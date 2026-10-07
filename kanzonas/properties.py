@@ -81,9 +81,12 @@ class PropertiesPanel(QWidget):
         self.opacity.setRange(10, 100)
         self.head = QComboBox()
         self.head.addItems(list(A.HEADS))
+        self.markup = QComboBox()
+        self.markup.addItems([m.capitalize() for m in A.COMMENT_STYLES])
 
         self.rows = {}
-        for key, label, w in (("text_color", "Text colour", self.text_color),
+        for key, label, w in (("markup", "Marks text with", self.markup),
+                              ("text_color", "Text colour", self.text_color),
                               ("stroke", "Line colour", self.stroke),
                               ("fill", "Fill", fill_row),
                               ("width", "Line width", self.width),
@@ -106,6 +109,7 @@ class PropertiesPanel(QWidget):
         self.fontsize.valueChanged.connect(self._emit)
         self.opacity.sliderReleased.connect(self._emit)
         self.head.currentIndexChanged.connect(self._emit)
+        self.markup.currentIndexChanged.connect(self._emit)
         self.show_target(None, None)
 
     def show_target(self, kind, props, selected=False):
@@ -147,6 +151,9 @@ class PropertiesPanel(QWidget):
             self.fontsize.setValue(float(props["fontsize"]))
         if "head" in props:
             self.head.setCurrentText(props["head"])
+        if "markup" in props:
+            self.markup.setCurrentIndex(A.COMMENT_STYLES.index(props["markup"])
+                                        if props["markup"] in A.COMMENT_STYLES else 0)
         if "opacity" in props:
             self.opacity.setValue(int(round(float(props["opacity"]) * 100)))
         self._props = dict(props)
@@ -175,6 +182,8 @@ class PropertiesPanel(QWidget):
             p["fontsize"] = self.fontsize.value()
         if "head" in p:
             p["head"] = self.head.currentText()
+        if "markup" in p:
+            p["markup"] = A.COMMENT_STYLES[self.markup.currentIndex()]
         if "opacity" in p:
             p["opacity"] = self.opacity.value() / 100
         self._props = p

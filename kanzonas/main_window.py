@@ -8,7 +8,8 @@ from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, 
                            QColor, QPainter)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, QMessageBox,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
-                               QListWidgetItem, QDockWidget, QAbstractItemView,
+                               QListWidgetItem, QDockWidget, QAbstractItemView, QToolButton,
+                               QVBoxLayout,
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea)
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
@@ -134,6 +135,8 @@ class MainWindow(QMainWindow):
         self.a_cards = self._act("Show &comment boxes", self._toggle_cards)
         self.a_cards.setCheckable(True)
         self.a_cards.setChecked(self.settings.value("comment_boxes", "true") != "false")
+        self.a_flatten = self._act("&Flatten...", self.flatten,
+                                   tip="Make annotations and form fields a permanent part of the page")
         self.a_delete_annot = self._act("Delete selected annotation",
                                         lambda: v() and v().delete_selected())
         self.a_about = self._act("&About", self.about)
@@ -176,7 +179,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_props)
         m.addSeparator()
-        m.addAction(self.a_ocr)
+        m.addActions([self.a_ocr, self.a_flatten])
         m = mb.addMenu("&Pages")
         m.addActions([self.a_rot_l, self.a_rot_r])
         m.addSeparator()
@@ -247,18 +250,30 @@ class MainWindow(QMainWindow):
         self.thumbs.setIconSize(QSize(120, 160))
         self.thumbs.setSpacing(4)
         self.thumbs.setUniformItemSizes(True)
-        # drag a thumbnail to a new position to reorder pages
-        self.thumbs.setDragDropMode(QAbstractItemView.InternalMove)
+        # drag a thumbnail to a new position to reorder pages (only when unlocked)
         self.thumbs.setDefaultDropAction(Qt.MoveAction)
         self.thumbs.setDropIndicatorShown(True)
         self.thumbs.model().rowsMoved.connect(self._on_thumb_moved)
-        self.thumbs.setToolTip("Drag pages to reorder them")
+        self.lock_btn = QToolButton()
+        self.lock_btn.setCheckable(True)
+        self.lock_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.lock_btn.toggled.connect(self._set_pages_locked)
+        side = QWidget()
+        sl = QVBoxLayout(side)
+        sl.setContentsMargins(0, 0, 0, 0)
+        sl.setSpacing(2)
+        sl.addWidget(self.lock_btn)
+        sl.addWidget(self.thumbs)
         self.thumbs.currentRowChanged.connect(self._on_thumb_clicked)
         self.thumbs.setContextMenuPolicy(Qt.ActionsContextMenu)
         self.dock = QDockWidget("Pages")
         self.dock.setObjectName("pages")
         self.dock.setFeatures(QDockWidget.DockWidgetClosable)
-        self.dock.setWidget(self.thumbs)
+        self.dock.setWidget(side)
+        # locked by default so pages can't be moved by accident; remembered between sessions
+        locked = self.settings.value("pages_locked", "true") != "false"
+        self.lock_btn.setChecked(locked)
+        self._set_pages_locked(locked)
         self.dock.setMinimumWidth(170)
         self.dock.visibilityChanged.connect(lambda vis: self.a_sidebar.setChecked(vis))
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock)
@@ -290,7 +305,7 @@ class MainWindow(QMainWindow):
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
-                  self.a_insert_blank, self.a_extract, self.a_ocr):
+                  self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten):
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_undo.setEnabled(has and v.can_undo())
@@ -641,6 +656,20 @@ class MainWindow(QMainWindow):
             pages = list(range(v.page_count()))
         v.run_ocr(pages)
 
+    def flatten(self):
+        v = self.view()
+        if not v:
+            return
+        choices = ["All pages", "Current page only"]
+        pick, ok = QInputDialog.getItem(
+            self, "Flatten", "Flatten annotations and form fields into the page.\n"
+            "They'll look the same but can no longer be edited or moved.\n"
+            "(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
+        if not ok:
+            return
+        v.flatten(None if pick == choices[0] else [v.current_page()])
+        self.statusBar().showMessage("Flattened", 4000)
+
     def _toggle_sidebar(self):
         self.dock.setVisible(not self.dock.isVisible())
 
@@ -673,6 +702,15 @@ class MainWindow(QMainWindow):
         if self.sender() is self.view():
             self._rebuild_thumbs()
         self._update_ui()
+
+    def _set_pages_locked(self, locked):
+        self.thumbs.setDragDropMode(QAbstractItemView.NoDragDrop if locked
+                                    else QAbstractItemView.InternalMove)
+        self.lock_btn.setText("\U0001F512 Page order locked (click to unlock)" if locked
+                              else "\U0001F513 Unlocked: drag pages to reorder")
+        self.thumbs.setToolTip("Unlock (button above) to drag pages" if locked
+                               else "Drag pages to reorder them")
+        self.settings.setValue("pages_locked", "true" if locked else "false")
 
     def _on_thumb_moved(self, _parent, start, _end, _dest_parent, dest_row):
         """Thumbnail dragged: apply the same move to the PDF (after Qt finishes the drop)."""

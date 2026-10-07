@@ -650,7 +650,8 @@ class DocumentView(QScrollArea):
             cards = []
             page = self.doc[index]
             for a in page.annots():
-                if a.type[0] != pymupdf.PDF_ANNOT_HIGHLIGHT:
+                if a.type[0] not in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
+                                     pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
                     continue
                 m = annotations.read(a)
                 if m and m["kind"] == "comment":
@@ -664,6 +665,14 @@ class DocumentView(QScrollArea):
             return
         if e.key() == Qt.Key_Escape and self.selection is not None:
             self.clear_selection()
+            return
+        if e.key() in (Qt.Key_Left, Qt.Key_Right) and not e.modifiers():
+            # previous / next page (use Shift+arrows or the scrollbar to scroll sideways)
+            self.goto_page(self.current_page() + (1 if e.key() == Qt.Key_Right else -1))
+            return
+        if e.key() in (Qt.Key_Left, Qt.Key_Right) and e.modifiers() == Qt.ShiftModifier:
+            bar = self.horizontalScrollBar()
+            bar.setValue(bar.value() + (1 if e.key() == Qt.Key_Right else -1) * bar.singleStep() * 3)
             return
         super().keyPressEvent(e)
 
@@ -810,6 +819,24 @@ class DocumentView(QScrollArea):
         to = target if delta < 0 else (target + 1 if target + 1 < self.doc.page_count else -1)
         self.modify(lambda: self.doc.move_page(index, to), structural=True)
         self.goto_page(target)
+
+    def flatten(self, pages=None):
+        """Burn annotations and form fields into the page content (pages=None: all pages).
+        Undo works until the file is closed; after saving, flattening is permanent."""
+        def do():
+            if pages is None:
+                self.doc.bake(annots=True, widgets=True)
+                return
+            for i in sorted(pages, reverse=True):
+                # PyMuPDF flattens whole documents: flatten a one-page copy and swap it in
+                tmp = pymupdf.open()
+                tmp.insert_pdf(self.doc, from_page=i, to_page=i)
+                tmp.bake(annots=True, widgets=True)
+                self.doc.delete_page(i)
+                self.doc.insert_pdf(tmp, start_at=i)
+                tmp.close()
+        self.clear_selection()
+        self.modify(do, structural=True)
 
     def move_page_to(self, src, dest_before):
         """Move page src so it sits before old page index dest_before (== count: end)."""

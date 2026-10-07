@@ -6,11 +6,13 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 
 - Tabs, drag-and-drop to open, recent files, password-protected PDFs
 - Continuous scrolling, Ctrl+mouse-wheel zoom, fit width or page
-- Page thumbnails: click to jump, **drag to reorder pages**
+- Page thumbnails: click to jump, drag to reorder pages (unlock first with the lock button)
+- Left/Right arrow keys: previous/next page
 - Find with all matches highlighted (Enter, F3 or Shift+F3)
 - Text selection that shows exactly what's selected as you drag; copy, highlight,
   underline, strike out
-- **Comment on text**: select text, it's highlighted and a note box appears beside it
+- **Comment on text**: select text, it's marked (highlight, underline, strikeout or squiggly,
+  set in the Properties panel) and a note box appears beside it
   (also visible as a comment in Acrobat)
 - Markup: sticky note, text box, rectangle, ellipse, line, arrow, freehand pen
 - **Properties panel** (F6): colours (line, fill, text), line width, font size, arrowhead
@@ -27,6 +29,7 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
   extract a range of pages to a new file
 - OCR (Tools > Recognize text): makes scanned pages searchable and selectable. Works offline,
   handles sideways (landscape) scans.
+- Flatten (Tools menu): burn annotations and form fields into the page, all pages or current
 - Undo and redo (Ctrl+Z, Ctrl+Y), print
 - Annotations are standard PDF annotations, so Acrobat and other viewers can see them
 
@@ -57,6 +60,7 @@ You can zip that folder and give it to anyone; they don't need Python.
 | Ctrl+Enter | Finish typing in note / text box / comment dialogs |
 | Ctrl+Shift+Plus / Minus | Rotate page clockwise / counter-clockwise |
 | Ctrl+Shift+Up / Down | Move current page up / down |
+| Left / Right | Previous / next page (Shift+Left/Right scrolls sideways) |
 | F4 / F6 | Show/hide page thumbnails / properties panel |
 
 ## Licence

@@ -20,9 +20,10 @@ KZ_KEY = "KZProps"
 
 DEFAULTS = {
     "highlight": {"stroke": "#ffdc00", "opacity": 1.0},
-    "comment": {"stroke": "#ffdc00", "opacity": 1.0},
+    "comment": {"markup": "highlight", "stroke": "#ffdc00", "opacity": 1.0},
     "underline": {"stroke": "#00a000", "opacity": 1.0},
     "strikeout": {"stroke": "#e00000", "opacity": 1.0},
+    "squiggly": {"stroke": "#e00000", "opacity": 1.0},
     "note": {"stroke": "#ffdc00", "opacity": 1.0},
     "textbox": {"text_color": "#000000", "stroke": "#d00000", "fill": None, "width": 1.0,
                 "fontsize": 11, "opacity": 1.0},
@@ -33,7 +34,7 @@ DEFAULTS = {
     "ink": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
 }
 LABELS = {"highlight": "Highlight", "comment": "Comment", "underline": "Underline",
-          "strikeout": "Strikeout", "note": "Sticky note", "textbox": "Text box",
+          "strikeout": "Strikeout", "squiggly": "Squiggly", "note": "Sticky note", "textbox": "Text box",
           "rect": "Rectangle", "ellipse": "Ellipse", "line": "Line", "arrow": "Arrow",
           "ink": "Pen"}
 HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE_CLOSED_ARROW,
@@ -41,13 +42,15 @@ HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE
          "closed (reversed)": pymupdf.PDF_ANNOT_LE_R_CLOSED_ARROW,
          "circle": pymupdf.PDF_ANNOT_LE_CIRCLE, "square": pymupdf.PDF_ANNOT_LE_SQUARE,
          "diamond": pymupdf.PDF_ANNOT_LE_DIAMOND, "bar": pymupdf.PDF_ANNOT_LE_BUTT}
-MARKUP = ("highlight", "comment", "underline", "strikeout")      # tied to text: not movable
+MARKUP = ("highlight", "comment", "underline", "strikeout", "squiggly")
+COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a comment marks text      # tied to text: not movable
 BOXED = ("rect", "ellipse", "textbox")                           # resizable via a rect
 _TYPE_KIND = {pymupdf.PDF_ANNOT_SQUARE: "rect", pymupdf.PDF_ANNOT_CIRCLE: "ellipse",
               pymupdf.PDF_ANNOT_INK: "ink", pymupdf.PDF_ANNOT_FREE_TEXT: "textbox",
               pymupdf.PDF_ANNOT_TEXT: "note", pymupdf.PDF_ANNOT_HIGHLIGHT: "highlight",
               pymupdf.PDF_ANNOT_UNDERLINE: "underline",
-              pymupdf.PDF_ANNOT_STRIKE_OUT: "strikeout", pymupdf.PDF_ANNOT_LINE: "line"}
+              pymupdf.PDF_ANNOT_STRIKE_OUT: "strikeout", pymupdf.PDF_ANNOT_SQUIGGLY: "squiggly",
+              pymupdf.PDF_ANNOT_LINE: "line"}
 
 
 # ---- colours ----------------------------------------------------------------
@@ -174,12 +177,15 @@ def write(page, model):
     width = float(p.get("width", 1))
     text = model.get("text", "")
 
-    if kind in ("highlight", "comment"):
+    markup = p.get("markup", "highlight") if kind == "comment" else kind
+    if markup == "highlight":
         a = page.add_highlight_annot(model["quads"])
-    elif kind == "underline":
+    elif markup == "underline":
         a = page.add_underline_annot(model["quads"])
-    elif kind == "strikeout":
+    elif markup == "strikeout":
         a = page.add_strikeout_annot(model["quads"])
+    elif markup == "squiggly":
+        a = page.add_squiggly_annot(model["quads"])
     elif kind == "rect":
         a = page.add_rect_annot(model["rect"])
     elif kind == "ellipse":
