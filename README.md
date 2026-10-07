@@ -1,5 +1,7 @@
 # KanzonasPDF
 
+![KanzonasPDF](assets/kanzonas-logo.png)
+
 A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymupdf.readthedocs.io/) (MuPDF) and Qt (PySide6).
 
 ## Features
@@ -118,7 +120,8 @@ revision, rotated plot, an ezdxf plot with vector text and layers, a 42x30 site 
 
 ## Credits
 
-Icons: Material Design Icons via QtAwesome (MIT).
+Icons: Material Design Icons via QtAwesome (MIT). App icon and logo: `kanzonas/branding.py`
+(regenerate `assets/` with `QT_QPA_PLATFORM=offscreen python tools_make_assets.py`).
 
 ## License
 

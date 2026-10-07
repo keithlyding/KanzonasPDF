@@ -2591,12 +2591,26 @@ class MainWindow(QMainWindow):
         self._manual.activateWindow()
 
     def about(self):
-        QMessageBox.about(self, "About " + APP_NAME,
-                          f"<b>{APP_NAME}</b> version {__version__}<br>A free, fast PDF reader and editor.<br><br>"
-                          f"Built on PyMuPDF {pymupdf.VersionBind} (MuPDF) and Qt (PySide6).<br><br>"
-                          "Free software under the GNU Affero General Public License 3.0.<br>"
-                          "Source code and downloads: <a href='https://github.com/keithlyding/KanzonasPDF'>"
-                          "github.com/keithlyding/KanzonasPDF</a>")
+        from . import branding, theme
+        dlg = QDialog(self)
+        dlg.setWindowTitle("About " + APP_NAME)
+        lay = QVBoxLayout(dlg)
+        logo = QLabel()
+        logo.setPixmap(branding.logo_pixmap(96, dark=theme.is_dark()))
+        lay.addWidget(logo)
+        text = QLabel(
+            f"Version {__version__}. A free, fast PDF reader and editor.<br><br>"
+            f"Built on PyMuPDF {pymupdf.VersionBind} (MuPDF) and Qt (PySide6).<br>"
+            "Free software under the GNU Affero General Public License 3.0.<br>"
+            "Source code and downloads: <a href='https://github.com/keithlyding/KanzonasPDF'>"
+            "github.com/keithlyding/KanzonasPDF</a>")
+        text.setOpenExternalLinks(True)
+        text.setWordWrap(True)
+        lay.addWidget(text)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok)
+        btns.accepted.connect(dlg.accept)
+        lay.addWidget(btns)
+        dlg.exec()
 
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):

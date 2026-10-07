@@ -36,8 +36,8 @@ def main():
         sock.waitForBytesWritten(1000)
         sock.disconnectFromServer()
         return
-    from .app_icon import icon
-    app.setWindowIcon(icon())
+    from .branding import app_icon
+    app.setWindowIcon(app_icon())
     from PySide6.QtCore import QSettings
     from . import theme
     theme.apply(app, QSettings(APP_NAME, APP_NAME).value("theme", "system"))
