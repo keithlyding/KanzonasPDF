@@ -498,6 +498,7 @@ class DocumentView(QScrollArea):
     def set_tool(self, tool):
         self.tool = tool
         self.clear_selection()
+        self.clear_text_selection()
         self._tool_cursor()
 
     def _tool_cursor(self):
@@ -596,6 +597,7 @@ class DocumentView(QScrollArea):
         self._line_cache = {}
         self._word_cache = {}
         self._card_cache = {}
+        self.text_sel = None           # (page index, selected character units) for copy / cut
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
         # the drawing's own line work rarely changes: re-check it lazily instead of dropping it
         if not hasattr(self, "_snap_content"):
@@ -723,6 +725,191 @@ class DocumentView(QScrollArea):
             last = key
         return "\n".join(line.strip() for line in "".join(out).split("\n"))
 
+    # ---- copy, cut, paste ------------------------------------------------------
+    def set_text_selection(self, index, words):
+        old = self.text_sel
+        self.text_sel = (index, list(words)) if words else None
+        for i in {index, old[0] if old else index}:
+            if 0 <= i < len(self.pages):
+                self.pages[i].update()
+
+    def clear_text_selection(self):
+        if self.text_sel is not None:
+            self.set_text_selection(self.text_sel[0], [])
+
+    def select_all_text(self):
+        index = self.current_page()
+        words = self._words(index)
+        self.set_text_selection(index, words)
+        return len(words)
+
+    def selected_text(self):
+        return self._words_text(self.text_sel[1]) if self.text_sel else ""
+
+    def copy(self):
+        """Copy the selected text, or the selected markups. Returns what was copied."""
+        from . import clip
+        if self.text_sel:
+            QGuiApplication.clipboard().setText(self.selected_text())
+            return "text"
+        models = self._models_for_clipboard()
+        if models:
+            text = "\n".join(m.get("text", "") for m in models if m.get("text"))
+            clip.put("markups", models, text)
+            return "markups"
+        return None
+
+    def _models_for_clipboard(self):
+        if self.selection is None:
+            return []
+        page = self.doc[self.selection[0]]
+        out = []
+        for x, m in self.selected_models():
+            if m["kind"] in ("field", "redact"):
+                continue
+            m = annotations.copy(m)
+            if m["kind"] == "image" and m.get("img"):
+                m["image_bytes"] = annotations.image_bytes(self.doc, m.pop("img"))[0]
+            if m["kind"] == "attach":
+                an = page.load_annot(x)
+                m["file_bytes"] = an.get_file()
+                m["filename"] = an.file_info.get("filename", "attachment")
+            m.pop("author", None)
+            m.pop("created", None)
+            m["locked"] = False
+            out.append(m)
+        return out
+
+    def cut(self):
+        """Cut the selected text (removed from the page) or the selected markups."""
+        what = self.copy()
+        if what == "text":
+            index, words = self.text_sel
+            rects = []
+            for w in words:
+                r = pymupdf.Rect(w[:4])
+                padx, pady = r.width * 0.08, r.height * 0.15
+                rects.append(pymupdf.Rect(r.x0 + padx, r.y0 + pady, r.x1 - padx, r.y1 - pady))
+
+            def do():
+                pg = self.doc[index]
+                for r in rects:
+                    pg.add_redact_annot(r, fill=False)
+                pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
+                                    graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
+                                    text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+            self.clear_text_selection()
+            self.modify(do, [index])
+        elif what == "markups":
+            self.delete_selected()
+        return what
+
+    def paste_target(self):
+        """(page index, PDF point) under the mouse, else the middle of the visible page."""
+        for i, pw in enumerate(self.pages):
+            local = pw.mapFromGlobal(QCursor.pos())
+            if pw.isVisible() and pw.rect().contains(local):
+                return i, pw.to_pdf(local)
+        i = self.current_page()
+        pw = self.pages[i]
+        vis = pw.visibleRegion().boundingRect()
+        c = vis.center() if not vis.isEmpty() else pw.rect().center()
+        return i, pw.to_pdf(c)
+
+    def paste(self):
+        """Paste markups copied in this app, else a picture, else text (as a text box)."""
+        from . import clip
+        kind, payload = clip.get()
+        if kind == "pages":
+            return self.paste_pages(payload, self.current_page() + 1)
+        index, pt = self.paste_target()
+        page = self.doc[index]
+        if kind == "markups":
+            box = None
+            for m in payload:
+                box = annotations.bounds(m) if box is None else box | annotations.bounds(m)
+            corner = pymupdf.Point(box.x0, box.y0) * page.rotation_matrix
+            target = pymupdf.Point(pt) * page.rotation_matrix
+            m_ = page.derotation_matrix
+            d = (target - corner) * m_ - pymupdf.Point(0, 0) * m_
+            made = []
+
+            def do():
+                pg = self.doc[index]
+                for m in payload:
+                    made.append(annotations.write(pg, annotations.moved(m, d)).xref)
+            self.modify(do, [index])
+            if made:
+                self._set_selection(index, made)
+            return "markups"
+        cb = QGuiApplication.clipboard()
+        md = cb.mimeData()
+        if md is not None and md.hasImage():
+            from PySide6.QtGui import QImage
+            img = QImage(cb.image())
+            if not img.isNull():
+                png = signatures.qimage_to_png(img)
+                disp = pymupdf.Point(pt) * page.rotation_matrix
+                w, h = img.width() * 72 / 150, img.height() * 72 / 150
+                k = min(1.0, page.rect.width * 0.8 / w, page.rect.height * 0.8 / h)
+                box = pymupdf.Rect(disp.x, disp.y, disp.x + w * k, disp.y + h * k)
+                self._create(index, {"kind": "image", "props": self.tool_props("image"),
+                                     "rect": box * page.derotation_matrix, "image_bytes": png,
+                                     "text": "Pasted image"}, select=True)
+                return "image"
+        text = cb.text()
+        if text.strip():
+            props = self.tool_props("textbox")
+            size = float(props.get("fontsize", 11))
+            lines = text.splitlines() or [text]
+            width = max(pymupdf.get_text_length(t, fontname="helv", fontsize=size) for t in lines)
+            disp = pymupdf.Point(pt) * page.rotation_matrix
+            box = pymupdf.Rect(disp.x, disp.y, disp.x + min(max(width + 12, 60), 460),
+                               disp.y + size * 1.35 * len(lines) + 10)
+            self._create(index, {"kind": "textbox", "rect": box * page.derotation_matrix,
+                                 "text": text, "props": props}, select=True)
+            return "text"
+        return None
+
+    # ---- pages: copy, paste, duplicate ---------------------------------------------
+    def pages_bytes(self, indices):
+        out = pymupdf.open()
+        for i in sorted(indices):
+            out.insert_pdf(self.doc, from_page=i, to_page=i)
+        data = out.tobytes(garbage=3, deflate=True)
+        out.close()
+        return data
+
+    def paste_pages(self, data, at):
+        """Insert the PDF pages in data before page index at (== count: at the end)."""
+        at = max(0, min(at, self.doc.page_count))
+        n = {}
+
+        def do():
+            with pymupdf.open(stream=data, filetype="pdf") as other:
+                n["n"] = other.page_count
+                self.doc.insert_pdf(other, start_at=at)
+        self.modify(do, structural=True)
+        self.goto_page(at)
+        return "pages"
+
+    def delete_pages(self, indices):
+        indices = sorted(set(indices), reverse=True)
+        if len(indices) >= self.doc.page_count:
+            QMessageBox.information(self, "Delete pages", "A PDF must keep at least one page.")
+            return False
+
+        def do():
+            for i in indices:
+                self.doc.delete_page(i)
+        self.modify(do, structural=True)
+        return True
+
+    def duplicate_pages(self, indices):
+        """Copies of these pages right after the last of them."""
+        data = self.pages_bytes(indices)
+        return self.paste_pages(data, max(indices) + 1)
+
     # ---- tool styles --------------------------------------------------------
     def tool_props(self, tool):
         return annotations.tool_props(tool) if tool in annotations.DEFAULTS else {}
@@ -757,8 +944,10 @@ class DocumentView(QScrollArea):
             return
         text = self._words_text(words)
         if tool == "select":
-            QGuiApplication.clipboard().setText(text)
-            self.statusMessage.emit(f"Copied {len(text)} characters")
+            # keep the selection: Ctrl+C copies, Ctrl+X cuts, Ctrl+V pastes
+            self.set_text_selection(index, words)
+            self.statusMessage.emit(f"{len(text)} characters selected: Ctrl+C to copy, "
+                                    "Ctrl+X to cut")
             return
         model = {"kind": tool, "props": self.tool_props(tool),
                  "quads": [r.quad for r in self.line_rects(words)],
@@ -1457,6 +1646,9 @@ class DocumentView(QScrollArea):
             return
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.selection is not None:
             self.delete_selected()
+            return
+        if e.key() == Qt.Key_Escape and self.text_sel is not None:
+            self.clear_text_selection()
             return
         if e.key() == Qt.Key_Escape:
             # Escape twice in a row: back to the Select (arrow) tool

@@ -66,7 +66,8 @@ scroll with the wheel instead. Your choice is remembered.</li>
 
 <h2 id="select">Selecting and editing markups</h2>
 <ul>
-<li><b>Select tool (V):</b> drag across text to copy it. Click a markup to select it, then drag
+<li><b>Select tool (V):</b> drag across text to select it (it stays highlighted; see Copy,
+cut and paste below). Click a markup to select it, then drag
 it to move it, drag a square handle to resize it, or change its look in the Properties panel.</li>
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
 it too, so you don't have to switch back to the arrow.</li>
@@ -75,6 +76,23 @@ tool (Ctrl+drag always draws a selection box). Drag any selected markup to move 
 Delete removes them all; Properties changes apply to all of them.</li>
 <li><b>Delete:</b> Delete or Backspace. <b>Edit a note's text:</b> double-click it.</li>
 <li><b>Escape</b> clears the selection; <b>Escape twice</b> switches back to the Select (arrow) tool.</li>
+</ul>
+
+<h2 id="clipboard">Copy, cut and paste</h2>
+<ul>
+<li><b>Text:</b> with the Select tool, drag across text; the selection stays highlighted.
+<b>Copy</b> (Ctrl+C) puts it on the clipboard; <b>Cut</b> (Ctrl+X) also removes those letters
+from the page (Undo brings them back). <b>Select all text</b> (Ctrl+A) selects the whole page's
+text. Escape or a click elsewhere clears the selection.</li>
+<li><b>Markups:</b> select one or more markups, then Copy or Cut. <b>Paste</b> (Ctrl+V) puts them
+where the mouse is, on any page or in another open document.</li>
+<li><b>Pictures and text from other programs:</b> Paste a copied picture (e.g. a screenshot)
+as an image markup, or copied text as a text box, where the mouse is.</li>
+<li><b>Pages:</b> unlock the page list (lock button above the thumbnails), select thumbnails
+(Ctrl+click or Shift+click for several), then right-click or use the Pages menu:
+<b>Copy pages</b>, <b>Cut pages</b>, <b>Paste pages after selected</b> and <b>Duplicate pages</b>
+(Ctrl+D). With the page list clicked, Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+A work on pages. Pages
+can be pasted into another open document too.</li>
 </ul>
 
 <h2 id="markup">Text markup and comments</h2>
@@ -326,6 +344,9 @@ Plain text (.txt).</li>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Escape, Escape twice</td><td>Clear selection, back to Select</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
+<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
+<tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>
+<tr><td>Ctrl+D</td><td>Duplicate selected pages</td></tr>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
 <tr><td>Left / Right</td><td>Previous / next page</td></tr>

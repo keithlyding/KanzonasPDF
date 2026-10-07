@@ -231,9 +231,9 @@ def read(annot):
             props["icon"] = doc.xref_get_key(annot.xref, "Name")[1].lstrip("/") or props["icon"]
         except Exception:
             pass
-    elif kind in ("rect", "ellipse", "placeholder") and geom.get("box"):
+    elif kind in ("rect", "ellipse", "placeholder", "textbox") and geom.get("box"):
         model["rect"] = pymupdf.Rect(geom["box"])
-    elif kind in ("rect", "ellipse") and stored:
+    elif kind in ("rect", "ellipse", "textbox") and stored:
         # made by an older version: the PDF rect includes half the border on each side
         hw = float(props.get("width", 0) or 0) / 2 if props.get("stroke") else 0
         model["rect"] = pymupdf.Rect(annot.rect) + (hw, hw, -hw, -hw)
@@ -442,7 +442,7 @@ def write(page, model):
             store["geom"]["box"] = list(model["rect"])
     elif kind == "image":
         store["geom"] = {"img": _image_appearance(page, a, model), "box": list(model["rect"])}
-    elif kind in ("rect", "ellipse", "placeholder"):
+    elif kind in ("rect", "ellipse", "placeholder", "textbox"):
         # keep the exact box: the PDF rect grows by the border width (would creep on edits)
         store["geom"] = {"box": list(model["rect"])}
     elif kind == "m_count":

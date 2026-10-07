@@ -27,7 +27,7 @@ APP_NAME = "KanzonasPDF"
 APP_TITLE = f"KanzonasPDF v{__version__}"
 PDF_FILTER = "PDF files (*.pdf);;All files (*)"
 TOOLS = [  # (id, label, shortcut, tooltip)
-    ("select", "Select", "V", "Select: drag across text to copy it; click an annotation "
+    ("select", "Select", "V", "Select: drag across text to select it (Ctrl+C copies); click an annotation "
                               "to move, resize or restyle it (V)"),
     ("hand", "Hand", "H", "Pan the page (H)"),
     ("edittext", "Edit text", "Ctrl+E", "Edit existing text: click a line of text (Ctrl+E)"),
@@ -181,6 +181,23 @@ class MainWindow(QMainWindow):
         self.a_undo = self._act("&Undo", lambda: v() and v().undo(), QKeySequence.Undo)
         self.a_redo = self._act("&Redo", lambda: v() and v().redo(), QKeySequence.Redo)
         self.a_find = self._act("&Find", self._focus_search, QKeySequence.Find)
+        # clipboard: text, markups, or pages (when the page list has the focus)
+        self.a_copy = self._act("&Copy", lambda: self._clipboard("copy"), QKeySequence.Copy,
+                                tip="Copy the selected text, markups, or pages (in the page list)")
+        self.a_cut = self._act("Cu&t", lambda: self._clipboard("cut"), QKeySequence.Cut,
+                               tip="Cut the selected text (removes it from the page), markups or pages")
+        self.a_paste = self._act("&Paste", lambda: self._clipboard("paste"), QKeySequence.Paste,
+                                 tip="Paste markups, pages, a picture, or text (as a text box) "
+                                     "where the mouse is")
+        self.a_select_all = self._act("Select &all text", lambda: self._clipboard("all"),
+                                      QKeySequence.SelectAll,
+                                      tip="Select all the text on the current page (or all pages "
+                                          "in the page list)")
+        self.a_dup_pages = self._act("D&uplicate pages", lambda: self._page_clip("dup"), "Ctrl+D",
+                                     tip="Duplicate the selected pages (page list must be unlocked)")
+        self.a_copy_pages = self._act("Copy pa&ges", lambda: self._page_clip("copy"))
+        self.a_cut_pages = self._act("Cut pages", lambda: self._page_clip("cut"))
+        self.a_paste_pages = self._act("Paste pages after selected", lambda: self._page_clip("paste"))
         self.a_find_next = self._act("Find next", lambda: self._find(False), QKeySequence.FindNext)
         self.a_find_prev = self._act("Find previous", lambda: self._find(True),
                                      QKeySequence.FindPrevious)
@@ -409,6 +426,9 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_close, self.a_exit])
         m = mb.addMenu("&Edit")
         m.addActions([self.a_undo, self.a_redo])
+        m.addSeparator()
+        m.addActions([self.a_cut, self.a_copy, self.a_paste, self.a_select_all])
+        m.addSeparator()
         m.addAction(self.a_delete_annot)
         m.addSeparator()
         m.addAction(self.a_author)
@@ -498,11 +518,17 @@ class MainWindow(QMainWindow):
         hint = m.addAction("To fill in a form: use Select or Hand and click a field")
         hint.setEnabled(False)
         m = mb.addMenu("&Pages")
+        m.addActions([self.a_copy_pages, self.a_cut_pages, self.a_paste_pages, self.a_dup_pages])
+        m.addSeparator()
         m.addActions([self.a_rot_l, self.a_rot_r])
         m.addSeparator()
         m.addActions([self.a_move_up, self.a_move_down, self.a_del_page])
         m.addSeparator()
         m.addActions([self.a_insert_pdf, self.a_insert_blank, self.a_extract])
+        sep = QAction(self)
+        sep.setSeparator(True)
+        self.thumbs.addActions([self.a_copy_pages, self.a_cut_pages, self.a_paste_pages,
+                                self.a_dup_pages, sep, self.a_rot_l, self.a_rot_r, self.a_del_page])
         m = mb.addMenu("&Help")
         m.addAction(self.a_manual)
         m.addSeparator()
@@ -649,6 +675,7 @@ class MainWindow(QMainWindow):
         sl.addWidget(self.lock_btn)
         sl.addWidget(self.thumbs)
         self.thumbs.currentRowChanged.connect(self._on_thumb_clicked)
+        self.thumbs.setSelectionMode(QAbstractItemView.ExtendedSelection)   # Ctrl/Shift+click
         self.thumbs.setContextMenuPolicy(Qt.ActionsContextMenu)
         self.dock = QDockWidget("Pages")
         self.dock.setObjectName("pages")
@@ -2656,6 +2683,67 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is not None:
             QTimer.singleShot(0, lambda: v.move_page_to(start, dest_row))
+
+    # ---- clipboard -----------------------------------------------------------------
+    def _clipboard(self, op):
+        """Edit > Copy / Cut / Paste / Select all: pages when the page list has the focus,
+        otherwise text or markups in the document."""
+        v = self.view()
+        if v is None:
+            return
+        if self.thumbs.hasFocus():
+            if op == "all":
+                self.thumbs.selectAll()
+            else:
+                self._page_clip(op)
+            return
+        if op == "copy":
+            what = v.copy()
+            self.statusBar().showMessage({"text": "Text copied", "markups": "Markups copied"}.get(
+                what, "Select text or markups first"), 3000)
+        elif op == "cut":
+            what = v.cut()
+            self.statusBar().showMessage({"text": "Text cut", "markups": "Markups cut"}.get(
+                what, "Select text or markups first"), 3000)
+        elif op == "paste":
+            what = v.paste()
+            if what is None:
+                self.statusBar().showMessage("Nothing to paste", 3000)
+        elif op == "all":
+            if self.tool != "select":
+                self.set_tool("select")
+            self.statusBar().showMessage(f"Selected {v.select_all_text()} characters", 3000)
+
+    def _selected_pages(self):
+        rows = sorted(self.thumbs.row(i) for i in self.thumbs.selectedItems())
+        v = self.view()
+        return rows or ([v.current_page()] if v else [])
+
+    def _page_clip(self, op):
+        from . import clip
+        v = self.view()
+        if v is None:
+            return
+        if op != "copy" and self.lock_btn.isChecked():
+            QMessageBox.information(self, "Pages", "The page order is locked. Click the lock "
+                                    "button above the page list to unlock it first.")
+            return
+        pages = self._selected_pages()
+        if op in ("copy", "cut"):
+            clip.put("pages", v.pages_bytes(pages))
+            if op == "cut" and v.delete_pages(pages):
+                self.statusBar().showMessage(f"Cut {len(pages)} page(s)", 3000)
+            else:
+                self.statusBar().showMessage(f"Copied {len(pages)} page(s)", 3000)
+        elif op == "paste":
+            kind, data = clip.get()
+            if kind != "pages":
+                self.statusBar().showMessage("Copy some pages first (Pages > Copy pages)", 3000)
+                return
+            v.paste_pages(data, max(pages) + 1)
+        elif op == "dup":
+            v.duplicate_pages(pages)
+            self.statusBar().showMessage(f"Duplicated {len(pages)} page(s)", 3000)
 
     def _on_thumb_clicked(self, row):
         v = self.view()

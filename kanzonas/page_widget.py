@@ -223,6 +223,11 @@ class PageWidget(QWidget):
                     p.drawRect(sr)
 
         tool = self.view.tool
+        # a finished text selection (Select tool): stays until copied / cut / cleared
+        ts = self.view.text_sel
+        if ts is not None and ts[0] == self.index and self._text_sel is None:
+            for r in self.view.line_rects(ts[1]):
+                p.fillRect(self.to_screen(r, page), QColor(0, 120, 215, 80))
         # live text selection: shows exactly what will be copied / marked up
         if self._text_sel is not None:
             mode, words = self._text_sel
@@ -597,6 +602,7 @@ class PageWidget(QWidget):
             if self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
                 return
         if tool in TEXT_TOOLS:
+            self.view.clear_text_selection()
             self._drag_start = self._drag_now = pos
             self._text_sel = self.view.text_selection(self.index, pdf, pdf)
             self._marquee = tool == "select" and ctrl_held(e)

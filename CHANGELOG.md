@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.32 | (this) | Icon uses the owner's original composition again (page coming out above the cactus), with the page outline darkened in the icon and logo |
+| 0.33 | (this) | Copy, cut and paste: text selections stay highlighted (Ctrl+C copies, Ctrl+X removes the text, Ctrl+A selects all); markups copy/paste between pages and documents; pasting a picture makes an image markup and text a text box; pages: Copy, Cut, Paste after selected and Duplicate (Ctrl+D) in the unlocked page list, also across documents. Fix: text boxes grew slightly on every edit |
+| 0.32 | b8dd3fb | Icon uses the owner's original composition again (page coming out above the cactus), with the page outline darkened in the icon and logo |
 | 0.31 | a556d7f | Logo and icon refinements on the owner's artwork: ™ removed, page outline darker, large icon's frame and page redrawn sharp around the owner's cactus and sunflower, simplified cactus-and-sunflower icon for 16-32 px with a white edge for dark taskbars |
 | 0.30 | e50faaa | Logo and icon replaced with the owner's own artwork (cactus and sunflower as designed); app icon, About box, installer artwork, README |
 | 0.29 | 976a7ff | New logo and icon (saguaro with a sunflower on a PDF page), drawn as vectors with simplified versions for small sizes; logo in the About box; installer artwork |
