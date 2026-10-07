@@ -13,8 +13,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
 from . import annotations as A
 
 COLUMNS = ["Page", "Type", "Comment / text", "Author", "Date", "Colour"]
-_SKIP = (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_WIDGET, pymupdf.PDF_ANNOT_LINK,
-         pymupdf.PDF_ANNOT_REDACT)
+_SKIP = (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_WIDGET, pymupdf.PDF_ANNOT_LINK)
 
 
 def _date(pdf_date):

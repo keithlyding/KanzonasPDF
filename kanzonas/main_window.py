@@ -11,8 +11,10 @@ from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, 
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, QMessageBox,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
                                QListWidgetItem, QDockWidget, QAbstractItemView, QToolButton,
-                               QVBoxLayout, QMenu, QProgressDialog,
-                               QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea)
+                               QVBoxLayout, QHBoxLayout, QMenu, QProgressDialog,
+                               QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
+                               QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
+                               QPushButton)
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from . import __version__, annotations, export, signatures
@@ -62,6 +64,10 @@ MEASURE_TOOLS = [
     ("m_area", "Area", "Shift+A", "Measure area and perimeter: click corners, double-click or Enter (Shift+A)"),
     ("m_count", "Count", "Shift+C", "Count: click each item; set the group name in Properties (Shift+C)"),
     ("m_calibrate", "Calibrate", "", "Calibrate: drag along a known dimension, then type its real length"),
+]
+EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
+    ("redact", "&Redact (mark text or area)", "Shift+R",
+     "Redact: drag across text, or drag a box over any area; then Apply redactions"),
 ]
 EXPORTS = [  # (id, menu label, file filter, extension)
     ("word", "Microsoft &Word (.docx)...", "Word document (*.docx)", "docx"),
@@ -185,6 +191,14 @@ class MainWindow(QMainWindow):
         self.a_chest = self._act("Tool &chest", lambda: (self.chest_dock.show(), self.chest_dock.raise_()), "F8")
         self.a_compare = self._act("&Compare documents...", self.compare_documents,
                                    tip="Compare this document with another revision")
+        self.a_header = self._act("&Header && footer, page numbers, Bates...", self.header_footer)
+        self.a_watermark = self._act("&Watermark...", self.watermark)
+        self.a_compress = self._act("&Compress (save a smaller copy)...", self.compress)
+        self.a_bookmarks = self._act("&Bookmarks", self._show_bookmarks, "F9")
+        self.a_search_redact = self._act("&Search && redact...", self.search_redact)
+        self.a_apply_redact = self._act("&Apply redactions...", self.apply_redactions)
+        self.a_digisign = self._act("&Digitally sign with certificate...", self.digital_sign)
+        self.a_sig_details = self._act("Digital signature &details...", self.signature_details)
         self.a_set_scale = self._act("Set &scale...", self.set_scale)
         self.a_measure_summary = self._act("Measurement &summary...", self.measure_summary)
         self.a_markups = self._act("&Markups list", self._toggle_markups, "F7")
@@ -208,7 +222,7 @@ class MainWindow(QMainWindow):
             self.tool_actions[tid] = a
         self.tool_actions["select"].setChecked(True)
         self.tool_group.triggered.connect(lambda _a: self._clear_chest())
-        for tid, label, sc, tip in MEASURE_TOOLS:
+        for tid, label, sc, tip in MEASURE_TOOLS + EXTRA_TOOLS:
             a = QAction(label, self, checkable=True)
             if sc:
                 a.setShortcut(QKeySequence(sc))
@@ -257,6 +271,15 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_props)
         m.addSeparator()
         m.addActions([self.a_ocr, self.a_flatten])
+        m = mb.addMenu("&Document")
+        m.addActions([self.a_header, self.a_watermark])
+        m.addSeparator()
+        m.addAction(self.a_bookmarks)
+        m.addSeparator()
+        rm = m.addMenu("&Redaction")
+        rm.addActions([self.tool_actions["redact"], self.a_search_redact, self.a_apply_redact])
+        m.addSeparator()
+        m.addActions([self.a_compress, self.a_compare, self.a_flatten])
         m = mb.addMenu("&Measure")
         m.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
         m.addSeparator()
@@ -267,6 +290,8 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_setup_sig, self.a_setup_init])
         m.addSeparator()
         m.addActions([self.a_protect, self.a_unlock])
+        m.addSeparator()
+        m.addActions([self.a_digisign, self.a_sig_details])
         m = mb.addMenu("F&orms")
         m.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
         m.addSeparator()
@@ -389,7 +414,13 @@ class MainWindow(QMainWindow):
         self.dock = QDockWidget("Pages")
         self.dock.setObjectName("pages")
         self.dock.setFeatures(QDockWidget.DockWidgetClosable)
-        self.dock.setWidget(side)
+        # Pages and Bookmarks are tabs inside one panel (two tabbed dock groups on both sides
+        # of the window trigger a Qt bug that draws a phantom duplicate tab bar).
+        self.left_tabs = QTabWidget()
+        self.left_tabs.setTabPosition(QTabWidget.South)
+        self.left_tabs.setDocumentMode(True)
+        self.left_tabs.addTab(side, "Pages")
+        self.dock.setWidget(self.left_tabs)
         # locked by default so pages can't be moved by accident; remembered between sessions
         locked = self.settings.value("pages_locked", "true") != "false"
         self.lock_btn.setChecked(locked)
@@ -397,6 +428,13 @@ class MainWindow(QMainWindow):
         self.dock.setMinimumWidth(170)
         self.dock.visibilityChanged.connect(lambda vis: self.a_sidebar.setChecked(vis))
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock)
+
+        from .bookmarks_panel import BookmarksPanel
+        self.bookmarks = BookmarksPanel()
+        self.bookmarks.current_page = lambda: self.view().current_page() if self.view() else 0
+        self.bookmarks.jump.connect(lambda i: self.view() and self.view().goto_page(i))
+        self.bookmarks.changed.connect(lambda toc: self.view() and self.view().set_toc(toc))
+        self.left_tabs.addTab(self.bookmarks, "Bookmarks")
 
         self.props = PropertiesPanel()
         self.props.propsChanged.connect(self._on_props_changed)
@@ -411,7 +449,6 @@ class MainWindow(QMainWindow):
         self.props_dock.setMinimumWidth(220)
         self.props_dock.visibilityChanged.connect(lambda vis: self.a_props.setChecked(vis))
         self.addDockWidget(Qt.RightDockWidgetArea, self.props_dock)
-        self.resizeDocks([self.dock, self.props_dock], [180, 240], Qt.Horizontal)
 
         self.chest = ToolChestPanel()
         self.chest.use.connect(self._use_chest_tool)
@@ -419,9 +456,11 @@ class MainWindow(QMainWindow):
         self.chest_dock = QDockWidget("Tool chest")
         self.chest_dock.setObjectName("toolchest")
         self.chest_dock.setWidget(self.chest)
+        self.chest_dock.setFeatures(QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.RightDockWidgetArea, self.chest_dock)
         self.tabifyDockWidget(self.props_dock, self.chest_dock)
         self.props_dock.raise_()
+        self.resizeDocks([self.dock, self.props_dock], [180, 240], Qt.Horizontal)
 
         self.markups = MarkupsPanel()
         self.markups.activated.connect(lambda i, x: self.view() and self.view().reveal(i, x))
@@ -448,7 +487,8 @@ class MainWindow(QMainWindow):
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
                   self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten,
                   self.a_protect, self.a_unlock, self.a_set_scale, self.a_measure_summary,
-                  self.a_compare,
+                  self.a_compare, self.a_header, self.a_watermark, self.a_compress,
+                  self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
                   *self.export_actions):
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
@@ -515,6 +555,7 @@ class MainWindow(QMainWindow):
         v.documentChanged.connect(self._on_doc_changed)
         v.structureChanged.connect(self._on_structure_changed)
         v.statusMessage.connect(lambda m: self.statusBar().showMessage(m, 4000))
+        v.check_digital_signatures()
         idx = self.tabs.addTab(v, os.path.basename(path))
         self.tabs.setCurrentIndex(idx)
         self.settings.setValue("last_dir", os.path.dirname(path))
@@ -1021,6 +1062,200 @@ class MainWindow(QMainWindow):
             return
         self.chest.add(tool, props, name)
 
+    # ---- document tools ------------------------------------------------------------
+    def _show_bookmarks(self):
+        self.dock.show()
+        self.left_tabs.setCurrentWidget(self.bookmarks)
+
+    def _refresh_bookmarks(self):
+        v = self.view()
+        self.bookmarks.set_toc(v.get_toc() if v else [])
+
+    def header_footer(self):
+        from .page_tools import HeaderFooterDialog
+        v = self.view()
+        if v:
+            dlg = HeaderFooterDialog(self, v.page_count())
+            if dlg.exec() and dlg.spec:
+                v.add_header_footer(dlg.spec)
+
+    def watermark(self):
+        from .page_tools import WatermarkDialog
+        v = self.view()
+        if v:
+            dlg = WatermarkDialog(self, v.page_count())
+            if dlg.exec() and dlg.spec:
+                v.add_watermark(dlg.spec)
+
+    def compress(self):
+        from . import page_tools
+        v = self.view()
+        if not v:
+            return
+        preset, ok = QInputDialog.getItem(self, "Compress", "Image quality:",
+                                          list(page_tools.COMPRESS), 1, False)
+        if not ok:
+            return
+        base = os.path.splitext(v.path)[0]
+        path, _ = QFileDialog.getSaveFileName(self, "Save smaller copy", base + "_small.pdf", PDF_FILTER)
+        if not path:
+            return
+        try:
+            before, after = page_tools.compress(v.doc.tobytes(), path, preset)
+        except Exception as ex:
+            QMessageBox.critical(self, "Compress failed", str(ex))
+            return
+        QMessageBox.information(self, "Compress",
+                                f"Saved {path}\n\n{before / 1e6:.2f} MB \u2192 {after / 1e6:.2f} MB "
+                                f"({100 - after * 100 / max(1, before):.0f}% smaller)")
+
+    def search_redact(self):
+        v = self.view()
+        if not v:
+            return
+        text, ok = QInputDialog.getText(self, "Search & redact",
+                                        "Mark every occurrence of this text for redaction:")
+        if ok and text.strip():
+            n = v.search_redact(text.strip())
+            QMessageBox.information(self, "Search & redact",
+                                    f"Marked {n} occurrence(s). Review them, then use Document > "
+                                    "Redaction > Apply redactions." if n else "No matches found.")
+
+    def apply_redactions(self):
+        v = self.view()
+        if not v:
+            return
+        n = v.pending_redactions()
+        if not n:
+            QMessageBox.information(self, "Redaction", "Nothing is marked for redaction yet. "
+                                    "Use the Redact tool or Search & redact first.")
+            return
+        box = QMessageBox(QMessageBox.Warning, "Apply redactions",
+                          f"Permanently remove everything under {n} redaction mark(s)? Text, "
+                          "images and drawings there are deleted, not just covered.\n\n"
+                          "Undo works until you close the file.", parent=self)
+        scrub = QCheckBox("Also remove hidden information (metadata, attachments, scripts)")
+        box.setCheckBox(scrub)
+        box.setStandardButtons(QMessageBox.Apply | QMessageBox.Cancel)
+        if box.exec() == QMessageBox.Apply:
+            v.apply_redactions(scrub.isChecked())
+            self.statusBar().showMessage(f"Applied {n} redaction(s). Save to make it permanent.", 6000)
+
+    # ---- digital signatures ----------------------------------------------------------
+    def digital_sign(self):
+        from . import digisign
+        v = self.view()
+        if not v:
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Digitally sign with a certificate")
+        lay = QVBoxLayout(dlg)
+        info = QLabel("A digital signature proves who signed and that the document hasn't "
+                      "changed since. Tip: place your visible signature first (Sign tool), "
+                      "then sign digitally. The signed copy is saved as a new file.")
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        form = QFormLayout()
+        mine = QRadioButton("My personal certificate" + ("" if os.path.exists(digisign.my_cert_path())
+                                                          else " (created now)"))
+        other = QRadioButton("Certificate file from a certificate authority / my company (.pfx, .p12)")
+        mine.setChecked(True)
+        cert_path = QLineEdit()
+        browse = QPushButton("Browse...")
+        browse.clicked.connect(lambda: cert_path.setText(QFileDialog.getOpenFileName(
+            dlg, "Certificate", "", "Certificates (*.pfx *.p12)")[0] or cert_path.text()))
+        row = QHBoxLayout()
+        row.addWidget(cert_path)
+        row.addWidget(browse)
+        password = QLineEdit()
+        password.setEchoMode(QLineEdit.Password)
+        reason = QComboBox()
+        reason.setEditable(True)
+        reason.addItems(["I approve this document", "I am the author of this document",
+                         "I have reviewed this document", "I agree to the terms"])
+        location = QLineEdit()
+        lock = QCheckBox("Lock the document: no further changes allowed (certify)")
+        form.addRow(mine)
+        form.addRow(other)
+        form.addRow("Certificate file", row)
+        form.addRow("Certificate password", password)
+        form.addRow("Reason", reason)
+        form.addRow("Location", location)
+        form.addRow(lock)
+        lay.addLayout(form)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        lay.addWidget(btns)
+        if not dlg.exec():
+            return
+        try:
+            if mine.isChecked():
+                path = digisign.my_cert_path()
+                if not os.path.exists(path):
+                    name, ok = QInputDialog.getText(self, "Create your certificate",
+                                                    "Your full name (shown as the signer):",
+                                                    text=annotations.author())
+                    if not ok or not name.strip():
+                        return
+                    email, _ok = QInputDialog.getText(self, "Create your certificate",
+                                                      "Email (optional):")
+                    if not password.text():
+                        QMessageBox.warning(self, "Certificate", "Choose a certificate password "
+                                            "in the signing dialog to protect your certificate.")
+                        return
+                    digisign.create_certificate(name.strip(), email.strip(), "", password.text())
+            else:
+                path = cert_path.text()
+                if not os.path.isfile(path):
+                    QMessageBox.warning(self, "Certificate", "Choose a certificate file.")
+                    return
+            signer = digisign.load_signer(path, password.text())
+        except Exception as ex:
+            QMessageBox.warning(self, "Certificate", f"Couldn't use that certificate: {ex}")
+            return
+        base = os.path.splitext(v.path)[0]
+        out, _ = QFileDialog.getSaveFileName(self, "Save signed copy as", base + "_signed.pdf", PDF_FILTER)
+        if not out:
+            return
+        try:
+            digisign.sign(v.doc.tobytes(), out, signer, reason.currentText(), location.text(),
+                          lock.isChecked())
+        except Exception as ex:
+            QMessageBox.critical(self, "Signing failed", str(ex))
+            return
+        self.open_file(out)
+
+    def signature_details(self):
+        v = self.view()
+        if not v:
+            return
+        res = getattr(v, "sig_results", [])
+        if not res:
+            QMessageBox.information(self, "Digital signatures", "This document has no digital "
+                                    "(certificate) signatures.")
+            return
+        lines = []
+        for r in res:
+            lines.append(r["summary"])
+            if r.get("reason"):
+                lines.append(f"   Reason: {r['reason']}")
+            if r.get("email"):
+                lines.append(f"   Email: {r['email']}")
+            if r.get("fingerprint"):
+                lines.append(f"   Certificate fingerprint: {r['fingerprint'][:32]}...")
+        box = QMessageBox(QMessageBox.Information, "Digital signatures", "\n".join(lines), parent=self)
+        untrusted = [r for r in res if r.get("fingerprint") and not r.get("trusted")]
+        trust_btn = box.addButton("Trust these signers on this computer", QMessageBox.ActionRole) \
+            if untrusted else None
+        box.addButton(QMessageBox.Close)
+        box.exec()
+        if trust_btn is not None and box.clickedButton() is trust_btn:
+            from . import digisign
+            for r in untrusted:
+                digisign.trust(r["fingerprint"])
+            v.check_digital_signatures()
+
     # ---- compare --------------------------------------------------------------------
     def compare_documents(self):
         from . import compare
@@ -1099,6 +1334,7 @@ class MainWindow(QMainWindow):
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):
         self._rebuild_thumbs()
+        self._refresh_bookmarks()
         self._markups_timer.start()
         self._refresh_props()
         self._update_ui()
@@ -1120,6 +1356,7 @@ class MainWindow(QMainWindow):
     def _on_structure_changed(self):
         if self.sender() is self.view():
             self._rebuild_thumbs()
+            self._refresh_bookmarks()
         self._update_ui()
 
     def _set_pages_locked(self, locked):

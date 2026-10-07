@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QWidget, QToolTip
 
 from . import annotations as A
 
-TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment"}
+TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
                "m_length", "m_calibrate"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area"}

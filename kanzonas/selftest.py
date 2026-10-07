@@ -80,6 +80,27 @@ def run(log_path):
         assert next(d[0].widgets()).field_value == "Filled"
     check("forms", t_forms)
 
+    def t_digisign():
+        from . import digisign
+        cert = os.path.join(tmp, "c.p12")
+        digisign.create_certificate("Self Test", "", "", "pw", cert)
+        out = os.path.join(tmp, "signed.pdf")
+        digisign.sign(data, out, digisign.load_signer(cert, "pw"), "test")
+        with open(out, "rb") as f:
+            res = digisign.validate(f.read())
+        assert res and res[0]["intact"] and not res[0]["modified"], res
+    check("digital signature", t_digisign)
+
+    def t_page_tools():
+        from . import page_tools
+        d = pymupdf.open(stream=data, filetype="pdf")
+        page_tools.add_header_footer(d, {"texts": {("footer", "center"): "Page {page} of {pages}"},
+                                         "pages": [0]}, "x.pdf")
+        page_tools.add_watermark(d, {"text": "DRAFT", "pages": [0]})
+        assert "Page 1 of 1" in d[0].get_text()
+        page_tools.compress(d.tobytes(), os.path.join(tmp, "small.pdf"), list(page_tools.COMPRESS)[1])
+    check("page tools", t_page_tools)
+
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     return 0 if ok else 1

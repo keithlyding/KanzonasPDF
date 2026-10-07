@@ -11,7 +11,7 @@ from PySide6.QtCore import QRectF
 from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor)
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
-                               QMenu, QPlainTextEdit)
+                               QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
 
 from . import annotations, dialogs, signatures, text_edit
 from .inline_editor import InlineEditor
@@ -261,9 +261,15 @@ class DocumentView(QScrollArea):
     def modify(self, fn, pages=None, structural=False):
         """Run an edit with an undo snapshot. pages = indices to repaint."""
         if self.read_only:
-            QMessageBox.information(self, "Protected document",
-                                    "This PDF is protected against changes. Use File > Unlock "
-                                    "with password... if you have its owner password.")
+            if getattr(self, "sig_results", None):
+                QMessageBox.information(self, "Digitally signed document",
+                                        "This PDF is digitally signed, so it's read-only to keep "
+                                        "the signature valid. Click \u201cEdit anyway\u201d in the "
+                                        "banner if you really need to change it.")
+            else:
+                QMessageBox.information(self, "Protected document",
+                                        "This PDF is protected against changes. Use Sign > Unlock "
+                                        "with password... if you have its owner password.")
             return
         snap = self._snapshot()
         self._clear_caches()
@@ -419,6 +425,8 @@ class DocumentView(QScrollArea):
         return annotations.tool_props(tool) if tool in annotations.DEFAULTS else {}
 
     def tool_color(self, tool):
+        if tool == "redact":
+            return QColor(0, 0, 0)
         return QColor(self.tool_props(tool).get("stroke") or "#0078d7")
 
     # ---- creating annotations -------------------------------------------------
@@ -434,6 +442,12 @@ class DocumentView(QScrollArea):
 
     def apply_text_tool(self, index, tool, a, b):
         mode, words = self.text_selection(index, a, b)
+        if tool == "redact":
+            rects = self.line_rects(words) if mode == "text" else [pymupdf.Rect(a, b).normalize()]
+            rects = [r for r in rects if r.width > 1 and r.height > 1]
+            if rects:
+                self.mark_redactions(index, rects)
+            return
         if not words:
             if tool != "select":
                 self.statusMessage.emit("No text there to mark up")
@@ -616,7 +630,7 @@ class DocumentView(QScrollArea):
     def _annot_hit(cls, annot, pt, tol=4.0):
         """Precise hit test: strokes must be clicked near the line, not anywhere in their box."""
         t = annot.type[0]
-        if t in (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_REDACT):
+        if t == pymupdf.PDF_ANNOT_POPUP:
             return False
         if not (+annot.rect + (-tol, -tol, tol, tol)).contains(pt):
             return False
@@ -872,6 +886,141 @@ class DocumentView(QScrollArea):
         elif font and not font.startswith("KZ"):
             self.statusMessage.emit("Original font isn't available for these characters; "
                                     "used the closest standard font.")
+
+    # ---- redaction ---------------------------------------------------------------------
+    def mark_redactions(self, index, rects):
+        def do():
+            pg = self.doc[index]
+            for r in rects:
+                a = pg.add_redact_annot(r, fill=(0, 0, 0))
+                a.set_colors(stroke=(0.85, 0, 0))
+                a.set_info(title=annotations.author(), content="Redaction (not applied yet)")
+                a.update()
+        self.modify(do, [index])
+
+    def search_redact(self, text):
+        hits = {i: self.doc[i].search_for(text) for i in range(self.doc.page_count)}
+        hits = {i: h for i, h in hits.items() if h}
+        if hits:
+            def do():
+                for i, rects in hits.items():
+                    pg = self.doc[i]
+                    for r in rects:
+                        a = pg.add_redact_annot(r, fill=(0, 0, 0))
+                        a.set_colors(stroke=(0.85, 0, 0))
+                        a.set_info(title=annotations.author(), content=f"Redaction: {text}")
+                        a.update()
+            self.modify(do, list(hits))
+        return sum(len(h) for h in hits.values())
+
+    def pending_redactions(self):
+        n = 0
+        for i in range(self.doc.page_count):
+            pg = self.doc[i]
+            n += sum(1 for a in pg.annots() if a.type[0] == pymupdf.PDF_ANNOT_REDACT)
+        return n
+
+    def apply_redactions(self, scrub=False):
+        """Permanently remove everything under the redaction marks (text, images, drawings)."""
+        def do():
+            for i in range(self.doc.page_count):
+                pg = self.doc[i]
+                if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in pg.annots()):
+                    pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
+                                        graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
+                                        text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+            if scrub:
+                self.doc.scrub(attached_files=True, clean_pages=True, embedded_files=True,
+                               hidden_text=True, javascript=True, metadata=True,
+                               redactions=False, remove_links=False, reset_fields=False,
+                               reset_responses=True, thumbnails=True, xml_metadata=True)
+        self.clear_selection()
+        self.modify(do, structural=True)
+
+    # ---- bookmarks & page tools -----------------------------------------------------------
+    def get_toc(self):
+        return self.doc.get_toc(simple=True)
+
+    def set_toc(self, toc):
+        self.modify(lambda: self.doc.set_toc(toc), [])
+        self.documentChanged.emit()
+
+    def add_header_footer(self, spec):
+        from . import page_tools
+        self.modify(lambda: page_tools.add_header_footer(self.doc, spec, os.path.basename(self.path)),
+                    spec["pages"])
+
+    def add_watermark(self, spec):
+        from . import page_tools
+        self.modify(lambda: page_tools.add_watermark(self.doc, spec), spec["pages"])
+
+    # ---- digitally signed documents --------------------------------------------------------
+    def check_digital_signatures(self):
+        """Validate certificate signatures; signed files open read-only with a banner."""
+        self.sig_results = []
+        try:
+            if self.doc.get_sigflags() < 1:
+                return
+            from . import digisign
+            with open(self.path, "rb") as f:
+                self.sig_results = digisign.validate(f.read())
+        except Exception as ex:
+            self.sig_results = [{"summary": f"Couldn't check the signature: {ex}", "ok": False,
+                                 "intact": False}]
+        if not self.sig_results:
+            return
+        self.read_only = True
+        good = all(r.get("ok") for r in self.sig_results)
+        text = "  ".join(r["summary"] for r in self.sig_results)
+        colour = "#e7f6e7" if good else "#fde8e8"
+        self.show_banner(("✔ " if good else "⚠ ") + text +
+                         "  This file is read-only so the signature stays valid.",
+                         colour, "Edit anyway", self._edit_signed)
+
+    def _edit_signed(self):
+        r = QMessageBox.question(
+            self, "Edit a signed document?",
+            "Changing a digitally signed document makes its signature show as changed or "
+            "invalid in Acrobat and other readers.\n\nTip: use Save As to keep the signed "
+            "original untouched.\n\nEdit anyway?")
+        if r == QMessageBox.Yes:
+            self.read_only = False
+            self.show_banner("Editing a signed document: when saved, its digital signature "
+                             "will no longer validate.", "#fff4d6")
+
+    def show_banner(self, text, colour="#fff4d6", button=None, callback=None):
+        if getattr(self, "_banner", None) is None:
+            self._banner = QWidget(self)
+            lay = QHBoxLayout(self._banner)
+            lay.setContentsMargins(8, 4, 8, 4)
+            self._banner_label = QLabel()
+            self._banner_label.setWordWrap(True)
+            self._banner_btn = QPushButton()
+            self._banner_btn.clicked.connect(lambda: self._banner_cb and self._banner_cb())
+            lay.addWidget(self._banner_label, 1)
+            lay.addWidget(self._banner_btn)
+        self._banner.setStyleSheet(f"background:{colour}; color:#222; border-bottom:1px solid #bbb;")
+        self._banner_label.setText(text)
+        self._banner_cb = callback
+        self._banner_btn.setVisible(button is not None)
+        if button:
+            self._banner_btn.setText(button)
+        self._banner.show()
+        self._place_banner()
+
+    def _place_banner(self):
+        b = getattr(self, "_banner", None)
+        if b is None or b.isHidden():        # (isVisible() is False until the window shows)
+            return
+        b.setFixedWidth(self.width())
+        h = b.sizeHint().height()
+        b.setGeometry(0, 0, self.width(), h)
+        self.setViewportMargins(0, h, 0, 0)
+        b.raise_()
+
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        self._place_banner()
 
     # ---- signatures & initials -------------------------------------------------------
     SIG_WIDTH = {"signature": 144.0, "initials": 54.0}     # default size in points

@@ -26,6 +26,14 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
   reuse it with one click; export/import chests to share them
 - **Compare documents** (File menu): overlays this document on an earlier revision (red =
   removed, blue = added) and clouds every change
+- **Bookmarks** (F9): view, add, rename, delete, reorder and nest the PDF outline
+- **Redaction** (Document menu): mark text or areas, or search & redact every occurrence; apply
+  to permanently delete what's underneath (optionally scrub metadata and hidden data)
+- **Header & footer** with page numbers, dates, file name and **Bates numbering**; text or
+  image **watermarks**; **compress** to a smaller copy
+- **Digital signatures** (Sign menu): sign with your own certificate (created for you) or a
+  .pfx/.p12 from a certificate authority; optional lock; signed files open read-only with a
+  banner saying who signed and whether anything changed since
 - **Markups list** (F7): every markup in a table; filter, sort, click to jump, export to CSV
 - **Properties panel** (F6): colours (line, fill, text), line width, font size, arrowhead
   style, opacity
@@ -76,7 +84,8 @@ You can zip that folder and give it to anyone; they don't need Python.
 | R / E / L / A / P | Rectangle / Ellipse / Line / Arrow / Pen |
 | X | Eraser (click one, or drag a box around several) |
 | K / D / Y / Shift+L / M | Callout / Cloud / Polygon / Polyline / Stamp |
-| F7 / F8 | Markups list / Tool chest |
+| F7 / F8 / F9 | Markups list / Tool chest / Bookmarks |
+| Shift+R | Redact |
 | Shift+M / Shift+A / Shift+C | Measure length / area / count |
 | G / I | Place signature / initials |
 | Delete / Esc | Delete / deselect the selected annotation |
@@ -100,8 +109,10 @@ with its source code available. That's fine for a free, open-source giveaway.
 - Text box borders use their own colour in this app; Acrobat may redraw a box's border
   in its text colour if you edit that box in Acrobat.
 - Protection uses standard PDF permissions: Acrobat, PDF-XChange and this app honour them,
-  but they're not tamper-proof against determined tools. Certificate-based digital signatures
-  would be the strong version.
+  but they're not tamper-proof against determined tools; use a digital signature for that.
+- A personal certificate proves a document is unchanged, but others' software only shows your
+  identity as verified if they trust your certificate (or you use one from a certificate
+  authority). Signing via the Windows certificate store / smart cards isn't supported yet.
 - Export: Word works best for ordinary text documents; Excel needs real (not scanned) tables;
   PowerPoint slides are page pictures; AutoCAD export is DXF (not DWG) and leaves out images.
 - Measurement labels on rotated pages are drawn in the page's unrotated direction.

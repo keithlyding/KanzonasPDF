@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.12 | (this) | Tool chest (save styled markups, one-click reuse without changing defaults, export/import to share); Compare documents (red = removed, blue = added, clouds around every change, listed in Markups list) |
+| 0.13 | (this) | Bookmarks panel (add, rename, delete, reorder, indent); redaction (mark text/areas, search & redact, apply permanently, scrub hidden data); header & footer with page numbers, dates and Bates numbering; text and image watermarks; compress to a smaller copy; certificate-based digital signatures (personal or CA certificate, optional certify-lock, validation banner, trust signers) |
+| 0.12 | 2b05045 | Tool chest (save styled markups, one-click reuse without changing defaults, export/import to share); Compare documents (red = removed, blue = added, clouds around every change, listed in Markups list) |
 | 0.11 | 48a58b1 | Measurement: calibrate or preset scales (architectural, engineering, metric), Length, Polylength, Area + perimeter, Count (groups), live readout, values drawn on the PDF and updated when edited or rescaled, measurement summary with CSV export, scale in status bar |
 | 0.10 | 4876a1e | Markups list (filter, click to jump, export CSV); stamps (15 presets, custom text, your own images, name + date); revision clouds; polygons and polylines (cloud option); callouts; author name on markups; shapes grouped under one toolbar button |
 | 0.9 | f997718 | Saved wet signature & initials (draw or scan, optional PIN), click to place with date; fill in forms (text, checkbox, option, dropdown, signature fields, Tab to next); create forms; protect document from changes; export to Word, Excel, PowerPoint, AutoCAD DXF, images, text |

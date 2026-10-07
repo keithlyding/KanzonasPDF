@@ -5,3 +5,4 @@ pdf2docx>=0.5
 ezdxf>=1.1
 openpyxl>=3.1
 python-pptx>=0.6
+pyhanko>=0.20
