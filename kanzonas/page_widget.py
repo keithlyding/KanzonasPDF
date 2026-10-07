@@ -18,6 +18,8 @@ class PageWidget(QWidget):
         self._drag_start = None
         self._drag_now = None
         self._ink = []
+        self._hover = None
+        self.setMouseTracking(True)
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         self.update_size()
 
@@ -92,6 +94,9 @@ class PageWidget(QWidget):
                 p.drawEllipse(QRectF(self._drag_start, self._drag_now).normalized())
             else:
                 p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
+        if self._hover is not None and tool == "edittext":
+            p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+            p.drawRect(self.to_screen(self._hover).adjusted(-2, -2, 2, 2))
         if len(self._ink) > 1:
             p.setRenderHint(QPainter.Antialiasing)
             p.setPen(QPen(self.view.color, 2))
@@ -117,11 +122,23 @@ class PageWidget(QWidget):
             self._drag_now = pos
         elif tool == "ink":
             self._ink = [pos]
+        elif tool == "edittext":
+            self._hover = None
+            self.update()
+            self.view.edit_text_at(self.index, self.to_pdf(pos))
         elif tool == "note":
             self.view.apply_point_tool(self.index, tool, self.to_pdf(pos))
 
     def mouseMoveEvent(self, e):
         pos = e.position()
+        if self.view.tool == "edittext" and not e.buttons():
+            r = self.view.text_line_rect(self.index, self.to_pdf(pos))
+            if r != self._hover:
+                self._hover = r
+                self.update()
+            return
+        if not e.buttons():
+            return
         if self.view.tool == "hand":
             self.view.continue_pan(e.globalPosition())
         elif self._drag_start is not None:
@@ -152,3 +169,8 @@ class PageWidget(QWidget):
     def mouseDoubleClickEvent(self, e):
         if self.view.tool in ("select", "hand"):
             self.view.edit_annot_at(self.index, self.to_pdf(e.position()))
+
+    def leaveEvent(self, e):
+        if self._hover is not None:
+            self._hover = None
+            self.update()

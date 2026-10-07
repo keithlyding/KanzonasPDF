@@ -8,6 +8,8 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 - Continuous scrolling, Ctrl+mouse-wheel zoom, fit width or page, page thumbnails
 - Find with all matches highlighted (Enter, F3 or Shift+F3)
 - Select text and copy it to the clipboard
+- Edit existing text, line by line (Edit text tool, Ctrl+E): keeps position, size, colour
+  and direction, and uses the original font when possible (or its installed copy)
 - Markup: highlight, underline, strikeout, sticky note, text box, rectangle, ellipse,
   line, arrow and freehand pen, in any colour. Double-click an annotation to edit its text,
   and use the Eraser to delete one.
@@ -35,6 +37,8 @@ You can zip that folder and give it to anyone; they don't need Python.
 | Key | Tool |
 | --- | --- |
 | V / H | Select / Hand |
+| Ctrl+E | Edit text (click a line) |
+| Ctrl+Enter | Finish typing in note / text box / edit dialogs |
 | Ctrl+Shift+H / U / S | Highlight / Underline / Strikeout |
 | N / T | Note / Text box |
 | R / E / L / A / P | Rectangle / Ellipse / Line / Arrow / Pen |
@@ -49,6 +53,7 @@ with its source code available. That's fine for a free, open-source giveaway.
 ## Known limitations
 
 - Saving rewrites the whole file, which invalidates existing digital signatures.
-- You can't edit existing page text yet (only add annotations and text boxes).
+- Text editing works one line at a time; edited text doesn't reflow into the next line.
+  If the original font isn't installed, a close standard font is used.
 - No form-field editing or measurement tools yet.
 - OCR caps large sheets at 6000 px on the long side, so very small text on big drawings may be missed.

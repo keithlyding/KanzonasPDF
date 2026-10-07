@@ -19,6 +19,7 @@ PDF_FILTER = "PDF files (*.pdf);;All files (*)"
 TOOLS = [  # (id, label, shortcut, tooltip)
     ("select", "Select", "V", "Select text: drag to copy text to the clipboard (V)"),
     ("hand", "Hand", "H", "Pan the page (H)"),
+    ("edittext", "Edit text", "Ctrl+E", "Edit existing text: click a line of text (Ctrl+E)"),
     ("highlight", "Highlight", "Ctrl+Shift+H", "Highlight text"),
     ("underline", "Underline", "Ctrl+Shift+U", "Underline text"),
     ("strikeout", "Strike", "Ctrl+Shift+S", "Strike out text"),
@@ -214,9 +215,9 @@ class MainWindow(QMainWindow):
         tt.setMovable(False)
         tt.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.addToolBar(tt)
-        tt.addActions(self.tool_group.actions()[:2])
+        tt.addActions(self.tool_group.actions()[:3])
         tt.addSeparator()
-        tt.addActions(self.tool_group.actions()[2:])
+        tt.addActions(self.tool_group.actions()[3:])
         tt.addSeparator()
         btn = QToolButton()
         btn.setDefaultAction(self.a_color)

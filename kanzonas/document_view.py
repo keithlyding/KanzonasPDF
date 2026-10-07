@@ -11,6 +11,7 @@ from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCu
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication)
 
+from . import dialogs, text_edit
 from .page_widget import PageWidget
 
 PAGE_GAP = 12
@@ -76,6 +77,8 @@ class DocumentView(QScrollArea):
         self._undo = []
         self._redo = []
         self._pan_origin = None
+        self._line_cache = {}
+        self._fonts_added = False
         self._last_page = -1
 
         self.setWidgetResizable(False)
@@ -216,7 +219,8 @@ class DocumentView(QScrollArea):
         if tool == "eraser":
             self.viewport().setCursor(eraser_cursor())
             return
-        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.IBeamCursor}
+        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.IBeamCursor,
+                   "edittext": Qt.IBeamCursor}
         self.viewport().setCursor(cursors.get(tool, Qt.CrossCursor))
 
     # ---- undo / modify ----------------------------------------------------
@@ -224,6 +228,7 @@ class DocumentView(QScrollArea):
         return self.doc.tobytes()
 
     def _restore(self, data):
+        self._line_cache = {}
         page = self.current_page()
         self.doc.close()
         self.doc = pymupdf.open(stream=data, filetype="pdf")
@@ -238,6 +243,7 @@ class DocumentView(QScrollArea):
     def modify(self, fn, pages=None, structural=False):
         """Run an edit with an undo snapshot. pages = indices to repaint."""
         snap = self._snapshot()
+        self._line_cache = {}
         try:
             fn()
         except Exception as ex:
@@ -374,7 +380,7 @@ class DocumentView(QScrollArea):
         if tool == "textbox":
             if is_click or rect.width < 20 or rect.height < 10:
                 rect = pymupdf.Rect(a.x, a.y, a.x + 200, a.y + 40)
-            text, ok = QInputDialog.getMultiLineText(self, "Text box", "Text:")
+            text, ok = dialogs.get_text(self, "Text box", "Text:")
             if not ok or not text.strip():
                 return
 
@@ -433,7 +439,7 @@ class DocumentView(QScrollArea):
     def apply_point_tool(self, index, tool, pt):
         page = self.doc[index]
         if tool == "note":
-            text, ok = QInputDialog.getMultiLineText(self, "Sticky note", "Note:")
+            text, ok = dialogs.get_text(self, "Sticky note", "Note:")
             if not ok or not text.strip():
                 return
 
@@ -514,7 +520,7 @@ class DocumentView(QScrollArea):
         if annot is None:
             return
         info = annot.info
-        text, ok = QInputDialog.getMultiLineText(self, "Edit " + annot.type[1],
+        text, ok = dialogs.get_text(self, "Edit " + annot.type[1],
                                                  "Content:", info.get("content", ""))
         if not ok:
             return
@@ -525,6 +531,45 @@ class DocumentView(QScrollArea):
             a.set_info(content=text)
             a.update()
         self.modify(do, [index])
+
+    # ---- editing existing text --------------------------------------------
+    def _lines(self, index):
+        if index not in self._line_cache:
+            self._line_cache[index] = text_edit.text_lines(self.doc[index])
+        return self._line_cache[index]
+
+    def text_line_rect(self, index, pt):
+        hit = text_edit.line_at(self._lines(index), pt)
+        return hit[0] if hit else None
+
+    def edit_text_at(self, index, pt):
+        hit = text_edit.line_at(self._lines(index), pt)
+        if hit is None:
+            self.statusMessage.emit("No text there. Click on a line of text to edit it.")
+            return
+        page = self.doc[index]
+        if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in page.annots()):
+            QMessageBox.warning(self, "Edit text", "This page has pending redactions; "
+                                "editing text would apply them. Remove them first.")
+            return
+        _, line = hit
+        old = text_edit.line_text(line)
+        new, ok = dialogs.get_text(self, "Edit text", "Line text:", old)
+        if not ok or new == old:
+            return
+        used = {}
+
+        def do():
+            used["font"] = text_edit.replace_line(self.doc[index], line, new)
+        self.modify(do, [index])
+        if (used.get("font") or "").startswith("KZS"):
+            self._fonts_added = True
+        font = used.get("font") or ""
+        if font.startswith("KZS"):
+            self.statusMessage.emit("Edited using the installed copy of the original font.")
+        elif font and not font.startswith("KZ"):
+            self.statusMessage.emit("Original font isn't available for these characters; "
+                                    "used the closest standard font.")
 
     # ---- OCR ----------------------------------------------------------------
     def page_has_text(self, index):
@@ -683,6 +728,13 @@ class DocumentView(QScrollArea):
     def save(self, path=None):
         path = os.path.abspath(path or self.path)
         tmp = path + ".kanzonas-tmp"
+        if self._fonts_added:
+            # Text edits may embed whole system fonts; keep only the glyphs actually used.
+            try:
+                self.doc.subset_fonts()
+            except Exception:
+                pass
+            self._fonts_added = False
         self.doc.save(tmp, garbage=1, deflate=True)
         os.replace(tmp, path)
         self.path = path
