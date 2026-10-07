@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, Q
                                QPushButton)
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
-from . import __version__, annotations, export, signatures
+from . import __version__, annotations, export, signatures, theme
 from .document_view import DocumentView
 from .properties import PropertiesPanel
 from .markups_panel import MarkupsPanel
@@ -33,7 +33,7 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("edittext", "Edit text", "Ctrl+E", "Edit existing text: click a line of text (Ctrl+E)"),
     ("highlight", "Highlight", "Ctrl+Shift+H", "Highlight text"),
     ("underline", "Underline", "Ctrl+Shift+U", "Underline text"),
-    ("strikeout", "Strike", "Ctrl+Shift+S", "Strike out text"),
+    ("strikeout", "Strike", "Ctrl+Shift+X", "Strike out text (Ctrl+Shift+X)"),
     ("comment", "Comment", "C", "Comment on text: select text, it's highlighted with a note (C)"),
     ("note", "Note", "N", "Sticky note: click where it should go (N)"),
     ("textbox", "Text box", "T", "Text box: drag a box or click (T)"),
@@ -108,6 +108,9 @@ class MainWindow(QMainWindow):
         self._thumb_queue = []
         self._thumb_timer = QTimer(self, interval=0)
         self._thumb_timer.timeout.connect(self._thumb_step)
+        self._build_split()
+        self._apply_icons()
+        self._apply_saved_shortcuts()
         self._update_ui()
         self._refresh_props()
         QApplication.instance().installEventFilter(self)
@@ -201,6 +204,20 @@ class MainWindow(QMainWindow):
         self.a_sig_details = self._act("Digital signature &details...", self.signature_details)
         self.a_set_scale = self._act("Set &scale...", self.set_scale)
         self.a_measure_summary = self._act("Measurement &summary...", self.measure_summary)
+        self.a_labels = self._act("Show text &labels on toolbars", self._toggle_labels)
+        self.a_labels.setCheckable(True)
+        self.a_labels.setChecked(self.settings.value("toolbar_labels", "false") == "true")
+        self.theme_group = QActionGroup(self)
+        self.theme_actions = {}
+        for key, label in (("system", "Match &Windows"), ("light", "&Light"), ("dark", "&Dark")):
+            a = QAction(label, self, checkable=True)
+            a.triggered.connect(lambda _=False, k=key: self.set_theme(k))
+            self.theme_group.addAction(a)
+            self.theme_actions[key] = a
+        self.theme_actions[self.settings.value("theme", "system")].setChecked(True)
+        self.a_split = self._act("&Split view", self._toggle_split, "F10")
+        self.a_split.setCheckable(True)
+        self.a_shortcuts = self._act("&Keyboard shortcuts...", self.edit_shortcuts)
         self.a_markups = self._act("&Markups list", self._toggle_markups, "F7")
         self.a_markups.setCheckable(True)
         self.a_author = self._act("&Author name for markups...", self._set_author)
@@ -265,6 +282,13 @@ class MainWindow(QMainWindow):
                       self.a_fit_page])
         m.addSeparator()
         m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
+        m.addSeparator()
+        m.addAction(self.a_split)
+        tm = m.addMenu("&Theme")
+        tm.addActions(list(self.theme_actions.values()))
+        m.addAction(self.a_labels)
+        m.addSeparator()
+        m.addAction(self.a_shortcuts)
         m = mb.addMenu("&Tools")
         m.addActions(self.tool_group.actions())
         m.addSeparator()
@@ -307,10 +331,9 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_about)
 
     def _build_toolbars(self):
-        tb = QToolBar("Main")
+        tb = self.main_tb = QToolBar("Main")
         tb.setObjectName("main")
         tb.setMovable(False)
-        tb.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.addToolBar(tb)
         tb.addActions([self.a_open, self.a_save, self.a_print])
         tb.addSeparator()
@@ -348,10 +371,9 @@ class MainWindow(QMainWindow):
         tb.addWidget(self.search)
 
         self.addToolBarBreak()
-        tt = QToolBar("Tools")
+        tt = self.tools_tb = QToolBar("Tools")
         tt.setObjectName("tools")
         tt.setMovable(False)
-        tt.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.addToolBar(tt)
         shapes = ("rect", "ellipse", "cloud", "polygon", "line", "arrow", "polyline", "ink")
         main_tools = [self.tool_actions[t[0]] for t in TOOLS if t[0] not in shapes]
@@ -380,9 +402,11 @@ class MainWindow(QMainWindow):
         tt.addWidget(self.measure_btn)
         tt.addSeparator()
         tt.addAction(self.a_ocr)
+        tt.addActions([self.a_rot_l, self.a_rot_r])
         tt.addSeparator()
-        forms_btn = QToolButton()
+        forms_btn = self.forms_btn = QToolButton()
         forms_btn.setText("Form fields")
+        forms_btn.setToolTip("Form field tools")
         forms_btn.setPopupMode(QToolButton.InstantPopup)
         fmenu = QMenu(forms_btn)
         fmenu.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
@@ -556,6 +580,9 @@ class MainWindow(QMainWindow):
         v.structureChanged.connect(self._on_structure_changed)
         v.statusMessage.connect(lambda m: self.statusBar().showMessage(m, 4000))
         v.check_digital_signatures()
+        state = self._file_states().get(os.path.normcase(path))
+        if state:
+            v.initial_state = state            # reopen at the last page and zoom
         idx = self.tabs.addTab(v, os.path.basename(path))
         self.tabs.setCurrentIndex(idx)
         self.settings.setValue("last_dir", os.path.dirname(path))
@@ -622,6 +649,11 @@ class MainWindow(QMainWindow):
         v = self.tabs.widget(index)
         if v is None or not self._confirm_close(v):
             return
+        self._remember_state(v)
+        if self._split_view is not None and getattr(self._split_view, "_source", None) is v:
+            self._split_view.deleteLater()
+            self._split_view = None
+            self.split_dock.hide()
         self.tabs.removeTab(index)
         v.close_doc()
         v.deleteLater()
@@ -632,6 +664,8 @@ class MainWindow(QMainWindow):
             if not self._confirm_close(self.tabs.widget(i)):
                 e.ignore()
                 return
+        for i in range(self.tabs.count()):
+            self._remember_state(self.tabs.widget(i))
         self.settings.setValue("geometry", self.saveGeometry())
         e.accept()
 
@@ -1302,6 +1336,191 @@ class MainWindow(QMainWindow):
                                 "Red = only in the earlier revision, blue = only in this one. "
                                 "Each change is clouded and listed in the Markups list. "
                                 "Use Save As to keep the comparison.")
+
+    # ---- appearance -------------------------------------------------------------------
+    TOOLBAR_ICON_KEYS = {"a_open": "open", "a_save": "save", "a_print": "print", "a_undo": "undo",
+                         "a_redo": "redo", "a_zoom_in": "zoom_in", "a_zoom_out": "zoom_out",
+                         "a_fit_width": "fit_width", "a_fit_page": "fit_page", "a_ocr": "ocr",
+                         "a_rot_l": "rot_l", "a_rot_r": "rot_r"}
+
+    def _apply_icons(self):
+        for attr, key in self.TOOLBAR_ICON_KEYS.items():
+            getattr(self, attr).setIcon(theme.icon(key))
+        for tid, a in self.tool_actions.items():
+            a.setIcon(theme.icon(tid))
+        self.forms_btn.setIcon(theme.icon("forms"))
+        labels = self.a_labels.isChecked()
+        style = Qt.ToolButtonTextUnderIcon if labels else Qt.ToolButtonIconOnly
+        for tb in (self.main_tb, self.tools_tb):
+            tb.setToolButtonStyle(style)
+            tb.setIconSize(QSize(20, 20))
+        for b in (self.shapes_btn, self.measure_btn, self.forms_btn):
+            b.setToolButtonStyle(style)
+        # tooltips show the shortcut so icon-only buttons stay discoverable
+        for a in list(self.tool_actions.values()) + [getattr(self, k) for k in self.TOOLBAR_ICON_KEYS]:
+            sc = a.shortcut().toString()
+            name = a.text().split("\t")[0].replace("&", "")
+            a.setToolTip(f"{name} ({sc})" if sc and sc not in (a.toolTip() or "") else
+                         (a.toolTip() or name))
+
+    def _toggle_labels(self):
+        self.settings.setValue("toolbar_labels", "true" if self.a_labels.isChecked() else "false")
+        self._apply_icons()
+
+    def set_theme(self, mode):
+        self.settings.setValue("theme", mode)
+        app = QApplication.instance()
+        theme.apply(app, mode)
+        # widgets with style sheets keep their old colours until re-polished
+        for wdg in app.allWidgets():
+            wdg.style().unpolish(wdg)
+            wdg.style().polish(wdg)
+            wdg.update()
+        self._apply_icons()
+
+    # ---- remembered page & zoom per file ------------------------------------------------
+    def _file_states(self):
+        import json
+        try:
+            return json.loads(self.settings.value("file_states", "{}") or "{}")
+        except (ValueError, TypeError):
+            return {}
+
+    def _remember_state(self, v):
+        import json
+        if v is None or not hasattr(v, "pages") or not v.pages:
+            return
+        states = self._file_states()
+        states[os.path.normcase(v.path)] = {"page": v.current_page(), "zoom": round(v.zoom, 4)}
+        if len(states) > 200:                      # keep the 200 most recent
+            states = dict(list(states.items())[-200:])
+        self.settings.setValue("file_states", json.dumps(states))
+
+    # ---- split view -----------------------------------------------------------------------
+    def _build_split(self):
+        self.split_dock = QDockWidget("Second view")
+        self.split_dock.setObjectName("splitview")
+        self.split_dock.setFeatures(QDockWidget.DockWidgetClosable)
+        self.split_holder = QWidget()
+        QVBoxLayout(self.split_holder).setContentsMargins(0, 0, 0, 0)
+        self.split_dock.setWidget(self.split_holder)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.split_dock)
+        self.split_dock.hide()
+        self.split_dock.visibilityChanged.connect(self._split_visible)
+        self._split_view = None
+        self.tabs.currentChanged.connect(lambda _: self.split_dock.isVisible() and self._attach_split())
+
+    def _toggle_split(self):
+        self.split_dock.setVisible(self.a_split.isChecked())
+
+    def _split_visible(self, vis):
+        self.a_split.setChecked(vis)
+        if vis:
+            self._attach_split()
+            self.resizeDocks([self.split_dock], [int(self.height() * 0.42)], Qt.Vertical)
+        elif self._split_view is not None:
+            self._split_view.deleteLater()
+            self._split_view = None
+
+    def _attach_split(self):
+        """Show a second, independently scrolled view of the current document."""
+        if self._split_view is not None:
+            self._split_view.deleteLater()
+            self._split_view = None
+        v = self.view()
+        if v is None:
+            return
+        sv = DocumentView.mirror(v)
+        self.split_holder.layout().addWidget(sv)
+        self._split_view = sv
+        self.split_dock.setWindowTitle(f"Second view: {os.path.basename(v.path)} "
+                                       "(scroll independently; edit in the main view)")
+
+    # ---- keyboard shortcuts --------------------------------------------------------------
+    def _shortcut_actions(self):
+        """{stable id: QAction} for every action that can have a shortcut."""
+        out = {}
+        for a in self.findChildren(QAction):
+            if a.parent() is not self:        # skip panels' own small menus
+                continue
+            name = a.text().split("\t")[0].replace("&", "").strip().rstrip(".")
+            if name and not a.menu() and name not in out:
+                out[name] = a
+        return out
+
+    def _apply_saved_shortcuts(self):
+        import json
+        try:
+            saved = json.loads(self.settings.value("shortcuts", "{}") or "{}")
+        except (ValueError, TypeError):
+            saved = {}
+        acts = self._shortcut_actions()
+        for name, seq in saved.items():
+            if name in acts:
+                acts[name].setShortcut(QKeySequence(seq))
+
+    def edit_shortcuts(self):
+        import json
+        from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QKeySequenceEdit, QHeaderView
+        acts = self._shortcut_actions()
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Keyboard shortcuts")
+        dlg.resize(560, 600)
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel("Click a shortcut and press the new key combination. "
+                             "Clear it with Backspace. Ctrl+Shift+Plus/Minus always rotate."))
+        filt = QLineEdit()
+        filt.setPlaceholderText("Filter")
+        lay.addWidget(filt)
+        names = sorted(acts)
+        table = QTableWidget(len(names), 2)
+        table.setHorizontalHeaderLabels(["Command", "Shortcut"])
+        table.verticalHeader().hide()
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        editors = {}
+        for r, name in enumerate(names):
+            item = QTableWidgetItem(name)
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            table.setItem(r, 0, item)
+            ed = QKeySequenceEdit(acts[name].shortcut())
+            table.setCellWidget(r, 1, ed)
+            editors[name] = ed
+        filt.textChanged.connect(lambda t: [table.setRowHidden(r, t.lower() not in n.lower())
+                                            for r, n in enumerate(names)])
+        lay.addWidget(table)
+        row = QHBoxLayout()
+        reset = QPushButton("Reset all to defaults")
+        row.addWidget(reset)
+        row.addStretch(1)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        row.addWidget(btns)
+        lay.addLayout(row)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+
+        def do_reset():
+            self.settings.remove("shortcuts")
+            QMessageBox.information(dlg, "Keyboard shortcuts",
+                                    "Default shortcuts come back the next time you start the app.")
+            dlg.reject()
+        reset.clicked.connect(do_reset)
+        if not dlg.exec():
+            return
+        seen, clashes, saved = {}, [], {}
+        for name, ed in editors.items():
+            seq = ed.keySequence().toString()
+            if seq:
+                if seq in seen:
+                    clashes.append(f"{seq}: {seen[seq]} / {name}")
+                seen[seq] = name
+            if seq != acts[name].shortcut().toString():
+                acts[name].setShortcut(QKeySequence(seq))
+            saved[name] = seq
+        self.settings.setValue("shortcuts", json.dumps(saved))
+        self._apply_icons()
+        if clashes:
+            QMessageBox.warning(self, "Keyboard shortcuts",
+                                "These shortcuts are used twice:\n" + "\n".join(clashes))
 
     def _toggle_markups(self):
         self.markups_dock.setVisible(not self.markups_dock.isVisible())

@@ -57,6 +57,9 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 - **Forms**: fill in any PDF form with Select or Hand (Tab moves to the next field); create
   forms with text fields, checkboxes, option buttons, dropdowns and signature fields
 - **Export** (File > Export to): Word, Excel, PowerPoint, AutoCAD DXF, PNG/JPEG, text
+- **Look & feel** (View menu): icon toolbars (optional text labels), dark / light / match-Windows
+  theme, **split view** (F10) to look at two places at once, reopens each file at its last page
+  and zoom, and **customisable keyboard shortcuts**
 - Undo and redo (Ctrl+Z, Ctrl+Y), print
 - Annotations are standard PDF annotations, so Acrobat and other viewers can see them
 
@@ -78,7 +81,7 @@ You can zip that folder and give it to anyone; they don't need Python.
 | --- | --- |
 | V / H | Select / Hand |
 | Ctrl+E | Edit text (click a line) |
-| Ctrl+Shift+H / U / S | Highlight / Underline / Strikeout |
+| Ctrl+Shift+H / U / X | Highlight / Underline / Strikeout |
 | C | Comment on text |
 | N / T | Note / Text box |
 | R / E / L / A / P | Rectangle / Ellipse / Line / Arrow / Pen |
@@ -93,7 +96,11 @@ You can zip that folder and give it to anyone; they don't need Python.
 | Ctrl+Shift+Plus / Minus | Rotate page clockwise / counter-clockwise |
 | Ctrl+Shift+Up / Down | Move current page up / down |
 | Left / Right | Previous / next page (Shift+Left/Right scrolls sideways) |
-| F4 / F6 | Show/hide page thumbnails / properties panel |
+| F4 / F6 / F10 | Page thumbnails / properties panel / split view |
+
+## Credits
+
+Icons: Material Design Icons via QtAwesome (MIT).
 
 ## Licence
 

@@ -21,7 +21,9 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_NAME)
-    app.setStyle("Fusion")
+    from PySide6.QtCore import QSettings
+    from . import theme
+    theme.apply(app, QSettings(APP_NAME, APP_NAME).value("theme", "system"))
     win = MainWindow()
     win.show()
     for path in sys.argv[1:]:

@@ -72,6 +72,11 @@ class DocumentView(QScrollArea):
             if not ok or not self.doc.authenticate(pw):
                 raise ValueError("Wrong or missing password")
         self._check_permissions()
+        self._init_state()
+        self._build_pages()
+        self._fitted = False
+
+    def _init_state(self):
         self.dirty = False
         self.zoom = 1.0
         self.tool = "select"
@@ -93,13 +98,10 @@ class DocumentView(QScrollArea):
         self._clear_caches()
         self._fonts_added = False
         self._last_page = -1
-
         self.setWidgetResizable(False)
         self.setAlignment(Qt.AlignHCenter)
         self.setStyleSheet("QScrollArea { background: #525659; border: none; }")
         self.verticalScrollBar().valueChanged.connect(self._on_scroll)
-        self._build_pages()
-        self._fitted = False
 
     # ---- page layout ----------------------------------------------------
     def page_count(self):
@@ -161,7 +163,43 @@ class DocumentView(QScrollArea):
         super().showEvent(e)
         if not self._fitted:
             self._fitted = True
-            QTimer.singleShot(0, self.fit_width)
+            QTimer.singleShot(0, self._initial_view)
+
+    def _initial_view(self):
+        state = getattr(self, "initial_state", None)
+        if state:
+            self.set_zoom(float(state.get("zoom", 1.0)))
+            self.goto_page(int(state.get("page", 0)))
+        else:
+            self.fit_width()
+
+    @classmethod
+    def mirror(cls, other):
+        """A second, read-only view onto another view's document (split view)."""
+        self = cls.__new__(cls)
+        QScrollArea.__init__(self)
+        self.path = other.path
+        self.doc = other.doc
+        self._init_state()
+        self.read_only = True
+        self.sig_results = []
+        self._source = other
+        self._build_pages()
+        self._fitted = False
+        other.documentChanged.connect(self._mirror_changed)
+        other.structureChanged.connect(self._mirror_structure)
+        return self
+
+    def _mirror_changed(self):
+        for w in self.pages:
+            w.invalidate()
+
+    def _mirror_structure(self):
+        page = self.current_page()
+        self.doc = self._source.doc            # undo/redo replaces the document object
+        self._clear_caches()
+        self._build_pages()
+        self.goto_page(min(page, self.doc.page_count - 1))
 
     # ---- zoom -------------------------------------------------------------
     def set_zoom(self, z):
