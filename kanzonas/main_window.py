@@ -334,6 +334,10 @@ class MainWindow(QMainWindow):
                 ("z_backward", "Send bac&kward", "Ctrl+[", lambda: v() and v().arrange("backward")),
                 ("z_back", "Send to bac&k", "Ctrl+Shift+[", lambda: v() and v().arrange("back"))):
             self.arrange_actions[key] = self._act(label, fn, sc or None)
+        self.a_lock = self._act("&Lock selected", lambda: self._lock_selected(), "Ctrl+L",
+                                tip="Lock the selected markups: they can't be clicked, moved or "
+                                    "selected on the page (unlock in the Objects panel)")
+        self.a_unlock_all = self._act("&Unlock all markups", lambda: self._unlock_all())
         self.align_ref_group = QActionGroup(self)
         self.align_ref_actions = {}
         for key, label in (("first", "First selected"), ("last", "Last selected"),
@@ -428,6 +432,8 @@ class MainWindow(QMainWindow):
         m.addActions([acts["dist_h"], acts["dist_v"]])
         m.addSeparator()
         m.addActions([acts[k] for k in ("z_front", "z_forward", "z_backward", "z_back")])
+        m.addSeparator()
+        m.addActions([self.a_lock, self.a_unlock_all])
         m.addSeparator()
         hint = m.addAction("Ctrl+click or drag a box with Select to pick several markups")
         hint.setEnabled(False)
@@ -662,6 +668,15 @@ class MainWindow(QMainWindow):
         self.layers.toggled.connect(lambda n, on: self.view() and self.view().set_layer(n, on))
         self.layers.allToggled.connect(self._all_layers)
         self.left_tabs.addTab(self.layers, "Layers")
+        from .objects_panel import ObjectsPanel
+        self.objects = ObjectsPanel()
+        self.objects.selectRequested.connect(self._objects_select)
+        self.objects.flagsChanged.connect(self._objects_flags)
+        self.objects.arrange.connect(lambda how: self.view() and self.view().arrange(how))
+        self.left_tabs.addTab(self.objects, "Objects")
+        self._objects_timer = QTimer(self, singleShot=True, interval=150)
+        self._objects_timer.timeout.connect(self._refresh_objects)
+        self.left_tabs.currentChanged.connect(lambda _i: self._objects_timer.start())
 
         self.props = PropertiesPanel()
         self.props.propsChanged.connect(self._on_props_changed)
@@ -721,6 +736,10 @@ class MainWindow(QMainWindow):
                   *self.export_actions):
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
+        self.a_lock.setEnabled(has and v.selection is not None)
+        self.a_unlock_all.setEnabled(has)
+        if hasattr(self, "_objects_timer"):
+            self._objects_timer.start()
         n_sel = len(v.selected_xrefs()) if has else 0
         for key, a in self.arrange_actions.items():
             need = 3 if key.startswith("dist") else 2 if key.startswith("al_") and \
@@ -1483,6 +1502,42 @@ class MainWindow(QMainWindow):
         if not n:
             QMessageBox.information(self, "Apply selected redactions",
                                     "Select one or more redaction marks first (Select tool).")
+
+    # ---- objects panel / locking ----------------------------------------------------------
+    def _refresh_objects(self):
+        if self.left_tabs.currentWidget() is self.objects and self.dock.isVisible():
+            self.objects.refresh(self.view())
+
+    def _objects_select(self, xrefs):
+        v = self.view()
+        if v is None:
+            return
+        index = v.current_page()
+        objs = {x: (lk, hd) for x, _l, lk, hd in v.page_objects(index)}
+        free = [x for x in xrefs if not objs.get(x, (True, True))[0]]
+        if len(free) < len(xrefs):
+            self.statusBar().showMessage("Locked objects can't be selected: untick Lock first.", 4000)
+        if free:
+            if self.tool != "select":
+                self.set_tool("select")
+            v._set_selection(index, free)
+
+    def _objects_flags(self, xrefs, locked, hidden):
+        v = self.view()
+        if v is not None:
+            v.set_object_flags(v.current_page(), xrefs, locked, hidden)
+
+    def _lock_selected(self):
+        v = self.view()
+        if v is not None:
+            n = v.lock_selected()
+            self.statusBar().showMessage(f"Locked {n} markup(s). Unlock them in the Objects "
+                                         "panel or with Arrange > Unlock all markups.", 5000)
+
+    def _unlock_all(self):
+        v = self.view()
+        if v is not None:
+            self.statusBar().showMessage(f"Unlocked {v.unlock_all()} markup(s).", 4000)
 
     def _toggle_show_markups(self):
         on = self.a_show_markups.isChecked()

@@ -192,7 +192,10 @@ def read(annot):
         props["opacity"] = annot.opacity
     props.update({k: v for k, v in stored.get("props", {}).items() if k in props})
 
+    flags = annot.flags or 0
     model = {"kind": kind, "props": props, "text": annot.info.get("content", ""),
+             "locked": bool(flags & pymupdf.PDF_ANNOT_IS_LOCKED),
+             "hidden": bool(flags & pymupdf.PDF_ANNOT_IS_HIDDEN),
              "rect": pymupdf.Rect(annot.rect), "author": annot.info.get("title", ""),
              "created": annot.info.get("creationDate", "")}
     verts = annot.vertices or []
@@ -445,6 +448,10 @@ def write(page, model):
     elif kind == "m_count":
         store["geom"] = {"at": list(model["points"][0]), "n": model.get("n", 1)}
     doc.xref_set_key(a.xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
+    keep = (pymupdf.PDF_ANNOT_IS_LOCKED if model.get("locked") else 0) | \
+        (pymupdf.PDF_ANNOT_IS_HIDDEN if model.get("hidden") else 0)
+    if keep:
+        a.set_flags((a.flags or 0) | keep)
     if label_text:
         from . import measure
         anchor, lab_angle = measure.label_anchor(kind, model["points"], page)

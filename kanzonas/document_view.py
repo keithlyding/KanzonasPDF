@@ -249,6 +249,67 @@ class DocumentView(QScrollArea):
         for pw in self.pages:
             pw.invalidate()
 
+    # ---- objects: lock, hide, list (Objects panel) ---------------------------------------------
+    def page_objects(self, index):
+        """[(xref, label, locked, hidden)] for a page's markups, front (top) to back."""
+        page = self.doc[index]
+        order = annotations.annot_order(page)
+        info = {}
+        for an in page.annots():
+            if an.type[0] == pymupdf.PDF_ANNOT_POPUP:
+                continue
+            m = annotations.read(an)
+            name = annotations.LABELS.get(m["kind"], an.type[1]) if m else an.type[1]
+            text = (an.info.get("content", "") or "").replace("\n", " ").strip()
+            who = an.info.get("title", "")
+            label = name + (f": {text[:40]}" if text else "") + (f"  ({who})" if who else "")
+            f = an.flags or 0
+            info[an.xref] = (an.xref, label, bool(f & pymupdf.PDF_ANNOT_IS_LOCKED),
+                             bool(f & pymupdf.PDF_ANNOT_IS_HIDDEN))
+        ordered = [info[x] for x in order if x in info] + [v for x, v in info.items() if x not in order]
+        return list(reversed(ordered))
+
+    def set_object_flags(self, index, xrefs, locked=None, hidden=None):
+        """Lock / unlock and hide / show markups (one undo step)."""
+        def do():
+            pg = self.doc[index]
+            for x in xrefs:
+                a = pg.load_annot(x)
+                f = a.flags or 0
+                if locked is not None:
+                    f = f | pymupdf.PDF_ANNOT_IS_LOCKED if locked else f & ~pymupdf.PDF_ANNOT_IS_LOCKED
+                if hidden is not None:
+                    f = f | pymupdf.PDF_ANNOT_IS_HIDDEN if hidden else f & ~pymupdf.PDF_ANNOT_IS_HIDDEN
+                a.set_flags(f)
+                a.update()
+        if locked or hidden:
+            self.clear_selection()
+        self.modify(do, [index])
+
+    def lock_selected(self):
+        if self.selection is None:
+            return 0
+        index, xrefs = self.selection[0], self.selected_xrefs()
+        self.set_object_flags(index, xrefs, locked=True)
+        return len(xrefs)
+
+    def unlock_all(self):
+        locked = {i: [x for x, _l, lk, _h in self.page_objects(i) if lk]
+                  for i in range(self.doc.page_count)}
+        locked = {i: x for i, x in locked.items() if x}
+        if not locked:
+            return 0
+
+        def do():
+            for i, xrefs in locked.items():
+                pg = self.doc[i]
+                for x in xrefs:
+                    a = pg.load_annot(x)
+                    a.set_flags((a.flags or 0) & ~pymupdf.PDF_ANNOT_IS_LOCKED)
+                    a.update()
+        self.modify(do, list(locked))
+        return sum(len(x) for x in locked.values())
+
     # ---- review: walk through, delete, flatten comments ---------------------------------------
     def review_items(self):
         """[(page, xref)] of every markup in reading order (page, then top to bottom)."""
@@ -257,7 +318,8 @@ class DocumentView(QScrollArea):
             pg = self.doc[i]
             items = []
             for an in pg.annots():
-                if an.type[0] == pymupdf.PDF_ANNOT_POPUP:
+                if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
+                        pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
                     continue
                 r = an.rect * pg.rotation_matrix
                 items.append((round(r.y0 / 6), r.x0, an.xref))
@@ -999,6 +1061,8 @@ class DocumentView(QScrollArea):
         t = annot.type[0]
         if t == pymupdf.PDF_ANNOT_POPUP:
             return False
+        if (annot.flags or 0) & (pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
+            return False                   # locked / hidden: clicks go through to what's below
         if not (+annot.rect + (-tol, -tol, tol, tol)).contains(pt):
             return False
         width = (annot.border or {}).get("width") or 1
@@ -1053,7 +1117,8 @@ class DocumentView(QScrollArea):
     def _annot_in_box(annot, box):
         """For drag-erase: the annotation lies entirely inside the box,
         or (for pen strokes and lines) any of its points is inside."""
-        if annot.type[0] == pymupdf.PDF_ANNOT_POPUP:
+        if annot.type[0] == pymupdf.PDF_ANNOT_POPUP or (annot.flags or 0) & (
+                pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
             return False
         if box.contains(annot.rect):
             return True
@@ -1137,7 +1202,8 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
         found = []
         for an in page.annots():
-            if an.type[0] == pymupdf.PDF_ANNOT_POPUP:
+            if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
+                    pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
                 continue
             if box.contains(an.rect) and annotations.read(an) is not None:
                 found.append(an.xref)

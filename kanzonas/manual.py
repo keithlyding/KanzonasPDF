@@ -154,6 +154,24 @@ the outer two stay put.</li>
 <b>Send backward</b> (Ctrl+[), <b>Send to back</b> (Ctrl+Shift+[).</li>
 </ul>
 
+<h2 id="objects">Objects panel and locking</h2>
+<ul>
+<li><b>Objects</b> tab (left panel, next to Pages, Bookmarks and Layers): every markup on the
+current page, from front (top of the list) to back. Click a row to select that markup even
+when it's completely covered by others; Ctrl/Shift+click selects several. Front, Up, Down
+and Back change the stacking order.</li>
+<li><b>Lock</b> column, or Arrange &gt; <b>Lock selected</b> (Ctrl+L): a locked markup behaves
+as if it were part of the page. It can't be clicked, moved, selected or erased, and dragging
+on it starts a selection box or a new markup instead. Untick Lock (or Arrange &gt;
+<b>Unlock all markups</b>) to edit it again. The lock is the PDF's standard "locked" flag, so
+Acrobat and PDF-XChange respect it too.</li>
+<li><b>Show</b> column: hide a single markup (it stays in the file; untick Show markups in the
+Review menu hides them all).</li>
+<li>The last row, <b>Page content</b>, is the original PDF itself. Its text and drawing aren't
+separate objects you can pick (a CAD sheet can contain over 100,000 line pieces); use Edit
+text for its text and the Layers tab for CAD layers.</li>
+</ul>
+
 <h2 id="stamps">Stamps</h2>
 <ul>
 <li>Stamp tool (M): pick a stamp in Properties (Approved, Draft, ... or type your own text),
@@ -289,6 +307,7 @@ Plain text (.txt).</li>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Escape, Escape twice</td><td>Clear selection, back to Select</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
+<tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
 <tr><td>Left / Right</td><td>Previous / next page</td></tr>
 <tr><td>Ctrl+Shift+Plus / Minus</td><td>Rotate page</td></tr>
