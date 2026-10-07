@@ -54,6 +54,8 @@ class DocumentView(QScrollArea):
     selectionChanged = Signal()
     signedDocument = Signal()
     selectToolRequested = Signal()
+    calibrateRequested = Signal(int, float)    # page index, drawn length in points
+    scaleChanged = Signal()
     requestSignature = Signal(int, int)      # page index, signature field xref
 
     def __init__(self, path, parent=None):
@@ -478,6 +480,15 @@ class DocumentView(QScrollArea):
                 return
             self._create(index, {"kind": "textbox", "rect": rect, "text": text, "props": props})
             return
+        if tool == "m_calibrate":
+            if not is_click and abs(b - a) > 2:
+                self.calibrateRequested.emit(index, abs(b - a))
+            return
+        if tool == "m_length":
+            if not is_click:
+                self._create(index, {"kind": "m_length", "props": props, "points": [a, b],
+                                     "rect": pymupdf.Rect()})
+            return
         if tool == "callout":
             text, ok = dialogs.get_text(self, "Callout", "Text:")
             if not ok or not text.strip():
@@ -495,6 +506,50 @@ class DocumentView(QScrollArea):
         if tool in ("line", "arrow"):
             model["points"] = [a, b]
         self._create(index, model)
+
+    # ---- measurement ------------------------------------------------------------------
+    def live_measure(self, index, tool, pts):
+        from . import measure
+        kind = "m_length" if tool == "m_calibrate" else tool
+        if tool == "m_calibrate":
+            return f"{abs(pts[-1] - pts[0]) / 72:.2f} in on paper"
+        return measure.measure_text(kind, pts, self.doc[index])
+
+    def place_count(self, index, pt):
+        group = self.tool_props("m_count").get("group") or "Count"
+        n = 0
+        for i in range(self.doc.page_count):
+            pg = self.doc[i]
+            for a in pg.annots():
+                m = annotations.read(a) if a.type[0] == pymupdf.PDF_ANNOT_CIRCLE else None
+                if m and m["kind"] == "m_count" and m["props"].get("group") == group:
+                    n = max(n, m.get("n", 0))
+        self._create(index, {"kind": "m_count", "props": self.tool_props("m_count"),
+                             "points": [pt], "rect": pymupdf.Rect(), "n": n + 1})
+
+    def page_scale_text(self, index):
+        from . import measure
+        return measure.describe(self.doc[index])
+
+    def set_page_scale(self, pages, m_per_pt, unit, label):
+        """Apply a scale and re-measure existing measurements on those pages."""
+        from . import measure
+
+        def do():
+            for i in pages:
+                pg = self.doc[i]
+                measure.set_scale(pg, m_per_pt, unit, label)
+                models = []
+                for a in pg.annots():
+                    m = annotations.read(a)
+                    if m and m["kind"] in annotations.MEASURES and m["kind"] != "m_count":
+                        models.append((a.xref, m))
+                for xref, m in models:
+                    pg.delete_annot(pg.load_annot(xref))
+                    annotations.write(pg, m)
+        self.clear_selection()
+        self.modify(do, list(pages))
+        self.scaleChanged.emit()
 
     def apply_poly(self, index, tool, pts):
         self._create(index, {"kind": tool, "props": self.tool_props(tool), "points": pts,

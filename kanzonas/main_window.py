@@ -55,6 +55,13 @@ FORM_TOOLS = [  # form design tools: drag a box (or click) to add a field
     ("f_combo", "Dropdown", "Dropdown list: drag a box, then enter the choices"),
     ("f_sign", "Signature field", "Signature field: others click it to sign"),
 ]
+MEASURE_TOOLS = [
+    ("m_length", "Length", "Shift+M", "Measure length: drag from point to point (Shift+M)"),
+    ("m_poly", "Polylength", "", "Measure along a path: click points, double-click or Enter to finish"),
+    ("m_area", "Area", "Shift+A", "Measure area and perimeter: click corners, double-click or Enter (Shift+A)"),
+    ("m_count", "Count", "Shift+C", "Count: click each item; set the group name in Properties (Shift+C)"),
+    ("m_calibrate", "Calibrate", "", "Calibrate: drag along a known dimension, then type its real length"),
+]
 EXPORTS = [  # (id, menu label, file filter, extension)
     ("word", "Microsoft &Word (.docx)...", "Word document (*.docx)", "docx"),
     ("excel", "Microsoft &Excel (.xlsx)...", "Excel workbook (*.xlsx)", "xlsx"),
@@ -89,7 +96,8 @@ class MainWindow(QMainWindow):
         self._build_actions()
         self._build_menus()
         self._build_toolbars()
-        self.statusBar()
+        self.scale_label = QLabel()
+        self.statusBar().addPermanentWidget(self.scale_label)
         self._thumb_queue = []
         self._thumb_timer = QTimer(self, interval=0)
         self._thumb_timer.timeout.connect(self._thumb_step)
@@ -173,6 +181,8 @@ class MainWindow(QMainWindow):
         for eid, label, _flt, _ext in EXPORTS:
             a = self._act(label, lambda _=False, e=eid: self.export_as(e))
             self.export_actions.append(a)
+        self.a_set_scale = self._act("Set &scale...", self.set_scale)
+        self.a_measure_summary = self._act("Measurement &summary...", self.measure_summary)
         self.a_markups = self._act("&Markups list", self._toggle_markups, "F7")
         self.a_markups.setCheckable(True)
         self.a_author = self._act("&Author name for markups...", self._set_author)
@@ -193,6 +203,15 @@ class MainWindow(QMainWindow):
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
         self.tool_actions["select"].setChecked(True)
+        for tid, label, sc, tip in MEASURE_TOOLS:
+            a = QAction(label, self, checkable=True)
+            if sc:
+                a.setShortcut(QKeySequence(sc))
+            a.setToolTip(tip)
+            a.setStatusTip(tip)
+            a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
+            self.tool_group.addAction(a)
+            self.tool_actions[tid] = a
         for tid, label, tip in FORM_TOOLS:
             a = QAction(label, self, checkable=True)
             a.setToolTip(tip)
@@ -232,6 +251,10 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_props)
         m.addSeparator()
         m.addActions([self.a_ocr, self.a_flatten])
+        m = mb.addMenu("&Measure")
+        m.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
+        m.addSeparator()
+        m.addActions([self.a_set_scale, self.a_measure_summary])
         m = mb.addMenu("&Sign")
         m.addActions([self.tool_actions["signature"], self.tool_actions["initials"]])
         m.addSeparator()
@@ -314,8 +337,16 @@ class MainWindow(QMainWindow):
         smenu.triggered.connect(self.shapes_btn.setDefaultAction)
         tt.addWidget(self.shapes_btn)
         tt.addActions(main_tools[main_tools.index(self.tool_actions["stamp"]):])
-        tt.addSeparator()
-        tt.addActions([self.a_rot_l, self.a_rot_r])
+        self.measure_btn = QToolButton()
+        self.measure_btn.setPopupMode(QToolButton.MenuButtonPopup)
+        mmenu = QMenu(self.measure_btn)
+        mmenu.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
+        mmenu.addSeparator()
+        mmenu.addActions([self.a_set_scale, self.a_measure_summary])
+        self.measure_btn.setMenu(mmenu)
+        self.measure_btn.setDefaultAction(self.tool_actions["m_length"])
+        mmenu.triggered.connect(lambda a: a.isCheckable() and self.measure_btn.setDefaultAction(a))
+        tt.addWidget(self.measure_btn)
         tt.addSeparator()
         tt.addAction(self.a_ocr)
         tt.addSeparator()
@@ -400,7 +431,8 @@ class MainWindow(QMainWindow):
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
                   self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten,
-                  self.a_protect, self.a_unlock, *self.export_actions):
+                  self.a_protect, self.a_unlock, self.a_set_scale, self.a_measure_summary,
+                  *self.export_actions):
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_undo.setEnabled(has and v.can_undo())
@@ -413,6 +445,7 @@ class MainWindow(QMainWindow):
             self.page_spin.blockSignals(False)
             self.page_total.setText(f" / {v.page_count()} ")
             self.zoom_box.setEditText(f"{round(v.zoom * 100)}%")
+            self.scale_label.setText(v.page_scale_text(v.current_page()))
             name = os.path.basename(v.path) + (" [protected]" if v.read_only else "")
             self.a_protect.setChecked(v.protect_on_save)
             self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {APP_TITLE}")
@@ -422,6 +455,7 @@ class MainWindow(QMainWindow):
                 self.tabs.setTabToolTip(i, w.path)
         else:
             self.page_total.setText(" / 0 ")
+            self.scale_label.setText("")
             self.setWindowTitle(APP_TITLE)
 
     # ---- files --------------------------------------------------------------
@@ -447,6 +481,8 @@ class MainWindow(QMainWindow):
         v.selectionChanged.connect(self._on_selection_changed)
         v.signedDocument.connect(self._on_signed)
         v.selectToolRequested.connect(lambda: self.set_tool("select"))
+        v.calibrateRequested.connect(self._calibrate)
+        v.scaleChanged.connect(self._update_ui)
         v.documentChanged.connect(self._markups_timer.start)
         v.structureChanged.connect(self._markups_timer.start)
         v.requestSignature.connect(self._sign_field)
@@ -904,6 +940,34 @@ class MainWindow(QMainWindow):
         elif eid == "ppt":
             msg += "\n\nEach page is a picture on its slide; its text is in the speaker notes."
         QMessageBox.information(self, "Export", msg)
+
+    # ---- measurement ---------------------------------------------------------------
+    def _scale_dialog(self, pdf_len=None, page_index=None):
+        from .measure_ui import ScaleDialog
+        v = self.view()
+        if not v:
+            return
+        page_index = v.current_page() if page_index is None else page_index
+        page = v.doc[page_index]
+        dlg = ScaleDialog(self, page, pdf_len, v.page_count())
+        if dlg.exec() and dlg.result_scale:
+            f, unit, label, all_pages = dlg.result_scale
+            pages = range(v.page_count()) if all_pages else [page_index]
+            v.set_page_scale(list(pages), f, unit, label)
+            self.statusBar().showMessage(v.page_scale_text(page_index), 5000)
+            self._update_ui()
+
+    def set_scale(self):
+        self._scale_dialog()
+
+    def _calibrate(self, index, pdf_len):
+        self._scale_dialog(pdf_len, index)
+
+    def measure_summary(self):
+        from .measure_ui import SummaryDialog
+        v = self.view()
+        if v:
+            SummaryDialog(self, v.doc).exec()
 
     def _toggle_markups(self):
         self.markups_dock.setVisible(not self.markups_dock.isVisible())

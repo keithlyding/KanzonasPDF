@@ -13,8 +13,10 @@ from PySide6.QtWidgets import QWidget, QToolTip
 from . import annotations as A
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment"}
-SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout"}
-POLY_TOOLS = {"polygon", "polyline"}
+SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
+               "m_length", "m_calibrate"}
+POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area"}
+MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign"}
 SIGN_TOOLS = {"signature", "initials"}
 HANDLE = 7          # handle size in px
@@ -140,9 +142,11 @@ class PageWidget(QWidget):
             pts = self._poly + ([self._poly_hover] if self._poly_hover is not None else [])
             for a_, b_ in zip(pts, pts[1:]):
                 p.drawLine(a_, b_)
-            if tool == "polygon" and len(pts) > 2:
+            if tool in ("polygon", "m_area") and len(pts) > 2:
                 p.setPen(QPen(self.view.tool_color(tool), 1, Qt.DashLine))
                 p.drawLine(pts[-1], pts[0])
+            if tool in MEASURE_TOOLS:
+                self._draw_readout(p, pts)
         if self._ghost is not None and tool == "stamp":
             pm = self.view.stamp_preview()
             if pm is not None:
@@ -167,8 +171,10 @@ class PageWidget(QWidget):
                 pen = QPen(self.view.tool_color(tool),
                            max(1.0, float(self.view.tool_props(tool).get("width", 1)) * self.view.zoom))
             p.setPen(pen)
-            if tool in ("line", "arrow"):
+            if tool in ("line", "arrow", "m_length", "m_calibrate"):
                 p.drawLine(self._drag_start, self._drag_now)
+                if tool in MEASURE_TOOLS:
+                    self._draw_readout(p, [self._drag_start, self._drag_now])
             elif tool == "callout":
                 p.drawLine(self._drag_start, self._drag_now)
                 p.drawRect(QRectF(self._drag_now, self._drag_now + QPointF(160, 40) * self.view.zoom))
@@ -196,6 +202,26 @@ class PageWidget(QWidget):
             p.setPen(QPen(QColor(0, 120, 215), 1))
             p.setBrush(Qt.NoBrush)
             p.drawRect(self.rect().adjusted(0, 0, -1, -1))
+
+    def _draw_readout(self, p, pts):
+        """Live measurement next to the cursor while drawing."""
+        if len(pts) < 2:
+            return
+        text = self.view.live_measure(self.index, self.view.tool, [self.to_pdf(q) for q in pts])
+        if not text:
+            return
+        fm = QFontMetrics(self.font())
+        lines = text.split("\n")
+        w_ = max(fm.horizontalAdvance(t) for t in lines) + 10
+        h_ = fm.lineSpacing() * len(lines) + 6
+        at = pts[-1] + QPointF(14, 14)
+        box = QRectF(at.x(), at.y(), w_, h_)
+        p.setPen(QPen(QColor(0, 90, 200), 1))
+        p.setBrush(QColor(255, 255, 255, 235))
+        p.drawRoundedRect(box, 3, 3)
+        p.setBrush(Qt.NoBrush)
+        p.setPen(Qt.black)
+        p.drawText(box.adjusted(5, 3, -5, -3), Qt.AlignLeft | Qt.AlignTop, text)
 
     def _paint_comment_cards(self, p, page):
         """Adobe-style note boxes beside commented text (drawn by us, not in the PDF)."""
@@ -235,13 +261,19 @@ class PageWidget(QWidget):
     def _handles(self, model):
         """{id: QRectF} handle squares for the selected annotation."""
         h = HANDLE
-        if model["kind"] in ("line", "arrow"):
+        if model["kind"] in ("line", "arrow", "m_length"):
             out = {}
             for i, q in enumerate(model["points"]):
                 s = self.to_screen_pt(q)
                 out[f"p{i}"] = QRectF(s.x() - h / 2, s.y() - h / 2, h, h)
             return out
-        if not A.movable(model) or model["kind"] == "note":
+        if model["kind"] in A.VERTEXED:
+            out = {}
+            for i, q in enumerate(model["points"]):
+                s = self.to_screen_pt(q)
+                out[f"v{i}"] = QRectF(s.x() - h / 2, s.y() - h / 2, h, h)
+            return out
+        if not A.movable(model) or model["kind"] in ("note", "m_count"):
             return {}
         extra = {}
         if model["kind"] == "callout":
@@ -264,9 +296,15 @@ class PageWidget(QWidget):
         blue = QColor(0, 120, 215)
         p.setBrush(Qt.NoBrush)
         p.setPen(QPen(blue, 1, Qt.DashLine))
-        if shown["kind"] in ("line", "arrow"):
+        if shown["kind"] in ("line", "arrow", "m_length"):
             a, b = (self.to_screen_pt(q, page) for q in shown["points"])
             p.drawLine(a, b)
+        elif shown["kind"] in A.VERTEXED:
+            pts = [self.to_screen_pt(q, page) for q in shown["points"]]
+            if shown["kind"] in ("polygon", "m_area"):
+                pts.append(pts[0])
+            for a_, b_ in zip(pts, pts[1:]):
+                p.drawLine(a_, b_)
         elif shown["kind"] == "callout":
             p.drawRect(self.to_screen(shown["rect"], page).adjusted(-3, -3, 3, 3))
             p.drawLine(self.to_screen_pt(shown["points"][0], page),
@@ -309,6 +347,9 @@ class PageWidget(QWidget):
             return
         if tool == "stamp":
             self.view.place_stamp(self.index, pdf)
+            return
+        if tool == "m_count":
+            self.view.place_count(self.index, pdf)
             return
         if tool in POLY_TOOLS:
             self._poly.append(pos)
@@ -368,6 +409,8 @@ class PageWidget(QWidget):
             return A.moved(model, delta)
         if ed["mode"] in ("p0", "p1"):
             return A.with_endpoint(model, int(ed["mode"][1]), self.to_pdf(pos))
+        if ed["mode"].startswith("v"):
+            return A.with_endpoint(model, int(ed["mode"][1:]), self.to_pdf(pos))
         r = self.to_screen(A.bounds(model))
         d = pos - ed["start"]
         x0, y0, x1, y1 = r.left(), r.top(), r.right(), r.bottom()

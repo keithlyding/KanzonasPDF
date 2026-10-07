@@ -35,6 +35,10 @@ DEFAULTS = {
     "polyline": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
                 "fontsize": 11, "head": "open", "opacity": 1.0},
+    "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    "m_count": {"stroke": "#0050ff", "fontsize": 9, "group": "Count 1", "opacity": 1.0},
     "stamp": {"label": "APPROVED", "stroke": "#c00000", "date": True, "opacity": 1.0},
     "line": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "arrow": {"stroke": "#d00000", "width": 2.0, "head": "open", "opacity": 1.0},
@@ -44,7 +48,8 @@ LABELS = {"highlight": "Highlight", "comment": "Comment", "underline": "Underlin
           "strikeout": "Strikeout", "squiggly": "Squiggly", "note": "Sticky note", "textbox": "Text box",
           "rect": "Rectangle", "ellipse": "Ellipse", "line": "Line", "arrow": "Arrow",
           "ink": "Pen", "polygon": "Polygon", "polyline": "Polyline", "callout": "Callout",
-          "stamp": "Stamp", "field": "Form field", "cloud": "Cloud"}
+          "stamp": "Stamp", "field": "Form field", "cloud": "Cloud",
+          "m_length": "Length", "m_poly": "Polylength", "m_area": "Area", "m_count": "Count"}
 HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE_CLOSED_ARROW,
          "open (reversed)": pymupdf.PDF_ANNOT_LE_R_OPEN_ARROW,
          "closed (reversed)": pymupdf.PDF_ANNOT_LE_R_CLOSED_ARROW,
@@ -53,7 +58,9 @@ HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE
 MARKUP = ("highlight", "comment", "underline", "strikeout", "squiggly")
 COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a comment marks text      # tied to text: not movable
 BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp")
-POINTED = ("line", "arrow", "polygon", "polyline")              # geometry = list of points                           # resizable via a rect
+MEASURES = ("m_length", "m_poly", "m_area", "m_count")
+POINTED = ("line", "arrow", "polygon", "polyline") + MEASURES   # geometry = list of points
+VERTEXED = ("polygon", "polyline", "m_poly", "m_area")          # one handle per vertex                           # resizable via a rect
 _TYPE_KIND = {pymupdf.PDF_ANNOT_SQUARE: "rect", pymupdf.PDF_ANNOT_CIRCLE: "ellipse",
               pymupdf.PDF_ANNOT_INK: "ink", pymupdf.PDF_ANNOT_FREE_TEXT: "textbox",
               pymupdf.PDF_ANNOT_TEXT: "note", pymupdf.PDF_ANNOT_HIGHLIGHT: "highlight",
@@ -161,8 +168,13 @@ def read(annot):
     geom = stored.get("geom", {})
     if kind in ("line", "arrow"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
-    elif kind in ("polygon", "polyline"):
+    elif kind in ("polygon", "polyline", "m_poly", "m_area"):
         model["points"] = [pymupdf.Point(v) for v in verts]
+    elif kind == "m_length":
+        model["points"] = [pymupdf.Point(v) for v in verts[:2]]
+    elif kind == "m_count":
+        model["points"] = [pymupdf.Point(geom.get("at", annot.rect.tl + (5, 5)))]
+        model["n"] = geom.get("n", 1)
     elif kind == "callout":
         model["rect"] = pymupdf.Rect(geom.get("box", annot.rect))
         model["points"] = [pymupdf.Point(geom.get("target", annot.rect.bl))]
@@ -230,8 +242,16 @@ def write(page, model):
             a.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, HEADS.get(p.get("head"), HEADS["open"]))
     elif kind == "ink":
         a = page.add_ink_annot([[(q.x, q.y) for q in s] for s in model["strokes"]])
-    elif kind == "polygon":
+    elif kind in ("polygon", "m_area"):
         a = page.add_polygon_annot([(q.x, q.y) for q in model["points"]])
+    elif kind == "m_length":
+        a = page.add_line_annot(*model["points"][:2])
+        a.set_line_ends(pymupdf.PDF_ANNOT_LE_BUTT, pymupdf.PDF_ANNOT_LE_BUTT)
+    elif kind == "m_poly":
+        a = page.add_polyline_annot([(q.x, q.y) for q in model["points"]])
+    elif kind == "m_count":
+        c = model["points"][0]
+        a = page.add_circle_annot(pymupdf.Rect(c.x - 5, c.y - 5, c.x + 5, c.y + 5))
     elif kind == "polyline":
         a = page.add_polyline_annot([(q.x, q.y) for q in model["points"]])
     elif kind == "callout":
@@ -271,15 +291,18 @@ def write(page, model):
         raise ValueError("unknown annotation kind " + kind)
 
     if kind not in ("textbox", "callout", "stamp"):
-        if kind in ("rect", "ellipse", "polygon"):
+        if kind in ("rect", "ellipse", "polygon", "m_area"):
             a.set_colors(stroke=stroke, fill=fill)
+        elif kind == "m_count":
+            a.set_colors(stroke=stroke, fill=stroke)
         elif kind == "arrow" and "closed" in (p.get("head") or ""):
             a.set_colors(stroke=stroke, fill=stroke)
         else:
             a.set_colors(stroke=stroke)
         if kind in ("rect", "ellipse", "polygon") and p.get("cloud"):
             a.set_border(width=width, clouds=2)
-        elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline"):
+        elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline",
+                      "m_length", "m_poly", "m_area"):
             a.set_border(width=width)
     if p.get("opacity", 1) < 1:
         a.set_opacity(float(p["opacity"]))
@@ -288,6 +311,15 @@ def write(page, model):
     now = pymupdf.get_pdf_now()
     info = {"title": model.get("author") or author(), "modDate": now,
             "creationDate": model.get("created") or now}
+    label_text = None
+    if kind in MEASURES:
+        from . import measure
+        if kind == "m_count":
+            label_text = str(model.get("n", 1))
+            info["content"] = f"{p.get('group') or 'Count'} #{model.get('n', 1)}"
+        else:
+            label_text = measure.measure_text(kind, model["points"], page)
+            info["content"] = f"{LABELS[kind]}: " + label_text.replace("\n", ", ")
     if kind == "stamp":
         info["content"] = (p.get("label") or "").replace("image:", "") + \
             (f" ({model['detail']})" if model.get("detail") else "")
@@ -308,7 +340,16 @@ def write(page, model):
         store["geom"] = {"box": list(model["rect"]), "target": list(model["points"][0])}
     elif kind == "stamp":
         store["geom"] = {"detail": model.get("detail") or ""}
+    elif kind == "m_count":
+        store["geom"] = {"at": list(model["points"][0]), "n": model.get("n", 1)}
     doc.xref_set_key(a.xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
+    if label_text:
+        from . import measure
+        anchor, angle = measure.label_anchor(kind, model["points"])
+        if kind == "m_count":
+            anchor = model["points"][0] + (10, -8)
+        measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
+                          stroke or (0, 0, 0), angle)
     return a
 
 

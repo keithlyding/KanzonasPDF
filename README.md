@@ -18,6 +18,10 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
   clouded), line, arrow, polyline, freehand pen
 - **Stamps**: Approved, Reviewed, Draft and 12 more, your own text, or your own images; adds
   your name and the date
+- **Measurement** (Measure menu): set the scale by calibrating against a known dimension or
+  picking a preset (1/4" = 1'-0", 1" = 20', 1:100, ...); measure length, polylength, area and
+  perimeter, and count items in groups. Values are drawn on the PDF, update when you edit a
+  vertex or change the scale, and total up in Measure > Measurement summary (CSV export)
 - **Markups list** (F7): every markup in a table; filter, sort, click to jump, export to CSV
 - **Properties panel** (F6): colours (line, fill, text), line width, font size, arrowhead
   style, opacity
@@ -69,6 +73,7 @@ You can zip that folder and give it to anyone; they don't need Python.
 | X | Eraser (click one, or drag a box around several) |
 | K / D / Y / Shift+L / M | Callout / Cloud / Polygon / Polyline / Stamp |
 | F7 | Markups list |
+| Shift+M / Shift+A / Shift+C | Measure length / area / count |
 | G / I | Place signature / initials |
 | Delete / Esc | Delete / deselect the selected annotation |
 | Ctrl+Enter | Finish typing in note / text box / comment dialogs |
@@ -95,5 +100,5 @@ with its source code available. That's fine for a free, open-source giveaway.
   would be the strong version.
 - Export: Word works best for ordinary text documents; Excel needs real (not scanned) tables;
   PowerPoint slides are page pictures; AutoCAD export is DXF (not DWG) and leaves out images.
-- No measurement tools yet.
+- Measurement labels on rotated pages are drawn in the page's unrotated direction.
 - OCR caps large sheets at 6000 px on the long side, so very small text on big drawings may be missed.
