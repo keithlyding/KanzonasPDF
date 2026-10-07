@@ -4,6 +4,7 @@ Handles drawing (page image, search hits, comment boxes, selection handles, prev
 and turns mouse input into calls on the DocumentView, which owns all PDF edits.
 """
 
+import math
 from collections import OrderedDict
 
 import pymupdf
@@ -30,6 +31,34 @@ FULL_LIMIT = 16_000_000     # device pixels: above this a page is drawn in tiles
 TILE = 512                  # tile size in device pixels
 TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
+ROT_GAP = 26        # rotation handle distance above the selection, px
+STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "callout"}   # Shift = 45° steps
+SQUARE_TOOLS = {"rect", "ellipse", "cloud"}                               # Shift = square / circle
+
+
+def snap45(a, b):
+    """b moved so the line a->b runs at a multiple of 45 degrees (same length)."""
+    d = b - a
+    length = math.hypot(d.x(), d.y())
+    if length == 0:
+        return QPointF(b)
+    ang = round(math.atan2(d.y(), d.x()) / (math.pi / 4)) * (math.pi / 4)
+    return a + QPointF(math.cos(ang) * length, math.sin(ang) * length)
+
+
+def square_corner(a, b):
+    """b moved so the box a-b is a square."""
+    d = b - a
+    side = max(abs(d.x()), abs(d.y()))
+    return a + QPointF(side if d.x() >= 0 else -side, side if d.y() >= 0 else -side)
+
+
+def shift_held(e):
+    return bool(e.modifiers() & Qt.ShiftModifier)
+
+
+def ctrl_held(e):
+    return bool(e.modifiers() & Qt.ControlModifier)
 
 
 class PageWidget(QWidget):
@@ -48,6 +77,7 @@ class PageWidget(QWidget):
         self._ghost = None          # signature / stamp preview position (widget coords)
         self._poly = []             # polygon / polyline points so far (widget coords)
         self._poly_hover = None
+        self._marquee = False       # Ctrl+drag with Select: selection box only, no text
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         self.update_size()
@@ -327,19 +357,24 @@ class PageWidget(QWidget):
         return self.view.selected_model
 
     def _handles(self, model):
-        """{id: QRectF} handle squares for the selected annotation."""
+        """{id: QRectF} handle squares for the selected annotation (none when several are
+        selected: then they move together)."""
         h = HANDLE
+        if self.view.extra:
+            return {}
         if model["kind"] in ("line", "arrow", "m_length"):
             out = {}
             for i, q in enumerate(model["points"]):
                 s = self.to_screen_pt(q)
                 out[f"p{i}"] = QRectF(s.x() - h / 2, s.y() - h / 2, h, h)
+            out.update(self._rot_handle(model))
             return out
         if model["kind"] in A.VERTEXED:
             out = {}
             for i, q in enumerate(model["points"]):
                 s = self.to_screen_pt(q)
                 out[f"v{i}"] = QRectF(s.x() - h / 2, s.y() - h / 2, h, h)
+            out.update(self._rot_handle(model))
             return out
         if not A.movable(model) or model["kind"] in ("note", "m_count"):
             return {}
@@ -354,17 +389,41 @@ class PageWidget(QWidget):
                "r": QPointF(r.right(), r.center().y())}
         out = {k: QRectF(v.x() - h / 2, v.y() - h / 2, h, h) for k, v in pts.items()}
         out.update(extra)
+        out.update(self._rot_handle(model))
         return out
+
+    def _rot_handle(self, model):
+        """Round handle above the shape for free rotation (not text boxes: 90° steps only)."""
+        if model["kind"] not in A.ROTATABLE or model["kind"] in A.QUARTER_TURNS or \
+                self.view.extra:
+            return {}
+        r = self.to_screen(A.bounds(model))
+        h = HANDLE + 2
+        c = QPointF(r.center().x(), r.top() - ROT_GAP)
+        return {"rot": QRectF(c.x() - h / 2, c.y() - h / 2, h, h)}
 
     def _paint_selection(self, p, page):
         model = self._selected_here()
         if model is None:
             return
-        shown = self._edit["preview"] if self._edit and self._edit.get("preview") else model
         blue = QColor(0, 120, 215)
         p.setBrush(Qt.NoBrush)
+        if self.view.extra:
+            # several selected: a box around each; the first one (alignment reference) bolder
+            group = self._edit["preview"] if self._edit and self._edit.get("preview") else None
+            if group is None:
+                group = [m for _x, m in self.view.selected_models()]
+            for k, m in enumerate(group):
+                p.setPen(QPen(blue, 2 if k == 0 else 1, Qt.SolidLine if k == 0 else Qt.DashLine))
+                p.drawRect(self.to_screen(A.bounds(m), page).adjusted(-3, -3, 3, 3))
+            return
+        shown = self._edit["preview"] if self._edit and self._edit.get("preview") else model
         p.setPen(QPen(blue, 1, Qt.DashLine))
-        if shown["kind"] in ("line", "arrow", "m_length"):
+        if A.turned(shown):
+            pts = [self.to_screen_pt(q, page) for q in A.outline(shown, 36)]
+            for a_, b_ in zip(pts, pts[1:] + pts[:1]):
+                p.drawLine(a_, b_)
+        elif shown["kind"] in ("line", "arrow", "m_length"):
             a, b = (self.to_screen_pt(q, page) for q in shown["points"])
             p.drawLine(a, b)
         elif shown["kind"] in A.VERTEXED:
@@ -379,11 +438,20 @@ class PageWidget(QWidget):
                        self.to_screen(shown["rect"], page).center())
         else:
             p.drawRect(self.to_screen(A.bounds(shown), page).adjusted(-3, -3, 3, 3))
+        if self._edit and self._edit["mode"] == "rot":
+            p.setPen(blue)
+            at = self._edit.get("pos", QPointF())
+            p.drawText(at + QPointF(14, -8), f"{A.angle(shown):.0f}\u00b0")
         if not self._edit:
             p.setPen(QPen(blue, 1))
             p.setBrush(Qt.white)
-            for r in self._handles(model).values():
-                p.drawRect(r)
+            for hid, r in self._handles(model).items():
+                if hid == "rot":
+                    top = QPointF(r.center().x(), r.center().y() + ROT_GAP)
+                    p.drawLine(QPointF(r.center().x(), r.bottom()), top)
+                    p.drawEllipse(r)
+                else:
+                    p.drawRect(r)
             p.setBrush(Qt.NoBrush)
 
     # ---- mouse ----------------------------------------------------------
@@ -414,7 +482,7 @@ class PageWidget(QWidget):
         if tool == "hand":
             self.view.begin_pan(e.globalPosition())
             return
-        if tool in EDIT_IN_PLACE and not self._poly and self._press_on_markup(pos, pdf):
+        if tool in EDIT_IN_PLACE and not self._poly and self._press_on_markup(pos, pdf, ctrl_held(e)):
             return
         if tool in SIGN_TOOLS:
             self.view.place_signature(self.index, tool, pdf)
@@ -426,6 +494,8 @@ class PageWidget(QWidget):
             self.view.place_count(self.index, pdf)
             return
         if tool in POLY_TOOLS:
+            if self._poly and shift_held(e):
+                pos = snap45(self._poly[-1], pos)
             self._poly.append(pos)
             self.update()
             return
@@ -444,25 +514,14 @@ class PageWidget(QWidget):
             self._drag_start = self._drag_now = pos
             return
         if tool == "select":
-            model = self._selected_here()
-            if model is not None:
-                for hid, r in self._handles(model).items():
-                    if r.adjusted(-3, -3, 3, 3).contains(pos):
-                        self._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
-                        return
-            card = self._card_at(pos)
-            if card is not None:
-                self.view.select_xref(self.index, card)
+            if self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
                 return
-            if self.view.select_annot_at(self.index, pdf):
-                model = self._selected_here()
-                if model is not None and A.movable(model):
-                    self._edit = {"mode": "move", "start": pos, "model": model, "preview": None}
-                return
-            self.view.clear_selection()
         if tool in TEXT_TOOLS:
             self._drag_start = self._drag_now = pos
             self._text_sel = self.view.text_selection(self.index, pdf, pdf)
+            self._marquee = tool == "select" and ctrl_held(e)
+            if self._marquee:
+                self._text_sel = ("box", [])        # Ctrl+drag: always a selection box
             self.update()
         elif tool in SHAPE_TOOLS:
             self._drag_start = self._drag_now = pos
@@ -475,34 +534,73 @@ class PageWidget(QWidget):
         elif tool == "note":
             self.view.apply_point_tool(self.index, tool, pdf)
 
-    def _press_on_markup(self, pos, pdf):
+    def _press_on_markup(self, pos, pdf, ctrl=False, cards=False):
         """Handle a press on a selected markup's handle or on any markup: select it and start
-        moving / resizing. Returns False when the press is on empty page (draw normally)."""
+        moving / resizing / rotating. Ctrl+click adds to / removes from the selection; pressing
+        on one of several selected markups moves them all. Returns False when the press is on
+        empty page (the caller draws or selects text); the selection is cleared then unless
+        Ctrl is held."""
         model = self._selected_here()
-        if model is not None:
+        if model is not None and not ctrl:
             for hid, r in self._handles(model).items():
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     self._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
                     return True
-        if self.view.select_annot_at(self.index, pdf):
-            model = self._selected_here()
-            if model is not None and A.movable(model):
-                self._edit = {"mode": "move", "start": pos, "model": model, "preview": None}
+        if cards:
+            card = self._card_at(pos)
+            if card is not None:
+                self.view.select_xref(self.index, card, add=ctrl)
+                return True
+        xref = self.view.annot_at(self.index, pdf)
+        if xref is not None:
+            if ctrl:
+                if self.view.selection is not None and self.view.selection[0] != self.index:
+                    self.view.clear_selection()
+                self.view.select_xref(self.index, xref, add=True)
+                return True
+            if self.view.extra and self.view.selection[0] == self.index and \
+                    xref in self.view.selected_xrefs():
+                group = [(x, m) for x, m in self.view.selected_models() if A.movable(m)]
+                self._edit = {"mode": "group", "start": pos, "group": group, "preview": None}
+                return True
+            if self.view.select_xref(self.index, xref):
+                model = self._selected_here()
+                if model is not None and A.movable(model):
+                    self._edit = {"mode": "move", "start": pos, "model": model, "preview": None}
             return True
-        if self.view.selection is not None:
+        if self.view.selection is not None and not ctrl:
             self.view.clear_selection()
         return False
 
-    def _edit_preview(self, pos):
+    def _edit_preview(self, pos, shift=False):
         ed = self._edit
+        if ed["mode"] == "group":
+            delta = self.to_pdf(pos) - self.to_pdf(ed["start"])
+            return [A.moved(m, delta) for _x, m in ed["group"]]
         model = ed["model"]
         if ed["mode"] == "move":
             delta = self.to_pdf(pos) - self.to_pdf(ed["start"])
             return A.moved(model, delta)
+        if ed["mode"] == "rot":
+            c = self.to_screen(A.bounds(model)).center()
+            a0 = math.atan2(ed["start"].y() - c.y(), ed["start"].x() - c.x())
+            a1 = math.atan2(pos.y() - c.y(), pos.x() - c.x())
+            new = A.angle(model) - math.degrees(a1 - a0)      # screen y grows downward
+            if shift:
+                new = round(new / 15.0) * 15
+            ed["pos"] = pos
+            return A.rotated(model, new)
         if ed["mode"] in ("p0", "p1"):
-            return A.with_endpoint(model, int(ed["mode"][1]), self.to_pdf(pos))
+            i = int(ed["mode"][1])
+            if shift and model["kind"] != "callout":
+                other = self.to_screen_pt(model["points"][1 - i])
+                pos = snap45(other, pos)
+            return A.with_endpoint(model, i, self.to_pdf(pos))
         if ed["mode"].startswith("v"):
-            return A.with_endpoint(model, int(ed["mode"][1:]), self.to_pdf(pos))
+            i = int(ed["mode"][1:])
+            if shift and len(model["points"]) > 1:
+                pos = snap45(self.to_screen_pt(model["points"][i - 1]), pos)
+            return A.with_endpoint(model, i, self.to_pdf(pos))
         r = self.to_screen(A.bounds(model))
         d = pos - ed["start"]
         x0, y0, x1, y1 = r.left(), r.top(), r.right(), r.bottom()
@@ -514,6 +612,18 @@ class PageWidget(QWidget):
             y0 += d.y()
         if "b" in ed["mode"]:
             y1 += d.y()
+        if shift and ed["mode"] in ("tl", "tr", "bl", "br"):
+            # Shift on a corner: squares / circles stay perfect, everything else keeps its shape
+            fixed = QPointF(x1 if "l" in ed["mode"] else x0, y1 if "t" in ed["mode"] else y0)
+            moving = QPointF(x0 if "l" in ed["mode"] else x1, y0 if "t" in ed["mode"] else y1)
+            dv = moving - fixed
+            if model["kind"] in ("rect", "ellipse") and not A.turned(model):
+                moving = square_corner(fixed, moving)
+            elif r.width() > 0 and r.height() > 0:
+                k = max(abs(dv.x()) / r.width(), abs(dv.y()) / r.height())
+                moving = fixed + QPointF(math.copysign(r.width() * k, dv.x() or 1),
+                                         math.copysign(r.height() * k, dv.y() or 1))
+            x0, y0, x1, y1 = fixed.x(), fixed.y(), moving.x(), moving.y()
         new = pymupdf.Rect(self.to_pdf(QPointF(x0, y0)), self.to_pdf(QPointF(x1, y1))).normalize()
         if new.width < 2 or new.height < 2:
             return model
@@ -528,7 +638,7 @@ class PageWidget(QWidget):
                 self.update()
                 return
             if self._poly:
-                self._poly_hover = pos
+                self._poly_hover = snap45(self._poly[-1], pos) if shift_held(e) else pos
                 self.update()
                 return
             if tool in ("select", "hand") and self.view.widget_at(self.index, self.to_pdf(pos)) is not None:
@@ -548,14 +658,18 @@ class PageWidget(QWidget):
             self.view.continue_pan(e.globalPosition())
         elif self._edit is not None:
             if (pos - self._edit["start"]).manhattanLength() >= 3:
-                self._edit["preview"] = self._edit_preview(pos)
+                self._edit["preview"] = self._edit_preview(pos, shift_held(e))
                 self.update()
         elif self._text_sel is not None:
             self._drag_now = pos
-            self._text_sel = self.view.text_selection(self.index, self.to_pdf(self._drag_start),
-                                                      self.to_pdf(pos))
+            self._text_sel = ("box", []) if self._marquee else \
+                self.view.text_selection(self.index, self.to_pdf(self._drag_start), self.to_pdf(pos))
             self.update()
         elif self._drag_start is not None:
+            if shift_held(e) and tool in STRAIGHT_TOOLS:
+                pos = snap45(self._drag_start, pos)
+            elif shift_held(e) and tool in SQUARE_TOOLS:
+                pos = square_corner(self._drag_start, pos)
             self._drag_now = pos
             self.update()
         elif self._ink:
@@ -570,7 +684,8 @@ class PageWidget(QWidget):
                     self.setCursor(Qt.SizeFDiagCursor if hid in ("tl", "br") else
                                    Qt.SizeBDiagCursor if hid in ("tr", "bl") else
                                    Qt.SizeVerCursor if hid in ("t", "b") else
-                                   Qt.SizeHorCursor if hid in ("l", "r") else Qt.CrossCursor)
+                                   Qt.SizeHorCursor if hid in ("l", "r") else
+                                   Qt.PointingHandCursor if hid == "rot" else Qt.CrossCursor)
                     return
         over = self.view.annot_at(self.index, self.to_pdf(pos)) is not None or \
             self._card_at(pos) is not None
@@ -595,14 +710,24 @@ class PageWidget(QWidget):
             ed, self._edit = self._edit, None
             preview = ed.get("preview")
             self.update()
-            if preview is not None:
+            if preview is not None and ed["mode"] == "group":
+                self.view.commit_models(self.index, [(x, m) for (x, _o), m
+                                                     in zip(ed["group"], preview)])
+            elif preview is not None:
                 self.view.commit_model(self.index, self.view.selection[1], preview)
         elif self._text_sel is not None:
             a, b = self._drag_start, pos
+            mode = self._text_sel[0]
             self._text_sel = None
+            self._marquee = False
             self._drag_start = self._drag_now = None
             self.update()
             if (b - a).manhattanLength() >= 3:
+                if tool == "select" and mode == "box":
+                    # a box drawn from empty space selects the markups inside it
+                    box = pymupdf.Rect(self.to_pdf(a), self.to_pdf(b)).normalize()
+                    if self.view.select_in_box(self.index, box, add=ctrl_held(e)) or ctrl_held(e):
+                        return
                 self.view.apply_text_tool(self.index, tool, self.to_pdf(a), self.to_pdf(b))
         elif self._drag_start is not None and tool in FORM_TOOLS:
             a, b = self._drag_start, self._drag_now

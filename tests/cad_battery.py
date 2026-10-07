@@ -27,6 +27,7 @@ QMessageBox.warning = staticmethod(lambda *a, **k: warnings.append(a[2]))
 answers = []
 dialogs.get_text = lambda *a, **k: (answers.pop(0) if answers else "test", True)
 P = pymupdf.Point
+A.reset_tool_props("stamp")
 FT = 72 / 48 * 12            # 1/4" = 1'-0"
 
 

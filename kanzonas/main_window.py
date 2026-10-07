@@ -221,6 +221,32 @@ class MainWindow(QMainWindow):
         self.a_markups = self._act("&Markups list", self._toggle_markups, "F7")
         self.a_markups.setCheckable(True)
         self.a_author = self._act("&Author name for markups...", self._set_author)
+        # arrange: align / distribute / stacking order of the selected markups
+        self.arrange_actions = {}
+        for key, label, sc, fn in (
+                ("al_left", "Align &left", "", lambda: self._align("left")),
+                ("al_hcenter", "Align &centers (horizontally)", "", lambda: self._align("hcenter")),
+                ("al_right", "Align &right", "", lambda: self._align("right")),
+                ("al_top", "Align &top", "", lambda: self._align("top")),
+                ("al_vmiddle", "Align &middles (vertically)", "", lambda: self._align("vmiddle")),
+                ("al_bottom", "Align &bottom", "", lambda: self._align("bottom")),
+                ("dist_h", "Distribute &horizontally", "", lambda: v() and v().distribute("h")),
+                ("dist_v", "Distribute &vertically", "", lambda: v() and v().distribute("v")),
+                ("z_front", "Bring to &front", "Ctrl+Shift+]", lambda: v() and v().arrange("front")),
+                ("z_forward", "Bring &forward", "Ctrl+]", lambda: v() and v().arrange("forward")),
+                ("z_backward", "Send bac&kward", "Ctrl+[", lambda: v() and v().arrange("backward")),
+                ("z_back", "Send to bac&k", "Ctrl+Shift+[", lambda: v() and v().arrange("back"))):
+            self.arrange_actions[key] = self._act(label, fn, sc or None)
+        self.align_ref_group = QActionGroup(self)
+        self.align_ref_actions = {}
+        for key, label in (("first", "First selected"), ("last", "Last selected"),
+                           ("selection", "Whole selection"), ("page", "Page")):
+            a = QAction("Align to " + label.lower(), self, checkable=True)
+            a.triggered.connect(lambda _=False, k=key: self._set_align_ref(k))
+            self.align_ref_group.addAction(a)
+            self.align_ref_actions[key] = a
+        ref = self.settings.value("align_ref", "first")
+        self.align_ref_actions.get(ref, self.align_ref_actions["first"]).setChecked(True)
         self.a_flatten = self._act("&Flatten...", self.flatten,
                                    tip="Make annotations and form fields a permanent part of the page")
         self.a_delete_annot = self._act("Delete selected annotation",
@@ -289,6 +315,19 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_labels)
         m.addSeparator()
         m.addAction(self.a_shortcuts)
+        m = mb.addMenu("&Arrange")
+        acts = self.arrange_actions
+        m.addActions([acts[k] for k in ("al_left", "al_hcenter", "al_right")])
+        m.addActions([acts[k] for k in ("al_top", "al_vmiddle", "al_bottom")])
+        rm = m.addMenu("Align &relative to")
+        rm.addActions(list(self.align_ref_actions.values()))
+        m.addSeparator()
+        m.addActions([acts["dist_h"], acts["dist_v"]])
+        m.addSeparator()
+        m.addActions([acts[k] for k in ("z_front", "z_forward", "z_backward", "z_back")])
+        m.addSeparator()
+        hint = m.addAction("Ctrl+click or drag a box with Select to pick several markups")
+        hint.setEnabled(False)
         m = mb.addMenu("&Tools")
         m.addActions(self.tool_group.actions())
         m.addSeparator()
@@ -413,6 +452,26 @@ class MainWindow(QMainWindow):
         forms_btn.setMenu(fmenu)
         tt.addWidget(forms_btn)
 
+        at = self.arrange_tb = QToolBar("Arrange")
+        at.setObjectName("arrange")
+        at.setMovable(False)
+        self.addToolBar(at)
+        acts = self.arrange_actions
+        at.addActions([acts[k] for k in ("al_left", "al_hcenter", "al_right",
+                                         "al_top", "al_vmiddle", "al_bottom")])
+        self.align_ref_box = QComboBox()
+        self.align_ref_box.setToolTip("What the Align buttons line markups up with")
+        for key, a in self.align_ref_actions.items():
+            self.align_ref_box.addItem(a.text().replace("Align to ", "to "), key)
+        self.align_ref_box.setCurrentIndex(max(0, self.align_ref_box.findData(self._align_ref())))
+        self.align_ref_box.activated.connect(
+            lambda i: self._set_align_ref(self.align_ref_box.itemData(i)))
+        at.addWidget(self.align_ref_box)
+        at.addSeparator()
+        at.addActions([acts["dist_h"], acts["dist_v"]])
+        at.addSeparator()
+        at.addActions([acts[k] for k in ("z_front", "z_forward", "z_backward", "z_back")])
+
     def _build_sidebar(self):
         self.thumbs = QListWidget()
         self.thumbs.setViewMode(QListWidget.ListMode)
@@ -521,6 +580,11 @@ class MainWindow(QMainWindow):
                   *self.export_actions):
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
+        n_sel = len(v.selected_xrefs()) if has else 0
+        for key, a in self.arrange_actions.items():
+            need = 3 if key.startswith("dist") else 2 if key.startswith("al_") and \
+                self._align_ref() != "page" else 1
+            a.setEnabled(n_sel >= need)
         self.a_undo.setEnabled(has and v.can_undo())
         self.a_redo.setEnabled(has and v.can_redo())
         self.page_spin.setEnabled(has)
@@ -1362,18 +1426,21 @@ class MainWindow(QMainWindow):
     def _apply_icons(self):
         for attr, key in self.TOOLBAR_ICON_KEYS.items():
             getattr(self, attr).setIcon(theme.icon(key))
+        for key, a in self.arrange_actions.items():
+            a.setIcon(theme.icon(key))
         for tid, a in self.tool_actions.items():
             a.setIcon(theme.icon(tid))
         self.forms_btn.setIcon(theme.icon("forms"))
         labels = self.a_labels.isChecked()
         style = Qt.ToolButtonTextUnderIcon if labels else Qt.ToolButtonIconOnly
-        for tb in (self.main_tb, self.tools_tb):
+        for tb in (self.main_tb, self.tools_tb, self.arrange_tb):
             tb.setToolButtonStyle(style)
             tb.setIconSize(QSize(20, 20))
         for b in (self.shapes_btn, self.measure_btn, self.forms_btn):
             b.setToolButtonStyle(style)
         # tooltips show the shortcut so icon-only buttons stay discoverable
-        for a in list(self.tool_actions.values()) + [getattr(self, k) for k in self.TOOLBAR_ICON_KEYS]:
+        for a in list(self.tool_actions.values()) + [getattr(self, k) for k in self.TOOLBAR_ICON_KEYS] + \
+                list(self.arrange_actions.values()):
             sc = a.shortcut().toString()
             name = a.text().split("\t")[0].replace("&", "")
             a.setToolTip(f"{name} ({sc})" if sc and sc not in (a.toolTip() or "") else
@@ -1551,12 +1618,31 @@ class MainWindow(QMainWindow):
             v = self.view()
             self.markups.refresh(v.doc if v else None)
 
+    def _align_ref(self):
+        for key, a in self.align_ref_actions.items():
+            if a.isChecked():
+                return key
+        return "first"
+
+    def _set_align_ref(self, key):
+        self.align_ref_actions[key].setChecked(True)
+        self.settings.setValue("align_ref", key)
+        if hasattr(self, "align_ref_box"):
+            self.align_ref_box.setCurrentIndex(max(0, self.align_ref_box.findData(key)))
+        self._update_ui()
+
+    def _align(self, how):
+        v = self.view()
+        if v is not None:
+            v.align(how, self._align_ref())
+
     def _set_author(self):
         name, ok = QInputDialog.getText(self, "Author name",
                                         "Name recorded on your markups, stamps and comments:",
                                         text=annotations.author())
         if ok:
             annotations.set_author(name.strip())
+            self._refresh_props()
 
     def _toggle_sidebar(self):
         self.dock.setVisible(not self.dock.isVisible())

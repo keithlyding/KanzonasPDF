@@ -101,13 +101,24 @@ class PropertiesPanel(QWidget):
         lr.setContentsMargins(0, 0, 0, 0)
         lr.addWidget(self.label)
         lr.addWidget(self.add_image)
-        self.date = QCheckBox("Add my name and date")
+        self.name = QCheckBox("Add my name")
+        self.name.setToolTip("Your name is set in Edit > Author name for markups")
+        self.date = QCheckBox("Add the date")
+        self.rotation = QDoubleSpinBox()
+        self.rotation.setRange(-360, 360)
+        self.rotation.setDecimals(1)
+        self.rotation.setSuffix("\u00b0")
+        self.rotation.setWrapping(True)
+        self.rotation.setKeyboardTracking(False)
+        self.rotation.setToolTip("Counterclockwise. You can also drag the round handle above a "
+                                 "selected shape (hold Shift for 15\u00b0 steps).")
         self.cloud = QCheckBox("Cloud border")
         self.markup = QComboBox()
         self.markup.addItems([m.capitalize() for m in A.COMMENT_STYLES])
 
         self.rows = {}
         for key, label, w in (("label", "Stamp", label_row),
+                              ("name", "", self.name),
                               ("date", "", self.date),
                               ("cloud", "", self.cloud),
                               ("markup", "Marks text with", self.markup),
@@ -117,6 +128,7 @@ class PropertiesPanel(QWidget):
                               ("width", "Line width", self.width),
                               ("fontsize", "Font size", self.fontsize),
                               ("head", "Arrowhead", self.head),
+                              ("rotation", "Rotation", self.rotation),
                               ("opacity", "Opacity", self.opacity)):
             lab = QLabel(label)
             self.form.addRow(lab, w)
@@ -139,6 +151,8 @@ class PropertiesPanel(QWidget):
         self.label.activated.connect(self._emit)
         self.label.lineEdit().editingFinished.connect(self._emit)
         self.date.toggled.connect(self._emit)
+        self.name.toggled.connect(self._emit)
+        self.rotation.valueChanged.connect(self._emit)
         self.cloud.toggled.connect(self._emit)
         self.show_target(None, None)
 
@@ -161,9 +175,16 @@ class PropertiesPanel(QWidget):
                           "Saved for next time. New annotations use these settings.")
         self.reset.setVisible(not selected)
         for key, (lab, w) in self.rows.items():
-            vis = key in props
+            vis = key in props and (key != "rotation" or selected)   # new markups start upright
             lab.setVisible(vis)
             w.setVisible(vis)
+        if "rotation" in props:
+            quarter = kind in A.QUARTER_TURNS
+            self.rotation.setSingleStep(90 if quarter else 5)
+            self.rotation.setDecimals(0 if quarter else 1)
+            self.rows["rotation"][0].setText("Rotation (90\u00b0 steps)" if quarter else "Rotation")
+            r = float(props.get("rotation") or 0)
+            self.rotation.setValue(r - 360 if r > 180 else r)
         if "stroke" in props:
             self.stroke.set_color(props["stroke"] or "#000000")
             # only shapes that can stand without an outline offer "No border"
@@ -188,6 +209,8 @@ class PropertiesPanel(QWidget):
             self._fill_labels(props["label"])
         if "date" in props:
             self.date.setChecked(bool(props["date"]))
+        if "name" in props:
+            self.name.setChecked(bool(props["name"]))
         if "cloud" in props:
             self.cloud.setChecked(bool(props["cloud"]))
         if "markup" in props:
@@ -253,9 +276,17 @@ class PropertiesPanel(QWidget):
                 else (text.upper() or "APPROVED")
         if "date" in p:
             p["date"] = self.date.isChecked()
+        if "name" in p:
+            p["name"] = self.name.isChecked()
         if "cloud" in p:
             p["cloud"] = self.cloud.isChecked()
         if "opacity" in p:
             p["opacity"] = self.opacity.value() / 100
+        if "rotation" in p:
+            v = self.rotation.value()
+            if self._kind in A.QUARTER_TURNS:
+                v = round(v / 90.0) * 90
+            old = float(p.get("rotation") or 0)
+            p["rotation"] = old if abs(((v - old + 180) % 360) - 180) < 1e-6 else v % 360
         self._props = p
         self.propsChanged.emit(p)

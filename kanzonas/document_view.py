@@ -82,8 +82,9 @@ class DocumentView(QScrollArea):
         self.dirty = False
         self.zoom = 1.0
         self.tool = "select"
-        self.selection = None          # (page index, annotation xref)
+        self.selection = None          # (page index, annotation xref): the first one selected
         self.selected_model = None
+        self.extra = []                # more selected xrefs on the same page, in click order
         self.show_comment_boxes = True
         self._inline = None
         self.sig_images = {}           # kind -> (png bytes, QPixmap)
@@ -286,6 +287,7 @@ class DocumentView(QScrollArea):
         self._clear_caches()
         self.selection = None
         self.selected_model = None
+        self.extra = []
         page = self.current_page()
         self.doc.close()
         self.doc = pymupdf.open(stream=data, filetype="pdf")
@@ -330,6 +332,7 @@ class DocumentView(QScrollArea):
             self._search_text = None
             self.selection = None
             self.selected_model = None
+            self.extra = []
             self._build_pages()
             self.goto_page(min(page, self.doc.page_count - 1))
             self.structureChanged.emit()
@@ -635,7 +638,7 @@ class DocumentView(QScrollArea):
 
     # ---- stamps -----------------------------------------------------------------
     def stamp_preview(self):
-        key = json.dumps(self.tool_props("stamp"), sort_keys=True)
+        key = json.dumps(self.tool_props("stamp"), sort_keys=True) + annotations.author()
         if self._stamp_cache.get("key") != key:
             from . import stamps
             png, aspect = stamps.stamp_png(self.tool_props("stamp"), annotations.author())
@@ -761,18 +764,86 @@ class DocumentView(QScrollArea):
         return False
 
     # ---- selecting and editing existing annotations ----------------------------
-    def select_xref(self, index, xref):
+    def select_xref(self, index, xref, add=False):
+        """Select one annotation. add=True (Ctrl+click) adds it to / removes it from the
+        selection instead; the first one selected stays the alignment reference."""
+        if add and self.selection is not None and self.selection[0] == index and xref:
+            xrefs = self.selected_xrefs()
+            if xref in xrefs:
+                xrefs.remove(xref)
+            else:
+                xrefs.append(xref)
+            self._set_selection(index, xrefs)
+            return True
         page = self.doc[index]
         annot = page.load_annot(xref) if xref else None
         model = annotations.read(annot) if annot else None
         old = self.selection
         self.selection = (index, xref) if model else None
         self.selected_model = model
+        self.extra = []
         for i in {index, old[0] if old else index}:
             if 0 <= i < len(self.pages):
                 self.pages[i].update()
         self.selectionChanged.emit()
         return model is not None
+
+    def _set_selection(self, index, xrefs):
+        """Select these xrefs (in order) on one page; unreadable ones are skipped."""
+        page = self.doc[index]
+        keep = []
+        for x in xrefs:
+            try:
+                if annotations.read(page.load_annot(x)) is not None and x not in keep:
+                    keep.append(x)
+            except Exception:
+                pass
+        old = self.selection
+        if not keep:
+            self.selection, self.selected_model, self.extra = None, None, []
+        else:
+            self.selection = (index, keep[0])
+            self.selected_model = annotations.read(page.load_annot(keep[0]))
+            self.extra = keep[1:]
+        for i in {index, old[0] if old else index}:
+            if 0 <= i < len(self.pages):
+                self.pages[i].update()
+        self.selectionChanged.emit()
+
+    def selected_xrefs(self):
+        if self.selection is None:
+            return []
+        return [self.selection[1]] + list(self.extra)
+
+    def selected_models(self):
+        """[(xref, model)] for everything selected, first-selected first."""
+        if self.selection is None:
+            return []
+        page = self.doc[self.selection[0]]
+        out = []
+        for x in self.selected_xrefs():
+            try:
+                m = annotations.read(page.load_annot(x))
+            except Exception:
+                m = None
+            if m is not None:
+                out.append((x, m))
+        return out
+
+    def select_in_box(self, index, box, add=False):
+        """Select the markups lying entirely inside box. Returns how many."""
+        page = self.doc[index]
+        found = []
+        for an in page.annots():
+            if an.type[0] in (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_REDACT):
+                continue
+            if box.contains(an.rect) and annotations.read(an) is not None:
+                found.append(an.xref)
+        if add and self.selection is not None and self.selection[0] == index:
+            found = self.selected_xrefs() + [x for x in found if x not in self.selected_xrefs()]
+        if found:
+            self._set_selection(index, found)
+        return len(found)
 
     def reveal(self, index, xref):
         """Scroll to an annotation and select it (used by the markups list)."""
@@ -786,11 +857,11 @@ class DocumentView(QScrollArea):
             self.selectToolRequested.emit()
         self.select_xref(index, xref)
 
-    def select_annot_at(self, index, pt):
+    def select_annot_at(self, index, pt, add=False):
         xref = self.annot_at(index, pt)
         if xref is None:
             return False
-        return self.select_xref(index, xref)
+        return self.select_xref(index, xref, add)
 
     def clear_selection(self):
         if self.selection is None:
@@ -798,6 +869,7 @@ class DocumentView(QScrollArea):
         old = self.selection
         self.selection = None
         self.selected_model = None
+        self.extra = []
         if 0 <= old[0] < len(self.pages):
             self.pages[old[0]].update()
         self.selectionChanged.emit()
@@ -807,34 +879,168 @@ class DocumentView(QScrollArea):
         if model["kind"] == "field":
             self._commit_field(index, xref, model)
             return
+        self.commit_models(index, [(xref, model)])
+
+    def commit_models(self, index, changes):
+        """Replace several annotations in one undo step, keeping their stacking order and
+        the selection (with the new xrefs)."""
+        changes = [(x, m) for x, m in changes if m["kind"] != "field"]
+        if not changes:
+            return
+        sel = self.selected_xrefs() if self.selection and self.selection[0] == index else []
         made = {}
 
         def do():
             page = self.doc[index]
-            page.delete_annot(page.load_annot(xref))
-            made["xref"] = annotations.write(page, model).xref
+            for x, m in changes:
+                made[x] = annotations.replace(page, x, m)
         self.modify(do, [index])
-        if "xref" in made:
-            self.select_xref(index, made["xref"])
+        if made:
+            self._set_selection(index, [made.get(x, x) for x in sel] or list(made.values()))
 
     def update_selected_props(self, props):
         if self.selection is None or self.selected_model is None or \
                 self.selected_model["kind"] == "field":
             return
-        model = annotations.copy(self.selected_model)
-        model["props"] = dict(props)
-        self.commit_model(self.selection[0], self.selection[1], model)
+        old = self.selected_model["props"]
+        changed = {k: v for k, v in props.items() if old.get(k) != v}
+        if not changed:
+            return
+        out = []
+        for x, m in self.selected_models():
+            if m["kind"] == "field":
+                continue
+            m = annotations.copy(m)
+            keys = {k: v for k, v in changed.items() if k in m["props"] and k != "rotation"}
+            if not keys and "rotation" not in changed:
+                continue
+            m["props"].update(keys)
+            if m["kind"] == "stamp" and ("name" in keys or "date" in keys):
+                m["detail"] = None              # redrawn with / without name and date
+            if "rotation" in changed and "rotation" in m["props"]:
+                m = annotations.rotated(m, changed["rotation"])
+            out.append((x, m))
+        self.commit_models(self.selection[0], out)
 
     def delete_selected(self):
         if self.selection is None:
             return
         index, xref = self.selection
-        if self.selected_model and self.selected_model["kind"] == "field":
+        if self.selected_model and self.selected_model["kind"] == "field" and not self.extra:
             self.delete_field(index, xref)
             return
+        xrefs = self.selected_xrefs()
         self.clear_selection()
         page = self.doc[index]
-        self.modify(lambda: page.delete_annot(page.load_annot(xref)), [index])
+
+        def do():
+            for x in xrefs:
+                try:
+                    page.delete_annot(page.load_annot(x))
+                except Exception:
+                    pass
+        self.modify(do, [index])
+
+    # ---- arrange: align, distribute, stacking order -------------------------------
+    ALIGN_REFS = ("first", "last", "selection", "page")
+
+    def _display_bounds(self, page, model):
+        return annotations.bounds(model) * page.rotation_matrix
+
+    def align(self, how, ref="first"):
+        """how: left, hcenter, right, top, vmiddle, bottom (as seen on screen).
+        ref: first selected (default), last selected, selection bounds, or page."""
+        models = [(x, m) for x, m in self.selected_models() if annotations.movable(m)]
+        if not models or (len(models) < 2 and ref != "page"):
+            self.statusMessage.emit("Select two or more markups to align (or align to the page).")
+            return
+        index = self.selection[0]
+        page = self.doc[index]
+        boxes = [self._display_bounds(page, m) for _x, m in models]
+        if ref == "page":
+            target = pymupdf.Rect(page.rect)
+        elif ref == "last":
+            target = boxes[-1]
+        elif ref == "selection":
+            target = pymupdf.Rect(boxes[0])
+            for b in boxes[1:]:
+                target |= b
+        else:
+            target = boxes[0]
+        to_pdf = page.derotation_matrix
+        out = []
+        for (x, m), b in zip(models, boxes):
+            dx = dy = 0.0
+            if how == "left":
+                dx = target.x0 - b.x0
+            elif how == "right":
+                dx = target.x1 - b.x1
+            elif how == "hcenter":
+                dx = (target.x0 + target.x1 - b.x0 - b.x1) / 2
+            elif how == "top":
+                dy = target.y0 - b.y0
+            elif how == "bottom":
+                dy = target.y1 - b.y1
+            elif how == "vmiddle":
+                dy = (target.y0 + target.y1 - b.y0 - b.y1) / 2
+            if abs(dx) > 1e-3 or abs(dy) > 1e-3:
+                d = pymupdf.Point(dx, dy) * to_pdf - pymupdf.Point(0, 0) * to_pdf
+                out.append((x, annotations.moved(m, d)))
+        self.commit_models(index, out)
+
+    def distribute(self, axis):
+        """Equal gaps between the selected markups, horizontally ('h') or vertically ('v');
+        the two outermost stay put."""
+        models = [(x, m) for x, m in self.selected_models() if annotations.movable(m)]
+        if len(models) < 3:
+            self.statusMessage.emit("Select three or more markups to distribute.")
+            return
+        index = self.selection[0]
+        page = self.doc[index]
+        items = [(x, m, self._display_bounds(page, m)) for x, m in models]
+        lo = (lambda b: b.x0) if axis == "h" else (lambda b: b.y0)
+        size = (lambda b: b.width) if axis == "h" else (lambda b: b.height)
+        items.sort(key=lambda t: lo(t[2]) + size(t[2]) / 2)
+        first, last = items[0][2], items[-1][2]
+        span = lo(last) + size(last) - lo(first)
+        gap = (span - sum(size(t[2]) for t in items)) / (len(items) - 1)
+        to_pdf = page.derotation_matrix
+        pos = lo(first)
+        out = []
+        for x, m, b in items:
+            d = pos - lo(b)
+            pos += size(b) + gap
+            if abs(d) > 1e-3:
+                v = pymupdf.Point(d, 0) if axis == "h" else pymupdf.Point(0, d)
+                out.append((x, annotations.moved(m, v * to_pdf - pymupdf.Point(0, 0) * to_pdf)))
+        self.commit_models(index, out)
+
+    def arrange(self, how):
+        """how: front, back, forward, backward (stacking order of the selected markups)."""
+        if self.selection is None:
+            return
+        index = self.selection[0]
+        sel = self.selected_xrefs()
+
+        def do():
+            page = self.doc[index]
+            order = annotations.annot_order(page)
+            chosen = [x for x in order if x in sel]
+            rest = [x for x in order if x not in sel]
+            if how == "front":
+                new = rest + chosen
+            elif how == "back":
+                new = chosen + rest
+            else:
+                new = list(order)
+                idx = range(len(new) - 2, -1, -1) if how == "forward" else range(1, len(new))
+                for i in idx:
+                    j = i + 1 if how == "forward" else i - 1
+                    if new[i] in sel and new[j] not in sel:
+                        new[i], new[j] = new[j], new[i]
+            annotations.set_annot_order(page, new)
+        self.modify(do, [index])
+        self._set_selection(index, sel)
 
     def edit_annot_text(self, index, xref):
         page = self.doc[index]
@@ -876,8 +1082,17 @@ class DocumentView(QScrollArea):
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.selection is not None:
             self.delete_selected()
             return
-        if e.key() == Qt.Key_Escape and self.selection is not None:
-            self.clear_selection()
+        if e.key() == Qt.Key_Escape:
+            # Escape twice in a row: back to the Select (arrow) tool
+            import time
+            now = time.monotonic()
+            twice = now - getattr(self, "_last_esc", -10.0) < 0.8
+            self._last_esc = -10.0 if twice else now
+            if twice and self.tool != "select":
+                self.selectToolRequested.emit()
+                return
+            if self.selection is not None:
+                self.clear_selection()
             return
         if e.key() in (Qt.Key_Left, Qt.Key_Right) and not e.modifiers():
             # previous / next page (use Shift+arrows or the scrollbar to scroll sideways)
@@ -930,18 +1145,57 @@ class DocumentView(QScrollArea):
             self._inline = None
             if text == old and not dx and not dy and wrap_px is None:
                 return
-            # on an upright page, screen deltas map straight to PDF points
-            offset = (dx / self.zoom, dy / self.zoom)
+            # screen movement -> PDF (unrotated) points
+            m = self.doc[index].derotation_matrix
+            v = pymupdf.Point(dx / self.zoom, dy / self.zoom) * m - pymupdf.Point(0, 0) * m
             wrap = wrap_px / self.zoom if wrap_px else None
-            self._apply_text_edit(index, line, text, offset, wrap)
+            self._apply_text_edit(index, line, text, (v.x, v.y), wrap)
         ed.committed.connect(done)
         ed.canceled.connect(lambda: setattr(self, "_inline", None))
+
+    def _markups_on_line(self, page, line):
+        """xrefs of text markups (highlight, underline, comments...) and sticky notes sitting
+        on this line of text: they travel with it when the text is moved."""
+        box = pymupdf.Rect(line["bbox"])
+        out = []
+        for an in page.annots():
+            t = an.type[0]
+            if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
+                     pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
+                v = an.vertices or []
+                quads = [pymupdf.Quad(v[k:k + 4]).rect for k in range(0, len(v) - 3, 4)]
+                # all of its marked area lies on this line (mostly overlapping it)
+                if quads and all(q.get_area() > 0 and (q & box).get_area() >= 0.5 * q.get_area()
+                                 for q in quads):
+                    out.append(an.xref)
+            elif t == pymupdf.PDF_ANNOT_TEXT:
+                r = an.rect
+                if (box + (-4, -4, 4, 4)).contains(pymupdf.Point(r.x0, r.y0)):
+                    out.append(an.xref)
+        return out
 
     def _apply_text_edit(self, index, line, new, offset, wrap):
         used = {}
 
         def do():
-            used["font"] = text_edit.replace_line(self.doc[index], line, new, offset, wrap)
+            page = self.doc[index]
+            moving = []
+            if offset[0] or offset[1]:
+                for x in self._markups_on_line(page, line):
+                    m = annotations.read(page.load_annot(x))
+                    if m is not None:
+                        moving.append((x, m))
+            used["font"] = text_edit.replace_line(page, line, new, offset, wrap)
+            d = pymupdf.Point(offset)
+            for x, m in moving:
+                if "quads" in m:
+                    m = annotations.copy(m)
+                    m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d)
+                                  for q in m["quads"]]
+                else:
+                    m = annotations.moved(m, d)
+                annotations.replace(page, x, m)
+            used["moved"] = len(moving)
         self.modify(do, [index])
         font = used.get("font") or ""
         if font.startswith("KZS"):

@@ -35,8 +35,10 @@ def add_to_library(path):
     return name
 
 
-def detail_line(author):
-    parts = [p for p in (author, signatures.date_text() or datetime.now().strftime("%m/%d/%Y")) if p]
+def detail_line(author, with_name=True, with_date=True):
+    """Small line under a stamp's label: name and/or date."""
+    date_s = (signatures.date_text() or datetime.now().strftime("%m/%d/%Y")) if with_date else ""
+    parts = [p for p in (author if with_name else "", date_s) if p]
     return "  ·  ".join(parts)
 
 
@@ -89,7 +91,7 @@ def stamp_png(props, author):
     if label.startswith(IMAGE_PREFIX):
         return image_stamp(label[len(IMAGE_PREFIX):])
     return render(label, props.get("stroke") or "#c00000",
-                  detail_line(author) if props.get("date", True) else "")
+                  detail_line(author, props.get("name", True), props.get("date", True)))
 
 
 def default_width(label):

@@ -8,6 +8,13 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor, QGuiApplication, QIcon
 
 ICONS = {
+    # arrange
+    "al_left": "align-horizontal-left", "al_hcenter": "align-horizontal-center",
+    "al_right": "align-horizontal-right", "al_top": "align-vertical-top",
+    "al_vmiddle": "align-vertical-center", "al_bottom": "align-vertical-bottom",
+    "dist_h": "distribute-horizontal-center", "dist_v": "distribute-vertical-center",
+    "z_front": "arrange-bring-to-front", "z_back": "arrange-send-to-back",
+    "z_forward": "arrange-bring-forward", "z_backward": "arrange-send-backward",
     # file / view
     "open": "folder-open-outline", "save": "content-save-outline", "print": "printer-outline",
     "undo": "undo", "redo": "redo", "zoom_in": "magnify-plus-outline",
