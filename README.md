@@ -64,7 +64,17 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 - Undo and redo (Ctrl+Z, Ctrl+Y), print
 - Annotations are standard PDF annotations, so Acrobat and other viewers can see them
 
-## Run it (Windows)
+## Download (Windows)
+
+Get the latest **`KanzonasPDF-v<version>-setup.exe`** from the
+[Releases page](https://github.com/keithlyding/KanzonasPDF/releases) and run it. No
+administrator rights are needed. Prefer no installer? Download the `-windows.zip`, unzip it
+anywhere and run `KanzonasPDF.exe`.
+
+To publish a release: bump `__version__` in `kanzonas/__init__.py`, push, then push a tag
+(`git tag v1.0 && git push origin v1.0`). The build attaches the installer and zip.
+
+## Run it from source (Windows)
 
 1. Install Python 3.10+ from https://www.python.org/downloads/ (tick "Add to PATH").
 2. Double-click **`Start KanzonasPDF.bat`**. The first time, it installs the libraries it needs.

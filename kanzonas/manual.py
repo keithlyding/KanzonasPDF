@@ -33,6 +33,20 @@ toolbars adds names under the icons. Hover over any toolbar button or box for a 
 saying what it does and its keyboard shortcut.</li>
 </ul>
 
+<h2 id="install">Installing, updating and uninstalling</h2>
+<ul>
+<li>Run <b>KanzonasPDF-v&lt;version&gt;-setup.exe</b>. No administrator rights are needed: it
+installs for your Windows account (choose "all users" on the first page if you're an admin and
+want that). It adds a Start-menu shortcut, optionally a desktop shortcut, and offers
+KanzonasPDF as an app for opening PDFs.</li>
+<li><b>Make it your default PDF app:</b> Windows doesn't let installers do this silently. Right-click
+any PDF &gt; Open with &gt; Choose another app &gt; KanzonasPDF, and tick "Always use this app".</li>
+<li>Opening another PDF while KanzonasPDF is running opens it as a new tab in the same window.</li>
+<li><b>Update:</b> run the newer setup; your settings, signatures, stamps and tool chest are kept.
+<b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
+<li>No installer wanted? The <b>-windows.zip</b> download runs from any folder (even a USB stick).</li>
+</ul>
+
 <h2 id="navigate">Moving around</h2>
 <ul>
 <li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number in the
