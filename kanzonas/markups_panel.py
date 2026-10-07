@@ -37,7 +37,9 @@ def collect(doc):
             label = A.LABELS.get(model["kind"], a.type[1]) if model else a.type[1]
             if model and model["kind"] == "comment":
                 label = f"Comment ({model['props'].get('markup', 'highlight')})"
-            if model and model["kind"] == "rect" and model["props"].get("cloud"):
+            clouds = (a.border or {}).get("clouds", -1) or -1
+            if (model and model["kind"] == "rect" and model["props"].get("cloud")) or \
+                    (a.type[0] == pymupdf.PDF_ANNOT_SQUARE and clouds > 0):
                 label = "Cloud"
             info = a.info
             text = info.get("content", "") or ""

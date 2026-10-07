@@ -19,6 +19,7 @@ from . import __version__, annotations, export, signatures
 from .document_view import DocumentView
 from .properties import PropertiesPanel
 from .markups_panel import MarkupsPanel
+from .tool_chest import ToolChestPanel, tool_for
 
 APP_NAME = "KanzonasPDF"
 APP_TITLE = f"KanzonasPDF v{__version__}"
@@ -181,6 +182,9 @@ class MainWindow(QMainWindow):
         for eid, label, _flt, _ext in EXPORTS:
             a = self._act(label, lambda _=False, e=eid: self.export_as(e))
             self.export_actions.append(a)
+        self.a_chest = self._act("Tool &chest", lambda: (self.chest_dock.show(), self.chest_dock.raise_()), "F8")
+        self.a_compare = self._act("&Compare documents...", self.compare_documents,
+                                   tip="Compare this document with another revision")
         self.a_set_scale = self._act("Set &scale...", self.set_scale)
         self.a_measure_summary = self._act("Measurement &summary...", self.measure_summary)
         self.a_markups = self._act("&Markups list", self._toggle_markups, "F7")
@@ -203,6 +207,7 @@ class MainWindow(QMainWindow):
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
         self.tool_actions["select"].setChecked(True)
+        self.tool_group.triggered.connect(lambda _a: self._clear_chest())
         for tid, label, sc, tip in MEASURE_TOOLS:
             a = QAction(label, self, checkable=True)
             if sc:
@@ -229,6 +234,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_save, self.a_save_as])
         em = m.addMenu("&Export to")
         em.addActions(self.export_actions)
+        m.addAction(self.a_compare)
         m.addSeparator()
         m.addAction(self.a_print)
         m.addSeparator()
@@ -244,7 +250,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_zoom_in, self.a_zoom_out, self.a_actual, self.a_fit_width,
                       self.a_fit_page])
         m.addSeparator()
-        m.addActions([self.a_sidebar, self.a_props, self.a_markups, self.a_cards])
+        m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
         m = mb.addMenu("&Tools")
         m.addActions(self.tool_group.actions())
         m.addSeparator()
@@ -407,6 +413,16 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.props_dock)
         self.resizeDocks([self.dock, self.props_dock], [180, 240], Qt.Horizontal)
 
+        self.chest = ToolChestPanel()
+        self.chest.use.connect(self._use_chest_tool)
+        self.chest.addRequested.connect(self._add_to_chest)
+        self.chest_dock = QDockWidget("Tool chest")
+        self.chest_dock.setObjectName("toolchest")
+        self.chest_dock.setWidget(self.chest)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.chest_dock)
+        self.tabifyDockWidget(self.props_dock, self.chest_dock)
+        self.props_dock.raise_()
+
         self.markups = MarkupsPanel()
         self.markups.activated.connect(lambda i, x: self.view() and self.view().reveal(i, x))
         self.markups_dock = QDockWidget("Markups list")
@@ -432,6 +448,7 @@ class MainWindow(QMainWindow):
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
                   self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten,
                   self.a_protect, self.a_unlock, self.a_set_scale, self.a_measure_summary,
+                  self.a_compare,
                   *self.export_actions):
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
@@ -658,6 +675,8 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is not None and v.selected_model is not None:
             v.update_selected_props(props)
+        elif annotations.OVERRIDE["tool"] == self.tool:
+            annotations.OVERRIDE["props"] = dict(props)
         elif self.tool in annotations.DEFAULTS:
             annotations.set_tool_props(self.tool, props)
 
@@ -968,6 +987,86 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v:
             SummaryDialog(self, v.doc).exec()
+
+    # ---- tool chest ------------------------------------------------------------------
+    def _clear_chest(self):
+        if annotations.OVERRIDE["tool"] is not None and not getattr(self, "_from_chest", False):
+            annotations.OVERRIDE.update(tool=None, props=None)
+            self._refresh_props()
+
+    def _use_chest_tool(self, tool, props):
+        self._from_chest = True
+        annotations.OVERRIDE.update(tool=tool, props=props)
+        self.set_tool(tool)
+        self._from_chest = False
+        self._refresh_props()
+        self.statusBar().showMessage("Tool chest: next markups use this style. "
+                                     "Pick a tool from the toolbar to go back to defaults.", 5000)
+
+    def _add_to_chest(self):
+        v = self.view()
+        if v is not None and v.selected_model is not None and v.selected_model["kind"] != "field":
+            m = v.selected_model
+            tool = tool_for(m)
+            props = m["props"]
+            name = (props.get("label") or annotations.LABELS.get(tool, tool)).replace("image:", "")
+        elif self.tool in annotations.DEFAULTS:
+            tool, props = self.tool, annotations.tool_props(self.tool)
+            name = annotations.LABELS.get(tool, tool)
+        else:
+            QMessageBox.information(self, "Tool chest", "Select a markup (or pick a markup "
+                                    "tool) first, then click Add.")
+            return
+        if tool is None:
+            return
+        self.chest.add(tool, props, name)
+
+    # ---- compare --------------------------------------------------------------------
+    def compare_documents(self):
+        from . import compare
+        v = self.view()
+        if not v:
+            return
+        path, _ = QFileDialog.getOpenFileName(self, "Compare with which earlier revision?",
+                                              os.path.dirname(v.path), PDF_FILTER)
+        if not path:
+            return
+        try:
+            with open(path, "rb") as f:
+                old = f.read()
+        except OSError as ex:
+            QMessageBox.critical(self, "Compare", str(ex))
+            return
+        new = v.doc.tobytes()
+        old_name, new_name = os.path.basename(path), os.path.basename(v.path)
+        dlg = QProgressDialog("Comparing pages...", None, 0, 0, self)
+        dlg.setWindowTitle("Compare")
+        dlg.setWindowModality(Qt.WindowModal)
+        dlg.setMinimumDuration(300)
+        pool = ThreadPoolExecutor(max_workers=1)
+        fut = pool.submit(compare.compare, old, new, 110, None, old_name, new_name)
+        while not fut.done():
+            QApplication.processEvents()
+            time.sleep(0.03)
+        dlg.close()
+        pool.shutdown(wait=False)
+        try:
+            data, counts = fut.result()
+        except Exception as ex:
+            QMessageBox.critical(self, "Compare failed", str(ex))
+            return
+        import tempfile
+        stem = f"Compare - {os.path.splitext(old_name)[0]} vs {os.path.splitext(new_name)[0]}.pdf"
+        out = os.path.join(tempfile.mkdtemp(prefix="kzcompare"), stem)
+        with open(out, "wb") as f:
+            f.write(data)
+        self.open_file(out)
+        self.markups_dock.show()
+        QMessageBox.information(self, "Compare", f"Found {sum(counts)} changed area(s) on "
+                                f"{sum(1 for c in counts if c)} of {len(counts)} page(s).\n\n"
+                                "Red = only in the earlier revision, blue = only in this one. "
+                                "Each change is clouded and listed in the Markups list. "
+                                "Use Save As to keep the comparison.")
 
     def _toggle_markups(self):
         self.markups_dock.setVisible(not self.markups_dock.isVisible())

@@ -22,6 +22,10 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
   picking a preset (1/4" = 1'-0", 1" = 20', 1:100, ...); measure length, polylength, area and
   perimeter, and count items in groups. Values are drawn on the PDF, update when you edit a
   vertex or change the scale, and total up in Measure > Measurement summary (CSV export)
+- **Tool chest** (F8): save a styled markup (e.g. a magenta REVISE cloud) as a named tool and
+  reuse it with one click; export/import chests to share them
+- **Compare documents** (File menu): overlays this document on an earlier revision (red =
+  removed, blue = added) and clouds every change
 - **Markups list** (F7): every markup in a table; filter, sort, click to jump, export to CSV
 - **Properties panel** (F6): colours (line, fill, text), line width, font size, arrowhead
   style, opacity
@@ -72,7 +76,7 @@ You can zip that folder and give it to anyone; they don't need Python.
 | R / E / L / A / P | Rectangle / Ellipse / Line / Arrow / Pen |
 | X | Eraser (click one, or drag a box around several) |
 | K / D / Y / Shift+L / M | Callout / Cloud / Polygon / Polyline / Stamp |
-| F7 | Markups list |
+| F7 / F8 | Markups list / Tool chest |
 | Shift+M / Shift+A / Shift+C | Measure length / area / count |
 | G / I | Place signature / initials |
 | Delete / Esc | Delete / deselect the selected annotation |

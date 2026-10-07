@@ -89,7 +89,16 @@ def _settings():
     return QSettings("KanzonasPDF", "KanzonasPDF")
 
 
+# A Tool Chest item in use: (tool, props) that replace the tool's defaults until another
+# tool is picked normally.
+OVERRIDE = {"tool": None, "props": None}
+
+
 def tool_props(kind):
+    if OVERRIDE["tool"] == kind and OVERRIDE["props"] is not None:
+        props = dict(DEFAULTS.get(kind, {}))
+        props.update({k: v for k, v in OVERRIDE["props"].items() if k in props})
+        return props
     props = dict(DEFAULTS.get(kind, {}))
     try:
         saved = json.loads(_settings().value("tool_defaults", "{}") or "{}").get(kind, {})
