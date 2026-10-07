@@ -251,6 +251,7 @@ class MainWindow(QMainWindow):
                                    tip="Make annotations and form fields a permanent part of the page")
         self.a_delete_annot = self._act("Delete selected annotation",
                                         lambda: v() and v().delete_selected())
+        self.a_manual = self._act("&User manual", self.show_manual, "F1")
         self.a_about = self._act("&About", self.about)
 
         self.tool_group = QActionGroup(self)
@@ -367,6 +368,8 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_insert_pdf, self.a_insert_blank, self.a_extract])
         m = mb.addMenu("&Help")
+        m.addAction(self.a_manual)
+        m.addSeparator()
         m.addAction(self.a_about)
 
     def _build_toolbars(self):
@@ -1646,6 +1649,14 @@ class MainWindow(QMainWindow):
 
     def _toggle_sidebar(self):
         self.dock.setVisible(not self.dock.isVisible())
+
+    def show_manual(self):
+        from .manual import ManualDialog
+        if getattr(self, "_manual", None) is None:
+            self._manual = ManualDialog(self)
+        self._manual.show()
+        self._manual.raise_()
+        self._manual.activateWindow()
 
     def about(self):
         QMessageBox.about(self, "About " + APP_NAME,
