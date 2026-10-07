@@ -90,7 +90,7 @@ class DocumentView(QScrollArea):
         self.sig_images = {}           # kind -> (png bytes, QPixmap)
         self._stamp_cache = {}
         self.signed = False
-        self.protect_on_save = False
+        self.security = None           # new security to apply when saving (see set_security)
         self.search_hits = {}
         self._search_list = []
         self._search_pos = -1
@@ -240,6 +240,20 @@ class DocumentView(QScrollArea):
         self.set_zoom(min(avail_w / r.width, avail_h / r.height))
         self.goto_page(page)
 
+    highlight_fields = True        # shade fillable form fields (View / Forms menu)
+
+    def field_rects(self, index):
+        """[(rect, required)] of fillable form fields on a page (cached until the next edit)."""
+        cache = self._card_cache.setdefault(("fields", index), None)
+        if cache is None:
+            cache = []
+            for w in self.doc[index].widgets():
+                if w.field_type == pymupdf.PDF_WIDGET_TYPE_BUTTON:
+                    continue
+                cache.append((pymupdf.Rect(w.rect), bool(w.field_flags & 2)))
+            self._card_cache[("fields", index)] = cache
+        return cache
+
     # ---- grid and snapping (View menu; settings shared by all documents) -------------
     grid_on = False
     grid_spacing = 36.0            # points between grid lines
@@ -386,8 +400,8 @@ class DocumentView(QScrollArea):
                                         "banner if you really need to change it.")
             else:
                 QMessageBox.information(self, "Protected document",
-                                        "This PDF is protected against changes. Use Sign > Unlock "
-                                        "with password... if you have its owner password.")
+                                        "This PDF is protected against changes. Use Protect > Unlock "
+                                        "with password if you have its permissions password.")
             return
         snap = self._snapshot()
         self._clear_caches()
@@ -644,6 +658,13 @@ class DocumentView(QScrollArea):
             return
         if tool == "image":
             self.place_image(index, a, b, is_click)
+            return
+        if tool == "placeholder":
+            props = self.tool_props("placeholder")
+            if is_click or rect.width < 12 or rect.height < 8:
+                w, h = (160, 40) if props.get("for") == "signature" else (70, 30)
+                rect = pymupdf.Rect(a.x, a.y, a.x + w, a.y + h)
+            self._create(index, {"kind": "placeholder", "props": props, "rect": rect})
             return
         if tool == "m_calibrate":
             if not is_click and abs(b - a) > 2:
@@ -1035,7 +1056,7 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
         found = []
         for an in page.annots():
-            if an.type[0] in (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_REDACT):
+            if an.type[0] == pymupdf.PDF_ANNOT_POPUP:
                 continue
             if box.contains(an.rect) and annotations.read(an) is not None:
                 found.append(an.xref)
@@ -1607,32 +1628,216 @@ class DocumentView(QScrollArea):
         else:
             disp = self.sig_display_rect(index, kind, pt)
         when = signatures.date_text()
+        if not hasattr(self, "_last_sig_spot"):
+            self._last_sig_spot = {}
+        self._last_sig_spot[kind] = pymupdf.Rect(disp)
 
         def do():
-            pg = self.doc[index]
-            img_rect = disp * pg.derotation_matrix
-            pg.insert_image(img_rect, stream=png, keep_proportion=True, rotate=pg.rotation,
-                            overlay=True)
-            if when:
-                size = 9 if kind == "signature" else 7
-                base = pymupdf.Point(disp.x0, disp.y1 + size + 1) * pg.derotation_matrix
-                pg.insert_text(base, when, fontsize=size, fontname="helv",
-                               color=(0.1, 0.1, 0.1), rotate=pg.rotation)
+            self._draw_signature(self.doc[index], kind, disp, when)
         self.modify(do, [index])
         self.signed = True
         self.signedDocument.emit()
 
     # ---- protection (read-only PDFs) ----------------------------------------------------
     def _check_permissions(self):
+        # (permissions is a signed 32-bit value: restricted files report negative numbers too)
         perm = self.doc.permissions
-        self.read_only = perm >= 0 and not (perm & pymupdf.PDF_PERM_MODIFY
-                                            and perm & pymupdf.PDF_PERM_ANNOTATE)
+        self.read_only = not (perm & pymupdf.PDF_PERM_MODIFY and perm & pymupdf.PDF_PERM_ANNOTATE)
 
     def unlock(self, password):
-        ok = self.doc.authenticate(password)
-        if ok:
+        """Unlock editing with the permissions (owner) password."""
+        rc = self.doc.authenticate(password)
+        if rc & 4:                     # 4 = owner password accepted
             self._check_permissions()
-        return ok and not self.read_only
+            return not self.read_only
+        return False
+
+    def security_state(self):
+        """What protection the file has now: {'encrypted', 'open_pw', 'perms'}."""
+        meta = self.doc.metadata or {}
+        enc = meta.get("encryption")
+        return {"encrypted": bool(enc), "method": enc or "", "perms": self.doc.permissions,
+                "is_owner": bool(self.doc.permissions & pymupdf.PDF_PERM_MODIFY)}
+
+    def set_security(self, open_pw="", owner_pw="", perms=-1):
+        """Security to apply on the next save ('' / '' removes all protection)."""
+        if self.read_only:
+            raise PermissionError("Unlock the document with its permissions password first.")
+        self.security = {"open_pw": open_pw, "owner_pw": owner_pw, "perms": perms}
+        self.dirty = True
+        self.documentChanged.emit()
+
+    # ---- sanitize ---------------------------------------------------------------------------
+    SANITIZE_OPTIONS = [  # (key, label, default)
+        ("metadata", "Document information (author, title, dates, producer)", True),
+        ("javascript", "JavaScript and automatic actions", True),
+        ("embedded_files", "Attached and embedded files", True),
+        ("hidden_text", "Hidden text (e.g. invisible OCR text)", False),
+        ("links", "Links", False),
+        ("markups", "Comments and markups", False),
+        ("form_data", "Data typed into form fields", False),
+        ("thumbnails", "Page thumbnails and leftover redaction data", True),
+    ]
+
+    def sanitize(self, opts):
+        """Remove hidden or sensitive content (Protect > Sanitize document)."""
+        def do():
+            self.doc.scrub(attached_files=opts.get("embedded_files", False),
+                           embedded_files=opts.get("embedded_files", False),
+                           clean_pages=True, hidden_text=opts.get("hidden_text", False),
+                           javascript=opts.get("javascript", False),
+                           metadata=opts.get("metadata", False),
+                           xml_metadata=opts.get("metadata", False),
+                           redactions=False, redact_images=0,
+                           remove_links=opts.get("links", False),
+                           reset_fields=opts.get("form_data", False),
+                           reset_responses=opts.get("markups", False),
+                           thumbnails=opts.get("thumbnails", False))
+            if opts.get("markups"):
+                for i in range(self.doc.page_count):
+                    pg = self.doc[i]
+                    for x in [a.xref for a in pg.annots()]:
+                        pg.delete_annot(pg.load_annot(x))
+        self.clear_selection()
+        self.modify(do, structural=True)
+
+    # ---- apply only some redactions -------------------------------------------------------------
+    def apply_selected_redactions(self):
+        """Apply the selected redaction marks only; other marks stay pending."""
+        if self.selection is None:
+            return 0
+        index = self.selection[0]
+        chosen = [x for x, m in self.selected_models() if m["kind"] == "redact"]
+        if not chosen:
+            return 0
+
+        def do():
+            pg = self.doc[index]
+            others = []
+            for an in list(pg.annots()):
+                if an.type[0] == pymupdf.PDF_ANNOT_REDACT and an.xref not in chosen:
+                    others.append(annotations.read(an))
+            for an in [a.xref for a in pg.annots()
+                       if a.type[0] == pymupdf.PDF_ANNOT_REDACT and a.xref not in chosen]:
+                pg.delete_annot(pg.load_annot(an))
+            pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
+                                graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
+                                text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+            for m in others:                       # put the other marks back
+                annotations.write(pg, m)
+        self.clear_selection()
+        self.modify(do, [index])
+        return len(chosen)
+
+    # ---- digital signatures: clear, timestamp ---------------------------------------------------
+    def clear_signatures(self):
+        """Remove every digital signature value (fields stay, unsigned). Returns how many."""
+        n = {"n": 0}
+
+        def do():
+            for i in range(self.doc.page_count):
+                pg = self.doc[i]
+                for w in list(pg.widgets()):
+                    if w.field_type == pymupdf.PDF_WIDGET_TYPE_SIGNATURE:
+                        typ, _val = self.doc.xref_get_key(w.xref, "V")
+                        if typ != "null":
+                            self.doc.xref_set_key(w.xref, "V", "null")
+                            self.doc.xref_set_key(w.xref, "AP", "null")
+                            n["n"] += 1
+            cat = self.doc.pdf_catalog()
+            self.doc.xref_set_key(cat, "Perms", "null")     # certification lock
+            if n["n"] and self.doc.xref_get_key(cat, "AcroForm/SigFlags")[0] != "null":
+                self.doc.xref_set_key(cat, "AcroForm/SigFlags", "0")
+        was = self.read_only
+        self.read_only = False
+        self.modify(do, list(range(self.doc.page_count)))
+        if not n["n"]:
+            self.read_only = was
+        else:
+            self.sig_results = []
+            self.show_banner("Digital signatures removed. Save to keep the unsigned version.",
+                             "#fff4d6")
+        return n["n"]
+
+    def timestamp(self, url, out_path):
+        """Add a trusted timestamp (RFC 3161) from a time server; writes out_path."""
+        from . import digisign
+        if self.dirty:
+            raise RuntimeError("Save your changes first.")
+        with open(self.path, "rb") as f:
+            data = f.read()
+        return digisign.timestamp(data, out_path, url)
+
+    # ---- multi-place signature & placeholders -------------------------------------------------
+    def _draw_signature(self, pg, kind, disp, when):
+        png, _pm = self.sig_images[kind]
+        img_rect = disp * pg.derotation_matrix
+        pg.insert_image(img_rect, stream=png, keep_proportion=True, rotate=pg.rotation,
+                        overlay=True)
+        if when:
+            size = 9 if kind == "signature" else 7
+            base = pymupdf.Point(disp.x0, disp.y1 + size + 1) * pg.derotation_matrix
+            pg.insert_text(base, when, fontsize=size, fontname="helv",
+                           color=(0.1, 0.1, 0.1), rotate=pg.rotation)
+
+    SIG_SPOTS = ["bottom right", "bottom left", "bottom center", "top right", "top left"]
+
+    def _spot_rect(self, index, kind, spot, margin=36):
+        page = self.doc[index]
+        pr = page.rect                                     # displayed page
+        r = self.sig_display_rect(index, kind, page.rect.tl * page.derotation_matrix)
+        w, h = r.width, r.height
+        x = {"right": pr.x1 - margin - w, "left": pr.x0 + margin,
+             "center": (pr.x0 + pr.x1 - w) / 2}[spot.split()[1]]
+        y = (pr.y1 - margin - h - 12) if spot.startswith("bottom") else pr.y0 + margin
+        return pymupdf.Rect(x, y, x + w, y + h)
+
+    def place_signature_on_pages(self, kind, pages, spot):
+        """Multi-place: the saved signature / initials on several pages at once. spot is a
+        corner name, or 'same' = where it was last placed (same spot on every page)."""
+        if kind not in self.sig_images or not pages:
+            return 0
+        when = signatures.date_text()
+        last = getattr(self, "_last_sig_spot", {}).get(kind)
+
+        def do():
+            for i in pages:
+                pg = self.doc[i]
+                disp = pymupdf.Rect(last) if spot == "same" and last is not None                     else self._spot_rect(i, kind, spot if spot != "same" else "bottom right")
+                self._draw_signature(pg, kind, disp, when)
+        self.modify(do, list(pages))
+        self.signed = True
+        self.signedDocument.emit()
+        return len(pages)
+
+    def placeholders(self):
+        """[(page, xref, 'signature'|'initials', rect)] for every placeholder in the file."""
+        out = []
+        for i in range(self.doc.page_count):
+            pg = self.doc[i]
+            for an in pg.annots():
+                m = annotations.read(an) if an.type[0] == pymupdf.PDF_ANNOT_FREE_TEXT else None
+                if m and m["kind"] == "placeholder":
+                    out.append((i, an.xref, m["props"].get("for", "initials"), m["rect"]))
+        return out
+
+    def apply_placeholders(self, kinds=("signature", "initials")):
+        """Fill every placeholder with your saved signature / initials (and the date)."""
+        todo = [t for t in self.placeholders() if t[2] in kinds and t[2] in self.sig_images]
+        if not todo:
+            return 0
+        when = signatures.date_text()
+
+        def do():
+            for i, xref, kind, rect in todo:
+                pg = self.doc[i]
+                pg.delete_annot(pg.load_annot(xref))
+                self._draw_signature(pg, kind, rect * pg.rotation_matrix, when)
+        self.clear_selection()
+        self.modify(do, sorted({t[0] for t in todo}))
+        self.signed = True
+        self.signedDocument.emit()
+        return len(todo)
 
     # ---- form filling ----------------------------------------------------------------
     def _widget_at(self, page, pt):
@@ -2061,19 +2266,20 @@ class DocumentView(QScrollArea):
             except Exception:
                 pass
             self._fonts_added = False
-        if self.protect_on_save:
-            # No-changes permissions with a random owner password nobody knows: anyone can
-            # open, read and print, but PDF software that honours permissions won't edit.
-            import secrets
-            self.doc.save(tmp, garbage=1, deflate=True, encryption=pymupdf.PDF_ENCRYPT_AES_256,
-                          owner_pw=secrets.token_urlsafe(24), user_pw="",
-                          permissions=pymupdf.PDF_PERM_PRINT | pymupdf.PDF_PERM_PRINT_HQ
-                          | pymupdf.PDF_PERM_COPY | pymupdf.PDF_PERM_ACCESSIBILITY)
-        else:
+        sec = self.security
+        if sec is None:
+            # unchanged: keep whatever security the file already has
             self.doc.save(tmp, garbage=1, deflate=True)
+        elif not sec.get("open_pw") and not sec.get("owner_pw"):
+            self.doc.save(tmp, garbage=1, deflate=True, encryption=pymupdf.PDF_ENCRYPT_NONE)
+        else:
+            # AES-256. Without an open password anyone can open it; the permissions password
+            # (the owner password) is what's needed to change the restrictions.
+            owner = sec.get("owner_pw") or sec.get("open_pw")
+            self.doc.save(tmp, garbage=1, deflate=True, encryption=pymupdf.PDF_ENCRYPT_AES_256,
+                          owner_pw=owner, user_pw=sec.get("open_pw") or "",
+                          permissions=sec.get("perms", -1) if sec.get("owner_pw") else -1)
         os.replace(tmp, path)
-        if self.protect_on_save:
-            self.read_only = True
         self.path = path
         self.dirty = False
         self.documentChanged.emit()

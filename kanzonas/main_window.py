@@ -71,6 +71,9 @@ MEASURE_TOOLS = [
 EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
     ("redact", "&Redact (mark text or area)", "Shift+R",
      "Redact: drag across text, or drag a box over any area; then Apply redactions"),
+    ("placeholder", "Add signature &placeholder", "",
+     "Placeholder: drag a box where a signature or initials go (choose which in Properties); "
+     "then Apply all signature placeholders"),
 ]
 EXPORTS = [  # (id, menu label, file filter, extension)
     ("word", "Microsoft &Word (.docx)...", "Word document (*.docx)", "docx"),
@@ -218,10 +221,29 @@ class MainWindow(QMainWindow):
         self.a_cards.setChecked(self.settings.value("comment_boxes", "true") != "false")
         self.a_setup_sig = self._act("Set up my &signature...", lambda: self.setup_signature("signature"))
         self.a_setup_init = self._act("Set up my &initials...", lambda: self.setup_signature("initials"))
-        self.a_protect = self._act("&Protect document from changes when saved", self._toggle_protect,
-                                   tip="Anyone can read and print it; editing software that honours "
-                                       "PDF permissions won't change it")
-        self.a_protect.setCheckable(True)
+        self.a_security = self._act("Security &properties (passwords && permissions)...",
+                                    self.security_properties,
+                                    tip="Require a password to open, and/or restrict printing, "
+                                        "editing and copying (AES-256)")
+        self.a_remove_security = self._act("&Remove security", self.remove_security)
+        self.a_sanitize = self._act("Sa&nitize document...", self.sanitize_document,
+                                    tip="Remove hidden data: document information, scripts, "
+                                        "attached files, hidden text...")
+        self.a_clear_sigs = self._act("&Clear all digital signatures...", self.clear_signatures)
+        self.a_timestamp = self._act("&Timestamp document...", self.timestamp_document,
+                                     tip="Add a trusted timestamp from a time server: proves the "
+                                         "file existed, unchanged, at that time")
+        self.a_multi_sign = self._act("&Multi-place signature or initials...", self.multi_place)
+        self.a_apply_placeholders = self._act("&Apply all signature placeholders",
+                                              self.apply_placeholders)
+        self.a_apply_sel_redact = self._act("Apply &selected redactions",
+                                            lambda: self._apply_selected_redactions())
+        self.a_hl_fields = self._act("&Highlight form fields", self._toggle_hl_fields,
+                                     tip="Shade fillable form fields so they're easy to find "
+                                         "(on screen only)")
+        self.a_hl_fields.setCheckable(True)
+        self.a_hl_fields.setChecked(self.settings.value("highlight_fields", "true") != "false")
+        DocumentView.highlight_fields = self.a_hl_fields.isChecked()
         self.a_unlock = self._act("&Unlock with password...", self.unlock_doc)
         self.export_actions = []
         for eid, label, _flt, _ext in EXPORTS:
@@ -373,6 +395,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_split)
         m.addAction(self.a_cad_mouse)
+        m.addAction(self.a_hl_fields)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_grid_settings])
         m.addSeparator()
@@ -407,24 +430,33 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_attachments)
         m.addSeparator()
         rm = m.addMenu("&Redaction")
-        rm.addActions([self.tool_actions["redact"], self.a_search_redact, self.a_apply_redact])
+        rm.addActions([self.tool_actions["redact"], self.a_search_redact,
+                       self.a_apply_sel_redact, self.a_apply_redact])
         m.addSeparator()
         m.addActions([self.a_compress, self.a_compare, self.a_flatten])
         m = mb.addMenu("&Measure")
         m.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
         m.addSeparator()
         m.addActions([self.a_set_scale, self.a_measure_summary])
-        m = mb.addMenu("&Sign")
-        m.addActions([self.tool_actions["signature"], self.tool_actions["initials"]])
-        m.addSeparator()
+        m = mb.addMenu("&Protect")
+        m.addActions([self.tool_actions["signature"], self.tool_actions["initials"],
+                      self.a_multi_sign])
         m.addActions([self.a_setup_sig, self.a_setup_init])
         m.addSeparator()
-        m.addActions([self.a_protect, self.a_unlock])
+        m.addActions([self.tool_actions["placeholder"], self.a_apply_placeholders])
         m.addSeparator()
-        m.addActions([self.a_digisign, self.a_sig_details])
+        m.addActions([self.a_digisign, self.a_timestamp, self.a_sig_details, self.a_clear_sigs])
+        m.addSeparator()
+        rm = m.addMenu("Re&daction")
+        rm.addActions([self.tool_actions["redact"], self.a_search_redact,
+                       self.a_apply_sel_redact, self.a_apply_redact])
+        m.addAction(self.a_sanitize)
+        m.addSeparator()
+        m.addActions([self.a_security, self.a_remove_security, self.a_unlock])
         m = mb.addMenu("F&orms")
         m.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
         m.addSeparator()
+        m.addAction(self.a_hl_fields)
         hint = m.addAction("To fill in a form: use Select or Hand and click a field")
         hint.setEnabled(False)
         m = mb.addMenu("&Pages")
@@ -659,7 +691,9 @@ class MainWindow(QMainWindow):
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
                   self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten,
-                  self.a_protect, self.a_unlock, self.a_set_scale, self.a_measure_summary,
+                  self.a_security, self.a_remove_security, self.a_sanitize, self.a_clear_sigs,
+                  self.a_timestamp, self.a_multi_sign, self.a_apply_placeholders,
+                  self.a_apply_sel_redact, self.a_unlock, self.a_set_scale, self.a_measure_summary,
                   self.a_compare, self.a_header, self.a_watermark, self.a_compress,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
                   *self.export_actions):
@@ -684,7 +718,6 @@ class MainWindow(QMainWindow):
             self.zoom_box.setEditText(f"{round(v.zoom * 100)}%")
             self.scale_label.setText(v.page_scale_text(v.current_page()))
             name = os.path.basename(v.path) + (" [protected]" if v.read_only else "")
-            self.a_protect.setChecked(v.protect_on_save)
             self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {APP_TITLE}")
             for i in range(self.tabs.count()):
                 w = self.tabs.widget(i)
@@ -729,8 +762,8 @@ class MainWindow(QMainWindow):
         if v.read_only:
             QTimer.singleShot(0, lambda: QMessageBox.information(
                 self, "Protected document", "This PDF is protected against changes. You can "
-                "read, search and print it. Sign > Unlock with password... if you have the "
-                "owner password."))
+                "read, search and print it. Use Protect > Unlock with password if you have its "
+                "permissions password."))
         v.pageChanged.connect(self._on_page_changed)
         v.zoomChanged.connect(lambda _: self._update_ui())
         v.documentChanged.connect(self._on_doc_changed)
@@ -1085,17 +1118,16 @@ class MainWindow(QMainWindow):
 
     def _on_signed(self):
         v = self.sender()
-        if v is None or v.protect_on_save or getattr(v, "_asked_protect", False):
+        if v is None or v.security is not None or getattr(v, "_asked_protect", False):
             return
         v._asked_protect = True
         r = QMessageBox.question(
             self, "Protect signed document?",
-            "Protect this document from changes when you save it?\n\n"
-            "Anyone can still open, read and print it, but PDF editors that honour PDF "
-            "permissions (Acrobat, PDF-XChange, this app) won't let it be edited.\n\n"
-            "Tip: keep an unsigned copy if you may need to change it later.")
-        v.protect_on_save = r == QMessageBox.Yes
-        self._update_ui()
+            "Restrict editing of this document with a permissions password when you save it?\n\n"
+            "Anyone can still open, read and print it. You choose the password, so you can "
+            "unlock it later.\n\nTip: keep an unsigned copy if you may need to change it.")
+        if r == QMessageBox.Yes:
+            self.security_properties(preset_restrict=True)
 
     def _sign_field(self, index, xref):
         v = self.sender()
@@ -1108,12 +1140,335 @@ class MainWindow(QMainWindow):
         rect = page.load_widget(xref).rect
         v.place_signature(index, "signature", field_rect=rect)
 
-    def _toggle_protect(self):
+    # ---- protection ----------------------------------------------------------------------
+    PERMS = [  # (flag, label, allowed by default when restricting)
+        (pymupdf.PDF_PERM_PRINT | pymupdf.PDF_PERM_PRINT_HQ, "Printing", True),
+        (pymupdf.PDF_PERM_COPY, "Copying text and images", True),
+        (pymupdf.PDF_PERM_ANNOTATE, "Adding comments and markups", False),
+        (pymupdf.PDF_PERM_FORM, "Filling in form fields and signing", True),
+        (pymupdf.PDF_PERM_MODIFY, "Changing the document (text, pages, content)", False),
+        (pymupdf.PDF_PERM_ASSEMBLE, "Inserting, deleting and rotating pages", False),
+    ]
+
+    def security_properties(self, preset_restrict=False):
+        import json
         v = self.view()
-        if v:
-            v.protect_on_save = self.a_protect.isChecked()
-            v.dirty = True
-            self._update_ui()
+        if v is None:
+            return
+        if v.read_only:
+            QMessageBox.information(self, "Security", "This document is protected. Use "
+                                    "Protect > Unlock with password with its permissions "
+                                    "password first.")
+            return
+        st = v.security_state()
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Security properties")
+        lay = QVBoxLayout(dlg)
+        now = QLabel("Current: " + (f"encrypted ({st['method']})" if st["encrypted"]
+                                    else "no security") +
+                     (" - changes pending until you save" if v.security is not None else ""))
+        lay.addWidget(now)
+
+        def pw_pair():
+            a, b = QLineEdit(), QLineEdit()
+            for e in (a, b):
+                e.setEchoMode(QLineEdit.Password)
+            b.setPlaceholderText("Type it again")
+            return a, b
+        open_on = QCheckBox("Require a password to open the document")
+        open_pw, open_pw2 = pw_pair()
+        lay.addWidget(open_on)
+        f1 = QFormLayout()
+        f1.addRow("Open password", open_pw)
+        f1.addRow("", open_pw2)
+        lay.addLayout(f1)
+        note1 = QLabel("Real protection: without it, nobody can read the file. If you forget "
+                       "it, the file can't be recovered.")
+        note1.setWordWrap(True)
+        note1.setStyleSheet("color: gray;")
+        lay.addWidget(note1)
+        restrict = QCheckBox("Restrict printing, editing and copying")
+        own_pw, own_pw2 = pw_pair()
+        lay.addWidget(restrict)
+        f2 = QFormLayout()
+        f2.addRow("Permissions password", own_pw)
+        f2.addRow("", own_pw2)
+        lay.addLayout(f2)
+        lay.addWidget(QLabel("Allow:"))
+        boxes = []
+        for flag, label, default in self.PERMS:
+            c = QCheckBox(label)
+            c.setChecked(default)
+            boxes.append((flag, c))
+            lay.addWidget(c)
+        note2 = QLabel("Restrictions are honored by Acrobat, PDF-XChange, Bluebeam and this app, "
+                       "but some free tools ignore them. Use an open password for anything "
+                       "confidential.")
+        note2.setWordWrap(True)
+        note2.setStyleSheet("color: gray;")
+        lay.addWidget(note2)
+        # presets (security policies): which options and permissions, never the passwords
+        prow = QHBoxLayout()
+        presets = QComboBox()
+        try:
+            saved = json.loads(self.settings.value("security_presets", "{}") or "{}")
+        except (ValueError, TypeError):
+            saved = {}
+        presets.addItem("(choose a saved policy)")
+        presets.addItems(sorted(saved))
+        save_p = QPushButton("Save as policy...")
+        prow.addWidget(QLabel("Policy:"))
+        prow.addWidget(presets, 1)
+        prow.addWidget(save_p)
+        lay.addLayout(prow)
+
+        def sync():
+            for w in (open_pw, open_pw2):
+                w.setEnabled(open_on.isChecked())
+            for w in (own_pw, own_pw2):
+                w.setEnabled(restrict.isChecked())
+            for _f, c in boxes:
+                c.setEnabled(restrict.isChecked())
+        open_on.toggled.connect(sync)
+        restrict.toggled.connect(sync)
+        restrict.setChecked(preset_restrict)
+
+        def load_preset(i):
+            p = saved.get(presets.itemText(i))
+            if not p:
+                return
+            open_on.setChecked(p.get("open", False))
+            restrict.setChecked(p.get("restrict", False))
+            for flag, c in boxes:
+                c.setChecked(bool(p.get("perms", 0) & flag))
+        presets.activated.connect(load_preset)
+
+        def save_preset():
+            name, ok = QInputDialog.getText(dlg, "Save security policy", "Policy name:")
+            if ok and name.strip():
+                saved[name.strip()] = {"open": open_on.isChecked(), "restrict": restrict.isChecked(),
+                                       "perms": sum(f for f, c in boxes if c.isChecked())}
+                self.settings.setValue("security_presets", json.dumps(saved))
+                if presets.findText(name.strip()) < 0:
+                    presets.addItem(name.strip())
+        save_p.clicked.connect(save_preset)
+        sync()
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.rejected.connect(dlg.reject)
+
+        def accept():
+            if open_on.isChecked() and (not open_pw.text() or open_pw.text() != open_pw2.text()):
+                QMessageBox.warning(dlg, "Security", "The open passwords are empty or don't match.")
+                return
+            if restrict.isChecked() and (not own_pw.text() or own_pw.text() != own_pw2.text()):
+                QMessageBox.warning(dlg, "Security",
+                                    "The permissions passwords are empty or don't match.")
+                return
+            if open_on.isChecked() and restrict.isChecked() and open_pw.text() == own_pw.text():
+                QMessageBox.warning(dlg, "Security", "Use a different password for permissions: "
+                                    "with the same one, anyone who can open it can change it.")
+                return
+            dlg.accept()
+        btns.accepted.connect(accept)
+        lay.addWidget(btns)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        perms = pymupdf.PDF_PERM_ACCESSIBILITY | sum(f for f, c in boxes if c.isChecked())
+        v.set_security(open_pw.text() if open_on.isChecked() else "",
+                       own_pw.text() if restrict.isChecked() else "", perms)
+        self.statusBar().showMessage("Security will be applied when you save.", 5000)
+        self._update_ui()
+
+    def remove_security(self):
+        v = self.view()
+        if v is None:
+            return
+        if v.read_only:
+            self.unlock_doc()
+            if v.read_only:
+                return
+        v.set_security("", "", -1)
+        self.statusBar().showMessage("Security will be removed when you save.", 5000)
+        self._update_ui()
+
+    def sanitize_document(self):
+        v = self.view()
+        if v is None:
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Sanitize document")
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel("Remove from this document:"))
+        boxes = {}
+        for key, label, default in v.SANITIZE_OPTIONS:
+            c = QCheckBox(label)
+            c.setChecked(default)
+            boxes[key] = c
+            lay.addWidget(c)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        lay.addWidget(btns)
+        if dlg.exec() == QDialog.Accepted:
+            v.sanitize({k: c.isChecked() for k, c in boxes.items()})
+            self.statusBar().showMessage("Sanitized. Save to keep it (Undo is available).", 5000)
+
+    def clear_signatures(self):
+        v = self.view()
+        if v is None:
+            return
+        if QMessageBox.question(self, "Clear all digital signatures",
+                                "Remove every digital signature from this document? The "
+                                "signature fields stay, empty. Visible signature images "
+                                "you placed aren't affected.") != QMessageBox.Yes:
+            return
+        n = v.clear_signatures()
+        self.statusBar().showMessage(f"Removed {n} digital signature(s).", 5000)
+        self._update_ui()
+
+    def timestamp_document(self):
+        from . import digisign
+        v = self.view()
+        if v is None:
+            return
+        if v.dirty:
+            QMessageBox.information(self, "Timestamp", "Save your changes first.")
+            return
+        url, ok = QInputDialog.getItem(self, "Timestamp document",
+                                       "Time server (free, needs internet):",
+                                       digisign.TIME_SERVERS, 0, True)
+        if not ok or not url.strip():
+            return
+        base, ext = os.path.splitext(v.path)
+        out, _ = QFileDialog.getSaveFileName(self, "Save timestamped copy", base + "_timestamped.pdf",
+                                             "PDF (*.pdf)")
+        if not out:
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            v.timestamp(url.strip(), out)
+        except Exception as ex:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.warning(self, "Timestamp", f"Couldn't get a timestamp from {url}:\n{ex}\n\n"
+                                "Check your internet connection or try another server.")
+            return
+        QApplication.restoreOverrideCursor()
+        self.open_file(out)
+
+    def multi_place(self):
+        v = self.view()
+        if v is None:
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Multi-place signature or initials")
+        form = QFormLayout(dlg)
+        what = QComboBox()
+        what.addItem("Initials", "initials")
+        what.addItem("Signature", "signature")
+        form.addRow("Place", what)
+        pages = QComboBox()
+        pages.addItems(["All pages", "All pages except the first", "All pages except the last",
+                        "Pages..."])
+        rng = QLineEdit()
+        rng.setPlaceholderText("e.g. 1-3, 5, 8")
+        form.addRow("On", pages)
+        form.addRow("", rng)
+        where = QComboBox()
+        where.addItem("Same spot as the last one I placed", "same")
+        for spot in v.SIG_SPOTS:
+            where.addItem(spot.capitalize() + " corner" if "center" not in spot
+                          else "Bottom center", spot)
+        if not getattr(v, "_last_sig_spot", {}):
+            where.setCurrentIndex(1)
+        form.addRow("Where", where)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        form.addRow(btns)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        n = v.page_count()
+        choice = pages.currentIndex()
+        if choice == 0:
+            sel = list(range(n))
+        elif choice == 1:
+            sel = list(range(1, n))
+        elif choice == 2:
+            sel = list(range(n - 1))
+        else:
+            sel = self._parse_pages(rng.text(), n)
+            if not sel:
+                QMessageBox.warning(self, "Multi-place", "Type pages like 1-3, 5.")
+                return
+        kind = what.currentData()
+        if not self._ensure_sig(kind):
+            return
+        spot = where.currentData()
+        if spot == "same" and kind not in getattr(v, "_last_sig_spot", {}):
+            spot = "bottom right"
+        placed = v.place_signature_on_pages(kind, sel, spot)
+        self.statusBar().showMessage(f"Placed your {kind} on {placed} page(s).", 5000)
+
+    @staticmethod
+    def _parse_pages(text, n):
+        out = []
+        for part in text.replace(" ", "").split(","):
+            if not part:
+                continue
+            try:
+                if "-" in part:
+                    a, b = part.split("-", 1)
+                    out += list(range(int(a) - 1, int(b)))
+                else:
+                    out.append(int(part) - 1)
+            except ValueError:
+                return []
+        return sorted({p for p in out if 0 <= p < n})
+
+    def _ensure_sig(self, kind):
+        """Make sure the saved signature / initials image is loaded (asks for the PIN)."""
+        if kind not in self._sig_cache:
+            png = signatures.get_image(self, kind)
+            if png is None:
+                return False
+            self._cache_sig(kind, png)
+        return True
+
+    def apply_placeholders(self):
+        v = self.view()
+        if v is None:
+            return
+        found = v.placeholders()
+        if not found:
+            QMessageBox.information(self, "Placeholders", "This document has no signature "
+                                    "placeholders. Add them with Protect > Add signature placeholder.")
+            return
+        for kind in sorted({k for _i, _x, k, _r in found}):
+            if not self._ensure_sig(kind):
+                return
+        n = v.apply_placeholders()
+        self.statusBar().showMessage(f"Filled {n} placeholder(s).", 5000)
+
+    def _apply_selected_redactions(self):
+        v = self.view()
+        if v is None:
+            return
+        if QMessageBox.question(self, "Apply selected redactions",
+                                "Permanently remove what's under the selected redaction "
+                                "marks? Other marks stay pending.") != QMessageBox.Yes:
+            return
+        n = v.apply_selected_redactions()
+        if not n:
+            QMessageBox.information(self, "Apply selected redactions",
+                                    "Select one or more redaction marks first (Select tool).")
+
+    def _toggle_hl_fields(self):
+        on = self.a_hl_fields.isChecked()
+        DocumentView.highlight_fields = on
+        self.settings.setValue("highlight_fields", "true" if on else "false")
+        for i in range(self.tabs.count()):
+            for pw in self.tabs.widget(i).pages:
+                pw.update()
 
     def unlock_doc(self):
         v = self.view()

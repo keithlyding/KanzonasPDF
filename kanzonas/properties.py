@@ -113,6 +113,9 @@ class PropertiesPanel(QWidget):
         self.rotation.setToolTip("Counterclockwise. You can also drag the round handle above a "
                                  "selected shape (hold Shift for 15\u00b0 steps).")
         self.cloud = QCheckBox("Cloud border")
+        self.for_who = QComboBox()
+        self.for_who.addItem("Initials", "initials")
+        self.for_who.addItem("Signature", "signature")
         self.markup = QComboBox()
         self.markup.addItems([m.capitalize() for m in A.COMMENT_STYLES])
 
@@ -122,6 +125,7 @@ class PropertiesPanel(QWidget):
                               ("date", "", self.date),
                               ("cloud", "", self.cloud),
                               ("markup", "Marks text with", self.markup),
+                              ("for", "Placeholder for", self.for_who),
                               ("text_color", "Text color", self.text_color),
                               ("stroke", "Line color", stroke_row),
                               ("fill", "Fill", fill_row),
@@ -148,6 +152,7 @@ class PropertiesPanel(QWidget):
         self.opacity.sliderReleased.connect(self._emit)
         self.head.currentIndexChanged.connect(self._emit)
         self.markup.currentIndexChanged.connect(self._emit)
+        self.for_who.currentIndexChanged.connect(self._emit)
         self.label.activated.connect(self._emit)
         self.label.lineEdit().editingFinished.connect(self._emit)
         self.date.toggled.connect(self._emit)
@@ -218,6 +223,8 @@ class PropertiesPanel(QWidget):
                                         if props["markup"] in A.COMMENT_STYLES else 0)
         if "opacity" in props:
             self.opacity.setValue(int(round(float(props["opacity"]) * 100)))
+        if "for" in props:
+            self.for_who.setCurrentIndex(max(0, self.for_who.findData(props["for"])))
         self._props = dict(props)
         self._loading = False
 
@@ -282,6 +289,8 @@ class PropertiesPanel(QWidget):
             p["cloud"] = self.cloud.isChecked()
         if "opacity" in p:
             p["opacity"] = self.opacity.value() / 100
+        if "for" in p:
+            p["for"] = self.for_who.currentData()
         if "rotation" in p:
             v = self.rotation.value()
             if self._kind in A.QUARTER_TURNS:

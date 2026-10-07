@@ -198,20 +198,46 @@ file, Delete page.</li>
 
 <h2 id="forms">Forms</h2>
 <ul>
-<li><b>Fill in:</b> with Select or Hand, click a field. Tab moves to the next text field.</li>
+<li><b>Fill in:</b> with Select or Hand, click a field. Tab moves to the next text field.
+<b>Highlight form fields</b> (View or Forms menu, on by default) shades every fillable field
+light blue; required fields get a red outline. The shading is on screen only.</li>
 <li><b>Create:</b> Forms menu: text field, checkbox, option button, dropdown, signature field.
 Double-click a field to change its name and options.</li>
 </ul>
 
-<h2 id="sign">Signatures and protection</h2>
+<h2 id="sign">Protect: signatures, passwords, redaction</h2>
+<p>Everything here is in the <b>Protect</b> menu.</p>
 <ul>
-<li><b>Wet signature / initials:</b> Sign &gt; Set up my signature and Set up my initials
-(draw or load an image, optional PIN). Then Sign (G) or Initials (I) and click to place, with the date.</li>
-<li><b>Digital signature:</b> Sign &gt; Digitally sign with certificate (a personal certificate
-or your company's .pfx/.p12). Signed files open read-only so the signature stays valid.
-Digital signature details shows who signed and whether the signature is still valid.</li>
-<li><b>Protect document from changes when saved</b> and <b>Unlock with password</b> are in
-the Sign menu.</li>
+<li><b>Wet signature / initials:</b> Set up my signature and Set up my initials (draw or load an
+image, optional PIN). Then Sign (G) or Initials (I) and click to place, with the date.</li>
+<li><b>Multi-place signature or initials:</b> put your initials (or signature) on all pages,
+all but the first or last, or pages you list, in the same spot as the last one you placed
+or in a corner.</li>
+<li><b>Add signature placeholder:</b> drag boxes where signatures or initials should go
+(choose which in Properties). <b>Apply all signature placeholders</b> then fills every one
+with your saved signature or initials and the date.</li>
+<li><b>Digitally sign with certificate</b> (a personal certificate or your company's
+.pfx/.p12), with an optional lock against changes (certify). Signed files open read-only so
+the signature stays valid. <b>Digital signature details</b> shows who signed and whether it's
+still valid. <b>Clear all digital signatures</b> removes them (the empty fields stay).</li>
+<li><b>Timestamp document:</b> gets a trusted timestamp from a free internet time server,
+proving the file existed, unchanged, at that moment. Saved as a new copy.</li>
+<li><b>Redaction:</b> Redact tool (Shift+R) or Search &amp; redact marks areas. Redaction marks
+can be selected, moved and resized; <b>Apply selected redactions</b> applies only the selected
+ones, Apply redactions applies them all.</li>
+<li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
+attached files, hidden text, links, comments, form data, thumbnails.</li>
+<li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption.
+  <ul>
+  <li><i>Open password:</i> nobody can read the file without it. Real protection; if you
+  forget it, the file can't be recovered.</li>
+  <li><i>Permissions password:</i> choose what others may do (print, copy, comment, fill forms,
+  change content, change pages). Acrobat, PDF-XChange, Bluebeam and this app honor it, but
+  some free tools ignore it, so don't rely on it for secrets.</li>
+  <li><i>Policies:</i> save your usual settings as a named policy (passwords are never saved).</li>
+  </ul>
+  Changes take effect when you save. <b>Remove security</b> takes protection off (you need the
+  permissions password). <b>Unlock with password</b> lets you edit a restricted file.</li>
 </ul>
 
 <h2 id="document">Document tools</h2>

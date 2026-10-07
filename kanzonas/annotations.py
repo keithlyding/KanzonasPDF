@@ -45,6 +45,8 @@ DEFAULTS = {
     "arrow": {"stroke": "#d00000", "width": 2.0, "head": "open", "opacity": 1.0},
     "ink": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "image": {"opacity": 1.0},
+    "redact": {},
+    "placeholder": {"for": "initials"},
     "attach": {"stroke": "#0050ff", "icon": "Paperclip", "opacity": 1.0},
 }
 ATTACH_ICONS = ["Paperclip", "PushPin", "Graph", "Tag"]
@@ -54,7 +56,9 @@ LABELS = {"highlight": "Highlight", "comment": "Comment", "underline": "Underlin
           "ink": "Pen", "polygon": "Polygon", "polyline": "Polyline", "callout": "Callout",
           "stamp": "Stamp", "field": "Form field", "cloud": "Cloud",
           "m_length": "Length", "m_poly": "Polylength", "m_area": "Area", "m_count": "Count",
-          "image": "Image", "attach": "Attached file"}
+          "image": "Image", "attach": "Attached file", "redact": "Redaction mark",
+          "placeholder": "Signature placeholder"}
+PLACEHOLDER_TEXT = {"signature": "SIGN HERE", "initials": "INITIAL HERE"}
 HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE_CLOSED_ARROW,
          "open (reversed)": pymupdf.PDF_ANNOT_LE_R_OPEN_ARROW,
          "closed (reversed)": pymupdf.PDF_ANNOT_LE_R_CLOSED_ARROW,
@@ -62,7 +66,8 @@ HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE
          "diamond": pymupdf.PDF_ANNOT_LE_DIAMOND, "bar": pymupdf.PDF_ANNOT_LE_BUTT}
 MARKUP = ("highlight", "comment", "underline", "strikeout", "squiggly")
 COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a comment marks text      # tied to text: not movable
-BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "attach")
+BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "attach", "redact",
+         "placeholder")
 MEASURES = ("m_length", "m_poly", "m_area", "m_count")
 POINTED = ("line", "arrow", "polygon", "polyline") + MEASURES   # geometry = list of points
 VERTEXED = ("polygon", "polyline", "m_poly", "m_area")          # one handle per vertex                           # resizable via a rect
@@ -81,7 +86,8 @@ _TYPE_KIND = {pymupdf.PDF_ANNOT_SQUARE: "rect", pymupdf.PDF_ANNOT_CIRCLE: "ellip
               pymupdf.PDF_ANNOT_STRIKE_OUT: "strikeout", pymupdf.PDF_ANNOT_SQUIGGLY: "squiggly",
               pymupdf.PDF_ANNOT_LINE: "line", pymupdf.PDF_ANNOT_POLYGON: "polygon",
               pymupdf.PDF_ANNOT_POLY_LINE: "polyline", pymupdf.PDF_ANNOT_STAMP: "stamp",
-              pymupdf.PDF_ANNOT_FILE_ATTACHMENT: "attach"}
+              pymupdf.PDF_ANNOT_FILE_ATTACHMENT: "attach",
+              pymupdf.PDF_ANNOT_REDACT: "redact"}
 
 
 # ---- colors ----------------------------------------------------------------
@@ -222,7 +228,7 @@ def read(annot):
             props["icon"] = doc.xref_get_key(annot.xref, "Name")[1].lstrip("/") or props["icon"]
         except Exception:
             pass
-    elif kind in ("rect", "ellipse") and geom.get("box"):
+    elif kind in ("rect", "ellipse", "placeholder") and geom.get("box"):
         model["rect"] = pymupdf.Rect(geom["box"])
     elif kind in ("rect", "ellipse") and stored:
         # made by an older version: the PDF rect includes half the border on each side
@@ -348,6 +354,16 @@ def write(page, model):
             a = page.add_stamp_annot(bounds(model), stamp=_PLACEHOLDER_PNG())
         else:
             a = page.add_stamp_annot(bounds(model), stamp=model["image_bytes"])
+    elif kind == "redact":
+        a = page.add_redact_annot(model["rect"], fill=(0, 0, 0))
+        a.set_colors(stroke=(0.85, 0, 0))
+    elif kind == "placeholder":
+        who = p.get("for", "initials")
+        a = page.add_freetext_annot(model["rect"], PLACEHOLDER_TEXT.get(who, "SIGN HERE"),
+                                    fontsize=min(10.0, max(5.0, model["rect"].height * 0.4)),
+                                    fontname="helv", text_color=(0.75, 0, 0),
+                                    fill_color=(1, 1, 0.75), border_width=1, align=1,
+                                    rotate=page.rotation)
     elif kind == "attach":
         a = page.add_file_annot(model["rect"].tl, model["file_bytes"], model["filename"],
                                 desc=text or model["filename"], icon=p.get("icon") or "Paperclip")
@@ -362,7 +378,7 @@ def write(page, model):
     else:
         raise ValueError("unknown annotation kind " + kind)
 
-    if kind not in ("textbox", "callout", "stamp", "image"):
+    if kind not in ("textbox", "callout", "stamp", "image", "redact", "placeholder"):
         if kind in ("rect", "ellipse", "polygon", "m_area"):
             # stroke [] = no outline at all (width 0 alone still draws a hairline)
             a.set_colors(stroke=stroke if stroke else [], fill=fill)
@@ -395,6 +411,10 @@ def write(page, model):
             info["content"] = f"{LABELS[kind]}: " + label_text.replace("\n", ", ")
     if kind == "image":
         info["content"] = text or model.get("filename") or "Image"
+    if kind == "redact":
+        info["content"] = text or "Redaction (not applied yet)"
+    if kind == "placeholder":
+        info["content"] = PLACEHOLDER_TEXT.get(p.get("for"), "SIGN HERE").capitalize()
     if kind == "stamp":
         info["content"] = (p.get("label") or "").replace("image:", "") + \
             (f" ({model['detail']})" if model.get("detail") else "")
@@ -419,7 +439,7 @@ def write(page, model):
             store["geom"]["box"] = list(model["rect"])
     elif kind == "image":
         store["geom"] = {"img": _image_appearance(page, a, model), "box": list(model["rect"])}
-    elif kind in ("rect", "ellipse"):
+    elif kind in ("rect", "ellipse", "placeholder"):
         # keep the exact box: the PDF rect grows by the border width (would creep on edits)
         store["geom"] = {"box": list(model["rect"])}
     elif kind == "m_count":

@@ -17,13 +17,13 @@ from . import annotations as A
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
-               "m_length", "m_calibrate", "image"}
+               "m_length", "m_calibrate", "image", "placeholder"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area"}
 # While one of these drawing tools is active, clicking an existing markup selects it for
 # moving / resizing / restyling (like the Select tool) instead of starting a new one.
 EDIT_IN_PLACE = {"rect", "ellipse", "cloud", "line", "arrow", "polygon", "polyline", "ink",
                  "textbox", "callout", "note", "stamp", "m_length", "m_poly", "m_area", "m_count",
-                 "image", "attach"}
+                 "image", "attach", "placeholder"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign"}
 SIGN_TOOLS = {"signature", "initials"}
@@ -212,6 +212,15 @@ class PageWidget(QWidget):
                 p.fillRect(self.to_screen(r, page), color)
 
         self._paint_comment_cards(p, page)
+
+        if self.view.highlight_fields and self.view.tool not in FORM_TOOLS:
+            # shade fillable fields (screen only); required ones get a red outline
+            for r, required in self.view.field_rects(self.index):
+                sr = self.to_screen(r, page)
+                p.fillRect(sr, QColor(204, 215, 255, 110))
+                if required:
+                    p.setPen(QPen(QColor(220, 0, 0), 1))
+                    p.drawRect(sr)
 
         tool = self.view.tool
         # live text selection: shows exactly what will be copied / marked up

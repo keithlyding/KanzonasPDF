@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.22 | (this) | Image tool (embedded at original quality and size; move, resize, rotate without re-encoding); Attach file tool (embed any file, e.g. videos; double-click opens it); Document > Attachments (open, save, go to, delete; warns before opening programs/scripts) |
+| 0.23 | (this) | Protect menu: Security properties (open password, permissions password you choose, AES-256, saved policies), Remove security, Sanitize document, Apply selected redactions (redaction marks selectable), Clear all digital signatures, Timestamp document (RFC 3161 time server), Multi-place signature or initials, signature placeholders + Apply all; Highlight form fields (required in red). Fixes: restricted PDFs from other programs opened as editable; old 'protect' used a password nobody knew; Unlock only accepts the permissions password |
+| 0.22 | 888afc4 | Image tool (embedded at original quality and size; move, resize, rotate without re-encoding); Attach file tool (embed any file, e.g. videos; double-click opens it); Document > Attachments (open, save, go to, delete; warns before opening programs/scripts) |
 | 0.21 | a1b20c6 | Grid (show/hide, adjustable spacing in in/mm/pt, darker line every N); Snap to grid and Snap to objects (markup corners, ends, centers; the drawing's line ends, midpoints and corners), each switchable; Alt = place without snapping; snap marker while drawing |
 | 0.20 | 5213ff8 | Every toolbar button and box has a tooltip describing what it does, with its shortcut |
 | 0.19 | ea9ab2a | Page navigation uses left / right buttons beside the page number; CAD-style mouse (View menu, toolbar, F11): scroll wheel zooms around the cursor; hold the wheel and drag to pan with any tool |

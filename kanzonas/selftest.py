@@ -101,6 +101,32 @@ def run(log_path):
         page_tools.compress(d.tobytes(), os.path.join(tmp, "small.pdf"), list(page_tools.COMPRESS)[1])
     check("page tools", t_page_tools)
 
+    def t_security():
+        d = pymupdf.open(stream=data, filetype="pdf")
+        out = os.path.join(tmp, "secure.pdf")
+        d.save(out, encryption=pymupdf.PDF_ENCRYPT_AES_256, owner_pw="own", user_pw="open",
+               permissions=pymupdf.PDF_PERM_PRINT)
+        x = pymupdf.open(out)
+        assert x.needs_pass and not x.authenticate("bad") and x.authenticate("open")
+        assert not x.permissions & pymupdf.PDF_PERM_MODIFY
+        assert pymupdf.open(out).authenticate("own") & 4
+    check("passwords and permissions", t_security)
+
+    def t_timestamp():
+        # the time server client must be bundled; stamp with pyHanko's built-in test server
+        import aiohttp  # noqa: F401
+        from pyhanko.sign import timestamps
+        from . import digisign
+        timestamps.HTTPTimeStamper("http://timestamp.digicert.com")
+        p12 = digisign.create_certificate("Self Test", "", "", "pw", os.path.join(tmp, "t.p12"))
+        signer = digisign.load_signer(p12, "pw")
+        out = os.path.join(tmp, "ts.pdf")
+        digisign.timestamp(data, out, "", timestamps.DummyTimeStamper(signer.signing_cert,
+                                                                        signer.signing_key))
+        res = digisign.validate(open(out, "rb").read())
+        assert res and res[0].get("timestamp") and res[0]["ok"], res
+    check("timestamp", t_timestamp)
+
     def t_manual():
         # every menu command must be described in Help > User manual (kanzonas/manual.py)
         from PySide6.QtWidgets import QApplication

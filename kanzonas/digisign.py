@@ -88,6 +88,25 @@ def sign(pdf_bytes, out_path, signer, reason="", location="", lock=False):
     return out_path
 
 
+# Free public RFC 3161 time servers (no account needed)
+TIME_SERVERS = ["http://timestamp.digicert.com", "http://timestamp.sectigo.com",
+                "https://freetsa.org/tsr"]
+
+
+def timestamp(pdf_bytes, out_path, url, timestamper=None):
+    """Add a document timestamp from a trusted time server (proves the file existed, unchanged,
+    at that time). timestamper can be given for testing."""
+    from pyhanko.sign import signers, timestamps
+    from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
+    ts = timestamper or timestamps.HTTPTimeStamper(url, timeout=20)
+    w = IncrementalPdfFileWriter(io.BytesIO(pdf_bytes))
+    out = io.BytesIO()
+    signers.PdfTimeStamper(ts).timestamp_pdf(w, "sha256", output=out)
+    with open(out_path, "wb") as f:
+        f.write(out.getvalue())
+    return out_path
+
+
 # ---- trust & validation -------------------------------------------------------------
 def _trusted():
     try:
@@ -112,6 +131,13 @@ def validate(pdf_bytes):
     trusted = _trusted()
     results = []
     for sig in reader.embedded_signatures:
+        try:
+            is_ts = str(sig.sig_object.get("/Type", "")) == "/DocTimeStamp"
+        except Exception:
+            is_ts = False
+        if is_ts:
+            results.append(_validate_timestamp(sig))
+            continue
         info = {"field": sig.field_name, "name": "", "email": "", "time": None, "reason": "",
                 "intact": False, "modified": True, "trusted": False, "fingerprint": ""}
         try:
@@ -148,3 +174,25 @@ def validate(pdf_bytes):
         info["summary"] = f"Signed by {info['name'] or 'unknown'} on {when}: {state}; {who}."
         results.append(info)
     return results
+
+
+def _validate_timestamp(sig):
+    from pyhanko.sign.validation import validate_pdf_timestamp
+    from pyhanko_certvalidator import ValidationContext
+    info = {"field": sig.field_name, "timestamp": True, "intact": False, "modified": True,
+            "trusted": False, "name": "", "time": None}
+    try:
+        st = validate_pdf_timestamp(sig, validation_context=ValidationContext(
+            trust_roots=[], allow_fetching=False))
+        info["intact"] = bool(st.intact and st.valid)
+        info["time"] = getattr(st, "timestamp", None)
+        info["modified"] = False
+        cert = sig.signer_cert
+        info["name"] = cert.subject.native.get("common_name", "") or cert.subject.human_friendly
+    except Exception as ex:
+        info["error"] = str(ex)
+    info["ok"] = info["intact"]
+    when = info["time"].strftime("%Y-%m-%d %H:%M") if info["time"] else "unknown time"
+    info["summary"] = (f"Timestamped by {info['name'] or 'a time server'} on {when}" +
+                       (": unchanged since." if info["ok"] else ": INVALID or changed."))
+    return info

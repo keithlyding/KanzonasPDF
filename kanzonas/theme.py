@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor, QGuiApplication, QIcon
 
 ICONS = {
-    "image": "image-outline", "attach": "paperclip",
+    "image": "image-outline", "attach": "paperclip", "placeholder": "draw-pen",
     "cad_mouse": "mouse-move-vertical", "grid": "grid", "snap_grid": "magnet",
     "snap_objects": "vector-point",
     # arrange
