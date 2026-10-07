@@ -1,6 +1,13 @@
 """Entry point: python -m kanzonas [file.pdf ...]"""
 
+import os
 import sys
+
+# A windowed Windows exe has no console: give libraries that print or log somewhere to write.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w")
 
 from PySide6.QtWidgets import QApplication
 
@@ -8,6 +15,9 @@ from .main_window import MainWindow, APP_NAME
 
 
 def main():
+    if len(sys.argv) >= 2 and sys.argv[1] == "--selftest":
+        from .selftest import run
+        sys.exit(run(sys.argv[2] if len(sys.argv) > 2 else "selftest.log"))
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_NAME)

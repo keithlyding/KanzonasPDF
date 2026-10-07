@@ -23,7 +23,7 @@ jobs:
         run: python -m pip install -r requirements.txt pyinstaller
 
       - name: Build exe
-        run: python -m PyInstaller --noconfirm --windowed --collect-all rapidocr_onnxruntime --name KanzonasPDF run.py
+        run: python -m PyInstaller --noconfirm --windowed --collect-all rapidocr_onnxruntime --collect-all docx --collect-all pptx --collect-all pdf2docx --collect-all ezdxf --collect-all openpyxl --name KanzonasPDF run.py
 
       - name: Smoke test (exe starts and opens a PDF)
         shell: pwsh
@@ -33,6 +33,13 @@ jobs:
           Start-Sleep -Seconds 15
           if ($p.HasExited) { throw "App exited early with code $($p.ExitCode)" }
           Stop-Process -Id $p.Id
+
+      - name: Self test (OCR, exports, signatures, forms inside the exe)
+        shell: pwsh
+        run: |
+          $p = Start-Process dist\KanzonasPDF\KanzonasPDF.exe -ArgumentList "--selftest","selftest.log" -PassThru -Wait
+          Get-Content selftest.log
+          if ($p.ExitCode -ne 0) { throw "Self test failed with code $($p.ExitCode)" }
 
       - name: Read version
         id: ver

@@ -1,6 +1,8 @@
 """Main application window: tabs, toolbars, menus, thumbnails sidebar."""
 
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
 from PySide6.QtCore import Qt, QSize, QTimer, QSettings, QEvent
@@ -9,11 +11,11 @@ from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, 
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, QMessageBox,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
                                QListWidgetItem, QDockWidget, QAbstractItemView, QToolButton,
-                               QVBoxLayout,
+                               QVBoxLayout, QMenu, QProgressDialog,
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea)
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
-from . import __version__, annotations
+from . import __version__, annotations, export, signatures
 from .document_view import DocumentView
 from .properties import PropertiesPanel
 
@@ -37,6 +39,24 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("arrow", "Arrow", "A", "Arrow (A)"),
     ("ink", "Pen", "P", "Freehand pen (P)"),
     ("eraser", "Eraser", "X", "Delete the annotation you click (X)"),
+    ("signature", "Sign", "G", "Place your saved signature (and date): click where it goes (G)"),
+    ("initials", "Initials", "I", "Place your saved initials (and date): click where they go (I)"),
+]
+FORM_TOOLS = [  # form design tools: drag a box (or click) to add a field
+    ("f_text", "Text field", "Text field: drag a box"),
+    ("f_check", "Checkbox", "Checkbox: click or drag"),
+    ("f_radio", "Option button", "Option (radio) button: click; same group name = pick one"),
+    ("f_combo", "Dropdown", "Dropdown list: drag a box, then enter the choices"),
+    ("f_sign", "Signature field", "Signature field: others click it to sign"),
+]
+EXPORTS = [  # (id, menu label, file filter, extension)
+    ("word", "Microsoft &Word (.docx)...", "Word document (*.docx)", "docx"),
+    ("excel", "Microsoft &Excel (.xlsx)...", "Excel workbook (*.xlsx)", "xlsx"),
+    ("ppt", "Microsoft &PowerPoint (.pptx)...", "PowerPoint presentation (*.pptx)", "pptx"),
+    ("dxf", "&AutoCAD drawing (.dxf)...", "AutoCAD DXF (*.dxf)", "dxf"),
+    ("png", "Images (P&NG)...", "PNG image (*.png)", "png"),
+    ("jpg", "Images (&JPEG)...", "JPEG image (*.jpg)", "jpg"),
+    ("txt", "Plain &text (.txt)...", "Text file (*.txt)", "txt"),
 ]
 ZOOM_PRESETS = ["50%", "75%", "100%", "125%", "150%", "200%", "300%", "400%"]
 
@@ -49,6 +69,7 @@ class MainWindow(QMainWindow):
         self.resize(1300, 900)
         self.setAcceptDrops(True)
         self.tool = "select"
+        self._sig_cache = {}            # kind -> png, for this run of the app only
 
         self.tabs = QTabWidget()
         self.tabs.setTabsClosable(True)
@@ -135,6 +156,17 @@ class MainWindow(QMainWindow):
         self.a_cards = self._act("Show &comment boxes", self._toggle_cards)
         self.a_cards.setCheckable(True)
         self.a_cards.setChecked(self.settings.value("comment_boxes", "true") != "false")
+        self.a_setup_sig = self._act("Set up my &signature...", lambda: self.setup_signature("signature"))
+        self.a_setup_init = self._act("Set up my &initials...", lambda: self.setup_signature("initials"))
+        self.a_protect = self._act("&Protect document from changes when saved", self._toggle_protect,
+                                   tip="Anyone can read and print it; editing software that honours "
+                                       "PDF permissions won't change it")
+        self.a_protect.setCheckable(True)
+        self.a_unlock = self._act("&Unlock with password...", self.unlock_doc)
+        self.export_actions = []
+        for eid, label, _flt, _ext in EXPORTS:
+            a = self._act(label, lambda _=False, e=eid: self.export_as(e))
+            self.export_actions.append(a)
         self.a_flatten = self._act("&Flatten...", self.flatten,
                                    tip="Make annotations and form fields a permanent part of the page")
         self.a_delete_annot = self._act("Delete selected annotation",
@@ -152,6 +184,13 @@ class MainWindow(QMainWindow):
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
         self.tool_actions["select"].setChecked(True)
+        for tid, label, tip in FORM_TOOLS:
+            a = QAction(label, self, checkable=True)
+            a.setToolTip(tip)
+            a.setStatusTip(tip)
+            a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
+            self.tool_group.addAction(a)
+            self.tool_actions[tid] = a
 
     def _build_menus(self):
         mb = self.menuBar()
@@ -160,6 +199,8 @@ class MainWindow(QMainWindow):
         self.recent_menu = m.addMenu("Open &recent")
         self._rebuild_recent()
         m.addActions([self.a_save, self.a_save_as])
+        em = m.addMenu("&Export to")
+        em.addActions(self.export_actions)
         m.addSeparator()
         m.addAction(self.a_print)
         m.addSeparator()
@@ -180,6 +221,17 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_props)
         m.addSeparator()
         m.addActions([self.a_ocr, self.a_flatten])
+        m = mb.addMenu("&Sign")
+        m.addActions([self.tool_actions["signature"], self.tool_actions["initials"]])
+        m.addSeparator()
+        m.addActions([self.a_setup_sig, self.a_setup_init])
+        m.addSeparator()
+        m.addActions([self.a_protect, self.a_unlock])
+        m = mb.addMenu("F&orms")
+        m.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
+        m.addSeparator()
+        hint = m.addAction("To fill in a form: use Select or Hand and click a field")
+        hint.setEnabled(False)
         m = mb.addMenu("&Pages")
         m.addActions([self.a_rot_l, self.a_rot_r])
         m.addSeparator()
@@ -236,13 +288,22 @@ class MainWindow(QMainWindow):
         tt.setMovable(False)
         tt.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.addToolBar(tt)
-        tt.addActions(self.tool_group.actions()[:3])
+        main_tools = [self.tool_actions[t[0]] for t in TOOLS]     # form tools live in their menu
+        tt.addActions(main_tools[:3])
         tt.addSeparator()
-        tt.addActions(self.tool_group.actions()[3:])
+        tt.addActions(main_tools[3:])
         tt.addSeparator()
         tt.addActions([self.a_rot_l, self.a_rot_r])
         tt.addSeparator()
         tt.addAction(self.a_ocr)
+        tt.addSeparator()
+        forms_btn = QToolButton()
+        forms_btn.setText("Form fields")
+        forms_btn.setPopupMode(QToolButton.InstantPopup)
+        fmenu = QMenu(forms_btn)
+        fmenu.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
+        forms_btn.setMenu(fmenu)
+        tt.addWidget(forms_btn)
 
     def _build_sidebar(self):
         self.thumbs = QListWidget()
@@ -305,7 +366,8 @@ class MainWindow(QMainWindow):
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
-                  self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten):
+                  self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten,
+                  self.a_protect, self.a_unlock, *self.export_actions):
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_undo.setEnabled(has and v.can_undo())
@@ -318,7 +380,8 @@ class MainWindow(QMainWindow):
             self.page_spin.blockSignals(False)
             self.page_total.setText(f" / {v.page_count()} ")
             self.zoom_box.setEditText(f"{round(v.zoom * 100)}%")
-            name = os.path.basename(v.path)
+            name = os.path.basename(v.path) + (" [protected]" if v.read_only else "")
+            self.a_protect.setChecked(v.protect_on_save)
             self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {APP_TITLE}")
             for i in range(self.tabs.count()):
                 w = self.tabs.widget(i)
@@ -349,6 +412,15 @@ class MainWindow(QMainWindow):
         v.set_tool(self.tool)
         v.show_comment_boxes = self.a_cards.isChecked()
         v.selectionChanged.connect(self._on_selection_changed)
+        v.signedDocument.connect(self._on_signed)
+        v.requestSignature.connect(self._sign_field)
+        for kind, png in self._sig_cache.items():
+            v.set_sig_image(kind, png)
+        if v.read_only:
+            QTimer.singleShot(0, lambda: QMessageBox.information(
+                self, "Protected document", "This PDF is protected against changes. You can "
+                "read, search and print it. Sign > Unlock with password... if you have the "
+                "owner password."))
         v.pageChanged.connect(self._on_page_changed)
         v.zoomChanged.connect(lambda _: self._update_ui())
         v.documentChanged.connect(self._on_doc_changed)
@@ -487,6 +559,12 @@ class MainWindow(QMainWindow):
 
     # ---- tools / search / pages --------------------------------------------
     def set_tool(self, tool):
+        if tool in ("signature", "initials") and tool not in self._sig_cache:
+            png = signatures.get_image(self, tool)
+            if png is None:
+                self.tool_actions[self.tool].setChecked(True)
+                return
+            self._cache_sig(tool, png)
         self.tool = tool
         self.tool_actions[tool].setChecked(True)
         for i in range(self.tabs.count()):
@@ -669,6 +747,127 @@ class MainWindow(QMainWindow):
             return
         v.flatten(None if pick == choices[0] else [v.current_page()])
         self.statusBar().showMessage("Flattened", 4000)
+
+    # ---- signing ---------------------------------------------------------------------
+    def _cache_sig(self, kind, png):
+        self._sig_cache[kind] = png
+        for i in range(self.tabs.count()):
+            self.tabs.widget(i).set_sig_image(kind, png)
+
+    def setup_signature(self, kind):
+        dlg = signatures.SignatureSetup(self, kind)
+        if dlg.exec() and dlg.png:
+            self._cache_sig(kind, dlg.png)
+            self.statusBar().showMessage(f"Your {kind} is saved.", 4000)
+
+    def _on_signed(self):
+        v = self.sender()
+        if v is None or v.protect_on_save or getattr(v, "_asked_protect", False):
+            return
+        v._asked_protect = True
+        r = QMessageBox.question(
+            self, "Protect signed document?",
+            "Protect this document from changes when you save it?\n\n"
+            "Anyone can still open, read and print it, but PDF editors that honour PDF "
+            "permissions (Acrobat, PDF-XChange, this app) won't let it be edited.\n\n"
+            "Tip: keep an unsigned copy if you may need to change it later.")
+        v.protect_on_save = r == QMessageBox.Yes
+        self._update_ui()
+
+    def _sign_field(self, index, xref):
+        v = self.sender()
+        if "signature" not in self._sig_cache:
+            png = signatures.get_image(self, "signature")
+            if png is None:
+                return
+            self._cache_sig("signature", png)
+        page = v.doc[index]
+        rect = page.load_widget(xref).rect
+        v.place_signature(index, "signature", field_rect=rect)
+
+    def _toggle_protect(self):
+        v = self.view()
+        if v:
+            v.protect_on_save = self.a_protect.isChecked()
+            v.dirty = True
+            self._update_ui()
+
+    def unlock_doc(self):
+        v = self.view()
+        if not v:
+            return
+        if not v.read_only:
+            QMessageBox.information(self, "Unlock", "This document isn't protected.")
+            return
+        pw, ok = QInputDialog.getText(self, "Unlock", "Owner password:", QLineEdit.Password)
+        if ok and pw:
+            if v.unlock(pw):
+                self.statusBar().showMessage("Unlocked: you can edit this document now.", 4000)
+            else:
+                QMessageBox.warning(self, "Unlock", "That password doesn't unlock editing.")
+            self._update_ui()
+
+    # ---- export ------------------------------------------------------------------------
+    def export_as(self, eid):
+        v = self.view()
+        if not v:
+            return
+        _id, label, flt, ext = next(e for e in EXPORTS if e[0] == eid)
+        base = os.path.splitext(v.path)[0]
+        path, _ = QFileDialog.getSaveFileName(self, "Export", f"{base}.{ext}", flt)
+        if not path:
+            return
+        pages = None
+        if v.page_count() > 1:
+            pick, ok = QInputDialog.getItem(self, "Export", "Pages:", ["All pages", "Current page"],
+                                            0, False)
+            if not ok:
+                return
+            pages = None if pick == "All pages" else [v.current_page()]
+        units = None
+        if eid == "dxf":
+            units, ok = QInputDialog.getItem(
+                self, "AutoCAD export", "Drawing units (1 inch on paper = 1 unit if inches):",
+                list(export.UNITS), 0, False)
+            if not ok:
+                return
+        data = v.doc.tobytes()
+        if eid in ("png", "jpg"):
+            base_out = os.path.splitext(path)[0]
+            job = lambda: export.to_images(data, base_out, eid, 200, pages)
+        elif eid == "dxf":
+            job = lambda: export.to_dxf(data, path, pages, units)
+        else:
+            fn = {"word": export.to_word, "excel": export.to_excel,
+                  "ppt": export.to_powerpoint, "txt": export.to_text}[eid]
+            job = lambda: fn(data, path, pages)
+        dlg = QProgressDialog(f"Exporting to {label.replace('&', '').rstrip('.')}...", None, 0, 0, self)
+        dlg.setWindowTitle("Export")
+        dlg.setWindowModality(Qt.WindowModal)
+        dlg.setMinimumDuration(300)
+        pool = ThreadPoolExecutor(max_workers=1)
+        fut = pool.submit(job)
+        while not fut.done():
+            QApplication.processEvents()
+            time.sleep(0.03)
+        dlg.close()
+        pool.shutdown(wait=False)
+        try:
+            result = fut.result()
+        except Exception as ex:
+            QMessageBox.critical(self, "Export failed", str(ex))
+            return
+        msg = "Exported to " + path
+        if eid == "excel" and result == 0:
+            msg += "\n\nNo tables were detected, so each page's text was exported row by row."
+        elif eid in ("png", "jpg"):
+            msg = f"Exported {len(result)} image(s) next to {path}"
+        elif eid == "dxf":
+            msg += (f"\n\n{result['lines']} lines, {result['curves']} curves and "
+                    f"{result['text']} text items. Images in the PDF aren't included.")
+        elif eid == "ppt":
+            msg += "\n\nEach page is a picture on its slide; its text is in the speaker notes."
+        QMessageBox.information(self, "Export", msg)
 
     def _toggle_sidebar(self):
         self.dock.setVisible(not self.dock.isVisible())

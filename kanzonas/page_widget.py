@@ -14,6 +14,8 @@ from . import annotations as A
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser"}
+FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign"}
+SIGN_TOOLS = {"signature", "initials"}
 HANDLE = 7          # handle size in px
 CARD_W = 190        # comment box width in px
 
@@ -31,6 +33,7 @@ class PageWidget(QWidget):
         self._hover = None          # edit-text hover rect
         self._edit = None           # dragging a selected annotation
         self._cards = []            # [(QRectF, xref)] comment boxes drawn last paint
+        self._ghost = None          # signature preview position (widget coords)
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         self.update_size()
@@ -116,6 +119,26 @@ class PageWidget(QWidget):
                 p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
                 p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
 
+        if tool in FORM_TOOLS:
+            p.setPen(QPen(QColor(0, 90, 200), 1, Qt.DashLine))
+            for wdg in page.widgets():
+                r = self.to_screen(wdg.rect, page)
+                p.drawRect(r)
+                p.drawText(r.adjusted(2, -14, 200, 0).topLeft() + QPointF(0, 11), wdg.field_name or "")
+        if self._drag_start is not None and self._drag_now is not None and tool in FORM_TOOLS:
+            p.setPen(QPen(QColor(0, 90, 200), 1.5))
+            p.setBrush(QColor(235, 242, 255, 160))
+            p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
+            p.setBrush(Qt.NoBrush)
+        if self._ghost is not None and tool in SIGN_TOOLS:
+            pm = self.view.sig_pixmap(tool)
+            if pm is not None:
+                r = self.view.sig_display_rect(self.index, tool, self.to_pdf(self._ghost))
+                z = self.view.zoom
+                p.setOpacity(0.6)
+                p.drawPixmap(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z), pm,
+                             QRectF(pm.rect()))
+                p.setOpacity(1.0)
         if self._drag_start is not None and self._drag_now is not None and tool in SHAPE_TOOLS:
             if tool == "eraser":
                 pen = QPen(QColor(220, 0, 0), 1.5, Qt.DashLine)
@@ -238,8 +261,31 @@ class PageWidget(QWidget):
         pos = e.position()
         pdf = self.to_pdf(pos)
 
+        if tool in ("hand", "select") and not self.view.read_only:
+            xref = self.view.widget_at(self.index, pdf)
+            if xref is not None:            # fill in a form field
+                self.view.clear_selection()
+                self.view.fill_field(self.index, xref)
+                return
         if tool == "hand":
             self.view.begin_pan(e.globalPosition())
+            return
+        if tool in SIGN_TOOLS:
+            self.view.place_signature(self.index, tool, pdf)
+            return
+        if tool in FORM_TOOLS:
+            model = self._selected_here()
+            if model is not None and model["kind"] == "field":
+                for hid, r in self._handles(model).items():
+                    if r.adjusted(-3, -3, 3, 3).contains(pos):
+                        self._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
+                        return
+            if self.view.select_field_at(self.index, pdf):
+                self._edit = {"mode": "move", "start": pos, "model": self.view.selected_model,
+                              "preview": None}
+                return
+            self.view.clear_selection()
+            self._drag_start = self._drag_now = pos
             return
         if tool == "select":
             model = self._selected_here()
@@ -301,6 +347,15 @@ class PageWidget(QWidget):
         pos = e.position()
         tool = self.view.tool
         if not e.buttons():
+            if tool in SIGN_TOOLS:
+                self._ghost = pos
+                self.update()
+                return
+            if tool in ("select", "hand") and self.view.widget_at(self.index, self.to_pdf(pos)) is not None:
+                self.setCursor(Qt.PointingHandCursor)
+                return
+            if tool == "hand":
+                self.unsetCursor()
             if tool == "edittext":
                 r = self.view.text_line_rect(self.index, self.to_pdf(pos))
                 if r != self._hover:
@@ -369,6 +424,12 @@ class PageWidget(QWidget):
             self.update()
             if (b - a).manhattanLength() >= 3:
                 self.view.apply_text_tool(self.index, tool, self.to_pdf(a), self.to_pdf(b))
+        elif self._drag_start is not None and tool in FORM_TOOLS:
+            a, b = self._drag_start, self._drag_now
+            self._drag_start = self._drag_now = None
+            self.update()
+            self.view.create_field(self.index, tool, self.to_pdf(a), self.to_pdf(b),
+                                   (b - a).manhattanLength() < 4)
         elif self._drag_start is not None:
             a, b = self._drag_start, self._drag_now
             self._drag_start = self._drag_now = None
@@ -383,6 +444,11 @@ class PageWidget(QWidget):
                 self.view.apply_ink(self.index, pts)
 
     def mouseDoubleClickEvent(self, e):
+        if self.view.tool in FORM_TOOLS:
+            xref = self.view.widget_at(self.index, self.to_pdf(e.position()))
+            if xref is not None:
+                self.view.edit_field_properties(self.index, xref)
+            return
         if self.view.tool in ("select", "hand"):
             card = self._card_at(e.position())
             if card is not None:
@@ -391,6 +457,9 @@ class PageWidget(QWidget):
                 self.view.edit_annot_at(self.index, self.to_pdf(e.position()))
 
     def leaveEvent(self, e):
+        if self._ghost is not None:
+            self._ghost = None
+            self.update()
         if self._hover is not None:
             self._hover = None
             self.update()

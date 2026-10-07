@@ -30,6 +30,13 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 - OCR (Tools > Recognize text): makes scanned pages searchable and selectable. Works offline,
   handles sideways (landscape) scans.
 - Flatten (Tools menu): burn annotations and form fields into the page, all pages or current
+- **Signature & initials** (Sign menu): set up once by drawing or loading a scan/photo of your
+  wet signature (background removed automatically), optionally protected by a PIN. Then click
+  to place it with today's date. It's written into the page, not a movable annotation
+- **Protect document from changes when saved** (offered after signing)
+- **Forms**: fill in any PDF form with Select or Hand (Tab moves to the next field); create
+  forms with text fields, checkboxes, option buttons, dropdowns and signature fields
+- **Export** (File > Export to): Word, Excel, PowerPoint, AutoCAD DXF, PNG/JPEG, text
 - Undo and redo (Ctrl+Z, Ctrl+Y), print
 - Annotations are standard PDF annotations, so Acrobat and other viewers can see them
 
@@ -56,6 +63,7 @@ You can zip that folder and give it to anyone; they don't need Python.
 | N / T | Note / Text box |
 | R / E / L / A / P | Rectangle / Ellipse / Line / Arrow / Pen |
 | X | Eraser (click one, or drag a box around several) |
+| G / I | Place signature / initials |
 | Delete / Esc | Delete / deselect the selected annotation |
 | Ctrl+Enter | Finish typing in note / text box / comment dialogs |
 | Ctrl+Shift+Plus / Minus | Rotate page clockwise / counter-clockwise |
@@ -76,5 +84,10 @@ with its source code available. That's fine for a free, open-source giveaway.
 - Arrowhead size follows line width (that's how PDF arrows work).
 - Text box borders use their own colour in this app; Acrobat may redraw a box's border
   in its text colour if you edit that box in Acrobat.
-- No form-field editing or measurement tools yet.
+- Protection uses standard PDF permissions: Acrobat, PDF-XChange and this app honour them,
+  but they're not tamper-proof against determined tools. Certificate-based digital signatures
+  would be the strong version.
+- Export: Word works best for ordinary text documents; Excel needs real (not scanned) tables;
+  PowerPoint slides are page pictures; AutoCAD export is DXF (not DWG) and leaves out images.
+- No measurement tools yet.
 - OCR caps large sheets at 6000 px on the long side, so very small text on big drawings may be missed.

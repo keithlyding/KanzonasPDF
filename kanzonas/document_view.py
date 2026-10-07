@@ -5,13 +5,14 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
-from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtCore import Qt, Signal, QTimer, QObject, QEvent
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor)
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
-                               QMessageBox, QLineEdit, QProgressDialog, QApplication)
+                               QMessageBox, QLineEdit, QProgressDialog, QApplication,
+                               QMenu, QPlainTextEdit)
 
-from . import annotations, dialogs, text_edit
+from . import annotations, dialogs, signatures, text_edit
 from .inline_editor import InlineEditor
 from .page_widget import PageWidget
 
@@ -50,6 +51,8 @@ class DocumentView(QScrollArea):
     zoomChanged = Signal(float)
     statusMessage = Signal(str)
     selectionChanged = Signal()
+    signedDocument = Signal()
+    requestSignature = Signal(int, int)      # page index, signature field xref
 
     def __init__(self, path, parent=None):
         super().__init__(parent)
@@ -64,6 +67,7 @@ class DocumentView(QScrollArea):
                                           QLineEdit.Password)
             if not ok or not self.doc.authenticate(pw):
                 raise ValueError("Wrong or missing password")
+        self._check_permissions()
         self.dirty = False
         self.zoom = 1.0
         self.tool = "select"
@@ -71,6 +75,9 @@ class DocumentView(QScrollArea):
         self.selected_model = None
         self.show_comment_boxes = True
         self._inline = None
+        self.sig_images = {}           # kind -> (png bytes, QPixmap)
+        self.signed = False
+        self.protect_on_save = False
         self.search_hits = {}
         self._search_list = []
         self._search_pos = -1
@@ -248,6 +255,11 @@ class DocumentView(QScrollArea):
 
     def modify(self, fn, pages=None, structural=False):
         """Run an edit with an undo snapshot. pages = indices to repaint."""
+        if self.read_only:
+            QMessageBox.information(self, "Protected document",
+                                    "This PDF is protected against changes. Use File > Unlock "
+                                    "with password... if you have its owner password.")
+            return
         snap = self._snapshot()
         self._clear_caches()
         try:
@@ -602,6 +614,9 @@ class DocumentView(QScrollArea):
 
     def commit_model(self, index, xref, model):
         """Replace annotation xref with a new version (one undo step); keep it selected."""
+        if model["kind"] == "field":
+            self._commit_field(index, xref, model)
+            return
         made = {}
 
         def do():
@@ -613,7 +628,8 @@ class DocumentView(QScrollArea):
             self.select_xref(index, made["xref"])
 
     def update_selected_props(self, props):
-        if self.selection is None or self.selected_model is None:
+        if self.selection is None or self.selected_model is None or \
+                self.selected_model["kind"] == "field":
             return
         model = annotations.copy(self.selected_model)
         model["props"] = dict(props)
@@ -623,6 +639,9 @@ class DocumentView(QScrollArea):
         if self.selection is None:
             return
         index, xref = self.selection
+        if self.selected_model and self.selected_model["kind"] == "field":
+            self.delete_field(index, xref)
+            return
         self.clear_selection()
         page = self.doc[index]
         self.modify(lambda: page.delete_annot(page.load_annot(xref)), [index])
@@ -737,6 +756,302 @@ class DocumentView(QScrollArea):
         elif font and not font.startswith("KZ"):
             self.statusMessage.emit("Original font isn't available for these characters; "
                                     "used the closest standard font.")
+
+    # ---- signatures & initials -------------------------------------------------------
+    SIG_WIDTH = {"signature": 144.0, "initials": 54.0}     # default size in points
+
+    def sig_pixmap(self, kind):
+        return self.sig_images.get(kind, (None, None))[1]
+
+    def set_sig_image(self, kind, png):
+        pm = QPixmap()
+        pm.loadFromData(png, "PNG")
+        self.sig_images[kind] = (png, pm)
+
+    def sig_display_rect(self, index, kind, pt, box=None):
+        """Displayed (rotated) rect the image will occupy when dropped at unrotated pt."""
+        pm = self.sig_pixmap(kind)
+        aspect = pm.height() / pm.width() if pm and pm.width() else 0.35
+        page = self.doc[index]
+        p = pymupdf.Point(pt) * page.rotation_matrix
+        if box is not None:
+            return box
+        w = self.SIG_WIDTH[kind]
+        return pymupdf.Rect(p.x - w / 2, p.y - w * aspect / 2, p.x + w / 2, p.y + w * aspect / 2)
+
+    def place_signature(self, index, kind, pt=None, field_rect=None):
+        """Write the saved signature/initials (and today's date) into the page content."""
+        if kind not in self.sig_images:
+            return
+        png, pm = self.sig_images[kind]
+        page = self.doc[index]
+        if field_rect is not None:      # fill a signature form field
+            disp = pymupdf.Rect(field_rect) * page.rotation_matrix
+        else:
+            disp = self.sig_display_rect(index, kind, pt)
+        when = signatures.date_text()
+
+        def do():
+            pg = self.doc[index]
+            img_rect = disp * pg.derotation_matrix
+            pg.insert_image(img_rect, stream=png, keep_proportion=True, rotate=pg.rotation,
+                            overlay=True)
+            if when:
+                size = 9 if kind == "signature" else 7
+                base = pymupdf.Point(disp.x0, disp.y1 + size + 1) * pg.derotation_matrix
+                pg.insert_text(base, when, fontsize=size, fontname="helv",
+                               color=(0.1, 0.1, 0.1), rotate=pg.rotation)
+        self.modify(do, [index])
+        self.signed = True
+        self.signedDocument.emit()
+
+    # ---- protection (read-only PDFs) ----------------------------------------------------
+    def _check_permissions(self):
+        perm = self.doc.permissions
+        self.read_only = perm >= 0 and not (perm & pymupdf.PDF_PERM_MODIFY
+                                            and perm & pymupdf.PDF_PERM_ANNOTATE)
+
+    def unlock(self, password):
+        ok = self.doc.authenticate(password)
+        if ok:
+            self._check_permissions()
+        return ok and not self.read_only
+
+    # ---- form filling ----------------------------------------------------------------
+    def _widget_at(self, page, pt):
+        for w in page.widgets():
+            if w.rect.contains(pt):
+                return w
+        return None
+
+    def widget_at(self, index, pt):
+        w = self._widget_at(self.doc[index], pt)
+        return w.xref if w is not None else None
+
+    def fill_field(self, index, xref):
+        page = self.doc[index]
+        w = page.load_widget(xref)
+        t = w.field_type
+        if t == pymupdf.PDF_WIDGET_TYPE_CHECKBOX:
+            on = w.on_state()
+            value = "Off" if w.field_value == on else on
+            self._set_field(index, xref, value)
+        elif t == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+            self._set_field(index, xref, True)
+        elif t in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
+            menu = QMenu(self)
+            for c in w.choice_values or []:
+                label = c[1] if isinstance(c, (list, tuple)) else c
+                act = menu.addAction(label)
+                act.setCheckable(True)
+                act.setChecked(label == w.field_value)
+            pw = self.pages[index]
+            r = pw.to_screen(w.rect)
+            chosen = menu.exec(pw.mapToGlobal(r.bottomLeft().toPoint()))
+            if chosen is not None:
+                self._set_field(index, xref, chosen.text())
+        elif t == pymupdf.PDF_WIDGET_TYPE_SIGNATURE:
+            self.requestSignature.emit(index, xref)
+        elif t == pymupdf.PDF_WIDGET_TYPE_TEXT:
+            self._edit_text_field(index, xref)
+
+    def _set_field(self, index, xref, value):
+        def do():
+            pg = self.doc[index]          # keep the page alive while using its widget
+            w = pg.load_widget(xref)
+            w.field_value = value
+            w.update()
+        self.modify(do, [index])
+
+    def _edit_text_field(self, index, xref):
+        page = self.doc[index]
+        w = page.load_widget(xref)
+        pw = self.pages[index]
+        r = pw.to_screen(w.rect)
+        multiline = bool(w.field_flags & pymupdf.PDF_TX_FIELD_IS_MULTILINE)
+        ed = QPlainTextEdit(pw) if multiline else QLineEdit(pw)
+        if multiline:
+            ed.setPlainText(w.field_value or "")
+        else:
+            ed.setText(w.field_value or "")
+            ed.selectAll()
+        f = ed.font()
+        size = w.text_fontsize or min(12.0, w.rect.height * 0.65)
+        f.setPixelSize(max(8, int(size * self.zoom)))
+        ed.setFont(f)
+        ed.setGeometry(r.toRect().adjusted(-1, -1, 1, 1))
+        ed.setStyleSheet("background:#fffbe6; border:2px solid #0078d7;")
+        done = {"x": False}
+
+        def finish(save=True, next_field=False):
+            if done["x"]:
+                return
+            done["x"] = True
+            text = ed.toPlainText() if multiline else ed.text()
+            ed.hide()
+            ed.deleteLater()
+            if save and text != (w.field_value or ""):
+                self._set_field(index, xref, text)
+            if next_field:
+                self._next_text_field(index, xref)
+
+        class Keys(QObject):
+            def eventFilter(_s, obj, e):
+                if e.type() == QEvent.KeyPress:
+                    if e.key() == Qt.Key_Escape:
+                        finish(save=False)
+                        return True
+                    if e.key() == Qt.Key_Tab:
+                        finish(next_field=True)
+                        return True
+                    if e.key() in (Qt.Key_Return, Qt.Key_Enter) and (
+                            not multiline or e.modifiers() & Qt.ControlModifier):
+                        finish()
+                        return True
+                elif e.type() == QEvent.FocusOut:
+                    finish()
+                return False
+        self._field_keys = Keys(ed)
+        ed.installEventFilter(self._field_keys)
+        ed.show()
+        ed.setFocus()
+
+    def _next_text_field(self, index, xref):
+        """Tab: go to the next text field (this page, then following pages)."""
+        order = []
+        for i in range(self.doc.page_count):
+            pg = self.doc[i]
+            ws = sorted((w for w in pg.widgets() if w.field_type == pymupdf.PDF_WIDGET_TYPE_TEXT),
+                        key=lambda w: (round(w.rect.y0), w.rect.x0))
+            order += [(i, w.xref) for w in ws]
+        if (index, xref) in order:
+            k = order.index((index, xref))
+            if k + 1 < len(order):
+                ni, nx = order[k + 1]
+                if ni != index:
+                    self.goto_page(ni)
+                QTimer.singleShot(0, lambda: self._edit_text_field(ni, nx))
+
+    # ---- form design ---------------------------------------------------------------
+    FIELD_TYPES = {"f_text": pymupdf.PDF_WIDGET_TYPE_TEXT,
+                   "f_check": pymupdf.PDF_WIDGET_TYPE_CHECKBOX,
+                   "f_radio": pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON,
+                   "f_combo": pymupdf.PDF_WIDGET_TYPE_COMBOBOX,
+                   "f_sign": pymupdf.PDF_WIDGET_TYPE_SIGNATURE}
+    FIELD_PREFIX = {"f_text": "Text", "f_check": "Check", "f_radio": "Option",
+                    "f_combo": "Dropdown", "f_sign": "Signature"}
+
+    def _unique_name(self, prefix):
+        names = {w.field_name for pg in self.doc for w in pg.widgets()}
+        n = 1
+        while f"{prefix}{n}" in names:
+            n += 1
+        return f"{prefix}{n}"
+
+    def create_field(self, index, tool, a, b, is_click):
+        rect = pymupdf.Rect(a, b).normalize()
+        if tool in ("f_check", "f_radio"):
+            rect = pymupdf.Rect(a.x - 7, a.y - 7, a.x + 7, a.y + 7) if is_click or rect.width < 6 \
+                else rect
+        elif is_click or rect.width < 10 or rect.height < 8:
+            w0, h0 = {"f_sign": (180, 45)}.get(tool, (160, 20))
+            rect = pymupdf.Rect(a.x, a.y, a.x + w0, a.y + h0)
+        name = self._unique_name(self.FIELD_PREFIX[tool])
+        choices = []
+        if tool == "f_radio":
+            groups = sorted({w.field_name for pg in self.doc for w in pg.widgets()
+                             if w.field_type == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON})
+            label = "Group name (options in the same group are mutually exclusive):"
+            name, ok = QInputDialog.getItem(self, "Option button", label,
+                                            groups + [self._unique_name("Group")],
+                                            0 if groups else len(groups), True)
+            if not ok or not name.strip():
+                return
+        elif tool == "f_combo":
+            text, ok = dialogs.get_text(self, "Dropdown", "Choices, one per line:")
+            if not ok:
+                return
+            choices = [c.strip() for c in text.splitlines() if c.strip()]
+            if not choices:
+                return
+
+        def do():
+            w = pymupdf.Widget()
+            w.field_type = self.FIELD_TYPES[tool]
+            w.rect = rect
+            w.field_name = name.strip()
+            w.border_color = (0.2, 0.35, 0.7)
+            w.border_width = 1
+            w.fill_color = (0.92, 0.95, 1.0)
+            if tool == "f_text":
+                w.text_fontsize = 0          # auto size
+            if tool == "f_combo":
+                w.choice_values = choices
+                w.field_value = choices[0]
+            if tool == "f_radio":
+                w.field_value = False
+            self.doc[index].add_widget(w)
+        self.modify(do, [index])
+
+    def select_field_at(self, index, pt):
+        page = self.doc[index]
+        w = self._widget_at(page, pt)
+        if w is None:
+            return False
+        old = self.selection
+        self.selection = (index, w.xref)
+        self.selected_model = {"kind": "field", "rect": pymupdf.Rect(w.rect), "props": {},
+                               "text": w.field_name}
+        for i in {index, old[0] if old else index}:
+            self.pages[i].update()
+        self.selectionChanged.emit()
+        return True
+
+    def _commit_field(self, index, xref, model):
+        def do():
+            pg = self.doc[index]
+            w = pg.load_widget(xref)
+            w.rect = model["rect"]
+            w.update()
+        self.modify(do, [index])
+        self.selection = (index, xref)
+        self.selected_model = dict(model)
+        self.pages[index].update()
+        self.selectionChanged.emit()
+
+    def edit_field_properties(self, index, xref):
+        page = self.doc[index]
+        w = page.load_widget(xref)
+        name, ok = QInputDialog.getText(self, "Field properties",
+                                        f"{w.field_type_string} field name:", text=w.field_name)
+        if not ok or not name.strip():
+            return
+        choices = None
+        if w.field_type in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
+            cur = "\n".join(c[1] if isinstance(c, (list, tuple)) else c
+                            for c in (w.choice_values or []))
+            text, ok = dialogs.get_text(self, "Dropdown", "Choices, one per line:", cur)
+            if ok:
+                choices = [c.strip() for c in text.splitlines() if c.strip()]
+
+        def do():
+            pg = self.doc[index]
+            ww = pg.load_widget(xref)
+            ww.field_name = name.strip()
+            if choices:
+                ww.choice_values = choices
+                if ww.field_value not in choices:
+                    ww.field_value = choices[0]
+            ww.update()
+        self.modify(do, [index])
+
+    def delete_field(self, index, xref):
+        self.clear_selection()
+
+        def do():
+            pg = self.doc[index]
+            pg.delete_widget(pg.load_widget(xref))
+        self.modify(do, [index])
 
     # ---- OCR ----------------------------------------------------------------
     def page_has_text(self, index):
@@ -929,8 +1244,19 @@ class DocumentView(QScrollArea):
             except Exception:
                 pass
             self._fonts_added = False
-        self.doc.save(tmp, garbage=1, deflate=True)
+        if self.protect_on_save:
+            # No-changes permissions with a random owner password nobody knows: anyone can
+            # open, read and print, but PDF software that honours permissions won't edit.
+            import secrets
+            self.doc.save(tmp, garbage=1, deflate=True, encryption=pymupdf.PDF_ENCRYPT_AES_256,
+                          owner_pw=secrets.token_urlsafe(24), user_pw="",
+                          permissions=pymupdf.PDF_PERM_PRINT | pymupdf.PDF_PERM_PRINT_HQ
+                          | pymupdf.PDF_PERM_COPY | pymupdf.PDF_PERM_ACCESSIBILITY)
+        else:
+            self.doc.save(tmp, garbage=1, deflate=True)
         os.replace(tmp, path)
+        if self.protect_on_save:
+            self.read_only = True
         self.path = path
         self.dirty = False
         self.documentChanged.emit()

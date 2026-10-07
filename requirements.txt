@@ -1,3 +1,7 @@
 pymupdf>=1.26
 PySide6>=6.7
 rapidocr_onnxruntime>=1.2
+pdf2docx>=0.5
+ezdxf>=1.1
+openpyxl>=3.1
+python-pptx>=0.6
