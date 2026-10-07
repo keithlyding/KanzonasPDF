@@ -240,15 +240,45 @@ class DocumentView(QScrollArea):
         self.set_zoom(min(avail_w / r.width, avail_h / r.height))
         self.goto_page(page)
 
+    # CAD-style mouse (View menu): the wheel zooms around the cursor, like AutoCAD.
+    # Holding the wheel (middle button) down and dragging pans in either mode.
+    cad_mouse = False
+
     def wheelEvent(self, e):
-        if e.modifiers() & Qt.ControlModifier:
-            if e.angleDelta().y() > 0:
+        dy = e.angleDelta().y()
+        if self.cad_mouse and not e.modifiers() & Qt.ShiftModifier:
+            if dy:
+                vp = self.viewport().mapFromGlobal(QCursor.pos())
+                self.zoom_at(self.zoom * 1.15 ** (dy / 120.0), vp)
+            e.accept()
+        elif e.modifiers() & Qt.ControlModifier:
+            if dy > 0:
                 self.zoom_in()
-            elif e.angleDelta().y() < 0:
+            elif dy < 0:
                 self.zoom_out()
             e.accept()
         else:
             super().wheelEvent(e)
+
+    def zoom_at(self, z, vp_pos):
+        """Zoom keeping the page point under vp_pos (viewport coordinates) where it is."""
+        cont = self.widget()
+        cpos = cont.mapFrom(self.viewport(), vp_pos)
+        target = None
+        for w in self.pages:
+            if w.geometry().contains(cpos):
+                target = w
+                break
+        if target is None:
+            self.set_zoom(z)
+            return
+        fx = (cpos.x() - target.x()) / max(1, target.width())
+        fy = (cpos.y() - target.y()) / max(1, target.height())
+        self.set_zoom(z)
+        nx = target.x() + fx * target.width()
+        ny = target.y() + fy * target.height()
+        self.horizontalScrollBar().setValue(int(nx - vp_pos.x()))
+        self.verticalScrollBar().setValue(int(ny - vp_pos.y()))
 
     # ---- hand tool --------------------------------------------------------
     def begin_pan(self, gpos):
@@ -266,11 +296,15 @@ class DocumentView(QScrollArea):
 
     def end_pan(self):
         self._pan_origin = None
-        self.viewport().setCursor(Qt.OpenHandCursor)
+        self._tool_cursor()
 
     def set_tool(self, tool):
         self.tool = tool
         self.clear_selection()
+        self._tool_cursor()
+
+    def _tool_cursor(self):
+        tool = self.tool
         if tool == "eraser":
             self.viewport().setCursor(eraser_cursor())
             return

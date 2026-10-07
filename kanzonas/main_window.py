@@ -215,6 +215,13 @@ class MainWindow(QMainWindow):
             self.theme_group.addAction(a)
             self.theme_actions[key] = a
         self.theme_actions[self.settings.value("theme", "system")].setChecked(True)
+        self.a_cad_mouse = self._act("CAD-style &mouse (wheel zooms, hold wheel to pan)",
+                                     self._toggle_cad_mouse, "F11",
+                                     tip="Like AutoCAD: the scroll wheel zooms at the cursor; "
+                                         "hold the wheel down and drag to move the sheet (F11)")
+        self.a_cad_mouse.setCheckable(True)
+        self.a_cad_mouse.setChecked(self.settings.value("cad_mouse", "false") == "true")
+        DocumentView.cad_mouse = self.a_cad_mouse.isChecked()
         self.a_split = self._act("&Split view", self._toggle_split, "F10")
         self.a_split.setCheckable(True)
         self.a_shortcuts = self._act("&Keyboard shortcuts...", self.edit_shortcuts)
@@ -311,6 +318,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
         m.addSeparator()
         m.addAction(self.a_split)
+        m.addAction(self.a_cad_mouse)
         tm = m.addMenu("&Theme")
         tm.addActions(list(self.theme_actions.values()))
         m.addAction(self.a_labels)
@@ -390,14 +398,26 @@ class MainWindow(QMainWindow):
         self.zoom_box.activated.connect(lambda _: self._zoom_from_box())
         tb.addWidget(self.zoom_box)
         tb.addAction(self.a_zoom_in)
-        tb.addActions([self.a_fit_width, self.a_fit_page])
+        tb.addActions([self.a_fit_width, self.a_fit_page, self.a_cad_mouse])
         tb.addSeparator()
         self.page_spin = QSpinBox()
         self.page_spin.setMinimum(1)
         self.page_spin.setKeyboardTracking(False)
+        self.page_spin.setButtonSymbols(QSpinBox.NoButtons)       # left/right buttons instead
+        self.page_spin.setAlignment(Qt.AlignCenter)
         self.page_spin.valueChanged.connect(lambda n: self.view() and self.view().goto_page(n - 1))
+        self.prev_page_btn = QToolButton()
+        self.prev_page_btn.setArrowType(Qt.LeftArrow)
+        self.prev_page_btn.setToolTip("Previous page (Left arrow key)")
+        self.prev_page_btn.clicked.connect(lambda: self._step_page(-1))
+        self.next_page_btn = QToolButton()
+        self.next_page_btn.setArrowType(Qt.RightArrow)
+        self.next_page_btn.setToolTip("Next page (Right arrow key)")
+        self.next_page_btn.clicked.connect(lambda: self._step_page(1))
         tb.addWidget(QLabel(" Page "))
+        tb.addWidget(self.prev_page_btn)
         tb.addWidget(self.page_spin)
+        tb.addWidget(self.next_page_btn)
         self.page_total = QLabel(" / 0 ")
         tb.addWidget(self.page_total)
         spacer = QWidget()
@@ -591,6 +611,8 @@ class MainWindow(QMainWindow):
         self.a_undo.setEnabled(has and v.can_undo())
         self.a_redo.setEnabled(has and v.can_redo())
         self.page_spin.setEnabled(has)
+        self.prev_page_btn.setEnabled(has and v.current_page() > 0)
+        self.next_page_btn.setEnabled(has and v.current_page() < v.page_count() - 1)
         if has:
             self.page_spin.blockSignals(True)
             self.page_spin.setMaximum(v.page_count())
@@ -1424,7 +1446,7 @@ class MainWindow(QMainWindow):
     TOOLBAR_ICON_KEYS = {"a_open": "open", "a_save": "save", "a_print": "print", "a_undo": "undo",
                          "a_redo": "redo", "a_zoom_in": "zoom_in", "a_zoom_out": "zoom_out",
                          "a_fit_width": "fit_width", "a_fit_page": "fit_page", "a_ocr": "ocr",
-                         "a_rot_l": "rot_l", "a_rot_r": "rot_r"}
+                         "a_rot_l": "rot_l", "a_rot_r": "rot_r", "a_cad_mouse": "cad_mouse"}
 
     def _apply_icons(self):
         for attr, key in self.TOOLBAR_ICON_KEYS.items():
@@ -1620,6 +1642,19 @@ class MainWindow(QMainWindow):
         if self.markups_dock.isVisible():
             v = self.view()
             self.markups.refresh(v.doc if v else None)
+
+    def _step_page(self, delta):
+        v = self.view()
+        if v is not None:
+            v.goto_page(max(0, min(v.page_count() - 1, v.current_page() + delta)))
+
+    def _toggle_cad_mouse(self):
+        on = self.a_cad_mouse.isChecked()
+        DocumentView.cad_mouse = on
+        self.settings.setValue("cad_mouse", "true" if on else "false")
+        self.statusBar().showMessage(
+            "CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan" if on else
+            "CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms", 4000)
 
     def _align_ref(self):
         for key, a in self.align_ref_actions.items():

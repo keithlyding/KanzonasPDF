@@ -462,6 +462,11 @@ class PageWidget(QWidget):
         return None
 
     def mousePressEvent(self, e):
+        if e.button() == Qt.MiddleButton:
+            # hold the wheel down and drag to pan (CAD style), with any tool
+            self._mid_pan = True
+            self.view.begin_pan(e.globalPosition())
+            return
         if e.button() != Qt.LeftButton:
             return super().mousePressEvent(e)
         if self.view._inline is not None:
@@ -630,6 +635,9 @@ class PageWidget(QWidget):
         return A.resized(model, new)
 
     def mouseMoveEvent(self, e):
+        if getattr(self, "_mid_pan", False):
+            self.view.continue_pan(e.globalPosition())
+            return
         pos = e.position()
         tool = self.view.tool
         if not e.buttons():
@@ -700,6 +708,10 @@ class PageWidget(QWidget):
             self.unsetCursor()
 
     def mouseReleaseEvent(self, e):
+        if e.button() == Qt.MiddleButton and getattr(self, "_mid_pan", False):
+            self._mid_pan = False
+            self.view.end_pan()
+            return
         if e.button() != Qt.LeftButton:
             return
         tool = self.view.tool

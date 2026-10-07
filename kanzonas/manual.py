@@ -29,11 +29,17 @@ toolbars adds names under the icons. Hover over any button to see its name and s
 
 <h2 id="navigate">Moving around</h2>
 <ul>
-<li><b>Next / previous page:</b> Right / Left arrow keys, or type a page number in the toolbar.</li>
+<li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number in the
+toolbar, the Right / Left arrow keys, or type a page number and press Enter.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1).</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
-<li><b>Pan:</b> Hand tool (H), or the scroll bars. Shift+Left/Right scrolls sideways.</li>
+<li><b>Pan:</b> Hand tool (H), the scroll bars, or <b>hold the mouse wheel down and drag</b>
+(works with any tool). Shift+Left/Right scrolls sideways.</li>
+<li><b>CAD-style mouse (wheel zooms, hold wheel to pan)</b> (View menu, toolbar button, F11):
+like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the wheel down
+moves the sheet, so you can navigate a drawing while any markup tool is active. Hold Shift to
+scroll with the wheel instead. Your choice is remembered.</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.</li>
 </ul>
@@ -207,6 +213,8 @@ Plain text (.txt).</li>
 <tr><td>Ctrl+2 / Ctrl+0 / Ctrl+1</td><td>Fit width / fit page / actual size</td></tr>
 <tr><td>Ctrl+F, F3, Shift+F3</td><td>Find, next, previous</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
+<tr><td>F11</td><td>CAD-style mouse on / off</td></tr>
+<tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>
 </table>
 <p>Change any shortcut in View &gt; Keyboard shortcuts.</p>
