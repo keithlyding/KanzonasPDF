@@ -9,6 +9,30 @@ import traceback
 import pymupdf
 
 
+def _memory_mb():
+    """Peak memory of this process in MB (Windows and Linux)."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class PMC(ctypes.Structure):
+            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+                        ("PeakWorkingSetSize", ctypes.c_size_t), ("WorkingSetSize", ctypes.c_size_t),
+                        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                        ("PagefileUsage", ctypes.c_size_t), ("PeakPagefileUsage", ctypes.c_size_t)]
+        pmc = PMC()
+        pmc.cb = ctypes.sizeof(PMC)
+        ctypes.windll.psapi.GetProcessMemoryInfo(ctypes.windll.kernel32.GetCurrentProcess(),
+                                                 ctypes.byref(pmc), pmc.cb)
+        return pmc.PeakWorkingSetSize / 1e6
+    except Exception:
+        import resource
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+
+
 def run(log_path):
     lines, ok = [], True
 
@@ -20,6 +44,56 @@ def run(log_path):
         except Exception:
             ok = False
             lines.append(f"FAIL {name}\n{traceback.format_exc()}")
+
+    # ---- performance budget (runs first, while nothing else is loaded) -------------------
+    # Generous limits so slow build machines pass; they catch real regressions (a heavy
+    # library imported at start-up, a render that suddenly takes many seconds...).
+    HEAVY = ("rapidocr_onnxruntime", "onnxruntime", "pdf2docx", "ezdxf", "openpyxl", "pptx",
+             "docx", "pyhanko", "cv2", "aiohttp")
+
+    def t_performance():
+        import time
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance() or QApplication([])
+        t = time.perf_counter()
+        from .main_window import MainWindow
+        win = MainWindow()
+        win.show()
+        app.processEvents()
+        startup = time.perf_counter() - t
+        loaded = [m for m in HEAVY if m in sys.modules]
+        assert not loaded, "loaded at start-up (import them only when used): " + ", ".join(loaded)
+        # a CAD-like page: 60,000 line segments
+        d = pymupdf.open()
+        pg = d.new_page(width=2592, height=1728)
+        sh = pg.new_shape()
+        for i in range(60000):
+            x, y = (i * 37) % 2500, (i * 53) % 1700
+            sh.draw_line((x, y), (x + 40, y + 25))
+        sh.finish(color=(0, 0, 0), width=0.3)
+        sh.commit()
+        path = os.path.join(tempfile.mkdtemp(prefix="kzperf"), "cad.pdf")
+        d.save(path)
+        t = time.perf_counter()
+        win.open_file(path)
+        app.processEvents()
+        v = win.view()
+        v.pages[0].repaint()
+        first = time.perf_counter() - t
+        t = time.perf_counter()
+        v.set_zoom(4.0)
+        app.processEvents()
+        v.pages[0].repaint()
+        zoom = time.perf_counter() - t
+        mem = _memory_mb()
+        win.close_tab(win.tabs.currentIndex())
+        win.deleteLater()
+        assert startup < 5, f"start-up took {startup:.1f}s (limit 5s)"
+        assert first < 5, f"opening a 60k-line sheet took {first:.1f}s (limit 5s)"
+        assert zoom < 5, f"zooming to 400% took {zoom:.1f}s (limit 5s)"
+        assert mem < 800, f"memory {mem:.0f} MB (limit 800 MB)"
+        return f"(start-up {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s, {mem:.0f} MB)"
+    check("performance budget", t_performance)
 
     tmp = tempfile.mkdtemp(prefix="kzselftest")
     doc = pymupdf.open()
