@@ -238,6 +238,20 @@ class MainWindow(QMainWindow):
                                               self.apply_placeholders)
         self.a_apply_sel_redact = self._act("Apply &selected redactions",
                                             lambda: self._apply_selected_redactions())
+        # review
+        self.a_next_markup = self._act("&Next comment", lambda: v() and v().goto_markup(1),
+                                       "Alt+Down", tip="Go to and select the next comment or markup")
+        self.a_prev_markup = self._act("&Previous comment", lambda: v() and v().goto_markup(-1),
+                                       "Alt+Up", tip="Go to and select the previous comment or markup")
+        self.a_show_markups = self._act("&Show markups", self._toggle_show_markups,
+                                        tip="Hide every comment and markup to see the page as if "
+                                            "unmarked (nothing is deleted)")
+        self.a_show_markups.setCheckable(True)
+        self.a_show_markups.setChecked(True)
+        self.a_delete_markups = self._act("&Delete comments...", self.delete_comments)
+        self.a_flatten_markups = self._act("&Flatten comments...", self.flatten_comments,
+                                           tip="Make comments and markups part of the page; "
+                                               "form fields stay fillable")
         self.a_hl_fields = self._act("&Highlight form fields", self._toggle_hl_fields,
                                      tip="Shade fillable form fields so they're easy to find "
                                          "(on screen only)")
@@ -438,6 +452,14 @@ class MainWindow(QMainWindow):
         m.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
         m.addSeparator()
         m.addActions([self.a_set_scale, self.a_measure_summary])
+        m = mb.addMenu("&Review")
+        m.addActions([self.tool_actions["comment"], self.tool_actions["note"]])
+        m.addSeparator()
+        m.addActions([self.a_prev_markup, self.a_next_markup, self.a_markups])
+        m.addSeparator()
+        m.addActions([self.a_show_markups, self.a_cards])
+        m.addSeparator()
+        m.addActions([self.a_delete_markups, self.a_flatten_markups])
         m = mb.addMenu("&Protect")
         m.addActions([self.tool_actions["signature"], self.tool_actions["initials"],
                       self.a_multi_sign])
@@ -1329,7 +1351,7 @@ class MainWindow(QMainWindow):
     def timestamp_document(self):
         from . import digisign
         v = self.view()
-        if v is None:
+        if v is None or self._blocked_by_security(v, "Timestamping"):
             return
         if v.dirty:
             QMessageBox.information(self, "Timestamp", "Save your changes first.")
@@ -1461,6 +1483,57 @@ class MainWindow(QMainWindow):
         if not n:
             QMessageBox.information(self, "Apply selected redactions",
                                     "Select one or more redaction marks first (Select tool).")
+
+    def _toggle_show_markups(self):
+        on = self.a_show_markups.isChecked()
+        DocumentView.show_markups = on
+        for i in range(self.tabs.count()):
+            self.tabs.widget(i).refresh_markup_display()
+        self.statusBar().showMessage("Markups shown" if on else
+                                     "Markups hidden (they're still in the document)", 4000)
+
+    def delete_comments(self):
+        v = self.view()
+        if v is None:
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Delete comments")
+        form = QFormLayout(dlg)
+        who = QComboBox()
+        who.addItem("Everyone's", None)
+        me = annotations.author()
+        who.addItem(f"Only mine ({me})", me)
+        for name in v.markup_authors():
+            if name != me:
+                who.addItem(f"Only by {name or '(no name)'}", name)
+        form.addRow("Delete comments and markups", who)
+        where = QComboBox()
+        where.addItems(["On all pages", "On this page only"])
+        form.addRow("", where)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        form.addRow(btns)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        n = v.delete_markups(who.currentData(),
+                             None if where.currentIndex() == 0 else [v.current_page()])
+        self.statusBar().showMessage(f"Deleted {n} comment(s) and markup(s). Undo brings "
+                                     "them back.", 5000)
+
+    def flatten_comments(self):
+        v = self.view()
+        if not v:
+            return
+        choices = ["All pages", "Current page only"]
+        pick, ok = QInputDialog.getItem(
+            self, "Flatten comments", "Make comments and markups part of the page.\n"
+            "They'll look the same but can no longer be edited or moved.\n"
+            "Form fields stay fillable. (Undo works until you close the file.)\n\n"
+            "Which pages?", choices, 0, False)
+        if ok:
+            v.flatten(None if pick == choices[0] else [v.current_page()], widgets=False)
+            self.statusBar().showMessage("Comments flattened", 4000)
 
     def _toggle_hl_fields(self):
         on = self.a_hl_fields.isChecked()
@@ -1698,10 +1771,23 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Applied {n} redaction(s). Save to make it permanent.", 6000)
 
     # ---- digital signatures ----------------------------------------------------------
+    def _blocked_by_security(self, v, what):
+        """Signing or timestamping a password-protected PDF isn't supported (the signing
+        library can't read the encryption PyMuPDF writes). Explain instead of failing."""
+        pending = v.security is not None and (v.security.get("open_pw") or v.security.get("owner_pw"))
+        if v.security_state()["encrypted"] or pending:
+            QMessageBox.information(
+                self, what, f"{what} isn't possible on a password-protected PDF yet.\n\n"
+                "Use Protect > Remove security and save, then sign. Note that adding a "
+                "password after signing changes the file and makes the signature invalid, "
+                "so sign the final version.")
+            return True
+        return False
+
     def digital_sign(self):
         from . import digisign
         v = self.view()
-        if not v:
+        if not v or self._blocked_by_security(v, "Digital signing"):
             return
         dlg = QDialog(self)
         dlg.setWindowTitle("Digitally sign with a certificate")

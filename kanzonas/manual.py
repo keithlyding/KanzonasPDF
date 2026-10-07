@@ -72,6 +72,23 @@ Hide the boxes with View &gt; Show comment boxes.</li>
 printed on stamps.</li>
 </ul>
 
+<h2 id="review">Reviewing comments (Review menu)</h2>
+<ul>
+<li><b>Add:</b> the Comment tool (C) marks text and adds a comment beside it; the Note tool (N)
+adds a sticky note anywhere.</li>
+<li><b>Next comment</b> (Alt+Down) and <b>Previous comment</b> (Alt+Up) walk through every
+comment and markup in reading order, page by page, selecting each one. The status bar shows
+"Markup 3 of 12". It wraps around at the end.</li>
+<li><b>Markups list</b> (F7): all markups in a table; filter, click to jump, export to CSV.</li>
+<li><b>Show markups:</b> untick to hide every comment and markup and see the page as if
+unmarked. Nothing is deleted; tick it again to bring them back. <b>Show comment boxes</b>
+hides just the yellow boxes beside commented text.</li>
+<li><b>Delete comments:</b> everyone's, only yours, or only one person's, on all pages or the
+current page. Undo brings them back.</li>
+<li><b>Flatten comments:</b> makes comments and markups a permanent part of the page while form
+fields stay fillable. (Document &gt; Flatten flattens form fields too.)</li>
+</ul>
+
 <h2 id="shapes">Shapes, lines and the pen</h2>
 <ul>
 <li>Rectangle (R), Ellipse (E), Cloud (D), Polygon (Y), Line (L), Arrow (A), Polyline
@@ -236,7 +253,9 @@ attached files, hidden text, links, comments, form data, thumbnails.</li>
   some free tools ignore it, so don't rely on it for secrets.</li>
   <li><i>Policies:</i> save your usual settings as a named policy (passwords are never saved).</li>
   </ul>
-  Changes take effect when you save. <b>Remove security</b> takes protection off (you need the
+  Changes take effect when you save. Digital signatures and timestamps can't be added to a
+  password-protected PDF yet: remove security, sign the final version, and don't add a
+  password afterwards (that would invalidate the signature). <b>Remove security</b> takes protection off (you need the
   permissions password). <b>Unlock with password</b> lets you edit a restricted file.</li>
 </ul>
 
@@ -276,6 +295,7 @@ Plain text (.txt).</li>
 <tr><td>Ctrl+Shift+Up / Down</td><td>Move page</td></tr>
 <tr><td>Ctrl+2 / Ctrl+0 / Ctrl+1</td><td>Fit width / fit page / actual size</td></tr>
 <tr><td>Ctrl+F, F3, Shift+F3</td><td>Find, next, previous</td></tr>
+<tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
 <tr><td>F11</td><td>CAD-style mouse on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>

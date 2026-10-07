@@ -241,6 +241,85 @@ class DocumentView(QScrollArea):
         self.goto_page(page)
 
     highlight_fields = True        # shade fillable form fields (View / Forms menu)
+    show_markups = True            # Review > Show markups (off: the page as if unmarked)
+
+    def refresh_markup_display(self):
+        self.clear_selection()
+        self._clear_caches()
+        for pw in self.pages:
+            pw.invalidate()
+
+    # ---- review: walk through, delete, flatten comments ---------------------------------------
+    def review_items(self):
+        """[(page, xref)] of every markup in reading order (page, then top to bottom)."""
+        out = []
+        for i in range(self.doc.page_count):
+            pg = self.doc[i]
+            items = []
+            for an in pg.annots():
+                if an.type[0] == pymupdf.PDF_ANNOT_POPUP:
+                    continue
+                r = an.rect * pg.rotation_matrix
+                items.append((round(r.y0 / 6), r.x0, an.xref))
+            out += [(i, x) for _y, _x, x in sorted(items)]
+        return out
+
+    def goto_markup(self, step):
+        """Select the next (step=1) or previous (step=-1) markup, wrapping around."""
+        if not self.show_markups:
+            self.statusMessage.emit("Markups are hidden (Review > Show markups).")
+            return None
+        items = self.review_items()
+        if not items:
+            self.statusMessage.emit("No comments or markups in this document.")
+            return None
+        cur = self.selection if self.selection in items else getattr(self, "_review_pos", None)
+        if cur in items:
+            k = (items.index(cur) + step) % len(items)
+        else:
+            page = self.current_page()
+            after = [k for k, (i, _x) in enumerate(items) if i >= page]
+            k = (after[0] if after else 0) if step > 0 else \
+                ([k for k, (i, _x) in enumerate(items) if i < page] or [len(items)])[-1] % len(items)
+        index, xref = items[k]
+        self.reveal(index, xref)                   # (markups this app can't edit: shown only)
+        self._review_pos = (index, xref)
+        self.statusMessage.emit(f"Markup {k + 1} of {len(items)} (page {index + 1})")
+        return index, xref
+
+    def markup_authors(self):
+        names = set()
+        for i in range(self.doc.page_count):
+            for an in self.doc[i].annots():
+                if an.type[0] != pymupdf.PDF_ANNOT_POPUP:
+                    names.add(an.info.get("title", "") or "")
+        return sorted(names)
+
+    def delete_markups(self, author=None, pages=None):
+        """Delete markups (all, or only those by author) on pages (None: all). Returns count."""
+        pages = range(self.doc.page_count) if pages is None else pages
+        doomed = {}
+        for i in pages:
+            pg = self.doc[i]
+            for an in pg.annots():
+                if an.type[0] == pymupdf.PDF_ANNOT_POPUP:
+                    continue
+                if author is None or (an.info.get("title", "") or "") == author:
+                    doomed.setdefault(i, []).append(an.xref)
+        if not doomed:
+            return 0
+
+        def do():
+            for i, xrefs in doomed.items():
+                pg = self.doc[i]
+                for x in xrefs:
+                    try:
+                        pg.delete_annot(pg.load_annot(x))
+                    except Exception:
+                        pass
+        self.clear_selection()
+        self.modify(do, list(doomed))
+        return sum(len(x) for x in doomed.values())
 
     def field_rects(self, index):
         """[(rect, required)] of fillable form fields on a page (cached until the next edit)."""
@@ -955,6 +1034,8 @@ class DocumentView(QScrollArea):
     def annot_at(self, index, pt):
         """xref of the annotation under pt, or None. (Returns an id, not an Annot: an Annot
         becomes unusable once its Page object is garbage collected.)"""
+        if not self.show_markups:
+            return None
         a = self._annot_at(self.doc[index], pt)
         return a.xref if a is not None else None
 
@@ -1288,6 +1369,8 @@ class DocumentView(QScrollArea):
 
     def comment_cards(self, index):
         """[(anchor rect, text, xref)] for comments on this page (cached)."""
+        if not self.show_markups:
+            return []
         if index not in self._card_cache:
             cards = []
             page = self.doc[index]
@@ -2157,18 +2240,18 @@ class DocumentView(QScrollArea):
         self.modify(lambda: self.doc.move_page(index, to), structural=True)
         self.goto_page(target)
 
-    def flatten(self, pages=None):
-        """Burn annotations and form fields into the page content (pages=None: all pages).
-        Undo works until the file is closed; after saving, flattening is permanent."""
+    def flatten(self, pages=None, widgets=True):
+        """Burn annotations (and form fields unless widgets=False) into the page content
+        (pages=None: all pages). Undo works until the file is closed."""
         def do():
             if pages is None:
-                self.doc.bake(annots=True, widgets=True)
+                self.doc.bake(annots=True, widgets=widgets)
                 return
             for i in sorted(pages, reverse=True):
                 # PyMuPDF flattens whole documents: flatten a one-page copy and swap it in
                 tmp = pymupdf.open()
                 tmp.insert_pdf(self.doc, from_page=i, to_page=i)
-                tmp.bake(annots=True, widgets=True)
+                tmp.bake(annots=True, widgets=widgets)
                 self.doc.delete_page(i)
                 self.doc.insert_pdf(tmp, start_at=i)
                 tmp.close()

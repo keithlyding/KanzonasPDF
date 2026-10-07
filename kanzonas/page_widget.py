@@ -112,7 +112,7 @@ class PageWidget(QWidget):
         """The page's parsed drawing, made once and reused for every render and tile."""
         dl = self.view._dlists.get(self.index)
         if dl is None:
-            dl = self.view.doc[self.index].get_displaylist(annots=True)
+            dl = self.view.doc[self.index].get_displaylist(annots=self.view.show_markups)
             self.view._dlists[self.index] = dl
         return dl
 
