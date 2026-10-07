@@ -18,6 +18,7 @@ from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 from . import __version__, annotations, export, signatures
 from .document_view import DocumentView
 from .properties import PropertiesPanel
+from .markups_panel import MarkupsPanel
 
 APP_NAME = "KanzonasPDF"
 APP_TITLE = f"KanzonasPDF v{__version__}"
@@ -33,11 +34,16 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("comment", "Comment", "C", "Comment on text: select text, it's highlighted with a note (C)"),
     ("note", "Note", "N", "Sticky note: click where it should go (N)"),
     ("textbox", "Text box", "T", "Text box: drag a box or click (T)"),
+    ("callout", "Callout", "K", "Callout: press on the point, drag to where the text goes (K)"),
     ("rect", "Rectangle", "R", "Rectangle (R)"),
     ("ellipse", "Ellipse", "E", "Ellipse (E)"),
+    ("cloud", "Cloud", "D", "Revision cloud: drag a box (D)"),
+    ("polygon", "Polygon", "Y", "Polygon: click each corner, double-click or Enter to finish (Y)"),
     ("line", "Line", "L", "Line (L)"),
     ("arrow", "Arrow", "A", "Arrow (A)"),
+    ("polyline", "Polyline", "Shift+L", "Polyline: click each point, double-click or Enter to finish"),
     ("ink", "Pen", "P", "Freehand pen (P)"),
+    ("stamp", "Stamp", "M", "Stamp (Approved, Draft, ... or your own image): click to place (M)"),
     ("eraser", "Eraser", "X", "Delete the annotation you click (X)"),
     ("signature", "Sign", "G", "Place your saved signature (and date): click where it goes (G)"),
     ("initials", "Initials", "I", "Place your saved initials (and date): click where they go (I)"),
@@ -167,6 +173,9 @@ class MainWindow(QMainWindow):
         for eid, label, _flt, _ext in EXPORTS:
             a = self._act(label, lambda _=False, e=eid: self.export_as(e))
             self.export_actions.append(a)
+        self.a_markups = self._act("&Markups list", self._toggle_markups, "F7")
+        self.a_markups.setCheckable(True)
+        self.a_author = self._act("&Author name for markups...", self._set_author)
         self.a_flatten = self._act("&Flatten...", self.flatten,
                                    tip="Make annotations and form fields a permanent part of the page")
         self.a_delete_annot = self._act("Delete selected annotation",
@@ -209,12 +218,14 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_undo, self.a_redo])
         m.addAction(self.a_delete_annot)
         m.addSeparator()
+        m.addAction(self.a_author)
+        m.addSeparator()
         m.addActions([self.a_find, self.a_find_next, self.a_find_prev])
         m = mb.addMenu("&View")
         m.addActions([self.a_zoom_in, self.a_zoom_out, self.a_actual, self.a_fit_width,
                       self.a_fit_page])
         m.addSeparator()
-        m.addActions([self.a_sidebar, self.a_props, self.a_cards])
+        m.addActions([self.a_sidebar, self.a_props, self.a_markups, self.a_cards])
         m = mb.addMenu("&Tools")
         m.addActions(self.tool_group.actions())
         m.addSeparator()
@@ -288,10 +299,21 @@ class MainWindow(QMainWindow):
         tt.setMovable(False)
         tt.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.addToolBar(tt)
-        main_tools = [self.tool_actions[t[0]] for t in TOOLS]     # form tools live in their menu
+        shapes = ("rect", "ellipse", "cloud", "polygon", "line", "arrow", "polyline", "ink")
+        main_tools = [self.tool_actions[t[0]] for t in TOOLS if t[0] not in shapes]
         tt.addActions(main_tools[:3])
         tt.addSeparator()
-        tt.addActions(main_tools[3:])
+        tt.addActions(main_tools[3:main_tools.index(self.tool_actions["stamp"])])
+        # shapes share one button: click = last used shape, arrow = pick another
+        self.shapes_btn = QToolButton()
+        self.shapes_btn.setPopupMode(QToolButton.MenuButtonPopup)
+        smenu = QMenu(self.shapes_btn)
+        smenu.addActions([self.tool_actions[t] for t in shapes])
+        self.shapes_btn.setMenu(smenu)
+        self.shapes_btn.setDefaultAction(self.tool_actions["rect"])
+        smenu.triggered.connect(self.shapes_btn.setDefaultAction)
+        tt.addWidget(self.shapes_btn)
+        tt.addActions(main_tools[main_tools.index(self.tool_actions["stamp"]):])
         tt.addSeparator()
         tt.addActions([self.a_rot_l, self.a_rot_r])
         tt.addSeparator()
@@ -354,6 +376,17 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.props_dock)
         self.resizeDocks([self.dock, self.props_dock], [180, 240], Qt.Horizontal)
 
+        self.markups = MarkupsPanel()
+        self.markups.activated.connect(lambda i, x: self.view() and self.view().reveal(i, x))
+        self.markups_dock = QDockWidget("Markups list")
+        self.markups_dock.setObjectName("markups")
+        self.markups_dock.setWidget(self.markups)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.markups_dock)
+        self.markups_dock.hide()
+        self.markups_dock.visibilityChanged.connect(self._markups_visible)
+        self._markups_timer = QTimer(self, singleShot=True, interval=400)
+        self._markups_timer.timeout.connect(self._refresh_markups)
+
     # ---- helpers ----------------------------------------------------------
     def view(self):
         w = self.tabs.currentWidget()
@@ -413,6 +446,9 @@ class MainWindow(QMainWindow):
         v.show_comment_boxes = self.a_cards.isChecked()
         v.selectionChanged.connect(self._on_selection_changed)
         v.signedDocument.connect(self._on_signed)
+        v.selectToolRequested.connect(lambda: self.set_tool("select"))
+        v.documentChanged.connect(self._markups_timer.start)
+        v.structureChanged.connect(self._markups_timer.start)
         v.requestSignature.connect(self._sign_field)
         for kind, png in self._sig_cache.items():
             v.set_sig_image(kind, png)
@@ -869,6 +905,26 @@ class MainWindow(QMainWindow):
             msg += "\n\nEach page is a picture on its slide; its text is in the speaker notes."
         QMessageBox.information(self, "Export", msg)
 
+    def _toggle_markups(self):
+        self.markups_dock.setVisible(not self.markups_dock.isVisible())
+
+    def _markups_visible(self, vis):
+        self.a_markups.setChecked(vis)
+        if vis:
+            self._refresh_markups()
+
+    def _refresh_markups(self):
+        if self.markups_dock.isVisible():
+            v = self.view()
+            self.markups.refresh(v.doc if v else None)
+
+    def _set_author(self):
+        name, ok = QInputDialog.getText(self, "Author name",
+                                        "Name recorded on your markups, stamps and comments:",
+                                        text=annotations.author())
+        if ok:
+            annotations.set_author(name.strip())
+
     def _toggle_sidebar(self):
         self.dock.setVisible(not self.dock.isVisible())
 
@@ -880,6 +936,7 @@ class MainWindow(QMainWindow):
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):
         self._rebuild_thumbs()
+        self._markups_timer.start()
         self._refresh_props()
         self._update_ui()
 

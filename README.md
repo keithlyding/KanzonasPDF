@@ -14,7 +14,11 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 - **Comment on text**: select text, it's marked (highlight, underline, strikeout or squiggly,
   set in the Properties panel) and a note box appears beside it
   (also visible as a comment in Acrobat)
-- Markup: sticky note, text box, rectangle, ellipse, line, arrow, freehand pen
+- Markup: sticky note, text box, callout, rectangle, ellipse, revision cloud, polygon (optionally
+  clouded), line, arrow, polyline, freehand pen
+- **Stamps**: Approved, Reviewed, Draft and 12 more, your own text, or your own images; adds
+  your name and the date
+- **Markups list** (F7): every markup in a table; filter, sort, click to jump, export to CSV
 - **Properties panel** (F6): colours (line, fill, text), line width, font size, arrowhead
   style, opacity
   - With nothing selected it sets each tool's **default style, saved for next time**
@@ -63,6 +67,8 @@ You can zip that folder and give it to anyone; they don't need Python.
 | N / T | Note / Text box |
 | R / E / L / A / P | Rectangle / Ellipse / Line / Arrow / Pen |
 | X | Eraser (click one, or drag a box around several) |
+| K / D / Y / Shift+L / M | Callout / Cloud / Polygon / Polyline / Stamp |
+| F7 | Markups list |
 | G / I | Place signature / initials |
 | Delete / Esc | Delete / deselect the selected annotation |
 | Ctrl+Enter | Finish typing in note / text box / comment dialogs |

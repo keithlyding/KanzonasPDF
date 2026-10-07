@@ -11,6 +11,7 @@ survive a save and reopen exactly.
 Per-tool default styles are kept in QSettings so they persist between sessions.
 """
 
+import getpass
 import json
 
 import pymupdf
@@ -27,8 +28,14 @@ DEFAULTS = {
     "note": {"stroke": "#ffdc00", "opacity": 1.0},
     "textbox": {"text_color": "#000000", "stroke": "#d00000", "fill": None, "width": 1.0,
                 "fontsize": 11, "opacity": 1.0},
-    "rect": {"stroke": "#d00000", "fill": None, "width": 2.0, "opacity": 1.0},
-    "ellipse": {"stroke": "#d00000", "fill": None, "width": 2.0, "opacity": 1.0},
+    "rect": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
+    "ellipse": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
+    "cloud": {"stroke": "#d00000", "fill": None, "width": 1.5, "cloud": True, "opacity": 1.0},
+    "polygon": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
+    "polyline": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
+    "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
+                "fontsize": 11, "head": "open", "opacity": 1.0},
+    "stamp": {"label": "APPROVED", "stroke": "#c00000", "date": True, "opacity": 1.0},
     "line": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "arrow": {"stroke": "#d00000", "width": 2.0, "head": "open", "opacity": 1.0},
     "ink": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
@@ -36,7 +43,8 @@ DEFAULTS = {
 LABELS = {"highlight": "Highlight", "comment": "Comment", "underline": "Underline",
           "strikeout": "Strikeout", "squiggly": "Squiggly", "note": "Sticky note", "textbox": "Text box",
           "rect": "Rectangle", "ellipse": "Ellipse", "line": "Line", "arrow": "Arrow",
-          "ink": "Pen"}
+          "ink": "Pen", "polygon": "Polygon", "polyline": "Polyline", "callout": "Callout",
+          "stamp": "Stamp", "field": "Form field", "cloud": "Cloud"}
 HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE_CLOSED_ARROW,
          "open (reversed)": pymupdf.PDF_ANNOT_LE_R_OPEN_ARROW,
          "closed (reversed)": pymupdf.PDF_ANNOT_LE_R_CLOSED_ARROW,
@@ -44,13 +52,15 @@ HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE
          "diamond": pymupdf.PDF_ANNOT_LE_DIAMOND, "bar": pymupdf.PDF_ANNOT_LE_BUTT}
 MARKUP = ("highlight", "comment", "underline", "strikeout", "squiggly")
 COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a comment marks text      # tied to text: not movable
-BOXED = ("rect", "ellipse", "textbox", "field")                           # resizable via a rect
+BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp")
+POINTED = ("line", "arrow", "polygon", "polyline")              # geometry = list of points                           # resizable via a rect
 _TYPE_KIND = {pymupdf.PDF_ANNOT_SQUARE: "rect", pymupdf.PDF_ANNOT_CIRCLE: "ellipse",
               pymupdf.PDF_ANNOT_INK: "ink", pymupdf.PDF_ANNOT_FREE_TEXT: "textbox",
               pymupdf.PDF_ANNOT_TEXT: "note", pymupdf.PDF_ANNOT_HIGHLIGHT: "highlight",
               pymupdf.PDF_ANNOT_UNDERLINE: "underline",
               pymupdf.PDF_ANNOT_STRIKE_OUT: "strikeout", pymupdf.PDF_ANNOT_SQUIGGLY: "squiggly",
-              pymupdf.PDF_ANNOT_LINE: "line"}
+              pymupdf.PDF_ANNOT_LINE: "line", pymupdf.PDF_ANNOT_POLYGON: "polygon",
+              pymupdf.PDF_ANNOT_POLY_LINE: "polyline", pymupdf.PDF_ANNOT_STAMP: "stamp"}
 
 
 # ---- colours ----------------------------------------------------------------
@@ -96,6 +106,21 @@ def reset_tool_props(kind):
     set_tool_props(kind, dict(DEFAULTS[kind]))
 
 
+def author():
+    """Name recorded on new markups (Edit > Author name...)."""
+    name = _settings().value("author", "") or ""
+    if not name:
+        try:
+            name = getpass.getuser()
+        except Exception:
+            name = ""
+    return name
+
+
+def set_author(name):
+    _settings().setValue("author", name)
+
+
 # ---- read / write ----------------------------------------------------------------
 def read(annot):
     """Annotation -> model, or None for annotation types the app doesn't edit."""
@@ -130,10 +155,19 @@ def read(annot):
     props.update({k: v for k, v in stored.get("props", {}).items() if k in props})
 
     model = {"kind": kind, "props": props, "text": annot.info.get("content", ""),
-             "rect": pymupdf.Rect(annot.rect)}
+             "rect": pymupdf.Rect(annot.rect), "author": annot.info.get("title", ""),
+             "created": annot.info.get("creationDate", "")}
     verts = annot.vertices or []
+    geom = stored.get("geom", {})
     if kind in ("line", "arrow"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
+    elif kind in ("polygon", "polyline"):
+        model["points"] = [pymupdf.Point(v) for v in verts]
+    elif kind == "callout":
+        model["rect"] = pymupdf.Rect(geom.get("box", annot.rect))
+        model["points"] = [pymupdf.Point(geom.get("target", annot.rect.bl))]
+    elif kind == "stamp":
+        model["detail"] = geom.get("detail")
     elif kind == "ink":
         model["strokes"] = [[pymupdf.Point(p) for p in s] for s in verts]
     elif kind in MARKUP:
@@ -196,6 +230,35 @@ def write(page, model):
             a.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, HEADS.get(p.get("head"), HEADS["open"]))
     elif kind == "ink":
         a = page.add_ink_annot([[(q.x, q.y) for q in s] for s in model["strokes"]])
+    elif kind == "polygon":
+        a = page.add_polygon_annot([(q.x, q.y) for q in model["points"]])
+    elif kind == "polyline":
+        a = page.add_polyline_annot([(q.x, q.y) for q in model["points"]])
+    elif kind == "callout":
+        box, target = pymupdf.Rect(model["rect"]), model["points"][0]
+        # leader line runs from the target to the nearest middle of a box edge
+        knees = [pymupdf.Point(box.x0, (box.y0 + box.y1) / 2), pymupdf.Point(box.x1, (box.y0 + box.y1) / 2),
+                 pymupdf.Point((box.x0 + box.x1) / 2, box.y0), pymupdf.Point((box.x0 + box.x1) / 2, box.y1)]
+        knee = min(knees, key=lambda k: abs(k - target))
+        a = page.add_freetext_annot(box, text, fontsize=float(p.get("fontsize", 11)),
+                                    fontname="helv",
+                                    text_color=to_rgb(p.get("text_color")) or (0, 0, 0),
+                                    fill_color=fill, border_width=width,
+                                    callout=((target.x, target.y), (knee.x, knee.y)),
+                                    line_end=HEADS.get(p.get("head"), HEADS["open"]),
+                                    rotate=page.rotation)
+    elif kind == "stamp":
+        from . import stamps
+        if model.get("detail") is None:
+            model["detail"] = stamps.detail_line(author()) if p.get("date", True) else ""
+        label = p.get("label") or "APPROVED"
+        if label.startswith(stamps.IMAGE_PREFIX):
+            png, _aspect = stamps.image_stamp(label[len(stamps.IMAGE_PREFIX):])
+        else:
+            png, _aspect = stamps.render(label, p.get("stroke") or "#c00000", model["detail"])
+        if png is None:
+            raise ValueError("The stamp image is missing from the stamp library.")
+        a = page.add_stamp_annot(model["rect"], stamp=pymupdf.Pixmap(png))
     elif kind == "note":
         a = page.add_text_annot(model["rect"].tl, text or " ", icon="Note")
     elif kind == "textbox":
@@ -207,19 +270,28 @@ def write(page, model):
     else:
         raise ValueError("unknown annotation kind " + kind)
 
-    if kind != "textbox":
-        if kind in ("rect", "ellipse"):
+    if kind not in ("textbox", "callout", "stamp"):
+        if kind in ("rect", "ellipse", "polygon"):
             a.set_colors(stroke=stroke, fill=fill)
         elif kind == "arrow" and "closed" in (p.get("head") or ""):
             a.set_colors(stroke=stroke, fill=stroke)
         else:
             a.set_colors(stroke=stroke)
-        if kind in ("rect", "ellipse", "line", "arrow", "ink"):
+        if kind in ("rect", "ellipse", "polygon") and p.get("cloud"):
+            a.set_border(width=width, clouds=2)
+        elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline"):
             a.set_border(width=width)
     if p.get("opacity", 1) < 1:
         a.set_opacity(float(p["opacity"]))
-    if text and kind != "textbox":
+    if text and kind not in ("textbox", "callout"):
         a.set_info(content=text)
+    now = pymupdf.get_pdf_now()
+    info = {"title": model.get("author") or author(), "modDate": now,
+            "creationDate": model.get("created") or now}
+    if kind == "stamp":
+        info["content"] = (p.get("label") or "").replace("image:", "") + \
+            (f" ({model['detail']})" if model.get("detail") else "")
+    a.set_info(**info)
     if kind == "comment" and model.get("quads"):
         anchor = pymupdf.Rect()
         for q in model["quads"]:
@@ -229,20 +301,25 @@ def write(page, model):
     a.update()
 
     doc = page.parent
-    if kind == "textbox" and width > 0 and stroke:
+    if kind in ("textbox", "callout") and width > 0 and stroke:
         _recolor_textbox_border(doc, a, stroke)
-    elif kind == "textbox" and width > 0 and not stroke:
-        pass
-    doc.xref_set_key(a.xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps({"kind": kind, "props": p})))
+    store = {"kind": kind, "props": p}
+    if kind == "callout":
+        store["geom"] = {"box": list(model["rect"]), "target": list(model["points"][0])}
+    elif kind == "stamp":
+        store["geom"] = {"detail": model.get("detail") or ""}
+    doc.xref_set_key(a.xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
     return a
 
 
 # ---- geometry edits on a model -------------------------------------------------
 def bounds(model):
     """Rect that the selection handles act on."""
-    if model["kind"] in ("line", "arrow"):
-        a, b = model["points"]
-        return pymupdf.Rect(a, b).normalize()
+    if model["kind"] in POINTED:
+        r = pymupdf.Rect(model["points"][0], model["points"][0])
+        for q in model["points"][1:]:
+            r |= q
+        return r
     if model["kind"] == "ink":
         r = pymupdf.Rect()
         for s in model["strokes"]:
@@ -264,6 +341,8 @@ def movable(model):
 def copy(model):
     m = dict(model)
     m["props"] = dict(model["props"])
+    if model["kind"] == "callout" and "points" in m:
+        m["points"] = [pymupdf.Point(q) for q in m["points"]]
     if "rect" in m:
         m["rect"] = pymupdf.Rect(m["rect"])
     if "points" in m:
@@ -290,7 +369,7 @@ def resized(model, new_rect):
     old = bounds(model)
     new_rect = pymupdf.Rect(new_rect).normalize()
     if m["kind"] in BOXED:
-        m["rect"] = new_rect
+        m["rect"] = new_rect             # (a callout's target point stays where it is)
         return m
     sx = new_rect.width / old.width if old.width else 1
     sy = new_rect.height / old.height if old.height else 1

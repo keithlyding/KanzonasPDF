@@ -1,5 +1,6 @@
 """Scrolling view of one open document, plus every editing operation on it."""
 
+import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -52,6 +53,7 @@ class DocumentView(QScrollArea):
     statusMessage = Signal(str)
     selectionChanged = Signal()
     signedDocument = Signal()
+    selectToolRequested = Signal()
     requestSignature = Signal(int, int)      # page index, signature field xref
 
     def __init__(self, path, parent=None):
@@ -76,6 +78,7 @@ class DocumentView(QScrollArea):
         self.show_comment_boxes = True
         self._inline = None
         self.sig_images = {}           # kind -> (png bytes, QPixmap)
+        self._stamp_cache = {}
         self.signed = False
         self.protect_on_save = False
         self.search_hits = {}
@@ -475,12 +478,54 @@ class DocumentView(QScrollArea):
                 return
             self._create(index, {"kind": "textbox", "rect": rect, "text": text, "props": props})
             return
+        if tool == "callout":
+            text, ok = dialogs.get_text(self, "Callout", "Text:")
+            if not ok or not text.strip():
+                return
+            box = pymupdf.Rect(b.x, b.y, b.x + 160, b.y + 40)
+            if b.x < a.x:                       # box to the left of the target
+                box = pymupdf.Rect(b.x - 160, b.y, b.x, b.y + 40)
+            self._create(index, {"kind": "callout", "props": props, "rect": box,
+                                 "points": [a], "text": text})
+            return
         if is_click:
             return
-        model = {"kind": tool, "props": props, "rect": rect}
+        kind = "rect" if tool == "cloud" else tool
+        model = {"kind": kind, "props": props, "rect": rect}
         if tool in ("line", "arrow"):
             model["points"] = [a, b]
         self._create(index, model)
+
+    def apply_poly(self, index, tool, pts):
+        self._create(index, {"kind": tool, "props": self.tool_props(tool), "points": pts,
+                             "rect": pymupdf.Rect()})
+
+    # ---- stamps -----------------------------------------------------------------
+    def stamp_preview(self):
+        key = json.dumps(self.tool_props("stamp"), sort_keys=True)
+        if self._stamp_cache.get("key") != key:
+            from . import stamps
+            png, aspect = stamps.stamp_png(self.tool_props("stamp"), annotations.author())
+            pm = QPixmap()
+            if png:
+                pm.loadFromData(png, "PNG")
+            self._stamp_cache = {"key": key, "pm": pm if png else None, "aspect": aspect or 0.4}
+        return self._stamp_cache["pm"]
+
+    def stamp_rect(self, index, pt):
+        """Unrotated rect for a stamp centred on unrotated point pt (upright on screen)."""
+        from . import stamps
+        self.stamp_preview()
+        page = self.doc[index]
+        w = stamps.default_width(self.tool_props("stamp").get("label") or "")
+        h = w * self._stamp_cache["aspect"]
+        c = pymupdf.Point(pt) * page.rotation_matrix
+        disp = pymupdf.Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
+        return disp * page.derotation_matrix
+
+    def place_stamp(self, index, pt):
+        self._create(index, {"kind": "stamp", "props": self.tool_props("stamp"),
+                             "rect": self.stamp_rect(index, pt)})
 
     def apply_ink(self, index, pts):
         self._create(index, {"kind": "ink", "props": self.tool_props("ink"),
@@ -596,6 +641,18 @@ class DocumentView(QScrollArea):
         self.selectionChanged.emit()
         return model is not None
 
+    def reveal(self, index, xref):
+        """Scroll to an annotation and select it (used by the markups list)."""
+        page = self.doc[index]
+        try:
+            r = page.load_annot(xref).rect * page.rotation_matrix
+        except Exception:
+            return
+        self.goto_page(index, max(0, r.y0 * self.zoom - self.viewport().height() / 3))
+        if self.tool != "select":
+            self.selectToolRequested.emit()
+        self.select_xref(index, xref)
+
     def select_annot_at(self, index, pt):
         xref = self.annot_at(index, pt)
         if xref is None:
@@ -679,6 +736,10 @@ class DocumentView(QScrollArea):
         return self._card_cache[index]
 
     def keyPressEvent(self, e):
+        drawing = [w for w in self.pages if w._poly]
+        if drawing and e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):
+            drawing[0].finish_poly(cancel=e.key() == Qt.Key_Escape)
+            return
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.selection is not None:
             self.delete_selected()
             return

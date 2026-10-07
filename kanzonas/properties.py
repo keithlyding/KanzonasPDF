@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QWidget, QFormLayout, QVBoxLayout, QLabel, QToolB
                                QColorDialog, QPushButton)
 
 from . import annotations as A
+from . import stamps as ST
 
 
 class ColorButton(QToolButton):
@@ -81,11 +82,27 @@ class PropertiesPanel(QWidget):
         self.opacity.setRange(10, 100)
         self.head = QComboBox()
         self.head.addItems(list(A.HEADS))
+        self.label = QComboBox()            # stamp choice
+        self.label.setEditable(True)
+        self.label.setInsertPolicy(QComboBox.NoInsert)
+        self.label.lineEdit().setPlaceholderText("Type your own stamp text")
+        self.add_image = QPushButton("Add image stamp...")
+        self.add_image.clicked.connect(self._add_image_stamp)
+        label_row = QWidget()
+        lr = QVBoxLayout(label_row)
+        lr.setContentsMargins(0, 0, 0, 0)
+        lr.addWidget(self.label)
+        lr.addWidget(self.add_image)
+        self.date = QCheckBox("Add my name and date")
+        self.cloud = QCheckBox("Cloud border")
         self.markup = QComboBox()
         self.markup.addItems([m.capitalize() for m in A.COMMENT_STYLES])
 
         self.rows = {}
-        for key, label, w in (("markup", "Marks text with", self.markup),
+        for key, label, w in (("label", "Stamp", label_row),
+                              ("date", "", self.date),
+                              ("cloud", "", self.cloud),
+                              ("markup", "Marks text with", self.markup),
                               ("text_color", "Text colour", self.text_color),
                               ("stroke", "Line colour", self.stroke),
                               ("fill", "Fill", fill_row),
@@ -110,6 +127,10 @@ class PropertiesPanel(QWidget):
         self.opacity.sliderReleased.connect(self._emit)
         self.head.currentIndexChanged.connect(self._emit)
         self.markup.currentIndexChanged.connect(self._emit)
+        self.label.activated.connect(self._emit)
+        self.label.lineEdit().editingFinished.connect(self._emit)
+        self.date.toggled.connect(self._emit)
+        self.cloud.toggled.connect(self._emit)
         self.show_target(None, None)
 
     def show_target(self, kind, props, selected=False):
@@ -137,7 +158,7 @@ class PropertiesPanel(QWidget):
         if "stroke" in props:
             self.stroke.set_color(props["stroke"])
             self.rows["stroke"][0].setText("Border colour" if kind == "textbox" else
-                                           "Colour" if kind in A.MARKUP + ("note",)
+                                           "Colour" if kind in A.MARKUP + ("note", "stamp")
                                            else "Line colour")
         if "fill" in props:
             self.fill.set_color(props["fill"])
@@ -151,6 +172,12 @@ class PropertiesPanel(QWidget):
             self.fontsize.setValue(float(props["fontsize"]))
         if "head" in props:
             self.head.setCurrentText(props["head"])
+        if "label" in props:
+            self._fill_labels(props["label"])
+        if "date" in props:
+            self.date.setChecked(bool(props["date"]))
+        if "cloud" in props:
+            self.cloud.setChecked(bool(props["cloud"]))
         if "markup" in props:
             self.markup.setCurrentIndex(A.COMMENT_STYLES.index(props["markup"])
                                         if props["markup"] in A.COMMENT_STYLES else 0)
@@ -158,6 +185,28 @@ class PropertiesPanel(QWidget):
             self.opacity.setValue(int(round(float(props["opacity"]) * 100)))
         self._props = dict(props)
         self._loading = False
+
+    def _fill_labels(self, current):
+        self.label.clear()
+        for t in ST.PRESETS:
+            self.label.addItem(t, t)
+        for f in ST.library():
+            self.label.addItem("Image: " + f, ST.IMAGE_PREFIX + f)
+        if current and self.label.findData(current) < 0:
+            self.label.addItem(current, current)          # custom text stamp
+        self.label.setCurrentIndex(max(0, self.label.findData(current)))
+
+    def _add_image_stamp(self):
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getOpenFileName(self, "Image stamp", "",
+                                              "Images (*.png *.jpg *.jpeg *.bmp)")
+        if not path:
+            return
+        name = ST.add_to_library(path)
+        self._loading = True
+        self._fill_labels(ST.IMAGE_PREFIX + name)
+        self._loading = False
+        self._emit()
 
     def _emit(self, *_):
         if self._loading or self._kind is None:
@@ -184,6 +233,15 @@ class PropertiesPanel(QWidget):
             p["head"] = self.head.currentText()
         if "markup" in p:
             p["markup"] = A.COMMENT_STYLES[self.markup.currentIndex()]
+        if "label" in p:
+            data = self.label.currentData()
+            text = self.label.currentText().strip()
+            p["label"] = data if data and self.label.itemText(self.label.currentIndex()) == text \
+                else (text.upper() or "APPROVED")
+        if "date" in p:
+            p["date"] = self.date.isChecked()
+        if "cloud" in p:
+            p["cloud"] = self.cloud.isChecked()
         if "opacity" in p:
             p["opacity"] = self.opacity.value() / 100
         self._props = p

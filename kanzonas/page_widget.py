@@ -13,7 +13,8 @@ from PySide6.QtWidgets import QWidget, QToolTip
 from . import annotations as A
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment"}
-SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser"}
+SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout"}
+POLY_TOOLS = {"polygon", "polyline"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign"}
 SIGN_TOOLS = {"signature", "initials"}
 HANDLE = 7          # handle size in px
@@ -33,7 +34,9 @@ class PageWidget(QWidget):
         self._hover = None          # edit-text hover rect
         self._edit = None           # dragging a selected annotation
         self._cards = []            # [(QRectF, xref)] comment boxes drawn last paint
-        self._ghost = None          # signature preview position (widget coords)
+        self._ghost = None          # signature / stamp preview position (widget coords)
+        self._poly = []             # polygon / polyline points so far (widget coords)
+        self._poly_hover = None
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         self.update_size()
@@ -130,6 +133,24 @@ class PageWidget(QWidget):
             p.setBrush(QColor(235, 242, 255, 160))
             p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
             p.setBrush(Qt.NoBrush)
+        if self._poly:
+            pen = QPen(self.view.tool_color(tool),
+                       max(1.0, float(self.view.tool_props(tool).get("width", 2)) * self.view.zoom))
+            p.setPen(pen)
+            pts = self._poly + ([self._poly_hover] if self._poly_hover is not None else [])
+            for a_, b_ in zip(pts, pts[1:]):
+                p.drawLine(a_, b_)
+            if tool == "polygon" and len(pts) > 2:
+                p.setPen(QPen(self.view.tool_color(tool), 1, Qt.DashLine))
+                p.drawLine(pts[-1], pts[0])
+        if self._ghost is not None and tool == "stamp":
+            pm = self.view.stamp_preview()
+            if pm is not None:
+                r = self.view.stamp_rect(self.index, self.to_pdf(self._ghost))
+                rr = self.to_screen(r)
+                p.setOpacity(0.6)
+                p.drawPixmap(rr, pm, QRectF(pm.rect()))
+                p.setOpacity(1.0)
         if self._ghost is not None and tool in SIGN_TOOLS:
             pm = self.view.sig_pixmap(tool)
             if pm is not None:
@@ -148,6 +169,9 @@ class PageWidget(QWidget):
             p.setPen(pen)
             if tool in ("line", "arrow"):
                 p.drawLine(self._drag_start, self._drag_now)
+            elif tool == "callout":
+                p.drawLine(self._drag_start, self._drag_now)
+                p.drawRect(QRectF(self._drag_now, self._drag_now + QPointF(160, 40) * self.view.zoom))
             elif tool == "ellipse":
                 p.drawEllipse(QRectF(self._drag_start, self._drag_now).normalized())
             else:
@@ -219,12 +243,18 @@ class PageWidget(QWidget):
             return out
         if not A.movable(model) or model["kind"] == "note":
             return {}
+        extra = {}
+        if model["kind"] == "callout":
+            s_ = self.to_screen_pt(model["points"][0])
+            extra["p0"] = QRectF(s_.x() - h / 2, s_.y() - h / 2, h, h)
         r = self.to_screen(A.bounds(model))
         pts = {"tl": r.topLeft(), "tr": r.topRight(), "bl": r.bottomLeft(),
                "br": r.bottomRight(), "t": QPointF(r.center().x(), r.top()),
                "b": QPointF(r.center().x(), r.bottom()), "l": QPointF(r.left(), r.center().y()),
                "r": QPointF(r.right(), r.center().y())}
-        return {k: QRectF(v.x() - h / 2, v.y() - h / 2, h, h) for k, v in pts.items()}
+        out = {k: QRectF(v.x() - h / 2, v.y() - h / 2, h, h) for k, v in pts.items()}
+        out.update(extra)
+        return out
 
     def _paint_selection(self, p, page):
         model = self._selected_here()
@@ -237,6 +267,10 @@ class PageWidget(QWidget):
         if shown["kind"] in ("line", "arrow"):
             a, b = (self.to_screen_pt(q, page) for q in shown["points"])
             p.drawLine(a, b)
+        elif shown["kind"] == "callout":
+            p.drawRect(self.to_screen(shown["rect"], page).adjusted(-3, -3, 3, 3))
+            p.drawLine(self.to_screen_pt(shown["points"][0], page),
+                       self.to_screen(shown["rect"], page).center())
         else:
             p.drawRect(self.to_screen(A.bounds(shown), page).adjusted(-3, -3, 3, 3))
         if not self._edit:
@@ -272,6 +306,13 @@ class PageWidget(QWidget):
             return
         if tool in SIGN_TOOLS:
             self.view.place_signature(self.index, tool, pdf)
+            return
+        if tool == "stamp":
+            self.view.place_stamp(self.index, pdf)
+            return
+        if tool in POLY_TOOLS:
+            self._poly.append(pos)
+            self.update()
             return
         if tool in FORM_TOOLS:
             model = self._selected_here()
@@ -347,8 +388,12 @@ class PageWidget(QWidget):
         pos = e.position()
         tool = self.view.tool
         if not e.buttons():
-            if tool in SIGN_TOOLS:
+            if tool in SIGN_TOOLS or tool == "stamp":
                 self._ghost = pos
+                self.update()
+                return
+            if self._poly:
+                self._poly_hover = pos
                 self.update()
                 return
             if tool in ("select", "hand") and self.view.widget_at(self.index, self.to_pdf(pos)) is not None:
@@ -443,7 +488,19 @@ class PageWidget(QWidget):
             if len(pts) > 1:
                 self.view.apply_ink(self.index, pts)
 
+    def finish_poly(self, cancel=False):
+        pts, self._poly, self._poly_hover = self._poly, [], None
+        self.update()
+        tool = self.view.tool
+        if cancel or len(pts) < 2 or (tool == "polygon" and len(pts) < 3):
+            return
+        self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
+
     def mouseDoubleClickEvent(self, e):
+        if self.view.tool in POLY_TOOLS:
+            # the double-click's first press already added this point
+            self.finish_poly()
+            return
         if self.view.tool in FORM_TOOLS:
             xref = self.view.widget_at(self.index, self.to_pdf(e.position()))
             if xref is not None:
@@ -457,6 +514,7 @@ class PageWidget(QWidget):
                 self.view.edit_annot_at(self.index, self.to_pdf(e.position()))
 
     def leaveEvent(self, e):
+        self._poly_hover = None
         if self._ghost is not None:
             self._ghost = None
             self.update()
