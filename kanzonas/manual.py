@@ -88,6 +88,24 @@ markups keep their proportions. Shift while dragging a line's end keeps it at 45
 <li><b>Eraser</b> (X): click a markup to delete it, or drag a box to delete everything inside.</li>
 </ul>
 
+<h2 id="snap">Grid and snapping</h2>
+<ul>
+<li><b>Show grid</b> (View menu or toolbar) draws a grid over the page. It's only on screen:
+it isn't saved in or printed with the PDF.</li>
+<li><b>Grid settings</b> (View menu): the spacing in inches, millimeters or points, measured on
+the paper, and how often a darker line is drawn. When zoomed far out, only the darker lines
+are shown.</li>
+<li><b>Snap to grid:</b> points you draw or drag jump to the nearest grid intersection.</li>
+<li><b>Snap to objects:</b> points jump to nearby markup corners, edge midpoints, centers and
+line ends, and to the drawing's own line ends, midpoints and corners (useful on CAD sheets).
+A pink square shows an object snap, a blue cross a grid snap. When both are on, a nearby
+object wins; otherwise the grid is used.</li>
+<li>Snapping works for shapes, lines, measurements, polygons, callouts, text boxes, stamps,
+notes and counts, and when moving or resizing markups (a moved markup snaps by its
+top-left corner). The pen and text markup tools don't snap.</li>
+<li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
+</ul>
+
 <h2 id="properties">Colors, borders and styles (Properties panel)</h2>
 <ul>
 <li>With a tool active, the Properties panel (F6) sets that tool's <b>default style</b>, saved
@@ -216,6 +234,7 @@ Plain text (.txt).</li>
 <tr><td>F1</td><td>This manual</td></tr>
 <tr><td>F11</td><td>CAD-style mouse on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
+<tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>
 </table>
 <p>Change any shortcut in View &gt; Keyboard shortcuts.</p>

@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.20 | (this) | Every toolbar button and box has a tooltip describing what it does, with its shortcut |
+| 0.21 | (this) | Grid (show/hide, adjustable spacing in in/mm/pt, darker line every N); Snap to grid and Snap to objects (markup corners, ends, centers; the drawing's line ends, midpoints and corners), each switchable; Alt = place without snapping; snap marker while drawing |
+| 0.20 | 5213ff8 | Every toolbar button and box has a tooltip describing what it does, with its shortcut |
 | 0.19 | ea9ab2a | Page navigation uses left / right buttons beside the page number; CAD-style mouse (View menu, toolbar, F11): scroll wheel zooms around the cursor; hold the wheel and drag to pan with any tool |
 | 0.18 | 00aa7c7 | User manual kept complete: names every menu command; self-test (and so the Windows build) fails if a command is missing from the manual; CLAUDE.md rules require manual, version and changelog updates with every change |
 | 0.17 | 3b481e8 | Built-in user manual: Help > User manual (F1), with contents list and search |

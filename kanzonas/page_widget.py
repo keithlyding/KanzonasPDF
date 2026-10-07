@@ -32,6 +32,8 @@ TILE = 512                  # tile size in device pixels
 TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
 ROT_GAP = 26        # rotation handle distance above the selection, px
+# tools whose points snap (to the grid / to objects) while drawing
+SNAP_TOOLS = (SHAPE_TOOLS - {"eraser"}) | POLY_TOOLS | {"stamp", "note", "m_count"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "callout"}   # Shift = 45° steps
 SQUARE_TOOLS = {"rect", "ellipse", "cloud"}                               # Shift = square / circle
 
@@ -78,6 +80,7 @@ class PageWidget(QWidget):
         self._poly = []             # polygon / polyline points so far (widget coords)
         self._poly_hover = None
         self._marquee = False       # Ctrl+drag with Select: selection box only, no text
+        self._snap_mark = None      # (widget point, "object" | "grid") last snap, for the marker
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         self.update_size()
@@ -195,6 +198,8 @@ class PageWidget(QWidget):
                     return
             p.drawPixmap(0, 0, self._pix)
         page = self.view.doc[self.index]
+        if self.view.grid_on:
+            self._paint_grid(p, QRectF(event.rect()))
         p.setRenderHint(QPainter.Antialiasing)
 
         hits = self.view.search_hits.get(self.index)
@@ -295,6 +300,7 @@ class PageWidget(QWidget):
             p.drawPath(path)
 
         self._paint_selection(p, page)
+        self._paint_snap_mark(p)
 
         if self.view.current_page() == self.index and self.view.page_count() > 1:
             p.setPen(QPen(QColor(0, 120, 215), 1))
@@ -454,6 +460,62 @@ class PageWidget(QWidget):
                     p.drawRect(r)
             p.setBrush(Qt.NoBrush)
 
+    # ---- snapping -------------------------------------------------------
+    def _snapping(self, e=None):
+        v = self.view
+        if not (v.snap_grid or v.snap_objects):
+            return False
+        return e is None or not e.modifiers() & Qt.AltModifier      # Alt = don't snap
+
+    def _snap(self, pos, e=None, exclude=()):
+        """Widget point -> snapped widget point (records the marker)."""
+        self._snap_mark = None
+        if not self._snapping(e):
+            return pos
+        r = self.view.snap_point(self.index, self.to_pdf(pos), exclude)
+        if r is None:
+            return pos
+        sp = self.to_screen_pt(r[0])
+        self._snap_mark = (sp, r[1])
+        return sp
+
+    def _paint_grid(self, p, exposed):
+        v = self.view
+        step = v.grid_spacing * v.zoom
+        major = max(1, int(v.grid_major))
+        if step * major < 6:
+            return
+        only_major = step < 6
+        if only_major:
+            step, major = step * major, 1
+        minor_pen = QPen(QColor(0, 120, 215, 45), 0)
+        major_pen = QPen(QColor(0, 120, 215, 100), 0)
+        x0, x1 = exposed.left(), exposed.right()
+        y0, y1 = exposed.top(), exposed.bottom()
+        i = int(x0 // step)
+        while i * step <= x1:
+            p.setPen(major_pen if i % major == 0 else minor_pen)
+            p.drawLine(QPointF(i * step, y0), QPointF(i * step, y1))
+            i += 1
+        j = int(y0 // step)
+        while j * step <= y1:
+            p.setPen(major_pen if j % major == 0 else minor_pen)
+            p.drawLine(QPointF(x0, j * step), QPointF(x1, j * step))
+            j += 1
+
+    def _paint_snap_mark(self, p):
+        if self._snap_mark is None:
+            return
+        pt, kind = self._snap_mark
+        p.setBrush(Qt.NoBrush)
+        if kind == "object":
+            p.setPen(QPen(QColor(230, 0, 160), 1.5))
+            p.drawRect(QRectF(pt.x() - 5, pt.y() - 5, 10, 10))
+        else:
+            p.setPen(QPen(QColor(0, 120, 215), 1.5))
+            p.drawLine(pt + QPointF(-6, 0), pt + QPointF(6, 0))
+            p.drawLine(pt + QPointF(0, -6), pt + QPointF(0, 6))
+
     # ---- mouse ----------------------------------------------------------
     def _card_at(self, pos):
         for r, xref in self._cards:
@@ -489,6 +551,9 @@ class PageWidget(QWidget):
             return
         if tool in EDIT_IN_PLACE and not self._poly and self._press_on_markup(pos, pdf, ctrl_held(e)):
             return
+        if tool in SNAP_TOOLS:
+            pos = self._snap(pos, e)
+            pdf = self.to_pdf(pos)
         if tool in SIGN_TOOLS:
             self.view.place_signature(self.index, tool, pdf)
             return
@@ -577,15 +642,26 @@ class PageWidget(QWidget):
             self.view.clear_selection()
         return False
 
-    def _edit_preview(self, pos, shift=False):
+    def _snapped_delta(self, model, pos, snap):
+        """PDF move vector for a drag, snapping the markup's top-left corner (as displayed)."""
         ed = self._edit
+        if not snap:
+            return self.to_pdf(pos) - self.to_pdf(ed["start"])
+        corner = self.to_screen(A.bounds(model)).topLeft()
+        moved = self._snap(corner + (pos - ed["start"]), exclude=set(self.view.selected_xrefs()))
+        return self.to_pdf(moved) - self.to_pdf(corner)
+
+    def _edit_preview(self, pos, shift=False, snap=False):
+        ed = self._edit
+        excl = set(self.view.selected_xrefs())
         if ed["mode"] == "group":
-            delta = self.to_pdf(pos) - self.to_pdf(ed["start"])
+            delta = self._snapped_delta(ed["group"][0][1], pos, snap)
             return [A.moved(m, delta) for _x, m in ed["group"]]
         model = ed["model"]
         if ed["mode"] == "move":
-            delta = self.to_pdf(pos) - self.to_pdf(ed["start"])
-            return A.moved(model, delta)
+            return A.moved(model, self._snapped_delta(model, pos, snap))
+        if snap and (ed["mode"] in ("p0", "p1") or ed["mode"].startswith("v")):
+            pos = self._snap(pos, exclude=excl)
         if ed["mode"] == "rot":
             c = self.to_screen(A.bounds(model)).center()
             a0 = math.atan2(ed["start"].y() - c.y(), ed["start"].x() - c.x())
@@ -617,6 +693,17 @@ class PageWidget(QWidget):
             y0 += d.y()
         if "b" in ed["mode"]:
             y1 += d.y()
+        if snap and ed["mode"] in ("tl", "tr", "bl", "br", "t", "b", "l", "r"):
+            sp = self._snap(QPointF(x0 if "l" in ed["mode"] else x1,
+                                    y0 if "t" in ed["mode"] else y1), exclude=excl)
+            if "l" in ed["mode"]:
+                x0 = sp.x()
+            if "r" in ed["mode"]:
+                x1 = sp.x()
+            if "t" in ed["mode"]:
+                y0 = sp.y()
+            if "b" in ed["mode"]:
+                y1 = sp.y()
         if shift and ed["mode"] in ("tl", "tr", "bl", "br"):
             # Shift on a corner: squares / circles stay perfect, everything else keeps its shape
             fixed = QPointF(x1 if "l" in ed["mode"] else x0, y1 if "t" in ed["mode"] else y0)
@@ -645,6 +732,14 @@ class PageWidget(QWidget):
                 self._ghost = pos
                 self.update()
                 return
+            if tool in SNAP_TOOLS and self._snapping(e):
+                old = self._snap_mark
+                pos = self._snap(pos, e)
+                if old != self._snap_mark and not self._poly:
+                    self.update()
+            elif self._snap_mark is not None:
+                self._snap_mark = None
+                self.update()
             if self._poly:
                 self._poly_hover = snap45(self._poly[-1], pos) if shift_held(e) else pos
                 self.update()
@@ -666,7 +761,7 @@ class PageWidget(QWidget):
             self.view.continue_pan(e.globalPosition())
         elif self._edit is not None:
             if (pos - self._edit["start"]).manhattanLength() >= 3:
-                self._edit["preview"] = self._edit_preview(pos, shift_held(e))
+                self._edit["preview"] = self._edit_preview(pos, shift_held(e), self._snapping(e))
                 self.update()
         elif self._text_sel is not None:
             self._drag_now = pos
@@ -674,6 +769,8 @@ class PageWidget(QWidget):
                 self.view.text_selection(self.index, self.to_pdf(self._drag_start), self.to_pdf(pos))
             self.update()
         elif self._drag_start is not None:
+            if tool in SNAP_TOOLS:
+                pos = self._snap(pos, e)
             if shift_held(e) and tool in STRAIGHT_TOOLS:
                 pos = snap45(self._drag_start, pos)
             elif shift_held(e) and tool in SQUARE_TOOLS:
@@ -708,6 +805,8 @@ class PageWidget(QWidget):
             self.unsetCursor()
 
     def mouseReleaseEvent(self, e):
+        if e.button() == Qt.LeftButton and self._snap_mark is not None and self._edit is not None:
+            self._snap_mark = None
         if e.button() == Qt.MiddleButton and getattr(self, "_mid_pan", False):
             self._mid_pan = False
             self.view.end_pan()
@@ -787,6 +886,9 @@ class PageWidget(QWidget):
 
     def leaveEvent(self, e):
         self._poly_hover = None
+        if self._snap_mark is not None:
+            self._snap_mark = None
+            self.update()
         if self._ghost is not None:
             self._ghost = None
             self.update()

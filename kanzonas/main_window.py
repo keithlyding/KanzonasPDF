@@ -87,6 +87,10 @@ BUTTON_TIPS = {
     "a_fit_page": "Zoom so the whole page fits in the window",
     "a_ocr": "Recognize text (OCR): make scanned pages searchable and selectable",
     "a_rot_l": "Rotate the page counterclockwise", "a_rot_r": "Rotate the page clockwise",
+    "a_grid": "Show grid: a grid over the page (spacing in View > Grid settings)",
+    "a_snap_grid": "Snap to grid: points jump to the nearest grid intersection (Alt = no snap)",
+    "a_snap_objects": "Snap to objects: points jump to markup corners, ends and centers and "
+                      "to the drawing's line ends and midpoints (Alt = no snap)",
     "tool_highlight": "Highlight: drag across text",
     "tool_underline": "Underline: drag across text",
     "tool_strikeout": "Strike out: drag across text",
@@ -251,6 +255,22 @@ class MainWindow(QMainWindow):
         self.a_cad_mouse.setCheckable(True)
         self.a_cad_mouse.setChecked(self.settings.value("cad_mouse", "false") == "true")
         DocumentView.cad_mouse = self.a_cad_mouse.isChecked()
+        # grid and snapping (shared by all open documents, remembered)
+        self.a_grid = self._act("Show &grid", self._apply_grid_settings,
+                                tip="Show a grid over the page (spacing in Grid settings)")
+        self.a_snap_grid = self._act("Snap to g&rid", self._apply_grid_settings,
+                                     tip="Points you draw or drag jump to the nearest grid "
+                                         "intersection (hold Alt to place freely)")
+        self.a_snap_objects = self._act("Snap to &objects", self._apply_grid_settings,
+                                        tip="Points jump to nearby markup corners, ends and centers "
+                                            "and to the drawing's line ends and midpoints "
+                                            "(hold Alt to place freely)")
+        for a, key in ((self.a_grid, "grid_on"), (self.a_snap_grid, "snap_grid"),
+                       (self.a_snap_objects, "snap_objects")):
+            a.setCheckable(True)
+            a.setChecked(self.settings.value(key, "false") == "true")
+        self.a_grid_settings = self._act("Grid &settings...", self.grid_settings)
+        self._apply_grid_settings(save=False)
         self.a_split = self._act("&Split view", self._toggle_split, "F10")
         self.a_split.setCheckable(True)
         self.a_shortcuts = self._act("&Keyboard shortcuts...", self.edit_shortcuts)
@@ -348,6 +368,9 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_split)
         m.addAction(self.a_cad_mouse)
+        m.addSeparator()
+        m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_grid_settings])
+        m.addSeparator()
         tm = m.addMenu("&Theme")
         tm.addActions(list(self.theme_actions.values()))
         m.addAction(self.a_labels)
@@ -428,6 +451,8 @@ class MainWindow(QMainWindow):
         tb.addWidget(self.zoom_box)
         tb.addAction(self.a_zoom_in)
         tb.addActions([self.a_fit_width, self.a_fit_page, self.a_cad_mouse])
+        tb.addSeparator()
+        tb.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects])
         tb.addSeparator()
         self.page_spin = QSpinBox()
         self.page_spin.setMinimum(1)
@@ -1477,7 +1502,8 @@ class MainWindow(QMainWindow):
     TOOLBAR_ICON_KEYS = {"a_open": "open", "a_save": "save", "a_print": "print", "a_undo": "undo",
                          "a_redo": "redo", "a_zoom_in": "zoom_in", "a_zoom_out": "zoom_out",
                          "a_fit_width": "fit_width", "a_fit_page": "fit_page", "a_ocr": "ocr",
-                         "a_rot_l": "rot_l", "a_rot_r": "rot_r", "a_cad_mouse": "cad_mouse"}
+                         "a_rot_l": "rot_l", "a_rot_r": "rot_r", "a_cad_mouse": "cad_mouse",
+                         "a_grid": "grid", "a_snap_grid": "snap_grid", "a_snap_objects": "snap_objects"}
 
     def _apply_icons(self):
         for attr, key in self.TOOLBAR_ICON_KEYS.items():
@@ -1692,6 +1718,78 @@ class MainWindow(QMainWindow):
         if self.markups_dock.isVisible():
             v = self.view()
             self.markups.refresh(v.doc if v else None)
+
+    # ---- grid and snapping -------------------------------------------------------------
+    def _apply_grid_settings(self, *_, save=True):
+        from . import snapping
+        DocumentView.grid_on = self.a_grid.isChecked()
+        DocumentView.snap_grid = self.a_snap_grid.isChecked()
+        DocumentView.snap_objects = self.a_snap_objects.isChecked()
+        unit = self.settings.value("grid_unit", "in")
+        try:
+            value = float(self.settings.value("grid_value", 0.5))
+            major = int(self.settings.value("grid_major", 4))
+        except (TypeError, ValueError):
+            value, major = 0.5, 4
+        DocumentView.grid_spacing = value * snapping.UNITS.get(unit, 72.0)
+        DocumentView.grid_major = major
+        if save:
+            for a, key in ((self.a_grid, "grid_on"), (self.a_snap_grid, "snap_grid"),
+                           (self.a_snap_objects, "snap_objects")):
+                self.settings.setValue(key, "true" if a.isChecked() else "false")
+        if hasattr(self, "tabs"):
+            for i in range(self.tabs.count()):
+                for pw in self.tabs.widget(i).pages:
+                    pw.update()
+
+    def grid_settings(self):
+        from PySide6.QtWidgets import QDoubleSpinBox
+        from . import snapping
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Grid settings")
+        form = QFormLayout(dlg)
+        value = QDoubleSpinBox()
+        value.setDecimals(3)
+        value.setRange(0.001, 10000)
+        unit = QComboBox()
+        for k, name in snapping.UNIT_NAMES.items():
+            unit.addItem(name, k)
+        unit.setCurrentIndex(max(0, unit.findData(self.settings.value("grid_unit", "in"))))
+        value.setValue(float(self.settings.value("grid_value", 0.5)))
+        row = QWidget()
+        rl = QHBoxLayout(row)
+        rl.setContentsMargins(0, 0, 0, 0)
+        rl.addWidget(value)
+        rl.addWidget(unit)
+        form.addRow("Grid spacing (on paper)", row)
+        major = QSpinBox()
+        major.setRange(1, 100)
+        major.setValue(int(self.settings.value("grid_major", 4)))
+        form.addRow("Darker line every", major)
+        show = QCheckBox("Show grid")
+        show.setChecked(self.a_grid.isChecked())
+        snap = QCheckBox("Snap to grid")
+        snap.setChecked(self.a_snap_grid.isChecked())
+        objs = QCheckBox("Snap to objects")
+        objs.setChecked(self.a_snap_objects.isChecked())
+        for c in (show, snap, objs):
+            form.addRow("", c)
+        hint = QLabel("Hold Alt while drawing or dragging to place a point without snapping.")
+        hint.setWordWrap(True)
+        form.addRow(hint)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        form.addRow(btns)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        self.settings.setValue("grid_value", value.value())
+        self.settings.setValue("grid_unit", unit.currentData())
+        self.settings.setValue("grid_major", major.value())
+        self.a_grid.setChecked(show.isChecked())
+        self.a_snap_grid.setChecked(snap.isChecked())
+        self.a_snap_objects.setChecked(objs.isChecked())
+        self._apply_grid_settings()
 
     def _step_page(self, delta):
         v = self.view()

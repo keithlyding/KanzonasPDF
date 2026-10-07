@@ -240,6 +240,48 @@ class DocumentView(QScrollArea):
         self.set_zoom(min(avail_w / r.width, avail_h / r.height))
         self.goto_page(page)
 
+    # ---- grid and snapping (View menu; settings shared by all documents) -------------
+    grid_on = False
+    grid_spacing = 36.0            # points between grid lines
+    grid_major = 4                 # every Nth line drawn darker
+    snap_grid = False
+    snap_objects = False
+    SNAP_PX = 9                    # snap distance on screen, pixels
+
+    def _content_key(self, page):
+        doc = page.parent
+        return tuple((x, len(doc.xref_stream_raw(x) or b"")) for x in page.get_contents())
+
+    def _content_snaps(self, index):
+        from . import snapping
+        page = self.doc[index]
+        cached = self._snap_content.get(index)
+        if cached is not None and index in self._snap_recheck:
+            self._snap_recheck.discard(index)
+            if cached[0] != self._content_key(page):
+                cached = None
+        if cached is None:
+            cached = (self._content_key(page), snapping.content_index(page))
+            self._snap_content[index] = cached
+        return cached[1]
+
+    def snap_point(self, index, pt, exclude=()):
+        """Snap a PDF point: to the nearest object point within SNAP_PX, else to the grid.
+        Returns (point, kind) with kind 'object' or 'grid', or None when nothing applies."""
+        from . import snapping
+        page = self.doc[index]
+        if self.snap_objects:
+            tol = self.SNAP_PX / self.zoom
+            if index not in self._snap_markups:
+                self._snap_markups[index] = snapping.markup_index(page)
+            hits = [h for h in (self._snap_markups[index].nearest(pt, tol, exclude),
+                                self._content_snaps(index).nearest(pt, tol)) if h is not None]
+            if hits:
+                return min(hits, key=lambda h: abs(h - pt)), "object"
+        if self.snap_grid and self.grid_spacing > 0:
+            return snapping.grid_snap(page, pt, self.grid_spacing), "grid"
+        return None
+
     # CAD-style mouse (View menu): the wheel zooms around the cursor, like AutoCAD.
     # Holding the wheel (middle button) down and dragging pans in either mode.
     cad_mouse = False
@@ -399,6 +441,11 @@ class DocumentView(QScrollArea):
         self._line_cache = {}
         self._word_cache = {}
         self._card_cache = {}
+        self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
+        # the drawing's own line work rarely changes: re-check it lazily instead of dropping it
+        if not hasattr(self, "_snap_content"):
+            self._snap_content = {}    # page index -> (content key, PointIndex)
+        self._snap_recheck = set(self._snap_content)
 
     def _words(self, index):
         """Selectable text units: individual characters, so selections can start and end
