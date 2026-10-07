@@ -25,10 +25,13 @@ def _memory_mb():
                         ("PagefileUsage", ctypes.c_size_t), ("PeakPagefileUsage", ctypes.c_size_t)]
         pmc = PMC()
         pmc.cb = ctypes.sizeof(PMC)
-        ctypes.windll.psapi.GetProcessMemoryInfo(ctypes.windll.kernel32.GetCurrentProcess(),
-                                                 ctypes.byref(pmc), pmc.cb)
+        k32 = ctypes.windll.kernel32
+        k32.GetCurrentProcess.restype = wintypes.HANDLE      # a 64-bit handle, not an int
+        k32.K32GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(PMC), wintypes.DWORD]
+        if not k32.K32GetProcessMemoryInfo(k32.GetCurrentProcess(), ctypes.byref(pmc), pmc.cb):
+            raise OSError("GetProcessMemoryInfo failed")
         return pmc.PeakWorkingSetSize / 1e6
-    except Exception:
+    except (AttributeError, OSError):
         import resource
         return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
 
@@ -91,6 +94,7 @@ def run(log_path):
         assert startup < 5, f"start-up took {startup:.1f}s (limit 5s)"
         assert first < 5, f"opening a 60k-line sheet took {first:.1f}s (limit 5s)"
         assert zoom < 5, f"zooming to 400% took {zoom:.1f}s (limit 5s)"
+        assert mem > 1, "couldn't measure memory"
         assert mem < 800, f"memory {mem:.0f} MB (limit 800 MB)"
         return f"(start-up {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s, {mem:.0f} MB)"
     check("performance budget", t_performance)
