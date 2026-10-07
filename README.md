@@ -127,7 +127,7 @@ Icons: Material Design Icons via QtAwesome (MIT). App icon and logo: the owner's
 ## License
 
 PyMuPDF is AGPL-3.0, so KanzonasPDF must also be distributed under the AGPL-3.0,
-with its source code available. That's fine for a free, open-source giveaway.
+with its source code available (this repository). The full license text is in [LICENSE](LICENSE).
 
 ## Known limitations
 
@@ -137,7 +137,7 @@ with its source code available. That's fine for a free, open-source giveaway.
 - Arrowhead size follows line width (that's how PDF arrows work).
 - Text box borders use their own color in this app; Acrobat may redraw a box's border
   in its text color if you edit that box in Acrobat.
-- Protection uses standard PDF permissions: Acrobat, PDF-XChange and this app honour them,
+- Protection uses standard PDF permissions: Acrobat, PDF-XChange and this app honor them,
   but they're not tamper-proof against determined tools; use a digital signature for that.
 - A personal certificate proves a document is unchanged, but others' software only shows your
   identity as verified if they trust your certificate (or you use one from a certificate

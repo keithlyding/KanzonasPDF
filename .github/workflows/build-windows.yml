@@ -135,6 +135,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: KanzonasPDF ${{ steps.ver.outputs.version }}
+          prerelease: ${{ startsWith(steps.ver.outputs.version, '0.') }}
           body: |
             **Download `KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe`** and run it (no administrator rights needed).
             **Portable (no install; settings stay with the app):** download `-portable.zip`, unzip it
