@@ -2591,12 +2591,13 @@ class MainWindow(QMainWindow):
         self._manual.activateWindow()
 
     def about(self):
-        from . import branding, theme
+        from . import branding
         dlg = QDialog(self)
         dlg.setWindowTitle("About " + APP_NAME)
         lay = QVBoxLayout(dlg)
         logo = QLabel()
-        logo.setPixmap(branding.logo_pixmap(96, dark=theme.is_dark()))
+        logo.setPixmap(branding.logo_pixmap(110))
+        logo.setStyleSheet("background: #f7f9fa; border-radius: 6px; padding: 6px;")
         lay.addWidget(logo)
         text = QLabel(
             f"Version {__version__}. A free, fast PDF reader and editor.<br><br>"
