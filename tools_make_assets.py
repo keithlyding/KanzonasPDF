@@ -3,10 +3,12 @@
     QT_QPA_PLATFORM=offscreen python tools_make_assets.py
 
 Sources (the owner's artwork):
-- assets/kanzonas-mark-source.png  cactus + sunflower (from the owner's primary logo)
+- assets/kanzonas-mark-page-source.png  page + cactus + sunflower (the owner's primary logo,
+  page outline darkened)
+- assets/kanzonas-mark-source.png  cactus + sunflower only (for the 16-32 px icon)
 - assets/kanzonas-logo-source.png  the owner's full logo
-The app icon's frame and page (the owner's application-icon design) are redrawn here as
-vectors so the large icon is sharp; sizes 16-32 use the cactus and sunflower alone with a
+The app icon's frame (the owner's application-icon design) is redrawn here as vectors so
+the large icon is sharp; sizes 16-32 use the cactus and sunflower alone with a
 thin white edge. Outputs: kanzonas.ico, kanzonas.png, installer BMPs and the embedded copy
 kanzonas/branding_data.py.
 """
@@ -21,6 +23,7 @@ from PySide6.QtWidgets import QApplication
 
 app = QApplication(sys.argv)
 mark = QImage("assets/kanzonas-mark-source.png")
+mark_page = QImage("assets/kanzonas-mark-page-source.png")
 
 
 def big_icon(size=512):
@@ -36,33 +39,14 @@ def big_icon(size=512):
     p.setPen(Qt.NoPen)
     p.setBrush(g)
     p.drawRoundedRect(QRectF(4, 4, 248, 248), 44, 44)
-    page = QPainterPath()                             # white page, green edge, folded corner
-    page.moveTo(30, 24)
-    page.lineTo(186, 24)
-    page.lineTo(228, 66)
-    page.lineTo(228, 226)
-    page.quadTo(228, 232, 222, 232)
-    page.lineTo(34, 232)
-    page.quadTo(28, 232, 28, 226)
-    page.lineTo(28, 30)
-    page.quadTo(28, 24, 30, 24)
+    # white panel with a green edge, then the owner's page + cactus + sunflower, with the
+    # page coming out above the cactus as in the original artwork
     p.setPen(QPen(QColor("#6aaa35"), 3))
     p.setBrush(QColor("white"))
-    p.drawPath(page)
-    fold = QPainterPath()
-    fold.moveTo(186, 24)
-    fold.lineTo(186, 66)
-    fold.lineTo(228, 66)
-    fold.closeSubpath()
-    p.setPen(QPen(QColor("#2b2b2b"), 2))
-    p.setBrush(QColor("#3c3c3c"))
-    p.drawPath(fold)
-    p.setPen(QPen(QColor("#8c8c8c"), 5, Qt.SolidLine, Qt.RoundCap))   # text lines (right side)
-    for y in (84, 100, 116):
-        p.drawLine(QPointF(150, y), QPointF(212, y))
-    h = 200.0
-    w = h * mark.width() / mark.height()
-    p.drawImage(QRectF(118 - w / 2, 232 - h, w, h), mark)
+    p.drawRoundedRect(QRectF(22, 22, 212, 212), 26, 26)
+    h = 204.0
+    w = h * mark_page.width() / mark_page.height()
+    p.drawImage(QRectF(128 - w / 2, 27, w, h), mark_page)
     p.end()
     return img
 
