@@ -12,11 +12,12 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, Q
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea)
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
-from . import annotations
+from . import __version__, annotations
 from .document_view import DocumentView
 from .properties import PropertiesPanel
 
 APP_NAME = "KanzonasPDF"
+APP_TITLE = f"KanzonasPDF v{__version__}"
 PDF_FILTER = "PDF files (*.pdf);;All files (*)"
 TOOLS = [  # (id, label, shortcut, tooltip)
     ("select", "Select", "V", "Select: drag across text to copy it; click an annotation "
@@ -303,14 +304,14 @@ class MainWindow(QMainWindow):
             self.page_total.setText(f" / {v.page_count()} ")
             self.zoom_box.setEditText(f"{round(v.zoom * 100)}%")
             name = os.path.basename(v.path)
-            self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {APP_NAME}")
+            self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {APP_TITLE}")
             for i in range(self.tabs.count()):
                 w = self.tabs.widget(i)
                 self.tabs.setTabText(i, ("*" if w.dirty else "") + os.path.basename(w.path))
                 self.tabs.setTabToolTip(i, w.path)
         else:
             self.page_total.setText(" / 0 ")
-            self.setWindowTitle(APP_NAME)
+            self.setWindowTitle(APP_TITLE)
 
     # ---- files --------------------------------------------------------------
     def open_dialog(self):
@@ -645,7 +646,7 @@ class MainWindow(QMainWindow):
 
     def about(self):
         QMessageBox.about(self, "About " + APP_NAME,
-                          f"<b>{APP_NAME}</b><br>A free, fast PDF reader and editor.<br><br>"
+                          f"<b>{APP_NAME}</b> version {__version__}<br>A free, fast PDF reader and editor.<br><br>"
                           f"Built on PyMuPDF {pymupdf.VersionBind} (MuPDF) and Qt (PySide6).")
 
     # ---- signals from views --------------------------------------------------
