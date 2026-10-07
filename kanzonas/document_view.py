@@ -11,7 +11,8 @@ from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCu
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication)
 
-from . import dialogs, text_edit
+from . import annotations, dialogs, text_edit
+from .inline_editor import InlineEditor
 from .page_widget import PageWidget
 
 PAGE_GAP = 12
@@ -42,16 +43,13 @@ def eraser_cursor():
     return _ERASER_CURSOR
 
 
-def _rgb(qcolor):
-    return (qcolor.redF(), qcolor.greenF(), qcolor.blueF())
-
-
 class DocumentView(QScrollArea):
     pageChanged = Signal(int)
     documentChanged = Signal()      # content edited (thumbnails / title need refresh)
     structureChanged = Signal()     # pages added / removed / reordered / rotated
     zoomChanged = Signal(float)
     statusMessage = Signal(str)
+    selectionChanged = Signal()
 
     def __init__(self, path, parent=None):
         super().__init__(parent)
@@ -69,7 +67,10 @@ class DocumentView(QScrollArea):
         self.dirty = False
         self.zoom = 1.0
         self.tool = "select"
-        self.color = QColor(255, 220, 0)
+        self.selection = None          # (page index, annotation xref)
+        self.selected_model = None
+        self.show_comment_boxes = True
+        self._inline = None
         self.search_hits = {}
         self._search_list = []
         self._search_pos = -1
@@ -77,7 +78,7 @@ class DocumentView(QScrollArea):
         self._undo = []
         self._redo = []
         self._pan_origin = None
-        self._line_cache = {}
+        self._clear_caches()
         self._fonts_added = False
         self._last_page = -1
 
@@ -216,6 +217,8 @@ class DocumentView(QScrollArea):
 
     def set_tool(self, tool):
         self.tool = tool
+        if tool not in ("select",):
+            self.clear_selection()
         if tool == "eraser":
             self.viewport().setCursor(eraser_cursor())
             return
@@ -228,7 +231,9 @@ class DocumentView(QScrollArea):
         return self.doc.tobytes()
 
     def _restore(self, data):
-        self._line_cache = {}
+        self._clear_caches()
+        self.selection = None
+        self.selected_model = None
         page = self.current_page()
         self.doc.close()
         self.doc = pymupdf.open(stream=data, filetype="pdf")
@@ -239,11 +244,12 @@ class DocumentView(QScrollArea):
         self.goto_page(min(page, self.doc.page_count - 1))
         self.dirty = True
         self.structureChanged.emit()
+        self.selectionChanged.emit()
 
     def modify(self, fn, pages=None, structural=False):
         """Run an edit with an undo snapshot. pages = indices to repaint."""
         snap = self._snapshot()
-        self._line_cache = {}
+        self._clear_caches()
         try:
             fn()
         except Exception as ex:
@@ -259,9 +265,12 @@ class DocumentView(QScrollArea):
             self.search_hits.clear()
             self._search_list = []
             self._search_text = None
+            self.selection = None
+            self.selected_model = None
             self._build_pages()
             self.goto_page(min(page, self.doc.page_count - 1))
             self.structureChanged.emit()
+            self.selectionChanged.emit()
         else:
             for i in pages or []:
                 self.pages[i].invalidate()
@@ -283,47 +292,91 @@ class DocumentView(QScrollArea):
             self._undo.append(self._snapshot())
             self._restore(self._redo.pop())
 
-    # ---- text helpers -----------------------------------------------------
-    @staticmethod
-    def _word_at(words, pt):
+    # ---- caches (cleared on every change) ------------------------------------
+    def _clear_caches(self):
+        self._line_cache = {}
+        self._word_cache = {}
+        self._card_cache = {}
+
+    def _words(self, index):
+        if index not in self._word_cache:
+            self._word_cache[index] = self.doc[index].get_text("words", sort=False)
+        return self._word_cache[index]
+
+    # ---- text selection (live, like a normal text cursor) ---------------------
+    NEAR = 12   # points: how close to text a drag must start to select text
+
+    def _word_near(self, words, pt, limit=None):
+        best, best_d = None, None
         for i, w in enumerate(words):
-            if pymupdf.Rect(w[:4]).contains(pt):
+            r = pymupdf.Rect(w[:4])
+            if r.contains(pt):
                 return i
-        return None
+            dx = max(r.x0 - pt.x, 0, pt.x - r.x1)
+            dy = max(r.y0 - pt.y, 0, pt.y - r.y1)
+            d = (dx * dx + 4 * dy * dy) ** 0.5
+            if best_d is None or d < best_d:
+                best, best_d = i, d
+        if limit is not None and (best_d is None or best_d > limit):
+            return None
+        return best
+
+    @staticmethod
+    def _reading_order(cands):
+        """Order words as a reader would: rows top to bottom, then left to right."""
+        cands = sorted(cands, key=lambda w: (w[1] + w[3]) / 2)
+        rows, row_y, row_h = [], None, None
+        for w in cands:
+            yc, h = (w[1] + w[3]) / 2, w[3] - w[1]
+            if row_y is None or abs(yc - row_y) > 0.5 * max(h, row_h):
+                rows.append([w])
+                row_y, row_h = yc, h
+            else:
+                rows[-1].append(w)
+        return [w for row in rows for w in sorted(row, key=lambda w: w[0])]
 
     @staticmethod
     def _word_in_box(r, box):
-        """True if the dragged box covers enough of word rect r."""
         if not r.intersects(box):
             return False
         inter = pymupdf.Rect(r) & box
-        if inter.get_area() >= 0.4 * r.get_area():
-            return True
-        # A thin drag straight across a word (horizontal or vertical text) also counts.
-        ow, oh = inter.width / max(r.width, 1e-6), inter.height / max(r.height, 1e-6)
-        return (box.height < r.height and ow >= 0.5) or (box.width < r.width and oh >= 0.5)
+        return inter.get_area() >= 0.4 * r.get_area()
 
-    def words_between(self, index, a, b):
-        """Text selection for a drag from a to b.
+    def text_selection(self, index, a, b):
+        """('text'|'box', words) for a drag from a to b.
 
-        If both ends start on words in the same text block (a paragraph), select in
-        reading order between them, like a normal text cursor. Otherwise (drawings,
-        tables, separate labels) select only the words inside the dragged box."""
-        words = self.doc[index].get_text("words", sort=False)
+        Starting on (or right next to) text selects like a text cursor: from the word under
+        the start to the word under the mouse, in reading order, staying within the column
+        of the start and end text. Starting away from text selects words inside the box."""
+        words = self._words(index)
         if not words:
-            return []
-        i, j = self._word_at(words, a), self._word_at(words, b)
-        if i is not None and j is not None and words[i][5] == words[j][5]:
-            if i > j:
-                i, j = j, i
-            return words[i:j + 1]
-        box = pymupdf.Rect(a, b).normalize()
-        return [w for w in words if self._word_in_box(pymupdf.Rect(w[:4]), box)]
+            return ("box", [])
+        si = self._word_near(words, a, self.NEAR)
+        if si is None:
+            box = pymupdf.Rect(a, b).normalize()
+            return ("box", [w for w in words if self._word_in_box(pymupdf.Rect(w[:4]), box)])
+        ei = self._word_near(words, b)
+        ws, we = words[si], words[ei]
+        if ws[5] == we[5]:                      # same text block: its own order
+            blk = [w for w in words if w[5] == ws[5]]
+            i, j = blk.index(ws), blk.index(we)
+            return ("text", blk[min(i, j):max(i, j) + 1])
+        # different blocks: geometric flow limited to the columns those blocks occupy
+        bb = {}
+        for w in words:
+            bb[w[5]] = bb.get(w[5], pymupdf.Rect(w[:4])) | pymupdf.Rect(w[:4])
+        span = bb[ws[5]] | bb[we[5]]
+        top, bottom = min(ws[1], we[1]), max(ws[3], we[3])
+        cands = [w for w in words
+                 if bb[w[5]].x1 > span.x0 and bb[w[5]].x0 < span.x1
+                 and w[3] > top and w[1] < bottom]
+        order = self._reading_order(cands)
+        i, j = order.index(ws), order.index(we)
+        return ("text", order[min(i, j):max(i, j) + 1])
 
     @staticmethod
-    def _line_rects(words):
-        lines = {}
-        order = []
+    def line_rects(words):
+        lines, order = {}, []
         for w in words:
             key = (w[5], w[6])
             if key not in lines:
@@ -344,54 +397,48 @@ class DocumentView(QScrollArea):
             last = key
         return "".join(out)
 
-    # ---- tools ------------------------------------------------------------
+    # ---- tool styles --------------------------------------------------------
+    def tool_props(self, tool):
+        return annotations.tool_props(tool) if tool in annotations.DEFAULTS else {}
+
+    def tool_color(self, tool):
+        return QColor(self.tool_props(tool).get("stroke") or "#0078d7")
+
+    # ---- creating annotations -------------------------------------------------
+    def _create(self, index, model, select=False):
+        made = {}
+
+        def do():
+            made["xref"] = annotations.write(self.doc[index], model).xref
+        self.modify(do, [index])
+        if select and "xref" in made:
+            self.select_xref(index, made["xref"])
+        return made.get("xref")
+
+    def apply_text_tool(self, index, tool, a, b):
+        mode, words = self.text_selection(index, a, b)
+        if not words:
+            if tool != "select":
+                self.statusMessage.emit("No text there to mark up")
+            return
+        text = self._words_text(words)
+        if tool == "select":
+            QGuiApplication.clipboard().setText(text)
+            self.statusMessage.emit(f"Copied {len(text)} characters")
+            return
+        model = {"kind": tool, "props": self.tool_props(tool),
+                 "quads": [r.quad for r in self.line_rects(words)],
+                 "text": text if tool != "comment" else ""}
+        if tool == "comment":
+            note, ok = dialogs.get_text(self, "Comment", f"Comment on “{text[:60]}”:")
+            if not ok:
+                return
+            model["text"] = note
+        self._create(index, model)
+
     def apply_drag_tool(self, index, tool, a, b, is_click):
         page = self.doc[index]
         rect = pymupdf.Rect(a, b).normalize()
-        col = _rgb(self.color)
-
-        if tool == "select":
-            if is_click:
-                return
-            text = self._words_text(self.words_between(index, a, b))
-            if text:
-                QGuiApplication.clipboard().setText(text)
-                self.statusMessage.emit(f"Copied {len(text)} characters")
-            return
-
-        if tool in ("highlight", "underline", "strikeout"):
-            words = [] if is_click else self.words_between(index, a, b)
-            if not words:
-                self.statusMessage.emit("No text there to mark up")
-                return
-            rects = self._line_rects(words)
-            adder = {"highlight": page.add_highlight_annot,
-                     "underline": page.add_underline_annot,
-                     "strikeout": page.add_strikeout_annot}[tool]
-
-            def do():
-                annot = adder(rects)
-                annot.set_colors(stroke=col)
-                annot.set_info(content=self._words_text(words))
-                annot.update()
-            self.modify(do, [index])
-            return
-
-        if tool == "textbox":
-            if is_click or rect.width < 20 or rect.height < 10:
-                rect = pymupdf.Rect(a.x, a.y, a.x + 200, a.y + 40)
-            text, ok = dialogs.get_text(self, "Text box", "Text:")
-            if not ok or not text.strip():
-                return
-
-            def do():
-                annot = page.add_freetext_annot(rect, text, fontsize=11, fontname="helv",
-                                                text_color=(0, 0, 0), rotate=page.rotation)
-                annot.set_border(width=1)
-                annot.update()
-            self.modify(do, [index])
-            return
-
         if tool == "eraser":
             if is_click:
                 self.apply_point_tool(index, "eraser", a)
@@ -403,38 +450,29 @@ class DocumentView(QScrollArea):
             def do():
                 for x in xrefs:
                     page.delete_annot(page.load_annot(x))
+            self.clear_selection()
             self.modify(do, [index])
             self.statusMessage.emit(f"Erased {len(xrefs)} annotation(s)")
             return
-
+        props = self.tool_props(tool)
+        if tool == "textbox":
+            if is_click or rect.width < 20 or rect.height < 10:
+                rect = pymupdf.Rect(a.x, a.y, a.x + 200, a.y + 40)
+            text, ok = dialogs.get_text(self, "Text box", "Text:")
+            if not ok or not text.strip():
+                return
+            self._create(index, {"kind": "textbox", "rect": rect, "text": text, "props": props})
+            return
         if is_click:
             return
-
-        def do():
-            if tool == "rect":
-                annot = page.add_rect_annot(rect)
-            elif tool == "ellipse":
-                annot = page.add_circle_annot(rect)
-            else:
-                annot = page.add_line_annot(a, b)
-                if tool == "arrow":
-                    annot.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE,
-                                        pymupdf.PDF_ANNOT_LE_OPEN_ARROW)
-            annot.set_colors(stroke=col)
-            annot.set_border(width=2)
-            annot.update()
-        self.modify(do, [index])
+        model = {"kind": tool, "props": props, "rect": rect}
+        if tool in ("line", "arrow"):
+            model["points"] = [a, b]
+        self._create(index, model)
 
     def apply_ink(self, index, pts):
-        page = self.doc[index]
-        col = _rgb(self.color)
-
-        def do():
-            annot = page.add_ink_annot([[(p.x, p.y) for p in pts]])
-            annot.set_colors(stroke=col)
-            annot.set_border(width=2)
-            annot.update()
-        self.modify(do, [index])
+        self._create(index, {"kind": "ink", "props": self.tool_props("ink"),
+                             "strokes": [pts], "rect": pymupdf.Rect()})
 
     def apply_point_tool(self, index, tool, pt):
         page = self.doc[index]
@@ -442,19 +480,17 @@ class DocumentView(QScrollArea):
             text, ok = dialogs.get_text(self, "Sticky note", "Note:")
             if not ok or not text.strip():
                 return
-
-            def do():
-                annot = page.add_text_annot(pt, text, icon="Note")
-                annot.set_colors(stroke=_rgb(self.color))
-                annot.update()
-            self.modify(do, [index])
+            self._create(index, {"kind": "note", "props": self.tool_props("note"),
+                                 "rect": pymupdf.Rect(pt, pt + (20, 20)), "text": text})
         elif tool == "eraser":
             target = self._annot_at(page, pt)
             if target is None:
                 return
             xref = target.xref
+            self.clear_selection()
             self.modify(lambda: page.delete_annot(page.load_annot(xref)), [index])
 
+    # ---- hit testing --------------------------------------------------------------
     @staticmethod
     def _seg_dist(p, a, b):
         ax, ay, bx, by = a[0], a[1], b[0], b[1]
@@ -468,7 +504,9 @@ class DocumentView(QScrollArea):
     def _annot_hit(cls, annot, pt, tol=4.0):
         """Precise hit test: strokes must be clicked near the line, not anywhere in their box."""
         t = annot.type[0]
-        if not annot.rect.contains(pt) and not (+annot.rect + (-tol, -tol, tol, tol)).contains(pt):
+        if t in (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_REDACT):
+            return False
+        if not (+annot.rect + (-tol, -tol, tol, tol)).contains(pt):
             return False
         width = (annot.border or {}).get("width") or 1
         tol = tol + width
@@ -500,10 +538,28 @@ class DocumentView(QScrollArea):
             return None
         return min(hits, key=lambda an: an.rect.get_area())
 
+    def annot_at(self, index, pt):
+        """xref of the annotation under pt, or None. (Returns an id, not an Annot: an Annot
+        becomes unusable once its Page object is garbage collected.)"""
+        a = self._annot_at(self.doc[index], pt)
+        return a.xref if a is not None else None
+
+    def annot_tooltip(self, index, pt):
+        page = self.doc[index]
+        a = self._annot_at(page, pt)
+        if a is None:
+            return ""
+        model = annotations.read(a)
+        label = annotations.LABELS.get(model["kind"], a.type[1]) if model else a.type[1]
+        content = a.info.get("content", "")
+        return f"{label}: {content}" if content else label
+
     @staticmethod
     def _annot_in_box(annot, box):
         """For drag-erase: the annotation lies entirely inside the box,
         or (for pen strokes and lines) any of its points is inside."""
+        if annot.type[0] == pymupdf.PDF_ANNOT_POPUP:
+            return False
         if box.contains(annot.rect):
             return True
         if annot.type[0] in (pymupdf.PDF_ANNOT_INK, pymupdf.PDF_ANNOT_LINE,
@@ -514,23 +570,102 @@ class DocumentView(QScrollArea):
             return any(box.contains(pymupdf.Point(p)) for p in pts)
         return False
 
-    def edit_annot_at(self, index, pt):
+    # ---- selecting and editing existing annotations ----------------------------
+    def select_xref(self, index, xref):
         page = self.doc[index]
-        annot = self._annot_at(page, pt)
-        if annot is None:
+        annot = page.load_annot(xref) if xref else None
+        model = annotations.read(annot) if annot else None
+        old = self.selection
+        self.selection = (index, xref) if model else None
+        self.selected_model = model
+        for i in {index, old[0] if old else index}:
+            if 0 <= i < len(self.pages):
+                self.pages[i].update()
+        self.selectionChanged.emit()
+        return model is not None
+
+    def select_annot_at(self, index, pt):
+        xref = self.annot_at(index, pt)
+        if xref is None:
+            return False
+        return self.select_xref(index, xref)
+
+    def clear_selection(self):
+        if self.selection is None:
             return
-        info = annot.info
-        text, ok = dialogs.get_text(self, "Edit " + annot.type[1],
-                                                 "Content:", info.get("content", ""))
-        if not ok:
-            return
-        xref = annot.xref
+        old = self.selection
+        self.selection = None
+        self.selected_model = None
+        if 0 <= old[0] < len(self.pages):
+            self.pages[old[0]].update()
+        self.selectionChanged.emit()
+
+    def commit_model(self, index, xref, model):
+        """Replace annotation xref with a new version (one undo step); keep it selected."""
+        made = {}
 
         def do():
-            a = page.load_annot(xref)
-            a.set_info(content=text)
-            a.update()
+            page = self.doc[index]
+            page.delete_annot(page.load_annot(xref))
+            made["xref"] = annotations.write(page, model).xref
         self.modify(do, [index])
+        if "xref" in made:
+            self.select_xref(index, made["xref"])
+
+    def update_selected_props(self, props):
+        if self.selection is None or self.selected_model is None:
+            return
+        model = annotations.copy(self.selected_model)
+        model["props"] = dict(props)
+        self.commit_model(self.selection[0], self.selection[1], model)
+
+    def delete_selected(self):
+        if self.selection is None:
+            return
+        index, xref = self.selection
+        self.clear_selection()
+        page = self.doc[index]
+        self.modify(lambda: page.delete_annot(page.load_annot(xref)), [index])
+
+    def edit_annot_text(self, index, xref):
+        page = self.doc[index]
+        model = annotations.read(page.load_annot(xref))
+        if model is None:
+            return
+        title = annotations.LABELS.get(model["kind"], "Annotation")
+        text, ok = dialogs.get_text(self, "Edit " + title, "Text:", model.get("text", ""))
+        if not ok or text == model.get("text", ""):
+            return
+        model["text"] = text
+        self.commit_model(index, xref, model)
+
+    def edit_annot_at(self, index, pt):
+        xref = self.annot_at(index, pt)
+        if xref is not None:
+            self.edit_annot_text(index, xref)
+
+    def comment_cards(self, index):
+        """[(anchor rect, text, xref)] for comments on this page (cached)."""
+        if index not in self._card_cache:
+            cards = []
+            page = self.doc[index]
+            for a in page.annots():
+                if a.type[0] != pymupdf.PDF_ANNOT_HIGHLIGHT:
+                    continue
+                m = annotations.read(a)
+                if m and m["kind"] == "comment":
+                    cards.append((annotations.bounds(m), m.get("text", ""), a.xref))
+            self._card_cache[index] = cards
+        return self._card_cache[index]
+
+    def keyPressEvent(self, e):
+        if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.selection is not None:
+            self.delete_selected()
+            return
+        if e.key() == Qt.Key_Escape and self.selection is not None:
+            self.clear_selection()
+            return
+        super().keyPressEvent(e)
 
     # ---- editing existing text --------------------------------------------
     def _lines(self, index):
@@ -543,6 +678,8 @@ class DocumentView(QScrollArea):
         return hit[0] if hit else None
 
     def edit_text_at(self, index, pt):
+        if self._inline is not None:
+            self._inline.commit()      # finish the edit already in progress first
         hit = text_edit.line_at(self._lines(index), pt)
         if hit is None:
             self.statusMessage.emit("No text there. Click on a line of text to edit it.")
@@ -552,20 +689,41 @@ class DocumentView(QScrollArea):
             QMessageBox.warning(self, "Edit text", "This page has pending redactions; "
                                 "editing text would apply them. Remove them first.")
             return
-        _, line = hit
+        rect, line = hit
         old = text_edit.line_text(line)
-        new, ok = dialogs.get_text(self, "Edit text", "Line text:", old)
-        if not ok or new == old:
+        w = self.pages[index]
+        upright = (text_edit.line_rotation(line) + page.rotation) % 360 == 0
+        if not upright:
+            # sideways text: the on-page editor can't sit along it, use the dialog
+            new, ok = dialogs.get_text(self, "Edit text", "Line text:", old)
+            if ok and new != old:
+                self._apply_text_edit(index, line, new, (0, 0), None)
             return
+        size = text_edit.main_span(line)["size"]
+        ed = InlineEditor(w, w.to_screen(rect), old, text_edit.font_family_hint(line),
+                          size * self.zoom)
+        self._inline = ed
+
+        def done(text, dx, dy, wrap_px):
+            self._inline = None
+            if text == old and not dx and not dy and wrap_px is None:
+                return
+            # on an upright page, screen deltas map straight to PDF points
+            offset = (dx / self.zoom, dy / self.zoom)
+            wrap = wrap_px / self.zoom if wrap_px else None
+            self._apply_text_edit(index, line, text, offset, wrap)
+        ed.committed.connect(done)
+        ed.cancelled.connect(lambda: setattr(self, "_inline", None))
+
+    def _apply_text_edit(self, index, line, new, offset, wrap):
         used = {}
 
         def do():
-            used["font"] = text_edit.replace_line(self.doc[index], line, new)
+            used["font"] = text_edit.replace_line(self.doc[index], line, new, offset, wrap)
         self.modify(do, [index])
-        if (used.get("font") or "").startswith("KZS"):
-            self._fonts_added = True
         font = used.get("font") or ""
         if font.startswith("KZS"):
+            self._fonts_added = True
             self.statusMessage.emit("Edited using the installed copy of the original font.")
         elif font and not font.startswith("KZ"):
             self.statusMessage.emit("Original font isn't available for these characters; "
@@ -652,6 +810,15 @@ class DocumentView(QScrollArea):
         to = target if delta < 0 else (target + 1 if target + 1 < self.doc.page_count else -1)
         self.modify(lambda: self.doc.move_page(index, to), structural=True)
         self.goto_page(target)
+
+    def move_page_to(self, src, dest_before):
+        """Move page src so it sits before old page index dest_before (== count: end)."""
+        n = self.doc.page_count
+        if dest_before in (src, src + 1) or not 0 <= src < n:
+            return
+        to = dest_before if dest_before < n else -1
+        self.modify(lambda: self.doc.move_page(src, to), structural=True)
+        self.goto_page(dest_before if dest_before < src else dest_before - 1)
 
     def insert_pdf(self, path, at):
         def do():

@@ -18,17 +18,57 @@ import pymupdf
 _ITALIC, _SERIF, _MONO, _BOLD = 2, 4, 8, 16
 
 
+def _baseline(line):
+    """Position across the text direction (y for horizontal text, x for vertical)."""
+    o = line["spans"][0]["origin"]
+    dx, dy = line["dir"]
+    return o[1] if abs(dx) >= abs(dy) else o[0]
+
+
+def _along(rect, line):
+    """(start, end) of a rect along the text direction."""
+    dx, dy = line["dir"]
+    if abs(dx) >= abs(dy):
+        return (rect.x0, rect.x1) if dx > 0 else (-rect.x1, -rect.x0)
+    return (rect.y0, rect.y1) if dy > 0 else (-rect.y1, -rect.y0)
+
+
 def text_lines(page):
-    """[(rect, line_dict)] for every non-empty text line on the page (unrotated coords)."""
-    out = []
+    """[(rect, line)] for every visual text line on the page (unrotated coords).
+
+    PDF producers often split one visual line into several pieces (kerning, a single
+    letter placed separately, another text block). Pieces on the same baseline that
+    touch or nearly touch are merged, so editing a line never leaves a letter behind."""
+    pieces = []
     d = page.get_text("dict", flags=pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES)
     for b in d["blocks"]:
         if b.get("type") != 0:
             continue
         for line in b["lines"]:
-            if any(s["text"].strip() for s in line["spans"]):
-                out.append((pymupdf.Rect(line["bbox"]), line))
-    return out
+            spans = [s for s in line["spans"] if s["text"]]
+            if spans and any(s["text"].strip() for s in spans):
+                pieces.append({"bbox": pymupdf.Rect(line["bbox"]), "dir": line["dir"],
+                               "spans": spans})
+    # sort along each direction so neighbours are adjacent
+    pieces.sort(key=lambda l: (round(l["dir"][0], 2), round(l["dir"][1], 2),
+                               round(_baseline(l)), _along(l["bbox"], l)[0]))
+    merged = []
+    for piece in pieces:
+        size = max(s["size"] for s in piece["spans"])
+        if merged:
+            last = merged[-1]
+            lsize = max(s["size"] for s in last["spans"])
+            same_dir = (abs(last["dir"][0] - piece["dir"][0]) < 0.01
+                        and abs(last["dir"][1] - piece["dir"][1]) < 0.01)
+            gap = _along(piece["bbox"], piece)[0] - _along(last["bbox"], last)[1]
+            if (same_dir and abs(_baseline(last) - _baseline(piece)) < 0.25 * max(size, lsize)
+                    and -0.5 * size < gap < 0.6 * max(size, lsize)):
+                last["spans"].extend(piece["spans"])
+                last["bbox"] |= piece["bbox"]
+                continue
+        merged.append({"bbox": pymupdf.Rect(piece["bbox"]), "dir": piece["dir"],
+                       "spans": list(piece["spans"])})
+    return [(m["bbox"], m) for m in merged]
 
 
 def line_at(lines, pt):
@@ -40,7 +80,34 @@ def line_at(lines, pt):
 
 
 def line_text(line):
-    return "".join(s["text"] for s in line["spans"])
+    """Text of a (possibly merged) line, adding a space where pieces have a visible gap."""
+    out, prev = [], None
+    for s in line["spans"]:
+        if prev is not None:
+            gap = _along(pymupdf.Rect(s["bbox"]), line)[0] - _along(pymupdf.Rect(prev["bbox"]), line)[1]
+            if gap > 0.15 * s["size"] and not out[-1].endswith(" ") and not s["text"].startswith(" "):
+                out.append(" ")
+        out.append(s["text"])
+        prev = s
+    return "".join(out)
+
+
+def line_rotation(line):
+    """Text direction as an insert_text rotation (0/90/180/270, unrotated page space)."""
+    dx, dy = line["dir"]
+    return int(round(math.degrees(math.atan2(-dy, dx)) / 90.0)) % 4 * 90
+
+
+def main_span(line):
+    spans = [s for s in line["spans"] if s["text"].strip()]
+    return max(spans, key=lambda s: len(s["text"].strip()))
+
+
+def font_family_hint(line):
+    """'sans' | 'serif' | 'mono' for showing the line in an on-screen editor."""
+    return {"helv": "sans", "hebo": "sans", "heit": "sans", "hebi": "sans",
+            "tiro": "serif", "tibo": "serif", "tiit": "serif", "tibi": "serif"}.get(
+        _base14(main_span(line)), "mono")
 
 
 _SANS = ("sans", "arial", "helvetica", "verdana", "calibri", "segoe", "tahoma", "gothic",
@@ -85,7 +152,7 @@ def _embedded_font(page, span, text):
             if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
                 name = f"KZ{xref}"
                 page.insert_font(fontname=name, fontbuffer=buf)
-                return name
+                return name, font
         except Exception:
             return None
     return None
@@ -131,7 +198,7 @@ def _system_font(page, span, text):
             return None
         name = "KZS" + _norm(span["font"])[:20]
         page.insert_font(fontname=name, fontfile=path)
-        return name
+        return name, font
     except Exception:
         return None
 
@@ -140,20 +207,37 @@ def _rgb(color_int):
     return tuple(c / 255 for c in pymupdf.sRGB_to_rgb(color_int))
 
 
-def replace_line(page, line, new_text):
+def _wrap(text, font, size, width):
+    """Greedy word wrap of each paragraph to `width` points."""
+    out = []
+    for para in text.split("\n"):
+        words = para.split(" ")
+        cur = ""
+        for w in words:
+            trial = w if not cur else cur + " " + w
+            if cur and font.text_length(trial, fontsize=size) > width:
+                out.append(cur)
+                cur = w
+            else:
+                cur = trial
+        out.append(cur)
+    return out
+
+
+def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
     """Remove the line's text and write new_text in its place.
 
+    offset: move the text by (dx, dy) points. wrap_width: wrap to this width (points).
     Returns the font name used: 'KZ…' = original embedded font, 'KZS…' = installed system
     font of the same name, otherwise a built-in PDF font."""
-    spans = [s for s in line["spans"] if s["text"].strip()]
-    main = max(spans, key=lambda s: len(s["text"].strip()))
+    main = main_span(line)
     first = line["spans"][0]
 
     # 1) remove only the text of this line (keep line art and images)
+    dx, dy = line["dir"]
     for s in line["spans"]:
         r = pymupdf.Rect(s["bbox"])
         # shrink across the line's height a little so glyphs of neighbouring lines survive
-        dx, dy = line["dir"]
         if abs(dx) >= abs(dy):
             pad = r.height * 0.15
             r = pymupdf.Rect(r.x0, r.y0 + pad, r.x1, r.y1 - pad)
@@ -168,10 +252,16 @@ def replace_line(page, line, new_text):
     if not new_text.strip():
         return None
     # 2) write the replacement at the same baseline / direction
-    dx, dy = line["dir"]
-    rotate = int(round(math.degrees(math.atan2(-dy, dx)) / 90.0)) % 4 * 90
-    fontname = (_embedded_font(page, main, new_text) or _system_font(page, main, new_text)
-                or _base14(main))
-    page.insert_text(pymupdf.Point(first["origin"]), new_text, fontsize=main["size"],
-                     fontname=fontname, color=_rgb(main["color"]), rotate=rotate)
+    found = _embedded_font(page, main, new_text) or _system_font(page, main, new_text)
+    if found:
+        fontname, font = found
+    else:
+        fontname = _base14(main)
+        font = pymupdf.Font(fontname)
+    size = main["size"]
+    lines = _wrap(new_text, font, size, wrap_width) if wrap_width else new_text.split("\n")
+    origin = pymupdf.Point(first["origin"]) + offset
+    page.insert_text(origin, "\n".join(lines), fontsize=size, fontname=fontname,
+                     color=_rgb(main["color"]), rotate=line_rotation(line),
+                     lineheight=1.2)
     return fontname

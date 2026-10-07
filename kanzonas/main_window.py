@@ -3,26 +3,30 @@
 import os
 
 import pymupdf
-from PySide6.QtCore import Qt, QSize, QTimer, QSettings
+from PySide6.QtCore import Qt, QSize, QTimer, QSettings, QEvent
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, QImage,
                            QColor, QPainter)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, QMessageBox,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
-                               QListWidgetItem, QDockWidget, QColorDialog, QToolButton,
-                               QInputDialog, QWidget, QSizePolicy)
+                               QListWidgetItem, QDockWidget, QAbstractItemView,
+                               QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea)
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
+from . import annotations
 from .document_view import DocumentView
+from .properties import PropertiesPanel
 
 APP_NAME = "KanzonasPDF"
 PDF_FILTER = "PDF files (*.pdf);;All files (*)"
 TOOLS = [  # (id, label, shortcut, tooltip)
-    ("select", "Select", "V", "Select text: drag to copy text to the clipboard (V)"),
+    ("select", "Select", "V", "Select: drag across text to copy it; click an annotation "
+                              "to move, resize or restyle it (V)"),
     ("hand", "Hand", "H", "Pan the page (H)"),
     ("edittext", "Edit text", "Ctrl+E", "Edit existing text: click a line of text (Ctrl+E)"),
     ("highlight", "Highlight", "Ctrl+Shift+H", "Highlight text"),
     ("underline", "Underline", "Ctrl+Shift+U", "Underline text"),
     ("strikeout", "Strike", "Ctrl+Shift+S", "Strike out text"),
+    ("comment", "Comment", "C", "Comment on text: select text, it's highlighted with a note (C)"),
     ("note", "Note", "N", "Sticky note: click where it should go (N)"),
     ("textbox", "Text box", "T", "Text box: drag a box or click (T)"),
     ("rect", "Rectangle", "R", "Rectangle (R)"),
@@ -43,7 +47,6 @@ class MainWindow(QMainWindow):
         self.resize(1300, 900)
         self.setAcceptDrops(True)
         self.tool = "select"
-        self.color = QColor(self.settings.value("color", "#ffdc00"))
 
         self.tabs = QTabWidget()
         self.tabs.setTabsClosable(True)
@@ -62,6 +65,8 @@ class MainWindow(QMainWindow):
         self._thumb_timer = QTimer(self, interval=0)
         self._thumb_timer.timeout.connect(self._thumb_step)
         self._update_ui()
+        self._refresh_props()
+        QApplication.instance().installEventFilter(self)
 
         geo = self.settings.value("geometry")
         if geo is not None:
@@ -102,22 +107,34 @@ class MainWindow(QMainWindow):
         self.a_sidebar = self._act("Page &thumbnails", self._toggle_sidebar, "F4")
         self.a_sidebar.setCheckable(True)
         self.a_sidebar.setChecked(True)
-        # Ctrl+Shift+Plus can't be used: on most keyboards "+" already needs Shift,
-        # so Qt sees it as Ctrl++ (zoom in). Ctrl+R / Ctrl+Shift+R are unambiguous.
-        self.a_rot_l = self._act("Rotate page &left", lambda: self._page_op("rot", -90),
-                                 "Ctrl+Shift+R", "Rotate page counter-clockwise (Ctrl+Shift+R)")
-        self.a_rot_r = self._act("Rotate page &right", lambda: self._page_op("rot", 90),
-                                 "Ctrl+R", "Rotate page clockwise (Ctrl+R)")
+        # Ctrl+Shift+Plus/Minus are caught by an event filter (see eventFilter): "+" needs
+        # Shift on most keyboards, so normal shortcuts would collide with zoom (Ctrl++).
+        # The key names are shown in the menu text after a tab.
+        self.a_rot_l = self._act("Rotate page &left\tCtrl+Shift+-", lambda: self._page_op("rot", -90),
+                                 tip="Rotate page counter-clockwise (Ctrl+Shift+Minus)")
+        self.a_rot_r = self._act("Rotate page &right\tCtrl+Shift++", lambda: self._page_op("rot", 90),
+                                 tip="Rotate page clockwise (Ctrl+Shift+Plus)")
+        self.a_rot_l.setIconText("Rotate left")
+        self.a_rot_r.setIconText("Rotate right")
         self.a_del_page = self._act("&Delete page", lambda: self._page_op("del"))
-        self.a_move_up = self._act("Move page &up", lambda: self._page_op("move", -1))
-        self.a_move_down = self._act("Move page do&wn", lambda: self._page_op("move", 1))
+        self.a_move_up = self._act("Move page &up", lambda: self._page_op("move", -1),
+                                   "Ctrl+Shift+Up", "Move current page up (Ctrl+Shift+Up)")
+        self.a_move_down = self._act("Move page do&wn", lambda: self._page_op("move", 1),
+                                     "Ctrl+Shift+Down", "Move current page down (Ctrl+Shift+Down)")
         self.a_insert_pdf = self._act("&Insert pages from file...", self.insert_from_file)
         self.a_insert_blank = self._act("Insert &blank page after current",
                                         lambda: self._page_op("blank"))
         self.a_extract = self._act("&Extract pages to new file...", self.extract_pages)
         self.a_ocr = self._act("Recognize text (&OCR)...", self.ocr,
                                tip="Make scanned pages searchable and selectable")
-        self.a_color = self._act("Color", self.pick_color, tip="Annotation color")
+        self.a_props = self._act("&Properties panel", self._toggle_props, "F6")
+        self.a_props.setCheckable(True)
+        self.a_props.setChecked(True)
+        self.a_cards = self._act("Show &comment boxes", self._toggle_cards)
+        self.a_cards.setCheckable(True)
+        self.a_cards.setChecked(self.settings.value("comment_boxes", "true") != "false")
+        self.a_delete_annot = self._act("Delete selected annotation",
+                                        lambda: v() and v().delete_selected())
         self.a_about = self._act("&About", self.about)
 
         self.tool_group = QActionGroup(self)
@@ -131,7 +148,6 @@ class MainWindow(QMainWindow):
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
         self.tool_actions["select"].setChecked(True)
-        self._refresh_color_icon()
 
     def _build_menus(self):
         mb = self.menuBar()
@@ -146,17 +162,18 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_close, self.a_exit])
         m = mb.addMenu("&Edit")
         m.addActions([self.a_undo, self.a_redo])
+        m.addAction(self.a_delete_annot)
         m.addSeparator()
         m.addActions([self.a_find, self.a_find_next, self.a_find_prev])
         m = mb.addMenu("&View")
         m.addActions([self.a_zoom_in, self.a_zoom_out, self.a_actual, self.a_fit_width,
                       self.a_fit_page])
         m.addSeparator()
-        m.addAction(self.a_sidebar)
+        m.addActions([self.a_sidebar, self.a_props, self.a_cards])
         m = mb.addMenu("&Tools")
         m.addActions(self.tool_group.actions())
         m.addSeparator()
-        m.addAction(self.a_color)
+        m.addAction(self.a_props)
         m.addSeparator()
         m.addAction(self.a_ocr)
         m = mb.addMenu("&Pages")
@@ -219,24 +236,22 @@ class MainWindow(QMainWindow):
         tt.addSeparator()
         tt.addActions(self.tool_group.actions()[3:])
         tt.addSeparator()
-        btn = QToolButton()
-        btn.setDefaultAction(self.a_color)
-        btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        tt.addWidget(btn)
-        tt.addSeparator()
         tt.addActions([self.a_rot_l, self.a_rot_r])
         tt.addSeparator()
         tt.addAction(self.a_ocr)
 
     def _build_sidebar(self):
         self.thumbs = QListWidget()
-        self.thumbs.setViewMode(QListWidget.IconMode)
-        self.thumbs.setFlow(QListWidget.TopToBottom)
-        self.thumbs.setWrapping(False)
-        self.thumbs.setMovement(QListWidget.Static)
+        self.thumbs.setViewMode(QListWidget.ListMode)
         self.thumbs.setIconSize(QSize(120, 160))
-        self.thumbs.setSpacing(6)
+        self.thumbs.setSpacing(4)
         self.thumbs.setUniformItemSizes(True)
+        # drag a thumbnail to a new position to reorder pages
+        self.thumbs.setDragDropMode(QAbstractItemView.InternalMove)
+        self.thumbs.setDefaultDropAction(Qt.MoveAction)
+        self.thumbs.setDropIndicatorShown(True)
+        self.thumbs.model().rowsMoved.connect(self._on_thumb_moved)
+        self.thumbs.setToolTip("Drag pages to reorder them")
         self.thumbs.currentRowChanged.connect(self._on_thumb_clicked)
         self.thumbs.setContextMenuPolicy(Qt.ActionsContextMenu)
         self.dock = QDockWidget("Pages")
@@ -246,6 +261,21 @@ class MainWindow(QMainWindow):
         self.dock.setMinimumWidth(170)
         self.dock.visibilityChanged.connect(lambda vis: self.a_sidebar.setChecked(vis))
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock)
+
+        self.props = PropertiesPanel()
+        self.props.propsChanged.connect(self._on_props_changed)
+        self.props.resetRequested.connect(self._reset_tool_defaults)
+        scroll = QScrollArea()
+        scroll.setWidget(self.props)
+        scroll.setWidgetResizable(True)
+        self.props_dock = QDockWidget("Properties")
+        self.props_dock.setObjectName("properties")
+        self.props_dock.setFeatures(QDockWidget.DockWidgetClosable)
+        self.props_dock.setWidget(scroll)
+        self.props_dock.setMinimumWidth(220)
+        self.props_dock.visibilityChanged.connect(lambda vis: self.a_props.setChecked(vis))
+        self.addDockWidget(Qt.RightDockWidgetArea, self.props_dock)
+        self.resizeDocks([self.dock, self.props_dock], [180, 240], Qt.Horizontal)
 
     # ---- helpers ----------------------------------------------------------
     def view(self):
@@ -261,6 +291,7 @@ class MainWindow(QMainWindow):
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
                   self.a_insert_blank, self.a_extract, self.a_ocr):
             a.setEnabled(has)
+        self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_undo.setEnabled(has and v.can_undo())
         self.a_redo.setEnabled(has and v.can_redo())
         self.page_spin.setEnabled(has)
@@ -281,11 +312,6 @@ class MainWindow(QMainWindow):
             self.page_total.setText(" / 0 ")
             self.setWindowTitle(APP_NAME)
 
-    def _refresh_color_icon(self):
-        pm = QPixmap(16, 16)
-        pm.fill(self.color)
-        self.a_color.setIcon(QIcon(pm))
-
     # ---- files --------------------------------------------------------------
     def open_dialog(self):
         start = self.settings.value("last_dir", "")
@@ -305,7 +331,8 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Could not open file", f"{path}\n\n{ex}")
             return
         v.set_tool(self.tool)
-        v.color = self.color
+        v.show_comment_boxes = self.a_cards.isChecked()
+        v.selectionChanged.connect(self._on_selection_changed)
         v.pageChanged.connect(self._on_page_changed)
         v.zoomChanged.connect(lambda _: self._update_ui())
         v.documentChanged.connect(self._on_doc_changed)
@@ -448,15 +475,65 @@ class MainWindow(QMainWindow):
         self.tool_actions[tool].setChecked(True)
         for i in range(self.tabs.count()):
             self.tabs.widget(i).set_tool(tool)
+        self._refresh_props()
 
-    def pick_color(self):
-        c = QColorDialog.getColor(self.color, self, "Annotation color")
-        if c.isValid():
-            self.color = c
-            self.settings.setValue("color", c.name())
-            self._refresh_color_icon()
-            for i in range(self.tabs.count()):
-                self.tabs.widget(i).color = c
+    # ---- properties panel / tool defaults -------------------------------------
+    def _refresh_props(self):
+        v = self.view()
+        if v is not None and v.selected_model is not None:
+            m = v.selected_model
+            self.props.show_target(m["kind"], m["props"], selected=True)
+        elif self.tool in annotations.DEFAULTS:
+            self.props.show_target(self.tool, annotations.tool_props(self.tool))
+        else:
+            self.props.show_target(None, None)
+
+    def _on_props_changed(self, props):
+        v = self.view()
+        if v is not None and v.selected_model is not None:
+            v.update_selected_props(props)
+        elif self.tool in annotations.DEFAULTS:
+            annotations.set_tool_props(self.tool, props)
+
+    def _reset_tool_defaults(self):
+        if self.tool in annotations.DEFAULTS:
+            annotations.reset_tool_props(self.tool)
+            self._refresh_props()
+
+    def _on_selection_changed(self):
+        if self.sender() is self.view():
+            self._refresh_props()
+            self._update_ui()
+
+    def _toggle_props(self):
+        self.props_dock.setVisible(not self.props_dock.isVisible())
+
+    def _toggle_cards(self):
+        on = self.a_cards.isChecked()
+        self.settings.setValue("comment_boxes", "true" if on else "false")
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            w.show_comment_boxes = on
+            for pw in w.pages:
+                pw.update()
+
+    # ---- rotate keys (Ctrl+Shift+Plus / Minus) ------------------------------
+    _PLUS_KEYS = (Qt.Key_Plus, Qt.Key_Equal)
+    _MINUS_KEYS = (Qt.Key_Minus, Qt.Key_Underscore)
+
+    def eventFilter(self, obj, e):
+        t = e.type()
+        if t in (QEvent.ShortcutOverride, QEvent.KeyPress):
+            mods = e.modifiers()
+            if (mods & Qt.ControlModifier and mods & Qt.ShiftModifier
+                    and e.key() in self._PLUS_KEYS + self._MINUS_KEYS
+                    and self.isActiveWindow()):
+                if t == QEvent.ShortcutOverride:
+                    e.accept()          # tell Qt "not a shortcut", so Ctrl++ (zoom) can't claim it
+                    return True
+                self._page_op("rot", 90 if e.key() in self._PLUS_KEYS else -90)
+                return True
+        return super().eventFilter(obj, e)
 
     def _focus_search(self):
         self.search.setFocus()
@@ -574,6 +651,7 @@ class MainWindow(QMainWindow):
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):
         self._rebuild_thumbs()
+        self._refresh_props()
         self._update_ui()
 
     def _on_page_changed(self, page):
@@ -594,6 +672,12 @@ class MainWindow(QMainWindow):
         if self.sender() is self.view():
             self._rebuild_thumbs()
         self._update_ui()
+
+    def _on_thumb_moved(self, _parent, start, _end, _dest_parent, dest_row):
+        """Thumbnail dragged: apply the same move to the PDF (after Qt finishes the drop)."""
+        v = self.view()
+        if v is not None:
+            QTimer.singleShot(0, lambda: v.move_page_to(start, dest_row))
 
     def _on_thumb_clicked(self, row):
         v = self.view()
