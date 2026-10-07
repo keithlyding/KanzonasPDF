@@ -19,11 +19,9 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 ## Run it (Windows)
 
 1. Install Python 3.10+ from https://www.python.org/downloads/ (tick "Add to PATH").
-2. In this folder:
-   ```
-   pip install -r requirements.txt
-   python run.py
-   ```
+2. Double-click **`Start KanzonasPDF.bat`**. The first time, it installs the libraries it needs.
+
+   Or from a command prompt: `pip install -r requirements.txt`, then `python run.py`.
 
 ## Build a standalone .exe
 
