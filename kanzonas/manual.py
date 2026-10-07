@@ -24,7 +24,8 @@ File &gt; Open recent. Each file opens in its own tab, at the page and zoom you 
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
-toolbars adds names under the icons. Hover over any button to see its name and shortcut.</li>
+toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
+saying what it does and its keyboard shortcut.</li>
 </ul>
 
 <h2 id="navigate">Moving around</h2>

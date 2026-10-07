@@ -1,3 +1,3 @@
 """KanzonasPDF: a free, fast PDF reader and editor."""
 
-__version__ = "0.19"
+__version__ = "0.20"

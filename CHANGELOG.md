@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.19 | (this) | Page navigation uses left / right buttons beside the page number; CAD-style mouse (View menu, toolbar, F11): scroll wheel zooms around the cursor; hold the wheel and drag to pan with any tool |
+| 0.20 | (this) | Every toolbar button and box has a tooltip describing what it does, with its shortcut |
+| 0.19 | ea9ab2a | Page navigation uses left / right buttons beside the page number; CAD-style mouse (View menu, toolbar, F11): scroll wheel zooms around the cursor; hold the wheel and drag to pan with any tool |
 | 0.18 | 00aa7c7 | User manual kept complete: names every menu command; self-test (and so the Windows build) fails if a command is missing from the manual; CLAUDE.md rules require manual, version and changelog updates with every change |
 | 0.17 | 3b481e8 | Built-in user manual: Help > User manual (F1), with contents list and search |
 | 0.16 | 7e0603e | Markups on a line of text (highlights, underlines, comments, notes) move with the text; Shift while drawing lines/arrows/measurements/polylines snaps to 45° steps; Shift draws perfect squares and circles and keeps proportions when resizing from a corner; rotation for shapes, lines, ink and stamps (Properties panel or round handle, Shift = 15° steps), text boxes in 90° steps; multi-select (Ctrl+click, drag a box); Arrange menu and toolbar: align (to first selected by default, or last selected, whole selection, page), distribute, bring to front / send to back; Escape twice returns to the Select arrow; stamp name and date are separate options and can be removed from an existing stamp; fixed rectangles and ellipses growing slightly every time they were edited |

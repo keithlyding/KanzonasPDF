@@ -78,6 +78,35 @@ EXPORTS = [  # (id, menu label, file filter, extension)
     ("jpg", "Images (&JPEG)...", "JPEG image (*.jpg)", "jpg"),
     ("txt", "Plain &text (.txt)...", "Text file (*.txt)", "txt"),
 ]
+# Toolbar tooltips: what each button does (the shortcut is added automatically)
+BUTTON_TIPS = {
+    "a_open": "Open a PDF", "a_save": "Save the document", "a_print": "Print",
+    "a_undo": "Undo the last change", "a_redo": "Redo what you undid",
+    "a_zoom_in": "Zoom in", "a_zoom_out": "Zoom out",
+    "a_fit_width": "Zoom so the page fills the window's width",
+    "a_fit_page": "Zoom so the whole page fits in the window",
+    "a_ocr": "Recognize text (OCR): make scanned pages searchable and selectable",
+    "a_rot_l": "Rotate the page counterclockwise", "a_rot_r": "Rotate the page clockwise",
+    "tool_highlight": "Highlight: drag across text",
+    "tool_underline": "Underline: drag across text",
+    "tool_strikeout": "Strike out: drag across text",
+    "tool_rect": "Rectangle: drag a box (Shift = square)",
+    "tool_ellipse": "Ellipse: drag a box (Shift = circle)",
+    "tool_cloud": "Revision cloud: drag a box (Shift = square)",
+    "tool_line": "Line: drag (Shift = 45\u00b0 steps)",
+    "tool_arrow": "Arrow: drag from tail to head (Shift = 45\u00b0 steps)",
+    "tool_eraser": "Eraser: click a markup to delete it, or drag a box to delete everything inside",
+}
+ARRANGE_TIPS = {
+    "al_left": "Align left edges", "al_hcenter": "Align centers (horizontally)",
+    "al_right": "Align right edges", "al_top": "Align top edges",
+    "al_vmiddle": "Align middles (vertically)", "al_bottom": "Align bottom edges",
+    "dist_h": "Distribute horizontally: equal gaps (3 or more markups)",
+    "dist_v": "Distribute vertically: equal gaps (3 or more markups)",
+    "z_front": "Bring to front: on top of all other markups",
+    "z_forward": "Bring forward one step", "z_backward": "Send backward one step",
+    "z_back": "Send to back: behind all other markups",
+}
 ZOOM_PRESETS = ["50%", "75%", "100%", "125%", "150%", "200%", "300%", "400%"]
 
 
@@ -468,7 +497,8 @@ class MainWindow(QMainWindow):
         tt.addSeparator()
         forms_btn = self.forms_btn = QToolButton()
         forms_btn.setText("Form fields")
-        forms_btn.setToolTip("Form field tools")
+        forms_btn.setToolTip("Form field tools: add text fields, checkboxes, option buttons, "
+                             "dropdowns and signature fields")
         forms_btn.setPopupMode(QToolButton.InstantPopup)
         fmenu = QMenu(forms_btn)
         fmenu.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
@@ -483,7 +513,8 @@ class MainWindow(QMainWindow):
         at.addActions([acts[k] for k in ("al_left", "al_hcenter", "al_right",
                                          "al_top", "al_vmiddle", "al_bottom")])
         self.align_ref_box = QComboBox()
-        self.align_ref_box.setToolTip("What the Align buttons line markups up with")
+        self.align_ref_box.setToolTip("Align relative to: the first markup you selected (default), "
+                                      "the last one selected, the whole selection, or the page")
         for key, a in self.align_ref_actions.items():
             self.align_ref_box.addItem(a.text().replace("Align to ", "to "), key)
         self.align_ref_box.setCurrentIndex(max(0, self.align_ref_box.findData(self._align_ref())))
@@ -1463,13 +1494,32 @@ class MainWindow(QMainWindow):
             tb.setIconSize(QSize(20, 20))
         for b in (self.shapes_btn, self.measure_btn, self.forms_btn):
             b.setToolButtonStyle(style)
-        # tooltips show the shortcut so icon-only buttons stay discoverable
-        for a in list(self.tool_actions.values()) + [getattr(self, k) for k in self.TOOLBAR_ICON_KEYS] + \
-                list(self.arrange_actions.values()):
-            sc = a.shortcut().toString()
-            name = a.text().split("\t")[0].replace("&", "")
-            a.setToolTip(f"{name} ({sc})" if sc and sc not in (a.toolTip() or "") else
-                         (a.toolTip() or name))
+        # tooltips: what the button does, plus its shortcut (icon-only buttons stay discoverable)
+        tips = dict(BUTTON_TIPS)
+        tips.update({"a_" + k: v for k, v in ARRANGE_TIPS.items()})
+        acts = [(k, getattr(self, k)) for k in self.TOOLBAR_ICON_KEYS] + \
+            [("a_" + k, a) for k, a in self.arrange_actions.items()] + \
+            [("tool_" + k, a) for k, a in self.tool_actions.items()]
+        for key, a in acts:
+            base = a.property("kz_tip")
+            if base is None:                       # first time: remember the plain tip
+                base = tips.get(key) or a.toolTip() or a.text().split("\t")[0].replace("&", "")
+                sc0 = a.shortcut().toString()
+                if sc0 and base.endswith(f"({sc0})"):        # drop a shortcut already in the text
+                    base = base[:-len(sc0) - 2].rstrip()
+                a.setProperty("kz_tip", base)
+            sc = a.shortcut().toString(QKeySequence.NativeText)
+            extra = {"a_rot_l": "Ctrl+Shift+Minus", "a_rot_r": "Ctrl+Shift+Plus"}.get(key, sc)
+            a.setToolTip(f"{base} ({extra})" if extra else base)
+        self.zoom_box.setToolTip("Zoom level: pick one or type a percentage and press Enter")
+        self.page_spin.setToolTip("Current page: type a page number and press Enter")
+        self.search.setToolTip("Find text in this document (Ctrl+F). Enter or F3 = next match, "
+                               "Shift+F3 = previous")
+        self.shapes_btn.setToolTip("Shapes: click for the shape shown, or the arrow to pick "
+                                   "another (rectangle, ellipse, cloud, polygon, line, arrow, "
+                                   "polyline, pen). Hold Shift for squares, circles and straight lines")
+        self.measure_btn.setToolTip("Measure: click for the tool shown, or the arrow for length, "
+                                    "polylength, area, count, calibrate and scale")
 
     def _toggle_labels(self):
         self.settings.setValue("toolbar_labels", "true" if self.a_labels.isChecked() else "false")
