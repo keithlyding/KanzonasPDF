@@ -46,6 +46,16 @@ def is_dark():
     return _mode == "dark"
 
 
+def icon_named(name):
+    """Icon by Material Design Icons name (for ribbon buttons without a toolbar icon)."""
+    try:
+        import qtawesome as qta
+        color = "#e6e6e6" if is_dark() else "#303030"
+        return qta.icon("mdi6." + name, color=color, color_active=color)
+    except Exception:
+        return QIcon()
+
+
 def icon(key):
     """Icon tinted for the current theme (empty icon if the icon font isn't available)."""
     name = ICONS.get(key)

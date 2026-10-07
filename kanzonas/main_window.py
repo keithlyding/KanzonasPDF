@@ -334,6 +334,15 @@ class MainWindow(QMainWindow):
                 ("z_backward", "Send bac&kward", "Ctrl+[", lambda: v() and v().arrange("backward")),
                 ("z_back", "Send to bac&k", "Ctrl+Shift+[", lambda: v() and v().arrange("back"))):
             self.arrange_actions[key] = self._act(label, fn, sc or None)
+        self.a_ribbon = self._act("&Ribbon (instead of toolbars)", self._toggle_ribbon,
+                                  tip="Office-style ribbon with labeled tabs; untick for the "
+                                      "classic compact toolbars")
+        self.a_ribbon.setCheckable(True)
+        self.a_ribbon.setChecked(self.settings.value("ui_mode", "ribbon") == "ribbon")
+        self.a_collapse = self._act("&Collapse ribbon", self._toggle_collapse, "Ctrl+F1",
+                                    tip="Show only the ribbon's tab names (double-click a tab "
+                                        "does the same)")
+        self.a_collapse.setCheckable(True)
         self.a_lock = self._act("&Lock selected", lambda: self._lock_selected(), "Ctrl+L",
                                 tip="Lock the selected markups: they can't be clicked, moved or "
                                     "selected on the page (unlock in the Objects panel)")
@@ -420,6 +429,7 @@ class MainWindow(QMainWindow):
         tm = m.addMenu("&Theme")
         tm.addActions(list(self.theme_actions.values()))
         m.addAction(self.a_labels)
+        m.addActions([self.a_ribbon, self.a_collapse])
         m.addSeparator()
         m.addAction(self.a_shortcuts)
         m = mb.addMenu("&Arrange")
@@ -616,6 +626,7 @@ class MainWindow(QMainWindow):
         at.addActions([acts["dist_h"], acts["dist_v"]])
         at.addSeparator()
         at.addActions([acts[k] for k in ("z_front", "z_forward", "z_backward", "z_back")])
+        self._build_ribbon()
 
     def _build_sidebar(self):
         self.thumbs = QListWidget()
@@ -2012,6 +2023,8 @@ class MainWindow(QMainWindow):
             getattr(self, attr).setIcon(theme.icon(key))
         for key, a in self.arrange_actions.items():
             a.setIcon(theme.icon(key))
+        for attr, name in self.RIBBON_ICONS.items():
+            getattr(self, attr).setIcon(theme.icon_named(name))
         for tid, a in self.tool_actions.items():
             a.setIcon(theme.icon(tid))
         self.forms_btn.setIcon(theme.icon("forms"))
@@ -2355,6 +2368,190 @@ class MainWindow(QMainWindow):
             "CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan" if on else
             "CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms", 4000)
 
+    # ---- ribbon --------------------------------------------------------------------------
+    # short labels for ribbon buttons (the menus keep the full names)
+    RIBBON_LABELS = {
+        "a_fit_width": "Fit width", "a_fit_page": "Fit page", "a_actual": "Actual size",
+        "a_cad_mouse": "CAD mouse", "a_grid": "Grid", "a_snap_grid": "Snap to grid",
+        "a_snap_objects": "Snap to objects", "a_grid_settings": "Grid settings",
+        "a_set_scale": "Set scale", "a_measure_summary": "Summary", "a_ocr": "OCR",
+        "a_rot_l": "Rotate left", "a_rot_r": "Rotate right", "a_lock": "Lock",
+        "a_unlock_all": "Unlock all", "a_prev_markup": "Previous", "a_next_markup": "Next",
+        "a_markups": "Markups list", "a_show_markups": "Show markups",
+        "a_cards": "Comment boxes", "a_delete_markups": "Delete comments",
+        "a_flatten_markups": "Flatten comments", "a_multi_sign": "Multi-place",
+        "a_setup_sig": "My signature", "a_setup_init": "My initials",
+        "a_apply_placeholders": "Apply all", "a_digisign": "Digital sign",
+        "a_timestamp": "Timestamp", "a_sig_details": "Signature details",
+        "a_clear_sigs": "Clear signatures", "a_search_redact": "Search and redact",
+        "a_apply_sel_redact": "Apply selected", "a_apply_redact": "Apply all",
+        "a_security": "Security", "a_remove_security": "Remove security", "a_unlock": "Unlock",
+        "a_sanitize": "Sanitize", "a_hl_fields": "Highlight fields", "a_move_up": "Move up",
+        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file",
+        "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
+        "a_watermark": "Watermark", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
+        "a_compress": "Compress", "a_compare": "Compare", "a_flatten": "Flatten",
+        "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest",
+        "a_split": "Split view", "a_labels": "Toolbar labels", "a_shortcuts": "Shortcuts",
+        "a_manual": "User manual", "a_ribbon": "Ribbon", "a_collapse": "Collapse",
+        "a_zoom_in": "Zoom in", "a_zoom_out": "Zoom out", "a_open": "Open", "a_save": "Save",
+        "a_print": "Print", "al_left": "Left", "al_hcenter": "Center", "al_right": "Right",
+        "al_top": "Top", "al_vmiddle": "Middle", "al_bottom": "Bottom",
+        "dist_h": "Horizontally", "dist_v": "Vertically", "z_front": "To front",
+        "z_forward": "Forward", "z_backward": "Backward", "z_back": "To back",
+        "tool_redact": "Redact", "tool_placeholder": "Placeholder",
+    }
+    RIBBON_ICONS = {
+        "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square",
+        "a_measure_summary": "sigma", "a_grid_settings": "cog-outline", "a_lock": "lock-outline",
+        "a_unlock_all": "lock-open-variant-outline", "a_prev_markup": "chevron-up",
+        "a_next_markup": "chevron-down", "a_markups": "format-list-bulleted",
+        "a_show_markups": "eye-outline", "a_cards": "card-text-outline",
+        "a_delete_markups": "comment-remove-outline", "a_flatten_markups": "layers-outline",
+        "a_multi_sign": "content-copy", "a_setup_sig": "account-edit-outline",
+        "a_setup_init": "account-edit", "a_apply_placeholders": "check-all",
+        "a_digisign": "certificate-outline", "a_timestamp": "clock-check-outline",
+        "a_sig_details": "shield-search", "a_clear_sigs": "shield-remove-outline",
+        "a_search_redact": "text-search", "a_apply_sel_redact": "marker-check",
+        "a_apply_redact": "check-decagram", "a_security": "shield-lock-outline",
+        "a_remove_security": "shield-off-outline", "a_unlock": "lock-open-outline",
+        "a_sanitize": "broom", "a_hl_fields": "format-color-highlight",
+        "a_move_up": "arrow-up-bold-outline", "a_move_down": "arrow-down-bold-outline",
+        "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
+        "a_insert_blank": "file-outline", "a_extract": "file-export-outline",
+        "a_header": "page-layout-header-footer", "a_watermark": "watermark",
+        "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
+        "a_compress": "zip-box-outline", "a_compare": "compare", "a_flatten": "layers-triple-outline",
+        "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
+        "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_labels": "label-outline",
+        "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline",
+        "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up",
+    }
+
+    def _build_ribbon(self):
+        from .ribbon import Ribbon
+        t = self.tool_actions
+        A_ = self.arrange_actions
+        for attr, label in self.RIBBON_LABELS.items():
+            if attr.startswith("tool_"):
+                t[attr[5:]].setIconText(label.replace("&&", "&"))
+            elif attr in A_:
+                A_[attr].setIconText(label)
+            else:
+                getattr(self, attr).setIconText(label.replace("&&", "&"))
+        self.ribbon_align_box = QComboBox()
+        for i in range(self.align_ref_box.count()):
+            self.ribbon_align_box.addItem(self.align_ref_box.itemText(i), self.align_ref_box.itemData(i))
+        self.ribbon_align_box.setCurrentIndex(self.align_ref_box.currentIndex())
+        self.ribbon_align_box.setToolTip(self.align_ref_box.toolTip())
+        self.ribbon_align_box.activated.connect(
+            lambda i: self._set_align_ref(self.ribbon_align_box.itemData(i)))
+        r = self.ribbon = Ribbon()
+        r.add_tab("Home", [
+            ("Tools", "large", [t["select"], t["hand"], t["edittext"]]),
+            ("Mark up text", "small", [t["highlight"], t["underline"], t["strikeout"],
+                                       t["comment"], t["note"], t["textbox"]]),
+            ("Insert", "large", [t["stamp"], t["image"], t["attach"]]),
+            ("Zoom", "small", [self.a_fit_width, self.a_fit_page, self.a_actual,
+                               self.a_zoom_in, self.a_zoom_out, self.a_cad_mouse]),
+            ("Sign", "large", [t["signature"], t["initials"]]),
+        ])
+        r.add_tab("Comment", [
+            ("Text", "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
+                               t["note"], t["textbox"]]),
+            ("Callout & stamps", "large", [t["callout"], t["stamp"], t["image"], t["attach"]]),
+            ("Shapes", "small", [t["rect"], t["ellipse"], t["cloud"], t["polygon"], t["line"],
+                                 t["arrow"], t["polyline"], t["ink"]]),
+            ("Erase", "large", [t["eraser"]]),
+            ("Styles", "large", [self.a_props, self.a_chest]),
+        ])
+        r.add_tab("Measure", [
+            ("Measure", "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
+            ("Scale", "small", [t["m_calibrate"], self.a_set_scale, self.a_measure_summary]),
+            ("Grid & snap", "small", [self.a_grid, self.a_snap_grid, self.a_snap_objects,
+                                      self.a_grid_settings]),
+        ])
+        r.add_tab("Arrange", [
+            ("Align", "small", [A_["al_left"], A_["al_hcenter"], A_["al_right"], A_["al_top"],
+                                A_["al_vmiddle"], A_["al_bottom"]]),
+            ("Align to", "small", [self.ribbon_align_box]),
+            ("Distribute", "small", [A_["dist_h"], A_["dist_v"]]),
+            ("Order", "small", [A_["z_front"], A_["z_forward"], A_["z_backward"], A_["z_back"]]),
+            ("Lock", "large", [self.a_lock, self.a_unlock_all]),
+        ])
+        r.add_tab("Review", [
+            ("Add", "large", [t["comment"], t["note"]]),
+            ("Navigate", "large", [self.a_prev_markup, self.a_next_markup, self.a_markups]),
+            ("Show", "small", [self.a_show_markups, self.a_cards]),
+            ("Manage", "large", [self.a_delete_markups, self.a_flatten_markups]),
+        ])
+        r.add_tab("Protect", [
+            ("Sign", "large", [t["signature"], t["initials"], self.a_multi_sign]),
+            ("My signature", "small", [self.a_setup_sig, self.a_setup_init]),
+            ("Placeholders", "large", [t["placeholder"], self.a_apply_placeholders]),
+            ("Digital signatures", "small", [self.a_digisign, self.a_timestamp,
+                                             self.a_sig_details, self.a_clear_sigs]),
+            ("Redact", "small", [t["redact"], self.a_search_redact, self.a_apply_sel_redact,
+                                 self.a_apply_redact]),
+            ("Security", "large", [self.a_security, self.a_remove_security, self.a_unlock,
+                                   self.a_sanitize]),
+        ])
+        r.add_tab("Forms", [
+            ("Add fields", "large", [t[k] for k, _l, _t in FORM_TOOLS]),
+            ("Show", "large", [self.a_hl_fields]),
+        ])
+        r.add_tab("Pages", [
+            ("Rotate", "large", [self.a_rot_l, self.a_rot_r]),
+            ("Organize", "small", [self.a_move_up, self.a_move_down, self.a_del_page,
+                                   self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
+            ("Document", "small", [self.a_header, self.a_watermark, self.a_bookmarks,
+                                   self.a_attachments, self.a_compress, self.a_compare]),
+            ("Convert", "large", [self.a_ocr, self.a_flatten]),
+        ])
+        r.add_tab("View", [
+            ("Panels", "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
+                                 self.a_split]),
+            ("Display", "small", [self.a_grid, self.a_hl_fields, self.a_show_markups,
+                                  self.a_cad_mouse]),
+            ("Ribbon", "large", [self.a_ribbon, self.a_collapse]),
+            ("Help", "large", [self.a_shortcuts, self.a_manual]),
+        ])
+        r.collapsedChanged.connect(self._ribbon_collapsed)
+        self.addToolBarBreak()
+        rt = self.ribbon_tb = QToolBar("Ribbon")
+        rt.setObjectName("ribbon")
+        rt.setMovable(False)
+        rt.toggleViewAction().setVisible(False)
+        rt.addWidget(r)
+        self.addToolBar(rt)
+        try:
+            tab = int(self.settings.value("ribbon_tab", 0))
+        except (TypeError, ValueError):
+            tab = 0
+        r.setCurrentIndex(max(0, min(tab, r.count() - 1)))
+        r.currentChanged.connect(lambda i: self.settings.setValue("ribbon_tab", i))
+        if self.settings.value("ribbon_collapsed", "false") == "true":
+            r.set_collapsed(True)
+        self._apply_ui_mode()
+
+    def _apply_ui_mode(self):
+        ribbon = self.a_ribbon.isChecked()
+        self.ribbon_tb.setVisible(ribbon)
+        self.tools_tb.setVisible(not ribbon)
+        self.arrange_tb.setVisible(not ribbon)
+        self.a_collapse.setEnabled(ribbon)
+
+    def _toggle_ribbon(self):
+        self.settings.setValue("ui_mode", "ribbon" if self.a_ribbon.isChecked() else "classic")
+        self._apply_ui_mode()
+
+    def _toggle_collapse(self):
+        self.ribbon.set_collapsed(self.a_collapse.isChecked())
+
+    def _ribbon_collapsed(self, on):
+        self.a_collapse.setChecked(on)
+        self.settings.setValue("ribbon_collapsed", "true" if on else "false")
+
     def _align_ref(self):
         for key, a in self.align_ref_actions.items():
             if a.isChecked():
@@ -2364,8 +2561,9 @@ class MainWindow(QMainWindow):
     def _set_align_ref(self, key):
         self.align_ref_actions[key].setChecked(True)
         self.settings.setValue("align_ref", key)
-        if hasattr(self, "align_ref_box"):
-            self.align_ref_box.setCurrentIndex(max(0, self.align_ref_box.findData(key)))
+        for box in (getattr(self, "align_ref_box", None), getattr(self, "ribbon_align_box", None)):
+            if box is not None:
+                box.setCurrentIndex(max(0, box.findData(key)))
         self._update_ui()
 
     def _align(self, how):

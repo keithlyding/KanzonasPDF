@@ -23,6 +23,11 @@ File &gt; Open recent. Each file opens in its own tab, at the page and zoom you 
 <li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Undo is Ctrl+Z, redo is Ctrl+Y.</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
+<li><b>Ribbon:</b> commands are grouped on tabs: Home, Comment, Measure, Arrange, Review,
+Protect, Forms, Pages and View. The bar above it (open, save, print, undo, zoom, page, find)
+stays visible. <b>Collapse ribbon</b> (Ctrl+F1, or double-click a tab) shows only the tab
+names; click a tab to open it again. Untick View &gt; <b>Ribbon (instead of toolbars)</b> for
+the classic compact toolbars. The menus always have every command.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
 saying what it does and its keyboard shortcut.</li>
@@ -316,6 +321,7 @@ Plain text (.txt).</li>
 <tr><td>Ctrl+F, F3, Shift+F3</td><td>Find, next, previous</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
+<tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
 <tr><td>F11</td><td>CAD-style mouse on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
