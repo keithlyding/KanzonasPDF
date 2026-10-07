@@ -1,0 +1,50 @@
+name: Build Windows app
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build exe
+        run: python -m PyInstaller --noconfirm --windowed --name KanzonasPDF run.py
+
+      - name: Smoke test (exe starts and opens a PDF)
+        shell: pwsh
+        run: |
+          python -c "import pymupdf; d=pymupdf.open(); d.new_page().insert_text((72,72),'hi'); d.save('test.pdf')"
+          $p = Start-Process dist\KanzonasPDF\KanzonasPDF.exe -ArgumentList test.pdf -PassThru
+          Start-Sleep -Seconds 15
+          if ($p.HasExited) { throw "App exited early with code $($p.ExitCode)" }
+          Stop-Process -Id $p.Id
+
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path dist\KanzonasPDF -DestinationPath KanzonasPDF-windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KanzonasPDF-windows
+          path: KanzonasPDF-windows.zip
+
+      - name: Publish release (version tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: KanzonasPDF-windows.zip
