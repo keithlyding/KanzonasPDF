@@ -16,7 +16,7 @@ import os
 import secrets
 from datetime import date
 
-from PySide6.QtCore import Qt, QStandardPaths, QPointF, QRectF, QBuffer, QIODevice, QByteArray
+from PySide6.QtCore import Qt, QPointF, QRectF, QBuffer, QIODevice, QByteArray
 from PySide6.QtGui import QImage, QPainter, QPen, QColor, QPainterPath
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
                                QWidget, QFileDialog, QInputDialog, QLineEdit, QMessageBox,
@@ -27,10 +27,8 @@ DATE_FORMATS = ["%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d", "%B %d, %Y", "(no date)"]
 
 
 def _dir():
-    d = os.path.join(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation),
-                     "signatures")
-    os.makedirs(d, exist_ok=True)
-    return d
+    from . import paths
+    return paths.data_dir("signatures")
 
 
 def _meta_path():

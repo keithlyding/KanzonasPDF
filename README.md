@@ -70,8 +70,9 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 
 Get the latest **`KanzonasPDF-v<version>-setup.exe`** from the
 [Releases page](https://github.com/keithlyding/KanzonasPDF/releases) and run it. No
-administrator rights are needed. Prefer no installer? Download the `-windows.zip`, unzip it
-anywhere and run `KanzonasPDF.exe`.
+administrator rights are needed. Prefer no installer? Download the **`-portable.zip`**, unzip it
+anywhere (even a USB stick) and run `KanzonasPDF.exe`: its settings, signatures and stamps stay
+in a `data` folder beside it.
 
 To publish a release: bump `__version__` in `kanzonas/__init__.py`, push, then push a tag
 (`git tag v1.0 && git push origin v1.0`). The build attaches the installer and zip.

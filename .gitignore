@@ -5,3 +5,5 @@ dist/
 *.spec
 *.kanzonas-tmp
 selftest.log
+portable.txt
+data/

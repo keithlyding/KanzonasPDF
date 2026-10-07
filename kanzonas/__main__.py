@@ -38,9 +38,8 @@ def main():
         return
     from .branding import app_icon
     app.setWindowIcon(app_icon())
-    from PySide6.QtCore import QSettings
-    from . import theme
-    theme.apply(app, QSettings(APP_NAME, APP_NAME).value("theme", "system"))
+    from . import paths, theme
+    theme.apply(app, paths.settings().value("theme", "system"))
     win = MainWindow()
     win.show()
     for path in files:

@@ -90,6 +90,36 @@ jobs:
           Start-Sleep -Seconds 5
           if (Test-Path "$dir\KanzonasPDF.exe") { throw "Uninstall left the app behind" }
 
+      - name: Portable version (settings and files stay in a data folder beside the exe)
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          New-Item -ItemType Directory portable | Out-Null
+          Copy-Item -Recurse dist\KanzonasPDF portable\KanzonasPDF
+          @"
+          KanzonasPDF portable
+
+          Because this file is here, KanzonasPDF keeps its settings, your signatures, stamp images
+          and certificate in the "data" folder next to KanzonasPDF.exe instead of the computer's
+          registry and user folders. Copy the whole KanzonasPDF folder anywhere (a USB
+          stick, a network drive) and run KanzonasPDF.exe. No installation or Python needed.
+          Delete this file to make it behave like the installed version.
+          "@ | Set-Content portable\KanzonasPDF\portable.txt
+          Compress-Archive -Path portable\KanzonasPDF -DestinationPath KanzonasPDF-v$v-portable.zip
+          # test a copy: it must run, keep its settings in data\ and leave the registry alone
+          Remove-Item -Recurse -Force "HKCU:\Software\KanzonasPDF" -ErrorAction SilentlyContinue
+          Copy-Item -Recurse portable\KanzonasPDF "$env:RUNNER_TEMP\kzportable"
+          $p = Start-Process "$env:RUNNER_TEMP\kzportable\KanzonasPDF.exe" -ArgumentList "--selftest","portable-selftest.log" -PassThru -Wait
+          Get-Content portable-selftest.log
+          if ($p.ExitCode -ne 0) { throw "Portable app failed its self test" }
+          if (-not (Test-Path "$env:RUNNER_TEMP\kzportable\data\settings.ini")) { throw "Portable settings not in data folder" }
+          if (Test-Path "HKCU:\Software\KanzonasPDF") { throw "Portable app wrote to the registry" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portable
+          path: KanzonasPDF-v${{ steps.ver.outputs.version }}-portable.zip
+
       - uses: actions/upload-artifact@v4
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-windows
@@ -107,10 +137,12 @@ jobs:
           name: KanzonasPDF ${{ steps.ver.outputs.version }}
           body: |
             **Download `KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe`** and run it (no administrator rights needed).
-            Prefer no installer? Download the `-windows.zip`, unzip it anywhere and run `KanzonasPDF.exe`.
+            **Portable (no install; settings stay with the app):** download `-portable.zip`, unzip it
+            anywhere (e.g. a USB stick) and run `KanzonasPDF.exe`; settings stay in its `data` folder.
 
             What's new: see [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/${{ github.ref_name }}/CHANGELOG.md).
             Free software under the GNU AGPL 3.0.
           files: |
             dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
+            KanzonasPDF-v${{ steps.ver.outputs.version }}-portable.zip
             KanzonasPDF-v${{ steps.ver.outputs.version }}-windows.zip

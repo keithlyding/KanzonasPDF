@@ -179,6 +179,20 @@ def run(log_path):
         page_tools.compress(d.tobytes(), os.path.join(tmp, "small.pdf"), list(page_tools.COMPRESS)[1])
     check("page tools", t_page_tools)
 
+    def t_storage():
+        # where settings and personal files go (portable: the data folder beside the exe)
+        from . import paths
+        st = paths.settings()
+        st.setValue("selftest/last_run", "ok")
+        st.sync()
+        if paths.is_portable():
+            ini = os.path.join(paths.data_dir(), "settings.ini")
+            assert os.path.exists(ini), "portable settings file missing"
+            assert paths.data_dir("signatures").startswith(paths.app_dir())
+            return f"(portable: {paths.data_dir()})"
+        return "(installed: registry + AppData)"
+    check("storage location", t_storage)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

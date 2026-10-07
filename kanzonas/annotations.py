@@ -16,7 +16,6 @@ import json
 import math
 
 import pymupdf
-from PySide6.QtCore import QSettings
 
 KZ_KEY = "KZProps"
 
@@ -106,7 +105,8 @@ def to_hex(rgb):
 
 # ---- per-tool defaults (persist across sessions) ------------------------------
 def _settings():
-    return QSettings("KanzonasPDF", "KanzonasPDF")
+    from . import paths
+    return paths.settings()
 
 
 # A Tool Chest item in use: (tool, props) that replace the tool's defaults until another

@@ -5,7 +5,7 @@ import os
 import shutil
 from datetime import datetime
 
-from PySide6.QtCore import Qt, QRectF, QStandardPaths
+from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QImage, QPainter, QPen, QColor, QFont, QFontMetricsF
 
 from . import signatures
@@ -18,9 +18,8 @@ SCALE = 4          # render resolution: pixels per point
 
 
 def library_dir():
-    d = os.path.join(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation), "stamps")
-    os.makedirs(d, exist_ok=True)
-    return d
+    from . import paths
+    return paths.data_dir("stamps")
 
 
 def library():

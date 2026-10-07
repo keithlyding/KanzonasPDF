@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.34 | (this) | Ctrl+D duplicates the selected markups (or the selected pages when the page list has the focus) |
+| 0.35 | (this) | Portable version (-portable.zip): with portable.txt beside the exe, settings, signatures, stamps and certificate live in a data folder next to it instead of the registry/AppData; the build tests that it stays out of the registry |
+| 0.34 | 400cd17 | Ctrl+D duplicates the selected markups (or the selected pages when the page list has the focus) |
 | 0.33 | 7226f12 | Copy, cut and paste: text selections stay highlighted (Ctrl+C copies, Ctrl+X removes the text, Ctrl+A selects all); markups copy/paste between pages and documents; pasting a picture makes an image markup and text a text box; pages: Copy, Cut, Paste after selected and Duplicate (Ctrl+D) in the unlocked page list, also across documents. Fix: text boxes grew slightly on every edit |
 | 0.32 | b8dd3fb | Icon uses the owner's original composition again (page coming out above the cactus), with the page outline darkened in the icon and logo |
 | 0.31 | a556d7f | Logo and icon refinements on the owner's artwork: ™ removed, page outline darker, large icon's frame and page redrawn sharp around the owner's cactus and sunflower, simplified cactus-and-sunflower icon for 16-32 px with a white edge for dark taskbars |

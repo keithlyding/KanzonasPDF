@@ -14,7 +14,6 @@ import json
 import logging
 import os
 
-from PySide6.QtCore import QStandardPaths
 
 from . import annotations as A
 
@@ -23,9 +22,8 @@ for _name in ("pyhanko", "pyhanko_certvalidator"):
 
 
 def my_cert_path():
-    d = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
-    os.makedirs(d, exist_ok=True)
-    return os.path.join(d, "my-certificate.p12")
+    from . import paths
+    return os.path.join(paths.data_dir(), "my-certificate.p12")
 
 
 def create_certificate(name, email, org, password, path=None):

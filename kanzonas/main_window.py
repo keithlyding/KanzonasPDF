@@ -5,7 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
-from PySide6.QtCore import Qt, QSize, QTimer, QSettings, QEvent
+from PySide6.QtCore import Qt, QSize, QTimer, QEvent
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, QImage,
                            QColor, QPainter)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, QMessageBox,
@@ -123,7 +123,8 @@ ZOOM_PRESETS = ["50%", "75%", "100%", "125%", "150%", "200%", "300%", "400%"]
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.settings = QSettings(APP_NAME, APP_NAME)
+        from . import paths
+        self.settings = paths.settings()
         self.setWindowTitle(APP_NAME)
         self.resize(1300, 900)
         self.setAcceptDrops(True)
