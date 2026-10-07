@@ -148,7 +148,7 @@ def qimage_to_png(img):
 
 def clean_scan(img, threshold=200, ink=None):
     """Photo/scan of a signature -> transparent background, cropped to the ink.
-    Pixels lighter than threshold become transparent; ink can be recoloured."""
+    Pixels lighter than threshold become transparent; ink can be recolored."""
     import numpy as np
     img = img.convertToFormat(QImage.Format_RGBA8888)
     w, h = img.width(), img.height()
@@ -258,7 +258,7 @@ class SignatureSetup(QDialog):
         b_load = QPushButton("Load scan / photo...")
         b_load.clicked.connect(self._load)
         self.ink = QComboBox()
-        self.ink.addItems(["Black ink", "Blue ink", "Keep original colours"])
+        self.ink.addItems(["Black ink", "Blue ink", "Keep original colors"])
         self.ink.currentIndexChanged.connect(self._ink_changed)
         row.addWidget(b_clear)
         row.addWidget(b_load)

@@ -1,7 +1,7 @@
 """Compare two revisions of a document.
 
 Each page pair is rendered, differences are found pixel by pixel, and a result PDF is
-built: an overlay image per page (only in OLD = red, only in NEW = blue, unchanged = grey)
+built: an overlay image per page (only in OLD = red, only in NEW = blue, unchanged = gray)
 plus a revision cloud around every changed area, listed in the markups list.
 """
 
@@ -102,7 +102,7 @@ def compare(old_bytes, new_bytes, dpi=110, progress=None, old_name="OLD", new_na
             annot.set_info(content=f"Change {k} ({kind})", title="Compare")
             annot.update()
         legend = (f"Compare  |  red = only in {old_name}  |  blue = only in {new_name}  |  "
-                  f"grey = unchanged  |  {len(regions)} change(s) on this page")
+                  f"gray = unchanged  |  {len(regions)} change(s) on this page")
         page.insert_text((12, 14), legend, fontsize=8, color=(0.4, 0, 0.4))
         if not po or not pn:
             page.insert_text((12, 26), "This page exists only in " +

@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
 
 from . import annotations as A
 
-COLUMNS = ["Page", "Type", "Comment / text", "Author", "Date", "Colour"]
+COLUMNS = ["Page", "Type", "Comment / text", "Author", "Date", "Color"]
 _SKIP = (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_WIDGET, pymupdf.PDF_ANNOT_LINK)
 
 
@@ -25,7 +25,7 @@ def _date(pdf_date):
 
 
 def collect(doc):
-    """[(page index, xref, type label, text, author, date, colour hex)]"""
+    """[(page index, xref, type label, text, author, date, color hex)]"""
     rows = []
     for i in range(doc.page_count):
         page = doc[i]
@@ -42,11 +42,11 @@ def collect(doc):
                 label = "Cloud"
             info = a.info
             text = info.get("content", "") or ""
-            colour = (model["props"].get("stroke") if model else None) or \
+            color = (model["props"].get("stroke") if model else None) or \
                 A.to_hex((a.colors or {}).get("stroke")) or ""
             rows.append((i, a.xref, label, text.replace("\r", " ").replace("\n", " "),
                          info.get("title", ""), _date(info.get("modDate") or info.get("creationDate")),
-                         colour))
+                         color))
     return rows
 
 
@@ -108,14 +108,14 @@ class MarkupsPanel(QWidget):
         self.type_filter.blockSignals(False)
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(self._rows))
-        for r, (page, xref, label, text, author, date, colour) in enumerate(self._rows):
+        for r, (page, xref, label, text, author, date, color) in enumerate(self._rows):
             cells = [_PageItem(str(page + 1)), QTableWidgetItem(label), QTableWidgetItem(text),
-                     QTableWidgetItem(author), QTableWidgetItem(date), QTableWidgetItem(colour)]
+                     QTableWidgetItem(author), QTableWidgetItem(date), QTableWidgetItem(color)]
             cells[0].setData(Qt.UserRole, (page, xref))
             cells[2].setToolTip(text)
-            if colour:
-                cells[5].setBackground(QBrush(QColor(colour)))
-                cells[5].setForeground(QBrush(QColor("white") if QColor(colour).lightness() < 128
+            if color:
+                cells[5].setBackground(QBrush(QColor(color)))
+                cells[5].setForeground(QBrush(QColor("white") if QColor(color).lightness() < 128
                                               else QColor("black")))
             for c, it in enumerate(cells):
                 self.table.setItem(r, c, it)

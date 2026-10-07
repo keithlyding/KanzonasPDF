@@ -4,6 +4,8 @@ Handles drawing (page image, search hits, comment boxes, selection handles, prev
 and turns mouse input into calls on the DocumentView, which owns all PDF edits.
 """
 
+from collections import OrderedDict
+
 import pymupdf
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath,
@@ -16,10 +18,17 @@ TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redac
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
                "m_length", "m_calibrate"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area"}
+# While one of these drawing tools is active, clicking an existing markup selects it for
+# moving / resizing / restyling (like the Select tool) instead of starting a new one.
+EDIT_IN_PLACE = {"rect", "ellipse", "cloud", "line", "arrow", "polygon", "polyline", "ink",
+                 "textbox", "callout", "note", "stamp", "m_length", "m_poly", "m_area", "m_count"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign"}
 SIGN_TOOLS = {"signature", "initials"}
 HANDLE = 7          # handle size in px
+FULL_LIMIT = 16_000_000     # device pixels: above this a page is drawn in tiles
+TILE = 512                  # tile size in device pixels
+TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
 
 
@@ -51,11 +60,71 @@ class PageWidget(QWidget):
         self._pix = None
 
     def invalidate(self):
+        """Page content changed: forget its display list, bitmap and tiles."""
         self._pix = None
+        self.view._dlists.pop(self.index, None)
+        self._drop_tiles()
         self.update()
 
     def drop_cache(self):
         self._pix = None
+
+    def _drop_tiles(self):
+        tiles = self.view._tiles
+        for key in [k for k in tiles if k[0] == self.index]:
+            del tiles[key]
+
+    def _display_list(self):
+        """The page's parsed drawing, made once and reused for every render and tile."""
+        dl = self.view._dlists.get(self.index)
+        if dl is None:
+            dl = self.view.doc[self.index].get_displaylist(annots=True)
+            self.view._dlists[self.index] = dl
+        return dl
+
+    @staticmethod
+    def _to_qpixmap(pm, dpr):
+        img = QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
+        pix = QPixmap.fromImage(img)
+        pix.setDevicePixelRatio(dpr)
+        return pix
+
+    def _tiled(self):
+        dpr = self.devicePixelRatioF()
+        return self.width() * self.height() * dpr * dpr > FULL_LIMIT
+
+    def _paint_tiles(self, p, exposed):
+        """Large page at high zoom: draw only the visible area, in cached tiles."""
+        dpr = self.devicePixelRatioF()
+        s = self.view.zoom * dpr
+        dl = self._display_list()
+        full = pymupdf.IRect(0, 0, int(self.width() * dpr), int(self.height() * dpr))
+        tiles = self.view._tiles
+        tx0, ty0 = int(exposed.left() * dpr) // TILE, int(exposed.top() * dpr) // TILE
+        tx1, ty1 = int(exposed.right() * dpr) // TILE, int(exposed.bottom() * dpr) // TILE
+        for ty in range(ty0, ty1 + 1):
+            for tx in range(tx0, tx1 + 1):
+                key = (self.index, round(s, 5), tx, ty)
+                hit = tiles.get(key)
+                if hit is None:
+                    dev = pymupdf.IRect(tx * TILE, ty * TILE, (tx + 1) * TILE, (ty + 1) * TILE) & full
+                    if dev.is_empty:
+                        continue
+                    try:
+                        pm = dl.get_pixmap(matrix=pymupdf.Matrix(s, s), clip=pymupdf.Rect(dev) / s,
+                                           alpha=False)
+                        hit = (self._to_qpixmap(pm, dpr), pm.x, pm.y)
+                    except Exception:
+                        p.fillRect(QRectF(dev.x0 / dpr, dev.y0 / dpr, dev.width / dpr,
+                                          dev.height / dpr), Qt.white)
+                        continue
+                    tiles[key] = hit
+                    while len(tiles) > TILE_LIMIT:
+                        tiles.popitem(last=False)
+                else:
+                    tiles.move_to_end(key)
+                pix, x, y = hit
+                p.drawPixmap(QPointF(x / dpr, y / dpr), pix)
 
     def to_pdf(self, pos):
         """Widget position -> unrotated PDF point (what PyMuPDF expects)."""
@@ -77,25 +146,24 @@ class PageWidget(QWidget):
 
     # ---- painting -------------------------------------------------------
     def _render(self):
-        page = self.view.doc[self.index]
         dpr = self.devicePixelRatioF()
         s = self.view.zoom * dpr
-        pm = page.get_pixmap(matrix=pymupdf.Matrix(s, s), alpha=False, annots=True)
-        img = QImage(pm.samples, pm.width, pm.height, pm.stride,
-                     QImage.Format_RGB888).copy()
-        pix = QPixmap.fromImage(img)
-        pix.setDevicePixelRatio(dpr)
-        self._pix = pix
+        pm = self._display_list().get_pixmap(matrix=pymupdf.Matrix(s, s), alpha=False)
+        self._pix = self._to_qpixmap(pm, dpr)
 
     def paintEvent(self, event):
         p = QPainter(self)
-        if self._pix is None:
-            try:
-                self._render()
-            except Exception:
-                p.fillRect(self.rect(), Qt.white)
-                return
-        p.drawPixmap(0, 0, self._pix)
+        if self._tiled():
+            self._pix = None
+            self._paint_tiles(p, event.rect())
+        else:
+            if self._pix is None:
+                try:
+                    self._render()
+                except Exception:
+                    p.fillRect(self.rect(), Qt.white)
+                    return
+            p.drawPixmap(0, 0, self._pix)
         page = self.view.doc[self.index]
         p.setRenderHint(QPainter.Antialiasing)
 
@@ -328,6 +396,10 @@ class PageWidget(QWidget):
     def mousePressEvent(self, e):
         if e.button() != Qt.LeftButton:
             return super().mousePressEvent(e)
+        if self.view._inline is not None:
+            # clicking outside the text editor finishes the edit (and nothing else)
+            self.view._inline.commit()
+            return
         self.view.setFocus()
         tool = self.view.tool
         pos = e.position()
@@ -341,6 +413,8 @@ class PageWidget(QWidget):
                 return
         if tool == "hand":
             self.view.begin_pan(e.globalPosition())
+            return
+        if tool in EDIT_IN_PLACE and not self._poly and self._press_on_markup(pos, pdf):
             return
         if tool in SIGN_TOOLS:
             self.view.place_signature(self.index, tool, pdf)
@@ -401,6 +475,24 @@ class PageWidget(QWidget):
         elif tool == "note":
             self.view.apply_point_tool(self.index, tool, pdf)
 
+    def _press_on_markup(self, pos, pdf):
+        """Handle a press on a selected markup's handle or on any markup: select it and start
+        moving / resizing. Returns False when the press is on empty page (draw normally)."""
+        model = self._selected_here()
+        if model is not None:
+            for hid, r in self._handles(model).items():
+                if r.adjusted(-3, -3, 3, 3).contains(pos):
+                    self._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
+                    return True
+        if self.view.select_annot_at(self.index, pdf):
+            model = self._selected_here()
+            if model is not None and A.movable(model):
+                self._edit = {"mode": "move", "start": pos, "model": model, "preview": None}
+            return True
+        if self.view.selection is not None:
+            self.view.clear_selection()
+        return False
+
     def _edit_preview(self, pos):
         ed = self._edit
         model = ed["model"]
@@ -449,8 +541,8 @@ class PageWidget(QWidget):
                 if r != self._hover:
                     self._hover = r
                     self.update()
-            elif tool == "select":
-                self._update_select_cursor(pos)
+            elif tool == "select" or (tool in EDIT_IN_PLACE and not self._poly):
+                self._update_select_cursor(pos, restore=tool != "select")
             return
         if tool == "hand":
             self.view.continue_pan(e.globalPosition())
@@ -470,7 +562,7 @@ class PageWidget(QWidget):
             self._ink.append(pos)
             self.update()
 
-    def _update_select_cursor(self, pos):
+    def _update_select_cursor(self, pos, restore=False):
         model = self._selected_here()
         if model is not None:
             for hid, r in self._handles(model).items():

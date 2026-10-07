@@ -38,7 +38,7 @@ def run(log_path):
         scan = pymupdf.open()
         p = scan.new_page()
         p.insert_image(p.rect, pixmap=doc[0].get_pixmap(dpi=150))
-        res = ocr.recognize(ocr.Rendering(scan[0]).png)
+        res = ocr.recognize(ocr.Rendering(scan[0]))
         text = " ".join(r[1] for r in res)
         assert "Hello" in text, text
         return f"({len(res)} lines)"

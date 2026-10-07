@@ -81,7 +81,7 @@ def add_watermark(doc, spec):
     for i in spec["pages"]:
         page = doc[i]
         disp = page.rect
-        centre = pymupdf.Point(disp.width / 2, disp.height / 2) * page.derotation_matrix
+        center = pymupdf.Point(disp.width / 2, disp.height / 2) * page.derotation_matrix
         if spec.get("image"):
             pm = pymupdf.Pixmap(spec["image"])
             if pm.alpha == 0:
@@ -96,12 +96,12 @@ def add_watermark(doc, spec):
         text = spec["text"]
         size = float(spec.get("size", 72))
         width = pymupdf.get_text_length(text, fontname="hebo", fontsize=size)
-        start = centre + (-width / 2, size * 0.35)
+        start = center + (-width / 2, size * 0.35)
         angle = float(spec.get("angle", 45)) + page.rotation
         page.insert_text(start, text, fontsize=size, fontname="hebo",
                          color=A.to_rgb(spec.get("color") or "#ff0000"),
                          fill_opacity=spec.get("opacity", 0.25), stroke_opacity=spec.get("opacity", 0.25),
-                         morph=(centre, pymupdf.Matrix(angle)), overlay=not spec.get("behind"))
+                         morph=(center, pymupdf.Matrix(angle)), overlay=not spec.get("behind"))
 
 
 COMPRESS = {"Good quality (150 dpi images)": (200, 150, 80),
@@ -138,7 +138,7 @@ class HeaderFooterDialog(QDialog):
                              "{file}  {bates}"))
         grid = QGridLayout()
         self.edits = {}
-        for c, align in enumerate(("Left", "Centre", "Right")):
+        for c, align in enumerate(("Left", "Center", "Right")):
             grid.addWidget(QLabel(align), 0, c + 1)
         for r, where in enumerate(("header", "footer")):
             grid.addWidget(QLabel(where.capitalize()), r + 1, 0)
@@ -176,7 +176,7 @@ class HeaderFooterDialog(QDialog):
         self.digits.setRange(1, 12)
         self.digits.setValue(6)
         form.addRow("Font size", self.size)
-        form.addRow("Colour", self.color)
+        form.addRow("Color", self.color)
         form.addRow("Margin from edge", self.margin)
         form.addRow("Pages", self.pages)
         bates = QHBoxLayout()
@@ -252,7 +252,7 @@ class WatermarkDialog(QDialog):
         form.addRow("Text", self.text)
         form.addRow("Image", img_row)
         form.addRow("Font size", self.size)
-        form.addRow("Colour", self.color)
+        form.addRow("Color", self.color)
         form.addRow("Angle", self.angle)
         form.addRow("Opacity", self.opacity)
         form.addRow("", self.behind)

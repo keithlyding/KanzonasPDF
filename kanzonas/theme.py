@@ -43,8 +43,8 @@ def icon(key):
         return QIcon()
     try:
         import qtawesome as qta
-        colour = "#e6e6e6" if is_dark() else "#303030"
-        return qta.icon("mdi6." + name, color=colour, color_active=colour)
+        color = "#e6e6e6" if is_dark() else "#303030"
+        return qta.icon("mdi6." + name, color=color, color_active=color)
     except Exception:
         return QIcon()
 

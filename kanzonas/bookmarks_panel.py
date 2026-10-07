@@ -14,7 +14,7 @@ def _subtree_end(toc, i):
     return j
 
 
-def _normalise(toc):
+def _normalize(toc):
     """Keep levels valid: first item level 1, never jump more than one level deeper."""
     out, prev = [], 0
     for lvl, title, page in toc:
@@ -116,7 +116,7 @@ class BookmarksPanel(QWidget):
             self.jump.emit(page - 1)
 
     def _commit(self, toc, select=None):
-        toc = _normalise(toc)
+        toc = _normalize(toc)
         self.set_toc(toc, select)
         self.changed.emit(toc)
 

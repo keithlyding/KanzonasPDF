@@ -459,6 +459,11 @@ class MainWindow(QMainWindow):
         self.bookmarks.jump.connect(lambda i: self.view() and self.view().goto_page(i))
         self.bookmarks.changed.connect(lambda toc: self.view() and self.view().set_toc(toc))
         self.left_tabs.addTab(self.bookmarks, "Bookmarks")
+        from .layers_panel import LayersPanel
+        self.layers = LayersPanel()
+        self.layers.toggled.connect(lambda n, on: self.view() and self.view().set_layer(n, on))
+        self.layers.allToggled.connect(self._all_layers)
+        self.left_tabs.addTab(self.layers, "Layers")
 
         self.props = PropertiesPanel()
         self.props.propsChanged.connect(self._on_props_changed)
@@ -563,6 +568,7 @@ class MainWindow(QMainWindow):
         v.signedDocument.connect(self._on_signed)
         v.selectToolRequested.connect(lambda: self.set_tool("select"))
         v.calibrateRequested.connect(self._calibrate)
+        v.layersChanged.connect(lambda: self.sender() is self.view() and self._rebuild_thumbs())
         v.scaleChanged.connect(self._update_ui)
         v.documentChanged.connect(self._markups_timer.start)
         v.structureChanged.connect(self._markups_timer.start)
@@ -1097,6 +1103,16 @@ class MainWindow(QMainWindow):
         self.chest.add(tool, props, name)
 
     # ---- document tools ------------------------------------------------------------
+    def _all_layers(self, on):
+        v = self.view()
+        if v:
+            v.set_all_layers(on)
+            self.layers.set_layers(v.layer_configs())
+
+    def _refresh_layers(self):
+        v = self.view()
+        self.layers.set_layers(v.layer_configs() if v else [])
+
     def _show_bookmarks(self):
         self.dock.show()
         self.left_tabs.setCurrentWidget(self.bookmarks)
@@ -1371,7 +1387,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("theme", mode)
         app = QApplication.instance()
         theme.apply(app, mode)
-        # widgets with style sheets keep their old colours until re-polished
+        # widgets with style sheets keep their old colors until re-polished
         for wdg in app.allWidgets():
             wdg.style().unpolish(wdg)
             wdg.style().polish(wdg)
@@ -1554,6 +1570,7 @@ class MainWindow(QMainWindow):
     def _on_tab_changed(self, _):
         self._rebuild_thumbs()
         self._refresh_bookmarks()
+        self._refresh_layers()
         self._markups_timer.start()
         self._refresh_props()
         self._update_ui()

@@ -70,7 +70,7 @@ _TYPE_KIND = {pymupdf.PDF_ANNOT_SQUARE: "rect", pymupdf.PDF_ANNOT_CIRCLE: "ellip
               pymupdf.PDF_ANNOT_POLY_LINE: "polyline", pymupdf.PDF_ANNOT_STAMP: "stamp"}
 
 
-# ---- colours ----------------------------------------------------------------
+# ---- colors ----------------------------------------------------------------
 def to_rgb(hex_color):
     if not hex_color:
         return None
@@ -159,7 +159,7 @@ def read(annot):
 
     props = dict(DEFAULTS[kind])
     cols = annot.colors or {}
-    if kind != "textbox":                      # FreeText keeps its colours elsewhere
+    if kind != "textbox":                      # FreeText keeps its colors elsewhere
         if cols.get("stroke"):
             props["stroke"] = to_hex(cols["stroke"])
         if "fill" in props:
@@ -207,8 +207,8 @@ def _popup_rect(page, anchor):
 
 
 def _recolor_textbox_border(doc, annot, stroke_rgb):
-    """PDF FreeText draws its border in the text colour. Patch our appearance so the
-    border uses its own colour: the first RG operator in the stream strokes the frame."""
+    """PDF FreeText draws its border in the text color. Patch our appearance so the
+    border uses its own color: the first RG operator in the stream strokes the frame."""
     try:
         typ, val = doc.xref_get_key(annot.xref, "AP/N")
         if typ != "xref":
@@ -230,6 +230,8 @@ def write(page, model):
     stroke = to_rgb(p.get("stroke"))
     fill = to_rgb(p.get("fill"))
     width = float(p.get("width", 1))
+    if stroke is None and kind in ("textbox", "callout", "rect", "ellipse", "polygon", "m_area"):
+        width = 0.0                          # "No border"
     text = model.get("text", "")
 
     markup = p.get("markup", "highlight") if kind == "comment" else kind
@@ -287,6 +289,11 @@ def write(page, model):
             png, _aspect = stamps.render(label, p.get("stroke") or "#c00000", model["detail"])
         if png is None:
             raise ValueError("The stamp image is missing from the stamp library.")
+        if page.rotation:
+            # the page is shown rotated: pre-rotate the image the other way so it reads upright
+            from PySide6.QtGui import QImage, QTransform
+            from .signatures import qimage_to_png
+            png = qimage_to_png(QImage.fromData(png).transformed(QTransform().rotate(-page.rotation)))
         a = page.add_stamp_annot(model["rect"], stamp=pymupdf.Pixmap(png))
     elif kind == "note":
         a = page.add_text_annot(model["rect"].tl, text or " ", icon="Note")
@@ -301,7 +308,8 @@ def write(page, model):
 
     if kind not in ("textbox", "callout", "stamp"):
         if kind in ("rect", "ellipse", "polygon", "m_area"):
-            a.set_colors(stroke=stroke, fill=fill)
+            # stroke [] = no outline at all (width 0 alone still draws a hairline)
+            a.set_colors(stroke=stroke if stroke else [], fill=fill)
         elif kind == "m_count":
             a.set_colors(stroke=stroke, fill=stroke)
         elif kind == "arrow" and "closed" in (p.get("head") or ""):
@@ -354,9 +362,7 @@ def write(page, model):
     doc.xref_set_key(a.xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
     if label_text:
         from . import measure
-        anchor, angle = measure.label_anchor(kind, model["points"])
-        if kind == "m_count":
-            anchor = model["points"][0] + (10, -8)
+        anchor, angle = measure.label_anchor(kind, model["points"], page)
         measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
                           stroke or (0, 0, 0), angle)
     return a

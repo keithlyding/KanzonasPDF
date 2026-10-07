@@ -17,8 +17,8 @@ import tempfile
 
 import pymupdf
 
-UNITS = {"inches": 1 / 72, "millimetres": 25.4 / 72, "PDF points (1:1)": 1.0}
-_DXF_UNITS = {"inches": 1, "millimetres": 4, "PDF points (1:1)": 0}
+UNITS = {"inches": 1 / 72, "millimeters": 25.4 / 72, "PDF points (1:1)": 1.0}
+_DXF_UNITS = {"inches": 1, "millimeters": 4, "PDF points (1:1)": 0}
 
 
 def _pages(doc, pages):

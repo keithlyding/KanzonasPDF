@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (QWidget, QFormLayout, QVBoxLayout, QLabel, QToolB
 from . import annotations as A
 from . import stamps as ST
 
+BORDERLESS = ("textbox", "callout", "rect", "ellipse", "polygon", "m_area")
+
 
 class ColorButton(QToolButton):
     changed = Signal()
@@ -36,7 +38,7 @@ class ColorButton(QToolButton):
 
     def _pick(self):
         start = QColor(self._color) if self._color else QColor("#ffffff")
-        c = QColorDialog.getColor(start, self, "Choose colour")
+        c = QColorDialog.getColor(start, self, "Choose color")
         if c.isValid():
             self.set_color(c.name())
             self.changed.emit()
@@ -63,6 +65,12 @@ class PropertiesPanel(QWidget):
         outer.addLayout(self.form)
 
         self.stroke = ColorButton()
+        self.no_stroke = QCheckBox("No border")
+        stroke_row = QWidget()
+        sl = QHBoxLayout(stroke_row)
+        sl.setContentsMargins(0, 0, 0, 0)
+        sl.addWidget(self.stroke)
+        sl.addWidget(self.no_stroke)
         self.fill = ColorButton(allow_none=True)
         self.no_fill = QCheckBox("No fill")
         fill_row = QWidget()
@@ -103,8 +111,8 @@ class PropertiesPanel(QWidget):
                               ("date", "", self.date),
                               ("cloud", "", self.cloud),
                               ("markup", "Marks text with", self.markup),
-                              ("text_color", "Text colour", self.text_color),
-                              ("stroke", "Line colour", self.stroke),
+                              ("text_color", "Text color", self.text_color),
+                              ("stroke", "Line color", stroke_row),
                               ("fill", "Fill", fill_row),
                               ("width", "Line width", self.width),
                               ("fontsize", "Font size", self.fontsize),
@@ -122,6 +130,7 @@ class PropertiesPanel(QWidget):
         for b in (self.stroke, self.fill, self.text_color):
             b.changed.connect(self._emit)
         self.no_fill.toggled.connect(self._emit)
+        self.no_stroke.toggled.connect(self._emit)
         self.width.valueChanged.connect(self._emit)
         self.fontsize.valueChanged.connect(self._emit)
         self.opacity.sliderReleased.connect(self._emit)
@@ -156,10 +165,13 @@ class PropertiesPanel(QWidget):
             lab.setVisible(vis)
             w.setVisible(vis)
         if "stroke" in props:
-            self.stroke.set_color(props["stroke"])
-            self.rows["stroke"][0].setText("Border colour" if kind == "textbox" else
-                                           "Colour" if kind in A.MARKUP + ("note", "stamp")
-                                           else "Line colour")
+            self.stroke.set_color(props["stroke"] or "#000000")
+            # only shapes that can stand without an outline offer "No border"
+            self.no_stroke.setVisible(kind in BORDERLESS)
+            self.no_stroke.setChecked(props["stroke"] is None and kind in BORDERLESS)
+            self.rows["stroke"][0].setText("Border color" if kind == "textbox" else
+                                           "Color" if kind in A.MARKUP + ("note", "stamp")
+                                           else "Line color")
         if "fill" in props:
             self.fill.set_color(props["fill"])
             self.no_fill.setChecked(props["fill"] is None)
@@ -213,7 +225,8 @@ class PropertiesPanel(QWidget):
             return
         p = dict(self._props)
         if "stroke" in p:
-            p["stroke"] = self.stroke.color()
+            no = self.no_stroke.isChecked() and self._kind in BORDERLESS
+            p["stroke"] = None if no else (self.stroke.color() or "#000000")
         if "fill" in p:
             if self.no_fill.isChecked():
                 p["fill"] = None

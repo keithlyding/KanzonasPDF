@@ -3,6 +3,7 @@
 import json
 import os
 import time
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
@@ -56,6 +57,7 @@ class DocumentView(QScrollArea):
     selectToolRequested = Signal()
     calibrateRequested = Signal(int, float)    # page index, drawn length in points
     scaleChanged = Signal()
+    layersChanged = Signal()
     requestSignature = Signal(int, int)      # page index, signature field xref
 
     def __init__(self, path, parent=None):
@@ -267,13 +269,13 @@ class DocumentView(QScrollArea):
 
     def set_tool(self, tool):
         self.tool = tool
-        if tool not in ("select",):
-            self.clear_selection()
+        self.clear_selection()
         if tool == "eraser":
             self.viewport().setCursor(eraser_cursor())
             return
-        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.IBeamCursor,
-                   "edittext": Qt.IBeamCursor}
+        text_cursor = ("select", "edittext", "highlight", "underline", "strikeout", "comment",
+                       "redact")
+        cursors = {"hand": Qt.OpenHandCursor, **{t: Qt.IBeamCursor for t in text_cursor}}
         self.viewport().setCursor(cursors.get(tool, Qt.CrossCursor))
 
     # ---- undo / modify ----------------------------------------------------
@@ -355,13 +357,34 @@ class DocumentView(QScrollArea):
 
     # ---- caches (cleared on every change) ------------------------------------
     def _clear_caches(self):
+        self._dlists = {}              # page index -> parsed drawing (DisplayList)
+        self._tiles = OrderedDict()    # (page, scale, tx, ty) -> rendered tile, LRU
         self._line_cache = {}
         self._word_cache = {}
         self._card_cache = {}
 
     def _words(self, index):
+        """Selectable text units: individual characters, so selections can start and end
+        mid-word. Same tuple shape as PyMuPDF words: (x0, y0, x1, y1, text, block, line, n)."""
         if index not in self._word_cache:
-            self._word_cache[index] = self.doc[index].get_text("words", sort=False)
+            out = []
+            flags = pymupdf.TEXTFLAGS_RAWDICT & ~pymupdf.TEXT_PRESERVE_IMAGES
+            d = self.doc[index].get_text("rawdict", flags=flags)
+            for bi, blk in enumerate(d["blocks"]):
+                if blk.get("type") != 0:
+                    continue
+                for li, line in enumerate(blk["lines"]):
+                    n = 0
+                    for span in line["spans"]:
+                        for ch in span["chars"]:
+                            r = pymupdf.Rect(ch["bbox"])
+                            if r.width <= 0:              # some spaces have no width
+                                r.x1 = r.x0 + span["size"] * 0.25
+                            if r.height <= 0:
+                                continue
+                            out.append((r.x0, r.y0, r.x1, r.y1, ch["c"], bi, li, n))
+                            n += 1
+            self._word_cache[index] = out
         return self._word_cache[index]
 
     # ---- text selection (live, like a normal text cursor) ---------------------
@@ -448,15 +471,18 @@ class DocumentView(QScrollArea):
         return [lines[k] for k in order]
 
     @staticmethod
-    def _words_text(words):
+    def _words_text(units):
+        """Selected text: characters on a line join directly; lines are separated by newlines."""
         out, last = [], None
-        for w in words:
+        for w in units:
             key = (w[5], w[6])
-            if last is not None:
-                out.append(" " if key == last else "\n")
+            if last is not None and key != last:
+                out.append("\n")
+            elif last is not None and len(w[4]) > 1:      # whole words (older callers)
+                out.append(" ")
             out.append(w[4])
             last = key
-        return "".join(out)
+        return "\n".join(line.strip() for line in "".join(out).split("\n"))
 
     # ---- tool styles --------------------------------------------------------
     def tool_props(self, tool):
@@ -620,7 +646,7 @@ class DocumentView(QScrollArea):
         return self._stamp_cache["pm"]
 
     def stamp_rect(self, index, pt):
-        """Unrotated rect for a stamp centred on unrotated point pt (upright on screen)."""
+        """Unrotated rect for a stamp centered on unrotated point pt (upright on screen)."""
         from . import stamps
         self.stamp_preview()
         page = self.doc[index]
@@ -909,7 +935,7 @@ class DocumentView(QScrollArea):
             wrap = wrap_px / self.zoom if wrap_px else None
             self._apply_text_edit(index, line, text, offset, wrap)
         ed.committed.connect(done)
-        ed.cancelled.connect(lambda: setattr(self, "_inline", None))
+        ed.canceled.connect(lambda: setattr(self, "_inline", None))
 
     def _apply_text_edit(self, index, line, new, offset, wrap):
         used = {}
@@ -964,8 +990,11 @@ class DocumentView(QScrollArea):
             for i in range(self.doc.page_count):
                 pg = self.doc[i]
                 if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in pg.annots()):
+                    # Line art: remove only what's fully inside a mark. "If touched" deleted
+                    # entire long paths (contours, walls, borders) crossing a small box on CAD
+                    # sheets. Text and image pixels under the mark are always removed.
                     pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
-                                        graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
+                                        graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
                                         text=pymupdf.PDF_REDACT_TEXT_REMOVE)
             if scrub:
                 self.doc.scrub(attached_files=True, clean_pages=True, embedded_files=True,
@@ -974,6 +1003,31 @@ class DocumentView(QScrollArea):
                                reset_responses=True, thumbnails=True, xml_metadata=True)
         self.clear_selection()
         self.modify(do, structural=True)
+
+    # ---- layers (optional content) -------------------------------------------------------
+    def layer_configs(self):
+        try:
+            return self.doc.layer_ui_configs()
+        except Exception:
+            return []
+
+    def set_layer(self, number, visible):
+        """Show/hide a layer. This is a viewing choice, not an edit (no undo, not 'unsaved')."""
+        self.doc.set_layer_ui_config(number, 1 if visible else 2)
+        self._redraw_all()
+
+    def set_all_layers(self, visible):
+        for c in self.layer_configs():
+            if not c.get("locked"):
+                self.doc.set_layer_ui_config(c["number"], 1 if visible else 2)
+        self._redraw_all()
+
+    def _redraw_all(self):
+        self._dlists = {}
+        self._tiles = OrderedDict()
+        for w in self.pages:
+            w.invalidate()
+        self.layersChanged.emit()
 
     # ---- bookmarks & page tools -----------------------------------------------------------
     def get_toc(self):
@@ -1010,10 +1064,10 @@ class DocumentView(QScrollArea):
         self.read_only = True
         good = all(r.get("ok") for r in self.sig_results)
         text = "  ".join(r["summary"] for r in self.sig_results)
-        colour = "#e7f6e7" if good else "#fde8e8"
+        color = "#e7f6e7" if good else "#fde8e8"
         self.show_banner(("✔ " if good else "⚠ ") + text +
                          "  This file is read-only so the signature stays valid.",
-                         colour, "Edit anyway", self._edit_signed)
+                         color, "Edit anyway", self._edit_signed)
 
     def _edit_signed(self):
         r = QMessageBox.question(
@@ -1026,7 +1080,7 @@ class DocumentView(QScrollArea):
             self.show_banner("Editing a signed document: when saved, its digital signature "
                              "will no longer validate.", "#fff4d6")
 
-    def show_banner(self, text, colour="#fff4d6", button=None, callback=None):
+    def show_banner(self, text, color="#fff4d6", button=None, callback=None):
         if getattr(self, "_banner", None) is None:
             self._banner = QWidget(self)
             lay = QHBoxLayout(self._banner)
@@ -1037,7 +1091,7 @@ class DocumentView(QScrollArea):
             self._banner_btn.clicked.connect(lambda: self._banner_cb and self._banner_cb())
             lay.addWidget(self._banner_label, 1)
             lay.addWidget(self._banner_btn)
-        self._banner.setStyleSheet(f"background:{colour}; color:#222; border-bottom:1px solid #bbb;")
+        self._banner.setStyleSheet(f"background:{color}; color:#222; border-bottom:1px solid #bbb;")
         self._banner_label.setText(text)
         self._banner_cb = callback
         self._banner_btn.setVisible(button is not None)
@@ -1372,7 +1426,7 @@ class DocumentView(QScrollArea):
         pool = ThreadPoolExecutor(max_workers=1)
 
         def ocr_image(rendering):
-            fut = pool.submit(ocr.recognize, rendering.png)
+            fut = pool.submit(ocr.recognize, rendering, dlg.wasCanceled)
             while not fut.done():       # keep the window responsive while OCR runs
                 QApplication.processEvents()
                 time.sleep(0.03)

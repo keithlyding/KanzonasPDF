@@ -1,6 +1,6 @@
 """Measurement: page scales, unit formatting, and measurement labels drawn into the PDF.
 
-A page's scale is stored in the page dictionary (/KZScale "metres-per-point|unit|label"),
+A page's scale is stored in the page dictionary (/KZScale "meters-per-point|unit|label"),
 so it travels with the file. Values are recomputed whenever a measurement is redrawn, so
 moving a vertex or changing the scale updates the number.
 """
@@ -10,12 +10,12 @@ from fractions import Fraction
 
 import pymupdf
 
-PT_M = 0.0254 / 72                        # metres per PDF point (paper size)
+PT_M = 0.0254 / 72                        # meters per PDF point (paper size)
 UNITS = {"ft-in": 0.3048, "ft": 0.3048, "in": 0.0254, "yd": 0.9144, "mi": 1609.344,
          "m": 1.0, "cm": 0.01, "mm": 0.001, "km": 1000.0}
 UNIT_LABELS = {"ft-in": "Feet and inches (12'-6\")", "ft": "Feet (decimal)", "in": "Inches",
-               "yd": "Yards", "mi": "Miles", "m": "Metres", "cm": "Centimetres",
-               "mm": "Millimetres", "km": "Kilometres"}
+               "yd": "Yards", "mi": "Miles", "m": "Meters", "cm": "Centimeters",
+               "mm": "Millimeters", "km": "Kilometers"}
 # (label, real length per paper length, display unit)
 PRESETS = [
     ("1:1 (actual paper size)", 1, "in"),
@@ -36,7 +36,7 @@ KEY = "KZScale"
 
 # ---- page scale ------------------------------------------------------------------
 def get_scale(page):
-    """(metres per PDF point, unit, label, calibrated?)"""
+    """(meters per PDF point, unit, label, calibrated?)"""
     try:
         typ, val = page.parent.xref_get_key(page.xref, KEY)
         if typ == "string":
@@ -78,9 +78,9 @@ def area(points):
 
 
 # ---- formatting ---------------------------------------------------------------------
-def fmt_length(metres, unit):
+def fmt_length(meters, unit):
     if unit == "ft-in":
-        total_in = metres / 0.0254
+        total_in = meters / 0.0254
         sign = "-" if total_in < 0 else ""
         total_in = abs(total_in)
         ft = int(total_in // 12)
@@ -92,14 +92,14 @@ def fmt_length(metres, unit):
             ft, whole = ft + 1, 0
         inch_s = str(whole) + (f" {rest.numerator}/{rest.denominator}" if rest else "")
         return f"{sign}{ft}'-{inch_s}\""
-    value = metres / UNITS[unit]
+    value = meters / UNITS[unit]
     digits = 0 if unit == "mm" else 2
     return f"{value:,.{digits}f} {unit}"
 
 
-def fmt_area(sq_metres, unit):
+def fmt_area(sq_meters, unit):
     base = "ft" if unit == "ft-in" else unit
-    value = sq_metres / UNITS[base] ** 2
+    value = sq_meters / UNITS[base] ** 2
     return f"{value:,.2f} sq {base}"
 
 
@@ -148,7 +148,7 @@ def _esc(s):
 
 def add_label(page, annot, text, anchor, size=9.0, color=(0, 0, 0), angle=0.0):
     """Append text (with a white backing) to the annotation's appearance and grow its box.
-    anchor: PyMuPDF (top-left origin, unrotated) point at the label's centre."""
+    anchor: PyMuPDF (top-left origin, unrotated) point at the label's center."""
     if not text:
         return
     doc = page.parent
@@ -188,29 +188,35 @@ def add_label(page, annot, text, anchor, size=9.0, color=(0, 0, 0), angle=0.0):
     doc.xref_set_key(annot.xref, "Rect", arr)
 
 
-def label_anchor(kind, points):
-    """(anchor point, angle in degrees) for a measurement label."""
+def label_anchor(kind, points, page=None):
+    """(anchor point, angle in degrees) for a measurement label, computed so the label reads
+    upright on screen even on rotated pages (anchor in unrotated page coordinates)."""
+    rot = page.rotation if page is not None else 0
+    to_disp = page.rotation_matrix if page is not None else pymupdf.Identity
+    to_page = page.derotation_matrix if page is not None else pymupdf.Identity
+    pts = [pymupdf.Point(q) * to_disp for q in points]          # as seen on screen
     if kind == "m_length":
-        a, b = points[0], points[1]
+        a, b = pts[0], pts[1]
         ang = math.degrees(math.atan2(-(b.y - a.y), b.x - a.x))
         if ang > 90:
             ang -= 180
         elif ang < -90:
             ang += 180
         mid = (a + b) / 2
-        # nudge the label just off the line (perpendicular, towards the top of the page)
+        # nudge the label just off the line (perpendicular, towards the top of the screen)
         n = pymupdf.Point(-(b.y - a.y), b.x - a.x)
         n = n / (abs(n) or 1)
         if n.y > 0:
             n = -n
-        return mid + n * 8, ang
-    if kind == "m_poly":
-        a, b = points[-2], points[-1]
-        return (a + b) / 2 + (0, -10), 0.0
-    if kind == "m_area":
-        cx = sum(q.x for q in points) / len(points)
-        cy = sum(q.y for q in points) / len(points)
-        return pymupdf.Point(cx, cy), 0.0
-    if kind == "m_count":
-        return points[0] + (0, -12), 0.0
-    return points[0], 0.0
+        anchor, angle = mid + n * 8, ang
+    elif kind == "m_poly":
+        a, b = pts[-2], pts[-1]
+        anchor, angle = (a + b) / 2 + (0, -10), 0.0
+    elif kind == "m_area":
+        anchor = pymupdf.Point(sum(q.x for q in pts) / len(pts), sum(q.y for q in pts) / len(pts))
+        angle = 0.0
+    elif kind == "m_count":
+        anchor, angle = pts[0] + (10, -8), 0.0
+    else:
+        anchor, angle = pts[0], 0.0
+    return anchor * to_page, angle + rot

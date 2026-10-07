@@ -3,7 +3,7 @@
 PDF pages store positioned glyphs, not paragraphs, so true word-processor editing
 isn't possible. Instead: find the line under the cursor, remove its characters
 (redaction that leaves drawings and images alone), and write the new text at the same
-baseline, size, colour and direction. The original embedded font is reused when it
+baseline, size, color and direction. The original embedded font is reused when it
 contains every needed character; otherwise the closest standard font is used.
 """
 

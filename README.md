@@ -26,6 +26,7 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
   reuse it with one click; export/import chests to share them
 - **Compare documents** (File menu): overlays this document on an earlier revision (red =
   removed, blue = added) and clouds every change
+- **Layers** (left panel tab): show or hide a PDF's layers, as found in many CAD plots
 - **Bookmarks** (F9): view, add, rename, delete, reorder and nest the PDF outline
 - **Redaction** (Document menu): mark text or areas, or search & redact every occurrence; apply
   to permanently delete what's underneath (optionally scrub metadata and hidden data)
@@ -35,7 +36,7 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
   .pfx/.p12 from a certificate authority; optional lock; signed files open read-only with a
   banner saying who signed and whether anything changed since
 - **Markups list** (F7): every markup in a table; filter, sort, click to jump, export to CSV
-- **Properties panel** (F6): colours (line, fill, text), line width, font size, arrowhead
+- **Properties panel** (F6): colors (line, fill, text), line width, font size, arrowhead
   style, opacity
   - With nothing selected it sets each tool's **default style, saved for next time**
   - With an annotation selected it restyles that annotation
@@ -44,7 +45,7 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 - Eraser: click one annotation, or drag a box around several
 - **Edit existing text in place** (Edit text tool, Ctrl+E): click a line, type, Enter.
   Drag the blue bar to move it, drag the corner to set a width (text wraps).
-  Keeps size, colour and direction; uses the original font when possible
+  Keeps size, color and direction; uses the original font when possible
 - Pages: rotate, delete, reorder, insert a blank page, insert pages from another PDF (merge),
   extract a range of pages to a new file
 - OCR (Tools > Recognize text): makes scanned pages searchable and selectable. Works offline,
@@ -59,7 +60,7 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 - **Export** (File > Export to): Word, Excel, PowerPoint, AutoCAD DXF, PNG/JPEG, text
 - **Look & feel** (View menu): icon toolbars (optional text labels), dark / light / match-Windows
   theme, **split view** (F10) to look at two places at once, reopens each file at its last page
-  and zoom, and **customisable keyboard shortcuts**
+  and zoom, and **customizable keyboard shortcuts**
 - Undo and redo (Ctrl+Z, Ctrl+Y), print
 - Annotations are standard PDF annotations, so Acrobat and other viewers can see them
 
@@ -98,11 +99,18 @@ You can zip that folder and give it to anyone; they don't need Python.
 | Left / Right | Previous / next page (Shift+Left/Right scrolls sideways) |
 | F4 / F6 / F10 | Page thumbnails / properties panel / split view |
 
+## Testing with CAD drawings
+
+`tests/cad_samples.py` generates realistic plotted-CAD sheets (architectural plan with
+revision, rotated plot, an ezdxf plot with vector text and layers, a 42x30 site plan with
+~139,000 contour segments and an aerial underlay, and a scanned sheet).
+`tests/cad_battery.py` runs the app's features against them and prints timings.
+
 ## Credits
 
 Icons: Material Design Icons via QtAwesome (MIT).
 
-## Licence
+## License
 
 PyMuPDF is AGPL-3.0, so KanzonasPDF must also be distributed under the AGPL-3.0,
 with its source code available. That's fine for a free, open-source giveaway.
@@ -113,8 +121,8 @@ with its source code available. That's fine for a free, open-source giveaway.
 - Text editing works one line at a time; it doesn't reflow the rest of a paragraph.
   If the original font isn't installed, a close standard font is used.
 - Arrowhead size follows line width (that's how PDF arrows work).
-- Text box borders use their own colour in this app; Acrobat may redraw a box's border
-  in its text colour if you edit that box in Acrobat.
+- Text box borders use their own color in this app; Acrobat may redraw a box's border
+  in its text color if you edit that box in Acrobat.
 - Protection uses standard PDF permissions: Acrobat, PDF-XChange and this app honour them,
   but they're not tamper-proof against determined tools; use a digital signature for that.
 - A personal certificate proves a document is unchanged, but others' software only shows your
@@ -122,5 +130,4 @@ with its source code available. That's fine for a free, open-source giveaway.
   authority). Signing via the Windows certificate store / smart cards isn't supported yet.
 - Export: Word works best for ordinary text documents; Excel needs real (not scanned) tables;
   PowerPoint slides are page pictures; AutoCAD export is DXF (not DWG) and leaves out images.
-- Measurement labels on rotated pages are drawn in the page's unrotated direction.
 - OCR caps large sheets at 6000 px on the long side, so very small text on big drawings may be missed.

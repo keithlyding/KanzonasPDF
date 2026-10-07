@@ -16,7 +16,7 @@ _INPUT_UNITS = ["ft-in", "ft", "in", "yd", "m", "cm", "mm"]
 
 
 def parse_length(text, unit):
-    """Text -> metres. Accepts 12'-6", 12' 6 1/2", 6", 12.5 (in the chosen unit)."""
+    """Text -> meters. Accepts 12'-6", 12' 6 1/2", 6", 12.5 (in the chosen unit)."""
     t = text.strip().replace("’", "'").replace("”", '"')
     if not t:
         raise ValueError("Enter the real length.")
@@ -104,14 +104,14 @@ class ScaleDialog(QDialog):
         unit = self.disp_unit.currentData()
         if self.r_known.isChecked() and self.pdf_len:
             try:
-                metres = parse_length(self.length.text(), self.in_unit.currentData())
+                meters = parse_length(self.length.text(), self.in_unit.currentData())
             except ValueError as e:
                 QMessageBox.warning(self, "Calibrate", str(e))
                 return
-            if metres <= 0:
+            if meters <= 0:
                 QMessageBox.warning(self, "Calibrate", "The length must be more than zero.")
                 return
-            f = metres / self.pdf_len
+            f = meters / self.pdf_len
             label = f"calibrated ({self.length.text().strip()} = drawn line)"
         else:
             ratio, _u = self.preset.currentData()

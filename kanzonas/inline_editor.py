@@ -60,7 +60,7 @@ class _Grip(QLabel):
 
 class InlineEditor(QFrame):
     committed = Signal(str, float, float, object)   # text, dx px, dy px, wrap width px or None
-    cancelled = Signal()
+    canceled = Signal()
 
     def __init__(self, parent, text_rect, text, family, pixel_size):
         """text_rect: QRectF of the line on the page widget (widget coords)."""
@@ -86,6 +86,9 @@ class InlineEditor(QFrame):
         self.text.setStyleSheet("background: #fffbe6;")
         self.text.installEventFilter(self)
         lay.addWidget(self.text)
+        # clicks on the bar / grip must not move keyboard focus to the page behind
+        self.setFocusPolicy(Qt.ClickFocus)
+        self.setFocusProxy(self.text)
         bottom = QHBoxLayout()
         bottom.setContentsMargins(0, 0, 0, 0)
         bottom.addStretch(1)
@@ -135,11 +138,8 @@ class InlineEditor(QFrame):
                 if e.key() == Qt.Key_Escape:
                     self.cancel()
                     return True
-            elif e.type() == QEvent.FocusOut and not self._done:
-                # clicking the drag bar / grip briefly takes focus; only commit if focus left us
-                fw = self.window().focusWidget() if self.window() else None
-                if fw is None or not self.isAncestorOf(fw):
-                    self.commit()
+        # (No commit on focus loss: the page commits the edit when you click elsewhere on it.
+        # Committing on focus-out made the move bar and resize grip end the edit.)
         return super().eventFilter(obj, e)
 
     def commit(self):
@@ -163,5 +163,5 @@ class InlineEditor(QFrame):
             return
         self._done = True
         self.hide()
-        self.cancelled.emit()
+        self.canceled.emit()
         self.deleteLater()
