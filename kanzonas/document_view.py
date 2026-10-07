@@ -780,6 +780,26 @@ class DocumentView(QScrollArea):
             out.append(m)
         return out
 
+    def duplicate_selected(self, offset=12):
+        """Copies of the selected markups, offset down-right on screen; the copies are selected."""
+        models = self._models_for_clipboard()
+        if not models:
+            return 0
+        index = self.selection[0]
+        page = self.doc[index]
+        m_ = page.derotation_matrix
+        d = pymupdf.Point(offset, offset) * m_ - pymupdf.Point(0, 0) * m_
+        made = []
+
+        def do():
+            pg = self.doc[index]
+            for m in models:
+                made.append(annotations.write(pg, annotations.moved(m, d)).xref)
+        self.modify(do, [index])
+        if made:
+            self._set_selection(index, made)
+        return len(made)
+
     def cut(self):
         """Cut the selected text (removed from the page) or the selected markups."""
         what = self.copy()

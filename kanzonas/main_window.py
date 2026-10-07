@@ -193,7 +193,10 @@ class MainWindow(QMainWindow):
                                       QKeySequence.SelectAll,
                                       tip="Select all the text on the current page (or all pages "
                                           "in the page list)")
-        self.a_dup_pages = self._act("D&uplicate pages", lambda: self._page_clip("dup"), "Ctrl+D",
+        self.a_duplicate = self._act("&Duplicate", lambda: self._clipboard("dup"), "Ctrl+D",
+                                     tip="Duplicate the selected markups, or the selected pages "
+                                         "when the page list has the focus")
+        self.a_dup_pages = self._act("D&uplicate pages", lambda: self._page_clip("dup"),
                                      tip="Duplicate the selected pages (page list must be unlocked)")
         self.a_copy_pages = self._act("Copy pa&ges", lambda: self._page_clip("copy"))
         self.a_cut_pages = self._act("Cut pages", lambda: self._page_clip("cut"))
@@ -427,7 +430,7 @@ class MainWindow(QMainWindow):
         m = mb.addMenu("&Edit")
         m.addActions([self.a_undo, self.a_redo])
         m.addSeparator()
-        m.addActions([self.a_cut, self.a_copy, self.a_paste, self.a_select_all])
+        m.addActions([self.a_cut, self.a_copy, self.a_paste, self.a_duplicate, self.a_select_all])
         m.addSeparator()
         m.addAction(self.a_delete_annot)
         m.addSeparator()
@@ -2690,6 +2693,11 @@ class MainWindow(QMainWindow):
         otherwise text or markups in the document."""
         v = self.view()
         if v is None:
+            return
+        if op == "dup" and not self.thumbs.hasFocus():
+            n = v.duplicate_selected()
+            self.statusBar().showMessage(f"Duplicated {n} markup(s)" if n else
+                                         "Select markups (or pages in the page list) first", 3000)
             return
         if self.thumbs.hasFocus():
             if op == "all":

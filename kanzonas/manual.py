@@ -86,12 +86,13 @@ from the page (Undo brings them back). <b>Select all text</b> (Ctrl+A) selects t
 text. Escape or a click elsewhere clears the selection.</li>
 <li><b>Markups:</b> select one or more markups, then Copy or Cut. <b>Paste</b> (Ctrl+V) puts them
 where the mouse is, on any page or in another open document.</li>
+<li><b>Duplicate</b> (Ctrl+D): copies of the selected markups appear slightly offset, selected
+so you can drag them into place. In the page list, Ctrl+D duplicates the selected pages.</li>
 <li><b>Pictures and text from other programs:</b> Paste a copied picture (e.g. a screenshot)
 as an image markup, or copied text as a text box, where the mouse is.</li>
 <li><b>Pages:</b> unlock the page list (lock button above the thumbnails), select thumbnails
 (Ctrl+click or Shift+click for several), then right-click or use the Pages menu:
-<b>Copy pages</b>, <b>Cut pages</b>, <b>Paste pages after selected</b> and <b>Duplicate pages</b>
-(Ctrl+D). With the page list clicked, Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+A work on pages. Pages
+<b>Copy pages</b>, <b>Cut pages</b>, <b>Paste pages after selected</b> and <b>Duplicate pages</b>. With the page list clicked, Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+A work on pages. Pages
 can be pasted into another open document too.</li>
 </ul>
 
@@ -346,7 +347,7 @@ Plain text (.txt).</li>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>
-<tr><td>Ctrl+D</td><td>Duplicate selected pages</td></tr>
+<tr><td>Ctrl+D</td><td>Duplicate selected markups (or pages, in the page list)</td></tr>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
 <tr><td>Left / Right</td><td>Previous / next page</td></tr>
