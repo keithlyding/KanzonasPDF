@@ -30,8 +30,9 @@ toolbars adds names under the icons. Hover over any button to see its name and s
 <h2 id="navigate">Moving around</h2>
 <ul>
 <li><b>Next / previous page:</b> Right / Left arrow keys, or type a page number in the toolbar.</li>
-<li><b>Zoom:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box. Fit width
-(Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1).</li>
+<li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
+Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1).</li>
+<li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
 <li><b>Pan:</b> Hand tool (H), or the scroll bars. Shift+Left/Right scrolls sideways.</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.</li>
@@ -100,12 +101,13 @@ with others (export / import).</li>
 
 <h2 id="arrange">Align, distribute and stacking order (Arrange)</h2>
 <ul>
-<li>Select two or more markups, then use the <b>Arrange</b> toolbar or menu:
-align left, centers, right, top, middles or bottom.</li>
-<li><b>Align relative to:</b> the first markup you selected (default), the last one selected,
-the whole selection, or the page. Choose it in the toolbar dropdown or Arrange &gt; Align
-relative to. The first-selected markup has a bolder outline.</li>
-<li><b>Distribute</b> horizontally or vertically (three or more): equal gaps, the outer two stay put.</li>
+<li>Select two or more markups, then use the <b>Arrange</b> toolbar or menu: Align left,
+Align centers (horizontally), Align right, Align top, Align middles (vertically), Align bottom.</li>
+<li><b>Align relative to:</b> Align to first selected (the default), Align to last selected,
+Align to whole selection, or Align to page. Choose it in the toolbar dropdown or Arrange &gt;
+Align relative to. The first-selected markup has a bolder outline.</li>
+<li><b>Distribute horizontally</b> / <b>Distribute vertically</b> (three or more): equal gaps,
+the outer two stay put.</li>
 <li><b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]),
 <b>Send backward</b> (Ctrl+[), <b>Send to back</b> (Ctrl+Shift+[).</li>
 </ul>
@@ -141,11 +143,11 @@ the scale.</li>
 
 <h2 id="pages">Pages</h2>
 <ul>
-<li><b>Rotate:</b> Ctrl+Shift+Plus / Ctrl+Shift+Minus.</li>
+<li><b>Rotate page left / Rotate page right:</b> Ctrl+Shift+Minus / Ctrl+Shift+Plus.</li>
 <li><b>Reorder:</b> unlock the page list (lock button above the thumbnails), then drag
-thumbnails; or Ctrl+Shift+Up / Down.</li>
-<li>Insert pages from another PDF, insert a blank page, extract pages to a new file, delete a
-page (Pages menu).</li>
+thumbnails; or Move page up / Move page down (Ctrl+Shift+Up / Down).</li>
+<li>Pages menu: Insert pages from file, Insert blank page after current, Extract pages to new
+file, Delete page.</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
 </ul>
@@ -159,23 +161,26 @@ Double-click a field to change its name and options.</li>
 
 <h2 id="sign">Signatures and protection</h2>
 <ul>
-<li><b>Wet signature / initials:</b> Sign &gt; Set up my signature (draw or load an image,
-optional PIN). Then Sign (G) or Initials (I) and click to place, with the date.</li>
+<li><b>Wet signature / initials:</b> Sign &gt; Set up my signature and Set up my initials
+(draw or load an image, optional PIN). Then Sign (G) or Initials (I) and click to place, with the date.</li>
 <li><b>Digital signature:</b> Sign &gt; Digitally sign with certificate (a personal certificate
-or your company's .pfx/.p12). Signed files open read-only so the signature stays valid.</li>
+or your company's .pfx/.p12). Signed files open read-only so the signature stays valid.
+Digital signature details shows who signed and whether the signature is still valid.</li>
 <li><b>Protect document from changes when saved</b> and <b>Unlock with password</b> are in
 the Sign menu.</li>
 </ul>
 
 <h2 id="document">Document tools</h2>
 <ul>
-<li><b>OCR</b> (Recognize text): makes scanned pages searchable and selectable.</li>
-<li><b>Redaction:</b> Redact tool (Shift+R) or Search &amp; redact marks areas; Apply
-redactions permanently removes what's underneath.</li>
-<li><b>Header &amp; footer</b> (page numbers, dates, Bates numbers), <b>Watermark</b>,
-<b>Compress</b>, <b>Compare documents</b> (changes clouded in red and blue),
-<b>Flatten</b> (make markups part of the page).</li>
-<li><b>Export</b> (File &gt; Export to): Word, Excel, PowerPoint, AutoCAD DXF, PNG/JPEG, text.</li>
+<li><b>Recognize text (OCR):</b> makes scanned pages searchable and selectable.</li>
+<li><b>Redaction:</b> the Redact (mark text or area) tool (Shift+R) or Search &amp; redact
+marks areas; Apply redactions permanently removes what's underneath.</li>
+<li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
+<b>Compress (save a smaller copy)</b>, <b>Compare documents</b> (changes clouded in red and
+blue), <b>Flatten</b> (make markups part of the page).</li>
+<li><b>Export</b> (File &gt; Export to): Microsoft Word (.docx), Microsoft Excel (.xlsx),
+Microsoft PowerPoint (.pptx), AutoCAD drawing (.dxf), Images (PNG), Images (JPEG),
+Plain text (.txt).</li>
 </ul>
 
 <h2 id="shortcuts">Keyboard shortcuts</h2>
@@ -275,3 +280,47 @@ class ManualDialog(QDialog):
         cur.movePosition(cur.MoveOperation.Start)
         self.text.setTextCursor(cur)
         return self.text.find(word)
+
+
+# ---- keeping the manual complete -------------------------------------------------
+# Menu commands that need no explanation, or are covered under another name.
+NOT_DOCUMENTED = {"exit", "about", "user manual", "close tab"}
+
+
+def _norm(text):
+    text = text.split("\t")[0].replace("&&", "\0").replace("&", "").replace("\0", "&")
+    return " ".join(text.replace("...", "").replace("…", "").split()).strip().lower()
+
+
+def _plain_manual():
+    from PySide6.QtGui import QTextDocument
+    d = QTextDocument()
+    d.setHtml(MANUAL)
+    return " ".join(d.toPlainText().split()).lower()
+
+
+def missing_from_manual(window):
+    """Names of menu commands (every menu, every tool) that the manual never mentions.
+    Used by the self-test so a new feature can't ship without being documented."""
+    text = _plain_manual()
+    missing = []
+
+    def walk(menu):
+        for a in menu.actions():
+            if a.menu():
+                if _norm(a.text()) != "open recent":      # the list of recent files
+                    walk(a.menu())
+                continue
+            if a.isSeparator() or not a.isEnabled() and not a.text():
+                continue
+            name = _norm(a.text())
+            if not name or name in NOT_DOCUMENTED or not a.isVisible():
+                continue
+            if a.isEnabled() is False and a.toolTip() == a.text():
+                continue
+            if name not in text and name not in missing:
+                missing.append(name)
+    for top in window.menuBar().actions():
+        if top.menu():
+            walk(top.menu())
+    return missing

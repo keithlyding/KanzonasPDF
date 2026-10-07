@@ -101,6 +101,21 @@ def run(log_path):
         page_tools.compress(d.tobytes(), os.path.join(tmp, "small.pdf"), list(page_tools.COMPRESS)[1])
     check("page tools", t_page_tools)
 
+    def t_manual():
+        # every menu command must be described in Help > User manual (kanzonas/manual.py)
+        from PySide6.QtWidgets import QApplication
+        from . import manual
+        from .main_window import MainWindow
+        app = QApplication.instance() or QApplication([])
+        win = MainWindow()
+        try:
+            missing = manual.missing_from_manual(win)
+        finally:
+            win.deleteLater()
+        assert not missing, "not in the user manual: " + ", ".join(missing)
+        return f"({len(manual.sections())} chapters)"
+    check("user manual covers every command", t_manual)
+
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     return 0 if ok else 1
