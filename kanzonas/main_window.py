@@ -47,6 +47,9 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("polyline", "Polyline", "Shift+L", "Polyline: click each point, double-click or Enter to finish"),
     ("ink", "Pen", "P", "Freehand pen (P)"),
     ("stamp", "Stamp", "M", "Stamp (Approved, Draft, ... or your own image): click to place (M)"),
+    ("image", "Image", "", "Image: drag a box (or click) and pick a picture; it's embedded in the PDF"),
+    ("attach", "Attach file", "", "Attach file: click where its icon goes and pick any file "
+                                  "(e.g. a video); it's embedded in the PDF. Double-click to open"),
     ("eraser", "Eraser", "X", "Delete the annotation you click (X)"),
     ("signature", "Sign", "G", "Place your saved signature (and date): click where it goes (G)"),
     ("initials", "Initials", "I", "Place your saved initials (and date): click where they go (I)"),
@@ -230,6 +233,8 @@ class MainWindow(QMainWindow):
         self.a_header = self._act("&Header && footer, page numbers, Bates...", self.header_footer)
         self.a_watermark = self._act("&Watermark...", self.watermark)
         self.a_compress = self._act("&Compress (save a smaller copy)...", self.compress)
+        self.a_attachments = self._act("A&ttachments...", self.show_attachments,
+                                       tip="Files embedded in this PDF: open, save or delete them")
         self.a_bookmarks = self._act("&Bookmarks", self._show_bookmarks, "F9")
         self.a_search_redact = self._act("&Search && redact...", self.search_redact)
         self.a_apply_redact = self._act("&Apply redactions...", self.apply_redactions)
@@ -399,6 +404,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_header, self.a_watermark])
         m.addSeparator()
         m.addAction(self.a_bookmarks)
+        m.addAction(self.a_attachments)
         m.addSeparator()
         rm = m.addMenu("&Redaction")
         rm.addActions([self.tool_actions["redact"], self.a_search_redact, self.a_apply_redact])
@@ -1790,6 +1796,55 @@ class MainWindow(QMainWindow):
         self.a_snap_grid.setChecked(snap.isChecked())
         self.a_snap_objects.setChecked(objs.isChecked())
         self._apply_grid_settings()
+
+    def show_attachments(self):
+        from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
+        v = self.view()
+        if v is None:
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Attachments")
+        dlg.resize(640, 360)
+        lay = QVBoxLayout(dlg)
+        table = QTableWidget(0, 3)
+        table.setHorizontalHeaderLabels(["File", "Size", "Where"])
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        lay.addWidget(table)
+        rows = []
+
+        def fill():
+            rows[:] = v.attachments()
+            table.setRowCount(len(rows))
+            for r, (pg, _key, name, size, _desc) in enumerate(rows):
+                table.setItem(r, 0, QTableWidgetItem(name))
+                table.setItem(r, 1, QTableWidgetItem(f"{size / 1024:,.0f} KB"))
+                table.setItem(r, 2, QTableWidgetItem(f"Page {pg + 1}" if pg is not None
+                                                     else "Document"))
+            empty.setVisible(not rows)
+        empty = QLabel("This PDF has no attached files. Use the Attach file tool to add one.")
+        lay.addWidget(empty)
+
+        def current():
+            r = table.currentRow()
+            return rows[r] if 0 <= r < len(rows) else None
+        btns = QHBoxLayout()
+        for label, fn in (("Open", lambda c: v.open_attachment(c[0], c[1], c[2])),
+                          ("Save as...", lambda c: v.save_attachment(c[0], c[1], c[2])),
+                          ("Go to", lambda c: c[0] is not None and v.reveal(c[0], c[1])),
+                          ("Delete", lambda c: (v.delete_attachment(c[0], c[1]), fill()))):
+            b = QPushButton(label)
+            b.clicked.connect(lambda _=False, f=fn: current() and f(current()))
+            btns.addWidget(b)
+        btns.addStretch(1)
+        close = QPushButton("Close")
+        close.clicked.connect(dlg.accept)
+        btns.addWidget(close)
+        lay.addLayout(btns)
+        table.cellDoubleClicked.connect(lambda r, _c: v.open_attachment(rows[r][0], rows[r][1], rows[r][2]))
+        fill()
+        dlg.exec()
 
     def _step_page(self, delta):
         v = self.view()

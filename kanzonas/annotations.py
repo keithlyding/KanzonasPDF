@@ -44,13 +44,17 @@ DEFAULTS = {
     "line": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "arrow": {"stroke": "#d00000", "width": 2.0, "head": "open", "opacity": 1.0},
     "ink": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
+    "image": {"opacity": 1.0},
+    "attach": {"stroke": "#0050ff", "icon": "Paperclip", "opacity": 1.0},
 }
+ATTACH_ICONS = ["Paperclip", "PushPin", "Graph", "Tag"]
 LABELS = {"highlight": "Highlight", "comment": "Comment", "underline": "Underline",
           "strikeout": "Strikeout", "squiggly": "Squiggly", "note": "Sticky note", "textbox": "Text box",
           "rect": "Rectangle", "ellipse": "Ellipse", "line": "Line", "arrow": "Arrow",
           "ink": "Pen", "polygon": "Polygon", "polyline": "Polyline", "callout": "Callout",
           "stamp": "Stamp", "field": "Form field", "cloud": "Cloud",
-          "m_length": "Length", "m_poly": "Polylength", "m_area": "Area", "m_count": "Count"}
+          "m_length": "Length", "m_poly": "Polylength", "m_area": "Area", "m_count": "Count",
+          "image": "Image", "attach": "Attached file"}
 HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE_CLOSED_ARROW,
          "open (reversed)": pymupdf.PDF_ANNOT_LE_R_OPEN_ARROW,
          "closed (reversed)": pymupdf.PDF_ANNOT_LE_R_CLOSED_ARROW,
@@ -58,14 +62,14 @@ HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE
          "diamond": pymupdf.PDF_ANNOT_LE_DIAMOND, "bar": pymupdf.PDF_ANNOT_LE_BUTT}
 MARKUP = ("highlight", "comment", "underline", "strikeout", "squiggly")
 COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a comment marks text      # tied to text: not movable
-BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp")
+BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "attach")
 MEASURES = ("m_length", "m_poly", "m_area", "m_count")
 POINTED = ("line", "arrow", "polygon", "polyline") + MEASURES   # geometry = list of points
 VERTEXED = ("polygon", "polyline", "m_poly", "m_area")          # one handle per vertex                           # resizable via a rect
 # Shapes with a "rotation" property (degrees, counterclockwise as seen on screen). Boxes keep
 # their unrotated box and are drawn turned; point-based shapes have their points turned.
 # Text boxes and callouts only turn in 90 degree steps (a PDF text box limitation).
-ROTATABLE = ("rect", "ellipse", "cloud", "polygon", "polyline", "line", "arrow", "ink", "stamp",
+ROTATABLE = ("rect", "ellipse", "cloud", "polygon", "polyline", "line", "arrow", "ink", "stamp", "image",
              "m_length", "m_poly", "m_area", "textbox", "callout")
 QUARTER_TURNS = ("textbox", "callout")
 for _k in ROTATABLE:
@@ -76,7 +80,8 @@ _TYPE_KIND = {pymupdf.PDF_ANNOT_SQUARE: "rect", pymupdf.PDF_ANNOT_CIRCLE: "ellip
               pymupdf.PDF_ANNOT_UNDERLINE: "underline",
               pymupdf.PDF_ANNOT_STRIKE_OUT: "strikeout", pymupdf.PDF_ANNOT_SQUIGGLY: "squiggly",
               pymupdf.PDF_ANNOT_LINE: "line", pymupdf.PDF_ANNOT_POLYGON: "polygon",
-              pymupdf.PDF_ANNOT_POLY_LINE: "polyline", pymupdf.PDF_ANNOT_STAMP: "stamp"}
+              pymupdf.PDF_ANNOT_POLY_LINE: "polyline", pymupdf.PDF_ANNOT_STAMP: "stamp",
+              pymupdf.PDF_ANNOT_FILE_ATTACHMENT: "attach"}
 
 
 # ---- colors ----------------------------------------------------------------
@@ -202,6 +207,21 @@ def read(annot):
         model["detail"] = geom.get("detail")
         if geom.get("box"):
             model["rect"] = pymupdf.Rect(geom["box"])
+    elif kind == "image":
+        model["img"] = geom.get("img")
+        if geom.get("box"):
+            model["rect"] = pymupdf.Rect(geom["box"])
+    elif kind == "attach":
+        try:
+            info = annot.file_info
+            model["filename"] = info.get("filename", "")
+            model["text"] = info.get("description", "") or model["text"]
+        except Exception:
+            model["filename"] = ""
+        try:
+            props["icon"] = doc.xref_get_key(annot.xref, "Name")[1].lstrip("/") or props["icon"]
+        except Exception:
+            pass
     elif kind in ("rect", "ellipse") and geom.get("box"):
         model["rect"] = pymupdf.Rect(geom["box"])
     elif kind in ("rect", "ellipse") and stored:
@@ -322,6 +342,15 @@ def write(page, model):
             img = QImage.fromData(png).convertToFormat(QImage.Format_ARGB32)
             png = qimage_to_png(img.transformed(QTransform().rotate(-turn), _Qt.SmoothTransformation))
         a = page.add_stamp_annot(bounds(model), stamp=pymupdf.Pixmap(png))
+    elif kind == "image":
+        if model.get("img"):
+            # reuse the image already in the file (moving / resizing never re-encodes it)
+            a = page.add_stamp_annot(bounds(model), stamp=_PLACEHOLDER_PNG())
+        else:
+            a = page.add_stamp_annot(bounds(model), stamp=model["image_bytes"])
+    elif kind == "attach":
+        a = page.add_file_annot(model["rect"].tl, model["file_bytes"], model["filename"],
+                                desc=text or model["filename"], icon=p.get("icon") or "Paperclip")
     elif kind == "note":
         a = page.add_text_annot(model["rect"].tl, text or " ", icon="Note")
     elif kind == "textbox":
@@ -333,7 +362,7 @@ def write(page, model):
     else:
         raise ValueError("unknown annotation kind " + kind)
 
-    if kind not in ("textbox", "callout", "stamp"):
+    if kind not in ("textbox", "callout", "stamp", "image"):
         if kind in ("rect", "ellipse", "polygon", "m_area"):
             # stroke [] = no outline at all (width 0 alone still draws a hairline)
             a.set_colors(stroke=stroke if stroke else [], fill=fill)
@@ -364,6 +393,8 @@ def write(page, model):
         else:
             label_text = measure.measure_text(kind, model["points"], page)
             info["content"] = f"{LABELS[kind]}: " + label_text.replace("\n", ", ")
+    if kind == "image":
+        info["content"] = text or model.get("filename") or "Image"
     if kind == "stamp":
         info["content"] = (p.get("label") or "").replace("image:", "") + \
             (f" ({model['detail']})" if model.get("detail") else "")
@@ -386,6 +417,8 @@ def write(page, model):
         store["geom"] = {"detail": model.get("detail") or ""}
         if turned(model):
             store["geom"]["box"] = list(model["rect"])
+    elif kind == "image":
+        store["geom"] = {"img": _image_appearance(page, a, model), "box": list(model["rect"])}
     elif kind in ("rect", "ellipse"):
         # keep the exact box: the PDF rect grows by the border width (would creep on edits)
         store["geom"] = {"box": list(model["rect"])}
@@ -398,6 +431,55 @@ def write(page, model):
         measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
                           stroke or (0, 0, 0), lab_angle)
     return a
+
+
+# ---- images ------------------------------------------------------------------------
+_PLACEHOLDER = []
+
+
+def _PLACEHOLDER_PNG():
+    if not _PLACEHOLDER:
+        pm = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 1, 1), False)
+        _PLACEHOLDER.append(pm.tobytes("png"))
+    return _PLACEHOLDER[0]
+
+
+def _image_appearance(page, a, model):
+    """Point the stamp's appearance at the image object (an existing one when the image is
+    being moved / resized) and draw it turned by the page and markup rotation without
+    resampling. Returns the image object's xref."""
+    doc = page.parent
+    ap = int(doc.xref_get_key(a.xref, "AP/N")[1].split()[0])
+    typ, val = doc.xref_get_key(ap, "Resources/XObject/I")
+    img = int(model["img"]) if model.get("img") else int(val.split()[0])
+    doc.xref_set_key(ap, "Resources/XObject/I", f"{img} 0 R")
+    # the image box as seen on screen, turned by the page's display rotation
+    r = pymupdf.Rect(model["rect"])
+    w, h = (r.height, r.width) if page.rotation in (90, 270) else (r.width, r.height)
+    turn = math.radians(page.rotation + angle(model))
+    b = bounds(model)
+    W, H = b.width, b.height
+    co, si = math.cos(turn), math.sin(turn)
+    e = W / 2 - (w / 2 * co - h / 2 * si)
+    f = H / 2 - (w / 2 * si + h / 2 * co)
+    doc.xref_set_key(ap, "BBox", f"[0 0 {W:.4f} {H:.4f}]")
+    # PyMuPDF shrinks a stamp's Rect to the picture's proportions: use the real box
+    pr = (b * page.transformation_matrix).normalize()
+    doc.xref_set_key(a.xref, "Rect", f"[{pr.x0:.4f} {pr.y0:.4f} {pr.x1:.4f} {pr.y1:.4f}]")
+    doc.update_stream(ap, (f"q {w * co:.5f} {w * si:.5f} {-h * si:.5f} {h * co:.5f} "
+                           f"{e:.4f} {f:.4f} cm /I Do Q\n").encode())
+    # keep a direct reference so the image survives even if the appearance is rebuilt
+    doc.xref_set_key(a.xref, "KZImage", f"{img} 0 R")
+    return img
+
+
+def image_bytes(doc, xref):
+    """Encoded image (PNG/JPEG...) of an image object, for saving it back out."""
+    info = doc.extract_image(xref)
+    if not info.get("smask"):
+        return info["image"], info.get("ext", "png")
+    pm = pymupdf.Pixmap(pymupdf.Pixmap(info["image"]), pymupdf.Pixmap(doc.extract_image(info["smask"])["image"]))
+    return pm.tobytes("png"), "png"
 
 
 # ---- rotation --------------------------------------------------------------------
@@ -418,7 +500,7 @@ def quarter(props):
 
 def turned(model):
     """A box shape drawn rotated (its model keeps the unrotated box)."""
-    return model["kind"] in ("rect", "ellipse", "stamp") and abs(angle(model)) > 1e-6 \
+    return model["kind"] in ("rect", "ellipse", "stamp", "image") and abs(angle(model)) > 1e-6 \
         and abs(angle(model) - 360) > 1e-6
 
 
@@ -584,6 +666,14 @@ def set_annot_order(page, xrefs):
 def replace(page, xref, model):
     """Swap annotation xref for a newly written model, keeping its place in the stacking
     order. Returns the new xref."""
+    if model["kind"] == "attach":
+        # the embedded file stays where it is: only its icon moves / restyles
+        a = page.load_annot(xref)
+        a.set_rect(pymupdf.Rect(model["rect"].tl, model["rect"].tl + (a.rect.width, a.rect.height)))
+        a.set_colors(stroke=to_rgb(model["props"].get("stroke")))
+        a.set_opacity(float(model["props"].get("opacity", 1)))
+        a.update()
+        return xref
     order = annot_order(page)
     pos = order.index(xref) if xref in order else None
     page.delete_annot(page.load_annot(xref))

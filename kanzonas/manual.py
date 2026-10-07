@@ -146,6 +146,25 @@ placed stamp redraws it (a re-added date shows today's date).</li>
 <li><b>Add image stamp...</b> adds your own picture (PNG/JPG) to the stamp list.</li>
 </ul>
 
+<h2 id="images">Pictures and attached files (videos and more)</h2>
+<ul>
+<li><b>Image</b> tool: drag a box and pick a picture (PNG, JPEG, BMP, GIF, TIFF). It's fitted
+inside the box keeping its proportions; just click instead to place it at its natural size.
+The picture is embedded in the PDF at its original quality and file size. Move, resize
+(Shift on a corner keeps its proportions), rotate, align and delete it like any markup;
+Flatten makes it a permanent part of the page.</li>
+<li><b>Attach file</b> tool: click where the paperclip icon should go and pick any file, such
+as a video, spreadsheet or photo. The file is embedded inside the PDF, so it travels with it.
+<b>Double-click the icon</b> to open the file in the program Windows uses for it (videos play
+in your normal video player). Adobe Acrobat, Bluebeam and PDF-XChange can open these too.</li>
+<li>Videos don't play inside the page: that only works in a few PDF readers, so attaching
+is the reliable way to send a video with a PDF. Large files make the PDF just as much larger
+(you're warned above 50 MB).</li>
+<li><b>Attachments</b> (Document menu): every file attached to this PDF, including ones added
+by other programs. Open, Save as, Go to its page, or Delete.</li>
+<li>For your safety, opening an attached program or script (.exe, .bat, .js, ...) asks first.</li>
+</ul>
+
 <h2 id="edittext">Editing the PDF's own text</h2>
 <ul>
 <li>Edit text tool (Ctrl+E): click a line of text. Type the change; drag the bar above the

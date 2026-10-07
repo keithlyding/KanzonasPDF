@@ -17,12 +17,13 @@ from . import annotations as A
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
-               "m_length", "m_calibrate"}
+               "m_length", "m_calibrate", "image"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area"}
 # While one of these drawing tools is active, clicking an existing markup selects it for
 # moving / resizing / restyling (like the Select tool) instead of starting a new one.
 EDIT_IN_PLACE = {"rect", "ellipse", "cloud", "line", "arrow", "polygon", "polyline", "ink",
-                 "textbox", "callout", "note", "stamp", "m_length", "m_poly", "m_area", "m_count"}
+                 "textbox", "callout", "note", "stamp", "m_length", "m_poly", "m_area", "m_count",
+                 "image", "attach"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign"}
 SIGN_TOOLS = {"signature", "initials"}
@@ -33,7 +34,7 @@ TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
 ROT_GAP = 26        # rotation handle distance above the selection, px
 # tools whose points snap (to the grid / to objects) while drawing
-SNAP_TOOLS = (SHAPE_TOOLS - {"eraser"}) | POLY_TOOLS | {"stamp", "note", "m_count"}
+SNAP_TOOLS = (SHAPE_TOOLS - {"eraser"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "callout"}   # Shift = 45° steps
 SQUARE_TOOLS = {"rect", "ellipse", "cloud"}                               # Shift = square / circle
 
@@ -382,7 +383,7 @@ class PageWidget(QWidget):
                 out[f"v{i}"] = QRectF(s.x() - h / 2, s.y() - h / 2, h, h)
             out.update(self._rot_handle(model))
             return out
-        if not A.movable(model) or model["kind"] in ("note", "m_count"):
+        if not A.movable(model) or model["kind"] in ("note", "m_count", "attach"):
             return {}
         extra = {}
         if model["kind"] == "callout":
@@ -601,7 +602,7 @@ class PageWidget(QWidget):
             self._hover = None
             self.update()
             self.view.edit_text_at(self.index, pdf)
-        elif tool == "note":
+        elif tool in ("note", "attach"):
             self.view.apply_point_tool(self.index, tool, pdf)
 
     def _press_on_markup(self, pos, pdf, ctrl=False, cards=False):

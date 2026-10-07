@@ -40,3 +40,16 @@ def get_text(parent, title, label, text=""):
     dlg = TextDialog(parent, title, label, text)
     ok = dlg.exec() == QDialog.Accepted
     return dlg.edit.toPlainText(), ok
+
+
+def open_file(parent, title, file_filter=""):
+    """File picker (a function so tests can replace it). Returns a path or ''."""
+    from PySide6.QtWidgets import QFileDialog
+    path, _ = QFileDialog.getOpenFileName(parent, title, "", file_filter)
+    return path
+
+
+def save_file(parent, title, name, file_filter=""):
+    from PySide6.QtWidgets import QFileDialog
+    path, _ = QFileDialog.getSaveFileName(parent, title, name, file_filter)
+    return path

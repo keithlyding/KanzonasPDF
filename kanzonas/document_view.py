@@ -642,6 +642,9 @@ class DocumentView(QScrollArea):
                 return
             self._create(index, {"kind": "textbox", "rect": rect, "text": text, "props": props})
             return
+        if tool == "image":
+            self.place_image(index, a, b, is_click)
+            return
         if tool == "m_calibrate":
             if not is_click and abs(b - a) > 2:
                 self.calibrateRequested.emit(index, abs(b - a))
@@ -740,6 +743,119 @@ class DocumentView(QScrollArea):
         disp = pymupdf.Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
         return disp * page.derotation_matrix
 
+    # ---- images and attached files ----------------------------------------------------
+    IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff)"
+    RISKY = (".exe", ".bat", ".cmd", ".com", ".msi", ".js", ".jse", ".vbs", ".vbe", ".ps1",
+             ".scr", ".lnk", ".hta", ".wsf", ".jar", ".reg", ".pif", ".cpl")
+
+    def place_image(self, index, a, b, is_click):
+        """Image tool: pick a picture and fit it in the dragged box (or natural size at the
+        click), keeping its proportions."""
+        path = dialogs.open_file(self, "Insert image", self.IMAGE_FILTER)
+        if not path:
+            return
+        with open(path, "rb") as f:
+            data = f.read()
+        try:
+            pm = pymupdf.Pixmap(data)
+            iw, ih = pm.width, pm.height
+            dpi_x, dpi_y = pm.xres or 150, pm.yres or 150
+        except Exception:
+            QMessageBox.warning(self, "Insert image", "That file isn't an image this app can read.")
+            return
+        page = self.doc[index]
+        to_disp, to_pdf = page.rotation_matrix, page.derotation_matrix
+        pa, pb = pymupdf.Point(a) * to_disp, pymupdf.Point(b) * to_disp
+        prect = page.rect                                   # displayed page size
+        if is_click or abs(pb.x - pa.x) < 8 or abs(pb.y - pa.y) < 8:
+            # natural size (at the image's own resolution, 150 dpi if unknown), within the page
+            w, h = iw * 72.0 / max(dpi_x, 72), ih * 72.0 / max(dpi_y, 72)
+            k = min(1.0, prect.width * 0.8 / w, prect.height * 0.8 / h)
+            box = pymupdf.Rect(pa.x, pa.y, pa.x + w * k, pa.y + h * k)
+        else:
+            area = pymupdf.Rect(pa, pb).normalize()
+            k = min(area.width / iw, area.height / ih)
+            w, h = iw * k, ih * k
+            box = pymupdf.Rect(area.x0, area.y0, area.x0 + w, area.y0 + h)
+        model = {"kind": "image", "props": self.tool_props("image"), "rect": box * to_pdf,
+                 "image_bytes": data, "text": os.path.basename(path)}
+        self._create(index, model, select=True)
+
+    def attach_file(self, index, pt):
+        """Attach file tool: embed any file in the PDF, shown as an icon at pt."""
+        path = dialogs.open_file(self, "Attach a file")
+        if not path:
+            return
+        size = os.path.getsize(path)
+        if size > 50 * 1024 * 1024:
+            if QMessageBox.question(self, "Attach file",
+                                    f"{os.path.basename(path)} is {size / 1e6:.0f} MB. The PDF will "
+                                    "grow by about that much, which may be too large to email. "
+                                    "Attach it anyway?") != QMessageBox.Yes:
+                return
+        with open(path, "rb") as f:
+            data = f.read()
+        model = {"kind": "attach", "props": self.tool_props("attach"),
+                 "rect": pymupdf.Rect(pt, pt + (20, 20)), "file_bytes": data,
+                 "filename": os.path.basename(path), "text": os.path.basename(path)}
+        self._create(index, model, select=True)
+
+    def attachments(self):
+        """[(page index or None, xref or name, file name, size, description)]: files attached
+        to markups on pages, and files embedded in the document itself."""
+        out = []
+        for i in range(self.doc.page_count):
+            page = self.doc[i]
+            for an in page.annots():
+                if an.type[0] == pymupdf.PDF_ANNOT_FILE_ATTACHMENT:
+                    info = an.file_info
+                    out.append((i, an.xref, info.get("filename", ""), info.get("length", 0),
+                                info.get("description", "")))
+        for name in self.doc.embfile_names():
+            info = self.doc.embfile_info(name)
+            out.append((None, name, info.get("filename") or name, info.get("length", 0),
+                        info.get("description", "")))
+        return out
+
+    def attachment_data(self, page_index, key):
+        if page_index is None:
+            return self.doc.embfile_get(key)
+        page = self.doc[page_index]
+        return page.load_annot(key).get_file()
+
+    def open_attachment(self, page_index, key, name):
+        """Open an attached file with the program Windows uses for it."""
+        import tempfile
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        if os.path.splitext(name)[1].lower() in self.RISKY:
+            if QMessageBox.warning(self, "Open attached file",
+                                   f"{name} is a program or script. Opening files from untrusted "
+                                   "PDFs can harm your computer. Open it anyway?",
+                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+                return None
+        folder = tempfile.mkdtemp(prefix="kzattach")
+        path = os.path.join(folder, os.path.basename(name) or "attachment")
+        with open(path, "wb") as f:
+            f.write(self.attachment_data(page_index, key))
+        QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+        return path
+
+    def save_attachment(self, page_index, key, name, path=None):
+        path = path or dialogs.save_file(self, "Save attached file", name)
+        if path:
+            with open(path, "wb") as f:
+                f.write(self.attachment_data(page_index, key))
+        return path
+
+    def delete_attachment(self, page_index, key):
+        if page_index is None:
+            self.modify(lambda: self.doc.embfile_del(key), [])
+        else:
+            page = self.doc[page_index]
+            self.clear_selection()
+            self.modify(lambda: page.delete_annot(page.load_annot(key)), [page_index])
+
     def place_stamp(self, index, pt):
         self._create(index, {"kind": "stamp", "props": self.tool_props("stamp"),
                              "rect": self.stamp_rect(index, pt)})
@@ -750,6 +866,9 @@ class DocumentView(QScrollArea):
 
     def apply_point_tool(self, index, tool, pt):
         page = self.doc[index]
+        if tool == "attach":
+            self.attach_file(index, pt)
+            return
         if tool == "note":
             text, ok = dialogs.get_text(self, "Sticky note", "Note:")
             if not ok or not text.strip():
@@ -1137,8 +1256,14 @@ class DocumentView(QScrollArea):
 
     def edit_annot_at(self, index, pt):
         xref = self.annot_at(index, pt)
-        if xref is not None:
-            self.edit_annot_text(index, xref)
+        if xref is None:
+            return
+        page = self.doc[index]
+        an = page.load_annot(xref)
+        if an.type[0] == pymupdf.PDF_ANNOT_FILE_ATTACHMENT:     # double-click opens the file
+            self.open_attachment(index, xref, an.file_info.get("filename", "attachment"))
+            return
+        self.edit_annot_text(index, xref)
 
     def comment_cards(self, index):
         """[(anchor rect, text, xref)] for comments on this page (cached)."""
