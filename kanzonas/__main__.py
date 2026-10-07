@@ -9,7 +9,7 @@ if sys.stdout is None:
 if sys.stderr is None:
     sys.stderr = open(os.devnull, "w")
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QApplication
 
 from .main_window import MainWindow, APP_NAME
@@ -44,6 +44,7 @@ def main():
     win.show()
     for path in files:
         win.open_file(path)
+    QTimer.singleShot(5000, win.start_update_check)    # once a day at most; never blocks start-up
 
     server = QLocalServer()
     QLocalServer.removeServer(name)          # stale socket from a crashed run

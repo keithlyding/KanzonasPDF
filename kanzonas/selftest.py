@@ -193,6 +193,19 @@ def run(log_path):
         return "(installed: registry + AppData)"
     check("storage location", t_storage)
 
+    def t_updates():
+        # the checker needs HTTPS in the packaged app; the version logic must pick the newest
+        from PySide6.QtNetwork import QSslSocket
+        from . import updates
+        assert QSslSocket.supportsSsl(), "no TLS support: update checks can't reach GitHub"
+        rel = [{"tag_name": "v0.1", "html_url": "a"}, {"tag_name": "v99.2", "html_url": "b"},
+               {"tag_name": "v99.10", "html_url": "c"}, {"tag_name": "v999", "draft": True}]
+        assert updates.newest(rel, "0.35") == ("99.10", "c")
+        assert updates.newest(rel[:1], "0.35") is None
+        assert updates.version_tuple("v1.0-beta") == (1, 0)
+        return "(TLS: " + QSslSocket.activeBackend() + ")"
+    check("update check", t_updates)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

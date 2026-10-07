@@ -42,14 +42,22 @@ KanzonasPDF as an app for opening PDFs.</li>
 <li><b>Make it your default PDF app:</b> Windows doesn't let installers do this silently. Right-click
 any PDF &gt; Open with &gt; Choose another app &gt; KanzonasPDF, and tick "Always use this app".</li>
 <li>Opening another PDF while KanzonasPDF is running opens it as a new tab in the same window.</li>
-<li><b>Update:</b> run the newer setup; your settings, signatures, stamps and tool chest are kept.
-<b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
+<li><b>Update:</b> run the newer setup over the old one; there's no need to uninstall first.
+It closes KanzonasPDF if it's running, installs in the same place, and keeps your settings,
+signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
 <li><b>Portable version</b> (<b>-portable.zip</b>): no installation. Unzip the KanzonasPDF folder
 anywhere (a USB stick, a network drive, your Documents) and run KanzonasPDF.exe. Because of the
 portable.txt file inside, your settings, signatures, stamp images and certificate are kept in a
 <b>data</b> folder next to the program instead of the computer's registry and user folders, so
 they travel with the folder. Keep the whole folder together. To update, replace everything
-except the data folder. (Opening an attached file still uses Windows' temporary folder.)</li>
+except the data folder (or unzip the new version and copy your old data folder into it).
+(Opening an attached file still uses Windows' temporary folder.)</li>
+<li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
+If so, a notice at the bottom of the window offers <b>Download</b> (opens the release page in your
+browser), <b>Skip this version</b> or <b>Later</b>. Nothing is downloaded or installed by itself.
+With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
+quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your
+network blocks GitHub, the automatic check simply finds nothing.</li>
 <li>The <b>-windows.zip</b> download is the same program without the portable.txt file: it runs
 from any folder but stores settings on the computer like the installed version.</li>
 </ul>

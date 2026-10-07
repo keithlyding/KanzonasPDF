@@ -384,6 +384,13 @@ class MainWindow(QMainWindow):
                                         lambda: v() and v().delete_selected())
         self.a_manual = self._act("&User manual", self.show_manual, "F1")
         self.a_about = self._act("&About", self.about)
+        self.a_check_updates = self._act("&Check for updates...", self.check_updates,
+                                         tip="Ask GitHub whether a newer KanzonasPDF is out")
+        self.a_auto_updates = QAction("Check for updates &automatically", self, checkable=True)
+        self.a_auto_updates.setToolTip("Once a day at start-up; only tells you, never installs")
+        self.a_auto_updates.setChecked(self.settings.value("update_check", "true") != "false")
+        self.a_auto_updates.toggled.connect(
+            lambda on: self.settings.setValue("update_check", "true" if on else "false"))
 
         self.tool_group = QActionGroup(self)
         self.tool_actions = {}
@@ -535,6 +542,8 @@ class MainWindow(QMainWindow):
                                 self.a_dup_pages, sep, self.a_rot_l, self.a_rot_r, self.a_del_page])
         m = mb.addMenu("&Help")
         m.addAction(self.a_manual)
+        m.addSeparator()
+        m.addActions([self.a_check_updates, self.a_auto_updates])
         m.addSeparator()
         m.addAction(self.a_about)
 
@@ -2643,6 +2652,51 @@ class MainWindow(QMainWindow):
         btns.accepted.connect(dlg.accept)
         lay.addWidget(btns)
         dlg.exec()
+
+    # ---- updates ---------------------------------------------------------------
+    def _updater(self):
+        if getattr(self, "_upd", None) is None:
+            from .updates import UpdateChecker
+            self._upd = UpdateChecker(self.settings, self)
+            self._upd.found.connect(self._update_found)
+            self._upd.result.connect(lambda t: QMessageBox.information(self, "Check for updates", t))
+        return self._upd
+
+    def start_update_check(self):
+        """Called a few seconds after start-up: checks at most once a day, if enabled."""
+        self._updater().check_if_due()
+
+    def check_updates(self):
+        self.statusBar().showMessage("Checking for updates...", 4000)
+        self._updater().check(manual=True)
+
+    def _update_found(self, version, url):
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtCore import QUrl
+        old = getattr(self, "_update_bar", None)
+        if old is not None:
+            self.statusBar().removeWidget(old)
+            old.deleteLater()
+        bar = QWidget()
+        h = QHBoxLayout(bar)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.addWidget(QLabel(f"<b>KanzonasPDF {version} is available</b> (you have {__version__})."))
+        get = QPushButton("Download")
+        get.setToolTip("Open the release page to download the installer or portable zip")
+        skip = QPushButton("Skip this version")
+        close = QPushButton("Later")
+
+        def done():
+            self.statusBar().removeWidget(bar)
+            bar.deleteLater()
+            self._update_bar = None
+        get.clicked.connect(lambda: (QDesktopServices.openUrl(QUrl(url)), done()))
+        skip.clicked.connect(lambda: (self.settings.setValue("update_skip", version), done()))
+        close.clicked.connect(done)
+        for b in (get, skip, close):
+            h.addWidget(b)
+        self._update_bar = bar
+        self.statusBar().addWidget(bar)
 
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):

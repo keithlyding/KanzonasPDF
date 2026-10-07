@@ -75,6 +75,34 @@ jobs:
           & $iscc /DMyAppVersion=${{ steps.ver.outputs.version }} installer\KanzonasPDF.iss
           if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
 
+      - name: Test updating (install an older version, then the new one over it, no uninstall)
+        shell: pwsh
+        run: |
+          # same files labeled 0.0, standing in for "the version the user already has"
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          & $iscc /DMyAppVersion=0.0 installer\KanzonasPDF.iss
+          if ($LASTEXITCODE -ne 0) { throw "Old installer build failed" }
+          $dir = "$env:RUNNER_TEMP\kzupgrade"
+          $sargs = "/VERYSILENT","/SUPPRESSMSGBOXES","/CURRENTUSER","/NORESTART"
+          $p = Start-Process "dist-installer\KanzonasPDF-v0.0-setup.exe" -ArgumentList ($sargs + "/DIR=$dir") -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Old version failed to install" }
+          New-Item -Force "HKCU:\Software\KanzonasPDF\upgradetest" | Set-ItemProperty -Name keep -Value "yes"
+          # the new setup gets no /DIR: it must find the existing install by itself
+          $p = Start-Process "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe" -ArgumentList $sargs -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Update over the old version failed" }
+          $un = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F4C2A61-5B7E-4D3A-9C1F-2E6B7A9D4C11}_is1"
+          $ver = (Get-ItemProperty $un).DisplayVersion
+          if ($ver -ne "${{ steps.ver.outputs.version }}") { throw "Installed version is '$ver' after the update" }
+          if ((Get-ItemProperty $un).InstallLocation.TrimEnd('\') -ne $dir) { throw "Update installed to a different folder" }
+          if ((Get-ItemProperty "HKCU:\Software\KanzonasPDF\upgradetest").keep -ne "yes") { throw "Update lost the user's settings" }
+          $p = Start-Process "$dir\KanzonasPDF.exe" -ArgumentList "--selftest","upgraded-selftest.log" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { Get-Content upgraded-selftest.log; throw "Updated app failed its self test" }
+          Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          Start-Sleep -Seconds 5
+          Remove-Item -Recurse -Force "HKCU:\Software\KanzonasPDF\upgradetest" -ErrorAction SilentlyContinue
+          Remove-Item "dist-installer\KanzonasPDF-v0.0-setup.exe"
+          Write-Host "Updated 0.0 -> ${{ steps.ver.outputs.version }} in place; settings kept"
+
       - name: Test the installer (install, self test the installed app, uninstall)
         shell: pwsh
         run: |
