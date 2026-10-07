@@ -1,7 +1,7 @@
 """KanzonasPDF icon and logo: the owner's artwork (saguaro with a sunflower on a PDF page).
 
-The images live in assets/ (kanzonas-icon-source.png, kanzonas-logo-source.png) and are
-embedded in branding_data.py by tools_make_assets.py, so a build can never lose them.
+Built from the artwork in assets/ by tools_make_assets.py and embedded in branding_data.py,
+so a build can never lose them.
 """
 
 from PySide6.QtCore import Qt
@@ -21,8 +21,9 @@ def _image(name):
 
 
 def icon_pixmap(size):
-    return QPixmap.fromImage(_image("ICON").scaled(size, size, Qt.KeepAspectRatio,
-                                                   Qt.SmoothTransformation))
+    """Sizes up to 32 px use the simplified icon (cactus and sunflower only)."""
+    src = _image("ICON_SMALL" if size <= 32 else "ICON")
+    return QPixmap.fromImage(src.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
 
 def app_icon():

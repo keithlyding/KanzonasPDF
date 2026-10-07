@@ -1,36 +1,131 @@
-"""Regenerate the icon files and the embedded copy from the artwork in assets/.
+"""Build the icon and logo files from the owner's artwork in assets/.
 
-    python tools_make_assets.py
+    QT_QPA_PLATFORM=offscreen python tools_make_assets.py
 
-Sources (the owner's artwork): assets/kanzonas-icon-source.png (square, transparent corners)
-and assets/kanzonas-logo-source.png.
+Sources (the owner's artwork):
+- assets/kanzonas-mark-source.png  cactus + sunflower (from the owner's primary logo)
+- assets/kanzonas-logo-source.png  the owner's full logo
+The app icon's frame and page (the owner's application-icon design) are redrawn here as
+vectors so the large icon is sharp; sizes 16-32 use the cactus and sunflower alone with a
+thin white edge. Outputs: kanzonas.ico, kanzonas.png, installer BMPs and the embedded copy
+kanzonas/branding_data.py.
 """
 import base64
+import io
+import sys
 
 from PIL import Image
+from PySide6.QtCore import QBuffer, QPointF, QRectF, Qt
+from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath, QPen
+from PySide6.QtWidgets import QApplication
 
-icon = Image.open("assets/kanzonas-icon-source.png").convert("RGBA")
+app = QApplication(sys.argv)
+mark = QImage("assets/kanzonas-mark-source.png")
+
+
+def big_icon(size=512):
+    img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
+    img.fill(Qt.transparent)
+    p = QPainter(img)
+    p.setRenderHint(QPainter.Antialiasing)
+    p.setRenderHint(QPainter.SmoothPixmapTransform)
+    p.scale(size / 256.0, size / 256.0)
+    g = QLinearGradient(0, 0, 0, 256)                 # dark rounded frame
+    g.setColorAt(0, QColor("#3a3a3a"))
+    g.setColorAt(1, QColor("#141414"))
+    p.setPen(Qt.NoPen)
+    p.setBrush(g)
+    p.drawRoundedRect(QRectF(4, 4, 248, 248), 44, 44)
+    page = QPainterPath()                             # white page, green edge, folded corner
+    page.moveTo(30, 24)
+    page.lineTo(186, 24)
+    page.lineTo(228, 66)
+    page.lineTo(228, 226)
+    page.quadTo(228, 232, 222, 232)
+    page.lineTo(34, 232)
+    page.quadTo(28, 232, 28, 226)
+    page.lineTo(28, 30)
+    page.quadTo(28, 24, 30, 24)
+    p.setPen(QPen(QColor("#6aaa35"), 3))
+    p.setBrush(QColor("white"))
+    p.drawPath(page)
+    fold = QPainterPath()
+    fold.moveTo(186, 24)
+    fold.lineTo(186, 66)
+    fold.lineTo(228, 66)
+    fold.closeSubpath()
+    p.setPen(QPen(QColor("#2b2b2b"), 2))
+    p.setBrush(QColor("#3c3c3c"))
+    p.drawPath(fold)
+    p.setPen(QPen(QColor("#8c8c8c"), 5, Qt.SolidLine, Qt.RoundCap))   # text lines (right side)
+    for y in (84, 100, 116):
+        p.drawLine(QPointF(150, y), QPointF(212, y))
+    h = 200.0
+    w = h * mark.width() / mark.height()
+    p.drawImage(QRectF(118 - w / 2, 232 - h, w, h), mark)
+    p.end()
+    return img
+
+
+def small_icon(size=128):
+    img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
+    img.fill(Qt.transparent)
+    p = QPainter(img)
+    p.setRenderHint(QPainter.Antialiasing)
+    p.setRenderHint(QPainter.SmoothPixmapTransform)
+    h = size * 0.98
+    w = h * mark.width() / mark.height()
+    r = QRectF((size - w) / 2, (size - h) / 2, w, h)
+    sil = mark.copy()                                 # white edge for dark taskbars
+    q = QPainter(sil)
+    q.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    q.fillRect(sil.rect(), QColor("white"))
+    q.end()
+    d = size * 0.025
+    for dx, dy in ((-d, 0), (d, 0), (0, -d), (0, d), (-d, -d), (d, d), (-d, d), (d, -d)):
+        p.drawImage(r.translated(dx, dy), sil)
+    p.drawImage(r, mark)
+    p.end()
+    return img
+
+
+def to_pil(qimg):
+    buf = QBuffer()
+    buf.open(QBuffer.ReadWrite)
+    qimg.save(buf, "PNG")
+    return Image.open(io.BytesIO(bytes(buf.data()))).convert("RGBA")
+
+
+big = to_pil(big_icon())
+small = to_pil(small_icon())
+big.save("assets/kanzonas-icon-source.png")
+small.save("assets/kanzonas-icon-small-source.png")
 sizes = [16, 20, 24, 32, 40, 48, 64, 128, 256]
-frames = {s: icon.resize((s, s), Image.LANCZOS) for s in sizes}
+frames = {s: (small if s <= 32 else big).resize((s, s), Image.LANCZOS) for s in sizes}
 frames[256].save("assets/kanzonas.png")
 frames[256].save("assets/kanzonas.ico", sizes=[(s, s) for s in sizes],
                  append_images=[frames[s] for s in sizes[:-1]])
 
-# Inno Setup wizard artwork (BMP on white)
+
 def on_white(w, h, size, pos):
     bg = Image.new("RGB", (w, h), "white")
-    im = icon.resize((size, size), Image.LANCZOS)
+    im = big.resize((size, size), Image.LANCZOS)
     bg.paste(im, pos, im)
     return bg
+
+
 on_white(164, 314, 150, (7, 80)).save("assets/wizard-large.bmp")
 on_white(55, 55, 51, (2, 2)).save("assets/wizard-small.bmp")
 
-# embedded copies for the app
+
 def b64(path):
     data = base64.b64encode(open(path, "rb").read()).decode()
     return "\n".join(f'    "{data[i:i + 96]}"' for i in range(0, len(data), 96))
+
+
 with open("kanzonas/branding_data.py", "w") as f:
     f.write('"""Generated by tools_make_assets.py from assets/: do not edit."""\n\nimport base64\n\n')
     f.write(f"ICON = base64.b64decode(\n{b64('assets/kanzonas-icon-source.png')}\n)\n\n")
+    f.write(f"ICON_SMALL = base64.b64decode(\n{b64('assets/kanzonas-icon-small-source.png')}\n)\n\n")
     f.write(f"LOGO = base64.b64decode(\n{b64('assets/kanzonas-logo-source.png')}\n)\n")
 print("assets written")

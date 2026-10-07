@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.30 | (this) | Logo and icon replaced with the owner's own artwork (cactus and sunflower as designed); app icon, About box, installer artwork, README |
+| 0.31 | (this) | Logo and icon refinements on the owner's artwork: ™ removed, page outline darker, large icon's frame and page redrawn sharp around the owner's cactus and sunflower, simplified cactus-and-sunflower icon for 16-32 px with a white edge for dark taskbars |
+| 0.30 | e50faaa | Logo and icon replaced with the owner's own artwork (cactus and sunflower as designed); app icon, About box, installer artwork, README |
 | 0.29 | 976a7ff | New logo and icon (saguaro with a sunflower on a PDF page), drawn as vectors with simplified versions for small sizes; logo in the About box; installer artwork |
 | 0.28 | e0da74c | Windows installer (per-user, no admin; Start menu, optional desktop shortcut, offered as a PDF app; uninstaller), app icon, single window (opening more PDFs adds tabs), license and source notice; pushing a version tag (e.g. v1.0) publishes a GitHub Release with the installer and zip; the build test-installs, self-tests the installed copy and uninstalls |
 | 0.27 | a270679 | Ribbon (Home, Comment, Measure, Arrange, Review, Protect, Forms, Pages, View) with labeled, grouped buttons; collapsible (Ctrl+F1 or double-click a tab); View > Ribbon switches back to classic toolbars; remembers mode, tab and collapsed state |
