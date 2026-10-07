@@ -6,7 +6,7 @@ from PySide6.QtGui import QPainter, QImage, QPixmap, QColor, QPen, QPainterPath
 from PySide6.QtWidgets import QWidget
 
 DRAG_TOOLS = {"select", "highlight", "underline", "strikeout", "textbox",
-              "rect", "ellipse", "line", "arrow"}
+              "rect", "ellipse", "line", "arrow", "eraser"}
 
 
 class PageWidget(QWidget):
@@ -81,7 +81,9 @@ class PageWidget(QWidget):
 
         tool = self.view.tool
         if self._drag_start is not None and self._drag_now is not None:
-            pen = QPen(self.view.color, 1.5, Qt.DashLine if tool == "select" else Qt.SolidLine)
+            dashed = tool in ("select", "eraser", "highlight", "underline", "strikeout")
+            pen = QPen(QColor(220, 0, 0) if tool == "eraser" else self.view.color, 1.5,
+                       Qt.DashLine if dashed else Qt.SolidLine)
             p.setPen(pen)
             p.setRenderHint(QPainter.Antialiasing)
             if tool in ("line", "arrow"):
@@ -115,7 +117,7 @@ class PageWidget(QWidget):
             self._drag_now = pos
         elif tool == "ink":
             self._ink = [pos]
-        elif tool in ("note", "eraser"):
+        elif tool == "note":
             self.view.apply_point_tool(self.index, tool, self.to_pdf(pos))
 
     def mouseMoveEvent(self, e):

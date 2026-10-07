@@ -11,7 +11,7 @@ if errorlevel 1 (
 )
 
 REM Install the libraries the first time (or after an update adds new ones).
-python -c "import pymupdf, PySide6" >nul 2>nul
+python -c "import pymupdf, PySide6, rapidocr_onnxruntime" >nul 2>nul
 if errorlevel 1 (
     echo First run: installing required libraries, this takes a minute...
     python -m pip install -r requirements.txt

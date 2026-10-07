@@ -14,6 +14,8 @@ A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymup
 - Pages: rotate, delete, reorder, insert a blank page, insert pages from another PDF (merge),
   extract a range of pages to a new file
 - Undo and redo (Ctrl+Z, Ctrl+Y), print
+- OCR (Tools > Recognize text): makes scanned pages searchable and selectable. Works offline,
+  handles sideways (landscape) scans.
 - Annotations are standard PDF annotations, so Acrobat and other viewers can see them
 
 ## Run it (Windows)
@@ -36,7 +38,8 @@ You can zip that folder and give it to anyone; they don't need Python.
 | Ctrl+Shift+H / U / S | Highlight / Underline / Strikeout |
 | N / T | Note / Text box |
 | R / E / L / A / P | Rectangle / Ellipse / Line / Arrow / Pen |
-| X | Eraser |
+| X | Eraser (click one, or drag a box around several) |
+| Ctrl+R / Ctrl+Shift+R | Rotate page clockwise / counter-clockwise |
 
 ## Licence
 
@@ -47,4 +50,5 @@ with its source code available. That's fine for a free, open-source giveaway.
 
 - Saving rewrites the whole file, which invalidates existing digital signatures.
 - You can't edit existing page text yet (only add annotations and text boxes).
-- No OCR, form-field editing or measurement tools yet.
+- No form-field editing or measurement tools yet.
+- OCR caps large sheets at 6000 px on the long side, so very small text on big drawings may be missed.

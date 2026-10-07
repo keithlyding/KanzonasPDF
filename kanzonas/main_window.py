@@ -101,10 +101,12 @@ class MainWindow(QMainWindow):
         self.a_sidebar = self._act("Page &thumbnails", self._toggle_sidebar, "F4")
         self.a_sidebar.setCheckable(True)
         self.a_sidebar.setChecked(True)
+        # Ctrl+Shift+Plus can't be used: on most keyboards "+" already needs Shift,
+        # so Qt sees it as Ctrl++ (zoom in). Ctrl+R / Ctrl+Shift+R are unambiguous.
         self.a_rot_l = self._act("Rotate page &left", lambda: self._page_op("rot", -90),
-                                 "Ctrl+Shift+-")
+                                 "Ctrl+Shift+R", "Rotate page counter-clockwise (Ctrl+Shift+R)")
         self.a_rot_r = self._act("Rotate page &right", lambda: self._page_op("rot", 90),
-                                 "Ctrl+Shift++")
+                                 "Ctrl+R", "Rotate page clockwise (Ctrl+R)")
         self.a_del_page = self._act("&Delete page", lambda: self._page_op("del"))
         self.a_move_up = self._act("Move page &up", lambda: self._page_op("move", -1))
         self.a_move_down = self._act("Move page do&wn", lambda: self._page_op("move", 1))
@@ -112,6 +114,8 @@ class MainWindow(QMainWindow):
         self.a_insert_blank = self._act("Insert &blank page after current",
                                         lambda: self._page_op("blank"))
         self.a_extract = self._act("&Extract pages to new file...", self.extract_pages)
+        self.a_ocr = self._act("Recognize text (&OCR)...", self.ocr,
+                               tip="Make scanned pages searchable and selectable")
         self.a_color = self._act("Color", self.pick_color, tip="Annotation color")
         self.a_about = self._act("&About", self.about)
 
@@ -152,6 +156,8 @@ class MainWindow(QMainWindow):
         m.addActions(self.tool_group.actions())
         m.addSeparator()
         m.addAction(self.a_color)
+        m.addSeparator()
+        m.addAction(self.a_ocr)
         m = mb.addMenu("&Pages")
         m.addActions([self.a_rot_l, self.a_rot_r])
         m.addSeparator()
@@ -218,6 +224,8 @@ class MainWindow(QMainWindow):
         tt.addWidget(btn)
         tt.addSeparator()
         tt.addActions([self.a_rot_l, self.a_rot_r])
+        tt.addSeparator()
+        tt.addAction(self.a_ocr)
 
     def _build_sidebar(self):
         self.thumbs = QListWidget()
@@ -250,7 +258,7 @@ class MainWindow(QMainWindow):
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
-                  self.a_insert_blank, self.a_extract):
+                  self.a_insert_blank, self.a_extract, self.a_ocr):
             a.setEnabled(has)
         self.a_undo.setEnabled(has and v.can_undo())
         self.a_redo.setEnabled(has and v.can_redo())
@@ -526,6 +534,33 @@ class MainWindow(QMainWindow):
         if path:
             v.extract_pages(first - 1, last - 1, path)
             self.statusBar().showMessage("Saved " + path, 4000)
+
+    def ocr(self):
+        v = self.view()
+        if not v:
+            return
+        choices = ["Pages without text (scanned pages)", "Current page only",
+                   "All pages (even ones that already have text)"]
+        pick, ok = QInputDialog.getItem(self, "Recognize text (OCR)",
+                                        "Which pages?", choices, 0, False)
+        if not ok:
+            return
+        n = choices.index(pick)
+        if n == 1:
+            pages = [v.current_page()]
+            if v.page_has_text(pages[0]) and QMessageBox.question(
+                    self, "OCR", "This page already has text. OCR it anyway? "
+                                 "(Text may become duplicated.)") != QMessageBox.Yes:
+                return
+        elif n == 0:
+            pages = [i for i in range(v.page_count()) if not v.page_has_text(i)]
+            if not pages:
+                QMessageBox.information(self, "OCR", "Every page already has text. "
+                                        "Nothing to recognize.")
+                return
+        else:
+            pages = list(range(v.page_count()))
+        v.run_ocr(pages)
 
     def _toggle_sidebar(self):
         self.dock.setVisible(not self.dock.isVisible())

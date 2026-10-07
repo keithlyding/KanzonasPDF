@@ -1,18 +1,44 @@
 """Scrolling view of one open document, plus every editing operation on it."""
 
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
 from PySide6.QtCore import Qt, Signal, QTimer
-from PySide6.QtGui import QColor, QGuiApplication
+from PySide6.QtCore import QRectF
+from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor)
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
-                               QMessageBox, QLineEdit)
+                               QMessageBox, QLineEdit, QProgressDialog, QApplication)
 
 from .page_widget import PageWidget
 
 PAGE_GAP = 12
 MIN_ZOOM, MAX_ZOOM = 0.1, 8.0
 UNDO_LIMIT = 30
+
+
+_ERASER_CURSOR = None
+
+
+def eraser_cursor():
+    """A drawn eraser icon; the hotspot is the bottom-left tip that does the erasing."""
+    global _ERASER_CURSOR
+    if _ERASER_CURSOR is None:
+        pm = QPixmap(32, 32)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.translate(16, 16)
+        p.rotate(-45)
+        p.setPen(QPen(QColor(40, 40, 40), 1.5))
+        p.setBrush(QColor(240, 110, 130))
+        p.drawRoundedRect(QRectF(-4, -6, 16, 12), 2, 2)     # pink rubber body
+        p.setBrush(QColor(250, 250, 250))
+        p.drawRoundedRect(QRectF(-12, -6, 8, 12), 2, 2)     # white tip
+        p.end()
+        _ERASER_CURSOR = QCursor(pm, 6, 26)
+    return _ERASER_CURSOR
 
 
 def _rgb(qcolor):
@@ -187,8 +213,10 @@ class DocumentView(QScrollArea):
 
     def set_tool(self, tool):
         self.tool = tool
-        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.IBeamCursor,
-                   "eraser": Qt.PointingHandCursor}
+        if tool == "eraser":
+            self.viewport().setCursor(eraser_cursor())
+            return
+        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.IBeamCursor}
         self.viewport().setCursor(cursors.get(tool, Qt.CrossCursor))
 
     # ---- undo / modify ----------------------------------------------------
@@ -251,28 +279,40 @@ class DocumentView(QScrollArea):
 
     # ---- text helpers -----------------------------------------------------
     @staticmethod
-    def _nearest_word(words, pt):
-        best, best_d = 0, None
+    def _word_at(words, pt):
         for i, w in enumerate(words):
-            r = pymupdf.Rect(w[:4])
-            if r.contains(pt):
+            if pymupdf.Rect(w[:4]).contains(pt):
                 return i
-            dx = max(r.x0 - pt.x, 0, pt.x - r.x1)
-            dy = max(r.y0 - pt.y, 0, pt.y - r.y1)
-            d = dx * dx + dy * dy * 4   # vertical distance matters more (line choice)
-            if best_d is None or d < best_d:
-                best, best_d = i, d
-        return best
+        return None
+
+    @staticmethod
+    def _word_in_box(r, box):
+        """True if the dragged box covers enough of word rect r."""
+        if not r.intersects(box):
+            return False
+        inter = pymupdf.Rect(r) & box
+        if inter.get_area() >= 0.4 * r.get_area():
+            return True
+        # A thin drag straight across a word (horizontal or vertical text) also counts.
+        ow, oh = inter.width / max(r.width, 1e-6), inter.height / max(r.height, 1e-6)
+        return (box.height < r.height and ow >= 0.5) or (box.width < r.width and oh >= 0.5)
 
     def words_between(self, index, a, b):
-        """Words in reading order from point a to point b (like a text cursor selection)."""
+        """Text selection for a drag from a to b.
+
+        If both ends start on words in the same text block (a paragraph), select in
+        reading order between them, like a normal text cursor. Otherwise (drawings,
+        tables, separate labels) select only the words inside the dragged box."""
         words = self.doc[index].get_text("words", sort=False)
         if not words:
             return []
-        i, j = self._nearest_word(words, a), self._nearest_word(words, b)
-        if i > j:
-            i, j = j, i
-        return words[i:j + 1]
+        i, j = self._word_at(words, a), self._word_at(words, b)
+        if i is not None and j is not None and words[i][5] == words[j][5]:
+            if i > j:
+                i, j = j, i
+            return words[i:j + 1]
+        box = pymupdf.Rect(a, b).normalize()
+        return [w for w in words if self._word_in_box(pymupdf.Rect(w[:4]), box)]
 
     @staticmethod
     def _line_rects(words):
@@ -340,11 +380,25 @@ class DocumentView(QScrollArea):
 
             def do():
                 annot = page.add_freetext_annot(rect, text, fontsize=11, fontname="helv",
-                                                text_color=(0, 0, 0), border_color=col,
-                                                rotate=page.rotation)
+                                                text_color=(0, 0, 0), rotate=page.rotation)
                 annot.set_border(width=1)
                 annot.update()
             self.modify(do, [index])
+            return
+
+        if tool == "eraser":
+            if is_click:
+                self.apply_point_tool(index, "eraser", a)
+                return
+            xrefs = [an.xref for an in page.annots() if self._annot_in_box(an, rect)]
+            if not xrefs:
+                return
+
+            def do():
+                for x in xrefs:
+                    page.delete_annot(page.load_annot(x))
+            self.modify(do, [index])
+            self.statusMessage.emit(f"Erased {len(xrefs)} annotation(s)")
             return
 
         if is_click:
@@ -396,12 +450,63 @@ class DocumentView(QScrollArea):
             self.modify(lambda: page.delete_annot(page.load_annot(xref)), [index])
 
     @staticmethod
-    def _annot_at(page, pt):
-        found = None
-        for annot in page.annots():
-            if annot.rect.contains(pt):
-                found = annot      # last one = topmost
-        return found
+    def _seg_dist(p, a, b):
+        ax, ay, bx, by = a[0], a[1], b[0], b[1]
+        dx, dy = bx - ax, by - ay
+        L = dx * dx + dy * dy
+        t = 0 if L == 0 else max(0, min(1, ((p.x - ax) * dx + (p.y - ay) * dy) / L))
+        cx, cy = ax + t * dx, ay + t * dy
+        return ((p.x - cx) ** 2 + (p.y - cy) ** 2) ** 0.5
+
+    @classmethod
+    def _annot_hit(cls, annot, pt, tol=4.0):
+        """Precise hit test: strokes must be clicked near the line, not anywhere in their box."""
+        t = annot.type[0]
+        if not annot.rect.contains(pt) and not (+annot.rect + (-tol, -tol, tol, tol)).contains(pt):
+            return False
+        width = (annot.border or {}).get("width") or 1
+        tol = tol + width
+        if t == pymupdf.PDF_ANNOT_INK:
+            for stroke in annot.vertices or []:
+                if len(stroke) == 1 and cls._seg_dist(pt, stroke[0], stroke[0]) <= tol:
+                    return True
+                if any(cls._seg_dist(pt, stroke[k], stroke[k + 1]) <= tol
+                       for k in range(len(stroke) - 1)):
+                    return True
+            return False
+        if t in (pymupdf.PDF_ANNOT_LINE, pymupdf.PDF_ANNOT_POLY_LINE):
+            v = annot.vertices or []
+            return any(cls._seg_dist(pt, v[k], v[k + 1]) <= tol for k in range(len(v) - 1))
+        if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
+                 pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
+            v = annot.vertices or []
+            for k in range(0, len(v) - 3, 4):
+                if pymupdf.Quad(v[k:k + 4]).rect.contains(pt):
+                    return True
+            return False
+        return annot.rect.contains(pt)
+
+    @classmethod
+    def _annot_at(cls, page, pt):
+        """Smallest annotation actually under the point (so big shapes don't swallow clicks)."""
+        hits = [an for an in page.annots() if cls._annot_hit(an, pt)]
+        if not hits:
+            return None
+        return min(hits, key=lambda an: an.rect.get_area())
+
+    @staticmethod
+    def _annot_in_box(annot, box):
+        """For drag-erase: the annotation lies entirely inside the box,
+        or (for pen strokes and lines) any of its points is inside."""
+        if box.contains(annot.rect):
+            return True
+        if annot.type[0] in (pymupdf.PDF_ANNOT_INK, pymupdf.PDF_ANNOT_LINE,
+                             pymupdf.PDF_ANNOT_POLY_LINE):
+            pts = annot.vertices or []
+            if pts and isinstance(pts[0], list):
+                pts = [p for stroke in pts for p in stroke]
+            return any(box.contains(pymupdf.Point(p)) for p in pts)
+        return False
 
     def edit_annot_at(self, index, pt):
         page = self.doc[index]
@@ -420,6 +525,68 @@ class DocumentView(QScrollArea):
             a.set_info(content=text)
             a.update()
         self.modify(do, [index])
+
+    # ---- OCR ----------------------------------------------------------------
+    def page_has_text(self, index):
+        return bool(self.doc[index].get_text("text").strip())
+
+    def run_ocr(self, pages):
+        """Recognize text on the given pages and add an invisible, searchable text layer."""
+        from . import ocr
+        dlg = QProgressDialog("Loading OCR engine...", "Cancel", 0, len(pages), self)
+        dlg.setWindowTitle("Recognize text (OCR)")
+        dlg.setWindowModality(Qt.WindowModal)
+        dlg.setMinimumDuration(0)
+        dlg.setValue(0)
+        results = {}
+        pool = ThreadPoolExecutor(max_workers=1)
+
+        def ocr_image(rendering):
+            fut = pool.submit(ocr.recognize, rendering.png)
+            while not fut.done():       # keep the window responsive while OCR runs
+                QApplication.processEvents()
+                time.sleep(0.03)
+                if dlg.wasCanceled():
+                    return None
+            return fut.result()
+
+        try:
+            for n, i in enumerate(pages):
+                dlg.setLabelText(f"Recognizing text on page {i + 1} ({n + 1} of {len(pages)})...")
+                best = ocr.Rendering(self.doc[i])
+                res = ocr_image(best)
+                if res is None:
+                    break
+                if ocr.mostly_vertical(res):
+                    # Sideways text (e.g. a landscape scan): try both 90-degree turns, keep the best.
+                    dlg.setLabelText(f"Page {i + 1}: text is sideways, trying other orientations...")
+                    for extra in (90, 270):
+                        r = ocr.Rendering(self.doc[i], extra)
+                        alt = ocr_image(r)
+                        if alt is None:
+                            break
+                        if ocr.score(alt) > ocr.score(res):
+                            best, res = r, alt
+                    if dlg.wasCanceled():
+                        break
+                results[i] = (res, best)
+                dlg.setValue(n + 1)
+        except Exception as ex:
+            QMessageBox.critical(self, "OCR failed", str(ex))
+            return
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
+            dlg.close()
+        if not results:
+            return
+        counts = {}
+
+        def do():
+            for i, (res, rendering) in results.items():
+                counts[i] = ocr.add_text_layer(self.doc[i], res, rendering)
+        self.modify(do, list(results))
+        self.statusMessage.emit(f"OCR added {sum(counts.values())} lines of text "
+                                f"on {len(results)} page(s)")
 
     # ---- page operations --------------------------------------------------
     def rotate_page(self, index, delta):
