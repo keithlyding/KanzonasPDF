@@ -3,72 +3,91 @@
     QT_QPA_PLATFORM=offscreen python tools_make_assets.py
 
 Sources (the owner's artwork):
-- assets/kanzonas-mark-page-source.png  page + cactus + sunflower (the owner's primary logo,
-  page outline darkened)
-- assets/kanzonas-mark-source.png  cactus + sunflower only (for the 16-32 px icon)
-- assets/kanzonas-logo-source.png  the owner's full logo
-The app icon's frame (the owner's application-icon design) is redrawn here as vectors so
-the large icon is sharp; sizes 16-32 use the cactus and sunflower alone with a
-thin white edge. Outputs: kanzonas.ico, kanzonas.png, installer BMPs and the embedded copy
-kanzonas/branding_data.py.
+- assets/kanzonas-mark-source.png  cactus + sunflower
+- assets/kanzonas-logo-source.png  the owner's full logo (Help > About)
+The app icon is a red tile (the color people associate with PDF apps) with a white page
+holding the cactus and sunflower, drawn here as vectors so it is sharp at every size; sizes
+16-32 use a simpler page without the folded corner. Outputs: kanzonas.ico, kanzonas.png,
+installer BMPs and the embedded copy kanzonas/branding_data.py.
 """
 import base64
 import io
 import sys
 
 from PIL import Image
-from PySide6.QtCore import QBuffer, QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath, QPen
+from PySide6.QtCore import QBuffer, QRectF, Qt
+from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath
 from PySide6.QtWidgets import QApplication
 
 app = QApplication(sys.argv)
 mark = QImage("assets/kanzonas-mark-source.png")
-mark_page = QImage("assets/kanzonas-mark-page-source.png")
+
+
+RED_TOP, RED_BOTTOM = "#e0362c", "#a3120f"      # red tile: the color people link with PDFs
+
+
+def _tile(p, size_units, radius):
+    g = QLinearGradient(0, 0, 0, size_units)
+    g.setColorAt(0, QColor(RED_TOP))
+    g.setColorAt(1, QColor(RED_BOTTOM))
+    p.setPen(Qt.NoPen)
+    p.setBrush(g)
+    m = size_units / 64
+    p.drawRoundedRect(QRectF(m, m, size_units - 2 * m, size_units - 2 * m), radius, radius)
 
 
 def big_icon(size=512):
+    """Red tile; a white page with a folded corner holds the owner's cactus and sunflower."""
     img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
     img.fill(Qt.transparent)
     p = QPainter(img)
     p.setRenderHint(QPainter.Antialiasing)
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 256.0, size / 256.0)
-    g = QLinearGradient(0, 0, 0, 256)                 # dark rounded frame
-    g.setColorAt(0, QColor("#3a3a3a"))
-    g.setColorAt(1, QColor("#141414"))
-    p.setPen(Qt.NoPen)
-    p.setBrush(g)
-    p.drawRoundedRect(QRectF(4, 4, 248, 248), 44, 44)
-    # white panel with a green edge, then the owner's page + cactus + sunflower, with the
-    # page coming out above the cactus as in the original artwork
-    p.setPen(QPen(QColor("#6aaa35"), 3))
+    _tile(p, 256, 44)
+    x0, y0, x1, y1, f = 52, 30, 204, 226, 34
+    page = QPainterPath()
+    page.moveTo(x0 + 10, y0)
+    page.lineTo(x1 - f, y0)
+    page.lineTo(x1, y0 + f)
+    page.lineTo(x1, y1 - 10)
+    page.quadTo(x1, y1, x1 - 10, y1)
+    page.lineTo(x0 + 10, y1)
+    page.quadTo(x0, y1, x0, y1 - 10)
+    page.lineTo(x0, y0 + 10)
+    page.quadTo(x0, y0, x0 + 10, y0)
+    p.setBrush(QColor(0, 0, 0, 60))                    # soft shadow
+    p.drawPath(page.translated(3, 4))
     p.setBrush(QColor("white"))
-    p.drawRoundedRect(QRectF(22, 22, 212, 212), 26, 26)
-    h = 204.0
-    w = h * mark_page.width() / mark_page.height()
-    p.drawImage(QRectF(128 - w / 2, 27, w, h), mark_page)
+    p.drawPath(page)
+    fold = QPainterPath()
+    fold.moveTo(x1 - f, y0)
+    fold.lineTo(x1 - f, y0 + f)
+    fold.lineTo(x1, y0 + f)
+    fold.closeSubpath()
+    p.setBrush(QColor("#d9d9d9"))
+    p.drawPath(fold)
+    h = 150.0
+    w = h * mark.width() / mark.height()
+    p.drawImage(QRectF(128 - w / 2, 62, w, h), mark)
     p.end()
     return img
 
 
 def small_icon(size=128):
+    """16-32 px: the red tile and a plain white page (a folded corner is too fine there)."""
     img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
     img.fill(Qt.transparent)
     p = QPainter(img)
     p.setRenderHint(QPainter.Antialiasing)
     p.setRenderHint(QPainter.SmoothPixmapTransform)
-    h = size * 0.98
+    p.scale(size / 128.0, size / 128.0)
+    _tile(p, 128, 24)
+    p.setBrush(QColor("white"))
+    p.drawRoundedRect(QRectF(22, 12, 84, 104), 10, 10)
+    h = 92.0
     w = h * mark.width() / mark.height()
-    r = QRectF((size - w) / 2, (size - h) / 2, w, h)
-    sil = mark.copy()                                 # white edge for dark taskbars
-    q = QPainter(sil)
-    q.setCompositionMode(QPainter.CompositionMode_SourceIn)
-    q.fillRect(sil.rect(), QColor("white"))
-    q.end()
-    d = size * 0.025
-    for dx, dy in ((-d, 0), (d, 0), (0, -d), (0, d), (-d, -d), (d, d), (-d, d), (d, -d)):
-        p.drawImage(r.translated(dx, dy), sil)
-    p.drawImage(r, mark)
+    p.drawImage(QRectF(64 - w / 2, 18, w, h), mark)
     p.end()
     return img
 
