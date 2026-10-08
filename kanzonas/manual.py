@@ -90,6 +90,11 @@ like AutoCAD, the scroll wheel zooms in and out around the cursor and holding th
 moves the sheet, so you can navigate a drawing while any markup tool is active. Like Bluebeam,
 hold <b>Ctrl</b> and turn the wheel to scroll up and down, or <b>Shift</b> to scroll left and
 right. Your choice is remembered.</li>
+<li><b>Scroll one page per wheel step</b> (View menu): when the whole page fits in the window
+(for example after <b>Fit page</b>), each step of the scroll wheel jumps to the next or previous
+page, centered, instead of scrolling a little. When you're zoomed in further, the wheel scrolls
+normally. Off by default; your choice is remembered. (With CAD-style mouse on, the wheel zooms
+instead.)</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.</li>
 </ul>

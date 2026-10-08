@@ -425,6 +425,14 @@ class MainWindow(QMainWindow):
         self.a_cad_mouse.setCheckable(True)
         self.a_cad_mouse.setChecked(self.settings.value("cad_mouse", "false") == "true")
         DocumentView.cad_mouse = self.a_cad_mouse.isChecked()
+        self.a_page_wheel = self._act("Scroll &one page per wheel step",
+                                      self._toggle_page_wheel,
+                                      tip="When the whole page fits in the window, each step "
+                                          "of the scroll wheel moves to the next or previous "
+                                          "page")
+        self.a_page_wheel.setCheckable(True)
+        self.a_page_wheel.setChecked(self.settings.value("page_wheel", "false") == "true")
+        DocumentView.page_wheel = self.a_page_wheel.isChecked()
         # grid and snapping (shared by all open documents, remembered)
         self.a_grid = self._act("Show &grid", self._apply_grid_settings,
                                 tip="Show a grid over the page (spacing in Grid settings)")
@@ -573,6 +581,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_split)
         m.addAction(self.a_cad_mouse)
+        m.addAction(self.a_page_wheel)
         m.addAction(self.a_hl_fields)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_grid_settings])
@@ -2634,6 +2643,14 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             "CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan" if on else
             "CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms", 4000)
+
+    def _toggle_page_wheel(self):
+        on = self.a_page_wheel.isChecked()
+        DocumentView.page_wheel = on
+        self.settings.setValue("page_wheel", "true" if on else "false")
+        self.statusBar().showMessage(
+            "Scroll wheel: one page per step when the whole page fits (zoom with Fit page)" if on
+            else "Scroll wheel: smooth scrolling", 4000)
 
     # ---- ribbon --------------------------------------------------------------------------
     # short labels for ribbon buttons (the menus keep the full names)

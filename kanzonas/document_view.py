@@ -463,6 +463,7 @@ class DocumentView(QScrollArea):
     # CAD-style mouse (View menu): the wheel zooms around the cursor, like AutoCAD.
     # Holding the wheel (middle button) down and dragging pans in either mode.
     cad_mouse = False
+    page_wheel = False          # one wheel step = one page when the page fits the window
 
     def wheelEvent(self, e):
         dy = e.angleDelta().y()
@@ -485,8 +486,29 @@ class DocumentView(QScrollArea):
             elif dy < 0:
                 self.zoom_out()
             e.accept()
+        elif self.page_wheel and dy and self._page_fits():
+            # one wheel step = one whole page (when the page fits in the window)
+            self._wheel_acc = getattr(self, "_wheel_acc", 0) + dy
+            if abs(self._wheel_acc) >= 120:         # touchpads send many small steps
+                step = -1 if self._wheel_acc > 0 else 1
+                self._wheel_acc = 0
+                self.show_whole_page(self.current_page() + step)
+            e.accept()
         else:
             super().wheelEvent(e)
+
+    def _page_fits(self):
+        if not getattr(self, "pages", None):
+            return False
+        w = self.pages[self.current_page()]
+        return w.height() <= self.viewport().height()
+
+    def show_whole_page(self, index):
+        """Scroll so page `index` is centered top to bottom in the window."""
+        index = max(0, min(index, len(self.pages) - 1))
+        w = self.pages[index]
+        self.verticalScrollBar().setValue(int(w.y() - (self.viewport().height() - w.height()) / 2))
+        self._on_scroll()
 
     def zoom_at(self, z, vp_pos):
         """Zoom keeping the page point under vp_pos (viewport coordinates) where it is."""
