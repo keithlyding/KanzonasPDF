@@ -161,8 +161,9 @@ def run(log_path):
         assert next(d[0].widgets()).field_value == "Filled"
     check("forms", t_forms)
 
+    from . import digisign
+
     def t_digisign():
-        from . import digisign
         cert = os.path.join(tmp, "c.p12")
         digisign.create_certificate("Self Test", "", "", "pw", cert)
         out = os.path.join(tmp, "signed.pdf")
@@ -171,6 +172,24 @@ def run(log_path):
             res = digisign.validate(f.read())
         assert res and res[0]["intact"] and not res[0]["modified"], res
     check("digital signature", t_digisign)
+
+    def t_wincerts():
+        # signing through the Windows certificate store (the build adds two test certificates:
+        # RSA and ECDSA, CNG keys, like New-SelfSignedCertificate makes)
+        if os.name != "nt":
+            return "(skipped: not Windows)"
+        from . import wincerts
+        certs = [c for c in wincerts.list_certificates() if c["name"] == "KanzonasPDF Self Test"]
+        if not certs:
+            return "(skipped: no test certificate in the Windows store)"
+        for c in certs:
+            out = os.path.join(tmp, "win-" + c["thumbprint"] + ".pdf")
+            digisign.sign(data, out, wincerts.WindowsSigner(c["thumbprint"]), "test")
+            with open(out, "rb") as f:
+                res = digisign.validate(f.read())
+            assert res and res[0]["intact"] and not res[0]["modified"], res
+        return "(%d certificates: signed and verified)" % len(certs)
+    check("Windows certificate store signing", t_wincerts)
 
     def t_page_tools():
         from . import page_tools

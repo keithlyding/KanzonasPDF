@@ -5,7 +5,8 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.75 | (this) | Portable version: Update now (in the update notice and Help > Check for updates) downloads the new KanzonasPDF-portable.zip, closes the app (asking to save), copies the new program files over the same folder with the data folder kept, and restarts, so it stays your default PDF app |
+| 0.76 | (this) | Digital signing can use certificates stored in Windows (Personal store), like Adobe Acrobat and PDF-XChange Editor: Windows does the signing, so non-exportable keys, smart cards and USB tokens work, with Windows' PIN prompt. RSA and ECDSA. The last certificate used is remembered |
+| 0.75 | 4979182 | Portable version: Update now (in the update notice and Help > Check for updates) downloads the new KanzonasPDF-portable.zip, closes the app (asking to save), copies the new program files over the same folder with the data folder kept, and restarts, so it stays your default PDF app |
 | 0.74 | 9c65b54 | The portable and Windows zips now have the same name every release (`KanzonasPDF-portable.zip`, `KanzonasPDF-windows.zip`), so a portable copy can be updated in place by unzipping over the same folder; KanzonasPDF.exe keeps its path and stays the default PDF app. Manual and README explain how. |
 | 0.73 | 795696f | Signing no longer adds the date: a separate Date tool (Ctrl+;, Protect tab) writes today's date where you click, in the format set in Preferences > You. After placing a signature, initials or a date, the Hand or Select tool (whichever was used last) is active again. |
 | 0.72 | 5058b7b | Set up my signature / Set up my initials removed from the Protect tab and menu (they read like "sign this document" but replace your saved signature); they stay in File > Preferences > You, and placing a signature still asks you to set one up the first time |
