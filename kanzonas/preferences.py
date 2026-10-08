@@ -4,13 +4,46 @@ Every checkbox is tied to the menu command that already does the job, so changin
 here or in its menu does the same thing and both always agree."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget,
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget,
                                QCheckBox, QComboBox, QFormLayout, QLabel, QPushButton,
-                               QDialogButtonBox, QLineEdit, QListWidget, QListWidgetItem)
+                               QDialogButtonBox, QLineEdit, QListWidget, QListWidgetItem,
+                               QSpinBox, QMessageBox)
 
 
 def _plain(text):
     return text.replace("&&", "\0").replace("&", "").replace("\0", "&")
+
+
+class _Sections(QWidget):
+    """Categories listed on the left, the chosen one shown on the right (fits many sections
+    without the scroll arrows a row of tabs would need)."""
+
+    def __init__(self):
+        super().__init__()
+        from PySide6.QtWidgets import QStackedWidget
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        self.list = QListWidget()
+        self.list.setMaximumWidth(190)
+        self.stack = QStackedWidget()
+        row.addWidget(self.list)
+        row.addWidget(self.stack, 1)
+        self.list.currentRowChanged.connect(self.stack.setCurrentIndex)
+
+    def addTab(self, widget, title):
+        self.stack.addWidget(widget)
+        self.list.addItem(title)
+        if self.list.count() == 1:
+            self.list.setCurrentRow(0)
+
+    def count(self):
+        return self.list.count()
+
+    def tabText(self, i):
+        return self.list.item(i).text()
+
+    def setCurrentIndex(self, i):
+        self.list.setCurrentRow(i)
 
 
 class PreferencesDialog(QDialog):
@@ -18,10 +51,11 @@ class PreferencesDialog(QDialog):
         super().__init__(win)
         self.win = win
         self.setWindowTitle("Preferences")
-        self.resize(640, 560)
+        self.resize(760, 560)
         self._boxes = []            # (QCheckBox, QAction)
         lay = QVBoxLayout(self)
-        tabs = QTabWidget()
+        tabs = _Sections()
+        self.sections = tabs
         lay.addWidget(tabs)
 
         # General
@@ -60,6 +94,11 @@ class PreferencesDialog(QDialog):
             form.addRow("Your " + kind + ":", row)
             self._sig_rows[kind] = status
         self._sig_status()
+        pin = QPushButton("Change PIN...")
+        pin.setToolTip("Set, change or remove the PIN that protects your saved signature and "
+                       "initials")
+        pin.clicked.connect(self._change_pin)
+        form.addRow("Signature PIN:", pin)
         hint = QLabel("Your signature and initials are kept on this computer only (in the data "
                       "folder in portable mode), protected by your PIN if you set one.")
         hint.setWordWrap(True)
@@ -89,7 +128,16 @@ class PreferencesDialog(QDialog):
 
         # Opening documents
         from .document_view import DocumentView
-        page, form = self._tab(tabs, "Opening documents")
+        page, form = self._tab(tabs, "Start-up and opening")
+        self.restore = QCheckBox("Reopen the documents that were open when I closed KanzonasPDF")
+        self.restore.setChecked(win.settings.value("restore_session", "false") == "true")
+        form.addRow(self.restore)
+        self.start_tool = QComboBox()
+        self.start_tool.addItem("Hand (drag to scroll)", "hand")
+        self.start_tool.addItem("Select", "select")
+        self.start_tool.setCurrentIndex(max(0, self.start_tool.findData(
+            win.settings.value("start_tool", "hand"))))
+        form.addRow("Start with the tool:", self.start_tool)
         self.open_view = QComboBox()
         for key, label in (("page", "Fit page (whole page in the window)"),
                            ("width", "Fit width"), ("actual", "Actual size (100%)"),
@@ -100,6 +148,49 @@ class PreferencesDialog(QDialog):
         self.reopen = QCheckBox("Reopen at the page I was on last time")
         self.reopen.setChecked(DocumentView.reopen_page)
         form.addRow(self.reopen)
+
+        # Saving: automatic backup copies
+        page, form = self._tab(tabs, "Saving")
+        self.autosave = QSpinBox()
+        self.autosave.setRange(0, 60)
+        self.autosave.setSuffix(" min")
+        self.autosave.setSpecialValueText("Off")
+        self.autosave.setValue(win.autosave.minutes)
+        form.addRow("Back up unsaved changes every:", self.autosave)
+        note = QLabel("A copy of each document with unsaved changes is kept in the backups "
+                      "folder and deleted when you save or close the document. If KanzonasPDF "
+                      "or Windows stops unexpectedly, you're offered the copies the next time "
+                      "it starts. Password-protected documents aren't backed up (the copy "
+                      "wouldn't have the password).")
+        note.setWordWrap(True)
+        form.addRow(note)
+        folder = QPushButton("Open backup folder")
+        folder.clicked.connect(self._open_backups)
+        form.addRow(folder)
+
+        # Measuring
+        from . import measure
+        page, form = self._tab(tabs, "Measuring")
+        self.m_unit = QComboBox()
+        for u, lab in measure.UNIT_LABELS.items():
+            self.m_unit.addItem(lab, u)
+        self.m_unit.setCurrentIndex(max(0, self.m_unit.findData(measure.DEFAULT_UNIT)))
+        form.addRow("Default units for a new scale:", self.m_unit)
+        self.m_frac = QComboBox()
+        for f in measure.FRACTIONS:
+            self.m_frac.addItem(f'1/{f}"', f)
+        self.m_frac.setCurrentIndex(max(0, self.m_frac.findData(measure.FRACTION)))
+        form.addRow("Feet and inches round to:", self.m_frac)
+        self.m_dec = QComboBox()
+        self.m_dec.addItem("Automatic (2, whole millimeters)", "auto")
+        for d in range(0, 5):
+            self.m_dec.addItem(str(d), str(d))
+        self.m_dec.setCurrentIndex(max(0, self.m_dec.findData(
+            "auto" if measure.DECIMALS is None else str(measure.DECIMALS))))
+        form.addRow("Decimal places:", self.m_dec)
+        note = QLabel("Existing measurement labels update when you next move or edit them.")
+        note.setWordWrap(True)
+        form.addRow(note)
 
         # Mouse and scrolling
         page, form = self._tab(tabs, "Mouse and scrolling")
@@ -146,6 +237,45 @@ class PreferencesDialog(QDialog):
     def _setup_sig(self, kind):
         self.win.setup_signature(kind)
         self._sig_status()
+
+    def _change_pin(self):
+        from . import signatures
+        old = None
+        if signatures.has_pin():
+            old = signatures.ask_pin(self, "Current PIN:")
+            if old is None:
+                return
+            if not signatures._pin_ok(old):
+                QMessageBox.warning(self, "Signature PIN", "Wrong PIN.")
+                return
+        from PySide6.QtWidgets import QInputDialog
+        new, ok = QInputDialog.getText(self, "Signature PIN",
+                                       "New PIN (leave empty for no PIN):", QLineEdit.Password)
+        if not ok:
+            return
+        again, ok = QInputDialog.getText(self, "Signature PIN", "Type the new PIN again:",
+                                         QLineEdit.Password)
+        if not ok:
+            return
+        if new != again:
+            QMessageBox.warning(self, "Signature PIN", "The two PINs don't match. Nothing "
+                                "was changed.")
+            return
+        try:
+            signatures.set_pin(new, old)
+        except Exception as e:
+            QMessageBox.warning(self, "Signature PIN", f"Couldn't change the PIN:\n{e}")
+            return
+        signatures.Session.pin = new or None
+        self._sig_status()
+        QMessageBox.information(self, "Signature PIN",
+                                "PIN changed." if new else "PIN removed.")
+
+    def _open_backups(self):
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        from . import autosave
+        QDesktopServices.openUrl(QUrl.fromLocalFile(autosave.folder()))
 
     def _kind(self):
         it = self.kinds.currentItem()
@@ -196,6 +326,15 @@ class PreferencesDialog(QDialog):
         if self.lock.isChecked() != win.lock_btn.isChecked():
             win.lock_btn.setChecked(self.lock.isChecked())
         win.settings.setValue("ocr_accuracy", self.ocr.currentData())
+        win.settings.setValue("restore_session", "true" if self.restore.isChecked() else "false")
+        win.settings.setValue("start_tool", self.start_tool.currentData())
+        win.settings.setValue("autosave_minutes", self.autosave.value())
+        win.autosave.set_minutes(self.autosave.value())
+        from . import measure
+        win.settings.setValue("measure_unit", self.m_unit.currentData())
+        win.settings.setValue("measure_fraction", self.m_frac.currentData())
+        win.settings.setValue("measure_decimals", self.m_dec.currentData())
+        measure.configure(win.settings)
         from .document_view import DocumentView
         DocumentView.open_view = self.open_view.currentData()
         DocumentView.reopen_page = self.reopen.isChecked()

@@ -1,5 +1,6 @@
 """Main application window: tabs, toolbars, menus, thumbnails sidebar."""
 
+import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -161,7 +162,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(_title_base())
         self.resize(1300, 900)
         self.setAcceptDrops(True)
-        self.tool = "hand"            # start with the Hand: scroll by dragging, like most viewers
+        # start with the Hand (scroll by dragging, like most viewers) or the Select tool
+        self.tool = "select" if self.settings.value("start_tool", "hand") == "select" else "hand"
         self._sig_cache = {}            # kind -> png, for this run of the app only
 
         self.tabs = QTabWidget()
@@ -436,6 +438,13 @@ class MainWindow(QMainWindow):
         self.a_page_wheel.setCheckable(True)
         self.a_page_wheel.setChecked(self.settings.value("page_wheel", "true") == "true")
         DocumentView.page_wheel = self.a_page_wheel.isChecked()
+        from . import autosave, measure
+        measure.configure(self.settings)
+        try:
+            minutes = int(self.settings.value("autosave_minutes", 5))
+        except (TypeError, ValueError):
+            minutes = 5
+        self.autosave = autosave.Autosaver(self, minutes)
         DocumentView.open_view = self.settings.value("open_view", "page")
         DocumentView.reopen_page = self.settings.value("reopen_page", "true") != "false"
         # grid and snapping (shared by all open documents, remembered)
@@ -534,7 +543,7 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
-        self.tool_actions["hand"].setChecked(True)
+        self.tool_actions[self.tool].setChecked(True)
         self.tool_group.triggered.connect(lambda _a: self._clear_chest())
         for tid, label, sc, tip in MEASURE_TOOLS + EXTRA_TOOLS:
             a = QAction(label, self, checkable=True)
@@ -1064,6 +1073,7 @@ class MainWindow(QMainWindow):
                                  f"{ex}\n\nIf the file is open in another program, close it "
                                  "or use Save As.")
             return False
+        self.autosave.discard(v)
         self.statusBar().showMessage("Saved " + v.path, 4000)
         return True
 
@@ -1079,6 +1089,7 @@ class MainWindow(QMainWindow):
         except Exception as ex:
             QMessageBox.critical(self, "Save failed", str(ex))
             return False
+        self.autosave.discard(v)
         self._add_recent(v.path)
         self._update_ui()
         return True
@@ -1099,6 +1110,7 @@ class MainWindow(QMainWindow):
         if v is None or not self._confirm_close(v):
             return
         self._remember_state(v)
+        self.autosave.discard(v)
         if self._split_view is not None and getattr(self._split_view, "_source", None) is v:
             self._split_view.deleteLater()
             self._split_view = None
@@ -1113,10 +1125,55 @@ class MainWindow(QMainWindow):
             if not self._confirm_close(self.tabs.widget(i)):
                 e.ignore()
                 return
+        from . import autosave
+        backups = autosave.folder()
+        session = []
         for i in range(self.tabs.count()):
-            self._remember_state(self.tabs.widget(i))
+            v = self.tabs.widget(i)
+            self._remember_state(v)
+            if v.path and os.path.exists(v.path) and \
+                    not os.path.normcase(v.path).startswith(os.path.normcase(backups)):
+                session.append(v.path)
+        self.settings.setValue("session_files", json.dumps(session))
+        self.autosave.discard_all()
         self.settings.setValue("geometry", self.saveGeometry())
         e.accept()
+
+    def restore_session(self):
+        """Start-up: reopen the files that were open when KanzonasPDF was last closed (if
+        that's turned on in Preferences > Start-up)."""
+        if self.settings.value("restore_session", "false") != "true":
+            return
+        try:
+            files = json.loads(self.settings.value("session_files", "[]") or "[]")
+        except ValueError:
+            files = []
+        for p in files:
+            if isinstance(p, str) and os.path.exists(p):
+                self.open_file(p)
+
+    def recover_backups(self):
+        """Start-up: offer the automatic backup copies left by a run that didn't exit
+        normally (a crash or power cut)."""
+        from . import autosave
+        try:
+            items = autosave.leftovers()
+        except OSError:
+            return
+        if not items:
+            return
+        names = "\n".join("  " + (os.path.basename(o) if o else os.path.basename(p))
+                           for p, o, _t in items[:10])
+        r = QMessageBox.question(
+            self, "Recover unsaved changes?",
+            "KanzonasPDF didn't close normally last time. Automatic backup copies of these "
+            f"documents have unsaved changes:\n\n{names}\n\nOpen the copies now? Use Save As "
+            "to keep one. (They stay in the backups folder for 30 days either way: "
+            "File > Preferences > Saving > Open backup folder.)")
+        moved = autosave.set_aside(items)
+        if r == QMessageBox.Yes:
+            for p in moved:
+                self.open_file(p)
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():

@@ -32,6 +32,24 @@ PRESETS = [
     ("1:2500", 2500, "m"),
 ]
 KEY = "KZScale"
+# Preferences > Measuring (set by configure())
+FRACTION = 16             # feet-and-inches values round to the nearest 1/FRACTION inch
+DECIMALS = None           # decimal places for decimal units; None = 2 (0 for mm)
+DEFAULT_UNIT = "ft-in"    # display unit offered for a page that has no scale yet
+FRACTIONS = [2, 4, 8, 16, 32, 64]
+
+
+def configure(settings):
+    global FRACTION, DECIMALS, DEFAULT_UNIT
+    try:
+        f = int(settings.value("measure_fraction", 16))
+        FRACTION = f if f in FRACTIONS else 16
+    except (TypeError, ValueError):
+        FRACTION = 16
+    d = settings.value("measure_decimals", "auto")
+    DECIMALS = int(d) if str(d).isdigit() and int(d) <= 6 else None
+    u = settings.value("measure_unit", "ft-in")
+    DEFAULT_UNIT = u if u in UNITS else "ft-in"
 
 
 # ---- page scale ------------------------------------------------------------------
@@ -85,7 +103,7 @@ def fmt_length(meters, unit):
         total_in = abs(total_in)
         ft = int(total_in // 12)
         inch = total_in - ft * 12
-        frac = Fraction(round(inch * 16), 16)      # nearest 1/16"
+        frac = Fraction(round(inch * FRACTION), FRACTION)      # nearest 1/FRACTION"
         whole = int(frac)
         rest = frac - whole
         if whole == 12:
@@ -93,14 +111,15 @@ def fmt_length(meters, unit):
         inch_s = str(whole) + (f" {rest.numerator}/{rest.denominator}" if rest else "")
         return f"{sign}{ft}'-{inch_s}\""
     value = meters / UNITS[unit]
-    digits = 0 if unit == "mm" else 2
+    digits = DECIMALS if DECIMALS is not None else (0 if unit == "mm" else 2)
     return f"{value:,.{digits}f} {unit}"
 
 
 def fmt_area(sq_meters, unit):
     base = "ft" if unit == "ft-in" else unit
     value = sq_meters / UNITS[base] ** 2
-    return f"{value:,.2f} sq {base}"
+    digits = DECIMALS if DECIMALS is not None else 2
+    return f"{value:,.{digits}f} sq {base}"
 
 
 def measure_text(kind, points, page, group=""):

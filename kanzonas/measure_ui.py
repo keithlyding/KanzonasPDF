@@ -54,6 +54,7 @@ class ScaleDialog(QDialog):
         self.in_unit = QComboBox()
         for u in _INPUT_UNITS:
             self.in_unit.addItem(M.UNIT_LABELS[u], u)
+        self.in_unit.setCurrentIndex(max(0, self.in_unit.findData(M.DEFAULT_UNIT)))
         row = QHBoxLayout()
         row.addWidget(self.length, 1)
         row.addWidget(self.in_unit)
@@ -63,7 +64,7 @@ class ScaleDialog(QDialog):
         self.disp_unit = QComboBox()
         for u, lab in M.UNIT_LABELS.items():
             self.disp_unit.addItem(lab, u)
-        self.disp_unit.setCurrentIndex(max(0, self.disp_unit.findData(cur_unit if ok else "ft-in")))
+        self.disp_unit.setCurrentIndex(max(0, self.disp_unit.findData(cur_unit if ok else M.DEFAULT_UNIT)))
         self.pages = QComboBox()
         self.pages.addItems(["This page", "All pages"])
         if page_count < 2:

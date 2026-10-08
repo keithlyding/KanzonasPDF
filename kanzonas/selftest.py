@@ -385,6 +385,30 @@ def run(log_path):
         return "(pictures and shapes: moved, resized, deleted; text and colors kept)"
     check("edit objects", t_edit_objects)
 
+    def t_backups():
+        # automatic backup: written while there are unsaved changes, removed after saving
+        import types
+        from . import autosave, measure
+        d = pymupdf.open()
+        d.new_page().insert_text((72, 72), "BACKUP")
+        v = types.SimpleNamespace(doc=d, path=os.path.join(tmp, "b.pdf"), dirty=True,
+                                  _orig_enc=None, read_only=False, _backup_path=None)
+        saver = autosave.Autosaver.__new__(autosave.Autosaver)
+        saver.backup(v)
+        bp = v._backup_path
+        assert os.path.exists(bp) and "BACKUP" in pymupdf.open(bp)[0].get_text()
+        assert any(p == bp for p, _o, _t in autosave.leftovers())
+        saver.discard(v)
+        assert not os.path.exists(bp)
+        old = measure.FRACTION
+        measure.FRACTION = 4
+        try:
+            assert measure.fmt_length(1.0, "ft-in") == "3'-3 1/4\"", measure.fmt_length(1.0, "ft-in")
+        finally:
+            measure.FRACTION = old
+        return "(backup written and removed; measuring precision)"
+    check("backups and measuring options", t_backups)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

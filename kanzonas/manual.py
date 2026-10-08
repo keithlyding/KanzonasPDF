@@ -450,18 +450,30 @@ Plain text (.txt).</li>
 <h2 id="preferences">Preferences</h2>
 <ul>
 <li><b>File &gt; Preferences...</b> (Ctrl+K) gathers the options KanzonasPDF remembers in one
-window. Each one does exactly the same as its menu command, so you can change it in either place.</li>
+window, with the sections listed on the left. An option that also has a menu command does exactly
+the same as that command, so you can change it in either place.</li>
 <li><b>General:</b> theme (Match Windows, Light, Dark), Ribbon (instead of toolbars), Show group
 names on ribbon, Show menu bar, Show text labels on toolbars, Check for updates automatically.
 It also tells you where your settings are saved (the data folder in portable mode).</li>
 <li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
-Set up my signature... / Set up my initials... with whether each is saved yet.</li>
+Set up my signature... / Set up my initials... with whether each is saved yet, and Change PIN...
+to set, change or remove the PIN that protects them (leave the new PIN empty to remove it).</li>
 <li><b>Markup styles:</b> pick a tool on the left to set its default colors, line width, font
 size, fill, opacity and so on, the same settings the Properties panel shows when that tool is
 active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
-<li><b>Opening documents:</b> the zoom a document opens at: Fit page (the whole page in the
-window; the default), Fit width, Actual size (100%), or the zoom it had when you closed it; and
-whether to reopen it at the page you were on last time.</li>
+<li><b>Start-up and opening:</b> reopen the documents that were open when you closed
+KanzonasPDF (off by default), the tool to start with (Hand or Select), the zoom a document opens
+at (Fit page, the whole page in the window, by default; Fit width; Actual size; or the zoom it had
+when you closed it), and whether to reopen it at the page you were on last time.</li>
+<li><b>Saving:</b> how often to back up unsaved changes (every 5 minutes by default; Off turns it
+off). A copy of each document with unsaved changes is kept in the backups folder and deleted when
+you save or close it. If KanzonasPDF or Windows stops unexpectedly, the next start offers to open
+the copies; use Save As to keep one. Offered copies stay in the backups folder (Open backup
+folder) for 30 days. Password-protected documents aren't backed up, because the copy wouldn't
+have the password.</li>
+<li><b>Measuring:</b> the units offered for a page that has no scale yet, what feet and inches
+round to (1/2" to 1/64"; 1/16" by default) and the decimal places for other units. Existing
+measurement labels update when you next move or edit them.</li>
 <li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step.</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
 Show grid, Snap to grid, Snap to objects, and Grid settings....</li>
