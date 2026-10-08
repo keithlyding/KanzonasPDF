@@ -7,7 +7,8 @@ Sources (the owner's artwork):
 - assets/kanzonas-logo-source.png  the owner's full logo (Help > About)
 The app icon is a red tile (the color people associate with PDF apps); the cactus and
 sunflower stand in front of a page whose top comes out above the cactus, as in the owner's
-artwork, set a little to the right with lines of writing on it; the page shades from white
+artwork, set a little to the right and lower (its top level with the top of the cactus),
+with lines of writing on it; the page shades from white
 at the top to transparent at the bottom. Drawn here as vectors so it is sharp at every size; sizes 16-32 use a
 simpler page without an outline. Outputs: kanzonas.ico, kanzonas.png,
 installer BMPs and the embedded copy kanzonas/branding_data.py.
@@ -114,7 +115,7 @@ def big_icon(size=512):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 256.0, size / 256.0)
     _tile(p, 256, 44)
-    _fading_page(p, 256, 84, 44, 202, 206, 28)
+    _fading_page(p, 256, 84, 62, 202, 224, 28)
     h = 178.0
     w = h * mark.width() / mark.height()
     p.drawImage(QRectF(128 - w / 2, 58, w, h), mark)
@@ -131,7 +132,7 @@ def small_icon(size=128):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 128.0, size / 128.0)
     _tile(p, 128, 24)
-    _fading_page(p, 128, 39, 18, 103, 102, 16, line=False)
+    _fading_page(p, 128, 39, 31, 103, 115, 16, line=False)
     h = 96.0
     w = h * mark.width() / mark.height()
     p.drawImage(QRectF(64 - w / 2, 28, w, h), mark)
