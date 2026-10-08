@@ -56,8 +56,9 @@ they travel with the folder. Keep the whole folder together. To update, replace 
 except the data folder (or unzip the new version and copy your old data folder into it).
 (Opening an attached file still uses Windows' temporary folder.)</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
-If so, a notice at the bottom of the window offers <b>Download</b> (opens the release page in your
-browser), <b>Skip this version</b> or <b>Later</b>. Nothing is downloaded or installed by itself.
+A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
+your browser. The automatic check instead shows a notice at the bottom of the window with
+<b>Download</b>, <b>Skip this version</b> and <b>Later</b>. Nothing is downloaded or installed by itself.
 With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
 quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your
 network blocks GitHub, the automatic check simply finds nothing.</li>

@@ -2688,6 +2688,17 @@ class MainWindow(QMainWindow):
     def _update_found(self, version, url):
         from PySide6.QtGui import QDesktopServices
         from PySide6.QtCore import QUrl
+        if self._upd.manual:
+            # asked for: answer in a box, like the "up to date" answer
+            box = QMessageBox(QMessageBox.Information, "Check for updates",
+                              f"KanzonasPDF {version} is available (you have {__version__}).\n\n"
+                              "Download opens the release page in your browser.", parent=self)
+            get = box.addButton("Download", QMessageBox.AcceptRole)
+            box.addButton("Later", QMessageBox.RejectRole)
+            box.exec()
+            if box.clickedButton() is get:
+                QDesktopServices.openUrl(QUrl(url))
+            return
         old = getattr(self, "_update_bar", None)
         if old is not None:
             self.statusBar().removeWidget(old)
@@ -2711,7 +2722,9 @@ class MainWindow(QMainWindow):
         for b in (get, skip, close):
             h.addWidget(b)
         self._update_bar = bar
+        self.statusBar().clearMessage()      # a status message would keep the notice hidden
         self.statusBar().addWidget(bar)
+        bar.show()
 
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):

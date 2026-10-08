@@ -33,9 +33,10 @@ def version_tuple(text):
     return tuple(parts)
 
 
-def newest(releases, current=__version__):
+def newest(releases, current=None):
     """The newest published release newer than `current`, as (version, page url), or None.
     Pre-releases count: every 0.x release is one."""
+    current = current or __version__
     best = None
     for r in releases:
         if r.get("draft"):

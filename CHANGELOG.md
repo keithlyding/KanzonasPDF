@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.37 | (this) | Slimmer ribbon (about 30% less height, close to LibreOffice): two rows of buttons, smaller icons, group names off by default (View > Show group names on ribbon), a tab that doesn't fit scrolls sideways instead of squeezing button names |
+| 0.38 | (this) | Fix: Help > Check for updates showed nothing when a newer version existed (the notice was hidden behind the "Checking..." status message); it now answers in a box with a Download button. The automatic daily check's notice is fixed the same way |
+| 0.37 | 3883cbc | Slimmer ribbon (about 30% less height, close to LibreOffice): two rows of buttons, smaller icons, group names off by default (View > Show group names on ribbon), a tab that doesn't fit scrolls sideways instead of squeezing button names |
 | 0.36 | 5e280b7 | Help > Check for updates: tells you when a newer release is on GitHub (Download / Skip this version / Later); checks automatically once a day unless you untick Help > Check for updates automatically. Nothing is downloaded or installed by itself. The build now installs the new version over the previous release to prove updating needs no uninstall |
 | 0.35 | f171774 | Portable version (-portable.zip): with portable.txt beside the exe, settings, signatures, stamps and certificate live in a data folder next to it instead of the registry/AppData; the build tests that it stays out of the registry |
 | 0.34 | 400cd17 | Ctrl+D duplicates the selected markups (or the selected pages when the page list has the focus) |
