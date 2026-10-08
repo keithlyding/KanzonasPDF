@@ -66,7 +66,7 @@ MEASURE_TOOLS = [
     ("m_poly", "Polylength", "", "Measure along a path: click points, double-click or Enter to finish"),
     ("m_area", "Area", "Shift+A", "Measure area and perimeter: click corners, double-click or Enter (Shift+A)"),
     ("m_count", "Count", "Shift+C", "Count: click each item; set the group name in Properties (Shift+C)"),
-    ("m_calibrate", "Calibrate", "", "Calibrate: drag along a known dimension, then type its real length"),
+    ("m_calibrate", "Calibrate Tape Measure", "", "Calibrate Tape Measure: drag along a known dimension, then type its real length"),
 ]
 EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
     ("redact", "&Redact (mark text or area)", "Shift+R",
@@ -1984,10 +1984,30 @@ class MainWindow(QMainWindow):
         text, ok = QInputDialog.getText(self, "Search & redact",
                                         "Mark every occurrence of this text for redaction:")
         if ok and text.strip():
-            n = v.search_redact(text.strip())
-            QMessageBox.information(self, "Search & redact",
-                                    f"Marked {n} occurrence(s). Review them, then use Document > "
-                                    "Redaction > Apply redactions." if n else "No matches found.")
+            term = text.strip()
+            hidden = v.hidden_matches(term)
+            n = v.search_redact(term)
+            extra = [f"{c} {what}" for what, c in (("form field(s)", hidden["fields"]),
+                     ("markup note(s)", hidden["markups"]), ("bookmark(s)", hidden["bookmarks"]),
+                     ("document propert(ies)", hidden["metadata"])) if c]
+            msg = (f"Marked {n} occurrence(s) on the pages." if n else
+                   "No matches on the pages.")
+            if extra and not n:
+                if QMessageBox.question(
+                        self, "Search & redact",
+                        "Not on the pages, but found in " + ", ".join(extra) + ".\n\nRemove it "
+                        "from there now? (Fields containing it are deleted; in notes, bookmarks "
+                        "and properties it's replaced by [redacted]. Undo works until you close "
+                        "the file.)") == QMessageBox.Yes:
+                    v.remove_term(term)
+                    self.statusBar().showMessage("Removed. Save to make it permanent.", 6000)
+                return
+            if extra:
+                msg += ("\n\nAlso found in " + ", ".join(extra) + ". Those can't be covered "
+                        "with a box; they're removed too when you apply the redactions.")
+            if n:
+                msg += "\n\nReview the marks, then use Apply redactions."
+            QMessageBox.information(self, "Search & redact", msg)
 
     def apply_redactions(self):
         v = self.view()

@@ -284,7 +284,7 @@ font (the status bar tells you which).</li>
 <h2 id="measure">Measuring</h2>
 <ul>
 <li>Set the drawing scale first: Measure &gt; Set scale (presets such as 1/4" = 1'-0", 1:100),
-or <b>Calibrate</b>: drag along a known dimension and type its real length.</li>
+or <b>Calibrate Tape Measure</b>: drag along a known dimension and type its real length.</li>
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
 <b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
 the scale.</li>
@@ -340,7 +340,13 @@ still valid. <b>Clear all digital signatures</b> removes them (the empty fields 
 proving the file existed, unchanged, at that moment. Saved as a new copy.</li>
 <li><b>Redaction:</b> Redact tool (Shift+R) or Search &amp; redact marks areas. Redaction marks
 can be selected, moved and resized; <b>Apply selected redactions</b> applies only the selected
-ones, Apply redactions applies them all.</li>
+ones, Apply redactions applies them all. Applying removes, not just covers: the text, images
+and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
+own copy of the text). <b>Search &amp; redact</b> also finds the text where a box can't go: form
+field values, markup notes, bookmark titles and document properties. When you apply, fields
+containing it are deleted, and in notes, bookmarks and properties it's replaced by
+[redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
+away. Check the result before sharing; Undo works until you close the file.</li>
 <li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
 attached files, hidden text, links, comments, form data, thumbnails.</li>
 <li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption.

@@ -1814,10 +1814,97 @@ class DocumentView(QScrollArea):
                     for r in rects:
                         a = pg.add_redact_annot(r, fill=(0, 0, 0))
                         a.set_colors(stroke=(0.85, 0, 0))
-                        a.set_info(title=annotations.author(), content=f"Redaction: {text}")
+                        a.set_info(title=annotations.author(),
+                                   content=self.REDACT_TAG + text)
                         a.update()
             self.modify(do, list(hits))
         return sum(len(h) for h in hits.values())
+
+    REDACT_TAG = "Redaction: "         # Search & redact marks remember their term in /Contents
+
+    def hidden_matches(self, text):
+        """Where `text` occurs outside the page drawing (which page redaction can't reach):
+        {"fields", "markups", "bookmarks", "metadata"} -> count."""
+        t = text.lower()
+        n = {"fields": 0, "markups": 0, "bookmarks": 0, "metadata": 0}
+        for i in range(self.doc.page_count):
+            pg = self.doc[i]
+            for w in pg.widgets():
+                if t in str(w.field_value or "").lower():
+                    n["fields"] += 1
+            for a in pg.annots():
+                if a.type[0] == pymupdf.PDF_ANNOT_REDACT:
+                    continue
+                if any(t in (a.info.get(k) or "").lower() for k in ("content", "subject", "title")):
+                    n["markups"] += 1
+        n["bookmarks"] = sum(1 for _l, title, _p in self.doc.get_toc() if t in title.lower())
+        n["metadata"] = sum(1 for v in (self.doc.metadata or {}).values()
+                            if isinstance(v, str) and t in v.lower())
+        return n
+
+    def _redaction_terms(self):
+        terms = set()
+        for i in range(self.doc.page_count):
+            for a in self.doc[i].annots():
+                c = a.info.get("content") or ""
+                if a.type[0] == pymupdf.PDF_ANNOT_REDACT and c.startswith(self.REDACT_TAG):
+                    terms.add(c[len(self.REDACT_TAG):])
+        return {t for t in terms if t.strip()}
+
+    @staticmethod
+    def _clear_under_marks(pg, rects):
+        """Delete form fields and markups that a redaction mark overlaps: page redaction only
+        cleans the page drawing, and a field or note keeps its own copy of the text."""
+        def hit(r):
+            r = pymupdf.Rect(r)
+            return any(r.intersects(m) for m in rects)
+        for w in list(pg.widgets()):
+            if hit(w.rect):
+                pg.delete_widget(w)
+        for x in [a.xref for a in pg.annots()
+                  if a.type[0] not in (pymupdf.PDF_ANNOT_REDACT, pymupdf.PDF_ANNOT_POPUP)
+                  and hit(a.rect)]:
+            pg.delete_annot(pg.load_annot(x))
+
+    def _scrub_terms(self, terms):
+        """Remove Search & redact terms from places outside the page drawing: form field
+        values, markup text, bookmark titles and document properties."""
+        import re
+        if not terms:
+            return
+        pat = re.compile("|".join(re.escape(t) for t in sorted(terms, key=len, reverse=True)),
+                         re.IGNORECASE)
+
+        def clean(v):
+            return pat.sub("[redacted]", v) if isinstance(v, str) else v
+        for i in range(self.doc.page_count):
+            pg = self.doc[i]
+            for w in list(pg.widgets()):
+                val = w.field_value
+                if isinstance(val, str) and pat.search(val):
+                    pg.delete_widget(w)         # its stored appearance holds the text too
+            for x in [a.xref for a in pg.annots() if a.type[0] != pymupdf.PDF_ANNOT_REDACT]:
+                a = pg.load_annot(x)
+                info = {k: a.info.get(k) or "" for k in ("content", "subject", "title")}
+                if any(pat.search(v) for v in info.values()):
+                    a.set_info(**{k: clean(v) for k, v in info.items()})
+                    a.update()
+        toc = self.doc.get_toc(simple=False)
+        if any(pat.search(e[1]) for e in toc):
+            self.doc.set_toc([[e[0], clean(e[1])] + e[2:] for e in toc])
+        meta = self.doc.metadata or {}
+        if any(pat.search(v) for v in meta.values() if isinstance(v, str)):
+            self.doc.set_metadata({k: clean(v) for k, v in meta.items() if v is not None})
+        try:
+            if pat.search(self.doc.get_xml_metadata() or ""):
+                self.doc.del_xml_metadata()     # XMP copy of the properties
+        except Exception:
+            pass
+
+    def remove_term(self, term):
+        """Search & redact for text that's only in fields, notes, bookmarks or properties."""
+        self.clear_selection()
+        self.modify(lambda: self._scrub_terms({term}), structural=True)
 
     def pending_redactions(self):
         n = 0
@@ -1829,9 +1916,13 @@ class DocumentView(QScrollArea):
     def apply_redactions(self, scrub=False):
         """Permanently remove everything under the redaction marks (text, images, drawings)."""
         def do():
+            self._scrub_terms(self._redaction_terms())
             for i in range(self.doc.page_count):
                 pg = self.doc[i]
-                if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in pg.annots()):
+                marks = [pymupdf.Rect(a.rect) for a in pg.annots()
+                         if a.type[0] == pymupdf.PDF_ANNOT_REDACT]
+                if marks:
+                    self._clear_under_marks(pg, marks)
                     # Line art: remove only what's fully inside a mark. "If touched" deleted
                     # entire long paths (contours, walls, borders) crossing a small box on CAD
                     # sheets. Text and image pixels under the mark are always removed.
@@ -2081,6 +2172,9 @@ class DocumentView(QScrollArea):
             for an in [a.xref for a in pg.annots()
                        if a.type[0] == pymupdf.PDF_ANNOT_REDACT and a.xref not in chosen]:
                 pg.delete_annot(pg.load_annot(an))
+            marks = [pymupdf.Rect(a.rect) for a in pg.annots()
+                     if a.type[0] == pymupdf.PDF_ANNOT_REDACT]
+            self._clear_under_marks(pg, marks)
             pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
                                 graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
                                 text=pymupdf.PDF_REDACT_TEXT_REMOVE)

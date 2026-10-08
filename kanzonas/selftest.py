@@ -221,6 +221,40 @@ def run(log_path):
         return "(5 pages, 2 bookmarks)"
     check("combine files", t_combine)
 
+    def t_redaction():
+        # Search & redact + Apply must remove the text everywhere, not just from the page:
+        # form fields, notes, bookmarks and document properties keep their own copies
+        from .document_view import DocumentView
+        secret = "123-45-6789"
+        path = os.path.join(tmp, "redact.pdf")
+        d = pymupdf.open()
+        pg = d.new_page()
+        pg.insert_text((72, 100), "SSN " + secret)
+        w = pymupdf.Widget()
+        w.field_type, w.field_name = pymupdf.PDF_WIDGET_TYPE_TEXT, "ssn"
+        w.rect, w.field_value = pymupdf.Rect(72, 200, 300, 220), secret
+        pg.add_widget(w)
+        pg.add_text_annot((400, 100), "note " + secret).update()
+        d.set_toc([[1, "Part " + secret, 1]])
+        d.set_metadata({"title": "File " + secret})
+        d.save(path)
+        d.close()
+        v = DocumentView(path)
+        assert v.search_redact(secret) >= 1
+        v.apply_redactions()
+        out = os.path.join(tmp, "redacted.pdf")
+        v.doc.save(out, garbage=4)
+        v.doc.close()
+        o = pymupdf.open(out)
+        found = secret in "".join(pg.get_text() for pg in o) or \
+            any(secret in t[1] for t in o.get_toc()) or secret in (o.metadata["title"] or "") or \
+            any(secret in (a.info["content"] or "") for pg in o for a in pg.annots()) or \
+            any(secret in str(w.field_value) for pg in o for w in pg.widgets())
+        o.close()
+        assert not found, "redacted text still in the file"
+        return "(page text, field, note, bookmark, title)"
+    check("redaction removes text everywhere", t_redaction)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

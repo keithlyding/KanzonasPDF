@@ -41,7 +41,7 @@ class ScaleDialog(QDialog):
 
     def __init__(self, parent, page, pdf_len=None, page_count=1):
         super().__init__(parent)
-        self.setWindowTitle("Calibrate" if pdf_len else "Set scale")
+        self.setWindowTitle("Calibrate Tape Measure" if pdf_len else "Set scale")
         self.pdf_len = pdf_len
         lay = QVBoxLayout(self)
         _f, cur_unit, cur_label, ok = M.get_scale(page)
@@ -106,10 +106,10 @@ class ScaleDialog(QDialog):
             try:
                 meters = parse_length(self.length.text(), self.in_unit.currentData())
             except ValueError as e:
-                QMessageBox.warning(self, "Calibrate", str(e))
+                QMessageBox.warning(self, "Calibrate Tape Measure", str(e))
                 return
             if meters <= 0:
-                QMessageBox.warning(self, "Calibrate", "The length must be more than zero.")
+                QMessageBox.warning(self, "Calibrate Tape Measure", "The length must be more than zero.")
                 return
             f = meters / self.pdf_len
             label = f"calibrated ({self.length.text().strip()} = drawn line)"
