@@ -29,6 +29,9 @@ mark = QImage("assets/kanzonas-mark-source.png")
 RED_TOP, RED_BOTTOM = "#b30000", "#800000"      # red tile: the color people link with PDFs
 
 
+GROW, GROW_SMALL = 1.2, 1.15     # how much the page and cactus fill the tile
+
+
 def _tile(p, size_units, radius):
     g = QLinearGradient(0, 0, size_units * 0.35, size_units)     # light top left, deep bottom
     g.setColorAt(0, QColor(RED_TOP))
@@ -86,18 +89,17 @@ def _page(p, x0, y0, x1, y1, f, line=True):
 def _fading_page(p, units, x0, y0, x1, y1, f, line=True, fade_from=0.1, fade_to=1.0):
     """The page drawn on its own layer: white at the top, shading to transparent at the
     bottom, so it seems to come out from behind the cactus."""
-    scale = p.device().width() / units
     layer = QImage(p.device().width(), p.device().height(), QImage.Format_ARGB32_Premultiplied)
     layer.fill(Qt.transparent)
     q = QPainter(layer)
     q.setRenderHint(QPainter.Antialiasing)
-    q.scale(scale, scale)
+    q.setTransform(p.transform())       # same scale (and enlargement) as the icon
     _page(q, x0, y0, x1, y1, f, line)
     q.setCompositionMode(QPainter.CompositionMode_DestinationIn)
     g = QLinearGradient(0, y0 + (y1 - y0) * fade_from, 0, y0 + (y1 - y0) * fade_to)
     g.setColorAt(0, QColor(0, 0, 0, 255))
     g.setColorAt(1, QColor(0, 0, 0, 0))
-    q.fillRect(QRectF(0, 0, units, units), g)
+    q.fillRect(QRectF(-units, -units, 3 * units, 3 * units), g)
     q.end()
     p.save()
     p.resetTransform()
@@ -129,6 +131,10 @@ def big_icon(size=512):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 256.0, size / 256.0)
     _tile(p, 256, 44)
+    # page and cactus enlarged to fill more of the tile, anchored at the cactus's base
+    p.translate(128, 240)
+    p.scale(GROW, GROW)
+    p.translate(-128, -240)
     _fading_page(p, 256, 84, 62, 202, 224, 28)
     h = 178.0
     w = h * mark.width() / mark.height()
@@ -146,6 +152,9 @@ def small_icon(size=128):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 128.0, size / 128.0)
     _tile(p, 128, 24)
+    p.translate(64, 124)
+    p.scale(GROW_SMALL, GROW_SMALL)
+    p.translate(-64, -124)
     _fading_page(p, 128, 39, 31, 103, 115, 16, line=False)
     h = 96.0
     w = h * mark.width() / mark.height()
