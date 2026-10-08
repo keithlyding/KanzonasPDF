@@ -8,7 +8,7 @@ Sources (the owner's artwork):
 The app icon is a red tile (the color people associate with PDF apps); the cactus and
 sunflower stand in front of a page whose top comes out above the cactus, as in the owner's
 artwork, set a little to the right and lower (its top level with the top of the cactus),
-with lines of writing on it; the page shades from white
+with lines of writing on it; the cactus has a white outline; the page shades from white
 at the top to transparent at the bottom. Drawn here as vectors so it is sharp at every size; sizes 16-32 use a
 simpler page without an outline. Outputs: kanzonas.ico, kanzonas.png,
 installer BMPs and the embedded copy kanzonas/branding_data.py.
@@ -105,6 +105,20 @@ def _fading_page(p, units, x0, y0, x1, y1, f, line=True, fade_from=0.1, fade_to=
     p.restore()
 
 
+def _outlined(p, r, width):
+    """The owner's cactus and sunflower with a white outline around them."""
+    import math
+    sil = mark.copy()
+    q = QPainter(sil)
+    q.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    q.fillRect(sil.rect(), QColor("white"))
+    q.end()
+    for k in range(24):
+        a = 2 * math.pi * k / 24
+        p.drawImage(r.translated(width * math.cos(a), width * math.sin(a)), sil)
+    p.drawImage(r, mark)
+
+
 def big_icon(size=512):
     """Red tile; the owner's cactus and sunflower stand in front of a white page whose top
     comes out above the cactus."""
@@ -118,7 +132,7 @@ def big_icon(size=512):
     _fading_page(p, 256, 84, 62, 202, 224, 28)
     h = 178.0
     w = h * mark.width() / mark.height()
-    p.drawImage(QRectF(128 - w / 2, 58, w, h), mark)
+    _outlined(p, QRectF(128 - w / 2, 58, w, h), 3.0)
     p.end()
     return img
 
@@ -135,7 +149,7 @@ def small_icon(size=128):
     _fading_page(p, 128, 39, 31, 103, 115, 16, line=False)
     h = 96.0
     w = h * mark.width() / mark.height()
-    p.drawImage(QRectF(64 - w / 2, 28, w, h), mark)
+    _outlined(p, QRectF(64 - w / 2, 28, w, h), 2.2)
     p.end()
     return img
 
