@@ -364,6 +364,10 @@ class MainWindow(QMainWindow):
                                     tip="Show only the ribbon's tab names (double-click a tab "
                                         "does the same)")
         self.a_collapse.setCheckable(True)
+        self.a_group_names = QAction("Show &group names on ribbon", self, checkable=True)
+        self.a_group_names.setToolTip("Name each group of ribbon buttons (makes the ribbon taller)")
+        self.a_group_names.setChecked(self.settings.value("ribbon_group_names", "false") == "true")
+        self.a_group_names.toggled.connect(self._toggle_group_names)
         self.a_lock = self._act("&Lock selected", lambda: self._lock_selected(), "Ctrl+L",
                                 tip="Lock the selected markups: they can't be clicked, moved or "
                                     "selected on the page (unlock in the Objects panel)")
@@ -460,7 +464,7 @@ class MainWindow(QMainWindow):
         tm = m.addMenu("&Theme")
         tm.addActions(list(self.theme_actions.values()))
         m.addAction(self.a_labels)
-        m.addActions([self.a_ribbon, self.a_collapse])
+        m.addActions([self.a_ribbon, self.a_collapse, self.a_group_names])
         m.addSeparator()
         m.addAction(self.a_shortcuts)
         m = mb.addMenu("&Arrange")
@@ -2073,6 +2077,8 @@ class MainWindow(QMainWindow):
         for tb in (self.main_tb, self.tools_tb, self.arrange_tb):
             tb.setToolButtonStyle(style)
             tb.setIconSize(QSize(20, 20))
+        if self.a_ribbon.isChecked() and not labels:
+            self.main_tb.setIconSize(QSize(16, 16))      # slim quick bar above the ribbon
         for b in (self.shapes_btn, self.measure_btn, self.forms_btn):
             b.setToolButtonStyle(style)
         # tooltips: what the button does, plus its shortcut (icon-only buttons stay discoverable)
@@ -2433,7 +2439,7 @@ class MainWindow(QMainWindow):
         "a_compress": "Compress", "a_compare": "Compare", "a_flatten": "Flatten",
         "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest",
         "a_split": "Split view", "a_labels": "Toolbar labels", "a_shortcuts": "Shortcuts",
-        "a_manual": "User manual", "a_ribbon": "Ribbon", "a_collapse": "Collapse",
+        "a_manual": "User manual", "a_ribbon": "Ribbon", "a_collapse": "Collapse", "a_group_names": "Group names",
         "a_zoom_in": "Zoom in", "a_zoom_out": "Zoom out", "a_open": "Open", "a_save": "Save",
         "a_print": "Print", "al_left": "Left", "al_hcenter": "Center", "al_right": "Right",
         "al_top": "Top", "al_vmiddle": "Middle", "al_bottom": "Bottom",
@@ -2465,7 +2471,7 @@ class MainWindow(QMainWindow):
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
         "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_labels": "label-outline",
         "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline",
-        "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up",
+        "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline",
     }
 
     def _build_ribbon(self):
@@ -2553,7 +2559,7 @@ class MainWindow(QMainWindow):
                                  self.a_split]),
             ("Display", "small", [self.a_grid, self.a_hl_fields, self.a_show_markups,
                                   self.a_cad_mouse]),
-            ("Ribbon", "large", [self.a_ribbon, self.a_collapse]),
+            ("Ribbon", "small", [self.a_ribbon, self.a_collapse, self.a_group_names]),
             ("Help", "large", [self.a_shortcuts, self.a_manual]),
         ])
         r.collapsedChanged.connect(self._ribbon_collapsed)
@@ -2562,7 +2568,10 @@ class MainWindow(QMainWindow):
         rt.setObjectName("ribbon")
         rt.setMovable(False)
         rt.toggleViewAction().setVisible(False)
+        rt.setContentsMargins(0, 0, 0, 0)
+        rt.layout().setContentsMargins(0, 0, 0, 0)
         rt.addWidget(r)
+        r.set_group_names(self.a_group_names.isChecked())
         self.addToolBar(rt)
         try:
             tab = int(self.settings.value("ribbon_tab", 0))
@@ -2580,10 +2589,16 @@ class MainWindow(QMainWindow):
         self.tools_tb.setVisible(not ribbon)
         self.arrange_tb.setVisible(not ribbon)
         self.a_collapse.setEnabled(ribbon)
+        self.a_group_names.setEnabled(ribbon)
 
     def _toggle_ribbon(self):
         self.settings.setValue("ui_mode", "ribbon" if self.a_ribbon.isChecked() else "classic")
         self._apply_ui_mode()
+        self._apply_icons()
+
+    def _toggle_group_names(self, on):
+        self.settings.setValue("ribbon_group_names", "true" if on else "false")
+        self.ribbon.set_group_names(on)
 
     def _toggle_collapse(self):
         self.ribbon.set_collapsed(self.a_collapse.isChecked())

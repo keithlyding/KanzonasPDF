@@ -25,7 +25,10 @@ File &gt; Open recent. Each file opens in its own tab, at the page and zoom you 
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Comment, Measure, Arrange, Review,
 Protect, Forms, Pages and View. The bar above it (open, save, print, undo, zoom, page, find)
-stays visible. <b>Collapse ribbon</b> (Ctrl+F1, or double-click a tab) shows only the tab
+stays visible. The ribbon is compact: two rows of buttons. If the window is too narrow for a
+tab, scroll it sideways with the mouse wheel or the thin bar under it. View &gt; <b>Show group
+names on ribbon</b> adds a name under each group of buttons (a little taller, like Microsoft
+Office). <b>Collapse ribbon</b> (Ctrl+F1, or double-click a tab) shows only the tab
 names; click a tab to open it again. Untick View &gt; <b>Ribbon (instead of toolbars)</b> for
 the classic compact toolbars. The menus always have every command.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
