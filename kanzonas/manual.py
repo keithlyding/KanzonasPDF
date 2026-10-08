@@ -178,9 +178,12 @@ keeps its outside parts. A filled shape that crosses the edge stays whole (one e
 removed). Markups aren't touched (use the Eraser for those). Ctrl+Z undoes it. Unlike redaction it
 leaves no black box; for confidential information use Redact, which also cleans hidden copies.</li>
 <li><b>Capture area</b> (Shift+P; Home tab, Tools menu): like Bluebeam's Snapshot, drag a box to
-copy that area, markups included, as a sharp picture. Ctrl+V pastes it as an image markup at the
-same size, on any page or in another document, and it also pastes into Word, Excel, email and
-other programs.</li>
+copy that area, markups included. Ctrl+V in KanzonasPDF pastes it as an image markup at the
+same size, on any page or in another document, made of the original <b>vector</b> content: lines
+and text stay sharp at any zoom and in print, and you can move, resize and rotate it like any
+image markup. Only what's inside the box is kept (text, pictures and lines outside it are
+removed from the copy; a line crossing the edge is kept whole but only the inside part shows).
+The capture also pastes as a picture into Word, Excel, email and other programs.</li>
 </ul>
 
 <h2 id="snap">Grid and snapping</h2>

@@ -802,7 +802,14 @@ class DocumentView(QScrollArea):
                 continue
             m = annotations.copy(m)
             if m["kind"] == "image" and m.get("img"):
-                m["image_bytes"] = annotations.image_bytes(self.doc, m.pop("img"))[0]
+                from . import capture
+                img = m.pop("img")
+                if capture.is_form(self.doc, img):
+                    # vector capture: same file pastes the vector drawing, others a picture
+                    m["form"] = (id(self.doc), img)
+                    m["image_bytes"] = page.load_annot(x).get_pixmap(dpi=200).tobytes("png")
+                else:
+                    m["image_bytes"] = annotations.image_bytes(self.doc, img)[0]
             if m["kind"] == "attach":
                 an = page.load_annot(x)
                 m["file_bytes"] = an.get_file()
@@ -878,12 +885,23 @@ class DocumentView(QScrollArea):
         index, pt = self.paste_target()
         page = self.doc[index]
         if kind == "capture":
+            from . import capture
             disp = pymupdf.Point(pt) * page.rotation_matrix
             box = pymupdf.Rect(disp.x, disp.y, disp.x + payload["w"], disp.y + payload["h"])
-            self._create(index, {"kind": "image", "props": self.tool_props("image"),
-                                 "rect": box * page.derotation_matrix,
-                                 "image_bytes": payload["png"], "text": "Captured area"},
-                         select=True)
+            model = {"kind": "image", "props": self.tool_props("image"),
+                     "rect": box * page.derotation_matrix,
+                     "image_bytes": payload["png"], "text": "Captured area"}
+            made = {}
+
+            def do():
+                if payload.get("pdf"):
+                    # vector content: stays sharp at any zoom and in print
+                    model["img"] = capture.make_form(self.doc, payload["pdf"], payload["box"])
+                made["xref"] = annotations.write(self.doc[index], model).xref
+            del page
+            self.modify(do, [index])
+            if "xref" in made:
+                self.select_xref(index, made["xref"])
             return "image"
         if kind == "markups":
             box = None
@@ -898,7 +916,11 @@ class DocumentView(QScrollArea):
             def do():
                 pg = self.doc[index]
                 for m in payload:
-                    made.append(annotations.write(pg, annotations.moved(m, d)).xref)
+                    m = annotations.moved(m, d)
+                    form = m.pop("form", None)
+                    if form and form[0] == id(self.doc):
+                        m["img"] = form[1]          # vector capture copied in the same file
+                    made.append(annotations.write(pg, m).xref)
             self.modify(do, [index])
             if made:
                 self._set_selection(index, made)
@@ -1892,9 +1914,9 @@ class DocumentView(QScrollArea):
         self.statusMessage.emit("Erased the content inside the box (Ctrl+Z undoes it)")
 
     def capture_area(self, index, rect):
-        """Capture tool (Bluebeam Snapshot): copy what's in the box, markups included, as a
-        picture. Ctrl+V here pastes it at the same size as an image markup; it also pastes
-        into Word, email and so on."""
+        """Capture tool (Bluebeam Snapshot): copy what's in the box, markups included. Ctrl+V
+        here pastes it at the same size as an image markup made of the original vector
+        drawing; a picture of it also pastes into Word, email and so on."""
         from . import clip
         from PySide6.QtGui import QImage
         page = self.doc[index]
@@ -1905,9 +1927,15 @@ class DocumentView(QScrollArea):
         pix = page.get_pixmap(clip=area, dpi=dpi, annots=True, alpha=False)
         png = pix.tobytes("png")
         img = QImage.fromData(png, "PNG")
-        clip.put("capture", {"png": png, "w": area.width, "h": area.height}, image=img)
-        self.statusMessage.emit("Captured: Ctrl+V pastes it as an image (also into Word or "
-                                "email)")
+        payload = {"png": png, "w": area.width, "h": area.height}
+        try:
+            from . import capture
+            payload["pdf"], payload["box"] = capture.snapshot(page, area)
+        except Exception:
+            pass                                # the picture alone still pastes
+        clip.put("capture", payload, image=img)
+        self.statusMessage.emit("Captured: Ctrl+V pastes it here as sharp vector content "
+                                "(and as a picture into Word or email)")
 
     REDACT_TAG = "Redaction: "         # Search & redact marks remember their term in /Contents
 

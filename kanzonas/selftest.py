@@ -313,6 +313,33 @@ def run(log_path):
         return "(text removed, line cut at the box)"
     check("erase content", t_erase)
 
+    def t_capture():
+        # Capture area keeps vector content, and nothing from outside the box goes with it
+        from . import annotations, capture
+        d = pymupdf.open()
+        pg = d.new_page()
+        pg.draw_line((50, 100), (550, 100), color=(1, 0, 0), width=2)
+        pg.insert_text((250, 150), "INSIDE")
+        pg.insert_text((60, 400), "OUTSIDE")
+        data, box = capture.snapshot(pg, pymupdf.Rect(200, 80, 400, 200))
+        dst = pymupdf.open()
+        dst.new_page()
+        x = capture.make_form(dst, data, box)
+        assert capture.is_form(dst, x)
+        page = dst[0]
+        annotations.write(page, {"kind": "image", "props": {"opacity": 1.0},
+                                 "rect": pymupdf.Rect(10, 10, 210, 130), "img": x,
+                                 "text": "Captured area"})
+        out = pymupdf.open("pdf", dst.tobytes(garbage=3))
+        raw = b"".join(out.xref_stream(i) or b"" for i in range(1, out.xref_length())
+                       if out.xref_is_stream(i))
+        assert b"INSIDE" in raw or "INSIDE" in out[0].get_text(), "vector text missing"
+        assert b"OUTSIDE" not in raw and "OUTSIDE" not in out[0].get_text(), "outside leaked"
+        pix = out[0].get_pixmap(clip=pymupdf.Rect(10, 10, 210, 130))
+        assert pix.color_count() > 1, "pasted capture is blank"
+        return "(vector, outside removed)"
+    check("capture area", t_capture)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")
