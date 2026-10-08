@@ -286,6 +286,22 @@ by other programs. Open, Save as, Go to its page, or Delete.</li>
 <li>For your safety, opening an attached program or script (.exe, .bat, .js, ...) asks first.</li>
 </ul>
 
+<h2 id="editobjects">Editing the PDF's own pictures</h2>
+<ul>
+<li>Edit objects tool (Shift+O; Home tab, Tools menu): works on the pictures that are part of
+the page itself (logos, photos, scanned images), not on markups. Point at a picture to see its
+outline; click to select it.</li>
+<li>Drag the picture to move it. Drag a corner handle to resize it, keeping its proportions (hold
+Shift to stretch freely), or a side handle to make it wider or taller.</li>
+<li>Delete (or Backspace) deletes it. Right-click for Copy (Ctrl+V pastes it as an image markup),
+Save picture as..., Rotate clockwise, Rotate counterclockwise and Delete. Escape deselects.</li>
+<li>Only that one picture changes: it keeps its place in the drawing order (text printed over a
+picture stays on top) and its image data isn't recompressed, so quality doesn't drop. Ctrl+Z
+undoes each change.</li>
+<li>Pictures inside a grouped object (a form XObject) can't be selected, and neither can text or
+lines; use Edit text for text and Erase content to remove line work.</li>
+</ul>
+
 <h2 id="edittext">Editing the PDF's own text</h2>
 <ul>
 <li>Edit text tool (Ctrl+E): click a line of text. Type the change; drag the bar above the
@@ -422,6 +438,7 @@ Plain text (.txt).</li>
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text</td></tr>
+<tr><td>Shift+O</td><td>Edit objects (the page's own pictures)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
 <tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>
 <tr><td>R / E / D / Y</td><td>Rectangle / Ellipse / Cloud / Polygon</td></tr>

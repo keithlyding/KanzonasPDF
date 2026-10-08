@@ -95,6 +95,9 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
     ("erasecontent", "Erase &content", "Shift+E",
      "Erase content: drag a box; the page's own text, images and lines inside it are deleted "
      "(lines crossing the edge are cut there). Shift+E"),
+    ("editobjects", "Edit &objects", "Shift+O",
+     "Edit objects: click a picture that's part of the page to select it; drag to move, drag a "
+     "handle to resize, Delete deletes it, right-click to rotate, copy or save it. Shift+O"),
     ("capture", "Ca&pture area", "Shift+P",
      "Capture: drag a box to copy that area as a picture; Ctrl+V pastes it as an image "
      "markup, or into Word or email. Shift+P"),
@@ -2665,6 +2668,7 @@ class MainWindow(QMainWindow):
         "z_forward": "Forward", "z_backward": "Backward", "z_back": "To back",
         "tool_redact": "Redact", "tool_placeholder": "Placeholder",
         "tool_erasecontent": "Erase content", "tool_capture": "Capture",
+        "tool_editobjects": "Edit objects",
     }
     RIBBON_ICONS = {
         "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square",
@@ -2714,7 +2718,7 @@ class MainWindow(QMainWindow):
             lambda i: self._set_align_ref(self.ribbon_align_box.itemData(i)))
         r = self.ribbon = Ribbon()
         r.add_tab("Home", [
-            ("Tools", "large", [t["select"], t["hand"], t["edittext"], t["capture"],
+            ("Tools", "large", [t["select"], t["hand"], t["edittext"], t["editobjects"], t["capture"],
                                 t["erasecontent"]]),
             ("Mark up text", "small", [t["highlight"], t["underline"], t["strikeout"],
                                        t["comment"], t["note"], t["textbox"]]),

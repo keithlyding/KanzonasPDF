@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.49 | (this) | Capture area now pastes vector content in KanzonasPDF: lines and text stay sharp at any zoom and in print (Word, email and other programs still get a picture). Only what's inside the box goes into the copy. New self-test check |
+| 0.50 | (this) | New Edit objects tool (Shift+O): select a picture that is part of the page itself, then drag to move it, drag handles to resize, Delete to delete, right-click to rotate, copy or save it. Only that picture changes (drawing order and image quality are kept). New self-test check |
+| 0.49 | f120a8f | Capture area now pastes vector content in KanzonasPDF: lines and text stay sharp at any zoom and in print (Word, email and other programs still get a picture). Only what's inside the box goes into the copy. New self-test check |
 | 0.48 | b2b08a4 | The window title and Help > About show "(portable)" when KanzonasPDF runs from the portable folder (portable.txt next to the exe) |
 | 0.47 | 4786a13 | Bluebeam-style tools requested by a tester: Erase content (Shift+E) deletes the page's own text, images and lines inside a box, cutting lines that cross its edge; Capture area (Shift+P) copies an area as a picture to paste as an image markup or into other programs; in CAD mouse mode Ctrl+wheel scrolls up and down and Shift+wheel left and right |
 | 0.46 | 2e27946 | Fix: the page order lock only stopped dragging, cut, paste and duplicate; Move page up / down, Delete page and Insert pages still worked while locked. The lock now covers every command that moves, adds or removes pages, and offers to unlock instead |

@@ -340,6 +340,30 @@ def run(log_path):
         return "(vector, outside removed)"
     check("capture area", t_capture)
 
+    def t_edit_objects():
+        # Edit objects: move / resize / delete one picture of the page, nothing else
+        from . import page_objects
+        pm = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 4, 3), False)
+        png = pm.tobytes("png")
+        d = pymupdf.open()
+        pg = d.new_page()
+        pg.insert_image((50, 50, 250, 200), stream=png)
+        pg.insert_text((60, 120), "OVER")
+        pg.insert_image((300, 50, 500, 200), stream=png)    # the same image drawn twice
+        d = pymupdf.open("pdf", d.tobytes())
+        pg = d[0]
+        ims = page_objects.images(pg)
+        assert [tuple(round(v) for v in i["rect"]) for i in ims] == \
+            [(50, 50, 250, 200), (300, 50, 500, 200)], ims
+        page_objects.move_to(pg, ims[0]["n"], ims[0]["rect"], pymupdf.Rect(100, 300, 200, 375))
+        page_objects.delete(pg, page_objects.images(pg)[1]["n"])
+        d = pymupdf.open("pdf", d.tobytes())
+        boxes = [tuple(round(v) for v in pymupdf.Rect(i["bbox"])) for i in d[0].get_image_info()]
+        assert boxes == [(100, 300, 200, 375)], boxes
+        assert "OVER" in d[0].get_text()
+        return "(moved, resized, deleted; text kept)"
+    check("edit objects", t_edit_objects)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")
