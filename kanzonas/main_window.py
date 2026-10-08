@@ -285,6 +285,8 @@ class MainWindow(QMainWindow):
         self.a_close = self._act("&Close tab", lambda: self.close_tab(self.tabs.currentIndex()),
                                  QKeySequence.Close)
         self.a_exit = self._act("E&xit", self.close, "Alt+F4")
+        self.a_prefs = self._act("Pre&ferences...", self.preferences, "Ctrl+K",
+                                 tip="All the remembered options in one place (Ctrl+K)")
         self.a_undo = self._act("&Undo", lambda: v() and v().undo(), QKeySequence.Undo)
         self.a_redo = self._act("&Redo", lambda: v() and v().redo(), QKeySequence.Redo)
         self.a_find = self._act("&Find", self._focus_search, QKeySequence.Find)
@@ -562,6 +564,8 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_compare)
         m.addSeparator()
         m.addAction(self.a_print)
+        m.addSeparator()
+        m.addAction(self.a_prefs)
         m.addSeparator()
         m.addActions([self.a_close, self.a_exit])
         m = mb.addMenu("&Edit")
@@ -2644,6 +2648,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             "CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan" if on else
             "CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms", 4000)
+
+    def preferences(self):
+        from .preferences import PreferencesDialog
+        PreferencesDialog(self).exec()
 
     def _toggle_page_wheel(self):
         on = self.a_page_wheel.isChecked()

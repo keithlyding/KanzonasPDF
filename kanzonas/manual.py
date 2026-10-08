@@ -446,11 +446,26 @@ Microsoft PowerPoint (.pptx), AutoCAD drawing (.dxf), Images (PNG), Images (JPEG
 Plain text (.txt).</li>
 </ul>
 
+<h2 id="preferences">Preferences</h2>
+<ul>
+<li><b>File &gt; Preferences...</b> (Ctrl+K) gathers the options KanzonasPDF remembers in one
+window. Each one does exactly the same as its menu command, so you can change it in either place.</li>
+<li><b>General:</b> theme (Match Windows, Light, Dark), Ribbon (instead of toolbars), Show group
+names on ribbon, Show menu bar, Show text labels on toolbars, Check for updates automatically.
+It also tells you where your settings are saved (the data folder in portable mode).</li>
+<li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step.</li>
+<li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
+Show grid, Snap to grid, Snap to objects, and Grid settings....</li>
+<li><b>OCR:</b> the accuracy the Recognize text dialog starts with.</li>
+<li>Changes apply when you click OK; Cancel leaves everything as it was.</li>
+</ul>
+
 <h2 id="shortcuts">Keyboard shortcuts</h2>
 <table border="1" cellpadding="3" cellspacing="0">
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text</td></tr>
+<tr><td>Ctrl+K</td><td>Preferences</td></tr>
 <tr><td>Shift+O</td><td>Edit objects (the page's own pictures and shapes)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
 <tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>
