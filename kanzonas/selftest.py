@@ -206,6 +206,30 @@ def run(log_path):
         assert updates.newest(rel, "0.35") == ("99.10", "c")
         assert updates.newest(rel[:1], "0.35") is None
         assert updates.version_tuple("v1.0-beta") == (1, 0)
+        rel[2]["assets"] = [{"name": "KanzonasPDF-portable.zip", "browser_download_url": "z"}]
+        assert updates.asset_url(updates.newest_release(rel, "0.35")) == "z"
+        # portable self-update: unpack into _update, keep data, refuse bad zips
+        import zipfile
+        app = os.path.join(tmp, "app")
+        os.makedirs(app, exist_ok=True)
+        good, evil = os.path.join(tmp, "good.zip"), os.path.join(tmp, "evil.zip")
+        with zipfile.ZipFile(good, "w") as z:
+            z.writestr("KanzonasPDF/KanzonasPDF.exe", "exe")
+            z.writestr("KanzonasPDF/_internal/a.dll", "dll")
+            z.writestr("KanzonasPDF/data/settings.ini", "theirs")
+        with zipfile.ZipFile(evil, "w") as z:
+            z.writestr("KanzonasPDF/KanzonasPDF.exe", "exe")
+            z.writestr("../../escape.txt", "x")
+        new = updates.unpack(good, app)
+        assert os.path.isfile(os.path.join(new, "_internal", "a.dll"))
+        assert not os.path.exists(os.path.join(new, "data")), "update would replace settings"
+        try:
+            updates.unpack(evil, app)
+            raise AssertionError("unsafe zip accepted")
+        except ValueError:
+            pass
+        bat = updates.swap_script(4242, new, app)
+        assert "PID eq 4242" in bat and "/MIR" in bat and "%rc%" in bat and "KanzonasPDF.exe" in bat
         return "(TLS: " + QSslSocket.activeBackend() + ")"
     check("update check", t_updates)
 
@@ -523,6 +547,7 @@ def run(log_path):
             text_edit._SYSTEM_FONTS = saved
         return "(minus sign, diameter written; emoji refused by name)"
     check("edit text with symbols", t_edit_symbols)
+
 
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")

@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, Q
                                QComboBox, QCheckBox, QSlider)
 
 KINDS = ("signature", "initials")
-DATE_FORMATS = ["%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d", "%B %d, %Y", "(no date)"]
+DATE_FORMATS = ["%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d", "%B %d, %Y"]
 
 
 def _dir():
@@ -130,9 +130,20 @@ def set_pin(new_pin, old_pin=None):
         store(k, png, new_pin or None)
 
 
-def date_text():
+def date_format():
     fmt = load_meta().get("date_format", DATE_FORMATS[0])
-    return "" if fmt == "(no date)" else date.today().strftime(fmt)
+    return fmt if fmt in DATE_FORMATS else DATE_FORMATS[0]
+
+
+def set_date_format(fmt):
+    meta = load_meta()
+    meta["date_format"] = fmt
+    save_meta(meta)
+
+
+def date_text():
+    """Today's date in the chosen format (the Date tool; Preferences > You)."""
+    return date.today().strftime(date_format())
 
 
 # ---- image helpers ----------------------------------------------------------------
@@ -275,15 +286,6 @@ class SignatureSetup(QDialog):
         lay.addWidget(self.thresh_label)
         lay.addWidget(self.thresh)
 
-        meta = load_meta()
-        drow = QHBoxLayout()
-        drow.addWidget(QLabel("Date placed with it:"))
-        self.datefmt = QComboBox()
-        self.datefmt.addItems(DATE_FORMATS)
-        self.datefmt.setCurrentText(meta.get("date_format", DATE_FORMATS[0]))
-        drow.addWidget(self.datefmt)
-        drow.addStretch(1)
-        lay.addLayout(drow)
         self.use_pin = QCheckBox("Protect my signature and initials with a PIN "
                                  "(asked once each time the app starts)")
         self.use_pin.setChecked(has_pin())
@@ -351,9 +353,6 @@ class SignatureSetup(QDialog):
         if img is None:
             QMessageBox.information(self, "Signature", f"Draw or load your {self.kind} first.")
             return
-        meta = load_meta()
-        meta["date_format"] = self.datefmt.currentText()
-        save_meta(meta)
         pin = None
         if self.use_pin.isChecked():
             pin = ask_pin(self, "Enter your signature PIN" if has_pin() else

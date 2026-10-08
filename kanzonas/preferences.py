@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget,
                                QCheckBox, QComboBox, QFormLayout, QLabel, QPushButton,
                                QDialogButtonBox, QLineEdit, QListWidget, QListWidgetItem,
-                               QSpinBox, QMessageBox)
+                               QSpinBox, QDoubleSpinBox, QMessageBox)
 
 
 def _plain(text):
@@ -94,6 +94,27 @@ class PreferencesDialog(QDialog):
             form.addRow("Your " + kind + ":", row)
             self._sig_rows[kind] = status
         self._sig_status()
+        from .document_view import DocumentView
+        self.sig_size = {}
+        for kind, label in (("signature", "Signature width:"), ("initials", "Initials width:")):
+            sb = QDoubleSpinBox()
+            sb.setRange(0.2, 8.0)
+            sb.setSingleStep(0.25)
+            sb.setDecimals(2)
+            sb.setSuffix(" in")
+            sb.setValue(DocumentView.SIG_WIDTH[kind] / 72.0)
+            sb.setToolTip("How wide it's placed when you click. You can also drag a box when "
+                          "placing it to make it exactly that wide.")
+            form.addRow(label, sb)
+            self.sig_size[kind] = sb
+        from . import signatures as sigmod
+        from datetime import date as _date
+        self.datefmt = QComboBox()
+        for fmt in sigmod.DATE_FORMATS:
+            self.datefmt.addItem(_date.today().strftime(fmt), fmt)
+        self.datefmt.setCurrentIndex(max(0, self.datefmt.findData(sigmod.date_format())))
+        self.datefmt.setToolTip("How the Date tool (Ctrl+;) writes today's date")
+        form.addRow("Date format:", self.datefmt)
         pin = QPushButton("Change PIN...")
         pin.setToolTip("Set, change or remove the PIN that protects your saved signature and "
                        "initials")
@@ -220,11 +241,36 @@ class PreferencesDialog(QDialog):
         self.lock.setToolTip(win.lock_btn.toolTip())
         self.lock.setChecked(win.lock_btn.isChecked())
         form.addRow(self.lock)
-        for a in (win.a_cards, win.a_hl_fields, win.a_grid, win.a_snap_grid, win.a_snap_objects):
+        for a in (win.a_cards, win.a_hl_fields):
             self._box(form, a)
-        grid = QPushButton("Grid settings...")
-        grid.clicked.connect(win.grid_settings)
-        form.addRow(grid)
+        # grid and snapping: all of it here, in one place (same settings as View > Grid
+        # settings...)
+        from PySide6.QtWidgets import QGroupBox
+        from . import snapping
+        box = QGroupBox("Grid and snapping")
+        gform = QFormLayout(box)
+        self.grid_value = QDoubleSpinBox()
+        self.grid_value.setDecimals(3)
+        self.grid_value.setRange(0.001, 10000)
+        self.grid_value.setValue(float(win.settings.value("grid_value", 0.5)))
+        self.grid_unit = QComboBox()
+        for k, name in snapping.UNIT_NAMES.items():
+            self.grid_unit.addItem(name, k)
+        self.grid_unit.setCurrentIndex(max(0, self.grid_unit.findData(
+            win.settings.value("grid_unit", "in"))))
+        row = QHBoxLayout()
+        row.addWidget(self.grid_value)
+        row.addWidget(self.grid_unit)
+        gform.addRow("Grid spacing (on paper):", row)
+        self.grid_major = QSpinBox()
+        self.grid_major.setRange(1, 100)
+        self.grid_major.setValue(int(win.settings.value("grid_major", 4)))
+        gform.addRow("Darker line every:", self.grid_major)
+        for a in (win.a_grid, win.a_snap_grid, win.a_snap_objects):
+            self._box(gform, a)
+        gform.addRow(QLabel("Hold Alt while drawing or dragging to place a point without "
+                            "snapping."))
+        form.addRow(box)
 
         # OCR
         page, form = self._tab(tabs, "OCR")
@@ -371,6 +417,17 @@ class PreferencesDialog(QDialog):
         if self.lock.isChecked() != win.lock_btn.isChecked():
             win.lock_btn.setChecked(self.lock.isChecked())
         win.settings.setValue("ocr_accuracy", self.ocr.currentData())
+        from . import signatures as sigmod
+        if self.datefmt.currentData() != sigmod.date_format():
+            sigmod.set_date_format(self.datefmt.currentData())
+        win.settings.setValue("grid_value", self.grid_value.value())
+        win.settings.setValue("grid_unit", self.grid_unit.currentData())
+        win.settings.setValue("grid_major", self.grid_major.value())
+        win._apply_grid_settings()
+        from .document_view import DocumentView
+        for kind, sb in self.sig_size.items():
+            DocumentView.SIG_WIDTH[kind] = sb.value() * 72.0
+            win.settings.setValue("sig_width_" + kind, sb.value() * 72.0)
         win.settings.setValue("restore_session", "true" if self.restore.isChecked() else "false")
         win.settings.setValue("start_tool", self.start_tool.currentData())
         win.settings.setValue("autosave_minutes", self.autosave.value())

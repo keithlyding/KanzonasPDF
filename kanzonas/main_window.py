@@ -75,8 +75,11 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("attach", "Attach file", "", "Attach file: click where its icon goes and pick any file "
                                   "(e.g. a video); it's embedded in the PDF. Double-click to open"),
     ("eraser", "Eraser", "X", "Delete the annotation you click (X)"),
-    ("signature", "Sign", "G", "Place your saved signature (and date): click where it goes (G)"),
-    ("initials", "Initials", "I", "Place your saved initials (and date): click where they go (I)"),
+    ("signature", "Sign", "G", "Place your saved signature: click where it goes, or drag a box "
+                               "to size it (G)"),
+    ("initials", "Initials", "I", "Place your saved initials: click where they go, or drag a box "
+                                  "to size them (I)"),
+    ("date", "Date", "Ctrl+;", "Place today's date: click where it goes (Ctrl+;)"),
 ]
 FORM_TOOLS = [  # form design tools: drag a box (or click) to add a field
     ("f_text", "Text field", "Text field: drag a box"),
@@ -164,6 +167,7 @@ class MainWindow(QMainWindow):
         self.setAcceptDrops(True)
         # start with the Hand (scroll by dragging, like most viewers) or the Select tool
         self.tool = "select" if self.settings.value("start_tool", "hand") == "select" else "hand"
+        self._last_basic_tool = self.tool
         self._sig_cache = {}            # kind -> png, for this run of the app only
 
         self.tabs = QTabWidget()
@@ -454,6 +458,13 @@ class MainWindow(QMainWindow):
             minutes = 5
         self.autosave = autosave.Autosaver(self, minutes)
         DocumentView.open_view = self.settings.value("open_view", "width")
+        for kind in ("signature", "initials"):
+            try:
+                w = float(self.settings.value("sig_width_" + kind, 0) or 0)
+            except (TypeError, ValueError):
+                w = 0
+            if 14 <= w <= 600:
+                DocumentView.SIG_WIDTH[kind] = w
         DocumentView.reopen_page = self.settings.value("reopen_page", "true") != "false"
         # grid and snapping (shared by all open documents, remembered)
         self.a_grid = self._act("Show &grid", self._apply_grid_settings,
@@ -662,8 +673,9 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_delete_markups, self.a_flatten_markups])
         m = mb.addMenu("&Protect")
         m.addActions([self.tool_actions["signature"], self.tool_actions["initials"],
-                      self.a_multi_sign])
-        m.addActions([self.a_setup_sig, self.a_setup_init])
+                      self.tool_actions["date"], self.a_multi_sign])
+        # setting up (or replacing) your signature / initials lives in File > Preferences >
+        # You: here it read like "add my signature to this document"
         m.addSeparator()
         m.addActions([self.tool_actions["placeholder"], self.a_apply_placeholders])
         m.addSeparator()
@@ -1029,6 +1041,7 @@ class MainWindow(QMainWindow):
         v.show_comment_boxes = self.a_cards.isChecked()
         v.selectionChanged.connect(self._on_selection_changed)
         v.signedDocument.connect(self._on_signed)
+        v.oneShotPlaced.connect(self._after_one_shot)
         v.selectToolRequested.connect(lambda: self.set_tool("select"))
         v.calibrateRequested.connect(self._calibrate)
         v.layersChanged.connect(lambda: self.sender() is self.view() and self._rebuild_thumbs())
@@ -1247,10 +1260,18 @@ class MainWindow(QMainWindow):
                 return
             self._cache_sig(tool, png)
         self.tool = tool
+        if tool in ("hand", "select"):
+            self._last_basic_tool = tool            # where signing / dating returns to
         self.tool_actions[tool].setChecked(True)
         for i in range(self.tabs.count()):
             self.tabs.widget(i).set_tool(tool)
         self._refresh_props()
+
+    def _after_one_shot(self):
+        """After placing a signature, initials or a date: back to the Hand or Select tool,
+        whichever was used last."""
+        if self.tool in ("signature", "initials", "date"):
+            self.set_tool(getattr(self, "_last_basic_tool", "hand"))
 
     # ---- properties panel / tool defaults -------------------------------------
     def _refresh_props(self):
@@ -2918,8 +2939,7 @@ class MainWindow(QMainWindow):
             ("Manage", "large", [self.a_delete_markups, self.a_flatten_markups]),
         ])
         r.add_tab("Protect", [
-            ("Sign", "large", [t["signature"], t["initials"], self.a_multi_sign]),
-            ("My signature", "small", [self.a_setup_sig, self.a_setup_init]),
+            ("Sign", "large", [t["signature"], t["initials"], t["date"], self.a_multi_sign]),
             ("Placeholders", "large", [t["placeholder"], self.a_apply_placeholders]),
             ("Digital signatures", "small", [self.a_digisign, self.a_timestamp,
                                              self.a_sig_details, self.a_clear_sigs]),
@@ -3151,11 +3171,18 @@ class MainWindow(QMainWindow):
             # asked for: answer in a box, like the "up to date" answer
             box = QMessageBox(QMessageBox.Information, "Check for updates",
                               f"KanzonasPDF {version} is available (you have {__version__}).\n\n"
-                              "Download opens the release page in your browser.", parent=self)
+                              + ("Update now downloads it, closes KanzonasPDF, replaces the "
+                                 "program files in this folder (your data folder is kept) and "
+                                 "starts it again.\n\n" if self._self_update_url() else "")
+                              + "Download opens the release page in your browser.", parent=self)
+            upd = (box.addButton("Update now", QMessageBox.AcceptRole)
+                   if self._self_update_url() else None)
             get = box.addButton("Download", QMessageBox.AcceptRole)
             box.addButton("Later", QMessageBox.RejectRole)
             box.exec()
-            if box.clickedButton() is get:
+            if upd is not None and box.clickedButton() is upd:
+                self.update_portable()
+            elif box.clickedButton() is get:
                 QDesktopServices.openUrl(QUrl(url))
             return
         old = getattr(self, "_update_bar", None)
@@ -3168,6 +3195,10 @@ class MainWindow(QMainWindow):
         h.addWidget(QLabel(f"<b>KanzonasPDF {version} is available</b> (you have {__version__})."))
         get = QPushButton("Download")
         get.setToolTip("Open the release page to download the installer or portable zip")
+        upd = QPushButton("Update now") if self._self_update_url() else None
+        if upd is not None:
+            upd.setToolTip("Download the new portable version and replace this one in place "
+                           "(your data folder is kept)")
         skip = QPushButton("Skip this version")
         close = QPushButton("Later")
 
@@ -3178,12 +3209,69 @@ class MainWindow(QMainWindow):
         get.clicked.connect(lambda: (QDesktopServices.openUrl(QUrl(url)), done()))
         skip.clicked.connect(lambda: (self.settings.setValue("update_skip", version), done()))
         close.clicked.connect(done)
-        for b in (get, skip, close):
-            h.addWidget(b)
+        if upd is not None:
+            upd.clicked.connect(lambda: (done(), self.update_portable()))
+        for b in (upd, get, skip, close):
+            if b is not None:
+                h.addWidget(b)
         self._update_bar = bar
         self.statusBar().clearMessage()      # a status message would keep the notice hidden
         self.statusBar().addWidget(bar)
         bar.show()
+
+    def _self_update_url(self):
+        """Download address of the new portable zip when this copy can update itself."""
+        from . import updates
+        upd = getattr(self, "_upd", None)
+        if upd is None or not updates.can_self_update():
+            return None
+        return updates.asset_url(upd.release)
+
+    def update_portable(self):
+        """Portable copy: download the new version, then close and let a script swap the files."""
+        import tempfile
+        from PySide6.QtWidgets import QProgressDialog
+        from . import paths, updates
+        url = self._self_update_url()
+        if not url:
+            return
+        app_dir = paths.app_dir()
+        dl = updates.PortableUpdater(url, app_dir, self)
+        prog = QProgressDialog("Downloading the new KanzonasPDF...", "Cancel", 0, 0, self)
+        prog.setWindowTitle("Update")
+        prog.setMinimumDuration(0)
+        prog.canceled.connect(dl.cancel)
+
+        def progress(got, total):
+            if total > 0:
+                prog.setMaximum(total)
+                prog.setValue(got)
+
+        def failed(msg):
+            prog.close()
+            QMessageBox.warning(self, "Update", msg + "\n\nYou can still download "
+                                "KanzonasPDF-portable.zip from the release page and unzip it "
+                                "over this folder.")
+
+        def ready(new):
+            import subprocess
+            prog.close()
+            script = os.path.join(tempfile.gettempdir(), "kanzonas-update.cmd")
+            with open(script, "w", encoding="mbcs" if os.name == "nt" else "utf-8") as f:
+                f.write(updates.swap_script(os.getpid(), new, app_dir))
+            if not self.close():          # the user kept a document open: try again later
+                import shutil
+                shutil.rmtree(os.path.join(app_dir, updates.STAGING), ignore_errors=True)
+                os.remove(script)
+                return
+            subprocess.Popen(["cmd", "/c", script],
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                             close_fds=True)
+            QApplication.quit()
+        dl.progress.connect(progress)
+        dl.failed.connect(failed)
+        dl.ready.connect(ready)
+        dl.start()
 
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):

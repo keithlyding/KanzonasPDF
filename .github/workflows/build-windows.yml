@@ -71,7 +71,7 @@ jobs:
 
       - name: Zip
         shell: pwsh
-        run: Compress-Archive -Path dist\KanzonasPDF -DestinationPath KanzonasPDF-v${{ steps.ver.outputs.version }}-windows.zip
+        run: Compress-Archive -Path dist\KanzonasPDF -DestinationPath KanzonasPDF-windows.zip
 
       - name: Build installer (Inno Setup)
         shell: pwsh
@@ -140,7 +140,7 @@ jobs:
           stick, a network drive) and run KanzonasPDF.exe. No installation or Python needed.
           Delete this file to make it behave like the installed version.
           "@ | Set-Content portable\KanzonasPDF\portable.txt
-          Compress-Archive -Path portable\KanzonasPDF -DestinationPath KanzonasPDF-v$v-portable.zip
+          Compress-Archive -Path portable\KanzonasPDF -DestinationPath KanzonasPDF-portable.zip
           # test a copy: it must run, keep its settings in data\ and leave the registry alone
           Remove-Item -Recurse -Force "HKCU:\Software\KanzonasPDF" -ErrorAction SilentlyContinue
           Copy-Item -Recurse portable\KanzonasPDF "$env:RUNNER_TEMP\kzportable"
@@ -153,12 +153,12 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portable
-          path: KanzonasPDF-v${{ steps.ver.outputs.version }}-portable.zip
+          path: KanzonasPDF-portable.zip
 
       - uses: actions/upload-artifact@v4
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-windows
-          path: KanzonasPDF-v${{ steps.ver.outputs.version }}-windows.zip
+          path: KanzonasPDF-windows.zip
 
       - uses: actions/upload-artifact@v4
         with:
@@ -196,12 +196,14 @@ jobs:
           prerelease: ${{ startsWith(steps.ver.outputs.version, '0.') }}
           body: |
             **Download `KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe`** and run it (no administrator rights needed).
-            **Portable (no install; settings stay with the app):** download `-portable.zip`, unzip it
+            **Portable (no install; settings stay with the app):** download `KanzonasPDF-portable.zip`, unzip it
             anywhere (e.g. a USB stick) and run `KanzonasPDF.exe`; settings stay in its `data` folder.
+            To update, unzip the new one over the same folder (replace the files): the path to `KanzonasPDF.exe`
+            stays the same, so it stays your default PDF app, and the `data` folder is kept.
 
             What's new: see [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ steps.ver.outputs.version }}/CHANGELOG.md).
             Free software under the GNU AGPL 3.0.
           files: |
             dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
-            KanzonasPDF-v${{ steps.ver.outputs.version }}-portable.zip
-            KanzonasPDF-v${{ steps.ver.outputs.version }}-windows.zip
+            KanzonasPDF-portable.zip
+            KanzonasPDF-windows.zip

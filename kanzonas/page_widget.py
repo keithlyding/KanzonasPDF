@@ -100,6 +100,8 @@ class PageWidget(QWidget):
         self._snap_mark = None      # (widget point, "object" | "grid") last snap, for the marker
         self._obj_hover = None      # Edit objects: picture under the mouse
         self._obj_edit = None       # Edit objects: dragging / resizing the selected picture
+        self._sig_drag = None       # signature / initials: press point while sizing
+        self._sig_now = None
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         self.update_size()
@@ -291,7 +293,18 @@ class PageWidget(QWidget):
                 p.setOpacity(0.6)
                 p.drawPixmap(rr, pm, QRectF(pm.rect()))
                 p.setOpacity(1.0)
-        if self._ghost is not None and tool in SIGN_TOOLS:
+        if self._sig_drag is not None and tool in SIGN_TOOLS:
+            r = self._sig_box()
+            pm = self.view.sig_pixmap(tool)
+            if r is not None and pm is not None:
+                z = self.view.zoom
+                p.setOpacity(0.7)
+                p.drawPixmap(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z), pm,
+                             QRectF(pm.rect()))
+                p.setOpacity(1.0)
+                p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+                p.drawRect(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z))
+        elif self._ghost is not None and tool in SIGN_TOOLS:
             pm = self.view.sig_pixmap(tool)
             if pm is not None:
                 r = self.view.sig_display_rect(self.index, tool, self.to_pdf(self._ghost))
@@ -629,6 +642,22 @@ class PageWidget(QWidget):
         menu.addAction("Delete", self.view.delete_objects)
         menu.exec(e.globalPosition().toPoint())
 
+    def _sig_box(self):
+        """While dragging to size a signature / initials: its box in displayed page
+        coordinates (width from the drag, height from the picture's proportions), or None
+        for a plain click."""
+        a, b = self._sig_drag, self._sig_now
+        if a is None or b is None or abs(b.x() - a.x()) < 6:
+            return None
+        pm = self.view.sig_pixmap(self.view.tool)
+        aspect = pm.height() / pm.width() if pm is not None and pm.width() else 0.35
+        z = self.view.zoom
+        x0, x1 = sorted((a.x() / z, b.x() / z))
+        w = x1 - x0
+        h = w * aspect
+        y0 = a.y() / z if b.y() >= a.y() else a.y() / z - h
+        return pymupdf.Rect(x0, y0, x1, y0 + h)
+
     def _content_menu(self, e, pdf):
         """Right-click on the page: copy / cut / paste / delete, and for selected text the
         text markups. A right-click on a markup that isn't selected selects it first; one
@@ -786,8 +815,13 @@ class PageWidget(QWidget):
         if tool in SNAP_TOOLS:
             pos = self._snap(pos, e)
             pdf = self.to_pdf(pos)
+        if tool == "date":
+            self.view.place_date(self.index, pdf)
+            return
         if tool in SIGN_TOOLS:
-            self.view.place_signature(self.index, tool, pdf)
+            # click: place at the default size; drag: a box that sets its width
+            self._sig_drag = pos
+            self._sig_now = pos
             return
         if tool == "stamp":
             self.view.place_stamp(self.index, pdf)
@@ -995,6 +1029,9 @@ class PageWidget(QWidget):
             return
         if tool == "hand":
             self.view.continue_pan(e.globalPosition())
+        elif self._sig_drag is not None:
+            self._sig_now = pos
+            self.update()
         elif self._obj_edit is not None:
             if (pos - self._obj_edit["start"]).manhattanLength() >= 3:
                 if self._obj_edit["mode"] == "box":
@@ -1056,6 +1093,15 @@ class PageWidget(QWidget):
         pos = e.position()
         if tool == "hand":
             self.view.end_pan()
+        elif self._sig_drag is not None:
+            self._sig_now = pos
+            box = self._sig_box()
+            start, self._sig_drag, self._sig_now = self._sig_drag, None, None
+            self.update()
+            if box is None:                       # a click: default size, centered there
+                self.view.place_signature(self.index, tool, self.to_pdf(start))
+            else:
+                self.view.place_signature(self.index, tool, box=box)
         elif self._obj_edit is not None:
             self._objects_release(e, pos)
         elif self._edit is not None:

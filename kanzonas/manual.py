@@ -56,22 +56,30 @@ any PDF &gt; Open with &gt; Choose another app &gt; KanzonasPDF, and tick "Alway
 <li><b>Update:</b> run the newer setup over the old one; there's no need to uninstall first.
 It closes KanzonasPDF if it's running, installs in the same place, and keeps your settings,
 signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
-<li><b>Portable version</b> (<b>-portable.zip</b>): no installation. Unzip the KanzonasPDF folder
+<li><b>Portable version</b> (<b>KanzonasPDF-portable.zip</b>): no installation. Unzip the KanzonasPDF folder
 anywhere (a USB stick, a network drive, your Documents) and run KanzonasPDF.exe. Because of the
 portable.txt file inside, your settings, signatures, stamp images and certificate are kept in a
 <b>data</b> folder next to the program instead of the computer's registry and user folders, so
 they travel with the folder. The window title and Help &gt; About say <b>(portable)</b> when
-this copy is running in portable mode. Keep the whole folder together. To update, replace everything
-except the data folder (or unzip the new version and copy your old data folder into it).
+this copy is running in portable mode. Keep the whole folder together. The download has the same name for every version
+(KanzonasPDF-portable.zip, with a KanzonasPDF folder inside), so the program's path never has to
+change. <b>To update</b>, use <b>Update now</b> in the update notice or in Help &gt; Check for
+updates: KanzonasPDF downloads the new portable version, asks to save open documents, closes,
+replaces its program files in the same folder and starts again. Or do it by hand: close
+KanzonasPDF and unzip the new download over the same folder, replacing the files. Your data folder is kept, and if you made KanzonasPDF.exe your default PDF
+app (Windows Settings &gt; Apps &gt; Default apps), it stays the default. Tip: if Windows'
+Extract All suggests a new folder name, change it to the folder you already use.
 (Opening an attached file still uses Windows' temporary folder.)</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
 A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
 your browser. The automatic check instead shows a notice at the bottom of the window with
-<b>Download</b>, <b>Skip this version</b> and <b>Later</b>. Nothing is downloaded or installed by itself.
+<b>Download</b>, <b>Skip this version</b> and <b>Later</b> (the portable version also has
+<b>Update now</b>, which updates it in place; see above). Nothing is downloaded or installed
+until you click a button.
 With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
 quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your
 network blocks GitHub, the automatic check simply finds nothing.</li>
-<li>The <b>-windows.zip</b> download is the same program without the portable.txt file: it runs
+<li>The <b>KanzonasPDF-windows.zip</b> download is the same program without the portable.txt file: it runs
 from any folder but stores settings on the computer like the installed version.</li>
 </ul>
 
@@ -394,8 +402,19 @@ Double-click a field to change its name and options.</li>
 <h2 id="sign">Protect: signatures, passwords, redaction</h2>
 <p>Everything here is in the <b>Protect</b> menu.</p>
 <ul>
-<li><b>Wet signature / initials:</b> Set up my signature and Set up my initials (draw or load an
-image, optional PIN). Then Sign (G) or Initials (I) and click to place, with the date.</li>
+<li><b>Wet signature / initials:</b> Sign (G) or Initials (I), then click to place your signature
+or initials. The first time, you're asked to set it up (draw it or load a picture of it, optional
+PIN); to replace it later, use File &gt; Preferences &gt; You &gt; Set up my signature... / Set up my
+initials.... To choose the size, <b>drag a box</b> instead of clicking: it's placed as wide as you
+drag (the height follows its proportions). The size used for a click is set in File &gt;
+Preferences &gt; You (2 in for a signature and 0.75 in for initials to start with). Afterwards the
+Hand or Select tool, whichever you used last, is active again, so you don't place a second one by
+accident. Like any picture on the page, a placed signature can be moved or deleted with Edit
+objects (or Ctrl+Z right after placing it).</li>
+<li><b>Date</b> (Ctrl+;, Protect tab and menu): click to write today's date there, for example
+next to a signature or in a document's own date field. It's separate from signing, so a form
+that already prints a date doesn't get two. The format (such as 10/08/2026 or October 08, 2026)
+is set in File &gt; Preferences &gt; You.</li>
 <li><b>Multi-place signature or initials:</b> put your initials (or signature) on all pages,
 all but the first or last, or pages you list, in the same spot as the last one you placed
 or in a corner.</li>
@@ -482,7 +501,9 @@ names on ribbon, Show menu bar, Show text labels on toolbars, Check for updates 
 It also tells you where your settings are saved (the data folder in portable mode).</li>
 <li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
 Set up my signature... / Set up my initials... with whether each is saved yet, and Change PIN...
-to set, change or remove the PIN that protects them (leave the new PIN empty to remove it).</li>
+to set, change or remove the PIN that protects them (leave the new PIN empty to remove it), and
+the Signature width and Initials width used when you click to place them, and the Date format
+the Date tool writes.</li>
 <li><b>Markup styles:</b> pick a tool on the left to set its default colors, line width, font
 size, fill, opacity and so on, the same settings the Properties panel shows when that tool is
 active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
@@ -504,7 +525,9 @@ round to (1/2" to 1/64"; 1/16" by default) and the decimal places for other unit
 measurement labels update when you next move or edit them.</li>
 <li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step.</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
-Show grid, Snap to grid, Snap to objects, and Grid settings....</li>
+and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
+interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid
+settings...).</li>
 <li><b>OCR:</b> the accuracy the Recognize text dialog starts with.</li>
 <li>Changes apply when you click OK; Cancel leaves everything as it was.</li>
 </ul>
@@ -515,6 +538,7 @@ Show grid, Snap to grid, Snap to objects, and Grid settings....</li>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text</td></tr>
 <tr><td>Ctrl+K</td><td>Preferences</td></tr>
+<tr><td>Ctrl+;</td><td>Date (today's date where you click)</td></tr>
 <tr><td>Shift+O</td><td>Edit objects (the page's own pictures and shapes)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
 <tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>

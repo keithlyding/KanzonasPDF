@@ -1,11 +1,16 @@
 # Changelog
 
 Each revision gets a version number. It's shown in the window title and Help > About,
-and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
+and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the same name every version).
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.70 | (this) | The ribbon's Comment tab is now called Markup (it holds highlights, notes, shapes, stamps, the pen and erasers, not only comments) |
+| 0.75 | (this) | Portable version: Update now (in the update notice and Help > Check for updates) downloads the new KanzonasPDF-portable.zip, closes the app (asking to save), copies the new program files over the same folder with the data folder kept, and restarts, so it stays your default PDF app |
+| 0.74 | 9c65b54 | The portable and Windows zips now have the same name every release (`KanzonasPDF-portable.zip`, `KanzonasPDF-windows.zip`), so a portable copy can be updated in place by unzipping over the same folder; KanzonasPDF.exe keeps its path and stays the default PDF app. Manual and README explain how. |
+| 0.73 | 795696f | Signing no longer adds the date: a separate Date tool (Ctrl+;, Protect tab) writes today's date where you click, in the format set in Preferences > You. After placing a signature, initials or a date, the Hand or Select tool (whichever was used last) is active again. |
+| 0.72 | 5058b7b | Set up my signature / Set up my initials removed from the Protect tab and menu (they read like "sign this document" but replace your saved signature); they stay in File > Preferences > You, and placing a signature still asks you to set one up the first time |
+| 0.71 | 04af3d1 | Signature and initials size: drag a box when placing them to set the width, and set the click size in Preferences > You. Preferences > Pages and display now has all the grid and snapping settings in one group (it had separate checkboxes plus a Grid settings window that could undo each other) |
+| 0.70 | f958e23 | The ribbon's Comment tab is now called Markup (it holds highlights, notes, shapes, stamps, the pen and erasers, not only comments) |
 | 0.69 | f4b3c11 | Fix: the Tool chest button (View tab, F8) only opened the panel; it now closes it too when it's showing, and brings it to the front when it's behind the Properties tab |
 | 0.68 | c471a2a | CAD mouse mode: the pages sit on an open canvas, so they can be dragged in any direction even when the whole page fits in the window (like Bluebeam); Fit page, Fit width and opening a file center the page |
 | 0.67 | 5c1f599 | Fix: Edit text refused lines with symbols few fonts have ("No available font has every character of the new text"), such as the minus sign, the diameter sign, invisible narrow or zero-width spaces and ligatures. It now tries broad installed fonts (Segoe UI and others), then look-alikes; characters that truly can't be written (emoji) are named in the message, and are never written as a different character. New self-test check |

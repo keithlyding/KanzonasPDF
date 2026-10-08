@@ -74,8 +74,8 @@ Pick **one** of these files from the newest release:
 | File | What it is |
 | --- | --- |
 | `KanzonasPDF-v…-setup.exe` | **Installer (recommended).** No administrator rights needed. It can add a desktop shortcut and offer KanzonasPDF as an app for opening PDFs. |
-| `KanzonasPDF-v…-portable.zip` | **No installation.** Unzip anywhere (even a USB stick) and run `KanzonasPDF.exe`. Settings, signatures and stamps stay in a `data` folder next to it. |
-| `KanzonasPDF-v…-windows.zip` | The same program as the portable version, but it keeps its settings in your Windows profile. |
+| `KanzonasPDF-portable.zip` | **No installation.** Unzip anywhere (even a USB stick) and run `KanzonasPDF.exe`. Settings, signatures and stamps stay in a `data` folder next to it. To update, unzip the new one over the same folder: the program keeps the same path, so it stays your default PDF app. |
+| `KanzonasPDF-windows.zip` | The same program as the portable version, but it keeps its settings in your Windows profile. |
 
 ### "Windows protected your PC"
 
