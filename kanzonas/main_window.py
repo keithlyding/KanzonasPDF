@@ -400,7 +400,8 @@ class MainWindow(QMainWindow):
         for eid, label, _flt, _ext in EXPORTS:
             a = self._act(label, lambda _=False, e=eid: self.export_as(e))
             self.export_actions.append(a)
-        self.a_chest = self._act("Tool &chest", lambda: (self.chest_dock.show(), self.chest_dock.raise_()), "F8")
+        self.a_chest = self._act("Tool &chest", self._toggle_chest, "F8")
+        self.a_chest.setCheckable(True)
         self.a_compare = self._act("&Compare documents...", self.compare_documents,
                                    tip="Compare this document with another revision")
         self.a_header = self._act("&Header && footer, page numbers, Bates...", self.header_footer)
@@ -929,6 +930,8 @@ class MainWindow(QMainWindow):
         self.chest_dock.setFeatures(QDockWidget.DockWidgetClosable)
         self.addDockWidget(Qt.RightDockWidgetArea, self.chest_dock)
         self.tabifyDockWidget(self.props_dock, self.chest_dock)
+        self.chest_dock.visibilityChanged.connect(
+            lambda _v: self.a_chest.setChecked(self._chest_showing()))
         self.props_dock.raise_()
         self.resizeDocks([self.dock, self.props_dock], [180, 240], Qt.Horizontal)
 
@@ -1278,6 +1281,21 @@ class MainWindow(QMainWindow):
         if self.sender() is self.view():
             self._refresh_props()
             self._update_ui()
+
+    def _chest_showing(self):
+        """True when the tool chest is on screen (not just a tab behind Properties)."""
+        d = self.chest_dock
+        return d.isVisible() and not d.visibleRegion().isEmpty()
+
+    def _toggle_chest(self):
+        """Tool chest (F8, View tab): open it, or close it if it's already showing. When it
+        shares the panel with Properties and is the hidden tab, bring it to the front."""
+        if self._chest_showing():
+            self.chest_dock.hide()
+        else:
+            self.chest_dock.show()
+            self.chest_dock.raise_()
+        self.a_chest.setChecked(self._chest_showing())
 
     def _toggle_props(self):
         self.props_dock.setVisible(not self.props_dock.isVisible())
@@ -2758,6 +2776,8 @@ class MainWindow(QMainWindow):
         on = self.a_cad_mouse.isChecked()
         DocumentView.cad_mouse = on
         self.settings.setValue("cad_mouse", "true" if on else "false")
+        for i in range(self.tabs.count()):
+            self.tabs.widget(i).apply_canvas()       # open canvas around the pages, or not
         self.statusBar().showMessage(
             "CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan" if on else
             "CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms", 4000)
@@ -2868,7 +2888,7 @@ class MainWindow(QMainWindow):
                                self.a_zoom_in, self.a_zoom_out, self.a_cad_mouse]),
             ("Sign", "large", [t["signature"], t["initials"]]),
         ])
-        r.add_tab("Comment", [
+        r.add_tab("Markup", [
             ("Text", "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
                                t["note"], t["textbox"]]),
             ("Callout & stamps", "large", [t["callout"], t["stamp"], t["image"], t["attach"]]),

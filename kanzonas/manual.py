@@ -22,7 +22,7 @@ File &gt; Open recent. Each file opens in its own tab, at the page and zoom you 
 <li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Undo is Ctrl+Z, redo is Ctrl+Y.</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
-<li><b>Ribbon:</b> commands are grouped on tabs: Home, Comment, Measure, Arrange, Review,
+<li><b>Ribbon:</b> commands are grouped on tabs: Home, Markup, Measure, Arrange, Review,
 Protect, Forms, Pages and View. Open, save, print, undo and redo sit left of the tabs, and the
 Find box sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
@@ -89,7 +89,9 @@ the page you were on last time; change this in File &gt; Preferences &gt; Openin
 like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the wheel down
 moves the sheet, so you can navigate a drawing while any markup tool is active. Like Bluebeam,
 hold <b>Ctrl</b> and turn the wheel to scroll up and down, or <b>Shift</b> to scroll left and
-right. Your choice is remembered.</li>
+right. The pages sit on an open canvas, so you can drag them anywhere in the window (with the
+wheel held down or the Hand tool), even when the whole page already fits. Your choice is
+remembered.</li>
 <li><b>Scroll one page per wheel step</b> (View menu): when the whole page fits in the window,
 top to bottom and side to side (for example after <b>Fit page</b>), each step of the scroll wheel
 jumps to the next or previous page, centered, instead of scrolling a little. As soon as you zoom
@@ -185,7 +187,7 @@ fields stay fillable. (Document &gt; Flatten flattens form fields too.)</li>
 <li><b>Hold Shift while resizing</b> from a corner: squares and circles stay perfect, other
 markups keep their proportions. Shift while dragging a line's end keeps it at 45&deg; steps.</li>
 <li><b>Eraser</b> (X): click a markup to delete it, or drag a box to delete everything inside.</li>
-<li><b>Erase content</b> (Shift+E; Home tab, Comment tab &gt; Erase, Tools menu): like Bluebeam's,
+<li><b>Erase content</b> (Shift+E; Home tab, Markup tab &gt; Erase, Tools menu): like Bluebeam's,
 drag a box to permanently delete the page's own content inside it: text, images and lines.
 Lines and curves that cross the edge of the box are cut there, so a wall running through the box
 keeps its outside parts. A filled shape that crosses the edge stays whole (one entirely inside is
@@ -225,7 +227,9 @@ for next time. With a markup selected, it changes <b>that markup</b>.</li>
 <li>Line color, fill (or <b>No fill</b>), <b>No border</b> for boxes and shapes, text color,
 line width, font size, arrowheads, cloud border, opacity.</li>
 <li><b>Reset defaults</b> puts a tool back to its original style.</li>
-<li><b>Tool chest</b> (F8): your favorite markup styles, one click away. Click an entry, then
+<li><b>Tool chest</b> (F8, or the View tab): your favorite markup styles, one click away. F8
+or the button opens it and, when it's showing, closes it again (if it's behind the Properties
+tab, it's brought to the front). Click an entry, then
 draw: you get that tool with that color and size, and the tool's normal settings stay as they
 were. It starts with a few ready-made entries (red revision cloud, yellow and green highlight,
 red arrow, blue box, red note text box, yellow callout, APPROVED and REJECTED stamps); rename
@@ -333,7 +337,12 @@ Ctrl+Enter to finish, Escape to cancel.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
 &Omega; &Delta;, symbols, Chinese and other scripts), a built-in Unicode font. Only the letters
-used are stored, so files stay small. The status bar tells you which font was used. A line on a
+used are stored, so files stay small. The status bar tells you which font was used. If no
+font has a symbol you typed or that came from the PDF (a minus sign, a diameter sign, an
+invisible narrow space...), a broader installed font such as Segoe UI is tried, then a look-alike
+is used (- for the minus sign, &Oslash; for the diameter sign, a normal space for an invisible
+one). Characters that can't be written at all, such as emoji, are named in a message, and
+nothing is changed. A line on a
 page that still has unapplied redaction marks can't be edited until you apply or remove them.</li>
 </ul>
 

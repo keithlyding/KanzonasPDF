@@ -147,8 +147,43 @@ class DocumentView(QScrollArea):
             lay.addWidget(w, 0, Qt.AlignHCenter)
             self.pages.append(w)
         self.setWidget(container)
+        self._canvas_margin = (PAGE_GAP, PAGE_GAP)
+        self.apply_canvas()
         container.adjustSize()
         self.verticalScrollBar().setValue(keep)
+
+    def center_horizontally(self, index=None):
+        """Scroll sideways so the page is centered in the window (needed in CAD mouse mode,
+        where open canvas lies left and right of the pages)."""
+        if not getattr(self, "pages", None):
+            return
+        w = self.pages[self.current_page() if index is None else index]
+        bar = self.horizontalScrollBar()
+        bar.setValue(int(w.x() + w.width() / 2 - self.viewport().width() / 2))
+
+    def apply_canvas(self):
+        """CAD mouse mode: open canvas about a window wide around the pages, so the drawing
+        can be dragged anywhere, even when it fits in the window (as in Bluebeam). The view
+        stays where it was when the margin changes."""
+        lay = self.widget().layout() if self.widget() is not None else None
+        if lay is None:
+            return
+        vp = self.viewport()
+        if self.cad_mouse:
+            mx = max(PAGE_GAP, int(vp.width() * 0.9))
+            my = max(PAGE_GAP, int(vp.height() * 0.9))
+        else:
+            mx = my = PAGE_GAP
+        old = getattr(self, "_canvas_margin", (PAGE_GAP, PAGE_GAP))
+        if (mx, my) == old:
+            return
+        h, v = self.horizontalScrollBar(), self.verticalScrollBar()
+        hv, vv = h.value(), v.value()
+        self._canvas_margin = (mx, my)
+        lay.setContentsMargins(mx, my, mx, my)
+        self.widget().adjustSize()
+        h.setValue(hv + mx - old[0])
+        v.setValue(vv + my - old[1])
 
     def _relayout(self):
         for w in self.pages:
@@ -206,6 +241,7 @@ class DocumentView(QScrollArea):
             self.fit_page()
         else:
             self.goto_page(page)
+            self.center_horizontally(page)
 
     @classmethod
     def mirror(cls, other):
@@ -262,6 +298,7 @@ class DocumentView(QScrollArea):
         if not self.verticalScrollBar().isVisible():
             avail -= self.verticalScrollBar().sizeHint().width()
         self.set_zoom(avail / widest)
+        self.center_horizontally()
 
     def fit_page(self):
         r = self.page_rects[self.current_page()]
@@ -520,6 +557,7 @@ class DocumentView(QScrollArea):
         index = max(0, min(index, len(self.pages) - 1))
         w = self.pages[index]
         self.verticalScrollBar().setValue(int(w.y() - (self.viewport().height() - w.height()) / 2))
+        self.center_horizontally(index)
         self._on_scroll()
 
     def zoom_at(self, z, vp_pos):
@@ -2417,6 +2455,8 @@ class DocumentView(QScrollArea):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         self._place_banner()
+        if self.cad_mouse:
+            self.apply_canvas()
 
     # ---- signatures & initials -------------------------------------------------------
     SIG_WIDTH = {"signature": 144.0, "initials": 54.0}     # default size in points
