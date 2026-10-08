@@ -193,11 +193,19 @@ class DocumentView(QScrollArea):
 
     def _initial_view(self):
         state = getattr(self, "initial_state", None)
-        if state:
+        page = int(state.get("page", 0)) if state and self.reopen_page else 0
+        mode = self.open_view
+        if mode == "last" and state:
             self.set_zoom(float(state.get("zoom", 1.0)))
-            self.goto_page(int(state.get("page", 0)))
-        else:
+        elif mode == "width" or mode == "last":
             self.fit_width()
+        elif mode == "actual":
+            self.set_zoom(1.0)
+        if mode == "page":
+            self.goto_page(page)
+            self.fit_page()
+        else:
+            self.goto_page(page)
 
     @classmethod
     def mirror(cls, other):
@@ -261,7 +269,7 @@ class DocumentView(QScrollArea):
         avail_h = self.viewport().height() - 2 * PAGE_GAP
         page = self.current_page()
         self.set_zoom(min(avail_w / r.width, avail_h / r.height))
-        self.goto_page(page)
+        self.show_whole_page(page)
 
     highlight_fields = True        # shade fillable form fields (View / Forms menu)
     show_markups = True            # Review > Show markups (off: the page as if unmarked)
@@ -464,6 +472,8 @@ class DocumentView(QScrollArea):
     # Holding the wheel (middle button) down and dragging pans in either mode.
     cad_mouse = False
     page_wheel = False          # one wheel step = one page when the page fits the window
+    open_view = "page"          # zoom for newly opened files: page, width, actual, last
+    reopen_page = True          # reopen files at the page they were left on
 
     def wheelEvent(self, e):
         dy = e.angleDelta().y()
@@ -500,8 +510,10 @@ class DocumentView(QScrollArea):
     def _page_fits(self):
         if not getattr(self, "pages", None):
             return False
+        # only when the whole page, top to bottom and side to side, is in the window
         w = self.pages[self.current_page()]
-        return w.height() <= self.viewport().height()
+        vp = self.viewport()
+        return w.height() <= vp.height() and w.width() <= vp.width()
 
     def show_whole_page(self, index):
         """Scroll so page `index` is centered top to bottom in the window."""

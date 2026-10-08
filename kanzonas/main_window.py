@@ -436,6 +436,8 @@ class MainWindow(QMainWindow):
         self.a_page_wheel.setCheckable(True)
         self.a_page_wheel.setChecked(self.settings.value("page_wheel", "true") == "true")
         DocumentView.page_wheel = self.a_page_wheel.isChecked()
+        DocumentView.open_view = self.settings.value("open_view", "page")
+        DocumentView.reopen_page = self.settings.value("reopen_page", "true") != "false"
         # grid and snapping (shared by all open documents, remembered)
         self.a_grid = self._act("Show &grid", self._apply_grid_settings,
                                 tip="Show a grid over the page (spacing in Grid settings)")

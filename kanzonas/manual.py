@@ -81,7 +81,8 @@ from any folder but stores settings on the computer like the installed version.<
 <li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number (bottom right
 with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
-Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1).</li>
+Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit page, at
+the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). Shift+Left/Right scrolls sideways.</li>
@@ -90,10 +91,10 @@ like AutoCAD, the scroll wheel zooms in and out around the cursor and holding th
 moves the sheet, so you can navigate a drawing while any markup tool is active. Like Bluebeam,
 hold <b>Ctrl</b> and turn the wheel to scroll up and down, or <b>Shift</b> to scroll left and
 right. Your choice is remembered.</li>
-<li><b>Scroll one page per wheel step</b> (View menu): when the whole page fits in the window
-(for example after <b>Fit page</b>), each step of the scroll wheel jumps to the next or previous
-page, centered, instead of scrolling a little. When you're zoomed in further, the wheel scrolls
-normally. On by default; turn it off for smooth scrolling. Your choice is remembered. (With CAD-style mouse on, the wheel zooms
+<li><b>Scroll one page per wheel step</b> (View menu): when the whole page fits in the window,
+top to bottom and side to side (for example after <b>Fit page</b>), each step of the scroll wheel
+jumps to the next or previous page, centered, instead of scrolling a little. As soon as you zoom
+in so that any edge of the page is outside the window, the wheel scrolls normally. On by default; turn it off for smooth scrolling. Your choice is remembered. (With CAD-style mouse on, the wheel zooms
 instead.)</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.</li>
@@ -458,6 +459,9 @@ Set up my signature... / Set up my initials... with whether each is saved yet.</
 <li><b>Markup styles:</b> pick a tool on the left to set its default colors, line width, font
 size, fill, opacity and so on, the same settings the Properties panel shows when that tool is
 active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
+<li><b>Opening documents:</b> the zoom a document opens at: Fit page (the whole page in the
+window; the default), Fit width, Actual size (100%), or the zoom it had when you closed it; and
+whether to reopen it at the page you were on last time.</li>
 <li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step.</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
 Show grid, Snap to grid, Snap to objects, and Grid settings....</li>

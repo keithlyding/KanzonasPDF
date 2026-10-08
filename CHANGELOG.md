@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.55 | (this) | Preferences gains a You tab (author name for markups, set up my signature and initials) and a Markup styles tab (every tool's default colors and formats, with Reset defaults). The menu and ribbon commands stay |
+| 0.56 | (this) | One page per wheel step now only applies when the whole page, side to side too, is in the window. Documents now open at Fit page by default; Preferences > Opening documents chooses Fit page, Fit width, Actual size or the last zoom, and whether to reopen at the last page |
+| 0.55 | 37f9190 | Preferences gains a You tab (author name for markups, set up my signature and initials) and a Markup styles tab (every tool's default colors and formats, with Reset defaults). The menu and ribbon commands stay |
 | 0.54 | 7746b6c | New File > Preferences (Ctrl+K): theme, ribbon and toolbar options, update check, CAD mouse, one page per wheel step, page lock, comment boxes, form field highlighting, grid and snapping, default OCR accuracy, all in one window |
 | 0.53 | 3d8d269 | Scroll one page per wheel step is now on by default (View menu to turn it off) |
 | 0.52 | e9236c7 | Edit objects now also selects vector shapes (lines, rectangles, curves, filled areas, CAD line work), like Bluebeam: Ctrl+click or drag a box to select several, then move, resize, rotate or delete them together. Colors, line styles and drawing order are kept |

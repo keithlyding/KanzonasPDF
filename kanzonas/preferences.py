@@ -87,6 +87,20 @@ class PreferencesDialog(QDialog):
         self.styles.resetRequested.connect(self._style_reset)
         self.kinds.setCurrentRow(0)
 
+        # Opening documents
+        from .document_view import DocumentView
+        page, form = self._tab(tabs, "Opening documents")
+        self.open_view = QComboBox()
+        for key, label in (("page", "Fit page (whole page in the window)"),
+                           ("width", "Fit width"), ("actual", "Actual size (100%)"),
+                           ("last", "The zoom it had when I closed it")):
+            self.open_view.addItem(label, key)
+        self.open_view.setCurrentIndex(max(0, self.open_view.findData(DocumentView.open_view)))
+        form.addRow("Zoom when opening:", self.open_view)
+        self.reopen = QCheckBox("Reopen at the page I was on last time")
+        self.reopen.setChecked(DocumentView.reopen_page)
+        form.addRow(self.reopen)
+
         # Mouse and scrolling
         page, form = self._tab(tabs, "Mouse and scrolling")
         for a in (win.a_cad_mouse, win.a_page_wheel):
@@ -182,6 +196,11 @@ class PreferencesDialog(QDialog):
         if self.lock.isChecked() != win.lock_btn.isChecked():
             win.lock_btn.setChecked(self.lock.isChecked())
         win.settings.setValue("ocr_accuracy", self.ocr.currentData())
+        from .document_view import DocumentView
+        DocumentView.open_view = self.open_view.currentData()
+        DocumentView.reopen_page = self.reopen.isChecked()
+        win.settings.setValue("open_view", DocumentView.open_view)
+        win.settings.setValue("reopen_page", "true" if self.reopen.isChecked() else "false")
         from . import annotations
         name = self.author.text().strip()
         if name != annotations.author():
