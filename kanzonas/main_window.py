@@ -86,6 +86,12 @@ MEASURE_TOOLS = [
     ("m_calibrate", "Calibrate Tape Measure", "", "Calibrate Tape Measure: drag along a known dimension, then type its real length"),
 ]
 EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
+    ("erasecontent", "Erase &content", "Shift+E",
+     "Erase content: drag a box; the page's own text, images and lines inside it are deleted "
+     "(lines crossing the edge are cut there). Shift+E"),
+    ("capture", "Ca&pture area", "Shift+P",
+     "Capture: drag a box to copy that area as a picture; Ctrl+V pastes it as an image "
+     "markup, or into Word or email. Shift+P"),
     ("redact", "&Redact (mark text or area)", "Shift+R",
      "Redact: drag across text, or drag a box over any area; then Apply redactions"),
     ("placeholder", "Add signature &placeholder", "",
@@ -2652,6 +2658,7 @@ class MainWindow(QMainWindow):
         "dist_h": "Horizontally", "dist_v": "Vertically", "z_front": "To front",
         "z_forward": "Forward", "z_backward": "Backward", "z_back": "To back",
         "tool_redact": "Redact", "tool_placeholder": "Placeholder",
+        "tool_erasecontent": "Erase content", "tool_capture": "Capture",
     }
     RIBBON_ICONS = {
         "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square",
@@ -2701,7 +2708,8 @@ class MainWindow(QMainWindow):
             lambda i: self._set_align_ref(self.ribbon_align_box.itemData(i)))
         r = self.ribbon = Ribbon()
         r.add_tab("Home", [
-            ("Tools", "large", [t["select"], t["hand"], t["edittext"]]),
+            ("Tools", "large", [t["select"], t["hand"], t["edittext"], t["capture"],
+                                t["erasecontent"]]),
             ("Mark up text", "small", [t["highlight"], t["underline"], t["strikeout"],
                                        t["comment"], t["note"], t["textbox"]]),
             ("Insert", "large", [t["stamp"], t["image"], t["attach"]]),
@@ -2715,7 +2723,7 @@ class MainWindow(QMainWindow):
             ("Callout & stamps", "large", [t["callout"], t["stamp"], t["image"], t["attach"]]),
             ("Shapes", "small", [t["rect"], t["ellipse"], t["cloud"], t["polygon"], t["line"],
                                  t["arrow"], t["polyline"], t["ink"]]),
-            ("Erase", "large", [t["eraser"]]),
+            ("Erase", "large", [t["eraser"], t["erasecontent"]]),
             ("Styles", "large", [self.a_props, self.a_chest]),
         ])
         r.add_tab("Measure", [

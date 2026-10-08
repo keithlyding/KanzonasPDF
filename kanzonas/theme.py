@@ -32,6 +32,7 @@ ICONS = {
     "rect": "rectangle-outline", "ellipse": "ellipse-outline", "cloud": "cloud-outline",
     "polygon": "vector-polygon", "line": "vector-line", "arrow": "arrow-top-right",
     "polyline": "vector-polyline", "ink": "draw", "stamp": "stamper", "eraser": "eraser",
+    "erasecontent": "eraser-variant", "capture": "camera-outline",
     "signature": "signature-freehand", "initials": "signature-text",
     "m_length": "ruler", "m_poly": "vector-polyline-edit", "m_area": "texture-box",
     "m_count": "counter", "m_calibrate": "tape-measure", "redact": "marker-cancel",

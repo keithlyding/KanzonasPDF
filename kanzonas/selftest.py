@@ -296,6 +296,23 @@ def run(log_path):
         return "(exact copy, password kept, bookmarks, Unicode, Find)"
     check("save keeps protection; edits stay correct", t_save_safety)
 
+    def t_erase():
+        # Erase content: text inside goes, a line crossing the box is cut at its edges
+        from . import erase
+        d = pymupdf.open()
+        pg = d.new_page()
+        pg.draw_line((50, 100), (550, 100), color=(1, 0, 0), width=2)
+        pg.insert_text((250, 150), "SECRET")
+        pg.insert_text((60, 400), "KEEP")
+        erase.erase(pg, pymupdf.Rect(200, 80, 400, 200))
+        d = pymupdf.open("pdf", d.tobytes())
+        assert d[0].get_text().split() == ["KEEP"], d[0].get_text()
+        segs = sorted((round(i[1].x), round(i[2].x)) for dr in d[0].get_drawings()
+                      for i in dr["items"])
+        assert segs == [(50, 200), (400, 550)], segs
+        return "(text removed, line cut at the box)"
+    check("erase content", t_erase)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

@@ -27,8 +27,9 @@ def _release():
         pass
 
 
-def put(kind, payload, text=""):
-    """kind: 'markups' (list of models) or 'pages' (PDF bytes)."""
+def put(kind, payload, text="", image=None):
+    """kind: 'markups' (list of models), 'pages' (PDF bytes) or 'capture' (picture of an
+    area). image: a QImage also offered to other programs."""
     if not _state.get("hooked"):
         import atexit
         from PySide6.QtCore import QCoreApplication
@@ -43,6 +44,8 @@ def put(kind, payload, text=""):
     md.setData(MIME, f"{kind}:{cid}".encode())
     if text:
         md.setText(text)
+    if image is not None:
+        md.setImageData(image)
     QGuiApplication.clipboard().setMimeData(md)
 
 

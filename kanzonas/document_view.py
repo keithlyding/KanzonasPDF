@@ -466,7 +466,15 @@ class DocumentView(QScrollArea):
 
     def wheelEvent(self, e):
         dy = e.angleDelta().y()
-        if self.cad_mouse and not e.modifiers() & Qt.ShiftModifier:
+        mods = e.modifiers()
+        if self.cad_mouse and mods & (Qt.ControlModifier | Qt.ShiftModifier):
+            # CAD mouse (Bluebeam-style): the wheel zooms, Ctrl+wheel scrolls up/down,
+            # Shift+wheel scrolls left/right
+            step = dy or e.angleDelta().x()
+            bar = self.horizontalScrollBar() if mods & Qt.ShiftModifier else self.verticalScrollBar()
+            bar.setValue(bar.value() - step)
+            e.accept()
+        elif self.cad_mouse:
             if dy:
                 vp = self.viewport().mapFromGlobal(QCursor.pos())
                 self.zoom_at(self.zoom * 1.15 ** (dy / 120.0), vp)
@@ -869,6 +877,14 @@ class DocumentView(QScrollArea):
             return self.paste_pages(payload, self.current_page() + 1)
         index, pt = self.paste_target()
         page = self.doc[index]
+        if kind == "capture":
+            disp = pymupdf.Point(pt) * page.rotation_matrix
+            box = pymupdf.Rect(disp.x, disp.y, disp.x + payload["w"], disp.y + payload["h"])
+            self._create(index, {"kind": "image", "props": self.tool_props("image"),
+                                 "rect": box * page.derotation_matrix,
+                                 "image_bytes": payload["png"], "text": "Captured area"},
+                         select=True)
+            return "image"
         if kind == "markups":
             box = None
             for m in payload:
@@ -962,6 +978,10 @@ class DocumentView(QScrollArea):
     def tool_color(self, tool):
         if tool == "redact":
             return QColor(0, 0, 0)
+        if tool == "erasecontent":
+            return QColor(220, 0, 0)
+        if tool == "capture":
+            return QColor(0, 120, 215)
         return QColor(self.tool_props(tool).get("stroke") or "#0078d7")
 
     # ---- creating annotations -------------------------------------------------
@@ -1023,6 +1043,15 @@ class DocumentView(QScrollArea):
             self.statusMessage.emit(f"Erased {len(xrefs)} annotation(s)")
             return
         props = self.tool_props(tool)
+        if tool in ("erasecontent", "capture"):
+            if is_click or rect.width < 2 or rect.height < 2:
+                self.statusMessage.emit("Drag a box around the area")
+                return
+            if tool == "capture":
+                self.capture_area(index, rect)
+            else:
+                self.erase_content(index, rect)
+            return
         if tool == "textbox":
             if is_click or rect.width < 20 or rect.height < 10:
                 rect = pymupdf.Rect(a.x, a.y, a.x + 200, a.y + 40)
@@ -1847,6 +1876,38 @@ class DocumentView(QScrollArea):
                         a.update()
             self.modify(do, list(hits))
         return sum(len(h) for h in hits.values())
+
+    def erase_content(self, index, rect):
+        """Erase content tool: permanently remove the page's own text, images and line art
+        inside rect; lines crossing the edge are cut there (see erase.py). Undo works."""
+        from . import erase
+        page = self.doc[index]
+        if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in page.annots()):
+            QMessageBox.information(self, "Erase content", "This page has redaction marks that "
+                                    "aren't applied yet. Apply or remove them first (erasing "
+                                    "would apply them too).")
+            return
+        self.clear_selection()
+        self.modify(lambda: erase.erase(self.doc[index], rect), [index])
+        self.statusMessage.emit("Erased the content inside the box (Ctrl+Z undoes it)")
+
+    def capture_area(self, index, rect):
+        """Capture tool (Bluebeam Snapshot): copy what's in the box, markups included, as a
+        picture. Ctrl+V here pastes it at the same size as an image markup; it also pastes
+        into Word, email and so on."""
+        from . import clip
+        from PySide6.QtGui import QImage
+        page = self.doc[index]
+        area = (pymupdf.Rect(rect) * page.rotation_matrix) & page.rect    # as displayed
+        if area.is_empty:
+            return
+        dpi = 300 if area.width * area.height < 200_000 else 200
+        pix = page.get_pixmap(clip=area, dpi=dpi, annots=True, alpha=False)
+        png = pix.tobytes("png")
+        img = QImage.fromData(png, "PNG")
+        clip.put("capture", {"png": png, "w": area.width, "h": area.height}, image=img)
+        self.statusMessage.emit("Captured: Ctrl+V pastes it as an image (also into Word or "
+                                "email)")
 
     REDACT_TAG = "Redaction: "         # Search & redact marks remember their term in /Contents
 
