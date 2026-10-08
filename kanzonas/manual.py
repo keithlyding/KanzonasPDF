@@ -299,6 +299,13 @@ thumbnails shrink to fit (the lock button then just reads Locked / Unlocked). Ta
 scroll sideways.</li>
 <li><b>Reorder:</b> unlock the page list (lock button above the thumbnails), then drag
 thumbnails; or Move page up / Move page down (Ctrl+Shift+Up / Down).</li>
+<li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine files): makes one
+new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
+open document is already in the list. Drag them, or use Move up / Move down / Sort by name, to
+set the order, top to bottom. With "Add a bookmark for each file" ticked, each file gets a
+bookmark named after it and keeps its own bookmarks underneath. Click Combine..., choose a name,
+and the combined PDF opens. Password-protected files ask for their password. The original files
+aren't changed.</li>
 <li>Pages menu: Insert pages from file, Insert blank page after current, Extract pages to new
 file, Delete page.</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>

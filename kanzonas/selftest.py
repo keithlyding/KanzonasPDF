@@ -206,6 +206,21 @@ def run(log_path):
         return "(TLS: " + QSslSocket.activeBackend() + ")"
     check("update check", t_updates)
 
+    def t_combine():
+        from .combine import combine
+        a, b = os.path.join(tmp, "ca.pdf"), os.path.join(tmp, "cb.pdf")
+        for path, n in ((a, 2), (b, 3)):
+            d = pymupdf.open()
+            for _ in range(n):
+                d.new_page()
+            d.save(path)
+        out = os.path.join(tmp, "combined.pdf")
+        assert combine([a, b], out) == 5
+        toc = pymupdf.open(out).get_toc()
+        assert [t[1:] for t in toc] == [["ca", 1], ["cb", 3]], toc
+        return "(5 pages, 2 bookmarks)"
+    check("combine files", t_combine)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

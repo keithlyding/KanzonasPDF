@@ -302,6 +302,9 @@ class MainWindow(QMainWindow):
         self.a_move_down = self._act("Move page do&wn", lambda: self._page_op("move", 1),
                                      "Ctrl+Shift+Down", "Move current page down (Ctrl+Shift+Down)")
         self.a_insert_pdf = self._act("&Insert pages from file...", self.insert_from_file)
+        self.a_combine = self._act("Co&mbine files...", self.combine_files,
+                                   tip="Combine several PDFs, in the order you choose, into one "
+                                       "new PDF")
         self.a_insert_blank = self._act("Insert &blank page after current",
                                         lambda: self._page_op("blank"))
         self.a_extract = self._act("&Extract pages to new file...", self.extract_pages)
@@ -512,6 +515,7 @@ class MainWindow(QMainWindow):
         self.recent_menu = m.addMenu("Open &recent")
         self._rebuild_recent()
         m.addActions([self.a_save, self.a_save_as])
+        m.addAction(self.a_combine)
         em = m.addMenu("&Export to")
         em.addActions(self.export_actions)
         m.addAction(self.a_compare)
@@ -1230,6 +1234,18 @@ class MainWindow(QMainWindow):
             v.move_page(cur, arg)
         elif op == "blank":
             v.insert_blank(cur + 1)
+
+    def combine_files(self):
+        from .combine import CombineDialog
+        v = self.view()
+        first = [v.path] if v is not None and v.path and os.path.isfile(v.path) else []
+        if first and v.dirty:
+            QMessageBox.information(self, "Combine files", "The current document has unsaved "
+                                    "changes; the combined PDF uses the saved file.")
+        dlg = CombineDialog(self, self.settings.value("last_dir", ""), first)
+        if dlg.exec() and dlg.result_path:
+            self.open_file(dlg.result_path)
+            self.statusBar().showMessage("Combined into " + dlg.result_path, 5000)
 
     def insert_from_file(self):
         v = self.view()
@@ -2546,7 +2562,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": "Apply selected", "a_apply_redact": "Apply all",
         "a_security": "Security", "a_remove_security": "Remove security", "a_unlock": "Unlock",
         "a_sanitize": "Sanitize", "a_hl_fields": "Highlight fields", "a_move_up": "Move up",
-        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file",
+        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_combine": "Combine files",
         "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
         "a_watermark": "Watermark", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
         "a_compress": "Compress", "a_compare": "Compare", "a_flatten": "Flatten",
@@ -2577,6 +2593,7 @@ class MainWindow(QMainWindow):
         "a_sanitize": "broom", "a_hl_fields": "format-color-highlight",
         "a_move_up": "arrow-up-bold-outline", "a_move_down": "arrow-down-bold-outline",
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
+        "a_combine": "file-document-multiple-outline",
         "a_insert_blank": "file-outline", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark",
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
@@ -2663,6 +2680,7 @@ class MainWindow(QMainWindow):
             ("Rotate", "large", [self.a_rot_l, self.a_rot_r]),
             ("Organize", "small", [self.a_move_up, self.a_move_down, self.a_del_page,
                                    self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
+            ("Combine", "large", [self.a_combine]),
             ("Document", "small", [self.a_header, self.a_watermark, self.a_bookmarks,
                                    self.a_attachments, self.a_compress, self.a_compare]),
             ("Convert", "large", [self.a_ocr, self.a_flatten]),
