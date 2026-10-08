@@ -333,7 +333,12 @@ Ctrl+Enter to finish, Escape to cancel.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
 &Omega; &Delta;, symbols, Chinese and other scripts), a built-in Unicode font. Only the letters
-used are stored, so files stay small. The status bar tells you which font was used. A line on a
+used are stored, so files stay small. The status bar tells you which font was used. If no
+font has a symbol you typed or that came from the PDF (a minus sign, a diameter sign, an
+invisible narrow space...), a broader installed font such as Segoe UI is tried, then a look-alike
+is used (- for the minus sign, &Oslash; for the diameter sign, a normal space for an invisible
+one). Characters that can't be written at all, such as emoji, are named in a message, and
+nothing is changed. A line on a
 page that still has unapplied redaction marks can't be edited until you apply or remove them.</li>
 </ul>
 

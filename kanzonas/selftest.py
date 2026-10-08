@@ -498,6 +498,32 @@ def run(log_path):
         return "(embedded font reused: " + used + ")"
     check("edit text with an embedded font", t_edit_embedded_font)
 
+    def t_edit_symbols():
+        # Edit text with symbols few fonts have: written (as look-alikes at worst), and
+        # characters that can't be written are refused by name, never written as others
+        from . import text_edit
+        d = pymupdf.open()
+        d.new_page().insert_text((72, 100), "Original", fontsize=12)
+        data = d.tobytes()
+        saved = text_edit._SYSTEM_FONTS
+        text_edit._SYSTEM_FONTS = {}                    # worst case: no broad fonts
+        try:
+            for new, want in (("Temp \u221210 C", "Temp -10 C"), ("\u2300 25", "\u00d8 25")):
+                doc = pymupdf.open("pdf", data)
+                text_edit.replace_line(doc[0], text_edit.text_lines(doc[0])[0][1], new)
+                got = pymupdf.open("pdf", doc.tobytes())[0].get_text().strip()
+                assert got == want, (new, got)
+            doc = pymupdf.open("pdf", data)
+            try:
+                text_edit.replace_line(doc[0], text_edit.text_lines(doc[0])[0][1], "Hi \U0001F600")
+                raise AssertionError("an emoji was written")
+            except ValueError as e:
+                assert "U+1F600" in str(e), e
+        finally:
+            text_edit._SYSTEM_FONTS = saved
+        return "(minus sign, diameter written; emoji refused by name)"
+    check("edit text with symbols", t_edit_symbols)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

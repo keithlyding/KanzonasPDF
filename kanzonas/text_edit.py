@@ -248,6 +248,69 @@ def _unicode_font(page, text):
     return None
 
 
+# Fonts that cover many symbols, tried when the text's own font and the bundled Unicode font
+# can't write every character (normalized names, as in _system_fonts()).
+BROAD_FONTS = ("segoeui", "segoeuisymbol", "arialunicodems", "cambriamath", "dejavusans",
+               "notosans", "notosanssymbols", "notosanssymbols2", "liberationsans")
+
+# Look-alikes for characters that often come out of PDF text (or are typed) but that few
+# fonts have, used only when no font can write the text as typed.
+LOOKALIKES = {"\u2212": "-", "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2043": "-",
+              "\u00ad": "", "\u200b": "", "\u200c": "", "\u200d": "", "\ufeff": "",
+              "\u2060": "", "\t": " ", "\u2002": " ", "\u2003": " ", "\u2007": " ",
+              "\u2008": " ", "\u2009": " ", "\u200a": " ", "\u202f": "\u00a0",
+              "\ufb00": "ff", "\ufb01": "fi", "\ufb02": "fl", "\ufb03": "ffi",
+              "\ufb04": "ffl", "\u2300": "\u00d8", "\u2610": "[ ]", "\u2611": "[x]",
+              "\u2612": "[x]", "\u2713": "\u221a", "\u2714": "\u221a"}
+
+
+def _broad_font(page, text):
+    """An installed font from BROAD_FONTS that has every character of text."""
+    fonts = _system_fonts()
+    for key in BROAD_FONTS:
+        path = fonts.get(key)
+        if not path:
+            continue
+        try:
+            font = pymupdf.Font(fontfile=path)
+            if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
+                name = "KZB" + key[:20]
+                page.insert_font(fontname=name, fontfile=path)
+                return name, font, {"fontfile": path}
+        except Exception:
+            continue
+    return None
+
+
+def _pick_font(page, span, text):
+    """(font name, Font, how to insert it) for text, or None to use a built-in PDF font."""
+    if any(ord(c) > 0xFFFF for c in text):
+        # emoji and other characters beyond U+FFFF: PDF text writing here truncates them to
+        # a different character, so never write them
+        raise LookupError
+    found = _embedded_font(page, span, text) or _system_font(page, span, text)
+    if not found and not _winansi_ok(text):
+        found = _unicode_font(page, text) or _broad_font(page, text)
+        if not found:
+            raise LookupError
+    return found
+
+
+def _unwritable(text):
+    """The characters of text that no font KanzonasPDF can use has (for the error message)."""
+    try:
+        uni = pymupdf.Font("cjk")
+    except Exception:
+        uni = None
+    out = []
+    for c in dict.fromkeys(text):
+        if ord(c) <= 0xFFFF and (c in "\n\r" or _winansi_ok(c) or
+                                 (uni is not None and uni.has_glyph(ord(c)))):
+            continue
+        out.append(c)
+    return out
+
+
 def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
     """Remove the line's text and write new_text in its place.
 
@@ -265,11 +328,21 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
     # 1) pick the font first, so nothing is deleted if the new text can't be written
     found = None
     if new_text.strip():
-        found = _embedded_font(page, main, new_text) or _system_font(page, main, new_text)
-        if not found and not _winansi_ok(new_text):
-            found = _unicode_font(page, new_text)
-            if not found:
-                raise ValueError("No available font has every character of the new text.")
+        try:
+            found = _pick_font(page, main, new_text)
+        except LookupError:
+            # retry with look-alikes for symbols few fonts have (minus sign, diameter,
+            # invisible spaces, ligatures...)
+            swapped = "".join(LOOKALIKES.get(c, c) for c in new_text)
+            try:
+                found = _pick_font(page, main, swapped)
+                new_text = swapped
+            except LookupError:
+                bad = _unwritable(swapped)
+                names = ", ".join(f"{c} (U+{ord(c):04X})" for c in bad[:6]) or "some characters"
+                raise ValueError("No font on this computer can write these characters of "
+                                 f"the new text: {names}. Remove or replace them and try "
+                                 "again.")
 
     # 2) remove only the text of this line (keep line art and images)
     dx, dy = line["dir"]
