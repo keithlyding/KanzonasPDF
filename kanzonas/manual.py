@@ -442,6 +442,14 @@ marks areas; Apply redactions permanently removes what's underneath.</li>
 <li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
 <b>Compress (save a smaller copy)</b>, <b>Compare documents</b> (changes clouded in red and
 blue), <b>Flatten</b> (make markups part of the page).</li>
+<li><b>Background...</b> (Document menu; Pages tab): puts a <b>solid color</b>, a <b>gradient</b>
+(two colors, top to bottom, bottom to top, left to right or diagonal) or a <b>picture</b> (Fit,
+Fill, Stretch to the page, or Center at its own size) behind everything on the page, at the
+opacity you choose. Apply it to the current page, all pages, or pages such as 1-3, 7. It's saved
+in the file, so everyone sees it, and it isn't picked up as text. Adding a background to a page
+that has one replaces it. <b>Remove background...</b> takes it off the current page, all pages or
+the pages you list; Ctrl+Z undoes either. A background can't show through a scanned page, because
+the scan is a picture covering the whole page; use a Watermark for those.</li>
 <li><b>Export</b> (File &gt; Export to): Microsoft Word (.docx), Microsoft Excel (.xlsx),
 Microsoft PowerPoint (.pptx), AutoCAD drawing (.dxf), Images (PNG), Images (JPEG),
 Plain text (.txt).</li>

@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QGridLayout, QFormLayout, QLineEdit,
                                QLabel, QSpinBox, QDoubleSpinBox, QComboBox, QDialogButtonBox,
                                QCheckBox, QGroupBox, QSlider, QHBoxLayout, QPushButton,
-                               QFileDialog)
+                               QFileDialog, QWidget)
 
 from .properties import ColorButton
 from . import annotations as A
@@ -294,4 +294,154 @@ class WatermarkDialog(QDialog):
             self.spec = {**common, "text": self.text.currentText().strip(),
                          "size": self.size.value(), "color": self.color.color(),
                          "angle": self.angle.value()}
+        self.accept()
+
+
+class PageChoice(QWidget):
+    """Current page / All pages / Pages: [1-3, 7]."""
+
+    def __init__(self, page_count, current, default_all=True):
+        super().__init__()
+        from PySide6.QtWidgets import QRadioButton
+        self.page_count, self.current = page_count, current
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        self.r_current = QRadioButton(f"Current page ({current + 1})")
+        self.r_all = QRadioButton("All pages")
+        self.r_some = QRadioButton("Pages:")
+        self.some = QLineEdit()
+        self.some.setPlaceholderText("e.g. 1-3, 7")
+        self.some.textEdited.connect(lambda _: self.r_some.setChecked(True))
+        for w in (self.r_current, self.r_all, self.r_some, self.some):
+            row.addWidget(w)
+        (self.r_all if default_all else self.r_current).setChecked(True)
+
+    def pages(self):
+        """Chosen page indices (raises ValueError for a bad range)."""
+        if self.r_current.isChecked():
+            return [self.current]
+        if self.r_all.isChecked():
+            return list(range(self.page_count))
+        if not self.some.text().strip():
+            raise ValueError("Type the pages, e.g. 1-3, 7.")
+        return parse_pages(self.some.text(), self.page_count)
+
+
+class BackgroundDialog(QDialog):
+    """Document > Background...: solid color, gradient or picture behind the page content."""
+
+    def __init__(self, parent, page_count, current):
+        super().__init__(parent)
+        from . import background as B
+        self.setWindowTitle("Background")
+        lay = QVBoxLayout(self)
+        form = QFormLayout()
+        self.kind = QComboBox()
+        for key, label in (("color", "Solid color"), ("gradient", "Gradient"),
+                           ("image", "Picture")):
+            self.kind.addItem(label, key)
+        form.addRow("Type", self.kind)
+        self.color = ColorButton()
+        self.color.set_color("#fff7e0")
+        self.color_label = QLabel("Color")
+        form.addRow(self.color_label, self.color)
+        self.color2 = ColorButton()
+        self.color2.set_color("#c8daf0")
+        form.addRow("Second color", self.color2)
+        self.direction = QComboBox()
+        for key, label in B.DIRECTIONS.items():
+            self.direction.addItem(label, key)
+        form.addRow("Direction", self.direction)
+        self.image = QLineEdit()
+        browse = QPushButton("Browse...")
+        browse.clicked.connect(self._browse)
+        img_row = QHBoxLayout()
+        img_row.addWidget(self.image)
+        img_row.addWidget(browse)
+        form.addRow("Picture", img_row)
+        self.fit = QComboBox()
+        for key, label in B.FITS.items():
+            self.fit.addItem(label, key)
+        form.addRow("Size", self.fit)
+        op_row = QHBoxLayout()
+        self.opacity = QSlider(Qt.Horizontal)
+        self.opacity.setRange(5, 100)
+        self.opacity.setValue(100)
+        self.op_label = QLabel("100%")
+        self.opacity.valueChanged.connect(lambda v: self.op_label.setText(f"{v}%"))
+        op_row.addWidget(self.opacity, 1)
+        op_row.addWidget(self.op_label)
+        form.addRow("Opacity", op_row)
+        self.pages = PageChoice(page_count, current)
+        form.addRow("Apply to", self.pages)
+        lay.addLayout(form)
+        note = QLabel("The background goes behind everything on the page and replaces one "
+                      "added here before. Document > Remove background takes it off again. "
+                      "It can't show through a scanned page (the scan covers the whole page).")
+        note.setWordWrap(True)
+        lay.addWidget(note)
+        self.error = QLabel()
+        self.error.setStyleSheet("color: #c00;")
+        lay.addWidget(self.error)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(self._ok)
+        btns.rejected.connect(self.reject)
+        lay.addWidget(btns)
+        self._rows = {"color2": self.color2, "direction": self.direction,
+                      "image": img_row, "fit": self.fit, "color": self.color}
+        self._form = form
+        self.kind.currentIndexChanged.connect(self._update)
+        self._update()
+        self.spec = None
+        self.page_list = None
+
+    def _show(self, field, on):
+        w = self._form.labelForField(field)
+        if isinstance(field, QHBoxLayout):
+            for i in range(field.count()):
+                field.itemAt(i).widget().setVisible(on)
+        else:
+            field.setVisible(on)
+        if w is not None:
+            w.setVisible(on)
+
+    def _update(self):
+        kind = self.kind.currentData()
+        self._show(self.color, kind != "image")
+        self.color_label.setText("First color" if kind == "gradient" else "Color")
+        self._show(self.color2, kind == "gradient")
+        self._show(self.direction, kind == "gradient")
+        self._show(self._rows["image"], kind == "image")
+        self._show(self.fit, kind == "image")
+        self.adjustSize()
+
+    def _browse(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Background picture", "",
+                                              "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)")
+        if path:
+            self.image.setText(path)
+
+    def _ok(self):
+        try:
+            pages = self.pages.pages()
+        except ValueError as e:
+            self.error.setText(str(e))
+            return
+        kind = self.kind.currentData()
+        spec = {"kind": kind, "opacity": self.opacity.value() / 100}
+        if kind == "image":
+            if not os.path.isfile(self.image.text()):
+                self.error.setText("Choose a picture file.")
+                return
+            try:
+                pymupdf.Pixmap(self.image.text())
+            except Exception:
+                self.error.setText("That file isn't a picture KanzonasPDF can read.")
+                return
+            spec.update(image=self.image.text(), fit=self.fit.currentData())
+        else:
+            spec["color"] = self.color.color()
+            if kind == "gradient":
+                spec.update(color2=self.color2.color(), direction=self.direction.currentData())
+        self.spec, self.page_list = spec, pages
         self.accept()

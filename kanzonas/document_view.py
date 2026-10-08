@@ -2277,6 +2277,20 @@ class DocumentView(QScrollArea):
         from . import page_tools
         self.modify(lambda: page_tools.add_watermark(self.doc, spec), spec["pages"])
 
+    def add_background(self, spec, pages):
+        from . import background
+        self.modify(lambda: background.apply(self.doc, pages, spec), pages)
+        self._obj_cache = {}
+        self.statusMessage.emit(f"Background added to {len(pages)} page(s) (Ctrl+Z undoes it)")
+
+    def remove_background(self, pages):
+        from . import background
+        if not pages:
+            self.statusMessage.emit("Those pages have no background to remove")
+            return
+        self.modify(lambda: background.remove_pages(self.doc, pages), pages)
+        self.statusMessage.emit(f"Background removed from {len(pages)} page(s)")
+
     # ---- digitally signed documents --------------------------------------------------------
     def check_digital_signatures(self):
         """Validate certificate signatures; signed files open read-only with a banner."""
