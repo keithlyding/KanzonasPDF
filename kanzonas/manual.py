@@ -25,8 +25,9 @@ File &gt; Open recent. Each file opens in its own tab, at the page and zoom you 
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Comment, Measure, Arrange, Review,
 Protect, Forms, Pages and View. Open, save, print, undo and redo sit left of the tabs, and the
-Find box sits right of them. The zoom box (with zoom out / zoom in) and the page number (with
-&#9664; &#9654;) are at the bottom right, in the status bar. The ribbon is compact: two rows of
+Find box sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
+previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
+zoom box with zoom out / zoom in, like PDF-XChange Editor. The ribbon is compact: two rows of
 buttons. If the window is too narrow for a tab, scroll it sideways with the mouse wheel or the
 thin bar under it. View &gt; <b>Show group names on ribbon</b> adds a name under each group of
 buttons (a little taller, like Microsoft Office). View &gt; <b>Show menu bar</b> (Ctrl+Shift+M)
@@ -35,6 +36,10 @@ of the ribbon tabs has every menu, and all keyboard shortcuts still work. <b>Col
 (Ctrl+F1, or double-click a tab) shows only the tab names; click a tab to open it again. Untick
 View &gt; <b>Ribbon (instead of toolbars)</b> for the classic compact toolbars (zoom, page number
 and Find then go back to the top toolbar). The menus always have every command.</li>
+<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers and
+Objects panels; click the lit icon again to fold the panel away and get more room for the page.
+The Markups list and Attachments icons are there too. View &gt; <b>Show panel strip (left
+edge)</b> hides the strip; the panels then show their names as tabs at the bottom instead.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
 saying what it does and its keyboard shortcut.</li>
@@ -191,8 +196,13 @@ for next time. With a markup selected, it changes <b>that markup</b>.</li>
 <li>Line color, fill (or <b>No fill</b>), <b>No border</b> for boxes and shapes, text color,
 line width, font size, arrowheads, cloud border, opacity.</li>
 <li><b>Reset defaults</b> puts a tool back to its original style.</li>
-<li><b>Tool chest</b> (F8): save a styled markup to reuse with one click, and share chests
-with others (export / import).</li>
+<li><b>Tool chest</b> (F8): your favorite markup styles, one click away. Click an entry, then
+draw: you get that tool with that color and size, and the tool's normal settings stay as they
+were. It starts with a few ready-made entries (red revision cloud, yellow and green highlight,
+red arrow, blue box, red note text box, yellow callout, APPROVED and REJECTED stamps); rename
+or delete them (right-click). To save your own: draw and style a markup, select it and click
+<b>Add</b>. <b>More</b> &gt; Add the starter tools brings the ready-made ones back; Export /
+Import tool chest shares a chest with others.</li>
 </ul>
 
 <h2 id="rotate">Rotating markups</h2>

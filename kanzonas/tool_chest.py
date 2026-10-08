@@ -27,9 +27,31 @@ def tool_for(model):
     return KIND_TOOL.get(kind)
 
 
+def _starter():
+    """A few ready-made tools so a new chest isn't empty (delete or rename them freely)."""
+    def t(name, tool, **change):
+        props = dict(A.DEFAULTS[tool])
+        props.update(change)
+        return {"name": name, "tool": tool, "props": props}
+    return [
+        t("Red revision cloud", "cloud", stroke="#d00000", width=1.5),
+        t("Yellow highlight", "highlight", stroke="#ffdc00"),
+        t("Green highlight", "highlight", stroke="#7ee07e"),
+        t("Red arrow", "arrow", stroke="#d00000", width=2.0),
+        t("Blue box", "rect", stroke="#0050ff", width=2.0),
+        t("Red note text box", "textbox", text_color="#d00000", stroke="#d00000"),
+        t("Yellow callout", "callout", fill="#ffffd0"),
+        t("APPROVED stamp", "stamp", label="APPROVED", stroke="#008000"),
+        t("REJECTED stamp", "stamp", label="REJECTED", stroke="#c00000"),
+    ]
+
+
 def load():
+    raw = A._settings().value("tool_chest", None)
+    if raw is None:                       # never used: start with the starter set
+        return _starter()
     try:
-        items = json.loads(A._settings().value("tool_chest", "[]") or "[]")
+        items = json.loads(raw or "[]")
         return [i for i in items if i.get("tool") in A.DEFAULTS]
     except (ValueError, TypeError):
         return []
@@ -53,8 +75,10 @@ class ToolChestPanel(QWidget):
         super().__init__()
         lay = QVBoxLayout(self)
         lay.setContentsMargins(4, 4, 4, 4)
-        hint = QLabel("Click a tool to use it. Save a selected markup's style with "
-                      "“Add”.")
+        hint = QLabel("Your favorite markup styles, one click away. Click one, then draw on "
+                      "the page: it uses that tool with that color and size, without changing "
+                      "the tool's normal settings. To save your own: draw and style a markup, "
+                      "select it, click “Add”.")
         hint.setWordWrap(True)
         hint.setStyleSheet("color: gray;")
         lay.addWidget(hint)
@@ -71,6 +95,7 @@ class ToolChestPanel(QWidget):
         m = QMenu(more)
         m.addAction("Rename...", self._rename)
         m.addAction("Delete", self._delete)
+        m.addAction("Add the starter tools", self._add_starter)
         m.addSeparator()
         m.addAction("Export tool chest...", self._export)
         m.addAction("Import tool chest...", self._import)
@@ -94,6 +119,12 @@ class ToolChestPanel(QWidget):
         if not ok or not name.strip():
             return
         self.items.append({"name": name.strip(), "tool": tool, "props": dict(props)})
+        save(self.items)
+        self._fill()
+
+    def _add_starter(self):
+        have = {i["name"] for i in self.items}
+        self.items += [i for i in _starter() if i["name"] not in have]
         save(self.items)
         self._fill()
 

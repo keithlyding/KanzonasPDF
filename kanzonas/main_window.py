@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, Q
                                QVBoxLayout, QHBoxLayout, QMenu, QProgressDialog,
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
-                               QPushButton)
+                               QPushButton, QSlider)
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from . import __version__, annotations, export, signatures, theme
@@ -149,6 +149,7 @@ class MainWindow(QMainWindow):
         self._thumb_timer = QTimer(self, interval=0)
         self._thumb_timer.timeout.connect(self._thumb_step)
         self._build_split()
+        self._build_panel_strip()
         self._apply_icons()
         self._apply_saved_shortcuts()
         self._update_ui()
@@ -160,6 +161,61 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(geo)
 
     # ---- construction -----------------------------------------------------
+    def _build_panel_strip(self):
+        """PDF-XChange style icon strip on the left edge: click an icon to open that panel,
+        click it again to fold the panel away (the strip stays)."""
+        from . import theme
+        ps = self.panel_strip = QToolBar("Panels")
+        ps.setObjectName("panel_strip")
+        ps.setMovable(False)
+        ps.setIconSize(QSize(18, 18))
+        ps.setOrientation(Qt.Vertical)
+        ps.toggleViewAction().setVisible(False)
+        self.addToolBar(Qt.LeftToolBarArea, ps)
+        self.strip_actions = []
+        for i, (label, icon) in enumerate((("Pages", "file-multiple-outline"),
+                                           ("Bookmarks", "bookmark-outline"),
+                                           ("Layers", "layers-outline"),
+                                           ("Objects", "shape-outline"))):
+            a = QAction(theme.icon_named(icon), label, self, checkable=True)
+            a.setToolTip(f"{label} panel (click again to fold it away)")
+            a.triggered.connect(lambda _=False, k=i: self._strip_clicked(k))
+            ps.addAction(a)
+            self.strip_actions.append(a)
+        ps.addSeparator()
+        for a, icon in ((self.a_markups, "comment-text-multiple-outline"),
+                        (self.a_attachments, "paperclip")):
+            if a.icon().isNull():
+                a.setIcon(theme.icon_named(icon))
+            ps.addAction(a)
+        self.a_panel_strip = QAction("Show panel &strip (left edge)", self, checkable=True)
+        self.a_panel_strip.setToolTip("Icons on the left edge that open and fold the Pages, "
+                                      "Bookmarks, Layers and Objects panels")
+        self.a_panel_strip.setChecked(self.settings.value("panel_strip", "true") != "false")
+        self.a_panel_strip.toggled.connect(self._toggle_panel_strip)
+        self.view_menu.addAction(self.a_panel_strip)
+        self.left_tabs.currentChanged.connect(lambda _i: self._sync_strip())
+        self.dock.visibilityChanged.connect(lambda _v: self._sync_strip())
+        self._toggle_panel_strip(self.a_panel_strip.isChecked())
+
+    def _strip_clicked(self, k):
+        if self.dock.isVisible() and self.left_tabs.currentIndex() == k:
+            self.dock.hide()                    # second click folds the panel away
+        else:
+            self.left_tabs.setCurrentIndex(k)
+            self.dock.show()
+        self._sync_strip()
+
+    def _sync_strip(self):
+        for i, a in enumerate(getattr(self, "strip_actions", [])):
+            a.setChecked(self.dock.isVisible() and self.left_tabs.currentIndex() == i)
+
+    def _toggle_panel_strip(self, on):
+        self.settings.setValue("panel_strip", "true" if on else "false")
+        self.panel_strip.setVisible(on)
+        self.left_tabs.tabBar().setVisible(not on)     # the strip replaces the tabs
+        self._sync_strip()
+
     def _group_widget(self, items):
         """A row of actions and widgets that can live in a toolbar or the status bar."""
         w = QWidget()
@@ -174,6 +230,7 @@ class MainWindow(QMainWindow):
                 b.setIconSize(QSize(16, 16))
                 it = b
             h.addWidget(it)
+        w.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         return w
 
     def _act(self, text, slot, shortcut=None, tip=None):
@@ -472,7 +529,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_author)
         m.addSeparator()
         m.addActions([self.a_find, self.a_find_next, self.a_find_prev])
-        m = mb.addMenu("&View")
+        m = self.view_menu = mb.addMenu("&View")
         m.addActions([self.a_zoom_in, self.a_zoom_out, self.a_actual, self.a_fit_width,
                       self.a_fit_page])
         m.addSeparator()
@@ -611,8 +668,29 @@ class MainWindow(QMainWindow):
         self.next_page_btn.setToolTip("Next page (Right arrow key)")
         self.next_page_btn.clicked.connect(lambda: self._step_page(1))
         self.page_total = QLabel(" / 0 ")
-        self.nav_group = self._group_widget([QLabel(" Page "), self.prev_page_btn, self.page_spin,
-                                             self.next_page_btn, self.page_total])
+        self.first_page_btn = QToolButton()
+        self.first_page_btn.setText("\u23EE")
+        self.first_page_btn.setToolTip("First page")
+        self.first_page_btn.clicked.connect(lambda: self._step_page(-10 ** 9))
+        self.last_page_btn = QToolButton()
+        self.last_page_btn.setText("\u23ED")
+        self.last_page_btn.setToolTip("Last page")
+        self.last_page_btn.clicked.connect(lambda: self._step_page(10 ** 9))
+        for b in (self.first_page_btn, self.prev_page_btn, self.next_page_btn, self.last_page_btn):
+            b.setAutoRaise(True)
+        self.nav_group = self._group_widget([QLabel(" Page "), self.first_page_btn,
+                                             self.prev_page_btn, self.page_spin,
+                                             self.next_page_btn, self.last_page_btn,
+                                             self.page_total])
+        # bottom-bar extras for the ribbon layout (PDF-XChange style): fit buttons and a slider
+        self.zoom_slider = QSlider(Qt.Horizontal)
+        self.zoom_slider.setRange(10, 800)
+        self.zoom_slider.setFixedWidth(110)
+        self.zoom_slider.setToolTip("Zoom: drag to zoom from 10% to 800%")
+        self.zoom_slider.sliderMoved.connect(
+            lambda val: self.view() and self.view().set_zoom(val / 100))
+        self.view_group = self._group_widget([self.a_fit_page, self.a_fit_width, self.a_actual,
+                                              self.zoom_slider])
         self._nav_group_act = tb.addWidget(self.nav_group)
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -831,7 +909,9 @@ class MainWindow(QMainWindow):
         self.a_redo.setEnabled(has and v.can_redo())
         self.page_spin.setEnabled(has)
         self.prev_page_btn.setEnabled(has and v.current_page() > 0)
+        self.first_page_btn.setEnabled(self.prev_page_btn.isEnabled())
         self.next_page_btn.setEnabled(has and v.current_page() < v.page_count() - 1)
+        self.last_page_btn.setEnabled(self.next_page_btn.isEnabled())
         if has:
             self.page_spin.blockSignals(True)
             self.page_spin.setMaximum(v.page_count())
@@ -839,6 +919,10 @@ class MainWindow(QMainWindow):
             self.page_spin.blockSignals(False)
             self.page_total.setText(f" / {v.page_count()} ")
             self.zoom_box.setEditText(f"{round(v.zoom * 100)}%")
+            if not self.zoom_slider.isSliderDown():
+                self.zoom_slider.blockSignals(True)
+                self.zoom_slider.setValue(round(v.zoom * 100))
+                self.zoom_slider.blockSignals(False)
             self.scale_label.setText(v.page_scale_text(v.current_page()))
             name = os.path.basename(v.path) + (" [protected]" if v.read_only else "")
             self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {APP_TITLE}")
@@ -2671,13 +2755,15 @@ class MainWindow(QMainWindow):
             for act in (self._zoom_group_act, self._nav_group_act, self._search_act):
                 tb.removeAction(act)
             self._zoom_group_act = self._nav_group_act = self._search_act = None
-            sb.addPermanentWidget(self.zoom_group)
             sb.addPermanentWidget(self.nav_group)
+            sb.addPermanentWidget(self.view_group)
+            sb.addPermanentWidget(self.zoom_group)
             self.ribbon_right.layout().insertWidget(0, self.search)
             self.search.setFixedWidth(170)
         elif not ribbon and not in_tb:
             sb.removeWidget(self.zoom_group)
             sb.removeWidget(self.nav_group)
+            sb.removeWidget(self.view_group)
             self.search.setMinimumWidth(0)
             self.search.setMaximumWidth(260)
             self._zoom_group_act = tb.insertWidget(self.a_fit_width, self.zoom_group)
@@ -2685,6 +2771,7 @@ class MainWindow(QMainWindow):
             self._search_act = tb.addWidget(self.search)
         for w in (self.zoom_group, self.nav_group, self.search):
             w.show()
+        self.view_group.setVisible(ribbon)
         tb.setVisible(not ribbon)
         self.menuBar().setVisible(not ribbon or self.a_menu_bar.isChecked())
         self.menu_btn.setVisible(ribbon and not self.a_menu_bar.isChecked())
