@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.52 | (this) | Edit objects now also selects vector shapes (lines, rectangles, curves, filled areas, CAD line work), like Bluebeam: Ctrl+click or drag a box to select several, then move, resize, rotate or delete them together. Colors, line styles and drawing order are kept |
+| 0.53 | (this) | Scroll one page per wheel step is now on by default (View menu to turn it off) |
+| 0.52 | e9236c7 | Edit objects now also selects vector shapes (lines, rectangles, curves, filled areas, CAD line work), like Bluebeam: Ctrl+click or drag a box to select several, then move, resize, rotate or delete them together. Colors, line styles and drawing order are kept |
 | 0.51 | 3d9ae76 | New View menu option Scroll one page per wheel step: when the whole page fits in the window, each wheel step jumps to the next or previous page |
 | 0.50 | e0b2c63 | New Edit objects tool (Shift+O): select a picture that is part of the page itself, then drag to move it, drag handles to resize, Delete to delete, right-click to rotate, copy or save it. Only that picture changes (drawing order and image quality are kept). New self-test check |
 | 0.49 | f120a8f | Capture area now pastes vector content in KanzonasPDF: lines and text stay sharp at any zoom and in print (Word, email and other programs still get a picture). Only what's inside the box goes into the copy. New self-test check |

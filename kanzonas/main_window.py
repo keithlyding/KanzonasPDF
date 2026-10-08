@@ -432,7 +432,7 @@ class MainWindow(QMainWindow):
                                           "of the scroll wheel moves to the next or previous "
                                           "page")
         self.a_page_wheel.setCheckable(True)
-        self.a_page_wheel.setChecked(self.settings.value("page_wheel", "false") == "true")
+        self.a_page_wheel.setChecked(self.settings.value("page_wheel", "true") == "true")
         DocumentView.page_wheel = self.a_page_wheel.isChecked()
         # grid and snapping (shared by all open documents, remembered)
         self.a_grid = self._act("Show &grid", self._apply_grid_settings,
