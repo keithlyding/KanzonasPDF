@@ -24,7 +24,7 @@ app = QApplication(sys.argv)
 mark = QImage("assets/kanzonas-mark-source.png")
 
 
-RED_TOP, RED_BOTTOM = "#ff6a52", "#8e0a0a"      # red tile: the color people link with PDFs
+RED_TOP, RED_BOTTOM = "#b30000", "#6e0000"      # red tile: the color people link with PDFs
 
 
 def _tile(p, size_units, radius):
