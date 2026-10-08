@@ -9,6 +9,12 @@ on:
 permissions:
   contents: write
 
+# a newer push to the same branch cancels the older, still-running build (only the newest
+# matters, and it publishes everything up to it); tag builds are never cancelled
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/heads/') }}
+
 jobs:
   build:
     runs-on: windows-latest
