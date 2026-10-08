@@ -5,7 +5,7 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.73 | (this) | Signing no longer adds the date: a separate Date tool (Ctrl+;, Protect tab) writes today's date where you click, in the format set in Preferences > You. After placing a signature, initials or a date, the Hand or Select tool (whichever was used last) is active again. Placed signatures and initials can't be moved or deleted with Edit objects. New self-test check |
+| 0.73 | (this) | Signing no longer adds the date: a separate Date tool (Ctrl+;, Protect tab) writes today's date where you click, in the format set in Preferences > You. After placing a signature, initials or a date, the Hand or Select tool (whichever was used last) is active again. |
 | 0.72 | 5058b7b | Set up my signature / Set up my initials removed from the Protect tab and menu (they read like "sign this document" but replace your saved signature); they stay in File > Preferences > You, and placing a signature still asks you to set one up the first time |
 | 0.71 | 04af3d1 | Signature and initials size: drag a box when placing them to set the width, and set the click size in Preferences > You. Preferences > Pages and display now has all the grid and snapping settings in one group (it had separate checkboxes plus a Grid settings window that could undo each other) |
 | 0.70 | f958e23 | The ribbon's Comment tab is now called Markup (it holds highlights, notes, shapes, stamps, the pen and erasers, not only comments) |

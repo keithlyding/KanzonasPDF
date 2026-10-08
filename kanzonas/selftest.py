@@ -524,24 +524,6 @@ def run(log_path):
         return "(minus sign, diameter written; emoji refused by name)"
     check("edit text with symbols", t_edit_symbols)
 
-    def t_signature_locked():
-        # a placed signature isn't offered to Edit objects; an ordinary picture still is
-        from . import page_objects
-        from .document_view import DocumentView
-        d = pymupdf.open()
-        pg = d.new_page()
-        pm = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 4, 3), False)
-        pg.insert_image((300, 600, 400, 675), stream=pm.tobytes("png"))
-        fake = type("V", (), {"SIG_KEY": DocumentView.SIG_KEY, "sig_images": {"signature": (pymupdf.Pixmap(
-            pymupdf.csRGB, (0, 0, 6, 2), False).tobytes("png"), None)}})()
-        DocumentView._draw_signature(fake, pg, "signature", pymupdf.Rect(100, 100, 250, 150))
-        d = pymupdf.open("pdf", d.tobytes())
-        kinds = [(it["kind"], tuple(round(v) for v in it["rect"]))
-                 for it in page_objects.Objects(d[0]).items]
-        assert kinds == [("picture", (300, 600, 400, 675))], kinds
-        assert len(d[0].get_image_info()) == 2
-        return "(signature excluded, other picture editable)"
-    check("signatures locked from Edit objects", t_signature_locked)
 
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")

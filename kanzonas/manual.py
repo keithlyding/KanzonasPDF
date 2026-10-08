@@ -401,8 +401,8 @@ initials.... To choose the size, <b>drag a box</b> instead of clicking: it's pla
 drag (the height follows its proportions). The size used for a click is set in File &gt;
 Preferences &gt; You (2 in for a signature and 0.75 in for initials to start with). Afterwards the
 Hand or Select tool, whichever you used last, is active again, so you don't place a second one by
-accident. Placed signatures and initials can't be moved or deleted with Edit objects (Ctrl+Z right
-after placing removes one).</li>
+accident. Like any picture on the page, a placed signature can be moved or deleted with Edit
+objects (or Ctrl+Z right after placing it).</li>
 <li><b>Date</b> (Ctrl+;, Protect tab and menu): click to write today's date there, for example
 next to a signature or in a document's own date field. It's separate from signing, so a form
 that already prints a date doesn't get two. The format (such as 10/08/2026 or October 08, 2026)
