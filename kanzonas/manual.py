@@ -300,8 +300,13 @@ the scale.</li>
 <li><b>Page list size:</b> drag the Pages panel's edge to make it as narrow as you like; the
 thumbnails shrink to fit (the lock button then just reads Locked / Unlocked). Tabs that don't fit
 scroll sideways.</li>
-<li><b>Reorder:</b> unlock the page list (lock button above the thumbnails), then drag
-thumbnails; or Move page up / Move page down (Ctrl+Shift+Up / Down).</li>
+<li><b>Page order lock:</b> the lock button above the thumbnails (locked by default) protects
+the page order: while it's locked, nothing moves, adds or removes pages, whether by dragging,
+the Pages menu, the ribbon or a shortcut (Move page up / down, Delete page, Insert pages, Insert
+blank page, Cut, Paste and Duplicate pages). Using one of those asks whether to unlock first.
+Copying pages, rotating and extracting work while locked.</li>
+<li><b>Reorder:</b> unlock the page list, then drag thumbnails; or Move page up / Move page down
+(Ctrl+Shift+Up / Down).</li>
 <li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine files): makes one
 new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
 open document is already in the list. Drag them, or use Move up / Move down / Sort by name, to
