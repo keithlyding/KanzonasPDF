@@ -56,13 +56,17 @@ any PDF &gt; Open with &gt; Choose another app &gt; KanzonasPDF, and tick "Alway
 <li><b>Update:</b> run the newer setup over the old one; there's no need to uninstall first.
 It closes KanzonasPDF if it's running, installs in the same place, and keeps your settings,
 signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
-<li><b>Portable version</b> (<b>-portable.zip</b>): no installation. Unzip the KanzonasPDF folder
+<li><b>Portable version</b> (<b>KanzonasPDF-portable.zip</b>): no installation. Unzip the KanzonasPDF folder
 anywhere (a USB stick, a network drive, your Documents) and run KanzonasPDF.exe. Because of the
 portable.txt file inside, your settings, signatures, stamp images and certificate are kept in a
 <b>data</b> folder next to the program instead of the computer's registry and user folders, so
 they travel with the folder. The window title and Help &gt; About say <b>(portable)</b> when
-this copy is running in portable mode. Keep the whole folder together. To update, replace everything
-except the data folder (or unzip the new version and copy your old data folder into it).
+this copy is running in portable mode. Keep the whole folder together. The download has the same name for every version
+(KanzonasPDF-portable.zip, with a KanzonasPDF folder inside), so the program's path never has to
+change: <b>to update</b>, close KanzonasPDF and unzip the new download over the same folder,
+replacing the files. Your data folder is kept, and if you made KanzonasPDF.exe your default PDF
+app (Windows Settings &gt; Apps &gt; Default apps), it stays the default. Tip: if Windows'
+Extract All suggests a new folder name, change it to the folder you already use.
 (Opening an attached file still uses Windows' temporary folder.)</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
 A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
@@ -71,7 +75,7 @@ your browser. The automatic check instead shows a notice at the bottom of the wi
 With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
 quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your
 network blocks GitHub, the automatic check simply finds nothing.</li>
-<li>The <b>-windows.zip</b> download is the same program without the portable.txt file: it runs
+<li>The <b>KanzonasPDF-windows.zip</b> download is the same program without the portable.txt file: it runs
 from any folder but stores settings on the computer like the installed version.</li>
 </ul>
 
