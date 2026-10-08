@@ -1,0 +1,550 @@
+"""Built-in user manual (Help > User manual, F1).
+
+The manual is kept here as HTML so it is always packaged with the app (no data files).
+Each <h2 id="..."> becomes an entry in the contents list.
+"""
+
+import re
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QTextDocument, QKeySequence, QShortcut
+from PySide6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QListWidget, QTextBrowser,
+                               QLineEdit, QPushButton, QSplitter, QWidget, QLabel)
+
+MANUAL = """
+<h1>KanzonasPDF user manual</h1>
+<p>A free PDF reader and editor. Use the contents list on the left, or type in the
+<b>Find in manual</b> box above.</p>
+
+<h2 id="start">Getting started</h2>
+<ul>
+<li><b>Open a PDF:</b> File &gt; Open (Ctrl+O), drag a file onto the window, or pick one from
+File &gt; Open recent. Each file opens in its own tab, at the page and zoom you left it.</li>
+<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Undo is Ctrl+Z, redo is Ctrl+Y.</li>
+<li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
+Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
+<li><b>Ribbon:</b> commands are grouped on tabs: Home, Comment, Measure, Arrange, Review,
+Protect, Forms, Pages and View. Open, save, print, undo and redo sit left of the tabs, and the
+Find box sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
+previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
+zoom box with zoom out / zoom in, like PDF-XChange Editor. The ribbon is compact: two rows of
+buttons. If the window is too narrow for a tab, scroll it sideways with the mouse wheel or the
+thin bar under it. View &gt; <b>Show group names on ribbon</b> adds a name under each group of
+buttons (a little taller, like Microsoft Office). View &gt; <b>Show menu bar</b> (Ctrl+Shift+M)
+hides or shows the File, Edit, View... menu bar; when it's hidden, the &#9776; button at the right
+of the ribbon tabs has every menu, and all keyboard shortcuts still work. <b>Collapse ribbon</b>
+(Ctrl+F1, or double-click a tab) shows only the tab names; click a tab to open it again. Untick
+View &gt; <b>Ribbon (instead of toolbars)</b> for the classic compact toolbars (zoom, page number
+and Find then go back to the top toolbar). The menus always have every command.</li>
+<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers and
+Objects panels; click the lit icon again to fold the panel away and get more room for the page.
+The Markups list and Attachments icons are there too. View &gt; <b>Show panel strip (left
+edge)</b> hides the strip; the panels then show their names as tabs at the bottom instead.</li>
+<li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
+toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
+saying what it does and its keyboard shortcut.</li>
+</ul>
+
+<h2 id="install">Installing, updating and uninstalling</h2>
+<ul>
+<li>Run <b>KanzonasPDF-v&lt;version&gt;-setup.exe</b>. No administrator rights are needed: it
+installs for your Windows account (choose "all users" on the first page if you're an admin and
+want that). It adds a Start-menu shortcut, optionally a desktop shortcut, and offers
+KanzonasPDF as an app for opening PDFs.</li>
+<li><b>Make it your default PDF app:</b> Windows doesn't let installers do this silently. Right-click
+any PDF &gt; Open with &gt; Choose another app &gt; KanzonasPDF, and tick "Always use this app".</li>
+<li>Opening another PDF while KanzonasPDF is running opens it as a new tab in the same window.</li>
+<li><b>Update:</b> run the newer setup over the old one; there's no need to uninstall first.
+It closes KanzonasPDF if it's running, installs in the same place, and keeps your settings,
+signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
+<li><b>Portable version</b> (<b>-portable.zip</b>): no installation. Unzip the KanzonasPDF folder
+anywhere (a USB stick, a network drive, your Documents) and run KanzonasPDF.exe. Because of the
+portable.txt file inside, your settings, signatures, stamp images and certificate are kept in a
+<b>data</b> folder next to the program instead of the computer's registry and user folders, so
+they travel with the folder. Keep the whole folder together. To update, replace everything
+except the data folder (or unzip the new version and copy your old data folder into it).
+(Opening an attached file still uses Windows' temporary folder.)</li>
+<li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
+A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
+your browser. The automatic check instead shows a notice at the bottom of the window with
+<b>Download</b>, <b>Skip this version</b> and <b>Later</b>. Nothing is downloaded or installed by itself.
+With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
+quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your
+network blocks GitHub, the automatic check simply finds nothing.</li>
+<li>The <b>-windows.zip</b> download is the same program without the portable.txt file: it runs
+from any folder but stores settings on the computer like the installed version.</li>
+</ul>
+
+<h2 id="navigate">Moving around</h2>
+<ul>
+<li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number (bottom right
+with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
+<li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
+Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1).</li>
+<li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
+<li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
+(works with any tool). Shift+Left/Right scrolls sideways.</li>
+<li><b>CAD-style mouse (wheel zooms, hold wheel to pan)</b> (View menu, toolbar button, F11):
+like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the wheel down
+moves the sheet, so you can navigate a drawing while any markup tool is active. Hold Shift to
+scroll with the wheel instead. Your choice is remembered.</li>
+<li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.</li>
+<li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.</li>
+</ul>
+
+<h2 id="select">Selecting and editing markups</h2>
+<ul>
+<li><b>Select tool (V):</b> drag across text to select it (it stays highlighted; see Copy,
+cut and paste below). Click a markup to select it, then drag
+it to move it, drag a square handle to resize it, or change its look in the Properties panel.</li>
+<li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
+it too, so you don't have to switch back to the arrow.</li>
+<li><b>Several markups:</b> Ctrl+click each one, or drag a box from empty space with the Select
+tool (Ctrl+drag always draws a selection box). Drag any selected markup to move them all;
+Delete removes them all; Properties changes apply to all of them.</li>
+<li><b>Delete:</b> Delete or Backspace. <b>Edit a note's text:</b> double-click it.</li>
+<li><b>Escape</b> clears the selection; <b>Escape twice</b> switches back to the Select (arrow) tool.</li>
+</ul>
+
+<h2 id="clipboard">Copy, cut and paste</h2>
+<ul>
+<li><b>Text:</b> with the Select tool, drag across text; the selection stays highlighted.
+<b>Copy</b> (Ctrl+C) puts it on the clipboard; <b>Cut</b> (Ctrl+X) also removes those letters
+from the page (Undo brings them back). <b>Select all text</b> (Ctrl+A) selects the whole page's
+text. Escape or a click elsewhere clears the selection.</li>
+<li><b>Markups:</b> select one or more markups, then Copy or Cut. <b>Paste</b> (Ctrl+V) puts them
+where the mouse is, on any page or in another open document.</li>
+<li><b>Duplicate</b> (Ctrl+D): copies of the selected markups appear slightly offset, selected
+so you can drag them into place. In the page list, Ctrl+D duplicates the selected pages.</li>
+<li><b>Pictures and text from other programs:</b> Paste a copied picture (e.g. a screenshot)
+as an image markup, or copied text as a text box, where the mouse is.</li>
+<li><b>Pages:</b> unlock the page list (lock button above the thumbnails), select thumbnails
+(Ctrl+click or Shift+click for several), then right-click or use the Pages menu:
+<b>Copy pages</b>, <b>Cut pages</b>, <b>Paste pages after selected</b> and <b>Duplicate pages</b>. With the page list clicked, Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+A work on pages. Pages
+can be pasted into another open document too.</li>
+</ul>
+
+<h2 id="markup">Text markup and comments</h2>
+<ul>
+<li><b>Highlight</b> (Ctrl+Shift+H), <b>Underline</b> (Ctrl+Shift+U), <b>Strike</b>
+(Ctrl+Shift+X): drag across the text. Selection works letter by letter.</li>
+<li><b>Comment</b> (C): select text, type your comment. The text is marked (highlight,
+underline, strike or squiggly: choose in Properties) and the comment shows in a box beside it.
+Hide the boxes with View &gt; Show comment boxes.</li>
+<li><b>Sticky note</b> (N): click where it goes and type.</li>
+<li><b>Text box</b> (T): drag a box (or click) and type. Ctrl+Enter finishes typing.</li>
+<li><b>Callout</b> (K): press on the point you're pointing at, drag to where the text goes.</li>
+<li><b>Author name:</b> Edit &gt; Author name for markups. It's recorded on your markups and
+printed on stamps.</li>
+</ul>
+
+<h2 id="review">Reviewing comments (Review menu)</h2>
+<ul>
+<li><b>Add:</b> the Comment tool (C) marks text and adds a comment beside it; the Note tool (N)
+adds a sticky note anywhere.</li>
+<li><b>Next comment</b> (Alt+Down) and <b>Previous comment</b> (Alt+Up) walk through every
+comment and markup in reading order, page by page, selecting each one. The status bar shows
+"Markup 3 of 12". It wraps around at the end.</li>
+<li><b>Markups list</b> (F7): all markups in a table; filter, click to jump, export to CSV.</li>
+<li><b>Show markups:</b> untick to hide every comment and markup and see the page as if
+unmarked. Nothing is deleted; tick it again to bring them back. <b>Show comment boxes</b>
+hides just the yellow boxes beside commented text.</li>
+<li><b>Delete comments:</b> everyone's, only yours, or only one person's, on all pages or the
+current page. Undo brings them back.</li>
+<li><b>Flatten comments:</b> makes comments and markups a permanent part of the page while form
+fields stay fillable. (Document &gt; Flatten flattens form fields too.)</li>
+</ul>
+
+<h2 id="shapes">Shapes, lines and the pen</h2>
+<ul>
+<li>Rectangle (R), Ellipse (E), Cloud (D), Polygon (Y), Line (L), Arrow (A), Polyline
+(Shift+L), Pen (P). The shapes share one toolbar button: click its arrow to pick another.</li>
+<li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Escape to cancel.</li>
+<li><b>Hold Shift</b> while drawing:
+  <ul>
+  <li>lines, arrows, measurements and polyline segments snap to 45&deg; steps (horizontal,
+  vertical or diagonal);</li>
+  <li>rectangles, ellipses and clouds become perfect squares and circles.</li>
+  </ul></li>
+<li><b>Hold Shift while resizing</b> from a corner: squares and circles stay perfect, other
+markups keep their proportions. Shift while dragging a line's end keeps it at 45&deg; steps.</li>
+<li><b>Eraser</b> (X): click a markup to delete it, or drag a box to delete everything inside.</li>
+</ul>
+
+<h2 id="snap">Grid and snapping</h2>
+<ul>
+<li><b>Show grid</b> (View menu or toolbar) draws a grid over the page. It's only on screen:
+it isn't saved in or printed with the PDF.</li>
+<li><b>Grid settings</b> (View menu): the spacing in inches, millimeters or points, measured on
+the paper, and how often a darker line is drawn. When zoomed far out, only the darker lines
+are shown.</li>
+<li><b>Snap to grid:</b> points you draw or drag jump to the nearest grid intersection.</li>
+<li><b>Snap to objects:</b> points jump to nearby markup corners, edge midpoints, centers and
+line ends, and to the drawing's own line ends, midpoints and corners (useful on CAD sheets).
+A pink square shows an object snap, a blue cross a grid snap. When both are on, a nearby
+object wins; otherwise the grid is used.</li>
+<li>Snapping works for shapes, lines, measurements, polygons, callouts, text boxes, stamps,
+notes and counts, and when moving or resizing markups (a moved markup snaps by its
+top-left corner). The pen and text markup tools don't snap.</li>
+<li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
+</ul>
+
+<h2 id="properties">Colors, borders and styles (Properties panel)</h2>
+<ul>
+<li>With a tool active, the Properties panel (F6) sets that tool's <b>default style</b>, saved
+for next time. With a markup selected, it changes <b>that markup</b>.</li>
+<li>Line color, fill (or <b>No fill</b>), <b>No border</b> for boxes and shapes, text color,
+line width, font size, arrowheads, cloud border, opacity.</li>
+<li><b>Reset defaults</b> puts a tool back to its original style.</li>
+<li><b>Tool chest</b> (F8): your favorite markup styles, one click away. Click an entry, then
+draw: you get that tool with that color and size, and the tool's normal settings stay as they
+were. It starts with a few ready-made entries (red revision cloud, yellow and green highlight,
+red arrow, blue box, red note text box, yellow callout, APPROVED and REJECTED stamps); rename
+or delete them (right-click). To save your own: draw and style a markup, select it and click
+<b>Add</b>. <b>More</b> &gt; Add the starter tools brings the ready-made ones back; Export /
+Import tool chest shares a chest with others.</li>
+</ul>
+
+<h2 id="rotate">Rotating markups</h2>
+<ul>
+<li>Select a shape and drag the <b>round handle</b> above it. Hold Shift for 15&deg; steps.</li>
+<li>Or type an angle in <b>Rotation</b> in the Properties panel (counterclockwise).</li>
+<li>Text boxes and callouts rotate in 90&deg; steps (a limitation of PDF text boxes).</li>
+</ul>
+
+<h2 id="arrange">Align, distribute and stacking order (Arrange)</h2>
+<ul>
+<li>Select two or more markups, then use the <b>Arrange</b> toolbar or menu: Align left,
+Align centers (horizontally), Align right, Align top, Align middles (vertically), Align bottom.</li>
+<li><b>Align relative to:</b> Align to first selected (the default), Align to last selected,
+Align to whole selection, or Align to page. Choose it in the toolbar dropdown or Arrange &gt;
+Align relative to. The first-selected markup has a bolder outline.</li>
+<li><b>Distribute horizontally</b> / <b>Distribute vertically</b> (three or more): equal gaps,
+the outer two stay put.</li>
+<li><b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]),
+<b>Send backward</b> (Ctrl+[), <b>Send to back</b> (Ctrl+Shift+[).</li>
+</ul>
+
+<h2 id="objects">Objects panel and locking</h2>
+<ul>
+<li><b>Objects</b> tab (left panel, next to Pages, Bookmarks and Layers): every markup on the
+current page, from front (top of the list) to back. Click a row to select that markup even
+when it's completely covered by others; Ctrl/Shift+click selects several. Front, Up, Down
+and Back change the stacking order.</li>
+<li><b>Lock</b> column, or Arrange &gt; <b>Lock selected</b> (Ctrl+L): a locked markup behaves
+as if it were part of the page. It can't be clicked, moved, selected or erased, and dragging
+on it starts a selection box or a new markup instead. Untick Lock (or Arrange &gt;
+<b>Unlock all markups</b>) to edit it again. The lock is the PDF's standard "locked" flag, so
+Acrobat and PDF-XChange respect it too.</li>
+<li><b>Show</b> column: hide a single markup (it stays in the file; untick Show markups in the
+Review menu hides them all).</li>
+<li>The last row, <b>Page content</b>, is the original PDF itself. Its text and drawing aren't
+separate objects you can pick (a CAD sheet can contain over 100,000 line pieces); use Edit
+text for its text and the Layers tab for CAD layers.</li>
+</ul>
+
+<h2 id="stamps">Stamps</h2>
+<ul>
+<li>Stamp tool (M): pick a stamp in Properties (Approved, Draft, ... or type your own text),
+then click to place it.</li>
+<li><b>Add my name</b> and <b>Add the date</b> are separate checkboxes. Changing them on a
+placed stamp redraws it (a re-added date shows today's date).</li>
+<li><b>Add image stamp...</b> adds your own picture (PNG/JPG) to the stamp list.</li>
+</ul>
+
+<h2 id="images">Pictures and attached files (videos and more)</h2>
+<ul>
+<li><b>Image</b> tool: drag a box and pick a picture (PNG, JPEG, BMP, GIF, TIFF). It's fitted
+inside the box keeping its proportions; just click instead to place it at its natural size.
+The picture is embedded in the PDF at its original quality and file size. Move, resize
+(Shift on a corner keeps its proportions), rotate, align and delete it like any markup;
+Flatten makes it a permanent part of the page.</li>
+<li><b>Attach file</b> tool: click where the paperclip icon should go and pick any file, such
+as a video, spreadsheet or photo. The file is embedded inside the PDF, so it travels with it.
+<b>Double-click the icon</b> to open the file in the program Windows uses for it (videos play
+in your normal video player). Adobe Acrobat, Bluebeam and PDF-XChange can open these too.</li>
+<li>Videos don't play inside the page: that only works in a few PDF readers, so attaching
+is the reliable way to send a video with a PDF. Large files make the PDF just as much larger
+(you're warned above 50 MB).</li>
+<li><b>Attachments</b> (Document menu): every file attached to this PDF, including ones added
+by other programs. Open, Save as, Go to its page, or Delete.</li>
+<li>For your safety, opening an attached program or script (.exe, .bat, .js, ...) asks first.</li>
+</ul>
+
+<h2 id="edittext">Editing the PDF's own text</h2>
+<ul>
+<li>Edit text tool (Ctrl+E): click a line of text. Type the change; drag the bar above the
+box to move the text, drag the corner grip to make it wrap. Click elsewhere or press
+Ctrl+Enter to finish, Escape to cancel.</li>
+<li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
+<li>The original font is used when it's embedded or installed and has every character you
+typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
+&Omega; &Delta;, symbols, Chinese and other scripts), a built-in Unicode font. Only the letters
+used are stored, so files stay small. The status bar tells you which font was used. A line on a
+page that still has unapplied redaction marks can't be edited until you apply or remove them.</li>
+</ul>
+
+<h2 id="measure">Measuring</h2>
+<ul>
+<li>Set the drawing scale first: Measure &gt; Set scale (presets such as 1/4" = 1'-0", 1:100),
+or <b>Calibrate Tape Measure</b>: drag along a known dimension and type its real length.</li>
+<li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
+<b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
+the scale.</li>
+<li><b>Measurement summary</b> totals everything and exports to CSV.</li>
+</ul>
+
+<h2 id="pages">Pages</h2>
+<ul>
+<li><b>Rotate page left / Rotate page right:</b> Ctrl+Shift+Minus / Ctrl+Shift+Plus.</li>
+<li><b>Page list size:</b> drag the Pages panel's edge to make it as narrow as you like; the
+thumbnails shrink to fit (the lock button then just reads Locked / Unlocked). Tabs that don't fit
+scroll sideways.</li>
+<li><b>Reorder:</b> unlock the page list (lock button above the thumbnails), then drag
+thumbnails; or Move page up / Move page down (Ctrl+Shift+Up / Down).</li>
+<li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine files): makes one
+new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
+open document is already in the list. Drag them, or use Move up / Move down / Sort by name, to
+set the order, top to bottom. With "Add a bookmark for each file" ticked, each file gets a
+bookmark named after it and keeps its own bookmarks underneath. Click Combine..., choose a name,
+and the combined PDF opens. Password-protected files ask for their password. The original files
+aren't changed.</li>
+<li>Pages menu: Insert pages from file, Insert blank page after current, Extract pages to new
+file, Delete page.</li>
+<li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
+<li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
+</ul>
+
+<h2 id="forms">Forms</h2>
+<ul>
+<li><b>Fill in:</b> with Select or Hand, click a field. Tab moves to the next text field.
+<b>Highlight form fields</b> (View or Forms menu, on by default) shades every fillable field
+light blue; required fields get a red outline. The shading is on screen only.</li>
+<li><b>Create:</b> Forms menu: text field, checkbox, option button, dropdown, signature field.
+Double-click a field to change its name and options.</li>
+</ul>
+
+<h2 id="sign">Protect: signatures, passwords, redaction</h2>
+<p>Everything here is in the <b>Protect</b> menu.</p>
+<ul>
+<li><b>Wet signature / initials:</b> Set up my signature and Set up my initials (draw or load an
+image, optional PIN). Then Sign (G) or Initials (I) and click to place, with the date.</li>
+<li><b>Multi-place signature or initials:</b> put your initials (or signature) on all pages,
+all but the first or last, or pages you list, in the same spot as the last one you placed
+or in a corner.</li>
+<li><b>Add signature placeholder:</b> drag boxes where signatures or initials should go
+(choose which in Properties). <b>Apply all signature placeholders</b> then fills every one
+with your saved signature or initials and the date.</li>
+<li><b>Digitally sign with certificate</b> (a personal certificate or your company's
+.pfx/.p12), with an optional lock against changes (certify). Signed files open read-only so
+the signature stays valid. <b>Digital signature details</b> shows who signed and whether it's
+still valid. <b>Clear all digital signatures</b> removes them (the empty fields stay).</li>
+<li><b>Timestamp document:</b> gets a trusted timestamp from a free internet time server,
+proving the file existed, unchanged, at that moment. Saved as a new copy.</li>
+<li><b>Redaction:</b> Redact tool (Shift+R) or Search &amp; redact marks areas. Redaction marks
+can be selected, moved and resized; <b>Apply selected redactions</b> applies only the selected
+ones, Apply redactions applies them all. Applying removes, not just covers: the text, images
+and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
+own copy of the text). <b>Search &amp; redact</b> also finds the text where a box can't go: form
+field values, markup notes, bookmark titles and document properties. When you apply, fields
+containing it are deleted, and in notes, bookmarks and properties it's replaced by
+[redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
+away. Check the result before sharing; Undo works until you close the file.</li>
+<li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
+attached files, hidden text, links, comments, form data, thumbnails.</li>
+<li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption.
+  <ul>
+  <li><i>Open password:</i> nobody can read the file without it. Real protection; if you
+  forget it, the file can't be recovered.</li>
+  <li><i>Permissions password:</i> choose what others may do (print, copy, comment, fill forms,
+  change content, change pages). Acrobat, PDF-XChange, Bluebeam and this app honor it, but
+  some free tools ignore it, so don't rely on it for secrets.</li>
+  <li><i>Policies:</i> save your usual settings as a named policy (passwords are never saved).</li>
+  </ul>
+  Changes take effect when you save. Digital signatures and timestamps can't be added to a
+  password-protected PDF yet: remove security, sign the final version, and don't add a
+  password afterwards (that would invalidate the signature). <b>Remove security</b> takes protection off (you need the
+  permissions password). <b>Unlock with password</b> lets you edit a restricted file.</li>
+<li><b>Saving keeps protection:</b> a password-protected file stays protected when you save
+your changes, with the same open password and restrictions (re-encrypted with AES-256). If you
+opened it with the open password only, KanzonasPDF doesn't know the permissions password, so the
+saved copy gets a new random one: its restrictions can then only be changed from the original
+file. Use Security properties or Remove security to change protection on purpose.</li>
+<li><b>Saving keeps signatures:</b> a digitally signed file you haven't changed is saved as an
+exact copy (Save or Save As), so its signatures stay valid. Only after "Edit anyway" does saving
+change it, and then the signature no longer validates.</li>
+</ul>
+
+<h2 id="document">Document tools</h2>
+<ul>
+<li><b>Recognize text (OCR):</b> makes scanned pages searchable and selectable. Choose the
+<b>pages</b> (All, the current page, or a list such as 1-3, 7), whether to <b>skip pages that
+already contain text</b> (on by default, so text isn't duplicated), and the <b>accuracy</b>:
+<b>Fast</b> (150 dpi) for clean scans with normal-size text; <b>Normal</b> (300 dpi);
+<b>High</b> (400 dpi, and it checks every orientation, for small print, poor scans and
+sideways or upside-down pages; the slowest); or <b>Auto</b> (the default), which reads each
+page fast and redoes it at High resolution only when the text came out small or unclear.
+Higher accuracy takes longer and uses more memory, and it never renders a scan sharper than
+it was scanned (that only adds blur), so on a 200 dpi scan Normal and High read at 200 dpi.
+Your choice is remembered.</li>
+<li><b>Redaction:</b> the Redact (mark text or area) tool (Shift+R) or Search &amp; redact
+marks areas; Apply redactions permanently removes what's underneath.</li>
+<li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
+<b>Compress (save a smaller copy)</b>, <b>Compare documents</b> (changes clouded in red and
+blue), <b>Flatten</b> (make markups part of the page).</li>
+<li><b>Export</b> (File &gt; Export to): Microsoft Word (.docx), Microsoft Excel (.xlsx),
+Microsoft PowerPoint (.pptx), AutoCAD drawing (.dxf), Images (PNG), Images (JPEG),
+Plain text (.txt).</li>
+</ul>
+
+<h2 id="shortcuts">Keyboard shortcuts</h2>
+<table border="1" cellpadding="3" cellspacing="0">
+<tr><th>Key</th><th>Action</th></tr>
+<tr><td>V / H</td><td>Select / Hand</td></tr>
+<tr><td>Ctrl+E</td><td>Edit text</td></tr>
+<tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
+<tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>
+<tr><td>R / E / D / Y</td><td>Rectangle / Ellipse / Cloud / Polygon</td></tr>
+<tr><td>L / A / Shift+L / P</td><td>Line / Arrow / Polyline / Pen</td></tr>
+<tr><td>M / X</td><td>Stamp / Eraser</td></tr>
+<tr><td>G / I</td><td>Signature / Initials</td></tr>
+<tr><td>Shift+M / Shift+A / Shift+C</td><td>Length / Area / Count</td></tr>
+<tr><td>Shift+R</td><td>Redact</td></tr>
+<tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
+<tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
+<tr><td>Escape, Escape twice</td><td>Clear selection, back to Select</td></tr>
+<tr><td>Delete</td><td>Delete selected markups</td></tr>
+<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
+<tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>
+<tr><td>Ctrl+D</td><td>Duplicate selected markups (or pages, in the page list)</td></tr>
+<tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
+<tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
+<tr><td>Left / Right</td><td>Previous / next page</td></tr>
+<tr><td>Ctrl+Shift+Plus / Minus</td><td>Rotate page</td></tr>
+<tr><td>Ctrl+Shift+Up / Down</td><td>Move page</td></tr>
+<tr><td>Ctrl+2 / Ctrl+0 / Ctrl+1</td><td>Fit width / fit page / actual size</td></tr>
+<tr><td>Ctrl+F, F3, Shift+F3</td><td>Find, next, previous</td></tr>
+<tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
+<tr><td>F1</td><td>This manual</td></tr>
+<tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
+<tr><td>Ctrl+Shift+M</td><td>Show / hide the menu bar (ribbon layout)</td></tr>
+<tr><td>F11</td><td>CAD-style mouse on / off</td></tr>
+<tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
+<tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
+<tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>
+</table>
+<p>Change any shortcut in View &gt; Keyboard shortcuts.</p>
+"""
+
+
+def sections():
+    """[(anchor id, title)] of the manual's chapters, in order."""
+    return re.findall(r'<h2 id="([^"]+)">(.*?)</h2>', MANUAL)
+
+
+class ManualDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("KanzonasPDF user manual")
+        self.resize(980, 720)
+        lay = QVBoxLayout(self)
+
+        bar = QHBoxLayout()
+        bar.addWidget(QLabel("Find in manual:"))
+        self.find = QLineEdit()
+        self.find.setClearButtonEnabled(True)
+        self.find.setPlaceholderText("Type a word, then Enter for the next match")
+        self.find.returnPressed.connect(self.find_next)
+        bar.addWidget(self.find, 1)
+        nxt = QPushButton("Next")
+        nxt.clicked.connect(self.find_next)
+        bar.addWidget(nxt)
+        lay.addLayout(bar)
+
+        split = QSplitter()
+        self.contents = QListWidget()
+        self.contents.setMaximumWidth(260)
+        self._anchors = []
+        for anchor, title in sections():
+            self.contents.addItem(title.replace("&amp;", "&"))
+            self._anchors.append(anchor)
+        self.contents.currentRowChanged.connect(self._jump)
+        split.addWidget(self.contents)
+        self.text = QTextBrowser()
+        self.text.setOpenLinks(False)
+        self.text.setHtml(MANUAL)
+        split.addWidget(self.text)
+        split.setStretchFactor(1, 1)
+        lay.addWidget(split, 1)
+
+        close = QPushButton("Close")
+        close.clicked.connect(self.close)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(close)
+        lay.addLayout(row)
+        QShortcut(QKeySequence.Find, self, activated=self.find.setFocus)
+
+    def _jump(self, row):
+        if 0 <= row < len(self._anchors):
+            self.text.scrollToAnchor(self._anchors[row])
+
+    def show_section(self, anchor):
+        if anchor in self._anchors:
+            self.contents.setCurrentRow(self._anchors.index(anchor))
+
+    def find_next(self):
+        word = self.find.text().strip()
+        if not word:
+            return False
+        if self.text.find(word):
+            return True
+        # wrap around to the top
+        cur = self.text.textCursor()
+        cur.movePosition(cur.MoveOperation.Start)
+        self.text.setTextCursor(cur)
+        return self.text.find(word)
+
+
+# ---- keeping the manual complete -------------------------------------------------
+# Menu commands that need no explanation, or are covered under another name.
+NOT_DOCUMENTED = {"exit", "about", "user manual", "close tab"}
+
+
+def _norm(text):
+    text = text.split("\t")[0].replace("&&", "\0").replace("&", "").replace("\0", "&")
+    return " ".join(text.replace("...", "").replace("…", "").split()).strip().lower()
+
+
+def _plain_manual():
+    from PySide6.QtGui import QTextDocument
+    d = QTextDocument()
+    d.setHtml(MANUAL)
+    return " ".join(d.toPlainText().split()).lower()
+
+
+def missing_from_manual(window):
+    """Names of menu commands (every menu, every tool) that the manual never mentions.
+    Used by the self-test so a new feature can't ship without being documented."""
+    text = _plain_manual()
+    missing = []
+
+    def walk(menu):
+        for a in menu.actions():
+            if a.menu():
+                if _norm(a.text()) != "open recent":      # the list of recent files
+                    walk(a.menu())
+                continue
+            if a.isSeparator() or not a.isEnabled() and not a.text():
+                continue
+            name = _norm(a.text())
+            if not name or name in NOT_DOCUMENTED or not a.isVisible():
+                continue
+            if a.isEnabled() is False and a.toolTip() == a.text():
+                continue
+            if name not in text and name not in missing:
+                missing.append(name)
+    for top in window.menuBar().actions():
+        if top.menu():
+            walk(top.menu())
+    return missing

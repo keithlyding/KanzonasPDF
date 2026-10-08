@@ -1,0 +1,346 @@
+"""`KanzonasPDF.exe --selftest log.txt`: checks that the bundled features really work in
+the built app (OCR engine, every export, signatures, forms). Used by the Windows build."""
+
+import os
+import sys
+import tempfile
+import traceback
+
+import pymupdf
+
+
+def _memory_mb():
+    """Peak memory of this process in MB (Windows and Linux)."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class PMC(ctypes.Structure):
+            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+                        ("PeakWorkingSetSize", ctypes.c_size_t), ("WorkingSetSize", ctypes.c_size_t),
+                        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                        ("PagefileUsage", ctypes.c_size_t), ("PeakPagefileUsage", ctypes.c_size_t)]
+        pmc = PMC()
+        pmc.cb = ctypes.sizeof(PMC)
+        k32 = ctypes.windll.kernel32
+        k32.GetCurrentProcess.restype = wintypes.HANDLE      # a 64-bit handle, not an int
+        k32.K32GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(PMC), wintypes.DWORD]
+        if not k32.K32GetProcessMemoryInfo(k32.GetCurrentProcess(), ctypes.byref(pmc), pmc.cb):
+            raise OSError("GetProcessMemoryInfo failed")
+        return pmc.PeakWorkingSetSize / 1e6
+    except (AttributeError, OSError):
+        import resource
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+
+
+def run(log_path):
+    lines, ok = [], True
+
+    def check(name, fn):
+        nonlocal ok
+        try:
+            detail = fn()
+            lines.append(f"PASS {name} {detail or ''}")
+        except Exception:
+            ok = False
+            lines.append(f"FAIL {name}\n{traceback.format_exc()}")
+
+    # ---- performance budget (runs first, while nothing else is loaded) -------------------
+    # Generous limits so slow build machines pass; they catch real regressions (a heavy
+    # library imported at start-up, a render that suddenly takes many seconds...).
+    HEAVY = ("rapidocr_onnxruntime", "onnxruntime", "pdf2docx", "ezdxf", "openpyxl", "pptx",
+             "docx", "pyhanko", "cv2", "aiohttp")
+
+    def t_performance():
+        import time
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance() or QApplication([])
+        t = time.perf_counter()
+        from .main_window import MainWindow
+        win = MainWindow()
+        win.show()
+        app.processEvents()
+        startup = time.perf_counter() - t
+        loaded = [m for m in HEAVY if m in sys.modules]
+        assert not loaded, "loaded at start-up (import them only when used): " + ", ".join(loaded)
+        # a CAD-like page: 60,000 line segments
+        d = pymupdf.open()
+        pg = d.new_page(width=2592, height=1728)
+        sh = pg.new_shape()
+        for i in range(60000):
+            x, y = (i * 37) % 2500, (i * 53) % 1700
+            sh.draw_line((x, y), (x + 40, y + 25))
+        sh.finish(color=(0, 0, 0), width=0.3)
+        sh.commit()
+        path = os.path.join(tempfile.mkdtemp(prefix="kzperf"), "cad.pdf")
+        d.save(path)
+        t = time.perf_counter()
+        win.open_file(path)
+        app.processEvents()
+        v = win.view()
+        v.pages[0].repaint()
+        first = time.perf_counter() - t
+        t = time.perf_counter()
+        v.set_zoom(4.0)
+        app.processEvents()
+        v.pages[0].repaint()
+        zoom = time.perf_counter() - t
+        mem = _memory_mb()
+        win.close_tab(win.tabs.currentIndex())
+        win.deleteLater()
+        assert startup < 5, f"start-up took {startup:.1f}s (limit 5s)"
+        assert first < 5, f"opening a 60k-line sheet took {first:.1f}s (limit 5s)"
+        assert zoom < 5, f"zooming to 400% took {zoom:.1f}s (limit 5s)"
+        assert mem > 1, "couldn't measure memory"
+        assert mem < 800, f"memory {mem:.0f} MB (limit 800 MB)"
+        return f"(start-up {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s, {mem:.0f} MB)"
+    check("performance budget", t_performance)
+
+    tmp = tempfile.mkdtemp(prefix="kzselftest")
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_text((72, 100), "Self test Hello World 12345", fontsize=20)
+    for r in range(3):
+        for c in range(3):
+            x, y = 72 + c * 100, 200 + r * 24
+            page.draw_rect((x, y, x + 100, y + 24))
+            page.insert_text((x + 5, y + 16), f"R{r}C{c}", fontsize=11)
+    data = doc.tobytes()
+
+    from . import export, ocr
+
+    def t_ocr():
+        scan = pymupdf.open()
+        p = scan.new_page()
+        p.insert_image(p.rect, pixmap=doc[0].get_pixmap(dpi=150))
+        res = ocr.recognize(ocr.Rendering(scan[0]))
+        text = " ".join(r[1] for r in res)
+        assert "Hello" in text, text
+        return f"({len(res)} lines)"
+    check("ocr", t_ocr)
+    check("word", lambda: export.to_word(data, os.path.join(tmp, "t.docx")))
+    check("excel", lambda: export.to_excel(data, os.path.join(tmp, "t.xlsx")))
+    check("powerpoint", lambda: export.to_powerpoint(data, os.path.join(tmp, "t.pptx")))
+    check("dxf", lambda: export.to_dxf(data, os.path.join(tmp, "t.dxf")))
+    check("images", lambda: export.to_images(data, os.path.join(tmp, "t")))
+    check("text", lambda: export.to_text(data, os.path.join(tmp, "t.txt")))
+
+    def t_files():
+        for f in ("t.docx", "t.xlsx", "t.pptx", "t.dxf", "t_p1.png", "t.txt"):
+            assert os.path.getsize(os.path.join(tmp, f)) > 0, f
+    check("export files", t_files)
+
+    def t_sig_crypto():
+        from . import signatures as S
+        blob = S._encrypt("1234", b"png-bytes")
+        assert S._decrypt("1234", blob) == b"png-bytes"
+        try:
+            S._decrypt("9999", blob)
+            raise AssertionError("wrong PIN accepted")
+        except ValueError:
+            pass
+    check("signature encryption", t_sig_crypto)
+
+    def t_forms():
+        d = pymupdf.open()
+        p = d.new_page()
+        w = pymupdf.Widget()
+        w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+        w.rect = pymupdf.Rect(50, 50, 200, 70)
+        w.field_name = "Name"
+        p.add_widget(w)
+        w = next(p.widgets())
+        w.field_value = "Filled"
+        w.update()
+        assert next(d[0].widgets()).field_value == "Filled"
+    check("forms", t_forms)
+
+    def t_digisign():
+        from . import digisign
+        cert = os.path.join(tmp, "c.p12")
+        digisign.create_certificate("Self Test", "", "", "pw", cert)
+        out = os.path.join(tmp, "signed.pdf")
+        digisign.sign(data, out, digisign.load_signer(cert, "pw"), "test")
+        with open(out, "rb") as f:
+            res = digisign.validate(f.read())
+        assert res and res[0]["intact"] and not res[0]["modified"], res
+    check("digital signature", t_digisign)
+
+    def t_page_tools():
+        from . import page_tools
+        d = pymupdf.open(stream=data, filetype="pdf")
+        page_tools.add_header_footer(d, {"texts": {("footer", "center"): "Page {page} of {pages}"},
+                                         "pages": [0]}, "x.pdf")
+        page_tools.add_watermark(d, {"text": "DRAFT", "pages": [0]})
+        assert "Page 1 of 1" in d[0].get_text()
+        page_tools.compress(d.tobytes(), os.path.join(tmp, "small.pdf"), list(page_tools.COMPRESS)[1])
+    check("page tools", t_page_tools)
+
+    def t_storage():
+        # where settings and personal files go (portable: the data folder beside the exe)
+        from . import paths
+        st = paths.settings()
+        st.setValue("selftest/last_run", "ok")
+        st.sync()
+        if paths.is_portable():
+            ini = os.path.join(paths.data_dir(), "settings.ini")
+            assert os.path.exists(ini), "portable settings file missing"
+            assert paths.data_dir("signatures").startswith(paths.app_dir())
+            return f"(portable: {paths.data_dir()})"
+        return "(installed: registry + AppData)"
+    check("storage location", t_storage)
+
+    def t_updates():
+        # the checker needs HTTPS in the packaged app; the version logic must pick the newest
+        from PySide6.QtNetwork import QSslSocket
+        from . import updates
+        assert QSslSocket.supportsSsl(), "no TLS support: update checks can't reach GitHub"
+        rel = [{"tag_name": "v0.1", "html_url": "a"}, {"tag_name": "v99.2", "html_url": "b"},
+               {"tag_name": "v99.10", "html_url": "c"}, {"tag_name": "v999", "draft": True}]
+        assert updates.newest(rel, "0.35") == ("99.10", "c")
+        assert updates.newest(rel[:1], "0.35") is None
+        assert updates.version_tuple("v1.0-beta") == (1, 0)
+        return "(TLS: " + QSslSocket.activeBackend() + ")"
+    check("update check", t_updates)
+
+    def t_combine():
+        from .combine import combine
+        a, b = os.path.join(tmp, "ca.pdf"), os.path.join(tmp, "cb.pdf")
+        for path, n in ((a, 2), (b, 3)):
+            d = pymupdf.open()
+            for _ in range(n):
+                d.new_page()
+            d.save(path)
+        out = os.path.join(tmp, "combined.pdf")
+        assert combine([a, b], out) == 5
+        toc = pymupdf.open(out).get_toc()
+        assert [t[1:] for t in toc] == [["ca", 1], ["cb", 3]], toc
+        return "(5 pages, 2 bookmarks)"
+    check("combine files", t_combine)
+
+    def t_redaction():
+        # Search & redact + Apply must remove the text everywhere, not just from the page:
+        # form fields, notes, bookmarks and document properties keep their own copies
+        from .document_view import DocumentView
+        secret = "123-45-6789"
+        path = os.path.join(tmp, "redact.pdf")
+        d = pymupdf.open()
+        pg = d.new_page()
+        pg.insert_text((72, 100), "SSN " + secret)
+        w = pymupdf.Widget()
+        w.field_type, w.field_name = pymupdf.PDF_WIDGET_TYPE_TEXT, "ssn"
+        w.rect, w.field_value = pymupdf.Rect(72, 200, 300, 220), secret
+        pg.add_widget(w)
+        pg.add_text_annot((400, 100), "note " + secret).update()
+        d.set_toc([[1, "Part " + secret, 1]])
+        d.set_metadata({"title": "File " + secret})
+        d.save(path)
+        d.close()
+        v = DocumentView(path)
+        assert v.search_redact(secret) >= 1
+        v.apply_redactions()
+        out = os.path.join(tmp, "redacted.pdf")
+        v.doc.save(out, garbage=4)
+        v.doc.close()
+        o = pymupdf.open(out)
+        found = secret in "".join(pg.get_text() for pg in o) or \
+            any(secret in t[1] for t in o.get_toc()) or secret in (o.metadata["title"] or "") or \
+            any(secret in (a.info["content"] or "") for pg in o for a in pg.annots()) or \
+            any(secret in str(w.field_value) for pg in o for w in pg.widgets())
+        o.close()
+        assert not found, "redacted text still in the file"
+        return "(page text, field, note, bookmark, title)"
+    check("redaction removes text everywhere", t_redaction)
+
+    def t_save_safety():
+        # independent test report v0.44 (KZ-01..05): protection and signatures survive Save,
+        # partial flatten keeps bookmarks, Unicode text edits, Find sees edited text
+        from PySide6.QtWidgets import QInputDialog
+        from .document_view import DocumentView
+        from . import text_edit
+        path = os.path.join(tmp, "locked.pdf")
+        d = pymupdf.open()
+        for i in range(3):
+            d.new_page().insert_text((72, 72), "PAGE %d ALPHA" % (i + 1))
+        d.set_toc([[1, "First", 1], [1, "Second", 2], [1, "Third", 3]])
+        d.save(path, encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw="user", owner_pw="owner")
+        d.close()
+        ask = QInputDialog.getText
+        QInputDialog.getText = staticmethod(lambda *a, **k: ("user", True))
+        try:
+            v = DocumentView(path)
+        finally:
+            QInputDialog.getText = ask
+        out = os.path.join(tmp, "locked-copy.pdf")
+        v.save(out)
+        assert open(out, "rb").read() == open(path, "rb").read(), "unchanged save not exact"
+        assert v.find("ALPHA") == 3
+        v.modify(lambda: v.doc[0].insert_text((72, 130), "ALPHA"), [0])
+        assert v.find("ALPHA") == 4, "Find didn't see the edit"
+        v.doc[1].add_rect_annot(pymupdf.Rect(100, 100, 200, 200))
+        v.flatten([1])
+        assert [t[1:] for t in v.doc.get_toc()] == [["First", 1], ["Second", 2], ["Third", 3]]
+        line = text_edit.text_lines(v.doc[2])[0][1]
+        v._apply_text_edit(2, line, "\u03a9 \u0394 \u4e2d\u6587 caf\u00e9", (0, 0), None)
+        assert "\u03a9 \u0394 \u4e2d\u6587 caf\u00e9" in v.doc[2].get_text()
+        v.save(out)
+        v.doc.close()
+        r = pymupdf.open(out)
+        assert r.needs_pass, "edited protected file saved without its password"
+        assert r.authenticate("user")
+        assert "\u4e2d\u6587" in r[2].get_text()
+        r.close()
+        return "(exact copy, password kept, bookmarks, Unicode, Find)"
+    check("save keeps protection; edits stay correct", t_save_safety)
+
+    def t_security():
+        d = pymupdf.open(stream=data, filetype="pdf")
+        out = os.path.join(tmp, "secure.pdf")
+        d.save(out, encryption=pymupdf.PDF_ENCRYPT_AES_256, owner_pw="own", user_pw="open",
+               permissions=pymupdf.PDF_PERM_PRINT)
+        x = pymupdf.open(out)
+        assert x.needs_pass and not x.authenticate("bad") and x.authenticate("open")
+        assert not x.permissions & pymupdf.PDF_PERM_MODIFY
+        assert pymupdf.open(out).authenticate("own") & 4
+    check("passwords and permissions", t_security)
+
+    def t_timestamp():
+        # the time server client must be bundled; stamp with pyHanko's built-in test server
+        import aiohttp  # noqa: F401
+        from pyhanko.sign import timestamps
+        from . import digisign
+        timestamps.HTTPTimeStamper("http://timestamp.digicert.com")
+        p12 = digisign.create_certificate("Self Test", "", "", "pw", os.path.join(tmp, "t.p12"))
+        signer = digisign.load_signer(p12, "pw")
+        out = os.path.join(tmp, "ts.pdf")
+        digisign.timestamp(data, out, "", timestamps.DummyTimeStamper(signer.signing_cert,
+                                                                        signer.signing_key))
+        res = digisign.validate(open(out, "rb").read())
+        assert res and res[0].get("timestamp") and res[0]["ok"], res
+    check("timestamp", t_timestamp)
+
+    def t_manual():
+        # every menu command must be described in Help > User manual (kanzonas/manual.py)
+        from PySide6.QtWidgets import QApplication
+        from . import manual
+        from .main_window import MainWindow
+        app = QApplication.instance() or QApplication([])
+        win = MainWindow()
+        try:
+            missing = manual.missing_from_manual(win)
+        finally:
+            win.deleteLater()
+        assert not missing, "not in the user manual: " + ", ".join(missing)
+        return f"({len(manual.sections())} chapters)"
+    check("user manual covers every command", t_manual)
+
+    with open(log_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(run(sys.argv[1] if len(sys.argv) > 1 else "selftest.log"))
