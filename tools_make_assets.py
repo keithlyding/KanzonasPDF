@@ -29,6 +29,9 @@ mark = QImage("assets/kanzonas-mark-source.png")
 RED_TOP, RED_BOTTOM = "#b30000", "#800000"      # red tile: the color people link with PDFs
 
 
+MARGIN = 3.0      # gap (in tile units of 256) kept between the artwork and the tile's edge
+
+
 def _tile(p, size_units, radius):
     g = QLinearGradient(0, 0, size_units * 0.35, size_units)     # light top left, deep bottom
     g.setColorAt(0, QColor(RED_TOP))
@@ -86,18 +89,17 @@ def _page(p, x0, y0, x1, y1, f, line=True):
 def _fading_page(p, units, x0, y0, x1, y1, f, line=True, fade_from=0.1, fade_to=1.0):
     """The page drawn on its own layer: white at the top, shading to transparent at the
     bottom, so it seems to come out from behind the cactus."""
-    scale = p.device().width() / units
     layer = QImage(p.device().width(), p.device().height(), QImage.Format_ARGB32_Premultiplied)
     layer.fill(Qt.transparent)
     q = QPainter(layer)
     q.setRenderHint(QPainter.Antialiasing)
-    q.scale(scale, scale)
+    q.setTransform(p.transform())       # same scale (and enlargement) as the icon
     _page(q, x0, y0, x1, y1, f, line)
     q.setCompositionMode(QPainter.CompositionMode_DestinationIn)
     g = QLinearGradient(0, y0 + (y1 - y0) * fade_from, 0, y0 + (y1 - y0) * fade_to)
     g.setColorAt(0, QColor(0, 0, 0, 255))
     g.setColorAt(1, QColor(0, 0, 0, 0))
-    q.fillRect(QRectF(0, 0, units, units), g)
+    q.fillRect(QRectF(-units, -units, 3 * units, 3 * units), g)
     q.end()
     p.save()
     p.resetTransform()
@@ -119,39 +121,95 @@ def _outlined(p, r, width):
     p.drawImage(r, mark)
 
 
-def big_icon(size=512):
-    """Red tile; the owner's cactus and sunflower stand in front of a white page whose top
-    comes out above the cactus."""
-    img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
-    img.fill(Qt.transparent)
-    p = QPainter(img)
-    p.setRenderHint(QPainter.Antialiasing)
-    p.setRenderHint(QPainter.SmoothPixmapTransform)
-    p.scale(size / 256.0, size / 256.0)
-    _tile(p, 256, 44)
+def _big_art(p):
     _fading_page(p, 256, 84, 62, 202, 224, 28)
     h = 178.0
     w = h * mark.width() / mark.height()
     _outlined(p, QRectF(128 - w / 2, 58, w, h), 3.0)
-    p.end()
-    return img
 
 
-def small_icon(size=128):
-    """16-32 px: same layout, bolder and simpler (no page outline)."""
+def _small_art(p):
+    _fading_page(p, 128, 39, 31, 103, 115, 16, line=False)
+    h = 96.0
+    w = h * mark.width() / mark.height()
+    _outlined(p, QRectF(64 - w / 2, 28, w, h), 2.2)
+
+
+def _render(size, units, transform, art):
     img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
     img.fill(Qt.transparent)
     p = QPainter(img)
     p.setRenderHint(QPainter.Antialiasing)
     p.setRenderHint(QPainter.SmoothPixmapTransform)
-    p.scale(size / 128.0, size / 128.0)
-    _tile(p, 128, 24)
-    _fading_page(p, 128, 39, 31, 103, 115, 16, line=False)
-    h = 96.0
-    w = h * mark.width() / mark.height()
-    _outlined(p, QRectF(64 - w / 2, 28, w, h), 2.2)
+    p.scale(size / units, size / units)
+    if transform:
+        transform(p)
+    art(p)
     p.end()
     return img
+
+
+def _fit(units, radius, art, size=512):
+    """The largest enlargement of the page and cactus, centered in the tile, that stays
+    inside the rounded tile (MARGIN units from its edge). Returns a function that applies
+    it to a painter."""
+    import numpy as np
+    k = size / units
+
+    def alpha(img):
+        a = np.frombuffer(img.constBits(), np.uint8).reshape(size, size, 4)[:, :, 3]
+        return a > 24
+    ys, xs = np.nonzero(alpha(_render(size, units, None, art)))
+    cx, cy = (xs.min() + xs.max() + 1) / 2 / k, (ys.min() + ys.max() + 1) / 2 / k
+    m = units / 64 + MARGIN * units / 256
+    tile = QPainterPath()
+    tile.addRoundedRect(QRectF(m, m, units - 2 * m, units - 2 * m), radius, radius)
+    inside = np.zeros((size, size), bool)
+    for y in range(size):
+        for x in range(size):
+            inside[y, x] = tile.contains(QPointF((x + 0.5) / k, (y + 0.5) / k))
+
+    def make(s):
+        def apply(p):
+            p.translate(units / 2, units / 2)
+            p.scale(s, s)
+            p.translate(-cx, -cy)
+        return apply
+    lo, hi = 1.0, 2.0
+    for _ in range(14):
+        mid = (lo + hi) / 2
+        if (alpha(_render(size, units, make(mid), art)) & ~inside).any():
+            hi = mid
+        else:
+            lo = mid
+    print(f"artwork enlarged {lo:.3f}x")
+    return make(lo)
+
+
+def _icon(size, units, radius, art):
+    fit = _fit(units, radius, art)
+    img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
+    img.fill(Qt.transparent)
+    p = QPainter(img)
+    p.setRenderHint(QPainter.Antialiasing)
+    p.setRenderHint(QPainter.SmoothPixmapTransform)
+    p.scale(size / units, size / units)
+    _tile(p, units, radius)
+    fit(p)
+    art(p)
+    p.end()
+    return img
+
+
+def big_icon(size=512):
+    """Red tile; the owner's cactus and sunflower stand in front of a white page whose top
+    comes out above the cactus, as big as fits inside the tile."""
+    return _icon(size, 256, 44, _big_art)
+
+
+def small_icon(size=128):
+    """16-32 px: same layout, bolder and simpler (no page outline)."""
+    return _icon(size, 128, 24, _small_art)
 
 
 def to_pil(qimg):
