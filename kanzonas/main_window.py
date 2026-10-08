@@ -2758,6 +2758,8 @@ class MainWindow(QMainWindow):
         on = self.a_cad_mouse.isChecked()
         DocumentView.cad_mouse = on
         self.settings.setValue("cad_mouse", "true" if on else "false")
+        for i in range(self.tabs.count()):
+            self.tabs.widget(i).apply_canvas()       # open canvas around the pages, or not
         self.statusBar().showMessage(
             "CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan" if on else
             "CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms", 4000)

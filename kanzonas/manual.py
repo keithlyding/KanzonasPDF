@@ -89,7 +89,9 @@ the page you were on last time; change this in File &gt; Preferences &gt; Openin
 like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the wheel down
 moves the sheet, so you can navigate a drawing while any markup tool is active. Like Bluebeam,
 hold <b>Ctrl</b> and turn the wheel to scroll up and down, or <b>Shift</b> to scroll left and
-right. Your choice is remembered.</li>
+right. The pages sit on an open canvas, so you can drag them anywhere in the window (with the
+wheel held down or the Hand tool), even when the whole page already fits. Your choice is
+remembered.</li>
 <li><b>Scroll one page per wheel step</b> (View menu): when the whole page fits in the window,
 top to bottom and side to side (for example after <b>Fit page</b>), each step of the scroll wheel
 jumps to the next or previous page, centered, instead of scrolling a little. As soon as you zoom
