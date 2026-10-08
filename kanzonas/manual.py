@@ -110,6 +110,11 @@ it too, so you don't have to switch back to the arrow.</li>
 tool (Ctrl+drag always draws a selection box). Drag any selected markup to move them all;
 Delete removes them all; Properties changes apply to all of them.</li>
 <li><b>Delete:</b> Delete or Backspace. <b>Edit a note's text:</b> double-click it.</li>
+<li><b>Move with the arrow keys:</b> with markups selected (or pictures and shapes selected with
+Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> moves 10 pt and
+<b>Ctrl+arrow</b> 0.1 pt, for fine adjustments. A series of presses is one Ctrl+Z. Markups tied to
+text (highlights, underlines, strikeouts) stay with their text. With nothing selected, Left and
+Right turn the page as usual.</li>
 <li><b>Escape</b> clears the selection; <b>Escape twice</b> switches back to the Select (arrow) tool.</li>
 </ul>
 
@@ -119,6 +124,10 @@ Delete removes them all; Properties changes apply to all of them.</li>
 <b>Copy</b> (Ctrl+C) puts it on the clipboard; <b>Cut</b> (Ctrl+X) also removes those letters
 from the page (Undo brings them back). <b>Select all text</b> (Ctrl+A) selects the whole page's
 text. Escape or a click elsewhere clears the selection.</li>
+<li><b>Right-click menu:</b> right-click the page for Cut, Copy, Paste, Delete (for selected
+markups) and Select all text. With text selected, it also offers Highlight, Underline, Strike out,
+Comment on text... and Mark for redaction for that text. Right-clicking a markup selects it
+first.</li>
 <li><b>Markups:</b> select one or more markups, then Copy or Cut. <b>Paste</b> (Ctrl+V) puts them
 where the mouse is, on any page or in another open document.</li>
 <li><b>Duplicate</b> (Ctrl+D): copies of the selected markups appear slightly offset, selected
@@ -519,6 +528,7 @@ Show grid, Snap to grid, Snap to objects, and Grid settings....</li>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
 <tr><td>Left / Right</td><td>Previous / next page</td></tr>
+<tr><td>Arrow keys (something selected)</td><td>Move it 1 pt; with Shift 10 pt; with Ctrl 0.1 pt</td></tr>
 <tr><td>Ctrl+Shift+Plus / Minus</td><td>Rotate page</td></tr>
 <tr><td>Ctrl+Shift+Up / Down</td><td>Move page</td></tr>
 <tr><td>Ctrl+2 / Ctrl+0 / Ctrl+1</td><td>Fit width / fit page / actual size</td></tr>

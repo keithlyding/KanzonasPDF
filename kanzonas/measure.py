@@ -192,7 +192,15 @@ def add_label(page, annot, text, anchor, size=9.0, color=(0, 0, 0), angle=0.0):
     stream = doc.xref_stream(ap) + ("\n" + "\n".join(ops) + "\n").encode("latin-1", "replace")
     doc.update_stream(ap, stream)
     font = _font_xref(doc)
-    doc.xref_set_key(ap, "Resources", f"<</Font<</KZHelv {font} 0 R>>>>")
+    # add the label font to the appearance's resources, keeping what's there (the
+    # transparency of a markup with opacity below 100% lives in its ExtGState)
+    typ, val = doc.xref_get_key(ap, "Resources")
+    if typ in ("null", ""):
+        doc.xref_set_key(ap, "Resources", f"<</Font<</KZHelv {font} 0 R>>>>")
+    else:
+        target = int(val.split()[0]) if typ == "xref" else ap
+        key = "Font/KZHelv" if typ == "xref" else "Resources/Font/KZHelv"
+        doc.xref_set_key(target, key, f"{font} 0 R")
     # grow BBox and the annotation Rect to include the (possibly rotated) label
     half = max(width, height) / 2 + 4
     lab = pymupdf.Rect(c.x - half, c.y - half, c.x + half, c.y + half)

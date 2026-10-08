@@ -101,8 +101,8 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
      "for several); drag to move, drag a handle to resize, Delete deletes, right-click to "
      "rotate. Shift+O"),
     ("capture", "Ca&pture area", "Shift+P",
-     "Capture: drag a box to copy that area as a picture; Ctrl+V pastes it as an image "
-     "markup, or into Word or email. Shift+P"),
+     "Capture: drag a box to copy that area; Ctrl+V pastes it here as sharp vector content, "
+     "or as a picture into Word or email. Shift+P"),
     ("redact", "&Redact (mark text or area)", "Shift+R",
      "Redact: drag across text, or drag a box over any area; then Apply redactions"),
     ("placeholder", "Add signature &placeholder", "",
@@ -208,11 +208,13 @@ class MainWindow(QMainWindow):
         ps.toggleViewAction().setVisible(False)
         self.addToolBar(Qt.LeftToolBarArea, ps)
         self.strip_actions = []
+        self._strip_icons = []          # (action, icon name), re-tinted when the theme changes
         for i, (label, icon) in enumerate((("Pages", "file-multiple-outline"),
                                            ("Bookmarks", "bookmark-outline"),
                                            ("Layers", "layers-outline"),
                                            ("Objects", "shape-outline"))):
             a = QAction(theme.icon_named(icon), label, self, checkable=True)
+            self._strip_icons.append((a, icon))
             a.setToolTip(f"{label} panel (click again to fold it away)")
             a.triggered.connect(lambda _=False, k=i: self._strip_clicked(k))
             ps.addAction(a)
@@ -222,6 +224,7 @@ class MainWindow(QMainWindow):
                         (self.a_attachments, "paperclip")):
             if a.icon().isNull():
                 a.setIcon(theme.icon_named(icon))
+                self._strip_icons.append((a, icon))
             ps.addAction(a)
         self.a_panel_strip = QAction("Show panel &strip (left edge)", self, checkable=True)
         self.a_panel_strip.setToolTip("Icons on the left edge that open and fold the Pages, "
@@ -2415,6 +2418,8 @@ class MainWindow(QMainWindow):
         for tid, a in self.tool_actions.items():
             a.setIcon(theme.icon(tid))
         self.forms_btn.setIcon(theme.icon("forms"))
+        for a, name in getattr(self, "_strip_icons", []):
+            a.setIcon(theme.icon_named(name))
         labels = self.a_labels.isChecked()
         style = Qt.ToolButtonTextUnderIcon if labels else Qt.ToolButtonIconOnly
         for tb in (self.main_tb, self.tools_tb, self.arrange_tb):

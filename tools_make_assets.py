@@ -6,8 +6,10 @@ Sources (the owner's artwork):
 - assets/kanzonas-mark-source.png  cactus + sunflower
 - assets/kanzonas-logo-source.png  the owner's full logo (Help > About)
 The app icon is a red tile (the color people associate with PDF apps); the cactus and
-sunflower stand in front of a white page that fades in from behind the cactus, its top
-coming out above it, as in the owner's artwork. Drawn here as vectors so it is sharp at every size; sizes 16-32 use a
+sunflower stand in front of a page whose top comes out above the cactus, as in the owner's
+artwork, set a little to the right and lower (its top level with the top of the cactus),
+with lines of writing on it; the cactus has a white outline; the page shades from white
+at the top to transparent at the bottom. Drawn here as vectors so it is sharp at every size; sizes 16-32 use a
 simpler page without an outline. Outputs: kanzonas.ico, kanzonas.png,
 installer BMPs and the embedded copy kanzonas/branding_data.py.
 """
@@ -16,7 +18,7 @@ import io
 import sys
 
 from PIL import Image
-from PySide6.QtCore import QBuffer, QRectF, Qt
+from PySide6.QtCore import QBuffer, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QApplication
 
@@ -24,7 +26,7 @@ app = QApplication(sys.argv)
 mark = QImage("assets/kanzonas-mark-source.png")
 
 
-RED_TOP, RED_BOTTOM = "#ff6a52", "#8e0a0a"      # red tile: the color people link with PDFs
+RED_TOP, RED_BOTTOM = "#b30000", "#800000"      # red tile: the color people link with PDFs
 
 
 def _tile(p, size_units, radius):
@@ -64,11 +66,26 @@ def _page(p, x0, y0, x1, y1, f, line=True):
     fold.closeSubpath()
     p.setBrush(QColor("#d9d9d9"))
     p.drawPath(fold)
+    # lines of "writing"
+    w = x1 - x0
+    gap = w * (0.115 if line else 0.16)
+    pen = QPen(QColor("#9a9a9a"), w * (0.03 if line else 0.05))
+    pen.setCapStyle(Qt.RoundCap)
+    p.setPen(pen)
+    y = y0 + w * 0.17
+    n = 0
+    while y < y1 - w * 0.1:
+        right = x1 - f - w * 0.06 if y < y0 + f + w * 0.03 else x1 - w * 0.12
+        if n % 3 == 2:
+            right -= w * 0.22                          # a shorter line now and then
+        p.drawLine(QPointF(x0 + w * 0.12, y), QPointF(right, y))
+        y += gap
+        n += 1
 
 
-def _fading_page(p, units, x0, y0, x1, y1, f, line=True, fade_from=0.45, fade_to=0.95):
-    """The page drawn on its own layer, solid at the top and fading out downward, so it
-    seems to come out from behind the cactus."""
+def _fading_page(p, units, x0, y0, x1, y1, f, line=True, fade_from=0.1, fade_to=1.0):
+    """The page drawn on its own layer: white at the top, shading to transparent at the
+    bottom, so it seems to come out from behind the cactus."""
     scale = p.device().width() / units
     layer = QImage(p.device().width(), p.device().height(), QImage.Format_ARGB32_Premultiplied)
     layer.fill(Qt.transparent)
@@ -88,6 +105,20 @@ def _fading_page(p, units, x0, y0, x1, y1, f, line=True, fade_from=0.45, fade_to
     p.restore()
 
 
+def _outlined(p, r, width):
+    """The owner's cactus and sunflower with a white outline around them."""
+    import math
+    sil = mark.copy()
+    q = QPainter(sil)
+    q.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    q.fillRect(sil.rect(), QColor("white"))
+    q.end()
+    for k in range(24):
+        a = 2 * math.pi * k / 24
+        p.drawImage(r.translated(width * math.cos(a), width * math.sin(a)), sil)
+    p.drawImage(r, mark)
+
+
 def big_icon(size=512):
     """Red tile; the owner's cactus and sunflower stand in front of a white page whose top
     comes out above the cactus."""
@@ -98,10 +129,10 @@ def big_icon(size=512):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 256.0, size / 256.0)
     _tile(p, 256, 44)
-    _fading_page(p, 256, 70, 44, 188, 206, 28)
+    _fading_page(p, 256, 84, 62, 202, 224, 28)
     h = 178.0
     w = h * mark.width() / mark.height()
-    p.drawImage(QRectF(128 - w / 2, 58, w, h), mark)
+    _outlined(p, QRectF(128 - w / 2, 58, w, h), 3.0)
     p.end()
     return img
 
@@ -115,10 +146,10 @@ def small_icon(size=128):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 128.0, size / 128.0)
     _tile(p, 128, 24)
-    _fading_page(p, 128, 32, 18, 96, 102, 16, line=False)
+    _fading_page(p, 128, 39, 31, 103, 115, 16, line=False)
     h = 96.0
     w = h * mark.width() / mark.height()
-    p.drawImage(QRectF(64 - w / 2, 28, w, h), mark)
+    _outlined(p, QRectF(64 - w / 2, 28, w, h), 2.2)
     p.end()
     return img
 

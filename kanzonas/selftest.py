@@ -435,6 +435,46 @@ def run(log_path):
         return "(gradient behind text on normal and rotated pages; removed)"
     check("page background", t_background)
 
+    def t_measure_opacity():
+        # a see-through measurement keeps its transparency when its label is added
+        from . import annotations
+        d = pymupdf.open()
+        pg = d.new_page()
+        props = annotations.tool_props("m_area")
+        props["opacity"] = 0.6
+        annotations.write(pg, {"kind": "m_area", "props": props,
+                               "points": [pymupdf.Point(50, 50), pymupdf.Point(200, 50),
+                                          pymupdf.Point(200, 200)]})
+        pymupdf.TOOLS.mupdf_warnings(reset=True)
+        r = pymupdf.open("pdf", d.tobytes())
+        r[0].get_pixmap()
+        warn = pymupdf.TOOLS.mupdf_warnings()
+        assert "ExtGState" not in warn, warn
+        return "(label added, transparency kept)"
+    check("measurement opacity", t_measure_opacity)
+
+    def t_nudge():
+        # arrow keys: repeated moves of a page shape fold into one wrapper (no growth)
+        from . import page_objects
+        d = pymupdf.open()
+        pg = d.new_page()
+        pg.draw_line((100, 300), (300, 300), color=(0, 0, 1), width=2)
+        objs = page_objects.Objects(pg)
+        ns = [objs.items[0]["n"]]
+        r = objs.items[0]["rect"]
+        size0 = None
+        for i in range(50):
+            page_objects.move_to(pg, ns, r, r + (1, -1, 1, -1))
+            r = r + (1, -1, 1, -1)
+            if i == 0:
+                size0 = len(page_objects._contents(pg))
+        # only the numbers change length a little; 50 nested wrappers would add ~2,500 bytes
+        assert len(page_objects._contents(pg)) < size0 + 40, "stream grew with each nudge"
+        got = [tuple(round(v) for v in dr["rect"]) for dr in pg.get_drawings()]
+        assert got == [(150, 250, 350, 250)], got
+        return "(50 nudges, exact position, no growth)"
+    check("arrow-key nudge", t_nudge)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

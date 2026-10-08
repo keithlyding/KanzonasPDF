@@ -1,162 +1,175 @@
-# KanzonasPDF
+<p align="center">
+  <img src="assets/kanzonas.png" width="128" alt="KanzonasPDF icon">
+</p>
 
-![KanzonasPDF](assets/kanzonas-logo-source.png)
+<h1 align="center">KanzonasPDF</h1>
 
-A free, fast PDF reader and editor for Windows, built on [PyMuPDF](https://pymupdf.readthedocs.io/) (MuPDF) and Qt (PySide6).
+<p align="center">
+  <b>A free, fast PDF reader and editor for Windows</b><br>
+  Mark up, measure, edit, sign and redact PDFs, with no subscription, no account and no ads.
+</p>
 
-## Features
+<p align="center">
+  <a href="https://github.com/keithlyding/KanzonasPDF/releases"><b>Download for Windows</b></a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#feedback">Report a bug</a>
+</p>
 
-- Tabs, drag-and-drop to open, recent files, password-protected PDFs
-- Continuous scrolling, Ctrl+mouse-wheel zoom, fit width or page
-- Page thumbnails: click to jump, drag to reorder pages (unlock first with the lock button)
-- Left/Right arrow keys: previous/next page
-- Find with all matches highlighted (Enter, F3 or Shift+F3)
-- Text selection that shows exactly what's selected as you drag; copy, highlight,
-  underline, strike out
-- **Comment on text**: select text, it's marked (highlight, underline, strikeout or squiggly,
-  set in the Properties panel) and a note box appears beside it
-  (also visible as a comment in Acrobat)
-- Markup: sticky note, text box, callout, rectangle, ellipse, revision cloud, polygon (optionally
-  clouded), line, arrow, polyline, freehand pen
-- **Stamps**: Approved, Reviewed, Draft and 12 more, your own text, or your own images; adds
-  your name and the date
-- **Measurement** (Measure menu): set the scale by calibrating against a known dimension or
-  picking a preset (1/4" = 1'-0", 1" = 20', 1:100, ...); measure length, polylength, area and
-  perimeter, and count items in groups. Values are drawn on the PDF, update when you edit a
-  vertex or change the scale, and total up in Measure > Measurement summary (CSV export)
-- **Tool chest** (F8): save a styled markup (e.g. a magenta REVISE cloud) as a named tool and
-  reuse it with one click; export/import chests to share them
-- **Compare documents** (File menu): overlays this document on an earlier revision (red =
-  removed, blue = added) and clouds every change
-- **Layers** (left panel tab): show or hide a PDF's layers, as found in many CAD plots
-- **Bookmarks** (F9): view, add, rename, delete, reorder and nest the PDF outline
-- **Redaction** (Document menu): mark text or areas, or search & redact every occurrence; apply
-  to permanently delete what's underneath (optionally scrub metadata and hidden data)
-- **Header & footer** with page numbers, dates, file name and **Bates numbering**; text or
-  image **watermarks**; **compress** to a smaller copy
-- **Digital signatures** (Sign menu): sign with your own certificate (created for you) or a
-  .pfx/.p12 from a certificate authority; optional lock; signed files open read-only with a
-  banner saying who signed and whether anything changed since
-- **Markups list** (F7): every markup in a table; filter, sort, click to jump, export to CSV
-- **Properties panel** (F6): colors (line, fill, text), line width, font size, arrowhead
-  style, opacity
-  - With nothing selected it sets each tool's **default style, saved for next time**
-  - With an annotation selected it restyles that annotation
-- **Edit annotations after creating them** (Select tool): click to select, drag to move,
-  drag handles to resize or move line ends, double-click to edit text, Delete to remove
-- Eraser: click one annotation, or drag a box around several
-- **Edit existing text in place** (Edit text tool, Ctrl+E): click a line, type, Enter.
-  Drag the blue bar to move it, drag the corner to set a width (text wraps).
-  Keeps size, color and direction; uses the original font when possible
-- Pages: rotate, delete, reorder, insert a blank page, insert pages from another PDF (merge),
-  extract a range of pages to a new file
-- OCR (Tools > Recognize text): makes scanned pages searchable and selectable. Works offline,
-  handles sideways (landscape) scans.
-- Flatten (Tools menu): burn annotations and form fields into the page, all pages or current
-- **Signature & initials** (Sign menu): set up once by drawing or loading a scan/photo of your
-  wet signature (background removed automatically), optionally protected by a PIN. Then click
-  to place it with today's date. It's written into the page, not a movable annotation
-- **Protect document from changes when saved** (offered after signing)
-- **Forms**: fill in any PDF form with Select or Hand (Tab moves to the next field); create
-  forms with text fields, checkboxes, option buttons, dropdowns and signature fields
-- **Export** (File > Export to): Word, Excel, PowerPoint, AutoCAD DXF, PNG/JPEG, text
-- **Look & feel** (View menu): icon toolbars (optional text labels), dark / light / match-Windows
-  theme, **split view** (F10) to look at two places at once, reopens each file at its last page
-  and zoom, and **customizable keyboard shortcuts**
-- Undo and redo (Ctrl+Z, Ctrl+Y), print
-- Annotations are standard PDF annotations, so Acrobat and other viewers can see them
+> **Beta:** KanzonasPDF is under active development (version 0.x). It's used daily, and every
+> build is tested automatically, but you may still find rough edges. Please
+> [tell us](#feedback) when something doesn't work, and keep a copy of important files.
 
-## Download (Windows)
+![KanzonasPDF with a marked-up floor plan: an area measurement, a length, a revision cloud, a callout and an APPROVED stamp](docs/screenshot-markup.png)
 
-Get the latest **`KanzonasPDF-v<version>-setup.exe`** from the
-[Releases page](https://github.com/keithlyding/KanzonasPDF/releases) and run it. No
-administrator rights are needed. Prefer no installer? Download the **`-portable.zip`**, unzip it
-anywhere (even a USB stick) and run `KanzonasPDF.exe`: its settings, signatures and stamps stay
-in a `data` folder beside it.
+## What it does
 
-Releases publish themselves: when `main` gets a new `__version__` (in `kanzonas/__init__.py`),
-usually by merging a pull request, and the build passes, the tested installer and zips are
-published as release `v<version>` (a pre-release while the version is 0.x). Work happens on
-other branches, which build and test but don't publish. To change publishing, set the
-repository variable `AUTO_RELEASE` (Settings > Secrets and variables > Actions > Variables):
-`draft` makes a draft release to check and publish by hand; `false` turns releasing off
-(then create a release with tag `v<version>` on GitHub to build and publish it).
+**Read and navigate**
+- Tabs, fast scrolling and zoom even on huge CAD sheets, page thumbnails, bookmarks, layers
+- Find with every match highlighted; split view to see two places at once
+- Light, dark or match-Windows theme; ribbon or classic toolbars
 
-## Run it from source (Windows)
+**Mark up and review**
+- Highlight, underline, strike out, comment on text, sticky notes, text boxes, callouts
+- Rectangles, ellipses, revision clouds, polygons, lines, arrows, freehand pen
+- Stamps (Approved, Reviewed, Draft and more, or your own), with your name and the date
+- A tool chest of saved markup styles, a markups list you can filter and export, and
+  Compare documents to cloud every change between two revisions
+- Markups are standard PDF annotations, so Acrobat and other viewers see them too
 
-1. Install Python 3.10+ from https://www.python.org/downloads/ (tick "Add to PATH").
-2. Double-click **`Start KanzonasPDF.bat`**. The first time, it installs the libraries it needs.
+**Measure** (for drawings and plans)
+- Set the scale from a preset (1/4" = 1'-0", 1:100, ...) or by calibrating a known dimension
+- Length, polylength, area and perimeter, and counts, with a measurement summary you can
+  export to CSV
+- CAD-style mouse (the wheel zooms, hold it to pan) and snapping to the drawing
 
-   Or from a command prompt: `pip install -r requirements.txt`, then `python run.py`.
+**Edit the PDF itself**
+- Edit text in place; move, resize, rotate or delete the page's own pictures and vector shapes
+- Erase content in an area, capture an area as sharp vector content, add backgrounds,
+  watermarks, headers and footers, page numbers and Bates numbering
+- Pages: rotate, reorder, insert, extract, combine files
 
-## Build a standalone .exe
+**Sign, protect and clean up**
+- Your signature and initials (drawn or scanned), digital signatures with a certificate,
+  passwords and permissions
+- True redaction that removes the text underneath, including from hidden places like
+  metadata and form fields
+- Recognize text (OCR) in scanned pages, offline
 
-Double-click `build_windows.bat`. The app ends up in `dist\KanzonasPDF\KanzonasPDF.exe`.
-You can zip that folder and give it to anyone; they don't need Python.
+**Forms and export**
+- Fill in and create forms
+- Export to Word, Excel, PowerPoint, AutoCAD DXF, images and text
 
-## Keyboard shortcuts
+**Built to stay fast and light:** it starts in well under a second, and every build checks
+start-up time and memory automatically. There's no background service, no account and no
+telemetry. It only goes online to check whether a newer version exists (you can turn that off)
+and, if you add a trusted timestamp to a digital signature, to contact a timestamp server.
 
-| Key | Action |
+![The same view in the dark theme](docs/screenshot-dark.png)
+
+## Download and install
+
+Download from the [Releases page](https://github.com/keithlyding/KanzonasPDF/releases).
+Pick **one** of these files from the newest release:
+
+| File | What it is |
 | --- | --- |
-| V / H | Select / Hand |
-| Ctrl+E | Edit text (click a line) |
-| Ctrl+Shift+H / U / X | Highlight / Underline / Strikeout |
-| C | Comment on text |
-| N / T | Note / Text box |
-| R / E / L / A / P | Rectangle / Ellipse / Line / Arrow / Pen |
-| X | Eraser (click one, or drag a box around several) |
-| K / D / Y / Shift+L / M | Callout / Cloud / Polygon / Polyline / Stamp |
-| F7 / F8 / F9 | Markups list / Tool chest / Bookmarks |
-| Shift+R | Redact |
-| Shift+M / Shift+A / Shift+C | Measure length / area / count |
-| G / I | Place signature / initials |
-| Delete / Esc | Delete / deselect the selected annotation |
-| Ctrl+Enter | Finish typing in note / text box / comment dialogs |
-| Ctrl+Shift+Plus / Minus | Rotate page clockwise / counter-clockwise |
-| Ctrl+Shift+Up / Down | Move current page up / down |
-| Left / Right | Previous / next page (Shift+Left/Right scrolls sideways) |
-| F4 / F6 / F10 | Page thumbnails / properties panel / split view |
+| `KanzonasPDF-v…-setup.exe` | **Installer (recommended).** No administrator rights needed. It can add a desktop shortcut and offer KanzonasPDF as an app for opening PDFs. |
+| `KanzonasPDF-v…-portable.zip` | **No installation.** Unzip anywhere (even a USB stick) and run `KanzonasPDF.exe`. Settings, signatures and stamps stay in a `data` folder next to it. |
+| `KanzonasPDF-v…-windows.zip` | The same program as the portable version, but it keeps its settings in your Windows profile. |
 
-## Testing with CAD drawings
+### "Windows protected your PC"
 
-`tests/cad_samples.py` generates realistic plotted-CAD sheets (architectural plan with
-revision, rotated plot, an ezdxf plot with vector text and layers, a 42x30 site plan with
-~139,000 contour segments and an aerial underlay, and a scanned sheet).
-`tests/cad_battery.py` runs the app's features against them and prints timings.
+KanzonasPDF isn't code-signed yet (a signing certificate costs money every year), so Windows
+SmartScreen may warn you the first time you run it, simply because it doesn't recognize a new
+program yet. To run it anyway, click **More info**, then **Run anyway**.
 
-## Feedback, security and contributing
+Only do this with files downloaded from this project's
+[Releases page](https://github.com/keithlyding/KanzonasPDF/releases). Every release is built
+from the public source code in this repository by GitHub's own build servers, and tested there
+before it's published.
 
-- **Bug or idea?** Open an [issue](https://github.com/keithlyding/KanzonasPDF/issues/new/choose).
-  Please don't attach confidential PDFs.
-- **Security problem** (redaction, passwords, signatures): report it privately, see
-  [SECURITY.md](SECURITY.md).
-- **Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md) and the
+### Updating and uninstalling
+
+- KanzonasPDF tells you when a newer version is out (Help > Check for updates...). It only
+  tells you; it never installs anything by itself.
+- To update, run the new installer: it replaces the old version and keeps your settings,
+  signatures, stamps and tool chest.
+- To uninstall, use Windows Settings > Apps.
+
+## Getting started
+
+- **Open a PDF:** drag it onto the window, or File > Open. Several PDFs open as tabs.
+- **The user manual is built in:** press **F1** (Help > User manual). It covers every tool,
+  menu command and keyboard shortcut.
+- **Make it yours:** File > Preferences (**Ctrl+K**) has your name for markups, your signature,
+  default markup styles, the zoom documents open at, mouse and scrolling options, automatic
+  backups and more.
+- **Keyboard shortcuts:** View > Keyboard shortcuts... lists them all, and you can change them.
+
+## Feedback
+
+- **Found a bug or have an idea?** Open an
+  [issue](https://github.com/keithlyding/KanzonasPDF/issues/new/choose). Please describe what
+  you did and what happened, and **don't attach confidential PDFs**.
+- **Security problem** (redaction, passwords, signatures): please report it privately, as
+  described in [SECURITY.md](SECURITY.md).
+- **Want to contribute?** See [CONTRIBUTING.md](CONTRIBUTING.md) and the
   [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## Credits
-
-Icons: Material Design Icons via QtAwesome (MIT). App icon and logo: the owner's artwork in `assets/`
-(after changing it, run `python tools_make_assets.py`).
-
-## License
-
-PyMuPDF is AGPL-3.0, so KanzonasPDF must also be distributed under the AGPL-3.0,
-with its source code available (this repository). The full license text is in [LICENSE](LICENSE).
 
 ## Known limitations
 
-- Saving an edited signed file rewrites it, which invalidates its digital signatures (an unedited
-  signed file is saved as an exact copy).
-- Text editing works one line at a time; it doesn't reflow the rest of a paragraph.
-  If the original font isn't installed, a close standard font is used.
-- Arrowhead size follows line width (that's how PDF arrows work).
-- Text box borders use their own color in this app; Acrobat may redraw a box's border
-  in its text color if you edit that box in Acrobat.
-- Protection uses standard PDF permissions: Acrobat, PDF-XChange and this app honor them,
-  but they're not tamper-proof against determined tools; use a digital signature for that.
-- A personal certificate proves a document is unchanged, but others' software only shows your
-  identity as verified if they trust your certificate (or you use one from a certificate
-  authority). Signing via the Windows certificate store / smart cards isn't supported yet.
+- Windows only.
+- Saving changes to a digitally signed file invalidates its signatures (an unchanged signed
+  file is saved as an exact copy).
+- Text editing works one line at a time; it doesn't reflow the rest of a paragraph. If the
+  original font isn't available, a close standard font is used.
+- Edit objects works on pictures and vector shapes, not on text, and not on content grouped
+  inside form XObjects.
+- Password permissions are honored by Acrobat, PDF-XChange and this app, but they aren't
+  tamper-proof; use a digital signature to prove a file hasn't changed.
+- A personal certificate proves a document is unchanged, but other people's software shows your
+  identity as verified only if they trust your certificate (or you use one from a certificate
+  authority). Signing with the Windows certificate store or smart cards isn't supported yet.
 - Export: Word works best for ordinary text documents; Excel needs real (not scanned) tables;
   PowerPoint slides are page pictures; AutoCAD export is DXF (not DWG) and leaves out images.
-- OCR caps large sheets at 6000 px on the long side, so very small text on big drawings may be missed.
+- OCR caps large sheets at 6000 px on the long side, so very small text on big drawings may be
+  missed.
+
+## For developers
+
+KanzonasPDF is written in Python with [PyMuPDF](https://pymupdf.readthedocs.io/) (MuPDF) and
+Qt ([PySide6](https://doc.qt.io/qtforpython-6/)). Project rules for changes are in
+[CLAUDE.md](CLAUDE.md).
+
+**Run from source (Windows):** install Python 3.10+ from https://www.python.org/downloads/
+(tick "Add to PATH"), then double-click **`Start KanzonasPDF.bat`** (the first time, it installs
+the libraries it needs). Or: `pip install -r requirements.txt`, then `python run.py`.
+
+**Self-test:** `python -m kanzonas --selftest selftest.log` checks the main features, the
+manual and the performance budget. The Windows build runs it on the packaged app, the installer
+and an upgrade.
+
+**Build an .exe:** double-click `build_windows.bat`; the app ends up in
+`dist\KanzonasPDF\KanzonasPDF.exe`.
+
+**Releases publish themselves:** when `main` gets a new `__version__` (in
+`kanzonas/__init__.py`), usually by merging a pull request, and the build passes, the tested
+installer and zips are published as release `v<version>` (a pre-release while the version is
+0.x). Other branches build and test but don't publish. To change this, set the repository
+variable `AUTO_RELEASE` (Settings > Secrets and variables > Actions > Variables): `draft` makes
+a draft release to publish by hand; `false` turns releasing off.
+
+**CAD test drawings:** `python tests/cad_samples.py DIR` generates realistic plotted CAD sheets
+(including a 42x30 site plan with ~139,000 contour segments and a scanned sheet);
+`python tests/cad_battery.py DIR` runs the app's features against them and prints timings.
+
+## Credits
+
+App icon and logo: the owner's artwork in `assets/` (after changing them, run
+`python tools_make_assets.py`). Toolbar icons: the Material Design Icons font that ships with
+QtAwesome.
+
+## License
+
+KanzonasPDF is free software under the [GNU AGPL-3.0](LICENSE). It's built on PyMuPDF, which is
+AGPL-3.0, so KanzonasPDF's source code is always available here.

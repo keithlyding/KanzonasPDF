@@ -375,16 +375,38 @@ def _split(old):
     return b" ".join(state), b" ".join(path)
 
 
+_WRAP = re.compile(rb"\nq ((?:-?[\d.]+ ){6})cm\n$")
+
+
 def transform(page, ns, t_page):
-    """Apply t_page (a Matrix in unrotated page coordinates) to objects ns."""
+    """Apply t_page (a Matrix in unrotated page coordinates) to objects ns. An object this
+    module moved before already sits in a  q <M> cm ... Q  wrapper: the new move is folded
+    into that one matrix, so nudging a shape a hundred times doesn't nest a hundred
+    wrappers."""
     tm = page.transformation_matrix
     t_pdf = tm * t_page * ~tm
-
-    def new(old, ctm):
-        m = ctm * t_pdf * ~ctm
+    data = _contents(page)
+    found = scan(data)
+    pieces = []
+    for n in sorted(set(ns), reverse=True):
+        if n >= len(found):
+            raise ValueError("The object is no longer on the page.")
+        d = found[n]
+        s, e, ctm = d["start"], d["end"], d["ctm"]
+        m = ctm * t_pdf * ~ctm                      # the move, in the object's own space
+        old = data[s:e]
+        w = _WRAP.search(data, max(0, s - 120), s)
+        if w and w.end() == s and data[e:e + 3] == b"\nQ\n":
+            outer = pymupdf.Matrix(*[float(v) for v in w.group(1).split()])
+            pieces.append((w.start(), e + 3, b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n"
+                           % tuple(m * outer) + old + b"\nQ\n"))
+            continue
         state, body = _split(old) if old[:2] != b"BI" else (b"", old)
-        return (state + b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m) + body + b"\nQ\n")
-    _edit(page, ns, new)
+        pieces.append((s, e, state + b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m)
+                       + body + b"\nQ\n"))
+    for s, e, piece in pieces:          # back to front: earlier offsets stay valid
+        data = data[:s] + piece + data[e:]
+    _set_contents(page, data)
 
 
 def move_to(page, ns, old_rect, new_rect):
