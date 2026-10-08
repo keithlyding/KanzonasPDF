@@ -394,8 +394,10 @@ Double-click a field to change its name and options.</li>
 <h2 id="sign">Protect: signatures, passwords, redaction</h2>
 <p>Everything here is in the <b>Protect</b> menu.</p>
 <ul>
-<li><b>Wet signature / initials:</b> Set up my signature and Set up my initials (draw or load an
-image, optional PIN). Then Sign (G) or Initials (I) and click to place, with the date. To
+<li><b>Wet signature / initials:</b> Sign (G) or Initials (I), then click to place your signature
+or initials, with the date. The first time, you're asked to set it up (draw it or load a picture
+of it, optional PIN). To replace it later, use File &gt; Preferences &gt; You &gt; Set up my
+signature... / Set up my initials.... To
 choose the size, <b>drag a box</b> instead of clicking: it's placed as wide as you drag (the
 height follows its proportions). The size used for a click is set in File &gt; Preferences &gt; You
 (2 in for a signature and 0.75 in for initials to start with).</li>

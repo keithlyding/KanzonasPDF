@@ -670,7 +670,8 @@ class MainWindow(QMainWindow):
         m = mb.addMenu("&Protect")
         m.addActions([self.tool_actions["signature"], self.tool_actions["initials"],
                       self.a_multi_sign])
-        m.addActions([self.a_setup_sig, self.a_setup_init])
+        # setting up (or replacing) your signature / initials lives in File > Preferences >
+        # You: here it read like "add my signature to this document"
         m.addSeparator()
         m.addActions([self.tool_actions["placeholder"], self.a_apply_placeholders])
         m.addSeparator()
@@ -2926,7 +2927,6 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab("Protect", [
             ("Sign", "large", [t["signature"], t["initials"], self.a_multi_sign]),
-            ("My signature", "small", [self.a_setup_sig, self.a_setup_init]),
             ("Placeholders", "large", [t["placeholder"], self.a_apply_placeholders]),
             ("Digital signatures", "small", [self.a_digisign, self.a_timestamp,
                                              self.a_sig_details, self.a_clear_sigs]),
