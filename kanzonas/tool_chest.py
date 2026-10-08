@@ -8,7 +8,7 @@ share with other people.
 import json
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QPixmap, QIcon, QColor, QAction
+from PySide6.QtGui import QPixmap, QIcon, QColor
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
                                QPushButton, QInputDialog, QFileDialog, QMessageBox, QLabel,
                                QMenu)

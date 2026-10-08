@@ -52,7 +52,10 @@ def run(log_path):
     # Generous limits so slow build machines pass; they catch real regressions (a heavy
     # library imported at start-up, a render that suddenly takes many seconds...).
     HEAVY = ("rapidocr_onnxruntime", "onnxruntime", "pdf2docx", "ezdxf", "openpyxl", "pptx",
-             "docx", "pyhanko", "cv2", "aiohttp")
+             "docx", "pyhanko", "cv2", "aiohttp",
+             # icons are drawn from the bundled font; loading qtawesome means the font wasn't
+             # found (and costs ~0.2 s of start-up)
+             "qtawesome", "qtpy")
 
     def t_performance():
         import time
@@ -408,6 +411,29 @@ def run(log_path):
             measure.FRACTION = old
         return "(backup written and removed; measuring precision)"
     check("backups and measuring options", t_backups)
+
+    def t_background():
+        # Document > Background: behind the content, removable, rotated pages right way up
+        from . import background
+        d = pymupdf.open()
+        for rot in (0, 90):
+            pg = d.new_page(width=300, height=200)
+            pg.insert_text((20, 40), "ON TOP")
+            pg.set_rotation(rot)
+        background.apply(d, [0, 1], {"kind": "gradient", "color": "#ff0000",
+                                     "color2": "#0000ff", "direction": "down", "opacity": 1})
+        d = pymupdf.open("pdf", d.tobytes(garbage=3))
+        for pg in d:
+            assert background.has_background(pg)
+            assert pg.get_text().split() == ["ON", "TOP"], pg.get_text()
+            pm = pg.get_pixmap(dpi=20)
+            top, bottom = pm.pixel(pm.width // 2, 1), pm.pixel(pm.width // 2, pm.height - 2)
+            assert top[0] > 200 and top[2] < 60 and bottom[2] > 200 and bottom[0] < 60, (top, bottom)
+        assert background.remove_pages(d, [0, 1]) == 2
+        pm = d[1].get_pixmap(dpi=20)
+        assert pm.pixel(pm.width // 2, 1) == (255, 255, 255)
+        return "(gradient behind text on normal and rotated pages; removed)"
+    check("page background", t_background)
 
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")

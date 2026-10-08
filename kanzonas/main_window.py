@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pymupdf
 from PySide6.QtCore import Qt, QSize, QTimer, QEvent
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, QImage,
-                           QColor, QPainter)
+                           QPainter)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, QMessageBox,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
                                QListWidgetItem, QDockWidget, QAbstractItemView, QToolButton,
@@ -402,6 +402,10 @@ class MainWindow(QMainWindow):
                                    tip="Compare this document with another revision")
         self.a_header = self._act("&Header && footer, page numbers, Bates...", self.header_footer)
         self.a_watermark = self._act("&Watermark...", self.watermark)
+        self.a_background = self._act("Bac&kground...", self.background,
+                                      tip="Put a color, gradient or picture behind the page "
+                                          "content, on this page or the whole document")
+        self.a_remove_bg = self._act("Remove back&ground...", self.remove_background)
         self.a_compress = self._act("&Compress (save a smaller copy)...", self.compress)
         self.a_attachments = self._act("A&ttachments...", self.show_attachments,
                                        tip="Files embedded in this PDF: open, save or delete them")
@@ -630,7 +634,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_ocr, self.a_flatten])
         m = mb.addMenu("&Document")
-        m.addActions([self.a_header, self.a_watermark])
+        m.addActions([self.a_header, self.a_watermark, self.a_background, self.a_remove_bg])
         m.addSeparator()
         m.addAction(self.a_bookmarks)
         m.addAction(self.a_attachments)
@@ -953,6 +957,7 @@ class MainWindow(QMainWindow):
                   self.a_timestamp, self.a_multi_sign, self.a_apply_placeholders,
                   self.a_apply_sel_redact, self.a_unlock, self.a_set_scale, self.a_measure_summary,
                   self.a_compare, self.a_header, self.a_watermark, self.a_compress,
+                  self.a_background, self.a_remove_bg,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
                   *self.export_actions):
             a.setEnabled(has)
@@ -2100,6 +2105,50 @@ class MainWindow(QMainWindow):
             if dlg.exec() and dlg.spec:
                 v.add_watermark(dlg.spec)
 
+    def background(self):
+        from .page_tools import BackgroundDialog
+        v = self.view()
+        if v:
+            dlg = BackgroundDialog(self, v.page_count(), v.current_page())
+            if dlg.exec() and dlg.spec:
+                v.add_background(dlg.spec, dlg.page_list)
+
+    def remove_background(self):
+        from .page_tools import PageChoice
+        from . import background as B
+        v = self.view()
+        if not v:
+            return
+        have = [i for i in range(v.page_count()) if B.has_background(v.doc[i])]
+        if not have:
+            QMessageBox.information(self, "Remove background", "No page in this document has a "
+                                    "background added with Document > Background.")
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Remove background")
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel(f"{len(have)} page(s) have a background added with "
+                             "Document > Background. Remove it from:"))
+        choice = PageChoice(v.page_count(), v.current_page())
+        lay.addWidget(choice)
+        err = QLabel()
+        err.setStyleSheet("color: #c00;")
+        lay.addWidget(err)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        lay.addWidget(btns)
+        btns.rejected.connect(dlg.reject)
+
+        def ok():
+            try:
+                dlg.pages_ = choice.pages()
+            except ValueError as e:
+                err.setText(str(e))
+                return
+            dlg.accept()
+        btns.accepted.connect(ok)
+        if dlg.exec():
+            v.remove_background([i for i in dlg.pages_ if i in have])
+
     def compress(self):
         from . import page_tools
         v = self.view()
@@ -2741,7 +2790,8 @@ class MainWindow(QMainWindow):
         "a_sanitize": "Sanitize", "a_hl_fields": "Highlight fields", "a_move_up": "Move up",
         "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_combine": "Combine files",
         "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
-        "a_watermark": "Watermark", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
+        "a_watermark": "Watermark", "a_background": "Background",
+        "a_remove_bg": "Remove background", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
         "a_compress": "Compress", "a_compare": "Compare", "a_flatten": "Flatten",
         "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest",
         "a_split": "Split view", "a_labels": "Toolbar labels", "a_shortcuts": "Shortcuts",
@@ -2774,7 +2824,8 @@ class MainWindow(QMainWindow):
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
         "a_combine": "file-document-multiple-outline",
         "a_insert_blank": "file-outline", "a_extract": "file-export-outline",
-        "a_header": "page-layout-header-footer", "a_watermark": "watermark",
+        "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
+        "a_remove_bg": "format-color-marker-cancel",
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
         "a_compress": "zip-box-outline", "a_compare": "compare", "a_flatten": "layers-triple-outline",
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
@@ -2861,8 +2912,9 @@ class MainWindow(QMainWindow):
             ("Organize", "small", [self.a_move_up, self.a_move_down, self.a_del_page,
                                    self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
             ("Combine", "large", [self.a_combine]),
-            ("Document", "small", [self.a_header, self.a_watermark, self.a_bookmarks,
-                                   self.a_attachments, self.a_compress, self.a_compare]),
+            ("Document", "small", [self.a_header, self.a_watermark, self.a_background,
+                                   self.a_bookmarks, self.a_attachments, self.a_compress,
+                                   self.a_compare]),
             ("Convert", "large", [self.a_ocr, self.a_flatten]),
         ])
         r.add_tab("View", [

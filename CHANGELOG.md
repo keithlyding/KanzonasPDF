@@ -5,7 +5,10 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.59 | (this) | Preferences > Saving: choose the backup folder (Change..., Use default, Open backup folder) |
+| 0.62 | (this) | New red app icon: the cactus and sunflower in front of a white page that fades in from behind them, its top coming out above, on a red gradient tile, at every size including the taskbar (red is the color people associate with PDF apps) |
+| 0.61 | 03f203d | Clean-up: toolbar icons are drawn straight from the icon font instead of loading the QtAwesome library at start-up (start-up about 20% faster, about 25 MB less memory, identical icons); unused code and imports removed; shared code for resize handles. Self-test now fails if QtAwesome loads at start-up |
+| 0.60 | 4f81b63 | New Document > Background...: solid color, gradient or picture behind the page content, with opacity, on the current page, all pages or chosen pages; Remove background... takes it off again. New self-test check |
+| 0.59 | 74ac12d | Preferences > Saving: choose the backup folder (Change..., Use default, Open backup folder) |
 | 0.58 | 4e6d88a | Documents open at Fit width by default again (like other PDF editors); Fit page, Actual size or the last zoom can be chosen in Preferences > Start-up and opening |
 | 0.57 | a2322ed | Automatic backup copies of unsaved changes (every 5 minutes by default) with recovery after a crash; option to reopen last session's documents and to start with the Select tool; measuring defaults (units, inch fraction, decimal places); Change PIN for the saved signature. Preferences now lists its sections on the left |
 | 0.56 | 52984ba | One page per wheel step now only applies when the whole page, side to side too, is in the window. Documents now open at Fit page by default; Preferences > Opening documents chooses Fit page, Fit width, Actual size or the last zoom, and whether to reopen at the last page |

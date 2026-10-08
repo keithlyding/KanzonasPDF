@@ -72,7 +72,6 @@ def compare(old_bytes, new_bytes, dpi=110, progress=None, old_name="OLD", new_na
             progress(i, n)
         po = old[i] if i < old.page_count else None
         pn = new[i] if i < new.page_count else None
-        ref = pn or po
         rects = [r for r in (po.rect if po else None, pn.rect if pn else None) if r is not None]
         width = max(r.width for r in rects)
         height = max(r.height for r in rects)

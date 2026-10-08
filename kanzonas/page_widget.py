@@ -5,12 +5,10 @@ and turns mouse input into calls on the DocumentView, which owns all PDF edits.
 """
 
 import math
-from collections import OrderedDict
-
 import pymupdf
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath,
-                           QFontMetrics, QBrush)
+                           QFontMetrics)
 from PySide6.QtWidgets import QWidget, QToolTip
 
 from . import annotations as A
@@ -37,6 +35,24 @@ ROT_GAP = 26        # rotation handle distance above the selection, px
 SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "callout"}   # Shift = 45° steps
 SQUARE_TOOLS = {"rect", "ellipse", "cloud"}                               # Shift = square / circle
+
+
+def box_handles(r, h=HANDLE):
+    """{id: QRectF} the eight resize handles (corners and sides) of screen rect r."""
+    c = r.center()
+    pts = {"tl": r.topLeft(), "tr": r.topRight(), "bl": r.bottomLeft(), "br": r.bottomRight(),
+           "t": QPointF(c.x(), r.top()), "b": QPointF(c.x(), r.bottom()),
+           "l": QPointF(r.left(), c.y()), "r": QPointF(r.right(), c.y())}
+    return {k: QRectF(v.x() - h / 2, v.y() - h / 2, h, h) for k, v in pts.items()}
+
+
+def handle_cursor(hid):
+    """Mouse cursor over a handle: resize arrows, a hand for rotation, a cross for points."""
+    return (Qt.SizeFDiagCursor if hid in ("tl", "br") else
+            Qt.SizeBDiagCursor if hid in ("tr", "bl") else
+            Qt.SizeVerCursor if hid in ("t", "b") else
+            Qt.SizeHorCursor if hid in ("l", "r") else
+            Qt.PointingHandCursor if hid == "rot" else Qt.CrossCursor)
 
 
 def snap45(a, b):
@@ -408,12 +424,7 @@ class PageWidget(QWidget):
         if model["kind"] == "callout":
             s_ = self.to_screen_pt(model["points"][0])
             extra["p0"] = QRectF(s_.x() - h / 2, s_.y() - h / 2, h, h)
-        r = self.to_screen(A.bounds(model))
-        pts = {"tl": r.topLeft(), "tr": r.topRight(), "bl": r.bottomLeft(),
-               "br": r.bottomRight(), "t": QPointF(r.center().x(), r.top()),
-               "b": QPointF(r.center().x(), r.bottom()), "l": QPointF(r.left(), r.center().y()),
-               "r": QPointF(r.right(), r.center().y())}
-        out = {k: QRectF(v.x() - h / 2, v.y() - h / 2, h, h) for k, v in pts.items()}
+        out = box_handles(self.to_screen(A.bounds(model)))
         out.update(extra)
         out.update(self._rot_handle(model))
         return out
@@ -489,13 +500,7 @@ class PageWidget(QWidget):
         items = self._objects_here()
         if not items:
             return {}
-        h = HANDLE
-        r = self.to_screen(self.view.selected_objects_rect()).adjusted(-2, -2, 2, 2)
-        pts = {"tl": r.topLeft(), "tr": r.topRight(), "bl": r.bottomLeft(),
-               "br": r.bottomRight(), "t": QPointF(r.center().x(), r.top()),
-               "b": QPointF(r.center().x(), r.bottom()), "l": QPointF(r.left(), r.center().y()),
-               "r": QPointF(r.right(), r.center().y())}
-        return {k: QRectF(v.x() - h / 2, v.y() - h / 2, h, h) for k, v in pts.items()}
+        return box_handles(self.to_screen(self.view.selected_objects_rect()).adjusted(-2, -2, 2, 2))
 
     def _draw_object(self, p, item, page):
         for line in self.view.object_lines(self.index, item):
@@ -628,9 +633,7 @@ class PageWidget(QWidget):
         if self._objects_here():
             for hid, r in self._objects_handles().items():
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
-                    self.setCursor(Qt.SizeFDiagCursor if hid in ("tl", "br") else
-                                   Qt.SizeBDiagCursor if hid in ("tr", "bl") else
-                                   Qt.SizeVerCursor if hid in ("t", "b") else Qt.SizeHorCursor)
+                    self.setCursor(handle_cursor(hid))
                     return
         item = self.view.object_at(self.index, self.to_pdf(pos))
         if item is not None:
@@ -985,11 +988,7 @@ class PageWidget(QWidget):
         if model is not None:
             for hid, r in self._handles(model).items():
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
-                    self.setCursor(Qt.SizeFDiagCursor if hid in ("tl", "br") else
-                                   Qt.SizeBDiagCursor if hid in ("tr", "bl") else
-                                   Qt.SizeVerCursor if hid in ("t", "b") else
-                                   Qt.SizeHorCursor if hid in ("l", "r") else
-                                   Qt.PointingHandCursor if hid == "rot" else Qt.CrossCursor)
+                    self.setCursor(handle_cursor(hid))
                     return
         over = self.view.annot_at(self.index, self.to_pdf(pos)) is not None or \
             self._card_at(pos) is not None

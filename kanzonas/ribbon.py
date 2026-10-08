@@ -58,7 +58,6 @@ class Ribbon(QTabWidget):
         self.setDocumentMode(True)
         self.setObjectName("ribbon")
         self._collapsed = False
-        self._expanded_height = None
         self._labels = []
         self._show_labels = False
         self.tabBar().tabBarDoubleClicked.connect(lambda _i: self.set_collapsed(not self._collapsed))
@@ -140,9 +139,6 @@ class Ribbon(QTabWidget):
         """Tab names, two rows of buttons, group names if shown and room for a thin scrollbar."""
         label = self._labels[0].sizeHint().height() if self._labels and self._show_labels else 0
         return self.tabBar().sizeHint().height() + ROWS * SMALL_HEIGHT + 2 + label + 2 + 7 + 4
-
-    def is_collapsed(self):
-        return self._collapsed
 
     def set_collapsed(self, on):
         self._collapsed = bool(on)

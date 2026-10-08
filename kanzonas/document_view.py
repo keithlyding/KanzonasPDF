@@ -1547,12 +1547,6 @@ class DocumentView(QScrollArea):
             self.selectToolRequested.emit()
         self.select_xref(index, xref)
 
-    def select_annot_at(self, index, pt, add=False):
-        xref = self.annot_at(index, pt)
-        if xref is None:
-            return False
-        return self.select_xref(index, xref, add)
-
     def clear_selection(self):
         if self.selection is None:
             return
@@ -1632,8 +1626,6 @@ class DocumentView(QScrollArea):
         self.modify(do, [index])
 
     # ---- arrange: align, distribute, stacking order -------------------------------
-    ALIGN_REFS = ("first", "last", "selection", "page")
-
     def _display_bounds(self, page, model):
         return annotations.bounds(model) * page.rotation_matrix
 
@@ -2276,6 +2268,20 @@ class DocumentView(QScrollArea):
     def add_watermark(self, spec):
         from . import page_tools
         self.modify(lambda: page_tools.add_watermark(self.doc, spec), spec["pages"])
+
+    def add_background(self, spec, pages):
+        from . import background
+        self.modify(lambda: background.apply(self.doc, pages, spec), pages)
+        self._obj_cache = {}
+        self.statusMessage.emit(f"Background added to {len(pages)} page(s) (Ctrl+Z undoes it)")
+
+    def remove_background(self, pages):
+        from . import background
+        if not pages:
+            self.statusMessage.emit("Those pages have no background to remove")
+            return
+        self.modify(lambda: background.remove_pages(self.doc, pages), pages)
+        self.statusMessage.emit(f"Background removed from {len(pages)} page(s)")
 
     # ---- digitally signed documents --------------------------------------------------------
     def check_digital_signatures(self):
