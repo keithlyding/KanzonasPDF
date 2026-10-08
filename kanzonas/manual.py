@@ -469,7 +469,10 @@ when you closed it), and whether to reopen it at the page you were on last time.
 off). A copy of each document with unsaved changes is kept in the backups folder and deleted when
 you save or close it. If KanzonasPDF or Windows stops unexpectedly, the next start offers to open
 the copies; use Save As to keep one. Offered copies stay in the backups folder (Open backup
-folder) for 30 days. Password-protected documents aren't backed up, because the copy wouldn't
+folder) for 30 days. <b>Backup folder</b>: Change... picks another folder (if KanzonasPDF can't
+write there it says so), Use default goes back to the standard one (in the data folder when
+portable). Backups of open documents move to the new folder; recovered copies from earlier stay
+in the old one. Password-protected documents aren't backed up, because the copy wouldn't
 have the password.</li>
 <li><b>Measuring:</b> the units offered for a page that has no scale yet, what feet and inches
 round to (1/2" to 1/64"; 1/16" by default) and the decimal places for other units. Existing

@@ -22,8 +22,35 @@ INDEX = "index.json"
 KEEP_DAYS = 30
 
 
-def folder():
+def default_folder():
     return paths.data_dir("backups")
+
+
+def folder():
+    """The backups folder: the one chosen in Preferences > Saving, else the default (in the
+    data folder when portable). Falls back to the default if the chosen one can't be used."""
+    chosen = paths.settings().value("backup_dir", "") or ""
+    if chosen:
+        try:
+            os.makedirs(chosen, exist_ok=True)
+            if os.access(chosen, os.W_OK):
+                return chosen
+        except OSError:
+            pass
+    return default_folder()
+
+
+def usable(path):
+    """True if backups can be written to path."""
+    try:
+        os.makedirs(path, exist_ok=True)
+        test = os.path.join(path, ".kanzonas-test")
+        with open(test, "w") as f:
+            f.write("ok")
+        os.remove(test)
+        return True
+    except OSError:
+        return False
 
 
 def _index():
@@ -74,7 +101,8 @@ def _remove(p):
 def set_aside(items):
     """Move offered copies to backups/recovered (so they're offered only once); returns the
     new paths. Recovered copies are also deleted after KEEP_DAYS."""
-    dest = paths.data_dir(os.path.join("backups", "recovered"))
+    dest = os.path.join(folder(), "recovered")
+    os.makedirs(dest, exist_ok=True)
     now = time.time()
     for name in os.listdir(dest):
         p = os.path.join(dest, name)

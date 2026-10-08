@@ -164,9 +164,26 @@ class PreferencesDialog(QDialog):
                       "wouldn't have the password).")
         note.setWordWrap(True)
         form.addRow(note)
-        folder = QPushButton("Open backup folder")
-        folder.clicked.connect(self._open_backups)
-        form.addRow(folder)
+        self.backup_dir = win.settings.value("backup_dir", "") or ""
+        self.backup_label = QLabel()
+        self.backup_label.setWordWrap(True)
+        self.backup_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self._show_backup_dir()
+        form.addRow("Backup folder:", self.backup_label)
+        row = QHBoxLayout()
+        for text, slot in (("Change...", self._pick_backup_dir),
+                           ("Use default", self._default_backup_dir),
+                           ("Open backup folder", self._open_backups)):
+            b = QPushButton(text)
+            b.clicked.connect(slot)
+            row.addWidget(b)
+        form.addRow(row)
+        note = QLabel("Tip: choose a folder on this computer. A network or cloud-synced "
+                      "folder works too, but your unsaved changes are then copied there. "
+                      "Backups of open documents move to the new folder; recovered copies "
+                      "from earlier stay in the old one.")
+        note.setWordWrap(True)
+        form.addRow(note)
 
         # Measuring
         from . import measure
@@ -271,11 +288,39 @@ class PreferencesDialog(QDialog):
         QMessageBox.information(self, "Signature PIN",
                                 "PIN changed." if new else "PIN removed.")
 
+    def _show_backup_dir(self):
+        from . import autosave
+        if self.backup_dir:
+            self.backup_label.setText(self.backup_dir)
+        else:
+            self.backup_label.setText(autosave.default_folder() + "  (default)")
+
+    def _pick_backup_dir(self):
+        from PySide6.QtWidgets import QFileDialog
+        from . import autosave
+        start = self.backup_dir or autosave.default_folder()
+        d = QFileDialog.getExistingDirectory(self, "Backup folder", start)
+        if not d:
+            return
+        if not autosave.usable(d):
+            QMessageBox.warning(self, "Backup folder", "KanzonasPDF can't write to that "
+                                "folder. Choose another one.")
+            return
+        self.backup_dir = d
+        self._show_backup_dir()
+
+    def _default_backup_dir(self):
+        self.backup_dir = ""
+        self._show_backup_dir()
+
     def _open_backups(self):
+        import os
         from PySide6.QtCore import QUrl
         from PySide6.QtGui import QDesktopServices
         from . import autosave
-        QDesktopServices.openUrl(QUrl.fromLocalFile(autosave.folder()))
+        d = self.backup_dir or autosave.default_folder()
+        os.makedirs(d, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(d))
 
     def _kind(self):
         it = self.kinds.currentItem()
@@ -329,6 +374,11 @@ class PreferencesDialog(QDialog):
         win.settings.setValue("restore_session", "true" if self.restore.isChecked() else "false")
         win.settings.setValue("start_tool", self.start_tool.currentData())
         win.settings.setValue("autosave_minutes", self.autosave.value())
+        if self.backup_dir != (win.settings.value("backup_dir", "") or ""):
+            win.autosave.discard_all()      # move the current copies to the new folder
+            win.settings.setValue("backup_dir", self.backup_dir)
+            if win.autosave.minutes:
+                win.autosave.tick()
         win.autosave.set_minutes(self.autosave.value())
         from . import measure
         win.settings.setValue("measure_unit", self.m_unit.currentData())
