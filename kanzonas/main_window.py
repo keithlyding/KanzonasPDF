@@ -25,6 +25,12 @@ from .tool_chest import ToolChestPanel, tool_for
 
 APP_NAME = "KanzonasPDF"
 APP_TITLE = f"KanzonasPDF v{__version__}"
+
+
+def _title_base():
+    """'KanzonasPDF v0.48', plus ' (portable)' when run from the portable folder."""
+    from . import paths
+    return APP_TITLE + (" (portable)" if paths.is_portable() else "")
 PDF_FILTER = "PDF files (*.pdf);;All files (*)"
 
 
@@ -148,7 +154,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         from . import paths
         self.settings = paths.settings()
-        self.setWindowTitle(APP_NAME)
+        self.setWindowTitle(_title_base())
         self.resize(1300, 900)
         self.setAcceptDrops(True)
         self.tool = "hand"            # start with the Hand: scroll by dragging, like most viewers
@@ -952,7 +958,7 @@ class MainWindow(QMainWindow):
                 self.zoom_slider.blockSignals(False)
             self.scale_label.setText(v.page_scale_text(v.current_page()))
             name = os.path.basename(v.path) + (" [protected]" if v.read_only else "")
-            self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {APP_TITLE}")
+            self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {_title_base()}")
             for i in range(self.tabs.count()):
                 w = self.tabs.widget(i)
                 self.tabs.setTabText(i, ("*" if w.dirty else "") + os.path.basename(w.path))
@@ -960,7 +966,7 @@ class MainWindow(QMainWindow):
         else:
             self.page_total.setText(" / 0 ")
             self.scale_label.setText("")
-            self.setWindowTitle(APP_TITLE)
+            self.setWindowTitle(_title_base())
 
     # ---- files --------------------------------------------------------------
     def open_dialog(self):
@@ -2933,7 +2939,7 @@ class MainWindow(QMainWindow):
         self._manual.activateWindow()
 
     def about(self):
-        from . import branding
+        from . import branding, paths
         dlg = QDialog(self)
         dlg.setWindowTitle("About " + APP_NAME)
         lay = QVBoxLayout(dlg)
@@ -2942,7 +2948,7 @@ class MainWindow(QMainWindow):
         logo.setStyleSheet("background: #f7f9fa; border-radius: 6px; padding: 6px;")
         lay.addWidget(logo)
         text = QLabel(
-            f"Version {__version__}. A free, fast PDF reader and editor.<br><br>"
+            f"Version {__version__}{' (portable)' if paths.is_portable() else ''}. A free, fast PDF reader and editor.<br><br>"
             f"Built on PyMuPDF {pymupdf.VersionBind} (MuPDF) and Qt (PySide6).<br>"
             "Free software under the GNU Affero General Public License 3.0.<br>"
             "Source code and downloads: <a href='https://github.com/keithlyding/KanzonasPDF'>"

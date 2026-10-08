@@ -61,7 +61,8 @@ signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps,
 anywhere (a USB stick, a network drive, your Documents) and run KanzonasPDF.exe. Because of the
 portable.txt file inside, your settings, signatures, stamp images and certificate are kept in a
 <b>data</b> folder next to the program instead of the computer's registry and user folders, so
-they travel with the folder. Keep the whole folder together. To update, replace everything
+they travel with the folder. The window title and Help &gt; About say <b>(portable)</b> when
+this copy is running in portable mode. Keep the whole folder together. To update, replace everything
 except the data folder (or unzip the new version and copy your old data folder into it).
 (Opening an attached file still uses Windows' temporary folder.)</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
