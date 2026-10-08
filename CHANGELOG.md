@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.69 | (this) | Fix: the Tool chest button (View tab, F8) only opened the panel; it now closes it too when it's showing, and brings it to the front when it's behind the Properties tab |
+| 0.70 | (this) | The ribbon's Comment tab is now called Markup (it holds highlights, notes, shapes, stamps, the pen and erasers, not only comments) |
+| 0.69 | f4b3c11 | Fix: the Tool chest button (View tab, F8) only opened the panel; it now closes it too when it's showing, and brings it to the front when it's behind the Properties tab |
 | 0.68 | c471a2a | CAD mouse mode: the pages sit on an open canvas, so they can be dragged in any direction even when the whole page fits in the window (like Bluebeam); Fit page, Fit width and opening a file center the page |
 | 0.67 | 5c1f599 | Fix: Edit text refused lines with symbols few fonts have ("No available font has every character of the new text"), such as the minus sign, the diameter sign, invisible narrow or zero-width spaces and ligatures. It now tries broad installed fonts (Segoe UI and others), then look-alikes; characters that truly can't be written (emoji) are named in the message, and are never written as a different character. New self-test check |
 | 0.66 | d9f3ed3 | Fix: Edit text failed with "need font file or buffer" on PDFs with embedded or installed fonts (most real documents): removing the old line also removed the font chosen for the new text. Edit text also now recognizes a PDF's embedded font when its name is written differently in different places, so edits keep the original look more often. New self-test check |

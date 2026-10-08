@@ -2888,7 +2888,7 @@ class MainWindow(QMainWindow):
                                self.a_zoom_in, self.a_zoom_out, self.a_cad_mouse]),
             ("Sign", "large", [t["signature"], t["initials"]]),
         ])
-        r.add_tab("Comment", [
+        r.add_tab("Markup", [
             ("Text", "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
                                t["note"], t["textbox"]]),
             ("Callout & stamps", "large", [t["callout"], t["stamp"], t["image"], t["attach"]]),
