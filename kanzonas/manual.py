@@ -89,7 +89,9 @@ from any folder but stores settings on the computer like the installed version.<
 with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit width, at
-the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.</li>
+the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.
+Fit width and Fit page keep fitting when the window or a side panel changes size, until you
+choose a zoom yourself.</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). Shift+Left/Right scrolls sideways.</li>
@@ -115,11 +117,17 @@ instead.)</li>
 cut and paste below). Click a markup to select it, then drag
 it to move it, drag a square handle to resize it, or change its look in the Properties panel.</li>
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
-it too, so you don't have to switch back to the arrow.</li>
+it too, so you don't have to switch back to the arrow. The <b>Hand tool</b> works the same way:
+click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
+page.</li>
 <li><b>Several markups:</b> Ctrl+click each one, or drag a box from empty space with the Select
 tool (Ctrl+drag always draws a selection box). Drag any selected markup to move them all;
 Delete removes them all; Properties changes apply to all of them.</li>
-<li><b>Delete:</b> Delete or Backspace. <b>Edit a note's text:</b> double-click it.</li>
+<li><b>Delete:</b> Delete or Backspace, or right-click the markup &gt; <b>Delete</b>.
+<b>Edit a comment's text:</b> double-click it, or right-click it &gt; <b>Edit text...</b>.
+If you right-click highlighted text that's selected, the menu offers <b>Delete highlight</b>.
+In the Markups list (F7), double-click a row to edit its text; right-click a row for
+<b>Edit text...</b> and <b>Delete</b>, or press Delete.</li>
 <li><b>Move with the arrow keys:</b> with markups selected (or pictures and shapes selected with
 Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> moves 10 pt and
 <b>Ctrl+arrow</b> 0.1 pt, for fine adjustments. A series of presses is one Ctrl+Z. Markups tied to
@@ -291,6 +299,10 @@ then click to place it.</li>
 <li><b>Add my name</b> and <b>Add the date</b> are separate checkboxes. Changing them on a
 placed stamp redraws it (a re-added date shows today's date).</li>
 <li><b>Add image stamp...</b> adds your own picture (PNG/JPG) to the stamp list.</li>
+<li><b>Fill-in stamps:</b> <b>Fill-in: PO # / Date ordered</b> and <b>Fill-in: Req # / Date
+submitted</b> in the stamp list. When you click to place one, a box asks for the number and the
+date (the date starts as today, in your Preferences &gt; You date format). Double-click a placed
+one to change what it says; it resizes to fit.</li>
 </ul>
 
 <h2 id="images">Pictures and attached files (videos and more)</h2>
@@ -392,11 +404,19 @@ file, Delete page.</li>
 
 <h2 id="forms">Forms</h2>
 <ul>
-<li><b>Fill in:</b> with Select or Hand, click a field. Tab moves to the next text field.
-<b>Highlight form fields</b> (View or Forms menu, on by default) shades every fillable field
-light blue; required fields get a red outline. The shading is on screen only.</li>
-<li><b>Create:</b> Forms menu: text field, checkbox, option button, dropdown, signature field.
-Double-click a field to change its name and options.</li>
+<li><b>Fill in:</b> with Select or Hand, click a field. Option buttons with the same group
+name are exclusive: choosing one clears the others in its group.</li>
+<li><b>Next form field</b> (Tab) and <b>Previous form field</b> (Shift+Tab), in the Forms menu:
+go through the fields in reading order (page by page, top to bottom, left to right). The
+current field gets an orange outline; a text field opens for typing (Tab moves on, Shift+Tab
+goes back); for a checkbox, option button, dropdown, signature or initials field press
+<b>Space</b> or <b>Enter</b> to fill it in. Escape clears the outline.</li>
+<li><b>Highlight form fields</b> (View or Forms menu, on by default) shades every fillable field
+blue with a blue outline; required fields get a red outline. The shading is on screen only.</li>
+<li><b>Create:</b> Forms menu: text field, checkbox, option button, dropdown, signature field,
+initials field. An <b>initials field</b> works like a signature field: whoever fills in the
+form clicks it to put their saved initials there. Double-click a field to change its name and
+options.</li>
 </ul>
 
 <h2 id="sign">Protect: signatures, passwords, redaction</h2>
@@ -489,6 +509,12 @@ marks areas; Apply redactions permanently removes what's underneath.</li>
 <li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
 <b>Compress (save a smaller copy)</b>, <b>Compare documents</b> (changes clouded in red and
 blue), <b>Flatten</b> (make markups part of the page).</li>
+<li><b>Remove watermarks...</b> (Document menu): takes watermarks off the current page, all
+pages or pages such as 1-3, 7. It finds watermarks added with Document &gt; Watermark and those
+added by apps that mark them as watermarks (Adobe Acrobat, PDF-XChange and others), and
+watermark annotations. Ctrl+Z undoes it. A "watermark" that is just ordinary text or a picture
+in the page can't be told apart from the rest of the page; remove it with Erase content or
+Edit objects.</li>
 <li><b>Background...</b> (Document menu; Pages tab): puts a <b>solid color</b>, a <b>gradient</b>
 (two colors, top to bottom, bottom to top, left to right or diagonal) or a <b>picture</b> (Fit,
 Fill, Stretch to the page, or Center at its own size) behind everything on the page, at the
@@ -572,6 +598,7 @@ settings...).</li>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
 <tr><td>Left / Right</td><td>Previous / next page</td></tr>
+<tr><td>Tab / Shift+Tab</td><td>Next / previous form field (Space or Enter fills it)</td></tr>
 <tr><td>Arrow keys (something selected)</td><td>Move it 1 pt; with Shift 10 pt; with Ctrl 0.1 pt</td></tr>
 <tr><td>Ctrl+Shift+Plus / Minus</td><td>Rotate page</td></tr>
 <tr><td>Ctrl+Shift+Up / Down</td><td>Move page</td></tr>

@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pymupdf
 from PySide6.QtCore import Qt, Signal, QTimer, QObject, QEvent
 from PySide6.QtCore import QRectF
-from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor)
+from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor, QImage)
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
                                QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
@@ -273,7 +273,11 @@ class DocumentView(QScrollArea):
         self.goto_page(min(page, self.doc.page_count - 1))
 
     # ---- zoom -------------------------------------------------------------
-    def set_zoom(self, z):
+    fit_mode = None     # "width" / "page" while the zoom follows the window size
+
+    def set_zoom(self, z, keep_fit=False):
+        if not keep_fit:
+            self.fit_mode = None       # a chosen zoom stays put when the window resizes
         z = max(MIN_ZOOM, min(MAX_ZOOM, z))
         if abs(z - self.zoom) < 1e-4:
             return
@@ -298,7 +302,8 @@ class DocumentView(QScrollArea):
         avail = self.viewport().width() - 2 * PAGE_GAP - 4
         if not self.verticalScrollBar().isVisible():
             avail -= self.verticalScrollBar().sizeHint().width()
-        self.set_zoom(avail / widest)
+        self.set_zoom(avail / widest, keep_fit=True)
+        self.fit_mode = "width"
         self.center_horizontally()
 
     def fit_page(self):
@@ -306,7 +311,8 @@ class DocumentView(QScrollArea):
         avail_w = self.viewport().width() - 2 * PAGE_GAP
         avail_h = self.viewport().height() - 2 * PAGE_GAP
         page = self.current_page()
-        self.set_zoom(min(avail_w / r.width, avail_h / r.height))
+        self.set_zoom(min(avail_w / r.width, avail_h / r.height), keep_fit=True)
+        self.fit_mode = "page"
         self.show_whole_page(page)
 
     highlight_fields = True        # shade fillable form fields (View / Forms menu)
@@ -1400,8 +1406,32 @@ class DocumentView(QScrollArea):
             self.modify(lambda: page.delete_annot(page.load_annot(key)), [page_index])
 
     def place_stamp(self, index, pt):
-        self._create(index, {"kind": "stamp", "props": self.tool_props("stamp"),
-                             "rect": self.stamp_rect(index, pt)})
+        from . import stamps
+        props = self.tool_props("stamp")
+        label = props.get("label") or ""
+        if not label.startswith(stamps.FORM_PREFIX):
+            self._create(index, {"kind": "stamp", "props": props,
+                                 "rect": self.stamp_rect(index, pt)})
+            return
+        values = stamps.ask_form_values(self, label)        # PO #, date ordered, ...
+        if values is None:
+            return
+        page = self.doc[index]
+        self._create(index, {"kind": "stamp", "props": props, "detail": "\n".join(values),
+                             "rect": self._form_stamp_rect(page, label, values, props,
+                                                           pymupdf.Point(pt) * page.rotation_matrix)})
+
+    @staticmethod
+    def _form_stamp_rect(page, label, values, props, center):
+        """Unrotated rect for a fill-in stamp centered on a display point, sized to its text."""
+        from . import stamps
+        png, aspect = stamps.render_form(stamps.form_fields(label), values,
+                                         props.get("stroke") or "#c00000")
+        img = QImage.fromData(png)
+        w = img.width() / stamps.SCALE * 0.75
+        h = w * aspect
+        disp = pymupdf.Rect(center.x - w / 2, center.y - h / 2, center.x + w / 2, center.y + h / 2)
+        return disp * page.derotation_matrix
 
     def apply_ink(self, index, pts):
         self._create(index, {"kind": "ink", "props": self.tool_props("ink"),
@@ -1826,6 +1856,19 @@ class DocumentView(QScrollArea):
         model = annotations.read(page.load_annot(xref))
         if model is None:
             return
+        from . import stamps
+        label = model["props"].get("label") or ""
+        if model["kind"] == "stamp" and label.startswith(stamps.FORM_PREFIX):
+            # fill-in stamp: change the values; the stamp grows or shrinks to fit them
+            values = stamps.ask_form_values(self, label, (model.get("detail") or "").split("\n"))
+            if values is None or "\n".join(values) == model.get("detail"):
+                return
+            disp = model["rect"] * page.rotation_matrix
+            model["detail"] = "\n".join(values)
+            model["rect"] = self._form_stamp_rect(page, label, values, model["props"],
+                                                  (disp.tl + disp.br) / 2)
+            self.commit_model(index, xref, model)
+            return
         title = annotations.LABELS.get(model["kind"], "Annotation")
         text, ok = dialogs.get_text(self, "Edit " + title, "Text:", model.get("text", ""))
         if not ok or text == model.get("text", ""):
@@ -1877,6 +1920,15 @@ class DocumentView(QScrollArea):
             return
         if e.key() == Qt.Key_Escape and self.text_sel is not None:
             self.clear_text_selection()
+            return
+        if self.field_focus is not None and self.tool in ("hand", "select") and \
+                e.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter) and not self.read_only:
+            self.fill_field(*self.field_focus)
+            return
+        if e.key() == Qt.Key_Escape and self.field_focus is not None:
+            old = self.field_focus
+            self.field_focus = None
+            self.pages[old[0]].update()
             return
         if e.key() == Qt.Key_Escape:
             # Escape twice in a row: back to the Select (arrow) tool
@@ -2375,6 +2427,20 @@ class DocumentView(QScrollArea):
         from . import page_tools
         self.modify(lambda: page_tools.add_watermark(self.doc, spec), spec["pages"])
 
+    def remove_watermarks(self, pages):
+        from . import page_tools
+        if not pages:
+            self.statusMessage.emit("Those pages have no watermark to remove")
+            return
+        count = {"n": 0}
+
+        def do():
+            count["n"] = page_tools.remove_watermarks(self.doc, pages)
+        self.modify(do, pages)
+        self._obj_cache = {}
+        self.statusMessage.emit(f"Removed {count['n']} watermark(s) from {len(pages)} page(s) "
+                                "(Ctrl+Z undoes it)")
+
     def add_background(self, spec, pages):
         from . import background
         self.modify(lambda: background.apply(self.doc, pages, spec), pages)
@@ -2458,6 +2524,20 @@ class DocumentView(QScrollArea):
         self._place_banner()
         if self.cad_mouse:
             self.apply_canvas()
+        # Fit width / Fit page keep fitting when the window or the side panels change size
+        # (the window often grows to its final size just after a file opens)
+        if self.fit_mode and e.size().width() != e.oldSize().width() or \
+                self.fit_mode == "page" and e.size().height() != e.oldSize().height():
+            if not getattr(self, "_refit_queued", False):
+                self._refit_queued = True
+                QTimer.singleShot(0, self._refit)
+
+    def _refit(self):
+        self._refit_queued = False
+        if self.fit_mode == "width":
+            self.fit_width()
+        elif self.fit_mode == "page":
+            self.fit_page()
 
     # ---- signatures & initials -------------------------------------------------------
     SIG_WIDTH = {"signature": 144.0, "initials": 54.0}     # default size in points
@@ -2736,6 +2816,7 @@ class DocumentView(QScrollArea):
         return w.xref if w is not None else None
 
     def fill_field(self, index, xref):
+        self._set_field_focus(index, xref)
         page = self.doc[index]
         w = page.load_widget(xref)
         t = w.field_type
@@ -2744,7 +2825,7 @@ class DocumentView(QScrollArea):
             value = "Off" if w.field_value == on else on
             self._set_field(index, xref, value)
         elif t == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
-            self._set_field(index, xref, True)
+            self._choose_option(index, xref)
         elif t in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
             menu = QMenu(self)
             for c in w.choice_values or []:
@@ -2770,6 +2851,26 @@ class DocumentView(QScrollArea):
             w.update()
         self.modify(do, [index])
 
+    def _choose_option(self, index, xref):
+        """Option (radio) button: turn this one on and every other button of its group off.
+        A group is the buttons sharing a field name (KanzonasPDF makes each button its own
+        field with the group's name) or the kids of one parent field (other PDF makers)."""
+        name = self.doc[index].load_widget(xref).field_name
+        others = [(i, w.xref) for i in range(self.doc.page_count)
+                  for w in self.doc[i].widgets(types=[pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON])
+                  if w.field_name == name and (i, w.xref) != (index, xref)]
+
+        def do():
+            for _i, x in others:
+                self.doc.xref_set_key(x, "AS", "/Off")
+                if self.doc.xref_get_key(x, "V")[0] != "null":
+                    self.doc.xref_set_key(x, "V", "/Off")
+            pg = self.doc[index]
+            w = pg.load_widget(xref)
+            w.field_value = True
+            w.update()
+        self.modify(do, sorted({index} | {i for i, _x in others}))
+
     def _edit_text_field(self, index, xref):
         page = self.doc[index]
         w = page.load_widget(xref)
@@ -2790,7 +2891,7 @@ class DocumentView(QScrollArea):
         ed.setStyleSheet("background:#fffbe6; border:2px solid #0078d7;")
         done = {"x": False}
 
-        def finish(save=True, next_field=False):
+        def finish(save=True, next_field=None):
             if done["x"]:
                 return
             done["x"] = True
@@ -2799,8 +2900,8 @@ class DocumentView(QScrollArea):
             ed.deleteLater()
             if save and text != (w.field_value or ""):
                 self._set_field(index, xref, text)
-            if next_field:
-                self._next_text_field(index, xref)
+            if next_field is not None:
+                self.next_field(back=next_field == "back", current=(index, xref))
 
         class Keys(QObject):
             def eventFilter(_s, obj, e):
@@ -2808,8 +2909,9 @@ class DocumentView(QScrollArea):
                     if e.key() == Qt.Key_Escape:
                         finish(save=False)
                         return True
-                    if e.key() == Qt.Key_Tab:
-                        finish(next_field=True)
+                    if e.key() in (Qt.Key_Tab, Qt.Key_Backtab):
+                        finish(next_field="back" if e.key() == Qt.Key_Backtab or
+                               e.modifiers() & Qt.ShiftModifier else "next")
                         return True
                     if e.key() in (Qt.Key_Return, Qt.Key_Enter) and (
                             not multiline or e.modifiers() & Qt.ControlModifier):
@@ -2823,30 +2925,81 @@ class DocumentView(QScrollArea):
         ed.show()
         ed.setFocus()
 
-    def _next_text_field(self, index, xref):
-        """Tab: go to the next text field (this page, then following pages)."""
+    field_focus = None      # (page, xref) of the form field Tab moved to / last filled
+
+    def field_order(self):
+        """Fillable fields in reading order: page by page, top to bottom, left to right."""
         order = []
         for i in range(self.doc.page_count):
-            pg = self.doc[i]
-            ws = sorted((w for w in pg.widgets() if w.field_type == pymupdf.PDF_WIDGET_TYPE_TEXT),
+            ws = sorted((w for w in self.doc[i].widgets()
+                         if w.field_type != pymupdf.PDF_WIDGET_TYPE_BUTTON
+                         and not w.field_flags & 1),                  # 1 = read-only
                         key=lambda w: (round(w.rect.y0), w.rect.x0))
             order += [(i, w.xref) for w in ws]
-        if (index, xref) in order:
-            k = order.index((index, xref))
-            if k + 1 < len(order):
-                ni, nx = order[k + 1]
-                if ni != index:
-                    self.goto_page(ni)
-                QTimer.singleShot(0, lambda: self._edit_text_field(ni, nx))
+        return order
+
+    def next_field(self, back=False, current=None):
+        """Tab / Shift+Tab: go to the next (previous) form field. Text fields open for typing;
+        Space or Enter fills the others (check, choose, sign). False if there are no fields."""
+        order = self.field_order()
+        if not order:
+            return False
+        cur = current or self.field_focus
+        if cur in order:
+            k = (order.index(cur) + (-1 if back else 1)) % len(order)
+        else:                                   # start on the page being viewed
+            page = self.current_page()
+            here = [k for k, (i, _x) in enumerate(order) if i >= page]
+            k = (here[0] if here else 0) if not back else \
+                ([k for k, (i, _x) in enumerate(order) if i <= page] or [len(order) - 1])[-1]
+        index, xref = order[k]
+        self._set_field_focus(index, xref)
+        pg = self.doc[index]
+        w = pg.load_widget(xref)
+        top = self.pages[index].y() + (w.rect * pg.rotation_matrix).y0 * self.zoom
+        vbar = self.verticalScrollBar()
+        if not vbar.value() + 20 <= top <= vbar.value() + self.viewport().height() - 40:
+            vbar.setValue(int(top - self.viewport().height() / 3))
+        if w.field_type == pymupdf.PDF_WIDGET_TYPE_TEXT and not self.read_only:
+            QTimer.singleShot(0, lambda: self._edit_text_field(index, xref))
+        return True
+
+    def _set_field_focus(self, index, xref):
+        old = self.field_focus
+        self.field_focus = (index, xref)
+        for i in {index, old[0] if old else index}:
+            if 0 <= i < len(self.pages):
+                self.pages[i].update()
+
+    def field_focus_rect(self, index):
+        """Rect of the focused field if it's on this page (drawn with a focus outline)."""
+        if self.field_focus is None or self.field_focus[0] != index:
+            return None
+        try:
+            return pymupdf.Rect(self.doc[index].load_widget(self.field_focus[1]).rect)
+        except Exception:
+            return None
+
+    def event(self, e):
+        # Tab / Shift+Tab move between form fields (Hand and Select tools) instead of
+        # moving the keyboard focus to the next control of the window
+        if e.type() == QEvent.KeyPress and e.key() in (Qt.Key_Tab, Qt.Key_Backtab) and \
+                self.tool in ("hand", "select") and \
+                self.next_field(back=e.key() == Qt.Key_Backtab or
+                                bool(e.modifiers() & Qt.ShiftModifier)):
+            return True
+        return super().event(e)
 
     # ---- form design ---------------------------------------------------------------
     FIELD_TYPES = {"f_text": pymupdf.PDF_WIDGET_TYPE_TEXT,
                    "f_check": pymupdf.PDF_WIDGET_TYPE_CHECKBOX,
                    "f_radio": pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON,
                    "f_combo": pymupdf.PDF_WIDGET_TYPE_COMBOBOX,
-                   "f_sign": pymupdf.PDF_WIDGET_TYPE_SIGNATURE}
+                   "f_sign": pymupdf.PDF_WIDGET_TYPE_SIGNATURE,
+                   "f_initials": pymupdf.PDF_WIDGET_TYPE_SIGNATURE}
     FIELD_PREFIX = {"f_text": "Text", "f_check": "Check", "f_radio": "Option",
-                    "f_combo": "Dropdown", "f_sign": "Signature"}
+                    "f_combo": "Dropdown", "f_sign": "Signature",
+                    "f_initials": "Initials"}
 
     def _unique_name(self, prefix):
         names = {w.field_name for pg in self.doc for w in pg.widgets()}
@@ -2861,7 +3014,7 @@ class DocumentView(QScrollArea):
             rect = pymupdf.Rect(a.x - 7, a.y - 7, a.x + 7, a.y + 7) if is_click or rect.width < 6 \
                 else rect
         elif is_click or rect.width < 10 or rect.height < 8:
-            w0, h0 = {"f_sign": (180, 45)}.get(tool, (160, 20))
+            w0, h0 = {"f_sign": (180, 45), "f_initials": (60, 30)}.get(tool, (160, 20))
             rect = pymupdf.Rect(a.x, a.y, a.x + w0, a.y + h0)
         name = self._unique_name(self.FIELD_PREFIX[tool])
         choices = []

@@ -40,7 +40,7 @@ ICONS = {
     "m_length": "ruler", "m_poly": "vector-polyline-edit", "m_area": "texture-box",
     "m_count": "counter", "m_calibrate": "tape-measure", "redact": "marker-cancel",
     "f_text": "form-textbox", "f_check": "checkbox-marked-outline", "f_radio": "radiobox-marked",
-    "f_combo": "form-dropdown", "f_sign": "draw-pen",
+    "f_combo": "form-dropdown", "f_sign": "draw-pen", "f_initials": "alpha-i-box-outline",
 }
 
 _mode = "light"

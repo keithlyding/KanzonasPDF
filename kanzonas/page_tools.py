@@ -5,6 +5,7 @@ Header/footer tokens: {page} {pages} {date} {file} {bates}
 """
 
 import os
+import re
 from datetime import date
 
 import pymupdf
@@ -73,33 +74,101 @@ def add_header_footer(doc, spec, file_name):
                 raise ValueError(f"\"{text}\" doesn't fit across the page at {size:g} pt.")
 
 
+WM_BEGIN = b"/Artifact <</Subtype /Watermark /Type /Pagination >> BDC\n"
+_WM_START = re.compile(rb"/Artifact\s*<<[^>]*?/Subtype\s*/Watermark\b[^>]*>>\s*BDC")
+_MARK_OPS = re.compile(rb"(?<![A-Za-z0-9_])(BDC|BMC|EMC)(?![A-Za-z0-9_])")
+
+
+def _mark_watermark(page, before):
+    """Wrap the content streams just added to the page as a watermark artifact (the standard
+    marking Adobe Acrobat and PDF-XChange use), so Remove watermarks can find them later."""
+    doc = page.parent
+    for x in page.get_contents():
+        if x not in before:
+            doc.update_stream(x, WM_BEGIN + doc.xref_stream(x) + b"\nEMC\n")
+
+
+def _strip_watermarks(data):
+    """data without its watermark artifacts (marked-content blocks with /Subtype
+    /Watermark, nested blocks included). Returns (new data, blocks removed)."""
+    out, pos, n = [], 0, 0
+    while True:
+        m = _WM_START.search(data, pos)
+        if not m:
+            break
+        depth, end = 1, None
+        for t in _MARK_OPS.finditer(data, m.end()):
+            depth += -1 if t.group(1) == b"EMC" else 1
+            if depth == 0:
+                end = t.end()
+                break
+        if end is None:                         # unbalanced: leave the rest alone
+            break
+        out.append(data[pos:m.start()])
+        pos, n = end, n + 1
+    out.append(data[pos:])
+    return b"".join(out), n
+
+
+def has_watermark(page):
+    if any(a.type[0] == pymupdf.PDF_ANNOT_WATERMARK for a in page.annots()):
+        return True
+    return bool(_WM_START.search(page.read_contents()))
+
+
+def remove_watermarks(doc, pages):
+    """Remove watermarks (ours and other apps' marked watermarks, and watermark annotations)
+    from the pages. Returns how many were removed."""
+    total = 0
+    for i in pages:
+        page = doc[i]
+        for a in list(page.annots(types=[pymupdf.PDF_ANNOT_WATERMARK])):
+            page.delete_annot(a)
+            total += 1
+        xrefs = page.get_contents()
+        if not xrefs:
+            continue
+        data, n = _strip_watermarks(page.read_contents())
+        if n:
+            doc.update_stream(xrefs[0], data)
+            page.set_contents(xrefs[0])
+            total += n
+    return total
+
+
 def add_watermark(doc, spec):
     """spec: {"text", "size", "color", "opacity", "angle", "pages", "behind"} or
     {"image": path, "opacity", "scale", "pages", "behind"}"""
     for i in spec["pages"]:
         page = doc[i]
-        disp = page.rect
-        center = pymupdf.Point(disp.width / 2, disp.height / 2) * page.derotation_matrix
-        if spec.get("image"):
-            pm = pymupdf.Pixmap(spec["image"])
-            if pm.alpha == 0:
-                pm = pymupdf.Pixmap(pm, 1)              # add alpha channel
-            pm.set_alpha(bytes([int(255 * spec.get("opacity", 0.3))]) * (pm.width * pm.height))
-            w = disp.width * spec.get("scale", 0.5)
-            h = w * pm.height / pm.width
-            r = pymupdf.Rect(disp.width / 2 - w / 2, disp.height / 2 - h / 2,
-                             disp.width / 2 + w / 2, disp.height / 2 + h / 2) * page.derotation_matrix
-            page.insert_image(r, pixmap=pm, overlay=not spec.get("behind"), rotate=page.rotation)
-            continue
-        text = spec["text"]
-        size = float(spec.get("size", 72))
-        width = pymupdf.get_text_length(text, fontname="hebo", fontsize=size)
-        start = center + (-width / 2, size * 0.35)
-        angle = float(spec.get("angle", 45)) + page.rotation
-        page.insert_text(start, text, fontsize=size, fontname="hebo",
-                         color=A.to_rgb(spec.get("color") or "#ff0000"),
-                         fill_opacity=spec.get("opacity", 0.25), stroke_opacity=spec.get("opacity", 0.25),
-                         morph=(center, pymupdf.Matrix(angle)), overlay=not spec.get("behind"))
+        before = set(page.get_contents())
+        _add_watermark_page(page, spec)
+        _mark_watermark(page, before)
+
+
+def _add_watermark_page(page, spec):
+    disp = page.rect
+    center = pymupdf.Point(disp.width / 2, disp.height / 2) * page.derotation_matrix
+    if spec.get("image"):
+        pm = pymupdf.Pixmap(spec["image"])
+        if pm.alpha == 0:
+            pm = pymupdf.Pixmap(pm, 1)              # add alpha channel
+        pm.set_alpha(bytes([int(255 * spec.get("opacity", 0.3))]) * (pm.width * pm.height))
+        w = disp.width * spec.get("scale", 0.5)
+        h = w * pm.height / pm.width
+        r = pymupdf.Rect(disp.width / 2 - w / 2, disp.height / 2 - h / 2,
+                         disp.width / 2 + w / 2, disp.height / 2 + h / 2) * page.derotation_matrix
+        page.insert_image(r, pixmap=pm, overlay=not spec.get("behind"), rotate=page.rotation)
+        return
+    text = spec["text"]
+    size = float(spec.get("size", 72))
+    width = pymupdf.get_text_length(text, fontname="hebo", fontsize=size)
+    start = center + (-width / 2, size * 0.35)
+    angle = float(spec.get("angle", 45)) + page.rotation
+    page.insert_text(start, text, fontsize=size, fontname="hebo",
+                     color=A.to_rgb(spec.get("color") or "#ff0000"),
+                     fill_opacity=spec.get("opacity", 0.25), stroke_opacity=spec.get("opacity", 0.25),
+                     morph=(center, pymupdf.Matrix(angle)), overlay=not spec.get("behind"))
 
 
 COMPRESS = {"Good quality (150 dpi images)": (200, 150, 80),

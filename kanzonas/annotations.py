@@ -341,12 +341,16 @@ def write(page, model):
                                     rotate=(page.rotation + quarter(p)) % 360)
     elif kind == "stamp":
         from . import stamps
-        if model.get("detail") is None:
+        label = p.get("label") or "APPROVED"
+        if model.get("detail") is None and not label.startswith(stamps.FORM_PREFIX):
             model["detail"] = stamps.detail_line(model.get("author") or author(),
                                                  p.get("name", True), p.get("date", True))
-        label = p.get("label") or "APPROVED"
         if label.startswith(stamps.IMAGE_PREFIX):
             png, _aspect = stamps.image_stamp(label[len(stamps.IMAGE_PREFIX):])
+        elif label.startswith(stamps.FORM_PREFIX):
+            png, _aspect = stamps.render_form(stamps.form_fields(label),
+                                              (model.get("detail") or "").split("\n"),
+                                              p.get("stroke") or "#c00000")
         else:
             png, _aspect = stamps.render(label, p.get("stroke") or "#c00000", model["detail"])
         if png is None:
