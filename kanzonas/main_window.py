@@ -2296,7 +2296,33 @@ class MainWindow(QMainWindow):
         mine = QRadioButton("My personal certificate" + ("" if os.path.exists(digisign.my_cert_path())
                                                           else " (created now)"))
         other = QRadioButton("Certificate file from a certificate authority / my company (.pfx, .p12)")
-        mine.setChecked(True)
+        win = QRadioButton("Certificate stored in Windows (cards and tokens too)")
+        win_list = QComboBox()
+        win_certs = []
+        if os.name == "nt":
+            try:
+                from . import wincerts
+                win_certs = wincerts.list_certificates()
+            except Exception:
+                win_certs = []
+        for c in win_certs:
+            label = c["name"] + "  (issued by " + ("yourself" if c["self_signed"] else c["issuer"])
+            label += ", " + ("EXPIRED " if c["expired"] else "expires ")
+            win_list.addItem(label + c["expires"].strftime("%Y-%m-%d") + ")", c["thumbprint"])
+        if not win_certs:
+            win_list.addItem("No signing certificates in your Windows Personal store")
+            win.setEnabled(False)
+            win_list.setEnabled(False)
+        last = self.settings.value("sign_windows_cert", "")
+        if last and win_list.findData(last) >= 0:
+            win_list.setCurrentIndex(win_list.findData(last))
+        win_list.currentIndexChanged.connect(lambda _: win.setChecked(True))
+        source = self.settings.value("sign_source", "")
+        if win_certs and (source == "windows"
+                          or (not source and not all(c["expired"] for c in win_certs))):
+            win.setChecked(True)
+        else:
+            mine.setChecked(True)
         cert_path = QLineEdit()
         browse = QPushButton("Browse...")
         browse.clicked.connect(lambda: cert_path.setText(QFileDialog.getOpenFileName(
@@ -2312,6 +2338,8 @@ class MainWindow(QMainWindow):
                          "I have reviewed this document", "I agree to the terms"])
         location = QLineEdit()
         lock = QCheckBox("Lock the document: no further changes allowed (certify)")
+        form.addRow(win)
+        form.addRow("Windows certificate", win_list)
         form.addRow(mine)
         form.addRow(other)
         form.addRow("Certificate file", row)
@@ -2327,7 +2355,13 @@ class MainWindow(QMainWindow):
         if not dlg.exec():
             return
         try:
-            if mine.isChecked():
+            if win.isChecked():
+                from . import wincerts
+                thumb = win_list.currentData()
+                signer = wincerts.WindowsSigner(thumb)
+                self.settings.setValue("sign_windows_cert", thumb)
+                self.settings.setValue("sign_source", "windows")
+            elif mine.isChecked():
                 path = digisign.my_cert_path()
                 if not os.path.exists(path):
                     name, ok = QInputDialog.getText(self, "Create your certificate",
@@ -2347,7 +2381,9 @@ class MainWindow(QMainWindow):
                 if not os.path.isfile(path):
                     QMessageBox.warning(self, "Certificate", "Choose a certificate file.")
                     return
-            signer = digisign.load_signer(path, password.text())
+            if not win.isChecked():
+                signer = digisign.load_signer(path, password.text())
+                self.settings.setValue("sign_source", "file")
         except Exception as ex:
             QMessageBox.warning(self, "Certificate", f"Couldn't use that certificate: {ex}")
             return

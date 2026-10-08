@@ -44,6 +44,9 @@ jobs:
       - name: Self test (OCR, exports, signatures, forms inside the exe)
         shell: pwsh
         run: |
+          # test certificates in the Windows store (RSA and ECDSA) for "Windows certificate store signing"
+          New-SelfSignedCertificate -Subject "CN=KanzonasPDF Self Test" -CertStoreLocation Cert:\CurrentUser\My -KeyUsage DigitalSignature,NonRepudiation -KeyAlgorithm RSA -KeyLength 2048 | Out-Null
+          New-SelfSignedCertificate -Subject "CN=KanzonasPDF Self Test" -CertStoreLocation Cert:\CurrentUser\My -KeyUsage DigitalSignature,NonRepudiation -KeyAlgorithm ECDSA_nistP256 | Out-Null
           $p = Start-Process dist\KanzonasPDF\KanzonasPDF.exe -ArgumentList "--selftest","selftest.log" -PassThru -Wait
           Get-Content selftest.log
           if ($p.ExitCode -ne 0) { throw "Self test failed with code $($p.ExitCode)" }

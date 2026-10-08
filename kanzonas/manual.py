@@ -421,8 +421,19 @@ or in a corner.</li>
 <li><b>Add signature placeholder:</b> drag boxes where signatures or initials should go
 (choose which in Properties). <b>Apply all signature placeholders</b> then fills every one
 with your saved signature or initials and the date.</li>
-<li><b>Digitally sign with certificate</b> (a personal certificate or your company's
-.pfx/.p12), with an optional lock against changes (certify). Signed files open read-only so
+<li><b>Digitally sign with certificate</b>, with an optional lock against changes (certify).
+Choose where the certificate comes from:
+<ul>
+<li><b>Certificate stored in Windows</b>: the list shows the signing certificates in your
+Windows Personal store, the same ones Adobe Acrobat and PDF-XChange Editor use (open
+certmgr.msc &gt; Personal &gt; Certificates to see them). Windows does the signing, so
+certificates whose key can't be copied, smart cards and USB tokens work too; Windows asks for
+the PIN when the key needs one. To add a .pfx/.p12 there, double-click it. KanzonasPDF
+remembers the certificate you used last.</li>
+<li><b>My personal certificate</b>: one KanzonasPDF makes for you the first time.</li>
+<li><b>Certificate file</b>: a .pfx/.p12 file from a certificate authority or your company,
+with its password.</li>
+</ul> Signed files open read-only so
 the signature stays valid. <b>Digital signature details</b> shows who signed and whether it's
 still valid. <b>Clear all digital signatures</b> removes them (the empty fields stay).</li>
 <li><b>Timestamp document:</b> gets a trusted timestamp from a free internet time server,
