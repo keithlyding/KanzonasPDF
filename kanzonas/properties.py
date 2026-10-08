@@ -232,6 +232,8 @@ class PropertiesPanel(QWidget):
         self.label.clear()
         for t in ST.PRESETS:
             self.label.addItem(t, t)
+        for t in ST.FORM_PRESETS:
+            self.label.addItem("Fill-in: " + ST.form_title(t), t)
         for f in ST.library():
             self.label.addItem("Image: " + f, ST.IMAGE_PREFIX + f)
         if current and self.label.findData(current) < 0:

@@ -23,7 +23,7 @@ EDIT_IN_PLACE = {"rect", "ellipse", "cloud", "line", "arrow", "polygon", "polyli
                  "textbox", "callout", "note", "stamp", "m_length", "m_poly", "m_area", "m_count",
                  "image", "attach", "placeholder"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area"}
-FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign"}
+FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}
 SIGN_TOOLS = {"signature", "initials"}
 HANDLE = 7          # handle size in px
 FULL_LIMIT = 16_000_000     # device pixels: above this a page is drawn in tiles
@@ -234,13 +234,18 @@ class PageWidget(QWidget):
         self._paint_comment_cards(p, page)
 
         if self.view.highlight_fields and self.view.tool not in FORM_TOOLS:
-            # shade fillable fields (screen only); required ones get a red outline
+            # shade fillable fields (screen only) with a blue outline so they stand out even
+            # on colored forms; required ones get a red outline
             for r, required in self.view.field_rects(self.index):
                 sr = self.to_screen(r, page)
-                p.fillRect(sr, QColor(204, 215, 255, 110))
-                if required:
-                    p.setPen(QPen(QColor(220, 0, 0), 1))
-                    p.drawRect(sr)
+                p.fillRect(sr, QColor(160, 185, 255, 130))
+                p.setPen(QPen(QColor(220, 0, 0) if required else QColor(30, 90, 220),
+                              2 if required else 1.5))
+                p.drawRect(sr.adjusted(0.5, 0.5, -0.5, -0.5))
+            fr = self.view.field_focus_rect(self.index)
+            if fr is not None:                  # the field Tab moved to
+                p.setPen(QPen(QColor(255, 140, 0), 2.5))
+                p.drawRect(self.to_screen(fr, page).adjusted(-2, -2, 2, 2))
 
         tool = self.view.tool
         # a finished text selection (Select tool): stays until copied / cut / cleared
@@ -684,7 +689,20 @@ class PageWidget(QWidget):
             if what != "paste":
                 act.setEnabled(has_text or has_markups)
         if has_markups:
+            if not v.extra and (v.selected_model or {}).get("kind") != "field":
+                sel = v.selection
+                menu.addAction("Edit text...", lambda: v.edit_annot_text(*sel))
             menu.addAction("Delete", v.delete_selected)
+        elif on_text:
+            # right-click on selected text that is also highlighted: offer to remove the markup
+            xref = v.annot_at(self.index, pdf)
+            if xref is not None:
+                def remove(x=xref):
+                    v.clear_text_selection()
+                    v.select_xref(self.index, x)
+                    v.delete_selected()
+                menu.addAction("Delete " + v.annot_tooltip(self.index, pdf).split(":")[0].lower(),
+                               remove)
         if has_text:
             menu.addSeparator()
             for tool, label in (("highlight", "Highlight"), ("underline", "Underline"),
@@ -805,6 +823,10 @@ class PageWidget(QWidget):
                 self.view.fill_field(self.index, xref)
                 return
         if tool == "hand":
+            # like Adobe and PDF-XChange: clicking a markup with the Hand selects it (to
+            # move, restyle or delete); anywhere else drags the page
+            if self.view.show_markups and self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
+                return
             self.view.begin_pan(e.globalPosition())
             return
         if tool == "editobjects":

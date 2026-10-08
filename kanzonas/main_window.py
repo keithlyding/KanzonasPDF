@@ -87,6 +87,7 @@ FORM_TOOLS = [  # form design tools: drag a box (or click) to add a field
     ("f_radio", "Option button", "Option (radio) button: click; same group name = pick one"),
     ("f_combo", "Dropdown", "Dropdown list: drag a box, then enter the choices"),
     ("f_sign", "Signature field", "Signature field: others click it to sign"),
+    ("f_initials", "Initials field", "Initials field: others click it to put their initials"),
 ]
 MEASURE_TOOLS = [
     ("m_length", "Length", "Shift+M", "Measure length: drag from point to point (Shift+M)"),
@@ -399,6 +400,12 @@ class MainWindow(QMainWindow):
         self.a_hl_fields.setCheckable(True)
         self.a_hl_fields.setChecked(self.settings.value("highlight_fields", "true") != "false")
         DocumentView.highlight_fields = self.a_hl_fields.isChecked()
+        self.a_next_field = self._act("&Next form field\tTab",
+                                      lambda: self.view() and self.view().next_field(),
+                                      tip="Go to the next form field (Tab; Space or Enter fills it)")
+        self.a_prev_field = self._act("&Previous form field\tShift+Tab",
+                                      lambda: self.view() and self.view().next_field(back=True),
+                                      tip="Go to the previous form field (Shift+Tab)")
         self.a_unlock = self._act("&Unlock with password...", self.unlock_doc)
         self.export_actions = []
         for eid, label, _flt, _ext in EXPORTS:
@@ -414,6 +421,9 @@ class MainWindow(QMainWindow):
                                       tip="Put a color, gradient or picture behind the page "
                                           "content, on this page or the whole document")
         self.a_remove_bg = self._act("Remove back&ground...", self.remove_background)
+        self.a_remove_wm = self._act("Remove water&marks...", self.remove_watermarks,
+                                     tip="Remove watermarks added by KanzonasPDF, Adobe Acrobat, "
+                                         "PDF-XChange and other apps that mark them as watermarks")
         self.a_compress = self._act("&Compress (save a smaller copy)...", self.compress)
         self.a_attachments = self._act("A&ttachments...", self.show_attachments,
                                        tip="Files embedded in this PDF: open, save or delete them")
@@ -649,7 +659,8 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_ocr, self.a_flatten])
         m = mb.addMenu("&Document")
-        m.addActions([self.a_header, self.a_watermark, self.a_background, self.a_remove_bg])
+        m.addActions([self.a_header, self.a_watermark, self.a_remove_wm, self.a_background,
+                      self.a_remove_bg])
         m.addSeparator()
         m.addAction(self.a_bookmarks)
         m.addAction(self.a_attachments)
@@ -691,6 +702,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
         m.addSeparator()
         m.addAction(self.a_hl_fields)
+        m.addActions([self.a_next_field, self.a_prev_field])
         hint = m.addAction("To fill in a form: use Select or Hand and click a field")
         hint.setEnabled(False)
         m = mb.addMenu("&Pages")
@@ -949,6 +961,8 @@ class MainWindow(QMainWindow):
 
         self.markups = MarkupsPanel()
         self.markups.activated.connect(lambda i, x: self.view() and self.view().reveal(i, x))
+        self.markups.editRequested.connect(self._edit_markup)
+        self.markups.deleteRequested.connect(self._delete_markup)
         self.markups_dock = QDockWidget("Markups list")
         self.markups_dock.setObjectName("markups")
         self.markups_dock.setWidget(self.markups)
@@ -975,7 +989,7 @@ class MainWindow(QMainWindow):
                   self.a_timestamp, self.a_multi_sign, self.a_apply_placeholders,
                   self.a_apply_sel_redact, self.a_unlock, self.a_set_scale, self.a_measure_summary,
                   self.a_compare, self.a_header, self.a_watermark, self.a_compress,
-                  self.a_background, self.a_remove_bg,
+                  self.a_background, self.a_remove_bg, self.a_remove_wm,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
                   *self.export_actions):
             a.setEnabled(has)
@@ -1548,14 +1562,17 @@ class MainWindow(QMainWindow):
 
     def _sign_field(self, index, xref):
         v = self.sender()
-        if "signature" not in self._sig_cache:
-            png = signatures.get_image(self, "signature")
+        page = v.doc[index]
+        w = page.load_widget(xref)
+        # an initials field (made with the Initials field tool, or named so by another app)
+        kind = "initials" if "initial" in (w.field_name or "").lower() else "signature"
+        rect = w.rect
+        if kind not in self._sig_cache:
+            png = signatures.get_image(self, kind)
             if png is None:
                 return
-            self._cache_sig("signature", png)
-        page = v.doc[index]
-        rect = page.load_widget(xref).rect
-        v.place_signature(index, "signature", field_rect=rect)
+            self._cache_sig(kind, png)
+        v.place_signature(index, kind, field_rect=rect)
 
     # ---- protection ----------------------------------------------------------------------
     PERMS = [  # (flag, label, allowed by default when restricting)
@@ -2190,6 +2207,43 @@ class MainWindow(QMainWindow):
         btns.accepted.connect(ok)
         if dlg.exec():
             v.remove_background([i for i in dlg.pages_ if i in have])
+
+    def remove_watermarks(self):
+        from .page_tools import PageChoice, has_watermark
+        v = self.view()
+        if not v:
+            return
+        have = [i for i in range(v.page_count()) if has_watermark(v.doc[i])]
+        if not have:
+            QMessageBox.information(
+                self, "Remove watermarks", "No watermark found that can be removed. KanzonasPDF "
+                "finds watermarks added with Document > Watermark and by apps that mark them as "
+                "watermarks (Adobe Acrobat, PDF-XChange and others). Text or pictures that are "
+                "simply part of the page can be taken out with Erase content or Edit objects.")
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Remove watermarks")
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel(f"{len(have)} page(s) have a watermark. Remove it from:"))
+        choice = PageChoice(v.page_count(), v.current_page())
+        lay.addWidget(choice)
+        err = QLabel()
+        err.setStyleSheet("color: #c00;")
+        lay.addWidget(err)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        lay.addWidget(btns)
+        btns.rejected.connect(dlg.reject)
+
+        def ok():
+            try:
+                dlg.pages_ = choice.pages()
+            except ValueError as e:
+                err.setText(str(e))
+                return
+            dlg.accept()
+        btns.accepted.connect(ok)
+        if dlg.exec():
+            v.remove_watermarks([i for i in dlg.pages_ if i in have])
 
     def compress(self):
         from . import page_tools
@@ -2873,7 +2927,7 @@ class MainWindow(QMainWindow):
         "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_combine": "Combine files",
         "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
         "a_watermark": "Watermark", "a_background": "Background",
-        "a_remove_bg": "Remove background", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
+        "a_remove_bg": "Remove background", "a_remove_wm": "Remove watermarks", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
         "a_compress": "Compress", "a_compare": "Compare", "a_flatten": "Flatten",
         "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest",
         "a_split": "Split view", "a_labels": "Toolbar labels", "a_shortcuts": "Shortcuts",
@@ -2907,7 +2961,7 @@ class MainWindow(QMainWindow):
         "a_combine": "file-document-multiple-outline",
         "a_insert_blank": "file-outline", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
-        "a_remove_bg": "format-color-marker-cancel",
+        "a_remove_bg": "format-color-marker-cancel", "a_remove_wm": "water-off-outline",
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
         "a_compress": "zip-box-outline", "a_compare": "compare", "a_flatten": "layers-triple-outline",
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
@@ -3182,6 +3236,18 @@ class MainWindow(QMainWindow):
         btns.accepted.connect(dlg.accept)
         lay.addWidget(btns)
         dlg.exec()
+
+    def _edit_markup(self, index, xref):
+        v = self.view()
+        if v:
+            v.reveal(index, xref)
+            v.edit_annot_text(index, xref)
+
+    def _delete_markup(self, index, xref):
+        v = self.view()
+        if v:
+            v.select_xref(index, xref)
+            v.delete_selected()
 
     # ---- updates ---------------------------------------------------------------
     def _updater(self):

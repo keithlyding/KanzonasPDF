@@ -59,6 +59,8 @@ class _PageItem(QTableWidgetItem):
 
 class MarkupsPanel(QWidget):
     activated = Signal(int, int)        # page index, xref
+    editRequested = Signal(int, int)    # change the comment's text
+    deleteRequested = Signal(int, int)
 
     def __init__(self):
         super().__init__()
@@ -92,6 +94,10 @@ class MarkupsPanel(QWidget):
         for c in (0, 1, 3, 4, 5):
             hh.setSectionResizeMode(c, QHeaderView.ResizeToContents)
         self.table.cellClicked.connect(self._clicked)
+        self.table.cellDoubleClicked.connect(lambda r, _c: self.editRequested.emit(*self._key(r)))
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._menu)
+        self.table.installEventFilter(self)
         lay.addWidget(self.table)
         self.type_filter.currentIndexChanged.connect(self._apply_filter)
         self.text_filter.textChanged.connect(self._apply_filter)
@@ -134,9 +140,32 @@ class MarkupsPanel(QWidget):
             shown += 0 if hide else 1
         self.count.setText(f"{shown} of {self.table.rowCount()}")
 
+    def _key(self, row):
+        return self.table.item(row, 0).data(Qt.UserRole)
+
     def _clicked(self, row, _col):
-        page, xref = self.table.item(row, 0).data(Qt.UserRole)
-        self.activated.emit(page, xref)
+        self.activated.emit(*self._key(row))
+
+    def _menu(self, pos):
+        from PySide6.QtWidgets import QMenu
+        row = self.table.rowAt(pos.y())
+        if row < 0:
+            return
+        self.table.selectRow(row)
+        key = self._key(row)
+        self.activated.emit(*key)
+        menu = QMenu(self)
+        menu.addAction("Edit text...", lambda: self.editRequested.emit(*key))
+        menu.addAction("Delete\tDel", lambda: self.deleteRequested.emit(*key))
+        menu.exec(self.table.viewport().mapToGlobal(pos))
+
+    def eventFilter(self, obj, e):
+        from PySide6.QtCore import QEvent
+        if obj is self.table and e.type() == QEvent.KeyPress and \
+                e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.table.currentRow() >= 0:
+            self.deleteRequested.emit(*self._key(self.table.currentRow()))
+            return True
+        return super().eventFilter(obj, e)
 
     def export_csv(self):
         path, _ = QFileDialog.getSaveFileName(self, "Export markups", "markups.csv",

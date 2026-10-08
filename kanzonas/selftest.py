@@ -161,6 +161,78 @@ def run(log_path):
         assert next(d[0].widgets()).field_value == "Filled"
     check("forms", t_forms)
 
+    def t_form_navigation():
+        # option buttons of one group are exclusive; Tab goes through fields in reading order;
+        # the Initials field tool makes a signature-type field named Initials...
+        from PySide6.QtWidgets import QApplication
+        from .document_view import DocumentView
+        QApplication.instance() or QApplication([])
+        d = pymupdf.open()
+        p = d.new_page()
+        for k in range(3):
+            w = pymupdf.Widget()
+            w.field_type = pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON
+            w.rect = pymupdf.Rect(50, 100 + 30 * k, 64, 114 + 30 * k)
+            w.field_name, w.field_value = "Group1", False
+            p.add_widget(w)
+        w = pymupdf.Widget()
+        w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+        w.rect, w.field_name = pymupdf.Rect(50, 50, 200, 70), "Top"
+        p.add_widget(w)
+        path = os.path.join(tmp, "radio.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        order = v.field_order()
+        pg = v.doc[0]
+        names = [pg.load_widget(x).field_name for _i, x in order]
+        assert names == ["Top", "Group1", "Group1", "Group1"], names
+        radios = [x for _i, x in order[1:]]
+        v.fill_field(0, radios[0])
+        v.fill_field(0, radios[2])
+        pg = v.doc[0]
+        on = [pg.load_widget(x).field_value != "Off" for x in radios]
+        assert on == [False, False, True], on
+        v.field_focus = (0, radios[2])
+        v.next_field()
+        assert v.field_focus == (0, order[0][1]), "Tab didn't wrap to the first field"
+        v.create_field(0, "f_initials", pymupdf.Point(300, 300), pymupdf.Point(300, 300), True)
+        pg = v.doc[0]
+        ini = [w for w in pg.widgets() if w.field_name.startswith("Initials")]
+        assert ini and ini[0].field_type == pymupdf.PDF_WIDGET_TYPE_SIGNATURE
+        return "(exclusive options, Tab order, initials field)"
+    check("form fields: options, Tab, initials", t_form_navigation)
+
+    def t_watermarks():
+        from . import page_tools as T
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_text((72, 72), "Body text")
+        T.add_watermark(d, {"text": "DRAFT", "pages": [0]})
+        T.add_watermark(d, {"text": "BEHIND", "pages": [0], "behind": True})
+        # an Adobe-style watermark from another app
+        x = p.get_contents()[-1]
+        d.update_stream(x, d.xref_stream(x) + b"\n/Artifact <</Subtype /Watermark /Type "
+                        b"/Pagination >> BDC q BT /F1 9 Tf (X) Tj ET Q EMC\n")
+        assert T.has_watermark(d[0])
+        n = T.remove_watermarks(d, [0])
+        words = d[0].get_text().split()
+        assert n == 3 and words == ["Body", "text"], (n, words)
+        assert not T.has_watermark(d[0])
+        return "(3 removed, page text kept)"
+    check("remove watermarks", t_watermarks)
+
+    def t_fillin_stamp():
+        from . import stamps, annotations as A
+        d = pymupdf.open()
+        p = d.new_page()
+        label = stamps.FORM_PRESETS[0]
+        a = A.write(p, {"kind": "stamp", "props": {"label": label, "stroke": "#c00000"},
+                        "detail": "4500123\n10/08/2026", "rect": pymupdf.Rect(100, 100, 270, 140)})
+        m = A.read(a)
+        assert m["detail"] == "4500123\n10/08/2026" and m["props"]["label"] == label, m
+        return "(" + stamps.form_title(label) + ")"
+    check("fill-in stamps", t_fillin_stamp)
+
     from . import digisign
 
     def t_digisign():
