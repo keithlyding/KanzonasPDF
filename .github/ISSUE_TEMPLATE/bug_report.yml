@@ -1,0 +1,54 @@
+name: Bug report
+description: Something doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! **Don't attach confidential PDFs**: if a file is needed, make a sample
+        with fake data that shows the problem. For anything that could leak data (redaction,
+        passwords, signatures), use the Security tab's **Report a vulnerability** instead (see SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: KanzonasPDF version
+      description: Help > About shows it.
+      placeholder: "0.45"
+    validations:
+      required: true
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Installed or portable?
+      options:
+        - Installed (setup.exe)
+        - Portable (zip)
+        - Running from source
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 23H2
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a PDF that ...
+        2. Click ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or anything else
+      description: Drag images here. Hide anything private.
