@@ -453,6 +453,11 @@ window. Each one does exactly the same as its menu command, so you can change it
 <li><b>General:</b> theme (Match Windows, Light, Dark), Ribbon (instead of toolbars), Show group
 names on ribbon, Show menu bar, Show text labels on toolbars, Check for updates automatically.
 It also tells you where your settings are saved (the data folder in portable mode).</li>
+<li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
+Set up my signature... / Set up my initials... with whether each is saved yet.</li>
+<li><b>Markup styles:</b> pick a tool on the left to set its default colors, line width, font
+size, fill, opacity and so on, the same settings the Properties panel shows when that tool is
+active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
 <li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step.</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
 Show grid, Snap to grid, Snap to objects, and Grid settings....</li>
