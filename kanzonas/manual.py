@@ -227,7 +227,9 @@ for next time. With a markup selected, it changes <b>that markup</b>.</li>
 <li>Line color, fill (or <b>No fill</b>), <b>No border</b> for boxes and shapes, text color,
 line width, font size, arrowheads, cloud border, opacity.</li>
 <li><b>Reset defaults</b> puts a tool back to its original style.</li>
-<li><b>Tool chest</b> (F8): your favorite markup styles, one click away. Click an entry, then
+<li><b>Tool chest</b> (F8, or the View tab): your favorite markup styles, one click away. F8
+or the button opens it and, when it's showing, closes it again (if it's behind the Properties
+tab, it's brought to the front). Click an entry, then
 draw: you get that tool with that color and size, and the tool's normal settings stay as they
 were. It starts with a few ready-made entries (red revision cloud, yellow and green highlight,
 red arrow, blue box, red note text box, yellow callout, APPROVED and REJECTED stamps); rename
