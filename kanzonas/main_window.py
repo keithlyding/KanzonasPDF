@@ -96,8 +96,9 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
      "Erase content: drag a box; the page's own text, images and lines inside it are deleted "
      "(lines crossing the edge are cut there). Shift+E"),
     ("editobjects", "Edit &objects", "Shift+O",
-     "Edit objects: click a picture that's part of the page to select it; drag to move, drag a "
-     "handle to resize, Delete deletes it, right-click to rotate, copy or save it. Shift+O"),
+     "Edit objects: click a picture or shape that's part of the page (Ctrl+click or drag a box "
+     "for several); drag to move, drag a handle to resize, Delete deletes, right-click to "
+     "rotate. Shift+O"),
     ("capture", "Ca&pture area", "Shift+P",
      "Capture: drag a box to copy that area as a picture; Ctrl+V pastes it as an image "
      "markup, or into Word or email. Shift+P"),

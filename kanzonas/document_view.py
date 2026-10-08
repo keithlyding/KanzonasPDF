@@ -551,7 +551,7 @@ class DocumentView(QScrollArea):
     def set_tool(self, tool):
         self.tool = tool
         self.clear_selection()
-        self.clear_picture_selection()
+        self.clear_object_selection()
         self.clear_text_selection()
         self._tool_cursor()
 
@@ -655,8 +655,8 @@ class DocumentView(QScrollArea):
         self._card_cache = {}
         self.text_sel = None           # (page index, selected character units) for copy / cut
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
-        self._obj_cache = {}           # page index -> editable pictures (Edit objects)
-        self.obj_sel = None            # (page index, picture) selected with Edit objects
+        self._obj_cache = {}           # page index -> page_objects.Objects (Edit objects)
+        self.obj_sel = None            # (page index, [objects]) selected with Edit objects
         # the drawing's own line work rarely changes: re-check it lazily instead of dropping it
         if not hasattr(self, "_snap_content"):
             self._snap_content = {}    # page index -> (content key, PointIndex)
@@ -1769,10 +1769,10 @@ class DocumentView(QScrollArea):
             self.delete_selected()
             return
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.obj_sel is not None:
-            self.delete_picture()
+            self.delete_objects()
             return
         if e.key() == Qt.Key_Escape and self.obj_sel is not None:
-            self.clear_picture_selection()
+            self.clear_object_selection()
             return
         if e.key() == Qt.Key_Escape and self.text_sel is not None:
             self.clear_text_selection()
@@ -1968,86 +1968,116 @@ class DocumentView(QScrollArea):
         self.statusMessage.emit("Captured: Ctrl+V pastes it here as sharp vector content "
                                 "(and as a picture into Word or email)")
 
-    # ---- Edit objects: the page's own pictures ---------------------------
-    def page_pictures(self, index):
-        """Editable pictures of page `index` (cached until the next edit)."""
+    # ---- Edit objects: the page's own pictures and shapes ------------------
+    def content_objects(self, index):
+        """Editable objects of page `index` (cached until the next edit)."""
         cache = self._obj_cache
         if index not in cache:
             from . import page_objects
+            QApplication.setOverrideCursor(Qt.WaitCursor)
             try:
-                cache[index] = page_objects.images(self.doc[index])
+                cache[index] = page_objects.Objects(self.doc[index])
             except Exception:
-                cache[index] = []
+                cache[index] = None
+            finally:
+                QApplication.restoreOverrideCursor()
         return cache[index]
 
-    def picture_at(self, index, pt):
-        """The topmost picture under PDF point pt, or None."""
-        for info in reversed(self.page_pictures(index)):
-            if pymupdf.Point(pt) in info["quad"]:
-                return info
-        return None
+    def object_at(self, index, pt):
+        """The topmost picture or shape under PDF point pt, or None."""
+        objs = self.content_objects(index)
+        return objs.at(pt, 4 / self.zoom) if objs is not None else None
 
-    def select_picture(self, index, info):
+    def objects_in(self, index, box):
+        objs = self.content_objects(index)
+        return objs.inside(box) if objs is not None else []
+
+    def object_lines(self, index, item):
+        objs = self.content_objects(index)
+        return objs.lines(item) if objs is not None else []
+
+    def selected_objects(self):
+        return self.obj_sel[1] if self.obj_sel else []
+
+    def selected_objects_rect(self):
+        r = pymupdf.Rect()
+        for it in self.selected_objects():
+            r |= it["rect"]
+        return r
+
+    def select_objects(self, index, items, add=False):
+        """Select pictures / shapes on page index; add=True toggles them in the selection."""
         old = self.obj_sel
-        self.obj_sel = (index, info) if info is not None else None
+        if add and old and old[0] == index:
+            have = {it["n"]: it for it in old[1]}
+            for it in items:
+                if it["n"] in have:
+                    del have[it["n"]]
+                else:
+                    have[it["n"]] = it
+            items = sorted(have.values(), key=lambda it: it["n"])
+        self.obj_sel = (index, list(items)) if items else None
         for i in {old[0] if old else None, index}:
             if i is not None and 0 <= i < len(self.pages):
                 self.pages[i].update()
-        if info is not None:
-            what = "inline picture" if not info["xref"] else "picture"
-            self.statusMessage.emit(f"Selected a {what}: drag to move, drag a handle to resize, "
-                                    "Delete deletes it, right-click for more")
+        if items:
+            pics = sum(1 for it in items if it["kind"] == "picture")
+            shapes = len(items) - pics
+            what = ", ".join(x for x in (
+                f"{pics} picture" + ("s" if pics != 1 else "") if pics else "",
+                f"{shapes} shape" + ("s" if shapes != 1 else "") if shapes else "") if x)
+            self.statusMessage.emit(f"Selected {what}: drag to move, drag a handle to resize, "
+                                    "Delete deletes, right-click for more")
 
-    def clear_picture_selection(self):
+    def clear_object_selection(self):
         if self.obj_sel is not None:
-            self.select_picture(self.obj_sel[0], None)
+            self.select_objects(self.obj_sel[0], [])
 
-    def _picture_edit(self, label, fn):
-        """Run fn(page, n) on the selected picture as one undo step, keep it selected."""
+    def _objects_edit(self, label, fn, keep=True):
+        """Run fn(page, ns) on the selected objects as one undo step; keep them selected."""
         if self.obj_sel is None:
             return
-        index, info = self.obj_sel
-        n = info["n"]
+        index, items = self.obj_sel
+        ns = [it["n"] for it in items]
 
         def do():
-            fn(self.doc[index], n)
+            fn(self.doc[index], ns)
         self.modify(do, [index])
         self._obj_cache.pop(index, None)
-        again = [i for i in self.page_pictures(index) if i["n"] == n]
-        self.obj_sel = (index, again[0]) if again else None
+        self.obj_sel = None
+        if keep:
+            objs = self.content_objects(index)
+            again = [it for it in (objs.items if objs else []) if it["n"] in set(ns)]
+            self.obj_sel = (index, again) if again else None
         self.pages[index].update()
         self.statusMessage.emit(label + " (Ctrl+Z undoes it)")
 
-    def move_picture(self, new_rect):
+    def move_objects(self, new_rect):
         from . import page_objects
-        old = self.obj_sel[1]["rect"] if self.obj_sel else None
-        if old is None or pymupdf.Rect(new_rect).is_empty:
+        old = self.selected_objects_rect()
+        if self.obj_sel is None:
             return
-        self._picture_edit("Picture moved", lambda pg, n: page_objects.move_to(pg, n, old,
-                                                                               new_rect))
+        self._objects_edit("Moved", lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect))
 
-    def rotate_picture(self, degrees):
+    def rotate_objects(self, degrees):
         from . import page_objects
         if self.obj_sel is None:
             return
-        rect = self.obj_sel[1]["rect"]
-        self._picture_edit("Picture rotated",
-                           lambda pg, n: page_objects.rotate(pg, n, rect, degrees))
+        rect = self.selected_objects_rect()
+        self._objects_edit("Rotated", lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees))
 
-    def delete_picture(self):
+    def delete_objects(self):
         from . import page_objects
-        if self.obj_sel is None:
-            return
-        self._picture_edit("Picture deleted", page_objects.delete)
-        self.obj_sel = None
+        self._objects_edit("Deleted", page_objects.delete, keep=False)
 
     def copy_picture(self):
-        """Copy the selected picture as it looks on the page (Ctrl+V pastes an image markup)."""
-        if self.obj_sel is None:
-            return
+        """Copy the one selected picture (Ctrl+V pastes it as an image markup)."""
         from . import clip
         from PySide6.QtGui import QImage
-        index, info = self.obj_sel
+        items = self.selected_objects()
+        if len(items) != 1 or items[0]["kind"] != "picture":
+            return
+        index, info = self.obj_sel[0], items[0]
         if not info["xref"]:            # inline picture: copy how that area looks
             page = self.doc[index]
             self.capture_area(index, info["rect"] & page.rect)
@@ -2062,10 +2092,11 @@ class DocumentView(QScrollArea):
         self.statusMessage.emit("Picture copied: Ctrl+V pastes it as an image markup")
 
     def save_picture(self):
-        if self.obj_sel is None or not self.obj_sel[1]["xref"]:
-            return
         from PySide6.QtWidgets import QFileDialog
-        data, ext = annotations.image_bytes(self.doc, self.obj_sel[1]["xref"])
+        items = self.selected_objects()
+        if len(items) != 1 or not items[0]["xref"]:
+            return
+        data, ext = annotations.image_bytes(self.doc, items[0]["xref"])
         folder = os.path.dirname(self.path) if self.path else ""
         out, _ = QFileDialog.getSaveFileName(self, "Save picture as",
                                              os.path.join(folder, "picture." + ext),
