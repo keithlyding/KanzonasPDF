@@ -18,6 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip                       # reuse downloaded packages between builds
 
       - name: Install dependencies
         run: python -m pip install -r requirements.txt pyinstaller
@@ -158,10 +159,33 @@ jobs:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-setup
           path: dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
 
-      - name: Publish release (version tags only, e.g. v1.0)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Publishing is automatic: when a push to initial-editor carries a version number that has
+      # no release yet, the files this build just tested are published as that release (no
+      # second build). Repository variable AUTO_RELEASE changes this:
+      #   (unset)  publish automatically;  draft  make a draft to check and publish by hand;
+      #   false    don't release (create a release/tag v<version> by hand; that builds and publishes).
+      - name: Is this version already released?
+        id: rel
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "v${{ steps.ver.outputs.version }}" --repo "${{ github.repository }}" *> $null
+          $new = if ($LASTEXITCODE -eq 0) { "false" } else { "true" }
+          "new=$new" >> $env:GITHUB_OUTPUT
+          Write-Host "Version ${{ steps.ver.outputs.version }}: new release = $new"
+          exit 0
+
+      - name: Publish release
+        if: >-
+          startsWith(github.ref, 'refs/tags/v') ||
+          (github.ref == 'refs/heads/initial-editor' && steps.rel.outputs.new == 'true' &&
+           vars.AUTO_RELEASE != 'false')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          draft: ${{ vars.AUTO_RELEASE == 'draft' && !startsWith(github.ref, 'refs/tags/v') }}
           name: KanzonasPDF ${{ steps.ver.outputs.version }}
           prerelease: ${{ startsWith(steps.ver.outputs.version, '0.') }}
           body: |
@@ -169,7 +193,7 @@ jobs:
             **Portable (no install; settings stay with the app):** download `-portable.zip`, unzip it
             anywhere (e.g. a USB stick) and run `KanzonasPDF.exe`; settings stay in its `data` folder.
 
-            What's new: see [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/${{ github.ref_name }}/CHANGELOG.md).
+            What's new: see [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ steps.ver.outputs.version }}/CHANGELOG.md).
             Free software under the GNU AGPL 3.0.
           files: |
             dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
