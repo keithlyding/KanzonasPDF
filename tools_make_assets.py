@@ -5,9 +5,10 @@
 Sources (the owner's artwork):
 - assets/kanzonas-mark-source.png  cactus + sunflower
 - assets/kanzonas-logo-source.png  the owner's full logo (Help > About)
-The app icon is a red tile (the color people associate with PDF apps) with a white page
-holding the cactus and sunflower, drawn here as vectors so it is sharp at every size; sizes
-16-32 use a simpler page without the folded corner. Outputs: kanzonas.ico, kanzonas.png,
+The app icon is a red tile (the color people associate with PDF apps); the cactus and
+sunflower stand in front of a white page whose top comes out above the cactus, as in the
+owner's artwork. Drawn here as vectors so it is sharp at every size; sizes 16-32 use a
+simpler page without an outline. Outputs: kanzonas.ico, kanzonas.png,
 installer BMPs and the embedded copy kanzonas/branding_data.py.
 """
 import base64
@@ -16,7 +17,7 @@ import sys
 
 from PIL import Image
 from PySide6.QtCore import QBuffer, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath
+from PySide6.QtGui import QColor, QImage, QLinearGradient, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QApplication
 
 app = QApplication(sys.argv)
@@ -36,29 +37,25 @@ def _tile(p, size_units, radius):
     p.drawRoundedRect(QRectF(m, m, size_units - 2 * m, size_units - 2 * m), radius, radius)
 
 
-def big_icon(size=512):
-    """Red tile; a white page with a folded corner holds the owner's cactus and sunflower."""
-    img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
-    img.fill(Qt.transparent)
-    p = QPainter(img)
-    p.setRenderHint(QPainter.Antialiasing)
-    p.setRenderHint(QPainter.SmoothPixmapTransform)
-    p.scale(size / 256.0, size / 256.0)
-    _tile(p, 256, 44)
-    x0, y0, x1, y1, f = 52, 30, 204, 226, 34
+def _page(p, x0, y0, x1, y1, f, line=True):
+    """White page with a folded top-right corner (as in the owner's artwork)."""
     page = QPainterPath()
-    page.moveTo(x0 + 10, y0)
+    r = (x1 - x0) * 0.07
+    page.moveTo(x0 + r, y0)
     page.lineTo(x1 - f, y0)
     page.lineTo(x1, y0 + f)
-    page.lineTo(x1, y1 - 10)
-    page.quadTo(x1, y1, x1 - 10, y1)
-    page.lineTo(x0 + 10, y1)
-    page.quadTo(x0, y1, x0, y1 - 10)
-    page.lineTo(x0, y0 + 10)
-    page.quadTo(x0, y0, x0 + 10, y0)
+    page.lineTo(x1, y1 - r)
+    page.quadTo(x1, y1, x1 - r, y1)
+    page.lineTo(x0 + r, y1)
+    page.quadTo(x0, y1, x0, y1 - r)
+    page.lineTo(x0, y0 + r)
+    page.quadTo(x0, y0, x0 + r, y0)
+    p.setPen(Qt.NoPen)
     p.setBrush(QColor(0, 0, 0, 60))                    # soft shadow
-    p.drawPath(page.translated(3, 4))
+    p.drawPath(page.translated((x1 - x0) * 0.02, (x1 - x0) * 0.025))
     p.setBrush(QColor("white"))
+    if line:
+        p.setPen(QPen(QColor("#5a5a5a"), (x1 - x0) * 0.035))
     p.drawPath(page)
     fold = QPainterPath()
     fold.moveTo(x1 - f, y0)
@@ -67,15 +64,28 @@ def big_icon(size=512):
     fold.closeSubpath()
     p.setBrush(QColor("#d9d9d9"))
     p.drawPath(fold)
-    h = 150.0
+
+
+def big_icon(size=512):
+    """Red tile; the owner's cactus and sunflower stand in front of a white page whose top
+    comes out above the cactus."""
+    img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
+    img.fill(Qt.transparent)
+    p = QPainter(img)
+    p.setRenderHint(QPainter.Antialiasing)
+    p.setRenderHint(QPainter.SmoothPixmapTransform)
+    p.scale(size / 256.0, size / 256.0)
+    _tile(p, 256, 44)
+    _page(p, 66, 22, 192, 196, 30)
+    h = 178.0
     w = h * mark.width() / mark.height()
-    p.drawImage(QRectF(128 - w / 2, 62, w, h), mark)
+    p.drawImage(QRectF(128 - w / 2, 58, w, h), mark)
     p.end()
     return img
 
 
 def small_icon(size=128):
-    """16-32 px: the red tile and a plain white page (a folded corner is too fine there)."""
+    """16-32 px: same layout, bolder and simpler (no page outline)."""
     img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
     img.fill(Qt.transparent)
     p = QPainter(img)
@@ -83,11 +93,10 @@ def small_icon(size=128):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 128.0, size / 128.0)
     _tile(p, 128, 24)
-    p.setBrush(QColor("white"))
-    p.drawRoundedRect(QRectF(22, 12, 84, 104), 10, 10)
-    h = 92.0
+    _page(p, 30, 9, 98, 98, 18, line=False)
+    h = 96.0
     w = h * mark.width() / mark.height()
-    p.drawImage(QRectF(64 - w / 2, 18, w, h), mark)
+    p.drawImage(QRectF(64 - w / 2, 28, w, h), mark)
     p.end()
     return img
 

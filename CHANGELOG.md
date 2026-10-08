@@ -5,7 +5,7 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.62 | (this) | New red app icon: the cactus and sunflower on a white page on a red tile, at every size including the taskbar (red is the color people associate with PDF apps) |
+| 0.62 | (this) | New red app icon: the cactus and sunflower in front of a white page whose top comes out above them, on a red tile, at every size including the taskbar (red is the color people associate with PDF apps) |
 | 0.61 | 03f203d | Clean-up: toolbar icons are drawn straight from the icon font instead of loading the QtAwesome library at start-up (start-up about 20% faster, about 25 MB less memory, identical icons); unused code and imports removed; shared code for resize handles. Self-test now fails if QtAwesome loads at start-up |
 | 0.60 | 4f81b63 | New Document > Background...: solid color, gradient or picture behind the page content, with opacity, on the current page, all pages or chosen pages; Remove background... takes it off again. New self-test check |
 | 0.59 | 74ac12d | Preferences > Saving: choose the backup folder (Change..., Use default, Open backup folder) |
