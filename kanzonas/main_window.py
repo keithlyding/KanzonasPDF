@@ -1241,6 +1241,8 @@ class MainWindow(QMainWindow):
         if not v:
             return
         cur = v.current_page()
+        if op in ("del", "move", "blank") and not self._pages_unlocked():
+            return
         if op == "rot":
             v.rotate_page(cur, arg)
         elif op == "del":
@@ -1267,6 +1269,8 @@ class MainWindow(QMainWindow):
     def insert_from_file(self):
         v = self.view()
         if not v:
+            return
+        if not self._pages_unlocked():
             return
         path, _ = QFileDialog.getOpenFileName(self, "Insert pages from",
                                               self.settings.value("last_dir", ""), PDF_FILTER)
@@ -3030,13 +3034,28 @@ class MainWindow(QMainWindow):
             self._refresh_bookmarks()
         self._update_ui()
 
+    def _pages_unlocked(self):
+        """True if the page order may change. While it's locked, ask once whether to unlock:
+        the lock covers every command that moves, adds or removes pages, not just dragging."""
+        if not self.lock_btn.isChecked():
+            return True
+        if QMessageBox.question(
+                self, "Page order locked",
+                "The page order is locked, so pages can't be moved, added or removed.\n\n"
+                "Unlock it and continue? (Lock it again with the lock button above the page "
+                "list.)") != QMessageBox.Yes:
+            return False
+        self.lock_btn.setChecked(False)
+        return True
+
     def _set_pages_locked(self, locked):
         self.thumbs.setDragDropMode(QAbstractItemView.NoDragDrop if locked
                                     else QAbstractItemView.InternalMove)
         self.lock_btn.setText("\U0001F512 Locked" if locked else "\U0001F513 Unlocked")
-        self.lock_btn.setToolTip("Page order locked: click to unlock and drag pages to reorder"
-                                 if locked else "Unlocked: drag pages to reorder them, "
-                                 "copy, cut, paste and duplicate (click to lock)")
+        self.lock_btn.setToolTip("Page order locked: pages can't be moved, added or removed "
+                                 "(click to unlock)" if locked else
+                                 "Unlocked: drag pages to reorder them; move, insert, delete, "
+                                 "cut, paste and duplicate pages (click to lock)")
         self.thumbs.setToolTip("Unlock (button above) to drag pages" if locked
                                else "Drag pages to reorder them")
         self.settings.setValue("pages_locked", "true" if locked else "false")
@@ -3108,9 +3127,7 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is None:
             return
-        if op != "copy" and self.lock_btn.isChecked():
-            QMessageBox.information(self, "Pages", "The page order is locked. Click the lock "
-                                    "button above the page list to unlock it first.")
+        if op != "copy" and not self._pages_unlocked():
             return
         pages = self._selected_pages()
         if op in ("copy", "cut"):
