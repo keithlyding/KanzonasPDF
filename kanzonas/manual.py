@@ -82,7 +82,7 @@ with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow k
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1).</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
-<li><b>Pan:</b> Hand tool (H), the scroll bars, or <b>hold the mouse wheel down and drag</b>
+<li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). Shift+Left/Right scrolls sideways.</li>
 <li><b>CAD-style mouse (wheel zooms, hold wheel to pan)</b> (View menu, toolbar button, F11):
 like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the wheel down
@@ -366,7 +366,16 @@ attached files, hidden text, links, comments, form data, thumbnails.</li>
 
 <h2 id="document">Document tools</h2>
 <ul>
-<li><b>Recognize text (OCR):</b> makes scanned pages searchable and selectable.</li>
+<li><b>Recognize text (OCR):</b> makes scanned pages searchable and selectable. Choose the
+<b>pages</b> (All, the current page, or a list such as 1-3, 7), whether to <b>skip pages that
+already contain text</b> (on by default, so text isn't duplicated), and the <b>accuracy</b>:
+<b>Fast</b> (150 dpi) for clean scans with normal-size text; <b>Normal</b> (300 dpi);
+<b>High</b> (400 dpi, and it checks every orientation, for small print, poor scans and
+sideways or upside-down pages; the slowest); or <b>Auto</b> (the default), which reads each
+page fast and redoes it at High resolution only when the text came out small or unclear.
+Higher accuracy takes longer and uses more memory, and it never renders a scan sharper than
+it was scanned (that only adds blur), so on a 200 dpi scan Normal and High read at 200 dpi.
+Your choice is remembered.</li>
 <li><b>Redaction:</b> the Redact (mark text or area) tool (Shift+R) or Search &amp; redact
 marks areas; Apply redactions permanently removes what's underneath.</li>
 <li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,

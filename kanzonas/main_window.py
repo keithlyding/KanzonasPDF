@@ -26,6 +26,23 @@ from .tool_chest import ToolChestPanel, tool_for
 APP_NAME = "KanzonasPDF"
 APP_TITLE = f"KanzonasPDF v{__version__}"
 PDF_FILTER = "PDF files (*.pdf);;All files (*)"
+
+
+def parse_page_list(text, count):
+    """'1-3, 7' -> [0, 1, 2, 6] (0-based, in order, no repeats); [] if invalid."""
+    out = []
+    try:
+        for part in text.replace(" ", "").split(","):
+            if not part:
+                continue
+            a, _, b = part.partition("-")
+            first, last = int(a), int(b or a)
+            if not 1 <= first <= last <= count:
+                return []
+            out += [i - 1 for i in range(first, last + 1) if i - 1 not in out]
+    except ValueError:
+        return []
+    return out
 TOOLS = [  # (id, label, shortcut, tooltip)
     ("select", "Select", "V", "Select: drag across text to select it (Ctrl+C copies); click an annotation "
                               "to move, resize or restyle it (V)"),
@@ -128,7 +145,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(APP_NAME)
         self.resize(1300, 900)
         self.setAcceptDrops(True)
-        self.tool = "select"
+        self.tool = "hand"            # start with the Hand: scroll by dragging, like most viewers
         self._sig_cache = {}            # kind -> png, for this run of the app only
 
         self.tabs = QTabWidget()
@@ -489,7 +506,7 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
-        self.tool_actions["select"].setChecked(True)
+        self.tool_actions["hand"].setChecked(True)
         self.tool_group.triggered.connect(lambda _a: self._clear_chest())
         for tid, label, sc, tip in MEASURE_TOOLS + EXTRA_TOOLS:
             a = QAction(label, self, checkable=True)
@@ -1292,28 +1309,64 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v:
             return
-        choices = ["Pages without text (scanned pages)", "Current page only",
-                   "All pages (even ones that already have text)"]
-        pick, ok = QInputDialog.getItem(self, "Recognize text (OCR)",
-                                        "Which pages?", choices, 0, False)
-        if not ok:
+        from . import ocr as ocrmod
+        n = v.page_count()
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Recognize text (OCR)")
+        form = QFormLayout(dlg)
+        rb_all = QRadioButton("All")
+        rb_cur = QRadioButton(f"Current page ({v.current_page() + 1})")
+        rb_custom = QRadioButton("Pages:")
+        custom = QLineEdit()
+        custom.setPlaceholderText(f"e.g. 1-3, 7 (of {n})")
+        custom.textEdited.connect(lambda _t: rb_custom.setChecked(True))
+        rb_all.setChecked(True)
+        row = QHBoxLayout()
+        for w in (rb_all, rb_cur, rb_custom, custom):
+            row.addWidget(w)
+        form.addRow("Pages:", row)
+        skip = QCheckBox("Skip pages that already contain text")
+        skip.setChecked(True)
+        skip.setToolTip("Pages that already have text (not scanned) are left alone, so their "
+                        "text isn't duplicated")
+        form.addRow("", skip)
+        acc = QComboBox()
+        for key in ("auto", "fast", "normal", "high"):
+            acc.addItem(ocrmod.ACCURACY_LABELS[key], key)
+        acc.setCurrentIndex(max(0, acc.findData(self.settings.value("ocr_accuracy", "auto"))))
+        acc.setToolTip("Accuracy is how sharp a page image the recognizer gets. Higher is slower "
+                       "and uses more memory; Auto starts fast and redoes a page sharper only "
+                       "when its text is small or unclear.")
+        form.addRow("Accuracy:", acc)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.button(QDialogButtonBox.Ok).setText("Recognize")
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        form.addRow(btns)
+        if not dlg.exec():
             return
-        n = choices.index(pick)
-        if n == 1:
+        if rb_cur.isChecked():
             pages = [v.current_page()]
-            if v.page_has_text(pages[0]) and QMessageBox.question(
-                    self, "OCR", "This page already has text. OCR it anyway? "
-                                 "(Text may become duplicated.)") != QMessageBox.Yes:
-                return
-        elif n == 0:
-            pages = [i for i in range(v.page_count()) if not v.page_has_text(i)]
+        elif rb_custom.isChecked():
+            pages = parse_page_list(custom.text(), n)
             if not pages:
-                QMessageBox.information(self, "OCR", "Every page already has text. "
-                                        "Nothing to recognize.")
+                QMessageBox.warning(self, "OCR", f"Type pages between 1 and {n}, for example "
+                                    "1-3, 7.")
                 return
         else:
-            pages = list(range(v.page_count()))
-        v.run_ocr(pages)
+            pages = list(range(n))
+        if skip.isChecked():
+            with_text = [i for i in pages if v.page_has_text(i)]
+            pages = [i for i in pages if i not in with_text]
+            if not pages:
+                QMessageBox.information(self, "OCR", "The chosen page(s) already have text, so "
+                                        "there's nothing to recognize. Untick \"Skip pages that "
+                                        "already contain text\" to OCR them anyway (their text "
+                                        "may then be duplicated).")
+                return
+        accuracy = acc.currentData()
+        self.settings.setValue("ocr_accuracy", accuracy)
+        v.run_ocr(pages, accuracy)
 
     def flatten(self):
         v = self.view()

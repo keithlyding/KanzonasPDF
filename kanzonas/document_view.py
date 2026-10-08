@@ -2534,8 +2534,9 @@ class DocumentView(QScrollArea):
     def page_has_text(self, index):
         return bool(self.doc[index].get_text("text").strip())
 
-    def run_ocr(self, pages):
-        """Recognize text on the given pages and add an invisible, searchable text layer."""
+    def run_ocr(self, pages, accuracy="normal"):
+        """Recognize text on the given pages and add an invisible, searchable text layer.
+        accuracy: auto | fast | normal | high (see ocr.ACCURACY_DPI)."""
         from . import ocr
         dlg = QProgressDialog("Loading OCR engine...", "Cancel", 0, len(pages), self)
         dlg.setWindowTitle("Recognize text (OCR)")
@@ -2557,19 +2558,34 @@ class DocumentView(QScrollArea):
         try:
             for n, i in enumerate(pages):
                 dlg.setLabelText(f"Recognizing text on page {i + 1} ({n + 1} of {len(pages)})...")
-                best = ocr.Rendering(self.doc[i])
+                dpi = ocr.page_dpi(self.doc[i],
+                                   ocr.ACCURACY_DPI.get(accuracy, ocr.ACCURACY_DPI["fast"]))
+                best = ocr.Rendering(self.doc[i], dpi=dpi)
                 res = ocr_image(best)
                 if res is None:
                     break
-                if ocr.mostly_vertical(res):
-                    # Sideways text (e.g. a landscape scan): try both 90-degree turns, keep the best.
-                    dlg.setLabelText(f"Page {i + 1}: text is sideways, trying other orientations...")
-                    for extra in (90, 270):
-                        r = ocr.Rendering(self.doc[i], extra)
+                sharper = ocr.page_dpi(self.doc[i], ocr.ACCURACY_DPI["high"])
+                if accuracy == "auto" and sharper > dpi and ocr.needs_sharper(res, best):
+                    dlg.setLabelText(f"Page {i + 1}: small or unclear text, "
+                                     "recognizing again at higher resolution...")
+                    dpi = sharper
+                    best = ocr.Rendering(self.doc[i], dpi=dpi)
+                    res = ocr_image(best)
+                    if res is None:
+                        break
+                turns = (90, 180, 270) if accuracy == "high" else \
+                    ((90, 270) if ocr.mostly_vertical(res) else ())
+                if turns:
+                    # Sideways or upside-down text: try other turns, keep the best.
+                    dlg.setLabelText(f"Page {i + 1}: checking other orientations...")
+                    for extra in turns:
+                        r = ocr.Rendering(self.doc[i], extra, dpi=dpi)
                         alt = ocr_image(r)
                         if alt is None:
                             break
-                        if ocr.score(alt) > ocr.score(res):
+                        # switch only for a clear win: the engine already reads turned text,
+                        # so near-equal scores are noise and the upright layout is better
+                        if ocr.score(alt) > 1.25 * ocr.score(res) + 5:
                             best, res = r, alt
                     if dlg.wasCanceled():
                         break
