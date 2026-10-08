@@ -81,7 +81,7 @@ from any folder but stores settings on the computer like the installed version.<
 <li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number (bottom right
 with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
-Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit page, at
+Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit width, at
 the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
@@ -463,7 +463,7 @@ size, fill, opacity and so on, the same settings the Properties panel shows when
 active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
 <li><b>Start-up and opening:</b> reopen the documents that were open when you closed
 KanzonasPDF (off by default), the tool to start with (Hand or Select), the zoom a document opens
-at (Fit page, the whole page in the window, by default; Fit width; Actual size; or the zoom it had
+at (Fit width by default; Fit page, the whole page in the window; Actual size; or the zoom it had
 when you closed it), and whether to reopen it at the page you were on last time.</li>
 <li><b>Saving:</b> how often to back up unsaved changes (every 5 minutes by default; Off turns it
 off). A copy of each document with unsaved changes is kept in the backups folder and deleted when

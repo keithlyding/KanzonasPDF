@@ -139,8 +139,8 @@ class PreferencesDialog(QDialog):
             win.settings.value("start_tool", "hand"))))
         form.addRow("Start with the tool:", self.start_tool)
         self.open_view = QComboBox()
-        for key, label in (("page", "Fit page (whole page in the window)"),
-                           ("width", "Fit width"), ("actual", "Actual size (100%)"),
+        for key, label in (("width", "Fit width"), ("page", "Fit page (whole page in the window)"),
+                           ("actual", "Actual size (100%)"),
                            ("last", "The zoom it had when I closed it")):
             self.open_view.addItem(label, key)
         self.open_view.setCurrentIndex(max(0, self.open_view.findData(DocumentView.open_view)))

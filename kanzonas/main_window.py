@@ -445,7 +445,7 @@ class MainWindow(QMainWindow):
         except (TypeError, ValueError):
             minutes = 5
         self.autosave = autosave.Autosaver(self, minutes)
-        DocumentView.open_view = self.settings.value("open_view", "page")
+        DocumentView.open_view = self.settings.value("open_view", "width")
         DocumentView.reopen_page = self.settings.value("reopen_page", "true") != "false"
         # grid and snapping (shared by all open documents, remembered)
         self.a_grid = self._act("Show &grid", self._apply_grid_settings,

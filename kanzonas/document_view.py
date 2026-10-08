@@ -472,7 +472,7 @@ class DocumentView(QScrollArea):
     # Holding the wheel (middle button) down and dragging pans in either mode.
     cad_mouse = False
     page_wheel = False          # one wheel step = one page when the page fits the window
-    open_view = "page"          # zoom for newly opened files: page, width, actual, last
+    open_view = "width"         # zoom for newly opened files: width, page, actual, last
     reopen_page = True          # reopen files at the page they were left on
 
     def wheelEvent(self, e):
