@@ -266,6 +266,9 @@ class Objects:
         for it in page.get_images(full=True):
             if it[-1] == 0:             # drawn by the page itself, not inside a form
                 names[("/" + it[7]).encode()] = it[0]
+        # placed signatures and initials aren't editable here
+        typ, val = page.parent.xref_get_key(page.xref, "KZSig")
+        sigs = {int(v) for v in val.strip("[]").split()} if typ == "array" else set()
         tm = self.tm
         for k, d in enumerate(scan(self.data)):
             m = d["ctm"] * tm
@@ -283,8 +286,8 @@ class Objects:
                 xref = 0
             else:
                 xref = names.get(d["name"])
-                if xref is None:
-                    continue            # a form or something else, not a picture
+                if xref is None or xref in sigs:
+                    continue            # a form or something else, or a signature
             quad = pymupdf.Rect(0, 0, 1, 1).quad.transform(m)
             self.items.append({"n": k, "kind": "picture", "rect": quad.rect, "xref": xref,
                                "quad": quad, "obj": d})

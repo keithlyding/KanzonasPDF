@@ -107,6 +107,14 @@ class PreferencesDialog(QDialog):
                           "placing it to make it exactly that wide.")
             form.addRow(label, sb)
             self.sig_size[kind] = sb
+        from . import signatures as sigmod
+        from datetime import date as _date
+        self.datefmt = QComboBox()
+        for fmt in sigmod.DATE_FORMATS:
+            self.datefmt.addItem(_date.today().strftime(fmt), fmt)
+        self.datefmt.setCurrentIndex(max(0, self.datefmt.findData(sigmod.date_format())))
+        self.datefmt.setToolTip("How the Date tool (Ctrl+;) writes today's date")
+        form.addRow("Date format:", self.datefmt)
         pin = QPushButton("Change PIN...")
         pin.setToolTip("Set, change or remove the PIN that protects your saved signature and "
                        "initials")
@@ -409,6 +417,9 @@ class PreferencesDialog(QDialog):
         if self.lock.isChecked() != win.lock_btn.isChecked():
             win.lock_btn.setChecked(self.lock.isChecked())
         win.settings.setValue("ocr_accuracy", self.ocr.currentData())
+        from . import signatures as sigmod
+        if self.datefmt.currentData() != sigmod.date_format():
+            sigmod.set_date_format(self.datefmt.currentData())
         win.settings.setValue("grid_value", self.grid_value.value())
         win.settings.setValue("grid_unit", self.grid_unit.currentData())
         win.settings.setValue("grid_major", self.grid_major.value())

@@ -57,6 +57,7 @@ class DocumentView(QScrollArea):
     statusMessage = Signal(str)
     selectionChanged = Signal()
     signedDocument = Signal()
+    oneShotPlaced = Signal()        # a signature / initials / date was placed
     selectToolRequested = Signal()
     calibrateRequested = Signal(int, float)    # page index, drawn length in points
     scaleChanged = Signal()
@@ -2492,7 +2493,7 @@ class DocumentView(QScrollArea):
             disp = pymupdf.Rect(box)
         else:
             disp = self.sig_display_rect(index, kind, pt)
-        when = signatures.date_text()
+        when = ""                       # the date is its own tool now (Date, Ctrl+;)
         if not hasattr(self, "_last_sig_spot"):
             self._last_sig_spot = {}
         self._last_sig_spot[kind] = pymupdf.Rect(disp)
@@ -2502,6 +2503,20 @@ class DocumentView(QScrollArea):
         self.modify(do, [index])
         self.signed = True
         self.signedDocument.emit()
+        self.oneShotPlaced.emit()
+
+    def place_date(self, index, pt):
+        """Date tool: today's date (format from Preferences > You) written into the page with
+        its baseline at pt, reading upright as displayed."""
+        text = signatures.date_text()
+
+        def do():
+            pg = self.doc[index]
+            pg.insert_text(pymupdf.Point(pt), text, fontsize=10, fontname="helv",
+                           color=(0.1, 0.1, 0.1), rotate=pg.rotation)
+        self.modify(do, [index])
+        self.statusMessage.emit(f"Dated {text} (Ctrl+Z undoes it)")
+        self.oneShotPlaced.emit()
 
     # ---- protection (read-only PDFs) ----------------------------------------------------
     def _check_permissions(self):
@@ -2639,11 +2654,20 @@ class DocumentView(QScrollArea):
         return digisign.timestamp(data, out_path, url)
 
     # ---- multi-place signature & placeholders -------------------------------------------------
-    def _draw_signature(self, pg, kind, disp, when):
+    SIG_KEY = "KZSig"      # page key: xrefs of placed signature / initials pictures
+
+    def _draw_signature(self, pg, kind, disp, when=""):
         png, _pm = self.sig_images[kind]
         img_rect = disp * pg.derotation_matrix
-        pg.insert_image(img_rect, stream=png, keep_proportion=True, rotate=pg.rotation,
-                        overlay=True)
+        xref = pg.insert_image(img_rect, stream=png, keep_proportion=True, rotate=pg.rotation,
+                               overlay=True)
+        # remember it, so Edit objects leaves signatures alone
+        doc = pg.parent
+        typ, val = doc.xref_get_key(pg.xref, self.SIG_KEY)
+        have = [int(v) for v in val.strip("[]").split()] if typ == "array" else []
+        if xref and xref not in have:
+            have.append(xref)
+        doc.xref_set_key(pg.xref, self.SIG_KEY, "[" + " ".join(map(str, have)) + "]")
         if when:
             size = 9 if kind == "signature" else 7
             base = pymupdf.Point(disp.x0, disp.y1 + size + 1) * pg.derotation_matrix
@@ -2667,7 +2691,7 @@ class DocumentView(QScrollArea):
         corner name, or 'same' = where it was last placed (same spot on every page)."""
         if kind not in self.sig_images or not pages:
             return 0
-        when = signatures.date_text()
+        when = ""
         last = getattr(self, "_last_sig_spot", {}).get(kind)
 
         def do():

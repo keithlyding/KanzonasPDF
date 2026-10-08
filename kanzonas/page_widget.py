@@ -815,6 +815,9 @@ class PageWidget(QWidget):
         if tool in SNAP_TOOLS:
             pos = self._snap(pos, e)
             pdf = self.to_pdf(pos)
+        if tool == "date":
+            self.view.place_date(self.index, pdf)
+            return
         if tool in SIGN_TOOLS:
             # click: place at the default size; drag: a box that sets its width
             self._sig_drag = pos

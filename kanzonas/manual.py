@@ -395,12 +395,18 @@ Double-click a field to change its name and options.</li>
 <p>Everything here is in the <b>Protect</b> menu.</p>
 <ul>
 <li><b>Wet signature / initials:</b> Sign (G) or Initials (I), then click to place your signature
-or initials, with the date. The first time, you're asked to set it up (draw it or load a picture
-of it, optional PIN). To replace it later, use File &gt; Preferences &gt; You &gt; Set up my
-signature... / Set up my initials.... To
-choose the size, <b>drag a box</b> instead of clicking: it's placed as wide as you drag (the
-height follows its proportions). The size used for a click is set in File &gt; Preferences &gt; You
-(2 in for a signature and 0.75 in for initials to start with).</li>
+or initials. The first time, you're asked to set it up (draw it or load a picture of it, optional
+PIN); to replace it later, use File &gt; Preferences &gt; You &gt; Set up my signature... / Set up my
+initials.... To choose the size, <b>drag a box</b> instead of clicking: it's placed as wide as you
+drag (the height follows its proportions). The size used for a click is set in File &gt;
+Preferences &gt; You (2 in for a signature and 0.75 in for initials to start with). Afterwards the
+Hand or Select tool, whichever you used last, is active again, so you don't place a second one by
+accident. Placed signatures and initials can't be moved or deleted with Edit objects (Ctrl+Z right
+after placing removes one).</li>
+<li><b>Date</b> (Ctrl+;, Protect tab and menu): click to write today's date there, for example
+next to a signature or in a document's own date field. It's separate from signing, so a form
+that already prints a date doesn't get two. The format (such as 10/08/2026 or October 08, 2026)
+is set in File &gt; Preferences &gt; You.</li>
 <li><b>Multi-place signature or initials:</b> put your initials (or signature) on all pages,
 all but the first or last, or pages you list, in the same spot as the last one you placed
 or in a corner.</li>
@@ -488,7 +494,8 @@ It also tells you where your settings are saved (the data folder in portable mod
 <li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
 Set up my signature... / Set up my initials... with whether each is saved yet, and Change PIN...
 to set, change or remove the PIN that protects them (leave the new PIN empty to remove it), and
-the Signature width and Initials width used when you click to place them.</li>
+the Signature width and Initials width used when you click to place them, and the Date format
+the Date tool writes.</li>
 <li><b>Markup styles:</b> pick a tool on the left to set its default colors, line width, font
 size, fill, opacity and so on, the same settings the Properties panel shows when that tool is
 active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
@@ -523,6 +530,7 @@ settings...).</li>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text</td></tr>
 <tr><td>Ctrl+K</td><td>Preferences</td></tr>
+<tr><td>Ctrl+;</td><td>Date (today's date where you click)</td></tr>
 <tr><td>Shift+O</td><td>Edit objects (the page's own pictures and shapes)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
 <tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>
