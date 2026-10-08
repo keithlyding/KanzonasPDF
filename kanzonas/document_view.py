@@ -611,15 +611,18 @@ class DocumentView(QScrollArea):
                                         "This PDF is protected against changes. Use Protect > Unlock "
                                         "with password if you have its permissions password.")
             return
-        snap = self._snapshot()
+        # a burst of arrow-key nudges is one undo step: later presses reuse the first snapshot
+        merge = getattr(self, "_merge_edit", False) and bool(self._undo)
+        snap = None if merge else self._snapshot()
         self._clear_caches()
         try:
             fn()
         except Exception as ex:
             QMessageBox.warning(self, "Edit failed", str(ex))
-            self._restore(snap)
+            self._restore(snap if snap is not None else self._undo.pop())
             return
-        self._undo.append(snap)
+        if snap is not None:
+            self._undo.append(snap)
         del self._undo[:-UNDO_LIMIT]
         self._redo.clear()
         self.dirty = True
@@ -1073,6 +1076,23 @@ class DocumentView(QScrollArea):
             self.statusMessage.emit(f"{len(text)} characters selected: Ctrl+C to copy, "
                                     "Ctrl+X to cut")
             return
+        self._markup_words(index, tool, words, text)
+
+    def markup_text_selection(self, tool):
+        """Right-click menu: highlight / underline / strike out / comment on / redact the
+        selected text."""
+        if not self.text_sel:
+            return
+        index, words = self.text_sel
+        if tool == "redact":
+            rects = [r for r in self.line_rects(words) if r.width > 1 and r.height > 1]
+            if rects:
+                self.mark_redactions(index, rects)
+        else:
+            self._markup_words(index, tool, words, self._words_text(words))
+        self.clear_text_selection()
+
+    def _markup_words(self, index, tool, words, text):
         model = {"kind": tool, "props": self.tool_props(tool),
                  "quads": [r.quad for r in self.line_rects(words)],
                  "text": text if tool != "comment" else ""}
@@ -1606,6 +1626,44 @@ class DocumentView(QScrollArea):
             out.append((x, m))
         self.commit_models(self.selection[0], out)
 
+    NUDGE = {"": 1.0, "shift": 10.0, "ctrl": 0.1}     # points per arrow-key press
+
+    def nudge(self, dx, dy, step):
+        """Move the selected markups, or the pictures / shapes selected with Edit objects, by
+        (dx, dy) * step points as seen on screen. Presses less than 1.5 s apart are one undo
+        step. Returns True if something moved."""
+        import time
+        if self.obj_sel is not None:
+            index = self.obj_sel[0]
+        elif self.selection is not None:
+            index = self.selection[0]
+        else:
+            return False
+        page = self.doc[index]
+        m_ = page.derotation_matrix
+        d = pymupdf.Point(dx * step, dy * step) * m_ - pymupdf.Point(0, 0) * m_
+        key = ("obj", index, tuple(it["n"] for it in self.obj_sel[1])) if self.obj_sel else \
+            ("annot", index)
+        now = time.monotonic()
+        last = getattr(self, "_last_nudge", (None, 0.0))
+        self._merge_edit = last[0] == key and now - last[1] < 1.5
+        try:
+            if self.obj_sel is not None:
+                r = self.selected_objects_rect()
+                self.move_objects(r + (d.x, d.y, d.x, d.y))
+            else:
+                changes = [(x, annotations.moved(m, d)) for x, m in self.selected_models()
+                           if m["kind"] != "field" and annotations.movable(m)]
+                if not changes:
+                    return False
+                self.commit_models(index, changes)
+        finally:
+            self._merge_edit = False
+        self._last_nudge = (key, now)
+        self.statusMessage.emit(f"Moved {step:g} pt (Shift+arrow: 10 pt, Ctrl+arrow: 0.1 pt; "
+                                "Ctrl+Z undoes the whole series)")
+        return True
+
     def delete_selected(self):
         if self.selection is None:
             return
@@ -1793,6 +1851,15 @@ class DocumentView(QScrollArea):
             if self.selection is not None:
                 self.clear_selection()
             return
+        arrows = {Qt.Key_Left: (-1, 0), Qt.Key_Right: (1, 0), Qt.Key_Up: (0, -1),
+                  Qt.Key_Down: (0, 1)}
+        mods = e.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier)
+        mod = {Qt.NoModifier: "", Qt.ShiftModifier: "shift",
+               Qt.ControlModifier: "ctrl"}.get(mods)
+        if e.key() in arrows and mod is not None and \
+                (self.selection is not None or self.obj_sel is not None):
+            if self.nudge(*arrows[e.key()], self.NUDGE[mod]):
+                return
         if e.key() in (Qt.Key_Left, Qt.Key_Right) and not e.modifiers():
             # previous / next page (use Shift+arrows or the scrollbar to scroll sideways)
             self.goto_page(self.current_page() + (1 if e.key() == Qt.Key_Right else -1))

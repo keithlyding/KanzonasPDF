@@ -629,6 +629,44 @@ class PageWidget(QWidget):
         menu.addAction("Delete", self.view.delete_objects)
         menu.exec(e.globalPosition().toPoint())
 
+    def _content_menu(self, e, pdf):
+        """Right-click on the page: copy / cut / paste / delete, and for selected text the
+        text markups. A right-click on a markup that isn't selected selects it first; one
+        on selected text keeps the selection."""
+        from PySide6.QtWidgets import QMenu
+        v = self.view
+        win = self.window()
+        on_text = v.text_sel is not None and v.text_sel[0] == self.index and any(
+            pymupdf.Rect(w[:4]).contains(pdf) for w in v.text_sel[1])
+        if not on_text:
+            xref = v.annot_at(self.index, pdf)
+            if xref is not None and xref not in (v.selected_xrefs() if v.selection and
+                                                 v.selection[0] == self.index else []):
+                v.clear_text_selection()
+                v.select_xref(self.index, xref)
+        has_text = v.text_sel is not None
+        has_markups = v.selection is not None
+        menu = QMenu(self)
+        # menu-only actions (the Edit menu's own ones keep their enabled state)
+        for what, label, keys in (("cut", "Cut", "Ctrl+X"), ("copy", "Copy", "Ctrl+C"),
+                                  ("paste", "Paste", "Ctrl+V")):
+            act = menu.addAction(f"{label}\t{keys}")
+            act.triggered.connect(lambda _=False, w=what: win._clipboard(w))
+            if what != "paste":
+                act.setEnabled(has_text or has_markups)
+        if has_markups:
+            menu.addAction("Delete", v.delete_selected)
+        if has_text:
+            menu.addSeparator()
+            for tool, label in (("highlight", "Highlight"), ("underline", "Underline"),
+                                ("strikeout", "Strike out"), ("comment", "Comment on text..."),
+                                ("redact", "Mark for redaction")):
+                menu.addAction(label, lambda t=tool: v.markup_text_selection(t))
+        menu.addSeparator()
+        act = menu.addAction("Select all text\tCtrl+A")
+        act.triggered.connect(lambda: win._clipboard("all"))
+        menu.exec(e.globalPosition().toPoint())
+
     def _objects_hover(self, pos):
         if self._objects_here():
             for hid, r in self._objects_handles().items():
@@ -716,6 +754,9 @@ class PageWidget(QWidget):
             return
         if e.button() == Qt.RightButton and self.view.tool == "editobjects":
             self._objects_menu(e, self.to_pdf(e.position()))
+            return
+        if e.button() == Qt.RightButton and not self._poly and self._edit is None:
+            self._content_menu(e, self.to_pdf(e.position()))
             return
         if e.button() != Qt.LeftButton:
             return super().mousePressEvent(e)
