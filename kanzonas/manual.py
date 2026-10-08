@@ -63,15 +63,19 @@ portable.txt file inside, your settings, signatures, stamp images and certificat
 they travel with the folder. The window title and Help &gt; About say <b>(portable)</b> when
 this copy is running in portable mode. Keep the whole folder together. The download has the same name for every version
 (KanzonasPDF-portable.zip, with a KanzonasPDF folder inside), so the program's path never has to
-change: <b>to update</b>, close KanzonasPDF and unzip the new download over the same folder,
-replacing the files. Your data folder is kept, and if you made KanzonasPDF.exe your default PDF
+change. <b>To update</b>, use <b>Update now</b> in the update notice or in Help &gt; Check for
+updates: KanzonasPDF downloads the new portable version, asks to save open documents, closes,
+replaces its program files in the same folder and starts again. Or do it by hand: close
+KanzonasPDF and unzip the new download over the same folder, replacing the files. Your data folder is kept, and if you made KanzonasPDF.exe your default PDF
 app (Windows Settings &gt; Apps &gt; Default apps), it stays the default. Tip: if Windows'
 Extract All suggests a new folder name, change it to the folder you already use.
 (Opening an attached file still uses Windows' temporary folder.)</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
 A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
 your browser. The automatic check instead shows a notice at the bottom of the window with
-<b>Download</b>, <b>Skip this version</b> and <b>Later</b>. Nothing is downloaded or installed by itself.
+<b>Download</b>, <b>Skip this version</b> and <b>Later</b> (the portable version also has
+<b>Update now</b>, which updates it in place; see above). Nothing is downloaded or installed
+until you click a button.
 With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
 quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your
 network blocks GitHub, the automatic check simply finds nothing.</li>

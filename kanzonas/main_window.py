@@ -3171,11 +3171,18 @@ class MainWindow(QMainWindow):
             # asked for: answer in a box, like the "up to date" answer
             box = QMessageBox(QMessageBox.Information, "Check for updates",
                               f"KanzonasPDF {version} is available (you have {__version__}).\n\n"
-                              "Download opens the release page in your browser.", parent=self)
+                              + ("Update now downloads it, closes KanzonasPDF, replaces the "
+                                 "program files in this folder (your data folder is kept) and "
+                                 "starts it again.\n\n" if self._self_update_url() else "")
+                              + "Download opens the release page in your browser.", parent=self)
+            upd = (box.addButton("Update now", QMessageBox.AcceptRole)
+                   if self._self_update_url() else None)
             get = box.addButton("Download", QMessageBox.AcceptRole)
             box.addButton("Later", QMessageBox.RejectRole)
             box.exec()
-            if box.clickedButton() is get:
+            if upd is not None and box.clickedButton() is upd:
+                self.update_portable()
+            elif box.clickedButton() is get:
                 QDesktopServices.openUrl(QUrl(url))
             return
         old = getattr(self, "_update_bar", None)
@@ -3188,6 +3195,10 @@ class MainWindow(QMainWindow):
         h.addWidget(QLabel(f"<b>KanzonasPDF {version} is available</b> (you have {__version__})."))
         get = QPushButton("Download")
         get.setToolTip("Open the release page to download the installer or portable zip")
+        upd = QPushButton("Update now") if self._self_update_url() else None
+        if upd is not None:
+            upd.setToolTip("Download the new portable version and replace this one in place "
+                           "(your data folder is kept)")
         skip = QPushButton("Skip this version")
         close = QPushButton("Later")
 
@@ -3198,12 +3209,69 @@ class MainWindow(QMainWindow):
         get.clicked.connect(lambda: (QDesktopServices.openUrl(QUrl(url)), done()))
         skip.clicked.connect(lambda: (self.settings.setValue("update_skip", version), done()))
         close.clicked.connect(done)
-        for b in (get, skip, close):
-            h.addWidget(b)
+        if upd is not None:
+            upd.clicked.connect(lambda: (done(), self.update_portable()))
+        for b in (upd, get, skip, close):
+            if b is not None:
+                h.addWidget(b)
         self._update_bar = bar
         self.statusBar().clearMessage()      # a status message would keep the notice hidden
         self.statusBar().addWidget(bar)
         bar.show()
+
+    def _self_update_url(self):
+        """Download address of the new portable zip when this copy can update itself."""
+        from . import updates
+        upd = getattr(self, "_upd", None)
+        if upd is None or not updates.can_self_update():
+            return None
+        return updates.asset_url(upd.release)
+
+    def update_portable(self):
+        """Portable copy: download the new version, then close and let a script swap the files."""
+        import tempfile
+        from PySide6.QtWidgets import QProgressDialog
+        from . import paths, updates
+        url = self._self_update_url()
+        if not url:
+            return
+        app_dir = paths.app_dir()
+        dl = updates.PortableUpdater(url, app_dir, self)
+        prog = QProgressDialog("Downloading the new KanzonasPDF...", "Cancel", 0, 0, self)
+        prog.setWindowTitle("Update")
+        prog.setMinimumDuration(0)
+        prog.canceled.connect(dl.cancel)
+
+        def progress(got, total):
+            if total > 0:
+                prog.setMaximum(total)
+                prog.setValue(got)
+
+        def failed(msg):
+            prog.close()
+            QMessageBox.warning(self, "Update", msg + "\n\nYou can still download "
+                                "KanzonasPDF-portable.zip from the release page and unzip it "
+                                "over this folder.")
+
+        def ready(new):
+            import subprocess
+            prog.close()
+            script = os.path.join(tempfile.gettempdir(), "kanzonas-update.cmd")
+            with open(script, "w", encoding="mbcs" if os.name == "nt" else "utf-8") as f:
+                f.write(updates.swap_script(os.getpid(), new, app_dir))
+            if not self.close():          # the user kept a document open: try again later
+                import shutil
+                shutil.rmtree(os.path.join(app_dir, updates.STAGING), ignore_errors=True)
+                os.remove(script)
+                return
+            subprocess.Popen(["cmd", "/c", script],
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                             close_fds=True)
+            QApplication.quit()
+        dl.progress.connect(progress)
+        dl.failed.connect(failed)
+        dl.ready.connect(ready)
+        dl.start()
 
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):
