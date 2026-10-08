@@ -124,6 +124,15 @@ revision, rotated plot, an ezdxf plot with vector text and layers, a 42x30 site 
 ~139,000 contour segments and an aerial underlay, and a scanned sheet).
 `tests/cad_battery.py` runs the app's features against them and prints timings.
 
+## Feedback, security and contributing
+
+- **Bug or idea?** Open an [issue](https://github.com/keithlyding/KanzonasPDF/issues/new/choose).
+  Please don't attach confidential PDFs.
+- **Security problem** (redaction, passwords, signatures): report it privately, see
+  [SECURITY.md](SECURITY.md).
+- **Contributing:** see [CONTRIBUTING.md](CONTRIBUTING.md) and the
+  [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Credits
 
 Icons: Material Design Icons via QtAwesome (MIT). App icon and logo: the owner's artwork in `assets/`
