@@ -165,7 +165,7 @@ jobs:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-setup
           path: dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
 
-      # Publishing is automatic: when a push to initial-editor carries a version number that has
+      # Publishing is automatic: when a push to main carries a version number that has
       # no release yet, the files this build just tested are published as that release (no
       # second build). Repository variable AUTO_RELEASE changes this:
       #   (unset)  publish automatically;  draft  make a draft to check and publish by hand;
@@ -185,7 +185,7 @@ jobs:
       - name: Publish release
         if: >-
           startsWith(github.ref, 'refs/tags/v') ||
-          (github.ref == 'refs/heads/initial-editor' && steps.rel.outputs.new == 'true' &&
+          (github.ref == 'refs/heads/main' && steps.rel.outputs.new == 'true' &&
            vars.AUTO_RELEASE != 'false')
         uses: softprops/action-gh-release@v2
         with:

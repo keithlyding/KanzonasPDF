@@ -74,9 +74,10 @@ administrator rights are needed. Prefer no installer? Download the **`-portable.
 anywhere (even a USB stick) and run `KanzonasPDF.exe`: its settings, signatures and stamps stay
 in a `data` folder beside it.
 
-Releases publish themselves: when a push to `initial-editor` carries a new `__version__`
-(in `kanzonas/__init__.py`) and the build passes, the tested installer and zips are published
-as release `v<version>` (a pre-release while the version is 0.x). To change that, set the
+Releases publish themselves: when `main` gets a new `__version__` (in `kanzonas/__init__.py`),
+usually by merging a pull request, and the build passes, the tested installer and zips are
+published as release `v<version>` (a pre-release while the version is 0.x). Work happens on
+other branches, which build and test but don't publish. To change publishing, set the
 repository variable `AUTO_RELEASE` (Settings > Secrets and variables > Actions > Variables):
 `draft` makes a draft release to check and publish by hand; `false` turns releasing off
 (then create a release with tag `v<version>` on GitHub to build and publish it).
