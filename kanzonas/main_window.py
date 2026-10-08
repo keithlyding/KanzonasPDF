@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pymupdf
 from PySide6.QtCore import Qt, QSize, QTimer, QEvent
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, QImage,
-                           QColor, QPainter)
+                           QPainter)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, QMessageBox,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
                                QListWidgetItem, QDockWidget, QAbstractItemView, QToolButton,

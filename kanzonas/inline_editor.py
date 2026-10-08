@@ -5,7 +5,7 @@ move the text, drag the corner grip to change the width (text wraps to it, in th
 Enter = done, Shift+Enter = new line, Esc = cancel, clicking elsewhere = done.
 """
 
-from PySide6.QtCore import Qt, Signal, QPoint, QEvent
+from PySide6.QtCore import Qt, Signal, QEvent
 from PySide6.QtGui import QFont, QFontMetricsF, QTextOption
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QLabel, QPlainTextEdit, QHBoxLayout
 

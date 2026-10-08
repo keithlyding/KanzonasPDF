@@ -6,10 +6,9 @@ Each <h2 id="..."> becomes an entry in the contents list.
 
 import re
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QTextDocument, QKeySequence, QShortcut
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QListWidget, QTextBrowser,
-                               QLineEdit, QPushButton, QSplitter, QWidget, QLabel)
+                               QLineEdit, QPushButton, QSplitter, QLabel)
 
 MANUAL = """
 <h1>KanzonasPDF user manual</h1>
@@ -588,10 +587,6 @@ class ManualDialog(QDialog):
     def _jump(self, row):
         if 0 <= row < len(self._anchors):
             self.text.scrollToAnchor(self._anchors[row])
-
-    def show_section(self, anchor):
-        if anchor in self._anchors:
-            self.contents.setCurrentRow(self._anchors.index(anchor))
 
     def find_next(self):
         word = self.find.text().strip()

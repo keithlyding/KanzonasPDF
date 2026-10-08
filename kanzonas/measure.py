@@ -73,10 +73,6 @@ def scale_from_preset(ratio):
     return PT_M * ratio
 
 
-def scale_from_distance(pdf_len, real_value, unit):
-    return real_value * UNITS[unit] / pdf_len
-
-
 def describe(page):
     _f, unit, label, ok = get_scale(page)
     return f"Scale: {label}" + (f"  ({unit})" if ok else "")

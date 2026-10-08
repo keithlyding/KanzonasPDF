@@ -11,14 +11,12 @@ import pymupdf
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QGridLayout, QFormLayout, QLineEdit,
                                QLabel, QSpinBox, QDoubleSpinBox, QComboBox, QDialogButtonBox,
-                               QCheckBox, QGroupBox, QSlider, QHBoxLayout, QPushButton,
+                               QCheckBox, QSlider, QHBoxLayout, QPushButton,
                                QFileDialog, QWidget)
 
 from .properties import ColorButton
 from . import annotations as A
 
-POSITIONS = [("header", "left"), ("header", "center"), ("header", "right"),
-             ("footer", "left"), ("footer", "center"), ("footer", "right")]
 _ALIGN = {"left": pymupdf.TEXT_ALIGN_LEFT, "center": pymupdf.TEXT_ALIGN_CENTER,
           "right": pymupdf.TEXT_ALIGN_RIGHT}
 

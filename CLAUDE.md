@@ -22,8 +22,9 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
 
 ## Performance (keep it fast and light, like PDF-XChange)
 - Start-up must not import heavy libraries (OCR/onnxruntime, pdf2docx, ezdxf, openpyxl,
-  python-pptx, python-docx, pyHanko, aiohttp, OpenCV): import them inside the function that
-  needs them. The self-test check "performance budget" fails the build if one is loaded.
+  python-pptx, python-docx, pyHanko, aiohttp, OpenCV, qtawesome): import them inside the function
+  that needs them. Toolbar icons are drawn straight from the MDI font file (theme.py), not
+  through qtawesome. The self-test check "performance budget" fails the build if one is loaded.
 - Budget (checked in the Windows build): start-up < 5 s, open + draw a 60,000-line sheet
   < 5 s, zoom to 400% < 5 s, peak memory < 800 MB. Typical today: ~0.3 s / 0.9 s / 0.6 s / 170 MB.
 - Never redo expensive work on every mouse move or paint: cache per page and clear the cache

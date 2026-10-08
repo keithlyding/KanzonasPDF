@@ -1547,12 +1547,6 @@ class DocumentView(QScrollArea):
             self.selectToolRequested.emit()
         self.select_xref(index, xref)
 
-    def select_annot_at(self, index, pt, add=False):
-        xref = self.annot_at(index, pt)
-        if xref is None:
-            return False
-        return self.select_xref(index, xref, add)
-
     def clear_selection(self):
         if self.selection is None:
             return
@@ -1632,8 +1626,6 @@ class DocumentView(QScrollArea):
         self.modify(do, [index])
 
     # ---- arrange: align, distribute, stacking order -------------------------------
-    ALIGN_REFS = ("first", "last", "selection", "page")
-
     def _display_bounds(self, page, model):
         return annotations.bounds(model) * page.rotation_matrix
 

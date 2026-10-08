@@ -52,7 +52,10 @@ def run(log_path):
     # Generous limits so slow build machines pass; they catch real regressions (a heavy
     # library imported at start-up, a render that suddenly takes many seconds...).
     HEAVY = ("rapidocr_onnxruntime", "onnxruntime", "pdf2docx", "ezdxf", "openpyxl", "pptx",
-             "docx", "pyhanko", "cv2", "aiohttp")
+             "docx", "pyhanko", "cv2", "aiohttp",
+             # icons are drawn from the bundled font; loading qtawesome means the font wasn't
+             # found (and costs ~0.2 s of start-up)
+             "qtawesome", "qtpy")
 
     def t_performance():
         import time

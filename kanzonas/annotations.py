@@ -48,7 +48,6 @@ DEFAULTS = {
     "placeholder": {"for": "initials"},
     "attach": {"stroke": "#0050ff", "icon": "Paperclip", "opacity": 1.0},
 }
-ATTACH_ICONS = ["Paperclip", "PushPin", "Graph", "Tag"]
 LABELS = {"highlight": "Highlight", "comment": "Comment", "underline": "Underline",
           "strikeout": "Strikeout", "squiggly": "Squiggly", "note": "Sticky note", "textbox": "Text box",
           "rect": "Rectangle", "ellipse": "Ellipse", "line": "Line", "arrow": "Arrow",
