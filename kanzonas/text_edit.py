@@ -224,16 +224,53 @@ def _wrap(text, font, size, width):
     return out
 
 
+def _winansi_ok(text):
+    """Built-in PDF fonts write text in the WinAnsi (cp1252) code page: anything outside it
+    comes out as a dot."""
+    try:
+        text.replace("\n", "").replace("\r", "").encode("cp1252")
+        return True
+    except UnicodeEncodeError:
+        return False
+
+
+def _unicode_font(page, text):
+    """A font for text the built-in PDF fonts can't encode (Greek, symbols, Chinese...):
+    PyMuPDF's bundled Droid Sans Fallback, embedded (only the used glyphs stay on save)."""
+    try:
+        font = pymupdf.Font("cjk")
+        if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
+            page.insert_font(fontname="KZUni", fontbuffer=font.buffer)
+            return "KZUni", font
+    except Exception:
+        pass
+    return None
+
+
 def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
     """Remove the line's text and write new_text in its place.
 
     offset: move the text by (dx, dy) points. wrap_width: wrap to this width (points).
     Returns the font name used: 'KZ…' = original embedded font, 'KZS…' = installed system
-    font of the same name, otherwise a built-in PDF font."""
+    font of the same name, 'KZUni' = bundled Unicode font, otherwise a built-in PDF font.
+    Raises ValueError (before changing anything) if no font can write the new text."""
     main = main_span(line)
     first = line["spans"][0]
+    if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in page.annots()):
+        # removing the old text applies every redaction on the page, pending ones included
+        raise ValueError("Apply or remove the redaction marks on this page before editing "
+                         "its text.")
 
-    # 1) remove only the text of this line (keep line art and images)
+    # 1) pick the font first, so nothing is deleted if the new text can't be written
+    found = None
+    if new_text.strip():
+        found = _embedded_font(page, main, new_text) or _system_font(page, main, new_text)
+        if not found and not _winansi_ok(new_text):
+            found = _unicode_font(page, new_text)
+            if not found:
+                raise ValueError("No available font has every character of the new text.")
+
+    # 2) remove only the text of this line (keep line art and images)
     dx, dy = line["dir"]
     for s in line["spans"]:
         r = pymupdf.Rect(s["bbox"])
@@ -251,10 +288,11 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
 
     if not new_text.strip():
         return None
-    # 2) write the replacement at the same baseline / direction
-    found = _embedded_font(page, main, new_text) or _system_font(page, main, new_text)
+    # 3) write the replacement at the same baseline / direction
     if found:
         fontname, font = found
+        if fontname == "KZUni":         # applying the redaction dropped the unused font again
+            page.insert_font(fontname=fontname, fontbuffer=font.buffer)
     else:
         fontname = _base14(main)
         font = pymupdf.Font(fontname)

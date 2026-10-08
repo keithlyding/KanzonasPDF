@@ -2,6 +2,7 @@
 
 import json
 import os
+import secrets
 import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -47,6 +48,8 @@ def eraser_cursor():
 
 
 class DocumentView(QScrollArea):
+    _orig_data = None               # original file bytes (signed / protected files only)
+    _orig_enc = None                # original protection, to keep it when saving edits
     pageChanged = Signal(int)
     documentChanged = Signal()      # content edited (thumbnails / title need refresh)
     structureChanged = Signal()     # pages added / removed / reordered / rotated
@@ -67,12 +70,32 @@ class DocumentView(QScrollArea):
         with open(self.path, "rb") as f:
             data = f.read()
         self.doc = pymupdf.open(stream=data, filetype="pdf")
+        # Keep what's needed to save without losing the file's protection or signatures:
+        # the original bytes (an unchanged file is saved as an exact copy) and its encryption.
+        self._orig_data = data
+        self._orig_enc = None
+        if (self.doc.metadata or {}).get("encryption") or self.doc.needs_pass:
+            self._orig_enc = {"needs_pass": bool(self.doc.needs_pass), "user_pw": None,
+                              "owner_pw": None}
         if self.doc.needs_pass:
             pw, ok = QInputDialog.getText(self, "Password required",
                                           os.path.basename(path) + " is protected:",
                                           QLineEdit.Password)
-            if not ok or not self.doc.authenticate(pw):
+            rc = self.doc.authenticate(pw) if ok else 0
+            if not rc:
                 raise ValueError("Wrong or missing password")
+            if rc & 2:
+                self._orig_enc["user_pw"] = pw
+            if rc & 4:
+                self._orig_enc["owner_pw"] = pw
+        if self._orig_enc is not None:
+            self._orig_enc["perms"] = self.doc.permissions
+        try:
+            signed = self.doc.get_sigflags() >= 1
+        except Exception:
+            signed = False
+        if self._orig_enc is None and not signed:
+            self._orig_data = None          # plain file: no need to keep a second copy
         self._check_permissions()
         self._init_state()
         self._build_pages()
@@ -557,6 +580,8 @@ class DocumentView(QScrollArea):
         del self._undo[:-UNDO_LIMIT]
         self._redo.clear()
         self.dirty = True
+        # any edit can change the page text: the next Find searches again
+        self._search_text = None
         if structural:
             page = self.current_page()
             self.search_hits.clear()
@@ -1786,9 +1811,12 @@ class DocumentView(QScrollArea):
             used["moved"] = len(moving)
         self.modify(do, [index])
         font = used.get("font") or ""
-        if font.startswith("KZS"):
+        if font.startswith("KZS") or font == "KZUni":
             self._fonts_added = True
-            self.statusMessage.emit("Edited using the installed copy of the original font.")
+            self.statusMessage.emit("Edited using the installed copy of the original font."
+                                    if font.startswith("KZS") else
+                                    "The original font lacks some of these characters; used "
+                                    "a Unicode font for this line.")
         elif font and not font.startswith("KZ"):
             self.statusMessage.emit("Original font isn't available for these characters; "
                                     "used the closest standard font.")
@@ -2100,6 +2128,8 @@ class DocumentView(QScrollArea):
         """Unlock editing with the permissions (owner) password."""
         rc = self.doc.authenticate(password)
         if rc & 4:                     # 4 = owner password accepted
+            if self._orig_enc is not None:
+                self._orig_enc["owner_pw"] = password
             self._check_permissions()
             return not self.read_only
         return False
@@ -2635,6 +2665,13 @@ class DocumentView(QScrollArea):
             if pages is None:
                 self.doc.bake(annots=True, widgets=widgets)
                 return
+            # Swapping a page in drops bookmarks and links that point to it: remember them
+            toc = self.doc.get_toc(simple=False)
+            links = {}
+            for pg in self.doc:
+                for ln in pg.get_links():
+                    if ln.get("kind") == pymupdf.LINK_GOTO and ln.get("page") in pages:
+                        links.setdefault(pg.number, []).append(ln)
             for i in sorted(pages, reverse=True):
                 # PyMuPDF flattens whole documents: flatten a one-page copy and swap it in
                 tmp = pymupdf.open()
@@ -2643,6 +2680,15 @@ class DocumentView(QScrollArea):
                 self.doc.delete_page(i)
                 self.doc.insert_pdf(tmp, start_at=i)
                 tmp.close()
+            if toc:
+                self.doc.set_toc(toc)
+            for pno, lst in links.items():
+                pg = self.doc[pno]
+                have = [pymupdf.Rect(ln["from"]) for ln in pg.get_links()]
+                for ln in lst:
+                    if pymupdf.Rect(ln["from"]) not in have:
+                        pg.insert_link({"kind": pymupdf.LINK_GOTO, "from": ln["from"],
+                                        "page": ln["page"], "to": ln.get("to", pymupdf.Point(0, 0))})
         self.clear_selection()
         self.modify(do, structural=True)
 
@@ -2738,8 +2784,20 @@ class DocumentView(QScrollArea):
                 pass
             self._fonts_added = False
         sec = self.security
-        if sec is None:
-            # unchanged: keep whatever security the file already has
+        if not self.dirty and sec is None and self._orig_data is not None:
+            # nothing changed: write the original bytes, so digital signatures stay valid
+            # and protection stays exactly as it was
+            with open(tmp, "wb") as f:
+                f.write(self._orig_data)
+        elif sec is None and self._orig_enc is not None:
+            # edited a protected file: save it protected again (PyMuPDF writes a full save
+            # unencrypted unless told otherwise)
+            enc = self._orig_enc
+            owner = enc.get("owner_pw") or enc.get("user_pw") or secrets.token_urlsafe(24)
+            user = enc.get("user_pw") or (owner if enc.get("needs_pass") else "")
+            self.doc.save(tmp, garbage=1, deflate=True, encryption=pymupdf.PDF_ENCRYPT_AES_256,
+                          owner_pw=owner, user_pw=user, permissions=enc.get("perms", -1))
+        elif sec is None:
             self.doc.save(tmp, garbage=1, deflate=True)
         elif not sec.get("open_pw") and not sec.get("owner_pw"):
             self.doc.save(tmp, garbage=1, deflate=True, encryption=pymupdf.PDF_ENCRYPT_NONE)
@@ -2752,6 +2810,8 @@ class DocumentView(QScrollArea):
                           permissions=sec.get("perms", -1) if sec.get("owner_pw") else -1)
         os.replace(tmp, path)
         self.path = path
+        if self.dirty or sec is not None:
+            self._orig_data = None          # the file on disk is our rewrite now
         self.dirty = False
         self.documentChanged.emit()
 

@@ -255,6 +255,47 @@ def run(log_path):
         return "(page text, field, note, bookmark, title)"
     check("redaction removes text everywhere", t_redaction)
 
+    def t_save_safety():
+        # independent test report v0.44 (KZ-01..05): protection and signatures survive Save,
+        # partial flatten keeps bookmarks, Unicode text edits, Find sees edited text
+        from PySide6.QtWidgets import QInputDialog
+        from .document_view import DocumentView
+        from . import text_edit
+        path = os.path.join(tmp, "locked.pdf")
+        d = pymupdf.open()
+        for i in range(3):
+            d.new_page().insert_text((72, 72), "PAGE %d ALPHA" % (i + 1))
+        d.set_toc([[1, "First", 1], [1, "Second", 2], [1, "Third", 3]])
+        d.save(path, encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw="user", owner_pw="owner")
+        d.close()
+        ask = QInputDialog.getText
+        QInputDialog.getText = staticmethod(lambda *a, **k: ("user", True))
+        try:
+            v = DocumentView(path)
+        finally:
+            QInputDialog.getText = ask
+        out = os.path.join(tmp, "locked-copy.pdf")
+        v.save(out)
+        assert open(out, "rb").read() == open(path, "rb").read(), "unchanged save not exact"
+        assert v.find("ALPHA") == 3
+        v.modify(lambda: v.doc[0].insert_text((72, 130), "ALPHA"), [0])
+        assert v.find("ALPHA") == 4, "Find didn't see the edit"
+        v.doc[1].add_rect_annot(pymupdf.Rect(100, 100, 200, 200))
+        v.flatten([1])
+        assert [t[1:] for t in v.doc.get_toc()] == [["First", 1], ["Second", 2], ["Third", 3]]
+        line = text_edit.text_lines(v.doc[2])[0][1]
+        v._apply_text_edit(2, line, "\u03a9 \u0394 \u4e2d\u6587 caf\u00e9", (0, 0), None)
+        assert "\u03a9 \u0394 \u4e2d\u6587 caf\u00e9" in v.doc[2].get_text()
+        v.save(out)
+        v.doc.close()
+        r = pymupdf.open(out)
+        assert r.needs_pass, "edited protected file saved without its password"
+        assert r.authenticate("user")
+        assert "\u4e2d\u6587" in r[2].get_text()
+        r.close()
+        return "(exact copy, password kept, bookmarks, Unicode, Find)"
+    check("save keeps protection; edits stay correct", t_save_safety)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

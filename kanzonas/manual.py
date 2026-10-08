@@ -277,8 +277,11 @@ by other programs. Open, Save as, Go to its page, or Delete.</li>
 box to move the text, drag the corner grip to make it wrap. Click elsewhere or press
 Ctrl+Enter to finish, Escape to cancel.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
-<li>The original font is used when it's embedded or installed; otherwise the closest standard
-font (the status bar tells you which).</li>
+<li>The original font is used when it's embedded or installed and has every character you
+typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
+&Omega; &Delta;, symbols, Chinese and other scripts), a built-in Unicode font. Only the letters
+used are stored, so files stay small. The status bar tells you which font was used. A line on a
+page that still has unapplied redaction marks can't be edited until you apply or remove them.</li>
 </ul>
 
 <h2 id="measure">Measuring</h2>
@@ -362,6 +365,14 @@ attached files, hidden text, links, comments, form data, thumbnails.</li>
   password-protected PDF yet: remove security, sign the final version, and don't add a
   password afterwards (that would invalidate the signature). <b>Remove security</b> takes protection off (you need the
   permissions password). <b>Unlock with password</b> lets you edit a restricted file.</li>
+<li><b>Saving keeps protection:</b> a password-protected file stays protected when you save
+your changes, with the same open password and restrictions (re-encrypted with AES-256). If you
+opened it with the open password only, KanzonasPDF doesn't know the permissions password, so the
+saved copy gets a new random one: its restrictions can then only be changed from the original
+file. Use Security properties or Remove security to change protection on purpose.</li>
+<li><b>Saving keeps signatures:</b> a digitally signed file you haven't changed is saved as an
+exact copy (Save or Save As), so its signatures stay valid. Only after "Edit anyway" does saving
+change it, and then the signature no longer validates.</li>
 </ul>
 
 <h2 id="document">Document tools</h2>

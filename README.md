@@ -135,7 +135,8 @@ with its source code available (this repository). The full license text is in [L
 
 ## Known limitations
 
-- Saving rewrites the whole file, which invalidates existing digital signatures.
+- Saving an edited signed file rewrites it, which invalidates its digital signatures (an unedited
+  signed file is saved as an exact copy).
 - Text editing works one line at a time; it doesn't reflow the rest of a paragraph.
   If the original font isn't installed, a close standard font is used.
 - Arrowhead size follows line width (that's how PDF arrows work).
