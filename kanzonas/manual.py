@@ -280,6 +280,9 @@ the scale.</li>
 <h2 id="pages">Pages</h2>
 <ul>
 <li><b>Rotate page left / Rotate page right:</b> Ctrl+Shift+Minus / Ctrl+Shift+Plus.</li>
+<li><b>Page list size:</b> drag the Pages panel's edge to make it as narrow as you like; the
+thumbnails shrink to fit (the lock button then just reads Locked / Unlocked). Tabs that don't fit
+scroll sideways.</li>
 <li><b>Reorder:</b> unlock the page list (lock button above the thumbnails), then drag
 thumbnails; or Move page up / Move page down (Ctrl+Shift+Up / Down).</li>
 <li>Pages menu: Insert pages from file, Insert blank page after current, Extract pages to new

@@ -677,6 +677,8 @@ class MainWindow(QMainWindow):
         self.thumbs.setIconSize(QSize(120, 160))
         self.thumbs.setSpacing(4)
         self.thumbs.setUniformItemSizes(True)
+        self.thumbs.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.thumbs.installEventFilter(self)          # resize: thumbnails follow the panel width
         # drag a thumbnail to a new position to reorder pages (only when unlocked)
         self.thumbs.setDefaultDropAction(Qt.MoveAction)
         self.thumbs.setDropIndicatorShown(True)
@@ -684,6 +686,7 @@ class MainWindow(QMainWindow):
         self.lock_btn = QToolButton()
         self.lock_btn.setCheckable(True)
         self.lock_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.lock_btn.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         self.lock_btn.toggled.connect(self._set_pages_locked)
         side = QWidget()
         sl = QVBoxLayout(side)
@@ -702,13 +705,16 @@ class MainWindow(QMainWindow):
         self.left_tabs = QTabWidget()
         self.left_tabs.setTabPosition(QTabWidget.South)
         self.left_tabs.setDocumentMode(True)
+        self.left_tabs.setUsesScrollButtons(True)     # narrow panel: tabs scroll, don't block
+        self.left_tabs.tabBar().setElideMode(Qt.ElideRight)
         self.left_tabs.addTab(side, "Pages")
         self.dock.setWidget(self.left_tabs)
         # locked by default so pages can't be moved by accident; remembered between sessions
         locked = self.settings.value("pages_locked", "true") != "false"
         self.lock_btn.setChecked(locked)
         self._set_pages_locked(locked)
-        self.dock.setMinimumWidth(170)
+        self.dock.setMinimumWidth(70)
+        self.left_tabs.setMinimumWidth(70)
         self.dock.visibilityChanged.connect(lambda vis: self.a_sidebar.setChecked(vis))
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock)
 
@@ -717,18 +723,18 @@ class MainWindow(QMainWindow):
         self.bookmarks.current_page = lambda: self.view().current_page() if self.view() else 0
         self.bookmarks.jump.connect(lambda i: self.view() and self.view().goto_page(i))
         self.bookmarks.changed.connect(lambda toc: self.view() and self.view().set_toc(toc))
-        self.left_tabs.addTab(self.bookmarks, "Bookmarks")
+        self.left_tabs.addTab(self._narrowable(self.bookmarks), "Bookmarks")
         from .layers_panel import LayersPanel
         self.layers = LayersPanel()
         self.layers.toggled.connect(lambda n, on: self.view() and self.view().set_layer(n, on))
         self.layers.allToggled.connect(self._all_layers)
-        self.left_tabs.addTab(self.layers, "Layers")
+        self.left_tabs.addTab(self._narrowable(self.layers), "Layers")
         from .objects_panel import ObjectsPanel
         self.objects = ObjectsPanel()
         self.objects.selectRequested.connect(self._objects_select)
         self.objects.flagsChanged.connect(self._objects_flags)
         self.objects.arrange.connect(lambda how: self.view() and self.view().arrange(how))
-        self.left_tabs.addTab(self.objects, "Objects")
+        self.left_tabs.addTab(self._narrowable(self.objects), "Objects")
         self._objects_timer = QTimer(self, singleShot=True, interval=150)
         self._objects_timer.timeout.connect(self._refresh_objects)
         self.left_tabs.currentChanged.connect(lambda _i: self._objects_timer.start())
@@ -1069,6 +1075,8 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj, e):
         t = e.type()
+        if t == QEvent.Resize and obj is getattr(self, "thumbs", None):
+            QTimer.singleShot(0, self._fit_thumbs)     # after the list has laid out its new size
         if t in (QEvent.ShortcutOverride, QEvent.KeyPress):
             mods = e.modifiers()
             if (mods & Qt.ControlModifier and mods & Qt.ShiftModifier
@@ -1560,7 +1568,7 @@ class MainWindow(QMainWindow):
 
     # ---- objects panel / locking ----------------------------------------------------------
     def _refresh_objects(self):
-        if self.left_tabs.currentWidget() is self.objects and self.dock.isVisible():
+        if self.left_tabs.currentWidget() is self.objects.parentWidget().parentWidget() and self.dock.isVisible():
             self.objects.refresh(self.view())
 
     def _objects_select(self, xrefs):
@@ -1804,7 +1812,7 @@ class MainWindow(QMainWindow):
 
     def _show_bookmarks(self):
         self.dock.show()
-        self.left_tabs.setCurrentWidget(self.bookmarks)
+        self.left_tabs.setCurrentWidget(self.bookmarks.parentWidget().parentWidget())
 
     def _refresh_bookmarks(self):
         v = self.view()
@@ -2758,11 +2766,29 @@ class MainWindow(QMainWindow):
     def _set_pages_locked(self, locked):
         self.thumbs.setDragDropMode(QAbstractItemView.NoDragDrop if locked
                                     else QAbstractItemView.InternalMove)
-        self.lock_btn.setText("\U0001F512 Page order locked (click to unlock)" if locked
-                              else "\U0001F513 Unlocked: drag pages to reorder")
+        self.lock_btn.setText("\U0001F512 Locked" if locked else "\U0001F513 Unlocked")
+        self.lock_btn.setToolTip("Page order locked: click to unlock and drag pages to reorder"
+                                 if locked else "Unlocked: drag pages to reorder them, "
+                                 "copy, cut, paste and duplicate (click to lock)")
         self.thumbs.setToolTip("Unlock (button above) to drag pages" if locked
                                else "Drag pages to reorder them")
         self.settings.setValue("pages_locked", "true" if locked else "false")
+
+    @staticmethod
+    def _narrowable(panel):
+        """Let the Pages panel get narrower than this tab's contents (they scroll sideways)."""
+        area = QScrollArea()
+        area.setWidget(panel)
+        area.setWidgetResizable(True)
+        area.setFrameShape(QScrollArea.NoFrame)
+        return area
+
+    def _fit_thumbs(self):
+        """Thumbnails shrink with the Pages panel (they're drawn at 120 x 160 and scaled down)."""
+        w = self.thumbs.viewport().width() - 34          # room for the page number
+        w = max(36, min(120, w))
+        if self.thumbs.iconSize().width() != w:
+            self.thumbs.setIconSize(QSize(w, w * 4 // 3))
 
     def _on_thumb_moved(self, _parent, start, _end, _dest_parent, dest_row):
         """Thumbnail dragged: apply the same move to the PDF (after Qt finishes the drop)."""
