@@ -61,7 +61,8 @@ signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps,
 anywhere (a USB stick, a network drive, your Documents) and run KanzonasPDF.exe. Because of the
 portable.txt file inside, your settings, signatures, stamp images and certificate are kept in a
 <b>data</b> folder next to the program instead of the computer's registry and user folders, so
-they travel with the folder. Keep the whole folder together. To update, replace everything
+they travel with the folder. The window title and Help &gt; About say <b>(portable)</b> when
+this copy is running in portable mode. Keep the whole folder together. To update, replace everything
 except the data folder (or unzip the new version and copy your old data folder into it).
 (Opening an attached file still uses Windows' temporary folder.)</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
@@ -86,8 +87,9 @@ Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1).</li>
 (works with any tool). Shift+Left/Right scrolls sideways.</li>
 <li><b>CAD-style mouse (wheel zooms, hold wheel to pan)</b> (View menu, toolbar button, F11):
 like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the wheel down
-moves the sheet, so you can navigate a drawing while any markup tool is active. Hold Shift to
-scroll with the wheel instead. Your choice is remembered.</li>
+moves the sheet, so you can navigate a drawing while any markup tool is active. Like Bluebeam,
+hold <b>Ctrl</b> and turn the wheel to scroll up and down, or <b>Shift</b> to scroll left and
+right. Your choice is remembered.</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.</li>
 </ul>
@@ -169,6 +171,16 @@ fields stay fillable. (Document &gt; Flatten flattens form fields too.)</li>
 <li><b>Hold Shift while resizing</b> from a corner: squares and circles stay perfect, other
 markups keep their proportions. Shift while dragging a line's end keeps it at 45&deg; steps.</li>
 <li><b>Eraser</b> (X): click a markup to delete it, or drag a box to delete everything inside.</li>
+<li><b>Erase content</b> (Shift+E; Home tab, Comment tab &gt; Erase, Tools menu): like Bluebeam's,
+drag a box to permanently delete the page's own content inside it: text, images and lines.
+Lines and curves that cross the edge of the box are cut there, so a wall running through the box
+keeps its outside parts. A filled shape that crosses the edge stays whole (one entirely inside is
+removed). Markups aren't touched (use the Eraser for those). Ctrl+Z undoes it. Unlike redaction it
+leaves no black box; for confidential information use Redact, which also cleans hidden copies.</li>
+<li><b>Capture area</b> (Shift+P; Home tab, Tools menu): like Bluebeam's Snapshot, drag a box to
+copy that area, markups included, as a sharp picture. Ctrl+V pastes it as an image markup at the
+same size, on any page or in another document, and it also pastes into Word, Excel, email and
+other programs.</li>
 </ul>
 
 <h2 id="snap">Grid and snapping</h2>
@@ -415,6 +427,9 @@ Plain text (.txt).</li>
 <tr><td>G / I</td><td>Signature / Initials</td></tr>
 <tr><td>Shift+M / Shift+A / Shift+C</td><td>Length / Area / Count</td></tr>
 <tr><td>Shift+R</td><td>Redact</td></tr>
+<tr><td>Shift+E</td><td>Erase content</td></tr>
+<tr><td>Shift+P</td><td>Capture area</td></tr>
+<tr><td>Ctrl+wheel / Shift+wheel (CAD mouse)</td><td>Scroll up-down / left-right</td></tr>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Escape, Escape twice</td><td>Clear selection, back to Select</td></tr>

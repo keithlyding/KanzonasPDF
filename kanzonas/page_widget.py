@@ -17,7 +17,7 @@ from . import annotations as A
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
-               "m_length", "m_calibrate", "image", "placeholder"}
+               "m_length", "m_calibrate", "image", "placeholder", "erasecontent", "capture"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area"}
 # While one of these drawing tools is active, clicking an existing markup selects it for
 # moving / resizing / restyling (like the Select tool) instead of starting a new one.
@@ -34,7 +34,7 @@ TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
 ROT_GAP = 26        # rotation handle distance above the selection, px
 # tools whose points snap (to the grid / to objects) while drawing
-SNAP_TOOLS = (SHAPE_TOOLS - {"eraser"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach"}
+SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "callout"}   # Shift = 45° steps
 SQUARE_TOOLS = {"rect", "ellipse", "cloud"}                               # Shift = square / circle
 
