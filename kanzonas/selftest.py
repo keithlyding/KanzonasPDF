@@ -435,6 +435,24 @@ def run(log_path):
         return "(gradient behind text on normal and rotated pages; removed)"
     check("page background", t_background)
 
+    def t_measure_opacity():
+        # a see-through measurement keeps its transparency when its label is added
+        from . import annotations
+        d = pymupdf.open()
+        pg = d.new_page()
+        props = annotations.tool_props("m_area")
+        props["opacity"] = 0.6
+        annotations.write(pg, {"kind": "m_area", "props": props,
+                               "points": [pymupdf.Point(50, 50), pymupdf.Point(200, 50),
+                                          pymupdf.Point(200, 200)]})
+        pymupdf.TOOLS.mupdf_warnings(reset=True)
+        r = pymupdf.open("pdf", d.tobytes())
+        r[0].get_pixmap()
+        warn = pymupdf.TOOLS.mupdf_warnings()
+        assert "ExtGState" not in warn, warn
+        return "(label added, transparency kept)"
+    check("measurement opacity", t_measure_opacity)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")
