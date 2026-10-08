@@ -5,7 +5,17 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.49 | (this) | Capture area now pastes vector content in KanzonasPDF: lines and text stay sharp at any zoom and in print (Word, email and other programs still get a picture). Only what's inside the box goes into the copy. New self-test check |
+| 0.59 | (this) | Preferences > Saving: choose the backup folder (Change..., Use default, Open backup folder) |
+| 0.58 | 4e6d88a | Documents open at Fit width by default again (like other PDF editors); Fit page, Actual size or the last zoom can be chosen in Preferences > Start-up and opening |
+| 0.57 | a2322ed | Automatic backup copies of unsaved changes (every 5 minutes by default) with recovery after a crash; option to reopen last session's documents and to start with the Select tool; measuring defaults (units, inch fraction, decimal places); Change PIN for the saved signature. Preferences now lists its sections on the left |
+| 0.56 | 52984ba | One page per wheel step now only applies when the whole page, side to side too, is in the window. Documents now open at Fit page by default; Preferences > Opening documents chooses Fit page, Fit width, Actual size or the last zoom, and whether to reopen at the last page |
+| 0.55 | 37f9190 | Preferences gains a You tab (author name for markups, set up my signature and initials) and a Markup styles tab (every tool's default colors and formats, with Reset defaults). The menu and ribbon commands stay |
+| 0.54 | 7746b6c | New File > Preferences (Ctrl+K): theme, ribbon and toolbar options, update check, CAD mouse, one page per wheel step, page lock, comment boxes, form field highlighting, grid and snapping, default OCR accuracy, all in one window |
+| 0.53 | 3d8d269 | Scroll one page per wheel step is now on by default (View menu to turn it off) |
+| 0.52 | e9236c7 | Edit objects now also selects vector shapes (lines, rectangles, curves, filled areas, CAD line work), like Bluebeam: Ctrl+click or drag a box to select several, then move, resize, rotate or delete them together. Colors, line styles and drawing order are kept |
+| 0.51 | 3d9ae76 | New View menu option Scroll one page per wheel step: when the whole page fits in the window, each wheel step jumps to the next or previous page |
+| 0.50 | e0b2c63 | New Edit objects tool (Shift+O): select a picture that is part of the page itself, then drag to move it, drag handles to resize, Delete to delete, right-click to rotate, copy or save it. Only that picture changes (drawing order and image quality are kept). New self-test check |
+| 0.49 | f120a8f | Capture area now pastes vector content in KanzonasPDF: lines and text stay sharp at any zoom and in print (Word, email and other programs still get a picture). Only what's inside the box goes into the copy. New self-test check |
 | 0.48 | b2b08a4 | The window title and Help > About show "(portable)" when KanzonasPDF runs from the portable folder (portable.txt next to the exe) |
 | 0.47 | 4786a13 | Bluebeam-style tools requested by a tester: Erase content (Shift+E) deletes the page's own text, images and lines inside a box, cutting lines that cross its edge; Capture area (Shift+P) copies an area as a picture to paste as an image markup or into other programs; in CAD mouse mode Ctrl+wheel scrolls up and down and Shift+wheel left and right |
 | 0.46 | 2e27946 | Fix: the page order lock only stopped dragging, cut, paste and duplicate; Move page up / down, Delete page and Insert pages still worked while locked. The lock now covers every command that moves, adds or removes pages, and offers to unlock instead |

@@ -340,6 +340,75 @@ def run(log_path):
         return "(vector, outside removed)"
     check("capture area", t_capture)
 
+    def t_edit_objects():
+        # Edit objects: move / resize / delete one picture of the page, nothing else
+        from . import page_objects
+        pm = pymupdf.Pixmap(pymupdf.csRGB, (0, 0, 4, 3), False)
+        png = pm.tobytes("png")
+        d = pymupdf.open()
+        pg = d.new_page()
+        pg.insert_image((50, 50, 250, 200), stream=png)
+        pg.insert_text((60, 120), "OVER")
+        pg.insert_image((300, 50, 500, 200), stream=png)    # the same image drawn twice
+        d = pymupdf.open("pdf", d.tobytes())
+        pg = d[0]
+        ims = page_objects.images(pg)
+        assert [tuple(round(v) for v in i["rect"]) for i in ims] == \
+            [(50, 50, 250, 200), (300, 50, 500, 200)], ims
+        page_objects.move_to(pg, [ims[0]["n"]], ims[0]["rect"], pymupdf.Rect(100, 300, 200, 375))
+        page_objects.delete(pg, [page_objects.images(pg)[1]["n"]])
+        d = pymupdf.open("pdf", d.tobytes())
+        boxes = [tuple(round(v) for v in pymupdf.Rect(i["bbox"])) for i in d[0].get_image_info()]
+        assert boxes == [(100, 300, 200, 375)], boxes
+        assert "OVER" in d[0].get_text()
+        # vector shapes: a line and a circle move together, colors stay, a box selects
+        d = pymupdf.open()
+        pg = d.new_page()
+        pg.draw_line((200, 60), (400, 60), color=(0, 0, 1), width=3)
+        pg.draw_circle((300, 250), 40, color=(0, 0.5, 0))
+        pg.draw_rect((450, 300, 550, 380), color=(1, 0, 0), fill=(1, 1, 0))
+        objs = page_objects.Objects(pg)
+        line = objs.at((300, 61), 2)
+        ring = objs.at((340, 250), 2)
+        assert line and ring and line["n"] != ring["n"], (line, ring)
+        assert objs.at((300, 250), 2) is None            # inside an unfilled circle
+        assert [it["n"] for it in objs.inside(pymupdf.Rect(440, 290, 560, 390))] == \
+            [objs.at((500, 340), 2)["n"]]                   # the filled square, by box
+        ns = [line["n"], ring["n"]]
+        r = line["rect"] | ring["rect"]
+        page_objects.move_to(pg, ns, r, r + (0, 100, 0, 100))
+        got = sorted((tuple(round(v) for v in dr["rect"]), dr["color"])
+                     for dr in pg.get_drawings())
+        assert got == [((200, 160, 400, 160), (0.0, 0.0, 1.0)),
+                       ((260, 310, 340, 390), (0.0, 0.5, 0.0)),
+                       ((450, 300, 550, 380), (1.0, 0.0, 0.0))], got
+        return "(pictures and shapes: moved, resized, deleted; text and colors kept)"
+    check("edit objects", t_edit_objects)
+
+    def t_backups():
+        # automatic backup: written while there are unsaved changes, removed after saving
+        import types
+        from . import autosave, measure
+        d = pymupdf.open()
+        d.new_page().insert_text((72, 72), "BACKUP")
+        v = types.SimpleNamespace(doc=d, path=os.path.join(tmp, "b.pdf"), dirty=True,
+                                  _orig_enc=None, read_only=False, _backup_path=None)
+        saver = autosave.Autosaver.__new__(autosave.Autosaver)
+        saver.backup(v)
+        bp = v._backup_path
+        assert os.path.exists(bp) and "BACKUP" in pymupdf.open(bp)[0].get_text()
+        assert any(p == bp for p, _o, _t in autosave.leftovers())
+        saver.discard(v)
+        assert not os.path.exists(bp)
+        old = measure.FRACTION
+        measure.FRACTION = 4
+        try:
+            assert measure.fmt_length(1.0, "ft-in") == "3'-3 1/4\"", measure.fmt_length(1.0, "ft-in")
+        finally:
+            measure.FRACTION = old
+        return "(backup written and removed; measuring precision)"
+    check("backups and measuring options", t_backups)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")

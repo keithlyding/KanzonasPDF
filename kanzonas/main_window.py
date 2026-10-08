@@ -1,5 +1,6 @@
 """Main application window: tabs, toolbars, menus, thumbnails sidebar."""
 
+import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -95,6 +96,10 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
     ("erasecontent", "Erase &content", "Shift+E",
      "Erase content: drag a box; the page's own text, images and lines inside it are deleted "
      "(lines crossing the edge are cut there). Shift+E"),
+    ("editobjects", "Edit &objects", "Shift+O",
+     "Edit objects: click a picture or shape that's part of the page (Ctrl+click or drag a box "
+     "for several); drag to move, drag a handle to resize, Delete deletes, right-click to "
+     "rotate. Shift+O"),
     ("capture", "Ca&pture area", "Shift+P",
      "Capture: drag a box to copy that area as a picture; Ctrl+V pastes it as an image "
      "markup, or into Word or email. Shift+P"),
@@ -157,7 +162,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(_title_base())
         self.resize(1300, 900)
         self.setAcceptDrops(True)
-        self.tool = "hand"            # start with the Hand: scroll by dragging, like most viewers
+        # start with the Hand (scroll by dragging, like most viewers) or the Select tool
+        self.tool = "select" if self.settings.value("start_tool", "hand") == "select" else "hand"
         self._sig_cache = {}            # kind -> png, for this run of the app only
 
         self.tabs = QTabWidget()
@@ -281,6 +287,8 @@ class MainWindow(QMainWindow):
         self.a_close = self._act("&Close tab", lambda: self.close_tab(self.tabs.currentIndex()),
                                  QKeySequence.Close)
         self.a_exit = self._act("E&xit", self.close, "Alt+F4")
+        self.a_prefs = self._act("Pre&ferences...", self.preferences, "Ctrl+K",
+                                 tip="All the remembered options in one place (Ctrl+K)")
         self.a_undo = self._act("&Undo", lambda: v() and v().undo(), QKeySequence.Undo)
         self.a_redo = self._act("&Redo", lambda: v() and v().redo(), QKeySequence.Redo)
         self.a_find = self._act("&Find", self._focus_search, QKeySequence.Find)
@@ -422,6 +430,23 @@ class MainWindow(QMainWindow):
         self.a_cad_mouse.setCheckable(True)
         self.a_cad_mouse.setChecked(self.settings.value("cad_mouse", "false") == "true")
         DocumentView.cad_mouse = self.a_cad_mouse.isChecked()
+        self.a_page_wheel = self._act("Scroll &one page per wheel step",
+                                      self._toggle_page_wheel,
+                                      tip="When the whole page fits in the window, each step "
+                                          "of the scroll wheel moves to the next or previous "
+                                          "page")
+        self.a_page_wheel.setCheckable(True)
+        self.a_page_wheel.setChecked(self.settings.value("page_wheel", "true") == "true")
+        DocumentView.page_wheel = self.a_page_wheel.isChecked()
+        from . import autosave, measure
+        measure.configure(self.settings)
+        try:
+            minutes = int(self.settings.value("autosave_minutes", 5))
+        except (TypeError, ValueError):
+            minutes = 5
+        self.autosave = autosave.Autosaver(self, minutes)
+        DocumentView.open_view = self.settings.value("open_view", "width")
+        DocumentView.reopen_page = self.settings.value("reopen_page", "true") != "false"
         # grid and snapping (shared by all open documents, remembered)
         self.a_grid = self._act("Show &grid", self._apply_grid_settings,
                                 tip="Show a grid over the page (spacing in Grid settings)")
@@ -518,7 +543,7 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
-        self.tool_actions["hand"].setChecked(True)
+        self.tool_actions[self.tool].setChecked(True)
         self.tool_group.triggered.connect(lambda _a: self._clear_chest())
         for tid, label, sc, tip in MEASURE_TOOLS + EXTRA_TOOLS:
             a = QAction(label, self, checkable=True)
@@ -551,6 +576,8 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_print)
         m.addSeparator()
+        m.addAction(self.a_prefs)
+        m.addSeparator()
         m.addActions([self.a_close, self.a_exit])
         m = mb.addMenu("&Edit")
         m.addActions([self.a_undo, self.a_redo])
@@ -570,6 +597,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_split)
         m.addAction(self.a_cad_mouse)
+        m.addAction(self.a_page_wheel)
         m.addAction(self.a_hl_fields)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_grid_settings])
@@ -1045,6 +1073,7 @@ class MainWindow(QMainWindow):
                                  f"{ex}\n\nIf the file is open in another program, close it "
                                  "or use Save As.")
             return False
+        self.autosave.discard(v)
         self.statusBar().showMessage("Saved " + v.path, 4000)
         return True
 
@@ -1060,6 +1089,7 @@ class MainWindow(QMainWindow):
         except Exception as ex:
             QMessageBox.critical(self, "Save failed", str(ex))
             return False
+        self.autosave.discard(v)
         self._add_recent(v.path)
         self._update_ui()
         return True
@@ -1080,6 +1110,7 @@ class MainWindow(QMainWindow):
         if v is None or not self._confirm_close(v):
             return
         self._remember_state(v)
+        self.autosave.discard(v)
         if self._split_view is not None and getattr(self._split_view, "_source", None) is v:
             self._split_view.deleteLater()
             self._split_view = None
@@ -1094,10 +1125,55 @@ class MainWindow(QMainWindow):
             if not self._confirm_close(self.tabs.widget(i)):
                 e.ignore()
                 return
+        from . import autosave
+        backups = autosave.folder()
+        session = []
         for i in range(self.tabs.count()):
-            self._remember_state(self.tabs.widget(i))
+            v = self.tabs.widget(i)
+            self._remember_state(v)
+            if v.path and os.path.exists(v.path) and \
+                    not os.path.normcase(v.path).startswith(os.path.normcase(backups)):
+                session.append(v.path)
+        self.settings.setValue("session_files", json.dumps(session))
+        self.autosave.discard_all()
         self.settings.setValue("geometry", self.saveGeometry())
         e.accept()
+
+    def restore_session(self):
+        """Start-up: reopen the files that were open when KanzonasPDF was last closed (if
+        that's turned on in Preferences > Start-up)."""
+        if self.settings.value("restore_session", "false") != "true":
+            return
+        try:
+            files = json.loads(self.settings.value("session_files", "[]") or "[]")
+        except ValueError:
+            files = []
+        for p in files:
+            if isinstance(p, str) and os.path.exists(p):
+                self.open_file(p)
+
+    def recover_backups(self):
+        """Start-up: offer the automatic backup copies left by a run that didn't exit
+        normally (a crash or power cut)."""
+        from . import autosave
+        try:
+            items = autosave.leftovers()
+        except OSError:
+            return
+        if not items:
+            return
+        names = "\n".join("  " + (os.path.basename(o) if o else os.path.basename(p))
+                           for p, o, _t in items[:10])
+        r = QMessageBox.question(
+            self, "Recover unsaved changes?",
+            "KanzonasPDF didn't close normally last time. Automatic backup copies of these "
+            f"documents have unsaved changes:\n\n{names}\n\nOpen the copies now? Use Save As "
+            "to keep one. (They stay in the backups folder for 30 days either way: "
+            "File > Preferences > Saving > Open backup folder.)")
+        moved = autosave.set_aside(items)
+        if r == QMessageBox.Yes:
+            for p in moved:
+                self.open_file(p)
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -2632,6 +2708,18 @@ class MainWindow(QMainWindow):
             "CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan" if on else
             "CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms", 4000)
 
+    def preferences(self):
+        from .preferences import PreferencesDialog
+        PreferencesDialog(self).exec()
+
+    def _toggle_page_wheel(self):
+        on = self.a_page_wheel.isChecked()
+        DocumentView.page_wheel = on
+        self.settings.setValue("page_wheel", "true" if on else "false")
+        self.statusBar().showMessage(
+            "Scroll wheel: one page per step when the whole page fits (zoom with Fit page)" if on
+            else "Scroll wheel: smooth scrolling", 4000)
+
     # ---- ribbon --------------------------------------------------------------------------
     # short labels for ribbon buttons (the menus keep the full names)
     RIBBON_LABELS = {
@@ -2665,6 +2753,7 @@ class MainWindow(QMainWindow):
         "z_forward": "Forward", "z_backward": "Backward", "z_back": "To back",
         "tool_redact": "Redact", "tool_placeholder": "Placeholder",
         "tool_erasecontent": "Erase content", "tool_capture": "Capture",
+        "tool_editobjects": "Edit objects",
     }
     RIBBON_ICONS = {
         "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square",
@@ -2714,7 +2803,7 @@ class MainWindow(QMainWindow):
             lambda i: self._set_align_ref(self.ribbon_align_box.itemData(i)))
         r = self.ribbon = Ribbon()
         r.add_tab("Home", [
-            ("Tools", "large", [t["select"], t["hand"], t["edittext"], t["capture"],
+            ("Tools", "large", [t["select"], t["hand"], t["edittext"], t["editobjects"], t["capture"],
                                 t["erasecontent"]]),
             ("Mark up text", "small", [t["highlight"], t["underline"], t["strikeout"],
                                        t["comment"], t["note"], t["textbox"]]),

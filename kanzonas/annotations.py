@@ -129,6 +129,17 @@ def tool_props(kind):
     return props
 
 
+def saved_tool_props(kind):
+    """The tool's saved default style (ignores a Tool Chest item in use)."""
+    props = dict(DEFAULTS.get(kind, {}))
+    try:
+        saved = json.loads(_settings().value("tool_defaults", "{}") or "{}").get(kind, {})
+        props.update({k: v for k, v in saved.items() if k in props})
+    except (ValueError, TypeError):
+        pass
+    return props
+
+
 def set_tool_props(kind, props):
     s = _settings()
     try:

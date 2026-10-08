@@ -82,6 +82,8 @@ class PageWidget(QWidget):
         self._poly_hover = None
         self._marquee = False       # Ctrl+drag with Select: selection box only, no text
         self._snap_mark = None      # (widget point, "object" | "grid") last snap, for the marker
+        self._obj_hover = None      # Edit objects: picture under the mouse
+        self._obj_edit = None       # Edit objects: dragging / resizing the selected picture
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_OpaquePaintEvent)
         self.update_size()
@@ -301,6 +303,9 @@ class PageWidget(QWidget):
             else:
                 p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
 
+        if tool == "editobjects":
+            self._paint_objects(p, page)
+
         if self._hover is not None and tool == "edittext":
             p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
             p.drawRect(self.to_screen(self._hover).adjusted(-2, -2, 2, 2))
@@ -475,6 +480,168 @@ class PageWidget(QWidget):
                     p.drawRect(r)
             p.setBrush(Qt.NoBrush)
 
+    # ---- Edit objects ---------------------------------------------------
+    def _objects_here(self):
+        sel = self.view.obj_sel
+        return sel[1] if sel is not None and sel[0] == self.index else []
+
+    def _objects_handles(self):
+        items = self._objects_here()
+        if not items:
+            return {}
+        h = HANDLE
+        r = self.to_screen(self.view.selected_objects_rect()).adjusted(-2, -2, 2, 2)
+        pts = {"tl": r.topLeft(), "tr": r.topRight(), "bl": r.bottomLeft(),
+               "br": r.bottomRight(), "t": QPointF(r.center().x(), r.top()),
+               "b": QPointF(r.center().x(), r.bottom()), "l": QPointF(r.left(), r.center().y()),
+               "r": QPointF(r.right(), r.center().y())}
+        return {k: QRectF(v.x() - h / 2, v.y() - h / 2, h, h) for k, v in pts.items()}
+
+    def _draw_object(self, p, item, page):
+        for line in self.view.object_lines(self.index, item):
+            pts = [self.to_screen_pt(q, page) for q in line]
+            for a_, b_ in zip(pts, pts[1:]):
+                p.drawLine(a_, b_)
+
+    def _paint_objects(self, p, page):
+        blue = QColor(0, 120, 215)
+        p.setBrush(Qt.NoBrush)
+        items = self._objects_here()
+        chosen = {it["n"] for it in items}
+        hover = self._obj_hover
+        if hover is not None and hover["n"] not in chosen:
+            p.setPen(QPen(QColor(0, 120, 215, 200), 2, Qt.DashLine))
+            self._draw_object(p, hover, page)
+        ed = self._obj_edit
+        if ed is not None and ed["mode"] == "box" and ed.get("now") is not None:
+            p.setPen(QPen(blue, 1, Qt.DashLine))
+            p.setBrush(QColor(0, 120, 215, 30))
+            p.drawRect(QRectF(ed["start"], ed["now"]).normalized())
+            p.setBrush(Qt.NoBrush)
+        if not items:
+            return
+        p.setPen(QPen(QColor(0, 120, 215, 220), 2))
+        if len(items) <= 3000:
+            for it in items:
+                self._draw_object(p, it, page)
+        if ed is not None and ed.get("preview") is not None:
+            p.setPen(QPen(blue, 1, Qt.DashLine))
+            p.setBrush(QColor(0, 120, 215, 40))
+            p.drawRect(ed["preview"])
+            p.setBrush(Qt.NoBrush)
+        p.setPen(QPen(blue, 1, Qt.DashLine))
+        p.drawRect(self.to_screen(self.view.selected_objects_rect(), page).adjusted(-2, -2, 2, 2))
+        if ed is None:
+            p.setPen(QPen(blue, 1))
+            p.setBrush(Qt.white)
+            for r in self._objects_handles().values():
+                p.drawRect(r)
+            p.setBrush(Qt.NoBrush)
+
+    def _objects_press(self, e, pos, pdf):
+        if self._objects_here() and not ctrl_held(e):
+            for hid, r in self._objects_handles().items():
+                if r.adjusted(-3, -3, 3, 3).contains(pos):
+                    self._obj_edit = {"mode": hid, "start": pos, "preview": None}
+                    return
+        item = self.view.object_at(self.index, pdf)
+        if item is None:
+            # drag a box from empty space: select everything inside it
+            if not ctrl_held(e):
+                self.view.clear_object_selection()
+            self._obj_edit = {"mode": "box", "start": pos, "now": None, "preview": None,
+                              "add": ctrl_held(e)}
+            return
+        if ctrl_held(e):
+            self.view.select_objects(self.index, [item], add=True)
+            return
+        if item["n"] not in {it["n"] for it in self._objects_here()}:
+            self.view.select_objects(self.index, [item])
+        self._obj_edit = {"mode": "move", "start": pos, "preview": None}
+        self.update()
+
+    def _objects_preview(self, pos, free=False):
+        """The selection's new box on screen while dragging."""
+        ed = self._obj_edit
+        r = QRectF(self.to_screen(self.view.selected_objects_rect()))
+        d = pos - ed["start"]
+        mode = ed["mode"]
+        if mode == "move":
+            return r.translated(d)
+        left, top, right, bottom = r.left(), r.top(), r.right(), r.bottom()
+        if "l" in mode:
+            left += d.x()
+        if "r" in mode:
+            right += d.x()
+        if "t" in mode:
+            top += d.y()
+        if "b" in mode:
+            bottom += d.y()
+        new = QRectF(QPointF(left, top), QPointF(right, bottom)).normalized()
+        if len(mode) == 2 and not free and r.width() > 0 and r.height() > 0:
+            # corner: keep the proportions (Shift = free)
+            s_ = max(new.width() / r.width(), new.height() / r.height())
+            w, h = r.width() * s_, r.height() * s_
+            ax = r.right() if "l" in mode else r.left()
+            ay = r.bottom() if "t" in mode else r.top()
+            new = QRectF(ax - w if "l" in mode else ax, ay - h if "t" in mode else ay, w, h)
+        return new
+
+    def _objects_release(self, e, pos):
+        ed, self._obj_edit = self._obj_edit, None
+        self.update()
+        if ed["mode"] == "box":
+            if ed.get("now") is None:
+                return
+            q = QRectF(ed["start"], pos).normalized()
+            box = pymupdf.Rect(self.to_pdf(q.topLeft()), self.to_pdf(q.bottomRight())).normalize()
+            self.view.select_objects(self.index, self.view.objects_in(self.index, box),
+                                     add=ed.get("add", False))
+            return
+        if ed["preview"] is not None and self._objects_here():
+            q = ed["preview"]
+            new = pymupdf.Rect(self.to_pdf(q.topLeft()), self.to_pdf(q.bottomRight())).normalize()
+            self.view.move_objects(new)
+
+    def _objects_menu(self, e, pdf):
+        from PySide6.QtWidgets import QMenu
+        item = self.view.object_at(self.index, pdf)
+        if item is not None and item["n"] not in {it["n"] for it in self._objects_here()}:
+            self.view.select_objects(self.index, [item])
+        items = self._objects_here()
+        if not items:
+            return
+        one_pic = len(items) == 1 and items[0]["kind"] == "picture"
+        menu = QMenu(self)
+        a = menu.addAction("Copy picture", self.view.copy_picture)
+        a.setEnabled(one_pic)
+        a = menu.addAction("Save picture as...", self.view.save_picture)
+        a.setEnabled(one_pic and bool(items[0]["xref"]))
+        menu.addSeparator()
+        menu.addAction("Rotate clockwise", lambda: self.view.rotate_objects(90))
+        menu.addAction("Rotate counterclockwise", lambda: self.view.rotate_objects(-90))
+        menu.addSeparator()
+        menu.addAction("Delete", self.view.delete_objects)
+        menu.exec(e.globalPosition().toPoint())
+
+    def _objects_hover(self, pos):
+        if self._objects_here():
+            for hid, r in self._objects_handles().items():
+                if r.adjusted(-3, -3, 3, 3).contains(pos):
+                    self.setCursor(Qt.SizeFDiagCursor if hid in ("tl", "br") else
+                                   Qt.SizeBDiagCursor if hid in ("tr", "bl") else
+                                   Qt.SizeVerCursor if hid in ("t", "b") else Qt.SizeHorCursor)
+                    return
+        item = self.view.object_at(self.index, self.to_pdf(pos))
+        if item is not None:
+            self.setCursor(Qt.SizeAllCursor)
+        else:
+            self.unsetCursor()
+        key = item["n"] if item is not None else None
+        if key != (self._obj_hover["n"] if self._obj_hover is not None else None):
+            self._obj_hover = item
+            self.update()
+
     # ---- snapping -------------------------------------------------------
     def _snapping(self, e=None):
         v = self.view
@@ -544,6 +711,9 @@ class PageWidget(QWidget):
             self._mid_pan = True
             self.view.begin_pan(e.globalPosition())
             return
+        if e.button() == Qt.RightButton and self.view.tool == "editobjects":
+            self._objects_menu(e, self.to_pdf(e.position()))
+            return
         if e.button() != Qt.LeftButton:
             return super().mousePressEvent(e)
         if self.view._inline is not None:
@@ -563,6 +733,9 @@ class PageWidget(QWidget):
                 return
         if tool == "hand":
             self.view.begin_pan(e.globalPosition())
+            return
+        if tool == "editobjects":
+            self._objects_press(e, pos, pdf)
             return
         if tool in EDIT_IN_PLACE and not self._poly and self._press_on_markup(pos, pdf, ctrl_held(e)):
             return
@@ -765,6 +938,9 @@ class PageWidget(QWidget):
                 return
             if tool == "hand":
                 self.unsetCursor()
+            if tool == "editobjects":
+                self._objects_hover(pos)
+                return
             if tool == "edittext":
                 r = self.view.text_line_rect(self.index, self.to_pdf(pos))
                 if r != self._hover:
@@ -775,6 +951,13 @@ class PageWidget(QWidget):
             return
         if tool == "hand":
             self.view.continue_pan(e.globalPosition())
+        elif self._obj_edit is not None:
+            if (pos - self._obj_edit["start"]).manhattanLength() >= 3:
+                if self._obj_edit["mode"] == "box":
+                    self._obj_edit["now"] = pos
+                else:
+                    self._obj_edit["preview"] = self._objects_preview(pos, shift_held(e))
+                self.update()
         elif self._edit is not None:
             if (pos - self._edit["start"]).manhattanLength() >= 3:
                 self._edit["preview"] = self._edit_preview(pos, shift_held(e), self._snapping(e))
@@ -833,6 +1016,8 @@ class PageWidget(QWidget):
         pos = e.position()
         if tool == "hand":
             self.view.end_pan()
+        elif self._obj_edit is not None:
+            self._objects_release(e, pos)
         elif self._edit is not None:
             ed, self._edit = self._edit, None
             preview = ed.get("preview")
@@ -901,6 +1086,9 @@ class PageWidget(QWidget):
                 self.view.edit_annot_at(self.index, self.to_pdf(e.position()))
 
     def leaveEvent(self, e):
+        if self._obj_hover is not None:
+            self._obj_hover = None
+            self.update()
         self._poly_hover = None
         if self._snap_mark is not None:
             self._snap_mark = None

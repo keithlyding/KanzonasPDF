@@ -81,7 +81,8 @@ from any folder but stores settings on the computer like the installed version.<
 <li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number (bottom right
 with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
-Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1).</li>
+Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit width, at
+the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). Shift+Left/Right scrolls sideways.</li>
@@ -90,6 +91,11 @@ like AutoCAD, the scroll wheel zooms in and out around the cursor and holding th
 moves the sheet, so you can navigate a drawing while any markup tool is active. Like Bluebeam,
 hold <b>Ctrl</b> and turn the wheel to scroll up and down, or <b>Shift</b> to scroll left and
 right. Your choice is remembered.</li>
+<li><b>Scroll one page per wheel step</b> (View menu): when the whole page fits in the window,
+top to bottom and side to side (for example after <b>Fit page</b>), each step of the scroll wheel
+jumps to the next or previous page, centered, instead of scrolling a little. As soon as you zoom
+in so that any edge of the page is outside the window, the wheel scrolls normally. On by default; turn it off for smooth scrolling. Your choice is remembered. (With CAD-style mouse on, the wheel zooms
+instead.)</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.</li>
 </ul>
@@ -286,6 +292,30 @@ by other programs. Open, Save as, Go to its page, or Delete.</li>
 <li>For your safety, opening an attached program or script (.exe, .bat, .js, ...) asks first.</li>
 </ul>
 
+<h2 id="editobjects">Editing the PDF's own pictures and shapes</h2>
+<ul>
+<li>Edit objects tool (Shift+O; Home tab, Tools menu), like Bluebeam's Edit content: works on
+the pictures (logos, photos, scans) and vector shapes (lines, rectangles, circles, curves,
+filled areas, CAD line work) that are part of the page itself, not on markups. Point at an object
+to see it outlined; click to select it. Lines are picked up within a few pixels; a filled shape
+is picked up anywhere inside it.</li>
+<li><b>Several at once:</b> Ctrl+click adds or removes an object, or drag a box from empty space
+to select everything entirely inside it (Ctrl+drag adds to the selection). In CAD drawings one
+"shape" is often many separate lines, so a box is the quickest way to grab it.</li>
+<li>Drag the selection to move it. Drag a corner handle to resize it, keeping its proportions
+(hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
+scales its line thickness.</li>
+<li>Delete (or Backspace) deletes the selection. Right-click for Rotate clockwise, Rotate
+counterclockwise and Delete, and, for one picture, Copy picture (Ctrl+V pastes it as an image
+markup) and Save picture as.... Escape deselects.</li>
+<li>Only the selected objects change: they keep their place in the drawing order (text printed
+over a picture stays on top), their colors and line styles, and pictures aren't recompressed, so
+quality doesn't drop. Ctrl+Z undoes each change.</li>
+<li>Text can't be selected with this tool (use Edit text), and neither can objects inside a grouped
+object (a form XObject) or clipping outlines. On very large drawings, the first click on a page
+takes a moment while the page is read.</li>
+</ul>
+
 <h2 id="edittext">Editing the PDF's own text</h2>
 <ul>
 <li>Edit text tool (Ctrl+E): click a line of text. Type the change; drag the bar above the
@@ -417,11 +447,50 @@ Microsoft PowerPoint (.pptx), AutoCAD drawing (.dxf), Images (PNG), Images (JPEG
 Plain text (.txt).</li>
 </ul>
 
+<h2 id="preferences">Preferences</h2>
+<ul>
+<li><b>File &gt; Preferences...</b> (Ctrl+K) gathers the options KanzonasPDF remembers in one
+window, with the sections listed on the left. An option that also has a menu command does exactly
+the same as that command, so you can change it in either place.</li>
+<li><b>General:</b> theme (Match Windows, Light, Dark), Ribbon (instead of toolbars), Show group
+names on ribbon, Show menu bar, Show text labels on toolbars, Check for updates automatically.
+It also tells you where your settings are saved (the data folder in portable mode).</li>
+<li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
+Set up my signature... / Set up my initials... with whether each is saved yet, and Change PIN...
+to set, change or remove the PIN that protects them (leave the new PIN empty to remove it).</li>
+<li><b>Markup styles:</b> pick a tool on the left to set its default colors, line width, font
+size, fill, opacity and so on, the same settings the Properties panel shows when that tool is
+active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
+<li><b>Start-up and opening:</b> reopen the documents that were open when you closed
+KanzonasPDF (off by default), the tool to start with (Hand or Select), the zoom a document opens
+at (Fit width by default; Fit page, the whole page in the window; Actual size; or the zoom it had
+when you closed it), and whether to reopen it at the page you were on last time.</li>
+<li><b>Saving:</b> how often to back up unsaved changes (every 5 minutes by default; Off turns it
+off). A copy of each document with unsaved changes is kept in the backups folder and deleted when
+you save or close it. If KanzonasPDF or Windows stops unexpectedly, the next start offers to open
+the copies; use Save As to keep one. Offered copies stay in the backups folder (Open backup
+folder) for 30 days. <b>Backup folder</b>: Change... picks another folder (if KanzonasPDF can't
+write there it says so), Use default goes back to the standard one (in the data folder when
+portable). Backups of open documents move to the new folder; recovered copies from earlier stay
+in the old one. Password-protected documents aren't backed up, because the copy wouldn't
+have the password.</li>
+<li><b>Measuring:</b> the units offered for a page that has no scale yet, what feet and inches
+round to (1/2" to 1/64"; 1/16" by default) and the decimal places for other units. Existing
+measurement labels update when you next move or edit them.</li>
+<li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step.</li>
+<li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
+Show grid, Snap to grid, Snap to objects, and Grid settings....</li>
+<li><b>OCR:</b> the accuracy the Recognize text dialog starts with.</li>
+<li>Changes apply when you click OK; Cancel leaves everything as it was.</li>
+</ul>
+
 <h2 id="shortcuts">Keyboard shortcuts</h2>
 <table border="1" cellpadding="3" cellspacing="0">
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text</td></tr>
+<tr><td>Ctrl+K</td><td>Preferences</td></tr>
+<tr><td>Shift+O</td><td>Edit objects (the page's own pictures and shapes)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
 <tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>
 <tr><td>R / E / D / Y</td><td>Rectangle / Ellipse / Cloud / Polygon</td></tr>

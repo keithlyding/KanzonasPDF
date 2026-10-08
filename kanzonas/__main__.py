@@ -42,6 +42,9 @@ def main():
     theme.apply(app, paths.settings().value("theme", "system"))
     win = MainWindow()
     win.show()
+    win.recover_backups()
+    if not files:
+        win.restore_session()
     for path in files:
         win.open_file(path)
     QTimer.singleShot(5000, win.start_update_check)    # once a day at most; never blocks start-up

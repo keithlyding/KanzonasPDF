@@ -193,11 +193,19 @@ class DocumentView(QScrollArea):
 
     def _initial_view(self):
         state = getattr(self, "initial_state", None)
-        if state:
+        page = int(state.get("page", 0)) if state and self.reopen_page else 0
+        mode = self.open_view
+        if mode == "last" and state:
             self.set_zoom(float(state.get("zoom", 1.0)))
-            self.goto_page(int(state.get("page", 0)))
-        else:
+        elif mode == "width" or mode == "last":
             self.fit_width()
+        elif mode == "actual":
+            self.set_zoom(1.0)
+        if mode == "page":
+            self.goto_page(page)
+            self.fit_page()
+        else:
+            self.goto_page(page)
 
     @classmethod
     def mirror(cls, other):
@@ -261,7 +269,7 @@ class DocumentView(QScrollArea):
         avail_h = self.viewport().height() - 2 * PAGE_GAP
         page = self.current_page()
         self.set_zoom(min(avail_w / r.width, avail_h / r.height))
-        self.goto_page(page)
+        self.show_whole_page(page)
 
     highlight_fields = True        # shade fillable form fields (View / Forms menu)
     show_markups = True            # Review > Show markups (off: the page as if unmarked)
@@ -463,6 +471,9 @@ class DocumentView(QScrollArea):
     # CAD-style mouse (View menu): the wheel zooms around the cursor, like AutoCAD.
     # Holding the wheel (middle button) down and dragging pans in either mode.
     cad_mouse = False
+    page_wheel = False          # one wheel step = one page when the page fits the window
+    open_view = "width"         # zoom for newly opened files: width, page, actual, last
+    reopen_page = True          # reopen files at the page they were left on
 
     def wheelEvent(self, e):
         dy = e.angleDelta().y()
@@ -485,8 +496,31 @@ class DocumentView(QScrollArea):
             elif dy < 0:
                 self.zoom_out()
             e.accept()
+        elif self.page_wheel and dy and self._page_fits():
+            # one wheel step = one whole page (when the page fits in the window)
+            self._wheel_acc = getattr(self, "_wheel_acc", 0) + dy
+            if abs(self._wheel_acc) >= 120:         # touchpads send many small steps
+                step = -1 if self._wheel_acc > 0 else 1
+                self._wheel_acc = 0
+                self.show_whole_page(self.current_page() + step)
+            e.accept()
         else:
             super().wheelEvent(e)
+
+    def _page_fits(self):
+        if not getattr(self, "pages", None):
+            return False
+        # only when the whole page, top to bottom and side to side, is in the window
+        w = self.pages[self.current_page()]
+        vp = self.viewport()
+        return w.height() <= vp.height() and w.width() <= vp.width()
+
+    def show_whole_page(self, index):
+        """Scroll so page `index` is centered top to bottom in the window."""
+        index = max(0, min(index, len(self.pages) - 1))
+        w = self.pages[index]
+        self.verticalScrollBar().setValue(int(w.y() - (self.viewport().height() - w.height()) / 2))
+        self._on_scroll()
 
     def zoom_at(self, z, vp_pos):
         """Zoom keeping the page point under vp_pos (viewport coordinates) where it is."""
@@ -529,6 +563,7 @@ class DocumentView(QScrollArea):
     def set_tool(self, tool):
         self.tool = tool
         self.clear_selection()
+        self.clear_object_selection()
         self.clear_text_selection()
         self._tool_cursor()
 
@@ -632,6 +667,8 @@ class DocumentView(QScrollArea):
         self._card_cache = {}
         self.text_sel = None           # (page index, selected character units) for copy / cut
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
+        self._obj_cache = {}           # page index -> page_objects.Objects (Edit objects)
+        self.obj_sel = None            # (page index, [objects]) selected with Edit objects
         # the drawing's own line work rarely changes: re-check it lazily instead of dropping it
         if not hasattr(self, "_snap_content"):
             self._snap_content = {}    # page index -> (content key, PointIndex)
@@ -1743,6 +1780,12 @@ class DocumentView(QScrollArea):
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.selection is not None:
             self.delete_selected()
             return
+        if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.obj_sel is not None:
+            self.delete_objects()
+            return
+        if e.key() == Qt.Key_Escape and self.obj_sel is not None:
+            self.clear_object_selection()
+            return
         if e.key() == Qt.Key_Escape and self.text_sel is not None:
             self.clear_text_selection()
             return
@@ -1936,6 +1979,144 @@ class DocumentView(QScrollArea):
         clip.put("capture", payload, image=img)
         self.statusMessage.emit("Captured: Ctrl+V pastes it here as sharp vector content "
                                 "(and as a picture into Word or email)")
+
+    # ---- Edit objects: the page's own pictures and shapes ------------------
+    def content_objects(self, index):
+        """Editable objects of page `index` (cached until the next edit)."""
+        cache = self._obj_cache
+        if index not in cache:
+            from . import page_objects
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                cache[index] = page_objects.Objects(self.doc[index])
+            except Exception:
+                cache[index] = None
+            finally:
+                QApplication.restoreOverrideCursor()
+        return cache[index]
+
+    def object_at(self, index, pt):
+        """The topmost picture or shape under PDF point pt, or None."""
+        objs = self.content_objects(index)
+        return objs.at(pt, 4 / self.zoom) if objs is not None else None
+
+    def objects_in(self, index, box):
+        objs = self.content_objects(index)
+        return objs.inside(box) if objs is not None else []
+
+    def object_lines(self, index, item):
+        objs = self.content_objects(index)
+        return objs.lines(item) if objs is not None else []
+
+    def selected_objects(self):
+        return self.obj_sel[1] if self.obj_sel else []
+
+    def selected_objects_rect(self):
+        r = pymupdf.Rect()
+        for it in self.selected_objects():
+            r |= it["rect"]
+        return r
+
+    def select_objects(self, index, items, add=False):
+        """Select pictures / shapes on page index; add=True toggles them in the selection."""
+        old = self.obj_sel
+        if add and old and old[0] == index:
+            have = {it["n"]: it for it in old[1]}
+            for it in items:
+                if it["n"] in have:
+                    del have[it["n"]]
+                else:
+                    have[it["n"]] = it
+            items = sorted(have.values(), key=lambda it: it["n"])
+        self.obj_sel = (index, list(items)) if items else None
+        for i in {old[0] if old else None, index}:
+            if i is not None and 0 <= i < len(self.pages):
+                self.pages[i].update()
+        if items:
+            pics = sum(1 for it in items if it["kind"] == "picture")
+            shapes = len(items) - pics
+            what = ", ".join(x for x in (
+                f"{pics} picture" + ("s" if pics != 1 else "") if pics else "",
+                f"{shapes} shape" + ("s" if shapes != 1 else "") if shapes else "") if x)
+            self.statusMessage.emit(f"Selected {what}: drag to move, drag a handle to resize, "
+                                    "Delete deletes, right-click for more")
+
+    def clear_object_selection(self):
+        if self.obj_sel is not None:
+            self.select_objects(self.obj_sel[0], [])
+
+    def _objects_edit(self, label, fn, keep=True):
+        """Run fn(page, ns) on the selected objects as one undo step; keep them selected."""
+        if self.obj_sel is None:
+            return
+        index, items = self.obj_sel
+        ns = [it["n"] for it in items]
+
+        def do():
+            fn(self.doc[index], ns)
+        self.modify(do, [index])
+        self._obj_cache.pop(index, None)
+        self.obj_sel = None
+        if keep:
+            objs = self.content_objects(index)
+            again = [it for it in (objs.items if objs else []) if it["n"] in set(ns)]
+            self.obj_sel = (index, again) if again else None
+        self.pages[index].update()
+        self.statusMessage.emit(label + " (Ctrl+Z undoes it)")
+
+    def move_objects(self, new_rect):
+        from . import page_objects
+        old = self.selected_objects_rect()
+        if self.obj_sel is None:
+            return
+        self._objects_edit("Moved", lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect))
+
+    def rotate_objects(self, degrees):
+        from . import page_objects
+        if self.obj_sel is None:
+            return
+        rect = self.selected_objects_rect()
+        self._objects_edit("Rotated", lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees))
+
+    def delete_objects(self):
+        from . import page_objects
+        self._objects_edit("Deleted", page_objects.delete, keep=False)
+
+    def copy_picture(self):
+        """Copy the one selected picture (Ctrl+V pastes it as an image markup)."""
+        from . import clip
+        from PySide6.QtGui import QImage
+        items = self.selected_objects()
+        if len(items) != 1 or items[0]["kind"] != "picture":
+            return
+        index, info = self.obj_sel[0], items[0]
+        if not info["xref"]:            # inline picture: copy how that area looks
+            page = self.doc[index]
+            self.capture_area(index, info["rect"] & page.rect)
+            return
+        pix = pymupdf.Pixmap(self.doc, info["xref"])
+        if pix.n - pix.alpha not in (1, 3):
+            pix = pymupdf.Pixmap(pymupdf.csRGB, pix)
+        png = pix.tobytes("png")
+        r = info["rect"]
+        clip.put("capture", {"png": png, "w": r.width, "h": r.height},
+                 image=QImage.fromData(png, "PNG"))
+        self.statusMessage.emit("Picture copied: Ctrl+V pastes it as an image markup")
+
+    def save_picture(self):
+        from PySide6.QtWidgets import QFileDialog
+        items = self.selected_objects()
+        if len(items) != 1 or not items[0]["xref"]:
+            return
+        data, ext = annotations.image_bytes(self.doc, items[0]["xref"])
+        folder = os.path.dirname(self.path) if self.path else ""
+        out, _ = QFileDialog.getSaveFileName(self, "Save picture as",
+                                             os.path.join(folder, "picture." + ext),
+                                             f"{ext.upper()} image (*.{ext})")
+        if out:
+            with open(out, "wb") as f:
+                f.write(data)
+            self.statusMessage.emit("Saved " + os.path.basename(out))
 
     REDACT_TAG = "Redaction: "         # Search & redact marks remember their term in /Contents
 
