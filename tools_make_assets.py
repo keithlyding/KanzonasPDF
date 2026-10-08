@@ -24,11 +24,11 @@ app = QApplication(sys.argv)
 mark = QImage("assets/kanzonas-mark-source.png")
 
 
-RED_TOP, RED_BOTTOM = "#e0362c", "#a3120f"      # red tile: the color people link with PDFs
+RED_TOP, RED_BOTTOM = "#ff6a52", "#8e0a0a"      # red tile: the color people link with PDFs
 
 
 def _tile(p, size_units, radius):
-    g = QLinearGradient(0, 0, 0, size_units)
+    g = QLinearGradient(0, 0, size_units * 0.35, size_units)     # light top left, deep bottom
     g.setColorAt(0, QColor(RED_TOP))
     g.setColorAt(1, QColor(RED_BOTTOM))
     p.setPen(Qt.NoPen)
@@ -98,7 +98,7 @@ def big_icon(size=512):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 256.0, size / 256.0)
     _tile(p, 256, 44)
-    _fading_page(p, 256, 66, 22, 192, 196, 30)
+    _fading_page(p, 256, 70, 44, 188, 206, 28)
     h = 178.0
     w = h * mark.width() / mark.height()
     p.drawImage(QRectF(128 - w / 2, 58, w, h), mark)
@@ -115,7 +115,7 @@ def small_icon(size=128):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / 128.0, size / 128.0)
     _tile(p, 128, 24)
-    _fading_page(p, 128, 30, 9, 98, 98, 18, line=False)
+    _fading_page(p, 128, 32, 18, 96, 102, 16, line=False)
     h = 96.0
     w = h * mark.width() / mark.height()
     p.drawImage(QRectF(64 - w / 2, 28, w, h), mark)
