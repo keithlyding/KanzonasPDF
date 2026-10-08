@@ -139,10 +139,11 @@ def _base14(span):
 def _embedded_font(page, span, text):
     """Reuse the span's embedded font if it has every glyph we need. Returns a font name or None."""
     doc = page.parent
-    want = span["font"]
+    want = _norm(span["font"])
     for xref, ext, _type, basefont, *_ in page.get_fonts(full=True):
-        base = basefont.split("+", 1)[-1]
-        if base != want or ext in ("n/a", ""):
+        # names are written differently in different places ("DejaVuSans" in the text,
+        # "DejaVu Sans Book" in the font list): compare them normalized
+        if _norm(basefont) != want or ext in ("n/a", ""):
             continue
         try:
             _name, _ext, _t, buf = doc.extract_font(xref)
@@ -152,7 +153,7 @@ def _embedded_font(page, span, text):
             if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
                 name = f"KZ{xref}"
                 page.insert_font(fontname=name, fontbuffer=buf)
-                return name, font
+                return name, font, {"fontbuffer": buf}
         except Exception:
             return None
     return None
@@ -198,7 +199,7 @@ def _system_font(page, span, text):
             return None
         name = "KZS" + _norm(span["font"])[:20]
         page.insert_font(fontname=name, fontfile=path)
-        return name, font
+        return name, font, {"fontfile": path}
     except Exception:
         return None
 
@@ -241,7 +242,7 @@ def _unicode_font(page, text):
         font = pymupdf.Font("cjk")
         if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
             page.insert_font(fontname="KZUni", fontbuffer=font.buffer)
-            return "KZUni", font
+            return "KZUni", font, {"fontbuffer": font.buffer}
     except Exception:
         pass
     return None
@@ -290,9 +291,10 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
         return None
     # 3) write the replacement at the same baseline / direction
     if found:
-        fontname, font = found
-        if fontname == "KZUni":         # applying the redaction dropped the unused font again
-            page.insert_font(fontname=fontname, fontbuffer=font.buffer)
+        fontname, font, source = found
+        # applying the redaction drops fonts no text uses yet, including the one just
+        # chosen: add it again (without this, writing failed: "need font file or buffer")
+        page.insert_font(fontname=fontname, **source)
     else:
         fontname = _base14(main)
         font = pymupdf.Font(fontname)

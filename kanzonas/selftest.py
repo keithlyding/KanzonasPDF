@@ -475,6 +475,29 @@ def run(log_path):
         return "(50 nudges, exact position, no growth)"
     check("arrow-key nudge", t_nudge)
 
+    def t_edit_embedded_font():
+        # Edit text with the PDF's own embedded font (not installed on this computer): the
+        # font must survive removing the old line ("need font file or buffer" before v0.66)
+        from . import text_edit
+        src = pymupdf.Font("cjk")                       # any real font file will do
+        d = pymupdf.open()
+        pg = d.new_page()
+        pg.insert_font(fontname="F1", fontbuffer=src.buffer)
+        pg.insert_text((72, 100), "Invoice total", fontname="F1", fontsize=14)
+        d = pymupdf.open("pdf", d.tobytes(garbage=3, deflate=True))
+        pg = d[0]
+        saved = text_edit._SYSTEM_FONTS
+        text_edit._SYSTEM_FONTS = {}                    # as if it isn't installed
+        try:
+            used = text_edit.replace_line(pg, text_edit.text_lines(pg)[0][1], "Invoice paid")
+        finally:
+            text_edit._SYSTEM_FONTS = saved
+        r = pymupdf.open("pdf", d.tobytes())
+        assert r[0].get_text().strip() == "Invoice paid", r[0].get_text()
+        assert used and used.startswith("KZ"), used
+        return "(embedded font reused: " + used + ")"
+    check("edit text with an embedded font", t_edit_embedded_font)
+
     def t_security():
         d = pymupdf.open(stream=data, filetype="pdf")
         out = os.path.join(tmp, "secure.pdf")
