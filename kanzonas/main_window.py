@@ -160,6 +160,22 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(geo)
 
     # ---- construction -----------------------------------------------------
+    def _group_widget(self, items):
+        """A row of actions and widgets that can live in a toolbar or the status bar."""
+        w = QWidget()
+        h = QHBoxLayout(w)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(1)
+        for it in items:
+            if isinstance(it, QAction):
+                b = QToolButton()
+                b.setDefaultAction(it)
+                b.setAutoRaise(True)
+                b.setIconSize(QSize(16, 16))
+                it = b
+            h.addWidget(it)
+        return w
+
     def _act(self, text, slot, shortcut=None, tip=None):
         a = QAction(text, self)
         a.triggered.connect(slot)
@@ -368,6 +384,13 @@ class MainWindow(QMainWindow):
         self.a_group_names.setToolTip("Name each group of ribbon buttons (makes the ribbon taller)")
         self.a_group_names.setChecked(self.settings.value("ribbon_group_names", "false") == "true")
         self.a_group_names.toggled.connect(self._toggle_group_names)
+        self.a_menu_bar = QAction("Show &menu bar", self, checkable=True)
+        self.a_menu_bar.setShortcut(QKeySequence("Ctrl+Shift+M"))
+        self.a_menu_bar.setToolTip("With the ribbon, hide the menu bar to save space; the "
+                                   "\u2630 button at the right of the ribbon tabs has every menu")
+        self.a_menu_bar.setChecked(self.settings.value("menu_bar", "true") != "false")
+        self.a_menu_bar.toggled.connect(self._toggle_menu_bar)
+        self.addAction(self.a_menu_bar)            # shortcut works while the menu bar is hidden
         self.a_lock = self._act("&Lock selected", lambda: self._lock_selected(), "Ctrl+L",
                                 tip="Lock the selected markups: they can't be clicked, moved or "
                                     "selected on the page (unlock in the Objects panel)")
@@ -464,7 +487,7 @@ class MainWindow(QMainWindow):
         tm = m.addMenu("&Theme")
         tm.addActions(list(self.theme_actions.values()))
         m.addAction(self.a_labels)
-        m.addActions([self.a_ribbon, self.a_collapse, self.a_group_names])
+        m.addActions([self.a_ribbon, self.a_collapse, self.a_group_names, self.a_menu_bar])
         m.addSeparator()
         m.addAction(self.a_shortcuts)
         m = mb.addMenu("&Arrange")
@@ -560,15 +583,15 @@ class MainWindow(QMainWindow):
         tb.addSeparator()
         tb.addActions([self.a_undo, self.a_redo])
         tb.addSeparator()
-        tb.addAction(self.a_zoom_out)
         self.zoom_box = QComboBox()
         self.zoom_box.setEditable(True)
         self.zoom_box.addItems(ZOOM_PRESETS)
         self.zoom_box.setMinimumWidth(80)
         self.zoom_box.lineEdit().returnPressed.connect(self._zoom_from_box)
         self.zoom_box.activated.connect(lambda _: self._zoom_from_box())
-        tb.addWidget(self.zoom_box)
-        tb.addAction(self.a_zoom_in)
+        # zoom and page groups are widgets so the ribbon layout can move them to the status bar
+        self.zoom_group = self._group_widget([self.a_zoom_out, self.zoom_box, self.a_zoom_in])
+        self._zoom_group_act = tb.addWidget(self.zoom_group)
         tb.addActions([self.a_fit_width, self.a_fit_page, self.a_cad_mouse])
         tb.addSeparator()
         tb.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects])
@@ -587,15 +610,13 @@ class MainWindow(QMainWindow):
         self.next_page_btn.setArrowType(Qt.RightArrow)
         self.next_page_btn.setToolTip("Next page (Right arrow key)")
         self.next_page_btn.clicked.connect(lambda: self._step_page(1))
-        tb.addWidget(QLabel(" Page "))
-        tb.addWidget(self.prev_page_btn)
-        tb.addWidget(self.page_spin)
-        tb.addWidget(self.next_page_btn)
         self.page_total = QLabel(" / 0 ")
-        tb.addWidget(self.page_total)
+        self.nav_group = self._group_widget([QLabel(" Page "), self.prev_page_btn, self.page_spin,
+                                             self.next_page_btn, self.page_total])
+        self._nav_group_act = tb.addWidget(self.nav_group)
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        tb.addWidget(spacer)
+        self._spacer_act = tb.addWidget(spacer)
         self.search = QLineEdit()
         self.search.setPlaceholderText("Find (Ctrl+F)")
         self.search.setClearButtonEnabled(True)
@@ -603,7 +624,7 @@ class MainWindow(QMainWindow):
         self.search.returnPressed.connect(lambda: self._find(False))
         self.search.textChanged.connect(lambda t: (not t) and self.view()
                                         and self.view().clear_search())
-        tb.addWidget(self.search)
+        self._search_act = tb.addWidget(self.search)
 
         self.addToolBarBreak()
         tt = self.tools_tb = QToolBar("Tools")
@@ -2447,7 +2468,7 @@ class MainWindow(QMainWindow):
         "a_compress": "Compress", "a_compare": "Compare", "a_flatten": "Flatten",
         "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest",
         "a_split": "Split view", "a_labels": "Toolbar labels", "a_shortcuts": "Shortcuts",
-        "a_manual": "User manual", "a_ribbon": "Ribbon", "a_collapse": "Collapse", "a_group_names": "Group names",
+        "a_manual": "User manual", "a_ribbon": "Ribbon", "a_collapse": "Collapse", "a_group_names": "Group names", "a_menu_bar": "Menu bar",
         "a_zoom_in": "Zoom in", "a_zoom_out": "Zoom out", "a_open": "Open", "a_save": "Save",
         "a_print": "Print", "al_left": "Left", "al_hcenter": "Center", "al_right": "Right",
         "al_top": "Top", "al_vmiddle": "Middle", "al_bottom": "Bottom",
@@ -2479,7 +2500,7 @@ class MainWindow(QMainWindow):
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
         "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_labels": "label-outline",
         "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline",
-        "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline",
+        "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline", "a_menu_bar": "menu",
     }
 
     def _build_ribbon(self):
@@ -2567,10 +2588,45 @@ class MainWindow(QMainWindow):
                                  self.a_split]),
             ("Display", "small", [self.a_grid, self.a_hl_fields, self.a_show_markups,
                                   self.a_cad_mouse]),
-            ("Ribbon", "small", [self.a_ribbon, self.a_collapse, self.a_group_names]),
+            ("Ribbon", "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
+                                 self.a_menu_bar]),
             ("Help", "large", [self.a_shortcuts, self.a_manual]),
         ])
         r.collapsedChanged.connect(self._ribbon_collapsed)
+        # quick-access icons in the tab row (left), find box and menu button (right), like
+        # LibreOffice: no separate toolbar row above the ribbon
+        q = self.quick_tb = QToolBar()
+        q.setIconSize(QSize(16, 16))
+        q.setStyleSheet("QToolBar { border: 0; padding: 0; spacing: 0; }")
+        q.addActions([self.a_open, self.a_save, self.a_print])
+        q.addSeparator()
+        q.addActions([self.a_undo, self.a_redo])
+        r.setCornerWidget(q, Qt.TopLeftCorner)
+        self.ribbon_right = QWidget()
+        rh = QHBoxLayout(self.ribbon_right)
+        rh.setContentsMargins(0, 0, 2, 0)
+        rh.setSpacing(2)
+        self.menu_btn = QToolButton()
+        self.menu_btn.setText("\u2630")
+        self.menu_btn.setToolTip("Menus (shown when the menu bar is hidden: View > Show menu bar)")
+        self.menu_btn.setPopupMode(QToolButton.InstantPopup)
+        self.menu_btn.setAutoRaise(True)
+        menu = QMenu(self.menu_btn)
+        for a in self.menuBar().actions():
+            menu.addAction(a)
+        self.menu_btn.setMenu(menu)
+        rh.addWidget(self.menu_btn)
+        r.setCornerWidget(self.ribbon_right, Qt.TopRightCorner)
+        # keep every menu command's shortcut working when the menu bar is hidden
+        def walk(m):
+            for a in m.actions():
+                if a.menu() is not None:
+                    walk(a.menu())
+                elif not a.isSeparator() and a not in self.actions():
+                    self.addAction(a)
+        for top in self.menuBar().actions():
+            if top.menu() is not None:
+                walk(top.menu())
         self.addToolBarBreak()
         rt = self.ribbon_tb = QToolBar("Ribbon")
         rt.setObjectName("ribbon")
@@ -2593,16 +2649,49 @@ class MainWindow(QMainWindow):
 
     def _apply_ui_mode(self):
         ribbon = self.a_ribbon.isChecked()
+        self._place_quick(ribbon)
         self.ribbon_tb.setVisible(ribbon)
         self.tools_tb.setVisible(not ribbon)
         self.arrange_tb.setVisible(not ribbon)
         self.a_collapse.setEnabled(ribbon)
         self.a_group_names.setEnabled(ribbon)
+        self.a_menu_bar.setEnabled(ribbon)
 
     def _toggle_ribbon(self):
         self.settings.setValue("ui_mode", "ribbon" if self.a_ribbon.isChecked() else "classic")
         self._apply_ui_mode()
         self._apply_icons()
+
+    def _place_quick(self, ribbon):
+        """Ribbon: zoom and page boxes go to the status bar, Find to the tab row, and the
+        top toolbar row disappears. Classic: everything back in the top toolbar."""
+        tb, sb = self.main_tb, self.statusBar()
+        in_tb = self._zoom_group_act is not None
+        if ribbon and in_tb:
+            for act in (self._zoom_group_act, self._nav_group_act, self._search_act):
+                tb.removeAction(act)
+            self._zoom_group_act = self._nav_group_act = self._search_act = None
+            sb.addPermanentWidget(self.zoom_group)
+            sb.addPermanentWidget(self.nav_group)
+            self.ribbon_right.layout().insertWidget(0, self.search)
+            self.search.setFixedWidth(170)
+        elif not ribbon and not in_tb:
+            sb.removeWidget(self.zoom_group)
+            sb.removeWidget(self.nav_group)
+            self.search.setMinimumWidth(0)
+            self.search.setMaximumWidth(260)
+            self._zoom_group_act = tb.insertWidget(self.a_fit_width, self.zoom_group)
+            self._nav_group_act = tb.insertWidget(self._spacer_act, self.nav_group)
+            self._search_act = tb.addWidget(self.search)
+        for w in (self.zoom_group, self.nav_group, self.search):
+            w.show()
+        tb.setVisible(not ribbon)
+        self.menuBar().setVisible(not ribbon or self.a_menu_bar.isChecked())
+        self.menu_btn.setVisible(ribbon and not self.a_menu_bar.isChecked())
+
+    def _toggle_menu_bar(self, on):
+        self.settings.setValue("menu_bar", "true" if on else "false")
+        self._apply_ui_mode()
 
     def _toggle_group_names(self, on):
         self.settings.setValue("ribbon_group_names", "true" if on else "false")

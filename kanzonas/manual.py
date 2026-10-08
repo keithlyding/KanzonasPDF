@@ -24,13 +24,17 @@ File &gt; Open recent. Each file opens in its own tab, at the page and zoom you 
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Comment, Measure, Arrange, Review,
-Protect, Forms, Pages and View. The bar above it (open, save, print, undo, zoom, page, find)
-stays visible. The ribbon is compact: two rows of buttons. If the window is too narrow for a
-tab, scroll it sideways with the mouse wheel or the thin bar under it. View &gt; <b>Show group
-names on ribbon</b> adds a name under each group of buttons (a little taller, like Microsoft
-Office). <b>Collapse ribbon</b> (Ctrl+F1, or double-click a tab) shows only the tab
-names; click a tab to open it again. Untick View &gt; <b>Ribbon (instead of toolbars)</b> for
-the classic compact toolbars. The menus always have every command.</li>
+Protect, Forms, Pages and View. Open, save, print, undo and redo sit left of the tabs, and the
+Find box sits right of them. The zoom box (with zoom out / zoom in) and the page number (with
+&#9664; &#9654;) are at the bottom right, in the status bar. The ribbon is compact: two rows of
+buttons. If the window is too narrow for a tab, scroll it sideways with the mouse wheel or the
+thin bar under it. View &gt; <b>Show group names on ribbon</b> adds a name under each group of
+buttons (a little taller, like Microsoft Office). View &gt; <b>Show menu bar</b> (Ctrl+Shift+M)
+hides or shows the File, Edit, View... menu bar; when it's hidden, the &#9776; button at the right
+of the ribbon tabs has every menu, and all keyboard shortcuts still work. <b>Collapse ribbon</b>
+(Ctrl+F1, or double-click a tab) shows only the tab names; click a tab to open it again. Untick
+View &gt; <b>Ribbon (instead of toolbars)</b> for the classic compact toolbars (zoom, page number
+and Find then go back to the top toolbar). The menus always have every command.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
 saying what it does and its keyboard shortcut.</li>
@@ -68,8 +72,8 @@ from any folder but stores settings on the computer like the installed version.<
 
 <h2 id="navigate">Moving around</h2>
 <ul>
-<li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number in the
-toolbar, the Right / Left arrow keys, or type a page number and press Enter.</li>
+<li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number (bottom right
+with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1).</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
@@ -380,6 +384,7 @@ Plain text (.txt).</li>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
+<tr><td>Ctrl+Shift+M</td><td>Show / hide the menu bar (ribbon layout)</td></tr>
 <tr><td>F11</td><td>CAD-style mouse on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>

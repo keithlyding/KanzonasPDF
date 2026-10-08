@@ -5,7 +5,8 @@ and the Windows download is named `KanzonasPDF-v<version>-windows.zip`.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.39 | (this) | The Pages panel narrows much further (about 75 px instead of about 345 px): thumbnails shrink with it, the lock button reads just Locked / Unlocked (details in its tooltip), and the Bookmarks, Layers and Objects tabs no longer hold the panel wide |
+| 0.40 | (this) | Ribbon layout without the extra toolbar row: open/save/print/undo/redo sit left of the ribbon tabs, Find right of them, zoom and page number in the status bar (bottom right). View > Show menu bar (Ctrl+Shift+M) hides the menu bar too, with a menu button by the tabs; shortcuts keep working. The document area now starts about 52 px higher (32 px with the menu bar kept) |
+| 0.39 | 20e8fe4 | The Pages panel narrows much further (about 75 px instead of about 345 px): thumbnails shrink with it, the lock button reads just Locked / Unlocked (details in its tooltip), and the Bookmarks, Layers and Objects tabs no longer hold the panel wide |
 | 0.38 | 3e1204d | Fix: Help > Check for updates showed nothing when a newer version existed (the notice was hidden behind the "Checking..." status message); it now answers in a box with a Download button. The automatic daily check's notice is fixed the same way |
 | 0.37 | 3883cbc | Slimmer ribbon (about 30% less height, close to LibreOffice): two rows of buttons, smaller icons, group names off by default (View > Show group names on ribbon), a tab that doesn't fit scrolls sideways instead of squeezing button names |
 | 0.36 | 5e280b7 | Help > Check for updates: tells you when a newer release is on GitHub (Download / Skip this version / Later); checks automatically once a day unless you untick Help > Check for updates automatically. Nothing is downloaded or installed by itself. The build now installs the new version over the previous release to prove updating needs no uninstall |
