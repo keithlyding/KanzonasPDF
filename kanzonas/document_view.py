@@ -2480,7 +2480,7 @@ class DocumentView(QScrollArea):
         w = self.SIG_WIDTH[kind]
         return pymupdf.Rect(p.x - w / 2, p.y - w * aspect / 2, p.x + w / 2, p.y + w * aspect / 2)
 
-    def place_signature(self, index, kind, pt=None, field_rect=None):
+    def place_signature(self, index, kind, pt=None, field_rect=None, box=None):
         """Write the saved signature/initials (and today's date) into the page content."""
         if kind not in self.sig_images:
             return
@@ -2488,6 +2488,8 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
         if field_rect is not None:      # fill a signature form field
             disp = pymupdf.Rect(field_rect) * page.rotation_matrix
+        elif box is not None:           # dragged to size (displayed coordinates)
+            disp = pymupdf.Rect(box)
         else:
             disp = self.sig_display_rect(index, kind, pt)
         when = signatures.date_text()

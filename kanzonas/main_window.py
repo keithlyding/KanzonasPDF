@@ -454,6 +454,13 @@ class MainWindow(QMainWindow):
             minutes = 5
         self.autosave = autosave.Autosaver(self, minutes)
         DocumentView.open_view = self.settings.value("open_view", "width")
+        for kind in ("signature", "initials"):
+            try:
+                w = float(self.settings.value("sig_width_" + kind, 0) or 0)
+            except (TypeError, ValueError):
+                w = 0
+            if 14 <= w <= 600:
+                DocumentView.SIG_WIDTH[kind] = w
         DocumentView.reopen_page = self.settings.value("reopen_page", "true") != "false"
         # grid and snapping (shared by all open documents, remembered)
         self.a_grid = self._act("Show &grid", self._apply_grid_settings,

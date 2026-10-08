@@ -395,7 +395,10 @@ Double-click a field to change its name and options.</li>
 <p>Everything here is in the <b>Protect</b> menu.</p>
 <ul>
 <li><b>Wet signature / initials:</b> Set up my signature and Set up my initials (draw or load an
-image, optional PIN). Then Sign (G) or Initials (I) and click to place, with the date.</li>
+image, optional PIN). Then Sign (G) or Initials (I) and click to place, with the date. To
+choose the size, <b>drag a box</b> instead of clicking: it's placed as wide as you drag (the
+height follows its proportions). The size used for a click is set in File &gt; Preferences &gt; You
+(2 in for a signature and 0.75 in for initials to start with).</li>
 <li><b>Multi-place signature or initials:</b> put your initials (or signature) on all pages,
 all but the first or last, or pages you list, in the same spot as the last one you placed
 or in a corner.</li>
@@ -482,7 +485,8 @@ names on ribbon, Show menu bar, Show text labels on toolbars, Check for updates 
 It also tells you where your settings are saved (the data folder in portable mode).</li>
 <li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
 Set up my signature... / Set up my initials... with whether each is saved yet, and Change PIN...
-to set, change or remove the PIN that protects them (leave the new PIN empty to remove it).</li>
+to set, change or remove the PIN that protects them (leave the new PIN empty to remove it), and
+the Signature width and Initials width used when you click to place them.</li>
 <li><b>Markup styles:</b> pick a tool on the left to set its default colors, line width, font
 size, fill, opacity and so on, the same settings the Properties panel shows when that tool is
 active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
@@ -504,7 +508,9 @@ round to (1/2" to 1/64"; 1/16" by default) and the decimal places for other unit
 measurement labels update when you next move or edit them.</li>
 <li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step.</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
-Show grid, Snap to grid, Snap to objects, and Grid settings....</li>
+and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
+interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid
+settings...).</li>
 <li><b>OCR:</b> the accuracy the Recognize text dialog starts with.</li>
 <li>Changes apply when you click OK; Cancel leaves everything as it was.</li>
 </ul>
