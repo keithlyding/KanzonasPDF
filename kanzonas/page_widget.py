@@ -204,6 +204,7 @@ class PageWidget(QWidget):
         s = self.view.zoom * dpr
         pm = self._display_list().get_pixmap(matrix=pymupdf.Matrix(s, s), alpha=False)
         self._pix = self._to_qpixmap(pm, dpr)
+        self.view._pix_pages.add(self.index)
 
     def paintEvent(self, event):
         p = QPainter(self)

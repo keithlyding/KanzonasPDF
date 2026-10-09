@@ -25,6 +25,7 @@ UNDO_LIMIT = 30
 # and for all open documents together (the oldest steps go first; the latest is always kept)
 UNDO_BYTES_PER_DOC = 256 * 1024 * 1024
 UNDO_BYTES_TOTAL = 512 * 1024 * 1024
+PAGE_CACHE_PAGES = 24     # parsed per-page data kept for at most about this many pages
 
 
 _ERASER_CURSOR = None
@@ -209,20 +210,46 @@ class DocumentView(QScrollArea):
             if 0 <= cur < len(self.pages):
                 self.pages[cur].update()
             self.pageChanged.emit(cur)
-        # Free rendered bitmaps for pages far from the viewport to keep memory low.
+        # Free rendered bitmaps for pages far from the viewport to keep memory low. Only the
+        # pages that hold one are visited, so scrolling costs the same on 10 or 10,000 pages.
         lo, hi = max(0, cur - 4), cur + 6
-        for i, w in enumerate(self.pages):
-            if (i < lo or i > hi) and w._pix is not None:
-                w.drop_cache()
+        for i in [i for i in self._pix_pages if i < lo or i > hi]:
+            self._pix_pages.discard(i)
+            if i < len(self.pages):
+                self.pages[i].drop_cache()
+        self._trim_page_caches(cur)
+
+    def _trim_page_caches(self, cur):
+        """Forget parsed data (drawings, text, snap points, objects) for pages far from the
+        current one, so a long session over a big file doesn't keep every page it visited."""
+        keep = {cur}
+        if self.text_sel:
+            keep.add(self.text_sel[0])
+        if self.obj_sel:
+            keep.add(self.obj_sel[0])
+        for cache in (self._dlists, self._line_cache, self._word_cache, self._snap_markups,
+                      self._obj_cache, self._snap_content):
+            if len(cache) <= PAGE_CACHE_PAGES:
+                continue
+            for i in [i for i in cache
+                      if abs(i - cur) > PAGE_CACHE_PAGES // 2 and i not in keep]:
+                del cache[i]
 
     def current_page(self):
         if not getattr(self, "pages", None):
             return 0
         mid = self.verticalScrollBar().value() + self.viewport().height() // 3
-        for i, w in enumerate(self.pages):
+        pages = self.pages
+        # pages are stacked top to bottom: binary-search for the first one reaching mid
+        lo, hi = 0, len(pages)
+        while lo < hi:
+            m = (lo + hi) // 2
+            w = pages[m]
             if w.y() + w.height() + PAGE_GAP // 2 >= mid:
-                return i
-        return len(self.pages) - 1
+                hi = m
+            else:
+                lo = m + 1
+        return min(lo, len(pages) - 1)
 
     def goto_page(self, index, y_offset=0):
         index = max(0, min(index, len(self.pages) - 1))
@@ -814,6 +841,8 @@ class DocumentView(QScrollArea):
         if not hasattr(self, "_snap_content"):
             self._snap_content = {}    # page index -> (content key, PointIndex)
         self._snap_recheck = set(self._snap_content)
+        if not hasattr(self, "_pix_pages"):
+            self._pix_pages = set()    # page indexes whose widget may hold a rendered bitmap
 
     def _clear_page_caches(self, pages):
         """Forget what's cached for these pages only (an edit that leaves the others as
