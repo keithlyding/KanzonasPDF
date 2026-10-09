@@ -1158,6 +1158,7 @@ class MainWindow(QMainWindow):
         return True
 
     def _confirm_close(self, v):
+        v.commit_pending()               # typed text not yet confirmed counts as a change
         if not v.dirty:
             return True
         self.tabs.setCurrentWidget(v)
@@ -2309,7 +2310,8 @@ class MainWindow(QMainWindow):
             hidden = v.hidden_matches(term)
             n = v.search_redact(term)
             extra = [f"{c} {what}" for what, c in (("form field(s)", hidden["fields"]),
-                     ("markup note(s)", hidden["markups"]), ("bookmark(s)", hidden["bookmarks"]),
+                     ("markup note(s)", hidden["markups"]), ("link(s)", hidden["links"]),
+                     ("bookmark(s)", hidden["bookmarks"]),
                      ("document propert(ies)", hidden["metadata"])) if c]
             msg = (f"Marked {n} occurrence(s) on the pages." if n else
                    "No matches on the pages.")
@@ -2317,7 +2319,7 @@ class MainWindow(QMainWindow):
                 if QMessageBox.question(
                         self, "Search & redact",
                         "Not on the pages, but found in " + ", ".join(extra) + ".\n\nRemove it "
-                        "from there now? (Fields containing it are deleted; in notes, bookmarks "
+                        "from there now? (Fields and links containing it are deleted; in notes, bookmarks "
                         "and properties it's replaced by [redacted]. Undo works until you close "
                         "the file.)") == QMessageBox.Yes:
                     v.remove_term(term)

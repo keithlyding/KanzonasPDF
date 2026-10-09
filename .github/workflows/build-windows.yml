@@ -175,7 +175,7 @@ jobs:
 
       # Publishing: a push to main with a version that has no release yet publishes a
       # draft unless the repository variable AUTO_RELEASE is 'true' (then it is a real
-      # release). Tag builds (refs/tags/v*) are always real releases. AUTO_RELEASE=false
+      # release). Tag builds (refs/tags/v*) of a commit on main are always real releases. AUTO_RELEASE=false
       # skips publishing (create a release or tag v<version> by hand; that builds and
       # publishes).
       - name: Is this version already released?
@@ -190,9 +190,23 @@ jobs:
           Write-Host "Version ${{ steps.ver.outputs.version }}: new release = $new"
           exit 0
 
+      # a v* tag publishes only when the tagged commit is already on main (reviewed through a
+      # pull request); a tag pushed on any other commit builds but doesn't publish
+      - name: Is the tagged commit on main?
+        id: onmain
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          git fetch --no-tags --quiet origin main
+          git merge-base --is-ancestor "${{ github.sha }}" FETCH_HEAD
+          $on = if ($LASTEXITCODE -eq 0) { "true" } else { "false" }
+          "main=$on" >> $env:GITHUB_OUTPUT
+          Write-Host "Tagged commit on main: $on"
+          exit 0
+
       - name: Publish release
         if: >-
-          startsWith(github.ref, 'refs/tags/v') ||
+          (startsWith(github.ref, 'refs/tags/v') && steps.onmain.outputs.main == 'true') ||
           (github.ref == 'refs/heads/main' && steps.rel.outputs.new == 'true' &&
            vars.AUTO_RELEASE != 'false')
         uses: softprops/action-gh-release@v2
