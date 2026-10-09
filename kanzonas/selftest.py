@@ -221,6 +221,46 @@ def run(log_path):
         return "(3 removed, page text kept)"
     check("remove watermarks", t_watermarks)
 
+    def t_object_order():
+        # the page's own objects: bring to front / send to back, same look where they land
+        from . import page_objects as PO
+        d = pymupdf.open()
+        p = d.new_page(width=200, height=200)
+        p.draw_rect((20, 20, 120, 120), color=None, fill=(1, 0, 0))
+        p.draw_rect((60, 60, 160, 160), color=(0, 0, 0), fill=(0, 0, 1), fill_opacity=0.9)
+        p.insert_text((30, 100), "TEXT", fontsize=30)
+        px = lambda: d[0].get_pixmap().pixel(90, 90)    # where the squares overlap
+        blue = px()
+        red_n = [it["n"] for it in PO.Objects(d[0]).items if it["rect"].x0 < 30][0]
+        assert PO.reorder(d[0], [red_n], "front") and px() == (255, 0, 0), px()
+        red_n = [it["n"] for it in PO.Objects(d[0]).items if it["rect"].x0 < 30][0]
+        assert PO.reorder(d[0], [red_n], "back") and px() == blue, px()
+        red_n = [it["n"] for it in PO.Objects(d[0]).items if it["rect"].x0 < 30][0]
+        assert PO.reorder(d[0], [red_n], "forward") and px() == (255, 0, 0), \
+            "moved object picked up the transparency where it landed"
+        assert d[0].get_text().split() == ["TEXT"]
+        return "(front, back, forward; colors kept)"
+    check("stacking order of page objects", t_object_order)
+
+    def t_links():
+        from PySide6.QtWidgets import QApplication
+        from .document_view import DocumentView
+        QApplication.instance() or QApplication([])
+        d = pymupdf.open()
+        for _k in range(3):
+            d.new_page()
+        d[0].set_rotation(90)
+        d[0].insert_link({"kind": pymupdf.LINK_GOTO, "from": pymupdf.Rect(10, 20, 110, 40),
+                          "page": 2, "to": pymupdf.Point(0, 0)})
+        path = os.path.join(tmp, "links.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        link = v.link_at(0, pymupdf.Point(50, 30))     # unrotated page point inside it
+        assert link is not None and link["page"] == 2, link
+        assert v.link_at(0, pymupdf.Point(300, 300)) is None
+        return "(found on a rotated page)"
+    check("links", t_links)
+
     def t_fillin_stamp():
         from . import stamps, annotations as A
         d = pymupdf.open()

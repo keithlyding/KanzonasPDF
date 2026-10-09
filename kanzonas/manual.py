@@ -93,6 +93,12 @@ the page you were on last time; change this in File &gt; Preferences &gt; Openin
 Fit width and Fit page keep fitting when the window or a side panel changes size, until you
 choose a zoom yourself.</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
+<li><b>Links in the PDF:</b> with the Hand or Select tool, point at a link to see where it goes
+(the pointer becomes a hand) and click it. A link to a page in the document goes there. A web or
+email address asks first, then opens in your browser or email program (tick <b>Don't ask
+again</b> to skip the question from then on). A link to another PDF opens it in a new tab; a
+link to another kind of file asks before opening it; links that would start a program or script
+are refused.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). Shift+Left/Right scrolls sideways.</li>
 <li><b>CAD-style mouse (wheel zooms, hold wheel to pan)</b> (View menu, toolbar button, F11):
@@ -271,7 +277,9 @@ Align relative to. The first-selected markup has a bolder outline.</li>
 <li><b>Distribute horizontally</b> / <b>Distribute vertically</b> (three or more): equal gaps,
 the outer two stay put.</li>
 <li><b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]),
-<b>Send backward</b> (Ctrl+[), <b>Send to back</b> (Ctrl+Shift+[).</li>
+<b>Send backward</b> (Ctrl+[), <b>Send to back</b> (Ctrl+Shift+[). With pictures or shapes of
+the page itself selected (Edit objects tool), these change their order on the page instead
+(see Editing the PDF's own pictures and shapes).</li>
 </ul>
 
 <h2 id="objects">Objects panel and locking</h2>
@@ -338,11 +346,18 @@ to select everything entirely inside it (Ctrl+drag adds to the selection). In CA
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
 scales its line thickness.</li>
 <li>Delete (or Backspace) deletes the selection. Right-click for Rotate clockwise, Rotate
-counterclockwise and Delete, and, for one picture, Copy picture (Ctrl+V pastes it as an image
-markup) and Save picture as.... Escape deselects.</li>
-<li>Only the selected objects change: they keep their place in the drawing order (text printed
-over a picture stays on top), their colors and line styles, and pictures aren't recompressed, so
-quality doesn't drop. Ctrl+Z undoes each change.</li>
+counterclockwise, the stacking order commands and Delete, and, for one picture, Copy picture
+(Ctrl+V pastes it as an image markup) and Save picture as.... Escape deselects.</li>
+<li><b>Stacking order:</b> when the page's own objects cover each other, select one and use
+<b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]), <b>Send backward</b>
+(Ctrl+[) or <b>Send to back</b> (Ctrl+Shift+[), from the right-click menu or Arrange. Front and
+back mean in front of or behind everything on the page, the page's text included; forward and
+backward move it past the next object it overlaps. The object keeps its colors, line style and
+transparency. If it was cut to a clipping outline where it was, it isn't any more where it
+lands.</li>
+<li>Only the selected objects change: moving, resizing and rotating keep their place in the
+drawing order (text printed over a picture stays on top), their colors and line styles, and
+pictures aren't recompressed, so quality doesn't drop. Ctrl+Z undoes each change.</li>
 <li>Text can't be selected with this tool (use Edit text), and neither can objects inside a grouped
 object (a form XObject) or clipping outlines. On very large drawings, the first click on a page
 takes a moment while the page is read.</li>
