@@ -3574,14 +3574,36 @@ class MainWindow(QMainWindow):
             self._thumb_queue.append(i)
         self._thumb_timer.start()
 
+    THUMB_BUDGET = 0.03         # seconds of thumbnail drawing per turn of the event loop
+
+    def _visible_thumb_rows(self):
+        vp = self.thumbs.viewport()
+        first = self.thumbs.indexAt(vp.rect().topLeft()).row()
+        last = self.thumbs.indexAt(vp.rect().bottomRight()).row()
+        if first < 0:
+            return []
+        if last < 0:
+            last = self.thumbs.count() - 1
+        return list(range(first, last + 1))
+
     def _thumb_step(self):
         v = self.view()
         if not v or not self._thumb_queue:
             self._thumb_timer.stop()
             return
-        for _ in range(3):
-            if not self._thumb_queue:
-                break
+        if not self.thumbs.isVisible():
+            # the Pages panel is hidden: check back now and then instead of drawing
+            self._thumb_timer.setInterval(500)
+            return
+        self._thumb_timer.setInterval(0)
+        # thumbnails you can see first
+        queued = set(self._thumb_queue)
+        seen = [i for i in self._visible_thumb_rows() if i in queued]
+        if seen and self._thumb_queue[0] not in seen:
+            first = set(seen)
+            self._thumb_queue = seen + [i for i in self._thumb_queue if i not in first]
+        start = time.monotonic()
+        while self._thumb_queue and time.monotonic() - start < self.THUMB_BUDGET:
             i = self._thumb_queue.pop(0)
             if i >= v.page_count() or i >= self.thumbs.count():
                 continue

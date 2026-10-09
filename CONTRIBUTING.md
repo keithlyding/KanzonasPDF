@@ -36,6 +36,11 @@ On Windows, leave out `QT_QPA_PLATFORM=offscreen`. Every push builds the Windows
 the self-test inside it (GitHub Actions); a pull request needs a green build. Merging a new
 version into `main` publishes it as a release automatically.
 
+## Free releases
+
+Official KanzonasPDF releases stay free of charge for personal and commercial use: no subscriptions, trial expiration, paid feature tiers, required account or required paid cloud service. Optional donations never unlock features. Contributions must keep it that way: no license checks,
+activation, paid-only features or required paid services.
+
 ## License
 
 KanzonasPDF is licensed under the GNU AGPL 3.0 (see [LICENSE](LICENSE)), because the PDF engine

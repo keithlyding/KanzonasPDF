@@ -59,6 +59,11 @@ class Rendering:
     def to_display(self, x, y):
         return (pymupdf.Point(x, y) + self._shift) * self._to_display
 
+    def release(self):
+        """Drop the page image once it's been read: only the coordinate mapping is needed
+        to place the text, so a long batch doesn't keep every full-size scan in memory."""
+        self.image = None
+
     @property
     def png(self):
         """Whole image as PNG (small pages / tests)."""

@@ -153,6 +153,9 @@ class Autosaver(QObject):
             if v._orig_enc is not None or any((v.security or {}).get(k) for k in ("open_pw", "owner_pw")) or getattr(v, "read_only", False):
                 self.discard(v)
                 continue                # never write a protected document out unprotected
+            if getattr(v, "_backup_path", None) and \
+                    getattr(v, "_backup_rev", None) == getattr(v, "revision", None):
+                continue                # nothing changed since the last backup
             self.backup(v)
 
     def backup(self, v):
@@ -172,6 +175,7 @@ class Autosaver(QObject):
             os.replace(tmp, path)
         except Exception:
             return
+        v._backup_rev = getattr(v, "revision", None)
         idx = _index()
         idx[os.path.basename(path)] = v.path or ""
         _save_index(idx)
@@ -181,6 +185,7 @@ class Autosaver(QObject):
         if path:
             _remove(path)
             v._backup_path = None
+            v._backup_rev = None
 
     def discard_all(self):
         for v in self.views():

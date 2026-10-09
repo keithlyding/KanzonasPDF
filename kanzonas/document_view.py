@@ -21,6 +21,10 @@ from .page_widget import PageWidget
 PAGE_GAP = 12
 MIN_ZOOM, MAX_ZOOM = 0.1, 8.0
 UNDO_LIMIT = 30
+# Undo keeps whole-document copies, so the history also has a memory budget: per document,
+# and for all open documents together (the oldest steps go first; the latest is always kept)
+UNDO_BYTES_PER_DOC = 256 * 1024 * 1024
+UNDO_BYTES_TOTAL = 512 * 1024 * 1024
 
 
 _ERASER_CURSOR = None
@@ -674,7 +678,12 @@ class DocumentView(QScrollArea):
         # a burst of arrow-key nudges is one undo step: later presses reuse the first snapshot
         merge = getattr(self, "_merge_edit", False) and bool(self._undo)
         snap = None if merge else self._snapshot()
-        self._clear_caches()
+        # only the pages this edit touches lose their parsed drawings, text and snap points;
+        # a structural change (pages added, removed, moved) or an unknown extent clears all
+        if structural or pages is None:
+            self._clear_caches()
+        else:
+            self._clear_page_caches(pages)
         try:
             fn()
         except Exception as ex:
@@ -685,6 +694,7 @@ class DocumentView(QScrollArea):
             self._undo.append(snap)
         del self._undo[:-UNDO_LIMIT]
         self._redo.clear()
+        self._trim_history()
         self.dirty = True
         # any edit can change the page text: the next Find searches again
         self._search_text = None
@@ -715,11 +725,58 @@ class DocumentView(QScrollArea):
         if self._undo:
             self._redo.append(self._snapshot())
             self._restore(self._undo.pop())
+            self._trim_history()
 
     def redo(self):
         if self._redo:
             self._undo.append(self._snapshot())
             self._restore(self._redo.pop())
+            self._trim_history()
+
+    # every change bumps the revision, so autosave can tell whether anything changed since
+    # its last backup
+    revision = 0
+    _dirty = False
+
+    @property
+    def dirty(self):
+        return self._dirty
+
+    @dirty.setter
+    def dirty(self, value):
+        if value:
+            self.revision += 1
+        self._dirty = bool(value)
+
+    _views = None                       # all open documents (weak), for the shared budget
+
+    def history_bytes(self):
+        return sum(len(s) for s in self._undo) + sum(len(s) for s in self._redo)
+
+    def _trim_history(self):
+        """Keep undo/redo within UNDO_BYTES_PER_DOC for this document and UNDO_BYTES_TOTAL
+        for all open documents, dropping the oldest steps first (redo's furthest first).
+        The most recent undo step of each document is always kept."""
+        import weakref
+        if DocumentView._views is None:
+            DocumentView._views = weakref.WeakSet()
+        DocumentView._views.add(self)
+
+        def drop_one(v):
+            if v._redo:
+                v._redo.pop(0)                  # the redo step furthest in the future
+                return True
+            if len(v._undo) > 1:
+                v._undo.pop(0)                  # the oldest step
+                return True
+            return False
+        while self.history_bytes() > UNDO_BYTES_PER_DOC and drop_one(self):
+            pass
+        views = [v for v in DocumentView._views if hasattr(v, "_undo")]
+        while sum(v.history_bytes() for v in views) > UNDO_BYTES_TOTAL:
+            biggest = max(views, key=lambda v: v.history_bytes())
+            if not drop_one(biggest):
+                break
 
     # ---- caches (cleared on every change) ------------------------------------
     def _clear_caches(self):
@@ -736,6 +793,25 @@ class DocumentView(QScrollArea):
         if not hasattr(self, "_snap_content"):
             self._snap_content = {}    # page index -> (content key, PointIndex)
         self._snap_recheck = set(self._snap_content)
+
+    def _clear_page_caches(self, pages):
+        """Forget what's cached for these pages only (an edit that leaves the others as
+        they were)."""
+        pages = set(pages)
+        for i in pages:
+            self._dlists.pop(i, None)
+            self._line_cache.pop(i, None)
+            self._word_cache.pop(i, None)
+            self._snap_markups.pop(i, None)
+            self._obj_cache.pop(i, None)
+            for key in ("fields", "links"):
+                self._card_cache.pop((key, i), None)
+            self._card_cache.pop(i, None)
+            self._snap_recheck.add(i)
+        for key in [k for k in self._tiles if k[0] in pages]:
+            del self._tiles[key]
+        self.text_sel = None
+        self.obj_sel = None
 
     def _words(self, index):
         """Selectable text units: individual characters, so selections can start and end
@@ -3416,6 +3492,7 @@ class DocumentView(QScrollArea):
                             best, res = r, alt
                     if dlg.wasCanceled():
                         break
+                best.release()              # keep the text, not the full-size image
                 results[i] = (res, best)
                 dlg.setValue(n + 1)
         except Exception as ex:
@@ -3666,4 +3743,5 @@ class DocumentView(QScrollArea):
         self.documentChanged.emit()
 
     def close_doc(self):
+        self._undo, self._redo = [], []         # free the history (and the shared budget)
         self.doc.close()

@@ -39,7 +39,9 @@ telemetry before creating recognition sessions.</p>
 <ul>
 <li><b>Open a PDF:</b> File &gt; Open (Ctrl+O), drag a file onto the window, or pick one from
 File &gt; Open recent. Each file opens in its own tab, at the page and zoom you left it.</li>
-<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Undo is Ctrl+Z, redo is Ctrl+Y.</li>
+<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Undo is Ctrl+Z, redo is Ctrl+Y.
+Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within a memory budget
+(256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Markup, Measure, Arrange, Review,
@@ -63,6 +65,9 @@ edge)</b> hides the strip; the panels then show their names as tabs at the botto
 toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
 saying what it does and its keyboard shortcut.</li>
 </ul>
+
+<h2 id="free">Free of charge</h2>
+<p>Official KanzonasPDF releases stay free of charge for personal and commercial use: no subscriptions, trial expiration, paid feature tiers, required account or required paid cloud service. Optional donations never unlock features. The source code is available under the GNU AGPL-3.0.</p>
 
 <h2 id="install">Installing, updating and uninstalling</h2>
 <ul>
