@@ -1,4 +1,4 @@
-"""Efficiency regressions from the v0.81 efficiency audit (P01-P05, P07, P08).
+"""Efficiency regressions from the v0.81 efficiency audit (P01-P09).
 
     QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -p "test_*.py"
 """
@@ -150,6 +150,48 @@ class PerformanceBudgets(unittest.TestCase):
             self.assertEqual(v.find("nothing-like-this"), -1)  # still searching, none yet
         v.clear_search()
         self.assertIsNone(v._search_todo)
+
+
+    def many(self, n=2000):
+        d = F.open()
+        for i in range(n):
+            d.new_page(width=200, height=200).insert_text((20, 40), "p%d" % i)
+        p = os.path.join(self.tmp.name, "many.pdf")
+        d.save(p)
+        v = DocumentView(p)
+        v.resize(800, 600)
+        return v
+
+    def test_page_lookup_is_logarithmic(self):
+        v = self.many()
+        for i in (0, 1, 777, 1500, 1990):
+            v.goto_page(i)
+            self.assertEqual(v.current_page(), i)
+        calls = []
+        orig = type(v.pages[0]).y
+        with mock.patch.object(type(v.pages[0]), "y", lambda w: calls.append(1) or orig(w)):
+            v.current_page()
+        self.assertLess(len(calls), 40)                 # binary search, not 1,500 widgets
+
+    def test_scrolling_visits_only_pages_with_bitmaps(self):
+        v = self.many()
+        v.goto_page(1000)
+        dropped = []
+        for w in v.pages:
+            w.drop_cache = lambda i=w.index: dropped.append(i)
+        v._pix_pages = {3, 1000, 1001}
+        v._on_scroll()
+        self.assertEqual(dropped, [3])
+        self.assertEqual(v._pix_pages, {1000, 1001})
+
+    def test_parsed_page_caches_are_bounded(self):
+        v = self.many(300)
+        for i in range(200):
+            v._words(i)
+            v._dlists[i] = object()
+        v.goto_page(250)
+        self.assertLessEqual(len(v._word_cache), DV.PAGE_CACHE_PAGES)
+        self.assertLessEqual(len(v._dlists), DV.PAGE_CACHE_PAGES)
 
 
 if __name__ == "__main__":

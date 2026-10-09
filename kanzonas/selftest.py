@@ -68,6 +68,10 @@ def run(log_path):
         win.show()
         app.processEvents()
         startup = time.perf_counter() - t
+        # from the first line of kanzonas/__main__.py (imported by run.py, or run as -m)
+        t0 = [getattr(sys.modules.get(m), "_T0", None) for m in ("kanzonas.__main__", "__main__")]
+        t0 = next((x for x in t0 if isinstance(x, float)), None)
+        launch = None if t0 is None else time.perf_counter() - t0
         loaded = [m for m in HEAVY if m in sys.modules]
         assert not loaded, "loaded at start-up (import them only when used): " + ", ".join(loaded)
         # a CAD-like page: 60,000 line segments
@@ -96,12 +100,52 @@ def run(log_path):
         win.close_tab(win.tabs.currentIndex())
         win.deleteLater()
         assert startup < 5, f"start-up took {startup:.1f}s (limit 5s)"
+        assert launch is None or launch < 8, f"launch to ready took {launch:.1f}s (limit 8s)"
         assert first < 5, f"opening a 60k-line sheet took {first:.1f}s (limit 5s)"
         assert zoom < 5, f"zooming to 400% took {zoom:.1f}s (limit 5s)"
         assert mem > 1, "couldn't measure memory"
         assert mem < 800, f"memory {mem:.0f} MB (limit 800 MB)"
-        return f"(start-up {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s, {mem:.0f} MB)"
+        lt = "n/a" if launch is None else f"{launch:.2f}s"
+        return f"(launch {lt}, window {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s, {mem:.0f} MB)"
     check("performance budget", t_performance)
+
+    def t_efficiency():
+        # the v0.81 audit's fixes stay in place: linear annotation walk, bounded undo, sliced
+        # search, logarithmic page lookup, bounded per-page caches
+        import time
+        from . import annotations as A
+        from . import document_view as DV
+        d = pymupdf.open()
+        pg = d.new_page()
+        for i in range(1500):
+            pg.add_rect_annot(pymupdf.Rect(i % 500, 10, i % 500 + 5, 15))
+        t = time.perf_counter()
+        n = sum(1 for _ in A.each_annot(pg))
+        walk = time.perf_counter() - t
+        assert n == 1500 and walk < 1, f"walking 1,500 annotations took {walk:.2f}s"
+        assert DV.UNDO_BYTES_PER_DOC <= 512 * 2**20, "undo history has no memory budget"
+        assert 0 < DV.DocumentView.SEARCH_SLICE <= 0.1, "Find no longer runs in short time slices"
+        d = pymupdf.open()
+        for i in range(3000):
+            d.new_page(width=200, height=200).insert_text((20, 40), "p%d" % i)
+        path = os.path.join(tempfile.mkdtemp(prefix="kzeff"), "many.pdf")
+        d.save(path)
+        v = DV.DocumentView(path)
+        v.resize(800, 600)
+        t = time.perf_counter()
+        for i in range(0, 3000, 7):
+            v.goto_page(i)
+            assert v.current_page() == i, f"page lookup returned {v.current_page()} for {i}"
+        jump = (time.perf_counter() - t) / (3000 // 7)
+        for i in range(100):
+            v._words(i)
+        v.goto_page(2000)
+        kept = len(v._word_cache)
+        v.close_doc()
+        assert kept <= DV.PAGE_CACHE_PAGES, f"{kept} pages of text kept after scrolling away"
+        assert jump < 0.01, f"jumping to a page took {jump * 1000:.1f} ms"
+        return f"(1,500 annotations {walk * 1000:.0f} ms, page jump {jump * 1000:.2f} ms)"
+    check("efficiency checks", t_efficiency)
 
     tmp = tempfile.mkdtemp(prefix="kzselftest")
     doc = pymupdf.open()

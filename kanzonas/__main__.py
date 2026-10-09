@@ -2,6 +2,9 @@
 
 import os
 import sys
+import time
+
+_T0 = time.perf_counter()      # launch clock: the self-test reports true launch-to-ready time
 
 # A windowed Windows exe has no console: give libraries that print or log somewhere to write.
 if sys.stdout is None:
