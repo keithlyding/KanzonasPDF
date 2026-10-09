@@ -3078,13 +3078,15 @@ class MainWindow(QMainWindow):
                                self.a_zoom_in, self.a_zoom_out, self.a_cad_mouse]),
             ("Sign", "large", [t["signature"], t["initials"]]),
         ])
+        # only markups here (PDF viewers can edit those); the Image tool and Erase content change
+        # the page itself and live on the Home tab with Add text and Edit objects
         r.add_tab("Markup", [
             ("Text", "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
                                t["note"], t["textbox"]]),
-            ("Callout & stamps", "large", [t["callout"], t["stamp"], t["image"], t["attach"]]),
+            ("Callout & stamps", "large", [t["callout"], t["stamp"], t["attach"]]),
             ("Shapes", "small", [t["rect"], t["ellipse"], t["cloud"], t["polygon"], t["line"],
                                  t["arrow"], t["polyline"], t["ink"]]),
-            ("Erase", "large", [t["eraser"], t["erasecontent"]]),
+            ("Erase", "large", [t["eraser"]]),
             ("Styles", "large", [self.a_props, self.a_chest]),
         ])
         # snapping is offered where it's used: Measure, Arrange (lining markups up) and View

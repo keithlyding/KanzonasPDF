@@ -46,7 +46,12 @@ Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within 
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Markup, Measure, Arrange, Review,
-Protect, Forms, Pages and View. Open, save, print, undo and redo sit left of the tabs, and the
+Protect, Forms, Pages and View. The <b>Markup</b> tab has only markups: comments, notes, text
+boxes, callouts, stamps, shapes and attached-file icons. Markups stay editable in any PDF
+viewer (Adobe Reader, browsers) until you flatten them. Everything else you add (pictures,
+Add text, signatures, initials, dates) is written into the page itself, so in a viewer it
+looks and acts flattened; Edit text and Edit objects (Home tab) still change it here, as
+Acrobat and PDF-XChange can. Open, save, print, undo and redo sit left of the tabs, and the
 Find box sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
 zoom box with zoom out / zoom in, like PDF-XChange Editor. The ribbon is compact: two rows of
@@ -263,7 +268,7 @@ then flag any later change.</li>
 <li><b>Hold Shift while resizing</b> from a corner: squares and circles stay perfect, other
 markups keep their proportions. Shift while dragging a line's end keeps it at 45&deg; steps.</li>
 <li><b>Eraser</b> (X): click a markup to delete it, or drag a box to delete everything inside.</li>
-<li><b>Erase content</b> (Shift+E; Home tab, Markup tab &gt; Erase, Tools menu): like Bluebeam's,
+<li><b>Erase content</b> (Shift+E; Home tab, Tools menu): like Bluebeam's,
 drag a box to permanently delete the page's own content inside it: text, images and lines.
 Lines and curves that cross the edge of the box are cut there, so a wall running through the box
 keeps its outside parts. A filled shape that crosses the edge stays whole (one entirely inside is
