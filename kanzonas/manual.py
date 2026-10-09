@@ -19,11 +19,14 @@ MANUAL = """
 <p>Apply redactions removes any vector path touching a mark, even when the path extends
 outside the marked area. Review nearby drawing geometry before saving. Search &amp; redact
 removes matching annotations completely, including private stamp data and appearances.</p>
-<p>Saving edits to an already encrypted PDF requires its original permissions (owner)
-password when that password is not yet known. If you opened it using only the owner
-password, preserving its encryption also requires the original open password. A failed or
-canceled password prompt leaves
-the existing file intact. Newly protected documents are excluded from automatic backups,
+<p>Saving edits to an already protected PDF keeps its own protection exactly as it was: the
+same open password, permissions password and permissions, with no password needed. So a form
+locked with a permissions password you don't know can still be filled in and saved, and stays
+locked. (Only in the rare case that the protection can't be carried over, KanzonasPDF asks
+for the original passwords; a failed or canceled prompt leaves the existing file intact.)
+Search &amp; redact only looks at the text of markups people see (comments, stamp labels,
+names and dates), not at their colors or shapes, so redacting a word like "fill" doesn't
+delete unrelated markups. Newly protected documents are excluded from automatic backups,
 and an existing recovery copy is removed when protection is added. Each recovery copy has
 its own unique identity, even for files with the same name.</p>
 <p>Copying, extracting and exporting require copying permission; Print requires printing

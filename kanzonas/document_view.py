@@ -631,6 +631,10 @@ class DocumentView(QScrollArea):
 
     # ---- undo / modify ----------------------------------------------------
     def _snapshot(self):
+        # a protected file's undo copies keep its encryption, so saving after an undo can
+        # still keep the original passwords and permissions (see save)
+        if self._orig_enc is not None and (self.doc.metadata or {}).get("encryption"):
+            return self.doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_KEEP)
         return self.doc.tobytes()
 
     def _restore(self, data):
@@ -641,6 +645,10 @@ class DocumentView(QScrollArea):
         page = self.current_page()
         self.doc.close()
         self.doc = pymupdf.open(stream=data, filetype="pdf")
+        if self.doc.needs_pass and self._orig_enc is not None:
+            for pw in (self._orig_enc.get("owner_pw"), self._orig_enc.get("user_pw")):
+                if pw and self.doc.authenticate(pw):
+                    break
         self.search_hits.clear()
         self._search_list = []
         self._search_text = None
@@ -2494,6 +2502,33 @@ class DocumentView(QScrollArea):
                   and hit(a.rect)]:
             pg.delete_annot(pg.load_annot(x))
 
+    # text a person typed or sees, in KanzonasPDF's private markup data (stamp labels, names
+    # and dates, notes): the rest is structure (kind, colors, geometry, picture data), where a
+    # search term like "rect" or "fill" must not match
+    PRIVATE_TEXT_KEYS = {"text", "detail", "label", "author", "subject", "title", "content"}
+
+    def _private_text(self, xref):
+        typ, val = self.doc.xref_get_key(xref, annotations.KZ_KEY)
+        if typ == "null" or not val:
+            return []
+        try:
+            data = json.loads(val)
+        except ValueError:
+            return [val]                    # unreadable: treat it all as text, to be safe
+        out = []
+
+        def walk(node, key=None):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    walk(v, k)
+            elif isinstance(node, list):
+                for v in node:
+                    walk(v, key)
+            elif isinstance(node, str) and key in self.PRIVATE_TEXT_KEYS:
+                out.append(node)
+        walk(data)
+        return out
+
     def _scrub_terms(self, terms):
         """Remove Search & redact terms from places outside the page drawing: form field
         values, markup text, bookmark titles and document properties."""
@@ -2514,8 +2549,8 @@ class DocumentView(QScrollArea):
             for x in [a.xref for a in pg.annots() if a.type[0] != pymupdf.PDF_ANNOT_REDACT]:
                 a = pg.load_annot(x)
                 info = {k: a.info.get(k) or "" for k in ("content", "subject", "title")}
-                private = self.doc.xref_get_key(x, annotations.KZ_KEY)[1]
-                if any(pat.search(v) for v in info.values()) or pat.search(private):
+                private = self._private_text(x)
+                if any(pat.search(v) for v in list(info.values()) + private):
                     # Drop the whole annotation: its appearance/private dictionaries can
                     # retain text even after updating the standard information fields.
                     pg.delete_annot(a)
@@ -3454,7 +3489,11 @@ class DocumentView(QScrollArea):
                 for ln in pg.get_links():
                     pg.delete_link(ln)
                 for ln in lst:
-                    pg.insert_link({k: v for k, v in ln.items() if k not in ("xref", "id")})
+                    # get_links gives the rectangle as displayed; insert_link wants it
+                    # unrotated (they differ on rotated pages)
+                    ln = {k: v for k, v in ln.items() if k not in ("xref", "id")}
+                    ln["from"] = pymupdf.Rect(ln["from"]) * pg.derotation_matrix
+                    pg.insert_link(ln)
             if toc:
                 self.doc.set_toc(toc)
             for pno, lst in links.items():
@@ -3462,7 +3501,8 @@ class DocumentView(QScrollArea):
                 have = [pymupdf.Rect(ln["from"]) for ln in pg.get_links()]
                 for ln in lst:
                     if pymupdf.Rect(ln["from"]) not in have:
-                        pg.insert_link({"kind": pymupdf.LINK_GOTO, "from": ln["from"],
+                        pg.insert_link({"kind": pymupdf.LINK_GOTO,
+                                        "from": pymupdf.Rect(ln["from"]) * pg.derotation_matrix,
                                         "page": ln["page"], "to": ln.get("to", pymupdf.Point(0, 0))})
         self.clear_selection()
         self.modify(do, structural=True)
@@ -3550,9 +3590,10 @@ class DocumentView(QScrollArea):
             w.update()
 
     # ---- saving -----------------------------------------------------------
-    def save(self, path=None):
-        path = os.path.abspath(path or self.path)
-        if self.dirty and self.security is None and self._orig_enc is not None and not self._orig_enc.get("owner_pw"):
+    def _ask_original_passwords(self):
+        """The original permissions (owner) and open passwords, asked for when unknown.
+        Raises PermissionError (and nothing is written) if they can't be given."""
+        if not self._orig_enc.get("owner_pw"):
             pw, ok = QInputDialog.getText(self, "Permissions password required",
                                           "Enter the owner password to preserve this file's protection:",
                                           QLineEdit.Password)
@@ -3563,7 +3604,7 @@ class DocumentView(QScrollArea):
             finally:
                 original.close()
             self._orig_enc["owner_pw"] = pw
-        if self.dirty and self.security is None and self._orig_enc is not None and self._orig_enc.get("needs_pass") and not self._orig_enc.get("user_pw"):
+        if self._orig_enc.get("needs_pass") and not self._orig_enc.get("user_pw"):
             pw, ok = QInputDialog.getText(self, "Open password required",
                                           "Enter the original open password, or explicitly choose new security settings:",
                                           QLineEdit.Password)
@@ -3574,6 +3615,9 @@ class DocumentView(QScrollArea):
             finally:
                 original.close()
             self._orig_enc["user_pw"] = pw
+
+    def save(self, path=None):
+        path = os.path.abspath(path or self.path)
         tmp = path + ".kanzonas-tmp"
         if self._fonts_added:
             # Text edits may embed whole system fonts; keep only the glyphs actually used.
@@ -3588,9 +3632,16 @@ class DocumentView(QScrollArea):
             # and protection stays exactly as it was
             with open(tmp, "wb") as f:
                 f.write(self._orig_data)
+        elif sec is None and self._orig_enc is not None and \
+                (self.doc.metadata or {}).get("encryption"):
+            # edited a protected file: keep its own encryption, open and permissions passwords
+            # and permissions exactly as they were (no password needed, nothing replaced)
+            self.doc.save(tmp, garbage=1, deflate=True, encryption=pymupdf.PDF_ENCRYPT_KEEP)
         elif sec is None and self._orig_enc is not None:
-            # edited a protected file: save it protected again (PyMuPDF writes a full save
-            # unencrypted unless told otherwise)
+            # the in-memory copy lost its encryption: protect it again with the original
+            # passwords, which must then be known (never invented: that would lock the owner
+            # out)
+            self._ask_original_passwords()
             enc = self._orig_enc
             owner = enc["owner_pw"]
             user = enc.get("user_pw") or (owner if enc.get("needs_pass") else "")

@@ -6,7 +6,7 @@ This revision addresses the twelve consolidated findings from the independent v0
 |---|---|
 | KZ80-001 | Applied redaction removes vector paths touching a mark, including crossing paths. |
 | KZ80-002 | Search redaction removes matching annotations and private stamp dictionaries; selected-redaction application also scrubs its selected search terms. |
-| KZ80-003 | Saving encrypted edits requires the original owner password; owner-only login also requires the original user/open password unless security is explicitly changed. |
+| KZ80-003 | Saving encrypted edits keeps the file's own encryption (`PDF_ENCRYPT_KEEP`): the original open and owner passwords and permissions are preserved without being re-entered, and no password is ever invented. Undo copies keep the encryption too. Only if it can't be carried over are the original passwords asked for. |
 | KZ80-004 | New protection deletes the document's existing recovery copy and excludes protected documents from both scheduled and direct backup paths. |
 | KZ80-005 | Recovery filenames include UUIDs so equal basenames and timestamps remain distinct. |
 | KZ80-006 | Selected-page flattening restores outgoing links, labels and stored measurement scale. |
@@ -19,9 +19,17 @@ This revision addresses the twelve consolidated findings from the independent v0
 
 OCR explicitly disables ONNX Runtime telemetry before recognition engine/session construction. The user manual and changelog describe changed behavior, and the version is bumped to 0.81.
 
+## Review follow-up
+
+A review of this change found and fixed three problems, each with a regression test that fails on the first version:
+
+- Saving required the owner password, so a form protected only by an unknown permissions password (common for official forms) could no longer be saved after filling it in. Fixed by keeping the original encryption instead.
+- Search redaction also searched the private markup data's structure, so a term such as "rect" or "fill" deleted unrelated markups. It now matches only the text people see.
+- Flattening selected pages put links back in the wrong place on rotated pages (displayed vs unrotated coordinates); the same mistake in restoring incoming links is fixed too.
+
 ## Verification
 
-- Fourteen automated audit regression tests pass on the recorded Linux/Python/Qt environment.
+- Eighteen automated audit regression tests pass on the recorded Linux/Python/Qt environment.
 - The built-in self-test reports 36 passes and one Windows certificate-store skip.
 - The repository CAD campaign completed on ordinary and rotated floor plans, a layered DXF plot, a heavy site plan and a scanned plan, without failed operations.
 - The Windows workflow now runs the audit regression tests before packaging. Windows executable/installer and certificate-store verification have not run locally.
@@ -40,6 +48,6 @@ Secure redaction now removes complete vector paths touching a mark. Long lines o
 
 Search redaction removes matching annotations completely, including appearances and private properties, rather than merely changing their visible comment text.
 
-Encrypted edits can require another password prompt. A failed or canceled prompt leaves the destination unchanged. Users who cannot supply both original roles can choose an explicit protection change after owner authorization; credentials are never silently equated.
+Encrypted edits keep the file's own encryption, so no password prompt is normally needed (a form protected only by an unknown permissions password can still be filled in and saved). Credentials are never invented or silently equated.
 
 Native Windows testing, additional PDF standards/compatibility corpora, accessibility and other previously untested audit areas remain outstanding.

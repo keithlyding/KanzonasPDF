@@ -37,22 +37,72 @@ class AuditRegressions(unittest.TestCase):
         else: d.save(p, encryption=F.PDF_ENCRYPT_AES_256, user_pw='user', owner_pw='owner', permissions=permissions)
         d.close(); v = DocumentView(str(p)); self.views.append(v); return v
 
+    def assert_original_protection(self, out, perms):
+        d = F.open(out)
+        self.assertTrue(d.needs_pass)
+        self.assertEqual(d.authenticate('user'), 2); d.close()
+        d = F.open(out); self.assertEqual(d.authenticate('owner'), 4); d.close()
+        d = F.open(out); d.authenticate('user')
+        self.assertEqual(d.permissions & perms, perms); d.close()
+
     def test_owner_authority(self):
-        v = self.document(permissions=F.PDF_PERM_MODIFY | F.PDF_PERM_ANNOTATE)
+        # saving edits keeps the file's own encryption: both original passwords still work
+        # and no password is invented (an invented owner password locks the owner out)
+        perms = F.PDF_PERM_MODIFY | F.PDF_PERM_ANNOTATE
+        v = self.document(permissions=perms)
         v.rotate_page(0, 90); out = self.root / 'protected.pdf'
-        with self.assertRaises(PermissionError): v.save(str(out))
-        self.assertFalse(out.exists()); self.assertTrue(v.dirty)
-        self.password = 'owner'; v.save(str(out)); d = F.open(out)
-        self.assertEqual(d.authenticate('user'), 2); self.assertEqual(d.authenticate('owner'), 4); d.close()
+        asked = QInputDialog.getText.call_count
+        v.save(str(out))
+        self.assertEqual(QInputDialog.getText.call_count, asked, "asked for a password to save")
+        self.assert_original_protection(out, perms)
 
     def test_owner_only_open_requires_original_user_password(self):
         self.password = 'owner'
-        v = self.document('owner-login', F.PDF_PERM_MODIFY | F.PDF_PERM_ANNOTATE)
+        perms = F.PDF_PERM_MODIFY | F.PDF_PERM_ANNOTATE
+        v = self.document('owner-login', perms)
         v.rotate_page(0, 90); out = self.root / 'owner-save.pdf'
-        with self.assertRaises(PermissionError): v.save(str(out))
-        self.password = 'user'; v.save(str(out)); d = F.open(out)
-        self.assertEqual(d.authenticate('user'), 2)
+        v.save(str(out))
+        self.assert_original_protection(out, perms)
+
+    def test_fill_owner_only_form_and_save(self):
+        # a form with only a permissions password (common for official forms) can be filled
+        # in and saved without knowing that password, and stays protected
+        p = self.root / 'gov.pdf'; d = F.open(); pg = d.new_page()
+        w = F.Widget(); w.field_name = 'Name'; w.field_type = F.PDF_WIDGET_TYPE_TEXT
+        w.rect = F.Rect(50, 50, 250, 70); pg.add_widget(w)
+        perms = F.PDF_PERM_FORM | F.PDF_PERM_PRINT
+        d.save(p, encryption=F.PDF_ENCRYPT_AES_256, owner_pw='owner', user_pw='', permissions=perms)
+        d.close(); v = DocumentView(str(p)); self.views.append(v)
+        pg = v.doc[0]; v._set_field(0, next(pg.widgets()).xref, 'Jane')
+        asked = QInputDialog.getText.call_count
+        out = self.root / 'gov-filled.pdf'; v.save(str(out))
+        self.assertEqual(QInputDialog.getText.call_count, asked)
+        d = F.open(out); pg = d[0]
+        self.assertEqual(next(pg.widgets()).field_value, 'Jane')
+        self.assertFalse(d.permissions & F.PDF_PERM_MODIFY)
         self.assertEqual(d.authenticate('owner'), 4); d.close()
+
+    def test_undo_then_save_keeps_protection(self):
+        perms = F.PDF_PERM_MODIFY | F.PDF_PERM_ANNOTATE
+        v = self.document('undo-save', perms)
+        v.rotate_page(0, 90); v.rotate_page(1, 90); v.undo()
+        out = self.root / 'undo-save-out.pdf'; v.save(str(out))
+        self.assert_original_protection(out, perms)
+
+    def test_search_redaction_keeps_unrelated_markups(self):
+        # a term that only appears in KanzonasPDF's structure data ("rect") must not delete
+        # a rectangle markup
+        v = self.document(); pg = v.doc[0]
+        A.write(pg, {'kind': 'rect', 'rect': F.Rect(300, 300, 400, 400),
+                     'props': dict(A.DEFAULTS['rect'])})
+        v._scrub_terms({'rect'})
+        pg = v.doc[0]; self.assertEqual(len(list(pg.annots())), 1)
+
+    def test_flatten_keeps_link_position_on_rotated_page(self):
+        v = self.document(); v.doc[0].set_rotation(90)
+        before = [ln['from'] for ln in v.doc[0].get_links()]
+        v.flatten([0])
+        self.assertEqual([ln['from'] for ln in v.doc[0].get_links()], before)
 
     def test_protected_backup(self):
         v = self.document(); a = autosave.Autosaver(None, 0); a.backup(v); old = v._backup_path
