@@ -124,6 +124,9 @@ class DocumentView(QScrollArea):
         self._search_list = []
         self._search_pos = -1
         self._search_text = None
+        self._search_cur = None         # (page, match) shown now
+        self._search_todo = None        # pages still to search (a search runs in slices)
+        self._search_gen = 0            # bumped to stop a running search
         self._undo = []
         self._redo = []
         self._pan_origin = None
@@ -335,7 +338,7 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
         order = annotations.annot_order(page)
         info = {}
-        for an in page.annots():
+        for an in annotations.each_annot(page):
             if an.type[0] == pymupdf.PDF_ANNOT_POPUP:
                 continue
             m = annotations.read(an)
@@ -397,7 +400,7 @@ class DocumentView(QScrollArea):
         for i in range(self.doc.page_count):
             pg = self.doc[i]
             items = []
-            for an in pg.annots():
+            for an in annotations.each_annot(pg):
                 if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
                         pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
                     continue
@@ -432,7 +435,7 @@ class DocumentView(QScrollArea):
     def markup_authors(self):
         names = set()
         for i in range(self.doc.page_count):
-            for an in self.doc[i].annots():
+            for an in annotations.each_annot(self.doc[i]):
                 if an.type[0] != pymupdf.PDF_ANNOT_POPUP:
                     names.add(an.info.get("title", "") or "")
         return sorted(names)
@@ -643,6 +646,7 @@ class DocumentView(QScrollArea):
 
     def _restore(self, data):
         self._clear_caches()
+        self.markups_changed = None
         self.selection = None
         self.selected_model = None
         self.extra = []
@@ -656,6 +660,9 @@ class DocumentView(QScrollArea):
         self.search_hits.clear()
         self._search_list = []
         self._search_text = None
+        self._search_cur = None
+        self._search_todo = None
+        self._search_gen += 1
         self._build_pages()
         self.goto_page(min(page, self.doc.page_count - 1))
         self.dirty = True
@@ -682,8 +689,11 @@ class DocumentView(QScrollArea):
         # a structural change (pages added, removed, moved) or an unknown extent clears all
         if structural or pages is None:
             self._clear_caches()
+            self.markups_changed = None             # the markups list re-reads everything
         else:
             self._clear_page_caches(pages)
+            if self.markups_changed is not None:
+                self.markups_changed |= set(pages)
         try:
             fn()
         except Exception as ex:
@@ -698,11 +708,14 @@ class DocumentView(QScrollArea):
         self.dirty = True
         # any edit can change the page text: the next Find searches again
         self._search_text = None
+        self._search_todo = None
+        self._search_gen += 1
         if structural:
             page = self.current_page()
             self.search_hits.clear()
             self._search_list = []
             self._search_text = None
+            self._search_cur = None
             self.selection = None
             self.selected_model = None
             self.extra = []
@@ -747,6 +760,14 @@ class DocumentView(QScrollArea):
         if value:
             self.revision += 1
         self._dirty = bool(value)
+
+    markups_changed = None      # pages whose markups changed since the list last read them
+                                # (None: all of them)
+
+    def take_markup_changes(self):
+        """Pages to re-read for the markups list (None: all), and start counting afresh."""
+        changed, self.markups_changed = self.markups_changed, set()
+        return changed
 
     _views = None                       # all open documents (weak), for the shared budget
 
@@ -1452,7 +1473,7 @@ class DocumentView(QScrollArea):
         out = []
         for i in range(self.doc.page_count):
             page = self.doc[i]
-            for an in page.annots():
+            for an in annotations.each_annot(page):
                 if an.type[0] == pymupdf.PDF_ANNOT_FILE_ATTACHMENT:
                     info = an.file_info
                     out.append((i, an.xref, info.get("filename", ""), info.get("length", 0),
@@ -1721,7 +1742,7 @@ class DocumentView(QScrollArea):
     @classmethod
     def _annot_at(cls, page, pt):
         """Smallest annotation actually under the point (so big shapes don't swallow clicks)."""
-        hits = [an for an in page.annots() if cls._annot_hit(an, pt)]
+        hits = [an for an in annotations.each_annot(page) if cls._annot_hit(an, pt)]
         if not hits:
             return None
         return min(hits, key=lambda an: an.rect.get_area())
@@ -1832,7 +1853,7 @@ class DocumentView(QScrollArea):
         """Select the markups lying entirely inside box. Returns how many."""
         page = self.doc[index]
         found = []
-        for an in page.annots():
+        for an in annotations.each_annot(page):
             if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
                     pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
                 continue
@@ -2118,7 +2139,7 @@ class DocumentView(QScrollArea):
         if index not in self._card_cache:
             cards = []
             page = self.doc[index]
-            for a in page.annots():
+            for a in annotations.each_annot(page):
                 if a.type[0] not in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
                                      pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
                     continue
@@ -2239,7 +2260,7 @@ class DocumentView(QScrollArea):
         on this line of text: they travel with it when the text is moved."""
         box = pymupdf.Rect(line["bbox"])
         out = []
-        for an in page.annots():
+        for an in annotations.each_annot(page):
             t = an.type[0]
             if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
                      pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
@@ -2651,7 +2672,7 @@ class DocumentView(QScrollArea):
         n = 0
         for i in range(self.doc.page_count):
             pg = self.doc[i]
-            n += sum(1 for a in pg.annots() if a.type[0] == pymupdf.PDF_ANNOT_REDACT)
+            n += sum(1 for a in annotations.each_annot(pg) if a.type[0] == pymupdf.PDF_ANNOT_REDACT)
         return n
 
     def apply_redactions(self, scrub=False):
@@ -3100,7 +3121,7 @@ class DocumentView(QScrollArea):
         out = []
         for i in range(self.doc.page_count):
             pg = self.doc[i]
-            for an in pg.annots():
+            for an in annotations.each_annot(pg):
                 m = annotations.read(an) if an.type[0] == pymupdf.PDF_ANNOT_FREE_TEXT else None
                 if m and m["kind"] == "placeholder":
                     out.append((i, an.xref, m["props"].get("for", "initials"), m["rect"]))
@@ -3613,30 +3634,105 @@ class DocumentView(QScrollArea):
         out.close()
 
     # ---- search -----------------------------------------------------------
+    SEARCH_SLICE = 0.03         # seconds of searching per turn of the event loop
+
     def find(self, text, backwards=False):
+        """Find text: go to the next (previous) match. A new search starts at the current
+        page and runs in short slices, so the window stays responsive on long documents: it
+        jumps to the first match as soon as it's found and keeps counting the rest. Returns
+        the number of matches found so far, or -1 while still searching with none yet."""
         if not text:
             self.clear_search()
             return 0
         if text != self._search_text:
-            self._search_text = text
-            self.search_hits = {}
-            self._search_list = []
-            for i, page in enumerate(self.doc):
-                hits = page.search_for(text)
-                if hits:
-                    self.search_hits[i] = hits
-                    self._search_list.extend((i, k) for k in range(len(hits)))
-            # start at the first hit at or after the current page
-            cur = self.current_page()
-            self._search_pos = next((n - 1 for n, (i, _) in enumerate(self._search_list)
-                                     if i >= cur), -1)
-            for w in self.pages:
-                w.update()
-        if not self._search_list:
-            return 0
-        step = -1 if backwards else 1
-        self._search_pos = (self._search_pos + step) % len(self._search_list)
-        i, k = self._search_list[self._search_pos]
+            self._start_search(text, backwards)
+            self._search_step()                     # small documents finish right here
+            if self._search_cur is None:
+                return -1 if self._search_todo else 0
+            return self._search_count()
+        if not self.search_hits:
+            return -1 if self._search_todo else 0
+        self._show_hit(self._step_hit(self._search_cur, backwards))
+        return self._search_count()
+
+    def _start_search(self, text, backwards):
+        from collections import deque
+        self._search_text = text
+        self.search_hits = {}
+        self._search_list = []
+        self._search_cur = None
+        self._search_back = backwards
+        n, cur = self.doc.page_count, self.current_page()
+        pages = list(range(cur, n)) + list(range(0, cur)) if not backwards else \
+            list(range(cur, -1, -1)) + list(range(n - 1, cur, -1))
+        self._search_todo = deque(pages)
+        self._search_gen = getattr(self, "_search_gen", 0) + 1
+        for w in self.pages:
+            w.update()
+
+    def _search_step(self, gen=None):
+        """Search pages for SEARCH_SLICE seconds, then let the window breathe."""
+        if gen is not None and gen != self._search_gen:
+            return                                  # a newer search (or an edit) took over
+        text = self._search_text
+        if text is None or not self._search_todo:
+            return
+        start = time.monotonic()
+        first = True
+        while self._search_todo:                    # at least one page per slice
+            if not first and time.monotonic() - start >= self.SEARCH_SLICE:
+                break
+            first = False
+            i = self._search_todo.popleft()
+            if i >= self.doc.page_count:
+                continue
+            hits = self.doc[i].search_for(text)
+            if hits:
+                self.search_hits[i] = hits
+                self.pages[i].update()
+                if self._search_cur is None:        # first match in the search direction
+                    self._show_hit((i, len(hits) - 1 if self._search_back else 0))
+        if self._search_todo:
+            done = self.doc.page_count - len(self._search_todo)
+            self.statusMessage.emit(self._search_status() +
+                                    f" (searching, {done} of {self.doc.page_count} pages)")
+            gen = self._search_gen
+            QTimer.singleShot(0, lambda: self._search_step(gen))
+        elif self._search_cur is None:
+            self.statusMessage.emit("No matches")
+        else:
+            self.statusMessage.emit(self._search_status())
+
+    def _search_count(self):
+        return sum(len(h) for h in self.search_hits.values())
+
+    def _step_hit(self, hit, backwards=False):
+        """The match after (before) hit, in page order, wrapping around."""
+        import bisect
+        pages = sorted(self.search_hits)
+        if hit is None or hit[0] not in self.search_hits:
+            i = pages[-1] if backwards else pages[0]
+            return (i, len(self.search_hits[i]) - 1 if backwards else 0)
+        i, k = hit
+        if not backwards and k + 1 < len(self.search_hits[i]):
+            return (i, k + 1)
+        if backwards and k > 0:
+            return (i, k - 1)
+        n = bisect.bisect_left(pages, i)
+        i = pages[(n + (-1 if backwards else 1)) % len(pages)]
+        return (i, len(self.search_hits[i]) - 1 if backwards else 0)
+
+    def _search_status(self):
+        if self._search_cur is None:
+            return "Searching..."
+        i, k = self._search_cur
+        n = sum(len(h) for p, h in self.search_hits.items() if p < i) + k + 1
+        return f"Match {n} of {self._search_count()}" + ("+" if self._search_todo else "")
+
+    def _show_hit(self, hit):
+        old = self._search_cur
+        self._search_cur = hit
+        i, k = hit
         w = self.pages[i]
         r = w.to_screen(self.search_hits[i][k])
         top = w.y() + r.y()
@@ -3647,21 +3743,21 @@ class DocumentView(QScrollArea):
         left = w.x() + r.x()
         if not (hbar.value() < left < hbar.value() + self.viewport().width() - 40):
             hbar.setValue(int(left - 40))
-        for w in self.pages:
-            if w.index in self.search_hits:
-                w.update()
-        self.statusMessage.emit(f"Match {self._search_pos + 1} of {len(self._search_list)}")
-        return len(self._search_list)
+        for p in {i, old[0] if old else i}:
+            if 0 <= p < len(self.pages):
+                self.pages[p].update()
+        self.statusMessage.emit(self._search_status())
 
     def current_hit(self):
-        if 0 <= self._search_pos < len(self._search_list):
-            return self._search_list[self._search_pos]
-        return None
+        return self._search_cur
 
     def clear_search(self):
         self.search_hits = {}
         self._search_list = []
         self._search_text = None
+        self._search_cur = None
+        self._search_todo = None
+        self._search_gen = getattr(self, "_search_gen", 0) + 1     # stops a running search
         self._search_pos = -1
         for w in self.pages:
             w.update()

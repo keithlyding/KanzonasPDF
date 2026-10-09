@@ -98,7 +98,7 @@ def markup_points(model):
 
 def markup_index(page):
     idx = PointIndex()
-    for an in page.annots():
+    for an in A.each_annot(page):
         if an.type[0] in (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_REDACT):
             continue
         try:

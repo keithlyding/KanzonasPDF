@@ -24,12 +24,15 @@ def _date(pdf_date):
     return d
 
 
-def collect(doc):
-    """[(page index, xref, type label, text, author, date, color hex)]"""
+def collect(doc, pages=None):
+    """[(page index, xref, type label, text, author, date, color hex)] for the pages given
+    (default: all)."""
     rows = []
-    for i in range(doc.page_count):
+    for i in (range(doc.page_count) if pages is None else sorted(pages)):
+        if not 0 <= i < doc.page_count:
+            continue
         page = doc[i]
-        for a in page.annots():
+        for a in A.each_annot(page):
             if a.type[0] in _SKIP:
                 continue
             model = A.read(a)
@@ -102,8 +105,25 @@ class MarkupsPanel(QWidget):
         self.type_filter.currentIndexChanged.connect(self._apply_filter)
         self.text_filter.textChanged.connect(self._apply_filter)
 
-    def refresh(self, doc):
-        self._rows = collect(doc) if doc is not None else []
+    def refresh(self, doc, pages=None):
+        """Rebuild the list. pages: only these pages' markups changed since the last refresh
+        of this same document (None: read them all)."""
+        if doc is None:
+            self._doc, self._by_page = None, {}
+        elif pages is None or doc is not getattr(self, "_doc", None):
+            self._doc, self._by_page = doc, {}
+            for row in collect(doc):
+                self._by_page.setdefault(row[0], []).append(row)
+        else:
+            fresh = {}
+            for row in collect(doc, pages):
+                fresh.setdefault(row[0], []).append(row)
+            for p in pages:
+                self._by_page.pop(p, None)
+            self._by_page.update(fresh)
+            for p in [p for p in self._by_page if p >= doc.page_count]:
+                del self._by_page[p]
+        self._rows = [r for p in sorted(self._by_page) for r in self._by_page[p]]
         types = sorted({r[2] for r in self._rows})
         cur = self.type_filter.currentText()
         self.type_filter.blockSignals(True)

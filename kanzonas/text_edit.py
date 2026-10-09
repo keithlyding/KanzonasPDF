@@ -320,7 +320,8 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
     Raises ValueError (before changing anything) if no font can write the new text."""
     main = main_span(line)
     first = line["spans"][0]
-    if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in page.annots()):
+    from .annotations import each_annot
+    if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
         # removing the old text applies every redaction on the page, pending ones included
         raise ValueError("Apply or remove the redaction marks on this page before editing "
                          "its text.")
