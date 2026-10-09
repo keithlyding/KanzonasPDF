@@ -7,8 +7,7 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
-from PySide6.QtCore import Qt, Signal, QTimer, QObject, QEvent
-from PySide6.QtCore import QRectF
+from PySide6.QtCore import Qt, Signal, QTimer, QObject, QEvent, QPointF, QRectF
 from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor, QImage)
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
@@ -224,7 +223,11 @@ class DocumentView(QScrollArea):
         current one, so a long session over a big file doesn't keep every page it visited."""
         keep = {cur}
         if self.text_sel:
-            keep.add(self.text_sel[0])
+            for i, _words in self.text_sel:
+                keep.add(i)
+        if self._text_drag:
+            for i, _mode, _words in self._text_drag:
+                keep.add(i)
         if self.obj_sel:
             keep.add(self.obj_sel[0])
         for cache in (self._dlists, self._line_cache, self._word_cache, self._snap_markups,
@@ -833,7 +836,8 @@ class DocumentView(QScrollArea):
         self._line_cache = {}
         self._word_cache = {}
         self._card_cache = {}
-        self.text_sel = None           # (page index, selected character units) for copy / cut
+        self.text_sel = None           # [(page index, selected character units), ...]
+        self._text_drag = None         # [(page, mode, words)] while a text drag is in progress
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
         self._obj_cache = {}           # page index -> page_objects.Objects (Edit objects)
         self.obj_sel = None            # (page index, [objects]) selected with Edit objects
@@ -861,6 +865,7 @@ class DocumentView(QScrollArea):
         for key in [k for k in self._tiles if k[0] in pages]:
             del self._tiles[key]
         self.text_sel = None
+        self._text_drag = None
         self.obj_sel = None
 
     def _words(self, index):
@@ -958,6 +963,138 @@ class DocumentView(QScrollArea):
         i, j = order.index(ws), order.index(we)
         return ("text", order[min(i, j):max(i, j) + 1])
 
+    def text_selection_span(self, i0, a, i1, b, box=False):
+        """[(page, mode, words)] for a drag from point a on page i0 to point b on page i1.
+
+        One page keeps the usual selection. Across pages, text the drag started on is taken
+        in reading order from that character through the character under the pointer, including
+        every page in between. A drag that starts away from text (or Ctrl+drag) takes the words
+        on each page that the drag covers."""
+        a, b = pymupdf.Point(a), pymupdf.Point(b)
+        if i0 == i1 and not box:
+            mode, words = self.text_selection(i0, a, b)
+            return [(i0, mode, words)]
+        if i0 == i1:
+            rect = pymupdf.Rect(a, b).normalize()
+            words = [w for w in self._words(i0) if self._word_in_box(pymupdf.Rect(w[:4]), rect)]
+            return [(i0, "box", words)]
+        started_on_text = bool(self._words(i0)) and self._word_near(self._words(i0), a, self.NEAR) is not None
+        if box or not started_on_text:
+            return self._box_span(i0, a, i1, b)
+        return self._flow_span(i0, a, i1, b)
+
+    def _flow_span(self, i0, a, i1, b):
+        """Reading-order text from the press to the pointer, across page breaks."""
+        def anchor(index, pt):
+            words = self._words(index)
+            if not words:
+                return None
+            i = self._word_near(words, pt)
+            return None if i is None else words[i]
+
+        w0, w1 = anchor(i0, a), anchor(i1, b)
+        if i0 <= i1:
+            first, first_w, last, last_w = i0, w0, i1, w1
+        else:
+            first, first_w, last, last_w = i1, w1, i0, w0
+        spans = []
+
+        def chunk(index, word, through_end):
+            order = self._reading_order(self._words(index))
+            if not order or word is None:
+                return
+            try:
+                i = order.index(word)
+            except ValueError:
+                spans.append((index, "text", order))
+                return
+            part = order[i:] if through_end else order[:i + 1]
+            if part:
+                spans.append((index, "text", part))
+
+        chunk(first, first_w, True)
+        for p in range(first + 1, last):
+            order = self._reading_order(self._words(p))
+            if order:
+                spans.append((p, "text", order))
+        if last != first:
+            chunk(last, last_w, False)
+        return spans
+
+    def _box_span(self, i0, a, i1, b):
+        """Words on each page the drag crosses, from the start point toward the end point."""
+        lo, hi = (i0, i1) if i0 <= i1 else (i1, i0)
+        spans = []
+        for p in range(lo, hi + 1):
+            words = self._words(p)
+            if p == i0 and i1 > i0:
+                picked = [w for w in words if w[3] >= a.y]
+            elif p == i0 and i1 < i0:
+                picked = [w for w in words if w[1] <= a.y]
+            elif p == i1 and i0 < i1:
+                picked = [w for w in words if w[1] <= b.y]
+            elif p == i1 and i0 > i1:
+                picked = [w for w in words if w[3] >= b.y]
+            else:
+                picked = list(words)
+            if picked:
+                spans.append((p, "box", self._reading_order(picked)))
+        return spans
+
+    def page_point_from(self, origin, pos):
+        """(page index, PDF point) under a point in a page widget's coordinates.
+
+        The point may be outside that page (the drag crossed the gap). Pages are stacked, so
+        the page is found by height, and the point is clamped onto it."""
+        if not self.pages:
+            return origin.index, origin.to_pdf(pos)
+        content = self.widget().mapFromGlobal(origin.mapToGlobal(pos))
+        y = content.y()
+        pages = self.pages
+        lo, hi = 0, len(pages)
+        while lo < hi:
+            m = (lo + hi) // 2
+            w = pages[m]
+            if w.y() + w.height() >= y:
+                hi = m
+            else:
+                lo = m + 1
+        if lo >= len(pages):
+            best = len(pages) - 1
+        elif y >= pages[lo].y() or lo == 0:
+            best = lo
+        else:
+            prev = pages[lo - 1]
+            best = lo - 1 if y - (prev.y() + prev.height()) <= pages[lo].y() - y else lo
+        w = pages[best]
+        local = w.mapFromGlobal(origin.mapToGlobal(pos))
+        clamped = QPointF(min(max(local.x(), 0), max(0, w.width() - 1)),
+                          min(max(local.y(), 0), max(0, w.height() - 1)))
+        return best, w.to_pdf(clamped)
+
+    def autoscroll_toward(self, global_pos):
+        """Scroll a little when a drag is held against the top or bottom of the window,
+        so the selection can reach the next page."""
+        p = self.viewport().mapFromGlobal(global_pos)
+        margin = 28
+        if p.y() < margin:
+            dy = p.y() - margin
+        elif p.y() > self.viewport().height() - margin:
+            dy = p.y() - (self.viewport().height() - margin)
+        else:
+            return
+        dy = max(-28, min(28, dy))
+        bar = self.verticalScrollBar()
+        bar.setValue(int(bar.value() + dy))
+
+    def _set_text_drag(self, spans):
+        old = {s[0] for s in (self._text_drag or [])}
+        self._text_drag = [s for s in (spans or []) if s[2]] or None
+        new = {s[0] for s in (self._text_drag or [])}
+        for i in old | new:
+            if 0 <= i < len(self.pages):
+                self.pages[i].update()
+
     @staticmethod
     def line_rects(words):
         lines, order = {}, []
@@ -986,24 +1123,30 @@ class DocumentView(QScrollArea):
 
     # ---- copy, cut, paste ------------------------------------------------------
     def set_text_selection(self, index, words):
-        old = self.text_sel
-        self.text_sel = (index, list(words)) if words else None
-        for i in {index, old[0] if old else index}:
+        self.set_text_spans([(index, words)] if words else [])
+
+    def set_text_spans(self, spans):
+        old = {i for i, _words in (self.text_sel or [])}
+        clean = [(i, list(words)) for i, words in spans if words]
+        self.text_sel = clean or None
+        for i in old | {i for i, _words in clean}:
             if 0 <= i < len(self.pages):
                 self.pages[i].update()
 
     def clear_text_selection(self):
-        if self.text_sel is not None:
-            self.set_text_selection(self.text_sel[0], [])
+        if self.text_sel:
+            self.set_text_spans([])
 
     def select_all_text(self):
         index = self.current_page()
         words = self._words(index)
         self.set_text_selection(index, words)
-        return len(words)
+        return len(self.selected_text())
 
     def selected_text(self):
-        return self._words_text(self.text_sel[1]) if self.text_sel else ""
+        if not self.text_sel:
+            return ""
+        return "\n\n".join(self._words_text(words) for _i, words in self.text_sel)
 
     def copy(self):
         """Copy the selected text, or the selected markups. Returns what was copied."""
@@ -1072,22 +1215,21 @@ class DocumentView(QScrollArea):
         """Cut the selected text (removed from the page) or the selected markups."""
         what = self.copy()
         if what == "text":
-            index, words = self.text_sel
-            rects = []
-            for w in words:
-                r = pymupdf.Rect(w[:4])
-                padx, pady = r.width * 0.08, r.height * 0.15
-                rects.append(pymupdf.Rect(r.x0 + padx, r.y0 + pady, r.x1 - padx, r.y1 - pady))
+            spans = list(self.text_sel)
 
             def do():
-                pg = self.doc[index]
-                for r in rects:
-                    pg.add_redact_annot(r, fill=False)
-                pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
-                                    graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
-                                    text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+                for index, words in spans:
+                    pg = self.doc[index]
+                    for w in words:
+                        r = pymupdf.Rect(w[:4])
+                        padx, pady = r.width * 0.08, r.height * 0.15
+                        pg.add_redact_annot(pymupdf.Rect(r.x0 + padx, r.y0 + pady,
+                                                         r.x1 - padx, r.y1 - pady), fill=False)
+                    pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
+                                        graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
+                                        text=pymupdf.PDF_REDACT_TEXT_REMOVE)
             self.clear_text_selection()
-            self.modify(do, [index])
+            self.modify(do, [i for i, _words in spans])
         elif what == "markups":
             self.delete_selected()
         return what
@@ -1250,50 +1392,83 @@ class DocumentView(QScrollArea):
         return made.get("xref")
 
     def apply_text_tool(self, index, tool, a, b):
-        mode, words = self.text_selection(index, a, b)
+        self.apply_text_span(tool, (index, a), (index, b))
+
+    def apply_text_span(self, tool, start, end, box=False):
+        """Select or mark up the text from start (page, point) to end, across pages."""
+        i0, a = start
+        i1, b = end
+        spans = self.text_selection_span(i0, a, i1, b, box=box)
         if tool == "redact":
-            rects = self.line_rects(words) if mode == "text" else [pymupdf.Rect(a, b).normalize()]
-            rects = [r for r in rects if r.width > 1 and r.height > 1]
-            if rects:
-                self.mark_redactions(index, rects)
+            self._redact_text_spans(spans, a, b)
             return
-        if not words:
+        usable = [(i, words) for i, _mode, words in spans if words]
+        if not usable:
             if tool != "select":
                 self.statusMessage.emit("No text there to mark up")
             return
-        text = self._words_text(words)
         if tool == "select":
-            # keep the selection: Ctrl+C copies, Ctrl+X cuts, Ctrl+V pastes
-            self.set_text_selection(index, words)
-            self.statusMessage.emit(f"{len(text)} characters selected: Ctrl+C to copy, "
+            self.set_text_spans(usable)
+            text = self.selected_text()
+            extra = f" on {len(usable)} pages" if len(usable) > 1 else ""
+            self.statusMessage.emit(f"{len(text)} characters selected{extra}: Ctrl+C to copy, "
                                     "Ctrl+X to cut")
             return
-        self._markup_words(index, tool, words, text)
+        self._markup_spans(tool, usable)
+
+    def _redact_text_spans(self, spans, a, b):
+        if len(spans) == 1 and spans[0][1] == "box":
+            rect = pymupdf.Rect(a, b).normalize()
+            by_page = {spans[0][0]: [rect]} if rect.width > 1 and rect.height > 1 else {}
+        else:
+            by_page = {}
+            for i, _mode, words in spans:
+                rects = [r for r in self.line_rects(words) if r.width > 1 and r.height > 1]
+                if rects:
+                    by_page[i] = rects
+        if not by_page:
+            return
+
+        def do():
+            for i, rects in by_page.items():
+                pg = self.doc[i]
+                for r in rects:
+                    an = pg.add_redact_annot(r, fill=(0, 0, 0))
+                    an.set_colors(stroke=(0.85, 0, 0))
+                    an.set_info(title=annotations.author(), content="Redaction (not applied yet)")
+                    an.update()
+        self.modify(do, list(by_page))
 
     def markup_text_selection(self, tool):
         """Right-click menu: highlight / underline / strike out / comment on / redact the
-        selected text."""
+        selected text. A selection that crosses pages is marked on each page."""
         if not self.text_sel:
             return
-        index, words = self.text_sel
+        spans = [(i, "text", words) for i, words in self.text_sel]
         if tool == "redact":
-            rects = [r for r in self.line_rects(words) if r.width > 1 and r.height > 1]
-            if rects:
-                self.mark_redactions(index, rects)
+            self._redact_text_spans(spans, None, None)
         else:
-            self._markup_words(index, tool, words, self._words_text(words))
+            self._markup_spans(tool, [(i, words) for i, words in self.text_sel])
         self.clear_text_selection()
 
-    def _markup_words(self, index, tool, words, text):
-        model = {"kind": tool, "props": self.tool_props(tool),
-                 "quads": [r.quad for r in self.line_rects(words)],
-                 "text": text if tool != "comment" else ""}
+    def _markup_spans(self, tool, spans):
+        text = "\n\n".join(self._words_text(words) for _i, words in spans)
+        note = ""
         if tool == "comment":
             note, ok = dialogs.get_text(self, "Comment", f"Comment on “{text[:60]}”:")
             if not ok:
                 return
-            model["text"] = note
-        self._create(index, model)
+
+        def do():
+            for index, words in spans:
+                model = {"kind": tool, "props": self.tool_props(tool),
+                         "quads": [r.quad for r in self.line_rects(words)],
+                         "text": note if tool == "comment" else self._words_text(words)}
+                annotations.write(self.doc[index], model)
+        self.modify(do, [i for i, _words in spans], permission=pymupdf.PDF_PERM_ANNOTATE)
+
+    def _markup_words(self, index, tool, words, text):
+        self._markup_spans(tool, [(index, words)])
 
     def apply_drag_tool(self, index, tool, a, b, is_click):
         page = self.doc[index]

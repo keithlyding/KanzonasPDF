@@ -5,6 +5,7 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 
 ## Unreleased
 
+- Text selection can continue across page breaks. Copy puts a blank line between pages.
 - App-created certificate is an end-entity document signer, not a CA.
 - Portable self-update only downloads from GitHub release hosts, and only applies a zip whose sha256 matches the release digest.
 - Attached programs and scripts are not opened.

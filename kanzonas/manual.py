@@ -150,8 +150,8 @@ the document starts a fresh search.</li>
 
 <h2 id="select">Selecting and editing markups</h2>
 <ul>
-<li><b>Select tool (V):</b> drag across text to select it (it stays highlighted; see Copy,
-cut and paste below). Click a markup to select it, then drag
+<li><b>Select tool (V):</b> drag across text to select it, including across the gap between
+pages (it stays highlighted; see Copy, cut and paste below). Click a markup to select it, then drag
 it to move it, drag a square handle to resize it, or change its look in the Properties panel.</li>
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
 it too, so you don't have to switch back to the arrow. The <b>Hand tool</b> works the same way:
@@ -176,7 +176,9 @@ Right turn the page as usual.</li>
 <h2 id="clipboard">Copy, cut and paste</h2>
 <ul>
 <li><b>Text:</b> with the Select tool, drag across text; the selection stays highlighted.
-<b>Copy</b> (Ctrl+C) puts it on the clipboard; <b>Cut</b> (Ctrl+X) also removes those letters
+The drag can cross the gap between pages, and the pages in between are included.
+<b>Copy</b> (Ctrl+C) puts it on the clipboard, with a blank line between pages;
+<b>Cut</b> (Ctrl+X) also removes those letters
 from the page (Undo brings them back). <b>Select all text</b> (Ctrl+A) selects the whole page's
 text. Escape or a click elsewhere clears the selection.</li>
 <li><b>Right-click menu:</b> right-click the page for Cut, Copy, Paste, Delete (for selected

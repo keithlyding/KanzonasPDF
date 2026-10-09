@@ -89,6 +89,7 @@ class PageWidget(QWidget):
         self._drag_start = None     # shape tools / box selection
         self._drag_now = None
         self._text_sel = None       # (mode, words) while selecting text
+        self._text_mode = None      # "text" or "box" for the drag in progress
         self._ink = []
         self._hover = None          # edit-text hover rect
         self._edit = None           # dragging a selected annotation
@@ -249,24 +250,7 @@ class PageWidget(QWidget):
                 p.drawRect(self.to_screen(fr, page).adjusted(-2, -2, 2, 2))
 
         tool = self.view.tool
-        # a finished text selection (Select tool): stays until copied / cut / cleared
-        ts = self.view.text_sel
-        if ts is not None and ts[0] == self.index and self._text_sel is None:
-            for r in self.view.line_rects(ts[1]):
-                p.fillRect(self.to_screen(r, page), QColor(0, 120, 215, 80))
-        # live text selection: shows exactly what will be copied / marked up
-        if self._text_sel is not None:
-            mode, words = self._text_sel
-            if tool == "select":
-                fill = QColor(0, 120, 215, 80)
-            else:
-                fill = QColor(self.view.tool_color(tool))
-                fill.setAlpha(110)
-            for r in self.view.line_rects(words):
-                p.fillRect(self.to_screen(r, page), fill)
-            if mode == "box" and self._drag_start is not None:
-                p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
-                p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
+        self._paint_text_selection(p, page, tool)
 
         if tool in FORM_TOOLS:
             p.setPen(QPen(QColor(0, 90, 200), 1, Qt.DashLine))
@@ -361,6 +345,41 @@ class PageWidget(QWidget):
             p.setPen(QPen(QColor(0, 120, 215), 1))
             p.setBrush(Qt.NoBrush)
             p.drawRect(self.rect().adjusted(0, 0, -1, -1))
+
+    def _paint_text_selection(self, p, page, tool):
+        """Blue highlight over text being dragged or already selected on this page.
+
+        A drag can start on another page and cross the gap onto this one. A box drag also
+        draws its dashed rectangle on the page where the drag began."""
+        v = self.view
+        words = []
+        dragging = False
+        for i, _mode, wds in (v._text_drag or []):
+            if i == self.index:
+                words = wds
+                dragging = True
+                break
+        if not words and v.text_sel:
+            for i, wds in v.text_sel:
+                if i == self.index:
+                    words = wds
+                    break
+        if words and (tool in TEXT_TOOLS or dragging):
+            color = QColor(0, 120, 215, 80) if dragging else QColor(0, 120, 215, 70)
+            for r in v.line_rects(words):
+                p.fillRect(self.to_screen(r, page), color)
+        # a box drag (empty space, or Ctrl) still draws its rectangle when it holds no words yet
+        if (self._text_sel is not None and self._drag_start is not None
+                and self._drag_now is not None and self._text_mode == "box"):
+            p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+            p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
+
+    def _selected_words(self):
+        """Character units selected on this page (a finished selection, not a live drag)."""
+        for i, words in (self.view.text_sel or []):
+            if i == self.index:
+                return words
+        return []
 
     def _draw_readout(self, p, pts):
         """Live measurement next to the cursor while drawing."""
@@ -677,8 +696,7 @@ class PageWidget(QWidget):
         from PySide6.QtWidgets import QMenu
         v = self.view
         win = self.window()
-        on_text = v.text_sel is not None and v.text_sel[0] == self.index and any(
-            pymupdf.Rect(w[:4]).contains(pdf) for w in v.text_sel[1])
+        on_text = any(pymupdf.Rect(w[:4]).contains(pdf) for w in self._selected_words())
         if not on_text:
             xref = v.annot_at(self.index, pdf)
             if xref is not None and xref not in (v.selected_xrefs() if v.selection and
@@ -893,10 +911,14 @@ class PageWidget(QWidget):
         if tool in TEXT_TOOLS:
             self.view.clear_text_selection()
             self._drag_start = self._drag_now = pos
-            self._text_sel = self.view.text_selection(self.index, pdf, pdf)
+            mode, words = self.view.text_selection(self.index, pdf, pdf)
             self._marquee = tool == "select" and ctrl_held(e)
+            self._text_mode = "box" if self._marquee else mode
+            self._text_sel = (self._text_mode, [] if self._marquee else words)
             if self._marquee:
-                self._text_sel = ("box", [])        # Ctrl+drag: always a selection box
+                self.view._set_text_drag([(self.index, "box", [])])
+            else:
+                self.view._set_text_drag([(self.index, mode, words)])
             self.update()
         elif tool in SHAPE_TOOLS:
             self._drag_start = self._drag_now = pos
@@ -1091,9 +1113,13 @@ class PageWidget(QWidget):
                 self.update()
         elif self._text_sel is not None:
             self._drag_now = pos
-            self._text_sel = ("box", []) if self._marquee else \
-                self.view.text_selection(self.index, self.to_pdf(self._drag_start), self.to_pdf(pos))
-            self.update()
+            end_i, end_pt = self.view.page_point_from(self, pos)
+            spans = self.view.text_selection_span(
+                self.index, self.to_pdf(self._drag_start), end_i, end_pt, box=self._marquee)
+            self._text_mode = "box" if self._marquee else (spans[0][1] if spans else "text")
+            self._text_sel = (self._text_mode, [])
+            self.view._set_text_drag(spans)
+            self.view.autoscroll_toward(self.mapToGlobal(pos))
         elif self._drag_start is not None:
             if tool in SNAP_TOOLS:
                 pos = self._snap(pos, e)
@@ -1170,18 +1196,23 @@ class PageWidget(QWidget):
                 self.view.commit_model(self.index, self.view.selection[1], preview)
         elif self._text_sel is not None:
             a, b = self._drag_start, pos
-            mode = self._text_sel[0]
+            mode = self._text_mode
+            end_i, end_pt = self.view.page_point_from(self, pos)
+            start_pt = self.to_pdf(a)
+            marquee = self._marquee
             self._text_sel = None
+            self._text_mode = None
             self._marquee = False
             self._drag_start = self._drag_now = None
-            self.update()
+            self.view._set_text_drag(None)
             if (b - a).manhattanLength() >= 3:
-                if tool == "select" and mode == "box":
+                if tool == "select" and mode == "box" and end_i == self.index:
                     # a box drawn from empty space selects the markups inside it
-                    box = pymupdf.Rect(self.to_pdf(a), self.to_pdf(b)).normalize()
+                    box = pymupdf.Rect(start_pt, self.to_pdf(b)).normalize()
                     if self.view.select_in_box(self.index, box, add=ctrl_held(e)) or ctrl_held(e):
                         return
-                self.view.apply_text_tool(self.index, tool, self.to_pdf(a), self.to_pdf(b))
+                self.view.apply_text_span(tool, (self.index, start_pt), (end_i, end_pt),
+                                          box=marquee)
         elif self._drag_start is not None and tool in FORM_TOOLS:
             a, b = self._drag_start, self._drag_now
             self._drag_start = self._drag_now = None
