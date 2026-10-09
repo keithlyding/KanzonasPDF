@@ -3,6 +3,10 @@
 Each revision gets a version number. It's shown in the window title and Help > About,
 and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the same name every version).
 
+## Unreleased
+
+- Dragging a group of the page's own shapes shows those shapes following the pointer, drawn once and then only moved, instead of an empty box and a redraw of every line on each mouse move. A group of markups follows the same way.
+
 | Version | Commit | Changes |
 | --- | --- | --- |
 | 0.85 | (this) | Trust and text selection: an app-created certificate is an end-entity document signer (email protection and document signing), not a certificate authority. The portable update downloads only from GitHub release hosts and applies the zip only when its sha256 matches the release. Attached programs and scripts are not opened. Apply redactions scrubs metadata, attachments, hidden text, and scripts unless told not to. A push to main publishes a draft release unless AUTO_RELEASE is true. Text selection can continue across page breaks; Copy puts a blank line between pages |
