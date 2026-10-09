@@ -125,8 +125,10 @@ choose a zoom yourself.</li>
 (the pointer becomes a hand) and click it. A link to a page in the document goes there. A web or
 email address asks first, then opens in your browser or email program (tick <b>Don't ask
 again</b> to skip the question from then on). A link to another PDF opens it in a new tab; a
-link to another kind of file asks before opening it; links that would start a program or script
-are refused.</li>
+link to another kind of file asks before opening it, and only common documents, pictures,
+media and drawings are opened (links that would start a program, a script or a file with
+macros are refused). A link to a file on another computer (a network share) asks first, because
+opening it sends your Windows sign-in to that computer.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). <b>Shift+wheel</b> always scrolls left and right, including when CAD-style
 mouse is off and when one wheel step would otherwise turn the page. Shift+Left/Right scrolls
@@ -372,9 +374,12 @@ is the reliable way to send a video with a PDF. Large files make the PDF just as
 (you're warned above 50 MB).</li>
 <li><b>Attachments</b> (Document menu): every file attached to this PDF, including ones added
 by other programs. Open, Save as, Go to its page, or Delete.</li>
-<li>For your safety, an attached program or script (.exe, .bat, .js, .html, .htm, .dll,
-.application, .msc, .iso and the like) is not opened. KanzonasPDF warns you and leaves the
-file in the PDF. Use Save as and open it yourself if you trust it.</li>
+<li>For your safety, Open asks first and only opens common documents, pictures, sound,
+video and drawings (PDF, text, Word/Excel/PowerPoint without macros, images, MP3/MP4,
+DWG/DXF...). Anything else, including programs, scripts, web pages and Office files with
+macros, is not opened: use Save as and open it yourself if you trust it. Opened copies are
+marked as downloaded from the internet, so Windows and Office treat them with the same
+care.</li>
 </ul>
 
 <h2 id="editobjects">Editing the PDF's own pictures and shapes</h2>
@@ -528,7 +533,8 @@ and line art under a mark, and any <b>form field or markup</b> a mark overlaps (
 own copy of the text). A vector path that touches a mark is removed past the box, including
 the part outside it. Applying scrubs metadata, attachments, hidden text, and scripts unless
 you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
-field values, markup notes, bookmark titles and document properties. When you apply, fields
+fields (values, list options, tooltips and names), links (web and email addresses), markup
+notes, bookmark titles and document properties. When you apply, fields and links
 containing it are deleted, and in notes, bookmarks and properties it's replaced by
 [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
 away. Check the result before sharing; Undo works until you close the file.</li>

@@ -949,7 +949,7 @@ class PageWidget(QWidget):
             return super().mousePressEvent(e)
         if self.view._inline is not None:
             # clicking outside the text editor finishes the edit (and nothing else)
-            self.view._inline.commit()
+            self.view.commit_pending()
             return
         self.view.setFocus()
         tool = self.view.tool

@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -725,6 +726,8 @@ class DocumentView(QScrollArea):
 
     def _restore(self, data):
         anchor = self._view_anchor()
+        self._inline = None             # its widget goes with the rebuilt pages
+        self.field_focus = None
         self._clear_caches()
         self.markups_changed = None
         self.selection = None
@@ -766,6 +769,7 @@ class DocumentView(QScrollArea):
                                         "This PDF is protected against changes. Use Protect > Unlock "
                                         "with password if you have its permissions password.")
             return
+        self.commit_pending()           # a text edit in progress becomes its own undo step
         # a burst of arrow-key nudges is one undo step: later presses reuse the first snapshot
         merge = getattr(self, "_merge_edit", False) and bool(self._undo)
         snap = None if merge else self._snapshot()
@@ -795,6 +799,8 @@ class DocumentView(QScrollArea):
         self._search_todo = None
         self._search_gen += 1
         if structural:
+            self._inline = None
+            self.field_focus = None     # its page may be gone or moved
             page = self.current_page()
             self.search_hits.clear()
             self._search_list = []
@@ -818,13 +824,25 @@ class DocumentView(QScrollArea):
     def can_redo(self):
         return bool(self._redo)
 
+    def commit_pending(self):
+        """Apply a text edit still open in the on-page editor (typed but not yet confirmed
+        with Enter), so Save, Undo, closing the tab or a page change doesn't drop it."""
+        if self._inline is not None:
+            try:
+                self._inline.commit()   # clears _inline, then applies the edit
+            except RuntimeError:        # its widget was already deleted
+                pass
+            self._inline = None
+
     def undo(self):
+        self.commit_pending()
         if self._undo:
             self._redo.append(self._snapshot())
             self._restore(self._undo.pop())
             self._trim_history()
 
     def redo(self):
+        self.commit_pending()
         if self._redo:
             self._undo.append(self._snapshot())
             self._restore(self._redo.pop())
@@ -1673,6 +1691,32 @@ class DocumentView(QScrollArea):
     RISKY = (".exe", ".bat", ".cmd", ".com", ".msi", ".js", ".jse", ".vbs", ".vbe", ".ps1",
              ".scr", ".lnk", ".hta", ".wsf", ".jar", ".reg", ".pif", ".cpl",
              ".application", ".html", ".htm", ".msc", ".iso", ".dll")
+    # the only kinds of file opened from a PDF (after asking): documents, pictures, media and
+    # drawings. Anything else, including macro-enabled Office files, must be saved first.
+    SAFE_OPEN = (".pdf", ".txt", ".csv", ".rtf", ".docx", ".xlsx", ".pptx", ".odt", ".ods",
+                 ".odp", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".webp",
+                 ".mp3", ".wav", ".mp4", ".mov", ".avi", ".dwg", ".dxf", ".dwf", ".msg", ".eml")
+
+    @staticmethod
+    def safe_file_name(name):
+        """A file name from a PDF made harmless for Windows: no folders, no ":stream" part,
+        no trailing dots or spaces (Windows drops them, so "evil.exe." would become
+        "evil.exe" after the type check), no characters Windows refuses."""
+        name = re.split(r"[\\/]", str(name or ""))[-1].split(":")[0]
+        name = re.sub(r'[<>"|?*\x00-\x1f]', "_", name).rstrip(". ")
+        return name or "attachment"
+
+    @staticmethod
+    def _mark_downloaded(path):
+        """Tag a file as from the internet (Mark of the Web), so Windows SmartScreen and
+        Office Protected View treat it as untrusted. Windows (NTFS) only."""
+        if os.name != "nt":
+            return
+        try:
+            with open(path + ":Zone.Identifier", "w") as f:
+                f.write("[ZoneTransfer]\r\nZoneId=3\r\n")
+        except OSError:
+            pass
 
     def place_image(self, index, a, b, is_click):
         """Image tool: pick a picture and fit it in the dragged box (or natural size at the
@@ -1847,6 +1891,20 @@ class DocumentView(QScrollArea):
             s.setValue("links_dont_ask", "true")
         return True
 
+    @staticmethod
+    def _is_network_path(path):
+        """A \\\\server\\share path, or a mapped network drive (Windows)."""
+        p = str(path).replace("/", "\\")
+        if p.startswith("\\\\"):
+            return True
+        if os.name == "nt" and len(p) >= 2 and p[1] == ":":
+            try:
+                import ctypes
+                return ctypes.windll.kernel32.GetDriveTypeW(p[:2] + "\\") == 4   # DRIVE_REMOTE
+            except (AttributeError, OSError):
+                return False
+        return False
+
     def _open_linked_file(self, path, page):
         """A link to another file: PDFs open here (at the page); other files with the program
         Windows uses for them, after asking; programs and scripts are refused."""
@@ -1857,6 +1915,13 @@ class DocumentView(QScrollArea):
         if not os.path.isabs(path) and self.path:
             path = os.path.join(os.path.dirname(self.path), path)
         path = os.path.normpath(path)
+        if self._is_network_path(path):
+            # even checking that it exists makes Windows send your sign-in to that computer
+            if QMessageBox.question(
+                    self, "Link", "This link points to a file on another computer:\n\n" + path +
+                    "\n\nOpening it sends your Windows sign-in to that computer. Open it?",
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+                return
         if not os.path.exists(path):
             QMessageBox.information(self, "Link", "The linked file isn't there:\n" + path)
             return
@@ -1864,9 +1929,10 @@ class DocumentView(QScrollArea):
         if ext == ".pdf":
             self.openFileRequested.emit(path, page)
             return
-        if ext in self.RISKY:
-            QMessageBox.warning(self, "Link", "This link would start a program or script, "
-                                "which KanzonasPDF doesn't do from a PDF:\n" + path)
+        if ext in self.RISKY or ext not in self.SAFE_OPEN:
+            QMessageBox.warning(self, "Link", "This link would open a program, a script or a "
+                                "file with macros, which KanzonasPDF doesn't do from a PDF:\n"
+                                + path)
             return
         if QMessageBox.question(self, "Open file", "This document wants to open:\n\n" + path +
                                 "\n\nOpen it?") == QMessageBox.Yes:
@@ -1877,21 +1943,28 @@ class DocumentView(QScrollArea):
         import tempfile
         from PySide6.QtCore import QUrl
         from PySide6.QtGui import QDesktopServices
-        if os.path.splitext(name)[1].lower() in self.RISKY:
+        name = self.safe_file_name(name)
+        if os.path.splitext(name)[1].lower() not in self.SAFE_OPEN:
             QMessageBox.warning(
                 self, "Open attached file",
-                f"{name} is a program or script. KanzonasPDF won't open it from a PDF.\n\n"
-                "Save the file and open it yourself if you trust it.")
+                f"{name} could be a program, a script or a file with macros. KanzonasPDF "
+                "doesn't open that kind of file from a PDF.\n\n"
+                "Use Save as and open it yourself if you trust it.")
+            return None
+        if QMessageBox.question(self, "Open attached file",
+                                f"Open {name}?\n\nOnly open files from people you trust.") \
+                != QMessageBox.Yes:
             return None
         folder = tempfile.mkdtemp(prefix="kzattach")
-        path = os.path.join(folder, os.path.basename(name) or "attachment")
+        path = os.path.join(folder, name)
         with open(path, "wb") as f:
             f.write(self.attachment_data(page_index, key))
+        self._mark_downloaded(path)
         QDesktopServices.openUrl(QUrl.fromLocalFile(path))
         return path
 
     def save_attachment(self, page_index, key, name, path=None):
-        path = path or dialogs.save_file(self, "Save attached file", name)
+        path = path or dialogs.save_file(self, "Save attached file", self.safe_file_name(name))
         if path:
             with open(path, "wb") as f:
                 f.write(self.attachment_data(page_index, key))
@@ -2476,8 +2549,7 @@ class DocumentView(QScrollArea):
         return hit[0] if hit else None
 
     def edit_text_at(self, index, pt):
-        if self._inline is not None:
-            self._inline.commit()      # finish the edit already in progress first
+        self.commit_pending()          # finish the edit already in progress first
         hit = text_edit.line_at(self._lines(index), pt)
         if hit is None:
             self.statusMessage.emit("No text there. Click on a line of text to edit it.")
@@ -2814,16 +2886,29 @@ class DocumentView(QScrollArea):
 
     REDACT_TAG = "Redaction: "         # Search & redact marks remember their term in /Contents
 
+    @staticmethod
+    def _widget_texts(w):
+        """Every piece of text a form field carries: value, option list, tooltip, name."""
+        out = [w.field_value, w.field_label, w.field_name]
+        out += [o if isinstance(o, str) else " ".join(map(str, o)) for o in (w.choice_values or [])]
+        return [str(t) for t in out if t]
+
+    @staticmethod
+    def _link_texts(ln):
+        return [str(ln.get(k)) for k in ("uri", "file") if ln.get(k)]
+
     def hidden_matches(self, text):
         """Where `text` occurs outside the page drawing (which page redaction can't reach):
         {"fields", "markups", "bookmarks", "metadata"} -> count."""
         t = text.lower()
-        n = {"fields": 0, "markups": 0, "bookmarks": 0, "metadata": 0}
+        n = {"fields": 0, "markups": 0, "links": 0, "bookmarks": 0, "metadata": 0}
         for i in range(self.doc.page_count):
             pg = self.doc[i]
             for w in pg.widgets():
-                if t in str(w.field_value or "").lower():
+                if any(t in x.lower() for x in self._widget_texts(w)):
                     n["fields"] += 1
+            n["links"] += sum(1 for ln in pg.get_links()
+                              if any(t in x.lower() for x in self._link_texts(ln)))
             for a in pg.annots():
                 if a.type[0] == pymupdf.PDF_ANNOT_REDACT:
                     continue
@@ -2887,7 +2972,8 @@ class DocumentView(QScrollArea):
 
     def _scrub_terms(self, terms):
         """Remove Search & redact terms from places outside the page drawing: form field
-        values, markup text, bookmark titles and document properties."""
+        values, option lists, tooltips and names, links, markup text, bookmark titles and
+        document properties."""
         import re
         if not terms:
             return
@@ -2899,9 +2985,13 @@ class DocumentView(QScrollArea):
         for i in range(self.doc.page_count):
             pg = self.doc[i]
             for w in list(pg.widgets()):
-                val = w.field_value
-                if isinstance(val, str) and pat.search(val):
-                    pg.delete_widget(w)         # its stored appearance holds the text too
+                # value, option list, tooltip or name: its stored appearance and dictionary
+                # hold the text, so the whole field goes
+                if any(pat.search(x) for x in self._widget_texts(w)):
+                    pg.delete_widget(w)
+            for ln in pg.get_links():
+                if any(pat.search(x) for x in self._link_texts(ln)):
+                    pg.delete_link(ln)          # e.g. a mailto: or web address with the term
             for x in [a.xref for a in pg.annots() if a.type[0] != pymupdf.PDF_ANNOT_REDACT]:
                 a = pg.load_annot(x)
                 info = {k: a.info.get(k) or "" for k in ("content", "subject", "title")}
@@ -3827,6 +3917,23 @@ class DocumentView(QScrollArea):
         self.modify(lambda: self.doc.move_page(index, to), structural=True)
         self.goto_page(target)
 
+    def _mend_form_fields(self, old_fields):
+        """After pages were swapped for copies: drop the originals' fields from the form's
+        field list (they no longer sit on any page) and give each copy its original name
+        back (copying renames a field that already exists, e.g. "f0" to "f0 [27]")."""
+        cat = self.doc.pdf_catalog()
+        typ, arr = self.doc.xref_get_key(cat, "AcroForm/Fields")
+        if typ != "array":
+            return
+        gone = {x for lst in old_fields.values() for x, _n in lst}
+        refs = [int(r) for r in re.findall(r"(\d+) 0 R", arr) if int(r) not in gone]
+        self.doc.xref_set_key(cat, "AcroForm/Fields", "[" + " ".join(f"{r} 0 R" for r in refs) + "]")
+        for i, lst in old_fields.items():
+            names = [n for _x, n in lst]
+            for w, name in zip(self.doc[i].widgets(), names):
+                if name and w.field_name != name and self.doc.xref_get_key(w.xref, "Parent")[0] == "null":
+                    self.doc.xref_set_key(w.xref, "T", pymupdf.get_pdf_str(name))
+
     def flatten(self, pages=None, widgets=True):
         """Burn annotations (and form fields unless widgets=False) into the page content
         (pages=None: all pages). Undo works until the file is closed."""
@@ -3844,6 +3951,10 @@ class DocumentView(QScrollArea):
                 for ln in pg.get_links():
                     if ln.get("kind") == pymupdf.LINK_GOTO and ln.get("page") in pages:
                         links.setdefault(pg.number, []).append(ln)
+            # the swapped-in page brings fresh copies of its form fields: remember the old
+            # ones so they can leave the form's field list and the copies keep their names
+            old_fields = {i: [(w.xref, w.field_name) for w in self.doc[i].widgets()]
+                          for i in pages}
             for i in sorted(pages, reverse=True):
                 # PyMuPDF flattens whole documents: flatten a one-page copy and swap it in
                 tmp = pymupdf.open()
@@ -3853,6 +3964,7 @@ class DocumentView(QScrollArea):
                 self.doc.insert_pdf(tmp, start_at=i)
                 tmp.close()
             self.doc.set_page_labels(labels)
+            self._mend_form_fields(old_fields)
             for i, (typ, value) in scales.items():
                 if typ == "string":
                     self.doc.xref_set_key(self.doc[i].xref, "KZScale", pymupdf.get_pdf_str(value))
@@ -4064,6 +4176,7 @@ class DocumentView(QScrollArea):
             self._orig_enc["user_pw"] = pw
 
     def save(self, path=None):
+        self.commit_pending()
         path = os.path.abspath(path or self.path)
         tmp = path + ".kanzonas-tmp"
         if self._fonts_added:
@@ -4114,4 +4227,7 @@ class DocumentView(QScrollArea):
 
     def close_doc(self):
         self._undo, self._redo = [], []         # free the history (and the shared budget)
+        self._inline = None
+        self._search_gen += 1                   # a Find still running stops here
+        self._search_todo = None
         self.doc.close()
