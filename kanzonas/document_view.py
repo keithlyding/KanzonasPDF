@@ -2598,6 +2598,18 @@ class DocumentView(QScrollArea):
         hit = text_edit.line_at(self._lines(index), pt)
         return hit[0] if hit else None
 
+    def move_text_line(self, index, pt, offset):
+        """Edit text tool, press on a line and drag: move it by offset (PDF points) without
+        changing its text or font; comments and highlights on it move along."""
+        self.commit_pending()
+        hit = text_edit.line_at(self._lines(index), pt)
+        if hit is None or not (offset[0] or offset[1]):
+            return
+        _rect, line = hit
+        self._apply_text_edit(index, line, text_edit.line_text(line), offset, None,
+                              keep_font=True)
+        self.statusMessage.emit("Moved the line (Ctrl+Z undoes it)")
+
     def edit_text_at(self, index, pt):
         self.commit_pending()          # finish the edit already in progress first
         hit = text_edit.line_at(self._lines(index), pt)
@@ -2711,9 +2723,9 @@ class DocumentView(QScrollArea):
         p = annotations.tool_props("edittext")
         return (p["font"], bool(p.get("bold")), bool(p.get("italic"))) if p.get("font") else None
 
-    def _apply_text_edit(self, index, line, new, offset, wrap):
+    def _apply_text_edit(self, index, line, new, offset, wrap, keep_font=False):
         used = {}
-        font = self._edit_font()
+        font = None if keep_font else self._edit_font()
 
         def do():
             page = self.doc[index]

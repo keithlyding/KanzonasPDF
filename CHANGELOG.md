@@ -3,6 +3,10 @@
 Each revision gets a version number. It's shown in the window title and Help > About,
 and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the same name every version).
 
+## Unreleased
+
+- Edit text: press on a line and drag to move it (a plain click still opens it for typing).
+
 | Version | Commit | Changes |
 | --- | --- | --- |
 | 0.89 | (this) | Only markups stay editable in PDF viewers: the Image tool now writes the picture into the page (like Acrobat's Add Image; Edit objects moves, resizes or deletes it; image stamps stay markups), as signatures, initials and dates already were. New Add text tool (Shift+T, next to Edit text) writes real page text in any installed font, with Bold / Italic, size and color in Properties; Edit text can change an existing line's font (Properties > Font). Text box comments can use Helvetica, Times or Courier, the fonts every PDF viewer has. The Markup tab now has only markups (Image and Erase content moved to the Home tab). Fix: text written in an installed font (Edit text, Add text) no longer reads back with no-break spaces in search and copy (fonts such as Times New Roman share one glyph for both) |
