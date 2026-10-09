@@ -97,7 +97,7 @@ class PageWidget(QWidget):
         self._poly = []             # polygon / polyline points so far (widget coords)
         self._poly_hover = None
         self._marquee = False       # Ctrl+drag with Select: selection box only, no text
-        self._snap_mark = None      # (widget point, "object" | "grid") last snap, for the marker
+        self._snap_mark = None      # (widget point, "object" | "page" | "grid") last snap
         self._obj_hover = None      # Edit objects: picture under the mouse
         self._obj_edit = None       # Edit objects: dragging / resizing the selected picture
         self._sig_drag = None       # signature / initials: press point while sizing
@@ -739,7 +739,7 @@ class PageWidget(QWidget):
     # ---- snapping -------------------------------------------------------
     def _snapping(self, e=None):
         v = self.view
-        if not (v.snap_grid or v.snap_objects):
+        if not (v.snap_grid or v.snap_objects or v.snap_page):
             return False
         return e is None or not e.modifiers() & Qt.AltModifier      # Alt = don't snap
 
@@ -787,6 +787,9 @@ class PageWidget(QWidget):
         if kind == "object":
             p.setPen(QPen(QColor(230, 0, 160), 1.5))
             p.drawRect(QRectF(pt.x() - 5, pt.y() - 5, 10, 10))
+        elif kind == "page":
+            p.setPen(QPen(QColor(0, 150, 60), 1.5))
+            p.drawEllipse(pt, 5.5, 5.5)
         else:
             p.setPen(QPen(QColor(0, 120, 215), 1.5))
             p.drawLine(pt + QPointF(-6, 0), pt + QPointF(6, 0))

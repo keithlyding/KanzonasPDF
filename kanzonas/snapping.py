@@ -117,3 +117,23 @@ def grid_snap(page, pt, spacing):
     d = pymupdf.Point(pt) * page.rotation_matrix
     d = pymupdf.Point(round(d.x / spacing) * spacing, round(d.y / spacing) * spacing)
     return d * page.derotation_matrix
+
+
+def page_snap(page, pt, tol):
+    """Snap to the page itself (unrotated coordinates): a corner, the middle of an edge or
+    the center within tol; else onto an edge (x or y alone) within tol. None if not near."""
+    r = page.rect * page.derotation_matrix
+    cx, cy = (r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2
+    best, best_d = None, tol
+    for x in (r.x0, cx, r.x1):
+        for y in (r.y0, cy, r.y1):
+            d = math.hypot(x - pt.x, y - pt.y)
+            if d <= best_d:
+                best, best_d = pymupdf.Point(x, y), d
+    if best is not None:
+        return best
+    x = next((e for e in (r.x0, r.x1) if abs(pt.x - e) <= tol), None)
+    y = next((e for e in (r.y0, r.y1) if abs(pt.y - e) <= tol), None)
+    if x is None and y is None:
+        return None
+    return pymupdf.Point(pt.x if x is None else x, pt.y if y is None else y)

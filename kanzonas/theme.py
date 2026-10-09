@@ -12,7 +12,7 @@ from PySide6.QtGui import (QPalette, QColor, QGuiApplication, QIcon, QIconEngine
 ICONS = {
     "image": "image-outline", "attach": "paperclip", "placeholder": "draw-pen",
     "cad_mouse": "mouse-move-vertical", "grid": "grid", "snap_grid": "magnet",
-    "snap_objects": "vector-point",
+    "snap_objects": "vector-point", "snap_page": "border-outside",
     # arrange
     "al_left": "align-horizontal-left", "al_hcenter": "align-horizontal-center",
     "al_right": "align-horizontal-right", "al_top": "align-vertical-top",

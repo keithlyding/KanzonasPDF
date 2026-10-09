@@ -261,6 +261,19 @@ def run(log_path):
         return "(found on a rotated page)"
     check("links", t_links)
 
+    def t_snap_page():
+        from . import snapping
+        d = pymupdf.open()
+        p = d.new_page(width=612, height=792)
+        assert snapping.page_snap(p, pymupdf.Point(3, 4), 9) == pymupdf.Point(0, 0)
+        assert snapping.page_snap(p, pymupdf.Point(300, 400), 9) == pymupdf.Point(306, 396)
+        assert snapping.page_snap(p, pymupdf.Point(608, 200), 9) == pymupdf.Point(612, 200)
+        assert snapping.page_snap(p, pymupdf.Point(200, 300), 9) is None
+        p.set_rotation(90)          # corners and center of the page as shown
+        assert snapping.page_snap(p, pymupdf.Point(305, 393), 9) == pymupdf.Point(306, 396)
+        return "(corners, center, edges)"
+    check("snap to page", t_snap_page)
+
     def t_fillin_stamp():
         from . import stamps, annotations as A
         d = pymupdf.open()
