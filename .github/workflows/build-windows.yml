@@ -224,7 +224,7 @@ jobs:
             stays the same, so it stays your default PDF app, and the `data` folder is kept.
 
             What's new: see [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ steps.ver.outputs.version }}/CHANGELOG.md).
-            Free software under the GNU AGPL 3.0.
+            Free software under the GNU AGPL 3.0. [Code signing policy](https://github.com/keithlyding/KanzonasPDF/blob/main/CODE_SIGNING_POLICY.md).
           files: |
             dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
             KanzonasPDF-portable.zip
