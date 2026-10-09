@@ -3,18 +3,10 @@
 Each revision gets a version number. It's shown in the window title and Help > About,
 and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the same name every version).
 
-## Unreleased
-
-- Text selection can continue across page breaks. Copy puts a blank line between pages.
-- App-created certificate is an end-entity document signer, not a CA.
-- Portable self-update only downloads from GitHub release hosts, and only applies a zip whose sha256 matches the release digest.
-- Attached programs and scripts are not opened.
-- Apply redactions scrubs metadata, attachments, hidden text, and scripts unless told not to.
-- Main-branch builds publish a draft unless AUTO_RELEASE is true.
-
 | Version | Commit | Changes |
 | --- | --- | --- |
-| 0.84 | (this) | Efficiency (audit round 3): finding the current page while scrolling is a binary search and only pages that hold a picture are visited (5,000 pages: 4.3 ms to 0.03 ms per scroll step); parsed drawings, text, snap points and objects are kept only for about 24 pages around the current one (reading through 5,000 pages kept 500, now 20). The self-test measures true launch-to-ready time and checks the audit fixes stay in place. Dependency versions are pinned in constraints.txt (with licenses) so builds are reproducible |
+| 0.85 | (this) | Trust and text selection: an app-created certificate is an end-entity document signer (email protection and document signing), not a certificate authority. The portable update downloads only from GitHub release hosts and applies the zip only when its sha256 matches the release. Attached programs and scripts are not opened. Apply redactions scrubs metadata, attachments, hidden text, and scripts unless told not to. A push to main publishes a draft release unless AUTO_RELEASE is true. Text selection can continue across page breaks; Copy puts a blank line between pages |
+| 0.84 | 8b88c7d | Efficiency (audit round 3): finding the current page while scrolling is a binary search and only pages that hold a picture are visited (5,000 pages: 4.3 ms to 0.03 ms per scroll step); parsed drawings, text, snap points and objects are kept only for about 24 pages around the current one (reading through 5,000 pages kept 500, now 20). The self-test measures true launch-to-ready time and checks the audit fixes stay in place. Dependency versions are pinned in constraints.txt (with licenses) so builds are reproducible |
 | 0.83 | e332e12 | Efficiency (audit round 2): Find no longer freezes the window: it searches in short slices from the current page, shows the first match at once and counts the rest in the background (5,000 pages: a 28 s freeze became 0.04 s to the first match, longest pause 0.19 s). The markups list reads annotations in one pass instead of looking each one up again (2,000 markups on a page: 5.9 s to 0.7 s) and after an edit re-reads only the pages that changed; clicking and hovering over markups on crowded pages is faster the same way |
 | 0.82 | 992cf59 | Efficiency (audit round 1): undo history has a memory budget (256 MB per document, 512 MB in all; 31 edits on a 24 MB PDF kept 720 MB, now 240 MB); batch OCR keeps one page image at a time (12 large sheets: 1,361 MB to 113 MB); autosave skips documents unchanged since the last backup; an edit only clears the cached drawings of the pages it touches; thumbnails draw visible pages first in short time slices and pause when the Pages panel is hidden (worst stall 0.51 s to 0.21 s). Free-of-charge pledge in README, manual and contributing guide |
 | 0.81 | 63b7f7f | Audit fixes: secure vector/private-stamp redaction; edits to protected files keep their own encryption, passwords and permissions (no password needed; owner-only forms can be filled and saved); protected, collision-free recovery; selected-page flatten preserves links (in place on rotated pages too), labels and scale; search redaction matches only markup text people see; granular form/annotation/copy/print permissions; literal Excel text; explicit self-test skips; corrected signing/OCR documentation; OCR runtime telemetry explicitly disabled |
