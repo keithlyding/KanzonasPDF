@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, Q
                                QVBoxLayout, QHBoxLayout, QMenu, QProgressDialog,
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
-                               QPushButton, QSlider)
+                               QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit)
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from . import __version__, annotations, export, signatures, theme
@@ -1082,6 +1082,8 @@ class MainWindow(QMainWindow):
         v.signedDocument.connect(self._on_signed)
         v.oneShotPlaced.connect(self._after_one_shot)
         v.selectToolRequested.connect(lambda: self.set_tool("select"))
+        v.previousToolRequested.connect(
+            lambda: self.set_tool(getattr(self, "_last_basic_tool", "hand")))
         v.calibrateRequested.connect(self._calibrate)
         v.layersChanged.connect(lambda: self.sender() is self.view() and self._rebuild_thumbs())
         v.scaleChanged.connect(self._update_ui)
@@ -1308,6 +1310,12 @@ class MainWindow(QMainWindow):
         self.tool_actions[tool].setChecked(True)
         for i in range(self.tabs.count()):
             self.tabs.widget(i).set_tool(tool)
+        # keyboard focus to the page (unless you're typing somewhere), so Escape puts the
+        # tool down even when it was picked from a toolbar button or a stamp menu
+        v = self.view()
+        typing = isinstance(QApplication.focusWidget(), (QLineEdit, QAbstractSpinBox, QPlainTextEdit))
+        if v is not None and not typing:
+            v.setFocus()
         self._refresh_props()
 
     def _after_one_shot(self):
@@ -1563,8 +1571,12 @@ class MainWindow(QMainWindow):
         choices = ["All pages", "Current page only"]
         pick, ok = QInputDialog.getItem(
             self, "Flatten", "Flatten annotations and form fields into the page.\n"
-            "They'll look the same but can no longer be edited or moved.\n"
-            "(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
+            "They'll look the same, but no PDF program sees them as markups or fields any\n"
+            "more: they can't be edited, moved or filled in as such.\n\n"
+            "Not a security lock: programs that edit page content (Acrobat, PDF-XChange)\n"
+            "can still change the page. To make changes detectable, digitally sign it\n"
+            "with the lock against changes (certify).\n"
+            "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
         if not ok:
             return
         v.flatten(None if pick == choices[0] else [v.current_page()])
@@ -2011,9 +2023,12 @@ class MainWindow(QMainWindow):
         choices = ["All pages", "Current page only"]
         pick, ok = QInputDialog.getItem(
             self, "Flatten comments", "Make comments and markups part of the page.\n"
-            "They'll look the same but can no longer be edited or moved.\n"
-            "Form fields stay fillable. (Undo works until you close the file.)\n\n"
-            "Which pages?", choices, 0, False)
+            "They'll look the same, but no PDF program sees them as markups any more:\n"
+            "they can't be edited, moved, hidden or deleted as such. Form fields stay fillable.\n\n"
+            "Not a security lock: programs that edit page content (Acrobat, PDF-XChange)\n"
+            "can still change the page. To make changes detectable, digitally sign it\n"
+            "with the lock against changes (certify).\n"
+            "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
         if ok:
             v.flatten(None if pick == choices[0] else [v.current_page()], widgets=False)
             self.statusBar().showMessage("Comments flattened", 4000)

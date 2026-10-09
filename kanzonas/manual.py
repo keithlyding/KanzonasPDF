@@ -72,7 +72,7 @@ saying what it does and its keyboard shortcut.</li>
 
 <h2 id="install">Installing, updating and uninstalling</h2>
 <ul>
-<li>Run <b>KanzonasPDF-v&lt;version&gt;-setup.exe</b>. No administrator rights are needed: it
+<li>Run <b>KanzonasPDF-v&lt;version&gt;-setup.exe</b> (the installer has a blue icon; the program itself is red). No administrator rights are needed: it
 installs for your Windows account (choose "all users" on the first page if you're an admin and
 want that). It adds a Start-menu shortcut, optionally a desktop shortcut, and offers
 KanzonasPDF as an app for opening PDFs.</li>
@@ -177,7 +177,9 @@ Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> mo
 <b>Ctrl+arrow</b> 0.1 pt, for fine adjustments. A series of presses is one Ctrl+Z. Markups tied to
 text (highlights, underlines, strikeouts) stay with their text. With nothing selected, Left and
 Right turn the page as usual.</li>
-<li><b>Escape</b> clears the selection; <b>Escape twice</b> switches back to the Select (arrow) tool.</li>
+<li><b>Escape</b> clears the selection. With nothing selected, Escape puts down the tool you
+picked (a stamp, shape, measurement...) and goes back to the Hand or Select tool you used last;
+press it again for the Select (arrow) tool.</li>
 </ul>
 
 <h2 id="clipboard">Copy, cut and paste</h2>
@@ -232,7 +234,15 @@ hides just the yellow boxes beside commented text.</li>
 <li><b>Delete comments:</b> everyone's, only yours, or only one person's, on all pages or the
 current page. Undo brings them back.</li>
 <li><b>Flatten comments:</b> makes comments and markups a permanent part of the page while form
-fields stay fillable. (Document &gt; Flatten flattens form fields too.)</li>
+fields stay fillable. (Document &gt; Flatten flattens form fields too.) The markups really
+become page drawing: no PDF program sees them as markups any more. Programs that edit page
+content (Acrobat's Edit PDF, PDF-XChange's Edit Content, KanzonasPDF's Edit objects) can still
+move that drawing, as they can the rest of the page, and so can you (Edit objects selects each
+flattened markup as a group; Edit text changes its text); flattening isn't a lock (that's the same
+in Acrobat and Bluebeam). It's for sending a file whose markups everyone sees and prints exactly
+as you made them. To make any later change detectable, digitally sign the PDF with the lock
+against changes (certify): PDF readers that check signatures (Acrobat, PDF-XChange, KanzonasPDF)
+then flag any later change.</li>
 </ul>
 
 <h2 id="shapes">Shapes, lines and the pen</h2>
@@ -390,6 +400,11 @@ the pictures (logos, photos, scans) and vector shapes (lines, rectangles, circle
 filled areas, CAD line work) that are part of the page itself, not on markups. Point at an object
 to see it outlined; click to select it. Lines are picked up within a few pixels; a filled shape
 is picked up anywhere inside it.</li>
+<li><b>Groups:</b> a drawing group the page places as one piece (flattened markups and stamps
+become these, and some programs export a whole drawing as one) is selected, moved, resized,
+rotated, deleted and re-stacked as one object, as in Acrobat and PDF-XChange. A group that
+fills the whole page isn't picked by a click (that would grab the sheet whenever you click
+blank paper): drag a selection box around the page to select it.</li>
 <li><b>Several at once:</b> Ctrl+click adds or removes an object, or drag a box from empty space
 to select everything entirely inside it (Ctrl+drag adds to the selection). In CAD drawings one
 "shape" is often many separate lines, so a box is the quickest way to grab it.</li>
@@ -669,7 +684,7 @@ settings...).</li>
 <tr><td>Shift+wheel</td><td>Scroll left and right</td></tr>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
-<tr><td>Escape, Escape twice</td><td>Clear selection, back to Select</td></tr>
+<tr><td>Escape, Escape again</td><td>Clear selection / put the tool down (back to Hand or Select), then Select</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>

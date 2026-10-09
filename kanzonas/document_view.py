@@ -67,6 +67,7 @@ class DocumentView(QScrollArea):
     signedDocument = Signal()
     oneShotPlaced = Signal()        # a signature / initials / date was placed
     selectToolRequested = Signal()
+    previousToolRequested = Signal()    # Escape with a tool picked: back to Hand / Select
     calibrateRequested = Signal(int, float)    # page index, drawn length in points
     scaleChanged = Signal()
     layersChanged = Signal()
@@ -688,6 +689,11 @@ class DocumentView(QScrollArea):
 
     def set_tool(self, tool):
         self.tool = tool
+        for w in getattr(self, "pages", []):
+            # a stamp / signature preview or a shape half-drawn belongs to the old tool
+            if w._ghost is not None or w._drag_start is not None or w._poly:
+                w._ghost, w._drag_start, w._drag_now, w._poly = None, None, None, []
+                w.update()
         self.clear_selection()
         self.clear_object_selection()
         self.clear_text_selection()
@@ -2544,16 +2550,16 @@ class DocumentView(QScrollArea):
             self.pages[old[0]].update()
             return
         if e.key() == Qt.Key_Escape:
-            # Escape twice in a row: back to the Select (arrow) tool
-            import time
-            now = time.monotonic()
-            twice = now - getattr(self, "_last_esc", -10.0) < 0.8
-            self._last_esc = -10.0 if twice else now
-            if twice and self.tool != "select":
-                self.selectToolRequested.emit()
-                return
             if self.selection is not None:
                 self.clear_selection()
+                return
+            # nothing selected: a picked tool (stamp, shape, measure...) is put down and the
+            # Hand or Select tool you used last comes back; Escape again gives Select
+            if self.tool in ("hand", "select"):
+                if self.tool != "select":
+                    self.selectToolRequested.emit()
+            else:
+                self.previousToolRequested.emit()
             return
         arrows = {Qt.Key_Left: (-1, 0), Qt.Key_Right: (1, 0), Qt.Key_Up: (0, -1),
                   Qt.Key_Down: (0, 1)}
@@ -2800,10 +2806,12 @@ class DocumentView(QScrollArea):
             self.selectionChanged.emit()        # menus: Arrange works on objects too
         if items:
             pics = sum(1 for it in items if it["kind"] == "picture")
-            shapes = len(items) - pics
+            groups = sum(1 for it in items if it["kind"] == "group")
+            shapes = len(items) - pics - groups
             what = ", ".join(x for x in (
                 f"{pics} picture" + ("s" if pics != 1 else "") if pics else "",
-                f"{shapes} shape" + ("s" if shapes != 1 else "") if shapes else "") if x)
+                f"{shapes} shape" + ("s" if shapes != 1 else "") if shapes else "",
+                f"{groups} group" + ("s" if groups != 1 else "") if groups else "") if x)
             self.statusMessage.emit(f"Selected {what}: drag to move, drag a handle to resize, "
                                     "Delete deletes, right-click for more")
 
@@ -2812,16 +2820,24 @@ class DocumentView(QScrollArea):
             self.select_objects(self.obj_sel[0], [])
 
     def _objects_edit(self, label, fn, keep=True):
-        """Run fn(page, ns) on the selected objects as one undo step; keep them selected."""
+        """Run fn(page, ns) on the selected objects as one undo step; keep them selected.
+        fn may return the page's new page_objects.Objects (saves reading the page again)."""
+        from . import page_objects
         if self.obj_sel is None:
             return
         index, items = self.obj_sel
         ns = [it["n"] for it in items]
 
+        fresh = {}
+
         def do():
-            fn(self.doc[index], ns)
+            fresh["objs"] = fn(self.doc[index], ns)
+        before = self._obj_cache.get(index)
         self.modify(do, [index])
         self._obj_cache.pop(index, None)
+        if isinstance(fresh.get("objs"), page_objects.Objects) and before is not None:
+            # a move / rotate worked out the page's objects without reading it again
+            self._obj_cache[index] = fresh["objs"]
         self.obj_sel = None
         if keep:
             objs = self.content_objects(index)
@@ -2835,14 +2851,16 @@ class DocumentView(QScrollArea):
         old = self.selected_objects_rect()
         if self.obj_sel is None:
             return
-        self._objects_edit("Moved", lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect))
+        objs = self._obj_cache.get(self.obj_sel[0])
+        self._objects_edit("Moved", lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect, objs))
 
     def rotate_objects(self, degrees):
         from . import page_objects
         if self.obj_sel is None:
             return
         rect = self.selected_objects_rect()
-        self._objects_edit("Rotated", lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees))
+        objs = self._obj_cache.get(self.obj_sel[0])
+        self._objects_edit("Rotated", lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees, objs))
 
     def arrange_objects(self, how):
         """Stacking order of the page's own pictures and shapes (Edit objects): bring them
