@@ -1002,7 +1002,9 @@ class MainWindow(QMainWindow):
         for key, a in self.arrange_actions.items():
             need = 3 if key.startswith("dist") else 2 if key.startswith("al_") and \
                 self._align_ref() != "page" else 1
-            a.setEnabled(n_sel >= need)
+            # stacking order also works on pictures / shapes selected with Edit objects
+            a.setEnabled(n_sel >= need or key.startswith("z_") and has
+                         and v.obj_sel is not None)
         self.a_undo.setEnabled(has and v.can_undo())
         self.a_redo.setEnabled(has and v.can_redo())
         self.page_spin.setEnabled(has)
@@ -1054,6 +1056,7 @@ class MainWindow(QMainWindow):
         v.set_tool(self.tool)
         v.show_comment_boxes = self.a_cards.isChecked()
         v.selectionChanged.connect(self._on_selection_changed)
+        v.openFileRequested.connect(self._open_linked_pdf)
         v.signedDocument.connect(self._on_signed)
         v.oneShotPlaced.connect(self._after_one_shot)
         v.selectToolRequested.connect(lambda: self.set_tool("select"))
@@ -1311,6 +1314,12 @@ class MainWindow(QMainWindow):
         if self.tool in annotations.DEFAULTS:
             annotations.reset_tool_props(self.tool)
             self._refresh_props()
+
+    def _open_linked_pdf(self, path, page):
+        self.open_file(path)
+        v = self.view()
+        if v is not None and page >= 0 and os.path.normcase(v.path or "") == os.path.normcase(path):
+            QTimer.singleShot(200, lambda: v.goto_page(min(page, v.page_count() - 1)))
 
     def _on_selection_changed(self):
         if self.sender() is self.view():

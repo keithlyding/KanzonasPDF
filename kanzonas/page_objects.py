@@ -30,6 +30,16 @@ _PAINT = {b"S": (True, False), b"s": (True, False), b"f": (False, True), b"F": (
 _STATE = {b"w", b"J", b"j", b"M", b"d", b"ri", b"i", b"gs", b"CS", b"cs", b"SC", b"SCN", b"sc",
           b"scn", b"G", b"g", b"RG", b"rg", b"K", b"k"}
 CURVE_STEPS = 12
+# graphics state that an object's look depends on, kept so it can be redrawn elsewhere in the
+# drawing order (Bring to front / Send to back): category -> the operators that set it
+_FILL = {b"g", b"rg", b"k", b"sc", b"scn"}
+_STROKE = {b"G", b"RG", b"K", b"SC", b"SCN"}
+_KEEP = {b"w", b"J", b"j", b"M", b"d", b"ri", b"i"}
+
+
+def _state_bytes(st):
+    return b" ".join(st["cs"] + st["fill"] + st["CS"] + st["stroke"] +
+                     [v for _k, v in sorted(st["keep"].items())] + st["gs"])
 
 
 def _skip_string(data, i):
@@ -128,13 +138,38 @@ def scan(data):
     ctm = pymupdf.Matrix(1, 0, 0, 1, 0, 0)
     width = 1.0
     stack = []
+    st = {"cs": [], "fill": [], "CS": [], "stroke": [], "keep": {}, "gs": []}
+
+    def copy(s):
+        return {k: (dict(v) if isinstance(v, dict) else list(v)) for k, v in s.items()}
+
+    def note(op, start, end):
+        raw = data[start:end]
+        if op == b"cs":
+            st["cs"], st["fill"] = [raw], []
+        elif op == b"CS":
+            st["CS"], st["stroke"] = [raw], []
+        elif op in _FILL:
+            if op in (b"g", b"rg", b"k"):
+                st["cs"] = []
+            st["fill"] = [raw]
+        elif op in _STROKE:
+            if op in (b"G", b"RG", b"K"):
+                st["CS"] = []
+            st["stroke"] = [raw]
+        elif op in _KEEP:
+            st["keep"][op] = raw
+        elif op == b"gs":
+            st["gs"].append(raw)
     path_start = None
+    path_state = None
     clip = False
     xs, ys = [], []
     for op, args, start, end in _tokens(data):
         if op in _CONSTRUCT:
             if path_start is None:
                 path_start = start
+                path_state = None
                 clip = False
                 xs, ys = [], []
             k = _CONSTRUCT[op]
@@ -155,21 +190,27 @@ def scan(data):
         if path_start is not None and op in _STATE:
             if op == b"w" and args:
                 width = _num(args[-1]) or 0.0
+            if path_state is None:
+                path_state = _state_bytes(st)      # the state the path started with
+            note(op, start, end)
             continue
         if path_start is not None:
             if op in _PAINT and not clip and xs:
                 stroke, fill = _PAINT[op]
                 out.append({"start": path_start, "end": end, "ctm": pymupdf.Matrix(ctm),
                             "path": True, "box": (min(xs), min(ys), max(xs), max(ys)),
-                            "stroke": stroke, "fill": fill, "width": width})
+                            "stroke": stroke, "fill": fill, "width": width,
+                            "state": path_state if path_state is not None
+                            else _state_bytes(st)})
             path_start = None
             if op in _PAINT or op == b"n":
                 continue
+        note(op, start, end)
         if op == b"q":
-            stack.append((ctm, width))
+            stack.append((ctm, width, copy(st)))
         elif op == b"Q":
             if stack:
-                ctm, width = stack.pop()
+                ctm, width, st = stack.pop()
         elif op == b"cm" and len(args) >= 6:
             vals = [_num(t) for t in args[-6:]]
             if None not in vals:
@@ -178,9 +219,10 @@ def scan(data):
             width = _num(args[-1]) or 0.0
         elif op == b"Do" and args and isinstance(args[-1], bytes) and args[-1][:1] == b"/":
             out.append({"start": start, "end": end, "ctm": pymupdf.Matrix(ctm),
-                        "name": args[-1]})
+                        "name": args[-1], "state": _state_bytes(st)})
         elif op == b"BI":
-            out.append({"start": start, "end": end, "ctm": pymupdf.Matrix(ctm), "name": None})
+            out.append({"start": start, "end": end, "ctm": pymupdf.Matrix(ctm), "name": None,
+                        "state": _state_bytes(st)})
     return out
 
 
@@ -430,6 +472,96 @@ def rotate(page, ns, rect, degrees):
 def delete(page, ns):
     _edit(page, ns, lambda old, ctm: b" " + (_split(old)[0] if old[:2] != b"BI" else b"") +
           b" ")
+
+
+_RESET = b"KZReset"
+_DEFAULTS = b"0 g 0 G 1 w 0 J 0 j 10 M [] 0 d /KZReset gs"
+
+
+def _add_reset_gs(page):
+    """Give the page an ExtGState /KZReset (fully opaque, normal blending, no soft mask), so
+    a moved object can drop the transparency in effect where it lands."""
+    doc = page.parent
+    value = "<</Type/ExtGState/CA 1/ca 1/BM/Normal/SMask/None>>"
+    kind, val = doc.xref_get_key(page.xref, "Resources")
+    if kind == "xref":
+        res_xref, prefix = int(val.split()[0]), ""
+    else:
+        if kind != "dict":
+            doc.xref_set_key(page.xref, "Resources", "<<>>")
+        res_xref, prefix = page.xref, "Resources/"
+    kind, val = doc.xref_get_key(res_xref, prefix + "ExtGState")
+    if kind == "xref":
+        doc.xref_set_key(int(val.split()[0]), "KZReset", value)
+    else:
+        if kind != "dict":
+            doc.xref_set_key(res_xref, prefix + "ExtGState", "<<>>")
+        doc.xref_set_key(res_xref, prefix + "ExtGState/KZReset", value)
+
+
+def reorder(page, ns, how, dry_run=False):
+    """Change where objects ns sit in the drawing order: front, back (of everything on the
+    page, text included), forward, backward (past the next / previous object they overlap).
+    Each moved object is redrawn as  q <matrix> cm <its colors, line style, transparency>
+    <its instructions> Q  at the new place, so it looks the same; its old instructions are
+    removed (state settings kept for what follows). A clipping path that was in effect at
+    its old place doesn't come with it. Returns False if there's nowhere to move (dry_run:
+    only check)."""
+    tm = page.transformation_matrix
+    data = _contents(page)
+    found = scan(data)
+    sel = sorted(set(n for n in ns if n < len(found)))
+    if not sel:
+        return False
+
+    def bounds(d):
+        if d.get("path"):
+            x0, y0, x1, y1 = d["box"]
+            return pymupdf.Rect(x0, y0, x1, y1).quad.transform(d["ctm"] * tm).rect
+        return pymupdf.Rect(0, 0, 1, 1).quad.transform(d["ctm"] * tm).rect
+    area = pymupdf.Rect()
+    for n in sel:
+        area |= bounds(found[n])
+    ident = pymupdf.Matrix(1, 0, 0, 1, 0, 0)
+    if how == "front":
+        at, target = len(data), ident
+    elif how == "back":
+        at, target = 0, ident
+    elif how == "forward":
+        later = [k for k in range(sel[-1] + 1, len(found))
+                 if k not in sel and bounds(found[k]).intersects(area)]
+        if not later:
+            return False
+        d = found[later[0]]
+        at, target = d["end"], d["ctm"]
+    else:
+        earlier = [k for k in range(sel[0] - 1, -1, -1)
+                   if k not in sel and bounds(found[k]).intersects(area)]
+        if not earlier:
+            return False
+        d = found[earlier[0]]
+        at, target = d["start"], d["ctm"]
+    if abs(target.a * target.d - target.b * target.c) < 1e-12:
+        return False
+    if dry_run:
+        return True
+    snippet = b""
+    pieces = []
+    for n in sel:
+        d = found[n]
+        old = data[d["start"]:d["end"]]
+        m = d["ctm"] * ~target
+        snippet += (b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m) + _DEFAULTS + b" " +
+                    d.get("state", b"") +
+                    b"\n" + old + b"\nQ\n")
+        keep = _split(old)[0] if old[:2] != b"BI" else b""
+        pieces.append((d["start"], d["end"], b" " + keep + b" "))
+    pieces.append((at, at, snippet))
+    for s, e, piece in sorted(pieces, key=lambda p: (p[0], p[1]), reverse=True):
+        data = data[:s] + piece + data[e:]
+    _add_reset_gs(page)
+    _set_contents(page, data)
+    return True
 
 
 def images(page):

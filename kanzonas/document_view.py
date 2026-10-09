@@ -55,6 +55,7 @@ class DocumentView(QScrollArea):
     structureChanged = Signal()     # pages added / removed / reordered / rotated
     zoomChanged = Signal(float)
     statusMessage = Signal(str)
+    openFileRequested = Signal(str, int)      # a link to another PDF: path, page (0-based)
     selectionChanged = Signal()
     signedDocument = Signal()
     oneShotPlaced = Signal()        # a signature / initials / date was placed
@@ -1372,6 +1373,129 @@ class DocumentView(QScrollArea):
         page = self.doc[page_index]
         return page.load_annot(key).get_file()
 
+    # ---- links in the PDF (web addresses, other pages, other files) -----------------------
+    WEB_SCHEMES = ("http://", "https://", "mailto:", "ftp://")
+
+    def links(self, index):
+        """[(rect as displayed, link dict)] of the page's links (cached until the next edit)."""
+        key = ("links", index)
+        if key not in self._card_cache:
+            try:
+                self._card_cache[key] = [(pymupdf.Rect(ln["from"]), ln)
+                                         for ln in self.doc[index].get_links()]
+            except Exception:
+                self._card_cache[key] = []
+        return self._card_cache[key]
+
+    def link_at(self, index, pt):
+        """The link under unrotated page point pt, or None."""
+        lst = self.links(index)
+        if not lst:
+            return None
+        disp = pymupdf.Point(pt) * self.doc[index].rotation_matrix
+        for r, ln in lst:
+            if disp in r:
+                return ln
+        return None
+
+    def link_tip(self, link):
+        k = link.get("kind")
+        if k == pymupdf.LINK_URI:
+            return link.get("uri", "")
+        if k in (pymupdf.LINK_GOTO, pymupdf.LINK_NAMED) and link.get("page", -1) >= 0:
+            return f"Go to page {link['page'] + 1}"
+        if k == pymupdf.LINK_NAMED:
+            return link.get("name") or link.get("nameddest") or "Link"
+        if k in (pymupdf.LINK_GOTOR, pymupdf.LINK_LAUNCH):
+            return "Open " + (link.get("file") or "file")
+        return "Link"
+
+    def _go_to(self, page, to=None):
+        if not 0 <= page < self.doc.page_count:
+            return
+        y = 0
+        if to is not None:
+            pg = self.doc[page]
+            y = max(0, (pymupdf.Point(to) * pg.rotation_matrix).y * self.zoom - 20)
+        self.goto_page(page, y)
+
+    def follow_link(self, link):
+        """Click on a link: go to the page, open the web address (asking first, like Adobe
+        and PDF-XChange, unless you said not to ask again), or open the other file."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        k = link.get("kind")
+        if k in (pymupdf.LINK_GOTO, pymupdf.LINK_NAMED) and link.get("page", -1) >= 0:
+            self._go_to(link["page"], link.get("to"))
+            return
+        if k == pymupdf.LINK_NAMED:
+            name = (link.get("name") or "").lower()
+            cur = self.current_page()
+            target = {"nextpage": cur + 1, "prevpage": cur - 1, "firstpage": 0,
+                      "lastpage": self.doc.page_count - 1}.get(name)
+            if target is not None:
+                self._go_to(target)
+            return
+        if k == pymupdf.LINK_URI:
+            uri = (link.get("uri") or "").strip()
+            if uri.lower().startswith("file:"):
+                self._open_linked_file(QUrl(uri).toLocalFile(), -1)
+                return
+            if not uri.lower().startswith(self.WEB_SCHEMES):
+                QMessageBox.information(self, "Link", "KanzonasPDF doesn't open this kind of "
+                                        "link:\n" + uri[:300])
+                return
+            if not self._confirm_web(uri):
+                return
+            QDesktopServices.openUrl(QUrl(uri))
+            return
+        if k in (pymupdf.LINK_GOTOR, pymupdf.LINK_LAUNCH):
+            self._open_linked_file(link.get("file") or "", link.get("page", -1))
+
+    def _confirm_web(self, uri):
+        from PySide6.QtWidgets import QCheckBox
+        from . import paths
+        s = paths.settings()
+        if s.value("links_dont_ask", "false") == "true":
+            return True
+        box = QMessageBox(QMessageBox.Question, "Open link",
+                          "This document wants to open:\n\n" + uri[:500] +
+                          "\n\nOpen it in your browser (or email program)?",
+                          QMessageBox.Yes | QMessageBox.No, self)
+        box.setDefaultButton(QMessageBox.Yes)
+        again = QCheckBox("Don't ask again")
+        box.setCheckBox(again)
+        if box.exec() != QMessageBox.Yes:
+            return False
+        if again.isChecked():
+            s.setValue("links_dont_ask", "true")
+        return True
+
+    def _open_linked_file(self, path, page):
+        """A link to another file: PDFs open here (at the page); other files with the program
+        Windows uses for them, after asking; programs and scripts are refused."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        if not path:
+            return
+        if not os.path.isabs(path) and self.path:
+            path = os.path.join(os.path.dirname(self.path), path)
+        path = os.path.normpath(path)
+        if not os.path.exists(path):
+            QMessageBox.information(self, "Link", "The linked file isn't there:\n" + path)
+            return
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".pdf":
+            self.openFileRequested.emit(path, page)
+            return
+        if ext in self.RISKY:
+            QMessageBox.warning(self, "Link", "This link would start a program or script, "
+                                "which KanzonasPDF doesn't do from a PDF:\n" + path)
+            return
+        if QMessageBox.question(self, "Open file", "This document wants to open:\n\n" + path +
+                                "\n\nOpen it?") == QMessageBox.Yes:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+
     def open_attachment(self, page_index, key, name):
         """Open an attached file with the program Windows uses for it."""
         import tempfile
@@ -1825,7 +1949,11 @@ class DocumentView(QScrollArea):
         self.commit_models(index, out)
 
     def arrange(self, how):
-        """how: front, back, forward, backward (stacking order of the selected markups)."""
+        """how: front, back, forward, backward (stacking order of the selected markups, or of
+        the page's own pictures and shapes selected with Edit objects)."""
+        if self.obj_sel is not None and self.selection is None:
+            self.arrange_objects(how)
+            return
         if self.selection is None:
             return
         index = self.selection[0]
@@ -2182,6 +2310,8 @@ class DocumentView(QScrollArea):
         for i in {old[0] if old else None, index}:
             if i is not None and 0 <= i < len(self.pages):
                 self.pages[i].update()
+        if bool(old) != bool(self.obj_sel):
+            self.selectionChanged.emit()        # menus: Arrange works on objects too
         if items:
             pics = sum(1 for it in items if it["kind"] == "picture")
             shapes = len(items) - pics
@@ -2227,6 +2357,38 @@ class DocumentView(QScrollArea):
             return
         rect = self.selected_objects_rect()
         self._objects_edit("Rotated", lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees))
+
+    def arrange_objects(self, how):
+        """Stacking order of the page's own pictures and shapes (Edit objects): bring them
+        in front of what covers them (text too), or send them behind."""
+        from . import page_objects
+        if self.obj_sel is None:
+            return
+        index, items = self.obj_sel
+        ns = [it["n"] for it in items]
+        moved = {"ok": False}
+
+        def do():
+            moved["ok"] = page_objects.reorder(self.doc[index], ns, how)
+        if how in ("forward", "backward"):
+            # nothing overlapping in that direction: say so instead of an empty undo step
+            if not page_objects.reorder(self.doc[index], ns, how, dry_run=True):
+                self.statusMessage.emit("Nothing overlaps it in that direction")
+                return
+        self.modify(do, [index])
+        self._obj_cache.pop(index, None)
+        # the moved objects get new positions in the drawing order: select them again by place
+        rects = [pymupdf.Rect(it["rect"]) for it in items]
+        objs = self.content_objects(index)
+        again = [it for it in (objs.items if objs else [])
+                 if any(abs(it["rect"].x0 - r.x0) < 0.05 and abs(it["rect"].y0 - r.y0) < 0.05
+                        and abs(it["rect"].x1 - r.x1) < 0.05 and abs(it["rect"].y1 - r.y1) < 0.05
+                        for r in rects)]
+        self.obj_sel = (index, again) if again else None
+        self.pages[index].update()
+        label = {"front": "Brought to front", "back": "Sent to back",
+                 "forward": "Brought forward", "backward": "Sent backward"}[how]
+        self.statusMessage.emit(label + " (Ctrl+Z undoes it)")
 
     def delete_objects(self):
         from . import page_objects

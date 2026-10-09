@@ -644,6 +644,12 @@ class PageWidget(QWidget):
         menu.addAction("Rotate clockwise", lambda: self.view.rotate_objects(90))
         menu.addAction("Rotate counterclockwise", lambda: self.view.rotate_objects(-90))
         menu.addSeparator()
+        for how, label, keys in (("front", "Bring to front", "Ctrl+Shift+]"),
+                                 ("forward", "Bring forward", "Ctrl+]"),
+                                 ("backward", "Send backward", "Ctrl+["),
+                                 ("back", "Send to back", "Ctrl+Shift+[")):
+            menu.addAction(f"{label}\t{keys}", lambda h=how: self.view.arrange_objects(h))
+        menu.addSeparator()
         menu.addAction("Delete", self.view.delete_objects)
         menu.exec(e.globalPosition().toPoint())
 
@@ -822,6 +828,12 @@ class PageWidget(QWidget):
                 self.view.clear_selection()
                 self.view.fill_field(self.index, xref)
                 return
+        # a click (press and release without dragging) on a link follows it
+        self._link_press = None
+        if tool in ("hand", "select"):
+            link = self.view.link_at(self.index, pdf)
+            if link is not None and self.view.annot_at(self.index, pdf) is None:
+                self._link_press = (link, pos)
         if tool == "hand":
             # like Adobe and PDF-XChange: clicking a markup with the Hand selects it (to
             # move, restyle or delete); anywhere else drags the page
@@ -1036,6 +1048,14 @@ class PageWidget(QWidget):
             if tool in ("select", "hand") and self.view.widget_at(self.index, self.to_pdf(pos)) is not None:
                 self.setCursor(Qt.PointingHandCursor)
                 return
+            if tool in ("select", "hand"):
+                pdf = self.to_pdf(pos)
+                link = self.view.link_at(self.index, pdf)
+                if link is not None and self.view.annot_at(self.index, pdf) is None:
+                    self.setCursor(Qt.PointingHandCursor)
+                    QToolTip.showText(self.mapToGlobal(pos.toPoint()),
+                                      self.view.link_tip(link), self)
+                    return
             if tool == "hand":
                 self.unsetCursor()
             if tool == "editobjects":
@@ -1103,6 +1123,15 @@ class PageWidget(QWidget):
             self.unsetCursor()
 
     def mouseReleaseEvent(self, e):
+        press = getattr(self, "_link_press", None)
+        self._link_press = None
+        self._release(e)
+        if press is not None and e.button() == Qt.LeftButton:
+            p = e.position() - press[1]
+            if abs(p.x()) + abs(p.y()) < 5:
+                self.view.follow_link(press[0])
+
+    def _release(self, e):
         if e.button() == Qt.LeftButton and self._snap_mark is not None and self._edit is not None:
             self._snap_mark = None
         if e.button() == Qt.MiddleButton and getattr(self, "_mid_pan", False):
