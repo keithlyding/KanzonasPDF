@@ -3,6 +3,10 @@
 Each revision gets a version number. It's shown in the window title and Help > About,
 and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the same name every version).
 
+## Unreleased
+
+- Zoom goes to 6400%, not 800%. A page too large for that stops a little sooner, so the window can still hold it. Only the part on screen is drawn.
+
 | Version | Commit | Changes |
 | --- | --- | --- |
 | 0.85 | (this) | Trust and text selection: an app-created certificate is an end-entity document signer (email protection and document signing), not a certificate authority. The portable update downloads only from GitHub release hosts and applies the zip only when its sha256 matches the release. Attached programs and scripts are not opened. Apply redactions scrubs metadata, attachments, hidden text, and scripts unless told not to. A push to main publishes a draft release unless AUTO_RELEASE is true. Text selection can continue across page breaks; Copy puts a blank line between pages |

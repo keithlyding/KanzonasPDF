@@ -18,7 +18,10 @@ from .inline_editor import InlineEditor
 from .page_widget import PageWidget
 
 PAGE_GAP = 12
-MIN_ZOOM, MAX_ZOOM = 0.1, 8.0
+MIN_ZOOM, MAX_ZOOM = 0.1, 64.0     # 10% to 6400%, the same ceiling as Acrobat and PDF-XChange
+# Qt refuses a widget larger than this on one side. A normal page still reaches 6400%;
+# an oversized sheet stops a little earlier so the window can still hold it.
+WIDGET_PX = 16_000_000
 UNDO_LIMIT = 30
 # Undo keeps whole-document copies, so the history also has a memory budget: per document,
 # and for all open documents together (the oldest steps go first; the latest is always kept)
@@ -313,10 +316,18 @@ class DocumentView(QScrollArea):
     # ---- zoom -------------------------------------------------------------
     fit_mode = None     # "width" / "page" while the zoom follows the window size
 
+    def _zoom_cap(self):
+        """Highest zoom for this file: 6400%, or less when a page would exceed Qt's widget size."""
+        cap = MAX_ZOOM
+        for r in getattr(self, "page_rects", None) or []:
+            side = max(r.width, r.height, 1)
+            cap = min(cap, WIDGET_PX / side)
+        return max(MIN_ZOOM, cap)
+
     def set_zoom(self, z, keep_fit=False):
         if not keep_fit:
             self.fit_mode = None       # a chosen zoom stays put when the window resizes
-        z = max(MIN_ZOOM, min(MAX_ZOOM, z))
+        z = max(MIN_ZOOM, min(self._zoom_cap(), z))
         if abs(z - self.zoom) < 1e-4:
             return
         vbar = self.verticalScrollBar()
