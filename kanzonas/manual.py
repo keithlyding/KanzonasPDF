@@ -72,7 +72,7 @@ saying what it does and its keyboard shortcut.</li>
 
 <h2 id="install">Installing, updating and uninstalling</h2>
 <ul>
-<li>Run <b>KanzonasPDF-v&lt;version&gt;-setup.exe</b>. No administrator rights are needed: it
+<li>Run <b>KanzonasPDF-v&lt;version&gt;-setup.exe</b> (the installer has a blue icon; the program itself is red). No administrator rights are needed: it
 installs for your Windows account (choose "all users" on the first page if you're an admin and
 want that). It adds a Start-menu shortcut, optionally a desktop shortcut, and offers
 KanzonasPDF as an app for opening PDFs.</li>

@@ -10,7 +10,8 @@ sunflower stand in front of a page whose top comes out above the cactus, as in t
 artwork, set a little to the right and lower (its top level with the top of the cactus),
 with lines of writing on it; the cactus has a white outline; the page shades from white
 at the top to transparent at the bottom. Drawn here as vectors so it is sharp at every size; sizes 16-32 use a
-simpler page without an outline. Outputs: kanzonas.ico, kanzonas.png,
+simpler page without an outline. Outputs: kanzonas.ico, kanzonas.png, kanzonas-setup.ico
+(the installer's icon: same art on a blue tile),
 installer BMPs and the embedded copy kanzonas/branding_data.py.
 """
 import base64
@@ -27,6 +28,10 @@ mark = QImage("assets/kanzonas-mark-source.png")
 
 
 RED_TOP, RED_BOTTOM = "#b30000", "#800000"      # red tile: the color people link with PDFs
+# the installer's icon: the same artwork on an installer-blue tile, so the setup file can't be
+# mistaken for the program itself
+BLUE_TOP, BLUE_BOTTOM = "#2b88e8", "#0a4ea8"
+TILE = [RED_TOP, RED_BOTTOM]
 
 
 MARGIN = 3.0      # gap (in tile units of 256) kept between the artwork and the tile's edge
@@ -34,8 +39,8 @@ MARGIN = 3.0      # gap (in tile units of 256) kept between the artwork and the 
 
 def _tile(p, size_units, radius):
     g = QLinearGradient(0, 0, size_units * 0.35, size_units)     # light top left, deep bottom
-    g.setColorAt(0, QColor(RED_TOP))
-    g.setColorAt(1, QColor(RED_BOTTOM))
+    g.setColorAt(0, QColor(TILE[0]))
+    g.setColorAt(1, QColor(TILE[1]))
     p.setPen(Qt.NoPen)
     p.setBrush(g)
     m = size_units / 64
@@ -228,6 +233,13 @@ frames = {s: (small if s <= 32 else big).resize((s, s), Image.LANCZOS) for s in 
 frames[256].save("assets/kanzonas.png")
 frames[256].save("assets/kanzonas.ico", sizes=[(s, s) for s in sizes],
                  append_images=[frames[s] for s in sizes[:-1]])
+
+TILE[:] = [BLUE_TOP, BLUE_BOTTOM]               # installer icon: same art, blue tile
+setup_big, setup_small = to_pil(big_icon()), to_pil(small_icon())
+TILE[:] = [RED_TOP, RED_BOTTOM]
+setup = {s: (setup_small if s <= 32 else setup_big).resize((s, s), Image.LANCZOS) for s in sizes}
+setup[256].save("assets/kanzonas-setup.ico", sizes=[(s, s) for s in sizes],
+                append_images=[setup[s] for s in sizes[:-1]])
 
 
 def on_white(w, h, size, pos):
