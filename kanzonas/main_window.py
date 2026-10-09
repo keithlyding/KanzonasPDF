@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, Q
                                QVBoxLayout, QHBoxLayout, QMenu, QProgressDialog,
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
-                               QPushButton, QSlider)
+                               QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit)
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from . import __version__, annotations, export, signatures, theme
@@ -1082,6 +1082,8 @@ class MainWindow(QMainWindow):
         v.signedDocument.connect(self._on_signed)
         v.oneShotPlaced.connect(self._after_one_shot)
         v.selectToolRequested.connect(lambda: self.set_tool("select"))
+        v.previousToolRequested.connect(
+            lambda: self.set_tool(getattr(self, "_last_basic_tool", "hand")))
         v.calibrateRequested.connect(self._calibrate)
         v.layersChanged.connect(lambda: self.sender() is self.view() and self._rebuild_thumbs())
         v.scaleChanged.connect(self._update_ui)
@@ -1308,6 +1310,12 @@ class MainWindow(QMainWindow):
         self.tool_actions[tool].setChecked(True)
         for i in range(self.tabs.count()):
             self.tabs.widget(i).set_tool(tool)
+        # keyboard focus to the page (unless you're typing somewhere), so Escape puts the
+        # tool down even when it was picked from a toolbar button or a stamp menu
+        v = self.view()
+        typing = isinstance(QApplication.focusWidget(), (QLineEdit, QAbstractSpinBox, QPlainTextEdit))
+        if v is not None and not typing:
+            v.setFocus()
         self._refresh_props()
 
     def _after_one_shot(self):

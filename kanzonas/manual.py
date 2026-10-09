@@ -177,7 +177,9 @@ Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> mo
 <b>Ctrl+arrow</b> 0.1 pt, for fine adjustments. A series of presses is one Ctrl+Z. Markups tied to
 text (highlights, underlines, strikeouts) stay with their text. With nothing selected, Left and
 Right turn the page as usual.</li>
-<li><b>Escape</b> clears the selection; <b>Escape twice</b> switches back to the Select (arrow) tool.</li>
+<li><b>Escape</b> clears the selection. With nothing selected, Escape puts down the tool you
+picked (a stamp, shape, measurement...) and goes back to the Hand or Select tool you used last;
+press it again for the Select (arrow) tool.</li>
 </ul>
 
 <h2 id="clipboard">Copy, cut and paste</h2>
@@ -232,7 +234,10 @@ hides just the yellow boxes beside commented text.</li>
 <li><b>Delete comments:</b> everyone's, only yours, or only one person's, on all pages or the
 current page. Undo brings them back.</li>
 <li><b>Flatten comments:</b> makes comments and markups a permanent part of the page while form
-fields stay fillable. (Document &gt; Flatten flattens form fields too.)</li>
+fields stay fillable. (Document &gt; Flatten flattens form fields too.) The markups really
+become page drawing: no PDF program sees them as markups any more. Programs that edit page
+content (Acrobat's Edit PDF, PDF-XChange's Edit Content, KanzonasPDF's Edit objects) can still
+move that drawing, as they can the rest of the page; flattening isn't a lock.</li>
 </ul>
 
 <h2 id="shapes">Shapes, lines and the pen</h2>
@@ -669,7 +674,7 @@ settings...).</li>
 <tr><td>Shift+wheel</td><td>Scroll left and right</td></tr>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
-<tr><td>Escape, Escape twice</td><td>Clear selection, back to Select</td></tr>
+<tr><td>Escape, Escape again</td><td>Clear selection / put the tool down (back to Hand or Select), then Select</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>

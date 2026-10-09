@@ -37,6 +37,41 @@ _STROKE = {b"G", b"RG", b"K", b"SC", b"SCN"}
 _KEEP = {b"w", b"J", b"j", b"M", b"d", b"ri", b"i"}
 
 
+def _new_state():
+    return {"cs": [], "fill": [], "CS": [], "stroke": [], "keep": {}, "gs": []}
+
+
+def _note(st, op, raw):
+    """Record a graphics-state operator (its bytes) in st."""
+    if op == b"cs":
+        st["cs"], st["fill"] = [raw], []
+    elif op == b"CS":
+        st["CS"], st["stroke"] = [raw], []
+    elif op in _FILL:
+        if op in (b"g", b"rg", b"k"):
+            st["cs"] = []
+        st["fill"] = [raw]
+    elif op in _STROKE:
+        if op in (b"G", b"RG", b"K"):
+            st["CS"] = []
+        st["stroke"] = [raw]
+    elif op in _KEEP:
+        st["keep"][op] = raw
+    elif op == b"gs":
+        st["gs"].append(raw)
+
+
+def _state_after(state, ops):
+    """The state bytes after applying the operators in `ops` (bytes) to `state` (bytes from
+    _state_bytes): how a full read would record an object whose own settings moved
+    in front of it."""
+    st = _new_state()
+    for chunk in (state, ops):
+        for op, _a, s_, e_ in _tokens(chunk):
+            _note(st, op, chunk[s_:e_])
+    return _state_bytes(st)
+
+
 def _state_bytes(st):
     return b" ".join(st["cs"] + st["fill"] + st["CS"] + st["stroke"] +
                      [v for _k, v in sorted(st["keep"].items())] + st["gs"])
@@ -138,29 +173,13 @@ def scan(data):
     ctm = pymupdf.Matrix(1, 0, 0, 1, 0, 0)
     width = 1.0
     stack = []
-    st = {"cs": [], "fill": [], "CS": [], "stroke": [], "keep": {}, "gs": []}
+    st = _new_state()
 
     def copy(s):
         return {k: (dict(v) if isinstance(v, dict) else list(v)) for k, v in s.items()}
 
     def note(op, start, end):
-        raw = data[start:end]
-        if op == b"cs":
-            st["cs"], st["fill"] = [raw], []
-        elif op == b"CS":
-            st["CS"], st["stroke"] = [raw], []
-        elif op in _FILL:
-            if op in (b"g", b"rg", b"k"):
-                st["cs"] = []
-            st["fill"] = [raw]
-        elif op in _STROKE:
-            if op in (b"G", b"RG", b"K"):
-                st["CS"] = []
-            st["stroke"] = [raw]
-        elif op in _KEEP:
-            st["keep"][op] = raw
-        elif op == b"gs":
-            st["gs"].append(raw)
+        _note(st, op, data[start:end])
     path_start = None
     path_state = None
     clip = False
@@ -286,30 +305,36 @@ def _contents(page):
     return b"\n".join(doc.xref_stream(x) or b"" for x in page.get_contents())
 
 
-def _set_contents(page, data):
-    """Give the page one new content stream (never edits a stream another page may share)."""
+def _set_contents(page, data, compress=True):
+    """Give the page one new content stream (never edits a stream another page may share).
+    compress=False skips deflating it now (saving deflates everything anyway): on a big CAD
+    sheet that's a quarter of a second per edit."""
     doc = page.parent
     x = doc.get_new_xref()
     doc.update_object(x, "<<>>")
-    doc.update_stream(x, data)
+    doc.update_stream(x, data, compress=compress)
     page.set_contents(x)
 
 
 class Objects:
     """The editable objects of one page, read once (cache it until the page changes)."""
 
-    def __init__(self, page):
-        self.data = _contents(page)
+    def __init__(self, page, data=None, found=None):
+        """data / found: the page's content and its scan when the caller already has them
+        (after a move: see transform), so a big drawing isn't read again."""
+        self.data = _contents(page) if data is None else data
         self.tm = page.transformation_matrix
         self.items = []
+        self.found = []
         if not self.data.strip():
             return
+        self.found = scan(self.data) if found is None else found
         names = {}
         for it in page.get_images(full=True):
             if it[-1] == 0:             # drawn by the page itself, not inside a form
                 names[("/" + it[7]).encode()] = it[0]
         tm = self.tm
-        for k, d in enumerate(scan(self.data)):
+        for k, d in enumerate(self.found):
             m = d["ctm"] * tm
             if abs(m.a * m.d - m.b * m.c) < 1e-12:
                 continue
@@ -420,15 +445,22 @@ def _split(old):
 _WRAP = re.compile(rb"\nq ((?:-?[\d.]+ ){6})cm\n$")
 
 
-def transform(page, ns, t_page):
+def transform(page, ns, t_page, objs=None):
     """Apply t_page (a Matrix in unrotated page coordinates) to objects ns. An object this
     module moved before already sits in a  q <M> cm ... Q  wrapper: the new move is folded
     into that one matrix, so nudging a shape a hundred times doesn't nest a hundred
-    wrappers."""
+    wrappers.
+
+    objs: the page's Objects (already read) to reuse instead of reading the drawing again.
+    Returns the page's new Objects, updated in place of a second full read (None when it
+    can't be: then read it again)."""
     tm = page.transformation_matrix
     t_pdf = tm * t_page * ~tm
     data = _contents(page)
-    found = scan(data)
+    if objs is not None and objs.found and objs.data == data:
+        found = objs.found
+    else:
+        found = scan(data)
     pieces = []
     for n in sorted(set(ns), reverse=True):
         if n >= len(found):
@@ -440,33 +472,77 @@ def transform(page, ns, t_page):
         w = _WRAP.search(data, max(0, s - 120), s)
         if w and w.end() == s and data[e:e + 3] == b"\nQ\n":
             outer = pymupdf.Matrix(*[float(v) for v in w.group(1).split()])
-            pieces.append((w.start(), e + 3, b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n"
-                           % tuple(m * outer) + old + b"\nQ\n"))
+            head = b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m * outer)
+            # the object's matrix becomes (written wrapper) x (what was under the old one)
+            pieces.append((w.start(), e + 3, head + old + b"\nQ\n", n, len(head), len(old),
+                           _written(head) * ~outer, b""))
             continue
         state, body = _split(old) if old[:2] != b"BI" else (b"", old)
-        pieces.append((s, e, state + b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m)
-                       + body + b"\nQ\n"))
-    for s, e, piece in pieces:          # back to front: earlier offsets stay valid
+        head = b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m)
+        pieces.append((s, e, state + head + body + b"\nQ\n", n,
+                       len(state) + len(head), len(body), _written(head), state))
+    for s, e, piece, *_ in pieces:      # back to front: earlier offsets stay valid
         data = data[:s] + piece + data[e:]
-    _set_contents(page, data)
+    _set_contents(page, data, compress=False)
+    return _moved(page, data, found, pieces)
 
 
-def move_to(page, ns, old_rect, new_rect):
-    """Move / scale objects ns so their common box old_rect becomes new_rect."""
+def _written(head):
+    """The matrix exactly as written in a  q a b c d e f cm  wrapper (rounded), so the
+    object's matrix matches what reading the page gives."""
+    return pymupdf.Matrix(*[float(v) for v in head.split()[1:7]])
+
+
+def _moved(page, data, found, pieces):
+    """The page's Objects after transform, from the old scan instead of reading the whole
+    drawing again: a moved object is wrapped in its own  q M cm ... Q, which leaves the
+    graphics state of everything after it as it was, so the other objects only shift by
+    the bytes added before them, and the moved one gets M in front of its matrix.
+    An object's own state settings (CAD exporters put the color and width inside the shape)
+    move in front of it, so its recorded state is the state after them."""
+    new = [dict(d) for d in found]
+    by_n = {p[3]: p for p in pieces}
+    shift = 0
+    edits = sorted(pieces)                      # front to back
+    k = 0
+    for n, d in enumerate(found):
+        while k < len(edits) and edits[k][1] <= d["start"] and edits[k][3] != n:
+            s, e, piece = edits[k][:3]
+            shift += len(piece) - (e - s)
+            k += 1
+        p = by_n.get(n)
+        if p is None:
+            new[n]["start"] = d["start"] + shift
+            new[n]["end"] = d["end"] + shift
+            continue
+        s, e, piece, _n, off, size, m, state = p
+        new[n]["start"] = s + shift + off
+        new[n]["end"] = new[n]["start"] + size
+        new[n]["ctm"] = pymupdf.Matrix(m) * d["ctm"]
+        if state:
+            new[n]["state"] = _state_after(d.get("state", b""), state)
+        shift += len(piece) - (e - s)
+        k += 1
+    return Objects(page, data, new)
+
+
+def move_to(page, ns, old_rect, new_rect, objs=None):
+    """Move / scale objects ns so their common box old_rect becomes new_rect. Returns the
+    page's new Objects when it could be worked out without reading the page again."""
     o, r = pymupdf.Rect(old_rect), pymupdf.Rect(new_rect)
     sx = r.width / o.width if o.width else 1.0
     sy = r.height / o.height if o.height else 1.0
     t = pymupdf.Matrix(1, 0, 0, 1, -o.x0, -o.y0) * pymupdf.Matrix(sx, 0, 0, sy, r.x0, r.y0)
-    transform(page, ns, t)
+    return transform(page, ns, t, objs)
 
 
-def rotate(page, ns, rect, degrees):
+def rotate(page, ns, rect, degrees, objs=None):
     """Turn objects ns about the center of rect (positive = clockwise as shown)."""
     r = pymupdf.Rect(rect)
     c = (r.tl + r.br) / 2
     t = pymupdf.Matrix(1, 0, 0, 1, -c.x, -c.y) * pymupdf.Matrix(degrees) * \
         pymupdf.Matrix(1, 0, 0, 1, c.x, c.y)
-    transform(page, ns, t)
+    return transform(page, ns, t, objs)
 
 
 def delete(page, ns):
