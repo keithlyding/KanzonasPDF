@@ -395,8 +395,21 @@ def run(log_path):
         assert updates.newest(rel, "0.35") == ("99.10", "c")
         assert updates.newest(rel[:1], "0.35") is None
         assert updates.version_tuple("v1.0-beta") == (1, 0)
-        rel[2]["assets"] = [{"name": "KanzonasPDF-portable.zip", "browser_download_url": "z"}]
-        assert updates.asset_url(updates.newest_release(rel, "0.35")) == "z"
+        rel[2]["assets"] = [{
+            "name": "KanzonasPDF-portable.zip",
+            "browser_download_url": "https://evil.example/KanzonasPDF-portable.zip",
+            "digest": "sha256:" + "ab" * 32,
+        }]
+        assert updates.asset_url(updates.newest_release(rel, "0.35")) is None
+        rel[2]["assets"][0]["browser_download_url"] = (
+            "https://github.com/keithlyding/KanzonasPDF/releases/download/v99.10/"
+            "KanzonasPDF-portable.zip")
+        rel[2]["assets"][0].pop("digest")
+        assert updates.asset_url(updates.newest_release(rel, "0.35")) is None
+        rel[2]["assets"][0]["digest"] = "sha256:" + "ab" * 32
+        got = updates.asset_url(updates.newest_release(rel, "0.35"))
+        assert got and got.startswith("https://github.com/"), got
+        assert updates.asset_digest(updates.newest_release(rel, "0.35")) == "ab" * 32
         # portable self-update: unpack into _update, keep data, refuse bad zips
         import zipfile
         app = os.path.join(tmp, "app")
@@ -759,7 +772,7 @@ def run(log_path):
         import aiohttp  # noqa: F401
         from pyhanko.sign import timestamps
         from . import digisign
-        timestamps.HTTPTimeStamper("http://timestamp.digicert.com")
+        timestamps.HTTPTimeStamper("https://timestamp.digicert.com")
         p12 = digisign.create_certificate("Self Test", "", "", "pw", os.path.join(tmp, "t.p12"))
         signer = digisign.load_signer(p12, "pw")
         out = os.path.join(tmp, "ts.pdf")

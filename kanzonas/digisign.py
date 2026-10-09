@@ -4,7 +4,9 @@ A digital signature proves who signed and that the file hasn't changed since. Yo
 sign with a certificate file from a certificate authority / your company (.pfx/.p12), or
 with a personal certificate the app creates for you. A personal (self-signed) certificate
 proves the document is unchanged, but other people's software can't confirm your
-identity unless they choose to trust your certificate.
+identity unless they choose to trust your certificate. The certificate this app creates
+is an end-entity document signer: it is not a certificate authority and cannot issue
+other certificates.
 """
 
 import datetime
@@ -32,7 +34,7 @@ def create_certificate(name, email, org, password, path=None):
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
     from cryptography.hazmat.primitives.serialization import pkcs12
-    from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
+    from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     attrs = [x509.NameAttribute(NameOID.COMMON_NAME, name)]
     if org:
@@ -47,10 +49,13 @@ def create_certificate(name, email, org, password, path=None):
             .not_valid_after(now + datetime.timedelta(days=3650))
             .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=True,
                                          key_encipherment=False, data_encipherment=False,
-                                         key_agreement=False, key_cert_sign=True, crl_sign=False,
+                                         key_agreement=False, key_cert_sign=False, crl_sign=False,
                                          encipher_only=False, decipher_only=False), critical=True)
-            .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.EMAIL_PROTECTION]),
-                           critical=False)
+            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+            .add_extension(x509.ExtendedKeyUsage([
+                ExtendedKeyUsageOID.EMAIL_PROTECTION,
+                x509.ObjectIdentifier("1.3.6.1.5.5.7.3.36"),
+            ]), critical=False)
             .sign(key, hashes.SHA256()))
     data = pkcs12.serialize_key_and_certificates(
         name.encode(), key, cert, None, serialization.BestAvailableEncryption(password.encode()))
@@ -86,8 +91,9 @@ def sign(pdf_bytes, out_path, signer, reason="", location="", lock=False):
     return out_path
 
 
-# Free public RFC 3161 time servers (no account needed)
-TIME_SERVERS = ["http://timestamp.digicert.com", "http://timestamp.sectigo.com",
+# Free public RFC 3161 time servers (no account needed). HTTPS only: the token is signed,
+# but the request should not go out in the clear.
+TIME_SERVERS = ["https://timestamp.digicert.com", "https://timestamp.sectigo.com",
                 "https://freetsa.org/tsr"]
 
 
