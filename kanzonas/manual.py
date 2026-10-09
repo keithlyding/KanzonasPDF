@@ -128,18 +128,21 @@ again</b> to skip the question from then on). A link to another PDF opens it in 
 link to another kind of file asks before opening it; links that would start a program or script
 are refused.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
-(works with any tool). Shift+Left/Right scrolls sideways.</li>
+(works with any tool). <b>Shift+wheel</b> always scrolls left and right, including when CAD-style
+mouse is off and when one wheel step would otherwise turn the page. Shift+Left/Right scrolls
+sideways too.</li>
 <li><b>CAD-style mouse (wheel zooms, hold wheel to pan)</b> (View menu, toolbar button, F11):
 like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the wheel down
 moves the sheet, so you can navigate a drawing while any markup tool is active. Like Bluebeam,
-hold <b>Ctrl</b> and turn the wheel to scroll up and down, or <b>Shift</b> to scroll left and
-right. The pages sit on an open canvas, so you can drag them anywhere in the window (with the
+hold <b>Ctrl</b> and turn the wheel to scroll up and down. Shift+wheel scrolls left and right
+here too, the same as with CAD-style mouse off. The pages sit on an open canvas, so you can drag them anywhere in the window (with the
 wheel held down or the Hand tool), even when the whole page already fits. Your choice is
 remembered.</li>
 <li><b>Scroll one page per wheel step</b> (View menu): when the whole page fits in the window,
 top to bottom and side to side (for example after <b>Fit page</b>), each step of the scroll wheel
 jumps to the next or previous page, centered, instead of scrolling a little. As soon as you zoom
-in so that any edge of the page is outside the window, the wheel scrolls normally. On by default; turn it off for smooth scrolling. Your choice is remembered. (With CAD-style mouse on, the wheel zooms
+in so that any edge of the page is outside the window, the wheel scrolls normally. Hold
+<b>Shift</b> to scroll left and right instead of turning the page. On by default; turn it off for smooth scrolling. Your choice is remembered. (With CAD-style mouse on, the wheel zooms
 instead.)</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.
 The search starts at the page you're on and shows the first match as soon as it finds it; on
@@ -654,7 +657,8 @@ settings...).</li>
 <tr><td>Shift+R</td><td>Redact</td></tr>
 <tr><td>Shift+E</td><td>Erase content</td></tr>
 <tr><td>Shift+P</td><td>Capture area</td></tr>
-<tr><td>Ctrl+wheel / Shift+wheel (CAD mouse)</td><td>Scroll up-down / left-right</td></tr>
+<tr><td>Ctrl+wheel</td><td>Zoom (scroll up and down when CAD-style mouse is on)</td></tr>
+<tr><td>Shift+wheel</td><td>Scroll left and right</td></tr>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Escape, Escape twice</td><td>Clear selection, back to Select</td></tr>

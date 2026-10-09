@@ -7,6 +7,8 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 
 - Dragging a group of the page's own shapes shows those shapes following the pointer, drawn once and then only moved, instead of an empty box and a redraw of every line on each mouse move. A group of markups follows the same way.
 - Zoom goes to 6400%, not 800%. A page too large for that stops a little sooner, so the window can still hold it. Only the part on screen is drawn.
+- Shift+scroll always moves the page left and right, including when CAD-style mouse is off and when one wheel step would otherwise turn the page.
+- Undo and redo leave the page where it was, instead of jumping.
 
 | Version | Commit | Changes |
 | --- | --- | --- |

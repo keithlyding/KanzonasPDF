@@ -575,21 +575,38 @@ class DocumentView(QScrollArea):
     reopen_page = True          # reopen files at the page they were left on
 
     def wheelEvent(self, e):
-        dy = e.angleDelta().y()
+        delta = e.angleDelta()
+        dy, dx = delta.y(), delta.x()
+        if dy == 0 and dx == 0:          # a trackpad may send pixels instead of a notch
+            pix = e.pixelDelta()
+            dy, dx = pix.y(), pix.x()
         mods = e.modifiers()
-        if self.cad_mouse and mods & (Qt.ControlModifier | Qt.ShiftModifier):
-            # CAD mouse (Bluebeam-style): the wheel zooms, Ctrl+wheel scrolls up/down,
-            # Shift+wheel scrolls left/right
-            step = dy or e.angleDelta().x()
-            bar = self.horizontalScrollBar() if mods & Qt.ShiftModifier else self.verticalScrollBar()
-            bar.setValue(bar.value() - step)
+        shift = bool(mods & Qt.ShiftModifier)
+        ctrl = bool(mods & Qt.ControlModifier)
+
+        def scroll(bar, step):
+            if step:
+                bar.setValue(bar.value() - step)
             e.accept()
-        elif self.cad_mouse:
+
+        # Shift+wheel always moves sideways: with CAD mouse on or off, and even when a
+        # plain wheel step would turn the page. The notch may arrive on either axis.
+        if shift:
+            scroll(self.horizontalScrollBar(), dy or dx)
+            return
+        if dx and not dy:
+            scroll(self.horizontalScrollBar(), dx)
+            return
+        if self.cad_mouse and ctrl:
+            # CAD mouse (Bluebeam-style): the wheel zooms; Ctrl+wheel scrolls up and down
+            scroll(self.verticalScrollBar(), dy or dx)
+            return
+        if self.cad_mouse:
             if dy:
                 vp = self.viewport().mapFromGlobal(QCursor.pos())
                 self.zoom_at(self.zoom * 1.15 ** (dy / 120.0), vp)
             e.accept()
-        elif e.modifiers() & Qt.ControlModifier:
+        elif ctrl:
             if dy > 0:
                 self.zoom_in()
             elif dy < 0:
@@ -685,19 +702,41 @@ class DocumentView(QScrollArea):
             return self.doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_KEEP)
         return self.doc.tobytes()
 
+    def _view_anchor(self):
+        """Where the window is looking, as a fraction of the current page, so a rebuild
+        (undo, redo) can put that same spot back instead of jumping to the top."""
+        if not getattr(self, "pages", None):
+            return None
+        page = self.current_page()
+        w = self.pages[page]
+        return (page,
+                (self.verticalScrollBar().value() - w.y()) / max(1, w.height()),
+                self.horizontalScrollBar().value() - w.x())
+
+    def _apply_view_anchor(self, anchor):
+        if anchor is None or not getattr(self, "pages", None):
+            return
+        page, vfrac, h_off = anchor
+        page = max(0, min(page, len(self.pages) - 1))
+        w = self.pages[page]
+        self.verticalScrollBar().setValue(int(w.y() + vfrac * w.height()))
+        self.horizontalScrollBar().setValue(int(w.x() + h_off))
+        self._on_scroll()
+
     def _restore(self, data):
+        anchor = self._view_anchor()
         self._clear_caches()
         self.markups_changed = None
         self.selection = None
         self.selected_model = None
         self.extra = []
-        page = self.current_page()
-        self.doc.close()
-        self.doc = pymupdf.open(stream=data, filetype="pdf")
-        if self.doc.needs_pass and self._orig_enc is not None:
+        fresh = pymupdf.open(stream=data, filetype="pdf")
+        if fresh.needs_pass and self._orig_enc is not None:
             for pw in (self._orig_enc.get("owner_pw"), self._orig_enc.get("user_pw")):
-                if pw and self.doc.authenticate(pw):
+                if pw and fresh.authenticate(pw):
                     break
+        old = self.doc
+        self.doc = fresh
         self.search_hits.clear()
         self._search_list = []
         self._search_text = None
@@ -705,7 +744,11 @@ class DocumentView(QScrollArea):
         self._search_todo = None
         self._search_gen += 1
         self._build_pages()
-        self.goto_page(min(page, self.doc.page_count - 1))
+        old.close()
+        self._apply_view_anchor(anchor)
+        # a fit that was queued by the rebuild runs after this returns; put the spot back
+        if anchor is not None:
+            QTimer.singleShot(0, lambda a=anchor: self._apply_view_anchor(a))
         self.dirty = True
         self.structureChanged.emit()
         self.selectionChanged.emit()
