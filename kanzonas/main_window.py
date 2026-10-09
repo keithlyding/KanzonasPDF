@@ -133,6 +133,8 @@ BUTTON_TIPS = {
     "a_rot_l": "Rotate the page counterclockwise", "a_rot_r": "Rotate the page clockwise",
     "a_grid": "Show grid: a grid over the page (spacing in View > Grid settings)",
     "a_snap_grid": "Snap to grid: points jump to the nearest grid intersection (Alt = no snap)",
+    "a_snap_page": "Snap to page: points jump to the page's corners, edge middles, center "
+                   "and edges (Alt = no snap)",
     "a_snap_objects": "Snap to objects: points jump to markup corners, ends and centers and "
                       "to the drawing's line ends and midpoints (Alt = no snap)",
     "tool_highlight": "Highlight: drag across text",
@@ -486,8 +488,12 @@ class MainWindow(QMainWindow):
                                         tip="Points jump to nearby markup corners, ends and centers "
                                             "and to the drawing's line ends and midpoints "
                                             "(hold Alt to place freely)")
+        self.a_snap_page = self._act("Snap to &page", self._apply_grid_settings,
+                                     tip="Points jump to the page's corners, the middles of its "
+                                         "edges, its center and its edges (hold Alt to place "
+                                         "freely)")
         for a, key in ((self.a_grid, "grid_on"), (self.a_snap_grid, "snap_grid"),
-                       (self.a_snap_objects, "snap_objects")):
+                       (self.a_snap_objects, "snap_objects"), (self.a_snap_page, "snap_page")):
             a.setCheckable(True)
             a.setChecked(self.settings.value(key, "false") == "true")
         self.a_grid_settings = self._act("Grid &settings...", self.grid_settings)
@@ -629,7 +635,8 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_page_wheel)
         m.addAction(self.a_hl_fields)
         m.addSeparator()
-        m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_grid_settings])
+        m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
+                      self.a_grid_settings])
         m.addSeparator()
         tm = m.addMenu("&Theme")
         tm.addActions(list(self.theme_actions.values()))
@@ -744,7 +751,7 @@ class MainWindow(QMainWindow):
         self._zoom_group_act = tb.addWidget(self.zoom_group)
         tb.addActions([self.a_fit_width, self.a_fit_page, self.a_cad_mouse])
         tb.addSeparator()
-        tb.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects])
+        tb.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page])
         tb.addSeparator()
         self.page_spin = QSpinBox()
         self.page_spin.setMinimum(1)
@@ -2544,7 +2551,8 @@ class MainWindow(QMainWindow):
                          "a_redo": "redo", "a_zoom_in": "zoom_in", "a_zoom_out": "zoom_out",
                          "a_fit_width": "fit_width", "a_fit_page": "fit_page", "a_ocr": "ocr",
                          "a_rot_l": "rot_l", "a_rot_r": "rot_r", "a_cad_mouse": "cad_mouse",
-                         "a_grid": "grid", "a_snap_grid": "snap_grid", "a_snap_objects": "snap_objects"}
+                         "a_grid": "grid", "a_snap_grid": "snap_grid", "a_snap_objects": "snap_objects",
+                         "a_snap_page": "snap_page"}
 
     def _apply_icons(self):
         for attr, key in self.TOOLBAR_ICON_KEYS.items():
@@ -2772,6 +2780,7 @@ class MainWindow(QMainWindow):
         DocumentView.grid_on = self.a_grid.isChecked()
         DocumentView.snap_grid = self.a_snap_grid.isChecked()
         DocumentView.snap_objects = self.a_snap_objects.isChecked()
+        DocumentView.snap_page = self.a_snap_page.isChecked()
         unit = self.settings.value("grid_unit", "in")
         try:
             value = float(self.settings.value("grid_value", 0.5))
@@ -2782,7 +2791,7 @@ class MainWindow(QMainWindow):
         DocumentView.grid_major = major
         if save:
             for a, key in ((self.a_grid, "grid_on"), (self.a_snap_grid, "snap_grid"),
-                           (self.a_snap_objects, "snap_objects")):
+                           (self.a_snap_objects, "snap_objects"), (self.a_snap_page, "snap_page")):
                 self.settings.setValue(key, "true" if a.isChecked() else "false")
         if hasattr(self, "tabs"):
             for i in range(self.tabs.count()):
@@ -2819,7 +2828,9 @@ class MainWindow(QMainWindow):
         snap.setChecked(self.a_snap_grid.isChecked())
         objs = QCheckBox("Snap to objects")
         objs.setChecked(self.a_snap_objects.isChecked())
-        for c in (show, snap, objs):
+        pagebox = QCheckBox("Snap to page")
+        pagebox.setChecked(self.a_snap_page.isChecked())
+        for c in (show, snap, objs, pagebox):
             form.addRow("", c)
         hint = QLabel("Hold Alt while drawing or dragging to place a point without snapping.")
         hint.setWordWrap(True)
@@ -2836,6 +2847,7 @@ class MainWindow(QMainWindow):
         self.a_grid.setChecked(show.isChecked())
         self.a_snap_grid.setChecked(snap.isChecked())
         self.a_snap_objects.setChecked(objs.isChecked())
+        self.a_snap_page.setChecked(pagebox.isChecked())
         self._apply_grid_settings()
 
     def show_attachments(self):
@@ -2919,7 +2931,8 @@ class MainWindow(QMainWindow):
     RIBBON_LABELS = {
         "a_fit_width": "Fit width", "a_fit_page": "Fit page", "a_actual": "Actual size",
         "a_cad_mouse": "CAD mouse", "a_grid": "Grid", "a_snap_grid": "Snap to grid",
-        "a_snap_objects": "Snap to objects", "a_grid_settings": "Grid settings",
+        "a_snap_objects": "Snap to objects", "a_snap_page": "Snap to page",
+        "a_grid_settings": "Grid settings",
         "a_set_scale": "Set scale", "a_measure_summary": "Summary", "a_ocr": "OCR",
         "a_rot_l": "Rotate left", "a_rot_r": "Rotate right", "a_lock": "Lock",
         "a_unlock_all": "Unlock all", "a_prev_markup": "Previous", "a_next_markup": "Next",
@@ -3017,11 +3030,13 @@ class MainWindow(QMainWindow):
             ("Erase", "large", [t["eraser"], t["erasecontent"]]),
             ("Styles", "large", [self.a_props, self.a_chest]),
         ])
+        # snapping is offered where it's used: Measure, Arrange (lining markups up) and View
+        snap_group = [self.a_snap_grid, self.a_snap_objects, self.a_snap_page, self.a_grid,
+                      self.a_grid_settings]
         r.add_tab("Measure", [
             ("Measure", "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
             ("Scale", "small", [t["m_calibrate"], self.a_set_scale, self.a_measure_summary]),
-            ("Grid & snap", "small", [self.a_grid, self.a_snap_grid, self.a_snap_objects,
-                                      self.a_grid_settings]),
+            ("Grid & snap", "small", snap_group),
         ])
         r.add_tab("Arrange", [
             ("Align", "small", [A_["al_left"], A_["al_hcenter"], A_["al_right"], A_["al_top"],
@@ -3030,6 +3045,7 @@ class MainWindow(QMainWindow):
             ("Distribute", "small", [A_["dist_h"], A_["dist_v"]]),
             ("Order", "small", [A_["z_front"], A_["z_forward"], A_["z_backward"], A_["z_back"]]),
             ("Lock", "large", [self.a_lock, self.a_unlock_all]),
+            ("Snap", "small", snap_group),
         ])
         r.add_tab("Review", [
             ("Add", "large", [t["comment"], t["note"]]),
@@ -3064,8 +3080,8 @@ class MainWindow(QMainWindow):
         r.add_tab("View", [
             ("Panels", "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                  self.a_split]),
-            ("Display", "small", [self.a_grid, self.a_hl_fields, self.a_show_markups,
-                                  self.a_cad_mouse]),
+            ("Display", "small", [self.a_hl_fields, self.a_show_markups, self.a_cad_mouse]),
+            ("Grid & snap", "small", snap_group),
             ("Ribbon", "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
                                  self.a_menu_bar]),
             ("Help", "large", [self.a_shortcuts, self.a_manual]),

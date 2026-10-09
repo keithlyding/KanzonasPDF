@@ -233,9 +233,15 @@ the paper, and how often a darker line is drawn. When zoomed far out, only the d
 are shown.</li>
 <li><b>Snap to grid:</b> points you draw or drag jump to the nearest grid intersection.</li>
 <li><b>Snap to objects:</b> points jump to nearby markup corners, edge midpoints, centers and
-line ends, and to the drawing's own line ends, midpoints and corners (useful on CAD sheets).
-A pink square shows an object snap, a blue cross a grid snap. When both are on, a nearby
-object wins; otherwise the grid is used.</li>
+line ends, and to the drawing's own line ends, midpoints and corners (useful on CAD sheets).</li>
+<li>The snap options are in the View menu and toolbar, in the <b>Grid &amp; snap</b> group of
+the ribbon's View and Measure tabs and the <b>Snap</b> group of the Arrange tab, in Grid
+settings, and in Preferences &gt; Pages and display.</li>
+<li><b>Snap to page</b>:
+points jump to the page's corners, the middles of its edges and its center, and onto its edges,
+so a markup can be lined up exactly with the edge or the middle of the page.</li>
+<li>A pink square shows an object snap, a green circle a page snap, a blue cross a grid snap.
+When several are on, a nearby object wins, then the page, then the grid.</li>
 <li>Snapping works for shapes, lines, measurements, polygons, callouts, text boxes, stamps,
 notes and counts, and when moving or resizing markups (a moved markup snaps by its
 top-left corner). The pen and text markup tools don't snap.</li>
@@ -547,7 +553,10 @@ Plain text (.txt).</li>
 <ul>
 <li><b>File &gt; Preferences...</b> (Ctrl+K) gathers the options KanzonasPDF remembers in one
 window, with the sections listed on the left. An option that also has a menu command does exactly
-the same as that command, so you can change it in either place.</li>
+the same as that command, so you can change it in either place. <b>OK</b> uses your changes and
+closes the window; <b>Apply</b> uses them right away and leaves the window open, so you can see
+the effect and keep adjusting; <b>Cancel</b> closes it without the changes made since the last
+Apply.</li>
 <li><b>General:</b> theme (Match Windows, Light, Dark), Ribbon (instead of toolbars), Show group
 names on ribbon, Show menu bar, Show text labels on toolbars, Check for updates automatically.
 It also tells you where your settings are saved (the data folder in portable mode).</li>

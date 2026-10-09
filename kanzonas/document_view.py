@@ -477,6 +477,7 @@ class DocumentView(QScrollArea):
     grid_major = 4                 # every Nth line drawn darker
     snap_grid = False
     snap_objects = False
+    snap_page = False              # page corners, edge middles, center and edges
     SNAP_PX = 9                    # snap distance on screen, pixels
 
     def _content_key(self, page):
@@ -497,8 +498,9 @@ class DocumentView(QScrollArea):
         return cached[1]
 
     def snap_point(self, index, pt, exclude=()):
-        """Snap a PDF point: to the nearest object point within SNAP_PX, else to the grid.
-        Returns (point, kind) with kind 'object' or 'grid', or None when nothing applies."""
+        """Snap a PDF point: to the nearest object point within SNAP_PX, else to the page
+        (corners, edge middles, center, edges), else to the grid. Returns (point, kind) with
+        kind 'object', 'page' or 'grid', or None when nothing applies."""
         from . import snapping
         page = self.doc[index]
         if self.snap_objects:
@@ -509,6 +511,10 @@ class DocumentView(QScrollArea):
                                 self._content_snaps(index).nearest(pt, tol)) if h is not None]
             if hits:
                 return min(hits, key=lambda h: abs(h - pt)), "object"
+        if self.snap_page:
+            hit = snapping.page_snap(page, pt, self.SNAP_PX / self.zoom)
+            if hit is not None:
+                return hit, "page"
         if self.snap_grid and self.grid_spacing > 0:
             return snapping.grid_snap(page, pt, self.grid_spacing), "grid"
         return None

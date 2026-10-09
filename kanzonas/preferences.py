@@ -266,7 +266,7 @@ class PreferencesDialog(QDialog):
         self.grid_major.setRange(1, 100)
         self.grid_major.setValue(int(win.settings.value("grid_major", 4)))
         gform.addRow("Darker line every:", self.grid_major)
-        for a in (win.a_grid, win.a_snap_grid, win.a_snap_objects):
+        for a in (win.a_grid, win.a_snap_grid, win.a_snap_objects, win.a_snap_page):
             self._box(gform, a)
         gform.addRow(QLabel("Hold Alt while drawing or dragging to place a point without "
                             "snapping."))
@@ -282,9 +282,13 @@ class PreferencesDialog(QDialog):
             win.settings.value("ocr_accuracy", "auto"))))
         form.addRow("Default accuracy:", self.ocr)
 
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel |
+                                QDialogButtonBox.Apply)
         btns.accepted.connect(self._ok)
         btns.rejected.connect(self.reject)
+        # Apply: use the changes now and keep the window open (Cancel then closes without
+        # undoing what was applied, as in Windows)
+        btns.button(QDialogButtonBox.Apply).clicked.connect(self._apply)
         lay.addWidget(btns)
 
     def _sig_status(self):
@@ -406,6 +410,10 @@ class PreferencesDialog(QDialog):
         self._boxes.append((b, action))
 
     def _ok(self):
+        self._apply()
+        self.accept()
+
+    def _apply(self):
         win = self.win
         key = self.theme.currentData()
         if not win.theme_actions[key].isChecked():
@@ -455,4 +463,4 @@ class PreferencesDialog(QDialog):
             annotations.set_tool_props(kind, props)
         if self._pending:
             win._refresh_props()
-        self.accept()
+        self._pending = {}
