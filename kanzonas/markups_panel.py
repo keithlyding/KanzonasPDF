@@ -133,6 +133,12 @@ class MarkupsPanel(QWidget):
         self.type_filter.setCurrentText(cur if cur in types else "All types")
         self.type_filter.blockSignals(False)
         self.table.setSortingEnabled(False)
+        # sizing columns to their contents on every setItem made filling quadratic (2,000
+        # markups: 3 minutes): fill with fixed columns, then size them once
+        hh = self.table.horizontalHeader()
+        for c in (0, 1, 3, 4, 5):
+            hh.setSectionResizeMode(c, QHeaderView.Interactive)
+        self.table.setUpdatesEnabled(False)
         self.table.setRowCount(len(self._rows))
         for r, (page, xref, label, text, author, date, color) in enumerate(self._rows):
             cells = [_PageItem(str(page + 1)), QTableWidgetItem(label), QTableWidgetItem(text),
@@ -145,6 +151,9 @@ class MarkupsPanel(QWidget):
                                               else QColor("black")))
             for c, it in enumerate(cells):
                 self.table.setItem(r, c, it)
+        self.table.setUpdatesEnabled(True)
+        for c in (0, 1, 3, 4, 5):
+            self.table.resizeColumnToContents(c)
         self.table.setSortingEnabled(True)
         self._apply_filter()
 

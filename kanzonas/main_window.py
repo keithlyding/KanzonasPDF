@@ -1110,7 +1110,10 @@ class MainWindow(QMainWindow):
         self._add_recent(path)
 
     def _add_recent(self, path):
-        recent = [p for p in (self.settings.value("recent") or []) if p != path]
+        recent = self.settings.value("recent") or []
+        if isinstance(recent, str):         # INI settings (portable) give one entry as a str
+            recent = [recent]
+        recent = [p for p in recent if p != path]
         recent.insert(0, path)
         self.settings.setValue("recent", recent[:10])
         self._rebuild_recent()
@@ -2712,6 +2715,9 @@ class MainWindow(QMainWindow):
         except (ValueError, TypeError):
             saved = {}
         acts = self._shortcut_actions()
+        # the built-in shortcuts, so only the ones a user changes are saved (a later release
+        # can then improve a default the user never touched)
+        self._default_shortcuts = {n: a.shortcut().toString() for n, a in acts.items()}
         for name, seq in saved.items():
             if name in acts:
                 acts[name].setShortcut(QKeySequence(seq))
@@ -2763,21 +2769,29 @@ class MainWindow(QMainWindow):
         reset.clicked.connect(do_reset)
         if not dlg.exec():
             return
-        seen, clashes, saved = {}, [], {}
+        seen, clashes = {}, []
         for name, ed in editors.items():
             seq = ed.keySequence().toString()
             if seq:
                 if seq in seen:
                     clashes.append(f"{seq}: {seen[seq]} / {name}")
                 seen[seq] = name
+        if clashes:
+            # a key on two commands runs neither: change nothing until that's sorted out
+            QMessageBox.warning(self, "Keyboard shortcuts",
+                                "Nothing was changed: these shortcuts are used twice:\n"
+                                + "\n".join(clashes))
+            return
+        defaults = getattr(self, "_default_shortcuts", {})
+        saved = {}
+        for name, ed in editors.items():
+            seq = ed.keySequence().toString()
             if seq != acts[name].shortcut().toString():
                 acts[name].setShortcut(QKeySequence(seq))
-            saved[name] = seq
+            if seq != defaults.get(name, ""):
+                saved[name] = seq
         self.settings.setValue("shortcuts", json.dumps(saved))
         self._apply_icons()
-        if clashes:
-            QMessageBox.warning(self, "Keyboard shortcuts",
-                                "These shortcuts are used twice:\n" + "\n".join(clashes))
 
     def _toggle_markups(self):
         self.markups_dock.setVisible(not self.markups_dock.isVisible())
