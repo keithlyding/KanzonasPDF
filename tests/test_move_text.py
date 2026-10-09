@@ -62,6 +62,30 @@ class MoveText(unittest.TestCase):
         self.mouse(pw, QEvent.MouseButtonPress, s)
         self.mouse(pw, QEvent.MouseButtonRelease, s)
         self.assertIsNotNone(v._inline)
+        self.assertEqual(v._inline.text.textCursor().selectedText(), "")   # cursor, no selection
+
+    def test_outline_moves_and_handles_rewrap_in_place(self):
+        from PySide6.QtCore import QPoint
+        v = self.view()
+        v.edit_text_at(0, F.Point(90, 96))
+        ed = v._inline
+
+        def drag(p, d):
+            g = ed.mapToGlobal(p)
+            for kind, at in ((QEvent.MouseButtonPress, p), (QEvent.MouseMove, p + d),
+                             (QEvent.MouseButtonRelease, p + d)):
+                ev = QMouseEvent(kind, QPointF(at), QPointF(g + (at - p)), Qt.LeftButton,
+                                 Qt.LeftButton if kind != QEvent.MouseButtonRelease
+                                 else Qt.NoButton, Qt.NoModifier)
+                {QEvent.MouseButtonPress: ed.mousePressEvent, QEvent.MouseMove: ed.mouseMoveEvent,
+                 QEvent.MouseButtonRelease: ed.mouseReleaseEvent}[kind](ev)
+        drag(QPoint(ed.width() // 2, 2), QPoint(80, 40))              # the outline: move
+        drag(ed._handles()["mr"].center(), QPoint(-70, 0))           # a side handle: narrower
+        v.commit_pending()
+        lines = [b for b in v.doc[0].get_text("dict")["blocks"] for _l in b["lines"]]
+        self.assertGreater(len(lines), 1)                            # it wrapped
+        r = v.doc[0].search_for("Move")[0]
+        self.assertGreater(r.x0, 72 + 30 / v.zoom)                   # and moved right
 
 
 if __name__ == "__main__":

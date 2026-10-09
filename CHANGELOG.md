@@ -6,6 +6,7 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 ## Unreleased
 
 - Edit text: press on a line and drag to move it (a plain click still opens it for typing).
+- Edit text and Add text edit in place: no bar above the text; the cursor goes where you click; drag the dashed outline to move the text and its handles to change the width it wraps to.
 
 | Version | Commit | Changes |
 | --- | --- | --- |

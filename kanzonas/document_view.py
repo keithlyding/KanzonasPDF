@@ -2635,7 +2635,7 @@ class DocumentView(QScrollArea):
         chosen = self._edit_font()
         ed = InlineEditor(w, w.to_screen(rect), old,
                           chosen[0] if chosen else text_edit.font_family_hint(line),
-                          size * self.zoom)
+                          size * self.zoom, click=w.to_screen_pt(pt))
         self._inline = ed
 
         def done(text, dx, dy, wrap_px):
