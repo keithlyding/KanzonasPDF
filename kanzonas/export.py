@@ -51,6 +51,12 @@ def to_excel(pdf_bytes, out_path, pages=None, progress=None):
     wb = Workbook()
     wb.remove(wb.active)
     tables_found = 0
+
+    def append_text(ws, values):
+        ws.append(values)
+        for cell in ws[ws.max_row]:
+            if isinstance(cell.value, str):
+                cell.data_type = "s"  # PDF content is text, never a formula.
     for i in _pages(doc, pages):
         if progress:
             progress(i)
@@ -62,12 +68,12 @@ def to_excel(pdf_bytes, out_path, pages=None, progress=None):
         for k, t in enumerate(tabs, 1):
             ws = wb.create_sheet(f"P{i + 1} table {k}"[:31])
             for row in t.extract():
-                ws.append([("" if c is None else str(c)) for c in row])
+                append_text(ws, [("" if c is None else str(c)) for c in row])
             tables_found += 1
         if not tabs:
             ws = wb.create_sheet(f"P{i + 1} text"[:31])
             for row in _text_rows(page):
-                ws.append(row)
+                append_text(ws, row)
     for ws in wb.worksheets:
         for col in ws.columns:
             width = max((len(str(c.value)) for c in col if c.value is not None), default=8)

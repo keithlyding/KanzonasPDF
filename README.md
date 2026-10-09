@@ -129,10 +129,10 @@ before it's published.
   tamper-proof; use a digital signature to prove a file hasn't changed.
 - A personal certificate proves a document is unchanged, but other people's software shows your
   identity as verified only if they trust your certificate (or you use one from a certificate
-  authority). Signing with the Windows certificate store or smart cards isn't supported yet.
+  authority). Windows Personal-store signing supports RSA/ECDSA keys; smart-card/token availability depends on the installed Windows key provider and hardware.
 - Export: Word works best for ordinary text documents; Excel needs real (not scanned) tables;
   PowerPoint slides are page pictures; AutoCAD export is DXF (not DWG) and leaves out images.
-- OCR caps large sheets at 6000 px on the long side, so very small text on big drawings may be
+- OCR uses overlapping tiles and caps large sheets at 13000 px on the long side, so very small text on big drawings may be
   missed.
 
 ## For developers

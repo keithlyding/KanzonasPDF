@@ -15,6 +15,26 @@ MANUAL = """
 <p>A free PDF reader and editor. Use the contents list on the left, or type in the
 <b>Find in manual</b> box above.</p>
 
+<h2 id="audit-fixes">Document protection and safe editing</h2>
+<p>Apply redactions removes any vector path touching a mark, even when the path extends
+outside the marked area. Review nearby drawing geometry before saving. Search &amp; redact
+removes matching annotations completely, including private stamp data and appearances.</p>
+<p>Saving edits to an already protected PDF keeps its own protection exactly as it was: the
+same open password, permissions password and permissions, with no password needed. So a form
+locked with a permissions password you don't know can still be filled in and saved, and stays
+locked. (Only in the rare case that the protection can't be carried over, KanzonasPDF asks
+for the original passwords; a failed or canceled prompt leaves the existing file intact.)
+Search &amp; redact only looks at the text of markups people see (comments, stamp labels,
+names and dates), not at their colors or shapes, so redacting a word like "fill" doesn't
+delete unrelated markups. Newly protected documents are excluded from automatic backups,
+and an existing recovery copy is removed when protection is added. Each recovery copy has
+its own unique identity, even for files with the same name.</p>
+<p>Copying, extracting and exporting require copying permission; Print requires printing
+permission and uses at most 150 dpi when high-quality printing is forbidden. Form filling
+and adding markups honor their separate permissions. Flattening selected pages preserves
+page labels, outgoing links and drawing calibration. Excel export writes PDF text as literal
+cell text, including text starting with an equals sign. OCR disables ONNX Runtime
+telemetry before creating recognition sessions.</p>
 <h2 id="start">Getting started</h2>
 <ul>
 <li><b>Open a PDF:</b> File &gt; Open (Ctrl+O), drag a file onto the window, or pick one from

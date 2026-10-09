@@ -13,6 +13,7 @@ password.
 import json
 import os
 import time
+import uuid
 
 from PySide6.QtCore import QObject, QTimer
 
@@ -149,15 +150,19 @@ class Autosaver(QObject):
             if not v.dirty:
                 self.discard(v)
                 continue
-            if v._orig_enc is not None or getattr(v, "read_only", False):
+            if v._orig_enc is not None or any((v.security or {}).get(k) for k in ("open_pw", "owner_pw")) or getattr(v, "read_only", False):
+                self.discard(v)
                 continue                # never write a protected document out unprotected
             self.backup(v)
 
     def backup(self, v):
+        if v._orig_enc is not None or any((v.security or {}).get(k) for k in ("open_pw", "owner_pw")):
+            self.discard(v)
+            return
         path = getattr(v, "_backup_path", None)
         if path is None:
             stem = os.path.splitext(os.path.basename(v.path or "Untitled"))[0]
-            path = os.path.join(folder(), f"{stem} (unsaved changes {time.strftime('%Y-%m-%d %H%M%S')}).pdf")
+            path = os.path.join(folder(), f"{stem} (unsaved changes {time.strftime('%Y-%m-%d %H%M%S')})-{uuid.uuid4().hex}.pdf")
             v._backup_path = path
         try:
             data = v.doc.tobytes(garbage=1)

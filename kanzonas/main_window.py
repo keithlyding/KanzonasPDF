@@ -1235,7 +1235,7 @@ class MainWindow(QMainWindow):
     # ---- printing -----------------------------------------------------------
     def print_doc(self):
         v = self.view()
-        if not v:
+        if not v or not v.require_permission(pymupdf.PDF_PERM_PRINT, "Printing"):
             return
         printer = QPrinter(QPrinter.HighResolution)
         printer.setDocName(os.path.basename(v.path))
@@ -1252,7 +1252,7 @@ class MainWindow(QMainWindow):
             pages = list(range(printer.fromPage() - 1, printer.toPage()))
         else:
             pages = list(range(v.page_count()))
-        dpi = min(printer.resolution(), 300)
+        dpi = min(printer.resolution(), 300 if v.allowed(pymupdf.PDF_PERM_PRINT_HQ) else 150)
         painter = QPainter()
         if not painter.begin(printer):
             QMessageBox.critical(self, "Print", "Could not start printing.")
@@ -1450,7 +1450,7 @@ class MainWindow(QMainWindow):
 
     def extract_pages(self):
         v = self.view()
-        if not v:
+        if not v or not v.require_permission(pymupdf.PDF_PERM_COPY, "Extracting"):
             return
         n = v.page_count()
         cur = v.current_page() + 1
@@ -2025,7 +2025,7 @@ class MainWindow(QMainWindow):
     # ---- export ------------------------------------------------------------------------
     def export_as(self, eid):
         v = self.view()
-        if not v:
+        if not v or not v.require_permission(pymupdf.PDF_PERM_COPY, "Exporting"):
             return
         _id, label, flt, ext = next(e for e in EXPORTS if e[0] == eid)
         base = os.path.splitext(v.path)[0]
@@ -3523,6 +3523,8 @@ class MainWindow(QMainWindow):
         if v is None:
             return
         if op != "copy" and not self._pages_unlocked():
+            return
+        if op in ("copy", "cut", "dup") and not v.require_permission(pymupdf.PDF_PERM_COPY, "Copying pages"):
             return
         pages = self._selected_pages()
         if op in ("copy", "cut"):
