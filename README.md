@@ -12,7 +12,8 @@
 <p align="center">
   <a href="https://github.com/keithlyding/KanzonasPDF/releases"><b>Download for Windows</b></a> ·
   <a href="#getting-started">Getting started</a> ·
-  <a href="#feedback">Report a bug</a>
+  <a href="#feedback">Report a bug</a> ·
+  <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
 </p>
 
 > **Beta:** KanzonasPDF is under active development (version 0.x). It's used daily, and every
@@ -86,9 +87,12 @@ Pick **one** of these files from the newest release:
 
 ### "Windows protected your PC"
 
-KanzonasPDF isn't code-signed yet (a signing certificate costs money every year), so Windows
-SmartScreen may warn you the first time you run it, simply because it doesn't recognize a new
-program yet. To run it anyway, click **More info**, then **Run anyway**.
+KanzonasPDF isn't code-signed yet: signing through the SignPath Foundation's free program for
+open-source projects is being set up (see the [code signing policy](CODE_SIGNING_POLICY.md)).
+Until then, Windows SmartScreen may warn you the first time you run it, simply because it
+doesn't recognize a new program yet. To run it anyway, click **More info**, then **Run anyway**.
+Even signed, a new program can see this warning for a while, until Windows has seen enough
+people run it safely.
 
 Only do this with files downloaded from this project's
 [Releases page](https://github.com/keithlyding/KanzonasPDF/releases). Every release is built
@@ -171,6 +175,10 @@ to `false` (Settings > Secrets and variables > Actions > Variables) to turn rele
 `python tests/cad_battery.py DIR` runs the app's features against them and prints timings.
 
 ## Credits
+
+Code signing (once set up): free code signing provided by [SignPath.io](https://signpath.io),
+certificate by [SignPath Foundation](https://signpath.org); see the
+[code signing policy](CODE_SIGNING_POLICY.md).
 
 App icon and logo: the owner's artwork in `assets/` (after changing them, run
 `python tools_make_assets.py`). Toolbar icons: the Material Design Icons font that ships with
