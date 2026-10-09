@@ -282,6 +282,32 @@ def _broad_font(page, text):
     return None
 
 
+def _fix_spaces(page, fontname, font):
+    """Many fonts (Times New Roman, Arial on Windows...) draw a space and a no-break space with
+    the same glyph, and the text map PyMuPDF writes for an embedded font then names that
+    glyph a no-break space (U+00A0): search, copy and paste would see it instead of a normal
+    space. Point the space glyph back at U+0020."""
+    try:
+        gid = font.has_glyph(0x20)
+        if not gid or font.has_glyph(0xA0) != gid:
+            return
+        doc = page.parent
+        for f in page.get_fonts(full=True):
+            if f[4] != fontname:
+                continue
+            kind, val = doc.xref_get_key(f[0], "ToUnicode")
+            if kind != "xref":
+                continue
+            tu = int(val.split()[0])
+            data = doc.xref_stream(tu)
+            for hexgid in (b"%04x" % gid, b"%04X" % gid):
+                for nb in (b"<00a0>", b"<00A0>"):
+                    data = data.replace(b"<" + hexgid + b"> " + nb, b"<" + hexgid + b"> <0020>")
+            doc.update_stream(tu, data)
+    except Exception:
+        pass        # the text is written either way; only search / copy would be affected
+
+
 _BASE14_STYLE = {(False, False): "helv", (True, False): "hebo", (False, True): "heit",
                  (True, True): "hebi"}
 
@@ -339,6 +365,8 @@ def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
     lines = _wrap(text, font, size, wrap_width) if wrap_width else text.split("\n")
     page.insert_text(pymupdf.Point(origin), "\n".join(lines), fontsize=size, fontname=fontname,
                      color=color, rotate=page.rotation, lineheight=1.2)
+    if found:
+        _fix_spaces(page, fontname, font)
     return fontname
 
 
@@ -443,4 +471,6 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
     page.insert_text(origin, "\n".join(lines), fontsize=size, fontname=fontname,
                      color=_rgb(main["color"]), rotate=line_rotation(line),
                      lineheight=1.2)
+    if found:
+        _fix_spaces(page, fontname, font)
     return fontname
