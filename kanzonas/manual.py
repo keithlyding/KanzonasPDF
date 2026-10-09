@@ -237,7 +237,11 @@ current page. Undo brings them back.</li>
 fields stay fillable. (Document &gt; Flatten flattens form fields too.) The markups really
 become page drawing: no PDF program sees them as markups any more. Programs that edit page
 content (Acrobat's Edit PDF, PDF-XChange's Edit Content, KanzonasPDF's Edit objects) can still
-move that drawing, as they can the rest of the page; flattening isn't a lock.</li>
+move that drawing, as they can the rest of the page; flattening isn't a lock (that's the same
+in Acrobat and Bluebeam). It's for sending a file whose markups everyone sees and prints exactly
+as you made them. To make any later change detectable, digitally sign the PDF with the lock
+against changes (certify): PDF readers that check signatures (Acrobat, PDF-XChange, KanzonasPDF)
+then flag any later change.</li>
 </ul>
 
 <h2 id="shapes">Shapes, lines and the pen</h2>

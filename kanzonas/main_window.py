@@ -1571,8 +1571,12 @@ class MainWindow(QMainWindow):
         choices = ["All pages", "Current page only"]
         pick, ok = QInputDialog.getItem(
             self, "Flatten", "Flatten annotations and form fields into the page.\n"
-            "They'll look the same but can no longer be edited or moved.\n"
-            "(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
+            "They'll look the same, but no PDF program sees them as markups or fields any\n"
+            "more: they can't be edited, moved or filled in as such.\n\n"
+            "Not a security lock: programs that edit page content (Acrobat, PDF-XChange)\n"
+            "can still change the page. To make changes detectable, digitally sign it\n"
+            "with the lock against changes (certify).\n"
+            "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
         if not ok:
             return
         v.flatten(None if pick == choices[0] else [v.current_page()])
@@ -2019,9 +2023,12 @@ class MainWindow(QMainWindow):
         choices = ["All pages", "Current page only"]
         pick, ok = QInputDialog.getItem(
             self, "Flatten comments", "Make comments and markups part of the page.\n"
-            "They'll look the same but can no longer be edited or moved.\n"
-            "Form fields stay fillable. (Undo works until you close the file.)\n\n"
-            "Which pages?", choices, 0, False)
+            "They'll look the same, but no PDF program sees them as markups any more:\n"
+            "they can't be edited, moved, hidden or deleted as such. Form fields stay fillable.\n\n"
+            "Not a security lock: programs that edit page content (Acrobat, PDF-XChange)\n"
+            "can still change the page. To make changes detectable, digitally sign it\n"
+            "with the lock against changes (certify).\n"
+            "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
         if ok:
             v.flatten(None if pick == choices[0] else [v.current_page()], widgets=False)
             self.statusBar().showMessage("Comments flattened", 4000)
