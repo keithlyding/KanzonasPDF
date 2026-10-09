@@ -111,7 +111,7 @@ def _strip_watermarks(data):
 
 
 def has_watermark(page):
-    if any(a.type[0] == pymupdf.PDF_ANNOT_WATERMARK for a in page.annots()):
+    if any(a.type[0] == pymupdf.PDF_ANNOT_WATERMARK for a in A.each_annot(page)):
         return True
     return bool(_WM_START.search(page.read_contents()))
 

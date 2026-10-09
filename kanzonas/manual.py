@@ -138,7 +138,11 @@ top to bottom and side to side (for example after <b>Fit page</b>), each step of
 jumps to the next or previous page, centered, instead of scrolling a little. As soon as you zoom
 in so that any edge of the page is outside the window, the wheel scrolls normally. On by default; turn it off for smooth scrolling. Your choice is remembered. (With CAD-style mouse on, the wheel zooms
 instead.)</li>
-<li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.</li>
+<li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.
+The search starts at the page you're on and shows the first match as soon as it finds it; on
+long documents it keeps searching the rest in the background (the status bar shows "Match 3
+of 120+" and how many pages are done) while you keep working. Changing the text or editing
+the document starts a fresh search.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.</li>
 </ul>
 

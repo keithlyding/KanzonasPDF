@@ -127,7 +127,7 @@ def summary_rows(doc):
     groups = {}
     for i in range(doc.page_count):
         page = doc[i]
-        for a in page.annots():
+        for a in A.each_annot(page):
             m = A.read(a)
             if not m or m["kind"] not in A.MEASURES:
                 continue

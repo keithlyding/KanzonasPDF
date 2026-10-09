@@ -1,4 +1,4 @@
-"""Efficiency regressions from the v0.81 efficiency audit (P01, P02, P07, P08).
+"""Efficiency regressions from the v0.81 efficiency audit (P01-P05, P07, P08).
 
     QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -p "test_*.py"
 """
@@ -98,6 +98,58 @@ class PerformanceBudgets(unittest.TestCase):
         self.assertEqual(sorted(v._dlists), [1, 2, 3])
         v.rotate_page(1, 90)                                 # structural: everything goes
         self.assertEqual(v._dlists, {})
+
+    def test_annotation_walk_is_linear(self):
+        # page.annots() looks each annotation up from the start (N squared); each_annot
+        # walks the list once. 1,500 markups: annots() takes seconds, each_annot a fraction
+        import time
+        d = F.open()
+        pg = d.new_page(width=2000, height=2000)
+        for k in range(1500):
+            x, y = (k % 50) * 39, (k // 50) * 49
+            pg.add_rect_annot(F.Rect(x, y, x + 30, y + 30))
+        d = F.open("pdf", d.tobytes())
+        pg = d[0]
+        t = time.perf_counter()
+        got = A.each_annot(pg)
+        took = time.perf_counter() - t
+        self.assertEqual([a.xref for a in got], [a.xref for a in pg.annots()])
+        self.assertLess(took, 0.5)
+        self.assertEqual(len(A.each_annot(pg, types=[F.PDF_ANNOT_SQUARE])), 1500)
+
+    def test_markups_list_rereads_only_changed_pages(self):
+        from kanzonas import markups_panel as MP
+        v = DocumentView(self.pdf("m.pdf", pages=4))
+        for i in range(4):
+            v._create(i, {"kind": "rect", "props": dict(A.DEFAULTS["rect"]),
+                          "rect": F.Rect(10, 10, 50, 50)})
+        panel = MP.MarkupsPanel()
+        panel.refresh(v.doc, v.take_markup_changes())
+        self.assertEqual(len(panel._rows), 4)
+        v._create(2, {"kind": "rect", "props": dict(A.DEFAULTS["rect"]),
+                      "rect": F.Rect(60, 60, 90, 90)})
+        changed = v.take_markup_changes()
+        self.assertEqual(changed, {2})
+        with mock.patch.object(MP, "collect", wraps=MP.collect) as collect:
+            panel.refresh(v.doc, changed)
+        collect.assert_called_once_with(v.doc, {2})
+        self.assertEqual(len(panel._rows), 5)
+        self.assertEqual([r[0] for r in panel._rows], [0, 1, 2, 2, 3])
+
+    def test_search_runs_in_slices_and_jumps_early(self):
+        v = DocumentView(self.pdf("s.pdf", pages=30))
+        with mock.patch.object(DV.DocumentView, "SEARCH_SLICE", 0.0):  # one page per slice
+            self.assertEqual(v.find("page"), 1)        # first match shown right away
+            self.assertTrue(v._search_todo)            # the rest is still to search
+            while v._search_todo:
+                v._search_step()
+        self.assertEqual(v._search_count(), 30)
+        self.assertEqual(v.find("page"), 30)           # then next / previous over all
+        self.assertEqual(v.current_hit(), (1, 0))
+        with mock.patch.object(DV.DocumentView, "SEARCH_SLICE", 0.0):
+            self.assertEqual(v.find("nothing-like-this"), -1)  # still searching, none yet
+        v.clear_search()
+        self.assertIsNone(v._search_todo)
 
 
 if __name__ == "__main__":

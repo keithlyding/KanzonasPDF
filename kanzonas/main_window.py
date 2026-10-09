@@ -2772,7 +2772,9 @@ class MainWindow(QMainWindow):
     def _refresh_markups(self):
         if self.markups_dock.isVisible():
             v = self.view()
-            self.markups.refresh(v.doc if v else None)
+            # only the pages whose markups changed are read again (all after undo, page
+            # changes, or switching documents)
+            self.markups.refresh(v.doc if v else None, v.take_markup_changes() if v else None)
 
     # ---- grid and snapping -------------------------------------------------------------
     def _apply_grid_settings(self, *_, save=True):
