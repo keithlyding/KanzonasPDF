@@ -72,7 +72,8 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("polyline", "Polyline", "Shift+L", "Polyline: click each point, double-click or Enter to finish"),
     ("ink", "Pen", "P", "Freehand pen (P)"),
     ("stamp", "Stamp", "M", "Stamp (Approved, Draft, ... or your own image): click to place (M)"),
-    ("image", "Image", "", "Image: drag a box (or click) and pick a picture; it's embedded in the PDF"),
+    ("image", "Image", "", "Image: drag a box (or click) and pick a picture; it becomes part of "
+     "the page (move or resize it with Edit objects)"),
     ("attach", "Attach file", "", "Attach file: click where its icon goes and pick any file "
                                   "(e.g. a video); it's embedded in the PDF. Double-click to open"),
     ("eraser", "Eraser", "X", "Delete the annotation you click (X)"),
@@ -101,6 +102,9 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
     ("erasecontent", "Erase &content", "Shift+E",
      "Erase content: drag a box; the page's own text, images and lines inside it are deleted "
      "(lines crossing the edge are cut there). Shift+E"),
+    ("addtext", "&Add text", "Shift+T",
+     "Add text: click where it goes and type; it's written into the page itself (PDF viewers "
+     "can't change it; Edit text does). Font, size and color in Properties. Shift+T"),
     ("editobjects", "Edit &objects", "Shift+O",
      "Edit objects: click a picture or shape that's part of the page (Ctrl+click or drag a box "
      "for several); drag to move, drag a handle to resize, Delete deletes, right-click to "
@@ -1330,7 +1334,10 @@ class MainWindow(QMainWindow):
         if v is not None and v.selected_model is not None:
             m = v.selected_model
             self.props.show_target(m["kind"], m["props"], selected=True)
-        elif self.tool in annotations.DEFAULTS:
+        elif (self.tool in annotations.DEFAULTS and self.tool != "image") or \
+                self.tool in annotations.PAGE_TEXT_TOOLS:
+            # (the Image tool writes into the page: no markup settings apply; Add text and
+            # Edit text have their font settings here)
             self.props.show_target(self.tool, annotations.tool_props(self.tool))
         else:
             self.props.show_target(None, None)
@@ -1341,11 +1348,11 @@ class MainWindow(QMainWindow):
             v.update_selected_props(props)
         elif annotations.OVERRIDE["tool"] == self.tool:
             annotations.OVERRIDE["props"] = dict(props)
-        elif self.tool in annotations.DEFAULTS:
+        elif self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
             annotations.set_tool_props(self.tool, props)
 
     def _reset_tool_defaults(self):
-        if self.tool in annotations.DEFAULTS:
+        if self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
             annotations.reset_tool_props(self.tool)
             self._refresh_props()
 
@@ -3010,7 +3017,7 @@ class MainWindow(QMainWindow):
         "z_forward": "Forward", "z_backward": "Backward", "z_back": "To back",
         "tool_redact": "Redact", "tool_placeholder": "Placeholder",
         "tool_erasecontent": "Erase content", "tool_capture": "Capture",
-        "tool_editobjects": "Edit objects",
+        "tool_editobjects": "Edit objects", "tool_addtext": "Add text",
     }
     RIBBON_ICONS = {
         "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square",
@@ -3061,7 +3068,8 @@ class MainWindow(QMainWindow):
             lambda i: self._set_align_ref(self.ribbon_align_box.itemData(i)))
         r = self.ribbon = Ribbon()
         r.add_tab("Home", [
-            ("Tools", "large", [t["select"], t["hand"], t["edittext"], t["editobjects"], t["capture"],
+            ("Tools", "large", [t["select"], t["hand"], t["edittext"], t["addtext"], t["editobjects"],
+                                t["capture"],
                                 t["erasecontent"]]),
             ("Mark up text", "small", [t["highlight"], t["underline"], t["strikeout"],
                                        t["comment"], t["note"], t["textbox"]]),
@@ -3070,13 +3078,15 @@ class MainWindow(QMainWindow):
                                self.a_zoom_in, self.a_zoom_out, self.a_cad_mouse]),
             ("Sign", "large", [t["signature"], t["initials"]]),
         ])
+        # only markups here (PDF viewers can edit those); the Image tool and Erase content change
+        # the page itself and live on the Home tab with Add text and Edit objects
         r.add_tab("Markup", [
             ("Text", "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
                                t["note"], t["textbox"]]),
-            ("Callout & stamps", "large", [t["callout"], t["stamp"], t["image"], t["attach"]]),
+            ("Callout & stamps", "large", [t["callout"], t["stamp"], t["attach"]]),
             ("Shapes", "small", [t["rect"], t["ellipse"], t["cloud"], t["polygon"], t["line"],
                                  t["arrow"], t["polyline"], t["ink"]]),
-            ("Erase", "large", [t["eraser"], t["erasecontent"]]),
+            ("Erase", "large", [t["eraser"]]),
             ("Styles", "large", [self.a_props, self.a_chest]),
         ])
         # snapping is offered where it's used: Measure, Arrange (lining markups up) and View

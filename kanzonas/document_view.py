@@ -704,7 +704,7 @@ class DocumentView(QScrollArea):
         if tool == "eraser":
             self.viewport().setCursor(eraser_cursor())
             return
-        text_cursor = ("select", "edittext", "highlight", "underline", "strikeout", "comment",
+        text_cursor = ("select", "edittext", "addtext", "highlight", "underline", "strikeout", "comment",
                        "redact")
         cursors = {"hand": Qt.OpenHandCursor, **{t: Qt.IBeamCursor for t in text_cursor}}
         self.viewport().setCursor(cursors.get(tool, Qt.CrossCursor))
@@ -1739,7 +1739,7 @@ class DocumentView(QScrollArea):
 
     def place_image(self, index, a, b, is_click):
         """Image tool: pick a picture and fit it in the dragged box (or natural size at the
-        click), keeping its proportions."""
+        click), keeping its proportions. It becomes part of the page content."""
         path = dialogs.open_file(self, "Insert image", self.IMAGE_FILTER)
         if not path:
             return
@@ -1766,9 +1766,17 @@ class DocumentView(QScrollArea):
             k = min(area.width / iw, area.height / ih)
             w, h = iw * k, ih * k
             box = pymupdf.Rect(area.x0, area.y0, area.x0 + w, area.y0 + h)
-        model = {"kind": "image", "props": self.tool_props("image"), "rect": box * to_pdf,
-                 "image_bytes": data, "text": os.path.basename(path)}
-        self._create(index, model, select=True)
+        # into the page itself, like Acrobat's Add Image: PDF viewers can't move or delete it
+        # (only markups are theirs to edit); Edit objects moves, resizes and deletes it
+        rect = box * to_pdf
+
+        def do():
+            pg = self.doc[index]
+            pg.insert_image(rect, stream=data, keep_proportion=True, rotate=pg.rotation,
+                            overlay=True)
+        self.modify(do, [index])
+        self.statusMessage.emit("Picture added to the page. Edit objects (Shift+O) moves, "
+                                "resizes or deletes it; Ctrl+Z undoes it.")
 
     def attach_file(self, index, pt):
         """Attach file tool: embed any file in the PDF, shown as an icon at pt."""
@@ -2608,17 +2616,20 @@ class DocumentView(QScrollArea):
         if not upright:
             # sideways text: the on-page editor can't sit along it, use the dialog
             new, ok = dialogs.get_text(self, "Edit text", "Line text:", old)
-            if ok and new != old:
+            if ok and (new != old or self._edit_font() is not None):
                 self._apply_text_edit(index, line, new, (0, 0), None)
             return
         size = text_edit.main_span(line)["size"]
-        ed = InlineEditor(w, w.to_screen(rect), old, text_edit.font_family_hint(line),
+        chosen = self._edit_font()
+        ed = InlineEditor(w, w.to_screen(rect), old,
+                          chosen[0] if chosen else text_edit.font_family_hint(line),
                           size * self.zoom)
         self._inline = ed
 
         def done(text, dx, dy, wrap_px):
             self._inline = None
-            if text == old and not dx and not dy and wrap_px is None:
+            if text == old and not dx and not dy and wrap_px is None and \
+                    self._edit_font() is None:
                 return
             # screen movement -> PDF (unrotated) points
             m = self.doc[index].derotation_matrix
@@ -2649,8 +2660,60 @@ class DocumentView(QScrollArea):
                     out.append(an.xref)
         return out
 
+    def add_text_at(self, index, pt):
+        """Add text tool: type at pt; the text is written into the page itself (like
+        Acrobat's Add Text), so PDF viewers can't change it and Edit text can."""
+        self.commit_pending()
+        if not self.allowed(pymupdf.PDF_PERM_MODIFY):
+            self.modify(lambda: None, [index])      # says why it's not allowed
+            return
+        props = annotations.tool_props("addtext")
+        size = float(props.get("fontsize") or 12)
+        family = props.get("font") or ""
+        page = self.doc[index]
+        w = self.pages[index]
+        top = pymupdf.Point(pt) * page.rotation_matrix          # displayed coordinates
+        disp = pymupdf.Rect(top.x, top.y - size * 0.85, top.x + size * 12, top.y + size * 0.35)
+        ed = InlineEditor(w, w.to_screen(disp * page.derotation_matrix), "",
+                          family or "sans", size * self.zoom)
+        self._inline = ed
+
+        def done(text, dx, dy, wrap_px):
+            self._inline = None
+            if not text.strip():
+                return
+            m = self.doc[index].derotation_matrix
+            v = pymupdf.Point(dx / self.zoom, dy / self.zoom) * m - pymupdf.Point(0, 0) * m
+            origin = pymupdf.Point(pt) + v
+            wrap = wrap_px / self.zoom if wrap_px else None
+            used = {}
+
+            def do():
+                used["font"] = text_edit.add_text(
+                    self.doc[index], origin, text, family, props.get("bold"), props.get("italic"),
+                    size, annotations.to_rgb(props.get("text_color")) or (0, 0, 0), wrap)
+            self.modify(do, [index])
+            font = used.get("font") or ""
+            if font.startswith("KZ"):
+                self._fonts_added = True
+            if family and not font.startswith("KZF") and font:
+                self.statusMessage.emit(f"{family} isn't installed in that style or lacks some "
+                                        "of these characters; used a standard font.")
+            elif font:
+                self.statusMessage.emit("Text added to the page. Edit text changes it; "
+                                        "Ctrl+Z undoes it.")
+        ed.committed.connect(done)
+        ed.canceled.connect(lambda: setattr(self, "_inline", None))
+
+    def _edit_font(self):
+        """(family, bold, italic) chosen for Edit text in Properties, or None = keep each
+        line's own font."""
+        p = annotations.tool_props("edittext")
+        return (p["font"], bool(p.get("bold")), bool(p.get("italic"))) if p.get("font") else None
+
     def _apply_text_edit(self, index, line, new, offset, wrap):
         used = {}
+        font = self._edit_font()
 
         def do():
             page = self.doc[index]
@@ -2660,7 +2723,7 @@ class DocumentView(QScrollArea):
                     m = annotations.read(page.load_annot(x))
                     if m is not None:
                         moving.append((x, m))
-            used["font"] = text_edit.replace_line(page, line, new, offset, wrap)
+            used["font"] = text_edit.replace_line(page, line, new, offset, wrap, font)
             d = pymupdf.Point(offset)
             for x, m in moving:
                 if "quads" in m:
@@ -2672,8 +2735,17 @@ class DocumentView(QScrollArea):
                 annotations.replace(page, x, m)
             used["moved"] = len(moving)
         self.modify(do, [index])
+        wanted = font
         font = used.get("font") or ""
-        if font.startswith("KZS") or font == "KZUni":
+        if font.startswith("KZF"):
+            self._fonts_added = True
+            self.statusMessage.emit(f"Edited in {wanted[0]}.")
+        elif wanted and new.strip():
+            self.statusMessage.emit(f"{wanted[0]} isn't installed in that style or lacks some of "
+                                    "these characters; kept the line's own font.")
+            if font.startswith("KZS") or font == "KZUni":
+                self._fonts_added = True
+        elif font.startswith("KZS") or font == "KZUni":
             self._fonts_added = True
             self.statusMessage.emit("Edited using the installed copy of the original font."
                                     if font.startswith("KZS") else

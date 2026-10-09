@@ -282,6 +282,94 @@ def _broad_font(page, text):
     return None
 
 
+def _fix_spaces(page, fontname, font):
+    """Many fonts (Times New Roman, Arial on Windows...) draw a space and a no-break space with
+    the same glyph, and the text map PyMuPDF writes for an embedded font then names that
+    glyph a no-break space (U+00A0): search, copy and paste would see it instead of a normal
+    space. Point the space glyph back at U+0020."""
+    try:
+        gid = font.has_glyph(0x20)
+        if not gid or font.has_glyph(0xA0) != gid:
+            return
+        doc = page.parent
+        for f in page.get_fonts(full=True):
+            if f[4] != fontname:
+                continue
+            kind, val = doc.xref_get_key(f[0], "ToUnicode")
+            if kind != "xref":
+                continue
+            tu = int(val.split()[0])
+            data = doc.xref_stream(tu)
+            for hexgid in (b"%04x" % gid, b"%04X" % gid):
+                for nb in (b"<00a0>", b"<00A0>"):
+                    data = data.replace(b"<" + hexgid + b"> " + nb, b"<" + hexgid + b"> <0020>")
+            doc.update_stream(tu, data)
+    except Exception:
+        pass        # the text is written either way; only search / copy would be affected
+
+
+_BASE14_STYLE = {(False, False): "helv", (True, False): "hebo", (False, True): "heit",
+                 (True, True): "hebi"}
+
+
+def chosen_font(page, family, bold=False, italic=False, text=""):
+    """(font name, Font, how to insert it) for an installed font family picked in Properties,
+    in its bold / italic style when installed, or None when it isn't installed or lacks some
+    characters of text. The font is embedded with only the letters used."""
+    if not family:
+        return None
+    fonts = _system_fonts()
+    base = _norm(family)
+    style = ("bold" if bold else "") + ("italic" if italic else "")
+    keys = ([base + style, base + style.replace("italic", "oblique")] if style else []) + [base]
+    for key in keys:
+        path = fonts.get(key)
+        if not path:
+            continue
+        try:
+            font = pymupdf.Font(fontfile=path)
+            if not all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
+                return None
+            name = "KZF" + key[:20]
+            page.insert_font(fontname=name, fontfile=path)
+            return name, font, {"fontfile": path}
+        except Exception:
+            continue
+    return None
+
+
+def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
+             color=(0, 0, 0), wrap_width=None):
+    """Add text: write text into the page itself (not an annotation) with its first baseline
+    at origin (unrotated page coordinates), reading upright as the page is displayed.
+    family "" = Helvetica, which every PDF reader has built in. Returns the font name used.
+    Raises ValueError (before changing anything) if no font can write the text."""
+    if any(ord(c) > 0xFFFF for c in text):
+        raise ValueError("Emoji and other characters beyond U+FFFF can't be written into a "
+                         "PDF page here. Remove them and try again.")
+    found = chosen_font(page, family, bold, italic, text)
+    if found is None and not _winansi_ok(text):
+        # the chosen font (or Helvetica) lacks some characters: a font that has them
+        found = _unicode_font(page, text) or _broad_font(page, text)
+        if found is None:
+            bad = _unwritable(text)
+            names = ", ".join(f"{c} (U+{ord(c):04X})" for c in bad[:6]) or "some characters"
+            raise ValueError("No font on this computer can write these characters: "
+                             f"{names}. Remove or replace them and try again.")
+    if found:
+        fontname, font, source = found
+        page.insert_font(fontname=fontname, **source)
+    else:
+        fontname = _BASE14_STYLE[(bool(bold), bool(italic))]
+        font = pymupdf.Font(fontname)
+    lines = _wrap(text, font, size, wrap_width) if wrap_width else text.split("\n")
+    page.insert_text(pymupdf.Point(origin), "\n".join(lines), fontsize=size, fontname=fontname,
+                     color=color, rotate=page.rotation, lineheight=1.2)
+    if found:
+        _fix_spaces(page, fontname, font)
+    return fontname
+
+
 def _pick_font(page, span, text):
     """(font name, Font, how to insert it) for text, or None to use a built-in PDF font."""
     if any(ord(c) > 0xFFFF for c in text):
@@ -311,12 +399,15 @@ def _unwritable(text):
     return out
 
 
-def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
+def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None):
     """Remove the line's text and write new_text in its place.
 
     offset: move the text by (dx, dy) points. wrap_width: wrap to this width (points).
+    font: (family, bold, italic) to change the line's font to an installed one (Properties >
+    Font with Edit text); None keeps the line's own font.
     Returns the font name used: 'KZ…' = original embedded font, 'KZS…' = installed system
-    font of the same name, 'KZUni' = bundled Unicode font, otherwise a built-in PDF font.
+    font of the same name, 'KZF…' = a font picked in Properties, 'KZUni' = bundled Unicode
+    font, otherwise a built-in PDF font.
     Raises ValueError (before changing anything) if no font can write the new text."""
     main = main_span(line)
     first = line["spans"][0]
@@ -328,7 +419,9 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
 
     # 1) pick the font first, so nothing is deleted if the new text can't be written
     found = None
-    if new_text.strip():
+    if new_text.strip() and font and font[0]:
+        found = chosen_font(page, font[0], font[1], font[2], new_text)
+    if new_text.strip() and found is None:
         try:
             found = _pick_font(page, main, new_text)
         except LookupError:
@@ -378,4 +471,6 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None):
     page.insert_text(origin, "\n".join(lines), fontsize=size, fontname=fontname,
                      color=_rgb(main["color"]), rotate=line_rotation(line),
                      lineheight=1.2)
+    if found:
+        _fix_spaces(page, fontname, font)
     return fontname
