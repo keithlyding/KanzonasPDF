@@ -74,7 +74,8 @@ class InlineEditor(QFrame):
         lay.setSpacing(0)
         lay.addWidget(_DragBar(self))
         self.text = QPlainTextEdit(text)
-        f = QFont({"sans": "Arial", "serif": "Times New Roman", "mono": "Courier New"}[family])
+        # a hint ("sans" / "serif" / "mono") from the line edited, or a family picked in Properties
+        f = QFont({"sans": "Arial", "serif": "Times New Roman", "mono": "Courier New"}.get(family, family))
         f.setPixelSize(max(6, int(round(pixel_size))))
         self.text.setFont(f)
         self.text.setFrameShape(QFrame.NoFrame)

@@ -118,6 +118,22 @@ class PropertiesPanel(QWidget):
         self.for_who.addItem("Signature", "signature")
         self.markup = QComboBox()
         self.markup.addItems([m.capitalize() for m in A.COMMENT_STYLES])
+        # font: the installed fonts for text written into the page (Add text, Edit text);
+        # Helvetica / Times / Courier for text box comments (fonts every PDF viewer has)
+        self.font = QComboBox()
+        self.font.setMaxVisibleItems(20)
+        self.bold = QCheckBox("Bold")
+        self.italic = QCheckBox("Italic")
+        font_row = QWidget()
+        fr = QVBoxLayout(font_row)
+        fr.setContentsMargins(0, 0, 0, 0)
+        fr.addWidget(self.font)
+        style_row = QHBoxLayout()
+        style_row.addWidget(self.bold)
+        style_row.addWidget(self.italic)
+        style_row.addStretch(1)
+        fr.addLayout(style_row)
+        self._font_kind = None
 
         self.rows = {}
         for key, label, w in (("label", "Stamp", label_row),
@@ -126,6 +142,7 @@ class PropertiesPanel(QWidget):
                               ("cloud", "", self.cloud),
                               ("markup", "Marks text with", self.markup),
                               ("for", "Placeholder for", self.for_who),
+                              ("font", "Font", font_row),
                               ("text_color", "Text color", self.text_color),
                               ("stroke", "Line color", stroke_row),
                               ("fill", "Fill", fill_row),
@@ -159,6 +176,9 @@ class PropertiesPanel(QWidget):
         self.name.toggled.connect(self._emit)
         self.rotation.valueChanged.connect(self._emit)
         self.cloud.toggled.connect(self._emit)
+        self.font.currentIndexChanged.connect(self._emit)
+        self.bold.toggled.connect(self._emit)
+        self.italic.toggled.connect(self._emit)
         self.show_target(None, None)
 
     def show_target(self, kind, props, selected=False):
@@ -177,6 +197,8 @@ class PropertiesPanel(QWidget):
         name = A.LABELS.get(kind, kind)
         self.title.setText(f"Selected: {name}" if selected else f"{name}: default style")
         self.hint.setText("Changes apply to the selected annotation." if selected else
+                          "Used for the text you add or edit next; it's written into the page."
+                          if kind in A.PAGE_TEXT_TOOLS else
                           "Saved for next time. New annotations use these settings.")
         self.reset.setVisible(not selected)
         for key, (lab, w) in self.rows.items():
@@ -225,8 +247,34 @@ class PropertiesPanel(QWidget):
             self.opacity.setValue(int(round(float(props["opacity"]) * 100)))
         if "for" in props:
             self.for_who.setCurrentIndex(max(0, self.for_who.findData(props["for"])))
+        if "font" in props:
+            self._fill_fonts(kind, props.get("font") or "")
+            page_text = kind != "textbox"           # comments can't use bold / italic fonts
+            self.bold.setVisible(page_text)
+            self.italic.setVisible(page_text)
+            self.bold.setChecked(bool(props.get("bold")))
+            self.italic.setChecked(bool(props.get("italic")))
         self._props = dict(props)
         self._loading = False
+
+    def _fill_fonts(self, kind, current):
+        if self._font_kind != kind:
+            self.font.clear()
+            if kind == "textbox":
+                for name in A.COMMENT_FONTS:
+                    self.font.addItem(name, name)
+            else:
+                from PySide6.QtGui import QFontDatabase
+                if kind == "edittext":
+                    self.font.addItem("Keep the line's font", "")
+                else:
+                    self.font.addItem("Helvetica (built into every PDF reader)", "")
+                for fam in QFontDatabase.families():
+                    if not QFontDatabase.isPrivateFamily(fam):
+                        self.font.addItem(fam, fam)
+            self._font_kind = kind
+        i = self.font.findData(current)
+        self.font.setCurrentIndex(max(0, i))
 
     def _fill_labels(self, current):
         self.label.clear()
@@ -293,6 +341,11 @@ class PropertiesPanel(QWidget):
             p["opacity"] = self.opacity.value() / 100
         if "for" in p:
             p["for"] = self.for_who.currentData()
+        if "font" in p:
+            p["font"] = self.font.currentData() or ""
+            if self._kind != "textbox":
+                p["bold"] = self.bold.isChecked()
+                p["italic"] = self.italic.isChecked()
         if "rotation" in p:
             v = self.rotation.value()
             if self._kind in A.QUARTER_TURNS:

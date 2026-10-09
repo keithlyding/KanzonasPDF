@@ -214,7 +214,11 @@ can be pasted into another open document too.</li>
 underline, strike or squiggly: choose in Properties) and the comment shows in a box beside it.
 Hide the boxes with View &gt; Show comment boxes.</li>
 <li><b>Sticky note</b> (N): click where it goes and type.</li>
-<li><b>Text box</b> (T): drag a box (or click) and type. Ctrl+Enter finishes typing.</li>
+<li><b>Text box</b> (T): drag a box (or click) and type. Ctrl+Enter finishes typing. A text box
+is a comment (a markup): people can move, edit or delete it in any PDF viewer until it's
+flattened. Its font can be Helvetica, Times or Courier (Properties > Font): those are the fonts
+every PDF viewer has, so the comment looks the same everywhere. To write text that's part of
+the page, use <b>Add text</b> (below).</li>
 <li><b>Callout</b> (K): press on the point you're pointing at, drag to where the text goes.</li>
 <li><b>Author name:</b> Edit &gt; Author name for markups. It's recorded on your markups and
 printed on stamps.</li>
@@ -373,9 +377,11 @@ one to change what it says; it resizes to fit.</li>
 <ul>
 <li><b>Image</b> tool: drag a box and pick a picture (PNG, JPEG, BMP, GIF, TIFF). It's fitted
 inside the box keeping its proportions; just click instead to place it at its natural size.
-The picture is embedded in the PDF at its original quality and file size. Move, resize
-(Shift on a corner keeps its proportions), rotate, align and delete it like any markup;
-Flatten makes it a permanent part of the page.</li>
+The picture is embedded in the PDF at its original quality and file size and becomes part of
+the page itself, like Acrobat's Add Image: PDF viewers can't move or delete it. Move, resize,
+rotate or delete it with <b>Edit objects</b> (Shift+O), as in Acrobat and PDF-XChange. For a
+picture that stays a movable markup, use <b>Add image stamp...</b> with the Stamp tool. Placed
+signatures, initials and dates are part of the page the same way.</li>
 <li><b>Attach file</b> tool: click where the paperclip icon should go and pick any file, such
 as a video, spreadsheet or photo. The file is embedded inside the PDF, so it travels with it.
 <b>Double-click the icon</b> to open the file in the program Windows uses for it (videos play
@@ -433,6 +439,14 @@ takes a moment while the page is read.</li>
 
 <h2 id="edittext">Editing the PDF's own text</h2>
 <ul>
+<li><b>Add text</b> tool (Shift+T; Home tab next to Edit text, Tools menu): click where the text
+goes and type (Enter finishes, Shift+Enter starts a new line). The text is written into the page
+itself, like Acrobat's Add Text: PDF viewers can't change it, and Edit text changes it later.
+Pick the font (any installed font, plus Bold and Italic), size and color in Properties before
+you click. Only the letters used are stored in the file.</li>
+<li><b>Change a line's font:</b> with the Edit text tool, pick a font (and Bold / Italic) in
+Properties, then click the line and press Enter, with or without changing the text. Pick
+<b>Keep the line's font</b> to go back to keeping each line's own font.</li>
 <li>Edit text tool (Ctrl+E): click a line of text. Type the change; drag the bar above the
 box to move the text, drag the corner grip to make it wrap. Press Enter (or click elsewhere)
 to finish, Shift+Enter to start a new line, Escape to cancel. Saving, closing the document,
@@ -667,6 +681,7 @@ settings...).</li>
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text</td></tr>
+<tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>
 <tr><td>Ctrl+K</td><td>Preferences</td></tr>
 <tr><td>Ctrl+;</td><td>Date (today's date where you click)</td></tr>
 <tr><td>Shift+O</td><td>Edit objects (the page's own pictures and shapes)</td></tr>

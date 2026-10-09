@@ -1040,6 +1040,8 @@ class PageWidget(QWidget):
             self._hover = None
             self.update()
             self.view.edit_text_at(self.index, pdf)
+        elif tool == "addtext":
+            self.view.add_text_at(self.index, pdf)
         elif tool in ("note", "attach"):
             self.view.apply_point_tool(self.index, tool, pdf)
 

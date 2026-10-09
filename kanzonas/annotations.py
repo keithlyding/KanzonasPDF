@@ -40,7 +40,8 @@ DEFAULTS = {
     "strikeout": {"stroke": "#e00000", "opacity": 1.0},
     "squiggly": {"stroke": "#e00000", "opacity": 1.0},
     "note": {"stroke": "#ffdc00", "opacity": 1.0},
-    "textbox": {"text_color": "#000000", "stroke": "#d00000", "fill": None, "width": 1.0,
+    "textbox": {"font": "Helvetica", "text_color": "#000000", "stroke": "#d00000", "fill": None,
+                "width": 1.0,
                 "fontsize": 11, "opacity": 1.0},
     "rect": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "ellipse": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
@@ -62,7 +63,7 @@ DEFAULTS = {
     "placeholder": {"for": "initials"},
     "attach": {"stroke": "#0050ff", "icon": "Paperclip", "opacity": 1.0},
 }
-LABELS = {"highlight": "Highlight", "comment": "Comment", "underline": "Underline",
+LABELS = {"addtext": "Add text", "edittext": "Edit text", "highlight": "Highlight", "comment": "Comment", "underline": "Underline",
           "strikeout": "Strikeout", "squiggly": "Squiggly", "note": "Sticky note", "textbox": "Text box",
           "rect": "Rectangle", "ellipse": "Ellipse", "line": "Line", "arrow": "Arrow",
           "ink": "Pen", "polygon": "Polygon", "polyline": "Polyline", "callout": "Callout",
@@ -70,6 +71,17 @@ LABELS = {"highlight": "Highlight", "comment": "Comment", "underline": "Underlin
           "m_length": "Length", "m_poly": "Polylength", "m_area": "Area", "m_count": "Count",
           "image": "Image", "attach": "Attached file", "redact": "Redaction mark",
           "placeholder": "Signature placeholder"}
+# fonts a text box comment can use: the standard ones every PDF viewer has, so it looks the
+# same everywhere (FreeText annotations can't carry other fonts reliably)
+COMMENT_FONTS = {"Helvetica": "helv", "Times": "TiRo", "Courier": "Cour"}
+
+# tools that write text into the page itself (not annotations): their settings live here too
+PAGE_TEXT_TOOLS = {
+    "addtext": {"font": "", "bold": False, "italic": False, "fontsize": 12,
+                "text_color": "#000000"},
+    "edittext": {"font": "", "bold": False, "italic": False},
+}
+
 PLACEHOLDER_TEXT = {"signature": "SIGN HERE", "initials": "INITIAL HERE"}
 HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE_CLOSED_ARROW,
          "open (reversed)": pymupdf.PDF_ANNOT_LE_R_OPEN_ARROW,
@@ -128,7 +140,7 @@ OVERRIDE = {"tool": None, "props": None}
 
 
 def tool_props(kind):
-    props = dict(DEFAULTS.get(kind, {}))
+    props = dict(DEFAULTS.get(kind) or PAGE_TEXT_TOOLS.get(kind, {}))
     if OVERRIDE["tool"] == kind and OVERRIDE["props"] is not None:
         props.update({k: v for k, v in OVERRIDE["props"].items() if k in props})
     else:
@@ -164,7 +176,7 @@ def set_tool_props(kind, props):
 
 
 def reset_tool_props(kind):
-    set_tool_props(kind, dict(DEFAULTS[kind]))
+    set_tool_props(kind, dict(DEFAULTS.get(kind) or PAGE_TEXT_TOOLS[kind]))
 
 
 def author():
@@ -402,7 +414,7 @@ def write(page, model):
         a = page.add_text_annot(model["rect"].tl, text or " ", icon="Note")
     elif kind == "textbox":
         a = page.add_freetext_annot(model["rect"], text, fontsize=float(p.get("fontsize", 11)),
-                                    fontname="helv",
+                                    fontname=COMMENT_FONTS.get(p.get("font"), "helv"),
                                     text_color=to_rgb(p.get("text_color")) or (0, 0, 0),
                                     fill_color=fill, border_width=width,
                                     rotate=(page.rotation + quarter(p)) % 360)
