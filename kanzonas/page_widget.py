@@ -209,6 +209,9 @@ class PageWidget(QWidget):
 
     def paintEvent(self, event):
         p = QPainter(self)
+        if self.view.doc.is_closed:      # tab closing: a queued repaint must not touch it
+            p.fillRect(event.rect(), Qt.white)
+            return
         if self._tiled():
             self._pix = None
             self._paint_tiles(p, event.rect())

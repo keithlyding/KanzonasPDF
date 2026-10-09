@@ -3,6 +3,7 @@
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_scroll_undo
 """
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -97,3 +98,17 @@ class ScrollAndUndo(unittest.TestCase):
         self.assertEqual(got[0], anchor[0])
         self.assertAlmostEqual(got[1], anchor[1], places=2)
         self.assertAlmostEqual(got[2], anchor[2], delta=2)
+
+    def test_repaint_after_closing_does_not_touch_the_closed_file(self):
+        v = self.view()
+        self.views.remove(v)
+        v.close_doc()
+        errors = []
+        old = sys.excepthook
+        sys.excepthook = lambda *a: errors.append(a)
+        try:
+            v.pages[0].repaint()
+            APP.processEvents()
+        finally:
+            sys.excepthook = old
+        self.assertEqual(errors, [])
