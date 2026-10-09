@@ -452,8 +452,11 @@ you click. Only the letters used are stored in the file.</li>
 <li><b>Change a line's font:</b> with the Edit text tool, pick a font (and Bold / Italic) in
 Properties, then click the line and press Enter, with or without changing the text. Pick
 <b>Keep the line's font</b> to go back to keeping each line's own font.</li>
-<li>Edit text tool (Ctrl+E): click a line of text. Type the change; drag the bar above the
-box to move the text, drag the corner grip to make it wrap. Press Enter (or click elsewhere)
+<li>Edit text tool (Ctrl+E): <b>press on a line and drag</b> to move it (its text and font stay
+as they are). Or click a line of text to edit it right where it is: the cursor goes where you
+clicked, and the line gets a dashed outline with handles, like a selected object. Type the
+change; drag the outline to move the text, drag a handle to change the width the text wraps
+to (the letters keep their size). Press Enter (or click elsewhere)
 to finish, Shift+Enter to start a new line, Escape to cancel. Saving, closing the document,
 Undo or a page change also finish an edit in progress, so typed text is never lost.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>

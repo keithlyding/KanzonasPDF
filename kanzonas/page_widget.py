@@ -101,6 +101,7 @@ class PageWidget(QWidget):
         self._snap_mark = None      # (widget point, "object" | "page" | "grid") last snap
         self._obj_hover = None      # Edit objects: picture under the mouse
         self._obj_edit = None       # Edit objects: dragging / resizing the selected picture
+        self._text_move = None      # Edit text: a line being dragged to a new place
         self._sig_drag = None       # signature / initials: press point while sizing
         self._sig_now = None
         self.setMouseTracking(True)
@@ -327,6 +328,13 @@ class PageWidget(QWidget):
 
         if tool == "editobjects":
             self._paint_objects(p, page)
+
+        tm = self._text_move
+        if tm is not None and tm["now"] is not None and tm["pix"] is not None:
+            d = tm["now"] - tm["start"]
+            p.drawPixmap(tm["box"].topLeft() + d, tm["pix"])
+            p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+            p.drawRect(tm["box"].translated(d))
 
         if self._hover is not None and tool == "edittext":
             p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
@@ -1037,9 +1045,15 @@ class PageWidget(QWidget):
         elif tool == "ink":
             self._ink = [pos]
         elif tool == "edittext":
+            # click a line to type in it; press on it and drag to move it (like Acrobat)
             self._hover = None
             self.update()
-            self.view.edit_text_at(self.index, pdf)
+            rect = self.view.text_line_rect(self.index, pdf)
+            if rect is None:
+                self.view.edit_text_at(self.index, pdf)     # says there's no text there
+            else:
+                self._text_move = {"start": pos, "pdf": pdf, "rect": rect, "now": None,
+                                   "pix": None}
         elif tool == "addtext":
             self.view.add_text_at(self.index, pdf)
         elif tool in ("note", "attach"):
@@ -1218,6 +1232,16 @@ class PageWidget(QWidget):
         elif self._sig_drag is not None:
             self._sig_now = pos
             self.update()
+        elif self._text_move is not None:
+            tm = self._text_move
+            if tm["now"] is not None or (pos - tm["start"]).manhattanLength() >= 4:
+                if tm["pix"] is None:
+                    # a picture of the line as it looks now, slid with the pointer
+                    tm["box"] = self.to_screen(tm["rect"]).adjusted(-2, -2, 2, 2)
+                    tm["pix"] = self.grab(tm["box"].toAlignedRect())
+                tm["now"] = pos
+                self.setCursor(Qt.SizeAllCursor)
+                self.update()
         elif self._obj_edit is not None:
             if (pos - self._obj_edit["start"]).manhattanLength() >= 3:
                 if self._obj_edit["mode"] == "box":
@@ -1291,6 +1315,16 @@ class PageWidget(QWidget):
             return
         tool = self.view.tool
         pos = e.position()
+        if self._text_move is not None:
+            tm, self._text_move = self._text_move, None
+            self.unsetCursor()
+            self.update()
+            if tm["now"] is None:
+                self.view.edit_text_at(self.index, tm["pdf"])
+            else:
+                a, b = self.to_pdf(tm["start"]), self.to_pdf(pos)
+                self.view.move_text_line(self.index, tm["pdf"], (b.x - a.x, b.y - a.y))
+            return
         if tool == "hand":
             self.view.end_pan()
         elif self._sig_drag is not None:
