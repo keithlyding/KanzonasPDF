@@ -237,7 +237,8 @@ current page. Undo brings them back.</li>
 fields stay fillable. (Document &gt; Flatten flattens form fields too.) The markups really
 become page drawing: no PDF program sees them as markups any more. Programs that edit page
 content (Acrobat's Edit PDF, PDF-XChange's Edit Content, KanzonasPDF's Edit objects) can still
-move that drawing, as they can the rest of the page; flattening isn't a lock (that's the same
+move that drawing, as they can the rest of the page, and so can you (Edit objects selects each
+flattened markup as a group; Edit text changes its text); flattening isn't a lock (that's the same
 in Acrobat and Bluebeam). It's for sending a file whose markups everyone sees and prints exactly
 as you made them. To make any later change detectable, digitally sign the PDF with the lock
 against changes (certify): PDF readers that check signatures (Acrobat, PDF-XChange, KanzonasPDF)
@@ -399,6 +400,11 @@ the pictures (logos, photos, scans) and vector shapes (lines, rectangles, circle
 filled areas, CAD line work) that are part of the page itself, not on markups. Point at an object
 to see it outlined; click to select it. Lines are picked up within a few pixels; a filled shape
 is picked up anywhere inside it.</li>
+<li><b>Groups:</b> a drawing group the page places as one piece (flattened markups and stamps
+become these, and some programs export a whole drawing as one) is selected, moved, resized,
+rotated, deleted and re-stacked as one object, as in Acrobat and PDF-XChange. A group that
+fills the whole page isn't picked by a click (that would grab the sheet whenever you click
+blank paper): drag a selection box around the page to select it.</li>
 <li><b>Several at once:</b> Ctrl+click adds or removes an object, or drag a box from empty space
 to select everything entirely inside it (Ctrl+drag adds to the selection). In CAD drawings one
 "shape" is often many separate lines, so a box is the quickest way to grab it.</li>

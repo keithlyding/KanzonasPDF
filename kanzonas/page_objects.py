@@ -300,6 +300,25 @@ def path_lines(data, obj, tm):
     return out
 
 
+def _form_box(doc, xref):
+    """(BBox, Matrix) of a Form XObject, or (None, None) when it has no usable BBox."""
+    def nums(key):
+        kind, val = doc.xref_get_key(xref, key)
+        if kind != "array":
+            return None
+        try:
+            return [float(v) for v in val.strip("[]").split()]
+        except ValueError:
+            return None
+    b = nums("BBox")
+    if not b or len(b) != 4:
+        return None, None
+    m = nums("Matrix")
+    fm = pymupdf.Matrix(*m) if m and len(m) == 6 else pymupdf.Matrix(1, 0, 0, 1, 0, 0)
+    box = pymupdf.Rect(b).normalize()
+    return (box, fm) if not box.is_empty else (None, None)
+
+
 def _contents(page):
     doc = page.parent
     return b"\n".join(doc.xref_stream(x) or b"" for x in page.get_contents())
@@ -333,6 +352,17 @@ class Objects:
         for it in page.get_images(full=True):
             if it[-1] == 0:             # drawn by the page itself, not inside a form
                 names[("/" + it[7]).encode()] = it[0]
+        # drawing groups (Form XObjects) the page places itself: flattened markups and stamps
+        # become these, and other PDF editors (Acrobat's Edit PDF, PDF-XChange's Edit
+        # Content) select and move them as one object, so Edit objects does too
+        groups = {}
+        doc = page.parent
+        for gx in page.get_xobjects():
+            xref, gname, invoker = gx[0], gx[1], gx[2]
+            if invoker != 0:
+                continue
+            groups[("/" + gname).encode()] = (xref, _form_box(doc, xref))
+        page_area = abs(page.rect) or 1
         tm = self.tm
         for k, d in enumerate(self.found):
             m = d["ctm"] * tm
@@ -346,12 +376,24 @@ class Objects:
                                    "quad": quad, "stroke": d["stroke"], "fill": d["fill"],
                                    "width": d["width"] * scale, "obj": d})
                 continue
+            if d["name"] is not None and d["name"] in groups:
+                gxref, (box, fm) = groups[d["name"]]
+                if box is None:
+                    continue
+                quad = box.quad.transform(fm * m)
+                self.items.append({"n": k, "kind": "group", "rect": quad.rect, "xref": gxref,
+                                   "quad": quad, "obj": d,
+                                   # a group filling the page (some programs wrap the whole
+                                   # drawing in one) is picked by a selection box, not by a
+                                   # click anywhere on the sheet
+                                   "whole": abs(quad.rect) >= 0.9 * page_area})
+                continue
             if d["name"] is None:
                 xref = 0
             else:
                 xref = names.get(d["name"])
                 if xref is None:
-                    continue            # a form or something else, not a picture
+                    continue            # something else, not a picture
             quad = pymupdf.Rect(0, 0, 1, 1).quad.transform(m)
             self.items.append({"n": k, "kind": "picture", "rect": quad.rect, "xref": xref,
                                "quad": quad, "obj": d})
@@ -376,8 +418,8 @@ class Objects:
             pad = tol + it.get("width", 0) / 2
             if not (r.x0 - pad <= pt.x <= r.x1 + pad and r.y0 - pad <= pt.y <= r.y1 + pad):
                 continue
-            if it["kind"] == "picture":
-                if pt in it["quad"] and filled is None:
+            if it["kind"] in ("picture", "group"):
+                if pt in it["quad"] and filled is None and not it.get("whole"):
                     filled = it
                 continue
             for line in self.lines(it):

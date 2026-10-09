@@ -2806,10 +2806,12 @@ class DocumentView(QScrollArea):
             self.selectionChanged.emit()        # menus: Arrange works on objects too
         if items:
             pics = sum(1 for it in items if it["kind"] == "picture")
-            shapes = len(items) - pics
+            groups = sum(1 for it in items if it["kind"] == "group")
+            shapes = len(items) - pics - groups
             what = ", ".join(x for x in (
                 f"{pics} picture" + ("s" if pics != 1 else "") if pics else "",
-                f"{shapes} shape" + ("s" if shapes != 1 else "") if shapes else "") if x)
+                f"{shapes} shape" + ("s" if shapes != 1 else "") if shapes else "",
+                f"{groups} group" + ("s" if groups != 1 else "") if groups else "") if x)
             self.statusMessage.emit(f"Selected {what}: drag to move, drag a handle to resize, "
                                     "Delete deletes, right-click for more")
 
