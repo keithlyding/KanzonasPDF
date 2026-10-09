@@ -151,7 +151,8 @@ The search starts at the page you're on and shows the first match as soon as it 
 long documents it keeps searching the rest in the background (the status bar shows "Match 3
 of 120+" and how many pages are done) while you keep working. Changing the text or editing
 the document starts a fresh search.</li>
-<li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.</li>
+<li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.
+It's for looking only: make changes in the main view.</li>
 </ul>
 
 <h2 id="select">Selecting and editing markups</h2>
@@ -418,8 +419,9 @@ takes a moment while the page is read.</li>
 <h2 id="edittext">Editing the PDF's own text</h2>
 <ul>
 <li>Edit text tool (Ctrl+E): click a line of text. Type the change; drag the bar above the
-box to move the text, drag the corner grip to make it wrap. Click elsewhere or press
-Ctrl+Enter to finish, Escape to cancel.</li>
+box to move the text, drag the corner grip to make it wrap. Press Enter (or click elsewhere)
+to finish, Shift+Enter to start a new line, Escape to cancel. Saving, closing the document,
+Undo or a page change also finish an edit in progress, so typed text is never lost.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
@@ -690,7 +692,7 @@ settings...).</li>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>
 </table>
-<p>Change any shortcut in View &gt; Keyboard shortcuts.</p>
+<p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it.</p>
 """
 
 

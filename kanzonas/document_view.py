@@ -97,6 +97,8 @@ class DocumentView(QScrollArea):
                 self._orig_enc["user_pw"] = pw
             if rc & 4:
                 self._orig_enc["owner_pw"] = pw
+        if self.doc.page_count == 0:
+            raise ValueError("The PDF has no pages")
         if self._orig_enc is not None:
             self._orig_enc["perms"] = self.doc.permissions
         try:
@@ -440,15 +442,21 @@ class DocumentView(QScrollArea):
         """[(page, xref)] of every markup in reading order (page, then top to bottom)."""
         out = []
         for i in range(self.doc.page_count):
-            pg = self.doc[i]
-            items = []
-            for an in annotations.each_annot(pg):
-                if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
-                        pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
-                    continue
-                r = an.rect * pg.rotation_matrix
-                items.append((round(r.y0 / 6), r.x0, an.xref))
-            out += [(i, x) for _y, _x, x in sorted(items)]
+            # cached per page (cleared when the page changes): Next comment on a long
+            # document used to reload every markup on every key press
+            key = ("review", i)
+            order = self._card_cache.get(key)
+            if order is None:
+                pg = self.doc[i]
+                items = []
+                for an in annotations.each_annot(pg):
+                    if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
+                            pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
+                        continue
+                    r = an.rect * pg.rotation_matrix
+                    items.append((round(r.y0 / 6), r.x0, an.xref))
+                order = self._card_cache[key] = [x for _y, _x, x in sorted(items)]
+            out += [(i, x) for x in order]
         return out
 
     def goto_markup(self, step):
@@ -758,6 +766,11 @@ class DocumentView(QScrollArea):
 
     def modify(self, fn, pages=None, structural=False, permission=pymupdf.PDF_PERM_MODIFY):
         """Run an edit with an undo snapshot. pages = indices to repaint."""
+        if getattr(self, "_source", None) is not None:
+            # the split view shares the main view's document but not its undo history or
+            # unsaved-changes mark: edits must go through the main view
+            self.statusMessage.emit("The split view is read-only: edit in the main view.")
+            return
         if not self.allowed(permission):
             if getattr(self, "sig_results", None):
                 QMessageBox.information(self, "Digitally signed document",
@@ -930,7 +943,7 @@ class DocumentView(QScrollArea):
             self._word_cache.pop(i, None)
             self._snap_markups.pop(i, None)
             self._obj_cache.pop(i, None)
-            for key in ("fields", "links"):
+            for key in ("fields", "links", "fieldx", "annotx", "review"):
                 self._card_cache.pop((key, i), None)
             self._card_cache.pop(i, None)
             self._snap_recheck.add(i)
@@ -2079,17 +2092,40 @@ class DocumentView(QScrollArea):
             return None
         return min(hits, key=lambda an: an.rect.get_area())
 
+    def _annot_boxes(self, index):
+        """[(rect, xref)] of a page's annotations, cached until the page changes, so moving
+        the mouse over a page with thousands of markups doesn't load every one of them."""
+        key = ("annotx", index)
+        boxes = self._card_cache.get(key)
+        if boxes is None:
+            page = self.doc[index]              # keep the Page alive while reading its annots
+            # plain numbers: building and testing pymupdf.Rect objects is slow in Python
+            boxes = [(tuple(a.rect), a.xref) for a in annotations.each_annot(page)
+                     if a.type[0] != pymupdf.PDF_ANNOT_POPUP]
+            self._card_cache[key] = boxes
+        return boxes
+
+    def _annot_under(self, index, pt, tol=4.0):
+        """Like _annot_at, but loads only the annotations whose box is near the point.
+        Returns (page, annot): keep the page alive while using the annot."""
+        page = self.doc[index]
+        px, py = pt.x, pt.y
+        near = [x for (x0, y0, x1, y1), x in self._annot_boxes(index)
+                if x0 - tol <= px <= x1 + tol and y0 - tol <= py <= y1 + tol]
+        hits = [an for an in (page.load_annot(x) for x in near)
+                if an is not None and self._annot_hit(an, pt, tol)]
+        return page, (min(hits, key=lambda an: an.rect.get_area()) if hits else None)
+
     def annot_at(self, index, pt):
         """xref of the annotation under pt, or None. (Returns an id, not an Annot: an Annot
         becomes unusable once its Page object is garbage collected.)"""
         if not self.show_markups:
             return None
-        a = self._annot_at(self.doc[index], pt)
+        _page, a = self._annot_under(index, pt)
         return a.xref if a is not None else None
 
     def annot_tooltip(self, index, pt):
-        page = self.doc[index]
-        a = self._annot_at(page, pt)
+        page, a = self._annot_under(index, pt)
         if a is None:
             return ""
         model = annotations.read(a)
@@ -3517,8 +3553,15 @@ class DocumentView(QScrollArea):
         return None
 
     def widget_at(self, index, pt):
-        w = self._widget_at(self.doc[index], pt)
-        return w.xref if w is not None else None
+        # cached boxes: this runs on every mouse move, and a big form has hundreds of fields
+        key = ("fieldx", index)
+        boxes = self._card_cache.get(key)
+        if boxes is None:
+            boxes = [(tuple(w.rect), w.xref) for w in self.doc[index].widgets()]
+            self._card_cache[key] = boxes
+        px, py = pt.x, pt.y
+        return next((x for (x0, y0, x1, y1), x in boxes
+                     if x0 <= px <= x1 and y0 <= py <= y1), None)
 
     def fill_field(self, index, xref):
         self._set_field_focus(index, xref)
