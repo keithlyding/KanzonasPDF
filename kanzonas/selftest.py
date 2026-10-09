@@ -43,7 +43,8 @@ def run(log_path):
         nonlocal ok
         try:
             detail = fn()
-            lines.append(f"PASS {name} {detail or ''}")
+            status = "SKIP" if isinstance(detail, str) and detail.startswith("(skipped:") else "PASS"
+            lines.append(f"{status} {name} {detail or ''}")
         except Exception:
             ok = False
             lines.append(f"FAIL {name}\n{traceback.format_exc()}")
@@ -457,7 +458,12 @@ def run(log_path):
         line = text_edit.text_lines(v.doc[2])[0][1]
         v._apply_text_edit(2, line, "\u03a9 \u0394 \u4e2d\u6587 caf\u00e9", (0, 0), None)
         assert "\u03a9 \u0394 \u4e2d\u6587 caf\u00e9" in v.doc[2].get_text()
-        v.save(out)
+        ask = QInputDialog.getText
+        QInputDialog.getText = staticmethod(lambda *a, **k: ("owner", True))
+        try:
+            v.save(out)
+        finally:
+            QInputDialog.getText = ask
         v.doc.close()
         r = pymupdf.open(out)
         assert r.needs_pass, "edited protected file saved without its password"
@@ -563,7 +569,7 @@ def run(log_path):
         d = pymupdf.open()
         d.new_page().insert_text((72, 72), "BACKUP")
         v = types.SimpleNamespace(doc=d, path=os.path.join(tmp, "b.pdf"), dirty=True,
-                                  _orig_enc=None, read_only=False, _backup_path=None)
+                                  _orig_enc=None, security=None, read_only=False, _backup_path=None)
         saver = autosave.Autosaver.__new__(autosave.Autosaver)
         saver.backup(v)
         bp = v._backup_path

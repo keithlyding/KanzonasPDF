@@ -15,6 +15,23 @@ MANUAL = """
 <p>A free PDF reader and editor. Use the contents list on the left, or type in the
 <b>Find in manual</b> box above.</p>
 
+<h2 id="audit-fixes">Document protection and safe editing</h2>
+<p>Apply redactions removes any vector path touching a mark, even when the path extends
+outside the marked area. Review nearby drawing geometry before saving. Search &amp; redact
+removes matching annotations completely, including private stamp data and appearances.</p>
+<p>Saving edits to an already encrypted PDF requires its original permissions (owner)
+password when that password is not yet known. If you opened it using only the owner
+password, preserving its encryption also requires the original open password. A failed or
+canceled password prompt leaves
+the existing file intact. Newly protected documents are excluded from automatic backups,
+and an existing recovery copy is removed when protection is added. Each recovery copy has
+its own unique identity, even for files with the same name.</p>
+<p>Copying, extracting and exporting require copying permission; Print requires printing
+permission and uses at most 150 dpi when high-quality printing is forbidden. Form filling
+and adding markups honor their separate permissions. Flattening selected pages preserves
+page labels, outgoing links and drawing calibration. Excel export writes PDF text as literal
+cell text, including text starting with an equals sign. OCR disables ONNX Runtime
+telemetry before creating recognition sessions.</p>
 <h2 id="start">Getting started</h2>
 <ul>
 <li><b>Open a PDF:</b> File &gt; Open (Ctrl+O), drag a file onto the window, or pick one from

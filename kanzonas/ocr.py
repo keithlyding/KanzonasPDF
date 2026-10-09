@@ -32,6 +32,8 @@ def _get_engine():
     global _engine
     with _lock:
         if _engine is None:
+            import onnxruntime
+            onnxruntime.disable_telemetry_events()
             from rapidocr_onnxruntime import RapidOCR
             _engine = RapidOCR()
         return _engine

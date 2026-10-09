@@ -2,7 +2,6 @@
 
 import json
 import os
-import secrets
 import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -98,6 +97,7 @@ class DocumentView(QScrollArea):
             signed = False
         if self._orig_enc is None and not signed:
             self._orig_data = None          # plain file: no need to keep a second copy
+        self._owner_authorized = self._orig_enc is None or bool(self._orig_enc.get("owner_pw"))
         self._check_permissions()
         self._init_state()
         self._build_pages()
@@ -360,7 +360,7 @@ class DocumentView(QScrollArea):
                 a.update()
         if locked or hidden:
             self.clear_selection()
-        self.modify(do, [index])
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
 
     def lock_selected(self):
         if self.selection is None:
@@ -383,7 +383,7 @@ class DocumentView(QScrollArea):
                     a = pg.load_annot(x)
                     a.set_flags((a.flags or 0) & ~pymupdf.PDF_ANNOT_IS_LOCKED)
                     a.update()
-        self.modify(do, list(locked))
+        self.modify(do, list(locked), permission=pymupdf.PDF_PERM_ANNOTATE)
         return sum(len(x) for x in locked.values())
 
     # ---- review: walk through, delete, flatten comments ---------------------------------------
@@ -456,7 +456,7 @@ class DocumentView(QScrollArea):
                     except Exception:
                         pass
         self.clear_selection()
-        self.modify(do, list(doomed))
+        self.modify(do, list(doomed), permission=pymupdf.PDF_PERM_ANNOTATE)
         return sum(len(x) for x in doomed.values())
 
     def field_rects(self, index):
@@ -650,9 +650,9 @@ class DocumentView(QScrollArea):
         self.structureChanged.emit()
         self.selectionChanged.emit()
 
-    def modify(self, fn, pages=None, structural=False):
+    def modify(self, fn, pages=None, structural=False, permission=pymupdf.PDF_PERM_MODIFY):
         """Run an edit with an undo snapshot. pages = indices to repaint."""
-        if self.read_only:
+        if not self.allowed(permission):
             if getattr(self, "sig_results", None):
                 QMessageBox.information(self, "Digitally signed document",
                                         "This PDF is digitally signed, so it's read-only to keep "
@@ -874,6 +874,8 @@ class DocumentView(QScrollArea):
     def copy(self):
         """Copy the selected text, or the selected markups. Returns what was copied."""
         from . import clip
+        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Copying"):
+            return None
         if self.text_sel:
             QGuiApplication.clipboard().setText(self.selected_text())
             return "text"
@@ -927,7 +929,7 @@ class DocumentView(QScrollArea):
             pg = self.doc[index]
             for m in models:
                 made.append(annotations.write(pg, annotations.moved(m, d)).xref)
-        self.modify(do, [index])
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if made:
             self._set_selection(index, made)
         return len(made)
@@ -1048,6 +1050,8 @@ class DocumentView(QScrollArea):
 
     # ---- pages: copy, paste, duplicate ---------------------------------------------
     def pages_bytes(self, indices):
+        if not self.allowed(pymupdf.PDF_PERM_COPY):
+            raise PermissionError("Copying pages is not allowed.")
         out = pymupdf.open()
         for i in sorted(indices):
             out.insert_pdf(self.doc, from_page=i, to_page=i)
@@ -1082,6 +1086,8 @@ class DocumentView(QScrollArea):
 
     def duplicate_pages(self, indices):
         """Copies of these pages right after the last of them."""
+        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Duplicating pages"):
+            return
         data = self.pages_bytes(indices)
         return self.paste_pages(data, max(indices) + 1)
 
@@ -1104,7 +1110,7 @@ class DocumentView(QScrollArea):
 
         def do():
             made["xref"] = annotations.write(self.doc[index], model).xref
-        self.modify(do, [index])
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if select and "xref" in made:
             self.select_xref(index, made["xref"])
         return made.get("xref")
@@ -1529,11 +1535,11 @@ class DocumentView(QScrollArea):
 
     def delete_attachment(self, page_index, key):
         if page_index is None:
-            self.modify(lambda: self.doc.embfile_del(key), [])
+            self.modify(lambda: self.doc.embfile_del(key), [], permission=pymupdf.PDF_PERM_ANNOTATE)
         else:
             page = self.doc[page_index]
             self.clear_selection()
-            self.modify(lambda: page.delete_annot(page.load_annot(key)), [page_index])
+            self.modify(lambda: page.delete_annot(page.load_annot(key)), [page_index], permission=pymupdf.PDF_PERM_ANNOTATE)
 
     def place_stamp(self, index, pt):
         from . import stamps
@@ -1584,7 +1590,7 @@ class DocumentView(QScrollArea):
                 return
             xref = target.xref
             self.clear_selection()
-            self.modify(lambda: page.delete_annot(page.load_annot(xref)), [index])
+            self.modify(lambda: page.delete_annot(page.load_annot(xref)), [index], permission=pymupdf.PDF_PERM_ANNOTATE)
 
     # ---- hit testing --------------------------------------------------------------
     @staticmethod
@@ -1797,7 +1803,7 @@ class DocumentView(QScrollArea):
             page = self.doc[index]
             for x, m in changes:
                 made[x] = annotations.replace(page, x, m)
-        self.modify(do, [index])
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if made:
             self._set_selection(index, [made.get(x, x) for x in sel] or list(made.values()))
 
@@ -1880,7 +1886,7 @@ class DocumentView(QScrollArea):
                     page.delete_annot(page.load_annot(x))
                 except Exception:
                     pass
-        self.modify(do, [index])
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
 
     # ---- arrange: align, distribute, stacking order -------------------------------
     def _display_bounds(self, page, model):
@@ -1982,7 +1988,7 @@ class DocumentView(QScrollArea):
                     if new[i] in sel and new[j] not in sel:
                         new[i], new[j] = new[j], new[i]
             annotations.set_annot_order(page, new)
-        self.modify(do, [index])
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         self._set_selection(index, sel)
 
     def edit_annot_text(self, index, xref):
@@ -2244,6 +2250,8 @@ class DocumentView(QScrollArea):
         """Capture tool (Bluebeam Snapshot): copy what's in the box, markups included. Ctrl+V
         here pastes it at the same size as an image markup made of the original vector
         drawing; a picture of it also pastes into Word, email and so on."""
+        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Copying pictures or page content"):
+            return
         from . import clip
         from PySide6.QtGui import QImage
         page = self.doc[index]
@@ -2402,6 +2410,8 @@ class DocumentView(QScrollArea):
 
     def copy_picture(self):
         """Copy the one selected picture (Ctrl+V pastes it as an image markup)."""
+        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Copying pictures or page content"):
+            return
         from . import clip
         from PySide6.QtGui import QImage
         items = self.selected_objects()
@@ -2422,6 +2432,8 @@ class DocumentView(QScrollArea):
         self.statusMessage.emit("Picture copied: Ctrl+V pastes it as an image markup")
 
     def save_picture(self):
+        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Copying pictures or page content"):
+            return
         from PySide6.QtWidgets import QFileDialog
         items = self.selected_objects()
         if len(items) != 1 or not items[0]["xref"]:
@@ -2502,9 +2514,11 @@ class DocumentView(QScrollArea):
             for x in [a.xref for a in pg.annots() if a.type[0] != pymupdf.PDF_ANNOT_REDACT]:
                 a = pg.load_annot(x)
                 info = {k: a.info.get(k) or "" for k in ("content", "subject", "title")}
-                if any(pat.search(v) for v in info.values()):
-                    a.set_info(**{k: clean(v) for k, v in info.items()})
-                    a.update()
+                private = self.doc.xref_get_key(x, annotations.KZ_KEY)[1]
+                if any(pat.search(v) for v in info.values()) or pat.search(private):
+                    # Drop the whole annotation: its appearance/private dictionaries can
+                    # retain text even after updating the standard information fields.
+                    pg.delete_annot(a)
         toc = self.doc.get_toc(simple=False)
         if any(pat.search(e[1]) for e in toc):
             self.doc.set_toc([[e[0], clean(e[1])] + e[2:] for e in toc])
@@ -2539,11 +2553,10 @@ class DocumentView(QScrollArea):
                          if a.type[0] == pymupdf.PDF_ANNOT_REDACT]
                 if marks:
                     self._clear_under_marks(pg, marks)
-                    # Line art: remove only what's fully inside a mark. "If touched" deleted
-                    # entire long paths (contours, walls, borders) crossing a small box on CAD
-                    # sheets. Text and image pixels under the mark are always removed.
+                    # Secure redaction removes crossing paths completely. Keeping them
+                    # behind an opaque fill would leave confidential geometry recoverable.
                     pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
-                                        graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
+                                        graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                         text=pymupdf.PDF_REDACT_TEXT_REMOVE)
             if scrub:
                 self.doc.scrub(attached_files=True, clean_pages=True, embedded_files=True,
@@ -2767,15 +2780,34 @@ class DocumentView(QScrollArea):
         self.oneShotPlaced.emit()
 
     # ---- protection (read-only PDFs) ----------------------------------------------------
+    def allowed(self, permission):
+        """Honor PDF permission flags independently; signed documents remain protected."""
+        if getattr(self, "sig_results", None) and self.read_only and permission not in (
+                pymupdf.PDF_PERM_COPY, pymupdf.PDF_PERM_PRINT, pymupdf.PDF_PERM_PRINT_HQ):
+            return False
+        if getattr(self, "_owner_authorized", False):
+            return True
+        permissions = self._orig_enc["perms"] if self._orig_enc is not None else self.doc.permissions
+        return bool(permissions & permission)
+
+    def require_permission(self, permission, operation):
+        if self.allowed(permission):
+            return True
+        QMessageBox.information(self, "Protected document",
+                                operation + " is not allowed by this PDF's permissions.")
+        return False
+
     def _check_permissions(self):
         # (permissions is a signed 32-bit value: restricted files report negative numbers too)
         perm = self.doc.permissions
-        self.read_only = not (perm & pymupdf.PDF_PERM_MODIFY and perm & pymupdf.PDF_PERM_ANNOTATE)
+        self.read_only = not (getattr(self, "_owner_authorized", False) or
+                              perm & (pymupdf.PDF_PERM_MODIFY | pymupdf.PDF_PERM_ANNOTATE | pymupdf.PDF_PERM_FORM))
 
     def unlock(self, password):
         """Unlock editing with the permissions (owner) password."""
         rc = self.doc.authenticate(password)
         if rc & 4:                     # 4 = owner password accepted
+            self._owner_authorized = True
             if self._orig_enc is not None:
                 self._orig_enc["owner_pw"] = password
             self._check_permissions()
@@ -2791,9 +2823,14 @@ class DocumentView(QScrollArea):
 
     def set_security(self, open_pw="", owner_pw="", perms=-1):
         """Security to apply on the next save ('' / '' removes all protection)."""
-        if self.read_only:
+        if not getattr(self, "_owner_authorized", False):
             raise PermissionError("Unlock the document with its permissions password first.")
         self.security = {"open_pw": open_pw, "owner_pw": owner_pw, "perms": perms}
+        from .autosave import _remove
+        backup = getattr(self, "_backup_path", None)
+        if backup and (open_pw or owner_pw):
+            _remove(backup)
+            self._backup_path = None
         self.dirty = True
         self.documentChanged.emit()
 
@@ -2843,6 +2880,10 @@ class DocumentView(QScrollArea):
 
         def do():
             pg = self.doc[index]
+            terms = {a.info.get("content", "")[len(self.REDACT_TAG):]
+                     for a in pg.annots() if a.xref in chosen
+                     and a.info.get("content", "").startswith(self.REDACT_TAG)}
+            self._scrub_terms(terms)
             others = []
             for an in list(pg.annots()):
                 if an.type[0] == pymupdf.PDF_ANNOT_REDACT and an.xref not in chosen:
@@ -2854,7 +2895,7 @@ class DocumentView(QScrollArea):
                      if a.type[0] == pymupdf.PDF_ANNOT_REDACT]
             self._clear_under_marks(pg, marks)
             pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
-                                graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
+                                graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                 text=pymupdf.PDF_REDACT_TEXT_REMOVE)
             for m in others:                       # put the other marks back
                 annotations.write(pg, m)
@@ -3017,7 +3058,7 @@ class DocumentView(QScrollArea):
             w = pg.load_widget(xref)
             w.field_value = value
             w.update()
-        self.modify(do, [index])
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM)
 
     def _choose_option(self, index, xref):
         """Option (radio) button: turn this one on and every other button of its group off.
@@ -3037,7 +3078,7 @@ class DocumentView(QScrollArea):
             w = pg.load_widget(xref)
             w.field_value = True
             w.update()
-        self.modify(do, sorted({index} | {i for i, _x in others}))
+        self.modify(do, sorted({index} | {i for i, _x in others}), permission=pymupdf.PDF_PERM_FORM)
 
     def _edit_text_field(self, index, xref):
         page = self.doc[index]
@@ -3388,6 +3429,9 @@ class DocumentView(QScrollArea):
                 return
             # Swapping a page in drops bookmarks and links that point to it: remember them
             toc = self.doc.get_toc(simple=False)
+            labels = self.doc.get_page_labels()
+            scales = {i: self.doc.xref_get_key(self.doc[i].xref, "KZScale") for i in pages}
+            outgoing = {i: self.doc[i].get_links() for i in pages}
             links = {}
             for pg in self.doc:
                 for ln in pg.get_links():
@@ -3401,6 +3445,16 @@ class DocumentView(QScrollArea):
                 self.doc.delete_page(i)
                 self.doc.insert_pdf(tmp, start_at=i)
                 tmp.close()
+            self.doc.set_page_labels(labels)
+            for i, (typ, value) in scales.items():
+                if typ == "string":
+                    self.doc.xref_set_key(self.doc[i].xref, "KZScale", pymupdf.get_pdf_str(value))
+            for i, lst in outgoing.items():
+                pg = self.doc[i]
+                for ln in pg.get_links():
+                    pg.delete_link(ln)
+                for ln in lst:
+                    pg.insert_link({k: v for k, v in ln.items() if k not in ("xref", "id")})
             if toc:
                 self.doc.set_toc(toc)
             for pno, lst in links.items():
@@ -3434,6 +3488,8 @@ class DocumentView(QScrollArea):
                     structural=True)
 
     def extract_pages(self, first, last, path):
+        if not self.allowed(pymupdf.PDF_PERM_COPY):
+            raise PermissionError("Extracting pages is not allowed.")
         out = pymupdf.open()
         out.insert_pdf(self.doc, from_page=first, to_page=last)
         out.save(path, garbage=3, deflate=True)
@@ -3496,6 +3552,28 @@ class DocumentView(QScrollArea):
     # ---- saving -----------------------------------------------------------
     def save(self, path=None):
         path = os.path.abspath(path or self.path)
+        if self.dirty and self.security is None and self._orig_enc is not None and not self._orig_enc.get("owner_pw"):
+            pw, ok = QInputDialog.getText(self, "Permissions password required",
+                                          "Enter the owner password to preserve this file's protection:",
+                                          QLineEdit.Password)
+            original = pymupdf.open(stream=self._orig_data, filetype="pdf")
+            try:
+                if not ok or not original.authenticate(pw) & 4:
+                    raise PermissionError("Saving changes requires the original owner password. The file was not overwritten.")
+            finally:
+                original.close()
+            self._orig_enc["owner_pw"] = pw
+        if self.dirty and self.security is None and self._orig_enc is not None and self._orig_enc.get("needs_pass") and not self._orig_enc.get("user_pw"):
+            pw, ok = QInputDialog.getText(self, "Open password required",
+                                          "Enter the original open password, or explicitly choose new security settings:",
+                                          QLineEdit.Password)
+            original = pymupdf.open(stream=self._orig_data, filetype="pdf")
+            try:
+                if not ok or not original.authenticate(pw) & 2:
+                    raise PermissionError("The original open password is required to preserve encryption. The file was not overwritten.")
+            finally:
+                original.close()
+            self._orig_enc["user_pw"] = pw
         tmp = path + ".kanzonas-tmp"
         if self._fonts_added:
             # Text edits may embed whole system fonts; keep only the glyphs actually used.
@@ -3514,7 +3592,7 @@ class DocumentView(QScrollArea):
             # edited a protected file: save it protected again (PyMuPDF writes a full save
             # unencrypted unless told otherwise)
             enc = self._orig_enc
-            owner = enc.get("owner_pw") or enc.get("user_pw") or secrets.token_urlsafe(24)
+            owner = enc["owner_pw"]
             user = enc.get("user_pw") or (owner if enc.get("needs_pass") else "")
             self.doc.save(tmp, garbage=1, deflate=True, encryption=pymupdf.PDF_ENCRYPT_AES_256,
                           owner_pw=owner, user_pw=user, permissions=enc.get("perms", -1))
