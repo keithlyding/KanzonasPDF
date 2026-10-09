@@ -487,7 +487,20 @@ class PageWidget(QWidget):
         blue = QColor(0, 120, 215)
         p.setBrush(Qt.NoBrush)
         if self.view.extra:
-            # several selected: a box around each; the first one (alignment reference) bolder
+            # several markups: their outlines follow the pointer while dragging. The outlines
+            # are drawn once and slid; copying every markup on each move is what made a group
+            # drag slow, and a box around each one looked empty.
+            ed = self._edit
+            if ed and ed.get("mode") == "group" and ed.get("ghost_path") is not None \
+                    and ed.get("delta") is not None:
+                origin = pymupdf.Point(0, 0)
+                d = self.to_screen_pt(origin + ed["delta"], page) - self.to_screen_pt(origin, page)
+                p.save()
+                p.translate(d.x(), d.y())
+                p.setPen(QPen(blue, 1.75))
+                p.drawPath(ed["ghost_path"])
+                p.restore()
+                return
             group = self._edit["preview"] if self._edit and self._edit.get("preview") else None
             if group is None:
                 group = [m for _x, m in self.view.selected_models()]
@@ -567,22 +580,24 @@ class PageWidget(QWidget):
         if not items:
             return
         p.setPen(QPen(QColor(0, 120, 215, 220), 2))
-        if len(items) <= 3000:
-            for it in items:
-                self._draw_object(p, it, page)
-        if ed is not None and ed.get("preview") is not None:
+        dragging = ed is not None and ed.get("preview") is not None
+        if dragging:
+            # one picture of the shapes, drawn when the drag starts, then only slid.
+            # redrawing every line on each mouse move is what made a group drag slow,
+            # and the old preview was an empty box, so the shapes looked like they vanished.
+            self._paint_object_ghost(p, ed, page)
+        else:
+            if len(items) <= 3000:
+                for it in items:
+                    self._draw_object(p, it, page)
             p.setPen(QPen(blue, 1, Qt.DashLine))
-            p.setBrush(QColor(0, 120, 215, 40))
-            p.drawRect(ed["preview"])
-            p.setBrush(Qt.NoBrush)
-        p.setPen(QPen(blue, 1, Qt.DashLine))
-        p.drawRect(self.to_screen(self.view.selected_objects_rect(), page).adjusted(-2, -2, 2, 2))
-        if ed is None:
-            p.setPen(QPen(blue, 1))
-            p.setBrush(Qt.white)
-            for r in self._objects_handles().values():
-                p.drawRect(r)
-            p.setBrush(Qt.NoBrush)
+            p.drawRect(self.to_screen(self.view.selected_objects_rect(), page).adjusted(-2, -2, 2, 2))
+            if ed is None:
+                p.setPen(QPen(blue, 1))
+                p.setBrush(Qt.white)
+                for r in self._objects_handles().values():
+                    p.drawRect(r)
+                p.setBrush(Qt.NoBrush)
 
     def _objects_press(self, e, pos, pdf):
         if self._objects_here() and not ctrl_held(e):
@@ -632,6 +647,100 @@ class PageWidget(QWidget):
             ay = r.bottom() if "t" in mode else r.top()
             new = QRectF(ax - w if "l" in mode else ax, ay - h if "t" in mode else ay, w, h)
         return new
+
+    def _build_object_ghost(self):
+        """Rasterize the selected shapes once, in screen space, so dragging only moves a picture."""
+        ed = self._obj_edit
+        if ed is None or "ghost_pm" in ed:
+            return
+        items = self._objects_here()
+        page = self.view.doc[self.index]
+        bounds = QRectF(self.to_screen(self.view.selected_objects_rect(), page))
+        ed["bounds_rect"] = bounds
+        if bounds.width() < 1 or bounds.height() < 1 or not items:
+            ed["ghost_pm"] = None
+            ed["ghost_rect"] = bounds
+            return
+        pad = 6.0
+        src = bounds.adjusted(-pad, -pad, pad, pad)
+        max_px = 1_500_000
+        w, h = max(1.0, src.width()), max(1.0, src.height())
+        scale = (max_px / (w * h)) ** 0.5 if w * h > max_px else 1.0
+        img = QImage(max(1, int(w * scale)), max(1, int(h * scale)),
+                     QImage.Format_ARGB32_Premultiplied)
+        img.fill(Qt.transparent)
+        gp = QPainter(img)
+        gp.setRenderHint(QPainter.Antialiasing, True)
+        gp.scale(scale, scale)
+        gp.translate(-src.left(), -src.top())
+        gp.setPen(QPen(QColor(0, 90, 200), 1.75))
+        gp.setBrush(Qt.NoBrush)
+        for it in items:
+            self._draw_object(gp, it, page)
+        gp.end()
+        ed["ghost_pm"] = QPixmap.fromImage(img)
+        ed["ghost_rect"] = src
+
+    def _paint_object_ghost(self, p, ed, page):
+        if "ghost_pm" not in ed:
+            self._build_object_ghost()
+        pm = ed.get("ghost_pm")
+        preview = ed.get("preview")
+        bounds = ed.get("bounds_rect")
+        src = ed.get("ghost_rect")
+        if (pm is not None and not pm.isNull() and bounds is not None and src is not None
+                and bounds.width() > 0 and bounds.height() > 0
+                and preview is not None and preview.width() > 0 and preview.height() > 0):
+            sx = preview.width() / bounds.width()
+            sy = preview.height() / bounds.height()
+            dest = QRectF(preview.left() - (bounds.left() - src.left()) * sx,
+                          preview.top() - (bounds.top() - src.top()) * sy,
+                          preview.width() + (src.width() - bounds.width()) * sx,
+                          preview.height() + (src.height() - bounds.height()) * sy)
+            p.drawPixmap(dest, pm, QRectF(0, 0, pm.width(), pm.height()))
+        if preview is not None:
+            p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+            p.setBrush(Qt.NoBrush)
+            p.drawRect(preview)
+
+    def _markup_outline(self, path, model, page):
+        """Add one markup's outline to path, in this widget's coordinates."""
+        if A.turned(model):
+            pts = [self.to_screen_pt(q, page) for q in A.outline(model, 24)]
+        elif model["kind"] in ("line", "arrow", "m_length") and model.get("points"):
+            pts = [self.to_screen_pt(q, page) for q in model["points"]]
+        elif model["kind"] in A.VERTEXED and model.get("points"):
+            pts = [self.to_screen_pt(q, page) for q in model["points"]]
+            if model["kind"] in ("polygon", "m_area") and pts:
+                pts = pts + [pts[0]]
+        elif model["kind"] == "ink":
+            for stroke in model.get("strokes") or []:
+                pts = [self.to_screen_pt(q, page) for q in stroke]
+                if len(pts) >= 2:
+                    path.moveTo(pts[0])
+                    for q in pts[1:]:
+                        path.lineTo(q)
+            return
+        elif model["kind"] == "ellipse":
+            path.addEllipse(self.to_screen(A.bounds(model), page))
+            return
+        else:
+            path.addRect(self.to_screen(A.bounds(model), page).adjusted(-3, -3, 3, 3))
+            return
+        if len(pts) >= 2:
+            path.moveTo(pts[0])
+            for q in pts[1:]:
+                path.lineTo(q)
+
+    def _build_markup_ghost(self):
+        ed = self._edit
+        if ed is None or "ghost_path" in ed:
+            return
+        path = QPainterPath()
+        page = self.view.doc[self.index]
+        for _x, model in ed.get("group") or []:
+            self._markup_outline(path, model, page)
+        ed["ghost_path"] = path
 
     def _objects_release(self, e, pos):
         ed, self._obj_edit = self._obj_edit, None
@@ -985,8 +1094,12 @@ class PageWidget(QWidget):
         ed = self._edit
         excl = set(self.view.selected_xrefs())
         if ed["mode"] == "group":
-            delta = self._snapped_delta(ed["group"][0][1], pos, snap)
-            return [A.moved(m, delta) for _x, m in ed["group"]]
+            # the move itself, not a fresh copy of every markup, until the button is released
+            if not ed.get("group"):
+                return None
+            ed["delta"] = self._snapped_delta(ed["group"][0][1], pos, snap)
+            self._build_markup_ghost()
+            return True
         model = ed["model"]
         if ed["mode"] == "move":
             return A.moved(model, self._snapped_delta(model, pos, snap))
@@ -1109,6 +1222,7 @@ class PageWidget(QWidget):
                     self._obj_edit["now"] = pos
                 else:
                     self._obj_edit["preview"] = self._objects_preview(pos, shift_held(e))
+                    self._build_object_ghost()
                 self.update()
         elif self._edit is not None:
             if (pos - self._edit["start"]).manhattanLength() >= 3:
@@ -1192,9 +1306,10 @@ class PageWidget(QWidget):
             ed, self._edit = self._edit, None
             preview = ed.get("preview")
             self.update()
-            if preview is not None and ed["mode"] == "group":
-                self.view.commit_models(self.index, [(x, m) for (x, _o), m
-                                                     in zip(ed["group"], preview)])
+            if ed["mode"] == "group" and ed.get("delta") is not None:
+                delta = ed["delta"]
+                self.view.commit_models(self.index, [(x, A.moved(m, delta))
+                                                     for x, m in ed["group"]])
             elif preview is not None:
                 self.view.commit_model(self.index, self.view.selection[1], preview)
         elif self._text_sel is not None:

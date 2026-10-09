@@ -1,6 +1,7 @@
 """Main application window: tabs, toolbars, menus, thumbnails sidebar."""
 
 import json
+import math
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -19,7 +20,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, Q
 from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from . import __version__, annotations, export, signatures, theme
-from .document_view import DocumentView
+from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
 from .properties import PropertiesPanel
 from .markups_panel import MarkupsPanel
 from .tool_chest import ToolChestPanel, tool_for
@@ -157,7 +158,21 @@ ARRANGE_TIPS = {
     "z_forward": "Bring forward one step", "z_backward": "Send backward one step",
     "z_back": "Send to back: behind all other markups",
 }
-ZOOM_PRESETS = ["50%", "75%", "100%", "125%", "150%", "200%", "300%", "400%"]
+ZOOM_PRESETS = ["50%", "75%", "100%", "125%", "150%", "200%", "400%", "800%",
+                 "1600%", "3200%", "6400%"]
+# The slider is logarithmic so 100%–400% still has room, while the top is 6400%.
+_SLIDER_STEPS = 1000
+
+
+def _zoom_to_slider(zoom):
+    lo, hi = math.log(MIN_ZOOM * 100), math.log(MAX_ZOOM * 100)
+    pct = min(MAX_ZOOM * 100, max(MIN_ZOOM * 100, zoom * 100))
+    return int(round((math.log(pct) - lo) / (hi - lo) * _SLIDER_STEPS))
+
+
+def _slider_to_zoom(val):
+    lo, hi = math.log(MIN_ZOOM * 100), math.log(MAX_ZOOM * 100)
+    return math.exp(lo + (hi - lo) * (val / _SLIDER_STEPS)) / 100
 
 
 class MainWindow(QMainWindow):
@@ -784,11 +799,11 @@ class MainWindow(QMainWindow):
                                              self.page_total])
         # bottom-bar extras for the ribbon layout (PDF-XChange style): fit buttons and a slider
         self.zoom_slider = QSlider(Qt.Horizontal)
-        self.zoom_slider.setRange(10, 800)
+        self.zoom_slider.setRange(0, _SLIDER_STEPS)
         self.zoom_slider.setFixedWidth(110)
-        self.zoom_slider.setToolTip("Zoom: drag to zoom from 10% to 800%")
+        self.zoom_slider.setToolTip("Zoom: drag to zoom from 10% to 6400%")
         self.zoom_slider.sliderMoved.connect(
-            lambda val: self.view() and self.view().set_zoom(val / 100))
+            lambda val: self.view() and self.view().set_zoom(_slider_to_zoom(val)))
         self.view_group = self._group_widget([self.a_fit_page, self.a_fit_width, self.a_actual,
                                               self.zoom_slider])
         self._nav_group_act = tb.addWidget(self.nav_group)
@@ -1028,7 +1043,7 @@ class MainWindow(QMainWindow):
             self.zoom_box.setEditText(f"{round(v.zoom * 100)}%")
             if not self.zoom_slider.isSliderDown():
                 self.zoom_slider.blockSignals(True)
-                self.zoom_slider.setValue(round(v.zoom * 100))
+                self.zoom_slider.setValue(_zoom_to_slider(v.zoom))
                 self.zoom_slider.blockSignals(False)
             self.scale_label.setText(v.page_scale_text(v.current_page()))
             name = os.path.basename(v.path) + (" [protected]" if v.read_only else "")

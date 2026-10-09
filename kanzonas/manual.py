@@ -114,7 +114,8 @@ from any folder but stores settings on the computer like the installed version.<
 <ul>
 <li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number (bottom right
 with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
-<li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, or the zoom box.
+<li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, the zoom slider, or the zoom box
+(type a percent, from 10% to 6400%).
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit width, at
 the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.
 Fit width and Fit page keep fitting when the window or a side panel changes size, until you
@@ -386,7 +387,9 @@ is picked up anywhere inside it.</li>
 <li><b>Several at once:</b> Ctrl+click adds or removes an object, or drag a box from empty space
 to select everything entirely inside it (Ctrl+drag adds to the selection). In CAD drawings one
 "shape" is often many separate lines, so a box is the quickest way to grab it.</li>
-<li>Drag the selection to move it. Drag a corner handle to resize it, keeping its proportions
+<li>Drag the selection to move it. The shapes follow the pointer (they are not an empty box),
+and the page itself changes only when you let go, so a large group stays quick to drag.
+Drag a corner handle to resize it, keeping its proportions
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
 scales its line thickness.</li>
 <li>Delete (or Backspace) deletes the selection. Right-click for Rotate clockwise, Rotate
