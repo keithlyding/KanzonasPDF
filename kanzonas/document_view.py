@@ -1442,7 +1442,8 @@ class DocumentView(QScrollArea):
     # ---- images and attached files ----------------------------------------------------
     IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff)"
     RISKY = (".exe", ".bat", ".cmd", ".com", ".msi", ".js", ".jse", ".vbs", ".vbe", ".ps1",
-             ".scr", ".lnk", ".hta", ".wsf", ".jar", ".reg", ".pif", ".cpl")
+             ".scr", ".lnk", ".hta", ".wsf", ".jar", ".reg", ".pif", ".cpl",
+             ".application", ".html", ".htm", ".msc", ".iso", ".dll")
 
     def place_image(self, index, a, b, is_click):
         """Image tool: pick a picture and fit it in the dragged box (or natural size at the
@@ -1648,11 +1649,11 @@ class DocumentView(QScrollArea):
         from PySide6.QtCore import QUrl
         from PySide6.QtGui import QDesktopServices
         if os.path.splitext(name)[1].lower() in self.RISKY:
-            if QMessageBox.warning(self, "Open attached file",
-                                   f"{name} is a program or script. Opening files from untrusted "
-                                   "PDFs can harm your computer. Open it anyway?",
-                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
-                return None
+            QMessageBox.warning(
+                self, "Open attached file",
+                f"{name} is a program or script. KanzonasPDF won't open it from a PDF.\n\n"
+                "Save the file and open it yourself if you trust it.")
+            return None
         folder = tempfile.mkdtemp(prefix="kzattach")
         path = os.path.join(folder, os.path.basename(name) or "attachment")
         with open(path, "wb") as f:
@@ -2704,8 +2705,12 @@ class DocumentView(QScrollArea):
             n += sum(1 for a in annotations.each_annot(pg) if a.type[0] == pymupdf.PDF_ANNOT_REDACT)
         return n
 
-    def apply_redactions(self, scrub=False):
-        """Permanently remove everything under the redaction marks (text, images, drawings)."""
+    def apply_redactions(self, scrub=True):
+        """Permanently remove everything under the redaction marks (text, images, drawings).
+
+        Unless scrub is False, also remove metadata, attachments, hidden text, scripts and
+        XML metadata, then rewrite the file so unlinked copies of that data are gone.
+        """
         def do():
             self._scrub_terms(self._redaction_terms())
             for i in range(self.doc.page_count):
@@ -2724,6 +2729,17 @@ class DocumentView(QScrollArea):
                                hidden_text=True, javascript=True, metadata=True,
                                redactions=False, remove_links=False, reset_fields=False,
                                reset_responses=True, thumbnails=True, xml_metadata=True)
+                # scrub unlinks the old objects; a plain tobytes() would still carry them.
+                enc = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
+                data = self.doc.tobytes(
+                    garbage=4, deflate=True,
+                    **({"encryption": pymupdf.PDF_ENCRYPT_KEEP} if enc else {}))
+                self.doc.close()
+                self.doc = pymupdf.open(stream=data, filetype="pdf")
+                if self.doc.needs_pass and self._orig_enc is not None:
+                    for pw in (self._orig_enc.get("owner_pw"), self._orig_enc.get("user_pw")):
+                        if pw and self.doc.authenticate(pw):
+                            break
         self.clear_selection()
         self.modify(do, structural=True)
 

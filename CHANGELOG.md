@@ -3,6 +3,14 @@
 Each revision gets a version number. It's shown in the window title and Help > About,
 and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the same name every version).
 
+## Unreleased
+
+- App-created certificate is an end-entity document signer, not a CA.
+- Portable self-update only downloads from GitHub release hosts, and only applies a zip whose sha256 matches the release digest.
+- Attached programs and scripts are not opened.
+- Apply redactions scrubs metadata, attachments, hidden text, and scripts unless told not to.
+- Main-branch builds publish a draft unless AUTO_RELEASE is true.
+
 | Version | Commit | Changes |
 | --- | --- | --- |
 | 0.84 | (this) | Efficiency (audit round 3): finding the current page while scrolling is a binary search and only pages that hold a picture are visited (5,000 pages: 4.3 ms to 0.03 ms per scroll step); parsed drawings, text, snap points and objects are kept only for about 24 pages around the current one (reading through 5,000 pages kept 500, now 20). The self-test measures true launch-to-ready time and checks the audit fixes stay in place. Dependency versions are pinned in constraints.txt (with licenses) so builds are reproducible |

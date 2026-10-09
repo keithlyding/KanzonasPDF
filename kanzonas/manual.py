@@ -16,8 +16,9 @@ MANUAL = """
 <b>Find in manual</b> box above.</p>
 
 <h2 id="audit-fixes">Document protection and safe editing</h2>
-<p>Apply redactions removes any vector path touching a mark, even when the path extends
-outside the marked area. Review nearby drawing geometry before saving. Search &amp; redact
+<p>Apply redactions removes any vector path touching a mark, even the part of that path
+outside the box. Applying also scrubs metadata, attachments, hidden text, and scripts
+unless you turn that off. Check the result before sharing. Search &amp; redact
 removes matching annotations completely, including private stamp data and appearances.</p>
 <p>Saving edits to an already protected PDF keeps its own protection exactly as it was: the
 same open password, permissions password and permissions, with no password needed. So a form
@@ -89,8 +90,9 @@ they travel with the folder. The window title and Help &gt; About say <b>(portab
 this copy is running in portable mode. Keep the whole folder together. The download has the same name for every version
 (KanzonasPDF-portable.zip, with a KanzonasPDF folder inside), so the program's path never has to
 change. <b>To update</b>, use <b>Update now</b> in the update notice or in Help &gt; Check for
-updates: KanzonasPDF downloads the new portable version, asks to save open documents, closes,
-replaces its program files in the same folder and starts again. Or do it by hand: close
+updates: KanzonasPDF downloads the new portable zip only from GitHub, and only installs it
+when the file's sha256 matches the digest published with that release. It asks to save open
+documents, closes, replaces its program files in the same folder and starts again. Or do it by hand: close
 KanzonasPDF and unzip the new download over the same folder, replacing the files. Your data folder is kept, and if you made KanzonasPDF.exe your default PDF
 app (Windows Settings &gt; Apps &gt; Default apps), it stays the default. Tip: if Windows'
 Extract All suggests a new folder name, change it to the folder you already use.
@@ -364,7 +366,9 @@ is the reliable way to send a video with a PDF. Large files make the PDF just as
 (you're warned above 50 MB).</li>
 <li><b>Attachments</b> (Document menu): every file attached to this PDF, including ones added
 by other programs. Open, Save as, Go to its page, or Delete.</li>
-<li>For your safety, opening an attached program or script (.exe, .bat, .js, ...) asks first.</li>
+<li>For your safety, an attached program or script (.exe, .bat, .js, .html, .htm, .dll,
+.application, .msc, .iso and the like) is not opened. KanzonasPDF warns you and leaves the
+file in the PDF. Use Save as and open it yourself if you trust it.</li>
 </ul>
 
 <h2 id="editobjects">Editing the PDF's own pictures and shapes</h2>
@@ -500,7 +504,8 @@ certmgr.msc &gt; Personal &gt; Certificates to see them). Windows does the signi
 certificates whose key can't be copied, smart cards and USB tokens work too; Windows asks for
 the PIN when the key needs one. To add a .pfx/.p12 there, double-click it. KanzonasPDF
 remembers the certificate you used last.</li>
-<li><b>My personal certificate</b>: one KanzonasPDF makes for you the first time.</li>
+<li><b>My personal certificate</b>: one KanzonasPDF makes for you the first time. It signs
+documents only. It is not a certificate authority and cannot issue other certificates.</li>
 <li><b>Certificate file</b>: a .pfx/.p12 file from a certificate authority or your company,
 with its password.</li>
 </ul> Signed files open read-only so
@@ -512,7 +517,9 @@ proving the file existed, unchanged, at that moment. Saved as a new copy.</li>
 can be selected, moved and resized; <b>Apply selected redactions</b> applies only the selected
 ones, Apply redactions applies them all. Applying removes, not just covers: the text, images
 and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
-own copy of the text). <b>Search &amp; redact</b> also finds the text where a box can't go: form
+own copy of the text). A vector path that touches a mark is removed past the box, including
+the part outside it. Applying scrubs metadata, attachments, hidden text, and scripts unless
+you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
 field values, markup notes, bookmark titles and document properties. When you apply, fields
 containing it are deleted, and in notes, bookmarks and properties it's replaced by
 [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
@@ -555,7 +562,9 @@ Higher accuracy takes longer and uses more memory, and it never renders a scan s
 it was scanned (that only adds blur), so on a 200 dpi scan Normal and High read at 200 dpi.
 Your choice is remembered.</li>
 <li><b>Redaction:</b> the Redact (mark text or area) tool (Shift+R) or Search &amp; redact
-marks areas; Apply redactions permanently removes what's underneath.</li>
+marks areas; Apply redactions permanently removes what's underneath. A vector path that
+touches a mark is removed past the box. Applying scrubs metadata, attachments, hidden text,
+and scripts unless you turn that off. Check the result before sharing.</li>
 <li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
 <b>Compress (save a smaller copy)</b>, <b>Compare documents</b> (changes clouded in red and
 blue), <b>Flatten</b> (make markups part of the page).</li>
