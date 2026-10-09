@@ -4,17 +4,20 @@ The check only tells the user. The automatic check runs at most once a day, in t
 (Qt networking), and fails silently when offline or blocked.
 
 Portable copies can also update themselves in place (PortableUpdater): download
-KanzonasPDF-portable.zip from the release, unpack it next to the program, then a small script
+KanzonasPDF-portable.zip from the GitHub release, and only if its sha256 matches the digest
+published with that release, unpack it next to the program. A small script
 waits for KanzonasPDF to close, copies the new files over the old ones (the data folder is left
 alone), and starts it again. The path to KanzonasPDF.exe never changes, so file associations
 ("default PDF app") keep working.
 """
 
+import hashlib
 import json
 import os
 import shutil
 import time
 import zipfile
+from urllib.parse import urlparse
 
 from PySide6.QtCore import QObject, QUrl, Signal
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
@@ -27,6 +30,9 @@ RELEASES_PAGE = "https://github.com/" + REPO + "/releases"
 DAY = 24 * 3600
 PORTABLE_ZIP = "KanzonasPDF-portable.zip"
 STAGING = "_update"          # folder beside the exe that holds the unpacked new version
+# browser_download_url hosts a portable update is allowed to use. Anything else is refused.
+GITHUB_HOSTS = ("github.com", "objects.githubusercontent.com",
+                "release-assets.githubusercontent.com")
 
 
 def version_tuple(text):
@@ -66,11 +72,41 @@ def newest_release(releases, current=None):
     return best[1] if best else None
 
 
+def _sha256_hex(asset):
+    """Hex digits from an asset digest of the form sha256:<hex>, or None."""
+    digest = (asset or {}).get("digest") or ""
+    if not isinstance(digest, str) or not digest.startswith("sha256:"):
+        return None
+    hexpart = digest[len("sha256:"):]
+    if not hexpart or any(c not in "0123456789abcdefABCDEF" for c in hexpart):
+        return None
+    return hexpart
+
+
 def asset_url(release, name=PORTABLE_ZIP):
-    """Download address of the release file called `name`, or None."""
+    """Download address of the release file called `name`, or None.
+
+    None unless the host is a GitHub release host and the asset has a sha256 digest.
+    """
+    for a in (release or {}).get("assets") or []:
+        if a.get("name") != name:
+            continue
+        url = a.get("browser_download_url") or ""
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        if parsed.scheme != "https" or parsed.username or parsed.password:
+            return None
+        if host not in GITHUB_HOSTS or _sha256_hex(a) is None:
+            return None
+        return url
+    return None
+
+
+def asset_digest(release, name=PORTABLE_ZIP):
+    """Hex sha256 published for the release file called `name`, or None."""
     for a in (release or {}).get("assets") or []:
         if a.get("name") == name:
-            return a.get("browser_download_url")
+            return _sha256_hex(a)
     return None
 
 
@@ -79,6 +115,14 @@ def can_self_update():
     import sys
     from . import paths
     return os.name == "nt" and getattr(sys, "frozen", False) and paths.is_portable()
+
+
+def _file_sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def unpack(zip_path, app_dir):
@@ -203,14 +247,26 @@ class PortableUpdater(QObject):
     ready = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, url, app_dir, parent=None):
+    def __init__(self, url, app_dir, parent=None, expected_sha256=None):
         super().__init__(parent)
         self.url, self.app_dir = url, app_dir
+        self.expected_sha256 = expected_sha256
         self.net = QNetworkAccessManager(self)
         self.reply = None
         self.file = None
 
+    def _expected_hex(self):
+        text = (self.expected_sha256 or "").strip().lower()
+        if text.startswith("sha256:"):
+            text = text[len("sha256:"):]
+        if len(text) != 64 or any(c not in "0123456789abcdef" for c in text):
+            return ""
+        return text
+
     def start(self):
+        if not self._expected_hex():
+            self.failed.emit("The update was not applied: the release has no sha256 digest.")
+            return
         self.path = os.path.join(self.app_dir, STAGING + ".zip")
         try:
             self.file = open(self.path, "wb")
@@ -240,6 +296,11 @@ class PortableUpdater(QObject):
             if r.error() != QNetworkReply.NoError:
                 if r.error() != QNetworkReply.OperationCanceledError:
                     self.failed.emit("The download failed (" + r.errorString() + ").")
+                return
+            expect = self._expected_hex()
+            if not expect or _file_sha256(self.path) != expect:
+                self.failed.emit("The download was not applied: its sha256 does not match "
+                                 "the release.")
                 return
             try:
                 self.ready.emit(unpack(self.path, self.app_dir))

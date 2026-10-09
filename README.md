@@ -5,8 +5,8 @@
 <h1 align="center">KanzonasPDF</h1>
 
 <p align="center">
-  <b>A free, fast PDF reader and editor for Windows</b><br>
-  Mark up, measure, edit, sign and redact PDFs, with no subscription, no account and no ads.
+  <b>Free Windows markup, measure, and stamps</b><br>
+  AGPL, no account, not a finished replacement.
 </p>
 
 <p align="center">
@@ -18,6 +18,14 @@
 > **Beta:** KanzonasPDF is under active development (version 0.x). It's used daily, and every
 > build is tested automatically, but you may still find rough edges. Please
 > [tell us](#feedback) when something doesn't work, and keep a copy of important files.
+
+## What it is, and what it is not
+
+**Works for** tabs, markups, measure, stamps, page tools, forms, basic text edit, OCR, and a portable build.
+
+**Does not yet have** a signed installer (SmartScreen will warn), a proven redaction corpus, or every Acrobat feature the menus mention.
+
+Do not use it on client drawings without checking the result.
 
 ![KanzonasPDF with a marked-up floor plan: an area measurement, a length, a revision cloud, a callout and an APPROVED stamp](docs/screenshot-markup.png)
 
@@ -51,8 +59,7 @@
 **Sign, protect and clean up**
 - Your signature and initials (drawn or scanned), digital signatures with a certificate,
   passwords and permissions
-- True redaction that removes the text underneath, including from hidden places like
-  metadata and form fields
+- Redaction removes marked text and, by default, scrubs metadata, attachments, hidden text and scripts. It is not a proven redaction corpus: check the result before sharing.
 - Recognize text (OCR) in scanned pages, offline
 
 **Forms and export**
@@ -154,10 +161,10 @@ and an upgrade.
 
 **Releases publish themselves:** when `main` gets a new `__version__` (in
 `kanzonas/__init__.py`), usually by merging a pull request, and the build passes, the tested
-installer and zips are published as release `v<version>` (a pre-release while the version is
-0.x). Other branches build and test but don't publish. To change this, set the repository
-variable `AUTO_RELEASE` (Settings > Secrets and variables > Actions > Variables): `draft` makes
-a draft release to publish by hand; `false` turns releasing off.
+installer and zips are published as a **draft** release `v<version>` (a pre-release while the
+version is 0.x), unless the repository variable `AUTO_RELEASE` is `true`. A tag build (`v*`)
+publishes a real release. Other branches build and test but don't publish. Set `AUTO_RELEASE`
+to `false` (Settings > Secrets and variables > Actions > Variables) to turn releasing off.
 
 **CAD test drawings:** `python tests/cad_samples.py DIR` generates realistic plotted CAD sheets
 (including a 42x30 site plan with ~139,000 contour segments and a scanned sheet);

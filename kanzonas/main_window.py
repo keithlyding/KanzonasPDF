@@ -2328,7 +2328,8 @@ class MainWindow(QMainWindow):
                           f"Permanently remove everything under {n} redaction mark(s)? Text, "
                           "images and drawings there are deleted, not just covered.\n\n"
                           "Undo works until you close the file.", parent=self)
-        scrub = QCheckBox("Also remove hidden information (metadata, attachments, scripts)")
+        scrub = QCheckBox("Remove hidden information (metadata, attachments, hidden text, scripts)")
+        scrub.setChecked(True)
         box.setCheckBox(scrub)
         box.setStandardButtons(QMessageBox.Apply | QMessageBox.Cancel)
         if box.exec() == QMessageBox.Apply:
@@ -3365,7 +3366,8 @@ class MainWindow(QMainWindow):
         if not url:
             return
         app_dir = paths.app_dir()
-        dl = updates.PortableUpdater(url, app_dir, self)
+        dl = updates.PortableUpdater(url, app_dir, self,
+                                     expected_sha256=updates.asset_digest(self._upd.release))
         prog = QProgressDialog("Downloading the new KanzonasPDF...", "Cancel", 0, 0, self)
         prog.setWindowTitle("Update")
         prog.setMinimumDuration(0)
