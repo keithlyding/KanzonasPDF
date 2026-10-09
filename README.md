@@ -169,6 +169,12 @@ App icon and logo: the owner's artwork in `assets/` (after changing them, run
 `python tools_make_assets.py`). Toolbar icons: the Material Design Icons font that ships with
 QtAwesome.
 
+## Free, for good
+
+Official KanzonasPDF releases stay free of charge for personal and commercial use: no subscriptions, trial expiration, paid feature tiers, required account or required paid cloud service. Optional donations never unlock features. This is the project's promise; the
+license below is what lets anyone use, change and share the code (it doesn't by itself stop
+others from charging for copies they make).
+
 ## License
 
 KanzonasPDF is free software under the [GNU AGPL-3.0](LICENSE). It's built on PyMuPDF, which is
