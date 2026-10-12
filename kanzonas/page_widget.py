@@ -85,6 +85,22 @@ class PageWidget(QWidget):
         super().__init__()
         self.view = view
         self.index = index
+        self._reset_state()
+        self.setMouseTracking(True)
+        self.setAttribute(Qt.WA_OpaquePaintEvent)
+        self.update_size()
+
+    def reuse(self, index):
+        """Take over page index after pages were added, removed, moved or rotated: a
+        rebuild renumbers the existing widgets instead of making 2,000 new ones."""
+        self.index = index
+        for child in self.findChildren(QWidget, options=Qt.FindDirectChildrenOnly):
+            child.deleteLater()             # an on-page text editor from before
+        self._reset_state()
+        self.update_size()
+        self.update()
+
+    def _reset_state(self):
         self._pix = None
         self._drag_start = None     # shape tools / box selection
         self._drag_now = None
@@ -104,9 +120,6 @@ class PageWidget(QWidget):
         self._text_move = None      # Edit text: a line being dragged to a new place
         self._sig_drag = None       # signature / initials: press point while sizing
         self._sig_now = None
-        self.setMouseTracking(True)
-        self.setAttribute(Qt.WA_OpaquePaintEvent)
-        self.update_size()
 
     # ---- geometry -------------------------------------------------------
     def update_size(self):

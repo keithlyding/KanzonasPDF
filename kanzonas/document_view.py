@@ -152,6 +152,24 @@ class DocumentView(QScrollArea):
     def _build_pages(self):
         keep = self.verticalScrollBar().value()
         self.page_rects = [p.rect for p in self.doc]
+        old = getattr(self, "pages", None)
+        lay = self.widget().layout() if old and self.widget() is not None else None
+        if lay is not None:
+            # reuse the page widgets: renumber them and add or remove the difference
+            n = self.doc.page_count
+            for w in old[n:]:
+                lay.removeWidget(w)
+                w.deleteLater()
+            del old[n:]
+            for i, w in enumerate(old):
+                w.reuse(i)
+            for i in range(len(old), n):
+                w = PageWidget(self, i)
+                lay.addWidget(w, 0, Qt.AlignHCenter)
+                old.append(w)
+            self.widget().adjustSize()
+            self.verticalScrollBar().setValue(keep)
+            return
         container = QWidget()
         container.setStyleSheet("background: #525659;")
         lay = QVBoxLayout(container)
