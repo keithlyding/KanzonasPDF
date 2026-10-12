@@ -18,8 +18,9 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
   the latest `main` into your branch, then set `__version__` to the next number after the one
   on `main` and add your CHANGELOG row above the newest one. Two branches with the same
   version conflict, and the second won't be released.
-- **Version numbers (from 0.90 on):** every release bumps the last number (0.90 -> 0.90.1 ->
-  0.90.2 ... 0.90.10). Only the owner decides when to go to 0.91.
+- **Version numbers (from 0.90 on):** a bug-fix release bumps the last number (0.90 ->
+  0.90.1 -> 0.90.2 ... 0.90.10); a release with a new feature bumps the middle one (0.91,
+  then 0.91.1 for its fixes).
 - Every push to any branch runs the full Windows build (~12 minutes). Push when a piece of
   work is done, not after every small edit.
 
