@@ -11,6 +11,7 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 - Edit text on sideways text opens on the page in an upright box at the line, instead of a separate "Line text" dialog.
 - Edit objects: right-click a group > Ungroup turns it into ordinary page content, so its shapes, pictures and text can be edited one by one.
 - Crop pages (Pages menu and tab): drag a box, crop this page or all pages; Remove crop shows the whole page again.
+- New measurements: Angle, Radius (with diameter), Perimeter and Volume (area × depth, depth set in Properties); they're included in the measurement summary.
 
 | Version | Commit | Changes |
 | --- | --- | --- |

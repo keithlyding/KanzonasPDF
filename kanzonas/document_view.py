@@ -1633,9 +1633,9 @@ class DocumentView(QScrollArea):
             if not is_click and abs(b - a) > 2:
                 self.calibrateRequested.emit(index, abs(b - a))
             return
-        if tool == "m_length":
+        if tool in ("m_length", "m_radius"):
             if not is_click:
-                self._create(index, {"kind": "m_length", "props": props, "points": [a, b],
+                self._create(index, {"kind": tool, "props": props, "points": [a, b],
                                      "rect": pymupdf.Rect()})
             return
         if tool == "callout":
@@ -1662,7 +1662,7 @@ class DocumentView(QScrollArea):
         kind = "m_length" if tool == "m_calibrate" else tool
         if tool == "m_calibrate":
             return f"{abs(pts[-1] - pts[0]) / 72:.2f} in on paper"
-        return measure.measure_text(kind, pts, self.doc[index])
+        return measure.measure_text(kind, pts, self.doc[index], props=self.tool_props(tool))
 
     def place_count(self, index, pt):
         group = self.tool_props("m_count").get("group") or "Count"

@@ -9,7 +9,8 @@ from PySide6.QtWidgets import (QWidget, QFormLayout, QVBoxLayout, QLabel, QToolB
 from . import annotations as A
 from . import stamps as ST
 
-BORDERLESS = ("textbox", "callout", "rect", "ellipse", "polygon", "m_area")
+BORDERLESS = ("textbox", "callout", "rect", "ellipse", "polygon", "m_area", "m_perimeter",
+              "m_volume")
 
 
 class ColorButton(QToolButton):
@@ -86,6 +87,12 @@ class PropertiesPanel(QWidget):
         self.fontsize = QDoubleSpinBox()
         self.fontsize.setRange(4, 144)
         self.fontsize.setSuffix(" pt")
+        self.depth = QDoubleSpinBox()
+        self.depth.setRange(0, 1_000_000)
+        self.depth.setDecimals(3)
+        self.depth.setKeyboardTracking(False)
+        self.depth.setToolTip("Volume = area \u00d7 depth. The depth is in the page's scale "
+                              "unit (feet when the scale is in feet and inches).")
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(10, 100)
         self.head = QComboBox()
@@ -149,6 +156,7 @@ class PropertiesPanel(QWidget):
                               ("width", "Line width", self.width),
                               ("fontsize", "Font size", self.fontsize),
                               ("head", "Arrowhead", self.head),
+                              ("depth", "Depth", self.depth),
                               ("rotation", "Rotation", self.rotation),
                               ("opacity", "Opacity", self.opacity)):
             lab = QLabel(label)
@@ -166,6 +174,7 @@ class PropertiesPanel(QWidget):
         self.no_stroke.toggled.connect(self._emit)
         self.width.valueChanged.connect(self._emit)
         self.fontsize.valueChanged.connect(self._emit)
+        self.depth.valueChanged.connect(self._emit)
         self.opacity.sliderReleased.connect(self._emit)
         self.head.currentIndexChanged.connect(self._emit)
         self.markup.currentIndexChanged.connect(self._emit)
@@ -232,6 +241,8 @@ class PropertiesPanel(QWidget):
             self.fontsize.setValue(float(props["fontsize"]))
         if "head" in props:
             self.head.setCurrentText(props["head"])
+        if "depth" in props:
+            self.depth.setValue(float(props["depth"] or 0))
         if "label" in props:
             self._fill_labels(props["label"])
         if "date" in props:
@@ -324,6 +335,8 @@ class PropertiesPanel(QWidget):
             p["fontsize"] = self.fontsize.value()
         if "head" in p:
             p["head"] = self.head.currentText()
+        if "depth" in p:
+            p["depth"] = self.depth.value()
         if "markup" in p:
             p["markup"] = A.COMMENT_STYLES[self.markup.currentIndex()]
         if "label" in p:

@@ -94,6 +94,10 @@ MEASURE_TOOLS = [
     ("m_length", "Length", "Shift+M", "Measure length: drag from point to point (Shift+M)"),
     ("m_poly", "Polylength", "", "Measure along a path: click points, double-click or Enter to finish"),
     ("m_area", "Area", "Shift+A", "Measure area and perimeter: click corners, double-click or Enter (Shift+A)"),
+    ("m_angle", "Angle", "", "Measure an angle: click one end, the corner, then the other end"),
+    ("m_radius", "Radius", "", "Measure a radius and diameter: drag from the center to the edge"),
+    ("m_perimeter", "Perimeter", "", "Measure a perimeter: click corners, double-click or Enter to finish"),
+    ("m_volume", "Volume", "", "Measure volume: click the corners of the area, double-click or Enter; set the depth in Properties"),
     ("m_count", "Count", "Shift+C", "Count: click each item; set the group name in Properties (Shift+C)"),
     ("m_calibrate", "Calibrate Tape Measure", "", "Calibrate Tape Measure: drag along a known dimension, then type its real length"),
 ]
@@ -3072,6 +3076,7 @@ class MainWindow(QMainWindow):
                       self.a_grid_settings]
         r.add_tab("Measure", [
             ("Measure", "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
+            ("More", "small", [t["m_angle"], t["m_radius"], t["m_perimeter"], t["m_volume"]]),
             ("Scale", "small", [t["m_calibrate"], self.a_set_scale, self.a_measure_summary]),
             ("Grid & snap", "small", snap_group),
         ])

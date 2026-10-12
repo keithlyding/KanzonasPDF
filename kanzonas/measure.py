@@ -91,6 +91,16 @@ def area(points):
     return abs(s) / 2
 
 
+def angle(points):
+    """Angle in degrees (0..180) at the middle of three points."""
+    a, v, b = points[:3]
+    u, w = a - v, b - v
+    if not abs(u) or not abs(w):
+        return 0.0
+    c = (u.x * w.x + u.y * w.y) / (abs(u) * abs(w))
+    return math.degrees(math.acos(max(-1.0, min(1.0, c))))
+
+
 # ---- formatting ---------------------------------------------------------------------
 def fmt_length(meters, unit):
     if unit == "ft-in":
@@ -118,7 +128,24 @@ def fmt_area(sq_meters, unit):
     return f"{value:,.{digits}f} sq {base}"
 
 
-def measure_text(kind, points, page, group=""):
+def fmt_volume(cu_meters, unit):
+    base = "ft" if unit == "ft-in" else unit
+    value = cu_meters / UNITS[base] ** 3
+    digits = DECIMALS if DECIMALS is not None else 2
+    return f"{value:,.{digits}f} cu {base}"
+
+
+def depth_m(props, unit):
+    """A volume measurement's depth (typed in the page's unit; feet for feet and inches)
+    in meters."""
+    base = "ft" if unit == "ft-in" else unit
+    try:
+        return max(0.0, float((props or {}).get("depth", 1.0))) * UNITS[base]
+    except (TypeError, ValueError):
+        return UNITS[base]
+
+
+def measure_text(kind, points, page, group="", props=None):
     f, unit, _label, _ok = get_scale(page)
     if kind in ("m_length", "m_poly"):
         return fmt_length(length(points) * f, unit)
@@ -126,12 +153,27 @@ def measure_text(kind, points, page, group=""):
         a = fmt_area(area(points) * f * f, unit)
         per = fmt_length(length(points + points[:1]) * f, unit)
         return f"{a}\nPerimeter {per}"
+    if kind == "m_perimeter":
+        return fmt_length(length(points + points[:1]) * f, unit)
+    if kind == "m_volume":
+        if len(points) < 3:
+            return ""
+        d = depth_m(props, unit)
+        return (fmt_volume(area(points) * f * f * d, unit) + "\n" +
+                fmt_area(area(points) * f * f, unit) + " \u00d7 " + fmt_length(d, unit))
+    if kind == "m_angle":
+        return f"{angle(points):.1f}\u00b0" if len(points) >= 3 else ""
+    if kind == "m_radius":
+        if len(points) < 2:
+            return ""
+        r = abs(points[1] - points[0]) * f
+        return f"R {fmt_length(r, unit)}\n\u00d8 {fmt_length(2 * r, unit)}"
     if kind == "m_count":
         return group
     return ""
 
 
-def raw_values(kind, points, page):
+def raw_values(kind, points, page, props=None):
     """Numbers for totals: (value, unit) in display units."""
     f, unit, _l, _ok = get_scale(page)
     base = "ft" if unit == "ft-in" else unit
@@ -139,6 +181,14 @@ def raw_values(kind, points, page):
         return length(points) * f / UNITS[base], base
     if kind == "m_area":
         return area(points) * f * f / UNITS[base] ** 2, "sq " + base
+    if kind == "m_perimeter":
+        return length(points + points[:1]) * f / UNITS[base], base
+    if kind == "m_volume":
+        return area(points) * f * f * depth_m(props, unit) / UNITS[base] ** 3, "cu " + base
+    if kind == "m_angle":
+        return angle(points), "degrees"
+    if kind == "m_radius":
+        return abs(points[1] - points[0]) * f / UNITS[base], base + " (radius)"
     return 1, "count"
 
 
@@ -211,6 +261,37 @@ def add_label(page, annot, text, anchor, size=9.0, color=(0, 0, 0), angle=0.0):
     doc.xref_set_key(annot.xref, "Rect", arr)
 
 
+def add_circle(page, annot, center, edge, color=(0, 0, 0), width=1.0):
+    """Append a dashed circle through edge around center (unrotated page points) to the
+    annotation's appearance and grow its box (Radius measurements)."""
+    doc = page.parent
+    typ, val = doc.xref_get_key(annot.xref, "AP/N")
+    if typ != "xref":
+        return
+    ap = int(val.split()[0])
+    to_pdf = ~page.transformation_matrix
+    c = pymupdf.Point(center) * to_pdf
+    r = abs(pymupdf.Point(edge) - pymupdf.Point(center))
+    k = 0.5523 * r
+    x, y = c.x, c.y
+    ops = ["q", " ".join(f"{v:g}" for v in color) + " RG", f"{max(0.5, width):g} w",
+           f"[{3 * max(1, width):g} {2 * max(1, width):g}] 0 d",
+           f"{x + r:.3f} {y:.3f} m",
+           f"{x + r:.3f} {y + k:.3f} {x + k:.3f} {y + r:.3f} {x:.3f} {y + r:.3f} c",
+           f"{x - k:.3f} {y + r:.3f} {x - r:.3f} {y + k:.3f} {x - r:.3f} {y:.3f} c",
+           f"{x - r:.3f} {y - k:.3f} {x - k:.3f} {y - r:.3f} {x:.3f} {y - r:.3f} c",
+           f"{x + k:.3f} {y - r:.3f} {x + r:.3f} {y - k:.3f} {x + r:.3f} {y:.3f} c",
+           "S", "Q"]
+    doc.update_stream(ap, doc.xref_stream(ap) + ("\n" + "\n".join(ops) + "\n").encode())
+    pad = width + 1
+    ring = pymupdf.Rect(x - r - pad, y - r - pad, x + r + pad, y + r + pad)
+    bb = doc.xref_get_key(ap, "BBox")[1].strip("[]").split()
+    box = pymupdf.Rect(*map(float, bb)) | ring
+    arr = f"[{box.x0:.3f} {box.y0:.3f} {box.x1:.3f} {box.y1:.3f}]"
+    doc.xref_set_key(ap, "BBox", arr)
+    doc.xref_set_key(annot.xref, "Rect", arr)
+
+
 def label_anchor(kind, points, page=None):
     """(anchor point, angle in degrees) for a measurement label, computed so the label reads
     upright on screen even on rotated pages (anchor in unrotated page coordinates)."""
@@ -218,7 +299,7 @@ def label_anchor(kind, points, page=None):
     to_disp = page.rotation_matrix if page is not None else pymupdf.Identity
     to_page = page.derotation_matrix if page is not None else pymupdf.Identity
     pts = [pymupdf.Point(q) * to_disp for q in points]          # as seen on screen
-    if kind == "m_length":
+    if kind in ("m_length", "m_radius"):
         a, b = pts[0], pts[1]
         ang = math.degrees(math.atan2(-(b.y - a.y), b.x - a.x))
         if ang > 90:
@@ -235,7 +316,13 @@ def label_anchor(kind, points, page=None):
     elif kind == "m_poly":
         a, b = pts[-2], pts[-1]
         anchor, angle = (a + b) / 2 + (0, -10), 0.0
-    elif kind == "m_area":
+    elif kind == "m_angle" and len(pts) >= 3:
+        # just outside the vertex, opposite the opening of the angle
+        a, v, b = pts[:3]
+        u = (a - v) / (abs(a - v) or 1) + (b - v) / (abs(b - v) or 1)
+        u = u / (abs(u) or 1)
+        anchor, angle = v - u * 16, 0.0
+    elif kind in ("m_area", "m_perimeter", "m_volume"):
         anchor = pymupdf.Point(sum(q.x for q in pts) / len(pts), sum(q.y for q in pts) / len(pts))
         angle = 0.0
     elif kind == "m_count":

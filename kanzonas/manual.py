@@ -492,6 +492,14 @@ or <b>Calibrate Tape Measure</b>: drag along a known dimension and type its real
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
 <b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
 the scale.</li>
+<li>More measurements (Measure tab, "More" group, and the Measure menu):
+<b>Angle</b>: click one end, the corner, then the other end; it shows the angle in degrees.
+<b>Radius</b>: drag from the center of a circle to its edge; it draws the circle and shows the
+radius (R) and diameter (&Oslash;).
+<b>Perimeter</b>: click the corners, double-click or press Enter; it shows the distance around.
+<b>Volume</b>: click the corners of the area, double-click or press Enter; it shows area
+&times; depth. Set the <b>Depth</b> in the Properties panel, in the page's scale unit (feet
+when the scale is in feet and inches); changing it updates the selected measurement.</li>
 <li><b>Measurement summary</b> totals everything and exports to CSV.</li>
 </ul>
 
