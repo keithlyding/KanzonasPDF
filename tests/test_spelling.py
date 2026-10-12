@@ -96,12 +96,13 @@ if __name__ == "__main__":
 
 class WordAt(unittest.TestCase):
     def test_word_at_cursor(self):
+        # the point -> character mapping is Qt's (and unreliable with the offscreen platform
+        # on the Windows build machine); this checks the word found around that character
+        from PySide6.QtGui import QTextCursor
         edit = QPlainTextEdit("one twoo three")
-        edit.resize(400, 100)
-        edit.show()
-        APP.processEvents()
-        c = edit.textCursor()
-        c.setPosition(6)
-        edit.setTextCursor(c)
-        cur, word = spelling.word_at(edit, edit.cursorRect().center())
-        self.assertEqual((word, cur.selectedText()), ("twoo", "twoo"))
+        for at, want in ((4, "twoo"), (6, "twoo"), (8, "twoo"), (0, "one"), (13, "three")):
+            c = QTextCursor(edit.document())
+            c.setPosition(at)
+            with mock.patch.object(edit, "cursorForPosition", lambda _p, c=c: c):
+                cur, word = spelling.word_at(edit, QPoint(0, 0))
+            self.assertEqual((word, cur.selectedText()), (want, want))
