@@ -74,3 +74,14 @@ class RedactionTests(unittest.TestCase):
         view.apply_redactions()
         raw = view.doc.tobytes()
         self.assertNotIn(b"SECRET-TOKEN", raw)
+
+
+class UpdateScriptPlace(unittest.TestCase):
+    def test_update_script_goes_in_a_new_private_folder(self):
+        # a fixed name in the shared Temp folder could be replaced by another program between
+        # writing it and running it
+        import inspect
+        from kanzonas import main_window
+        src = inspect.getsource(main_window)
+        self.assertIn('tempfile.mkdtemp(prefix="kzupdate")', src)
+        self.assertNotIn('os.path.join(tempfile.gettempdir(), "kanzonas-update.cmd")', src)

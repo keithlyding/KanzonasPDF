@@ -1,0 +1,64 @@
+name: Security check
+
+# Weekly: known vulnerabilities in the pinned libraries (pip-audit) and newer releases of the
+# libraries that read untrusted files (PyMuPDF, Qt). Findings go into one open issue labeled
+# "security" so they're seen; nothing is changed automatically.
+on:
+  schedule:
+    - cron: "17 6 * * 1"          # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Known vulnerabilities (pip-audit)
+        id: audit
+        continue-on-error: true
+        run: |
+          python -m pip install --quiet pip-audit
+          set -o pipefail
+          python -m pip_audit -r constraints.txt --progress-spinner off --desc on 2>&1 | tee audit.txt
+
+      - name: Newer releases of document and image readers
+        id: fresh
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python tools/check_dependencies.py | tee fresh.txt
+
+      - name: Report in an issue
+        if: steps.audit.outcome == 'failure' || steps.fresh.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Automatic weekly security check ($(date -u +%F))."
+            echo
+            echo "### Known vulnerabilities (pip-audit)"
+            echo '```'; cat audit.txt; echo '```'
+            echo
+            echo "### Newer releases"
+            cat fresh.txt
+          } > body.md
+          gh label create security --color B60205 --description "Security" 2>/dev/null || true
+          n=$(gh issue list --label security --state open --search "Security check in:title" --json number --jq '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body-file body.md
+          else
+            gh issue create --title "Security check: dependencies need attention" --label security --body-file body.md
+          fi
+
+      - name: Fail when something needs attention
+        if: steps.audit.outcome == 'failure' || steps.fresh.outcome == 'failure'
+        run: exit 1

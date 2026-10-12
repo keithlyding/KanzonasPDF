@@ -41,6 +41,13 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
 - New dependencies: add the minimum to `requirements.txt` and the exact version and license
   to `constraints.txt`; heavy ones must be imported lazily (see Performance).
 
+## Security updates
+- `.github/workflows/security-check.yml` runs every Monday (and by hand): pip-audit on
+  `constraints.txt`, and `tools/check_dependencies.py` for newer PyMuPDF and PySide6 releases
+  (they read untrusted PDFs and pictures; MuPDF fixes often have no PyPI advisory). It reports
+  in one open issue labeled `security`. Act on it promptly: bump the pin in `constraints.txt` on
+  a branch, read the release notes, and release when the Windows build is green.
+
 ## Conventions
 - American spelling in all user-visible text.
 - Annotations: keep a Page object alive while using an Annot from it ("not bound to page").
