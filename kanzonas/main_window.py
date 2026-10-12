@@ -3443,7 +3443,9 @@ class MainWindow(QMainWindow):
         def ready(new):
             import subprocess
             prog.close()
-            script = os.path.join(tempfile.gettempdir(), "kanzonas-update.cmd")
+            # a new folder only this user can write to (mkdtemp), not a fixed name in Temp
+            # that another program could put its own script at before it runs
+            script = os.path.join(tempfile.mkdtemp(prefix="kzupdate"), "kanzonas-update.cmd")
             with open(script, "w", encoding="mbcs" if os.name == "nt" else "utf-8") as f:
                 f.write(updates.swap_script(os.getpid(), new, app_dir))
             if not self.close():          # the user kept a document open: try again later
