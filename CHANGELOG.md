@@ -7,6 +7,8 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 
 - Fix: Arrange > Bring to front / Bring forward / Send backward / Send to back no longer gray out after one use on objects selected with Edit objects (or after moving them).
 - PortableApps.com: every build also makes KanzonasPDF in the PortableApps.com Format (tested: settings stay in the package's Data folder, nothing in the registry, its own updater off). Two final steps use PortableApps.com's tools (docs/portableapps.md).
+- Each release lists the SHA-256 checksum of every download (and a SHA256SUMS.txt), so you can check a download wasn't altered.
+- Qt (PySide6) updated from 6.11.2 to 6.12.0, the newer version the weekly security check reported.
 
 | Version | Commit | Changes |
 | --- | --- | --- |

@@ -227,6 +227,18 @@ jobs:
           Write-Host "Tagged commit on main: $on"
           exit 0
 
+      - name: Checksums (SHA-256) of the downloads
+        id: sums
+        shell: pwsh
+        run: |
+          $files = "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe", "KanzonasPDF-portable.zip", "KanzonasPDF-windows.zip"
+          $lines = foreach ($f in $files) { "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 $f).Hash.ToLower(), (Split-Path $f -Leaf) }
+          $lines | Set-Content -Encoding ascii SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+          "text<<KZSUMS" >> $env:GITHUB_OUTPUT
+          $lines >> $env:GITHUB_OUTPUT
+          "KZSUMS" >> $env:GITHUB_OUTPUT
+
       - name: Publish release
         if: >-
           (startsWith(github.ref, 'refs/tags/v') && steps.onmain.outputs.main == 'true') ||
@@ -248,7 +260,13 @@ jobs:
 
             What's new: see [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ steps.ver.outputs.version }}/CHANGELOG.md).
             Free software under the GNU AGPL 3.0. [Code signing policy](https://github.com/keithlyding/KanzonasPDF/blob/main/CODE_SIGNING_POLICY.md).
+
+            **Check your download (SHA-256):** in PowerShell, `Get-FileHash <file>` must show the same value.
+            ```
+            ${{ steps.sums.outputs.text }}
+            ```
           files: |
+            SHA256SUMS.txt
             dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
             KanzonasPDF-portable.zip
             KanzonasPDF-windows.zip
