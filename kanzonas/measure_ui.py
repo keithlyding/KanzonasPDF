@@ -131,7 +131,7 @@ def summary_rows(doc):
             m = A.read(a)
             if not m or m["kind"] not in A.MEASURES:
                 continue
-            value, unit = M.raw_values(m["kind"], m["points"], page)
+            value, unit = M.raw_values(m["kind"], m["points"], page, m["props"])
             key = (A.LABELS[m["kind"]], m["props"].get("group", "") if m["kind"] == "m_count" else "")
             g = groups.setdefault(key + (unit,), {"count": 0, "total": 0.0, "pages": set()})
             g["count"] += 1

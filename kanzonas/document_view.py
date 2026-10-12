@@ -152,6 +152,24 @@ class DocumentView(QScrollArea):
     def _build_pages(self):
         keep = self.verticalScrollBar().value()
         self.page_rects = [p.rect for p in self.doc]
+        old = getattr(self, "pages", None)
+        lay = self.widget().layout() if old and self.widget() is not None else None
+        if lay is not None:
+            # reuse the page widgets: renumber them and add or remove the difference
+            n = self.doc.page_count
+            for w in old[n:]:
+                lay.removeWidget(w)
+                w.deleteLater()
+            del old[n:]
+            for i, w in enumerate(old):
+                w.reuse(i)
+            for i in range(len(old), n):
+                w = PageWidget(self, i)
+                lay.addWidget(w, 0, Qt.AlignHCenter)
+                old.append(w)
+            self.widget().adjustSize()
+            self.verticalScrollBar().setValue(keep)
+            return
         container = QWidget()
         container.setStyleSheet("background: #525659;")
         lay = QVBoxLayout(container)
@@ -1580,11 +1598,26 @@ class DocumentView(QScrollArea):
             self.statusMessage.emit(f"Erased {len(xrefs)} annotation(s)")
             return
         props = self.tool_props(tool)
-        if tool in ("erasecontent", "capture"):
+        if tool == "link":
+            if is_click or rect.width < 4 or rect.height < 4:
+                ln = self.link_at(index, a)
+                if ln is not None:
+                    self.edit_link(index, ln)
+                else:
+                    self.statusMessage.emit("Drag a box over what should be clickable, or "
+                                            "click a link to change it")
+                return
+            self.add_link(index, rect)
+            return
+        if tool in ("erasecontent", "capture", "crop"):
             if is_click or rect.width < 2 or rect.height < 2:
                 self.statusMessage.emit("Drag a box around the area")
                 return
-            if tool == "capture":
+            if tool == "crop":
+                scope = self._ask_pages_scope("Crop pages", "Crop to this box on which pages?")
+                if scope is not None:
+                    self.crop_pages(index, rect, scope == "all")
+            elif tool == "capture":
                 self.capture_area(index, rect)
             else:
                 self.erase_content(index, rect)
@@ -1611,9 +1644,9 @@ class DocumentView(QScrollArea):
             if not is_click and abs(b - a) > 2:
                 self.calibrateRequested.emit(index, abs(b - a))
             return
-        if tool == "m_length":
+        if tool in ("m_length", "m_radius"):
             if not is_click:
-                self._create(index, {"kind": "m_length", "props": props, "points": [a, b],
+                self._create(index, {"kind": tool, "props": props, "points": [a, b],
                                      "rect": pymupdf.Rect()})
             return
         if tool == "callout":
@@ -1640,7 +1673,7 @@ class DocumentView(QScrollArea):
         kind = "m_length" if tool == "m_calibrate" else tool
         if tool == "m_calibrate":
             return f"{abs(pts[-1] - pts[0]) / 72:.2f} in on paper"
-        return measure.measure_text(kind, pts, self.doc[index])
+        return measure.measure_text(kind, pts, self.doc[index], props=self.tool_props(tool))
 
     def place_count(self, index, pt):
         group = self.tool_props("m_count").get("group") or "Count"
@@ -1898,6 +1931,52 @@ class DocumentView(QScrollArea):
             return
         if k in (pymupdf.LINK_GOTOR, pymupdf.LINK_LAUNCH):
             self._open_linked_file(link.get("file") or "", link.get("page", -1))
+
+    def _ask_link(self, current=None):
+        from .link_dialog import LinkDialog
+        dlg = LinkDialog(self, self.doc.page_count, current)
+        return dlg.result_value if dlg.exec() else None
+
+    @staticmethod
+    def _link_dict(rect, target):
+        if target[0] == "page":
+            return {"kind": pymupdf.LINK_GOTO, "from": rect, "page": target[1],
+                    "to": pymupdf.Point(0, 0)}
+        return {"kind": pymupdf.LINK_URI, "from": rect, "uri": target[1]}
+
+    def add_link(self, index, rect, target=None):
+        """Links tool: make rect (unrotated page coordinates) clickable. target: ("uri",
+        address) or ("page", index); asked for when None."""
+        target = target or self._ask_link()
+        if not target or target[0] == "delete":
+            return
+        self.modify(lambda: self.doc[index].insert_link(
+            self._link_dict(pymupdf.Rect(rect).normalize(), target)), [index],
+            permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.statusMessage.emit("Link added (Ctrl+Z undoes it)")
+
+    def edit_link(self, index, link, target=None):
+        """Change where a link goes, or delete it (target ("delete",))."""
+        k = link.get("kind")
+        current = (("page", link.get("page", 0)) if k == pymupdf.LINK_GOTO
+                   else ("uri", link.get("uri") or ""))
+        target = target or self._ask_link(current)
+        if not target:
+            return
+        page_rect = pymupdf.Rect(link["from"]) * self.doc[index].derotation_matrix
+        xref = link.get("xref")
+
+        def do():
+            page = self.doc[index]
+            old = [ln for ln in page.get_links() if ln.get("xref") == xref]
+            if not old:
+                raise ValueError("The link is no longer on the page.")
+            page.delete_link(old[0])
+            if target[0] != "delete":
+                page.insert_link(self._link_dict(page_rect, target))
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.statusMessage.emit(("Link deleted" if target[0] == "delete" else "Link changed")
+                                + " (Ctrl+Z undoes it)")
 
     def _confirm_web(self, uri):
         from PySide6.QtWidgets import QCheckBox
@@ -2625,21 +2704,27 @@ class DocumentView(QScrollArea):
         old = text_edit.line_text(line)
         w = self.pages[index]
         upright = (text_edit.line_rotation(line) + page.rotation) % 360 == 0
-        if not upright:
-            # sideways text: the on-page editor can't sit along it, use the dialog
-            new, ok = dialogs.get_text(self, "Edit text", "Line text:", old)
-            if ok and (new != old or self._edit_font() is not None):
-                self._apply_text_edit(index, line, new, (0, 0), None)
-            return
         size = text_edit.main_span(line)["size"]
         chosen = self._edit_font()
-        ed = InlineEditor(w, w.to_screen(rect), old,
+        box = w.to_screen(rect)
+        if not upright:
+            # sideways text: type in an upright box laid over the middle of the line (it
+            # can't run along the line); the text keeps its direction on the page
+            c = box.center()
+            bw = max(160.0, min(w.width() - 8.0, len(old) * size * 0.6 * self.zoom + 24))
+            bh = size * self.zoom * 1.4
+            box = QRectF(c.x() - bw / 2, c.y() - bh / 2, bw, bh)
+            box.moveLeft(max(0.0, min(box.left(), w.width() - bw)))
+            box.moveTop(max(0.0, min(box.top(), w.height() - bh)))
+        ed = InlineEditor(w, box, old,
                           chosen[0] if chosen else text_edit.font_family_hint(line),
-                          size * self.zoom, click=w.to_screen_pt(pt))
+                          size * self.zoom, click=w.to_screen_pt(pt) if upright else None)
         self._inline = ed
 
         def done(text, dx, dy, wrap_px):
             self._inline = None
+            if not upright:
+                wrap_px = None          # the box's width isn't along the line
             if text == old and not dx and not dy and wrap_px is None and \
                     self._edit_font() is None:
                 return
@@ -2650,6 +2735,47 @@ class DocumentView(QScrollArea):
             self._apply_text_edit(index, line, text, (v.x, v.y), wrap)
         ed.committed.connect(done)
         ed.canceled.connect(lambda: setattr(self, "_inline", None))
+
+    def replace_text(self, find, repl, match_case=False, whole_words=False, pages=None):
+        """Replace find with repl in the page text (pages: indices, None = all) as one undo
+        step. Returns (matches replaced, lines rewritten, pages skipped because they have
+        pending redaction marks)."""
+        from .replace_dialog import pattern
+        self.commit_pending()
+        if not find or not self.allowed(pymupdf.PDF_PERM_MODIFY):
+            if find:
+                self.modify(lambda: None, [])       # says why it's not allowed
+            return 0, 0, []
+        rx = pattern(find, match_case, whole_words)
+        todo, skipped = {}, []
+        for i in (range(self.doc.page_count) if pages is None else pages):
+            page = self.doc[i]
+            if not rx.search(re.sub(r"\s+", " ", page.get_text())):
+                continue                # quick test before reading the page's lines
+            hits = [(line, text_edit.line_text(line)) for _r, line in self._lines(i)]
+            hits = [(line, t) for line, t in hits if rx.search(t)]
+            if not hits:
+                continue
+            if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in page.annots()):
+                skipped.append(i)
+                continue
+            todo[i] = hits
+        if not todo:
+            return 0, 0, skipped
+        count = {"found": 0, "lines": 0}
+
+        def do():
+            for i, hits in todo.items():
+                page = self.doc[i]
+                for line, text in hits:
+                    new, n = rx.subn(lambda _m: repl, text)
+                    text_edit.replace_line(page, line, new)
+                    count["found"] += n
+                    count["lines"] += 1
+        self.modify(do, list(todo))
+        self._fonts_added = True
+        self.statusMessage.emit(f"Replaced {count['found']} (Ctrl+Z undoes it)")
+        return count["found"], count["lines"], skipped
 
     def _markups_on_line(self, page, line):
         """xrefs of text markups (highlight, underline, comments...) and sticky notes sitting
@@ -2981,6 +3107,16 @@ class DocumentView(QScrollArea):
     def delete_objects(self):
         from . import page_objects
         self._objects_edit("Deleted", page_objects.delete, keep=False)
+
+    def ungroup_objects(self):
+        """Take the selected groups apart: their shapes, pictures and text become separate
+        objects of the page (Edit objects, Edit text)."""
+        from . import page_objects
+        if self.obj_sel is None or not any(it["kind"] == "group" for it in self.obj_sel[1]):
+            return
+        groups = [it for it in self.obj_sel[1] if it["kind"] == "group"]
+        self.obj_sel = (self.obj_sel[0], groups)
+        self._objects_edit("Ungrouped", page_objects.ungroup, keep=False)
 
     def copy_picture(self):
         """Copy the one selected picture (Ctrl+V pastes it as an image markup)."""
@@ -3730,6 +3866,8 @@ class DocumentView(QScrollArea):
         ed = QPlainTextEdit(pw) if multiline else QLineEdit(pw)
         if multiline:
             ed.setPlainText(w.field_value or "")
+            from . import spelling
+            spelling.install(ed)
         else:
             ed.setText(w.field_value or "")
             ed.selectAll()
@@ -4046,6 +4184,46 @@ class DocumentView(QScrollArea):
     def rotate_page(self, index, delta):
         page = self.doc[index]
         self.modify(lambda: page.set_rotation((page.rotation + delta) % 360), structural=True)
+
+    def _ask_pages_scope(self, title, question):
+        """"this", "all" or None (canceled)."""
+        box = QMessageBox(QMessageBox.Question, title, question, parent=self)
+        this = box.addButton("This page", QMessageBox.AcceptRole)
+        every = box.addButton("All pages", QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        box.exec()
+        return {this: "this", every: "all"}.get(box.clickedButton())
+
+    def crop_pages(self, index, rect, all_pages=False):
+        """Crop page index (or every page) to rect, given in page index's unrotated page
+        coordinates. Only the visible area changes (the crop box): Remove crop brings the
+        rest back. On other pages the same box is used, measured from their own top left."""
+        rect = pymupdf.Rect(rect).normalize()
+        targets = range(self.doc.page_count) if all_pages else [index]
+
+        def do():
+            for i in targets:
+                page = self.doc[i]
+                cb = page.cropbox
+                box = (rect + (cb.x0, cb.y0, cb.x0, cb.y0)) & page.mediabox
+                if box.width >= 2 and box.height >= 2:
+                    page.set_cropbox(box)
+        self.modify(do, structural=True)
+        self.statusMessage.emit("Cropped (Ctrl+Z undoes it; Pages > Remove crop shows the "
+                                "whole page again)")
+
+    def remove_crop(self, index, all_pages=False):
+        targets = range(self.doc.page_count) if all_pages else [index]
+        if not any(self.doc[i].cropbox != self.doc[i].mediabox for i in targets):
+            self.statusMessage.emit("Not cropped")
+            return
+
+        def do():
+            for i in targets:
+                page = self.doc[i]
+                page.set_cropbox(page.mediabox)
+        self.modify(do, structural=True)
+        self.statusMessage.emit("Crop removed")
 
     def delete_page(self, index):
         if self.doc.page_count <= 1:
