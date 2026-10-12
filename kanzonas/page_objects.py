@@ -685,3 +685,190 @@ def reorder(page, ns, how, dry_run=False):
 def images(page):
     """The page's editable pictures (kept for callers and tests)."""
     return [it for it in Objects(page).items if it["kind"] == "picture"]
+
+
+# ---- ungroup ---------------------------------------------------------------------------------
+# operator -> the resource category its name operand comes from
+_RES_OPS = {b"Tf": "Font", b"Do": "XObject", b"gs": "ExtGState", b"cs": "ColorSpace",
+            b"CS": "ColorSpace", b"scn": "Pattern", b"SCN": "Pattern", b"sh": "Shading",
+            b"BDC": "Properties", b"DP": "Properties"}
+_RES_KINDS = ("Font", "XObject", "ExtGState", "ColorSpace", "Pattern", "Shading", "Properties")
+
+
+def _dict_keys(text):
+    """Top-level keys of a PDF dictionary written as text: '<</F1 5 0 R/F2 <<...>>>>'."""
+    keys, depth, i, n = [], 0, 0, len(text)
+    while i < n:
+        if text.startswith("<<", i):
+            depth += 1
+            i += 2
+        elif text.startswith(">>", i):
+            depth -= 1
+            i += 2
+        elif text[i] in "[(" and depth == 1:
+            i = _skip_value(text, i)        # an array or string value, whole
+        elif text[i] == "/" and depth == 1:
+            m = re.match(r"/([^\s/\[\]()<>{}%]+)", text[i:])
+            name = m.group(1)
+            i += m.end()
+            keys.append(name)
+            # its value: skip a name value too, so it isn't taken for the next key
+            j = i
+            while j < n and text[j] in " \r\n\t":
+                j += 1
+            if text.startswith("/", j):
+                m2 = re.match(r"/[^\s/\[\]()<>{}%]*", text[j:])
+                i = j + m2.end()
+        else:
+            i += 1
+    return keys
+
+
+def _skip_value(text, i):
+    """Index just past the array "[...]" or string "(...)" starting at text[i]."""
+    open_, close = (text[i], "]" if text[i] == "[" else ")")
+    depth, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "\\" and open_ == "(":
+            i += 2
+            continue
+        if c == open_:
+            depth += 1
+        elif c == close:
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return n
+
+
+def _res_entries(doc, xref, path):
+    """{key: value text} of the resource dictionary at xref/path (e.g. 'Resources/Font')."""
+    kind, val = doc.xref_get_key(xref, path)
+    if kind == "xref":
+        sub = int(val.split()[0])
+        return {k: doc.xref_get_key(sub, k) for k in doc.xref_get_keys(sub)}
+    if kind == "dict":
+        return {k: doc.xref_get_key(xref, path + "/" + k) for k in _dict_keys(val)}
+    return {}
+
+
+def _own_resources(page):
+    """Make sure the page has its own /Resources (not only one inherited from its parents),
+    so names added to it don't land in a dictionary other pages depend on unchanged."""
+    doc = page.parent
+    kind, _v = doc.xref_get_key(page.xref, "Resources")
+    if kind != "null":
+        return
+    x = page.xref
+    while True:
+        k, parent = doc.xref_get_key(x, "Parent")
+        if k != "xref":
+            doc.xref_set_key(page.xref, "Resources", "<<>>")
+            return
+        x = int(parent.split()[0])
+        k, v = doc.xref_get_key(x, "Resources")
+        if k in ("xref", "dict"):
+            doc.xref_set_key(page.xref, "Resources", v)
+            return
+
+
+def _set_resource(doc, xref, cat, key, text):
+    """Resources/<cat>/<key> = text on object xref, following indirect dictionaries (which
+    xref_set_key can't write through)."""
+    kind, val = doc.xref_get_key(xref, "Resources")
+    path = "Resources/"
+    if kind == "xref":
+        xref, path = int(val.split()[0]), ""
+    kind, val = doc.xref_get_key(xref, path + cat)
+    if kind == "xref":
+        doc.xref_set_key(int(val.split()[0]), key, text)
+    elif kind == "dict":
+        doc.xref_set_key(xref, f"{path}{cat}/{key}", text)
+    else:
+        doc.xref_set_key(xref, path + cat, f"<</{key} {text}>>")
+
+
+def _value_text(kind, val):
+    return {"xref": val, "dict": val, "array": val, "name": val, "int": val, "float": val,
+            "bool": val, "string": val}.get(kind)
+
+
+def _expand(doc, page, fx, taken, depth=0):
+    """The drawing instructions of Form XObject fx, to stand in for its "/Name Do" on the
+    page (None when fx isn't a usable form). A group holding nothing but one other group (a
+    wrapper, as many programs write) is taken apart too."""
+    if fx is None or depth > 8 or doc.xref_get_key(fx, "Subtype")[1] != "/Form":
+        return None
+    box, fm = _form_box(doc, fx)
+    if box is None:
+        return None
+    # the group's resources, renamed into the page's
+    rename, forms = {}, {}
+    for cat in _RES_KINDS:
+        for key, (kind, val) in _res_entries(doc, fx, "Resources/" + cat).items():
+            text = _value_text(kind, val)
+            if text is None:
+                continue
+            k = 1
+            while f"KZ{k}{key}" in taken[cat]:
+                k += 1
+            new = f"KZ{k}{key}"
+            taken[cat].add(new)
+            _set_resource(doc, page.xref, cat, new, text)
+            rename[(cat, ("/" + key).encode())] = ("/" + new).encode()
+            if cat == "XObject" and kind == "xref":
+                forms[("/" + new).encode()] = int(val.split()[0])
+    body = doc.xref_stream(fx) or b""
+    out, last = [], 0
+    for op, args, s_, e_ in _tokens(body):
+        cat = _RES_OPS.get(op)
+        if cat is None:
+            continue
+        for a in args:
+            new = rename.get((cat, a)) if isinstance(a, bytes) else None
+            if new is not None:
+                at = body.find(a, s_, e_)
+                if at >= 0:
+                    out.append(body[last:at])
+                    out.append(new)
+                    last = at + len(a)
+                break
+    out.append(body[last:])
+    body = b"".join(out)
+    inner = scan(body)
+    if len(inner) == 1 and inner[0].get("name") in forms:
+        sub = _expand(doc, page, forms[inner[0]["name"]], taken, depth + 1)
+        if sub is not None:
+            body = body[:inner[0]["start"]] + sub + body[inner[0]["end"]:]
+    m = " ".join(f"{v:g}" for v in (fm.a, fm.b, fm.c, fm.d, fm.e, fm.f)).encode()
+    clip = f"{box.x0:g} {box.y0:g} {box.width:g} {box.height:g} re W n".encode()
+    return b"\nq " + m + b" cm " + clip + b"\n" + body + b"\nQ\n"
+
+
+def ungroup(page, ns):
+    """Turn the groups (Form XObjects drawn with /Name Do) among objects ns into ordinary page
+    content: the "Do" is replaced by the group's own drawing instructions, kept inside its
+    matrix and bounding box, and the fonts, pictures and styles it uses are added to the
+    page's resources under new names. Afterwards each shape, picture and line of text in it
+    can be selected and edited on its own. Returns how many groups were taken apart."""
+    doc = page.parent
+    data = _contents(page)
+    found = scan(data)
+    forms = {("/" + g[1]).encode(): g[0] for g in page.get_xobjects() if g[2] == 0}
+    _own_resources(page)
+    taken = {cat: set(_res_entries(doc, page.xref, "Resources/" + cat)) for cat in _RES_KINDS}
+    pieces = []
+    for n in sorted(set(ns), reverse=True):
+        if n >= len(found):
+            raise ValueError("The object is no longer on the page.")
+        d = found[n]
+        piece = _expand(doc, page, forms.get(d.get("name")), taken)
+        if piece is not None:
+            pieces.append((d["start"], d["end"], piece))
+    for s, e, piece in pieces:          # back to front: earlier offsets stay valid
+        data = data[:s] + piece + data[e:]
+    if pieces:
+        _set_contents(page, data)
+    return len(pieces)

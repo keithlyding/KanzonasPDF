@@ -3006,6 +3006,16 @@ class DocumentView(QScrollArea):
         from . import page_objects
         self._objects_edit("Deleted", page_objects.delete, keep=False)
 
+    def ungroup_objects(self):
+        """Take the selected groups apart: their shapes, pictures and text become separate
+        objects of the page (Edit objects, Edit text)."""
+        from . import page_objects
+        if self.obj_sel is None or not any(it["kind"] == "group" for it in self.obj_sel[1]):
+            return
+        groups = [it for it in self.obj_sel[1] if it["kind"] == "group"]
+        self.obj_sel = (self.obj_sel[0], groups)
+        self._objects_edit("Ungrouped", page_objects.ungroup, keep=False)
+
     def copy_picture(self):
         """Copy the one selected picture (Ctrl+V pastes it as an image markup)."""
         if not self.require_permission(pymupdf.PDF_PERM_COPY, "Copying pictures or page content"):

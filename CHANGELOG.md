@@ -9,6 +9,7 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 - Printing renders at the printer's resolution up to 600 dpi (was 300), a strip at a time, so fine CAD lines print sharper with little memory.
 - Rotating, deleting and moving pages, and undoing them, are about twice as fast on big documents (0.6 s instead of 1.5 s on 2,000 pages): the page widgets are reused instead of rebuilt.
 - Edit text on sideways text opens on the page in an upright box at the line, instead of a separate "Line text" dialog.
+- Edit objects: right-click a group > Ungroup turns it into ordinary page content, so its shapes, pictures and text can be edited one by one.
 
 | Version | Commit | Changes |
 | --- | --- | --- |

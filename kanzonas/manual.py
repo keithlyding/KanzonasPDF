@@ -422,7 +422,11 @@ is picked up anywhere inside it.</li>
 become these, and some programs export a whole drawing as one) is selected, moved, resized,
 rotated, deleted and re-stacked as one object, as in Acrobat and PDF-XChange. A group that
 fills the whole page isn't picked by a click (that would grab the sheet whenever you click
-blank paper): drag a selection box around the page to select it.</li>
+blank paper): drag a selection box around the page to select it.
+Right-click a group &gt; <b>Ungroup</b> to take it apart: it looks the same, but its shapes and
+pictures become separate objects you can select one by one, and its text can be changed with
+Edit text. A group holding just one other group (as many programs write them) is taken apart
+in one go; a group with groups inside still has those after one Ungroup.</li>
 <li><b>Several at once:</b> Ctrl+click adds or removes an object, or drag a box from empty space
 to select everything entirely inside it (Ctrl+drag adds to the selection). In CAD drawings one
 "shape" is often many separate lines, so a box is the quickest way to grab it.</li>
@@ -431,7 +435,7 @@ and the page itself changes only when you let go, so a large group stays quick t
 Drag a corner handle to resize it, keeping its proportions
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
 scales its line thickness.</li>
-<li>Delete (or Backspace) deletes the selection. Right-click for Rotate clockwise, Rotate
+<li>Delete (or Backspace) deletes the selection. Right-click for Ungroup (groups), Rotate clockwise, Rotate
 counterclockwise, the stacking order commands and Delete, and, for one picture, Copy picture
 (Ctrl+V pastes it as an image markup) and Save picture as.... Escape deselects.</li>
 <li><b>Stacking order:</b> when the page's own objects cover each other, select one and use
@@ -445,7 +449,7 @@ lands.</li>
 drawing order (text printed over a picture stays on top), their colors and line styles, and
 pictures aren't recompressed, so quality doesn't drop. Ctrl+Z undoes each change.</li>
 <li>Text can't be selected with this tool (use Edit text), and neither can objects inside a grouped
-object (a form XObject) or clipping outlines. On very large drawings, the first click on a page
+object (a form XObject; use Ungroup first) or clipping outlines. On very large drawings, the first click on a page
 takes a moment while the page is read.</li>
 </ul>
 
