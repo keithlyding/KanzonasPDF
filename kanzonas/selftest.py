@@ -53,7 +53,7 @@ def run(log_path):
     # Generous limits so slow build machines pass; they catch real regressions (a heavy
     # library imported at start-up, a render that suddenly takes many seconds...).
     HEAVY = ("rapidocr_onnxruntime", "onnxruntime", "pdf2docx", "ezdxf", "openpyxl", "pptx",
-             "docx", "pyhanko", "cv2", "aiohttp",
+             "docx", "pyhanko", "cv2", "aiohttp", "spellchecker",
              # icons are drawn from the bundled font; loading qtawesome means the font wasn't
              # found (and costs ~0.2 s of start-up)
              "qtawesome", "qtpy")
@@ -796,6 +796,14 @@ def run(log_path):
         assert not missing, "not in the user manual: " + ", ".join(missing)
         return f"({len(manual.sections())} chapters)"
     check("user manual covers every command", t_manual)
+
+    def t_spelling():
+        # the word list is bundled in the exe (--collect-all spellchecker) and American
+        from . import spelling
+        assert spelling.is_known("receive") and spelling.is_known("color")
+        assert not spelling.is_known("recieve") and not spelling.is_known("colour")
+        assert "receive" in spelling.suggestions("recieve")
+    check("spell check", t_spelling)
 
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")

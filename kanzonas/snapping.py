@@ -76,7 +76,7 @@ def markup_points(model):
     if model["kind"] in A.POINTED:
         q = model["points"]
         pts += q
-        closed = model["kind"] in ("polygon", "m_area")
+        closed = model["kind"] in ("polygon",) + A.CLOSED_MEASURES
         segs = list(zip(q, q[1:] + (q[:1] if closed else [])))
         pts += [(a + b) / 2 for a, b in segs]
         return pts

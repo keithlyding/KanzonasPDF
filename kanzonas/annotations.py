@@ -53,6 +53,11 @@ DEFAULTS = {
     "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    "m_angle": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    "m_radius": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    "m_perimeter": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    "m_volume": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "depth": 1.0,
+                 "opacity": 1.0},
     "m_count": {"stroke": "#0050ff", "fontsize": 9, "group": "Count 1", "opacity": 1.0},
     "stamp": {"label": "APPROVED", "stroke": "#c00000", "name": True, "date": True, "opacity": 1.0},
     "line": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
@@ -69,6 +74,8 @@ LABELS = {"addtext": "Add text", "edittext": "Edit text", "highlight": "Highligh
           "ink": "Pen", "polygon": "Polygon", "polyline": "Polyline", "callout": "Callout",
           "stamp": "Stamp", "field": "Form field", "cloud": "Cloud",
           "m_length": "Length", "m_poly": "Polylength", "m_area": "Area", "m_count": "Count",
+          "m_angle": "Angle", "m_radius": "Radius", "m_perimeter": "Perimeter",
+          "m_volume": "Volume",
           "image": "Image", "attach": "Attached file", "redact": "Redaction mark",
           "placeholder": "Signature placeholder"}
 # fonts a text box comment can use: the standard ones every PDF viewer has, so it looks the
@@ -92,14 +99,17 @@ MARKUP = ("highlight", "comment", "underline", "strikeout", "squiggly")
 COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a comment marks text      # tied to text: not movable
 BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "attach", "redact",
          "placeholder")
-MEASURES = ("m_length", "m_poly", "m_area", "m_count")
+MEASURES = ("m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius", "m_perimeter",
+            "m_volume")
+CLOSED_MEASURES = ("m_area", "m_perimeter", "m_volume")      # drawn as a closed outline
 POINTED = ("line", "arrow", "polygon", "polyline") + MEASURES   # geometry = list of points
-VERTEXED = ("polygon", "polyline", "m_poly", "m_area")          # one handle per vertex                           # resizable via a rect
+VERTEXED = ("polygon", "polyline", "m_poly", "m_angle") + CLOSED_MEASURES          # one handle per vertex                           # resizable via a rect
 # Shapes with a "rotation" property (degrees, counterclockwise as seen on screen). Boxes keep
 # their unrotated box and are drawn turned; point-based shapes have their points turned.
 # Text boxes and callouts only turn in 90 degree steps (a PDF text box limitation).
 ROTATABLE = ("rect", "ellipse", "cloud", "polygon", "polyline", "line", "arrow", "ink", "stamp", "image",
-             "m_length", "m_poly", "m_area", "textbox", "callout")
+             "m_length", "m_poly", "m_area", "m_angle", "m_radius", "m_perimeter", "m_volume",
+             "textbox", "callout")
 QUARTER_TURNS = ("textbox", "callout")
 for _k in ROTATABLE:
     DEFAULTS[_k]["rotation"] = 0
@@ -238,9 +248,9 @@ def read(annot):
     geom = stored.get("geom", {})
     if kind in ("line", "arrow"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
-    elif kind in ("polygon", "polyline", "m_poly", "m_area"):
+    elif kind in ("polygon", "polyline", "m_poly", "m_angle") + CLOSED_MEASURES:
         model["points"] = [pymupdf.Point(v) for v in verts]
-    elif kind == "m_length":
+    elif kind in ("m_length", "m_radius"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
     elif kind == "m_count":
         model["points"] = [pymupdf.Point(geom.get("at", annot.rect.tl + (5, 5)))]
@@ -314,7 +324,7 @@ def write(page, model):
     stroke = to_rgb(p.get("stroke"))
     fill = to_rgb(p.get("fill"))
     width = float(p.get("width", 1))
-    if stroke is None and kind in ("textbox", "callout", "rect", "ellipse", "polygon", "m_area"):
+    if stroke is None and kind in ("textbox", "callout", "rect", "ellipse", "polygon") + CLOSED_MEASURES:
         width = 0.0                          # "No border"
     text = model.get("text", "")
 
@@ -340,11 +350,16 @@ def write(page, model):
             a.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, HEADS.get(p.get("head"), HEADS["open"]))
     elif kind == "ink":
         a = page.add_ink_annot([[(q.x, q.y) for q in s] for s in model["strokes"]])
-    elif kind in ("polygon", "m_area"):
+    elif kind in ("polygon",) + CLOSED_MEASURES:
         a = page.add_polygon_annot([(q.x, q.y) for q in model["points"]])
     elif kind == "m_length":
         a = page.add_line_annot(*model["points"][:2])
         a.set_line_ends(pymupdf.PDF_ANNOT_LE_BUTT, pymupdf.PDF_ANNOT_LE_BUTT)
+    elif kind == "m_radius":
+        a = page.add_line_annot(*model["points"][:2])
+        a.set_line_ends(pymupdf.PDF_ANNOT_LE_CIRCLE, pymupdf.PDF_ANNOT_LE_OPEN_ARROW)
+    elif kind == "m_angle":
+        a = page.add_polyline_annot([(q.x, q.y) for q in model["points"]])
     elif kind == "m_poly":
         a = page.add_polyline_annot([(q.x, q.y) for q in model["points"]])
     elif kind == "m_count":
@@ -422,7 +437,7 @@ def write(page, model):
         raise ValueError("unknown annotation kind " + kind)
 
     if kind not in ("textbox", "callout", "stamp", "image", "redact", "placeholder"):
-        if kind in ("rect", "ellipse", "polygon", "m_area"):
+        if kind in ("rect", "ellipse", "polygon") + CLOSED_MEASURES:
             # stroke [] = no outline at all (width 0 alone still draws a hairline)
             a.set_colors(stroke=stroke if stroke else [], fill=fill)
         elif kind == "m_count":
@@ -434,7 +449,7 @@ def write(page, model):
         if kind in ("rect", "ellipse", "polygon") and p.get("cloud"):
             a.set_border(width=width, clouds=2)
         elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline",
-                      "m_length", "m_poly", "m_area"):
+                      "m_length", "m_poly", "m_angle", "m_radius") + CLOSED_MEASURES:
             a.set_border(width=width)
     if p.get("opacity", 1) < 1:
         a.set_opacity(float(p["opacity"]))
@@ -450,7 +465,7 @@ def write(page, model):
             label_text = str(model.get("n", 1))
             info["content"] = f"{p.get('group') or 'Count'} #{model.get('n', 1)}"
         else:
-            label_text = measure.measure_text(kind, model["points"], page)
+            label_text = measure.measure_text(kind, model["points"], page, props=p)
             info["content"] = f"{LABELS[kind]}: " + label_text.replace("\n", ", ")
     if kind == "image":
         info["content"] = text or model.get("filename") or "Image"
@@ -492,6 +507,10 @@ def write(page, model):
         (pymupdf.PDF_ANNOT_IS_HIDDEN if model.get("hidden") else 0)
     if keep:
         a.set_flags((a.flags or 0) | keep)
+    if kind == "m_radius":
+        from . import measure
+        measure.add_circle(page, a, model["points"][0], model["points"][1], stroke or (0, 0, 0),
+                           width)
     if label_text:
         from . import measure
         anchor, lab_angle = measure.label_anchor(kind, model["points"], page)

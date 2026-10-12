@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, Q
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
                                QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit)
-from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from . import __version__, annotations, export, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
@@ -95,6 +94,10 @@ MEASURE_TOOLS = [
     ("m_length", "Length", "Shift+M", "Measure length: drag from point to point (Shift+M)"),
     ("m_poly", "Polylength", "", "Measure along a path: click points, double-click or Enter to finish"),
     ("m_area", "Area", "Shift+A", "Measure area and perimeter: click corners, double-click or Enter (Shift+A)"),
+    ("m_angle", "Angle", "", "Measure an angle: click one end, the corner, then the other end"),
+    ("m_radius", "Radius", "", "Measure a radius and diameter: drag from the center to the edge"),
+    ("m_perimeter", "Perimeter", "", "Measure a perimeter: click corners, double-click or Enter to finish"),
+    ("m_volume", "Volume", "", "Measure volume: click the corners of the area, double-click or Enter; set the depth in Properties"),
     ("m_count", "Count", "Shift+C", "Count: click each item; set the group name in Properties (Shift+C)"),
     ("m_calibrate", "Calibrate Tape Measure", "", "Calibrate Tape Measure: drag along a known dimension, then type its real length"),
 ]
@@ -112,6 +115,12 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
     ("capture", "Ca&pture area", "Shift+P",
      "Capture: drag a box to copy that area; Ctrl+V pastes it here as sharp vector content, "
      "or as a picture into Word or email. Shift+P"),
+    ("link", "&Links", "",
+     "Links: drag a box over what should be clickable, then type a web address or choose a "
+     "page; click a link to change or delete it"),
+    ("crop", "C&rop pages", "",
+     "Crop: drag a box around what to keep, then choose this page or all pages; Pages > "
+     "Remove crop shows the whole page again"),
     ("redact", "&Redact (mark text or area)", "Shift+R",
      "Redact: drag across text, or drag a box over any area; then Apply redactions"),
     ("placeholder", "Add signature &placeholder", "",
@@ -321,6 +330,8 @@ class MainWindow(QMainWindow):
         self.a_undo = self._act("&Undo", lambda: v() and v().undo(), QKeySequence.Undo)
         self.a_redo = self._act("&Redo", lambda: v() and v().redo(), QKeySequence.Redo)
         self.a_find = self._act("&Find", self._focus_search, QKeySequence.Find)
+        self.a_replace = self._act("R&eplace text...", self.replace_text, "Ctrl+H",
+                                   tip="Find text in the page and replace it (Ctrl+H)")
         # clipboard: text, markups, or pages (when the page list has the focus)
         self.a_copy = self._act("&Copy", lambda: self._clipboard("copy"), QKeySequence.Copy,
                                 tip="Copy the selected text, markups, or pages (in the page list)")
@@ -371,9 +382,14 @@ class MainWindow(QMainWindow):
         self.a_combine = self._act("Co&mbine files...", self.combine_files,
                                    tip="Combine several PDFs, in the order you choose, into one "
                                        "new PDF")
+        self.a_from_images = self._act("Create PDF from &images...", self.pdf_from_images,
+                                       tip="Make a PDF from pictures: scans, phone photos "
+                                           "(JPG, PNG, TIFF...), one page each")
         self.a_insert_blank = self._act("Insert &blank page after current",
                                         lambda: self._page_op("blank"))
         self.a_extract = self._act("&Extract pages to new file...", self.extract_pages)
+        self.a_uncrop = self._act("Remove cro&p...", lambda: self._page_op("uncrop"),
+                                  tip="Show the whole page again on this page or all pages")
         self.a_ocr = self._act("Recognize text (&OCR)...", self.ocr,
                                tip="Make scanned pages searchable and selectable")
         self.a_props = self._act("&Properties panel", self._toggle_props, "F6")
@@ -523,6 +539,12 @@ class MainWindow(QMainWindow):
         self.a_markups = self._act("&Markups list", self._toggle_markups, "F7")
         self.a_markups.setCheckable(True)
         self.a_author = self._act("&Author name for markups...", self._set_author)
+        self.a_spell = self._act("Check &spelling", self._toggle_spelling,
+                                 tip="Underline misspelled words while you type in comments, "
+                                     "text boxes and Edit text; right-click one for corrections")
+        self.a_spell.setCheckable(True)
+        from . import spelling
+        self.a_spell.setChecked(spelling.enabled())
         # arrange: align / distribute / stacking order of the selected markups
         self.arrange_actions = {}
         for key, label, sc, fn in (
@@ -623,7 +645,7 @@ class MainWindow(QMainWindow):
         self.recent_menu = m.addMenu("Open &recent")
         self._rebuild_recent()
         m.addActions([self.a_save, self.a_save_as])
-        m.addAction(self.a_combine)
+        m.addActions([self.a_combine, self.a_from_images])
         em = m.addMenu("&Export to")
         em.addActions(self.export_actions)
         m.addAction(self.a_compare)
@@ -640,9 +662,9 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_delete_annot)
         m.addSeparator()
-        m.addAction(self.a_author)
+        m.addActions([self.a_author, self.a_spell])
         m.addSeparator()
-        m.addActions([self.a_find, self.a_find_next, self.a_find_prev])
+        m.addActions([self.a_find, self.a_find_next, self.a_find_prev, self.a_replace])
         m = self.view_menu = mb.addMenu("&View")
         m.addActions([self.a_zoom_in, self.a_zoom_out, self.a_actual, self.a_fit_width,
                       self.a_fit_page])
@@ -735,6 +757,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_copy_pages, self.a_cut_pages, self.a_paste_pages, self.a_dup_pages])
         m.addSeparator()
         m.addActions([self.a_rot_l, self.a_rot_r])
+        m.addActions([self.tool_actions["crop"], self.a_uncrop])
         m.addSeparator()
         m.addActions([self.a_move_up, self.a_move_down, self.a_del_page])
         m.addSeparator()
@@ -1006,7 +1029,8 @@ class MainWindow(QMainWindow):
     def _update_ui(self):
         v = self.view()
         has = v is not None
-        for a in (self.a_save, self.a_save_as, self.a_print, self.a_close, self.a_find,
+        for a in (self.a_save, self.a_save_as, self.a_print, self.a_close,
+                  self.a_find,
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
@@ -1259,46 +1283,13 @@ class MainWindow(QMainWindow):
 
     # ---- printing -----------------------------------------------------------
     def print_doc(self):
+        """File > Print: KanzonasPDF's print window, with a preview of each sheet."""
         v = self.view()
         if not v or not v.require_permission(pymupdf.PDF_PERM_PRINT, "Printing"):
             return
-        printer = QPrinter(QPrinter.HighResolution)
-        printer.setDocName(os.path.basename(v.path))
-        printer.setFromTo(1, v.page_count())
-        dlg = QPrintDialog(printer, self)
-        dlg.setMinMax(1, v.page_count())
-        dlg.setOption(QPrintDialog.PrintPageRange, True)
-        dlg.setOption(QPrintDialog.PrintCurrentPage, True)
-        if dlg.exec() != QPrintDialog.Accepted:
-            return
-        if printer.printRange() == QPrinter.CurrentPage:
-            pages = [v.current_page()]
-        elif printer.printRange() == QPrinter.PageRange:
-            pages = list(range(printer.fromPage() - 1, printer.toPage()))
-        else:
-            pages = list(range(v.page_count()))
-        dpi = min(printer.resolution(), 300 if v.allowed(pymupdf.PDF_PERM_PRINT_HQ) else 150)
-        painter = QPainter()
-        if not painter.begin(printer):
-            QMessageBox.critical(self, "Print", "Could not start printing.")
-            return
-        self.statusBar().showMessage("Printing...")
-        try:
-            for n, i in enumerate(pages):
-                if n:
-                    printer.newPage()
-                pm = v.doc[i].get_pixmap(dpi=dpi, annots=True)
-                img = QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
-                area = painter.viewport()
-                size = img.size().scaled(area.size(), Qt.KeepAspectRatio)
-                painter.setViewport(area.x(), area.y(), size.width(), size.height())
-                painter.setWindow(img.rect())
-                painter.drawImage(0, 0, img)
-                painter.setViewport(area)
-                painter.setWindow(area)
-        finally:
-            painter.end()
-        self.statusBar().showMessage("Sent to printer", 4000)
+        from .print_dialog import PrintDialog
+        if PrintDialog(self, v).exec():
+            self.statusBar().showMessage("Sent to printer", 4000)
 
     # ---- tools / search / pages --------------------------------------------
     def set_tool(self, tool):
@@ -1452,6 +1443,10 @@ class MainWindow(QMainWindow):
             v.move_page(cur, arg)
         elif op == "blank":
             v.insert_blank(cur + 1)
+        elif op == "uncrop":
+            scope = v._ask_pages_scope("Remove crop", "Remove the crop from which pages?")
+            if scope is not None:
+                v.remove_crop(cur, scope == "all")
 
     def combine_files(self):
         from .combine import CombineDialog
@@ -1464,6 +1459,18 @@ class MainWindow(QMainWindow):
         if dlg.exec() and dlg.result_path:
             self.open_file(dlg.result_path)
             self.statusBar().showMessage("Combined into " + dlg.result_path, 5000)
+
+    def pdf_from_images(self):
+        from .combine import CombineDialog, IMAGE_FILTER
+        start = self.settings.value("last_dir", "")
+        paths, _ = QFileDialog.getOpenFileNames(self, "Create PDF from images", start,
+                                                IMAGE_FILTER)
+        if not paths:
+            return
+        dlg = CombineDialog(self, os.path.dirname(paths[0]), paths, images=True)
+        if dlg.exec() and dlg.result_path:
+            self.open_file(dlg.result_path)
+            self.statusBar().showMessage("Created " + dlg.result_path, 5000)
 
     def insert_from_file(self):
         v = self.view()
@@ -2543,6 +2550,18 @@ class MainWindow(QMainWindow):
             v.check_digital_signatures()
 
     # ---- compare --------------------------------------------------------------------
+    def _toggle_spelling(self, on):
+        from . import spelling
+        spelling.set_enabled(on)
+
+    def replace_text(self):
+        from .replace_dialog import ReplaceDialog
+        v = self.view()
+        if not v:
+            return
+        sel = (v.selected_text() or "").strip().split("\n")[0]
+        ReplaceDialog(self, v, sel).exec()
+
     def compare_documents(self):
         from . import compare
         v = self.view()
@@ -3002,7 +3021,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": "Apply selected", "a_apply_redact": "Apply all",
         "a_security": "Security", "a_remove_security": "Remove security", "a_unlock": "Unlock",
         "a_sanitize": "Sanitize", "a_hl_fields": "Highlight fields", "a_move_up": "Move up",
-        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_combine": "Combine files",
+        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_combine": "Combine files", "a_from_images": "From images",
         "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
         "a_watermark": "Watermark", "a_background": "Background",
         "a_remove_bg": "Remove background", "a_remove_wm": "Remove watermarks", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
@@ -3017,6 +3036,7 @@ class MainWindow(QMainWindow):
         "z_forward": "Forward", "z_backward": "Backward", "z_back": "To back",
         "tool_redact": "Redact", "tool_placeholder": "Placeholder",
         "tool_erasecontent": "Erase content", "tool_capture": "Capture",
+        "tool_crop": "Crop", "a_uncrop": "Remove crop", "tool_link": "Links",
         "tool_editobjects": "Edit objects", "tool_addtext": "Add text",
     }
     RIBBON_ICONS = {
@@ -3037,7 +3057,8 @@ class MainWindow(QMainWindow):
         "a_move_up": "arrow-up-bold-outline", "a_move_down": "arrow-down-bold-outline",
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
         "a_combine": "file-document-multiple-outline",
-        "a_insert_blank": "file-outline", "a_extract": "file-export-outline",
+        "a_insert_blank": "file-outline", "a_uncrop": "crop-free",
+        "a_from_images": "file-image-outline", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
         "a_remove_bg": "format-color-marker-cancel", "a_remove_wm": "water-off-outline",
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
@@ -3073,7 +3094,7 @@ class MainWindow(QMainWindow):
                                 t["erasecontent"]]),
             ("Mark up text", "small", [t["highlight"], t["underline"], t["strikeout"],
                                        t["comment"], t["note"], t["textbox"]]),
-            ("Insert", "large", [t["stamp"], t["image"], t["attach"]]),
+            ("Insert", "large", [t["stamp"], t["image"], t["attach"], t["link"]]),
             ("Zoom", "small", [self.a_fit_width, self.a_fit_page, self.a_actual,
                                self.a_zoom_in, self.a_zoom_out, self.a_cad_mouse]),
             ("Sign", "large", [t["signature"], t["initials"]]),
@@ -3094,6 +3115,7 @@ class MainWindow(QMainWindow):
                       self.a_grid_settings]
         r.add_tab("Measure", [
             ("Measure", "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
+            ("More", "small", [t["m_angle"], t["m_radius"], t["m_perimeter"], t["m_volume"]]),
             ("Scale", "small", [t["m_calibrate"], self.a_set_scale, self.a_measure_summary]),
             ("Grid & snap", "small", snap_group),
         ])
@@ -3128,9 +3150,10 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab("Pages", [
             ("Rotate", "large", [self.a_rot_l, self.a_rot_r]),
+            ("Crop", "large", [t["crop"], self.a_uncrop]),
             ("Organize", "small", [self.a_move_up, self.a_move_down, self.a_del_page,
                                    self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
-            ("Combine", "large", [self.a_combine]),
+            ("Combine", "large", [self.a_combine, self.a_from_images]),
             ("Document", "small", [self.a_header, self.a_watermark, self.a_background,
                                    self.a_bookmarks, self.a_attachments, self.a_compress,
                                    self.a_compare]),

@@ -30,6 +30,13 @@ names and dates), not at their colors or shapes, so redacting a word like "fill"
 delete unrelated markups. Newly protected documents are excluded from automatic backups,
 and an existing recovery copy is removed when protection is added. Each recovery copy has
 its own unique identity, even for files with the same name.</p>
+<p><b>Print</b> (File menu, toolbar, Ctrl+P) opens KanzonasPDF's print window with a preview
+of each sheet as it will print: pick the printer and copies, which pages (All, Current page,
+or a list such as 1-3, 5), the orientation (Auto turns each sheet to fit its page), the size
+(Fit to paper, or Actual size, which only shrinks pages that are too big) and whether markups
+and form fields print. <b>Page setup...</b> sets the paper size and margins. Use the arrows
+under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
+rendered a strip at a time so even large drawings print sharp without using much memory.</p>
 <p>Copying, extracting and exporting require copying permission; Print requires printing
 permission and uses at most 150 dpi when high-quality printing is forbidden. Form filling
 and adding markups honor their separate permissions. Flattening selected pages preserves
@@ -134,6 +141,11 @@ link to another kind of file asks before opening it, and only common documents, 
 media and drawings are opened (links that would start a program, a script or a file with
 macros are refused). A link to a file on another computer (a network share) asks first, because
 opening it sends your Windows sign-in to that computer.</li>
+<li><b>Adding links:</b> the <b>Links</b> tool (Home tab &gt; Insert, Tools menu) draws the
+page's links as blue dashed boxes. Drag a box over what should be clickable, then type a web
+address or e-mail address (www.example.com is fine; https:// is added) or choose a page in this
+document. Click an existing link with the tool to change where it goes or to <b>Delete link</b>.
+Ctrl+Z undoes it.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). <b>Shift+wheel</b> always scrolls left and right, including when CAD-style
 mouse is off and when one wheel step would otherwise turn the page. Shift+Left/Right scrolls
@@ -156,6 +168,12 @@ The search starts at the page you're on and shows the first match as soon as it 
 long documents it keeps searching the rest in the background (the status bar shows "Match 3
 of 120+" and how many pages are done) while you keep working. Changing the text or editing
 the document starts a fresh search.</li>
+<li><b>Replace text...</b> (Edit menu, Ctrl+H): type what to find and what to replace it with,
+tick <b>Match case</b> or <b>Whole words only</b> if needed, choose <b>All pages</b> or this
+page, and click <b>Replace all</b>. It changes the PDF's own text (not comments). Each line
+that changes is rewritten like Edit text does it, in the line's own font when that has the
+characters. Pages with redaction marks that aren't applied yet are skipped (it says which).
+Ctrl+Z undoes the whole replacement.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.
 It's for looking only: make changes in the main view.</li>
 </ul>
@@ -227,6 +245,12 @@ the page, use <b>Add text</b> (below).</li>
 <li><b>Callout</b> (K): press on the point you're pointing at, drag to where the text goes.</li>
 <li><b>Author name:</b> Edit &gt; Author name for markups. It's recorded on your markups and
 printed on stamps.</li>
+<li><b>Check spelling</b> (Edit menu, on at first): while you type a comment, a text box, a
+form field with several lines, or with Edit text and Add text, misspelled words get a red
+wavy underline (American English). Right-click one for corrections, or <b>Add to
+dictionary</b> to stop flagging it (your words are remembered). Abbreviations in capitals
+(HVAC) and names with capitals inside (KanzonasPDF) aren't flagged. Click Check spelling again
+to turn it off.</li>
 </ul>
 
 <h2 id="review">Reviewing comments (Review menu)</h2>
@@ -415,7 +439,11 @@ is picked up anywhere inside it.</li>
 become these, and some programs export a whole drawing as one) is selected, moved, resized,
 rotated, deleted and re-stacked as one object, as in Acrobat and PDF-XChange. A group that
 fills the whole page isn't picked by a click (that would grab the sheet whenever you click
-blank paper): drag a selection box around the page to select it.</li>
+blank paper): drag a selection box around the page to select it.
+Right-click a group &gt; <b>Ungroup</b> to take it apart: it looks the same, but its shapes and
+pictures become separate objects you can select one by one, and its text can be changed with
+Edit text. A group holding just one other group (as many programs write them) is taken apart
+in one go; a group with groups inside still has those after one Ungroup.</li>
 <li><b>Several at once:</b> Ctrl+click adds or removes an object, or drag a box from empty space
 to select everything entirely inside it (Ctrl+drag adds to the selection). In CAD drawings one
 "shape" is often many separate lines, so a box is the quickest way to grab it.</li>
@@ -424,7 +452,7 @@ and the page itself changes only when you let go, so a large group stays quick t
 Drag a corner handle to resize it, keeping its proportions
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
 scales its line thickness.</li>
-<li>Delete (or Backspace) deletes the selection. Right-click for Rotate clockwise, Rotate
+<li>Delete (or Backspace) deletes the selection. Right-click for Ungroup (groups), Rotate clockwise, Rotate
 counterclockwise, the stacking order commands and Delete, and, for one picture, Copy picture
 (Ctrl+V pastes it as an image markup) and Save picture as.... Escape deselects.</li>
 <li><b>Stacking order:</b> when the page's own objects cover each other, select one and use
@@ -438,7 +466,7 @@ lands.</li>
 drawing order (text printed over a picture stays on top), their colors and line styles, and
 pictures aren't recompressed, so quality doesn't drop. Ctrl+Z undoes each change.</li>
 <li>Text can't be selected with this tool (use Edit text), and neither can objects inside a grouped
-object (a form XObject) or clipping outlines. On very large drawings, the first click on a page
+object (a form XObject; use Ungroup first) or clipping outlines. On very large drawings, the first click on a page
 takes a moment while the page is read.</li>
 </ul>
 
@@ -458,7 +486,9 @@ clicked, and the line gets a dashed outline with handles, like a selected object
 change; drag the outline to move the text, drag a handle to change the width the text wraps
 to (the letters keep their size). Press Enter (or click elsewhere)
 to finish, Shift+Enter to start a new line, Escape to cancel. Saving, closing the document,
-Undo or a page change also finish an edit in progress, so typed text is never lost.</li>
+Undo or a page change also finish an edit in progress, so typed text is never lost.
+Sideways text (turned on the page, or on a rotated page) opens in an upright box over the
+middle of the line so it's easy to type; the text stays turned on the page when you finish.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
@@ -479,12 +509,25 @@ or <b>Calibrate Tape Measure</b>: drag along a known dimension and type its real
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
 <b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
 the scale.</li>
+<li>More measurements (Measure tab, "More" group, and the Measure menu):
+<b>Angle</b>: click one end, the corner, then the other end; it shows the angle in degrees.
+<b>Radius</b>: drag from the center of a circle to its edge; it draws the circle and shows the
+radius (R) and diameter (&Oslash;).
+<b>Perimeter</b>: click the corners, double-click or press Enter; it shows the distance around.
+<b>Volume</b>: click the corners of the area, double-click or press Enter; it shows area
+&times; depth. Set the <b>Depth</b> in the Properties panel, in the page's scale unit (feet
+when the scale is in feet and inches); changing it updates the selected measurement.</li>
 <li><b>Measurement summary</b> totals everything and exports to CSV.</li>
 </ul>
 
 <h2 id="pages">Pages</h2>
 <ul>
 <li><b>Rotate page left / Rotate page right:</b> Ctrl+Shift+Minus / Ctrl+Shift+Plus.</li>
+<li><b>Crop pages</b> (Pages menu, Pages tab, Tools menu): drag a box around what to keep, then
+choose <b>This page</b> or <b>All pages</b> (on other pages the same box is measured from their
+top left corner). Only the visible area changes; nothing is deleted, so <b>Remove crop...</b>
+(Pages menu, Pages tab) shows the whole page again, on this page or all pages. Ctrl+Z undoes
+either.</li>
 <li><b>Page list size:</b> drag the Pages panel's edge to make it as narrow as you like; the
 thumbnails shrink to fit (the lock button then just reads Locked / Unlocked). Tabs that don't fit
 scroll sideways.</li>
@@ -502,6 +545,13 @@ set the order, top to bottom. With "Add a bookmark for each file" ticked, each f
 bookmark named after it and keeps its own bookmarks underneath. Click Combine..., choose a name,
 and the combined PDF opens. Password-protected files ask for their password. The original files
 aren't changed.</li>
+<li>Combine files also takes pictures (JPG, PNG, TIFF, BMP, GIF, WebP): each becomes a page.
+<b>Create PDF from images...</b> (File menu, Pages tab) starts with pictures: choose them, put
+them in order and click Create.... With "Put each picture on a Letter page" ticked (the
+default), each picture is fitted on a Letter page turned to suit it (landscape for wide
+pictures); untick it to make each page the picture's own size. Phone photos come out upright,
+JPEG photos aren't recompressed (no quality loss), and each page of a multi-page TIFF scan
+becomes a page.</li>
 <li>Pages menu: Insert pages from file, Insert blank page after current, Extract pages to new
 file, Delete page.</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
@@ -619,8 +669,13 @@ marks areas; Apply redactions permanently removes what's underneath. A vector pa
 touches a mark is removed past the box. Applying scrubs metadata, attachments, hidden text,
 and scripts unless you turn that off. Check the result before sharing.</li>
 <li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
-<b>Compress (save a smaller copy)</b>, <b>Compare documents</b> (changes clouded in red and
-blue), <b>Flatten</b> (make markups part of the page).</li>
+<b>Compress (save a smaller copy)</b>, <b>Compare documents</b>, <b>Flatten</b> (make markups part of the page).</li>
+<li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision; a new
+document overlays the two on each page: red = only in the earlier one, blue = only in this
+one, gray = unchanged, with each changed area clouded and listed in the Markups list. If the
+drawing moved on the sheet between revisions (re-plotted with a different margin, say), the
+pages are lined up first, so only real changes show; the top of the page says how far it
+moved.</li>
 <li><b>Remove watermarks...</b> (Document menu): takes watermarks off the current page, all
 pages or pages such as 1-3, 7. It finds watermarks added with Document &gt; Watermark and those
 added by apps that mark them as watermarks (Adobe Acrobat, PDF-XChange and others), and
@@ -689,6 +744,7 @@ settings...).</li>
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text</td></tr>
+<tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>
 <tr><td>Ctrl+K</td><td>Preferences</td></tr>
 <tr><td>Ctrl+;</td><td>Date (today's date where you click)</td></tr>
@@ -721,6 +777,7 @@ settings...).</li>
 <tr><td>Ctrl+Shift+Up / Down</td><td>Move page</td></tr>
 <tr><td>Ctrl+2 / Ctrl+0 / Ctrl+1</td><td>Fit width / fit page / actual size</td></tr>
 <tr><td>Ctrl+F, F3, Shift+F3</td><td>Find, next, previous</td></tr>
+<tr><td>Ctrl+H</td><td>Replace text</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>

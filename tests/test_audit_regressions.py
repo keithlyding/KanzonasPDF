@@ -167,7 +167,7 @@ class AuditRegressions(unittest.TestCase):
         v = self.document('no-print', 0)
         class Window:
             def view(self): return v
-        with patch('kanzonas.main_window.QPrintDialog') as dialog:
+        with patch('kanzonas.print_dialog.PrintDialog') as dialog:
             MainWindow.print_doc(Window())
             dialog.assert_not_called()
 

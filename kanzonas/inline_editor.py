@@ -47,6 +47,8 @@ class InlineEditor(QFrame):
         # white like the page, so the line reads as edited in place (it covers the old text)
         self.text.setStyleSheet("background: white;")
         self.text.installEventFilter(self)
+        from . import spelling
+        spelling.install(self.text)
         lay.addWidget(self.text)
         self.setFocusPolicy(Qt.ClickFocus)
         self.setFocusProxy(self.text)
