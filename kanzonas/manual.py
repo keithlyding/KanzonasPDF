@@ -498,6 +498,11 @@ the scale.</li>
 <h2 id="pages">Pages</h2>
 <ul>
 <li><b>Rotate page left / Rotate page right:</b> Ctrl+Shift+Minus / Ctrl+Shift+Plus.</li>
+<li><b>Crop pages</b> (Pages menu, Pages tab, Tools menu): drag a box around what to keep, then
+choose <b>This page</b> or <b>All pages</b> (on other pages the same box is measured from their
+top left corner). Only the visible area changes; nothing is deleted, so <b>Remove crop...</b>
+(Pages menu, Pages tab) shows the whole page again, on this page or all pages. Ctrl+Z undoes
+either.</li>
 <li><b>Page list size:</b> drag the Pages panel's edge to make it as narrow as you like; the
 thumbnails shrink to fit (the lock button then just reads Locked / Unlocked). Tabs that don't fit
 scroll sideways.</li>

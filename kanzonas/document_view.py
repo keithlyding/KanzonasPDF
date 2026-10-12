@@ -1598,11 +1598,15 @@ class DocumentView(QScrollArea):
             self.statusMessage.emit(f"Erased {len(xrefs)} annotation(s)")
             return
         props = self.tool_props(tool)
-        if tool in ("erasecontent", "capture"):
+        if tool in ("erasecontent", "capture", "crop"):
             if is_click or rect.width < 2 or rect.height < 2:
                 self.statusMessage.emit("Drag a box around the area")
                 return
-            if tool == "capture":
+            if tool == "crop":
+                scope = self._ask_pages_scope("Crop pages", "Crop to this box on which pages?")
+                if scope is not None:
+                    self.crop_pages(index, rect, scope == "all")
+            elif tool == "capture":
                 self.capture_area(index, rect)
             else:
                 self.erase_content(index, rect)
@@ -4080,6 +4084,46 @@ class DocumentView(QScrollArea):
     def rotate_page(self, index, delta):
         page = self.doc[index]
         self.modify(lambda: page.set_rotation((page.rotation + delta) % 360), structural=True)
+
+    def _ask_pages_scope(self, title, question):
+        """"this", "all" or None (canceled)."""
+        box = QMessageBox(QMessageBox.Question, title, question, parent=self)
+        this = box.addButton("This page", QMessageBox.AcceptRole)
+        every = box.addButton("All pages", QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        box.exec()
+        return {this: "this", every: "all"}.get(box.clickedButton())
+
+    def crop_pages(self, index, rect, all_pages=False):
+        """Crop page index (or every page) to rect, given in page index's unrotated page
+        coordinates. Only the visible area changes (the crop box): Remove crop brings the
+        rest back. On other pages the same box is used, measured from their own top left."""
+        rect = pymupdf.Rect(rect).normalize()
+        targets = range(self.doc.page_count) if all_pages else [index]
+
+        def do():
+            for i in targets:
+                page = self.doc[i]
+                cb = page.cropbox
+                box = (rect + (cb.x0, cb.y0, cb.x0, cb.y0)) & page.mediabox
+                if box.width >= 2 and box.height >= 2:
+                    page.set_cropbox(box)
+        self.modify(do, structural=True)
+        self.statusMessage.emit("Cropped (Ctrl+Z undoes it; Pages > Remove crop shows the "
+                                "whole page again)")
+
+    def remove_crop(self, index, all_pages=False):
+        targets = range(self.doc.page_count) if all_pages else [index]
+        if not any(self.doc[i].cropbox != self.doc[i].mediabox for i in targets):
+            self.statusMessage.emit("Not cropped")
+            return
+
+        def do():
+            for i in targets:
+                page = self.doc[i]
+                page.set_cropbox(page.mediabox)
+        self.modify(do, structural=True)
+        self.statusMessage.emit("Crop removed")
 
     def delete_page(self, index):
         if self.doc.page_count <= 1:
