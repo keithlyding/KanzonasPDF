@@ -327,6 +327,8 @@ class MainWindow(QMainWindow):
         self.a_undo = self._act("&Undo", lambda: v() and v().undo(), QKeySequence.Undo)
         self.a_redo = self._act("&Redo", lambda: v() and v().redo(), QKeySequence.Redo)
         self.a_find = self._act("&Find", self._focus_search, QKeySequence.Find)
+        self.a_replace = self._act("R&eplace text...", self.replace_text, "Ctrl+H",
+                                   tip="Find text in the page and replace it (Ctrl+H)")
         # clipboard: text, markups, or pages (when the page list has the focus)
         self.a_copy = self._act("&Copy", lambda: self._clipboard("copy"), QKeySequence.Copy,
                                 tip="Copy the selected text, markups, or pages (in the page list)")
@@ -650,7 +652,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_author)
         m.addSeparator()
-        m.addActions([self.a_find, self.a_find_next, self.a_find_prev])
+        m.addActions([self.a_find, self.a_find_next, self.a_find_prev, self.a_replace])
         m = self.view_menu = mb.addMenu("&View")
         m.addActions([self.a_zoom_in, self.a_zoom_out, self.a_actual, self.a_fit_width,
                       self.a_fit_page])
@@ -2524,6 +2526,14 @@ class MainWindow(QMainWindow):
             v.check_digital_signatures()
 
     # ---- compare --------------------------------------------------------------------
+    def replace_text(self):
+        from .replace_dialog import ReplaceDialog
+        v = self.view()
+        if not v:
+            return
+        sel = (v.selected_text() or "").strip().split("\n")[0]
+        ReplaceDialog(self, v, sel).exec()
+
     def compare_documents(self):
         from . import compare
         v = self.view()

@@ -163,6 +163,12 @@ The search starts at the page you're on and shows the first match as soon as it 
 long documents it keeps searching the rest in the background (the status bar shows "Match 3
 of 120+" and how many pages are done) while you keep working. Changing the text or editing
 the document starts a fresh search.</li>
+<li><b>Replace text...</b> (Edit menu, Ctrl+H): type what to find and what to replace it with,
+tick <b>Match case</b> or <b>Whole words only</b> if needed, choose <b>All pages</b> or this
+page, and click <b>Replace all</b>. It changes the PDF's own text (not comments). Each line
+that changes is rewritten like Edit text does it, in the line's own font when that has the
+characters. Pages with redaction marks that aren't applied yet are skipped (it says which).
+Ctrl+Z undoes the whole replacement.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.
 It's for looking only: make changes in the main view.</li>
 </ul>
@@ -753,6 +759,7 @@ settings...).</li>
 <tr><td>Ctrl+Shift+Up / Down</td><td>Move page</td></tr>
 <tr><td>Ctrl+2 / Ctrl+0 / Ctrl+1</td><td>Fit width / fit page / actual size</td></tr>
 <tr><td>Ctrl+F, F3, Shift+F3</td><td>Find, next, previous</td></tr>
+<tr><td>Ctrl+H</td><td>Replace text</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>

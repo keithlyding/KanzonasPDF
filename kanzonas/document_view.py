@@ -2679,6 +2679,47 @@ class DocumentView(QScrollArea):
         ed.committed.connect(done)
         ed.canceled.connect(lambda: setattr(self, "_inline", None))
 
+    def replace_text(self, find, repl, match_case=False, whole_words=False, pages=None):
+        """Replace find with repl in the page text (pages: indices, None = all) as one undo
+        step. Returns (matches replaced, lines rewritten, pages skipped because they have
+        pending redaction marks)."""
+        from .replace_dialog import pattern
+        self.commit_pending()
+        if not find or not self.allowed(pymupdf.PDF_PERM_MODIFY):
+            if find:
+                self.modify(lambda: None, [])       # says why it's not allowed
+            return 0, 0, []
+        rx = pattern(find, match_case, whole_words)
+        todo, skipped = {}, []
+        for i in (range(self.doc.page_count) if pages is None else pages):
+            page = self.doc[i]
+            if not rx.search(re.sub(r"\s+", " ", page.get_text())):
+                continue                # quick test before reading the page's lines
+            hits = [(line, text_edit.line_text(line)) for _r, line in self._lines(i)]
+            hits = [(line, t) for line, t in hits if rx.search(t)]
+            if not hits:
+                continue
+            if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in page.annots()):
+                skipped.append(i)
+                continue
+            todo[i] = hits
+        if not todo:
+            return 0, 0, skipped
+        count = {"found": 0, "lines": 0}
+
+        def do():
+            for i, hits in todo.items():
+                page = self.doc[i]
+                for line, text in hits:
+                    new, n = rx.subn(lambda _m: repl, text)
+                    text_edit.replace_line(page, line, new)
+                    count["found"] += n
+                    count["lines"] += 1
+        self.modify(do, list(todo))
+        self._fonts_added = True
+        self.statusMessage.emit(f"Replaced {count['found']} (Ctrl+Z undoes it)")
+        return count["found"], count["lines"], skipped
+
     def _markups_on_line(self, page, line):
         """xrefs of text markups (highlight, underline, comments...) and sticky notes sitting
         on this line of text: they travel with it when the text is moved."""
