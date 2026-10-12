@@ -141,6 +141,11 @@ link to another kind of file asks before opening it, and only common documents, 
 media and drawings are opened (links that would start a program, a script or a file with
 macros are refused). A link to a file on another computer (a network share) asks first, because
 opening it sends your Windows sign-in to that computer.</li>
+<li><b>Adding links:</b> the <b>Links</b> tool (Home tab &gt; Insert, Tools menu) draws the
+page's links as blue dashed boxes. Drag a box over what should be clickable, then type a web
+address or e-mail address (www.example.com is fine; https:// is added) or choose a page in this
+document. Click an existing link with the tool to change where it goes or to <b>Delete link</b>.
+Ctrl+Z undoes it.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). <b>Shift+wheel</b> always scrolls left and right, including when CAD-style
 mouse is off and when one wheel step would otherwise turn the page. Shift+Left/Right scrolls

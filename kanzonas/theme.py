@@ -34,7 +34,7 @@ ICONS = {
     "rect": "rectangle-outline", "ellipse": "ellipse-outline", "cloud": "cloud-outline",
     "polygon": "vector-polygon", "line": "vector-line", "arrow": "arrow-top-right",
     "polyline": "vector-polyline", "ink": "draw", "stamp": "stamper", "eraser": "eraser",
-    "erasecontent": "eraser-variant", "capture": "camera-outline", "crop": "crop",
+    "erasecontent": "eraser-variant", "capture": "camera-outline", "crop": "crop", "link": "link-variant",
     "editobjects": "image-edit-outline", "addtext": "format-text-variant-outline",
     "signature": "signature-freehand", "initials": "signature-text", "date": "calendar-today",
     "m_length": "ruler", "m_poly": "vector-polyline-edit", "m_area": "texture-box",

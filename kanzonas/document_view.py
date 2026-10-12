@@ -1598,6 +1598,17 @@ class DocumentView(QScrollArea):
             self.statusMessage.emit(f"Erased {len(xrefs)} annotation(s)")
             return
         props = self.tool_props(tool)
+        if tool == "link":
+            if is_click or rect.width < 4 or rect.height < 4:
+                ln = self.link_at(index, a)
+                if ln is not None:
+                    self.edit_link(index, ln)
+                else:
+                    self.statusMessage.emit("Drag a box over what should be clickable, or "
+                                            "click a link to change it")
+                return
+            self.add_link(index, rect)
+            return
         if tool in ("erasecontent", "capture", "crop"):
             if is_click or rect.width < 2 or rect.height < 2:
                 self.statusMessage.emit("Drag a box around the area")
@@ -1920,6 +1931,52 @@ class DocumentView(QScrollArea):
             return
         if k in (pymupdf.LINK_GOTOR, pymupdf.LINK_LAUNCH):
             self._open_linked_file(link.get("file") or "", link.get("page", -1))
+
+    def _ask_link(self, current=None):
+        from .link_dialog import LinkDialog
+        dlg = LinkDialog(self, self.doc.page_count, current)
+        return dlg.result_value if dlg.exec() else None
+
+    @staticmethod
+    def _link_dict(rect, target):
+        if target[0] == "page":
+            return {"kind": pymupdf.LINK_GOTO, "from": rect, "page": target[1],
+                    "to": pymupdf.Point(0, 0)}
+        return {"kind": pymupdf.LINK_URI, "from": rect, "uri": target[1]}
+
+    def add_link(self, index, rect, target=None):
+        """Links tool: make rect (unrotated page coordinates) clickable. target: ("uri",
+        address) or ("page", index); asked for when None."""
+        target = target or self._ask_link()
+        if not target or target[0] == "delete":
+            return
+        self.modify(lambda: self.doc[index].insert_link(
+            self._link_dict(pymupdf.Rect(rect).normalize(), target)), [index],
+            permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.statusMessage.emit("Link added (Ctrl+Z undoes it)")
+
+    def edit_link(self, index, link, target=None):
+        """Change where a link goes, or delete it (target ("delete",))."""
+        k = link.get("kind")
+        current = (("page", link.get("page", 0)) if k == pymupdf.LINK_GOTO
+                   else ("uri", link.get("uri") or ""))
+        target = target or self._ask_link(current)
+        if not target:
+            return
+        page_rect = pymupdf.Rect(link["from"]) * self.doc[index].derotation_matrix
+        xref = link.get("xref")
+
+        def do():
+            page = self.doc[index]
+            old = [ln for ln in page.get_links() if ln.get("xref") == xref]
+            if not old:
+                raise ValueError("The link is no longer on the page.")
+            page.delete_link(old[0])
+            if target[0] != "delete":
+                page.insert_link(self._link_dict(page_rect, target))
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.statusMessage.emit(("Link deleted" if target[0] == "delete" else "Link changed")
+                                + " (Ctrl+Z undoes it)")
 
     def _confirm_web(self, uri):
         from PySide6.QtWidgets import QCheckBox

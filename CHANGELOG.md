@@ -15,6 +15,7 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 - Compare documents lines up a revision whose drawing moved on the sheet, so only real changes are clouded instead of every line.
 - Edit > Replace text (Ctrl+H): find and replace the PDF's own text on this page or all pages, with match case and whole words; one Ctrl+Z undoes it.
 - File > Create PDF from images, and Combine files now takes pictures too (JPG, PNG, TIFF, WebP...): one page each, on Letter pages or at the picture's own size; phone photos upright, JPEGs not recompressed.
+- Links tool: drag a box to link to a web address, e-mail address or page; click a link with the tool to change or delete it.
 
 | Version | Commit | Changes |
 | --- | --- | --- |

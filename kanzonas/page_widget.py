@@ -16,7 +16,7 @@ from . import annotations as A
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
                "m_length", "m_calibrate", "m_radius", "image", "placeholder", "erasecontent",
-               "capture", "crop"}
+               "capture", "crop", "link"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume"}
 # While one of these drawing tools is active, clicking an existing markup selects it for
 # moving / resizing / restyling (like the Select tool) instead of starting a new one.
@@ -34,7 +34,7 @@ TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
 ROT_GAP = 26        # rotation handle distance above the selection, px
 # tools whose points snap (to the grid / to objects) while drawing
-SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "crop"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach"}
+SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "crop", "link"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "m_radius", "callout"}   # Shift = 45° steps
 SQUARE_TOOLS = {"rect", "ellipse", "cloud"}                               # Shift = square / circle
 
@@ -347,6 +347,14 @@ class PageWidget(QWidget):
 
         if tool == "editobjects":
             self._paint_objects(p, page)
+        if tool == "link":
+            # the page's links, outlined so they can be found and clicked to change them
+            p.setPen(QPen(QColor(0, 90, 220), 1, Qt.DashLine))
+            p.setBrush(QColor(0, 90, 220, 28))
+            z = self.view.zoom
+            for r, _ln in self.view.links(self.index):
+                p.drawRect(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z))
+            p.setBrush(Qt.NoBrush)
 
         tm = self._text_move
         if tm is not None and tm["now"] is not None and tm["pix"] is not None:

@@ -115,6 +115,9 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
     ("capture", "Ca&pture area", "Shift+P",
      "Capture: drag a box to copy that area; Ctrl+V pastes it here as sharp vector content, "
      "or as a picture into Word or email. Shift+P"),
+    ("link", "&Links", "",
+     "Links: drag a box over what should be clickable, then type a web address or choose a "
+     "page; click a link to change or delete it"),
     ("crop", "C&rop pages", "",
      "Crop: drag a box around what to keep, then choose this page or all pages; Pages > "
      "Remove crop shows the whole page again"),
@@ -3023,7 +3026,7 @@ class MainWindow(QMainWindow):
         "z_forward": "Forward", "z_backward": "Backward", "z_back": "To back",
         "tool_redact": "Redact", "tool_placeholder": "Placeholder",
         "tool_erasecontent": "Erase content", "tool_capture": "Capture",
-        "tool_crop": "Crop", "a_uncrop": "Remove crop",
+        "tool_crop": "Crop", "a_uncrop": "Remove crop", "tool_link": "Links",
         "tool_editobjects": "Edit objects", "tool_addtext": "Add text",
     }
     RIBBON_ICONS = {
@@ -3081,7 +3084,7 @@ class MainWindow(QMainWindow):
                                 t["erasecontent"]]),
             ("Mark up text", "small", [t["highlight"], t["underline"], t["strikeout"],
                                        t["comment"], t["note"], t["textbox"]]),
-            ("Insert", "large", [t["stamp"], t["image"], t["attach"]]),
+            ("Insert", "large", [t["stamp"], t["image"], t["attach"], t["link"]]),
             ("Zoom", "small", [self.a_fit_width, self.a_fit_page, self.a_actual,
                                self.a_zoom_in, self.a_zoom_out, self.a_cad_mouse]),
             ("Sign", "large", [t["signature"], t["initials"]]),
