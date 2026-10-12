@@ -12,6 +12,7 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 - Edit objects: right-click a group > Ungroup turns it into ordinary page content, so its shapes, pictures and text can be edited one by one.
 - Crop pages (Pages menu and tab): drag a box, crop this page or all pages; Remove crop shows the whole page again.
 - New measurements: Angle, Radius (with diameter), Perimeter and Volume (area × depth, depth set in Properties); they're included in the measurement summary.
+- Compare documents lines up a revision whose drawing moved on the sheet, so only real changes are clouded instead of every line.
 
 | Version | Commit | Changes |
 | --- | --- | --- |

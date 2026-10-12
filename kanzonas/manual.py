@@ -645,8 +645,13 @@ marks areas; Apply redactions permanently removes what's underneath. A vector pa
 touches a mark is removed past the box. Applying scrubs metadata, attachments, hidden text,
 and scripts unless you turn that off. Check the result before sharing.</li>
 <li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
-<b>Compress (save a smaller copy)</b>, <b>Compare documents</b> (changes clouded in red and
-blue), <b>Flatten</b> (make markups part of the page).</li>
+<b>Compress (save a smaller copy)</b>, <b>Compare documents</b>, <b>Flatten</b> (make markups part of the page).</li>
+<li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision; a new
+document overlays the two on each page: red = only in the earlier one, blue = only in this
+one, gray = unchanged, with each changed area clouded and listed in the Markups list. If the
+drawing moved on the sheet between revisions (re-plotted with a different margin, say), the
+pages are lined up first, so only real changes show; the top of the page says how far it
+moved.</li>
 <li><b>Remove watermarks...</b> (Document menu): takes watermarks off the current page, all
 pages or pages such as 1-3, 7. It finds watermarks added with Document &gt; Watermark and those
 added by apps that mark them as watermarks (Adobe Acrobat, PDF-XChange and others), and
