@@ -3,6 +3,10 @@
 Each revision gets a version number. It's shown in the window title and Help > About,
 and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the same name every version).
 
+## Unreleased
+
+- File > Print preview (Ctrl+Shift+P): the pages as they'll print, with page setup, then Print.
+
 | Version | Commit | Changes |
 | --- | --- | --- |
 | 0.90 | (this) | Edit text and Add text edit in place: click a line and type where you clicked (no bar above the text); drag the dashed outline to move it and its handles to change the width it wraps to; press on a line and drag to move it in one go |
