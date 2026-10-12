@@ -6,6 +6,7 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 ## Unreleased
 
 - Fix: Arrange > Bring to front / Bring forward / Send backward / Send to back no longer gray out after one use on objects selected with Edit objects (or after moving them).
+- PortableApps.com: every build also makes KanzonasPDF in the PortableApps.com Format (tested: settings stay in the package's Data folder, nothing in the registry, its own updater off). Two final steps use PortableApps.com's tools (docs/portableapps.md).
 
 | Version | Commit | Changes |
 | --- | --- | --- |

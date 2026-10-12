@@ -5,6 +5,10 @@ certificate) in the user's AppData folder.
 Portable: when a file named portable.txt sits next to KanzonasPDF.exe, everything goes in a
 "data" folder beside the exe instead, so it travels with a USB stick and leaves nothing on
 the computer.
+
+portable.txt can hold settings, one per line (the PortableApps.com package uses them):
+  data=..\..\Data    keep the data somewhere else (relative to the exe's folder)
+  updates=off        the program doesn't update itself (the PortableApps.com platform does)
 """
 
 import os
@@ -27,10 +31,31 @@ def is_portable():
     return os.path.exists(os.path.join(app_dir(), MARKER))
 
 
+def portable_options():
+    """key=value settings in portable.txt (keys lowercased); {} when there are none."""
+    out = {}
+    try:
+        with open(os.path.join(app_dir(), MARKER), encoding="utf-8", errors="replace") as f:
+            for line in f:
+                key, eq, value = line.partition("=")
+                if eq and key.strip() and " " not in key.strip():
+                    out[key.strip().lower()] = value.strip()
+    except OSError:
+        pass
+    return out
+
+
+def platform_updates():
+    """True when something else (the PortableApps.com platform) updates this copy."""
+    return is_portable() and portable_options().get("updates", "").lower() == "off"
+
+
 def data_dir(sub=""):
     """Folder for personal files (created if missing)."""
     if is_portable():
-        base = os.path.join(app_dir(), "data")
+        where = portable_options().get("data")
+        base = os.path.normpath(os.path.join(app_dir(), where)) if where else \
+            os.path.join(app_dir(), "data")
     else:
         base = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
     d = os.path.join(base, sub) if sub else base

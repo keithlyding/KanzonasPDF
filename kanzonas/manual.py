@@ -109,6 +109,10 @@ KanzonasPDF and unzip the new download over the same folder, replacing the files
 app (Windows Settings &gt; Apps &gt; Default apps), it stays the default. Tip: if Windows'
 Extract All suggests a new folder name, change it to the folder you already use.
 (Opening an attached file still uses Windows' temporary folder.)</li>
+<li><b>PortableApps.com version</b> (KanzonasPDF Portable, for the PortableApps.com Platform):
+your settings and files are kept in the package's <b>Data</b> folder, and the PortableApps.com
+Platform updates it, so KanzonasPDF doesn't check for updates or offer Update now unless you
+turn Help &gt; Check for updates automatically back on.</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
 A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
 your browser. The automatic check instead shows a notice at the bottom of the window with

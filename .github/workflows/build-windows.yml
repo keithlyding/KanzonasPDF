@@ -158,6 +158,29 @@ jobs:
           if (-not (Test-Path "$env:RUNNER_TEMP\kzportable\data\settings.ini")) { throw "Portable settings not in data folder" }
           if (Test-Path "HKCU:\Software\KanzonasPDF") { throw "Portable app wrote to the registry" }
 
+      - name: PortableApps.com package layout (finished by hand with their tools)
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python tools/make_portableapps.py "${{ steps.ver.outputs.version }}" dist\KanzonasPDF KanzonasPDFPortable
+          if ($LASTEXITCODE -ne 0) { throw "Making the PortableApps.com layout failed" }
+          # the program in the package keeps its data in the package's Data folder, leaves the
+          # registry alone and doesn't offer to update itself
+          Remove-Item -Recurse -Force "HKCU:\Software\KanzonasPDF" -ErrorAction SilentlyContinue
+          $p = Start-Process "KanzonasPDFPortable\App\KanzonasPDF\KanzonasPDF.exe" -ArgumentList "--selftest","paf-selftest.log" -PassThru -Wait
+          Get-Content paf-selftest.log
+          if ($p.ExitCode -ne 0) { throw "PortableApps.com package failed its self test" }
+          if (-not (Test-Path "KanzonasPDFPortable\Data\settings.ini")) { throw "Settings not in the package's Data folder" }
+          if (Test-Path "HKCU:\Software\KanzonasPDF") { throw "PortableApps.com package wrote to the registry" }
+          Remove-Item -Recurse -Force "KanzonasPDFPortable\Data"
+          Compress-Archive -Path KanzonasPDFPortable -DestinationPath KanzonasPDFPortable-layout.zip
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portableapps-layout
+          path: KanzonasPDFPortable-layout.zip
+
       - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portable

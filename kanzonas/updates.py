@@ -114,7 +114,8 @@ def can_self_update():
     """True for the portable Windows program (the installer handles installed copies)."""
     import sys
     from . import paths
-    return os.name == "nt" and getattr(sys, "frozen", False) and paths.is_portable()
+    return (os.name == "nt" and getattr(sys, "frozen", False) and paths.is_portable()
+            and not paths.platform_updates())
 
 
 def _file_sha256(path):
@@ -190,7 +191,10 @@ class UpdateChecker(QObject):
         self.release = None          # GitHub's entry for the newest release found
 
     def enabled(self):
-        return self.settings.value("update_check", "true") != "false"
+        from . import paths
+        # the PortableApps.com platform checks for updates itself: off unless switched on
+        default = "false" if paths.platform_updates() else "true"
+        return self.settings.value("update_check", default) != "false"
 
     def check_if_due(self):
         if not self.enabled():
