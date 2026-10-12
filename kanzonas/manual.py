@@ -245,6 +245,12 @@ the page, use <b>Add text</b> (below).</li>
 <li><b>Callout</b> (K): press on the point you're pointing at, drag to where the text goes.</li>
 <li><b>Author name:</b> Edit &gt; Author name for markups. It's recorded on your markups and
 printed on stamps.</li>
+<li><b>Check spelling</b> (Edit menu, on at first): while you type a comment, a text box, a
+form field with several lines, or with Edit text and Add text, misspelled words get a red
+wavy underline (American English). Right-click one for corrections, or <b>Add to
+dictionary</b> to stop flagging it (your words are remembered). Abbreviations in capitals
+(HVAC) and names with capitals inside (KanzonasPDF) aren't flagged. Click Check spelling again
+to turn it off.</li>
 </ul>
 
 <h2 id="review">Reviewing comments (Review menu)</h2>

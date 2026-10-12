@@ -48,7 +48,7 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
   short slices on the Qt event loop (see Find in `document_view.py`).
 ## Performance (keep it fast and light, like PDF-XChange)
 - Start-up must not import heavy libraries (OCR/onnxruntime, pdf2docx, ezdxf, openpyxl,
-  python-pptx, python-docx, pyHanko, aiohttp, OpenCV, qtawesome): import them inside the function
+  python-pptx, python-docx, pyHanko, aiohttp, OpenCV, qtawesome, pyspellchecker): import them inside the function
   that needs them. Toolbar icons are drawn straight from the MDI font file (theme.py), not
   through qtawesome. The self-test check "performance budget" fails the build if one is loaded.
 - Budget (checked in the Windows build): start-up < 5 s, open + draw a 60,000-line sheet

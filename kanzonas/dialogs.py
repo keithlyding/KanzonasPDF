@@ -14,6 +14,8 @@ class TextDialog(QDialog):
         lay = QVBoxLayout(self)
         lay.addWidget(QLabel(label))
         self.edit = QPlainTextEdit(text)
+        from . import spelling
+        spelling.install(self.edit)
         self.edit.installEventFilter(self)
         self.edit.selectAll()
         lay.addWidget(self.edit)

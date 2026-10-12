@@ -3866,6 +3866,8 @@ class DocumentView(QScrollArea):
         ed = QPlainTextEdit(pw) if multiline else QLineEdit(pw)
         if multiline:
             ed.setPlainText(w.field_value or "")
+            from . import spelling
+            spelling.install(ed)
         else:
             ed.setText(w.field_value or "")
             ed.selectAll()

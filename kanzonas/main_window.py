@@ -539,6 +539,12 @@ class MainWindow(QMainWindow):
         self.a_markups = self._act("&Markups list", self._toggle_markups, "F7")
         self.a_markups.setCheckable(True)
         self.a_author = self._act("&Author name for markups...", self._set_author)
+        self.a_spell = self._act("Check &spelling", self._toggle_spelling,
+                                 tip="Underline misspelled words while you type in comments, "
+                                     "text boxes and Edit text; right-click one for corrections")
+        self.a_spell.setCheckable(True)
+        from . import spelling
+        self.a_spell.setChecked(spelling.enabled())
         # arrange: align / distribute / stacking order of the selected markups
         self.arrange_actions = {}
         for key, label, sc, fn in (
@@ -656,7 +662,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_delete_annot)
         m.addSeparator()
-        m.addAction(self.a_author)
+        m.addActions([self.a_author, self.a_spell])
         m.addSeparator()
         m.addActions([self.a_find, self.a_find_next, self.a_find_prev, self.a_replace])
         m = self.view_menu = mb.addMenu("&View")
@@ -2544,6 +2550,10 @@ class MainWindow(QMainWindow):
             v.check_digital_signatures()
 
     # ---- compare --------------------------------------------------------------------
+    def _toggle_spelling(self, on):
+        from . import spelling
+        spelling.set_enabled(on)
+
     def replace_text(self):
         from .replace_dialog import ReplaceDialog
         v = self.view()
