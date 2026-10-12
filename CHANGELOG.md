@@ -6,6 +6,7 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 ## Unreleased
 
 - Print (Ctrl+P) opens KanzonasPDF's own print window with a preview of each sheet: printer, copies, pages, orientation, fit or actual size, markups on or off, page setup.
+- Printing renders at the printer's resolution up to 600 dpi (was 300), a strip at a time, so fine CAD lines print sharper with little memory.
 
 | Version | Commit | Changes |
 | --- | --- | --- |

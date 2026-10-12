@@ -35,7 +35,8 @@ of each sheet as it will print: pick the printer and copies, which pages (All, C
 or a list such as 1-3, 5), the orientation (Auto turns each sheet to fit its page), the size
 (Fit to paper, or Actual size, which only shrinks pages that are too big) and whether markups
 and form fields print. <b>Page setup...</b> sets the paper size and margins. Use the arrows
-under the preview to see each sheet.</p>
+under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
+rendered a strip at a time so even large drawings print sharp without using much memory.</p>
 <p>Copying, extracting and exporting require copying permission; Print requires printing
 permission and uses at most 150 dpi when high-quality printing is forbidden. Form filling
 and adding markups honor their separate permissions. Flattening selected pages preserves

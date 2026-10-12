@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QDia
                                QWidget)
 
 PREVIEW_W, PREVIEW_H = 380, 470
+BAND_BYTES = 48 * 1024 * 1024      # largest piece of a page rendered at once when printing
 
 
 def parse_pages(text, count):
@@ -263,9 +264,8 @@ class PrintDialog(QDialog):
     def print_to(self, printer, pages):
         """Print pages on printer as previewed. True when done."""
         v = self.view
-        dpi = min(printer.resolution(), 300 if v.allowed(pymupdf.PDF_PERM_PRINT_HQ) else 150)
+        dpi = min(printer.resolution(), 600 if v.allowed(pymupdf.PDF_PERM_PRINT_HQ) else 150)
         painter = QPainter()
-        first = True
         try:
             return self._print_pages(printer, painter, pages, dpi)
         finally:
@@ -287,5 +287,26 @@ class PrintDialog(QDialog):
                 printer.newPage()
             res = printer.resolution() / 72.0
             target = QRectF(box.x() * res, box.y() * res, box.width() * res, box.height() * res)
-            painter.drawImage(target, self._page_image(i, dpi))
+            self._draw_bands(painter, i, target, dpi)
         return True
+
+    def _draw_bands(self, painter, i, target, dpi):
+        """Draw page i into target in horizontal bands of at most BAND_BYTES each, so a big
+        sheet at 600 dpi never needs one huge image in memory."""
+        page = self.view.doc[i]
+        r = page.rect
+        k = dpi / 72.0
+        rows = max(1, int(BAND_BYTES / max(1.0, r.width * k * 3)))   # pixel rows per band
+        step = rows / k                                                # in page points
+        sy = target.height() / r.height
+        y = r.y0
+        while y < r.y1:
+            y1 = min(r.y1, y + step)
+            clip = pymupdf.Rect(r.x0, y, r.x1, y1)
+            pm = page.get_pixmap(matrix=pymupdf.Matrix(k, k), clip=clip,
+                                 annots=self.markups.isChecked())
+            img = QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
+            painter.drawImage(QRectF(target.x(), target.y() + (y - r.y0) * sy,
+                                     target.width(), (y1 - y) * sy), img)
+            del img, pm
+            y = y1
