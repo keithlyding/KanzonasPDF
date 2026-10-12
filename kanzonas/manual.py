@@ -465,7 +465,9 @@ clicked, and the line gets a dashed outline with handles, like a selected object
 change; drag the outline to move the text, drag a handle to change the width the text wraps
 to (the letters keep their size). Press Enter (or click elsewhere)
 to finish, Shift+Enter to start a new line, Escape to cancel. Saving, closing the document,
-Undo or a page change also finish an edit in progress, so typed text is never lost.</li>
+Undo or a page change also finish an edit in progress, so typed text is never lost.
+Sideways text (turned on the page, or on a rotated page) opens in an upright box over the
+middle of the line so it's easy to type; the text stays turned on the page when you finish.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as

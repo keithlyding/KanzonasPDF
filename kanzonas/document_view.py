@@ -2643,21 +2643,27 @@ class DocumentView(QScrollArea):
         old = text_edit.line_text(line)
         w = self.pages[index]
         upright = (text_edit.line_rotation(line) + page.rotation) % 360 == 0
-        if not upright:
-            # sideways text: the on-page editor can't sit along it, use the dialog
-            new, ok = dialogs.get_text(self, "Edit text", "Line text:", old)
-            if ok and (new != old or self._edit_font() is not None):
-                self._apply_text_edit(index, line, new, (0, 0), None)
-            return
         size = text_edit.main_span(line)["size"]
         chosen = self._edit_font()
-        ed = InlineEditor(w, w.to_screen(rect), old,
+        box = w.to_screen(rect)
+        if not upright:
+            # sideways text: type in an upright box laid over the middle of the line (it
+            # can't run along the line); the text keeps its direction on the page
+            c = box.center()
+            bw = max(160.0, min(w.width() - 8.0, len(old) * size * 0.6 * self.zoom + 24))
+            bh = size * self.zoom * 1.4
+            box = QRectF(c.x() - bw / 2, c.y() - bh / 2, bw, bh)
+            box.moveLeft(max(0.0, min(box.left(), w.width() - bw)))
+            box.moveTop(max(0.0, min(box.top(), w.height() - bh)))
+        ed = InlineEditor(w, box, old,
                           chosen[0] if chosen else text_edit.font_family_hint(line),
-                          size * self.zoom, click=w.to_screen_pt(pt))
+                          size * self.zoom, click=w.to_screen_pt(pt) if upright else None)
         self._inline = ed
 
         def done(text, dx, dy, wrap_px):
             self._inline = None
+            if not upright:
+                wrap_px = None          # the box's width isn't along the line
             if text == old and not dx and not dy and wrap_px is None and \
                     self._edit_font() is None:
                 return
