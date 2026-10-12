@@ -3054,6 +3054,7 @@ class DocumentView(QScrollArea):
             again = [it for it in (objs.items if objs else []) if it["n"] in set(ns)]
             self.obj_sel = (index, again) if again else None
         self.pages[index].update()
+        self.selectionChanged.emit()    # menus (Arrange) follow the reselected objects
         self.statusMessage.emit(label + " (Ctrl+Z undoes it)")
 
     def move_objects(self, new_rect):
@@ -3100,6 +3101,8 @@ class DocumentView(QScrollArea):
                         for r in rects)]
         self.obj_sel = (index, again) if again else None
         self.pages[index].update()
+        # the edit cleared the selection (and the Arrange buttons with it): tell the menus
+        self.selectionChanged.emit()
         label = {"front": "Brought to front", "back": "Sent to back",
                  "forward": "Brought forward", "backward": "Sent backward"}[how]
         self.statusMessage.emit(label + " (Ctrl+Z undoes it)")

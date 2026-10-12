@@ -3,6 +3,10 @@
 Each revision gets a version number. It's shown in the window title and Help > About,
 and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the same name every version).
 
+## Unreleased
+
+- Fix: Arrange > Bring to front / Bring forward / Send backward / Send to back no longer gray out after one use on objects selected with Edit objects (or after moving them).
+
 | Version | Commit | Changes |
 | --- | --- | --- |
 | 0.91.1 | (this) | Security: the portable updater writes its short update script in a new folder only you can write to, instead of a fixed name in the Temp folder another program could replace before it runs. A weekly automatic check reports known vulnerabilities in the libraries KanzonasPDF uses and new releases of the ones that read PDFs and pictures (PyMuPDF, Qt), so security fixes reach releases quickly |
