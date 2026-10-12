@@ -37,9 +37,11 @@ def with_orientation(path, value):
     tiff = b"MM\x00*\x00\x00\x00\x08" + struct.pack(">H", 1) + \
         struct.pack(">HHIHH", 0x0112, 3, 1, value, 0) + b"\x00\x00\x00\x00"
     app1 = b"Exif\x00\x00" + tiff
-    data = open(path, "rb").read()
+    with open(path, "rb") as f:
+        data = f.read()
     data = data[:2] + b"\xff\xe1" + struct.pack(">H", len(app1) + 2) + app1 + data[2:]
-    open(path, "wb").write(data)
+    with open(path, "wb") as f:
+        f.write(data)
     return path
 
 

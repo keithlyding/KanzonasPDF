@@ -47,6 +47,14 @@ class Spelling(unittest.TestCase):
                 out.append(block.text()[r.start:r.start + r.length])
         return out
 
+    @staticmethod
+    def menu_on(edit, word):
+        """The right-click menu on word (where the click lands on screen depends on fonts,
+        which differ between systems, so the word is given directly)."""
+        cur = edit.document().find(word)
+        with mock.patch.object(spelling, "word_at", lambda _e, _p: (cur, word)):
+            return spelling.menu_for(edit, QPoint(0, 0))
+
     def test_words(self):
         self.assertTrue(spelling.is_known("Color"))
         self.assertFalse(spelling.is_known("colour"))        # American spelling
@@ -62,15 +70,13 @@ class Spelling(unittest.TestCase):
         edit.show()
         APP.processEvents()
         self.assertEqual(self.underlined(edit), ["Pleese", "recieve"])
-        pos = edit.cursorRect(edit.document().find("recieve")).center()
-        menu = spelling.menu_for(edit, pos)
+        menu = self.menu_on(edit, "recieve")
         texts = [a.text() for a in menu.actions()]
         self.assertEqual(texts[0], "receive")
         self.assertIn("Add to dictionary", texts)
         menu.actions()[0].trigger()                          # take the correction
         self.assertEqual(edit.toPlainText(), "Pleese receive the drawings")
-        pos = edit.cursorRect(edit.document().find("Pleese")).center()
-        add = [a for a in spelling.menu_for(edit, pos).actions() if a.text() == "Add to dictionary"]
+        add = [a for a in self.menu_on(edit, "Pleese").actions() if a.text() == "Add to dictionary"]
         add[0].trigger()
         self.assertEqual(self.underlined(edit), [])
         self.assertEqual(self.store.d["spell_words"], ["pleese"])
@@ -86,3 +92,16 @@ class Spelling(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WordAt(unittest.TestCase):
+    def test_word_at_cursor(self):
+        edit = QPlainTextEdit("one twoo three")
+        edit.resize(400, 100)
+        edit.show()
+        APP.processEvents()
+        c = edit.textCursor()
+        c.setPosition(6)
+        edit.setTextCursor(c)
+        cur, word = spelling.word_at(edit, edit.cursorRect().center())
+        self.assertEqual((word, cur.selectedText()), ("twoo", "twoo"))
