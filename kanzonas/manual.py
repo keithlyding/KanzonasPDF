@@ -30,10 +30,12 @@ names and dates), not at their colors or shapes, so redacting a word like "fill"
 delete unrelated markups. Newly protected documents are excluded from automatic backups,
 and an existing recovery copy is removed when protection is added. Each recovery copy has
 its own unique identity, even for files with the same name.</p>
-<p><b>Print preview</b> (File menu, toolbar, Ctrl+Shift+P): see the pages as they'll print,
-markups included, change the page setup (paper, portrait / landscape, margins), then
-<b>Print</b> opens the print dialog to pick the printer and pages. A long document previews its
-first 200 pages. <b>Print...</b> (Ctrl+P) goes straight to the print dialog.</p>
+<p><b>Print</b> (File menu, toolbar, Ctrl+P) opens KanzonasPDF's print window with a preview
+of each sheet as it will print: pick the printer and copies, which pages (All, Current page,
+or a list such as 1-3, 5), the orientation (Auto turns each sheet to fit its page), the size
+(Fit to paper, or Actual size, which only shrinks pages that are too big) and whether markups
+and form fields print. <b>Page setup...</b> sets the paper size and margins. Use the arrows
+under the preview to see each sheet.</p>
 <p>Copying, extracting and exporting require copying permission; Print requires printing
 permission and uses at most 150 dpi when high-quality printing is forbidden. Form filling
 and adding markups honor their separate permissions. Flattening selected pages preserves
@@ -693,7 +695,7 @@ settings...).</li>
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text</td></tr>
-<tr><td>Ctrl+P / Ctrl+Shift+P</td><td>Print / Print preview</td></tr>
+<tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>
 <tr><td>Ctrl+K</td><td>Preferences</td></tr>
 <tr><td>Ctrl+;</td><td>Date (today's date where you click)</td></tr>

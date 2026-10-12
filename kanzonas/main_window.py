@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, Q
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
                                QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit)
-from PySide6.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
 
 from . import __version__, annotations, export, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
@@ -313,9 +312,6 @@ class MainWindow(QMainWindow):
         self.a_save = self._act("&Save", self.save, QKeySequence.Save)
         self.a_save_as = self._act("Save &As...", self.save_as, QKeySequence.SaveAs)
         self.a_print = self._act("&Print...", self.print_doc, QKeySequence.Print)
-        self.a_print_preview = self._act("Print pre&view...", self.print_preview, "Ctrl+Shift+P",
-                                         tip="See the pages as they'll print, change the page "
-                                             "setup, then print (Ctrl+Shift+P)")
         self.a_close = self._act("&Close tab", lambda: self.close_tab(self.tabs.currentIndex()),
                                  QKeySequence.Close)
         self.a_exit = self._act("E&xit", self.close, "Alt+F4")
@@ -631,7 +627,7 @@ class MainWindow(QMainWindow):
         em.addActions(self.export_actions)
         m.addAction(self.a_compare)
         m.addSeparator()
-        m.addActions([self.a_print, self.a_print_preview])
+        m.addAction(self.a_print)
         m.addSeparator()
         m.addAction(self.a_prefs)
         m.addSeparator()
@@ -758,7 +754,7 @@ class MainWindow(QMainWindow):
         tb.setObjectName("main")
         tb.setMovable(False)
         self.addToolBar(tb)
-        tb.addActions([self.a_open, self.a_save, self.a_print, self.a_print_preview])
+        tb.addActions([self.a_open, self.a_save, self.a_print])
         tb.addSeparator()
         tb.addActions([self.a_undo, self.a_redo])
         tb.addSeparator()
@@ -1009,7 +1005,7 @@ class MainWindow(QMainWindow):
     def _update_ui(self):
         v = self.view()
         has = v is not None
-        for a in (self.a_save, self.a_save_as, self.a_print, self.a_print_preview, self.a_close,
+        for a in (self.a_save, self.a_save_as, self.a_print, self.a_close,
                   self.a_find,
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
@@ -1263,83 +1259,13 @@ class MainWindow(QMainWindow):
 
     # ---- printing -----------------------------------------------------------
     def print_doc(self):
+        """File > Print: KanzonasPDF's print window, with a preview of each sheet."""
         v = self.view()
         if not v or not v.require_permission(pymupdf.PDF_PERM_PRINT, "Printing"):
             return
-        printer = QPrinter(QPrinter.HighResolution)
-        printer.setDocName(os.path.basename(v.path))
-        printer.setFromTo(1, v.page_count())
-        dlg = QPrintDialog(printer, self)
-        dlg.setMinMax(1, v.page_count())
-        dlg.setOption(QPrintDialog.PrintPageRange, True)
-        dlg.setOption(QPrintDialog.PrintCurrentPage, True)
-        if dlg.exec() != QPrintDialog.Accepted:
-            return
-        pages = self._print_pages(v, printer)
-        self.statusBar().showMessage("Printing...")
-        if self._paint_pages(v, printer, pages):
+        from .print_dialog import PrintDialog
+        if PrintDialog(self, v).exec():
             self.statusBar().showMessage("Sent to printer", 4000)
-
-    def _print_pages(self, v, printer):
-        """The pages the printer's range asks for (0-based)."""
-        if printer.printRange() == QPrinter.CurrentPage:
-            return [v.current_page()]
-        if printer.printRange() == QPrinter.PageRange and printer.fromPage() > 0:
-            return list(range(printer.fromPage() - 1, min(printer.toPage(), v.page_count())))
-        return list(range(v.page_count()))
-
-    PREVIEW_DPI = 110          # on screen a lighter image is plenty
-    PREVIEW_PAGES = 200        # a long document previews its first pages only
-
-    def _paint_pages(self, v, printer, pages):
-        """Draw pages on printer, each fitted to the paper. Returns "preview" when it drew
-        into a print preview (lighter images), True when it printed, False on failure."""
-        from PySide6.QtGui import QPaintEngine
-        dpi = min(printer.resolution(), 300 if v.allowed(pymupdf.PDF_PERM_PRINT_HQ) else 150)
-        painter = QPainter()
-        if not painter.begin(printer):
-            QMessageBox.critical(self, "Print", "Could not start printing.")
-            return False
-        preview = painter.paintEngine() is not None and \
-            painter.paintEngine().type() == QPaintEngine.Picture
-        if preview:
-            dpi = min(dpi, self.PREVIEW_DPI)
-            pages = pages[:self.PREVIEW_PAGES]
-        try:
-            for n, i in enumerate(pages):
-                if n:
-                    printer.newPage()
-                pm = v.doc[i].get_pixmap(dpi=dpi, annots=True)
-                img = QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
-                area = painter.viewport()
-                size = img.size().scaled(area.size(), Qt.KeepAspectRatio)
-                painter.setViewport(area.x(), area.y(), size.width(), size.height())
-                painter.setWindow(img.rect())
-                painter.drawImage(0, 0, img)
-                painter.setViewport(area)
-                painter.setWindow(area)
-        finally:
-            painter.end()
-        return "preview" if preview else True
-
-    def print_preview(self):
-        """File > Print preview: the pages as they'll print (with markups), page setup,
-        then Print, which opens the print dialog to pick the printer and pages."""
-        v = self.view()
-        if not v or not v.require_permission(pymupdf.PDF_PERM_PRINT, "Printing"):
-            return
-        printer = QPrinter(QPrinter.HighResolution)
-        printer.setDocName(os.path.basename(v.path))
-        printer.setFromTo(1, v.page_count())
-        dlg = QPrintPreviewDialog(printer, self)
-        dlg.setWindowTitle("Print preview - " + os.path.basename(v.path))
-        dlg.resize(1000, 800)
-
-        def paint(p):
-            if self._paint_pages(v, p, self._print_pages(v, p)) is True:
-                self.statusBar().showMessage("Sent to printer", 4000)
-        dlg.paintRequested.connect(paint)
-        dlg.exec()
 
     # ---- tools / search / pages --------------------------------------------
     def set_tool(self, tool):

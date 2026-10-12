@@ -5,7 +5,7 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 
 ## Unreleased
 
-- File > Print preview (Ctrl+Shift+P): the pages as they'll print, with page setup, then Print.
+- Print (Ctrl+P) opens KanzonasPDF's own print window with a preview of each sheet: printer, copies, pages, orientation, fit or actual size, markups on or off, page setup.
 
 | Version | Commit | Changes |
 | --- | --- | --- |
