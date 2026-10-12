@@ -534,6 +534,13 @@ set the order, top to bottom. With "Add a bookmark for each file" ticked, each f
 bookmark named after it and keeps its own bookmarks underneath. Click Combine..., choose a name,
 and the combined PDF opens. Password-protected files ask for their password. The original files
 aren't changed.</li>
+<li>Combine files also takes pictures (JPG, PNG, TIFF, BMP, GIF, WebP): each becomes a page.
+<b>Create PDF from images...</b> (File menu, Pages tab) starts with pictures: choose them, put
+them in order and click Create.... With "Put each picture on a Letter page" ticked (the
+default), each picture is fitted on a Letter page turned to suit it (landscape for wide
+pictures); untick it to make each page the picture's own size. Phone photos come out upright,
+JPEG photos aren't recompressed (no quality loss), and each page of a multi-page TIFF scan
+becomes a page.</li>
 <li>Pages menu: Insert pages from file, Insert blank page after current, Extract pages to new
 file, Delete page.</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>

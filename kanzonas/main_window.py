@@ -379,6 +379,9 @@ class MainWindow(QMainWindow):
         self.a_combine = self._act("Co&mbine files...", self.combine_files,
                                    tip="Combine several PDFs, in the order you choose, into one "
                                        "new PDF")
+        self.a_from_images = self._act("Create PDF from &images...", self.pdf_from_images,
+                                       tip="Make a PDF from pictures: scans, phone photos "
+                                           "(JPG, PNG, TIFF...), one page each")
         self.a_insert_blank = self._act("Insert &blank page after current",
                                         lambda: self._page_op("blank"))
         self.a_extract = self._act("&Extract pages to new file...", self.extract_pages)
@@ -633,7 +636,7 @@ class MainWindow(QMainWindow):
         self.recent_menu = m.addMenu("Open &recent")
         self._rebuild_recent()
         m.addActions([self.a_save, self.a_save_as])
-        m.addAction(self.a_combine)
+        m.addActions([self.a_combine, self.a_from_images])
         em = m.addMenu("&Export to")
         em.addActions(self.export_actions)
         m.addAction(self.a_compare)
@@ -1447,6 +1450,18 @@ class MainWindow(QMainWindow):
         if dlg.exec() and dlg.result_path:
             self.open_file(dlg.result_path)
             self.statusBar().showMessage("Combined into " + dlg.result_path, 5000)
+
+    def pdf_from_images(self):
+        from .combine import CombineDialog, IMAGE_FILTER
+        start = self.settings.value("last_dir", "")
+        paths, _ = QFileDialog.getOpenFileNames(self, "Create PDF from images", start,
+                                                IMAGE_FILTER)
+        if not paths:
+            return
+        dlg = CombineDialog(self, os.path.dirname(paths[0]), paths, images=True)
+        if dlg.exec() and dlg.result_path:
+            self.open_file(dlg.result_path)
+            self.statusBar().showMessage("Created " + dlg.result_path, 5000)
 
     def insert_from_file(self):
         v = self.view()
@@ -2993,7 +3008,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": "Apply selected", "a_apply_redact": "Apply all",
         "a_security": "Security", "a_remove_security": "Remove security", "a_unlock": "Unlock",
         "a_sanitize": "Sanitize", "a_hl_fields": "Highlight fields", "a_move_up": "Move up",
-        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_combine": "Combine files",
+        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_combine": "Combine files", "a_from_images": "From images",
         "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
         "a_watermark": "Watermark", "a_background": "Background",
         "a_remove_bg": "Remove background", "a_remove_wm": "Remove watermarks", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
@@ -3029,7 +3044,8 @@ class MainWindow(QMainWindow):
         "a_move_up": "arrow-up-bold-outline", "a_move_down": "arrow-down-bold-outline",
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
         "a_combine": "file-document-multiple-outline",
-        "a_insert_blank": "file-outline", "a_uncrop": "crop-free", "a_extract": "file-export-outline",
+        "a_insert_blank": "file-outline", "a_uncrop": "crop-free",
+        "a_from_images": "file-image-outline", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
         "a_remove_bg": "format-color-marker-cancel", "a_remove_wm": "water-off-outline",
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
@@ -3124,7 +3140,7 @@ class MainWindow(QMainWindow):
             ("Crop", "large", [t["crop"], self.a_uncrop]),
             ("Organize", "small", [self.a_move_up, self.a_move_down, self.a_del_page,
                                    self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
-            ("Combine", "large", [self.a_combine]),
+            ("Combine", "large", [self.a_combine, self.a_from_images]),
             ("Document", "small", [self.a_header, self.a_watermark, self.a_background,
                                    self.a_bookmarks, self.a_attachments, self.a_compress,
                                    self.a_compare]),
