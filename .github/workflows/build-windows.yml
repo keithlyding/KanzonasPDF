@@ -174,22 +174,25 @@ jobs:
           if (-not (Test-Path "KanzonasPDFPortable\Data\settings.ini")) { throw "Settings not in the package's Data folder" }
           if (Test-Path "HKCU:\Software\KanzonasPDF") { throw "PortableApps.com package wrote to the registry" }
           Remove-Item -Recurse -Force "KanzonasPDFPortable\Data"
-          Compress-Archive -Path KanzonasPDFPortable -DestinationPath KanzonasPDFPortable-layout.zip
+          # uploaded as a folder (GitHub zips each artifact once); the paf folder keeps
+          # KanzonasPDFPortable as the top folder in the download
+          New-Item -ItemType Directory paf | Out-Null
+          Move-Item KanzonasPDFPortable paf\KanzonasPDFPortable
 
       - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portableapps-layout
-          path: KanzonasPDFPortable-layout.zip
+          path: paf/
 
       - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portable
-          path: KanzonasPDF-portable.zip
+          path: portable/
 
       - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-windows
-          path: KanzonasPDF-windows.zip
+          path: dist/
 
       - uses: actions/upload-artifact@v6
         with:
