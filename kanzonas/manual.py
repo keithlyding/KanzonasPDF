@@ -112,7 +112,9 @@ Extract All suggests a new folder name, change it to the folder you already use.
 <li><b>PortableApps.com version</b> (KanzonasPDF Portable, for the PortableApps.com Platform):
 your settings and files are kept in the package's <b>Data</b> folder, and the PortableApps.com
 Platform updates it, so KanzonasPDF doesn't check for updates or offer Update now unless you
-turn Help &gt; Check for updates automatically back on.</li>
+turn Help &gt; Check for updates automatically back on. Both portable versions follow your USB
+stick to a new drive letter: if Open recent lists E:\Docs\plan.pdf and the stick is now F:, it
+opens F:\Docs\plan.pdf.</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
 A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
 your browser. The automatic check instead shows a notice at the bottom of the window with

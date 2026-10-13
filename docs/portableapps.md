@@ -15,10 +15,12 @@ Two steps need PortableApps.com's own Windows tools, so they are done by hand:
 4. Try it (install it into the PortableApps.com Platform, open a PDF, change a setting, close
    and reopen it), then post it in the portableapps.com forum's Development Test section.
 
-Check the current rules first: https://portableapps.com/development and
-https://portableapps.com/development/portableapps.com_format. The `appinfo.ini` format
-version (3.8) and the launcher settings were written from memory; correct them in
-`tools/make_portableapps.py` if the format page says otherwise.
+The package follows PortableApps.com Format 3.9 (2026-03-02): `appinfo.ini` (with
+Requires64bitOS=yes), PNG icons at 16/32/75/128/256 px and an `appicon.ico` with 256-color
+16/32/48 px and true-color 16/32/48/256 px images (`assets/portableapps-appicon.ico`, made by
+`tools/make_paf_icon.py`). Both PortableApps.com tools also work from the command line (pass
+the package folder), so a later build can run them itself. Don't run the AppCompactor: it's
+deprecated for releases, and compressed Python/Qt files can break or trip antivirus scanners.
 
 How the package points the program at `Data`: `App\KanzonasPDF\portable.txt` contains
 `data=..\..\Data` and `updates=off` (see `kanzonas/paths.py`).
