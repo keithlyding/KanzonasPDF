@@ -113,8 +113,8 @@ Extract All suggests a new folder name, change it to the folder you already use.
 your settings and files are kept in the package's <b>Data</b> folder, and the PortableApps.com
 Platform updates it, so KanzonasPDF doesn't check for updates or offer Update now unless you
 turn Help &gt; Check for updates automatically back on. Both portable versions follow your USB
-stick to a new drive letter: if Open recent lists E:\Docs\plan.pdf and the stick is now F:, it
-opens F:\Docs\plan.pdf.</li>
+stick to a new drive letter: if Open recent lists E:\\Docs\\plan.pdf and the stick is now F:, it
+opens F:\\Docs\\plan.pdf.</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
 A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
 your browser. The automatic check instead shows a notice at the bottom of the window with
@@ -485,11 +485,14 @@ takes a moment while the page is read.</li>
 <li><b>Add text</b> tool (Shift+T; Home tab next to Edit text, Tools menu): click where the text
 goes and type (Enter finishes, Shift+Enter starts a new line). The text is written into the page
 itself, like Acrobat's Add Text: PDF viewers can't change it, and Edit text changes it later.
-Pick the font (any installed font, plus Bold and Italic), size and color in Properties before
-you click. Only the letters used are stored in the file.</li>
-<li><b>Change a line's font:</b> with the Edit text tool, pick a font (and Bold / Italic) in
-Properties, then click the line and press Enter, with or without changing the text. Pick
-<b>Keep the line's font</b> to go back to keeping each line's own font.</li>
+Pick the font (any installed font, plus Bold and Italic), size and color in Properties. The
+<b>Font size</b> can also be changed while you type: the text shows at the new size right away.
+Only the letters used are stored in the file.</li>
+<li><b>Change a line's font or size:</b> with the Edit text tool, pick a font (and Bold /
+Italic) or a <b>Font size</b> in Properties, then click the line and press Enter, with or without
+changing the text. The size can also be changed while the line is open. Pick <b>Keep the line's
+font</b> or <b>Keep the line's size</b> (the lowest font size) to go back to keeping each line's
+own font and size.</li>
 <li>Edit text tool (Ctrl+E): <b>press on a line and drag</b> to move it (its text and font stay
 as they are). Or click a line of text to edit it right where it is: the cursor goes where you
 clicked, and the line gets a dashed outline with handles, like a selected object. Type the

@@ -1345,6 +1345,8 @@ class MainWindow(QMainWindow):
             annotations.OVERRIDE["props"] = dict(props)
         elif self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
             annotations.set_tool_props(self.tool, props)
+            if v is not None and self.tool in annotations.PAGE_TEXT_TOOLS:
+                v.text_tool_props_changed()
 
     def _reset_tool_defaults(self):
         if self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
