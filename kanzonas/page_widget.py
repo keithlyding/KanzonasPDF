@@ -347,6 +347,7 @@ class PageWidget(QWidget):
 
         if tool == "editobjects":
             self._paint_objects(p, page)
+        self._paint_link_borders(p)
         if tool == "link":
             # the page's links, outlined so they can be found and clicked to change them
             p.setPen(QPen(QColor(0, 90, 220), 1, Qt.DashLine))
@@ -792,6 +793,25 @@ class PageWidget(QWidget):
             q = ed["preview"]
             new = pymupdf.Rect(self.to_pdf(q.topLeft()), self.to_pdf(q.bottomRight())).normalize()
             self.view.move_objects(new)
+
+    def _paint_link_borders(self, p):
+        """Links with a visible border (/BS or /Border): MuPDF doesn't draw these, other
+        PDF readers do, so draw them like Acrobat."""
+        z = self.view.zoom
+        for r, ln in self.view.links(self.index):
+            b = ln.get("kz_border")
+            if not b:
+                continue
+            width, rgb, style = b
+            pen = QPen(QColor.fromRgbF(*rgb), max(1.0, width * z),
+                       Qt.DashLine if style == "D" else Qt.SolidLine)
+            p.setPen(pen)
+            p.setBrush(Qt.NoBrush)
+            box = QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z)
+            if style == "U":
+                p.drawLine(box.bottomLeft(), box.bottomRight())
+            else:
+                p.drawRect(box)
 
     def _objects_menu(self, e, pdf):
         from PySide6.QtWidgets import QMenu

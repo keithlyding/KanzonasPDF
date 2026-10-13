@@ -3,7 +3,7 @@ and Delete link when editing one."""
 
 import re
 
-from PySide6.QtWidgets import (QButtonGroup, QDialog, QDialogButtonBox, QGridLayout, QLabel,
+from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QDialog, QDialogButtonBox, QGridLayout, QLabel,
                                QLineEdit, QRadioButton, QSpinBox, QVBoxLayout)
 
 
@@ -21,7 +21,8 @@ def normalize_url(text):
 
 
 class LinkDialog(QDialog):
-    """result: ("uri", address) | ("page", 0-based index) | ("delete",) | None."""
+    """result: ("uri", address, show box) | ("page", 0-based index, show box) |
+    ("delete",) | None."""
 
     def __init__(self, parent, page_count, current=None):
         super().__init__(parent)
@@ -41,7 +42,11 @@ class LinkDialog(QDialog):
         grid.addWidget(self.url, 0, 1)
         grid.addWidget(self.to_page, 1, 0)
         grid.addWidget(self.page, 1, 1)
-        kind, value = current or ("uri", "")
+        kind, value, shown = (tuple(current or ("uri", "")) + (True,))[:3]
+        self.show_box = QCheckBox("Show a box around the link")
+        self.show_box.setToolTip("Without it, the link is invisible until the pointer is over it")
+        self.show_box.setChecked(bool(shown))
+        grid.addWidget(self.show_box, 2, 0, 1, 2)
         if kind == "page":
             self.to_page.setChecked(True)
             self.page.setValue(value + 1)
@@ -66,13 +71,13 @@ class LinkDialog(QDialog):
 
     def _ok(self):
         if self.to_page.isChecked():
-            self.result_value = ("page", self.page.value() - 1)
+            self.result_value = ("page", self.page.value() - 1, self.show_box.isChecked())
         else:
             url = normalize_url(self.url.text())
             if not url:
                 self.error.setText("Type a web address, or choose a page.")
                 return
-            self.result_value = ("uri", url)
+            self.result_value = ("uri", url, self.show_box.isChecked())
         self.accept()
 
     def _delete(self):

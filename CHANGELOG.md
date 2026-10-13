@@ -5,6 +5,8 @@ and the installer is named `KanzonasPDF-v<version>-setup.exe` (the zips keep the
 
 ## Unreleased
 
+- Fix: right-clicking a misspelled word shows corrections (on some Windows PCs the menu came up without them). The right-click is now read the way Qt recommends for text boxes, and if the click lands beside the word, the word at the text cursor is used.
+- Links: new links get a thin blue box so they can be seen (Show a box around the link, in the link window); KanzonasPDF now draws link boxes on screen and in print, as other PDF readers do.
 - Fix: Arrange > Bring to front / Bring forward / Send backward / Send to back no longer gray out after one use on objects selected with Edit objects (or after moving them).
 - PortableApps.com: every build also makes KanzonasPDF in the PortableApps.com Format (tested: settings stay in the package's Data folder, nothing in the registry, its own updater off). Two final steps use PortableApps.com's tools (docs/portableapps.md).
 - Each release lists the SHA-256 checksum of every download (and a SHA256SUMS.txt), so you can check a download wasn't altered.

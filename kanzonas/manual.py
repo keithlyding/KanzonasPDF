@@ -148,7 +148,10 @@ opening it sends your Windows sign-in to that computer.</li>
 <li><b>Adding links:</b> the <b>Links</b> tool (Home tab &gt; Insert, Tools menu) draws the
 page's links as blue dashed boxes. Drag a box over what should be clickable, then type a web
 address or e-mail address (www.example.com is fine; https:// is added) or choose a page in this
-document. Click an existing link with the tool to change where it goes or to <b>Delete link</b>.
+document. <b>Show a box around the link</b> (ticked at first) draws a thin blue box so readers
+can see it's there, here and in other PDF readers, and it prints with the markups; untick it for a
+link that stays invisible until the pointer is over it. Click an existing link with the tool to
+change where it goes, show or hide its box, or <b>Delete link</b>.
 Ctrl+Z undoes it.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). <b>Shift+wheel</b> always scrolls left and right, including when CAD-style
@@ -252,7 +255,8 @@ printed on stamps.</li>
 <li><b>Check spelling</b> (Edit menu, on at first): while you type a comment, a text box, a
 form field with several lines, or with Edit text and Add text, misspelled words get a red
 wavy underline (American English). Right-click one for corrections, or <b>Add to
-dictionary</b> to stop flagging it (your words are remembered). Abbreviations in capitals
+dictionary</b> to stop flagging it (your words are remembered). If the click lands just
+beside the word, the word where the text cursor is gets the corrections. Abbreviations in capitals
 (HVAC) and names with capitals inside (KanzonasPDF) aren't flagged. Click Check spelling again
 to turn it off.</li>
 </ul>
