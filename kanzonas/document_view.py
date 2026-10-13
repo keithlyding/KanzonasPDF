@@ -54,6 +54,30 @@ def eraser_cursor():
     return _ERASER_CURSOR
 
 
+
+def link_border(doc, xref):
+    """(width, (r, g, b), style) of a link's visible border, or None when it has none.
+    style: "S" solid, "D" dashed, "U" underline."""
+    if not xref:
+        return None
+    try:
+        kind, w = doc.xref_get_key(xref, "BS/W")
+        width = float(w) if kind in ("int", "float") else None
+        if width is None:
+            kind, arr = doc.xref_get_key(xref, "Border")
+            nums = arr.strip("[]").split() if kind == "array" else []
+            width = float(nums[2]) if len(nums) >= 3 else 0.0
+        if width <= 0:
+            return None
+        kind, c = doc.xref_get_key(xref, "C")
+        rgb = tuple(float(v) for v in c.strip("[]").split()) if kind == "array" else (0, 0, 0)
+        if len(rgb) != 3:
+            rgb = (0, 0, 0)
+        style = doc.xref_get_key(xref, "BS/S")[1].lstrip("/") or "S"
+        return width, rgb, style if style in ("S", "D", "U") else "S"
+    except (ValueError, IndexError, RuntimeError):
+        return None
+
 class DocumentView(QScrollArea):
     _orig_data = None               # original file bytes (signed / protected files only)
     _orig_enc = None                # original protection, to keep it when saving edits
@@ -1861,8 +1885,10 @@ class DocumentView(QScrollArea):
         key = ("links", index)
         if key not in self._card_cache:
             try:
-                self._card_cache[key] = [(pymupdf.Rect(ln["from"]), ln)
-                                         for ln in self.doc[index].get_links()]
+                lst = self.doc[index].get_links()
+                for ln in lst:
+                    ln["kz_border"] = link_border(self.doc, ln.get("xref"))
+                self._card_cache[key] = [(pymupdf.Rect(ln["from"]), ln) for ln in lst]
             except Exception:
                 self._card_cache[key] = []
         return self._card_cache[key]
@@ -1944,22 +1970,43 @@ class DocumentView(QScrollArea):
                     "to": pymupdf.Point(0, 0)}
         return {"kind": pymupdf.LINK_URI, "from": rect, "uri": target[1]}
 
+    @staticmethod
+    def _insert_link(page, rect, target):
+        """Add the link; target[2] (default True) gives it a visible blue box, which PDF
+        readers draw around it (KanzonasPDF draws it too: MuPDF doesn't)."""
+        # the page's /Annots list shows the new link at once (get_links only after a reload,
+        # which PyMuPDF refuses while the page is in use elsewhere)
+        before = {x for x, _t, *_ in page.annot_xrefs()}
+        page.insert_link(DocumentView._link_dict(rect, target))
+        show = target[2] if len(target) > 2 else True
+        doc = page.parent
+        for xref, kind, *_ in page.annot_xrefs():
+            if xref in before or kind != pymupdf.PDF_ANNOT_LINK:
+                continue
+            if show:
+                doc.xref_set_key(xref, "BS", "<</W 1/S/S>>")
+                doc.xref_set_key(xref, "C", "[0 0.35 0.85]")
+            else:
+                doc.xref_set_key(xref, "Border", "[0 0 0]")
+
     def add_link(self, index, rect, target=None):
         """Links tool: make rect (unrotated page coordinates) clickable. target: ("uri",
-        address) or ("page", index); asked for when None."""
+        address) or ("page", index), optionally with a third item: show a box (default
+        True); asked for when None."""
         target = target or self._ask_link()
         if not target or target[0] == "delete":
             return
-        self.modify(lambda: self.doc[index].insert_link(
-            self._link_dict(pymupdf.Rect(rect).normalize(), target)), [index],
-            permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.modify(lambda: self._insert_link(self.doc[index], pymupdf.Rect(rect).normalize(),
+                                              target), [index],
+                    permission=pymupdf.PDF_PERM_ANNOTATE)
         self.statusMessage.emit("Link added (Ctrl+Z undoes it)")
 
     def edit_link(self, index, link, target=None):
         """Change where a link goes, or delete it (target ("delete",))."""
         k = link.get("kind")
-        current = (("page", link.get("page", 0)) if k == pymupdf.LINK_GOTO
-                   else ("uri", link.get("uri") or ""))
+        shown = link_border(self.doc, link.get("xref")) is not None
+        current = (("page", link.get("page", 0), shown) if k == pymupdf.LINK_GOTO
+                   else ("uri", link.get("uri") or "", shown))
         target = target or self._ask_link(current)
         if not target:
             return
@@ -1973,7 +2020,7 @@ class DocumentView(QScrollArea):
                 raise ValueError("The link is no longer on the page.")
             page.delete_link(old[0])
             if target[0] != "delete":
-                page.insert_link(self._link_dict(page_rect, target))
+                self._insert_link(page, page_rect, target)
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         self.statusMessage.emit(("Link deleted" if target[0] == "delete" else "Link changed")
                                 + " (Ctrl+Z undoes it)")
@@ -3054,6 +3101,7 @@ class DocumentView(QScrollArea):
             again = [it for it in (objs.items if objs else []) if it["n"] in set(ns)]
             self.obj_sel = (index, again) if again else None
         self.pages[index].update()
+        self.selectionChanged.emit()    # menus (Arrange) follow the reselected objects
         self.statusMessage.emit(label + " (Ctrl+Z undoes it)")
 
     def move_objects(self, new_rect):
@@ -3100,6 +3148,8 @@ class DocumentView(QScrollArea):
                         for r in rects)]
         self.obj_sel = (index, again) if again else None
         self.pages[index].update()
+        # the edit cleared the selection (and the Arrange buttons with it): tell the menus
+        self.selectionChanged.emit()
         label = {"front": "Brought to front", "back": "Sent to back",
                  "forward": "Brought forward", "backward": "Sent backward"}[how]
         self.statusMessage.emit(label + " (Ctrl+Z undoes it)")

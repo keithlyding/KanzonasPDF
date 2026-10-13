@@ -5,10 +5,10 @@
 #
 # package                    version     license
 pymupdf==1.28.2               # AGPL-3.0 (or Artifex commercial)
-PySide6==6.11.2               # LGPL-3.0
-PySide6_Essentials==6.11.2    # LGPL-3.0
-PySide6_Addons==6.11.2        # LGPL-3.0
-shiboken6==6.11.2             # LGPL-3.0
+PySide6==6.12.0               # LGPL-3.0
+PySide6_Essentials==6.12.0    # LGPL-3.0
+PySide6_Addons==6.12.0        # LGPL-3.0
+shiboken6==6.12.0             # LGPL-3.0
 rapidocr_onnxruntime==1.2.3   # Apache-2.0
 onnxruntime==1.29.0           # MIT
 opencv-python==5.0.0.93       # Apache-2.0

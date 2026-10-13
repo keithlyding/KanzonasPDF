@@ -81,3 +81,65 @@ class LinksTool(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VisibleLinks(unittest.TestCase):
+    def view(self):
+        d = F.open()
+        d.new_page(width=300, height=200)
+        p = os.path.join(tempfile.mkdtemp(), "v.pdf")
+        d.save(p)
+        v = DocumentView(p)
+        v.resize(600, 500)
+        v.show()
+        APP.processEvents()
+        self.addCleanup(v.close_doc)
+        return v
+
+    def blue_pixels(self, img, box):
+        n = 0
+        for y in range(int(box.top()), int(box.bottom()) + 1):
+            for x in range(int(box.left()), int(box.right()) + 1):
+                c = img.pixelColor(x, y)
+                n += c.blue() > 150 and c.red() < 100
+        return n
+
+    def test_new_link_has_a_box_drawn_on_screen(self):
+        from kanzonas.document_view import link_border
+        v = self.view()
+        v.add_link(0, F.Rect(40, 40, 200, 80), ("uri", "https://example.com"))
+        ln = v.doc[0].get_links()[0]
+        self.assertEqual(link_border(v.doc, ln["xref"])[0], 1.0)
+        pw = v.pages[0]
+        img = pw.grab().toImage()
+        box = pw.to_screen(F.Rect(40, 40, 200, 80))
+        self.assertGreater(self.blue_pixels(img, box.adjusted(-2, -2, 2, 2)), 50)
+        # and it survives editing where it goes
+        v.edit_link(0, v.doc[0].get_links()[0], ("page", 0, True))
+        self.assertIsNotNone(link_border(v.doc, v.doc[0].get_links()[0]["xref"]))
+
+    def test_hidden_link_option(self):
+        from kanzonas.document_view import link_border
+        v = self.view()
+        v.add_link(0, F.Rect(40, 40, 200, 80), ("uri", "https://example.com", False))
+        self.assertIsNone(link_border(v.doc, v.doc[0].get_links()[0]["xref"]))
+
+    def test_dialog_remembers_box_choice(self):
+        dlg = LinkDialog(None, 3, ("uri", "https://a.example", False))
+        self.assertFalse(dlg.show_box.isChecked())
+        dlg._ok()
+        self.assertEqual(dlg.result_value, ("uri", "https://a.example", False))
+
+    def test_printed_with_markups(self):
+        from PySide6.QtCore import QRectF
+        from PySide6.QtGui import QImage, QPainter
+        from kanzonas.print_dialog import PrintDialog
+        v = self.view()
+        v.add_link(0, F.Rect(40, 40, 200, 80), ("uri", "https://example.com"))
+        dlg = PrintDialog(None, v)
+        img = QImage(600, 400, QImage.Format_RGB32)
+        img.fill(0xFFFFFF)
+        p = QPainter(img)
+        dlg._draw_links(p, 0, QRectF(0, 0, 600, 400))
+        p.end()
+        self.assertGreater(self.blue_pixels(img, QRectF(78, 78, 324, 84)), 50)

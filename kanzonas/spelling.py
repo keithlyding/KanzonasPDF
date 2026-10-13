@@ -6,7 +6,7 @@ The word list (pyspellchecker) loads the first time a text box opens, not at sta
 
 import re
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, QObject
 from PySide6.QtGui import QColor, QSyntaxHighlighter, QTextCharFormat, QTextCursor
 
 WORD = re.compile(r"[A-Za-z][A-Za-z']*[A-Za-z]|[A-Za-z]")
@@ -98,8 +98,12 @@ class Highlighter(QSyntaxHighlighter):
 
 
 def word_at(edit, pos):
-    """(QTextCursor selecting the word at widget point pos, word) or (None, None)."""
-    cur = edit.cursorForPosition(pos)
+    """(QTextCursor selecting the word at viewport point pos, word) or (None, None)."""
+    return _word_around(edit.cursorForPosition(pos))
+
+
+def _word_around(cur):
+    """(cursor selecting the word around text cursor cur, word) or (None, None)."""
     block = cur.block().text()
     at = cur.positionInBlock()
     for m in WORD.finditer(block):
@@ -111,13 +115,24 @@ def word_at(edit, pos):
     return None, None
 
 
+def misspelled_at(edit, pos):
+    """The misspelled word to offer corrections for: the one under the pointer (pos, in
+    the editor's viewport), else the one at the text cursor, so a right-click that lands a
+    little off the word still finds it. (cursor, word) or (None, None)."""
+    for cur, word in (word_at(edit, pos), _word_around(edit.textCursor())):
+        if word is not None and not is_known(word):
+            return cur, word
+    return None, None
+
+
 def menu_for(edit, pos):
-    """The editor's usual right-click menu, with corrections on top for a misspelled word."""
+    """The editor's usual right-click menu, with corrections on top for a misspelled word.
+    pos: where it was clicked, in the editor's viewport."""
     menu = edit.createStandardContextMenu(pos)
     if not enabled():
         return menu
-    cur, word = word_at(edit, pos)
-    if word is None or is_known(word):
+    cur, word = misspelled_at(edit, pos)
+    if word is None:
         return menu
     first = menu.actions()[0] if menu.actions() else None
     options = suggestions(word)
@@ -145,14 +160,26 @@ def menu_for(edit, pos):
     return menu
 
 
+class _MenuFilter(QObject):
+    """Right-click in the editor's text area (its viewport, where Qt delivers the event
+    with the click in viewport coordinates, the ones the text layout uses)."""
+
+    def __init__(self, edit):
+        super().__init__(edit)
+        self.edit = edit
+
+    def eventFilter(self, obj, e):
+        if e.type() == QEvent.ContextMenu:
+            m = menu_for(self.edit, e.pos())
+            m.exec(e.globalPos())
+            m.deleteLater()
+            return True
+        return False
+
+
 def install(edit):
     """Spell check a QPlainTextEdit / QTextEdit as you type."""
     edit._kz_spell = Highlighter(edit.document())
-    edit.setContextMenuPolicy(Qt.CustomContextMenu)
-
-    def show(pos):
-        m = menu_for(edit, pos)
-        m.exec(edit.mapToGlobal(pos))
-        m.deleteLater()
-    edit.customContextMenuRequested.connect(show)
+    edit._kz_menu = _MenuFilter(edit)
+    edit.viewport().installEventFilter(edit._kz_menu)
     return edit._kz_spell

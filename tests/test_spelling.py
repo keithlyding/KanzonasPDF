@@ -94,6 +94,47 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class RightClick(unittest.TestCase):
+    def setUp(self):
+        spelling._state.update({"enabled": True, "own": set(), "known": {}})
+
+    def test_viewport_right_click_shows_corrections(self):
+        from PySide6.QtCore import QEvent as E
+        from PySide6.QtGui import QContextMenuEvent
+        edit = QPlainTextEdit("Pleese recieve it")
+        spelling.install(edit)
+        shown = []
+        real = spelling.menu_for
+
+        class Stub:                       # the real menu is checked, then not shown
+            def exec(self, *_a):
+                pass
+
+            def deleteLater(self):
+                pass
+
+        def capture(e, pos):
+            shown.append([a.text() for a in real(e, pos).actions()])
+            return Stub()
+        cur = edit.document().find("recieve")
+        with mock.patch.object(spelling, "word_at", lambda _e, _p: (cur, "recieve")), \
+                mock.patch.object(spelling, "menu_for", capture):
+            ev = QContextMenuEvent(QContextMenuEvent.Mouse, QPoint(5, 5), QPoint(5, 5))
+            APP.sendEvent(edit.viewport(), ev)
+        self.assertEqual(len(shown), 1)
+        self.assertEqual(shown[0][0], "receive")
+
+    def test_falls_back_to_word_at_text_cursor(self):
+        edit = QPlainTextEdit("the recieve")
+        c = edit.textCursor()
+        c.setPosition(6)                                   # inside "recieve"
+        edit.setTextCursor(c)
+        known = edit.document().find("the")
+        with mock.patch.object(spelling, "word_at", lambda _e, _p: (known, "the")):
+            cur, word = spelling.misspelled_at(edit, QPoint(0, 0))
+        self.assertEqual((word, cur.selectedText()), ("recieve", "recieve"))
+
+
 class WordAt(unittest.TestCase):
     def test_word_at_cursor(self):
         # the point -> character mapping is Qt's (and unreliable with the offscreen platform

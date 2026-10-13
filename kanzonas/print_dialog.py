@@ -242,6 +242,7 @@ class PrintDialog(QDialog):
                        QColor(0, 0, 0, 60))
             p.fillRect(QRectF(ox, oy, paper.width() * k, paper.height() * k), Qt.white)
             p.drawImage(target, img)
+            self._draw_links(p, i, target)
         finally:
             p.end()
         self.picture.setPixmap(canvas)
@@ -288,7 +289,31 @@ class PrintDialog(QDialog):
             res = printer.resolution() / 72.0
             target = QRectF(box.x() * res, box.y() * res, box.width() * res, box.height() * res)
             self._draw_bands(painter, i, target, dpi)
+            self._draw_links(painter, i, target)
         return True
+
+    def _draw_links(self, painter, i, target):
+        """Visible link borders, as on screen (MuPDF's rendering leaves them out). They
+        print with the markups."""
+        if not self.markups.isChecked():
+            return
+        from PySide6.QtGui import QPen
+        page_rect = self.view.doc[i].rect
+        k = target.width() / max(1e-6, page_rect.width)
+        for r, ln in self.view.links(i):
+            b = ln.get("kz_border")
+            if not b:
+                continue
+            width, rgb, style = b
+            painter.setPen(QPen(QColor.fromRgbF(*rgb), max(0.5, width * k),
+                                Qt.DashLine if style == "D" else Qt.SolidLine))
+            painter.setBrush(Qt.NoBrush)
+            box = QRectF(target.x() + r.x0 * k, target.y() + r.y0 * k, r.width * k,
+                         r.height * k)
+            if style == "U":
+                painter.drawLine(box.bottomLeft(), box.bottomRight())
+            else:
+                painter.drawRect(box)
 
     def _draw_bands(self, painter, i, target, dpi):
         """Draw page i into target in horizontal bands of at most BAND_BYTES each, so a big

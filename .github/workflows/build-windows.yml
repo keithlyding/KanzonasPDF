@@ -19,9 +19,9 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip                       # reuse downloaded packages between builds
@@ -158,17 +158,40 @@ jobs:
           if (-not (Test-Path "$env:RUNNER_TEMP\kzportable\data\settings.ini")) { throw "Portable settings not in data folder" }
           if (Test-Path "HKCU:\Software\KanzonasPDF") { throw "Portable app wrote to the registry" }
 
-      - uses: actions/upload-artifact@v4
+      - name: PortableApps.com package layout (finished by hand with their tools)
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python tools/make_portableapps.py "${{ steps.ver.outputs.version }}" dist\KanzonasPDF KanzonasPDFPortable
+          if ($LASTEXITCODE -ne 0) { throw "Making the PortableApps.com layout failed" }
+          # the program in the package keeps its data in the package's Data folder, leaves the
+          # registry alone and doesn't offer to update itself
+          Remove-Item -Recurse -Force "HKCU:\Software\KanzonasPDF" -ErrorAction SilentlyContinue
+          $p = Start-Process "KanzonasPDFPortable\App\KanzonasPDF\KanzonasPDF.exe" -ArgumentList "--selftest","paf-selftest.log" -PassThru -Wait
+          Get-Content paf-selftest.log
+          if ($p.ExitCode -ne 0) { throw "PortableApps.com package failed its self test" }
+          if (-not (Test-Path "KanzonasPDFPortable\Data\settings.ini")) { throw "Settings not in the package's Data folder" }
+          if (Test-Path "HKCU:\Software\KanzonasPDF") { throw "PortableApps.com package wrote to the registry" }
+          Remove-Item -Recurse -Force "KanzonasPDFPortable\Data"
+          Compress-Archive -Path KanzonasPDFPortable -DestinationPath KanzonasPDFPortable-layout.zip
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portableapps-layout
+          path: KanzonasPDFPortable-layout.zip
+
+      - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portable
           path: KanzonasPDF-portable.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-windows
           path: KanzonasPDF-windows.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-setup
           path: dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
@@ -204,12 +227,24 @@ jobs:
           Write-Host "Tagged commit on main: $on"
           exit 0
 
+      - name: Checksums (SHA-256) of the downloads
+        id: sums
+        shell: pwsh
+        run: |
+          $files = "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe", "KanzonasPDF-portable.zip", "KanzonasPDF-windows.zip"
+          $lines = foreach ($f in $files) { "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 $f).Hash.ToLower(), (Split-Path $f -Leaf) }
+          $lines | Set-Content -Encoding ascii SHA256SUMS.txt
+          Get-Content SHA256SUMS.txt
+          "text<<KZSUMS" >> $env:GITHUB_OUTPUT
+          $lines >> $env:GITHUB_OUTPUT
+          "KZSUMS" >> $env:GITHUB_OUTPUT
+
       - name: Publish release
         if: >-
           (startsWith(github.ref, 'refs/tags/v') && steps.onmain.outputs.main == 'true') ||
           (github.ref == 'refs/heads/main' && steps.rel.outputs.new == 'true' &&
            vars.AUTO_RELEASE != 'false')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.ver.outputs.version }}
           target_commitish: ${{ github.sha }}
@@ -225,7 +260,13 @@ jobs:
 
             What's new: see [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ steps.ver.outputs.version }}/CHANGELOG.md).
             Free software under the GNU AGPL 3.0. [Code signing policy](https://github.com/keithlyding/KanzonasPDF/blob/main/CODE_SIGNING_POLICY.md).
+
+            **Check your download (SHA-256):** in PowerShell, `Get-FileHash <file>` must show the same value.
+            ```
+            ${{ steps.sums.outputs.text }}
+            ```
           files: |
+            SHA256SUMS.txt
             dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
             KanzonasPDF-portable.zip
             KanzonasPDF-windows.zip

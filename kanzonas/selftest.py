@@ -380,7 +380,10 @@ def run(log_path):
         if paths.is_portable():
             ini = os.path.join(paths.data_dir(), "settings.ini")
             assert os.path.exists(ini), "portable settings file missing"
-            assert paths.data_dir("signatures").startswith(paths.app_dir())
+            where = paths.portable_options().get("data")
+            base = os.path.normpath(os.path.join(paths.app_dir(), where)) if where \
+                else paths.app_dir()
+            assert paths.data_dir("signatures").startswith(base)
             return f"(portable: {paths.data_dir()})"
         return "(installed: registry + AppData)"
     check("storage location", t_storage)
