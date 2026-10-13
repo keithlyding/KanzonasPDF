@@ -1140,19 +1140,23 @@ class MainWindow(QMainWindow):
         self._add_recent(path)
 
     def _add_recent(self, path):
+        from . import paths
         recent = self.settings.value("recent") or []
         if isinstance(recent, str):         # INI settings (portable) give one entry as a str
             recent = [recent]
-        recent = [p for p in recent if p != path]
+        recent = [p for p in (paths.follow_drive(r) for r in recent) if p != path]
         recent.insert(0, path)
         self.settings.setValue("recent", recent[:10])
         self._rebuild_recent()
 
     def _rebuild_recent(self):
+        from . import paths
         self.recent_menu.clear()
         recent = self.settings.value("recent") or []
         if isinstance(recent, str):
             recent = [recent]
+        # portable: files on the stick follow it to its new drive letter on another PC
+        recent = [paths.follow_drive(p) for p in recent]
         for p in recent:
             a = self.recent_menu.addAction(p)
             a.triggered.connect(lambda _=False, p=p: self.open_file(p))

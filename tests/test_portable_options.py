@@ -56,3 +56,22 @@ class PortableOptions(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DriveLetterMoves(unittest.TestCase):
+    """PortableApps.com Format: the app must keep working, recent files included, when the
+    stick's drive letter changes between PCs."""
+
+    def test_follows_the_stick_to_its_new_letter(self):
+        import ntpath
+        files = {"F:\\Docs\\plan.pdf"}
+        exists = files.__contains__
+        with mock.patch.object(paths, "is_portable", lambda: True), \
+                mock.patch.object(paths, "app_dir", lambda: "F:\\PortableApps\\KanzonasPDFPortable\\App\\KanzonasPDF"):
+            f = lambda p: paths.follow_drive(p, exists, ntpath.splitdrive)
+            self.assertEqual(f("E:\\Docs\\plan.pdf"), "F:\\Docs\\plan.pdf")
+            self.assertEqual(f("C:\\Users\\me\\gone.pdf"), "C:\\Users\\me\\gone.pdf")  # not on stick
+            self.assertEqual(f("F:\\Docs\\plan.pdf"), "F:\\Docs\\plan.pdf")
+        with mock.patch.object(paths, "is_portable", lambda: False):
+            self.assertEqual(paths.follow_drive("E:\\Docs\\plan.pdf", exists, ntpath.splitdrive),
+                             "E:\\Docs\\plan.pdf")                               # installed: as is

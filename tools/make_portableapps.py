@@ -30,12 +30,12 @@ def package_version(v):
 
 APPINFO = """[Format]
 Type=PortableApps.comFormat
-Version=3.8
+Version=3.9
 
 [Details]
 Name=KanzonasPDF Portable
 AppID={app_id}
-Publisher=KanzonasPDF & PortableApps.com
+Publisher=KanzonasPDF
 Homepage={home}
 Category=Office
 Description=Free PDF reader and editor: markups, measuring, forms, signing and editing
@@ -50,6 +50,9 @@ CommercialUse=true
 [Version]
 PackageVersion={package}
 DisplayVersion={display}
+
+[Dependencies]
+Requires64bitOS=yes
 
 [Control]
 Icons=1
@@ -117,7 +120,9 @@ def build(version, dist="dist/KanzonasPDF", out="KanzonasPDFPortable", root=".")
         f.write(LAUNCHER)
     with open(os.path.join(out, "help.html"), "w", encoding="utf-8") as f:
         f.write(HELP.format(**fields))
-    shutil.copy(os.path.join(root, "assets", "kanzonas.ico"), os.path.join(info, "appicon.ico"))
+    # 256-color and true-color sizes, as the format asks (tools/make_paf_icon.py)
+    shutil.copy(os.path.join(root, "assets", "portableapps-appicon.ico"),
+                os.path.join(info, "appicon.ico"))
     icons(os.path.join(root, "assets", "kanzonas.png"), info)
     for name in ("LICENSE", "README.md"):
         if os.path.exists(os.path.join(root, name)):

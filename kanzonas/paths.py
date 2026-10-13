@@ -45,6 +45,19 @@ def portable_options():
     return out
 
 
+def follow_drive(path, exists=os.path.exists, splitdrive=os.path.splitdrive):
+    """Portable copies move between PCs and the stick's drive letter changes (E: here, F:
+    there): a remembered file that's gone from its old drive but is on the drive the program
+    now runs from is found there. Other paths come back unchanged."""
+    if not path or not is_portable() or exists(path):
+        return path
+    old, rest = splitdrive(path)
+    here = splitdrive(app_dir())[0]
+    if old and here and old.lower() != here.lower() and exists(here + rest):
+        return here + rest
+    return path
+
+
 def platform_updates():
     """True when something else (the PortableApps.com platform) updates this copy."""
     return is_portable() and portable_options().get("updates", "").lower() == "off"
