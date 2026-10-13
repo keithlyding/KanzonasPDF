@@ -119,10 +119,49 @@ class RightClick(unittest.TestCase):
         cur = edit.document().find("recieve")
         with mock.patch.object(spelling, "word_at", lambda _e, _p: (cur, "recieve")), \
                 mock.patch.object(spelling, "menu_for", capture):
-            ev = QContextMenuEvent(QContextMenuEvent.Mouse, QPoint(5, 5), QPoint(5, 5))
+            ev = QContextMenuEvent(QContextMenuEvent.Keyboard, QPoint(5, 5), QPoint(5, 5))
             APP.sendEvent(edit.viewport(), ev)
         self.assertEqual(len(shown), 1)
         self.assertEqual(shown[0][0], "receive")
+
+    def test_right_press_on_the_page_editor_stays_in_the_editor(self):
+        """The on-page editors are children of the page: a right press in the text must open
+        the corrections, not go on to the page (which opened its own Cut / Copy / Paste menu)."""
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QContextMenuEvent
+        from PySide6.QtTest import QTest
+        from PySide6.QtWidgets import QWidget
+
+        class Page(QWidget):
+            presses = 0
+
+            def mousePressEvent(self, e):
+                Page.presses += 1
+
+        page = Page()
+        page.resize(400, 200)
+        edit = QPlainTextEdit("Pleese recieve it", page)
+        edit.setGeometry(10, 10, 300, 60)
+        spelling.install(edit)
+        page.show()
+        APP.processEvents()
+        shown = []
+
+        class Stub:
+            def exec(self, *_a):
+                shown.append(True)
+
+            def deleteLater(self):
+                pass
+        with mock.patch.object(spelling, "menu_for", lambda _e, _p: Stub()):
+            QTest.mouseClick(edit.viewport(), Qt.RightButton, Qt.NoModifier, QPoint(20, 10))
+            ev = QContextMenuEvent(QContextMenuEvent.Mouse, QPoint(20, 10), QPoint(20, 10))
+            APP.sendEvent(edit.viewport(), ev)        # Windows sends this after the release
+        self.assertEqual(shown, [True])               # one menu, from the press
+        self.assertEqual(Page.presses, 0)
+        QTest.mouseClick(edit.viewport(), Qt.LeftButton, Qt.NoModifier, QPoint(20, 10))
+        self.assertEqual(Page.presses, 0)             # left clicks still edit the text
+        page.close()
 
     def test_falls_back_to_word_at_text_cursor(self):
         edit = QPlainTextEdit("the recieve")

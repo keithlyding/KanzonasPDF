@@ -6,8 +6,9 @@ The word list (pyspellchecker) loads the first time a text box opens, not at sta
 
 import re
 
-from PySide6.QtCore import QEvent, QObject
-from PySide6.QtGui import QColor, QSyntaxHighlighter, QTextCharFormat, QTextCursor
+from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtGui import (QColor, QContextMenuEvent, QSyntaxHighlighter, QTextCharFormat,
+                           QTextCursor)
 
 WORD = re.compile(r"[A-Za-z][A-Za-z']*[A-Za-z]|[A-Za-z]")
 def _settings():
@@ -161,18 +162,32 @@ def menu_for(edit, pos):
 
 
 class _MenuFilter(QObject):
-    """Right-click in the editor's text area (its viewport, where Qt delivers the event
-    with the click in viewport coordinates, the ones the text layout uses)."""
+    """Right-click in the editor's text area (its viewport, where the click comes in viewport
+    coordinates, the ones the text layout uses). The menu opens on the right-button press and
+    the press is kept here: Qt's text box ignores right presses, so on the page (the on-page
+    editors are children of the page) the press went on to the page, which opened its own
+    Cut / Copy / Paste menu instead of the corrections."""
 
     def __init__(self, edit):
         super().__init__(edit)
         self.edit = edit
 
+    def _show(self, pos, global_pos):
+        m = menu_for(self.edit, pos)
+        m.exec(global_pos)
+        m.deleteLater()
+
     def eventFilter(self, obj, e):
-        if e.type() == QEvent.ContextMenu:
-            m = menu_for(self.edit, e.pos())
-            m.exec(e.globalPos())
-            m.deleteLater()
+        t = e.type()
+        if t in (QEvent.MouseButtonPress, QEvent.MouseButtonDblClick) and \
+                e.button() == Qt.RightButton:
+            self._show(e.position().toPoint(), e.globalPosition().toPoint())
+            return True
+        if t == QEvent.MouseButtonRelease and e.button() == Qt.RightButton:
+            return True
+        if t == QEvent.ContextMenu:
+            if e.reason() != QContextMenuEvent.Mouse:      # the menu key (mouse: done above)
+                self._show(e.pos(), e.globalPos())
             return True
         return False
 
