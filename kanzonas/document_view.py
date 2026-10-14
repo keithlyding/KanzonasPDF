@@ -92,7 +92,7 @@ class DocumentView(QScrollArea):
     signedDocument = Signal()
     oneShotPlaced = Signal()        # a signature / initials / date was placed
     selectToolRequested = Signal()
-    previousToolRequested = Signal()    # Escape with a tool picked: back to Hand / Select
+    previousToolRequested = Signal()    # Escape: back to the default tool (Hand or Select)
     calibrateRequested = Signal(int, float)    # page index, drawn length in points
     scaleChanged = Signal()
     layersChanged = Signal()
@@ -660,10 +660,10 @@ class DocumentView(QScrollArea):
                 self.zoom_at(self.zoom * 1.15 ** (dy / 120.0), vp)
             e.accept()
         elif ctrl:
-            if dy > 0:
-                self.zoom_in()
-            elif dy < 0:
-                self.zoom_out()
+            # zoom around the pointer, like CAD-style mouse, not around the window's center
+            if dy:
+                vp = self.viewport().mapFromGlobal(e.globalPosition().toPoint())
+                self.zoom_at(self.zoom * (1.2 if dy > 0 else 1 / 1.2), vp)
             e.accept()
         elif self.page_wheel and dy and self._page_fits():
             # one wheel step = one whole page (when the page fits in the window)
@@ -1279,6 +1279,30 @@ class DocumentView(QScrollArea):
         self.set_text_selection(index, words)
         return len(self.selected_text())
 
+    def word_at(self, index, pt):
+        """The characters of the word under pt (unrotated page point), or []."""
+        words = self._words(index)
+        i = self._word_near(words, pt, self.NEAR) if words else None
+        if i is None or not words[i][4].strip():
+            return []
+        key = (words[i][5], words[i][6])
+        a = b = i
+        while a > 0 and (words[a - 1][5], words[a - 1][6]) == key and words[a - 1][4].strip():
+            a -= 1
+        while b + 1 < len(words) and (words[b + 1][5], words[b + 1][6]) == key and \
+                words[b + 1][4].strip():
+            b += 1
+        return words[a:b + 1]
+
+    def line_at(self, index, pt):
+        """The characters of the line of text under pt, or []."""
+        words = self._words(index)
+        i = self._word_near(words, pt, self.NEAR) if words else None
+        if i is None:
+            return []
+        key = (words[i][5], words[i][6])
+        return [w for w in words if (w[5], w[6]) == key]
+
     def selected_text(self):
         if not self.text_sel:
             return ""
@@ -1644,6 +1668,7 @@ class DocumentView(QScrollArea):
                 scope = self._ask_pages_scope("Crop pages", "Crop to this box on which pages?")
                 if scope is not None:
                     self.crop_pages(index, rect, scope == "all")
+                self.setFocus()         # so Escape still puts the Crop tool down
             elif tool == "capture":
                 self.capture_area(index, rect)
             else:
@@ -2690,13 +2715,9 @@ class DocumentView(QScrollArea):
             if self.selection is not None:
                 self.clear_selection()
                 return
-            # nothing selected: a picked tool (stamp, shape, measure...) is put down and the
-            # Hand or Select tool you used last comes back; Escape again gives Select
-            if self.tool in ("hand", "select"):
-                if self.tool != "select":
-                    self.selectToolRequested.emit()
-            else:
-                self.previousToolRequested.emit()
+            # nothing selected: whatever tool is picked, Escape goes back to the default
+            # tool (Preferences > Start-up: Hand or Select)
+            self.previousToolRequested.emit()
             return
         arrows = {Qt.Key_Left: (-1, 0), Qt.Key_Right: (1, 0), Qt.Key_Up: (0, -1),
                   Qt.Key_Down: (0, 1)}
@@ -3955,7 +3976,7 @@ class DocumentView(QScrollArea):
         f.setPixelSize(max(8, int(size * self.zoom)))
         ed.setFont(f)
         ed.setGeometry(r.toRect().adjusted(-1, -1, 1, 1))
-        ed.setStyleSheet("background:#fffbe6; border:2px solid #0078d7;")
+        ed.setStyleSheet("background:#fffbe6; color:#000; border:2px solid #0078d7;")
         done = {"x": False}
 
         def finish(save=True, next_field=None):

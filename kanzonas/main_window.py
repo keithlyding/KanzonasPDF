@@ -1318,8 +1318,7 @@ class MainWindow(QMainWindow):
             (v.signedDocument, self._on_signed),
             (v.oneShotPlaced, self._after_one_shot),
             (v.selectToolRequested, lambda: self.set_tool("select")),
-            (v.previousToolRequested,
-             lambda: self.set_tool(getattr(self, "_last_basic_tool", "hand"))),
+            (v.previousToolRequested, lambda: self.set_tool(self.default_tool())),
             (v.calibrateRequested, self._calibrate),
             (v.layersChanged, lambda: self.sender() is self.view() and self._rebuild_thumbs()),
             (v.scaleChanged, self._update_ui),
@@ -1564,11 +1563,15 @@ class MainWindow(QMainWindow):
             v.setFocus()
         self._refresh_props()
 
+    def default_tool(self):
+        """Hand or Select (Preferences > Start-up): the tool at start-up, and the one Escape
+        and a placed signature / date go back to."""
+        return "select" if self.settings.value("start_tool", "hand") == "select" else "hand"
+
     def _after_one_shot(self):
-        """After placing a signature, initials or a date: back to the Hand or Select tool,
-        whichever was used last."""
+        """After placing a signature, initials or a date: back to the default tool."""
         if self.tool in ("signature", "initials", "date"):
-            self.set_tool(getattr(self, "_last_basic_tool", "hand"))
+            self.set_tool(self.default_tool())
 
     # ---- properties panel / tool defaults -------------------------------------
     def _refresh_props(self):
@@ -1646,6 +1649,15 @@ class MainWindow(QMainWindow):
         t = e.type()
         if t == QEvent.Resize and obj is getattr(self, "thumbs", None):
             QTimer.singleShot(0, self._fit_thumbs)     # after the list has laid out its new size
+        if t == QEvent.KeyPress and e.key() == Qt.Key_Escape and not e.modifiers() and \
+                self.isActiveWindow() and self._escape_goes_to_page():
+            # after a toolbar button, a ribbon tab or a dialog took the keyboard focus, Escape
+            # still clears the selection / puts the tool down, as if the page had focus
+            v = self.view()
+            if v is not None:
+                v.setFocus()
+                v.keyPressEvent(e)
+                return True
         if t in (QEvent.ShortcutOverride, QEvent.KeyPress):
             mods = e.modifiers()
             if (mods & Qt.ControlModifier and mods & Qt.ShiftModifier
@@ -1657,6 +1669,18 @@ class MainWindow(QMainWindow):
                 self._page_op("rot", 90 if e.key() in self._PLUS_KEYS else -90)
                 return True
         return super().eventFilter(obj, e)
+
+    def _escape_goes_to_page(self):
+        """True when Escape should go to the page: no menu or dialog is open and the keyboard
+        focus isn't somewhere Escape means something (a text box, a list, the page itself)."""
+        from PySide6.QtWidgets import QAbstractButton
+        if QApplication.activePopupWidget() is not None or QApplication.activeModalWidget() is not None:
+            return False
+        fw = QApplication.focusWidget()
+        if fw is None:
+            return True
+        return isinstance(fw, (QAbstractButton, QToolBar, QTabWidget)) or \
+            type(fw).__name__ in ("QTabBar", "_TabBar", "Ribbon")
 
     def _focus_search(self):
         self.search.setFocus()
@@ -1719,6 +1743,7 @@ class MainWindow(QMainWindow):
             scope = v._ask_pages_scope("Remove crop", "Remove the crop from which pages?")
             if scope is not None:
                 v.remove_crop(cur, scope == "all")
+            v.setFocus()                # so Escape still puts the Crop tool down
 
     def combine_files(self):
         from .combine import CombineDialog

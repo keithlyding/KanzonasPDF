@@ -158,7 +158,7 @@ class PreferencesDialog(QDialog):
         self.start_tool.addItem("Select", "select")
         self.start_tool.setCurrentIndex(max(0, self.start_tool.findData(
             win.settings.value("start_tool", "hand"))))
-        form.addRow("Start with the tool:", self.start_tool)
+        form.addRow("Default tool (at start-up, and where Escape goes back to):", self.start_tool)
         self.open_view = QComboBox()
         for key, label in (("width", "Fit width"), ("page", "Fit page (whole page in the window)"),
                            ("actual", "Actual size (100%)"),
