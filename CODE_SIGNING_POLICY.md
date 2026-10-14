@@ -1,12 +1,21 @@
 # Code signing policy
 
-Free code signing provided by [SignPath.io](https://signpath.io), certificate by
-[SignPath Foundation](https://signpath.org).
+KanzonasPDF's downloads are **not code-signed yet**. A free certificate from the SignPath
+Foundation was applied for and declined (the project is too new and has too few users); a
+certificate will be bought or applied for again once the project has grown. Until then:
 
-KanzonasPDF's Windows program (`KanzonasPDF.exe`), installer (`KanzonasPDF-v<version>-setup.exe`)
-and portable download (`KanzonasPDF-portable.zip`) are built from this repository's source code by
-the automated GitHub Actions build (`.github/workflows/build-windows.yml`) and signed only from
-that build. Nothing is signed from a developer's own computer.
+- KanzonasPDF's Windows program (`KanzonasPDF.exe`), installer
+  (`KanzonasPDF-v<version>-setup.exe`), portable download (`KanzonasPDF-portable.zip`) and
+  PortableApps.com package are built from this repository's source code by the automated
+  GitHub Actions build (`.github/workflows/build-windows.yml`), never on a developer's own
+  computer, and only after the build's tests pass.
+- Every release lists the SHA-256 checksum of each download (in the release notes and in
+  `SHA256SUMS.txt`), so a download can be checked against what the build produced.
+- Windows SmartScreen may warn the first time an unsigned program runs; the README says what
+  that means and when it's safe to continue.
+
+When signing is in place, it will happen only from that automated build, and this policy will
+say which certificate is used.
 
 ## Team roles
 

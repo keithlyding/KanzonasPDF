@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: KanzonasPDF.KanzonasPDF
+PackageVersion: 0.91.3
+PackageLocale: en-US
+Publisher: KanzonasPDF
+PublisherUrl: https://github.com/keithlyding/KanzonasPDF
+PublisherSupportUrl: https://github.com/keithlyding/KanzonasPDF/issues
+PackageName: KanzonasPDF
+PackageUrl: https://github.com/keithlyding/KanzonasPDF
+License: AGPL-3.0
+LicenseUrl: https://github.com/keithlyding/KanzonasPDF/blob/main/LICENSE
+Copyright: Copyright (c) KanzonasPDF contributors
+ShortDescription: Free PDF markup, measuring and editing for construction and engineering
+Description: |-
+  A free, open-source PDF reader and editor for Windows: markups and comments, calibrated
+  measuring (length, area, angle, radius, perimeter, volume, count), stamps, forms, signatures,
+  editing page text and objects, page tools (rotate, move, crop, combine, create from images),
+  compare revisions, redaction, OCR and export. No account, no telemetry; a portable build is
+  available too.
+Moniker: kanzonaspdf
+Tags:
+- annotate
+- cad
+- construction
+- drawing
+- markup
+- measure
+- pdf
+- pdf-editor
+- portable
+- stamp
+ReleaseNotesUrl: https://github.com/keithlyding/KanzonasPDF/blob/v0.91.3/CHANGELOG.md
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
