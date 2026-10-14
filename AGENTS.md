@@ -36,7 +36,9 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
 
 ## Before pushing
 - `QT_QPA_PLATFORM=offscreen python -m kanzonas --selftest selftest.log` must exit 0.
-- `QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -p "test_*.py"` must pass.
+- `QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -p "test_*.py" -t .` must pass
+  (`-t .` loads `tests/__init__.py`, which tears Qt down in order at exit; without it the
+  process can crash after reporting OK).
 - For CAD-related changes: `python tests/cad_samples.py DIR` then `python tests/cad_battery.py DIR`.
 - New dependencies: add the minimum to `requirements.txt` and the exact version and license
   to `constraints.txt`; heavy ones must be imported lazily (see Performance).

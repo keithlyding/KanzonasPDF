@@ -772,8 +772,9 @@ class DocumentView(QScrollArea):
                 self.horizontalScrollBar().value() - w.x())
 
     def _apply_view_anchor(self, anchor):
-        if anchor is None or not getattr(self, "pages", None):
-            return
+        import shiboken6
+        if anchor is None or not shiboken6.isValid(self) or not getattr(self, "pages", None):
+            return                      # (queued with a timer: the view may be gone by now)
         page, vfrac, h_off = anchor
         page = max(0, min(page, len(self.pages) - 1))
         w = self.pages[page]
@@ -3584,7 +3585,10 @@ class DocumentView(QScrollArea):
                 QTimer.singleShot(0, self._refit)
 
     def _refit(self):
+        import shiboken6
         self._refit_queued = False
+        if not shiboken6.isValid(self):
+            return                      # queued with a timer: the view was closed meanwhile
         if self.fit_mode == "width":
             self.fit_width()
         elif self.fit_mode == "page":
