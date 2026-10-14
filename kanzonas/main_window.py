@@ -7,7 +7,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
-from PySide6.QtCore import Qt, QSize, QTimer, QEvent
+from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, QImage,
                            QPainter)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, QMessageBox,
@@ -187,6 +187,17 @@ def _slider_to_zoom(val):
     lo, hi = math.log(MIN_ZOOM * 100), math.log(MAX_ZOOM * 100)
     return math.exp(lo + (hi - lo) * (val / _SLIDER_STEPS)) / 100
 
+
+
+class _FindBox(QLineEdit):
+    """The Find box: Enter = next match, Shift+Enter = previous (returnPressed can't tell)."""
+    previousRequested = Signal()
+
+    def keyPressEvent(self, e):
+        if e.key() in (Qt.Key_Return, Qt.Key_Enter) and e.modifiers() & Qt.ShiftModifier:
+            self.previousRequested.emit()
+            return
+        super().keyPressEvent(e)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -837,14 +848,36 @@ class MainWindow(QMainWindow):
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self._spacer_act = tb.addWidget(spacer)
-        self.search = QLineEdit()
+        self.search = _FindBox()
         self.search.setPlaceholderText("Find (Ctrl+F)")
         self.search.setClearButtonEnabled(True)
         self.search.setMaximumWidth(260)
         self.search.returnPressed.connect(lambda: self._find(False))
+        self.search.previousRequested.connect(lambda: self._find(True))
         self.search.textChanged.connect(lambda t: (not t) and self.view()
                                         and self.view().clear_search())
-        self._search_act = tb.addWidget(self.search)
+        # the Find box with its match count and up / down arrows, kept together wherever
+        # the box goes (top toolbar or the ribbon's tab row)
+        self.find_count = QLabel()
+        self.find_count.setToolTip("Match shown of the matches found")
+        self.find_prev_btn = QToolButton()
+        self.find_prev_btn.setArrowType(Qt.UpArrow)
+        self.find_prev_btn.setAutoRaise(True)
+        self.find_prev_btn.setToolTip("Previous match (Shift+Enter, Shift+F3)")
+        self.find_prev_btn.clicked.connect(lambda: self._find(True))
+        self.find_next_btn = QToolButton()
+        self.find_next_btn.setArrowType(Qt.DownArrow)
+        self.find_next_btn.setAutoRaise(True)
+        self.find_next_btn.setToolTip("Next match (Enter, F3)")
+        self.find_next_btn.clicked.connect(lambda: self._find(False))
+        self.find_group = QWidget()
+        fl = QHBoxLayout(self.find_group)
+        fl.setContentsMargins(0, 0, 0, 0)
+        fl.setSpacing(2)
+        for w in (self.search, self.find_count, self.find_prev_btn, self.find_next_btn):
+            fl.addWidget(w)
+        self._show_find_count(0, 0, False)
+        self._search_act = tb.addWidget(self.find_group)
 
         self.addToolBarBreak()
         tt = self.tools_tb = QToolBar("Tools")
@@ -1130,6 +1163,7 @@ class MainWindow(QMainWindow):
         v.documentChanged.connect(self._on_doc_changed)
         v.structureChanged.connect(self._on_structure_changed)
         v.statusMessage.connect(lambda m: self.statusBar().showMessage(m, 4000))
+        v.searchChanged.connect(self._on_search_changed)
         v.check_digital_signatures()
         state = self._file_states().get(os.path.normcase(path))
         if state:
@@ -1421,6 +1455,25 @@ class MainWindow(QMainWindow):
             return
         if not v.find(self.search.text(), backwards) and self.search.text():
             self.statusBar().showMessage("No matches", 4000)
+        self._show_find_count(*v.search_position())
+
+    def _on_search_changed(self, n, total, searching):
+        if self.sender() is self.view():       # another tab's search doesn't show here
+            self._show_find_count(n, total, searching)
+
+    def _show_find_count(self, n, total, searching):
+        """The count beside the Find box: '3 of 120' ('120+' while still searching)."""
+        v = self.view()
+        if not total and not searching:
+            text = "No matches" if v is not None and v.search_text() is not None else ""
+        elif not n:
+            text = "Searching..."
+        else:
+            text = f"{n} of {total}" + ("+" if searching else "")
+        self.find_count.setText(text)
+        self.find_count.setVisible(bool(text))
+        for b in (self.find_prev_btn, self.find_next_btn):
+            b.setEnabled(total > 0)
 
     def _zoom_from_box(self):
         v = self.view()
@@ -2663,7 +2716,7 @@ class MainWindow(QMainWindow):
         self.zoom_box.setToolTip("Zoom level: pick one or type a percentage and press Enter")
         self.page_spin.setToolTip("Current page: type a page number and press Enter")
         self.search.setToolTip("Find text in this document (Ctrl+F). Enter or F3 = next match, "
-                               "Shift+F3 = previous")
+                               "Shift+Enter or Shift+F3 = previous")
         self.shapes_btn.setToolTip("Shapes: click for the shape shown, or the arrow to pick "
                                    "another (rectangle, ellipse, cloud, polygon, line, arrow, "
                                    "polyline, pen). Hold Shift for squares, circles and straight lines")
@@ -3256,7 +3309,7 @@ class MainWindow(QMainWindow):
             sb.addPermanentWidget(self.nav_group)
             sb.addPermanentWidget(self.view_group)
             sb.addPermanentWidget(self.zoom_group)
-            self.ribbon_right.layout().insertWidget(0, self.search)
+            self.ribbon_right.layout().insertWidget(0, self.find_group)
             self.search.setFixedWidth(170)
         elif not ribbon and not in_tb:
             sb.removeWidget(self.zoom_group)
@@ -3266,8 +3319,8 @@ class MainWindow(QMainWindow):
             self.search.setMaximumWidth(260)
             self._zoom_group_act = tb.insertWidget(self.a_fit_width, self.zoom_group)
             self._nav_group_act = tb.insertWidget(self._spacer_act, self.nav_group)
-            self._search_act = tb.addWidget(self.search)
-        for w in (self.zoom_group, self.nav_group, self.search):
+            self._search_act = tb.addWidget(self.find_group)
+        for w in (self.zoom_group, self.nav_group, self.find_group):
             w.show()
         self.view_group.setVisible(ribbon)
         tb.setVisible(not ribbon)

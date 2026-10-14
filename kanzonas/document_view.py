@@ -86,6 +86,7 @@ class DocumentView(QScrollArea):
     structureChanged = Signal()     # pages added / removed / reordered / rotated
     zoomChanged = Signal(float)
     statusMessage = Signal(str)
+    searchChanged = Signal(int, int, bool)   # match shown (1-based, 0 = none), matches, still searching
     openFileRequested = Signal(str, int)      # a link to another PDF: path, page (0-based)
     selectionChanged = Signal()
     signedDocument = Signal()
@@ -802,6 +803,7 @@ class DocumentView(QScrollArea):
         self._search_cur = None
         self._search_todo = None
         self._search_gen += 1
+        self.searchChanged.emit(0, 0, False)
         self._build_pages()
         old.close()
         self._apply_view_anchor(anchor)
@@ -859,6 +861,7 @@ class DocumentView(QScrollArea):
         self._search_text = None
         self._search_todo = None
         self._search_gen += 1
+        self.searchChanged.emit(0, 0, False)
         if structural:
             self._inline = None
             self.field_focus = None     # its page may be gone or moved
@@ -4487,6 +4490,7 @@ class DocumentView(QScrollArea):
             self.statusMessage.emit("No matches")
         else:
             self.statusMessage.emit(self._search_status())
+        self.searchChanged.emit(*self.search_position())
 
     def _search_count(self):
         return sum(len(h) for h in self.search_hits.values())
@@ -4507,34 +4511,53 @@ class DocumentView(QScrollArea):
         i = pages[(n + (-1 if backwards else 1)) % len(pages)]
         return (i, len(self.search_hits[i]) - 1 if backwards else 0)
 
-    def _search_status(self):
+    def search_position(self):
+        """(number of the match shown, 1-based, or 0; matches found so far; whether the
+        search is still running) for the Find box's count."""
+        if self._search_text is None:
+            return 0, 0, False
         if self._search_cur is None:
-            return "Searching..."
+            return 0, 0, bool(self._search_todo)
         i, k = self._search_cur
         n = sum(len(h) for p, h in self.search_hits.items() if p < i) + k + 1
-        return f"Match {n} of {self._search_count()}" + ("+" if self._search_todo else "")
+        return n, self._search_count(), bool(self._search_todo)
+
+    def _search_status(self):
+        n, total, searching = self.search_position()
+        if not n:
+            return "Searching..."
+        return f"Match {n} of {total}" + ("+" if searching else "")
 
     def _show_hit(self, hit):
         old = self._search_cur
         self._search_cur = hit
         i, k = hit
         w = self.pages[i]
-        r = w.to_screen(self.search_hits[i][k])
-        top = w.y() + r.y()
-        vbar = self.verticalScrollBar()
-        if not (vbar.value() + 40 < top < vbar.value() + self.viewport().height() - 40):
-            vbar.setValue(int(top - self.viewport().height() / 3))
-        hbar = self.horizontalScrollBar()
-        left = w.x() + r.x()
-        if not (hbar.value() < left < hbar.value() + self.viewport().width() - 40):
-            hbar.setValue(int(left - 40))
+        if self.fit_mode == "page":
+            # whole-page view: bring the match's page in front, centered, not just the match
+            self.show_whole_page(i)
+        else:
+            r = w.to_screen(self.search_hits[i][k])
+            top = w.y() + r.y()
+            vbar = self.verticalScrollBar()
+            if not (vbar.value() + 40 < top < vbar.value() + self.viewport().height() - 40):
+                vbar.setValue(int(top - self.viewport().height() / 3))
+            hbar = self.horizontalScrollBar()
+            left = w.x() + r.x()
+            if not (hbar.value() < left < hbar.value() + self.viewport().width() - 40):
+                hbar.setValue(int(left - 40))
         for p in {i, old[0] if old else i}:
             if 0 <= p < len(self.pages):
                 self.pages[p].update()
         self.statusMessage.emit(self._search_status())
+        self.searchChanged.emit(*self.search_position())
 
     def current_hit(self):
         return self._search_cur
+
+    def search_text(self):
+        """The text being searched for, or None when there's no search."""
+        return self._search_text
 
     def clear_search(self):
         self.search_hits = {}
@@ -4546,6 +4569,7 @@ class DocumentView(QScrollArea):
         self._search_pos = -1
         for w in self.pages:
             w.update()
+        self.searchChanged.emit(0, 0, False)
 
     # ---- saving -----------------------------------------------------------
     def _ask_original_passwords(self):
