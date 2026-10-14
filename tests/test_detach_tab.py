@@ -42,13 +42,13 @@ class DetachTab(unittest.TestCase):
 
         # windows left by an earlier test (deleteLater'd, not yet gone) must not count
         self.pump()
-        for x in list(main_window.WINDOWS):
+        for x in main_window.windows():
             for v in x._views():
                 v.dirty = False
             x._close_confirmed = True
             x.close()
         self.pump()
-        main_window.WINDOWS.clear()
+        assert not main_window.windows()
 
     def window(self):
         w = MainWindow()
@@ -73,7 +73,7 @@ class DetachTab(unittest.TestCase):
         self.pump()
         self.assertIsNotNone(w2)
         self.assertFalse(w2.primary)
-        self.assertIn(w2, main_window.WINDOWS)
+        self.assertIn(w2, main_window.windows())
         self.assertEqual([w.tabs.count(), w2.tabs.count()], [1, 1])
         self.assertIs(w2.view(), v)
         self.assertTrue(v.dirty)                              # not reopened
@@ -103,7 +103,7 @@ class DetachTab(unittest.TestCase):
         self.assertEqual(w.tabs.count(), 2)
         self.assertIs(w.tabs.widget(0), v)                    # dropped on the first tab
         self.assertIs(w.view(), v)
-        self.assertNotIn(w2, main_window.WINDOWS)             # closed itself, nothing left
+        self.assertNotIn(w2, main_window.windows())             # closed itself, nothing left
         v.statusMessage.emit("back")
         self.assertEqual(w.statusBar().currentMessage(), "back")
 
@@ -113,9 +113,9 @@ class DetachTab(unittest.TestCase):
         self.pump()
         w2.close_tab(0)
         self.pump()
-        self.assertNotIn(w2, main_window.WINDOWS)
+        self.assertNotIn(w2, main_window.windows())
         self.assertEqual(w.tabs.count(), 1)
-        self.assertIn(w, main_window.WINDOWS)
+        self.assertIn(w, main_window.windows())
 
     def test_closing_the_main_window_closes_the_others_and_remembers_all_files(self):
         w = self.window()
@@ -129,8 +129,8 @@ class DetachTab(unittest.TestCase):
         w.close()
         self.pump()
         self.assertEqual(asked.call_count, 1)                 # the one dirty document, once
-        self.assertNotIn(w2, main_window.WINDOWS)
-        self.assertNotIn(w, main_window.WINDOWS)
+        self.assertNotIn(w2, main_window.windows())
+        self.assertNotIn(w, main_window.windows())
         files = json.loads(w.settings.value("session_files"))
         self.assertEqual(sorted(os.path.basename(f) for f in files), ["one.pdf", "two.pdf"])
 
@@ -143,8 +143,8 @@ class DetachTab(unittest.TestCase):
         mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Cancel).start()
         w.close()
         self.pump()
-        self.assertIn(w, main_window.WINDOWS)
-        self.assertIn(w2, main_window.WINDOWS)
+        self.assertIn(w, main_window.windows())
+        self.assertIn(w2, main_window.windows())
         self.assertTrue(w2.isVisible())
         w2.view().dirty = False
         w2.close()

@@ -223,14 +223,16 @@ Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> mo
 <b>Ctrl+arrow</b> 0.1 pt, for fine adjustments. A series of presses is one Ctrl+Z. Markups tied to
 text (highlights, underlines, strikeouts) stay with their text. With nothing selected, Left and
 Right turn the page as usual.</li>
-<li><b>Escape</b> clears the selection. With nothing selected, Escape puts down the tool you
-picked (a stamp, shape, measurement...) and goes back to the Hand or Select tool you used last;
-press it again for the Select (arrow) tool.</li>
+<li><b>Escape</b> clears the selection. With nothing selected, Escape puts down whatever tool
+is picked (a stamp, shape, measurement, Crop...) and goes back to your default tool: Hand or
+Select, chosen in Preferences &gt; Start-up (<b>Default tool</b>). It works even right after a
+dialog or a toolbar click took the keyboard focus.</li>
 </ul>
 
 <h2 id="clipboard">Copy, cut and paste</h2>
 <ul>
 <li><b>Text:</b> with the Select tool, drag across text; the selection stays highlighted.
+<b>Double-click</b> a word to select it, and click a <b>third time</b> to select its whole line.
 The drag can cross the gap between pages, and the pages in between are included.
 <b>Copy</b> (Ctrl+C) puts it on the clipboard, with a blank line between pages;
 <b>Cut</b> (Ctrl+X) also removes those letters
@@ -786,11 +788,11 @@ settings...).</li>
 <tr><td>Shift+R</td><td>Redact</td></tr>
 <tr><td>Shift+E</td><td>Erase content</td></tr>
 <tr><td>Shift+P</td><td>Capture area</td></tr>
-<tr><td>Ctrl+wheel</td><td>Zoom (scroll up and down when CAD-style mouse is on)</td></tr>
+<tr><td>Ctrl+wheel</td><td>Zoom around the pointer (scroll up and down when CAD-style mouse is on)</td></tr>
 <tr><td>Shift+wheel</td><td>Scroll left and right</td></tr>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
-<tr><td>Escape, Escape again</td><td>Clear selection / put the tool down (back to Hand or Select), then Select</td></tr>
+<tr><td>Escape</td><td>Clear selection / put the tool down (back to the default tool, Hand or Select)</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>

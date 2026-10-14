@@ -44,8 +44,9 @@ class InlineEditor(QFrame):
         self.text.setLineWrapMode(QPlainTextEdit.WidgetWidth)
         self.text.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        # white like the page, so the line reads as edited in place (it covers the old text)
-        self.text.setStyleSheet("background: white;")
+        # white like the page, so the line reads as edited in place (it covers the old text);
+        # black text whatever the theme (the dark theme's palette text is light)
+        self.text.setStyleSheet("background: white; color: black;")
         self.text.installEventFilter(self)
         from . import spelling
         spelling.install(self.text)

@@ -9,7 +9,7 @@ import pymupdf
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath,
                            QFontMetrics)
-from PySide6.QtWidgets import QWidget, QToolTip
+from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
 
@@ -1102,6 +1102,8 @@ class PageWidget(QWidget):
             if self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
                 return
         if tool in TEXT_TOOLS:
+            if self._triple_click(e):
+                return
             self.view.clear_text_selection()
             self._drag_start = self._drag_now = pos
             mode, words = self.view.text_selection(self.index, pdf, pdf)
@@ -1479,10 +1481,45 @@ class PageWidget(QWidget):
             return
         if self.view.tool in ("select", "hand"):
             card = self._card_at(e.position())
+            pdf = self.to_pdf(e.position())
             if card is not None:
                 self.view.edit_annot_text(self.index, card)
+            elif self.view.annot_at(self.index, pdf) is not None or self.view.tool == "hand":
+                self.view.edit_annot_at(self.index, pdf)
             else:
-                self.view.edit_annot_at(self.index, self.to_pdf(e.position()))
+                self._select_word(pdf, e)
+        elif self.view.tool in TEXT_TOOLS:
+            self._select_word(self.to_pdf(e.position()), e)
+
+    def _select_word(self, pdf, e):
+        """Double-click: select the word under the pointer (a third click selects the line)."""
+        word = self.view.word_at(self.index, pdf)
+        self._drag_start = self._drag_now = None
+        self._text_sel = None
+        self.view._set_text_drag(None)
+        if word:
+            self.view.set_text_selection(self.index, word)
+        else:
+            self.view.clear_text_selection()
+        import time
+        self._dbl_click = (time.monotonic(), e.position().toPoint())
+
+    def _triple_click(self, e):
+        """True (and the line under the pointer selected) when this press follows a
+        double-click closely enough to be the third click."""
+        import time
+        last = getattr(self, "_dbl_click", None)
+        if last is None:
+            return False
+        t, pos = last
+        self._dbl_click = None
+        if time.monotonic() - t > QApplication.doubleClickInterval() / 1000 or \
+                (e.position().toPoint() - pos).manhattanLength() > 6:
+            return False
+        line = self.view.line_at(self.index, self.to_pdf(e.position()))
+        if line:
+            self.view.set_text_selection(self.index, line)
+        return bool(line)
 
     def leaveEvent(self, e):
         if self._obj_hover is not None:

@@ -189,10 +189,28 @@ def _slider_to_zoom(val):
 
 
 
-# every open main window, in the order they were opened: the first one is the primary (it
-# owns the session: closing it closes the others); the rest hold tabs pulled out of it
-WINDOWS = []
+# every open main window, in the order they were opened, as weak references: the registry
+# must not keep a window alive (a window the interpreter frees at exit, after Qt's own
+# teardown, corrupts the heap). windows() gives the live ones.
+_WINDOW_REFS = []
 TAB_MIME = "application/x-kanzonaspdf-tab"
+
+
+def windows():
+    """The open main windows, oldest first."""
+    out = []
+    for ref in list(_WINDOW_REFS):
+        w = ref()
+        if w is None:
+            _WINDOW_REFS.remove(ref)
+        else:
+            out.append(w)
+    return out
+
+
+def _forget_window(ref):
+    if ref in _WINDOW_REFS:
+        _WINDOW_REFS.remove(ref)
 
 
 class _TabBar(QTabBar):
@@ -252,7 +270,7 @@ def tab_from_mime(mime):
     """(source window, tab index) a dragged tab stands for, or (None, None)."""
     try:
         wid, index = bytes(mime.data(TAB_MIME)).decode("ascii").split(":")
-        src = next(w for w in WINDOWS if str(id(w)) == wid)
+        src = next(w for w in windows() if str(id(w)) == wid)
         return src, int(index)
     except (ValueError, StopIteration):
         return None, None
@@ -283,8 +301,10 @@ class MainWindow(QMainWindow):
         from . import paths
         self.settings = paths.settings()
         self.primary = True if primary is None else bool(primary)
-        WINDOWS.append(self)
-        self.destroyed.connect(lambda *_: self in WINDOWS and WINDOWS.remove(self))
+        import weakref
+        ref = weakref.ref(self)
+        _WINDOW_REFS.append(ref)
+        self.destroyed.connect(lambda *_: _forget_window(ref))
         if not self.primary:
             self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle(_title_base())
@@ -1318,8 +1338,7 @@ class MainWindow(QMainWindow):
             (v.signedDocument, self._on_signed),
             (v.oneShotPlaced, self._after_one_shot),
             (v.selectToolRequested, lambda: self.set_tool("select")),
-            (v.previousToolRequested,
-             lambda: self.set_tool(getattr(self, "_last_basic_tool", "hand"))),
+            (v.previousToolRequested, lambda: self.set_tool(self.default_tool())),
             (v.calibrateRequested, self._calibrate),
             (v.layersChanged, lambda: self.sender() is self.view() and self._rebuild_thumbs()),
             (v.scaleChanged, self._update_ui),
@@ -1427,7 +1446,7 @@ class MainWindow(QMainWindow):
             return
         menu = QMenu(self)
         menu.addAction("Move to new window", lambda: self.detach_tab(index))
-        others = [w for w in WINDOWS if w is not self and w.isVisible()]
+        others = [w for w in windows() if w is not self and w.isVisible()]
         for w in others:
             name = w.tabs.tabText(w.tabs.currentIndex()) if w.tabs.count() else "empty window"
             menu.addAction(f"Move to window: {name}",
@@ -1459,7 +1478,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, e):
         """Closing the primary window closes every window (asking about unsaved changes in
         each) and remembers the session; closing a pulled-out window closes just its tabs."""
-        others = [w for w in WINDOWS if w is not self] if self.primary else []
+        others = [w for w in windows() if w is not self] if self.primary else []
         if not getattr(self, "_close_confirmed", False):
             for w in [self] + others:
                 for v in w._views():
@@ -1483,8 +1502,7 @@ class MainWindow(QMainWindow):
                 w.close()
         self.autosave.discard_all()
         QApplication.instance().removeEventFilter(self)
-        if self in WINDOWS:
-            WINDOWS.remove(self)
+        _forget_window(next((r for r in _WINDOW_REFS if r() is self), None))
         e.accept()
 
     def restore_session(self):
@@ -1564,11 +1582,15 @@ class MainWindow(QMainWindow):
             v.setFocus()
         self._refresh_props()
 
+    def default_tool(self):
+        """Hand or Select (Preferences > Start-up): the tool at start-up, and the one Escape
+        and a placed signature / date go back to."""
+        return "select" if self.settings.value("start_tool", "hand") == "select" else "hand"
+
     def _after_one_shot(self):
-        """After placing a signature, initials or a date: back to the Hand or Select tool,
-        whichever was used last."""
+        """After placing a signature, initials or a date: back to the default tool."""
         if self.tool in ("signature", "initials", "date"):
-            self.set_tool(getattr(self, "_last_basic_tool", "hand"))
+            self.set_tool(self.default_tool())
 
     # ---- properties panel / tool defaults -------------------------------------
     def _refresh_props(self):
@@ -1643,9 +1665,20 @@ class MainWindow(QMainWindow):
     _MINUS_KEYS = (Qt.Key_Minus, Qt.Key_Underscore)
 
     def eventFilter(self, obj, e):
+        if QApplication.closingDown():
+            return False            # the app is being torn down: nothing here is safe to touch
         t = e.type()
         if t == QEvent.Resize and obj is getattr(self, "thumbs", None):
             QTimer.singleShot(0, self._fit_thumbs)     # after the list has laid out its new size
+        if t == QEvent.KeyPress and e.key() == Qt.Key_Escape and not e.modifiers() and \
+                self.isActiveWindow() and self._escape_goes_to_page():
+            # after a toolbar button, a ribbon tab or a dialog took the keyboard focus, Escape
+            # still clears the selection / puts the tool down, as if the page had focus
+            v = self.view()
+            if v is not None:
+                v.setFocus()
+                v.keyPressEvent(e)
+                return True
         if t in (QEvent.ShortcutOverride, QEvent.KeyPress):
             mods = e.modifiers()
             if (mods & Qt.ControlModifier and mods & Qt.ShiftModifier
@@ -1657,6 +1690,18 @@ class MainWindow(QMainWindow):
                 self._page_op("rot", 90 if e.key() in self._PLUS_KEYS else -90)
                 return True
         return super().eventFilter(obj, e)
+
+    def _escape_goes_to_page(self):
+        """True when Escape should go to the page: no menu or dialog is open and the keyboard
+        focus isn't somewhere Escape means something (a text box, a list, the page itself)."""
+        from PySide6.QtWidgets import QAbstractButton
+        if QApplication.activePopupWidget() is not None or QApplication.activeModalWidget() is not None:
+            return False
+        fw = QApplication.focusWidget()
+        if fw is None:
+            return True
+        return isinstance(fw, (QAbstractButton, QToolBar, QTabWidget)) or \
+            type(fw).__name__ in ("QTabBar", "_TabBar", "Ribbon")
 
     def _focus_search(self):
         self.search.setFocus()
@@ -1719,6 +1764,7 @@ class MainWindow(QMainWindow):
             scope = v._ask_pages_scope("Remove crop", "Remove the crop from which pages?")
             if scope is not None:
                 v.remove_crop(cur, scope == "all")
+            v.setFocus()                # so Escape still puts the Crop tool down
 
     def combine_files(self):
         from .combine import CombineDialog
