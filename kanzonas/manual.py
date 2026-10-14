@@ -52,6 +52,15 @@ Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within 
 (256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
+<li><b>A document in its own window</b> (for a second monitor): drag its tab up or down out
+of the tab bar and let go, or right-click the tab &gt; <b>Move to new window</b>, or View &gt;
+<b>Move tab to new window</b> (Ctrl+Shift+N). The document isn't reopened: unsaved changes
+and undo history come along. Drop a tab on another KanzonasPDF window's tabs (or right-click
+it &gt; <b>Move to window</b>) to move it there. Each window has its own panels, tools and
+Find box, with the same settings. Closing the last tab of a pulled-out window closes that
+window; closing the main window (the first one) closes all of them, asking about unsaved
+changes in each, and reopening the last files at start-up brings back the documents from
+every window, in the main window.</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Markup, Measure, Arrange, Review,
 Protect, Forms, Pages and View. The <b>Markup</b> tab has only markups: comments, notes, text
 boxes, callouts, stamps, shapes and attached-file icons. Markups stay editable in any PDF
@@ -796,6 +805,7 @@ settings...).</li>
 <tr><td>Ctrl+2 / Ctrl+0 / Ctrl+1</td><td>Fit width / fit page / actual size</td></tr>
 <tr><td>Ctrl+F, Enter / F3, Shift+Enter / Shift+F3</td><td>Find, next match, previous match</td></tr>
 <tr><td>Ctrl+H</td><td>Replace text</td></tr>
+<tr><td>Ctrl+Shift+N</td><td>Move tab to new window</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>

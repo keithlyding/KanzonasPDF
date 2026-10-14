@@ -7,10 +7,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
-from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal
+from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, QImage,
-                           QPainter)
-from PySide6.QtWidgets import (QMainWindow, QTabWidget, QToolBar, QFileDialog, QMessageBox,
+                           QPainter, QDrag, QMouseEvent, QCursor)
+from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFileDialog, QMessageBox,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
                                QListWidgetItem, QDockWidget, QAbstractItemView, QToolButton,
                                QVBoxLayout, QHBoxLayout, QMenu, QProgressDialog,
@@ -189,6 +189,81 @@ def _slider_to_zoom(val):
 
 
 
+# every open main window, in the order they were opened: the first one is the primary (it
+# owns the session: closing it closes the others); the rest hold tabs pulled out of it
+WINDOWS = []
+TAB_MIME = "application/x-kanzonaspdf-tab"
+
+
+class _TabBar(QTabBar):
+    """Document tabs that can be dragged out of the window (to a second window, on another
+    monitor say) or dropped on another KanzonasPDF window's tabs."""
+
+    PULL = 24          # px the pointer must leave the tab bar by before the tab comes out
+
+    def __init__(self, win):
+        super().__init__()
+        self.win = win
+        self.setAcceptDrops(True)
+        self._press = None
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            self._press = self.tabAt(e.position().toPoint())
+        super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e):
+        pos = e.position().toPoint()
+        if self._press is not None and self._press >= 0 and e.buttons() & Qt.LeftButton and \
+                (pos.y() < -self.PULL or pos.y() > self.height() + self.PULL):
+            index, self._press = self._press, None
+            # end the tab bar's own reorder drag before the tab leaves it
+            release = QMouseEvent(QEvent.MouseButtonRelease, e.position(), e.globalPosition(),
+                                  Qt.LeftButton, Qt.NoButton, e.modifiers())
+            super().mouseReleaseEvent(release)
+            self.win.drag_tab_out(index)
+            return
+        super().mouseMoveEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        self._press = None
+        super().mouseReleaseEvent(e)
+
+    def dragEnterEvent(self, e):
+        if e.mimeData().hasFormat(TAB_MIME):
+            e.acceptProposedAction()
+
+    def dragMoveEvent(self, e):
+        if e.mimeData().hasFormat(TAB_MIME):
+            e.acceptProposedAction()
+
+    def dropEvent(self, e):
+        if not e.mimeData().hasFormat(TAB_MIME):
+            return
+        src, index = tab_from_mime(e.mimeData())
+        if src is None:
+            return
+        at = self.tabAt(e.position().toPoint())
+        self.win.receive_tab(src, index, at)
+        e.acceptProposedAction()
+
+
+def tab_from_mime(mime):
+    """(source window, tab index) a dragged tab stands for, or (None, None)."""
+    try:
+        wid, index = bytes(mime.data(TAB_MIME)).decode("ascii").split(":")
+        src = next(w for w in WINDOWS if str(id(w)) == wid)
+        return src, int(index)
+    except (ValueError, StopIteration):
+        return None, None
+
+
+class _Tabs(QTabWidget):
+    def __init__(self, win):
+        super().__init__()
+        self.setTabBar(_TabBar(win))
+
+
 class _FindBox(QLineEdit):
     """The Find box: Enter = next match, Shift+Enter = previous (returnPressed can't tell)."""
     previousRequested = Signal()
@@ -200,10 +275,18 @@ class _FindBox(QLineEdit):
         super().keyPressEvent(e)
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, primary=None):
+        """primary (the default): the app's main window, which owns the session (closing it
+        closes the others). A window a tab was pulled out into is not: closing its last
+        tab closes it."""
         super().__init__()
         from . import paths
         self.settings = paths.settings()
+        self.primary = True if primary is None else bool(primary)
+        WINDOWS.append(self)
+        self.destroyed.connect(lambda *_: self in WINDOWS and WINDOWS.remove(self))
+        if not self.primary:
+            self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle(_title_base())
         self.resize(1300, 900)
         self.setAcceptDrops(True)
@@ -212,12 +295,14 @@ class MainWindow(QMainWindow):
         self._last_basic_tool = self.tool
         self._sig_cache = {}            # kind -> png, for this run of the app only
 
-        self.tabs = QTabWidget()
+        self.tabs = _Tabs(self)
         self.tabs.setTabsClosable(True)
         self.tabs.setMovable(True)
         self.tabs.setDocumentMode(True)
         self.tabs.tabCloseRequested.connect(self.close_tab)
         self.tabs.currentChanged.connect(self._on_tab_changed)
+        self.tabs.tabBar().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tabs.tabBar().customContextMenuRequested.connect(self._tab_menu)
         self.setCentralWidget(self.tabs)
 
         self._build_sidebar()
@@ -336,6 +421,9 @@ class MainWindow(QMainWindow):
         self.a_close = self._act("&Close tab", lambda: self.close_tab(self.tabs.currentIndex()),
                                  QKeySequence.Close)
         self.a_exit = self._act("E&xit", self.close, "Alt+F4")
+        self.a_detach = self._act("Move tab to new &window", self.detach_current, "Ctrl+Shift+N",
+                                  tip="Open this document in its own window (for a second "
+                                      "monitor); drag the tab out of the tab bar does the same")
         self.a_prefs = self._act("Pre&ferences...", self.preferences, "Ctrl+K",
                                  tip="All the remembered options in one place (Ctrl+K)")
         self.a_undo = self._act("&Undo", lambda: v() and v().undo(), QKeySequence.Undo)
@@ -683,6 +771,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
         m.addSeparator()
         m.addAction(self.a_split)
+        m.addAction(self.a_detach)
         m.addAction(self.a_cad_mouse)
         m.addAction(self.a_page_wheel)
         m.addAction(self.a_hl_fields)
@@ -1062,7 +1151,7 @@ class MainWindow(QMainWindow):
     def _update_ui(self):
         v = self.view()
         has = v is not None
-        for a in (self.a_save, self.a_save_as, self.a_print, self.a_close,
+        for a in (self.a_save, self.a_save_as, self.a_print, self.a_close, self.a_detach,
                   self.a_find,
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
@@ -1136,34 +1225,12 @@ class MainWindow(QMainWindow):
         except Exception as ex:
             QMessageBox.critical(self, "Could not open file", f"{path}\n\n{ex}")
             return
-        v.set_tool(self.tool)
-        v.show_comment_boxes = self.a_cards.isChecked()
-        v.selectionChanged.connect(self._on_selection_changed)
-        v.openFileRequested.connect(self._open_linked_pdf)
-        v.signedDocument.connect(self._on_signed)
-        v.oneShotPlaced.connect(self._after_one_shot)
-        v.selectToolRequested.connect(lambda: self.set_tool("select"))
-        v.previousToolRequested.connect(
-            lambda: self.set_tool(getattr(self, "_last_basic_tool", "hand")))
-        v.calibrateRequested.connect(self._calibrate)
-        v.layersChanged.connect(lambda: self.sender() is self.view() and self._rebuild_thumbs())
-        v.scaleChanged.connect(self._update_ui)
-        v.documentChanged.connect(self._markups_timer.start)
-        v.structureChanged.connect(self._markups_timer.start)
-        v.requestSignature.connect(self._sign_field)
-        for kind, png in self._sig_cache.items():
-            v.set_sig_image(kind, png)
+        self._connect_view(v)
         if v.read_only:
             QTimer.singleShot(0, lambda: QMessageBox.information(
                 self, "Protected document", "This PDF is protected against changes. You can "
                 "read, search and print it. Use Protect > Unlock with password if you have its "
                 "permissions password."))
-        v.pageChanged.connect(self._on_page_changed)
-        v.zoomChanged.connect(lambda _: self._update_ui())
-        v.documentChanged.connect(self._on_doc_changed)
-        v.structureChanged.connect(self._on_structure_changed)
-        v.statusMessage.connect(lambda m: self.statusBar().showMessage(m, 4000))
-        v.searchChanged.connect(self._on_search_changed)
         v.check_digital_signatures()
         state = self._file_states().get(os.path.normcase(path))
         if state:
@@ -1240,6 +1307,135 @@ class MainWindow(QMainWindow):
             return self.save()
         return r == QMessageBox.Discard
 
+    def _connect_view(self, v):
+        """Wire a document view to this window (the connections are kept so the view can
+        move to another window, see move_view)."""
+        v.set_tool(self.tool)
+        v.show_comment_boxes = self.a_cards.isChecked()
+        conns = [
+            (v.selectionChanged, self._on_selection_changed),
+            (v.openFileRequested, self._open_linked_pdf),
+            (v.signedDocument, self._on_signed),
+            (v.oneShotPlaced, self._after_one_shot),
+            (v.selectToolRequested, lambda: self.set_tool("select")),
+            (v.previousToolRequested,
+             lambda: self.set_tool(getattr(self, "_last_basic_tool", "hand"))),
+            (v.calibrateRequested, self._calibrate),
+            (v.layersChanged, lambda: self.sender() is self.view() and self._rebuild_thumbs()),
+            (v.scaleChanged, self._update_ui),
+            (v.documentChanged, self._markups_timer.start),
+            (v.structureChanged, self._markups_timer.start),
+            (v.requestSignature, self._sign_field),
+            (v.pageChanged, self._on_page_changed),
+            (v.zoomChanged, lambda _: self._update_ui()),
+            (v.documentChanged, self._on_doc_changed),
+            (v.structureChanged, self._on_structure_changed),
+            (v.statusMessage, lambda m: self.statusBar().showMessage(m, 4000)),
+            (v.searchChanged, self._on_search_changed),
+        ]
+        for sig, slot in conns:
+            sig.connect(slot)
+        v._kz_window_conns = conns
+        for kind, png in self._sig_cache.items():
+            v.set_sig_image(kind, png)
+
+    def _disconnect_view(self, v):
+        for sig, slot in getattr(v, "_kz_window_conns", []):
+            try:
+                sig.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+        v._kz_window_conns = []
+
+    # ---- tabs in other windows --------------------------------------------------------
+    def detach_current(self):
+        self.detach_tab(self.tabs.currentIndex())
+
+    def detach_tab(self, index, pos=None):
+        """Move the tab's document into a new window of its own (pos: where to put the
+        window, screen coordinates; else a little offset from this one). The document isn't
+        reopened: its unsaved changes and undo history come along."""
+        v = self.tabs.widget(index)
+        if v is None:
+            return None
+        win = MainWindow(primary=False)
+        win._sig_cache = dict(self._sig_cache)
+        win.resize(self.size())
+        win.move(pos - QPoint(120, 24) if pos is not None else self.pos() + QPoint(40, 40))
+        win.show()
+        self.move_view(v, win)
+        win.raise_()
+        win.activateWindow()
+        return win
+
+    def move_view(self, v, target, at=-1):
+        """Move document view v from this window to target (at: tab position there)."""
+        index = self.tabs.indexOf(v)
+        if index < 0 or target is self:
+            return
+        v.commit_pending()
+        title = self.tabs.tabText(index)
+        if self._split_view is not None and getattr(self._split_view, "_source", None) is v:
+            self._split_view.deleteLater()
+            self._split_view = None
+            self.split_dock.hide()
+        self._disconnect_view(v)
+        self.tabs.removeTab(index)
+        target.adopt_view(v, title, at)
+        self._update_ui()
+        if not self.primary and self.tabs.count() == 0:
+            QTimer.singleShot(0, self.close)     # a pulled-out window with nothing left in it
+
+    def adopt_view(self, v, title, at=-1):
+        self._connect_view(v)
+        at = self.tabs.count() if at < 0 else at
+        self.tabs.insertTab(at, v, title)
+        self.tabs.setCurrentIndex(at)
+        self._update_ui()
+
+    def receive_tab(self, src, index, at):
+        """A tab dropped on this window's tab bar: from another window, or reordered."""
+        if src is self:
+            if 0 <= index != at and at >= 0:
+                self.tabs.tabBar().moveTab(index, at)
+            return
+        v = src.tabs.widget(index)
+        if v is not None:
+            src.move_view(v, self, at)
+
+    def drag_tab_out(self, index):
+        """Drag a tab beyond the tab bar: drop it on another window's tabs to move it there,
+        or anywhere else to open it in a new window at the pointer."""
+        v = self.tabs.widget(index)
+        if v is None:
+            return
+        drag = QDrag(self.tabs.tabBar())
+        mime = QMimeData()
+        mime.setData(TAB_MIME, f"{id(self)}:{index}".encode("ascii"))
+        drag.setMimeData(mime)
+        pix = v.grab().scaledToWidth(240, Qt.SmoothTransformation)
+        drag.setPixmap(pix)
+        drag.setHotSpot(QPoint(pix.width() // 2, 12))
+        result = drag.exec(Qt.MoveAction)
+        if result == Qt.IgnoreAction and self.tabs.indexOf(v) >= 0:
+            self.detach_tab(self.tabs.indexOf(v), QCursor.pos())
+
+    def _tab_menu(self, pos):
+        bar = self.tabs.tabBar()
+        index = bar.tabAt(pos)
+        if index < 0:
+            return
+        menu = QMenu(self)
+        menu.addAction("Move to new window", lambda: self.detach_tab(index))
+        others = [w for w in WINDOWS if w is not self and w.isVisible()]
+        for w in others:
+            name = w.tabs.tabText(w.tabs.currentIndex()) if w.tabs.count() else "empty window"
+            menu.addAction(f"Move to window: {name}",
+                           lambda _=False, w=w: self.move_view(self.tabs.widget(index), w))
+        menu.addSeparator()
+        menu.addAction("Close tab", lambda: self.close_tab(index))
+        menu.exec(bar.mapToGlobal(pos))
+
     def close_tab(self, index):
         v = self.tabs.widget(index)
         if v is None or not self._confirm_close(v):
@@ -1254,24 +1450,41 @@ class MainWindow(QMainWindow):
         v.close_doc()
         v.deleteLater()
         self._update_ui()
+        if not self.primary and self.tabs.count() == 0:
+            QTimer.singleShot(0, self.close)     # a pulled-out window with nothing left in it
+
+    def _views(self):
+        return [self.tabs.widget(i) for i in range(self.tabs.count())]
 
     def closeEvent(self, e):
-        for i in range(self.tabs.count()):
-            if not self._confirm_close(self.tabs.widget(i)):
-                e.ignore()
-                return
+        """Closing the primary window closes every window (asking about unsaved changes in
+        each) and remembers the session; closing a pulled-out window closes just its tabs."""
+        others = [w for w in WINDOWS if w is not self] if self.primary else []
+        if not getattr(self, "_close_confirmed", False):
+            for w in [self] + others:
+                for v in w._views():
+                    if not w._confirm_close(v):
+                        e.ignore()
+                        return
         from . import autosave
         backups = autosave.folder()
         session = []
-        for i in range(self.tabs.count()):
-            v = self.tabs.widget(i)
-            self._remember_state(v)
-            if v.path and os.path.exists(v.path) and \
-                    not os.path.normcase(v.path).startswith(os.path.normcase(backups)):
-                session.append(v.path)
-        self.settings.setValue("session_files", json.dumps(session))
+        for w in [self] + others:
+            for v in w._views():
+                w._remember_state(v)
+                if v.path and os.path.exists(v.path) and \
+                        not os.path.normcase(v.path).startswith(os.path.normcase(backups)):
+                    session.append(v.path)
+        if self.primary:
+            self.settings.setValue("session_files", json.dumps(session))
+            self.settings.setValue("geometry", self.saveGeometry())
+            for w in others:
+                w._close_confirmed = True
+                w.close()
         self.autosave.discard_all()
-        self.settings.setValue("geometry", self.saveGeometry())
+        QApplication.instance().removeEventFilter(self)
+        if self in WINDOWS:
+            WINDOWS.remove(self)
         e.accept()
 
     def restore_session(self):
