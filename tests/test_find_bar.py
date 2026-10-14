@@ -21,6 +21,7 @@ APP = QApplication.instance() or QApplication([])
 
 from kanzonas.document_view import DocumentView  # noqa: E402
 from kanzonas.main_window import MainWindow  # noqa: E402
+from kanzonas.page_widget import HIT_FRAME_MIN, hit_frame  # noqa: E402
 
 
 def three_pages():
@@ -95,6 +96,27 @@ class FindView(unittest.TestCase):
         top = w.y() + r.y()
         bar = v.verticalScrollBar()
         self.assertTrue(bar.value() < top < bar.value() + v.viewport().height())
+
+    def test_current_match_gets_a_frame_you_can_see_when_zoomed_out(self):
+        from PySide6.QtCore import QRectF
+        small = hit_frame(QRectF(100, 100, 6, 3))        # tiny text at a low zoom
+        self.assertEqual((small.width(), small.height()), HIT_FRAME_MIN)
+        self.assertEqual(small.center(), QRectF(100, 100, 6, 3).center())
+        big = hit_frame(QRectF(100, 100, 200, 40))
+        self.assertEqual((big.width(), big.height()), (206, 46))
+        v = self.view()
+        v.set_zoom(0.2)
+        v.find("third")
+        settle(v)
+        w = v.pages[2]
+        sr = w.to_screen(v.search_hits[2][0])
+        self.assertLess(sr.height(), HIT_FRAME_MIN[1])  # the text itself is tiny here
+        img = w.grab().toImage()
+        frame = hit_frame(sr)
+        x, y = int(frame.center().x()), int(frame.top())
+        orange = [img.pixelColor(x, y + dy) for dy in range(-2, 3)]
+        self.assertTrue(any(c.red() > 200 and c.green() < 150 and c.blue() < 80 for c in orange),
+                        [c.name() for c in orange])
 
 
 class FindBar(unittest.TestCase):

@@ -177,8 +177,10 @@ for the previous; the up and down arrows beside the Find box do the same. The co
 the box shows which match you're on and how many there are ("3 of 120"; "No matches" when
 there are none). The search starts at the page you're on and shows the first match as soon as
 it finds it; on long documents it keeps searching the rest in the background (the count reads
-"3 of 120+" and the status bar shows how many pages are done) while you keep working. In
-<b>Fit page</b> view, each match brings its whole page in front, centered. Changing the text
+"3 of 120+" and the status bar shows how many pages are done) while you keep working. The match
+you're on is shaded orange with a bold orange frame that stays big enough to spot even when
+you're zoomed out and the text is tiny. In <b>Fit page</b> view, each match brings its whole
+page in front, centered. Changing the text
 or editing the document starts a fresh search.</li>
 <li><b>Replace text...</b> (Edit menu, Ctrl+H): type what to find and what to replace it with,
 tick <b>Match case</b> or <b>Whole words only</b> if needed, choose <b>All pages</b> or this
