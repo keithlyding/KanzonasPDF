@@ -74,6 +74,14 @@ class InlineEditor(QFrame):
         else:
             self.text.selectAll()
 
+    def set_pixel_size(self, pixel_size):
+        """Font size changed in Properties while typing: show the text at the new size."""
+        f = self.text.font()
+        f.setPixelSize(max(6, int(round(pixel_size))))
+        self.text.setFont(f)
+        self._grow()
+        self.text.setFocus()
+
     # ---- outline and handles ------------------------------------------------------
     def _handles(self):
         """{name: QRect} of the handles: corners and the middles of the left and right sides

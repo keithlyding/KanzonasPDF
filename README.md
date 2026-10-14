@@ -5,8 +5,8 @@
 <h1 align="center">KanzonasPDF</h1>
 
 <p align="center">
-  <b>Free Windows markup, measure, and stamps</b><br>
-  AGPL, no account, not a finished replacement.
+  <b>Free PDF markup, measuring and editing for construction and engineering, on Windows</b><br>
+  Open source (AGPL), no account, no telemetry, portable.
 </p>
 
 <p align="center">
@@ -20,13 +20,30 @@
 > build is tested automatically, but you may still find rough edges. Please
 > [tell us](#feedback) when something doesn't work, and keep a copy of important files.
 
-## What it is, and what it is not
+## Who it's for
 
-**Works for** tabs, markups, measure, stamps, page tools, forms, basic text edit, OCR, and a portable build.
+People who mark up and measure drawings and plans, estimators, engineers, architects,
+reviewers, and anyone who wants a capable PDF editor without a license or a subscription.
+If you need Bluebeam-style calibration, lengths, areas, volumes and revision clouds, or
+Acrobat-style forms, signatures, redaction and text editing, but not the price, try it.
 
-**Does not yet have** a signed installer (SmartScreen will warn), a proven redaction corpus, or every Acrobat feature the menus mention.
+| | KanzonasPDF | Bluebeam Revu | Adobe Acrobat Pro | PDF-XChange Editor |
+| --- | --- | --- | --- | --- |
+| Price | Free, open source | Subscription | Subscription | Free with watermarks, or a license |
+| Calibrated measuring (length, area, volume, count) | Yes | Yes | Basic | Yes |
+| Compare revisions (clouds the changes) | Yes | Yes | Yes | Yes |
+| Edit page text and objects | Yes (one line at a time) | Limited | Yes | Yes |
+| Portable (USB stick, nothing in the registry) | Yes | No | No | Yes |
+| Runs offline, no account | Yes | Account | Account | Yes |
 
-Do not use it on client drawings without checking the result.
+Those are capable, mature products with features KanzonasPDF doesn't have (see
+[Known limitations](#known-limitations)). The table is about what you get for free.
+
+**Works today:** tabs, markups, measuring, stamps, page tools, forms, text editing, OCR,
+digital signatures, compare, redaction, a portable build and a PortableApps.com package.
+
+**Not yet:** a code-signed installer (SmartScreen warns the first time), a proven redaction
+corpus, or every feature of the products above. Check the result before you send a drawing out.
 
 ![KanzonasPDF with a marked-up floor plan: an area measurement, a length, a revision cloud, a callout and an APPROVED stamp](docs/screenshot-markup.png)
 
@@ -85,19 +102,23 @@ Pick **one** of these files from the newest release:
 | `KanzonasPDF-portable.zip` | **No installation.** Unzip anywhere (even a USB stick) and run `KanzonasPDF.exe`. Settings, signatures and stamps stay in a `data` folder next to it. To update, unzip the new one over the same folder: the program keeps the same path, so it stays your default PDF app. |
 | `KanzonasPDF-windows.zip` | The same program as the portable version, but it keeps its settings in your Windows profile. |
 
+Also available as a [PortableApps.com](https://portableapps.com/) package
+(`KanzonasPDFPortable_<version>_English.paf.exe` on the Releases page, in testing on their
+forum) and, soon, through `winget` (the manifests are in [`packaging/winget`](packaging/winget)).
+
 ### "Windows protected your PC"
 
-KanzonasPDF isn't code-signed yet: signing through the SignPath Foundation's free program for
-open-source projects is being set up (see the [code signing policy](CODE_SIGNING_POLICY.md)).
-Until then, Windows SmartScreen may warn you the first time you run it, simply because it
-doesn't recognize a new program yet. To run it anyway, click **More info**, then **Run anyway**.
-Even signed, a new program can see this warning for a while, until Windows has seen enough
-people run it safely.
+KanzonasPDF isn't code-signed yet (see the [code signing policy](CODE_SIGNING_POLICY.md)), so
+Windows SmartScreen may warn you the first time you run it, simply because it doesn't recognize
+a new program yet. To run it anyway, click **More info**, then **Run anyway**. Even signed, a
+new program can see this warning for a while, until Windows has seen enough people run it safely.
 
 Only do this with files downloaded from this project's
 [Releases page](https://github.com/keithlyding/KanzonasPDF/releases). Every release is built
-from the public source code in this repository by GitHub's own build servers, and tested there
-before it's published.
+from the public source code in this repository by GitHub's own build servers and tested there
+before it's published, and every release lists the SHA-256 checksum of each download
+(`SHA256SUMS.txt`), so you can check that what you downloaded is what was built:
+`Get-FileHash <file>` in PowerShell.
 
 ### Updating and uninstalling
 
@@ -175,10 +196,6 @@ to `false` (Settings > Secrets and variables > Actions > Variables) to turn rele
 `python tests/cad_battery.py DIR` runs the app's features against them and prints timings.
 
 ## Credits
-
-Code signing (once set up): free code signing provided by [SignPath.io](https://signpath.io),
-certificate by [SignPath Foundation](https://signpath.org); see the
-[code signing policy](CODE_SIGNING_POLICY.md).
 
 App icon and logo: the owner's artwork in `assets/` (after changing them, run
 `python tools_make_assets.py`). Toolbar icons: the Material Design Icons font that ships with

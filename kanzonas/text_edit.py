@@ -399,12 +399,13 @@ def _unwritable(text):
     return out
 
 
-def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None):
+def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None):
     """Remove the line's text and write new_text in its place.
 
     offset: move the text by (dx, dy) points. wrap_width: wrap to this width (points).
     font: (family, bold, italic) to change the line's font to an installed one (Properties >
-    Font with Edit text); None keeps the line's own font.
+    Font with Edit text); None keeps the line's own font. size: new font size (points);
+    None keeps the line's.
     Returns the font name used: 'KZ…' = original embedded font, 'KZS…' = installed system
     font of the same name, 'KZF…' = a font picked in Properties, 'KZUni' = bundled Unicode
     font, otherwise a built-in PDF font.
@@ -465,7 +466,7 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
     else:
         fontname = _base14(main)
         font = pymupdf.Font(fontname)
-    size = main["size"]
+    size = float(size or main["size"])
     lines = _wrap(new_text, font, size, wrap_width) if wrap_width else new_text.split("\n")
     origin = pymupdf.Point(first["origin"]) + offset
     page.insert_text(origin, "\n".join(lines), fontsize=size, fontname=fontname,

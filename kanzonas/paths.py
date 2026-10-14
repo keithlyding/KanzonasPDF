@@ -1,4 +1,4 @@
-"""Where KanzonasPDF keeps settings and personal files.
+r"""Where KanzonasPDF keeps settings and personal files.
 
 Installed / normal: settings in the Windows registry, files (signatures, stamp images, your
 certificate) in the user's AppData folder.

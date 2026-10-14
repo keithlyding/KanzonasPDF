@@ -82,6 +82,18 @@ def ctrl_held(e):
     return bool(e.modifiers() & Qt.ControlModifier)
 
 
+
+HIT_FRAME_MIN = (36, 24)    # px: the frame around the current search match never gets smaller
+
+
+def hit_frame(rect):
+    """The frame drawn around the current search match: the match's screen rect with a
+    little padding, widened to HIT_FRAME_MIN around its center when the text is small."""
+    r = QRectF(rect).adjusted(-3, -3, 3, 3)
+    w, h = max(r.width(), HIT_FRAME_MIN[0]), max(r.height(), HIT_FRAME_MIN[1])
+    c = r.center()
+    return QRectF(c.x() - w / 2, c.y() - h / 2, w, h)
+
 class PageWidget(QWidget):
     def __init__(self, view, index):
         super().__init__()
@@ -250,7 +262,16 @@ class PageWidget(QWidget):
             for i, r in enumerate(hits):
                 active = cur == (self.index, i)
                 color = QColor(255, 120, 0, 120) if active else QColor(255, 230, 0, 90)
-                p.fillRect(self.to_screen(r, page), color)
+                sr = self.to_screen(r, page)
+                p.fillRect(sr, color)
+                if active:
+                    # the match you're on gets a bold frame that stays at least a thumb's
+                    # size on screen, so it's easy to spot when zoomed out and the text is tiny
+                    frame = hit_frame(sr)
+                    p.setPen(QPen(QColor(255, 255, 255, 200), 5))
+                    p.drawRect(frame)
+                    p.setPen(QPen(QColor(255, 90, 0), 2.5))
+                    p.drawRect(frame)
 
         self._paint_comment_cards(p, page)
 

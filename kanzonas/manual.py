@@ -52,6 +52,15 @@ Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within 
 (256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
+<li><b>A document in its own window</b> (for a second monitor): drag its tab up or down out
+of the tab bar and let go, or right-click the tab &gt; <b>Move to new window</b>, or View &gt;
+<b>Move tab to new window</b> (Ctrl+Shift+N). The document isn't reopened: unsaved changes
+and undo history come along. Drop a tab on another KanzonasPDF window's tabs (or right-click
+it &gt; <b>Move to window</b>) to move it there. Each window has its own panels, tools and
+Find box, with the same settings. Closing the last tab of a pulled-out window closes that
+window; closing the main window (the first one) closes all of them, asking about unsaved
+changes in each, and reopening the last files at start-up brings back the documents from
+every window, in the main window.</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Markup, Measure, Arrange, Review,
 Protect, Forms, Pages and View. The <b>Markup</b> tab has only markups: comments, notes, text
 boxes, callouts, stamps, shapes and attached-file icons. Markups stay editable in any PDF
@@ -59,7 +68,7 @@ viewer (Adobe Reader, browsers) until you flatten them. Everything else you add 
 Add text, signatures, initials, dates) is written into the page itself, so in a viewer it
 looks and acts flattened; Edit text and Edit objects (Home tab) still change it here, as
 Acrobat and PDF-XChange can. Open, save, print, undo and redo sit left of the tabs, and the
-Find box sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
+Find box (with its match count and up / down arrows) sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
 zoom box with zoom out / zoom in, like PDF-XChange Editor. The ribbon is compact: two rows of
 buttons. If the window is too narrow for a tab, scroll it sideways with the mouse wheel or the
@@ -113,8 +122,8 @@ Extract All suggests a new folder name, change it to the folder you already use.
 your settings and files are kept in the package's <b>Data</b> folder, and the PortableApps.com
 Platform updates it, so KanzonasPDF doesn't check for updates or offer Update now unless you
 turn Help &gt; Check for updates automatically back on. Both portable versions follow your USB
-stick to a new drive letter: if Open recent lists E:\Docs\plan.pdf and the stick is now F:, it
-opens F:\Docs\plan.pdf.</li>
+stick to a new drive letter: if Open recent lists E:\\Docs\\plan.pdf and the stick is now F:, it
+opens F:\\Docs\\plan.pdf.</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
 A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
 your browser. The automatic check instead shows a notice at the bottom of the window with
@@ -172,11 +181,16 @@ jumps to the next or previous page, centered, instead of scrolling a little. As 
 in so that any edge of the page is outside the window, the wheel scrolls normally. Hold
 <b>Shift</b> to scroll left and right instead of turning the page. On by default; turn it off for smooth scrolling. Your choice is remembered. (With CAD-style mouse on, the wheel zooms
 instead.)</li>
-<li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+F3 for the previous.
-The search starts at the page you're on and shows the first match as soon as it finds it; on
-long documents it keeps searching the rest in the background (the status bar shows "Match 3
-of 120+" and how many pages are done) while you keep working. Changing the text or editing
-the document starts a fresh search.</li>
+<li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+Enter / Shift+F3
+for the previous; the up and down arrows beside the Find box do the same. The count beside
+the box shows which match you're on and how many there are ("3 of 120"; "No matches" when
+there are none). The search starts at the page you're on and shows the first match as soon as
+it finds it; on long documents it keeps searching the rest in the background (the count reads
+"3 of 120+" and the status bar shows how many pages are done) while you keep working. The match
+you're on is shaded orange with a bold orange frame that stays big enough to spot even when
+you're zoomed out and the text is tiny. In <b>Fit page</b> view, each match brings its whole
+page in front, centered. Changing the text
+or editing the document starts a fresh search.</li>
 <li><b>Replace text...</b> (Edit menu, Ctrl+H): type what to find and what to replace it with,
 tick <b>Match case</b> or <b>Whole words only</b> if needed, choose <b>All pages</b> or this
 page, and click <b>Replace all</b>. It changes the PDF's own text (not comments). Each line
@@ -485,11 +499,14 @@ takes a moment while the page is read.</li>
 <li><b>Add text</b> tool (Shift+T; Home tab next to Edit text, Tools menu): click where the text
 goes and type (Enter finishes, Shift+Enter starts a new line). The text is written into the page
 itself, like Acrobat's Add Text: PDF viewers can't change it, and Edit text changes it later.
-Pick the font (any installed font, plus Bold and Italic), size and color in Properties before
-you click. Only the letters used are stored in the file.</li>
-<li><b>Change a line's font:</b> with the Edit text tool, pick a font (and Bold / Italic) in
-Properties, then click the line and press Enter, with or without changing the text. Pick
-<b>Keep the line's font</b> to go back to keeping each line's own font.</li>
+Pick the font (any installed font, plus Bold and Italic), size and color in Properties. The
+<b>Font size</b> can also be changed while you type: the text shows at the new size right away.
+Only the letters used are stored in the file.</li>
+<li><b>Change a line's font or size:</b> with the Edit text tool, pick a font (and Bold /
+Italic) or a <b>Font size</b> in Properties, then click the line and press Enter, with or without
+changing the text. The size can also be changed while the line is open. Pick <b>Keep the line's
+font</b> or <b>Keep the line's size</b> (the lowest font size) to go back to keeping each line's
+own font and size.</li>
 <li>Edit text tool (Ctrl+E): <b>press on a line and drag</b> to move it (its text and font stay
 as they are). Or click a line of text to edit it right where it is: the cursor goes where you
 clicked, and the line gets a dashed outline with handles, like a selected object. Type the
@@ -786,8 +803,9 @@ settings...).</li>
 <tr><td>Ctrl+Shift+Plus / Minus</td><td>Rotate page</td></tr>
 <tr><td>Ctrl+Shift+Up / Down</td><td>Move page</td></tr>
 <tr><td>Ctrl+2 / Ctrl+0 / Ctrl+1</td><td>Fit width / fit page / actual size</td></tr>
-<tr><td>Ctrl+F, F3, Shift+F3</td><td>Find, next, previous</td></tr>
+<tr><td>Ctrl+F, Enter / F3, Shift+Enter / Shift+F3</td><td>Find, next match, previous match</td></tr>
 <tr><td>Ctrl+H</td><td>Replace text</td></tr>
+<tr><td>Ctrl+Shift+N</td><td>Move tab to new window</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>

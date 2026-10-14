@@ -174,22 +174,25 @@ jobs:
           if (-not (Test-Path "KanzonasPDFPortable\Data\settings.ini")) { throw "Settings not in the package's Data folder" }
           if (Test-Path "HKCU:\Software\KanzonasPDF") { throw "PortableApps.com package wrote to the registry" }
           Remove-Item -Recurse -Force "KanzonasPDFPortable\Data"
-          Compress-Archive -Path KanzonasPDFPortable -DestinationPath KanzonasPDFPortable-layout.zip
+          # uploaded as a folder (GitHub zips each artifact once); the paf folder keeps
+          # KanzonasPDFPortable as the top folder in the download
+          New-Item -ItemType Directory paf | Out-Null
+          Move-Item KanzonasPDFPortable paf\KanzonasPDFPortable
 
       - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portableapps-layout
-          path: KanzonasPDFPortable-layout.zip
+          path: paf/
 
       - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-portable
-          path: KanzonasPDF-portable.zip
+          path: portable/
 
       - uses: actions/upload-artifact@v6
         with:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-windows
-          path: KanzonasPDF-windows.zip
+          path: dist/
 
       - uses: actions/upload-artifact@v6
         with:
@@ -239,6 +242,25 @@ jobs:
           $lines >> $env:GITHUB_OUTPUT
           "KZSUMS" >> $env:GITHUB_OUTPUT
 
+      - name: winget manifests for this version (attached to the release; see packaging/winget)
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $sha = (Get-FileHash -Algorithm SHA256 "dist-installer\KanzonasPDF-v$v-setup.exe").Hash
+          $src = "packaging\winget\manifests\k\KanzonasPDF\KanzonasPDF"
+          $from = Get-ChildItem $src -Directory | Sort-Object { [version]($_.Name + ".0") } | Select-Object -Last 1
+          $dir = "winget\manifests\k\KanzonasPDF\KanzonasPDF\$v"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          foreach ($f in Get-ChildItem $from.FullName -Filter *.yaml) {
+            $t = Get-Content $f.FullName -Raw
+            $t = $t -replace [regex]::Escape($from.Name), $v
+            $t = $t -replace 'InstallerSha256: [0-9A-Fa-f]+', "InstallerSha256: $sha"
+            $t = $t -replace 'ReleaseDate: \d{4}-\d{2}-\d{2}', ("ReleaseDate: " + (Get-Date -Format yyyy-MM-dd))
+            Set-Content -Encoding utf8 (Join-Path $dir $f.Name) $t
+          }
+          Get-ChildItem $dir | ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName }
+          Compress-Archive -Path winget\manifests -DestinationPath winget-manifests.zip
+
       - name: Publish release
         if: >-
           (startsWith(github.ref, 'refs/tags/v') && steps.onmain.outputs.main == 'true') ||
@@ -270,3 +292,4 @@ jobs:
             dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
             KanzonasPDF-portable.zip
             KanzonasPDF-windows.zip
+            winget-manifests.zip

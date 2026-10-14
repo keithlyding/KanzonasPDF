@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: KanzonasPDF.KanzonasPDF
+PackageVersion: 0.91.3
+InstallerType: inno
+Scope: user
+InstallModes:
+- interactive
+- silent
+- silentWithProgress
+UpgradeBehavior: install
+FileExtensions:
+- pdf
+ReleaseDate: 2026-10-13
+Installers:
+- Architecture: x64
+  InstallerUrl: https://github.com/keithlyding/KanzonasPDF/releases/download/v0.91.3/KanzonasPDF-v0.91.3-setup.exe
+  InstallerSha256: 2A512E7174F994D9936BC4F5D895D48CD20E1EE7E41427ACF64BB20B8EC63469
+  ProductCode: '{8F4C2A61-5B7E-4D3A-9C1F-2E6B7A9D4C11}_is1'
+  AppsAndFeaturesEntries:
+  - DisplayName: KanzonasPDF
+    Publisher: KanzonasPDF
+    DisplayVersion: 0.91.3
+ManifestType: installer
+ManifestVersion: 1.6.0

@@ -86,6 +86,7 @@ class DocumentView(QScrollArea):
     structureChanged = Signal()     # pages added / removed / reordered / rotated
     zoomChanged = Signal(float)
     statusMessage = Signal(str)
+    searchChanged = Signal(int, int, bool)   # match shown (1-based, 0 = none), matches, still searching
     openFileRequested = Signal(str, int)      # a link to another PDF: path, page (0-based)
     selectionChanged = Signal()
     signedDocument = Signal()
@@ -802,6 +803,7 @@ class DocumentView(QScrollArea):
         self._search_cur = None
         self._search_todo = None
         self._search_gen += 1
+        self.searchChanged.emit(0, 0, False)
         self._build_pages()
         old.close()
         self._apply_view_anchor(anchor)
@@ -859,6 +861,7 @@ class DocumentView(QScrollArea):
         self._search_text = None
         self._search_todo = None
         self._search_gen += 1
+        self.searchChanged.emit(0, 0, False)
         if structural:
             self._inline = None
             self.field_focus = None     # its page may be gone or moved
@@ -2753,6 +2756,7 @@ class DocumentView(QScrollArea):
         upright = (text_edit.line_rotation(line) + page.rotation) % 360 == 0
         size = text_edit.main_span(line)["size"]
         chosen = self._edit_font()
+        new_size = self._edit_size()
         box = w.to_screen(rect)
         if not upright:
             # sideways text: type in an upright box laid over the middle of the line (it
@@ -2765,21 +2769,24 @@ class DocumentView(QScrollArea):
             box.moveTop(max(0.0, min(box.top(), w.height() - bh)))
         ed = InlineEditor(w, box, old,
                           chosen[0] if chosen else text_edit.font_family_hint(line),
-                          size * self.zoom, click=w.to_screen_pt(pt) if upright else None)
+                          (new_size or size) * self.zoom,
+                          click=w.to_screen_pt(pt) if upright else None)
+        ed.kz_tool, ed.kz_line_size = "edittext", size
         self._inline = ed
 
         def done(text, dx, dy, wrap_px):
             self._inline = None
             if not upright:
                 wrap_px = None          # the box's width isn't along the line
+            new = self._edit_size()
             if text == old and not dx and not dy and wrap_px is None and \
-                    self._edit_font() is None:
+                    self._edit_font() is None and (new is None or abs(new - size) < 0.01):
                 return
             # screen movement -> PDF (unrotated) points
             m = self.doc[index].derotation_matrix
             v = pymupdf.Point(dx / self.zoom, dy / self.zoom) * m - pymupdf.Point(0, 0) * m
             wrap = wrap_px / self.zoom if wrap_px else None
-            self._apply_text_edit(index, line, text, (v.x, v.y), wrap)
+            self._apply_text_edit(index, line, text, (v.x, v.y), wrap, size=new)
         ed.committed.connect(done)
         ed.canceled.connect(lambda: setattr(self, "_inline", None))
 
@@ -2861,12 +2868,15 @@ class DocumentView(QScrollArea):
         disp = pymupdf.Rect(top.x, top.y - size * 0.85, top.x + size * 12, top.y + size * 0.35)
         ed = InlineEditor(w, w.to_screen(disp * page.derotation_matrix), "",
                           family or "sans", size * self.zoom)
+        ed.kz_tool = "addtext"
         self._inline = ed
 
         def done(text, dx, dy, wrap_px):
             self._inline = None
             if not text.strip():
                 return
+            # the size can be changed in Properties while typing
+            size = float(annotations.tool_props("addtext").get("fontsize") or 12)
             m = self.doc[index].derotation_matrix
             v = pymupdf.Point(dx / self.zoom, dy / self.zoom) * m - pymupdf.Point(0, 0) * m
             origin = pymupdf.Point(pt) + v
@@ -2890,13 +2900,31 @@ class DocumentView(QScrollArea):
         ed.committed.connect(done)
         ed.canceled.connect(lambda: setattr(self, "_inline", None))
 
+    def _edit_size(self):
+        """Font size chosen for Edit text in Properties (points), or None = keep each
+        line's own size."""
+        return float(annotations.tool_props("edittext").get("fontsize") or 0) or None
+
+    def text_tool_props_changed(self):
+        """Properties changed while Add text / Edit text is open on the page: show the text
+        at the new size right away (it's written at that size when you finish)."""
+        ed = self._inline
+        tool = getattr(ed, "kz_tool", None)
+        if ed is None or tool is None:
+            return
+        if tool == "addtext":
+            size = float(annotations.tool_props("addtext").get("fontsize") or 12)
+        else:
+            size = self._edit_size() or ed.kz_line_size
+        ed.set_pixel_size(size * self.zoom)
+
     def _edit_font(self):
         """(family, bold, italic) chosen for Edit text in Properties, or None = keep each
         line's own font."""
         p = annotations.tool_props("edittext")
         return (p["font"], bool(p.get("bold")), bool(p.get("italic"))) if p.get("font") else None
 
-    def _apply_text_edit(self, index, line, new, offset, wrap, keep_font=False):
+    def _apply_text_edit(self, index, line, new, offset, wrap, keep_font=False, size=None):
         used = {}
         font = None if keep_font else self._edit_font()
 
@@ -2908,7 +2936,8 @@ class DocumentView(QScrollArea):
                     m = annotations.read(page.load_annot(x))
                     if m is not None:
                         moving.append((x, m))
-            used["font"] = text_edit.replace_line(page, line, new, offset, wrap, font)
+            used["font"] = text_edit.replace_line(page, line, new, offset, wrap, font,
+                                                  None if keep_font else size)
             d = pymupdf.Point(offset)
             for x, m in moving:
                 if "quads" in m:
@@ -4461,6 +4490,7 @@ class DocumentView(QScrollArea):
             self.statusMessage.emit("No matches")
         else:
             self.statusMessage.emit(self._search_status())
+        self.searchChanged.emit(*self.search_position())
 
     def _search_count(self):
         return sum(len(h) for h in self.search_hits.values())
@@ -4481,34 +4511,53 @@ class DocumentView(QScrollArea):
         i = pages[(n + (-1 if backwards else 1)) % len(pages)]
         return (i, len(self.search_hits[i]) - 1 if backwards else 0)
 
-    def _search_status(self):
+    def search_position(self):
+        """(number of the match shown, 1-based, or 0; matches found so far; whether the
+        search is still running) for the Find box's count."""
+        if self._search_text is None:
+            return 0, 0, False
         if self._search_cur is None:
-            return "Searching..."
+            return 0, 0, bool(self._search_todo)
         i, k = self._search_cur
         n = sum(len(h) for p, h in self.search_hits.items() if p < i) + k + 1
-        return f"Match {n} of {self._search_count()}" + ("+" if self._search_todo else "")
+        return n, self._search_count(), bool(self._search_todo)
+
+    def _search_status(self):
+        n, total, searching = self.search_position()
+        if not n:
+            return "Searching..."
+        return f"Match {n} of {total}" + ("+" if searching else "")
 
     def _show_hit(self, hit):
         old = self._search_cur
         self._search_cur = hit
         i, k = hit
         w = self.pages[i]
-        r = w.to_screen(self.search_hits[i][k])
-        top = w.y() + r.y()
-        vbar = self.verticalScrollBar()
-        if not (vbar.value() + 40 < top < vbar.value() + self.viewport().height() - 40):
-            vbar.setValue(int(top - self.viewport().height() / 3))
-        hbar = self.horizontalScrollBar()
-        left = w.x() + r.x()
-        if not (hbar.value() < left < hbar.value() + self.viewport().width() - 40):
-            hbar.setValue(int(left - 40))
+        if self.fit_mode == "page":
+            # whole-page view: bring the match's page in front, centered, not just the match
+            self.show_whole_page(i)
+        else:
+            r = w.to_screen(self.search_hits[i][k])
+            top = w.y() + r.y()
+            vbar = self.verticalScrollBar()
+            if not (vbar.value() + 40 < top < vbar.value() + self.viewport().height() - 40):
+                vbar.setValue(int(top - self.viewport().height() / 3))
+            hbar = self.horizontalScrollBar()
+            left = w.x() + r.x()
+            if not (hbar.value() < left < hbar.value() + self.viewport().width() - 40):
+                hbar.setValue(int(left - 40))
         for p in {i, old[0] if old else i}:
             if 0 <= p < len(self.pages):
                 self.pages[p].update()
         self.statusMessage.emit(self._search_status())
+        self.searchChanged.emit(*self.search_position())
 
     def current_hit(self):
         return self._search_cur
+
+    def search_text(self):
+        """The text being searched for, or None when there's no search."""
+        return self._search_text
 
     def clear_search(self):
         self.search_hits = {}
@@ -4520,6 +4569,7 @@ class DocumentView(QScrollArea):
         self._search_pos = -1
         for w in self.pages:
             w.update()
+        self.searchChanged.emit(0, 0, False)
 
     # ---- saving -----------------------------------------------------------
     def _ask_original_passwords(self):

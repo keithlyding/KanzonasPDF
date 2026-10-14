@@ -238,6 +238,9 @@ class PropertiesPanel(QWidget):
             self.width.setValue(float(props["width"]))
             self.rows["width"][0].setText("Border width" if kind == "textbox" else "Line width")
         if "fontsize" in props:
+            keep = kind == "edittext"          # 0 = keep each line's own size
+            self.fontsize.setMinimum(0 if keep else 4)
+            self.fontsize.setSpecialValueText("Keep the line's size" if keep else "")
             self.fontsize.setValue(float(props["fontsize"]))
         if "head" in props:
             self.head.setCurrentText(props["head"])

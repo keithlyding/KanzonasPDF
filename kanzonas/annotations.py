@@ -86,7 +86,7 @@ COMMENT_FONTS = {"Helvetica": "helv", "Times": "TiRo", "Courier": "Cour"}
 PAGE_TEXT_TOOLS = {
     "addtext": {"font": "", "bold": False, "italic": False, "fontsize": 12,
                 "text_color": "#000000"},
-    "edittext": {"font": "", "bold": False, "italic": False},
+    "edittext": {"font": "", "bold": False, "italic": False, "fontsize": 0},   # 0: keep the line's
 }
 
 PLACEHOLDER_TEXT = {"signature": "SIGN HERE", "initials": "INITIAL HERE"}
