@@ -194,6 +194,9 @@ def _slider_to_zoom(val):
 # teardown, corrupts the heap). windows() gives the live ones.
 _WINDOW_REFS = []
 TAB_MIME = "application/x-kanzonaspdf-tab"
+# Panel layout saved with QMainWindow.saveState (which panels are open, their sizes, sides
+# and tab order). Bump when a dock or toolbar is renamed or added, so an old layout is ignored.
+LAYOUT_VERSION = 1
 
 
 def windows():
@@ -345,6 +348,20 @@ class MainWindow(QMainWindow):
         geo = self.settings.value("geometry")
         if geo is not None:
             self.restoreGeometry(geo)
+        self._restore_layout()
+
+    def _restore_layout(self):
+        """Bring back the panels as they were when KanzonasPDF was last closed: which ones
+        were open (Pages, Properties, Tool chest, Markups list), their sizes and sides, and
+        which of Properties / Tool chest was in front."""
+        state = self.settings.value("window_state")
+        if state is None or not self.restoreState(state, LAYOUT_VERSION):
+            return
+        # the toolbars follow the ribbon / classic choice and the panel strip option, not the
+        # saved layout (they normally agree; this keeps them right if a setting was changed)
+        self._apply_ui_mode()
+        self._toggle_panel_strip(self.a_panel_strip.isChecked())
+        self.split_dock.hide()          # a second view belongs to a document; start without
 
     # ---- construction -----------------------------------------------------
     def _build_panel_strip(self):
@@ -507,6 +524,10 @@ class MainWindow(QMainWindow):
         self.a_insert_blank = self._act("Insert &blank page after current",
                                         lambda: self._page_op("blank"))
         self.a_extract = self._act("&Extract pages to new file...", self.extract_pages)
+        self.a_sheet_links = self._act("Link sheet &callouts...", self.link_sheet_callouts,
+                                       tip="Read the sheet numbers from the title blocks and make "
+                                           "every callout, note and index line that names a sheet a "
+                                           "link to it (also to PDFs in the same folder)")
         self.a_uncrop = self._act("Remove cro&p...", lambda: self._page_op("uncrop"),
                                   tip="Show the whole page again on this page or all pages")
         self.a_ocr = self._act("Recognize text (&OCR)...", self.ocr,
@@ -589,6 +610,9 @@ class MainWindow(QMainWindow):
         self.a_digisign = self._act("&Digitally sign with certificate...", self.digital_sign)
         self.a_sig_details = self._act("Digital signature &details...", self.signature_details)
         self.a_set_scale = self._act("Set &scale...", self.set_scale)
+        self.a_sheet_scales = self._act("Read scales from &title blocks", self.read_sheet_scales,
+                                        tip="Set each page's scale to what its title block says "
+                                            "(1/4\" = 1'-0\", 1:50...), for the whole document")
         self.a_measure_summary = self._act("Measurement &summary...", self.measure_summary)
         self.a_labels = self._act("Show text &labels on toolbars", self._toggle_labels)
         self.a_labels.setCheckable(True)
@@ -616,6 +640,13 @@ class MainWindow(QMainWindow):
         self.a_page_wheel.setCheckable(True)
         self.a_page_wheel.setChecked(self.settings.value("page_wheel", "true") == "true")
         DocumentView.page_wheel = self.a_page_wheel.isChecked()
+        self.a_night = self._act("&Night mode (white lines on black)", self._toggle_night, "F12",
+                                 tip="Draw the pages like a CAD screen: lightness inverted, colors "
+                                     "kept (black lines turn white, red stays red). Printing and "
+                                     "export are not affected (F12)")
+        self.a_night.setCheckable(True)
+        self.a_night.setChecked(self.settings.value("night_mode", "false") == "true")
+        DocumentView.night_mode = self.a_night.isChecked()
         from . import autosave, measure
         measure.configure(self.settings)
         try:
@@ -719,6 +750,9 @@ class MainWindow(QMainWindow):
         self.a_delete_annot = self._act("Delete selected annotation",
                                         lambda: v() and v().delete_selected())
         self.a_manual = self._act("&User manual", self.show_manual, "F1")
+        self.a_palette = self._act("Command &palette...", self.show_palette, "Ctrl+Shift+P",
+                                   tip="Type a few letters of any command or tool and run it "
+                                       "from the list (Ctrl+Shift+P)")
         self.a_about = self._act("&About", self.about)
         self.a_check_updates = self._act("&Check for updates...", self.check_updates,
                                          tip="Ask GitHub whether a newer KanzonasPDF is out")
@@ -794,6 +828,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_detach)
         m.addAction(self.a_cad_mouse)
         m.addAction(self.a_page_wheel)
+        m.addAction(self.a_night)
         m.addAction(self.a_hl_fields)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
@@ -841,7 +876,7 @@ class MainWindow(QMainWindow):
         m = mb.addMenu("&Measure")
         m.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
         m.addSeparator()
-        m.addActions([self.a_set_scale, self.a_measure_summary])
+        m.addActions([self.a_set_scale, self.a_sheet_scales, self.a_measure_summary])
         m = mb.addMenu("&Review")
         m.addActions([self.tool_actions["comment"], self.tool_actions["note"]])
         m.addSeparator()
@@ -882,12 +917,15 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_move_up, self.a_move_down, self.a_del_page])
         m.addSeparator()
         m.addActions([self.a_insert_pdf, self.a_insert_blank, self.a_extract])
+        m.addSeparator()
+        m.addAction(self.a_sheet_links)
         sep = QAction(self)
         sep.setSeparator(True)
         self.thumbs.addActions([self.a_copy_pages, self.a_cut_pages, self.a_paste_pages,
                                 self.a_dup_pages, sep, self.a_rot_l, self.a_rot_r, self.a_del_page])
         m = mb.addMenu("&Help")
         m.addAction(self.a_manual)
+        m.addAction(self.a_palette)
         m.addSeparator()
         m.addActions([self.a_check_updates, self.a_auto_updates])
         m.addSeparator()
@@ -1013,7 +1051,7 @@ class MainWindow(QMainWindow):
         mmenu = QMenu(self.measure_btn)
         mmenu.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
         mmenu.addSeparator()
-        mmenu.addActions([self.a_set_scale, self.a_measure_summary])
+        mmenu.addActions([self.a_set_scale, self.a_sheet_scales, self.a_measure_summary])
         self.measure_btn.setMenu(mmenu)
         self.measure_btn.setDefaultAction(self.tool_actions["m_length"])
         mmenu.triggered.connect(lambda a: a.isCheckable() and self.measure_btn.setDefaultAction(a))
@@ -1176,10 +1214,11 @@ class MainWindow(QMainWindow):
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
-                  self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten,
+                  self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten, self.a_sheet_links,
                   self.a_security, self.a_remove_security, self.a_sanitize, self.a_clear_sigs,
                   self.a_timestamp, self.a_multi_sign, self.a_apply_placeholders,
                   self.a_apply_sel_redact, self.a_unlock, self.a_set_scale, self.a_measure_summary,
+                  self.a_sheet_scales,
                   self.a_compare, self.a_header, self.a_watermark, self.a_compress,
                   self.a_background, self.a_remove_bg, self.a_remove_wm,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
@@ -1495,6 +1534,7 @@ class MainWindow(QMainWindow):
         if self.primary:
             self.settings.setValue("session_files", json.dumps(session))
             self.settings.setValue("geometry", self.saveGeometry())
+            self.settings.setValue("window_state", self.saveState(LAYOUT_VERSION))
             for w in others:
                 w._close_confirmed = True
                 w.close()
@@ -1674,7 +1714,12 @@ class MainWindow(QMainWindow):
         self.open_file(path)
         v = self.view()
         if v is not None and page >= 0 and os.path.normcase(v.path or "") == os.path.normcase(path):
-            QTimer.singleShot(200, lambda: v.goto_page(min(page, v.page_count() - 1)))
+            import shiboken6
+
+            def jump():                 # the tab may be closed again before the timer fires
+                if shiboken6.isValid(v) and not v.doc.is_closed:
+                    v.goto_page(min(page, v.page_count() - 1))
+            QTimer.singleShot(200, jump)
 
     def _on_selection_changed(self):
         if self.sender() is self.view():
@@ -2016,11 +2061,12 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is None:
             return
-        if v.read_only:
-            QMessageBox.information(self, "Security", "This document is protected. Use "
-                                    "Protect > Unlock with password with its permissions "
-                                    "password first.")
-            return
+        if not v.owner_authorized():
+            # encrypted with a permissions password (even one that allows editing): changing
+            # the protection needs that password
+            self.unlock_doc()
+            if not v.owner_authorized():
+                return
         st = v.security_state()
         dlg = QDialog(self)
         dlg.setWindowTitle("Security properties")
@@ -2144,9 +2190,9 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is None:
             return
-        if v.read_only:
+        if not v.owner_authorized():
             self.unlock_doc()
-            if v.read_only:
+            if not v.owner_authorized():
                 return
         v.set_security("", "", -1)
         self.statusBar().showMessage("Security will be removed when you save.", 5000)
@@ -2425,13 +2471,15 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v:
             return
-        if not v.read_only:
+        if v.owner_authorized():
             QMessageBox.information(self, "Unlock", "This document isn't protected.")
             return
-        pw, ok = QInputDialog.getText(self, "Unlock", "Owner password:", QLineEdit.Password)
+        pw, ok = QInputDialog.getText(self, "Unlock", "Permissions (owner) password:",
+                                      QLineEdit.Password)
         if ok and pw:
             if v.unlock(pw):
-                self.statusBar().showMessage("Unlocked: you can edit this document now.", 4000)
+                self.statusBar().showMessage("Unlocked: you can edit this document and change "
+                                             "its security now.", 4000)
             else:
                 QMessageBox.warning(self, "Unlock", "That password doesn't unlock editing.")
             self._update_ui()
@@ -2516,6 +2564,69 @@ class MainWindow(QMainWindow):
 
     def set_scale(self):
         self._scale_dialog()
+
+    def link_sheet_callouts(self):
+        """Pages > Link sheet callouts...: sheet numbers from the title blocks, then a link on
+        every callout, note and index line that names one of the sheets."""
+        from .sheets_ui import SheetLinksDialog
+        from . import sheets
+        v = self.view()
+        if not v or not v.require_permission(pymupdf.PDF_PERM_ANNOTATE, "Adding links"):
+            return
+        folder = os.path.dirname(v.path) if v.path and os.path.isdir(os.path.dirname(v.path)) else None
+        dlg = SheetLinksDialog(self, v.doc, folder)
+        if dlg.exec() != QDialog.Accepted or not dlg.result_plan:
+            return
+        pl = dlg.result_plan
+        made = {}
+
+        def do():
+            made["links"], made["marks"] = sheets.apply(v.doc, pl, show_box=dlg.box.isChecked(),
+                                                        bookmarks=dlg.marks.isChecked())
+        pages = sorted({i for i, _r, _t in pl["links"]})
+        v.modify(do, pages or [], permission=pymupdf.PDF_PERM_ANNOTATE)
+        if dlg.marks.isChecked():
+            v.documentChanged.emit()
+        msg = f"{made.get('links', 0)} link(s) made on {len(pages)} page(s)"
+        if made.get("marks"):
+            msg += f"; {made['marks']} bookmark(s) added"
+        self.statusBar().showMessage(msg + " (Ctrl+Z undoes it)", 6000)
+        self._update_ui()
+
+    def read_sheet_scales(self):
+        """Measure > Read scales from title blocks: every page gets the scale its own title
+        block (or first scale note) says; pages without one, or marked not to scale, are left
+        as they are and listed."""
+        from . import measure
+        v = self.view()
+        if not v:
+            return
+        scales, none, nts = {}, [], []
+        for i in range(v.page_count()):
+            note = v.sheet_scale_note(i)
+            if note is None:
+                none.append(i + 1)
+            elif note["ratio"] is None:
+                nts.append(i + 1)
+            else:
+                scales[i] = (measure.scale_from_preset(note["ratio"]), note["unit"], note["label"])
+        if scales:
+            v.set_page_scales(scales)
+        lines = [f"Scale set on {len(scales)} of {v.page_count()} page(s) from what the sheets say."
+                 if scales else "No sheet in this document says its scale."]
+        if len(set(scales.values())) > 1:
+            lines.append("The sheets use different scales; each page got its own.")
+        if nts:
+            lines.append("Marked not to scale, left as is: page " + ", ".join(map(str, nts[:20])))
+        if none:
+            lines.append("No scale note found, left as is: page " + ", ".join(map(str, none[:20]))
+                         + (" ..." if len(none) > 20 else ""))
+        lines.append("A sheet printed at reduced size still says its original scale: check one "
+                     "dimension, and use Calibrate Tape Measure if it is off.")
+        QMessageBox.information(self, "Read scales from title blocks", "\n\n".join(lines))
+        if scales:
+            self.statusBar().showMessage(v.page_scale_text(v.current_page()), 5000)
+            self._update_ui()
 
     def _calibrate(self, index, pdf_len):
         self._scale_dialog(pdf_len, index)
@@ -3359,6 +3470,18 @@ class MainWindow(QMainWindow):
         from .preferences import PreferencesDialog
         PreferencesDialog(self).exec()
 
+    def _toggle_night(self):
+        on = self.a_night.isChecked()
+        DocumentView.night_mode = on
+        self.settings.setValue("night_mode", "true" if on else "false")
+        for w in windows():
+            w.a_night.setChecked(on)
+            for v in w._views():
+                v.redraw_pages()
+        self.statusBar().showMessage("Night mode on: pages drawn white on black (F12 turns it "
+                                     "off); printing and export are unchanged" if on else
+                                     "Night mode off", 4000)
+
     def _toggle_page_wheel(self):
         on = self.a_page_wheel.isChecked()
         DocumentView.page_wheel = on
@@ -3374,7 +3497,7 @@ class MainWindow(QMainWindow):
         "a_cad_mouse": "CAD mouse", "a_grid": "Grid", "a_snap_grid": "Snap to grid",
         "a_snap_objects": "Snap to objects", "a_snap_page": "Snap to page",
         "a_grid_settings": "Grid settings",
-        "a_set_scale": "Set scale", "a_measure_summary": "Summary", "a_ocr": "OCR",
+        "a_set_scale": "Set scale", "a_sheet_scales": "Sheet scales", "a_measure_summary": "Summary", "a_ocr": "OCR",
         "a_rot_l": "Rotate left", "a_rot_r": "Rotate right", "a_lock": "Lock",
         "a_unlock_all": "Unlock all", "a_prev_markup": "Previous", "a_next_markup": "Next",
         "a_markups": "Markups list", "a_show_markups": "Show markups",
@@ -3387,14 +3510,14 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": "Apply selected", "a_apply_redact": "Apply all",
         "a_security": "Security", "a_remove_security": "Remove security", "a_unlock": "Unlock",
         "a_sanitize": "Sanitize", "a_hl_fields": "Highlight fields", "a_move_up": "Move up",
-        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_combine": "Combine files", "a_from_images": "From images",
+        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_sheet_links": "Sheet callouts", "a_combine": "Combine files", "a_from_images": "From images",
         "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
         "a_watermark": "Watermark", "a_background": "Background",
         "a_remove_bg": "Remove background", "a_remove_wm": "Remove watermarks", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
         "a_compress": "Compress", "a_compare": "Compare", "a_flatten": "Flatten",
-        "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest",
+        "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest", "a_night": "Night mode",
         "a_split": "Split view", "a_labels": "Toolbar labels", "a_shortcuts": "Shortcuts",
-        "a_manual": "User manual", "a_ribbon": "Ribbon", "a_collapse": "Collapse", "a_group_names": "Group names", "a_menu_bar": "Menu bar",
+        "a_manual": "User manual", "a_palette": "Command palette", "a_ribbon": "Ribbon", "a_collapse": "Collapse", "a_group_names": "Group names", "a_menu_bar": "Menu bar",
         "a_zoom_in": "Zoom in", "a_zoom_out": "Zoom out", "a_open": "Open", "a_save": "Save",
         "a_print": "Print", "al_left": "Left", "al_hcenter": "Center", "al_right": "Right",
         "al_top": "Top", "al_vmiddle": "Middle", "al_bottom": "Bottom",
@@ -3406,7 +3529,7 @@ class MainWindow(QMainWindow):
         "tool_editobjects": "Edit objects", "tool_addtext": "Add text",
     }
     RIBBON_ICONS = {
-        "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square",
+        "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square", "a_sheet_scales": "text-box-search-outline", "a_sheet_links": "link-variant-plus",
         "a_measure_summary": "sigma", "a_grid_settings": "cog-outline", "a_lock": "lock-outline",
         "a_unlock_all": "lock-open-variant-outline", "a_prev_markup": "chevron-up",
         "a_next_markup": "chevron-down", "a_markups": "format-list-bulleted",
@@ -3431,7 +3554,8 @@ class MainWindow(QMainWindow):
         "a_compress": "zip-box-outline", "a_compare": "compare", "a_flatten": "layers-triple-outline",
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
         "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_labels": "label-outline",
-        "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline",
+        "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline", "a_palette": "console-line",
+        "a_night": "weather-night",
         "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline", "a_menu_bar": "menu",
     }
 
@@ -3482,7 +3606,8 @@ class MainWindow(QMainWindow):
         r.add_tab("Measure", [
             ("Measure", "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
             ("More", "small", [t["m_angle"], t["m_radius"], t["m_perimeter"], t["m_volume"]]),
-            ("Scale", "small", [t["m_calibrate"], self.a_set_scale, self.a_measure_summary]),
+            ("Scale", "small", [t["m_calibrate"], self.a_set_scale, self.a_sheet_scales,
+                                self.a_measure_summary]),
             ("Grid & snap", "small", snap_group),
         ])
         r.add_tab("Arrange", [
@@ -3521,18 +3646,19 @@ class MainWindow(QMainWindow):
                                    self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
             ("Combine", "large", [self.a_combine, self.a_from_images]),
             ("Document", "small", [self.a_header, self.a_watermark, self.a_background,
-                                   self.a_bookmarks, self.a_attachments, self.a_compress,
-                                   self.a_compare]),
+                                   self.a_bookmarks, self.a_sheet_links, self.a_attachments,
+                                   self.a_compress, self.a_compare]),
             ("Convert", "large", [self.a_ocr, self.a_flatten]),
         ])
         r.add_tab("View", [
             ("Panels", "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                  self.a_split]),
-            ("Display", "small", [self.a_hl_fields, self.a_show_markups, self.a_cad_mouse]),
+            ("Display", "small", [self.a_hl_fields, self.a_show_markups, self.a_cad_mouse,
+                                  self.a_night]),
             ("Grid & snap", "small", snap_group),
             ("Ribbon", "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
                                  self.a_menu_bar]),
-            ("Help", "large", [self.a_shortcuts, self.a_manual]),
+            ("Help", "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
         ])
         r.collapsedChanged.connect(self._ribbon_collapsed)
         # quick-access icons in the tab row (left), find box and menu button (right), like
@@ -3678,6 +3804,11 @@ class MainWindow(QMainWindow):
 
     def _toggle_sidebar(self):
         self.dock.setVisible(not self.dock.isVisible())
+
+    def show_palette(self):
+        """Command palette (Ctrl+Shift+P): type to find any command or tool, Enter runs it."""
+        from .palette import CommandPalette
+        CommandPalette(self).exec()
 
     def show_manual(self):
         from .manual import ManualDialog

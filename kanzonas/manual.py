@@ -51,7 +51,9 @@ File &gt; Open recent. Each file opens in its own tab, at the page and zoom you 
 Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within a memory budget
 (256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
-Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
+Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10). The panels you had open
+when you closed KanzonasPDF (and their sizes, sides and which of Properties / Tool chest was in
+front) come back the next time it starts; the Split view always starts closed.</li>
 <li><b>A document in its own window</b> (for a second monitor): drag its tab up or down out
 of the tab bar and let go, or right-click the tab &gt; <b>Move to new window</b>, or View &gt;
 <b>Move tab to new window</b> (Ctrl+Shift+N). The document isn't reopened: unsaved changes
@@ -88,6 +90,17 @@ and Find then go back to the top toolbar). The menus always have every command.<
 Objects panels; click the lit icon again to fold the panel away and get more room for the page.
 The Markups list and Attachments icons are there too. View &gt; <b>Show panel strip (left
 edge)</b> hides the strip; the panels then show their names as tabs at the bottom instead.</li>
+<li><b>Command palette</b> (Ctrl+Shift+P; Help menu, View tab): type a few letters of what you
+want to do and pick the command from the list; Enter runs it. Every menu command and tool is
+there with its menu and shortcut, so nothing has to be hunted for on the ribbon. The letters
+only have to appear in order ("sv as" finds Save As, "rot l" finds Rotate page left), and the
+commands you ran from the palette lately come first.</li>
+<li><b>Night mode (white lines on black)</b> (F12; View menu, View tab, Preferences &gt; Pages
+and display): draws the pages like a CAD screen. Lightness is inverted and colors are kept, so
+black lines and text turn white on a black sheet while a red line stays red and a yellow
+highlight stays yellow. Pictures and scans are inverted too, like a negative. Only the screen
+changes: printing, export, Capture area and the saved file are the same as always. Your choice
+is remembered.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
 saying what it does and its keyboard shortcut.</li>
@@ -159,12 +172,14 @@ email address asks first, then opens in your browser or email program (tick <b>D
 again</b> to skip the question from then on). A link to another PDF opens it in a new tab; a
 link to another kind of file asks before opening it, and only common documents, pictures,
 media and drawings are opened (links that would start a program, a script or a file with
-macros are refused). A link to a file on another computer (a network share) asks first, because
+macros are refused). Links written by AutoCAD and other CAD programs when plotting a sheet set
+work this way, including links to files whose names have spaces. A link to a file on another computer (a network share) asks first, because
 opening it sends your Windows sign-in to that computer.</li>
 <li><b>Adding links:</b> the <b>Links</b> tool (Home tab &gt; Insert, Tools menu) draws the
 page's links as blue dashed boxes. Drag a box over what should be clickable, then type a web
 address or e-mail address (www.example.com is fine; https:// is added) or choose a page in this
-document. <b>Show a box around the link</b> (ticked at first) draws a thin blue box so readers
+document. For a whole drawing set, <b>Link sheet callouts</b> (Pages menu) makes the links
+for you from the sheet numbers. <b>Show a box around the link</b> (ticked at first) draws a thin blue box so readers
 can see it's there, here and in other PDF readers, and it prints with the markups; untick it for a
 link that stays invisible until the pointer is over it. Click an existing link with the tool to
 change where it goes, show or hide its box, or <b>Delete link</b>.
@@ -326,9 +341,11 @@ markups keep their proportions. Shift while dragging a line's end keeps it at 45
 <li><b>Erase content</b> (Shift+E; Home tab, Tools menu): like Bluebeam's,
 drag a box to permanently delete the page's own content inside it: text, images and lines.
 Lines and curves that cross the edge of the box are cut there, so a wall running through the box
-keeps its outside parts. A filled shape that crosses the edge stays whole (one entirely inside is
-removed). Markups aren't touched (use the Eraser for those). Ctrl+Z undoes it. Unlike redaction it
-leaves no black box; for confidential information use Redact, which also cleans hidden copies.</li>
+keeps its outside parts. A filled shape that crosses the edge (a solid color, a hatch pattern or a
+gradient) keeps its outside part and loses what was inside the box; one entirely inside is
+removed. Markups aren't touched (use the Eraser for those, which deletes a markup whole). Ctrl+Z
+undoes it. Unlike redaction it leaves no black box; for confidential information use Redact, which
+also cleans hidden copies (Erase content keeps the outline of a cut fill in the file, hidden).</li>
 <li><b>Capture area</b> (Shift+P; Home tab, Tools menu): like Bluebeam's Snapshot, drag a box to
 copy that area, markups included. Ctrl+V in KanzonasPDF pastes it as an image markup at the
 same size, on any page or in another document, made of the original <b>vector</b> content: lines
@@ -538,8 +555,17 @@ page that still has unapplied redaction marks can't be edited until you apply or
 
 <h2 id="measure">Measuring</h2>
 <ul>
-<li>Set the drawing scale first: Measure &gt; Set scale (presets such as 1/4" = 1'-0", 1:100),
-or <b>Calibrate Tape Measure</b>: drag along a known dimension and type its real length.</li>
+<li>Set the drawing scale first: Measure &gt; <b>Set scale</b> (presets such as 1/4" = 1'-0",
+1:100), or <b>Calibrate Tape Measure</b>: drag along a known dimension and type its real
+length. KanzonasPDF reads the scale notes written on the sheet (SCALE: 1/4" = 1'-0", 1" = 20',
+1:50, NTS, in the title block or under detail titles): Set scale offers them as <b>Scale
+written on the sheet</b>, picked for you when the title block has one, and the status bar
+mentions what the sheet says while no scale is set.</li>
+<li><b>Read scales from title blocks</b> (Measure menu, Measure tab): for a whole set at once,
+every page gets the scale its own title block says; pages marked not to scale or without a
+note are left as they are and listed. Trust but check: a sheet printed at reduced size (a
+24x36 on 11x17 paper) still says its original scale, and nothing on the page tells. Measure
+one known dimension after reading the scales, and use Calibrate Tape Measure if it is off.</li>
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
 <b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
 the scale.</li>
@@ -590,6 +616,16 @@ becomes a page.</li>
 file, Delete page.</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
+<li><b>Link sheet callouts</b> (Pages menu, Pages tab): for a drawing set plotted without
+hyperlinks. KanzonasPDF reads each page's sheet number and title from its title block (the
+value after a SHEET, SHEET NO or DWG NO caption, or the largest sheet-like number in the
+title block area) and shows them for correction. Then every callout bubble, note or index line
+that names one of those sheets (3/A-501, SEE A-201, A101 and A-101 count as the same) becomes a
+link to that page; a number that isn't a page here but is in the name of a PDF in the same
+folder (A-501 Details.pdf) links to that file. Words that already have a link are left alone,
+so AutoCAD's own hyperlinks stay and running it twice adds nothing. Options: a thin blue box
+around the links (off by default, to keep drawings clean), and bookmarks named by sheet number
+and title. Ctrl+Z undoes it all.</li>
 </ul>
 
 <h2 id="forms">Forms</h2>
@@ -675,7 +711,10 @@ attached files, hidden text, links, comments, form data, thumbnails.</li>
   Changes take effect when you save. Digital signatures and timestamps can't be added to a
   password-protected PDF yet: remove security, sign the final version, and don't add a
   password afterwards (that would invalidate the signature). <b>Remove security</b> takes protection off (you need the
-  permissions password). <b>Unlock with password</b> lets you edit a restricted file.</li>
+  permissions password). <b>Unlock with password</b> lets you edit a restricted file and
+  accepts the permissions password of a file that already lets you edit, so its protection can
+  be changed; Security properties and Remove security ask for that password first when the
+  file has one.</li>
 <li><b>Saving keeps protection:</b> a password-protected file stays protected when you save
 your changes, with the same open password and restrictions (re-encrypted with AES-256). If you
 opened it with the open password only, KanzonasPDF doesn't know the permissions password, so the
@@ -765,8 +804,11 @@ have the password.</li>
 <li><b>Measuring:</b> the units offered for a page that has no scale yet, what feet and inches
 round to (1/2" to 1/64"; 1/16" by default) and the decimal places for other units. Existing
 measurement labels update when you next move or edit them.</li>
-<li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step.</li>
+<li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step (the note
+under it says when it applies: only while the whole page fits in the window, as after Fit
+page).</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
+Night mode (white lines on black),
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid
 settings...).</li>
@@ -816,9 +858,11 @@ settings...).</li>
 <tr><td>Ctrl+Shift+N</td><td>Move tab to new window</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
+<tr><td>Ctrl+Shift+P</td><td>Command palette</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Show / hide the menu bar (ribbon layout)</td></tr>
 <tr><td>F11</td><td>CAD-style mouse on / off</td></tr>
+<tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>

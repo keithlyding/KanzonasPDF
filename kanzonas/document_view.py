@@ -184,6 +184,7 @@ class DocumentView(QScrollArea):
             n = self.doc.page_count
             for w in old[n:]:
                 lay.removeWidget(w)
+                w.hide()                # not painted again before deleteLater runs
                 w.deleteLater()
             del old[n:]
             for i, w in enumerate(old):
@@ -414,6 +415,17 @@ class DocumentView(QScrollArea):
     highlight_fields = True        # shade fillable form fields (View / Forms menu)
     show_markups = True            # Review > Show markups (off: the page as if unmarked)
 
+    def redraw_pages(self):
+        """Draw every page again from its display list (after a display option changed, such
+        as night mode); selections, search hits and caches of the page text are kept."""
+        self._tiles.clear()
+        for i in list(getattr(self, "_pix_pages", ())):
+            if i < len(self.pages):
+                self.pages[i].drop_cache()
+        self._pix_pages = set()
+        for pw in self.pages:
+            pw.update()
+
     def refresh_markup_display(self):
         self.clear_selection()
         self._clear_caches()
@@ -624,6 +636,7 @@ class DocumentView(QScrollArea):
     # Holding the wheel (middle button) down and dragging pans in either mode.
     cad_mouse = False
     page_wheel = False          # one wheel step = one page when the page fits the window
+    night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
     open_view = "width"         # zoom for newly opened files: width, page, actual, last
     reopen_page = True          # reopen files at the page they were left on
 
@@ -1741,15 +1754,45 @@ class DocumentView(QScrollArea):
                              "points": [pt], "rect": pymupdf.Rect(), "n": n + 1})
 
     def page_scale_text(self, index):
+        """'Scale: ...' for the status bar; when no scale is set and the sheet's title block
+        says one, that is mentioned, since Set scale offers it."""
         from . import measure
-        return measure.describe(self.doc[index])
+        text = measure.describe(self.doc[index])
+        if not measure.get_scale(self.doc[index])[3]:
+            note = self.sheet_scale_note(index)
+            if note and note["ratio"] is not None:
+                text += f"  |  the sheet says {note['label']}: Measure > Set scale uses it"
+            elif note:
+                text += "  |  the sheet says NOT TO SCALE"
+        return text
+
+    def sheet_scale_note(self, index):
+        """The scale note on the sheet (sheet_scale.sheet_scale), read once per page."""
+        from . import sheet_scale
+        cache = self.__dict__.setdefault("_sheet_scale_cache", {})
+        page = self.doc[index]
+        key = page.xref
+        if key not in cache:
+            try:
+                cache[key] = sheet_scale.sheet_scale(page)
+            except Exception:
+                cache[key] = None
+        return cache[key]
 
     def set_page_scale(self, pages, m_per_pt, unit, label):
-        """Apply a scale and re-measure existing measurements on those pages."""
+        """Apply one scale to pages and re-measure existing measurements on them."""
+        self.set_page_scales({i: (m_per_pt, unit, label) for i in pages})
+
+    def set_page_scales(self, scales):
+        """{page index: (meters per point, unit, label)}: apply them all in one undo step and
+        re-measure the existing measurements on those pages."""
         from . import measure
+        scales = dict(scales)
+        if not scales:
+            return
 
         def do():
-            for i in pages:
+            for i, (m_per_pt, unit, label) in scales.items():
                 pg = self.doc[i]
                 measure.set_scale(pg, m_per_pt, unit, label)
                 models = []
@@ -1761,7 +1804,7 @@ class DocumentView(QScrollArea):
                     pg.delete_annot(pg.load_annot(xref))
                     annotations.write(pg, m)
         self.clear_selection()
-        self.modify(do, list(pages))
+        self.modify(do, list(scales))
         self.scaleChanged.emit()
 
     def apply_poly(self, index, tool, pts):
@@ -2094,6 +2137,11 @@ class DocumentView(QScrollArea):
         from PySide6.QtGui import QDesktopServices
         if not path:
             return
+        if "%" in path:
+            # MuPDF hands file names back percent-encoded ("Framing%20Plan.pdf"), also for
+            # the plain /F strings CAD exporters write
+            from urllib.parse import unquote
+            path = unquote(path)
         if not os.path.isabs(path) and self.path:
             path = os.path.join(os.path.dirname(self.path), path)
         path = os.path.normpath(path)
@@ -3694,6 +3742,12 @@ class DocumentView(QScrollArea):
         enc = meta.get("encryption")
         return {"encrypted": bool(enc), "method": enc or "", "perms": self.doc.permissions,
                 "is_owner": bool(self.doc.permissions & pymupdf.PDF_PERM_MODIFY)}
+
+    def owner_authorized(self):
+        """True when the security of this document may be changed: it has no permissions
+        password, or that password was given (Unlock with password). A file whose
+        permissions allow editing still needs it to change or remove its protection."""
+        return bool(getattr(self, "_owner_authorized", False))
 
     def set_security(self, open_pw="", owner_pw="", perms=-1):
         """Security to apply on the next save ('' / '' removes all protection)."""
