@@ -633,6 +633,13 @@ class MainWindow(QMainWindow):
         self.a_page_wheel.setCheckable(True)
         self.a_page_wheel.setChecked(self.settings.value("page_wheel", "true") == "true")
         DocumentView.page_wheel = self.a_page_wheel.isChecked()
+        self.a_night = self._act("&Night mode (white lines on black)", self._toggle_night, "F12",
+                                 tip="Draw the pages like a CAD screen: lightness inverted, colors "
+                                     "kept (black lines turn white, red stays red). Printing and "
+                                     "export are not affected (F12)")
+        self.a_night.setCheckable(True)
+        self.a_night.setChecked(self.settings.value("night_mode", "false") == "true")
+        DocumentView.night_mode = self.a_night.isChecked()
         from . import autosave, measure
         measure.configure(self.settings)
         try:
@@ -736,6 +743,9 @@ class MainWindow(QMainWindow):
         self.a_delete_annot = self._act("Delete selected annotation",
                                         lambda: v() and v().delete_selected())
         self.a_manual = self._act("&User manual", self.show_manual, "F1")
+        self.a_palette = self._act("Command &palette...", self.show_palette, "Ctrl+Shift+P",
+                                   tip="Type a few letters of any command or tool and run it "
+                                       "from the list (Ctrl+Shift+P)")
         self.a_about = self._act("&About", self.about)
         self.a_check_updates = self._act("&Check for updates...", self.check_updates,
                                          tip="Ask GitHub whether a newer KanzonasPDF is out")
@@ -811,6 +821,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_detach)
         m.addAction(self.a_cad_mouse)
         m.addAction(self.a_page_wheel)
+        m.addAction(self.a_night)
         m.addAction(self.a_hl_fields)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
@@ -905,6 +916,7 @@ class MainWindow(QMainWindow):
                                 self.a_dup_pages, sep, self.a_rot_l, self.a_rot_r, self.a_del_page])
         m = mb.addMenu("&Help")
         m.addAction(self.a_manual)
+        m.addAction(self.a_palette)
         m.addSeparator()
         m.addActions([self.a_check_updates, self.a_auto_updates])
         m.addSeparator()
@@ -3380,6 +3392,18 @@ class MainWindow(QMainWindow):
         from .preferences import PreferencesDialog
         PreferencesDialog(self).exec()
 
+    def _toggle_night(self):
+        on = self.a_night.isChecked()
+        DocumentView.night_mode = on
+        self.settings.setValue("night_mode", "true" if on else "false")
+        for w in windows():
+            w.a_night.setChecked(on)
+            for v in w._views():
+                v.redraw_pages()
+        self.statusBar().showMessage("Night mode on: pages drawn white on black (F12 turns it "
+                                     "off); printing and export are unchanged" if on else
+                                     "Night mode off", 4000)
+
     def _toggle_page_wheel(self):
         on = self.a_page_wheel.isChecked()
         DocumentView.page_wheel = on
@@ -3413,9 +3437,9 @@ class MainWindow(QMainWindow):
         "a_watermark": "Watermark", "a_background": "Background",
         "a_remove_bg": "Remove background", "a_remove_wm": "Remove watermarks", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
         "a_compress": "Compress", "a_compare": "Compare", "a_flatten": "Flatten",
-        "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest",
+        "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest", "a_night": "Night mode",
         "a_split": "Split view", "a_labels": "Toolbar labels", "a_shortcuts": "Shortcuts",
-        "a_manual": "User manual", "a_ribbon": "Ribbon", "a_collapse": "Collapse", "a_group_names": "Group names", "a_menu_bar": "Menu bar",
+        "a_manual": "User manual", "a_palette": "Command palette", "a_ribbon": "Ribbon", "a_collapse": "Collapse", "a_group_names": "Group names", "a_menu_bar": "Menu bar",
         "a_zoom_in": "Zoom in", "a_zoom_out": "Zoom out", "a_open": "Open", "a_save": "Save",
         "a_print": "Print", "al_left": "Left", "al_hcenter": "Center", "al_right": "Right",
         "al_top": "Top", "al_vmiddle": "Middle", "al_bottom": "Bottom",
@@ -3452,7 +3476,8 @@ class MainWindow(QMainWindow):
         "a_compress": "zip-box-outline", "a_compare": "compare", "a_flatten": "layers-triple-outline",
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
         "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_labels": "label-outline",
-        "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline",
+        "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline", "a_palette": "console-line",
+        "a_night": "weather-night",
         "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline", "a_menu_bar": "menu",
     }
 
@@ -3549,11 +3574,12 @@ class MainWindow(QMainWindow):
         r.add_tab("View", [
             ("Panels", "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                  self.a_split]),
-            ("Display", "small", [self.a_hl_fields, self.a_show_markups, self.a_cad_mouse]),
+            ("Display", "small", [self.a_hl_fields, self.a_show_markups, self.a_cad_mouse,
+                                  self.a_night]),
             ("Grid & snap", "small", snap_group),
             ("Ribbon", "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
                                  self.a_menu_bar]),
-            ("Help", "large", [self.a_shortcuts, self.a_manual]),
+            ("Help", "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
         ])
         r.collapsedChanged.connect(self._ribbon_collapsed)
         # quick-access icons in the tab row (left), find box and menu button (right), like
@@ -3699,6 +3725,11 @@ class MainWindow(QMainWindow):
 
     def _toggle_sidebar(self):
         self.dock.setVisible(not self.dock.isVisible())
+
+    def show_palette(self):
+        """Command palette (Ctrl+Shift+P): type to find any command or tool, Enter runs it."""
+        from .palette import CommandPalette
+        CommandPalette(self).exec()
 
     def show_manual(self):
         from .manual import ManualDialog

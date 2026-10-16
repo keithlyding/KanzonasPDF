@@ -249,7 +249,7 @@ class PreferencesDialog(QDialog):
         self.lock.setToolTip(win.lock_btn.toolTip())
         self.lock.setChecked(win.lock_btn.isChecked())
         form.addRow(self.lock)
-        for a in (win.a_cards, win.a_hl_fields):
+        for a in (win.a_cards, win.a_hl_fields, win.a_night):
             self._box(form, a)
         # grid and snapping: all of it here, in one place (same settings as View > Grid
         # settings...)

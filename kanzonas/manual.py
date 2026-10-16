@@ -90,6 +90,17 @@ and Find then go back to the top toolbar). The menus always have every command.<
 Objects panels; click the lit icon again to fold the panel away and get more room for the page.
 The Markups list and Attachments icons are there too. View &gt; <b>Show panel strip (left
 edge)</b> hides the strip; the panels then show their names as tabs at the bottom instead.</li>
+<li><b>Command palette</b> (Ctrl+Shift+P; Help menu, View tab): type a few letters of what you
+want to do and pick the command from the list; Enter runs it. Every menu command and tool is
+there with its menu and shortcut, so nothing has to be hunted for on the ribbon. The letters
+only have to appear in order ("sv as" finds Save As, "rot l" finds Rotate page left), and the
+commands you ran from the palette lately come first.</li>
+<li><b>Night mode (white lines on black)</b> (F12; View menu, View tab, Preferences &gt; Pages
+and display): draws the pages like a CAD screen. Lightness is inverted and colors are kept, so
+black lines and text turn white on a black sheet while a red line stays red and a yellow
+highlight stays yellow. Pictures and scans are inverted too, like a negative. Only the screen
+changes: printing, export, Capture area and the saved file are the same as always. Your choice
+is remembered.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
 saying what it does and its keyboard shortcut.</li>
@@ -776,6 +787,7 @@ measurement labels update when you next move or edit them.</li>
 under it says when it applies: only while the whole page fits in the window, as after Fit
 page).</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
+Night mode (white lines on black),
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid
 settings...).</li>
@@ -825,9 +837,11 @@ settings...).</li>
 <tr><td>Ctrl+Shift+N</td><td>Move tab to new window</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
+<tr><td>Ctrl+Shift+P</td><td>Command palette</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Show / hide the menu bar (ribbon layout)</td></tr>
 <tr><td>F11</td><td>CAD-style mouse on / off</td></tr>
+<tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>

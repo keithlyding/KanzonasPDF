@@ -415,6 +415,17 @@ class DocumentView(QScrollArea):
     highlight_fields = True        # shade fillable form fields (View / Forms menu)
     show_markups = True            # Review > Show markups (off: the page as if unmarked)
 
+    def redraw_pages(self):
+        """Draw every page again from its display list (after a display option changed, such
+        as night mode); selections, search hits and caches of the page text are kept."""
+        self._tiles.clear()
+        for i in list(getattr(self, "_pix_pages", ())):
+            if i < len(self.pages):
+                self.pages[i].drop_cache()
+        self._pix_pages = set()
+        for pw in self.pages:
+            pw.update()
+
     def refresh_markup_display(self):
         self.clear_selection()
         self._clear_caches()
@@ -625,6 +636,7 @@ class DocumentView(QScrollArea):
     # Holding the wheel (middle button) down and dragging pans in either mode.
     cad_mouse = False
     page_wheel = False          # one wheel step = one page when the page fits the window
+    night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
     open_view = "width"         # zoom for newly opened files: width, page, actual, last
     reopen_page = True          # reopen files at the page they were left on
 

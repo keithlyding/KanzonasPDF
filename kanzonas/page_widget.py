@@ -94,6 +94,20 @@ def hit_frame(rect):
     c = r.center()
     return QRectF(c.x() - w / 2, c.y() - h / 2, w, h)
 
+def night_samples(samples, width, height, stride):
+    """Night mode (CAD style): the page's lightness is inverted and its hues kept, so a black
+    line on white paper becomes a white line on black, red stays red, a yellow highlight stays
+    yellow. Per pixel: add (255 - max - min) to every channel. RGB bytes in, RGB bytes out
+    (tightly packed)."""
+    import numpy as np
+    a = np.frombuffer(samples, dtype=np.uint8)
+    rows = a[: height * stride].reshape(height, stride)[:, : width * 3].reshape(height, width, 3)
+    rows = rows.astype(np.int16)
+    offset = 255 - rows.max(axis=2) - rows.min(axis=2)
+    out = (rows + offset[:, :, None]).clip(0, 255).astype(np.uint8)
+    return out.tobytes()
+
+
 class PageWidget(QWidget):
     def __init__(self, view, index):
         super().__init__()
@@ -165,9 +179,12 @@ class PageWidget(QWidget):
             self.view._dlists[self.index] = dl
         return dl
 
-    @staticmethod
-    def _to_qpixmap(pm, dpr):
-        img = QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
+    def _to_qpixmap(self, pm, dpr):
+        if self.view.night_mode:
+            data = night_samples(pm.samples, pm.width, pm.height, pm.stride)
+            img = QImage(data, pm.width, pm.height, pm.width * 3, QImage.Format_RGB888).copy()
+        else:
+            img = QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
         pix = QPixmap.fromImage(img)
         pix.setDevicePixelRatio(dpr)
         return pix
