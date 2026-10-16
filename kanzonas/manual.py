@@ -765,7 +765,9 @@ have the password.</li>
 <li><b>Measuring:</b> the units offered for a page that has no scale yet, what feet and inches
 round to (1/2" to 1/64"; 1/16" by default) and the decimal places for other units. Existing
 measurement labels update when you next move or edit them.</li>
-<li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step.</li>
+<li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step (the note
+under it says when it applies: only while the whole page fits in the window, as after Fit
+page).</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid

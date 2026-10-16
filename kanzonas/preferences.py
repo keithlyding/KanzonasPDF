@@ -236,8 +236,12 @@ class PreferencesDialog(QDialog):
 
         # Mouse and scrolling
         page, form = self._tab(tabs, "Mouse and scrolling")
-        for a in (win.a_cad_mouse, win.a_page_wheel):
-            self._box(form, a)
+        self._box(form, win.a_cad_mouse)
+        self._box(form, win.a_page_wheel,
+                  note="Only when the whole page fits in the window, top to bottom and side to "
+                       "side (for example after View > Fit page). Zoomed in so that any edge of "
+                       "the page is outside the window, the wheel scrolls normally. With "
+                       "CAD-style mouse on, the wheel zooms instead.")
 
         # Pages and display
         page, form = self._tab(tabs, "Pages and display")
@@ -406,11 +410,16 @@ class PreferencesDialog(QDialog):
         tabs.addTab(page, title)
         return page, form
 
-    def _box(self, form, action):
+    def _box(self, form, action, note=None):
         b = QCheckBox(_plain(action.text()))
         b.setToolTip(action.toolTip() if action.toolTip() != _plain(action.text()) else "")
         b.setChecked(action.isChecked())
         form.addRow(b)
+        if note:                        # a visible explanation under the box, not just a tooltip
+            lab = QLabel(note)
+            lab.setWordWrap(True)
+            lab.setIndent(22)
+            form.addRow(lab)
         self._boxes.append((b, action))
 
     def _ok(self):
