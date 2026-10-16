@@ -553,8 +553,17 @@ page that still has unapplied redaction marks can't be edited until you apply or
 
 <h2 id="measure">Measuring</h2>
 <ul>
-<li>Set the drawing scale first: Measure &gt; Set scale (presets such as 1/4" = 1'-0", 1:100),
-or <b>Calibrate Tape Measure</b>: drag along a known dimension and type its real length.</li>
+<li>Set the drawing scale first: Measure &gt; <b>Set scale</b> (presets such as 1/4" = 1'-0",
+1:100), or <b>Calibrate Tape Measure</b>: drag along a known dimension and type its real
+length. KanzonasPDF reads the scale notes written on the sheet (SCALE: 1/4" = 1'-0", 1" = 20',
+1:50, NTS, in the title block or under detail titles): Set scale offers them as <b>Scale
+written on the sheet</b>, picked for you when the title block has one, and the status bar
+mentions what the sheet says while no scale is set.</li>
+<li><b>Read scales from title blocks</b> (Measure menu, Measure tab): for a whole set at once,
+every page gets the scale its own title block says; pages marked not to scale or without a
+note are left as they are and listed. Trust but check: a sheet printed at reduced size (a
+24x36 on 11x17 paper) still says its original scale, and nothing on the page tells. Measure
+one known dimension after reading the scales, and use Calibrate Tape Measure if it is off.</li>
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
 <b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
 the scale.</li>

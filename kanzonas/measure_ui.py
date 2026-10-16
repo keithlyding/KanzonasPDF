@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, Q
 
 from . import annotations as A
 from . import measure as M
+from . import sheet_scale
 
 _INPUT_UNITS = ["ft-in", "ft", "in", "yd", "m", "cm", "mm"]
 
@@ -49,6 +50,12 @@ class ScaleDialog(QDialog):
         form = QFormLayout()
         self.r_known = QRadioButton("Known distance")
         self.r_preset = QRadioButton("Preset scale")
+        self.r_sheet = QRadioButton("Scale written on the sheet")
+        self.sheet = QComboBox()
+        self.found = sheet_scale.find(page)
+        for f in self.found:
+            if f["ratio"] is not None:
+                self.sheet.addItem(f'{f["label"]}  ({f["where"]})', (f["ratio"], f["unit"], f["label"]))
         self.length = QLineEdit()
         self.length.setPlaceholderText("e.g. 12'-6\"  or  3.5")
         self.in_unit = QComboBox()
@@ -78,12 +85,29 @@ class ScaleDialog(QDialog):
             self.length.hide()
             self.in_unit.hide()
             self.r_preset.setChecked(True)
+        if self.sheet.count():
+            form.addRow(self.r_sheet, self.sheet)
+            note = QLabel("Read off the page text. A sheet printed at reduced size still says "
+                          "its original scale: then draw a Calibrate line instead.")
+            note.setWordWrap(True)
+            form.addRow(note)
+            if not pdf_len and self.found[0]["where"] == "title block":
+                self.r_sheet.setChecked(True)
+                self.r_preset.setChecked(False)
+                self._sheet_changed(0)
+        else:
+            self.r_sheet.hide()
+            self.sheet.hide()
+            if any(f["ratio"] is None for f in self.found):
+                form.addRow(QLabel("The sheet says NOT TO SCALE."))
         form.addRow(self.r_preset, self.preset)
         form.addRow("Show measurements in", self.disp_unit)
         form.addRow("Apply to", self.pages)
         lay.addLayout(form)
         self.preset.currentIndexChanged.connect(self._preset_changed)
         self.preset.activated.connect(lambda _: self.r_preset.setChecked(True))
+        self.sheet.currentIndexChanged.connect(self._sheet_changed)
+        self.sheet.activated.connect(lambda _: self.r_sheet.setChecked(True))
         self.length.textEdited.connect(lambda _: self.r_known.setChecked(True))
         self.in_unit.currentIndexChanged.connect(self._unit_changed)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -97,6 +121,11 @@ class ScaleDialog(QDialog):
     def _preset_changed(self, i):
         _ratio, unit = self.preset.itemData(i)
         self.disp_unit.setCurrentIndex(self.disp_unit.findData(unit))
+
+    def _sheet_changed(self, i):
+        data = self.sheet.itemData(i)
+        if data:
+            self.disp_unit.setCurrentIndex(self.disp_unit.findData(data[1]))
 
     def _unit_changed(self, _i):
         self.disp_unit.setCurrentIndex(self.disp_unit.findData(self.in_unit.currentData()))
@@ -114,6 +143,9 @@ class ScaleDialog(QDialog):
                 return
             f = meters / self.pdf_len
             label = f"calibrated ({self.length.text().strip()} = drawn line)"
+        elif self.r_sheet.isChecked() and self.sheet.count():
+            ratio, _u, label = self.sheet.currentData()
+            f = M.scale_from_preset(ratio)
         else:
             ratio, _u = self.preset.currentData()
             f = M.scale_from_preset(ratio)

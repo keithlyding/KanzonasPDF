@@ -1754,15 +1754,45 @@ class DocumentView(QScrollArea):
                              "points": [pt], "rect": pymupdf.Rect(), "n": n + 1})
 
     def page_scale_text(self, index):
+        """'Scale: ...' for the status bar; when no scale is set and the sheet's title block
+        says one, that is mentioned, since Set scale offers it."""
         from . import measure
-        return measure.describe(self.doc[index])
+        text = measure.describe(self.doc[index])
+        if not measure.get_scale(self.doc[index])[3]:
+            note = self.sheet_scale_note(index)
+            if note and note["ratio"] is not None:
+                text += f"  |  the sheet says {note['label']}: Measure > Set scale uses it"
+            elif note:
+                text += "  |  the sheet says NOT TO SCALE"
+        return text
+
+    def sheet_scale_note(self, index):
+        """The scale note on the sheet (sheet_scale.sheet_scale), read once per page."""
+        from . import sheet_scale
+        cache = self.__dict__.setdefault("_sheet_scale_cache", {})
+        page = self.doc[index]
+        key = page.xref
+        if key not in cache:
+            try:
+                cache[key] = sheet_scale.sheet_scale(page)
+            except Exception:
+                cache[key] = None
+        return cache[key]
 
     def set_page_scale(self, pages, m_per_pt, unit, label):
-        """Apply a scale and re-measure existing measurements on those pages."""
+        """Apply one scale to pages and re-measure existing measurements on them."""
+        self.set_page_scales({i: (m_per_pt, unit, label) for i in pages})
+
+    def set_page_scales(self, scales):
+        """{page index: (meters per point, unit, label)}: apply them all in one undo step and
+        re-measure the existing measurements on those pages."""
         from . import measure
+        scales = dict(scales)
+        if not scales:
+            return
 
         def do():
-            for i in pages:
+            for i, (m_per_pt, unit, label) in scales.items():
                 pg = self.doc[i]
                 measure.set_scale(pg, m_per_pt, unit, label)
                 models = []
@@ -1774,7 +1804,7 @@ class DocumentView(QScrollArea):
                     pg.delete_annot(pg.load_annot(xref))
                     annotations.write(pg, m)
         self.clear_selection()
-        self.modify(do, list(pages))
+        self.modify(do, list(scales))
         self.scaleChanged.emit()
 
     def apply_poly(self, index, tool, pts):
