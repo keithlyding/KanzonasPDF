@@ -124,11 +124,11 @@ class DetachTab(unittest.TestCase):
         v2 = w2.view()
         v2._create(0, {"kind": "rect", "props": {"stroke": "#d00000", "width": 2},
                        "rect": F.Rect(40, 40, 80, 80)})
-        asked = mock.patch.object(QMessageBox, "question",
-                                  return_value=QMessageBox.Discard).start()
+        asked = mock.patch.object(w, "_ask_exit", return_value="discard").start()
         w.close()
         self.pump()
-        self.assertEqual(asked.call_count, 1)                 # the one dirty document, once
+        self.assertEqual(asked.call_count, 1)                 # one question for all windows
+        self.assertEqual(asked.call_args[0], (2, ["two.pdf"]))
         self.assertNotIn(w2, main_window.windows())
         self.assertNotIn(w, main_window.windows())
         files = json.loads(w.settings.value("session_files"))
@@ -140,7 +140,7 @@ class DetachTab(unittest.TestCase):
         self.pump()
         w2.view()._create(0, {"kind": "rect", "props": {"stroke": "#d00000", "width": 2},
                               "rect": F.Rect(40, 40, 80, 80)})
-        mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Cancel).start()
+        mock.patch.object(w, "_ask_exit", return_value="cancel").start()
         w.close()
         self.pump()
         self.assertIn(w, main_window.windows())
