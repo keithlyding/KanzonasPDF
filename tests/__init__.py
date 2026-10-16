@@ -5,12 +5,23 @@ teardown, their Python overrides run on half-dead objects, and the process dies 
 reporting OK (exit code 1 on Windows, SIGSEGV on Linux).
 
 atexit runs last-registered first: this hook is registered after PySide6 is imported, so it
-runs before PySide's shutdown."""
+runs before PySide's shutdown.
+
+Settings: QSettings resolves its folder once per process, so changing HOME inside a test does
+nothing after the first QSettings exists. The whole run is pointed at a fresh temporary folder
+here instead (on Linux and macOS; on Windows the native store is the registry and the path is
+ignored), so the tests never read or write the developer's real KanzonasPDF settings. Within a
+run the store is still shared, so a test that depends on a remembered option sets it."""
 import atexit
 import gc
+import tempfile
 
-from PySide6.QtCore import QCoreApplication, QEvent  # noqa: E402  (before atexit.register)
+from PySide6.QtCore import QCoreApplication, QEvent, QSettings  # noqa: E402  (before atexit)
 from PySide6.QtWidgets import QApplication
+
+_SETTINGS_DIR = tempfile.mkdtemp(prefix="kanzonas-test-settings-")
+for _fmt in (QSettings.NativeFormat, QSettings.IniFormat):
+    QSettings.setPath(_fmt, QSettings.UserScope, _SETTINGS_DIR)
 
 
 def _shutdown_qt():

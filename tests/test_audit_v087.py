@@ -55,6 +55,7 @@ class AuditV087(unittest.TestCase):
         w = MainWindow()
         w.show()
         w.open_file(self.pdf("many.pdf", annots=5, pages=400))
+        w.markups_dock.hide()                   # a remembered layout may have left it open
         APP.processEvents()
         t = time.perf_counter()
         w.a_markups.trigger()                   # F7: the list fills as it opens

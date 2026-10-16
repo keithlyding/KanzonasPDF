@@ -194,6 +194,9 @@ def _slider_to_zoom(val):
 # teardown, corrupts the heap). windows() gives the live ones.
 _WINDOW_REFS = []
 TAB_MIME = "application/x-kanzonaspdf-tab"
+# Panel layout saved with QMainWindow.saveState (which panels are open, their sizes, sides
+# and tab order). Bump when a dock or toolbar is renamed or added, so an old layout is ignored.
+LAYOUT_VERSION = 1
 
 
 def windows():
@@ -345,6 +348,20 @@ class MainWindow(QMainWindow):
         geo = self.settings.value("geometry")
         if geo is not None:
             self.restoreGeometry(geo)
+        self._restore_layout()
+
+    def _restore_layout(self):
+        """Bring back the panels as they were when KanzonasPDF was last closed: which ones
+        were open (Pages, Properties, Tool chest, Markups list), their sizes and sides, and
+        which of Properties / Tool chest was in front."""
+        state = self.settings.value("window_state")
+        if state is None or not self.restoreState(state, LAYOUT_VERSION):
+            return
+        # the toolbars follow the ribbon / classic choice and the panel strip option, not the
+        # saved layout (they normally agree; this keeps them right if a setting was changed)
+        self._apply_ui_mode()
+        self._toggle_panel_strip(self.a_panel_strip.isChecked())
+        self.split_dock.hide()          # a second view belongs to a document; start without
 
     # ---- construction -----------------------------------------------------
     def _build_panel_strip(self):
@@ -1495,6 +1512,7 @@ class MainWindow(QMainWindow):
         if self.primary:
             self.settings.setValue("session_files", json.dumps(session))
             self.settings.setValue("geometry", self.saveGeometry())
+            self.settings.setValue("window_state", self.saveState(LAYOUT_VERSION))
             for w in others:
                 w._close_confirmed = True
                 w.close()

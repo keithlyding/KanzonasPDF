@@ -51,7 +51,9 @@ File &gt; Open recent. Each file opens in its own tab, at the page and zoom you 
 Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within a memory budget
 (256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
-Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10).</li>
+Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10). The panels you had open
+when you closed KanzonasPDF (and their sizes, sides and which of Properties / Tool chest was in
+front) come back the next time it starts; the Split view always starts closed.</li>
 <li><b>A document in its own window</b> (for a second monitor): drag its tab up or down out
 of the tab bar and let go, or right-click the tab &gt; <b>Move to new window</b>, or View &gt;
 <b>Move tab to new window</b> (Ctrl+Shift+N). The document isn't reopened: unsaved changes
