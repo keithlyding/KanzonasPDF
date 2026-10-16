@@ -1480,11 +1480,9 @@ class MainWindow(QMainWindow):
         each) and remembers the session; closing a pulled-out window closes just its tabs."""
         others = [w for w in windows() if w is not self] if self.primary else []
         if not getattr(self, "_close_confirmed", False):
-            for w in [self] + others:
-                for v in w._views():
-                    if not w._confirm_close(v):
-                        e.ignore()
-                        return
+            if not self._confirm_exit([(w, v) for w in [self] + others for v in w._views()]):
+                e.ignore()
+                return
         from . import autosave
         backups = autosave.folder()
         session = []
@@ -1504,6 +1502,56 @@ class MainWindow(QMainWindow):
         QApplication.instance().removeEventFilter(self)
         _forget_window(next((r for r in _WINDOW_REFS if r() is self), None))
         e.accept()
+
+    def _confirm_exit(self, views):
+        """Before the window closes: with one document, the usual Save / Discard / Cancel
+        when it has unsaved changes. With several documents, one question for all of them
+        (Preferences > Start-up turns off the question when none of them has unsaved
+        changes): Save all / Don't save / Cancel. False = keep everything open."""
+        for _w, v in views:
+            v.commit_pending()          # typed text not yet confirmed counts as a change
+        if len(views) < 2:
+            return all(w._confirm_close(v) for w, v in views)
+        dirty = [(w, v) for w, v in views if v.dirty]
+        if not dirty and self.settings.value("confirm_exit", "true") == "false":
+            return True
+        answer = self._ask_exit(len(views), [os.path.basename(v.path or "Untitled")
+                                             for _w, v in dirty])
+        if answer == "cancel":
+            return False
+        if answer == "save":
+            for w, v in dirty:
+                w.tabs.setCurrentWidget(v)
+                if not w.save():        # a failed or canceled save keeps everything open
+                    return False
+        return True
+
+    def _ask_exit(self, count, unsaved):
+        """The question before closing with several documents open: 'save' (all the
+        unsaved ones), 'discard' or 'cancel'."""
+        box = QMessageBox(QMessageBox.Question, "Close KanzonasPDF", "", parent=self)
+        if unsaved:
+            names = "\n".join("  " + n for n in unsaved[:12])
+            if len(unsaved) > 12:
+                names += f"\n  ... and {len(unsaved) - 12} more"
+            box.setText(f"{count} documents are open; {len(unsaved)} with unsaved changes:\n"
+                        f"{names}\n\nSave them before closing?")
+            save = box.addButton("Save all", QMessageBox.AcceptRole)
+            box.addButton("Don't save", QMessageBox.DestructiveRole)
+            cancel = box.addButton(QMessageBox.Cancel)
+            box.setDefaultButton(save)
+        else:
+            box.setText(f"{count} documents are open. Close them all and exit?")
+            close = box.addButton("Close all", QMessageBox.AcceptRole)
+            cancel = box.addButton(QMessageBox.Cancel)
+            box.setDefaultButton(close)
+            save = None
+        box.setEscapeButton(cancel)
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked is cancel or clicked is None:
+            return "cancel"
+        return "save" if clicked is save else "discard"
 
     def restore_session(self):
         """Start-up: reopen the files that were open when KanzonasPDF was last closed (if

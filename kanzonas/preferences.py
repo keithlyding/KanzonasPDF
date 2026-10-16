@@ -153,6 +153,10 @@ class PreferencesDialog(QDialog):
         self.restore = QCheckBox("Reopen the documents that were open when I closed KanzonasPDF")
         self.restore.setChecked(win.settings.value("restore_session", "false") == "true")
         form.addRow(self.restore)
+        self.confirm_exit = QCheckBox("Ask before closing KanzonasPDF with several documents open")
+        self.confirm_exit.setToolTip("With unsaved changes in any of them, KanzonasPDF always asks.")
+        self.confirm_exit.setChecked(win.settings.value("confirm_exit", "true") != "false")
+        form.addRow(self.confirm_exit)
         self.start_tool = QComboBox()
         self.start_tool.addItem("Hand (drag to scroll)", "hand")
         self.start_tool.addItem("Select", "select")
@@ -437,6 +441,7 @@ class PreferencesDialog(QDialog):
             DocumentView.SIG_WIDTH[kind] = sb.value() * 72.0
             win.settings.setValue("sig_width_" + kind, sb.value() * 72.0)
         win.settings.setValue("restore_session", "true" if self.restore.isChecked() else "false")
+        win.settings.setValue("confirm_exit", "true" if self.confirm_exit.isChecked() else "false")
         win.settings.setValue("start_tool", self.start_tool.currentData())
         win.settings.setValue("autosave_minutes", self.autosave.value())
         if self.backup_dir != (win.settings.value("backup_dir", "") or ""):

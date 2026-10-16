@@ -58,9 +58,14 @@ of the tab bar and let go, or right-click the tab &gt; <b>Move to new window</b>
 and undo history come along. Drop a tab on another KanzonasPDF window's tabs (or right-click
 it &gt; <b>Move to window</b>) to move it there. Each window has its own panels, tools and
 Find box, with the same settings. Closing the last tab of a pulled-out window closes that
-window; closing the main window (the first one) closes all of them, asking about unsaved
-changes in each, and reopening the last files at start-up brings back the documents from
-every window, in the main window.</li>
+window; closing the main window (the first one) closes all of them, and reopening the last
+files at start-up brings back the documents from every window, in the main window.</li>
+<li><b>Closing KanzonasPDF:</b> with one document open, you're asked to save it if it has
+unsaved changes. With several documents open you get one question: it lists the ones with
+unsaved changes and offers <b>Save all</b>, <b>Don't save</b> or <b>Cancel</b> (Cancel keeps
+everything open); when none has unsaved changes it asks "Close them all and exit?" (turn that
+off in Preferences &gt; Start-up &gt; <b>Ask before closing KanzonasPDF with several documents
+open</b>). Closing a tab asks only about that document.</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Markup, Measure, Arrange, Review,
 Protect, Forms, Pages and View. The <b>Markup</b> tab has only markups: comments, notes, text
 boxes, callouts, stamps, shapes and attached-file icons. Markups stay editable in any PDF
@@ -744,7 +749,8 @@ the Date tool writes.</li>
 size, fill, opacity and so on, the same settings the Properties panel shows when that tool is
 active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
 <li><b>Start-up and opening:</b> reopen the documents that were open when you closed
-KanzonasPDF (off by default), the tool to start with (Hand or Select), the zoom a document opens
+KanzonasPDF (off by default), whether to ask before closing with several documents open (on
+by default), the default tool (Hand or Select), the zoom a document opens
 at (Fit width by default; Fit page, the whole page in the window; Actual size; or the zoom it had
 when you closed it), and whether to reopen it at the page you were on last time.</li>
 <li><b>Saving:</b> how often to back up unsaved changes (every 5 minutes by default; Off turns it
