@@ -524,6 +524,10 @@ class MainWindow(QMainWindow):
         self.a_insert_blank = self._act("Insert &blank page after current",
                                         lambda: self._page_op("blank"))
         self.a_extract = self._act("&Extract pages to new file...", self.extract_pages)
+        self.a_sheet_links = self._act("Link sheet &callouts...", self.link_sheet_callouts,
+                                       tip="Read the sheet numbers from the title blocks and make "
+                                           "every callout, note and index line that names a sheet a "
+                                           "link to it (also to PDFs in the same folder)")
         self.a_uncrop = self._act("Remove cro&p...", lambda: self._page_op("uncrop"),
                                   tip="Show the whole page again on this page or all pages")
         self.a_ocr = self._act("Recognize text (&OCR)...", self.ocr,
@@ -913,6 +917,8 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_move_up, self.a_move_down, self.a_del_page])
         m.addSeparator()
         m.addActions([self.a_insert_pdf, self.a_insert_blank, self.a_extract])
+        m.addSeparator()
+        m.addAction(self.a_sheet_links)
         sep = QAction(self)
         sep.setSeparator(True)
         self.thumbs.addActions([self.a_copy_pages, self.a_cut_pages, self.a_paste_pages,
@@ -1208,7 +1214,7 @@ class MainWindow(QMainWindow):
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
-                  self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten,
+                  self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten, self.a_sheet_links,
                   self.a_security, self.a_remove_security, self.a_sanitize, self.a_clear_sigs,
                   self.a_timestamp, self.a_multi_sign, self.a_apply_placeholders,
                   self.a_apply_sel_redact, self.a_unlock, self.a_set_scale, self.a_measure_summary,
@@ -1708,7 +1714,12 @@ class MainWindow(QMainWindow):
         self.open_file(path)
         v = self.view()
         if v is not None and page >= 0 and os.path.normcase(v.path or "") == os.path.normcase(path):
-            QTimer.singleShot(200, lambda: v.goto_page(min(page, v.page_count() - 1)))
+            import shiboken6
+
+            def jump():                 # the tab may be closed again before the timer fires
+                if shiboken6.isValid(v) and not v.doc.is_closed:
+                    v.goto_page(min(page, v.page_count() - 1))
+            QTimer.singleShot(200, jump)
 
     def _on_selection_changed(self):
         if self.sender() is self.view():
@@ -2553,6 +2564,34 @@ class MainWindow(QMainWindow):
 
     def set_scale(self):
         self._scale_dialog()
+
+    def link_sheet_callouts(self):
+        """Pages > Link sheet callouts...: sheet numbers from the title blocks, then a link on
+        every callout, note and index line that names one of the sheets."""
+        from .sheets_ui import SheetLinksDialog
+        from . import sheets
+        v = self.view()
+        if not v or not v.require_permission(pymupdf.PDF_PERM_ANNOTATE, "Adding links"):
+            return
+        folder = os.path.dirname(v.path) if v.path and os.path.isdir(os.path.dirname(v.path)) else None
+        dlg = SheetLinksDialog(self, v.doc, folder)
+        if dlg.exec() != QDialog.Accepted or not dlg.result_plan:
+            return
+        pl = dlg.result_plan
+        made = {}
+
+        def do():
+            made["links"], made["marks"] = sheets.apply(v.doc, pl, show_box=dlg.box.isChecked(),
+                                                        bookmarks=dlg.marks.isChecked())
+        pages = sorted({i for i, _r, _t in pl["links"]})
+        v.modify(do, pages or [], permission=pymupdf.PDF_PERM_ANNOTATE)
+        if dlg.marks.isChecked():
+            v.documentChanged.emit()
+        msg = f"{made.get('links', 0)} link(s) made on {len(pages)} page(s)"
+        if made.get("marks"):
+            msg += f"; {made['marks']} bookmark(s) added"
+        self.statusBar().showMessage(msg + " (Ctrl+Z undoes it)", 6000)
+        self._update_ui()
 
     def read_sheet_scales(self):
         """Measure > Read scales from title blocks: every page gets the scale its own title
@@ -3471,7 +3510,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": "Apply selected", "a_apply_redact": "Apply all",
         "a_security": "Security", "a_remove_security": "Remove security", "a_unlock": "Unlock",
         "a_sanitize": "Sanitize", "a_hl_fields": "Highlight fields", "a_move_up": "Move up",
-        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_combine": "Combine files", "a_from_images": "From images",
+        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_sheet_links": "Sheet callouts", "a_combine": "Combine files", "a_from_images": "From images",
         "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
         "a_watermark": "Watermark", "a_background": "Background",
         "a_remove_bg": "Remove background", "a_remove_wm": "Remove watermarks", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
@@ -3490,7 +3529,7 @@ class MainWindow(QMainWindow):
         "tool_editobjects": "Edit objects", "tool_addtext": "Add text",
     }
     RIBBON_ICONS = {
-        "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square", "a_sheet_scales": "text-box-search-outline",
+        "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square", "a_sheet_scales": "text-box-search-outline", "a_sheet_links": "link-variant-plus",
         "a_measure_summary": "sigma", "a_grid_settings": "cog-outline", "a_lock": "lock-outline",
         "a_unlock_all": "lock-open-variant-outline", "a_prev_markup": "chevron-up",
         "a_next_markup": "chevron-down", "a_markups": "format-list-bulleted",
@@ -3607,8 +3646,8 @@ class MainWindow(QMainWindow):
                                    self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
             ("Combine", "large", [self.a_combine, self.a_from_images]),
             ("Document", "small", [self.a_header, self.a_watermark, self.a_background,
-                                   self.a_bookmarks, self.a_attachments, self.a_compress,
-                                   self.a_compare]),
+                                   self.a_bookmarks, self.a_sheet_links, self.a_attachments,
+                                   self.a_compress, self.a_compare]),
             ("Convert", "large", [self.a_ocr, self.a_flatten]),
         ])
         r.add_tab("View", [

@@ -172,12 +172,14 @@ email address asks first, then opens in your browser or email program (tick <b>D
 again</b> to skip the question from then on). A link to another PDF opens it in a new tab; a
 link to another kind of file asks before opening it, and only common documents, pictures,
 media and drawings are opened (links that would start a program, a script or a file with
-macros are refused). A link to a file on another computer (a network share) asks first, because
+macros are refused). Links written by AutoCAD and other CAD programs when plotting a sheet set
+work this way, including links to files whose names have spaces. A link to a file on another computer (a network share) asks first, because
 opening it sends your Windows sign-in to that computer.</li>
 <li><b>Adding links:</b> the <b>Links</b> tool (Home tab &gt; Insert, Tools menu) draws the
 page's links as blue dashed boxes. Drag a box over what should be clickable, then type a web
 address or e-mail address (www.example.com is fine; https:// is added) or choose a page in this
-document. <b>Show a box around the link</b> (ticked at first) draws a thin blue box so readers
+document. For a whole drawing set, <b>Link sheet callouts</b> (Pages menu) makes the links
+for you from the sheet numbers. <b>Show a box around the link</b> (ticked at first) draws a thin blue box so readers
 can see it's there, here and in other PDF readers, and it prints with the markups; untick it for a
 link that stays invisible until the pointer is over it. Click an existing link with the tool to
 change where it goes, show or hide its box, or <b>Delete link</b>.
@@ -614,6 +616,16 @@ becomes a page.</li>
 file, Delete page.</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
+<li><b>Link sheet callouts</b> (Pages menu, Pages tab): for a drawing set plotted without
+hyperlinks. KanzonasPDF reads each page's sheet number and title from its title block (the
+value after a SHEET, SHEET NO or DWG NO caption, or the largest sheet-like number in the
+title block area) and shows them for correction. Then every callout bubble, note or index line
+that names one of those sheets (3/A-501, SEE A-201, A101 and A-101 count as the same) becomes a
+link to that page; a number that isn't a page here but is in the name of a PDF in the same
+folder (A-501 Details.pdf) links to that file. Words that already have a link are left alone,
+so AutoCAD's own hyperlinks stay and running it twice adds nothing. Options: a thin blue box
+around the links (off by default, to keep drawings clean), and bookmarks named by sheet number
+and title. Ctrl+Z undoes it all.</li>
 </ul>
 
 <h2 id="forms">Forms</h2>

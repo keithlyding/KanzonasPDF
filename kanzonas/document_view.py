@@ -2137,6 +2137,11 @@ class DocumentView(QScrollArea):
         from PySide6.QtGui import QDesktopServices
         if not path:
             return
+        if "%" in path:
+            # MuPDF hands file names back percent-encoded ("Framing%20Plan.pdf"), also for
+            # the plain /F strings CAD exporters write
+            from urllib.parse import unquote
+            path = unquote(path)
         if not os.path.isabs(path) and self.path:
             path = os.path.join(os.path.dirname(self.path), path)
         path = os.path.normpath(path)
