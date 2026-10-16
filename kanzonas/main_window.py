@@ -2034,11 +2034,12 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is None:
             return
-        if v.read_only:
-            QMessageBox.information(self, "Security", "This document is protected. Use "
-                                    "Protect > Unlock with password with its permissions "
-                                    "password first.")
-            return
+        if not v.owner_authorized():
+            # encrypted with a permissions password (even one that allows editing): changing
+            # the protection needs that password
+            self.unlock_doc()
+            if not v.owner_authorized():
+                return
         st = v.security_state()
         dlg = QDialog(self)
         dlg.setWindowTitle("Security properties")
@@ -2162,9 +2163,9 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is None:
             return
-        if v.read_only:
+        if not v.owner_authorized():
             self.unlock_doc()
-            if v.read_only:
+            if not v.owner_authorized():
                 return
         v.set_security("", "", -1)
         self.statusBar().showMessage("Security will be removed when you save.", 5000)
@@ -2443,13 +2444,15 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v:
             return
-        if not v.read_only:
+        if v.owner_authorized():
             QMessageBox.information(self, "Unlock", "This document isn't protected.")
             return
-        pw, ok = QInputDialog.getText(self, "Unlock", "Owner password:", QLineEdit.Password)
+        pw, ok = QInputDialog.getText(self, "Unlock", "Permissions (owner) password:",
+                                      QLineEdit.Password)
         if ok and pw:
             if v.unlock(pw):
-                self.statusBar().showMessage("Unlocked: you can edit this document now.", 4000)
+                self.statusBar().showMessage("Unlocked: you can edit this document and change "
+                                             "its security now.", 4000)
             else:
                 QMessageBox.warning(self, "Unlock", "That password doesn't unlock editing.")
             self._update_ui()

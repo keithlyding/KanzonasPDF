@@ -184,6 +184,7 @@ class DocumentView(QScrollArea):
             n = self.doc.page_count
             for w in old[n:]:
                 lay.removeWidget(w)
+                w.hide()                # not painted again before deleteLater runs
                 w.deleteLater()
             del old[n:]
             for i, w in enumerate(old):
@@ -3694,6 +3695,12 @@ class DocumentView(QScrollArea):
         enc = meta.get("encryption")
         return {"encrypted": bool(enc), "method": enc or "", "perms": self.doc.permissions,
                 "is_owner": bool(self.doc.permissions & pymupdf.PDF_PERM_MODIFY)}
+
+    def owner_authorized(self):
+        """True when the security of this document may be changed: it has no permissions
+        password, or that password was given (Unlock with password). A file whose
+        permissions allow editing still needs it to change or remove its protection."""
+        return bool(getattr(self, "_owner_authorized", False))
 
     def set_security(self, open_pw="", owner_pw="", perms=-1):
         """Security to apply on the next save ('' / '' removes all protection)."""

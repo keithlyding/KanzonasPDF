@@ -237,7 +237,9 @@ class PageWidget(QWidget):
 
     def paintEvent(self, event):
         p = QPainter(self)
-        if self.view.doc.is_closed:      # tab closing: a queued repaint must not touch it
+        if self.view.doc.is_closed or self.index >= self.view.doc.page_count:
+            # tab closing, or a widget of a page that was just deleted (its deleteLater is
+            # still queued): a repaint must not touch the document
             p.fillRect(event.rect(), Qt.white)
             return
         if self._tiled():

@@ -679,7 +679,10 @@ attached files, hidden text, links, comments, form data, thumbnails.</li>
   Changes take effect when you save. Digital signatures and timestamps can't be added to a
   password-protected PDF yet: remove security, sign the final version, and don't add a
   password afterwards (that would invalidate the signature). <b>Remove security</b> takes protection off (you need the
-  permissions password). <b>Unlock with password</b> lets you edit a restricted file.</li>
+  permissions password). <b>Unlock with password</b> lets you edit a restricted file and
+  accepts the permissions password of a file that already lets you edit, so its protection can
+  be changed; Security properties and Remove security ask for that password first when the
+  file has one.</li>
 <li><b>Saving keeps protection:</b> a password-protected file stays protected when you save
 your changes, with the same open password and restrictions (re-encrypted with AES-256). If you
 opened it with the open password only, KanzonasPDF doesn't know the permissions password, so the
