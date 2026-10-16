@@ -2,9 +2,11 @@
 art inside a box. Lines that cross the box edge are cut at the edge, not removed whole (so a
 wall running through the box keeps its outside parts), unlike plain redaction.
 
-Limits: a filled shape that crosses the edge keeps its fill whole (only shapes entirely
-inside are removed); redrawn line pieces are drawn on top of the page, in their original
-color, width, dashes and layer.
+A filled shape that crosses the edge is painted again clipped to the outside of the box (its
+outline stays in the file under the clip; only shapes entirely inside are removed). Fills made
+with a pattern (hatches) or a gradient, which Shape can't draw, are put back by
+erase_patterns.py from the page's content streams. Redrawn pieces are drawn on top of the
+page, in their original color, width, dashes and layer.
 """
 
 import pymupdf
@@ -79,11 +81,25 @@ def _bulk_lines(shape, pieces):
     shape.lastPoint = pieces[-1][1]
 
 
+def _clip_outside(shape, rect, box):
+    """Content that clips the following path to everything outside `box` (even-odd clip of a
+    rectangle around `rect` and the box), in the Shape's PDF coordinates."""
+    o = (pymupdf.Rect(rect) + (-2, -2, 2, 2)) * shape.ipctm
+    b = pymupdf.Rect(box) * shape.ipctm
+    return (f"{o.x0:.3f} {o.y0:.3f} {o.width:.3f} {o.height:.3f} re "
+            f"{b.x0:.3f} {b.y0:.3f} {b.width:.3f} {b.height:.3f} re W* n\n")
+
+
 def erase(page, box):
     """Remove everything of the page's own content inside `box` (unrotated page
-    coordinates). Returns a short description of what was done. Annotations are untouched."""
+    coordinates). Returns how many crossing shapes were redrawn. Annotations are untouched."""
     box = pymupdf.Rect(box).normalize()
     doc = page.parent
+    try:
+        from . import erase_patterns
+        patterned = erase_patterns.find_crossing(page, box)
+    except Exception:
+        patterned = []                   # an odd content stream: hatches may still vanish
     ocgs = {v.get("name"): x for x, v in (doc.get_ocgs() or {}).items()}
     crossing = []
     for path in page.get_drawings():
@@ -110,7 +126,9 @@ def erase(page, box):
         if oc:
             kw["oc"] = oc
         if filled:
-            # can't cut a fill: put the whole shape back as it was
+            # a fill can't be cut like a line: put the whole shape back, clipped to the
+            # outside of the box
+            shape.draw_cont = _clip_outside(shape, path["rect"], box)
             for it in path["items"]:
                 op = it[0]
                 if op == "l":
@@ -137,4 +155,9 @@ def erase(page, box):
         redrawn += 1
     if redrawn:
         shape.commit()
+    if patterned:
+        try:
+            redrawn += erase_patterns.repaint(page, patterned, box)
+        except Exception:
+            pass                         # the erase itself is done; the hatch is lost
     return redrawn

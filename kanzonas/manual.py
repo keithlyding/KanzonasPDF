@@ -328,9 +328,11 @@ markups keep their proportions. Shift while dragging a line's end keeps it at 45
 <li><b>Erase content</b> (Shift+E; Home tab, Tools menu): like Bluebeam's,
 drag a box to permanently delete the page's own content inside it: text, images and lines.
 Lines and curves that cross the edge of the box are cut there, so a wall running through the box
-keeps its outside parts. A filled shape that crosses the edge stays whole (one entirely inside is
-removed). Markups aren't touched (use the Eraser for those). Ctrl+Z undoes it. Unlike redaction it
-leaves no black box; for confidential information use Redact, which also cleans hidden copies.</li>
+keeps its outside parts. A filled shape that crosses the edge (a solid color, a hatch pattern or a
+gradient) keeps its outside part and loses what was inside the box; one entirely inside is
+removed. Markups aren't touched (use the Eraser for those, which deletes a markup whole). Ctrl+Z
+undoes it. Unlike redaction it leaves no black box; for confidential information use Redact, which
+also cleans hidden copies (Erase content keeps the outline of a cut fill in the file, hidden).</li>
 <li><b>Capture area</b> (Shift+P; Home tab, Tools menu): like Bluebeam's Snapshot, drag a box to
 copy that area, markups included. Ctrl+V in KanzonasPDF pastes it as an image markup at the
 same size, on any page or in another document, made of the original <b>vector</b> content: lines

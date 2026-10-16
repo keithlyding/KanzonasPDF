@@ -17,7 +17,7 @@ import gc
 import tempfile
 
 from PySide6.QtCore import QCoreApplication, QEvent, QSettings  # noqa: E402  (before atexit)
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QMenu
 
 _SETTINGS_DIR = tempfile.mkdtemp(prefix="kanzonas-test-settings-")
 for _fmt in (QSettings.NativeFormat, QSettings.IniFormat):
@@ -30,6 +30,22 @@ def _shutdown_qt():
         return
     for _ in range(3):              # timers the tests left queued run while views exist
         app.processEvents()
+    for w in QApplication.topLevelWidgets():
+        # Destroying a main window with its toolbars, menus and ribbon buttons still holding
+        # its actions segfaults about one time in three inside Qt (an action being destroyed
+        # tells a tool button that is already gone; seen with gdb in QWidget::removeAction).
+        # Taking the actions out of every toolbar and menu first makes the teardown clean.
+        # The real app never hits this: it exits after closing one window, which we tested.
+        try:
+            app.removeEventFilter(w)
+            if isinstance(w, QMainWindow):
+                for tb in w.findChildren(QToolBar):
+                    tb.clear()
+                for m in w.findChildren(QMenu):
+                    m.clear()
+                w.menuBar().clear()
+        except RuntimeError:
+            pass
     for w in QApplication.topLevelWidgets():
         try:
             w.hide()
