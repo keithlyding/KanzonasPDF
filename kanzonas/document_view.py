@@ -4196,8 +4196,41 @@ class DocumentView(QScrollArea):
                 w.field_value = choices[0]
             if tool == "f_radio":
                 w.field_value = False
-            self.doc[index].add_widget(w)
+            pg = self.doc[index]
+            before = {x for x, *_ in pg.annot_xrefs()}
+            pg.add_widget(w)
+            if tool == "f_radio":
+                # (w.xref is not filled in by every PyMuPDF version: find the new widget)
+                made = [x for x, *_ in pg.annot_xrefs() if x not in before]
+                n = sum(1 for q in self.doc for x in q.widgets(types=[pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON])
+                        if x.field_name == name.strip())
+                for x in made:
+                    self.distinct_on_state(self.doc, x, n)
         self.modify(do, [index])
+
+    @staticmethod
+    def distinct_on_state(doc, xref, n):
+        """Give an option button PyMuPDF just made its own 'on' appearance state name
+        (Choice<n>) and start it off. PyMuPDF names the state the same for every button of a
+        group ('Yes'; 2.0 even uses the value given, 'False'), and in 2.0 the buttons are kids
+        of one parent field, so turning one on would show the whole group on: PDF readers
+        light every kid whose state name matches the group's value."""
+        typ, ap = doc.xref_get_key(xref, "AP/N")
+        if typ != "dict":
+            return
+        entries = re.findall(r"/([^\s/\[\]<>()]+)\s+(\d+)\s+0\s+R", ap)
+        if not entries:
+            return
+        new = []
+        for key, ref in entries:
+            new.append(("Off" if key == "Off" else f"Choice{n}", ref))
+        doc.xref_set_key(xref, "AP/N", "<<" + "".join(f"/{k} {r} 0 R" for k, r in new) + ">>")
+        doc.xref_set_key(xref, "AS", "/Off")
+        if doc.xref_get_key(xref, "V")[0] != "null":
+            doc.xref_set_key(xref, "V", "/Off")
+        typ, parent = doc.xref_get_key(xref, "Parent")
+        if typ == "xref":
+            doc.xref_set_key(int(parent.split()[0]), "V", "/Off")
 
     def select_field_at(self, index, pt):
         page = self.doc[index]
@@ -4398,22 +4431,50 @@ class DocumentView(QScrollArea):
         self.modify(lambda: self.doc.move_page(index, to), structural=True)
         self.goto_page(target)
 
+    def _parent_xref(self, xref):
+        typ, val = self.doc.xref_get_key(xref, "Parent")
+        return int(val.split()[0]) if typ == "xref" else None
+
     def _mend_form_fields(self, old_fields):
         """After pages were swapped for copies: drop the originals' fields from the form's
         field list (they no longer sit on any page) and give each copy its original name
-        back (copying renames a field that already exists, e.g. "f0" to "f0 [27]")."""
+        back (copying renames a field that already exists, e.g. "f0" to "f0 [27]").
+        A field is either the widget itself or, since PyMuPDF 2.0 for every field and in
+        any version for radio groups, a parent dictionary holding the name and the widgets
+        as its /Kids: the name lives wherever it is, and a parent leaves the field list only
+        when all its kids are gone."""
         cat = self.doc.pdf_catalog()
         typ, arr = self.doc.xref_get_key(cat, "AcroForm/Fields")
         if typ != "array":
             return
         gone = {x for lst in old_fields.values() for x, _n in lst}
-        refs = [int(r) for r in re.findall(r"(\d+) 0 R", arr) if int(r) not in gone]
+        gone_parents = {p for lst in old_fields.values() for x, _n in lst
+                        if (p := self._parent_xref(x)) is not None}
+        refs = []
+        for r in (int(r) for r in re.findall(r"(\d+) 0 R", arr)):
+            if r in gone:
+                continue
+            if r in gone_parents:
+                typ, kids = self.doc.xref_get_key(r, "Kids")
+                kids = [int(k) for k in re.findall(r"(\d+) 0 R", kids)] if typ == "array" else []
+                if all(k in gone for k in kids):
+                    continue
+            refs.append(r)
         self.doc.xref_set_key(cat, "AcroForm/Fields", "[" + " ".join(f"{r} 0 R" for r in refs) + "]")
+        renamed = set()
         for i, lst in old_fields.items():
             names = [n for _x, n in lst]
             for w, name in zip(self.doc[i].widgets(), names):
-                if name and w.field_name != name and self.doc.xref_get_key(w.xref, "Parent")[0] == "null":
-                    self.doc.xref_set_key(w.xref, "T", pymupdf.get_pdf_str(name))
+                if not name or w.field_name == name:
+                    continue
+                parent = self._parent_xref(w.xref)
+                target = w.xref if parent is None else parent
+                if target in renamed:
+                    continue                    # a group: its name was put back already
+                if parent is not None and self.doc.xref_get_key(parent, "T")[0] == "null":
+                    continue                    # the name is not on the parent: leave it
+                self.doc.xref_set_key(target, "T", pymupdf.get_pdf_str(name))
+                renamed.add(target)
 
     def flatten(self, pages=None, widgets=True):
         """Burn annotations (and form fields unless widgets=False) into the page content

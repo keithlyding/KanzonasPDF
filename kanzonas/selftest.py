@@ -219,7 +219,10 @@ def run(log_path):
             w.field_type = pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON
             w.rect = pymupdf.Rect(50, 100 + 30 * k, 64, 114 + 30 * k)
             w.field_name, w.field_value = "Group1", False
+            before = {x for x, *_ in p.annot_xrefs()}
             p.add_widget(w)
+            for x in (x for x, *_ in p.annot_xrefs() if x not in before):
+                DocumentView.distinct_on_state(d, x, k + 1)   # as the Option button tool does
         w = pymupdf.Widget()
         w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
         w.rect, w.field_name = pymupdf.Rect(50, 50, 200, 70), "Top"
