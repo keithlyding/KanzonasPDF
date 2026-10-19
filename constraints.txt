@@ -4,7 +4,7 @@
 #   pip install -r requirements.txt -c constraints.txt
 #
 # package                    version     license
-pymupdf==1.28.2               # AGPL-3.0 (or Artifex commercial)
+pymupdf==2.0                  # AGPL-3.0 (or Artifex commercial)
 PySide6==6.12.0               # LGPL-3.0
 PySide6_Essentials==6.12.0    # LGPL-3.0
 PySide6_Addons==6.12.0        # LGPL-3.0
