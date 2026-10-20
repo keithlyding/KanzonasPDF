@@ -743,12 +743,28 @@ touches a mark is removed past the box. Applying scrubs metadata, attachments, h
 and scripts unless you turn that off. Check the result before sharing.</li>
 <li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
 <b>Compress (save a smaller copy)</b>, <b>Compare documents</b>, <b>Flatten</b> (make markups part of the page).</li>
-<li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision; a new
+<li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision, then
+how to compare. <b>Text, word by word</b> is for anything that reflows (letters,
+specifications, permits, reports): the words of both documents are compared in reading
+order, so text that only moved down a line or a page is not a change. The result is a copy
+of this document with the words added in it highlighted blue, a red mark where words of the
+earlier one were removed (the mark's comment says which words), and a box around every
+picture that was added, removed or changed size. Every change is a markup whose comment
+says what changed ("Was: July 13  |  Now: draft"), listed in the Markups list, and a summary
+page at the end lists them all, a change repeated on every page (a header) once with its
+pages. A moved paragraph counts as removed in one place and added in the other; a scanned
+page without a text layer is compared only as a picture (run OCR on both documents first to
+compare its words). <b>Drawings, laid over each other</b> is for plans and sheets: a new
 document overlays the two on each page: red = only in the earlier one, blue = only in this
 one, gray = unchanged, with each changed area clouded and listed in the Markups list. If the
 drawing moved on the sheet between revisions (re-plotted with a different margin, say), the
 pages are lined up first, so only real changes show; the top of the page says how far it
-moved.</li>
+moved. A revision plotted at another paper size (a 24x36 sheet and its 11x17 print) is scaled
+to the earlier one's size first, with some tolerance for the thicker lines a reduced print
+has, and the top of the page says so. Two prints of the same drawing should then show no
+changes; if a result has changes everywhere, the two files are not the same drawing at the
+same scale. The way that fits is picked for you (text when both documents have a text layer
+on most pages); either can be chosen.</li>
 <li><b>Remove watermarks...</b> (Document menu): takes watermarks off the current page, all
 pages or pages such as 1-3, 7. It finds watermarks added with Document &gt; Watermark and those
 added by apps that mark them as watermarks (Adobe Acrobat, PDF-XChange and others), and
