@@ -748,7 +748,11 @@ document overlays the two on each page: red = only in the earlier one, blue = on
 one, gray = unchanged, with each changed area clouded and listed in the Markups list. If the
 drawing moved on the sheet between revisions (re-plotted with a different margin, say), the
 pages are lined up first, so only real changes show; the top of the page says how far it
-moved.</li>
+moved. A revision plotted at another paper size (a 24x36 sheet and its 11x17 print) is scaled
+to the earlier one's size first, with some tolerance for the thicker lines a reduced print
+has, and the top of the page says so. Two prints of the same drawing should then show no
+changes; if a result has changes everywhere, the two files are not the same drawing at the
+same scale.</li>
 <li><b>Remove watermarks...</b> (Document menu): takes watermarks off the current page, all
 pages or pages such as 1-3, 7. It finds watermarks added with Document &gt; Watermark and those
 added by apps that mark them as watermarks (Adobe Acrobat, PDF-XChange and others), and
