@@ -3041,6 +3041,7 @@ class MainWindow(QMainWindow):
 
     def compare_documents(self):
         from . import compare
+        from .compare_ui import CompareModeDialog
         v = self.view()
         if not v:
             return
@@ -3056,12 +3057,24 @@ class MainWindow(QMainWindow):
             return
         new = v.doc.tobytes()
         old_name, new_name = os.path.basename(path), os.path.basename(v.path)
+        try:
+            texty = compare.has_text(v.doc) and \
+                compare.has_text(pymupdf.open(stream=old, filetype="pdf"))
+        except Exception:
+            texty = False
+        choice = CompareModeDialog(self, old_name, new_name, texty)
+        if choice.exec() != QDialog.Accepted:
+            return
+        mode = choice.mode()
         dlg = QProgressDialog("Comparing pages...", None, 0, 0, self)
         dlg.setWindowTitle("Compare")
         dlg.setWindowModality(Qt.WindowModal)
         dlg.setMinimumDuration(300)
         pool = ThreadPoolExecutor(max_workers=1)
-        fut = pool.submit(compare.compare, old, new, 110, None, old_name, new_name)
+        if mode == "text":
+            fut = pool.submit(compare.compare_text, old, new, None, old_name, new_name)
+        else:
+            fut = pool.submit(compare.compare, old, new, 110, None, old_name, new_name)
         while not fut.done():
             QApplication.processEvents()
             time.sleep(0.03)
@@ -3079,11 +3092,20 @@ class MainWindow(QMainWindow):
             f.write(data)
         self.open_file(out)
         self.markups_dock.show()
-        QMessageBox.information(self, "Compare", f"Found {sum(counts)} changed area(s) on "
-                                f"{sum(1 for c in counts if c)} of {len(counts)} page(s).\n\n"
-                                "Red = only in the earlier revision, blue = only in this one. "
-                                "Each change is clouded and listed in the Markups list. "
-                                "Use Save As to keep the comparison.")
+        found = (f"Found {sum(counts)} change(s) on {sum(1 for c in counts if c)} of "
+                 f"{len(counts)} page(s).\n\n")
+        if mode == "text":
+            QMessageBox.information(self, "Compare", found +
+                                    "Blue = words added in this revision; a red mark shows "
+                                    "where words of the earlier one were removed (its comment "
+                                    "says which). Pictures added, removed or resized are boxed. "
+                                    "Every change is listed in the Markups list and on the "
+                                    "summary page at the end. Use Save As to keep the comparison.")
+        else:
+            QMessageBox.information(self, "Compare", found +
+                                    "Red = only in the earlier revision, blue = only in this one. "
+                                    "Each change is clouded and listed in the Markups list. "
+                                    "Use Save As to keep the comparison.")
 
     # ---- appearance -------------------------------------------------------------------
     TOOLBAR_ICON_KEYS = {"a_open": "open", "a_save": "save", "a_print": "print", "a_undo": "undo",

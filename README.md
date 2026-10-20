@@ -59,7 +59,7 @@ corpus, or every feature of the products above. Check the result before you send
 - Rectangles, ellipses, revision clouds, polygons, lines, arrows, freehand pen
 - Stamps (Approved, Reviewed, Draft and more, or your own), with your name and the date
 - A tool chest of saved markup styles, a markups list you can filter and export, and
-  Compare documents to cloud every change between two revisions
+  Compare documents: word by word for text that reflows, or laid over each other for drawings
 - Markups are standard PDF annotations, so Acrobat and other viewers see them too
 
 **Measure** (for drawings and plans)
