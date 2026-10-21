@@ -384,6 +384,25 @@ def _pick_font(page, span, text):
     return found
 
 
+def _scan_font(page, scan, text):
+    """The font matched to a scanned line, when it can write text: (found, None) for an
+    installed font, (None, name) for a built-in one, (None, None) when it can't."""
+    cand = scan.get("font")
+    if cand is None:
+        return (None, "helv") if _winansi_ok(text) else (None, None)
+    name, _label, _kind, _bold, _italic, source = cand
+    if source is None:
+        return (None, name) if _winansi_ok(text) else (None, None)
+    try:
+        font = pymupdf.Font(**source)
+        if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
+            page.insert_font(fontname=name, **source)
+            return (name, font, source), None
+    except Exception:
+        pass
+    return None, None
+
+
 def _unwritable(text):
     """The characters of text that no font KanzonasPDF can use has (for the error message)."""
     try:
@@ -399,13 +418,19 @@ def _unwritable(text):
     return out
 
 
-def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None):
+def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None,
+                 scan="auto", info=None):
     """Remove the line's text and write new_text in its place.
 
     offset: move the text by (dx, dy) points. wrap_width: wrap to this width (points).
     font: (family, bold, italic) to change the line's font to an installed one (Properties >
     Font with Edit text); None keeps the line's own font. size: new font size (points);
     None keeps the line's.
+    scan: for a line on a scanned page (see scan_text), how to match the scan: "auto" works
+    it out, None treats the line as ordinary text, or a scan_text.analyze() result. The old
+    letters in the picture are then covered with the paper color, and the new text is
+    written in the font, size, color and baseline that reproduce them (a font or size picked
+    in Properties still wins). info: a dict that gets "scan" (the match used, or None).
     Returns the font name used: 'KZ…' = original embedded font, 'KZS…' = installed system
     font of the same name, 'KZF…' = a font picked in Properties, 'KZUni' = bundled Unicode
     font, otherwise a built-in PDF font.
@@ -418,11 +443,32 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
         raise ValueError("Apply or remove the redaction marks on this page before editing "
                          "its text.")
 
+    if scan == "auto":
+        try:
+            from . import scan_text
+            scan = scan_text.analyze(page, line, line_text(line))
+        except Exception:
+            scan = None                 # never let the scan match stop an edit
+    if info is not None:
+        info["scan"] = scan
+    cover = scan["cover"] if scan else []
+    if scan and scan.get("cover_letters") and (scan["lead"] or scan["trail"]):
+        # symbols the scanner's OCR read as part of the line (a checkbox before it): when
+        # the new text keeps them, the picture keeps showing them and they aren't rewritten
+        t = new_text.strip()
+        lead, trail = scan["lead"], scan["trail"]
+        if t.startswith(lead) and t.endswith(trail) and len(t) > len(lead) + len(trail):
+            new_text = t[len(lead):len(t) - len(trail)].strip()
+            cover = scan["cover_letters"]
+
     # 1) pick the font first, so nothing is deleted if the new text can't be written
     found = None
+    builtin = None                      # a built-in PDF font matched to the scan
     if new_text.strip() and font and font[0]:
         found = chosen_font(page, font[0], font[1], font[2], new_text)
-    if new_text.strip() and found is None:
+    if new_text.strip() and found is None and scan:
+        found, builtin = _scan_font(page, scan, new_text)
+    if new_text.strip() and found is None and builtin is None:
         try:
             found = _pick_font(page, main, new_text)
         except LookupError:
@@ -439,21 +485,28 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
                                  f"the new text: {names}. Remove or replace them and try "
                                  "again.")
 
-    # 2) remove only the text of this line (keep line art and images)
+    # 2) remove only the text of this line (keep line art and images). A letter goes when
+    # the redaction touches its box, which spans the font's full height: a thin band through
+    # the middle of the line takes all of it (punctuation too) and never reaches the boxes
+    # of the lines above and below, even where those overlap this one (OCR text layers).
     dx, dy = line["dir"]
     for s in line["spans"]:
         r = pymupdf.Rect(s["bbox"])
-        # shrink across the line's height a little so glyphs of neighbouring lines survive
         if abs(dx) >= abs(dy):
-            pad = r.height * 0.15
-            r = pymupdf.Rect(r.x0, r.y0 + pad, r.x1, r.y1 - pad)
+            mid, half = (r.y0 + r.y1) / 2, max(0.5, r.height * 0.1)
+            r = pymupdf.Rect(r.x0, mid - half, r.x1, mid + half)
         else:
-            pad = r.width * 0.15
-            r = pymupdf.Rect(r.x0 + pad, r.y0, r.x1 - pad, r.y1)
+            mid, half = (r.x0 + r.x1) / 2, max(0.5, r.width * 0.1)
+            r = pymupdf.Rect(mid - half, r.y0, mid + half, r.y1)
         page.add_redact_annot(r, fill=False)
     page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
                           graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
                           text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+    if scan:
+        # the old letters in the scan's picture: covered with the paper color
+        for r in cover:
+            if not r.is_empty:
+                page.draw_rect(r, color=None, fill=scan["paper"], width=0, overlay=True)
 
     if not new_text.strip():
         return None
@@ -464,14 +517,14 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
         # chosen: add it again (without this, writing failed: "need font file or buffer")
         page.insert_font(fontname=fontname, **source)
     else:
-        fontname = _base14(main)
+        fontname = builtin or _base14(main)
         font = pymupdf.Font(fontname)
-    size = float(size or main["size"])
+    size = float(size or (scan["size"] if scan else main["size"]))
     lines = _wrap(new_text, font, size, wrap_width) if wrap_width else new_text.split("\n")
-    origin = pymupdf.Point(first["origin"]) + offset
+    origin = pymupdf.Point(scan["origin"] if scan else first["origin"]) + offset
     page.insert_text(origin, "\n".join(lines), fontsize=size, fontname=fontname,
-                     color=_rgb(main["color"]), rotate=line_rotation(line),
-                     lineheight=1.2)
+                     color=scan["color"] if scan else _rgb(main["color"]),
+                     rotate=line_rotation(line), lineheight=1.2)
     if found:
         _fix_spaces(page, fontname, font)
     return fontname
