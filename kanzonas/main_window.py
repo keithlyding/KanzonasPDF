@@ -2108,9 +2108,22 @@ class MainWindow(QMainWindow):
             c.setChecked(default)
             boxes.append((flag, c))
             lay.addWidget(c)
+        filled = v.form_filled() or preset_restrict
+        if filled:
+            # a filled-in or signed form is protected to keep its answers: lock its fields
+            for flag, c in boxes:
+                if flag == pymupdf.PDF_PERM_FORM:
+                    c.setChecked(False)
+            note_form = QLabel("This form is filled in or signed: its fields will be locked "
+                               "(read-only in every PDF reader) so the answers can't be changed. "
+                               "Tick \"Filling in form fields\" to let others change them.")
+            note_form.setWordWrap(True)
+            note_form.setStyleSheet("color: gray;")
+            lay.addWidget(note_form)
         note2 = QLabel("Restrictions are honored by Acrobat, PDF-XChange, Bluebeam and this app, "
-                       "but some free tools ignore them. Use an open password for anything "
-                       "confidential.")
+                       "but some free tools ignore them; form fields that aren't allowed to be "
+                       "filled in are also made read-only, which every reader honors. Use an "
+                       "open password for anything confidential.")
         note2.setWordWrap(True)
         note2.setStyleSheet("color: gray;")
         lay.addWidget(note2)
