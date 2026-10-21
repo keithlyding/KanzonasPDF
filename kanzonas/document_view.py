@@ -3783,9 +3783,15 @@ class DocumentView(QScrollArea):
         return bool(getattr(self, "_owner_authorized", False))
 
     def set_security(self, open_pw="", owner_pw="", perms=-1):
-        """Security to apply on the next save ('' / '' removes all protection)."""
+        """Security to apply on the next save ('' / '' removes all protection). When form
+        filling isn't allowed, the form's fields are made read-only right away (undoable):
+        every PDF reader honors that, even those that ignore permissions (web browsers);
+        allowing it again, or removing the security, unlocks the fields locked this way."""
         if not getattr(self, "_owner_authorized", False):
             raise PermissionError("Unlock the document with its permissions password first.")
+        lock = bool(owner_pw) and perms != -1 and not perms & pymupdf.PDF_PERM_FORM
+        if self.lock_fields(lock, dry_run=True):
+            self.modify(lambda: self.lock_fields(lock), list(range(self.doc.page_count)))
         self.security = {"open_pw": open_pw, "owner_pw": owner_pw, "perms": perms}
         from .autosave import _remove
         backup = getattr(self, "_backup_path", None)
@@ -3794,6 +3800,55 @@ class DocumentView(QScrollArea):
             self._backup_path = None
         self.dirty = True
         self.documentChanged.emit()
+
+    LOCK_MARK = "KZLocked"      # on fields KanzonasPDF made read-only when protecting
+
+    def _field_dict(self, w):
+        """xref of the dictionary holding a widget's field entries (name, flags): the widget
+        itself, or its parent when the widget is only one appearance of a field."""
+        typ, _v = self.doc.xref_get_key(w.xref, "T")
+        if typ == "null":
+            parent = self._parent_xref(w.xref)
+            if parent is not None:
+                return parent
+        return w.xref
+
+    def lock_fields(self, lock, dry_run=False):
+        """Make every form field read-only (lock), marked as locked by KanzonasPDF, or undo
+        that for the fields so marked. Returns how many fields change (dry_run: count only)."""
+        n, seen = 0, set()
+        for page in self.doc:
+            for w in page.widgets():
+                fx = self._field_dict(w)
+                if fx in seen:
+                    continue
+                seen.add(fx)
+                typ, val = self.doc.xref_get_key(fx, "Ff")
+                ff = int(float(val)) if typ == "int" or (typ and val.lstrip("-").isdigit()) else 0
+                marked = self.doc.xref_get_key(fx, self.LOCK_MARK)[0] != "null"
+                if lock and not ff & 1:
+                    n += 1
+                    if not dry_run:
+                        self.doc.xref_set_key(fx, "Ff", str(ff | 1))
+                        self.doc.xref_set_key(fx, self.LOCK_MARK, "true")
+                elif not lock and marked:
+                    n += 1
+                    if not dry_run:
+                        self.doc.xref_set_key(fx, "Ff", str(ff & ~1))
+                        self.doc.xref_set_key(fx, self.LOCK_MARK, "null")
+        if n and not dry_run:
+            self._card_cache.clear()
+        return n
+
+    def form_filled(self):
+        """True when any form field has an answer (text typed, a box ticked, a choice made)."""
+        for page in self.doc:
+            for w in page.widgets():
+                v = w.field_value
+                if v not in (None, "", "Off", False) and \
+                        w.field_type != pymupdf.PDF_WIDGET_TYPE_BUTTON:
+                    return True
+        return False
 
     # ---- sanitize ---------------------------------------------------------------------------
     SANITIZE_OPTIONS = [  # (key, label, default)
@@ -3996,6 +4051,13 @@ class DocumentView(QScrollArea):
         self._set_field_focus(index, xref)
         page = self.doc[index]
         w = page.load_widget(xref)
+        if w.field_flags & 1:
+            self.statusMessage.emit("This field is read-only." +
+                                    (" Allow filling in form fields in Security properties to "
+                                     "unlock it." if self.doc.xref_get_key(
+                                         self._field_dict(w), self.LOCK_MARK)[0] != "null"
+                                     else ""))
+            return
         t = w.field_type
         if t == pymupdf.PDF_WIDGET_TYPE_CHECKBOX:
             on = w.on_state()

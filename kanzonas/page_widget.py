@@ -1076,8 +1076,14 @@ class PageWidget(QWidget):
         if tool == "editobjects":
             self._objects_press(e, pos, pdf)
             return
-        if tool in EDIT_IN_PLACE and not self._poly and self._press_on_markup(pos, pdf, ctrl_held(e)):
-            return
+        if tool in EDIT_IN_PLACE and not self._poly:
+            if shift_held(e):
+                # Shift = draw a new one here even on top of a markup (to start a line at the
+                # end of another, say): no selecting or moving
+                if self.view.selection is not None:
+                    self.view.clear_selection()
+            elif self._press_on_markup(pos, pdf, ctrl_held(e)):
+                return
         if tool in SNAP_TOOLS:
             pos = self._snap(pos, e)
             pdf = self.to_pdf(pos)
@@ -1318,6 +1324,8 @@ class PageWidget(QWidget):
                 if r != self._hover:
                     self._hover = r
                     self.update()
+            elif tool in EDIT_IN_PLACE and not self._poly and shift_held(e):
+                self.unsetCursor()              # Shift: the tool draws here, it doesn't move
             elif tool == "select" or (tool in EDIT_IN_PLACE and not self._poly):
                 self._update_select_cursor(pos, restore=tool != "select")
             return

@@ -329,6 +329,11 @@ then flag any later change.</li>
 <li>Rectangle (R), Ellipse (E), Cloud (D), Polygon (Y), Line (L), Arrow (A), Polyline
 (Shift+L), Pen (P). The shapes share one toolbar button: click its arrow to pick another.</li>
 <li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Escape to cancel.</li>
+<li>With a drawing tool, clicking an existing markup selects it, and dragging moves it or its
+points, without changing tools. <b>Shift+click on a markup</b> starts a new one right there
+instead (to start a line at the end of another, say): nothing is selected or moved, and the
+point snaps to the markup's end or corner when snapping is on. The pointer shows the drawing
+cross while Shift is held.</li>
 <li><b>Hold Shift</b> while drawing:
   <ul>
   <li>lines, arrows, measurements and polyline segments snap to 45&deg; steps (horizontal,
@@ -721,6 +726,13 @@ attached files, hidden text, links, comments, form data, thumbnails.</li>
   <li><i>Permissions password:</i> choose what others may do (print, copy, comment, fill forms,
   change content, change pages). Acrobat, PDF-XChange, Bluebeam and this app honor it, but
   some free tools ignore it, so don't rely on it for secrets.</li>
+  <li><i>Filled-in forms:</i> when <b>Filling in form fields and signing</b> isn't allowed, the
+  form's fields are also made read-only right away (Ctrl+Z undoes it), which every PDF reader
+  honors, web browsers included, so the answers can't be changed. On a form that's filled in,
+  or when you protect a document you just signed, this box starts unticked; tick it to hand
+  out a form for others to fill in. Allowing form filling again, or Remove security, unlocks
+  the fields locked this way (fields that were read-only before stay so). KanzonasPDF doesn't
+  fill in read-only fields either.</li>
   <li><i>Policies:</i> save your usual settings as a named policy (passwords are never saved).</li>
   </ul>
   Changes take effect when you save. Digital signatures and timestamps can't be added to a
@@ -871,6 +883,7 @@ settings...).</li>
 <tr><td>Ctrl+wheel</td><td>Zoom around the pointer (scroll up and down when CAD-style mouse is on)</td></tr>
 <tr><td>Shift+wheel</td><td>Scroll left and right</td></tr>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
+<tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Escape</td><td>Clear selection / put the tool down (back to the default tool, Hand or Select)</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
