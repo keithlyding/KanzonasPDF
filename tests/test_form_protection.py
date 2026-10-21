@@ -128,17 +128,23 @@ class Protection(unittest.TestCase):
 
     def test_fields_already_read_only_stay_so(self):
         path = form(os.path.join(self.dir, "ro.pdf"))
+        # made read-only by the form's author: the flag sits on the field (the widget, or
+        # its parent when the widget only shows it, as PyMuPDF 2.0 writes fields)
         d = pymupdf.open(path)
         page = d[0]                                # (kept while its widget is used)
-        wd = page.first_widget
-        wd.field_flags |= 1
-        wd.update()
+        x = page.first_widget.xref
+        typ, val = d.xref_get_key(x, "Parent")
+        if typ == "xref" and d.xref_get_key(x, "T")[0] == "null":
+            x = int(val.split()[0])
+        d.xref_set_key(x, "Ff", "1")
         d.saveIncr()
         d.close()
         w = open_window(path)
         self.close(w)
         v = w.view()
+        self.assertEqual(read_only(v.doc), {"name": True, "agree": False})
         v.set_security("", "secret", pymupdf.PDF_PERM_PRINT)
+        self.assertEqual(read_only(v.doc), {"name": True, "agree": True})
         v.set_security("", "", -1)                 # unlocks only what it locked
         self.assertEqual(read_only(v.doc), {"name": True, "agree": False})
 
