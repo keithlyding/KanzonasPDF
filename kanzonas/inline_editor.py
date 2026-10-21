@@ -18,7 +18,7 @@ class InlineEditor(QFrame):
     committed = Signal(str, float, float, object)   # text, dx px, dy px, wrap width px or None
     canceled = Signal()
 
-    def __init__(self, parent, text_rect, text, family, pixel_size, click=None):
+    def __init__(self, parent, text_rect, text, family, pixel_size, click=None, bold=False):
         """text_rect: QRectF of the line on the page widget (widget coords). click: the point
         clicked (widget coords), where the cursor goes; None selects all the text."""
         super().__init__(parent)
@@ -37,6 +37,7 @@ class InlineEditor(QFrame):
         # a hint ("sans" / "serif" / "mono") from the line edited, or a family picked in Properties
         f = QFont({"sans": "Arial", "serif": "Times New Roman", "mono": "Courier New"}.get(family, family))
         f.setPixelSize(max(6, int(round(pixel_size))))
+        f.setBold(bool(bold))
         self.text.setFont(f)
         self.text.setFrameShape(QFrame.NoFrame)
         self.text.document().setDocumentMargin(0)

@@ -2825,6 +2825,16 @@ class DocumentView(QScrollArea):
         w = self.pages[index]
         upright = (text_edit.line_rotation(line) + page.rotation) % 360 == 0
         size = text_edit.main_span(line)["size"]
+        try:
+            from . import scan_text
+            scan = scan_text.analyze(page, line, old)     # a line on a scanned page?
+        except Exception:
+            scan = None
+        hint = text_edit.font_family_hint(line)
+        if scan:
+            # show and write it as the scan looks: the matched font, size and color
+            size = scan["size"]
+            hint = scan["label"] if scan["font"] and scan["font"][5] else scan["kind"]
         chosen = self._edit_font()
         new_size = self._edit_size()
         box = w.to_screen(rect)
@@ -2837,10 +2847,10 @@ class DocumentView(QScrollArea):
             box = QRectF(c.x() - bw / 2, c.y() - bh / 2, bw, bh)
             box.moveLeft(max(0.0, min(box.left(), w.width() - bw)))
             box.moveTop(max(0.0, min(box.top(), w.height() - bh)))
-        ed = InlineEditor(w, box, old,
-                          chosen[0] if chosen else text_edit.font_family_hint(line),
+        ed = InlineEditor(w, box, old, chosen[0] if chosen else hint,
                           (new_size or size) * self.zoom,
-                          click=w.to_screen_pt(pt) if upright else None)
+                          click=w.to_screen_pt(pt) if upright else None,
+                          bold=bool(scan and scan["bold"] and not chosen))
         ed.kz_tool, ed.kz_line_size = "edittext", size
         self._inline = ed
 
@@ -2856,7 +2866,7 @@ class DocumentView(QScrollArea):
             m = self.doc[index].derotation_matrix
             v = pymupdf.Point(dx / self.zoom, dy / self.zoom) * m - pymupdf.Point(0, 0) * m
             wrap = wrap_px / self.zoom if wrap_px else None
-            self._apply_text_edit(index, line, text, (v.x, v.y), wrap, size=new)
+            self._apply_text_edit(index, line, text, (v.x, v.y), wrap, size=new, scan=scan)
         ed.committed.connect(done)
         ed.canceled.connect(lambda: setattr(self, "_inline", None))
 
@@ -2994,7 +3004,8 @@ class DocumentView(QScrollArea):
         p = annotations.tool_props("edittext")
         return (p["font"], bool(p.get("bold")), bool(p.get("italic"))) if p.get("font") else None
 
-    def _apply_text_edit(self, index, line, new, offset, wrap, keep_font=False, size=None):
+    def _apply_text_edit(self, index, line, new, offset, wrap, keep_font=False, size=None,
+                         scan="auto"):
         used = {}
         font = None if keep_font else self._edit_font()
 
@@ -3006,8 +3017,10 @@ class DocumentView(QScrollArea):
                     m = annotations.read(page.load_annot(x))
                     if m is not None:
                         moving.append((x, m))
+            info = {}
             used["font"] = text_edit.replace_line(page, line, new, offset, wrap, font,
-                                                  None if keep_font else size)
+                                                  None if keep_font else size, scan, info)
+            used["scan"] = info.get("scan")
             d = pymupdf.Point(offset)
             for x, m in moving:
                 if "quads" in m:
@@ -3021,6 +3034,26 @@ class DocumentView(QScrollArea):
         self.modify(do, [index])
         wanted = font
         font = used.get("font") or ""
+        sc = used.get("scan")
+        if font.startswith("KZ"):
+            self._fonts_added = True
+        if sc and not (wanted and font.startswith("KZF")):
+            if not new.strip():
+                self.statusMessage.emit("Removed the line from the scan (Ctrl+Z undoes it).")
+            elif sc.get("unsure"):
+                self.statusMessage.emit("The scanned letters didn't match their recognized "
+                                        "text, so the font couldn't be told: used Helvetica. "
+                                        "Pick a font in Properties to change it.")
+            elif font.startswith("KZM") or font in ("helv", "hebo", "heit", "hebi", "tiro",
+                                                    "tibo", "tiit", "tibi", "cour", "cobo",
+                                                    "coit", "cobi"):
+                style = " Bold" if sc["bold"] else ""
+                style += " Italic" if sc["italic"] else ""
+                first = (f"{wanted[0]} isn't installed in that style or lacks some of these "
+                         "characters. " if wanted else "")
+                self.statusMessage.emit(f"{first}Matched the scan: {sc['label']}{style}, "
+                                        f"{sc['size']:g} pt, in the scan's color.")
+            return
         if font.startswith("KZF"):
             self._fonts_added = True
             self.statusMessage.emit(f"Edited in {wanted[0]}.")

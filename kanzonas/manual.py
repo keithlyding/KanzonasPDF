@@ -551,6 +551,21 @@ is used (- for the minus sign, &Oslash; for the diameter sign, a normal space fo
 one). Characters that can't be written at all, such as emoji, are named in a message, and
 nothing is changed. A line on a
 page that still has unapplied redaction marks can't be edited until you apply or remove them.</li>
+<li><b>Scanned pages</b> (a picture of the paper with recognized text over it, from your
+scanner's OCR or Recognize text): Edit text, Find and replace and moving a line change the
+picture too. The old words are covered with the paper's color, and the new text is written
+to match the scan: KanzonasPDF draws the old words in each standard font and in common
+installed ones (Arial, Calibri, Times New Roman, Courier New and others), regular, bold and
+italic, compares them with the scanned letters, and uses the closest one, at the size and on
+the baseline that fit, in the scan's ink color (gray, blue...). The editor opens in that font
+and size, and the status bar says what was matched ("Matched the scan: Helvetica Bold,
+11 pt"). A font or size picked in Properties still wins. Form lines under the text and
+the text of the lines above and below stay as they are, and a checkbox the scan's text
+starts with stays in the picture as long as the new text still starts with it. The
+scanned typeface can't be named from a picture, so the result is the closest available font;
+if the recognized text doesn't match the letters (the OCR misread them), Helvetica is used at
+the letters' size, and the status bar says so. The new line is real text: search, copy and Edit
+text work on it, and editing it again keeps its font.</li>
 </ul>
 
 <h2 id="measure">Measuring</h2>
@@ -736,7 +751,8 @@ sideways or upside-down pages; the slowest); or <b>Auto</b> (the default), which
 page fast and redoes it at High resolution only when the text came out small or unclear.
 Higher accuracy takes longer and uses more memory, and it never renders a scan sharper than
 it was scanned (that only adds blur), so on a 200 dpi scan Normal and High read at 200 dpi.
-Your choice is remembered.</li>
+Your choice is remembered. Edit text then changes the scan's words in a matching font (see
+Editing the PDF's own text).</li>
 <li><b>Redaction:</b> the Redact (mark text or area) tool (Shift+R) or Search &amp; redact
 marks areas; Apply redactions permanently removes what's underneath. A vector path that
 touches a mark is removed past the box. Applying scrubs metadata, attachments, hidden text,
