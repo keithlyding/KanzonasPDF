@@ -16,9 +16,9 @@
   <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
 </p>
 
-> **Beta:** KanzonasPDF is under active development (version 0.x). It's used daily, and every
-> build is tested automatically, but you may still find rough edges. Please
-> [tell us](#feedback) when something doesn't work, and keep a copy of important files.
+> **Version 1.0:** KanzonasPDF is used daily for real work, and every build is tested
+> automatically. It's still young and actively developed: please [tell us](#feedback) when
+> something doesn't work, and keep a copy of important files.
 
 ## Who it's for
 
