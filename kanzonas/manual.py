@@ -101,6 +101,12 @@ black lines and text turn white on a black sheet while a red line stays red and 
 highlight stays yellow. Pictures and scans are inverted too, like a negative. Only the screen
 changes: printing, export, Capture area and the saved file are the same as always. Your choice
 is remembered.</li>
+<li><b>Enhance thin lines</b> (View menu, Preferences &gt; Pages and display; on by default):
+every line is drawn at least one screen pixel wide, like Acrobat's option of the same name. CAD
+drawings use very thin lines (a tenth of a point or less); at their true width they cover only
+part of a screen pixel when zoomed out and come out pale gray. With this on they stay dark and
+legible at any zoom. Only the screen changes: printing, export, OCR, Compare and the saved
+file use the true line widths. Your choice is remembered.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
 saying what it does and its keyboard shortcut.</li>
@@ -270,7 +276,9 @@ so you can drag them into place. In the page list, Ctrl+D duplicates the selecte
 as an image markup, or copied text as a text box, where the mouse is.</li>
 <li><b>Pages:</b> unlock the page list (lock button above the thumbnails), select thumbnails
 (Ctrl+click or Shift+click for several), then right-click or use the Pages menu:
-<b>Copy pages</b>, <b>Cut pages</b>, <b>Paste pages after selected</b> and <b>Duplicate pages</b>. With the page list clicked, Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+A work on pages. Pages
+<b>Copy pages</b>, <b>Cut pages</b>, <b>Paste pages after selected</b>, <b>Duplicate pages</b>
+and <b>Delete pages</b>. With the page list clicked, Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+A work on
+pages, and Delete (or Backspace) deletes the selected pages, after asking. Pages
 can be pasted into another open document too.</li>
 </ul>
 
@@ -613,7 +621,7 @@ thumbnails shrink to fit (the lock button then just reads Locked / Unlocked). Ta
 scroll sideways.</li>
 <li><b>Page order lock:</b> the lock button above the thumbnails (locked by default) protects
 the page order: while it's locked, nothing moves, adds or removes pages, whether by dragging,
-the Pages menu, the ribbon or a shortcut (Move page up / down, Delete page, Insert pages, Insert
+the Pages menu, the ribbon or a shortcut (Move page up / down, Delete pages, Insert pages, Insert
 blank page, Cut, Paste and Duplicate pages). Using one of those asks whether to unlock first.
 Copying pages, rotating and extracting work while locked.</li>
 <li><b>Reorder:</b> unlock the page list, then drag thumbnails; or Move page up / Move page down
@@ -633,7 +641,8 @@ pictures); untick it to make each page the picture's own size. Phone photos come
 JPEG photos aren't recompressed (no quality loss), and each page of a multi-page TIFF scan
 becomes a page.</li>
 <li>Pages menu: Insert pages from file, Insert blank page after current, Extract pages to new
-file, Delete page.</li>
+file, Delete pages (the pages selected in the page list, or the current page; it asks first,
+and Ctrl+Z brings them back).</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
 <li><b>Link sheet callouts</b> (Pages menu, Pages tab): for a drawing set plotted without
@@ -852,7 +861,7 @@ measurement labels update when you next move or edit them.</li>
 under it says when it applies: only while the whole page fits in the window, as after Fit
 page).</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
-Night mode (white lines on black),
+Night mode (white lines on black), Enhance thin lines,
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid
 settings...).</li>
@@ -890,6 +899,7 @@ settings...).</li>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>
 <tr><td>Ctrl+D</td><td>Duplicate selected markups (or pages, in the page list)</td></tr>
+<tr><td>Delete (in the page list)</td><td>Delete the selected pages</td></tr>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
 <tr><td>Left / Right</td><td>Previous / next page</td></tr>

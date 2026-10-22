@@ -94,6 +94,29 @@ def hit_frame(rect):
     c = r.center()
     return QRectF(c.x() - w / 2, c.y() - h / 2, w, h)
 
+THIN_LINE_PX = 1.0          # Enhance thin lines: no line drawn on screen narrower than this
+
+
+class screen_lines:
+    """While a page is drawn on screen: with Enhance thin lines on, every line is at least
+    THIN_LINE_PX device pixels wide, so the hairlines of CAD drawings don't fade to pale gray
+    when zoomed out (as Acrobat's Enhance thin lines). The setting is the rendering engine's,
+    for the whole program, so it's reset right after: printing, export, OCR and Compare keep
+    the true line widths."""
+
+    def __init__(self, on):
+        self.on = on
+
+    def __enter__(self):
+        if self.on:
+            pymupdf.TOOLS.set_graphics_min_line_width(THIN_LINE_PX)
+
+    def __exit__(self, *exc):
+        if self.on:
+            pymupdf.TOOLS.set_graphics_min_line_width(0)
+        return False
+
+
 def night_samples(samples, width, height, stride):
     """Night mode (CAD style): the page's lightness is inverted and its hues kept, so a black
     line on white paper becomes a white line on black, red stays red, a yellow highlight stays
@@ -211,8 +234,9 @@ class PageWidget(QWidget):
                     if dev.is_empty:
                         continue
                     try:
-                        pm = dl.get_pixmap(matrix=pymupdf.Matrix(s, s), clip=pymupdf.Rect(dev) / s,
-                                           alpha=False)
+                        with screen_lines(self.view.thin_lines):
+                            pm = dl.get_pixmap(matrix=pymupdf.Matrix(s, s),
+                                               clip=pymupdf.Rect(dev) / s, alpha=False)
                         hit = (self._to_qpixmap(pm, dpr), pm.x, pm.y)
                     except Exception:
                         p.fillRect(QRectF(dev.x0 / dpr, dev.y0 / dpr, dev.width / dpr,
@@ -248,7 +272,9 @@ class PageWidget(QWidget):
     def _render(self):
         dpr = self.devicePixelRatioF()
         s = self.view.zoom * dpr
-        pm = self._display_list().get_pixmap(matrix=pymupdf.Matrix(s, s), alpha=False)
+        dl = self._display_list()
+        with screen_lines(self.view.thin_lines):
+            pm = dl.get_pixmap(matrix=pymupdf.Matrix(s, s), alpha=False)
         self._pix = self._to_qpixmap(pm, dpr)
         self.view._pix_pages.add(self.index)
 
