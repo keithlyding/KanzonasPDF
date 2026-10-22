@@ -509,7 +509,10 @@ class MainWindow(QMainWindow):
                                  tip="Rotate page clockwise (Ctrl+Shift+Plus)")
         self.a_rot_l.setIconText("Rotate left")
         self.a_rot_r.setIconText("Rotate right")
-        self.a_del_page = self._act("&Delete page", lambda: self._page_op("del"))
+        self.a_del_page = self._act("&Delete pages", lambda: self._page_op("del"),
+                                    tip="Delete the pages selected in the page list (Ctrl+click "
+                                        "or Shift+click for several), or the current page; "
+                                        "Delete in the page list does it too")
         self.a_move_up = self._act("Move page &up", lambda: self._page_op("move", -1),
                                    "Ctrl+Shift+Up", "Move current page up (Ctrl+Shift+Up)")
         self.a_move_down = self._act("Move page do&wn", lambda: self._page_op("move", 1),
@@ -647,6 +650,14 @@ class MainWindow(QMainWindow):
         self.a_night.setCheckable(True)
         self.a_night.setChecked(self.settings.value("night_mode", "false") == "true")
         DocumentView.night_mode = self.a_night.isChecked()
+        self.a_thin_lines = self._act("Enhance &thin lines", self._toggle_thin_lines,
+                                      tip="Draw every line at least one screen pixel wide, so "
+                                          "the hairlines of CAD drawings stay dark and legible "
+                                          "when zoomed out. Printing and export keep the true "
+                                          "line widths")
+        self.a_thin_lines.setCheckable(True)
+        self.a_thin_lines.setChecked(self.settings.value("thin_lines", "true") == "true")
+        DocumentView.thin_lines = self.a_thin_lines.isChecked()
         from . import autosave, measure
         measure.configure(self.settings)
         try:
@@ -829,6 +840,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_cad_mouse)
         m.addAction(self.a_page_wheel)
         m.addAction(self.a_night)
+        m.addAction(self.a_thin_lines)
         m.addAction(self.a_hl_fields)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
@@ -1763,6 +1775,10 @@ class MainWindow(QMainWindow):
         t = e.type()
         if t == QEvent.Resize and obj is getattr(self, "thumbs", None):
             QTimer.singleShot(0, self._fit_thumbs)     # after the list has laid out its new size
+        if t == QEvent.KeyPress and obj is getattr(self, "thumbs", None) and \
+                e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and not e.modifiers():
+            self._page_op("del")                        # Delete in the page list: those pages
+            return True
         if t == QEvent.KeyPress and e.key() == Qt.Key_Escape and not e.modifiers() and \
                 self.isActiveWindow() and self._escape_goes_to_page():
             # after a toolbar button, a ribbon tab or a dialog took the keyboard focus, Escape
@@ -1846,9 +1862,17 @@ class MainWindow(QMainWindow):
         if op == "rot":
             v.rotate_page(cur, arg)
         elif op == "del":
-            if QMessageBox.question(self, "Delete page",
-                                    f"Delete page {cur + 1}?") == QMessageBox.Yes:
-                v.delete_page(cur)
+            pages = self._selected_pages()
+            if len(pages) == 1:
+                text = f"Delete page {pages[0] + 1}?"
+            else:
+                names = ", ".join(str(i + 1) for i in pages[:12]) + \
+                    (", ..." if len(pages) > 12 else "")
+                text = f"Delete these {len(pages)} pages ({names})?"
+            if QMessageBox.question(self, "Delete pages", text) == QMessageBox.Yes and \
+                    v.delete_pages(pages):
+                self.statusBar().showMessage(f"Deleted {len(pages)} page(s) (Ctrl+Z undoes it)",
+                                             4000)
         elif op == "move":
             v.move_page(cur, arg)
         elif op == "blank":
@@ -3504,6 +3528,17 @@ class MainWindow(QMainWindow):
     def preferences(self):
         from .preferences import PreferencesDialog
         PreferencesDialog(self).exec()
+
+    def _toggle_thin_lines(self):
+        on = self.a_thin_lines.isChecked()
+        DocumentView.thin_lines = on
+        self.settings.setValue("thin_lines", "true" if on else "false")
+        for w in windows():
+            w.a_thin_lines.setChecked(on)
+            for v in w._views():
+                v.redraw_pages()
+        self.statusBar().showMessage("Thin lines drawn at least a pixel wide" if on else
+                                     "Lines drawn at their true width", 3000)
 
     def _toggle_night(self):
         on = self.a_night.isChecked()

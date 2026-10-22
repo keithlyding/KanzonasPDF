@@ -637,6 +637,7 @@ class DocumentView(QScrollArea):
     cad_mouse = False
     page_wheel = False          # one wheel step = one page when the page fits the window
     night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
+    thin_lines = True           # Enhance thin lines: lines at least a pixel wide on screen
     open_view = "width"         # zoom for newly opened files: width, page, actual, last
     reopen_page = True          # reopen files at the page they were left on
 
