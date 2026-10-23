@@ -177,7 +177,7 @@ class Autosaver(QObject):
             return
         v._backup_rev = getattr(v, "revision", None)
         idx = _index()
-        idx[os.path.basename(path)] = v.path or ""
+        idx[os.path.basename(path)] = "" if getattr(v, "untitled", False) else (v.path or "")
         _save_index(idx)
 
     def discard(self, v):

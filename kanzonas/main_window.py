@@ -138,7 +138,7 @@ EXPORTS = [  # (id, menu label, file filter, extension)
 ]
 # Toolbar tooltips: what each button does (the shortcut is added automatically)
 BUTTON_TIPS = {
-    "a_open": "Open a PDF", "a_save": "Save the document", "a_print": "Print",
+    "a_new": "Start a new PDF with a blank page", "a_open": "Open a PDF", "a_save": "Save the document", "a_print": "Print",
     "a_undo": "Undo the last change", "a_redo": "Redo what you undid",
     "a_zoom_in": "Zoom in", "a_zoom_out": "Zoom out",
     "a_fit_width": "Zoom so the page fills the window's width",
@@ -451,6 +451,8 @@ class MainWindow(QMainWindow):
 
     def _build_actions(self):
         v = self.view
+        self.a_new = self._act("&New PDF...", self.new_pdf, QKeySequence.New,
+                               "Start a new PDF with a blank page (it asks for the page size)")
         self.a_open = self._act("&Open...", self.open_dialog, QKeySequence.Open)
         self.a_save = self._act("&Save", self.save, QKeySequence.Save)
         self.a_save_as = self._act("Save &As...", self.save_as, QKeySequence.SaveAs)
@@ -805,7 +807,7 @@ class MainWindow(QMainWindow):
     def _build_menus(self):
         mb = self.menuBar()
         m = mb.addMenu("&File")
-        m.addActions([self.a_open])
+        m.addActions([self.a_new, self.a_open])
         self.recent_menu = m.addMenu("Open &recent")
         self._rebuild_recent()
         m.addActions([self.a_save, self.a_save_as])
@@ -1225,8 +1227,7 @@ class MainWindow(QMainWindow):
                   self.a_find,
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
-                  self.a_del_page, self.a_move_up, self.a_move_down, self.a_insert_pdf,
-                  self.a_insert_blank, self.a_extract, self.a_ocr, self.a_flatten, self.a_sheet_links,
+                  self.a_del_page, self.a_move_up, self.a_move_down, self.a_extract, self.a_ocr, self.a_flatten, self.a_sheet_links,
                   self.a_security, self.a_remove_security, self.a_sanitize, self.a_clear_sigs,
                   self.a_timestamp, self.a_multi_sign, self.a_apply_placeholders,
                   self.a_apply_sel_redact, self.a_unlock, self.a_set_scale, self.a_measure_summary,
@@ -1272,7 +1273,7 @@ class MainWindow(QMainWindow):
             for i in range(self.tabs.count()):
                 w = self.tabs.widget(i)
                 self.tabs.setTabText(i, ("*" if w.dirty else "") + os.path.basename(w.path))
-                self.tabs.setTabToolTip(i, w.path)
+                self.tabs.setTabToolTip(i, "Not saved yet" if w.untitled else w.path)
         else:
             self.page_total.setText(" / 0 ")
             self.scale_label.setText("")
@@ -1288,7 +1289,8 @@ class MainWindow(QMainWindow):
     def open_file(self, path):
         path = os.path.abspath(path)
         for i in range(self.tabs.count()):
-            if os.path.normcase(self.tabs.widget(i).path) == os.path.normcase(path):
+            w = self.tabs.widget(i)
+            if not w.untitled and os.path.normcase(w.path) == os.path.normcase(path):
                 self.tabs.setCurrentIndex(i)
                 return
         try:
@@ -1338,6 +1340,8 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v:
             return False
+        if v.untitled:
+            return self.save_as()
         try:
             v.save()
         except Exception as ex:
@@ -1363,6 +1367,7 @@ class MainWindow(QMainWindow):
             return False
         self.autosave.discard(v)
         self._add_recent(v.path)
+        self.settings.setValue("last_dir", os.path.dirname(v.path))
         self._update_ui()
         return True
 
@@ -1540,7 +1545,7 @@ class MainWindow(QMainWindow):
         for w in [self] + others:
             for v in w._views():
                 w._remember_state(v)
-                if v.path and os.path.exists(v.path) and \
+                if v.path and not v.untitled and os.path.exists(v.path) and \
                         not os.path.normcase(v.path).startswith(os.path.normcase(backups)):
                     session.append(v.path)
         if self.primary:
@@ -1855,6 +1860,8 @@ class MainWindow(QMainWindow):
     def _page_op(self, op, arg=None):
         v = self.view()
         if not v:
+            if op == "blank":           # nothing open: a new PDF is the blank page
+                self.new_pdf()
             return
         cur = v.current_page()
         if op in ("del", "move", "blank") and not self._pages_unlocked():
@@ -1886,7 +1893,8 @@ class MainWindow(QMainWindow):
     def combine_files(self):
         from .combine import CombineDialog
         v = self.view()
-        first = [v.path] if v is not None and v.path and os.path.isfile(v.path) else []
+        first = [v.path] if v is not None and not v.untitled and v.path and \
+            os.path.isfile(v.path) else []
         if first and v.dirty:
             QMessageBox.information(self, "Combine files", "The current document has unsaved "
                                     "changes; the combined PDF uses the saved file.")
@@ -1908,21 +1916,73 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Created " + dlg.result_path, 5000)
 
     def insert_from_file(self):
+        """Pages > Insert pages from file: PDFs and pictures (each picture a page). With
+        nothing open they make a new, unsaved PDF."""
+        from .combine import IMAGE_EXTS, is_image
         v = self.view()
+        if v and not self._pages_unlocked():
+            return
+        pics = " ".join("*" + e for e in IMAGE_EXTS)
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Insert pages from", self.settings.value("last_dir", ""),
+            f"PDFs and pictures (*.pdf {pics});;PDF files (*.pdf);;Pictures ({pics})")
+        if not paths:
+            return
+        self.settings.setValue("last_dir", os.path.dirname(paths[0]))
         if not v:
-            return
-        if not self._pages_unlocked():
-            return
-        path, _ = QFileDialog.getOpenFileName(self, "Insert pages from",
-                                              self.settings.value("last_dir", ""), PDF_FILTER)
-        if not path:
+            from . import new_pdf
+            size = new_pdf.ask(self, self.settings) if any(map(is_image, paths)) else \
+                new_pdf.page_size(*new_pdf.remembered(self.settings))
+            if size is None:
+                return
+            from .combine import insert_files
+            doc = pymupdf.open()
+            try:
+                insert_files(doc, paths, 0, size)
+            except Exception as ex:
+                doc.close()
+                QMessageBox.critical(self, "Insert pages", str(ex))
+                return
+            v = self._open_untitled(doc)
+            v.dirty = True              # closing it asks whether to save
+            self._update_ui()
             return
         choices = ["After current page", "At the end", "At the beginning"]
         where, ok = QInputDialog.getItem(self, "Insert pages", "Insert:", choices, 0, False)
         if not ok:
             return
         at = {0: v.current_page() + 1, 1: -1, 2: 0}[choices.index(where)]
-        v.insert_pdf(path, at)
+        v.insert_files(paths, at)           # shows what went wrong itself
+
+    def new_pdf(self):
+        """File > New PDF: an unsaved document with one blank page of the chosen size; Save
+        asks where to save it."""
+        from . import new_pdf
+        size = new_pdf.ask(self, self.settings)
+        if size is None:
+            return None
+        return self._open_untitled(new_pdf.blank_doc(size))
+
+    def _open_untitled(self, doc):
+        """Show a new, unsaved document in a tab named Untitled N."""
+        from PySide6.QtCore import QStandardPaths
+        folder = self.settings.value("last_dir", "") or \
+            QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+        taken = {os.path.basename(w.path).lower() for w in
+                 (x for win in windows() for x in win._views())}
+        n = 1
+        while True:
+            name = f"Untitled {n}.pdf"
+            if name.lower() not in taken and not os.path.exists(os.path.join(folder, name)):
+                break
+            n += 1
+        v = DocumentView(os.path.join(folder, name), doc=doc)
+        self._connect_view(v)
+        idx = self.tabs.addTab(v, name)
+        self.tabs.setCurrentIndex(idx)
+        self.statusBar().showMessage(name + " isn't saved yet: Save (Ctrl+S) asks where to "
+                                     "save it", 5000)
+        return v
 
     def extract_pages(self):
         v = self.view()
@@ -3225,7 +3285,7 @@ class MainWindow(QMainWindow):
 
     def _remember_state(self, v):
         import json
-        if v is None or not hasattr(v, "pages") or not v.pages:
+        if v is None or not hasattr(v, "pages") or not v.pages or v.untitled:
             return
         states = self._file_states()
         states[os.path.normcase(v.path)] = {"page": v.current_page(), "zoom": round(v.zoom, 4)}
@@ -3580,7 +3640,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": "Apply selected", "a_apply_redact": "Apply all",
         "a_security": "Security", "a_remove_security": "Remove security", "a_unlock": "Unlock",
         "a_sanitize": "Sanitize", "a_hl_fields": "Highlight fields", "a_move_up": "Move up",
-        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_sheet_links": "Sheet callouts", "a_combine": "Combine files", "a_from_images": "From images",
+        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_sheet_links": "Sheet callouts", "a_combine": "Combine files", "a_from_images": "From images", "a_new": "New PDF",
         "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
         "a_watermark": "Watermark", "a_background": "Background",
         "a_remove_bg": "Remove background", "a_remove_wm": "Remove watermarks", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
@@ -3617,7 +3677,7 @@ class MainWindow(QMainWindow):
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
         "a_combine": "file-document-multiple-outline",
         "a_insert_blank": "file-outline", "a_uncrop": "crop-free",
-        "a_from_images": "file-image-outline", "a_extract": "file-export-outline",
+        "a_from_images": "file-image-outline", "a_new": "file-document-plus-outline", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
         "a_remove_bg": "format-color-marker-cancel", "a_remove_wm": "water-off-outline",
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
@@ -3714,7 +3774,7 @@ class MainWindow(QMainWindow):
             ("Crop", "large", [t["crop"], self.a_uncrop]),
             ("Organize", "small", [self.a_move_up, self.a_move_down, self.a_del_page,
                                    self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
-            ("Combine", "large", [self.a_combine, self.a_from_images]),
+            ("Create", "large", [self.a_new, self.a_combine, self.a_from_images]),
             ("Document", "small", [self.a_header, self.a_watermark, self.a_background,
                                    self.a_bookmarks, self.a_sheet_links, self.a_attachments,
                                    self.a_compress, self.a_compare]),
@@ -4064,9 +4124,13 @@ class MainWindow(QMainWindow):
     def _on_page_changed(self, page):
         if self.sender() is not self.view():
             return
-        self.thumbs.blockSignals(True)
-        self.thumbs.setCurrentRow(page)
-        self.thumbs.blockSignals(False)
+        # Scrolling to another page selects it in the page list. A page reached by clicking
+        # in the list (Ctrl+click, Shift+click, right-click) keeps the pages selected there.
+        if not self._thumb_nav and self.thumbs.currentRow() != page:
+            from PySide6.QtCore import QItemSelectionModel
+            self.thumbs.blockSignals(True)
+            self.thumbs.setCurrentRow(page, QItemSelectionModel.ClearAndSelect)
+            self.thumbs.blockSignals(False)
         self._update_ui()
 
     def _on_doc_changed(self):
@@ -4195,10 +4259,16 @@ class MainWindow(QMainWindow):
             v.duplicate_pages(pages)
             self.statusBar().showMessage(f"Duplicated {len(pages)} page(s)", 3000)
 
+    _thumb_nav = False                  # going to a page clicked in the page list
+
     def _on_thumb_clicked(self, row):
         v = self.view()
         if v and row >= 0:
-            v.goto_page(row)
+            self._thumb_nav = True
+            try:
+                v.goto_page(row)
+            finally:
+                self._thumb_nav = False
 
     # ---- thumbnails (rendered a few at a time so opening big files stays snappy) ----
     def _rebuild_thumbs(self):

@@ -251,6 +251,21 @@ class PreferencesDialog(QDialog):
         form.addRow(self.lock)
         for a in (win.a_cards, win.a_hl_fields, win.a_night, win.a_thin_lines):
             self._box(form, a)
+        # File > New PDF: the page size, or ask each time
+        from . import new_pdf
+        name, landscape = new_pdf.remembered(win.settings)
+        self.new_size = new_pdf.size_combo(with_ask=True)
+        ask = win.settings.value("new_pdf_ask", "true") != "false"
+        self.new_size.setCurrentIndex(max(0, self.new_size.findData(new_pdf.ASK if ask
+                                                                     else name)))
+        self.new_size.setToolTip("File > New PDF uses this size, or asks every time (the size "
+                                 "you choose then is the one it suggests next time)")
+        self.new_orient = new_pdf.orientation_combo()
+        self.new_orient.setCurrentIndex(1 if landscape else 0)
+        row = QHBoxLayout()
+        row.addWidget(self.new_size, 1)
+        row.addWidget(self.new_orient)
+        form.addRow("New PDF page size:", row)
         # grid and snapping: all of it here, in one place (same settings as View > Grid
         # settings...)
         from PySide6.QtWidgets import QGroupBox
@@ -438,6 +453,13 @@ class PreferencesDialog(QDialog):
         if self.lock.isChecked() != win.lock_btn.isChecked():
             win.lock_btn.setChecked(self.lock.isChecked())
         win.settings.setValue("ocr_accuracy", self.ocr.currentData())
+        from . import new_pdf
+        size = self.new_size.currentData()
+        win.settings.setValue("new_pdf_ask", "true" if size == new_pdf.ASK else "false")
+        if size != new_pdf.ASK:
+            win.settings.setValue("new_pdf_size", size)
+        win.settings.setValue("new_pdf_landscape",
+                              "true" if self.new_orient.currentData() else "false")
         from . import signatures as sigmod
         if self.datefmt.currentData() != sigmod.date_format():
             sigmod.set_date_format(self.datefmt.currentData())

@@ -47,6 +47,16 @@ telemetry before creating recognition sessions.</p>
 <ul>
 <li><b>Open a PDF:</b> File &gt; Open (Ctrl+O), drag a file onto the window, or pick one from
 File &gt; Open recent. Each file opens in its own tab, at the page and zoom you left it.</li>
+<li><b>Start a new PDF:</b> File &gt; <b>New PDF...</b> (Ctrl+N, or Pages tab &gt; New PDF)
+asks for the page size (Letter, Legal, Tabloid, ANSI C to E, ARCH A to E, A4 to A0) and
+portrait or landscape, then opens a tab named Untitled 1 with one blank page. Add pages with
+Insert blank page after current or Insert pages from file (PDFs and pictures), draw, type or
+sign on it as on any PDF. It isn't saved anywhere until you save it: Save (Ctrl+S) asks where,
+as Save As does, and closing it after changes asks whether to save. Tick <b>Don't ask
+again</b> to always use the size you chose; change it, or go back to being asked, in
+Preferences &gt; Pages and display &gt; New PDF page size. With no document open, Insert blank
+page starts a new PDF the same way, and Insert pages from file makes a new, unsaved PDF from
+the files you choose.</li>
 <li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Undo is Ctrl+Z, redo is Ctrl+Y.
 Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within a memory budget
 (256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
@@ -275,7 +285,8 @@ so you can drag them into place. In the page list, Ctrl+D duplicates the selecte
 <li><b>Pictures and text from other programs:</b> Paste a copied picture (e.g. a screenshot)
 as an image markup, or copied text as a text box, where the mouse is.</li>
 <li><b>Pages:</b> unlock the page list (lock button above the thumbnails), select thumbnails
-(Ctrl+click or Shift+click for several), then right-click or use the Pages menu:
+(Ctrl+click adds or removes one page, Shift+click selects a run of pages), then right-click any
+of the selected pages (the whole selection stays selected) or use the Pages menu:
 <b>Copy pages</b>, <b>Cut pages</b>, <b>Paste pages after selected</b>, <b>Duplicate pages</b>
 and <b>Delete pages</b>. With the page list clicked, Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+A work on
 pages, and Delete (or Backspace) deletes the selected pages, after asking. Pages
@@ -634,14 +645,19 @@ bookmark named after it and keeps its own bookmarks underneath. Click Combine...
 and the combined PDF opens. Password-protected files ask for their password. The original files
 aren't changed.</li>
 <li>Combine files also takes pictures (JPG, PNG, TIFF, BMP, GIF, WebP): each becomes a page.
-<b>Create PDF from images...</b> (File menu, Pages tab) starts with pictures: choose them, put
+<b>Create PDF from images...</b> (File menu, Pages tab &gt; Create group) starts with pictures: choose them, put
 them in order and click Create.... With "Put each picture on a Letter page" ticked (the
 default), each picture is fitted on a Letter page turned to suit it (landscape for wide
 pictures); untick it to make each page the picture's own size. Phone photos come out upright,
 JPEG photos aren't recompressed (no quality loss), and each page of a multi-page TIFF scan
 becomes a page.</li>
-<li>Pages menu: Insert pages from file, Insert blank page after current, Extract pages to new
-file, Delete pages (the pages selected in the page list, or the current page; it asks first,
+<li><b>Insert pages from file</b> (Pages menu, Pages tab) inserts PDFs and pictures (JPG, PNG,
+TIFF, BMP, GIF, WebP; pick several at once), in the order chosen, after the current page, at the
+end or at the beginning, as one undo step. Each picture becomes a page the size of the page
+before it, turned to suit the picture. With nothing open, it makes a new, unsaved PDF from
+them.</li>
+<li>Pages menu: Insert blank page after current (the same size as the current page), Extract
+pages to new file, Delete pages (the pages selected in the page list, or the current page; it asks first,
 and Ctrl+Z brings them back).</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
@@ -861,7 +877,8 @@ measurement labels update when you next move or edit them.</li>
 under it says when it applies: only while the whole page fits in the window, as after Fit
 page).</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
-Night mode (white lines on black), Enhance thin lines,
+Night mode (white lines on black), Enhance thin lines, <b>New PDF page size</b> (the size and
+orientation File &gt; New PDF uses, or Ask every time),
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid
 settings...).</li>
@@ -875,6 +892,7 @@ settings...).</li>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text</td></tr>
 <tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
+<tr><td>Ctrl+N</td><td>New PDF (blank page)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>
 <tr><td>Ctrl+K</td><td>Preferences</td></tr>
 <tr><td>Ctrl+;</td><td>Date (today's date where you click)</td></tr>
