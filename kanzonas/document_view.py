@@ -98,13 +98,21 @@ class DocumentView(QScrollArea):
     layersChanged = Signal()
     requestSignature = Signal(int, int)      # page index, signature field xref
 
-    def __init__(self, path, parent=None):
+    def __init__(self, path, parent=None, doc=None):
+        """doc: a new document not yet saved (File > New PDF); path is then the name Save
+        suggests, and Save asks where to save it (see untitled)."""
         super().__init__(parent)
         self.path = os.path.abspath(path)
-        # Load from memory so the file is not locked on Windows and can be overwritten on save.
-        with open(self.path, "rb") as f:
-            data = f.read()
-        self.doc = pymupdf.open(stream=data, filetype="pdf")
+        self.untitled = doc is not None
+        if doc is not None:
+            data = None
+            self.doc = doc
+        else:
+            # Load from memory so the file is not locked on Windows and can be overwritten
+            # on save.
+            with open(self.path, "rb") as f:
+                data = f.read()
+            self.doc = pymupdf.open(stream=data, filetype="pdf")
         # Keep what's needed to save without losing the file's protection or signatures:
         # the original bytes (an unchanged file is saved as an exact copy) and its encryption.
         self._orig_data = data
@@ -339,6 +347,7 @@ class DocumentView(QScrollArea):
         self = cls.__new__(cls)
         QScrollArea.__init__(self)
         self.path = other.path
+        self.untitled = other.untitled
         self.doc = other.doc
         self._init_state()
         self.read_only = True
@@ -638,6 +647,7 @@ class DocumentView(QScrollArea):
     page_wheel = False          # one wheel step = one page when the page fits the window
     night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
     thin_lines = True           # Enhance thin lines: lines at least a pixel wide on screen
+    untitled = False            # a new document never saved yet (File > New PDF)
     open_view = "width"         # zoom for newly opened files: width, page, actual, last
     reopen_page = True          # reopen files at the page they were left on
 
@@ -3953,7 +3963,7 @@ class DocumentView(QScrollArea):
     def timestamp(self, url, out_path):
         """Add a trusted timestamp (RFC 3161) from a time server; writes out_path."""
         from . import digisign
-        if self.dirty:
+        if self.dirty or self.untitled:
             raise RuntimeError("Save your changes first.")
         with open(self.path, "rb") as f:
             data = f.read()
@@ -4639,10 +4649,17 @@ class DocumentView(QScrollArea):
         self.goto_page(dest_before if dest_before < src else dest_before - 1)
 
     def insert_pdf(self, path, at):
-        def do():
-            with pymupdf.open(path) as other:
-                self.doc.insert_pdf(other, start_at=at)
-        self.modify(do, structural=True)
+        self.insert_files([path], at)
+
+    def insert_files(self, paths, at):
+        """Insert PDFs and pictures, in order, before page `at` (-1: at the end), as one undo
+        step. Each picture becomes a page the size of the page it follows (the first page
+        when inserted at the start), turned to suit the picture."""
+        from .combine import insert_files
+        n = self.doc.page_count
+        ref = self.page_rects[min(max(at - 1, 0), n - 1) if at != -1 else n - 1]
+        self.modify(lambda: insert_files(self.doc, paths, n if at == -1 else at,
+                                         (ref.width, ref.height)), structural=True)
 
     def insert_blank(self, at):
         r = self.page_rects[min(at, len(self.page_rects) - 1)]
@@ -4835,6 +4852,8 @@ class DocumentView(QScrollArea):
             self._orig_enc["user_pw"] = pw
 
     def save(self, path=None):
+        if path is None and self.untitled:
+            raise RuntimeError("This PDF hasn't been saved yet: use Save As to choose where.")
         self.commit_pending()
         path = os.path.abspath(path or self.path)
         tmp = path + ".kanzonas-tmp"
@@ -4879,6 +4898,7 @@ class DocumentView(QScrollArea):
                           permissions=sec.get("perms", -1) if sec.get("owner_pw") else -1)
         os.replace(tmp, path)
         self.path = path
+        self.untitled = False
         if self.dirty or sec is not None:
             self._orig_data = None          # the file on disk is our rewrite now
         self.dirty = False

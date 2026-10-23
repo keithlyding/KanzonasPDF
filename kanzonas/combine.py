@@ -56,6 +56,33 @@ def add_image(result, path, letter=True):
     pdf.close()
 
 
+def image_pages(path, size):
+    """The picture at path as a new PDF, each picture page fitted on a page of `size` (width,
+    height in points), turned to suit the picture (Pages > Insert pages from file)."""
+    pdf = _image_pdf(path)
+    out = pymupdf.open()
+    lo, hi = sorted(size)
+    for i in range(pdf.page_count):
+        w, h = pdf[i].rect.width, pdf[i].rect.height
+        page = out.new_page(width=hi if w > h else lo, height=lo if w > h else hi)
+        page.show_pdf_page(page.rect, pdf, i)     # keeps proportions, centered
+    pdf.close()
+    return out
+
+
+def insert_files(doc, paths, pos, size):
+    """Insert the PDFs and pictures in `paths`, in order, into doc before page `pos`; each
+    picture page is fitted on a page of `size` (see image_pages)."""
+    for path in paths:
+        other = image_pages(path, size) if is_image(path) else pymupdf.open(path)
+        with other:
+            if other.needs_pass:
+                raise ValueError(f"{os.path.basename(path)} is password-protected: open it "
+                                 "and use Combine files instead.")
+            doc.insert_pdf(other, start_at=pos)
+            pos += other.page_count
+
+
 class _FileList(QListWidget):
     """Reorder by dragging; drop PDFs from Explorer to add them."""
 
