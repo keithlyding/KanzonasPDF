@@ -167,6 +167,10 @@ until you click a button.
 With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
 quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your
 network blocks GitHub, the automatic check simply finds nothing.</li>
+<li><b>Help &gt; Report a problem or suggest an idea...</b> opens KanzonasPDF's page on GitHub in
+your browser, with forms for a bug report or an idea (a free GitHub account is needed to send
+one). Describe what you did and what happened; please don't attach confidential PDFs. Security
+problems (redaction, passwords, signatures) have their own private form there.</li>
 <li>The <b>KanzonasPDF-windows.zip</b> download is the same program without the portable.txt file: it runs
 from any folder but stores settings on the computer like the installed version.</li>
 </ul>
