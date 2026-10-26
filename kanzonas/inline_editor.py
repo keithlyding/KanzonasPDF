@@ -76,6 +76,14 @@ class InlineEditor(QFrame):
         else:
             self.text.selectAll()
 
+    def fix_width(self, width_px):
+        """Edit a whole paragraph: the box keeps the paragraph's width and the text wraps in
+        it as it will on the page (drag a side handle to change the width)."""
+        self.resized_by_user = True
+        self.resize(int(width_px + 2 * MARGIN + 6), self.height())
+        self._start_width = self.width()
+        self._grow()
+
     def set_pixel_size(self, pixel_size):
         """Font size changed in Properties while typing: show the text at the new size."""
         f = self.text.font()

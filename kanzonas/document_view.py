@@ -2950,7 +2950,105 @@ class DocumentView(QScrollArea):
                               keep_font=True)
         self.statusMessage.emit("Moved the line (Ctrl+Z undoes it)")
 
-    def edit_text_at(self, index, pt):
+    def _paragraph_of(self, index, line):
+        """The paragraph (Edit objects text item) holding line, when it has several
+        horizontal lines on an unrotated page: what a click with Edit text rewrites."""
+        if self.doc[index].rotation:
+            return None
+        box = pymupdf.Rect(line["bbox"])
+        for it in self.text_objects(index):
+            # (a line of a justified paragraph is joined from pieces: match by place)
+            if any(ln is line or (r.contains(box) and r.y0 - 0.5 <= box.y0)
+                   for r, ln in it["lines"]):
+                lines = [ln for _r, ln in it["lines"]]
+                if len(lines) > 1 and all(abs(ln["dir"][0] - 1) < 0.01 and abs(ln["dir"][1]) < 0.01
+                                          for ln in lines) and text_edit.flows(lines):
+                    return it
+                return None
+        return None
+
+    def _paragraph_overlaps(self, index, old_box, new_box, bases):
+        """After a paragraph grew: is there other text in the room it grew into? Its own
+        lines are the ones on the baselines it wrote."""
+        if new_box is None or new_box.is_empty or new_box.y1 <= old_box.y1 + 1:
+            return False
+        grown = pymupdf.Rect(new_box.x0, old_box.y1 + 1, new_box.x1, new_box.y1)
+        for r, ln in self._lines(index):
+            if not r.intersects(grown) or not text_edit.visible(ln):
+                continue
+            base = ln["spans"][0]["origin"][1]
+            if not any(abs(base - b) < 0.5 for b in bases):
+                return True
+        return False
+
+    def _edit_paragraph(self, index, item, pt):
+        """Edit text on a paragraph: type in a box of the paragraph's width; the words
+        rewrap as you type and the paragraph is rewritten in its font, size, line spacing and
+        alignment."""
+        page = self.doc[index]
+        lines = [ln for _r, ln in item["lines"]]
+        old = text_edit.paragraph_text(lines)
+        lay = text_edit.paragraph_layout(lines)
+        size = lay["span"]["size"]
+        w = self.pages[index]
+        chosen = self._edit_font()
+        picked = self._edit_size()
+        annotations.set_tool_props("edittext", dict(annotations.tool_props("edittext"),
+                                                    fontsize=round(picked or size, 2)))
+        self.textToolPropsChanged.emit()
+        ed = InlineEditor(w, w.to_screen(item["rect"]), old,
+                          chosen[0] if chosen else text_edit.font_family_hint(lines[0]),
+                          (picked or size) * self.zoom, click=w.to_screen_pt(pt))
+        ed.fix_width(lay["width"] * self.zoom)
+        ed.kz_tool, ed.kz_line_size = "edittext", size
+        self._inline = ed
+        self.statusMessage.emit("Editing the paragraph: the words rewrap as you type. Alt+click "
+                                "edits a single line.")
+        box = pymupdf.Rect(item["rect"])
+
+        def finished():
+            self._inline = None
+            annotations.reset_tool_props("edittext")
+            self.textToolPropsChanged.emit()
+
+        def done(text, dx, dy, wrap_px):
+            new_size = self._edit_size()
+            font = self._edit_font()
+            finished()
+            if new_size is not None and abs(new_size - size) < 0.06:
+                new_size = None
+            wrap = wrap_px / self.zoom if wrap_px else None
+            if wrap is None or abs(wrap - lay["width"]) < 4:
+                wrap = None                     # the paragraph's own width
+            if " ".join(text.split()) == " ".join(old.split()) and not dx and not dy and \
+                    wrap is None and font is None and new_size is None:
+                return
+            offset = (dx / self.zoom, dy / self.zoom)
+            made = {}
+
+            def do():
+                from . import links
+                pg = self.doc[index]
+                made["font"], made["box"], made["bases"] = text_edit.replace_paragraph(
+                    pg, lines, text, wrap, font, new_size, offset)
+                if offset[0] or offset[1]:
+                    links.follow(pg, box, box + (offset[0], offset[1], offset[0], offset[1]))
+            self.modify(do, [index])
+            if (made.get("font") or "").startswith("KZ"):
+                self._fonts_added = True
+            if self._paragraph_overlaps(index, box, made.get("box"), made.get("bases") or []):
+                self.statusMessage.emit("The paragraph grew and now overlaps text below it. "
+                                        "Ctrl+Z undoes it; drag a side of the box wider to "
+                                        "keep it shorter.")
+                return
+            self.statusMessage.emit("Paragraph rewritten (Ctrl+Z undoes it). Alt+click edits "
+                                    "a single line.")
+        ed.committed.connect(done)
+        ed.canceled.connect(finished)
+
+    def edit_text_at(self, index, pt, one_line=False):
+        """Edit text tool, click: edit the paragraph there (words rewrap), or, with
+        one_line (Alt+click), a scanned page, sideways text or a lone line, just the line."""
         self.commit_pending()          # finish the edit already in progress first
         hit = text_edit.line_at(self._lines(index), pt)
         if hit is None:
@@ -2971,6 +3069,11 @@ class DocumentView(QScrollArea):
             scan = scan_text.analyze(page, line, old)     # a line on a scanned page?
         except Exception:
             scan = None
+        if not one_line and not scan and upright:
+            para = self._paragraph_of(index, line)
+            if para is not None:
+                self._edit_paragraph(index, para, pt)
+                return
         hint = text_edit.font_family_hint(line)
         if scan:
             # show and write it as the scan looks: the matched font, size and color

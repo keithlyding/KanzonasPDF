@@ -16,9 +16,8 @@
   <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
 </p>
 
-> **Version 1.0:** KanzonasPDF is used daily for real work, and every build is tested
-> automatically. It's still young and actively developed: please [tell us](#feedback) when
-> something doesn't work, and keep a copy of important files.
+> Used daily for real work. Every release passes 280+ automated tests and a self-test of the
+> built program on Windows before it's published, and reported bugs have been fixed within days.
 
 ## Who it's for
 
@@ -29,21 +28,22 @@ Acrobat-style forms, signatures, redaction and text editing, but not the price, 
 
 | | KanzonasPDF | Bluebeam Revu | Adobe Acrobat Pro | PDF-XChange Editor |
 | --- | --- | --- | --- | --- |
-| Price | Free, open source | Subscription | Subscription | Free with watermarks, or a license |
+| Price | Free forever, open source | Subscription | Subscription | Free with watermarks, or a license |
 | Calibrated measuring (length, area, volume, count) | Yes | Yes | Basic | Yes |
 | Compare revisions (clouds the changes) | Yes | Yes | Yes | Yes |
-| Edit page text and objects | Yes (one line at a time) | Limited | Yes | Yes |
+| Edit page text and objects | Yes (paragraphs rewrap) | Limited | Yes | Yes |
 | Portable (USB stick, nothing in the registry) | Yes | No | No | Yes |
 | Runs offline, no account | Yes | Account | Account | Yes |
 
-Those are capable, mature products with features KanzonasPDF doesn't have (see
-[Known limitations](#known-limitations)). The table is about what you get for free.
+**All of it free, with no watermarks, no account and nothing uploaded:** calibrated measuring
+(length, area, perimeter, volume, count, angle, radius), scales read from title blocks, revision
+clouds, stamps and a tool chest, compare (word by word, or laid over each other), sheet callout
+links, editing the PDF's own text, pictures and shapes, links on anything, OCR, redaction,
+digital signatures, fillable forms, and export to Word, Excel, PowerPoint and AutoCAD DXF. It
+runs from a USB stick too, or as a PortableApps.com package.
 
-**Works today:** tabs, markups, measuring, stamps, page tools, forms, text editing, OCR,
-digital signatures, compare, redaction, a portable build and a PortableApps.com package.
-
-**Not yet:** a code-signed installer (SmartScreen warns the first time), a proven redaction
-corpus, or every feature of the products above. Check the result before you send a drawing out.
+**Missing something you rely on in Bluebeam or Acrobat?** [Tell us](#feedback). That's how
+most of the features above got here.
 
 ![KanzonasPDF with a marked-up floor plan: an area measurement, a length, a revision cloud, a callout and an APPROVED stamp](docs/screenshot-markup.png)
 
@@ -155,10 +155,12 @@ before it's published, and every release lists the SHA-256 checksum of each down
 - Windows only.
 - Saving changes to a digitally signed file invalidates its signatures (an unchanged signed
   file is saved as an exact copy).
-- Text editing works one line at a time; it doesn't reflow the rest of a paragraph. If the
-  original font isn't available, a close standard font is used.
-- Edit objects works on pictures and vector shapes, not on text, and not on content grouped
-  inside form XObjects.
+- Editing a paragraph rewrites it in one style (a bold word inside comes out like the rest), and
+  a paragraph that grows doesn't push the content below it down. If the original font isn't
+  available, a close standard font is used.
+- Edit objects moves, resizes and rotates pictures and vector shapes; text can be moved and
+  deleted there (change its words with Edit text). Content grouped inside form XObjects can be
+  edited after Ungroup.
 - Password permissions are honored by Acrobat, PDF-XChange and this app, but they aren't
   tamper-proof; use a digital signature to prove a file hasn't changed.
 - A personal certificate proves a document is unchanged, but other people's software shows your

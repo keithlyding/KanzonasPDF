@@ -46,7 +46,9 @@ telemetry before creating recognition sessions.</p>
 <h2 id="start">Getting started</h2>
 <ul>
 <li><b>Open a PDF:</b> File &gt; Open (Ctrl+O), drag a file onto the window, or pick one from
-File &gt; Open recent. Each file opens in its own tab, at the page and zoom you left it.</li>
+File &gt; Open recent. Each file opens in its own tab, at the page and zoom you left it. When
+KanzonasPDF is already open, a PDF opened from Explorer, an e-mail or a browser opens as a new tab
+in it, and the window comes to the front (restored if it was minimized).</li>
 <li><b>Start a new PDF:</b> File &gt; <b>New PDF...</b> (Ctrl+N, or Pages tab &gt; New PDF)
 asks for the page size (Letter, Legal, Tabloid, ANSI C to E, ARCH A to E, A4 to A0) and
 portrait or landscape, then opens a tab named Untitled 1 with one blank page. Add pages with
@@ -589,8 +591,19 @@ size picked before clicking a line applies to that line.</li>
 <li><b>Delete text:</b> with the Edit text tool, right-click the text &gt; <b>Delete text</b>, or
 select it with the Edit objects tool and press Delete (see below). The whole paragraph goes, all
 the lines Add text wrote in one go; pictures and lines under it stay. Ctrl+Z brings it back.</li>
-<li>Edit text tool (Ctrl+E): <b>press on a line and drag</b> to move it (its text and font stay
-as they are). Or click a line of text to edit it right where it is: the cursor goes where you
+<li><b>Edit a paragraph:</b> with the Edit text tool (Ctrl+E), click anywhere in a paragraph: the
+whole paragraph opens in a box of its width, and as you type the words rewrap, as in Word. Press
+Enter and the paragraph is rewritten in its font, size, color and line spacing, and keeps its
+alignment (left, right, centered or justified); a word split by a hyphen at a line's end is
+joined again. Shift+Enter starts a new paragraph. Drag a side handle to make it wider or
+narrower, or the outline to move it (links on it move along; highlights stay where they were,
+since the words have moved within it). A paragraph that gets longer grows downward; it doesn't push what's below it down,
+so if it now runs into text below, the status bar says so (Ctrl+Z undoes it). The paragraph
+is written in one style: a bold or colored word inside it comes out like the rest.</li>
+<li><b>Edit one line:</b> <b>Alt+click</b> a line to edit just that line (drawing labels, title
+blocks, table cells). Single lines, scanned text, sideways text and lines that don't wrap like a
+paragraph (a column of room names or schedule entries) are always edited a line at a time. <b>Press on a line and drag</b> to move it (its text and font stay as they are).
+Editing a line: the cursor goes where you
 clicked, and the line gets a dashed outline with handles, like a selected object. Type the
 change; drag the outline to move the text, drag a handle to change the width the text wraps
 to (the letters keep their size). Press Enter (or click elsewhere)
@@ -924,7 +937,7 @@ settings...).</li>
 <table border="1" cellpadding="3" cellspacing="0">
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
-<tr><td>Ctrl+E</td><td>Edit text</td></tr>
+<tr><td>Ctrl+E</td><td>Edit text (click: the paragraph; Alt+click: one line)</td></tr>
 <tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
 <tr><td>Ctrl+N</td><td>New PDF (blank page)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>
