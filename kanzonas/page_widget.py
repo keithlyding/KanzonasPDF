@@ -908,6 +908,7 @@ class PageWidget(QWidget):
                                  ("back", "Send to back", "Ctrl+Shift+[")):
             a = menu.addAction(f"{label}\t{keys}", lambda h=how: self.view.arrange_objects(h))
             a.setEnabled(not has_text)
+        self._link_actions(menu, pdf, True)
         menu.addSeparator()
         menu.addAction("Delete\tDel", self.view.delete_objects)
         menu.exec(e.globalPosition().toPoint())
@@ -927,6 +928,19 @@ class PageWidget(QWidget):
         h = w * aspect
         y0 = a.y() / z if b.y() >= a.y() else a.y() / z - h
         return pymupdf.Rect(x0, y0, x1, y0 + h)
+
+    def _link_actions(self, menu, pdf, selected):
+        """Add link... for what's selected; Edit link... / Remove link for a link here."""
+        v = self.view
+        here = v.link_at(self.index, pdf)
+        if not selected and here is None:
+            return
+        menu.addSeparator()
+        if selected:
+            menu.addAction("Add link...", v.add_link_to_selection)
+        if here is not None:
+            menu.addAction("Edit link...", lambda: v.edit_link(self.index, here))
+            menu.addAction("Remove link", lambda: v.remove_link_at(self.index, pdf))
 
     def _content_menu(self, e, pdf):
         """Right-click on the page: copy / cut / paste / delete, and for selected text the
@@ -977,6 +991,7 @@ class PageWidget(QWidget):
                                 ("strikeout", "Strike out"), ("comment", "Comment on text..."),
                                 ("redact", "Mark for redaction")):
                 menu.addAction(label, lambda t=tool: v.markup_text_selection(t))
+        self._link_actions(menu, pdf, has_text or has_markups)
         menu.addSeparator()
         act = menu.addAction("Select all text\tCtrl+A")
         act.triggered.connect(lambda: win._clipboard("all"))
@@ -1093,9 +1108,11 @@ class PageWidget(QWidget):
                 self.view.clear_selection()
                 self.view.fill_field(self.index, xref)
                 return
-        # a click (press and release without dragging) on a link follows it
+        # a click (press and release without dragging) on a link follows it: with the Hand
+        # tool; with Select only on Ctrl+click, so clicking to select or edit what the link is
+        # on never opens it by accident
         self._link_press = None
-        if tool in ("hand", "select"):
+        if tool == "hand" or (tool == "select" and ctrl_held(e)):
             link = self.view.link_at(self.index, pdf)
             if link is not None and self.view.annot_at(self.index, pdf) is None:
                 self._link_press = (link, pos)
@@ -1343,10 +1360,14 @@ class PageWidget(QWidget):
                 pdf = self.to_pdf(pos)
                 link = self.view.link_at(self.index, pdf)
                 if link is not None and self.view.annot_at(self.index, pdf) is None:
-                    self.setCursor(Qt.PointingHandCursor)
-                    QToolTip.showText(self.mapToGlobal(pos.toPoint()),
-                                      self.view.link_tip(link), self)
-                    return
+                    if tool == "hand":
+                        self.setCursor(Qt.PointingHandCursor)
+                    tip = self.view.link_tip(link)
+                    if tool == "select":
+                        tip += "\nCtrl+click to open"
+                    QToolTip.showText(self.mapToGlobal(pos.toPoint()), tip, self)
+                    if tool == "hand":
+                        return
             if tool == "hand":
                 self.unsetCursor()
             if tool == "editobjects":

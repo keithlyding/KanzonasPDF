@@ -124,11 +124,11 @@ class VisibleLinks(unittest.TestCase):
         v.add_link(0, F.Rect(40, 40, 200, 80), ("uri", "https://example.com", False))
         self.assertIsNone(link_border(v.doc, v.doc[0].get_links()[0]["xref"]))
 
-    def test_dialog_remembers_box_choice(self):
-        dlg = LinkDialog(None, 3, ("uri", "https://a.example", False))
-        self.assertFalse(dlg.show_box.isChecked())
+    def test_dialog_remembers_the_look(self):
+        dlg = LinkDialog(None, 3, ("uri", "https://a.example", False))   # (an older target)
+        self.assertEqual(dlg.look.currentData(), "none")
         dlg._ok()
-        self.assertEqual(dlg.result_value, ("uri", "https://a.example", False))
+        self.assertEqual(dlg.result_value, ("uri", "https://a.example", "none", None))
 
     def test_printed_with_markups(self):
         from PySide6.QtCore import QRectF
