@@ -192,14 +192,15 @@ def remove(page, links, keep_text=False):
         page.delete_link({"xref": ln["xref"]})
 
 
-def attached(page, region, tol=1.0, share=0.6):
+def attached(page, region, tol=1.0, share=0.6, foreign=False):
     """KanzonasPDF links lying mostly on region (what was made for the item that was there):
     at least `share` of the link's area. A link drawn by hand a little larger than the words
-    still counts; a big link a small item merely sits in doesn't."""
+    still counts; a big link a small item merely sits in doesn't. foreign: links the PDF
+    came with count too (a paragraph moved with Edit text takes its links along)."""
     box = pymupdf.Rect(region) + (-tol, -tol, tol, tol)
     out = []
     for ln in read(page):
-        if not ln["group"]:
+        if not ln["group"] and not foreign:
             continue
         r = ln["rect"]
         area = r.width * r.height
@@ -228,10 +229,11 @@ def transform(page, links, m):
             doc.xref_set_key(ln["xref"], "KZUnder", "[%g %g %g %g]" % (a.x, a.y, b.x, b.y))
 
 
-def follow(page, old_rect, new_rect):
-    """The item that was at old_rect is now at new_rect: its links go along."""
+def follow(page, old_rect, new_rect, foreign=False):
+    """The item that was at old_rect is now at new_rect: its links go along (foreign: the
+    PDF's own links on it too)."""
     o, r = pymupdf.Rect(old_rect), pymupdf.Rect(new_rect)
-    links = attached(page, o)
+    links = attached(page, o, foreign=foreign)
     if not links:
         return 0
     sx = r.width / o.width if o.width else 1.0

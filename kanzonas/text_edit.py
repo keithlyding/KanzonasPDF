@@ -76,26 +76,71 @@ def visible(line):
     return any(s.get("alpha", 255) for s in line["spans"] if s["text"].strip())
 
 
+def _row_key(r, ln):
+    return (round(ln["dir"][0], 2), round(ln["dir"][1], 2), round(_baseline(ln), 1),
+            _along(r, ln)[0])
+
+
+def _covered(pieces, g0, g1):
+    """True when the pieces of a row (sorted (start, end) along it) have text all the way
+    across g0..g1."""
+    x = g0 + 0.5
+    for a0, a1 in pieces:
+        if a1 <= x:
+            continue
+        if a0 > x:
+            return False
+        x = a1
+        if x >= g1 - 0.5:
+            return True
+    return False
+
+
 def _join_spread_pieces(rows):
     """Pieces of one line of a justified paragraph: the wide gaps between its words split
     it into pieces on the same baseline (text_lines keeps a line's pieces apart beyond a
-    small gap, so labels and table cells stay separate). Join pieces in the same font, size
-    and color up to 1.5 letter heights apart into one line."""
-    def key(span):
-        return (span.get("font"), round(span["size"], 1), span.get("color"))
-    rows = sorted(rows, key=lambda h: (round(h[1]["dir"][0], 2), round(h[1]["dir"][1], 2),
-                                       round(_baseline(h[1]), 1), _along(h[0], h[1])[0]))
+    small gap, so labels and table cells stay separate). Join pieces of the same size up to
+    1.5 letter heights apart into one line, but only where the line above or below has text
+    across the gap: a gap that runs down the page is a gutter between columns or table
+    cells, not a stretched space."""
+    rows = sorted(rows, key=lambda h: _row_key(*h))
+    # the pieces of each visual row, by direction and baseline, for the gutter test
+    by_base = {}
+    for r, ln in rows:
+        k = (round(ln["dir"][0], 2), round(ln["dir"][1], 2))
+        by_base.setdefault(k, []).append((_baseline(ln), _along(r, ln)))
+    index = {}
+    for k, items in by_base.items():
+        items.sort()
+        index[k] = ([b for b, _a in items], items)
+
+    def crossed(ln, size, g0, g1):
+        import bisect
+        k = (round(ln["dir"][0], 2), round(ln["dir"][1], 2))
+        bases, items = index[k]
+        base = _baseline(ln)
+        for lo, hi in ((base - 2.0 * size, base - 0.7 * size), (base + 0.7 * size, base + 2.0 * size)):
+            i, j = bisect.bisect_left(bases, lo), bisect.bisect_right(bases, hi)
+            if i >= j:
+                continue
+            near = min(bases[i:j], key=lambda b: abs(b - base))
+            pieces = sorted(a for b, a in items[i:j] if abs(b - near) < 0.25 * size)
+            if _covered(pieces, g0, g1):
+                return True
+        return False
+
     out = []
     for r, ln in rows:
         if out:
             lr, last = out[-1]
             size = max(s["size"] for s in ln["spans"])
-            gap = _along(r, ln)[0] - _along(lr, last)[1]
+            lsize = max(s["size"] for s in last["spans"])
+            g0, g1 = _along(lr, last)[1], _along(r, ln)[0]
             if (abs(last["dir"][0] - ln["dir"][0]) < 0.01 and
                     abs(last["dir"][1] - ln["dir"][1]) < 0.01 and
                     abs(_baseline(last) - _baseline(ln)) < 0.25 * size and
-                    0 <= gap <= 1.5 * size and
-                    key(main_span(last)) == key(main_span(ln))):
+                    abs(size - lsize) < 0.05 * size and
+                    0 <= g1 - g0 <= 1.5 * size and crossed(ln, size, g0, g1)):
                 joined = {"bbox": pymupdf.Rect(lr) | r, "dir": last["dir"],
                           "spans": last["spans"] + ln["spans"]}
                 out[-1] = (pymupdf.Rect(joined["bbox"]), joined)
@@ -291,6 +336,22 @@ def _wrap(text, font, size, width):
             else:
                 cur = trial
         out.append(cur)
+    return out
+
+
+def _wrap_indented(text, font, size, width, indent=0.0):
+    """Greedy word wrap of one paragraph whose first line starts indent points in (a
+    negative indent sets it out)."""
+    out, cur = [], ""
+    for w in text.split(" "):
+        trial = w if not cur else cur + " " + w
+        room = width - indent if not out else width
+        if cur and font.text_length(trial, fontsize=size) > room:
+            out.append(cur)
+            cur = w
+        else:
+            cur = trial
+    out.append(cur)
     return out
 
 
@@ -565,52 +626,333 @@ def _font_for(page, span, text):
                              f"text: {names}. Remove or replace them and try again.")
 
 
-def flows(lines):
+_MARKER = re.compile(r"^\s*(?:[\u2022\u25aa\u25cf\u25e6\u2013\u2014\uf0b7\uf0a7\uf076\uf0d8*-]"
+                     r"|\(?(?:\d{1,3}|[A-Za-z]|[ivxIVX]{1,4})[.)](?:\d{1,2}[.)]?)*)(?:\s|$)")
+_WORD = re.compile(r"[^\W_]", re.UNICODE)
+
+
+def _space_w(size):
+    return 0.27 * size
+
+
+def _visible_right(ln, box, measure=None):
+    """Right end of a line's letters: its box without trailing spaces (word processors
+    keep the space a line was broken at)."""
+    t = line_text(ln)
+    trail = len(t) - len(t.rstrip(" "))
+    if not trail:
+        return box.x1
+    size = main_span(ln)["size"]
+    try:
+        w = measure(" " * trail, size) if measure else trail * _space_w(size)
+    except Exception:
+        w = trail * _space_w(size)
+    return box.x1 - w
+
+
+def _words(text):
+    return [w for w in text.split() if _WORD.search(w)]
+
+
+def flows(lines, measure=None):
     """True when lines read as wrapped text: each line (but the last) ends where the next
-    line's first word wouldn't have fit. A column of labels or schedule entries stacked at a
-    normal line spacing doesn't, and is edited a line at a time."""
+    line's first word wouldn't have fit, and has words enough to be running text. A column
+    of labels, a title block or schedule entries stacked at a normal line spacing don't,
+    and are edited a line at a time."""
+    if len(lines) < 2:
+        return False
     boxes = [pymupdf.Rect(ln["bbox"]) for ln in lines]
-    full = max(b.width for b in boxes)
-    for ln, b, nxt, nb in zip(lines, boxes, lines[1:], boxes[1:]):
-        t = line_text(nxt).strip()
-        if not t:
+    rights = [_visible_right(ln, b, measure) for ln, b in zip(lines, boxes)]
+    body = [b.x0 for b in boxes[1:]]
+    if max(body) - min(body) > 1.5:
+        # centered or set right: compare the lines' widths
+        rights = [r - b.x0 for r, b in zip(rights, boxes)]
+    full = max(rights)
+    counts = []
+    for ln, b, right, nxt, nb in zip(lines, boxes, rights, lines[1:], boxes[1:]):
+        t, tn = line_text(ln).strip(), line_text(nxt).strip()
+        if not tn or "\t" in t or "   " in t:
             return False
-        word = t.split(" ")[0]
-        size = max(s["size"] for s in ln["spans"])
-        word_w = nb.width * len(word) / max(1, len(t))
-        if full - b.width > word_w + 0.8 * size:
+        n = len(_words(t))
+        if n < 2:
             return False
-    return True
+        counts.append(n)
+        word = tn.split(" ")[0]
+        size = main_span(ln)["size"]
+        try:
+            word_w = measure(word, size) if measure else None
+        except Exception:
+            word_w = None
+        if word_w is None:
+            word_w = nb.width * len(word) / max(1, len(tn))
+        if full - right > word_w + _space_w(size) + 0.3 * size:
+            return False
+    last = line_text(lines[-1]).strip()
+    if "\t" in last or "   " in last:
+        return False
+    return sum(counts) / len(counts) >= 4 and sum(counts) + len(_words(last)) >= 8
 
 
-def paragraph_text(lines):
-    """The words of a paragraph's lines as one text: lines joined with a space, a word
-    split by a hyphen at a line's end joined again."""
-    out = ""
+def _hyphen_joins(left, right):
+    """A word broken at a line's end with a hyphen: is the hyphen only the break (it goes
+    when the lines are joined) or part of the word (self-/consolidating keeps it)? Only a
+    joined word the dictionary knows loses it."""
+    a = re.findall(r"[A-Za-z]+$", left[:-1])
+    b = re.findall(r"^[a-z]+", right)
+    if not a or not b:
+        return False
+    try:
+        from . import spelling
+        return spelling.is_known(a[0] + b[0])
+    except Exception:
+        return False
+
+
+def _paragraph_parts(lines):
+    """(paragraph text, where each line's text starts in it)."""
+    out, starts = "", []
     for ln in lines:
         t = line_text(ln).strip()
         if not t:
+            starts.append(len(out))
             continue
         if not out:
             out = t
+            starts.append(0)
+            continue
+        if out.endswith("\u00ad"):
+            out = out[:-1]
         elif out.endswith("-") and len(out) > 1 and out[-2].isalpha() and t[:1].islower():
-            out = out[:-1] + t
+            if _hyphen_joins(out.split(" ")[-1], t):
+                out = out[:-1]
         else:
-            out += " " + t
-    return out
+            out += " "
+        starts.append(len(out))
+        out += t
+    return out, starts
 
 
-def paragraph_layout(lines, measure=None, exact=False):
-    """How a paragraph sits on the page: {"left", "right", "width", "first" (first
-    baseline), "step" (baseline to baseline), "align" (left, right, center, justify),
-    "span" (its main span)}. lines: in reading order, horizontal. measure(text, size): the
-    natural width of text in the paragraph's font, to tell justified lines (their words
-    spread wider than that) even in a paragraph of two lines; exact: measure uses the
-    paragraph's own font (any stretch counts), not a stand-in (only clear stretching)."""
+def paragraph_text(lines):
+    """The words of a paragraph's lines as one text: lines joined with a space; a word
+    split by a hyphen at a line's end (spe-/cification) joined again, a hyphenated word
+    (self-/consolidating) kept."""
+    return _paragraph_parts(lines)[0]
+
+
+def paragraph_index(lines, pt):
+    """Where in paragraph_text(lines) the point pt (on the page) is: the text cursor goes
+    there when a paragraph is clicked."""
+    text, starts = _paragraph_parts(lines)
+    best = min(range(len(lines)), key=lambda i: (0 if pymupdf.Rect(lines[i]["bbox"]).y0 <= pt.y <=
+                                                 pymupdf.Rect(lines[i]["bbox"]).y1 else 1,
+                                                 abs(_baseline(lines[i]) - pt.y)))
+    ln = lines[best]
+    raw = line_text(ln)
+    lead = len(raw) - len(raw.lstrip())
+    # walk the spans as line_text joins them (a space between pieces set apart)
+    pos, length, prev = 0, 0, None
+    for sp in ln["spans"]:
+        if prev is not None:
+            gap = _along(pymupdf.Rect(sp["bbox"]), ln)[0] - _along(pymupdf.Rect(prev["bbox"]), ln)[1]
+            if gap > 0.15 * sp["size"] and not raw[:length].endswith(" ") and \
+                    not sp["text"].startswith(" "):
+                length += 1
+        r = pymupdf.Rect(sp["bbox"])
+        n = len(sp["text"])
+        if pt.x >= r.x1:
+            pos = length + n
+        elif pt.x > r.x0 and n:
+            pos = length + int(round((pt.x - r.x0) / max(r.width, 0.01) * n))
+            break
+        else:
+            pos = length
+            break
+        length += n
+        prev = sp
+    end = starts[best + 1] if best + 1 < len(starts) else len(text)
+    return max(starts[best], min(end, starts[best] + pos - lead))
+
+
+def _marker_before(row, rows_on_base):
+    """A bullet or number set apart just before this line (on its baseline): the line
+    starts a list item."""
+    r, ln = row
+    size = main_span(ln)["size"]
+    for r2, ln2 in rows_on_base:
+        if ln2 is ln or r2.x1 > r.x0 + 0.5 or r.x0 - r2.x1 > 4 * size:
+            continue
+        if len(line_text(ln2).strip()) <= 6:
+            return True
+    return False
+
+
+def _split_marker(r, ln):
+    """A line that starts with a bullet or number set apart from its text ("2.   DO NOT
+    SCALE...") as two pieces, so the number stays and the text is the paragraph's."""
+    spans = ln["spans"]
+    first = spans[0]["text"].strip()
+    if len(spans) < 2 or not first or len(first) > 6 or not _MARKER.match(first + " "):
+        return [(r, ln)]
+    size = main_span(ln)["size"]
+    # (MuPDF may fill the gap with a space of its own)
+    k = next((i for i in range(1, len(spans)) if spans[i]["text"].strip()), None)
+    if k is None or spans[k]["bbox"][0] - spans[0]["bbox"][2] < 0.3 * size:
+        return [(r, ln)]
+    mark = {"bbox": pymupdf.Rect(spans[0]["bbox"]), "dir": ln["dir"], "spans": spans[:k]}
+    rest_box = pymupdf.Rect()
+    for sp in spans[k:]:
+        rest_box |= pymupdf.Rect(sp["bbox"])
+    rest = {"bbox": rest_box, "dir": ln["dir"], "spans": spans[k:]}
+    return [(pymupdf.Rect(mark["bbox"]), mark), (pymupdf.Rect(rest_box), rest)]
+
+
+def paragraph_at(lines, line):
+    """The lines of the paragraph holding line (horizontal text; text_lines output), in
+    reading order, or None when it isn't clearly a paragraph of wrapped lines: what a
+    click with Edit text rewrites. Lines stack at one size and an even line spacing, with
+    one left edge (the first may be indented); a bullet or number, a change of size or
+    spacing, or lines that don't wrap like running text end it."""
+    rows = [(r, ln) for r, ln in _join_spread_pieces(
+        [(r, ln) for r, ln in lines if visible(ln)])
+        if abs(ln["dir"][0] - 1) < 0.01 and abs(ln["dir"][1]) < 0.01]
+    rows = [piece for h in rows for piece in _split_marker(*h)]
+    ids = {id(s) for s in line["spans"]}
+    mine = [h for h in rows if h[1] is line or any(id(s) in ids for s in h[1]["spans"])]
+    # (a number split off its line: the line's text is what was clicked)
+    start = max(mine, key=lambda h: len(line_text(h[1]).strip())) if mine else None
+    if start is None:
+        # the same line from another reading of the page: match by place
+        box, base = pymupdf.Rect(line["bbox"]), _baseline(line)
+        start = next((h for h in rows if abs(_baseline(h[1]) - base) < 0.5 and
+                      h[0].x0 - 0.5 <= box.x0 and box.x1 <= h[0].x1 + 0.5), None)
+    if start is None:
+        return None
+    rows.sort(key=lambda h: (_baseline(h[1]), h[0].x0))
+    bases = [_baseline(ln) for _r, ln in rows]
+    import bisect
+
+    def size_of(h):
+        return main_span(h[1])["size"]
+    size = size_of(start)
+
+    def on_base(h):
+        b = _baseline(h[1])
+        i, j = bisect.bisect_left(bases, b - 0.25 * size), bisect.bisect_right(bases, b + 0.25 * size)
+        return rows[i:j]
+
+    def near(h, down):
+        """Rows on the nearest baseline above / below h that overlap it across the page."""
+        b = _baseline(h[1])
+        lo, hi = (b + 0.7 * size, b + 2.2 * size) if down else (b - 2.2 * size, b - 0.7 * size)
+        i, j = bisect.bisect_left(bases, lo), bisect.bisect_right(bases, hi)
+        cands = [c for c in rows[i:j] if abs(size_of(c) - size) <= 0.03 * size and
+                 c[0].x0 < h[0].x1 + 2 * size and c[0].x1 > h[0].x0 - 2 * size]
+        if not cands:
+            return None
+        nb = min(cands, key=lambda c: abs(_baseline(c[1]) - b))
+        nb_base = _baseline(nb[1])
+        same = [c for c in cands if abs(_baseline(c[1]) - nb_base) < 0.25 * size]
+        return min(same, key=lambda c: abs(c[0].x0 - h[0].x0))
+
+    tol = max(1.5, 0.15 * size)
+    pitch = [None]
+
+    def even(a, b):
+        """The same line spacing as the lines taken so far (it's set by the first two)."""
+        step = abs(_baseline(b[1]) - _baseline(a[1]))
+        return pitch[0] is None or abs(step - pitch[0]) <= max(0.6, 0.08 * pitch[0])
+
+    def take(a, b):
+        if pitch[0] is None:
+            pitch[0] = abs(_baseline(b[1]) - _baseline(a[1]))
+
+    def edges(h):
+        right = _visible_right(h[1], h[0])
+        return h[0].x0, right, (h[0].x0 + right) / 2
+
+    def lined_up(a, b):
+        """How two lines line up: 'left', 'right', 'center' or None."""
+        ea, eb = edges(a), edges(b)
+        if abs(ea[0] - eb[0]) <= tol:
+            return "left"
+        if abs(ea[1] - eb[1]) <= tol:
+            return "right"
+        if abs(ea[2] - eb[2]) <= tol:
+            return "center"
+        return None
+
+    mode = [None]
+
+    def fits(a, b):
+        m = lined_up(a, b)
+        if m is None or (mode[0] is not None and m != mode[0] and
+                         not (mode[0] == "left" and m in ("right", "center") and
+                              abs(edges(a)[0] - edges(b)[0]) <= tol)):
+            return False
+        if mode[0] is None:
+            mode[0] = m
+        return True
+
+    chain = [start]
+    # upward: lines lined up the same way; an indented line is the first and ends it
+    if not _marker_before(start, on_base(start)):
+        cur = start
+        while True:
+            up = near(cur, down=False)
+            if up is None or not even(up, cur):
+                break
+            if fits(up, cur):
+                take(up, cur)
+                chain.insert(0, up)
+                cur = up
+                if _marker_before(up, on_base(up)):
+                    break
+                continue
+            dx = up[0].x0 - cur[0].x0
+            if mode[0] in (None, "left") and tol < dx <= 6 * size:
+                take(up, cur)
+                chain.insert(0, up)
+                mode[0] = "left"
+            break
+    cur = chain[-1]
+    while True:
+        down = near(cur, down=True)
+        if down is None or _marker_before(down, on_base(down)) or not even(cur, down):
+            break
+        if len(chain) == 1 and mode[0] is None:
+            dx = down[0].x0 - cur[0].x0
+            if -6 * size <= dx < -tol and not _marker_before(cur, on_base(cur)) and \
+                    lined_up(cur, down) is None:
+                mode[0] = "left"                # cur is a first line set in
+                take(cur, down)
+                chain.append(down)
+                cur = down
+                continue
+        if not fits(cur, down):
+            break
+        take(cur, down)
+        chain.append(down)
+        cur = down
+    lines_out = [ln for _r, ln in chain]
+    if len(lines_out) < 2 or not flows(lines_out):
+        return None
+    return lines_out
+
+
+def paragraph_layout(lines, measure=None, exact=False, gaps=None):
+    """How a paragraph sits on the page: {"left", "first_left" (the first line's start:
+    an indent), "right", "width", "first" (first baseline), "step" (baseline to
+    baseline), "align" (left, right, center, justify), "span" (its main span)}. lines: in
+    reading order, horizontal. measure(text, size): the natural width of text in the
+    paragraph's font, to tell justified lines (their words spread wider than that) even in
+    a paragraph of two lines; exact: measure uses the paragraph's own font (any stretch
+    counts), not a stand-in (only clear stretching). gaps(line): the spaces between its
+    words as set on the page: justified lines have wider ones than the last line (or than
+    a space), whatever the font measures."""
     boxes = [pymupdf.Rect(ln["bbox"]) for ln in lines]
     lefts = [b.x0 for b in boxes]
-    rights = [b.x1 for b in boxes]
-    mids = [(b.x0 + b.x1) / 2 for b in boxes]
+    rights = [_visible_right(ln, b, measure) for ln, b in zip(lines, boxes)]
+    mids = [(l + r) / 2 for l, r in zip(lefts, rights)]
     bases = [ln["spans"][0]["origin"][1] for ln in lines]
     steps = sorted(b - a for a, b in zip(bases, bases[1:]))
     main = max((s for ln in lines for s in ln["spans"] if s["text"].strip()),
@@ -620,33 +962,80 @@ def paragraph_layout(lines, measure=None, exact=False):
         return max(v) - min(v) if v else 0.0
     tol = 1.5
 
-    def stretched(ln, box):
-        t = line_text(ln)
+    def stretched(ln, box, right):
+        t = line_text(ln).rstrip(" ")
         gaps = t.strip().count(" ")
         if measure is None or not gaps:
             return False
         try:
-            extra = box.width - measure(t, main["size"])
+            extra = (right - box.x0) - measure(t, main["size"])
         except Exception:
             return False
         if exact:
             return extra > 1.0
         return extra / gaps > 0.12 * main["size"] and extra > 0.02 * box.width
+    # a first line indented (or set out) from the rest keeps its own start
+    body = lefts[1:] if len(lefts) > 1 else lefts
+    first_left = lefts[0]
+    left = min(body) if spread(body) <= tol else min(lefts)
+    if abs(first_left - left) <= tol:
+        first_left = left
+    def median(v):
+        v = sorted(v)
+        return v[len(v) // 2] if v else None
+
+    def wide_gaps():
+        """None when the gaps can't tell; else whether the full lines' spaces are wider."""
+        if gaps is None:
+            return None
+        try:
+            natural = median(gaps(lines[-1]))
+            if natural is None and measure is not None:
+                natural = measure(" ", main["size"])
+            if natural is None:
+                return None
+            per = [median(gaps(ln)) for ln in lines[:-1]]
+        except Exception:
+            return None
+        per = [g for g in per if g is not None]
+        if not per:
+            return None
+        wide = sum(g > natural + max(0.35, 0.1 * natural) for g in per)
+        return wide * 2 > len(per)
     align = "left"
-    if spread(lefts) <= tol:
+    if spread(body) <= tol:
         full = len(lines) >= 2 and spread(rights[:-1]) <= tol
-        if full and len(lines) >= 3 and rights[-1] < max(rights) - 3:
-            align = "justify"
-        elif full and measure is not None and \
-                all(stretched(ln, b) for ln, b in zip(lines[:-1], boxes[:-1])):
+        judged = wide_gaps() if full else None
+        if judged is not None:
+            if judged:
+                align = "justify"
+        elif full and measure is not None:
+            hits = sum(stretched(ln, b, r) for ln, b, r in zip(lines[:-1], boxes[:-1], rights[:-1]))
+            if hits * 2 >= len(lines) - 1 and (len(lines) >= 3 and rights[-1] < max(rights) - 3
+                                               or hits == len(lines) - 1):
+                align = "justify"
+        elif full and len(lines) >= 3 and rights[-1] < max(rights) - 3:
             align = "justify"
     elif spread(rights) <= tol:
         align = "right"
     elif spread(mids) <= tol:
         align = "center"
-    return {"left": min(lefts), "right": max(rights), "width": max(rights) - min(lefts),
-            "first": bases[0], "step": steps[len(steps) // 2] if steps else main["size"] * 1.2,
+    if align in ("right", "center"):
+        first_left = left = min(lefts)
+    return {"left": left, "first_left": first_left, "right": max(rights),
+            "width": max(rights) - left, "first": bases[0],
+            "step": steps[len(steps) // 2] if steps else main["size"] * 1.2,
             "align": align, "span": main}
+
+
+def _word_gaps(words, line):
+    """The spaces between a line's words as set on the page (points). words: the page's
+    words around it (page.get_text("words"))."""
+    box = pymupdf.Rect(line["bbox"]) + (-1, -1, 1, 1)
+    base = _baseline(line)
+    mine = sorted((w for w in words if w[1] - 1 <= base <= w[3] + 1 and
+                   box.x0 <= w[0] and w[2] <= box.x1), key=lambda w: w[0])
+    return [b[0] - a[2] for a, b in zip(mine, mine[1:]) if b[0] >= a[2] - 0.5]
 
 
 def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=None,
@@ -664,6 +1053,10 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
     if text and found is None:
         found, text = _font_for(page, main, text)
     # the paragraph's own font measures how far its lines were spread (justified)
+    area = pymupdf.Rect()
+    for ln in lines:
+        area |= pymupdf.Rect(ln["bbox"])
+    words = page.get_text("words", clip=area + (-1, -1, 1, 1))
     try:
         own, _t = _font_for(page, main, paragraph_text(lines))
         ruler = own[1] if own else pymupdf.Font(_base14(main))
@@ -672,9 +1065,10 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
         name = main.get("font", "").split("+")[-1]
         exact = (own is None and name.startswith(("Helvetica", "Times", "Courier"))) or \
             (own is not None and not own[0].startswith(("KZUni", "KZB")))
-        lay = paragraph_layout(lines, lambda t, sz: ruler.text_length(t, fontsize=sz), exact)
+        lay = paragraph_layout(lines, lambda t, sz: ruler.text_length(t, fontsize=sz), exact,
+                               lambda ln: _word_gaps(words, ln))
     except ValueError:
-        lay = paragraph_layout(lines)
+        lay = paragraph_layout(lines, gaps=lambda ln: _word_gaps(words, ln))
     size = float(size or main["size"])
     step = lay["step"] * (size / main["size"])
     _remove_lines(page, lines)
@@ -687,36 +1081,40 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
         fontname = _base14(main)
         fnt = pymupdf.Font(fontname)
     width = wrap_width or lay["width"]
+    indent = lay["first_left"] - lay["left"]         # the first line's own start
     rows = []
     for part in text.split("\n"):                    # Shift+Enter: a new paragraph
-        wrapped = _wrap(part, fnt, size, width)
-        rows += [(r, i == len(wrapped) - 1) for i, r in enumerate(wrapped)]
+        wrapped = _wrap_indented(part, fnt, size, width, indent)
+        rows += [(r, i == 0, i == len(wrapped) - 1) for i, r in enumerate(wrapped)]
     color = _rgb(main["color"])
     left, right = lay["left"] + offset[0], lay["left"] + offset[0] + width
     y = lay["first"] + offset[1]
     top = y - size
     bases = []
-    for row, last in rows:
+    for row, first, last in rows:
         bases.append(y)
         row = row.strip()
         length = fnt.text_length(row, fontsize=size)
         words = row.split(" ")
+        start = left + indent if first else left
         if lay["align"] == "justify" and not last and len(words) > 1:
-            gap = (width - sum(fnt.text_length(w, fontsize=size) for w in words)) / (len(words) - 1)
-            x = left
+            gap = (right - start - sum(fnt.text_length(w, fontsize=size) for w in words)) / \
+                (len(words) - 1)
+            x = start
             for w in words:
                 page.insert_text(pymupdf.Point(x, y), w, fontsize=size, fontname=fontname,
                                  color=color)
                 x += fnt.text_length(w, fontsize=size) + gap
         else:
             x = {"right": right - length, "center": (left + right - length) / 2}.get(
-                lay["align"], left)
+                lay["align"], start)
             page.insert_text(pymupdf.Point(x, y), row, fontsize=size, fontname=fontname,
                              color=color)
         y += step
     if found:
         _fix_spaces(page, fontname, fnt)
-    return fontname, pymupdf.Rect(left, top, right, y - step + size * 0.25), bases
+    return fontname, pymupdf.Rect(min(left, left + indent), top, right,
+                                  y - step + size * 0.25), bases
 
 
 def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None,
