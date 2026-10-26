@@ -147,6 +147,8 @@ before it's published, and every release lists the SHA-256 checksum of each down
   described in [SECURITY.md](SECURITY.md).
 - **Want to contribute?** See [CONTRIBUTING.md](CONTRIBUTING.md) and the
   [Code of Conduct](CODE_OF_CONDUCT.md).
+- **Like it?** If KanzonasPDF saves you time, a ⭐ star on GitHub (top right of this page)
+  helps other people find it, and telling a colleague helps even more.
 
 ## Known limitations
 
