@@ -206,7 +206,9 @@ class PropertiesPanel(QWidget):
         name = A.LABELS.get(kind, kind)
         self.title.setText(f"Selected: {name}" if selected else f"{name}: default style")
         self.hint.setText("Changes apply to the selected annotation." if selected else
-                          "Used for the text you add or edit next; it's written into the page."
+                          "The line being edited: a font or size picked here changes that "
+                          "line only." if kind == "edittext" else
+                          "Used for the text you add next; it's written into the page."
                           if kind in A.PAGE_TEXT_TOOLS else
                           "Saved for next time. New annotations use these settings.")
         self.reset.setVisible(not selected)

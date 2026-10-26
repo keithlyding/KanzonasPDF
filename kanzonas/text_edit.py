@@ -71,6 +71,47 @@ def text_lines(page):
     return [(m["bbox"], m) for m in merged]
 
 
+def visible(line):
+    """False for text nobody sees (a scanner's OCR layer: invisible, opacity 0)."""
+    return any(s.get("alpha", 255) for s in line["spans"] if s["text"].strip())
+
+
+def text_blocks(lines):
+    """The page's visible text as paragraphs: [(rect, [(rect, line), ...])], lines in
+    order. Lines join a paragraph when they run the same way, are about the same size and
+    sit one under the other at a normal line spacing (so what Add text wrote in one go is
+    one paragraph). For Edit objects: select, move and delete text as one piece."""
+    rows = [(r, ln) for r, ln in lines if visible(ln)]
+    rows.sort(key=lambda h: (round(h[1]["dir"][0], 2), round(h[1]["dir"][1], 2),
+                             _baseline(h[1]), _along(h[0], h[1])[0]))
+    blocks = []
+    for r, ln in rows:
+        size = max(s["size"] for s in ln["spans"])
+        for blk in reversed(blocks[-6:]):           # paragraphs still open nearby
+            lr, last = blk[-1]
+            lsize = max(s["size"] for s in last["spans"])
+            if (abs(last["dir"][0] - ln["dir"][0]) > 0.01 or
+                    abs(last["dir"][1] - ln["dir"][1]) > 0.01 or
+                    not 0.75 < size / lsize < 1.33):
+                continue
+            step = abs(_baseline(ln) - _baseline(last))
+            a0, a1 = _along(r, ln)
+            b0, b1 = _along(lr, last)
+            if 0.8 * max(size, lsize) < step <= 1.75 * max(size, lsize) and \
+                    (min(a1, b1) - max(a0, b0) > 0 or abs(a0 - b0) < 2 * size):
+                blk.append((r, ln))
+                break
+        else:
+            blocks.append([(r, ln)])
+    out = []
+    for blk in blocks:
+        box = pymupdf.Rect()
+        for r, _ln in blk:
+            box |= r
+        out.append((box, blk))
+    return out
+
+
 def line_at(lines, pt):
     """Smallest line whose box contains the point (or is within 2pt of it)."""
     hits = [(r, l) for r, l in lines if (r + (-2, -2, 2, 2)).contains(pt)]
@@ -418,6 +459,43 @@ def _unwritable(text):
     return out
 
 
+def removal_bands(line):
+    """Where a line's letters are taken out (unrotated page coords). A letter goes when the
+    redaction touches its box, which spans the font's full height: a thin band through the
+    middle of each span takes all of it (punctuation too) and never reaches the boxes of
+    the lines above and below, even where those overlap this one (OCR text layers)."""
+    dx, dy = line["dir"]
+    out = []
+    for s in line["spans"]:
+        r = pymupdf.Rect(s["bbox"])
+        if abs(dx) >= abs(dy):
+            mid, half = (r.y0 + r.y1) / 2, max(0.5, r.height * 0.1)
+            r = pymupdf.Rect(r.x0, mid - half, r.x1, mid + half)
+        else:
+            mid, half = (r.x0 + r.x1) / 2, max(0.5, r.width * 0.1)
+            r = pymupdf.Rect(mid - half, r.y0, mid + half, r.y1)
+        out.append(r)
+    return out
+
+
+def _remove_lines(page, lines):
+    for line in lines:
+        for r in removal_bands(line):
+            page.add_redact_annot(r, fill=False)
+    page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
+                          graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
+                          text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+
+
+def delete_lines(page, lines):
+    """Take these lines of text out of the page; pictures and line art stay."""
+    from .annotations import each_annot
+    if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
+        raise ValueError("Apply or remove the redaction marks on this page before deleting "
+                         "its text.")
+    _remove_lines(page, lines)
+
+
 def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None,
                  scan="auto", info=None):
     """Remove the line's text and write new_text in its place.
@@ -485,23 +563,8 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
                                  f"the new text: {names}. Remove or replace them and try "
                                  "again.")
 
-    # 2) remove only the text of this line (keep line art and images). A letter goes when
-    # the redaction touches its box, which spans the font's full height: a thin band through
-    # the middle of the line takes all of it (punctuation too) and never reaches the boxes
-    # of the lines above and below, even where those overlap this one (OCR text layers).
-    dx, dy = line["dir"]
-    for s in line["spans"]:
-        r = pymupdf.Rect(s["bbox"])
-        if abs(dx) >= abs(dy):
-            mid, half = (r.y0 + r.y1) / 2, max(0.5, r.height * 0.1)
-            r = pymupdf.Rect(r.x0, mid - half, r.x1, mid + half)
-        else:
-            mid, half = (r.x0 + r.x1) / 2, max(0.5, r.width * 0.1)
-            r = pymupdf.Rect(mid - half, r.y0, mid + half, r.y1)
-        page.add_redact_annot(r, fill=False)
-    page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
-                          graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
-                          text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+    # 2) remove only the text of this line (keep line art and images)
+    _remove_lines(page, [line])
     if scan:
         # the old letters in the scan's picture: covered with the paper color
         for r in cover:

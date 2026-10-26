@@ -654,8 +654,8 @@ class PageWidget(QWidget):
 
     def _objects_handles(self):
         items = self._objects_here()
-        if not items:
-            return {}
+        if not items or any(it["kind"] == "text" for it in items):
+            return {}                   # text is moved, not resized (Edit text changes it)
         return box_handles(self.to_screen(self.view.selected_objects_rect()).adjusted(-2, -2, 2, 2))
 
     def _draw_object(self, p, item, page):
@@ -888,6 +888,7 @@ class PageWidget(QWidget):
         if not items:
             return
         one_pic = len(items) == 1 and items[0]["kind"] == "picture"
+        has_text = any(it["kind"] == "text" for it in items)
         menu = QMenu(self)
         a = menu.addAction("Copy picture", self.view.copy_picture)
         a.setEnabled(one_pic)
@@ -897,16 +898,18 @@ class PageWidget(QWidget):
         a = menu.addAction("Ungroup", self.view.ungroup_objects)
         a.setEnabled(any(it["kind"] == "group" for it in items))
         menu.addSeparator()
-        menu.addAction("Rotate clockwise", lambda: self.view.rotate_objects(90))
-        menu.addAction("Rotate counterclockwise", lambda: self.view.rotate_objects(-90))
+        for deg, label in ((90, "Rotate clockwise"), (-90, "Rotate counterclockwise")):
+            a = menu.addAction(label, lambda d=deg: self.view.rotate_objects(d))
+            a.setEnabled(not has_text)
         menu.addSeparator()
         for how, label, keys in (("front", "Bring to front", "Ctrl+Shift+]"),
                                  ("forward", "Bring forward", "Ctrl+]"),
                                  ("backward", "Send backward", "Ctrl+["),
                                  ("back", "Send to back", "Ctrl+Shift+[")):
-            menu.addAction(f"{label}\t{keys}", lambda h=how: self.view.arrange_objects(h))
+            a = menu.addAction(f"{label}\t{keys}", lambda h=how: self.view.arrange_objects(h))
+            a.setEnabled(not has_text)
         menu.addSeparator()
-        menu.addAction("Delete", self.view.delete_objects)
+        menu.addAction("Delete\tDel", self.view.delete_objects)
         menu.exec(e.globalPosition().toPoint())
 
     def _sig_box(self):
@@ -942,6 +945,10 @@ class PageWidget(QWidget):
         has_text = v.text_sel is not None
         has_markups = v.selection is not None
         menu = QMenu(self)
+        if v.tool == "edittext" and v.text_line_rect(self.index, pdf) is not None:
+            # the text written into the page under the pointer (its whole paragraph)
+            menu.addAction("Delete text", lambda: v.delete_text_at(self.index, pdf))
+            menu.addSeparator()
         # menu-only actions (the Edit menu's own ones keep their enabled state)
         for what, label, keys in (("cut", "Cut", "Ctrl+X"), ("copy", "Copy", "Ctrl+C"),
                                   ("paste", "Paste", "Ctrl+V")):

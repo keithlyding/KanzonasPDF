@@ -667,6 +667,7 @@ class MainWindow(QMainWindow):
         except (TypeError, ValueError):
             minutes = 5
         self.autosave = autosave.Autosaver(self, minutes)
+        annotations.forget_saved_transient()    # an Edit text size saved before 1.2.1
         DocumentView.open_view = self.settings.value("open_view", "width")
         for kind in ("signature", "initials"):
             try:
@@ -1401,6 +1402,8 @@ class MainWindow(QMainWindow):
             (v.documentChanged, self._markups_timer.start),
             (v.structureChanged, self._markups_timer.start),
             (v.requestSignature, self._sign_field),
+            (v.textToolPropsChanged,
+             lambda: self.sender() is self.view() and self._refresh_props()),
             (v.pageChanged, self._on_page_changed),
             (v.zoomChanged, lambda _: self._update_ui()),
             (v.documentChanged, self._on_doc_changed),

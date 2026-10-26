@@ -440,7 +440,7 @@ the outer two stay put.</li>
 <li><b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]),
 <b>Send backward</b> (Ctrl+[), <b>Send to back</b> (Ctrl+Shift+[). With pictures or shapes of
 the page itself selected (Edit objects tool), these change their order on the page instead
-(see Editing the PDF's own pictures and shapes).</li>
+(see Editing the PDF's own pictures, shapes and text).</li>
 </ul>
 
 <h2 id="objects">Objects panel and locking</h2>
@@ -500,13 +500,22 @@ marked as downloaded from the internet, so Windows and Office treat them with th
 care.</li>
 </ul>
 
-<h2 id="editobjects">Editing the PDF's own pictures and shapes</h2>
+<h2 id="editobjects">Editing the PDF's own pictures, shapes and text</h2>
 <ul>
 <li>Edit objects tool (Shift+O; Home tab, Tools menu), like Bluebeam's Edit content: works on
 the pictures (logos, photos, scans) and vector shapes (lines, rectangles, circles, curves,
 filled areas, CAD line work) that are part of the page itself, not on markups. Point at an object
 to see it outlined; click to select it. Lines are picked up within a few pixels; a filled shape
 is picked up anywhere inside it.</li>
+<li><b>Text:</b> the page's own text (what Add text wrote, and the text of the PDF) is selected a
+paragraph at a time: click a word to select its paragraph, and everything Add text wrote in one
+go comes together. A selection box takes text only when there are no pictures or shapes in it
+(so a box around a drawing detail selects its line work, not its labels); Ctrl+click adds text
+to a selection. Press <b>Delete</b> (or Backspace) or right-click &gt; <b>Delete</b> to remove
+it; drag it to move it (highlights and other markups on it move along). Text isn't resized,
+rotated or re-stacked here: change its words, font and size with Edit text. Pictures and lines
+under it stay. If other text overlaps it so closely that some of its letters would go too,
+KanzonasPDF asks first. Invisible text (a scanner's recognized-text layer) isn't selected.</li>
 <li><b>Groups:</b> a drawing group the page places as one piece (flattened markups and stamps
 become these, and some programs export a whole drawing as one) is selected, moved, resized,
 rotated, deleted and re-stacked as one object, as in Acrobat and PDF-XChange. A group that
@@ -550,11 +559,14 @@ itself, like Acrobat's Add Text: PDF viewers can't change it, and Edit text chan
 Pick the font (any installed font, plus Bold and Italic), size and color in Properties. The
 <b>Font size</b> can also be changed while you type: the text shows at the new size right away.
 Only the letters used are stored in the file.</li>
-<li><b>Change a line's font or size:</b> with the Edit text tool, pick a font (and Bold /
-Italic) or a <b>Font size</b> in Properties, then click the line and press Enter, with or without
-changing the text. The size can also be changed while the line is open. Pick <b>Keep the line's
-font</b> or <b>Keep the line's size</b> (the lowest font size) to go back to keeping each line's
-own font and size.</li>
+<li><b>Change a line's font or size:</b> with the Edit text tool, click the line: Properties
+shows its own <b>Font size</b>. Change the size, or pick a font (and Bold / Italic), and press
+Enter, with or without changing the text. The choice applies to that line only: the next line you
+click keeps its own font and size again (Keep the line's font / Keep the line's size). A font or
+size picked before clicking a line applies to that line.</li>
+<li><b>Delete text:</b> with the Edit text tool, right-click the text &gt; <b>Delete text</b>, or
+select it with the Edit objects tool and press Delete (see below). The whole paragraph goes, all
+the lines Add text wrote in one go; pictures and lines under it stay. Ctrl+Z brings it back.</li>
 <li>Edit text tool (Ctrl+E): <b>press on a line and drag</b> to move it (its text and font stay
 as they are). Or click a line of text to edit it right where it is: the cursor goes where you
 clicked, and the line gets a dashed outline with handles, like a selected object. Type the
