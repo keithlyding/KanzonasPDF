@@ -12,7 +12,7 @@ if sys.stdout is None:
 if sys.stderr is None:
     sys.stderr = open(os.devnull, "w")
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 from .main_window import MainWindow, APP_NAME
@@ -34,6 +34,8 @@ def main():
     sock = QLocalSocket()
     sock.connectToServer(name)
     if sock.waitForConnected(300):
+        from . import winfocus
+        winfocus.allow_foreground()          # so the running window may come to the front
         sock.write(("\n".join(files) + "\n").encode("utf-8"))
         sock.flush()
         sock.waitForBytesWritten(1000)
@@ -63,9 +65,8 @@ def main():
             for line in bytes(conn.readAll()).decode("utf-8", "replace").splitlines():
                 if line.strip():
                     win.open_file(line.strip())
-            win.setWindowState(win.windowState() & ~Qt.WindowMinimized)
-            win.raise_()
-            win.activateWindow()
+            from . import winfocus
+            winfocus.bring_to_front(win)
         conn.readyRead.connect(read)
     server.newConnection.connect(incoming)
     sys.exit(app.exec())

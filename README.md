@@ -31,7 +31,7 @@ Acrobat-style forms, signatures, redaction and text editing, but not the price, 
 | Price | Free forever, open source | Subscription | Subscription | Free with watermarks, or a license |
 | Calibrated measuring (length, area, volume, count) | Yes | Yes | Basic | Yes |
 | Compare revisions (clouds the changes) | Yes | Yes | Yes | Yes |
-| Edit page text and objects | Yes (one line at a time) | Limited | Yes | Yes |
+| Edit page text and objects | Yes (paragraphs rewrap) | Limited | Yes | Yes |
 | Portable (USB stick, nothing in the registry) | Yes | No | No | Yes |
 | Runs offline, no account | Yes | Account | Account | Yes |
 
@@ -155,8 +155,9 @@ before it's published, and every release lists the SHA-256 checksum of each down
 - Windows only.
 - Saving changes to a digitally signed file invalidates its signatures (an unchanged signed
   file is saved as an exact copy).
-- Text editing works one line at a time; it doesn't reflow the rest of a paragraph. If the
-  original font isn't available, a close standard font is used.
+- Editing a paragraph rewrites it in one style (a bold word inside comes out like the rest), and
+  a paragraph that grows doesn't push the content below it down. If the original font isn't
+  available, a close standard font is used.
 - Edit objects moves, resizes and rotates pictures and vector shapes; text can be moved and
   deleted there (change its words with Edit text). Content grouped inside form XObjects can be
   edited after Ungroup.

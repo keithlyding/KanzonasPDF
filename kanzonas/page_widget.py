@@ -82,6 +82,10 @@ def ctrl_held(e):
     return bool(e.modifiers() & Qt.ControlModifier)
 
 
+def alt_held(e):
+    return bool(e.modifiers() & Qt.AltModifier)
+
+
 
 HIT_FRAME_MIN = (36, 24)    # px: the frame around the current search match never gets smaller
 
@@ -1203,6 +1207,7 @@ class PageWidget(QWidget):
                 self.view.edit_text_at(self.index, pdf)     # says there's no text there
             else:
                 self._text_move = {"start": pos, "pdf": pdf, "rect": rect, "now": None,
+                                   "one_line": alt_held(e),
                                    "pix": None}
         elif tool == "addtext":
             self.view.add_text_at(self.index, pdf)
@@ -1476,7 +1481,8 @@ class PageWidget(QWidget):
             self.unsetCursor()
             self.update()
             if tm["now"] is None:
-                self.view.edit_text_at(self.index, tm["pdf"])
+                # a click edits the paragraph; Alt+click just the line
+                self.view.edit_text_at(self.index, tm["pdf"], one_line=tm.get("one_line", False))
             else:
                 a, b = self.to_pdf(tm["start"]), self.to_pdf(pos)
                 self.view.move_text_line(self.index, tm["pdf"], (b.x - a.x, b.y - a.y))

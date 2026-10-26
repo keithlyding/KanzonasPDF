@@ -76,12 +76,40 @@ def visible(line):
     return any(s.get("alpha", 255) for s in line["spans"] if s["text"].strip())
 
 
+def _join_spread_pieces(rows):
+    """Pieces of one line of a justified paragraph: the wide gaps between its words split
+    it into pieces on the same baseline (text_lines keeps a line's pieces apart beyond a
+    small gap, so labels and table cells stay separate). Join pieces in the same font, size
+    and color up to 1.5 letter heights apart into one line."""
+    def key(span):
+        return (span.get("font"), round(span["size"], 1), span.get("color"))
+    rows = sorted(rows, key=lambda h: (round(h[1]["dir"][0], 2), round(h[1]["dir"][1], 2),
+                                       round(_baseline(h[1]), 1), _along(h[0], h[1])[0]))
+    out = []
+    for r, ln in rows:
+        if out:
+            lr, last = out[-1]
+            size = max(s["size"] for s in ln["spans"])
+            gap = _along(r, ln)[0] - _along(lr, last)[1]
+            if (abs(last["dir"][0] - ln["dir"][0]) < 0.01 and
+                    abs(last["dir"][1] - ln["dir"][1]) < 0.01 and
+                    abs(_baseline(last) - _baseline(ln)) < 0.25 * size and
+                    0 <= gap <= 1.5 * size and
+                    key(main_span(last)) == key(main_span(ln))):
+                joined = {"bbox": pymupdf.Rect(lr) | r, "dir": last["dir"],
+                          "spans": last["spans"] + ln["spans"]}
+                out[-1] = (pymupdf.Rect(joined["bbox"]), joined)
+                continue
+        out.append((pymupdf.Rect(r), ln))
+    return out
+
+
 def text_blocks(lines):
     """The page's visible text as paragraphs: [(rect, [(rect, line), ...])], lines in
     order. Lines join a paragraph when they run the same way, are about the same size and
     sit one under the other at a normal line spacing (so what Add text wrote in one go is
     one paragraph). For Edit objects: select, move and delete text as one piece."""
-    rows = [(r, ln) for r, ln in lines if visible(ln)]
+    rows = _join_spread_pieces([(r, ln) for r, ln in lines if visible(ln)])
     rows.sort(key=lambda h: (round(h[1]["dir"][0], 2), round(h[1]["dir"][1], 2),
                              _baseline(h[1]), _along(h[0], h[1])[0]))
     blocks = []
@@ -520,6 +548,177 @@ def delete_lines(page, lines, keep_links=False):
     _remove_lines(page, lines, keep_links)
 
 
+def _font_for(page, span, text):
+    """(font for writing text like span, text): the span's own font when it can, otherwise
+    the closest one; look-alikes replace symbols few fonts have (minus sign, diameter,
+    invisible spaces, ligatures...). Raises ValueError when nothing can write it."""
+    try:
+        return _pick_font(page, span, text), text
+    except LookupError:
+        swapped = "".join(LOOKALIKES.get(c, c) for c in text)
+        try:
+            return _pick_font(page, span, swapped), swapped
+        except LookupError:
+            bad = _unwritable(swapped)
+            names = ", ".join(f"{c} (U+{ord(c):04X})" for c in bad[:6]) or "some characters"
+            raise ValueError("No font on this computer can write these characters of the new "
+                             f"text: {names}. Remove or replace them and try again.")
+
+
+def flows(lines):
+    """True when lines read as wrapped text: each line (but the last) ends where the next
+    line's first word wouldn't have fit. A column of labels or schedule entries stacked at a
+    normal line spacing doesn't, and is edited a line at a time."""
+    boxes = [pymupdf.Rect(ln["bbox"]) for ln in lines]
+    full = max(b.width for b in boxes)
+    for ln, b, nxt, nb in zip(lines, boxes, lines[1:], boxes[1:]):
+        t = line_text(nxt).strip()
+        if not t:
+            return False
+        word = t.split(" ")[0]
+        size = max(s["size"] for s in ln["spans"])
+        word_w = nb.width * len(word) / max(1, len(t))
+        if full - b.width > word_w + 0.8 * size:
+            return False
+    return True
+
+
+def paragraph_text(lines):
+    """The words of a paragraph's lines as one text: lines joined with a space, a word
+    split by a hyphen at a line's end joined again."""
+    out = ""
+    for ln in lines:
+        t = line_text(ln).strip()
+        if not t:
+            continue
+        if not out:
+            out = t
+        elif out.endswith("-") and len(out) > 1 and out[-2].isalpha() and t[:1].islower():
+            out = out[:-1] + t
+        else:
+            out += " " + t
+    return out
+
+
+def paragraph_layout(lines, measure=None, exact=False):
+    """How a paragraph sits on the page: {"left", "right", "width", "first" (first
+    baseline), "step" (baseline to baseline), "align" (left, right, center, justify),
+    "span" (its main span)}. lines: in reading order, horizontal. measure(text, size): the
+    natural width of text in the paragraph's font, to tell justified lines (their words
+    spread wider than that) even in a paragraph of two lines; exact: measure uses the
+    paragraph's own font (any stretch counts), not a stand-in (only clear stretching)."""
+    boxes = [pymupdf.Rect(ln["bbox"]) for ln in lines]
+    lefts = [b.x0 for b in boxes]
+    rights = [b.x1 for b in boxes]
+    mids = [(b.x0 + b.x1) / 2 for b in boxes]
+    bases = [ln["spans"][0]["origin"][1] for ln in lines]
+    steps = sorted(b - a for a, b in zip(bases, bases[1:]))
+    main = max((s for ln in lines for s in ln["spans"] if s["text"].strip()),
+               key=lambda s: len(s["text"].strip()))
+
+    def spread(v):
+        return max(v) - min(v) if v else 0.0
+    tol = 1.5
+
+    def stretched(ln, box):
+        t = line_text(ln)
+        gaps = t.strip().count(" ")
+        if measure is None or not gaps:
+            return False
+        try:
+            extra = box.width - measure(t, main["size"])
+        except Exception:
+            return False
+        if exact:
+            return extra > 1.0
+        return extra / gaps > 0.12 * main["size"] and extra > 0.02 * box.width
+    align = "left"
+    if spread(lefts) <= tol:
+        full = len(lines) >= 2 and spread(rights[:-1]) <= tol
+        if full and len(lines) >= 3 and rights[-1] < max(rights) - 3:
+            align = "justify"
+        elif full and measure is not None and \
+                all(stretched(ln, b) for ln, b in zip(lines[:-1], boxes[:-1])):
+            align = "justify"
+    elif spread(rights) <= tol:
+        align = "right"
+    elif spread(mids) <= tol:
+        align = "center"
+    return {"left": min(lefts), "right": max(rights), "width": max(rights) - min(lefts),
+            "first": bases[0], "step": steps[len(steps) // 2] if steps else main["size"] * 1.2,
+            "align": align, "span": main}
+
+
+def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=None,
+                      offset=(0, 0)):
+    """Rewrite a whole paragraph (horizontal lines, reading order) with new_text, wrapped to
+    its width (or wrap_width) in its font, size, color, line spacing and alignment. font /
+    size: a font or size picked in Properties instead. offset: move it (points). Returns
+    (font name, its new box, the baselines written). Raises ValueError (before changing
+    anything) if no font can write it."""
+    main = paragraph_layout(lines)["span"]
+    text = new_text.strip()
+    found = None
+    if text and font and font[0]:
+        found = chosen_font(page, font[0], font[1], font[2], text)
+    if text and found is None:
+        found, text = _font_for(page, main, text)
+    # the paragraph's own font measures how far its lines were spread (justified)
+    try:
+        own, _t = _font_for(page, main, paragraph_text(lines))
+        ruler = own[1] if own else pymupdf.Font(_base14(main))
+        # exact: the paragraph's own font (embedded, installed, or a built-in PDF font it
+        # names); a stand-in for a font that isn't here measures only roughly
+        name = main.get("font", "").split("+")[-1]
+        exact = (own is None and name.startswith(("Helvetica", "Times", "Courier"))) or \
+            (own is not None and not own[0].startswith(("KZUni", "KZB")))
+        lay = paragraph_layout(lines, lambda t, sz: ruler.text_length(t, fontsize=sz), exact)
+    except ValueError:
+        lay = paragraph_layout(lines)
+    size = float(size or main["size"])
+    step = lay["step"] * (size / main["size"])
+    _remove_lines(page, lines)
+    if not text:
+        return None, pymupdf.Rect(), []
+    if found:
+        fontname, fnt, source = found
+        page.insert_font(fontname=fontname, **source)
+    else:
+        fontname = _base14(main)
+        fnt = pymupdf.Font(fontname)
+    width = wrap_width or lay["width"]
+    rows = []
+    for part in text.split("\n"):                    # Shift+Enter: a new paragraph
+        wrapped = _wrap(part, fnt, size, width)
+        rows += [(r, i == len(wrapped) - 1) for i, r in enumerate(wrapped)]
+    color = _rgb(main["color"])
+    left, right = lay["left"] + offset[0], lay["left"] + offset[0] + width
+    y = lay["first"] + offset[1]
+    top = y - size
+    bases = []
+    for row, last in rows:
+        bases.append(y)
+        row = row.strip()
+        length = fnt.text_length(row, fontsize=size)
+        words = row.split(" ")
+        if lay["align"] == "justify" and not last and len(words) > 1:
+            gap = (width - sum(fnt.text_length(w, fontsize=size) for w in words)) / (len(words) - 1)
+            x = left
+            for w in words:
+                page.insert_text(pymupdf.Point(x, y), w, fontsize=size, fontname=fontname,
+                                 color=color)
+                x += fnt.text_length(w, fontsize=size) + gap
+        else:
+            x = {"right": right - length, "center": (left + right - length) / 2}.get(
+                lay["align"], left)
+            page.insert_text(pymupdf.Point(x, y), row, fontsize=size, fontname=fontname,
+                             color=color)
+        y += step
+    if found:
+        _fix_spaces(page, fontname, fnt)
+    return fontname, pymupdf.Rect(left, top, right, y - step + size * 0.25), bases
+
+
 def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None,
                  scan="auto", info=None):
     """Remove the line's text and write new_text in its place.
@@ -571,21 +770,7 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
     if new_text.strip() and found is None and scan:
         found, builtin = _scan_font(page, scan, new_text)
     if new_text.strip() and found is None and builtin is None:
-        try:
-            found = _pick_font(page, main, new_text)
-        except LookupError:
-            # retry with look-alikes for symbols few fonts have (minus sign, diameter,
-            # invisible spaces, ligatures...)
-            swapped = "".join(LOOKALIKES.get(c, c) for c in new_text)
-            try:
-                found = _pick_font(page, main, swapped)
-                new_text = swapped
-            except LookupError:
-                bad = _unwritable(swapped)
-                names = ", ".join(f"{c} (U+{ord(c):04X})" for c in bad[:6]) or "some characters"
-                raise ValueError("No font on this computer can write these characters of "
-                                 f"the new text: {names}. Remove or replace them and try "
-                                 "again.")
+        found, new_text = _font_for(page, main, new_text)
 
     # 2) remove only the text of this line (keep line art and images)
     _remove_lines(page, [line])
