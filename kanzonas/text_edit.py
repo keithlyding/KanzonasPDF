@@ -478,22 +478,46 @@ def removal_bands(line):
     return out
 
 
-def _remove_lines(page, lines):
+def _remove_lines(page, lines, keep_links=True):
+    """Take the lines' letters out of the page. Applying a redaction also drops every link
+    it touches: keep_links puts those back (editing or moving linked words keeps the link,
+    a drawing set's sheet hyperlinks included)."""
+    doc = page.parent
+    saved = []
+    if keep_links:
+        for xref, kind, *_ in page.annot_xrefs():
+            if kind == pymupdf.PDF_ANNOT_LINK:
+                saved.append((xref, doc.xref_object(xref, compressed=True)))
     for line in lines:
         for r in removal_bands(line):
             page.add_redact_annot(r, fill=False)
     page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
                           graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
                           text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+    if saved:
+        have = {x for x, _k, *_ in page.annot_xrefs()}
+        lost = [(x, src) for x, src in saved if x not in have]
+        if lost:
+            refs = []
+            for _x, src in lost:
+                new = doc.get_new_xref()
+                doc.update_object(new, src)
+                refs.append(f"{new} 0 R")
+            kind, val = doc.xref_get_key(page.xref, "Annots")
+            if kind == "xref":
+                val = doc.xref_object(int(val.split()[0]))
+            items = re.findall(r"\d+ 0 R", val) if kind in ("array", "xref") else []
+            doc.xref_set_key(page.xref, "Annots", "[" + " ".join(items + refs) + "]")
 
 
-def delete_lines(page, lines):
-    """Take these lines of text out of the page; pictures and line art stay."""
+def delete_lines(page, lines, keep_links=False):
+    """Take these lines of text out of the page; pictures and line art stay. Links on them
+    go too, unless keep_links."""
     from .annotations import each_annot
     if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
         raise ValueError("Apply or remove the redaction marks on this page before deleting "
                          "its text.")
-    _remove_lines(page, lines)
+    _remove_lines(page, lines, keep_links)
 
 
 def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None,

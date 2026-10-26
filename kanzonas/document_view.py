@@ -1678,15 +1678,27 @@ class DocumentView(QScrollArea):
             return
         props = self.tool_props(tool)
         if tool == "link":
+            size = float(annotations.tool_props("addtext").get("fontsize") or 12)
             if is_click or rect.width < 4 or rect.height < 4:
                 ln = self.link_at(index, a)
                 if ln is not None:
                     self.edit_link(index, ln)
                 else:
-                    self.statusMessage.emit("Drag a box over what should be clickable, or "
-                                            "click a link to change it")
+                    # a click on the page: new link text there (it starts at the click,
+                    # centered on it)
+                    d = pymupdf.Point(a) * page.rotation_matrix + (0, size * 0.35)
+                    self.add_link(index, None, rects=[pymupdf.Rect(a, a)], look="underline",
+                                  text_at=(d * page.derotation_matrix, size))
                 return
-            self.add_link(index, rect)
+            if self._area_is_blank(index, rect):
+                # a box over empty paper: new link text in it (as the page is shown)
+                disp = (rect * page.rotation_matrix).normalize()
+                size = min(size, max(6.0, disp.height * 0.7))
+                d = pymupdf.Point(disp.x0, disp.y0 + (disp.height + size * 0.7) / 2)
+                self.add_link(index, rect, look="underline",
+                              text_at=(d * page.derotation_matrix, size))
+            else:
+                self.add_link(index, rect)
             return
         if tool in ("erasecontent", "capture", "crop"):
             if is_click or rect.width < 2 or rect.height < 2:
@@ -2044,72 +2056,169 @@ class DocumentView(QScrollArea):
         if k in (pymupdf.LINK_GOTOR, pymupdf.LINK_LAUNCH):
             self._open_linked_file(link.get("file") or "", link.get("page", -1))
 
-    def _ask_link(self, current=None):
+    def _ask_link(self, current=None, text_choice=None, look="box"):
         from .link_dialog import LinkDialog
-        dlg = LinkDialog(self, self.doc.page_count, current)
+        dlg = LinkDialog(self, self.doc.page_count, current, text_choice, look)
         return dlg.result_value if dlg.exec() else None
 
-    @staticmethod
-    def _link_dict(rect, target):
-        if target[0] == "page":
-            return {"kind": pymupdf.LINK_GOTO, "from": rect, "page": target[1],
-                    "to": pymupdf.Point(0, 0)}
-        return {"kind": pymupdf.LINK_URI, "from": rect, "uri": target[1]}
+    def _area_is_blank(self, index, rect):
+        """Nothing under rect yet (no letters, pictures or shapes): a link drawn there brings
+        its own text."""
+        r = pymupdf.Rect(rect)
+        if any(pymupdf.Rect(w[:4]).intersects(r) for w in self._words(index) if w[4].strip()):
+            return False
+        objs = self.content_objects(index)
+        return not any(it["rect"].intersects(r) and not it.get("whole")
+                       for it in (objs.items if objs is not None else []))
 
-    @staticmethod
-    def _insert_link(page, rect, target):
-        """Add the link; target[2] (default True) gives it a visible blue box, which PDF
-        readers draw around it (KanzonasPDF draws it too: MuPDF doesn't)."""
-        # the page's /Annots list shows the new link at once (get_links only after a reload,
-        # which PyMuPDF refuses while the page is in use elsewhere)
-        before = {x for x, _t, *_ in page.annot_xrefs()}
-        page.insert_link(DocumentView._link_dict(rect, target))
-        show = target[2] if len(target) > 2 else True
-        doc = page.parent
-        for xref, kind, *_ in page.annot_xrefs():
-            if xref in before or kind != pymupdf.PDF_ANNOT_LINK:
-                continue
-            if show:
-                doc.xref_set_key(xref, "BS", "<</W 1/S/S>>")
-                doc.xref_set_key(xref, "C", "[0 0.35 0.85]")
-            else:
-                doc.xref_set_key(xref, "Border", "[0 0 0]")
-
-    def add_link(self, index, rect, target=None):
-        """Links tool: make rect (unrotated page coordinates) clickable. target: ("uri",
-        address) or ("page", index), optionally with a third item: show a box (default
-        True); asked for when None."""
-        target = target or self._ask_link()
+    def add_link(self, index, rect, target=None, rects=None, text_lines=False, look=None,
+                 text_at=None):
+        """Make rect (or rects, all acting as one; unrotated page coordinates) clickable.
+        target: ("uri", address) or ("page", index), then optionally the look ("underline",
+        "box", "none"; True / False = box / none) and the link's own text to write into the
+        page; asked for when None. text_at: (baseline start, size) where its own text goes;
+        when given, the window offers "Text to show"."""
+        from . import links
+        from .link_dialog import look_of
+        rects = [pymupdf.Rect(r).normalize() for r in (rects or [rect])]
+        if target is None:
+            choice = {"text": "", "write": True} if text_at is not None else None
+            target = self._ask_link(text_choice=choice, look=look or "box")
         if not target or target[0] == "delete":
             return
-        self.modify(lambda: self._insert_link(self.doc[index], pymupdf.Rect(rect).normalize(),
-                                              target), [index],
-                    permission=pymupdf.PDF_PERM_ANNOTATE)
-        self.statusMessage.emit("Link added (Ctrl+Z undoes it)")
-
-    def edit_link(self, index, link, target=None):
-        """Change where a link goes, or delete it (target ("delete",))."""
-        k = link.get("kind")
-        shown = link_border(self.doc, link.get("xref")) is not None
-        current = (("page", link.get("page", 0), shown) if k == pymupdf.LINK_GOTO
-                   else ("uri", link.get("uri") or "", shown))
-        target = target or self._ask_link(current)
-        if not target:
-            return
-        page_rect = pymupdf.Rect(link["from"]) * self.doc[index].derotation_matrix
-        xref = link.get("xref")
+        how = look_of(target[2]) if len(target) > 2 else (look or "box")
+        words = target[3] if len(target) > 3 else None
+        text = None
+        if words and text_at is not None:
+            text = {"text": words, "origin": pymupdf.Point(text_at[0]), "size": text_at[1]}
 
         def do():
-            page = self.doc[index]
-            old = [ln for ln in page.get_links() if ln.get("xref") == xref]
-            if not old:
+            links.add(self.doc[index], rects, target[:2], how, text, text_lines)
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_MODIFY if text
+                    else pymupdf.PDF_PERM_ANNOTATE)
+        if text:
+            self._fonts_added = True
+        self.statusMessage.emit("Link added (Ctrl+Z undoes it)")
+
+    def _link_current(self, index, link):
+        """(kind, value, look, text) of an existing link for the link window, the areas
+        acting with it, and whether they're lines of text."""
+        from . import links
+        page = self.doc[index]
+        grp = links.group(page, link.get("xref")) or []
+        first = grp[0] if grp else {}
+        look = first.get("look") or ("box" if link_border(self.doc, link.get("xref"))
+                                     else "none")
+        k = link.get("kind")
+        value = link.get("page", 0) if k == pymupdf.LINK_GOTO else link.get("uri") or ""
+        kind = "page" if k == pymupdf.LINK_GOTO else "uri"
+        return (kind, value, look, first.get("text")), grp
+
+    def edit_link(self, index, link, target=None):
+        """Change where a link goes, how it looks or the text it wrote, or delete it (target
+        ("delete",)). All the areas acting as one link change together."""
+        from . import links
+        current, grp = self._link_current(index, link)
+        if target is None:
+            choice = {"text": current[3], "write": True} if current[3] else None
+            target = self._ask_link(current, choice)
+        if not target:
+            return
+        page = self.doc[index]
+        if not grp:
+            grp = [{"xref": link.get("xref"), "under": None, "text": None, "group": None,
+                    "look": None,
+                    "rect": pymupdf.Rect(link["from"]) * page.derotation_matrix}]
+        rects = [g["rect"] for g in grp]
+        wrote = next((g["text"] for g in grp if g["text"]), None)
+        origin = size = None
+        if wrote:
+            hit = [ln for r, ln in text_edit.text_lines(page)
+                   if any(g["rect"].contains(pymupdf.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2))
+                          for g in grp)]
+            if hit:
+                origin = pymupdf.Point(hit[0]["spans"][0]["origin"])
+                size = max(s["size"] for s in hit[0]["spans"])
+        on_text = any(g["under"] and g["under"][1] < g["rect"].y1 - 0.5 and
+                      g["under"][3] < g["rect"].y1 - 0.5 for g in grp)
+        from .link_dialog import look_of
+        how = look_of(target[2]) if len(target) > 2 else current[2]
+        words = target[3] if len(target) > 3 else wrote
+        xrefs = {g["xref"] for g in grp}
+
+        def do():
+            pg = self.doc[index]
+            mine = [ln for ln in links.read(pg) if ln["xref"] in xrefs]
+            if not mine:
                 raise ValueError("The link is no longer on the page.")
-            page.delete_link(old[0])
-            if target[0] != "delete":
-                self._insert_link(page, page_rect, target)
-        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+            for g in mine:
+                if not g["group"]:
+                    g["text"] = None            # (a link from elsewhere wrote nothing)
+            # its own text is rewritten only when it changed
+            keep_text = not wrote or (words == wrote and target[0] != "delete")
+            links.remove(pg, mine, keep_text=keep_text)
+            if target[0] == "delete":
+                return
+            text = None
+            if wrote and words and not keep_text and origin is not None:
+                text = {"text": words, "origin": origin, "size": size}
+            if text:
+                links.add(pg, [], target[:2], how, text)
+            else:
+                gid = links.add(pg, rects, target[:2], how, None, on_text or bool(wrote))
+                if wrote and keep_text:
+                    # the same words stay: the new link keeps owning them
+                    for ln in links.read(pg):
+                        if ln["group"] == gid:
+                            pg.parent.xref_set_key(ln["xref"], "KZText", links._pdf_string(wrote))
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_MODIFY if wrote
+                    else pymupdf.PDF_PERM_ANNOTATE)
         self.statusMessage.emit(("Link deleted" if target[0] == "delete" else "Link changed")
                                 + " (Ctrl+Z undoes it)")
+
+    def remove_link_at(self, index, pt):
+        """Right-click > Remove link: the link goes, what it was on stays (its own text,
+        written by the link, goes with it)."""
+        ln = self.link_at(index, pt)
+        if ln is not None:
+            self.edit_link(index, ln, ("delete",))
+
+    def _selection_link_areas(self):
+        """[(page index, rects, lines of text?)] for what's selected: text (each line), markups
+        (each one's box) or the page's own objects (each one's box), and the look that suits
+        it."""
+        if self.text_sel:
+            return [(i, [r for r in self.line_rects(words)], True)
+                    for i, words in self.text_sel], "underline"
+        if self.selection is not None:
+            index = self.selection[0]
+            return [(index, [annotations.bounds(m) for _x, m in self.selected_models()],
+                     False)], "none"
+        if self.obj_sel is not None:
+            index, items = self.obj_sel
+            return [(index, [pymupdf.Rect(it["rect"]) for it in items], False)], "none"
+        return [], "none"
+
+    def add_link_to_selection(self):
+        """Right-click > Add link...: the selected text, markups or objects become one link."""
+        from . import links
+        from .link_dialog import look_of
+        areas, look = self._selection_link_areas()
+        areas = [(i, rs, t) for i, rs, t in areas if rs]
+        if not areas:
+            self.statusMessage.emit("Select text, markups or objects first")
+            return
+        target = self._ask_link(look=look)
+        if not target or target[0] == "delete":
+            return
+        how = look_of(target[2]) if len(target) > 2 else look
+
+        def do():
+            for index, rects, on_text in areas:
+                links.add(self.doc[index], rects, target[:2], how, None, on_text)
+        self.modify(do, [i for i, _rs, _t in areas], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.clear_text_selection()
+        self.statusMessage.emit("Link added (Ctrl+Z undoes it)")
 
     def _confirm_web(self, uri):
         from PySide6.QtWidgets import QCheckBox
@@ -2506,10 +2615,23 @@ class DocumentView(QScrollArea):
         def do():
             page = self.doc[index]
             for x, m in changes:
-                made[x] = annotations.replace(page, x, m)
+                made[x] = self._replace_markup(page, x, m)
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if made:
             self._set_selection(index, [made.get(x, x) for x in sel] or list(made.values()))
+
+    @staticmethod
+    def _replace_markup(page, xref, model):
+        """annotations.replace, with the links made for the markup following it."""
+        from . import links
+        try:
+            old = annotations.bounds(annotations.read(page.load_annot(xref)))
+        except Exception:
+            old = None
+        new = annotations.replace(page, xref, model)
+        if old is not None:
+            links.follow(page, old, annotations.bounds(model))
+        return new
 
     def update_selected_props(self, props):
         if self.selection is None or self.selected_model is None or \
@@ -2585,11 +2707,16 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
 
         def do():
+            from . import links
             for x in xrefs:
                 try:
+                    box = annotations.bounds(annotations.read(page.load_annot(x)))
                     page.delete_annot(page.load_annot(x))
                 except Exception:
-                    pass
+                    continue
+                mine = links.attached(page, box)          # the links made for it go too
+                if mine:
+                    links.remove(page, mine, keep_text=True)
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
 
     # ---- arrange: align, distribute, stacking order -------------------------------
@@ -3051,6 +3178,10 @@ class DocumentView(QScrollArea):
                                                   None if keep_font else size, scan, info)
             used["scan"] = info.get("scan")
             d = pymupdf.Point(offset)
+            if d.x or d.y:
+                from . import links
+                old = pymupdf.Rect(line["bbox"])
+                links.follow(page, old, old + (d.x, d.y, d.x, d.y))
             for x, m in moving:
                 if "quads" in m:
                     m = annotations.copy(m)
@@ -3267,7 +3398,8 @@ class DocumentView(QScrollArea):
         if self.obj_sel is not None:
             self.select_objects(self.obj_sel[0], [])
 
-    def _objects_edit(self, label, fn, keep=True, text_fn=None):
+    def _objects_edit(self, label, fn, keep=True, text_fn=None, links_fn=None,
+                      links_first=False):
         """Run fn(page, ns) on the selected pictures and shapes, then text_fn(page, texts) on
         the selected text, as one undo step; keep them selected. fn may return the page's
         new page_objects.Objects (saves reading the page again). text_fn returns where each
@@ -3285,9 +3417,15 @@ class DocumentView(QScrollArea):
             page = self.doc[index]
             if ns:
                 fresh["objs"] = fn(page, ns)
+            # the links made for these objects go along (links_fn); before the text when
+            # the text's removal would take them, after it when they follow a move
+            if links_fn is not None and links_first and links_fn(page):
+                fresh["objs"] = None
             if texts and text_fn is not None:
                 # (the shapes first: text removal rewrites the page's drawing instructions)
                 fresh["text_rects"] = text_fn(page, texts)
+                fresh["objs"] = None
+            if links_fn is not None and not links_first and links_fn(page):
                 fresh["objs"] = None
         before = self._obj_cache.get(index)
         self.modify(do, [index])
@@ -3325,8 +3463,10 @@ class DocumentView(QScrollArea):
                                   offset)
             d = pymupdf.Point(offset)
             return [it["rect"] + (d.x, d.y, d.x, d.y) for it in texts]
+        from . import links
         self._objects_edit("Moved", lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect, objs),
-                           text_fn=move_text)
+                           text_fn=move_text,
+                           links_fn=lambda pg: links.follow(pg, old, new_rect))
 
     def _move_text_lines(self, page, lines, offset):
         """Move lines of the page's text by offset (points), with the highlights and other
@@ -3367,7 +3507,18 @@ class DocumentView(QScrollArea):
             return
         rect = self.selected_objects_rect()
         objs = self._obj_cache.get(self.obj_sel[0])
-        self._objects_edit("Rotated", lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees, objs))
+        from . import links
+        c = (rect.tl + rect.br) / 2
+        turn = pymupdf.Matrix(1, 0, 0, 1, -c.x, -c.y) * pymupdf.Matrix(degrees) * \
+            pymupdf.Matrix(1, 0, 0, 1, c.x, c.y)
+
+        def turn_links(pg):
+            mine = links.attached(pg, rect)
+            if mine:
+                links.transform(pg, mine, turn)
+            return bool(mine)
+        self._objects_edit("Rotated", lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees, objs),
+                           links_fn=turn_links)
 
     def arrange_objects(self, how):
         """Stacking order of the page's own pictures and shapes (Edit objects): bring them
@@ -3418,7 +3569,16 @@ class DocumentView(QScrollArea):
 
         def delete_text(page, texts):
             text_edit.delete_lines(page, [ln for it in texts for _r, ln in it["lines"]])
-        self._objects_edit("Deleted", page_objects.delete, keep=False, text_fn=delete_text)
+        from . import links
+        boxes = [pymupdf.Rect(it["rect"]) for it in items]
+
+        def drop_links(pg):
+            mine = {ln["xref"]: ln for r in boxes for ln in links.attached(pg, r)}
+            if mine:
+                links.remove(pg, list(mine.values()), keep_text=True)
+            return bool(mine)
+        self._objects_edit("Deleted", page_objects.delete, keep=False, text_fn=delete_text,
+                           links_fn=drop_links, links_first=True)
 
     def _confirm_text_removal(self, index, texts):
         """Taking text out removes every letter the cut touches. When that would take

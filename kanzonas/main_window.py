@@ -768,6 +768,9 @@ class MainWindow(QMainWindow):
                                    tip="Type a few letters of any command or tool and run it "
                                        "from the list (Ctrl+Shift+P)")
         self.a_about = self._act("&About", self.about)
+        self.a_feedback = self._act("&Report a problem or suggest an idea...", self.open_feedback,
+                                    tip="Open KanzonasPDF's GitHub page for bug reports and "
+                                        "ideas in your browser")
         self.a_check_updates = self._act("&Check for updates...", self.check_updates,
                                          tip="Ask GitHub whether a newer KanzonasPDF is out")
         self.a_auto_updates = QAction("Check for updates &automatically", self, checkable=True)
@@ -944,7 +947,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_check_updates, self.a_auto_updates])
         m.addSeparator()
-        m.addAction(self.a_about)
+        m.addActions([self.a_feedback, self.a_about])
 
     def _build_toolbars(self):
         tb = self.main_tb = QToolBar("Main")
@@ -3951,6 +3954,16 @@ class MainWindow(QMainWindow):
         self._manual.raise_()
         self._manual.activateWindow()
 
+    FEEDBACK_URL = "https://github.com/keithlyding/KanzonasPDF/issues/new/choose"
+
+    def open_feedback(self):
+        """Help > Report a problem or suggest an idea: GitHub's form, in the browser."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        QDesktopServices.openUrl(QUrl(self.FEEDBACK_URL))
+        self.statusBar().showMessage("Opened the feedback page in your browser. Please don't "
+                                     "attach confidential PDFs.", 6000)
+
     def about(self):
         from . import branding, paths
         dlg = QDialog(self)
@@ -3965,7 +3978,9 @@ class MainWindow(QMainWindow):
             f"Built on PyMuPDF {pymupdf.VersionBind} (MuPDF) and Qt (PySide6).<br>"
             "Free software under the GNU Affero General Public License 3.0.<br>"
             "Source code and downloads: <a href='https://github.com/keithlyding/KanzonasPDF'>"
-            "github.com/keithlyding/KanzonasPDF</a>")
+            "github.com/keithlyding/KanzonasPDF</a><br><br>"
+            "If KanzonasPDF saves you time, a star on its GitHub page helps other people find "
+            "it.")
         text.setOpenExternalLinks(True)
         text.setWordWrap(True)
         lay.addWidget(text)

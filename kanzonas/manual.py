@@ -167,6 +167,10 @@ until you click a button.
 With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
 quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your
 network blocks GitHub, the automatic check simply finds nothing.</li>
+<li><b>Help &gt; Report a problem or suggest an idea...</b> opens KanzonasPDF's page on GitHub in
+your browser, with forms for a bug report or an idea (a free GitHub account is needed to send
+one). Describe what you did and what happened; please don't attach confidential PDFs. Security
+problems (redaction, passwords, signatures) have their own private form there.</li>
 <li>The <b>KanzonasPDF-windows.zip</b> download is the same program without the portable.txt file: it runs
 from any folder but stores settings on the computer like the installed version.</li>
 </ul>
@@ -182,8 +186,10 @@ the page you were on last time; change this in File &gt; Preferences &gt; Openin
 Fit width and Fit page keep fitting when the window or a side panel changes size, until you
 choose a zoom yourself.</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
-<li><b>Links in the PDF:</b> with the Hand or Select tool, point at a link to see where it goes
-(the pointer becomes a hand) and click it. A link to a page in the document goes there. A web or
+<li><b>Links in the PDF:</b> point at a link to see where it goes. With the <b>Hand</b> tool, click
+it (the pointer becomes a hand). With the <b>Select</b> tool, <b>Ctrl+click</b> it: a plain click
+selects or edits what the link is on, so working on linked text, pictures or markups never
+opens the link by accident. Edit text, Edit objects and the Links tool never open links. A link to a page in the document goes there. A web or
 email address asks first, then opens in your browser or email program (tick <b>Don't ask
 again</b> to skip the question from then on). A link to another PDF opens it in a new tab; a
 link to another kind of file asks before opening it, and only common documents, pictures,
@@ -191,15 +197,31 @@ media and drawings are opened (links that would start a program, a script or a f
 macros are refused). Links written by AutoCAD and other CAD programs when plotting a sheet set
 work this way, including links to files whose names have spaces. A link to a file on another computer (a network share) asks first, because
 opening it sends your Windows sign-in to that computer.</li>
-<li><b>Adding links:</b> the <b>Links</b> tool (Home tab &gt; Insert, Tools menu) draws the
-page's links as blue dashed boxes. Drag a box over what should be clickable, then type a web
-address or e-mail address (www.example.com is fine; https:// is added) or choose a page in this
-document. For a whole drawing set, <b>Link sheet callouts</b> (Pages menu) makes the links
-for you from the sheet numbers. <b>Show a box around the link</b> (ticked at first) draws a thin blue box so readers
-can see it's there, here and in other PDF readers, and it prints with the markups; untick it for a
-link that stays invisible until the pointer is over it. Click an existing link with the tool to
-change where it goes, show or hide its box, or <b>Delete link</b>.
-Ctrl+Z undoes it.</li>
+<li><b>Make anything a link:</b> select it, right-click and choose <b>Add link...</b>, then type a
+web or e-mail address (www.example.com is fine; https:// is added) or choose a page in this
+document. It works on <b>words</b> selected with the Select tool (only those words become
+clickable; a selection over several lines makes one link), <b>markups</b> (stamps, text boxes,
+shapes, pictures, signatures) and the page's own <b>pictures, shapes and text</b> selected with Edit
+objects. <b>Look</b>: <b>Underline</b> (a thin blue line drawn into the page; the default for
+words), <b>Box around it</b>, or <b>Nothing</b> (the default for pictures, shapes and markups; the
+pointer still finds it). The words, picture or markup themselves don't change.</li>
+<li><b>Links stay with what they're on:</b> move, resize or rotate a linked markup, picture, shape
+or paragraph, or move a linked line with Edit text, and the link (and its underline) goes
+along; delete it and its link goes too. Editing linked words with Edit text keeps their link,
+including the links AutoCAD writes on a sheet set.</li>
+<li><b>New link text:</b> with the <b>Links</b> tool (Home tab &gt; Insert, Tools menu), click
+empty paper, or drag a box over it: the window's <b>Write this text on the page</b> is ticked,
+and the text shows the address as you type it; type your own words instead if you like ("Our
+website"). The text is written into the page, in blue and underlined, at the Add text size (or
+to fit the box), and the link covers exactly it. Drag a box over what's already on the page
+(a drawing, a scan) to make that area clickable without writing anything.</li>
+<li><b>Change or remove a link:</b> right-click it &gt; <b>Edit link...</b> (where it goes, its look,
+and the words it wrote) or <b>Remove link</b> (the link and its underline go; the words or
+picture it was on stay; words the link wrote itself go with it). Clicking a link with the Links
+tool also opens it for changing, with <b>Delete link</b>. The Links tool shows the page's links as
+blue dashed boxes. All the parts of one link (several lines) change and go together. Ctrl+Z
+undoes any of it. For a whole drawing set, <b>Link sheet callouts</b> (Pages menu) makes the
+links for you from the sheet numbers.</li>
 <li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
 (works with any tool). <b>Shift+wheel</b> always scrolls left and right, including when CAD-style
 mouse is off and when one wheel step would otherwise turn the page. Shift+Left/Right scrolls
@@ -924,6 +946,7 @@ settings...).</li>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
+<tr><td>Ctrl+click a link (Select tool)</td><td>Open the link (a plain click with the Hand tool)</td></tr>
 <tr><td>Escape</td><td>Clear selection / put the tool down (back to the default tool, Hand or Select)</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
