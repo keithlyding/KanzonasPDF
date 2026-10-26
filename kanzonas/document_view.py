@@ -97,6 +97,7 @@ class DocumentView(QScrollArea):
     scaleChanged = Signal()
     layersChanged = Signal()
     requestSignature = Signal(int, int)      # page index, signature field xref
+    textToolPropsChanged = Signal()          # Edit text: the line's font / size to show
 
     def __init__(self, path, parent=None, doc=None):
         """doc: a new document not yet saved (File > New PDF); path is then the name Save
@@ -1001,6 +1002,7 @@ class DocumentView(QScrollArea):
         self._text_drag = None         # [(page, mode, words)] while a text drag is in progress
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
         self._obj_cache = {}           # page index -> page_objects.Objects (Edit objects)
+        self._text_obj_cache = {}      # page index -> paragraphs of text (Edit objects)
         self.obj_sel = None            # (page index, [objects]) selected with Edit objects
         # the drawing's own line work rarely changes: re-check it lazily instead of dropping it
         if not hasattr(self, "_snap_content"):
@@ -1019,6 +1021,7 @@ class DocumentView(QScrollArea):
             self._word_cache.pop(i, None)
             self._snap_markups.pop(i, None)
             self._obj_cache.pop(i, None)
+            self._text_obj_cache.pop(i, None)
             for key in ("fields", "links", "fieldx", "annotx", "review"):
                 self._card_cache.pop((key, i), None)
             self._card_cache.pop(i, None)
@@ -2847,7 +2850,13 @@ class DocumentView(QScrollArea):
             size = scan["size"]
             hint = scan["label"] if scan["font"] and scan["font"][5] else scan["kind"]
         chosen = self._edit_font()
-        new_size = self._edit_size()
+        # Properties shows this line's size while it's edited (a size picked there before
+        # clicking the line applies to it); whatever is picked applies to this line only
+        picked = self._edit_size()
+        annotations.set_tool_props("edittext", dict(annotations.tool_props("edittext"),
+                                                    fontsize=round(picked or size, 2)))
+        self.textToolPropsChanged.emit()
+        new_size = picked
         box = w.to_screen(rect)
         if not upright:
             # sideways text: type in an upright box laid over the middle of the line (it
@@ -2865,21 +2874,30 @@ class DocumentView(QScrollArea):
         ed.kz_tool, ed.kz_line_size = "edittext", size
         self._inline = ed
 
-        def done(text, dx, dy, wrap_px):
+        def finished():
             self._inline = None
+            annotations.reset_tool_props("edittext")     # the next line keeps its own
+            self.textToolPropsChanged.emit()
+
+        def done(text, dx, dy, wrap_px):
+            new = self._edit_size()
+            font = self._edit_font()
+            finished()
+            if new is not None and abs(new - size) < 0.06:
+                new = None              # the size shown is the line's own: keep it exactly
             if not upright:
                 wrap_px = None          # the box's width isn't along the line
-            new = self._edit_size()
             if text == old and not dx and not dy and wrap_px is None and \
-                    self._edit_font() is None and (new is None or abs(new - size) < 0.01):
+                    font is None and new is None:
                 return
             # screen movement -> PDF (unrotated) points
             m = self.doc[index].derotation_matrix
             v = pymupdf.Point(dx / self.zoom, dy / self.zoom) * m - pymupdf.Point(0, 0) * m
             wrap = wrap_px / self.zoom if wrap_px else None
-            self._apply_text_edit(index, line, text, (v.x, v.y), wrap, size=new, scan=scan)
+            self._apply_text_edit(index, line, text, (v.x, v.y), wrap, size=new, scan=scan,
+                                  font=font)
         ed.committed.connect(done)
-        ed.canceled.connect(lambda: setattr(self, "_inline", None))
+        ed.canceled.connect(finished)
 
     def replace_text(self, find, repl, match_case=False, whole_words=False, pages=None):
         """Replace find with repl in the page text (pages: indices, None = all) as one undo
@@ -3016,9 +3034,9 @@ class DocumentView(QScrollArea):
         return (p["font"], bool(p.get("bold")), bool(p.get("italic"))) if p.get("font") else None
 
     def _apply_text_edit(self, index, line, new, offset, wrap, keep_font=False, size=None,
-                         scan="auto"):
+                         scan="auto", font=None):
         used = {}
-        font = None if keep_font else self._edit_font()
+        font = None if keep_font else font
 
         def do():
             page = self.doc[index]
@@ -3165,16 +3183,42 @@ class DocumentView(QScrollArea):
                 QApplication.restoreOverrideCursor()
         return cache[index]
 
+    TEXT_N = 10 ** 9                   # Edit objects numbers text paragraphs from here
+
+    def text_objects(self, index):
+        """The page's visible text as Edit objects items, one per paragraph: kind "text",
+        "rect", "lines" [(rect, line)] (cached until the next edit)."""
+        if index not in self._text_obj_cache:
+            self._text_obj_cache[index] = [
+                {"n": self.TEXT_N + i, "kind": "text", "rect": box, "quad": box.quad,
+                 "lines": blk}
+                for i, (box, blk) in enumerate(text_edit.text_blocks(self._lines(index)))]
+        return self._text_obj_cache[index]
+
     def object_at(self, index, pt):
-        """The topmost picture or shape under PDF point pt, or None."""
+        """The topmost picture or shape under PDF point pt, or None. Text comes first: what
+        you click on a word is the text, even over a filled shape or picture."""
+        pad = 2 / self.zoom
+        hits = [it for it in self.text_objects(index)
+                if (it["rect"] + (-pad, -pad, pad, pad)).contains(pt)]
+        if hits:
+            return min(hits, key=lambda it: it["rect"].get_area())
         objs = self.content_objects(index)
         return objs.at(pt, 4 / self.zoom) if objs is not None else None
 
     def objects_in(self, index, box):
+        """What a selection box takes: the pictures and shapes inside it, or, when it holds
+        none (a box around text alone), the text paragraphs inside it. So a box around a CAD
+        detail still selects its line work to resize or rotate, labels left alone."""
         objs = self.content_objects(index)
-        return objs.inside(box) if objs is not None else []
+        box = pymupdf.Rect(box)
+        found = objs.inside(box) if objs is not None else []
+        return found or [it for it in self.text_objects(index) if box.contains(it["rect"])]
 
     def object_lines(self, index, item):
+        if item["kind"] == "text":
+            q = item["quad"]
+            return [[q.ul, q.ur, q.lr, q.ll, q.ul]]
         objs = self.content_objects(index)
         return objs.lines(item) if objs is not None else []
 
@@ -3207,31 +3251,44 @@ class DocumentView(QScrollArea):
         if items:
             pics = sum(1 for it in items if it["kind"] == "picture")
             groups = sum(1 for it in items if it["kind"] == "group")
-            shapes = len(items) - pics - groups
+            texts = sum(1 for it in items if it["kind"] == "text")
+            shapes = len(items) - pics - groups - texts
             what = ", ".join(x for x in (
+                f"{texts} text" + ("s" if texts != 1 else "") if texts else "",
                 f"{pics} picture" + ("s" if pics != 1 else "") if pics else "",
                 f"{shapes} shape" + ("s" if shapes != 1 else "") if shapes else "",
                 f"{groups} group" + ("s" if groups != 1 else "") if groups else "") if x)
-            self.statusMessage.emit(f"Selected {what}: drag to move, drag a handle to resize, "
-                                    "Delete deletes, right-click for more")
+            how = ("drag to move, Delete deletes, right-click for more (Edit text changes the "
+                   "words)" if texts else
+                   "drag to move, drag a handle to resize, Delete deletes, right-click for more")
+            self.statusMessage.emit(f"Selected {what}: {how}")
 
     def clear_object_selection(self):
         if self.obj_sel is not None:
             self.select_objects(self.obj_sel[0], [])
 
-    def _objects_edit(self, label, fn, keep=True):
-        """Run fn(page, ns) on the selected objects as one undo step; keep them selected.
-        fn may return the page's new page_objects.Objects (saves reading the page again)."""
+    def _objects_edit(self, label, fn, keep=True, text_fn=None):
+        """Run fn(page, ns) on the selected pictures and shapes, then text_fn(page, texts) on
+        the selected text, as one undo step; keep them selected. fn may return the page's
+        new page_objects.Objects (saves reading the page again). text_fn returns where each
+        text paragraph is now (to select it again), or None."""
         from . import page_objects
         if self.obj_sel is None:
             return
         index, items = self.obj_sel
-        ns = [it["n"] for it in items]
+        ns = [it["n"] for it in items if it["kind"] != "text"]
+        texts = [it for it in items if it["kind"] == "text"]
 
         fresh = {}
 
         def do():
-            fresh["objs"] = fn(self.doc[index], ns)
+            page = self.doc[index]
+            if ns:
+                fresh["objs"] = fn(page, ns)
+            if texts and text_fn is not None:
+                # (the shapes first: text removal rewrites the page's drawing instructions)
+                fresh["text_rects"] = text_fn(page, texts)
+                fresh["objs"] = None
         before = self._obj_cache.get(index)
         self.modify(do, [index])
         self._obj_cache.pop(index, None)
@@ -3242,6 +3299,10 @@ class DocumentView(QScrollArea):
         if keep:
             objs = self.content_objects(index)
             again = [it for it in (objs.items if objs else []) if it["n"] in set(ns)]
+            for r in fresh.get("text_rects") or []:
+                near = [it for it in self.text_objects(index)
+                        if abs(it["rect"].x0 - r.x0) < 1.5 and abs(it["rect"].y0 - r.y0) < 1.5]
+                again += near[:1]
             self.obj_sel = (index, again) if again else None
         self.pages[index].update()
         self.selectionChanged.emit()    # menus (Arrange) follow the reselected objects
@@ -3253,11 +3314,56 @@ class DocumentView(QScrollArea):
         if self.obj_sel is None:
             return
         objs = self._obj_cache.get(self.obj_sel[0])
-        self._objects_edit("Moved", lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect, objs))
+        new_rect = pymupdf.Rect(new_rect)
+        offset = (new_rect.x0 - old.x0, new_rect.y0 - old.y0)
+        if any(it["kind"] == "text" for it in self.obj_sel[1]):
+            # text only moves (the box keeps its size: Edit text changes the words)
+            new_rect = old + (offset[0], offset[1], offset[0], offset[1])
+
+        def move_text(page, texts):
+            self._move_text_lines(page, [ln for it in texts for _r, ln in it["lines"]],
+                                  offset)
+            d = pymupdf.Point(offset)
+            return [it["rect"] + (d.x, d.y, d.x, d.y) for it in texts]
+        self._objects_edit("Moved", lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect, objs),
+                           text_fn=move_text)
+
+    def _move_text_lines(self, page, lines, offset):
+        """Move lines of the page's text by offset (points), with the highlights and other
+        markups on them. The last line in the direction of the move goes first, so a moved
+        line never lands on one that is still to be taken out."""
+        dx, dy = offset
+        if not (dx or dy):
+            return
+        d = pymupdf.Point(offset)
+        order = sorted(lines, key=lambda ln: (pymupdf.Rect(ln["bbox"]).y0 * (-1 if dy > 0 else 1),
+                                              pymupdf.Rect(ln["bbox"]).x0 * (-1 if dx > 0 else 1)))
+        for line in order:
+            moving = []
+            for x in self._markups_on_line(page, line):
+                m = annotations.read(page.load_annot(x))
+                if m is not None:
+                    moving.append((x, m))
+            used = text_edit.replace_line(page, line, text_edit.line_text(line), offset,
+                                          scan=None)
+            if (used or "").startswith("KZ"):
+                self._fonts_added = True
+            for x, m in moving:
+                if "quads" in m:
+                    m = annotations.copy(m)
+                    m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d)
+                                  for q in m["quads"]]
+                else:
+                    m = annotations.moved(m, d)
+                annotations.replace(page, x, m)
 
     def rotate_objects(self, degrees):
         from . import page_objects
         if self.obj_sel is None:
+            return
+        if any(it["kind"] == "text" for it in self.obj_sel[1]):
+            self.statusMessage.emit("Text can be moved or deleted here, not turned: select "
+                                    "only pictures and shapes to rotate them")
             return
         rect = self.selected_objects_rect()
         objs = self._obj_cache.get(self.obj_sel[0])
@@ -3268,6 +3374,10 @@ class DocumentView(QScrollArea):
         in front of what covers them (text too), or send them behind."""
         from . import page_objects
         if self.obj_sel is None:
+            return
+        if any(it["kind"] == "text" for it in self.obj_sel[1]):
+            self.statusMessage.emit("Stacking order is for pictures and shapes: select only "
+                                    "those to bring them forward or send them back")
             return
         index, items = self.obj_sel
         ns = [it["n"] for it in items]
@@ -3299,7 +3409,47 @@ class DocumentView(QScrollArea):
 
     def delete_objects(self):
         from . import page_objects
-        self._objects_edit("Deleted", page_objects.delete, keep=False)
+        if self.obj_sel is None:
+            return
+        index, items = self.obj_sel
+        texts = [it for it in items if it["kind"] == "text"]
+        if texts and not self._confirm_text_removal(index, texts):
+            return
+
+        def delete_text(page, texts):
+            text_edit.delete_lines(page, [ln for it in texts for _r, ln in it["lines"]])
+        self._objects_edit("Deleted", page_objects.delete, keep=False, text_fn=delete_text)
+
+    def _confirm_text_removal(self, index, texts):
+        """Taking text out removes every letter the cut touches. When that would take
+        letters of other text overlapping it too, ask first."""
+        bands = [b for it in texts for _r, ln in it["lines"] for b in text_edit.removal_bands(ln)]
+        others = 0
+        for w in self._words(index):                 # one entry per letter
+            r = pymupdf.Rect(w[:4])
+            c = pymupdf.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2)
+            # this text's own letters are centered on its cut; others only touch it
+            if w[4].strip() and any(r.intersects(b) for b in bands) and \
+                    not any(c in (b + (-0.5, -0.5, 0.5, 0.5)) for b in bands):
+                others += 1
+        if not others:
+            return True
+        return QMessageBox.question(
+            self, "Delete text",
+            f"{others} letter(s) of other text overlap this text and would be deleted with "
+            "it.\n\nDelete anyway? (Ctrl+Z undoes it.)") == QMessageBox.Yes
+
+    def delete_text_at(self, index, pt):
+        """Edit text tool, right-click > Delete text: take out the paragraph under pt."""
+        self.commit_pending()
+        hit = [it for it in self.text_objects(index) if (it["rect"] + (-2, -2, 2, 2)).contains(pt)]
+        if not hit:
+            self.statusMessage.emit("No text there")
+            return
+        item = min(hit, key=lambda it: it["rect"].get_area())
+        self.obj_sel = (index, [item])
+        self.delete_objects()
+        self.obj_sel = None
 
     def ungroup_objects(self):
         """Take the selected groups apart: their shapes, pictures and text become separate

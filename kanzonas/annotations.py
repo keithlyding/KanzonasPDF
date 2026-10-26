@@ -147,10 +147,17 @@ def _settings():
 # A Tool Chest item in use: (tool, props) that replace the tool's defaults until another
 # tool is picked normally.
 OVERRIDE = {"tool": None, "props": None}
+# Edit text's font and size apply to the line being edited only: never saved, back to "keep
+# the line's" after each edit (a size kept from an earlier edit quietly resized later ones)
+TRANSIENT_TOOLS = ("edittext",)
+_TRANSIENT = {}
 
 
 def tool_props(kind):
     props = dict(DEFAULTS.get(kind) or PAGE_TEXT_TOOLS.get(kind, {}))
+    if kind in TRANSIENT_TOOLS:
+        props.update({k: v for k, v in _TRANSIENT.get(kind, {}).items() if k in props})
+        return props
     if OVERRIDE["tool"] == kind and OVERRIDE["props"] is not None:
         props.update({k: v for k, v in OVERRIDE["props"].items() if k in props})
     else:
@@ -176,6 +183,9 @@ def saved_tool_props(kind):
 
 
 def set_tool_props(kind, props):
+    if kind in TRANSIENT_TOOLS:
+        _TRANSIENT[kind] = dict(props)
+        return
     s = _settings()
     try:
         allp = json.loads(s.value("tool_defaults", "{}") or "{}")
@@ -187,6 +197,19 @@ def set_tool_props(kind, props):
 
 def reset_tool_props(kind):
     set_tool_props(kind, dict(DEFAULTS.get(kind) or PAGE_TEXT_TOOLS[kind]))
+
+
+def forget_saved_transient():
+    """Drop Edit text font / size choices saved by versions before 1.2.1."""
+    s = _settings()
+    try:
+        allp = json.loads(s.value("tool_defaults", "{}") or "{}")
+    except (ValueError, TypeError):
+        return
+    if any(k in allp for k in TRANSIENT_TOOLS):
+        for k in TRANSIENT_TOOLS:
+            allp.pop(k, None)
+        s.setValue("tool_defaults", json.dumps(allp))
 
 
 def author():
