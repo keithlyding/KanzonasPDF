@@ -733,7 +733,8 @@ and title. Ctrl+Z undoes it all.</li>
 <li><b>Fill in:</b> with Select or Hand, click a field. Option buttons with the same group
 name are exclusive: choosing one clears the others in its group.</li>
 <li><b>Next form field</b> (Tab) and <b>Previous form field</b> (Shift+Tab), in the Forms menu:
-go through the fields in reading order (page by page, top to bottom, left to right). The
+go through the fields in reading order (page by page, top to bottom, left to right as the
+page is shown, also on a rotated page). The
 current field gets an orange outline; a text field opens for typing (Tab moves on, Shift+Tab
 goes back); for a checkbox, option button, dropdown, signature or initials field press
 <b>Space</b> or <b>Enter</b> to fill it in. Escape clears the outline.</li>

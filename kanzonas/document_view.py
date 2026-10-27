@@ -1714,9 +1714,11 @@ class DocumentView(QScrollArea):
             else:
                 self.erase_content(index, rect)
             return
+        disp = (rect * page.rotation_matrix).normalize()       # as the page is shown
         if tool == "textbox":
-            if is_click or rect.width < 20 or rect.height < 10:
-                rect = pymupdf.Rect(a.x, a.y, a.x + 200, a.y + 40)
+            if is_click or disp.width < 20 or disp.height < 10:
+                c = pymupdf.Point(a) * page.rotation_matrix
+                rect = pymupdf.Rect(c.x, c.y, c.x + 200, c.y + 40) * page.derotation_matrix
             text, ok = dialogs.get_text(self, "Text box", "Text:")
             if not ok or not text.strip():
                 return
@@ -1727,9 +1729,10 @@ class DocumentView(QScrollArea):
             return
         if tool == "placeholder":
             props = self.tool_props("placeholder")
-            if is_click or rect.width < 12 or rect.height < 8:
+            if is_click or disp.width < 12 or disp.height < 8:
                 w, h = (160, 40) if props.get("for") == "signature" else (70, 30)
-                rect = pymupdf.Rect(a.x, a.y, a.x + w, a.y + h)
+                c = pymupdf.Point(a) * page.rotation_matrix
+                rect = pymupdf.Rect(c.x, c.y, c.x + w, c.y + h) * page.derotation_matrix
             self._create(index, {"kind": "placeholder", "props": props, "rect": rect})
             return
         if tool == "m_calibrate":
@@ -1745,10 +1748,13 @@ class DocumentView(QScrollArea):
             text, ok = dialogs.get_text(self, "Callout", "Text:")
             if not ok or not text.strip():
                 return
-            box = pymupdf.Rect(b.x, b.y, b.x + 160, b.y + 40)
-            if b.x < a.x:                       # box to the left of the target
-                box = pymupdf.Rect(b.x - 160, b.y, b.x, b.y + 40)
-            self._create(index, {"kind": "callout", "props": props, "rect": box,
+            to_disp = page.rotation_matrix
+            ta, tb = pymupdf.Point(a) * to_disp, pymupdf.Point(b) * to_disp
+            box = pymupdf.Rect(tb.x, tb.y, tb.x + 160, tb.y + 40)
+            if tb.x < ta.x:                     # box to the left of the target
+                box = pymupdf.Rect(tb.x - 160, tb.y, tb.x, tb.y + 40)
+            self._create(index, {"kind": "callout", "props": props,
+                                 "rect": box * page.derotation_matrix,
                                  "points": [a], "text": text})
             return
         if is_click:
@@ -4613,11 +4619,13 @@ class DocumentView(QScrollArea):
         """Fillable fields in reading order: page by page, top to bottom, left to right."""
         order = []
         for i in range(self.doc.page_count):
-            ws = sorted((w for w in self.doc[i].widgets()
-                         if w.field_type != pymupdf.PDF_WIDGET_TYPE_BUTTON
-                         and not w.field_flags & 1),                  # 1 = read-only
-                        key=lambda w: (round(w.rect.y0), w.rect.x0))
-            order += [(i, w.xref) for w in ws]
+            page = self.doc[i]
+            shown = page.rotation_matrix                # reading order as the page is shown
+            ws = [((w.rect * shown).normalize(), w.xref) for w in page.widgets()
+                  if w.field_type != pymupdf.PDF_WIDGET_TYPE_BUTTON
+                  and not w.field_flags & 1]                         # 1 = read-only
+            ws.sort(key=lambda t: (round(t[0].y0), t[0].x0))
+            order += [(i, x) for _r, x in ws]
         return order
 
     def next_field(self, back=False, current=None):
