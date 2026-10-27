@@ -844,8 +844,10 @@ sideways or upside-down pages; the slowest); or <b>Auto</b> (the default), which
 page fast and redoes it at High resolution only when the text came out small or unclear.
 Higher accuracy takes longer and uses more memory, and it never renders a scan sharper than
 it was scanned (that only adds blur), so on a 200 dpi scan Normal and High read at 200 dpi.
-Your choice is remembered. Edit text then changes the scan's words in a matching font (see
-Editing the PDF's own text).</li>
+Your choice is remembered. At every accuracy, a page scanned upside down is noticed and read
+turned upright, and lines that are upside down or standing up on the page get their text
+where their letters are, so Find and Search &amp; redact cover the right words. Edit text then
+changes the scan's words in a matching font (see Editing the PDF's own text).</li>
 <li><b>Redaction:</b> the Redact (mark text or area) tool (Shift+R) or Search &amp; redact
 marks areas; Apply redactions permanently removes what's underneath. A vector path that
 touches a mark is removed past the box. Applying scrubs metadata, attachments, hidden text,

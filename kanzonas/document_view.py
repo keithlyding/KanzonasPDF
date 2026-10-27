@@ -4879,12 +4879,25 @@ class DocumentView(QScrollArea):
                     res = ocr_image(best)
                     if res is None:
                         break
+                turn = 0
+                if ocr.upside_down(res):
+                    # scanned upside down: read it turned upright too (lines the engine
+                    # wasn't sure about read right then), keep the better reading
+                    dlg.setLabelText(f"Page {i + 1}: upside down, recognizing it turned...")
+                    r = ocr.Rendering(self.doc[i], 180, dpi=dpi)
+                    alt = ocr_image(r)
+                    if alt is None:
+                        break
+                    if ocr.score(alt) >= ocr.score(res):
+                        best, res, turn = r, alt, 180
                 turns = (90, 180, 270) if accuracy == "high" else \
                     ((90, 270) if ocr.mostly_vertical(res) else ())
                 if turns:
                     # Sideways or upside-down text: try other turns, keep the best.
                     dlg.setLabelText(f"Page {i + 1}: checking other orientations...")
                     for extra in turns:
+                        if extra == turn:
+                            continue
                         r = ocr.Rendering(self.doc[i], extra, dpi=dpi)
                         alt = ocr_image(r)
                         if alt is None:
