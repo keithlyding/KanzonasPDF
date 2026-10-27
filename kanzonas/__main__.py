@@ -72,10 +72,19 @@ def main():
         sock.write(("\n".join(files) + "\n").encode("utf-8"))
         sock.flush()
         sock.waitForBytesWritten(1000)
+        # the running one answers with its window: this program, started by the click, may
+        # bring it to the front (Windows doesn't let the running one do it itself)
+        winfocus.front_from_reply(sock)
         sock.disconnectFromServer()
         return
+    from . import winfocus
     # Files handed over before the window is ready wait here (several PDFs opened at once)
-    state = {"win": None, "waiting": [], "asked": False}
+    state = {"win": None, "waiting": [], "asked": False, "unanswered": []}
+
+    def answer(conn):
+        """Tell the program handing over files which window to bring to the front."""
+        conn.write(("HWND %d\n" % winfocus.handle(state["win"])).encode("ascii"))
+        conn.flush()
 
     def deliver(paths):
         win = state["win"]
@@ -85,12 +94,17 @@ def main():
             return
         for p in paths:
             win.open_file(p)
-        from . import winfocus
         winfocus.bring_to_front(win)
 
     def incoming():
         while server is not None and server.hasPendingConnections():
             conn = server.nextPendingConnection()
+            # straight away, before opening the files: the window to bring forward (once
+            # there is one)
+            if state["win"] is not None:
+                answer(conn)
+            else:
+                state["unanswered"].append(conn)
 
             def read(conn=conn, buf=[b""]):
                 buf[0] += bytes(conn.readAll())
@@ -113,6 +127,11 @@ def main():
     for path in files:
         win.open_file(path)
     state["win"] = win
+    for conn in state["unanswered"]:
+        try:
+            answer(conn)
+        except RuntimeError:
+            pass                        # (it gave up waiting and went)
     if state["asked"]:
         deliver(state["waiting"])
     QTimer.singleShot(5000, win.start_update_check)    # once a day at most; never blocks start-up

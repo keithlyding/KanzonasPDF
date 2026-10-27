@@ -143,6 +143,8 @@ def _join_spread_pieces(rows):
             if any(a1 <= g0 + 0.5 for _a0, a1 in pieces) and \
                     any(a0 >= g1 - 0.5 for a0, _a1 in pieces):
                 verdict = False
+            elif any(abs(a0 - g1) <= 1.5 for a0, _a1 in pieces):
+                verdict = False         # the text after the gap starts a column's lines
         return verdict
 
     out = []
@@ -643,8 +645,10 @@ def _font_for(page, span, text):
                              f"text: {names}. Remove or replace them and try again.")
 
 
-_MARKER = re.compile(r"^\s*(?:[\u2022\u25aa\u25cf\u25e6\u2013\u2014\uf0b7\uf0a7\uf076\uf0d8*-]"
-                     r"|\(?(?:\d{1,3}|[A-Za-z]|[ivxIVX]{1,4})[.)](?:\d{1,2}[.)]?)*)(?:\s|$)")
+_MARKER = re.compile(r"^\s*(?:(?:[\u2022\u2023\u2043\u2219\u25a0-\u25ff\u2700-\u27bf\ue000-\uf8ff"
+                     r"\u2013\u2014*-]"
+                     r"|\(?(?:\d{1,3}|[A-Za-z]|[ivxIVX]{1,4})[.)](?:\d{1,2}[.)]?)*)(?:\s|$)"
+                     r"|\d{1,3}[.)](?=[A-Z]))")     # (a number run into its text: "1.Turn")
 _WORD = re.compile(r"[^\W_]", re.UNICODE)
 
 
@@ -886,7 +890,15 @@ def paragraph_at(lines, line, rows=None):
         nb = min(cands, key=lambda c: abs(_baseline(c[1]) - b))
         nb_base = _baseline(nb[1])
         same = [c for c in cands if abs(_baseline(c[1]) - nb_base) < 0.25 * size]
-        return min(same, key=lambda c: abs(c[0].x0 - h[0].x0))
+        # the piece running along most of h, not a number or label set apart at its start
+        return max(same, key=lambda c: (min(c[0].x1, h[0].x1) - max(c[0].x0, h[0].x0),
+                                        -abs(c[0].x0 - h[0].x0)))
+
+    def lone_marker(h):
+        """A list item's number or bullet on its own ("(a)", "2.", "\u2022"): never a line
+        of the paragraph."""
+        t = line_text(h[1]).strip()
+        return len(t) <= 6 and bool(_MARKER.match(t + " "))
 
     tol = max(1.5, 0.15 * size)
     pitch = [None]
@@ -912,6 +924,20 @@ def paragraph_at(lines, line, rows=None):
                 if abs(ea[k] - eb[k]) <= tol}
 
     mode = [None]                       # the ways all the body's lines line up
+
+    def ends(a, b, chain_now):
+        """a, followed by b, is a paragraph's last line: the next line's first word would
+        have fitted on it (a short line ends a paragraph; the next one starts another)."""
+        tb = line_text(b[1]).strip()
+        if not tb:
+            return True
+        hs = chain_now + [a, b]
+        centered = mode[0] is not None and "left" not in mode[0]
+        reach = [(edges(h)[1] - edges(h)[0]) if centered else edges(h)[1] for h in hs]
+        word = tb.split(" ")[0]
+        word_w = b[0].width * len(word) / max(1, len(tb))
+        mine = (edges(a)[1] - edges(a)[0]) if centered else edges(a)[1]
+        return max(reach) - mine > word_w + _space_w(size) + 0.3 * size
 
     def fits(a, b):
         m = lined_up(a, b)
@@ -951,7 +977,7 @@ def paragraph_at(lines, line, rows=None):
         cur = start
         while True:
             up = near(cur, down=False)
-            if up is None or not even(up, cur):
+            if up is None or not even(up, cur) or lone_marker(up) or ends(up, cur, chain):
                 break
             if first_line(up, cur):
                 take(up, cur)
@@ -970,12 +996,14 @@ def paragraph_at(lines, line, rows=None):
     while True:
         down = near(cur, down=True)
         if down is None or not even(cur, down) or _marker_before(down, on_base(down)) or \
-                _starts_item(down[1]):
+                _starts_item(down[1]) or lone_marker(down) or ends(cur, down, chain[:-1]):
             break
         if len(chain) == 1:
             dx = down[0].x0 - cur[0].x0
             # cur is a first line set in (indent) or out before its number (hanging)
-            setin = -6 * size <= dx < -tol and not _marker_before(cur, on_base(cur))
+            # (a numbered first line's text may run back to the margin below its number)
+            setin = -6 * size <= dx < -tol and (not _marker_before(cur, on_base(cur)) or
+                                                down[0].x0 < cur[0].x0 - 2 * size)
             setout = tol < dx <= 6 * size and (_starts_item(cur[1]) or (
                 full(cur, down) and body_left(down)))
             if (setin or setout) and not lined_up(cur, down) & {"left"}:
@@ -990,9 +1018,21 @@ def paragraph_at(lines, line, rows=None):
         chain.append(down)
         cur = down
     lines_out = [ln for _r, ln in chain]
-    if len(lines_out) < 2 or not flows(lines_out):
+    if len(lines_out) < 2 or not flows(lines_out) or _sentence_per_line(lines_out):
         return None
     return lines_out
+
+
+def _sentence_per_line(lines):
+    """Every line ends a sentence and the next starts one ("Supports Ubuntu." / "Built-in
+    speaker."): a list of one-line items (its bullets may be drawn, not text), not one
+    paragraph."""
+    for ln, nxt in zip(lines, lines[1:]):
+        t = line_text(ln).rstrip().rstrip(")]\"'\u201d\u2019")
+        n = line_text(nxt).lstrip()
+        if not t or t[-1] not in ".!?:;" or not n[:1].isupper():
+            return False
+    return True
 
 
 def paragraph_layout(lines, measure=None, exact=False, gaps=None):

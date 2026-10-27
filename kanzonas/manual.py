@@ -626,8 +626,9 @@ size picked before clicking a line applies to that line.</li>
 <li><b>Delete text:</b> with the Edit text tool, right-click the text &gt; <b>Delete text</b>, or
 select it with the Edit objects tool and press Delete (see below). The whole paragraph goes, all
 the lines Add text wrote in one go; pictures and lines under it stay. Ctrl+Z brings it back.</li>
-<li><b>Edit a paragraph:</b> with the Edit text tool (Ctrl+E), click anywhere in a paragraph: the
-whole paragraph opens in a box of its width with the cursor on the word you clicked, and as you
+<li><b>Edit a paragraph:</b> with the Edit text tool (Ctrl+E), the dashed outline under the
+pointer shows what a click edits: a whole paragraph, or one line (hold Alt for one line).
+Click anywhere in a paragraph: the whole paragraph opens in a box of its width with the cursor on the word you clicked, and as you
 type the words rewrap, as in Word. Press Enter and the paragraph is rewritten in its font, size,
 color and line spacing, and keeps its alignment (left, right, centered or justified) and a
 first line set in (an indent) or set out (a numbered paragraph's hanging indent). A word split by a hyphen at a line's end is joined again when the dictionary
@@ -640,10 +641,15 @@ downward; it doesn't push what's below it down, so if it now runs into other tex
 bottom of the page, the status bar says so (Ctrl+Z undoes it). The paragraph is written in one
 style: a bold or colored word inside it comes out like the rest.</li>
 <li><b>What counts as a paragraph:</b> lines of one size, one under the other at an even line
-spacing, lined up on one side (or centered), that wrap like running text. Anything else is
+spacing, lined up on one side (or centered), that wrap like running text. It ends at its
+short last line, so numbered steps and paragraphs with no space between them are each their
+own; a line that starts with a number or bullet ("2.", "(b)", "1.Turn", a symbol bullet)
+starts a new one. Anything else is
 edited a line at a time: single lines; drawing labels, title blocks and dimension text; table
 and schedule cells; a column next to another column; a heading (its size differs from the text
-under it); list items, each on its own; scanned and sideways text, and rotated pages.</li>
+under it); list items, each on its own (also a list of one-line items whose bullets are
+drawn, where every line is a sentence of its own); scanned and sideways text, and rotated
+pages.</li>
 <li><b>Edit one line:</b> <b>Alt+click</b> a line to edit just that line, even inside a
 paragraph. <b>Press on a line and drag</b> to move it (its text and font stay as they are).
 Editing a line: the cursor goes where you

@@ -305,8 +305,9 @@ class DocumentView(QScrollArea):
                 keep.add(i)
         if self.obj_sel:
             keep.add(self.obj_sel[0])
-        for cache in (self._dlists, self._line_cache, self._row_cache, self._word_cache,
-                      self._snap_markups, self._obj_cache, self._snap_content):
+        for cache in (self._dlists, self._line_cache, self._row_cache, self._hover_para,
+                      self._word_cache, self._snap_markups, self._obj_cache,
+                      self._snap_content):
             if len(cache) <= PAGE_CACHE_PAGES:
                 continue
             for i in [i for i in cache
@@ -1028,6 +1029,7 @@ class DocumentView(QScrollArea):
         self._tiles = OrderedDict()    # (page, scale, tx, ty) -> rendered tile, LRU
         self._line_cache = {}
         self._row_cache = {}           # page index -> text_edit.paragraph_rows (Edit text)
+        self._hover_para = {}          # page index -> {line id: what a click there edits}
         self._word_cache = {}
         self._card_cache = {}
         self.text_sel = None           # [(page index, selected character units), ...]
@@ -1051,6 +1053,7 @@ class DocumentView(QScrollArea):
             self._dlists.pop(i, None)
             self._line_cache.pop(i, None)
             self._row_cache.pop(i, None)
+            self._hover_para.pop(i, None)
             self._word_cache.pop(i, None)
             self._snap_markups.pop(i, None)
             self._obj_cache.pop(i, None)
@@ -3152,6 +3155,26 @@ class DocumentView(QScrollArea):
     def text_line_rect(self, index, pt):
         hit = text_edit.line_at(self._lines(index), pt)
         return hit[0] if hit else None
+
+    def text_target_rect(self, index, pt, one_line=False):
+        """What a click with Edit text at pt edits, for the outline under the pointer: the
+        whole paragraph (see edit_text_at), or the line (one_line: Alt held)."""
+        hit = text_edit.line_at(self._lines(index), pt)
+        if hit is None:
+            return None
+        rect, line = hit
+        if one_line or self.doc[index].rotation or \
+                text_edit.line_rotation(line) % 360:
+            return rect
+        key = id(line)
+        cache = self._hover_para.setdefault(index, {})
+        if key not in cache:
+            para = self._paragraph_of(index, line)
+            box = pymupdf.Rect(rect)
+            for ln in para or []:
+                box |= pymupdf.Rect(ln["bbox"])
+            cache[key] = box
+        return cache[key]
 
     def move_text_line(self, index, pt, offset):
         """Edit text tool, press on a line and drag: move it by offset (PDF points) without
