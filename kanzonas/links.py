@@ -328,18 +328,27 @@ def _action(doc, xref):
 
 
 def _add_annot(doc, page_xref, rect, action, extras):
+    """A new link annotation object for the page (not in its /Annots yet: _append_annots)."""
     new = doc.get_new_xref()
     doc.update_object(new, "<</Type/Annot/Subtype/Link/Rect%s%s/P %d 0 R%s>>"
                       % (rect, action, page_xref, "".join("/%s %s" % kv for kv in extras)))
+    return new
+
+
+def _append_annots(doc, page_xref, xrefs):
+    """Add these annotation objects to the page's /Annots, in one write."""
+    if not xrefs:
+        return
+    refs = " ".join("%d 0 R" % x for x in xrefs)
     typ, val = doc.xref_get_key(page_xref, "Annots")
     if typ == "xref":
         arr = int(val.split()[0])
         doc.update_object(arr, doc.xref_object(arr, compressed=True).rstrip()[:-1] +
-                          " %d 0 R]" % new)
+                          " " + refs + "]")
     elif typ == "array":
-        doc.xref_set_key(page_xref, "Annots", val.rstrip()[:-1] + " %d 0 R]" % new)
+        doc.xref_set_key(page_xref, "Annots", val.rstrip()[:-1] + " " + refs + "]")
     else:
-        doc.xref_set_key(page_xref, "Annots", "[%d 0 R]" % new)
+        doc.xref_set_key(page_xref, "Annots", "[" + refs + "]")
 
 
 def copy_page_links(src, pairs, dst, park=None, outside=None):
@@ -351,6 +360,7 @@ def copy_page_links(src, pairs, dst, park=None, outside=None):
     copies = {src.page_xref(s): dst.page_xref(d) for s, d in pairs}
     for s, d in pairs:
         page_xref = dst.page_xref(d)
+        made = []
         named = {ln["xref"]: ln for ln in src[s].get_links()
                  if ln.get("kind") == pymupdf.LINK_NAMED and 0 <= ln.get("page", -1) < len(src)}
         for xref, kind, *_ in src[s].annot_xrefs():
@@ -397,4 +407,5 @@ def copy_page_links(src, pairs, dst, park=None, outside=None):
                 if action is None:
                     continue
                 action = "/A" + action
-            _add_annot(dst, page_xref, rect, action, extras)
+            made.append(_add_annot(dst, page_xref, rect, action, extras))
+        _append_annots(dst, page_xref, made)

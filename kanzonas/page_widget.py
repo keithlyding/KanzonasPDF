@@ -1118,7 +1118,7 @@ class PageWidget(QWidget):
         # select or edit what the link is on never opens it by accident
         self._link_press = None
         if tool == "hand" or (tool == "select" and ctrl_held(e)):
-            link = self.view.link_at(self.index, pdf)
+            link = self.view.link_to_follow(self.index, pdf)
             if link is not None:
                 self._link_press = (link, pos)
         if tool == "hand":
@@ -1366,7 +1366,7 @@ class PageWidget(QWidget):
                 return
             if tool in ("select", "hand"):
                 pdf = self.to_pdf(pos)
-                link = self.view.link_at(self.index, pdf)
+                link = self.view.link_to_follow(self.index, pdf)
                 if link is not None:
                     if tool == "hand":
                         self.setCursor(Qt.PointingHandCursor)

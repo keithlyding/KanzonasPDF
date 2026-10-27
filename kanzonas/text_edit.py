@@ -100,34 +100,50 @@ def _join_spread_pieces(rows):
     """Pieces of one line of a justified paragraph: the wide gaps between its words split
     it into pieces on the same baseline (text_lines keeps a line's pieces apart beyond a
     small gap, so labels and table cells stay separate). Join pieces of the same size up to
-    1.5 letter heights apart into one line, but only where the line above or below has text
-    across the gap: a gap that runs down the page is a gutter between columns or table
-    cells, not a stretched space."""
-    rows = sorted(rows, key=lambda h: _row_key(*h))
-    # the pieces of each visual row, by direction and baseline, for the gutter test
-    by_base = {}
-    for r, ln in rows:
-        k = (round(ln["dir"][0], 2), round(ln["dir"][1], 2))
-        by_base.setdefault(k, []).append((_baseline(ln), _along(r, ln)))
-    index = {}
-    for k, items in by_base.items():
-        items.sort()
-        index[k] = ([b for b, _a in items], items)
+    1.5 letter heights apart into one line, unless the gap runs down the page: a gutter
+    between columns or table cells has the rows next to it split at the same place (text on
+    both sides, none across it), where a stretched space has words across it above or
+    below. When the rows next to it can't tell, pieces in the same font and color join."""
+    import bisect
 
-    def crossed(ln, size, g0, g1):
-        import bisect
-        k = (round(ln["dir"][0], 2), round(ln["dir"][1], 2))
-        bases, items = index[k]
+    def key(span):
+        return (span.get("font"), round(span["size"], 1), span.get("color"))
+    rows = sorted(rows, key=lambda h: _row_key(*h))
+    # each visual row's pieces, (start, end) along it, by direction and baseline: built once
+    index = {}
+    for r, ln in rows:
+        d = (round(ln["dir"][0], 2), round(ln["dir"][1], 2))
         base = _baseline(ln)
-        for lo, hi in ((base - 2.0 * size, base - 0.7 * size), (base + 0.7 * size, base + 2.0 * size)):
-            i, j = bisect.bisect_left(bases, lo), bisect.bisect_right(bases, hi)
+        groups = index.setdefault(d, [])
+        if groups and abs(groups[-1][0] - base) < 0.3:
+            groups[-1][1].append(_along(r, ln))
+        else:
+            groups.append((base, [_along(r, ln)]))
+    bases = {}
+    for d, groups in index.items():
+        for _b, pieces in groups:
+            pieces.sort()
+        bases[d] = [b for b, _p in groups]
+
+    def neighbors_say(ln, size, g0, g1):
+        """True: a row next to it has words across the gap (a stretched space); False: a
+        row next to it is split there too (a gutter); None: they can't tell."""
+        d = (round(ln["dir"][0], 2), round(ln["dir"][1], 2))
+        groups, bs = index[d], bases[d]
+        base = _baseline(ln)
+        verdict = None
+        for lo, hi, pick in ((base - 2.0 * size, base - 0.7 * size, -1),
+                             (base + 0.7 * size, base + 2.0 * size, 0)):
+            i, j = bisect.bisect_left(bs, lo), bisect.bisect_right(bs, hi)
             if i >= j:
                 continue
-            near = min(bases[i:j], key=lambda b: abs(b - base))
-            pieces = sorted(a for b, a in items[i:j] if abs(b - near) < 0.25 * size)
+            pieces = groups[(j - 1) if pick < 0 else i][1]      # the nearest row
             if _covered(pieces, g0, g1):
                 return True
-        return False
+            if any(a1 <= g0 + 0.5 for _a0, a1 in pieces) and \
+                    any(a0 >= g1 - 0.5 for a0, _a1 in pieces):
+                verdict = False
+        return verdict
 
     out = []
     for r, ln in rows:
@@ -139,12 +155,13 @@ def _join_spread_pieces(rows):
             if (abs(last["dir"][0] - ln["dir"][0]) < 0.01 and
                     abs(last["dir"][1] - ln["dir"][1]) < 0.01 and
                     abs(_baseline(last) - _baseline(ln)) < 0.25 * size and
-                    abs(size - lsize) < 0.05 * size and
-                    0 <= g1 - g0 <= 1.5 * size and crossed(ln, size, g0, g1)):
-                joined = {"bbox": pymupdf.Rect(lr) | r, "dir": last["dir"],
-                          "spans": last["spans"] + ln["spans"]}
-                out[-1] = (pymupdf.Rect(joined["bbox"]), joined)
-                continue
+                    abs(size - lsize) < 0.05 * size and 0 <= g1 - g0 <= 1.5 * size):
+                said = neighbors_say(ln, size, g0, g1)
+                if said or (said is None and key(main_span(last)) == key(main_span(ln))):
+                    joined = {"bbox": pymupdf.Rect(lr) | r, "dir": last["dir"],
+                              "spans": last["spans"] + ln["spans"]}
+                    out[-1] = (pymupdf.Rect(joined["bbox"]), joined)
+                    continue
         out.append((pymupdf.Rect(r), ln))
     return out
 
@@ -806,16 +823,35 @@ def _split_marker(r, ln):
     return [(pymupdf.Rect(mark["bbox"]), mark), (pymupdf.Rect(rest_box), rest)]
 
 
-def paragraph_at(lines, line):
-    """The lines of the paragraph holding line (horizontal text; text_lines output), in
-    reading order, or None when it isn't clearly a paragraph of wrapped lines: what a
-    click with Edit text rewrites. Lines stack at one size and an even line spacing, with
-    one left edge (the first may be indented); a bullet or number, a change of size or
-    spacing, or lines that don't wrap like running text end it."""
+def paragraph_rows(lines):
+    """The page's horizontal visible lines as paragraph_at reads them (a justified line's
+    pieces joined, a list item's number split off), sorted by baseline. Worth keeping per
+    page: paragraph_at(lines, line, rows) then answers a click quickly."""
     rows = [(r, ln) for r, ln in _join_spread_pieces(
         [(r, ln) for r, ln in lines if visible(ln)])
         if abs(ln["dir"][0] - 1) < 0.01 and abs(ln["dir"][1]) < 0.01]
     rows = [piece for h in rows for piece in _split_marker(*h)]
+    rows.sort(key=lambda h: (_baseline(h[1]), h[0].x0))
+    return rows
+
+
+def _starts_item(ln):
+    """The line begins with a list number or bullet ("1. The contractor..."): it's the first
+    line of a list item, never the continuation of the line above."""
+    t = line_text(ln).lstrip()
+    return bool(_MARKER.match(t)) and len(t.split()) > 1
+
+
+def paragraph_at(lines, line, rows=None):
+    """The lines of the paragraph holding line (horizontal text; text_lines output), in
+    reading order, or None when it isn't clearly a paragraph of wrapped lines: what a
+    click with Edit text rewrites. Lines stack at one size and an even line spacing, lined
+    up on one side or centered (the first may be indented, or set out before a list
+    number); a bullet or number, a change of size or spacing, or lines that don't wrap like
+    running text end it. rows: paragraph_rows(lines), when kept."""
+    import bisect
+    if rows is None:
+        rows = paragraph_rows(lines)
     ids = {id(s) for s in line["spans"]}
     mine = [h for h in rows if h[1] is line or any(id(s) in ids for s in h[1]["spans"])]
     # (a number split off its line: the line's text is what was clicked)
@@ -827,9 +863,7 @@ def paragraph_at(lines, line):
                       h[0].x0 - 0.5 <= box.x0 and box.x1 <= h[0].x1 + 0.5), None)
     if start is None:
         return None
-    rows.sort(key=lambda h: (_baseline(h[1]), h[0].x0))
     bases = [_baseline(ln) for _r, ln in rows]
-    import bisect
 
     def size_of(h):
         return main_span(h[1])["size"]
@@ -841,7 +875,7 @@ def paragraph_at(lines, line):
         return rows[i:j]
 
     def near(h, down):
-        """Rows on the nearest baseline above / below h that overlap it across the page."""
+        """The row on the nearest baseline above / below h that overlaps it across the page."""
         b = _baseline(h[1])
         lo, hi = (b + 0.7 * size, b + 2.2 * size) if down else (b - 2.2 * size, b - 0.7 * size)
         i, j = bisect.bisect_left(bases, lo), bisect.bisect_right(bases, hi)
@@ -871,59 +905,81 @@ def paragraph_at(lines, line):
         return h[0].x0, right, (h[0].x0 + right) / 2
 
     def lined_up(a, b):
-        """How two lines line up: 'left', 'right', 'center' or None."""
+        """The ways two lines line up: a set of 'left', 'right', 'center' (a justified
+        paragraph's full lines line up on both sides)."""
         ea, eb = edges(a), edges(b)
-        if abs(ea[0] - eb[0]) <= tol:
-            return "left"
-        if abs(ea[1] - eb[1]) <= tol:
-            return "right"
-        if abs(ea[2] - eb[2]) <= tol:
-            return "center"
-        return None
+        return {m for m, k in (("left", 0), ("right", 1), ("center", 2))
+                if abs(ea[k] - eb[k]) <= tol}
 
-    mode = [None]
+    mode = [None]                       # the ways all the body's lines line up
 
     def fits(a, b):
         m = lined_up(a, b)
-        if m is None or (mode[0] is not None and m != mode[0] and
-                         not (mode[0] == "left" and m in ("right", "center") and
-                              abs(edges(a)[0] - edges(b)[0]) <= tol)):
+        if mode[0] is not None:
+            m &= mode[0]
+        if not m:
             return False
-        if mode[0] is None:
-            mode[0] = m
+        mode[0] = m
         return True
 
+    def full(a, b):
+        return abs(edges(a)[1] - edges(b)[1]) <= tol
+
+    def first_line(up, cur):
+        """up, just above cur, is the paragraph's first line, set in (an indent) or set out
+        (a hanging indent: before a list number, or in justified text)?"""
+        dx = up[0].x0 - cur[0].x0
+        if mode[0] is not None and "left" not in mode[0]:
+            return False
+        if tol < dx <= 6 * size:
+            return True
+        return -6 * size <= dx < -tol and (_starts_item(up[1]) or
+                                           (full(up, cur) and body_left(cur)))
+
+    def body_left(cur):
+        """cur and the line below it line up on the left (the body of a paragraph whose
+        first line is set out)."""
+        if mode[0] is not None:
+            return "left" in mode[0]
+        below = near(cur, down=True)
+        return below is not None and "left" in lined_up(cur, below)
+
     chain = [start]
-    # upward: lines lined up the same way; an indented line is the first and ends it
-    if not _marker_before(start, on_base(start)):
+    # upward: lines lined up the same way, until the first line (set in or out, a list
+    # item's first line or one with its number before it)
+    if not (_marker_before(start, on_base(start)) or _starts_item(start[1])):
         cur = start
         while True:
             up = near(cur, down=False)
             if up is None or not even(up, cur):
                 break
-            if fits(up, cur):
+            if first_line(up, cur):
                 take(up, cur)
                 chain.insert(0, up)
-                cur = up
-                if _marker_before(up, on_base(up)):
-                    break
-                continue
-            dx = up[0].x0 - cur[0].x0
-            if mode[0] in (None, "left") and tol < dx <= 6 * size:
-                take(up, cur)
-                chain.insert(0, up)
-                mode[0] = "left"
-            break
+                mode[0] = (mode[0] or {"left"}) & {"left"}
+                break
+            if not fits(up, cur):
+                break
+            take(up, cur)
+            chain.insert(0, up)
+            cur = up
+            if _marker_before(up, on_base(up)) or _starts_item(up[1]):
+                break
+    # downward: the body's lines, lined up the same way; a list item's first line ends it
     cur = chain[-1]
     while True:
         down = near(cur, down=True)
-        if down is None or _marker_before(down, on_base(down)) or not even(cur, down):
+        if down is None or not even(cur, down) or _marker_before(down, on_base(down)) or \
+                _starts_item(down[1]):
             break
-        if len(chain) == 1 and mode[0] is None:
+        if len(chain) == 1:
             dx = down[0].x0 - cur[0].x0
-            if -6 * size <= dx < -tol and not _marker_before(cur, on_base(cur)) and \
-                    lined_up(cur, down) is None:
-                mode[0] = "left"                # cur is a first line set in
+            # cur is a first line set in (indent) or out before its number (hanging)
+            setin = -6 * size <= dx < -tol and not _marker_before(cur, on_base(cur))
+            setout = tol < dx <= 6 * size and (_starts_item(cur[1]) or (
+                full(cur, down) and body_left(down)))
+            if (setin or setout) and not lined_up(cur, down) & {"left"}:
+                mode[0] = {"left"}
                 take(cur, down)
                 chain.append(down)
                 cur = down

@@ -259,10 +259,11 @@ class RealDocuments(unittest.TestCase):
         v._inline.committed.emit("DO NOT SCALE THE DRAWINGS. CHECK ALL CONDITIONS IN THE "
                                  "FIELD BEFORE DRAWINGS AND REPORT ANY ERRORS TO THE "
                                  "ARCHITECT.", 0, 0, None)
-        two = [r for r in rows(v.doc[0]) if 115 < r[2] < 140]
-        self.assertEqual((round(two[0][0]), two[0][4]), (72, "2."), two)  # the number stays
-        self.assertTrue(two[1][4].startswith("DO NOT SCALE THE DRAWINGS"), two)
-        self.assertTrue(all(round(r[0]) == 86 for r in two[1:]), two)
+        words = [w for w in v.doc[0].get_text("words") if 115 < w[3] < 140]
+        first = sorted((w for w in words if w[3] < 125), key=lambda w: w[0])
+        self.assertEqual((round(first[0][0]), first[0][4]), (72, "2."), first)  # it stays
+        self.assertEqual((round(first[1][0]), first[1][4]), (86, "DO"), first)
+        self.assertEqual(min(round(w[0]) for w in words if w[3] > 125), 86)
         self.assertEqual(self.shown_at(v, (120, 141)),
                          "Air barrier membrane shall be continuous at all transitions here.")
         v._inline.canceled.emit()

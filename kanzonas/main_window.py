@@ -1379,7 +1379,7 @@ class MainWindow(QMainWindow):
         return nv
 
     @staticmethod
-    def _writing_over(path, exclude=None):
+    def _writing_over(path, exclude=None, source=None):
         """Before a new PDF is written at path (Save As, Extract pages, Combine files, the
         copies saved by Compress, Timestamp and Digital signature): the tabs, in any window,
         that show the file there now [(window, view)]. When one of them has unsaved changes,
@@ -1389,9 +1389,11 @@ class MainWindow(QMainWindow):
                 if v is not exclude and not v.untitled and os.path.normcase(v.path) == key]
         for w, v in tabs:
             v.commit_pending()
-        if any(v.dirty for _w, v in tabs):
+        # (source: the tab whose document is written, unsaved changes and all: nothing of
+        # it is lost)
+        if any(v.dirty and v is not source for _w, v in tabs):
             w = tabs[0][0]
-            w.tabs.setCurrentWidget(next(v for _w, v in tabs if v.dirty))
+            w.tabs.setCurrentWidget(next(v for _w, v in tabs if v.dirty and v is not source))
             if QMessageBox.warning(
                     w, "File is open", f"{os.path.basename(path)} is open in KanzonasPDF with "
                     "unsaved changes.\n\nReplace it anyway and lose those changes?",
@@ -3089,7 +3091,7 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getSaveFileName(self, "Save smaller copy", base + "_small.pdf", PDF_FILTER)
         if not path:
             return
-        replaced = self._writing_over(path)
+        replaced = self._writing_over(path, source=v)
         if replaced is None:
             return
         try:
@@ -3284,7 +3286,7 @@ class MainWindow(QMainWindow):
         out, _ = QFileDialog.getSaveFileName(self, "Save signed copy as", base + "_signed.pdf", PDF_FILTER)
         if not out:
             return
-        replaced = self._writing_over(out)
+        replaced = self._writing_over(out, source=v)
         if replaced is None:
             return
         try:

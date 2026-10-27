@@ -305,8 +305,8 @@ class DocumentView(QScrollArea):
                 keep.add(i)
         if self.obj_sel:
             keep.add(self.obj_sel[0])
-        for cache in (self._dlists, self._line_cache, self._word_cache, self._snap_markups,
-                      self._obj_cache, self._snap_content):
+        for cache in (self._dlists, self._line_cache, self._row_cache, self._word_cache,
+                      self._snap_markups, self._obj_cache, self._snap_content):
             if len(cache) <= PAGE_CACHE_PAGES:
                 continue
             for i in [i for i in cache
@@ -1027,6 +1027,7 @@ class DocumentView(QScrollArea):
         self._dlists = {}              # page index -> parsed drawing (DisplayList)
         self._tiles = OrderedDict()    # (page, scale, tx, ty) -> rendered tile, LRU
         self._line_cache = {}
+        self._row_cache = {}           # page index -> text_edit.paragraph_rows (Edit text)
         self._word_cache = {}
         self._card_cache = {}
         self.text_sel = None           # [(page index, selected character units), ...]
@@ -1049,6 +1050,7 @@ class DocumentView(QScrollArea):
         for i in pages:
             self._dlists.pop(i, None)
             self._line_cache.pop(i, None)
+            self._row_cache.pop(i, None)
             self._word_cache.pop(i, None)
             self._snap_markups.pop(i, None)
             self._obj_cache.pop(i, None)
@@ -2096,6 +2098,23 @@ class DocumentView(QScrollArea):
         # the smallest one: the words' link, not the link of a cloud drawn around them
         hits = [(abs(r), ln) for r, ln in lst if disp in r]
         return min(hits, key=lambda h: h[0])[1] if hits else None
+
+    def link_to_follow(self, index, pt):
+        """The link a click at pt follows (Hand tool, Ctrl+click with Select): on a markup,
+        only a link made on that markup; a link merely under a markup (the PDF's own link on
+        highlighted words) leaves the click to the markup."""
+        link = self.link_at(index, pt)
+        if link is None or not self.show_markups:
+            return link
+        page, a = self._annot_under(index, pt)
+        if a is None:
+            return link
+        from . import links
+        try:
+            own = links.attached(page, annotations.bounds(annotations.read(a)), "markup")
+        except Exception:
+            own = []
+        return link if any(ln["xref"] == link.get("xref") for ln in own) else None
 
     def link_tip(self, link):
         k = link.get("kind")
@@ -3151,7 +3170,10 @@ class DocumentView(QScrollArea):
         unrotated page: what a click with Edit text rewrites. None: edit the line."""
         if self.doc[index].rotation:
             return None
-        return text_edit.paragraph_at(self._lines(index), line)
+        lines = self._lines(index)
+        if index not in self._row_cache:
+            self._row_cache[index] = text_edit.paragraph_rows(lines)
+        return text_edit.paragraph_at(lines, line, self._row_cache[index])
 
     @staticmethod
     def _bands(rows):
@@ -3211,8 +3233,12 @@ class DocumentView(QScrollArea):
             if new_size is not None and abs(new_size - size) < 0.06:
                 new_size = None
             wrap = wrap_px / self.zoom if wrap_px else None
-            if wrap is not None and abs(wrap - lay["width"]) < 4:
-                wrap = None                     # the paragraph's own width
+            if wrap is not None:
+                # the box spans a first line set out before its number too; the body wraps
+                # to the rest
+                wrap -= max(0.0, lay["left"] - lay["first_left"])
+                if abs(wrap - lay["width"]) < 4:
+                    wrap = None                 # the paragraph's own width
 
             def paras(t):
                 return [" ".join(p.split()) for p in t.split("\n")]

@@ -285,7 +285,9 @@ it to move it, drag a square handle to resize it, or change its look in the Prop
 it too, so you don't have to switch back to the arrow. The <b>Hand tool</b> works the same way:
 click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
 page. A markup made a link opens its link instead when clicked with the Hand tool, or
-Ctrl+clicked with the Select tool (a plain click with Select selects it).</li>
+Ctrl+clicked with the Select tool (a plain click with Select selects it). A markup on a link
+the PDF came with (a highlight on a table of contents entry) is selected; click the link
+beside the markup to open it.</li>
 <li><b>Outlines and fills:</b> a rectangle, ellipse, cloud, polygon or area measurement
 without a fill is picked by its outline (within a few pixels at any zoom, or an area's
 label), like in Bluebeam; a filled one anywhere inside. So with a drawing or measuring tool,
@@ -628,7 +630,7 @@ the lines Add text wrote in one go; pictures and lines under it stay. Ctrl+Z bri
 whole paragraph opens in a box of its width with the cursor on the word you clicked, and as you
 type the words rewrap, as in Word. Press Enter and the paragraph is rewritten in its font, size,
 color and line spacing, and keeps its alignment (left, right, centered or justified) and a
-first-line indent. A word split by a hyphen at a line's end is joined again when the dictionary
+first line set in (an indent) or set out (a numbered paragraph's hanging indent). A word split by a hyphen at a line's end is joined again when the dictionary
 knows the whole word (spe-/cification); a hyphenated word (self-/consolidating) keeps its
 hyphen. The number or bullet of a list item stays where it is and its text is rewritten.
 Shift+Enter starts a new paragraph. Drag a side handle to make it wider or narrower, or the
