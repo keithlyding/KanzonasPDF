@@ -10,6 +10,8 @@ ignore it):
   /KZLook   /U /B /N      underline, box, nothing
   /KZUnder  [x0 y0 x1 y1] the underline drawn into the page (unrotated page coordinates)
   /KZText   (text)        text this link wrote into the page (removed with the link)
+  /KZOn     /T /M /O /A   what it was made on: text, a markup, the page's own picture or
+                          shape, or a box drawn with the Links tool (older links have none)
 
 All rectangles here are in unrotated page coordinates, like the rest of KanzonasPDF.
 """
@@ -25,6 +27,9 @@ BLUE = (0.0, 0.35, 0.85)            # link text, underlines and boxes
 LOOKS = ("underline", "box", "none")
 _LOOK_KEY = {"underline": "/U", "box": "/B", "none": "/N"}
 _KEY_LOOK = {v[1:]: k for k, v in _LOOK_KEY.items()}
+ONS = ("text", "markup", "object", "area")
+_ON_KEY = {"text": "/T", "markup": "/M", "object": "/O", "area": "/A"}
+_KEY_ON = {v[1:]: k for k, v in _ON_KEY.items()}
 
 
 def _pdf_string(text):
@@ -49,8 +54,9 @@ def _string(doc, xref, key):
 
 
 def read(page):
-    """The page's link annotations: [{"xref", "rect", "group", "look", "under", "text"}].
-    group is the /KZGroup id (None for links not made by KanzonasPDF)."""
+    """The page's link annotations: [{"xref", "rect", "group", "look", "under", "text", "on"}].
+    group is the /KZGroup id (None for links not made by KanzonasPDF); on is what it was made
+    on (None for older KanzonasPDF links and links from other programs)."""
     doc = page.parent
     out = []
     for xref, kind, *_ in page.annot_xrefs():
@@ -60,13 +66,15 @@ def read(page):
         if rect is None:
             continue
         look = doc.xref_get_key(xref, "KZLook")
+        on = doc.xref_get_key(xref, "KZOn")
         under = doc.xref_get_key(xref, "KZUnder")
         nums = [float(v) for v in re.findall(r"-?\d*\.?\d+", under[1])] if under[0] == "array" \
             else []
         out.append({"xref": xref, "rect": rect, "group": _string(doc, xref, "KZGroup"),
                     "look": _KEY_LOOK.get(look[1].lstrip("/")) if look[0] == "name" else None,
                     "under": nums[:4] if len(nums) >= 4 else None,
-                    "text": _string(doc, xref, "KZText")})
+                    "text": _string(doc, xref, "KZText"),
+                    "on": _KEY_ON.get(on[1].lstrip("/")) if on[0] == "name" else None})
     return out
 
 
@@ -100,12 +108,14 @@ def _underline(page, rect, text_line=False):
     return a, b
 
 
-def add(page, rects, target, look="box", text=None, text_lines=False):
+def add(page, rects, target, look="box", text=None, text_lines=False, on=None):
     """Add one link over rects (all acting as one). target: ("uri", address) or ("page",
     index). look: "underline" (drawn into the page), "box" (a thin box readers draw) or
     "none". text: {"text", "origin" (baseline start), "size"} to write the link's own text
     into the page in link blue (rects are then its line). text_lines: the rects are lines
-    of text (the underline goes just under the letters). Returns the group id."""
+    of text (the underline goes just under the letters). on: what the rects are, one of ONS
+    or a list (one for each rect); by default "text" for lines of text, else "area".
+    Returns the group id."""
     from . import text_edit
     doc = page.parent
     rects = [pymupdf.Rect(r).normalize() for r in rects]
@@ -118,8 +128,12 @@ def add(page, rects, target, look="box", text=None, text_lines=False):
                  pymupdf.Rect(origin.x, origin.y - text["size"], origin.x + len(words) *
                               text["size"] * 0.55, origin.y + text["size"] * 0.25)]
         text_lines = True
+        on = "text"
+    if on is None or isinstance(on, str):
+        on = [on] * len(rects)
+    on = [what or ("text" if text_lines else "area") for what in on]
     gid = uuid.uuid4().hex[:12]
-    for r in rects:
+    for r, what in zip(rects, on):
         if r.is_empty:
             continue
         before = {x for x, _k, *_ in page.annot_xrefs()}
@@ -131,6 +145,7 @@ def add(page, rects, target, look="box", text=None, text_lines=False):
         xref = new[0]
         doc.xref_set_key(xref, "KZGroup", _pdf_string(gid))
         doc.xref_set_key(xref, "KZLook", _LOOK_KEY.get(look, "/N"))
+        doc.xref_set_key(xref, "KZOn", _ON_KEY.get(what, "/A"))
         if words:
             doc.xref_set_key(xref, "KZText", _pdf_string(words))
         if look == "box":
@@ -194,20 +209,34 @@ def remove(page, links, keep_text=False):
         page.delete_link({"xref": ln["xref"]})
 
 
-def attached(page, region, tol=1.0, share=0.6, foreign=False):
-    """KanzonasPDF links lying mostly on region (what was made for the item that was there):
-    at least `share` of the link's area. A link drawn by hand a little larger than the words
-    still counts; a big link a small item merely sits in doesn't. foreign: links the PDF
-    came with count too (a paragraph moved with Edit text takes its links along)."""
+def attached(page, region, on=None, tol=1.0, share=0.6, foreign=False, known=None):
+    """The KanzonasPDF links made for the item at region, so they move and go with it.
+    on: what the item is, "text" (lines of the page's text), "markup" or "object" (a picture
+    or shape of the page); a link made on one kind never goes with another. Text takes the
+    links lying mostly on it (at least `share` of the link's area: the words a link was made
+    on are part of their line). Anything else takes only a link of about its own size (each
+    covers at least `share` of the other), so a cloud or a box drawn around linked words
+    doesn't take the words' link. foreign: the item is text (a paragraph moved with Edit
+    text) and the links the PDF came with count too. known: the page's links (read()) when
+    the caller already has them."""
+    if foreign:
+        on = "text"
     box = pymupdf.Rect(region) + (-tol, -tol, tol, tol)
+    region_area = abs(pymupdf.Rect(region))
     out = []
-    for ln in read(page):
+    for ln in read(page) if known is None else known:
         if not ln["group"] and not foreign:
             continue
+        if on and ln.get("on") not in (None, "area", on):
+            continue                    # made on another kind of item
         r = ln["rect"]
         area = r.width * r.height
-        if box.contains(r) or (area > 0 and abs(r & box) / area >= share):
-            out.append(ln)
+        common = abs(r & box)
+        if not (box.contains(r) or (area > 0 and common / area >= share)):
+            continue
+        if on != "text" and not (region_area > 0 and common / region_area >= share):
+            continue                    # the item is much bigger than the link
+        out.append(ln)
     return out
 
 
@@ -225,17 +254,24 @@ def transform(page, links, m):
         r = (ln["rect"] * m).normalize()
         pdf = (r * tm).normalize()
         doc.xref_set_key(ln["xref"], "Rect", "[%g %g %g %g]" % (pdf.x0, pdf.y0, pdf.x1, pdf.y1))
+        ln["rect"] = r                  # (kept current for a caller holding the list)
         if ln["under"]:
             a = pymupdf.Point(ln["under"][0], ln["under"][1]) * m
             b = pymupdf.Point(ln["under"][2], ln["under"][3]) * m
             doc.xref_set_key(ln["xref"], "KZUnder", "[%g %g %g %g]" % (a.x, a.y, b.x, b.y))
+            ln["under"] = [a.x, a.y, b.x, b.y]
 
 
-def follow(page, old_rect, new_rect, foreign=False):
-    """The item that was at old_rect is now at new_rect: its links go along (foreign: the
-    PDF's own links on it too)."""
+def follow(page, old_rect, new_rect, foreign=False, on=None, parts=None, known=None):
+    """The item that was at old_rect is now at new_rect: its links go along (on, foreign
+    and known: see attached). parts: [(rect, on)] for several items moved together within
+    old_rect (the objects selected with Edit objects)."""
     o, r = pymupdf.Rect(old_rect), pymupdf.Rect(new_rect)
-    links = attached(page, o, foreign=foreign)
+    links = {}
+    for box, what in parts or [(o, on)]:
+        for ln in attached(page, box, what, foreign=foreign, known=known):
+            links.setdefault(ln["xref"], ln)
+    links = list(links.values())
     if not links:
         return 0
     sx = r.width / o.width if o.width else 1.0

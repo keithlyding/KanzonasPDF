@@ -91,8 +91,10 @@ class MarkupsPanel(QWidget):
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.verticalHeader().hide()
-        self.table.setSortingEnabled(True)
         hh = self.table.horizontalHeader()
+        # first page first (Qt's own default order is descending) until a header is clicked
+        hh.setSortIndicator(0, Qt.AscendingOrder)
+        self.table.setSortingEnabled(True)
         hh.setSectionResizeMode(2, QHeaderView.Stretch)
         for c in (0, 1, 3, 4, 5):
             hh.setSectionResizeMode(c, QHeaderView.ResizeToContents)
@@ -184,9 +186,19 @@ class MarkupsPanel(QWidget):
         key = self._key(row)
         self.activated.emit(*key)
         menu = QMenu(self)
-        menu.addAction("Edit text...", lambda: self.editRequested.emit(*key))
+        if self._editable(*key):
+            menu.addAction("Edit text...", lambda: self.editRequested.emit(*key))
         menu.addAction("Delete\tDel", lambda: self.deleteRequested.emit(*key))
         menu.exec(self.table.viewport().mapToGlobal(pos))
+
+    def _editable(self, index, xref):
+        """Edit text... can change this markup's text (not a measurement's or a stamp's)."""
+        try:
+            page = self._doc[index]            # keep the page alive while using its annot
+            model = A.read(page.load_annot(xref))
+        except Exception:
+            return False
+        return model is not None and A.text_editable(model)
 
     def eventFilter(self, obj, e):
         from PySide6.QtCore import QEvent

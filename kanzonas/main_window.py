@@ -2247,8 +2247,35 @@ class MainWindow(QMainWindow):
             "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
         if not ok:
             return
-        v.flatten(None if pick == choices[0] else [v.current_page()])
+        pages = None if pick == choices[0] else [v.current_page()]
+        if not self._flatten_redactions_first(v, pages):
+            return
+        v.flatten(pages)
         self.statusBar().showMessage("Flattened", 4000)
+
+    def _flatten_redactions_first(self, v, pages):
+        """Before Flatten: redaction marks that aren't applied yet stay marks (the text under
+        them is still there). Offer to apply them first. False: don't flatten."""
+        n = v.pending_redactions(pages)
+        if not n:
+            return True
+        where = "This document has" if pages is None else "This page has"
+        box = QMessageBox(QMessageBox.Warning, "Flatten",
+                          f"{where} {n} redaction mark(s) that aren't applied yet. Flatten "
+                          "leaves them as marks: what's under them stays in the file until "
+                          "they're applied.\n\nApply the redactions first? (This applies every "
+                          "mark in the document.)", parent=self)
+        apply_btn = box.addButton("Apply them first", QMessageBox.AcceptRole)
+        keep_btn = box.addButton("Keep them as marks", QMessageBox.DestructiveRole)
+        box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(apply_btn)
+        box.exec()
+        if box.clickedButton() is keep_btn:
+            return True
+        if box.clickedButton() is not apply_btn:
+            return False
+        self.apply_redactions()
+        return not v.pending_redactions()           # (unless that was canceled)
 
     # ---- signing ---------------------------------------------------------------------
     def _cache_sig(self, kind, png):
@@ -2715,8 +2742,11 @@ class MainWindow(QMainWindow):
             "can still change the page. To make changes detectable, digitally sign it\n"
             "with the lock against changes (certify).\n"
             "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
-        if ok:
-            v.flatten(None if pick == choices[0] else [v.current_page()], widgets=False)
+        if not ok:
+            return
+        pages = None if pick == choices[0] else [v.current_page()]
+        if self._flatten_redactions_first(v, pages):
+            v.flatten(pages, widgets=False)
             self.statusBar().showMessage("Comments flattened", 4000)
 
     def _toggle_hl_fields(self):
@@ -3092,15 +3122,17 @@ class MainWindow(QMainWindow):
                 if QMessageBox.question(
                         self, "Search & redact",
                         "Not on the pages, but found in " + ", ".join(extra) + ".\n\nRemove it "
-                        "from there now? (Fields and links containing it are deleted; in notes, bookmarks "
-                        "and properties it's replaced by [redacted]. Undo works until you close "
-                        "the file.)") == QMessageBox.Yes:
+                        "from there now? (Fields, links, stamps and attachments containing it are "
+                        "deleted; in notes, bookmarks and properties it's replaced by [redacted]. "
+                        "Undo works until you close the file.)") == QMessageBox.Yes:
                     v.remove_term(term)
                     self.statusBar().showMessage("Removed. Save to make it permanent.", 6000)
                 return
             if extra:
                 msg += ("\n\nAlso found in " + ", ".join(extra) + ". Those can't be covered "
-                        "with a box; they're removed too when you apply the redactions.")
+                        "with a box. When you apply the redactions, fields, links, stamps and "
+                        "attachments containing it are deleted; in notes, bookmarks and "
+                        "properties it's replaced by [redacted].")
             if n:
                 msg += "\n\nReview the marks, then use Apply redactions."
             QMessageBox.information(self, "Search & redact", msg)

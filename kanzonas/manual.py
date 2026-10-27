@@ -19,7 +19,9 @@ MANUAL = """
 <p>Apply redactions removes any vector path touching a mark, even the part of that path
 outside the box. Applying also scrubs metadata, attachments, hidden text, and scripts
 unless you turn that off. Check the result before sharing. Search &amp; redact
-removes matching annotations completely, including private stamp data and appearances.</p>
+replaces the text with [redacted] in notes and comments (they're written anew, so no copy of
+the text stays in their appearance or private data) and removes stamps, pictures and
+attached files containing it completely, including private stamp data and appearances.</p>
 <p>Saving edits to an already protected PDF keeps its own protection exactly as it was: the
 same open password, permissions password and permissions, with no password needed. So a form
 locked with a permissions password you don't know can still be filled in and saved, and stays
@@ -39,8 +41,12 @@ under the preview to see each sheet. Pages print at the printer's resolution up 
 rendered a strip at a time so even large drawings print sharp without using much memory.</p>
 <p>Copying, extracting and exporting require copying permission; Print requires printing
 permission and uses at most 150 dpi when high-quality printing is forbidden. Form filling
-and adding markups honor their separate permissions. Flattening selected pages preserves
-page labels, outgoing links and drawing calibration. Excel export writes PDF text as literal
+and adding markups honor their separate permissions: signing or dating a form field needs only
+<b>Filling in form fields and signing</b>, while placing a signature or the date anywhere else
+on the page changes the page. A form with only empty signature fields isn't signed, so it opens
+for filling in even when it's protected. Flattening selected pages preserves
+page labels, outgoing links (and what ties a link to its underline and words) and drawing
+calibration. Flatten leaves redaction marks that aren't applied yet as marks. Excel export writes PDF text as literal
 cell text, including text starting with an equals sign. OCR disables ONNX Runtime
 telemetry before creating recognition sessions.</p>
 <h2 id="start">Getting started</h2>
@@ -215,7 +221,10 @@ words), <b>Box around it</b>, or <b>Nothing</b> (the default for pictures, shape
 pointer still finds it). The words, picture or markup themselves don't change.</li>
 <li><b>Links stay with what they're on:</b> move, resize or rotate a linked markup, picture, shape
 or paragraph, or move a linked line with Edit text, and the link (and its underline) goes
-along; delete it and its link goes too. Editing linked words with Edit text keeps their link,
+along; delete it and its link goes too. A link remembers what it was made on, so only that
+goes with it: a cloud or a box drawn around linked words doesn't take the words' link when
+it's moved or deleted. Where links overlap, Remove link and Edit link act on the smallest one
+under the pointer (the words' link, not the link of a cloud around them). Editing linked words with Edit text keeps their link,
 including the links AutoCAD writes on a sheet set.</li>
 <li><b>New link text:</b> with the <b>Links</b> tool (Home tab &gt; Insert, Tools menu), click
 empty paper, or drag a box over it: the window's <b>Write this text on the page</b> is ticked,
@@ -275,15 +284,25 @@ it to move it, drag a square handle to resize it, or change its look in the Prop
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
 it too, so you don't have to switch back to the arrow. The <b>Hand tool</b> works the same way:
 click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
-page.</li>
+page. A markup made a link opens its link instead when clicked with the Hand tool, or
+Ctrl+clicked with the Select tool (a plain click with Select selects it).</li>
+<li><b>Outlines and fills:</b> a rectangle, ellipse, cloud, polygon or area measurement
+without a fill is picked by its outline (within a few pixels at any zoom, or an area's
+label), like in Bluebeam; a filled one anywhere inside. So with a drawing or measuring tool,
+pressing inside a room outlined with an Area or a cloud draws there (a Length across the
+room, a Count, another cloud) instead of moving the outline.</li>
 <li><b>Several markups:</b> Ctrl+click each one, or drag a box from empty space with the Select
-tool (Ctrl+drag always draws a selection box). Drag any selected markup to move them all;
+tool (Ctrl+drag always draws a selection box). Ctrl+click on a markup made a link opens the
+link; drag a box around that one instead. Drag any selected markup to move them all;
 Delete removes them all; Properties changes apply to all of them.</li>
 <li><b>Delete:</b> Delete or Backspace, or right-click the markup &gt; <b>Delete</b>.
 <b>Edit a comment's text:</b> double-click it, or right-click it &gt; <b>Edit text...</b>.
+Measurements, stamps and signature placeholders show text made from what they are, so they
+don't offer Edit text (double-click a fill-in stamp to change its values); add a note or a
+text box to comment on them.
 If you right-click highlighted text that's selected, the menu offers <b>Delete highlight</b>.
 In the Markups list (F7), double-click a row to edit its text; right-click a row for
-<b>Edit text...</b> and <b>Delete</b>, or press Delete.</li>
+<b>Edit text...</b> (when its text can be edited) and <b>Delete</b>, or press Delete.</li>
 <li><b>Move with the arrow keys:</b> with markups selected (or pictures and shapes selected with
 Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> moves 10 pt and
 <b>Ctrl+arrow</b> 0.1 pt, for fine adjustments. A series of presses is one Ctrl+Z. Markups tied to
@@ -357,14 +376,19 @@ adds a sticky note anywhere.</li>
 <li><b>Next comment</b> (Alt+Down) and <b>Previous comment</b> (Alt+Up) walk through every
 comment and markup in reading order, page by page, selecting each one. The status bar shows
 "Markup 3 of 12". It wraps around at the end.</li>
-<li><b>Markups list</b> (F7): all markups in a table; filter, click to jump, export to CSV.</li>
+<li><b>Markups list</b> (F7): all markups in a table, page 1 first (click a column heading
+to sort by it); filter, click to jump, export to CSV (in the order shown).</li>
 <li><b>Show markups:</b> untick to hide every comment and markup and see the page as if
 unmarked. Nothing is deleted; tick it again to bring them back. <b>Show comment boxes</b>
 hides just the yellow boxes beside commented text.</li>
 <li><b>Delete comments:</b> everyone's, only yours, or only one person's, on all pages or the
 current page. Undo brings them back.</li>
 <li><b>Flatten comments:</b> makes comments and markups a permanent part of the page while form
-fields stay fillable. (Document &gt; Flatten flattens form fields too.) The markups really
+fields stay fillable. (Document &gt; Flatten flattens form fields too.) Redaction marks that
+aren't applied yet are never flattened: burned in, they would look like a redaction with the
+text still under them. If there are any, it asks first: <b>Apply them first</b> (the usual
+Apply redactions, for every mark in the document), <b>Keep them as marks</b> (they stay
+markups, the rest is flattened) or Cancel. The markups really
 become page drawing: no PDF program sees them as markups any more. Programs that edit page
 content (Acrobat's Edit PDF, PDF-XChange's Edit Content, KanzonasPDF's Edit objects) can still
 move that drawing, as they can the rest of the page, and so can you (Edit objects selects each
@@ -503,7 +527,8 @@ placed stamp redraws it (a re-added date shows today's date).</li>
 <li><b>Fill-in stamps:</b> <b>Fill-in: PO # / Date ordered</b> and <b>Fill-in: Req # / Date
 submitted</b> in the stamp list. When you click to place one, a box asks for the number and the
 date (the date starts as today, in your Preferences &gt; You date format). Double-click a placed
-one to change what it says; it resizes to fit.</li>
+one to change what it says; it resizes to fit. Its comment text (in the Markups list, its CSV
+and other PDF programs) reads like "PO # PO-4471, Date ordered 10/26/2026".</li>
 </ul>
 
 <h2 id="images">Pictures and attached files (videos and more)</h2>
@@ -670,7 +695,8 @@ note are left as they are and listed. Trust but check: a sheet printed at reduce
 one known dimension after reading the scales, and use Calibrate Tape Measure if it is off.</li>
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
 <b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
-the scale.</li>
+the scale. A Count marker copied with Duplicate (Ctrl+D) or copy and paste takes the next
+number of its group.</li>
 <li>More measurements (Measure tab, "More" group, and the Measure menu):
 <b>Angle</b>: click one end, the corner, then the other end; it shows the angle in degrees.
 <b>Radius</b>: drag from the center of a circle to its edge; it draws the circle and shows the
@@ -769,7 +795,9 @@ Hand or Select tool, whichever you used last, is active again, so you don't plac
 accident. Like any picture on the page, a placed signature can be moved or deleted with Edit
 objects (or Ctrl+Z right after placing it).</li>
 <li><b>Date</b> (Ctrl+;, Protect tab and menu): click to write today's date there, for example
-next to a signature or in a document's own date field. It's separate from signing, so a form
+next to a signature or in a document's own date field. Dating a form field (and signing a
+signature or initials field) works on a protected form that allows filling in form fields and
+signing. It's separate from signing, so a form
 that already prints a date doesn't get two. The format (such as 10/08/2026 or October 08, 2026)
 is set in File &gt; Preferences &gt; You.</li>
 <li><b>Multi-place signature or initials:</b> put your initials (or signature) on all pages,
@@ -792,7 +820,8 @@ documents only. It is not a certificate authority and cannot issue other certifi
 <li><b>Certificate file</b>: a .pfx/.p12 file from a certificate authority or your company,
 with its password.</li>
 </ul> Signed files open read-only so
-the signature stays valid. <b>Digital signature details</b> shows who signed and whether it's
+the signature stays valid (a file whose signature fields are all empty isn't signed and opens
+normally). <b>Digital signature details</b> shows who signed and whether it's
 still valid. <b>Clear all digital signatures</b> removes them (the empty fields stay).</li>
 <li><b>Timestamp document:</b> gets a trusted timestamp from a free internet time server,
 proving the file existed, unchanged, at that moment. Saved as a new copy.</li>
@@ -804,9 +833,9 @@ own copy of the text). A vector path that touches a mark is removed past the box
 the part outside it. Applying scrubs metadata, attachments, hidden text, and scripts unless
 you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
 fields (values, list options, tooltips and names), links (web and email addresses), markup
-notes, bookmark titles and document properties. When you apply, fields and links
-containing it are deleted, and in notes, bookmarks and properties it's replaced by
-[redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
+notes, bookmark titles and document properties. When you apply, fields, links, stamps and
+attached files containing it are deleted, and in notes and comments (they stay), bookmarks
+and properties it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
 away. Check the result before sharing; Undo works until you close the file.</li>
 <li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
 attached files, hidden text, links, comments, form data, thumbnails.</li>
@@ -982,7 +1011,7 @@ settings...).</li>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
-<tr><td>Ctrl+click a link (Select tool)</td><td>Open the link (a plain click with the Hand tool)</td></tr>
+<tr><td>Ctrl+click a link (Select tool)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
 <tr><td>Escape</td><td>Clear selection / put the tool down (back to the default tool, Hand or Select)</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
