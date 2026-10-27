@@ -199,6 +199,14 @@ TAB_MIME = "application/x-kanzonaspdf-tab"
 LAYOUT_VERSION = 1
 
 
+def _doc_name(v):
+    """A document's name on its tab and in the title bar."""
+    name = os.path.basename(v.path)
+    if v.untitled and getattr(v, "recovered", False):
+        name += " (recovered)"          # a backup copy opened after a crash, not saved yet
+    return name
+
+
 def windows():
     """The open main windows, oldest first."""
     out = []
@@ -1272,12 +1280,17 @@ class MainWindow(QMainWindow):
                 self.zoom_slider.setValue(_zoom_to_slider(v.zoom))
                 self.zoom_slider.blockSignals(False)
             self.scale_label.setText(v.page_scale_text(v.current_page()))
-            name = os.path.basename(v.path) + (" [protected]" if v.read_only else "")
+            name = _doc_name(v) + (" [protected]" if v.read_only else "")
             self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {_title_base()}")
             for i in range(self.tabs.count()):
+                # only changed names: each set lays out the whole tab bar again
                 w = self.tabs.widget(i)
-                self.tabs.setTabText(i, ("*" if w.dirty else "") + os.path.basename(w.path))
-                self.tabs.setTabToolTip(i, "Not saved yet" if w.untitled else w.path)
+                text = ("*" if w.dirty else "") + _doc_name(w)
+                if self.tabs.tabText(i) != text:
+                    self.tabs.setTabText(i, text)
+                tip = "Not saved yet" if w.untitled else w.path
+                if self.tabs.tabToolTip(i) != tip:
+                    self.tabs.setTabToolTip(i, tip)
         else:
             self.page_total.setText(" / 0 ")
             self.scale_label.setText("")
@@ -1295,13 +1308,27 @@ class MainWindow(QMainWindow):
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
             if not w.untitled and os.path.normcase(w.path) == os.path.normcase(path):
-                self.tabs.setCurrentIndex(i)
+                # already open: show it, as it is on disk now if it changed since
+                if self._changed_on_disk(w) and self._may_reload(w):
+                    w = self._reload_tab(w) or w
+                self.tabs.setCurrentWidget(w)
                 return
+        v = self._load_view(path)
+        if v is None:
+            return
+        idx = self.tabs.addTab(v, os.path.basename(path))
+        self.tabs.setCurrentIndex(idx)
+        self.settings.setValue("last_dir", os.path.dirname(path))
+        self._add_recent(path)
+
+    def _load_view(self, path):
+        """A view of the PDF at path, wired to this window (not in a tab yet); None if it
+        can't be opened (the reason is shown)."""
         try:
             v = DocumentView(path)
         except Exception as ex:
             QMessageBox.critical(self, "Could not open file", f"{path}\n\n{ex}")
-            return
+            return None
         self._connect_view(v)
         if v.read_only:
             QTimer.singleShot(0, lambda: QMessageBox.information(
@@ -1312,10 +1339,82 @@ class MainWindow(QMainWindow):
         state = self._file_states().get(os.path.normcase(path))
         if state:
             v.initial_state = state            # reopen at the last page and zoom
-        idx = self.tabs.addTab(v, os.path.basename(path))
-        self.tabs.setCurrentIndex(idx)
-        self.settings.setValue("last_dir", os.path.dirname(path))
-        self._add_recent(path)
+        return v
+
+    @staticmethod
+    def _changed_on_disk(v):
+        """True when v's file was replaced or changed since v read or saved it."""
+        from .document_view import disk_stamp
+        now = disk_stamp(v.path)
+        was = getattr(v, "disk_stamp", None)
+        return not v.untitled and now is not None and was is not None and now != was
+
+    def _may_reload(self, v):
+        """Before reloading v's file: ask when that drops unsaved changes."""
+        v.commit_pending()
+        if not v.dirty:
+            return True
+        self.tabs.setCurrentWidget(v)
+        return QMessageBox.question(
+            self, "File changed on disk",
+            f"{os.path.basename(v.path)} has changed on disk since it was opened, and this "
+            "tab has unsaved changes.\n\nReload it from disk and lose your changes?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No) == QMessageBox.Yes
+
+    def _reload_tab(self, v):
+        """Show v's file as it is on disk now, in v's place (v and its unsaved changes are
+        dropped). Returns the new view, or None if the file can't be opened."""
+        i = self.tabs.indexOf(v)
+        self._remember_state(v)
+        nv = self._load_view(v.path)
+        if nv is None or i < 0:
+            return None
+        current = self.tabs.currentIndex() == i
+        self.tabs.insertTab(i + 1, nv, os.path.basename(nv.path))
+        if current:
+            self.tabs.setCurrentIndex(i + 1)
+        v.commit_pending()
+        v.dirty = False
+        self.close_tab(i)
+        return nv
+
+    @staticmethod
+    def _writing_over(path, exclude=None, source=None):
+        """Before a new PDF is written at path (Save As, Extract pages, Combine files, the
+        copies saved by Compress, Timestamp and Digital signature): the tabs, in any window,
+        that show the file there now [(window, view)]. When one of them has unsaved changes,
+        ask first: None = don't write."""
+        key = os.path.normcase(os.path.abspath(path))
+        tabs = [(w, v) for w in windows() for v in w._views()
+                if v is not exclude and not v.untitled and os.path.normcase(v.path) == key]
+        for w, v in tabs:
+            v.commit_pending()
+        # (source: the tab whose document is written, unsaved changes and all: nothing of
+        # it is lost)
+        if any(v.dirty and v is not source for _w, v in tabs):
+            w = tabs[0][0]
+            w.tabs.setCurrentWidget(next(v for _w, v in tabs if v.dirty and v is not source))
+            if QMessageBox.warning(
+                    w, "File is open", f"{os.path.basename(path)} is open in KanzonasPDF with "
+                    "unsaved changes.\n\nReplace it anyway and lose those changes?",
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
+                return None
+        return tabs
+
+    @staticmethod
+    def _written_over(tabs, close=False):
+        """The file these tabs showed was just replaced: show the new one in them (close:
+        close them instead), without asking (see _writing_over)."""
+        for w, v in tabs:
+            i = w.tabs.indexOf(v)
+            if i < 0:
+                continue
+            if close:
+                v.commit_pending()
+                v.dirty = False
+                w.close_tab(i)
+            else:
+                w._reload_tab(v)
 
     def _add_recent(self, path):
         from . import paths
@@ -1364,11 +1463,15 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getSaveFileName(self, "Save As", v.path, PDF_FILTER)
         if not path:
             return False
+        others = self._writing_over(path, exclude=v)
+        if others is None:
+            return False
         try:
             v.save(path)
         except Exception as ex:
             QMessageBox.critical(self, "Save failed", str(ex))
             return False
+        self._written_over(others, close=True)      # this tab is that file now
         self.autosave.discard(v)
         self._add_recent(v.path)
         self.settings.setValue("last_dir", os.path.dirname(v.path))
@@ -1644,13 +1747,33 @@ class MainWindow(QMainWindow):
         r = QMessageBox.question(
             self, "Recover unsaved changes?",
             "KanzonasPDF didn't close normally last time. Automatic backup copies of these "
-            f"documents have unsaved changes:\n\n{names}\n\nOpen the copies now? Use Save As "
-            "to keep one. (They stay in the backups folder for 30 days either way: "
-            "File > Preferences > Saving > Open backup folder.)")
+            f"documents have unsaved changes:\n\n{names}\n\nOpen the copies now? Each opens "
+            "with unsaved changes, and Save asks where to keep it. (They stay in the backups "
+            "folder for 30 days either way: File > Preferences > Saving > Open backup folder.)")
         moved = autosave.set_aside(items)
         if r == QMessageBox.Yes:
-            for p in moved:
-                self.open_file(p)
+            for p, original in moved:
+                self._open_recovered(p, original)
+
+    def _open_recovered(self, copy, original):
+        """A backup copy offered after a crash: it opens with unsaved changes, named after its
+        original file, and Save asks where to save it, offering the original file."""
+        try:
+            with open(copy, "rb") as f:
+                doc = pymupdf.open(stream=f.read(), filetype="pdf")
+            if not original:
+                v = self._open_untitled(doc)
+            else:
+                v = DocumentView(original, doc=doc)
+                v.recovered = True
+                self._connect_view(v)
+                self.tabs.setCurrentIndex(self.tabs.addTab(v, _doc_name(v)))
+        except Exception as ex:
+            QMessageBox.critical(self, "Could not open file", f"{copy}\n\n{ex}")
+            return None
+        v.dirty = True                  # closing it asks whether to save
+        self._update_ui()
+        return v
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -1858,7 +1981,10 @@ class MainWindow(QMainWindow):
         if not v:
             return
         try:
-            v.set_zoom(float(self.zoom_box.currentText().strip().rstrip("%")) / 100)
+            # "25,5%" too (a decimal comma); not "nan" or "inf"
+            z = float(self.zoom_box.currentText().strip().rstrip("%").strip().replace(",", "."))
+            if math.isfinite(z) and z > 0:
+                v.set_zoom(z / 100)
         except ValueError:
             pass
         self._update_ui()
@@ -1905,9 +2031,23 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Combine files", "The current document has unsaved "
                                     "changes; the combined PDF uses the saved file.")
         dlg = CombineDialog(self, self.settings.value("last_dir", ""), first)
+        replaced = self._guard_target(dlg)
         if dlg.exec() and dlg.result_path:
+            self._written_over(replaced)
             self.open_file(dlg.result_path)
             self.statusBar().showMessage("Combined into " + dlg.result_path, 5000)
+
+    def _guard_target(self, dlg):
+        """Have the Combine dialog check the file it's about to write (see _writing_over);
+        returns the list that then holds the tabs showing that file."""
+        replaced = []
+
+        def check(path):
+            tabs = self._writing_over(path)
+            replaced[:] = tabs or []
+            return tabs is not None
+        dlg.check_target = check
+        return replaced
 
     def pdf_from_images(self):
         from .combine import CombineDialog, IMAGE_FILTER
@@ -1917,7 +2057,9 @@ class MainWindow(QMainWindow):
         if not paths:
             return
         dlg = CombineDialog(self, os.path.dirname(paths[0]), paths, images=True)
+        replaced = self._guard_target(dlg)
         if dlg.exec() and dlg.result_path:
+            self._written_over(replaced)
             self.open_file(dlg.result_path)
             self.statusBar().showMessage("Created " + dlg.result_path, 5000)
 
@@ -2012,9 +2154,22 @@ class MainWindow(QMainWindow):
         base = os.path.splitext(v.path)[0]
         path, _ = QFileDialog.getSaveFileName(self, "Save extracted pages",
                                               f"{base}_p{first}-{last}.pdf", PDF_FILTER)
-        if path:
+        if not path:
+            return
+        if not v.untitled and os.path.normcase(os.path.abspath(path)) == os.path.normcase(v.path):
+            QMessageBox.warning(self, "Extract pages", "Choose a new file name: the extracted "
+                                "pages can't replace the document they come from.")
+            return
+        replaced = self._writing_over(path)
+        if replaced is None:
+            return
+        try:
             v.extract_pages(first - 1, last - 1, path)
-            self.statusBar().showMessage("Saved " + path, 4000)
+        except Exception as ex:
+            QMessageBox.critical(self, "Extract pages", f"Couldn't save the pages:\n{ex}")
+            return
+        self._written_over(replaced)
+        self.statusBar().showMessage("Saved " + path, 4000)
 
     def ocr(self):
         v = self.view()
@@ -2094,8 +2249,35 @@ class MainWindow(QMainWindow):
             "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
         if not ok:
             return
-        v.flatten(None if pick == choices[0] else [v.current_page()])
+        pages = None if pick == choices[0] else [v.current_page()]
+        if not self._flatten_redactions_first(v, pages):
+            return
+        v.flatten(pages)
         self.statusBar().showMessage("Flattened", 4000)
+
+    def _flatten_redactions_first(self, v, pages):
+        """Before Flatten: redaction marks that aren't applied yet stay marks (the text under
+        them is still there). Offer to apply them first. False: don't flatten."""
+        n = v.pending_redactions(pages)
+        if not n:
+            return True
+        where = "This document has" if pages is None else "This page has"
+        box = QMessageBox(QMessageBox.Warning, "Flatten",
+                          f"{where} {n} redaction mark(s) that aren't applied yet. Flatten "
+                          "leaves them as marks: what's under them stays in the file until "
+                          "they're applied.\n\nApply the redactions first? (This applies every "
+                          "mark in the document.)", parent=self)
+        apply_btn = box.addButton("Apply them first", QMessageBox.AcceptRole)
+        keep_btn = box.addButton("Keep them as marks", QMessageBox.DestructiveRole)
+        box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(apply_btn)
+        box.exec()
+        if box.clickedButton() is keep_btn:
+            return True
+        if box.clickedButton() is not apply_btn:
+            return False
+        self.apply_redactions()
+        return not v.pending_redactions()           # (unless that was canceled)
 
     # ---- signing ---------------------------------------------------------------------
     def _cache_sig(self, kind, png):
@@ -2354,6 +2536,9 @@ class MainWindow(QMainWindow):
                                              "PDF (*.pdf)")
         if not out:
             return
+        replaced = self._writing_over(out)
+        if replaced is None:
+            return
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
             v.timestamp(url.strip(), out)
@@ -2363,6 +2548,7 @@ class MainWindow(QMainWindow):
                                 "Check your internet connection or try another server.")
             return
         QApplication.restoreOverrideCursor()
+        self._written_over(replaced)
         self.open_file(out)
 
     def multi_place(self):
@@ -2558,8 +2744,11 @@ class MainWindow(QMainWindow):
             "can still change the page. To make changes detectable, digitally sign it\n"
             "with the lock against changes (certify).\n"
             "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
-        if ok:
-            v.flatten(None if pick == choices[0] else [v.current_page()], widgets=False)
+        if not ok:
+            return
+        pages = None if pick == choices[0] else [v.current_page()]
+        if self._flatten_redactions_first(v, pages):
+            v.flatten(pages, widgets=False)
             self.statusBar().showMessage("Comments flattened", 4000)
 
     def _toggle_hl_fields(self):
@@ -2902,11 +3091,15 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getSaveFileName(self, "Save smaller copy", base + "_small.pdf", PDF_FILTER)
         if not path:
             return
+        replaced = self._writing_over(path, source=v)
+        if replaced is None:
+            return
         try:
             before, after = page_tools.compress(v.doc.tobytes(), path, preset)
         except Exception as ex:
             QMessageBox.critical(self, "Compress failed", str(ex))
             return
+        self._written_over(replaced)
         QMessageBox.information(self, "Compress",
                                 f"Saved {path}\n\n{before / 1e6:.2f} MB \u2192 {after / 1e6:.2f} MB "
                                 f"({100 - after * 100 / max(1, before):.0f}% smaller)")
@@ -2931,15 +3124,17 @@ class MainWindow(QMainWindow):
                 if QMessageBox.question(
                         self, "Search & redact",
                         "Not on the pages, but found in " + ", ".join(extra) + ".\n\nRemove it "
-                        "from there now? (Fields and links containing it are deleted; in notes, bookmarks "
-                        "and properties it's replaced by [redacted]. Undo works until you close "
-                        "the file.)") == QMessageBox.Yes:
+                        "from there now? (Fields, links, stamps and attachments containing it are "
+                        "deleted; in notes, bookmarks and properties it's replaced by [redacted]. "
+                        "Undo works until you close the file.)") == QMessageBox.Yes:
                     v.remove_term(term)
                     self.statusBar().showMessage("Removed. Save to make it permanent.", 6000)
                 return
             if extra:
                 msg += ("\n\nAlso found in " + ", ".join(extra) + ". Those can't be covered "
-                        "with a box; they're removed too when you apply the redactions.")
+                        "with a box. When you apply the redactions, fields, links, stamps and "
+                        "attachments containing it are deleted; in notes, bookmarks and "
+                        "properties it's replaced by [redacted].")
             if n:
                 msg += "\n\nReview the marks, then use Apply redactions."
             QMessageBox.information(self, "Search & redact", msg)
@@ -3091,12 +3286,16 @@ class MainWindow(QMainWindow):
         out, _ = QFileDialog.getSaveFileName(self, "Save signed copy as", base + "_signed.pdf", PDF_FILTER)
         if not out:
             return
+        replaced = self._writing_over(out, source=v)
+        if replaced is None:
+            return
         try:
             digisign.sign(v.doc.tobytes(), out, signer, reason.currentText(), location.text(),
                           lock.isChecked())
         except Exception as ex:
             QMessageBox.critical(self, "Signing failed", str(ex))
             return
+        self._written_over(replaced)
         self.open_file(out)
 
     def signature_details(self):
@@ -3294,7 +3493,9 @@ class MainWindow(QMainWindow):
         if v is None or not hasattr(v, "pages") or not v.pages or v.untitled:
             return
         states = self._file_states()
-        states[os.path.normcase(v.path)] = {"page": v.current_page(), "zoom": round(v.zoom, 4)}
+        key = os.path.normcase(v.path)
+        states.pop(key, None)                      # moves to the end: the most recent
+        states[key] = {"page": v.current_page(), "zoom": round(v.zoom, 4)}
         if len(states) > 200:                      # keep the 200 most recent
             states = dict(list(states.items())[-200:])
         self.settings.setValue("file_states", json.dumps(states))
@@ -4205,11 +4406,24 @@ class MainWindow(QMainWindow):
         if self.thumbs.iconSize().width() != w:
             self.thumbs.setIconSize(QSize(w, w * 4 // 3))
 
-    def _on_thumb_moved(self, _parent, start, _end, _dest_parent, dest_row):
-        """Thumbnail dragged: apply the same move to the PDF (after Qt finishes the drop)."""
+    def _on_thumb_moved(self, *_):
+        """Thumbnail dragged: apply the new order to the PDF after Qt finishes the drop (it
+        moves one row at a time when several pages are dragged), as one undo step."""
         v = self.view()
-        if v is not None:
-            QTimer.singleShot(0, lambda: v.move_page_to(start, dest_row))
+        if v is not None and not getattr(self, "_thumb_order_queued", False):
+            self._thumb_order_queued = True
+            QTimer.singleShot(0, lambda: self._apply_thumb_order(v))
+
+    def _apply_thumb_order(self, v):
+        self._thumb_order_queued = False
+        if v is not self.view():
+            return
+        # each thumbnail is labeled with the number of the page it shows
+        order = [int(self.thumbs.item(i).text()) - 1 for i in range(self.thumbs.count())]
+        item = self.thumbs.currentItem()
+        show = int(item.text()) - 1 if item is not None else None
+        if order != sorted(order) and not v.reorder_pages(order, show):
+            self._rebuild_thumbs()          # refused (protected document): back as it is
 
     # ---- clipboard -----------------------------------------------------------------
     def _clipboard(self, op):

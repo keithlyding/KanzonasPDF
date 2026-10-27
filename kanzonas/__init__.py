@@ -1,6 +1,6 @@
 """KanzonasPDF: a free, fast PDF reader and editor."""
 
-__version__ = "1.4"
+__version__ = "1.4.1"
 
 # PyMuPDF 2.0 imports its optional layout-analysis package at import time, and that package
 # imports onnxruntime (a 100 MB AI runtime, also shipped here for OCR) as soon as it is
@@ -18,3 +18,5 @@ if "onnxruntime" not in _sys.modules:
     finally:
         del _sys.modules["onnxruntime"]
 del _sys, _os
+
+from . import pdfcoords as _pdfcoords  # noqa: E402,F401  (gives PyMuPDF the right page matrix)

@@ -100,8 +100,8 @@ def _remove(p):
 
 
 def set_aside(items):
-    """Move offered copies to backups/recovered (so they're offered only once); returns the
-    new paths. Recovered copies are also deleted after KEEP_DAYS."""
+    """Move offered copies to backups/recovered (so they're offered only once); returns
+    [(new path, original path or "")]. Recovered copies are also deleted after KEEP_DAYS."""
     dest = os.path.join(folder(), "recovered")
     os.makedirs(dest, exist_ok=True)
     now = time.time()
@@ -114,11 +114,11 @@ def set_aside(items):
                 pass
     out = []
     idx = _index()
-    for p, _orig, _t in items:
+    for p, orig, _t in items:
         q = os.path.join(dest, os.path.basename(p))
         try:
             os.replace(p, q)
-            out.append(q)
+            out.append((q, orig))
         except OSError:
             continue
         idx.pop(os.path.basename(p), None)
@@ -177,7 +177,9 @@ class Autosaver(QObject):
             return
         v._backup_rev = getattr(v, "revision", None)
         idx = _index()
-        idx[os.path.basename(path)] = "" if getattr(v, "untitled", False) else (v.path or "")
+        # (a recovered copy not saved yet still belongs to its original file)
+        idx[os.path.basename(path)] = "" if getattr(v, "untitled", False) and \
+            not getattr(v, "recovered", False) else (v.path or "")
         _save_index(idx)
 
     def discard(self, v):

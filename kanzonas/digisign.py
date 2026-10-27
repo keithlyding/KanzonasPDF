@@ -132,6 +132,9 @@ def validate(pdf_bytes):
     from pyhanko.sign.validation.status import SignatureCoverageLevel
     from pyhanko_certvalidator import ValidationContext
     reader = PdfFileReader(io.BytesIO(pdf_bytes), strict=False)
+    if reader.encrypted:
+        # Protected with only a permissions password: it opens with the empty user password.
+        reader.decrypt(b"")
     trusted = _trusted()
     results = []
     for sig in reader.embedded_signatures:

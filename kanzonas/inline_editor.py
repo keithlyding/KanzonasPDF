@@ -70,19 +70,30 @@ class InlineEditor(QFrame):
         self.show()
         self.raise_()
         self.text.setFocus()
+        self._click = click
+        self._fixed = False
         if click is not None:
-            c = self.text.cursorForPosition(self.text.mapFrom(parent, click.toPoint()))
-            self.text.setTextCursor(c)
+            self._place_cursor()
         else:
             self.text.selectAll()
+
+    def _place_cursor(self):
+        """Put the text cursor where the page was clicked."""
+        c = self.text.cursorForPosition(self.text.mapFrom(self.parentWidget(),
+                                                          self._click.toPoint()))
+        self.text.setTextCursor(c)
 
     def fix_width(self, width_px):
         """Edit a whole paragraph: the box keeps the paragraph's width and the text wraps in
         it as it will on the page (drag a side handle to change the width)."""
         self.resized_by_user = True
+        self._fixed = True
         self.resize(int(width_px + 2 * MARGIN + 6), self.height())
         self._start_width = self.width()
         self._grow()
+        if self._click is not None:
+            # the words now wrap as on the page: the click lands on the word clicked
+            self._place_cursor()
 
     def set_pixel_size(self, pixel_size):
         """Font size changed in Properties while typing: show the text at the new size."""
@@ -187,6 +198,8 @@ class InlineEditor(QFrame):
         moved = self.pos() - self._start_pos
         # Wrap in the PDF exactly when the user resized the box or the text wraps on screen.
         wrap = self.text.viewport().width() - 2 if (self.resized_by_user or self._wraps()) else None
+        if self._fixed and self.width() == self._start_width:
+            wrap = None             # a paragraph's own width, not the box's (no creep)
         self.hide()
         self.committed.emit(self.text.toPlainText(), float(moved.x()), float(moved.y()), wrap)
         self.deleteLater()

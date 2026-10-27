@@ -19,7 +19,9 @@ MANUAL = """
 <p>Apply redactions removes any vector path touching a mark, even the part of that path
 outside the box. Applying also scrubs metadata, attachments, hidden text, and scripts
 unless you turn that off. Check the result before sharing. Search &amp; redact
-removes matching annotations completely, including private stamp data and appearances.</p>
+replaces the text with [redacted] in notes and comments (they're written anew, so no copy of
+the text stays in their appearance or private data) and removes stamps, pictures and
+attached files containing it completely, including private stamp data and appearances.</p>
 <p>Saving edits to an already protected PDF keeps its own protection exactly as it was: the
 same open password, permissions password and permissions, with no password needed. So a form
 locked with a permissions password you don't know can still be filled in and saved, and stays
@@ -39,8 +41,12 @@ under the preview to see each sheet. Pages print at the printer's resolution up 
 rendered a strip at a time so even large drawings print sharp without using much memory.</p>
 <p>Copying, extracting and exporting require copying permission; Print requires printing
 permission and uses at most 150 dpi when high-quality printing is forbidden. Form filling
-and adding markups honor their separate permissions. Flattening selected pages preserves
-page labels, outgoing links and drawing calibration. Excel export writes PDF text as literal
+and adding markups honor their separate permissions: signing or dating a form field needs only
+<b>Filling in form fields and signing</b>, while placing a signature or the date anywhere else
+on the page changes the page. A form with only empty signature fields isn't signed, so it opens
+for filling in even when it's protected. Flattening selected pages preserves
+page labels, outgoing links (and what ties a link to its underline and words) and drawing
+calibration. Flatten leaves redaction marks that aren't applied yet as marks. Excel export writes PDF text as literal
 cell text, including text starting with an equals sign. OCR disables ONNX Runtime
 telemetry before creating recognition sessions.</p>
 <h2 id="start">Getting started</h2>
@@ -48,7 +54,9 @@ telemetry before creating recognition sessions.</p>
 <li><b>Open a PDF:</b> File &gt; Open (Ctrl+O), drag a file onto the window, or pick one from
 File &gt; Open recent. Each file opens in its own tab, at the page and zoom you left it. When
 KanzonasPDF is already open, a PDF opened from Explorer, an e-mail or a browser opens as a new tab
-in it, and the window comes to the front (restored if it was minimized).</li>
+in it, and the window comes to the front (restored if it was minimized). Opening a file that's
+already open switches to its tab; if the file has changed on disk since it was opened, the tab
+shows it as it is now (asking first if the tab has unsaved changes).</li>
 <li><b>Start a new PDF:</b> File &gt; <b>New PDF...</b> (Ctrl+N, or Pages tab &gt; New PDF)
 asks for the page size (Letter, Legal, Tabloid, ANSI C to E, ARCH A to E, A4 to A0) and
 portrait or landscape, then opens a tab named Untitled 1 with one blank page. Add pages with
@@ -59,7 +67,10 @@ again</b> to always use the size you chose; change it, or go back to being asked
 Preferences &gt; Pages and display &gt; New PDF page size. With no document open, Insert blank
 page starts a new PDF the same way, and Insert pages from file makes a new, unsaved PDF from
 the files you choose.</li>
-<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Undo is Ctrl+Z, redo is Ctrl+Y.
+<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Saving as a file that's open in another
+tab replaces that file and closes that tab (asking first if it has unsaved changes); the same goes
+for Extract pages, Combine files and the copies saved by Compress, Timestamp and digital signing,
+except that the other tab then shows the new file. Undo is Ctrl+Z, redo is Ctrl+Y.
 Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within a memory budget
 (256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
@@ -182,7 +193,8 @@ from any folder but stores settings on the computer like the installed version.<
 <li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number (bottom right
 with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, the zoom slider, or the zoom box
-(type a percent, from 10% to 6400%).
+(type a percent, from 10% to 6400%; 25.5 and 25,5 both work). A very long document can't go
+quite as high: all its pages together must stay within the largest size Windows can draw.
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit width, at
 the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.
 Fit width and Fit page keep fitting when the window or a side panel changes size, until you
@@ -209,7 +221,10 @@ words), <b>Box around it</b>, or <b>Nothing</b> (the default for pictures, shape
 pointer still finds it). The words, picture or markup themselves don't change.</li>
 <li><b>Links stay with what they're on:</b> move, resize or rotate a linked markup, picture, shape
 or paragraph, or move a linked line with Edit text, and the link (and its underline) goes
-along; delete it and its link goes too. Editing linked words with Edit text keeps their link,
+along; delete it and its link goes too. A link remembers what it was made on, so only that
+goes with it: a cloud or a box drawn around linked words doesn't take the words' link when
+it's moved or deleted. Where links overlap, Remove link and Edit link act on the smallest one
+under the pointer (the words' link, not the link of a cloud around them). Editing linked words with Edit text keeps their link,
 including the links AutoCAD writes on a sheet set.</li>
 <li><b>New link text:</b> with the <b>Links</b> tool (Home tab &gt; Insert, Tools menu), click
 empty paper, or drag a box over it: the window's <b>Write this text on the page</b> is ticked,
@@ -269,15 +284,27 @@ it to move it, drag a square handle to resize it, or change its look in the Prop
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
 it too, so you don't have to switch back to the arrow. The <b>Hand tool</b> works the same way:
 click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
-page.</li>
+page. A markup made a link opens its link instead when clicked with the Hand tool, or
+Ctrl+clicked with the Select tool (a plain click with Select selects it). A markup on a link
+the PDF came with (a highlight on a table of contents entry) is selected; click the link
+beside the markup to open it.</li>
+<li><b>Outlines and fills:</b> a rectangle, ellipse, cloud, polygon or area measurement
+without a fill is picked by its outline (within a few pixels at any zoom, or an area's
+label), like in Bluebeam; a filled one anywhere inside. So with a drawing or measuring tool,
+pressing inside a room outlined with an Area or a cloud draws there (a Length across the
+room, a Count, another cloud) instead of moving the outline.</li>
 <li><b>Several markups:</b> Ctrl+click each one, or drag a box from empty space with the Select
-tool (Ctrl+drag always draws a selection box). Drag any selected markup to move them all;
+tool (Ctrl+drag always draws a selection box). Ctrl+click on a markup made a link opens the
+link; drag a box around that one instead. Drag any selected markup to move them all;
 Delete removes them all; Properties changes apply to all of them.</li>
 <li><b>Delete:</b> Delete or Backspace, or right-click the markup &gt; <b>Delete</b>.
 <b>Edit a comment's text:</b> double-click it, or right-click it &gt; <b>Edit text...</b>.
+Measurements, stamps and signature placeholders show text made from what they are, so they
+don't offer Edit text (double-click a fill-in stamp to change its values); add a note or a
+text box to comment on them.
 If you right-click highlighted text that's selected, the menu offers <b>Delete highlight</b>.
 In the Markups list (F7), double-click a row to edit its text; right-click a row for
-<b>Edit text...</b> and <b>Delete</b>, or press Delete.</li>
+<b>Edit text...</b> (when its text can be edited) and <b>Delete</b>, or press Delete.</li>
 <li><b>Move with the arrow keys:</b> with markups selected (or pictures and shapes selected with
 Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> moves 10 pt and
 <b>Ctrl+arrow</b> 0.1 pt, for fine adjustments. A series of presses is one Ctrl+Z. Markups tied to
@@ -314,7 +341,9 @@ of the selected pages (the whole selection stays selected) or use the Pages menu
 <b>Copy pages</b>, <b>Cut pages</b>, <b>Paste pages after selected</b>, <b>Duplicate pages</b>
 and <b>Delete pages</b>. With the page list clicked, Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+A work on
 pages, and Delete (or Backspace) deletes the selected pages, after asking. Pages
-can be pasted into another open document too.</li>
+can be pasted into another open document too. Links on copied pages come along: a link to
+another copied page goes to its copy, and a link to a page not copied still works on a duplicate
+or a paste into the same document (in another document it's left out).</li>
 </ul>
 
 <h2 id="markup">Text markup and comments</h2>
@@ -349,14 +378,19 @@ adds a sticky note anywhere.</li>
 <li><b>Next comment</b> (Alt+Down) and <b>Previous comment</b> (Alt+Up) walk through every
 comment and markup in reading order, page by page, selecting each one. The status bar shows
 "Markup 3 of 12". It wraps around at the end.</li>
-<li><b>Markups list</b> (F7): all markups in a table; filter, click to jump, export to CSV.</li>
+<li><b>Markups list</b> (F7): all markups in a table, page 1 first (click a column heading
+to sort by it); filter, click to jump, export to CSV (in the order shown).</li>
 <li><b>Show markups:</b> untick to hide every comment and markup and see the page as if
 unmarked. Nothing is deleted; tick it again to bring them back. <b>Show comment boxes</b>
 hides just the yellow boxes beside commented text.</li>
 <li><b>Delete comments:</b> everyone's, only yours, or only one person's, on all pages or the
 current page. Undo brings them back.</li>
 <li><b>Flatten comments:</b> makes comments and markups a permanent part of the page while form
-fields stay fillable. (Document &gt; Flatten flattens form fields too.) The markups really
+fields stay fillable. (Document &gt; Flatten flattens form fields too.) Redaction marks that
+aren't applied yet are never flattened: burned in, they would look like a redaction with the
+text still under them. If there are any, it asks first: <b>Apply them first</b> (the usual
+Apply redactions, for every mark in the document), <b>Keep them as marks</b> (they stay
+markups, the rest is flattened) or Cancel. The markups really
 become page drawing: no PDF program sees them as markups any more. Programs that edit page
 content (Acrobat's Edit PDF, PDF-XChange's Edit Content, KanzonasPDF's Edit objects) can still
 move that drawing, as they can the rest of the page, and so can you (Edit objects selects each
@@ -495,7 +529,8 @@ placed stamp redraws it (a re-added date shows today's date).</li>
 <li><b>Fill-in stamps:</b> <b>Fill-in: PO # / Date ordered</b> and <b>Fill-in: Req # / Date
 submitted</b> in the stamp list. When you click to place one, a box asks for the number and the
 date (the date starts as today, in your Preferences &gt; You date format). Double-click a placed
-one to change what it says; it resizes to fit.</li>
+one to change what it says; it resizes to fit. Its comment text (in the Markups list, its CSV
+and other PDF programs) reads like "PO # PO-4471, Date ordered 10/26/2026".</li>
 </ul>
 
 <h2 id="images">Pictures and attached files (videos and more)</h2>
@@ -592,17 +627,25 @@ size picked before clicking a line applies to that line.</li>
 select it with the Edit objects tool and press Delete (see below). The whole paragraph goes, all
 the lines Add text wrote in one go; pictures and lines under it stay. Ctrl+Z brings it back.</li>
 <li><b>Edit a paragraph:</b> with the Edit text tool (Ctrl+E), click anywhere in a paragraph: the
-whole paragraph opens in a box of its width, and as you type the words rewrap, as in Word. Press
-Enter and the paragraph is rewritten in its font, size, color and line spacing, and keeps its
-alignment (left, right, centered or justified); a word split by a hyphen at a line's end is
-joined again. Shift+Enter starts a new paragraph. Drag a side handle to make it wider or
-narrower, or the outline to move it (links on it move along; highlights stay where they were,
-since the words have moved within it). A paragraph that gets longer grows downward; it doesn't push what's below it down,
-so if it now runs into text below, the status bar says so (Ctrl+Z undoes it). The paragraph
-is written in one style: a bold or colored word inside it comes out like the rest.</li>
-<li><b>Edit one line:</b> <b>Alt+click</b> a line to edit just that line (drawing labels, title
-blocks, table cells). Single lines, scanned text, sideways text and lines that don't wrap like a
-paragraph (a column of room names or schedule entries) are always edited a line at a time. <b>Press on a line and drag</b> to move it (its text and font stay as they are).
+whole paragraph opens in a box of its width with the cursor on the word you clicked, and as you
+type the words rewrap, as in Word. Press Enter and the paragraph is rewritten in its font, size,
+color and line spacing, and keeps its alignment (left, right, centered or justified) and a
+first line set in (an indent) or set out (a numbered paragraph's hanging indent). A word split by a hyphen at a line's end is joined again when the dictionary
+knows the whole word (spe-/cification); a hyphenated word (self-/consolidating) keeps its
+hyphen. The number or bullet of a list item stays where it is and its text is rewritten.
+Shift+Enter starts a new paragraph. Drag a side handle to make it wider or narrower, or the
+outline to move it (links on it move along; highlights and underlines drawn into the page stay
+where they were, since the words have moved within it). A paragraph that gets longer grows
+downward; it doesn't push what's below it down, so if it now runs into other text or past the
+bottom of the page, the status bar says so (Ctrl+Z undoes it). The paragraph is written in one
+style: a bold or colored word inside it comes out like the rest.</li>
+<li><b>What counts as a paragraph:</b> lines of one size, one under the other at an even line
+spacing, lined up on one side (or centered), that wrap like running text. Anything else is
+edited a line at a time: single lines; drawing labels, title blocks and dimension text; table
+and schedule cells; a column next to another column; a heading (its size differs from the text
+under it); list items, each on its own; scanned and sideways text, and rotated pages.</li>
+<li><b>Edit one line:</b> <b>Alt+click</b> a line to edit just that line, even inside a
+paragraph. <b>Press on a line and drag</b> to move it (its text and font stay as they are).
 Editing a line: the cursor goes where you
 clicked, and the line gets a dashed outline with handles, like a selected object. Type the
 change; drag the outline to move the text, drag a handle to change the width the text wraps
@@ -654,7 +697,8 @@ note are left as they are and listed. Trust but check: a sheet printed at reduce
 one known dimension after reading the scales, and use Calibrate Tape Measure if it is off.</li>
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
 <b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
-the scale.</li>
+the scale. A Count marker copied with Duplicate (Ctrl+D) or copy and paste takes the next
+number of its group.</li>
 <li>More measurements (Measure tab, "More" group, and the Measure menu):
 <b>Angle</b>: click one end, the corner, then the other end; it shows the angle in degrees.
 <b>Radius</b>: drag from the center of a circle to its edge; it draws the circle and shows the
@@ -682,7 +726,8 @@ the page order: while it's locked, nothing moves, adds or removes pages, whether
 the Pages menu, the ribbon or a shortcut (Move page up / down, Delete pages, Insert pages, Insert
 blank page, Cut, Paste and Duplicate pages). Using one of those asks whether to unlock first.
 Copying pages, rotating and extracting work while locked.</li>
-<li><b>Reorder:</b> unlock the page list, then drag thumbnails; or Move page up / Move page down
+<li><b>Reorder:</b> unlock the page list, then drag thumbnails (several selected pages move
+together, and Ctrl+Z undoes the whole drag); or Move page up / Move page down
 (Ctrl+Shift+Up / Down).</li>
 <li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine files): makes one
 new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
@@ -690,7 +735,7 @@ open document is already in the list. Drag them, or use Move up / Move down / So
 set the order, top to bottom. With "Add a bookmark for each file" ticked, each file gets a
 bookmark named after it and keeps its own bookmarks underneath. Click Combine..., choose a name,
 and the combined PDF opens. Password-protected files ask for their password. The original files
-aren't changed.</li>
+aren't changed, and the new PDF can't replace one of them.</li>
 <li>Combine files also takes pictures (JPG, PNG, TIFF, BMP, GIF, WebP): each becomes a page.
 <b>Create PDF from images...</b> (File menu, Pages tab &gt; Create group) starts with pictures: choose them, put
 them in order and click Create.... With "Put each picture on a Letter page" ticked (the
@@ -704,8 +749,9 @@ end or at the beginning, as one undo step. Each picture becomes a page the size 
 before it, turned to suit the picture. With nothing open, it makes a new, unsaved PDF from
 them.</li>
 <li>Pages menu: Insert blank page after current (the same size as the current page), Extract
-pages to new file, Delete pages (the pages selected in the page list, or the current page; it asks first,
-and Ctrl+Z brings them back).</li>
+pages to new file (to a new file, not the document itself), Delete pages (the pages selected in
+the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
+deleted page then goes to the page after it (or the last page).</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
 <li><b>Link sheet callouts</b> (Pages menu, Pages tab): for a drawing set plotted without
@@ -725,7 +771,8 @@ and title. Ctrl+Z undoes it all.</li>
 <li><b>Fill in:</b> with Select or Hand, click a field. Option buttons with the same group
 name are exclusive: choosing one clears the others in its group.</li>
 <li><b>Next form field</b> (Tab) and <b>Previous form field</b> (Shift+Tab), in the Forms menu:
-go through the fields in reading order (page by page, top to bottom, left to right). The
+go through the fields in reading order (page by page, top to bottom, left to right as the
+page is shown, also on a rotated page). The
 current field gets an orange outline; a text field opens for typing (Tab moves on, Shift+Tab
 goes back); for a checkbox, option button, dropdown, signature or initials field press
 <b>Space</b> or <b>Enter</b> to fill it in. Escape clears the outline.</li>
@@ -750,7 +797,9 @@ Hand or Select tool, whichever you used last, is active again, so you don't plac
 accident. Like any picture on the page, a placed signature can be moved or deleted with Edit
 objects (or Ctrl+Z right after placing it).</li>
 <li><b>Date</b> (Ctrl+;, Protect tab and menu): click to write today's date there, for example
-next to a signature or in a document's own date field. It's separate from signing, so a form
+next to a signature or in a document's own date field. Dating a form field (and signing a
+signature or initials field) works on a protected form that allows filling in form fields and
+signing. It's separate from signing, so a form
 that already prints a date doesn't get two. The format (such as 10/08/2026 or October 08, 2026)
 is set in File &gt; Preferences &gt; You.</li>
 <li><b>Multi-place signature or initials:</b> put your initials (or signature) on all pages,
@@ -773,7 +822,8 @@ documents only. It is not a certificate authority and cannot issue other certifi
 <li><b>Certificate file</b>: a .pfx/.p12 file from a certificate authority or your company,
 with its password.</li>
 </ul> Signed files open read-only so
-the signature stays valid. <b>Digital signature details</b> shows who signed and whether it's
+the signature stays valid (a file whose signature fields are all empty isn't signed and opens
+normally). <b>Digital signature details</b> shows who signed and whether it's
 still valid. <b>Clear all digital signatures</b> removes them (the empty fields stay).</li>
 <li><b>Timestamp document:</b> gets a trusted timestamp from a free internet time server,
 proving the file existed, unchanged, at that moment. Saved as a new copy.</li>
@@ -785,9 +835,9 @@ own copy of the text). A vector path that touches a mark is removed past the box
 the part outside it. Applying scrubs metadata, attachments, hidden text, and scripts unless
 you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
 fields (values, list options, tooltips and names), links (web and email addresses), markup
-notes, bookmark titles and document properties. When you apply, fields and links
-containing it are deleted, and in notes, bookmarks and properties it's replaced by
-[redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
+notes, bookmark titles and document properties. When you apply, fields, links, stamps and
+attached files containing it are deleted, and in notes and comments (they stay), bookmarks
+and properties it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
 away. Check the result before sharing; Undo works until you close the file.</li>
 <li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
 attached files, hidden text, links, comments, form data, thumbnails.</li>
@@ -835,8 +885,10 @@ sideways or upside-down pages; the slowest); or <b>Auto</b> (the default), which
 page fast and redoes it at High resolution only when the text came out small or unclear.
 Higher accuracy takes longer and uses more memory, and it never renders a scan sharper than
 it was scanned (that only adds blur), so on a 200 dpi scan Normal and High read at 200 dpi.
-Your choice is remembered. Edit text then changes the scan's words in a matching font (see
-Editing the PDF's own text).</li>
+Your choice is remembered. At every accuracy, a page scanned upside down is noticed and read
+turned upright, and lines that are upside down or standing up on the page get their text
+where their letters are, so Find and Search &amp; redact cover the right words. Edit text then
+changes the scan's words in a matching font (see Editing the PDF's own text).</li>
 <li><b>Redaction:</b> the Redact (mark text or area) tool (Shift+R) or Search &amp; redact
 marks areas; Apply redactions permanently removes what's underneath. A vector path that
 touches a mark is removed past the box. Applying scrubs metadata, attachments, hidden text,
@@ -911,7 +963,9 @@ when you closed it), and whether to reopen it at the page you were on last time.
 <li><b>Saving:</b> how often to back up unsaved changes (every 5 minutes by default; Off turns it
 off). A copy of each document with unsaved changes is kept in the backups folder and deleted when
 you save or close it. If KanzonasPDF or Windows stops unexpectedly, the next start offers to open
-the copies; use Save As to keep one. Offered copies stay in the backups folder (Open backup
+the copies. Each opens in a tab named after its original file with "(recovered)" added, marked as
+unsaved; Save asks where to keep it, offering the original file (or Untitled for a PDF that was
+never saved). Offered copies stay in the backups folder (Open backup
 folder) for 30 days. <b>Backup folder</b>: Change... picks another folder (if KanzonasPDF can't
 write there it says so), Use default goes back to the standard one (in the data folder when
 portable). Backups of open documents move to the new folder; recovered copies from earlier stay
@@ -959,7 +1013,7 @@ settings...).</li>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
-<tr><td>Ctrl+click a link (Select tool)</td><td>Open the link (a plain click with the Hand tool)</td></tr>
+<tr><td>Ctrl+click a link (Select tool)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
 <tr><td>Escape</td><td>Clear selection / put the tool down (back to the default tool, Hand or Select)</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
@@ -1014,6 +1068,9 @@ class ManualDialog(QDialog):
         nxt = QPushButton("Next")
         nxt.clicked.connect(self.find_next)
         bar.addWidget(nxt)
+        self.not_found = QLabel("")
+        self.find.textChanged.connect(lambda: self.not_found.setText(""))
+        bar.addWidget(self.not_found)
         lay.addLayout(bar)
 
         split = QSplitter()
@@ -1048,13 +1105,20 @@ class ManualDialog(QDialog):
         word = self.find.text().strip()
         if not word:
             return False
+        self.not_found.setText("")
         if self.text.find(word):
             return True
         # wrap around to the top
+        was, top = self.text.textCursor(), self.text.verticalScrollBar().value()
         cur = self.text.textCursor()
         cur.movePosition(cur.MoveOperation.Start)
         self.text.setTextCursor(cur)
-        return self.text.find(word)
+        if self.text.find(word):
+            return True
+        self.text.setTextCursor(was)        # stay where you were reading
+        self.text.verticalScrollBar().setValue(top)
+        self.not_found.setText("Not found")
+        return False
 
 
 # ---- keeping the manual complete -------------------------------------------------

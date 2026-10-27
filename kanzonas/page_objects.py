@@ -19,6 +19,8 @@ import re
 
 import pymupdf
 
+from . import pdfcoords
+
 _TOKEN = re.compile(rb"\s+|%[^\r\n]*|/[^\s/\[\]()<>{}%]*|<<|>>|<[0-9A-Fa-f\s]*>|[\[\]{}]|"
                     rb"\(|[^\s/\[\]()<>{}%]+")
 _WS = b" \t\r\n\f\x00"
@@ -342,7 +344,7 @@ class Objects:
         """data / found: the page's content and its scan when the caller already has them
         (after a move: see transform), so a big drawing isn't read again."""
         self.data = _contents(page) if data is None else data
-        self.tm = page.transformation_matrix
+        self.tm = pdfcoords.to_page(page)
         self.items = []
         self.found = []
         if not self.data.strip():
@@ -496,7 +498,7 @@ def transform(page, ns, t_page, objs=None):
     objs: the page's Objects (already read) to reuse instead of reading the drawing again.
     Returns the page's new Objects, updated in place of a second full read (None when it
     can't be: then read it again)."""
-    tm = page.transformation_matrix
+    tm = pdfcoords.to_page(page)
     t_pdf = tm * t_page * ~tm
     data = _contents(page)
     if objs is not None and objs.found and objs.data == data:
@@ -625,7 +627,7 @@ def reorder(page, ns, how, dry_run=False):
     removed (state settings kept for what follows). A clipping path that was in effect at
     its old place doesn't come with it. Returns False if there's nowhere to move (dry_run:
     only check)."""
-    tm = page.transformation_matrix
+    tm = pdfcoords.to_page(page)
     data = _contents(page)
     found = scan(data)
     sel = sorted(set(n for n in ns if n < len(found)))
