@@ -164,6 +164,9 @@ class CombineDialog(QDialog):
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)
         self.result_path = None
+        # check_target(path) -> False: don't write there (MainWindow: the file is open with
+        # unsaved changes and the user said no)
+        self.check_target = None
 
     def _add(self):
         filters = (IMAGE_FILTER if self.images else
@@ -207,6 +210,8 @@ class CombineDialog(QDialog):
         if os.path.abspath(out) in {os.path.abspath(p) for p in paths}:
             QMessageBox.warning(self, self.title, "Choose a new file name: the new PDF can't "
                                 "replace one of the files going into it.")
+            return
+        if self.check_target is not None and not self.check_target(out):
             return
         try:
             n = combine(paths, out, self.bookmarks.isChecked(), self._password,

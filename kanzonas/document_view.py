@@ -34,6 +34,16 @@ PAGE_CACHE_PAGES = 24     # parsed per-page data kept for at most about this man
 _ERASER_CURSOR = None
 
 
+def disk_stamp(path):
+    """(modified time, size) of a file, to notice when it has changed on disk; None when it
+    can't be read."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return st.st_mtime_ns, st.st_size
+
+
 def eraser_cursor():
     """A drawn eraser icon; the hotspot is the bottom-left tip that does the erasing."""
     global _ERASER_CURSOR
@@ -105,6 +115,8 @@ class DocumentView(QScrollArea):
         super().__init__(parent)
         self.path = os.path.abspath(path)
         self.untitled = doc is not None
+        # the file as it was read, to notice a newer one (see MainWindow.open_file)
+        self.disk_stamp = None if doc is not None else disk_stamp(self.path)
         if doc is not None:
             data = None
             self.doc = doc
@@ -186,6 +198,9 @@ class DocumentView(QScrollArea):
     def _build_pages(self):
         keep = self.verticalScrollBar().value()
         self.page_rects = [p.rect for p in self.doc]
+        if self.zoom > self._zoom_cap():        # pages added at a high zoom: they must fit
+            self.zoom = self._zoom_cap()
+            self.zoomChanged.emit(self.zoom)
         old = getattr(self, "pages", None)
         lay = self.widget().layout() if old and self.widget() is not None else None
         if lay is not None:
@@ -326,6 +341,11 @@ class DocumentView(QScrollArea):
             QTimer.singleShot(0, self._initial_view)
 
     def _initial_view(self):
+        if not self.isVisible():
+            # its tab went to the back before this ran (several files opened at once): the
+            # page layout isn't updated while hidden, so wait until the tab is shown again
+            self._fitted = False
+            return
         state = getattr(self, "initial_state", None)
         page = int(state.get("page", 0)) if state and self.reopen_page else 0
         mode = self.open_view
@@ -375,11 +395,16 @@ class DocumentView(QScrollArea):
     fit_mode = None     # "width" / "page" while the zoom follows the window size
 
     def _zoom_cap(self):
-        """Highest zoom for this file: 6400%, or less when a page would exceed Qt's widget size."""
+        """Highest zoom for this file: 6400%, or less when a page, or all the pages stacked
+        one under the other, would exceed Qt's widget size."""
         cap = MAX_ZOOM
-        for r in getattr(self, "page_rects", None) or []:
+        rects = getattr(self, "page_rects", None) or []
+        for r in rects:
             side = max(r.width, r.height, 1)
             cap = min(cap, WIDGET_PX / side)
+        if rects:
+            tall = sum(r.height for r in rects)
+            cap = min(cap, (WIDGET_PX - (len(rects) + 1) * PAGE_GAP) / max(tall, 1))
         return max(MIN_ZOOM, cap)
 
     def set_zoom(self, z, keep_fit=False):
@@ -807,7 +832,9 @@ class DocumentView(QScrollArea):
         self.horizontalScrollBar().setValue(int(w.x() + h_off))
         self._on_scroll()
 
-    def _restore(self, data):
+    def _restore(self, data, dirty=True):
+        """Show the document saved in data (undo, redo, a rolled-back edit); dirty: whether
+        it then has unsaved changes."""
         anchor = self._view_anchor()
         self._inline = None             # its widget goes with the rebuilt pages
         self.field_focus = None
@@ -836,12 +863,13 @@ class DocumentView(QScrollArea):
         # a fit that was queued by the rebuild runs after this returns; put the spot back
         if anchor is not None:
             QTimer.singleShot(0, lambda a=anchor: self._apply_view_anchor(a))
-        self.dirty = True
+        self.dirty = dirty
         self.structureChanged.emit()
         self.selectionChanged.emit()
 
     def modify(self, fn, pages=None, structural=False, permission=pymupdf.PDF_PERM_MODIFY):
-        """Run an edit with an undo snapshot. pages = indices to repaint."""
+        """Run an edit with an undo snapshot. pages = indices to repaint. Returns True when
+        the edit was made (not refused or rolled back)."""
         if getattr(self, "_source", None) is not None:
             # the split view shares the main view's document but not its undo history or
             # unsaved-changes mark: edits must go through the main view
@@ -871,11 +899,13 @@ class DocumentView(QScrollArea):
             self._clear_page_caches(pages)
             if self.markups_changed is not None:
                 self.markups_changed |= set(pages)
+        was_dirty = self.dirty
         try:
             fn()
         except Exception as ex:
             QMessageBox.warning(self, "Edit failed", str(ex))
-            self._restore(snap if snap is not None else self._undo.pop())
+            # rolled back: nothing changed
+            self._restore(snap if snap is not None else self._undo.pop(), dirty=was_dirty)
             return
         if snap is not None:
             self._undo.append(snap)
@@ -907,6 +937,7 @@ class DocumentView(QScrollArea):
             for i in pages or []:
                 self.pages[i].invalidate()
             self.documentChanged.emit()
+        return True
 
     def can_undo(self):
         return bool(self._undo)
@@ -1514,24 +1545,46 @@ class DocumentView(QScrollArea):
 
     # ---- pages: copy, paste, duplicate ---------------------------------------------
     def pages_bytes(self, indices):
+        """These pages as a PDF for the clipboard. Their links come along as they are; one
+        to a page not copied is kept for a paste into this same document (see paste_pages
+        and links.copy_page_links)."""
+        from . import links
         if not self.allowed(pymupdf.PDF_PERM_COPY):
             raise PermissionError("Copying pages is not allowed.")
         out = pymupdf.open()
-        for i in sorted(indices):
-            out.insert_pdf(self.doc, from_page=i, to_page=i)
+        pages = sorted(set(indices))
+        for i in pages:
+            out.insert_pdf(self.doc, from_page=i, to_page=i, links=False)
+        links.copy_page_links(self.doc, list(zip(pages, range(len(pages)))), out,
+                              park=self._clip_id())
         data = out.tobytes(garbage=3, deflate=True)
         out.close()
         return data
 
+    def _clip_id(self):
+        """Tells this document's pages on the clipboard from another one's."""
+        if getattr(self, "_clip_uid", None) is None:
+            import uuid
+            self._clip_uid = uuid.uuid4().hex
+        return self._clip_uid
+
     def paste_pages(self, data, at):
         """Insert the PDF pages in data before page index at (== count: at the end)."""
+        from . import links
         at = max(0, min(at, self.doc.page_count))
         n = {}
 
         def do():
             with pymupdf.open(stream=data, filetype="pdf") as other:
                 n["n"] = other.page_count
-                self.doc.insert_pdf(other, start_at=at)
+                mine = {self.doc.page_xref(i) for i in range(self.doc.page_count)}
+                self.doc.insert_pdf(other, start_at=at, links=False)
+                # links to pages that weren't copied work again when pasted back into the
+                # document they were copied from (Duplicate pages)
+                links.copy_page_links(
+                    other, [(k, at + k) for k in range(other.page_count)], self.doc,
+                    outside=lambda src, xref: xref if src == self._clip_id() and xref in mine
+                    else None)
         self.modify(do, structural=True)
         self.goto_page(at)
         return "pages"
@@ -1543,10 +1596,25 @@ class DocumentView(QScrollArea):
             return False
 
         def do():
+            toc = self.doc.get_toc(False)
             for i in indices:
                 self.doc.delete_page(i)
+            self._retarget_bookmarks(toc, set(indices), len(indices) + self.doc.page_count)
         self.modify(do, structural=True)
         return True
+
+    def _retarget_bookmarks(self, toc, gone, old_count):
+        """After pages were deleted: a bookmark to one of them (toc: the bookmarks from
+        before) goes to the page that now follows it, or the last page, instead of nowhere."""
+        for idx, (_lvl, _title, _page, dest) in enumerate(toc):
+            if dest.get("kind") != pymupdf.LINK_GOTO or dest.get("page") not in gone:
+                continue
+            after = next((p for p in range(dest["page"] + 1, old_count) if p not in gone), None)
+            new = self.doc.page_count - 1 if after is None else \
+                after - sum(1 for g in gone if g < after)
+            self.doc.set_toc_item(idx, dest_dict=dict(dest, page=new, to=pymupdf.Point(0, 0)))
+            if not dest.get("color") and dest.get("xref"):
+                self.doc.xref_set_key(dest["xref"], "C", "null")   # not grayed out
 
     def duplicate_pages(self, indices):
         """Copies of these pages right after the last of them."""
@@ -4956,7 +5024,12 @@ class DocumentView(QScrollArea):
         if self.doc.page_count <= 1:
             QMessageBox.information(self, "Delete page", "A PDF must keep at least one page.")
             return
-        self.modify(lambda: self.doc.delete_page(index), structural=True)
+
+        def do():
+            toc = self.doc.get_toc(False)
+            self.doc.delete_page(index)
+            self._retarget_bookmarks(toc, {index}, self.doc.page_count + 1)
+        self.modify(do, structural=True)
 
     def move_page(self, index, delta):
         target = index + delta
@@ -5069,14 +5142,26 @@ class DocumentView(QScrollArea):
         self.clear_selection()
         self.modify(do, structural=True)
 
-    def move_page_to(self, src, dest_before):
-        """Move page src so it sits before old page index dest_before (== count: end)."""
+    def reorder_pages(self, order, show=None):
+        """Put the pages in this order (old page indices) as one undo step, then show old
+        page `show` where it landed. False when nothing changed (or the edit was refused)."""
         n = self.doc.page_count
-        if dest_before in (src, src + 1) or not 0 <= src < n:
-            return
-        to = dest_before if dest_before < n else -1
-        self.modify(lambda: self.doc.move_page(src, to), structural=True)
-        self.goto_page(dest_before if dest_before < src else dest_before - 1)
+        order = list(order)
+        if order == list(range(n)) or sorted(order) != list(range(n)):
+            return False
+
+        def do():
+            now = list(range(n))
+            for k, src in enumerate(order):
+                i = now.index(src)
+                if i != k:
+                    self.doc.move_page(i, k)        # (inserts before page k)
+                    now.insert(k, now.pop(i))
+        if not self.modify(do, structural=True):
+            return False
+        if show is not None:
+            self.goto_page(order.index(show))
+        return True
 
     def insert_pdf(self, path, at):
         self.insert_files([path], at)
@@ -5295,6 +5380,26 @@ class DocumentView(QScrollArea):
                 pass
             self._fonts_added = False
         sec = self.security
+        try:
+            self._write_file(tmp, sec)
+            os.replace(tmp, path)
+            self.disk_stamp = disk_stamp(path)
+        except BaseException:
+            # e.g. the file is locked by another program: don't leave the copy next to it
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            raise
+        self.path = path
+        self.untitled = False
+        if self.dirty or sec is not None:
+            self._orig_data = None          # the file on disk is our rewrite now
+        self.dirty = False
+        self.documentChanged.emit()
+
+    def _write_file(self, tmp, sec):
+        """Write the document to tmp the way save needs it (see save)."""
         if not self.dirty and sec is None and self._orig_data is not None:
             # nothing changed: write the original bytes, so digital signatures stay valid
             # and protection stays exactly as it was
@@ -5326,13 +5431,6 @@ class DocumentView(QScrollArea):
             self.doc.save(tmp, garbage=1, deflate=True, encryption=pymupdf.PDF_ENCRYPT_AES_256,
                           owner_pw=owner, user_pw=sec.get("open_pw") or "",
                           permissions=sec.get("perms", -1) if sec.get("owner_pw") else -1)
-        os.replace(tmp, path)
-        self.path = path
-        self.untitled = False
-        if self.dirty or sec is not None:
-            self._orig_data = None          # the file on disk is our rewrite now
-        self.dirty = False
-        self.documentChanged.emit()
 
     def close_doc(self):
         self._undo, self._redo = [], []         # free the history (and the shared budget)

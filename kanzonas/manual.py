@@ -48,7 +48,9 @@ telemetry before creating recognition sessions.</p>
 <li><b>Open a PDF:</b> File &gt; Open (Ctrl+O), drag a file onto the window, or pick one from
 File &gt; Open recent. Each file opens in its own tab, at the page and zoom you left it. When
 KanzonasPDF is already open, a PDF opened from Explorer, an e-mail or a browser opens as a new tab
-in it, and the window comes to the front (restored if it was minimized).</li>
+in it, and the window comes to the front (restored if it was minimized). Opening a file that's
+already open switches to its tab; if the file has changed on disk since it was opened, the tab
+shows it as it is now (asking first if the tab has unsaved changes).</li>
 <li><b>Start a new PDF:</b> File &gt; <b>New PDF...</b> (Ctrl+N, or Pages tab &gt; New PDF)
 asks for the page size (Letter, Legal, Tabloid, ANSI C to E, ARCH A to E, A4 to A0) and
 portrait or landscape, then opens a tab named Untitled 1 with one blank page. Add pages with
@@ -59,7 +61,10 @@ again</b> to always use the size you chose; change it, or go back to being asked
 Preferences &gt; Pages and display &gt; New PDF page size. With no document open, Insert blank
 page starts a new PDF the same way, and Insert pages from file makes a new, unsaved PDF from
 the files you choose.</li>
-<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Undo is Ctrl+Z, redo is Ctrl+Y.
+<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Saving as a file that's open in another
+tab replaces that file and closes that tab (asking first if it has unsaved changes); the same goes
+for Extract pages, Combine files and the copies saved by Compress, Timestamp and digital signing,
+except that the other tab then shows the new file. Undo is Ctrl+Z, redo is Ctrl+Y.
 Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within a memory budget
 (256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
@@ -182,7 +187,8 @@ from any folder but stores settings on the computer like the installed version.<
 <li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number (bottom right
 with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, the zoom slider, or the zoom box
-(type a percent, from 10% to 6400%).
+(type a percent, from 10% to 6400%; 25.5 and 25,5 both work). A very long document can't go
+quite as high: all its pages together must stay within the largest size Windows can draw.
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit width, at
 the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.
 Fit width and Fit page keep fitting when the window or a side panel changes size, until you
@@ -314,7 +320,9 @@ of the selected pages (the whole selection stays selected) or use the Pages menu
 <b>Copy pages</b>, <b>Cut pages</b>, <b>Paste pages after selected</b>, <b>Duplicate pages</b>
 and <b>Delete pages</b>. With the page list clicked, Ctrl+C, Ctrl+X, Ctrl+V and Ctrl+A work on
 pages, and Delete (or Backspace) deletes the selected pages, after asking. Pages
-can be pasted into another open document too.</li>
+can be pasted into another open document too. Links on copied pages come along: a link to
+another copied page goes to its copy, and a link to a page not copied still works on a duplicate
+or a paste into the same document (in another document it's left out).</li>
 </ul>
 
 <h2 id="markup">Text markup and comments</h2>
@@ -690,7 +698,8 @@ the page order: while it's locked, nothing moves, adds or removes pages, whether
 the Pages menu, the ribbon or a shortcut (Move page up / down, Delete pages, Insert pages, Insert
 blank page, Cut, Paste and Duplicate pages). Using one of those asks whether to unlock first.
 Copying pages, rotating and extracting work while locked.</li>
-<li><b>Reorder:</b> unlock the page list, then drag thumbnails; or Move page up / Move page down
+<li><b>Reorder:</b> unlock the page list, then drag thumbnails (several selected pages move
+together, and Ctrl+Z undoes the whole drag); or Move page up / Move page down
 (Ctrl+Shift+Up / Down).</li>
 <li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine files): makes one
 new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
@@ -698,7 +707,7 @@ open document is already in the list. Drag them, or use Move up / Move down / So
 set the order, top to bottom. With "Add a bookmark for each file" ticked, each file gets a
 bookmark named after it and keeps its own bookmarks underneath. Click Combine..., choose a name,
 and the combined PDF opens. Password-protected files ask for their password. The original files
-aren't changed.</li>
+aren't changed, and the new PDF can't replace one of them.</li>
 <li>Combine files also takes pictures (JPG, PNG, TIFF, BMP, GIF, WebP): each becomes a page.
 <b>Create PDF from images...</b> (File menu, Pages tab &gt; Create group) starts with pictures: choose them, put
 them in order and click Create.... With "Put each picture on a Letter page" ticked (the
@@ -712,8 +721,9 @@ end or at the beginning, as one undo step. Each picture becomes a page the size 
 before it, turned to suit the picture. With nothing open, it makes a new, unsaved PDF from
 them.</li>
 <li>Pages menu: Insert blank page after current (the same size as the current page), Extract
-pages to new file, Delete pages (the pages selected in the page list, or the current page; it asks first,
-and Ctrl+Z brings them back).</li>
+pages to new file (to a new file, not the document itself), Delete pages (the pages selected in
+the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
+deleted page then goes to the page after it (or the last page).</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
 <li><b>Link sheet callouts</b> (Pages menu, Pages tab): for a drawing set plotted without
@@ -919,7 +929,9 @@ when you closed it), and whether to reopen it at the page you were on last time.
 <li><b>Saving:</b> how often to back up unsaved changes (every 5 minutes by default; Off turns it
 off). A copy of each document with unsaved changes is kept in the backups folder and deleted when
 you save or close it. If KanzonasPDF or Windows stops unexpectedly, the next start offers to open
-the copies; use Save As to keep one. Offered copies stay in the backups folder (Open backup
+the copies. Each opens in a tab named after its original file with "(recovered)" added, marked as
+unsaved; Save asks where to keep it, offering the original file (or Untitled for a PDF that was
+never saved). Offered copies stay in the backups folder (Open backup
 folder) for 30 days. <b>Backup folder</b>: Change... picks another folder (if KanzonasPDF can't
 write there it says so), Use default goes back to the standard one (in the data folder when
 portable). Backups of open documents move to the new folder; recovered copies from earlier stay
@@ -1022,6 +1034,9 @@ class ManualDialog(QDialog):
         nxt = QPushButton("Next")
         nxt.clicked.connect(self.find_next)
         bar.addWidget(nxt)
+        self.not_found = QLabel("")
+        self.find.textChanged.connect(lambda: self.not_found.setText(""))
+        bar.addWidget(self.not_found)
         lay.addLayout(bar)
 
         split = QSplitter()
@@ -1056,13 +1071,20 @@ class ManualDialog(QDialog):
         word = self.find.text().strip()
         if not word:
             return False
+        self.not_found.setText("")
         if self.text.find(word):
             return True
         # wrap around to the top
+        was, top = self.text.textCursor(), self.text.verticalScrollBar().value()
         cur = self.text.textCursor()
         cur.movePosition(cur.MoveOperation.Start)
         self.text.setTextCursor(cur)
-        return self.text.find(word)
+        if self.text.find(word):
+            return True
+        self.text.setTextCursor(was)        # stay where you were reading
+        self.text.verticalScrollBar().setValue(top)
+        self.not_found.setText("Not found")
+        return False
 
 
 # ---- keeping the manual complete -------------------------------------------------

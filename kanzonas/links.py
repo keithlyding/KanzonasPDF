@@ -241,3 +241,122 @@ def follow(page, old_rect, new_rect, foreign=False):
     m = pymupdf.Matrix(1, 0, 0, 1, -o.x0, -o.y0) * pymupdf.Matrix(sx, 0, 0, sy, r.x0, r.y0)
     transform(page, links, m)
     return len(links)
+
+
+# ---- copying pages ----------------------------------------------------------------------
+# PyMuPDF's insert_pdf makes new links on the copied pages: only those going to pages copied
+# in the same call, and without the keys above (or the link's color and border). Copying
+# pages (Copy pages, Duplicate pages) copies the link annotations itself instead.
+#
+# A link to a page that isn't copied along is parked on the copy (no action, so other
+# readers ignore it) until it's pasted:
+#   /KZToPage  n        the page's object number in the document it was copied from
+#   /KZFrom    (id)     that document (see DocumentView.pages_bytes)
+#   /KZTo      (text)   the rest of the destination (/XYZ left top zoom, /Fit...)
+
+_NOT_COPIED = {"Type", "Subtype", "Rect", "A", "Dest", "P", "NM", "Popup", "IRT",
+               "StructParent", "KZToPage", "KZFrom", "KZTo"}
+_REF = re.compile(r"\d+\s+\d+\s+R")
+
+
+def _goto(doc, xref):
+    """(page object number, rest of the destination) of a link to a page of its own
+    document, else None."""
+    for key in ("A", "Dest"):
+        typ, val = doc.xref_get_key(xref, key)
+        if typ == "xref":
+            val = doc.xref_object(int(val.split()[0]), compressed=True)
+        elif typ not in ("dict", "array"):
+            continue
+        if key == "A":
+            if not re.search(r"/S\s*/GoTo(?![A-Za-z])", val):
+                return None
+            m = re.search(r"/D\s*\[\s*(\d+)\s+\d+\s+R([^\]]*)\]", val)
+        else:
+            m = re.match(r"\s*\[\s*(\d+)\s+\d+\s+R([^\]]*)\]", val)
+        return (int(m.group(1)), m.group(2).strip()) if m else None
+    return None
+
+
+def _action(doc, xref):
+    """The /A of a link going elsewhere (a web address, another file), to copy as it is;
+    None when it refers to other objects of the document."""
+    typ, val = doc.xref_get_key(xref, "A")
+    if typ == "xref":
+        val = doc.xref_object(int(val.split()[0]), compressed=True)
+    elif typ != "dict":
+        return None
+    return None if _REF.search(val) else val
+
+
+def _add_annot(doc, page_xref, rect, action, extras):
+    new = doc.get_new_xref()
+    doc.update_object(new, "<</Type/Annot/Subtype/Link/Rect%s%s/P %d 0 R%s>>"
+                      % (rect, action, page_xref, "".join("/%s %s" % kv for kv in extras)))
+    typ, val = doc.xref_get_key(page_xref, "Annots")
+    if typ == "xref":
+        arr = int(val.split()[0])
+        doc.update_object(arr, doc.xref_object(arr, compressed=True).rstrip()[:-1] +
+                          " %d 0 R]" % new)
+    elif typ == "array":
+        doc.xref_set_key(page_xref, "Annots", val.rstrip()[:-1] + " %d 0 R]" % new)
+    else:
+        doc.xref_set_key(page_xref, "Annots", "[%d 0 R]" % new)
+
+
+def copy_page_links(src, pairs, dst, park=None, outside=None):
+    """Copy the links on src's pages to their copies in dst, made with insert_pdf(...,
+    links=False). pairs: [(page index in src, index of its copy in dst)]. A link to a page
+    copied too goes to that copy. A link to a page not copied is parked on the copy when
+    park (the id of src) is given, else left out. A parked link found in src goes where
+    outside(id, page object number) says: a page object number in dst, or None (left out)."""
+    copies = {src.page_xref(s): dst.page_xref(d) for s, d in pairs}
+    for s, d in pairs:
+        page_xref = dst.page_xref(d)
+        named = {ln["xref"]: ln for ln in src[s].get_links()
+                 if ln.get("kind") == pymupdf.LINK_NAMED and 0 <= ln.get("page", -1) < len(src)}
+        for xref, kind, *_ in src[s].annot_xrefs():
+            if kind != pymupdf.PDF_ANNOT_LINK:
+                continue
+            typ, rect = src.xref_get_key(xref, "Rect")
+            if typ != "array":
+                continue
+            extras = []
+            for key in src.xref_get_keys(xref):
+                kt, kv = src.xref_get_key(xref, key)
+                # (references to other objects can't come along)
+                if key in _NOT_COPIED or kt in ("xref", "null") or \
+                        kt != "string" and _REF.search(kv):
+                    continue
+                extras.append((key, _pdf_string(kv) if kt == "string" else kv))
+            parked = src.xref_get_key(xref, "KZToPage")
+            goto = _goto(src, xref)
+            if goto is None and xref in named:
+                # a named destination: the page and spot it names (in PDF coordinates)
+                ln = named[xref]
+                to = ln.get("to") or pymupdf.Point(0, 0)
+                goto = (src.page_xref(ln["page"]),
+                        "/XYZ %g %g %g" % (to.x, to.y, ln.get("zoom") or 0))
+            if parked[0] == "int":
+                target = outside(_string(src, xref, "KZFrom"), int(parked[1])) \
+                    if outside else None
+                if target is None:
+                    continue
+                action = "/A<</S/GoTo/D[%d 0 R %s]>>" % (target, _string(src, xref, "KZTo")
+                                                         or "/XYZ null null 0")
+            elif goto is not None:
+                target = copies.get(goto[0])
+                if target is not None:
+                    action = "/A<</S/GoTo/D[%d 0 R %s]>>" % (target, goto[1])
+                elif park is not None:
+                    action = ""
+                    extras += [("KZToPage", str(goto[0])), ("KZFrom", _pdf_string(park)),
+                               ("KZTo", _pdf_string(goto[1]))]
+                else:
+                    continue
+            else:
+                action = _action(src, xref)
+                if action is None:
+                    continue
+                action = "/A" + action
+            _add_annot(dst, page_xref, rect, action, extras)
