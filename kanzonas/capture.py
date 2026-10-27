@@ -32,7 +32,8 @@ def _upright(page):
     doc = page.parent
     w, h = page.rect.width, page.rect.height
     m = pdfcoords.to_page(page) * page.rotation_matrix * pymupdf.Matrix(1, 0, 0, -1, 0, h)
-    data = b"%.6f %.6f %.6f %.6f %.6f %.6f cm\n" % tuple(m) + (page.read_contents() or b"")
+    data = b"\n".join([b"%.6f %.6f %.6f %.6f %.6f %.6f cm" % tuple(m)] +
+                      [doc.xref_stream(x) or b"" for x in page.get_contents()])
     xref = doc.get_new_xref()
     doc.update_object(xref, "<<>>")
     doc.update_stream(xref, data)
