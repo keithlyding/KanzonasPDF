@@ -975,7 +975,8 @@ class PageWidget(QWidget):
             if what != "paste":
                 act.setEnabled(has_text or has_markups)
         if has_markups:
-            if not v.extra and (v.selected_model or {}).get("kind") != "field":
+            if not v.extra and v.selected_model is not None and \
+                    A.text_editable(v.selected_model):
                 sel = v.selection
                 menu.addAction("Edit text...", lambda: v.edit_annot_text(*sel))
             menu.addAction("Delete", v.delete_selected)
@@ -1112,18 +1113,19 @@ class PageWidget(QWidget):
                 self.view.clear_selection()
                 self.view.fill_field(self.index, xref)
                 return
-        # a click (press and release without dragging) on a link follows it: with the Hand
-        # tool; with Select only on Ctrl+click, so clicking to select or edit what the link is
-        # on never opens it by accident
+        # a click (press and release without dragging) on a link follows it, also on a markup
+        # made a link: with the Hand tool; with Select only on Ctrl+click, so clicking to
+        # select or edit what the link is on never opens it by accident
         self._link_press = None
         if tool == "hand" or (tool == "select" and ctrl_held(e)):
             link = self.view.link_at(self.index, pdf)
-            if link is not None and self.view.annot_at(self.index, pdf) is None:
+            if link is not None:
                 self._link_press = (link, pos)
         if tool == "hand":
             # like Adobe and PDF-XChange: clicking a markup with the Hand selects it (to
-            # move, restyle or delete); anywhere else drags the page
-            if self.view.show_markups and self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
+            # move, restyle or delete), unless it's a link; anywhere else drags the page
+            if self._link_press is None and self.view.show_markups and \
+                    self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
                 return
             self.view.begin_pan(e.globalPosition())
             return
@@ -1178,7 +1180,8 @@ class PageWidget(QWidget):
             self._drag_start = self._drag_now = pos
             return
         if tool == "select":
-            if self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
+            if self._link_press is None and self._press_on_markup(pos, pdf, ctrl_held(e),
+                                                                  cards=True):
                 return
         if tool in TEXT_TOOLS:
             if self._triple_click(e):
@@ -1364,7 +1367,7 @@ class PageWidget(QWidget):
             if tool in ("select", "hand"):
                 pdf = self.to_pdf(pos)
                 link = self.view.link_at(self.index, pdf)
-                if link is not None and self.view.annot_at(self.index, pdf) is None:
+                if link is not None:
                     if tool == "hand":
                         self.setCursor(Qt.PointingHandCursor)
                     tip = self.view.link_tip(link)

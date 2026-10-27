@@ -14,6 +14,7 @@ Per-tool default styles are kept in QSettings so they persist between sessions.
 import getpass
 import json
 import math
+import weakref
 
 import pymupdf
 
@@ -28,6 +29,33 @@ def each_annot(page, types=None):
         if types is None or a.type[0] in types:
             out.append(a)
         a = a.next
+    return out
+
+
+def load_annots(page, xrefs):
+    """{xref: Annot} for these annotations of the page (missing ones left out): one walk of
+    the page for many, where page.load_annot looks each one up from the start of the list.
+    Keep the page alive while using them."""
+    if len(xrefs) < 8:
+        out = {}
+        for x in xrefs:
+            try:
+                out[x] = page.load_annot(x)
+            except Exception:
+                pass
+        return out
+    want = set(xrefs)
+    out = {}
+    a = page.first_annot
+    while a:
+        if a.xref in want:
+            out[a.xref] = a
+        a = a.next
+        if a is not None:
+            # Annot.next gives each one a Page object of its own, in a reference cycle that
+            # keeps the page loaded until Python collects it, with its old stacking order
+            # (set_annot_order): tie it to this page instead, as page.load_annot does
+            a.parent = weakref.proxy(page)
     return out
 
 
@@ -497,8 +525,17 @@ def write(page, model):
     if kind == "placeholder":
         info["content"] = PLACEHOLDER_TEXT.get(p.get("for"), "SIGN HERE").capitalize()
     if kind == "stamp":
-        info["content"] = (p.get("label") or "").replace("image:", "") + \
-            (f" ({model['detail']})" if model.get("detail") else "")
+        from . import stamps
+        label = p.get("label") or ""
+        if label.startswith(stamps.FORM_PREFIX):
+            # a fill-in stamp reads "PO # PO-4471, Date ordered 10/26/2026"
+            values = (model.get("detail") or "").split("\n")
+            info["content"] = ", ".join(
+                f"{name} {values[k] if k < len(values) else ''}".strip()
+                for k, name in enumerate(stamps.form_fields(label)))
+        else:
+            info["content"] = label.replace(stamps.IMAGE_PREFIX, "") + \
+                (f" ({model['detail']})" if model.get("detail") else "")
     a.set_info(**info)
     if kind == "comment" and model.get("quads"):
         anchor = pymupdf.Rect()
@@ -686,6 +723,16 @@ def movable(model):
     return model["kind"] not in MARKUP
 
 
+def text_editable(model):
+    """Edit text... can change the markup's text. A measurement's, a stamp's and a sign-here
+    placeholder's text is made from what they are (a fill-in stamp's values can change)."""
+    kind = model["kind"]
+    if kind == "stamp":
+        from . import stamps
+        return (model["props"].get("label") or "").startswith(stamps.FORM_PREFIX)
+    return kind not in MEASURES + ("placeholder", "field")
+
+
 def copy(model):
     m = dict(model)
     m["props"] = dict(model["props"])
@@ -770,6 +817,47 @@ def set_annot_order(page, xrefs):
     """Rewrite /Annots in this order (back to front). Drop all Annot/Page objects of this
     page afterwards and reload it: MuPDF keeps its own list for a loaded page."""
     page.parent.xref_set_key(page.xref, "Annots", "[" + " ".join(f"{x} 0 R" for x in xrefs) + "]")
+
+
+def replace_many(page, changes):
+    """replace() for several annotations at once ([(xref, model)], in that order), as when
+    many markups are aligned, restyled or nudged together: each one is found in one walk of
+    the page and the stacking order is read and written once, not once for each (N squared
+    steps: 18 s for 1,000 markups). Returns [(old xref, its old model or None, new xref)]."""
+    by_xref = load_annots(page, [x for x, _m in changes])
+    order = annot_order(page)
+    place = {x: k for k, x in enumerate(order)}
+    out = []
+    for xref, model in changes:
+        a = by_xref.pop(xref, None)
+        if a is None:
+            a = page.load_annot(xref)       # (raises, like replace(), if it's gone)
+        try:
+            old = read(a)
+        except Exception:
+            old = None
+        if model["kind"] == "attach":
+            del a
+            out.append((xref, old, replace(page, xref, model)))
+            continue
+        page.delete_annot(a)
+        del a
+        out.append((xref, old, write(page, model).xref))
+    # each new one takes its old one's place in the stacking order (anything else made on
+    # the way, a pop-up note, stays on top as it was added)
+    now = annot_order(page)
+    new_at = {new: place[x] for x, _old, new in out if x in place and new != x}
+    if new_at:
+        kept = set(now)
+        slots = list(order)
+        for new, k in new_at.items():
+            slots[k] = new
+        final = [x for x in slots if x in kept]
+        placed = set(final)
+        final += [x for x in now if x not in placed]
+        if final != now:
+            set_annot_order(page, final)
+    return out
 
 
 def replace(page, xref, model):
