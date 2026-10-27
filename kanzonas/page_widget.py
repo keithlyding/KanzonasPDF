@@ -1382,7 +1382,8 @@ class PageWidget(QWidget):
                 self._objects_hover(pos)
                 return
             if tool == "edittext":
-                r = self.view.text_line_rect(self.index, self.to_pdf(pos))
+                # outline what a click edits: the paragraph, or the line with Alt
+                r = self.view.text_target_rect(self.index, self.to_pdf(pos), alt_held(e))
                 if r != self._hover:
                     self._hover = r
                     self.update()
