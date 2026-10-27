@@ -18,6 +18,8 @@ import re
 
 import pymupdf
 
+from . import pdfcoords
+
 MAX_DEPTH = 8                   # nested form XObjects followed
 
 _WS = b"\x00\t\n\x0c\r "
@@ -345,7 +347,7 @@ def _page_chain(page):
 def find_crossing(page, box):
     """The pattern-filled shapes on the page whose outline crosses `box` (PyMuPDF unrotated
     page coordinates). Call before the redaction; pass the result to repaint after it."""
-    box_pdf = pymupdf.Rect(box) * ~page.transformation_matrix
+    box_pdf = pymupdf.Rect(box) * pdfcoords.to_pdf(page)
     w = _Walker(page.parent, box_pdf)
     w.run(page.read_contents() or b"", _page_chain(page), pymupdf.Matrix(1, 1),
           pymupdf.Matrix(1, 1), [], 0, set())
@@ -383,7 +385,7 @@ def repaint(page, records, box):
     if not records:
         return 0
     doc = page.parent
-    box_pdf = pymupdf.Rect(box) * ~page.transformation_matrix
+    box_pdf = pymupdf.Rect(box) * pdfcoords.to_pdf(page)
     identity = pymupdf.Matrix(1, 1)
     parts, done = [], 0
     for rec in records:

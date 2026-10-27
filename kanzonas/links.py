@@ -19,6 +19,8 @@ import uuid
 
 import pymupdf
 
+from . import pdfcoords
+
 BLUE = (0.0, 0.35, 0.85)            # link text, underlines and boxes
 LOOKS = ("underline", "box", "none")
 _LOOK_KEY = {"underline": "/U", "box": "/B", "none": "/N"}
@@ -36,7 +38,7 @@ def _rect_from_pdf(page, value):
     nums = [float(v) for v in re.findall(r"-?\d*\.?\d+(?:[eE]-?\d+)?", value)]
     if len(nums) < 4:
         return None
-    return (pymupdf.Rect(nums[:4]) * ~page.transformation_matrix).normalize()
+    return (pymupdf.Rect(nums[:4]) * pdfcoords.to_page(page)).normalize()
 
 
 def _string(doc, xref, key):
@@ -218,7 +220,7 @@ def transform(page, links, m):
     shapes, objs = _underline_shapes(page, [ln["under"] for ln in links if ln["under"]])
     if shapes:
         page_objects.transform(page, shapes, m, objs)
-    tm = page.transformation_matrix
+    tm = pdfcoords.to_pdf(page)
     for ln in links:
         r = (ln["rect"] * m).normalize()
         pdf = (r * tm).normalize()

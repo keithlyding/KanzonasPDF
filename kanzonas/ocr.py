@@ -36,7 +36,59 @@ def _get_engine():
             onnxruntime.disable_telemetry_events()
             from rapidocr_onnxruntime import RapidOCR
             _engine = RapidOCR()
+            _watch_turns(_engine)
         return _engine
+
+
+def _watch_turns(engine):
+    """Note which lines the engine turned to read them. RapidOCR reads a line that is upside
+    down (its angle classifier turns the line's picture) or standing up (a tall line is
+    turned a quarter), but returns its corners as they lie in the picture, so the text layer
+    would run the wrong way over it: see _reading_order."""
+    crop, classify = getattr(engine, "get_crop_img_list", None), getattr(engine, "text_cls", None)
+    if crop is None or classify is None:
+        return
+
+    def crop_list(img, dt_boxes):
+        engine.kz_boxes = list(dt_boxes)
+        return crop(img, dt_boxes)
+
+    def classify_turns(img_list):
+        out = classify(img_list)
+        least = getattr(classify, "cls_thresh", 0.9)
+        engine.kz_flips = ["180" in str(label) and float(conf) > least for label, conf in out[1]]
+        return out
+    engine.get_crop_img_list = crop_list
+    engine.text_cls = classify_turns
+
+
+def _key(box):
+    return tuple(round(float(v), 1) for p in box for v in p)
+
+
+def _reading_order(box, flipped):
+    """The line's corners in reading order (top-left, top-right, bottom-right, bottom-left
+    of the text) from the picture's order, the way the engine read it: turned a quarter
+    when it is tall (as RapidOCR does), and half a turn more when its classifier found it
+    upside down."""
+    box = [list(p) for p in box]
+    w = int(max(math.dist(box[0], box[1]), math.dist(box[2], box[3])))
+    h = int(max(math.dist(box[0], box[3]), math.dist(box[1], box[2])))
+    k = (1 if w and h / w >= 1.5 else 0) + (2 if flipped else 0)
+    return box[k:] + box[:k]
+
+
+def _read(image):
+    """Run the engine on one image: [(box in reading order, text, confidence), ...]."""
+    engine = _get_engine()
+    engine.kz_boxes = engine.kz_flips = None
+    result, _ = engine(image)
+    boxes, flips = getattr(engine, "kz_boxes", None), getattr(engine, "kz_flips", None)
+    turned = {}
+    if boxes and flips and len(boxes) == len(flips):
+        turned = {_key(b): f for b, f in zip(boxes, flips)}
+    return [(_reading_order(box, turned.get(_key(box), False)), text, conf)
+            for box, text, conf in result or []]
 
 
 class Rendering:
@@ -84,8 +136,7 @@ def recognize(rendering, cancelled=lambda: False):
     import numpy as np
     img = rendering.image if hasattr(rendering, "image") else None
     if img is None:                                   # PNG bytes (older callers)
-        result, _ = _get_engine()(rendering)
-        return result or []
+        return _read(rendering)
     h, w = img.shape
     xs, ys = _starts(w), _starts(h)
     out = []
@@ -96,13 +147,13 @@ def recognize(rendering, cancelled=lambda: False):
             tile = img[y0:y0 + TILE_PX, x0:x0 + TILE_PX]
             if tile.min() > 200:                      # blank paper: nothing to read
                 continue
-            result, _ = _get_engine()(np.ascontiguousarray(np.stack([tile] * 3, axis=-1)))
+            result = _read(np.ascontiguousarray(np.stack([tile] * 3, axis=-1)))
             # keep each line once: the tile that holds its centre outside the shared overlap
             lo_x = x0 + (OVERLAP_PX / 2 if tx > 0 else 0)
             hi_x = x0 + TILE_PX - (OVERLAP_PX / 2 if tx < len(xs) - 1 else 0)
             lo_y = y0 + (OVERLAP_PX / 2 if ty > 0 else 0)
             hi_y = y0 + TILE_PX - (OVERLAP_PX / 2 if ty < len(ys) - 1 else 0)
-            for box, text, conf in result or []:
+            for box, text, conf in result:
                 box = [[p[0] + x0, p[1] + y0] for p in box]
                 cx = sum(p[0] for p in box) / 4
                 cy = sum(p[1] for p in box) / 4
@@ -121,13 +172,29 @@ def mostly_vertical(results):
     for box, text, _ in _good(results):
         if len(text.strip()) < 3:
             continue
-        w = math.dist(box[0], box[1])
-        h = math.dist(box[1], box[2])
+        w = max(p[0] for p in box) - min(p[0] for p in box)
+        h = max(p[1] for p in box) - min(p[1] for p in box)
         if h > 1.5 * w:
             tall += 1
         else:
             wide += 1
     return tall > wide
+
+
+def upside_down(results):
+    """True if most recognized lines run right to left in the image: the page was scanned
+    upside down."""
+    turned = upright = 0
+    for box, text, _ in _good(results):
+        if len(text.strip()) < 3:
+            continue
+        dx, dy = box[1][0] - box[0][0], box[1][1] - box[0][1]
+        if abs(dx) > abs(dy):
+            if dx < 0:
+                turned += 1
+            else:
+                upright += 1
+    return turned > upright
 
 
 def native_dpi(page):
@@ -184,7 +251,8 @@ def add_text_layer(page, results, rendering):
     for box, text, conf in _good(results):
         text = text.strip()
         (tlx, tly), (trx, try_), (brx, bry), (blx, bly) = box[:4]
-        # Baseline runs bottom-left -> bottom-right in the OCR image; map both ends to the display.
+        # Baseline runs bottom-left -> bottom-right of the text (the box is in reading order,
+        # see _reading_order); map both ends to the display.
         bl = rendering.to_display(blx, bly)
         br = rendering.to_display(brx, bry)
         tl = rendering.to_display(tlx, tly)

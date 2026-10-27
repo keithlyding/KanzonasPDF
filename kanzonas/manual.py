@@ -743,7 +743,8 @@ and title. Ctrl+Z undoes it all.</li>
 <li><b>Fill in:</b> with Select or Hand, click a field. Option buttons with the same group
 name are exclusive: choosing one clears the others in its group.</li>
 <li><b>Next form field</b> (Tab) and <b>Previous form field</b> (Shift+Tab), in the Forms menu:
-go through the fields in reading order (page by page, top to bottom, left to right). The
+go through the fields in reading order (page by page, top to bottom, left to right as the
+page is shown, also on a rotated page). The
 current field gets an orange outline; a text field opens for typing (Tab moves on, Shift+Tab
 goes back); for a checkbox, option button, dropdown, signature or initials field press
 <b>Space</b> or <b>Enter</b> to fill it in. Escape clears the outline.</li>
@@ -853,8 +854,10 @@ sideways or upside-down pages; the slowest); or <b>Auto</b> (the default), which
 page fast and redoes it at High resolution only when the text came out small or unclear.
 Higher accuracy takes longer and uses more memory, and it never renders a scan sharper than
 it was scanned (that only adds blur), so on a 200 dpi scan Normal and High read at 200 dpi.
-Your choice is remembered. Edit text then changes the scan's words in a matching font (see
-Editing the PDF's own text).</li>
+Your choice is remembered. At every accuracy, a page scanned upside down is noticed and read
+turned upright, and lines that are upside down or standing up on the page get their text
+where their letters are, so Find and Search &amp; redact cover the right words. Edit text then
+changes the scan's words in a matching font (see Editing the PDF's own text).</li>
 <li><b>Redaction:</b> the Redact (mark text or area) tool (Shift+R) or Search &amp; redact
 marks areas; Apply redactions permanently removes what's underneath. A vector path that
 touches a mark is removed past the box. Applying scrubs metadata, attachments, hidden text,

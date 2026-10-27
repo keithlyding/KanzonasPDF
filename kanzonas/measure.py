@@ -10,6 +10,8 @@ from fractions import Fraction
 
 import pymupdf
 
+from . import pdfcoords
+
 PT_M = 0.0254 / 72                        # meters per PDF point (paper size)
 UNITS = {"ft-in": 0.3048, "ft": 0.3048, "in": 0.0254, "yd": 0.9144, "mi": 1609.344,
          "m": 1.0, "cm": 0.01, "mm": 0.001, "km": 1000.0}
@@ -221,7 +223,7 @@ def add_label(page, annot, text, anchor, size=9.0, color=(0, 0, 0), angle=0.0):
     if typ != "xref":
         return
     ap = int(val.split()[0])
-    to_pdf = ~page.transformation_matrix
+    to_pdf = pdfcoords.to_pdf(page)
     lines = text.split("\n")
     lead = size * 1.2
     width = max(pymupdf.get_text_length(t, fontname="helv", fontsize=size) for t in lines)
@@ -269,7 +271,7 @@ def add_circle(page, annot, center, edge, color=(0, 0, 0), width=1.0):
     if typ != "xref":
         return
     ap = int(val.split()[0])
-    to_pdf = ~page.transformation_matrix
+    to_pdf = pdfcoords.to_pdf(page)
     c = pymupdf.Point(center) * to_pdf
     r = abs(pymupdf.Point(edge) - pymupdf.Point(center))
     k = 0.5523 * r
