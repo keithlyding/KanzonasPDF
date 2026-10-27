@@ -17,6 +17,9 @@ import math
 
 import pymupdf
 
+from . import pdfcoords
+
+
 def each_annot(page, types=None):
     """The page's annotations (no links, form fields or popups), as a list in page order:
     the same as page.annots(), which looks each one up from the start of the list again
@@ -573,7 +576,7 @@ def _image_appearance(page, a, model):
     f = H / 2 - (w / 2 * si + h / 2 * co)
     doc.xref_set_key(ap, "BBox", f"[0 0 {W:.4f} {H:.4f}]")
     # PyMuPDF shrinks a stamp's Rect to the picture's proportions: use the real box
-    pr = (b * page.transformation_matrix).normalize()
+    pr = (b * pdfcoords.to_pdf(page)).normalize()
     doc.xref_set_key(a.xref, "Rect", f"[{pr.x0:.4f} {pr.y0:.4f} {pr.x1:.4f} {pr.y1:.4f}]")
     doc.update_stream(ap, (f"q {w * co:.5f} {w * si:.5f} {-h * si:.5f} {h * co:.5f} "
                            f"{e:.4f} {f:.4f} cm /I Do Q\n").encode())

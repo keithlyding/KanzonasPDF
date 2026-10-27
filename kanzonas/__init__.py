@@ -18,3 +18,5 @@ if "onnxruntime" not in _sys.modules:
     finally:
         del _sys.modules["onnxruntime"]
 del _sys, _os
+
+from . import pdfcoords as _pdfcoords  # noqa: E402,F401  (gives PyMuPDF the right page matrix)

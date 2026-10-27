@@ -4,6 +4,8 @@ any zoom and in print. A PNG of the area is also put on the clipboard for other 
 
 import pymupdf
 
+from . import pdfcoords
+
 
 def snapshot(page, area):
     """One-page PDF (bytes) of `page` as displayed, markups baked in, and the PDF-space box
@@ -14,13 +16,31 @@ def snapshot(page, area):
         tmp.insert_pdf(doc, from_page=page.number, to_page=page.number, annots=True,
                        widgets=True)
         tmp.bake()                       # markups and form fields become page drawing
+        _upright(tmp[0])                 # the page now shows as displayed, unrotated
         tp = tmp[0]
-        tp.remove_rotation()             # the page now shows as displayed, unrotated
         _remove_outside(tp, pymupdf.Rect(area) & tp.rect)
-        box = (pymupdf.Rect(area) * ~tp.transformation_matrix).normalize()
+        box = (pymupdf.Rect(area) * pdfcoords.to_pdf(tp)).normalize()
         return tmp.tobytes(garbage=3, deflate=True), list(box)
     finally:
         tmp.close()
+
+
+def _upright(page):
+    """Turn the page's drawing so that its PDF space is the page as displayed (y up), with
+    no rotation and no crop. (PyMuPDF's remove_rotation drops the CropBox of a cropped
+    page and leaves the drawing where the crop no longer shows it.)"""
+    doc = page.parent
+    w, h = page.rect.width, page.rect.height
+    m = pdfcoords.to_page(page) * page.rotation_matrix * pymupdf.Matrix(1, 0, 0, -1, 0, h)
+    data = b"%.6f %.6f %.6f %.6f %.6f %.6f cm\n" % tuple(m) + (page.read_contents() or b"")
+    xref = doc.get_new_xref()
+    doc.update_object(xref, "<<>>")
+    doc.update_stream(xref, data)
+    page.set_contents(xref)
+    box = f"[0 0 {w:.6f} {h:.6f}]"
+    doc.xref_set_key(page.xref, "MediaBox", box)
+    doc.xref_set_key(page.xref, "CropBox", box)
+    page.set_rotation(0)
 
 
 def _remove_outside(page, keep):
