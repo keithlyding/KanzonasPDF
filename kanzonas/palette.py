@@ -6,6 +6,10 @@ from the palette lately come first.
 Matching is fuzzy: the letters typed must appear in order in the command's name or its menu
 ("sv a" finds "Save As..."); runs of letters, word starts and a match at the very start
 score higher, so the obvious command is at the top.
+
+In another language the commands are listed, and found, by their translated names; their
+English names find them too (and the recent commands are remembered by the English name, so
+they survive a change of language).
 """
 
 import json
@@ -14,6 +18,8 @@ from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
                                QLabel, QAbstractItemView)
+
+from .i18n import tr
 
 MAX_ROWS = 14
 RECENT = 8                  # commands remembered as "used lately"
@@ -72,13 +78,15 @@ class CommandPalette(QDialog):
         super().__init__(win, Qt.Popup | Qt.FramelessWindowHint)
         self.win = win
         self.setObjectName("command_palette")
-        self.actions = win._shortcut_actions()          # name -> QAction
+        self.actions = win._shortcut_actions()          # English name -> QAction
+        # the names as the menus show them (the same as the English ones in English)
+        self.names = {n: win.action_name(a) for n, a in self.actions.items()}
         self.paths = menu_paths(win.menuBar())
         self.chosen = None
         lay = QVBoxLayout(self)
         lay.setContentsMargins(8, 8, 8, 8)
         self.edit = QLineEdit()
-        self.edit.setPlaceholderText("Type a command (for example 'rotate', 'sv as', 'night')")
+        self.edit.setPlaceholderText(tr("Type a command (for example 'rotate', 'sv as', 'night')"))
         self.edit.setClearButtonEnabled(True)
         self.edit.installEventFilter(self)
         lay.addWidget(self.edit)
@@ -91,7 +99,7 @@ class CommandPalette(QDialog):
         self.list.setFocusPolicy(Qt.NoFocus)
         self.list.itemClicked.connect(lambda *_: self._run())
         lay.addWidget(self.list)
-        self.hint = QLabel("Enter runs the command, Escape closes. Up/Down move.")
+        self.hint = QLabel(tr("Enter runs the command, Escape closes. Up/Down move."))
         self.hint.setStyleSheet("color: palette(mid);")
         lay.addWidget(self.hint)
         self.edit.textChanged.connect(self.refresh)
@@ -107,31 +115,40 @@ class CommandPalette(QDialog):
             return []
 
     def rows(self, query):
-        """[(name, action)] best matches first (recent ones first when nothing is typed)."""
+        """[(name, action)] best matches first (recent ones first when nothing is typed);
+        name is the English name (the id), self.names[name] the one shown."""
         recent = self._recent()
         scored = []
         for name, a in self.actions.items():
             if not a.isEnabled():
                 continue
+            shown = self.names.get(name, name)
             path = self.paths.get(a, "")
-            s = match(query, name)
-            sp = match(query, path + " " + name) if path else None
-            best = max(x for x in (s, sp) if x is not None) if (s is not None or sp is not None) else None
-            if best is None:
+            scores = [match(query, shown)]
+            if path:
+                scores.append(match(query, path + " " + shown))
+            if shown != name:
+                # the English name finds it too (a shade lower, so on a tie the name the user
+                # sees wins)
+                en = match(query, name)
+                scores.append(None if en is None else en - 3)
+            scores = [x for x in scores if x is not None]
+            if not scores:
                 continue
+            best = max(scores)
             if name in recent:
                 best += 50 - recent.index(name)     # used lately: first
-            scored.append((best, name, a))
-        scored.sort(key=lambda r: (-r[0], r[1].lower()))
-        return [(n, a) for _s, n, a in scored[:MAX_ROWS]]
+            scored.append((best, shown.lower(), name, a))
+        scored.sort(key=lambda r: (-r[0], r[1]))
+        return [(n, a) for _s, _shown, n, a in scored[:MAX_ROWS]]
 
     def refresh(self, query):
         self.list.clear()
         for name, a in self.rows(query):
-            label = name
+            label = self.names.get(name, name)
             if a.isCheckable():
-                label += "   [on]" if a.isChecked() else "   [off]"
-            it = QTreeWidgetItem([label, self.paths.get(a, "Tool"),
+                label += "   " + (tr("[on]") if a.isChecked() else tr("[off]"))
+            it = QTreeWidgetItem([label, self.paths.get(a, tr("Tool")),
                                   a.shortcut().toString(QKeySequence.NativeText)])
             it.setData(0, Qt.UserRole, name)
             it.setToolTip(0, a.toolTip())

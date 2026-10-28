@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFile
 
 from . import __version__, annotations, export, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
+from .i18n import tr
 from .properties import PropertiesPanel
 from .markups_panel import MarkupsPanel
 from .tool_chest import ToolChestPanel, tool_for
@@ -31,8 +32,27 @@ APP_TITLE = f"KanzonasPDF v{__version__}"
 def _title_base():
     """'KanzonasPDF v0.48', plus ' (portable)' when run from the portable folder."""
     from . import paths
-    return APP_TITLE + (" (portable)" if paths.is_portable() else "")
-PDF_FILTER = "PDF files (*.pdf);;All files (*)"
+    return tr("{title} (portable)").format(title=APP_TITLE) if paths.is_portable() else APP_TITLE
+
+
+# file filters: the descriptions are translated, the patterns never
+PDF_FILTER = tr("PDF files") + " (*.pdf);;" + tr("All files") + " (*)"
+
+
+_english_of = {}
+
+
+def english_name(text):
+    """The English a menu or action text was translated from (text itself in English, or when
+    it has no translation). Saved shortcuts and the palette's recent commands are keyed by the
+    English name, so they survive a change of language."""
+    from . import i18n
+    if i18n.language() == "en":
+        return text
+    if not _english_of:
+        for en, translated in i18n.load(i18n.language()).items():
+            _english_of.setdefault(translated, en)
+    return _english_of.get(text, text)
 
 
 def parse_page_list(text, count):
@@ -51,125 +71,126 @@ def parse_page_list(text, count):
         return []
     return out
 TOOLS = [  # (id, label, shortcut, tooltip)
-    ("select", "Select", "V", "Select: drag across text to select it (Ctrl+C copies); click an annotation "
-                              "to move, resize or restyle it (V)"),
-    ("hand", "Hand", "H", "Pan the page (H)"),
-    ("edittext", "Edit text", "Ctrl+E", "Edit existing text: click a line of text (Ctrl+E)"),
-    ("highlight", "Highlight", "Ctrl+Shift+H", "Highlight text"),
-    ("underline", "Underline", "Ctrl+Shift+U", "Underline text"),
-    ("strikeout", "Strike", "Ctrl+Shift+X", "Strike out text (Ctrl+Shift+X)"),
-    ("comment", "Comment", "C", "Comment on text: select text, it's highlighted with a note (C)"),
-    ("note", "Note", "N", "Sticky note: click where it should go (N)"),
-    ("textbox", "Text box", "T", "Text box: drag a box or click (T)"),
-    ("callout", "Callout", "K", "Callout: press on the point, drag to where the text goes (K)"),
-    ("rect", "Rectangle", "R", "Rectangle (R)"),
-    ("ellipse", "Ellipse", "E", "Ellipse (E)"),
-    ("cloud", "Cloud", "D", "Revision cloud: drag a box (D)"),
-    ("polygon", "Polygon", "Y", "Polygon: click each corner, double-click or Enter to finish (Y)"),
-    ("line", "Line", "L", "Line (L)"),
-    ("arrow", "Arrow", "A", "Arrow (A)"),
-    ("polyline", "Polyline", "Shift+L", "Polyline: click each point, double-click or Enter to finish"),
-    ("ink", "Pen", "P", "Freehand pen (P)"),
-    ("stamp", "Stamp", "M", "Stamp (Approved, Draft, ... or your own image): click to place (M)"),
-    ("image", "Image", "", "Image: drag a box (or click) and pick a picture; it becomes part of "
-     "the page (move or resize it with Edit objects)"),
-    ("attach", "Attach file", "", "Attach file: click where its icon goes and pick any file "
-                                  "(e.g. a video); it's embedded in the PDF. Double-click to open"),
-    ("eraser", "Eraser", "X", "Delete the annotation you click (X)"),
-    ("signature", "Sign", "G", "Place your saved signature: click where it goes, or drag a box "
-                               "to size it (G)"),
-    ("initials", "Initials", "I", "Place your saved initials: click where they go, or drag a box "
-                                  "to size them (I)"),
-    ("date", "Date", "Ctrl+;", "Place today's date: click where it goes (Ctrl+;)"),
+    ("select", tr("Select"), "V", tr("Select: drag across text to select it (Ctrl+C copies); click an annotation "
+                                     "to move, resize or restyle it (V)")),
+    ("hand", tr("Hand"), "H", tr("Pan the page (H)")),
+    ("edittext", tr("Edit text"), "Ctrl+E", tr("Edit existing text: click a line of text (Ctrl+E)")),
+    ("highlight", tr("Highlight"), "Ctrl+Shift+H", tr("Highlight text")),
+    ("underline", tr("Underline"), "Ctrl+Shift+U", tr("Underline text")),
+    ("strikeout", tr("Strike"), "Ctrl+Shift+X", tr("Strike out text (Ctrl+Shift+X)")),
+    ("comment", tr("Comment"), "C", tr("Comment on text: select text, it's highlighted with a note (C)")),
+    ("note", tr("Note"), "N", tr("Sticky note: click where it should go (N)")),
+    ("textbox", tr("Text box"), "T", tr("Text box: drag a box or click (T)")),
+    ("callout", tr("Callout"), "K", tr("Callout: press on the point, drag to where the text goes (K)")),
+    ("rect", tr("Rectangle"), "R", tr("Rectangle (R)")),
+    ("ellipse", tr("Ellipse"), "E", tr("Ellipse (E)")),
+    ("cloud", tr("Cloud"), "D", tr("Revision cloud: drag a box (D)")),
+    ("polygon", tr("Polygon"), "Y", tr("Polygon: click each corner, double-click or Enter to finish (Y)")),
+    ("line", tr("Line"), "L", tr("Line (L)")),
+    ("arrow", tr("Arrow"), "A", tr("Arrow (A)")),
+    ("polyline", tr("Polyline"), "Shift+L", tr("Polyline: click each point, double-click or Enter to finish")),
+    ("ink", tr("Pen"), "P", tr("Freehand pen (P)")),
+    ("stamp", tr("Stamp"), "M", tr("Stamp (Approved, Draft, ... or your own image): click to place (M)")),
+    ("image", tr("Image"), "", tr("Image: drag a box (or click) and pick a picture; it becomes part of "
+                                  "the page (move or resize it with Edit objects)")),
+    ("attach", tr("Attach file"), "", tr("Attach file: click where its icon goes and pick any file "
+                                         "(e.g. a video); it's embedded in the PDF. Double-click to open")),
+    ("eraser", tr("Eraser"), "X", tr("Delete the annotation you click (X)")),
+    ("signature", tr("Sign"), "G", tr("Place your saved signature: click where it goes, or drag a box "
+                                      "to size it (G)")),
+    ("initials", tr("Initials"), "I", tr("Place your saved initials: click where they go, or drag a box "
+                                         "to size them (I)")),
+    ("date", tr("Date"), "Ctrl+;", tr("Place today's date: click where it goes (Ctrl+;)")),
 ]
 FORM_TOOLS = [  # form design tools: drag a box (or click) to add a field
-    ("f_text", "Text field", "Text field: drag a box"),
-    ("f_check", "Checkbox", "Checkbox: click or drag"),
-    ("f_radio", "Option button", "Option (radio) button: click; same group name = pick one"),
-    ("f_combo", "Dropdown", "Dropdown list: drag a box, then enter the choices"),
-    ("f_sign", "Signature field", "Signature field: others click it to sign"),
-    ("f_initials", "Initials field", "Initials field: others click it to put their initials"),
+    ("f_text", tr("Text field"), tr("Text field: drag a box")),
+    ("f_check", tr("Checkbox"), tr("Checkbox: click or drag")),
+    ("f_radio", tr("Option button"), tr("Option (radio) button: click; same group name = pick one")),
+    ("f_combo", tr("Dropdown"), tr("Dropdown list: drag a box, then enter the choices")),
+    ("f_sign", tr("Signature field"), tr("Signature field: others click it to sign")),
+    ("f_initials", tr("Initials field"), tr("Initials field: others click it to put their initials")),
 ]
 MEASURE_TOOLS = [
-    ("m_length", "Length", "Shift+M", "Measure length: drag from point to point (Shift+M)"),
-    ("m_poly", "Polylength", "", "Measure along a path: click points, double-click or Enter to finish"),
-    ("m_area", "Area", "Shift+A", "Measure area and perimeter: click corners, double-click or Enter (Shift+A)"),
-    ("m_angle", "Angle", "", "Measure an angle: click one end, the corner, then the other end"),
-    ("m_radius", "Radius", "", "Measure a radius and diameter: drag from the center to the edge"),
-    ("m_perimeter", "Perimeter", "", "Measure a perimeter: click corners, double-click or Enter to finish"),
-    ("m_volume", "Volume", "", "Measure volume: click the corners of the area, double-click or Enter; set the depth in Properties"),
-    ("m_count", "Count", "Shift+C", "Count: click each item; set the group name in Properties (Shift+C)"),
-    ("m_calibrate", "Calibrate Tape Measure", "", "Calibrate Tape Measure: drag along a known dimension, then type its real length"),
+    ("m_length", tr("Length"), "Shift+M", tr("Measure length: drag from point to point (Shift+M)")),
+    ("m_poly", tr("Polylength"), "", tr("Measure along a path: click points, double-click or Enter to finish")),
+    ("m_area", tr("Area"), "Shift+A", tr("Measure area and perimeter: click corners, double-click or Enter (Shift+A)")),
+    ("m_angle", tr("Angle"), "", tr("Measure an angle: click one end, the corner, then the other end")),
+    ("m_radius", tr("Radius"), "", tr("Measure a radius and diameter: drag from the center to the edge")),
+    ("m_perimeter", tr("Perimeter"), "", tr("Measure a perimeter: click corners, double-click or Enter to finish")),
+    ("m_volume", tr("Volume"), "", tr("Measure volume: click the corners of the area, double-click or Enter; set the depth in Properties")),
+    ("m_count", tr("Count"), "Shift+C", tr("Count: click each item; set the group name in Properties (Shift+C)")),
+    ("m_calibrate", tr("Calibrate Tape Measure"), "", tr("Calibrate Tape Measure: drag along a known dimension, then type its real length")),
 ]
 EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
-    ("erasecontent", "Erase &content", "Shift+E",
-     "Erase content: drag a box; the page's own text, images and lines inside it are deleted "
-     "(lines crossing the edge are cut there). Shift+E"),
-    ("addtext", "&Add text", "Shift+T",
-     "Add text: click where it goes and type; it's written into the page itself (PDF viewers "
-     "can't change it; Edit text does). Font, size and color in Properties. Shift+T"),
-    ("editobjects", "Edit &objects", "Shift+O",
-     "Edit objects: click a picture or shape that's part of the page (Ctrl+click or drag a box "
-     "for several); drag to move, drag a handle to resize, Delete deletes, right-click to "
-     "rotate. Shift+O"),
-    ("capture", "Ca&pture area", "Shift+P",
-     "Capture: drag a box to copy that area; Ctrl+V pastes it here as sharp vector content, "
-     "or as a picture into Word or email. Shift+P"),
-    ("link", "&Links", "",
-     "Links: drag a box over what should be clickable, then type a web address or choose a "
-     "page; click a link to change or delete it"),
-    ("crop", "C&rop pages", "",
-     "Crop: drag a box around what to keep, then choose this page or all pages; Pages > "
-     "Remove crop shows the whole page again"),
-    ("redact", "&Redact (mark text or area)", "Shift+R",
-     "Redact: drag across text, or drag a box over any area; then Apply redactions"),
-    ("placeholder", "Add signature &placeholder", "",
-     "Placeholder: drag a box where a signature or initials go (choose which in Properties); "
-     "then Apply all signature placeholders"),
+    ("erasecontent", tr("Erase &content"), "Shift+E",
+     tr("Erase content: drag a box; the page's own text, images and lines inside it are deleted "
+        "(lines crossing the edge are cut there). Shift+E")),
+    ("addtext", tr("&Add text"), "Shift+T",
+     tr("Add text: click where it goes and type; it's written into the page itself (PDF viewers "
+        "can't change it; Edit text does). Font, size and color in Properties. Shift+T")),
+    ("editobjects", tr("Edit &objects"), "Shift+O",
+     tr("Edit objects: click a picture or shape that's part of the page (Ctrl+click or drag a box "
+        "for several); drag to move, drag a handle to resize, Delete deletes, right-click to "
+        "rotate. Shift+O")),
+    ("capture", tr("Ca&pture area"), "Shift+P",
+     tr("Capture: drag a box to copy that area; Ctrl+V pastes it here as sharp vector content, "
+        "or as a picture into Word or email. Shift+P")),
+    ("link", tr("&Links"), "",
+     tr("Links: drag a box over what should be clickable, then type a web address or choose a "
+        "page; click a link to change or delete it")),
+    ("crop", tr("C&rop pages"), "",
+     tr("Crop: drag a box around what to keep, then choose this page or all pages; Pages > "
+        "Remove crop shows the whole page again")),
+    ("redact", tr("&Redact (mark text or area)"), "Shift+R",
+     tr("Redact: drag across text, or drag a box over any area; then Apply redactions")),
+    ("placeholder", tr("Add signature &placeholder"), "",
+     tr("Placeholder: drag a box where a signature or initials go (choose which in Properties); "
+        "then Apply all signature placeholders")),
 ]
 EXPORTS = [  # (id, menu label, file filter, extension)
-    ("word", "Microsoft &Word (.docx)...", "Word document (*.docx)", "docx"),
-    ("excel", "Microsoft &Excel (.xlsx)...", "Excel workbook (*.xlsx)", "xlsx"),
-    ("ppt", "Microsoft &PowerPoint (.pptx)...", "PowerPoint presentation (*.pptx)", "pptx"),
-    ("dxf", "&AutoCAD drawing (.dxf)...", "AutoCAD DXF (*.dxf)", "dxf"),
-    ("png", "Images (P&NG)...", "PNG image (*.png)", "png"),
-    ("jpg", "Images (&JPEG)...", "JPEG image (*.jpg)", "jpg"),
-    ("txt", "Plain &text (.txt)...", "Text file (*.txt)", "txt"),
+    ("word", tr("Microsoft &Word (.docx)..."), tr("Word document") + " (*.docx)", "docx"),
+    ("excel", tr("Microsoft &Excel (.xlsx)..."), tr("Excel workbook") + " (*.xlsx)", "xlsx"),
+    ("ppt", tr("Microsoft &PowerPoint (.pptx)..."), tr("PowerPoint presentation") + " (*.pptx)",
+     "pptx"),
+    ("dxf", tr("&AutoCAD drawing (.dxf)..."), "AutoCAD DXF (*.dxf)", "dxf"),
+    ("png", tr("Images (P&NG)..."), tr("PNG image") + " (*.png)", "png"),
+    ("jpg", tr("Images (&JPEG)..."), tr("JPEG image") + " (*.jpg)", "jpg"),
+    ("txt", tr("Plain &text (.txt)..."), tr("Text file") + " (*.txt)", "txt"),
 ]
 # Toolbar tooltips: what each button does (the shortcut is added automatically)
 BUTTON_TIPS = {
-    "a_new": "Start a new PDF with a blank page", "a_open": "Open a PDF", "a_save": "Save the document", "a_print": "Print",
-    "a_undo": "Undo the last change", "a_redo": "Redo what you undid",
-    "a_zoom_in": "Zoom in", "a_zoom_out": "Zoom out",
-    "a_fit_width": "Zoom so the page fills the window's width",
-    "a_fit_page": "Zoom so the whole page fits in the window",
-    "a_ocr": "Recognize text (OCR): make scanned pages searchable and selectable",
-    "a_rot_l": "Rotate the page counterclockwise", "a_rot_r": "Rotate the page clockwise",
-    "a_grid": "Show grid: a grid over the page (spacing in View > Grid settings)",
-    "a_snap_grid": "Snap to grid: points jump to the nearest grid intersection (Alt = no snap)",
-    "a_snap_page": "Snap to page: points jump to the page's corners, edge middles, center "
-                   "and edges (Alt = no snap)",
-    "a_snap_objects": "Snap to objects: points jump to markup corners, ends and centers and "
-                      "to the drawing's line ends and midpoints (Alt = no snap)",
-    "tool_highlight": "Highlight: drag across text",
-    "tool_underline": "Underline: drag across text",
-    "tool_strikeout": "Strike out: drag across text",
-    "tool_rect": "Rectangle: drag a box (Shift = square)",
-    "tool_ellipse": "Ellipse: drag a box (Shift = circle)",
-    "tool_cloud": "Revision cloud: drag a box (Shift = square)",
-    "tool_line": "Line: drag (Shift = 45\u00b0 steps)",
-    "tool_arrow": "Arrow: drag from tail to head (Shift = 45\u00b0 steps)",
-    "tool_eraser": "Eraser: click a markup to delete it, or drag a box to delete everything inside",
+    "a_new": tr("Start a new PDF with a blank page"), "a_open": tr("Open a PDF"), "a_save": tr("Save the document"), "a_print": tr("Print"),
+    "a_undo": tr("Undo the last change"), "a_redo": tr("Redo what you undid"),
+    "a_zoom_in": tr("Zoom in"), "a_zoom_out": tr("Zoom out"),
+    "a_fit_width": tr("Zoom so the page fills the window's width"),
+    "a_fit_page": tr("Zoom so the whole page fits in the window"),
+    "a_ocr": tr("Recognize text (OCR): make scanned pages searchable and selectable"),
+    "a_rot_l": tr("Rotate the page counterclockwise"), "a_rot_r": tr("Rotate the page clockwise"),
+    "a_grid": tr("Show grid: a grid over the page (spacing in View > Grid settings)"),
+    "a_snap_grid": tr("Snap to grid: points jump to the nearest grid intersection (Alt = no snap)"),
+    "a_snap_page": tr("Snap to page: points jump to the page's corners, edge middles, center "
+                      "and edges (Alt = no snap)"),
+    "a_snap_objects": tr("Snap to objects: points jump to markup corners, ends and centers and "
+                         "to the drawing's line ends and midpoints (Alt = no snap)"),
+    "tool_highlight": tr("Highlight: drag across text"),
+    "tool_underline": tr("Underline: drag across text"),
+    "tool_strikeout": tr("Strike out: drag across text"),
+    "tool_rect": tr("Rectangle: drag a box (Shift = square)"),
+    "tool_ellipse": tr("Ellipse: drag a box (Shift = circle)"),
+    "tool_cloud": tr("Revision cloud: drag a box (Shift = square)"),
+    "tool_line": tr("Line: drag (Shift = 45\u00b0 steps)"),
+    "tool_arrow": tr("Arrow: drag from tail to head (Shift = 45\u00b0 steps)"),
+    "tool_eraser": tr("Eraser: click a markup to delete it, or drag a box to delete everything inside"),
 }
 ARRANGE_TIPS = {
-    "al_left": "Align left edges", "al_hcenter": "Align centers (horizontally)",
-    "al_right": "Align right edges", "al_top": "Align top edges",
-    "al_vmiddle": "Align middles (vertically)", "al_bottom": "Align bottom edges",
-    "dist_h": "Distribute horizontally: equal gaps (3 or more markups)",
-    "dist_v": "Distribute vertically: equal gaps (3 or more markups)",
-    "z_front": "Bring to front: on top of all other markups",
-    "z_forward": "Bring forward one step", "z_backward": "Send backward one step",
-    "z_back": "Send to back: behind all other markups",
+    "al_left": tr("Align left edges"), "al_hcenter": tr("Align centers (horizontally)"),
+    "al_right": tr("Align right edges"), "al_top": tr("Align top edges"),
+    "al_vmiddle": tr("Align middles (vertically)"), "al_bottom": tr("Align bottom edges"),
+    "dist_h": tr("Distribute horizontally: equal gaps (3 or more markups)"),
+    "dist_v": tr("Distribute vertically: equal gaps (3 or more markups)"),
+    "z_front": tr("Bring to front: on top of all other markups"),
+    "z_forward": tr("Bring forward one step"), "z_backward": tr("Send backward one step"),
+    "z_back": tr("Send to back: behind all other markups"),
 }
 ZOOM_PRESETS = ["50%", "75%", "100%", "125%", "150%", "200%", "400%", "800%",
                  "1600%", "3200%", "6400%"]
@@ -203,7 +224,8 @@ def _doc_name(v):
     """A document's name on its tab and in the title bar."""
     name = os.path.basename(v.path)
     if v.untitled and getattr(v, "recovered", False):
-        name += " (recovered)"          # a backup copy opened after a crash, not saved yet
+        # a backup copy opened after a crash, not saved yet (the file name itself stays)
+        name = tr("{name} (recovered)").format(name=name)
     return name
 
 
@@ -376,7 +398,7 @@ class MainWindow(QMainWindow):
         """PDF-XChange style icon strip on the left edge: click an icon to open that panel,
         click it again to fold the panel away (the strip stays)."""
         from . import theme
-        ps = self.panel_strip = QToolBar("Panels")
+        ps = self.panel_strip = QToolBar(tr("Panels"))
         ps.setObjectName("panel_strip")
         ps.setMovable(False)
         ps.setIconSize(QSize(18, 18))
@@ -385,13 +407,17 @@ class MainWindow(QMainWindow):
         self.addToolBar(Qt.LeftToolBarArea, ps)
         self.strip_actions = []
         self._strip_icons = []          # (action, icon name), re-tinted when the theme changes
-        for i, (label, icon) in enumerate((("Pages", "file-multiple-outline"),
-                                           ("Bookmarks", "bookmark-outline"),
-                                           ("Layers", "layers-outline"),
-                                           ("Objects", "shape-outline"))):
+        for i, (label, icon, tip) in enumerate((
+                (tr("Pages"), "file-multiple-outline",
+                 tr("Pages panel (click again to fold it away)")),
+                (tr("Bookmarks"), "bookmark-outline",
+                 tr("Bookmarks panel (click again to fold it away)")),
+                (tr("Layers"), "layers-outline", tr("Layers panel (click again to fold it away)")),
+                (tr("Objects"), "shape-outline",
+                 tr("Objects panel (click again to fold it away)")))):
             a = QAction(theme.icon_named(icon), label, self, checkable=True)
             self._strip_icons.append((a, icon))
-            a.setToolTip(f"{label} panel (click again to fold it away)")
+            a.setToolTip(tip)
             a.triggered.connect(lambda _=False, k=i: self._strip_clicked(k))
             ps.addAction(a)
             self.strip_actions.append(a)
@@ -402,9 +428,9 @@ class MainWindow(QMainWindow):
                 a.setIcon(theme.icon_named(icon))
                 self._strip_icons.append((a, icon))
             ps.addAction(a)
-        self.a_panel_strip = QAction("Show panel &strip (left edge)", self, checkable=True)
-        self.a_panel_strip.setToolTip("Icons on the left edge that open and fold the Pages, "
-                                      "Bookmarks, Layers and Objects panels")
+        self.a_panel_strip = QAction(tr("Show panel &strip (left edge)"), self, checkable=True)
+        self.a_panel_strip.setToolTip(tr("Icons on the left edge that open and fold the Pages, "
+                                         "Bookmarks, Layers and Objects panels"))
         self.a_panel_strip.setChecked(self.settings.value("panel_strip", "true") != "false")
         self.a_panel_strip.toggled.connect(self._toggle_panel_strip)
         self.view_menu.addAction(self.a_panel_strip)
@@ -459,212 +485,213 @@ class MainWindow(QMainWindow):
 
     def _build_actions(self):
         v = self.view
-        self.a_new = self._act("&New PDF...", self.new_pdf, QKeySequence.New,
-                               "Start a new PDF with a blank page (it asks for the page size)")
-        self.a_open = self._act("&Open...", self.open_dialog, QKeySequence.Open)
-        self.a_save = self._act("&Save", self.save, QKeySequence.Save)
-        self.a_save_as = self._act("Save &As...", self.save_as, QKeySequence.SaveAs)
-        self.a_print = self._act("&Print...", self.print_doc, QKeySequence.Print)
-        self.a_close = self._act("&Close tab", lambda: self.close_tab(self.tabs.currentIndex()),
+        self.a_new = self._act(tr("&New PDF..."), self.new_pdf, QKeySequence.New,
+                               tr("Start a new PDF with a blank page (it asks for the page size)"))
+        self.a_open = self._act(tr("&Open..."), self.open_dialog, QKeySequence.Open)
+        self.a_save = self._act(tr("&Save"), self.save, QKeySequence.Save)
+        self.a_save_as = self._act(tr("Save &As..."), self.save_as, QKeySequence.SaveAs)
+        self.a_print = self._act(tr("&Print..."), self.print_doc, QKeySequence.Print)
+        self.a_close = self._act(tr("&Close tab"), lambda: self.close_tab(self.tabs.currentIndex()),
                                  QKeySequence.Close)
-        self.a_exit = self._act("E&xit", self.close, "Alt+F4")
-        self.a_detach = self._act("Move tab to new &window", self.detach_current, "Ctrl+Shift+N",
-                                  tip="Open this document in its own window (for a second "
-                                      "monitor); drag the tab out of the tab bar does the same")
-        self.a_prefs = self._act("Pre&ferences...", self.preferences, "Ctrl+K",
-                                 tip="All the remembered options in one place (Ctrl+K)")
-        self.a_undo = self._act("&Undo", lambda: v() and v().undo(), QKeySequence.Undo)
-        self.a_redo = self._act("&Redo", lambda: v() and v().redo(), QKeySequence.Redo)
-        self.a_find = self._act("&Find", self._focus_search, QKeySequence.Find)
-        self.a_replace = self._act("R&eplace text...", self.replace_text, "Ctrl+H",
-                                   tip="Find text in the page and replace it (Ctrl+H)")
+        self.a_exit = self._act(tr("E&xit"), self.close, "Alt+F4")
+        self.a_detach = self._act(tr("Move tab to new &window"), self.detach_current, "Ctrl+Shift+N",
+                                  tip=tr("Open this document in its own window (for a second "
+                                         "monitor); drag the tab out of the tab bar does the same"))
+        self.a_prefs = self._act(tr("Pre&ferences..."), self.preferences, "Ctrl+K",
+                                 tip=tr("All the remembered options in one place (Ctrl+K)"))
+        self.a_undo = self._act(tr("&Undo"), lambda: v() and v().undo(), QKeySequence.Undo)
+        self.a_redo = self._act(tr("&Redo"), lambda: v() and v().redo(), QKeySequence.Redo)
+        self.a_find = self._act(tr("&Find"), self._focus_search, QKeySequence.Find)
+        self.a_replace = self._act(tr("R&eplace text..."), self.replace_text, "Ctrl+H",
+                                   tip=tr("Find text in the page and replace it (Ctrl+H)"))
         # clipboard: text, markups, or pages (when the page list has the focus)
-        self.a_copy = self._act("&Copy", lambda: self._clipboard("copy"), QKeySequence.Copy,
-                                tip="Copy the selected text, markups, or pages (in the page list)")
-        self.a_cut = self._act("Cu&t", lambda: self._clipboard("cut"), QKeySequence.Cut,
-                               tip="Cut the selected text (removes it from the page), markups or pages")
-        self.a_paste = self._act("&Paste", lambda: self._clipboard("paste"), QKeySequence.Paste,
-                                 tip="Paste markups, pages, a picture, or text (as a text box) "
-                                     "where the mouse is")
-        self.a_select_all = self._act("Select &all text", lambda: self._clipboard("all"),
+        self.a_copy = self._act(tr("&Copy"), lambda: self._clipboard("copy"), QKeySequence.Copy,
+                                tip=tr("Copy the selected text, markups, or pages (in the page list)"))
+        self.a_cut = self._act(tr("Cu&t"), lambda: self._clipboard("cut"), QKeySequence.Cut,
+                               tip=tr("Cut the selected text (removes it from the page), markups or pages"))
+        self.a_paste = self._act(tr("&Paste"), lambda: self._clipboard("paste"), QKeySequence.Paste,
+                                 tip=tr("Paste markups, pages, a picture, or text (as a text box) "
+                                        "where the mouse is"))
+        self.a_select_all = self._act(tr("Select &all text"), lambda: self._clipboard("all"),
                                       QKeySequence.SelectAll,
-                                      tip="Select all the text on the current page (or all pages "
-                                          "in the page list)")
-        self.a_duplicate = self._act("&Duplicate", lambda: self._clipboard("dup"), "Ctrl+D",
-                                     tip="Duplicate the selected markups, or the selected pages "
-                                         "when the page list has the focus")
-        self.a_dup_pages = self._act("D&uplicate pages", lambda: self._page_clip("dup"),
-                                     tip="Duplicate the selected pages (page list must be unlocked)")
-        self.a_copy_pages = self._act("Copy pa&ges", lambda: self._page_clip("copy"))
-        self.a_cut_pages = self._act("Cut pages", lambda: self._page_clip("cut"))
-        self.a_paste_pages = self._act("Paste pages after selected", lambda: self._page_clip("paste"))
-        self.a_find_next = self._act("Find next", lambda: self._find(False), QKeySequence.FindNext)
-        self.a_find_prev = self._act("Find previous", lambda: self._find(True),
+                                      tip=tr("Select all the text on the current page (or all pages "
+                                             "in the page list)"))
+        self.a_duplicate = self._act(tr("&Duplicate"), lambda: self._clipboard("dup"), "Ctrl+D",
+                                     tip=tr("Duplicate the selected markups, or the selected pages "
+                                            "when the page list has the focus"))
+        self.a_dup_pages = self._act(tr("D&uplicate pages"), lambda: self._page_clip("dup"),
+                                     tip=tr("Duplicate the selected pages (page list must be unlocked)"))
+        self.a_copy_pages = self._act(tr("Copy pa&ges"), lambda: self._page_clip("copy"))
+        self.a_cut_pages = self._act(tr("Cut pages"), lambda: self._page_clip("cut"))
+        self.a_paste_pages = self._act(tr("Paste pages after selected"), lambda: self._page_clip("paste"))
+        self.a_find_next = self._act(tr("Find next"), lambda: self._find(False), QKeySequence.FindNext)
+        self.a_find_prev = self._act(tr("Find previous"), lambda: self._find(True),
                                      QKeySequence.FindPrevious)
-        self.a_zoom_in = self._act("Zoom &in", lambda: v() and v().zoom_in(), QKeySequence.ZoomIn)
-        self.a_zoom_out = self._act("Zoom &out", lambda: v() and v().zoom_out(),
+        self.a_zoom_in = self._act(tr("Zoom &in"), lambda: v() and v().zoom_in(), QKeySequence.ZoomIn)
+        self.a_zoom_out = self._act(tr("Zoom &out"), lambda: v() and v().zoom_out(),
                                     QKeySequence.ZoomOut)
-        self.a_fit_width = self._act("Fit &width", lambda: v() and v().fit_width(), "Ctrl+2")
-        self.a_fit_page = self._act("Fit &page", lambda: v() and v().fit_page(), "Ctrl+0")
-        self.a_actual = self._act("&Actual size", lambda: v() and v().set_zoom(1.0), "Ctrl+1")
-        self.a_sidebar = self._act("Page &thumbnails", self._toggle_sidebar, "F4")
+        self.a_fit_width = self._act(tr("Fit &width"), lambda: v() and v().fit_width(), "Ctrl+2")
+        self.a_fit_page = self._act(tr("Fit &page"), lambda: v() and v().fit_page(), "Ctrl+0")
+        self.a_actual = self._act(tr("&Actual size"), lambda: v() and v().set_zoom(1.0), "Ctrl+1")
+        self.a_sidebar = self._act(tr("Page &thumbnails"), self._toggle_sidebar, "F4")
         self.a_sidebar.setCheckable(True)
         self.a_sidebar.setChecked(True)
         # Ctrl+Shift+Plus/Minus are caught by an event filter (see eventFilter): "+" needs
         # Shift on most keyboards, so normal shortcuts would collide with zoom (Ctrl++).
         # The key names are shown in the menu text after a tab.
-        self.a_rot_l = self._act("Rotate page &left\tCtrl+Shift+-", lambda: self._page_op("rot", -90),
-                                 tip="Rotate page counter-clockwise (Ctrl+Shift+Minus)")
-        self.a_rot_r = self._act("Rotate page &right\tCtrl+Shift++", lambda: self._page_op("rot", 90),
-                                 tip="Rotate page clockwise (Ctrl+Shift+Plus)")
-        self.a_rot_l.setIconText("Rotate left")
-        self.a_rot_r.setIconText("Rotate right")
-        self.a_del_page = self._act("&Delete pages", lambda: self._page_op("del"),
-                                    tip="Delete the pages selected in the page list (Ctrl+click "
-                                        "or Shift+click for several), or the current page; "
-                                        "Delete in the page list does it too")
-        self.a_move_up = self._act("Move page &up", lambda: self._page_op("move", -1),
-                                   "Ctrl+Shift+Up", "Move current page up (Ctrl+Shift+Up)")
-        self.a_move_down = self._act("Move page do&wn", lambda: self._page_op("move", 1),
-                                     "Ctrl+Shift+Down", "Move current page down (Ctrl+Shift+Down)")
-        self.a_insert_pdf = self._act("&Insert pages from file...", self.insert_from_file)
-        self.a_combine = self._act("Co&mbine files...", self.combine_files,
-                                   tip="Combine several PDFs, in the order you choose, into one "
-                                       "new PDF")
-        self.a_from_images = self._act("Create PDF from &images...", self.pdf_from_images,
-                                       tip="Make a PDF from pictures: scans, phone photos "
-                                           "(JPG, PNG, TIFF...), one page each")
-        self.a_insert_blank = self._act("Insert &blank page after current",
+        self.a_rot_l = self._act(tr("Rotate page &left\tCtrl+Shift+-"), lambda: self._page_op("rot", -90),
+                                 tip=tr("Rotate page counter-clockwise (Ctrl+Shift+Minus)"))
+        self.a_rot_r = self._act(tr("Rotate page &right\tCtrl+Shift++"), lambda: self._page_op("rot", 90),
+                                 tip=tr("Rotate page clockwise (Ctrl+Shift+Plus)"))
+        self.a_rot_l.setIconText(tr("Rotate left"))
+        self.a_rot_r.setIconText(tr("Rotate right"))
+        self.a_del_page = self._act(tr("&Delete pages"), lambda: self._page_op("del"),
+                                    tip=tr("Delete the pages selected in the page list (Ctrl+click "
+                                           "or Shift+click for several), or the current page; "
+                                           "Delete in the page list does it too"))
+        self.a_move_up = self._act(tr("Move page &up"), lambda: self._page_op("move", -1),
+                                   "Ctrl+Shift+Up", tr("Move current page up (Ctrl+Shift+Up)"))
+        self.a_move_down = self._act(tr("Move page do&wn"), lambda: self._page_op("move", 1),
+                                     "Ctrl+Shift+Down", tr("Move current page down (Ctrl+Shift+Down)"))
+        self.a_insert_pdf = self._act(tr("&Insert pages from file..."), self.insert_from_file)
+        self.a_combine = self._act(tr("Co&mbine files..."), self.combine_files,
+                                   tip=tr("Combine several PDFs, in the order you choose, into one "
+                                          "new PDF"))
+        self.a_from_images = self._act(tr("Create PDF from &images..."), self.pdf_from_images,
+                                       tip=tr("Make a PDF from pictures: scans, phone photos "
+                                              "(JPG, PNG, TIFF...), one page each"))
+        self.a_insert_blank = self._act(tr("Insert &blank page after current"),
                                         lambda: self._page_op("blank"))
-        self.a_extract = self._act("&Extract pages to new file...", self.extract_pages)
-        self.a_sheet_links = self._act("Link sheet &callouts...", self.link_sheet_callouts,
-                                       tip="Read the sheet numbers from the title blocks and make "
-                                           "every callout, note and index line that names a sheet a "
-                                           "link to it (also to PDFs in the same folder)")
-        self.a_uncrop = self._act("Remove cro&p...", lambda: self._page_op("uncrop"),
-                                  tip="Show the whole page again on this page or all pages")
-        self.a_ocr = self._act("Recognize text (&OCR)...", self.ocr,
-                               tip="Make scanned pages searchable and selectable")
-        self.a_props = self._act("&Properties panel", self._toggle_props, "F6")
+        self.a_extract = self._act(tr("&Extract pages to new file..."), self.extract_pages)
+        self.a_sheet_links = self._act(tr("Link sheet &callouts..."), self.link_sheet_callouts,
+                                       tip=tr("Read the sheet numbers from the title blocks and make "
+                                              "every callout, note and index line that names a sheet a "
+                                              "link to it (also to PDFs in the same folder)"))
+        self.a_uncrop = self._act(tr("Remove cro&p..."), lambda: self._page_op("uncrop"),
+                                  tip=tr("Show the whole page again on this page or all pages"))
+        self.a_ocr = self._act(tr("Recognize text (&OCR)..."), self.ocr,
+                               tip=tr("Make scanned pages searchable and selectable"))
+        self.a_props = self._act(tr("&Properties panel"), self._toggle_props, "F6")
         self.a_props.setCheckable(True)
         self.a_props.setChecked(True)
-        self.a_cards = self._act("Show &comment boxes", self._toggle_cards)
+        self.a_cards = self._act(tr("Show &comment boxes"), self._toggle_cards)
         self.a_cards.setCheckable(True)
         self.a_cards.setChecked(self.settings.value("comment_boxes", "true") != "false")
-        self.a_setup_sig = self._act("Set up my &signature...", lambda: self.setup_signature("signature"))
-        self.a_setup_init = self._act("Set up my &initials...", lambda: self.setup_signature("initials"))
-        self.a_security = self._act("Security &properties (passwords && permissions)...",
+        self.a_setup_sig = self._act(tr("Set up my &signature..."), lambda: self.setup_signature("signature"))
+        self.a_setup_init = self._act(tr("Set up my &initials..."), lambda: self.setup_signature("initials"))
+        self.a_security = self._act(tr("Security &properties (passwords && permissions)..."),
                                     self.security_properties,
-                                    tip="Require a password to open, and/or restrict printing, "
-                                        "editing and copying (AES-256)")
-        self.a_remove_security = self._act("&Remove security", self.remove_security)
-        self.a_sanitize = self._act("Sa&nitize document...", self.sanitize_document,
-                                    tip="Remove hidden data: document information, scripts, "
-                                        "attached files, hidden text...")
-        self.a_clear_sigs = self._act("&Clear all digital signatures...", self.clear_signatures)
-        self.a_timestamp = self._act("&Timestamp document...", self.timestamp_document,
-                                     tip="Add a trusted timestamp from a time server: proves the "
-                                         "file existed, unchanged, at that time")
-        self.a_multi_sign = self._act("&Multi-place signature or initials...", self.multi_place)
-        self.a_apply_placeholders = self._act("&Apply all signature placeholders",
+                                    tip=tr("Require a password to open, and/or restrict printing, "
+                                           "editing and copying (AES-256)"))
+        self.a_remove_security = self._act(tr("&Remove security"), self.remove_security)
+        self.a_sanitize = self._act(tr("Sa&nitize document..."), self.sanitize_document,
+                                    tip=tr("Remove hidden data: document information, scripts, "
+                                           "attached files, hidden text..."))
+        self.a_clear_sigs = self._act(tr("&Clear all digital signatures..."), self.clear_signatures)
+        self.a_timestamp = self._act(tr("&Timestamp document..."), self.timestamp_document,
+                                     tip=tr("Add a trusted timestamp from a time server: proves the "
+                                            "file existed, unchanged, at that time"))
+        self.a_multi_sign = self._act(tr("&Multi-place signature or initials..."), self.multi_place)
+        self.a_apply_placeholders = self._act(tr("&Apply all signature placeholders"),
                                               self.apply_placeholders)
-        self.a_apply_sel_redact = self._act("Apply &selected redactions",
+        self.a_apply_sel_redact = self._act(tr("Apply &selected redactions"),
                                             lambda: self._apply_selected_redactions())
         # review
-        self.a_next_markup = self._act("&Next comment", lambda: v() and v().goto_markup(1),
-                                       "Alt+Down", tip="Go to and select the next comment or markup")
-        self.a_prev_markup = self._act("&Previous comment", lambda: v() and v().goto_markup(-1),
-                                       "Alt+Up", tip="Go to and select the previous comment or markup")
-        self.a_show_markups = self._act("&Show markups", self._toggle_show_markups,
-                                        tip="Hide every comment and markup to see the page as if "
-                                            "unmarked (nothing is deleted)")
+        self.a_next_markup = self._act(tr("&Next comment"), lambda: v() and v().goto_markup(1),
+                                       "Alt+Down", tip=tr("Go to and select the next comment or markup"))
+        self.a_prev_markup = self._act(tr("&Previous comment"), lambda: v() and v().goto_markup(-1),
+                                       "Alt+Up", tip=tr("Go to and select the previous comment or markup"))
+        self.a_show_markups = self._act(tr("&Show markups"), self._toggle_show_markups,
+                                        tip=tr("Hide every comment and markup to see the page as if "
+                                               "unmarked (nothing is deleted)"))
         self.a_show_markups.setCheckable(True)
         self.a_show_markups.setChecked(True)
-        self.a_delete_markups = self._act("&Delete comments...", self.delete_comments)
-        self.a_flatten_markups = self._act("&Flatten comments...", self.flatten_comments,
-                                           tip="Make comments and markups part of the page; "
-                                               "form fields stay fillable")
-        self.a_hl_fields = self._act("&Highlight form fields", self._toggle_hl_fields,
-                                     tip="Shade fillable form fields so they're easy to find "
-                                         "(on screen only)")
+        self.a_delete_markups = self._act(tr("&Delete comments..."), self.delete_comments)
+        self.a_flatten_markups = self._act(tr("&Flatten comments..."), self.flatten_comments,
+                                           tip=tr("Make comments and markups part of the page; "
+                                                  "form fields stay fillable"))
+        self.a_hl_fields = self._act(tr("&Highlight form fields"), self._toggle_hl_fields,
+                                     tip=tr("Shade fillable form fields so they're easy to find "
+                                            "(on screen only)"))
         self.a_hl_fields.setCheckable(True)
         self.a_hl_fields.setChecked(self.settings.value("highlight_fields", "true") != "false")
         DocumentView.highlight_fields = self.a_hl_fields.isChecked()
-        self.a_next_field = self._act("&Next form field\tTab",
+        self.a_next_field = self._act(tr("&Next form field\tTab"),
                                       lambda: self.view() and self.view().next_field(),
-                                      tip="Go to the next form field (Tab; Space or Enter fills it)")
-        self.a_prev_field = self._act("&Previous form field\tShift+Tab",
+                                      tip=tr("Go to the next form field (Tab; Space or Enter fills it)"))
+        self.a_prev_field = self._act(tr("&Previous form field\tShift+Tab"),
                                       lambda: self.view() and self.view().next_field(back=True),
-                                      tip="Go to the previous form field (Shift+Tab)")
-        self.a_unlock = self._act("&Unlock with password...", self.unlock_doc)
+                                      tip=tr("Go to the previous form field (Shift+Tab)"))
+        self.a_unlock = self._act(tr("&Unlock with password..."), self.unlock_doc)
         self.export_actions = []
         for eid, label, _flt, _ext in EXPORTS:
             a = self._act(label, lambda _=False, e=eid: self.export_as(e))
             self.export_actions.append(a)
-        self.a_chest = self._act("Tool &chest", self._toggle_chest, "F8")
+        self.a_chest = self._act(tr("Tool &chest"), self._toggle_chest, "F8")
         self.a_chest.setCheckable(True)
-        self.a_compare = self._act("&Compare documents...", self.compare_documents,
-                                   tip="Compare this document with another revision")
-        self.a_header = self._act("&Header && footer, page numbers, Bates...", self.header_footer)
-        self.a_watermark = self._act("&Watermark...", self.watermark)
-        self.a_background = self._act("Bac&kground...", self.background,
-                                      tip="Put a color, gradient or picture behind the page "
-                                          "content, on this page or the whole document")
-        self.a_remove_bg = self._act("Remove back&ground...", self.remove_background)
-        self.a_remove_wm = self._act("Remove water&marks...", self.remove_watermarks,
-                                     tip="Remove watermarks added by KanzonasPDF, Adobe Acrobat, "
-                                         "PDF-XChange and other apps that mark them as watermarks")
-        self.a_compress = self._act("&Compress (save a smaller copy)...", self.compress)
-        self.a_attachments = self._act("A&ttachments...", self.show_attachments,
-                                       tip="Files embedded in this PDF: open, save or delete them")
-        self.a_bookmarks = self._act("&Bookmarks", self._show_bookmarks, "F9")
-        self.a_search_redact = self._act("&Search && redact...", self.search_redact)
-        self.a_apply_redact = self._act("&Apply redactions...", self.apply_redactions)
-        self.a_digisign = self._act("&Digitally sign with certificate...", self.digital_sign)
-        self.a_sig_details = self._act("Digital signature &details...", self.signature_details)
-        self.a_set_scale = self._act("Set &scale...", self.set_scale)
-        self.a_sheet_scales = self._act("Read scales from &title blocks", self.read_sheet_scales,
-                                        tip="Set each page's scale to what its title block says "
-                                            "(1/4\" = 1'-0\", 1:50...), for the whole document")
-        self.a_measure_summary = self._act("Measurement &summary...", self.measure_summary)
-        self.a_labels = self._act("Show text &labels on toolbars", self._toggle_labels)
+        self.a_compare = self._act(tr("&Compare documents..."), self.compare_documents,
+                                   tip=tr("Compare this document with another revision"))
+        self.a_header = self._act(tr("&Header && footer, page numbers, Bates..."), self.header_footer)
+        self.a_watermark = self._act(tr("&Watermark..."), self.watermark)
+        self.a_background = self._act(tr("Bac&kground..."), self.background,
+                                      tip=tr("Put a color, gradient or picture behind the page "
+                                             "content, on this page or the whole document"))
+        self.a_remove_bg = self._act(tr("Remove back&ground..."), self.remove_background)
+        self.a_remove_wm = self._act(tr("Remove water&marks..."), self.remove_watermarks,
+                                     tip=tr("Remove watermarks added by KanzonasPDF, Adobe Acrobat, "
+                                            "PDF-XChange and other apps that mark them as watermarks"))
+        self.a_compress = self._act(tr("&Compress (save a smaller copy)..."), self.compress)
+        self.a_attachments = self._act(tr("A&ttachments..."), self.show_attachments,
+                                       tip=tr("Files embedded in this PDF: open, save or delete them"))
+        self.a_bookmarks = self._act(tr("&Bookmarks"), self._show_bookmarks, "F9")
+        self.a_search_redact = self._act(tr("&Search && redact..."), self.search_redact)
+        self.a_apply_redact = self._act(tr("&Apply redactions..."), self.apply_redactions)
+        self.a_digisign = self._act(tr("&Digitally sign with certificate..."), self.digital_sign)
+        self.a_sig_details = self._act(tr("Digital signature &details..."), self.signature_details)
+        self.a_set_scale = self._act(tr("Set &scale..."), self.set_scale)
+        self.a_sheet_scales = self._act(tr("Read scales from &title blocks"), self.read_sheet_scales,
+                                        tip=tr("Set each page's scale to what its title block says "
+                                               "(1/4\" = 1'-0\", 1:50...), for the whole document"))
+        self.a_measure_summary = self._act(tr("Measurement &summary..."), self.measure_summary)
+        self.a_labels = self._act(tr("Show text &labels on toolbars"), self._toggle_labels)
         self.a_labels.setCheckable(True)
         self.a_labels.setChecked(self.settings.value("toolbar_labels", "false") == "true")
         self.theme_group = QActionGroup(self)
         self.theme_actions = {}
-        for key, label in (("system", "Match &Windows"), ("light", "&Light"), ("dark", "&Dark")):
+        for key, label in (("system", tr("Match &Windows")), ("light", tr("&Light")),
+                           ("dark", tr("&Dark"))):
             a = QAction(label, self, checkable=True)
             a.triggered.connect(lambda _=False, k=key: self.set_theme(k))
             self.theme_group.addAction(a)
             self.theme_actions[key] = a
         self.theme_actions[self.settings.value("theme", "system")].setChecked(True)
-        self.a_cad_mouse = self._act("CAD-style &mouse (wheel zooms, hold wheel to pan)",
+        self.a_cad_mouse = self._act(tr("CAD-style &mouse (wheel zooms, hold wheel to pan)"),
                                      self._toggle_cad_mouse, "F11",
-                                     tip="Like AutoCAD: the scroll wheel zooms at the cursor; "
-                                         "hold the wheel down and drag to move the sheet (F11)")
+                                     tip=tr("Like AutoCAD: the scroll wheel zooms at the cursor; "
+                                            "hold the wheel down and drag to move the sheet (F11)"))
         self.a_cad_mouse.setCheckable(True)
         self.a_cad_mouse.setChecked(self.settings.value("cad_mouse", "false") == "true")
         DocumentView.cad_mouse = self.a_cad_mouse.isChecked()
-        self.a_page_wheel = self._act("Scroll &one page per wheel step",
+        self.a_page_wheel = self._act(tr("Scroll &one page per wheel step"),
                                       self._toggle_page_wheel,
-                                      tip="When the whole page fits in the window, each step "
-                                          "of the scroll wheel moves to the next or previous "
-                                          "page")
+                                      tip=tr("When the whole page fits in the window, each step "
+                                             "of the scroll wheel moves to the next or previous "
+                                             "page"))
         self.a_page_wheel.setCheckable(True)
         self.a_page_wheel.setChecked(self.settings.value("page_wheel", "true") == "true")
         DocumentView.page_wheel = self.a_page_wheel.isChecked()
-        self.a_night = self._act("&Night mode (white lines on black)", self._toggle_night, "F12",
-                                 tip="Draw the pages like a CAD screen: lightness inverted, colors "
-                                     "kept (black lines turn white, red stays red). Printing and "
-                                     "export are not affected (F12)")
+        self.a_night = self._act(tr("&Night mode (white lines on black)"), self._toggle_night, "F12",
+                                 tip=tr("Draw the pages like a CAD screen: lightness inverted, colors "
+                                        "kept (black lines turn white, red stays red). Printing and "
+                                        "export are not affected (F12)"))
         self.a_night.setCheckable(True)
         self.a_night.setChecked(self.settings.value("night_mode", "false") == "true")
         DocumentView.night_mode = self.a_night.isChecked()
-        self.a_thin_lines = self._act("Enhance &thin lines", self._toggle_thin_lines,
-                                      tip="Draw every line at least one screen pixel wide, so "
-                                          "the hairlines of CAD drawings stay dark and legible "
-                                          "when zoomed out. Printing and export keep the true "
-                                          "line widths")
+        self.a_thin_lines = self._act(tr("Enhance &thin lines"), self._toggle_thin_lines,
+                                      tip=tr("Draw every line at least one screen pixel wide, so "
+                                             "the hairlines of CAD drawings stay dark and legible "
+                                             "when zoomed out. Printing and export keep the true "
+                                             "line widths"))
         self.a_thin_lines.setCheckable(True)
         self.a_thin_lines.setChecked(self.settings.value("thin_lines", "true") == "true")
         DocumentView.thin_lines = self.a_thin_lines.isChecked()
@@ -686,103 +713,109 @@ class MainWindow(QMainWindow):
                 DocumentView.SIG_WIDTH[kind] = w
         DocumentView.reopen_page = self.settings.value("reopen_page", "true") != "false"
         # grid and snapping (shared by all open documents, remembered)
-        self.a_grid = self._act("Show &grid", self._apply_grid_settings,
-                                tip="Show a grid over the page (spacing in Grid settings)")
-        self.a_snap_grid = self._act("Snap to g&rid", self._apply_grid_settings,
-                                     tip="Points you draw or drag jump to the nearest grid "
-                                         "intersection (hold Alt to place freely)")
-        self.a_snap_objects = self._act("Snap to &objects", self._apply_grid_settings,
-                                        tip="Points jump to nearby markup corners, ends and centers "
-                                            "and to the drawing's line ends and midpoints "
-                                            "(hold Alt to place freely)")
-        self.a_snap_page = self._act("Snap to &page", self._apply_grid_settings,
-                                     tip="Points jump to the page's corners, the middles of its "
-                                         "edges, its center and its edges (hold Alt to place "
-                                         "freely)")
+        self.a_grid = self._act(tr("Show &grid"), self._apply_grid_settings,
+                                tip=tr("Show a grid over the page (spacing in Grid settings)"))
+        self.a_snap_grid = self._act(tr("Snap to g&rid"), self._apply_grid_settings,
+                                     tip=tr("Points you draw or drag jump to the nearest grid "
+                                            "intersection (hold Alt to place freely)"))
+        self.a_snap_objects = self._act(tr("Snap to &objects"), self._apply_grid_settings,
+                                        tip=tr("Points jump to nearby markup corners, ends and centers "
+                                               "and to the drawing's line ends and midpoints "
+                                               "(hold Alt to place freely)"))
+        self.a_snap_page = self._act(tr("Snap to &page"), self._apply_grid_settings,
+                                     tip=tr("Points jump to the page's corners, the middles of its "
+                                            "edges, its center and its edges (hold Alt to place "
+                                            "freely)"))
         for a, key in ((self.a_grid, "grid_on"), (self.a_snap_grid, "snap_grid"),
                        (self.a_snap_objects, "snap_objects"), (self.a_snap_page, "snap_page")):
             a.setCheckable(True)
             a.setChecked(self.settings.value(key, "false") == "true")
-        self.a_grid_settings = self._act("Grid &settings...", self.grid_settings)
+        self.a_grid_settings = self._act(tr("Grid &settings..."), self.grid_settings)
         self._apply_grid_settings(save=False)
-        self.a_split = self._act("&Split view", self._toggle_split, "F10")
+        self.a_split = self._act(tr("&Split view"), self._toggle_split, "F10")
         self.a_split.setCheckable(True)
-        self.a_shortcuts = self._act("&Keyboard shortcuts...", self.edit_shortcuts)
-        self.a_markups = self._act("&Markups list", self._toggle_markups, "F7")
+        self.a_shortcuts = self._act(tr("&Keyboard shortcuts..."), self.edit_shortcuts)
+        self.a_markups = self._act(tr("&Markups list"), self._toggle_markups, "F7")
         self.a_markups.setCheckable(True)
-        self.a_author = self._act("&Author name for markups...", self._set_author)
-        self.a_spell = self._act("Check &spelling", self._toggle_spelling,
-                                 tip="Underline misspelled words while you type in comments, "
-                                     "text boxes and Edit text; right-click one for corrections")
+        self.a_author = self._act(tr("&Author name for markups..."), self._set_author)
+        self.a_spell = self._act(tr("Check &spelling"), self._toggle_spelling,
+                                 tip=tr("Underline misspelled words while you type in comments, "
+                                        "text boxes and Edit text; right-click one for corrections"))
         self.a_spell.setCheckable(True)
         from . import spelling
         self.a_spell.setChecked(spelling.enabled())
         # arrange: align / distribute / stacking order of the selected markups
         self.arrange_actions = {}
         for key, label, sc, fn in (
-                ("al_left", "Align &left", "", lambda: self._align("left")),
-                ("al_hcenter", "Align &centers (horizontally)", "", lambda: self._align("hcenter")),
-                ("al_right", "Align &right", "", lambda: self._align("right")),
-                ("al_top", "Align &top", "", lambda: self._align("top")),
-                ("al_vmiddle", "Align &middles (vertically)", "", lambda: self._align("vmiddle")),
-                ("al_bottom", "Align &bottom", "", lambda: self._align("bottom")),
-                ("dist_h", "Distribute &horizontally", "", lambda: v() and v().distribute("h")),
-                ("dist_v", "Distribute &vertically", "", lambda: v() and v().distribute("v")),
-                ("z_front", "Bring to &front", "Ctrl+Shift+]", lambda: v() and v().arrange("front")),
-                ("z_forward", "Bring &forward", "Ctrl+]", lambda: v() and v().arrange("forward")),
-                ("z_backward", "Send bac&kward", "Ctrl+[", lambda: v() and v().arrange("backward")),
-                ("z_back", "Send to bac&k", "Ctrl+Shift+[", lambda: v() and v().arrange("back"))):
+                ("al_left", tr("Align &left"), "", lambda: self._align("left")),
+                ("al_hcenter", tr("Align &centers (horizontally)"), "", lambda: self._align("hcenter")),
+                ("al_right", tr("Align &right"), "", lambda: self._align("right")),
+                ("al_top", tr("Align &top"), "", lambda: self._align("top")),
+                ("al_vmiddle", tr("Align &middles (vertically)"), "", lambda: self._align("vmiddle")),
+                ("al_bottom", tr("Align &bottom"), "", lambda: self._align("bottom")),
+                ("dist_h", tr("Distribute &horizontally"), "", lambda: v() and v().distribute("h")),
+                ("dist_v", tr("Distribute &vertically"), "", lambda: v() and v().distribute("v")),
+                ("z_front", tr("Bring to &front"), "Ctrl+Shift+]", lambda: v() and v().arrange("front")),
+                ("z_forward", tr("Bring &forward"), "Ctrl+]", lambda: v() and v().arrange("forward")),
+                ("z_backward", tr("Send bac&kward"), "Ctrl+[", lambda: v() and v().arrange("backward")),
+                ("z_back", tr("Send to bac&k"), "Ctrl+Shift+[", lambda: v() and v().arrange("back"))):
             self.arrange_actions[key] = self._act(label, fn, sc or None)
-        self.a_ribbon = self._act("&Ribbon (instead of toolbars)", self._toggle_ribbon,
-                                  tip="Office-style ribbon with labeled tabs; untick for the "
-                                      "classic compact toolbars")
+        self.a_ribbon = self._act(tr("&Ribbon (instead of toolbars)"), self._toggle_ribbon,
+                                  tip=tr("Office-style ribbon with labeled tabs; untick for the "
+                                         "classic compact toolbars"))
         self.a_ribbon.setCheckable(True)
         self.a_ribbon.setChecked(self.settings.value("ui_mode", "ribbon") == "ribbon")
-        self.a_collapse = self._act("&Collapse ribbon", self._toggle_collapse, "Ctrl+F1",
-                                    tip="Show only the ribbon's tab names (double-click a tab "
-                                        "does the same)")
+        self.a_collapse = self._act(tr("&Collapse ribbon"), self._toggle_collapse, "Ctrl+F1",
+                                    tip=tr("Show only the ribbon's tab names (double-click a tab "
+                                           "does the same)"))
         self.a_collapse.setCheckable(True)
-        self.a_group_names = QAction("Show &group names on ribbon", self, checkable=True)
-        self.a_group_names.setToolTip("Name each group of ribbon buttons (makes the ribbon taller)")
+        self.a_group_names = QAction(tr("Show &group names on ribbon"), self, checkable=True)
+        self.a_group_names.setToolTip(tr("Name each group of ribbon buttons (makes the ribbon taller)"))
         self.a_group_names.setChecked(self.settings.value("ribbon_group_names", "false") == "true")
         self.a_group_names.toggled.connect(self._toggle_group_names)
-        self.a_menu_bar = QAction("Show &menu bar", self, checkable=True)
+        self.a_menu_bar = QAction(tr("Show &menu bar"), self, checkable=True)
         self.a_menu_bar.setShortcut(QKeySequence("Ctrl+Shift+M"))
-        self.a_menu_bar.setToolTip("With the ribbon, hide the menu bar to save space; the "
-                                   "\u2630 button at the right of the ribbon tabs has every menu")
+        self.a_menu_bar.setToolTip(tr("With the ribbon, hide the menu bar to save space; the "
+                                      "\u2630 button at the right of the ribbon tabs has every menu"))
         self.a_menu_bar.setChecked(self.settings.value("menu_bar", "true") != "false")
         self.a_menu_bar.toggled.connect(self._toggle_menu_bar)
         self.addAction(self.a_menu_bar)            # shortcut works while the menu bar is hidden
-        self.a_lock = self._act("&Lock selected", lambda: self._lock_selected(), "Ctrl+L",
-                                tip="Lock the selected markups: they can't be clicked, moved or "
-                                    "selected on the page (unlock in the Objects panel)")
-        self.a_unlock_all = self._act("&Unlock all markups", lambda: self._unlock_all())
+        self.a_lock = self._act(tr("&Lock selected"), lambda: self._lock_selected(), "Ctrl+L",
+                                tip=tr("Lock the selected markups: they can't be clicked, moved or "
+                                       "selected on the page (unlock in the Objects panel)"))
+        self.a_unlock_all = self._act(tr("&Unlock all markups"), lambda: self._unlock_all())
         self.align_ref_group = QActionGroup(self)
         self.align_ref_actions = {}
-        for key, label in (("first", "First selected"), ("last", "Last selected"),
-                           ("selection", "Whole selection"), ("page", "Page")):
-            a = QAction("Align to " + label.lower(), self, checkable=True)
+        # (menu text, the shorter text in the toolbar's "align to" box)
+        self._align_ref_short = {}
+        for key, label, short in (
+                ("first", tr("Align to first selected"), tr("to first selected")),
+                ("last", tr("Align to last selected"), tr("to last selected")),
+                ("selection", tr("Align to whole selection"), tr("to whole selection")),
+                ("page", tr("Align to page"), tr("to page"))):
+            a = QAction(label, self, checkable=True)
             a.triggered.connect(lambda _=False, k=key: self._set_align_ref(k))
             self.align_ref_group.addAction(a)
             self.align_ref_actions[key] = a
+            self._align_ref_short[key] = short
         ref = self.settings.value("align_ref", "first")
         self.align_ref_actions.get(ref, self.align_ref_actions["first"]).setChecked(True)
-        self.a_flatten = self._act("&Flatten...", self.flatten,
-                                   tip="Make annotations and form fields a permanent part of the page")
-        self.a_delete_annot = self._act("Delete selected annotation",
+        self.a_flatten = self._act(tr("&Flatten..."), self.flatten,
+                                   tip=tr("Make annotations and form fields a permanent part of the page"))
+        self.a_delete_annot = self._act(tr("Delete selected annotation"),
                                         lambda: v() and v().delete_selected())
-        self.a_manual = self._act("&User manual", self.show_manual, "F1")
-        self.a_palette = self._act("Command &palette...", self.show_palette, "Ctrl+Shift+P",
-                                   tip="Type a few letters of any command or tool and run it "
-                                       "from the list (Ctrl+Shift+P)")
-        self.a_about = self._act("&About", self.about)
-        self.a_feedback = self._act("&Report a problem or suggest an idea...", self.open_feedback,
-                                    tip="Open KanzonasPDF's GitHub page for bug reports and "
-                                        "ideas in your browser")
-        self.a_check_updates = self._act("&Check for updates...", self.check_updates,
-                                         tip="Ask GitHub whether a newer KanzonasPDF is out")
-        self.a_auto_updates = QAction("Check for updates &automatically", self, checkable=True)
-        self.a_auto_updates.setToolTip("Once a day at start-up; only tells you, never installs")
+        self.a_manual = self._act(tr("&User manual"), self.show_manual, "F1")
+        self.a_palette = self._act(tr("Command &palette..."), self.show_palette, "Ctrl+Shift+P",
+                                   tip=tr("Type a few letters of any command or tool and run it "
+                                          "from the list (Ctrl+Shift+P)"))
+        self.a_about = self._act(tr("&About"), self.about)
+        self.a_feedback = self._act(tr("&Report a problem or suggest an idea..."), self.open_feedback,
+                                    tip=tr("Open KanzonasPDF's GitHub page for bug reports and "
+                                           "ideas in your browser"))
+        self.a_check_updates = self._act(tr("&Check for updates..."), self.check_updates,
+                                         tip=tr("Ask GitHub whether a newer KanzonasPDF is out"))
+        self.a_auto_updates = QAction(tr("Check for updates &automatically"), self, checkable=True)
+        self.a_auto_updates.setToolTip(tr("Once a day at start-up; only tells you, never installs"))
         self.a_auto_updates.setChecked(self.settings.value("update_check", "true") != "false")
         self.a_auto_updates.toggled.connect(
             lambda on: self.settings.setValue("update_check", "true" if on else "false"))
@@ -818,13 +851,13 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self):
         mb = self.menuBar()
-        m = mb.addMenu("&File")
+        m = mb.addMenu(tr("&File"))
         m.addActions([self.a_new, self.a_open])
-        self.recent_menu = m.addMenu("Open &recent")
+        self.recent_menu = m.addMenu(tr("Open &recent"))
         self._rebuild_recent()
         m.addActions([self.a_save, self.a_save_as])
         m.addActions([self.a_combine, self.a_from_images])
-        em = m.addMenu("&Export to")
+        em = m.addMenu(tr("&Export to"))
         em.addActions(self.export_actions)
         m.addAction(self.a_compare)
         m.addSeparator()
@@ -833,7 +866,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_prefs)
         m.addSeparator()
         m.addActions([self.a_close, self.a_exit])
-        m = mb.addMenu("&Edit")
+        m = mb.addMenu(tr("&Edit"))
         m.addActions([self.a_undo, self.a_redo])
         m.addSeparator()
         m.addActions([self.a_cut, self.a_copy, self.a_paste, self.a_duplicate, self.a_select_all])
@@ -843,7 +876,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_author, self.a_spell])
         m.addSeparator()
         m.addActions([self.a_find, self.a_find_next, self.a_find_prev, self.a_replace])
-        m = self.view_menu = mb.addMenu("&View")
+        m = self.view_menu = mb.addMenu(tr("&View"))
         m.addActions([self.a_zoom_in, self.a_zoom_out, self.a_actual, self.a_fit_width,
                       self.a_fit_page])
         m.addSeparator()
@@ -860,17 +893,17 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
                       self.a_grid_settings])
         m.addSeparator()
-        tm = m.addMenu("&Theme")
+        tm = m.addMenu(tr("&Theme"))
         tm.addActions(list(self.theme_actions.values()))
         m.addAction(self.a_labels)
         m.addActions([self.a_ribbon, self.a_collapse, self.a_group_names, self.a_menu_bar])
         m.addSeparator()
         m.addAction(self.a_shortcuts)
-        m = mb.addMenu("&Arrange")
+        m = mb.addMenu(tr("&Arrange"))
         acts = self.arrange_actions
         m.addActions([acts[k] for k in ("al_left", "al_hcenter", "al_right")])
         m.addActions([acts[k] for k in ("al_top", "al_vmiddle", "al_bottom")])
-        rm = m.addMenu("Align &relative to")
+        rm = m.addMenu(tr("Align &relative to"))
         rm.addActions(list(self.align_ref_actions.values()))
         m.addSeparator()
         m.addActions([acts["dist_h"], acts["dist_v"]])
@@ -879,31 +912,31 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_lock, self.a_unlock_all])
         m.addSeparator()
-        hint = m.addAction("Ctrl+click or drag a box with Select to pick several markups")
+        hint = m.addAction(tr("Ctrl+click or drag a box with Select to pick several markups"))
         hint.setEnabled(False)
-        m = mb.addMenu("&Tools")
+        m = mb.addMenu(tr("&Tools"))
         m.addActions(self.tool_group.actions())
         m.addSeparator()
         m.addAction(self.a_props)
         m.addSeparator()
         m.addActions([self.a_ocr, self.a_flatten])
-        m = mb.addMenu("&Document")
+        m = mb.addMenu(tr("&Document"))
         m.addActions([self.a_header, self.a_watermark, self.a_remove_wm, self.a_background,
                       self.a_remove_bg])
         m.addSeparator()
         m.addAction(self.a_bookmarks)
         m.addAction(self.a_attachments)
         m.addSeparator()
-        rm = m.addMenu("&Redaction")
+        rm = m.addMenu(tr("&Redaction"))
         rm.addActions([self.tool_actions["redact"], self.a_search_redact,
                        self.a_apply_sel_redact, self.a_apply_redact])
         m.addSeparator()
         m.addActions([self.a_compress, self.a_compare, self.a_flatten])
-        m = mb.addMenu("&Measure")
+        m = mb.addMenu(tr("&Measure"))
         m.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
         m.addSeparator()
         m.addActions([self.a_set_scale, self.a_sheet_scales, self.a_measure_summary])
-        m = mb.addMenu("&Review")
+        m = mb.addMenu(tr("&Review"))
         m.addActions([self.tool_actions["comment"], self.tool_actions["note"]])
         m.addSeparator()
         m.addActions([self.a_prev_markup, self.a_next_markup, self.a_markups])
@@ -911,7 +944,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_show_markups, self.a_cards])
         m.addSeparator()
         m.addActions([self.a_delete_markups, self.a_flatten_markups])
-        m = mb.addMenu("&Protect")
+        m = mb.addMenu(tr("&Protect"))
         m.addActions([self.tool_actions["signature"], self.tool_actions["initials"],
                       self.tool_actions["date"], self.a_multi_sign])
         # setting up (or replacing) your signature / initials lives in File > Preferences >
@@ -921,20 +954,20 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_digisign, self.a_timestamp, self.a_sig_details, self.a_clear_sigs])
         m.addSeparator()
-        rm = m.addMenu("Re&daction")
+        rm = m.addMenu(tr("Re&daction"))
         rm.addActions([self.tool_actions["redact"], self.a_search_redact,
                        self.a_apply_sel_redact, self.a_apply_redact])
         m.addAction(self.a_sanitize)
         m.addSeparator()
         m.addActions([self.a_security, self.a_remove_security, self.a_unlock])
-        m = mb.addMenu("F&orms")
+        m = mb.addMenu(tr("F&orms"))
         m.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
         m.addSeparator()
         m.addAction(self.a_hl_fields)
         m.addActions([self.a_next_field, self.a_prev_field])
-        hint = m.addAction("To fill in a form: use Select or Hand and click a field")
+        hint = m.addAction(tr("To fill in a form: use Select or Hand and click a field"))
         hint.setEnabled(False)
-        m = mb.addMenu("&Pages")
+        m = mb.addMenu(tr("&Pages"))
         m.addActions([self.a_copy_pages, self.a_cut_pages, self.a_paste_pages, self.a_dup_pages])
         m.addSeparator()
         m.addActions([self.a_rot_l, self.a_rot_r])
@@ -949,7 +982,7 @@ class MainWindow(QMainWindow):
         sep.setSeparator(True)
         self.thumbs.addActions([self.a_copy_pages, self.a_cut_pages, self.a_paste_pages,
                                 self.a_dup_pages, sep, self.a_rot_l, self.a_rot_r, self.a_del_page])
-        m = mb.addMenu("&Help")
+        m = mb.addMenu(tr("&Help"))
         m.addAction(self.a_manual)
         m.addAction(self.a_palette)
         m.addSeparator()
@@ -958,7 +991,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_feedback, self.a_about])
 
     def _build_toolbars(self):
-        tb = self.main_tb = QToolBar("Main")
+        tb = self.main_tb = QToolBar(tr("Main"))
         tb.setObjectName("main")
         tb.setMovable(False)
         self.addToolBar(tb)
@@ -987,24 +1020,24 @@ class MainWindow(QMainWindow):
         self.page_spin.valueChanged.connect(lambda n: self.view() and self.view().goto_page(n - 1))
         self.prev_page_btn = QToolButton()
         self.prev_page_btn.setArrowType(Qt.LeftArrow)
-        self.prev_page_btn.setToolTip("Previous page (Left arrow key)")
+        self.prev_page_btn.setToolTip(tr("Previous page (Left arrow key)"))
         self.prev_page_btn.clicked.connect(lambda: self._step_page(-1))
         self.next_page_btn = QToolButton()
         self.next_page_btn.setArrowType(Qt.RightArrow)
-        self.next_page_btn.setToolTip("Next page (Right arrow key)")
+        self.next_page_btn.setToolTip(tr("Next page (Right arrow key)"))
         self.next_page_btn.clicked.connect(lambda: self._step_page(1))
         self.page_total = QLabel(" / 0 ")
         self.first_page_btn = QToolButton()
         self.first_page_btn.setText("\u23EE")
-        self.first_page_btn.setToolTip("First page")
+        self.first_page_btn.setToolTip(tr("First page"))
         self.first_page_btn.clicked.connect(lambda: self._step_page(-10 ** 9))
         self.last_page_btn = QToolButton()
         self.last_page_btn.setText("\u23ED")
-        self.last_page_btn.setToolTip("Last page")
+        self.last_page_btn.setToolTip(tr("Last page"))
         self.last_page_btn.clicked.connect(lambda: self._step_page(10 ** 9))
         for b in (self.first_page_btn, self.prev_page_btn, self.next_page_btn, self.last_page_btn):
             b.setAutoRaise(True)
-        self.nav_group = self._group_widget([QLabel(" Page "), self.first_page_btn,
+        self.nav_group = self._group_widget([QLabel(tr(" Page ")), self.first_page_btn,
                                              self.prev_page_btn, self.page_spin,
                                              self.next_page_btn, self.last_page_btn,
                                              self.page_total])
@@ -1012,7 +1045,7 @@ class MainWindow(QMainWindow):
         self.zoom_slider = QSlider(Qt.Horizontal)
         self.zoom_slider.setRange(0, _SLIDER_STEPS)
         self.zoom_slider.setFixedWidth(110)
-        self.zoom_slider.setToolTip("Zoom: drag to zoom from 10% to 6400%")
+        self.zoom_slider.setToolTip(tr("Zoom: drag to zoom from 10% to 6400%"))
         self.zoom_slider.sliderMoved.connect(
             lambda val: self.view() and self.view().set_zoom(_slider_to_zoom(val)))
         self.view_group = self._group_widget([self.a_fit_page, self.a_fit_width, self.a_actual,
@@ -1022,7 +1055,7 @@ class MainWindow(QMainWindow):
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self._spacer_act = tb.addWidget(spacer)
         self.search = _FindBox()
-        self.search.setPlaceholderText("Find (Ctrl+F)")
+        self.search.setPlaceholderText(tr("Find (Ctrl+F)"))
         self.search.setClearButtonEnabled(True)
         self.search.setMaximumWidth(260)
         self.search.returnPressed.connect(lambda: self._find(False))
@@ -1032,16 +1065,16 @@ class MainWindow(QMainWindow):
         # the Find box with its match count and up / down arrows, kept together wherever
         # the box goes (top toolbar or the ribbon's tab row)
         self.find_count = QLabel()
-        self.find_count.setToolTip("Match shown of the matches found")
+        self.find_count.setToolTip(tr("Match shown of the matches found"))
         self.find_prev_btn = QToolButton()
         self.find_prev_btn.setArrowType(Qt.UpArrow)
         self.find_prev_btn.setAutoRaise(True)
-        self.find_prev_btn.setToolTip("Previous match (Shift+Enter, Shift+F3)")
+        self.find_prev_btn.setToolTip(tr("Previous match (Shift+Enter, Shift+F3)"))
         self.find_prev_btn.clicked.connect(lambda: self._find(True))
         self.find_next_btn = QToolButton()
         self.find_next_btn.setArrowType(Qt.DownArrow)
         self.find_next_btn.setAutoRaise(True)
-        self.find_next_btn.setToolTip("Next match (Enter, F3)")
+        self.find_next_btn.setToolTip(tr("Next match (Enter, F3)"))
         self.find_next_btn.clicked.connect(lambda: self._find(False))
         self.find_group = QWidget()
         fl = QHBoxLayout(self.find_group)
@@ -1053,7 +1086,7 @@ class MainWindow(QMainWindow):
         self._search_act = tb.addWidget(self.find_group)
 
         self.addToolBarBreak()
-        tt = self.tools_tb = QToolBar("Tools")
+        tt = self.tools_tb = QToolBar(tr("Tools"))
         tt.setObjectName("tools")
         tt.setMovable(False)
         self.addToolBar(tt)
@@ -1087,16 +1120,16 @@ class MainWindow(QMainWindow):
         tt.addActions([self.a_rot_l, self.a_rot_r])
         tt.addSeparator()
         forms_btn = self.forms_btn = QToolButton()
-        forms_btn.setText("Form fields")
-        forms_btn.setToolTip("Form field tools: add text fields, checkboxes, option buttons, "
-                             "dropdowns and signature fields")
+        forms_btn.setText(tr("Form fields"))
+        forms_btn.setToolTip(tr("Form field tools: add text fields, checkboxes, option buttons, "
+                                "dropdowns and signature fields"))
         forms_btn.setPopupMode(QToolButton.InstantPopup)
         fmenu = QMenu(forms_btn)
         fmenu.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
         forms_btn.setMenu(fmenu)
         tt.addWidget(forms_btn)
 
-        at = self.arrange_tb = QToolBar("Arrange")
+        at = self.arrange_tb = QToolBar(tr("Arrange"))
         at.setObjectName("arrange")
         at.setMovable(False)
         self.addToolBar(at)
@@ -1104,10 +1137,10 @@ class MainWindow(QMainWindow):
         at.addActions([acts[k] for k in ("al_left", "al_hcenter", "al_right",
                                          "al_top", "al_vmiddle", "al_bottom")])
         self.align_ref_box = QComboBox()
-        self.align_ref_box.setToolTip("Align relative to: the first markup you selected (default), "
-                                      "the last one selected, the whole selection, or the page")
+        self.align_ref_box.setToolTip(tr("Align relative to: the first markup you selected (default), "
+                                         "the last one selected, the whole selection, or the page"))
         for key, a in self.align_ref_actions.items():
-            self.align_ref_box.addItem(a.text().replace("Align to ", "to "), key)
+            self.align_ref_box.addItem(self._align_ref_short[key], key)
         self.align_ref_box.setCurrentIndex(max(0, self.align_ref_box.findData(self._align_ref())))
         self.align_ref_box.activated.connect(
             lambda i: self._set_align_ref(self.align_ref_box.itemData(i)))
@@ -1144,7 +1177,7 @@ class MainWindow(QMainWindow):
         self.thumbs.currentRowChanged.connect(self._on_thumb_clicked)
         self.thumbs.setSelectionMode(QAbstractItemView.ExtendedSelection)   # Ctrl/Shift+click
         self.thumbs.setContextMenuPolicy(Qt.ActionsContextMenu)
-        self.dock = QDockWidget("Pages")
+        self.dock = QDockWidget(tr("Pages"))
         self.dock.setObjectName("pages")
         self.dock.setFeatures(QDockWidget.DockWidgetClosable)
         # Pages and Bookmarks are tabs inside one panel (two tabbed dock groups on both sides
@@ -1154,7 +1187,7 @@ class MainWindow(QMainWindow):
         self.left_tabs.setDocumentMode(True)
         self.left_tabs.setUsesScrollButtons(True)     # narrow panel: tabs scroll, don't block
         self.left_tabs.tabBar().setElideMode(Qt.ElideRight)
-        self.left_tabs.addTab(side, "Pages")
+        self.left_tabs.addTab(side, tr("Pages"))
         self.dock.setWidget(self.left_tabs)
         # locked by default so pages can't be moved by accident; remembered between sessions
         locked = self.settings.value("pages_locked", "true") != "false"
@@ -1170,18 +1203,18 @@ class MainWindow(QMainWindow):
         self.bookmarks.current_page = lambda: self.view().current_page() if self.view() else 0
         self.bookmarks.jump.connect(lambda i: self.view() and self.view().goto_page(i))
         self.bookmarks.changed.connect(lambda toc: self.view() and self.view().set_toc(toc))
-        self.left_tabs.addTab(self._narrowable(self.bookmarks), "Bookmarks")
+        self.left_tabs.addTab(self._narrowable(self.bookmarks), tr("Bookmarks"))
         from .layers_panel import LayersPanel
         self.layers = LayersPanel()
         self.layers.toggled.connect(lambda n, on: self.view() and self.view().set_layer(n, on))
         self.layers.allToggled.connect(self._all_layers)
-        self.left_tabs.addTab(self._narrowable(self.layers), "Layers")
+        self.left_tabs.addTab(self._narrowable(self.layers), tr("Layers"))
         from .objects_panel import ObjectsPanel
         self.objects = ObjectsPanel()
         self.objects.selectRequested.connect(self._objects_select)
         self.objects.flagsChanged.connect(self._objects_flags)
         self.objects.arrange.connect(lambda how: self.view() and self.view().arrange(how))
-        self.left_tabs.addTab(self._narrowable(self.objects), "Objects")
+        self.left_tabs.addTab(self._narrowable(self.objects), tr("Objects"))
         self._objects_timer = QTimer(self, singleShot=True, interval=150)
         self._objects_timer.timeout.connect(self._refresh_objects)
         self.left_tabs.currentChanged.connect(lambda _i: self._objects_timer.start())
@@ -1192,7 +1225,7 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidget(self.props)
         scroll.setWidgetResizable(True)
-        self.props_dock = QDockWidget("Properties")
+        self.props_dock = QDockWidget(tr("Properties"))
         self.props_dock.setObjectName("properties")
         self.props_dock.setFeatures(QDockWidget.DockWidgetClosable)
         self.props_dock.setWidget(scroll)
@@ -1203,7 +1236,7 @@ class MainWindow(QMainWindow):
         self.chest = ToolChestPanel()
         self.chest.use.connect(self._use_chest_tool)
         self.chest.addRequested.connect(self._add_to_chest)
-        self.chest_dock = QDockWidget("Tool chest")
+        self.chest_dock = QDockWidget(tr("Tool chest"))
         self.chest_dock.setObjectName("toolchest")
         self.chest_dock.setWidget(self.chest)
         self.chest_dock.setFeatures(QDockWidget.DockWidgetClosable)
@@ -1218,7 +1251,7 @@ class MainWindow(QMainWindow):
         self.markups.activated.connect(lambda i, x: self.view() and self.view().reveal(i, x))
         self.markups.editRequested.connect(self._edit_markup)
         self.markups.deleteRequested.connect(self._delete_markup)
-        self.markups_dock = QDockWidget("Markups list")
+        self.markups_dock = QDockWidget(tr("Markups list"))
         self.markups_dock.setObjectName("markups")
         self.markups_dock.setWidget(self.markups)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.markups_dock)
@@ -1280,7 +1313,9 @@ class MainWindow(QMainWindow):
                 self.zoom_slider.setValue(_zoom_to_slider(v.zoom))
                 self.zoom_slider.blockSignals(False)
             self.scale_label.setText(v.page_scale_text(v.current_page()))
-            name = _doc_name(v) + (" [protected]" if v.read_only else "")
+            # (the file name itself is never translated, only the words around it)
+            name = tr("{name} [protected]").format(name=_doc_name(v)) if v.read_only \
+                else _doc_name(v)
             self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {_title_base()}")
             for i in range(self.tabs.count()):
                 # only changed names: each set lays out the whole tab bar again
@@ -1288,7 +1323,7 @@ class MainWindow(QMainWindow):
                 text = ("*" if w.dirty else "") + _doc_name(w)
                 if self.tabs.tabText(i) != text:
                     self.tabs.setTabText(i, text)
-                tip = "Not saved yet" if w.untitled else w.path
+                tip = tr("Not saved yet") if w.untitled else w.path
                 if self.tabs.tabToolTip(i) != tip:
                     self.tabs.setTabToolTip(i, tip)
         else:
@@ -1299,7 +1334,7 @@ class MainWindow(QMainWindow):
     # ---- files --------------------------------------------------------------
     def open_dialog(self):
         start = self.settings.value("last_dir", "")
-        paths, _ = QFileDialog.getOpenFileNames(self, "Open PDF", start, PDF_FILTER)
+        paths, _ = QFileDialog.getOpenFileNames(self, tr("Open PDF"), start, PDF_FILTER)
         for p in paths:
             self.open_file(p)
 
@@ -1327,14 +1362,14 @@ class MainWindow(QMainWindow):
         try:
             v = DocumentView(path)
         except Exception as ex:
-            QMessageBox.critical(self, "Could not open file", f"{path}\n\n{ex}")
+            QMessageBox.critical(self, tr("Could not open file"), f"{path}\n\n{ex}")
             return None
         self._connect_view(v)
         if v.read_only:
             QTimer.singleShot(0, lambda: QMessageBox.information(
-                self, "Protected document", "This PDF is protected against changes. You can "
-                "read, search and print it. Use Protect > Unlock with password if you have its "
-                "permissions password."))
+                self, tr("Protected document"), tr("This PDF is protected against changes. You can "
+                                                   "read, search and print it. Use Protect > Unlock with password if you have its "
+                                                   "permissions password.")))
         v.check_digital_signatures()
         state = self._file_states().get(os.path.normcase(path))
         if state:
@@ -1356,9 +1391,10 @@ class MainWindow(QMainWindow):
             return True
         self.tabs.setCurrentWidget(v)
         return QMessageBox.question(
-            self, "File changed on disk",
-            f"{os.path.basename(v.path)} has changed on disk since it was opened, and this "
-            "tab has unsaved changes.\n\nReload it from disk and lose your changes?",
+            self, tr("File changed on disk"),
+            tr("{name} has changed on disk since it was opened, and this tab has unsaved "
+               "changes.\n\nReload it from disk and lose your changes?").format(
+                name=os.path.basename(v.path)),
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No) == QMessageBox.Yes
 
     def _reload_tab(self, v):
@@ -1395,8 +1431,9 @@ class MainWindow(QMainWindow):
             w = tabs[0][0]
             w.tabs.setCurrentWidget(next(v for _w, v in tabs if v.dirty and v is not source))
             if QMessageBox.warning(
-                    w, "File is open", f"{os.path.basename(path)} is open in KanzonasPDF with "
-                    "unsaved changes.\n\nReplace it anyway and lose those changes?",
+                    w, tr("File is open"),
+                    tr("{name} is open in KanzonasPDF with unsaved changes.\n\nReplace it "
+                       "anyway and lose those changes?").format(name=os.path.basename(path)),
                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
                 return None
         return tabs
@@ -1448,19 +1485,19 @@ class MainWindow(QMainWindow):
         try:
             v.save()
         except Exception as ex:
-            QMessageBox.critical(self, "Save failed",
-                                 f"{ex}\n\nIf the file is open in another program, close it "
-                                 "or use Save As.")
+            QMessageBox.critical(self, tr("Save failed"),
+                                 tr("{error}\n\nIf the file is open in another program, close "
+                                    "it or use Save As.").format(error=ex))
             return False
         self.autosave.discard(v)
-        self.statusBar().showMessage("Saved " + v.path, 4000)
+        self.statusBar().showMessage(tr("Saved {path}").format(path=v.path), 4000)
         return True
 
     def save_as(self):
         v = self.view()
         if not v:
             return False
-        path, _ = QFileDialog.getSaveFileName(self, "Save As", v.path, PDF_FILTER)
+        path, _ = QFileDialog.getSaveFileName(self, tr("Save As"), v.path, PDF_FILTER)
         if not path:
             return False
         others = self._writing_over(path, exclude=v)
@@ -1469,7 +1506,7 @@ class MainWindow(QMainWindow):
         try:
             v.save(path)
         except Exception as ex:
-            QMessageBox.critical(self, "Save failed", str(ex))
+            QMessageBox.critical(self, tr("Save failed"), str(ex))
             return False
         self._written_over(others, close=True)      # this tab is that file now
         self.autosave.discard(v)
@@ -1483,8 +1520,9 @@ class MainWindow(QMainWindow):
         if not v.dirty:
             return True
         self.tabs.setCurrentWidget(v)
-        r = QMessageBox.question(self, "Unsaved changes",
-                                 f"Save changes to {os.path.basename(v.path)}?",
+        r = QMessageBox.question(self, tr("Unsaved changes"),
+                                 tr("Save changes to {name}?").format(
+                                     name=os.path.basename(v.path)),
                                  QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
         if r == QMessageBox.Save:
             return self.save()
@@ -1610,14 +1648,15 @@ class MainWindow(QMainWindow):
         if index < 0:
             return
         menu = QMenu(self)
-        menu.addAction("Move to new window", lambda: self.detach_tab(index))
+        menu.addAction(tr("Move to new window"), lambda: self.detach_tab(index))
         others = [w for w in windows() if w is not self and w.isVisible()]
         for w in others:
-            name = w.tabs.tabText(w.tabs.currentIndex()) if w.tabs.count() else "empty window"
-            menu.addAction(f"Move to window: {name}",
+            name = w.tabs.tabText(w.tabs.currentIndex()) if w.tabs.count() else \
+                tr("empty window")
+            menu.addAction(tr("Move to window: {name}").format(name=name),
                            lambda _=False, w=w: self.move_view(self.tabs.widget(index), w))
         menu.addSeparator()
-        menu.addAction("Close tab", lambda: self.close_tab(index))
+        menu.addAction(tr("Close tab"), lambda: self.close_tab(index))
         menu.exec(bar.mapToGlobal(pos))
 
     def close_tab(self, index):
@@ -1681,7 +1720,7 @@ class MainWindow(QMainWindow):
         dirty = [(w, v) for w, v in views if v.dirty]
         if not dirty and self.settings.value("confirm_exit", "true") == "false":
             return True
-        answer = self._ask_exit(len(views), [os.path.basename(v.path or "Untitled")
+        answer = self._ask_exit(len(views), [os.path.basename(v.path or tr("Untitled"))
                                              for _w, v in dirty])
         if answer == "cancel":
             return False
@@ -1695,20 +1734,22 @@ class MainWindow(QMainWindow):
     def _ask_exit(self, count, unsaved):
         """The question before closing with several documents open: 'save' (all the
         unsaved ones), 'discard' or 'cancel'."""
-        box = QMessageBox(QMessageBox.Question, "Close KanzonasPDF", "", parent=self)
+        box = QMessageBox(QMessageBox.Question, tr("Close KanzonasPDF"), "", parent=self)
         if unsaved:
             names = "\n".join("  " + n for n in unsaved[:12])
             if len(unsaved) > 12:
-                names += f"\n  ... and {len(unsaved) - 12} more"
-            box.setText(f"{count} documents are open; {len(unsaved)} with unsaved changes:\n"
-                        f"{names}\n\nSave them before closing?")
-            save = box.addButton("Save all", QMessageBox.AcceptRole)
-            box.addButton("Don't save", QMessageBox.DestructiveRole)
+                names += "\n  " + tr("... and {n} more").format(n=len(unsaved) - 12)
+            box.setText(tr("{count} documents are open; {unsaved} with unsaved changes:\n"
+                           "{names}\n\nSave them before closing?").format(
+                count=count, unsaved=len(unsaved), names=names))
+            save = box.addButton(tr("Save all"), QMessageBox.AcceptRole)
+            box.addButton(tr("Don't save"), QMessageBox.DestructiveRole)
             cancel = box.addButton(QMessageBox.Cancel)
             box.setDefaultButton(save)
         else:
-            box.setText(f"{count} documents are open. Close them all and exit?")
-            close = box.addButton("Close all", QMessageBox.AcceptRole)
+            box.setText(tr("{count} documents are open. Close them all and exit?").format(
+                count=count))
+            close = box.addButton(tr("Close all"), QMessageBox.AcceptRole)
             cancel = box.addButton(QMessageBox.Cancel)
             box.setDefaultButton(close)
             save = None
@@ -1745,11 +1786,12 @@ class MainWindow(QMainWindow):
         names = "\n".join("  " + (os.path.basename(o) if o else os.path.basename(p))
                            for p, o, _t in items[:10])
         r = QMessageBox.question(
-            self, "Recover unsaved changes?",
-            "KanzonasPDF didn't close normally last time. Automatic backup copies of these "
-            f"documents have unsaved changes:\n\n{names}\n\nOpen the copies now? Each opens "
-            "with unsaved changes, and Save asks where to keep it. (They stay in the backups "
-            "folder for 30 days either way: File > Preferences > Saving > Open backup folder.)")
+            self, tr("Recover unsaved changes?"),
+            tr("KanzonasPDF didn't close normally last time. Automatic backup copies of these "
+               "documents have unsaved changes:\n\n{names}\n\nOpen the copies now? Each opens "
+               "with unsaved changes, and Save asks where to keep it. (They stay in the backups "
+               "folder for 30 days either way: File > Preferences > Saving > Open backup "
+               "folder.)").format(names=names))
         moved = autosave.set_aside(items)
         if r == QMessageBox.Yes:
             for p, original in moved:
@@ -1769,7 +1811,7 @@ class MainWindow(QMainWindow):
                 self._connect_view(v)
                 self.tabs.setCurrentIndex(self.tabs.addTab(v, _doc_name(v)))
         except Exception as ex:
-            QMessageBox.critical(self, "Could not open file", f"{copy}\n\n{ex}")
+            QMessageBox.critical(self, tr("Could not open file"), f"{copy}\n\n{ex}")
             return None
         v.dirty = True                  # closing it asks whether to save
         self._update_ui()
@@ -1788,11 +1830,11 @@ class MainWindow(QMainWindow):
     def print_doc(self):
         """File > Print: KanzonasPDF's print window, with a preview of each sheet."""
         v = self.view()
-        if not v or not v.require_permission(pymupdf.PDF_PERM_PRINT, "Printing"):
+        if not v or not v.require_permission(pymupdf.PDF_PERM_PRINT, tr("Printing")):
             return
         from .print_dialog import PrintDialog
         if PrintDialog(self, v).exec():
-            self.statusBar().showMessage("Sent to printer", 4000)
+            self.statusBar().showMessage(tr("Sent to printer"), 4000)
 
     # ---- tools / search / pages --------------------------------------------
     def set_tool(self, tool):
@@ -1955,7 +1997,7 @@ class MainWindow(QMainWindow):
         if not v:
             return
         if not v.find(self.search.text(), backwards) and self.search.text():
-            self.statusBar().showMessage("No matches", 4000)
+            self.statusBar().showMessage(tr("No matches"), 4000)
         self._show_find_count(*v.search_position())
 
     def _on_search_changed(self, n, total, searching):
@@ -1966,11 +2008,11 @@ class MainWindow(QMainWindow):
         """The count beside the Find box: '3 of 120' ('120+' while still searching)."""
         v = self.view()
         if not total and not searching:
-            text = "No matches" if v is not None and v.search_text() is not None else ""
+            text = tr("No matches") if v is not None and v.search_text() is not None else ""
         elif not n:
-            text = "Searching..."
+            text = tr("Searching...")
         else:
-            text = f"{n} of {total}" + ("+" if searching else "")
+            text = tr("{n} of {total}").format(n=n, total=f"{total}+" if searching else total)
         self.find_count.setText(text)
         self.find_count.setVisible(bool(text))
         for b in (self.find_prev_btn, self.find_next_btn):
@@ -2003,21 +2045,21 @@ class MainWindow(QMainWindow):
         elif op == "del":
             pages = self._selected_pages()
             if len(pages) == 1:
-                text = f"Delete page {pages[0] + 1}?"
+                text = tr("Delete page {page}?").format(page=pages[0] + 1)
             else:
                 names = ", ".join(str(i + 1) for i in pages[:12]) + \
                     (", ..." if len(pages) > 12 else "")
-                text = f"Delete these {len(pages)} pages ({names})?"
-            if QMessageBox.question(self, "Delete pages", text) == QMessageBox.Yes and \
+                text = tr("Delete these {n} pages ({pages})?").format(n=len(pages), pages=names)
+            if QMessageBox.question(self, tr("Delete pages"), text) == QMessageBox.Yes and \
                     v.delete_pages(pages):
-                self.statusBar().showMessage(f"Deleted {len(pages)} page(s) (Ctrl+Z undoes it)",
-                                             4000)
+                self.statusBar().showMessage(
+                    tr("Deleted {n} page(s) (Ctrl+Z undoes it)").format(n=len(pages)), 4000)
         elif op == "move":
             v.move_page(cur, arg)
         elif op == "blank":
             v.insert_blank(cur + 1)
         elif op == "uncrop":
-            scope = v._ask_pages_scope("Remove crop", "Remove the crop from which pages?")
+            scope = v._ask_pages_scope(tr("Remove crop"), tr("Remove the crop from which pages?"))
             if scope is not None:
                 v.remove_crop(cur, scope == "all")
             v.setFocus()                # so Escape still puts the Crop tool down
@@ -2028,14 +2070,15 @@ class MainWindow(QMainWindow):
         first = [v.path] if v is not None and not v.untitled and v.path and \
             os.path.isfile(v.path) else []
         if first and v.dirty:
-            QMessageBox.information(self, "Combine files", "The current document has unsaved "
-                                    "changes; the combined PDF uses the saved file.")
+            QMessageBox.information(self, tr("Combine files"), tr("The current document has unsaved "
+                                                                  "changes; the combined PDF uses the saved file."))
         dlg = CombineDialog(self, self.settings.value("last_dir", ""), first)
         replaced = self._guard_target(dlg)
         if dlg.exec() and dlg.result_path:
             self._written_over(replaced)
             self.open_file(dlg.result_path)
-            self.statusBar().showMessage("Combined into " + dlg.result_path, 5000)
+            self.statusBar().showMessage(tr("Combined into {path}").format(path=dlg.result_path),
+                                         5000)
 
     def _guard_target(self, dlg):
         """Have the Combine dialog check the file it's about to write (see _writing_over);
@@ -2052,7 +2095,7 @@ class MainWindow(QMainWindow):
     def pdf_from_images(self):
         from .combine import CombineDialog, IMAGE_FILTER
         start = self.settings.value("last_dir", "")
-        paths, _ = QFileDialog.getOpenFileNames(self, "Create PDF from images", start,
+        paths, _ = QFileDialog.getOpenFileNames(self, tr("Create PDF from images"), start,
                                                 IMAGE_FILTER)
         if not paths:
             return
@@ -2061,7 +2104,7 @@ class MainWindow(QMainWindow):
         if dlg.exec() and dlg.result_path:
             self._written_over(replaced)
             self.open_file(dlg.result_path)
-            self.statusBar().showMessage("Created " + dlg.result_path, 5000)
+            self.statusBar().showMessage(tr("Created {path}").format(path=dlg.result_path), 5000)
 
     def insert_from_file(self):
         """Pages > Insert pages from file: PDFs and pictures (each picture a page). With
@@ -2072,8 +2115,9 @@ class MainWindow(QMainWindow):
             return
         pics = " ".join("*" + e for e in IMAGE_EXTS)
         paths, _ = QFileDialog.getOpenFileNames(
-            self, "Insert pages from", self.settings.value("last_dir", ""),
-            f"PDFs and pictures (*.pdf {pics});;PDF files (*.pdf);;Pictures ({pics})")
+            self, tr("Insert pages from"), self.settings.value("last_dir", ""),
+            tr("PDFs and pictures") + f" (*.pdf {pics});;" + tr("PDF files") + " (*.pdf);;"
+            + tr("Pictures") + f" ({pics})")
         if not paths:
             return
         self.settings.setValue("last_dir", os.path.dirname(paths[0]))
@@ -2089,14 +2133,14 @@ class MainWindow(QMainWindow):
                 insert_files(doc, paths, 0, size)
             except Exception as ex:
                 doc.close()
-                QMessageBox.critical(self, "Insert pages", str(ex))
+                QMessageBox.critical(self, tr("Insert pages"), str(ex))
                 return
             v = self._open_untitled(doc)
             v.dirty = True              # closing it asks whether to save
             self._update_ui()
             return
-        choices = ["After current page", "At the end", "At the beginning"]
-        where, ok = QInputDialog.getItem(self, "Insert pages", "Insert:", choices, 0, False)
+        choices = [tr("After current page"), tr("At the end"), tr("At the beginning")]
+        where, ok = QInputDialog.getItem(self, tr("Insert pages"), tr("Insert:"), choices, 0, False)
         if not ok:
             return
         at = {0: v.current_page() + 1, 1: -1, 2: 0}[choices.index(where)]
@@ -2120,7 +2164,8 @@ class MainWindow(QMainWindow):
                  (x for win in windows() for x in win._views())}
         n = 1
         while True:
-            name = f"Untitled {n}.pdf"
+            # (a name of our own for a new document, in the user's language)
+            name = tr("Untitled {n}.pdf").format(n=n)
             if name.lower() not in taken and not os.path.exists(os.path.join(folder, name)):
                 break
             n += 1
@@ -2128,18 +2173,19 @@ class MainWindow(QMainWindow):
         self._connect_view(v)
         idx = self.tabs.addTab(v, name)
         self.tabs.setCurrentIndex(idx)
-        self.statusBar().showMessage(name + " isn't saved yet: Save (Ctrl+S) asks where to "
-                                     "save it", 5000)
+        self.statusBar().showMessage(tr("{name} isn't saved yet: Save (Ctrl+S) asks where to "
+                                        "save it").format(name=name), 5000)
         return v
 
     def extract_pages(self):
         v = self.view()
-        if not v or not v.require_permission(pymupdf.PDF_PERM_COPY, "Extracting"):
+        if not v or not v.require_permission(pymupdf.PDF_PERM_COPY, tr("Extracting")):
             return
         n = v.page_count()
         cur = v.current_page() + 1
-        text, ok = QInputDialog.getText(self, "Extract pages",
-                                        f"Page range (1-{n}), e.g. 3-7:", text=f"{cur}-{cur}")
+        text, ok = QInputDialog.getText(self, tr("Extract pages"),
+                                        tr("Page range (1-{n}), e.g. 3-7:").format(n=n),
+                                        text=f"{cur}-{cur}")
         if not ok:
             return
         try:
@@ -2149,16 +2195,16 @@ class MainWindow(QMainWindow):
             if not 1 <= first <= last <= n:
                 raise ValueError
         except ValueError:
-            QMessageBox.warning(self, "Extract pages", "Invalid page range.")
+            QMessageBox.warning(self, tr("Extract pages"), tr("Invalid page range."))
             return
         base = os.path.splitext(v.path)[0]
-        path, _ = QFileDialog.getSaveFileName(self, "Save extracted pages",
+        path, _ = QFileDialog.getSaveFileName(self, tr("Save extracted pages"),
                                               f"{base}_p{first}-{last}.pdf", PDF_FILTER)
         if not path:
             return
         if not v.untitled and os.path.normcase(os.path.abspath(path)) == os.path.normcase(v.path):
-            QMessageBox.warning(self, "Extract pages", "Choose a new file name: the extracted "
-                                "pages can't replace the document they come from.")
+            QMessageBox.warning(self, tr("Extract pages"), tr("Choose a new file name: the extracted "
+                                                              "pages can't replace the document they come from."))
             return
         replaced = self._writing_over(path)
         if replaced is None:
@@ -2166,10 +2212,11 @@ class MainWindow(QMainWindow):
         try:
             v.extract_pages(first - 1, last - 1, path)
         except Exception as ex:
-            QMessageBox.critical(self, "Extract pages", f"Couldn't save the pages:\n{ex}")
+            QMessageBox.critical(self, tr("Extract pages"),
+                                 tr("Couldn't save the pages:\n{error}").format(error=ex))
             return
         self._written_over(replaced)
-        self.statusBar().showMessage("Saved " + path, 4000)
+        self.statusBar().showMessage(tr("Saved {path}").format(path=path), 4000)
 
     def ocr(self):
         v = self.view()
@@ -2178,34 +2225,34 @@ class MainWindow(QMainWindow):
         from . import ocr as ocrmod
         n = v.page_count()
         dlg = QDialog(self)
-        dlg.setWindowTitle("Recognize text (OCR)")
+        dlg.setWindowTitle(tr("Recognize text (OCR)"))
         form = QFormLayout(dlg)
-        rb_all = QRadioButton("All")
-        rb_cur = QRadioButton(f"Current page ({v.current_page() + 1})")
-        rb_custom = QRadioButton("Pages:")
+        rb_all = QRadioButton(tr("All"))
+        rb_cur = QRadioButton(tr("Current page ({page})").format(page=v.current_page() + 1))
+        rb_custom = QRadioButton(tr("Pages:"))
         custom = QLineEdit()
-        custom.setPlaceholderText(f"e.g. 1-3, 7 (of {n})")
+        custom.setPlaceholderText(tr("e.g. 1-3, 7 (of {n})").format(n=n))
         custom.textEdited.connect(lambda _t: rb_custom.setChecked(True))
         rb_all.setChecked(True)
         row = QHBoxLayout()
         for w in (rb_all, rb_cur, rb_custom, custom):
             row.addWidget(w)
-        form.addRow("Pages:", row)
-        skip = QCheckBox("Skip pages that already contain text")
+        form.addRow(tr("Pages:"), row)
+        skip = QCheckBox(tr("Skip pages that already contain text"))
         skip.setChecked(True)
-        skip.setToolTip("Pages that already have text (not scanned) are left alone, so their "
-                        "text isn't duplicated")
+        skip.setToolTip(tr("Pages that already have text (not scanned) are left alone, so their "
+                           "text isn't duplicated"))
         form.addRow("", skip)
         acc = QComboBox()
         for key in ("auto", "fast", "normal", "high"):
             acc.addItem(ocrmod.ACCURACY_LABELS[key], key)
         acc.setCurrentIndex(max(0, acc.findData(self.settings.value("ocr_accuracy", "auto"))))
-        acc.setToolTip("Accuracy is how sharp a page image the recognizer gets. Higher is slower "
-                       "and uses more memory; Auto starts fast and redoes a page sharper only "
-                       "when its text is small or unclear.")
-        form.addRow("Accuracy:", acc)
+        acc.setToolTip(tr("Accuracy is how sharp a page image the recognizer gets. Higher is slower "
+                          "and uses more memory; Auto starts fast and redoes a page sharper only "
+                          "when its text is small or unclear."))
+        form.addRow(tr("Accuracy:"), acc)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.button(QDialogButtonBox.Ok).setText("Recognize")
+        btns.button(QDialogButtonBox.Ok).setText(tr("Recognize"))
         btns.accepted.connect(dlg.accept)
         btns.rejected.connect(dlg.reject)
         form.addRow(btns)
@@ -2216,8 +2263,8 @@ class MainWindow(QMainWindow):
         elif rb_custom.isChecked():
             pages = parse_page_list(custom.text(), n)
             if not pages:
-                QMessageBox.warning(self, "OCR", f"Type pages between 1 and {n}, for example "
-                                    "1-3, 7.")
+                QMessageBox.warning(self, tr("OCR"), tr("Type pages between 1 and {n}, for "
+                                                        "example 1-3, 7.").format(n=n))
                 return
         else:
             pages = list(range(n))
@@ -2225,10 +2272,10 @@ class MainWindow(QMainWindow):
             with_text = [i for i in pages if v.page_has_text(i)]
             pages = [i for i in pages if i not in with_text]
             if not pages:
-                QMessageBox.information(self, "OCR", "The chosen page(s) already have text, so "
-                                        "there's nothing to recognize. Untick \"Skip pages that "
-                                        "already contain text\" to OCR them anyway (their text "
-                                        "may then be duplicated).")
+                QMessageBox.information(self, tr("OCR"), tr("The chosen page(s) already have text, so "
+                                                            "there's nothing to recognize. Untick \"Skip pages that "
+                                                            "already contain text\" to OCR them anyway (their text "
+                                                            "may then be duplicated)."))
                 return
         accuracy = acc.currentData()
         self.settings.setValue("ocr_accuracy", accuracy)
@@ -2238,22 +2285,22 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v:
             return
-        choices = ["All pages", "Current page only"]
+        choices = [tr("All pages"), tr("Current page only")]
         pick, ok = QInputDialog.getItem(
-            self, "Flatten", "Flatten annotations and form fields into the page.\n"
-            "They'll look the same, but no PDF program sees them as markups or fields any\n"
-            "more: they can't be edited, moved or filled in as such.\n\n"
-            "Not a security lock: programs that edit page content (Acrobat, PDF-XChange)\n"
-            "can still change the page. To make changes detectable, digitally sign it\n"
-            "with the lock against changes (certify).\n"
-            "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
+            self, tr("Flatten"), tr("Flatten annotations and form fields into the page.\n"
+                                    "They'll look the same, but no PDF program sees them as markups or fields any\n"
+                                    "more: they can't be edited, moved or filled in as such.\n\n"
+                                    "Not a security lock: programs that edit page content (Acrobat, PDF-XChange)\n"
+                                    "can still change the page. To make changes detectable, digitally sign it\n"
+                                    "with the lock against changes (certify).\n"
+                                    "\n(Undo works until you close the file.)\n\nWhich pages?"), choices, 0, False)
         if not ok:
             return
         pages = None if pick == choices[0] else [v.current_page()]
         if not self._flatten_redactions_first(v, pages):
             return
         v.flatten(pages)
-        self.statusBar().showMessage("Flattened", 4000)
+        self.statusBar().showMessage(tr("Flattened"), 4000)
 
     def _flatten_redactions_first(self, v, pages):
         """Before Flatten: redaction marks that aren't applied yet stay marks (the text under
@@ -2261,14 +2308,19 @@ class MainWindow(QMainWindow):
         n = v.pending_redactions(pages)
         if not n:
             return True
-        where = "This document has" if pages is None else "This page has"
-        box = QMessageBox(QMessageBox.Warning, "Flatten",
-                          f"{where} {n} redaction mark(s) that aren't applied yet. Flatten "
-                          "leaves them as marks: what's under them stays in the file until "
-                          "they're applied.\n\nApply the redactions first? (This applies every "
-                          "mark in the document.)", parent=self)
-        apply_btn = box.addButton("Apply them first", QMessageBox.AcceptRole)
-        keep_btn = box.addButton("Keep them as marks", QMessageBox.DestructiveRole)
+        if pages is None:
+            text = tr("This document has {n} redaction mark(s) that aren't applied yet. Flatten "
+                      "leaves them as marks: what's under them stays in the file until they're "
+                      "applied.\n\nApply the redactions first? (This applies every mark in the "
+                      "document.)")
+        else:
+            text = tr("This page has {n} redaction mark(s) that aren't applied yet. Flatten "
+                      "leaves them as marks: what's under them stays in the file until they're "
+                      "applied.\n\nApply the redactions first? (This applies every mark in the "
+                      "document.)")
+        box = QMessageBox(QMessageBox.Warning, tr("Flatten"), text.format(n=n), parent=self)
+        apply_btn = box.addButton(tr("Apply them first"), QMessageBox.AcceptRole)
+        keep_btn = box.addButton(tr("Keep them as marks"), QMessageBox.DestructiveRole)
         box.addButton(QMessageBox.Cancel)
         box.setDefaultButton(apply_btn)
         box.exec()
@@ -2289,7 +2341,8 @@ class MainWindow(QMainWindow):
         dlg = signatures.SignatureSetup(self, kind)
         if dlg.exec() and dlg.png:
             self._cache_sig(kind, dlg.png)
-            self.statusBar().showMessage(f"Your {kind} is saved.", 4000)
+            self.statusBar().showMessage(tr("Your initials are saved.") if kind == "initials"
+                                         else tr("Your signature is saved."), 4000)
 
     def _on_signed(self):
         v = self.sender()
@@ -2297,10 +2350,10 @@ class MainWindow(QMainWindow):
             return
         v._asked_protect = True
         r = QMessageBox.question(
-            self, "Protect signed document?",
-            "Restrict editing of this document with a permissions password when you save it?\n\n"
-            "Anyone can still open, read and print it. You choose the password, so you can "
-            "unlock it later.\n\nTip: keep an unsigned copy if you may need to change it.")
+            self, tr("Protect signed document?"),
+            tr("Restrict editing of this document with a permissions password when you save it?\n\n"
+               "Anyone can still open, read and print it. You choose the password, so you can "
+               "unlock it later.\n\nTip: keep an unsigned copy if you may need to change it."))
         if r == QMessageBox.Yes:
             self.security_properties(preset_restrict=True)
 
@@ -2320,12 +2373,12 @@ class MainWindow(QMainWindow):
 
     # ---- protection ----------------------------------------------------------------------
     PERMS = [  # (flag, label, allowed by default when restricting)
-        (pymupdf.PDF_PERM_PRINT | pymupdf.PDF_PERM_PRINT_HQ, "Printing", True),
-        (pymupdf.PDF_PERM_COPY, "Copying text and images", True),
-        (pymupdf.PDF_PERM_ANNOTATE, "Adding comments and markups", False),
-        (pymupdf.PDF_PERM_FORM, "Filling in form fields and signing", True),
-        (pymupdf.PDF_PERM_MODIFY, "Changing the document (text, pages, content)", False),
-        (pymupdf.PDF_PERM_ASSEMBLE, "Inserting, deleting and rotating pages", False),
+        (pymupdf.PDF_PERM_PRINT | pymupdf.PDF_PERM_PRINT_HQ, tr("Printing"), True),
+        (pymupdf.PDF_PERM_COPY, tr("Copying text and images"), True),
+        (pymupdf.PDF_PERM_ANNOTATE, tr("Adding comments and markups"), False),
+        (pymupdf.PDF_PERM_FORM, tr("Filling in form fields and signing"), True),
+        (pymupdf.PDF_PERM_MODIFY, tr("Changing the document (text, pages, content)"), False),
+        (pymupdf.PDF_PERM_ASSEMBLE, tr("Inserting, deleting and rotating pages"), False),
     ]
 
     def security_properties(self, preset_restrict=False):
@@ -2341,39 +2394,40 @@ class MainWindow(QMainWindow):
                 return
         st = v.security_state()
         dlg = QDialog(self)
-        dlg.setWindowTitle("Security properties")
+        dlg.setWindowTitle(tr("Security properties"))
         lay = QVBoxLayout(dlg)
-        now = QLabel("Current: " + (f"encrypted ({st['method']})" if st["encrypted"]
-                                    else "no security") +
-                     (" - changes pending until you save" if v.security is not None else ""))
+        state = tr("encrypted ({method})").format(method=st["method"]) if st["encrypted"] \
+            else tr("no security")
+        now = QLabel(tr("Current: {state} - changes pending until you save").format(state=state)
+                     if v.security is not None else tr("Current: {state}").format(state=state))
         lay.addWidget(now)
 
         def pw_pair():
             a, b = QLineEdit(), QLineEdit()
             for e in (a, b):
                 e.setEchoMode(QLineEdit.Password)
-            b.setPlaceholderText("Type it again")
+            b.setPlaceholderText(tr("Type it again"))
             return a, b
-        open_on = QCheckBox("Require a password to open the document")
+        open_on = QCheckBox(tr("Require a password to open the document"))
         open_pw, open_pw2 = pw_pair()
         lay.addWidget(open_on)
         f1 = QFormLayout()
-        f1.addRow("Open password", open_pw)
+        f1.addRow(tr("Open password"), open_pw)
         f1.addRow("", open_pw2)
         lay.addLayout(f1)
-        note1 = QLabel("Real protection: without it, nobody can read the file. If you forget "
-                       "it, the file can't be recovered.")
+        note1 = QLabel(tr("Real protection: without it, nobody can read the file. If you forget "
+                          "it, the file can't be recovered."))
         note1.setWordWrap(True)
         note1.setStyleSheet("color: gray;")
         lay.addWidget(note1)
-        restrict = QCheckBox("Restrict printing, editing and copying")
+        restrict = QCheckBox(tr("Restrict printing, editing and copying"))
         own_pw, own_pw2 = pw_pair()
         lay.addWidget(restrict)
         f2 = QFormLayout()
-        f2.addRow("Permissions password", own_pw)
+        f2.addRow(tr("Permissions password"), own_pw)
         f2.addRow("", own_pw2)
         lay.addLayout(f2)
-        lay.addWidget(QLabel("Allow:"))
+        lay.addWidget(QLabel(tr("Allow:")))
         boxes = []
         for flag, label, default in self.PERMS:
             c = QCheckBox(label)
@@ -2386,16 +2440,16 @@ class MainWindow(QMainWindow):
             for flag, c in boxes:
                 if flag == pymupdf.PDF_PERM_FORM:
                     c.setChecked(False)
-            note_form = QLabel("This form is filled in or signed: its fields will be locked "
-                               "(read-only in every PDF reader) so the answers can't be changed. "
-                               "Tick \"Filling in form fields\" to let others change them.")
+            note_form = QLabel(tr("This form is filled in or signed: its fields will be locked "
+                                  "(read-only in every PDF reader) so the answers can't be changed. "
+                                  "Tick \"Filling in form fields\" to let others change them."))
             note_form.setWordWrap(True)
             note_form.setStyleSheet("color: gray;")
             lay.addWidget(note_form)
-        note2 = QLabel("Restrictions are honored by Acrobat, PDF-XChange, Bluebeam and this app, "
-                       "but some free tools ignore them; form fields that aren't allowed to be "
-                       "filled in are also made read-only, which every reader honors. Use an "
-                       "open password for anything confidential.")
+        note2 = QLabel(tr("Restrictions are honored by Acrobat, PDF-XChange, Bluebeam and this app, "
+                          "but some free tools ignore them; form fields that aren't allowed to be "
+                          "filled in are also made read-only, which every reader honors. Use an "
+                          "open password for anything confidential."))
         note2.setWordWrap(True)
         note2.setStyleSheet("color: gray;")
         lay.addWidget(note2)
@@ -2406,10 +2460,10 @@ class MainWindow(QMainWindow):
             saved = json.loads(self.settings.value("security_presets", "{}") or "{}")
         except (ValueError, TypeError):
             saved = {}
-        presets.addItem("(choose a saved policy)")
+        presets.addItem(tr("(choose a saved policy)"))
         presets.addItems(sorted(saved))
-        save_p = QPushButton("Save as policy...")
-        prow.addWidget(QLabel("Policy:"))
+        save_p = QPushButton(tr("Save as policy..."))
+        prow.addWidget(QLabel(tr("Policy:")))
         prow.addWidget(presets, 1)
         prow.addWidget(save_p)
         lay.addLayout(prow)
@@ -2436,7 +2490,7 @@ class MainWindow(QMainWindow):
         presets.activated.connect(load_preset)
 
         def save_preset():
-            name, ok = QInputDialog.getText(dlg, "Save security policy", "Policy name:")
+            name, ok = QInputDialog.getText(dlg, tr("Save security policy"), tr("Policy name:"))
             if ok and name.strip():
                 saved[name.strip()] = {"open": open_on.isChecked(), "restrict": restrict.isChecked(),
                                        "perms": sum(f for f, c in boxes if c.isChecked())}
@@ -2450,15 +2504,15 @@ class MainWindow(QMainWindow):
 
         def accept():
             if open_on.isChecked() and (not open_pw.text() or open_pw.text() != open_pw2.text()):
-                QMessageBox.warning(dlg, "Security", "The open passwords are empty or don't match.")
+                QMessageBox.warning(dlg, tr("Security"), tr("The open passwords are empty or don't match."))
                 return
             if restrict.isChecked() and (not own_pw.text() or own_pw.text() != own_pw2.text()):
-                QMessageBox.warning(dlg, "Security",
-                                    "The permissions passwords are empty or don't match.")
+                QMessageBox.warning(dlg, tr("Security"),
+                                    tr("The permissions passwords are empty or don't match."))
                 return
             if open_on.isChecked() and restrict.isChecked() and open_pw.text() == own_pw.text():
-                QMessageBox.warning(dlg, "Security", "Use a different password for permissions: "
-                                    "with the same one, anyone who can open it can change it.")
+                QMessageBox.warning(dlg, tr("Security"), tr("Use a different password for permissions: "
+                                                            "with the same one, anyone who can open it can change it."))
                 return
             dlg.accept()
         btns.accepted.connect(accept)
@@ -2468,7 +2522,7 @@ class MainWindow(QMainWindow):
         perms = pymupdf.PDF_PERM_ACCESSIBILITY | sum(f for f, c in boxes if c.isChecked())
         v.set_security(open_pw.text() if open_on.isChecked() else "",
                        own_pw.text() if restrict.isChecked() else "", perms)
-        self.statusBar().showMessage("Security will be applied when you save.", 5000)
+        self.statusBar().showMessage(tr("Security will be applied when you save."), 5000)
         self._update_ui()
 
     def remove_security(self):
@@ -2480,7 +2534,7 @@ class MainWindow(QMainWindow):
             if not v.owner_authorized():
                 return
         v.set_security("", "", -1)
-        self.statusBar().showMessage("Security will be removed when you save.", 5000)
+        self.statusBar().showMessage(tr("Security will be removed when you save."), 5000)
         self._update_ui()
 
     def sanitize_document(self):
@@ -2488,9 +2542,9 @@ class MainWindow(QMainWindow):
         if v is None:
             return
         dlg = QDialog(self)
-        dlg.setWindowTitle("Sanitize document")
+        dlg.setWindowTitle(tr("Sanitize document"))
         lay = QVBoxLayout(dlg)
-        lay.addWidget(QLabel("Remove from this document:"))
+        lay.addWidget(QLabel(tr("Remove from this document:")))
         boxes = {}
         for key, label, default in v.SANITIZE_OPTIONS:
             c = QCheckBox(label)
@@ -2503,37 +2557,37 @@ class MainWindow(QMainWindow):
         lay.addWidget(btns)
         if dlg.exec() == QDialog.Accepted:
             v.sanitize({k: c.isChecked() for k, c in boxes.items()})
-            self.statusBar().showMessage("Sanitized. Save to keep it (Undo is available).", 5000)
+            self.statusBar().showMessage(tr("Sanitized. Save to keep it (Undo is available)."), 5000)
 
     def clear_signatures(self):
         v = self.view()
         if v is None:
             return
-        if QMessageBox.question(self, "Clear all digital signatures",
-                                "Remove every digital signature from this document? The "
-                                "signature fields stay, empty. Visible signature images "
-                                "you placed aren't affected.") != QMessageBox.Yes:
+        if QMessageBox.question(self, tr("Clear all digital signatures"),
+                                tr("Remove every digital signature from this document? The "
+                                   "signature fields stay, empty. Visible signature images "
+                                   "you placed aren't affected.")) != QMessageBox.Yes:
             return
         n = v.clear_signatures()
-        self.statusBar().showMessage(f"Removed {n} digital signature(s).", 5000)
+        self.statusBar().showMessage(tr("Removed {n} digital signature(s).").format(n=n), 5000)
         self._update_ui()
 
     def timestamp_document(self):
         from . import digisign
         v = self.view()
-        if v is None or self._blocked_by_security(v, "Timestamping"):
+        if v is None or self._blocked_by_security(v, tr("Timestamping")):
             return
         if v.dirty:
-            QMessageBox.information(self, "Timestamp", "Save your changes first.")
+            QMessageBox.information(self, tr("Timestamp"), tr("Save your changes first."))
             return
-        url, ok = QInputDialog.getItem(self, "Timestamp document",
-                                       "Time server (free, needs internet):",
+        url, ok = QInputDialog.getItem(self, tr("Timestamp document"),
+                                       tr("Time server (free, needs internet):"),
                                        digisign.TIME_SERVERS, 0, True)
         if not ok or not url.strip():
             return
         base, ext = os.path.splitext(v.path)
-        out, _ = QFileDialog.getSaveFileName(self, "Save timestamped copy", base + "_timestamped.pdf",
-                                             "PDF (*.pdf)")
+        out, _ = QFileDialog.getSaveFileName(self, tr("Save timestamped copy"),
+                                             base + "_timestamped.pdf", "PDF (*.pdf)")
         if not out:
             return
         replaced = self._writing_over(out)
@@ -2544,8 +2598,10 @@ class MainWindow(QMainWindow):
             v.timestamp(url.strip(), out)
         except Exception as ex:
             QApplication.restoreOverrideCursor()
-            QMessageBox.warning(self, "Timestamp", f"Couldn't get a timestamp from {url}:\n{ex}\n\n"
-                                "Check your internet connection or try another server.")
+            QMessageBox.warning(self, tr("Timestamp"),
+                                tr("Couldn't get a timestamp from {url}:\n{error}\n\nCheck your "
+                                   "internet connection or try another server.").format(
+                                    url=url, error=ex))
             return
         QApplication.restoreOverrideCursor()
         self._written_over(replaced)
@@ -2556,27 +2612,30 @@ class MainWindow(QMainWindow):
         if v is None:
             return
         dlg = QDialog(self)
-        dlg.setWindowTitle("Multi-place signature or initials")
+        dlg.setWindowTitle(tr("Multi-place signature or initials"))
         form = QFormLayout(dlg)
         what = QComboBox()
-        what.addItem("Initials", "initials")
-        what.addItem("Signature", "signature")
-        form.addRow("Place", what)
+        what.addItem(tr("Initials"), "initials")
+        what.addItem(tr("Signature"), "signature")
+        form.addRow(tr("Place"), what)
         pages = QComboBox()
-        pages.addItems(["All pages", "All pages except the first", "All pages except the last",
-                        "Pages..."])
+        pages.addItems([tr("All pages"), tr("All pages except the first"), tr("All pages except the last"),
+                        tr("Pages...")])
         rng = QLineEdit()
-        rng.setPlaceholderText("e.g. 1-3, 5, 8")
-        form.addRow("On", pages)
+        rng.setPlaceholderText(tr("e.g. 1-3, 5, 8"))
+        form.addRow(tr("On"), pages)
         form.addRow("", rng)
         where = QComboBox()
-        where.addItem("Same spot as the last one I placed", "same")
+        where.addItem(tr("Same spot as the last one I placed"), "same")
+        spot_names = {"bottom right": tr("Bottom right corner"),
+                      "bottom left": tr("Bottom left corner"),
+                      "bottom center": tr("Bottom center"),
+                      "top right": tr("Top right corner"), "top left": tr("Top left corner")}
         for spot in v.SIG_SPOTS:
-            where.addItem(spot.capitalize() + " corner" if "center" not in spot
-                          else "Bottom center", spot)
+            where.addItem(spot_names.get(spot, spot), spot)
         if not getattr(v, "_last_sig_spot", {}):
             where.setCurrentIndex(1)
-        form.addRow("Where", where)
+        form.addRow(tr("Where"), where)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btns.accepted.connect(dlg.accept)
         btns.rejected.connect(dlg.reject)
@@ -2594,7 +2653,7 @@ class MainWindow(QMainWindow):
         else:
             sel = self._parse_pages(rng.text(), n)
             if not sel:
-                QMessageBox.warning(self, "Multi-place", "Type pages like 1-3, 5.")
+                QMessageBox.warning(self, tr("Multi-place"), tr("Type pages like 1-3, 5."))
                 return
         kind = what.currentData()
         if not self._ensure_sig(kind):
@@ -2603,7 +2662,9 @@ class MainWindow(QMainWindow):
         if spot == "same" and kind not in getattr(v, "_last_sig_spot", {}):
             spot = "bottom right"
         placed = v.place_signature_on_pages(kind, sel, spot)
-        self.statusBar().showMessage(f"Placed your {kind} on {placed} page(s).", 5000)
+        self.statusBar().showMessage(
+            (tr("Placed your initials on {n} page(s).") if kind == "initials" else
+             tr("Placed your signature on {n} page(s).")).format(n=placed), 5000)
 
     @staticmethod
     def _parse_pages(text, n):
@@ -2636,27 +2697,27 @@ class MainWindow(QMainWindow):
             return
         found = v.placeholders()
         if not found:
-            QMessageBox.information(self, "Placeholders", "This document has no signature "
-                                    "placeholders. Add them with Protect > Add signature placeholder.")
+            QMessageBox.information(self, tr("Placeholders"), tr("This document has no signature "
+                                                                 "placeholders. Add them with Protect > Add signature placeholder."))
             return
         for kind in sorted({k for _i, _x, k, _r in found}):
             if not self._ensure_sig(kind):
                 return
         n = v.apply_placeholders()
-        self.statusBar().showMessage(f"Filled {n} placeholder(s).", 5000)
+        self.statusBar().showMessage(tr("Filled {n} placeholder(s).").format(n=n), 5000)
 
     def _apply_selected_redactions(self):
         v = self.view()
         if v is None:
             return
-        if QMessageBox.question(self, "Apply selected redactions",
-                                "Permanently remove what's under the selected redaction "
-                                "marks? Other marks stay pending.") != QMessageBox.Yes:
+        if QMessageBox.question(self, tr("Apply selected redactions"),
+                                tr("Permanently remove what's under the selected redaction "
+                                   "marks? Other marks stay pending.")) != QMessageBox.Yes:
             return
         n = v.apply_selected_redactions()
         if not n:
-            QMessageBox.information(self, "Apply selected redactions",
-                                    "Select one or more redaction marks first (Select tool).")
+            QMessageBox.information(self, tr("Apply selected redactions"),
+                                    tr("Select one or more redaction marks first (Select tool)."))
 
     # ---- objects panel / locking ----------------------------------------------------------
     def _refresh_objects(self):
@@ -2671,7 +2732,7 @@ class MainWindow(QMainWindow):
         objs = {x: (lk, hd) for x, _l, lk, hd in v.page_objects(index)}
         free = [x for x in xrefs if not objs.get(x, (True, True))[0]]
         if len(free) < len(xrefs):
-            self.statusBar().showMessage("Locked objects can't be selected: untick Lock first.", 4000)
+            self.statusBar().showMessage(tr("Locked objects can't be selected: untick Lock first."), 4000)
         if free:
             if self.tool != "select":
                 self.set_tool("select")
@@ -2686,39 +2747,41 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is not None:
             n = v.lock_selected()
-            self.statusBar().showMessage(f"Locked {n} markup(s). Unlock them in the Objects "
-                                         "panel or with Arrange > Unlock all markups.", 5000)
+            self.statusBar().showMessage(tr("Locked {n} markup(s). Unlock them in the Objects "
+                                            "panel or with Arrange > Unlock all markups.").format(
+                                                n=n), 5000)
 
     def _unlock_all(self):
         v = self.view()
         if v is not None:
-            self.statusBar().showMessage(f"Unlocked {v.unlock_all()} markup(s).", 4000)
+            self.statusBar().showMessage(tr("Unlocked {n} markup(s).").format(n=v.unlock_all()),
+                                         4000)
 
     def _toggle_show_markups(self):
         on = self.a_show_markups.isChecked()
         DocumentView.show_markups = on
         for i in range(self.tabs.count()):
             self.tabs.widget(i).refresh_markup_display()
-        self.statusBar().showMessage("Markups shown" if on else
-                                     "Markups hidden (they're still in the document)", 4000)
+        self.statusBar().showMessage(tr("Markups shown") if on else
+                                     tr("Markups hidden (they're still in the document)"), 4000)
 
     def delete_comments(self):
         v = self.view()
         if v is None:
             return
         dlg = QDialog(self)
-        dlg.setWindowTitle("Delete comments")
+        dlg.setWindowTitle(tr("Delete comments"))
         form = QFormLayout(dlg)
         who = QComboBox()
-        who.addItem("Everyone's", None)
+        who.addItem(tr("Everyone's"), None)
         me = annotations.author()
-        who.addItem(f"Only mine ({me})", me)
+        who.addItem(tr("Only mine ({name})").format(name=me), me)
         for name in v.markup_authors():
             if name != me:
-                who.addItem(f"Only by {name or '(no name)'}", name)
-        form.addRow("Delete comments and markups", who)
+                who.addItem(tr("Only by {name}").format(name=name or tr("(no name)")), name)
+        form.addRow(tr("Delete comments and markups"), who)
         where = QComboBox()
-        where.addItems(["On all pages", "On this page only"])
+        where.addItems([tr("On all pages"), tr("On this page only")])
         form.addRow("", where)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btns.accepted.connect(dlg.accept)
@@ -2728,28 +2791,28 @@ class MainWindow(QMainWindow):
             return
         n = v.delete_markups(who.currentData(),
                              None if where.currentIndex() == 0 else [v.current_page()])
-        self.statusBar().showMessage(f"Deleted {n} comment(s) and markup(s). Undo brings "
-                                     "them back.", 5000)
+        self.statusBar().showMessage(tr("Deleted {n} comment(s) and markup(s). Undo brings "
+                                        "them back.").format(n=n), 5000)
 
     def flatten_comments(self):
         v = self.view()
         if not v:
             return
-        choices = ["All pages", "Current page only"]
+        choices = [tr("All pages"), tr("Current page only")]
         pick, ok = QInputDialog.getItem(
-            self, "Flatten comments", "Make comments and markups part of the page.\n"
-            "They'll look the same, but no PDF program sees them as markups any more:\n"
-            "they can't be edited, moved, hidden or deleted as such. Form fields stay fillable.\n\n"
-            "Not a security lock: programs that edit page content (Acrobat, PDF-XChange)\n"
-            "can still change the page. To make changes detectable, digitally sign it\n"
-            "with the lock against changes (certify).\n"
-            "\n(Undo works until you close the file.)\n\nWhich pages?", choices, 0, False)
+            self, tr("Flatten comments"), tr("Make comments and markups part of the page.\n"
+                                             "They'll look the same, but no PDF program sees them as markups any more:\n"
+                                             "they can't be edited, moved, hidden or deleted as such. Form fields stay fillable.\n\n"
+                                             "Not a security lock: programs that edit page content (Acrobat, PDF-XChange)\n"
+                                             "can still change the page. To make changes detectable, digitally sign it\n"
+                                             "with the lock against changes (certify).\n"
+                                             "\n(Undo works until you close the file.)\n\nWhich pages?"), choices, 0, False)
         if not ok:
             return
         pages = None if pick == choices[0] else [v.current_page()]
         if self._flatten_redactions_first(v, pages):
             v.flatten(pages, widgets=False)
-            self.statusBar().showMessage("Comments flattened", 4000)
+            self.statusBar().showMessage(tr("Comments flattened"), 4000)
 
     def _toggle_hl_fields(self):
         on = self.a_hl_fields.isChecked()
@@ -2764,42 +2827,48 @@ class MainWindow(QMainWindow):
         if not v:
             return
         if v.owner_authorized():
-            QMessageBox.information(self, "Unlock", "This document isn't protected.")
+            QMessageBox.information(self, tr("Unlock"), tr("This document isn't protected."))
             return
-        pw, ok = QInputDialog.getText(self, "Unlock", "Permissions (owner) password:",
+        pw, ok = QInputDialog.getText(self, tr("Unlock"), tr("Permissions (owner) password:"),
                                       QLineEdit.Password)
         if ok and pw:
             if v.unlock(pw):
-                self.statusBar().showMessage("Unlocked: you can edit this document and change "
-                                             "its security now.", 4000)
+                self.statusBar().showMessage(tr("Unlocked: you can edit this document and change "
+                                                "its security now."), 4000)
             else:
-                QMessageBox.warning(self, "Unlock", "That password doesn't unlock editing.")
+                QMessageBox.warning(self, tr("Unlock"), tr("That password doesn't unlock editing."))
             self._update_ui()
 
     # ---- export ------------------------------------------------------------------------
     def export_as(self, eid):
         v = self.view()
-        if not v or not v.require_permission(pymupdf.PDF_PERM_COPY, "Exporting"):
+        if not v or not v.require_permission(pymupdf.PDF_PERM_COPY, tr("Exporting")):
             return
         _id, label, flt, ext = next(e for e in EXPORTS if e[0] == eid)
         base = os.path.splitext(v.path)[0]
-        path, _ = QFileDialog.getSaveFileName(self, "Export", f"{base}.{ext}", flt)
+        path, _ = QFileDialog.getSaveFileName(self, tr("Export"), f"{base}.{ext}", flt)
         if not path:
             return
         pages = None
         if v.page_count() > 1:
-            pick, ok = QInputDialog.getItem(self, "Export", "Pages:", ["All pages", "Current page"],
-                                            0, False)
+            choices = [tr("All pages"), tr("Current page")]
+            pick, ok = QInputDialog.getItem(self, tr("Export"), tr("Pages:"), choices, 0, False)
             if not ok:
                 return
-            pages = None if pick == "All pages" else [v.current_page()]
+            pages = None if pick == choices[0] else [v.current_page()]
         units = None
         if eid == "dxf":
-            units, ok = QInputDialog.getItem(
-                self, "AutoCAD export", "Drawing units (1 inch on paper = 1 unit if inches):",
-                list(export.UNITS), 0, False)
+            # export.UNITS' keys are what to_dxf takes: shown in the user's language
+            names = {"inches": tr("inches"), "millimeters": tr("millimeters"),
+                     "PDF points (1:1)": tr("PDF points (1:1)")}
+            keys = list(export.UNITS)
+            shown = [names.get(k, k) for k in keys]
+            unit, ok = QInputDialog.getItem(
+                self, tr("AutoCAD export"), tr("Drawing units (1 inch on paper = 1 unit if inches):"),
+                shown, 0, False)
             if not ok:
                 return
+            units = keys[shown.index(unit)]
         data = v.doc.tobytes()
         if eid in ("png", "jpg"):
             base_out = os.path.splitext(path)[0]
@@ -2810,8 +2879,9 @@ class MainWindow(QMainWindow):
             fn = {"word": export.to_word, "excel": export.to_excel,
                   "ppt": export.to_powerpoint, "txt": export.to_text}[eid]
             job = lambda: fn(data, path, pages)
-        dlg = QProgressDialog(f"Exporting to {label.replace('&', '').rstrip('.')}...", None, 0, 0, self)
-        dlg.setWindowTitle("Export")
+        dlg = QProgressDialog(tr("Exporting to {format}...").format(
+            format=label.replace('&', '').rstrip('.')), None, 0, 0, self)
+        dlg.setWindowTitle(tr("Export"))
         dlg.setWindowModality(Qt.WindowModal)
         dlg.setMinimumDuration(300)
         pool = ThreadPoolExecutor(max_workers=1)
@@ -2824,19 +2894,22 @@ class MainWindow(QMainWindow):
         try:
             result = fut.result()
         except Exception as ex:
-            QMessageBox.critical(self, "Export failed", str(ex))
+            QMessageBox.critical(self, tr("Export failed"), str(ex))
             return
-        msg = "Exported to " + path
+        msg = tr("Exported to {path}").format(path=path)
         if eid == "excel" and result == 0:
-            msg += "\n\nNo tables were detected, so each page's text was exported row by row."
+            msg += "\n\n" + tr("No tables were detected, so each page's text was exported row "
+                               "by row.")
         elif eid in ("png", "jpg"):
-            msg = f"Exported {len(result)} image(s) next to {path}"
+            msg = tr("Exported {n} image(s) next to {path}").format(n=len(result), path=path)
         elif eid == "dxf":
-            msg += (f"\n\n{result['lines']} lines, {result['curves']} curves and "
-                    f"{result['text']} text items. Images in the PDF aren't included.")
+            msg += "\n\n" + tr("{lines} lines, {curves} curves and {text} text items. Images in "
+                               "the PDF aren't included.").format(
+                lines=result['lines'], curves=result['curves'], text=result['text'])
         elif eid == "ppt":
-            msg += "\n\nEach page is a picture on its slide; its text is in the speaker notes."
-        QMessageBox.information(self, "Export", msg)
+            msg += "\n\n" + tr("Each page is a picture on its slide; its text is in the speaker "
+                               "notes.")
+        QMessageBox.information(self, tr("Export"), msg)
 
     # ---- measurement ---------------------------------------------------------------
     def _scale_dialog(self, pdf_len=None, page_index=None):
@@ -2863,7 +2936,7 @@ class MainWindow(QMainWindow):
         from .sheets_ui import SheetLinksDialog
         from . import sheets
         v = self.view()
-        if not v or not v.require_permission(pymupdf.PDF_PERM_ANNOTATE, "Adding links"):
+        if not v or not v.require_permission(pymupdf.PDF_PERM_ANNOTATE, tr("Adding links")):
             return
         folder = os.path.dirname(v.path) if v.path and os.path.isdir(os.path.dirname(v.path)) else None
         dlg = SheetLinksDialog(self, v.doc, folder)
@@ -2879,10 +2952,14 @@ class MainWindow(QMainWindow):
         v.modify(do, pages or [], permission=pymupdf.PDF_PERM_ANNOTATE)
         if dlg.marks.isChecked():
             v.documentChanged.emit()
-        msg = f"{made.get('links', 0)} link(s) made on {len(pages)} page(s)"
         if made.get("marks"):
-            msg += f"; {made['marks']} bookmark(s) added"
-        self.statusBar().showMessage(msg + " (Ctrl+Z undoes it)", 6000)
+            msg = tr("{links} link(s) made on {pages} page(s); {marks} bookmark(s) added "
+                     "(Ctrl+Z undoes it)").format(links=made.get('links', 0), pages=len(pages),
+                                                  marks=made['marks'])
+        else:
+            msg = tr("{links} link(s) made on {pages} page(s) (Ctrl+Z undoes it)").format(
+                links=made.get('links', 0), pages=len(pages))
+        self.statusBar().showMessage(msg, 6000)
         self._update_ui()
 
     def read_sheet_scales(self):
@@ -2904,18 +2981,20 @@ class MainWindow(QMainWindow):
                 scales[i] = (measure.scale_from_preset(note["ratio"]), note["unit"], note["label"])
         if scales:
             v.set_page_scales(scales)
-        lines = [f"Scale set on {len(scales)} of {v.page_count()} page(s) from what the sheets say."
-                 if scales else "No sheet in this document says its scale."]
+        lines = [tr("Scale set on {n} of {total} page(s) from what the sheets say.").format(
+                     n=len(scales), total=v.page_count())
+                 if scales else tr("No sheet in this document says its scale.")]
         if len(set(scales.values())) > 1:
-            lines.append("The sheets use different scales; each page got its own.")
+            lines.append(tr("The sheets use different scales; each page got its own."))
         if nts:
-            lines.append("Marked not to scale, left as is: page " + ", ".join(map(str, nts[:20])))
+            lines.append(tr("Marked not to scale, left as is: page {pages}").format(
+                pages=", ".join(map(str, nts[:20]))))
         if none:
-            lines.append("No scale note found, left as is: page " + ", ".join(map(str, none[:20]))
-                         + (" ..." if len(none) > 20 else ""))
-        lines.append("A sheet printed at reduced size still says its original scale: check one "
-                     "dimension, and use Calibrate Tape Measure if it is off.")
-        QMessageBox.information(self, "Read scales from title blocks", "\n\n".join(lines))
+            lines.append(tr("No scale note found, left as is: page {pages}").format(
+                pages=", ".join(map(str, none[:20])) + (" ..." if len(none) > 20 else "")))
+        lines.append(tr("A sheet printed at reduced size still says its original scale: check "
+                        "one dimension, and use Calibrate Tape Measure if it is off."))
+        QMessageBox.information(self, tr("Read scales from title blocks"), "\n\n".join(lines))
         if scales:
             self.statusBar().showMessage(v.page_scale_text(v.current_page()), 5000)
             self._update_ui()
@@ -2941,8 +3020,8 @@ class MainWindow(QMainWindow):
         self.set_tool(tool)
         self._from_chest = False
         self._refresh_props()
-        self.statusBar().showMessage("Tool chest: next markups use this style. "
-                                     "Pick a tool from the toolbar to go back to defaults.", 5000)
+        self.statusBar().showMessage(tr("Tool chest: next markups use this style. "
+                                        "Pick a tool from the toolbar to go back to defaults."), 5000)
 
     def _add_to_chest(self):
         v = self.view()
@@ -2955,8 +3034,8 @@ class MainWindow(QMainWindow):
             tool, props = self.tool, annotations.tool_props(self.tool)
             name = annotations.LABELS.get(tool, tool)
         else:
-            QMessageBox.information(self, "Tool chest", "Select a markup (or pick a markup "
-                                    "tool) first, then click Add.")
+            QMessageBox.information(self, tr("Tool chest"), tr("Select a markup (or pick a markup "
+                                                               "tool) first, then click Add."))
             return
         if tool is None:
             return
@@ -3013,14 +3092,14 @@ class MainWindow(QMainWindow):
             return
         have = [i for i in range(v.page_count()) if B.has_background(v.doc[i])]
         if not have:
-            QMessageBox.information(self, "Remove background", "No page in this document has a "
-                                    "background added with Document > Background.")
+            QMessageBox.information(self, tr("Remove background"), tr("No page in this document has a "
+                                                                      "background added with Document > Background."))
             return
         dlg = QDialog(self)
-        dlg.setWindowTitle("Remove background")
+        dlg.setWindowTitle(tr("Remove background"))
         lay = QVBoxLayout(dlg)
-        lay.addWidget(QLabel(f"{len(have)} page(s) have a background added with "
-                             "Document > Background. Remove it from:"))
+        lay.addWidget(QLabel(tr("{n} page(s) have a background added with Document > "
+                                "Background. Remove it from:").format(n=len(have))))
         choice = PageChoice(v.page_count(), v.current_page())
         lay.addWidget(choice)
         err = QLabel()
@@ -3049,15 +3128,16 @@ class MainWindow(QMainWindow):
         have = [i for i in range(v.page_count()) if has_watermark(v.doc[i])]
         if not have:
             QMessageBox.information(
-                self, "Remove watermarks", "No watermark found that can be removed. KanzonasPDF "
-                "finds watermarks added with Document > Watermark and by apps that mark them as "
-                "watermarks (Adobe Acrobat, PDF-XChange and others). Text or pictures that are "
-                "simply part of the page can be taken out with Erase content or Edit objects.")
+                self, tr("Remove watermarks"), tr("No watermark found that can be removed. KanzonasPDF "
+                                                  "finds watermarks added with Document > Watermark and by apps that mark them as "
+                                                  "watermarks (Adobe Acrobat, PDF-XChange and others). Text or pictures that are "
+                                                  "simply part of the page can be taken out with Erase content or Edit objects."))
             return
         dlg = QDialog(self)
-        dlg.setWindowTitle("Remove watermarks")
+        dlg.setWindowTitle(tr("Remove watermarks"))
         lay = QVBoxLayout(dlg)
-        lay.addWidget(QLabel(f"{len(have)} page(s) have a watermark. Remove it from:"))
+        lay.addWidget(QLabel(tr("{n} page(s) have a watermark. Remove it from:").format(
+            n=len(have))))
         choice = PageChoice(v.page_count(), v.current_page())
         lay.addWidget(choice)
         err = QLabel()
@@ -3083,12 +3163,19 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v:
             return
-        preset, ok = QInputDialog.getItem(self, "Compress", "Image quality:",
-                                          list(page_tools.COMPRESS), 1, False)
+        # page_tools.COMPRESS's keys are what compress() takes: shown in the user's language
+        names = {"Good quality (150 dpi images)": tr("Good quality (150 dpi images)"),
+                 "Smaller (100 dpi images)": tr("Smaller (100 dpi images)"),
+                 "Smallest (72 dpi images)": tr("Smallest (72 dpi images)")}
+        keys = list(page_tools.COMPRESS)
+        shown = [names.get(k, k) for k in keys]
+        preset, ok = QInputDialog.getItem(self, tr("Compress"), tr("Image quality:"),
+                                          shown, 1, False)
         if not ok:
             return
+        preset = keys[shown.index(preset)]
         base = os.path.splitext(v.path)[0]
-        path, _ = QFileDialog.getSaveFileName(self, "Save smaller copy", base + "_small.pdf", PDF_FILTER)
+        path, _ = QFileDialog.getSaveFileName(self, tr("Save smaller copy"), base + "_small.pdf", PDF_FILTER)
         if not path:
             return
         replaced = self._writing_over(path, source=v)
@@ -3097,47 +3184,53 @@ class MainWindow(QMainWindow):
         try:
             before, after = page_tools.compress(v.doc.tobytes(), path, preset)
         except Exception as ex:
-            QMessageBox.critical(self, "Compress failed", str(ex))
+            QMessageBox.critical(self, tr("Compress failed"), str(ex))
             return
         self._written_over(replaced)
-        QMessageBox.information(self, "Compress",
-                                f"Saved {path}\n\n{before / 1e6:.2f} MB \u2192 {after / 1e6:.2f} MB "
-                                f"({100 - after * 100 / max(1, before):.0f}% smaller)")
+        QMessageBox.information(self, tr("Compress"),
+                                tr("Saved {path}\n\n{before} MB \u2192 {after} MB ({percent}% "
+                                   "smaller)").format(
+                                    path=path, before=f"{before / 1e6:.2f}",
+                                    after=f"{after / 1e6:.2f}",
+                                    percent=f"{100 - after * 100 / max(1, before):.0f}"))
 
     def search_redact(self):
         v = self.view()
         if not v:
             return
-        text, ok = QInputDialog.getText(self, "Search & redact",
-                                        "Mark every occurrence of this text for redaction:")
+        text, ok = QInputDialog.getText(self, tr("Search & redact"),
+                                        tr("Mark every occurrence of this text for redaction:"))
         if ok and text.strip():
             term = text.strip()
             hidden = v.hidden_matches(term)
             n = v.search_redact(term)
-            extra = [f"{c} {what}" for what, c in (("form field(s)", hidden["fields"]),
-                     ("markup note(s)", hidden["markups"]), ("link(s)", hidden["links"]),
-                     ("bookmark(s)", hidden["bookmarks"]),
-                     ("document propert(ies)", hidden["metadata"])) if c]
-            msg = (f"Marked {n} occurrence(s) on the pages." if n else
-                   "No matches on the pages.")
+            extra = [what.format(n=c) for what, c in (
+                (tr("{n} form field(s)"), hidden["fields"]),
+                (tr("{n} markup note(s)"), hidden["markups"]), (tr("{n} link(s)"), hidden["links"]),
+                (tr("{n} bookmark(s)"), hidden["bookmarks"]),
+                (tr("{n} document propert(ies)"), hidden["metadata"])) if c]
+            msg = (tr("Marked {n} occurrence(s) on the pages.").format(n=n) if n else
+                   tr("No matches on the pages."))
             if extra and not n:
                 if QMessageBox.question(
-                        self, "Search & redact",
-                        "Not on the pages, but found in " + ", ".join(extra) + ".\n\nRemove it "
-                        "from there now? (Fields, links, stamps and attachments containing it are "
-                        "deleted; in notes, bookmarks and properties it's replaced by [redacted]. "
-                        "Undo works until you close the file.)") == QMessageBox.Yes:
+                        self, tr("Search & redact"),
+                        tr("Not on the pages, but found in {places}.\n\nRemove it from there "
+                           "now? (Fields, links, stamps and attachments containing it are "
+                           "deleted; in notes, bookmarks and properties it's replaced by "
+                           "[redacted]. Undo works until you close the file.)").format(
+                            places=", ".join(extra))) == QMessageBox.Yes:
                     v.remove_term(term)
-                    self.statusBar().showMessage("Removed. Save to make it permanent.", 6000)
+                    self.statusBar().showMessage(tr("Removed. Save to make it permanent."), 6000)
                 return
             if extra:
-                msg += ("\n\nAlso found in " + ", ".join(extra) + ". Those can't be covered "
-                        "with a box. When you apply the redactions, fields, links, stamps and "
-                        "attachments containing it are deleted; in notes, bookmarks and "
-                        "properties it's replaced by [redacted].")
+                msg += "\n\n" + tr("Also found in {places}. Those can't be covered with a box. "
+                                   "When you apply the redactions, fields, links, stamps and "
+                                   "attachments containing it are deleted; in notes, bookmarks "
+                                   "and properties it's replaced by [redacted].").format(
+                    places=", ".join(extra))
             if n:
-                msg += "\n\nReview the marks, then use Apply redactions."
-            QMessageBox.information(self, "Search & redact", msg)
+                msg += "\n\n" + tr("Review the marks, then use Apply redactions.")
+            QMessageBox.information(self, tr("Search & redact"), msg)
 
     def apply_redactions(self):
         v = self.view()
@@ -3145,20 +3238,21 @@ class MainWindow(QMainWindow):
             return
         n = v.pending_redactions()
         if not n:
-            QMessageBox.information(self, "Redaction", "Nothing is marked for redaction yet. "
-                                    "Use the Redact tool or Search & redact first.")
+            QMessageBox.information(self, tr("Redaction"), tr("Nothing is marked for redaction yet. "
+                                                              "Use the Redact tool or Search & redact first."))
             return
-        box = QMessageBox(QMessageBox.Warning, "Apply redactions",
-                          f"Permanently remove everything under {n} redaction mark(s)? Text, "
-                          "images and drawings there are deleted, not just covered.\n\n"
-                          "Undo works until you close the file.", parent=self)
-        scrub = QCheckBox("Remove hidden information (metadata, attachments, hidden text, scripts)")
+        box = QMessageBox(QMessageBox.Warning, tr("Apply redactions"),
+                          tr("Permanently remove everything under {n} redaction mark(s)? Text, "
+                             "images and drawings there are deleted, not just covered.\n\n"
+                             "Undo works until you close the file.").format(n=n), parent=self)
+        scrub = QCheckBox(tr("Remove hidden information (metadata, attachments, hidden text, scripts)"))
         scrub.setChecked(True)
         box.setCheckBox(scrub)
         box.setStandardButtons(QMessageBox.Apply | QMessageBox.Cancel)
         if box.exec() == QMessageBox.Apply:
             v.apply_redactions(scrub.isChecked())
-            self.statusBar().showMessage(f"Applied {n} redaction(s). Save to make it permanent.", 6000)
+            self.statusBar().showMessage(
+                tr("Applied {n} redaction(s). Save to make it permanent.").format(n=n), 6000)
 
     # ---- digital signatures ----------------------------------------------------------
     def _blocked_by_security(self, v, what):
@@ -3167,31 +3261,31 @@ class MainWindow(QMainWindow):
         pending = v.security is not None and (v.security.get("open_pw") or v.security.get("owner_pw"))
         if v.security_state()["encrypted"] or pending:
             QMessageBox.information(
-                self, what, f"{what} isn't possible on a password-protected PDF yet.\n\n"
-                "Use Protect > Remove security and save, then sign. Note that adding a "
-                "password after signing changes the file and makes the signature invalid, "
-                "so sign the final version.")
+                self, what, tr("{what} isn't possible on a password-protected PDF yet.\n\n"
+                               "Use Protect > Remove security and save, then sign. Note that "
+                               "adding a password after signing changes the file and makes the "
+                               "signature invalid, so sign the final version.").format(what=what))
             return True
         return False
 
     def digital_sign(self):
         from . import digisign
         v = self.view()
-        if not v or self._blocked_by_security(v, "Digital signing"):
+        if not v or self._blocked_by_security(v, tr("Digital signing")):
             return
         dlg = QDialog(self)
-        dlg.setWindowTitle("Digitally sign with a certificate")
+        dlg.setWindowTitle(tr("Digitally sign with a certificate"))
         lay = QVBoxLayout(dlg)
-        info = QLabel("A digital signature proves who signed and that the document hasn't "
-                      "changed since. Tip: place your visible signature first (Sign tool), "
-                      "then sign digitally. The signed copy is saved as a new file.")
+        info = QLabel(tr("A digital signature proves who signed and that the document hasn't "
+                         "changed since. Tip: place your visible signature first (Sign tool), "
+                         "then sign digitally. The signed copy is saved as a new file."))
         info.setWordWrap(True)
         lay.addWidget(info)
         form = QFormLayout()
-        mine = QRadioButton("My personal certificate" + ("" if os.path.exists(digisign.my_cert_path())
-                                                          else " (created now)"))
-        other = QRadioButton("Certificate file from a certificate authority / my company (.pfx, .p12)")
-        win = QRadioButton("Certificate stored in Windows (cards and tokens too)")
+        mine = QRadioButton(tr("My personal certificate") if os.path.exists(digisign.my_cert_path())
+                            else tr("My personal certificate (created now)"))
+        other = QRadioButton(tr("Certificate file from a certificate authority / my company (.pfx, .p12)"))
+        win = QRadioButton(tr("Certificate stored in Windows (cards and tokens too)"))
         win_list = QComboBox()
         win_certs = []
         if os.name == "nt":
@@ -3201,11 +3295,14 @@ class MainWindow(QMainWindow):
             except Exception:
                 win_certs = []
         for c in win_certs:
-            label = c["name"] + "  (issued by " + ("yourself" if c["self_signed"] else c["issuer"])
-            label += ", " + ("EXPIRED " if c["expired"] else "expires ")
-            win_list.addItem(label + c["expires"].strftime("%Y-%m-%d") + ")", c["thumbprint"])
+            issuer = tr("yourself") if c["self_signed"] else c["issuer"]
+            date = c["expires"].strftime("%Y-%m-%d")
+            label = (tr("{name}  (issued by {issuer}, EXPIRED {date})") if c["expired"] else
+                     tr("{name}  (issued by {issuer}, expires {date})")).format(
+                name=c["name"], issuer=issuer, date=date)
+            win_list.addItem(label, c["thumbprint"])
         if not win_certs:
-            win_list.addItem("No signing certificates in your Windows Personal store")
+            win_list.addItem(tr("No signing certificates in your Windows Personal store"))
             win.setEnabled(False)
             win_list.setEnabled(False)
         last = self.settings.value("sign_windows_cert", "")
@@ -3219,9 +3316,10 @@ class MainWindow(QMainWindow):
         else:
             mine.setChecked(True)
         cert_path = QLineEdit()
-        browse = QPushButton("Browse...")
+        browse = QPushButton(tr("Browse..."))
         browse.clicked.connect(lambda: cert_path.setText(QFileDialog.getOpenFileName(
-            dlg, "Certificate", "", "Certificates (*.pfx *.p12)")[0] or cert_path.text()))
+            dlg, tr("Certificate"), "", tr("Certificates") + " (*.pfx *.p12)")[0]
+            or cert_path.text()))
         row = QHBoxLayout()
         row.addWidget(cert_path)
         row.addWidget(browse)
@@ -3229,18 +3327,18 @@ class MainWindow(QMainWindow):
         password.setEchoMode(QLineEdit.Password)
         reason = QComboBox()
         reason.setEditable(True)
-        reason.addItems(["I approve this document", "I am the author of this document",
-                         "I have reviewed this document", "I agree to the terms"])
+        reason.addItems([tr("I approve this document"), tr("I am the author of this document"),
+                         tr("I have reviewed this document"), tr("I agree to the terms")])
         location = QLineEdit()
-        lock = QCheckBox("Lock the document: no further changes allowed (certify)")
+        lock = QCheckBox(tr("Lock the document: no further changes allowed (certify)"))
         form.addRow(win)
-        form.addRow("Windows certificate", win_list)
+        form.addRow(tr("Windows certificate"), win_list)
         form.addRow(mine)
         form.addRow(other)
-        form.addRow("Certificate file", row)
-        form.addRow("Certificate password", password)
-        form.addRow("Reason", reason)
-        form.addRow("Location", location)
+        form.addRow(tr("Certificate file"), row)
+        form.addRow(tr("Certificate password"), password)
+        form.addRow(tr("Reason"), reason)
+        form.addRow(tr("Location"), location)
         form.addRow(lock)
         lay.addLayout(form)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -3259,31 +3357,33 @@ class MainWindow(QMainWindow):
             elif mine.isChecked():
                 path = digisign.my_cert_path()
                 if not os.path.exists(path):
-                    name, ok = QInputDialog.getText(self, "Create your certificate",
-                                                    "Your full name (shown as the signer):",
+                    name, ok = QInputDialog.getText(self, tr("Create your certificate"),
+                                                    tr("Your full name (shown as the signer):"),
                                                     text=annotations.author())
                     if not ok or not name.strip():
                         return
-                    email, _ok = QInputDialog.getText(self, "Create your certificate",
-                                                      "Email (optional):")
+                    email, _ok = QInputDialog.getText(self, tr("Create your certificate"),
+                                                      tr("Email (optional):"))
                     if not password.text():
-                        QMessageBox.warning(self, "Certificate", "Choose a certificate password "
-                                            "in the signing dialog to protect your certificate.")
+                        QMessageBox.warning(self, tr("Certificate"), tr("Choose a certificate password "
+                                                                        "in the signing dialog to protect your certificate."))
                         return
                     digisign.create_certificate(name.strip(), email.strip(), "", password.text())
             else:
                 path = cert_path.text()
                 if not os.path.isfile(path):
-                    QMessageBox.warning(self, "Certificate", "Choose a certificate file.")
+                    QMessageBox.warning(self, tr("Certificate"), tr("Choose a certificate file."))
                     return
             if not win.isChecked():
                 signer = digisign.load_signer(path, password.text())
                 self.settings.setValue("sign_source", "file")
         except Exception as ex:
-            QMessageBox.warning(self, "Certificate", f"Couldn't use that certificate: {ex}")
+            QMessageBox.warning(self, tr("Certificate"),
+                                tr("Couldn't use that certificate: {error}").format(error=ex))
             return
         base = os.path.splitext(v.path)[0]
-        out, _ = QFileDialog.getSaveFileName(self, "Save signed copy as", base + "_signed.pdf", PDF_FILTER)
+        out, _ = QFileDialog.getSaveFileName(self, tr("Save signed copy as"), base + "_signed.pdf",
+                                             PDF_FILTER)
         if not out:
             return
         replaced = self._writing_over(out, source=v)
@@ -3293,7 +3393,7 @@ class MainWindow(QMainWindow):
             digisign.sign(v.doc.tobytes(), out, signer, reason.currentText(), location.text(),
                           lock.isChecked())
         except Exception as ex:
-            QMessageBox.critical(self, "Signing failed", str(ex))
+            QMessageBox.critical(self, tr("Signing failed"), str(ex))
             return
         self._written_over(replaced)
         self.open_file(out)
@@ -3304,21 +3404,22 @@ class MainWindow(QMainWindow):
             return
         res = getattr(v, "sig_results", [])
         if not res:
-            QMessageBox.information(self, "Digital signatures", "This document has no digital "
-                                    "(certificate) signatures.")
+            QMessageBox.information(self, tr("Digital signatures"), tr("This document has no digital "
+                                                                       "(certificate) signatures."))
             return
         lines = []
         for r in res:
             lines.append(r["summary"])
             if r.get("reason"):
-                lines.append(f"   Reason: {r['reason']}")
+                lines.append("   " + tr("Reason: {reason}").format(reason=r['reason']))
             if r.get("email"):
-                lines.append(f"   Email: {r['email']}")
+                lines.append("   " + tr("Email: {email}").format(email=r['email']))
             if r.get("fingerprint"):
-                lines.append(f"   Certificate fingerprint: {r['fingerprint'][:32]}...")
-        box = QMessageBox(QMessageBox.Information, "Digital signatures", "\n".join(lines), parent=self)
+                lines.append("   " + tr("Certificate fingerprint: {fingerprint}...").format(
+                    fingerprint=r['fingerprint'][:32]))
+        box = QMessageBox(QMessageBox.Information, tr("Digital signatures"), "\n".join(lines), parent=self)
         untrusted = [r for r in res if r.get("fingerprint") and not r.get("trusted")]
-        trust_btn = box.addButton("Trust these signers on this computer", QMessageBox.ActionRole) \
+        trust_btn = box.addButton(tr("Trust these signers on this computer"), QMessageBox.ActionRole) \
             if untrusted else None
         box.addButton(QMessageBox.Close)
         box.exec()
@@ -3347,7 +3448,7 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v:
             return
-        path, _ = QFileDialog.getOpenFileName(self, "Compare with which earlier revision?",
+        path, _ = QFileDialog.getOpenFileName(self, tr("Compare with which earlier revision?"),
                                               os.path.dirname(v.path), PDF_FILTER)
         if not path:
             return
@@ -3355,7 +3456,7 @@ class MainWindow(QMainWindow):
             with open(path, "rb") as f:
                 old = f.read()
         except OSError as ex:
-            QMessageBox.critical(self, "Compare", str(ex))
+            QMessageBox.critical(self, tr("Compare"), str(ex))
             return
         new = v.doc.tobytes()
         old_name, new_name = os.path.basename(path), os.path.basename(v.path)
@@ -3368,8 +3469,8 @@ class MainWindow(QMainWindow):
         if choice.exec() != QDialog.Accepted:
             return
         mode = choice.mode()
-        dlg = QProgressDialog("Comparing pages...", None, 0, 0, self)
-        dlg.setWindowTitle("Compare")
+        dlg = QProgressDialog(tr("Comparing pages..."), None, 0, 0, self)
+        dlg.setWindowTitle(tr("Compare"))
         dlg.setWindowModality(Qt.WindowModal)
         dlg.setMinimumDuration(300)
         pool = ThreadPoolExecutor(max_workers=1)
@@ -3385,29 +3486,31 @@ class MainWindow(QMainWindow):
         try:
             data, counts = fut.result()
         except Exception as ex:
-            QMessageBox.critical(self, "Compare failed", str(ex))
+            QMessageBox.critical(self, tr("Compare failed"), str(ex))
             return
         import tempfile
-        stem = f"Compare - {os.path.splitext(old_name)[0]} vs {os.path.splitext(new_name)[0]}.pdf"
+        # (a name of our own for the result; the two file names in it stay as they are)
+        stem = tr("Compare - {old} vs {new}.pdf").format(old=os.path.splitext(old_name)[0],
+                                                         new=os.path.splitext(new_name)[0])
         out = os.path.join(tempfile.mkdtemp(prefix="kzcompare"), stem)
         with open(out, "wb") as f:
             f.write(data)
         self.open_file(out)
         self.markups_dock.show()
-        found = (f"Found {sum(counts)} change(s) on {sum(1 for c in counts if c)} of "
-                 f"{len(counts)} page(s).\n\n")
+        found = tr("Found {changes} change(s) on {pages} of {total} page(s).").format(
+            changes=sum(counts), pages=sum(1 for c in counts if c), total=len(counts)) + "\n\n"
         if mode == "text":
-            QMessageBox.information(self, "Compare", found +
+            QMessageBox.information(self, tr("Compare"), found + tr(
                                     "Blue = words added in this revision; a red mark shows "
                                     "where words of the earlier one were removed (its comment "
                                     "says which). Pictures added, removed or resized are boxed. "
                                     "Every change is listed in the Markups list and on the "
-                                    "summary page at the end. Use Save As to keep the comparison.")
+                                    "summary page at the end. Use Save As to keep the comparison."))
         else:
-            QMessageBox.information(self, "Compare", found +
+            QMessageBox.information(self, tr("Compare"), found + tr(
                                     "Red = only in the earlier revision, blue = only in this one. "
                                     "Each change is clouded and listed in the Markups list. "
-                                    "Use Save As to keep the comparison.")
+                                    "Use Save As to keep the comparison."))
 
     # ---- appearance -------------------------------------------------------------------
     TOOLBAR_ICON_KEYS = {"a_open": "open", "a_save": "save", "a_print": "print", "a_undo": "undo",
@@ -3455,15 +3558,15 @@ class MainWindow(QMainWindow):
             sc = a.shortcut().toString(QKeySequence.NativeText)
             extra = {"a_rot_l": "Ctrl+Shift+Minus", "a_rot_r": "Ctrl+Shift+Plus"}.get(key, sc)
             a.setToolTip(f"{base} ({extra})" if extra else base)
-        self.zoom_box.setToolTip("Zoom level: pick one or type a percentage and press Enter")
-        self.page_spin.setToolTip("Current page: type a page number and press Enter")
-        self.search.setToolTip("Find text in this document (Ctrl+F). Enter or F3 = next match, "
-                               "Shift+Enter or Shift+F3 = previous")
-        self.shapes_btn.setToolTip("Shapes: click for the shape shown, or the arrow to pick "
-                                   "another (rectangle, ellipse, cloud, polygon, line, arrow, "
-                                   "polyline, pen). Hold Shift for squares, circles and straight lines")
-        self.measure_btn.setToolTip("Measure: click for the tool shown, or the arrow for length, "
-                                    "polylength, area, count, calibrate and scale")
+        self.zoom_box.setToolTip(tr("Zoom level: pick one or type a percentage and press Enter"))
+        self.page_spin.setToolTip(tr("Current page: type a page number and press Enter"))
+        self.search.setToolTip(tr("Find text in this document (Ctrl+F). Enter or F3 = next match, "
+                                  "Shift+Enter or Shift+F3 = previous"))
+        self.shapes_btn.setToolTip(tr("Shapes: click for the shape shown, or the arrow to pick "
+                                      "another (rectangle, ellipse, cloud, polygon, line, arrow, "
+                                      "polyline, pen). Hold Shift for squares, circles and straight lines"))
+        self.measure_btn.setToolTip(tr("Measure: click for the tool shown, or the arrow for length, "
+                                       "polylength, area, count, calibrate and scale"))
 
     def _toggle_labels(self):
         self.settings.setValue("toolbar_labels", "true" if self.a_labels.isChecked() else "false")
@@ -3502,7 +3605,7 @@ class MainWindow(QMainWindow):
 
     # ---- split view -----------------------------------------------------------------------
     def _build_split(self):
-        self.split_dock = QDockWidget("Second view")
+        self.split_dock = QDockWidget(tr("Second view"))
         self.split_dock.setObjectName("splitview")
         self.split_dock.setFeatures(QDockWidget.DockWidgetClosable)
         self.split_holder = QWidget()
@@ -3537,17 +3640,26 @@ class MainWindow(QMainWindow):
         sv = DocumentView.mirror(v)
         self.split_holder.layout().addWidget(sv)
         self._split_view = sv
-        self.split_dock.setWindowTitle(f"Second view: {os.path.basename(v.path)} "
-                                       "(scroll independently; edit in the main view)")
+        self.split_dock.setWindowTitle(
+            tr("Second view: {name} (scroll independently; edit in the main view)").format(
+                name=os.path.basename(v.path)))
 
     # ---- keyboard shortcuts --------------------------------------------------------------
+    @staticmethod
+    def action_name(a):
+        """An action's name as the user sees it: its menu text without the & and the "..."."""
+        return a.text().split("\t")[0].replace("&", "").strip().rstrip(".")
+
     def _shortcut_actions(self):
-        """{stable id: QAction} for every action that can have a shortcut."""
+        """{stable id: QAction} for every action that can have a shortcut. The id is the
+        action's English name (also in another language), so shortcuts saved by name and the
+        palette's recent commands survive a change of language; action_name(a) is the name
+        to show."""
         out = {}
         for a in self.findChildren(QAction):
             if a.parent() is not self:        # skip panels' own small menus
                 continue
-            name = a.text().split("\t")[0].replace("&", "").strip().rstrip(".")
+            name = english_name(a.text()).split("\t")[0].replace("&", "").strip().rstrip(".")
             if name and not a.menu() and name not in out:
                 out[name] = a
         return out
@@ -3571,32 +3683,37 @@ class MainWindow(QMainWindow):
         from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QKeySequenceEdit, QHeaderView
         acts = self._shortcut_actions()
         dlg = QDialog(self)
-        dlg.setWindowTitle("Keyboard shortcuts")
+        dlg.setWindowTitle(tr("Keyboard shortcuts"))
         dlg.resize(560, 600)
         lay = QVBoxLayout(dlg)
-        lay.addWidget(QLabel("Click a shortcut and press the new key combination. "
-                             "Clear it with Backspace. Ctrl+Shift+Plus/Minus always rotate."))
+        intro = QLabel(tr("Click a shortcut and press the new key combination. "
+                          "Clear it with Backspace. Ctrl+Shift+Plus/Minus always rotate."))
+        intro.setWordWrap(True)         # (longer in other languages: don't widen the dialog)
+        lay.addWidget(intro)
         filt = QLineEdit()
-        filt.setPlaceholderText("Filter")
+        filt.setPlaceholderText(tr("Filter"))
         lay.addWidget(filt)
-        names = sorted(acts)
+        shown = {n: self.action_name(a) for n, a in acts.items()}     # in the user's language
+        names = sorted(acts, key=lambda n: shown[n].lower())
         table = QTableWidget(len(names), 2)
-        table.setHorizontalHeaderLabels(["Command", "Shortcut"])
+        table.setHorizontalHeaderLabels([tr("Command"), tr("Shortcut")])
         table.verticalHeader().hide()
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         editors = {}
         for r, name in enumerate(names):
-            item = QTableWidgetItem(name)
+            item = QTableWidgetItem(shown[name])
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             table.setItem(r, 0, item)
             ed = QKeySequenceEdit(acts[name].shortcut())
             table.setCellWidget(r, 1, ed)
             editors[name] = ed
-        filt.textChanged.connect(lambda t: [table.setRowHidden(r, t.lower() not in n.lower())
-                                            for r, n in enumerate(names)])
+        # (the English name finds a command too)
+        filt.textChanged.connect(lambda t: [table.setRowHidden(
+            r, t.lower() not in shown[n].lower() and t.lower() not in n.lower())
+            for r, n in enumerate(names)])
         lay.addWidget(table)
         row = QHBoxLayout()
-        reset = QPushButton("Reset all to defaults")
+        reset = QPushButton(tr("Reset all to defaults"))
         row.addWidget(reset)
         row.addStretch(1)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -3607,8 +3724,8 @@ class MainWindow(QMainWindow):
 
         def do_reset():
             self.settings.remove("shortcuts")
-            QMessageBox.information(dlg, "Keyboard shortcuts",
-                                    "Default shortcuts come back the next time you start the app.")
+            QMessageBox.information(dlg, tr("Keyboard shortcuts"),
+                                    tr("Default shortcuts come back the next time you start the app."))
             dlg.reject()
         reset.clicked.connect(do_reset)
         if not dlg.exec():
@@ -3618,13 +3735,13 @@ class MainWindow(QMainWindow):
             seq = ed.keySequence().toString()
             if seq:
                 if seq in seen:
-                    clashes.append(f"{seq}: {seen[seq]} / {name}")
+                    clashes.append(f"{seq}: {shown[seen[seq]]} / {shown[name]}")
                 seen[seq] = name
         if clashes:
             # a key on two commands runs neither: change nothing until that's sorted out
-            QMessageBox.warning(self, "Keyboard shortcuts",
-                                "Nothing was changed: these shortcuts are used twice:\n"
-                                + "\n".join(clashes))
+            QMessageBox.warning(self, tr("Keyboard shortcuts"),
+                                tr("Nothing was changed: these shortcuts are used twice:")
+                                + "\n" + "\n".join(clashes))
             return
         defaults = getattr(self, "_default_shortcuts", {})
         saved = {}
@@ -3680,7 +3797,7 @@ class MainWindow(QMainWindow):
         from PySide6.QtWidgets import QDoubleSpinBox
         from . import snapping
         dlg = QDialog(self)
-        dlg.setWindowTitle("Grid settings")
+        dlg.setWindowTitle(tr("Grid settings"))
         form = QFormLayout(dlg)
         value = QDoubleSpinBox()
         value.setDecimals(3)
@@ -3695,22 +3812,22 @@ class MainWindow(QMainWindow):
         rl.setContentsMargins(0, 0, 0, 0)
         rl.addWidget(value)
         rl.addWidget(unit)
-        form.addRow("Grid spacing (on paper)", row)
+        form.addRow(tr("Grid spacing (on paper)"), row)
         major = QSpinBox()
         major.setRange(1, 100)
         major.setValue(int(self.settings.value("grid_major", 4)))
-        form.addRow("Darker line every", major)
-        show = QCheckBox("Show grid")
+        form.addRow(tr("Darker line every"), major)
+        show = QCheckBox(tr("Show grid"))
         show.setChecked(self.a_grid.isChecked())
-        snap = QCheckBox("Snap to grid")
+        snap = QCheckBox(tr("Snap to grid"))
         snap.setChecked(self.a_snap_grid.isChecked())
-        objs = QCheckBox("Snap to objects")
+        objs = QCheckBox(tr("Snap to objects"))
         objs.setChecked(self.a_snap_objects.isChecked())
-        pagebox = QCheckBox("Snap to page")
+        pagebox = QCheckBox(tr("Snap to page"))
         pagebox.setChecked(self.a_snap_page.isChecked())
         for c in (show, snap, objs, pagebox):
             form.addRow("", c)
-        hint = QLabel("Hold Alt while drawing or dragging to place a point without snapping.")
+        hint = QLabel(tr("Hold Alt while drawing or dragging to place a point without snapping."))
         hint.setWordWrap(True)
         form.addRow(hint)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -3734,11 +3851,11 @@ class MainWindow(QMainWindow):
         if v is None:
             return
         dlg = QDialog(self)
-        dlg.setWindowTitle("Attachments")
+        dlg.setWindowTitle(tr("Attachments"))
         dlg.resize(640, 360)
         lay = QVBoxLayout(dlg)
         table = QTableWidget(0, 3)
-        table.setHorizontalHeaderLabels(["File", "Size", "Where"])
+        table.setHorizontalHeaderLabels([tr("File"), tr("Size"), tr("Where")])
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -3751,25 +3868,25 @@ class MainWindow(QMainWindow):
             for r, (pg, _key, name, size, _desc) in enumerate(rows):
                 table.setItem(r, 0, QTableWidgetItem(name))
                 table.setItem(r, 1, QTableWidgetItem(f"{size / 1024:,.0f} KB"))
-                table.setItem(r, 2, QTableWidgetItem(f"Page {pg + 1}" if pg is not None
-                                                     else "Document"))
+                table.setItem(r, 2, QTableWidgetItem(tr("Page {page}").format(page=pg + 1)
+                                                     if pg is not None else tr("Document")))
             empty.setVisible(not rows)
-        empty = QLabel("This PDF has no attached files. Use the Attach file tool to add one.")
+        empty = QLabel(tr("This PDF has no attached files. Use the Attach file tool to add one."))
         lay.addWidget(empty)
 
         def current():
             r = table.currentRow()
             return rows[r] if 0 <= r < len(rows) else None
         btns = QHBoxLayout()
-        for label, fn in (("Open", lambda c: v.open_attachment(c[0], c[1], c[2])),
-                          ("Save as...", lambda c: v.save_attachment(c[0], c[1], c[2])),
-                          ("Go to", lambda c: c[0] is not None and v.reveal(c[0], c[1])),
-                          ("Delete", lambda c: (v.delete_attachment(c[0], c[1]), fill()))):
+        for label, fn in ((tr("Open"), lambda c: v.open_attachment(c[0], c[1], c[2])),
+                          (tr("Save as..."), lambda c: v.save_attachment(c[0], c[1], c[2])),
+                          (tr("Go to"), lambda c: c[0] is not None and v.reveal(c[0], c[1])),
+                          (tr("Delete"), lambda c: (v.delete_attachment(c[0], c[1]), fill()))):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, f=fn: current() and f(current()))
             btns.addWidget(b)
         btns.addStretch(1)
-        close = QPushButton("Close")
+        close = QPushButton(tr("Close"))
         close.clicked.connect(dlg.accept)
         btns.addWidget(close)
         lay.addLayout(btns)
@@ -3789,8 +3906,8 @@ class MainWindow(QMainWindow):
         for i in range(self.tabs.count()):
             self.tabs.widget(i).apply_canvas()       # open canvas around the pages, or not
         self.statusBar().showMessage(
-            "CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan" if on else
-            "CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms", 4000)
+            tr("CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan") if on else
+            tr("CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms"), 4000)
 
     def preferences(self):
         from .preferences import PreferencesDialog
@@ -3804,8 +3921,8 @@ class MainWindow(QMainWindow):
             w.a_thin_lines.setChecked(on)
             for v in w._views():
                 v.redraw_pages()
-        self.statusBar().showMessage("Thin lines drawn at least a pixel wide" if on else
-                                     "Lines drawn at their true width", 3000)
+        self.statusBar().showMessage(tr("Thin lines drawn at least a pixel wide") if on else
+                                     tr("Lines drawn at their true width"), 3000)
 
     def _toggle_night(self):
         on = self.a_night.isChecked()
@@ -3815,55 +3932,55 @@ class MainWindow(QMainWindow):
             w.a_night.setChecked(on)
             for v in w._views():
                 v.redraw_pages()
-        self.statusBar().showMessage("Night mode on: pages drawn white on black (F12 turns it "
-                                     "off); printing and export are unchanged" if on else
-                                     "Night mode off", 4000)
+        self.statusBar().showMessage(tr("Night mode on: pages drawn white on black (F12 turns it "
+                                        "off); printing and export are unchanged") if on else
+                                     tr("Night mode off"), 4000)
 
     def _toggle_page_wheel(self):
         on = self.a_page_wheel.isChecked()
         DocumentView.page_wheel = on
         self.settings.setValue("page_wheel", "true" if on else "false")
         self.statusBar().showMessage(
-            "Scroll wheel: one page per step when the whole page fits (zoom with Fit page)" if on
-            else "Scroll wheel: smooth scrolling", 4000)
+            tr("Scroll wheel: one page per step when the whole page fits (zoom with Fit page)") if on
+            else tr("Scroll wheel: smooth scrolling"), 4000)
 
     # ---- ribbon --------------------------------------------------------------------------
     # short labels for ribbon buttons (the menus keep the full names)
     RIBBON_LABELS = {
-        "a_fit_width": "Fit width", "a_fit_page": "Fit page", "a_actual": "Actual size",
-        "a_cad_mouse": "CAD mouse", "a_grid": "Grid", "a_snap_grid": "Snap to grid",
-        "a_snap_objects": "Snap to objects", "a_snap_page": "Snap to page",
-        "a_grid_settings": "Grid settings",
-        "a_set_scale": "Set scale", "a_sheet_scales": "Sheet scales", "a_measure_summary": "Summary", "a_ocr": "OCR",
-        "a_rot_l": "Rotate left", "a_rot_r": "Rotate right", "a_lock": "Lock",
-        "a_unlock_all": "Unlock all", "a_prev_markup": "Previous", "a_next_markup": "Next",
-        "a_markups": "Markups list", "a_show_markups": "Show markups",
-        "a_cards": "Comment boxes", "a_delete_markups": "Delete comments",
-        "a_flatten_markups": "Flatten comments", "a_multi_sign": "Multi-place",
-        "a_setup_sig": "My signature", "a_setup_init": "My initials",
-        "a_apply_placeholders": "Apply all", "a_digisign": "Digital sign",
-        "a_timestamp": "Timestamp", "a_sig_details": "Signature details",
-        "a_clear_sigs": "Clear signatures", "a_search_redact": "Search and redact",
-        "a_apply_sel_redact": "Apply selected", "a_apply_redact": "Apply all",
-        "a_security": "Security", "a_remove_security": "Remove security", "a_unlock": "Unlock",
-        "a_sanitize": "Sanitize", "a_hl_fields": "Highlight fields", "a_move_up": "Move up",
-        "a_move_down": "Move down", "a_del_page": "Delete", "a_insert_pdf": "Insert file", "a_sheet_links": "Sheet callouts", "a_combine": "Combine files", "a_from_images": "From images", "a_new": "New PDF",
-        "a_insert_blank": "Blank page", "a_extract": "Extract", "a_header": "Header and footer",
-        "a_watermark": "Watermark", "a_background": "Background",
-        "a_remove_bg": "Remove background", "a_remove_wm": "Remove watermarks", "a_bookmarks": "Bookmarks", "a_attachments": "Attachments",
-        "a_compress": "Compress", "a_compare": "Compare", "a_flatten": "Flatten",
-        "a_sidebar": "Pages panel", "a_props": "Properties", "a_chest": "Tool chest", "a_night": "Night mode",
-        "a_split": "Split view", "a_labels": "Toolbar labels", "a_shortcuts": "Shortcuts",
-        "a_manual": "User manual", "a_palette": "Command palette", "a_ribbon": "Ribbon", "a_collapse": "Collapse", "a_group_names": "Group names", "a_menu_bar": "Menu bar",
-        "a_zoom_in": "Zoom in", "a_zoom_out": "Zoom out", "a_open": "Open", "a_save": "Save",
-        "a_print": "Print", "al_left": "Left", "al_hcenter": "Center", "al_right": "Right",
-        "al_top": "Top", "al_vmiddle": "Middle", "al_bottom": "Bottom",
-        "dist_h": "Horizontally", "dist_v": "Vertically", "z_front": "To front",
-        "z_forward": "Forward", "z_backward": "Backward", "z_back": "To back",
-        "tool_redact": "Redact", "tool_placeholder": "Placeholder",
-        "tool_erasecontent": "Erase content", "tool_capture": "Capture",
-        "tool_crop": "Crop", "a_uncrop": "Remove crop", "tool_link": "Links",
-        "tool_editobjects": "Edit objects", "tool_addtext": "Add text",
+        "a_fit_width": tr("Fit width"), "a_fit_page": tr("Fit page"), "a_actual": tr("Actual size"),
+        "a_cad_mouse": tr("CAD mouse"), "a_grid": tr("Grid"), "a_snap_grid": tr("Snap to grid"),
+        "a_snap_objects": tr("Snap to objects"), "a_snap_page": tr("Snap to page"),
+        "a_grid_settings": tr("Grid settings"),
+        "a_set_scale": tr("Set scale"), "a_sheet_scales": tr("Sheet scales"), "a_measure_summary": tr("Summary"), "a_ocr": tr("OCR"),
+        "a_rot_l": tr("Rotate left"), "a_rot_r": tr("Rotate right"), "a_lock": tr("Lock"),
+        "a_unlock_all": tr("Unlock all"), "a_prev_markup": tr("Previous"), "a_next_markup": tr("Next"),
+        "a_markups": tr("Markups list"), "a_show_markups": tr("Show markups"),
+        "a_cards": tr("Comment boxes"), "a_delete_markups": tr("Delete comments"),
+        "a_flatten_markups": tr("Flatten comments"), "a_multi_sign": tr("Multi-place"),
+        "a_setup_sig": tr("My signature"), "a_setup_init": tr("My initials"),
+        "a_apply_placeholders": tr("Apply all"), "a_digisign": tr("Digital sign"),
+        "a_timestamp": tr("Timestamp"), "a_sig_details": tr("Signature details"),
+        "a_clear_sigs": tr("Clear signatures"), "a_search_redact": tr("Search and redact"),
+        "a_apply_sel_redact": tr("Apply selected"), "a_apply_redact": tr("Apply all"),
+        "a_security": tr("Security"), "a_remove_security": tr("Remove security"), "a_unlock": tr("Unlock"),
+        "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"), "a_move_up": tr("Move up"),
+        "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files"), "a_from_images": tr("From images"), "a_new": tr("New PDF"),
+        "a_insert_blank": tr("Blank page"), "a_extract": tr("Extract"), "a_header": tr("Header and footer"),
+        "a_watermark": tr("Watermark"), "a_background": tr("Background"),
+        "a_remove_bg": tr("Remove background"), "a_remove_wm": tr("Remove watermarks"), "a_bookmarks": tr("Bookmarks"), "a_attachments": tr("Attachments"),
+        "a_compress": tr("Compress"), "a_compare": tr("Compare"), "a_flatten": tr("Flatten"),
+        "a_sidebar": tr("Pages panel"), "a_props": tr("Properties"), "a_chest": tr("Tool chest"), "a_night": tr("Night mode"),
+        "a_split": tr("Split view"), "a_labels": tr("Toolbar labels"), "a_shortcuts": tr("Shortcuts"),
+        "a_manual": tr("User manual"), "a_palette": tr("Command palette"), "a_ribbon": tr("Ribbon"), "a_collapse": tr("Collapse"), "a_group_names": tr("Group names"), "a_menu_bar": tr("Menu bar"),
+        "a_zoom_in": tr("Zoom in"), "a_zoom_out": tr("Zoom out"), "a_open": tr("Open"), "a_save": tr("Save"),
+        "a_print": tr("Print"), "al_left": tr("Left"), "al_hcenter": tr("Center"), "al_right": tr("Right"),
+        "al_top": tr("Top"), "al_vmiddle": tr("Middle"), "al_bottom": tr("Bottom"),
+        "dist_h": tr("Horizontally"), "dist_v": tr("Vertically"), "z_front": tr("To front"),
+        "z_forward": tr("Forward"), "z_backward": tr("Backward"), "z_back": tr("To back"),
+        "tool_redact": tr("Redact"), "tool_placeholder": tr("Placeholder"),
+        "tool_erasecontent": tr("Erase content"), "tool_capture": tr("Capture"),
+        "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "tool_link": tr("Links"),
+        "tool_editobjects": tr("Edit objects"), "tool_addtext": tr("Add text"),
     }
     RIBBON_ICONS = {
         "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square", "a_sheet_scales": "text-box-search-outline", "a_sheet_links": "link-variant-plus",
@@ -3915,87 +4032,87 @@ class MainWindow(QMainWindow):
         self.ribbon_align_box.activated.connect(
             lambda i: self._set_align_ref(self.ribbon_align_box.itemData(i)))
         r = self.ribbon = Ribbon()
-        r.add_tab("Home", [
-            ("Tools", "large", [t["select"], t["hand"], t["edittext"], t["addtext"], t["editobjects"],
+        r.add_tab(tr("Home"), [
+            (tr("Tools"), "large", [t["select"], t["hand"], t["edittext"], t["addtext"], t["editobjects"],
                                 t["capture"],
                                 t["erasecontent"]]),
-            ("Mark up text", "small", [t["highlight"], t["underline"], t["strikeout"],
+            (tr("Mark up text"), "small", [t["highlight"], t["underline"], t["strikeout"],
                                        t["comment"], t["note"], t["textbox"]]),
-            ("Insert", "large", [t["stamp"], t["image"], t["attach"], t["link"]]),
-            ("Zoom", "small", [self.a_fit_width, self.a_fit_page, self.a_actual,
+            (tr("Insert"), "large", [t["stamp"], t["image"], t["attach"], t["link"]]),
+            (tr("Zoom"), "small", [self.a_fit_width, self.a_fit_page, self.a_actual,
                                self.a_zoom_in, self.a_zoom_out, self.a_cad_mouse]),
-            ("Sign", "large", [t["signature"], t["initials"]]),
+            (tr("Sign"), "large", [t["signature"], t["initials"]]),
         ])
         # only markups here (PDF viewers can edit those); the Image tool and Erase content change
         # the page itself and live on the Home tab with Add text and Edit objects
-        r.add_tab("Markup", [
-            ("Text", "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
+        r.add_tab(tr("Markup"), [
+            (tr("Text"), "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
                                t["note"], t["textbox"]]),
-            ("Callout & stamps", "large", [t["callout"], t["stamp"], t["attach"]]),
-            ("Shapes", "small", [t["rect"], t["ellipse"], t["cloud"], t["polygon"], t["line"],
+            (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"]]),
+            (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["cloud"], t["polygon"], t["line"],
                                  t["arrow"], t["polyline"], t["ink"]]),
-            ("Erase", "large", [t["eraser"]]),
-            ("Styles", "large", [self.a_props, self.a_chest]),
+            (tr("Erase"), "large", [t["eraser"]]),
+            (tr("Styles"), "large", [self.a_props, self.a_chest]),
         ])
         # snapping is offered where it's used: Measure, Arrange (lining markups up) and View
         snap_group = [self.a_snap_grid, self.a_snap_objects, self.a_snap_page, self.a_grid,
                       self.a_grid_settings]
-        r.add_tab("Measure", [
-            ("Measure", "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
-            ("More", "small", [t["m_angle"], t["m_radius"], t["m_perimeter"], t["m_volume"]]),
-            ("Scale", "small", [t["m_calibrate"], self.a_set_scale, self.a_sheet_scales,
+        r.add_tab(tr("Measure"), [
+            (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
+            (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_perimeter"], t["m_volume"]]),
+            (tr("Scale"), "small", [t["m_calibrate"], self.a_set_scale, self.a_sheet_scales,
                                 self.a_measure_summary]),
-            ("Grid & snap", "small", snap_group),
+            (tr("Grid & snap"), "small", snap_group),
         ])
-        r.add_tab("Arrange", [
-            ("Align", "small", [A_["al_left"], A_["al_hcenter"], A_["al_right"], A_["al_top"],
+        r.add_tab(tr("Arrange"), [
+            (tr("Align"), "small", [A_["al_left"], A_["al_hcenter"], A_["al_right"], A_["al_top"],
                                 A_["al_vmiddle"], A_["al_bottom"]]),
-            ("Align to", "small", [self.ribbon_align_box]),
-            ("Distribute", "small", [A_["dist_h"], A_["dist_v"]]),
-            ("Order", "small", [A_["z_front"], A_["z_forward"], A_["z_backward"], A_["z_back"]]),
-            ("Lock", "large", [self.a_lock, self.a_unlock_all]),
-            ("Snap", "small", snap_group),
+            (tr("Align to"), "small", [self.ribbon_align_box]),
+            (tr("Distribute"), "small", [A_["dist_h"], A_["dist_v"]]),
+            (tr("Order"), "small", [A_["z_front"], A_["z_forward"], A_["z_backward"], A_["z_back"]]),
+            (tr("Lock"), "large", [self.a_lock, self.a_unlock_all]),
+            (tr("Snap"), "small", snap_group),
         ])
-        r.add_tab("Review", [
-            ("Add", "large", [t["comment"], t["note"]]),
-            ("Navigate", "large", [self.a_prev_markup, self.a_next_markup, self.a_markups]),
-            ("Show", "small", [self.a_show_markups, self.a_cards]),
-            ("Manage", "large", [self.a_delete_markups, self.a_flatten_markups]),
+        r.add_tab(tr("Review"), [
+            (tr("Add"), "large", [t["comment"], t["note"]]),
+            (tr("Navigate"), "large", [self.a_prev_markup, self.a_next_markup, self.a_markups]),
+            (tr("Show"), "small", [self.a_show_markups, self.a_cards]),
+            (tr("Manage"), "large", [self.a_delete_markups, self.a_flatten_markups]),
         ])
-        r.add_tab("Protect", [
-            ("Sign", "large", [t["signature"], t["initials"], t["date"], self.a_multi_sign]),
-            ("Placeholders", "large", [t["placeholder"], self.a_apply_placeholders]),
-            ("Digital signatures", "small", [self.a_digisign, self.a_timestamp,
+        r.add_tab(tr("Protect"), [
+            (tr("Sign"), "large", [t["signature"], t["initials"], t["date"], self.a_multi_sign]),
+            (tr("Placeholders"), "large", [t["placeholder"], self.a_apply_placeholders]),
+            (tr("Digital signatures"), "small", [self.a_digisign, self.a_timestamp,
                                              self.a_sig_details, self.a_clear_sigs]),
-            ("Redact", "small", [t["redact"], self.a_search_redact, self.a_apply_sel_redact,
+            (tr("Redact"), "small", [t["redact"], self.a_search_redact, self.a_apply_sel_redact,
                                  self.a_apply_redact]),
-            ("Security", "large", [self.a_security, self.a_remove_security, self.a_unlock,
+            (tr("Security"), "large", [self.a_security, self.a_remove_security, self.a_unlock,
                                    self.a_sanitize]),
         ])
-        r.add_tab("Forms", [
-            ("Add fields", "large", [t[k] for k, _l, _t in FORM_TOOLS]),
-            ("Show", "large", [self.a_hl_fields]),
+        r.add_tab(tr("Forms"), [
+            (tr("Add fields"), "large", [t[k] for k, _l, _t in FORM_TOOLS]),
+            (tr("Show"), "large", [self.a_hl_fields]),
         ])
-        r.add_tab("Pages", [
-            ("Rotate", "large", [self.a_rot_l, self.a_rot_r]),
-            ("Crop", "large", [t["crop"], self.a_uncrop]),
-            ("Organize", "small", [self.a_move_up, self.a_move_down, self.a_del_page,
+        r.add_tab(tr("Pages"), [
+            (tr("Rotate"), "large", [self.a_rot_l, self.a_rot_r]),
+            (tr("Crop"), "large", [t["crop"], self.a_uncrop]),
+            (tr("Organize"), "small", [self.a_move_up, self.a_move_down, self.a_del_page,
                                    self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
-            ("Create", "large", [self.a_new, self.a_combine, self.a_from_images]),
-            ("Document", "small", [self.a_header, self.a_watermark, self.a_background,
+            (tr("Create"), "large", [self.a_new, self.a_combine, self.a_from_images]),
+            (tr("Document"), "small", [self.a_header, self.a_watermark, self.a_background,
                                    self.a_bookmarks, self.a_sheet_links, self.a_attachments,
                                    self.a_compress, self.a_compare]),
-            ("Convert", "large", [self.a_ocr, self.a_flatten]),
+            (tr("Convert"), "large", [self.a_ocr, self.a_flatten]),
         ])
-        r.add_tab("View", [
-            ("Panels", "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
+        r.add_tab(tr("View"), [
+            (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                  self.a_split]),
-            ("Display", "small", [self.a_hl_fields, self.a_show_markups, self.a_cad_mouse,
+            (tr("Display"), "small", [self.a_hl_fields, self.a_show_markups, self.a_cad_mouse,
                                   self.a_night]),
-            ("Grid & snap", "small", snap_group),
-            ("Ribbon", "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
+            (tr("Grid & snap"), "small", snap_group),
+            (tr("Ribbon"), "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
                                  self.a_menu_bar]),
-            ("Help", "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
+            (tr("Help"), "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
         ])
         r.collapsedChanged.connect(self._ribbon_collapsed)
         # quick-access icons in the tab row (left), find box and menu button (right), like
@@ -4013,7 +4130,7 @@ class MainWindow(QMainWindow):
         rh.setSpacing(2)
         self.menu_btn = QToolButton()
         self.menu_btn.setText("\u2630")
-        self.menu_btn.setToolTip("Menus (shown when the menu bar is hidden: View > Show menu bar)")
+        self.menu_btn.setToolTip(tr("Menus (shown when the menu bar is hidden: View > Show menu bar)"))
         self.menu_btn.setPopupMode(QToolButton.InstantPopup)
         self.menu_btn.setAutoRaise(True)
         menu = QMenu(self.menu_btn)
@@ -4033,7 +4150,7 @@ class MainWindow(QMainWindow):
             if top.menu() is not None:
                 walk(top.menu())
         self.addToolBarBreak()
-        rt = self.ribbon_tb = QToolBar("Ribbon")
+        rt = self.ribbon_tb = QToolBar(tr("Ribbon"))
         rt.setObjectName("ribbon")
         rt.setMovable(False)
         rt.toggleViewAction().setVisible(False)
@@ -4132,8 +4249,8 @@ class MainWindow(QMainWindow):
             v.align(how, self._align_ref())
 
     def _set_author(self):
-        name, ok = QInputDialog.getText(self, "Author name",
-                                        "Name recorded on your markups, stamps and comments:",
+        name, ok = QInputDialog.getText(self, tr("Author name"),
+                                        tr("Name recorded on your markups, stamps and comments:"),
                                         text=annotations.author())
         if ok:
             annotations.set_author(name.strip())
@@ -4162,26 +4279,28 @@ class MainWindow(QMainWindow):
         from PySide6.QtCore import QUrl
         from PySide6.QtGui import QDesktopServices
         QDesktopServices.openUrl(QUrl(self.FEEDBACK_URL))
-        self.statusBar().showMessage("Opened the feedback page in your browser. Please don't "
-                                     "attach confidential PDFs.", 6000)
+        self.statusBar().showMessage(tr("Opened the feedback page in your browser. Please don't "
+                                        "attach confidential PDFs."), 6000)
 
     def about(self):
         from . import branding, paths
         dlg = QDialog(self)
-        dlg.setWindowTitle("About " + APP_NAME)
+        dlg.setWindowTitle(tr("About {app}").format(app=APP_NAME))
         lay = QVBoxLayout(dlg)
         logo = QLabel()
         logo.setPixmap(branding.logo_pixmap(110))
         logo.setStyleSheet("background: #f7f9fa; border-radius: 6px; padding: 6px;")
         lay.addWidget(logo)
-        text = QLabel(
-            f"Version {__version__}{' (portable)' if paths.is_portable() else ''}. A free, fast PDF reader and editor.<br><br>"
-            f"Built on PyMuPDF {pymupdf.VersionBind} (MuPDF) and Qt (PySide6).<br>"
+        version = tr("{title} (portable)").format(title=__version__) if paths.is_portable() \
+            else __version__
+        text = QLabel(tr(
+            "Version {version}. A free, fast PDF reader and editor.<br><br>"
+            "Built on PyMuPDF {pymupdf} (MuPDF) and Qt (PySide6).<br>"
             "Free software under the GNU Affero General Public License 3.0.<br>"
             "Source code and downloads: <a href='https://github.com/keithlyding/KanzonasPDF'>"
             "github.com/keithlyding/KanzonasPDF</a><br><br>"
             "If KanzonasPDF saves you time, a star on its GitHub page helps other people find "
-            "it.")
+            "it.").format(version=version, pymupdf=pymupdf.VersionBind))
         text.setOpenExternalLinks(True)
         text.setWordWrap(True)
         lay.addWidget(text)
@@ -4208,7 +4327,8 @@ class MainWindow(QMainWindow):
             from .updates import UpdateChecker
             self._upd = UpdateChecker(self.settings, self)
             self._upd.found.connect(self._update_found)
-            self._upd.result.connect(lambda t: QMessageBox.information(self, "Check for updates", t))
+            self._upd.result.connect(
+                lambda t: QMessageBox.information(self, tr("Check for updates"), t))
         return self._upd
 
     def start_update_check(self):
@@ -4216,7 +4336,7 @@ class MainWindow(QMainWindow):
         self._updater().check_if_due()
 
     def check_updates(self):
-        self.statusBar().showMessage("Checking for updates...", 4000)
+        self.statusBar().showMessage(tr("Checking for updates..."), 4000)
         self._updater().check(manual=True)
 
     def _update_found(self, version, url):
@@ -4224,16 +4344,17 @@ class MainWindow(QMainWindow):
         from PySide6.QtCore import QUrl
         if self._upd.manual:
             # asked for: answer in a box, like the "up to date" answer
-            box = QMessageBox(QMessageBox.Information, "Check for updates",
-                              f"KanzonasPDF {version} is available (you have {__version__}).\n\n"
-                              + ("Update now downloads it, closes KanzonasPDF, replaces the "
-                                 "program files in this folder (your data folder is kept) and "
-                                 "starts it again.\n\n" if self._self_update_url() else "")
-                              + "Download opens the release page in your browser.", parent=self)
-            upd = (box.addButton("Update now", QMessageBox.AcceptRole)
+            box = QMessageBox(QMessageBox.Information, tr("Check for updates"),
+                              tr("KanzonasPDF {version} is available (you have {current}).").format(
+                                  version=version, current=__version__) + "\n\n"
+                              + (tr("Update now downloads it, closes KanzonasPDF, replaces the "
+                                    "program files in this folder (your data folder is kept) and "
+                                    "starts it again.") + "\n\n" if self._self_update_url() else "")
+                              + tr("Download opens the release page in your browser."), parent=self)
+            upd = (box.addButton(tr("Update now"), QMessageBox.AcceptRole)
                    if self._self_update_url() else None)
-            get = box.addButton("Download", QMessageBox.AcceptRole)
-            box.addButton("Later", QMessageBox.RejectRole)
+            get = box.addButton(tr("Download"), QMessageBox.AcceptRole)
+            box.addButton(tr("Later"), QMessageBox.RejectRole)
             box.exec()
             if upd is not None and box.clickedButton() is upd:
                 self.update_portable()
@@ -4247,15 +4368,16 @@ class MainWindow(QMainWindow):
         bar = QWidget()
         h = QHBoxLayout(bar)
         h.setContentsMargins(0, 0, 0, 0)
-        h.addWidget(QLabel(f"<b>KanzonasPDF {version} is available</b> (you have {__version__})."))
-        get = QPushButton("Download")
-        get.setToolTip("Open the release page to download the installer or portable zip")
-        upd = QPushButton("Update now") if self._self_update_url() else None
+        h.addWidget(QLabel(tr("<b>KanzonasPDF {version} is available</b> (you have "
+                              "{current}).").format(version=version, current=__version__)))
+        get = QPushButton(tr("Download"))
+        get.setToolTip(tr("Open the release page to download the installer or portable zip"))
+        upd = QPushButton(tr("Update now")) if self._self_update_url() else None
         if upd is not None:
-            upd.setToolTip("Download the new portable version and replace this one in place "
-                           "(your data folder is kept)")
-        skip = QPushButton("Skip this version")
-        close = QPushButton("Later")
+            upd.setToolTip(tr("Download the new portable version and replace this one in place "
+                              "(your data folder is kept)"))
+        skip = QPushButton(tr("Skip this version"))
+        close = QPushButton(tr("Later"))
 
         def done():
             self.statusBar().removeWidget(bar)
@@ -4293,8 +4415,8 @@ class MainWindow(QMainWindow):
         app_dir = paths.app_dir()
         dl = updates.PortableUpdater(url, app_dir, self,
                                      expected_sha256=updates.asset_digest(self._upd.release))
-        prog = QProgressDialog("Downloading the new KanzonasPDF...", "Cancel", 0, 0, self)
-        prog.setWindowTitle("Update")
+        prog = QProgressDialog(tr("Downloading the new KanzonasPDF..."), tr("Cancel"), 0, 0, self)
+        prog.setWindowTitle(tr("Update"))
         prog.setMinimumDuration(0)
         prog.canceled.connect(dl.cancel)
 
@@ -4305,9 +4427,9 @@ class MainWindow(QMainWindow):
 
         def failed(msg):
             prog.close()
-            QMessageBox.warning(self, "Update", msg + "\n\nYou can still download "
-                                "KanzonasPDF-portable.zip from the release page and unzip it "
-                                "over this folder.")
+            QMessageBox.warning(self, tr("Update"), msg + "\n\n" + tr(
+                "You can still download KanzonasPDF-portable.zip from the release page and unzip "
+                "it over this folder."))
 
         def ready(new):
             import subprocess
@@ -4370,10 +4492,10 @@ class MainWindow(QMainWindow):
         if not self.lock_btn.isChecked():
             return True
         if QMessageBox.question(
-                self, "Page order locked",
-                "The page order is locked, so pages can't be moved, added or removed.\n\n"
-                "Unlock it and continue? (Lock it again with the lock button above the page "
-                "list.)") != QMessageBox.Yes:
+                self, tr("Page order locked"),
+                tr("The page order is locked, so pages can't be moved, added or removed.\n\n"
+                   "Unlock it and continue? (Lock it again with the lock button above the page "
+                   "list.)")) != QMessageBox.Yes:
             return False
         self.lock_btn.setChecked(False)
         return True
@@ -4381,13 +4503,13 @@ class MainWindow(QMainWindow):
     def _set_pages_locked(self, locked):
         self.thumbs.setDragDropMode(QAbstractItemView.NoDragDrop if locked
                                     else QAbstractItemView.InternalMove)
-        self.lock_btn.setText("\U0001F512 Locked" if locked else "\U0001F513 Unlocked")
-        self.lock_btn.setToolTip("Page order locked: pages can't be moved, added or removed "
-                                 "(click to unlock)" if locked else
-                                 "Unlocked: drag pages to reorder them; move, insert, delete, "
-                                 "cut, paste and duplicate pages (click to lock)")
-        self.thumbs.setToolTip("Unlock (button above) to drag pages" if locked
-                               else "Drag pages to reorder them")
+        self.lock_btn.setText(tr("\U0001F512 Locked") if locked else tr("\U0001F513 Unlocked"))
+        self.lock_btn.setToolTip(tr("Page order locked: pages can't be moved, added or removed "
+                                    "(click to unlock)") if locked else
+                                 tr("Unlocked: drag pages to reorder them; move, insert, delete, "
+                                    "cut, paste and duplicate pages (click to lock)"))
+        self.thumbs.setToolTip(tr("Unlock (button above) to drag pages") if locked
+                               else tr("Drag pages to reorder them"))
         self.settings.setValue("pages_locked", "true" if locked else "false")
 
     @staticmethod
@@ -4434,8 +4556,8 @@ class MainWindow(QMainWindow):
             return
         if op == "dup" and not self.thumbs.hasFocus():
             n = v.duplicate_selected()
-            self.statusBar().showMessage(f"Duplicated {n} markup(s)" if n else
-                                         "Select markups (or pages in the page list) first", 3000)
+            self.statusBar().showMessage(tr("Duplicated {n} markup(s)").format(n=n) if n else
+                                         tr("Select markups (or pages in the page list) first"), 3000)
             return
         if self.thumbs.hasFocus():
             if op == "all":
@@ -4445,20 +4567,22 @@ class MainWindow(QMainWindow):
             return
         if op == "copy":
             what = v.copy()
-            self.statusBar().showMessage({"text": "Text copied", "markups": "Markups copied"}.get(
-                what, "Select text or markups first"), 3000)
+            self.statusBar().showMessage({"text": tr("Text copied"),
+                                          "markups": tr("Markups copied")}.get(
+                what, tr("Select text or markups first")), 3000)
         elif op == "cut":
             what = v.cut()
-            self.statusBar().showMessage({"text": "Text cut", "markups": "Markups cut"}.get(
-                what, "Select text or markups first"), 3000)
+            self.statusBar().showMessage({"text": tr("Text cut"), "markups": tr("Markups cut")}.get(
+                what, tr("Select text or markups first")), 3000)
         elif op == "paste":
             what = v.paste()
             if what is None:
-                self.statusBar().showMessage("Nothing to paste", 3000)
+                self.statusBar().showMessage(tr("Nothing to paste"), 3000)
         elif op == "all":
             if self.tool != "select":
                 self.set_tool("select")
-            self.statusBar().showMessage(f"Selected {v.select_all_text()} characters", 3000)
+            self.statusBar().showMessage(
+                tr("Selected {n} characters").format(n=v.select_all_text()), 3000)
 
     def _selected_pages(self):
         rows = sorted(self.thumbs.row(i) for i in self.thumbs.selectedItems())
@@ -4472,24 +4596,24 @@ class MainWindow(QMainWindow):
             return
         if op != "copy" and not self._pages_unlocked():
             return
-        if op in ("copy", "cut", "dup") and not v.require_permission(pymupdf.PDF_PERM_COPY, "Copying pages"):
+        if op in ("copy", "cut", "dup") and not v.require_permission(pymupdf.PDF_PERM_COPY, tr("Copying pages")):
             return
         pages = self._selected_pages()
         if op in ("copy", "cut"):
             clip.put("pages", v.pages_bytes(pages))
             if op == "cut" and v.delete_pages(pages):
-                self.statusBar().showMessage(f"Cut {len(pages)} page(s)", 3000)
+                self.statusBar().showMessage(tr("Cut {n} page(s)").format(n=len(pages)), 3000)
             else:
-                self.statusBar().showMessage(f"Copied {len(pages)} page(s)", 3000)
+                self.statusBar().showMessage(tr("Copied {n} page(s)").format(n=len(pages)), 3000)
         elif op == "paste":
             kind, data = clip.get()
             if kind != "pages":
-                self.statusBar().showMessage("Copy some pages first (Pages > Copy pages)", 3000)
+                self.statusBar().showMessage(tr("Copy some pages first (Pages > Copy pages)"), 3000)
                 return
             v.paste_pages(data, max(pages) + 1)
         elif op == "dup":
             v.duplicate_pages(pages)
-            self.statusBar().showMessage(f"Duplicated {len(pages)} page(s)", 3000)
+            self.statusBar().showMessage(tr("Duplicated {n} page(s)").format(n=len(pages)), 3000)
 
     _thumb_nav = False                  # going to a page clicked in the page list
 
