@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QDia
                                QPushButton, QRadioButton, QSpinBox, QToolButton, QVBoxLayout,
                                QWidget)
 
+from .i18n import tr
+
 PREVIEW_W, PREVIEW_H = 380, 470
 BAND_BYTES = 48 * 1024 * 1024      # largest piece of a page rendered at once when printing
 
@@ -42,7 +44,7 @@ class PrintDialog(QDialog):
     def __init__(self, parent, view):
         super().__init__(parent)
         self.view = view
-        self.setWindowTitle("Print")
+        self.setWindowTitle(tr("Print"))
         self.printer = QPrinter(QPrinter.HighResolution)
         self.printer.setFullPage(True)          # we place each page on the sheet ourselves
         self.printer.setDocName(view.path.rsplit("\\", 1)[-1].rsplit("/", 1)[-1])
@@ -58,25 +60,26 @@ class PrintDialog(QDialog):
         if default in names:
             self.printer_box.setCurrentText(default)
         if not names:
-            self.printer_box.addItem("(no printer installed)")
+            self.printer_box.addItem(tr("(no printer installed)"))
             self.printer_box.setEnabled(False)
-        setup = QPushButton("Page setup...")
-        setup.setToolTip("Paper size and margins for this printer")
+        setup = QPushButton(tr("Page setup..."))
+        setup.setToolTip(tr("Paper size and margins for this printer"))
         setup.clicked.connect(self._page_setup)
         row = QHBoxLayout()
         row.addWidget(self.printer_box, 1)
         row.addWidget(setup)
-        left.addRow("Printer", self._wrap(row))
+        left.addRow(tr("Printer"), self._wrap(row))
         self.copies = QSpinBox()
         self.copies.setRange(1, 999)
-        left.addRow("Copies", self.copies)
+        left.addRow(tr("Copies"), self.copies)
 
         n = view.page_count()
-        self.all_pages = QRadioButton(f"All ({n} page{'s' if n != 1 else ''})")
-        self.current = QRadioButton(f"Current page ({view.current_page() + 1})")
-        self.some = QRadioButton("Pages")
+        self.all_pages = QRadioButton(tr("All ({n} pages)").format(n=n) if n != 1 else
+                                      tr("All (1 page)"))
+        self.current = QRadioButton(tr("Current page ({n})").format(n=view.current_page() + 1))
+        self.some = QRadioButton(tr("Pages"))
         self.range_text = QLineEdit()
-        self.range_text.setPlaceholderText("e.g. 1-3, 5")
+        self.range_text.setPlaceholderText(tr("e.g. 1-3, 5"))
         self.all_pages.setChecked(True)
         group = QButtonGroup(self)
         pages = QVBoxLayout()
@@ -88,16 +91,16 @@ class PrintDialog(QDialog):
         some.addWidget(self.some)
         some.addWidget(self.range_text, 1)
         pages.addLayout(some)
-        left.addRow("Pages", self._wrap(pages))
+        left.addRow(tr("Pages"), self._wrap(pages))
 
         self.orientation = QComboBox()
-        self.orientation.addItems(["Auto (turn each sheet to fit the page)", "Portrait",
-                                   "Landscape"])
-        left.addRow("Orientation", self.orientation)
+        self.orientation.addItems([tr("Auto (turn each sheet to fit the page)"), tr("Portrait"),
+                                   tr("Landscape")])
+        left.addRow(tr("Orientation"), self.orientation)
         self.size = QComboBox()
-        self.size.addItems(["Fit to paper", "Actual size (shrink pages that are too big)"])
-        left.addRow("Size", self.size)
-        self.markups = QCheckBox("Print markups and form fields")
+        self.size.addItems([tr("Fit to paper"), tr("Actual size (shrink pages that are too big)")])
+        left.addRow(tr("Size"), self.size)
+        self.markups = QCheckBox(tr("Print markups and form fields"))
         self.markups.setChecked(True)
         left.addRow("", self.markups)
 
@@ -126,7 +129,7 @@ class PrintDialog(QDialog):
         body.addLayout(left, 1)
         body.addLayout(right)
         self.buttons = QDialogButtonBox(QDialogButtonBox.Cancel)
-        self.print_b = self.buttons.addButton("Print", QDialogButtonBox.AcceptRole)
+        self.print_b = self.buttons.addButton(tr("Print"), QDialogButtonBox.AcceptRole)
         self.print_b.setDefault(True)
         self.print_b.setEnabled(bool(names))
         self.buttons.accepted.connect(self._accept)
@@ -223,7 +226,7 @@ class PrintDialog(QDialog):
         canvas.fill(QColor("#8a8a8a"))
         if not pages:
             self.picture.setPixmap(canvas)
-            self.sheet_label.setText("No pages" if pages == [] else "Check the page numbers")
+            self.sheet_label.setText(tr("No pages") if pages == [] else tr("Check the page numbers"))
             self.prev_b.setEnabled(False)
             self.next_b.setEnabled(False)
             return
@@ -246,7 +249,8 @@ class PrintDialog(QDialog):
         finally:
             p.end()
         self.picture.setPixmap(canvas)
-        self.sheet_label.setText(f"Sheet {self._shown + 1} of {len(pages)} (page {i + 1})")
+        self.sheet_label.setText(tr("Sheet {n} of {total} (page {page})").format(
+            n=self._shown + 1, total=len(pages), page=i + 1))
         self.prev_b.setEnabled(self._shown > 0)
         self.next_b.setEnabled(self._shown < len(pages) - 1)
 
@@ -254,8 +258,9 @@ class PrintDialog(QDialog):
     def _accept(self):
         pages = self.pages()
         if not pages:
-            QMessageBox.information(self, "Print", "Type pages like 1-3, 5 (this document has "
-                                    f"{self.view.page_count()} pages).")
+            QMessageBox.information(self, tr("Print"), tr("Type pages like 1-3, 5 (this document "
+                                                          "has {n} pages).").format(
+                                        n=self.view.page_count()))
             return
         self._apply_printer()
         self.printer.setCopyCount(self.copies.value())
@@ -281,7 +286,7 @@ class PrintDialog(QDialog):
             printer.setPageOrientation(orient)              # each sheet turned as previewed
             if first:
                 if not painter.begin(printer):
-                    QMessageBox.critical(self, "Print", "Could not start printing.")
+                    QMessageBox.critical(self, tr("Print"), tr("Could not start printing."))
                     return False
                 first = False
             else:

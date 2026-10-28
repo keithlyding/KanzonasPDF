@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget,
                                QDialogButtonBox, QLineEdit, QListWidget, QListWidgetItem,
                                QSpinBox, QDoubleSpinBox, QMessageBox)
 
+from .i18n import tr
+
 
 def _plain(text):
     return text.replace("&&", "\0").replace("&", "").replace("\0", "&")
@@ -33,6 +35,10 @@ class _Sections(QWidget):
     def addTab(self, widget, title):
         self.stack.addWidget(widget)
         self.list.addItem(title)
+        # wide enough for the longest name (longer in some languages), not squeezed by the page
+        need = min(240, self.list.sizeHintForColumn(0) + 2 * self.list.frameWidth() + 8)
+        self.list.setMinimumWidth(need)
+        self.list.setMaximumWidth(max(190, need))
         if self.list.count() == 1:
             self.list.setCurrentRow(0)
 
@@ -50,7 +56,7 @@ class PreferencesDialog(QDialog):
     def __init__(self, win):
         super().__init__(win)
         self.win = win
-        self.setWindowTitle("Preferences")
+        self.setWindowTitle(tr("Preferences"))
         self.resize(760, 560)
         self._boxes = []            # (QCheckBox, QAction)
         lay = QVBoxLayout(self)
@@ -59,38 +65,39 @@ class PreferencesDialog(QDialog):
         lay.addWidget(tabs)
 
         # General
-        page, form = self._tab(tabs, "General")
+        page, form = self._tab(tabs, tr("General"))
         self.theme = QComboBox()
-        for key, label in (("system", "Match Windows"), ("light", "Light"), ("dark", "Dark")):
+        for key, label in (("system", tr("Match Windows")), ("light", tr("Light")),
+                           ("dark", tr("Dark"))):
             self.theme.addItem(label, key)
         current = next((k for k, a in win.theme_actions.items() if a.isChecked()), "system")
         self.theme.setCurrentIndex(max(0, self.theme.findData(current)))
-        form.addRow("Theme:", self.theme)
+        form.addRow(tr("Theme:"), self.theme)
         from . import i18n
         self.language = QComboBox()
-        self.language.addItem("Automatic (the language of Windows)", "auto")
+        self.language.addItem(tr("Automatic (the language of Windows)"), "auto")
         for code, name in i18n.LANGUAGES.items():
             self.language.addItem(name, code)
         self.language.setCurrentIndex(max(0, self.language.findData(
             str(win.settings.value("language", "auto")))))
-        form.addRow("Language:", self.language)
+        form.addRow(tr("Language:"), self.language)
         for a in (win.a_ribbon, win.a_group_names, win.a_menu_bar, win.a_labels,
                   win.a_auto_updates):
             self._box(form, a)
         from . import paths
-        where = ("the data folder next to KanzonasPDF.exe (portable)" if paths.is_portable()
-                 else "your Windows user profile")
-        note = QLabel("Settings are saved in " + where + ".")
+        note = QLabel(tr("Settings are saved in the data folder next to KanzonasPDF.exe "
+                         "(portable).") if paths.is_portable() else
+                      tr("Settings are saved in your Windows user profile."))
         note.setWordWrap(True)
         form.addRow(note)
 
         # You: name on markups, signature and initials
         from . import annotations
-        page, form = self._tab(tabs, "You")
+        page, form = self._tab(tabs, tr("You"))
         self.author = QLineEdit(annotations.author())
-        self.author.setToolTip("Recorded on new markups and shown on stamps (Edit > Author name "
-                               "for markups)")
-        form.addRow("Author name for markups:", self.author)
+        self.author.setToolTip(tr("Recorded on new markups and shown on stamps (Edit > Author "
+                                  "name for markups)"))
+        form.addRow(tr("Author name for markups:"), self.author)
         self._sig_rows = {}
         for kind, action in (("signature", win.a_setup_sig), ("initials", win.a_setup_init)):
             row = QHBoxLayout()
@@ -99,20 +106,21 @@ class PreferencesDialog(QDialog):
             btn.clicked.connect(lambda _=False, k=kind: self._setup_sig(k))
             row.addWidget(status, 1)
             row.addWidget(btn)
-            form.addRow("Your " + kind + ":", row)
+            form.addRow(tr("Your signature:") if kind == "signature" else tr("Your initials:"), row)
             self._sig_rows[kind] = status
         self._sig_status()
         from .document_view import DocumentView
         self.sig_size = {}
-        for kind, label in (("signature", "Signature width:"), ("initials", "Initials width:")):
+        for kind, label in (("signature", tr("Signature width:")),
+                            ("initials", tr("Initials width:"))):
             sb = QDoubleSpinBox()
             sb.setRange(0.2, 8.0)
             sb.setSingleStep(0.25)
             sb.setDecimals(2)
             sb.setSuffix(" in")
             sb.setValue(DocumentView.SIG_WIDTH[kind] / 72.0)
-            sb.setToolTip("How wide it's placed when you click. You can also drag a box when "
-                          "placing it to make it exactly that wide.")
+            sb.setToolTip(tr("How wide it's placed when you click. You can also drag a box when "
+                             "placing it to make it exactly that wide."))
             form.addRow(label, sb)
             self.sig_size[kind] = sb
         from . import signatures as sigmod
@@ -121,21 +129,21 @@ class PreferencesDialog(QDialog):
         for fmt in sigmod.DATE_FORMATS:
             self.datefmt.addItem(_date.today().strftime(fmt), fmt)
         self.datefmt.setCurrentIndex(max(0, self.datefmt.findData(sigmod.date_format())))
-        self.datefmt.setToolTip("How the Date tool (Ctrl+;) writes today's date")
-        form.addRow("Date format:", self.datefmt)
-        pin = QPushButton("Change PIN...")
-        pin.setToolTip("Set, change or remove the PIN that protects your saved signature and "
-                       "initials")
+        self.datefmt.setToolTip(tr("How the Date tool (Ctrl+;) writes today's date"))
+        form.addRow(tr("Date format:"), self.datefmt)
+        pin = QPushButton(tr("Change PIN..."))
+        pin.setToolTip(tr("Set, change or remove the PIN that protects your saved signature "
+                          "and initials"))
         pin.clicked.connect(self._change_pin)
-        form.addRow("Signature PIN:", pin)
-        hint = QLabel("Your signature and initials are kept on this computer only (in the data "
-                      "folder in portable mode), protected by your PIN if you set one.")
+        form.addRow(tr("Signature PIN:"), pin)
+        hint = QLabel(tr("Your signature and initials are kept on this computer only (in the "
+                         "data folder in portable mode), protected by your PIN if you set one."))
         hint.setWordWrap(True)
         form.addRow(hint)
 
         # Markup styles: each tool's default colors and formats
         page = QWidget()
-        tabs.addTab(page, "Markup styles")
+        tabs.addTab(page, tr("Markup styles"))
         row = QHBoxLayout(page)
         self.kinds = QListWidget()
         self.kinds.setMaximumWidth(170)
@@ -157,44 +165,46 @@ class PreferencesDialog(QDialog):
 
         # Opening documents
         from .document_view import DocumentView
-        page, form = self._tab(tabs, "Start-up and opening")
-        self.restore = QCheckBox("Reopen the documents that were open when I closed KanzonasPDF")
+        page, form = self._tab(tabs, tr("Start-up and opening"))
+        self.restore = QCheckBox(tr("Reopen the documents that were open when I closed KanzonasPDF"))
         self.restore.setChecked(win.settings.value("restore_session", "false") == "true")
         form.addRow(self.restore)
-        self.confirm_exit = QCheckBox("Ask before closing KanzonasPDF with several documents open")
-        self.confirm_exit.setToolTip("With unsaved changes in any of them, KanzonasPDF always asks.")
+        self.confirm_exit = QCheckBox(tr("Ask before closing KanzonasPDF with several documents open"))
+        self.confirm_exit.setToolTip(tr("With unsaved changes in any of them, KanzonasPDF always asks."))
         self.confirm_exit.setChecked(win.settings.value("confirm_exit", "true") != "false")
         form.addRow(self.confirm_exit)
         self.start_tool = QComboBox()
-        self.start_tool.addItem("Hand (drag to scroll)", "hand")
-        self.start_tool.addItem("Select", "select")
+        self.start_tool.addItem(tr("Hand (drag to scroll)"), "hand")
+        self.start_tool.addItem(tr("Select"), "select")
         self.start_tool.setCurrentIndex(max(0, self.start_tool.findData(
             win.settings.value("start_tool", "hand"))))
-        form.addRow("Default tool (at start-up, and where Escape goes back to):", self.start_tool)
+        form.addRow(tr("Default tool (at start-up, and where Escape goes back to):"),
+                     self.start_tool)
         self.open_view = QComboBox()
-        for key, label in (("width", "Fit width"), ("page", "Fit page (whole page in the window)"),
-                           ("actual", "Actual size (100%)"),
-                           ("last", "The zoom it had when I closed it")):
+        for key, label in (("width", tr("Fit width")),
+                           ("page", tr("Fit page (whole page in the window)")),
+                           ("actual", tr("Actual size (100%)")),
+                           ("last", tr("The zoom it had when I closed it"))):
             self.open_view.addItem(label, key)
         self.open_view.setCurrentIndex(max(0, self.open_view.findData(DocumentView.open_view)))
-        form.addRow("Zoom when opening:", self.open_view)
-        self.reopen = QCheckBox("Reopen at the page I was on last time")
+        form.addRow(tr("Zoom when opening:"), self.open_view)
+        self.reopen = QCheckBox(tr("Reopen at the page I was on last time"))
         self.reopen.setChecked(DocumentView.reopen_page)
         form.addRow(self.reopen)
 
         # Saving: automatic backup copies
-        page, form = self._tab(tabs, "Saving")
+        page, form = self._tab(tabs, tr("Saving"))
         self.autosave = QSpinBox()
         self.autosave.setRange(0, 60)
         self.autosave.setSuffix(" min")
-        self.autosave.setSpecialValueText("Off")
+        self.autosave.setSpecialValueText(tr("Off"))
         self.autosave.setValue(win.autosave.minutes)
-        form.addRow("Back up unsaved changes every:", self.autosave)
-        note = QLabel("A copy of each document with unsaved changes is kept in the backups "
+        form.addRow(tr("Back up unsaved changes every:"), self.autosave)
+        note = QLabel(tr("A copy of each document with unsaved changes is kept in the backups "
                       "folder and deleted when you save or close the document. If KanzonasPDF "
                       "or Windows stops unexpectedly, you're offered the copies the next time "
                       "it starts. Password-protected documents aren't backed up (the copy "
-                      "wouldn't have the password).")
+                      "wouldn't have the password)."))
         note.setWordWrap(True)
         form.addRow(note)
         self.backup_dir = win.settings.value("backup_dir", "") or ""
@@ -202,58 +212,58 @@ class PreferencesDialog(QDialog):
         self.backup_label.setWordWrap(True)
         self.backup_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self._show_backup_dir()
-        form.addRow("Backup folder:", self.backup_label)
+        form.addRow(tr("Backup folder:"), self.backup_label)
         row = QHBoxLayout()
-        for text, slot in (("Change...", self._pick_backup_dir),
-                           ("Use default", self._default_backup_dir),
-                           ("Open backup folder", self._open_backups)):
+        for text, slot in ((tr("Change..."), self._pick_backup_dir),
+                           (tr("Use default"), self._default_backup_dir),
+                           (tr("Open backup folder"), self._open_backups)):
             b = QPushButton(text)
             b.clicked.connect(slot)
             row.addWidget(b)
         form.addRow(row)
-        note = QLabel("Tip: choose a folder on this computer. A network or cloud-synced "
+        note = QLabel(tr("Tip: choose a folder on this computer. A network or cloud-synced "
                       "folder works too, but your unsaved changes are then copied there. "
                       "Backups of open documents move to the new folder; recovered copies "
-                      "from earlier stay in the old one.")
+                      "from earlier stay in the old one."))
         note.setWordWrap(True)
         form.addRow(note)
 
         # Measuring
         from . import measure
-        page, form = self._tab(tabs, "Measuring")
+        page, form = self._tab(tabs, tr("Measuring"))
         self.m_unit = QComboBox()
         for u, lab in measure.UNIT_LABELS.items():
             self.m_unit.addItem(lab, u)
         self.m_unit.setCurrentIndex(max(0, self.m_unit.findData(measure.DEFAULT_UNIT)))
-        form.addRow("Default units for a new scale:", self.m_unit)
+        form.addRow(tr("Default units for a new scale:"), self.m_unit)
         self.m_frac = QComboBox()
         for f in measure.FRACTIONS:
             self.m_frac.addItem(f'1/{f}"', f)
         self.m_frac.setCurrentIndex(max(0, self.m_frac.findData(measure.FRACTION)))
-        form.addRow("Feet and inches round to:", self.m_frac)
+        form.addRow(tr("Feet and inches round to:"), self.m_frac)
         self.m_dec = QComboBox()
-        self.m_dec.addItem("Automatic (2, whole millimeters)", "auto")
+        self.m_dec.addItem(tr("Automatic (2, whole millimeters)"), "auto")
         for d in range(0, 5):
             self.m_dec.addItem(str(d), str(d))
         self.m_dec.setCurrentIndex(max(0, self.m_dec.findData(
             "auto" if measure.DECIMALS is None else str(measure.DECIMALS))))
-        form.addRow("Decimal places:", self.m_dec)
-        note = QLabel("Existing measurement labels update when you next move or edit them.")
+        form.addRow(tr("Decimal places:"), self.m_dec)
+        note = QLabel(tr("Existing measurement labels update when you next move or edit them."))
         note.setWordWrap(True)
         form.addRow(note)
 
         # Mouse and scrolling
-        page, form = self._tab(tabs, "Mouse and scrolling")
+        page, form = self._tab(tabs, tr("Mouse and scrolling"))
         self._box(form, win.a_cad_mouse)
         self._box(form, win.a_page_wheel,
-                  note="Only when the whole page fits in the window, top to bottom and side to "
+                  note=tr("Only when the whole page fits in the window, top to bottom and side to "
                        "side (for example after View > Fit page). Zoomed in so that any edge of "
                        "the page is outside the window, the wheel scrolls normally. With "
-                       "CAD-style mouse on, the wheel zooms instead.")
+                       "CAD-style mouse on, the wheel zooms instead."))
 
         # Pages and display
-        page, form = self._tab(tabs, "Pages and display")
-        self.lock = QCheckBox("Lock the page order (Pages panel)")
+        page, form = self._tab(tabs, tr("Pages and display"))
+        self.lock = QCheckBox(tr("Lock the page order (Pages panel)"))
         self.lock.setToolTip(win.lock_btn.toolTip())
         self.lock.setChecked(win.lock_btn.isChecked())
         form.addRow(self.lock)
@@ -266,19 +276,19 @@ class PreferencesDialog(QDialog):
         ask = win.settings.value("new_pdf_ask", "true") != "false"
         self.new_size.setCurrentIndex(max(0, self.new_size.findData(new_pdf.ASK if ask
                                                                      else name)))
-        self.new_size.setToolTip("File > New PDF uses this size, or asks every time (the size "
-                                 "you choose then is the one it suggests next time)")
+        self.new_size.setToolTip(tr("File > New PDF uses this size, or asks every time (the "
+                                    "size you choose then is the one it suggests next time)"))
         self.new_orient = new_pdf.orientation_combo()
         self.new_orient.setCurrentIndex(1 if landscape else 0)
         row = QHBoxLayout()
         row.addWidget(self.new_size, 1)
         row.addWidget(self.new_orient)
-        form.addRow("New PDF page size:", row)
+        form.addRow(tr("New PDF page size:"), row)
         # grid and snapping: all of it here, in one place (same settings as View > Grid
         # settings...)
         from PySide6.QtWidgets import QGroupBox
         from . import snapping
-        box = QGroupBox("Grid and snapping")
+        box = QGroupBox(tr("Grid and snapping"))
         gform = QFormLayout(box)
         self.grid_value = QDoubleSpinBox()
         self.grid_value.setDecimals(3)
@@ -292,26 +302,26 @@ class PreferencesDialog(QDialog):
         row = QHBoxLayout()
         row.addWidget(self.grid_value)
         row.addWidget(self.grid_unit)
-        gform.addRow("Grid spacing (on paper):", row)
+        gform.addRow(tr("Grid spacing (on paper):"), row)
         self.grid_major = QSpinBox()
         self.grid_major.setRange(1, 100)
         self.grid_major.setValue(int(win.settings.value("grid_major", 4)))
-        gform.addRow("Darker line every:", self.grid_major)
+        gform.addRow(tr("Darker line every:"), self.grid_major)
         for a in (win.a_grid, win.a_snap_grid, win.a_snap_objects, win.a_snap_page):
             self._box(gform, a)
-        gform.addRow(QLabel("Hold Alt while drawing or dragging to place a point without "
-                            "snapping."))
+        gform.addRow(QLabel(tr("Hold Alt while drawing or dragging to place a point without "
+                               "snapping.")))
         form.addRow(box)
 
         # OCR
-        page, form = self._tab(tabs, "OCR")
+        page, form = self._tab(tabs, tr("OCR"))
         from . import ocr as ocrmod
         self.ocr = QComboBox()
         for key in ("auto", "fast", "normal", "high"):
             self.ocr.addItem(ocrmod.ACCURACY_LABELS[key], key)
         self.ocr.setCurrentIndex(max(0, self.ocr.findData(
             win.settings.value("ocr_accuracy", "auto"))))
-        form.addRow("Default accuracy:", self.ocr)
+        form.addRow(tr("Default accuracy:"), self.ocr)
 
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel |
                                 QDialogButtonBox.Apply)
@@ -326,11 +336,11 @@ class PreferencesDialog(QDialog):
         from . import signatures
         for kind, label in self._sig_rows.items():
             if not signatures.exists(kind):
-                label.setText("Not set up yet")
+                label.setText(tr("Not set up yet"))
             elif signatures.has_pin():
-                label.setText("Saved (protected with your PIN)")
+                label.setText(tr("Saved (protected with your PIN)"))
             else:
-                label.setText("Saved")
+                label.setText(tr("Saved"))
 
     def _setup_sig(self, kind):
         self.win.setup_signature(kind)
@@ -340,52 +350,53 @@ class PreferencesDialog(QDialog):
         from . import signatures
         old = None
         if signatures.has_pin():
-            old = signatures.ask_pin(self, "Current PIN:")
+            old = signatures.ask_pin(self, tr("Current PIN:"))
             if old is None:
                 return
             if not signatures._pin_ok(old):
-                QMessageBox.warning(self, "Signature PIN", "Wrong PIN.")
+                QMessageBox.warning(self, tr("Signature PIN"), tr("Wrong PIN."))
                 return
         from PySide6.QtWidgets import QInputDialog
-        new, ok = QInputDialog.getText(self, "Signature PIN",
-                                       "New PIN (leave empty for no PIN):", QLineEdit.Password)
+        new, ok = QInputDialog.getText(self, tr("Signature PIN"),
+                                       tr("New PIN (leave empty for no PIN):"), QLineEdit.Password)
         if not ok:
             return
-        again, ok = QInputDialog.getText(self, "Signature PIN", "Type the new PIN again:",
+        again, ok = QInputDialog.getText(self, tr("Signature PIN"), tr("Type the new PIN again:"),
                                          QLineEdit.Password)
         if not ok:
             return
         if new != again:
-            QMessageBox.warning(self, "Signature PIN", "The two PINs don't match. Nothing "
-                                "was changed.")
+            QMessageBox.warning(self, tr("Signature PIN"), tr("The two PINs don't match. Nothing "
+                                                             "was changed."))
             return
         try:
             signatures.set_pin(new, old)
         except Exception as e:
-            QMessageBox.warning(self, "Signature PIN", f"Couldn't change the PIN:\n{e}")
+            QMessageBox.warning(self, tr("Signature PIN"),
+                                tr("Couldn't change the PIN:\n{error}").format(error=e))
             return
         signatures.Session.pin = new or None
         self._sig_status()
-        QMessageBox.information(self, "Signature PIN",
-                                "PIN changed." if new else "PIN removed.")
+        QMessageBox.information(self, tr("Signature PIN"),
+                                tr("PIN changed.") if new else tr("PIN removed."))
 
     def _show_backup_dir(self):
         from . import autosave
         if self.backup_dir:
             self.backup_label.setText(self.backup_dir)
         else:
-            self.backup_label.setText(autosave.default_folder() + "  (default)")
+            self.backup_label.setText(autosave.default_folder() + "  " + tr("(default)"))
 
     def _pick_backup_dir(self):
         from PySide6.QtWidgets import QFileDialog
         from . import autosave
         start = self.backup_dir or autosave.default_folder()
-        d = QFileDialog.getExistingDirectory(self, "Backup folder", start)
+        d = QFileDialog.getExistingDirectory(self, tr("Backup folder"), start)
         if not d:
             return
         if not autosave.usable(d):
-            QMessageBox.warning(self, "Backup folder", "KanzonasPDF can't write to that "
-                                "folder. Choose another one.")
+            QMessageBox.warning(self, tr("Backup folder"), tr("KanzonasPDF can't write to that "
+                                                             "folder. Choose another one."))
             return
         self.backup_dir = d
         self._show_backup_dir()
@@ -454,8 +465,8 @@ class PreferencesDialog(QDialog):
         lang = self.language.currentData()
         if lang != str(win.settings.value("language", "auto")):
             win.settings.setValue("language", lang)
-            QMessageBox.information(win, "Language", "The new language shows the next time "
-                                    "KanzonasPDF starts.")
+            QMessageBox.information(win, tr("Language"), tr("The new language shows the next time "
+                                                               "KanzonasPDF starts."))
         key = self.theme.currentData()
         if not win.theme_actions[key].isChecked():
             win.theme_actions[key].setChecked(True)

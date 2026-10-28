@@ -18,6 +18,8 @@ import difflib
 import numpy as np
 import pymupdf
 
+from .i18n import tr
+
 OLD_RGB = (220, 30, 30)
 NEW_RGB = (20, 90, 230)
 SAME_RGB = (150, 150, 150)
@@ -270,26 +272,31 @@ def compare(old_bytes, new_bytes, dpi=110, progress=None, old_name="OLD", new_na
             annot.set_border(width=1.5, clouds=1)
             removed = only_a[y0:y1, x0:x1].sum()
             added = only_b[y0:y1, x0:x1].sum()
-            kind = "added" if removed == 0 else "removed" if added == 0 else "changed"
-            annot.set_info(content=f"Change {k} ({kind})", title="Compare")
+            kind = tr("added") if removed == 0 else tr("removed") if added == 0 else tr("changed")
+            annot.set_info(content=tr("Change {n} ({kind})").format(n=k, kind=kind),
+                           title=tr("Compare"))
             annot.update()
-        legend = (f"Compare  |  red = only in {old_name}  |  blue = only in {new_name}  |  "
-                  f"gray = unchanged  |  {len(regions)} change(s) on this page")
+        legend = tr("Compare  |  red = only in {old}  |  blue = only in {new}  |  "
+                    "gray = unchanged  |  {n} change(s) on this page").format(
+                        old=old_name, new=new_name, n=len(regions))
         page.insert_text((12, 14), legend, fontsize=8, color=(0.4, 0, 0.4))
         notes = []
         if scale_b != 1.0:
-            notes.append(f"{new_name} is {pn.rect.width / 72:.1f} x {pn.rect.height / 72:.1f} in, "
-                         f"{old_name} {po.rect.width / 72:.1f} x {po.rect.height / 72:.1f} in: "
-                         f"{new_name} was scaled x{scale_b:.3g} to {old_name}'s size before comparing")
+            notes.append(tr("{new} is {new_size} in, {old} {old_size} in: {new} was scaled "
+                            "x{factor} to {old}'s size before comparing").format(
+                new=new_name, old=old_name, factor=f"{scale_b:.3g}",
+                new_size=f"{pn.rect.width / 72:.1f} x {pn.rect.height / 72:.1f}",
+                old_size=f"{po.rect.width / 72:.1f} x {po.rect.height / 72:.1f}"))
         if shift != (0, 0):
-            notes.append(f"Lined up: the drawing in {new_name} sits "
-                         f"{-shift[1] * 72 / dpi:+.1f} pt right and {shift[0] * 72 / dpi:+.1f}"
-                         f" pt up from {old_name}")
+            notes.append(tr("Lined up: the drawing in {new} sits {right} pt right and {up} pt "
+                            "up from {old}").format(new=new_name, old=old_name,
+                                                    right=f"{-shift[1] * 72 / dpi:+.1f}",
+                                                    up=f"{shift[0] * 72 / dpi:+.1f}"))
         for k, note in enumerate(notes):
             page.insert_text((12, 26 + 12 * k), note, fontsize=8, color=(0.4, 0, 0.4))
         if not po or not pn:
-            page.insert_text((12, 26), "This page exists only in " +
-                             (new_name if pn else old_name), fontsize=8, color=(0.4, 0, 0.4))
+            page.insert_text((12, 26), tr("This page exists only in {name}").format(
+                name=new_name if pn else old_name), fontsize=8, color=(0.4, 0, 0.4))
         counts.append(len(regions))
     data = out.tobytes(garbage=3, deflate=True)
     return data, counts
@@ -440,14 +447,20 @@ def _describe(c):
         w = c["what"]
         if w == "picture resized":
             o, n = c["old"][0][1], c["new"][0][1]
-            return (f"Picture resized: {o.width / 72:.1f} x {o.height / 72:.1f} in, "
-                    f"now {n.width / 72:.1f} x {n.height / 72:.1f} in")
-        return w[0].upper() + w[1:]
+            return tr("Picture resized: {old} in, now {new} in").format(
+                old=f"{o.width / 72:.1f} x {o.height / 72:.1f}",
+                new=f"{n.width / 72:.1f} x {n.height / 72:.1f}")
+        return _WHAT.get(w) or w[0].upper() + w[1:]
     if c["kind"] == "added":
-        return f"Added: {_text_of(c['new'])}"
+        return tr("Added: {text}").format(text=_text_of(c['new']))
     if c["kind"] == "removed":
-        return f"Removed: {_text_of(c['old'])}"
-    return f"Was: {_text_of(c['old'])}  |  Now: {_text_of(c['new'])}"
+        return tr("Removed: {text}").format(text=_text_of(c['old']))
+    return tr("Was: {old}  |  Now: {new}").format(old=_text_of(c['old']), new=_text_of(c['new']))
+
+
+# what a picture change is (the "what" keys), as written in the result
+_WHAT = {"picture moved": tr("Picture moved"), "picture replaced": tr("Picture replaced"),
+         "picture added": tr("Picture added"), "picture removed": tr("Picture removed")}
 
 
 def _page_ranges(pages):
@@ -461,7 +474,8 @@ def _page_ranges(pages):
         parts.append(f"{start + 1}-{prev + 1}" if prev > start else f"{start + 1}")
         if p is not None:
             start = prev = p
-    return ("pages " if len(pages) > 1 else "page ") + ", ".join(parts)
+    return (tr("pages {list}") if len(pages) > 1 else tr("page {list}")).format(
+        list=", ".join(parts))
 
 
 def _box(page, rect, color, text, clouds=0, fill=False):
@@ -470,7 +484,7 @@ def _box(page, rect, color, text, clouds=0, fill=False):
     if fill:
         a.set_opacity(0.5)
     a.set_border(width=2 if clouds else 1, clouds=clouds)
-    a.set_info(content=text, title="Compare")
+    a.set_info(content=text, title=tr("Compare"))
     a.update()
     return a
 
@@ -503,7 +517,7 @@ def compare_text(old_bytes, new_bytes, progress=None, old_name="OLD", new_name="
         out.insert_pdf(new)
     counts = [0] * out.page_count
     for k, c in enumerate(changes, 1):
-        text = f"Change {k}: {_describe(c)}"
+        text = tr("Change {n}: {what}").format(n=k, what=_describe(c))
         pages = set()
         if c.get("what"):
             # pictures: a box around where the picture is (NEW) or was (OLD's place)
@@ -523,7 +537,7 @@ def compare_text(old_bytes, new_bytes, progress=None, old_name="OLD", new_name="
                     page = out[pg]
                     a = page.add_highlight_annot(rects)
                     a.set_colors(stroke=ADD_RGB)
-                    a.set_info(content=text, title="Compare")
+                    a.set_info(content=text, title=tr("Compare"))
                     a.update()
                     pages.add(pg)
             if not c["new"] and c["anchor"] and 0 <= c["anchor"][0] < out.page_count:
@@ -535,31 +549,37 @@ def compare_text(old_bytes, new_bytes, progress=None, old_name="OLD", new_name="
             counts[pg] += 1
     for pg in range(out.page_count):
         n = counts[pg]
-        _legend(out[pg], [f"Compare (text)  |  blue = added in {new_name}  |  red mark = removed "
-                          f"from {old_name} (its comment says what)  |  {n} change(s) on this "
-                          f"page  |  summary on the last page"])
+        _legend(out[pg], [tr("Compare (text)  |  blue = added in {new}  |  red mark = removed "
+                             "from {old} (its comment says what)  |  {n} change(s) on this "
+                             "page  |  summary on the last page").format(new=new_name,
+                                                                         old=old_name, n=n)])
     # the summary: every change, repeated ones (a header on every page) once with their pages
     groups = {}
     for k, c in enumerate(changes, 1):
         key = (c["kind"], c.get("what"), _text_of(c["old"]), _text_of(c["new"]))
         pg = (c["new"] or c["old"])[0][0] if (c["new"] or c["old"]) else 0
         groups.setdefault(key, []).append((k, pg))
-    lines = [f"Compare, text mode: {new_name} against {old_name}: {len(changes)} change(s)"]
+    lines = [tr("Compare, text mode: {new} against {old}: {n} change(s)").format(
+        new=new_name, old=old_name, n=len(changes))]
     if old.page_count != new.page_count:
-        lines.append(f"{old_name} has {old.page_count} page(s), {new_name} {new.page_count}")
-    lines.append("Blue highlight = words added in the newer document; red mark = words of the "
-                 "earlier one gone from there. Moved text counts as removed and added.")
+        lines.append(tr("{old} has {old_pages} page(s), {new} {new_pages}").format(
+            old=old_name, new=new_name, old_pages=old.page_count, new_pages=new.page_count))
+    lines.append(tr("Blue highlight = words added in the newer document; red mark = words of "
+                    "the earlier one gone from there. Moved text counts as removed and added."))
     lines.append("")
     for key, items in sorted(groups.items(), key=lambda kv: kv[1][0][1]):
         c = changes[items[0][0] - 1]
         if len(items) == 1:
-            lines.append(f"Change {items[0][0]}, page {items[0][1] + 1}: {_describe(c)}")
+            lines.append(tr("Change {n}, page {page}: {what}").format(
+                n=items[0][0], page=items[0][1] + 1, what=_describe(c)))
         elif len(items) <= 4:
-            lines.append(f"Changes {', '.join(str(k) for k, _pg in items)}, "
-                         f"{_page_ranges([pg for _k, pg in items])}: {_describe(c)}")
+            lines.append(tr("Changes {list}, {pages}: {what}").format(
+                list=", ".join(str(k) for k, _pg in items),
+                pages=_page_ranges([pg for _k, pg in items]), what=_describe(c)))
         else:
-            lines.append(f"Change {items[0][0]} and {len(items) - 1} more like it, "
-                         f"{_page_ranges([pg for _k, pg in items])}: {_describe(c)}")
+            lines.append(tr("Change {n} and {more} more like it, {pages}: {what}").format(
+                n=items[0][0], more=len(items) - 1,
+                pages=_page_ranges([pg for _k, pg in items]), what=_describe(c)))
     _summary_pages(out, lines)
     if progress:
         progress(3, 3)
@@ -572,7 +592,7 @@ def _summary_pages(out, lines):
     while text:
         page = out.new_page(width=612, height=792)
         box = pymupdf.Rect(48, 54, 564, 750)
-        page.insert_text((48, 40), "Compare: summary of changes", fontsize=12, color=(0.4, 0, 0.4))
+        page.insert_text((48, 40), tr("Compare: summary of changes"), fontsize=12, color=(0.4, 0, 0.4))
         rest = page.insert_textbox(box, text, fontsize=9, fontname="helv", color=(0, 0, 0))
         if rest >= 0:
             break

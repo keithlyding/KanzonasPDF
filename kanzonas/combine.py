@@ -9,9 +9,11 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QListWidget, Q
                                QPushButton, QCheckBox, QLabel, QDialogButtonBox, QFileDialog,
                                QInputDialog, QLineEdit, QMessageBox, QAbstractItemView)
 
+from .i18n import tr
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp", ".gif", ".webp")
-IMAGE_FILTER = "Pictures (*.jpg *.jpeg *.png *.tif *.tiff *.bmp *.gif *.webp)"
+IMAGE_PATTERNS = "(*.jpg *.jpeg *.png *.tif *.tiff *.bmp *.gif *.webp)"
+IMAGE_FILTER = tr("Pictures") + " " + IMAGE_PATTERNS
 LETTER = pymupdf.paper_rect("letter")
 
 
@@ -30,7 +32,8 @@ def _image_pdf(path):
         from PySide6.QtGui import QImage
         q = QImage(path)
         if q.isNull():
-            raise ValueError(f"{os.path.basename(path)} isn't a picture KanzonasPDF can read.")
+            raise ValueError(tr("{name} isn't a picture KanzonasPDF can read.").format(
+                name=os.path.basename(path)))
         data = QByteArray()
         buf = QBuffer(data)
         buf.open(QIODevice.WriteOnly)
@@ -77,8 +80,8 @@ def insert_files(doc, paths, pos, size):
         other = image_pages(path, size) if is_image(path) else pymupdf.open(path)
         with other:
             if other.needs_pass:
-                raise ValueError(f"{os.path.basename(path)} is password-protected: open it "
-                                 "and use Combine files instead.")
+                raise ValueError(tr("{name} is password-protected: open it and use Combine "
+                                    "files instead.").format(name=os.path.basename(path)))
             doc.insert_pdf(other, start_at=pos)
             pos += other.page_count
 
@@ -127,39 +130,40 @@ class CombineDialog(QDialog):
     def __init__(self, parent, start_dir="", first=None, images=False):
         super().__init__(parent)
         self.images = images
-        self.title = "Create PDF from images" if images else "Combine files"
+        self.title = tr("Create PDF from images") if images else tr("Combine files")
         self.setWindowTitle(self.title)
         self.resize(520, 440)
         self.start_dir = start_dir
         lay = QVBoxLayout(self)
-        lay.addWidget(QLabel(("Pictures" if images else "PDFs and pictures") +
-                             " to put together, top to bottom. Drag to reorder, or drop files "
-                             "here from Explorer."))
+        lay.addWidget(QLabel(tr("Pictures to put together, top to bottom. Drag to reorder, "
+                                "or drop files here from Explorer.") if images else
+                             tr("PDFs and pictures to put together, top to bottom. Drag to "
+                                "reorder, or drop files here from Explorer.")))
         row = QHBoxLayout()
         self.list = _FileList()
         if first:
             self.list.add_paths(first)
         row.addWidget(self.list, 1)
         col = QVBoxLayout()
-        for text, slot in (("Add files...", self._add), ("Remove", self._remove),
-                           ("Move up", lambda: self._move(-1)),
-                           ("Move down", lambda: self._move(1)),
-                           ("Sort by name", self._sort)):
+        for text, slot in ((tr("Add files..."), self._add), (tr("Remove"), self._remove),
+                           (tr("Move up"), lambda: self._move(-1)),
+                           (tr("Move down"), lambda: self._move(1)),
+                           (tr("Sort by name"), self._sort)):
             b = QPushButton(text)
             b.clicked.connect(slot)
             col.addWidget(b)
         col.addStretch(1)
         row.addLayout(col)
         lay.addLayout(row, 1)
-        self.bookmarks = QCheckBox("Add a bookmark for each file (named after the file)")
+        self.bookmarks = QCheckBox(tr("Add a bookmark for each file (named after the file)"))
         self.bookmarks.setChecked(not images)
         lay.addWidget(self.bookmarks)
-        self.letter = QCheckBox("Put each picture on a Letter page (otherwise the page is the "
-                                "picture's own size)")
+        self.letter = QCheckBox(tr("Put each picture on a Letter page (otherwise the page is "
+                                   "the picture's own size)"))
         self.letter.setChecked(True)
         lay.addWidget(self.letter)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.button(QDialogButtonBox.Ok).setText("Create..." if images else "Combine...")
+        btns.button(QDialogButtonBox.Ok).setText(tr("Create...") if images else tr("Combine..."))
         btns.accepted.connect(self._ok)
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)
@@ -170,9 +174,9 @@ class CombineDialog(QDialog):
 
     def _add(self):
         filters = (IMAGE_FILTER if self.images else
-                   "PDFs and pictures (*.pdf " + IMAGE_FILTER.split("(")[1] + ";;PDF files (*.pdf);;"
-                   + IMAGE_FILTER)
-        paths, _ = QFileDialog.getOpenFileNames(self, "Add files", self.start_dir, filters)
+                   tr("PDFs and pictures") + " (*.pdf " + IMAGE_PATTERNS[1:] + ";;" +
+                   tr("PDF files") + " (*.pdf);;" + IMAGE_FILTER)
+        paths, _ = QFileDialog.getOpenFileNames(self, tr("Add files"), self.start_dir, filters)
         if paths:
             self.start_dir = os.path.dirname(paths[0])
             self.list.add_paths(paths)
@@ -197,19 +201,20 @@ class CombineDialog(QDialog):
     def _ok(self):
         paths = self.list.paths()
         if not paths or (len(paths) < 2 and not any(is_image(p) for p in paths)):
-            QMessageBox.information(self, self.title, "Add at least two PDFs, or a picture.")
+            QMessageBox.information(self, self.title, tr("Add at least two PDFs, or a picture."))
             return
         folder = os.path.dirname(paths[0])
         name = (os.path.splitext(os.path.basename(paths[0]))[0] + ".pdf" if self.images
-                else "Combined.pdf")
-        out, _ = QFileDialog.getSaveFileName(self, "Save the PDF as",
+                else tr("Combined") + ".pdf")
+        out, _ = QFileDialog.getSaveFileName(self, tr("Save the PDF as"),
                                              os.path.join(folder, name),
-                                             "PDF files (*.pdf)")
+                                             tr("PDF files") + " (*.pdf)")
         if not out:
             return
         if os.path.abspath(out) in {os.path.abspath(p) for p in paths}:
-            QMessageBox.warning(self, self.title, "Choose a new file name: the new PDF can't "
-                                "replace one of the files going into it.")
+            QMessageBox.warning(self, self.title, tr("Choose a new file name: the new PDF "
+                                                     "can't replace one of the files going "
+                                                     "into it."))
             return
         if self.check_target is not None and not self.check_target(out):
             return
@@ -217,7 +222,7 @@ class CombineDialog(QDialog):
             n = combine(paths, out, self.bookmarks.isChecked(), self._password,
                         letter=self.letter.isChecked())
         except Exception as e:
-            QMessageBox.warning(self, self.title, f"Couldn't make the PDF:\n{e}")
+            QMessageBox.warning(self, self.title, tr("Couldn't make the PDF:\n{error}").format(error=e))
             return
         if n is None:
             return
@@ -225,9 +230,10 @@ class CombineDialog(QDialog):
         self.accept()
 
     def _password(self, path):
-        pw, ok = QInputDialog.getText(self, "Password needed",
-                                      f"{os.path.basename(path)} is password protected.\n"
-                                      "Password (Cancel stops combining):", QLineEdit.Password)
+        pw, ok = QInputDialog.getText(self, tr("Password needed"),
+                                      tr("{name} is password protected.\nPassword (Cancel stops "
+                                         "combining):").format(name=os.path.basename(path)),
+                                      QLineEdit.Password)
         return pw if ok else None
 
 

@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTreeWidget, QTreeWidgetItem,
                                QToolButton, QInputDialog, QLabel)
 
+from .i18n import tr
+
 
 def _subtree_end(toc, i):
     """Index just past item i and all of its children."""
@@ -66,12 +68,13 @@ class BookmarksPanel(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(2, 2, 2, 2)
         bar = QHBoxLayout()
-        for text, tip, fn in (("+", "Add a bookmark to the current page", self._add),
-                              ("Rename", "Rename", self._rename), ("✕", "Delete", self._delete),
-                              ("↑", "Move up", lambda: self._move(-1)),
-                              ("↓", "Move down", lambda: self._move(1)),
-                              ("→", "Indent (make child)", lambda: self._shift(1)),
-                              ("←", "Outdent", lambda: self._shift(-1))):
+        for text, tip, fn in (("+", tr("Add a bookmark to the current page"), self._add),
+                              (tr("Rename"), tr("Rename"), self._rename),
+                              ("✕", tr("Delete"), self._delete),
+                              ("↑", tr("Move up"), lambda: self._move(-1)),
+                              ("↓", tr("Move down"), lambda: self._move(1)),
+                              ("→", tr("Indent (make child)"), lambda: self._shift(1)),
+                              ("←", tr("Outdent"), lambda: self._shift(-1))):
             b = QToolButton()
             b.setText(text)
             b.setToolTip(tip)
@@ -84,7 +87,7 @@ class BookmarksPanel(QWidget):
         self.tree.itemClicked.connect(self._clicked)
         self.tree.itemDoubleClicked.connect(lambda *_: self._rename())
         lay.addWidget(self.tree)
-        self.empty = QLabel("No bookmarks. Click + to add one for the current page.")
+        self.empty = QLabel(tr("No bookmarks. Click + to add one for the current page."))
         self.empty.setWordWrap(True)
         self.empty.setStyleSheet("color: gray;")
         lay.addWidget(self.empty)
@@ -96,7 +99,8 @@ class BookmarksPanel(QWidget):
         sel = None
         for i, (lvl, title, page) in enumerate(self.toc):
             parent = parents.get(lvl - 1, self.tree.invisibleRootItem())
-            it = QTreeWidgetItem(parent, [f"{title}   (p. {page})" if page > 0 else title])
+            it = QTreeWidgetItem(parent, [title + "   " + tr("(p. {page})").format(page=page)
+                                     if page > 0 else title])
             it.setData(0, Qt.UserRole, i)
             parents[lvl] = it
             if i == select:
@@ -122,8 +126,9 @@ class BookmarksPanel(QWidget):
 
     def _add(self):
         page = self.current_page() + 1
-        title, ok = QInputDialog.getText(self, "Add bookmark", f"Bookmark for page {page}:",
-                                         text=f"Page {page}")
+        title, ok = QInputDialog.getText(self, tr("Add bookmark"),
+                                         tr("Bookmark for page {page}:").format(page=page),
+                                         text=tr("Page {page}").format(page=page))
         if not ok or not title.strip():
             return
         toc = [list(e) for e in self.toc]
@@ -141,7 +146,8 @@ class BookmarksPanel(QWidget):
         i = self._index()
         if i is None:
             return
-        title, ok = QInputDialog.getText(self, "Rename bookmark", "Name:", text=self.toc[i][1])
+        title, ok = QInputDialog.getText(self, tr("Rename bookmark"), tr("Name:"),
+                                         text=self.toc[i][1])
         if ok and title.strip():
             toc = [list(e) for e in self.toc]
             toc[i][1] = title.strip()

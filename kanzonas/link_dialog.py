@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QDia
                                QGridLayout, QLabel, QLineEdit, QRadioButton, QSpinBox,
                                QVBoxLayout)
 
+from .i18n import tr
+
 
 def normalize_url(text):
     """What was typed -> a link address: 'www.x.com' -> 'https://www.x.com', an e-mail
@@ -22,9 +24,9 @@ def normalize_url(text):
     return "https://" + t
 
 
-LOOK_LABELS = (("underline", "Underline (drawn into the page)"),
-               ("box", "Box around it"),
-               ("none", "Nothing (the pointer still shows it)"))
+LOOK_LABELS = (("underline", tr("Underline (drawn into the page)")),
+               ("box", tr("Box around it")),
+               ("none", tr("Nothing (the pointer still shows it)")))
 
 
 def look_of(value):
@@ -46,12 +48,12 @@ class LinkDialog(QDialog):
 
     def __init__(self, parent, page_count, current=None, text_choice=None, look="box"):
         super().__init__(parent)
-        self.setWindowTitle("Edit link" if current else "Add link")
+        self.setWindowTitle(tr("Edit link") if current else tr("Add link"))
         self.result_value = None
-        self.web = QRadioButton("Web address or e-mail")
+        self.web = QRadioButton(tr("Web address or e-mail"))
         self.url = QLineEdit()
         self.url.setPlaceholderText("www.example.com")
-        self.to_page = QRadioButton("Page in this document")
+        self.to_page = QRadioButton(tr("Page in this document"))
         self.page = QSpinBox()
         self.page.setRange(1, max(1, page_count))
         group = QButtonGroup(self)
@@ -69,18 +71,18 @@ class LinkDialog(QDialog):
         for key, label in LOOK_LABELS:
             self.look.addItem(label, key)
         self.look.setCurrentIndex(max(0, self.look.findData(chosen)))
-        self.look.setToolTip("How readers see that it's a link. With Nothing, it shows only when "
-                             "the pointer is over it.")
-        grid.addWidget(QLabel("Look:"), 2, 0)
+        self.look.setToolTip(tr("How readers see that it's a link. With Nothing, it shows only "
+                                "when the pointer is over it."))
+        grid.addWidget(QLabel(tr("Look:")), 2, 0)
         grid.addWidget(self.look, 2, 1)
         self.text = None
         self.write = None
         self._text_edited = False
         if text_choice is not None:
-            self.write = QCheckBox("Write this text on the page:")
+            self.write = QCheckBox(tr("Write this text on the page:"))
             self.write.setChecked(bool(text_choice.get("write")))
             self.text = QLineEdit(text_choice.get("text") or "")
-            self.text.setPlaceholderText("the address, or your own words")
+            self.text.setPlaceholderText(tr("the address, or your own words"))
             self._text_edited = bool(text_choice.get("text"))
             self.text.textEdited.connect(self._own_text)
             self.write.toggled.connect(self.text.setEnabled)
@@ -97,7 +99,7 @@ class LinkDialog(QDialog):
         self.page.valueChanged.connect(self._page_chosen)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         if current:
-            delete = buttons.addButton("Delete link", QDialogButtonBox.DestructiveRole)
+            delete = buttons.addButton(tr("Delete link"), QDialogButtonBox.DestructiveRole)
             delete.clicked.connect(self._delete)
         buttons.accepted.connect(self._ok)
         buttons.rejected.connect(self.reject)
@@ -121,7 +123,7 @@ class LinkDialog(QDialog):
     def _page_chosen(self, n):
         self.to_page.setChecked(True)
         if self.text is not None and not self._text_edited:
-            self.text.setText(f"Page {n}")
+            self.text.setText(tr("Page {page}").format(page=n))
 
     def _ok(self):
         look = self.look.currentData()
@@ -129,14 +131,14 @@ class LinkDialog(QDialog):
         if self.write is not None and self.write.isChecked():
             # left empty: the address itself (or "Page 3") is the text
             words = " ".join(self.text.text().split()) or (
-                f"Page {self.page.value()}" if self.to_page.isChecked()
+                tr("Page {page}").format(page=self.page.value()) if self.to_page.isChecked()
                 else self.url.text().strip())
         if self.to_page.isChecked():
             self.result_value = ("page", self.page.value() - 1, look, words)
         else:
             url = normalize_url(self.url.text())
             if not url:
-                self.error.setText("Type a web address, or choose a page.")
+                self.error.setText(tr("Type a web address, or choose a page."))
                 return
             self.result_value = ("uri", url, look, words)
         self.accept()

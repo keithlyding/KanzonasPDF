@@ -23,6 +23,7 @@ from PySide6.QtCore import QObject, QUrl, Signal
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from . import __version__
+from .i18n import tr
 
 REPO = "keithlyding/KanzonasPDF"
 API = "https://api.github.com/repos/" + REPO + "/releases?per_page=20"
@@ -137,16 +138,17 @@ def unpack(zip_path, app_dir):
     with zipfile.ZipFile(zip_path) as z:
         bad = z.testzip()
         if bad:
-            raise ValueError("The download is damaged (" + bad + "). Try again.")
+            raise ValueError(tr("The download is damaged ({name}). Try again.").format(name=bad))
         for name in z.namelist():
             target = os.path.realpath(os.path.join(stage, name))
             if target != root and not target.startswith(root + os.sep):
-                raise ValueError("The download contains an unsafe file name: " + name)
+                raise ValueError(tr("The download contains an unsafe file name: {name}").format(
+                    name=name))
         z.extractall(stage)
     new = os.path.join(stage, "KanzonasPDF")
     if not os.path.isfile(os.path.join(new, "KanzonasPDF.exe")):
         shutil.rmtree(stage, ignore_errors=True)
-        raise ValueError("The download isn't a KanzonasPDF portable version.")
+        raise ValueError(tr("The download isn't a KanzonasPDF portable version."))
     # a data folder in the zip (there is none today) must never replace the user's settings
     shutil.rmtree(os.path.join(new, "data"), ignore_errors=True)
     return new
@@ -221,8 +223,8 @@ class UpdateChecker(QObject):
         reply.deleteLater()
         if reply.error() != QNetworkReply.NoError:
             if self.manual:
-                self.result.emit("Couldn't reach GitHub to check for updates ("
-                                 + reply.errorString() + ").")
+                self.result.emit(tr("Couldn't reach GitHub to check for updates ({error}).")
+                                 .format(error=reply.errorString()))
             return
         try:
             data = json.loads(bytes(reply.readAll()).decode("utf-8"))
@@ -230,14 +232,15 @@ class UpdateChecker(QObject):
             data = None
         if not isinstance(data, list):
             if self.manual:
-                self.result.emit("GitHub sent an unexpected answer. Try again later.")
+                self.result.emit(tr("GitHub sent an unexpected answer. Try again later."))
             return
         self.settings.setValue("update_last", time.time())
         self.release = newest_release(data)
         hit = newest(data)
         if hit is None:
             if self.manual:
-                self.result.emit("You have the latest version (" + __version__ + ").")
+                self.result.emit(tr("You have the latest version ({version}).").format(
+                    version=__version__))
             return
         if not self.manual and self.settings.value("update_skip", "") == hit[0]:
             return
@@ -269,13 +272,13 @@ class PortableUpdater(QObject):
 
     def start(self):
         if not self._expected_hex():
-            self.failed.emit("The update was not applied: the release has no sha256 digest.")
+            self.failed.emit(tr("The update was not applied: the release has no sha256 digest."))
             return
         self.path = os.path.join(self.app_dir, STAGING + ".zip")
         try:
             self.file = open(self.path, "wb")
         except OSError as e:
-            self.failed.emit("Can't write next to KanzonasPDF.exe (" + str(e) + ").")
+            self.failed.emit(tr("Can't write next to KanzonasPDF.exe ({error}).").format(error=e))
             return
         req = QNetworkRequest(QUrl(self.url))
         req.setRawHeader(b"User-Agent", ("KanzonasPDF/" + __version__).encode())
@@ -299,12 +302,13 @@ class PortableUpdater(QObject):
         try:
             if r.error() != QNetworkReply.NoError:
                 if r.error() != QNetworkReply.OperationCanceledError:
-                    self.failed.emit("The download failed (" + r.errorString() + ").")
+                    self.failed.emit(tr("The download failed ({error}).").format(
+                        error=r.errorString()))
                 return
             expect = self._expected_hex()
             if not expect or _file_sha256(self.path) != expect:
-                self.failed.emit("The download was not applied: its sha256 does not match "
-                                 "the release.")
+                self.failed.emit(tr("The download was not applied: its sha256 does not "
+                                    "match the release."))
                 return
             try:
                 self.ready.emit(unpack(self.path, self.app_dir))
