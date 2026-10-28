@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
 
 from . import annotations, dialogs, signatures, text_edit
+from .i18n import tr
 from .inline_editor import InlineEditor
 from .page_widget import PageWidget
 
@@ -134,18 +135,19 @@ class DocumentView(QScrollArea):
             self._orig_enc = {"needs_pass": bool(self.doc.needs_pass), "user_pw": None,
                               "owner_pw": None}
         if self.doc.needs_pass:
-            pw, ok = QInputDialog.getText(self, "Password required",
-                                          os.path.basename(path) + " is protected:",
+            pw, ok = QInputDialog.getText(self, tr("Password required"),
+                                          tr("{name} is protected:").format(
+                                              name=os.path.basename(path)),
                                           QLineEdit.Password)
             rc = self.doc.authenticate(pw) if ok else 0
             if not rc:
-                raise ValueError("Wrong or missing password")
+                raise ValueError(tr("Wrong or missing password"))
             if rc & 2:
                 self._orig_enc["user_pw"] = pw
             if rc & 4:
                 self._orig_enc["owner_pw"] = pw
         if self.doc.page_count == 0:
-            raise ValueError("The PDF has no pages")
+            raise ValueError(tr("The PDF has no pages"))
         if self._orig_enc is not None:
             self._orig_enc["perms"] = self.doc.permissions
         try:
@@ -554,11 +556,11 @@ class DocumentView(QScrollArea):
     def goto_markup(self, step):
         """Select the next (step=1) or previous (step=-1) markup, wrapping around."""
         if not self.show_markups:
-            self.statusMessage.emit("Markups are hidden (Review > Show markups).")
+            self.statusMessage.emit(tr("Markups are hidden (Review > Show markups)."))
             return None
         items = self.review_items()
         if not items:
-            self.statusMessage.emit("No comments or markups in this document.")
+            self.statusMessage.emit(tr("No comments or markups in this document."))
             return None
         cur = self.selection if self.selection in items else getattr(self, "_review_pos", None)
         if cur in items:
@@ -571,7 +573,8 @@ class DocumentView(QScrollArea):
         index, xref = items[k]
         self.reveal(index, xref)                   # (markups this app can't edit: shown only)
         self._review_pos = (index, xref)
-        self.statusMessage.emit(f"Markup {k + 1} of {len(items)} (page {index + 1})")
+        self.statusMessage.emit(tr("Markup {n} of {total} (page {page})").format(
+            n=k + 1, total=len(items), page=index + 1))
         return index, xref
 
     def markup_authors(self):
@@ -874,18 +877,19 @@ class DocumentView(QScrollArea):
         if getattr(self, "_source", None) is not None:
             # the split view shares the main view's document but not its undo history or
             # unsaved-changes mark: edits must go through the main view
-            self.statusMessage.emit("The split view is read-only: edit in the main view.")
+            self.statusMessage.emit(tr("The split view is read-only: edit in the main view."))
             return
         if not self.allowed(permission):
             if getattr(self, "sig_results", None):
-                QMessageBox.information(self, "Digitally signed document",
-                                        "This PDF is digitally signed, so it's read-only to keep "
-                                        "the signature valid. Click \u201cEdit anyway\u201d in the "
-                                        "banner if you really need to change it.")
+                QMessageBox.information(self, tr("Digitally signed document"),
+                                        tr("This PDF is digitally signed, so it's read-only to "
+                                           "keep the signature valid. Click \u201cEdit anyway\u201d "
+                                           "in the banner if you really need to change it."))
             else:
-                QMessageBox.information(self, "Protected document",
-                                        "This PDF is protected against changes. Use Protect > Unlock "
-                                        "with password if you have its permissions password.")
+                QMessageBox.information(self, tr("Protected document"),
+                                        tr("This PDF is protected against changes. Use Protect > "
+                                           "Unlock with password if you have its permissions "
+                                           "password."))
             return
         self.commit_pending()           # a text edit in progress becomes its own undo step
         # a burst of arrow-key nudges is one undo step: later presses reuse the first snapshot
@@ -904,7 +908,7 @@ class DocumentView(QScrollArea):
         try:
             fn()
         except Exception as ex:
-            QMessageBox.warning(self, "Edit failed", str(ex))
+            QMessageBox.warning(self, tr("Edit failed"), str(ex))
             # rolled back: nothing changed
             self._restore(snap if snap is not None else self._undo.pop(), dirty=was_dirty)
             return
@@ -1375,7 +1379,7 @@ class DocumentView(QScrollArea):
     def copy(self):
         """Copy the selected text, or the selected markups. Returns what was copied."""
         from . import clip
-        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Copying"):
+        if not self.require_permission(pymupdf.PDF_PERM_COPY, tr("Copying")):
             return None
         if self.text_sel:
             QGuiApplication.clipboard().setText(self.selected_text())
@@ -1485,7 +1489,7 @@ class DocumentView(QScrollArea):
             box = pymupdf.Rect(disp.x, disp.y, disp.x + payload["w"], disp.y + payload["h"])
             model = {"kind": "image", "props": self.tool_props("image"),
                      "rect": box * page.derotation_matrix,
-                     "image_bytes": payload["png"], "text": "Captured area"}
+                     "image_bytes": payload["png"], "text": tr("Captured area")}
             made = {}
 
             def do():
@@ -1534,7 +1538,7 @@ class DocumentView(QScrollArea):
                 box = pymupdf.Rect(disp.x, disp.y, disp.x + w * k, disp.y + h * k)
                 self._create(index, {"kind": "image", "props": self.tool_props("image"),
                                      "rect": box * page.derotation_matrix, "image_bytes": png,
-                                     "text": "Pasted image"}, select=True)
+                                     "text": tr("Pasted image")}, select=True)
                 return "image"
         text = cb.text()
         if text.strip():
@@ -1557,7 +1561,7 @@ class DocumentView(QScrollArea):
         and links.copy_page_links)."""
         from . import links
         if not self.allowed(pymupdf.PDF_PERM_COPY):
-            raise PermissionError("Copying pages is not allowed.")
+            raise PermissionError(tr("Copying pages is not allowed."))
         out = pymupdf.open()
         pages = sorted(set(indices))
         for i in pages:
@@ -1599,7 +1603,7 @@ class DocumentView(QScrollArea):
     def delete_pages(self, indices):
         indices = sorted(set(indices), reverse=True)
         if len(indices) >= self.doc.page_count:
-            QMessageBox.information(self, "Delete pages", "A PDF must keep at least one page.")
+            QMessageBox.information(self, tr("Delete pages"), tr("A PDF must keep at least one page."))
             return False
 
         def do():
@@ -1625,7 +1629,7 @@ class DocumentView(QScrollArea):
 
     def duplicate_pages(self, indices):
         """Copies of these pages right after the last of them."""
-        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Duplicating pages"):
+        if not self.require_permission(pymupdf.PDF_PERM_COPY, tr("Duplicating pages")):
             return
         data = self.pages_bytes(indices)
         return self.paste_pages(data, max(indices) + 1)
@@ -1668,14 +1672,16 @@ class DocumentView(QScrollArea):
         usable = [(i, words) for i, _mode, words in spans if words]
         if not usable:
             if tool != "select":
-                self.statusMessage.emit("No text there to mark up")
+                self.statusMessage.emit(tr("No text there to mark up"))
             return
         if tool == "select":
             self.set_text_spans(usable)
             text = self.selected_text()
-            extra = f" on {len(usable)} pages" if len(usable) > 1 else ""
-            self.statusMessage.emit(f"{len(text)} characters selected{extra}: Ctrl+C to copy, "
-                                    "Ctrl+X to cut")
+            if len(usable) > 1:
+                msg = tr("{n} characters selected on {pages} pages: Ctrl+C to copy, Ctrl+X to cut")
+            else:
+                msg = tr("{n} characters selected: Ctrl+C to copy, Ctrl+X to cut")
+            self.statusMessage.emit(msg.format(n=len(text), pages=len(usable)))
             return
         self._markup_spans(tool, usable)
 
@@ -1698,7 +1704,7 @@ class DocumentView(QScrollArea):
                 for r in rects:
                     an = pg.add_redact_annot(r, fill=(0, 0, 0))
                     an.set_colors(stroke=(0.85, 0, 0))
-                    an.set_info(title=annotations.author(), content="Redaction (not applied yet)")
+                    an.set_info(title=annotations.author(), content=tr("Redaction (not applied yet)"))
                     an.update()
         self.modify(do, list(by_page))
 
@@ -1718,7 +1724,8 @@ class DocumentView(QScrollArea):
         text = "\n\n".join(self._words_text(words) for _i, words in spans)
         note = ""
         if tool == "comment":
-            note, ok = dialogs.get_text(self, "Comment", f"Comment on “{text[:60]}”:")
+            note, ok = dialogs.get_text(self, tr("Comment"),
+                                        tr("Comment on “{text}”:").format(text=text[:60]))
             if not ok:
                 return
 
@@ -1749,7 +1756,7 @@ class DocumentView(QScrollArea):
                     page.delete_annot(page.load_annot(x))
             self.clear_selection()
             self.modify(do, [index])
-            self.statusMessage.emit(f"Erased {len(xrefs)} annotation(s)")
+            self.statusMessage.emit(tr("Erased {n} annotation(s)").format(n=len(xrefs)))
             return
         props = self.tool_props(tool)
         if tool == "link":
@@ -1777,10 +1784,10 @@ class DocumentView(QScrollArea):
             return
         if tool in ("erasecontent", "capture", "crop"):
             if is_click or rect.width < 2 or rect.height < 2:
-                self.statusMessage.emit("Drag a box around the area")
+                self.statusMessage.emit(tr("Drag a box around the area"))
                 return
             if tool == "crop":
-                scope = self._ask_pages_scope("Crop pages", "Crop to this box on which pages?")
+                scope = self._ask_pages_scope(tr("Crop pages"), tr("Crop to this box on which pages?"))
                 if scope is not None:
                     self.crop_pages(index, rect, scope == "all")
                 self.setFocus()         # so Escape still puts the Crop tool down
@@ -1794,7 +1801,7 @@ class DocumentView(QScrollArea):
             if is_click or disp.width < 20 or disp.height < 10:
                 c = pymupdf.Point(a) * page.rotation_matrix
                 rect = pymupdf.Rect(c.x, c.y, c.x + 200, c.y + 40) * page.derotation_matrix
-            text, ok = dialogs.get_text(self, "Text box", "Text:")
+            text, ok = dialogs.get_text(self, tr("Text box"), tr("Text:"))
             if not ok or not text.strip():
                 return
             self._create(index, {"kind": "textbox", "rect": rect, "text": text, "props": props})
@@ -1820,7 +1827,7 @@ class DocumentView(QScrollArea):
                                      "rect": pymupdf.Rect()})
             return
         if tool == "callout":
-            text, ok = dialogs.get_text(self, "Callout", "Text:")
+            text, ok = dialogs.get_text(self, tr("Callout"), tr("Text:"))
             if not ok or not text.strip():
                 return
             to_disp = page.rotation_matrix
@@ -1845,7 +1852,7 @@ class DocumentView(QScrollArea):
         from . import measure
         kind = "m_length" if tool == "m_calibrate" else tool
         if tool == "m_calibrate":
-            return f"{abs(pts[-1] - pts[0]) / 72:.2f} in on paper"
+            return tr("{length} in on paper").format(length="%.2f" % (abs(pts[-1] - pts[0]) / 72))
         return measure.measure_text(kind, pts, self.doc[index], props=self.tool_props(tool))
 
     def place_count(self, index, pt):
@@ -1888,9 +1895,10 @@ class DocumentView(QScrollArea):
         if not measure.get_scale(self.doc[index])[3]:
             note = self.sheet_scale_note(index)
             if note and note["ratio"] is not None:
-                text += f"  |  the sheet says {note['label']}: Measure > Set scale uses it"
+                text += "  |  " + tr("the sheet says {scale}: Measure > Set scale uses it").format(
+                    scale=note["label"])
             elif note:
-                text += "  |  the sheet says NOT TO SCALE"
+                text += "  |  " + tr("the sheet says NOT TO SCALE")
         return text
 
     def sheet_scale_note(self, index):
@@ -1962,7 +1970,7 @@ class DocumentView(QScrollArea):
         return disp * page.derotation_matrix
 
     # ---- images and attached files ----------------------------------------------------
-    IMAGE_FILTER = "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff)"
+    IMAGE_FILTER = tr("Images") + " (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff)"
     RISKY = (".exe", ".bat", ".cmd", ".com", ".msi", ".js", ".jse", ".vbs", ".vbe", ".ps1",
              ".scr", ".lnk", ".hta", ".wsf", ".jar", ".reg", ".pif", ".cpl",
              ".application", ".html", ".htm", ".msc", ".iso", ".dll")
@@ -1996,7 +2004,7 @@ class DocumentView(QScrollArea):
     def place_image(self, index, a, b, is_click):
         """Image tool: pick a picture and fit it in the dragged box (or natural size at the
         click), keeping its proportions. It becomes part of the page content."""
-        path = dialogs.open_file(self, "Insert image", self.IMAGE_FILTER)
+        path = dialogs.open_file(self, tr("Insert image"), self.IMAGE_FILTER)
         if not path:
             return
         with open(path, "rb") as f:
@@ -2006,7 +2014,8 @@ class DocumentView(QScrollArea):
             iw, ih = pm.width, pm.height
             dpi_x, dpi_y = pm.xres or 150, pm.yres or 150
         except Exception:
-            QMessageBox.warning(self, "Insert image", "That file isn't an image this app can read.")
+            QMessageBox.warning(self, tr("Insert image"),
+                                tr("That file isn't an image this app can read."))
             return
         page = self.doc[index]
         to_disp, to_pdf = page.rotation_matrix, page.derotation_matrix
@@ -2031,20 +2040,22 @@ class DocumentView(QScrollArea):
             pg.insert_image(rect, stream=data, keep_proportion=True, rotate=pg.rotation,
                             overlay=True)
         self.modify(do, [index])
-        self.statusMessage.emit("Picture added to the page. Edit objects (Shift+O) moves, "
-                                "resizes or deletes it; Ctrl+Z undoes it.")
+        self.statusMessage.emit(tr("Picture added to the page. Edit objects (Shift+O) moves, "
+                                   "resizes or deletes it; Ctrl+Z undoes it."))
 
     def attach_file(self, index, pt):
         """Attach file tool: embed any file in the PDF, shown as an icon at pt."""
-        path = dialogs.open_file(self, "Attach a file")
+        path = dialogs.open_file(self, tr("Attach a file"))
         if not path:
             return
         size = os.path.getsize(path)
         if size > 50 * 1024 * 1024:
-            if QMessageBox.question(self, "Attach file",
-                                    f"{os.path.basename(path)} is {size / 1e6:.0f} MB. The PDF will "
-                                    "grow by about that much, which may be too large to email. "
-                                    "Attach it anyway?") != QMessageBox.Yes:
+            if QMessageBox.question(self, tr("Attach file"),
+                                    tr("{name} is {size} MB. The PDF will grow by about that "
+                                       "much, which may be too large to email. Attach it "
+                                       "anyway?").format(name=os.path.basename(path),
+                                                         size="%.0f" % (size / 1e6))
+                                    ) != QMessageBox.Yes:
                 return
         with open(path, "rb") as f:
             data = f.read()
@@ -2124,12 +2135,12 @@ class DocumentView(QScrollArea):
         if k == pymupdf.LINK_URI:
             return link.get("uri", "")
         if k in (pymupdf.LINK_GOTO, pymupdf.LINK_NAMED) and link.get("page", -1) >= 0:
-            return f"Go to page {link['page'] + 1}"
+            return tr("Go to page {page}").format(page=link["page"] + 1)
         if k == pymupdf.LINK_NAMED:
-            return link.get("name") or link.get("nameddest") or "Link"
+            return link.get("name") or link.get("nameddest") or tr("Link")
         if k in (pymupdf.LINK_GOTOR, pymupdf.LINK_LAUNCH):
-            return "Open " + (link.get("file") or "file")
-        return "Link"
+            return tr("Open {file}").format(file=link.get("file") or tr("file"))
+        return tr("Link")
 
     def _go_to(self, page, to=None):
         if not 0 <= page < self.doc.page_count:
@@ -2163,8 +2174,9 @@ class DocumentView(QScrollArea):
                 self._open_linked_file(QUrl(uri).toLocalFile(), -1)
                 return
             if not uri.lower().startswith(self.WEB_SCHEMES):
-                QMessageBox.information(self, "Link", "KanzonasPDF doesn't open this kind of "
-                                        "link:\n" + uri[:300])
+                QMessageBox.information(self, tr("Link"),
+                                        tr("KanzonasPDF doesn't open this kind of link:")
+                                        + "\n" + uri[:300])
                 return
             if not self._confirm_web(uri):
                 return
@@ -2215,7 +2227,7 @@ class DocumentView(QScrollArea):
                     else pymupdf.PDF_PERM_ANNOTATE)
         if text:
             self._fonts_added = True
-        self.statusMessage.emit("Link added (Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("Link added (Ctrl+Z undoes it)"))
 
     def _link_current(self, index, link):
         """(kind, value, look, text) of an existing link for the link window, the areas
@@ -2267,7 +2279,7 @@ class DocumentView(QScrollArea):
             pg = self.doc[index]
             mine = [ln for ln in links.read(pg) if ln["xref"] in xrefs]
             if not mine:
-                raise ValueError("The link is no longer on the page.")
+                raise ValueError(tr("The link is no longer on the page."))
             for g in mine:
                 if not g["group"]:
                     g["text"] = None            # (a link from elsewhere wrote nothing)
@@ -2291,8 +2303,8 @@ class DocumentView(QScrollArea):
                             pg.parent.xref_set_key(ln["xref"], "KZText", links._pdf_string(wrote))
         self.modify(do, [index], permission=pymupdf.PDF_PERM_MODIFY if wrote
                     else pymupdf.PDF_PERM_ANNOTATE)
-        self.statusMessage.emit(("Link deleted" if target[0] == "delete" else "Link changed")
-                                + " (Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("Link deleted (Ctrl+Z undoes it)") if target[0] == "delete"
+                                else tr("Link changed (Ctrl+Z undoes it)"))
 
     def remove_link_at(self, index, pt):
         """Right-click > Remove link: the link goes, what it was on stays (its own text,
@@ -2330,7 +2342,7 @@ class DocumentView(QScrollArea):
         areas, look = self._selection_link_areas()
         areas = [a for a in areas if a[1]]
         if not areas:
-            self.statusMessage.emit("Select text, markups or objects first")
+            self.statusMessage.emit(tr("Select text, markups or objects first"))
             return
         target = self._ask_link(look=look)
         if not target or target[0] == "delete":
@@ -2342,7 +2354,7 @@ class DocumentView(QScrollArea):
                 links.add(self.doc[index], rects, target[:2], how, None, on_text, on)
         self.modify(do, [a[0] for a in areas], permission=pymupdf.PDF_PERM_ANNOTATE)
         self.clear_text_selection()
-        self.statusMessage.emit("Link added (Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("Link added (Ctrl+Z undoes it)"))
 
     def _confirm_web(self, uri):
         from PySide6.QtWidgets import QCheckBox
@@ -2350,12 +2362,12 @@ class DocumentView(QScrollArea):
         s = paths.settings()
         if s.value("links_dont_ask", "false") == "true":
             return True
-        box = QMessageBox(QMessageBox.Question, "Open link",
-                          "This document wants to open:\n\n" + uri[:500] +
-                          "\n\nOpen it in your browser (or email program)?",
+        box = QMessageBox(QMessageBox.Question, tr("Open link"),
+                          tr("This document wants to open:\n\n{address}\n\nOpen it in your "
+                             "browser (or email program)?").format(address=uri[:500]),
                           QMessageBox.Yes | QMessageBox.No, self)
         box.setDefaultButton(QMessageBox.Yes)
-        again = QCheckBox("Don't ask again")
+        again = QCheckBox(tr("Don't ask again"))
         box.setCheckBox(again)
         if box.exec() != QMessageBox.Yes:
             return False
@@ -2395,24 +2407,29 @@ class DocumentView(QScrollArea):
         if self._is_network_path(path):
             # even checking that it exists makes Windows send your sign-in to that computer
             if QMessageBox.question(
-                    self, "Link", "This link points to a file on another computer:\n\n" + path +
-                    "\n\nOpening it sends your Windows sign-in to that computer. Open it?",
+                    self, tr("Link"),
+                    tr("This link points to a file on another computer:\n\n{path}\n\nOpening "
+                       "it sends your Windows sign-in to that computer. Open it?").format(
+                        path=path),
                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
                 return
         if not os.path.exists(path):
-            QMessageBox.information(self, "Link", "The linked file isn't there:\n" + path)
+            QMessageBox.information(self, tr("Link"),
+                                    tr("The linked file isn't there:\n{path}").format(path=path))
             return
         ext = os.path.splitext(path)[1].lower()
         if ext == ".pdf":
             self.openFileRequested.emit(path, page)
             return
         if ext in self.RISKY or ext not in self.SAFE_OPEN:
-            QMessageBox.warning(self, "Link", "This link would open a program, a script or a "
-                                "file with macros, which KanzonasPDF doesn't do from a PDF:\n"
-                                + path)
+            QMessageBox.warning(self, tr("Link"),
+                                tr("This link would open a program, a script or a file with "
+                                   "macros, which KanzonasPDF doesn't do from a PDF:\n{path}")
+                                .format(path=path))
             return
-        if QMessageBox.question(self, "Open file", "This document wants to open:\n\n" + path +
-                                "\n\nOpen it?") == QMessageBox.Yes:
+        if QMessageBox.question(self, tr("Open file"),
+                                tr("This document wants to open:\n\n{path}\n\nOpen it?")
+                                .format(path=path)) == QMessageBox.Yes:
             QDesktopServices.openUrl(QUrl.fromLocalFile(path))
 
     def open_attachment(self, page_index, key, name):
@@ -2423,13 +2440,14 @@ class DocumentView(QScrollArea):
         name = self.safe_file_name(name)
         if os.path.splitext(name)[1].lower() not in self.SAFE_OPEN:
             QMessageBox.warning(
-                self, "Open attached file",
-                f"{name} could be a program, a script or a file with macros. KanzonasPDF "
-                "doesn't open that kind of file from a PDF.\n\n"
-                "Use Save as and open it yourself if you trust it.")
+                self, tr("Open attached file"),
+                tr("{name} could be a program, a script or a file with macros. KanzonasPDF "
+                   "doesn't open that kind of file from a PDF.\n\n"
+                   "Use Save as and open it yourself if you trust it.").format(name=name))
             return None
-        if QMessageBox.question(self, "Open attached file",
-                                f"Open {name}?\n\nOnly open files from people you trust.") \
+        if QMessageBox.question(self, tr("Open attached file"),
+                                tr("Open {name}?\n\nOnly open files from people you trust.")
+                                .format(name=name)) \
                 != QMessageBox.Yes:
             return None
         folder = tempfile.mkdtemp(prefix="kzattach")
@@ -2441,7 +2459,7 @@ class DocumentView(QScrollArea):
         return path
 
     def save_attachment(self, page_index, key, name, path=None):
-        path = path or dialogs.save_file(self, "Save attached file", self.safe_file_name(name))
+        path = path or dialogs.save_file(self, tr("Save attached file"), self.safe_file_name(name))
         if path:
             with open(path, "wb") as f:
                 f.write(self.attachment_data(page_index, key))
@@ -2493,7 +2511,7 @@ class DocumentView(QScrollArea):
             self.attach_file(index, pt)
             return
         if tool == "note":
-            text, ok = dialogs.get_text(self, "Sticky note", "Note:")
+            text, ok = dialogs.get_text(self, tr("Sticky note"), tr("Note:"))
             if not ok or not text.strip():
                 return
             self._create(index, {"kind": "note", "props": self.tool_props("note"),
@@ -2679,12 +2697,19 @@ class DocumentView(QScrollArea):
         _page, a = self._annot_under(index, pt)
         return a.xref if a is not None else None
 
+    def annot_label(self, index, pt):
+        """The kind of markup under pt ("Cloud", "Highlight"...), or ""."""
+        _page, a = self._annot_under(index, pt)
+        if a is None:
+            return ""
+        model = annotations.read(a)
+        return annotations.LABELS.get(model["kind"], a.type[1]) if model else a.type[1]
+
     def annot_tooltip(self, index, pt):
         page, a = self._annot_under(index, pt)
         if a is None:
             return ""
-        model = annotations.read(a)
-        label = annotations.LABELS.get(model["kind"], a.type[1]) if model else a.type[1]
+        label = self.annot_label(index, pt)
         content = a.info.get("content", "")
         return f"{label}: {content}" if content else label
 
@@ -2904,8 +2929,8 @@ class DocumentView(QScrollArea):
         finally:
             self._merge_edit = False
         self._last_nudge = (key, now)
-        self.statusMessage.emit(f"Moved {step:g} pt (Shift+arrow: 10 pt, Ctrl+arrow: 0.1 pt; "
-                                "Ctrl+Z undoes the whole series)")
+        self.statusMessage.emit(tr("Moved {step} pt (Shift+arrow: 10 pt, Ctrl+arrow: 0.1 pt; "
+                                   "Ctrl+Z undoes the whole series)").format(step="%g" % step))
         return True
 
     def delete_selected(self):
@@ -2941,7 +2966,7 @@ class DocumentView(QScrollArea):
         ref: first selected (default), last selected, selection bounds, or page."""
         models = [(x, m) for x, m in self.selected_models() if annotations.movable(m)]
         if not models or (len(models) < 2 and ref != "page"):
-            self.statusMessage.emit("Select two or more markups to align (or align to the page).")
+            self.statusMessage.emit(tr("Select two or more markups to align (or align to the page)."))
             return
         index = self.selection[0]
         page = self.doc[index]
@@ -2982,7 +3007,7 @@ class DocumentView(QScrollArea):
         the two outermost stay put."""
         models = [(x, m) for x, m in self.selected_models() if annotations.movable(m)]
         if len(models) < 3:
-            self.statusMessage.emit("Select three or more markups to distribute.")
+            self.statusMessage.emit(tr("Select three or more markups to distribute."))
             return
         index = self.selection[0]
         page = self.doc[index]
@@ -3041,9 +3066,10 @@ class DocumentView(QScrollArea):
         if model is None:
             return
         if not annotations.text_editable(model):
-            what = annotations.LABELS.get(model["kind"], "markup").lower()
-            self.statusMessage.emit(f"The {what}'s text is generated, so it can't be edited: "
-                                    "add a note or a text box to comment on it")
+            what = annotations.LABELS.get(model["kind"], tr("markup")).lower()
+            self.statusMessage.emit(tr("The {what}'s text is generated, so it can't be edited: "
+                                       "add a note or a text box to comment on it").format(
+                                           what=what))
             return
         from . import stamps
         label = model["props"].get("label") or ""
@@ -3058,8 +3084,9 @@ class DocumentView(QScrollArea):
                                                   (disp.tl + disp.br) / 2)
             self.commit_model(index, xref, model)
             return
-        title = annotations.LABELS.get(model["kind"], "Annotation")
-        text, ok = dialogs.get_text(self, "Edit " + title, "Text:", model.get("text", ""))
+        title = annotations.LABELS.get(model["kind"], tr("Annotation"))
+        text, ok = dialogs.get_text(self, tr("Edit {what}").format(what=title), tr("Text:"),
+                                    model.get("text", ""))
         if not ok or text == model.get("text", ""):
             return
         model["text"] = text
@@ -3186,7 +3213,7 @@ class DocumentView(QScrollArea):
         _rect, line = hit
         self._apply_text_edit(index, line, text_edit.line_text(line), offset, None,
                               keep_font=True)
-        self.statusMessage.emit("Moved the line (Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("Moved the line (Ctrl+Z undoes it)"))
 
     def _paragraph_of(self, index, line):
         """The lines of the paragraph holding line (text_edit.paragraph_at), on an
@@ -3241,8 +3268,8 @@ class DocumentView(QScrollArea):
         ed.text.setTextCursor(cur)
         ed.kz_tool, ed.kz_line_size = "edittext", size
         self._inline = ed
-        self.statusMessage.emit("Editing the paragraph: the words rewrap as you type. Alt+click "
-                                "edits a single line.")
+        self.statusMessage.emit(tr("Editing the paragraph: the words rewrap as you type. "
+                                   "Alt+click edits a single line."))
 
         def finished():
             self._inline = None
@@ -3282,7 +3309,7 @@ class DocumentView(QScrollArea):
             self.modify(do, [index])
             if "box" not in made:
                 # it failed (and said why) or was refused: nothing changed
-                self.statusMessage.emit("The paragraph wasn't changed.")
+                self.statusMessage.emit(tr("The paragraph wasn't changed."))
                 return
             if (made.get("font") or "").startswith("KZ"):
                 self._fonts_added = True
@@ -3290,21 +3317,21 @@ class DocumentView(QScrollArea):
             sz = new_size or size
             page_rect = self.doc[index].rect
             if bases and new_box.y1 > page_rect.y1 + 0.5:
-                self.statusMessage.emit("The paragraph now runs past the bottom of the page. "
-                                        "Ctrl+Z undoes it; drag a side of the box wider to "
-                                        "keep it shorter.")
+                self.statusMessage.emit(tr("The paragraph now runs past the bottom of the "
+                                           "page. Ctrl+Z undoes it; drag a side of the box "
+                                           "wider to keep it shorter."))
                 return
             x0, x1 = new_box.x0, new_box.x1
             near = [o for o in others if o[0] < x1 - 0.5 and o[2] > x0 + 0.5 and
                     o[1] < new_box.y1 and o[3] > new_box.y0]
             if any(min(o[3], b + 0.15 * sz) - max(o[1], b - 0.7 * sz) > 0.5
                    for b in bases for o in near):
-                self.statusMessage.emit("The paragraph grew and now overlaps text below it. "
-                                        "Ctrl+Z undoes it; drag a side of the box wider to "
-                                        "keep it shorter.")
+                self.statusMessage.emit(tr("The paragraph grew and now overlaps text below "
+                                           "it. Ctrl+Z undoes it; drag a side of the box "
+                                           "wider to keep it shorter."))
                 return
-            self.statusMessage.emit("Paragraph rewritten (Ctrl+Z undoes it). Alt+click edits "
-                                    "a single line.")
+            self.statusMessage.emit(tr("Paragraph rewritten (Ctrl+Z undoes it). Alt+click "
+                                       "edits a single line."))
         ed.committed.connect(done)
         ed.canceled.connect(finished)
 
@@ -3314,12 +3341,12 @@ class DocumentView(QScrollArea):
         self.commit_pending()          # finish the edit already in progress first
         hit = text_edit.line_at(self._lines(index), pt)
         if hit is None:
-            self.statusMessage.emit("No text there. Click on a line of text to edit it.")
+            self.statusMessage.emit(tr("No text there. Click on a line of text to edit it."))
             return
         page = self.doc[index]
         if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in page.annots()):
-            QMessageBox.warning(self, "Edit text", "This page has pending redactions; "
-                                "editing text would apply them. Remove them first.")
+            QMessageBox.warning(self, tr("Edit text"), tr("This page has pending redactions; "
+                                "editing text would apply them. Remove them first."))
             return
         rect, line = hit
         old = text_edit.line_text(line)
@@ -3429,7 +3456,7 @@ class DocumentView(QScrollArea):
                     count["lines"] += 1
         self.modify(do, list(todo))
         self._fonts_added = True
-        self.statusMessage.emit(f"Replaced {count['found']} (Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("Replaced {n} (Ctrl+Z undoes it)").format(n=count["found"]))
         return count["found"], count["lines"], skipped
 
     def _markups_on_line(self, page, line):
@@ -3493,11 +3520,12 @@ class DocumentView(QScrollArea):
             if font.startswith("KZ"):
                 self._fonts_added = True
             if family and not font.startswith("KZF") and font:
-                self.statusMessage.emit(f"{family} isn't installed in that style or lacks some "
-                                        "of these characters; used a standard font.")
+                self.statusMessage.emit(tr("{font} isn't installed in that style or lacks "
+                                           "some of these characters; used a standard font.")
+                                        .format(font=family))
             elif font:
-                self.statusMessage.emit("Text added to the page. Edit text changes it; "
-                                        "Ctrl+Z undoes it.")
+                self.statusMessage.emit(tr("Text added to the page. Edit text changes it; "
+                                           "Ctrl+Z undoes it."))
         ed.committed.connect(done)
         ed.canceled.connect(lambda: setattr(self, "_inline", None))
 
@@ -3564,38 +3592,43 @@ class DocumentView(QScrollArea):
             self._fonts_added = True
         if sc and not (wanted and font.startswith("KZF")):
             if not new.strip():
-                self.statusMessage.emit("Removed the line from the scan (Ctrl+Z undoes it).")
+                self.statusMessage.emit(tr("Removed the line from the scan (Ctrl+Z undoes it)."))
             elif sc.get("unsure"):
-                self.statusMessage.emit("The scanned letters didn't match their recognized "
-                                        "text, so the font couldn't be told: used Helvetica. "
-                                        "Pick a font in Properties to change it.")
+                self.statusMessage.emit(tr("The scanned letters didn't match their "
+                                           "recognized text, so the font couldn't be told: used "
+                                           "Helvetica. Pick a font in Properties to change it."))
             elif font.startswith("KZM") or font in ("helv", "hebo", "heit", "hebi", "tiro",
                                                     "tibo", "tiit", "tibi", "cour", "cobo",
                                                     "coit", "cobi"):
-                style = " Bold" if sc["bold"] else ""
-                style += " Italic" if sc["italic"] else ""
-                first = (f"{wanted[0]} isn't installed in that style or lacks some of these "
-                         "characters. " if wanted else "")
-                self.statusMessage.emit(f"{first}Matched the scan: {sc['label']}{style}, "
-                                        f"{sc['size']:g} pt, in the scan's color.")
+                shown = " ".join([sc["label"]] + ([tr("Bold")] if sc["bold"] else []) +
+                                 ([tr("Italic")] if sc["italic"] else []))
+                if wanted:
+                    msg = tr("{wanted} isn't installed in that style or lacks some of these "
+                             "characters. Matched the scan: {font}, {size} pt, in the scan's "
+                             "color.")
+                else:
+                    msg = tr("Matched the scan: {font}, {size} pt, in the scan's color.")
+                self.statusMessage.emit(msg.format(wanted=wanted[0] if wanted else "",
+                                                   font=shown, size="%g" % sc["size"]))
             return
         if font.startswith("KZF"):
             self._fonts_added = True
-            self.statusMessage.emit(f"Edited in {wanted[0]}.")
+            self.statusMessage.emit(tr("Edited in {font}.").format(font=wanted[0]))
         elif wanted and new.strip():
-            self.statusMessage.emit(f"{wanted[0]} isn't installed in that style or lacks some of "
-                                    "these characters; kept the line's own font.")
+            self.statusMessage.emit(tr("{font} isn't installed in that style or lacks some of "
+                                       "these characters; kept the line's own font.")
+                                    .format(font=wanted[0]))
             if font.startswith("KZS") or font == "KZUni":
                 self._fonts_added = True
         elif font.startswith("KZS") or font == "KZUni":
             self._fonts_added = True
-            self.statusMessage.emit("Edited using the installed copy of the original font."
+            self.statusMessage.emit(tr("Edited using the installed copy of the original font.")
                                     if font.startswith("KZS") else
-                                    "The original font lacks some of these characters; used "
-                                    "a Unicode font for this line.")
+                                    tr("The original font lacks some of these characters; used "
+                                       "a Unicode font for this line."))
         elif font and not font.startswith("KZ"):
-            self.statusMessage.emit("Original font isn't available for these characters; "
-                                    "used the closest standard font.")
+            self.statusMessage.emit(tr("Original font isn't available for these characters; "
+                                       "used the closest standard font."))
 
     # ---- redaction ---------------------------------------------------------------------
     def mark_redactions(self, index, rects):
@@ -3604,7 +3637,7 @@ class DocumentView(QScrollArea):
             for r in rects:
                 a = pg.add_redact_annot(r, fill=(0, 0, 0))
                 a.set_colors(stroke=(0.85, 0, 0))
-                a.set_info(title=annotations.author(), content="Redaction (not applied yet)")
+                a.set_info(title=annotations.author(), content=tr("Redaction (not applied yet)"))
                 a.update()
         self.modify(do, [index])
 
@@ -3630,19 +3663,21 @@ class DocumentView(QScrollArea):
         from . import erase
         page = self.doc[index]
         if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in page.annots()):
-            QMessageBox.information(self, "Erase content", "This page has redaction marks that "
-                                    "aren't applied yet. Apply or remove them first (erasing "
-                                    "would apply them too).")
+            QMessageBox.information(self, tr("Erase content"),
+                                    tr("This page has redaction marks that aren't applied yet. "
+                                       "Apply or remove them first (erasing would apply them "
+                                       "too)."))
             return
         self.clear_selection()
         self.modify(lambda: erase.erase(self.doc[index], rect), [index])
-        self.statusMessage.emit("Erased the content inside the box (Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("Erased the content inside the box (Ctrl+Z undoes it)"))
 
     def capture_area(self, index, rect):
         """Capture tool (Bluebeam Snapshot): copy what's in the box, markups included. Ctrl+V
         here pastes it at the same size as an image markup made of the original vector
         drawing; a picture of it also pastes into Word, email and so on."""
-        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Copying pictures or page content"):
+        if not self.require_permission(pymupdf.PDF_PERM_COPY,
+                                       tr("Copying pictures or page content")):
             return
         from . import clip
         from PySide6.QtGui import QImage
@@ -3661,8 +3696,8 @@ class DocumentView(QScrollArea):
         except Exception:
             pass                                # the picture alone still pastes
         clip.put("capture", payload, image=img)
-        self.statusMessage.emit("Captured: Ctrl+V pastes it here as sharp vector content "
-                                "(and as a picture into Word or email)")
+        self.statusMessage.emit(tr("Captured: Ctrl+V pastes it here as sharp vector content "
+                                   "(and as a picture into Word or email)"))
 
     # ---- Edit objects: the page's own pictures and shapes ------------------
     def content_objects(self, index):
@@ -3750,14 +3785,19 @@ class DocumentView(QScrollArea):
             texts = sum(1 for it in items if it["kind"] == "text")
             shapes = len(items) - pics - groups - texts
             what = ", ".join(x for x in (
-                f"{texts} text" + ("s" if texts != 1 else "") if texts else "",
-                f"{pics} picture" + ("s" if pics != 1 else "") if pics else "",
-                f"{shapes} shape" + ("s" if shapes != 1 else "") if shapes else "",
-                f"{groups} group" + ("s" if groups != 1 else "") if groups else "") if x)
-            how = ("drag to move, Delete deletes, right-click for more (Edit text changes the "
-                   "words)" if texts else
-                   "drag to move, drag a handle to resize, Delete deletes, right-click for more")
-            self.statusMessage.emit(f"Selected {what}: {how}")
+                (tr("{n} text") if texts == 1 else tr("{n} texts")).format(n=texts)
+                if texts else "",
+                (tr("{n} picture") if pics == 1 else tr("{n} pictures")).format(n=pics)
+                if pics else "",
+                (tr("{n} shape") if shapes == 1 else tr("{n} shapes")).format(n=shapes)
+                if shapes else "",
+                (tr("{n} group") if groups == 1 else tr("{n} groups")).format(n=groups)
+                if groups else "") if x)
+            how = (tr("drag to move, Delete deletes, right-click for more (Edit text changes "
+                      "the words)") if texts else
+                   tr("drag to move, drag a handle to resize, Delete deletes, right-click for "
+                      "more"))
+            self.statusMessage.emit(tr("Selected {what}: {how}").format(what=what, how=how))
 
     def clear_object_selection(self):
         if self.obj_sel is not None:
@@ -3809,7 +3849,7 @@ class DocumentView(QScrollArea):
             self.obj_sel = (index, again) if again else None
         self.pages[index].update()
         self.selectionChanged.emit()    # menus (Arrange) follow the reselected objects
-        self.statusMessage.emit(label + " (Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("{what} (Ctrl+Z undoes it)").format(what=label))
 
     def move_objects(self, new_rect):
         from . import page_objects
@@ -3830,7 +3870,7 @@ class DocumentView(QScrollArea):
             return [it["rect"] + (d.x, d.y, d.x, d.y) for it in texts]
         from . import links
         parts = [(pymupdf.Rect(it["rect"]), self._obj_on(it)) for it in self.obj_sel[1]]
-        self._objects_edit("Moved", lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect, objs),
+        self._objects_edit(tr("Moved"), lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect, objs),
                            text_fn=move_text,
                            links_fn=lambda pg: links.follow(pg, old, new_rect, parts=parts))
 
@@ -3868,8 +3908,8 @@ class DocumentView(QScrollArea):
         if self.obj_sel is None:
             return
         if any(it["kind"] == "text" for it in self.obj_sel[1]):
-            self.statusMessage.emit("Text can be moved or deleted here, not turned: select "
-                                    "only pictures and shapes to rotate them")
+            self.statusMessage.emit(tr("Text can be moved or deleted here, not turned: select "
+                                       "only pictures and shapes to rotate them"))
             return
         rect = self.selected_objects_rect()
         objs = self._obj_cache.get(self.obj_sel[0])
@@ -3886,7 +3926,7 @@ class DocumentView(QScrollArea):
             if mine:
                 links.transform(pg, mine, turn)
             return bool(mine)
-        self._objects_edit("Rotated", lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees, objs),
+        self._objects_edit(tr("Rotated"), lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees, objs),
                            links_fn=turn_links)
 
     def arrange_objects(self, how):
@@ -3896,8 +3936,8 @@ class DocumentView(QScrollArea):
         if self.obj_sel is None:
             return
         if any(it["kind"] == "text" for it in self.obj_sel[1]):
-            self.statusMessage.emit("Stacking order is for pictures and shapes: select only "
-                                    "those to bring them forward or send them back")
+            self.statusMessage.emit(tr("Stacking order is for pictures and shapes: select "
+                                       "only those to bring them forward or send them back"))
             return
         index, items = self.obj_sel
         ns = [it["n"] for it in items]
@@ -3908,7 +3948,7 @@ class DocumentView(QScrollArea):
         if how in ("forward", "backward"):
             # nothing overlapping in that direction: say so instead of an empty undo step
             if not page_objects.reorder(self.doc[index], ns, how, dry_run=True):
-                self.statusMessage.emit("Nothing overlaps it in that direction")
+                self.statusMessage.emit(tr("Nothing overlaps it in that direction"))
                 return
         self.modify(do, [index])
         self._obj_cache.pop(index, None)
@@ -3923,9 +3963,9 @@ class DocumentView(QScrollArea):
         self.pages[index].update()
         # the edit cleared the selection (and the Arrange buttons with it): tell the menus
         self.selectionChanged.emit()
-        label = {"front": "Brought to front", "back": "Sent to back",
-                 "forward": "Brought forward", "backward": "Sent backward"}[how]
-        self.statusMessage.emit(label + " (Ctrl+Z undoes it)")
+        label = {"front": tr("Brought to front"), "back": tr("Sent to back"),
+                 "forward": tr("Brought forward"), "backward": tr("Sent backward")}[how]
+        self.statusMessage.emit(tr("{what} (Ctrl+Z undoes it)").format(what=label))
 
     def delete_objects(self):
         from . import page_objects
@@ -3946,7 +3986,7 @@ class DocumentView(QScrollArea):
             if mine:
                 links.remove(pg, list(mine.values()), keep_text=True)
             return bool(mine)
-        self._objects_edit("Deleted", page_objects.delete, keep=False, text_fn=delete_text,
+        self._objects_edit(tr("Deleted"), page_objects.delete, keep=False, text_fn=delete_text,
                            links_fn=drop_links, links_first=True)
 
     def _confirm_text_removal(self, index, texts):
@@ -3964,16 +4004,16 @@ class DocumentView(QScrollArea):
         if not others:
             return True
         return QMessageBox.question(
-            self, "Delete text",
-            f"{others} letter(s) of other text overlap this text and would be deleted with "
-            "it.\n\nDelete anyway? (Ctrl+Z undoes it.)") == QMessageBox.Yes
+            self, tr("Delete text"),
+            tr("{n} letter(s) of other text overlap this text and would be deleted with "
+               "it.\n\nDelete anyway? (Ctrl+Z undoes it.)").format(n=others)) == QMessageBox.Yes
 
     def delete_text_at(self, index, pt):
         """Edit text tool, right-click > Delete text: take out the paragraph under pt."""
         self.commit_pending()
         hit = [it for it in self.text_objects(index) if (it["rect"] + (-2, -2, 2, 2)).contains(pt)]
         if not hit:
-            self.statusMessage.emit("No text there")
+            self.statusMessage.emit(tr("No text there"))
             return
         item = min(hit, key=lambda it: it["rect"].get_area())
         self.obj_sel = (index, [item])
@@ -3988,11 +4028,12 @@ class DocumentView(QScrollArea):
             return
         groups = [it for it in self.obj_sel[1] if it["kind"] == "group"]
         self.obj_sel = (self.obj_sel[0], groups)
-        self._objects_edit("Ungrouped", page_objects.ungroup, keep=False)
+        self._objects_edit(tr("Ungrouped"), page_objects.ungroup, keep=False)
 
     def copy_picture(self):
         """Copy the one selected picture (Ctrl+V pastes it as an image markup)."""
-        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Copying pictures or page content"):
+        if not self.require_permission(pymupdf.PDF_PERM_COPY,
+                                       tr("Copying pictures or page content")):
             return
         from . import clip
         from PySide6.QtGui import QImage
@@ -4011,10 +4052,11 @@ class DocumentView(QScrollArea):
         r = info["rect"]
         clip.put("capture", {"png": png, "w": r.width, "h": r.height},
                  image=QImage.fromData(png, "PNG"))
-        self.statusMessage.emit("Picture copied: Ctrl+V pastes it as an image markup")
+        self.statusMessage.emit(tr("Picture copied: Ctrl+V pastes it as an image markup"))
 
     def save_picture(self):
-        if not self.require_permission(pymupdf.PDF_PERM_COPY, "Copying pictures or page content"):
+        if not self.require_permission(pymupdf.PDF_PERM_COPY,
+                                       tr("Copying pictures or page content")):
             return
         from PySide6.QtWidgets import QFileDialog
         items = self.selected_objects()
@@ -4022,13 +4064,14 @@ class DocumentView(QScrollArea):
             return
         data, ext = annotations.image_bytes(self.doc, items[0]["xref"])
         folder = os.path.dirname(self.path) if self.path else ""
-        out, _ = QFileDialog.getSaveFileName(self, "Save picture as",
-                                             os.path.join(folder, "picture." + ext),
-                                             f"{ext.upper()} image (*.{ext})")
+        out, _ = QFileDialog.getSaveFileName(self, tr("Save picture as"),
+                                             os.path.join(folder, tr("picture") + "." + ext),
+                                             tr("{kind} image").format(kind=ext.upper())
+                                             + f" (*.{ext})")
         if out:
             with open(out, "wb") as f:
                 f.write(data)
-            self.statusMessage.emit("Saved " + os.path.basename(out))
+            self.statusMessage.emit(tr("Saved {name}").format(name=os.path.basename(out)))
 
     REDACT_TAG = "Redaction: "         # Search & redact marks remember their term in /Contents
 
@@ -4271,7 +4314,7 @@ class DocumentView(QScrollArea):
     def remove_watermarks(self, pages):
         from . import page_tools
         if not pages:
-            self.statusMessage.emit("Those pages have no watermark to remove")
+            self.statusMessage.emit(tr("Those pages have no watermark to remove"))
             return
         count = {"n": 0}
 
@@ -4279,22 +4322,23 @@ class DocumentView(QScrollArea):
             count["n"] = page_tools.remove_watermarks(self.doc, pages)
         self.modify(do, pages)
         self._obj_cache = {}
-        self.statusMessage.emit(f"Removed {count['n']} watermark(s) from {len(pages)} page(s) "
-                                "(Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("Removed {n} watermark(s) from {pages} page(s) "
+                                   "(Ctrl+Z undoes it)").format(n=count["n"], pages=len(pages)))
 
     def add_background(self, spec, pages):
         from . import background
         self.modify(lambda: background.apply(self.doc, pages, spec), pages)
         self._obj_cache = {}
-        self.statusMessage.emit(f"Background added to {len(pages)} page(s) (Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("Background added to {pages} page(s) (Ctrl+Z undoes it)")
+                                .format(pages=len(pages)))
 
     def remove_background(self, pages):
         from . import background
         if not pages:
-            self.statusMessage.emit("Those pages have no background to remove")
+            self.statusMessage.emit(tr("Those pages have no background to remove"))
             return
         self.modify(lambda: background.remove_pages(self.doc, pages), pages)
-        self.statusMessage.emit(f"Background removed from {len(pages)} page(s)")
+        self.statusMessage.emit(tr("Background removed from {pages} page(s)").format(pages=len(pages)))
 
     # ---- digitally signed documents --------------------------------------------------------
     def check_digital_signatures(self):
@@ -4310,7 +4354,8 @@ class DocumentView(QScrollArea):
             # A form with only empty signature fields has nothing to keep valid.
             if not self._has_filled_signature():
                 return
-            self.sig_results = [{"summary": f"Couldn't check the signature: {ex}", "ok": False,
+            self.sig_results = [{"summary": tr("Couldn't check the signature: {error}").format(
+                                     error=ex), "ok": False,
                                  "intact": False}]
         if not self.sig_results:
             return
@@ -4319,8 +4364,8 @@ class DocumentView(QScrollArea):
         text = "  ".join(r["summary"] for r in self.sig_results)
         color = "#e7f6e7" if good else "#fde8e8"
         self.show_banner(("✔ " if good else "⚠ ") + text +
-                         "  This file is read-only so the signature stays valid.",
-                         color, "Edit anyway", self._edit_signed)
+                         "  " + tr("This file is read-only so the signature stays valid."),
+                         color, tr("Edit anyway"), self._edit_signed)
 
     def _has_filled_signature(self):
         """True if any signature field holds a signature (/V), false for empty ones only."""
@@ -4335,14 +4380,14 @@ class DocumentView(QScrollArea):
 
     def _edit_signed(self):
         r = QMessageBox.question(
-            self, "Edit a signed document?",
-            "Changing a digitally signed document makes its signature show as changed or "
-            "invalid in Acrobat and other readers.\n\nTip: use Save As to keep the signed "
-            "original untouched.\n\nEdit anyway?")
+            self, tr("Edit a signed document?"),
+            tr("Changing a digitally signed document makes its signature show as changed or "
+               "invalid in Acrobat and other readers.\n\nTip: use Save As to keep the signed "
+               "original untouched.\n\nEdit anyway?"))
         if r == QMessageBox.Yes:
             self.read_only = False
-            self.show_banner("Editing a signed document: when saved, its digital signature "
-                             "will no longer validate.", "#fff4d6")
+            self.show_banner(tr("Editing a signed document: when saved, its digital signature "
+                                "will no longer validate."), "#fff4d6")
 
     def show_banner(self, text, color="#fff4d6", button=None, callback=None):
         if getattr(self, "_banner", None) is None:
@@ -4459,7 +4504,7 @@ class DocumentView(QScrollArea):
         on_field = self.widget_at(index, pymupdf.Point(pt)) is not None
         self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM if on_field
                     else pymupdf.PDF_PERM_MODIFY)
-        self.statusMessage.emit(f"Dated {text} (Ctrl+Z undoes it)")
+        self.statusMessage.emit(tr("Dated {date} (Ctrl+Z undoes it)").format(date=text))
         self.oneShotPlaced.emit()
 
     # ---- protection (read-only PDFs) ----------------------------------------------------
@@ -4476,8 +4521,9 @@ class DocumentView(QScrollArea):
     def require_permission(self, permission, operation):
         if self.allowed(permission):
             return True
-        QMessageBox.information(self, "Protected document",
-                                operation + " is not allowed by this PDF's permissions.")
+        QMessageBox.information(self, tr("Protected document"),
+                                tr("{operation} is not allowed by this PDF's permissions.")
+                                .format(operation=operation))
         return False
 
     def _check_permissions(self):
@@ -4516,7 +4562,7 @@ class DocumentView(QScrollArea):
         every PDF reader honors that, even those that ignore permissions (web browsers);
         allowing it again, or removing the security, unlocks the fields locked this way."""
         if not getattr(self, "_owner_authorized", False):
-            raise PermissionError("Unlock the document with its permissions password first.")
+            raise PermissionError(tr("Unlock the document with its permissions password first."))
         lock = bool(owner_pw) and perms != -1 and not perms & pymupdf.PDF_PERM_FORM
         if self.lock_fields(lock, dry_run=True):
             self.modify(lambda: self.lock_fields(lock), list(range(self.doc.page_count)))
@@ -4580,14 +4626,14 @@ class DocumentView(QScrollArea):
 
     # ---- sanitize ---------------------------------------------------------------------------
     SANITIZE_OPTIONS = [  # (key, label, default)
-        ("metadata", "Document information (author, title, dates, producer)", True),
-        ("javascript", "JavaScript and automatic actions", True),
-        ("embedded_files", "Attached and embedded files", True),
-        ("hidden_text", "Hidden text (e.g. invisible OCR text)", False),
-        ("links", "Links", False),
-        ("markups", "Comments and markups", False),
-        ("form_data", "Data typed into form fields", False),
-        ("thumbnails", "Page thumbnails and leftover redaction data", True),
+        ("metadata", tr("Document information (author, title, dates, producer)"), True),
+        ("javascript", tr("JavaScript and automatic actions"), True),
+        ("embedded_files", tr("Attached and embedded files"), True),
+        ("hidden_text", tr("Hidden text (e.g. invisible OCR text)"), False),
+        ("links", tr("Links"), False),
+        ("markups", tr("Comments and markups"), False),
+        ("form_data", tr("Data typed into form fields"), False),
+        ("thumbnails", tr("Page thumbnails and leftover redaction data"), True),
     ]
 
     def sanitize(self, opts):
@@ -4673,15 +4719,15 @@ class DocumentView(QScrollArea):
             self.read_only = was
         else:
             self.sig_results = []
-            self.show_banner("Digital signatures removed. Save to keep the unsigned version.",
-                             "#fff4d6")
+            self.show_banner(tr("Digital signatures removed. Save to keep the unsigned "
+                                "version."), "#fff4d6")
         return n["n"]
 
     def timestamp(self, url, out_path):
         """Add a trusted timestamp (RFC 3161) from a time server; writes out_path."""
         from . import digisign
         if self.dirty or self.untitled:
-            raise RuntimeError("Save your changes first.")
+            raise RuntimeError(tr("Save your changes first."))
         with open(self.path, "rb") as f:
             data = f.read()
         return digisign.timestamp(data, out_path, url)
@@ -4780,11 +4826,11 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
         w = page.load_widget(xref)
         if w.field_flags & 1:
-            self.statusMessage.emit("This field is read-only." +
-                                    (" Allow filling in form fields in Security properties to "
-                                     "unlock it." if self.doc.xref_get_key(
-                                         self._field_dict(w), self.LOCK_MARK)[0] != "null"
-                                     else ""))
+            self.statusMessage.emit(
+                tr("This field is read-only. Allow filling in form fields in Security "
+                   "properties to unlock it.") if self.doc.xref_get_key(
+                    self._field_dict(w), self.LOCK_MARK)[0] != "null"
+                else tr("This field is read-only."))
             return
         t = w.field_type
         if t == pymupdf.PDF_WIDGET_TYPE_CHECKBOX:
@@ -4992,14 +5038,14 @@ class DocumentView(QScrollArea):
         if tool == "f_radio":
             groups = sorted({w.field_name for pg in self.doc for w in pg.widgets()
                              if w.field_type == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON})
-            label = "Group name (options in the same group are mutually exclusive):"
-            name, ok = QInputDialog.getItem(self, "Option button", label,
+            label = tr("Group name (options in the same group are mutually exclusive):")
+            name, ok = QInputDialog.getItem(self, tr("Option button"), label,
                                             groups + [self._unique_name("Group")],
                                             0 if groups else len(groups), True)
             if not ok or not name.strip():
                 return
         elif tool == "f_combo":
-            text, ok = dialogs.get_text(self, "Dropdown", "Choices, one per line:")
+            text, ok = dialogs.get_text(self, tr("Dropdown"), tr("Choices, one per line:"))
             if not ok:
                 return
             choices = [c.strip() for c in text.splitlines() if c.strip()]
@@ -5086,15 +5132,16 @@ class DocumentView(QScrollArea):
     def edit_field_properties(self, index, xref):
         page = self.doc[index]
         w = page.load_widget(xref)
-        name, ok = QInputDialog.getText(self, "Field properties",
-                                        f"{w.field_type_string} field name:", text=w.field_name)
+        name, ok = QInputDialog.getText(self, tr("Field properties"),
+                                        tr("{kind} field name:").format(kind=w.field_type_string),
+                                        text=w.field_name)
         if not ok or not name.strip():
             return
         choices = None
         if w.field_type in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
             cur = "\n".join(c[1] if isinstance(c, (list, tuple)) else c
                             for c in (w.choice_values or []))
-            text, ok = dialogs.get_text(self, "Dropdown", "Choices, one per line:", cur)
+            text, ok = dialogs.get_text(self, tr("Dropdown"), tr("Choices, one per line:"), cur)
             if ok:
                 choices = [c.strip() for c in text.splitlines() if c.strip()]
 
@@ -5125,8 +5172,8 @@ class DocumentView(QScrollArea):
         """Recognize text on the given pages and add an invisible, searchable text layer.
         accuracy: auto | fast | normal | high (see ocr.ACCURACY_DPI)."""
         from . import ocr
-        dlg = QProgressDialog("Loading OCR engine...", "Cancel", 0, len(pages), self)
-        dlg.setWindowTitle("Recognize text (OCR)")
+        dlg = QProgressDialog(tr("Loading OCR engine..."), tr("Cancel"), 0, len(pages), self)
+        dlg.setWindowTitle(tr("Recognize text (OCR)"))
         dlg.setWindowModality(Qt.WindowModal)
         dlg.setMinimumDuration(0)
         dlg.setValue(0)
@@ -5144,7 +5191,8 @@ class DocumentView(QScrollArea):
 
         try:
             for n, i in enumerate(pages):
-                dlg.setLabelText(f"Recognizing text on page {i + 1} ({n + 1} of {len(pages)})...")
+                dlg.setLabelText(tr("Recognizing text on page {page} ({n} of {total})...").format(
+                    page=i + 1, n=n + 1, total=len(pages)))
                 dpi = ocr.page_dpi(self.doc[i],
                                    ocr.ACCURACY_DPI.get(accuracy, ocr.ACCURACY_DPI["fast"]))
                 best = ocr.Rendering(self.doc[i], dpi=dpi)
@@ -5153,8 +5201,8 @@ class DocumentView(QScrollArea):
                     break
                 sharper = ocr.page_dpi(self.doc[i], ocr.ACCURACY_DPI["high"])
                 if accuracy == "auto" and sharper > dpi and ocr.needs_sharper(res, best):
-                    dlg.setLabelText(f"Page {i + 1}: small or unclear text, "
-                                     "recognizing again at higher resolution...")
+                    dlg.setLabelText(tr("Page {page}: small or unclear text, recognizing "
+                                        "again at higher resolution...").format(page=i + 1))
                     dpi = sharper
                     best = ocr.Rendering(self.doc[i], dpi=dpi)
                     res = ocr_image(best)
@@ -5164,7 +5212,8 @@ class DocumentView(QScrollArea):
                 if ocr.upside_down(res):
                     # scanned upside down: read it turned upright too (lines the engine
                     # wasn't sure about read right then), keep the better reading
-                    dlg.setLabelText(f"Page {i + 1}: upside down, recognizing it turned...")
+                    dlg.setLabelText(tr("Page {page}: upside down, recognizing it turned...")
+                                     .format(page=i + 1))
                     r = ocr.Rendering(self.doc[i], 180, dpi=dpi)
                     alt = ocr_image(r)
                     if alt is None:
@@ -5175,7 +5224,8 @@ class DocumentView(QScrollArea):
                     ((90, 270) if ocr.mostly_vertical(res) else ())
                 if turns:
                     # Sideways or upside-down text: try other turns, keep the best.
-                    dlg.setLabelText(f"Page {i + 1}: checking other orientations...")
+                    dlg.setLabelText(tr("Page {page}: checking other orientations...")
+                                     .format(page=i + 1))
                     for extra in turns:
                         if extra == turn:
                             continue
@@ -5193,7 +5243,7 @@ class DocumentView(QScrollArea):
                 results[i] = (res, best)
                 dlg.setValue(n + 1)
         except Exception as ex:
-            QMessageBox.critical(self, "OCR failed", str(ex))
+            QMessageBox.critical(self, tr("OCR failed"), str(ex))
             return
         finally:
             pool.shutdown(wait=False, cancel_futures=True)
@@ -5206,8 +5256,8 @@ class DocumentView(QScrollArea):
             for i, (res, rendering) in results.items():
                 counts[i] = ocr.add_text_layer(self.doc[i], res, rendering)
         self.modify(do, list(results))
-        self.statusMessage.emit(f"OCR added {sum(counts.values())} lines of text "
-                                f"on {len(results)} page(s)")
+        self.statusMessage.emit(tr("OCR added {lines} lines of text on {pages} page(s)").format(
+            lines=sum(counts.values()), pages=len(results)))
 
     # ---- page operations --------------------------------------------------
     def rotate_page(self, index, delta):
@@ -5217,8 +5267,8 @@ class DocumentView(QScrollArea):
     def _ask_pages_scope(self, title, question):
         """"this", "all" or None (canceled)."""
         box = QMessageBox(QMessageBox.Question, title, question, parent=self)
-        this = box.addButton("This page", QMessageBox.AcceptRole)
-        every = box.addButton("All pages", QMessageBox.AcceptRole)
+        this = box.addButton(tr("This page"), QMessageBox.AcceptRole)
+        every = box.addButton(tr("All pages"), QMessageBox.AcceptRole)
         box.addButton(QMessageBox.Cancel)
         box.exec()
         return {this: "this", every: "all"}.get(box.clickedButton())
@@ -5238,13 +5288,13 @@ class DocumentView(QScrollArea):
                 if box.width >= 2 and box.height >= 2:
                     page.set_cropbox(box)
         self.modify(do, structural=True)
-        self.statusMessage.emit("Cropped (Ctrl+Z undoes it; Pages > Remove crop shows the "
-                                "whole page again)")
+        self.statusMessage.emit(tr("Cropped (Ctrl+Z undoes it; Pages > Remove crop shows the "
+                                   "whole page again)"))
 
     def remove_crop(self, index, all_pages=False):
         targets = range(self.doc.page_count) if all_pages else [index]
         if not any(self.doc[i].cropbox != self.doc[i].mediabox for i in targets):
-            self.statusMessage.emit("Not cropped")
+            self.statusMessage.emit(tr("Not cropped"))
             return
 
         def do():
@@ -5252,11 +5302,11 @@ class DocumentView(QScrollArea):
                 page = self.doc[i]
                 page.set_cropbox(page.mediabox)
         self.modify(do, structural=True)
-        self.statusMessage.emit("Crop removed")
+        self.statusMessage.emit(tr("Crop removed"))
 
     def delete_page(self, index):
         if self.doc.page_count <= 1:
-            QMessageBox.information(self, "Delete page", "A PDF must keep at least one page.")
+            QMessageBox.information(self, tr("Delete page"), tr("A PDF must keep at least one page."))
             return
 
         def do():
@@ -5489,7 +5539,7 @@ class DocumentView(QScrollArea):
 
     def extract_pages(self, first, last, path):
         if not self.allowed(pymupdf.PDF_PERM_COPY):
-            raise PermissionError("Extracting pages is not allowed.")
+            raise PermissionError(tr("Extracting pages is not allowed."))
         out = pymupdf.open()
         out.insert_pdf(self.doc, from_page=first, to_page=last)
         out.save(path, garbage=3, deflate=True)
@@ -5556,12 +5606,13 @@ class DocumentView(QScrollArea):
                     self._show_hit((i, len(hits) - 1 if self._search_back else 0))
         if self._search_todo:
             done = self.doc.page_count - len(self._search_todo)
-            self.statusMessage.emit(self._search_status() +
-                                    f" (searching, {done} of {self.doc.page_count} pages)")
+            self.statusMessage.emit(self._search_status() + " " +
+                                    tr("(searching, {done} of {total} pages)").format(
+                                        done=done, total=self.doc.page_count))
             gen = self._search_gen
             QTimer.singleShot(0, lambda: self._search_step(gen))
         elif self._search_cur is None:
-            self.statusMessage.emit("No matches")
+            self.statusMessage.emit(tr("No matches"))
         else:
             self.statusMessage.emit(self._search_status())
         self.searchChanged.emit(*self.search_position())
@@ -5599,8 +5650,8 @@ class DocumentView(QScrollArea):
     def _search_status(self):
         n, total, searching = self.search_position()
         if not n:
-            return "Searching..."
-        return f"Match {n} of {total}" + ("+" if searching else "")
+            return tr("Searching...")
+        return tr("Match {n} of {total}").format(n=n, total=total) + ("+" if searching else "")
 
     def _show_hit(self, hit):
         old = self._search_cur
@@ -5650,31 +5701,35 @@ class DocumentView(QScrollArea):
         """The original permissions (owner) and open passwords, asked for when unknown.
         Raises PermissionError (and nothing is written) if they can't be given."""
         if not self._orig_enc.get("owner_pw"):
-            pw, ok = QInputDialog.getText(self, "Permissions password required",
-                                          "Enter the owner password to preserve this file's protection:",
+            pw, ok = QInputDialog.getText(self, tr("Permissions password required"),
+                                          tr("Enter the owner password to preserve this file's "
+                                             "protection:"),
                                           QLineEdit.Password)
             original = pymupdf.open(stream=self._orig_data, filetype="pdf")
             try:
                 if not ok or not original.authenticate(pw) & 4:
-                    raise PermissionError("Saving changes requires the original owner password. The file was not overwritten.")
+                    raise PermissionError(tr("Saving changes requires the original owner password. "
+                                                         "The file was not overwritten."))
             finally:
                 original.close()
             self._orig_enc["owner_pw"] = pw
         if self._orig_enc.get("needs_pass") and not self._orig_enc.get("user_pw"):
-            pw, ok = QInputDialog.getText(self, "Open password required",
-                                          "Enter the original open password, or explicitly choose new security settings:",
+            pw, ok = QInputDialog.getText(self, tr("Open password required"),
+                                          tr("Enter the original open password, or explicitly "
+                                             "choose new security settings:"),
                                           QLineEdit.Password)
             original = pymupdf.open(stream=self._orig_data, filetype="pdf")
             try:
                 if not ok or not original.authenticate(pw) & 2:
-                    raise PermissionError("The original open password is required to preserve encryption. The file was not overwritten.")
+                    raise PermissionError(tr("The original open password is required to preserve "
+                                                         "encryption. The file was not overwritten."))
             finally:
                 original.close()
             self._orig_enc["user_pw"] = pw
 
     def save(self, path=None):
         if path is None and self.untitled:
-            raise RuntimeError("This PDF hasn't been saved yet: use Save As to choose where.")
+            raise RuntimeError(tr("This PDF hasn't been saved yet: use Save As to choose where."))
         self.commit_pending()
         path = os.path.abspath(path or self.path)
         tmp = path + ".kanzonas-tmp"

@@ -12,6 +12,7 @@ from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath
 from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
+from .i18n import tr
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
@@ -518,7 +519,7 @@ class PageWidget(QWidget):
         fm = QFontMetrics(self.font())
         for anchor, text, xref in self.view.comment_cards(self.index):
             a = self.to_screen(anchor, page)
-            body = text if text.strip() else "(empty note)"
+            body = text if text.strip() else tr("(empty note)")
             br = fm.boundingRect(0, 0, CARD_W - 12, 2000, Qt.TextWordWrap, body)
             h = min(br.height(), fm.lineSpacing() * 6) + 10
             x = a.right() + 14
@@ -894,27 +895,27 @@ class PageWidget(QWidget):
         one_pic = len(items) == 1 and items[0]["kind"] == "picture"
         has_text = any(it["kind"] == "text" for it in items)
         menu = QMenu(self)
-        a = menu.addAction("Copy picture", self.view.copy_picture)
+        a = menu.addAction(tr("Copy picture"), self.view.copy_picture)
         a.setEnabled(one_pic)
-        a = menu.addAction("Save picture as...", self.view.save_picture)
+        a = menu.addAction(tr("Save picture as..."), self.view.save_picture)
         a.setEnabled(one_pic and bool(items[0]["xref"]))
         menu.addSeparator()
-        a = menu.addAction("Ungroup", self.view.ungroup_objects)
+        a = menu.addAction(tr("Ungroup"), self.view.ungroup_objects)
         a.setEnabled(any(it["kind"] == "group" for it in items))
         menu.addSeparator()
-        for deg, label in ((90, "Rotate clockwise"), (-90, "Rotate counterclockwise")):
+        for deg, label in ((90, tr("Rotate clockwise")), (-90, tr("Rotate counterclockwise"))):
             a = menu.addAction(label, lambda d=deg: self.view.rotate_objects(d))
             a.setEnabled(not has_text)
         menu.addSeparator()
-        for how, label, keys in (("front", "Bring to front", "Ctrl+Shift+]"),
-                                 ("forward", "Bring forward", "Ctrl+]"),
-                                 ("backward", "Send backward", "Ctrl+["),
-                                 ("back", "Send to back", "Ctrl+Shift+[")):
+        for how, label, keys in (("front", tr("Bring to front"), "Ctrl+Shift+]"),
+                                 ("forward", tr("Bring forward"), "Ctrl+]"),
+                                 ("backward", tr("Send backward"), "Ctrl+["),
+                                 ("back", tr("Send to back"), "Ctrl+Shift+[")):
             a = menu.addAction(f"{label}\t{keys}", lambda h=how: self.view.arrange_objects(h))
             a.setEnabled(not has_text)
         self._link_actions(menu, pdf, True)
         menu.addSeparator()
-        menu.addAction("Delete\tDel", self.view.delete_objects)
+        menu.addAction(tr("Delete") + "\tDel", self.view.delete_objects)
         menu.exec(e.globalPosition().toPoint())
 
     def _sig_box(self):
@@ -941,10 +942,10 @@ class PageWidget(QWidget):
             return
         menu.addSeparator()
         if selected:
-            menu.addAction("Add link...", v.add_link_to_selection)
+            menu.addAction(tr("Add link..."), v.add_link_to_selection)
         if here is not None:
-            menu.addAction("Edit link...", lambda: v.edit_link(self.index, here))
-            menu.addAction("Remove link", lambda: v.remove_link_at(self.index, pdf))
+            menu.addAction(tr("Edit link..."), lambda: v.edit_link(self.index, here))
+            menu.addAction(tr("Remove link"), lambda: v.remove_link_at(self.index, pdf))
 
     def _content_menu(self, e, pdf):
         """Right-click on the page: copy / cut / paste / delete, and for selected text the
@@ -965,11 +966,11 @@ class PageWidget(QWidget):
         menu = QMenu(self)
         if v.tool == "edittext" and v.text_line_rect(self.index, pdf) is not None:
             # the text written into the page under the pointer (its whole paragraph)
-            menu.addAction("Delete text", lambda: v.delete_text_at(self.index, pdf))
+            menu.addAction(tr("Delete text"), lambda: v.delete_text_at(self.index, pdf))
             menu.addSeparator()
         # menu-only actions (the Edit menu's own ones keep their enabled state)
-        for what, label, keys in (("cut", "Cut", "Ctrl+X"), ("copy", "Copy", "Ctrl+C"),
-                                  ("paste", "Paste", "Ctrl+V")):
+        for what, label, keys in (("cut", tr("Cut"), "Ctrl+X"), ("copy", tr("Copy"), "Ctrl+C"),
+                                  ("paste", tr("Paste"), "Ctrl+V")):
             act = menu.addAction(f"{label}\t{keys}")
             act.triggered.connect(lambda _=False, w=what: win._clipboard(w))
             if what != "paste":
@@ -978,8 +979,8 @@ class PageWidget(QWidget):
             if not v.extra and v.selected_model is not None and \
                     A.text_editable(v.selected_model):
                 sel = v.selection
-                menu.addAction("Edit text...", lambda: v.edit_annot_text(*sel))
-            menu.addAction("Delete", v.delete_selected)
+                menu.addAction(tr("Edit text..."), lambda: v.edit_annot_text(*sel))
+            menu.addAction(tr("Delete"), v.delete_selected)
         elif on_text:
             # right-click on selected text that is also highlighted: offer to remove the markup
             xref = v.annot_at(self.index, pdf)
@@ -988,17 +989,18 @@ class PageWidget(QWidget):
                     v.clear_text_selection()
                     v.select_xref(self.index, x)
                     v.delete_selected()
-                menu.addAction("Delete " + v.annot_tooltip(self.index, pdf).split(":")[0].lower(),
-                               remove)
+                menu.addAction(tr("Delete {what}").format(
+                    what=v.annot_label(self.index, pdf).lower()), remove)
         if has_text:
             menu.addSeparator()
-            for tool, label in (("highlight", "Highlight"), ("underline", "Underline"),
-                                ("strikeout", "Strike out"), ("comment", "Comment on text..."),
-                                ("redact", "Mark for redaction")):
+            for tool, label in (("highlight", tr("Highlight")), ("underline", tr("Underline")),
+                                ("strikeout", tr("Strike out")),
+                                ("comment", tr("Comment on text...")),
+                                ("redact", tr("Mark for redaction"))):
                 menu.addAction(label, lambda t=tool: v.markup_text_selection(t))
         self._link_actions(menu, pdf, has_text or has_markups)
         menu.addSeparator()
-        act = menu.addAction("Select all text\tCtrl+A")
+        act = menu.addAction(tr("Select all text") + "\tCtrl+A")
         act.triggered.connect(lambda: win._clipboard("all"))
         menu.exec(e.globalPosition().toPoint())
 
@@ -1372,7 +1374,7 @@ class PageWidget(QWidget):
                         self.setCursor(Qt.PointingHandCursor)
                     tip = self.view.link_tip(link)
                     if tool == "select":
-                        tip += "\nCtrl+click to open"
+                        tip += "\n" + tr("Ctrl+click to open")
                     QToolTip.showText(self.mapToGlobal(pos.toPoint()), tip, self)
                     if tool == "hand":
                         return

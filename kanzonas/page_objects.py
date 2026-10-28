@@ -20,6 +20,7 @@ import re
 import pymupdf
 
 from . import pdfcoords
+from .i18n import tr
 
 _TOKEN = re.compile(rb"\s+|%[^\r\n]*|/[^\s/\[\]()<>{}%]*|<<|>>|<[0-9A-Fa-f\s]*>|[\[\]{}]|"
                     rb"\(|[^\s/\[\]()<>{}%]+")
@@ -469,7 +470,7 @@ def _edit(page, ns, new):
     pieces = []
     for n in sorted(set(ns), reverse=True):
         if n >= len(found):
-            raise ValueError("The object is no longer on the page.")
+            raise ValueError(tr("The object is no longer on the page."))
         d = found[n]
         pieces.append((d["start"], d["end"], new(data[d["start"]:d["end"]], d["ctm"])))
     for s, e, piece in pieces:          # back to front: earlier offsets stay valid
@@ -508,7 +509,7 @@ def transform(page, ns, t_page, objs=None):
     pieces = []
     for n in sorted(set(ns), reverse=True):
         if n >= len(found):
-            raise ValueError("The object is no longer on the page.")
+            raise ValueError(tr("The object is no longer on the page."))
         d = found[n]
         s, e, ctm = d["start"], d["end"], d["ctm"]
         m = ctm * t_pdf * ~ctm                      # the move, in the object's own space
@@ -864,7 +865,7 @@ def ungroup(page, ns):
     pieces = []
     for n in sorted(set(ns), reverse=True):
         if n >= len(found):
-            raise ValueError("The object is no longer on the page.")
+            raise ValueError(tr("The object is no longer on the page."))
         d = found[n]
         piece = _expand(doc, page, forms.get(d.get("name")), taken)
         if piece is not None:

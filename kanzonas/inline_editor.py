@@ -10,6 +10,8 @@ from PySide6.QtCore import Qt, Signal, QEvent, QRect
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QPainter, QPen, QTextOption
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QPlainTextEdit
 
+from .i18n import tr
+
 MARGIN = 7          # the outline you grab to move the text (px around the text)
 HANDLE = 7          # handle squares on the corners and side middles
 
@@ -25,8 +27,8 @@ class InlineEditor(QFrame):
         self.setFrameShape(QFrame.NoFrame)
         self.setStyleSheet("InlineEditor { background: transparent; }")
         self.setMouseTracking(True)
-        self.setToolTip("Drag the outline to move the text, drag a handle to change its width.\n"
-                        "Enter = done, Shift+Enter = new line, Esc = cancel")
+        self.setToolTip(tr("Drag the outline to move the text, drag a handle to change its "
+                           "width.\nEnter = done, Shift+Enter = new line, Esc = cancel"))
         self.resized_by_user = False
         self._done = False
         self._drag = None

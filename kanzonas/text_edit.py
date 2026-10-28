@@ -14,6 +14,8 @@ import re
 
 import pymupdf
 
+from .i18n import tr
+
 # PDF font flags as reported by PyMuPDF spans
 _ITALIC, _SERIF, _MONO, _BOLD = 2, 4, 8, 16
 
@@ -494,17 +496,18 @@ def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
     family "" = Helvetica, which every PDF reader has built in. Returns the font name used.
     Raises ValueError (before changing anything) if no font can write the text."""
     if any(ord(c) > 0xFFFF for c in text):
-        raise ValueError("Emoji and other characters beyond U+FFFF can't be written into a "
-                         "PDF page here. Remove them and try again.")
+        raise ValueError(tr("Emoji and other characters beyond U+FFFF can't be written into "
+                            "a PDF page here. Remove them and try again."))
     found = chosen_font(page, family, bold, italic, text)
     if found is None and not _winansi_ok(text):
         # the chosen font (or Helvetica) lacks some characters: a font that has them
         found = _unicode_font(page, text) or _broad_font(page, text)
         if found is None:
             bad = _unwritable(text)
-            names = ", ".join(f"{c} (U+{ord(c):04X})" for c in bad[:6]) or "some characters"
-            raise ValueError("No font on this computer can write these characters: "
-                             f"{names}. Remove or replace them and try again.")
+            names = ", ".join(f"{c} (U+{ord(c):04X})" for c in bad[:6]) or tr("some characters")
+            raise ValueError(tr("No font on this computer can write these characters: "
+                                "{names}. Remove or replace them and try again.").format(
+                                    names=names))
     if found:
         fontname, font, source = found
         page.insert_font(fontname=fontname, **source)
@@ -623,8 +626,8 @@ def delete_lines(page, lines, keep_links=False):
     go too, unless keep_links."""
     from .annotations import each_annot
     if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
-        raise ValueError("Apply or remove the redaction marks on this page before deleting "
-                         "its text.")
+        raise ValueError(tr("Apply or remove the redaction marks on this page before "
+                            "deleting its text."))
     _remove_lines(page, lines, keep_links)
 
 
@@ -640,9 +643,10 @@ def _font_for(page, span, text):
             return _pick_font(page, span, swapped), swapped
         except LookupError:
             bad = _unwritable(swapped)
-            names = ", ".join(f"{c} (U+{ord(c):04X})" for c in bad[:6]) or "some characters"
-            raise ValueError("No font on this computer can write these characters of the new "
-                             f"text: {names}. Remove or replace them and try again.")
+            names = ", ".join(f"{c} (U+{ord(c):04X})" for c in bad[:6]) or tr("some characters")
+            raise ValueError(tr("No font on this computer can write these characters of the "
+                                "new text: {names}. Remove or replace them and try again.")
+                             .format(names=names))
 
 
 _MARKER = re.compile(r"^\s*(?:(?:[\u2022\u2023\u2043\u2219\u25a0-\u25ff\u2700-\u27bf\ue000-\uf8ff"
@@ -1235,8 +1239,8 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
     from .annotations import each_annot
     if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
         # removing the old text applies every redaction on the page, pending ones included
-        raise ValueError("Apply or remove the redaction marks on this page before editing "
-                         "its text.")
+        raise ValueError(tr("Apply or remove the redaction marks on this page before "
+                            "editing its text."))
 
     if scan == "auto":
         try:
