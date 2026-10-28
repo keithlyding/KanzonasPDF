@@ -15,6 +15,8 @@ from ctypes import wintypes as W
 
 from pyhanko.sign import signers
 
+from .i18n import tr
+
 # crypt32 constants
 CERT_KEY_PROV_INFO_PROP_ID = 2
 CRYPT_ACQUIRE_COMPARE_KEY_FLAG = 0x4
@@ -211,8 +213,9 @@ def _sign_digest(ctx, digest, hash_name, ecdsa):
     if not c.CryptAcquireCertificatePrivateKey(
             ctx, CRYPT_ACQUIRE_COMPARE_KEY_FLAG | CRYPT_ACQUIRE_PREFER_NCRYPT_KEY_FLAG, None,
             ctypes.byref(key), ctypes.byref(spec), ctypes.byref(free)):
-        raise OSError("Windows couldn't open the certificate's private key "
-                      "(error %d). If it's on a card or token, plug it in." % ctypes.get_last_error())
+        raise OSError(tr("Windows couldn't open the certificate's private key (error {code}). "
+                         "If it's on a card or token, plug it in.").format(
+            code=ctypes.get_last_error()))
     buf = ctypes.create_string_buffer(digest, len(digest))
     try:
         if spec.value == CERT_NCRYPT_KEY_SPEC:            # CNG key (most keys today)
@@ -227,24 +230,27 @@ def _sign_digest(ctx, digest, hash_name, ecdsa):
                                       ctypes.byref(size), flags)
             if rc != 0:
                 if rc & 0xFFFFFFFF == 0x800704C7:          # ERROR_CANCELLED (PIN dialog)
-                    raise OSError("Signing was canceled.")
-                raise OSError("Windows couldn't sign (error 0x%08X)." % (rc & 0xFFFFFFFF))
+                    raise OSError(tr("Signing was canceled."))
+                raise OSError(tr("Windows couldn't sign (error {code}).").format(
+                    code="0x%08X" % (rc & 0xFFFFFFFF)))
             return sig.raw[:size.value]
         # older CryptoAPI key (some smart card drivers)
         if ecdsa:
-            raise OSError("This certificate's key type isn't supported for signing.")
+            raise OSError(tr("This certificate's key type isn't supported for signing."))
         h = ctypes.c_size_t(0)
         if not a.CryptCreateHash(key.value, CALG[hash_name], 0, 0, ctypes.byref(h)):
-            raise OSError("Windows couldn't sign with %s (error %d)."
-                          % (hash_name.upper(), ctypes.get_last_error()))
+            raise OSError(tr("Windows couldn't sign with {hash} (error {code}).").format(
+                hash=hash_name.upper(), code=ctypes.get_last_error()))
         try:
             if not a.CryptSetHashParam(h.value, HP_HASHVAL, buf, 0):
-                raise OSError("Windows couldn't sign (error %d)." % ctypes.get_last_error())
+                raise OSError(tr("Windows couldn't sign (error {code}).").format(
+                    code=ctypes.get_last_error()))
             size = W.DWORD(0)
             a.CryptSignHashW(h.value, spec.value, None, 0, None, ctypes.byref(size))
             sig = ctypes.create_string_buffer(size.value)
             if not a.CryptSignHashW(h.value, spec.value, None, 0, sig, ctypes.byref(size)):
-                raise OSError("Windows couldn't sign (error %d)." % ctypes.get_last_error())
+                raise OSError(tr("Windows couldn't sign (error {code}).").format(
+                    code=ctypes.get_last_error()))
             return sig.raw[:size.value][::-1]             # CryptoAPI is little-endian
         finally:
             a.CryptDestroyHash(h.value)
@@ -265,11 +271,11 @@ class WindowsSigner(signers.Signer):
         c = _api()[0]
         store = c.CertOpenSystemStoreW(None, "MY")
         if not store:
-            raise OSError("Couldn't open the Windows certificate store.")
+            raise OSError(tr("Couldn't open the Windows certificate store."))
         try:
             ctx = _find(store, thumbprint)
             if not ctx:
-                raise OSError("That certificate is no longer in the Windows certificate store.")
+                raise OSError(tr("That certificate is no longer in the Windows certificate store."))
             try:
                 cert = x509.Certificate.load(_der(ctx))
                 chain = [x509.Certificate.load(d) for d in _chain(ctx)]
@@ -280,7 +286,8 @@ class WindowsSigner(signers.Signer):
         self.thumbprint = thumbprint
         algo = cert.public_key.algorithm
         if algo not in ("rsa", "ec"):
-            raise OSError("This certificate's key type (%s) isn't supported for signing." % algo)
+            raise OSError(tr("This certificate's key type ({type}) isn't supported for "
+                             "signing.").format(type=algo))
         self.ecdsa = algo == "ec"
         self.key_bytes = (cert.public_key.bit_size + 7) // 8
         super().__init__(
@@ -300,7 +307,7 @@ class WindowsSigner(signers.Signer):
         try:
             ctx = _find(store, self.thumbprint)
             if not ctx:
-                raise OSError("That certificate is no longer in the Windows certificate store.")
+                raise OSError(tr("That certificate is no longer in the Windows certificate store."))
             try:
                 sig = _sign_digest(ctx, digest, name, self.ecdsa)
             finally:

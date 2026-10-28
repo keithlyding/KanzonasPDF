@@ -8,6 +8,14 @@ from PySide6.QtWidgets import (QWidget, QFormLayout, QVBoxLayout, QLabel, QToolB
 
 from . import annotations as A
 from . import stamps as ST
+from .i18n import tr
+
+# arrowhead and comment-mark names as shown (the stored values are the keys)
+HEAD_NAMES = {"open": tr("open"), "closed": tr("closed"), "open (reversed)": tr("open (reversed)"),
+              "closed (reversed)": tr("closed (reversed)"), "circle": tr("circle"),
+              "square": tr("square"), "diamond": tr("diamond"), "bar": tr("bar")}
+MARKUP_NAMES = {"highlight": tr("Highlight"), "underline": tr("Underline"),
+                "strikeout": tr("Strikeout"), "squiggly": tr("Squiggly")}
 
 BORDERLESS = ("textbox", "callout", "rect", "ellipse", "polygon", "m_area", "m_perimeter",
               "m_volume")
@@ -34,12 +42,12 @@ class ColorButton(QToolButton):
             self.setText(hex_color)
         else:
             pm.fill(Qt.white)
-            self.setText("none")
+            self.setText(tr("none"))
         self.setIcon(QIcon(pm))
 
     def _pick(self):
         start = QColor(self._color) if self._color else QColor("#ffffff")
-        c = QColorDialog.getColor(start, self, "Choose color")
+        c = QColorDialog.getColor(start, self, tr("Choose color"))
         if c.isValid():
             self.set_color(c.name())
             self.changed.emit()
@@ -66,14 +74,14 @@ class PropertiesPanel(QWidget):
         outer.addLayout(self.form)
 
         self.stroke = ColorButton()
-        self.no_stroke = QCheckBox("No border")
+        self.no_stroke = QCheckBox(tr("No border"))
         stroke_row = QWidget()
         sl = QHBoxLayout(stroke_row)
         sl.setContentsMargins(0, 0, 0, 0)
         sl.addWidget(self.stroke)
         sl.addWidget(self.no_stroke)
         self.fill = ColorButton(allow_none=True)
-        self.no_fill = QCheckBox("No fill")
+        self.no_fill = QCheckBox(tr("No fill"))
         fill_row = QWidget()
         fl = QHBoxLayout(fill_row)
         fl.setContentsMargins(0, 0, 0, 0)
@@ -91,46 +99,47 @@ class PropertiesPanel(QWidget):
         self.depth.setRange(0, 1_000_000)
         self.depth.setDecimals(3)
         self.depth.setKeyboardTracking(False)
-        self.depth.setToolTip("Volume = area \u00d7 depth. The depth is in the page's scale "
-                              "unit (feet when the scale is in feet and inches).")
+        self.depth.setToolTip(tr("Volume = area \u00d7 depth. The depth is in the page's scale "
+                                 "unit (feet when the scale is in feet and inches)."))
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(10, 100)
         self.head = QComboBox()
-        self.head.addItems(list(A.HEADS))
+        for key in A.HEADS:
+            self.head.addItem(HEAD_NAMES.get(key, key), key)
         self.label = QComboBox()            # stamp choice
         self.label.setEditable(True)
         self.label.setInsertPolicy(QComboBox.NoInsert)
-        self.label.lineEdit().setPlaceholderText("Type your own stamp text")
-        self.add_image = QPushButton("Add image stamp...")
+        self.label.lineEdit().setPlaceholderText(tr("Type your own stamp text"))
+        self.add_image = QPushButton(tr("Add image stamp..."))
         self.add_image.clicked.connect(self._add_image_stamp)
         label_row = QWidget()
         lr = QVBoxLayout(label_row)
         lr.setContentsMargins(0, 0, 0, 0)
         lr.addWidget(self.label)
         lr.addWidget(self.add_image)
-        self.name = QCheckBox("Add my name")
-        self.name.setToolTip("Your name is set in Edit > Author name for markups")
-        self.date = QCheckBox("Add the date")
+        self.name = QCheckBox(tr("Add my name"))
+        self.name.setToolTip(tr("Your name is set in Edit > Author name for markups"))
+        self.date = QCheckBox(tr("Add the date"))
         self.rotation = QDoubleSpinBox()
         self.rotation.setRange(-360, 360)
         self.rotation.setDecimals(1)
         self.rotation.setSuffix("\u00b0")
         self.rotation.setWrapping(True)
         self.rotation.setKeyboardTracking(False)
-        self.rotation.setToolTip("Counterclockwise. You can also drag the round handle above a "
-                                 "selected shape (hold Shift for 15\u00b0 steps).")
-        self.cloud = QCheckBox("Cloud border")
+        self.rotation.setToolTip(tr("Counterclockwise. You can also drag the round handle above "
+                                    "a selected shape (hold Shift for 15\u00b0 steps)."))
+        self.cloud = QCheckBox(tr("Cloud border"))
         self.for_who = QComboBox()
-        self.for_who.addItem("Initials", "initials")
-        self.for_who.addItem("Signature", "signature")
+        self.for_who.addItem(tr("Initials"), "initials")
+        self.for_who.addItem(tr("Signature"), "signature")
         self.markup = QComboBox()
-        self.markup.addItems([m.capitalize() for m in A.COMMENT_STYLES])
+        self.markup.addItems([MARKUP_NAMES.get(m, m) for m in A.COMMENT_STYLES])
         # font: the installed fonts for text written into the page (Add text, Edit text);
         # Helvetica / Times / Courier for text box comments (fonts every PDF viewer has)
         self.font = QComboBox()
         self.font.setMaxVisibleItems(20)
-        self.bold = QCheckBox("Bold")
-        self.italic = QCheckBox("Italic")
+        self.bold = QCheckBox(tr("Bold"))
+        self.italic = QCheckBox(tr("Italic"))
         font_row = QWidget()
         fr = QVBoxLayout(font_row)
         fr.setContentsMargins(0, 0, 0, 0)
@@ -143,27 +152,27 @@ class PropertiesPanel(QWidget):
         self._font_kind = None
 
         self.rows = {}
-        for key, label, w in (("label", "Stamp", label_row),
+        for key, label, w in (("label", tr("Stamp"), label_row),
                               ("name", "", self.name),
                               ("date", "", self.date),
                               ("cloud", "", self.cloud),
-                              ("markup", "Marks text with", self.markup),
-                              ("for", "Placeholder for", self.for_who),
-                              ("font", "Font", font_row),
-                              ("text_color", "Text color", self.text_color),
-                              ("stroke", "Line color", stroke_row),
-                              ("fill", "Fill", fill_row),
-                              ("width", "Line width", self.width),
-                              ("fontsize", "Font size", self.fontsize),
-                              ("head", "Arrowhead", self.head),
-                              ("depth", "Depth", self.depth),
-                              ("rotation", "Rotation", self.rotation),
-                              ("opacity", "Opacity", self.opacity)):
+                              ("markup", tr("Marks text with"), self.markup),
+                              ("for", tr("Placeholder for"), self.for_who),
+                              ("font", tr("Font"), font_row),
+                              ("text_color", tr("Text color"), self.text_color),
+                              ("stroke", tr("Line color"), stroke_row),
+                              ("fill", tr("Fill"), fill_row),
+                              ("width", tr("Line width"), self.width),
+                              ("fontsize", tr("Font size"), self.fontsize),
+                              ("head", tr("Arrowhead"), self.head),
+                              ("depth", tr("Depth"), self.depth),
+                              ("rotation", tr("Rotation"), self.rotation),
+                              ("opacity", tr("Opacity"), self.opacity)):
             lab = QLabel(label)
             self.form.addRow(lab, w)
             self.rows[key] = (lab, w)
 
-        self.reset = QPushButton("Reset defaults")
+        self.reset = QPushButton(tr("Reset defaults"))
         self.reset.clicked.connect(self.resetRequested.emit)
         outer.addWidget(self.reset)
         outer.addStretch(1)
@@ -194,9 +203,9 @@ class PropertiesPanel(QWidget):
         self._loading = True
         self._kind = kind
         if kind is None:
-            self.title.setText("No tool settings")
-            self.hint.setText("Pick a markup tool to set its default style, "
-                              "or click an annotation to edit it.")
+            self.title.setText(tr("No tool settings"))
+            self.hint.setText(tr("Pick a markup tool to set its default style, "
+                                 "or click an annotation to edit it."))
             for lab, w in self.rows.values():
                 lab.hide()
                 w.hide()
@@ -204,13 +213,14 @@ class PropertiesPanel(QWidget):
             self._loading = False
             return
         name = A.LABELS.get(kind, kind)
-        self.title.setText(f"Selected: {name}" if selected else f"{name}: default style")
-        self.hint.setText("Changes apply to the selected annotation." if selected else
-                          "The line being edited: a font or size picked here changes that "
-                          "line only." if kind == "edittext" else
-                          "Used for the text you add next; it's written into the page."
+        self.title.setText(tr("Selected: {name}").format(name=name) if selected else
+                           tr("{name}: default style").format(name=name))
+        self.hint.setText(tr("Changes apply to the selected annotation.") if selected else
+                          tr("The line being edited: a font or size picked here changes that "
+                             "line only.") if kind == "edittext" else
+                          tr("Used for the text you add next; it's written into the page.")
                           if kind in A.PAGE_TEXT_TOOLS else
-                          "Saved for next time. New annotations use these settings.")
+                          tr("Saved for next time. New annotations use these settings."))
         self.reset.setVisible(not selected)
         for key, (lab, w) in self.rows.items():
             vis = key in props and (key != "rotation" or selected)   # new markups start upright
@@ -220,7 +230,8 @@ class PropertiesPanel(QWidget):
             quarter = kind in A.QUARTER_TURNS
             self.rotation.setSingleStep(90 if quarter else 5)
             self.rotation.setDecimals(0 if quarter else 1)
-            self.rows["rotation"][0].setText("Rotation (90\u00b0 steps)" if quarter else "Rotation")
+            self.rows["rotation"][0].setText(tr("Rotation (90\u00b0 steps)") if quarter
+                                                else tr("Rotation"))
             r = float(props.get("rotation") or 0)
             self.rotation.setValue(r - 360 if r > 180 else r)
         if "stroke" in props:
@@ -228,9 +239,9 @@ class PropertiesPanel(QWidget):
             # only shapes that can stand without an outline offer "No border"
             self.no_stroke.setVisible(kind in BORDERLESS)
             self.no_stroke.setChecked(props["stroke"] is None and kind in BORDERLESS)
-            self.rows["stroke"][0].setText("Border color" if kind == "textbox" else
-                                           "Color" if kind in A.MARKUP + ("note", "stamp")
-                                           else "Line color")
+            self.rows["stroke"][0].setText(tr("Border color") if kind == "textbox" else
+                                           tr("Color") if kind in A.MARKUP + ("note", "stamp")
+                                           else tr("Line color"))
         if "fill" in props:
             self.fill.set_color(props["fill"])
             self.no_fill.setChecked(props["fill"] is None)
@@ -238,14 +249,15 @@ class PropertiesPanel(QWidget):
             self.text_color.set_color(props["text_color"])
         if "width" in props:
             self.width.setValue(float(props["width"]))
-            self.rows["width"][0].setText("Border width" if kind == "textbox" else "Line width")
+            self.rows["width"][0].setText(tr("Border width") if kind == "textbox"
+                                          else tr("Line width"))
         if "fontsize" in props:
             keep = kind == "edittext"          # 0 = keep each line's own size
             self.fontsize.setMinimum(0 if keep else 4)
-            self.fontsize.setSpecialValueText("Keep the line's size" if keep else "")
+            self.fontsize.setSpecialValueText(tr("Keep the line's size") if keep else "")
             self.fontsize.setValue(float(props["fontsize"]))
         if "head" in props:
-            self.head.setCurrentText(props["head"])
+            self.head.setCurrentIndex(max(0, self.head.findData(props["head"])))
         if "depth" in props:
             self.depth.setValue(float(props["depth"] or 0))
         if "label" in props:
@@ -282,9 +294,9 @@ class PropertiesPanel(QWidget):
             else:
                 from PySide6.QtGui import QFontDatabase
                 if kind == "edittext":
-                    self.font.addItem("Keep the line's font", "")
+                    self.font.addItem(tr("Keep the line's font"), "")
                 else:
-                    self.font.addItem("Helvetica (built into every PDF reader)", "")
+                    self.font.addItem(tr("Helvetica (built into every PDF reader)"), "")
                 for fam in QFontDatabase.families():
                     if not QFontDatabase.isPrivateFamily(fam):
                         self.font.addItem(fam, fam)
@@ -297,17 +309,17 @@ class PropertiesPanel(QWidget):
         for t in ST.PRESETS:
             self.label.addItem(t, t)
         for t in ST.FORM_PRESETS:
-            self.label.addItem("Fill-in: " + ST.form_title(t), t)
+            self.label.addItem(tr("Fill-in: {name}").format(name=ST.form_title(t)), t)
         for f in ST.library():
-            self.label.addItem("Image: " + f, ST.IMAGE_PREFIX + f)
+            self.label.addItem(tr("Image: {name}").format(name=f), ST.IMAGE_PREFIX + f)
         if current and self.label.findData(current) < 0:
             self.label.addItem(current, current)          # custom text stamp
         self.label.setCurrentIndex(max(0, self.label.findData(current)))
 
     def _add_image_stamp(self):
         from PySide6.QtWidgets import QFileDialog
-        path, _ = QFileDialog.getOpenFileName(self, "Image stamp", "",
-                                              "Images (*.png *.jpg *.jpeg *.bmp)")
+        path, _ = QFileDialog.getOpenFileName(self, tr("Image stamp"), "",
+                                              tr("Images") + " (*.png *.jpg *.jpeg *.bmp)")
         if not path:
             return
         name = ST.add_to_library(path)
@@ -339,7 +351,7 @@ class PropertiesPanel(QWidget):
         if "fontsize" in p:
             p["fontsize"] = self.fontsize.value()
         if "head" in p:
-            p["head"] = self.head.currentText()
+            p["head"] = self.head.currentData() or self.head.currentText()
         if "depth" in p:
             p["depth"] = self.depth.value()
         if "markup" in p:
@@ -348,7 +360,7 @@ class PropertiesPanel(QWidget):
             data = self.label.currentData()
             text = self.label.currentText().strip()
             p["label"] = data if data and self.label.itemText(self.label.currentIndex()) == text \
-                else (text.upper() or "APPROVED")
+                else (text.upper() or tr("APPROVED"))
         if "date" in p:
             p["date"] = self.date.isChecked()
         if "name" in p:

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QGridLayout, QFormLayout, Q
 
 from .properties import ColorButton
 from . import annotations as A
+from .i18n import tr
 
 _ALIGN = {"left": pymupdf.TEXT_ALIGN_LEFT, "center": pymupdf.TEXT_ALIGN_CENTER,
           "right": pymupdf.TEXT_ALIGN_RIGHT}
@@ -38,7 +39,7 @@ def parse_pages(text, count):
         else:
             a = b = int(part)
         if a < 1 or b > count or a > b:
-            raise ValueError(f"Page range {part} is outside 1-{count}.")
+            raise ValueError(tr("Page range {part} is outside 1-{count}.").format(part=part, count=count))
         out.update(range(a - 1, b))
     return sorted(out)
 
@@ -71,7 +72,8 @@ def add_header_footer(doc, spec, file_name):
             rc = page.insert_textbox(box, text, fontsize=size, fontname="helv", color=color,
                                      align=_ALIGN[align], rotate=page.rotation)
             if rc < 0:
-                raise ValueError(f"\"{text}\" doesn't fit across the page at {size:g} pt.")
+                raise ValueError(tr("\"{text}\" doesn't fit across the page at {size} pt.").format(
+                    text=text, size=f"{size:g}"))
 
 
 WM_BEGIN = b"/Artifact <</Subtype /Watermark /Type /Pagination >> BDC\n"
@@ -171,14 +173,17 @@ def _add_watermark_page(page, spec):
                      morph=(center, pymupdf.Matrix(angle)), overlay=not spec.get("behind"))
 
 
-COMPRESS = {"Good quality (150 dpi images)": (200, 150, 80),
-            "Smaller (100 dpi images)": (130, 100, 65),
-            "Smallest (72 dpi images)": (90, 72, 50)}
+COMPRESS_EN = {"Good quality (150 dpi images)": (200, 150, 80),
+               "Smaller (100 dpi images)": (130, 100, 65),
+               "Smallest (72 dpi images)": (90, 72, 50)}
+# the choices as shown (in the user's language); compress() takes these or the English names
+COMPRESS = dict(zip((tr("Good quality (150 dpi images)"), tr("Smaller (100 dpi images)"),
+                     tr("Smallest (72 dpi images)")), COMPRESS_EN.values()))
 
 
 def compress(pdf_bytes, out_path, preset):
     """Downsample/recompress images, subset fonts, drop unused objects."""
-    threshold, target, quality = COMPRESS[preset]
+    threshold, target, quality = COMPRESS.get(preset) or COMPRESS_EN[preset]
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     try:
         doc.rewrite_images(dpi_threshold=threshold, dpi_target=target, quality=quality)
@@ -198,26 +203,28 @@ def compress(pdf_bytes, out_path, preset):
 class HeaderFooterDialog(QDialog):
     def __init__(self, parent, page_count):
         super().__init__(parent)
-        self.setWindowTitle("Header, footer, page numbers & Bates numbering")
+        self.setWindowTitle(tr("Header, footer, page numbers & Bates numbering"))
         self.page_count = page_count
         lay = QVBoxLayout(self)
-        lay.addWidget(QLabel("Type text in any position. Tokens: {page}  {pages}  {date}  "
-                             "{file}  {bates}"))
+        lay.addWidget(QLabel(tr("Type text in any position. Tokens:") +
+                             "  {page}  {pages}  {date}  {file}  {bates}"))
         grid = QGridLayout()
         self.edits = {}
-        for c, align in enumerate(("Left", "Center", "Right")):
+        for c, align in enumerate((tr("Left"), tr("Center"), tr("Right"))):
             grid.addWidget(QLabel(align), 0, c + 1)
         for r, where in enumerate(("header", "footer")):
-            grid.addWidget(QLabel(where.capitalize()), r + 1, 0)
+            grid.addWidget(QLabel(tr("Header") if where == "header" else tr("Footer")), r + 1, 0)
             for c, align in enumerate(("left", "center", "right")):
                 e = QLineEdit()
                 grid.addWidget(e, r + 1, c + 1)
                 self.edits[(where, align)] = e
         lay.addLayout(grid)
         presets = QHBoxLayout()
-        for label, key, val in (("Page X of Y", ("footer", "center"), "Page {page} of {pages}"),
-                                ("Bates number", ("footer", "right"), "{bates}"),
-                                ("Date", ("header", "right"), "{date}")):
+        # the {tokens} in the texts put in stay as they are (they're filled in per page)
+        for label, key, val in ((tr("Page X of Y"), ("footer", "center"),
+                                 tr("Page {page} of {pages}")),
+                                (tr("Bates number"), ("footer", "right"), "{bates}"),
+                                (tr("Date"), ("header", "right"), "{date}")):
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, k=key, v=val: self.edits[k].setText(v))
             presets.addWidget(b)
@@ -234,7 +241,7 @@ class HeaderFooterDialog(QDialog):
         self.margin.setValue(24)
         self.margin.setSuffix(" pt")
         self.pages = QLineEdit()
-        self.pages.setPlaceholderText(f"All pages (or e.g. 1-3, 5, 8-)")
+        self.pages.setPlaceholderText(tr("All pages (or e.g. 1-3, 5, 8-)"))
         self.prefix = QLineEdit("ABC")
         self.start = QSpinBox()
         self.start.setRange(0, 10 ** 8)
@@ -242,18 +249,18 @@ class HeaderFooterDialog(QDialog):
         self.digits = QSpinBox()
         self.digits.setRange(1, 12)
         self.digits.setValue(6)
-        form.addRow("Font size", self.size)
-        form.addRow("Color", self.color)
-        form.addRow("Margin from edge", self.margin)
-        form.addRow("Pages", self.pages)
+        form.addRow(tr("Font size"), self.size)
+        form.addRow(tr("Color"), self.color)
+        form.addRow(tr("Margin from edge"), self.margin)
+        form.addRow(tr("Pages"), self.pages)
         bates = QHBoxLayout()
-        bates.addWidget(QLabel("prefix"))
+        bates.addWidget(QLabel(tr("prefix")))
         bates.addWidget(self.prefix)
-        bates.addWidget(QLabel("start"))
+        bates.addWidget(QLabel(tr("start")))
         bates.addWidget(self.start)
-        bates.addWidget(QLabel("digits"))
+        bates.addWidget(QLabel(tr("digits")))
         bates.addWidget(self.digits)
-        form.addRow("Bates numbering", bates)
+        form.addRow(tr("Bates numbering"), bates)
         lay.addLayout(form)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btns.accepted.connect(self._ok)
@@ -272,7 +279,7 @@ class HeaderFooterDialog(QDialog):
             return
         texts = {k: e.text() for k, e in self.edits.items() if e.text().strip()}
         if not texts:
-            self.error.setText("Type something in at least one position.")
+            self.error.setText(tr("Type something in at least one position."))
             return
         self.spec = {"texts": texts, "size": self.size.value(), "color": self.color.color(),
                      "margin": self.margin.value(), "pages": pages,
@@ -284,18 +291,20 @@ class HeaderFooterDialog(QDialog):
 class WatermarkDialog(QDialog):
     def __init__(self, parent, page_count):
         super().__init__(parent)
-        self.setWindowTitle("Watermark")
+        self.setWindowTitle(tr("Watermark"))
         self.page_count = page_count
         lay = QVBoxLayout(self)
         form = QFormLayout()
         self.kind = QComboBox()
-        self.kind.addItems(["Text", "Image"])
+        self.kind.addItem(tr("Text"), "text")
+        self.kind.addItem(tr("Image"), "image")
         self.text = QComboBox()
         self.text.setEditable(True)
-        self.text.addItems(["DRAFT", "CONFIDENTIAL", "COPY", "PRELIMINARY", "NOT FOR CONSTRUCTION",
-                            "SAMPLE", "VOID"])
+        # suggested watermark words (printed on the pages, in the user's language)
+        self.text.addItems([tr("DRAFT"), tr("CONFIDENTIAL"), tr("COPY"), tr("PRELIMINARY"),
+                            tr("NOT FOR CONSTRUCTION"), tr("SAMPLE"), tr("VOID")])
         self.image = QLineEdit()
-        browse = QPushButton("Browse...")
+        browse = QPushButton(tr("Browse..."))
         browse.clicked.connect(self._browse)
         img_row = QHBoxLayout()
         img_row.addWidget(self.image)
@@ -312,18 +321,18 @@ class WatermarkDialog(QDialog):
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(5, 100)
         self.opacity.setValue(25)
-        self.behind = QCheckBox("Behind page content")
+        self.behind = QCheckBox(tr("Behind page content"))
         self.pages = QLineEdit()
-        self.pages.setPlaceholderText("All pages (or e.g. 1-3, 5)")
-        form.addRow("Type", self.kind)
-        form.addRow("Text", self.text)
-        form.addRow("Image", img_row)
-        form.addRow("Font size", self.size)
-        form.addRow("Color", self.color)
-        form.addRow("Angle", self.angle)
-        form.addRow("Opacity", self.opacity)
+        self.pages.setPlaceholderText(tr("All pages (or e.g. 1-3, 5)"))
+        form.addRow(tr("Type"), self.kind)
+        form.addRow(tr("Text"), self.text)
+        form.addRow(tr("Image"), img_row)
+        form.addRow(tr("Font size"), self.size)
+        form.addRow(tr("Color"), self.color)
+        form.addRow(tr("Angle"), self.angle)
+        form.addRow(tr("Opacity"), self.opacity)
         form.addRow("", self.behind)
-        form.addRow("Pages", self.pages)
+        form.addRow(tr("Pages"), self.pages)
         lay.addLayout(form)
         self.error = QLabel()
         self.error.setStyleSheet("color: #c00;")
@@ -335,11 +344,11 @@ class WatermarkDialog(QDialog):
         self.spec = None
 
     def _browse(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Watermark image", "",
-                                              "Images (*.png *.jpg *.jpeg *.bmp)")
+        path, _ = QFileDialog.getOpenFileName(self, tr("Watermark image"), "",
+                                              tr("Images") + " (*.png *.jpg *.jpeg *.bmp)")
         if path:
             self.image.setText(path)
-            self.kind.setCurrentText("Image")
+            self.kind.setCurrentIndex(self.kind.findData("image"))
 
     def _ok(self):
         try:
@@ -349,14 +358,14 @@ class WatermarkDialog(QDialog):
             return
         common = {"pages": pages, "opacity": self.opacity.value() / 100,
                   "behind": self.behind.isChecked()}
-        if self.kind.currentText() == "Image":
+        if self.kind.currentData() == "image":
             if not os.path.isfile(self.image.text()):
-                self.error.setText("Choose an image file.")
+                self.error.setText(tr("Choose an image file."))
                 return
             self.spec = {**common, "image": self.image.text(), "scale": 0.5}
         else:
             if not self.text.currentText().strip():
-                self.error.setText("Type the watermark text.")
+                self.error.setText(tr("Type the watermark text."))
                 return
             self.spec = {**common, "text": self.text.currentText().strip(),
                          "size": self.size.value(), "color": self.color.color(),
@@ -373,11 +382,11 @@ class PageChoice(QWidget):
         self.page_count, self.current = page_count, current
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 0, 0, 0)
-        self.r_current = QRadioButton(f"Current page ({current + 1})")
-        self.r_all = QRadioButton("All pages")
-        self.r_some = QRadioButton("Pages:")
+        self.r_current = QRadioButton(tr("Current page ({n})").format(n=current + 1))
+        self.r_all = QRadioButton(tr("All pages"))
+        self.r_some = QRadioButton(tr("Pages:"))
         self.some = QLineEdit()
-        self.some.setPlaceholderText("e.g. 1-3, 7")
+        self.some.setPlaceholderText(tr("e.g. 1-3, 7"))
         self.some.textEdited.connect(lambda _: self.r_some.setChecked(True))
         for w in (self.r_current, self.r_all, self.r_some, self.some):
             row.addWidget(w)
@@ -390,7 +399,7 @@ class PageChoice(QWidget):
         if self.r_all.isChecked():
             return list(range(self.page_count))
         if not self.some.text().strip():
-            raise ValueError("Type the pages, e.g. 1-3, 7.")
+            raise ValueError(tr("Type the pages, e.g. 1-3, 7."))
         return parse_pages(self.some.text(), self.page_count)
 
 
@@ -400,36 +409,36 @@ class BackgroundDialog(QDialog):
     def __init__(self, parent, page_count, current):
         super().__init__(parent)
         from . import background as B
-        self.setWindowTitle("Background")
+        self.setWindowTitle(tr("Background"))
         lay = QVBoxLayout(self)
         form = QFormLayout()
         self.kind = QComboBox()
-        for key, label in (("color", "Solid color"), ("gradient", "Gradient"),
-                           ("image", "Picture")):
+        for key, label in (("color", tr("Solid color")), ("gradient", tr("Gradient")),
+                           ("image", tr("Picture"))):
             self.kind.addItem(label, key)
-        form.addRow("Type", self.kind)
+        form.addRow(tr("Type"), self.kind)
         self.color = ColorButton()
         self.color.set_color("#fff7e0")
-        self.color_label = QLabel("Color")
+        self.color_label = QLabel(tr("Color"))
         form.addRow(self.color_label, self.color)
         self.color2 = ColorButton()
         self.color2.set_color("#c8daf0")
-        form.addRow("Second color", self.color2)
+        form.addRow(tr("Second color"), self.color2)
         self.direction = QComboBox()
         for key, label in B.DIRECTIONS.items():
             self.direction.addItem(label, key)
-        form.addRow("Direction", self.direction)
+        form.addRow(tr("Direction"), self.direction)
         self.image = QLineEdit()
-        browse = QPushButton("Browse...")
+        browse = QPushButton(tr("Browse..."))
         browse.clicked.connect(self._browse)
         img_row = QHBoxLayout()
         img_row.addWidget(self.image)
         img_row.addWidget(browse)
-        form.addRow("Picture", img_row)
+        form.addRow(tr("Picture"), img_row)
         self.fit = QComboBox()
         for key, label in B.FITS.items():
             self.fit.addItem(label, key)
-        form.addRow("Size", self.fit)
+        form.addRow(tr("Size"), self.fit)
         op_row = QHBoxLayout()
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(5, 100)
@@ -438,13 +447,13 @@ class BackgroundDialog(QDialog):
         self.opacity.valueChanged.connect(lambda v: self.op_label.setText(f"{v}%"))
         op_row.addWidget(self.opacity, 1)
         op_row.addWidget(self.op_label)
-        form.addRow("Opacity", op_row)
+        form.addRow(tr("Opacity"), op_row)
         self.pages = PageChoice(page_count, current)
-        form.addRow("Apply to", self.pages)
+        form.addRow(tr("Apply to"), self.pages)
         lay.addLayout(form)
-        note = QLabel("The background goes behind everything on the page and replaces one "
+        note = QLabel(tr("The background goes behind everything on the page and replaces one "
                       "added here before. Document > Remove background takes it off again. "
-                      "It can't show through a scanned page (the scan covers the whole page).")
+                      "It can't show through a scanned page (the scan covers the whole page)."))
         note.setWordWrap(True)
         lay.addWidget(note)
         self.error = QLabel()
@@ -475,7 +484,7 @@ class BackgroundDialog(QDialog):
     def _update(self):
         kind = self.kind.currentData()
         self._show(self.color, kind != "image")
-        self.color_label.setText("First color" if kind == "gradient" else "Color")
+        self.color_label.setText(tr("First color") if kind == "gradient" else tr("Color"))
         self._show(self.color2, kind == "gradient")
         self._show(self.direction, kind == "gradient")
         self._show(self._rows["image"], kind == "image")
@@ -483,8 +492,8 @@ class BackgroundDialog(QDialog):
         self.adjustSize()
 
     def _browse(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Background picture", "",
-                                              "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)")
+        path, _ = QFileDialog.getOpenFileName(self, tr("Background picture"), "",
+                                              tr("Images") + " (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)")
         if path:
             self.image.setText(path)
 
@@ -498,12 +507,12 @@ class BackgroundDialog(QDialog):
         spec = {"kind": kind, "opacity": self.opacity.value() / 100}
         if kind == "image":
             if not os.path.isfile(self.image.text()):
-                self.error.setText("Choose a picture file.")
+                self.error.setText(tr("Choose a picture file."))
                 return
             try:
                 pymupdf.Pixmap(self.image.text())
             except Exception:
-                self.error.setText("That file isn't a picture KanzonasPDF can read.")
+                self.error.setText(tr("That file isn't a picture KanzonasPDF can read."))
                 return
             spec.update(image=self.image.text(), fit=self.fit.currentData())
         else:

@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, Q
 from . import annotations as A
 from . import measure as M
 from . import sheet_scale
+from .i18n import tr
 
 _INPUT_UNITS = ["ft-in", "ft", "in", "yd", "m", "cm", "mm"]
 
@@ -20,12 +21,12 @@ def parse_length(text, unit):
     """Text -> meters. Accepts 12'-6", 12' 6 1/2", 6", 12.5 (in the chosen unit)."""
     t = text.strip().replace("’", "'").replace("”", '"')
     if not t:
-        raise ValueError("Enter the real length.")
+        raise ValueError(tr("Enter the real length."))
     if "'" in t or '"' in t:
         m = re.fullmatch(r"\s*(?:(\d+(?:\.\d+)?)\s*')?\s*-?\s*(?:(\d+(?:\.\d+)?)?"
                          r"(?:\s+(\d+)/(\d+))?\s*\"?)?\s*", t)
         if not m:
-            raise ValueError("Couldn't read that length. Try 12'-6\" or 150.")
+            raise ValueError(tr("Couldn't read that length. Try 12'-6\" or 150."))
         ft = float(m.group(1) or 0)
         inch = float(m.group(2) or 0)
         if m.group(3):
@@ -42,22 +43,22 @@ class ScaleDialog(QDialog):
 
     def __init__(self, parent, page, pdf_len=None, page_count=1):
         super().__init__(parent)
-        self.setWindowTitle("Calibrate Tape Measure" if pdf_len else "Set scale")
+        self.setWindowTitle(tr("Calibrate Tape Measure") if pdf_len else tr("Set scale"))
         self.pdf_len = pdf_len
         lay = QVBoxLayout(self)
         _f, cur_unit, cur_label, ok = M.get_scale(page)
-        lay.addWidget(QLabel(f"Current: {cur_label}"))
+        lay.addWidget(QLabel(tr("Current: {scale}").format(scale=cur_label)))
         form = QFormLayout()
-        self.r_known = QRadioButton("Known distance")
-        self.r_preset = QRadioButton("Preset scale")
-        self.r_sheet = QRadioButton("Scale written on the sheet")
+        self.r_known = QRadioButton(tr("Known distance"))
+        self.r_preset = QRadioButton(tr("Preset scale"))
+        self.r_sheet = QRadioButton(tr("Scale written on the sheet"))
         self.sheet = QComboBox()
         self.found = sheet_scale.find(page)
         for f in self.found:
             if f["ratio"] is not None:
                 self.sheet.addItem(f'{f["label"]}  ({f["where"]})', (f["ratio"], f["unit"], f["label"]))
         self.length = QLineEdit()
-        self.length.setPlaceholderText("e.g. 12'-6\"  or  3.5")
+        self.length.setPlaceholderText(tr("e.g. 12'-6\"  or  3.5"))
         self.in_unit = QComboBox()
         for u in _INPUT_UNITS:
             self.in_unit.addItem(M.UNIT_LABELS[u], u)
@@ -73,11 +74,11 @@ class ScaleDialog(QDialog):
             self.disp_unit.addItem(lab, u)
         self.disp_unit.setCurrentIndex(max(0, self.disp_unit.findData(cur_unit if ok else M.DEFAULT_UNIT)))
         self.pages = QComboBox()
-        self.pages.addItems(["This page", "All pages"])
+        self.pages.addItems([tr("This page"), tr("All pages")])
         if page_count < 2:
             self.pages.setEnabled(False)
         if pdf_len:
-            lay.addWidget(QLabel("You drew a line. How long is it in real life?"))
+            lay.addWidget(QLabel(tr("You drew a line. How long is it in real life?")))
             form.addRow(self.r_known, row)
             self.r_known.setChecked(True)
         else:
@@ -87,8 +88,8 @@ class ScaleDialog(QDialog):
             self.r_preset.setChecked(True)
         if self.sheet.count():
             form.addRow(self.r_sheet, self.sheet)
-            note = QLabel("Read off the page text. A sheet printed at reduced size still says "
-                          "its original scale: then draw a Calibrate line instead.")
+            note = QLabel(tr("Read off the page text. A sheet printed at reduced size still says "
+                             "its original scale: then draw a Calibrate line instead."))
             note.setWordWrap(True)
             form.addRow(note)
             if not pdf_len and self.found[0]["where"] == "title block":
@@ -99,10 +100,10 @@ class ScaleDialog(QDialog):
             self.r_sheet.hide()
             self.sheet.hide()
             if any(f["ratio"] is None for f in self.found):
-                form.addRow(QLabel("The sheet says NOT TO SCALE."))
+                form.addRow(QLabel(tr("The sheet says NOT TO SCALE.")))
         form.addRow(self.r_preset, self.preset)
-        form.addRow("Show measurements in", self.disp_unit)
-        form.addRow("Apply to", self.pages)
+        form.addRow(tr("Show measurements in"), self.disp_unit)
+        form.addRow(tr("Apply to"), self.pages)
         lay.addLayout(form)
         self.preset.currentIndexChanged.connect(self._preset_changed)
         self.preset.activated.connect(lambda _: self.r_preset.setChecked(True))
@@ -136,13 +137,15 @@ class ScaleDialog(QDialog):
             try:
                 meters = parse_length(self.length.text(), self.in_unit.currentData())
             except ValueError as e:
-                QMessageBox.warning(self, "Calibrate Tape Measure", str(e))
+                QMessageBox.warning(self, tr("Calibrate Tape Measure"), str(e))
                 return
             if meters <= 0:
-                QMessageBox.warning(self, "Calibrate Tape Measure", "The length must be more than zero.")
+                QMessageBox.warning(self, tr("Calibrate Tape Measure"),
+                                    tr("The length must be more than zero."))
                 return
             f = meters / self.pdf_len
-            label = f"calibrated ({self.length.text().strip()} = drawn line)"
+            label = tr("calibrated ({length} = drawn line)").format(
+                length=self.length.text().strip())
         elif self.r_sheet.isChecked() and self.sheet.count():
             ratio, _u, label = self.sheet.currentData()
             f = M.scale_from_preset(ratio)
@@ -173,16 +176,27 @@ def summary_rows(doc):
     for (label, group, unit), g in sorted(groups.items()):
         pages = ", ".join(str(p) for p in sorted(g["pages"]))
         total = g["count"] if unit == "count" else round(g["total"], 2)
-        rows.append((label, group or "", pages, g["count"], total, unit))
+        rows.append((label, group or "", pages, g["count"], total, _unit_name(unit)))
     return rows
 
 
+def _unit_name(unit):
+    """A total's unit as shown ("count", "degrees" and "ft (radius)" are worded)."""
+    if unit == "count":
+        return tr("count")
+    if unit == "degrees":
+        return tr("degrees")
+    if unit.endswith(" (radius)"):
+        return tr("{unit} (radius)").format(unit=unit[:-len(" (radius)")])
+    return unit
+
+
 class SummaryDialog(QDialog):
-    COLS = ["Type", "Group", "Pages", "Items", "Total", "Unit"]
+    COLS = [tr("Type"), tr("Group"), tr("Pages"), tr("Items"), tr("Total"), tr("Unit")]
 
     def __init__(self, parent, doc):
         super().__init__(parent)
-        self.setWindowTitle("Measurement summary")
+        self.setWindowTitle(tr("Measurement summary"))
         self.resize(640, 360)
         lay = QVBoxLayout(self)
         self.rows = summary_rows(doc)
@@ -199,11 +213,11 @@ class SummaryDialog(QDialog):
                 t.setItem(r, c, it)
         lay.addWidget(t)
         if not self.rows:
-            lay.addWidget(QLabel("No measurements yet. Use the Measure tools to add some."))
+            lay.addWidget(QLabel(tr("No measurements yet. Use the Measure tools to add some.")))
         btns = QHBoxLayout()
-        exp = QPushButton("Export CSV...")
+        exp = QPushButton(tr("Export CSV..."))
         exp.clicked.connect(self._export)
-        close = QPushButton("Close")
+        close = QPushButton(tr("Close"))
         close.clicked.connect(self.accept)
         btns.addWidget(exp)
         btns.addStretch(1)
@@ -211,8 +225,8 @@ class SummaryDialog(QDialog):
         lay.addLayout(btns)
 
     def _export(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Export measurements", "measurements.csv",
-                                              "CSV (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(self, tr("Export measurements"), "measurements.csv",
+                                              tr("CSV files") + " (*.csv)")
         if path:
             with open(path, "w", newline="", encoding="utf-8-sig") as f:
                 w = csv.writer(f)

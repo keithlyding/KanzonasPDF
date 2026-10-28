@@ -17,8 +17,14 @@ import tempfile
 
 import pymupdf
 
-UNITS = {"inches": 1 / 72, "millimeters": 25.4 / 72, "PDF points (1:1)": 1.0}
+from .i18n import tr
+
+_UNITS_EN = {"inches": 1 / 72, "millimeters": 25.4 / 72, "PDF points (1:1)": 1.0}
 _DXF_UNITS = {"inches": 1, "millimeters": 4, "PDF points (1:1)": 0}
+# the DXF unit choices as shown (in the user's language); to_dxf takes these or the English
+_UNIT_NAMES = {tr("inches"): "inches", tr("millimeters"): "millimeters",
+               tr("PDF points (1:1)"): "PDF points (1:1)"}
+UNITS = {shown: _UNITS_EN[en] for shown, en in _UNIT_NAMES.items()}
 
 
 def _pages(doc, pages):
@@ -66,12 +72,12 @@ def to_excel(pdf_bytes, out_path, pages=None, progress=None):
         except Exception:
             tabs = []
         for k, t in enumerate(tabs, 1):
-            ws = wb.create_sheet(f"P{i + 1} table {k}"[:31])
+            ws = wb.create_sheet(tr("P{page} table {n}").format(page=i + 1, n=k)[:31])
             for row in t.extract():
                 append_text(ws, [("" if c is None else str(c)) for c in row])
             tables_found += 1
         if not tabs:
-            ws = wb.create_sheet(f"P{i + 1} text"[:31])
+            ws = wb.create_sheet(tr("P{page} text").format(page=i + 1)[:31])
             for row in _text_rows(page):
                 append_text(ws, row)
     for ws in wb.worksheets:
@@ -79,7 +85,7 @@ def to_excel(pdf_bytes, out_path, pages=None, progress=None):
             width = max((len(str(c.value)) for c in col if c.value is not None), default=8)
             ws.column_dimensions[get_column_letter(col[0].column)].width = min(60, width + 2)
     if not wb.worksheets:
-        wb.create_sheet("Empty")
+        wb.create_sheet(tr("Empty"))
     wb.save(out_path)
     doc.close()
     return tables_found
@@ -152,9 +158,10 @@ def to_dxf(pdf_bytes, out_path, pages=None, units="inches", progress=None):
     from ezdxf.enums import TextEntityAlignment
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     dxf = ezdxf.new("R2010", setup=True)
+    units = _UNIT_NAMES.get(units, units)
     dxf.units = _DXF_UNITS[units]
     msp = dxf.modelspace()
-    k = UNITS[units]
+    k = _UNITS_EN[units]
     x_offset = 0.0
     counts = {"lines": 0, "curves": 0, "text": 0}
     for i in _pages(doc, pages):
@@ -248,7 +255,7 @@ def to_text(pdf_bytes, out_path, pages=None, progress=None):
         for i in _pages(doc, pages):
             if progress:
                 progress(i)
-            f.write(f"===== Page {i + 1} =====\n")
+            f.write("===== " + tr("Page {page}").format(page=i + 1) + " =====\n")
             f.write(doc[i].get_text(sort=True))
             f.write("\n")
     doc.close()

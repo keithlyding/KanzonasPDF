@@ -6,6 +6,8 @@ import re
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
                                QLabel, QLineEdit, QVBoxLayout)
 
+from .i18n import tr
+
 
 def pattern(find, match_case=False, whole_words=False):
     p = re.escape(find)
@@ -18,27 +20,28 @@ class ReplaceDialog(QDialog):
     def __init__(self, parent, view, find=""):
         super().__init__(parent)
         self.view = view
-        self.setWindowTitle("Replace text")
+        self.setWindowTitle(tr("Replace text"))
         form = QFormLayout()
         self.find = QLineEdit(find)
         self.repl = QLineEdit()
-        self.case = QCheckBox("Match case")
-        self.whole = QCheckBox("Whole words only")
+        self.case = QCheckBox(tr("Match case"))
+        self.whole = QCheckBox(tr("Whole words only"))
         self.scope = QComboBox()
-        self.scope.addItems(["All pages", f"This page ({view.current_page() + 1})"])
-        form.addRow("Find", self.find)
-        form.addRow("Replace with", self.repl)
+        self.scope.addItems([tr("All pages"),
+                             tr("This page ({n})").format(n=view.current_page() + 1)])
+        form.addRow(tr("Find"), self.find)
+        form.addRow(tr("Replace with"), self.repl)
         form.addRow("", self.case)
         form.addRow("", self.whole)
-        form.addRow("In", self.scope)
-        self.note = QLabel("Each line that changes is rewritten in its own font when it has "
-                           "the characters (like Edit text). Ctrl+Z undoes it all.")
+        form.addRow(tr("In"), self.scope)
+        self.note = QLabel(tr("Each line that changes is rewritten in its own font when it "
+                              "has the characters (like Edit text). Ctrl+Z undoes it all."))
         self.note.setWordWrap(True)
         self.note.setStyleSheet("color: gray;")
         self.result = QLabel()
         self.result.setWordWrap(True)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
-        self.go = buttons.addButton("Replace all", QDialogButtonBox.ActionRole)
+        self.go = buttons.addButton(tr("Replace all"), QDialogButtonBox.ActionRole)
         self.go.setDefault(True)
         self.go.clicked.connect(self.replace_all)
         buttons.rejected.connect(self.reject)
@@ -57,9 +60,13 @@ class ReplaceDialog(QDialog):
         found, lines, skipped = v.replace_text(self.find.text(), self.repl.text(),
                                                self.case.isChecked(), self.whole.isChecked(),
                                                pages)
-        msg = (f"Replaced {found} match{'es' if found != 1 else ''} in {lines} "
-               f"line{'s' if lines != 1 else ''}." if found else "Not found.")
+        if found:
+            msg = tr("Replaced {matches} in {lines}.").format(
+                matches=tr("1 match") if found == 1 else tr("{n} matches").format(n=found),
+                lines=tr("1 line") if lines == 1 else tr("{n} lines").format(n=lines))
+        else:
+            msg = tr("Not found.")
         if skipped:
-            msg += " Skipped page " + ", ".join(str(i + 1) for i in skipped) + \
-                   " (pending redaction marks: apply or remove them first)."
+            msg += " " + tr("Skipped page {pages} (pending redaction marks: apply or remove "
+                            "them first).").format(pages=", ".join(str(i + 1) for i in skipped))
         self.result.setText(msg)

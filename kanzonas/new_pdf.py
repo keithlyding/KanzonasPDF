@@ -5,6 +5,8 @@ import pymupdf
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QFormLayout, QComboBox, QCheckBox,
                                QDialogButtonBox, QLabel)
 
+from .i18n import tr
+
 # name -> (width, height) in inches, portrait
 SIZES = {
     "Letter": (8.5, 11), "Legal": (8.5, 14), "Tabloid": (11, 17),
@@ -22,7 +24,11 @@ def label(name):
     if name.startswith("A") and name[1:].isdigit():
         mm = pymupdf.paper_size(name.lower())
         return f"{name} ({round(mm[0] / 72 * 25.4)} x {round(mm[1] / 72 * 25.4)} mm)"
-    return f"{name} ({w:g} x {h:g} in)"
+    return f"{_PAPER_NAMES.get(name, name)} ({w:g} x {h:g} in)"
+
+
+# the US paper names as shown (the SIZES keys are kept in the settings)
+_PAPER_NAMES = {"Letter": tr("Letter"), "Legal": tr("Legal"), "Tabloid": tr("Tabloid")}
 
 
 def page_size(name, landscape=False):
@@ -44,7 +50,7 @@ def remembered(settings):
 def size_combo(with_ask=False):
     box = QComboBox()
     if with_ask:
-        box.addItem("Ask every time", ASK)
+        box.addItem(tr("Ask every time"), ASK)
     for name in SIZES:
         box.addItem(label(name), name)
     return box
@@ -52,32 +58,33 @@ def size_combo(with_ask=False):
 
 def orientation_combo():
     box = QComboBox()
-    box.addItem("Portrait", False)
-    box.addItem("Landscape", True)
+    box.addItem(tr("Portrait"), False)
+    box.addItem(tr("Landscape"), True)
     return box
 
 
 class PageSizeDialog(QDialog):
     def __init__(self, parent, settings):
         super().__init__(parent)
-        self.setWindowTitle("New PDF")
+        self.setWindowTitle(tr("New PDF"))
         lay = QVBoxLayout(self)
         form = QFormLayout()
         name, landscape = remembered(settings)
         self.size = size_combo()
         self.size.setCurrentIndex(max(0, self.size.findData(name)))
-        form.addRow("Page size:", self.size)
+        form.addRow(tr("Page size:"), self.size)
         self.orient = orientation_combo()
         self.orient.setCurrentIndex(1 if landscape else 0)
-        form.addRow("Orientation:", self.orient)
+        form.addRow(tr("Orientation:"), self.orient)
         lay.addLayout(form)
-        self.dont_ask = QCheckBox("Don't ask again")
+        self.dont_ask = QCheckBox(tr("Don't ask again"))
         lay.addWidget(self.dont_ask)
-        hint = QLabel("You can change the size later in File > Preferences > Pages and display.")
+        hint = QLabel(tr("You can change the size later in File > Preferences > Pages and "
+                         "display."))
         hint.setWordWrap(True)
         lay.addWidget(hint)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.button(QDialogButtonBox.Ok).setText("Create")
+        btns.button(QDialogButtonBox.Ok).setText(tr("Create"))
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)

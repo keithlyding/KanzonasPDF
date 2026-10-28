@@ -1,0 +1,1770 @@
+# Spanish (Latin America): panels, dialogs and tools (see es.po for the header).
+
+msgid "Ctrl+Enter to finish"
+msgstr "Ctrl+Enter para terminar"
+
+msgid "Show all"
+msgstr "Mostrar todo"
+
+msgid "Hide all"
+msgstr "Ocultar todo"
+
+msgid "This document has no layers."
+msgstr "Este documento no tiene capas."
+
+msgid "(unnamed)"
+msgstr "(sin nombre)"
+
+msgid "Compare documents"
+msgstr "Comparar documentos"
+
+msgid ""
+"Comparing <b>{new_name}</b> (this document) with <b>{old_name}</b> (the earlier revision). How?"
+msgstr ""
+"Se comparará <b>{new_name}</b> (este documento) con <b>{old_name}</b> (la revisión anterior). ¿Cómo?"
+
+msgid "Text, word by word"
+msgstr "Texto, palabra por palabra"
+
+msgid ""
+"For letters, specifications, permits, anything that reflows: words added in this document are highlighted blue, a red mark shows where words of the earlier one were removed, and pictures that came, went or changed size are boxed. Text that only moved is not a change. Each change is listed in the Markups list and on a summary page at the end."
+msgstr ""
+"Para cartas, especificaciones, permisos, todo lo que se reacomoda: las palabras agregadas en este documento se resaltan en azul, una marca roja indica dónde se quitaron palabras del anterior y las imágenes que aparecieron, desaparecieron o cambiaron de tamaño se encierran en un recuadro. El texto que solo se movió no cuenta como cambio. Cada cambio aparece en la lista de marcas y en una página de resumen al final."
+
+msgid "Drawings, laid over each other"
+msgstr "Planos, superpuestos"
+
+msgid ""
+"For plans and sheets: the two pages are overlaid (red = only in the earlier revision, blue = only in this one, gray = unchanged) and every area that differs is clouded. A drawing that moved on the sheet or was printed at another paper size is lined up first."
+msgstr ""
+"Para planos y hojas: las dos páginas se superponen (rojo = solo en la revisión anterior, azul = solo en esta, gris = sin cambios) y cada zona que difiere se encierra en una nube. Un dibujo que se movió en la hoja o se imprimió en otro tamaño de papel se alinea primero."
+
+msgid "Compare"
+msgstr "Comparar"
+
+msgid "APPROVED"
+msgstr "APROBADO"
+
+msgid "Add text"
+msgstr "Agregar texto"
+
+msgid "Edit text"
+msgstr "Editar texto"
+
+msgid "Highlight"
+msgstr "Resaltado"
+
+msgid "Comment"
+msgstr "Comentario"
+
+msgid "Underline"
+msgstr "Subrayado"
+
+msgid "Strikeout"
+msgstr "Tachado"
+
+msgid "Squiggly"
+msgstr "Subrayado ondulado"
+
+msgid "Sticky note"
+msgstr "Nota adhesiva"
+
+msgid "Text box"
+msgstr "Cuadro de texto"
+
+msgid "Rectangle"
+msgstr "Rectángulo"
+
+msgid "Ellipse"
+msgstr "Elipse"
+
+msgid "Line"
+msgstr "Línea"
+
+msgid "Arrow"
+msgstr "Flecha"
+
+msgid "Pen"
+msgstr "Lápiz"
+
+msgid "Polygon"
+msgstr "Polígono"
+
+msgid "Polyline"
+msgstr "Polilínea"
+
+msgid "Callout"
+msgstr "Llamada"
+
+msgid "Stamp"
+msgstr "Sello"
+
+msgid "Form field"
+msgstr "Campo de formulario"
+
+msgid "Cloud"
+msgstr "Nube"
+
+msgid "Length"
+msgstr "Longitud"
+
+msgid "Polylength"
+msgstr "Longitud de polilínea"
+
+msgid "Area"
+msgstr "Área"
+
+msgid "Count"
+msgstr "Conteo"
+
+msgid "Angle"
+msgstr "Ángulo"
+
+msgid "Radius"
+msgstr "Radio"
+
+msgid "Perimeter"
+msgstr "Perímetro"
+
+msgid "Volume"
+msgstr "Volumen"
+
+msgid "Image"
+msgstr "Imagen"
+
+msgid "Attached file"
+msgstr "Archivo adjunto"
+
+msgid "Redaction mark"
+msgstr "Marca de censura"
+
+msgid "Signature placeholder"
+msgstr "Espacio para firma"
+
+msgid "SIGN HERE"
+msgstr "FIRME AQUÍ"
+
+msgid "INITIAL HERE"
+msgstr "INICIALES AQUÍ"
+
+msgid "The stamp image is missing from the stamp library."
+msgstr "Falta la imagen del sello en la biblioteca de sellos."
+
+msgid "Redaction (not applied yet)"
+msgstr "Censura (aún no aplicada)"
+
+msgid "APPROVED AS NOTED"
+msgstr "APROBADO CON OBSERVACIONES"
+
+msgid "REVIEWED"
+msgstr "REVISADO"
+
+msgid "REVISE AND RESUBMIT"
+msgstr "REVISAR Y REENVIAR"
+
+msgid "REJECTED"
+msgstr "RECHAZADO"
+
+msgid "NOT APPROVED"
+msgstr "NO APROBADO"
+
+msgid "DRAFT"
+msgstr "BORRADOR"
+
+msgid "FINAL"
+msgstr "FINAL"
+
+msgid "FOR CONSTRUCTION"
+msgstr "PARA CONSTRUCCIÓN"
+
+msgid "NOT FOR CONSTRUCTION"
+msgstr "NO PARA CONSTRUCCIÓN"
+
+msgid "FOR INFORMATION ONLY"
+msgstr "SOLO PARA INFORMACIÓN"
+
+msgid "RECEIVED"
+msgstr "RECIBIDO"
+
+msgid "CONFIDENTIAL"
+msgstr "CONFIDENCIAL"
+
+msgid "VOID"
+msgstr "ANULADO"
+
+msgid "COMPLETED"
+msgstr "COMPLETADO"
+
+msgid "PO #|Date ordered"
+msgstr "OC n.º|Fecha de pedido"
+
+msgid "Req #|Date submitted"
+msgstr "Solicitud n.º|Fecha de envío"
+
+msgid "{name} stamp"
+msgstr "Sello {name}"
+
+msgid "Date"
+msgstr "Fecha"
+
+msgid "Preferences"
+msgstr "Preferencias"
+
+msgid "General"
+msgstr "General"
+
+msgid "Match Windows"
+msgstr "Igual que Windows"
+
+msgid "Light"
+msgstr "Claro"
+
+msgid "Dark"
+msgstr "Oscuro"
+
+msgid "Theme:"
+msgstr "Tema:"
+
+msgid "Automatic (the language of Windows)"
+msgstr "Automático (el idioma de Windows)"
+
+msgid "Language:"
+msgstr "Idioma:"
+
+msgid ""
+"Settings are saved in the data folder next to KanzonasPDF.exe (portable)."
+msgstr ""
+"La configuración se guarda en la carpeta data junto a KanzonasPDF.exe (portátil)."
+
+msgid "Settings are saved in your Windows user profile."
+msgstr "La configuración se guarda en su perfil de usuario de Windows."
+
+msgid "You"
+msgstr "Usted"
+
+msgid ""
+"Recorded on new markups and shown on stamps (Edit > Author name for markups)"
+msgstr ""
+"Se registra en las marcas nuevas y aparece en los sellos (Editar > Nombre del autor de las marcas)"
+
+msgid "Author name for markups:"
+msgstr "Nombre del autor de las marcas:"
+
+msgid "Your signature:"
+msgstr "Su firma:"
+
+msgid "Your initials:"
+msgstr "Sus iniciales:"
+
+msgid "Signature width:"
+msgstr "Ancho de la firma:"
+
+msgid "Initials width:"
+msgstr "Ancho de las iniciales:"
+
+msgid ""
+"How wide it's placed when you click. You can also drag a box when placing it to make it exactly that wide."
+msgstr ""
+"El ancho con que se coloca al hacer clic. También puede arrastrar un cuadro al colocarla para darle exactamente ese ancho."
+
+msgid "How the Date tool (Ctrl+;) writes today's date"
+msgstr "Cómo escribe la fecha de hoy la herramienta Fecha (Ctrl+;)"
+
+msgid "Date format:"
+msgstr "Formato de fecha:"
+
+msgid "Change PIN..."
+msgstr "Cambiar PIN…"
+
+msgid ""
+"Set, change or remove the PIN that protects your saved signature and initials"
+msgstr ""
+"Establecer, cambiar o quitar el PIN que protege su firma e iniciales guardadas"
+
+msgid "Signature PIN:"
+msgstr "PIN de firma:"
+
+msgid ""
+"Your signature and initials are kept on this computer only (in the data folder in portable mode), protected by your PIN if you set one."
+msgstr ""
+"Su firma y sus iniciales se guardan solo en este equipo (en la carpeta data en modo portátil), protegidas por su PIN si establece uno."
+
+msgid "Markup styles"
+msgstr "Estilos de marcas"
+
+msgid "Start-up and opening"
+msgstr "Inicio y apertura"
+
+msgid "Reopen the documents that were open when I closed KanzonasPDF"
+msgstr ""
+"Volver a abrir los documentos que estaban abiertos al cerrar KanzonasPDF"
+
+msgid "Ask before closing KanzonasPDF with several documents open"
+msgstr "Preguntar antes de cerrar KanzonasPDF con varios documentos abiertos"
+
+msgid "With unsaved changes in any of them, KanzonasPDF always asks."
+msgstr "Si alguno tiene cambios sin guardar, KanzonasPDF siempre pregunta."
+
+msgid "Hand (drag to scroll)"
+msgstr "Mano (arrastrar para desplazarse)"
+
+msgid "Select"
+msgstr "Seleccionar"
+
+msgid "Default tool (at start-up, and where Escape goes back to):"
+msgstr "Herramienta predeterminada (al iniciar y a la que vuelve Escape):"
+
+msgid "Fit width"
+msgstr "Ajustar al ancho"
+
+msgid "Fit page (whole page in the window)"
+msgstr "Ajustar página (la página entera en la ventana)"
+
+msgid "Actual size (100%)"
+msgstr "Tamaño real (100%)"
+
+msgid "The zoom it had when I closed it"
+msgstr "El zoom que tenía cuando lo cerré"
+
+msgid "Zoom when opening:"
+msgstr "Zoom al abrir:"
+
+msgid "Reopen at the page I was on last time"
+msgstr "Volver a abrir en la página donde estaba la última vez"
+
+msgid "Saving"
+msgstr "Guardado"
+
+msgid "Off"
+msgstr "Desactivado"
+
+msgid "Back up unsaved changes every:"
+msgstr "Hacer copia de seguridad de los cambios sin guardar cada:"
+
+msgid ""
+"A copy of each document with unsaved changes is kept in the backups folder and deleted when you save or close the document. If KanzonasPDF or Windows stops unexpectedly, you're offered the copies the next time it starts. Password-protected documents aren't backed up (the copy wouldn't have the password)."
+msgstr ""
+"Se guarda una copia de cada documento con cambios sin guardar en la carpeta de copias de seguridad y se elimina al guardar o cerrar el documento. Si KanzonasPDF o Windows se detienen de forma inesperada, se le ofrecerán las copias la próxima vez que se inicie. Los documentos protegidos con contraseña no se copian (la copia no tendría la contraseña)."
+
+msgid "Backup folder:"
+msgstr "Carpeta de copias de seguridad:"
+
+msgid "Change..."
+msgstr "Cambiar…"
+
+msgid "Use default"
+msgstr "Usar la predeterminada"
+
+msgid "Open backup folder"
+msgstr "Abrir la carpeta de copias de seguridad"
+
+msgid ""
+"Tip: choose a folder on this computer. A network or cloud-synced folder works too, but your unsaved changes are then copied there. Backups of open documents move to the new folder; recovered copies from earlier stay in the old one."
+msgstr ""
+"Sugerencia: elija una carpeta en este equipo. Una carpeta de red o sincronizada con la nube también funciona, pero sus cambios sin guardar se copian allí. Las copias de seguridad de los documentos abiertos se mueven a la nueva carpeta; las copias recuperadas anteriormente se quedan en la anterior."
+
+msgid "Measuring"
+msgstr "Medición"
+
+msgid "Default units for a new scale:"
+msgstr "Unidades predeterminadas para una escala nueva:"
+
+msgid "Feet and inches round to:"
+msgstr "Redondear pies y pulgadas a:"
+
+msgid "Automatic (2, whole millimeters)"
+msgstr "Automático (2, milímetros enteros)"
+
+msgid "Decimal places:"
+msgstr "Decimales:"
+
+msgid "Existing measurement labels update when you next move or edit them."
+msgstr ""
+"Las etiquetas de medición existentes se actualizan la próxima vez que las mueva o edite."
+
+msgid "Mouse and scrolling"
+msgstr "Mouse y desplazamiento"
+
+msgid ""
+"Only when the whole page fits in the window, top to bottom and side to side (for example after View > Fit page). Zoomed in so that any edge of the page is outside the window, the wheel scrolls normally. With CAD-style mouse on, the wheel zooms instead."
+msgstr ""
+"Solo cuando la página entera cabe en la ventana, de arriba abajo y de lado a lado (por ejemplo, después de Ver > Ajustar página). Si se acerca de modo que algún borde de la página queda fuera de la ventana, la rueda se desplaza normalmente. Con el mouse estilo CAD activado, la rueda hace zoom."
+
+msgid "Pages and display"
+msgstr "Páginas y visualización"
+
+msgid "Lock the page order (Pages panel)"
+msgstr "Bloquear el orden de las páginas (panel Páginas)"
+
+msgid ""
+"File > New PDF uses this size, or asks every time (the size you choose then is the one it suggests next time)"
+msgstr ""
+"Archivo > Nuevo PDF usa este tamaño o pregunta cada vez (el tamaño que elija entonces es el que sugiere la próxima vez)"
+
+msgid "New PDF page size:"
+msgstr "Tamaño de página del nuevo PDF:"
+
+msgid "Grid and snapping"
+msgstr "Cuadrícula y ajuste"
+
+msgid "Grid spacing (on paper):"
+msgstr "Espaciado de la cuadrícula (en papel):"
+
+msgid "Darker line every:"
+msgstr "Línea más oscura cada:"
+
+msgid "Hold Alt while drawing or dragging to place a point without snapping."
+msgstr ""
+"Mantenga presionada Alt al dibujar o arrastrar para colocar un punto sin ajuste."
+
+msgid "OCR"
+msgstr "OCR"
+
+msgid "Default accuracy:"
+msgstr "Precisión predeterminada:"
+
+msgid "Not set up yet"
+msgstr "Aún no configurada"
+
+msgid "Saved (protected with your PIN)"
+msgstr "Guardada (protegida con su PIN)"
+
+msgid "Saved"
+msgstr "Guardada"
+
+msgid "Current PIN:"
+msgstr "PIN actual:"
+
+msgid "Signature PIN"
+msgstr "PIN de firma"
+
+msgid "Wrong PIN."
+msgstr "PIN incorrecto."
+
+msgid "New PIN (leave empty for no PIN):"
+msgstr "PIN nuevo (déjelo vacío para no usar PIN):"
+
+msgid "Type the new PIN again:"
+msgstr "Escriba el PIN nuevo otra vez:"
+
+msgid "The two PINs don't match. Nothing was changed."
+msgstr "Los dos PIN no coinciden. No se cambió nada."
+
+msgid ""
+"Couldn't change the PIN:\n"
+"{error}"
+msgstr ""
+"No se pudo cambiar el PIN:\n"
+"{error}"
+
+msgid "PIN changed."
+msgstr "PIN cambiado."
+
+msgid "PIN removed."
+msgstr "PIN quitado."
+
+msgid "(default)"
+msgstr "(predeterminada)"
+
+msgid "Backup folder"
+msgstr "Carpeta de copias de seguridad"
+
+msgid "KanzonasPDF can't write to that folder. Choose another one."
+msgstr "KanzonasPDF no puede escribir en esa carpeta. Elija otra."
+
+msgid "Language"
+msgstr "Idioma"
+
+msgid "The new language shows the next time KanzonasPDF starts."
+msgstr "El nuevo idioma se mostrará la próxima vez que se inicie KanzonasPDF."
+
+msgid "open"
+msgstr "abierta"
+
+msgid "closed"
+msgstr "cerrada"
+
+msgid "open (reversed)"
+msgstr "abierta (invertida)"
+
+msgid "closed (reversed)"
+msgstr "cerrada (invertida)"
+
+msgid "circle"
+msgstr "círculo"
+
+msgid "square"
+msgstr "cuadrado"
+
+msgid "diamond"
+msgstr "rombo"
+
+msgid "bar"
+msgstr "barra"
+
+msgid "none"
+msgstr "ninguno"
+
+msgid "Choose color"
+msgstr "Elegir color"
+
+msgid "No border"
+msgstr "Sin borde"
+
+msgid "No fill"
+msgstr "Sin relleno"
+
+msgid ""
+"Volume = area × depth. The depth is in the page's scale unit (feet when the scale is in feet and inches)."
+msgstr ""
+"Volumen = área × profundidad. La profundidad está en la unidad de la escala de la página (pies cuando la escala está en pies y pulgadas)."
+
+msgid "Type your own stamp text"
+msgstr "Escriba el texto de su propio sello"
+
+msgid "Add image stamp..."
+msgstr "Agregar sello de imagen…"
+
+msgid "Add my name"
+msgstr "Agregar mi nombre"
+
+msgid "Your name is set in Edit > Author name for markups"
+msgstr "Su nombre se establece en Editar > Nombre del autor de las marcas"
+
+msgid "Add the date"
+msgstr "Agregar la fecha"
+
+msgid ""
+"Counterclockwise. You can also drag the round handle above a selected shape (hold Shift for 15° steps)."
+msgstr ""
+"En sentido antihorario. También puede arrastrar el controlador redondo sobre una forma seleccionada (mantenga presionada Mayús para pasos de 15°)."
+
+msgid "Cloud border"
+msgstr "Borde de nube"
+
+msgid "Initials"
+msgstr "Iniciales"
+
+msgid "Signature"
+msgstr "Firma"
+
+msgid "Bold"
+msgstr "Negrita"
+
+msgid "Italic"
+msgstr "Cursiva"
+
+msgid "Marks text with"
+msgstr "Marca el texto con"
+
+msgid "Placeholder for"
+msgstr "Espacio para"
+
+msgid "Font"
+msgstr "Fuente"
+
+msgid "Text color"
+msgstr "Color del texto"
+
+msgid "Line color"
+msgstr "Color de línea"
+
+msgid "Fill"
+msgstr "Relleno"
+
+msgid "Line width"
+msgstr "Grosor de línea"
+
+msgid "Font size"
+msgstr "Tamaño de fuente"
+
+msgid "Arrowhead"
+msgstr "Punta de flecha"
+
+msgid "Depth"
+msgstr "Profundidad"
+
+msgid "Rotation"
+msgstr "Rotación"
+
+msgid "Opacity"
+msgstr "Opacidad"
+
+msgid "Reset defaults"
+msgstr "Restablecer valores predeterminados"
+
+msgid "No tool settings"
+msgstr "Sin configuración de herramienta"
+
+msgid ""
+"Pick a markup tool to set its default style, or click an annotation to edit it."
+msgstr ""
+"Elija una herramienta de marcas para establecer su estilo predeterminado, o haga clic en una anotación para editarla."
+
+msgid "Selected: {name}"
+msgstr "Seleccionado: {name}"
+
+msgid "{name}: default style"
+msgstr "{name}: estilo predeterminado"
+
+msgid "Changes apply to the selected annotation."
+msgstr "Los cambios se aplican a la anotación seleccionada."
+
+msgid ""
+"The line being edited: a font or size picked here changes that line only."
+msgstr ""
+"La línea que se está editando: una fuente o tamaño elegido aquí cambia solo esa línea."
+
+msgid "Used for the text you add next; it's written into the page."
+msgstr "Se usa para el próximo texto que agregue; se escribe en la página."
+
+msgid "Saved for next time. New annotations use these settings."
+msgstr ""
+"Se guarda para la próxima vez. Las anotaciones nuevas usan esta configuración."
+
+msgid "Rotation (90° steps)"
+msgstr "Rotación (pasos de 90°)"
+
+msgid "Border color"
+msgstr "Color del borde"
+
+msgid "Color"
+msgstr "Color"
+
+msgid "Border width"
+msgstr "Grosor del borde"
+
+msgid "Keep the line's size"
+msgstr "Mantener el tamaño de la línea"
+
+msgid "Keep the line's font"
+msgstr "Mantener la fuente de la línea"
+
+msgid "Helvetica (built into every PDF reader)"
+msgstr "Helvetica (incluida en todo lector de PDF)"
+
+msgid "Fill-in: {name}"
+msgstr "Para rellenar: {name}"
+
+msgid "Image: {name}"
+msgstr "Imagen: {name}"
+
+msgid "Image stamp"
+msgstr "Sello de imagen"
+
+msgid "Images"
+msgstr "Imágenes"
+
+msgid "Feet and inches (12'-6\")"
+msgstr "Pies y pulgadas (12'-6\")"
+
+msgid "Feet (decimal)"
+msgstr "Pies (decimales)"
+
+msgid "Inches"
+msgstr "Pulgadas"
+
+msgid "Yards"
+msgstr "Yardas"
+
+msgid "Miles"
+msgstr "Millas"
+
+msgid "Meters"
+msgstr "Metros"
+
+msgid "Centimeters"
+msgstr "Centímetros"
+
+msgid "Millimeters"
+msgstr "Milímetros"
+
+msgid "Kilometers"
+msgstr "Kilómetros"
+
+msgid "1:1 (actual paper size)"
+msgstr "1:1 (tamaño real del papel)"
+
+msgid "not set (paper size)"
+msgstr "sin establecer (tamaño del papel)"
+
+msgid "Scale: {label}"
+msgstr "Escala: {label}"
+
+msgid "Perimeter {length}"
+msgstr "Perímetro {length}"
+
+msgid "Enter the real length."
+msgstr "Escriba la longitud real."
+
+msgid "Couldn't read that length. Try 12'-6\" or 150."
+msgstr "No se pudo leer esa longitud. Pruebe 12'-6\" o 150."
+
+msgid "Calibrate Tape Measure"
+msgstr "Calibrar cinta métrica"
+
+msgid "Set scale"
+msgstr "Establecer escala"
+
+msgid "Current: {scale}"
+msgstr "Actual: {scale}"
+
+msgid "Known distance"
+msgstr "Distancia conocida"
+
+msgid "Preset scale"
+msgstr "Escala predefinida"
+
+msgid "Scale written on the sheet"
+msgstr "Escala escrita en el plano"
+
+msgid "e.g. 12'-6\"  or  3.5"
+msgstr "p. ej. 12'-6\"  o  3.5"
+
+msgid "This page"
+msgstr "Esta página"
+
+msgid "All pages"
+msgstr "Todas las páginas"
+
+msgid "You drew a line. How long is it in real life?"
+msgstr "Dibujó una línea. ¿Cuánto mide en la realidad?"
+
+msgid ""
+"Read off the page text. A sheet printed at reduced size still says its original scale: then draw a Calibrate line instead."
+msgstr ""
+"Leída del texto de la página. Un plano impreso a tamaño reducido sigue indicando su escala original: en ese caso, dibuje una línea de calibración."
+
+msgid "The sheet says NOT TO SCALE."
+msgstr "El plano dice SIN ESCALA."
+
+msgid "Show measurements in"
+msgstr "Mostrar las mediciones en"
+
+msgid "Apply to"
+msgstr "Aplicar a"
+
+msgid "The length must be more than zero."
+msgstr "La longitud debe ser mayor que cero."
+
+msgid "calibrated ({length} = drawn line)"
+msgstr "calibrada ({length} = línea dibujada)"
+
+msgid "count"
+msgstr "conteo"
+
+msgid "degrees"
+msgstr "grados"
+
+msgid "{unit} (radius)"
+msgstr "{unit} (radio)"
+
+msgid "Type"
+msgstr "Tipo"
+
+msgid "Group"
+msgstr "Grupo"
+
+msgid "Pages"
+msgstr "Páginas"
+
+msgid "Items"
+msgstr "Elementos"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Unit"
+msgstr "Unidad"
+
+msgid "Measurement summary"
+msgstr "Resumen de mediciones"
+
+msgid "No measurements yet. Use the Measure tools to add some."
+msgstr ""
+"Todavía no hay mediciones. Use las herramientas de Medir para agregar algunas."
+
+msgid "Export CSV..."
+msgstr "Exportar CSV…"
+
+msgid "Close"
+msgstr "Cerrar"
+
+msgid "Export measurements"
+msgstr "Exportar mediciones"
+
+msgid "CSV files"
+msgstr "Archivos CSV"
+
+msgid "Page range {part} is outside 1-{count}."
+msgstr "El intervalo de páginas {part} está fuera de 1-{count}."
+
+msgid "\"{text}\" doesn't fit across the page at {size} pt."
+msgstr "\"{text}\" no cabe a lo ancho de la página con {size} pt."
+
+msgid "Good quality (150 dpi images)"
+msgstr "Buena calidad (imágenes de 150 ppp)"
+
+msgid "Smaller (100 dpi images)"
+msgstr "Más pequeño (imágenes de 100 ppp)"
+
+msgid "Smallest (72 dpi images)"
+msgstr "Lo más pequeño (imágenes de 72 ppp)"
+
+msgid "Header, footer, page numbers & Bates numbering"
+msgstr "Encabezado, pie de página, números de página y numeración Bates"
+
+msgid "Type text in any position. Tokens:"
+msgstr "Escriba texto en cualquier posición. Códigos:"
+
+msgid "Left"
+msgstr "Izquierda"
+
+msgid "Center"
+msgstr "Centro"
+
+msgid "Right"
+msgstr "Derecha"
+
+msgid "Header"
+msgstr "Encabezado"
+
+msgid "Footer"
+msgstr "Pie de página"
+
+msgid "Page X of Y"
+msgstr "Página X de Y"
+
+msgid "Page {page} of {pages}"
+msgstr "Página {page} de {pages}"
+
+msgid "Bates number"
+msgstr "Número Bates"
+
+msgid "All pages (or e.g. 1-3, 5, 8-)"
+msgstr "Todas las páginas (o p. ej. 1-3, 5, 8-)"
+
+msgid "Margin from edge"
+msgstr "Margen desde el borde"
+
+msgid "prefix"
+msgstr "prefijo"
+
+msgid "start"
+msgstr "inicio"
+
+msgid "digits"
+msgstr "dígitos"
+
+msgid "Bates numbering"
+msgstr "Numeración Bates"
+
+msgid "Type something in at least one position."
+msgstr "Escriba algo en al menos una posición."
+
+msgid "Watermark"
+msgstr "Marca de agua"
+
+msgid "Text"
+msgstr "Texto"
+
+msgid "COPY"
+msgstr "COPIA"
+
+msgid "PRELIMINARY"
+msgstr "PRELIMINAR"
+
+msgid "SAMPLE"
+msgstr "MUESTRA"
+
+msgid "Browse..."
+msgstr "Examinar…"
+
+msgid "Behind page content"
+msgstr "Detrás del contenido de la página"
+
+msgid "All pages (or e.g. 1-3, 5)"
+msgstr "Todas las páginas (o p. ej. 1-3, 5)"
+
+msgid "Watermark image"
+msgstr "Imagen de marca de agua"
+
+msgid "Choose an image file."
+msgstr "Elija un archivo de imagen."
+
+msgid "Type the watermark text."
+msgstr "Escriba el texto de la marca de agua."
+
+msgid "Current page ({n})"
+msgstr "Página actual ({n})"
+
+msgid "Pages:"
+msgstr "Páginas:"
+
+msgid "e.g. 1-3, 7"
+msgstr "p. ej. 1-3, 7"
+
+msgid "Type the pages, e.g. 1-3, 7."
+msgstr "Escriba las páginas, p. ej. 1-3, 7."
+
+msgid "Background"
+msgstr "Fondo"
+
+msgid "Solid color"
+msgstr "Color sólido"
+
+msgid "Gradient"
+msgstr "Degradado"
+
+msgid "Picture"
+msgstr "Imagen"
+
+msgid "Second color"
+msgstr "Segundo color"
+
+msgid "Direction"
+msgstr "Dirección"
+
+msgid "Size"
+msgstr "Tamaño"
+
+msgid ""
+"The background goes behind everything on the page and replaces one added here before. Document > Remove background takes it off again. It can't show through a scanned page (the scan covers the whole page)."
+msgstr ""
+"El fondo va detrás de todo lo que hay en la página y reemplaza al que se haya agregado antes aquí. Documento > Quitar fondo lo quita de nuevo. No se puede ver a través de una página escaneada (el escaneo cubre toda la página)."
+
+msgid "First color"
+msgstr "Primer color"
+
+msgid "Background picture"
+msgstr "Imagen de fondo"
+
+msgid "Choose a picture file."
+msgstr "Elija un archivo de imagen."
+
+msgid "That file isn't a picture KanzonasPDF can read."
+msgstr "Ese archivo no es una imagen que KanzonasPDF pueda leer."
+
+msgid "added"
+msgstr "agregado"
+
+msgid "removed"
+msgstr "quitado"
+
+msgid "changed"
+msgstr "cambiado"
+
+msgid "Change {n} ({kind})"
+msgstr "Cambio {n} ({kind})"
+
+msgid ""
+"Compare  |  red = only in {old}  |  blue = only in {new}  |  gray = unchanged  |  {n} change(s) on this page"
+msgstr ""
+"Comparación  |  rojo = solo en {old}  |  azul = solo en {new}  |  gris = sin cambios  |  {n} cambio(s) en esta página"
+
+msgid ""
+"{new} is {new_size} in, {old} {old_size} in: {new} was scaled x{factor} to {old}'s size before comparing"
+msgstr ""
+"{new} mide {new_size} in, {old} {old_size} in: {new} se escaló x{factor} al tamaño de {old} antes de comparar"
+
+msgid ""
+"Lined up: the drawing in {new} sits {right} pt right and {up} pt up from {old}"
+msgstr ""
+"Alineado: el dibujo de {new} está {right} pt a la derecha y {up} pt arriba respecto de {old}"
+
+msgid "This page exists only in {name}"
+msgstr "Esta página solo existe en {name}"
+
+msgid "Picture resized: {old} in, now {new} in"
+msgstr "Imagen redimensionada: {old} in, ahora {new} in"
+
+msgid "Added: {text}"
+msgstr "Agregado: {text}"
+
+msgid "Removed: {text}"
+msgstr "Quitado: {text}"
+
+msgid "Was: {old}  |  Now: {new}"
+msgstr "Antes: {old}  |  Ahora: {new}"
+
+msgid "Picture moved"
+msgstr "Imagen movida"
+
+msgid "Picture replaced"
+msgstr "Imagen reemplazada"
+
+msgid "Picture added"
+msgstr "Imagen agregada"
+
+msgid "Picture removed"
+msgstr "Imagen quitada"
+
+msgid "pages {list}"
+msgstr "páginas {list}"
+
+msgid "page {list}"
+msgstr "página {list}"
+
+msgid "Change {n}: {what}"
+msgstr "Cambio {n}: {what}"
+
+msgid ""
+"Compare (text)  |  blue = added in {new}  |  red mark = removed from {old} (its comment says what)  |  {n} change(s) on this page  |  summary on the last page"
+msgstr ""
+"Comparación (texto)  |  azul = agregado en {new}  |  marca roja = quitado de {old} (su comentario dice qué)  |  {n} cambio(s) en esta página  |  resumen en la última página"
+
+msgid "Compare, text mode: {new} against {old}: {n} change(s)"
+msgstr "Comparación, modo texto: {new} frente a {old}: {n} cambio(s)"
+
+msgid "{old} has {old_pages} page(s), {new} {new_pages}"
+msgstr "{old} tiene {old_pages} página(s), {new} {new_pages}"
+
+msgid ""
+"Blue highlight = words added in the newer document; red mark = words of the earlier one gone from there. Moved text counts as removed and added."
+msgstr ""
+"Resaltado azul = palabras agregadas en el documento más reciente; marca roja = palabras del anterior que ya no están. El texto movido cuenta como quitado y agregado."
+
+msgid "Change {n}, page {page}: {what}"
+msgstr "Cambio {n}, página {page}: {what}"
+
+msgid "Changes {list}, {pages}: {what}"
+msgstr "Cambios {list}, {pages}: {what}"
+
+msgid "Change {n} and {more} more like it, {pages}: {what}"
+msgstr "Cambio {n} y {more} más como este, {pages}: {what}"
+
+msgid "Compare: summary of changes"
+msgstr "Comparación: resumen de cambios"
+
+msgid "Pictures"
+msgstr "Imágenes"
+
+msgid "Combined"
+msgstr "Combinado"
+
+msgid "{name} isn't a picture KanzonasPDF can read."
+msgstr "{name} no es una imagen que KanzonasPDF pueda leer."
+
+msgid "{name} is password-protected: open it and use Combine files instead."
+msgstr ""
+"{name} está protegido con contraseña: ábralo y use Combinar archivos en su lugar."
+
+msgid "Create PDF from images"
+msgstr "Crear PDF a partir de imágenes"
+
+msgid "Combine files"
+msgstr "Combinar archivos"
+
+msgid ""
+"Pictures to put together, top to bottom. Drag to reorder, or drop files here from Explorer."
+msgstr ""
+"Imágenes que se unirán, de arriba abajo. Arrastre para cambiar el orden o suelte aquí archivos desde el Explorador."
+
+msgid ""
+"PDFs and pictures to put together, top to bottom. Drag to reorder, or drop files here from Explorer."
+msgstr ""
+"Archivos PDF e imágenes que se unirán, de arriba abajo. Arrastre para cambiar el orden o suelte aquí archivos desde el Explorador."
+
+msgid "Add files..."
+msgstr "Agregar archivos…"
+
+msgid "Remove"
+msgstr "Quitar"
+
+msgid "Move up"
+msgstr "Subir"
+
+msgid "Move down"
+msgstr "Bajar"
+
+msgid "Sort by name"
+msgstr "Ordenar por nombre"
+
+msgid "Add a bookmark for each file (named after the file)"
+msgstr "Agregar un marcador para cada archivo (con el nombre del archivo)"
+
+msgid ""
+"Put each picture on a Letter page (otherwise the page is the picture's own size)"
+msgstr ""
+"Poner cada imagen en una página Carta (si no, la página tiene el tamaño de la imagen)"
+
+msgid "Create..."
+msgstr "Crear…"
+
+msgid "Combine..."
+msgstr "Combinar…"
+
+msgid "PDFs and pictures"
+msgstr "Archivos PDF e imágenes"
+
+msgid "PDF files"
+msgstr "Archivos PDF"
+
+msgid "Add files"
+msgstr "Agregar archivos"
+
+msgid "Add at least two PDFs, or a picture."
+msgstr "Agregue al menos dos archivos PDF o una imagen."
+
+msgid "Save the PDF as"
+msgstr "Guardar el PDF como"
+
+msgid ""
+"Choose a new file name: the new PDF can't replace one of the files going into it."
+msgstr ""
+"Elija un nombre de archivo nuevo: el PDF nuevo no puede reemplazar a uno de los archivos que contiene."
+
+msgid ""
+"Couldn't make the PDF:\n"
+"{error}"
+msgstr ""
+"No se pudo crear el PDF:\n"
+"{error}"
+
+msgid "Password needed"
+msgstr "Se necesita contraseña"
+
+msgid ""
+"{name} is password protected.\n"
+"Password (Cancel stops combining):"
+msgstr ""
+"{name} está protegido con contraseña.\n"
+"Contraseña (Cancelar detiene la combinación):"
+
+msgid "Print"
+msgstr "Imprimir"
+
+msgid "(no printer installed)"
+msgstr "(no hay ninguna impresora instalada)"
+
+msgid "Page setup..."
+msgstr "Configurar página…"
+
+msgid "Paper size and margins for this printer"
+msgstr "Tamaño del papel y márgenes para esta impresora"
+
+msgid "Printer"
+msgstr "Impresora"
+
+msgid "Copies"
+msgstr "Copias"
+
+msgid "All ({n} pages)"
+msgstr "Todas ({n} páginas)"
+
+msgid "All (1 page)"
+msgstr "Todas (1 página)"
+
+msgid "e.g. 1-3, 5"
+msgstr "p. ej. 1-3, 5"
+
+msgid "Auto (turn each sheet to fit the page)"
+msgstr "Automática (girar cada hoja para ajustarla a la página)"
+
+msgid "Portrait"
+msgstr "Vertical"
+
+msgid "Landscape"
+msgstr "Horizontal"
+
+msgid "Orientation"
+msgstr "Orientación"
+
+msgid "Fit to paper"
+msgstr "Ajustar al papel"
+
+msgid "Actual size (shrink pages that are too big)"
+msgstr "Tamaño real (reducir las páginas demasiado grandes)"
+
+msgid "Print markups and form fields"
+msgstr "Imprimir marcas y campos de formulario"
+
+msgid "No pages"
+msgstr "No hay páginas"
+
+msgid "Check the page numbers"
+msgstr "Revise los números de página"
+
+msgid "Sheet {n} of {total} (page {page})"
+msgstr "Hoja {n} de {total} (página {page})"
+
+msgid "Type pages like 1-3, 5 (this document has {n} pages)."
+msgstr "Escriba páginas como 1-3, 5 (este documento tiene {n} páginas)."
+
+msgid "Could not start printing."
+msgstr "No se pudo iniciar la impresión."
+
+msgid "not an encrypted signature"
+msgstr "no es una firma cifrada"
+
+msgid "wrong PIN"
+msgstr "PIN incorrecto"
+
+msgid "PIN required"
+msgstr "se necesita el PIN"
+
+msgid "Set up your initials"
+msgstr "Configurar sus iniciales"
+
+msgid "Set up your signature"
+msgstr "Configurar su firma"
+
+msgid ""
+"Draw your initials below, or load a scan/photo of your wet initials (signed on white paper)."
+msgstr ""
+"Dibuje sus iniciales abajo o cargue un escaneo o una foto de sus iniciales en tinta (firmadas en papel blanco)."
+
+msgid ""
+"Draw your signature below, or load a scan/photo of your wet signature (signed on white paper)."
+msgstr ""
+"Dibuje su firma abajo o cargue un escaneo o una foto de su firma en tinta (firmada en papel blanco)."
+
+msgid "Clear"
+msgstr "Borrar"
+
+msgid "Load scan / photo..."
+msgstr "Cargar escaneo o foto…"
+
+msgid "Black ink"
+msgstr "Tinta negra"
+
+msgid "Blue ink"
+msgstr "Tinta azul"
+
+msgid "Keep original colors"
+msgstr "Mantener los colores originales"
+
+msgid ""
+"Background removal for scans: move right if paper is left behind, left if ink is lost"
+msgstr ""
+"Eliminación del fondo en escaneos: mueva a la derecha si queda papel, a la izquierda si se pierde tinta"
+
+msgid "Background removal (scans):"
+msgstr "Eliminación del fondo (escaneos):"
+
+msgid ""
+"Protect my signature and initials with a PIN (asked once each time the app starts)"
+msgstr ""
+"Proteger mi firma e iniciales con un PIN (se pide una vez cada vez que se inicia la aplicación)"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Signature image"
+msgstr "Imagen de la firma"
+
+msgid "Couldn't read that image."
+msgstr "No se pudo leer esa imagen."
+
+msgid "Draw or load your initials first."
+msgstr "Primero dibuje o cargue sus iniciales."
+
+msgid "Draw or load your signature first."
+msgstr "Primero dibuje o cargue su firma."
+
+msgid "Enter your signature PIN"
+msgstr "Escriba su PIN de firma"
+
+msgid "Choose a PIN for your signature and initials"
+msgstr "Elija un PIN para su firma e iniciales"
+
+msgid "Existing images are protected by a different PIN."
+msgstr "Las imágenes existentes están protegidas con otro PIN."
+
+msgid "Enter your current PIN to remove PIN protection"
+msgstr "Escriba su PIN actual para quitar la protección con PIN"
+
+msgid "Enter your PIN to use your initials"
+msgstr "Escriba su PIN para usar sus iniciales"
+
+msgid "Enter your PIN to use your signature"
+msgstr "Escriba su PIN para usar su firma"
+
+msgid "Page"
+msgstr "Página"
+
+msgid "Comment / text"
+msgstr "Comentario / texto"
+
+msgid "Author"
+msgstr "Autor"
+
+msgid "All types"
+msgstr "Todos los tipos"
+
+msgid "Comment ({style})"
+msgstr "Comentario ({style})"
+
+msgid "Filter by text or author"
+msgstr "Filtrar por texto o autor"
+
+msgid "Show:"
+msgstr "Mostrar:"
+
+msgid "{shown} of {total}"
+msgstr "{shown} de {total}"
+
+msgid "Edit text..."
+msgstr "Editar texto…"
+
+msgid "Delete"
+msgstr "Eliminar"
+
+msgid "Export markups"
+msgstr "Exportar marcas"
+
+msgid "The download is damaged ({name}). Try again."
+msgstr "La descarga está dañada ({name}). Inténtelo de nuevo."
+
+msgid "The download contains an unsafe file name: {name}"
+msgstr "La descarga contiene un nombre de archivo no seguro: {name}"
+
+msgid "The download isn't a KanzonasPDF portable version."
+msgstr "La descarga no es una versión portátil de KanzonasPDF."
+
+msgid "Couldn't reach GitHub to check for updates ({error})."
+msgstr "No se pudo conectar con GitHub para buscar actualizaciones ({error})."
+
+msgid "GitHub sent an unexpected answer. Try again later."
+msgstr "GitHub envió una respuesta inesperada. Inténtelo de nuevo más tarde."
+
+msgid "You have the latest version ({version})."
+msgstr "Tiene la versión más reciente ({version})."
+
+msgid "The update was not applied: the release has no sha256 digest."
+msgstr ""
+"No se aplicó la actualización: la versión publicada no tiene resumen sha256."
+
+msgid "Can't write next to KanzonasPDF.exe ({error})."
+msgstr "No se puede escribir junto a KanzonasPDF.exe ({error})."
+
+msgid "The download failed ({error})."
+msgstr "La descarga falló ({error})."
+
+msgid "The download was not applied: its sha256 does not match the release."
+msgstr ""
+"No se aplicó la descarga: su sha256 no coincide con la versión publicada."
+
+msgid "Ask every time"
+msgstr "Preguntar cada vez"
+
+msgid "New PDF"
+msgstr "Nuevo PDF"
+
+msgid "Page size:"
+msgstr "Tamaño de página:"
+
+msgid "Orientation:"
+msgstr "Orientación:"
+
+msgid "Don't ask again"
+msgstr "No volver a preguntar"
+
+msgid ""
+"You can change the size later in File > Preferences > Pages and display."
+msgstr ""
+"Puede cambiar el tamaño más tarde en Archivo > Preferencias > Páginas y visualización."
+
+msgid "Create"
+msgstr "Crear"
+
+msgid "Letter"
+msgstr "Carta"
+
+msgid "Legal"
+msgstr "Legal"
+
+msgid "Tabloid"
+msgstr "Tabloide"
+
+msgid "Add a bookmark to the current page"
+msgstr "Agregar un marcador a la página actual"
+
+msgid "Rename"
+msgstr "Cambiar nombre"
+
+msgid "Indent (make child)"
+msgstr "Aumentar sangría (convertir en secundario)"
+
+msgid "Outdent"
+msgstr "Reducir sangría"
+
+msgid "No bookmarks. Click + to add one for the current page."
+msgstr ""
+"No hay marcadores. Haga clic en + para agregar uno para la página actual."
+
+msgid "(p. {page})"
+msgstr "(pág. {page})"
+
+msgid "Add bookmark"
+msgstr "Agregar marcador"
+
+msgid "Bookmark for page {page}:"
+msgstr "Marcador para la página {page}:"
+
+msgid "Page {page}"
+msgstr "Página {page}"
+
+msgid "Rename bookmark"
+msgstr "Cambiar nombre del marcador"
+
+msgid "Name:"
+msgstr "Nombre:"
+
+msgid "Link sheet callouts"
+msgstr "Vincular referencias a planos"
+
+msgid ""
+"Sheet numbers read from the title blocks. Correct one by clicking it (leave it empty for a page that isn't a sheet). Every callout, note or index line naming one of these sheets becomes a link to its page."
+msgstr ""
+"Números de plano leídos de los cuadros de rótulo. Corrija uno haciendo clic en él (déjelo vacío para una página que no sea un plano). Cada referencia, nota o línea de índice que nombre uno de estos planos se convierte en un vínculo a su página."
+
+msgid "Sheet number"
+msgstr "Número de plano"
+
+msgid "Title"
+msgstr "Título"
+
+msgid ""
+"Also link callouts to other PDFs in the same folder, named by sheet number (A-501 Details.pdf)"
+msgstr ""
+"Vincular también las referencias a otros PDF de la misma carpeta, nombrados por número de plano (A-501 Detalles.pdf)"
+
+msgid "Show a thin blue box around each link"
+msgstr "Mostrar un recuadro azul delgado alrededor de cada vínculo"
+
+msgid "Add bookmarks for the sheets (number and title)"
+msgstr "Agregar marcadores para los planos (número y título)"
+
+msgid "(the document already has bookmarks: they would be replaced)"
+msgstr "(el documento ya tiene marcadores: se reemplazarían)"
+
+msgid "Create links"
+msgstr "Crear vínculos"
+
+msgid "Could not read the pages: {error}"
+msgstr "No se pudieron leer las páginas: {error}"
+
+msgid ""
+"{sheets} sheet(s) found; {links} callout(s) will be linked, {ext} of them to {files} other PDF(s) in the folder."
+msgstr ""
+"Se encontraron {sheets} plano(s); se vincularán {links} referencia(s), {ext} de ellas a {files} otro(s) PDF de la carpeta."
+
+msgid "{sheets} sheet(s) found; {links} callout(s) will be linked."
+msgstr "Se encontraron {sheets} plano(s); se vincularán {links} referencia(s)."
+
+msgid "Not linked (no such sheet here or in the folder): {names}"
+msgstr "Sin vincular (no existe ese plano aquí ni en la carpeta): {names}"
+
+msgid "Replace text"
+msgstr "Reemplazar texto"
+
+msgid "Match case"
+msgstr "Coincidir mayúsculas y minúsculas"
+
+msgid "Whole words only"
+msgstr "Solo palabras completas"
+
+msgid "This page ({n})"
+msgstr "Esta página ({n})"
+
+msgid "Find"
+msgstr "Buscar"
+
+msgid "Replace with"
+msgstr "Reemplazar con"
+
+msgid "In"
+msgstr "En"
+
+msgid ""
+"Each line that changes is rewritten in its own font when it has the characters (like Edit text). Ctrl+Z undoes it all."
+msgstr ""
+"Cada línea que cambia se vuelve a escribir en su propia fuente cuando esta tiene los caracteres (como Editar texto). Ctrl+Z lo deshace todo."
+
+msgid "Replace all"
+msgstr "Reemplazar todo"
+
+msgid "Replaced {matches} in {lines}."
+msgstr "Reemplazos: {matches} en {lines}."
+
+msgid "1 match"
+msgstr "1 coincidencia"
+
+msgid "{n} matches"
+msgstr "{n} coincidencias"
+
+msgid "1 line"
+msgstr "1 línea"
+
+msgid "{n} lines"
+msgstr "{n} líneas"
+
+msgid "Not found."
+msgstr "No se encontró."
+
+msgid ""
+"Skipped page {pages} (pending redaction marks: apply or remove them first)."
+msgstr ""
+"Se omitió la página {pages} (marcas de censura pendientes: aplíquelas o quítelas primero)."
+
+msgid "Page content (the original PDF: text, drawing, images)"
+msgstr "Contenido de la página (el PDF original: texto, dibujo, imágenes)"
+
+msgid "Lock"
+msgstr "Bloquear"
+
+msgid "Show"
+msgstr "Mostrar"
+
+msgid "Object (top is in front)"
+msgstr "Objeto (el de arriba está delante)"
+
+msgid "Front"
+msgstr "Al frente"
+
+msgid "Bring to front"
+msgstr "Traer al frente"
+
+msgid "Up"
+msgstr "Subir"
+
+msgid "Bring forward"
+msgstr "Traer adelante"
+
+msgid "Down"
+msgstr "Bajar"
+
+msgid "Send backward"
+msgstr "Enviar atrás"
+
+msgid "Back"
+msgstr "Al fondo"
+
+msgid "Send to back"
+msgstr "Enviar al fondo"
+
+msgid ""
+"Click a row to select it, even if it's covered. Locked objects can't be clicked or moved on the page."
+msgstr ""
+"Haga clic en una fila para seleccionarla, aunque esté tapada. Los objetos bloqueados no se pueden seleccionar ni mover en la página."
+
+msgid "Page {page}: {n} markup(s)"
+msgstr "Página {page}: {n} marca(s)"
+
+msgid "Underline (drawn into the page)"
+msgstr "Subrayado (dibujado en la página)"
+
+msgid "Box around it"
+msgstr "Recuadro alrededor"
+
+msgid "Nothing (the pointer still shows it)"
+msgstr "Nada (el puntero lo sigue indicando)"
+
+msgid "Edit link"
+msgstr "Editar vínculo"
+
+msgid "Add link"
+msgstr "Agregar vínculo"
+
+msgid "Web address or e-mail"
+msgstr "Dirección web o correo electrónico"
+
+msgid "Page in this document"
+msgstr "Página de este documento"
+
+msgid ""
+"How readers see that it's a link. With Nothing, it shows only when the pointer is over it."
+msgstr ""
+"Cómo ven los lectores que es un vínculo. Con Nada, solo se nota cuando el puntero está sobre él."
+
+msgid "Look:"
+msgstr "Aspecto:"
+
+msgid "Write this text on the page:"
+msgstr "Escribir este texto en la página:"
+
+msgid "the address, or your own words"
+msgstr "la dirección o sus propias palabras"
+
+msgid "Delete link"
+msgstr "Eliminar vínculo"
+
+msgid "Type a web address, or choose a page."
+msgstr "Escriba una dirección web o elija una página."
+
+msgid "Auto (fast, redo sharper if needed)"
+msgstr "Automática (rápida; se repite con más nitidez si hace falta)"
+
+msgid "Fast (150 dpi: clean scans, normal-size text)"
+msgstr "Rápida (150 ppp: escaneos limpios, texto de tamaño normal)"
+
+msgid "Normal (300 dpi)"
+msgstr "Normal (300 ppp)"
+
+msgid "High (400 dpi, checks every orientation: small print, poor scans)"
+msgstr ""
+"Alta (400 ppp, revisa todas las orientaciones: letra pequeña, escaneos de mala calidad)"
+
+msgid ""
+"Windows couldn't open the certificate's private key (error {code}). If it's on a card or token, plug it in."
+msgstr ""
+"Windows no pudo abrir la clave privada del certificado (error {code}). Si está en una tarjeta o un token, conéctelo."
+
+msgid "Signing was canceled."
+msgstr "Se canceló la firma."
+
+msgid "Windows couldn't sign (error {code})."
+msgstr "Windows no pudo firmar (error {code})."
+
+msgid "This certificate's key type isn't supported for signing."
+msgstr "El tipo de clave de este certificado no se admite para firmar."
+
+msgid "Windows couldn't sign with {hash} (error {code})."
+msgstr "Windows no pudo firmar con {hash} (error {code})."
+
+msgid "Couldn't open the Windows certificate store."
+msgstr "No se pudo abrir el almacén de certificados de Windows."
+
+msgid "That certificate is no longer in the Windows certificate store."
+msgstr "Ese certificado ya no está en el almacén de certificados de Windows."
+
+msgid "This certificate's key type ({type}) isn't supported for signing."
+msgstr ""
+"El tipo de clave de este certificado ({type}) no se admite para firmar."
+
+msgid "Couldn't open that certificate. Is the password right?"
+msgstr "No se pudo abrir ese certificado. ¿Es correcta la contraseña?"
+
+msgid "unknown time"
+msgstr "hora desconocida"
+
+msgid "INVALID: the signed content was changed or the signature is damaged"
+msgstr "NO VÁLIDA: el contenido firmado se modificó o la firma está dañada"
+
+msgid "changes were made after signing"
+msgstr "se hicieron cambios después de firmar"
+
+msgid "unchanged since signing"
+msgstr "sin cambios desde la firma"
+
+msgid "identity confirmed"
+msgstr "identidad confirmada"
+
+msgid "identity not verified (certificate not trusted on this computer)"
+msgstr ""
+"identidad no verificada (certificado no considerado de confianza en este equipo)"
+
+msgid "Signed by {name} on {when}: {state}; {who}."
+msgstr "Firmado por {name} el {when}: {state}; {who}."
+
+msgid "unknown"
+msgstr "desconocido"
+
+msgid "Timestamped by {name} on {when}: unchanged since."
+msgstr "Sello de tiempo de {name} el {when}: sin cambios desde entonces."
+
+msgid "Timestamped by {name} on {when}: INVALID or changed."
+msgstr "Sello de tiempo de {name} el {when}: NO VÁLIDO o modificado."
+
+msgid "a time server"
+msgstr "un servidor de hora"
+
+msgid "inches"
+msgstr "pulgadas"
+
+msgid "millimeters"
+msgstr "milímetros"
+
+msgid "PDF points (1:1)"
+msgstr "puntos PDF (1:1)"
+
+msgid "P{page} table {n}"
+msgstr "P{page} tabla {n}"
+
+msgid "P{page} text"
+msgstr "P{page} texto"
+
+msgid "Empty"
+msgstr "Vacía"
+
+msgid "(no suggestions)"
+msgstr "(no hay sugerencias)"
+
+msgid "Add to dictionary"
+msgstr "Agregar al diccionario"
+
+msgid "Red revision cloud"
+msgstr "Nube de revisión roja"
+
+msgid "Yellow highlight"
+msgstr "Resaltado amarillo"
+
+msgid "Green highlight"
+msgstr "Resaltado verde"
+
+msgid "Red arrow"
+msgstr "Flecha roja"
+
+msgid "Blue box"
+msgstr "Rectángulo azul"
+
+msgid "Red note text box"
+msgstr "Cuadro de texto rojo"
+
+msgid "Yellow callout"
+msgstr "Llamada amarilla"
+
+msgid "APPROVED stamp"
+msgstr "Sello APROBADO"
+
+msgid "REJECTED stamp"
+msgstr "Sello RECHAZADO"
+
+msgid ""
+"Your favorite markup styles, one click away. Click one, then draw on the page: it uses that tool with that color and size, without changing the tool's normal settings. To save your own: draw and style a markup, select it, click “Add”."
+msgstr ""
+"Sus estilos de marcas favoritos, a un clic. Haga clic en uno y dibuje en la página: usa esa herramienta con ese color y tamaño, sin cambiar la configuración normal de la herramienta. Para guardar los suyos: dibuje una marca y dele estilo, selecciónela y haga clic en “Agregar”."
+
+msgid "Add"
+msgstr "Agregar"
+
+msgid "Save the selected markup's style (or the current tool's settings)"
+msgstr ""
+"Guardar el estilo de la marca seleccionada (o la configuración de la herramienta actual)"
+
+msgid "More"
+msgstr "Más"
+
+msgid "Rename..."
+msgstr "Cambiar nombre…"
+
+msgid "Add the starter tools"
+msgstr "Agregar las herramientas iniciales"
+
+msgid "Export tool chest..."
+msgstr "Exportar caja de herramientas…"
+
+msgid "Import tool chest..."
+msgstr "Importar caja de herramientas…"
+
+msgid "Tool chest"
+msgstr "Caja de herramientas"
+
+msgid "Name for this tool:"
+msgstr "Nombre de esta herramienta:"
+
+msgid "Export tool chest"
+msgstr "Exportar caja de herramientas"
+
+msgid "Import tool chest"
+msgstr "Importar caja de herramientas"
+
+msgid "That file isn't a tool chest."
+msgstr "Ese archivo no es una caja de herramientas."
+
+msgid "Imported {n} tool(s)."
+msgstr "Se importaron {n} herramienta(s)."

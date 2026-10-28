@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, Q
                                QWidget, QFileDialog, QInputDialog, QLineEdit, QMessageBox,
                                QComboBox, QCheckBox, QSlider)
 
+from .i18n import tr
+
 KINDS = ("signature", "initials")
 DATE_FORMATS = ["%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d", "%B %d, %Y"]
 
@@ -68,11 +70,11 @@ def _encrypt(pin, data):
 
 def _decrypt(pin, blob):
     if not blob.startswith(b"KZS1"):
-        raise ValueError("not an encrypted signature")
+        raise ValueError(tr("not an encrypted signature"))
     salt, nonce, tag, ct = blob[4:20], blob[20:36], blob[36:68], blob[68:]
     k = _derive(pin, salt)
     if not hmac.compare_digest(tag, hmac.new(k[32:], nonce + ct, hashlib.sha256).digest()):
-        raise ValueError("wrong PIN")
+        raise ValueError(tr("wrong PIN"))
     return _xor_stream(k[:32], nonce, ct)
 
 
@@ -112,7 +114,7 @@ def load(kind, pin=None):
         blob = f.read()
     if blob.startswith(b"KZS1"):
         if not pin:
-            raise ValueError("PIN required")
+            raise ValueError(tr("PIN required"))
         return _decrypt(pin, blob)
     return blob
 
@@ -250,10 +252,13 @@ class SignatureSetup(QDialog):
     def __init__(self, parent, kind):
         super().__init__(parent)
         self.kind = kind
-        self.setWindowTitle(f"Set up your {kind}")
+        initials = kind == "initials"
+        self.setWindowTitle(tr("Set up your initials") if initials else tr("Set up your signature"))
         lay = QVBoxLayout(self)
-        lay.addWidget(QLabel(f"Draw your {kind} below, or load a scan/photo of your wet "
-                             f"{kind} (signed on white paper)."))
+        lay.addWidget(QLabel(tr("Draw your initials below, or load a scan/photo of your wet "
+                                "initials (signed on white paper).") if initials else
+                             tr("Draw your signature below, or load a scan/photo of your wet "
+                                "signature (signed on white paper).")))
         self.pad = DrawPad()
         lay.addWidget(self.pad)
         self.preview = QLabel()
@@ -262,12 +267,12 @@ class SignatureSetup(QDialog):
         self.preview.hide()
         lay.addWidget(self.preview)
         row = QHBoxLayout()
-        b_clear = QPushButton("Clear")
+        b_clear = QPushButton(tr("Clear"))
         b_clear.clicked.connect(self._clear)
-        b_load = QPushButton("Load scan / photo...")
+        b_load = QPushButton(tr("Load scan / photo..."))
         b_load.clicked.connect(self._load)
         self.ink = QComboBox()
-        self.ink.addItems(["Black ink", "Blue ink", "Keep original colors"])
+        self.ink.addItems([tr("Black ink"), tr("Blue ink"), tr("Keep original colors")])
         self.ink.currentIndexChanged.connect(self._ink_changed)
         row.addWidget(b_clear)
         row.addWidget(b_load)
@@ -277,26 +282,26 @@ class SignatureSetup(QDialog):
         self.thresh = QSlider(Qt.Horizontal)
         self.thresh.setRange(120, 245)
         self.thresh.setValue(200)
-        self.thresh.setToolTip("Background removal for scans: move right if paper is left behind, "
-                               "left if ink is lost")
+        self.thresh.setToolTip(tr("Background removal for scans: move right if paper is left "
+                                  "behind, left if ink is lost"))
         self.thresh.sliderReleased.connect(self._reprocess)
-        self.thresh_label = QLabel("Background removal (scans):")
+        self.thresh_label = QLabel(tr("Background removal (scans):"))
         self.thresh_label.hide()
         self.thresh.hide()
         lay.addWidget(self.thresh_label)
         lay.addWidget(self.thresh)
 
-        self.use_pin = QCheckBox("Protect my signature and initials with a PIN "
-                                 "(asked once each time the app starts)")
+        self.use_pin = QCheckBox(tr("Protect my signature and initials with a PIN "
+                                    "(asked once each time the app starts)"))
         self.use_pin.setChecked(has_pin())
         lay.addWidget(self.use_pin)
 
         btns = QHBoxLayout()
         btns.addStretch(1)
-        ok = QPushButton("Save")
+        ok = QPushButton(tr("Save"))
         ok.setDefault(True)
         ok.clicked.connect(self._save)
-        cancel = QPushButton("Cancel")
+        cancel = QPushButton(tr("Cancel"))
         cancel.clicked.connect(self.reject)
         btns.addWidget(ok)
         btns.addWidget(cancel)
@@ -322,13 +327,13 @@ class SignatureSetup(QDialog):
         self.pad.show()
 
     def _load(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Signature image", "",
-                                              "Images (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)")
+        path, _ = QFileDialog.getOpenFileName(self, tr("Signature image"), "",
+                                              tr("Images") + " (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)")
         if not path:
             return
         img = QImage(path)
         if img.isNull():
-            QMessageBox.warning(self, "Signature", "Couldn't read that image.")
+            QMessageBox.warning(self, tr("Signature"), tr("Couldn't read that image."))
             return
         if img.width() > 1600:              # plenty for a signature; keeps processing quick
             img = img.scaledToWidth(1600, Qt.SmoothTransformation)
@@ -351,26 +356,28 @@ class SignatureSetup(QDialog):
     def _save(self):
         img = self._scan if self._scan is not None else self.pad.image()
         if img is None:
-            QMessageBox.information(self, "Signature", f"Draw or load your {self.kind} first.")
+            QMessageBox.information(self, tr("Signature"),
+                                    tr("Draw or load your initials first.") if self.kind == "initials"
+                                    else tr("Draw or load your signature first."))
             return
         pin = None
         if self.use_pin.isChecked():
-            pin = ask_pin(self, "Enter your signature PIN" if has_pin() else
-                          "Choose a PIN for your signature and initials")
+            pin = ask_pin(self, tr("Enter your signature PIN") if has_pin() else
+                          tr("Choose a PIN for your signature and initials"))
             if pin is None:
                 return
             if has_pin() and not _pin_ok(pin):
-                QMessageBox.warning(self, "Signature", "Wrong PIN.")
+                QMessageBox.warning(self, tr("Signature"), tr("Wrong PIN."))
                 return
             if not has_pin():
                 try:
                     set_pin(pin)
                 except ValueError:
-                    QMessageBox.warning(self, "Signature",
-                                        "Existing images are protected by a different PIN.")
+                    QMessageBox.warning(self, tr("Signature"),
+                                        tr("Existing images are protected by a different PIN."))
                     return
         elif has_pin():
-            old = ask_pin(self, "Enter your current PIN to remove PIN protection")
+            old = ask_pin(self, tr("Enter your current PIN to remove PIN protection"))
             if old is None or not _pin_ok(old):
                 return
             set_pin("", old)
@@ -381,7 +388,7 @@ class SignatureSetup(QDialog):
 
 
 def ask_pin(parent, prompt):
-    pin, ok = QInputDialog.getText(parent, "Signature PIN", prompt, QLineEdit.Password)
+    pin, ok = QInputDialog.getText(parent, tr("Signature PIN"), prompt, QLineEdit.Password)
     return pin if ok and pin else None
 
 
@@ -401,11 +408,12 @@ def get_image(parent, kind):
         try:
             return load(kind, Session.pin)
         except ValueError:
-            pin = ask_pin(parent, f"Enter your PIN to use your {kind}")
+            pin = ask_pin(parent, tr("Enter your PIN to use your initials") if kind == "initials"
+                          else tr("Enter your PIN to use your signature"))
             if pin is None:
                 return None
             if _pin_ok(pin):
                 Session.pin = pin
             else:
-                QMessageBox.warning(parent, "Signature", "Wrong PIN.")
+                QMessageBox.warning(parent, tr("Signature"), tr("Wrong PIN."))
     return None
