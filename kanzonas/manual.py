@@ -875,10 +875,11 @@ attached files, hidden text, links, comments, form data, thumbnails.</li>
   be changed; Security properties and Remove security ask for that password first when the
   file has one.</li>
 <li><b>Saving keeps protection:</b> a password-protected file stays protected when you save
-your changes, with the same open password and restrictions (re-encrypted with AES-256). If you
-opened it with the open password only, KanzonasPDF doesn't know the permissions password, so the
-saved copy gets a new random one: its restrictions can then only be changed from the original
-file. Use Security properties or Remove security to change protection on purpose.</li>
+your changes, exactly as it was: the same encryption, open password, permissions password and
+restrictions, even if you don't know the permissions password. (Only in the rare case that the
+protection can't be carried over does KanzonasPDF ask for the original passwords.) Use Security
+properties (new protection uses AES-256) or Remove security to change protection on
+purpose.</li>
 <li><b>Saving keeps signatures:</b> a digitally signed file you haven't changed is saved as an
 exact copy (Save or Save As), so its signatures stay valid. Only after "Edit anyway" does saving
 change it, and then the signature no longer validates.</li>

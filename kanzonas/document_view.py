@@ -1023,8 +1023,9 @@ class DocumentView(QScrollArea):
             pass
         views = [v for v in DocumentView._views if hasattr(v, "_undo")]
         while sum(v.history_bytes() for v in views) > UNDO_BYTES_TOTAL:
-            biggest = max(views, key=lambda v: v.history_bytes())
-            if not drop_one(biggest):
+            # the biggest history first; one that can't give up a step (just its last undo
+            # step left) is passed over, not the end of trimming
+            if not any(drop_one(v) for v in sorted(views, key=lambda v: -v.history_bytes())):
                 break
 
     # ---- caches (cleared on every change) ------------------------------------

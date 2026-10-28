@@ -868,10 +868,11 @@ archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, m
   protección; Propiedades de seguridad y Quitar seguridad piden primero esa contraseña cuando el
   archivo tiene una.</li>
 <li><b>Guardar conserva la protección:</b> un archivo protegido con contraseña sigue protegido cuando guarda
-sus cambios, con la misma contraseña de apertura y las mismas restricciones (vuelve a cifrarse con AES-256). Si
-lo abrió solo con la contraseña de apertura, KanzonasPDF no conoce la contraseña de permisos, así que la
-copia guardada recibe una nueva aleatoria: sus restricciones solo se pueden cambiar entonces desde el archivo
-original. Use Propiedades de seguridad o Quitar seguridad para cambiar la protección a propósito.</li>
+sus cambios, exactamente como estaba: el mismo cifrado, la misma contraseña de apertura, la misma contraseña
+de permisos y las mismas restricciones, aunque usted no conozca la contraseña de permisos. (Solo en el caso
+poco común de que la protección no pueda conservarse, KanzonasPDF pide las contraseñas originales.) Use
+Propiedades de seguridad (la protección nueva usa AES-256) o Quitar seguridad para cambiar la protección a
+propósito.</li>
 <li><b>Guardar conserva las firmas:</b> un archivo con firma digital que no ha modificado se guarda como una
 copia exacta (Guardar o Guardar como), así que sus firmas siguen siendo válidas. Solo después de "Editar de todos modos" guardar
 lo modifica, y entonces la firma deja de validarse.</li>
