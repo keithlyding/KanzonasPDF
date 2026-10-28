@@ -13,9 +13,25 @@ unsaved changes) so it can run in a worker thread without touching the GUI's doc
 
 import math
 import os
+import re
 import tempfile
 
 import pymupdf
+
+
+_NUMBER = re.compile(r"[+-]?\d[\d,]*(\.\d+)?%?")
+
+
+def csv_cell(value):
+    """A value safe to put in a CSV that may be opened in Excel or another spreadsheet: text
+    that starts with = + - @ (or a tab or line break) would be run as a formula there, so it
+    gets a leading apostrophe and shows as the text it is. Numbers ("-5", "+12.5") stay
+    numbers; anything else is unchanged."""
+    if not isinstance(value, str) or not value or value[0] not in "=+-@\t\r":
+        return value
+    if _NUMBER.fullmatch(value):
+        return value
+    return "'" + value
 
 UNITS = {"inches": 1 / 72, "millimeters": 25.4 / 72, "PDF points (1:1)": 1.0}
 _DXF_UNITS = {"inches": 1, "millimeters": 4, "PDF points (1:1)": 0}

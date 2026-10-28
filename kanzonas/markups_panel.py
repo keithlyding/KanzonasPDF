@@ -214,8 +214,11 @@ class MarkupsPanel(QWidget):
         if not path:
             return
         with open(path, "w", newline="", encoding="utf-8-sig") as f:
+            from .export import csv_cell
             w = csv.writer(f)
             w.writerow(COLUMNS)
             for r in range(self.table.rowCount()):
                 if not self.table.isRowHidden(r):
-                    w.writerow([self.table.item(r, c).text() for c in range(len(COLUMNS))])
+                    # (comment text comes from the PDF: never a live spreadsheet formula)
+                    w.writerow([csv_cell(self.table.item(r, c).text())
+                                for c in range(len(COLUMNS))])

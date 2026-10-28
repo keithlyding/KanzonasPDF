@@ -215,6 +215,7 @@ class SummaryDialog(QDialog):
                                               "CSV (*.csv)")
         if path:
             with open(path, "w", newline="", encoding="utf-8-sig") as f:
+                from .export import csv_cell
                 w = csv.writer(f)
                 w.writerow(self.COLS)
-                w.writerows(self.rows)
+                w.writerows([[csv_cell(v) for v in row] for row in self.rows])

@@ -16,7 +16,7 @@
   <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
 </p>
 
-> Used daily for real work. Every release passes 280+ automated tests and a self-test of the
+> Used daily for real work. Every release passes 390+ automated tests and a self-test of the
 > built program on Windows before it's published, and reported bugs have been fixed within days.
 
 ## Who it's for
@@ -28,7 +28,7 @@ Acrobat-style forms, signatures, redaction and text editing, but not the price, 
 
 | | KanzonasPDF | Bluebeam Revu | Adobe Acrobat Pro | PDF-XChange Editor |
 | --- | --- | --- | --- | --- |
-| Price | Free forever, open source | Subscription | Subscription | Free with watermarks, or a license |
+| Price | Free, open source (AGPL) | Annual subscription | Subscription, or a 3-year license (Acrobat Pro 2024) | Free (its paid features add watermarks), or a license |
 | Calibrated measuring (length, area, volume, count) | Yes | Yes | Basic | Yes |
 | Compare revisions (clouds the changes) | Yes | Yes | Yes | Yes |
 | Edit page text and objects | Yes (paragraphs rewrap) | Limited | Yes | Yes |
