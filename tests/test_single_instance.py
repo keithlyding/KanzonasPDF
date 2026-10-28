@@ -109,7 +109,13 @@ class SingleInstance(unittest.TestCase):
         seen = self.tabs_when([st for _p, st in started],
                               lambda s: any(len(t) == 3 for t in s))
         self.assertEqual(sorted(len(t) for t in seen if t), [3], seen)
+        # the programs that handed their file over quit once the window has answered them
+        # (they wait for its handle to bring it to the front): give them time to exit
+        end = time.time() + 15
         running = [p for p, _st in started if p.poll() is None]
+        while len(running) > 1 and time.time() < end:
+            time.sleep(0.2)
+            running = [p for p, _st in started if p.poll() is None]
         self.assertEqual(len(running), 1)
 
     def test_the_first_listens_and_the_next_one_connects(self):
