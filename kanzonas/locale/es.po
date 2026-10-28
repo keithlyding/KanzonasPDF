@@ -1,0 +1,11 @@
+# Spanish (Latin America) translation of KanzonasPDF's interface.
+# Each msgid is the English text in the code (tr("...")); msgstr is the Spanish. Keep the
+# {fields}, the & (keyboard accelerator, on a letter of the Spanish word) and \n as they are.
+msgid ""
+msgstr ""
+"Project-Id-Version: KanzonasPDF\n"
+"Language: es_419\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+

@@ -66,6 +66,14 @@ class PreferencesDialog(QDialog):
         current = next((k for k, a in win.theme_actions.items() if a.isChecked()), "system")
         self.theme.setCurrentIndex(max(0, self.theme.findData(current)))
         form.addRow("Theme:", self.theme)
+        from . import i18n
+        self.language = QComboBox()
+        self.language.addItem("Automatic (the language of Windows)", "auto")
+        for code, name in i18n.LANGUAGES.items():
+            self.language.addItem(name, code)
+        self.language.setCurrentIndex(max(0, self.language.findData(
+            str(win.settings.value("language", "auto")))))
+        form.addRow("Language:", self.language)
         for a in (win.a_ribbon, win.a_group_names, win.a_menu_bar, win.a_labels,
                   win.a_auto_updates):
             self._box(form, a)
@@ -443,6 +451,11 @@ class PreferencesDialog(QDialog):
 
     def _apply(self):
         win = self.win
+        lang = self.language.currentData()
+        if lang != str(win.settings.value("language", "auto")):
+            win.settings.setValue("language", lang)
+            QMessageBox.information(win, "Language", "The new language shows the next time "
+                                    "KanzonasPDF starts.")
         key = self.theme.currentData()
         if not win.theme_actions[key].isChecked():
             win.theme_actions[key].setChecked(True)

@@ -117,7 +117,8 @@ def main():
         server.newConnection.connect(incoming)
     from .branding import app_icon
     app.setWindowIcon(app_icon())
-    from . import paths, theme
+    from . import i18n, paths, theme
+    i18n.install_qt(app)                 # Qt's own buttons and dialogs in the same language
     theme.apply(app, paths.settings().value("theme", "system"))
     win = MainWindow()
     win.show()
