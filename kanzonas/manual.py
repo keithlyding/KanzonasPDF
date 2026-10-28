@@ -1,7 +1,9 @@
 """Built-in user manual (Help > User manual, F1).
 
 The manual is kept here as HTML so it is always packaged with the app (no data files).
-Each <h2 id="..."> becomes an entry in the contents list.
+Each <h2 id="..."> becomes an entry in the contents list. The Spanish translation is
+manual_es.MANUAL (same chapters and ids); manual_html() gives the one for the interface's
+language.
 """
 
 import re
@@ -9,6 +11,8 @@ import re
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QListWidget, QTextBrowser,
                                QLineEdit, QPushButton, QSplitter, QLabel)
+
+from .i18n import language, tr
 
 MANUAL = """
 <h1>KanzonasPDF user manual</h1>
@@ -1052,26 +1056,34 @@ settings...).</li>
 """
 
 
+def manual_html():
+    """The manual in the interface's language: Spanish when it's in Spanish, else English."""
+    if language() == "es":
+        from . import manual_es
+        return manual_es.MANUAL
+    return MANUAL
+
+
 def sections():
     """[(anchor id, title)] of the manual's chapters, in order."""
-    return re.findall(r'<h2 id="([^"]+)">(.*?)</h2>', MANUAL)
+    return re.findall(r'<h2 id="([^"]+)">(.*?)</h2>', manual_html())
 
 
 class ManualDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("KanzonasPDF user manual")
+        self.setWindowTitle(tr("KanzonasPDF user manual"))
         self.resize(980, 720)
         lay = QVBoxLayout(self)
 
         bar = QHBoxLayout()
-        bar.addWidget(QLabel("Find in manual:"))
+        bar.addWidget(QLabel(tr("Find in manual:")))
         self.find = QLineEdit()
         self.find.setClearButtonEnabled(True)
-        self.find.setPlaceholderText("Type a word, then Enter for the next match")
+        self.find.setPlaceholderText(tr("Type a word, then Enter for the next match"))
         self.find.returnPressed.connect(self.find_next)
         bar.addWidget(self.find, 1)
-        nxt = QPushButton("Next")
+        nxt = QPushButton(tr("Next"))
         nxt.clicked.connect(self.find_next)
         bar.addWidget(nxt)
         self.not_found = QLabel("")
@@ -1082,6 +1094,7 @@ class ManualDialog(QDialog):
         split = QSplitter()
         self.contents = QListWidget()
         self.contents.setMaximumWidth(260)
+        self.contents.setAccessibleName(tr("Contents"))
         self._anchors = []
         for anchor, title in sections():
             self.contents.addItem(title.replace("&amp;", "&"))
@@ -1090,12 +1103,12 @@ class ManualDialog(QDialog):
         split.addWidget(self.contents)
         self.text = QTextBrowser()
         self.text.setOpenLinks(False)
-        self.text.setHtml(MANUAL)
+        self.text.setHtml(manual_html())
         split.addWidget(self.text)
         split.setStretchFactor(1, 1)
         lay.addWidget(split, 1)
 
-        close = QPushButton("Close")
+        close = QPushButton(tr("Close"))
         close.clicked.connect(self.close)
         row = QHBoxLayout()
         row.addStretch(1)
@@ -1123,12 +1136,13 @@ class ManualDialog(QDialog):
             return True
         self.text.setTextCursor(was)        # stay where you were reading
         self.text.verticalScrollBar().setValue(top)
-        self.not_found.setText("Not found")
+        self.not_found.setText(tr("Not found"))
         return False
 
 
 # ---- keeping the manual complete -------------------------------------------------
-# Menu commands that need no explanation, or are covered under another name.
+# Menu commands that need no explanation, or are covered under another name (their English
+# names, also when the interface is in another language).
 NOT_DOCUMENTED = {"exit", "about", "user manual", "close tab"}
 
 
@@ -1140,26 +1154,32 @@ def _norm(text):
 def _plain_manual():
     from PySide6.QtGui import QTextDocument
     d = QTextDocument()
-    d.setHtml(MANUAL)
+    d.setHtml(manual_html())
     return " ".join(d.toPlainText().split()).lower()
 
 
 def missing_from_manual(window):
     """Names of menu commands (every menu, every tool) that the manual never mentions.
-    Used by the self-test so a new feature can't ship without being documented."""
+    Used by the self-test so a new feature can't ship without being documented. The names
+    are checked in the interface's language against the manual in that language;
+    NOT_DOCUMENTED and the recent-files list are recognized by their English names."""
+    from .main_window import english_name
     text = _plain_manual()
     missing = []
+
+    def english(a):
+        return _norm(english_name(a.text().split("\t")[0]))
 
     def walk(menu):
         for a in menu.actions():
             if a.menu():
-                if _norm(a.text()) != "open recent":      # the list of recent files
+                if english(a) != "open recent":      # the list of recent files
                     walk(a.menu())
                 continue
             if a.isSeparator() or not a.isEnabled() and not a.text():
                 continue
             name = _norm(a.text())
-            if not name or name in NOT_DOCUMENTED or not a.isVisible():
+            if not name or english(a) in NOT_DOCUMENTED or not a.isVisible():
                 continue
             if a.isEnabled() is False and a.toolTip() == a.text():
                 continue

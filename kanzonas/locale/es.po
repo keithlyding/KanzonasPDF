@@ -4141,7 +4141,7 @@ msgstr "Guardar como..."
 msgid "Go to"
 msgstr "Ir a"
 
-#: main_window.py:3889 measure_ui.py:220
+#: main_window.py:3889 manual.py:1111 measure_ui.py:220
 msgid "Close"
 msgstr "Cerrar"
 
@@ -4249,7 +4249,7 @@ msgstr "Desbloquear todo"
 msgid "Previous"
 msgstr "Anterior"
 
-#: main_window.py:3956
+#: main_window.py:3956 manual.py:1086
 msgid "Next"
 msgstr "Siguiente"
 
@@ -4842,6 +4842,26 @@ msgstr "Primero copie algunas páginas (Páginas > Copiar páginas)"
 #: main_window.py:4616
 msgid "Duplicated {n} page(s)"
 msgstr "Se duplicaron {n} página(s)"
+
+#: manual.py:1075
+msgid "KanzonasPDF user manual"
+msgstr "Manual del usuario de KanzonasPDF"
+
+#: manual.py:1080
+msgid "Find in manual:"
+msgstr "Buscar en el manual:"
+
+#: manual.py:1083
+msgid "Type a word, then Enter for the next match"
+msgstr "Escriba una palabra y presione Enter para ir a la coincidencia siguiente"
+
+#: manual.py:1097
+msgid "Contents"
+msgstr "Contenido"
+
+#: manual.py:1139
+msgid "Not found"
+msgstr "No se encontró"
 
 #: markups_panel.py:16 sheets_ui.py:29
 msgid "Page"
