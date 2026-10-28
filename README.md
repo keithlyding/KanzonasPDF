@@ -137,6 +137,8 @@ before it's published, and every release lists the SHA-256 checksum of each down
   default markup styles, the zoom documents open at, mouse and scrolling options, automatic
   backups and more.
 - **Keyboard shortcuts:** View > Keyboard shortcuts... lists them all, and you can change them.
+- **In English and Spanish (Español):** menus, messages and the user manual follow the language
+  of Windows, or pick one in File > Preferences > General > Language.
 
 ## Feedback
 

@@ -2197,7 +2197,7 @@ msgstr "E&xtraer páginas a un archivo nuevo..."
 
 #: main_window.py:566
 msgid "Link sheet &callouts..."
-msgstr "&Vincular llamadas de planos..."
+msgstr "&Vincular referencias a planos..."
 
 #: main_window.py:567
 msgid "Read the sheet numbers from the title blocks and make every callout, note and index line that names a sheet a link to it (also to PDFs in the same folder)"
@@ -2345,7 +2345,7 @@ msgstr "Desbl&oquear con contraseña..."
 
 #: main_window.py:630
 msgid "Tool &chest"
-msgstr "Co&fre de herramientas"
+msgstr "&Caja de herramientas"
 
 #: main_window.py:632
 msgid "&Compare documents..."
@@ -2417,7 +2417,7 @@ msgstr "Detalles de la firma digi&tal..."
 
 #: main_window.py:651
 msgid "Set &scale..."
-msgstr "Definir &escala..."
+msgstr "&Establecer escala..."
 
 #: main_window.py:652
 msgid "Read scales from &title blocks"
@@ -2529,7 +2529,7 @@ msgstr "&Lista de marcas"
 
 #: main_window.py:740
 msgid "&Author name for markups..."
-msgstr "Nombre de &autor para las marcas..."
+msgstr "Nombre del &autor de las marcas..."
 
 #: main_window.py:741
 msgid "Check &spelling"
@@ -3711,7 +3711,7 @@ msgstr "Leer escalas de los cuadros de rótulo"
 
 #: main_window.py:3023
 msgid "Tool chest: next markups use this style. Pick a tool from the toolbar to go back to defaults."
-msgstr "Cofre de herramientas: las próximas marcas usan este estilo. Elija una herramienta de la barra para volver a los valores predeterminados."
+msgstr "Caja de herramientas: las próximas marcas usan este estilo. Elija una herramienta de la barra para volver a los valores predeterminados."
 
 #: main_window.py:3037
 msgid "Select a markup (or pick a markup tool) first, then click Add."
@@ -4339,7 +4339,7 @@ msgstr "Insertar archivo"
 
 #: main_window.py:3967
 msgid "Sheet callouts"
-msgstr "Llamadas de planos"
+msgstr "Referencias a planos"
 
 #: main_window.py:3967
 msgid "From images"

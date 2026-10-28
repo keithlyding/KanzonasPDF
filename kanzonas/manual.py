@@ -954,9 +954,11 @@ the same as that command, so you can change it in either place. <b>OK</b> uses y
 closes the window; <b>Apply</b> uses them right away and leaves the window open, so you can see
 the effect and keep adjusting; <b>Cancel</b> closes it without the changes made since the last
 Apply.</li>
-<li><b>General:</b> theme (Match Windows, Light, Dark), Ribbon (instead of toolbars), Show group
-names on ribbon, Show menu bar, Show text labels on toolbars, Check for updates automatically.
-It also tells you where your settings are saved (the data folder in portable mode).</li>
+<li><b>General:</b> theme (Match Windows, Light, Dark), <b>Language</b> (Automatic, the language
+of Windows; English; Español: menus, messages and this manual; a change shows the next time
+KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, Show menu bar,
+Show text labels on toolbars, Check for updates automatically. It also tells you where your
+settings are saved (the data folder in portable mode).</li>
 <li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
 Set up my signature... / Set up my initials... with whether each is saved yet, and Change PIN...
 to set, change or remove the PIN that protects them (leave the new PIN empty to remove it), and

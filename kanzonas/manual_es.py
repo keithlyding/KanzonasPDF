@@ -71,8 +71,8 @@ salvo que en ese caso la otra pestaña muestra el archivo nuevo. Deshacer es Ctr
 Se conservan hasta 30 pasos; en los PDF muy grandes, menos, para que el historial de deshacer no supere un límite de memoria
 (256 MB por documento, 512 MB para todos los documentos abiertos juntos; los pasos más antiguos se descartan primero).</li>
 <li><b>Paneles:</b> Páginas/Marcadores/Capas a la izquierda (F4), Propiedades a la derecha (F6),
-Lista de marcas (F7), Cofre de herramientas (F8), Marcadores (F9), Vista dividida (F10). Los paneles que tenía abiertos
-al cerrar KanzonasPDF (y sus tamaños, sus lados y cuál de Propiedades / Cofre de herramientas estaba
+Lista de marcas (F7), Caja de herramientas (F8), Marcadores (F9), Vista dividida (F10). Los paneles que tenía abiertos
+al cerrar KanzonasPDF (y sus tamaños, sus lados y cuál de Propiedades / Caja de herramientas estaba
 delante) vuelven la próxima vez que se inicia; la Vista dividida siempre se inicia cerrada.</li>
 <li><b>Un documento en su propia ventana</b> (para un segundo monitor): arrastre su pestaña hacia arriba o hacia abajo fuera
 de la barra de pestañas y suéltela, o haga clic con el botón derecho en la pestaña &gt; <b>Mover a una nueva ventana</b>, o Ver &gt;
@@ -146,7 +146,7 @@ cualquier PDF &gt; Abrir con &gt; Elegir otra aplicación &gt; KanzonasPDF, y ma
 <li>Abrir otro PDF mientras KanzonasPDF se está ejecutando lo abre en una nueva pestaña de la misma ventana.</li>
 <li><b>Actualizar:</b> ejecute el instalador más reciente sobre el anterior; no hace falta desinstalar primero.
 Cierra KanzonasPDF si se está ejecutando, lo instala en el mismo lugar y conserva su configuración,
-sus firmas, sus sellos y su cofre de herramientas. <b>Desinstalar:</b> Configuración de Windows &gt; Aplicaciones, o el desinstalador de la carpeta de instalación.</li>
+sus firmas, sus sellos y su caja de herramientas. <b>Desinstalar:</b> Configuración de Windows &gt; Aplicaciones, o el desinstalador de la carpeta de instalación.</li>
 <li><b>Versión portátil</b> (<b>KanzonasPDF-portable.zip</b>): no requiere instalación. Descomprima la carpeta KanzonasPDF
 en cualquier lugar (una memoria USB, una unidad de red, su carpeta Documentos) y ejecute KanzonasPDF.exe. Gracias al
 archivo portable.txt que contiene, su configuración, sus firmas, sus imágenes de sellos y su certificado se guardan en una
@@ -234,7 +234,7 @@ y las palabras que escribió) o <b>Quitar vínculo</b> (el vínculo y su subraya
 imagen sobre las que estaba se quedan; las palabras que escribió el propio vínculo desaparecen con él). Hacer clic en un vínculo con la herramienta
 Vínculos también lo abre para modificarlo, con <b>Eliminar vínculo</b>. La herramienta Vínculos muestra los vínculos de la página como
 cuadros azules discontinuos. Todas las partes de un vínculo (varias líneas) cambian y desaparecen juntas. Ctrl+Z
-deshace cualquiera de estas acciones. Para todo un juego de planos, <b>Vincular llamadas de planos</b> (menú Páginas) crea los
+deshace cualquiera de estas acciones. Para todo un juego de planos, <b>Vincular referencias a planos</b> (menú Páginas) crea los
 vínculos por usted a partir de los números de plano.</li>
 <li><b>Desplazar:</b> herramienta Mano (H; KanzonasPDF se inicia con la herramienta Mano), las barras de desplazamiento, o <b>mantenga presionada la rueda del mouse y arrastre</b>
 (funciona con cualquier herramienta). <b>Shift+rueda</b> siempre desplaza a la izquierda y a la derecha, incluso cuando el mouse
@@ -357,7 +357,7 @@ acopla. Su fuente puede ser Helvetica, Times o Courier (Propiedades > Fuente): s
 tiene todo visor de PDF, así que el comentario se ve igual en todas partes. Para escribir texto que forme parte de
 la página, use <b>Agregar texto</b> (más abajo).</li>
 <li><b>Llamada</b> (K): presione en el punto que señala y arrastre hasta donde va el texto.</li>
-<li><b>Nombre del autor:</b> Editar &gt; Nombre de autor para las marcas. Se registra en sus marcas y
+<li><b>Nombre del autor:</b> Editar &gt; Nombre del autor de las marcas. Se registra en sus marcas y
 se imprime en los sellos.</li>
 <li><b>Revisar ortografía</b> (menú Editar, activado al principio): mientras escribe un comentario, un cuadro de texto, un
 campo de formulario de varias líneas, o con Editar texto y Agregar texto, las palabras mal escritas se subrayan con una línea
@@ -465,7 +465,7 @@ para la próxima vez. Con una marca seleccionada, cambia <b>esa marca</b>.</li>
 <li>Color de línea, relleno (o <b>Sin relleno</b>), <b>Sin borde</b> para cuadros y formas, color del texto,
 grosor de línea, tamaño de fuente, puntas de flecha, borde de nube, opacidad.</li>
 <li><b>Restablecer valores predeterminados</b> devuelve una herramienta a su estilo original.</li>
-<li><b>Cofre de herramientas</b> (F8, o la pestaña Ver): sus estilos de marca favoritos, a un clic de distancia. F8
+<li><b>Caja de herramientas</b> (F8, o la pestaña Ver): sus estilos de marca favoritos, a un clic de distancia. F8
 o el botón lo abre y, cuando está visible, lo vuelve a cerrar (si está detrás de la pestaña
 Propiedades, pasa al frente). Haga clic en una entrada y luego
 dibuje: obtiene esa herramienta con ese color y ese tamaño, y la configuración normal de la herramienta se queda como
@@ -687,10 +687,10 @@ texto funcionan con ella, y editarla de nuevo conserva su fuente.</li>
 
 <h2 id="measure">Medir</h2>
 <ul>
-<li>Primero defina la escala del dibujo: Medir &gt; <b>Definir escala</b> (escalas predefinidas como 1/4" = 1'-0",
+<li>Primero defina la escala del dibujo: Medir &gt; <b>Establecer escala</b> (escalas predefinidas como 1/4" = 1'-0",
 1:100), o <b>Calibrar cinta métrica</b>: arrastre a lo largo de una dimensión conocida y escriba su longitud
 real. KanzonasPDF lee las notas de escala escritas en el plano (SCALE: 1/4" = 1'-0", 1" = 20',
-1:50, NTS, en el cuadro de rótulo o debajo de los títulos de los detalles): Definir escala las ofrece como <b>Escala
+1:50, NTS, en el cuadro de rótulo o debajo de los títulos de los detalles): Establecer escala las ofrece como <b>Escala
 escrita en el plano</b>, que queda elegida automáticamente cuando el cuadro de rótulo tiene una, y la barra de estado
 menciona lo que dice el plano mientras no haya ninguna escala definida.</li>
 <li><b>Leer escalas de los cuadros de rótulo</b> (menú Medir, pestaña Medir): para todo un juego de una vez,
@@ -757,7 +757,7 @@ la lista de páginas, o la página actual; pregunta primero, y Ctrl+Z las recupe
 página eliminada lleva entonces a la página siguiente (o a la última página).</li>
 <li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional.</li>
 <li>Pestaña <b>Marcadores</b>: agregue, cambie el nombre, reordene y aplique sangría a los marcadores.</li>
-<li><b>Vincular llamadas de planos</b> (menú Páginas, pestaña Páginas): para un juego de planos trazado sin
+<li><b>Vincular referencias a planos</b> (menú Páginas, pestaña Páginas): para un juego de planos trazado sin
 hipervínculos. KanzonasPDF lee el número y el título de cada plano en su cuadro de rótulo (el
 valor que sigue a un rótulo SHEET, SHEET NO o DWG NO, o el número con aspecto de número de plano más grande de la
 zona del cuadro de rótulo) y los muestra para que los corrija. Luego, cada globo de llamada, nota o línea de índice
@@ -947,7 +947,9 @@ lo mismo que ese comando, así que puede cambiarla en cualquiera de los dos luga
 cierra la ventana; <b>Aplicar</b> los usa de inmediato y deja la ventana abierta, para que pueda ver
 el efecto y seguir ajustando; <b>Cancelar</b> la cierra sin los cambios hechos desde el último
 Aplicar.</li>
-<li><b>General:</b> tema (Igual que Windows, Claro, Oscuro), Cinta (en lugar de barras de herramientas), Mostrar nombres de grupo
+<li><b>General:</b> tema (Igual que Windows, Claro, Oscuro), <b>Idioma</b> (Automático, el idioma de
+Windows; English; Español: menús, mensajes y este manual; el cambio se ve la próxima vez que se
+inicia KanzonasPDF), Cinta (en lugar de barras de herramientas), Mostrar nombres de grupo
 en la cinta, Mostrar barra de menús, Mostrar etiquetas de texto en las barras de herramientas, Buscar actualizaciones automáticamente.
 También le indica dónde se guarda su configuración (la carpeta data en el modo portátil).</li>
 <li><b>Usted:</b> el Nombre del autor de las marcas (que se registra en las marcas nuevas y aparece en los sellos), y
@@ -1043,7 +1045,7 @@ cuadrícula...).</li>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>
-<tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Páginas / Propiedades / Marcas / Cofre de herramientas / Marcadores / Vista dividida</td></tr>
+<tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Páginas / Propiedades / Marcas / Caja de herramientas / Marcadores / Vista dividida</td></tr>
 </table>
 <p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija.</p>
 """
