@@ -3234,6 +3234,10 @@ class DocumentView(QScrollArea):
         ed = InlineEditor(w, w.to_screen(box), old,
                           chosen[0] if chosen else text_edit.font_family_hint(lines[0]),
                           (picked or size) * self.zoom, click=w.to_screen_pt(pt))
+        # the box covers the whole paragraph while you type, also when the screen font fits
+        # its words on fewer lines than the page does
+        from .inline_editor import MARGIN
+        ed.min_height = int(box.height * self.zoom + 2 * MARGIN + 4)
         ed.fix_width((lay["right"] - min(lay["left"], lay["first_left"])) * self.zoom)
         # the cursor goes where the page was clicked (the editor's font wraps a little
         # differently from the page's, so the place on screen can be another word)

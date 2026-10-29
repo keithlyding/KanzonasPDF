@@ -28,6 +28,7 @@ class InlineEditor(QFrame):
         self.setToolTip("Drag the outline to move the text, drag a handle to change its width.\n"
                         "Enter = done, Shift+Enter = new line, Esc = cancel")
         self.resized_by_user = False
+        self.min_height = 0             # px: at least the text it covers (a paragraph)
         self._done = False
         self._drag = None
         lay = QVBoxLayout(self)
@@ -171,7 +172,7 @@ class InlineEditor(QFrame):
             if need > self.width():
                 self.resize(max(self.width(), min(need, limit)), self.height())
         lines = self.text.document().size().height()
-        want = int(lines * fm.lineSpacing() + 2 * MARGIN + 4)
+        want = max(int(lines * fm.lineSpacing() + 2 * MARGIN + 4), self.min_height)
         if want != self.height():
             self.resize(self.width(), want)
         # wrapping in the PDF follows the editor, so the start width must track auto-growth

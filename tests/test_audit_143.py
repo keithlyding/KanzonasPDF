@@ -91,5 +91,36 @@ class OddClipboard(unittest.TestCase):
         v.paste()                                        # no exception
 
 
+class EditorCoversParagraph(unittest.TestCase):
+    def test_the_old_lines_never_peek_out_below_the_editor(self):
+        """The edit box covers the whole paragraph, also when the screen font fits its words
+        on fewer lines than the page does (found making screenshots)."""
+        text = ("1.01 SUMMARY. Section includes cast-in-place concrete, including formwork, "
+                "reinforcement, concrete materials, mixture design, placement procedures, and "
+                "finishes, for footings, slabs-on-grade, foundation walls and elevated slabs as "
+                "shown on the drawings.")
+
+        def build(p):
+            p.insert_textbox(pymupdf.Rect(72, 122, 540, 260), text, fontsize=11,
+                             fontname="tiro", align=pymupdf.TEXT_ALIGN_JUSTIFY)
+        v = DocumentView(pdf(build))
+        self.addCleanup(v.close_doc)
+        v.resize(1200, 900)
+        v.show()
+        v.set_zoom(1.6)
+        APP.processEvents()
+        from kanzonas import text_edit
+        v.edit_text_at(0, pymupdf.Point(200, 135))
+        ed = v._inline
+        self.assertIsNotNone(ed)
+        box = pymupdf.Rect()
+        for _r, ln in text_edit.text_lines(v.doc[0]):
+            box |= pymupdf.Rect(ln["bbox"])
+        w = v.pages[0]
+        covered = w.to_screen(box)
+        self.assertGreaterEqual(ed.y() + ed.height(), covered.bottom())
+        ed.canceled.emit()
+
+
 if __name__ == "__main__":
     unittest.main()
