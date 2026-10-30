@@ -90,6 +90,18 @@ def link_border(doc, xref):
     except (ValueError, IndexError, RuntimeError):
         return None
 
+class _busy:
+    """The busy pointer while a command works (most take a fraction of a second; on a huge
+    drawing it shows the program is at it)."""
+
+    def __enter__(self):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+    def __exit__(self, *exc):
+        QApplication.restoreOverrideCursor()
+        return False
+
+
 class DocumentView(QScrollArea):
     _orig_data = None               # original file bytes (signed / protected files only)
     _orig_enc = None                # original protection, to keep it when saving edits
@@ -287,6 +299,7 @@ class DocumentView(QScrollArea):
             if 0 <= cur < len(self.pages):
                 self.pages[cur].update()
             self.pageChanged.emit(cur)
+            self._cad_prepare_soon()
         # Free rendered bitmaps for pages far from the viewport to keep memory low. Only the
         # pages that hold one are visited, so scrolling costs the same on 10 or 10,000 pages.
         lo, hi = max(0, cur - 4), cur + 6
@@ -813,6 +826,7 @@ class DocumentView(QScrollArea):
         self._tool_cursor()
 
     def _tool_cursor(self):
+        self._cad_prepare_soon()            # (a tool or the mouse mode changed)
         tool = self.tool
         if tool == "eraser" and not self.plus_cursor:
             self.viewport().setCursor(eraser_cursor())
@@ -932,6 +946,7 @@ class DocumentView(QScrollArea):
             return
         if snap is not None:
             self._undo.append(snap)
+        self._cad_prepare_soon()            # (in CAD mode: the changed page made ready again)
         del self._undo[:-UNDO_LIMIT]
         self._redo.clear()
         self._trim_history()
@@ -3953,6 +3968,47 @@ class DocumentView(QScrollArea):
                 texts.append(it)
         return found + texts
 
+    # ---- CAD mode: the page made ready while nothing happens -------------------------------
+    PREP_WAIT = 600             # ms without a new reason before preparing starts
+    PREP_SLICE = 0.03           # seconds of preparing at a time
+
+    def _cad_prepare_soon(self):
+        """In CAD mode, read the page's objects and their lines in short slices while you
+        aren't doing anything, so the first box, lasso, highlight or command on a big
+        drawing starts at once instead of reading the drawing first."""
+        if not self.cad_select or getattr(self, "doc", None) is None:
+            return
+        t = getattr(self, "_prep_timer", None)
+        if t is None:
+            t = self._prep_timer = QTimer(self)
+            t.setSingleShot(True)
+            t.timeout.connect(self._cad_prepare_step)
+        t.start(self.PREP_WAIT)
+
+    def _cad_prepare_step(self):
+        if not self.cad_select or getattr(self, "doc", None) is None or self.doc.is_closed or \
+                not getattr(self, "pages", None):
+            return
+        index = self.current_page()
+        job = getattr(self, "_prep_job", None)
+        objs = self._obj_cache.get(index)
+        if job is None or job["index"] != index or job["objs"] is not objs or objs is None:
+            # first the page's objects and its text (each in one go), then their lines
+            objs = self.content_objects(index)
+            self.text_objects(index)
+            shapes = [it for it in (objs.items if objs is not None else ())
+                      if it["kind"] == "shape" and "lines" not in it]
+            self._prep_job = {"index": index, "objs": objs, "todo": iter(shapes)}
+            if shapes:
+                self._prep_timer.start(0)
+            return
+        end = time.monotonic() + self.PREP_SLICE
+        for it in job["todo"]:
+            objs.lines(it)
+            if time.monotonic() > end:
+                self._prep_timer.start(0)   # more next time round, after any input
+                return
+
     # ---- CAD tab commands (cad_commands.py) ----------------------------------------------
     _cad_cmd = None             # the CAD command running, or None
 
@@ -3993,6 +4049,10 @@ class DocumentView(QScrollArea):
         return out
 
     def cad_apply(self, label, mat, copies=None, keep=False):
+        with _busy():
+            return self._cad_apply(label, mat, copies, keep)
+
+    def _cad_apply(self, label, mat, copies=None, keep=False):
         """A CAD command's change to the selection, as one undo step: mat (a Matrix in page
         coordinates) moves / turns / scales / mirrors it; copies (a list of matrices) adds a
         copy for each instead. The drawing's own text only moves."""
@@ -4015,9 +4075,11 @@ class DocumentView(QScrollArea):
                 if not shapes:
                     return
                 self.obj_sel = (index, shapes)
-                self._objects_edit(label, lambda pg, ns: page_objects.copies(pg, ns, copies,
-                                                                              objs),
-                                   keep=False)
+                # many copies of many objects (an array): by reference, as one group placed
+                # again and again (fast, and the file stays small)
+                big = len(copies) > 20 and len(copies) * len(shapes) > 400
+                make = page_objects.block_copies if big else page_objects.copies
+                self._objects_edit(label, lambda pg, ns: make(pg, ns, copies, objs), keep=False)
                 if keep:
                     # the originals stay selected (Copy goes on placing copies of them): each
                     # one's copies come right after it, so its number grows by those before it
@@ -4077,6 +4139,10 @@ class DocumentView(QScrollArea):
             yield an
 
     def cad_trim(self, index, pt):
+        with _busy():
+            return self._cad_trim(index, pt)
+
+    def _cad_trim(self, index, pt):
         """Trim at pt (the CAD tab): the clicked line of the drawing, or line markup, loses
         the part between the nearest lines crossing it (or its end). True if it changed."""
         from . import page_objects, trim
@@ -4164,10 +4230,22 @@ class DocumentView(QScrollArea):
             new = [p_[0] if j != k else [[q * inv for q in pc] for pc in pieces]
                    for j, p_ in enumerate(parts)]
 
+            fresh = {}
+
             def do():
-                page_objects.rewrite_path(self.doc[index], item["n"], state, new, paint, objs)
-            self.modify(do, [index])
+                fresh["objs"] = page_objects.rewrite_path(self.doc[index], item["n"], state,
+                                                          new, paint, objs)
             self.clear_object_selection()
+            self.modify(do, [index])
+            got = fresh.get("objs")
+            if isinstance(got, page_objects.Objects):
+                # the page's objects, worked out without reading the drawing again; the
+                # trimmed one's lines are known too
+                got_item = next((it for it in got.items if it["n"] == item["n"]), None)
+                if got_item is not None and pieces:
+                    lines = objs.lines(item)
+                    got_item["lines"] = lines[:k] + [list(pc) for pc in pieces] + lines[k + 1:]
+                self._obj_cache[index] = got
         else:
             _d, _w, xref, k, _poly, _closed, m = best
             models = []
@@ -4293,7 +4371,8 @@ class DocumentView(QScrollArea):
         self.obj_sel = None
         if keep:
             objs = self.content_objects(index)
-            again = [it for it in (objs.items if objs else []) if it["n"] in set(ns)]
+            wanted = set(ns)
+            again = [it for it in (objs.items if objs else []) if it["n"] in wanted]
             for r in fresh.get("text_rects") or []:
                 near = [it for it in self.text_objects(index)
                         if abs(it["rect"].x0 - r.x0) < 1.5 and abs(it["rect"].y0 - r.y0) < 1.5]
@@ -4438,7 +4517,9 @@ class DocumentView(QScrollArea):
             if mine:
                 links.remove(pg, list(mine.values()), keep_text=True)
             return bool(mine)
-        self._objects_edit(tr("Deleted"), page_objects.delete, keep=False, text_fn=delete_text,
+        objs = self._obj_cache.get(self.obj_sel[0])
+        self._objects_edit(tr("Deleted"), lambda pg, ns: page_objects.delete(pg, ns, objs),
+                           keep=False, text_fn=delete_text,
                            links_fn=drop_links, links_first=True)
 
     def _confirm_text_removal(self, index, texts):

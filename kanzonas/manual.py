@@ -374,7 +374,10 @@ or <b>Delete them</b> (the originals are replaced).</li>
 it goes; then <b>Scale</b> (so the second points meet too) or <b>Don't scale</b>.</li>
 <li><b>Array</b>: choose the rows and columns (up to 50 each), then click the base point, where
 the next column's copy goes and where the next row's copy goes (the direction counts too). An
-array that would make more than 20,000 objects asks first.</li>
+array that would make more than 20,000 objects asks first. A big array (more than 20 copies of
+a large selection) is made as CAD programs make blocks: the selection goes into the file once,
+as a drawing group, and each copy places that group, so it's quick and the file stays small.
+In Edit objects each such copy is a group; Ungroup takes one apart.</li>
 <li><b>Trim</b>: no selection needed. Click the part of a line to cut away: it goes up to the
 nearest lines crossing it on either side (or to its end, when nothing crosses on that side); a
 line nothing crosses goes completely. The click picks the line nearest to it and isn't
@@ -383,6 +386,9 @@ again and again; Enter, Escape or Done ends it. It
 trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
 and line, polyline and pen markups; filled shapes and pictures aren't trimmed.</li>
 </ul>
+<p>On a big drawing, CAD mode reads the page's line work in the background while you aren't
+doing anything, so the first box, lasso or command starts at once; the pointer shows a busy
+cursor while a command works.</p>
 <p>What the commands don't do: the drawing's own text only moves (Move); copying, turning,
 scaling or mirroring leaves it where it is and says so (Edit text changes it). Highlights and
 other text markups stay on their words, so they only move and copy. A mirrored picture or stamp

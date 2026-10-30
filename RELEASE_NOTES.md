@@ -18,6 +18,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - A CAD tab (in CAD mode) with Move, Copy, Rotate, Scale, Mirror, Delete, Align, Array and Trim.
 - A CAD command line at the bottom: type M, CO, RO, TR... (or any command's name) and press Enter, as in AutoCAD.
 - Free page movement: drag the page anywhere, even when it fits in the window.
+- Faster on big CAD drawings: moving, copying, arrays and trimming are many times quicker.
 
 **Fixed**
 - Documents open while a setup updates KanzonasPDF, or while Windows shuts down, reopen at the next start, and their unsaved changes are kept as backups.
@@ -36,6 +37,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Una pestaña CAD (en el modo CAD) con Mover, Copiar, Girar, Escalar, Simetría, Eliminar, Alinear, Matriz y Recortar.
 - Una línea de comandos CAD en la parte inferior: escriba M, CO, RO, TR... (o el nombre de cualquier comando) y presione Entrar, como en AutoCAD.
 - Movimiento libre de la página: arrastre la página a cualquier lugar, aunque quepa en la ventana.
+- Más rápido en dibujos CAD grandes: mover, copiar, las matrices y recortar son mucho más rápidos.
 
 **Correcciones**
 - Los documentos abiertos mientras un instalador actualiza KanzonasPDF, o mientras Windows se apaga, se vuelven a abrir en el siguiente inicio, y sus cambios sin guardar se conservan como copias de seguridad.
