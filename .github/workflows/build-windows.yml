@@ -103,6 +103,25 @@ jobs:
           $p = Start-Process "dist-installer\KanzonasPDF-v0.0-setup.exe" -ArgumentList ($sargs + "/DIR=$dir") -PassThru -Wait
           if ($p.ExitCode -ne 0) { throw "Old version failed to install" }
           New-Item -Force "HKCU:\Software\KanzonasPDF\upgradetest" | Set-ItemProperty -Name keep -Value "yes"
+          # the old version runs with a document open, set to reopen documents at start-up; the
+          # setup closes it through Windows (no window is closed) and it must still remember them
+          $kz = "HKCU:\Software\KanzonasPDF\KanzonasPDF"
+          if (-not (Test-Path $kz)) { New-Item -Force $kz | Out-Null }
+          New-Item -ItemType Directory "$env:RUNNER_TEMP\kzbackups" -Force | Out-Null
+          Set-ItemProperty $kz -Name restore_session -Value "true"
+          Set-ItemProperty $kz -Name update_check -Value "false"
+          Set-ItemProperty $kz -Name session_files -Value "[]"
+          Set-ItemProperty $kz -Name backup_dir -Value "$env:RUNNER_TEMP\kzbackups"
+          $doc = "$env:RUNNER_TEMP\kz-open-during-update.pdf"
+          python -c "import pymupdf, sys; d = pymupdf.open(); d.new_page().insert_text((72, 72), 'open'); d.save(sys.argv[1])" $doc
+          $old = Start-Process "$dir\KanzonasPDF.exe" -ArgumentList "`"$doc`"" -PassThru
+          foreach ($i in 1..60) {
+            $old.Refresh()
+            if ($old.MainWindowTitle -like "kz-open-during-update*") { break }
+            Start-Sleep -Seconds 1
+          }
+          if ($old.MainWindowTitle -notlike "kz-open-during-update*") { throw "The old version didn't open the document (title '$($old.MainWindowTitle)')" }
+          Start-Sleep -Seconds 3
           # the new setup runs exactly as the app's Update now runs it (updates.installer_command):
           # no /DIR (it must find the existing install by itself), and /RELAUNCH starts the app again
           $uargs = "/SILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-","/CLOSEAPPLICATIONS","/CURRENTUSER","/RELAUNCH"
@@ -110,15 +129,23 @@ jobs:
           $p = Start-Process "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe" -ArgumentList $uargs -PassThru
           $p.WaitForExit()
           if ($p.ExitCode -ne 0) { throw "Update over the old version failed" }
+          if (-not $old.HasExited) { $old | Stop-Process -Force; throw "The setup didn't close the running KanzonasPDF" }
+          $files = (Get-ItemProperty $kz).session_files
+          if ($files -notlike "*kz-open-during-update.pdf*") { throw "The document open during the update wasn't remembered: '$files'" }
+          # started again, it reopens the document
           $again = $null
-          foreach ($i in 1..30) {
+          foreach ($i in 1..60) {
             $again = Get-Process KanzonasPDF -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($dir) }
-            if ($again) { break }
+            if ($again -and ($again | Where-Object { $_.MainWindowTitle -like "kz-open-during-update*" })) { break }
             Start-Sleep -Seconds 1
           }
           if (-not $again) { throw "The update didn't start KanzonasPDF again" }
+          $title = ($again | Select-Object -First 1).MainWindowTitle
           $again | Stop-Process -Force
+          if ($title -notlike "kz-open-during-update*") { throw "Started again, KanzonasPDF didn't reopen the document (title '$title')" }
           Start-Sleep -Seconds 2
+          Set-ItemProperty $kz -Name restore_session -Value "false"
+          Remove-ItemProperty $kz -Name update_check, session_files, backup_dir -ErrorAction SilentlyContinue
           $un = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F4C2A61-5B7E-4D3A-9C1F-2E6B7A9D4C11}_is1"
           $ver = (Get-ItemProperty $un).DisplayVersion
           if ($ver -ne "${{ steps.ver.outputs.version }}") { throw "Installed version is '$ver' after the update" }

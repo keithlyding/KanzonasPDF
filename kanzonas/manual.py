@@ -974,14 +974,17 @@ the Date tool writes.</li>
 size, fill, opacity and so on, the same settings the Properties panel shows when that tool is
 active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
 <li><b>Start-up and opening:</b> reopen the documents that were open when you closed
-KanzonasPDF (off by default), whether to ask before closing with several documents open (on
+KanzonasPDF (off by default; this also works when a setup closes KanzonasPDF to update it, or
+Windows closes it to shut down or sign out), whether to ask before closing with several documents open (on
 by default), the default tool (Hand or Select), the zoom a document opens
 at (Fit width by default; Fit page, the whole page in the window; Actual size; or the zoom it had
 when you closed it), and whether to reopen it at the page you were on last time.</li>
 <li><b>Saving:</b> how often to back up unsaved changes (every 5 minutes by default; Off turns it
 off). A copy of each document with unsaved changes is kept in the backups folder and deleted when
 you save or close it. If KanzonasPDF or Windows stops unexpectedly, the next start offers to open
-the copies. Each opens in a tab named after its original file with "(recovered)" added, marked as
+the copies. When a setup or Windows shutting down closes KanzonasPDF, nothing can be asked, so
+each document's latest unsaved changes are first written to its copy, and the next start offers
+them the same way. Each opens in a tab named after its original file with "(recovered)" added, marked as
 unsaved; Save asks where to keep it, offering the original file (or Untitled for a PDF that was
 never saved). Offered copies stay in the backups folder (Open backup
 folder) for 30 days. <b>Backup folder</b>: Change... picks another folder (if KanzonasPDF can't
