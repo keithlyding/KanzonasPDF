@@ -79,6 +79,54 @@ class Notes(unittest.TestCase):
         self.assertEqual(updates.notes_since(rels, current="2.1"), [])
 
 
+class OddAnswers(unittest.TestCase):
+    """A release's text and GitHub's answer are anyone's: odd ones must not hang or fail."""
+
+    def test_long_runs_of_spaces_are_quick(self):
+        import time
+        body = "<!-- kanzonas-notes -->" + " " * 300000 + "x" + " " * 300000
+        t = time.monotonic()
+        self.assertEqual(updates.release_notes({"body": body}), "x")
+        self.assertLess(time.monotonic() - t, 0.5)
+        two = "<!-- kanzonas-notes -->A<!-- kanzonas-notes lang=es -->B"
+        self.assertEqual(updates.release_notes({"body": two}, "es"), "B")
+        self.assertEqual(updates.release_notes({"body": two}), "A")
+
+    def test_assets_that_are_not_entries(self):
+        self.assertIsNone(updates.asset_url({"assets": [1, "x", None, []]}))
+        self.assertIsNone(updates.asset_digest({"assets": [1, "x", None, []]}))
+
+    def test_a_last_check_in_the_future_is_due(self):
+        import time
+        settings = mock.Mock()
+        for last in (time.time() + 7 * 86400, float("nan"), float("inf")):
+            settings.value.side_effect = lambda k, d=None, last=last: \
+                "true" if k == "update_check" else last
+            checker = updates.UpdateChecker(settings)
+            with mock.patch.object(updates.UpdateChecker, "check") as check, \
+                    mock.patch.object(updates.UpdateChecker, "enabled", return_value=True):
+                checker.check_if_due()
+            self.assertTrue(check.called, last)
+
+    def test_one_download_at_a_time_and_none_left_when_abandoned(self):
+        import tempfile
+        from PySide6.QtCore import QObject
+        app_dir = tempfile.mkdtemp()
+        holder = QObject()
+        dl = updates.PortableUpdater("https://127.0.0.1:9/z.zip", app_dir, holder,
+                                     expected_sha256="c" * 64)
+        with mock.patch.object(dl.net, "get", return_value=mock.MagicMock()):
+            dl.start()
+        self.assertTrue(updates.downloading())
+        self.assertTrue(os.listdir(app_dir))
+        holder.deleteLater()
+        QApplication.sendPostedEvents(None, 0)
+        from PySide6.QtCore import QEvent
+        QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+        self.assertFalse(updates.downloading())
+        self.assertEqual(os.listdir(app_dir), [])
+
+
 class UpdateBox(unittest.TestCase):
     def window(self):
         from kanzonas.main_window import MainWindow

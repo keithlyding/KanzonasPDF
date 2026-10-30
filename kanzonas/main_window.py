@@ -1751,7 +1751,8 @@ class MainWindow(QMainWindow):
         """Closing the primary window closes every window (asking about unsaved changes in
         each) and remembers the session; closing a pulled-out window closes just its tabs."""
         others = [w for w in windows() if w is not self] if self.primary else []
-        if not getattr(self, "_close_confirmed", False):
+        ending = getattr(self, "_windows_ending", False)
+        if not ending and not getattr(self, "_close_confirmed", False):
             if not self._confirm_exit([(w, v) for w in [self] + others for v in w._views()]):
                 e.ignore()
                 return
@@ -1760,7 +1761,9 @@ class MainWindow(QMainWindow):
             for w in others:
                 w._close_confirmed = True
                 w.close()
-        self.autosave.discard_all()
+        if not ending:
+            # (when Windows ends KanzonasPDF, the backups just written stay for next time)
+            self.autosave.discard_all()
         QApplication.instance().removeEventFilter(self)
         _forget_window(next((r for r in _WINDOW_REFS if r() is self), None))
         e.accept()
@@ -1770,12 +1773,15 @@ class MainWindow(QMainWindow):
         in all windows (Preferences > Start-up reopens them) and the window layout."""
         from . import autosave
         backups = autosave.folder()
+        listed = autosave._index()
         session = []
         for w in [self] + list(others):
             for v in w._views():
                 w._remember_state(v)
-                if v.path and not v.untitled and os.path.exists(v.path) and \
-                        not _inside(v.path, backups):
+                # (a backup copy isn't reopened as a document; the backups folder may also be
+                # a folder of documents)
+                backup = _inside(v.path or "", backups) and os.path.basename(v.path) in listed
+                if v.path and not v.untitled and os.path.exists(v.path) and not backup:
                     session.append(v.path)
         if self.primary:
             self.settings.setValue("session_files", json.dumps(session))
@@ -1791,6 +1797,9 @@ class MainWindow(QMainWindow):
         the next time KanzonasPDF starts (unless backups are turned off)."""
         others = [w for w in windows() if w is not self]
         for w in [self] + others:
+            # Qt quits after this, which closes the windows: no questions then, and the
+            # backups stay
+            w._windows_ending = True
             for v in w._views():
                 v.commit_pending()
             if w.autosave.minutes:
@@ -4710,6 +4719,10 @@ class MainWindow(QMainWindow):
     def update_now(self):
         """Update now: in place, the portable way or with the new setup."""
         from . import updates
+        if updates.downloading():
+            QMessageBox.information(self, tr("Update"),
+                                    tr("The new version is already downloading."))
+            return
         if updates.can_self_update():
             self.update_portable()
         elif updates.can_install_update():

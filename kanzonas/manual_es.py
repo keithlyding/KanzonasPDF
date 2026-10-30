@@ -323,10 +323,10 @@ marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pe
 <p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Seleccione primero, luego haga clic en un comando
 (o escríbalo: vea la línea de comandos más abajo) y responda a su indicación en la línea de comandos: haga clic en puntos
 de la página (se ajustan a los extremos de las líneas y a las esquinas como con las herramientas de dibujo; mantenga
-presionada Alt para no ajustar), escriba un valor y presione Entrar, o haga clic en un botón ahí. Escape (o Cancelar)
-detiene un comando; el clic derecho equivale a Entrar. Cada cambio se deshace con un Ctrl+Z.</p>
+presionada Alt para no ajustar), escriba un valor y presione Enter, o haga clic en un botón ahí. Escape (o Cancelar)
+detiene un comando; el clic derecho equivale a Enter. Cada cambio se deshace con un Ctrl+Z.</p>
 <p><b>La línea de comandos</b>, a lo largo de la parte inferior de la ventana en el modo CAD, funciona como la de AutoCAD.
-Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Entrar</b> (la
+Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Enter</b> (la
 barra espaciadora solo escribe un espacio, como en "ajustar página"):</p>
 <ul>
 <li>Los nombres cortos de AutoCAD: <b>M</b> Mover, <b>CO</b> o <b>CP</b> Copiar, <b>RO</b> Girar, <b>SC</b> Escalar,
@@ -336,8 +336,8 @@ comienzo del nombre de un comando, en inglés o en español: MOV, COP, GIR, REC.
 "ajustar página", "guardar como"... Mientras escribe, aparece sobre la línea una lista de comandos que coinciden; Arriba
 y Abajo eligen en ella. Solo se ejecuta una coincidencia segura: lo que escribió debe ser el comienzo del nombre del
 comando o de una de sus palabras. Cualquier otra cosa no ejecuta nada: la línea indica <b>Comando desconocido</b> y
-conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Entrar.</li>
-<li>Entrar con la línea vacía repite el último comando.</li>
+conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Enter.</li>
+<li>Enter con la línea vacía repite el último comando.</li>
 <li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
 de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para
 Eliminarlos).</li>
@@ -345,17 +345,17 @@ Eliminarlos).</li>
 <li>En el modo CAD, los atajos de una sola letra de las herramientas (V para Seleccionar, H para Mano...) escriben en la
 línea de comandos; los atajos con Shift y una letra (Shift+M Longitud, Shift+A Área...) siguen funcionando mientras no
 haya nada escrito, los atajos con Ctrl y Alt (Ctrl+S, Ctrl+Z...) funcionan como siempre, y las herramientas están a un
-nombre de distancia ("mano", "seleccionar"). Entrar sigue terminando un polígono o un área que se está dibujando, y la
-barra espaciadora y Entrar siguen llenando el campo de formulario al que llevó Tab.</li>
+nombre de distancia ("mano", "seleccionar"). Enter sigue terminando un polígono o un área que se está dibujando, y la
+barra espaciadora y Enter siguen llenando el campo de formulario al que llevó Tab.</li>
 </ul>
 <ul>
 <li><b>Mover</b>: haga clic en el punto base y luego donde va.</li>
-<li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera; Entrar, Escape o Listo
+<li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera; Enter, Escape o Listo
 termina.</li>
 <li><b>Girar</b>: haga clic en el punto base y luego escriba el ángulo en grados (en sentido antihorario; -90 gira en
-sentido horario) y presione Entrar, o haga clic en un punto: la selección gira para que el "este" apunte hacia ahí.</li>
+sentido horario) y presione Enter, o haga clic en un punto: la selección gira para que el "este" apunte hacia ahí.</li>
 <li><b>Escalar</b>: haga clic en el punto base y luego escriba el factor (2 = el doble de grande, 0.5 = la mitad; de 0.001
-a 1000) y presione Entrar, o haga clic en un punto a una longitud que conozca y luego en el punto a la longitud que tendrá.</li>
+a 1000) y presione Enter, o haga clic en un punto a una longitud que conozca y luego en el punto a la longitud que tendrá.</li>
 <li><b>Simetría</b>: haga clic en dos puntos del eje de simetría y luego en <b>Conservarlos</b> (una copia reflejada) o
 <b>Eliminarlos</b> (los originales se reemplazan).</li>
 <li><b>Eliminar</b>: elimina la selección.</li>
@@ -370,7 +370,7 @@ grupo; Desagrupar separa una.</li>
 <li><b>Recortar</b>: no hace falta seleccionar nada. Haga clic en la parte de una línea que quiere quitar: se quita hasta
 las líneas más cercanas que la cruzan a cada lado (o hasta su extremo, si nada la cruza de ese lado); una línea que nada
 cruza se quita entera. El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
-en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; Entrar, Escape o Listo termina. Recorta las líneas y curvas propias del
+en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; Enter, Escape o Listo termina. Recorta las líneas y curvas propias del
 dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma; las
 formas rellenas y las imágenes no se recortan.</li>
 </ul>
@@ -1170,7 +1170,7 @@ cuadrícula...).</li>
 <tr><td>Ctrl+F1</td><td>Contraer / expandir la cinta</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Mostrar / ocultar la barra de menús (diseño con cinta)</td></tr>
 <tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
-<tr><td>Letras, Entrar (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Entrar lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD (los de Shift y una letra, sí).</td></tr>
+<tr><td>Letras, Enter (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Enter lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD (los de Shift y una letra, sí).</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>

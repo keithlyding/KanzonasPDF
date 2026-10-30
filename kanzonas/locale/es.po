@@ -6537,7 +6537,7 @@ msgstr "Luego haga clic en el punto base, donde va la copia de la columna siguie
 
 #: cad
 msgid "click the part of a line to cut away, up to the lines that cross it (Enter or Escape when done)"
-msgstr "haga clic en la parte de una línea que quiere quitar, hasta las líneas que la cruzan (Entrar o Escape al terminar)"
+msgstr "haga clic en la parte de una línea que quiere quitar, hasta las líneas que la cruzan (Enter o Escape al terminar)"
 
 #: cad
 msgid "Click on the same page."
@@ -6549,7 +6549,7 @@ msgstr "haga clic en el punto base"
 
 #: cad
 msgid "click where a copy goes (Enter or Escape when done)"
-msgstr "haga clic donde va una copia (Entrar o Escape al terminar)"
+msgstr "haga clic donde va una copia (Enter o Escape al terminar)"
 
 #: cad
 msgid "Copied"
@@ -6557,7 +6557,7 @@ msgstr "Copiado"
 
 #: cad
 msgid "type the angle (degrees, counterclockwise) and press Enter, or click a point"
-msgstr "escriba el ángulo (grados, en sentido antihorario) y presione Entrar, o haga clic en un punto"
+msgstr "escriba el ángulo (grados, en sentido antihorario) y presione Enter, o haga clic en un punto"
 
 #: cad
 msgid "Type a factor above 0, for example 2 or 0.5."
@@ -6593,7 +6593,7 @@ msgstr "Escriba un número de grados, por ejemplo 90 o -45."
 
 #: cad
 msgid "type the scale factor and press Enter (2 = twice as big), or click a point at a length you know"
-msgstr "escriba el factor de escala y presione Entrar (2 = el doble de grande), o haga clic en un punto a una longitud que conozca"
+msgstr "escriba el factor de escala y presione Enter (2 = el doble de grande), o haga clic en un punto a una longitud que conozca"
 
 #: cad
 msgid "click the point at the length it becomes"
@@ -6889,7 +6889,7 @@ msgstr "Línea de comandos CAD"
 
 #: cad_commands.py
 msgid "Unknown command: {text}. Type a command's name, or pick one in the list with Up and Down and press Enter."
-msgstr "Comando desconocido: {text}. Escriba el nombre de un comando, o elija uno de la lista con Arriba y Abajo y presione Entrar."
+msgstr "Comando desconocido: {text}. Escriba el nombre de un comando, o elija uno de la lista con Arriba y Abajo y presione Enter."
 
 #: main_window.py
 msgid "Mouse: Standard (arrow, the wheel scrolls)"
@@ -6922,3 +6922,6 @@ msgstr "Esto crea {n} objetos nuevos, lo que puede tardar y agranda el archivo. 
 #: cad_commands.py
 msgid "Trim: that's where lines cross. Click on the part of the line to cut away, a little to one side."
 msgstr "Recortar: ahí se cruzan líneas. Haga clic en la parte de la línea que quiere quitar, un poco a un lado."
+
+msgid "The new version is already downloading."
+msgstr "La nueva versión ya se está descargando."

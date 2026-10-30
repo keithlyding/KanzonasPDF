@@ -95,6 +95,28 @@ class WindowsEnding(unittest.TestCase):
         self.assertEqual(autosave.leftovers(), [])
         self.assertEqual(len(json.loads(self.settings.value("session_files"))), 2)
 
+    def test_qt_quitting_afterwards_asks_nothing_and_keeps_the_backups(self):
+        # On Windows, Qt quits after the session ends, which closes the windows: no question
+        # can be answered then, and the backups just written must stay
+        w = self.window()
+        w.view()._create(0, {"kind": "rect", "props": {"stroke": "#d00000", "width": 2},
+                             "rect": F.Rect(40, 40, 80, 80)})
+        w.autosave.set_minutes(5)
+        w.windows_ending(None)
+        asked = []
+        with mock.patch.object(MainWindow, "_ask_exit", lambda *a: asked.append(a) or "discard"), \
+                mock.patch.object(QMessageBox, "question",
+                                  lambda *a, **k: asked.append(a) or QMessageBox.Discard):
+            w.close()
+        self.assertEqual(asked, [])
+        self.assertEqual(len(autosave.leftovers()), 1)
+
+    def test_a_backups_folder_that_holds_documents_too(self):
+        self.settings.setValue("backup_dir", self.tmp)      # the documents' own folder
+        w = self.window()
+        w.windows_ending(None)
+        self.assertEqual(len(json.loads(self.settings.value("session_files"))), 2)
+
     def test_the_app_listens_for_windows_ending_it(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(root, "kanzonas", "__main__.py"), encoding="utf-8") as f:

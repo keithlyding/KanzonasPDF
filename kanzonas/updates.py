@@ -19,6 +19,7 @@ installation; it starts KanzonasPDF again when it's done.
 
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -26,7 +27,7 @@ import time
 import zipfile
 from urllib.parse import urlparse
 
-from PySide6.QtCore import QObject, QUrl, Signal
+from PySide6.QtCore import QCoreApplication, QObject, QUrl, Signal
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from . import __version__
@@ -66,17 +67,35 @@ def newest(releases, current=None):
 
 
 # (a part's text never runs into the next part, also when its closing mark is missing)
-_NOTES = re.compile(r"<!-- kanzonas-notes(?: lang=(\w+))? -->\s*"
-                    r"((?:(?!<!-- /?kanzonas-notes).)*?)\s*(?:<!-- /kanzonas-notes -->|(?=<!-- "
-                    r"kanzonas-notes)|$)", re.S)
+_OPEN = "<!-- kanzonas-notes"
+_CLOSE = "<!-- /kanzonas-notes -->"
+_LANG = re.compile(r"(?: lang=(\w+))? -->")
+
+
+def _notes_blocks(body):
+    """{language: notes} from a release's text. Plain string searching (a release text is
+    anyone's: no pattern that slows down on odd input)."""
+    found = {}
+    at = body.find(_OPEN)
+    while at >= 0:
+        m = _LANG.match(body, at + len(_OPEN))
+        if m is None:
+            at = body.find(_OPEN, at + 1)
+            continue
+        start = m.end()
+        nxt = body.find(_OPEN, start)
+        close = body.find(_CLOSE, start)
+        end = min(x for x in (nxt, close, len(body)) if x >= 0)
+        found.setdefault(m.group(1) or "en", body[start:end].strip())
+        at = nxt
+    return found
 
 
 def release_notes(release, lang="en"):
     """The short notes in a release's text (see tools/release_notes.py): in lang if it has
     them, else in English; None for a release without notes (those before 1.5)."""
     body = (release or {}).get("body") if isinstance(release, dict) else None
-    found = {(m.group(1) or "en"): m.group(2) for m in _NOTES.finditer(
-        body if isinstance(body, str) else "")}
+    found = _notes_blocks(body if isinstance(body, str) else "")
     return found.get(lang) or found.get("en")
 
 
@@ -129,7 +148,7 @@ def asset_url(release, name=PORTABLE_ZIP):
     None unless the host is a GitHub release host and the asset has a sha256 digest.
     """
     for a in (release or {}).get("assets") or []:
-        if a.get("name") != name:
+        if not isinstance(a, dict) or a.get("name") != name:
             continue
         url = a.get("browser_download_url") or ""
         parsed = urlparse(url)
@@ -145,7 +164,7 @@ def asset_url(release, name=PORTABLE_ZIP):
 def asset_digest(release, name=PORTABLE_ZIP):
     """Hex sha256 published for the release file called `name`, or None."""
     for a in (release or {}).get("assets") or []:
-        if a.get("name") == name:
+        if isinstance(a, dict) and a.get("name") == name:
             return _sha256_hex(a)
     return None
 
@@ -194,6 +213,8 @@ def _installed_in(hive, app_dir):
         except OSError:
             continue
         found = False
+        if not str(where or "").strip():
+            continue                    # (an empty entry names no folder)
         if os.path.normcase(os.path.abspath(str(where))).rstrip("\\/") == here:
             return True
     return found
@@ -320,7 +341,9 @@ class UpdateChecker(QObject):
             last = float(self.settings.value("update_last", 0) or 0)
         except (TypeError, ValueError):
             last = 0
-        if time.time() - last >= DAY:
+        now = time.time()
+        if not math.isfinite(last) or last > now or now - last >= DAY:
+            # (a time in the future: the clock was changed; check rather than wait)
             self.check(manual=False)
 
     _reply = None                    # the request on its way, and whether it was asked for
@@ -361,7 +384,7 @@ class UpdateChecker(QObject):
             return
         try:
             data = json.loads(bytes(reply.readAll()).decode("utf-8"))
-        except ValueError:
+        except (ValueError, RecursionError):
             data = None
         if not isinstance(data, list):
             if manual:
@@ -378,6 +401,36 @@ class UpdateChecker(QObject):
         if not manual and self.settings.value("update_skip", "") == hit[0]:
             return
         self.found.emit(hit[0], hit[1])
+
+
+_RUNNING = []                           # the downloads on their way (one at a time)
+
+
+def downloading():
+    """An update is being downloaded (Update now waits for it rather than start another)."""
+    return any(not st["done"] for st in _RUNNING)
+
+
+def _abandon(st):
+    """The download's window went away or KanzonasPDF quit before it finished: nothing of it
+    stays behind (its file, and the setup's own folder)."""
+    if st["done"]:
+        return
+    st["done"] = True
+    if st in _RUNNING:
+        _RUNNING.remove(st)
+    try:
+        if st["file"] is not None:
+            st["file"].close()
+    except OSError:
+        pass
+    for path in st["paths"]:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    for folder in st["folders"]:
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 class PortableUpdater(QObject):
@@ -413,6 +466,14 @@ class PortableUpdater(QObject):
         except OSError as e:
             self.failed.emit(tr("Can't write next to KanzonasPDF.exe ({error}).").format(error=e))
             return
+        st = self._state = {"done": False, "file": self.file, "paths": [self.path],
+                            "folders": self._folders()}
+        _RUNNING.append(st)
+        # (not methods of self: they run while self is being destroyed)
+        self.destroyed.connect(lambda *_: _abandon(st))
+        app = QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(lambda: _abandon(st))
         req = QNetworkRequest(QUrl(self.url))
         req.setRawHeader(b"User-Agent", ("KanzonasPDF/" + __version__).encode())
         req.setAttribute(QNetworkRequest.RedirectPolicyAttribute,
@@ -428,6 +489,13 @@ class PortableUpdater(QObject):
             self.reply.abort()
 
     def _done(self):
+        st = getattr(self, "_state", None)
+        if st is not None:
+            if st["done"]:
+                return                  # (already cleared away)
+            st["done"] = True
+            if st in _RUNNING:
+                _RUNNING.remove(st)
         r = self.reply
         r.deleteLater()
         self.file.write(bytes(r.readAll()))
@@ -457,6 +525,9 @@ class PortableUpdater(QObject):
     def _finish(self):
         return unpack(self.path, self.app_dir)
 
+    def _folders(self):
+        return []
+
     def _cleanup(self):
         try:
             os.remove(self.path)
@@ -475,6 +546,9 @@ class InstallerUpdater(PortableUpdater):
     def _target(self):
         import tempfile
         return os.path.join(tempfile.mkdtemp(prefix="kzsetup"), setup_name(self.version))
+
+    def _folders(self):
+        return [os.path.dirname(self.path)]
 
     def _finish(self):
         self._good = True               # checked: keep it for running
