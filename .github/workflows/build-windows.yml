@@ -91,6 +91,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
 
       - name: Test updating (install an older version, then the new one over it, no uninstall)
+        timeout-minutes: 20
         shell: pwsh
         run: |
           # same files labeled 0.0, standing in for "the version the user already has"
@@ -105,7 +106,9 @@ jobs:
           # the new setup runs exactly as the app's Update now runs it (updates.installer_command):
           # no /DIR (it must find the existing install by itself), and /RELAUNCH starts the app again
           $uargs = "/SILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-","/CLOSEAPPLICATIONS","/CURRENTUSER","/RELAUNCH"
-          $p = Start-Process "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe" -ArgumentList $uargs -PassThru -Wait
+          # (not -Wait: that also waits for the programs the setup starts, and it starts KanzonasPDF)
+          $p = Start-Process "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe" -ArgumentList $uargs -PassThru
+          $p.WaitForExit()
           if ($p.ExitCode -ne 0) { throw "Update over the old version failed" }
           $again = $null
           foreach ($i in 1..30) {
