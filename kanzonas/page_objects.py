@@ -761,6 +761,118 @@ def rotate(page, ns, rect, degrees, objs=None):
     return transform(page, ns, t, objs)
 
 
+def copies(page, ns, matrices, objs=None):
+    """Copies of objects ns, one for each Matrix in matrices (unrotated page coordinates): each
+    drawn right after its original, in a  q <M> cm ... Q  wrapper, so it looks the same (the
+    state in effect there is the original's) and leaves the state of what follows alone."""
+    tm = pdfcoords.to_page(page)
+    data = _contents(page)
+    if objs is not None and objs.found and objs.data == data:
+        found = objs.found
+    else:
+        found = scan(data)
+    adds = []
+    for n in sorted(set(ns), reverse=True):
+        if n >= len(found):
+            raise ValueError(tr("The object is no longer on the page."))
+        d = found[n]
+        old = data[d["start"]:d["end"]]
+        body = _split(old)[1] if old[:2] != b"BI" else old
+        add = b""
+        for t_page in matrices:
+            m = d["ctm"] * (tm * pymupdf.Matrix(t_page) * ~tm) * ~d["ctm"]
+            add += b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(m) + body + b"\nQ\n"
+        adds.append((d["end"], add))
+    for e, add in adds:                 # back to front: earlier offsets stay valid
+        data = data[:e] + add + data[e:]
+    _set_contents(page, data, compress=False)
+
+
+def subpaths(data, obj):
+    """A path object's pieces: (state bytes, [(subpath bytes, polyline in the object's own
+    coordinates, closed)], paint operator bytes)."""
+    state, parts, paint = [], [], b""
+    cur = None
+    first = last = None
+    old = data[obj["start"]:obj["end"]]
+    for op, args, s_, e_ in _tokens(old):
+        raw = old[s_:e_]
+        if op in _STATE:
+            state.append(raw)
+            continue
+        if op in _PAINT or op == b"n":
+            paint = raw
+            continue
+        k = _CONSTRUCT.get(op)
+        if k is None:
+            continue
+        vals = [_num(t) for t in args[-k:]] if k else []
+        if k and (len(args) < k or None in vals):
+            continue
+        P = [pymupdf.Point(vals[i], vals[i + 1]) for i in range(0, len(vals), 2)]
+        if op == b"m":
+            cur = [raw, [P[0]], False]
+            parts.append(cur)
+            first = last = P[0]
+        elif op == b"re":
+            x, y, w, h = vals
+            c = [pymupdf.Point(x, y), pymupdf.Point(x + w, y), pymupdf.Point(x + w, y + h),
+                 pymupdf.Point(x, y + h), pymupdf.Point(x, y)]
+            parts.append([raw, c, True])
+            cur = None
+            first = last = c[0]
+        elif cur is None:
+            continue
+        else:
+            cur[0] += b" " + raw
+            if op == b"l":
+                cur[1].append(P[0])
+                last = P[0]
+            elif op == b"c":
+                cur[1] += _bezier(last, P[0], P[1], P[2])
+                last = P[2]
+            elif op == b"v":
+                cur[1] += _bezier(last, last, P[0], P[1])
+                last = P[1]
+            elif op == b"y":
+                cur[1] += _bezier(last, P[0], P[1], P[1])
+                last = P[1]
+            elif op == b"h" and first is not None:
+                cur[1].append(first)
+                cur[2] = True
+                last = first
+    if paint in (b"s",):
+        for part in parts:              # s closes every subpath, like h
+            if part[1] and not part[2]:
+                part[1].append(part[1][0])
+                part[2] = True
+    return b" ".join(state), [tuple(p_) for p_ in parts], paint
+
+
+def _polyline_ops(pts):
+    out = [b"%.4f %.4f m" % (pts[0].x, pts[0].y)]
+    out += [b"%.4f %.4f l" % (q.x, q.y) for q in pts[1:]]
+    return b" ".join(out)
+
+
+def rewrite_path(page, n, state, parts, paint):
+    """Write path object n again from (state, [(subpath bytes, polyline, closed) or a list of
+    new polylines], paint): a subpath given as bytes is kept as it was, polylines are drawn as
+    straight lines. Nothing left: the object goes."""
+    body = []
+    for part in parts:
+        if isinstance(part, bytes):
+            body.append(part)
+        else:
+            body += [_polyline_ops(pts) for pts in part if len(pts) >= 2]
+    if not body:
+        delete(page, [n])
+        return
+    paint = b"S" if paint in (b"s", b"") else paint
+    new = (state + b" " if state else b"") + b" ".join(body) + b" " + paint
+    _edit(page, [n], lambda old, ctm: b"\n" + new + b"\n")
+
+
 def delete(page, ns):
     _edit(page, ns, lambda old, ctm: b" " + (_split(old)[0] if old[:2] != b"BI" else b"") +
           b" ")

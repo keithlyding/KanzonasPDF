@@ -6486,3 +6486,383 @@ msgstr "La herramienta Mano (o la rueda presionada) arrastra la página a cualqu
 #: main_window.py
 msgid "Free movement"
 msgstr "Movimiento libre"
+
+#: cad
+msgid "Move"
+msgstr "Mover"
+
+#: cad
+msgid "Mirror"
+msgstr "Simetría"
+
+#: cad
+msgid "Array"
+msgstr "Matriz"
+
+#: cad
+msgid "Trim"
+msgstr "Recortar"
+
+#: cad
+msgid "Scaled"
+msgstr "Escalado"
+
+#: cad
+msgid "click the first source point"
+msgstr "haga clic en el primer punto de origen"
+
+#: cad
+msgid "click where it goes"
+msgstr "haga clic donde va"
+
+#: cad
+msgid "click the second source point"
+msgstr "haga clic en el segundo punto de origen"
+
+#: cad
+msgid "Aligned"
+msgstr "Alineado"
+
+#: cad
+msgid "Rows:"
+msgstr "Filas:"
+
+#: cad
+msgid "Columns:"
+msgstr "Columnas:"
+
+#: cad
+msgid "Then click the base point, where the next column's copy goes, and where the next row's copy goes."
+msgstr "Luego haga clic en el punto base, donde va la copia de la columna siguiente y donde va la copia de la fila siguiente."
+
+#: cad
+msgid "click the part of a line to cut away, up to the lines that cross it (Enter or Escape when done)"
+msgstr "haga clic en la parte de una línea que quiere quitar, hasta las líneas que la cruzan (Entrar o Escape al terminar)"
+
+#: cad
+msgid "Click on the same page."
+msgstr "Haga clic en la misma página."
+
+#: cad
+msgid "click the base point"
+msgstr "haga clic en el punto base"
+
+#: cad
+msgid "click where a copy goes (Enter or Escape when done)"
+msgstr "haga clic donde va una copia (Entrar o Escape al terminar)"
+
+#: cad
+msgid "Copied"
+msgstr "Copiado"
+
+#: cad
+msgid "type the angle (degrees, counterclockwise) and press Enter, or click a point"
+msgstr "escriba el ángulo (grados, en sentido antihorario) y presione Entrar, o haga clic en un punto"
+
+#: cad
+msgid "Type a factor above 0, for example 2 or 0.5."
+msgstr "Escriba un factor mayor que 0, por ejemplo 2 o 0.5."
+
+#: cad
+msgid "click the first point of the mirror line"
+msgstr "haga clic en el primer punto del eje de simetría"
+
+#: cad
+msgid "Mirrored"
+msgstr "Reflejado"
+
+#: cad
+msgid "Mirrored (a copy)"
+msgstr "Reflejado (una copia)"
+
+#: cad
+msgid "scale it so the second points meet too?"
+msgstr "¿escalarlo para que también coincidan los segundos puntos?"
+
+#: cad
+msgid "The two source points must be apart."
+msgstr "Los dos puntos de origen deben estar separados."
+
+#: cad
+msgid "{command} canceled"
+msgstr "{command} cancelado"
+
+#: cad
+msgid "Type a number of degrees, for example 90 or -45."
+msgstr "Escriba un número de grados, por ejemplo 90 o -45."
+
+#: cad
+msgid "type the scale factor and press Enter (2 = twice as big), or click a point at a length you know"
+msgstr "escriba el factor de escala y presione Entrar (2 = el doble de grande), o haga clic en un punto a una longitud que conozca"
+
+#: cad
+msgid "click the point at the length it becomes"
+msgstr "haga clic en el punto a la longitud que tendrá"
+
+#: cad
+msgid "click the second point of the mirror line"
+msgstr "haga clic en el segundo punto del eje de simetría"
+
+#: cad
+msgid "delete the originals?"
+msgstr "¿eliminar los originales?"
+
+#: cad
+msgid "click where the next column's copy goes"
+msgstr "haga clic donde va la copia de la columna siguiente"
+
+#: cad
+msgid "click where the next row's copy goes"
+msgstr "haga clic donde va la copia de la fila siguiente"
+
+#: cad
+msgid "{n} copies made"
+msgstr "{n} copias hechas"
+
+#: cad
+msgid "Array: {n} copies made (Ctrl+Z undoes it)"
+msgstr "Matriz: {n} copias hechas (Ctrl+Z lo deshace)"
+
+#: cad
+msgid "Done"
+msgstr "Listo"
+
+#: cad
+msgid "{n} trims (Ctrl+Z undoes them one by one)"
+msgstr "{n} recortes (Ctrl+Z los deshace uno por uno)"
+
+#: cad
+msgid "{command}: select what to change first (click it, or draw a box or a lasso), then click {command}."
+msgstr "{command}: primero seleccione lo que quiere cambiar (haga clic en ello, o dibuje un recuadro o un lazo) y luego haga clic en {command}."
+
+#: cad
+msgid "Don't scale"
+msgstr "No escalar"
+
+#: cad
+msgid "Keep them"
+msgstr "Conservarlos"
+
+#: cad
+msgid "Delete them"
+msgstr "Eliminarlos"
+
+#: cad
+msgid "Trimmed (Ctrl+Z undoes it)"
+msgstr "Recortado (Ctrl+Z lo deshace)"
+
+#: cad
+msgid "Highlights and other text markups stay on their words: they can only be moved or copied."
+msgstr "Los resaltados y otras marcas de texto se quedan sobre sus palabras: solo se pueden mover o copiar."
+
+#: cad
+msgid "Trim: no line there. Click on a line of the drawing or a line markup (filled shapes and pictures aren't trimmed)."
+msgstr "Recortar: no hay ninguna línea ahí. Haga clic en una línea del dibujo o en una marca de línea (las formas rellenas y las imágenes no se recortan)."
+
+#: cad
+msgid "The drawing's text can be moved here, not copied, turned, scaled or mirrored: it stays where it is (Edit text changes it)."
+msgstr "Aquí el texto del dibujo se puede mover, pero no copiar, girar, escalar ni reflejar: se queda donde está (Editar texto lo cambia)."
+
+#: cad
+msgid "CAD"
+msgstr "CAD"
+
+#: cad
+msgid "Standard"
+msgstr "Estándar"
+
+#: cad
+msgid "Mouse: &Standard (arrow, the wheel scrolls)"
+msgstr "Mouse: &Estándar (flecha, la rueda desplaza)"
+
+#: cad
+msgid "Mouse: &Hand (drag the page)"
+msgstr "Mouse: &Mano (arrastrar la página)"
+
+#: cad
+msgid "Mouse: &CAD (wheel zooms, hold wheel to pan)"
+msgstr "Mouse: &CAD (la rueda acerca y aleja; mantenga presionada la rueda para desplazar)"
+
+#: cad
+msgid "&CAD"
+msgstr "&CAD"
+
+#: cad
+msgid "What's new"
+msgstr "Novedades"
+
+#: cad
+msgid "What changed since your version"
+msgstr "Lo que cambió desde su versión"
+
+#: cad
+msgid "Select text and markups with the arrow; the wheel scrolls, Ctrl+wheel zooms"
+msgstr "Seleccione texto y marcas con la flecha; la rueda desplaza, Ctrl+rueda acerca y aleja"
+
+#: cad
+msgid "Drag to move the page; click a markup to select it; the wheel scrolls"
+msgstr "Arrastre para mover la página; haga clic en una marca para seleccionarla; la rueda desplaza"
+
+#: cad
+msgid "Like AutoCAD: the scroll wheel zooms at the cursor; hold the wheel down and drag to move the sheet; a plus cursor; click, move, click for a box (left to right selects what's inside, right to left what it touches) or hold the button for a lasso; the CAD tab's commands (F11 switches CAD on and off)"
+msgstr "Como en AutoCAD: la rueda del mouse acerca y aleja en el cursor; mantenga presionada la rueda y arrastre para mover el plano; un cursor en cruz; clic, mover, clic para un recuadro (de izquierda a derecha selecciona lo que queda dentro, de derecha a izquierda lo que toca) o mantenga presionado el botón para un lazo; los comandos de la pestaña CAD (F11 activa y desactiva CAD)"
+
+#: cad
+msgid "&Move"
+msgstr "&Mover"
+
+#: cad
+msgid "Move the selection: base point, then where it goes"
+msgstr "Mover la selección: punto base y luego dónde va"
+
+#: cad
+msgid "Copy the selection: base point, then where each copy goes"
+msgstr "Copiar la selección: punto base y luego dónde va cada copia"
+
+#: cad
+msgid "&Rotate"
+msgstr "&Girar"
+
+#: cad
+msgid "Turn the selection around a base point by an angle you type or click"
+msgstr "Girar la selección alrededor de un punto base, un ángulo que escribe o marca con un clic"
+
+#: cad
+msgid "&Scale"
+msgstr "&Escalar"
+
+#: cad
+msgid "Make the selection bigger or smaller around a base point"
+msgstr "Agrandar o reducir la selección alrededor de un punto base"
+
+#: cad
+msgid "M&irror"
+msgstr "&Simetría"
+
+#: cad
+msgid "Mirror the selection across a line you click"
+msgstr "Reflejar la selección respecto de una línea que marca con clics"
+
+#: cad
+msgid "&Delete"
+msgstr "E&liminar"
+
+#: cad
+msgid "Delete the selection"
+msgstr "Eliminar la selección"
+
+#: cad
+msgid "&Align"
+msgstr "&Alinear"
+
+#: cad
+msgid "Line the selection up with two pairs of points"
+msgstr "Alinear la selección con dos pares de puntos"
+
+#: cad
+msgid "Arra&y"
+msgstr "Ma&triz"
+
+#: cad
+msgid "Copies of the selection in rows and columns"
+msgstr "Copias de la selección en filas y columnas"
+
+#: cad
+msgid "&Trim"
+msgstr "&Recortar"
+
+#: cad
+msgid "Cut away the part of a line between the lines that cross it"
+msgstr "Quitar la parte de una línea que queda entre las líneas que la cruzan"
+
+#: cad
+msgid "Mouse: {mode}. {what}"
+msgstr "Mouse: {mode}. {what}"
+
+#: cad
+msgid "Mouse"
+msgstr "Mouse"
+
+#: cad
+msgid "Modify"
+msgstr "Modificar"
+
+#: cad
+msgid "Delete: select what to delete first."
+msgstr "Eliminar: primero seleccione lo que quiere eliminar."
+
+#: cad
+msgid "What's new since your version"
+msgstr "Novedades desde su versión"
+
+#: cad
+msgid "Version {version}"
+msgstr "Versión {version}"
+
+#: cad
+msgid "Checked for updates: {result}"
+msgstr "Actualizaciones comprobadas: {result}"
+
+#: cad
+msgid "What's new in {version}"
+msgstr "Novedades de la versión {version}"
+
+#: cad
+msgid "The arrow: select text and markups; the wheel scrolls, Ctrl+wheel zooms."
+msgstr "La flecha: seleccione texto y marcas; la rueda desplaza, Ctrl+rueda acerca y aleja."
+
+#: cad
+msgid "The Hand: drag to move the page; click a markup to select it; the wheel scrolls."
+msgstr "La Mano: arrastre para mover la página; haga clic en una marca para seleccionarla; la rueda desplaza."
+
+#: cad
+msgid "Like CAD programs: the wheel zooms at the cursor, hold the wheel to pan, a plus cursor, window and crossing selection, and the CAD tab's commands."
+msgstr "Como los programas CAD: la rueda acerca y aleja en el cursor, mantenga presionada la rueda para desplazar, un cursor en cruz, selección por ventana y por captura, y los comandos de la pestaña CAD."
+
+#: cad
+msgid "Scroll one page per wheel step"
+msgstr "Desplazar una página por paso de la rueda"
+
+#: cad
+msgid "The wheel zooms at the cursor (Ctrl+wheel scrolls)"
+msgstr "La rueda acerca y aleja en el cursor (Ctrl+rueda desplaza)"
+
+#: cad
+msgid "Plus cursor"
+msgstr "Cursor en cruz"
+
+#: cad
+msgid "Open canvas around the pages (drag the drawing anywhere)"
+msgstr "Lienzo abierto alrededor de las páginas (arrastre el dibujo a cualquier lugar)"
+
+#: cad
+msgid "Window (blue) and crossing (green) selection: clicks add to the selection, Shift takes out, Escape clears"
+msgstr "Selección por ventana (azul) y por captura (verde): los clics agregan a la selección, Shift quita y Escape la borra"
+
+#: cad
+msgid "Click, move, click draws the selection box"
+msgstr "Clic, mover, clic dibuja el recuadro de selección"
+
+#: cad
+msgid "Hold the button and drag to draw a lasso"
+msgstr "Mantenga presionado el botón y arrastre para dibujar un lazo"
+
+#: cad
+msgid "Show the CAD tab (Move, Copy, Rotate...)"
+msgstr "Mostrar la pestaña CAD (Mover, Copiar, Girar...)"
+
+#: cad
+msgid "Free page movement (drag the page past its edges)"
+msgstr "Movimiento libre de la página (arrastrar la página más allá de sus bordes)"
+
+#: cad
+msgid "Clicking a markup with the Hand selects it"
+msgstr "Hacer clic en una marca con la Mano la selecciona"
+
+#: cad
+msgid "{mode} options"
+msgstr "Opciones de {mode}"
+
+#: cad
+msgid "Only when the whole page fits in the window, top to bottom and side to side (for example after View > Fit page). Zoomed in so that any edge of the page is outside the window, the wheel scrolls normally."
+msgstr "Solo cuando la página entera cabe en la ventana, de arriba abajo y de lado a lado (por ejemplo, después de Ver > Ajustar página). Si acerca la vista de modo que algún borde de la página quede fuera de la ventana, la rueda desplaza normalmente."

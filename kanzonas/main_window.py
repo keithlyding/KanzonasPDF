@@ -696,6 +696,25 @@ class MainWindow(QMainWindow):
                                            "anywhere, up, down and sideways, even when the "
                                            "whole page fits in the window"))
         self.a_free_pan.setCheckable(True)
+        # the CAD tab's commands (CAD mouse mode): select, then the command (cad_commands.py)
+        self.cad_actions = {}
+        for key, label, tip in (
+                ("move", tr("&Move"), tr("Move the selection: base point, then where it goes")),
+                ("copy", tr("&Copy"), tr("Copy the selection: base point, then where each copy "
+                                         "goes")),
+                ("rotate", tr("&Rotate"), tr("Turn the selection around a base point by an angle "
+                                             "you type or click")),
+                ("scale", tr("&Scale"), tr("Make the selection bigger or smaller around a base "
+                                           "point")),
+                ("mirror", tr("M&irror"), tr("Mirror the selection across a line you click")),
+                ("delete", tr("&Delete"), tr("Delete the selection")),
+                ("align", tr("&Align"), tr("Line the selection up with two pairs of points")),
+                ("array", tr("Arra&y"), tr("Copies of the selection in rows and columns")),
+                ("trim", tr("&Trim"), tr("Cut away the part of a line between the lines that "
+                                         "cross it"))):
+            a = self._act(label, lambda _=False, k=key: self.start_cad_command(k), tip=tip)
+            self.cad_actions[key] = a
+            setattr(self, "a_cad_" + key, a)
         self.a_page_wheel = self._act(tr("Scroll &one page per wheel step"),
                                       lambda: self._toggle_mouse_option("page_wheel",
                                                                         self.a_page_wheel),
@@ -939,6 +958,11 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         hint = m.addAction(tr("Ctrl+click or drag a box with Select to pick several markups"))
         hint.setEnabled(False)
+        m = self.cad_menu = mb.addMenu(tr("&CAD"))
+        m.addActions([self.cad_actions[k] for k in ("move", "copy", "rotate", "scale", "mirror",
+                                                    "delete")])
+        m.addSeparator()
+        m.addActions([self.cad_actions[k] for k in ("align", "array", "trim")])
         m = mb.addMenu(tr("&Tools"))
         m.addActions(self.tool_group.actions())
         m.addSeparator()
@@ -4000,6 +4024,29 @@ class MainWindow(QMainWindow):
         if menu is not None:
             menu.menuAction().setVisible(m == "cad")
 
+    def start_cad_command(self, key):
+        """A CAD tab command on the current document (cad_commands.py)."""
+        v = self.view()
+        if v is None:
+            return
+        if v._cad_cmd is not None:
+            v._cad_cmd.cancel()
+        if key == "delete":
+            if v.obj_sel is not None:
+                v.delete_objects()
+            elif v.selection is not None:
+                v.delete_selected()
+            else:
+                self.statusBar().showMessage(tr("Delete: select what to delete first."), 4000)
+            return
+        from . import cad_commands
+        if getattr(self, "cad_prompt", None) is None:
+            self.cad_prompt = cad_commands.Prompt()
+            self.statusBar().addWidget(self.cad_prompt, 1)
+        cmd = cad_commands.COMMANDS[key](v, self.cad_prompt)
+        if cmd.start():
+            v.setFocus()
+
     def _toggle_mouse_option(self, key, action):
         """View > Free page movement / Scroll one page per wheel step: for the mode in use."""
         from . import mouse_modes
@@ -4210,6 +4257,16 @@ class MainWindow(QMainWindow):
                                  self.a_menu_bar]),
             (tr("Help"), "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
         ])
+        c = self.cad_actions
+        r.add_tab(tr("CAD"), [
+            (tr("Select"), "large", [self.tool_actions["select"],
+                                     self.tool_actions["editobjects"]]),
+            (tr("Modify"), "large", [c["move"], c["copy"], c["rotate"], c["scale"], c["mirror"],
+                                     c["delete"]]),
+            (tr("More"), "large", [c["align"], c["array"], c["trim"]]),
+        ])
+        self._cad_tab = r.widget(r.count() - 1)
+        self._sync_mouse_actions()          # the CAD tab: only in CAD mouse mode
         r.collapsedChanged.connect(self._ribbon_collapsed)
         # quick-access icons in the tab row (left), find box and menu button (right), like
         # LibreOffice: no separate toolbar row above the ribbon

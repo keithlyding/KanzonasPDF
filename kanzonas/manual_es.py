@@ -173,15 +173,18 @@ vuelva a activar Ayuda &gt; Buscar actualizaciones automáticamente. Ambas versi
 USB a una nueva letra de unidad: si Abrir recientes muestra E:\\Docs\\plan.pdf y la memoria ahora es F:,
 abre F:\\Docs\\plan.pdf.</li>
 <li><b>Ayuda &gt; Buscar actualizaciones:</b> pregunta a GitHub si se ha publicado una versión más reciente de KanzonasPDF.
-Un cuadro le indica la respuesta; si hay una versión más reciente, <b>Descargar</b> abre su página de la versión en
-su navegador. La búsqueda automática, en cambio, muestra un aviso en la parte inferior de la ventana con
-<b>Descargar</b>, <b>Omitir esta versión</b> y <b>Más tarde</b>, y <b>Actualizar ahora</b>, que
-actualiza esta copia en el mismo lugar (vea más arriba; no en la versión de PortableApps.com, que su
-plataforma actualiza). No se descarga ni se instala nada
-hasta que hace clic en un botón.
+Un cuadro le indica la respuesta. Si hay una versión más reciente, muestra las <b>novedades desde su versión</b>: las
+notas breves de cada versión más reciente que la suya, de la más nueva a la más antigua (en español cuando KanzonasPDF
+está en español); <b>Descargar</b> abre la página de la versión en su navegador y <b>Actualizar ahora</b> actualiza esta
+copia en el mismo lugar (vea más arriba; no en la versión de PortableApps.com, que su plataforma actualiza). La búsqueda
+automática, en cambio, muestra un aviso en la parte inferior de la ventana con <b>Novedades</b> (las mismas notas),
+<b>Actualizar ahora</b>, <b>Descargar</b>, <b>Omitir esta versión</b> y <b>Más tarde</b>. No se descarga ni se instala
+nada hasta que hace clic en un botón.
 Con Ayuda &gt; <b>Buscar actualizaciones automáticamente</b> marcado (el valor predeterminado), la aplicación busca
-discretamente una vez al día, unos segundos después de iniciarse; desmárquelo para no contactar nunca con GitHub. Si su
-red bloquea GitHub, la búsqueda automática simplemente no encuentra nada.</li>
+discretamente una vez al día: unos segundos después de iniciarse, y otra vez cada día mientras sigue abierta. Cuando no hay
+nada más reciente, la barra de estado lo dice durante unos segundos ("Actualizaciones comprobadas: Tiene la última
+versión"). Desmárquelo para no contactar nunca con GitHub. Si su red bloquea GitHub, la búsqueda automática simplemente
+no encuentra nada.</li>
 <li><b>Ayuda &gt; Informar un problema o sugerir una idea...</b> abre la página de KanzonasPDF en GitHub en
 su navegador, con formularios para informar un error o proponer una idea (se necesita una cuenta gratuita de GitHub para enviar
 uno). Describa lo que hizo y lo que ocurrió; por favor, no adjunte archivos PDF confidenciales. Los problemas de
@@ -241,41 +244,37 @@ Vínculos también lo abre para modificarlo, con <b>Eliminar vínculo</b>. La he
 cuadros azules discontinuos. Todas las partes de un vínculo (varias líneas) cambian y desaparecen juntas. Ctrl+Z
 deshace cualquiera de estas acciones. Para todo un juego de planos, <b>Vincular referencias a planos</b> (menú Páginas) crea los
 vínculos por usted a partir de los números de plano.</li>
-<li><b>Desplazar:</b> herramienta Mano (H; KanzonasPDF se inicia con la herramienta Mano), las barras de desplazamiento, o <b>mantenga presionada la rueda del mouse y arrastre</b>
-(funciona con cualquier herramienta). <b>Shift+rueda</b> siempre desplaza a la izquierda y a la derecha, incluso cuando el mouse
-estilo CAD está desactivado y cuando un paso de la rueda pasaría de página. Shift+Left/Right también desplaza
+<li><b>Desplazar:</b> herramienta Mano (H; KanzonasPDF se inicia con ella en el modo del mouse Mano), las barras de desplazamiento, o <b>mantenga presionada la rueda del mouse y arrastre</b>
+(funciona con cualquier herramienta). <b>Shift+rueda</b> siempre desplaza a la izquierda y a la derecha, en todos los
+modos del mouse y cuando un paso de la rueda pasaría de página. Shift+Left/Right también desplaza
 lateralmente.</li>
-<li><b>Mouse estilo CAD (la rueda acerca y aleja; mantenga presionada la rueda para desplazar)</b> (menú Ver, botón de la barra de herramientas, F11):
-como en AutoCAD, la rueda del mouse acerca y aleja alrededor del cursor, y mantener presionada la rueda
-mueve la hoja, de modo que puede recorrer un dibujo mientras cualquier herramienta de marcas está activa. Como en Bluebeam,
-mantenga presionada <b>Ctrl</b> y gire la rueda para desplazarse hacia arriba y hacia abajo. Shift+rueda desplaza a la izquierda y a la derecha
-también aquí, igual que con el mouse estilo CAD desactivado. Las páginas están sobre un lienzo abierto, así que puede arrastrarlas a cualquier lugar de la ventana (con la
-rueda presionada o con la herramienta Mano), incluso cuando la página entera ya cabe. El puntero es una
-<b>cruz</b> con todas las herramientas excepto la Mano, para que se vea que el mouse estilo CAD está activado. La selección
-funciona como en AutoCAD, con <b>Seleccionar</b> (marcas y texto) y con <b>Editar objetos</b> (las líneas, el texto y las
-imágenes propios del dibujo):
+<li><b>Modo del mouse</b> (menú Ver, el grupo <b>Mouse</b> de la pestaña Inicio, Preferencias &gt; Mouse): tres
+maneras de trabajar, cada una con sus propias opciones (vea Preferencias más abajo).
 <ul>
-<li>Arrastre un recuadro <b>de izquierda a derecha</b> (una ventana <b>azul</b> de línea continua): selecciona lo que queda
-completamente dentro.</li>
-<li>Arrastre un recuadro <b>de derecha a izquierda</b> (un recuadro de captura <b>verde</b> de línea discontinua): selecciona todo
-lo que toca, incluida una línea que lo atraviese.</li>
-<li>Un clic o un recuadro <b>agrega</b> a la selección, y un recuadro puede empezar encima de una línea del dibujo. Hacer clic
-en el papel vacío conserva la selección. <b>Shift</b>+clic o Shift+recuadro quita elementos de ella. <b>Escape</b> la borra
-por completo.</li>
-<li>Presione sobre algo ya seleccionado y arrastre para mover todo lo seleccionado.</li>
-<li>Con Seleccionar, un recuadro que no toma marcas selecciona texto: los caracteres dentro de una ventana, o los que toca un
-recuadro de captura.</li>
+<li><b>Mouse: Estándar (flecha, la rueda desplaza)</b>: KanzonasPDF se inicia con la herramienta Seleccionar (la
+flecha) y Escape vuelve a ella; la rueda desplaza y Ctrl+rueda acerca y aleja.</li>
+<li><b>Mouse: Mano (arrastrar la página)</b>: se inicia con la herramienta Mano, que arrastra la página; hacer clic en
+una marca con ella la selecciona. En este modo el movimiento libre de la página está activado, así que la Mano arrastra
+la página a cualquier lugar, aunque quepa en la ventana. Así se inicia KanzonasPDF la primera vez.</li>
+<li><b>Mouse: CAD (la rueda acerca y aleja; mantenga presionada la rueda para desplazar)</b> (F11 lo activa, y otra vez
+vuelve al modo que tenía): como en AutoCAD, la rueda del mouse acerca y aleja alrededor del cursor y mantener presionada
+la rueda mueve la hoja, de modo que puede recorrer un dibujo con cualquier herramienta activa. Como en Bluebeam,
+mantenga presionada <b>Ctrl</b> y gire la rueda para desplazarse hacia arriba y hacia abajo. Las páginas están sobre un
+lienzo abierto, el puntero es una <b>cruz</b> (excepto con la Mano), la selección funciona como en CAD y aparece la
+pestaña <b>CAD</b> con Mover, Copiar, Girar y los demás comandos CAD: vea <b>Modo CAD</b> más abajo.</li>
 </ul>
-Su elección se recuerda.</li>
-<li><b>Movimiento libre de la página (arrastrar la página más allá de sus bordes)</b> (menú Ver, pestaña Ver de la cinta,
-Preferencias &gt; Mouse y desplazamiento): el mismo lienzo abierto sin el resto del mouse estilo CAD. La herramienta Mano
-(o la rueda presionada) arrastra la página a cualquier lugar, arriba, abajo y a los lados, aunque la página entera quepa
-en la ventana, por ejemplo después de Ajustar página. Desactivado de forma predeterminada; su elección se recuerda.</li>
+Su elección se recuerda. (Antes de la versión 1.5 esto era el interruptor del mouse estilo CAD y una herramienta
+predeterminada; sus elecciones se conservan.)</li>
+<li><b>Movimiento libre de la página (arrastrar la página más allá de sus bordes)</b> (menú Ver, pestaña Ver de la
+cinta): un lienzo abierto alrededor de las páginas, para que la herramienta Mano (o la rueda presionada) arrastre la
+página a cualquier lugar, arriba, abajo y a los lados, aunque la página entera quepa en la ventana, por ejemplo después
+de Ajustar página. El menú lo cambia para el modo del mouse en uso; cada modo recuerda su propio ajuste (activado en el
+modo Mano, desactivado en el modo Estándar, activado en el modo CAD).</li>
 <li><b>Desplazar una página por paso de la rueda</b> (menú Ver): cuando la página entera cabe en la ventana,
 de arriba abajo y de lado a lado (por ejemplo, después de <b>Ajustar página</b>), cada paso de la rueda del mouse
 salta a la página siguiente o anterior, centrada, en lugar de desplazarse un poco. En cuanto acerca el zoom
 de modo que algún borde de la página queda fuera de la ventana, la rueda se desplaza normalmente. Mantenga presionada
-<b>Shift</b> para desplazarse a la izquierda y a la derecha en lugar de pasar de página. Activado de forma predeterminada; desactívelo para un desplazamiento continuo. Su elección se recuerda. (Con el mouse estilo CAD activado, la rueda acerca y aleja
+<b>Shift</b> para desplazarse a la izquierda y a la derecha en lugar de pasar de página. Activado de forma predeterminada; desactívelo para un desplazamiento continuo. Cada modo del mouse recuerda su propio ajuste. (En el modo CAD la rueda acerca y aleja
 en su lugar).</li>
 <li><b>Buscar texto:</b> Ctrl+F; luego Enter / F3 para la coincidencia siguiente y Shift+Enter / Shift+F3
 para la anterior; las flechas arriba y abajo junto al cuadro Buscar hacen lo mismo. El contador junto
@@ -297,13 +296,66 @@ Ctrl+Z deshace todo el reemplazo.</li>
 Es solo para mirar: haga los cambios en la vista principal.</li>
 </ul>
 
+<h2 id="cad">Modo CAD: selección y la pestaña CAD</h2>
+<p>En el modo del mouse <b>CAD</b> (Ver &gt; Mouse: CAD, F11) KanzonasPDF selecciona y edita como un programa CAD.
+Funciona con <b>Seleccionar</b> (sus marcas y el texto de la página) y con <b>Editar objetos</b> (las líneas, el texto y
+las imágenes propios del dibujo).</p>
+<ul>
+<li>Haga <b>clic</b> en algo para agregarlo a la selección. <b>Shift+clic</b> lo quita. <b>Escape</b> borra toda la
+selección. Hacer clic en el papel vacío conserva la selección.</li>
+<li><b>Clic, mover, clic</b>: haga clic en el papel vacío, mueva el puntero (el recuadro lo sigue) y vuelva a hacer
+clic. De izquierda a derecha es una <b>ventana azul</b> de línea continua: toma lo que queda completamente dentro. De
+derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua: toma todo lo que toca, incluida una
+línea que lo atraviese. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para quitar
+elementos en lugar de agregarlos.</li>
+<li><b>Mantenga presionado el botón y arrastre</b>: un <b>lazo</b> que sigue al puntero. Si al principio lo dibuja hacia
+la derecha es un lazo de ventana azul (lo que queda completamente dentro); hacia la izquierda, un lazo de captura verde
+(lo que toca). Shift+lazo quita elementos.</li>
+<li>Con Seleccionar, un recuadro o un lazo que no toma marcas selecciona texto: los caracteres dentro de una ventana, o
+los que toca un recuadro de captura (Ctrl+C los copia).</li>
+<li>En el modo CAD arrastrar nunca mueve nada, así que nada se mueve por accidente: los controladores cuadrados de una
+marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pestaña CAD lo mueve.</li>
+<li>Preferencias &gt; Mouse activa o desactiva cada una de estas funciones (vea Preferencias).</li>
+</ul>
+<p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Seleccione primero, luego haga clic en un comando y
+responda a su indicación en la parte inferior de la ventana: haga clic en puntos de la página (se ajustan a los extremos
+de las líneas y a las esquinas como con las herramientas de dibujo; mantenga presionada Alt para no ajustar), escriba un
+valor y presione Entrar, o haga clic en un botón ahí. Escape (o Cancelar) detiene un comando; el clic derecho equivale a
+Entrar. Cada cambio se deshace con un Ctrl+Z.</p>
+<ul>
+<li><b>Mover</b>: haga clic en el punto base y luego donde va.</li>
+<li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera; Entrar, Escape o Listo
+termina.</li>
+<li><b>Girar</b>: haga clic en el punto base y luego escriba el ángulo en grados (en sentido antihorario; -90 gira en
+sentido horario) y presione Entrar, o haga clic en un punto: la selección gira para que el "este" apunte hacia ahí.</li>
+<li><b>Escalar</b>: haga clic en el punto base y luego escriba el factor (2 = el doble de grande, 0.5 = la mitad) y
+presione Entrar, o haga clic en un punto a una longitud que conozca y luego en el punto a la longitud que tendrá.</li>
+<li><b>Simetría</b>: haga clic en dos puntos del eje de simetría y luego en <b>Conservarlos</b> (una copia reflejada) o
+<b>Eliminarlos</b> (los originales se reemplazan).</li>
+<li><b>Eliminar</b>: elimina la selección.</li>
+<li><b>Alinear</b>: haga clic en un punto de la selección y donde va, luego en un segundo punto y donde va; después en
+<b>Escalar</b> (para que también coincidan los segundos puntos) o <b>No escalar</b>.</li>
+<li><b>Matriz</b>: elija las filas y las columnas y luego haga clic en el punto base, donde va la copia de la columna
+siguiente y donde va la copia de la fila siguiente (la dirección también cuenta).</li>
+<li><b>Recortar</b>: no hace falta seleccionar nada. Haga clic en la parte de una línea que quiere quitar: se quita hasta
+las líneas más cercanas que la cruzan a cada lado (o hasta su extremo, si nada la cruza de ese lado); una línea que nada
+cruza se quita entera. Haga clic una y otra vez; Entrar, Escape o Listo termina. Recorta las líneas y curvas propias del
+dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma; las
+formas rellenas y las imágenes no se recortan.</li>
+</ul>
+<p>Lo que los comandos no hacen: el texto propio del dibujo solo se mueve (Mover); copiarlo, girarlo, escalarlo o
+reflejarlo lo deja donde está y lo indica (Editar texto lo cambia). Los resaltados y otras marcas de texto se quedan sobre
+sus palabras, así que solo se mueven y se copian. Una imagen o un sello reflejados se siguen leyendo al derecho, y los
+cuadros de texto giran en cuartos de vuelta.</p>
+
 <h2 id="select">Seleccionar y editar marcas</h2>
 <ul>
 <li><b>Herramienta Seleccionar (V):</b> arrastre sobre el texto para seleccionarlo, incluso a través del espacio entre
 páginas (permanece resaltado; vea Copiar, cortar y pegar más abajo). Haga clic en una marca para seleccionarla; luego arrástrela
 para moverla, arrastre un controlador cuadrado para cambiar su tamaño o cambie su aspecto en el panel de propiedades.
-Con el <b>mouse estilo CAD</b> activado, Seleccionar funciona como en AutoCAD: ventanas azules y recuadros de captura verdes,
-clics que agregan a la selección, Shift para quitar y Escape para borrarla (vea Desplazarse por el documento).</li>
+En el modo del mouse <b>CAD</b>, Seleccionar funciona como en AutoCAD: ventanas azules y recuadros de captura verdes, un
+lazo, clics que agregan a la selección, Shift para quitar, Escape para borrarla, y arrastrar no mueve nada (vea Modo
+CAD).</li>
 <li>Con una herramienta de dibujo activa (rectángulo, línea, llamada, ...), hacer clic en una marca existente también la
 selecciona, así que no tiene que volver a la flecha. La <b>herramienta Mano</b> funciona igual:
 haga clic en una marca (un resaltado, una nota, una forma...) para seleccionarla; arrastre en cualquier otro lugar para mover la
@@ -334,8 +386,8 @@ Editar objetos), cada pulsación de una tecla de flecha las mueve 1 pt; <b>Shift
 texto (resaltados, subrayados, tachados) permanecen con su texto. Sin nada seleccionado, las flechas izquierda y
 derecha pasan de página como siempre.</li>
 <li><b>Esc</b> borra la selección. Sin nada seleccionado, Esc suelta la herramienta que esté
-elegida (un sello, una forma, una medición, Recortar...) y vuelve a su herramienta predeterminada: Mano o
-Seleccionar, elegida en Preferencias &gt; Inicio y apertura (<b>Herramienta predeterminada</b>). Funciona incluso justo después de que
+elegida (un sello, una forma, una medición, Recortar...) y vuelve a su herramienta predeterminada: la Mano en el modo
+del mouse Mano, Seleccionar en los modos Estándar y CAD. Funciona incluso justo después de que
 un cuadro de diálogo o un clic en la barra de herramientas se haya llevado el foco del teclado.</li>
 </ul>
 
@@ -593,10 +645,10 @@ se detecta en cualquier punto de su interior.</li>
 párrafo a párrafo: haga clic en una palabra para seleccionar su párrafo; todo lo que Agregar texto escribió de una
 vez se selecciona junto. Un cuadro de selección toma texto solo cuando no contiene imágenes ni formas
 (así, un cuadro alrededor de un detalle de un dibujo selecciona sus trazos, no sus rótulos); Ctrl+clic agrega texto
-a una selección. Con el <b>mouse estilo CAD</b> activado, la selección funciona como en AutoCAD: una ventana azul (arrastrada
-de izquierda a derecha) toma las líneas, el texto y las imágenes que quedan completamente dentro, un recuadro de captura verde
-(de derecha a izquierda) todo lo que toca, texto y trazos juntos; los clics y los recuadros agregan a la selección, Shift quita
-y Escape la borra (vea Desplazarse por el documento). Presione <b>Supr</b> (o Retroceso) o haga clic con el botón derecho &gt; <b>Eliminar</b> para quitarlo;
+a una selección. En el modo del mouse <b>CAD</b>, la selección funciona como en AutoCAD: una ventana azul (de izquierda a
+derecha) toma las líneas, el texto y las imágenes que quedan completamente dentro, un recuadro de captura verde (de derecha
+a izquierda) todo lo que toca, texto y trazos juntos; los clics, los recuadros y los lazos agregan a la selección, Shift
+quita, Escape la borra, y los comandos de la pestaña CAD la cambian (vea Modo CAD). Presione <b>Supr</b> (o Retroceso) o haga clic con el botón derecho &gt; <b>Eliminar</b> para quitarlo;
 arrástrelo para moverlo (los resaltados y otras marcas que tenga encima se mueven con él). Aquí el texto no se redimensiona,
 no se gira ni se reordena en la pila: cambie sus palabras, su fuente y su tamaño con Editar texto. Las imágenes y las líneas
 que tiene debajo se quedan. Si otro texto se superpone tanto que algunas de sus letras también desaparecerían,
@@ -993,7 +1045,7 @@ activa. Restablecer valores predeterminados devuelve una herramienta a como ven�
 <li><b>Inicio y apertura:</b> volver a abrir los documentos que estaban abiertos al cerrar
 KanzonasPDF (desactivado de forma predeterminada; también funciona cuando un instalador cierra KanzonasPDF para
 actualizarlo, o Windows lo cierra al apagarse o cerrar la sesión), si se debe preguntar antes de cerrar con varios documentos abiertos (activado
-de forma predeterminada), la herramienta predeterminada (Mano o Seleccionar), el zoom con el que se abre un
+de forma predeterminada), el zoom con el que se abre un
 documento (Ajustar al ancho de forma predeterminada; Ajustar página, la página entera en la ventana; Tamaño real; o el zoom que tenía
 cuando lo cerró) y si se debe volver a abrir en la página donde estaba la última vez.</li>
 <li><b>Guardado:</b> cada cuánto hacer copia de seguridad de los cambios sin guardar (cada 5 minutos de forma predeterminada; Desactivado lo
@@ -1012,9 +1064,19 @@ tendría la contraseña.</li>
 <li><b>Medición:</b> las unidades que se ofrecen para una página que aún no tiene escala, a qué se redondean los pies y las pulgadas
 (de 1/2" a 1/64"; 1/16" de forma predeterminada) y los decimales para las demás unidades. Las etiquetas de
 medición existentes se actualizan la próxima vez que las mueve o las edita.</li>
-<li><b>Mouse y desplazamiento:</b> Mouse estilo CAD, Movimiento libre de la página, Desplazar una página por paso de la rueda (la nota
-que hay debajo indica cuándo se aplica: solo mientras la página entera cabe en la ventana, como después de Ajustar
-página).</li>
+<li><b>Mouse:</b> el modo del mouse (<b>Estándar</b>, <b>Mano</b> o <b>CAD</b>; la herramienta del modo es con la que
+se inicia KanzonasPDF y a la que vuelve Escape) y las opciones de cada modo:
+<ul>
+<li>Estándar: Desplazar una página por paso de la rueda (activado), Movimiento libre de la página (desactivado).</li>
+<li>Mano: Movimiento libre de la página (activado), Desplazar una página por paso de la rueda (activado), Hacer clic en
+una marca con la Mano la selecciona (activado).</li>
+<li>CAD: La rueda acerca y aleja en el cursor (Ctrl+rueda desplaza), Cursor en cruz, Lienzo abierto alrededor de las
+páginas, Selección por ventana (azul) y por captura (verde), Clic, mover, clic dibuja el recuadro de selección, Mantenga
+presionado el botón y arrastre para dibujar un lazo, Mostrar la pestaña CAD: todas activadas. Con las dos últimas
+desactivadas, presionar, arrastrar y soltar dibuja un recuadro.</li>
+</ul>
+La nota debajo de Desplazar una página por paso de la rueda indica cuándo se aplica: solo mientras la página entera cabe
+en la ventana, como después de Ajustar página.</li>
 <li><b>Páginas y visualización:</b> bloquear el orden de las páginas, Mostrar cuadros de comentario, Resaltar campos de formulario,
 Modo nocturno (líneas blancas sobre negro), Mejorar líneas finas, <b>Tamaño de página del nuevo PDF</b> (el tamaño y la
 orientación que usa Archivo &gt; Nuevo PDF, o Preguntar cada vez),
@@ -1046,13 +1108,13 @@ cuadrícula...).</li>
 <tr><td>Shift+R</td><td>Censurar</td></tr>
 <tr><td>Shift+E</td><td>Borrar contenido</td></tr>
 <tr><td>Shift+P</td><td>Capturar área</td></tr>
-<tr><td>Ctrl+rueda</td><td>Acercar o alejar alrededor del puntero (desplazarse hacia arriba y hacia abajo cuando el mouse estilo CAD está activado)</td></tr>
+<tr><td>Ctrl+rueda</td><td>Acercar o alejar alrededor del puntero (desplazarse hacia arriba y hacia abajo en el modo del mouse CAD)</td></tr>
 <tr><td>Shift+rueda</td><td>Desplazarse a la izquierda y a la derecha</td></tr>
 <tr><td>Shift (al dibujar)</td><td>Líneas a 45&deg;, cuadrados y círculos</td></tr>
 <tr><td>Shift+clic (herramienta de dibujo)</td><td>Empezar una marca nueva encima de una existente</td></tr>
 <tr><td>Ctrl+clic, Ctrl+arrastrar</td><td>Seleccionar varias marcas</td></tr>
 <tr><td>Ctrl+clic en un vínculo (herramienta Seleccionar)</td><td>Abrir el vínculo, también en una marca convertida en vínculo (un clic normal con la herramienta Mano)</td></tr>
-<tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta predeterminada, Mano o Seleccionar)</td></tr>
+<tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse, Mano o Seleccionar) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
 <tr><td>Supr</td><td>Eliminar las marcas seleccionadas</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas)</td></tr>
 <tr><td>Ctrl+A</td><td>Seleccionar todo el texto de la página (todas las páginas en la lista de páginas)</td></tr>
@@ -1074,7 +1136,7 @@ cuadrícula...).</li>
 <tr><td>Ctrl+Shift+P</td><td>Paleta de comandos</td></tr>
 <tr><td>Ctrl+F1</td><td>Contraer / expandir la cinta</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Mostrar / ocultar la barra de menús (diseño con cinta)</td></tr>
-<tr><td>F11</td><td>Activar / desactivar el mouse estilo CAD</td></tr>
+<tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>

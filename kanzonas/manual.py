@@ -180,15 +180,18 @@ turn Help &gt; Check for updates automatically back on. Both portable versions f
 stick to a new drive letter: if Open recent lists E:\\Docs\\plan.pdf and the stick is now F:, it
 opens F:\\Docs\\plan.pdf.</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
-A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
-your browser. The automatic check instead shows a notice at the bottom of the window with
-<b>Download</b>, <b>Skip this version</b> and <b>Later</b>, and <b>Update now</b>, which
-updates this copy in place (see above; not in the PortableApps.com version, which its platform
-updates). Nothing is downloaded or installed
-until you click a button.
+A box tells you the answer. If there's a newer version, it lists <b>what's new since your
+version</b>: the short notes of every version newer than yours, newest first (in Spanish when
+KanzonasPDF is in Spanish); <b>Download</b> opens the release page in your browser and
+<b>Update now</b> updates this copy in place (see above; not in the PortableApps.com version,
+which its platform updates). The automatic check instead shows a notice at the bottom of the
+window with <b>What's new</b> (the same notes), <b>Update now</b>, <b>Download</b>, <b>Skip
+this version</b> and <b>Later</b>. Nothing is downloaded or installed until you click a button.
 With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
-quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your
-network blocks GitHub, the automatic check simply finds nothing.</li>
+quietly once a day: a few seconds after it starts, and again every day while it stays open.
+When there's nothing newer, the status bar says so for a few seconds ("Checked for updates:
+You have the latest version"). Untick it to never contact GitHub. If your network blocks
+GitHub, the automatic check simply finds nothing.</li>
 <li><b>Help &gt; Report a problem or suggest an idea...</b> opens KanzonasPDF's page on GitHub in
 your browser, with forms for a bug report or an idea (a free GitHub account is needed to send
 one). Describe what you did and what happened; please don't attach confidential PDFs. Security
@@ -248,43 +251,39 @@ tool also opens it for changing, with <b>Delete link</b>. The Links tool shows t
 blue dashed boxes. All the parts of one link (several lines) change and go together. Ctrl+Z
 undoes any of it. For a whole drawing set, <b>Link sheet callouts</b> (Pages menu) makes the
 links for you from the sheet numbers.</li>
-<li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with the Hand tool), the scroll bars, or <b>hold the mouse wheel down and drag</b>
-(works with any tool). <b>Shift+wheel</b> always scrolls left and right, including when CAD-style
-mouse is off and when one wheel step would otherwise turn the page. Shift+Left/Right scrolls
+<li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with it in the Hand mouse mode), the scroll bars, or <b>hold the mouse wheel down and drag</b>
+(works with any tool). <b>Shift+wheel</b> always scrolls left and right, in every mouse mode and
+when one wheel step would otherwise turn the page. Shift+Left/Right scrolls
 sideways too.</li>
-<li><b>CAD-style mouse (wheel zooms, hold wheel to pan)</b> (View menu, toolbar button, F11):
-like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the wheel down
-moves the sheet, so you can navigate a drawing while any markup tool is active. Like Bluebeam,
-hold <b>Ctrl</b> and turn the wheel to scroll up and down. Shift+wheel scrolls left and right
-here too, the same as with CAD-style mouse off. The pages sit on an open canvas, so you can drag them anywhere in the window (with the
-wheel held down or the Hand tool), even when the whole page already fits. The pointer is a
-<b>plus</b> with every tool except the Hand, so you can see CAD-style mouse is on. Selecting
-works as in AutoCAD, with <b>Select</b> (markups and text) and with <b>Edit objects</b> (the
-drawing's own lines, text and pictures):
+<li><b>Mouse mode</b> (View menu, the Home tab's <b>Mouse</b> group, Preferences &gt; Mouse):
+three ways to work, each with its own options (see Preferences below).
 <ul>
-<li>Drag a box <b>left to right</b> (a solid <b>blue</b> window): it selects what lies entirely
-inside it.</li>
-<li>Drag a box <b>right to left</b> (a dashed <b>green</b> crossing box): it selects everything
-it touches, a line running through it included.</li>
-<li>A click or a box <b>adds</b> to the selection, and a box can start on top of a line of the
-drawing. Clicking empty paper keeps the selection. <b>Shift</b>+click or Shift+box takes things
-out of it. <b>Escape</b> clears it all.</li>
-<li>Press on something already selected and drag to move everything selected.</li>
-<li>With Select, a box that takes no markups selects text instead: the characters inside a
-window, or the ones a crossing box touches.</li>
+<li><b>Mouse: Standard (arrow, the wheel scrolls)</b>: KanzonasPDF starts with the Select tool
+(the arrow) and Escape goes back to it; the wheel scrolls and Ctrl+wheel zooms.</li>
+<li><b>Mouse: Hand (drag the page)</b>: starts with the Hand tool, which drags the page; clicking
+a markup with it selects the markup. Free page movement is on in this mode, so the Hand drags the
+page anywhere, also when it fits in the window. This is how KanzonasPDF starts at first.</li>
+<li><b>Mouse: CAD (wheel zooms, hold wheel to pan)</b> (F11 switches it on, and off again to the
+mode you had): like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the
+wheel down moves the sheet, so you can navigate a drawing while any tool is active. Like
+Bluebeam, hold <b>Ctrl</b> and turn the wheel to scroll up and down. The pages sit on an open
+canvas, the pointer is a <b>plus</b> (except with the Hand), selecting works like CAD and the
+<b>CAD</b> tab appears with Move, Copy, Rotate and the other CAD commands: see
+<b>CAD mode</b> below.</li>
 </ul>
-Your choice is remembered.</li>
+Your choice is remembered. (Before version 1.5 this was the CAD-style mouse switch and a
+default tool; your choices carry over.)</li>
 <li><b>Free page movement (drag the page past its edges)</b> (View menu, the View tab of the
-ribbon, Preferences &gt; Mouse and scrolling): the same open canvas without the rest of
-CAD-style mouse. The Hand tool (or the held wheel) drags the page anywhere, up, down and
-sideways, even when the whole page fits in the window, for example after Fit page. Off by
-default; your choice is remembered.</li>
+ribbon): an open canvas around the pages, so the Hand tool (or the held wheel) drags the page
+anywhere, up, down and sideways, even when the whole page fits in the window, for example after
+Fit page. The menu switches it for the mouse mode in use; each mode remembers its own setting
+(on in Hand mode, off in Standard mode, on in CAD mode).</li>
 <li><b>Scroll one page per wheel step</b> (View menu): when the whole page fits in the window,
 top to bottom and side to side (for example after <b>Fit page</b>), each step of the scroll wheel
 jumps to the next or previous page, centered, instead of scrolling a little. As soon as you zoom
 in so that any edge of the page is outside the window, the wheel scrolls normally. Hold
-<b>Shift</b> to scroll left and right instead of turning the page. On by default; turn it off for smooth scrolling. Your choice is remembered. (With CAD-style mouse on, the wheel zooms
-instead.)</li>
+<b>Shift</b> to scroll left and right instead of turning the page. On by default; turn it off for smooth scrolling. Each mouse mode remembers its own setting. (In CAD mode the
+wheel zooms instead.)</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+Enter / Shift+F3
 for the previous; the up and down arrows beside the Find box do the same. The count beside
 the box shows which match you're on and how many there are ("3 of 120"; "No matches" when
@@ -305,14 +304,67 @@ Ctrl+Z undoes the whole replacement.</li>
 It's for looking only: make changes in the main view.</li>
 </ul>
 
+<h2 id="cad">CAD mode: selecting and the CAD tab</h2>
+<p>In the <b>CAD</b> mouse mode (View &gt; Mouse: CAD, F11) KanzonasPDF selects and edits like a
+CAD program. It works with <b>Select</b> (your markups, and the text of the page) and with
+<b>Edit objects</b> (the drawing's own lines, text and pictures).</p>
+<ul>
+<li><b>Click</b> something to add it to the selection. <b>Shift+click</b> takes it out.
+<b>Escape</b> clears the whole selection. Clicking empty paper keeps the selection.</li>
+<li><b>Click, move, click</b>: click empty paper, move the pointer (the box follows it) and click
+again. Left to right it's a solid <b>blue window</b>: it takes what lies entirely inside it.
+Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line
+running through it included. Escape drops a box you started. Hold Shift on the second click to
+take things out instead.</li>
+<li><b>Hold the button and drag</b>: a <b>lasso</b> that follows the pointer. Drawn rightward at
+first it's a blue window lasso (what's entirely inside it); leftward, a green crossing lasso
+(what it touches). Shift+lasso takes things out.</li>
+<li>With Select, a box or lasso that takes no markups selects text: the characters inside a
+window, or the ones a crossing box touches (Ctrl+C copies them).</li>
+<li>Dragging never moves anything in CAD mode, so nothing moves by accident: the square handles
+of one selected markup or object still resize it, and the CAD tab's <b>Move</b> moves.</li>
+<li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>
+</ul>
+<p>The <b>CAD</b> tab (and the CAD menu) shows only in CAD mode. Select first, then click a
+command and answer its prompt at the bottom of the window: click points on the page (they snap
+to line ends and corners like the drawing tools; hold Alt not to snap), type a value and press
+Enter, or click a button there. Escape (or Cancel) stops a command; right-click is Enter. Each
+change is one Ctrl+Z.</p>
+<ul>
+<li><b>Move</b>: click the base point, then where it goes.</li>
+<li><b>Copy</b>: click the base point, then where each copy goes, as many as you like; Enter,
+Escape or Done ends it.</li>
+<li><b>Rotate</b>: click the base point, then type the angle in degrees (counterclockwise; -90
+turns clockwise) and press Enter, or click a point: the selection turns so that "east" points
+there.</li>
+<li><b>Scale</b>: click the base point, then type the factor (2 = twice as big, 0.5 = half) and
+press Enter, or click a point at a length you know, then the point at the length it becomes.</li>
+<li><b>Mirror</b>: click two points on the mirror line, then <b>Keep them</b> (a mirrored copy)
+or <b>Delete them</b> (the originals are replaced).</li>
+<li><b>Delete</b>: deletes the selection.</li>
+<li><b>Align</b>: click a point on the selection and where it goes, then a second point and where
+it goes; then <b>Scale</b> (so the second points meet too) or <b>Don't scale</b>.</li>
+<li><b>Array</b>: choose the rows and columns, then click the base point, where the next
+column's copy goes and where the next row's copy goes (the direction counts too).</li>
+<li><b>Trim</b>: no selection needed. Click the part of a line to cut away: it goes up to the
+nearest lines crossing it on either side (or to its end, when nothing crosses on that side); a
+line nothing crosses goes completely. Click again and again; Enter, Escape or Done ends it. It
+trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
+and line, polyline and pen markups; filled shapes and pictures aren't trimmed.</li>
+</ul>
+<p>What the commands don't do: the drawing's own text only moves (Move); copying, turning,
+scaling or mirroring leaves it where it is and says so (Edit text changes it). Highlights and
+other text markups stay on their words, so they only move and copy. A mirrored picture or stamp
+keeps reading the right way round, and text boxes turn in quarter turns.</p>
+
 <h2 id="select">Selecting and editing markups</h2>
 <ul>
 <li><b>Select tool (V):</b> drag across text to select it, including across the gap between
 pages (it stays highlighted; see Copy, cut and paste below). Click a markup to select it, then drag
 it to move it, drag a square handle to resize it, or change its look in the Properties panel.
-With <b>CAD-style mouse</b> on, Select works as in AutoCAD: blue window and green crossing
-boxes, clicks that add to the selection, Shift to take out, Escape to clear (see Moving
-around).</li>
+In the <b>CAD</b> mouse mode, Select works as in AutoCAD instead: blue window and green
+crossing boxes, a lasso, clicks that add to the selection, Shift to take out, Escape to clear,
+and dragging moves nothing (see CAD mode).</li>
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
 it too, so you don't have to switch back to the arrow. The <b>Hand tool</b> works the same way:
 click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
@@ -343,8 +395,8 @@ Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> mo
 text (highlights, underlines, strikeouts) stay with their text. With nothing selected, Left and
 Right turn the page as usual.</li>
 <li><b>Escape</b> clears the selection. With nothing selected, Escape puts down whatever tool
-is picked (a stamp, shape, measurement, Crop...) and goes back to your default tool: Hand or
-Select, chosen in Preferences &gt; Start-up (<b>Default tool</b>). It works even right after a
+is picked (a stamp, shape, measurement, Crop...) and goes back to your default tool: the Hand
+in the Hand mouse mode, Select in the Standard and CAD modes. It works even right after a
 dialog or a toolbar click took the keyboard focus.</li>
 </ul>
 
@@ -602,10 +654,11 @@ is picked up anywhere inside it.</li>
 paragraph at a time: click a word to select its paragraph, and everything Add text wrote in one
 go comes together. A selection box takes text only when there are no pictures or shapes in it
 (so a box around a drawing detail selects its line work, not its labels); Ctrl+click adds text
-to a selection. With <b>CAD-style mouse</b> on, selecting works as in AutoCAD instead: a blue
-window (dragged left to right) takes the lines, text and pictures entirely inside it, a green
-crossing box (right to left) everything it touches, text and line work together; clicks and
-boxes add to the selection, Shift takes out of it and Escape clears it (see Moving around). Press <b>Delete</b> (or Backspace) or right-click &gt; <b>Delete</b> to remove
+to a selection. In the <b>CAD</b> mouse mode, selecting works as in AutoCAD instead: a blue
+window (left to right) takes the lines, text and pictures entirely inside it, a green crossing
+box (right to left) everything it touches, text and line work together; clicks, boxes and
+lassos add to the selection, Shift takes out of it and Escape clears it, and the CAD tab's
+commands change it (see CAD mode). Press <b>Delete</b> (or Backspace) or right-click &gt; <b>Delete</b> to remove
 it; drag it to move it (highlights and other markups on it move along). Text isn't resized,
 rotated or re-stacked here: change its words, font and size with Edit text. Pictures and lines
 under it stay. If other text overlaps it so closely that some of its letters would go too,
@@ -1002,7 +1055,7 @@ active. Reset defaults puts a tool back to how KanzonasPDF came.</li>
 <li><b>Start-up and opening:</b> reopen the documents that were open when you closed
 KanzonasPDF (off by default; this also works when a setup closes KanzonasPDF to update it, or
 Windows closes it to shut down or sign out), whether to ask before closing with several documents open (on
-by default), the default tool (Hand or Select), the zoom a document opens
+by default), the zoom a document opens
 at (Fit width by default; Fit page, the whole page in the window; Actual size; or the zoom it had
 when you closed it), and whether to reopen it at the page you were on last time.</li>
 <li><b>Saving:</b> how often to back up unsaved changes (every 5 minutes by default; Off turns it
@@ -1021,9 +1074,19 @@ have the password.</li>
 <li><b>Measuring:</b> the units offered for a page that has no scale yet, what feet and inches
 round to (1/2" to 1/64"; 1/16" by default) and the decimal places for other units. Existing
 measurement labels update when you next move or edit them.</li>
-<li><b>Mouse and scrolling:</b> CAD-style mouse, Free page movement, Scroll one page per wheel step (the note
-under it says when it applies: only while the whole page fits in the window, as after Fit
-page).</li>
+<li><b>Mouse:</b> the mouse mode (<b>Standard</b>, <b>Hand</b> or <b>CAD</b>; the mode's tool
+is the one KanzonasPDF starts with and Escape goes back to), and each mode's own options:
+<ul>
+<li>Standard: Scroll one page per wheel step (on), Free page movement (off).</li>
+<li>Hand: Free page movement (on), Scroll one page per wheel step (on), Clicking a markup with
+the Hand selects it (on).</li>
+<li>CAD: The wheel zooms at the cursor (Ctrl+wheel scrolls), Plus cursor, Open canvas around the
+pages, Window (blue) and crossing (green) selection, Click, move, click draws the selection box,
+Hold the button and drag to draw a lasso, Show the CAD tab: all on. With the last two off, a
+press, drag and release draws a box.</li>
+</ul>
+The note under Scroll one page per wheel step says when it applies: only while the whole page
+fits in the window, as after Fit page.</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
 Night mode (white lines on black), Enhance thin lines, <b>New PDF page size</b> (the size and
 orientation File &gt; New PDF uses, or Ask every time),
@@ -1055,13 +1118,13 @@ settings...).</li>
 <tr><td>Shift+R</td><td>Redact</td></tr>
 <tr><td>Shift+E</td><td>Erase content</td></tr>
 <tr><td>Shift+P</td><td>Capture area</td></tr>
-<tr><td>Ctrl+wheel</td><td>Zoom around the pointer (scroll up and down when CAD-style mouse is on)</td></tr>
+<tr><td>Ctrl+wheel</td><td>Zoom around the pointer (scroll up and down in the CAD mouse mode)</td></tr>
 <tr><td>Shift+wheel</td><td>Scroll left and right</td></tr>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Ctrl+click a link (Select tool)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
-<tr><td>Escape</td><td>Clear selection / put the tool down (back to the default tool, Hand or Select)</td></tr>
+<tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool, Hand or Select) / cancel a CAD command or a started selection box</td></tr>
 <tr><td>Delete</td><td>Delete selected markups</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>
@@ -1083,7 +1146,7 @@ settings...).</li>
 <tr><td>Ctrl+Shift+P</td><td>Command palette</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Show / hide the menu bar (ribbon layout)</td></tr>
-<tr><td>F11</td><td>CAD-style mouse on / off</td></tr>
+<tr><td>F11</td><td>CAD mouse mode on / off (off goes back to Standard or Hand, whichever you had)</td></tr>
 <tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>

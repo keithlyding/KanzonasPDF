@@ -1,0 +1,548 @@
+"""The CAD tab's commands (CAD mouse mode), as in AutoCAD: select first, then click the command
+and answer its prompts in the status bar by clicking points on the page (they snap like the
+drawing tools; Alt = don't snap) or typing a value and pressing Enter. Escape cancels.
+
+Move     base point, then where it goes
+Copy     base point, then where each copy goes (as many as you like; Enter or Escape ends)
+Rotate   base point, then the angle: type it (degrees, counterclockwise) or click a point
+Scale    base point, then the factor: type it, or click two points (a length, then the length
+         it becomes)
+Mirror   two points on the mirror line, then keep or delete the originals
+Delete   the selection
+Align    first source point, where it goes, second source point, where it goes; then scale or
+         not, to make the second pair meet too
+Array    rows and columns, then the spacing: click the base point, the next column's place,
+         the next row's place
+Trim     click the part of a line to cut away, up to the nearest crossing lines (or its end);
+         again and again until Escape. No selection needed.
+
+The selection is either the drawing's own objects (Edit objects) or markups (Select). Text of
+the drawing only moves (Move); the other commands leave it where it is and say so.
+"""
+import math
+
+import pymupdf
+from PySide6.QtCore import Qt, QPointF
+from PySide6.QtGui import QColor, QPen
+from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel,
+                               QLineEdit, QPushButton, QSpinBox, QWidget)
+
+from .i18n import tr
+
+GHOST = QColor(0, 120, 215, 200)
+BAND = QColor(220, 60, 0)
+GHOST_LIMIT = 4000          # polylines drawn while previewing (more: the selection's box)
+
+
+def translate(d):
+    return pymupdf.Matrix(1, 0, 0, 1, d.x, d.y)
+
+
+def about(base, m):
+    """Matrix m applied around point base."""
+    return translate(-pymupdf.Point(base)) * pymupdf.Matrix(m) * translate(pymupdf.Point(base))
+
+
+def rotation(base, ccw_degrees):
+    """Turn around base, counterclockwise on screen (as CAD measures angles)."""
+    return about(base, pymupdf.Matrix(-ccw_degrees))
+
+
+def screen_angle(base, pt):
+    """The direction from base to pt, counterclockwise from east, in degrees."""
+    return math.degrees(math.atan2(-(pt.y - base.y), pt.x - base.x))
+
+
+def mirror(p1, p2):
+    d = pymupdf.Point(p2) - pymupdf.Point(p1)
+    L = math.hypot(d.x, d.y)
+    if L < 1e-9:
+        return None
+    ux, uy = d.x / L, d.y / L
+    a, b = ux * ux - uy * uy, 2 * ux * uy
+    m = pymupdf.Matrix(a, b, b, -a, 0, 0)
+    p1 = pymupdf.Point(p1)
+    q = p1 * m
+    return pymupdf.Matrix(a, b, b, -a, p1.x - q.x, p1.y - q.y)
+
+
+def align(s1, d1, s2, d2, scale=False):
+    u, v = s2 - s1, d2 - d1
+    lu, lv = math.hypot(u.x, u.y), math.hypot(v.x, v.y)
+    turn = math.atan2(v.y, v.x) - math.atan2(u.y, u.x)
+    k = lv / lu if scale and lu > 1e-9 else 1.0
+    return translate(-s1) * pymupdf.Matrix(math.degrees(turn)) * pymupdf.Matrix(k, k) * \
+        translate(d1)
+
+
+def is_translation(m):
+    return abs(m.a - 1) < 1e-9 and abs(m.d - 1) < 1e-9 and abs(m.b) < 1e-9 and abs(m.c) < 1e-9
+
+
+class Prompt(QWidget):
+    """The command line in the status bar: what to do next, a box to type a value in, and
+    buttons for a choice."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        self.label = QLabel()
+        self.edit = QLineEdit()
+        self.edit.setMaximumWidth(110)
+        self.edit.returnPressed.connect(self._typed)
+        row.addWidget(self.label)
+        row.addWidget(self.edit)
+        self.buttons = []
+        self.cancel_btn = QPushButton(tr("Cancel"))
+        self.cancel_btn.clicked.connect(lambda: self.command and self.command.cancel())
+        self._row = row
+        row.addWidget(self.cancel_btn)
+        row.addStretch(1)
+        self.command = None
+        self.hide()
+
+    def show_for(self, command, text, typing=False, choices=()):
+        self.command = command
+        self.label.setText("<b>%s</b>: %s" % (command.title, text))
+        self.edit.setVisible(typing)
+        self.edit.clear()
+        for b in self.buttons:
+            b.deleteLater()
+        self.buttons = []
+        for label, value in choices:
+            b = QPushButton(label)
+            b.clicked.connect(lambda _=False, v=value: self.command and self.command.choose(v))
+            self._row.insertWidget(self._row.indexOf(self.cancel_btn), b)
+            self.buttons.append(b)
+        self.show()
+        if typing:
+            self.edit.setFocus()
+
+    def done(self):
+        self.command = None
+        self.hide()
+
+    def _typed(self):
+        if self.command is not None:
+            self.command.typed(self.edit.text())
+
+
+class Command:
+    """One run of a CAD command on a document view (view._cad_cmd while it runs)."""
+    title = ""
+    needs_selection = True
+
+    def __init__(self, view, prompt):
+        self.v = view
+        self.ui = prompt
+        self.page = None
+        self.pts = []
+        self.hover = None
+        self.kind = None
+        self.items = []
+        self.ghost = []                 # the selection's outlines (page coordinates)
+
+    # ---- running -------------------------------------------------------------------------
+    def start(self):
+        v = self.v
+        if self.needs_selection:
+            what = v.cad_targets()
+            if what is None:
+                v.statusMessage.emit(tr("{command}: select what to change first (click it, or "
+                                        "draw a box or a lasso), then click {command}.").format(
+                    command=self.title))
+                return False
+            self.kind, self.page, self.items = what
+            self.ghost = v.cad_outlines(self.page, self.kind, self.items)
+        v._cad_cmd = self
+        self.ask()
+        return True
+
+    def ask(self):
+        """Show the prompt for the current step."""
+
+    def finish(self, label=None):
+        self.v._cad_cmd = None
+        self.ui.done()
+        self._repaint()
+        if label:
+            self.v.statusMessage.emit(label)
+
+    def cancel(self):
+        self.finish(tr("{command} canceled").format(command=self.title))
+
+    def enter(self):
+        """Enter with nothing typed."""
+
+    def typed(self, text):
+        """A value typed in the prompt and Enter."""
+
+    def choose(self, value):
+        """A choice button."""
+
+    def click(self, index, pt):
+        if self.page is None:
+            self.page = index
+        if index != self.page:
+            self.v.statusMessage.emit(tr("Click on the same page."))
+            return
+        self.pts.append(pymupdf.Point(pt))
+        self.step()
+        self._repaint()
+
+    def step(self):
+        """After a click."""
+
+    def move(self, index, pt):
+        self.hover = pymupdf.Point(pt) if index == self.page or self.page is None else None
+        self._repaint()
+
+    def _repaint(self):
+        if self.page is not None and 0 <= self.page < len(self.v.pages):
+            self.v.pages[self.page].update()
+
+    # ---- preview -------------------------------------------------------------------------
+    def preview(self):
+        """[Matrix] to draw the selection with while the pointer moves, and the rubber band's
+        start point (or None)."""
+        return [], None
+
+    def paint(self, w, p):
+        if w.index != self.page:
+            return
+        mats, start = self.preview()
+        if mats and self.ghost:
+            p.setPen(QPen(GHOST, 1, Qt.DashLine))
+            lines = self.ghost if len(self.ghost) <= GHOST_LIMIT else None
+            for m in mats:
+                if lines is None:
+                    r = pymupdf.Rect()
+                    for line in self.ghost:
+                        for q in line:
+                            r |= q
+                    lines_m = [[r.tl * m, r.tr * m, r.br * m, r.bl * m, r.tl * m]]
+                else:
+                    lines_m = [[pymupdf.Point(q) * m for q in line] for line in lines]
+                for line in lines_m:
+                    for a, b in zip(line, line[1:]):
+                        p.drawLine(w.to_screen_pt(a), w.to_screen_pt(b))
+        if start is not None and self.hover is not None:
+            p.setPen(QPen(BAND, 1, Qt.DashLine))
+            p.drawLine(w.to_screen_pt(start), w.to_screen_pt(self.hover))
+        p.setPen(QPen(BAND, 1))
+        for q in self.pts:
+            c = QPointF(w.to_screen_pt(q))
+            p.drawLine(c + QPointF(-5, 0), c + QPointF(5, 0))
+            p.drawLine(c + QPointF(0, -5), c + QPointF(0, 5))
+
+
+class Move(Command):
+    title = tr("Move")
+
+    def ask(self):
+        self.ui.show_for(self, tr("click the base point") if not self.pts else
+                         tr("click where it goes"))
+
+    def step(self):
+        if len(self.pts) == 2:
+            self.v.cad_apply(tr("Moved"), translate(self.pts[1] - self.pts[0]))
+            self.finish()
+        else:
+            self.ask()
+
+    def preview(self):
+        if len(self.pts) == 1 and self.hover is not None:
+            return [translate(self.hover - self.pts[0])], self.pts[0]
+        return [], None
+
+
+class Copy(Command):
+    title = tr("Copy")
+    made = 0
+
+    def ask(self):
+        if not self.pts:
+            self.ui.show_for(self, tr("click the base point"))
+        else:
+            self.ui.show_for(self, tr("click where a copy goes (Enter or Escape when done)"),
+                             choices=[(tr("Done"), "done")])
+
+    def step(self):
+        if len(self.pts) >= 2:
+            self.v.cad_apply(tr("Copied"), None, copies=[translate(self.pts[-1] - self.pts[0])],
+                             keep=True)
+            self.made += 1
+        self.ask()
+
+    def enter(self):
+        self.choose("done")
+
+    def choose(self, value):
+        self.finish(tr("{n} copies made").format(n=self.made) if self.made else None)
+
+    def cancel(self):
+        self.choose("done")
+
+    def preview(self):
+        if self.pts and self.hover is not None:
+            return [translate(self.hover - self.pts[0])], self.pts[0]
+        return [], None
+
+
+class Rotate(Command):
+    title = tr("Rotate")
+
+    def ask(self):
+        if not self.pts:
+            self.ui.show_for(self, tr("click the base point"))
+        else:
+            self.ui.show_for(self, tr("type the angle (degrees, counterclockwise) and press Enter, "
+                                      "or click a point"), typing=True)
+
+    def step(self):
+        if len(self.pts) == 2:
+            self._apply(screen_angle(self.pts[0], self.pts[1]))
+        else:
+            self.ask()
+
+    def typed(self, text):
+        try:
+            a = float(text.replace(",", ".").strip())
+        except ValueError:
+            self.v.statusMessage.emit(tr("Type a number of degrees, for example 90 or -45."))
+            return
+        if self.pts:
+            self._apply(a)
+
+    def _apply(self, ccw):
+        self.v.cad_apply(tr("Rotated"), rotation(self.pts[0], ccw))
+        self.finish()
+
+    def preview(self):
+        if len(self.pts) == 1 and self.hover is not None:
+            return [rotation(self.pts[0], screen_angle(self.pts[0], self.hover))], self.pts[0]
+        return [], None
+
+
+class Scale(Command):
+    title = tr("Scale")
+
+    def ask(self):
+        if not self.pts:
+            self.ui.show_for(self, tr("click the base point"))
+        elif len(self.pts) == 1:
+            self.ui.show_for(self, tr("type the scale factor and press Enter (2 = twice as big), "
+                                      "or click a point at a length you know"), typing=True)
+        else:
+            self.ui.show_for(self, tr("click the point at the length it becomes"), typing=True)
+
+    def step(self):
+        if len(self.pts) == 3:
+            ref = abs(self.pts[1] - self.pts[0])
+            if ref < 1e-6:
+                self.pts.pop()
+                return
+            self._apply(abs(self.pts[2] - self.pts[0]) / ref)
+        else:
+            self.ask()
+
+    def typed(self, text):
+        try:
+            k = float(text.replace(",", ".").strip())
+        except ValueError:
+            k = 0
+        if k <= 0:
+            self.v.statusMessage.emit(tr("Type a factor above 0, for example 2 or 0.5."))
+            return
+        if self.pts:
+            self._apply(k)
+
+    def _apply(self, k):
+        self.v.cad_apply(tr("Scaled"), about(self.pts[0], pymupdf.Matrix(k, k)))
+        self.finish()
+
+    def preview(self):
+        if len(self.pts) == 2 and self.hover is not None:
+            ref = abs(self.pts[1] - self.pts[0])
+            if ref > 1e-6:
+                k = abs(self.hover - self.pts[0]) / ref
+                return [about(self.pts[0], pymupdf.Matrix(k, k))], self.pts[0]
+        return [], self.pts[0] if self.pts else None
+
+
+class Mirror(Command):
+    title = tr("Mirror")
+
+    def ask(self):
+        if not self.pts:
+            self.ui.show_for(self, tr("click the first point of the mirror line"))
+        elif len(self.pts) == 1:
+            self.ui.show_for(self, tr("click the second point of the mirror line"))
+        else:
+            self.ui.show_for(self, tr("delete the originals?"),
+                             choices=[(tr("Keep them"), "keep"), (tr("Delete them"), "delete")])
+
+    def step(self):
+        if len(self.pts) == 2 and mirror(self.pts[0], self.pts[1]) is None:
+            self.pts.pop()
+        self.ask()
+
+    def enter(self):
+        if len(self.pts) == 2:
+            self.choose("keep")
+
+    def choose(self, value):
+        if len(self.pts) != 2:
+            return
+        m = mirror(self.pts[0], self.pts[1])
+        if value == "delete":
+            self.v.cad_apply(tr("Mirrored"), m)
+        else:
+            self.v.cad_apply(tr("Mirrored (a copy)"), None, copies=[m])
+        self.finish()
+
+    def preview(self):
+        if len(self.pts) == 1 and self.hover is not None:
+            m = mirror(self.pts[0], self.hover)
+            return ([m] if m is not None else []), self.pts[0]
+        if len(self.pts) == 2:
+            return [mirror(self.pts[0], self.pts[1])], None
+        return [], None
+
+
+class Align(Command):
+    title = tr("Align")
+
+    def ask(self):
+        texts = [tr("click the first source point"), tr("click where it goes"),
+                 tr("click the second source point"), tr("click where it goes")]
+        if len(self.pts) < 4:
+            self.ui.show_for(self, texts[len(self.pts)])
+        else:
+            self.ui.show_for(self, tr("scale it so the second points meet too?"),
+                             choices=[(tr("Don't scale"), "no"), (tr("Scale"), "yes")])
+
+    def step(self):
+        self.ask()
+
+    def enter(self):
+        if len(self.pts) == 4:
+            self.choose("no")
+
+    def choose(self, value):
+        if len(self.pts) != 4:
+            return
+        s1, d1, s2, d2 = self.pts
+        if abs(s2 - s1) < 1e-6:
+            self.v.statusMessage.emit(tr("The two source points must be apart."))
+            return
+        self.v.cad_apply(tr("Aligned"), align(s1, d1, s2, d2, value == "yes"))
+        self.finish()
+
+    def preview(self):
+        if len(self.pts) == 1 and self.hover is not None:
+            return [translate(self.hover - self.pts[0])], self.pts[0]
+        if len(self.pts) == 3 and self.hover is not None and abs(self.pts[2] - self.pts[0]) > 1e-6:
+            return [align(self.pts[0], self.pts[1], self.pts[2], self.hover)], self.pts[1]
+        if len(self.pts) in (2, 4):
+            return [translate(self.pts[1] - self.pts[0])] if len(self.pts) == 2 else \
+                [align(*self.pts)], None
+        return [], None
+
+
+class Array(Command):
+    title = tr("Array")
+    rows = cols = 1
+
+    def start(self):
+        v = self.v
+        if v.cad_targets() is None:
+            return super().start()
+        dlg = QDialog(v)
+        dlg.setWindowTitle(tr("Array"))
+        form = QFormLayout(dlg)
+        rows, cols = QSpinBox(), QSpinBox()
+        for sb, val in ((rows, 1), (cols, 3)):
+            sb.setRange(1, 100)
+            sb.setValue(val)
+        form.addRow(tr("Rows:"), rows)
+        form.addRow(tr("Columns:"), cols)
+        note = QLabel(tr("Then click the base point, where the next column's copy goes, and "
+                         "where the next row's copy goes."))
+        note.setWordWrap(True)
+        form.addRow(note)
+        box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        box.accepted.connect(dlg.accept)
+        box.rejected.connect(dlg.reject)
+        form.addRow(box)
+        if dlg.exec() != QDialog.Accepted or rows.value() * cols.value() < 2:
+            return False
+        self.rows, self.cols = rows.value(), cols.value()
+        return super().start()
+
+    def _needed(self):
+        return 1 + (self.cols > 1) + (self.rows > 1)
+
+    def ask(self):
+        if not self.pts:
+            self.ui.show_for(self, tr("click the base point"))
+        elif len(self.pts) == 1 and self.cols > 1:
+            self.ui.show_for(self, tr("click where the next column's copy goes"))
+        else:
+            self.ui.show_for(self, tr("click where the next row's copy goes"))
+
+    def _vectors(self, pts):
+        col = pts[1] - pts[0] if self.cols > 1 and len(pts) > 1 else pymupdf.Point(0, 0)
+        k = 2 if self.cols > 1 else 1
+        row = pts[k] - pts[0] if self.rows > 1 and len(pts) > k else pymupdf.Point(0, 0)
+        return col, row
+
+    def _matrices(self, pts):
+        col, row = self._vectors(pts)
+        return [translate(col * c + row * r) for r in range(self.rows) for c in range(self.cols)
+                if r or c]
+
+    def step(self):
+        if len(self.pts) == self._needed():
+            n = self.rows * self.cols - 1
+            self.v.cad_apply(tr("Array"), None, copies=self._matrices(self.pts))
+            self.finish(tr("Array: {n} copies made (Ctrl+Z undoes it)").format(n=n))
+        else:
+            self.ask()
+
+    def preview(self):
+        if self.pts and self.hover is not None:
+            return self._matrices(self.pts + [self.hover]), self.pts[0]
+        return [], None
+
+
+class Trim(Command):
+    title = tr("Trim")
+    needs_selection = False
+    done = 0
+
+    def ask(self):
+        self.ui.show_for(self, tr("click the part of a line to cut away, up to the lines that "
+                                  "cross it (Enter or Escape when done)"),
+                         choices=[(tr("Done"), "done")])
+
+    def click(self, index, pt):
+        self.page = index
+        if self.v.cad_trim(index, pymupdf.Point(pt)):
+            self.done += 1
+        self.ask()
+
+    def enter(self):
+        self.choose("done")
+
+    def choose(self, value):
+        self.finish(tr("{n} trims (Ctrl+Z undoes them one by one)").format(n=self.done)
+                    if self.done else None)
+
+    def cancel(self):
+        self.choose("done")
+
+
+COMMANDS = {"move": Move, "copy": Copy, "rotate": Rotate, "scale": Scale, "mirror": Mirror,
+            "align": Align, "array": Array, "trim": Trim}

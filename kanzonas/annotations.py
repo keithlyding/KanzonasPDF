@@ -769,6 +769,41 @@ def moved(model, delta):
     return m
 
 
+def transformed(model, mat):
+    """Copy of the markup under mat (a Matrix in page coordinates: a CAD tab Move, Rotate,
+    Scale, Mirror or Align). Lines, polygons, clouds, ink and measurements follow it exactly;
+    a box (rectangle, ellipse, stamp, picture, text box...) goes by its center, its size and
+    its turn (a picture or stamp keeps reading the right way round when mirrored; text boxes
+    and callouts turn in quarter turns). Highlighted words' quads only move."""
+    mat = pymupdf.Matrix(mat)
+    m = copy(model)
+    if "points" in m:
+        m["points"] = [pymupdf.Point(q) * mat for q in m["points"]]
+    if "strokes" in m:
+        m["strokes"] = [[pymupdf.Point(q) * mat for q in s] for s in m["strokes"]]
+    if "quads" in m:
+        d = pymupdf.Point(mat.e, mat.f)
+        m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d) for q in m["quads"]]
+    if "rect" in m:
+        r = pymupdf.Rect(m["rect"])
+        c = pymupdf.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2) * mat
+        sx, sy = math.hypot(mat.a, mat.b), math.hypot(mat.c, mat.d)
+        if model["kind"] in POINTED or model["kind"] == "ink":
+            sx = sy = 1.0               # (a box kept with the points: they say where it is)
+        w, h = r.width * sx, r.height * sy
+        m["rect"] = pymupdf.Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
+        turn = math.degrees(math.atan2(mat.b, mat.a))          # clockwise on screen
+        if abs(turn) > 1e-6 or mat.a * mat.d - mat.b * mat.c < 0:
+            if model["kind"] in ROTATABLE and model["kind"] not in POINTED + ("ink",):
+                a = angle(model)
+                new = (a - turn) if mat.a * mat.d - mat.b * mat.c >= 0 else (-a - turn)
+                m["props"]["rotation"] = round(new % 360, 2)
+            elif model["kind"] in QUARTER_TURNS:
+                new = angle(model) - turn
+                m["props"]["rotation"] = int(round(new / 90.0)) * 90 % 360
+    return m
+
+
 def resized(model, new_rect):
     """Fit the annotation to new_rect (boxes directly, ink and lines by scaling)."""
     m = copy(model)

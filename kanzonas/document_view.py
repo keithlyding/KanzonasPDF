@@ -797,6 +797,8 @@ class DocumentView(QScrollArea):
     def set_tool(self, tool):
         from . import cad_select
         cad_select.cancel(self)
+        if self._cad_cmd is not None:
+            self._cad_cmd.cancel()
         self.tool = tool
         for w in getattr(self, "pages", []):
             # a stamp / signature preview or a shape half-drawn belongs to the old tool
@@ -3239,6 +3241,13 @@ class DocumentView(QScrollArea):
         return self._card_cache[index]
 
     def keyPressEvent(self, e):
+        if self._cad_cmd is not None and e.key() in (Qt.Key_Escape, Qt.Key_Return,
+                                                     Qt.Key_Enter):
+            if e.key() == Qt.Key_Escape:
+                self._cad_cmd.cancel()
+            else:
+                self._cad_cmd.enter()
+            return
         if e.key() == Qt.Key_Escape:
             from . import cad_select
             if cad_select.cancel(self):
@@ -3894,6 +3903,223 @@ class DocumentView(QScrollArea):
                     region.touches_rect(r) for r, _ln in it["lines"]):
                 texts.append(it)
         return found + texts
+
+    # ---- CAD tab commands (cad_commands.py) ----------------------------------------------
+    _cad_cmd = None             # the CAD command running, or None
+
+    def cad_targets(self):
+        """What a CAD command works on: ("objects", page, items) for the drawing's own objects
+        selected with Edit objects, ("markups", page, [(xref, model)]) for selected markups,
+        or None."""
+        if self.obj_sel is not None and self.obj_sel[1]:
+            return "objects", self.obj_sel[0], list(self.obj_sel[1])
+        if self.selection is not None:
+            models = [(x, m) for x, m in self.selected_models() if m["kind"] != "field"]
+            if models:
+                return "markups", self.selection[0], models
+        return None
+
+    def cad_outlines(self, index, kind, items):
+        """The selection's outlines in page coordinates, for a command's preview."""
+        out = []
+        if kind == "objects":
+            for it in items:
+                out += self.object_lines(index, it)
+            return out
+        for _x, m in items:
+            if "strokes" in m:
+                out += [list(s) for s in m["strokes"]]
+            elif "points" in m and m["kind"] in annotations.POINTED:
+                pts = list(m["points"])
+                out.append(pts + pts[:1] if m["kind"] in ("polygon", "m_area", "cloud")
+                           else pts)
+            elif "quads" in m:
+                out += [[q.ul, q.ur, q.lr, q.ll, q.ul] for q in m["quads"]]
+            else:
+                pts = annotations.outline(m) if annotations.turned(m) else None
+                if pts is None:
+                    r = annotations.bounds(m)
+                    pts = [r.tl, r.tr, r.br, r.bl]
+                out.append(list(pts) + [pts[0]])
+        return out
+
+    def cad_apply(self, label, mat, copies=None, keep=False):
+        """A CAD command's change to the selection, as one undo step: mat (a Matrix in page
+        coordinates) moves / turns / scales / mirrors it; copies (a list of matrices) adds a
+        copy for each instead. The drawing's own text only moves."""
+        from . import cad_commands, page_objects
+        what = self.cad_targets()
+        if what is None:
+            return
+        kind, index, items = what
+        mats = copies if copies is not None else [mat]
+        moving_only = all(cad_commands.is_translation(m) for m in mats)
+        if kind == "objects":
+            texts = [it for it in items if it["kind"] == "text"]
+            shapes = [it for it in items if it["kind"] != "text"]
+            objs = self._obj_cache.get(index)
+            if texts and (copies is not None or not moving_only):
+                self.statusMessage.emit(tr("The drawing's text can be moved here, not copied, "
+                                           "turned, scaled or mirrored: it stays where it is "
+                                           "(Edit text changes it)."))
+            if copies is not None:
+                if not shapes:
+                    return
+                self.obj_sel = (index, shapes)
+                self._objects_edit(label, lambda pg, ns: page_objects.copies(pg, ns, copies,
+                                                                              objs),
+                                   keep=False)
+                if keep:
+                    # the originals stay selected (Copy goes on placing copies of them): each
+                    # one's copies come right after it, so its number grows by those before it
+                    order = sorted(it["n"] for it in shapes)
+                    now = {n + k * len(copies) for k, n in enumerate(order)}
+                    objs = self.content_objects(index)
+                    again = [it for it in (objs.items if objs else []) if it["n"] in now]
+                    self.obj_sel = (index, again) if again else None
+                    self.pages[index].update()
+                return
+            if texts and moving_only:
+                d = pymupdf.Point(mat.e, mat.f)
+
+                def move_text(page, texts):
+                    self._move_text_lines(page, [ln for it in texts for _r, ln in it["lines"]],
+                                          (d.x, d.y))
+                    return [it["rect"] + (d.x, d.y, d.x, d.y) for it in texts]
+                self._objects_edit(label, lambda pg, ns: page_objects.transform(pg, ns, mat, objs),
+                                   text_fn=move_text)
+                return
+            if not shapes:
+                return
+            self.obj_sel = (index, shapes)
+            self._objects_edit(label, lambda pg, ns: page_objects.transform(pg, ns, mat, objs))
+            return
+        # markups
+        usable = [(x, m) for x, m in items
+                  if moving_only or m["kind"] not in annotations.MARKUP]
+        if len(usable) < len(items):
+            self.statusMessage.emit(tr("Highlights and other text markups stay on their words: "
+                                       "they can only be moved or copied."))
+        if not usable:
+            return
+        if copies is None:
+            self.commit_models(index, [(x, annotations.transformed(m, mat)) for x, m in usable])
+            self.statusMessage.emit(tr("{what} (Ctrl+Z undoes it)").format(what=label))
+            return
+        models = self._next_counts([m for _x, m in usable])
+        made = []
+
+        def do():
+            pg = self.doc[index]
+            for c in copies:
+                for m in models:
+                    made.append(annotations.write(pg, annotations.transformed(m, c)).xref)
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.statusMessage.emit(tr("{what} (Ctrl+Z undoes it)").format(what=label))
+
+    def cad_trim(self, index, pt):
+        """Trim at pt (the CAD tab): the clicked line of the drawing, or line markup, loses
+        the part between the nearest lines crossing it (or its end). True if it changed."""
+        from . import page_objects, trim
+        tol = 6 / self.zoom
+        page = self.doc[index]
+        objs = self.content_objects(index)
+        best = None                         # (distance, what, ...)
+        if objs is not None:
+            item = objs.at(pt, tol)
+            if item is not None and item["kind"] == "shape" and item["stroke"] and \
+                    not item["fill"]:
+                state, parts, paint = page_objects.subpaths(objs.data, item["obj"])
+                mat = item["obj"]["ctm"] * objs.tm
+                for k, (_raw, local, closed) in enumerate(parts):
+                    poly = [q * mat for q in local]
+                    if len(poly) < 2:
+                        continue
+                    _s, d = trim.project(poly, trim._cum(poly), pt)
+                    if d <= tol + item.get("width", 0) / 2 and (best is None or d < best[0]):
+                        best = (d, "object", item, k, poly, closed, state, parts, paint, mat)
+        for an in annotations.each_annot(page):
+            m = annotations.read(an)
+            if m is None or m["kind"] not in ("line", "polyline", "ink"):
+                continue
+            strokes = m["strokes"] if m["kind"] == "ink" else [m["points"]]
+            for k, poly in enumerate(strokes):
+                poly = [pymupdf.Point(q) for q in poly]
+                if len(poly) < 2:
+                    continue
+                _s, d = trim.project(poly, trim._cum(poly), pt)
+                if d <= tol and (best is None or d < best[0]):
+                    best = (d, "markup", an.xref, k, poly, False, m)
+        if best is None:
+            self.statusMessage.emit(tr("Trim: no line there. Click on a line of the drawing or "
+                                       "a line markup (filled shapes and pictures aren't "
+                                       "trimmed)."))
+            return False
+        poly = best[4]
+        r = pymupdf.Rect(poly[0], poly[0])
+        for q in poly[1:]:
+            r |= q
+        r += (-1, -1, 1, 1)
+        cutters = []
+        if objs is not None:
+            for it in objs.items:
+                if it["kind"] != "shape" or not page_objects.overlap(it["rect"], r):
+                    continue
+                for k, line in enumerate(objs.lines(it)):
+                    if best[1] == "object" and it is best[2] and k == best[3]:
+                        continue
+                    cutters.append(line)
+        for an in annotations.each_annot(page):
+            if best[1] == "markup" and an.xref == best[2]:
+                continue
+            if not page_objects.overlap(an.rect, r):
+                continue
+            lines, _closed, _filled = self._annot_geometry(an)
+            cutters += lines
+        if best[1] == "markup":
+            m = best[6]
+            others = (m["strokes"] if m["kind"] == "ink" else [])
+            cutters += [list(s) for j, s in enumerate(others) if j != best[3]]
+        pieces = trim.trim(poly, best[5], pt, cutters)
+        if best[1] == "object":
+            _d, _w, item, k, _poly, _closed, state, parts, paint, mat = best
+            inv = ~mat
+            new = [p_[0] if j != k else [[q * inv for q in pc] for pc in pieces]
+                   for j, p_ in enumerate(parts)]
+
+            def do():
+                page_objects.rewrite_path(self.doc[index], item["n"], state, new, paint)
+            self.modify(do, [index])
+            self.clear_object_selection()
+        else:
+            _d, _w, xref, k, _poly, _closed, m = best
+            models = []
+            if m["kind"] == "ink":
+                strokes = [s for j, s in enumerate(m["strokes"]) if j != k] + pieces
+                if strokes:
+                    n = annotations.copy(m)
+                    n["strokes"] = [[pymupdf.Point(q) for q in s] for s in strokes]
+                    models.append(n)
+            else:
+                for pc in pieces:
+                    n = annotations.copy(m)
+                    n["points"] = [pymupdf.Point(q) for q in pc]
+                    if m["kind"] == "line" and len(pc) > 2:
+                        n["points"] = [pc[0], pc[-1]]
+                    models.append(n)
+
+            def do():
+                pg = self.doc[index]
+                if models:
+                    annotations.replace_many(pg, [(xref, models[0])])
+                else:
+                    pg.delete_annot(pg.load_annot(xref))
+                for mod in models[1:]:
+                    annotations.write(pg, mod)
+            self.clear_selection()
+            self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
+        return True
 
     def object_lines(self, index, item):
         if item["kind"] == "text":

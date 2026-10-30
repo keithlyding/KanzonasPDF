@@ -452,6 +452,8 @@ class PageWidget(QWidget):
             p.drawPath(path)
 
         self._paint_selection(p, page)
+        if self.view._cad_cmd is not None:
+            self.view._cad_cmd.paint(self, p)
         self._paint_snap_mark(p)
 
         if self.view.current_page() == self.index and self.view.page_count() > 1:
@@ -1095,6 +1097,14 @@ class PageWidget(QWidget):
             self._mid_pan = True
             self.view.begin_pan(e.globalPosition())
             return
+        cmd = self.view._cad_cmd
+        if cmd is not None:
+            # a CAD tab command takes the clicks (snapped); right-click = Enter
+            if e.button() == Qt.LeftButton:
+                cmd.click(self.index, self.to_pdf(self._snap(e.position(), e)))
+            elif e.button() == Qt.RightButton:
+                cmd.enter()
+            return
         if e.button() == Qt.RightButton and self.view.tool == "editobjects":
             self._objects_menu(e, self.to_pdf(e.position()))
             return
@@ -1353,6 +1363,9 @@ class PageWidget(QWidget):
             return
         pos = e.position()
         tool = self.view.tool
+        if self.view._cad_cmd is not None and not e.buttons():
+            self.view._cad_cmd.move(self.index, self.to_pdf(self._snap(pos, e)))
+            return
         if self._cad_down is not None and e.buttons():
             cad_select.move(self, e, pos)
             return
