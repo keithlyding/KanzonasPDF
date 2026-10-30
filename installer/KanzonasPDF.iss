@@ -59,3 +59,12 @@ Root: HKA; Subkey: "Software\Classes\Applications\{#MyAppExe}\shell\open\command
 
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "Start {#MyAppName}"; Flags: nowait postinstall skipifsilent
+; KanzonasPDF's Update now runs this setup quietly with /RELAUNCH: start the app again when done
+; (as the user, also when the update needed the administrator prompt)
+Filename: "{app}\{#MyAppExe}"; Flags: nowait runasoriginaluser; Check: RelaunchAfterUpdate
+
+[Code]
+function RelaunchAfterUpdate: Boolean;
+begin
+  Result := WizardSilent and (Pos('/RELAUNCH', Uppercase(GetCmdTail)) > 0);
+end;

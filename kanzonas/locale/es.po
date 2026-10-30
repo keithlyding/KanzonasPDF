@@ -6466,3 +6466,11 @@ msgstr "Ese certificado ya no está en el almacén de certificados de Windows."
 #: wincerts.py:289
 msgid "This certificate's key type ({type}) isn't supported for signing."
 msgstr "El tipo de clave de este certificado ({type}) no se admite para firmar."
+
+#: main_window.py
+msgid "Update now downloads the new setup, checks it, closes KanzonasPDF (after asking to save your work) and installs the new version over this one; KanzonasPDF starts again when it's done. Your settings are kept."
+msgstr "Actualizar ahora descarga el nuevo instalador, lo comprueba, cierra KanzonasPDF (después de pedirle que guarde su trabajo) e instala la nueva versión sobre esta; KanzonasPDF se vuelve a abrir al terminar. Su configuración se conserva."
+
+#: main_window.py
+msgid "You can still download the setup from the release page and run it."
+msgstr "También puede descargar el instalador desde la página de versiones y ejecutarlo."

@@ -151,9 +151,13 @@ KanzonasPDF as an app for opening PDFs.</li>
 <li><b>Make it your default PDF app:</b> Windows doesn't let installers do this silently. Right-click
 any PDF &gt; Open with &gt; Choose another app &gt; KanzonasPDF, and tick "Always use this app".</li>
 <li>Opening another PDF while KanzonasPDF is running opens it as a new tab in the same window.</li>
-<li><b>Update:</b> run the newer setup over the old one; there's no need to uninstall first.
-It closes KanzonasPDF if it's running, installs in the same place, and keeps your settings,
-signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
+<li><b>Update:</b> use <b>Update now</b> in the update notice or in Help &gt; Check for
+updates. KanzonasPDF downloads the new setup only from GitHub and only runs it when the file's
+sha256 matches the digest published with that release; it asks to save open documents, closes,
+installs the new version over this one (for you, or for all users with Windows' administrator
+prompt if that's how it was installed) and starts again. Or run the newer setup over the old one
+yourself; there's no need to uninstall first. Either way it installs in the same place and keeps
+your settings, signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
 <li><b>Portable version</b> (<b>KanzonasPDF-portable.zip</b>): no installation. Unzip the KanzonasPDF folder
 anywhere (a USB stick, a network drive, your Documents) and run KanzonasPDF.exe. Because of the
 portable.txt file inside, your settings, signatures, stamp images and certificate are kept in a
@@ -178,8 +182,9 @@ opens F:\\Docs\\plan.pdf.</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
 A box tells you the answer; if there's a newer version, <b>Download</b> opens its release page in
 your browser. The automatic check instead shows a notice at the bottom of the window with
-<b>Download</b>, <b>Skip this version</b> and <b>Later</b> (the portable version also has
-<b>Update now</b>, which updates it in place; see above). Nothing is downloaded or installed
+<b>Download</b>, <b>Skip this version</b> and <b>Later</b>, and <b>Update now</b>, which
+updates this copy in place (see above; not in the PortableApps.com version, which its platform
+updates). Nothing is downloaded or installed
 until you click a button.
 With Help &gt; <b>Check for updates automatically</b> ticked (the default) the app checks
 quietly once a day, a few seconds after it starts; untick it to never contact GitHub. If your

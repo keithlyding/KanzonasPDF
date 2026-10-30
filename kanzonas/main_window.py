@@ -4347,9 +4347,7 @@ class MainWindow(QMainWindow):
             box = QMessageBox(QMessageBox.Information, tr("Check for updates"),
                               tr("KanzonasPDF {version} is available (you have {current}).").format(
                                   version=version, current=__version__) + "\n\n"
-                              + (tr("Update now downloads it, closes KanzonasPDF, replaces the "
-                                    "program files in this folder (your data folder is kept) and "
-                                    "starts it again.") + "\n\n" if self._self_update_url() else "")
+                              + (self._update_now_text() + "\n\n" if self._self_update_url() else "")
                               + tr("Download opens the release page in your browser."), parent=self)
             upd = (box.addButton(tr("Update now"), QMessageBox.AcceptRole)
                    if self._self_update_url() else None)
@@ -4357,7 +4355,7 @@ class MainWindow(QMainWindow):
             box.addButton(tr("Later"), QMessageBox.RejectRole)
             box.exec()
             if upd is not None and box.clickedButton() is upd:
-                self.update_portable()
+                self.update_now()
             elif box.clickedButton() is get:
                 QDesktopServices.openUrl(QUrl(url))
             return
@@ -4374,8 +4372,7 @@ class MainWindow(QMainWindow):
         get.setToolTip(tr("Open the release page to download the installer or portable zip"))
         upd = QPushButton(tr("Update now")) if self._self_update_url() else None
         if upd is not None:
-            upd.setToolTip(tr("Download the new portable version and replace this one in place "
-                              "(your data folder is kept)"))
+            upd.setToolTip(self._update_now_text())
         skip = QPushButton(tr("Skip this version"))
         close = QPushButton(tr("Later"))
 
@@ -4387,7 +4384,7 @@ class MainWindow(QMainWindow):
         skip.clicked.connect(lambda: (self.settings.setValue("update_skip", version), done()))
         close.clicked.connect(done)
         if upd is not None:
-            upd.clicked.connect(lambda: (done(), self.update_portable()))
+            upd.clicked.connect(lambda: (done(), self.update_now()))
         for b in (upd, get, skip, close):
             if b is not None:
                 h.addWidget(b)
@@ -4397,12 +4394,78 @@ class MainWindow(QMainWindow):
         bar.show()
 
     def _self_update_url(self):
-        """Download address of the new portable zip when this copy can update itself."""
+        """Download address of what updates this copy in place: the new portable zip, or for
+        an installed copy the new setup. None when it can't update itself."""
         from . import updates
         upd = getattr(self, "_upd", None)
-        if upd is None or not updates.can_self_update():
+        if upd is None:
             return None
-        return updates.asset_url(upd.release)
+        if updates.can_self_update():
+            return updates.asset_url(upd.release)
+        if updates.can_install_update():
+            return updates.asset_url(upd.release, updates.setup_name(self._new_version()))
+        return None
+
+    def _new_version(self):
+        """The version of the release found ('1.6' for the tag v1.6)."""
+        return str((self._upd.release or {}).get("tag_name", "")).strip().lstrip("vV")
+
+    def _update_now_text(self):
+        from . import updates
+        if updates.can_self_update():
+            return tr("Update now downloads it, closes KanzonasPDF, replaces the program files "
+                      "in this folder (your data folder is kept) and starts it again.")
+        return tr("Update now downloads the new setup, checks it, closes KanzonasPDF (after "
+                  "asking to save your work) and installs the new version over this one; "
+                  "KanzonasPDF starts again when it's done. Your settings are kept.")
+
+    def update_now(self):
+        """Update now: in place, the portable way or with the new setup."""
+        from . import updates
+        if updates.can_self_update():
+            self.update_portable()
+        elif updates.can_install_update():
+            self.update_installed()
+
+    def update_installed(self):
+        """Installed copy: download the new setup, close (saving first) and run it quietly
+        over this installation; it starts KanzonasPDF again."""
+        from PySide6.QtWidgets import QProgressDialog
+        from . import paths, updates
+        url = self._self_update_url()
+        if not url:
+            return
+        version = self._new_version()
+        dl = updates.InstallerUpdater(url, version, self, expected_sha256=updates.asset_digest(
+            self._upd.release, updates.setup_name(version)))
+        prog = QProgressDialog(tr("Downloading the new KanzonasPDF..."), tr("Cancel"), 0, 0, self)
+        prog.setWindowTitle(tr("Update"))
+        prog.setMinimumDuration(0)
+        prog.canceled.connect(dl.cancel)
+
+        def progress(got, total):
+            if total > 0:
+                prog.setMaximum(total)
+                prog.setValue(got)
+
+        def failed(msg):
+            prog.close()
+            QMessageBox.warning(self, tr("Update"), msg + "\n\n" + tr(
+                "You can still download the setup from the release page and run it."))
+
+        def ready(setup):
+            import shutil
+            import subprocess
+            prog.close()
+            if not self.close():          # the user kept a document open: not now
+                shutil.rmtree(os.path.dirname(setup), ignore_errors=True)
+                return
+            subprocess.Popen(updates.installer_command(setup, paths.app_dir()), close_fds=True)
+            QApplication.quit()
+        dl.progress.connect(progress)
+        dl.failed.connect(failed)
+        dl.ready.connect(ready)
+        dl.start()
 
     def update_portable(self):
         """Portable copy: download the new version, then close and let a script swap the files."""

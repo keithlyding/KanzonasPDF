@@ -144,9 +144,13 @@ KanzonasPDF como aplicación para abrir archivos PDF.</li>
 <li><b>Convertirla en su aplicación predeterminada para PDF:</b> Windows no permite que los instaladores lo hagan sin preguntar. Haga clic con el botón derecho en
 cualquier PDF &gt; Abrir con &gt; Elegir otra aplicación &gt; KanzonasPDF, y marque "Usar siempre esta aplicación".</li>
 <li>Abrir otro PDF mientras KanzonasPDF se está ejecutando lo abre en una nueva pestaña de la misma ventana.</li>
-<li><b>Actualizar:</b> ejecute el instalador más reciente sobre el anterior; no hace falta desinstalar primero.
-Cierra KanzonasPDF si se está ejecutando, lo instala en el mismo lugar y conserva su configuración,
-sus firmas, sus sellos y su caja de herramientas. <b>Desinstalar:</b> Configuración de Windows &gt; Aplicaciones, o el desinstalador de la carpeta de instalación.</li>
+<li><b>Actualizar:</b> use <b>Actualizar ahora</b> en el aviso de actualización o en Ayuda &gt; Buscar
+actualizaciones. KanzonasPDF descarga el nuevo instalador solo desde GitHub y solo lo ejecuta cuando el
+sha256 del archivo coincide con el resumen publicado con esa versión; pide guardar los documentos abiertos,
+se cierra, instala la nueva versión sobre esta (para usted, o para todos los usuarios con el aviso de
+administrador de Windows si así se instaló) y se vuelve a iniciar. También puede ejecutar usted mismo el
+instalador más reciente sobre el anterior; no hace falta desinstalar primero. De cualquier forma se instala
+en el mismo lugar y conserva su configuración, sus firmas, sus sellos y su caja de herramientas. <b>Desinstalar:</b> Configuración de Windows &gt; Aplicaciones, o el desinstalador de la carpeta de instalación.</li>
 <li><b>Versión portátil</b> (<b>KanzonasPDF-portable.zip</b>): no requiere instalación. Descomprima la carpeta KanzonasPDF
 en cualquier lugar (una memoria USB, una unidad de red, su carpeta Documentos) y ejecute KanzonasPDF.exe. Gracias al
 archivo portable.txt que contiene, su configuración, sus firmas, sus imágenes de sellos y su certificado se guardan en una
@@ -171,8 +175,9 @@ abre F:\\Docs\\plan.pdf.</li>
 <li><b>Ayuda &gt; Buscar actualizaciones:</b> pregunta a GitHub si se ha publicado una versión más reciente de KanzonasPDF.
 Un cuadro le indica la respuesta; si hay una versión más reciente, <b>Descargar</b> abre su página de la versión en
 su navegador. La búsqueda automática, en cambio, muestra un aviso en la parte inferior de la ventana con
-<b>Descargar</b>, <b>Omitir esta versión</b> y <b>Más tarde</b> (la versión portátil también tiene
-<b>Actualizar ahora</b>, que la actualiza en la misma carpeta; vea más arriba). No se descarga ni se instala nada
+<b>Descargar</b>, <b>Omitir esta versión</b> y <b>Más tarde</b>, y <b>Actualizar ahora</b>, que
+actualiza esta copia en el mismo lugar (vea más arriba; no en la versión de PortableApps.com, que su
+plataforma actualiza). No se descarga ni se instala nada
 hasta que hace clic en un botón.
 Con Ayuda &gt; <b>Buscar actualizaciones automáticamente</b> marcado (el valor predeterminado), la aplicación busca
 discretamente una vez al día, unos segundos después de iniciarse; desmárquelo para no contactar nunca con GitHub. Si su

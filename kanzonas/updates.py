@@ -9,6 +9,10 @@ published with that release, unpack it next to the program. A small script
 waits for KanzonasPDF to close, copies the new files over the old ones (the data folder is left
 alone), and starts it again. The path to KanzonasPDF.exe never changes, so file associations
 ("default PDF app") keep working.
+
+Installed copies update in place too (InstallerUpdater): download the release's setup, check
+its sha256 the same way, close KanzonasPDF (saving first), and run the setup quietly over the
+installation; it starts KanzonasPDF again when it's done.
 """
 
 import hashlib
@@ -117,6 +121,42 @@ def can_self_update():
     from . import paths
     return (os.name == "nt" and getattr(sys, "frozen", False) and paths.is_portable()
             and not paths.platform_updates())
+
+
+def setup_name(version):
+    """The release's installer for version: KanzonasPDF-v1.6-setup.exe."""
+    return "KanzonasPDF-v%s-setup.exe" % version
+
+
+def can_install_update(app_dir=None):
+    """True for a copy installed with KanzonasPDF's setup on Windows (its uninstaller sits
+    beside the program): Update now downloads the new setup and runs it over this one."""
+    import sys
+    from . import paths
+    if os.name != "nt" or not getattr(sys, "frozen", False) or paths.is_portable():
+        return False
+    return os.path.exists(os.path.join(app_dir or paths.app_dir(), "unins000.exe"))
+
+
+def for_all_users(app_dir):
+    """The copy in app_dir was installed for all users (in Program Files), so its update needs
+    Windows' administrator prompt."""
+    here = os.path.normcase(os.path.abspath(app_dir))
+    for var in ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)"):
+        base = os.environ.get(var)
+        if base and here.startswith(os.path.normcase(os.path.abspath(base)) + os.sep):
+            return True
+    return False
+
+
+def installer_command(setup_path, app_dir):
+    """How Update now runs the new setup: quietly (a progress window only, no questions),
+    over the existing installation with its options kept, closing anything still using the
+    files, and starting KanzonasPDF again when done (/RELAUNCH, see installer/KanzonasPDF.iss;
+    the Windows build tests this command line)."""
+    return [setup_path, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
+            "/CLOSEAPPLICATIONS", "/ALLUSERS" if for_all_users(app_dir) else "/CURRENTUSER",
+            "/RELAUNCH"]
 
 
 def _file_sha256(path):
@@ -274,7 +314,7 @@ class PortableUpdater(QObject):
         if not self._expected_hex():
             self.failed.emit(tr("The update was not applied: the release has no sha256 digest."))
             return
-        self.path = os.path.join(self.app_dir, STAGING + ".zip")
+        self.path = self._target()
         try:
             self.file = open(self.path, "wb")
         except OSError as e:
@@ -311,11 +351,42 @@ class PortableUpdater(QObject):
                                     "match the release."))
                 return
             try:
-                self.ready.emit(unpack(self.path, self.app_dir))
+                self.ready.emit(self._finish())
             except (ValueError, OSError, zipfile.BadZipFile) as e:
                 self.failed.emit(str(e))
         finally:
-            try:
-                os.remove(self.path)
-            except OSError:
-                pass
+            self._cleanup()
+
+    # (what InstallerUpdater does differently)
+    def _target(self):
+        return os.path.join(self.app_dir, STAGING + ".zip")
+
+    def _finish(self):
+        return unpack(self.path, self.app_dir)
+
+    def _cleanup(self):
+        try:
+            os.remove(self.path)
+        except OSError:
+            pass
+
+
+class InstallerUpdater(PortableUpdater):
+    """Downloads the new setup for an installed copy into a fresh folder only this user can
+    write to, and checks its sha256 against the release. ready(path of the setup)."""
+
+    def __init__(self, url, version, parent=None, expected_sha256=None):
+        super().__init__(url, "", parent, expected_sha256)
+        self.version = version
+
+    def _target(self):
+        import tempfile
+        return os.path.join(tempfile.mkdtemp(prefix="kzsetup"), setup_name(self.version))
+
+    def _finish(self):
+        self._good = True               # checked: keep it for running
+        return self.path
+
+    def _cleanup(self):
+        if not getattr(self, "_good", False):
+            super()._cleanup()          # a failed or wrong download goes
