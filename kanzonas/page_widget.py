@@ -12,6 +12,7 @@ from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath
 from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
+from . import cad_select
 from .i18n import tr
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
@@ -73,20 +74,6 @@ def square_corner(a, b):
     d = b - a
     side = max(abs(d.x()), abs(d.y()))
     return a + QPointF(side if d.x() >= 0 else -side, side if d.y() >= 0 else -side)
-
-
-def paint_cad_box(p, a, b):
-    """A CAD mouse selection box from a to b: dragged left to right a blue window (takes
-    what lies inside it), right to left a green dashed crossing box (takes what it touches),
-    as in AutoCAD."""
-    if b.x() < a.x():
-        p.setPen(QPen(QColor(0, 150, 60), 1, Qt.DashLine))
-        p.setBrush(QColor(0, 180, 70, 45))
-    else:
-        p.setPen(QPen(QColor(0, 120, 215), 1))
-        p.setBrush(QColor(0, 120, 215, 45))
-    p.drawRect(QRectF(a, b).normalized())
-    p.setBrush(Qt.NoBrush)
 
 
 def shift_held(e):
@@ -184,8 +171,7 @@ class PageWidget(QWidget):
         self._poly = []             # polygon / polyline points so far (widget coords)
         self._poly_hover = None
         self._marquee = False       # Ctrl+drag with Select: selection box only, no text
-        self._cad_box = False       # CAD mouse, Select: the box is a window or crossing box
-        self._cad_click = None      # CAD mouse, Select: (markup pressed on, Shift held)
+        self._cad_down = None       # CAD mode: a press with Select / Edit objects (cad_select.py)
         self._snap_mark = None      # (widget point, "object" | "page" | "grid") last snap
         self._obj_hover = None      # Edit objects: picture under the mouse
         self._obj_edit = None       # Edit objects: dragging / resizing the selected picture
@@ -357,6 +343,7 @@ class PageWidget(QWidget):
 
         tool = self.view.tool
         self._paint_text_selection(p, page, tool)
+        cad_select.paint(self, p)
 
         if tool in FORM_TOOLS:
             p.setPen(QPen(QColor(0, 90, 200), 1, Qt.DashLine))
@@ -497,9 +484,6 @@ class PageWidget(QWidget):
         # a box drag (empty space, or Ctrl) still draws its rectangle when it holds no words yet
         if (self._text_sel is not None and self._drag_start is not None
                 and self._drag_now is not None and self._text_mode == "box"):
-            if self._cad_box:
-                paint_cad_box(p, self._drag_start, self._drag_now)
-                return
             p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
             p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
 
@@ -698,9 +682,7 @@ class PageWidget(QWidget):
             p.setPen(QPen(QColor(0, 120, 215, 200), 2, Qt.DashLine))
             self._draw_object(p, hover, page)
         ed = self._obj_edit
-        if ed is not None and ed["mode"] == "box" and ed.get("now") is not None and ed.get("cad"):
-            paint_cad_box(p, ed["start"], ed["now"])
-        elif ed is not None and ed["mode"] == "box" and ed.get("now") is not None:
+        if ed is not None and ed["mode"] == "box" and ed.get("now") is not None:
             p.setPen(QPen(blue, 1, Qt.DashLine))
             p.setBrush(QColor(0, 120, 215, 30))
             p.drawRect(QRectF(ed["start"], ed["now"]).normalized())
@@ -728,23 +710,12 @@ class PageWidget(QWidget):
                 p.setBrush(Qt.NoBrush)
 
     def _objects_press(self, e, pos, pdf):
-        # CAD mouse: as in AutoCAD, a click or a box adds to the selection, Shift takes out
-        # of it, and only Escape clears it
-        cad = self.view.cad_mouse
-        if self._objects_here() and not ctrl_held(e) and not (cad and shift_held(e)):
+        if self._objects_here() and not ctrl_held(e):
             for hid, r in self._objects_handles().items():
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     self._obj_edit = {"mode": hid, "start": pos, "preview": None}
                     return
         item = self.view.object_at(self.index, pdf)
-        here = {it["n"] for it in self._objects_here()}
-        if cad and (item is None or item["n"] not in here or shift_held(e)):
-            # a click takes the object under the pointer (Shift: out); a drag, also one that
-            # starts on a line of a busy drawing, is a selection box. Only pressing on what's
-            # selected and dragging moves it.
-            self._obj_edit = {"mode": "box", "start": pos, "now": None, "preview": None,
-                              "cad": True, "click": item, "remove": shift_held(e)}
-            return
         if item is None:
             # drag a box from empty space: select everything inside it
             if not ctrl_held(e):
@@ -752,12 +723,10 @@ class PageWidget(QWidget):
             self._obj_edit = {"mode": "box", "start": pos, "now": None, "preview": None,
                               "add": ctrl_held(e)}
             return
-        if cad:
-            pass                        # on what's selected: dragging moves it all
-        elif ctrl_held(e):
+        if ctrl_held(e):
             self.view.select_objects(self.index, [item], add=True)
             return
-        elif item["n"] not in here:
+        if item["n"] not in {it["n"] for it in self._objects_here()}:
             self.view.select_objects(self.index, [item])
         self._obj_edit = {"mode": "move", "start": pos, "preview": None}
         self.update()
@@ -888,25 +857,9 @@ class PageWidget(QWidget):
         self.update()
         if ed["mode"] == "box":
             if ed.get("now") is None:
-                item = ed.get("click")
-                here = {it["n"] for it in self._objects_here()}
-                if item is not None and (item["n"] in here) == bool(ed.get("remove")):
-                    self.view.select_objects(self.index, [item], add=True)     # in or out
                 return
             q = QRectF(ed["start"], pos).normalized()
             box = pymupdf.Rect(self.to_pdf(q.topLeft()), self.to_pdf(q.bottomRight())).normalize()
-            if ed.get("cad"):
-                found = self.view.cad_objects(self.index, box, crossing=pos.x() < ed["start"].x())
-                took = {it["n"] for it in found}
-                have = self._objects_here()
-                if ed.get("remove"):
-                    self.view.select_objects(self.index, [it for it in have
-                                                          if it["n"] not in took])
-                else:
-                    known = {it["n"] for it in have}
-                    self.view.select_objects(self.index, have + [it for it in found
-                                                                 if it["n"] not in known])
-                return
             self.view.select_objects(self.index, self.view.objects_in(self.index, box),
                                      add=ed.get("add", False))
             return
@@ -1061,11 +1014,10 @@ class PageWidget(QWidget):
                     self.setCursor(handle_cursor(hid))
                     return
         item = self.view.object_at(self.index, self.to_pdf(pos))
-        if item is not None and not (self.view.cad_mouse and item["n"] not in
-                                     {it["n"] for it in self._objects_here()}):
+        if item is not None and not self.view.cad_select:
             self.setCursor(Qt.SizeAllCursor)
         else:
-            self.unsetCursor()          # (CAD mouse: dragging from there draws a box)
+            self.unsetCursor()          # (CAD mode: dragging draws a lasso, nothing moves)
         key = item["n"] if item is not None else None
         if key != (self._obj_hover["n"] if self._obj_hover is not None else None):
             self._obj_hover = item
@@ -1174,10 +1126,14 @@ class PageWidget(QWidget):
             link = self.view.link_to_follow(self.index, pdf)
             if link is not None:
                 self._link_press = (link, pos)
+        if cad_select.active(self):
+            cad_select.press(self, e, pos, pdf)
+            return
         if tool == "hand":
             # like Adobe and PDF-XChange: clicking a markup with the Hand selects it (to
             # move, restyle or delete), unless it's a link; anywhere else drags the page
             if self._link_press is None and self.view.show_markups and \
+                    self.view.hand_selects and \
                     self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
                 return
             self.view.begin_pan(e.globalPosition())
@@ -1233,20 +1189,16 @@ class PageWidget(QWidget):
             self._drag_start = self._drag_now = pos
             return
         if tool == "select":
-            if self._link_press is None and self._press_on_markup(
-                    pos, pdf, ctrl_held(e), cards=True, cad=self.view.cad_mouse,
-                    remove=shift_held(e)):
+            if self._link_press is None and self._press_on_markup(pos, pdf, ctrl_held(e),
+                                                                  cards=True):
                 return
         if tool in TEXT_TOOLS:
             if self._triple_click(e):
                 return
-            # CAD mouse: Select drags window and crossing boxes, adding to the selection
-            self._cad_box = tool == "select" and self.view.cad_mouse
-            if not self._cad_box:
-                self.view.clear_text_selection()
+            self.view.clear_text_selection()
             self._drag_start = self._drag_now = pos
             mode, words = self.view.text_selection(self.index, pdf, pdf)
-            self._marquee = tool == "select" and (ctrl_held(e) or self._cad_box)
+            self._marquee = tool == "select" and ctrl_held(e)
             self._text_mode = "box" if self._marquee else mode
             self._text_sel = (self._text_mode, [] if self._marquee else words)
             if self._marquee:
@@ -1274,15 +1226,12 @@ class PageWidget(QWidget):
         elif tool in ("note", "attach"):
             self.view.apply_point_tool(self.index, tool, pdf)
 
-    def _press_on_markup(self, pos, pdf, ctrl=False, cards=False, cad=False, remove=False):
+    def _press_on_markup(self, pos, pdf, ctrl=False, cards=False):
         """Handle a press on a selected markup's handle or on any markup: select it and start
         moving / resizing / rotating. Ctrl+click adds to / removes from the selection; pressing
         on one of several selected markups moves them all. Returns False when the press is on
         empty page (the caller draws or selects text); the selection is cleared then unless
-        Ctrl is held. cad (CAD mouse): a click adds to the selection, remove (Shift) takes out
-        of it, and a click on empty page keeps it."""
-        if cad:
-            return self._cad_press_on_markup(pos, pdf, remove)
+        Ctrl is held."""
         model = self._selected_here()
         if model is not None and not ctrl:
             for hid, r in self._handles(model).items():
@@ -1314,35 +1263,6 @@ class PageWidget(QWidget):
         if self.view.selection is not None and not ctrl:
             self.view.clear_selection()
         return False
-
-    def _cad_press_on_markup(self, pos, pdf, remove):
-        self._cad_click = None
-        model = self._selected_here()
-        if model is not None and not remove and not self.view.extra:
-            for hid, r in self._handles(model).items():
-                if r.adjusted(-3, -3, 3, 3).contains(pos):
-                    self._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
-                    return True
-        xref = self._card_at(pos)
-        if xref is None:
-            xref = self.view.annot_at(self.index, pdf)
-        v = self.view
-        have = v.selected_xrefs() if v.selection is not None and v.selection[0] == self.index \
-            else []
-        if xref is None or remove or xref not in have:
-            # a click takes the markup under the pointer (Shift: out of the selection); a
-            # drag, also one starting on a markup, is a selection box (see _release)
-            self._cad_click = (xref, remove)
-            return False
-        # pressing on what's selected and dragging moves it all
-        if v.extra:
-            group = [(x, m) for x, m in v.selected_models() if A.movable(m)]
-            self._edit = {"mode": "group", "start": pos, "group": group, "preview": None}
-        else:
-            model = self._selected_here()
-            if model is not None and A.movable(model):
-                self._edit = {"mode": "move", "start": pos, "model": model, "preview": None}
-        return True
 
     def _snapped_delta(self, model, pos, snap):
         """PDF move vector for a drag, snapping the markup's top-left corner (as displayed)."""
@@ -1433,6 +1353,11 @@ class PageWidget(QWidget):
             return
         pos = e.position()
         tool = self.view.tool
+        if self._cad_down is not None and e.buttons():
+            cad_select.move(self, e, pos)
+            return
+        if not e.buttons():
+            cad_select.hover(self, e)
         if not e.buttons():
             if tool in SIGN_TOOLS or tool == "stamp":
                 self._ghost = pos
@@ -1510,12 +1435,6 @@ class PageWidget(QWidget):
                 self.update()
         elif self._text_sel is not None:
             self._drag_now = pos
-            if self._cad_box:
-                box = pymupdf.Rect(self.to_pdf(self._drag_start), self.to_pdf(pos)).normalize()
-                self._text_mode = "box"
-                self.view._set_text_drag([(self.index, "box", self.view.cad_text(
-                    self.index, box, pos.x() < self._drag_start.x()))])
-                return
             end_i, end_pt = self.view.page_point_from(self, pos)
             spans = self.view.text_selection_span(
                 self.index, self.to_pdf(self._drag_start), end_i, end_pt, box=self._marquee)
@@ -1547,9 +1466,8 @@ class PageWidget(QWidget):
         if over is None:
             over = self._card_at(pos)
         if over is not None:
-            if self.view.cad_mouse and self.view.tool == "select" and \
-                    over not in self.view.selected_xrefs():
-                self.unsetCursor()      # CAD mouse: dragging from there draws a box
+            if self.view.cad_select and self.view.tool == "select":
+                self.unsetCursor()      # CAD mode: dragging draws a lasso, nothing moves
             else:
                 self.setCursor(Qt.SizeAllCursor)
             card = self._card_at(pos)
@@ -1580,6 +1498,9 @@ class PageWidget(QWidget):
             return
         tool = self.view.tool
         pos = e.position()
+        if self._cad_down is not None:
+            cad_select.release(self, e, pos)
+            return
         if self._text_move is not None:
             tm, self._text_move = self._text_move, None
             self.unsetCursor()
@@ -1620,26 +1541,11 @@ class PageWidget(QWidget):
             end_i, end_pt = self.view.page_point_from(self, pos)
             start_pt = self.to_pdf(a)
             marquee = self._marquee
-            cad_box, self._cad_box = self._cad_box, False
             self._text_sel = None
             self._text_mode = None
             self._marquee = False
             self._drag_start = self._drag_now = None
             self.view._set_text_drag(None)
-            if cad_box:
-                click, self._cad_click = self._cad_click, None
-                if (b - a).manhattanLength() >= 3:
-                    box = pymupdf.Rect(start_pt, self.to_pdf(b)).normalize()
-                    self.view.cad_select(self.index, box, crossing=b.x() < a.x(),
-                                         remove=shift_held(e))
-                elif click is not None and click[0] is not None:
-                    v = self.view
-                    xref, remove = click
-                    have = v.selected_xrefs() if v.selection is not None and \
-                        v.selection[0] == self.index else []
-                    if (xref in have) == remove:
-                        v.select_xref(self.index, xref, add=bool(have))   # in or out
-                return
             if (b - a).manhattanLength() >= 3:
                 if tool == "select" and mode == "box" and end_i == self.index:
                     # a box drawn from empty space selects the markups inside it

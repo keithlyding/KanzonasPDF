@@ -1,5 +1,6 @@
-"""Preferences: the Scroll one page per wheel step option says, in plain sight (not only in a
-tooltip), that it applies only while the whole page fits in the window."""
+"""Preferences: the Scroll one page per wheel step option (of the Standard and Hand mouse modes)
+says, in plain sight (not only in a tooltip), that it applies only while the whole page fits
+in the window."""
 import os
 import sys
 import unittest
@@ -24,13 +25,14 @@ class PreferencesNotes(unittest.TestCase):
         self.addCleanup(d.close)
         boxes = [b for b in d.findChildren(QCheckBox)
                  if b.text() == "Scroll one page per wheel step"]
-        self.assertEqual(len(boxes), 1)
+        self.assertEqual(len(boxes), 2)                 # Standard and Hand mouse modes
         notes = [lab for lab in d.findChildren(QLabel)
                  if lab.text().startswith("Only when the whole page fits in the window")]
-        self.assertEqual(len(notes), 1)
-        self.assertTrue(notes[0].wordWrap())
-        # same parent page as the box it explains
-        self.assertIs(notes[0].parentWidget(), boxes[0].parentWidget())
+        self.assertEqual(len(notes), 2)
+        for box, note in zip(boxes, notes):
+            self.assertTrue(note.wordWrap())
+            # same parent as the box it explains
+            self.assertIs(note.parentWidget(), box.parentWidget())
 
 
 if __name__ == "__main__":

@@ -1,8 +1,11 @@
-"""CAD mouse selection, as in AutoCAD: a box dragged left to right (blue window) takes what
-lies inside it, right to left (green crossing) what it touches; a click or a box adds to the
-selection, Shift takes out of it, Escape clears it. With Select for markups and text, with
-Edit objects for the drawing's own lines, text and pictures. A plus cursor in CAD mouse mode.
-Free page movement: the page can be dragged past its edges even when it fits the window.
+"""CAD mode selection, as in AutoCAD: a box left to right (blue window) takes what lies inside
+it, right to left (green crossing) what it touches; a click or a box adds to the selection,
+Shift takes out of it, Escape clears it. Click, move, click draws the box; holding the button
+draws a lasso (rightward a window, leftward a crossing one); dragging moves nothing. With
+Select for markups and text, with Edit objects for the drawing's own lines, text and
+pictures. A plus cursor in CAD mode. Free page movement: the page can be dragged past its
+edges even when it fits the window. (Most tests turn click-click and the lasso off, so a
+press-drag-release draws a box.)
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_cad_select
 """
@@ -58,9 +61,10 @@ class Geometry(unittest.TestCase):
 
 class CadMouse(unittest.TestCase):
     def setUp(self):
-        old = DocumentView.cad_mouse
-        self.addCleanup(setattr, DocumentView, "cad_mouse", old)
-        DocumentView.cad_mouse = True
+        for key in ("cad_select", "plus_cursor", "click_click", "lasso"):
+            self.addCleanup(setattr, DocumentView, key, getattr(DocumentView, key))
+        DocumentView.cad_select = DocumentView.plus_cursor = True
+        DocumentView.click_click = DocumentView.lasso = False     # (press, drag, release: a box)
 
     def view(self, build, tool):
         v = DocumentView(saved(build))
@@ -72,12 +76,12 @@ class CadMouse(unittest.TestCase):
         v.set_tool(tool)
         return v
 
-    def mouse(self, v, kind, pt, mods=Qt.NoModifier):
+    def mouse(self, v, kind, pt, mods=Qt.NoModifier, held=True):
         w = v.pages[0]
         pos = QPointF(w.to_screen_pt(pymupdf.Point(pt)))
         t = {"press": QEvent.MouseButtonPress, "move": QEvent.MouseMove,
              "release": QEvent.MouseButtonRelease}[kind]
-        buttons = Qt.NoButton if kind == "release" else Qt.LeftButton
+        buttons = Qt.NoButton if kind == "release" or not held else Qt.LeftButton
         ev = QMouseEvent(t, pos, w.mapToGlobal(pos), Qt.LeftButton, buttons, mods)
         {"press": w.mousePressEvent, "move": w.mouseMoveEvent,
          "release": w.mouseReleaseEvent}[kind](ev)
@@ -137,15 +141,51 @@ class CadMouse(unittest.TestCase):
         self.drag(v, (420, 210), (50, 190), Qt.ShiftModifier)   # Shift+crossing takes out
         self.assertEqual(self.chosen(v), [(100, 100, "shape")])
 
-    def test_a_drag_from_a_line_is_a_box_only_whats_selected_moves(self):
+    def test_dragging_moves_nothing_it_selects(self):
         v = self.view(drawing, "editobjects")
-        before = v.doc[0].get_drawings()[1]["rect"]
+        before = [d["rect"] for d in v.doc[0].get_drawings()]
         self.drag(v, (200, 200), (90, 90))                      # starts on the long line
         self.assertEqual(self.chosen(v), [(60, 200, "shape"), (100, 100, "shape")])
-        self.assertEqual(v.doc[0].get_drawings()[1]["rect"], before)      # not moved
-        self.drag(v, (200, 200), (200, 230))                    # on it, selected: moves
-        moved = [d["rect"] for d in v.doc[0].get_drawings()]
-        self.assertTrue(any(abs(r.y0 - 230) < 1 for r in moved), moved)
+        self.drag(v, (200, 200), (200, 230))                    # on it, selected: still a box
+        self.assertEqual([d["rect"] for d in v.doc[0].get_drawings()], before)
+
+    def test_click_move_click_draws_the_box(self):
+        DocumentView.click_click = True
+        v = self.view(drawing, "editobjects")
+        self.click(v, (80, 80))                                 # first corner, on empty paper
+        self.assertIsNotNone(v._cad_pick)
+        self.mouse(v, "move", (180, 220), held=False)           # the box follows the pointer
+        self.assertEqual(v._cad_pick["now"], QPointF(v.pages[0].to_screen_pt(
+            pymupdf.Point(180, 220))))
+        self.click(v, (180, 220))                               # second corner
+        self.assertIsNone(v._cad_pick)
+        self.assertEqual(self.chosen(v), [(100, 100, "shape")])  # left to right: window
+        self.click(v, (180, 220))                               # on the line? no: empty
+        self.click(v, (80, 80))                                 # right to left: crossing
+        self.assertEqual(self.chosen(v), [(60, 200, "shape"), (100, 100, "shape")])
+        self.click(v, (500, 600))
+        self.escape(v)                                          # Escape drops a started box
+        self.assertIsNone(v._cad_pick)
+        self.assertEqual(len(v.selected_objects()), 2)          # (and keeps the selection)
+
+    def test_a_lasso_follows_the_pointer(self):
+        DocumentView.lasso = True
+        v = self.view(drawing, "editobjects")
+        # rightward: a window lasso around the short line (100..140, 100) only
+        loop = [(90, 90), (150, 85), (155, 115), (95, 120), (85, 100)]
+        self.mouse(v, "press", loop[0])
+        for pt in loop[1:]:
+            self.mouse(v, "move", pt)
+        self.mouse(v, "release", loop[-1])
+        self.assertEqual(self.chosen(v), [(100, 100, "shape")])
+        self.escape(v)
+        # leftward: a crossing lasso over the long line and the plumb line
+        loop = [(320, 190), (280, 185), (270, 215), (330, 220)]
+        self.mouse(v, "press", loop[0])
+        for pt in loop[1:]:
+            self.mouse(v, "move", pt)
+        self.mouse(v, "release", loop[-1])
+        self.assertEqual(self.chosen(v), [(60, 200, "shape"), (300, 60, "shape")])
 
     # ---- Select: markups and text ---------------------------------------------------
     def markups(self, p):
@@ -186,15 +226,11 @@ class CadMouse(unittest.TestCase):
         self.assertEqual(len(v.selected_xrefs()), 1)
         self.drag(v, (200, 250), (90, 90))                      # from the line: a box
         self.assertEqual(len(v.selected_xrefs()), 2)
-        line = [x for x, m in v.selected_models() if m["kind"] == "line"]
-        self.assertEqual(len(line), 1)
-        page = v.doc[0]                                         # (alive while its annot is)
-        r0 = page.load_annot(line[0]).rect
-        self.drag(v, (200, 250), (200, 280))                    # on it, selected: moves
-        page = v.doc[0]                                         # (a moved markup is made anew)
-        lines = [a.rect for a in page.annots() if a.type[0] == pymupdf.PDF_ANNOT_LINE]
-        self.assertEqual(len(lines), 1)
-        self.assertAlmostEqual(lines[0].y0, r0.y0 + 30, delta=1)
+        page = v.doc[0]                                         # (alive while its annots are)
+        before = sorted(tuple(a.rect) for a in page.annots())
+        self.drag(v, (200, 250), (200, 280))                    # on it, selected: no move
+        page = v.doc[0]
+        self.assertEqual(sorted(tuple(a.rect) for a in page.annots()), before)
 
     def test_select_text_by_window_and_crossing(self):
         v = self.view(self.markups, "select")
@@ -214,17 +250,15 @@ class CadMouse(unittest.TestCase):
         self.assertEqual(v.viewport().cursor().shape(), Qt.CrossCursor)
         v.set_tool("hand")
         self.assertEqual(v.viewport().cursor().shape(), Qt.OpenHandCursor)
-        DocumentView.cad_mouse = False
+        DocumentView.plus_cursor = False
         v.set_tool("select")
         self.assertEqual(v.viewport().cursor().shape(), Qt.IBeamCursor)
 
 
 class FreeMovement(unittest.TestCase):
     def test_the_hand_drags_a_page_that_fits_the_window(self):
-        old = DocumentView.free_pan, DocumentView.cad_mouse
-        self.addCleanup(lambda: (setattr(DocumentView, "free_pan", old[0]),
-                                 setattr(DocumentView, "cad_mouse", old[1])))
-        DocumentView.cad_mouse = False
+        old = DocumentView.free_pan
+        self.addCleanup(setattr, DocumentView, "free_pan", old)
         DocumentView.free_pan = False
         v = DocumentView(saved(drawing))
         self.addCleanup(v.close_doc)

@@ -437,25 +437,145 @@ class Objects:
         box = pymupdf.Rect(box)
         return [it for it in self.items if box.contains(it["rect"])]
 
-    def touching(self, box):
-        """Objects a crossing box (CAD mouse, dragged right to left) takes: inside it, or with
-        a line running through it; a filled shape or a picture also when the box is on it. A
-        group filling the page is only taken whole (inside the box)."""
-        box = pymupdf.Rect(box)
+    def pick(self, region, crossing=False):
+        """Objects a CAD selection region (Box or Lasso) takes. A window (crossing False)
+        takes the ones lying entirely inside it; a crossing region also the ones it touches:
+        a line running through it, a filled shape or a picture it is on. A group filling the
+        page is only taken whole (inside a window)."""
         out = []
+        bounds = region.bounds
         for it in self.items:
             r = it["rect"]
-            if box.contains(r):
+            if not overlap(r, bounds):
+                continue
+            pic = it["kind"] in ("picture", "group")
+            if region.contains_rect(r) if pic or isinstance(region, Box) else \
+                    region.contains_lines(self.lines(it)):
                 out.append(it)
-            elif it.get("whole") or (r.width and r.height and not r.intersects(box)):
-                continue            # (a level or plumb line has an empty rect: test its line)
-            elif it["kind"] in ("picture", "group"):
-                out.append(it)
-            elif lines_meet(self.lines(it), box) or \
-                    it["fill"] and _inside(self.lines(it), pymupdf.Point(
-                        (box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2)):
+            elif not crossing or it.get("whole"):
+                continue
+            elif pic:
+                q = it["quad"]
+                if region.touches_lines([[q.ul, q.ur, q.lr, q.ll, q.ul]]) or \
+                        pymupdf.Point(region.inner_point()) in q:
+                    out.append(it)
+            elif region.touches_lines(self.lines(it)) or \
+                    it["fill"] and _inside(self.lines(it), pymupdf.Point(region.inner_point())):
                 out.append(it)
         return out
+
+
+def overlap(a, b):
+    """Rects a and b share a point (also a level or plumb line's empty rect)."""
+    return a.x0 <= b.x1 and b.x0 <= a.x1 and a.y0 <= b.y1 and b.y0 <= a.y1
+
+
+class Box:
+    """A rectangular CAD selection region (window or crossing box)."""
+
+    def __init__(self, rect):
+        self.bounds = pymupdf.Rect(rect).normalize()
+
+    def inner_point(self):
+        b = self.bounds
+        return ((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2)
+
+    def contains_point(self, p):
+        b = self.bounds
+        return b.x0 <= p[0] <= b.x1 and b.y0 <= p[1] <= b.y1
+
+    def contains_rect(self, r):
+        b = self.bounds
+        return b.x0 <= r.x0 and r.x1 <= b.x1 and b.y0 <= r.y0 and r.y1 <= b.y1
+
+    def contains_lines(self, lines):
+        return all(self.contains_point(p) for line in lines for p in line)
+
+    def touches_rect(self, r):
+        return overlap(pymupdf.Rect(r), self.bounds)
+
+    def touches_lines(self, lines):
+        return lines_meet(lines, self.bounds)
+
+
+class Lasso:
+    """A freehand CAD selection region (its outline closes back to its start)."""
+
+    def __init__(self, points):
+        self.pts = [(float(p[0]), float(p[1])) for p in points]
+        xs = [p[0] for p in self.pts]
+        ys = [p[1] for p in self.pts]
+        self.bounds = pymupdf.Rect(min(xs), min(ys), max(xs), max(ys))
+        self.edges = list(zip(self.pts, self.pts[1:] + self.pts[:1]))
+
+    def inner_point(self):
+        return self.pts[0]
+
+    def contains_point(self, p):
+        if not (self.bounds.x0 <= p[0] <= self.bounds.x1 and
+                self.bounds.y0 <= p[1] <= self.bounds.y1):
+            return False
+        hit = False
+        x, y = p[0], p[1]
+        for (x0, y0), (x1, y1) in self.edges:
+            if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+                hit = not hit
+        return hit
+
+    def _cuts(self, a, b):
+        """Segment ab crosses the lasso's outline."""
+        lo_x, hi_x = min(a[0], b[0]), max(a[0], b[0])
+        lo_y, hi_y = min(a[1], b[1]), max(a[1], b[1])
+        if hi_x < self.bounds.x0 or lo_x > self.bounds.x1 or hi_y < self.bounds.y0 or \
+                lo_y > self.bounds.y1:
+            return False
+        for c, d in self.edges:
+            if max(c[0], d[0]) < lo_x or min(c[0], d[0]) > hi_x or \
+                    max(c[1], d[1]) < lo_y or min(c[1], d[1]) > hi_y:
+                continue
+            if _segments_cross(a, b, c, d):
+                return True
+        return False
+
+    def contains_lines(self, lines):
+        pts = [p for line in lines for p in line]
+        if not pts or not all(self.contains_point(p) for p in pts):
+            return False
+        return not any(self._cuts(a, b) for line in lines for a, b in zip(line, line[1:]))
+
+    def touches_lines(self, lines):
+        for line in lines:
+            if any(self.contains_point(p) for p in line):
+                return True
+            if any(self._cuts(a, b) for a, b in zip(line, line[1:])):
+                return True
+        return False
+
+    def contains_rect(self, r):
+        r = pymupdf.Rect(r)
+        return self.contains_lines([[r.tl, r.tr, r.br, r.bl, r.tl]])
+
+    def touches_rect(self, r):
+        r = pymupdf.Rect(r)
+        if self.touches_lines([[r.tl, r.tr, r.br, r.bl, r.tl]]):
+            return True
+        return any(r.x0 <= p[0] <= r.x1 and r.y0 <= p[1] <= r.y1 for p in self.pts[:1])
+
+
+def _segments_cross(a, b, c, d):
+    """Segments ab and cd meet."""
+    def orient(p, q, r):
+        v = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+        return (v > 1e-12) - (v < -1e-12)
+
+    def on(p, q, r):
+        return min(p[0], r[0]) - 1e-9 <= q[0] <= max(p[0], r[0]) + 1e-9 and \
+            min(p[1], r[1]) - 1e-9 <= q[1] <= max(p[1], r[1]) + 1e-9
+    o1, o2, o3, o4 = orient(a, b, c), orient(a, b, d), orient(c, d, a), orient(c, d, b)
+    if o1 != o2 and o3 != o4:
+        return True
+    return (o1 == 0 and on(a, c, b)) or (o2 == 0 and on(a, d, b)) or \
+        (o3 == 0 and on(c, a, d)) or (o4 == 0 and on(c, b, d))
 
 
 def segment_meets(a, b, box):

@@ -256,7 +256,7 @@ class DocumentView(QScrollArea):
         if lay is None:
             return
         vp = self.viewport()
-        if self.cad_mouse or self.free_pan:
+        if self.free_pan:
             mx = max(PAGE_GAP, int(vp.width() * 0.9))
             my = max(PAGE_GAP, int(vp.height() * 0.9))
         else:
@@ -674,8 +674,16 @@ class DocumentView(QScrollArea):
 
     # CAD-style mouse (View menu): the wheel zooms around the cursor, like AutoCAD.
     # Holding the wheel (middle button) down and dragging pans in either mode.
-    cad_mouse = False
-    free_pan = False            # View > Free page movement: the page can be dragged past its edges
+    # Mouse mode (mouse_modes.py sets these from Preferences > Mouse)
+    mouse_mode = "hand"         # "standard", "hand" or "cad"
+    wheel_zoom = False          # CAD: the wheel zooms at the cursor, Ctrl+wheel scrolls
+    plus_cursor = False         # CAD: a plus pointer with every tool but the Hand
+    cad_select = False          # CAD: window / crossing boxes; clicks add, Shift takes out
+    click_click = False         # CAD: click, move, click draws the selection box
+    lasso = False               # CAD: holding the button and dragging draws a lasso
+    _cad_pick = None            # CAD: a click, move, click box in progress (cad_select.py)
+    hand_selects = True         # Hand: clicking a markup selects it
+    free_pan = False            # Free page movement: the page can be dragged past its edges
     page_wheel = False          # one wheel step = one page when the page fits the window
     night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
     thin_lines = True           # Enhance thin lines: lines at least a pixel wide on screen
@@ -706,11 +714,11 @@ class DocumentView(QScrollArea):
         if dx and not dy:
             scroll(self.horizontalScrollBar(), dx)
             return
-        if self.cad_mouse and ctrl:
+        if self.wheel_zoom and ctrl:
             # CAD mouse (Bluebeam-style): the wheel zooms; Ctrl+wheel scrolls up and down
             scroll(self.verticalScrollBar(), dy or dx)
             return
-        if self.cad_mouse:
+        if self.wheel_zoom:
             if dy:
                 vp = self.viewport().mapFromGlobal(QCursor.pos())
                 self.zoom_at(self.zoom * 1.15 ** (dy / 120.0), vp)
@@ -787,6 +795,8 @@ class DocumentView(QScrollArea):
         self._tool_cursor()
 
     def set_tool(self, tool):
+        from . import cad_select
+        cad_select.cancel(self)
         self.tool = tool
         for w in getattr(self, "pages", []):
             # a stamp / signature preview or a shape half-drawn belongs to the old tool
@@ -800,13 +810,13 @@ class DocumentView(QScrollArea):
 
     def _tool_cursor(self):
         tool = self.tool
-        if tool == "eraser" and not self.cad_mouse:
+        if tool == "eraser" and not self.plus_cursor:
             self.viewport().setCursor(eraser_cursor())
             return
         text_cursor = ("select", "edittext", "addtext", "highlight", "underline", "strikeout", "comment",
                        "redact")
         cursors = {"hand": Qt.OpenHandCursor, **{t: Qt.IBeamCursor for t in text_cursor}}
-        if self.cad_mouse and tool != "hand":
+        if self.plus_cursor and tool != "hand":
             cursors = {}                # CAD mouse: a plus, as in CAD programs
         self.viewport().setCursor(cursors.get(tool, Qt.CrossCursor))
 
@@ -2801,33 +2811,30 @@ class DocumentView(QScrollArea):
         return out
 
     @classmethod
-    def _annot_touches(cls, annot, box):
-        """A crossing box (CAD mouse, dragged right to left) takes this markup: its line or
-        outline runs through the box, or the box is on its filling, its highlighted words,
-        or (text boxes, notes, stamps and the like) anywhere on it."""
-        from .page_objects import lines_meet
-        if not (annot.rect + (-1, -1, 1, 1)).intersects(box):
-            return False
+    def _annot_geometry(cls, annot):
+        """(lines, closed outline or None, filled) of a markup, for CAD selection regions:
+        the lines it draws (or its box), and for rectangles, ellipses and polygons the outline
+        whose inside a crossing region can be on."""
         t = annot.type[0]
         v = annot.vertices or []
-        if t == pymupdf.PDF_ANNOT_INK:
-            return lines_meet(v, box)
-        if t in (pymupdf.PDF_ANNOT_LINE, pymupdf.PDF_ANNOT_POLY_LINE):
-            return lines_meet([v], box)
+        r = annot.rect
+        box = [[r.tl, r.tr, r.br, r.bl, r.tl]]
+        if t == pymupdf.PDF_ANNOT_INK and v:
+            return [list(s) for s in v], None, False
+        if t in (pymupdf.PDF_ANNOT_LINE, pymupdf.PDF_ANNOT_POLY_LINE) and v:
+            return [list(v)], None, False
         if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
-                 pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
-            return any(pymupdf.Quad(v[k:k + 4]).rect.intersects(box)
-                       for k in range(0, len(v) - 3, 4))
+                 pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY) and v:
+            quads = [pymupdf.Quad(v[k:k + 4]).rect for k in range(0, len(v) - 3, 4)]
+            return [[q.tl, q.tr, q.br, q.bl, q.tl] for q in quads], "quads", True
         if t not in (pymupdf.PDF_ANNOT_SQUARE, pymupdf.PDF_ANNOT_CIRCLE,
                      pymupdf.PDF_ANNOT_POLYGON):
-            return True
+            return box, "box", True
         filled = bool((annot.colors or {}).get("fill"))
-        mid = pymupdf.Point((box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2)
         if t == pymupdf.PDF_ANNOT_POLYGON and len(v) >= 2:
             outline = list(v) + [v[0]]
         else:
             rd = cls._annot_rd(annot)
-            r = annot.rect
             inner = pymupdf.Rect(r.x0 + rd[0], r.y0 + rd[1], r.x1 - rd[2], r.y1 - rd[3])
             if t == pymupdf.PDF_ANNOT_SQUARE:
                 outline = [inner.tl, inner.tr, inner.br, inner.bl, inner.tl]
@@ -2836,9 +2843,29 @@ class DocumentView(QScrollArea):
                 a, b = inner.width / 2, inner.height / 2
                 outline = [(cx + a * math.cos(k * math.pi / 24),
                             cy + b * math.sin(k * math.pi / 24)) for k in range(49)]
-        if lines_meet([outline], box):
+        return [outline], "outline", filled
+
+    @classmethod
+    def _annot_picked(cls, annot, region, crossing):
+        """A CAD selection region (page_objects.Box or Lasso) takes this markup: a window one
+        lying entirely inside it; a crossing one also when its line or outline runs through
+        the region, or the region is on its filling, its highlighted words, or (text boxes,
+        notes, stamps and the like) anywhere on it."""
+        from .page_objects import Box, overlap
+        if not overlap(annot.rect + (-1, -1, 1, 1), region.bounds):
+            return False
+        lines, closed, filled = cls._annot_geometry(annot)
+        if region.contains_rect(annot.rect) if isinstance(region, Box) else \
+                region.contains_lines(lines):
             return True
-        return filled and cls._in_polygon(mid, outline[:-1])
+        if not crossing:
+            return False
+        if region.touches_lines(lines):
+            return True
+        if closed in ("box", "quads") or filled:
+            inner = pymupdf.Point(region.inner_point())
+            return any(cls._in_polygon(inner, line[:-1]) for line in lines)
+        return False
 
     @staticmethod
     def _annot_rd(annot):
@@ -2850,11 +2877,12 @@ class DocumentView(QScrollArea):
             rd = []
         return rd if len(rd) == 4 else [0.0] * 4
 
-    def cad_select(self, index, box, crossing=False, remove=False):
-        """CAD mouse, Select tool: a box dragged left to right (a window) takes the markups
-        lying entirely inside it, right to left (crossing) the ones it touches. They are added
-        to what's selected (Shift: taken out of it). A box that takes no markups takes text
-        the same way: characters inside it, or touched. Returns what it took."""
+    def cad_select_region(self, index, region, crossing=False, remove=False):
+        """CAD mode, Select tool: a window (a box dragged left to right, or a lasso drawn
+        rightward) takes the markups lying entirely inside it, a crossing one (leftward) the
+        ones it touches; region is a page_objects.Box or Lasso. They are added to what's
+        selected (Shift: taken out of it). A region that takes no markups takes text the
+        same way: characters inside it, or touched. Returns what it took."""
         page = self.doc[index]
         found = []
         if self.show_markups:
@@ -2862,8 +2890,7 @@ class DocumentView(QScrollArea):
                 if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
                         pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
                     continue
-                if (box.contains(an.rect) or crossing and self._annot_touches(an, box)) and \
-                        annotations.read(an) is not None:
+                if self._annot_picked(an, region, crossing) and annotations.read(an) is not None:
                     found.append(an.xref)
         if found:
             have = self.selected_xrefs() if self.selection is not None and \
@@ -2873,7 +2900,7 @@ class DocumentView(QScrollArea):
             else:
                 self._set_selection(index, have + [x for x in found if x not in have])
             return "markups"
-        words = self.cad_text(index, box, crossing)
+        words = self.cad_text(index, region, crossing)
         have = [ws for i, ws in (self.text_sel or []) if i == index]
         have = set(have[0]) if have else set()
         took = set(words)
@@ -2881,11 +2908,17 @@ class DocumentView(QScrollArea):
         self.set_text_selection(index, [w for w in self._words(index) if w in keep])
         return "text" if words else None
 
-    def cad_text(self, index, box, crossing=False):
-        """The characters a CAD mouse box takes: inside a window, touched by a crossing box."""
-        if crossing:
-            return [w for w in self._words(index) if pymupdf.Rect(w[:4]).intersects(box)]
-        return [w for w in self._words(index) if box.contains(pymupdf.Rect(w[:4]))]
+    def cad_text(self, index, region, crossing=False):
+        """The characters a CAD region takes: inside a window, touched by a crossing one."""
+        from .page_objects import overlap
+        out = []
+        for w in self._words(index):
+            r = pymupdf.Rect(w[:4])
+            if not overlap(r, region.bounds):
+                continue
+            if region.touches_rect(r) if crossing else region.contains_rect(r):
+                out.append(w)
+        return out
 
     def select_in_box(self, index, box, add=False):
         """Select the markups lying entirely inside box. Returns how many."""
@@ -3206,6 +3239,10 @@ class DocumentView(QScrollArea):
         return self._card_cache[index]
 
     def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Escape:
+            from . import cad_select
+            if cad_select.cancel(self):
+                return
         drawing = [w for w in self.pages if w._poly]
         if drawing and e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):
             drawing[0].finish_poly(cancel=e.key() == Qt.Key_Escape)
@@ -3216,7 +3253,7 @@ class DocumentView(QScrollArea):
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.obj_sel is not None:
             self.delete_objects()
             return
-        if e.key() == Qt.Key_Escape and self.cad_mouse and (
+        if e.key() == Qt.Key_Escape and self.cad_select and (
                 self.obj_sel is not None or self.text_sel or self.selection is not None):
             # CAD mouse: clicks and boxes only add to the selection; Escape clears all of it
             self.clear_object_selection()
@@ -3842,20 +3879,20 @@ class DocumentView(QScrollArea):
         found = objs.inside(box) if objs is not None else []
         return found or [it for it in self.text_objects(index) if box.contains(it["rect"])]
 
-    def cad_objects(self, index, box, crossing=False):
-        """What a CAD mouse box takes with Edit objects, as in CAD programs: dragged left to
-        right (a window), the pictures, shapes and text lying entirely inside it; right to
-        left (crossing), also the ones it touches."""
+    def cad_objects(self, index, region, crossing=False):
+        """What a CAD selection region (page_objects.Box or Lasso) takes with Edit objects, as
+        in CAD programs: a window, the pictures, shapes and text lying entirely inside it; a
+        crossing one, also the ones it touches."""
+        from .page_objects import overlap
         objs = self.content_objects(index)
-        box = pymupdf.Rect(box)
-        if crossing:
-            found = objs.touching(box) if objs is not None else []
-            texts = [it for it in self.text_objects(index)
-                     if box.contains(it["rect"]) or any(
-                         pymupdf.Rect(r).intersects(box) for r, _ln in it["lines"])]
-        else:
-            found = objs.inside(box) if objs is not None else []
-            texts = [it for it in self.text_objects(index) if box.contains(it["rect"])]
+        found = objs.pick(region, crossing) if objs is not None else []
+        texts = []
+        for it in self.text_objects(index):
+            if not overlap(it["rect"], region.bounds):
+                continue
+            if region.contains_rect(it["rect"]) or crossing and any(
+                    region.touches_rect(r) for r, _ln in it["lines"]):
+                texts.append(it)
         return found + texts
 
     def object_lines(self, index, item):
@@ -4534,7 +4571,7 @@ class DocumentView(QScrollArea):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         self._place_banner()
-        if self.cad_mouse or self.free_pan:
+        if self.free_pan:
             self.apply_canvas()
         # Fit width / Fit page keep fitting when the window or the side panels change size
         # (the window often grows to its final size just after a file opens)

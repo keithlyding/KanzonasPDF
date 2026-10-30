@@ -343,8 +343,11 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(_title_base())
         self.resize(1300, 900)
         self.setAcceptDrops(True)
-        # start with the Hand (scroll by dragging, like most viewers) or the Select tool
-        self.tool = "select" if self.settings.value("start_tool", "hand") == "select" else "hand"
+        # start with the mouse mode's tool: the Hand (scroll by dragging, like most viewers)
+        # or Select (Standard and CAD)
+        from . import mouse_modes
+        mouse_modes.apply(self.settings)
+        self.tool = mouse_modes.default_tool(mouse_modes.mode(self.settings))
         self._last_basic_tool = self.tool
         self._sig_cache = {}            # kind -> png, for this run of the app only
 
@@ -665,32 +668,42 @@ class MainWindow(QMainWindow):
             self.theme_group.addAction(a)
             self.theme_actions[key] = a
         self.theme_actions[self.settings.value("theme", "system")].setChecked(True)
-        self.a_cad_mouse = self._act(tr("CAD-style &mouse (wheel zooms, hold wheel to pan)"),
-                                     self._toggle_cad_mouse, "F11",
+        # Mouse mode: Standard, Hand or CAD (mouse_modes.py), each with its own options
+        self.mouse_group = QActionGroup(self)
+        self.a_mouse_standard = self._act(tr("Mouse: &Standard (arrow, the wheel scrolls)"),
+                                          lambda: self.set_mouse_mode("standard"),
+                                          tip=tr("Select text and markups with the arrow; the "
+                                                 "wheel scrolls, Ctrl+wheel zooms"))
+        self.a_mouse_hand = self._act(tr("Mouse: &Hand (drag the page)"),
+                                      lambda: self.set_mouse_mode("hand"),
+                                      tip=tr("Drag to move the page; click a markup to select "
+                                             "it; the wheel scrolls"))
+        self.a_cad_mouse = self._act(tr("Mouse: &CAD (wheel zooms, hold wheel to pan)"),
+                                     lambda: self.set_mouse_mode("cad", toggle=True), "F11",
                                      tip=tr("Like AutoCAD: the scroll wheel zooms at the cursor; "
                                             "hold the wheel down and drag to move the sheet; a "
-                                            "plus cursor; boxes dragged left to right (blue) "
-                                            "select what's inside, right to left (green) what "
-                                            "they touch (F11)"))
-        self.a_cad_mouse.setCheckable(True)
-        self.a_cad_mouse.setChecked(self.settings.value("cad_mouse", "false") == "true")
-        DocumentView.cad_mouse = self.a_cad_mouse.isChecked()
+                                            "plus cursor; click, move, click for a box (left to "
+                                            "right selects what's inside, right to left what it "
+                                            "touches) or hold the button for a lasso; the CAD "
+                                            "tab's commands (F11 switches CAD on and off)"))
+        for a in (self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse):
+            a.setCheckable(True)
+            self.mouse_group.addAction(a)
         self.a_free_pan = self._act(tr("&Free page movement (drag the page past its edges)"),
-                                    self._toggle_free_pan,
+                                    lambda: self._toggle_mouse_option("free_pan",
+                                                                      self.a_free_pan),
                                     tip=tr("The Hand tool (or the held wheel) drags the page "
                                            "anywhere, up, down and sideways, even when the "
                                            "whole page fits in the window"))
         self.a_free_pan.setCheckable(True)
-        self.a_free_pan.setChecked(self.settings.value("free_pan", "false") == "true")
-        DocumentView.free_pan = self.a_free_pan.isChecked()
         self.a_page_wheel = self._act(tr("Scroll &one page per wheel step"),
-                                      self._toggle_page_wheel,
+                                      lambda: self._toggle_mouse_option("page_wheel",
+                                                                        self.a_page_wheel),
                                       tip=tr("When the whole page fits in the window, each step "
                                              "of the scroll wheel moves to the next or previous "
                                              "page"))
         self.a_page_wheel.setCheckable(True)
-        self.a_page_wheel.setChecked(self.settings.value("page_wheel", "true") == "true")
-        DocumentView.page_wheel = self.a_page_wheel.isChecked()
+        self._sync_mouse_actions()
         self.a_night = self._act(tr("&Night mode (white lines on black)"), self._toggle_night, "F12",
                                  tip=tr("Draw the pages like a CAD screen: lightness inverted, colors "
                                         "kept (black lines turn white, red stays red). Printing and "
@@ -895,7 +908,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_split)
         m.addAction(self.a_detach)
-        m.addAction(self.a_cad_mouse)
+        m.addActions([self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse])
         m.addAction(self.a_free_pan)
         m.addAction(self.a_page_wheel)
         m.addAction(self.a_night)
@@ -1897,9 +1910,10 @@ class MainWindow(QMainWindow):
         self._refresh_props()
 
     def default_tool(self):
-        """Hand or Select (Preferences > Start-up): the tool at start-up, and the one Escape
-        and a placed signature / date go back to."""
-        return "select" if self.settings.value("start_tool", "hand") == "select" else "hand"
+        """Hand or Select (the mouse mode: Hand, or Standard and CAD): the tool at start-up,
+        and the one Escape and a placed signature / date go back to."""
+        from . import mouse_modes
+        return mouse_modes.default_tool(mouse_modes.mode(self.settings))
 
     def _after_one_shot(self):
         """After placing a signature, initials or a date: back to the default tool."""
@@ -3555,7 +3569,8 @@ class MainWindow(QMainWindow):
                          "a_redo": "redo", "a_zoom_in": "zoom_in", "a_zoom_out": "zoom_out",
                          "a_fit_width": "fit_width", "a_fit_page": "fit_page", "a_ocr": "ocr",
                          "a_rot_l": "rot_l", "a_rot_r": "rot_r", "a_cad_mouse": "cad_mouse",
-                         "a_free_pan": "free_pan",
+                         "a_free_pan": "free_pan", "a_mouse_standard": "select",
+                         "a_mouse_hand": "hand",
                          "a_grid": "grid", "a_snap_grid": "snap_grid", "a_snap_objects": "snap_objects",
                          "a_snap_page": "snap_page"}
 
@@ -3938,23 +3953,63 @@ class MainWindow(QMainWindow):
         if v is not None:
             v.goto_page(max(0, min(v.page_count() - 1, v.current_page() + delta)))
 
-    def _toggle_cad_mouse(self):
-        on = self.a_cad_mouse.isChecked()
-        DocumentView.cad_mouse = on
-        self.settings.setValue("cad_mouse", "true" if on else "false")
+    def set_mouse_mode(self, m, toggle=False):
+        """Standard, Hand or CAD. toggle (F11, the CAD button): CAD again goes back to the
+        mode used before it."""
+        from . import mouse_modes
+        old = mouse_modes.mode(self.settings)
+        if toggle and m == "cad" and old == "cad":
+            m = self.settings.value("mouse_before_cad", "hand")
+            m = m if m in ("standard", "hand") else "hand"
+        if m == "cad" and old != "cad":
+            self.settings.setValue("mouse_before_cad", old)
+        self.settings.setValue("mouse_mode", m)
+        self.apply_mouse_mode()
+        self.set_tool(mouse_modes.default_tool(m))
+        self.statusBar().showMessage(tr("Mouse: {mode}. {what}").format(
+            mode=mouse_modes.labels()[m], what=mouse_modes.descriptions()[m]), 5000)
+
+    def apply_mouse_mode(self):
+        """After the mode or one of its options changed: every window and document follows."""
+        from . import mouse_modes
+        mouse_modes.apply(self.settings)
+        for w in windows():
+            w._sync_mouse_actions()
         for v in self._all_views():
             v.apply_canvas()        # open canvas around the pages, or not
-            v._tool_cursor()        # a plus in CAD mouse mode
-        self.statusBar().showMessage(
-            tr("CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan") if on else
-            tr("CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms"), 4000)
+            v._tool_cursor()        # a plus in CAD mode
 
-    def _toggle_free_pan(self):
-        on = self.a_free_pan.isChecked()
-        DocumentView.free_pan = on
-        self.settings.setValue("free_pan", "true" if on else "false")
-        for v in self._all_views():
-            v.apply_canvas()
+    def _sync_mouse_actions(self):
+        from . import mouse_modes
+        m = mouse_modes.mode(self.settings)
+        {"standard": self.a_mouse_standard, "hand": self.a_mouse_hand,
+         "cad": self.a_cad_mouse}[m].setChecked(True)
+        self.a_free_pan.setChecked(mouse_modes.option(self.settings, m, "free_pan"))
+        self.a_page_wheel.setChecked(mouse_modes.option(self.settings, m, "page_wheel"))
+        self.a_page_wheel.setEnabled(m != "cad")      # (in CAD mode the wheel zooms)
+        ribbon = getattr(self, "ribbon", None)
+        cad_tab = getattr(self, "_cad_tab", None)
+        if ribbon is not None and cad_tab is not None:
+            i = ribbon.indexOf(cad_tab)
+            show = m == "cad" and mouse_modes.option(self.settings, "cad", "cad_tab")
+            if i >= 0 and ribbon.isTabVisible(i) != show:
+                if not show and ribbon.currentIndex() == i:
+                    ribbon.setCurrentIndex(0)
+                ribbon.setTabVisible(i, show)
+        menu = getattr(self, "cad_menu", None)
+        if menu is not None:
+            menu.menuAction().setVisible(m == "cad")
+
+    def _toggle_mouse_option(self, key, action):
+        """View > Free page movement / Scroll one page per wheel step: for the mode in use."""
+        from . import mouse_modes
+        m = mouse_modes.mode(self.settings)
+        mouse_modes.set_option(self.settings, m, key, action.isChecked())
+        self.apply_mouse_mode()
+        if key == "page_wheel":
+            self.statusBar().showMessage(
+                tr("Scroll wheel: one page per step when the whole page fits (zoom with Fit page)")
+                if action.isChecked() else tr("Scroll wheel: smooth scrolling"), 4000)
 
     def preferences(self):
         from .preferences import PreferencesDialog
@@ -3983,19 +4038,12 @@ class MainWindow(QMainWindow):
                                         "off); printing and export are unchanged") if on else
                                      tr("Night mode off"), 4000)
 
-    def _toggle_page_wheel(self):
-        on = self.a_page_wheel.isChecked()
-        DocumentView.page_wheel = on
-        self.settings.setValue("page_wheel", "true" if on else "false")
-        self.statusBar().showMessage(
-            tr("Scroll wheel: one page per step when the whole page fits (zoom with Fit page)") if on
-            else tr("Scroll wheel: smooth scrolling"), 4000)
-
     # ---- ribbon --------------------------------------------------------------------------
     # short labels for ribbon buttons (the menus keep the full names)
     RIBBON_LABELS = {
         "a_fit_width": tr("Fit width"), "a_fit_page": tr("Fit page"), "a_actual": tr("Actual size"),
-        "a_cad_mouse": tr("CAD mouse"), "a_free_pan": tr("Free movement"), "a_grid": tr("Grid"), "a_snap_grid": tr("Snap to grid"),
+        "a_cad_mouse": tr("CAD"), "a_mouse_standard": tr("Standard"), "a_mouse_hand": tr("Hand"),
+        "a_free_pan": tr("Free movement"), "a_grid": tr("Grid"), "a_snap_grid": tr("Snap to grid"),
         "a_snap_objects": tr("Snap to objects"), "a_snap_page": tr("Snap to page"),
         "a_grid_settings": tr("Grid settings"),
         "a_set_scale": tr("Set scale"), "a_sheet_scales": tr("Sheet scales"), "a_measure_summary": tr("Summary"), "a_ocr": tr("OCR"),
@@ -4087,7 +4135,8 @@ class MainWindow(QMainWindow):
                                        t["comment"], t["note"], t["textbox"]]),
             (tr("Insert"), "large", [t["stamp"], t["image"], t["attach"], t["link"]]),
             (tr("Zoom"), "small", [self.a_fit_width, self.a_fit_page, self.a_actual,
-                               self.a_zoom_in, self.a_zoom_out, self.a_cad_mouse]),
+                               self.a_zoom_in, self.a_zoom_out]),
+            (tr("Mouse"), "small", [self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse]),
             (tr("Sign"), "large", [t["signature"], t["initials"]]),
         ])
         # only markups here (PDF viewers can edit those); the Image tool and Erase content change
@@ -4154,8 +4203,8 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("View"), [
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                  self.a_split]),
-            (tr("Display"), "small", [self.a_hl_fields, self.a_show_markups, self.a_cad_mouse,
-                                  self.a_free_pan, self.a_night]),
+            (tr("Display"), "small", [self.a_hl_fields, self.a_show_markups, self.a_free_pan,
+                                  self.a_night]),
             (tr("Grid & snap"), "small", snap_group),
             (tr("Ribbon"), "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
                                  self.a_menu_bar]),
@@ -4376,11 +4425,18 @@ class MainWindow(QMainWindow):
             self._upd.found.connect(self._update_found)
             self._upd.result.connect(
                 lambda t: QMessageBox.information(self, tr("Check for updates"), t))
+            self._upd.checked.connect(lambda t: self.statusBar().showMessage(
+                tr("Checked for updates: {result}").format(result=t), 8000))
         return self._upd
 
     def start_update_check(self):
-        """Called a few seconds after start-up: checks at most once a day, if enabled."""
+        """Called a few seconds after start-up: checks at most once a day, if enabled. While
+        KanzonasPDF stays open, it looks again every hour whether a day has passed."""
         self._updater().check_if_due()
+        if getattr(self, "_update_timer", None) is None:
+            self._update_timer = QTimer(self)
+            self._update_timer.timeout.connect(lambda: self._updater().check_if_due())
+            self._update_timer.start(3600 * 1000)
 
     def check_updates(self):
         self.statusBar().showMessage(tr("Checking for updates..."), 4000)
@@ -4391,20 +4447,7 @@ class MainWindow(QMainWindow):
         from PySide6.QtCore import QUrl
         if self._upd.manual:
             # asked for: answer in a box, like the "up to date" answer
-            box = QMessageBox(QMessageBox.Information, tr("Check for updates"),
-                              tr("KanzonasPDF {version} is available (you have {current}).").format(
-                                  version=version, current=__version__) + "\n\n"
-                              + (self._update_now_text() + "\n\n" if self._self_update_url() else "")
-                              + tr("Download opens the release page in your browser."), parent=self)
-            upd = (box.addButton(tr("Update now"), QMessageBox.AcceptRole)
-                   if self._self_update_url() else None)
-            get = box.addButton(tr("Download"), QMessageBox.AcceptRole)
-            box.addButton(tr("Later"), QMessageBox.RejectRole)
-            box.exec()
-            if upd is not None and box.clickedButton() is upd:
-                self.update_now()
-            elif box.clickedButton() is get:
-                QDesktopServices.openUrl(QUrl(url))
+            self._update_box(version, url)
             return
         old = getattr(self, "_update_bar", None)
         if old is not None:
@@ -4415,6 +4458,8 @@ class MainWindow(QMainWindow):
         h.setContentsMargins(0, 0, 0, 0)
         h.addWidget(QLabel(tr("<b>KanzonasPDF {version} is available</b> (you have "
                               "{current}).").format(version=version, current=__version__)))
+        news = QPushButton(tr("What's new"))
+        news.setToolTip(tr("What changed since your version"))
         get = QPushButton(tr("Download"))
         get.setToolTip(tr("Open the release page to download the installer or portable zip"))
         upd = QPushButton(tr("Update now")) if self._self_update_url() else None
@@ -4432,13 +4477,58 @@ class MainWindow(QMainWindow):
         close.clicked.connect(done)
         if upd is not None:
             upd.clicked.connect(lambda: (done(), self.update_now()))
-        for b in (upd, get, skip, close):
+        news.clicked.connect(lambda: self._update_box(version, url, done))
+        for b in (news, upd, get, skip, close):
             if b is not None:
                 h.addWidget(b)
         self._update_bar = bar
         self.statusBar().clearMessage()      # a status message would keep the notice hidden
         self.statusBar().addWidget(bar)
         bar.show()
+
+    def _update_box(self, version, url, done=None):
+        """The update box: the short notes of every version newer than this one (what changed
+        since your version), then Update now / Download / Later. done: closes the notice in
+        the status bar when the user updates or downloads."""
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtCore import QUrl
+        from PySide6.QtWidgets import QDialog, QDialogButtonBox, QTextBrowser
+        from . import i18n, updates
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("Check for updates"))
+        lay = QVBoxLayout(dlg)
+        lay.addWidget(QLabel(tr("KanzonasPDF {version} is available (you have {current}).").format(
+            version=version, current=__version__)))
+        lay.addWidget(QLabel("<b>" + tr("What's new since your version") + "</b>"))
+        notes = QTextBrowser()
+        notes.setOpenExternalLinks(True)
+        parts = []
+        for v, text, page in updates.notes_since(self._upd.releases, lang=i18n.language()):
+            parts.append("### " + tr("Version {version}").format(version=v))
+            parts.append(text or "[" + tr("What's new in {version}").format(version=v)
+                         + "](" + page + ")")
+        notes.setMarkdown("\n\n".join(parts))
+        lay.addWidget(notes)
+        info = QLabel((self._update_now_text() + "\n\n" if self._self_update_url() else "")
+                      + tr("Download opens the release page in your browser."))
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        box = QDialogButtonBox()
+        upd = (box.addButton(tr("Update now"), QDialogButtonBox.AcceptRole)
+               if self._self_update_url() else None)
+        get = box.addButton(tr("Download"), QDialogButtonBox.AcceptRole)
+        box.addButton(tr("Later"), QDialogButtonBox.RejectRole)
+        chosen = []
+        box.clicked.connect(lambda b: (chosen.append(b), dlg.accept()))
+        lay.addWidget(box)
+        dlg.resize(600, 520)
+        dlg.exec()
+        if chosen and chosen[0] in (upd, get) and done is not None:
+            done()
+        if upd is not None and chosen and chosen[0] is upd:
+            self.update_now()
+        elif chosen and chosen[0] is get:
+            QDesktopServices.openUrl(QUrl(url))
 
     def _self_update_url(self):
         """Download address of what updates this copy in place: the new portable zip, or for

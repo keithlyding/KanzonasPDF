@@ -302,6 +302,13 @@ jobs:
           Get-ChildItem $dir | ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName }
           Compress-Archive -Path winget\manifests -DestinationPath winget-manifests.zip
 
+      - name: Release notes (RELEASE_NOTES.md; the update box shows them)
+        id: notes
+        shell: pwsh
+        run: |
+          python tools/release_notes.py "${{ steps.ver.outputs.version }}" --github-output
+          if ($LASTEXITCODE -ne 0) { throw "Write the notes for this version in RELEASE_NOTES.md" }
+
       - name: Publish release
         if: >-
           (startsWith(github.ref, 'refs/tags/v') && steps.onmain.outputs.main == 'true') ||
@@ -321,7 +328,9 @@ jobs:
             To update, unzip the new one over the same folder (replace the files): the path to `KanzonasPDF.exe`
             stays the same, so it stays your default PDF app, and the `data` folder is kept.
 
-            What's new: see [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ steps.ver.outputs.version }}/CHANGELOG.md).
+            ${{ steps.notes.outputs.notes }}
+
+            All the details: [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ steps.ver.outputs.version }}/CHANGELOG.md).
             Free software under the GNU AGPL 3.0. [Code signing policy](https://github.com/keithlyding/KanzonasPDF/blob/main/CODE_SIGNING_POLICY.md).
 
             **Check your download (SHA-256):** in PowerShell, `Get-FileHash <file>` must show the same value.

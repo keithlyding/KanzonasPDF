@@ -7,7 +7,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget,
                                QCheckBox, QComboBox, QFormLayout, QLabel, QPushButton,
                                QDialogButtonBox, QLineEdit, QListWidget, QListWidgetItem,
-                               QSpinBox, QDoubleSpinBox, QMessageBox)
+                               QSpinBox, QDoubleSpinBox, QMessageBox, QButtonGroup,
+                               QRadioButton, QGroupBox, QScrollArea, QFrame)
 
 from .i18n import tr
 
@@ -173,13 +174,6 @@ class PreferencesDialog(QDialog):
         self.confirm_exit.setToolTip(tr("With unsaved changes in any of them, KanzonasPDF always asks."))
         self.confirm_exit.setChecked(win.settings.value("confirm_exit", "true") != "false")
         form.addRow(self.confirm_exit)
-        self.start_tool = QComboBox()
-        self.start_tool.addItem(tr("Hand (drag to scroll)"), "hand")
-        self.start_tool.addItem(tr("Select"), "select")
-        self.start_tool.setCurrentIndex(max(0, self.start_tool.findData(
-            win.settings.value("start_tool", "hand"))))
-        form.addRow(tr("Default tool (at start-up, and where Escape goes back to):"),
-                     self.start_tool)
         self.open_view = QComboBox()
         for key, label in (("width", tr("Fit width")),
                            ("page", tr("Fit page (whole page in the window)")),
@@ -252,15 +246,46 @@ class PreferencesDialog(QDialog):
         note.setWordWrap(True)
         form.addRow(note)
 
-        # Mouse and scrolling
-        page, form = self._tab(tabs, tr("Mouse and scrolling"))
-        self._box(form, win.a_cad_mouse)
-        self._box(form, win.a_free_pan)
-        self._box(form, win.a_page_wheel,
-                  note=tr("Only when the whole page fits in the window, top to bottom and side to "
-                       "side (for example after View > Fit page). Zoomed in so that any edge of "
-                       "the page is outside the window, the wheel scrolls normally. With "
-                       "CAD-style mouse on, the wheel zooms instead."))
+        # Mouse: the mode (Standard, Hand or CAD) and each mode's own options
+        from . import mouse_modes
+        page = QWidget()
+        form = QFormLayout(page)
+        scroll = QScrollArea()          # three modes' options: taller than the other pages
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidget(page)
+        tabs.addTab(scroll, tr("Mouse"))
+        self.mouse_mode = {}
+        current = mouse_modes.mode(win.settings)
+        group = QButtonGroup(page)
+        for m in mouse_modes.MODES:
+            b = QRadioButton(mouse_modes.labels()[m])
+            b.setChecked(m == current)
+            group.addButton(b)
+            form.addRow(b)
+            lab = QLabel(mouse_modes.descriptions()[m])
+            lab.setWordWrap(True)
+            lab.setIndent(22)
+            form.addRow(lab)
+            self.mouse_mode[m] = b
+        self.mouse_options = {}
+        for m in mouse_modes.MODES:
+            box = QGroupBox(tr("{mode} options").format(mode=mouse_modes.labels()[m]))
+            inner = QFormLayout(box)
+            for key, label, _default in mouse_modes.options(m):
+                b = QCheckBox(label)
+                b.setChecked(mouse_modes.option(win.settings, m, key))
+                inner.addRow(b)
+                self.mouse_options[(m, key)] = b
+                if key == "page_wheel":     # a visible explanation under the box
+                    note = QLabel(tr("Only when the whole page fits in the window, top to "
+                                     "bottom and side to side (for example after View > Fit "
+                                     "page). Zoomed in so that any edge of the page is outside "
+                                     "the window, the wheel scrolls normally."))
+                    note.setWordWrap(True)
+                    note.setIndent(22)
+                    inner.addRow(note)
+            form.addRow(box)
 
         # Pages and display
         page, form = self._tab(tabs, tr("Pages and display"))
@@ -287,7 +312,6 @@ class PreferencesDialog(QDialog):
         form.addRow(tr("New PDF page size:"), row)
         # grid and snapping: all of it here, in one place (same settings as View > Grid
         # settings...)
-        from PySide6.QtWidgets import QGroupBox
         from . import snapping
         box = QGroupBox(tr("Grid and snapping"))
         gform = QFormLayout(box)
@@ -498,7 +522,14 @@ class PreferencesDialog(QDialog):
             win.settings.setValue("sig_width_" + kind, sb.value() * 72.0)
         win.settings.setValue("restore_session", "true" if self.restore.isChecked() else "false")
         win.settings.setValue("confirm_exit", "true" if self.confirm_exit.isChecked() else "false")
-        win.settings.setValue("start_tool", self.start_tool.currentData())
+        from . import mouse_modes
+        for (m, key), b in self.mouse_options.items():
+            mouse_modes.set_option(win.settings, m, key, b.isChecked())
+        chosen = next(m for m, b in self.mouse_mode.items() if b.isChecked())
+        if chosen != mouse_modes.mode(win.settings):
+            win.set_mouse_mode(chosen)
+        else:
+            win.apply_mouse_mode()
         win.settings.setValue("autosave_minutes", self.autosave.value())
         if self.backup_dir != (win.settings.value("backup_dir", "") or ""):
             win.autosave.discard_all()      # move the current copies to the new folder

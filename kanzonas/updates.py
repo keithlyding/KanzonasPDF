@@ -1,7 +1,9 @@
 """Update check: asks GitHub for the newest KanzonasPDF release and tells the user about it.
 
 The check only tells the user. The automatic check runs at most once a day, in the background
-(Qt networking), and fails silently when offline or blocked.
+(Qt networking), also while KanzonasPDF stays open for days, and fails silently when offline or
+blocked. The box that tells about a new version shows the short notes (RELEASE_NOTES.md, carried
+in each release's text) of every version newer than the one running.
 
 Portable copies can also update themselves in place (PortableUpdater): download
 KanzonasPDF-portable.zip from the GitHub release, and only if its sha256 matches the digest
@@ -18,6 +20,7 @@ installation; it starts KanzonasPDF again when it's done.
 import hashlib
 import json
 import os
+import re
 import shutil
 import time
 import zipfile
@@ -60,6 +63,33 @@ def newest(releases, current=None):
     Pre-releases count: every 0.x release is one."""
     r = newest_release(releases, current)
     return (r["tag_name"].lstrip("vV"), r.get("html_url") or RELEASES_PAGE) if r else None
+
+
+_NOTES = re.compile(r"<!-- kanzonas-notes(?: lang=(\w+))? -->\s*(.*?)\s*<!-- /kanzonas-notes -->",
+                    re.S)
+
+
+def release_notes(release, lang="en"):
+    """The short notes in a release's text (see tools/release_notes.py): in lang if it has
+    them, else in English; None for a release without notes (those before 1.5)."""
+    found = {(m.group(1) or "en"): m.group(2) for m in _NOTES.finditer(
+        (release or {}).get("body") or "")}
+    return found.get(lang) or found.get("en")
+
+
+def notes_since(releases, current=None, lang="en"):
+    """[(version, notes or None, page url)] for every published release newer than current,
+    newest first: what changed since the version the user has."""
+    current = version_tuple(current or __version__)
+    out = []
+    for r in releases or []:
+        v = version_tuple(r.get("tag_name", ""))
+        if r.get("draft") or not v or v <= current:
+            continue
+        out.append((v, r))
+    out.sort(key=lambda x: x[0], reverse=True)
+    return [(r["tag_name"].lstrip("vV"), release_notes(r, lang), r.get("html_url") or RELEASES_PAGE)
+            for _v, r in out]
 
 
 def newest_release(releases, current=None):
@@ -224,6 +254,7 @@ class UpdateChecker(QObject):
     """found(version, url) when a newer release exists; result(text) after a manual check."""
     found = Signal(str, str)
     result = Signal(str)
+    checked = Signal(str)            # an automatic check found nothing newer (a quiet note)
 
     def __init__(self, settings, parent=None):
         super().__init__(parent)
@@ -231,6 +262,7 @@ class UpdateChecker(QObject):
         self.net = None
         self.manual = False
         self.release = None          # GitHub's entry for the newest release found
+        self.releases = []           # every release GitHub listed (for the notes since yours)
 
     def enabled(self):
         from . import paths
@@ -275,12 +307,12 @@ class UpdateChecker(QObject):
                 self.result.emit(tr("GitHub sent an unexpected answer. Try again later."))
             return
         self.settings.setValue("update_last", time.time())
+        self.releases = data
         self.release = newest_release(data)
         hit = newest(data)
         if hit is None:
-            if self.manual:
-                self.result.emit(tr("You have the latest version ({version}).").format(
-                    version=__version__))
+            text = tr("You have the latest version ({version}).").format(version=__version__)
+            (self.result if self.manual else self.checked).emit(text)
             return
         if not self.manual and self.settings.value("update_skip", "") == hit[0]:
             return

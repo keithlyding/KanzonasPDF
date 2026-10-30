@@ -56,7 +56,7 @@ class ScrollAndUndo(unittest.TestCase):
 
     def test_shift_wheel_scrolls_sideways_without_cad_mouse(self):
         v = self.view()
-        v.cad_mouse = False
+        v.wheel_zoom = False
         v.page_wheel = True
         v.set_zoom(3)
         APP.processEvents()
@@ -71,7 +71,7 @@ class ScrollAndUndo(unittest.TestCase):
 
     def test_shift_wheel_does_not_turn_the_page(self):
         v = self.view()
-        v.cad_mouse = False
+        v.wheel_zoom = False
         v.page_wheel = True
         v.fit_page()
         APP.processEvents()
