@@ -120,6 +120,8 @@ def main():
     from . import paths, theme
     theme.apply(app, paths.settings().value("theme", "system"))
     win = MainWindow()
+    # a setup closing KanzonasPDF to update it, or Windows shutting down, closes no windows
+    app.commitDataRequest.connect(win.windows_ending)
     win.show()
     win.recover_backups()
     if not files:

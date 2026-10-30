@@ -1648,10 +1648,23 @@ class MainWindow(QMainWindow):
             if not self._confirm_exit([(w, v) for w in [self] + others for v in w._views()]):
                 e.ignore()
                 return
+        self._save_session(others)
+        if self.primary:
+            for w in others:
+                w._close_confirmed = True
+                w.close()
+        self.autosave.discard_all()
+        QApplication.instance().removeEventFilter(self)
+        _forget_window(next((r for r in _WINDOW_REFS if r() is self), None))
+        e.accept()
+
+    def _save_session(self, others=()):
+        """Each open document's page and zoom; from the primary window also the files open
+        in all windows (Preferences > Start-up reopens them) and the window layout."""
         from . import autosave
         backups = autosave.folder()
         session = []
-        for w in [self] + others:
+        for w in [self] + list(others):
             for v in w._views():
                 w._remember_state(v)
                 if v.path and not v.untitled and os.path.exists(v.path) and \
@@ -1661,13 +1674,21 @@ class MainWindow(QMainWindow):
             self.settings.setValue("session_files", json.dumps(session))
             self.settings.setValue("geometry", self.saveGeometry())
             self.settings.setValue("window_state", self.saveState(LAYOUT_VERSION))
-            for w in others:
-                w._close_confirmed = True
-                w.close()
-        self.autosave.discard_all()
-        QApplication.instance().removeEventFilter(self)
-        _forget_window(next((r for r in _WINDOW_REFS if r() is self), None))
-        e.accept()
+        self.settings.sync()
+
+    def windows_ending(self, *_):
+        """Windows is ending KanzonasPDF without closing its windows: a setup updating it
+        (the installer closes running copies) or the computer shutting down or signing out.
+        Nothing can be asked now, so keep what closing keeps: the open files (reopened at
+        start-up when that's on) and, for unsaved changes, backup copies that are offered
+        the next time KanzonasPDF starts (unless backups are turned off)."""
+        others = [w for w in windows() if w is not self]
+        for w in [self] + others:
+            for v in w._views():
+                v.commit_pending()
+            if w.autosave.minutes:
+                w.autosave.tick()
+        self._save_session(others)
 
     def _confirm_exit(self, views):
         """Before the window closes: with one document, the usual Save / Discard / Cancel
