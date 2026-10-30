@@ -313,6 +313,9 @@ la derecha es un lazo de ventana azul (lo que queda completamente dentro); hacia
 (lo que toca). Shift+lazo quita elementos.</li>
 <li>Con Seleccionar, un recuadro o un lazo que no toma marcas selecciona texto: los caracteres dentro de una ventana, o
 los que toca un recuadro de captura (Ctrl+C los copia).</li>
+<li>Mientras dibuja un recuadro o un lazo, lo que tomaría <b>se resalta</b> (azul para una ventana, verde para un recuadro de
+captura), así que ve lo que obtendrá antes del segundo clic o antes de soltar. En un dibujo muy grande se completa en un
+momento mientras se mueve.</li>
 <li>En el modo CAD arrastrar nunca mueve nada, así que nada se mueve por accidente: los controladores cuadrados de una
 marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pestaña CAD lo mueve.</li>
 <li>Preferencias &gt; Mouse activa o desactiva cada una de estas funciones (vea Preferencias).</li>
@@ -351,18 +354,20 @@ barra espaciadora y Entrar siguen llenando el campo de formulario al que llevó 
 termina.</li>
 <li><b>Girar</b>: haga clic en el punto base y luego escriba el ángulo en grados (en sentido antihorario; -90 gira en
 sentido horario) y presione Entrar, o haga clic en un punto: la selección gira para que el "este" apunte hacia ahí.</li>
-<li><b>Escalar</b>: haga clic en el punto base y luego escriba el factor (2 = el doble de grande, 0.5 = la mitad) y
-presione Entrar, o haga clic en un punto a una longitud que conozca y luego en el punto a la longitud que tendrá.</li>
+<li><b>Escalar</b>: haga clic en el punto base y luego escriba el factor (2 = el doble de grande, 0.5 = la mitad; de 0.001
+a 1000) y presione Entrar, o haga clic en un punto a una longitud que conozca y luego en el punto a la longitud que tendrá.</li>
 <li><b>Simetría</b>: haga clic en dos puntos del eje de simetría y luego en <b>Conservarlos</b> (una copia reflejada) o
 <b>Eliminarlos</b> (los originales se reemplazan).</li>
 <li><b>Eliminar</b>: elimina la selección.</li>
 <li><b>Alinear</b>: haga clic en un punto de la selección y donde va, luego en un segundo punto y donde va; después en
 <b>Escalar</b> (para que también coincidan los segundos puntos) o <b>No escalar</b>.</li>
-<li><b>Matriz</b>: elija las filas y las columnas y luego haga clic en el punto base, donde va la copia de la columna
-siguiente y donde va la copia de la fila siguiente (la dirección también cuenta).</li>
+<li><b>Matriz</b>: elija las filas y las columnas (hasta 50 de cada una) y luego haga clic en el punto base, donde va la
+copia de la columna siguiente y donde va la copia de la fila siguiente (la dirección también cuenta). Una matriz que
+crearía más de 20 000 objetos pregunta primero.</li>
 <li><b>Recortar</b>: no hace falta seleccionar nada. Haga clic en la parte de una línea que quiere quitar: se quita hasta
 las líneas más cercanas que la cruzan a cada lado (o hasta su extremo, si nada la cruza de ese lado); una línea que nada
-cruza se quita entera. Haga clic una y otra vez; Entrar, Escape o Listo termina. Recorta las líneas y curvas propias del
+cruza se quita entera. El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
+en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; Entrar, Escape o Listo termina. Recorta las líneas y curvas propias del
 dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma; las
 formas rellenas y las imágenes no se recortan.</li>
 </ul>

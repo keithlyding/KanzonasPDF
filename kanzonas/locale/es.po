@@ -6902,3 +6902,23 @@ msgstr "Mouse: Mano (arrastrar la página)"
 #: main_window.py
 msgid "Mouse: CAD (wheel zooms, hold wheel to pan)"
 msgstr "Mouse: CAD (la rueda acerca y aleja; mantenga presionada la rueda para desplazar)"
+
+#: cad_commands.py
+msgid "Click the base point first."
+msgstr "Primero haga clic en el punto base."
+
+#: cad_commands.py
+msgid "To scale, the two points where it goes must be apart too: choose Don't scale, or start Align again."
+msgstr "Para escalar, los dos puntos de destino también deben estar separados: elija No escalar o vuelva a empezar Alinear."
+
+#: cad_commands.py
+msgid "The factor must be between {lo} and {hi}."
+msgstr "El factor debe estar entre {lo} y {hi}."
+
+#: cad_commands.py
+msgid "This makes {n} new objects, which can take a while and makes the file bigger. Go on?"
+msgstr "Esto crea {n} objetos nuevos, lo que puede tardar y agranda el archivo. ¿Continuar?"
+
+#: cad_commands.py
+msgid "Trim: that's where lines cross. Click on the part of the line to cut away, a little to one side."
+msgstr "Recortar: ahí se cruzan líneas. Haga clic en la parte de la línea que quiere quitar, un poco a un lado."

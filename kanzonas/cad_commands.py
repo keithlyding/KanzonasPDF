@@ -31,7 +31,8 @@ from .i18n import tr
 
 GHOST = QColor(0, 120, 215, 200)
 BAND = QColor(220, 60, 0)
-GHOST_LIMIT = 4000          # polylines drawn while previewing (more: the selection's box)
+GHOST_LIMIT = 400           # copies previewed one by one (more: the box they fill)
+GHOST_SEGMENTS = 20000      # line pieces drawn while previewing (more: each copy's box)
 
 
 def _scale():
@@ -79,6 +80,19 @@ def align(s1, d1, s2, d2, scale=False):
     k = lv / lu if scale and lu > 1e-9 else 1.0
     return translate(-s1) * pymupdf.Matrix(math.degrees(turn)) * pymupdf.Matrix(k, k) * \
         translate(d1)
+
+
+MIN_FACTOR, MAX_FACTOR = 0.001, 1000.0      # a scale outside these makes objects unusable
+
+
+def number(text):
+    """A typed number ("90", "-45", "0,5", "90°"), or None for anything that isn't a finite
+    one (nan and inf would write unusable drawing instructions)."""
+    try:
+        x = float(text.replace(",", ".").replace("\u00b0", "").strip())
+    except ValueError:
+        return None
+    return x if math.isfinite(x) else None
 
 
 def is_translation(m):
@@ -384,6 +398,7 @@ class Command:
     """One run of a CAD command on a document view (view._cad_cmd while it runs)."""
     title = ""
     needs_selection = True
+    snap = True                         # clicks snap to line ends, corners... (not Trim's)
 
     def __init__(self, view, prompt):
         self.v = view
@@ -407,6 +422,8 @@ class Command:
                 return False
             self.kind, self.page, self.items = what
             self.ghost = v.cad_outlines(self.page, self.kind, self.items)
+        from . import cad_select
+        cad_select.cancel(v)                # (a box started before the command is dropped)
         v._cad_cmd = self
         self.ask()
         return True
@@ -466,13 +483,23 @@ class Command:
         mats, start = self.preview()
         if mats and self.ghost:
             p.setPen(QPen(GHOST, 1, Qt.DashLine))
-            lines = self.ghost if len(self.ghost) <= GHOST_LIMIT else None
+            if not hasattr(self, "_ghost_size"):
+                self._ghost_size = sum(max(0, len(line) - 1) for line in self.ghost)
+                xs = [q[0] for line in self.ghost for q in line]
+                ys = [q[1] for line in self.ghost for q in line]
+                self._ghost_box = pymupdf.Rect(min(xs), min(ys), max(xs), max(ys)) if xs \
+                    else pymupdf.Rect()
+            box = self._ghost_box
+            if len(mats) > GHOST_LIMIT:         # (a huge array: just where it all goes)
+                box = pymupdf.Rect()
+                for m in mats:
+                    box |= self._ghost_box * m
+                mats = [pymupdf.Matrix(1, 0, 0, 1, 0, 0)]
+            lines = self.ghost if self._ghost_size * len(mats) <= GHOST_SEGMENTS and \
+                box is self._ghost_box else None
             for m in mats:
                 if lines is None:
-                    r = pymupdf.Rect()
-                    for line in self.ghost:
-                        for q in line:
-                            r |= q
+                    r = box
                     lines_m = [[r.tl * m, r.tr * m, r.br * m, r.bl * m, r.tl * m]]
                 else:
                     lines_m = [[pymupdf.Point(q) * m for q in line] for line in lines]
@@ -554,18 +581,24 @@ class Rotate(Command):
 
     def step(self):
         if len(self.pts) == 2:
-            self._apply(screen_angle(self.pts[0], self.pts[1]))
+            self._apply(self._angle(self.pts[1]))
         else:
             self.ask()
 
+    def _angle(self, pt):
+        """The angle from the base point to pt as seen on screen (a turned page too)."""
+        rm = self.v.doc[self.page].rotation_matrix
+        return screen_angle(self.pts[0] * rm, pymupdf.Point(pt) * rm)
+
     def typed(self, text):
-        try:
-            a = float(text.replace(",", ".").strip())
-        except ValueError:
+        a = number(text)
+        if a is None or abs(a) > 1e6:
             self.v.statusMessage.emit(tr("Type a number of degrees, for example 90 or -45."))
             return
-        if self.pts:
-            self._apply(a)
+        if not self.pts:
+            self.v.statusMessage.emit(tr("Click the base point first."))
+            return
+        self._apply(a)
 
     def _apply(self, ccw):
         self.v.cad_apply(tr("Rotated"), rotation(self.pts[0], ccw))
@@ -573,7 +606,7 @@ class Rotate(Command):
 
     def preview(self):
         if len(self.pts) == 1 and self.hover is not None:
-            return [rotation(self.pts[0], screen_angle(self.pts[0], self.hover))], self.pts[0]
+            return [rotation(self.pts[0], self._angle(self.hover))], self.pts[0]
         return [], None
 
 
@@ -590,25 +623,35 @@ class Scale(Command):
             self.ui.show_for(self, tr("click the point at the length it becomes"), typing=True)
 
     def step(self):
+        if len(self.pts) == 2 and abs(self.pts[1] - self.pts[0]) < 1e-6:
+            self.pts.pop()                  # (a length of nothing can't be a reference)
+            return
         if len(self.pts) == 3:
-            ref = abs(self.pts[1] - self.pts[0])
-            if ref < 1e-6:
+            k = abs(self.pts[2] - self.pts[0]) / abs(self.pts[1] - self.pts[0])
+            if not MIN_FACTOR <= k <= MAX_FACTOR:
                 self.pts.pop()
+                self._too_far()
                 return
-            self._apply(abs(self.pts[2] - self.pts[0]) / ref)
+            self._apply(k)
         else:
             self.ask()
 
+    def _too_far(self):
+        self.v.statusMessage.emit(tr("The factor must be between {lo} and {hi}.").format(
+            lo=MIN_FACTOR, hi=int(MAX_FACTOR)))
+
     def typed(self, text):
-        try:
-            k = float(text.replace(",", ".").strip())
-        except ValueError:
-            k = 0
-        if k <= 0:
+        k = number(text)
+        if k is None or k <= 0:
             self.v.statusMessage.emit(tr("Type a factor above 0, for example 2 or 0.5."))
             return
-        if self.pts:
-            self._apply(k)
+        if not MIN_FACTOR <= k <= MAX_FACTOR:
+            self._too_far()
+            return
+        if not self.pts:
+            self.v.statusMessage.emit(tr("Click the base point first."))
+            return
+        self._apply(k)
 
     def _apply(self, k):
         self.v.cad_apply(tr("Scaled"), about(self.pts[0], pymupdf.Matrix(k, k)))
@@ -689,6 +732,10 @@ class Align(Command):
         if abs(s2 - s1) < 1e-6:
             self.v.statusMessage.emit(tr("The two source points must be apart."))
             return
+        if value == "yes" and not MIN_FACTOR <= abs(d2 - d1) / abs(s2 - s1) <= MAX_FACTOR:
+            self.v.statusMessage.emit(tr("To scale, the two points where it goes must be apart "
+                                         "too: choose Don't scale, or start Align again."))
+            return
         self.v.cad_apply(tr("Aligned"), align(s1, d1, s2, d2, value == "yes"))
         self.finish()
 
@@ -716,7 +763,7 @@ class Array(Command):
         form = QFormLayout(dlg)
         rows, cols = QSpinBox(), QSpinBox()
         for sb, val in ((rows, 1), (cols, 3)):
-            sb.setRange(1, 100)
+            sb.setRange(1, 50)
             sb.setValue(val)
         form.addRow(tr("Rows:"), rows)
         form.addRow(tr("Columns:"), cols)
@@ -730,6 +777,15 @@ class Array(Command):
         form.addRow(box)
         if dlg.exec() != QDialog.Accepted or rows.value() * cols.value() < 2:
             return False
+        copies = rows.value() * cols.value() - 1
+        many = copies * len(v.cad_targets()[2])
+        if many > 20000:
+            from PySide6.QtWidgets import QMessageBox
+            if QMessageBox.question(
+                    v, tr("Array"), tr("This makes {n} new objects, which can take a while and "
+                                       "makes the file bigger. Go on?").format(n=many)) \
+                    != QMessageBox.Yes:
+                return False
         self.rows, self.cols = rows.value(), cols.value()
         return super().start()
 
@@ -772,6 +828,7 @@ class Array(Command):
 class Trim(Command):
     title = tr("Trim")
     needs_selection = False
+    snap = False                        # the click picks a line: it must stay where it is
     done = 0
 
     def ask(self):

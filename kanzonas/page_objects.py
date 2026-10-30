@@ -257,12 +257,26 @@ def _bezier(p0, p1, p2, p3):
     return pts
 
 
+def _bezier_xy(p0, p1, p2, p3):
+    """_bezier on plain (x, y) pairs (much quicker than pymupdf Points for big drawings)."""
+    out = []
+    for i in range(1, CURVE_STEPS + 1):
+        t = i / CURVE_STEPS
+        u = 1 - t
+        a, b, c, d = u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t
+        out.append((p0[0] * a + p1[0] * b + p2[0] * c + p3[0] * d,
+                    p0[1] * a + p1[1] * b + p2[1] * c + p3[1] * d))
+    return out
+
+
 def path_lines(data, obj, tm):
     """A shape's outline as polylines in page coordinates: [[Point, ...], ...]."""
     mat = obj["ctm"] * tm
+    ma, mb, mc, md, me, mf = mat.a, mat.b, mat.c, mat.d, mat.e, mat.f
     out = []
     cur = None
-    first = None
+    first = last = None
+    Point = pymupdf.Point
     for op, args, _s, _e in _tokens(data[obj["start"]:obj["end"]]):
         k = _CONSTRUCT.get(op)
         if k is None:
@@ -270,37 +284,34 @@ def path_lines(data, obj, tm):
         vals = [_num(t) for t in args[-k:]] if k else []
         if k and (len(args) < k or None in vals):
             continue
-        P = [pymupdf.Point(vals[i], vals[i + 1]) for i in range(0, len(vals), 2)]
         if op == b"m":
-            cur = [P[0] * mat]
-            first = P[0]
+            first = last = (vals[0], vals[1])
+            cur = [first]
             out.append(cur)
-            last = P[0]
         elif op == b"re":
             x, y, w, h = vals
-            c = [pymupdf.Point(x, y), pymupdf.Point(x + w, y), pymupdf.Point(x + w, y + h),
-                 pymupdf.Point(x, y + h), pymupdf.Point(x, y)]
-            out.append([q * mat for q in c])
+            out.append([(x, y), (x + w, y), (x + w, y + h), (x, y + h), (x, y)])
             cur = None
-            first = last = c[0]
+            first = last = (x, y)
         elif cur is None:
             continue
         elif op == b"l":
-            cur.append(P[0] * mat)
-            last = P[0]
+            last = (vals[0], vals[1])
+            cur.append(last)
         elif op == b"c":
-            cur += [q * mat for q in _bezier(last, P[0], P[1], P[2])]
-            last = P[2]
+            cur += _bezier_xy(last, vals[0:2], vals[2:4], vals[4:6])
+            last = (vals[4], vals[5])
         elif op == b"v":
-            cur += [q * mat for q in _bezier(last, last, P[0], P[1])]
-            last = P[1]
+            cur += _bezier_xy(last, last, vals[0:2], vals[2:4])
+            last = (vals[2], vals[3])
         elif op == b"y":
-            cur += [q * mat for q in _bezier(last, P[0], P[1], P[1])]
-            last = P[1]
+            cur += _bezier_xy(last, vals[0:2], vals[2:4], vals[2:4])
+            last = (vals[2], vals[3])
         elif op == b"h" and first is not None:
-            cur.append(first * mat)
+            cur.append(first)
             last = first
-    return out
+    return [[Point(x * ma + y * mc + me, x * mb + y * md + mf) for x, y in line]
+            for line in out]
 
 
 def _form_box(doc, xref):
@@ -442,27 +453,33 @@ class Objects:
         takes the ones lying entirely inside it; a crossing region also the ones it touches:
         a line running through it, a filled shape or a picture it is on. A group filling the
         page is only taken whole (inside a window)."""
-        out = []
+        return [it for it, taken in self.pick_steps(region, crossing) if taken]
+
+    def pick_steps(self, region, crossing=False):
+        """pick() one object at a time: (item, taken) for each object it looks at, so the live
+        highlight can do a little at a time (reading a big drawing's lines takes a while)."""
         bounds = region.bounds
         for it in self.items:
             r = it["rect"]
             if not overlap(r, bounds):
                 continue
             pic = it["kind"] in ("picture", "group")
-            if region.contains_rect(r) if pic or isinstance(region, Box) else \
+            if not crossing and not (bounds.x0 <= r.x0 and r.x1 <= bounds.x1 and
+                                     bounds.y0 <= r.y0 and r.y1 <= bounds.y1):
+                continue                # (can't lie inside: no need to read its lines)
+            if region.contains_rect(r) or not pic and not isinstance(region, Box) and \
                     region.contains_lines(self.lines(it)):
-                out.append(it)
+                yield it, True
             elif not crossing or it.get("whole"):
-                continue
+                yield it, False
             elif pic:
                 q = it["quad"]
-                if region.touches_lines([[q.ul, q.ur, q.lr, q.ll, q.ul]]) or \
-                        pymupdf.Point(region.inner_point()) in q:
-                    out.append(it)
-            elif region.touches_lines(self.lines(it)) or \
-                    it["fill"] and _inside(self.lines(it), pymupdf.Point(region.inner_point())):
-                out.append(it)
-        return out
+                yield it, (region.touches_lines([[q.ul, q.ur, q.lr, q.ll, q.ul]]) or
+                           pymupdf.Point(region.inner_point()) in q)
+            else:
+                yield it, (region.touches_lines(self.lines(it)) or bool(
+                    it["fill"] and _inside(self.lines(it),
+                                           pymupdf.Point(region.inner_point()))))
 
 
 def overlap(a, b):
@@ -499,7 +516,10 @@ class Box:
 
 
 class Lasso:
-    """A freehand CAD selection region (its outline closes back to its start)."""
+    """A freehand CAD selection region (its outline closes back to its start). Its edges are
+    sorted into a grid of cells and horizontal bands, so a test only looks at the edges near
+    it (a crossing lasso over a 100,000-line sheet is redrawn while the pointer moves)."""
+    CELLS = 24
 
     def __init__(self, points):
         self.pts = [(float(p[0]), float(p[1])) for p in points]
@@ -507,6 +527,25 @@ class Lasso:
         ys = [p[1] for p in self.pts]
         self.bounds = pymupdf.Rect(min(xs), min(ys), max(xs), max(ys))
         self.edges = list(zip(self.pts, self.pts[1:] + self.pts[:1]))
+        b = self.bounds
+        self._cw = max(b.width, 1e-6) / self.CELLS
+        self._ch = max(b.height, 1e-6) / self.CELLS
+        self._grid = {}
+        self._rows = [[] for _ in range(self.CELLS)]
+        for e in self.edges:
+            (x0, y0), (x1, y1) = e
+            c0, c1 = self._col(min(x0, x1)), self._col(max(x0, x1))
+            r0, r1 = self._row(min(y0, y1)), self._row(max(y0, y1))
+            for r in range(r0, r1 + 1):
+                self._rows[r].append(e)
+                for c in range(c0, c1 + 1):
+                    self._grid.setdefault((c, r), []).append(e)
+
+    def _col(self, x):
+        return max(0, min(self.CELLS - 1, int((x - self.bounds.x0) / self._cw)))
+
+    def _row(self, y):
+        return max(0, min(self.CELLS - 1, int((y - self.bounds.y0) / self._ch)))
 
     def inner_point(self):
         return self.pts[0]
@@ -517,7 +556,7 @@ class Lasso:
             return False
         hit = False
         x, y = p[0], p[1]
-        for (x0, y0), (x1, y1) in self.edges:
+        for (x0, y0), (x1, y1) in self._rows[self._row(y)]:
             if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
                 hit = not hit
         return hit
@@ -529,12 +568,21 @@ class Lasso:
         if hi_x < self.bounds.x0 or lo_x > self.bounds.x1 or hi_y < self.bounds.y0 or \
                 lo_y > self.bounds.y1:
             return False
-        for c, d in self.edges:
-            if max(c[0], d[0]) < lo_x or min(c[0], d[0]) > hi_x or \
-                    max(c[1], d[1]) < lo_y or min(c[1], d[1]) > hi_y:
-                continue
-            if _segments_cross(a, b, c, d):
-                return True
+        c0, c1 = self._col(lo_x), self._col(hi_x)
+        r0, r1 = self._row(lo_y), self._row(hi_y)
+        seen = set()
+        for r in range(r0, r1 + 1):
+            for c in range(c0, c1 + 1):
+                for e in self._grid.get((c, r), ()):
+                    if id(e) in seen:
+                        continue
+                    seen.add(id(e))
+                    (cx, cy), (dx, dy) = e
+                    if max(cx, dx) < lo_x or min(cx, dx) > hi_x or \
+                            max(cy, dy) < lo_y or min(cy, dy) > hi_y:
+                        continue
+                    if _segments_cross(a, b, e[0], e[1]):
+                        return True
         return False
 
     def contains_lines(self, lines):
@@ -545,7 +593,7 @@ class Lasso:
 
     def touches_lines(self, lines):
         for line in lines:
-            if any(self.contains_point(p) for p in line):
+            if line and self.contains_point(line[0]):
                 return True
             if any(self._cuts(a, b) for a, b in zip(line, line[1:])):
                 return True
@@ -634,10 +682,11 @@ def _inside(lines, p):
 
 
 # ---- edits ---------------------------------------------------------------------------
-def _edit(page, ns, new):
-    """Replace the drawing instructions of objects ns with new(old_bytes, ctm)."""
+def _edit(page, ns, new, objs=None):
+    """Replace the drawing instructions of objects ns with new(old_bytes, ctm). objs: the
+    page's Objects when the caller has them (saves reading a big drawing again)."""
     data = _contents(page)
-    found = scan(data)
+    found = objs.found if objs is not None and objs.found and objs.data == data else scan(data)
     pieces = []
     for n in sorted(set(ns), reverse=True):
         if n >= len(found):
@@ -855,7 +904,7 @@ def _polyline_ops(pts):
     return b" ".join(out)
 
 
-def rewrite_path(page, n, state, parts, paint):
+def rewrite_path(page, n, state, parts, paint, objs=None):
     """Write path object n again from (state, [(subpath bytes, polyline, closed) or a list of
     new polylines], paint): a subpath given as bytes is kept as it was, polylines are drawn as
     straight lines. Nothing left: the object goes."""
@@ -870,7 +919,7 @@ def rewrite_path(page, n, state, parts, paint):
         return
     paint = b"S" if paint in (b"s", b"") else paint
     new = (state + b" " if state else b"") + b" ".join(body) + b" " + paint
-    _edit(page, [n], lambda old, ctm: b"\n" + new + b"\n")
+    _edit(page, [n], lambda old, ctm: b"\n" + new + b"\n", objs)
 
 
 def delete(page, ns):

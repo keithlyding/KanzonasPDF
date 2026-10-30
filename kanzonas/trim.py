@@ -35,7 +35,7 @@ def piece(poly, cum, s0, s1):
         if s0 < cum[k] < s1:
             out.append(pymupdf.Point(poly[k]))
     out.append(_at(poly, cum, s1))
-    return out
+    return [q for k, q in enumerate(out) if k == 0 or abs(q - out[k - 1]) > EPS]
 
 
 def project(poly, cum, pt):
@@ -68,31 +68,59 @@ def _hit(a, b, c, d):
 
 
 def crossings(poly, cum, cutters):
-    """Positions along the polyline where it meets any cutter polyline."""
+    """Positions along the polyline where it meets any cutter polyline. The cutters' pieces
+    near the polyline go into a grid of cells first, so each piece of the polyline is only
+    tested against the pieces in the cells it passes (a contour on a site plan crosses a
+    hundred thousand lines' worth of drawing)."""
     xs = [p[0] for p in poly]
     ys = [p[1] for p in poly]
     x0, x1, y0, y1 = min(xs) - 0.01, max(xs) + 0.01, min(ys) - 0.01, max(ys) + 0.01
-    out = []
+    n = 64
+    cw, ch = max(x1 - x0, 1e-6) / n, max(y1 - y0, 1e-6) / n
+
+    def col(x):
+        return max(0, min(n - 1, int((x - x0) / cw)))
+
+    def row(y):
+        return max(0, min(n - 1, int((y - y0) / ch)))
+    grid = {}
     for cut in cutters:
         if len(cut) < 2:
             continue
-        cx = [p[0] for p in cut]
-        cy = [p[1] for p in cut]
-        if max(cx) < x0 or min(cx) > x1 or max(cy) < y0 or min(cy) > y1:
-            continue
         for c, d in zip(cut, cut[1:]):
-            if max(c[0], d[0]) < x0 or min(c[0], d[0]) > x1 or \
-                    max(c[1], d[1]) < y0 or min(c[1], d[1]) > y1:
+            lx, hx = min(c[0], d[0]), max(c[0], d[0])
+            ly, hy = min(c[1], d[1]), max(c[1], d[1])
+            if hx < x0 or lx > x1 or hy < y0 or ly > y1:
                 continue
-            for k in range(len(poly) - 1):
-                t = _hit(poly[k], poly[k + 1], c, d)
-                if t is not None:
-                    out.append(cum[k] + t * (cum[k + 1] - cum[k]))
+            seg = (c, d)
+            for r in range(row(ly), row(hy) + 1):
+                for k in range(col(lx), col(hx) + 1):
+                    grid.setdefault((k, r), []).append(seg)
+    out = []
+    for k in range(len(poly) - 1):
+        a, b = poly[k], poly[k + 1]
+        lx, hx = min(a[0], b[0]), max(a[0], b[0])
+        ly, hy = min(a[1], b[1]), max(a[1], b[1])
+        seen = set()
+        for r in range(row(ly), row(hy) + 1):
+            for c_ in range(col(lx), col(hx) + 1):
+                for seg in grid.get((c_, r), ()):
+                    if id(seg) in seen:
+                        continue
+                    seen.add(id(seg))
+                    c, d = seg
+                    if max(c[0], d[0]) < lx or min(c[0], d[0]) > hx or \
+                            max(c[1], d[1]) < ly or min(c[1], d[1]) > hy:
+                        continue
+                    t = _hit(a, b, c, d)
+                    if t is not None:
+                        out.append(cum[k] + t * (cum[k + 1] - cum[k]))
     return sorted(out)
 
 
 def trim(poly, closed, click, cutters):
-    """The pieces of the polyline left after trimming at click: [] when it all goes."""
+    """The pieces of the polyline left after trimming at click: [] when it all goes, None
+    when the click is right on a crossing (it can't tell which side to cut away)."""
     poly = [pymupdf.Point(p) for p in poly]
     cum = _cum(poly)
     total = cum[-1]
@@ -100,8 +128,14 @@ def trim(poly, closed, click, cutters):
         return []
     s, _d = project(poly, cum, click)
     tol = 1e-4 * max(1.0, total)
-    cuts = [c for c in crossings(poly, cum, cutters)
-            if closed or tol < c < total - tol]
+    cuts = []
+    for c in crossings(poly, cum, cutters):
+        if (closed or tol < c < total - tol) and not (cuts and c - cuts[-1] <= tol):
+            cuts.append(c)              # (one cut where several lines meet at a point)
+    if closed and len(cuts) > 1 and cuts[0] + total - cuts[-1] <= tol:
+        cuts.pop()                      # (the same point, at the start and the end)
+    if any(abs(c - s) <= max(tol, 0.5) for c in cuts):
+        return None                     # the click is on a crossing: which side to cut?
     before = [c for c in cuts if c < s - tol]
     after = [c for c in cuts if c > s + tol]
     if closed:
@@ -111,11 +145,12 @@ def trim(poly, closed, click, cutters):
         hi = after[0] if after else cuts[0] + total
         # what's left runs from hi round to lo (going past the start / end point)
         if lo < 0:
-            return [piece(poly, cum, hi, lo + total)]
-        if hi > total:
-            return [piece(poly, cum, hi - total, lo)]
-        return [p_ for p_ in (piece(poly, cum, hi, total)[:-1] + piece(poly, cum, 0.0, lo),)
-                if len(p_) >= 2]
+            out = [piece(poly, cum, hi, lo + total)]
+        elif hi > total:
+            out = [piece(poly, cum, hi - total, lo)]
+        else:
+            out = [piece(poly, cum, hi, total)[:-1] + piece(poly, cum, 0.0, lo)]
+        return [p_ for p_ in out if len(p_) >= 2 and _length(p_) > tol]
     lo = before[-1] if before else 0.0
     hi = after[0] if after else total
     out = []
@@ -123,4 +158,8 @@ def trim(poly, closed, click, cutters):
         out.append(piece(poly, cum, 0.0, lo))
     if hi < total - tol:
         out.append(piece(poly, cum, hi, total))
-    return out
+    return [p_ for p_ in out if _length(p_) > tol]
+
+
+def _length(pts):
+    return _cum(pts)[-1]

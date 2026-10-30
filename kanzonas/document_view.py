@@ -979,6 +979,8 @@ class DocumentView(QScrollArea):
             self._inline = None
 
     def undo(self):
+        if self._cad_cmd is not None and self._cad_cmd.needs_selection:
+            self._cad_cmd.cancel()      # (its selection is gone with the change)
         self.commit_pending()
         if self._undo:
             self._redo.append(self._snapshot())
@@ -986,6 +988,8 @@ class DocumentView(QScrollArea):
             self._trim_history()
 
     def redo(self):
+        if self._cad_cmd is not None and self._cad_cmd.needs_selection:
+            self._cad_cmd.cancel()
         self.commit_pending()
         if self._redo:
             self._undo.append(self._snapshot())
@@ -2887,15 +2891,7 @@ class DocumentView(QScrollArea):
         ones it touches; region is a page_objects.Box or Lasso. They are added to what's
         selected (Shift: taken out of it). A region that takes no markups takes text the
         same way: characters inside it, or touched. Returns what it took."""
-        page = self.doc[index]
-        found = []
-        if self.show_markups:
-            for an in annotations.each_annot(page):
-                if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
-                        pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
-                    continue
-                if self._annot_picked(an, region, crossing) and annotations.read(an) is not None:
-                    found.append(an.xref)
+        found = self.cad_markups_in(index, region, crossing)
         if found:
             have = self.selected_xrefs() if self.selection is not None and \
                 self.selection[0] == index else []
@@ -2911,6 +2907,57 @@ class DocumentView(QScrollArea):
         keep = have - took if remove else have | took
         self.set_text_selection(index, [w for w in self._words(index) if w in keep])
         return "text" if words else None
+
+    def cad_markups_in(self, index, region, crossing=False):
+        """The markups (xrefs) a CAD region takes: entirely inside a window, touched by a
+        crossing one."""
+        page = self.doc[index]
+        found = []
+        if self.show_markups:
+            for an in annotations.each_annot(page):
+                if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
+                        pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
+                    continue
+                if self._annot_picked(an, region, crossing) and annotations.read(an) is not None:
+                    found.append(an.xref)
+        return found
+
+    def cad_preview(self, index, region, crossing=False, limit=3000):
+        """What a CAD region would take if finished now, for the live highlight while it's
+        drawn: (outlines [[Point...]], text rects) in page coordinates, at most limit
+        outlines."""
+        out, rects = [], []
+        for lines, more in self.cad_preview_steps(index, region, crossing):
+            out += lines
+            rects += more
+            if len(out) >= limit:
+                break
+        return out[:limit], rects
+
+    def cad_preview_steps(self, index, region, crossing=False):
+        """cad_preview a little at a time: yields (outlines, text rects) for each thing looked
+        at (often nothing), so the highlight can be worked out in short slices."""
+        if self.tool == "select":
+            xrefs = self.cad_markups_in(index, region, crossing)
+            if xrefs:
+                page = self.doc[index]
+                found = annotations.load_annots(page, xrefs[:3000])
+                models = [(x, annotations.read(a)) for x, a in found.items()]
+                yield self.cad_outlines(index, "markups",
+                                        [(x, m) for x, m in models if m is not None]), []
+            else:
+                yield [], self.line_rects(self.cad_text(index, region, crossing))
+            return
+        from .page_objects import overlap
+        objs = self.content_objects(index)
+        for it, taken in (objs.pick_steps(region, crossing) if objs is not None else ()):
+            yield (self.object_lines(index, it) if taken else []), []
+        for it in self.text_objects(index):
+            if overlap(it["rect"], region.bounds) and (
+                    region.contains_rect(it["rect"]) or crossing and any(
+                        region.touches_rect(r) for r, _ln in it["lines"])):
+                r = it["rect"]
+                yield [[r.tl, r.tr, r.br, r.bl, r.tl]], []
 
     def cad_text(self, index, region, crossing=False):
         """The characters a CAD region takes: inside a window, touched by a crossing one."""
@@ -4019,6 +4066,16 @@ class DocumentView(QScrollArea):
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         self.statusMessage.emit(tr("{what} (Ctrl+Z undoes it)").format(what=label))
 
+    def _trimmable_annots(self, page):
+        """The markups Trim sees: shown, not hidden or locked."""
+        if not self.show_markups:
+            return
+        for an in annotations.each_annot(page):
+            if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
+                    pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
+                continue
+            yield an
+
     def cad_trim(self, index, pt):
         """Trim at pt (the CAD tab): the clicked line of the drawing, or line markup, loses
         the part between the nearest lines crossing it (or its end). True if it changed."""
@@ -4027,20 +4084,34 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
         objs = self.content_objects(index)
         best = None                         # (distance, what, ...)
+        near = []
         if objs is not None:
-            item = objs.at(pt, tol)
-            if item is not None and item["kind"] == "shape" and item["stroke"] and \
-                    not item["fill"]:
-                state, parts, paint = page_objects.subpaths(objs.data, item["obj"])
-                mat = item["obj"]["ctm"] * objs.tm
-                for k, (_raw, local, closed) in enumerate(parts):
-                    poly = [q * mat for q in local]
-                    if len(poly) < 2:
-                        continue
-                    _s, d = trim.project(poly, trim._cum(poly), pt)
-                    if d <= tol + item.get("width", 0) / 2 and (best is None or d < best[0]):
-                        best = (d, "object", item, k, poly, closed, state, parts, paint, mat)
-        for an in annotations.each_annot(page):
+            # every stroked line near the click, not only the topmost: the nearest one is cut
+            # (a click just beside a crossing means the line it's on)
+            for item in objs.items:
+                r = item["rect"]
+                pad = tol + item.get("width", 0) / 2
+                if item["kind"] == "shape" and item["stroke"] and not item["fill"] and \
+                        r.x0 - pad <= pt.x <= r.x1 + pad and r.y0 - pad <= pt.y <= r.y1 + pad:
+                    near.append(item)
+        nearest = None                      # (distance, item, subpath number)
+        for item in near:
+            for k, poly in enumerate(objs.lines(item)):
+                if len(poly) < 2:
+                    continue
+                _s, d = trim.project(poly, trim._cum(poly), pt)
+                if d <= tol + item.get("width", 0) / 2 and (nearest is None or d < nearest[0]):
+                    nearest = (d, item, k)
+        if nearest is not None:
+            d, item, k = nearest
+            state, parts, paint = page_objects.subpaths(objs.data, item["obj"])
+            mat = item["obj"]["ctm"] * objs.tm
+            if k < len(parts):
+                shown = objs.lines(item)[k]         # (the same subpath, already on the page)
+                poly = shown if len(shown) == len(parts[k][1]) else \
+                    [q * mat for q in parts[k][1]]
+                best = (d, "object", item, k, poly, parts[k][2], state, parts, paint, mat)
+        for an in self._trimmable_annots(page):
             m = annotations.read(an)
             if m is None or m["kind"] not in ("line", "polyline", "ink"):
                 continue
@@ -4071,7 +4142,7 @@ class DocumentView(QScrollArea):
                     if best[1] == "object" and it is best[2] and k == best[3]:
                         continue
                     cutters.append(line)
-        for an in annotations.each_annot(page):
+        for an in self._trimmable_annots(page):
             if best[1] == "markup" and an.xref == best[2]:
                 continue
             if not page_objects.overlap(an.rect, r):
@@ -4083,6 +4154,10 @@ class DocumentView(QScrollArea):
             others = (m["strokes"] if m["kind"] == "ink" else [])
             cutters += [list(s) for j, s in enumerate(others) if j != best[3]]
         pieces = trim.trim(poly, best[5], pt, cutters)
+        if pieces is None:
+            self.statusMessage.emit(tr("Trim: that's where lines cross. Click on the part of "
+                                       "the line to cut away, a little to one side."))
+            return False
         if best[1] == "object":
             _d, _w, item, k, _poly, _closed, state, parts, paint, mat = best
             inv = ~mat
@@ -4090,7 +4165,7 @@ class DocumentView(QScrollArea):
                    for j, p_ in enumerate(parts)]
 
             def do():
-                page_objects.rewrite_path(self.doc[index], item["n"], state, new, paint)
+                page_objects.rewrite_path(self.doc[index], item["n"], state, new, paint, objs)
             self.modify(do, [index])
             self.clear_object_selection()
         else:

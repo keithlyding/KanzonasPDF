@@ -791,16 +791,29 @@ def transformed(model, mat):
         if model["kind"] in POINTED or model["kind"] == "ink":
             sx = sy = 1.0               # (a box kept with the points: they say where it is)
         w, h = r.width * sx, r.height * sy
-        m["rect"] = pymupdf.Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
         turn = math.degrees(math.atan2(mat.b, mat.a))          # clockwise on screen
-        if abs(turn) > 1e-6 or mat.a * mat.d - mat.b * mat.c < 0:
-            if model["kind"] in ROTATABLE and model["kind"] not in POINTED + ("ink",):
-                a = angle(model)
-                new = (a - turn) if mat.a * mat.d - mat.b * mat.c >= 0 else (-a - turn)
-                m["props"]["rotation"] = round(new % 360, 2)
-            elif model["kind"] in QUARTER_TURNS:
-                new = angle(model) - turn
-                m["props"]["rotation"] = int(round(new / 90.0)) * 90 % 360
+        mirrored = mat.a * mat.d - mat.b * mat.c < 0
+        a = angle(model)
+        if mirrored:
+            # a mirror image of a box is the same box turned: of the two turns that give it,
+            # the one nearer upright, so stamps, pictures and text keep reading the right way
+            new = min(((-a - turn) % 360, (-a - turn + 180) % 360),
+                      key=lambda x: min(x, 360 - x))
+        else:
+            new = (a - turn) % 360
+        if model["kind"] in ("rect", "ellipse"):
+            new %= 180                  # (turned half round, they're the same shape)
+        if model["kind"] in QUARTER_TURNS:
+            # text boxes and callouts turn in quarter turns; a quarter turn turns their box
+            q = int(round((new - a) / 90.0)) % 4
+            new = int(round(new / 90.0)) * 90 % 360
+            if q % 2:
+                w, h = h, w
+        if model["kind"] in ROTATABLE + QUARTER_TURNS and \
+                model["kind"] not in POINTED + ("ink",) and abs(new - a) > 1e-6:
+            m["props"]["rotation"] = round(new, 2) if model["kind"] not in QUARTER_TURNS \
+                else new
+        m["rect"] = pymupdf.Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
     return m
 
 

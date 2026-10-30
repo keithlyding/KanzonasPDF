@@ -7,14 +7,18 @@ page's own lines, text and pictures):
   everything it touches). Escape cancels it;
 - hold the button and drag: a lasso that follows the pointer. Drawn rightward at first it's a
   window lasso (blue), leftward a crossing lasso (green);
-- dragging never moves anything (use the CAD tab's Move); handles still resize.
+- dragging never moves anything (use the CAD tab's Move); handles still resize;
+- while a box or lasso is drawn, what it would take is highlighted, worked out in short
+  slices between pointer moves so big drawings stay smooth (it fills in as it goes).
 
 Mouse mode options (Preferences > Mouse) can turn click-click boxes or the lasso off: then a
 press-drag-release draws a box instead.
 """
+import time
+
 import pymupdf
 import shiboken6
-from PySide6.QtCore import Qt, QPointF, QRectF
+from PySide6.QtCore import Qt, QPointF, QRectF, QTimer
 from PySide6.QtGui import QColor, QPen, QPolygonF
 
 from .page_objects import Box, Lasso
@@ -77,6 +81,7 @@ def move(w, e, pos):
             d["dir"] = 1 if pos.x() > d["start"].x() else -1
     elif d["mode"] == "box":
         d["now"] = pos
+    _schedule(w)
     w.update()
 
 
@@ -90,11 +95,13 @@ def hover(w, e):
         w.view._cad_pick = None
         return
     pick["now"] = QPointF(pw.mapFromGlobal(e.globalPosition()))
+    _schedule(pw)
     pw.update()
 
 
 def release(w, e, pos):
     d, w._cad_down = w._cad_down, None
+    _clear(w)
     if d.get("ignore"):
         return
     v = w.view
@@ -109,7 +116,9 @@ def release(w, e, pos):
         if target is not None:
             toggle(w, kind, target, d["remove"])
         elif v.click_click and not d.get("link"):     # (Ctrl+click on a link opens it)
-            v._cad_pick = {"w": w, "start": d["start"], "now": d["start"],
+            # the first corner is kept as a point of the page: zooming or scrolling before
+            # the second click doesn't move it
+            v._cad_pick = {"w": w, "at": w.to_pdf(d["start"]), "now": d["start"],
                            "remove": d["remove"]}
     w.update()
 
@@ -121,8 +130,9 @@ def finish_box(v, pk, e):
         return
     end = QPointF(pw.mapFromGlobal(e.globalPosition()))
     v._cad_pick = None
+    _clear(pw)
     pw.update()
-    a = pk["start"]
+    a = QPointF(pw.to_screen_pt(pk["at"]))
     if (end - a).manhattanLength() < 3:
         return
     pick(pw, Box(pymupdf.Rect(pw.to_pdf(a), pw.to_pdf(end))), end.x() < a.x(),
@@ -136,6 +146,7 @@ def cancel(v):
         return False
     v._cad_pick = None
     if shiboken6.isValid(pk["w"]):
+        _clear(pk["w"])
         pk["w"].update()
     return True
 
@@ -170,6 +181,95 @@ def toggle(w, kind, target, remove):
         v.select_objects(w.index, [target], add=True)
 
 
+# ---- the live highlight ---------------------------------------------------------------
+def _region(w):
+    """(region, crossing) of the box or lasso being drawn on page widget w, or None."""
+    d = w._cad_down
+    if d is not None and not d.get("ignore"):
+        if d["mode"] == "lasso" and len(d["pts"]) >= 3:
+            return Lasso([w.to_pdf(p) for p in d["pts"]]), d["dir"] < 0
+        if d["mode"] == "box" and d["now"] is not None:
+            a, b = d["start"], d["now"]
+            return Box(pymupdf.Rect(w.to_pdf(a), w.to_pdf(b))), b.x() < a.x()
+    pk = w.view._cad_pick
+    if pk is not None and pk["w"] is w:
+        a, b = QPointF(w.to_screen_pt(pk["at"])), pk["now"]
+        if (b - a).manhattanLength() >= 3:
+            return Box(pymupdf.Rect(pk["at"], w.to_pdf(b))), b.x() < a.x()
+    return None
+
+
+SLICE = 0.05                   # seconds of work per step of the live highlight
+LIMIT = 3000                    # outlines drawn at most
+
+
+def _schedule(w):
+    """Work out the highlight soon (once for a burst of pointer moves)."""
+    t = getattr(w, "_preview_timer", None)
+    if t is None:
+        t = w._preview_timer = QTimer(w)
+        t.setSingleShot(True)
+        t.timeout.connect(lambda: _preview(w))
+    if not t.isActive():
+        t.start(40)
+
+
+def _key(region, crossing):
+    b = region.bounds
+    return (type(region).__name__, round(b.x0, 2), round(b.y0, 2), round(b.x1, 2),
+            round(b.y1, 2), len(getattr(region, "pts", ())), crossing)
+
+
+def _preview(w):
+    """A short slice of working out the highlight; more slices follow until it's done, so
+    the pointer never waits (a big drawing's lines are read a little at a time)."""
+    if not shiboken6.isValid(w):
+        return
+    doc = getattr(w.view, "doc", None)
+    if doc is None or doc.is_closed:
+        return                          # (the document closed meanwhile)
+    try:
+        found = _region(w)
+        if found is None:
+            _clear(w)
+            return
+        region, crossing = found
+        key = _key(region, crossing)
+        job = getattr(w, "_preview_job", None)
+        if job is None or job["key"] != key:
+            job = w._preview_job = {"key": key, "crossing": crossing, "lines": [],
+                                    "rects": [], "steps": w.view.cad_preview_steps(
+                                        w.index, region, crossing)}
+        end = time.monotonic() + SLICE
+        done = False
+        while time.monotonic() < end:
+            try:
+                lines, rects = next(job["steps"])
+            except StopIteration:
+                done = True
+                break
+            if len(job["lines"]) < LIMIT:
+                job["lines"] += lines
+            job["rects"] += rects
+    except Exception:
+        _clear(w)
+        return
+    w._cad_preview = (job["crossing"], job["lines"][:LIMIT], job["rects"])
+    w.update()
+    if not done:
+        w._preview_timer.start(0)       # the next slice, after the pointer had its turn
+
+
+def _clear(w):
+    t = getattr(w, "_preview_timer", None)
+    if t is not None:
+        t.stop()
+    w._preview_job = None
+    if getattr(w, "_cad_preview", None) is not None:
+        w._cad_preview = None
+        w.update()
+
+
 def paint_box(p, a, b):
     """A selection box from a to b: left to right a blue window, right to left a green dashed
     crossing box."""
@@ -181,9 +281,22 @@ def paint_box(p, a, b):
 
 
 def paint(w, p):
+    pv = getattr(w, "_cad_preview", None)
+    if pv is not None and (w._cad_down is not None or w.view._cad_pick is not None):
+        crossing, lines, rects = pv
+        color = QColor(GREEN if crossing else BLUE)
+        p.setPen(QPen(color, 2.5))
+        for line in lines:
+            pts = [QPointF(w.to_screen_pt(q)) for q in line]
+            for a, b in zip(pts, pts[1:]):
+                p.drawLine(a, b)
+        fill = QColor(color)
+        fill.setAlpha(70)
+        for r in rects:
+            p.fillRect(w.to_screen(r), fill)
     pk = w.view._cad_pick
     if pk is not None and pk["w"] is w:
-        paint_box(p, pk["start"], pk["now"])
+        paint_box(p, QPointF(w.to_screen_pt(pk["at"])), pk["now"])
     d = w._cad_down
     if d is None or d.get("ignore"):
         return

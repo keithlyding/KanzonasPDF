@@ -668,6 +668,20 @@ class PageWidget(QWidget):
             return {}                   # text is moved, not resized (Edit text changes it)
         return box_handles(self.to_screen(self.view.selected_objects_rect()).adjusted(-2, -2, 2, 2))
 
+    def _selected_size(self, items):
+        """How many line pieces the selected objects have (worked out once per selection)."""
+        key = (id(self.view.obj_sel), len(items))
+        if getattr(self, "_size_key", None) != key:
+            self._size_key = key
+            total = 0
+            for it in items:
+                total += sum(max(0, len(line) - 1)
+                             for line in self.view.object_lines(self.index, it))
+                if total > 30000:
+                    break
+            self._size = total
+        return self._size
+
     def _draw_object(self, p, item, page):
         for line in self.view.object_lines(self.index, item):
             pts = [self.to_screen_pt(q, page) for q in line]
@@ -699,9 +713,12 @@ class PageWidget(QWidget):
             # and the old preview was an empty box, so the shapes looked like they vanished.
             self._paint_object_ghost(p, ed, page)
         else:
-            if len(items) <= 3000:
+            if len(items) <= 3000 and self._selected_size(items) <= 30000:
                 for it in items:
                     self._draw_object(p, it, page)
+            elif len(items) <= 3000:            # (a huge drawing: each one's box)
+                for it in items:
+                    p.drawRect(self.to_screen(it["rect"], page))
             p.setPen(QPen(blue, 1, Qt.DashLine))
             p.drawRect(self.to_screen(self.view.selected_objects_rect(), page).adjusted(-2, -2, 2, 2))
             if ed is None:
@@ -1101,7 +1118,8 @@ class PageWidget(QWidget):
         if cmd is not None:
             # a CAD tab command takes the clicks (snapped); right-click = Enter
             if e.button() == Qt.LeftButton:
-                cmd.click(self.index, self.to_pdf(self._snap(e.position(), e)))
+                pos = self._snap(e.position(), e) if cmd.snap else e.position()
+                cmd.click(self.index, self.to_pdf(pos))
             elif e.button() == Qt.RightButton:
                 cmd.enter()
             return
@@ -1364,7 +1382,8 @@ class PageWidget(QWidget):
         pos = e.position()
         tool = self.view.tool
         if self.view._cad_cmd is not None and not e.buttons():
-            self.view._cad_cmd.move(self.index, self.to_pdf(self._snap(pos, e)))
+            cmd = self.view._cad_cmd
+            cmd.move(self.index, self.to_pdf(self._snap(pos, e) if cmd.snap else pos))
             return
         if self._cad_down is not None and e.buttons():
             cad_select.move(self, e, pos)

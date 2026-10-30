@@ -135,7 +135,7 @@ class Keys(Window):
         w._link_press = None
         cad_select.release(w, None, w.rect().center())
         self.assertIsNone(v._cad_pick)
-        v._cad_pick = {"w": w, "start": w.rect().center(), "now": w.rect().center(),
+        v._cad_pick = {"w": w, "at": w.to_pdf(w.rect().center()), "now": w.rect().center(),
                        "remove": False}
         w.mouseDoubleClickEvent(mock.Mock(position=lambda: w.rect().center().toPointF(),
                                           button=lambda: Qt.LeftButton,
@@ -305,6 +305,151 @@ class Updates(unittest.TestCase):
 
     def test_spanish_names_without_accents(self):
         self.assertEqual(cad_commands._plain("Simetría"), "simetria")
+
+
+class CadCommands(unittest.TestCase):
+    """The CAD tester's findings."""
+
+    def view(self, build, tool="editobjects", rotation=0):
+        for k in ("snap_objects", "snap_page", "snap_grid", "cad_select", "click_click"):
+            self.addCleanup(setattr, DocumentView, k, getattr(DocumentView, k))
+        DocumentView.snap_objects = DocumentView.snap_page = DocumentView.snap_grid = False
+        d = pymupdf.open()
+        p = d.new_page()
+        build(p)
+        if rotation:
+            p.set_rotation(rotation)
+        path = os.path.join(tempfile.mkdtemp(), "c.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        self.addCleanup(v.close_doc)
+        v.resize(900, 1000)
+        v.show()
+        APP.processEvents()
+        v.set_tool(tool)
+        self.prompt = cad_commands.Prompt()
+        self.addCleanup(self.prompt.deleteLater)
+        return v
+
+    def run_cmd(self, v, key, clicks=(), typed=None):
+        cmd = cad_commands.COMMANDS[key](v, self.prompt)
+        cmd.start()
+        for pt in clicks:
+            cmd.click(0, P(pt))
+        if typed is not None:
+            cmd.typed(typed)
+        return cmd
+
+    def line(self, p):
+        p.draw_line((100, 100), (200, 100))
+
+    def test_values_that_would_break_the_drawing_are_refused(self):
+        v = self.view(self.line)
+        v.select_objects(0, list(v.content_objects(0).items))
+        before = v.doc[0].read_contents()
+        for key, value in (("scale", "nan"), ("scale", "inf"), ("scale", "1e300"),
+                           ("scale", "0.000001"), ("rotate", "nan"), ("rotate", "inf")):
+            cmd = self.run_cmd(v, key, [(100, 100)], value)
+            self.assertIs(v._cad_cmd, cmd, (key, value))           # still asking
+            cmd.cancel()
+        self.assertEqual(v.doc[0].read_contents(), before)
+        self.assertEqual(cad_commands.number("90\u00b0"), 90)
+        cmd = self.run_cmd(v, "scale", [(100, 100), (200, 100), (100, 100)])   # to nothing
+        self.assertIs(v._cad_cmd, cmd)
+        cmd.cancel()
+        cmd = self.run_cmd(v, "align", [(100, 100), (300, 300), (200, 100), (300, 300)])
+        cmd.choose("yes")                                       # both ends to one point
+        self.assertIs(v._cad_cmd, cmd)
+        cmd.cancel()
+        self.assertEqual(v.doc[0].read_contents(), before)
+
+    def test_trim_cuts_the_line_nearest_the_click_unsnapped(self):
+        def build(p):
+            p.draw_line((100, 100), (400, 100))
+            p.draw_line((300, 50), (300, 150))
+            p.draw_line((200, 50), (200, 150))
+        DocumentView.snap_objects = True
+        v = self.view(build)
+        cmd = cad_commands.COMMANDS["trim"](v, self.prompt)
+        self.assertFalse(cmd.snap)
+        cmd.start()
+        said = []
+        v.statusMessage.connect(said.append)
+        cmd.click(0, P(200, 100))                               # right on a crossing
+        self.assertIn("lines cross", said[-1])
+        cmd.click(0, P(298, 100))                               # just beside the crossing
+        segs = sorted(tuple(sorted(((round(i[1].x), round(i[1].y)), (round(i[2].x),
+                                                                       round(i[2].y)))))
+                      for d in v.doc[0].get_drawings() for i in d["items"])
+        self.assertIn(((300, 50), (300, 150)), segs)            # the plumb line is whole
+        self.assertNotIn(((100, 100), (400, 100)), segs)        # the level one was cut
+
+    def test_trim_leaves_hidden_and_locked_markups_alone(self):
+        def build(p):
+            a = p.add_line_annot((100, 100), (400, 100))
+            a.set_flags(pymupdf.PDF_ANNOT_IS_LOCKED)
+            a.update()
+            b = p.add_line_annot((250, 50), (250, 150))
+            b.set_flags(pymupdf.PDF_ANNOT_IS_HIDDEN)
+            b.update()
+        v = self.view(build, "select")
+        cmd = self.run_cmd(v, "trim", [(300, 100)])
+        page = v.doc[0]
+        self.assertEqual(len(list(page.annots())), 2)
+        locked = [a for a in page.annots() if a.flags & pymupdf.PDF_ANNOT_IS_LOCKED][0]
+        self.assertEqual(round(locked.vertices[0][0]), 100)
+        cmd.cancel()
+
+    def test_rotate_by_a_click_on_a_turned_page(self):
+        for rot in (90, 180, 270):
+            v = self.view(self.line, rotation=rot)
+            v.select_objects(0, list(v.content_objects(0).items))
+            page = v.doc[0]
+            rm = page.rotation_matrix
+            base = P(100, 100)
+            # a click straight above the base point as shown
+            shown = base * rm + (0, -50)
+            self.run_cmd(v, "rotate", [base, shown * page.derotation_matrix])
+            objs = v.content_objects(0)
+            line = objs.lines(objs.items[0])[0]                 # (the app's page points)
+            a, b = line[0] * rm, line[-1] * rm
+            far = b if abs(b - base * rm) > abs(a - base * rm) else a
+            # as shown, the line turned a quarter counterclockwise: from "east" to the click
+            # the way it was shown before (y grows downward on screen)
+            u = P(200, 100) * rm - base * rm
+            want = base * rm + P(u.y, -u.x)
+            self.assertAlmostEqual(far.x, want.x, delta=0.5, msg=rot)
+            self.assertAlmostEqual(far.y, want.y, delta=0.5, msg=rot)
+
+    def test_mirror_keeps_stamps_and_text_upright_and_quarter_turns_turn_the_box(self):
+        from kanzonas import annotations as A
+        m = {"kind": "textbox", "rect": pymupdf.Rect(100, 100, 300, 140),
+             "props": {"rotation": 0}, "text": "x"}
+        mirrored = A.transformed(m, cad_commands.mirror(P(400, 0), P(400, 500)))
+        self.assertEqual(A.angle(mirrored), 0)
+        turned = A.transformed(m, cad_commands.rotation(P(200, 120), 90))
+        self.assertEqual(A.angle(turned), 90)
+        self.assertAlmostEqual(turned["rect"].width, 40, places=3)
+        stamp = {"kind": "stamp", "rect": pymupdf.Rect(0, 0, 100, 30), "props": {"rotation": 0}}
+        for line in ((P(50, 0), P(50, 10)), (P(0, 50), P(10, 50))):
+            self.assertEqual(A.angle(A.transformed(stamp, cad_commands.mirror(*line))), 0)
+        rect = {"kind": "rect", "rect": pymupdf.Rect(0, 0, 100, 30), "props": {"rotation": 0}}
+        self.assertEqual(A.angle(A.transformed(rect, cad_commands.rotation(P(0, 0), 180))), 0)
+
+    def test_a_started_box_survives_a_zoom_but_not_a_command(self):
+        DocumentView.cad_select = DocumentView.click_click = True
+        v = self.view(self.line)
+        from kanzonas import cad_select
+        w = v.pages[0]
+        v._cad_pick = {"w": w, "at": P(90, 90), "now": w.rect().center(), "remove": False}
+        v.set_zoom(v.zoom / 2)
+        APP.processEvents()
+        self.assertEqual(v._cad_pick["at"], P(90, 90))           # a page point: it stays
+        v.select_objects(0, list(v.content_objects(0).items))
+        self.run_cmd(v, "move")
+        self.assertIsNone(v._cad_pick)
+        v._cad_cmd.cancel()
+        self.assertTrue(callable(cad_select.cancel))
 
 
 if __name__ == "__main__":

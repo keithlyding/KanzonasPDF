@@ -168,6 +168,48 @@ class CadMouse(unittest.TestCase):
         self.assertIsNone(v._cad_pick)
         self.assertEqual(len(v.selected_objects()), 2)          # (and keeps the selection)
 
+    def test_what_a_box_would_take_lights_up_while_it_is_drawn(self):
+        DocumentView.click_click = True
+        from kanzonas import cad_select
+        v = self.view(drawing, "editobjects")
+        w = v.pages[0]
+        self.click(v, (80, 80))                                 # first corner
+        self.mouse(v, "move", (180, 220), held=False)           # left to right: window
+        cad_select._preview(w)                                  # (what the timer runs)
+        crossing, lines, _rects = w._cad_preview
+        self.assertFalse(crossing)
+        self.assertEqual(len(lines), 1)                         # the short line only
+        self.escape(v)
+        self.assertIsNone(w._cad_preview)                       # gone with the box
+        self.click(v, (180, 220))
+        self.mouse(v, "move", (80, 80), held=False)             # right to left: crossing
+        cad_select._preview(w)
+        crossing, lines, _rects = w._cad_preview
+        self.assertTrue(crossing)
+        self.assertEqual(len(lines), 2)                         # and the long line it crosses
+        self.click(v, (80, 80))
+        self.assertIsNone(w._cad_preview)
+        self.assertEqual(len(v.selected_objects()), 2)
+
+    def test_text_and_markups_light_up_with_select(self):
+        DocumentView.lasso = False
+        from kanzonas import cad_select
+        v = self.view(self.markups, "select")
+        w = v.pages[0]
+        self.mouse(v, "press", (128, 506))
+        self.mouse(v, "move", (95, 484))                        # crossing over "Wall m"
+        cad_select._preview(w)
+        _c, lines, rects = w._cad_preview
+        self.assertEqual(lines, [])
+        self.assertEqual(len(rects), 1)                         # the text's line, lit
+        self.mouse(v, "move", (200, 270))
+        self.mouse(v, "move", (90, 90))       # over the box, the line and the room's top
+        cad_select._preview(w)
+        _c, lines, rects = w._cad_preview
+        self.assertEqual(len(lines), 3)
+        self.mouse(v, "release", (90, 90))
+        self.assertIsNone(w._cad_preview)
+
     def test_a_lasso_follows_the_pointer(self):
         DocumentView.lasso = True
         v = self.view(drawing, "editobjects")

@@ -321,6 +321,9 @@ first it's a blue window lasso (what's entirely inside it); leftward, a green cr
 (what it touches). Shift+lasso takes things out.</li>
 <li>With Select, a box or lasso that takes no markups selects text: the characters inside a
 window, or the ones a crossing box touches (Ctrl+C copies them).</li>
+<li>While you draw a box or a lasso, what it would take <b>lights up</b> (blue for a window,
+green for a crossing box), so you see what you'll get before the second click or before you
+let go. On a very big drawing it fills in over a moment while you move.</li>
 <li>Dragging never moves anything in CAD mode, so nothing moves by accident: the square handles
 of one selected markup or object still resize it, and the CAD tab's <b>Move</b> moves.</li>
 <li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>
@@ -361,18 +364,22 @@ Escape or Done ends it.</li>
 <li><b>Rotate</b>: click the base point, then type the angle in degrees (counterclockwise; -90
 turns clockwise) and press Enter, or click a point: the selection turns so that "east" points
 there.</li>
-<li><b>Scale</b>: click the base point, then type the factor (2 = twice as big, 0.5 = half) and
-press Enter, or click a point at a length you know, then the point at the length it becomes.</li>
+<li><b>Scale</b>: click the base point, then type the factor (2 = twice as big, 0.5 = half; from
+0.001 to 1000) and press Enter, or click a point at a length you know, then the point at the
+length it becomes.</li>
 <li><b>Mirror</b>: click two points on the mirror line, then <b>Keep them</b> (a mirrored copy)
 or <b>Delete them</b> (the originals are replaced).</li>
 <li><b>Delete</b>: deletes the selection.</li>
 <li><b>Align</b>: click a point on the selection and where it goes, then a second point and where
 it goes; then <b>Scale</b> (so the second points meet too) or <b>Don't scale</b>.</li>
-<li><b>Array</b>: choose the rows and columns, then click the base point, where the next
-column's copy goes and where the next row's copy goes (the direction counts too).</li>
+<li><b>Array</b>: choose the rows and columns (up to 50 each), then click the base point, where
+the next column's copy goes and where the next row's copy goes (the direction counts too). An
+array that would make more than 20,000 objects asks first.</li>
 <li><b>Trim</b>: no selection needed. Click the part of a line to cut away: it goes up to the
 nearest lines crossing it on either side (or to its end, when nothing crosses on that side); a
-line nothing crosses goes completely. Click again and again; Enter, Escape or Done ends it. It
+line nothing crosses goes completely. The click picks the line nearest to it and isn't
+snapped; a click right where lines cross says so instead (click a little to one side). Click
+again and again; Enter, Escape or Done ends it. It
 trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
 and line, polyline and pen markups; filled shapes and pictures aren't trimmed.</li>
 </ul>
