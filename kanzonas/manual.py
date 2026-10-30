@@ -381,7 +381,11 @@ the next column's copy goes and where the next row's copy goes (the direction co
 array that would make more than 20,000 objects asks first. A big array (more than 20 copies of
 a large selection) is made as CAD programs make blocks: the selection goes into the file once,
 as a drawing group, and each copy places that group, so it's quick and the file stays small.
-In Edit objects each such copy is a group; Ungroup takes one apart.</li>
+In Edit objects each such copy is a group; Ungroup takes one apart. This is done only for plain
+lines, shapes and pictures that are all under the same clipping and in the same layer, where it
+looks exactly like copying each object; anything else (groups, objects in different layers) is
+copied object by object, which takes longer. The group's copies are drawn together, above the
+last selected object.</li>
 <li><b>Trim</b>: no selection needed. Click the part of a line to cut away: it goes up to the
 nearest lines crossing it on either side (or to its end, when nothing crosses on that side); a
 line nothing crosses goes completely. The click picks the line nearest to it and isn't

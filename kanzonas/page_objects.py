@@ -355,6 +355,8 @@ def path_lines(data, obj, tm):
     for op, args, _raw in toks:
         k = _CONSTRUCT.get(op)
         if k is None:
+            if op in (b"s", b"b", b"b*") and cur and first is not None and cur[-1] != first:
+                cur.append(first)       # (these paint operators close the last subpath)
             continue
         vals = [_num(t) for t in args[-k:]] if k else []
         if k and (len(args) < k or None in vals):
@@ -418,10 +420,31 @@ def _set_contents(page, data, compress=True):
     compress=False skips deflating it now (saving deflates everything anyway): on a big CAD
     sheet that's a quarter of a second per edit."""
     doc = page.parent
-    x = doc.get_new_xref()
-    doc.update_object(x, "<<>>")
+    # The stream an earlier edit wrote for this page is written over (a new one each time
+    # left every old drawing in the file: an undo step on a big sheet carried all of them)
+    # when no other page uses it.
+    x = _own_stream(doc, page)
+    if x is None:
+        x = doc.get_new_xref()
+        doc.update_object(x, "<</KzPage %d>>" % page.xref)
     doc.update_stream(x, data, compress=compress)
     page.set_contents(x)
+
+
+def _own_stream(doc, page):
+    """The page's one content stream when an edit here wrote it for this page and no other
+    page shows it, else None."""
+    kind, val = doc.xref_get_key(page.xref, "Contents")
+    if kind != "xref":
+        return None
+    x = int(val.split()[0])
+    if doc.xref_get_key(x, "KzPage") != ("int", str(page.xref)):
+        return None
+    for i in range(doc.page_count):
+        px = doc.page_xref(i)
+        if px != page.xref and doc.xref_get_key(px, "Contents")[1].split()[:1] == [str(x)]:
+            return None                 # (shared, as a copied page can be)
+    return x
 
 
 class _Shape(dict):
@@ -1065,6 +1088,59 @@ def copies(page, ns, matrices, objs=None):
     return _rebuilt(page, new_data, out, objs, origin)
 
 
+def _contexts(data, starts):
+    """{start: (marked content around it, clipping in effect)} for objects starting at
+    starts: two objects with the same value are drawn under the same clip, in the same
+    layer."""
+    want = sorted(set(starts))
+    out, i = {}, 0
+    bdc, clip, stack = [], [], []
+    for op, _args, s_, e_ in _tokens(data):
+        while i < len(want) and want[i] <= s_:
+            out[want[i]] = (tuple(bdc), tuple(clip))
+            i += 1
+        if i >= len(want):
+            break
+        if op == b"q":
+            stack.append(len(clip))
+        elif op == b"Q":
+            if stack:
+                del clip[stack.pop():]
+        elif op in (b"BDC", b"BMC"):
+            bdc.append(data[s_:e_])
+        elif op == b"EMC":
+            if bdc:
+                bdc.pop()
+        elif op in (b"W", b"W*"):
+            clip.append(s_)
+    for w in want[i:]:
+        out[w] = (tuple(bdc), tuple(clip))
+    return out
+
+
+def _used_resources(doc, page, body):
+    """A resource dictionary (text) with just the page's resources that body uses."""
+    used = {}
+    for op, args, _s, _e in _tokens(body):
+        cat = _RES_OPS.get(op)
+        if cat is not None:
+            for a in args:
+                if isinstance(a, bytes) and a.startswith(b"/"):
+                    used.setdefault(cat, set()).add(a[1:].decode("latin-1"))
+    parts = []
+    for cat, keys in sorted(used.items()):
+        have = _res_entries(doc, page.xref, "Resources/" + cat)
+        items = []
+        for k in sorted(keys):
+            if k in have:
+                text = _value_text(*have[k])
+                if text is not None:
+                    items.append("/%s %s" % (k, text))
+        if items:
+            parts.append("/%s<<%s>>" % (cat, " ".join(items)))
+    return "<<%s>>" % "".join(parts)
+
+
 def block_copies(page, ns, matrices, objs=None):
     """Copies of objects ns by reference, for big arrays: the objects go once into a drawing
     group (a Form XObject, as CAD programs export blocks), and each copy is one line placing
@@ -1081,6 +1157,14 @@ def block_copies(page, ns, matrices, objs=None):
     ns = sorted(set(ns))
     if not ns or ns[-1] >= len(found):
         raise ValueError(tr("The object is no longer on the page."))
+    # Only where a group looks exactly like copies written out one by one: plain shapes and
+    # pictures (a group's own size isn't known here), all under the same clipping and in the
+    # same layer (marked content), as the copies placed after the last of them will be.
+    # Anything else is copied the usual way.
+    pictures = {("/" + g[7]).encode() for g in page.get_images(full=True)}
+    if any(not found[n].get("path") and found[n].get("name") not in pictures for n in ns) or \
+            len(set(_contexts(data, [found[n]["start"] for n in ns]).values())) != 1:
+        return copies(page, ns, matrices, objs)
     _own_resources(page)
     _add_reset_gs(page)
     body = [_DEFAULTS]
@@ -1092,13 +1176,16 @@ def block_copies(page, ns, matrices, objs=None):
                     d.get("state", b"") + b"\n" + old + b"\nQ")
         x0, y0, x1, y1 = d["box"] if d.get("path") else (0, 0, 1, 1)
         if d.get("path"):
-            pad = max(pad, d.get("width", 1.0) * 2 + 1)
+            c = d["ctm"]                # (the width is in the object's units, the box isn't)
+            scale = math.sqrt(abs(c.a * c.d - c.b * c.c))
+            pad = max(pad, (d.get("width", 1.0) * 2 + 1) * max(scale, 1.0))
         for x, y in ((x0, y0), (x1, y0), (x0, y1), (x1, y1)):
             q = pymupdf.Point(x, y) * d["ctm"]
             xs.append(q.x)
             ys.append(q.y)
-    kind, val = doc.xref_get_key(page.xref, "Resources")
-    res = val if kind in ("xref", "dict") else "<<>>"
+    # the group's own resources: only what its drawing uses (sharing the page's whole set
+    # made each Ungroup copy all of it into the page again)
+    res = _used_resources(doc, page, b"\n".join(body))
     xref = doc.get_new_xref()
     doc.update_object(xref, "<</Type/XObject/Subtype/Form/BBox[%g %g %g %g]/Resources %s>>"
                       % (min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad, res))
@@ -1155,6 +1242,10 @@ def subpaths(data, obj):
             continue
         if op in _PAINT or op == b"n":
             paint = raw
+            if op in (b"s", b"b", b"b*") and cur is not None and not cur[2]:
+                if cur[1][-1] != first:
+                    cur[1].append(first)
+                cur[2] = True           # (these paint operators close the last subpath)
             continue
         k = _CONSTRUCT.get(op)
         if k is None:
@@ -1194,11 +1285,6 @@ def subpaths(data, obj):
                 cur[1].append(first)
                 cur[2] = True
                 last = first
-    if paint in (b"s",):
-        for part in parts:              # s closes every subpath, like h
-            if part[1] and not part[2]:
-                part[1].append(part[1][0])
-                part[2] = True
     return b" ".join(state), [tuple(p_) for p_ in parts], paint
 
 
@@ -1220,6 +1306,8 @@ def rewrite_path(page, n, state, parts, paint, objs=None):
             body += [_polyline_ops(pts) for pts in part if len(pts) >= 2]
     if not body:
         return delete(page, [n], objs)
+    if paint == b"s" and parts and isinstance(parts[-1], bytes):
+        body[-1] += b" h"               # (s closed the last subpath, kept as it was)
     paint = b"S" if paint in (b"s", b"") else paint
     new = (state + b" " if state else b"") + b" ".join(body) + b" " + paint
     return _edit(page, [n], lambda old, ctm: b"\n" + new + b"\n", objs)
@@ -1444,10 +1532,19 @@ def _expand(doc, page, fx, taken, depth=0):
         return None
     # the group's resources, renamed into the page's
     rename, forms = {}, {}
+    page_res = {}
+    for cat in _RES_KINDS:
+        page_res[cat] = {k: _value_text(*v) for k, v in
+                         _res_entries(doc, page.xref, "Resources/" + cat).items()}
     for cat in _RES_KINDS:
         for key, (kind, val) in _res_entries(doc, fx, "Resources/" + cat).items():
             text = _value_text(kind, val)
             if text is None:
+                continue
+            if key in taken[cat] and page_res.get(cat, {}).get(key) == text:
+                # the page has this very one under this name already
+                if cat == "XObject" and kind == "xref":
+                    forms[("/" + key).encode()] = int(val.split()[0])
                 continue
             k = 1
             while f"KZ{k}{key}" in taken[cat]:

@@ -36,6 +36,61 @@ class StraightLines(unittest.TestCase):
         self.assertTrue(page_objects.bounding([]).is_empty)
 
 
+class BigArrays(unittest.TestCase):
+    def page(self, content):
+        d = pymupdf.open()
+        p = d.new_page()
+        x = d.get_new_xref()
+        d.update_object(x, "<<>>")
+        d.update_stream(x, content)
+        p.set_contents(x)
+        return d, p
+
+    def mats(self):
+        return [pymupdf.Matrix(1, 0, 0, 1, 30 * k, 0) for k in range(1, 22)]
+
+    def test_a_block_holds_only_what_it_uses_and_ungroup_adds_nothing_twice(self):
+        d, p = self.page(b"0 0 0 RG 10 10 m 20 20 l S 30 10 m 40 20 l S")
+        page_objects.block_copies(p, [0, 1], self.mats())
+        res = d.xref_object(int(d.xref_get_key(p.xref, "Resources")[1].split()[0])
+                            if d.xref_get_key(p.xref, "Resources")[0] == "xref" else p.xref)
+        before = len(d.tobytes(garbage=1))
+        for _ in range(5):
+            found = page_objects.scan(page_objects._contents(p))
+            groups = [k for k, f in enumerate(found) if not f.get("path")]
+            page_objects.ungroup(p, groups[:1])
+        self.assertLess(len(d.tobytes(garbage=1)), before + 2000, res)
+
+    def test_under_a_clip_or_in_a_layer_copies_are_written_out(self):
+        d, p = self.page(b"q 0 0 100 100 re W n 0 0 0 RG 10 10 m 20 20 l S Q "
+                         b"0 0 1 RG 30 10 m 40 20 l S")
+        page_objects.block_copies(p, [0, 1], self.mats())
+        self.assertNotIn(b"KzBlock", page_objects._contents(p))
+        d, p = self.page(b"0 0 0 RG 10 10 m 20 20 l S 30 10 m 40 20 l S")
+        page_objects.block_copies(p, [0, 1], self.mats())
+        self.assertIn(b"KzBlock", page_objects._contents(p))
+
+    def test_trim_keeps_the_closing_edge_of_an_s_shape(self):
+        d, p = self.page(b"0 0 0 RG 10 10 m 60 10 l 35 60 l 100 10 m 150 10 l 125 60 l s")
+        found = page_objects.scan(page_objects._contents(p))
+        state, parts, paint = page_objects.subpaths(page_objects._contents(p), found[0])
+        self.assertFalse(parts[0][2])           # s closes only the last subpath
+        self.assertTrue(parts[1][2])
+        page_objects.rewrite_path(p, 0, state, [[[pymupdf.Point(10, 10),
+                                                  pymupdf.Point(40, 10)]], parts[1][0]], paint)
+        self.assertTrue(page_objects._contents(p).rstrip().endswith(b"h S"))
+
+    def test_an_edit_writes_over_its_own_stream(self):
+        d, p = self.page(b"0 0 0 RG 10 10 m 20 20 l S")
+        for k in range(6):
+            page_objects.transform(p, [0], pymupdf.Matrix(1, 0, 0, 1, 1, 0))
+        sizes = [len(d.tobytes())]
+        for k in range(6):
+            page_objects.transform(p, [0], pymupdf.Matrix(1, 0, 0, 1, 1, 0))
+        sizes.append(len(d.tobytes()))
+        self.assertLess(sizes[1] - sizes[0], 200)
+
+
 class Lines(Window):
     def select_line(self, v):
         v.set_tool("editobjects")

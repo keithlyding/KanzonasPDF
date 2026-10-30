@@ -370,7 +370,10 @@ copia de la columna siguiente y donde va la copia de la fila siguiente (la direc
 crearía más de 20 000 objetos pregunta primero. Una matriz grande (más de 20 copias de una selección grande) se hace como
 los programas CAD hacen los bloques: la selección se guarda una sola vez en el archivo, como un grupo de dibujo, y cada
 copia coloca ese grupo, así que es rápida y el archivo no crece mucho. En Editar objetos cada una de esas copias es un
-grupo; Desagrupar separa una.</li>
+grupo; Desagrupar separa una. Esto se hace solo con líneas, formas e imágenes simples que están todas bajo el mismo
+recorte y en la misma capa, donde se ve exactamente igual que copiar cada objeto; todo lo demás (grupos, objetos en
+capas distintas) se copia objeto por objeto, lo que tarda más. Las copias del grupo se dibujan juntas, encima del último
+objeto seleccionado.</li>
 <li><b>Recortar</b>: no hace falta seleccionar nada. Haga clic en la parte de una línea que quiere quitar: se quita hasta
 las líneas más cercanas que la cruzan a cada lado (o hasta su extremo, si nada la cruza de ese lado); una línea que nada
 cruza se quita entera. El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
