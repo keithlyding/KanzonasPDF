@@ -73,46 +73,28 @@ def menu_paths(menubar):
     return out
 
 
-class CommandPalette(QDialog):
+class Finder:
+    """The commands the palette (and the CAD command line, cad_commands.py) find: every menu
+    command and tool, by its name, its menu, or its English name."""
+
     def __init__(self, win):
-        super().__init__(win, Qt.Popup | Qt.FramelessWindowHint)
         self.win = win
-        self.setObjectName("command_palette")
         self.actions = win._shortcut_actions()          # English name -> QAction
         # the names as the menus show them (the same as the English ones in English)
         self.names = {n: win.action_name(a) for n, a in self.actions.items()}
         self.paths = menu_paths(win.menuBar())
-        self.chosen = None
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(8, 8, 8, 8)
-        self.edit = QLineEdit()
-        self.edit.setPlaceholderText(tr("Type a command (for example 'rotate', 'sv as', 'night')"))
-        self.edit.setClearButtonEnabled(True)
-        self.edit.installEventFilter(self)
-        lay.addWidget(self.edit)
-        self.list = QTreeWidget()
-        self.list.setColumnCount(3)
-        self.list.setHeaderHidden(True)
-        self.list.setRootIsDecorated(False)
-        self.list.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.list.setUniformRowHeights(True)
-        self.list.setFocusPolicy(Qt.NoFocus)
-        self.list.itemClicked.connect(lambda *_: self._run())
-        lay.addWidget(self.list)
-        self.hint = QLabel(tr("Enter runs the command, Escape closes. Up/Down move."))
-        self.hint.setStyleSheet("color: palette(mid);")
-        lay.addWidget(self.hint)
-        self.edit.textChanged.connect(self.refresh)
-        self.resize(560, 420)
-        self.refresh("")
 
-    # -- the list --------------------------------------------------------------------------
     def _recent(self):
         try:
             return [n for n in json.loads(self.win.settings.value("palette_recent", "[]") or "[]")
                     if n in self.actions]
         except (TypeError, ValueError):
             return []
+
+    def remember(self, name):
+        """name was just run: it comes first among the recent commands."""
+        recent = [name] + [n for n in self._recent() if n != name]
+        self.win.settings.setValue("palette_recent", json.dumps(recent[:RECENT]))
 
     def rows(self, query):
         """[(name, action)] best matches first (recent ones first when nothing is typed);
@@ -142,6 +124,42 @@ class CommandPalette(QDialog):
         scored.sort(key=lambda r: (-r[0], r[1]))
         return [(n, a) for _s, _shown, n, a in scored[:MAX_ROWS]]
 
+
+class CommandPalette(QDialog):
+    def __init__(self, win):
+        super().__init__(win, Qt.Popup | Qt.FramelessWindowHint)
+        self.win = win
+        self.finder = Finder(win)
+        self.actions, self.names, self.paths = (self.finder.actions, self.finder.names,
+                                                self.finder.paths)
+        self.rows, self._recent, self.remember = (self.finder.rows, self.finder._recent,
+                                                  self.finder.remember)
+        self.setObjectName("command_palette")
+        self.chosen = None
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(8, 8, 8, 8)
+        self.edit = QLineEdit()
+        self.edit.setPlaceholderText(tr("Type a command (for example 'rotate', 'sv as', 'night')"))
+        self.edit.setClearButtonEnabled(True)
+        self.edit.installEventFilter(self)
+        lay.addWidget(self.edit)
+        self.list = QTreeWidget()
+        self.list.setColumnCount(3)
+        self.list.setHeaderHidden(True)
+        self.list.setRootIsDecorated(False)
+        self.list.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.list.setUniformRowHeights(True)
+        self.list.setFocusPolicy(Qt.NoFocus)
+        self.list.itemClicked.connect(lambda *_: self._run())
+        lay.addWidget(self.list)
+        self.hint = QLabel(tr("Enter runs the command, Escape closes. Up/Down move."))
+        self.hint.setStyleSheet("color: palette(mid);")
+        lay.addWidget(self.hint)
+        self.edit.textChanged.connect(self.refresh)
+        self.resize(560, 420)
+        self.refresh("")
+
+    # -- the list --------------------------------------------------------------------------
     def refresh(self, query):
         self.list.clear()
         for name, a in self.rows(query):
@@ -183,8 +201,7 @@ class CommandPalette(QDialog):
         a = self.actions.get(name)
         if a is None or not a.isEnabled():
             return
-        recent = [name] + [n for n in self._recent() if n != name]
-        self.win.settings.setValue("palette_recent", json.dumps(recent[:RECENT]))
+        self.remember(name)
         self.chosen = name
         self.accept()
         a.trigger()                     # after closing: the command may open its own dialog

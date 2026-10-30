@@ -317,11 +317,30 @@ los que toca un recuadro de captura (Ctrl+C los copia).</li>
 marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pestaña CAD lo mueve.</li>
 <li>Preferencias &gt; Mouse activa o desactiva cada una de estas funciones (vea Preferencias).</li>
 </ul>
-<p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Seleccione primero, luego haga clic en un comando y
-responda a su indicación en la parte inferior de la ventana: haga clic en puntos de la página (se ajustan a los extremos
-de las líneas y a las esquinas como con las herramientas de dibujo; mantenga presionada Alt para no ajustar), escriba un
-valor y presione Entrar, o haga clic en un botón ahí. Escape (o Cancelar) detiene un comando; el clic derecho equivale a
-Entrar. Cada cambio se deshace con un Ctrl+Z.</p>
+<p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Seleccione primero, luego haga clic en un comando
+(o escríbalo: vea la línea de comandos más abajo) y responda a su indicación en la línea de comandos: haga clic en puntos
+de la página (se ajustan a los extremos de las líneas y a las esquinas como con las herramientas de dibujo; mantenga
+presionada Alt para no ajustar), escriba un valor y presione Entrar, o haga clic en un botón ahí. Escape (o Cancelar)
+detiene un comando; el clic derecho equivale a Entrar. Cada cambio se deshace con un Ctrl+Z.</p>
+<p><b>La línea de comandos</b>, a lo largo de la parte inferior de la ventana en el modo CAD, funciona como la de AutoCAD.
+Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Entrar</b> o la
+<b>barra espaciadora</b>:</p>
+<ul>
+<li>Los nombres cortos de AutoCAD: <b>M</b> Mover, <b>CO</b> o <b>CP</b> Copiar, <b>RO</b> Girar, <b>SC</b> Escalar,
+<b>MI</b> Simetría, <b>E</b> Eliminar (también ERASE, DEL), <b>AL</b> Alinear, <b>AR</b> Matriz, <b>TR</b> Recortar; o el
+comienzo del nombre de un comando, en inglés o en español: MOV, COP, GIR, REC...</li>
+<li>Cualquier otro comando por su nombre, como lo encuentra la paleta de comandos (Ctrl+Shift+P): "rectángulo", "nube",
+"ajustar página", "guardar como"... Mientras escribe, aparece sobre la línea una lista de comandos que coinciden; Arriba
+y Abajo eligen en ella.</li>
+<li>Entrar (o la barra espaciadora) con la línea vacía repite el último comando.</li>
+<li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
+de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para
+Eliminarlos).</li>
+<li>Escape borra lo que escribió; sin nada escrito, cancela el comando.</li>
+<li>En el modo CAD, los atajos de una sola letra de las herramientas (V para Seleccionar, H para Mano...) escriben en la
+línea de comandos; los atajos con Ctrl y Alt (Ctrl+S, Ctrl+Z...) funcionan como siempre, y las herramientas están a un
+nombre de distancia ("mano", "seleccionar").</li>
+</ul>
 <ul>
 <li><b>Mover</b>: haga clic en el punto base y luego donde va.</li>
 <li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera; Entrar, Escape o Listo
@@ -1137,6 +1156,7 @@ cuadrícula...).</li>
 <tr><td>Ctrl+F1</td><td>Contraer / expandir la cinta</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Mostrar / ocultar la barra de menús (diseño con cinta)</td></tr>
 <tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
+<tr><td>Letras, Entrar, barra espaciadora (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Entrar o la barra espaciadora lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD.</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>

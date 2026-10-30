@@ -326,10 +326,29 @@ of one selected markup or object still resize it, and the CAD tab's <b>Move</b> 
 <li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>
 </ul>
 <p>The <b>CAD</b> tab (and the CAD menu) shows only in CAD mode. Select first, then click a
-command and answer its prompt at the bottom of the window: click points on the page (they snap
-to line ends and corners like the drawing tools; hold Alt not to snap), type a value and press
-Enter, or click a button there. Escape (or Cancel) stops a command; right-click is Enter. Each
-change is one Ctrl+Z.</p>
+command (or type it: see the command line below) and answer its prompt on the command line:
+click points on the page (they snap to line ends and corners like the drawing tools; hold Alt
+not to snap), type a value and press Enter, or click a button there. Escape (or Cancel) stops a
+command; right-click is Enter. Each change is one Ctrl+Z.</p>
+<p><b>The command line</b>, along the bottom of the window in CAD mode, works like AutoCAD's.
+Just start typing over the drawing (you don't have to click in the line first) and press
+<b>Enter</b> or <b>Space</b>:</p>
+<ul>
+<li>AutoCAD's short names: <b>M</b> Move, <b>CO</b> or <b>CP</b> Copy, <b>RO</b> Rotate,
+<b>SC</b> Scale, <b>MI</b> Mirror, <b>E</b> Delete (also ERASE, DEL), <b>AL</b> Align,
+<b>AR</b> Array, <b>TR</b> Trim; or the start of a command's name: MOV, COP, ROT, TRI...</li>
+<li>Any other command by its name, as the command palette (Ctrl+Shift+P) finds it: "rect",
+"cloud", "fit page", "save as"... A list of matching commands shows above the line as you
+type; Up and Down choose in it.</li>
+<li>Enter (or Space) on an empty line repeats the last command.</li>
+<li>While a command runs, the line says what to do next and takes what you type: an angle, a
+scale factor, or a choice (the first letters of a button's name will do: K for Keep them, D
+for Delete them).</li>
+<li>Escape clears what you typed; with nothing typed, it cancels the command.</li>
+<li>In CAD mode the one-letter tool shortcuts (V for Select, H for Hand...) type into the command
+line instead; Ctrl and Alt shortcuts (Ctrl+S, Ctrl+Z...) work as always, and the tools are a
+name away ("hand", "select").</li>
+</ul>
 <ul>
 <li><b>Move</b>: click the base point, then where it goes.</li>
 <li><b>Copy</b>: click the base point, then where each copy goes, as many as you like; Enter,
@@ -1147,6 +1166,7 @@ settings...).</li>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Show / hide the menu bar (ribbon layout)</td></tr>
 <tr><td>F11</td><td>CAD mouse mode on / off (off goes back to Standard or Hand, whichever you had)</td></tr>
+<tr><td>Letters, Enter, Space (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter or Space runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode.</td></tr>
 <tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>

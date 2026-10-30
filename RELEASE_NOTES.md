@@ -16,6 +16,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Mouse mode: Standard, Hand or CAD, each with its own options (File > Preferences > Mouse).
 - CAD mode selects like CAD: click, move, click for a box (left to right selects what's inside, right to left what it touches), or hold the button and draw a lasso.
 - A CAD tab (in CAD mode) with Move, Copy, Rotate, Scale, Mirror, Delete, Align, Array and Trim.
+- A CAD command line at the bottom: type M, CO, RO, TR... (or any command's name) and press Enter or Space, as in AutoCAD.
 - Free page movement: drag the page anywhere, even when it fits in the window.
 
 **Fixed**
@@ -33,6 +34,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Modo del mouse: Estándar, Mano o CAD, cada uno con sus propias opciones (Archivo > Preferencias > Mouse).
 - El modo CAD selecciona como en CAD: clic, mover, clic para un recuadro (de izquierda a derecha selecciona lo que queda dentro, de derecha a izquierda lo que toca), o mantenga presionado el botón y dibuje un lazo.
 - Una pestaña CAD (en el modo CAD) con Mover, Copiar, Girar, Escalar, Simetría, Eliminar, Alinear, Matriz y Recortar.
+- Una línea de comandos CAD en la parte inferior: escriba M, CO, RO, TR... (o el nombre de cualquier comando) y presione Entrar o la barra espaciadora, como en AutoCAD.
 - Movimiento libre de la página: arrastre la página a cualquier lugar, aunque quepa en la ventana.
 
 **Correcciones**

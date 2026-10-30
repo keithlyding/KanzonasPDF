@@ -79,53 +79,255 @@ def is_translation(m):
     return abs(m.a - 1) < 1e-9 and abs(m.d - 1) < 1e-9 and abs(m.b) < 1e-9 and abs(m.c) < 1e-9
 
 
-class Prompt(QWidget):
-    """The command line in the status bar: what to do next, a box to type a value in, and
-    buttons for a choice."""
+# AutoCAD's short names for the CAD tab's commands (the command line also takes the start of a
+# command's name: MOV, COP, ROT...)
+ALIASES = {"m": "move", "co": "copy", "cp": "copy", "ro": "rotate", "sc": "scale",
+           "mi": "mirror", "e": "delete", "erase": "delete", "del": "delete", "al": "align",
+           "ar": "array", "tr": "trim"}
+KEYS = ("move", "copy", "rotate", "scale", "mirror", "delete", "align", "array", "trim")
 
-    def __init__(self, parent=None):
+
+def names():
+    """{command: its name in the language in use}."""
+    return {"move": tr("Move"), "copy": tr("Copy"), "rotate": tr("Rotate"),
+            "scale": tr("Scale"), "mirror": tr("Mirror"), "delete": tr("Delete"),
+            "align": tr("Align"), "array": tr("Array"), "trim": tr("Trim")}
+
+
+def resolve(text):
+    """The CAD command typed: an AutoCAD short name (M, CO, RO, SC, MI, E, AL, AR, TR) or the
+    start of a command's name, in English or the language in use (MOV, COP, ROT...). None
+    when it isn't one (or the start fits two, like A: Align and Array)."""
+    t = text.strip().lower()
+    if not t:
+        return None
+    if t in ALIASES:
+        return ALIASES[t]
+    hits = {k for k in KEYS if k.startswith(t)}
+    hits |= {k for k, n in names().items() if n.lower().startswith(t)}
+    return hits.pop() if len(hits) == 1 else None
+
+
+class CommandLine(QWidget):
+    """The command line at the bottom of the window in CAD mode, as in AutoCAD. Type a command
+    (M, CO, RO... or any command's name: the command palette's list finds it) and press Enter
+    or Space; Enter on an empty line repeats the last one. While a command runs, it shows what
+    to do next and takes typed values (an angle, a factor) and choices (the first letters of a
+    button's name will do). In CAD mode, letters typed over the drawing come here (cad_typing
+    in main_window.py)."""
+
+    def __init__(self, win=None, parent=None):
         super().__init__(parent)
+        self.win = win
         row = QHBoxLayout(self)
-        row.setContentsMargins(0, 0, 0, 0)
+        row.setContentsMargins(4, 1, 4, 1)
         self.label = QLabel()
         self.edit = QLineEdit()
-        self.edit.setMaximumWidth(110)
-        self.edit.returnPressed.connect(self._typed)
+        self.edit.setMinimumWidth(240)
+        self.edit.setPlaceholderText(tr("Type a command: M (Move), CO (Copy), RO, SC, MI, E, AL, "
+                                        "AR, TR, or any command's name"))
+        self.edit.installEventFilter(self)
+        self.edit.textChanged.connect(self._suggest)
         row.addWidget(self.label)
-        row.addWidget(self.edit)
+        row.addWidget(self.edit, 1)
         self.buttons = []
+        self.choices = []
         self.cancel_btn = QPushButton(tr("Cancel"))
         self.cancel_btn.clicked.connect(lambda: self.command and self.command.cancel())
         self._row = row
         row.addWidget(self.cancel_btn)
-        row.addStretch(1)
         self.command = None
-        self.hide()
+        self.last = None                # what Enter on an empty line runs again
+        self.finder = None
+        self.list = None                # the matching commands shown above the line
+        self._idle()
+
+    # ---- what it shows ---------------------------------------------------------------------
+    def _idle(self):
+        self.label.setText("<b>%s</b>" % tr("Command:"))
+        self.cancel_btn.hide()
+        self._clear_choices()
+
+    def _clear_choices(self):
+        for b in self.buttons:
+            b.deleteLater()
+        self.buttons = []
+        self.choices = []
 
     def show_for(self, command, text, typing=False, choices=()):
         self.command = command
         self.label.setText("<b>%s</b>: %s" % (command.title, text))
-        self.edit.setVisible(typing)
         self.edit.clear()
-        for b in self.buttons:
-            b.deleteLater()
-        self.buttons = []
+        self._clear_choices()
+        self.choices = list(choices)
         for label, value in choices:
             b = QPushButton(label)
             b.clicked.connect(lambda _=False, v=value: self.command and self.command.choose(v))
             self._row.insertWidget(self._row.indexOf(self.cancel_btn), b)
             self.buttons.append(b)
+        self.cancel_btn.show()
+        self._hide_list()
+        if self.win is not None:
+            self.win.show_cad_line()
         self.show()
         if typing:
             self.edit.setFocus()
 
     def done(self):
         self.command = None
-        self.hide()
+        self.edit.clear()
+        self._idle()
+        if self.win is not None:
+            self.win.show_cad_line()        # (stays in CAD mode, goes otherwise)
+        elif self.parent() is None:
+            self.hide()
+
+    # ---- typing --------------------------------------------------------------------------
+    def take_key(self, e):
+        """A key typed over the drawing (CAD mode): it goes into the line."""
+        self.edit.setFocus()
+        if e.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
+            self.run()
+        else:
+            self.edit.insert(e.text())
+
+    def eventFilter(self, obj, e):
+        from PySide6.QtCore import QEvent
+        if obj is self.edit and e.type() == QEvent.KeyPress:
+            k = e.key()
+            if k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+                self.run()
+                return True
+            if k == Qt.Key_Escape:
+                if self.edit.text():
+                    self.edit.clear()
+                elif self.command is not None:
+                    self.command.cancel()
+                self._back_to_page()
+                return True
+            if k in (Qt.Key_Up, Qt.Key_Down) and self.list is not None and self.list.isVisible():
+                n = self.list.count()
+                r = max(0, min(n - 1, self.list.currentRow() + (1 if k == Qt.Key_Down else -1)))
+                self.list.setCurrentRow(r)
+                return True
+        return super().eventFilter(obj, e)
 
     def _typed(self):
-        if self.command is not None:
-            self.command.typed(self.edit.text())
+        self.run()
+
+    def run(self):
+        """Enter (or Space) on the line."""
+        text = self.edit.text().strip()
+        cmd = self.command
+        if cmd is not None:
+            self.edit.clear()
+            if not text:
+                cmd.enter()
+                return
+            low = text.lower()
+            for label, value in self.choices:
+                if label.replace("&", "").lower().startswith(low):
+                    cmd.choose(value)
+                    return
+            cmd.typed(text)
+            return
+        if not text:
+            if self.last is not None:
+                self._start(self.last)
+            return
+        what = self._pick(text)
+        self.edit.clear()
+        self._hide_list()
+        if what is None:
+            self._say(tr("Unknown command: {text}").format(text=text))
+            return
+        self._start(what)
+
+    def _pick(self, text):
+        """("cad", key) or ("action", English name) for what was typed, or None."""
+        key = resolve(text)
+        if key is not None:
+            return ("cad", key)
+        if self.list is not None and self.list.isVisible() and self.list.currentItem():
+            return self.list.currentItem().data(Qt.UserRole)
+        rows = self._finder().rows(text) if self._finder() is not None else []
+        return ("action", rows[0][0]) if rows else None
+
+    def _start(self, what):
+        kind, name = what
+        self.last = what
+        if self.win is None:
+            return
+        if kind == "cad":
+            self.win.start_cad_command(name)
+            return
+        f = self._finder()
+        a = f.actions.get(name) if f is not None else None
+        if a is None or not a.isEnabled():
+            return
+        f.remember(name)
+        self._back_to_page()
+        a.trigger()
+
+    def _say(self, text):
+        if self.win is not None:
+            self.win.statusBar().showMessage(text, 4000)
+
+    def _back_to_page(self):
+        v = self.win.view() if self.win is not None else None
+        if v is not None:
+            v.setFocus()
+
+    # ---- the list of matching commands -----------------------------------------------------
+    def _finder(self):
+        if self.finder is None and self.win is not None:
+            from .palette import Finder
+            self.finder = Finder(self.win)
+        return self.finder
+
+    def _hide_list(self):
+        if self.list is not None:
+            self.list.hide()
+
+    def _suggest(self, text):
+        if self.command is not None or self.win is None or not text.strip():
+            self._hide_list()
+            return
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem
+        if self.list is None:
+            self.list = QListWidget(self.win)
+            self.list.setFocusPolicy(Qt.NoFocus)
+            self.list.itemClicked.connect(lambda it: (self.edit.clear(), self._hide_list(),
+                                                      self._start(it.data(Qt.UserRole))))
+        self.list.clear()
+        rows = []
+        key = resolve(text)
+        if key is not None:
+            rows.append((("cad", key), names()[key] + "   " + tr("(CAD)")))
+        f = self._finder()
+        for name, a in (f.rows(text)[:7] if f is not None else []):
+            if key is not None and a is getattr(self.win, "a_cad_" + key, None):
+                continue
+            path = f.paths.get(a, "")
+            rows.append((("action", name), f.names.get(name, name) +
+                         ("   (" + path + ")" if path else "")))
+        if not rows:
+            self._hide_list()
+            return
+        for data, label in rows:
+            it = QListWidgetItem(label)
+            it.setData(Qt.UserRole, data)
+            self.list.addItem(it)
+        self.list.setCurrentRow(0)
+        h = min(len(rows), 8) * (self.list.sizeHintForRow(0) + 2) + 6
+        w = min(max(self.edit.width(), 360), 560)
+        top_left = self.edit.mapTo(self.win, self.edit.rect().topLeft())
+        self.list.setGeometry(top_left.x(), top_left.y() - h - 2, w, h)
+        self.list.show()
+        self.list.raise_()
+
+
+Prompt = CommandLine            # (the name it had before the command line took typed commands)
 
 
 class Command:

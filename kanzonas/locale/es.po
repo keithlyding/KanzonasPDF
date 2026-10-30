@@ -6866,3 +6866,23 @@ msgstr "Opciones de {mode}"
 #: cad
 msgid "Only when the whole page fits in the window, top to bottom and side to side (for example after View > Fit page). Zoomed in so that any edge of the page is outside the window, the wheel scrolls normally."
 msgstr "Solo cuando la página entera cabe en la ventana, de arriba abajo y de lado a lado (por ejemplo, después de Ver > Ajustar página). Si acerca la vista de modo que algún borde de la página quede fuera de la ventana, la rueda desplaza normalmente."
+
+#: cad_commands.py
+msgid "Type a command: M (Move), CO (Copy), RO, SC, MI, E, AL, AR, TR, or any command's name"
+msgstr "Escriba un comando: M (Mover), CO (Copiar), RO, SC, MI, E, AL, AR, TR, o el nombre de cualquier comando"
+
+#: cad_commands.py
+msgid "Command:"
+msgstr "Comando:"
+
+#: cad_commands.py
+msgid "Unknown command: {text}"
+msgstr "Comando desconocido: {text}"
+
+#: cad_commands.py
+msgid "(CAD)"
+msgstr "(CAD)"
+
+#: cad_commands.py
+msgid "CAD command line"
+msgstr "Línea de comandos CAD"

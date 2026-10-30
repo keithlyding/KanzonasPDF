@@ -382,6 +382,7 @@ class MainWindow(QMainWindow):
         if geo is not None:
             self.restoreGeometry(geo)
         self._restore_layout()
+        self._sync_mouse_actions()          # (after the saved layout: the CAD command line)
 
     def _restore_layout(self):
         """Bring back the panels as they were when KanzonasPDF was last closed: which ones
@@ -2040,6 +2041,12 @@ class MainWindow(QMainWindow):
                 v.setFocus()
                 v.keyPressEvent(e)
                 return True
+        if t in (QEvent.ShortcutOverride, QEvent.KeyPress) and self.cad_typing(obj, e):
+            if t == QEvent.ShortcutOverride:
+                e.accept()              # not a shortcut: the letter goes to the command line
+                return True
+            self.cad_command_line().take_key(e)
+            return True
         if t in (QEvent.ShortcutOverride, QEvent.KeyPress):
             mods = e.modifiers()
             if (mods & Qt.ControlModifier and mods & Qt.ShiftModifier
@@ -4023,6 +4030,8 @@ class MainWindow(QMainWindow):
         menu = getattr(self, "cad_menu", None)
         if menu is not None:
             menu.menuAction().setVisible(m == "cad")
+        if m == "cad" or getattr(self, "cad_line", None) is not None:
+            self.show_cad_line()
 
     def start_cad_command(self, key):
         """A CAD tab command on the current document (cad_commands.py)."""
@@ -4040,12 +4049,54 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(tr("Delete: select what to delete first."), 4000)
             return
         from . import cad_commands
-        if getattr(self, "cad_prompt", None) is None:
-            self.cad_prompt = cad_commands.Prompt()
-            self.statusBar().addWidget(self.cad_prompt, 1)
-        cmd = cad_commands.COMMANDS[key](v, self.cad_prompt)
+        line = self.cad_command_line()
+        line.last = ("cad", key)            # Enter on an empty command line runs it again
+        cmd = cad_commands.COMMANDS[key](v, line)
         if cmd.start():
             v.setFocus()
+
+    def cad_command_line(self):
+        """The command line along the bottom of the window (cad_commands.CommandLine): in CAD
+        mode always, otherwise while a CAD command runs."""
+        if getattr(self, "cad_line", None) is None:
+            from . import cad_commands
+            tb = self.cad_bar = QToolBar(tr("CAD command line"))
+            tb.setObjectName("cad_command_line")
+            tb.setMovable(False)
+            tb.toggleViewAction().setVisible(False)
+            self.cad_line = cad_commands.CommandLine(self)
+            tb.addWidget(self.cad_line)
+            self.addToolBar(Qt.BottomToolBarArea, tb)
+        return self.cad_line
+
+    def show_cad_line(self):
+        from . import mouse_modes
+        line = self.cad_command_line()
+        self.cad_bar.setVisible(mouse_modes.mode(self.settings) == "cad" or
+                                line.command is not None)
+
+    def cad_typing(self, obj, e):
+        """CAD mode: a key typed over the drawing goes to the command line (letters, digits,
+        Space; Enter when no command runs), as in AutoCAD, instead of being a one-letter tool
+        shortcut. Not when a box to type in has the focus, or with Ctrl or Alt held."""
+        from .document_view import DocumentView
+        if DocumentView.mouse_mode != "cad" or not self.isActiveWindow():
+            return False
+        fw = QApplication.focusWidget()
+        if fw is None or obj is not fw or fw.window() is not self:
+            return False
+        from PySide6.QtWidgets import (QAbstractSpinBox, QComboBox, QLineEdit, QPlainTextEdit,
+                                       QTextEdit)
+        if isinstance(fw, (QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox)) or \
+                isinstance(fw, QComboBox) and fw.isEditable():
+            return False
+        if e.modifiers() & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier):
+            return False
+        if e.key() in (Qt.Key_Return, Qt.Key_Enter):
+            v = self.view()
+            return v is None or v._cad_cmd is None
+        text = e.text()
+        return bool(text) and text.isprintable()
 
     def _toggle_mouse_option(self, key, action):
         """View > Free page movement / Scroll one page per wheel step: for the mode in use."""
