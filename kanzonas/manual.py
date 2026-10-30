@@ -332,15 +332,18 @@ not to snap), type a value and press Enter, or click a button there. Escape (or 
 command; right-click is Enter. Each change is one Ctrl+Z.</p>
 <p><b>The command line</b>, along the bottom of the window in CAD mode, works like AutoCAD's.
 Just start typing over the drawing (you don't have to click in the line first) and press
-<b>Enter</b> or <b>Space</b>:</p>
+<b>Enter</b> (Space just types a space, as in "fit page"):</p>
 <ul>
 <li>AutoCAD's short names: <b>M</b> Move, <b>CO</b> or <b>CP</b> Copy, <b>RO</b> Rotate,
 <b>SC</b> Scale, <b>MI</b> Mirror, <b>E</b> Delete (also ERASE, DEL), <b>AL</b> Align,
 <b>AR</b> Array, <b>TR</b> Trim; or the start of a command's name: MOV, COP, ROT, TRI...</li>
 <li>Any other command by its name, as the command palette (Ctrl+Shift+P) finds it: "rect",
 "cloud", "fit page", "save as"... A list of matching commands shows above the line as you
-type; Up and Down choose in it.</li>
-<li>Enter (or Space) on an empty line repeats the last command.</li>
+type; Up and Down choose in it. Only a sure match runs: what you typed must be the start of the
+command's name or of one of its words. Anything else runs nothing: the line says
+<b>Unknown command</b> and keeps what you typed, to correct it or to pick a command in the list
+with Up and Down and Enter.</li>
+<li>Enter on an empty line repeats the last command.</li>
 <li>While a command runs, the line says what to do next and takes what you type: an angle, a
 scale factor, or a choice (the first letters of a button's name will do: K for Keep them, D
 for Delete them).</li>
@@ -1166,7 +1169,7 @@ settings...).</li>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Show / hide the menu bar (ribbon layout)</td></tr>
 <tr><td>F11</td><td>CAD mouse mode on / off (off goes back to Standard or Hand, whichever you had)</td></tr>
-<tr><td>Letters, Enter, Space (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter or Space runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode.</td></tr>
+<tr><td>Letters, Enter (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode.</td></tr>
 <tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>

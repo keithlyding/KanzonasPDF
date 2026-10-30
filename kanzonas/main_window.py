@@ -4076,8 +4076,8 @@ class MainWindow(QMainWindow):
                                 line.command is not None)
 
     def cad_typing(self, obj, e):
-        """CAD mode: a key typed over the drawing goes to the command line (letters, digits,
-        Space; Enter when no command runs), as in AutoCAD, instead of being a one-letter tool
+        """CAD mode: a key typed over the drawing goes to the command line (letters, digits, a
+        space after them; Enter when no command runs), as in AutoCAD, instead of being a one-letter tool
         shortcut. Not when a box to type in has the focus, or with Ctrl or Alt held."""
         from .document_view import DocumentView
         if DocumentView.mouse_mode != "cad" or not self.isActiveWindow():
@@ -4096,6 +4096,8 @@ class MainWindow(QMainWindow):
             v = self.view()
             return v is None or v._cad_cmd is None
         text = e.text()
+        if text == " " and not (getattr(self, "cad_line", None) and self.cad_line.edit.text()):
+            return False                # (a space starts nothing: Space keeps its usual job)
         return bool(text) and text.isprintable()
 
     def _toggle_mouse_option(self, key, action):

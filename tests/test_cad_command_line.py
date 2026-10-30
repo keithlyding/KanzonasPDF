@@ -1,6 +1,7 @@
 """The CAD command line (CAD mouse mode), as in AutoCAD: type M, MOV or MOVE (CO, RO, SC, MI,
-E, AL, AR, TR...) and Enter or Space; any other command by its name, found like the command
-palette finds it; Enter on an empty line repeats the last command; while a command runs the
+E, AL, AR, TR...) and Enter (only Enter: Space types a space); any other command by its name,
+found like the command palette finds it, but only a sure match runs (else "Unknown command",
+nothing runs); Enter on an empty line repeats the last command; while a command runs the
 same line takes its values and choices; Escape clears the line or cancels the command. In CAD
 mode, letters typed over the drawing go to the line.
 
@@ -122,8 +123,16 @@ class CommandLine(unittest.TestCase):
         self.assertEqual(self.v.fit_mode, "page")
         said = []
         self.w.statusBar().messageChanged.connect(said.append)
-        self.type("zzqqx")
-        self.assertIn("Unknown command", said[-1])
+        before = self.v.fit_mode
+        for typo in ("zzqqx", "mve", "ftpg"):           # letters scattered through a name
+            self.type(typo)
+            self.assertIn("Unknown command", said[-1], typo)
+            self.assertEqual(self.line.edit.text(), typo)  # kept, to correct
+            self.assertIsNone(self.v._cad_cmd)
+        self.assertEqual(self.v.fit_mode, before)
+        self.line.edit.setText("rect")
+        self.line.run()
+        self.assertEqual(self.w.tool, "rect")
 
     def test_a_command_needs_a_selection_first(self):
         said = []
@@ -136,8 +145,12 @@ class CommandLine(unittest.TestCase):
         self.line.take_key(key(Qt.Key_M, "m"))
         self.line.take_key(key(Qt.Key_O, "o"))
         self.assertEqual(self.line.edit.text(), "mo")
+        self.line.take_key(key(Qt.Key_Space, " "))              # Space types a space
+        self.assertEqual(self.line.edit.text(), "mo ")
+        self.assertIsNone(self.v._cad_cmd)
+        self.line.edit.setText("mo")
         self.select_line()
-        self.line.take_key(key(Qt.Key_Space, " "))              # Space runs it, as in CAD
+        self.line.take_key(key(Qt.Key_Return))                  # only Enter runs it
         self.assertIsInstance(self.v._cad_cmd, cad_commands.Move)
 
     def test_which_keys_go_to_the_line(self):
@@ -152,6 +165,7 @@ class CommandLine(unittest.TestCase):
                                                        Qt.ControlModifier, "s")))
             self.assertFalse(w.cad_typing(v, key(Qt.Key_Delete)))
             self.assertFalse(w.cad_typing(v, key(Qt.Key_Escape)))
+            self.assertFalse(w.cad_typing(v, key(Qt.Key_Space, " ")))   # empty line: not taken
             w.set_mouse_mode("standard")
             self.assertFalse(w.cad_typing(v, key(Qt.Key_V, "v")))    # V selects again
         box = QLineEdit(w)

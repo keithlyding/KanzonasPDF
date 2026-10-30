@@ -6886,3 +6886,7 @@ msgstr "(CAD)"
 #: cad_commands.py
 msgid "CAD command line"
 msgstr "Línea de comandos CAD"
+
+#: cad_commands.py
+msgid "Unknown command: {text}. Type a command's name, or pick one in the list with Up and Down and press Enter."
+msgstr "Comando desconocido: {text}. Escriba el nombre de un comando, o elija uno de la lista con Arriba y Abajo y presione Entrar."

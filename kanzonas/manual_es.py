@@ -323,16 +323,18 @@ de la página (se ajustan a los extremos de las líneas y a las esquinas como co
 presionada Alt para no ajustar), escriba un valor y presione Entrar, o haga clic en un botón ahí. Escape (o Cancelar)
 detiene un comando; el clic derecho equivale a Entrar. Cada cambio se deshace con un Ctrl+Z.</p>
 <p><b>La línea de comandos</b>, a lo largo de la parte inferior de la ventana en el modo CAD, funciona como la de AutoCAD.
-Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Entrar</b> o la
-<b>barra espaciadora</b>:</p>
+Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Entrar</b> (la
+barra espaciadora solo escribe un espacio, como en "ajustar página"):</p>
 <ul>
 <li>Los nombres cortos de AutoCAD: <b>M</b> Mover, <b>CO</b> o <b>CP</b> Copiar, <b>RO</b> Girar, <b>SC</b> Escalar,
 <b>MI</b> Simetría, <b>E</b> Eliminar (también ERASE, DEL), <b>AL</b> Alinear, <b>AR</b> Matriz, <b>TR</b> Recortar; o el
 comienzo del nombre de un comando, en inglés o en español: MOV, COP, GIR, REC...</li>
 <li>Cualquier otro comando por su nombre, como lo encuentra la paleta de comandos (Ctrl+Shift+P): "rectángulo", "nube",
 "ajustar página", "guardar como"... Mientras escribe, aparece sobre la línea una lista de comandos que coinciden; Arriba
-y Abajo eligen en ella.</li>
-<li>Entrar (o la barra espaciadora) con la línea vacía repite el último comando.</li>
+y Abajo eligen en ella. Solo se ejecuta una coincidencia segura: lo que escribió debe ser el comienzo del nombre del
+comando o de una de sus palabras. Cualquier otra cosa no ejecuta nada: la línea indica <b>Comando desconocido</b> y
+conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Entrar.</li>
+<li>Entrar con la línea vacía repite el último comando.</li>
 <li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
 de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para
 Eliminarlos).</li>
@@ -1156,7 +1158,7 @@ cuadrícula...).</li>
 <tr><td>Ctrl+F1</td><td>Contraer / expandir la cinta</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Mostrar / ocultar la barra de menús (diseño con cinta)</td></tr>
 <tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
-<tr><td>Letras, Entrar, barra espaciadora (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Entrar o la barra espaciadora lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD.</td></tr>
+<tr><td>Letras, Entrar (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Entrar lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD.</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>

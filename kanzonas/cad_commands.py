@@ -108,10 +108,24 @@ def resolve(text):
     return hits.pop() if len(hits) == 1 else None
 
 
+def _word_start(typed, name):
+    """typed is found in name at its start or at the start of a word."""
+    t = " ".join(typed.lower().split())
+    n = name.replace("&", "").lower()
+    i = n.find(t)
+    while i >= 0:
+        if i == 0 or not n[i - 1].isalnum():
+            return True
+        i = n.find(t, i + 1)
+    return False
+
+
 class CommandLine(QWidget):
     """The command line at the bottom of the window in CAD mode, as in AutoCAD. Type a command
     (M, CO, RO... or any command's name: the command palette's list finds it) and press Enter
-    or Space; Enter on an empty line repeats the last one. While a command runs, it shows what
+    (only Enter: Space types a space, "fit page"); Enter on an empty line repeats the last one.
+    Text that is no command's name runs nothing: "Unknown command" (a near match runs only
+    when picked from the list with Up / Down). While a command runs, it shows what
     to do next and takes typed values (an angle, a factor) and choices (the first letters of a
     button's name will do). In CAD mode, letters typed over the drawing come here (cad_typing
     in main_window.py)."""
@@ -140,6 +154,7 @@ class CommandLine(QWidget):
         self.last = None                # what Enter on an empty line runs again
         self.finder = None
         self.list = None                # the matching commands shown above the line
+        self._arrowed = False           # a command was picked in the list with Up / Down
         self._idle()
 
     # ---- what it shows ---------------------------------------------------------------------
@@ -186,16 +201,16 @@ class CommandLine(QWidget):
     def take_key(self, e):
         """A key typed over the drawing (CAD mode): it goes into the line."""
         self.edit.setFocus()
-        if e.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
+        if e.key() in (Qt.Key_Return, Qt.Key_Enter):
             self.run()
-        else:
+        elif e.text() != " " or self.edit.text():
             self.edit.insert(e.text())
 
     def eventFilter(self, obj, e):
         from PySide6.QtCore import QEvent
         if obj is self.edit and e.type() == QEvent.KeyPress:
             k = e.key()
-            if k in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+            if k in (Qt.Key_Return, Qt.Key_Enter):
                 self.run()
                 return True
             if k == Qt.Key_Escape:
@@ -209,6 +224,7 @@ class CommandLine(QWidget):
                 n = self.list.count()
                 r = max(0, min(n - 1, self.list.currentRow() + (1 if k == Qt.Key_Down else -1)))
                 self.list.setCurrentRow(r)
+                self._arrowed = True
                 return True
         return super().eventFilter(obj, e)
 
@@ -216,7 +232,7 @@ class CommandLine(QWidget):
         self.run()
 
     def run(self):
-        """Enter (or Space) on the line."""
+        """Enter on the line."""
         text = self.edit.text().strip()
         cmd = self.command
         if cmd is not None:
@@ -236,11 +252,14 @@ class CommandLine(QWidget):
                 self._start(self.last)
             return
         what = self._pick(text)
+        if what is None:
+            # nothing runs; the text stays (selected) to be corrected or typed over
+            self._say(tr("Unknown command: {text}. Type a command's name, or pick one in the "
+                         "list with Up and Down and press Enter.").format(text=text))
+            self.edit.selectAll()
+            return
         self.edit.clear()
         self._hide_list()
-        if what is None:
-            self._say(tr("Unknown command: {text}").format(text=text))
-            return
         self._start(what)
 
     def _pick(self, text):
@@ -248,10 +267,16 @@ class CommandLine(QWidget):
         key = resolve(text)
         if key is not None:
             return ("cad", key)
-        if self.list is not None and self.list.isVisible() and self.list.currentItem():
+        if self._arrowed and self.list is not None and self.list.isVisible() and \
+                self.list.currentItem():
             return self.list.currentItem().data(Qt.UserRole)
-        rows = self._finder().rows(text) if self._finder() is not None else []
-        return ("action", rows[0][0]) if rows else None
+        f = self._finder()
+        for name, _a in (f.rows(text) if f is not None else []):
+            # only a sure match: what was typed is the start of the command's name or of one
+            # of its words ("fit page", "rect", "save as"), not letters scattered through it
+            if any(_word_start(text, n) for n in (f.names.get(name, name), name)):
+                return ("action", name)
+        return None
 
     def _start(self, what):
         kind, name = what
@@ -290,6 +315,7 @@ class CommandLine(QWidget):
             self.list.hide()
 
     def _suggest(self, text):
+        self._arrowed = False
         if self.command is not None or self.win is None or not text.strip():
             self._hide_list()
             return
