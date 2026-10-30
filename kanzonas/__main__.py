@@ -126,6 +126,8 @@ def main():
     i18n.install_qt(app)                 # Qt's own buttons and dialogs in the same language
     theme.apply(app, paths.settings().value("theme", "system"))
     win = MainWindow()
+    # a setup closing KanzonasPDF to update it, or Windows shutting down, closes no windows
+    app.commitDataRequest.connect(win.windows_ending)
     win.show()
     win.recover_backups()
     if not files:

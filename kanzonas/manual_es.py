@@ -962,14 +962,17 @@ que escribe la herramienta Fecha.</li>
 de fuente, el relleno, la opacidad, etc., la misma configuración que muestra el panel de propiedades cuando esa herramienta está
 activa. Restablecer valores predeterminados devuelve una herramienta a como venía en KanzonasPDF.</li>
 <li><b>Inicio y apertura:</b> volver a abrir los documentos que estaban abiertos al cerrar
-KanzonasPDF (desactivado de forma predeterminada), si se debe preguntar antes de cerrar con varios documentos abiertos (activado
+KanzonasPDF (desactivado de forma predeterminada; también funciona cuando un instalador cierra KanzonasPDF para
+actualizarlo, o Windows lo cierra al apagarse o cerrar la sesión), si se debe preguntar antes de cerrar con varios documentos abiertos (activado
 de forma predeterminada), la herramienta predeterminada (Mano o Seleccionar), el zoom con el que se abre un
 documento (Ajustar al ancho de forma predeterminada; Ajustar página, la página entera en la ventana; Tamaño real; o el zoom que tenía
 cuando lo cerró) y si se debe volver a abrir en la página donde estaba la última vez.</li>
 <li><b>Guardado:</b> cada cuánto hacer copia de seguridad de los cambios sin guardar (cada 5 minutos de forma predeterminada; Desactivado lo
 desactiva). Se guarda una copia de cada documento con cambios sin guardar en la carpeta de copias de seguridad y se elimina cuando
 lo guarda o lo cierra. Si KanzonasPDF o Windows se detienen inesperadamente, el siguiente inicio ofrece abrir
-las copias. Cada una se abre en una pestaña con el nombre de su archivo original seguido de "(recuperado)", marcada como
+las copias. Cuando un instalador o el apagado de Windows cierran KanzonasPDF, no se puede preguntar nada, así que
+los últimos cambios sin guardar de cada documento se escriben primero en su copia, y el siguiente inicio los ofrece
+de la misma manera. Cada una se abre en una pestaña con el nombre de su archivo original seguido de "(recuperado)", marcada como
 no guardada; Guardar pregunta dónde guardarla y ofrece el archivo original (o Sin título para un PDF que
 nunca se guardó). Las copias ofrecidas permanecen en la carpeta de copias de seguridad (Abrir la carpeta de copias de
 seguridad) durante 30 días. <b>Carpeta de copias de seguridad</b>: Cambiar… elige otra carpeta (si KanzonasPDF no puede
