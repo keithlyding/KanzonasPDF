@@ -2452,8 +2452,8 @@ msgid "CAD-style &mouse (wheel zooms, hold wheel to pan)"
 msgstr "Mo&use estilo CAD (la rueda acerca y aleja; mantenga presionada la rueda para desplazar)"
 
 #: main_window.py:670
-msgid "Like AutoCAD: the scroll wheel zooms at the cursor; hold the wheel down and drag to move the sheet (F11)"
-msgstr "Como en AutoCAD: la rueda del mouse acerca y aleja en el cursor; mantenga presionada la rueda y arrastre para mover el plano (F11)"
+msgid "Like AutoCAD: the scroll wheel zooms at the cursor; hold the wheel down and drag to move the sheet; a plus cursor; boxes dragged left to right (blue) select what's inside, right to left (green) what they touch (F11)"
+msgstr "Como en AutoCAD: la rueda del mouse acerca y aleja en el cursor; mantenga presionada la rueda y arrastre para mover el plano; un cursor en cruz; los recuadros arrastrados de izquierda a derecha (azules) seleccionan lo que queda dentro, de derecha a izquierda (verdes) lo que tocan (F11)"
 
 #: main_window.py:675
 msgid "Scroll &one page per wheel step"
@@ -6474,3 +6474,15 @@ msgstr "Actualizar ahora descarga el nuevo instalador, lo comprueba, cierra Kanz
 #: main_window.py
 msgid "You can still download the setup from the release page and run it."
 msgstr "También puede descargar el instalador desde la página de versiones y ejecutarlo."
+
+#: main_window.py
+msgid "&Free page movement (drag the page past its edges)"
+msgstr "Movimiento &libre de la página (arrastrar la página más allá de sus bordes)"
+
+#: main_window.py
+msgid "The Hand tool (or the held wheel) drags the page anywhere, up, down and sideways, even when the whole page fits in the window"
+msgstr "La herramienta Mano (o la rueda presionada) arrastra la página a cualquier lugar, arriba, abajo y a los lados, aunque la página entera quepa en la ventana"
+
+#: main_window.py
+msgid "Free movement"
+msgstr "Movimiento libre"

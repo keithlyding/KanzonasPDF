@@ -437,6 +437,57 @@ class Objects:
         box = pymupdf.Rect(box)
         return [it for it in self.items if box.contains(it["rect"])]
 
+    def touching(self, box):
+        """Objects a crossing box (CAD mouse, dragged right to left) takes: inside it, or with
+        a line running through it; a filled shape or a picture also when the box is on it. A
+        group filling the page is only taken whole (inside the box)."""
+        box = pymupdf.Rect(box)
+        out = []
+        for it in self.items:
+            r = it["rect"]
+            if box.contains(r):
+                out.append(it)
+            elif it.get("whole") or (r.width and r.height and not r.intersects(box)):
+                continue            # (a level or plumb line has an empty rect: test its line)
+            elif it["kind"] in ("picture", "group"):
+                out.append(it)
+            elif lines_meet(self.lines(it), box) or \
+                    it["fill"] and _inside(self.lines(it), pymupdf.Point(
+                        (box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2)):
+                out.append(it)
+        return out
+
+
+def segment_meets(a, b, box):
+    """The straight line from point a to point b passes through (or touches) rect box."""
+    x0, y0, x1, y1 = box.x0, box.y0, box.x1, box.y1
+    t0, t1 = 0.0, 1.0
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    for p, q in ((-dx, a[0] - x0), (dx, x1 - a[0]), (-dy, a[1] - y0), (dy, y1 - a[1])):
+        if p == 0:
+            if q < 0:
+                return False
+        else:
+            t = q / p
+            if p < 0:
+                t0 = max(t0, t)
+            else:
+                t1 = min(t1, t)
+            if t0 > t1:
+                return False
+    return True
+
+
+def lines_meet(lines, box):
+    """Any segment of these polylines passes through rect box."""
+    for line in lines:
+        if len(line) == 1 and pymupdf.Point(line[0]) in box:
+            return True
+        for a, b in zip(line, line[1:]):
+            if segment_meets(a, b, box):
+                return True
+    return False
+
 
 def _near(line, p, tol):
     t2 = tol * tol

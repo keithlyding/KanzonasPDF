@@ -250,8 +250,27 @@ como en AutoCAD, la rueda del mouse acerca y aleja alrededor del cursor, y mante
 mueve la hoja, de modo que puede recorrer un dibujo mientras cualquier herramienta de marcas está activa. Como en Bluebeam,
 mantenga presionada <b>Ctrl</b> y gire la rueda para desplazarse hacia arriba y hacia abajo. Shift+rueda desplaza a la izquierda y a la derecha
 también aquí, igual que con el mouse estilo CAD desactivado. Las páginas están sobre un lienzo abierto, así que puede arrastrarlas a cualquier lugar de la ventana (con la
-rueda presionada o con la herramienta Mano), incluso cuando la página entera ya cabe. Su elección se
-recuerda.</li>
+rueda presionada o con la herramienta Mano), incluso cuando la página entera ya cabe. El puntero es una
+<b>cruz</b> con todas las herramientas excepto la Mano, para que se vea que el mouse estilo CAD está activado. La selección
+funciona como en AutoCAD, con <b>Seleccionar</b> (marcas y texto) y con <b>Editar objetos</b> (las líneas, el texto y las
+imágenes propios del dibujo):
+<ul>
+<li>Arrastre un recuadro <b>de izquierda a derecha</b> (una ventana <b>azul</b> de línea continua): selecciona lo que queda
+completamente dentro.</li>
+<li>Arrastre un recuadro <b>de derecha a izquierda</b> (un recuadro de captura <b>verde</b> de línea discontinua): selecciona todo
+lo que toca, incluida una línea que lo atraviese.</li>
+<li>Un clic o un recuadro <b>agrega</b> a la selección, y un recuadro puede empezar encima de una línea del dibujo. Hacer clic
+en el papel vacío conserva la selección. <b>Shift</b>+clic o Shift+recuadro quita elementos de ella. <b>Escape</b> la borra
+por completo.</li>
+<li>Presione sobre algo ya seleccionado y arrastre para mover todo lo seleccionado.</li>
+<li>Con Seleccionar, un recuadro que no toma marcas selecciona texto: los caracteres dentro de una ventana, o los que toca un
+recuadro de captura.</li>
+</ul>
+Su elección se recuerda.</li>
+<li><b>Movimiento libre de la página (arrastrar la página más allá de sus bordes)</b> (menú Ver, pestaña Ver de la cinta,
+Preferencias &gt; Mouse y desplazamiento): el mismo lienzo abierto sin el resto del mouse estilo CAD. La herramienta Mano
+(o la rueda presionada) arrastra la página a cualquier lugar, arriba, abajo y a los lados, aunque la página entera quepa
+en la ventana, por ejemplo después de Ajustar página. Desactivado de forma predeterminada; su elección se recuerda.</li>
 <li><b>Desplazar una página por paso de la rueda</b> (menú Ver): cuando la página entera cabe en la ventana,
 de arriba abajo y de lado a lado (por ejemplo, después de <b>Ajustar página</b>), cada paso de la rueda del mouse
 salta a la página siguiente o anterior, centrada, en lugar de desplazarse un poco. En cuanto acerca el zoom
@@ -282,7 +301,9 @@ Es solo para mirar: haga los cambios en la vista principal.</li>
 <ul>
 <li><b>Herramienta Seleccionar (V):</b> arrastre sobre el texto para seleccionarlo, incluso a través del espacio entre
 páginas (permanece resaltado; vea Copiar, cortar y pegar más abajo). Haga clic en una marca para seleccionarla; luego arrástrela
-para moverla, arrastre un controlador cuadrado para cambiar su tamaño o cambie su aspecto en el panel de propiedades.</li>
+para moverla, arrastre un controlador cuadrado para cambiar su tamaño o cambie su aspecto en el panel de propiedades.
+Con el <b>mouse estilo CAD</b> activado, Seleccionar funciona como en AutoCAD: ventanas azules y recuadros de captura verdes,
+clics que agregan a la selección, Shift para quitar y Escape para borrarla (vea Desplazarse por el documento).</li>
 <li>Con una herramienta de dibujo activa (rectángulo, línea, llamada, ...), hacer clic en una marca existente también la
 selecciona, así que no tiene que volver a la flecha. La <b>herramienta Mano</b> funciona igual:
 haga clic en una marca (un resaltado, una nota, una forma...) para seleccionarla; arrastre en cualquier otro lugar para mover la
@@ -572,7 +593,10 @@ se detecta en cualquier punto de su interior.</li>
 párrafo a párrafo: haga clic en una palabra para seleccionar su párrafo; todo lo que Agregar texto escribió de una
 vez se selecciona junto. Un cuadro de selección toma texto solo cuando no contiene imágenes ni formas
 (así, un cuadro alrededor de un detalle de un dibujo selecciona sus trazos, no sus rótulos); Ctrl+clic agrega texto
-a una selección. Presione <b>Supr</b> (o Retroceso) o haga clic con el botón derecho &gt; <b>Eliminar</b> para quitarlo;
+a una selección. Con el <b>mouse estilo CAD</b> activado, la selección funciona como en AutoCAD: una ventana azul (arrastrada
+de izquierda a derecha) toma las líneas, el texto y las imágenes que quedan completamente dentro, un recuadro de captura verde
+(de derecha a izquierda) todo lo que toca, texto y trazos juntos; los clics y los recuadros agregan a la selección, Shift quita
+y Escape la borra (vea Desplazarse por el documento). Presione <b>Supr</b> (o Retroceso) o haga clic con el botón derecho &gt; <b>Eliminar</b> para quitarlo;
 arrástrelo para moverlo (los resaltados y otras marcas que tenga encima se mueven con él). Aquí el texto no se redimensiona,
 no se gira ni se reordena en la pila: cambie sus palabras, su fuente y su tamaño con Editar texto. Las imágenes y las líneas
 que tiene debajo se quedan. Si otro texto se superpone tanto que algunas de sus letras también desaparecerían,
@@ -988,7 +1012,7 @@ tendría la contraseña.</li>
 <li><b>Medición:</b> las unidades que se ofrecen para una página que aún no tiene escala, a qué se redondean los pies y las pulgadas
 (de 1/2" a 1/64"; 1/16" de forma predeterminada) y los decimales para las demás unidades. Las etiquetas de
 medición existentes se actualizan la próxima vez que las mueve o las edita.</li>
-<li><b>Mouse y desplazamiento:</b> Mouse estilo CAD, Desplazar una página por paso de la rueda (la nota
+<li><b>Mouse y desplazamiento:</b> Mouse estilo CAD, Movimiento libre de la página, Desplazar una página por paso de la rueda (la nota
 que hay debajo indica cuándo se aplica: solo mientras la página entera cabe en la ventana, como después de Ajustar
 página).</li>
 <li><b>Páginas y visualización:</b> bloquear el orden de las páginas, Mostrar cuadros de comentario, Resaltar campos de formulario,

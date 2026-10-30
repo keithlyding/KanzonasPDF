@@ -255,6 +255,7 @@ class PreferencesDialog(QDialog):
         # Mouse and scrolling
         page, form = self._tab(tabs, tr("Mouse and scrolling"))
         self._box(form, win.a_cad_mouse)
+        self._box(form, win.a_free_pan)
         self._box(form, win.a_page_wheel,
                   note=tr("Only when the whole page fits in the window, top to bottom and side to "
                        "side (for example after View > Fit page). Zoomed in so that any edge of "

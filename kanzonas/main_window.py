@@ -668,10 +668,21 @@ class MainWindow(QMainWindow):
         self.a_cad_mouse = self._act(tr("CAD-style &mouse (wheel zooms, hold wheel to pan)"),
                                      self._toggle_cad_mouse, "F11",
                                      tip=tr("Like AutoCAD: the scroll wheel zooms at the cursor; "
-                                            "hold the wheel down and drag to move the sheet (F11)"))
+                                            "hold the wheel down and drag to move the sheet; a "
+                                            "plus cursor; boxes dragged left to right (blue) "
+                                            "select what's inside, right to left (green) what "
+                                            "they touch (F11)"))
         self.a_cad_mouse.setCheckable(True)
         self.a_cad_mouse.setChecked(self.settings.value("cad_mouse", "false") == "true")
         DocumentView.cad_mouse = self.a_cad_mouse.isChecked()
+        self.a_free_pan = self._act(tr("&Free page movement (drag the page past its edges)"),
+                                    self._toggle_free_pan,
+                                    tip=tr("The Hand tool (or the held wheel) drags the page "
+                                           "anywhere, up, down and sideways, even when the "
+                                           "whole page fits in the window"))
+        self.a_free_pan.setCheckable(True)
+        self.a_free_pan.setChecked(self.settings.value("free_pan", "false") == "true")
+        DocumentView.free_pan = self.a_free_pan.isChecked()
         self.a_page_wheel = self._act(tr("Scroll &one page per wheel step"),
                                       self._toggle_page_wheel,
                                       tip=tr("When the whole page fits in the window, each step "
@@ -885,6 +896,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_split)
         m.addAction(self.a_detach)
         m.addAction(self.a_cad_mouse)
+        m.addAction(self.a_free_pan)
         m.addAction(self.a_page_wheel)
         m.addAction(self.a_night)
         m.addAction(self.a_thin_lines)
@@ -1678,6 +1690,11 @@ class MainWindow(QMainWindow):
 
     def _views(self):
         return [self.tabs.widget(i) for i in range(self.tabs.count())]
+
+    @staticmethod
+    def _all_views():
+        """The documents open in every window (view options apply to all of them)."""
+        return [v for w in windows() for v in w._views()]
 
     def closeEvent(self, e):
         """Closing the primary window closes every window (asking about unsaved changes in
@@ -3538,6 +3555,7 @@ class MainWindow(QMainWindow):
                          "a_redo": "redo", "a_zoom_in": "zoom_in", "a_zoom_out": "zoom_out",
                          "a_fit_width": "fit_width", "a_fit_page": "fit_page", "a_ocr": "ocr",
                          "a_rot_l": "rot_l", "a_rot_r": "rot_r", "a_cad_mouse": "cad_mouse",
+                         "a_free_pan": "free_pan",
                          "a_grid": "grid", "a_snap_grid": "snap_grid", "a_snap_objects": "snap_objects",
                          "a_snap_page": "snap_page"}
 
@@ -3924,11 +3942,19 @@ class MainWindow(QMainWindow):
         on = self.a_cad_mouse.isChecked()
         DocumentView.cad_mouse = on
         self.settings.setValue("cad_mouse", "true" if on else "false")
-        for i in range(self.tabs.count()):
-            self.tabs.widget(i).apply_canvas()       # open canvas around the pages, or not
+        for v in self._all_views():
+            v.apply_canvas()        # open canvas around the pages, or not
+            v._tool_cursor()        # a plus in CAD mouse mode
         self.statusBar().showMessage(
             tr("CAD-style mouse on: scroll wheel zooms, hold the wheel and drag to pan") if on else
             tr("CAD-style mouse off: scroll wheel scrolls, Ctrl+wheel zooms"), 4000)
+
+    def _toggle_free_pan(self):
+        on = self.a_free_pan.isChecked()
+        DocumentView.free_pan = on
+        self.settings.setValue("free_pan", "true" if on else "false")
+        for v in self._all_views():
+            v.apply_canvas()
 
     def preferences(self):
         from .preferences import PreferencesDialog
@@ -3969,7 +3995,7 @@ class MainWindow(QMainWindow):
     # short labels for ribbon buttons (the menus keep the full names)
     RIBBON_LABELS = {
         "a_fit_width": tr("Fit width"), "a_fit_page": tr("Fit page"), "a_actual": tr("Actual size"),
-        "a_cad_mouse": tr("CAD mouse"), "a_grid": tr("Grid"), "a_snap_grid": tr("Snap to grid"),
+        "a_cad_mouse": tr("CAD mouse"), "a_free_pan": tr("Free movement"), "a_grid": tr("Grid"), "a_snap_grid": tr("Snap to grid"),
         "a_snap_objects": tr("Snap to objects"), "a_snap_page": tr("Snap to page"),
         "a_grid_settings": tr("Grid settings"),
         "a_set_scale": tr("Set scale"), "a_sheet_scales": tr("Sheet scales"), "a_measure_summary": tr("Summary"), "a_ocr": tr("OCR"),
@@ -4129,7 +4155,7 @@ class MainWindow(QMainWindow):
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                  self.a_split]),
             (tr("Display"), "small", [self.a_hl_fields, self.a_show_markups, self.a_cad_mouse,
-                                  self.a_night]),
+                                  self.a_free_pan, self.a_night]),
             (tr("Grid & snap"), "small", snap_group),
             (tr("Ribbon"), "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
                                  self.a_menu_bar]),

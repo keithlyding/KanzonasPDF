@@ -257,8 +257,28 @@ like AutoCAD, the scroll wheel zooms in and out around the cursor and holding th
 moves the sheet, so you can navigate a drawing while any markup tool is active. Like Bluebeam,
 hold <b>Ctrl</b> and turn the wheel to scroll up and down. Shift+wheel scrolls left and right
 here too, the same as with CAD-style mouse off. The pages sit on an open canvas, so you can drag them anywhere in the window (with the
-wheel held down or the Hand tool), even when the whole page already fits. Your choice is
-remembered.</li>
+wheel held down or the Hand tool), even when the whole page already fits. The pointer is a
+<b>plus</b> with every tool except the Hand, so you can see CAD-style mouse is on. Selecting
+works as in AutoCAD, with <b>Select</b> (markups and text) and with <b>Edit objects</b> (the
+drawing's own lines, text and pictures):
+<ul>
+<li>Drag a box <b>left to right</b> (a solid <b>blue</b> window): it selects what lies entirely
+inside it.</li>
+<li>Drag a box <b>right to left</b> (a dashed <b>green</b> crossing box): it selects everything
+it touches, a line running through it included.</li>
+<li>A click or a box <b>adds</b> to the selection, and a box can start on top of a line of the
+drawing. Clicking empty paper keeps the selection. <b>Shift</b>+click or Shift+box takes things
+out of it. <b>Escape</b> clears it all.</li>
+<li>Press on something already selected and drag to move everything selected.</li>
+<li>With Select, a box that takes no markups selects text instead: the characters inside a
+window, or the ones a crossing box touches.</li>
+</ul>
+Your choice is remembered.</li>
+<li><b>Free page movement (drag the page past its edges)</b> (View menu, the View tab of the
+ribbon, Preferences &gt; Mouse and scrolling): the same open canvas without the rest of
+CAD-style mouse. The Hand tool (or the held wheel) drags the page anywhere, up, down and
+sideways, even when the whole page fits in the window, for example after Fit page. Off by
+default; your choice is remembered.</li>
 <li><b>Scroll one page per wheel step</b> (View menu): when the whole page fits in the window,
 top to bottom and side to side (for example after <b>Fit page</b>), each step of the scroll wheel
 jumps to the next or previous page, centered, instead of scrolling a little. As soon as you zoom
@@ -289,7 +309,10 @@ It's for looking only: make changes in the main view.</li>
 <ul>
 <li><b>Select tool (V):</b> drag across text to select it, including across the gap between
 pages (it stays highlighted; see Copy, cut and paste below). Click a markup to select it, then drag
-it to move it, drag a square handle to resize it, or change its look in the Properties panel.</li>
+it to move it, drag a square handle to resize it, or change its look in the Properties panel.
+With <b>CAD-style mouse</b> on, Select works as in AutoCAD: blue window and green crossing
+boxes, clicks that add to the selection, Shift to take out, Escape to clear (see Moving
+around).</li>
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
 it too, so you don't have to switch back to the arrow. The <b>Hand tool</b> works the same way:
 click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
@@ -579,7 +602,10 @@ is picked up anywhere inside it.</li>
 paragraph at a time: click a word to select its paragraph, and everything Add text wrote in one
 go comes together. A selection box takes text only when there are no pictures or shapes in it
 (so a box around a drawing detail selects its line work, not its labels); Ctrl+click adds text
-to a selection. Press <b>Delete</b> (or Backspace) or right-click &gt; <b>Delete</b> to remove
+to a selection. With <b>CAD-style mouse</b> on, selecting works as in AutoCAD instead: a blue
+window (dragged left to right) takes the lines, text and pictures entirely inside it, a green
+crossing box (right to left) everything it touches, text and line work together; clicks and
+boxes add to the selection, Shift takes out of it and Escape clears it (see Moving around). Press <b>Delete</b> (or Backspace) or right-click &gt; <b>Delete</b> to remove
 it; drag it to move it (highlights and other markups on it move along). Text isn't resized,
 rotated or re-stacked here: change its words, font and size with Edit text. Pictures and lines
 under it stay. If other text overlaps it so closely that some of its letters would go too,
@@ -995,7 +1021,7 @@ have the password.</li>
 <li><b>Measuring:</b> the units offered for a page that has no scale yet, what feet and inches
 round to (1/2" to 1/64"; 1/16" by default) and the decimal places for other units. Existing
 measurement labels update when you next move or edit them.</li>
-<li><b>Mouse and scrolling:</b> CAD-style mouse, Scroll one page per wheel step (the note
+<li><b>Mouse and scrolling:</b> CAD-style mouse, Free page movement, Scroll one page per wheel step (the note
 under it says when it applies: only while the whole page fits in the window, as after Fit
 page).</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
