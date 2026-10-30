@@ -4043,7 +4043,9 @@ class MainWindow(QMainWindow):
         mouse_modes.apply(self.settings)
         for w in windows():
             w._sync_mouse_actions()
+        from . import cad_select
         for v in self._all_views():
+            cad_select.drop(v)      # (a box drawn under the old options goes)
             v.apply_canvas()        # open canvas around the pages, or not
             v._tool_cursor()        # a plus in CAD mode
 
@@ -4826,10 +4828,13 @@ class MainWindow(QMainWindow):
 
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):
+        from . import cad_select
         current = self.view()
         for v in self._views():             # a CAD command belongs to the tab it ran in
-            if v is not current and v._cad_cmd is not None:
-                v._cad_cmd.cancel()
+            if v is not current:
+                if v._cad_cmd is not None:
+                    v._cad_cmd.cancel()
+                cad_select.drop(v)          # (and a box or lasso being drawn there)
         self._rebuild_thumbs()
         self._refresh_bookmarks()
         self._refresh_layers()
@@ -4943,7 +4948,9 @@ class MainWindow(QMainWindow):
         if op == "copy":
             what = v.copy()
             self.statusBar().showMessage({"text": tr("Text copied"),
-                                          "markups": tr("Markups copied")}.get(
+                                          "markups": tr("Markups copied"),
+                                          "picture": tr("Picture copied: Ctrl+V pastes it as "
+                                                        "an image markup")}.get(
                 what, tr("Select text or markups first")), 3000)
         elif op == "cut":
             what = v.cut()

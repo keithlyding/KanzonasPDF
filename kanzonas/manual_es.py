@@ -334,9 +334,13 @@ barra espaciadora solo escribe un espacio, como en "ajustar página"):</p>
 comienzo del nombre de un comando, en inglés o en español: MOV, COP, GIR, REC...</li>
 <li>Cualquier otro comando por su nombre, como lo encuentra la paleta de comandos (Ctrl+Shift+P): "rectángulo", "nube",
 "ajustar página", "guardar como"... Mientras escribe, aparece sobre la línea una lista de comandos que coinciden; Arriba
-y Abajo eligen en ella. Solo se ejecuta una coincidencia segura: lo que escribió debe ser el comienzo del nombre del
-comando o de una de sus palabras. Cualquier otra cosa no ejecuta nada: la línea indica <b>Comando desconocido</b> y
-conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Enter.</li>
+y Abajo eligen en ella. Solo se ejecuta una coincidencia segura: el nombre completo del comando, o al menos tres
+letras con las que empieza el nombre (o una de sus palabras) de ese único comando y de ningún otro. Los acentos y las
+mayúsculas no importan. Los comandos que cierran la ventana o quitan cosas del documento (Salir, Cerrar pestaña,
+Eliminar páginas, Quitar marcas de agua...) solo se ejecutan escritos completos, para que un EX suelto nunca cierre el
+programa. Cualquier otra cosa no ejecuta nada: la línea indica <b>Comando desconocido</b> (o que varios comandos
+coinciden) y conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Enter.
+Un ajuste que se activa escribiendo su nombre indica si ahora está activado o desactivado.</li>
 <li>Enter con la línea vacía repite el último comando.</li>
 <li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
 de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para

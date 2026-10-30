@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QHBoxLayo
                                QLineEdit, QPushButton, QSpinBox, QWidget)
 
 from .i18n import tr
+from . import page_objects
 
 GHOST = QColor(0, 120, 215, 200)
 BAND = QColor(220, 60, 0)
@@ -136,15 +137,32 @@ def resolve(text):
 
 
 def _word_start(typed, name):
-    """typed is found in name at its start or at the start of a word."""
-    t = " ".join(typed.lower().split())
-    n = name.replace("&", "").lower()
+    """typed is found in name at its start or at the start of a word (accents and case
+    don't matter: "ajustar pagina")."""
+    t = " ".join(_plain(typed).split())
+    n = _plain(name.replace("&", ""))
     i = n.find(t)
     while i >= 0:
         if i == 0 or not n[i - 1].isalnum():
             return True
         i = n.find(t, i + 1)
     return False
+
+
+def _whole(typed, name):
+    """typed is the command's whole name ("..." left off)."""
+    def clean(x):
+        return " ".join(_plain(x.replace("&", "")).replace("...", "").replace("\u2026", "")
+                        .split())
+    return clean(typed) == clean(name)
+
+
+# commands typed text runs only when typed in full (a few letters must never close the
+# window or take things out of the document): EX is AutoCAD's Extend, not Exit
+WHOLE_NAME_ONLY = {"Exit", "Close tab", "Delete pages", "Remove crop", "Remove security",
+                   "Clear all digital signatures", "Delete comments", "Remove background",
+                   "Remove watermarks", "Delete selected annotation"}
+MIN_TYPED = 3                           # letters needed before a part of a name runs a command
 
 
 class CommandLine(QWidget):
@@ -176,6 +194,7 @@ class CommandLine(QWidget):
         self.buttons = []
         self.choices = []
         self.cancel_btn = QPushButton(tr("Cancel"))
+        self.cancel_btn.setFocusPolicy(Qt.NoFocus)
         self.cancel_btn.clicked.connect(lambda: self.command and self.command.cancel())
         self._row = row
         row.addWidget(self.cancel_btn)
@@ -184,6 +203,7 @@ class CommandLine(QWidget):
         self.finder = None
         self.list = None                # the matching commands shown above the line
         self._arrowed = False           # a command was picked in the list with Up / Down
+        self._why = None                # why typed text ran nothing (shown on the status bar)
         self._idle()
 
     # ---- what it shows ---------------------------------------------------------------------
@@ -206,7 +226,9 @@ class CommandLine(QWidget):
         self.choices = list(choices)
         for label, value in choices:
             b = QPushButton(label)
-            b.clicked.connect(lambda _=False, v=value: self.command and self.command.choose(v))
+            b.setFocusPolicy(Qt.NoFocus)    # (a click leaves the keys with the page)
+            b.clicked.connect(lambda _=False, v=value: self.command and
+                              not self.command.gone() and self.command.choose(v))
             self._row.insertWidget(self._row.indexOf(self.cancel_btn), b)
             self.buttons.append(b)
         self.cancel_btn.show()
@@ -218,6 +240,7 @@ class CommandLine(QWidget):
             self.edit.setFocus()
 
     def done(self):
+        from PySide6.QtWidgets import QApplication
         self.command = None
         self.edit.clear()
         self._idle()
@@ -225,6 +248,12 @@ class CommandLine(QWidget):
             self.win.show_cad_line()        # (stays in CAD mode, goes otherwise)
         elif self.parent() is None:
             self.hide()
+        focus = QApplication.focusWidget()
+        if focus is None or focus is self or self.isAncestorOf(focus) or \
+                (self.win is not None and focus is self.win.tabs.tabBar()):
+            # ended by a click on the page or a button: the keys (Ctrl+Z, Delete, the
+            # arrows) go to the document again, not to the line
+            self._back_to_page()
 
     # ---- typing --------------------------------------------------------------------------
     def take_key(self, e):
@@ -273,6 +302,8 @@ class CommandLine(QWidget):
         if cmd is not None:
             self.edit.clear()
             self._back_to_page()        # (so Ctrl+Z, Delete... reach the document again)
+            if cmd.gone():
+                return
             if not text:
                 cmd.enter()
                 return
@@ -288,11 +319,13 @@ class CommandLine(QWidget):
             if self.last is not None:
                 self._start(self.last)
             return
+        self._why = None
         what = self._pick(text)
         if what is None:
             # nothing runs; the text stays (selected) to be corrected or typed over
-            self._say(tr("Unknown command: {text}. Type a command's name, or pick one in the "
-                         "list with Up and Down and press Enter.").format(text=text))
+            self._say(self._why or tr(
+                "Unknown command: {text}. Type a command's name, or pick one in the list with "
+                "Up and Down and press Enter.").format(text=text))
             self.edit.selectAll()
             return
         self.edit.clear()
@@ -309,12 +342,39 @@ class CommandLine(QWidget):
         if key is not None:
             return ("cad", key)
         f = self._finder()
-        for name, _a in (f.rows(text) if f is not None else []):
-            # only a sure match: what was typed is the start of the command's name or of one
-            # of its words ("fit page", "rect", "save as"), not letters scattered through it
-            if any(_word_start(text, n) for n in (f.names.get(name, name), name)):
-                return ("action", name)
-        return None
+        if f is None:
+            return None
+        whole, starts = [], []
+        for name, a in f.actions.items():
+            shown = f.names.get(name, name)
+            if any(_whole(text, n) for n in (shown, name)):
+                whole.append((name, a))
+            elif any(_word_start(text, n) for n in (shown, name)):
+                starts.append((name, a))
+        if len(whole) == 1:
+            found = whole
+        elif whole:
+            found = []
+        else:
+            # only a sure match: what was typed is the start of one command's name or of one
+            # of its words ("fit page", "rect", "save as"), not letters scattered through it,
+            # not two or three letters, and not the start of several commands
+            letters = sum(c.isalnum() for c in text)
+            found = [(n, a) for n, a in starts if n not in WHOLE_NAME_ONLY]
+            if letters < MIN_TYPED or len(found) != 1:
+                if len(found) > 1 or (found and letters < MIN_TYPED):
+                    self._why = tr("{text} could be several commands: type more of the name, "
+                                   "or pick one in the list with Up and Down and press "
+                                   "Enter.").format(text=text)
+                found = []
+        if not found:
+            return None
+        name, a = found[0]
+        if not a.isEnabled():
+            self._why = tr("{command} can't be used now (open a document first?).").format(
+                command=f.names.get(name, name).replace("&", ""))
+            return None
+        return ("action", name)
 
     def _start(self, what):
         kind, name = what
@@ -331,6 +391,9 @@ class CommandLine(QWidget):
         f.remember(name)
         self._back_to_page()
         a.trigger()
+        if a.isCheckable():             # (a setting switched by typing: say which way)
+            self._say((tr("{command}: on") if a.isChecked() else tr("{command}: off")).format(
+                command=f.names.get(name, name).replace("&", "")))
 
     def _say(self, text):
         if self.win is not None:
@@ -413,6 +476,9 @@ class Command:
     # ---- running -------------------------------------------------------------------------
     def start(self):
         v = self.v
+        if getattr(v, "_source", None) is not None or not v.allowed(pymupdf.PDF_PERM_MODIFY):
+            v.modify(lambda: None)          # says why it can't be changed (once, not per click)
+            return False
         if self.needs_selection:
             what = v.cad_targets()
             if what is None:
@@ -422,6 +488,7 @@ class Command:
                 return False
             self.kind, self.page, self.items = what
             self.ghost = v.cad_outlines(self.page, self.kind, self.items)
+        self.rev = getattr(v, "revision", 0)
         from . import cad_select
         cad_select.cancel(v)                # (a box started before the command is dropped)
         v._cad_cmd = self
@@ -445,12 +512,35 @@ class Command:
         """Enter with nothing typed."""
 
     def typed(self, text):
-        """A value typed in the prompt and Enter."""
+        """A value typed in the prompt and Enter (commands that take clicks only say so)."""
+        self.v.statusMessage.emit(tr("{command} takes clicks, not typed values: click the "
+                                     "points on the page.").format(command=self.title))
 
     def choose(self, value):
         """A choice button."""
 
+    rev = 0                             # the document's revision the command works on
+
+    def gone(self):
+        """The document changed under the command (Delete, a page rotated or deleted, the
+        selection cleared): what it was changing isn't there as it was. Ends it, saying so."""
+        if not self.needs_selection:
+            return False
+        v = self.v
+        if getattr(v, "revision", 0) == self.rev and self.page is not None and \
+                self.page < len(v.pages) and (
+                    (self.kind == "objects" and v.obj_sel is not None and
+                     v.obj_sel[0] == self.page and v.obj_sel[1]) or
+                    (self.kind == "markups" and v.selection is not None and
+                     v.selection[0] == self.page)):
+            return False
+        self.finish(tr("{command} canceled: the document changed under it. Select again and "
+                       "start it again.").format(command=self.title))
+        return True
+
     def click(self, index, pt):
+        if self.gone():
+            return
         if self.page is None:
             self.page = index
         if index != self.page:
@@ -464,6 +554,8 @@ class Command:
         """After a click."""
 
     def move(self, index, pt):
+        if self.gone():
+            return
         self.hover = pymupdf.Point(pt) if index == self.page or self.page is None else None
         self._repaint()
 
@@ -491,9 +583,7 @@ class Command:
                     else pymupdf.Rect()
             box = self._ghost_box
             if len(mats) > GHOST_LIMIT:         # (a huge array: just where it all goes)
-                box = pymupdf.Rect()
-                for m in mats:
-                    box |= self._ghost_box * m
+                box = page_objects.bounding(self._ghost_box * m for m in mats)
                 mats = [pymupdf.Matrix(1, 0, 0, 1, 0, 0)]
             lines = self.ghost if self._ghost_size * len(mats) <= GHOST_SEGMENTS and \
                 box is self._ghost_box else None

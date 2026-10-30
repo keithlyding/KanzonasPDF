@@ -24,6 +24,9 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Documents open while a setup updates KanzonasPDF, or while Windows shuts down, reopen at the next start when File > Preferences > Start-up and opening > "Reopen the documents..." is on, and their unsaved changes are kept as backups.
 - CSV exports can't start a spreadsheet formula.
 - The paragraph edit box always covers the whole paragraph.
+- A straight level or vertical line selected with Edit objects rotates about its middle, has its handles on it, and can be brought forward.
+- Picking another tool applies the text you were typing with Edit text.
+- Ctrl+C copies a picture selected with Edit objects.
 - Several smaller fixes from an outside review.
 
 ## 1.5 (es)
@@ -43,4 +46,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Los documentos abiertos mientras un instalador actualiza KanzonasPDF, o mientras Windows se apaga, se vuelven a abrir en el siguiente inicio cuando Archivo > Preferencias > Inicio y apertura > "Volver a abrir los documentos..." está activado, y sus cambios sin guardar se conservan como copias de seguridad.
 - Las exportaciones CSV no pueden iniciar una fórmula de hoja de cálculo.
 - El cuadro de edición de párrafos siempre cubre el párrafo entero.
+- Una línea recta horizontal o vertical seleccionada con Editar objetos gira sobre su centro, tiene sus controladores sobre ella y se puede traer hacia adelante.
+- Al elegir otra herramienta se aplica el texto que estaba escribiendo con Editar texto.
+- Ctrl+C copia una imagen seleccionada con Editar objetos.
 - Varias correcciones menores de una revisión externa.

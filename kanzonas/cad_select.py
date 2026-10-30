@@ -151,6 +151,18 @@ def cancel(v):
     return True
 
 
+def drop(v):
+    """The document changed, or the tab, tool or mode did: a box or lasso being drawn, and
+    its highlight, go (what they'd take was worked out on the drawing as it was)."""
+    cancel(v)
+    for w in getattr(v, "pages", []):
+        if w._cad_down is not None or getattr(w, "_cad_preview", None) is not None or \
+                getattr(w, "_preview_job", None) is not None:
+            w._cad_down = None
+            _clear(w)
+            w.update()
+
+
 def pick(w, region, crossing, remove):
     """Add what the region takes to the selection (or take it out)."""
     v = w.view

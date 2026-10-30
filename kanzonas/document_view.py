@@ -94,11 +94,29 @@ class _busy:
     """The busy pointer while a command works (most take a fraction of a second; on a huge
     drawing it shows the program is at it)."""
 
+    depth = 0
+
     def __enter__(self):
+        _busy.depth += 1
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
     def __exit__(self, *exc):
+        _busy.depth -= 1
         QApplication.restoreOverrideCursor()
+        return False
+
+
+class _not_busy:
+    """A message box while a command works: the usual pointer over it, the busy one after."""
+
+    def __enter__(self):
+        self.n = _busy.depth
+        for _ in range(self.n):
+            QApplication.restoreOverrideCursor()
+
+    def __exit__(self, *exc):
+        for _ in range(self.n):
+            QApplication.setOverrideCursor(Qt.WaitCursor)
         return False
 
 
@@ -809,11 +827,12 @@ class DocumentView(QScrollArea):
 
     def set_tool(self, tool):
         from . import cad_select
-        cad_select.cancel(self)
+        # text typed in Edit text and not yet applied is applied, as Save and Undo do (the
+        # next click on the page would otherwise only apply it)
+        self.commit_pending()
+        cad_select.drop(self)           # (a lasso held while the mode changed selects nothing)
         if self._cad_cmd is not None:
             self._cad_cmd.cancel()
-        for w in getattr(self, "pages", []):
-            w._cad_down = None          # (a lasso held while the mode changed selects nothing)
         self.tool = tool
         for w in getattr(self, "pages", []):
             # a stamp / signature preview or a shape half-drawn belongs to the old tool
@@ -913,17 +932,22 @@ class DocumentView(QScrollArea):
             return
         if not self.allowed(permission):
             if getattr(self, "sig_results", None):
-                QMessageBox.information(self, tr("Digitally signed document"),
-                                        tr("This PDF is digitally signed, so it's read-only to "
-                                           "keep the signature valid. Click \u201cEdit anyway\u201d "
-                                           "in the banner if you really need to change it."))
+                with _not_busy():
+                    QMessageBox.information(self, tr("Digitally signed document"),
+                                            tr("This PDF is digitally signed, so it's read-only "
+                                               "to keep the signature valid. Click \u201cEdit "
+                                               "anyway\u201d in the banner if you really need to "
+                                               "change it."))
             else:
-                QMessageBox.information(self, tr("Protected document"),
-                                        tr("This PDF is protected against changes. Use Protect > "
-                                           "Unlock with password if you have its permissions "
-                                           "password."))
+                with _not_busy():
+                    QMessageBox.information(self, tr("Protected document"),
+                                            tr("This PDF is protected against changes. Use "
+                                               "Protect > Unlock with password if you have its "
+                                               "permissions password."))
             return
         self.commit_pending()           # a text edit in progress becomes its own undo step
+        from . import cad_select
+        cad_select.drop(self)
         # a burst of arrow-key nudges is one undo step: later presses reuse the first snapshot
         merge = getattr(self, "_merge_edit", False) and bool(self._undo)
         snap = None if merge else self._snapshot()
@@ -940,7 +964,8 @@ class DocumentView(QScrollArea):
         try:
             fn()
         except Exception as ex:
-            QMessageBox.warning(self, tr("Edit failed"), str(ex))
+            with _not_busy():
+                QMessageBox.warning(self, tr("Edit failed"), str(ex))
             # rolled back: nothing changed
             self._restore(snap if snap is not None else self._undo.pop(), dirty=was_dirty)
             return
@@ -994,8 +1019,10 @@ class DocumentView(QScrollArea):
             self._inline = None
 
     def undo(self):
+        from . import cad_select
         if self._cad_cmd is not None and self._cad_cmd.needs_selection:
             self._cad_cmd.cancel()      # (its selection is gone with the change)
+        cad_select.drop(self)
         self.commit_pending()
         if self._undo:
             self._redo.append(self._snapshot())
@@ -1003,8 +1030,10 @@ class DocumentView(QScrollArea):
             self._trim_history()
 
     def redo(self):
+        from . import cad_select
         if self._cad_cmd is not None and self._cad_cmd.needs_selection:
             self._cad_cmd.cancel()
+        cad_select.drop(self)
         self.commit_pending()
         if self._redo:
             self._undo.append(self._snapshot())
@@ -1024,7 +1053,16 @@ class DocumentView(QScrollArea):
     def dirty(self, value):
         if value:
             self.revision += 1
+            if self._cad_cmd is not None:
+                # a change the command didn't make itself (Delete, a page rotated...): it
+                # ends, once this change is done (cad_apply marks its own changes as seen)
+                QTimer.singleShot(0, self._cad_check)
         self._dirty = bool(value)
+
+    def _cad_check(self):
+        import shiboken6
+        if shiboken6.isValid(self) and self._cad_cmd is not None:
+            self._cad_cmd.gone()
 
     markups_changed = None      # pages whose markups changed since the list last read them
                                 # (None: all of them)
@@ -1415,13 +1453,18 @@ class DocumentView(QScrollArea):
         return "\n\n".join(self._words_text(words) for _i, words in self.text_sel)
 
     def copy(self):
-        """Copy the selected text, or the selected markups. Returns what was copied."""
+        """Copy the selected text, the selected markups, or one picture selected with Edit
+        objects. Returns what was copied."""
         from . import clip
         if not self.require_permission(pymupdf.PDF_PERM_COPY, tr("Copying")):
             return None
         if self.text_sel:
             QGuiApplication.clipboard().setText(self.selected_text())
             return "text"
+        items = self.selected_objects()
+        if self.tool == "editobjects" and len(items) == 1 and items[0]["kind"] == "picture":
+            self.copy_picture()             # (as right-click > Copy picture)
+            return "picture"
         models = self._models_for_clipboard()
         if models:
             text = "\n".join(m.get("text", "") for m in models if m.get("text"))
@@ -2235,7 +2278,8 @@ class DocumentView(QScrollArea):
         if any(pymupdf.Rect(w[:4]).intersects(r) for w in self._words(index) if w[4].strip()):
             return False
         objs = self.content_objects(index)
-        return not any(it["rect"].intersects(r) and not it.get("whole")
+        from .page_objects import overlap
+        return not any(overlap(it["rect"], r) and not it.get("whole")
                        for it in (objs.items if objs is not None else []))
 
     def add_link(self, index, rect, target=None, rects=None, text_lines=False, look=None,
@@ -3993,8 +4037,13 @@ class DocumentView(QScrollArea):
         job = getattr(self, "_prep_job", None)
         objs = self._obj_cache.get(index)
         if job is None or job["index"] != index or job["objs"] is not objs or objs is None:
-            # first the page's objects and its text (each in one go), then their lines
-            objs = self.content_objects(index)
+            # first the page's objects, then (another time round, so input in between is
+            # answered) its text, each in one go, then their lines in slices
+            if objs is None:
+                if self.content_objects(index) is not None and \
+                        self._obj_cache.get(index) is not None:
+                    self._prep_timer.start(0)
+                return                      # (nothing it can read: no more tries)
             self.text_objects(index)
             shapes = [it for it in (objs.items if objs is not None else ())
                       if it["kind"] == "shape" and "lines" not in it]
@@ -4049,8 +4098,21 @@ class DocumentView(QScrollArea):
         return out
 
     def cad_apply(self, label, mat, copies=None, keep=False):
-        with _busy():
-            return self._cad_apply(label, mat, copies, keep)
+        try:
+            with _busy():
+                out = self._cad_apply(label, mat, copies, keep)
+        except Exception:
+            if self._cad_cmd is not None:   # (a command that failed doesn't go on)
+                self._cad_cmd.finish()
+            raise
+        self._cad_seen()
+        return out
+
+    def _cad_seen(self):
+        """The running command made this change itself (Copy goes on after it): it isn't a
+        change to the document under it."""
+        if self._cad_cmd is not None:
+            self._cad_cmd.rev = getattr(self, "revision", 0)
 
     def _cad_apply(self, label, mat, copies=None, keep=False):
         """A CAD command's change to the selection, as one undo step: mat (a Matrix in page
@@ -4140,7 +4202,9 @@ class DocumentView(QScrollArea):
 
     def cad_trim(self, index, pt):
         with _busy():
-            return self._cad_trim(index, pt)
+            out = self._cad_trim(index, pt)
+        self._cad_seen()
+        return out
 
     def _cad_trim(self, index, pt):
         """Trim at pt (the CAD tab): the clicked line of the drawing, or line markup, loses
@@ -4287,10 +4351,8 @@ class DocumentView(QScrollArea):
         return self.obj_sel[1] if self.obj_sel else []
 
     def selected_objects_rect(self):
-        r = pymupdf.Rect()
-        for it in self.selected_objects():
-            r |= it["rect"]
-        return r
+        from .page_objects import bounding
+        return bounding(it["rect"] for it in self.selected_objects())
 
     def select_objects(self, index, items, add=False):
         """Select pictures / shapes on page index; add=True toggles them in the selection."""

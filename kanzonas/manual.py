@@ -342,10 +342,14 @@ Just start typing over the drawing (you don't have to click in the line first) a
 <b>AR</b> Array, <b>TR</b> Trim; or the start of a command's name: MOV, COP, ROT, TRI...</li>
 <li>Any other command by its name, as the command palette (Ctrl+Shift+P) finds it: "rect",
 "cloud", "fit page", "save as"... A list of matching commands shows above the line as you
-type; Up and Down choose in it. Only a sure match runs: what you typed must be the start of the
-command's name or of one of its words. Anything else runs nothing: the line says
-<b>Unknown command</b> and keeps what you typed, to correct it or to pick a command in the list
-with Up and Down and Enter.</li>
+type; Up and Down choose in it. Only a sure match runs: the command's whole name, or at least
+three letters that start the name (or one of its words) of that one command and no other.
+Accents and capitals don't matter. Commands that close the window or take things out of the
+document (Exit, Close tab, Delete pages, Remove watermarks...) run only when typed in full, so
+a stray EX never quits. Anything else runs nothing: the line says <b>Unknown command</b> (or
+that several commands fit) and keeps what you typed, to correct it or to pick a command in the
+list with Up and Down and Enter. A setting switched by typing its name says whether it's now on
+or off.</li>
 <li>Enter on an empty line repeats the last command.</li>
 <li>While a command runs, the line says what to do next and takes what you type: an angle, a
 scale factor, or a choice (the first letters of a button's name will do: K for Keep them, D

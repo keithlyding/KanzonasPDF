@@ -6925,3 +6925,21 @@ msgstr "Recortar: ahí se cruzan líneas. Haga clic en la parte de la línea que
 
 msgid "The new version is already downloading."
 msgstr "La nueva versión ya se está descargando."
+
+msgid "{command} can't be used now (open a document first?)."
+msgstr "{command} no se puede usar ahora (¿abrir primero un documento?)."
+
+msgid "{command} takes clicks, not typed values: click the points on the page."
+msgstr "{command} usa clics, no valores escritos: haga clic en los puntos de la página."
+
+msgid "{command} canceled: the document changed under it. Select again and start it again."
+msgstr "{command} cancelado: el documento cambió mientras tanto. Vuelva a seleccionar y empiece de nuevo."
+
+msgid "{command}: on"
+msgstr "{command}: activado"
+
+msgid "{command}: off"
+msgstr "{command}: desactivado"
+
+msgid "{text} could be several commands: type more of the name, or pick one in the list with Up and Down and press Enter."
+msgstr "{text} puede ser varios comandos: escriba más del nombre, o elija uno de la lista con Arriba y Abajo y presione Enter."

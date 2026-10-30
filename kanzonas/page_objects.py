@@ -594,6 +594,17 @@ class Objects:
                                            pymupdf.Point(region.inner_point()))))
 
 
+def bounding(rects):
+    """The box around rects. Not Rect() |= ...: PyMuPDF joins a flat box (a straight
+    horizontal or vertical line's) as if it were empty."""
+    x0 = y0 = float("inf")
+    x1 = y1 = float("-inf")
+    for r in rects:
+        x0, y0 = min(x0, r[0], r[2]), min(y0, r[1], r[3])
+        x1, y1 = max(x1, r[0], r[2]), max(y1, r[1], r[3])
+    return pymupdf.Rect(x0, y0, x1, y1) if x0 <= x1 else pymupdf.Rect()
+
+
 def overlap(a, b):
     """Rects a and b share a point (also a level or plumb line's empty rect)."""
     return a.x0 <= b.x1 and b.x0 <= a.x1 and a.y0 <= b.y1 and b.y0 <= a.y1
@@ -1104,6 +1115,10 @@ def block_copies(page, ns, matrices, objs=None):
     _set_contents(page, new_data, compress=False)
     if not have:
         return None
+    # the state in effect after the last object: its own settings (colors, width) stay on
+    lo = data[last["start"]:last["end"]]
+    own = _split(lo)[0] if lo[:2] != b"BI" else b""
+    after = _state_after(last.get("state", b""), own) if own else last.get("state", b"")
     out, origin = [], []
     for n, d in enumerate(found):
         e = dict(d)
@@ -1118,7 +1133,7 @@ def block_copies(page, ns, matrices, objs=None):
                 x["start"] += at
                 x["end"] += at
                 x["ctm"] = x["ctm"] * last["ctm"]
-                x["state"] = last.get("state", b"")
+                x["state"] = after
                 out.append(x)
                 origin.append(None)
     return _rebuilt(page, new_data, out, objs, origin)
@@ -1262,9 +1277,7 @@ def reorder(page, ns, how, dry_run=False):
             x0, y0, x1, y1 = d["box"]
             return pymupdf.Rect(x0, y0, x1, y1).quad.transform(d["ctm"] * tm).rect
         return pymupdf.Rect(0, 0, 1, 1).quad.transform(d["ctm"] * tm).rect
-    area = pymupdf.Rect()
-    for n in sel:
-        area |= bounds(found[n])
+    area = bounding(bounds(found[n]) for n in sel)
     ident = pymupdf.Matrix(1, 0, 0, 1, 0, 0)
     if how == "front":
         at, target = len(data), ident
@@ -1272,14 +1285,14 @@ def reorder(page, ns, how, dry_run=False):
         at, target = 0, ident
     elif how == "forward":
         later = [k for k in range(sel[-1] + 1, len(found))
-                 if k not in sel and bounds(found[k]).intersects(area)]
+                 if k not in sel and overlap(bounds(found[k]), area)]
         if not later:
             return False
         d = found[later[0]]
         at, target = d["end"], d["ctm"]
     else:
         earlier = [k for k in range(sel[0] - 1, -1, -1)
-                   if k not in sel and bounds(found[k]).intersects(area)]
+                   if k not in sel and overlap(bounds(found[k]), area)]
         if not earlier:
             return False
         d = found[earlier[0]]

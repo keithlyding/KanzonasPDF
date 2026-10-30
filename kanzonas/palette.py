@@ -25,13 +25,20 @@ MAX_ROWS = 14
 RECENT = 8                  # commands remembered as "used lately"
 
 
+def plain(text):
+    """Lower case without accents ("Página" -> "pagina")."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", text.lower())
+                   if unicodedata.category(c) != "Mn")
+
+
 def match(query, text):
     """Score of `query` against `text` (higher is better), or None when the letters of the
-    query don't all appear in order. Case doesn't matter."""
-    q = query.lower().strip()
+    query don't all appear in order. Case and accents don't matter."""
+    q = plain(query).strip()
     if not q:
         return 0
-    t = text.lower()
+    t = plain(text)
     # a plain substring is the strongest kind of match
     pos = t.find(q)
     if pos >= 0:
