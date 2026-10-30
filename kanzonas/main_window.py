@@ -229,6 +229,15 @@ def _doc_name(v):
     return name
 
 
+def _inside(path, folder):
+    """path is in folder or one of its subfolders ("Backups 2026" isn't in "Backups")."""
+    try:
+        f = os.path.normcase(os.path.abspath(folder))
+        return os.path.commonpath([os.path.normcase(os.path.abspath(path)), f]) == f
+    except ValueError:              # (another drive)
+        return False
+
+
 def windows():
     """The open main windows, oldest first."""
     out = []
@@ -671,15 +680,15 @@ class MainWindow(QMainWindow):
         self.theme_actions[self.settings.value("theme", "system")].setChecked(True)
         # Mouse mode: Standard, Hand or CAD (mouse_modes.py), each with its own options
         self.mouse_group = QActionGroup(self)
-        self.a_mouse_standard = self._act(tr("Mouse: &Standard (arrow, the wheel scrolls)"),
+        self.a_mouse_standard = self._act(tr("Mouse: Standard (arrow, the wheel scrolls)"),
                                           lambda: self.set_mouse_mode("standard"),
                                           tip=tr("Select text and markups with the arrow; the "
                                                  "wheel scrolls, Ctrl+wheel zooms"))
-        self.a_mouse_hand = self._act(tr("Mouse: &Hand (drag the page)"),
+        self.a_mouse_hand = self._act(tr("Mouse: Hand (drag the page)"),
                                       lambda: self.set_mouse_mode("hand"),
                                       tip=tr("Drag to move the page; click a markup to select "
                                              "it; the wheel scrolls"))
-        self.a_cad_mouse = self._act(tr("Mouse: &CAD (wheel zooms, hold wheel to pan)"),
+        self.a_cad_mouse = self._act(tr("Mouse: CAD (wheel zooms, hold wheel to pan)"),
                                      lambda: self.set_mouse_mode("cad", toggle=True), "F11",
                                      tip=tr("Like AutoCAD: the scroll wheel zooms at the cursor; "
                                             "hold the wheel down and drag to move the sheet; a "
@@ -690,7 +699,7 @@ class MainWindow(QMainWindow):
         for a in (self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse):
             a.setCheckable(True)
             self.mouse_group.addAction(a)
-        self.a_free_pan = self._act(tr("&Free page movement (drag the page past its edges)"),
+        self.a_free_pan = self._act(tr("Free page movement (drag the page past its edges)"),
                                     lambda: self._toggle_mouse_option("free_pan",
                                                                       self.a_free_pan),
                                     tip=tr("The Hand tool (or the held wheel) drags the page "
@@ -714,6 +723,7 @@ class MainWindow(QMainWindow):
                 ("trim", tr("&Trim"), tr("Cut away the part of a line between the lines that "
                                          "cross it"))):
             a = self._act(label, lambda _=False, k=key: self.start_cad_command(k), tip=tip)
+            a.setProperty("kz_id", "CAD " + english_name(label).replace("&", ""))
             self.cad_actions[key] = a
             setattr(self, "a_cad_" + key, a)
         self.a_page_wheel = self._act(tr("Scroll &one page per wheel step"),
@@ -860,7 +870,8 @@ class MainWindow(QMainWindow):
                                          tip=tr("Ask GitHub whether a newer KanzonasPDF is out"))
         self.a_auto_updates = QAction(tr("Check for updates &automatically"), self, checkable=True)
         self.a_auto_updates.setToolTip(tr("Once a day at start-up; only tells you, never installs"))
-        self.a_auto_updates.setChecked(self.settings.value("update_check", "true") != "false")
+        from .updates import UpdateChecker
+        self.a_auto_updates.setChecked(UpdateChecker(self.settings).enabled())
         self.a_auto_updates.toggled.connect(
             lambda on: self.settings.setValue("update_check", "true" if on else "false"))
 
@@ -1713,6 +1724,8 @@ class MainWindow(QMainWindow):
         v = self.tabs.widget(index)
         if v is None or not self._confirm_close(v):
             return
+        if v._cad_cmd is not None:
+            v._cad_cmd.cancel()
         self._remember_state(v)
         self.autosave.discard(v)
         if self._split_view is not None and getattr(self._split_view, "_source", None) is v:
@@ -1762,7 +1775,7 @@ class MainWindow(QMainWindow):
             for v in w._views():
                 w._remember_state(v)
                 if v.path and not v.untitled and os.path.exists(v.path) and \
-                        not os.path.normcase(v.path).startswith(os.path.normcase(backups)):
+                        not _inside(v.path, backups):
                     session.append(v.path)
         if self.primary:
             self.settings.setValue("session_files", json.dumps(session))
@@ -1845,8 +1858,12 @@ class MainWindow(QMainWindow):
             files = json.loads(self.settings.value("session_files", "[]") or "[]")
         except ValueError:
             files = []
+        # a file whose unsaved changes were just offered as a recovered copy is open already
+        recovered = {os.path.normcase(v.path) for w in windows() for v in w._views()
+                     if getattr(v, "recovered", False) and v.path}
         for p in files:
-            if isinstance(p, str) and os.path.exists(p):
+            if isinstance(p, str) and os.path.exists(p) and \
+                    os.path.normcase(p) not in recovered:
                 self.open_file(p)
 
     def recover_backups(self):
@@ -2032,6 +2049,10 @@ class MainWindow(QMainWindow):
                 e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and not e.modifiers():
             self._page_op("del")                        # Delete in the page list: those pages
             return True
+        if t == QEvent.KeyPress and e.key() == Qt.Key_Escape and \
+                getattr(self, "cad_line", None) is not None and self.cad_line.edit.text() and \
+                QApplication.focusWidget() is not self.cad_line.edit and self.isActiveWindow():
+            self.cad_line.edit.clear()          # (and Escape goes on to the page as well)
         if t == QEvent.KeyPress and e.key() == Qt.Key_Escape and not e.modifiers() and \
                 self.isActiveWindow() and self._escape_goes_to_page():
             # after a toolbar button, a ribbon tab or a dialog took the keyboard focus, Escape
@@ -3744,7 +3765,8 @@ class MainWindow(QMainWindow):
         for a in self.findChildren(QAction):
             if a.parent() is not self:        # skip panels' own small menus
                 continue
-            name = english_name(a.text()).split("\t")[0].replace("&", "").strip().rstrip(".")
+            name = a.property("kz_id") or \
+                english_name(a.text()).split("\t")[0].replace("&", "").strip().rstrip(".")
             if name and not a.menu() and name not in out:
                 out[name] = a
         return out
@@ -3759,7 +3781,10 @@ class MainWindow(QMainWindow):
         # the built-in shortcuts, so only the ones a user changes are saved (a later release
         # can then improve a default the user never touched)
         self._default_shortcuts = {n: a.shortcut().toString() for n, a in acts.items()}
+        renamed = {"CAD-style mouse (wheel zooms, hold wheel to pan)":     # before 1.5
+                   "Mouse: CAD (wheel zooms, hold wheel to pan)"}
         for name, seq in saved.items():
+            name = renamed.get(name, name)
             if name in acts:
                 acts[name].setShortcut(QKeySequence(seq))
 
@@ -3990,13 +4015,16 @@ class MainWindow(QMainWindow):
         from . import mouse_modes
         old = mouse_modes.mode(self.settings)
         if toggle and m == "cad" and old == "cad":
-            m = self.settings.value("mouse_before_cad", "hand")
-            m = m if m in ("standard", "hand") else "hand"
+            m = self.settings.value("mouse_before_cad")
+            if m not in ("standard", "hand"):   # (CAD since before 1.5: its default tool)
+                m = "standard" if self.settings.value("start_tool", "hand") == "select" \
+                    else "hand"
         if m == "cad" and old != "cad":
             self.settings.setValue("mouse_before_cad", old)
         self.settings.setValue("mouse_mode", m)
         self.apply_mouse_mode()
-        self.set_tool(mouse_modes.default_tool(m))
+        for w in windows():                 # (a pulled-out window too; this ends CAD commands)
+            w.set_tool(mouse_modes.default_tool(m))
         self.statusBar().showMessage(tr("Mouse: {mode}. {what}").format(
             mode=mouse_modes.labels()[m], what=mouse_modes.descriptions()[m]), 5000)
 
@@ -4038,8 +4066,9 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is None:
             return
-        if v._cad_cmd is not None:
-            v._cad_cmd.cancel()
+        for other in self._views():         # one command at a time in a window
+            if other._cad_cmd is not None:
+                other._cad_cmd.cancel()
         if key == "delete":
             if v.obj_sel is not None:
                 v.delete_objects()
@@ -4072,8 +4101,11 @@ class MainWindow(QMainWindow):
     def show_cad_line(self):
         from . import mouse_modes
         line = self.cad_command_line()
-        self.cad_bar.setVisible(mouse_modes.mode(self.settings) == "cad" or
-                                line.command is not None)
+        show = mouse_modes.mode(self.settings) == "cad" or line.command is not None
+        if not show:
+            line.edit.clear()
+            line._hide_list()
+        self.cad_bar.setVisible(show)
 
     def cad_typing(self, obj, e):
         """CAD mode: a key typed over the drawing goes to the command line (letters, digits, a
@@ -4092,8 +4124,17 @@ class MainWindow(QMainWindow):
             return False
         if e.modifiers() & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier):
             return False
+        v = self.view()
+        if v is not None and v.field_focus is not None and \
+                e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+            return False                    # Space / Enter fill the form field Tab moved to
+        if v is not None and any(w._poly for w in v.pages) and \
+                e.key() in (Qt.Key_Return, Qt.Key_Enter):
+            return False                    # Enter finishes the polygon being drawn
+        typed = getattr(self, "cad_line", None) is not None and self.cad_line.edit.text()
+        if e.modifiers() & Qt.ShiftModifier and not typed:
+            return False                    # Shift+letter tool shortcuts (Shift+M Length...)
         if e.key() in (Qt.Key_Return, Qt.Key_Enter):
-            v = self.view()
             return v is None or v._cad_cmd is None
         text = e.text()
         if text == " " and not (getattr(self, "cad_line", None) and self.cad_line.edit.text()):
@@ -4674,6 +4715,13 @@ class MainWindow(QMainWindow):
         elif updates.can_install_update():
             self.update_installed()
 
+    def _close_all_for_update(self):
+        """Close every window before an update (asking about unsaved changes in all of them,
+        also when Update now was clicked in a pulled-out window). False: the user kept a
+        document open."""
+        main = next((w for w in windows() if w.primary), self)
+        return main.close() and not any(w.isVisible() for w in windows())
+
     def update_installed(self):
         """Installed copy: download the new setup, close (saving first) and run it quietly
         over this installation; it starts KanzonasPDF again."""
@@ -4704,7 +4752,7 @@ class MainWindow(QMainWindow):
             import shutil
             import subprocess
             prog.close()
-            if not self.close():          # the user kept a document open: not now
+            if not self._close_all_for_update():    # a document kept open: not now
                 shutil.rmtree(os.path.dirname(setup), ignore_errors=True)
                 return
             subprocess.Popen(updates.installer_command(setup, paths.app_dir()), close_fds=True)
@@ -4749,10 +4797,10 @@ class MainWindow(QMainWindow):
             script = os.path.join(tempfile.mkdtemp(prefix="kzupdate"), "kanzonas-update.cmd")
             with open(script, "w", encoding="mbcs" if os.name == "nt" else "utf-8") as f:
                 f.write(updates.swap_script(os.getpid(), new, app_dir))
-            if not self.close():          # the user kept a document open: try again later
+            if not self._close_all_for_update():    # a document kept open: try again later
                 import shutil
                 shutil.rmtree(os.path.join(app_dir, updates.STAGING), ignore_errors=True)
-                os.remove(script)
+                shutil.rmtree(os.path.dirname(script), ignore_errors=True)
                 return
             subprocess.Popen(["cmd", "/c", script],
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
@@ -4765,6 +4813,10 @@ class MainWindow(QMainWindow):
 
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):
+        current = self.view()
+        for v in self._views():             # a CAD command belongs to the tab it ran in
+            if v is not current and v._cad_cmd is not None:
+                v._cad_cmd.cancel()
         self._rebuild_thumbs()
         self._refresh_bookmarks()
         self._refresh_layers()

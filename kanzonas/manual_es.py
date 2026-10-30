@@ -340,8 +340,10 @@ de escala o una elección (bastan las primeras letras del nombre de un botón: C
 Eliminarlos).</li>
 <li>Escape borra lo que escribió; sin nada escrito, cancela el comando.</li>
 <li>En el modo CAD, los atajos de una sola letra de las herramientas (V para Seleccionar, H para Mano...) escriben en la
-línea de comandos; los atajos con Ctrl y Alt (Ctrl+S, Ctrl+Z...) funcionan como siempre, y las herramientas están a un
-nombre de distancia ("mano", "seleccionar").</li>
+línea de comandos; los atajos con Shift y una letra (Shift+M Longitud, Shift+A Área...) siguen funcionando mientras no
+haya nada escrito, los atajos con Ctrl y Alt (Ctrl+S, Ctrl+Z...) funcionan como siempre, y las herramientas están a un
+nombre de distancia ("mano", "seleccionar"). Entrar sigue terminando un polígono o un área que se está dibujando, y la
+barra espaciadora y Entrar siguen llenando el campo de formulario al que llevó Tab.</li>
 </ul>
 <ul>
 <li><b>Mover</b>: haga clic en el punto base y luego donde va.</li>
@@ -1158,7 +1160,7 @@ cuadrícula...).</li>
 <tr><td>Ctrl+F1</td><td>Contraer / expandir la cinta</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Mostrar / ocultar la barra de menús (diseño con cinta)</td></tr>
 <tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
-<tr><td>Letras, Entrar (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Entrar lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD.</td></tr>
+<tr><td>Letras, Entrar (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Entrar lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD (los de Shift y una letra, sí).</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>

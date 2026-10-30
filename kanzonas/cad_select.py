@@ -58,7 +58,8 @@ def press(w, e, pos, pdf):
                     return
         target = ("object", v.object_at(w.index, pdf))
     w._cad_down = {"start": pos, "pts": [pos], "dir": 0, "mode": None, "now": None,
-                   "target": target, "remove": remove}
+                   "target": target, "remove": remove,
+                   "link": getattr(w, "_link_press", None) is not None}
 
 
 def move(w, e, pos):
@@ -107,7 +108,7 @@ def release(w, e, pos):
         kind, target = d["target"]
         if target is not None:
             toggle(w, kind, target, d["remove"])
-        elif v.click_click:
+        elif v.click_click and not d.get("link"):     # (Ctrl+click on a link opens it)
             v._cad_pick = {"w": w, "start": d["start"], "now": d["start"],
                            "remove": d["remove"]}
     w.update()

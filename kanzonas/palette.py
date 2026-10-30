@@ -95,6 +95,9 @@ class Finder:
         """name was just run: it comes first among the recent commands."""
         recent = [name] + [n for n in self._recent() if n != name]
         self.win.settings.setValue("palette_recent", json.dumps(recent[:RECENT]))
+        line = getattr(self.win, "cad_line", None)
+        if line is not None:
+            line.last = ("action", name)    # Enter on the CAD command line runs it again
 
     def rows(self, query):
         """[(name, action)] best matches first (recent ones first when nothing is typed);

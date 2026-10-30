@@ -1595,6 +1595,7 @@ class PageWidget(QWidget):
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 
     def mouseDoubleClickEvent(self, e):
+        cad_select.cancel(self.view)        # (a double-click selects a word: no box after it)
         if self.view.tool in POLY_TOOLS:
             # the double-click's first press already added this point
             self.finish_poly()

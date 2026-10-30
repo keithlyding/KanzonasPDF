@@ -6890,3 +6890,15 @@ msgstr "Línea de comandos CAD"
 #: cad_commands.py
 msgid "Unknown command: {text}. Type a command's name, or pick one in the list with Up and Down and press Enter."
 msgstr "Comando desconocido: {text}. Escriba el nombre de un comando, o elija uno de la lista con Arriba y Abajo y presione Entrar."
+
+#: main_window.py
+msgid "Mouse: Standard (arrow, the wheel scrolls)"
+msgstr "Mouse: Estándar (flecha, la rueda desplaza)"
+
+#: main_window.py
+msgid "Mouse: Hand (drag the page)"
+msgstr "Mouse: Mano (arrastrar la página)"
+
+#: main_window.py
+msgid "Mouse: CAD (wheel zooms, hold wheel to pan)"
+msgstr "Mouse: CAD (la rueda acerca y aleja; mantenga presionada la rueda para desplazar)"

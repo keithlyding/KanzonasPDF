@@ -349,8 +349,10 @@ scale factor, or a choice (the first letters of a button's name will do: K for K
 for Delete them).</li>
 <li>Escape clears what you typed; with nothing typed, it cancels the command.</li>
 <li>In CAD mode the one-letter tool shortcuts (V for Select, H for Hand...) type into the command
-line instead; Ctrl and Alt shortcuts (Ctrl+S, Ctrl+Z...) work as always, and the tools are a
-name away ("hand", "select").</li>
+line instead; Shift+letter shortcuts (Shift+M Length, Shift+A Area...) still work while nothing
+is typed, Ctrl and Alt shortcuts (Ctrl+S, Ctrl+Z...) work as always, and the tools are a name
+away ("hand", "select"). Enter still finishes a polygon or area being drawn, and Space and Enter
+still fill the form field Tab moved to.</li>
 </ul>
 <ul>
 <li><b>Move</b>: click the base point, then where it goes.</li>
@@ -1169,7 +1171,7 @@ settings...).</li>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Show / hide the menu bar (ribbon layout)</td></tr>
 <tr><td>F11</td><td>CAD mouse mode on / off (off goes back to Standard or Hand, whichever you had)</td></tr>
-<tr><td>Letters, Enter (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode.</td></tr>
+<tr><td>Letters, Enter (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode (Shift+letter ones do).</td></tr>
 <tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>

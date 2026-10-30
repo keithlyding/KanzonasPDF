@@ -79,7 +79,14 @@ def apply(settings):
     from .document_view import DocumentView
     m = mode(settings)
     DocumentView.mouse_mode = m
+    listed = {k for k, _label, _default in options(m)}
     for key in ("page_wheel", "free_pan", "hand_selects", "wheel_zoom", "plus_cursor",
                 "cad_select", "click_click", "lasso"):
-        setattr(DocumentView, key, option(settings, m, key))
+        # an option a mode doesn't list keeps its usual behavior there: the Hand tool picked
+        # in Standard or CAD mode still selects the markup it clicks
+        on = option(settings, m, key) if key in listed else UNLISTED.get(key, False)
+        setattr(DocumentView, key, on)
     return m
+
+
+UNLISTED = {"hand_selects": True}

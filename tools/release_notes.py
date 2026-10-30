@@ -46,8 +46,10 @@ def main(argv):
         print("RELEASE_NOTES.md has no notes for %s" % version, file=sys.stderr)
         return 1
     if "--github-output" in argv:
+        import uuid
+        end = "KZ_NOTES_END_" + uuid.uuid4().hex     # (never a line of the notes)
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
-            f.write("notes<<KZ_NOTES_END\n%s\nKZ_NOTES_END\n" % text)
+            f.write("notes<<%s\n%s\n%s\n" % (end, text, end))
     else:
         sys.stdout.reconfigure(encoding="utf-8")
         print(text)

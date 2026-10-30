@@ -62,18 +62,21 @@ def newest(releases, current=None):
     """The newest published release newer than `current`, as (version, page url), or None.
     Pre-releases count: every 0.x release is one."""
     r = newest_release(releases, current)
-    return (r["tag_name"].lstrip("vV"), r.get("html_url") or RELEASES_PAGE) if r else None
+    return (str(r["tag_name"]).lstrip("vV"), r.get("html_url") or RELEASES_PAGE) if r else None
 
 
-_NOTES = re.compile(r"<!-- kanzonas-notes(?: lang=(\w+))? -->\s*(.*?)\s*<!-- /kanzonas-notes -->",
-                    re.S)
+# (a part's text never runs into the next part, also when its closing mark is missing)
+_NOTES = re.compile(r"<!-- kanzonas-notes(?: lang=(\w+))? -->\s*"
+                    r"((?:(?!<!-- /?kanzonas-notes).)*?)\s*(?:<!-- /kanzonas-notes -->|(?=<!-- "
+                    r"kanzonas-notes)|$)", re.S)
 
 
 def release_notes(release, lang="en"):
     """The short notes in a release's text (see tools/release_notes.py): in lang if it has
     them, else in English; None for a release without notes (those before 1.5)."""
+    body = (release or {}).get("body") if isinstance(release, dict) else None
     found = {(m.group(1) or "en"): m.group(2) for m in _NOTES.finditer(
-        (release or {}).get("body") or "")}
+        body if isinstance(body, str) else "")}
     return found.get(lang) or found.get("en")
 
 
@@ -83,13 +86,15 @@ def notes_since(releases, current=None, lang="en"):
     current = version_tuple(current or __version__)
     out = []
     for r in releases or []:
+        if not isinstance(r, dict):
+            continue
         v = version_tuple(r.get("tag_name", ""))
         if r.get("draft") or not v or v <= current:
             continue
         out.append((v, r))
     out.sort(key=lambda x: x[0], reverse=True)
-    return [(r["tag_name"].lstrip("vV"), release_notes(r, lang), r.get("html_url") or RELEASES_PAGE)
-            for _v, r in out]
+    return [(str(r["tag_name"]).lstrip("vV"), release_notes(r, lang),
+             r.get("html_url") or RELEASES_PAGE) for _v, r in out]
 
 
 def newest_release(releases, current=None):
@@ -97,7 +102,7 @@ def newest_release(releases, current=None):
     current = current or __version__
     best = None
     for r in releases:
-        if r.get("draft"):
+        if not isinstance(r, dict) or r.get("draft"):
             continue
         v = version_tuple(r.get("tag_name", ""))
         if not v or v <= version_tuple(current):
@@ -113,8 +118,8 @@ def _sha256_hex(asset):
     if not isinstance(digest, str) or not digest.startswith("sha256:"):
         return None
     hexpart = digest[len("sha256:"):]
-    if not hexpart or any(c not in "0123456789abcdefABCDEF" for c in hexpart):
-        return None
+    if len(hexpart) != 64 or any(c not in "0123456789abcdefABCDEF" for c in hexpart):
+        return None                     # (a sha256 is 64 hex digits; anything else isn't one)
     return hexpart
 
 
@@ -168,9 +173,47 @@ def can_install_update(app_dir=None):
     return os.path.exists(os.path.join(app_dir or paths.app_dir(), "unins000.exe"))
 
 
+# the setup's AppId (installer/KanzonasPDF.iss): its uninstall entry says who it was installed for
+UNINSTALL_KEY = (r"Software\Microsoft\Windows\CurrentVersion\Uninstall"
+                 r"\{8F4C2A61-5B7E-4D3A-9C1F-2E6B7A9D4C11}_is1")
+
+
+def _installed_in(hive, app_dir):
+    """The setup's uninstall entry under hive (winreg.HKEY_LOCAL_MACHINE / _CURRENT_USER)
+    names app_dir as where it installed. None when it can't be read (not Windows, no entry)."""
+    try:
+        import winreg
+    except ImportError:
+        return None
+    here = os.path.normcase(os.path.abspath(app_dir)).rstrip("\\/")
+    found = None
+    for view in (getattr(winreg, "KEY_WOW64_64KEY", 0), getattr(winreg, "KEY_WOW64_32KEY", 0)):
+        try:
+            with winreg.OpenKey(hive, UNINSTALL_KEY, 0, winreg.KEY_READ | view) as k:
+                where = winreg.QueryValueEx(k, "InstallLocation")[0]
+        except OSError:
+            continue
+        found = False
+        if os.path.normcase(os.path.abspath(str(where))).rstrip("\\/") == here:
+            return True
+    return found
+
+
 def for_all_users(app_dir):
-    """The copy in app_dir was installed for all users (in Program Files), so its update needs
-    Windows' administrator prompt."""
+    """The copy in app_dir was installed for all users, so its update needs Windows'
+    administrator prompt (and the setup's /ALLUSERS, or it would install a second copy for
+    this user). The setup's own uninstall entry says so (also for a custom folder); without
+    it, a folder under Program Files does."""
+    try:
+        import winreg
+        mine = _installed_in(winreg.HKEY_CURRENT_USER, app_dir)
+        everyone = _installed_in(winreg.HKEY_LOCAL_MACHINE, app_dir)
+    except ImportError:
+        mine = everyone = None
+    if everyone:
+        return True
+    if mine:
+        return False
     here = os.path.normcase(os.path.abspath(app_dir))
     for var in ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)"):
         base = os.environ.get(var)
@@ -280,8 +323,18 @@ class UpdateChecker(QObject):
         if time.time() - last >= DAY:
             self.check(manual=False)
 
+    _reply = None                    # the request on its way, and whether it was asked for
+    _reply_manual = False
+
     def check(self, manual=True):
-        self.manual = manual
+        busy = self._reply is not None and self._reply.isRunning()
+        if busy and not manual:
+            return                      # (a check is already on its way)
+        if busy and self._reply_manual:
+            return
+        if busy:                        # asked for while the automatic one runs: this one
+            old, self._reply = self._reply, None
+            old.abort()
         if self.net is None:
             self.net = QNetworkAccessManager(self)
         req = QNetworkRequest(QUrl(API))
@@ -289,12 +342,20 @@ class UpdateChecker(QObject):
         req.setRawHeader(b"User-Agent", ("KanzonasPDF/" + __version__).encode())
         req.setTransferTimeout(15000)
         reply = self.net.get(req)
-        reply.finished.connect(lambda: self._done(reply))
+        self._reply, self._reply_manual = reply, manual
+        reply.finished.connect(lambda: self._done(reply, manual))
 
-    def _done(self, reply):
+    def _done(self, reply, manual=None):
         reply.deleteLater()
+        if self._reply is reply:
+            self._reply = None
+        if manual is None:
+            manual = self.manual
+        self.manual = manual            # (the window asks: answer in a box or in the notice)
+        if reply.error() == QNetworkReply.OperationCanceledError and not manual:
+            return
         if reply.error() != QNetworkReply.NoError:
-            if self.manual:
+            if manual:
                 self.result.emit(tr("Couldn't reach GitHub to check for updates ({error}).")
                                  .format(error=reply.errorString()))
             return
@@ -303,7 +364,7 @@ class UpdateChecker(QObject):
         except ValueError:
             data = None
         if not isinstance(data, list):
-            if self.manual:
+            if manual:
                 self.result.emit(tr("GitHub sent an unexpected answer. Try again later."))
             return
         self.settings.setValue("update_last", time.time())
@@ -312,9 +373,9 @@ class UpdateChecker(QObject):
         hit = newest(data)
         if hit is None:
             text = tr("You have the latest version ({version}).").format(version=__version__)
-            (self.result if self.manual else self.checked).emit(text)
+            (self.result if manual else self.checked).emit(text)
             return
-        if not self.manual and self.settings.value("update_skip", "") == hit[0]:
+        if not manual and self.settings.value("update_skip", "") == hit[0]:
             return
         self.found.emit(hit[0], hit[1])
 
@@ -421,4 +482,5 @@ class InstallerUpdater(PortableUpdater):
 
     def _cleanup(self):
         if not getattr(self, "_good", False):
-            super()._cleanup()          # a failed or wrong download goes
+            super()._cleanup()          # a failed or wrong download goes, with its folder
+            shutil.rmtree(os.path.dirname(self.path), ignore_errors=True)

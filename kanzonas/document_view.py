@@ -799,6 +799,8 @@ class DocumentView(QScrollArea):
         cad_select.cancel(self)
         if self._cad_cmd is not None:
             self._cad_cmd.cancel()
+        for w in getattr(self, "pages", []):
+            w._cad_down = None          # (a lasso held while the mode changed selects nothing)
         self.tool = tool
         for w in getattr(self, "pages", []):
             # a stamp / signature preview or a shape half-drawn belongs to the old tool

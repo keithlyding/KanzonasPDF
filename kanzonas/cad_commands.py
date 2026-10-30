@@ -34,6 +34,12 @@ BAND = QColor(220, 60, 0)
 GHOST_LIMIT = 4000          # polylines drawn while previewing (more: the selection's box)
 
 
+def _scale():
+    """The verb Scale (the CAD tab's command and button): "Scale" alone is translated as the
+    noun, the drawing's scale."""
+    return tr("&Scale").replace("&", "")
+
+
 def translate(d):
     return pymupdf.Matrix(1, 0, 0, 1, d.x, d.y)
 
@@ -90,21 +96,28 @@ KEYS = ("move", "copy", "rotate", "scale", "mirror", "delete", "align", "array",
 def names():
     """{command: its name in the language in use}."""
     return {"move": tr("Move"), "copy": tr("Copy"), "rotate": tr("Rotate"),
-            "scale": tr("Scale"), "mirror": tr("Mirror"), "delete": tr("Delete"),
+            "scale": _scale(), "mirror": tr("Mirror"), "delete": tr("Delete"),
             "align": tr("Align"), "array": tr("Array"), "trim": tr("Trim")}
+
+
+def _plain(text):
+    """Lower case without accents ("Simetría" -> "simetria")."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", text.lower())
+                   if unicodedata.category(c) != "Mn")
 
 
 def resolve(text):
     """The CAD command typed: an AutoCAD short name (M, CO, RO, SC, MI, E, AL, AR, TR) or the
     start of a command's name, in English or the language in use (MOV, COP, ROT...). None
     when it isn't one (or the start fits two, like A: Align and Array)."""
-    t = text.strip().lower()
+    t = _plain(text.strip())
     if not t:
         return None
     if t in ALIASES:
         return ALIASES[t]
     hits = {k for k in KEYS if k.startswith(t)}
-    hits |= {k for k, n in names().items() if n.lower().startswith(t)}
+    hits |= {k for k, n in names().items() if _plain(n).startswith(t)}
     return hits.pop() if len(hits) == 1 else None
 
 
@@ -142,6 +155,8 @@ class CommandLine(QWidget):
                                         "AR, TR, or any command's name"))
         self.edit.installEventFilter(self)
         self.edit.textChanged.connect(self._suggest)
+        if win is not None:
+            win.installEventFilter(self)    # (resized: the list of matches goes)
         row.addWidget(self.label)
         row.addWidget(self.edit, 1)
         self.buttons = []
@@ -208,6 +223,12 @@ class CommandLine(QWidget):
 
     def eventFilter(self, obj, e):
         from PySide6.QtCore import QEvent
+        if obj is self.win and e.type() in (QEvent.Resize, QEvent.Move):
+            self._hide_list()
+            return False
+        if obj is self.edit and e.type() == QEvent.FocusOut:
+            self._hide_list()
+            return False
         if obj is self.edit and e.type() == QEvent.KeyPress:
             k = e.key()
             if k in (Qt.Key_Return, Qt.Key_Enter):
@@ -237,6 +258,7 @@ class CommandLine(QWidget):
         cmd = self.command
         if cmd is not None:
             self.edit.clear()
+            self._back_to_page()        # (so Ctrl+Z, Delete... reach the document again)
             if not text:
                 cmd.enter()
                 return
@@ -248,6 +270,7 @@ class CommandLine(QWidget):
             cmd.typed(text)
             return
         if not text:
+            self._back_to_page()
             if self.last is not None:
                 self._start(self.last)
             return
@@ -260,16 +283,17 @@ class CommandLine(QWidget):
             return
         self.edit.clear()
         self._hide_list()
+        self._back_to_page()
         self._start(what)
 
     def _pick(self, text):
         """("cad", key) or ("action", English name) for what was typed, or None."""
+        if self._arrowed and self.list is not None and self.list.isVisible() and \
+                self.list.currentItem():
+            return self.list.currentItem().data(Qt.UserRole)     # picked with Up / Down
         key = resolve(text)
         if key is not None:
             return ("cad", key)
-        if self._arrowed and self.list is not None and self.list.isVisible() and \
-                self.list.currentItem():
-            return self.list.currentItem().data(Qt.UserRole)
         f = self._finder()
         for name, _a in (f.rows(text) if f is not None else []):
             # only a sure match: what was typed is the start of the command's name or of one
@@ -554,7 +578,7 @@ class Rotate(Command):
 
 
 class Scale(Command):
-    title = tr("Scale")
+    title = _scale()
 
     def ask(self):
         if not self.pts:
@@ -649,7 +673,7 @@ class Align(Command):
             self.ui.show_for(self, texts[len(self.pts)])
         else:
             self.ui.show_for(self, tr("scale it so the second points meet too?"),
-                             choices=[(tr("Don't scale"), "no"), (tr("Scale"), "yes")])
+                             choices=[(tr("Don't scale"), "no"), (_scale(), "yes")])
 
     def step(self):
         self.ask()
