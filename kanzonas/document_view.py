@@ -4037,13 +4037,13 @@ class DocumentView(QScrollArea):
         job = getattr(self, "_prep_job", None)
         objs = self._obj_cache.get(index)
         if job is None or job["index"] != index or job["objs"] is not objs or objs is None:
-            # first the page's objects, then (another time round, so input in between is
-            # answered) its text, each in one go, then their lines in slices
+            # first the page's objects (read in slices too: a 60,000-line sheet takes
+            # seconds), then its text (quick), then their lines in slices
             if objs is None:
-                if self.content_objects(index) is not None and \
-                        self._obj_cache.get(index) is not None:
-                    self._prep_timer.start(0)
-                return                      # (nothing it can read: no more tries)
+                if index in self._obj_cache:
+                    return                  # (nothing it can read: no more tries)
+                self._prepare_read(index)
+                return
             self.text_objects(index)
             shapes = [it for it in (objs.items if objs is not None else ())
                       if it["kind"] == "shape" and "lines" not in it]
@@ -4057,6 +4057,32 @@ class DocumentView(QScrollArea):
             if time.monotonic() > end:
                 self._prep_timer.start(0)   # more next time round, after any input
                 return
+
+    def _prepare_read(self, index):
+        """One slice of reading page index's objects in idle time; they go into the cache
+        when done, unless the page changed (or was read another way) meanwhile."""
+        from . import page_objects
+        key = (index, id(self.doc), getattr(self, "revision", 0), id(self._obj_cache))
+        read = getattr(self, "_prep_read", None)
+        if read is None or read["key"] != key:
+            try:
+                objs, steps = page_objects.Objects.steps(self.doc[index])
+            except Exception:
+                return
+            read = self._prep_read = {"key": key, "objs": objs, "steps": steps}
+        end = time.monotonic() + self.PREP_SLICE
+        try:
+            while time.monotonic() < end:
+                next(read["steps"])
+        except StopIteration:
+            self._prep_read = None
+            if index not in self._obj_cache:
+                self._obj_cache[index] = read["objs"]
+        except Exception:
+            self._prep_read = None
+            self._obj_cache.setdefault(index, None)     # (as content_objects does)
+            return
+        self._prep_timer.start(0)           # more next time round, after any input
 
     # ---- CAD tab commands (cad_commands.py) ----------------------------------------------
     _cad_cmd = None             # the CAD command running, or None
@@ -4141,12 +4167,13 @@ class DocumentView(QScrollArea):
                 # again and again (fast, and the file stays small)
                 big = len(copies) > 20 and len(copies) * len(shapes) > 400
                 make = page_objects.block_copies if big else page_objects.copies
-                self._objects_edit(label, lambda pg, ns: make(pg, ns, copies, objs), keep=False)
+                placed = {}
+                self._objects_edit(label, lambda pg, ns: make(pg, ns, copies, objs, placed),
+                                   keep=False)
                 if keep:
-                    # the originals stay selected (Copy goes on placing copies of them): each
-                    # one's copies come right after it, so its number grows by those before it
-                    order = sorted(it["n"] for it in shapes)
-                    now = {n + k * len(copies) for k, n in enumerate(order)}
+                    # the originals stay selected (Copy goes on placing copies of them), where
+                    # the copying left them in the drawing order
+                    now = set(placed.get("originals", ()))
                     objs = self.content_objects(index)
                     again = [it for it in (objs.items if objs else []) if it["n"] in now]
                     self.obj_sel = (index, again) if again else None

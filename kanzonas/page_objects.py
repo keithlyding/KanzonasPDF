@@ -173,6 +173,18 @@ def scan(data):
     "name" (b"/Im1" for Do, None for an inline image) or "path": True with "box" (content
     space bounds), "stroke", "fill" and "width"."""
     out = []
+    for _ in scan_steps(data, out):
+        pass
+    return out
+
+
+STEP = 1000                             # instructions read between two pauses (scan_steps)
+
+
+def scan_steps(data, out):
+    """scan() a little at a time: a generator that fills out, pausing (yield) every STEP
+    instructions, so a big drawing can be read in idle time without freezing the window."""
+    count = 0
     ctm = pymupdf.Matrix(1, 0, 0, 1, 0, 0)
     width = 1.0
     stack = []
@@ -188,6 +200,10 @@ def scan(data):
     clip = False
     xs, ys = [], []
     for op, args, start, end in _tokens(data):
+        count += 1
+        if count >= STEP:
+            count = 0
+            yield
         if op in _CONSTRUCT:
             if path_start is None:
                 path_start = start
@@ -245,7 +261,6 @@ def scan(data):
         elif op == b"BI":
             out.append({"start": start, "end": end, "ctm": pymupdf.Matrix(ctm), "name": None,
                         "state": _state_bytes(st)})
-    return out
 
 
 def _bezier(p0, p1, p2, p3):
@@ -479,13 +494,27 @@ class Objects:
     def __init__(self, page, data=None, found=None):
         """data / found: the page's content and its scan when the caller already has them
         (after a move: see transform), so a big drawing isn't read again."""
+        for _ in self.build_steps(page, data, found):
+            pass
+
+    @classmethod
+    def steps(cls, page):
+        """(the Objects, a generator that reads them a little at a time): they're ready once
+        it's run out (CAD mode reads a big page in idle time like this)."""
+        objs = cls.__new__(cls)
+        return objs, objs.build_steps(page, None, None)
+
+    def build_steps(self, page, data, found):
         self.data = _contents(page) if data is None else data
         self.tm = pdfcoords.to_page(page)
         self.items = []
         self.found = []
         if not self.data.strip():
             return
-        self.found = scan(self.data) if found is None else found
+        if found is None:
+            found = []
+            yield from scan_steps(self.data, found)
+        self.found = found
         names = {}
         for it in page.get_images(full=True):
             if it[-1] == 0:             # drawn by the page itself, not inside a form
@@ -505,6 +534,8 @@ class Objects:
         tt = tuple(tm)
         Rect = pymupdf.Rect
         for k, d in enumerate(self.found):
+            if k % STEP == STEP - 1:
+                yield
             if d.get("path"):
                 # plain arithmetic: a big drawing has tens of thousands of these
                 a, b, c, e_, e, f = _mul(tuple(d["ctm"]), tt)
@@ -557,6 +588,16 @@ class Objects:
                 item["lines"] = [[q.ul, q.ur, q.lr, q.ll, q.ul]]
         return item["lines"]
 
+    def tight(self, item):
+        """The box around a shape's line as drawn (its "rect" holds a curve's control
+        points too)."""
+        if "tight" not in item:
+            pts = [q for line in self.lines(item) for q in line]
+            item["tight"] = pymupdf.Rect(min(q.x for q in pts), min(q.y for q in pts),
+                                         max(q.x for q in pts), max(q.y for q in pts)) \
+                if pts else item["rect"]
+        return item["tight"]
+
     def at(self, pt, tol):
         """The topmost object at page point pt: a line within tol of it first, then a filled
         shape or picture under it."""
@@ -581,7 +622,8 @@ class Objects:
     def inside(self, box):
         """Objects lying entirely inside box."""
         box = pymupdf.Rect(box)
-        return [it for it in self.items if box.contains(it["rect"])]
+        return [it for it in self.items if box.contains(it["rect"]) or (
+            it["kind"] == "shape" and overlap(it["rect"], box) and box.contains(self.tight(it)))]
 
     def pick(self, region, crossing=False):
         """Objects a CAD selection region (Box or Lasso) takes. A window (crossing False)
@@ -601,7 +643,14 @@ class Objects:
             pic = it["kind"] in ("picture", "group")
             if not crossing and not (bounds.x0 <= r.x0 and r.x1 <= bounds.x1 and
                                      bounds.y0 <= r.y0 and r.y1 <= bounds.y1):
-                continue                # (can't lie inside: no need to read its lines)
+                if pic:
+                    continue            # (can't lie inside: no need to read its lines)
+                # a curve's box holds its control points, which can stick out well past the
+                # curve itself: what counts is the line as drawn
+                r = self.tight(it)
+                if not (bounds.x0 <= r.x0 and r.x1 <= bounds.x1 and
+                        bounds.y0 <= r.y0 and r.y1 <= bounds.y1):
+                    continue
             if region.contains_rect(r) or not pic and not isinstance(region, Box) and \
                     region.contains_lines(self.lines(it)):
                 yield it, True
@@ -1030,7 +1079,7 @@ def rotate(page, ns, rect, degrees, objs=None):
     return transform(page, ns, t, objs)
 
 
-def copies(page, ns, matrices, objs=None):
+def copies(page, ns, matrices, objs=None, placed=None):
     """Copies of objects ns, one for each Matrix in matrices (unrotated page coordinates): each
     drawn right after its original, in a  q <M> cm ... Q  wrapper, so it looks the same (the
     state in effect there is the original's) and leaves the state of what follows alone."""
@@ -1041,6 +1090,12 @@ def copies(page, ns, matrices, objs=None):
     else:
         found = scan(data)
     have = objs is not None and objs.found and objs.data == data
+    ns = sorted(set(ns))
+    if ns and ns[-1] >= len(found):
+        raise ValueError(tr("The object is no longer on the page."))
+    if len(ns) > 1 and _groupable(page, data, found, ns):
+        return _copies_together(page, data, found, ns, matrices, objs if have else None,
+                                placed)
     adds = []
     tps = [tuple(tm * pymupdf.Matrix(t) * ~tm) for t in matrices]
     for n in sorted(set(ns)):
@@ -1056,6 +1111,12 @@ def copies(page, ns, matrices, objs=None):
         adds.append((d["end"], d["end"], add, n, state))
     new_data = _splice(data, adds)
     _set_contents(page, new_data, compress=False)
+    if placed is not None:
+        # where the originals are now: each one's copies come right after it
+        placed["originals"], before = [], 0
+        for a in adds:
+            placed["originals"].append(a[3] + before)
+            before += len(scan(a[2]))
     if not have:
         return None
     # the new scan: each original, then its copies (scanned on their own, under its matrix)
@@ -1085,6 +1146,51 @@ def copies(page, ns, matrices, objs=None):
             # (one object per copy: its lines are the original's, moved)
             origin.append((n, matrices[k]) if len(got) == len(matrices) else None)
         shift += len(add)
+    return _rebuilt(page, new_data, out, objs, origin)
+
+
+def _copies_together(page, data, found, ns, matrices, objs, placed=None):
+    """copies() of several objects that can be drawn together (_groupable): each copy of the
+    whole selection goes after the last selected object, its objects in their order, as a big
+    array's group copies do, so a copy is drawn over the originals (as CAD programs draw new
+    objects on top) and small and big arrays stack the same way."""
+    tm = pdfcoords.to_page(page)
+    _own_resources(page)
+    _add_reset_gs(page)
+    last = found[ns[-1]]
+    ci = _inv(tuple(last["ctm"]))
+    inner = b"\n".join([_DEFAULTS] + _standalone(data, found, ns))
+    add = b"".join(b"\nq\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" %
+                   _mul(tuple(tm * pymupdf.Matrix(t) * ~tm), ci) + inner + b"\nQ\n"
+                   for t in matrices)
+    at = last["end"]
+    new_data = data[:at] + add + data[at:]
+    _set_contents(page, new_data, compress=False)
+    if placed is not None:
+        placed["originals"] = list(ns)  # (the copies all come after them)
+    if objs is None:
+        return None
+    after = _after_last(data, last)
+    got = scan(add)
+    one_each = len(got) == len(matrices) * len(ns)
+    out, origin = [], []
+    for n, d in enumerate(found):
+        e = dict(d)
+        if d["start"] >= at:
+            e["start"] += len(add)
+            e["end"] += len(add)
+        out.append(e)
+        origin.append((n, None))
+        if n == ns[-1]:
+            for k, x in enumerate(got):
+                x = dict(x)
+                x["start"] += at
+                x["end"] += at
+                x["ctm"] = x["ctm"] * last["ctm"]
+                x["state"] = _state_after(after, x.get("state", b""))
+                out.append(x)
+                # (copy k // len(ns) of object ns[k % len(ns)]: its lines, moved)
+                origin.append((ns[k % len(ns)], matrices[k // len(ns)]) if one_each else None)
     return _rebuilt(page, new_data, out, objs, origin)
 
 
@@ -1141,7 +1247,61 @@ def _used_resources(doc, page, body):
     return "<<%s>>" % "".join(parts)
 
 
-def block_copies(page, ns, matrices, objs=None):
+def group_size(doc, xref, memo=None, depth=0):
+    """How many objects drawing group xref draws, counting the groups inside it (an Array of
+    a group copies all of them)."""
+    memo = {} if memo is None else memo
+    if xref in memo:
+        return memo[xref]
+    memo[xref] = 1                      # (a group inside itself counts once)
+    try:
+        data = doc.xref_stream(xref) or b""
+        inner = {("/" + k).encode(): v for k, v in
+                 _res_entries(doc, xref, "Resources/XObject").items()}
+    except Exception:
+        return 1
+    n = 0
+    for d in scan(data):
+        kind, val = inner.get(d.get("name"), (None, None))
+        if d.get("name") and kind == "xref" and depth < 8:
+            sub = int(val.split()[0])
+            if doc.xref_get_key(sub, "Subtype")[1] == "/Form":
+                n += group_size(doc, sub, memo, depth + 1)
+                continue
+        n += 1
+    memo[xref] = max(n, 1)
+    return memo[xref]
+
+
+def _groupable(page, data, found, ns):
+    """Objects ns can be drawn together somewhere else and look the same: plain shapes and
+    pictures (a group's own size isn't known), all under the same clipping and in the same
+    layer (marked content), as copies placed right after the last of them are."""
+    pictures = {("/" + g[7]).encode() for g in page.get_images(full=True)}
+    if any(not found[n].get("path") and found[n].get("name") not in pictures for n in ns):
+        return False
+    return len(set(_contexts(data, [found[n]["start"] for n in ns]).values())) == 1
+
+
+def _standalone(data, found, ns):
+    """Each of objects ns as instructions that draw it the same anywhere (after _DEFAULTS):
+    q <its matrix> cm <its colors, line style...> <its instructions> Q."""
+    out = []
+    for n in ns:
+        d = found[n]
+        out.append(b"q\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(d["ctm"]) +
+                   d.get("state", b"") + b"\n" + data[d["start"]:d["end"]] + b"\nQ")
+    return out
+
+
+def _after_last(data, last):
+    """The state in effect right after object last: its own settings (colors, width) stay."""
+    lo = data[last["start"]:last["end"]]
+    own = _split(lo)[0] if lo[:2] != b"BI" else b""
+    return _state_after(last.get("state", b""), own) if own else last.get("state", b"")
+
+
+def block_copies(page, ns, matrices, objs=None, placed=None):
     """Copies of objects ns by reference, for big arrays: the objects go once into a drawing
     group (a Form XObject, as CAD programs export blocks), and each copy is one line placing
     it,  q <M> cm /KzBlockN Do Q,  right after the last of them (where the drawing's
@@ -1161,19 +1321,14 @@ def block_copies(page, ns, matrices, objs=None):
     # pictures (a group's own size isn't known here), all under the same clipping and in the
     # same layer (marked content), as the copies placed after the last of them will be.
     # Anything else is copied the usual way.
-    pictures = {("/" + g[7]).encode() for g in page.get_images(full=True)}
-    if any(not found[n].get("path") and found[n].get("name") not in pictures for n in ns) or \
-            len(set(_contexts(data, [found[n]["start"] for n in ns]).values())) != 1:
-        return copies(page, ns, matrices, objs)
+    if not _groupable(page, data, found, ns):
+        return copies(page, ns, matrices, objs, placed)
     _own_resources(page)
     _add_reset_gs(page)
-    body = [_DEFAULTS]
+    body = [_DEFAULTS] + _standalone(data, found, ns)
     xs, ys, pad = [], [], 0.0
     for n in ns:
         d = found[n]
-        old = data[d["start"]:d["end"]]
-        body.append(b"q\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(d["ctm"]) +
-                    d.get("state", b"") + b"\n" + old + b"\nQ")
         x0, y0, x1, y1 = d["box"] if d.get("path") else (0, 0, 1, 1)
         if d.get("path"):
             c = d["ctm"]                # (the width is in the object's units, the box isn't)
@@ -1200,12 +1355,11 @@ def block_copies(page, ns, matrices, objs=None):
     at = last["end"]
     new_data = data[:at] + add + data[at:]
     _set_contents(page, new_data, compress=False)
+    if placed is not None:
+        placed["originals"] = list(ns)  # (the copies all come after them)
     if not have:
         return None
-    # the state in effect after the last object: its own settings (colors, width) stay on
-    lo = data[last["start"]:last["end"]]
-    own = _split(lo)[0] if lo[:2] != b"BI" else b""
-    after = _state_after(last.get("state", b""), own) if own else last.get("state", b"")
+    after = _after_last(data, last)
     out, origin = [], []
     for n, d in enumerate(found):
         e = dict(d)

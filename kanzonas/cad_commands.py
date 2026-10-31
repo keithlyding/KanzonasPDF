@@ -868,7 +868,15 @@ class Array(Command):
         if dlg.exec() != QDialog.Accepted or rows.value() * cols.value() < 2:
             return False
         copies = rows.value() * cols.value() - 1
-        many = copies * len(v.cad_targets()[2])
+        kind, _page, items = v.cad_targets()
+        if kind == "objects":
+            # a group (a placed drawing, a copy from a big array) counts what it draws
+            from .page_objects import group_size
+            memo = {}
+            many = copies * sum(group_size(v.doc, it["xref"], memo) if it["kind"] == "group"
+                                else 1 for it in items)
+        else:
+            many = copies * len(items)
         if many > 20000:
             from PySide6.QtWidgets import QMessageBox
             if QMessageBox.question(

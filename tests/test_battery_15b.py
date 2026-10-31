@@ -91,6 +91,65 @@ class BigArrays(unittest.TestCase):
         self.assertLess(sizes[1] - sizes[0], 200)
 
 
+class OpenItems(unittest.TestCase):
+    """The four left open after the second battery."""
+
+    def test_a_page_is_read_a_little_at_a_time_to_the_same_result(self):
+        d = pymupdf.open()
+        p = d.new_page()
+        sh = p.new_shape()
+        for i in range(3000):
+            sh.draw_line((i % 500, i // 10), (i % 500 + 5, i // 10 + 3))
+            sh.finish()
+        sh.commit()
+        objs, steps = page_objects.Objects.steps(p)
+        pauses = sum(1 for _ in steps)
+        self.assertGreater(pauses, 5)
+        whole = page_objects.Objects(p)
+        self.assertEqual([(it["n"], tuple(it["rect"])) for it in objs.items],
+                         [(it["n"], tuple(it["rect"])) for it in whole.items])
+
+    def test_an_array_of_a_group_counts_what_it_draws(self):
+        d = pymupdf.open()
+        p = d.new_page()
+        sh = p.new_shape()
+        for i in range(50):
+            sh.draw_line((i, 0), (i, 50))
+            sh.finish()
+        sh.commit()
+        objs = page_objects.Objects(p)
+        page_objects.block_copies(p, [it["n"] for it in objs.items],
+                                  [pymupdf.Matrix(1, 0, 0, 1, 60 * k, 0) for k in range(1, 22)])
+        g = [it for it in page_objects.Objects(p).items if it["kind"] == "group"][0]
+        self.assertEqual(page_objects.group_size(d, g["xref"]), 50)
+
+    def test_small_and_big_arrays_stack_the_same(self):
+        pix = []
+        for big in (False, True):
+            d = pymupdf.open()
+            p = d.new_page()
+            p.draw_rect(pymupdf.Rect(10, 10, 60, 60), color=(0, 0, 1), fill=(1, 0, 0))
+            p.draw_rect(pymupdf.Rect(40, 40, 90, 90), color=(0, 0, 0), fill=(0, 1, 0))
+            mats = [pymupdf.Matrix(1, 0, 0, 1, 15 * k, 0) for k in range(1, 22)]
+            make = page_objects.block_copies if big else page_objects.copies
+            placed = {}
+            make(p, [0, 1], mats, None, placed)
+            self.assertEqual(placed["originals"], [0, 1])
+            pix.append(p.get_pixmap(dpi=36).samples)
+        self.assertEqual(pix[0], pix[1])
+
+    def test_a_window_around_a_curve_takes_it(self):
+        d = pymupdf.open()
+        p = d.new_page()
+        p.draw_bezier((100, 300), (150, 100), (250, 100), (300, 300))
+        objs = page_objects.Objects(p)
+        top = min(q.y for line in objs.lines(objs.items[0]) for q in line)
+        win = pymupdf.Rect(90, top - 5, 310, 310)
+        self.assertEqual(len(objs.pick(page_objects.Box(win))), 1)
+        self.assertEqual(len(objs.inside(win)), 1)
+        self.assertEqual(objs.pick(page_objects.Box(pymupdf.Rect(190, 120, 210, 140)), True), [])
+
+
 class Lines(Window):
     def select_line(self, v):
         v.set_tool("editobjects")

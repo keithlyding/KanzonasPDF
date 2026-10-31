@@ -378,14 +378,17 @@ or <b>Delete them</b> (the originals are replaced).</li>
 it goes; then <b>Scale</b> (so the second points meet too) or <b>Don't scale</b>.</li>
 <li><b>Array</b>: choose the rows and columns (up to 50 each), then click the base point, where
 the next column's copy goes and where the next row's copy goes (the direction counts too). An
-array that would make more than 20,000 objects asks first. A big array (more than 20 copies of
+array that would make more than 20,000 objects asks first (a group counts every object it
+draws). A big array (more than 20 copies of
 a large selection) is made as CAD programs make blocks: the selection goes into the file once,
 as a drawing group, and each copy places that group, so it's quick and the file stays small.
 In Edit objects each such copy is a group; Ungroup takes one apart. This is done only for plain
 lines, shapes and pictures that are all under the same clipping and in the same layer, where it
 looks exactly like copying each object; anything else (groups, objects in different layers) is
-copied object by object, which takes longer. The group's copies are drawn together, above the
-last selected object.</li>
+copied object by object, which takes longer. Copies of such a selection (Copy, Mirror's copy
+and arrays of any size) are drawn together on top of the originals, as CAD programs draw new
+objects; a selection spread over different layers or clipping keeps each copy right above its
+own original.</li>
 <li><b>Trim</b>: no selection needed. Click the part of a line to cut away: it goes up to the
 nearest lines crossing it on either side (or to its end, when nothing crosses on that side); a
 line nothing crosses goes completely. The click picks the line nearest to it and isn't
@@ -395,8 +398,10 @@ trims the drawing's own lines and curves (a trimmed curve is redrawn as short st
 and line, polyline and pen markups; filled shapes and pictures aren't trimmed.</li>
 </ul>
 <p>On a big drawing, CAD mode reads the page's line work in the background while you aren't
-doing anything, so the first box, lasso or command starts at once; the pointer shows a busy
-cursor while a command works.</p>
+doing anything, a little at a time so the window never stops answering, so the first box,
+lasso or command starts at once; the pointer shows a busy cursor while a command works. A
+window box takes a curve when the curve as drawn lies inside it (its control points may stick
+out).</p>
 <p>What the commands don't do: the drawing's own text only moves (Move); copying, turning,
 scaling or mirroring leaves it where it is and says so (Edit text changes it). Highlights and
 other text markups stay on their words, so they only move and copy. A mirrored picture or stamp

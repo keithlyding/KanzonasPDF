@@ -367,13 +367,14 @@ a 1000) y presione Enter, o haga clic en un punto a una longitud que conozca y l
 <b>Escalar</b> (para que también coincidan los segundos puntos) o <b>No escalar</b>.</li>
 <li><b>Matriz</b>: elija las filas y las columnas (hasta 50 de cada una) y luego haga clic en el punto base, donde va la
 copia de la columna siguiente y donde va la copia de la fila siguiente (la dirección también cuenta). Una matriz que
-crearía más de 20 000 objetos pregunta primero. Una matriz grande (más de 20 copias de una selección grande) se hace como
+crearía más de 20 000 objetos pregunta primero (un grupo cuenta cada objeto que dibuja). Una matriz grande (más de 20 copias de una selección grande) se hace como
 los programas CAD hacen los bloques: la selección se guarda una sola vez en el archivo, como un grupo de dibujo, y cada
 copia coloca ese grupo, así que es rápida y el archivo no crece mucho. En Editar objetos cada una de esas copias es un
 grupo; Desagrupar separa una. Esto se hace solo con líneas, formas e imágenes simples que están todas bajo el mismo
 recorte y en la misma capa, donde se ve exactamente igual que copiar cada objeto; todo lo demás (grupos, objetos en
-capas distintas) se copia objeto por objeto, lo que tarda más. Las copias del grupo se dibujan juntas, encima del último
-objeto seleccionado.</li>
+capas distintas) se copia objeto por objeto, lo que tarda más. Las copias de una selección así (Copiar, la copia de
+Simetría y las matrices de cualquier tamaño) se dibujan juntas encima de los originales, como los programas CAD dibujan
+los objetos nuevos; una selección repartida en capas o recortes distintos deja cada copia justo encima de su original.</li>
 <li><b>Recortar</b>: no hace falta seleccionar nada. Haga clic en la parte de una línea que quiere quitar: se quita hasta
 las líneas más cercanas que la cruzan a cada lado (o hasta su extremo, si nada la cruza de ese lado); una línea que nada
 cruza se quita entera. El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
@@ -381,8 +382,10 @@ en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; En
 dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma; las
 formas rellenas y las imágenes no se recortan.</li>
 </ul>
-<p>En un dibujo grande, el modo CAD lee los trazos de la página en segundo plano mientras usted no hace nada, así que el
-primer recuadro, lazo o comando empieza enseguida; el puntero muestra un cursor de espera mientras un comando trabaja.</p>
+<p>En un dibujo grande, el modo CAD lee los trazos de la página en segundo plano mientras usted no hace nada, poco a
+poco para que la ventana siempre responda, así que el primer recuadro, lazo o comando empieza enseguida; el puntero
+muestra un cursor de espera mientras un comando trabaja. Un recuadro de ventana toma una curva cuando la curva tal como se
+dibuja queda dentro (sus puntos de control pueden sobresalir).</p>
 <p>Lo que los comandos no hacen: el texto propio del dibujo solo se mueve (Mover); copiarlo, girarlo, escalarlo o
 reflejarlo lo deja donde está y lo indica (Editar texto lo cambia). Los resaltados y otras marcas de texto se quedan sobre
 sus palabras, así que solo se mueven y se copian. Una imagen o un sello reflejados se siguen leyendo al derecho, y los
