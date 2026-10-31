@@ -1813,7 +1813,10 @@ class MainWindow(QMainWindow):
             if not self._confirm_exit([(w, v) for w in [self] + others for v in w._views()]):
                 e.ignore()
                 return
-        self._save_session(others)
+        if not ending:
+            # (when Windows ends KanzonasPDF, windows_ending saved the session with every
+            # window's files; a pulled-out window closed first here would be left out)
+            self._save_session(others)
         if self.primary:
             for w in others:
                 w._close_confirmed = True
