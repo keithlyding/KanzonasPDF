@@ -3,6 +3,7 @@
 import json
 import math
 import os
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -202,6 +203,24 @@ def _zoom_to_slider(zoom):
     lo, hi = math.log(MIN_ZOOM * 100), math.log(MAX_ZOOM * 100)
     pct = min(MAX_ZOOM * 100, max(MIN_ZOOM * 100, zoom * 100))
     return int(round((math.log(pct) - lo) / (hi - lo) * _SLIDER_STEPS))
+
+
+def parse_zoom(text):
+    """A zoom typed in the zoom box, in percent, or None: '150', '150 %', '25.5', '25,5' (a
+    decimal comma), '1,000' (a comma before exactly three digits separates thousands)."""
+    t = text.strip().rstrip("%").replace(" ", "")
+    t = t.replace(",", "") if re.fullmatch(r"\d{1,3}(,\d{3})+(\.\d*)?", t) else t.replace(",", ".")
+    try:
+        z = float(t)
+    except ValueError:
+        return None
+    return z if math.isfinite(z) and z > 0 else None       # (not "nan" or "inf")
+
+
+def zoom_text(zoom):
+    """The zoom box's text: '150%', or '25.5%' when the zoom isn't a whole percent."""
+    pct = zoom * 100
+    return f"{round(pct)}%" if abs(pct - round(pct)) < 0.05 else f"{pct:.1f}%"
 
 
 def _slider_to_zoom(val):
@@ -881,8 +900,7 @@ class MainWindow(QMainWindow):
         self.a_auto_updates.setToolTip(tr("Once a day at start-up; only tells you, never installs"))
         from .updates import UpdateChecker
         self.a_auto_updates.setChecked(UpdateChecker(self.settings).enabled())
-        self.a_auto_updates.toggled.connect(
-            lambda on: self.settings.setValue("update_check", "true" if on else "false"))
+        self.a_auto_updates.toggled.connect(self._toggle_auto_updates)
 
         self.tool_group = QActionGroup(self)
         self.tool_actions = {}
@@ -1386,7 +1404,7 @@ class MainWindow(QMainWindow):
             self.page_spin.setValue(v.current_page() + 1)
             self.page_spin.blockSignals(False)
             self.page_total.setText(f" / {v.page_count()} ")
-            self.zoom_box.setEditText(f"{round(v.zoom * 100)}%")
+            self.zoom_box.setEditText(zoom_text(v.zoom))
             if not self.zoom_slider.isSliderDown():
                 self.zoom_slider.blockSignals(True)
                 self.zoom_slider.setValue(_zoom_to_slider(v.zoom))
@@ -1857,21 +1875,27 @@ class MainWindow(QMainWindow):
 
     def _ask_exit(self, count, unsaved):
         """The question before closing with several documents open: 'save' (all the
-        unsaved ones), 'discard' or 'cancel'."""
-        box = QMessageBox(QMessageBox.Question, tr("Close KanzonasPDF"), "", parent=self)
+        unsaved ones), 'discard' or 'cancel'. Closing the main window ends KanzonasPDF;
+        closing a window a tab was pulled out into closes just that window."""
+        box = QMessageBox(QMessageBox.Question, tr("Close KanzonasPDF") if self.primary else
+                          tr("Close window"), "", parent=self)
         if unsaved:
             names = "\n".join("  " + n for n in unsaved[:12])
             if len(unsaved) > 12:
                 names += "\n  " + tr("... and {n} more").format(n=len(unsaved) - 12)
-            box.setText(tr("{count} documents are open; {unsaved} with unsaved changes:\n"
-                           "{names}\n\nSave them before closing?").format(
+            box.setText((tr("{count} documents are open; {unsaved} with unsaved changes:\n"
+                            "{names}\n\nSave them before closing?") if self.primary else
+                         tr("{count} documents are open in this window; {unsaved} with unsaved "
+                            "changes:\n{names}\n\nSave them before closing the window?")).format(
                 count=count, unsaved=len(unsaved), names=names))
             save = box.addButton(tr("Save all"), QMessageBox.AcceptRole)
             box.addButton(tr("Don't save"), QMessageBox.DestructiveRole)
             cancel = box.addButton(QMessageBox.Cancel)
             box.setDefaultButton(save)
         else:
-            box.setText(tr("{count} documents are open. Close them all and exit?").format(
+            box.setText((tr("{count} documents are open. Close them all and exit?")
+                         if self.primary else
+                         tr("{count} documents are open in this window. Close them all?")).format(
                 count=count))
             close = box.addButton(tr("Close all"), QMessageBox.AcceptRole)
             cancel = box.addButton(QMessageBox.Cancel)
@@ -2061,11 +2085,12 @@ class MainWindow(QMainWindow):
     def _toggle_cards(self):
         on = self.a_cards.isChecked()
         self.settings.setValue("comment_boxes", "true" if on else "false")
-        for i in range(self.tabs.count()):
-            w = self.tabs.widget(i)
-            w.show_comment_boxes = on
-            for pw in w.pages:
-                pw.update()
+        for win in windows():           # (every window shows the same)
+            win.a_cards.setChecked(on)
+            for w in win._views():
+                w.show_comment_boxes = on
+                for pw in w.pages:
+                    pw.update()
 
     # ---- rotate keys (Ctrl+Shift+Plus / Minus) ------------------------------
     _PLUS_KEYS = (Qt.Key_Plus, Qt.Key_Equal)
@@ -2158,13 +2183,9 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v:
             return
-        try:
-            # "25,5%" too (a decimal comma); not "nan" or "inf"
-            z = float(self.zoom_box.currentText().strip().rstrip("%").strip().replace(",", "."))
-            if math.isfinite(z) and z > 0:
-                v.set_zoom(z / 100)
-        except ValueError:
-            pass
+        z = parse_zoom(self.zoom_box.currentText())
+        if z is not None:
+            v.set_zoom(z / 100)
         self._update_ui()
 
     def _page_op(self, op, arg=None):
@@ -2901,8 +2922,10 @@ class MainWindow(QMainWindow):
     def _toggle_show_markups(self):
         on = self.a_show_markups.isChecked()
         DocumentView.show_markups = on
-        for i in range(self.tabs.count()):
-            self.tabs.widget(i).refresh_markup_display()
+        for w in windows():
+            w.a_show_markups.setChecked(on)
+            for v in w._views():
+                v.refresh_markup_display()
         self.statusBar().showMessage(tr("Markups shown") if on else
                                      tr("Markups hidden (they're still in the document)"), 4000)
 
@@ -2959,9 +2982,11 @@ class MainWindow(QMainWindow):
         on = self.a_hl_fields.isChecked()
         DocumentView.highlight_fields = on
         self.settings.setValue("highlight_fields", "true" if on else "false")
-        for i in range(self.tabs.count()):
-            for pw in self.tabs.widget(i).pages:
-                pw.update()
+        for w in windows():
+            w.a_hl_fields.setChecked(on)
+            for v in w._views():
+                for pw in v.pages:
+                    pw.update()
 
     def unlock_doc(self):
         v = self.view()
@@ -3013,6 +3038,16 @@ class MainWindow(QMainWindow):
         data = v.doc.tobytes()
         if eid in ("png", "jpg"):
             base_out = os.path.splitext(path)[0]
+            # one picture per page, named plan_p1.png...: the save dialog only checked the name
+            # typed, so ask once before replacing any of them
+            there = [p for p in (export.image_path(base_out, eid, i) for i in
+                                 (range(v.page_count()) if pages is None else pages))
+                     if os.path.exists(p)]
+            ask = tr("{name} already exists. Replace it?") if len(there) == 1 else \
+                tr("{n} of the pictures already exist, such as {name}. Replace them?")
+            if there and QMessageBox.question(self, tr("Export"), ask.format(
+                    n=len(there), name=os.path.basename(there[0]))) != QMessageBox.Yes:
+                return
             job = lambda: export.to_images(data, base_out, eid, 200, pages)
         elif eid == "dxf":
             job = lambda: export.to_dxf(data, path, pages, units)
@@ -3591,6 +3626,14 @@ class MainWindow(QMainWindow):
     def _toggle_spelling(self, on):
         from . import spelling
         spelling.set_enabled(on)
+        for w in windows():
+            w.a_spell.setChecked(on)
+
+    def _toggle_auto_updates(self, on):
+        self.settings.setValue("update_check", "true" if on else "false")
+        for w in windows():
+            if w.a_auto_updates.isChecked() != on:
+                w.a_auto_updates.setChecked(on)
 
     def replace_text(self):
         from .replace_dialog import ReplaceDialog
@@ -3743,7 +3786,10 @@ class MainWindow(QMainWindow):
             wdg.style().unpolish(wdg)
             wdg.style().polish(wdg)
             wdg.update()
-        self._apply_icons()
+        for w in windows():
+            if mode in w.theme_actions:
+                w.theme_actions[mode].setChecked(True)
+            w._apply_icons()
 
     # ---- remembered page & zoom per file ------------------------------------------------
     def _file_states(self):
@@ -3886,8 +3932,11 @@ class MainWindow(QMainWindow):
 
         def do_reset():
             self.settings.remove("shortcuts")
+            for w in windows():
+                w._apply_saved_shortcuts()
+                w._apply_icons()
             QMessageBox.information(dlg, tr("Keyboard shortcuts"),
-                                    tr("Default shortcuts come back the next time you start the app."))
+                                    tr("The default shortcuts are back."))
             dlg.reject()
         reset.clicked.connect(do_reset)
         if not dlg.exec():
@@ -3909,12 +3958,12 @@ class MainWindow(QMainWindow):
         saved = {}
         for name, ed in editors.items():
             seq = ed.keySequence().toString()
-            if seq != acts[name].shortcut().toString():
-                acts[name].setShortcut(QKeySequence(seq))
             if seq != defaults.get(name, ""):
                 saved[name] = seq
         self.settings.setValue("shortcuts", json.dumps(saved))
-        self._apply_icons()
+        for w in windows():             # (every open window)
+            w._apply_saved_shortcuts()
+            w._apply_icons()
 
     def _toggle_markups(self):
         self.markups_dock.setVisible(not self.markups_dock.isVisible())
@@ -3948,9 +3997,12 @@ class MainWindow(QMainWindow):
                            (self.a_snap_objects, "snap_objects"), (self.a_snap_page, "snap_page")):
                 self.settings.setValue(key, "true" if a.isChecked() else "false")
         if hasattr(self, "tabs"):
-            for i in range(self.tabs.count()):
-                for pw in self.tabs.widget(i).pages:
-                    pw.update()
+            for w in windows():         # (the other windows' check marks and pages follow)
+                for name in ("a_grid", "a_snap_grid", "a_snap_objects", "a_snap_page"):
+                    getattr(w, name).setChecked(getattr(self, name).isChecked())
+                for v in w._views():
+                    for pw in v.pages:
+                        pw.update()
 
     def grid_settings(self):
         from PySide6.QtWidgets import QDoubleSpinBox

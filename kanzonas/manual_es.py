@@ -86,7 +86,10 @@ y el historial de deshacer se trasladan con él. Suelte una pestaña sobre las p
 en ella &gt; <b>Mover a la ventana</b>) para moverla allí. Cada ventana tiene sus propios paneles, herramientas y
 cuadro Buscar, con la misma configuración. Cerrar la última pestaña de una ventana separada cierra esa
 ventana; cerrar la ventana principal (la primera) las cierra todas, y volver a abrir los últimos
-archivos al iniciar trae de vuelta los documentos de todas las ventanas, en la ventana principal.</li>
+archivos al iniciar trae de vuelta los documentos de todas las ventanas, en la ventana principal. Cerrar una
+ventana separada con varios documentos pregunta solo por los documentos de esa ventana. Las opciones de vista
+(cuadrícula, ajuste, cuadros de comentario, resaltar campos de formulario, mostrar marcas, revisar ortografía,
+tema, modo del mouse) son las mismas en todas las ventanas: al cambiar una, el menú de cada ventana la sigue.</li>
 <li><b>Cerrar KanzonasPDF:</b> con un documento abierto, se le pide que lo guarde si tiene
 cambios sin guardar. Con varios documentos abiertos se le hace una sola pregunta: enumera los que tienen
 cambios sin guardar y ofrece <b>Guardar todo</b>, <b>No guardar</b> o <b>Cancelar</b> (Cancelar mantiene
@@ -207,7 +210,8 @@ o Av Pág / Re Pág, o escriba un número de página y presione Enter. <b>Inicio
 página</b>, <b>Última página</b> e <b>Ir a la página...</b> (Ctrl+G: el cuadro de página, listo para un número), así que
 la paleta de comandos y la línea de comandos CAD también los encuentran ("página siguiente", "última página").</li>
 <li><b>Acercar / Alejar:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+rueda del mouse, el control deslizante de zoom o el cuadro de zoom
-(escriba un porcentaje, del 10% al 6400%; 25.5 y 25,5 funcionan igual). Un documento muy largo no puede llegar
+(escriba un porcentaje, del 10% al 6400%; 25.5 y 25,5 funcionan igual, y 1,000 es 1000%; un zoom que no es
+un porcentaje entero se muestra con un decimal). Un documento muy largo no puede llegar
 tan alto: todas sus páginas juntas deben caber en el tamaño máximo que Windows puede dibujar.
 Ajustar al ancho (Ctrl+2), ajustar página (Ctrl+0), tamaño real (Ctrl+1). Los documentos se abren con Ajustar al ancho, en
 la página donde estaba la última vez; cámbielo en Archivo &gt; Preferencias &gt; Inicio y apertura.
@@ -513,7 +517,8 @@ agrega una nota adhesiva en cualquier lugar.</li>
 comentario y cada marca en orden de lectura, página por página, seleccionando cada uno. La barra de estado muestra
 "Marca 3 de 12". Al llegar al final vuelve al principio.</li>
 <li><b>Lista de marcas</b> (F7): todas las marcas en una tabla, empezando por la página 1 (haga clic en el encabezado de una columna
-para ordenar por ella); filtre, haga clic para ir a una marca, exporte a CSV (en el orden mostrado).</li>
+para ordenar por ella); filtre, haga clic para ir a una marca, exporte a CSV (en el orden mostrado; si el
+archivo no se puede escribir, por ejemplo porque está abierto en Excel, un mensaje se lo indica).</li>
 <li><b>Mostrar marcas:</b> desmárquelo para ocultar todos los comentarios y las marcas y ver la página como si no tuviera
 marcas. No se elimina nada; márquelo de nuevo para que vuelvan. <b>Mostrar cuadros de comentario</b>
 oculta solo los cuadros amarillos junto al texto comentado.</li>
@@ -1080,7 +1085,8 @@ las páginas que indique; Ctrl+Z deshace cualquiera de los dos. Un fondo no se p
 el escaneo es una imagen que cubre toda la página; para esas páginas use una Marca de agua.</li>
 <li><b>Exportar</b> (Archivo &gt; Exportar a): Microsoft Word (.docx), Microsoft Excel (.xlsx),
 Microsoft PowerPoint (.pptx), Dibujo de AutoCAD (.dxf), Imágenes (PNG), Imágenes (JPEG),
-Texto sin formato (.txt).</li>
+Texto sin formato (.txt). Imágenes crea una imagen por página, con el nombre que elija más el número de
+página (plano_p1.png, plano_p2.png...); si alguna ya existe, se le pregunta una vez antes de reemplazarlas.</li>
 </ul>
 
 <h2 id="preferences">Preferencias</h2>
@@ -1212,5 +1218,5 @@ cuadrícula...).</li>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Páginas / Propiedades / Marcas / Caja de herramientas / Marcadores / Vista dividida</td></tr>
 </table>
-<p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija.</p>
+<p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija. <b>Restablecer todos los valores predeterminados</b> vuelve a poner los métodos abreviados originales de inmediato. Los cambios se aplican en todas las ventanas.</p>
 """
