@@ -42,8 +42,8 @@ def page_size(name, landscape=False):
 
 def remembered(settings):
     """(size name, landscape) from the settings."""
-    name = settings.value("new_pdf_size", "Letter")
-    return (name if name in SIZES else "Letter",
+    from . import paths
+    return (paths.stored_str(settings, "new_pdf_size", "Letter", SIZES),
             settings.value("new_pdf_landscape", "false") == "true")
 
 

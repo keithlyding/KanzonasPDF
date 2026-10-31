@@ -45,7 +45,8 @@ GITHUB_HOSTS = ("github.com", "objects.githubusercontent.com",
 
 
 def version_tuple(text):
-    """'v0.36' -> (0, 36); '1.2.3' -> (1, 2, 3). Non-numeric parts end the version."""
+    """'v0.36' -> (0, 36); '1.2.3' -> (1, 2, 3). Non-numeric parts end the version (and so
+    does a part too long to be one: a tag is anyone's text)."""
     parts = []
     for p in str(text).strip().lstrip("vV").split("."):
         digits = ""
@@ -53,17 +54,31 @@ def version_tuple(text):
             if not ch.isdigit():
                 break
             digits += ch
-        if not digits:
+        if not digits or len(digits) > 9:
             break
         parts.append(int(digits))
     return tuple(parts)
+
+
+def _order(v):
+    """A version_tuple to compare: trailing zeros don't count (1.5.0 is 1.5)."""
+    v = list(v)
+    while v and v[-1] == 0:
+        v.pop()
+    return tuple(v)
+
+
+def _page(release):
+    """The release's GitHub page (the releases page if it has none we can use)."""
+    url = release.get("html_url")
+    return url if isinstance(url, str) and url else RELEASES_PAGE
 
 
 def newest(releases, current=None):
     """The newest published release newer than `current`, as (version, page url), or None.
     Pre-releases count: every 0.x release is one."""
     r = newest_release(releases, current)
-    return (str(r["tag_name"]).lstrip("vV"), r.get("html_url") or RELEASES_PAGE) if r else None
+    return (str(r["tag_name"]).lstrip("vV"), _page(r)) if r else None
 
 
 # (a part's text never runs into the next part, also when its closing mark is missing)
@@ -102,18 +117,18 @@ def release_notes(release, lang="en"):
 def notes_since(releases, current=None, lang="en"):
     """[(version, notes or None, page url)] for every published release newer than current,
     newest first: what changed since the version the user has."""
-    current = version_tuple(current or __version__)
+    current = _order(version_tuple(current or __version__))
     out = []
     for r in releases or []:
         if not isinstance(r, dict):
             continue
-        v = version_tuple(r.get("tag_name", ""))
+        v = _order(version_tuple(r.get("tag_name", "")))
         if r.get("draft") or not v or v <= current:
             continue
         out.append((v, r))
     out.sort(key=lambda x: x[0], reverse=True)
-    return [(str(r["tag_name"]).lstrip("vV"), release_notes(r, lang),
-             r.get("html_url") or RELEASES_PAGE) for _v, r in out]
+    return [(str(r["tag_name"]).lstrip("vV"), release_notes(r, lang), _page(r))
+            for _v, r in out]
 
 
 def newest_release(releases, current=None):
@@ -123,8 +138,8 @@ def newest_release(releases, current=None):
     for r in releases:
         if not isinstance(r, dict) or r.get("draft"):
             continue
-        v = version_tuple(r.get("tag_name", ""))
-        if not v or v <= version_tuple(current):
+        v = _order(version_tuple(r.get("tag_name", "")))
+        if not v or v <= _order(version_tuple(current)):
             continue
         if best is None or v > best[0]:
             best = (v, r)

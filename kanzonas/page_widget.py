@@ -311,8 +311,11 @@ class PageWidget(QWidget):
         hits = self.view.search_hits.get(self.index)
         if hits:
             cur = self.view.current_hit()
-            for i, r in enumerate(hits):
-                active = cur == (self.index, i)
+            # (a match can be more than one rect: a word split at a line's end)
+            mine = {id(r) for r in self.view.hit_rects(cur)} \
+                if cur is not None and cur[0] == self.index else set()
+            for r in hits:
+                active = id(r) in mine
                 color = QColor(255, 120, 0, 120) if active else QColor(255, 230, 0, 90)
                 sr = self.to_screen(r, page)
                 p.fillRect(sr, color)

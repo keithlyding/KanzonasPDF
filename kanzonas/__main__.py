@@ -58,6 +58,62 @@ def first_instance(name):
             lock.unlock()
 
 
+def _log_error(what):
+    """Write the exception being handled to startup-errors.log in the data folder (a windowed
+    exe has no console); returns that file's path."""
+    import traceback
+    from . import paths
+    path = os.path.join(paths.data_dir(), "startup-errors.log")
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("%s %s\n%s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), what,
+                                      traceback.format_exc()))
+    except OSError:
+        pass
+    return path
+
+
+def _reset_settings():
+    """Keep a copy of every setting in the data folder, then clear them all. Returns the
+    copy's path."""
+    from . import paths
+    st = paths.settings()
+    path = os.path.join(paths.data_dir(), "settings-before-reset.txt")
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            for key in st.allKeys():
+                f.write("%s = %r\n" % (key, st.value(key)))
+    except OSError:
+        pass
+    st.clear()
+    st.sync()
+    return path
+
+
+def _build_window(app):
+    """The main window. A stored setting that stops it from being built (each one is
+    checked as it's read, so this is a last line of defense) doesn't stop KanzonasPDF from
+    starting: the settings are put aside and it starts with the default ones."""
+    from . import main_window
+    try:
+        return MainWindow()
+    except Exception:
+        _log_error("building the window")
+        for w in main_window.windows():         # the half-built one
+            app.removeEventFilter(w)
+            w.deleteLater()
+        main_window._WINDOW_REFS.clear()
+    kept = _reset_settings()
+    win = MainWindow()
+    from PySide6.QtWidgets import QMessageBox
+    from .i18n import tr
+    QTimer.singleShot(0, lambda: QMessageBox.warning(
+        win, APP_NAME, tr("A saved setting couldn't be used, so KanzonasPDF started with the "
+                          "default settings. The old ones are listed in:\n{path}").format(
+                              path=kept)))
+    return win
+
+
 def main():
     if len(sys.argv) >= 2 and sys.argv[1] == "--selftest":
         from .selftest import run
@@ -124,14 +180,21 @@ def main():
     app.setWindowIcon(app_icon())
     from . import i18n, paths, theme
     i18n.install_qt(app)                 # Qt's own buttons and dialogs in the same language
-    theme.apply(app, paths.settings().value("theme", "system"))
-    win = MainWindow()
+    theme.apply(app, paths.stored_str(paths.settings(), "theme", "system"))
+    win = _build_window(app)
     # a setup closing KanzonasPDF to update it, or Windows shutting down, closes no windows
     app.commitDataRequest.connect(win.windows_ending)
     win.show()
-    win.recover_backups()
+    # (an unexpected error here leaves the window open rather than ending the program)
+    try:
+        win.recover_backups()
+    except Exception:
+        _log_error("offering backups")
     if not files:
-        win.restore_session()
+        try:
+            win.restore_session()
+        except Exception:
+            _log_error("reopening the last documents")
     for path in files:
         win.open_file(path)
     state["win"] = win

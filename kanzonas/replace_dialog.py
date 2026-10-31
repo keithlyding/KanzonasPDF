@@ -69,4 +69,8 @@ class ReplaceDialog(QDialog):
         if skipped:
             msg += " " + tr("Skipped page {pages} (pending redaction marks: apply or remove "
                             "them first).").format(pages=", ".join(str(i + 1) for i in skipped))
+        if found and v.replace_overruns:
+            msg += " " + tr("On page {pages} the new text runs into other text or past the "
+                            "edge of the page (Ctrl+Z undoes it).").format(
+                                pages=", ".join(str(i + 1) for i in v.replace_overruns))
         self.result.setText(msg)

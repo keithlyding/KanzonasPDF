@@ -45,15 +45,12 @@ FRACTIONS = [2, 4, 8, 16, 32, 64]
 
 def configure(settings):
     global FRACTION, DECIMALS, DEFAULT_UNIT
-    try:
-        f = int(settings.value("measure_fraction", 16))
-        FRACTION = f if f in FRACTIONS else 16
-    except (TypeError, ValueError):
-        FRACTION = 16
-    d = settings.value("measure_decimals", "auto")
-    DECIMALS = int(d) if str(d).isdigit() and int(d) <= 6 else None
-    u = settings.value("measure_unit", "ft-in")
-    DEFAULT_UNIT = u if u in UNITS else "ft-in"
+    from . import paths
+    f = paths.stored_int(settings, "measure_fraction", 16)
+    FRACTION = f if f in FRACTIONS else 16
+    d = paths.stored_int(settings, "measure_decimals", -1, 0, 6)     # (or "auto")
+    DECIMALS = None if d < 0 else d
+    DEFAULT_UNIT = paths.stored_str(settings, "measure_unit", "ft-in", UNITS)
 
 
 # ---- page scale ------------------------------------------------------------------
@@ -71,6 +68,15 @@ def get_scale(page):
 
 def set_scale(page, m_per_pt, unit, label):
     page.parent.xref_set_key(page.xref, KEY, pymupdf.get_pdf_str(f"{m_per_pt!r}|{unit}|{label}"))
+
+
+def copy_scales(src, dst, pairs):
+    """Give pages copied with insert_pdf their originals' scale (insert_pdf leaves out a
+    page's own keys). pairs: [(page index in src, index of its copy in dst)]."""
+    for i, k in pairs:
+        typ, val = src.xref_get_key(src.page_xref(i), KEY)
+        if typ == "string":
+            dst.xref_set_key(dst.page_xref(k), KEY, pymupdf.get_pdf_str(val))
 
 
 def scale_from_preset(ratio):

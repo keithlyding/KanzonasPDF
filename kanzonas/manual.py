@@ -42,8 +42,13 @@ or a list such as 1-3, 5), the orientation (Auto turns each sheet to fit its pag
 (Fit to paper, or Actual size, which only shrinks pages that are too big) and whether markups
 and form fields print. <b>Page setup...</b> sets the paper size and margins. Use the arrows
 under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
-rendered a strip at a time so even large drawings print sharp without using much memory.</p>
-<p>Copying, extracting and exporting require copying permission; Print requires printing
+rendered a strip at a time so even large drawings print sharp without using much memory.
+Markups and form fields follow their own print setting, as in Acrobat: one made to show on
+screen only doesn't print, and one made to print but not show on screen does. While it prints, a
+small window shows which page it's on; <b>Cancel</b> there stops the job.</p>
+<p>Copying, extracting and exporting require copying permission, and so do Combine files and
+Insert pages from file for each PDF they take pages from: a PDF that doesn't allow copying is
+refused unless you type its permissions (owner) password when asked. Print requires printing
 permission and uses at most 150 dpi when high-quality printing is forbidden. Form filling
 and adding markups honor their separate permissions: signing or dating a form field needs only
 <b>Filling in form fields and signing</b>, while placing a signature or the date anywhere else
@@ -88,7 +93,10 @@ and undo history come along. Drop a tab on another KanzonasPDF window's tabs (or
 it &gt; <b>Move to window</b>) to move it there. Each window has its own panels, tools and
 Find box, with the same settings. Closing the last tab of a pulled-out window closes that
 window; closing the main window (the first one) closes all of them, and reopening the last
-files at start-up brings back the documents from every window, in the main window.</li>
+files at start-up brings back the documents from every window, in the main window. Closing a
+pulled-out window with several documents asks only about that window's documents. View options
+(grid, snapping, comment boxes, highlight form fields, show markups, check spelling, theme, mouse
+mode) are the same in every window: change one and every window's menu follows.</li>
 <li><b>Closing KanzonasPDF:</b> with one document open, you're asked to save it if it has
 unsaved changes. With several documents open you get one question: it lists the ones with
 unsaved changes and offers <b>Save all</b>, <b>Don't save</b> or <b>Cancel</b> (Cancel keeps
@@ -210,7 +218,8 @@ last page. The same are in <b>View &gt; Go to</b>: <b>Next page</b>, <b>Previous
 number), so the command palette and the CAD command line find them too ("next page", "last
 page").</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, the zoom slider, or the zoom box
-(type a percent, from 10% to 6400%; 25.5 and 25,5 both work). A very long document can't go
+(type a percent, from 10% to 6400%; 25.5 and 25,5 both work, and so does 1,000 for 1000%; a
+zoom that isn't a whole percent shows one decimal). A very long document can't go
 quite as high: all its pages together must stay within the largest size Windows can draw.
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit width, at
 the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.
@@ -292,7 +301,7 @@ wheel zooms instead.)</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+Enter / Shift+F3
 for the previous; the up and down arrows beside the Find box do the same. The count beside
 the box shows which match you're on and how many there are ("3 of 120"; "No matches" when
-there are none). The search starts at the page you're on and shows the first match as soon as
+there are none; a word split by a hyphen at a line's end counts as one match). The search starts at the page you're on and shows the first match as soon as
 it finds it; on long documents it keeps searching the rest in the background (the count reads
 "3 of 120+" and the status bar shows how many pages are done) while you keep working. The match
 you're on is shaded orange with a bold orange frame that stays big enough to spot even when
@@ -303,7 +312,9 @@ or editing the document starts a fresh search.</li>
 tick <b>Match case</b> or <b>Whole words only</b> if needed, choose <b>All pages</b> or this
 page, and click <b>Replace all</b>. It changes the PDF's own text (not comments). Each line
 that changes is rewritten like Edit text does it, in the line's own font when that has the
-characters. Pages with redaction marks that aren't applied yet are skipped (it says which).
+characters. A line is rewritten in place and doesn't rewrap: when the new text runs into other
+text or past the edge of the page, Replace text says on which pages (Ctrl+Z undoes it; Edit text
+can rewrap the paragraph). Pages with redaction marks that aren't applied yet are skipped (it says which).
 Ctrl+Z undoes the whole replacement.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.
 It's for looking only: make changes in the main view.</li>
@@ -469,14 +480,18 @@ dialog or a toolbar click took the keyboard focus.</li>
 The drag can cross the gap between pages, and the pages in between are included.
 <b>Copy</b> (Ctrl+C) puts it on the clipboard, with a blank line between pages;
 <b>Cut</b> (Ctrl+X) also removes those letters
-from the page (Undo brings them back). <b>Select all text</b> (Ctrl+A) selects the whole page's
+from the page (Undo brings them back); the lines above and below keep theirs, even in tightly set
+text. On a page with redaction marks that aren't applied yet, Cut leaves the text where it is
+(cutting would apply the marks): apply or remove them first. <b>Select all text</b> (Ctrl+A) selects the whole page's
 text. Escape or a click elsewhere clears the selection.</li>
 <li><b>Right-click menu:</b> right-click the page for Cut, Copy, Paste, Delete (for selected
 markups) and Select all text. With text selected, it also offers Highlight, Underline, Strike out,
 Comment on text... and Mark for redaction for that text. Right-clicking a markup selects it
 first.</li>
 <li><b>Markups:</b> select one or more markups, then Copy or Cut. <b>Paste</b> (Ctrl+V) puts them
-where the mouse is, on any page or in another open document.</li>
+where the mouse is, on any page or in another open document. Pasted on a page that's turned
+another way (a rotated page), they're turned to look as they did where you copied them; a text
+box still reads upright.</li>
 <li><b>Duplicate</b> (Ctrl+D): copies of the selected markups appear slightly offset, selected
 so you can drag them into place. In the page list, Ctrl+D duplicates the selected pages.</li>
 <li><b>Pictures and text from other programs:</b> Paste a copied picture (e.g. a screenshot)
@@ -525,7 +540,9 @@ adds a sticky note anywhere.</li>
 comment and markup in reading order, page by page, selecting each one. The status bar shows
 "Markup 3 of 12". It wraps around at the end.</li>
 <li><b>Markups list</b> (F7): all markups in a table, page 1 first (click a column heading
-to sort by it); filter, click to jump, export to CSV (in the order shown).</li>
+to sort by it); filter, click to jump, export to CSV (in the order shown; if the file can't be
+written, open in Excel say, a message tells you). Clicking a locked markup jumps to it without
+selecting it, and the list's Delete leaves it: unlock it first.</li>
 <li><b>Show markups:</b> untick to hide every comment and markup and see the page as if
 unmarked. Nothing is deleted; tick it again to bring them back. <b>Show comment boxes</b>
 hides just the yellow boxes beside commented text.</li>
@@ -809,7 +826,8 @@ to (the letters keep their size). Press Enter (or click elsewhere)
 to finish, Shift+Enter to start a new line, Escape to cancel. Saving, closing the document,
 Undo or a page change also finish an edit in progress, so typed text is never lost.
 Sideways text (turned on the page, or on a rotated page) opens in an upright box over the
-middle of the line so it's easy to type; the text stays turned on the page when you finish.</li>
+middle of the line so it's easy to type, with the cursor where you clicked along the line; the
+text stays turned on the page when you finish.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
@@ -845,7 +863,9 @@ text work on it, and editing it again keeps its font.</li>
 length. KanzonasPDF reads the scale notes written on the sheet (SCALE: 1/4" = 1'-0", 1" = 20',
 1:50, NTS, in the title block or under detail titles): Set scale offers them as <b>Scale
 written on the sheet</b>, picked for you when the title block has one, and the status bar
-mentions what the sheet says while no scale is set.</li>
+mentions what the sheet says while no scale is set. A page's scale goes with it: copies made
+with Duplicate pages, Copy pages and Paste, Extract pages, Insert pages from file and Combine
+files keep it.</li>
 <li><b>Read scales from title blocks</b> (Measure menu, Measure tab): for a whole set at once,
 every page gets the scale its own title block says; pages marked not to scale or without a
 note are left as they are and listed. Trust but check: a sheet printed at reduced size (a
@@ -925,7 +945,10 @@ and title. Ctrl+Z undoes it all.</li>
 <h2 id="forms">Forms</h2>
 <ul>
 <li><b>Fill in:</b> with Select or Hand, click a field. Option buttons with the same group
-name are exclusive: choosing one clears the others in its group.</li>
+name are exclusive: choosing one clears the others in its group. A field's maximum length is
+kept to; a dropdown that allows it also takes a typed value (Type a value...). KanzonasPDF
+doesn't run a form's JavaScript: totals a form works out itself and number or date formats
+written as scripts don't update (check them, or fill such a form in Acrobat Reader).</li>
 <li><b>Next form field</b> (Tab) and <b>Previous form field</b> (Shift+Tab), in the Forms menu:
 go through the fields in reading order (page by page, top to bottom, left to right as the
 page is shown, also on a rotated page). The
@@ -1090,7 +1113,9 @@ the pages you list; Ctrl+Z undoes either. A background can't show through a scan
 the scan is a picture covering the whole page; use a Watermark for those.</li>
 <li><b>Export</b> (File &gt; Export to): Microsoft Word (.docx), Microsoft Excel (.xlsx),
 Microsoft PowerPoint (.pptx), AutoCAD drawing (.dxf), Images (PNG), Images (JPEG),
-Plain text (.txt).</li>
+Plain text (.txt). Images make one picture per page, named after the name you choose plus the
+page number (plan_p1.png, plan_p2.png...); if any of them exist already, you're asked once
+before they're replaced.</li>
 </ul>
 
 <h2 id="preferences">Preferences</h2>
@@ -1105,7 +1130,10 @@ Apply.</li>
 of Windows; English; Español: menus, messages and this manual; a change shows the next time
 KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, Show menu bar,
 Show text labels on toolbars, Check for updates automatically. It also tells you where your
-settings are saved (the data folder in portable mode).</li>
+settings are saved (the data folder in portable mode). A saved setting that can't be used (one
+edited by hand, say) is replaced by its default. Should one still stop KanzonasPDF from starting,
+it starts with the default settings, says so, and lists the old ones in
+settings-before-reset.txt in the data folder.</li>
 <li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
 Set up my signature... / Set up my initials... with whether each is saved yet, and Change PIN...
 to set, change or remove the PIN that protects them (leave the new PIN empty to remove it), and
@@ -1219,7 +1247,7 @@ settings...).</li>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>
 </table>
-<p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it.</p>
+<p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it. <b>Reset all to defaults</b> puts the built-in shortcuts back straight away. Changes apply in every window.</p>
 """
 
 

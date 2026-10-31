@@ -35,8 +35,13 @@ o una lista como 1-3, 5), la orientación (Automática gira cada hoja para ajust
 (Ajustar al papel, o Tamaño real, que solo reduce las páginas demasiado grandes) y si se imprimen las marcas
 y los campos de formulario. <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
-y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.</p>
-<p>Copiar, extraer y exportar requieren el permiso de copia; Imprimir requiere el permiso de
+y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
+Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse
+solo en pantalla no se imprime, y una hecha para imprimirse sin verse en pantalla sí. Mientras imprime, una
+pequeña ventana indica en qué página va; <b>Cancelar</b> allí detiene el trabajo.</p>
+<p>Copiar, extraer y exportar requieren el permiso de copia, y también Combinar archivos e
+Insertar páginas desde archivo para cada PDF del que toman páginas: un PDF que no permite copiar se
+rechaza, a menos que escriba su contraseña de permisos (de propietario) cuando se le pida. Imprimir requiere el permiso de
 impresión y usa como máximo 150 ppp cuando la impresión de alta calidad está prohibida. Rellenar formularios
 y agregar marcas respetan sus permisos por separado: firmar un campo de formulario o ponerle la fecha solo necesita
 <b>Rellenar campos de formulario y firmar</b>, mientras que colocar una firma o la fecha en cualquier otro lugar
@@ -81,7 +86,10 @@ y el historial de deshacer se trasladan con él. Suelte una pestaña sobre las p
 en ella &gt; <b>Mover a la ventana</b>) para moverla allí. Cada ventana tiene sus propios paneles, herramientas y
 cuadro Buscar, con la misma configuración. Cerrar la última pestaña de una ventana separada cierra esa
 ventana; cerrar la ventana principal (la primera) las cierra todas, y volver a abrir los últimos
-archivos al iniciar trae de vuelta los documentos de todas las ventanas, en la ventana principal.</li>
+archivos al iniciar trae de vuelta los documentos de todas las ventanas, en la ventana principal. Cerrar una
+ventana separada con varios documentos pregunta solo por los documentos de esa ventana. Las opciones de vista
+(cuadrícula, ajuste, cuadros de comentario, resaltar campos de formulario, mostrar marcas, revisar ortografía,
+tema, modo del mouse) son las mismas en todas las ventanas: al cambiar una, el menú de cada ventana la sigue.</li>
 <li><b>Cerrar KanzonasPDF:</b> con un documento abierto, se le pide que lo guarde si tiene
 cambios sin guardar. Con varios documentos abiertos se le hace una sola pregunta: enumera los que tienen
 cambios sin guardar y ofrece <b>Guardar todo</b>, <b>No guardar</b> o <b>Cancelar</b> (Cancelar mantiene
@@ -202,7 +210,8 @@ o Av Pág / Re Pág, o escriba un número de página y presione Enter. <b>Inicio
 página</b>, <b>Última página</b> e <b>Ir a la página...</b> (Ctrl+G: el cuadro de página, listo para un número), así que
 la paleta de comandos y la línea de comandos CAD también los encuentran ("página siguiente", "última página").</li>
 <li><b>Acercar / Alejar:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+rueda del mouse, el control deslizante de zoom o el cuadro de zoom
-(escriba un porcentaje, del 10% al 6400%; 25.5 y 25,5 funcionan igual). Un documento muy largo no puede llegar
+(escriba un porcentaje, del 10% al 6400%; 25.5 y 25,5 funcionan igual, y 1,000 es 1000%; un zoom que no es
+un porcentaje entero se muestra con un decimal). Un documento muy largo no puede llegar
 tan alto: todas sus páginas juntas deben caber en el tamaño máximo que Windows puede dibujar.
 Ajustar al ancho (Ctrl+2), ajustar página (Ctrl+0), tamaño real (Ctrl+1). Los documentos se abren con Ajustar al ancho, en
 la página donde estaba la última vez; cámbielo en Archivo &gt; Preferencias &gt; Inicio y apertura.
@@ -283,7 +292,7 @@ en su lugar).</li>
 <li><b>Buscar texto:</b> Ctrl+F; luego Enter / F3 para la coincidencia siguiente y Shift+Enter / Shift+F3
 para la anterior; las flechas arriba y abajo junto al cuadro Buscar hacen lo mismo. El contador junto
 al cuadro muestra en qué coincidencia está y cuántas hay ("3 de 120"; "Sin coincidencias" cuando
-no hay ninguna). La búsqueda empieza en la página donde está y muestra la primera coincidencia en cuanto
+no hay ninguna; una palabra dividida con un guion al final de una línea cuenta como una sola coincidencia). La búsqueda empieza en la página donde está y muestra la primera coincidencia en cuanto
 la encuentra; en los documentos largos sigue buscando en el resto en segundo plano (el contador indica
 "3 de 120+" y la barra de estado muestra cuántas páginas se han revisado) mientras usted sigue trabajando. La coincidencia
 en la que está se sombrea de naranja con un marco naranja grueso que sigue siendo lo bastante grande para verlo incluso cuando
@@ -294,7 +303,9 @@ o editar el documento inicia una búsqueda nueva.</li>
 marque <b>Coincidir mayúsculas y minúsculas</b> o <b>Solo palabras completas</b> si hace falta, elija <b>Todas las páginas</b> o esta
 página y haga clic en <b>Reemplazar todo</b>. Cambia el texto propio del PDF (no los comentarios). Cada línea
 que cambia se vuelve a escribir como lo hace Editar texto, con la fuente propia de la línea cuando esta tiene los
-caracteres. Las páginas con marcas de censura que aún no se han aplicado se omiten (se indica cuáles).
+caracteres. La línea se vuelve a escribir en su sitio y no se reajusta: cuando el texto nuevo se mete en otro
+texto o pasa del borde de la página, Reemplazar texto indica en qué páginas (Ctrl+Z lo deshace; Editar texto
+puede reajustar el párrafo). Las páginas con marcas de censura que aún no se han aplicado se omiten (se indica cuáles).
 Ctrl+Z deshace todo el reemplazo.</li>
 <li><b>Vista dividida</b> (F10) muestra una segunda vista del mismo archivo, que se desplaza de forma independiente.
 Es solo para mirar: haga los cambios en la vista principal.</li>
@@ -452,14 +463,18 @@ Haga <b>doble clic</b> en una palabra para seleccionarla, y haga clic <b>una ter
 El arrastre puede cruzar el espacio entre páginas, y las páginas intermedias se incluyen.
 <b>Copiar</b> (Ctrl+C) lo coloca en el portapapeles, con una línea en blanco entre páginas;
 <b>Cortar</b> (Ctrl+X) además quita esas letras
-de la página (Deshacer las recupera). <b>Seleccionar todo el texto</b> (Ctrl+A) selecciona todo el texto
+de la página (Deshacer las recupera); las líneas de arriba y de abajo conservan las suyas, incluso en
+texto muy apretado. En una página con marcas de censura que aún no se han aplicado, Cortar deja el texto
+donde está (cortar aplicaría las marcas): aplíquelas o quítelas primero. <b>Seleccionar todo el texto</b> (Ctrl+A) selecciona todo el texto
 de la página. Esc o un clic en otro lugar borra la selección.</li>
 <li><b>Menú contextual:</b> haga clic con el botón derecho en la página para Cortar, Copiar, Pegar, Eliminar (para las
 marcas seleccionadas) y Seleccionar todo el texto. Con texto seleccionado, también ofrece Resaltado, Subrayado, Tachar,
 Comentar el texto… y Marcar para censura para ese texto. Hacer clic con el botón derecho en una marca la selecciona
 primero.</li>
 <li><b>Marcas:</b> seleccione una o más marcas y luego Copiar o Cortar. <b>Pegar</b> (Ctrl+V) las coloca
-donde está el mouse, en cualquier página o en otro documento abierto.</li>
+donde está el mouse, en cualquier página o en otro documento abierto. Pegadas en una página girada de
+otra manera (una página girada), se giran para que se vean como donde las copió; un cuadro de texto
+se sigue leyendo derecho.</li>
 <li><b>Duplicar</b> (Ctrl+D): aparecen copias de las marcas seleccionadas ligeramente desplazadas, seleccionadas
 para que pueda arrastrarlas a su lugar. En la lista de páginas, Ctrl+D duplica las páginas seleccionadas.</li>
 <li><b>Imágenes y texto de otros programas:</b> Pegar coloca una imagen copiada (p. ej., una captura de pantalla)
@@ -508,7 +523,9 @@ agrega una nota adhesiva en cualquier lugar.</li>
 comentario y cada marca en orden de lectura, página por página, seleccionando cada uno. La barra de estado muestra
 "Marca 3 de 12". Al llegar al final vuelve al principio.</li>
 <li><b>Lista de marcas</b> (F7): todas las marcas en una tabla, empezando por la página 1 (haga clic en el encabezado de una columna
-para ordenar por ella); filtre, haga clic para ir a una marca, exporte a CSV (en el orden mostrado).</li>
+para ordenar por ella); filtre, haga clic para ir a una marca, exporte a CSV (en el orden mostrado; si el
+archivo no se puede escribir, por ejemplo porque está abierto en Excel, un mensaje se lo indica). Hacer clic
+en una marca bloqueada lleva hasta ella sin seleccionarla, y Eliminar en la lista no la quita: desbloquéela primero.</li>
 <li><b>Mostrar marcas:</b> desmárquelo para ocultar todos los comentarios y las marcas y ver la página como si no tuviera
 marcas. No se elimina nada; márquelo de nuevo para que vuelvan. <b>Mostrar cuadros de comentario</b>
 oculta solo los cuadros amarillos junto al texto comentado.</li>
@@ -791,7 +808,8 @@ el texto (las letras conservan su tamaño). Presione Enter (o haga clic en otro 
 para terminar, Shift+Enter para empezar una línea nueva, Esc para cancelar. Guardar, cerrar el documento,
 Deshacer o un cambio de página también terminan una edición en curso, así que el texto escrito nunca se pierde.
 El texto de lado (girado en la página, o en una página girada) se abre en un cuadro vertical sobre el
-centro de la línea para que sea fácil escribir; el texto sigue girado en la página cuando termina.</li>
+centro de la línea para que sea fácil escribir, con el cursor donde hizo clic a lo largo de la línea; el texto
+sigue girado en la página cuando termina.</li>
 <li>Los resaltados, subrayados, tachados, comentarios y notas adhesivas de esa línea se mueven con ella.</li>
 <li>Se usa la fuente original cuando está incrustada o instalada y tiene todos los caracteres que
 escribió; si no, la fuente estándar más parecida o, para los caracteres que estas no pueden escribir (griego como
@@ -827,7 +845,9 @@ texto funcionan con ella, y editarla de nuevo conserva su fuente.</li>
 real. KanzonasPDF lee las notas de escala escritas en el plano (SCALE: 1/4" = 1'-0", 1" = 20',
 1:50, NTS, en el cuadro de rótulo o debajo de los títulos de los detalles): Establecer escala las ofrece como <b>Escala
 escrita en el plano</b>, que queda elegida automáticamente cuando el cuadro de rótulo tiene una, y la barra de estado
-menciona lo que dice el plano mientras no haya ninguna escala definida.</li>
+menciona lo que dice el plano mientras no haya ninguna escala definida. La escala de una página va con ella:
+las copias hechas con Duplicar páginas, Copiar páginas y Pegar, Extraer páginas, Insertar páginas desde archivo y
+Combinar archivos la conservan.</li>
 <li><b>Leer escalas de los cuadros de rótulo</b> (menú Medir, pestaña Medir): para todo un juego de una vez,
 cada página recibe la escala que indica su propio cuadro de rótulo; las páginas marcadas como sin escala o sin
 nota se dejan como están y se enumeran. Confíe, pero compruebe: un plano impreso a tamaño reducido (un
@@ -907,7 +927,10 @@ y el título de cada plano. Ctrl+Z lo deshace todo.</li>
 <h2 id="forms">Formularios</h2>
 <ul>
 <li><b>Rellenar:</b> con Seleccionar o Mano, haga clic en un campo. Los botones de opción con el mismo nombre de
-grupo son excluyentes: elegir uno desmarca los demás de su grupo.</li>
+grupo son excluyentes: elegir uno desmarca los demás de su grupo. Se respeta la longitud máxima de un campo; una lista
+desplegable que lo permite también acepta un valor escrito (Escribir un valor...). KanzonasPDF no ejecuta el JavaScript
+de un formulario: los totales que el formulario calcula por sí mismo y los formatos de número o fecha escritos como scripts
+no se actualizan (revíselos, o rellene ese formulario en Acrobat Reader).</li>
 <li><b>Campo de formulario siguiente</b> (Tab) y <b>Campo de formulario anterior</b> (Shift+Tab), en el menú Formularios:
 recorren los campos en orden de lectura (página por página, de arriba abajo, de izquierda a derecha tal como se
 muestra la página, también en una página girada). El
@@ -1072,7 +1095,8 @@ las páginas que indique; Ctrl+Z deshace cualquiera de los dos. Un fondo no se p
 el escaneo es una imagen que cubre toda la página; para esas páginas use una Marca de agua.</li>
 <li><b>Exportar</b> (Archivo &gt; Exportar a): Microsoft Word (.docx), Microsoft Excel (.xlsx),
 Microsoft PowerPoint (.pptx), Dibujo de AutoCAD (.dxf), Imágenes (PNG), Imágenes (JPEG),
-Texto sin formato (.txt).</li>
+Texto sin formato (.txt). Imágenes crea una imagen por página, con el nombre que elija más el número de
+página (plano_p1.png, plano_p2.png...); si alguna ya existe, se le pregunta una vez antes de reemplazarlas.</li>
 </ul>
 
 <h2 id="preferences">Preferencias</h2>
@@ -1087,7 +1111,10 @@ Aplicar.</li>
 Windows; English; Español: menús, mensajes y este manual; el cambio se ve la próxima vez que se
 inicia KanzonasPDF), Cinta (en lugar de barras de herramientas), Mostrar nombres de grupo
 en la cinta, Mostrar barra de menús, Mostrar etiquetas de texto en las barras de herramientas, Buscar actualizaciones automáticamente.
-También le indica dónde se guarda su configuración (la carpeta data en el modo portátil).</li>
+También le indica dónde se guarda su configuración (la carpeta data en el modo portátil). Una opción guardada
+que no se puede usar (editada a mano, por ejemplo) se reemplaza por su valor predeterminado. Si aun así una
+impidiera que KanzonasPDF se inicie, se inicia con la configuración predeterminada, lo avisa y anota la
+anterior en settings-before-reset.txt, en la carpeta de datos.</li>
 <li><b>Usted:</b> el Nombre del autor de las marcas (que se registra en las marcas nuevas y aparece en los sellos), y
 Configurar mi firma... / Configurar mis iniciales..., con la indicación de si cada una ya está guardada, y Cambiar PIN…
 para definir, cambiar o quitar el PIN que las protege (deje vacío el PIN nuevo para quitarlo), y
@@ -1201,5 +1228,5 @@ cuadrícula...).</li>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Páginas / Propiedades / Marcas / Caja de herramientas / Marcadores / Vista dividida</td></tr>
 </table>
-<p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija.</p>
+<p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija. <b>Restablecer todos los valores predeterminados</b> vuelve a poner los métodos abreviados originales de inmediato. Los cambios se aplican en todas las ventanas.</p>
 """

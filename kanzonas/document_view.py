@@ -4,6 +4,7 @@ import json
 import math
 import os
 import re
+import shutil
 import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -106,6 +107,88 @@ class _busy:
         return False
 
 
+class OpenCanceled(Exception):
+    """Opening was canceled by the user (a password prompt): no error to show."""
+
+
+_JS_ACTION = re.compile(r"/S\s*/(JavaScript|Launch)\b")    # (Launch: runs a program)
+
+
+def remove_scripts(doc):
+    """Take every JavaScript action, Launch action (runs a program) and automatic action
+    out of doc. PyMuPDF's scrub empties
+    the JavaScript actions stored as objects of their own; one written straight into a
+    catalog's /OpenAction, an /AA or a link's /A (a common way) stays, so this removes those
+    too: /AA (actions run on opening, closing, printing, page visits...) goes wherever it is,
+    an /OpenAction or /A only when it is (or leads to) JavaScript, and the document-level
+    scripts (the /JavaScript name tree) go."""
+    for xref in range(1, doc.xref_length()):
+        try:
+            keys = doc.xref_get_keys(xref)
+        except Exception:
+            continue
+        if "AA" in keys:
+            doc.xref_set_key(xref, "AA", "null")
+        for key in ("OpenAction", "A"):
+            if key not in keys:
+                continue
+            kind, val = doc.xref_get_key(xref, key)
+            if kind == "xref":
+                try:
+                    val = doc.xref_object(int(val.split()[0]))
+                except Exception:
+                    continue
+            if kind in ("dict", "xref") and (_JS_ACTION.search(val) or "/Next" in val and
+                                              "JavaScript" in val):
+                doc.xref_set_key(xref, key, "null")
+        if "Names" in keys and doc.xref_get_key(xref, "Names/JavaScript")[0] != "null":
+            doc.xref_set_key(xref, "Names/JavaScript", "null")
+
+
+def blank_appearance(doc, widget_xref):
+    """Make an emptied text / choice field look empty. PyMuPDF doesn't redraw a field set
+    to "" (its old text stayed on the page and in the file), so the field's normal
+    appearance is written over with an empty one."""
+    kind, val = doc.xref_get_key(widget_xref, "AP/N")
+    if kind == "xref":
+        doc.update_stream(int(val.split()[0]), b"/Tx BMC\nEMC\n")
+
+
+def clear_form_data(doc):
+    """Empty every form field (Sanitize > Data typed into form fields). The value is kept on
+    the field, which is often a parent dictionary above the widget (KanzonasPDF's own fields
+    since PyMuPDF 2.0, many Acrobat forms): PyMuPDF's scrub resets only the widget, so the
+    value stayed in the file. Each widget is emptied through PyMuPDF (new appearance), then
+    every field dictionary loses its /V."""
+    for i in range(doc.page_count):
+        page = doc[i]
+        for w in list(page.widgets() or []):
+            t = w.field_type
+            try:
+                if t in (pymupdf.PDF_WIDGET_TYPE_CHECKBOX, pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON):
+                    w.field_value = False
+                elif t in (pymupdf.PDF_WIDGET_TYPE_TEXT, pymupdf.PDF_WIDGET_TYPE_COMBOBOX,
+                           pymupdf.PDF_WIDGET_TYPE_LISTBOX):
+                    w.field_value = ""
+                else:
+                    continue
+                w.update()
+                if t != pymupdf.PDF_WIDGET_TYPE_CHECKBOX and \
+                        t != pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+                    blank_appearance(doc, w.xref)
+            except Exception:
+                pass
+    for xref in range(1, doc.xref_length()):
+        try:
+            keys = doc.xref_get_keys(xref)
+        except Exception:
+            continue
+        if "V" in keys and ("FT" in keys or "T" in keys or "Kids" in keys):
+            doc.xref_set_key(xref, "V", "null")
+            if "RV" in keys:
+                doc.xref_set_key(xref, "RV", "null")
+
+
 class _not_busy:
     """A message box while a command works: the usual pointer over it, the busy one after."""
 
@@ -166,11 +249,17 @@ class DocumentView(QScrollArea):
             self._orig_enc = {"needs_pass": bool(self.doc.needs_pass), "user_pw": None,
                               "owner_pw": None}
         if self.doc.needs_pass:
-            pw, ok = QInputDialog.getText(self, tr("Password required"),
-                                          tr("{name} is protected:").format(
-                                              name=os.path.basename(path)),
-                                          QLineEdit.Password)
-            rc = self.doc.authenticate(pw) if ok else 0
+            rc, prompt = 0, tr("{name} is protected:").format(name=os.path.basename(path))
+            for _try in range(3):           # a mistyped password can be typed again
+                pw, ok = QInputDialog.getText(self, tr("Password required"), prompt,
+                                              QLineEdit.Password)
+                if not ok:
+                    raise OpenCanceled()    # (Cancel: nothing to report)
+                rc = self.doc.authenticate(pw)
+                if rc:
+                    break
+                prompt = tr("Wrong password. {name} is protected:").format(
+                    name=os.path.basename(path))
             if not rc:
                 raise ValueError(tr("Wrong or missing password"))
             if rc & 2:
@@ -182,7 +271,7 @@ class DocumentView(QScrollArea):
         if self._orig_enc is not None:
             self._orig_enc["perms"] = self.doc.permissions
         try:
-            signed = self.doc.get_sigflags() >= 1
+            signed = self.doc.get_sigflags() >= 1 or self._has_filled_signature()
         except Exception:
             signed = False
         if self._orig_enc is None and not signed:
@@ -207,6 +296,7 @@ class DocumentView(QScrollArea):
         self.signed = False
         self.security = None           # new security to apply when saving (see set_security)
         self.search_hits = {}
+        self._search_groups = {}       # page index -> the matches among its hit rects
         self._search_list = []
         self._search_pos = -1
         self._search_text = None
@@ -382,10 +472,16 @@ class DocumentView(QScrollArea):
             self._fitted = False
             return
         state = getattr(self, "initial_state", None)
-        page = int(state.get("page", 0)) if state and self.reopen_page else 0
+        try:                    # (remembered in the settings: anything could be there)
+            page = int(state.get("page", 0)) if state and self.reopen_page else 0
+            zoom = float(state.get("zoom", 1.0)) if state else 1.0
+        except (TypeError, ValueError, OverflowError):
+            page, zoom = 0, 1.0
+        if not math.isfinite(zoom) or zoom <= 0:
+            zoom = 1.0
         mode = self.open_view
         if mode == "last" and state:
-            self.set_zoom(float(state.get("zoom", 1.0)))
+            self.set_zoom(zoom)
         elif mode == "width" or mode == "last":
             self.fit_width()
         elif mode == "actual":
@@ -862,9 +958,24 @@ class DocumentView(QScrollArea):
     def _snapshot(self):
         # a protected file's undo copies keep its encryption, so saving after an undo can
         # still keep the original passwords and permissions (see save)
-        if self._orig_enc is not None and (self.doc.metadata or {}).get("encryption"):
-            return self.doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_KEEP)
-        return self.doc.tobytes()
+        keep = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
+        opts = {"encryption": pymupdf.PDF_ENCRYPT_KEEP} if keep else {}
+        # written through a temporary file: tobytes hands MuPDF's output to Python in tiny
+        # pieces, about three times slower, and a big plan set is copied on every edit
+        import tempfile
+        fd, tmp = tempfile.mkstemp(suffix=".pdf", prefix="kz-undo-")
+        os.close(fd)
+        try:
+            self.doc.save(tmp, **opts)
+            with open(tmp, "rb") as f:
+                return f.read()
+        except Exception:
+            return self.doc.tobytes(**opts)
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
 
     def _view_anchor(self):
         """Where the window is looking, as a fraction of the current page, so a rebuild
@@ -888,6 +999,28 @@ class DocumentView(QScrollArea):
         self.horizontalScrollBar().setValue(int(w.x() + h_off))
         self._on_scroll()
 
+    def _open_snapshot(self, data):
+        """A document opened from _snapshot bytes (unlocked with the file's passwords when
+        it keeps its encryption)."""
+        fresh = pymupdf.open(stream=data, filetype="pdf")
+        if fresh.needs_pass and self._orig_enc is not None:
+            for pw in (self._orig_enc.get("owner_pw"), self._orig_enc.get("user_pw")):
+                if pw and fresh.authenticate(pw):
+                    break
+        return fresh
+
+    def _stale_pages(self):
+        """True when MuPDF hands out a loaded page that is no longer the page at its
+        number. MuPDF keeps each page that is still in use loaded under its number, and
+        PyMuPDF's move_page rearranges the page tree without renumbering those: a page held
+        through a move (e.g. by an Annot in a reference cycle with its Page) then comes back
+        for the number it used to have, so the view would show it twice."""
+        try:
+            return any(pymupdf.mupdf.pdf_to_num(self.doc[i]._pdf_page().obj())
+                       != self.doc.page_xref(i) for i in range(self.doc.page_count))
+        except Exception:               # (another PyMuPDF: don't block the edit)
+            return False
+
     def _restore(self, data, dirty=True):
         """Show the document saved in data (undo, redo, a rolled-back edit); dirty: whether
         it then has unsaved changes."""
@@ -899,11 +1032,7 @@ class DocumentView(QScrollArea):
         self.selection = None
         self.selected_model = None
         self.extra = []
-        fresh = pymupdf.open(stream=data, filetype="pdf")
-        if fresh.needs_pass and self._orig_enc is not None:
-            for pw in (self._orig_enc.get("owner_pw"), self._orig_enc.get("user_pw")):
-                if pw and fresh.authenticate(pw):
-                    break
+        fresh = self._open_snapshot(data)
         old = self.doc
         self.doc = fresh
         self.search_hits.clear()
@@ -962,6 +1091,11 @@ class DocumentView(QScrollArea):
             if self.markups_changed is not None:
                 self.markups_changed |= set(pages)
         was_dirty = self.dirty
+        if structural:
+            # a page kept loaded only by a reference cycle (an Annot and its Page) would
+            # come back under its old number once pages move: free those first
+            import gc
+            gc.collect()
         try:
             fn()
         except Exception as ex:
@@ -983,6 +1117,11 @@ class DocumentView(QScrollArea):
         self._search_gen += 1
         self.searchChanged.emit(0, 0, False)
         if structural:
+            if self._stale_pages():
+                # something still holds a page from before the change: open the document
+                # afresh from its bytes (which follow the page tree), as Undo does
+                old, self.doc = self.doc, self._open_snapshot(self._snapshot())
+                old.close()
             self._inline = None
             self.field_focus = None     # its page may be gone or moved
             page = self.current_page()
@@ -1469,7 +1608,10 @@ class DocumentView(QScrollArea):
         models = self._models_for_clipboard()
         if models:
             text = "\n".join(m.get("text", "") for m in models if m.get("text"))
-            clip.put("markups", models, text)
+            # the page's turn goes along: pasted on a page turned otherwise, they're turned
+            # to look the same on screen (see paste)
+            rot = self.doc[self.selection[0]].rotation
+            clip.put("markups", [dict(m, page_rotation=rot) for m in models], text)
             return "markups"
         return None
 
@@ -1522,8 +1664,40 @@ class DocumentView(QScrollArea):
             self._set_selection(index, made)
         return len(made)
 
+    def _line_dirs(self, index):
+        """{(block, line): writing direction} for the units _words gives."""
+        flags = pymupdf.TEXTFLAGS_RAWDICT & ~pymupdf.TEXT_PRESERVE_IMAGES
+        d = self.doc[index].get_text("dict", flags=flags)
+        return {(bi, li): line["dir"] for bi, blk in enumerate(d["blocks"])
+                if blk.get("type") == 0 for li, line in enumerate(blk["lines"])}
+
+    @staticmethod
+    def _cut_band(word, direction):
+        """Where cutting this letter takes it out: a thin band through its middle, along
+        the line (as text_edit.removal_bands), a little inside its sides so its neighbors
+        stay. A letter's box spans the font's full height, so in tightly set text it
+        overlaps the lines above and below: a taller box would take their letters too."""
+        r = pymupdf.Rect(word[:4])
+        dx, dy = direction
+        if abs(dx) >= abs(dy):
+            mid, half, pad = (r.y0 + r.y1) / 2, max(0.5, r.height * 0.1), r.width * 0.08
+            return pymupdf.Rect(r.x0 + pad, mid - half, r.x1 - pad, mid + half)
+        mid, half, pad = (r.x0 + r.x1) / 2, max(0.5, r.width * 0.1), r.height * 0.08
+        return pymupdf.Rect(mid - half, r.y0 + pad, mid + half, r.y1 - pad)
+
     def cut(self):
-        """Cut the selected text (removed from the page) or the selected markups."""
+        """Cut the selected text (removed from the page) or the selected markups. Returns
+        what was cut ("blocked": refused, and the user was told why)."""
+        if self.text_sel:
+            # taking the text out applies every redaction mark on its page: refuse, as
+            # Edit text does, rather than apply marks the user hasn't applied yet
+            for index, _words in self.text_sel:
+                page = self.doc[index]
+                if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in page.annots()):
+                    QMessageBox.warning(self, tr("Cut"), tr(
+                        "This page has pending redactions; cutting text would apply them. "
+                        "Remove them first."))
+                    return "blocked"
         what = self.copy()
         if what == "text":
             spans = list(self.text_sel)
@@ -1531,11 +1705,10 @@ class DocumentView(QScrollArea):
             def do():
                 for index, words in spans:
                     pg = self.doc[index]
+                    dirs = self._line_dirs(index)
                     for w in words:
-                        r = pymupdf.Rect(w[:4])
-                        padx, pady = r.width * 0.08, r.height * 0.15
-                        pg.add_redact_annot(pymupdf.Rect(r.x0 + padx, r.y0 + pady,
-                                                         r.x1 - padx, r.y1 - pady), fill=False)
+                        pg.add_redact_annot(self._cut_band(w, dirs.get((w[5], w[6]), (1, 0))),
+                                            fill=False)
                     pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
                                         graphics=pymupdf.PDF_REDACT_LINE_ART_NONE,
                                         text=pymupdf.PDF_REDACT_TEXT_REMOVE)
@@ -1585,6 +1758,13 @@ class DocumentView(QScrollArea):
                 self.select_xref(index, made["xref"])
             return "image"
         if kind == "markups":
+            turn = (payload[0].get("page_rotation", page.rotation) - page.rotation) % 360 \
+                if payload else 0
+            payload = [{k: v for k, v in m.items() if k != "page_rotation"} for m in payload]
+            if turn:
+                # copied from a page turned otherwise: turn them to look the same on screen
+                # here (a text box keeps reading upright; its box turns with it)
+                payload = [annotations.page_turned(m, turn) for m in payload]
             box = None
             for m in payload:
                 box = annotations.bounds(m) if box is None else box | annotations.bounds(m)
@@ -1641,13 +1821,14 @@ class DocumentView(QScrollArea):
         """These pages as a PDF for the clipboard. Their links come along as they are; one
         to a page not copied is kept for a paste into this same document (see paste_pages
         and links.copy_page_links)."""
-        from . import links
+        from . import links, measure
         if not self.allowed(pymupdf.PDF_PERM_COPY):
             raise PermissionError(tr("Copying pages is not allowed."))
         out = pymupdf.open()
         pages = sorted(set(indices))
         for i in pages:
             out.insert_pdf(self.doc, from_page=i, to_page=i, links=False)
+        measure.copy_scales(self.doc, out, zip(pages, range(len(pages))))
         links.copy_page_links(self.doc, list(zip(pages, range(len(pages)))), out,
                               park=self._clip_id())
         data = out.tobytes(garbage=3, deflate=True)
@@ -1663,7 +1844,7 @@ class DocumentView(QScrollArea):
 
     def paste_pages(self, data, at):
         """Insert the PDF pages in data before page index at (== count: at the end)."""
-        from . import links
+        from . import links, measure
         at = max(0, min(at, self.doc.page_count))
         n = {}
 
@@ -1672,6 +1853,8 @@ class DocumentView(QScrollArea):
                 n["n"] = other.page_count
                 mine = {self.doc.page_xref(i) for i in range(self.doc.page_count)}
                 self.doc.insert_pdf(other, start_at=at, links=False)
+                measure.copy_scales(other, self.doc,
+                                    [(k, at + k) for k in range(other.page_count)])
                 # links to pages that weren't copied work again when pasted back into the
                 # document they were copied from (Duplicate pages)
                 links.copy_page_links(
@@ -2820,6 +3003,8 @@ class DocumentView(QScrollArea):
             return True
         page = self.doc[index]
         annot = page.load_annot(xref) if xref else None
+        if annot is not None and (annot.flags or 0) & pymupdf.PDF_ANNOT_IS_LOCKED:
+            annot = None                # locked: it can't be selected (nor moved or deleted)
         model = annotations.read(annot) if annot else None
         old = self.selection
         self.selection = (index, xref) if model else None
@@ -3048,16 +3233,36 @@ class DocumentView(QScrollArea):
         return len(found)
 
     def reveal(self, index, xref):
-        """Scroll to an annotation and select it (used by the markups list)."""
+        """Scroll to an annotation and select it (used by the markups list). A locked one
+        is only shown: it can't be selected, so it can't be moved, resized or deleted."""
         page = self.doc[index]
         try:
-            r = page.load_annot(xref).rect * page.rotation_matrix
+            annot = page.load_annot(xref)
+            r = annot.rect * page.rotation_matrix
+            locked = bool((annot.flags or 0) & pymupdf.PDF_ANNOT_IS_LOCKED)
         except Exception:
             return
         self.goto_page(index, max(0, r.y0 * self.zoom - self.viewport().height() / 3))
+        if locked:
+            self.clear_selection()
+            self.statusMessage.emit(self.locked_note())
+            return
         if self.tool != "select":
             self.selectToolRequested.emit()
         self.select_xref(index, xref)
+
+    @staticmethod
+    def locked_note():
+        return tr("This markup is locked. Untick Lock in the Objects panel (or use Arrange > "
+                  "Unlock all markups) to move, resize or delete it.")
+
+    def markup_locked(self, index, xref):
+        """True when annotation xref on page index is locked."""
+        try:
+            page = self.doc[index]
+            return bool((page.load_annot(xref).flags or 0) & pymupdf.PDF_ANNOT_IS_LOCKED)
+        except Exception:
+            return False
 
     def clear_selection(self):
         if self.selection is None:
@@ -3169,9 +3374,12 @@ class DocumentView(QScrollArea):
         if self.selected_model and self.selected_model["kind"] == "field" and not self.extra:
             self.delete_field(index, xref)
             return
-        xrefs = self.selected_xrefs()
-        self.clear_selection()
         page = self.doc[index]
+        xrefs = [x for x in self.selected_xrefs() if not self.markup_locked(index, x)]
+        self.clear_selection()
+        if not xrefs:
+            self.statusMessage.emit(self.locked_note())
+            return
 
         def do():
             from . import links
@@ -3646,6 +3854,12 @@ class DocumentView(QScrollArea):
                           (new_size or size) * self.zoom,
                           click=w.to_screen_pt(pt) if upright else None,
                           bold=bool(scan and scan["bold"] and not chosen))
+        if not upright:
+            # the box is upright, the line isn't: put the cursor where the click falls along
+            # the line instead (not the whole line selected, which typing would replace)
+            cur = ed.text.textCursor()
+            cur.setPosition(min(len(old), text_edit.line_index(line, pt)))
+            ed.text.setTextCursor(cur)
         ed.kz_tool, ed.kz_line_size = "edittext", size
         self._inline = ed
 
@@ -3698,9 +3912,17 @@ class DocumentView(QScrollArea):
                 skipped.append(i)
                 continue
             todo[i] = hits
+        self.replace_overruns = []
         if not todo:
             return 0, 0, skipped
         count = {"found": 0, "lines": 0}
+        # the page's other text, to tell afterwards whether a longer line now runs into it
+        # (a line is rewritten in place: it doesn't rewrap, as Edit text on one line)
+        others = {}
+        for i, hits in todo.items():
+            mine = {id(line) for line, _t in hits}
+            others[i] = [(r, ln) for r, ln in self._lines(i)
+                         if id(ln) not in mine and text_edit.visible(ln)]
 
         def do():
             for i, hits in todo.items():
@@ -3710,10 +3932,48 @@ class DocumentView(QScrollArea):
                     text_edit.replace_line(page, line, new)
                     count["found"] += n
                     count["lines"] += 1
-        self.modify(do, list(todo))
+        if not self.modify(do, list(todo)):
+            return 0, 0, skipped
         self._fonts_added = True
-        self.statusMessage.emit(tr("Replaced {n} (Ctrl+Z undoes it)").format(n=count["found"]))
+        self.replace_overruns = [i for i in todo if self._text_overruns(i, others[i])]
+        if self.replace_overruns:
+            self.statusMessage.emit(tr(
+                "Replaced {n} (Ctrl+Z undoes it). On page {pages} the new text runs into "
+                "other text or past the edge of the page.").format(
+                    n=count["found"], pages=", ".join(str(i + 1) for i in self.replace_overruns)))
+        else:
+            self.statusMessage.emit(tr("Replaced {n} (Ctrl+Z undoes it)").format(
+                n=count["found"]))
         return count["found"], count["lines"], skipped
+
+    replace_overruns = []       # pages where the last Replace text ran into text / off the page
+
+    def _text_overruns(self, index, others):
+        """After lines on page index were rewritten: True when a rewritten line now runs
+        past the edge of the page or into the page's other text. others: [(rect, line)] of
+        the page's text the edit left alone, read before it."""
+        page = self.doc[index]
+        bounds = page.rect * page.derotation_matrix         # (text is in unrotated space)
+        kept = [pymupdf.Rect(r) for r, _ln in others]
+        theirs = self._bands([(r, ln) for r, ln in others
+                              if abs(ln["dir"][1]) < 1e-3 and ln["dir"][0] > 0])
+
+        def same(r):
+            return any(abs(r.x0 - k.x0) < 0.3 and abs(r.y0 - k.y0) < 0.3 and
+                       abs(r.x1 - k.x1) < 0.3 and abs(r.y1 - k.y1) < 0.3 for k in kept)
+        for r, ln in self._lines(index):
+            if same(r) or not text_edit.visible(ln):
+                continue                    # not rewritten
+            if r.x0 < bounds.x0 - 0.5 or r.x1 > bounds.x1 + 0.5 or \
+                    r.y0 < bounds.y0 - 0.5 or r.y1 > bounds.y1 + 0.5:
+                return True
+            if abs(ln["dir"][1]) >= 1e-3 or ln["dir"][0] <= 0:
+                continue                    # (only level text is checked against its neighbors)
+            x0, top, x1, bottom = self._bands([(r, ln)])[0]
+            if any(min(x1, o[2]) - max(x0, o[0]) > 0.5 and min(bottom, o[3]) - max(top, o[1]) > 0.5
+                   for o in theirs):
+                return True
+        return False
 
     def _markups_on_line(self, page, line):
         """xrefs of text markups (highlight, underline, comments...) and sticky notes sitting
@@ -4883,6 +5143,7 @@ class DocumentView(QScrollArea):
                                hidden_text=True, javascript=True, metadata=True,
                                redactions=False, remove_links=False, reset_fields=False,
                                reset_responses=True, thumbnails=True, xml_metadata=True)
+                remove_scripts(self.doc)
                 # scrub unlinks the old objects; a plain tobytes() would still carry them.
                 enc = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
                 data = self.doc.tobytes(
@@ -4973,8 +5234,8 @@ class DocumentView(QScrollArea):
         """Validate certificate signatures; signed files open read-only with a banner."""
         self.sig_results = []
         try:
-            if self.doc.get_sigflags() < 1:
-                return
+            if self.doc.get_sigflags() < 1 and not self._has_filled_signature():
+                return              # (some programs sign without setting /SigFlags)
             from . import digisign
             with open(self.path, "rb") as f:
                 self.sig_results = digisign.validate(f.read())
@@ -5247,10 +5508,21 @@ class DocumentView(QScrollArea):
         for page in self.doc:
             for w in page.widgets():
                 v = w.field_value
-                if v not in (None, "", "Off", False) and \
-                        w.field_type != pymupdf.PDF_WIDGET_TYPE_BUTTON:
-                    return True
+                if v in (None, "", "Off", False) or \
+                        w.field_type == pymupdf.PDF_WIDGET_TYPE_BUTTON:
+                    continue
+                if w.field_type in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX,
+                                    pymupdf.PDF_WIDGET_TYPE_LISTBOX) and \
+                        self._preselected(w, v):
+                    continue                # (a dropdown shows its first choice untouched)
+                return True
         return False
+
+    def _preselected(self, w, value):
+        """value is what a choice field shows before anyone picks: its default (/DV; a
+        dropdown made here gets its first choice as default)."""
+        kind, dv = self.doc.xref_get_key(self._field_dict(w), "DV")
+        return kind == "string" and dv == value
 
     # ---- sanitize ---------------------------------------------------------------------------
     SANITIZE_OPTIONS = [  # (key, label, default)
@@ -5278,6 +5550,14 @@ class DocumentView(QScrollArea):
                            reset_fields=opts.get("form_data", False),
                            reset_responses=opts.get("markups", False),
                            thumbnails=opts.get("thumbnails", False))
+            if opts.get("javascript"):
+                remove_scripts(self.doc)
+            if opts.get("thumbnails"):
+                for i in range(self.doc.page_count):   # (scrub left /Thumb in place)
+                    if self.doc.xref_get_key(self.doc.page_xref(i), "Thumb")[0] != "null":
+                        self.doc.xref_set_key(self.doc.page_xref(i), "Thumb", "null")
+            if opts.get("form_data"):
+                clear_form_data(self.doc)
             if opts.get("markups"):
                 for i in range(self.doc.page_count):
                     pg = self.doc[i]
@@ -5470,15 +5750,28 @@ class DocumentView(QScrollArea):
         elif t in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
             menu = QMenu(self)
             for c in w.choice_values or []:
-                label = c[1] if isinstance(c, (list, tuple)) else c
+                # a choice can have a value saved in the file apart from the text shown
+                # ([NY, New York]): the saved one is what the form's data needs
+                value, label = (c[0], c[1]) if isinstance(c, (list, tuple)) else (c, c)
                 act = menu.addAction(label)
+                act.setData(value)
                 act.setCheckable(True)
-                act.setChecked(label == w.field_value)
+                act.setChecked(w.field_value in (value, label))
+            typed = None
+            if w.field_type == pymupdf.PDF_WIDGET_TYPE_COMBOBOX and \
+                    w.field_flags & pymupdf.PDF_CH_FIELD_IS_EDIT:
+                menu.addSeparator()
+                typed = menu.addAction(tr("Type a value..."))
             pw = self.pages[index]
             r = pw.to_screen(w.rect)
             chosen = menu.exec(pw.mapToGlobal(r.bottomLeft().toPoint()))
-            if chosen is not None:
-                self._set_field(index, xref, chosen.text())
+            if chosen is not None and chosen is typed:
+                text, ok = QInputDialog.getText(self, w.field_name or tr("Dropdown"),
+                                                tr("Value:"), text=w.field_value or "")
+                if ok:
+                    self._set_field(index, xref, text)
+            elif chosen is not None:
+                self._set_field(index, xref, chosen.data())
         elif t == pymupdf.PDF_WIDGET_TYPE_SIGNATURE:
             self.requestSignature.emit(index, xref)
         elif t == pymupdf.PDF_WIDGET_TYPE_TEXT:
@@ -5490,6 +5783,11 @@ class DocumentView(QScrollArea):
             w = pg.load_widget(xref)
             w.field_value = value
             w.update()
+            if value == "":
+                blank_appearance(self.doc, xref)   # (else the old text still shows)
+                fx = self._field_dict(w)           # (and the parent kept the old value)
+                if self.doc.xref_get_key(fx, "V")[0] != "null":
+                    self.doc.xref_set_key(fx, "V", "null")
         self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM)
 
     def _choose_option(self, index, xref):
@@ -5526,6 +5824,9 @@ class DocumentView(QScrollArea):
         else:
             ed.setText(w.field_value or "")
             ed.selectAll()
+        maxlen = w.text_maxlen or 0         # the field's limit (a ZIP code, comb boxes)
+        if maxlen > 0 and not multiline:
+            ed.setMaxLength(maxlen)
         f = ed.font()
         size = w.text_fontsize or min(12.0, w.rect.height * 0.65)
         f.setPixelSize(max(8, int(size * self.zoom)))
@@ -5539,6 +5840,8 @@ class DocumentView(QScrollArea):
                 return
             done["x"] = True
             text = ed.toPlainText() if multiline else ed.text()
+            if maxlen > 0:
+                text = text[:maxlen]
             ed.hide()
             ed.deleteLater()
             if save and text != (w.field_value or ""):
@@ -5578,10 +5881,27 @@ class DocumentView(QScrollArea):
             shown = page.rotation_matrix                # reading order as the page is shown
             ws = [((w.rect * shown).normalize(), w.xref) for w in page.widgets()
                   if w.field_type != pymupdf.PDF_WIDGET_TYPE_BUTTON
-                  and not w.field_flags & 1]                         # 1 = read-only
-            ws.sort(key=lambda t: (round(t[0].y0), t[0].x0))
-            order += [(i, x) for _r, x in ws]
+                  and not w.field_flags & 1                          # 1 = read-only
+                  and not self._annot_flag(w.xref) & 2]              # 2 = hidden
+            ws.sort(key=lambda t: t[0].y0)
+            # a row is the fields side by side, even when their tops differ by a point or
+            # two (rounding each top put a field right of its neighbor first)
+            rows = []
+            for r, x in ws:
+                if rows and r.y0 - rows[-1][0] <= max(3.0, 0.5 * min(r.height, rows[-1][1])):
+                    rows[-1][2].append((r, x))
+                else:
+                    rows.append([r.y0, r.height, [(r, x)]])
+            for _y, _h, row in rows:
+                order += [(i, x) for _r, x in sorted(row, key=lambda t: t[0].x0)]
         return order
+
+    def _annot_flag(self, xref):
+        kind, val = self.doc.xref_get_key(xref, "F")
+        try:
+            return int(float(val)) if kind in ("int", "float") else 0
+        except ValueError:
+            return 0
 
     def next_field(self, back=False, current=None):
         """Tab / Shift+Tab: go to the next (previous) form field. Text fields open for typing;
@@ -5692,12 +6012,23 @@ class DocumentView(QScrollArea):
                 w.text_fontsize = 0          # auto size
             if tool == "f_combo":
                 w.choice_values = choices
-                w.field_value = choices[0]
+                w.field_value = choices[0]  # (also its default: see form_filled)
             if tool == "f_radio":
                 w.field_value = False
             pg = self.doc[index]
             before = {x for x, *_ in pg.annot_xrefs()}
             pg.add_widget(w)
+            made = [x for x, *_ in pg.annot_xrefs() if x not in before]
+            if tool == "f_combo":
+                for x in made:
+                    fx = self._field_dict(pg.load_widget(x))
+                    self.doc.xref_set_key(fx, "DV", pymupdf.get_pdf_str(choices[0]))
+            if pg.rotation:
+                # on a turned page the field's text turns with it (upright on screen and on
+                # paper), as Acrobat's fields do: the widget's /MK /R
+                for x in made:
+                    self.doc.xref_set_key(x, "MK/R", str(pg.rotation))
+                    pg.load_widget(x).update()
             if tool == "f_radio":
                 # (w.xref is not filled in by every PyMuPDF version: find the new widget)
                 made = [x for x, *_ in pg.annot_xrefs() if x not in before]
@@ -5765,6 +6096,16 @@ class DocumentView(QScrollArea):
                                         text=w.field_name)
         if not ok or not name.strip():
             return
+        mine = self._field_dict(w)
+        taken = {x.field_name for pg in self.doc for x in pg.widgets()
+                 if self._field_dict(x) != mine}
+        if name.strip() != w.field_name and name.strip() in taken and \
+                w.field_type != pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+            # (two fields with one name are one field: typing in one would fill both)
+            QMessageBox.information(self, tr("Field properties"), tr(
+                "Another field is already called {name}: choose another name.").format(
+                    name=name.strip()))
+            return
         choices = None
         if w.field_type in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
             cur = "\n".join(c[1] if isinstance(c, (list, tuple)) else c
@@ -5776,7 +6117,13 @@ class DocumentView(QScrollArea):
         def do():
             pg = self.doc[index]
             ww = pg.load_widget(xref)
-            ww.field_name = name.strip()
+            fx = self._field_dict(ww)
+            if fx != xref:
+                # the name lives on the field above the widget (KanzonasPDF's own fields,
+                # many Acrobat forms): naming the widget changed nothing
+                self.doc.xref_set_key(fx, "T", pymupdf.get_pdf_str(name.strip()))
+            else:
+                ww.field_name = name.strip()
             if choices:
                 ww.choice_values = choices
                 if ww.field_value not in choices:
@@ -6150,26 +6497,31 @@ class DocumentView(QScrollArea):
     def insert_pdf(self, path, at):
         self.insert_files([path], at)
 
-    def insert_files(self, paths, at):
+    def insert_files(self, paths, at, owner=None):
         """Insert PDFs and pictures, in order, before page `at` (-1: at the end), as one undo
         step. Each picture becomes a page the size of the page it follows (the first page
-        when inserted at the start), turned to suit the picture."""
+        when inserted at the start), turned to suit the picture. owner: permissions passwords
+        of PDFs that don't allow copying (combine.owner_passwords)."""
         from .combine import insert_files
         n = self.doc.page_count
         ref = self.page_rects[min(max(at - 1, 0), n - 1) if at != -1 else n - 1]
         self.modify(lambda: insert_files(self.doc, paths, n if at == -1 else at,
-                                         (ref.width, ref.height)), structural=True)
+                                         (ref.width, ref.height), owner), structural=True)
 
     def insert_blank(self, at):
-        r = self.page_rects[min(at, len(self.page_rects) - 1)]
+        """A blank page before page index at, the size of the page it follows (as shown;
+        the first page's when it goes first)."""
+        r = self.page_rects[max(0, min(at - 1, len(self.page_rects) - 1))]
         self.modify(lambda: self.doc.new_page(at, width=r.width, height=r.height),
                     structural=True)
 
     def extract_pages(self, first, last, path):
         if not self.allowed(pymupdf.PDF_PERM_COPY):
             raise PermissionError(tr("Extracting pages is not allowed."))
+        from . import measure
         out = pymupdf.open()
         out.insert_pdf(self.doc, from_page=first, to_page=last)
+        measure.copy_scales(self.doc, out, [(i, i - first) for i in range(first, last + 1)])
         out.save(path, garbage=3, deflate=True)
         out.close()
 
@@ -6199,6 +6551,7 @@ class DocumentView(QScrollArea):
         from collections import deque
         self._search_text = text
         self.search_hits = {}
+        self._search_groups = {}       # page index -> the matches among its hit rects
         self._search_list = []
         self._search_cur = None
         self._search_back = backwards
@@ -6226,12 +6579,15 @@ class DocumentView(QScrollArea):
             i = self._search_todo.popleft()
             if i >= self.doc.page_count:
                 continue
-            hits = self.doc[i].search_for(text)
+            page = self.doc[i]
+            tp = page.get_textpage(flags=self.SEARCH_FLAGS)     # (as search_for makes it)
+            hits = page.search_for(text, textpage=tp)
             if hits:
                 self.search_hits[i] = hits
+                self._search_groups[i] = self._match_groups(tp, hits)
                 self.pages[i].update()
                 if self._search_cur is None:        # first match in the search direction
-                    self._show_hit((i, len(hits) - 1 if self._search_back else 0))
+                    self._show_hit((i, len(self._matches(i)) - 1 if self._search_back else 0))
         if self._search_todo:
             done = self.doc.page_count - len(self._search_todo)
             self.statusMessage.emit(self._search_status() + " " +
@@ -6245,8 +6601,57 @@ class DocumentView(QScrollArea):
             self.statusMessage.emit(self._search_status())
         self.searchChanged.emit(*self.search_position())
 
+    SEARCH_FLAGS = (pymupdf.TEXT_DEHYPHENATE | pymupdf.TEXT_PRESERVE_WHITESPACE |
+                    pymupdf.TEXT_PRESERVE_LIGATURES | pymupdf.TEXT_MEDIABOX_CLIP)
+
+    @staticmethod
+    def _match_groups(textpage, rects):
+        """The matches among search_for's rects: [[rect indices], ...]. Find joins a word
+        split by a hyphen at a line's end, and finds it in two rects: the one ending where
+        a line's last word ends in a hyphen and the next one, on a later line, are one match."""
+        groups = [[k] for k in range(len(rects))]
+        if len(rects) < 2:
+            return groups
+        words = textpage.extractWORDS()
+        ends = {}                       # where such words end, by line
+        for n, w in enumerate(words):
+            if w[4].endswith(("-", "\u00ad", "\u2010")) and \
+                    (n + 1 == len(words) or words[n + 1][5:7] != w[5:7]):   # last on its line
+                ends.setdefault(round(w[1]), []).append(w)
+        if not ends:
+            return groups
+
+        def hyphen_end(r):
+            return any(abs(r.x1 - w[2]) < 0.5 and abs(r.y0 - w[1]) < 0.5 and
+                       abs(r.y1 - w[3]) < 0.5
+                       for y in (round(r.y0) - 1, round(r.y0), round(r.y0) + 1)
+                       for w in ends.get(y, ()))
+        out = []
+        for k, r in enumerate(rects):
+            prev = rects[k - 1] if k else None
+            if prev is not None and len(out[-1]) == 1 and \
+                    r.y0 > prev.y0 + 0.5 * prev.height and hyphen_end(prev):
+                out[-1].append(k)
+            else:
+                out.append([k])
+        return out
+
+    def _matches(self, index):
+        """[[rect indices of one match], ...] of page index's search hits."""
+        rects = self.search_hits.get(index) or []
+        groups = self._search_groups.get(index)
+        if groups is None or sum(len(g) for g in groups) != len(rects):
+            return [[k] for k in range(len(rects))]
+        return groups
+
+    def hit_rects(self, hit):
+        """The rects of search match hit = (page index, match number)."""
+        i, k = hit
+        groups = self._matches(i)
+        return [self.search_hits[i][n] for n in groups[k]] if 0 <= k < len(groups) else []
+
     def _search_count(self):
-        return sum(len(h) for h in self.search_hits.values())
+        return sum(len(self._matches(i)) for i in self.search_hits)
 
     def _step_hit(self, hit, backwards=False):
         """The match after (before) hit, in page order, wrapping around."""
@@ -6254,15 +6659,15 @@ class DocumentView(QScrollArea):
         pages = sorted(self.search_hits)
         if hit is None or hit[0] not in self.search_hits:
             i = pages[-1] if backwards else pages[0]
-            return (i, len(self.search_hits[i]) - 1 if backwards else 0)
+            return (i, len(self._matches(i)) - 1 if backwards else 0)
         i, k = hit
-        if not backwards and k + 1 < len(self.search_hits[i]):
+        if not backwards and k + 1 < len(self._matches(i)):
             return (i, k + 1)
         if backwards and k > 0:
             return (i, k - 1)
         n = bisect.bisect_left(pages, i)
         i = pages[(n + (-1 if backwards else 1)) % len(pages)]
-        return (i, len(self.search_hits[i]) - 1 if backwards else 0)
+        return (i, len(self._matches(i)) - 1 if backwards else 0)
 
     def search_position(self):
         """(number of the match shown, 1-based, or 0; matches found so far; whether the
@@ -6272,7 +6677,7 @@ class DocumentView(QScrollArea):
         if self._search_cur is None:
             return 0, 0, bool(self._search_todo)
         i, k = self._search_cur
-        n = sum(len(h) for p, h in self.search_hits.items() if p < i) + k + 1
+        n = sum(len(self._matches(p)) for p in self.search_hits if p < i) + k + 1
         return n, self._search_count(), bool(self._search_todo)
 
     def _search_status(self):
@@ -6290,7 +6695,7 @@ class DocumentView(QScrollArea):
             # whole-page view: bring the match's page in front, centered, not just the match
             self.show_whole_page(i)
         else:
-            r = w.to_screen(self.search_hits[i][k])
+            r = w.to_screen(self.hit_rects(hit)[0])
             top = w.y() + r.y()
             vbar = self.verticalScrollBar()
             if not (vbar.value() + 40 < top < vbar.value() + self.viewport().height() - 40):
@@ -6314,6 +6719,7 @@ class DocumentView(QScrollArea):
 
     def clear_search(self):
         self.search_hits = {}
+        self._search_groups = {}       # page index -> the matches among its hit rects
         self._search_list = []
         self._search_text = None
         self._search_cur = None
@@ -6360,18 +6766,27 @@ class DocumentView(QScrollArea):
             raise RuntimeError(tr("This PDF hasn't been saved yet: use Save As to choose where."))
         self.commit_pending()
         path = os.path.abspath(path or self.path)
-        tmp = path + ".kanzonas-tmp"
+        # a link to the file: write the file it points to (replacing the link would cut it)
+        target = os.path.realpath(path) if os.path.islink(path) else path
+        tmp = target + ".kanzonas-tmp"
         if self._fonts_added:
             # Text edits may embed whole system fonts; keep only the glyphs actually used.
             try:
                 self.doc.subset_fonts()
+                # text added later must not get the cut-down fonts (see text_edit._insert_font)
+                self.doc.font_salt = getattr(self.doc, "font_salt", 0) + 1
             except Exception:
                 pass
             self._fonts_added = False
         sec = self.security
         try:
             self._write_file(tmp, sec)
-            os.replace(tmp, path)
+            if os.path.exists(target):
+                try:
+                    shutil.copymode(target, tmp)    # (the file keeps its permissions)
+                except OSError:
+                    pass
+            os.replace(tmp, target)
             self.disk_stamp = disk_stamp(path)
         except BaseException:
             # e.g. the file is locked by another program: don't leave the copy next to it
