@@ -17,6 +17,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - CAD mode selects like CAD: click, move, click for a box (left to right selects what's inside, right to left what it touches), or hold the button and draw a lasso; what it will select lights up as you go.
 - A CAD tab (in CAD mode) with Move, Copy, Rotate, Scale, Mirror, Delete, Align, Array and Trim.
 - A CAD command line at the bottom: type M, CO, RO, TR... (or any command's name) and press Enter, as in AutoCAD.
+- In CAD mode, one-letter tool shortcuts can keep working (File > Preferences > Mouse). If you used the CAD-style mouse before, they still work.
 - Free page movement: drag the page anywhere, even when it fits in the window.
 - Faster on big CAD drawings: moving, copying, arrays and trimming are many times quicker.
 
@@ -39,6 +40,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - El modo CAD selecciona como en CAD: clic, mover, clic para un recuadro (de izquierda a derecha selecciona lo que queda dentro, de derecha a izquierda lo que toca), o mantenga presionado el botón y dibuje un lazo; lo que seleccionará se resalta mientras lo dibuja.
 - Una pestaña CAD (en el modo CAD) con Mover, Copiar, Girar, Escalar, Simetría, Eliminar, Alinear, Matriz y Recortar.
 - Una línea de comandos CAD en la parte inferior: escriba M, CO, RO, TR... (o el nombre de cualquier comando) y presione Enter, como en AutoCAD.
+- En el modo CAD, los atajos de una letra de las herramientas pueden seguir funcionando (Archivo > Preferencias > Mouse). Si usaba el mouse estilo CAD antes, siguen funcionando.
 - Movimiento libre de la página: arrastre la página a cualquier lugar, aunque quepa en la ventana.
 - Más rápido en dibujos CAD grandes: mover, copiar, las matrices y recortar son mucho más rápidos.
 

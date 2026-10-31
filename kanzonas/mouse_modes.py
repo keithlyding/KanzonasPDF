@@ -40,7 +40,9 @@ def options(mode):
                               "selection, Shift takes out, Escape clears"), True),
             ("click_click", tr("Click, move, click draws the selection box"), True),
             ("lasso", tr("Hold the button and drag to draw a lasso"), True),
-            ("cad_tab", tr("Show the CAD tab (Move, Copy, Rotate...)"), True)]
+            ("cad_tab", tr("Show the CAD tab (Move, Copy, Rotate...)"), True),
+            ("type_to_line", tr("Letters typed over the drawing go to the command line (off: "
+                                "one-letter tool shortcuts work, as in the other modes)"), True)]
 
 
 def mode(settings):
@@ -77,11 +79,17 @@ def default_tool(m):
 def apply(settings):
     """Set the view behaviors (DocumentView's class attributes) for the mode in use."""
     from .document_view import DocumentView
+    if settings.value("mouse_mode", "") not in MODES and \
+            settings.value("cad_mouse", "false") == "true" and \
+            settings.value("mouse/cad/type_to_line") is None:
+        # Before 1.5 the CAD-style mouse kept the one-letter tool shortcuts: whoever had it on
+        # (and so is in CAD mode now) keeps them, until they switch typing to the command line
+        set_option(settings, "cad", "type_to_line", False)
     m = mode(settings)
     DocumentView.mouse_mode = m
     listed = {k for k, _label, _default in options(m)}
     for key in ("page_wheel", "free_pan", "hand_selects", "wheel_zoom", "plus_cursor",
-                "cad_select", "click_click", "lasso"):
+                "cad_select", "click_click", "lasso", "type_to_line"):
         # an option a mode doesn't list keeps its usual behavior there: the Hand tool picked
         # in Standard or CAD mode still selects the markup it clicks
         on = option(settings, m, key) if key in listed else UNLISTED.get(key, False)

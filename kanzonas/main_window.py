@@ -4123,8 +4123,9 @@ class MainWindow(QMainWindow):
         space after them; Enter when no command runs), as in AutoCAD, instead of being a one-letter tool
         shortcut. Not when a box to type in has the focus, or with Ctrl or Alt held."""
         from .document_view import DocumentView
-        if DocumentView.mouse_mode != "cad" or not self.isActiveWindow():
-            return False
+        if DocumentView.mouse_mode != "cad" or not DocumentView.type_to_line or \
+                not self.isActiveWindow():
+            return False                # (option off: click in the line to type a command)
         fw = QApplication.focusWidget()
         if fw is None or obj is not fw or fw.window() is not self:
             return False

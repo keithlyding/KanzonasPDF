@@ -712,6 +712,7 @@ class DocumentView(QScrollArea):
     cad_select = False          # CAD: window / crossing boxes; clicks add, Shift takes out
     click_click = False         # CAD: click, move, click draws the selection box
     lasso = False               # CAD: holding the button and dragging draws a lasso
+    type_to_line = False        # CAD: letters typed over the drawing go to the command line
     _cad_pick = None            # CAD: a click, move, click box in progress (cad_select.py)
     hand_selects = True         # Hand: clicking a markup selects it
     free_pan = False            # Free page movement: the page can be dragged past its edges

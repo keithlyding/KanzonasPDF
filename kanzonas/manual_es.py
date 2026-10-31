@@ -347,7 +347,9 @@ de escala o una elección (bastan las primeras letras del nombre de un botón: C
 Eliminarlos).</li>
 <li>Escape borra lo que escribió; sin nada escrito, cancela el comando.</li>
 <li>En el modo CAD, los atajos de una sola letra de las herramientas (V para Seleccionar, H para Mano...) escriben en la
-línea de comandos; los atajos con Shift y una letra (Shift+M Longitud, Shift+A Área...) siguen funcionando mientras no
+línea de comandos (Preferencias &gt; Mouse, opciones de CAD: desactive <b>Las letras escritas sobre el dibujo van a la
+línea de comandos</b> para conservarlos como atajos de herramientas; entonces haga clic en la línea de comandos para
+escribir un comando); los atajos con Shift y una letra (Shift+M Longitud, Shift+A Área...) siguen funcionando mientras no
 haya nada escrito, los atajos con Ctrl y Alt (Ctrl+S, Ctrl+Z...) funcionan como siempre, y las herramientas están a un
 nombre de distancia ("mano", "seleccionar"). Enter sigue terminando un polígono o un área que se está dibujando, y la
 barra espaciadora y Enter siguen llenando el campo de formulario al que llevó Tab.</li>
@@ -1115,8 +1117,10 @@ se inicia KanzonasPDF y a la que vuelve Escape) y las opciones de cada modo:
 una marca con la Mano la selecciona (activado).</li>
 <li>CAD: La rueda acerca y aleja en el cursor (Ctrl+rueda desplaza), Cursor en cruz, Lienzo abierto alrededor de las
 páginas, Selección por ventana (azul) y por captura (verde), Clic, mover, clic dibuja el recuadro de selección, Mantenga
-presionado el botón y arrastre para dibujar un lazo, Mostrar la pestaña CAD: todas activadas. Con las dos últimas
-desactivadas, presionar, arrastrar y soltar dibuja un recuadro.</li>
+presionado el botón y arrastre para dibujar un lazo, Mostrar la pestaña CAD, Las letras escritas sobre el dibujo van a la
+línea de comandos: todas activadas (la última está desactivada para quien usaba el mouse estilo CAD antes de la 1.5, así
+siguen funcionando los atajos de una letra que usaba). Con el recuadro de clic, mover, clic y el lazo desactivados,
+presionar, arrastrar y soltar dibuja un recuadro.</li>
 </ul>
 La nota debajo de Desplazar una página por paso de la rueda indica cuándo se aplica: solo mientras la página entera cabe
 en la ventana, como después de Ajustar página.</li>
@@ -1180,7 +1184,7 @@ cuadrícula...).</li>
 <tr><td>Ctrl+F1</td><td>Contraer / expandir la cinta</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Mostrar / ocultar la barra de menús (diseño con cinta)</td></tr>
 <tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
-<tr><td>Letras, Enter (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Enter lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD (los de Shift y una letra, sí).</td></tr>
+<tr><td>Letras, Enter (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Enter lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD (los de Shift y una letra, sí), salvo que Preferencias &gt; Mouse desactive escribir en la línea de comandos.</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>

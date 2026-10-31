@@ -356,7 +356,9 @@ scale factor, or a choice (the first letters of a button's name will do: K for K
 for Delete them).</li>
 <li>Escape clears what you typed; with nothing typed, it cancels the command.</li>
 <li>In CAD mode the one-letter tool shortcuts (V for Select, H for Hand...) type into the command
-line instead; Shift+letter shortcuts (Shift+M Length, Shift+A Area...) still work while nothing
+line instead (Preferences &gt; Mouse, CAD options: turn off <b>Letters typed over the drawing go to
+the command line</b> to keep them as tool shortcuts; then click in the command line to type a
+command); Shift+letter shortcuts (Shift+M Length, Shift+A Area...) still work while nothing
 is typed, Ctrl and Alt shortcuts (Ctrl+S, Ctrl+Z...) work as always, and the tools are a name
 away ("hand", "select"). Enter still finishes a polygon or area being drawn, and Space and Enter
 still fill the form field Tab moved to.</li>
@@ -1132,8 +1134,10 @@ is the one KanzonasPDF starts with and Escape goes back to), and each mode's own
 the Hand selects it (on).</li>
 <li>CAD: The wheel zooms at the cursor (Ctrl+wheel scrolls), Plus cursor, Open canvas around the
 pages, Window (blue) and crossing (green) selection, Click, move, click draws the selection box,
-Hold the button and drag to draw a lasso, Show the CAD tab: all on. With the last two off, a
-press, drag and release draws a box.</li>
+Hold the button and drag to draw a lasso, Show the CAD tab, Letters typed over the drawing go to
+the command line: all on (the last one is off for whoever had the CAD-style mouse before 1.5, so
+the one-letter tool shortcuts they used keep working). With the click, move, click box and the
+lasso off, a press, drag and release draws a box.</li>
 </ul>
 The note under Scroll one page per wheel step says when it applies: only while the whole page
 fits in the window, as after Fit page.</li>
@@ -1197,7 +1201,7 @@ settings...).</li>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>
 <tr><td>Ctrl+Shift+M</td><td>Show / hide the menu bar (ribbon layout)</td></tr>
 <tr><td>F11</td><td>CAD mouse mode on / off (off goes back to Standard or Hand, whichever you had)</td></tr>
-<tr><td>Letters, Enter (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode (Shift+letter ones do).</td></tr>
+<tr><td>Letters, Enter (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode (Shift+letter ones do), unless Preferences &gt; Mouse turns typing to the command line off.</td></tr>
 <tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>

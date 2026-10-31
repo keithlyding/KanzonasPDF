@@ -246,6 +246,39 @@ class CommandLine(Window):
         self.assertIsNone(w._cad_down)
 
 
+class TypingOption(Window):
+    def test_letters_can_stay_tool_shortcuts_in_cad_mode(self):
+        from PySide6.QtCore import QEvent
+        from PySide6.QtGui import QKeyEvent
+        from kanzonas import mouse_modes
+        from kanzonas.document_view import DocumentView
+        v = self.open()
+        self.w.set_mouse_mode("cad")
+        ev = QKeyEvent(QEvent.KeyPress, Qt.Key_R, Qt.NoModifier, "r")
+        self.assertTrue(self.typing(v, ev))                 # on: R goes to the command line
+        mouse_modes.set_option(self.w.settings, "cad", "type_to_line", False)
+        self.w.apply_mouse_mode()
+        self.assertFalse(DocumentView.type_to_line)
+        self.assertFalse(self.typing(v, ev))                # off: R is the Rectangle tool again
+        self.w.settings.remove("mouse/cad/type_to_line")
+
+    def test_who_had_the_cad_style_mouse_keeps_the_letter_shortcuts(self):
+        class Settings(dict):
+            def value(self, k, d=None):
+                return self.get(k, d)
+
+            def setValue(self, k, v):
+                self[k] = v
+        from kanzonas import mouse_modes
+        old = Settings({"cad_mouse": "true"})               # a 1.4.2 user with F11 on
+        self.assertEqual(mouse_modes.apply(old), "cad")
+        self.assertFalse(mouse_modes.option(old, "cad", "type_to_line"))
+        new = Settings({"mouse_mode": "cad"})               # chose CAD mode in 1.5
+        mouse_modes.apply(new)
+        self.assertTrue(mouse_modes.option(new, "cad", "type_to_line"))
+        mouse_modes.apply(self.w.settings)
+
+
 class Busy(unittest.TestCase):
     def test_no_busy_pointer_over_a_message_box(self):
         seen = []

@@ -6943,3 +6943,6 @@ msgstr "{command}: desactivado"
 
 msgid "{text} could be several commands: type more of the name, or pick one in the list with Up and Down and press Enter."
 msgstr "{text} puede ser varios comandos: escriba más del nombre, o elija uno de la lista con Arriba y Abajo y presione Enter."
+
+msgid "Letters typed over the drawing go to the command line (off: one-letter tool shortcuts work, as in the other modes)"
+msgstr "Las letras escritas sobre el dibujo van a la línea de comandos (desactivado: los atajos de una letra de las herramientas funcionan, como en los otros modos)"
