@@ -43,7 +43,7 @@ class Polish(unittest.TestCase):
 
     def test_ctrl_wheel_zooms_around_the_pointer(self):
         v = self.view()
-        v.cad_mouse = False
+        v.wheel_zoom = False
         v.set_zoom(1.0)
         vp = QPoint(300, 200)
         ev = QWheelEvent(QPointF(vp), QPointF(v.viewport().mapToGlobal(vp)), QPoint(0, 0),

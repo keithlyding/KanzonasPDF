@@ -11,7 +11,7 @@ from PySide6.QtGui import (QPalette, QColor, QGuiApplication, QIcon, QIconEngine
 
 ICONS = {
     "image": "image-outline", "attach": "paperclip", "placeholder": "draw-pen",
-    "cad_mouse": "mouse-move-vertical", "grid": "grid", "snap_grid": "magnet",
+    "cad_mouse": "mouse-move-vertical", "free_pan": "pan", "grid": "grid", "snap_grid": "magnet",
     "snap_objects": "vector-point", "snap_page": "border-outside",
     # arrange
     "al_left": "align-horizontal-left", "al_hcenter": "align-horizontal-center",
@@ -43,6 +43,10 @@ ICONS = {
     "m_count": "counter", "m_calibrate": "tape-measure", "redact": "marker-cancel",
     "f_text": "form-textbox", "f_check": "checkbox-marked-outline", "f_radio": "radiobox-marked",
     "f_combo": "form-dropdown", "f_sign": "draw-pen", "f_initials": "alpha-i-box-outline",
+    # CAD tab
+    "cad_move": "cursor-move", "cad_copy": "content-copy", "cad_rotate": "rotate-right-variant",
+    "cad_scale": "resize", "cad_mirror": "reflect-horizontal", "cad_delete": "delete-outline",
+    "cad_align": "vector-link", "cad_array": "dots-grid", "cad_trim": "content-cut",
 }
 
 _mode = "light"

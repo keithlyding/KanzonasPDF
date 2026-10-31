@@ -9,14 +9,19 @@ from PySide6.QtCore import Qt, QRectF
 from PySide6.QtGui import QImage, QPainter, QPen, QColor, QFont, QFontMetricsF
 
 from . import signatures
+from .i18n import tr
 
-PRESETS = ["APPROVED", "APPROVED AS NOTED", "REVIEWED", "REVISE AND RESUBMIT", "REJECTED",
-           "NOT APPROVED", "DRAFT", "FINAL", "FOR CONSTRUCTION", "NOT FOR CONSTRUCTION",
-           "FOR INFORMATION ONLY", "RECEIVED", "CONFIDENTIAL", "VOID", "COMPLETED"]
+# The stamp words offered, in the user's language. The word picked is what's printed and
+# kept in the stamp (its label); nothing looks a label up in this list, so a stamp placed in
+# one language keeps its word in the other.
+PRESETS = [tr("APPROVED"), tr("APPROVED AS NOTED"), tr("REVIEWED"), tr("REVISE AND RESUBMIT"),
+           tr("REJECTED"), tr("NOT APPROVED"), tr("DRAFT"), tr("FINAL"), tr("FOR CONSTRUCTION"),
+           tr("NOT FOR CONSTRUCTION"), tr("FOR INFORMATION ONLY"), tr("RECEIVED"),
+           tr("CONFIDENTIAL"), tr("VOID"), tr("COMPLETED")]
 IMAGE_PREFIX = "image:"
 # fill-in stamps: you type the values when placing them (double-click one to change them)
 FORM_PREFIX = "form:"
-FORM_PRESETS = [FORM_PREFIX + "PO #|Date ordered", FORM_PREFIX + "Req #|Date submitted"]
+FORM_PRESETS = [FORM_PREFIX + tr("PO #|Date ordered"), FORM_PREFIX + tr("Req #|Date submitted")]
 
 
 def form_fields(label):
@@ -31,7 +36,8 @@ def form_title(label):
 
 
 def is_date_field(name):
-    return name.lower().startswith("date")
+    # a stamp made in either language: "Date ordered", "Fecha de pedido"
+    return name.lower().startswith(("date", tr("Date").lower()))
 SCALE = 4          # render resolution: pixels per point
 
 
@@ -141,7 +147,7 @@ def ask_form_values(parent, label, values=None):
     fields = form_fields(label)
     values = list(values or [])
     dlg = QDialog(parent)
-    dlg.setWindowTitle(form_title(label) + " stamp")
+    dlg.setWindowTitle(tr("{name} stamp").format(name=form_title(label)))
     form = QFormLayout(dlg)
     edits = []
     for k, f in enumerate(fields):
@@ -172,7 +178,7 @@ def image_stamp(file_name):
 
 def stamp_png(props, author):
     """(png bytes, aspect) for a stamp's properties."""
-    label = props.get("label") or "APPROVED"
+    label = props.get("label") or tr("APPROVED")
     if label.startswith(IMAGE_PREFIX):
         return image_stamp(label[len(IMAGE_PREFIX):])
     if label.startswith(FORM_PREFIX):

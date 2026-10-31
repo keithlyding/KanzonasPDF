@@ -11,8 +11,10 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                                QHeaderView, QAbstractItemView, QFileDialog)
 
 from . import annotations as A
+from .i18n import tr
 
-COLUMNS = ["Page", "Type", "Comment / text", "Author", "Date", "Color"]
+COLUMNS = [tr("Page"), tr("Type"), tr("Comment / text"), tr("Author"), tr("Date"), tr("Color")]
+ALL_TYPES = tr("All types")
 _SKIP = (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_WIDGET, pymupdf.PDF_ANNOT_LINK)
 
 
@@ -38,11 +40,12 @@ def collect(doc, pages=None):
             model = A.read(a)
             label = A.LABELS.get(model["kind"], a.type[1]) if model else a.type[1]
             if model and model["kind"] == "comment":
-                label = f"Comment ({model['props'].get('markup', 'highlight')})"
+                style = model['props'].get('markup', 'highlight')
+                label = tr("Comment ({style})").format(style=A.LABELS.get(style, style).lower())
             clouds = (a.border or {}).get("clouds", -1) or -1
             if (model and model["kind"] == "rect" and model["props"].get("cloud")) or \
                     (a.type[0] == pymupdf.PDF_ANNOT_SQUARE and clouds > 0):
-                label = "Cloud"
+                label = A.LABELS["cloud"]
             info = a.info
             text = info.get("content", "") or ""
             color = (model["props"].get("stroke") if model else None) or \
@@ -72,14 +75,14 @@ class MarkupsPanel(QWidget):
         lay.setContentsMargins(4, 4, 4, 4)
         bar = QHBoxLayout()
         self.type_filter = QComboBox()
-        self.type_filter.addItem("All types")
+        self.type_filter.addItem(ALL_TYPES)
         self.text_filter = QLineEdit()
-        self.text_filter.setPlaceholderText("Filter by text or author")
+        self.text_filter.setPlaceholderText(tr("Filter by text or author"))
         self.text_filter.setClearButtonEnabled(True)
         self.count = QLabel()
-        export = QPushButton("Export CSV...")
+        export = QPushButton(tr("Export CSV..."))
         export.clicked.connect(self.export_csv)
-        bar.addWidget(QLabel("Show:"))
+        bar.addWidget(QLabel(tr("Show:")))
         bar.addWidget(self.type_filter)
         bar.addWidget(self.text_filter, 1)
         bar.addWidget(self.count)
@@ -130,9 +133,9 @@ class MarkupsPanel(QWidget):
         cur = self.type_filter.currentText()
         self.type_filter.blockSignals(True)
         self.type_filter.clear()
-        self.type_filter.addItem("All types")
+        self.type_filter.addItem(ALL_TYPES)
         self.type_filter.addItems(types)
-        self.type_filter.setCurrentText(cur if cur in types else "All types")
+        self.type_filter.setCurrentText(cur if cur in types else ALL_TYPES)
         self.type_filter.blockSignals(False)
         self.table.setSortingEnabled(False)
         # sizing columns to their contents on every setItem made filling quadratic (2,000
@@ -166,10 +169,10 @@ class MarkupsPanel(QWidget):
         for r in range(self.table.rowCount()):
             label = self.table.item(r, 1).text()
             hay = (self.table.item(r, 2).text() + " " + self.table.item(r, 3).text()).lower()
-            hide = (t != "All types" and label != t) or (q and q not in hay)
+            hide = (t != ALL_TYPES and label != t) or (q and q not in hay)
             self.table.setRowHidden(r, bool(hide))
             shown += 0 if hide else 1
-        self.count.setText(f"{shown} of {self.table.rowCount()}")
+        self.count.setText(tr("{shown} of {total}").format(shown=shown, total=self.table.rowCount()))
 
     def _key(self, row):
         return self.table.item(row, 0).data(Qt.UserRole)
@@ -187,8 +190,8 @@ class MarkupsPanel(QWidget):
         self.activated.emit(*key)
         menu = QMenu(self)
         if self._editable(*key):
-            menu.addAction("Edit text...", lambda: self.editRequested.emit(*key))
-        menu.addAction("Delete\tDel", lambda: self.deleteRequested.emit(*key))
+            menu.addAction(tr("Edit text..."), lambda: self.editRequested.emit(*key))
+        menu.addAction(tr("Delete") + "\tDel", lambda: self.deleteRequested.emit(*key))
         menu.exec(self.table.viewport().mapToGlobal(pos))
 
     def _editable(self, index, xref):
@@ -209,13 +212,16 @@ class MarkupsPanel(QWidget):
         return super().eventFilter(obj, e)
 
     def export_csv(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Export markups", "markups.csv",
-                                              "CSV (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(self, tr("Export markups"), "markups.csv",
+                                              tr("CSV files") + " (*.csv)")
         if not path:
             return
         with open(path, "w", newline="", encoding="utf-8-sig") as f:
+            from .export import csv_cell
             w = csv.writer(f)
             w.writerow(COLUMNS)
             for r in range(self.table.rowCount()):
                 if not self.table.isRowHidden(r):
-                    w.writerow([self.table.item(r, c).text() for c in range(len(COLUMNS))])
+                    # (comment text comes from the PDF: never a live spreadsheet formula)
+                    w.writerow([csv_cell(self.table.item(r, c).text())
+                                for c in range(len(COLUMNS))])

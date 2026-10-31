@@ -19,6 +19,7 @@ import weakref
 import pymupdf
 
 from . import pdfcoords
+from .i18n import tr
 
 
 def each_annot(page, types=None):
@@ -90,7 +91,8 @@ DEFAULTS = {
     "m_volume": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "depth": 1.0,
                  "opacity": 1.0},
     "m_count": {"stroke": "#0050ff", "fontsize": 9, "group": "Count 1", "opacity": 1.0},
-    "stamp": {"label": "APPROVED", "stroke": "#c00000", "name": True, "date": True, "opacity": 1.0},
+    # the stamp word is printed on the page: in the user's language (a placed stamp keeps its own)
+    "stamp": {"label": tr("APPROVED"), "stroke": "#c00000", "name": True, "date": True, "opacity": 1.0},
     "line": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "arrow": {"stroke": "#d00000", "width": 2.0, "head": "open", "opacity": 1.0},
     "ink": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
@@ -99,16 +101,21 @@ DEFAULTS = {
     "placeholder": {"for": "initials"},
     "attach": {"stroke": "#0050ff", "icon": "Paperclip", "opacity": 1.0},
 }
-LABELS = {"addtext": "Add text", "edittext": "Edit text", "highlight": "Highlight", "comment": "Comment", "underline": "Underline",
-          "strikeout": "Strikeout", "squiggly": "Squiggly", "note": "Sticky note", "textbox": "Text box",
-          "rect": "Rectangle", "ellipse": "Ellipse", "line": "Line", "arrow": "Arrow",
-          "ink": "Pen", "polygon": "Polygon", "polyline": "Polyline", "callout": "Callout",
-          "stamp": "Stamp", "field": "Form field", "cloud": "Cloud",
-          "m_length": "Length", "m_poly": "Polylength", "m_area": "Area", "m_count": "Count",
-          "m_angle": "Angle", "m_radius": "Radius", "m_perimeter": "Perimeter",
-          "m_volume": "Volume",
-          "image": "Image", "attach": "Attached file", "redact": "Redaction mark",
-          "placeholder": "Signature placeholder"}
+# display names (Markups list, Properties, measurement text in the markup): never read back
+LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": tr("Highlight"),
+          "comment": tr("Comment"), "underline": tr("Underline"),
+          "strikeout": tr("Strikeout"), "squiggly": tr("Squiggly"), "note": tr("Sticky note"),
+          "textbox": tr("Text box"),
+          "rect": tr("Rectangle"), "ellipse": tr("Ellipse"), "line": tr("Line"), "arrow": tr("Arrow"),
+          "ink": tr("Pen"), "polygon": tr("Polygon"), "polyline": tr("Polyline"),
+          "callout": tr("Callout"),
+          "stamp": tr("Stamp"), "field": tr("Form field"), "cloud": tr("Cloud"),
+          "m_length": tr("Length"), "m_poly": tr("Polylength"), "m_area": tr("Area"),
+          "m_count": tr("Count"),
+          "m_angle": tr("Angle"), "m_radius": tr("Radius"), "m_perimeter": tr("Perimeter"),
+          "m_volume": tr("Volume"),
+          "image": tr("Image"), "attach": tr("Attached file"), "redact": tr("Redaction mark"),
+          "placeholder": tr("Signature placeholder")}
 # fonts a text box comment can use: the standard ones every PDF viewer has, so it looks the
 # same everywhere (FreeText annotations can't carry other fonts reliably)
 COMMENT_FONTS = {"Helvetica": "helv", "Times": "TiRo", "Courier": "Cour"}
@@ -120,7 +127,8 @@ PAGE_TEXT_TOOLS = {
     "edittext": {"font": "", "bold": False, "italic": False, "fontsize": 0},   # 0: keep the line's
 }
 
-PLACEHOLDER_TEXT = {"signature": "SIGN HERE", "initials": "INITIAL HERE"}
+# printed in the sign-here box (made from the placeholder's kind, never read back)
+PLACEHOLDER_TEXT = {"signature": tr("SIGN HERE"), "initials": tr("INITIAL HERE")}
 HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE_CLOSED_ARROW,
          "open (reversed)": pymupdf.PDF_ANNOT_LE_R_OPEN_ARROW,
          "closed (reversed)": pymupdf.PDF_ANNOT_LE_R_CLOSED_ARROW,
@@ -436,7 +444,7 @@ def write(page, model):
                                     rotate=(page.rotation + quarter(p)) % 360)
     elif kind == "stamp":
         from . import stamps
-        label = p.get("label") or "APPROVED"
+        label = p.get("label") or tr("APPROVED")
         if model.get("detail") is None and not label.startswith(stamps.FORM_PREFIX):
             model["detail"] = stamps.detail_line(model.get("author") or author(),
                                                  p.get("name", True), p.get("date", True))
@@ -449,7 +457,7 @@ def write(page, model):
         else:
             png, _aspect = stamps.render(label, p.get("stroke") or "#c00000", model["detail"])
         if png is None:
-            raise ValueError("The stamp image is missing from the stamp library.")
+            raise ValueError(tr("The stamp image is missing from the stamp library."))
         turn = page.rotation + angle(model)
         if turn % 360:
             # pre-rotate the image: undo the page's display rotation (so it reads upright)
@@ -471,7 +479,7 @@ def write(page, model):
         a.set_colors(stroke=(0.85, 0, 0))
     elif kind == "placeholder":
         who = p.get("for", "initials")
-        a = page.add_freetext_annot(model["rect"], PLACEHOLDER_TEXT.get(who, "SIGN HERE"),
+        a = page.add_freetext_annot(model["rect"], PLACEHOLDER_TEXT.get(who, PLACEHOLDER_TEXT["signature"]),
                                     fontsize=min(10.0, max(5.0, model["rect"].height * 0.4)),
                                     fontname="helv", text_color=(0.75, 0, 0),
                                     fill_color=(1, 1, 0.75), border_width=1, align=1,
@@ -522,11 +530,11 @@ def write(page, model):
             label_text = measure.measure_text(kind, model["points"], page, props=p)
             info["content"] = f"{LABELS[kind]}: " + label_text.replace("\n", ", ")
     if kind == "image":
-        info["content"] = text or model.get("filename") or "Image"
+        info["content"] = text or model.get("filename") or tr("Image")
     if kind == "redact":
-        info["content"] = text or "Redaction (not applied yet)"
+        info["content"] = text or tr("Redaction (not applied yet)")
     if kind == "placeholder":
-        info["content"] = PLACEHOLDER_TEXT.get(p.get("for"), "SIGN HERE").capitalize()
+        info["content"] = PLACEHOLDER_TEXT.get(p.get("for"), PLACEHOLDER_TEXT["signature"]).capitalize()
     if kind == "stamp":
         from . import stamps
         label = p.get("label") or ""
@@ -758,6 +766,54 @@ def moved(model, delta):
         m["points"] = [q + delta for q in m["points"]]
     if "strokes" in m:
         m["strokes"] = [[q + delta for q in s] for s in m["strokes"]]
+    return m
+
+
+def transformed(model, mat):
+    """Copy of the markup under mat (a Matrix in page coordinates: a CAD tab Move, Rotate,
+    Scale, Mirror or Align). Lines, polygons, clouds, ink and measurements follow it exactly;
+    a box (rectangle, ellipse, stamp, picture, text box...) goes by its center, its size and
+    its turn (a picture or stamp keeps reading the right way round when mirrored; text boxes
+    and callouts turn in quarter turns). Highlighted words' quads only move."""
+    mat = pymupdf.Matrix(mat)
+    m = copy(model)
+    if "points" in m:
+        m["points"] = [pymupdf.Point(q) * mat for q in m["points"]]
+    if "strokes" in m:
+        m["strokes"] = [[pymupdf.Point(q) * mat for q in s] for s in m["strokes"]]
+    if "quads" in m:
+        d = pymupdf.Point(mat.e, mat.f)
+        m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d) for q in m["quads"]]
+    if "rect" in m:
+        r = pymupdf.Rect(m["rect"])
+        c = pymupdf.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2) * mat
+        sx, sy = math.hypot(mat.a, mat.b), math.hypot(mat.c, mat.d)
+        if model["kind"] in POINTED or model["kind"] == "ink":
+            sx = sy = 1.0               # (a box kept with the points: they say where it is)
+        w, h = r.width * sx, r.height * sy
+        turn = math.degrees(math.atan2(mat.b, mat.a))          # clockwise on screen
+        mirrored = mat.a * mat.d - mat.b * mat.c < 0
+        a = angle(model)
+        if mirrored:
+            # a mirror image of a box is the same box turned: of the two turns that give it,
+            # the one nearer upright, so stamps, pictures and text keep reading the right way
+            new = min(((-a - turn) % 360, (-a - turn + 180) % 360),
+                      key=lambda x: min(x, 360 - x))
+        else:
+            new = (a - turn) % 360
+        if model["kind"] in ("rect", "ellipse"):
+            new %= 180                  # (turned half round, they're the same shape)
+        if model["kind"] in QUARTER_TURNS:
+            # text boxes and callouts turn in quarter turns; a quarter turn turns their box
+            q = int(round((new - a) / 90.0)) % 4
+            new = int(round(new / 90.0)) * 90 % 360
+            if q % 2:
+                w, h = h, w
+        if model["kind"] in ROTATABLE + QUARTER_TURNS and \
+                model["kind"] not in POINTED + ("ink",) and abs(new - a) > 1e-6:
+            m["props"]["rotation"] = round(new, 2) if model["kind"] not in QUARTER_TURNS \
+                else new
+        m["rect"] = pymupdf.Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
     return m
 
 

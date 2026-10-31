@@ -43,7 +43,7 @@ class EscapeTool(unittest.TestCase):
 
         def esc():
             v.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Escape, Qt.NoModifier))
-        w.settings.setValue("start_tool", "hand")
+        w.settings.setValue("mouse_mode", "hand")
         w.set_tool("stamp")
         v.pages[0]._ghost = v.pages[0].rect().center()      # stamp preview under the mouse
         esc()
@@ -54,7 +54,7 @@ class EscapeTool(unittest.TestCase):
         self.assertEqual(w.tool, "hand")                     # not "the last basic tool"
         esc()
         self.assertEqual(w.tool, "hand")
-        w.settings.setValue("start_tool", "select")
+        w.settings.setValue("mouse_mode", "standard")
         for tool in ("rect", "crop", "hand", "m_length"):
             w.set_tool(tool)
             esc()
@@ -62,7 +62,7 @@ class EscapeTool(unittest.TestCase):
 
     def test_escape_works_when_a_toolbar_button_has_focus(self):
         w = self.window()
-        w.settings.setValue("start_tool", "hand")
+        w.settings.setValue("mouse_mode", "hand")
         w.set_tool("crop")
         btn = QToolButton(w)
         btn.show()

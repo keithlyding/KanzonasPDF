@@ -12,6 +12,8 @@ import threading
 
 import pymupdf
 
+from .i18n import tr
+
 OCR_DPI = 300
 MAX_SIDE_PX = 13000     # 42x30in sheets still get ~300 dpi; the image is grayscale (1 byte/px)
 TILE_PX = 1600          # OCR runs on overlapping tiles so small text keeps full resolution
@@ -19,10 +21,11 @@ OVERLAP_PX = 200        #   (and memory stays small) on big drawings
 MIN_CONFIDENCE = 0.5
 # Accuracy levels: the engine has no quality dial, so accuracy = how sharp the page image is.
 ACCURACY_DPI = {"fast": 150, "normal": 300, "high": 400}
-ACCURACY_LABELS = {"auto": "Auto (fast, redo sharper if needed)",
-                   "fast": "Fast (150 dpi: clean scans, normal-size text)",
-                   "normal": "Normal (300 dpi)",
-                   "high": "High (400 dpi, checks every orientation: small print, poor scans)"}
+ACCURACY_LABELS = {"auto": tr("Auto (fast, redo sharper if needed)"),
+                   "fast": tr("Fast (150 dpi: clean scans, normal-size text)"),
+                   "normal": tr("Normal (300 dpi)"),
+                   "high": tr("High (400 dpi, checks every orientation: small print, poor "
+                              "scans)")}
 
 _engine = None
 _lock = threading.Lock()

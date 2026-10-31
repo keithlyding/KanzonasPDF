@@ -54,7 +54,8 @@ def get():
     md = QGuiApplication.clipboard().mimeData()
     if md is None or not md.hasFormat(MIME):
         return None, None
-    kind, _sep, cid = bytes(md.data(MIME)).decode().partition(":")
+    # (another program may have put anything under our format: not ours, then)
+    kind, _sep, cid = bytes(md.data(MIME)).decode("utf-8", "replace").partition(":")
     if cid != _state["id"]:
         return None, None
     return kind, _state["payload"]

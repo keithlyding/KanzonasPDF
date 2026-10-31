@@ -12,6 +12,8 @@ from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath
 from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
+from . import cad_select
+from .i18n import tr
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
@@ -169,6 +171,7 @@ class PageWidget(QWidget):
         self._poly = []             # polygon / polyline points so far (widget coords)
         self._poly_hover = None
         self._marquee = False       # Ctrl+drag with Select: selection box only, no text
+        self._cad_down = None       # CAD mode: a press with Select / Edit objects (cad_select.py)
         self._snap_mark = None      # (widget point, "object" | "page" | "grid") last snap
         self._obj_hover = None      # Edit objects: picture under the mouse
         self._obj_edit = None       # Edit objects: dragging / resizing the selected picture
@@ -340,6 +343,7 @@ class PageWidget(QWidget):
 
         tool = self.view.tool
         self._paint_text_selection(p, page, tool)
+        cad_select.paint(self, p)
 
         if tool in FORM_TOOLS:
             p.setPen(QPen(QColor(0, 90, 200), 1, Qt.DashLine))
@@ -448,6 +452,8 @@ class PageWidget(QWidget):
             p.drawPath(path)
 
         self._paint_selection(p, page)
+        if self.view._cad_cmd is not None:
+            self.view._cad_cmd.paint(self, p)
         self._paint_snap_mark(p)
 
         if self.view.current_page() == self.index and self.view.page_count() > 1:
@@ -518,7 +524,7 @@ class PageWidget(QWidget):
         fm = QFontMetrics(self.font())
         for anchor, text, xref in self.view.comment_cards(self.index):
             a = self.to_screen(anchor, page)
-            body = text if text.strip() else "(empty note)"
+            body = text if text.strip() else tr("(empty note)")
             br = fm.boundingRect(0, 0, CARD_W - 12, 2000, Qt.TextWordWrap, body)
             h = min(br.height(), fm.lineSpacing() * 6) + 10
             x = a.right() + 14
@@ -662,6 +668,20 @@ class PageWidget(QWidget):
             return {}                   # text is moved, not resized (Edit text changes it)
         return box_handles(self.to_screen(self.view.selected_objects_rect()).adjusted(-2, -2, 2, 2))
 
+    def _selected_size(self, items):
+        """How many line pieces the selected objects have (worked out once per selection)."""
+        key = (id(self.view.obj_sel), len(items))
+        if getattr(self, "_size_key", None) != key:
+            self._size_key = key
+            total = 0
+            for it in items:
+                total += sum(max(0, len(line) - 1)
+                             for line in self.view.object_lines(self.index, it))
+                if total > 30000:
+                    break
+            self._size = total
+        return self._size
+
     def _draw_object(self, p, item, page):
         for line in self.view.object_lines(self.index, item):
             pts = [self.to_screen_pt(q, page) for q in line]
@@ -693,9 +713,12 @@ class PageWidget(QWidget):
             # and the old preview was an empty box, so the shapes looked like they vanished.
             self._paint_object_ghost(p, ed, page)
         else:
-            if len(items) <= 3000:
+            if len(items) <= 3000 and self._selected_size(items) <= 30000:
                 for it in items:
                     self._draw_object(p, it, page)
+            elif len(items) <= 3000:            # (a huge drawing: each one's box)
+                for it in items:
+                    p.drawRect(self.to_screen(it["rect"], page))
             p.setPen(QPen(blue, 1, Qt.DashLine))
             p.drawRect(self.to_screen(self.view.selected_objects_rect(), page).adjusted(-2, -2, 2, 2))
             if ed is None:
@@ -894,27 +917,27 @@ class PageWidget(QWidget):
         one_pic = len(items) == 1 and items[0]["kind"] == "picture"
         has_text = any(it["kind"] == "text" for it in items)
         menu = QMenu(self)
-        a = menu.addAction("Copy picture", self.view.copy_picture)
+        a = menu.addAction(tr("Copy picture"), self.view.copy_picture)
         a.setEnabled(one_pic)
-        a = menu.addAction("Save picture as...", self.view.save_picture)
+        a = menu.addAction(tr("Save picture as..."), self.view.save_picture)
         a.setEnabled(one_pic and bool(items[0]["xref"]))
         menu.addSeparator()
-        a = menu.addAction("Ungroup", self.view.ungroup_objects)
+        a = menu.addAction(tr("Ungroup"), self.view.ungroup_objects)
         a.setEnabled(any(it["kind"] == "group" for it in items))
         menu.addSeparator()
-        for deg, label in ((90, "Rotate clockwise"), (-90, "Rotate counterclockwise")):
+        for deg, label in ((90, tr("Rotate clockwise")), (-90, tr("Rotate counterclockwise"))):
             a = menu.addAction(label, lambda d=deg: self.view.rotate_objects(d))
             a.setEnabled(not has_text)
         menu.addSeparator()
-        for how, label, keys in (("front", "Bring to front", "Ctrl+Shift+]"),
-                                 ("forward", "Bring forward", "Ctrl+]"),
-                                 ("backward", "Send backward", "Ctrl+["),
-                                 ("back", "Send to back", "Ctrl+Shift+[")):
+        for how, label, keys in (("front", tr("Bring to front"), "Ctrl+Shift+]"),
+                                 ("forward", tr("Bring forward"), "Ctrl+]"),
+                                 ("backward", tr("Send backward"), "Ctrl+["),
+                                 ("back", tr("Send to back"), "Ctrl+Shift+[")):
             a = menu.addAction(f"{label}\t{keys}", lambda h=how: self.view.arrange_objects(h))
             a.setEnabled(not has_text)
         self._link_actions(menu, pdf, True)
         menu.addSeparator()
-        menu.addAction("Delete\tDel", self.view.delete_objects)
+        menu.addAction(tr("Delete") + "\tDel", self.view.delete_objects)
         menu.exec(e.globalPosition().toPoint())
 
     def _sig_box(self):
@@ -941,10 +964,10 @@ class PageWidget(QWidget):
             return
         menu.addSeparator()
         if selected:
-            menu.addAction("Add link...", v.add_link_to_selection)
+            menu.addAction(tr("Add link..."), v.add_link_to_selection)
         if here is not None:
-            menu.addAction("Edit link...", lambda: v.edit_link(self.index, here))
-            menu.addAction("Remove link", lambda: v.remove_link_at(self.index, pdf))
+            menu.addAction(tr("Edit link..."), lambda: v.edit_link(self.index, here))
+            menu.addAction(tr("Remove link"), lambda: v.remove_link_at(self.index, pdf))
 
     def _content_menu(self, e, pdf):
         """Right-click on the page: copy / cut / paste / delete, and for selected text the
@@ -965,11 +988,11 @@ class PageWidget(QWidget):
         menu = QMenu(self)
         if v.tool == "edittext" and v.text_line_rect(self.index, pdf) is not None:
             # the text written into the page under the pointer (its whole paragraph)
-            menu.addAction("Delete text", lambda: v.delete_text_at(self.index, pdf))
+            menu.addAction(tr("Delete text"), lambda: v.delete_text_at(self.index, pdf))
             menu.addSeparator()
         # menu-only actions (the Edit menu's own ones keep their enabled state)
-        for what, label, keys in (("cut", "Cut", "Ctrl+X"), ("copy", "Copy", "Ctrl+C"),
-                                  ("paste", "Paste", "Ctrl+V")):
+        for what, label, keys in (("cut", tr("Cut"), "Ctrl+X"), ("copy", tr("Copy"), "Ctrl+C"),
+                                  ("paste", tr("Paste"), "Ctrl+V")):
             act = menu.addAction(f"{label}\t{keys}")
             act.triggered.connect(lambda _=False, w=what: win._clipboard(w))
             if what != "paste":
@@ -978,8 +1001,8 @@ class PageWidget(QWidget):
             if not v.extra and v.selected_model is not None and \
                     A.text_editable(v.selected_model):
                 sel = v.selection
-                menu.addAction("Edit text...", lambda: v.edit_annot_text(*sel))
-            menu.addAction("Delete", v.delete_selected)
+                menu.addAction(tr("Edit text..."), lambda: v.edit_annot_text(*sel))
+            menu.addAction(tr("Delete"), v.delete_selected)
         elif on_text:
             # right-click on selected text that is also highlighted: offer to remove the markup
             xref = v.annot_at(self.index, pdf)
@@ -988,17 +1011,18 @@ class PageWidget(QWidget):
                     v.clear_text_selection()
                     v.select_xref(self.index, x)
                     v.delete_selected()
-                menu.addAction("Delete " + v.annot_tooltip(self.index, pdf).split(":")[0].lower(),
-                               remove)
+                menu.addAction(tr("Delete {what}").format(
+                    what=v.annot_label(self.index, pdf).lower()), remove)
         if has_text:
             menu.addSeparator()
-            for tool, label in (("highlight", "Highlight"), ("underline", "Underline"),
-                                ("strikeout", "Strike out"), ("comment", "Comment on text..."),
-                                ("redact", "Mark for redaction")):
+            for tool, label in (("highlight", tr("Highlight")), ("underline", tr("Underline")),
+                                ("strikeout", tr("Strike out")),
+                                ("comment", tr("Comment on text...")),
+                                ("redact", tr("Mark for redaction"))):
                 menu.addAction(label, lambda t=tool: v.markup_text_selection(t))
         self._link_actions(menu, pdf, has_text or has_markups)
         menu.addSeparator()
-        act = menu.addAction("Select all text\tCtrl+A")
+        act = menu.addAction(tr("Select all text") + "\tCtrl+A")
         act.triggered.connect(lambda: win._clipboard("all"))
         menu.exec(e.globalPosition().toPoint())
 
@@ -1009,10 +1033,10 @@ class PageWidget(QWidget):
                     self.setCursor(handle_cursor(hid))
                     return
         item = self.view.object_at(self.index, self.to_pdf(pos))
-        if item is not None:
+        if item is not None and not self.view.cad_select:
             self.setCursor(Qt.SizeAllCursor)
         else:
-            self.unsetCursor()
+            self.unsetCursor()          # (CAD mode: dragging draws a lasso, nothing moves)
         key = item["n"] if item is not None else None
         if key != (self._obj_hover["n"] if self._obj_hover is not None else None):
             self._obj_hover = item
@@ -1090,6 +1114,15 @@ class PageWidget(QWidget):
             self._mid_pan = True
             self.view.begin_pan(e.globalPosition())
             return
+        cmd = self.view._cad_cmd
+        if cmd is not None:
+            # a CAD tab command takes the clicks (snapped); right-click = Enter
+            if e.button() == Qt.LeftButton:
+                pos = self._snap(e.position(), e) if cmd.snap else e.position()
+                cmd.click(self.index, self.to_pdf(pos))
+            elif e.button() == Qt.RightButton:
+                cmd.enter()
+            return
         if e.button() == Qt.RightButton and self.view.tool == "editobjects":
             self._objects_menu(e, self.to_pdf(e.position()))
             return
@@ -1121,10 +1154,14 @@ class PageWidget(QWidget):
             link = self.view.link_to_follow(self.index, pdf)
             if link is not None:
                 self._link_press = (link, pos)
+        if cad_select.active(self):
+            cad_select.press(self, e, pos, pdf)
+            return
         if tool == "hand":
             # like Adobe and PDF-XChange: clicking a markup with the Hand selects it (to
             # move, restyle or delete), unless it's a link; anywhere else drags the page
             if self._link_press is None and self.view.show_markups and \
+                    self.view.hand_selects and \
                     self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
                 return
             self.view.begin_pan(e.globalPosition())
@@ -1344,6 +1381,15 @@ class PageWidget(QWidget):
             return
         pos = e.position()
         tool = self.view.tool
+        if self.view._cad_cmd is not None and not e.buttons():
+            cmd = self.view._cad_cmd
+            cmd.move(self.index, self.to_pdf(self._snap(pos, e) if cmd.snap else pos))
+            return
+        if self._cad_down is not None and e.buttons():
+            cad_select.move(self, e, pos)
+            return
+        if not e.buttons():
+            cad_select.hover(self, e)
         if not e.buttons():
             if tool in SIGN_TOOLS or tool == "stamp":
                 self._ghost = pos
@@ -1372,7 +1418,7 @@ class PageWidget(QWidget):
                         self.setCursor(Qt.PointingHandCursor)
                     tip = self.view.link_tip(link)
                     if tool == "select":
-                        tip += "\nCtrl+click to open"
+                        tip += "\n" + tr("Ctrl+click to open")
                     QToolTip.showText(self.mapToGlobal(pos.toPoint()), tip, self)
                     if tool == "hand":
                         return
@@ -1448,10 +1494,14 @@ class PageWidget(QWidget):
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     self.setCursor(handle_cursor(hid))
                     return
-        over = self.view.annot_at(self.index, self.to_pdf(pos)) is not None or \
-            self._card_at(pos) is not None
-        if over:
-            self.setCursor(Qt.SizeAllCursor)
+        over = self.view.annot_at(self.index, self.to_pdf(pos))
+        if over is None:
+            over = self._card_at(pos)
+        if over is not None:
+            if self.view.cad_select and self.view.tool == "select":
+                self.unsetCursor()      # CAD mode: dragging draws a lasso, nothing moves
+            else:
+                self.setCursor(Qt.SizeAllCursor)
             card = self._card_at(pos)
             if card is None:
                 tip = self.view.annot_tooltip(self.index, self.to_pdf(pos))
@@ -1480,6 +1530,9 @@ class PageWidget(QWidget):
             return
         tool = self.view.tool
         pos = e.position()
+        if self._cad_down is not None:
+            cad_select.release(self, e, pos)
+            return
         if self._text_move is not None:
             tm, self._text_move = self._text_move, None
             self.unsetCursor()
@@ -1561,6 +1614,7 @@ class PageWidget(QWidget):
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 
     def mouseDoubleClickEvent(self, e):
+        cad_select.cancel(self.view)        # (a double-click selects a word: no box after it)
         if self.view.tool in POLY_TOOLS:
             # the double-click's first press already added this point
             self.finish_poly()

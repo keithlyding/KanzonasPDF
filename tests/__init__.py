@@ -14,7 +14,10 @@ ignored), so the tests never read or write the developer's real KanzonasPDF sett
 run the store is still shared, so a test that depends on a remembered option sets it."""
 import atexit
 import gc
+import os
 import tempfile
+
+os.environ.setdefault("KANZONAS_LANG", "en")      # the tests check English texts
 
 from PySide6.QtCore import QCoreApplication, QEvent, QSettings  # noqa: E402  (before atexit)
 from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QMenu

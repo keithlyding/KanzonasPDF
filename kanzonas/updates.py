@@ -1,7 +1,9 @@
 """Update check: asks GitHub for the newest KanzonasPDF release and tells the user about it.
 
 The check only tells the user. The automatic check runs at most once a day, in the background
-(Qt networking), and fails silently when offline or blocked.
+(Qt networking), also while KanzonasPDF stays open for days, and fails silently when offline or
+blocked. The box that tells about a new version shows the short notes (RELEASE_NOTES.md, carried
+in each release's text) of every version newer than the one running.
 
 Portable copies can also update themselves in place (PortableUpdater): download
 KanzonasPDF-portable.zip from the GitHub release, and only if its sha256 matches the digest
@@ -9,20 +11,27 @@ published with that release, unpack it next to the program. A small script
 waits for KanzonasPDF to close, copies the new files over the old ones (the data folder is left
 alone), and starts it again. The path to KanzonasPDF.exe never changes, so file associations
 ("default PDF app") keep working.
+
+Installed copies update in place too (InstallerUpdater): download the release's setup, check
+its sha256 the same way, close KanzonasPDF (saving first), and run the setup quietly over the
+installation; it starts KanzonasPDF again when it's done.
 """
 
 import hashlib
 import json
+import math
 import os
+import re
 import shutil
 import time
 import zipfile
 from urllib.parse import urlparse
 
-from PySide6.QtCore import QObject, QUrl, Signal
+from PySide6.QtCore import QCoreApplication, QObject, QUrl, Signal
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from . import __version__
+from .i18n import tr
 
 REPO = "keithlyding/KanzonasPDF"
 API = "https://api.github.com/repos/" + REPO + "/releases?per_page=20"
@@ -54,7 +63,57 @@ def newest(releases, current=None):
     """The newest published release newer than `current`, as (version, page url), or None.
     Pre-releases count: every 0.x release is one."""
     r = newest_release(releases, current)
-    return (r["tag_name"].lstrip("vV"), r.get("html_url") or RELEASES_PAGE) if r else None
+    return (str(r["tag_name"]).lstrip("vV"), r.get("html_url") or RELEASES_PAGE) if r else None
+
+
+# (a part's text never runs into the next part, also when its closing mark is missing)
+_OPEN = "<!-- kanzonas-notes"
+_CLOSE = "<!-- /kanzonas-notes -->"
+_LANG = re.compile(r"(?: lang=(\w+))? -->")
+
+
+def _notes_blocks(body):
+    """{language: notes} from a release's text. Plain string searching (a release text is
+    anyone's: no pattern that slows down on odd input)."""
+    found = {}
+    at = body.find(_OPEN)
+    while at >= 0:
+        m = _LANG.match(body, at + len(_OPEN))
+        if m is None:
+            at = body.find(_OPEN, at + 1)
+            continue
+        start = m.end()
+        nxt = body.find(_OPEN, start)
+        close = body.find(_CLOSE, start)
+        end = min(x for x in (nxt, close, len(body)) if x >= 0)
+        found.setdefault(m.group(1) or "en", body[start:end].strip())
+        at = nxt
+    return found
+
+
+def release_notes(release, lang="en"):
+    """The short notes in a release's text (see tools/release_notes.py): in lang if it has
+    them, else in English; None for a release without notes (those before 1.5)."""
+    body = (release or {}).get("body") if isinstance(release, dict) else None
+    found = _notes_blocks(body if isinstance(body, str) else "")
+    return found.get(lang) or found.get("en")
+
+
+def notes_since(releases, current=None, lang="en"):
+    """[(version, notes or None, page url)] for every published release newer than current,
+    newest first: what changed since the version the user has."""
+    current = version_tuple(current or __version__)
+    out = []
+    for r in releases or []:
+        if not isinstance(r, dict):
+            continue
+        v = version_tuple(r.get("tag_name", ""))
+        if r.get("draft") or not v or v <= current:
+            continue
+        out.append((v, r))
+    out.sort(key=lambda x: x[0], reverse=True)
+    return [(str(r["tag_name"]).lstrip("vV"), release_notes(r, lang),
+             r.get("html_url") or RELEASES_PAGE) for _v, r in out]
 
 
 def newest_release(releases, current=None):
@@ -62,7 +121,7 @@ def newest_release(releases, current=None):
     current = current or __version__
     best = None
     for r in releases:
-        if r.get("draft"):
+        if not isinstance(r, dict) or r.get("draft"):
             continue
         v = version_tuple(r.get("tag_name", ""))
         if not v or v <= version_tuple(current):
@@ -78,8 +137,8 @@ def _sha256_hex(asset):
     if not isinstance(digest, str) or not digest.startswith("sha256:"):
         return None
     hexpart = digest[len("sha256:"):]
-    if not hexpart or any(c not in "0123456789abcdefABCDEF" for c in hexpart):
-        return None
+    if len(hexpart) != 64 or any(c not in "0123456789abcdefABCDEF" for c in hexpart):
+        return None                     # (a sha256 is 64 hex digits; anything else isn't one)
     return hexpart
 
 
@@ -89,7 +148,7 @@ def asset_url(release, name=PORTABLE_ZIP):
     None unless the host is a GitHub release host and the asset has a sha256 digest.
     """
     for a in (release or {}).get("assets") or []:
-        if a.get("name") != name:
+        if not isinstance(a, dict) or a.get("name") != name:
             continue
         url = a.get("browser_download_url") or ""
         parsed = urlparse(url)
@@ -105,7 +164,7 @@ def asset_url(release, name=PORTABLE_ZIP):
 def asset_digest(release, name=PORTABLE_ZIP):
     """Hex sha256 published for the release file called `name`, or None."""
     for a in (release or {}).get("assets") or []:
-        if a.get("name") == name:
+        if isinstance(a, dict) and a.get("name") == name:
             return _sha256_hex(a)
     return None
 
@@ -116,6 +175,82 @@ def can_self_update():
     from . import paths
     return (os.name == "nt" and getattr(sys, "frozen", False) and paths.is_portable()
             and not paths.platform_updates())
+
+
+def setup_name(version):
+    """The release's installer for version: KanzonasPDF-v1.6-setup.exe."""
+    return "KanzonasPDF-v%s-setup.exe" % version
+
+
+def can_install_update(app_dir=None):
+    """True for a copy installed with KanzonasPDF's setup on Windows (its uninstaller sits
+    beside the program): Update now downloads the new setup and runs it over this one."""
+    import sys
+    from . import paths
+    if os.name != "nt" or not getattr(sys, "frozen", False) or paths.is_portable():
+        return False
+    return os.path.exists(os.path.join(app_dir or paths.app_dir(), "unins000.exe"))
+
+
+# the setup's AppId (installer/KanzonasPDF.iss): its uninstall entry says who it was installed for
+UNINSTALL_KEY = (r"Software\Microsoft\Windows\CurrentVersion\Uninstall"
+                 r"\{8F4C2A61-5B7E-4D3A-9C1F-2E6B7A9D4C11}_is1")
+
+
+def _installed_in(hive, app_dir):
+    """The setup's uninstall entry under hive (winreg.HKEY_LOCAL_MACHINE / _CURRENT_USER)
+    names app_dir as where it installed. None when it can't be read (not Windows, no entry)."""
+    try:
+        import winreg
+    except ImportError:
+        return None
+    here = os.path.normcase(os.path.abspath(app_dir)).rstrip("\\/")
+    found = None
+    for view in (getattr(winreg, "KEY_WOW64_64KEY", 0), getattr(winreg, "KEY_WOW64_32KEY", 0)):
+        try:
+            with winreg.OpenKey(hive, UNINSTALL_KEY, 0, winreg.KEY_READ | view) as k:
+                where = winreg.QueryValueEx(k, "InstallLocation")[0]
+        except OSError:
+            continue
+        found = False
+        if not str(where or "").strip():
+            continue                    # (an empty entry names no folder)
+        if os.path.normcase(os.path.abspath(str(where))).rstrip("\\/") == here:
+            return True
+    return found
+
+
+def for_all_users(app_dir):
+    """The copy in app_dir was installed for all users, so its update needs Windows'
+    administrator prompt (and the setup's /ALLUSERS, or it would install a second copy for
+    this user). The setup's own uninstall entry says so (also for a custom folder); without
+    it, a folder under Program Files does."""
+    try:
+        import winreg
+        mine = _installed_in(winreg.HKEY_CURRENT_USER, app_dir)
+        everyone = _installed_in(winreg.HKEY_LOCAL_MACHINE, app_dir)
+    except ImportError:
+        mine = everyone = None
+    if everyone:
+        return True
+    if mine:
+        return False
+    here = os.path.normcase(os.path.abspath(app_dir))
+    for var in ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)"):
+        base = os.environ.get(var)
+        if base and here.startswith(os.path.normcase(os.path.abspath(base)) + os.sep):
+            return True
+    return False
+
+
+def installer_command(setup_path, app_dir):
+    """How Update now runs the new setup: quietly (a progress window only, no questions),
+    over the existing installation with its options kept, closing anything still using the
+    files, and starting KanzonasPDF again when done (/RELAUNCH, see installer/KanzonasPDF.iss;
+    the Windows build tests this command line)."""
+    return [setup_path, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
+            "/CLOSEAPPLICATIONS", "/ALLUSERS" if for_all_users(app_dir) else "/CURRENTUSER",
+            "/RELAUNCH"]
 
 
 def _file_sha256(path):
@@ -137,16 +272,17 @@ def unpack(zip_path, app_dir):
     with zipfile.ZipFile(zip_path) as z:
         bad = z.testzip()
         if bad:
-            raise ValueError("The download is damaged (" + bad + "). Try again.")
+            raise ValueError(tr("The download is damaged ({name}). Try again.").format(name=bad))
         for name in z.namelist():
             target = os.path.realpath(os.path.join(stage, name))
             if target != root and not target.startswith(root + os.sep):
-                raise ValueError("The download contains an unsafe file name: " + name)
+                raise ValueError(tr("The download contains an unsafe file name: {name}").format(
+                    name=name))
         z.extractall(stage)
     new = os.path.join(stage, "KanzonasPDF")
     if not os.path.isfile(os.path.join(new, "KanzonasPDF.exe")):
         shutil.rmtree(stage, ignore_errors=True)
-        raise ValueError("The download isn't a KanzonasPDF portable version.")
+        raise ValueError(tr("The download isn't a KanzonasPDF portable version."))
     # a data folder in the zip (there is none today) must never replace the user's settings
     shutil.rmtree(os.path.join(new, "data"), ignore_errors=True)
     return new
@@ -182,6 +318,7 @@ class UpdateChecker(QObject):
     """found(version, url) when a newer release exists; result(text) after a manual check."""
     found = Signal(str, str)
     result = Signal(str)
+    checked = Signal(str)            # an automatic check found nothing newer (a quiet note)
 
     def __init__(self, settings, parent=None):
         super().__init__(parent)
@@ -189,6 +326,7 @@ class UpdateChecker(QObject):
         self.net = None
         self.manual = False
         self.release = None          # GitHub's entry for the newest release found
+        self.releases = []           # every release GitHub listed (for the notes since yours)
 
     def enabled(self):
         from . import paths
@@ -203,11 +341,23 @@ class UpdateChecker(QObject):
             last = float(self.settings.value("update_last", 0) or 0)
         except (TypeError, ValueError):
             last = 0
-        if time.time() - last >= DAY:
+        now = time.time()
+        if not math.isfinite(last) or last > now or now - last >= DAY:
+            # (a time in the future: the clock was changed; check rather than wait)
             self.check(manual=False)
 
+    _reply = None                    # the request on its way, and whether it was asked for
+    _reply_manual = False
+
     def check(self, manual=True):
-        self.manual = manual
+        busy = self._reply is not None and self._reply.isRunning()
+        if busy and not manual:
+            return                      # (a check is already on its way)
+        if busy and self._reply_manual:
+            return
+        if busy:                        # asked for while the automatic one runs: this one
+            old, self._reply = self._reply, None
+            old.abort()
         if self.net is None:
             self.net = QNetworkAccessManager(self)
         req = QNetworkRequest(QUrl(API))
@@ -215,33 +365,72 @@ class UpdateChecker(QObject):
         req.setRawHeader(b"User-Agent", ("KanzonasPDF/" + __version__).encode())
         req.setTransferTimeout(15000)
         reply = self.net.get(req)
-        reply.finished.connect(lambda: self._done(reply))
+        self._reply, self._reply_manual = reply, manual
+        reply.finished.connect(lambda: self._done(reply, manual))
 
-    def _done(self, reply):
+    def _done(self, reply, manual=None):
         reply.deleteLater()
+        if self._reply is reply:
+            self._reply = None
+        if manual is None:
+            manual = self.manual
+        self.manual = manual            # (the window asks: answer in a box or in the notice)
+        if reply.error() == QNetworkReply.OperationCanceledError and not manual:
+            return
         if reply.error() != QNetworkReply.NoError:
-            if self.manual:
-                self.result.emit("Couldn't reach GitHub to check for updates ("
-                                 + reply.errorString() + ").")
+            if manual:
+                self.result.emit(tr("Couldn't reach GitHub to check for updates ({error}).")
+                                 .format(error=reply.errorString()))
             return
         try:
             data = json.loads(bytes(reply.readAll()).decode("utf-8"))
-        except ValueError:
+        except (ValueError, RecursionError):
             data = None
         if not isinstance(data, list):
-            if self.manual:
-                self.result.emit("GitHub sent an unexpected answer. Try again later.")
+            if manual:
+                self.result.emit(tr("GitHub sent an unexpected answer. Try again later."))
             return
         self.settings.setValue("update_last", time.time())
+        self.releases = data
         self.release = newest_release(data)
         hit = newest(data)
         if hit is None:
-            if self.manual:
-                self.result.emit("You have the latest version (" + __version__ + ").")
+            text = tr("You have the latest version ({version}).").format(version=__version__)
+            (self.result if manual else self.checked).emit(text)
             return
-        if not self.manual and self.settings.value("update_skip", "") == hit[0]:
+        if not manual and self.settings.value("update_skip", "") == hit[0]:
             return
         self.found.emit(hit[0], hit[1])
+
+
+_RUNNING = []                           # the downloads on their way (one at a time)
+
+
+def downloading():
+    """An update is being downloaded (Update now waits for it rather than start another)."""
+    return any(not st["done"] for st in _RUNNING)
+
+
+def _abandon(st):
+    """The download's window went away or KanzonasPDF quit before it finished: nothing of it
+    stays behind (its file, and the setup's own folder)."""
+    if st["done"]:
+        return
+    st["done"] = True
+    if st in _RUNNING:
+        _RUNNING.remove(st)
+    try:
+        if st["file"] is not None:
+            st["file"].close()
+    except OSError:
+        pass
+    for path in st["paths"]:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    for folder in st["folders"]:
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 class PortableUpdater(QObject):
@@ -269,14 +458,22 @@ class PortableUpdater(QObject):
 
     def start(self):
         if not self._expected_hex():
-            self.failed.emit("The update was not applied: the release has no sha256 digest.")
+            self.failed.emit(tr("The update was not applied: the release has no sha256 digest."))
             return
-        self.path = os.path.join(self.app_dir, STAGING + ".zip")
+        self.path = self._target()
         try:
             self.file = open(self.path, "wb")
         except OSError as e:
-            self.failed.emit("Can't write next to KanzonasPDF.exe (" + str(e) + ").")
+            self.failed.emit(tr("Can't write next to KanzonasPDF.exe ({error}).").format(error=e))
             return
+        st = self._state = {"done": False, "file": self.file, "paths": [self.path],
+                            "folders": self._folders()}
+        _RUNNING.append(st)
+        # (not methods of self: they run while self is being destroyed)
+        self.destroyed.connect(lambda *_: _abandon(st))
+        app = QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(lambda: _abandon(st))
         req = QNetworkRequest(QUrl(self.url))
         req.setRawHeader(b"User-Agent", ("KanzonasPDF/" + __version__).encode())
         req.setAttribute(QNetworkRequest.RedirectPolicyAttribute,
@@ -292,6 +489,13 @@ class PortableUpdater(QObject):
             self.reply.abort()
 
     def _done(self):
+        st = getattr(self, "_state", None)
+        if st is not None:
+            if st["done"]:
+                return                  # (already cleared away)
+            st["done"] = True
+            if st in _RUNNING:
+                _RUNNING.remove(st)
         r = self.reply
         r.deleteLater()
         self.file.write(bytes(r.readAll()))
@@ -299,19 +503,58 @@ class PortableUpdater(QObject):
         try:
             if r.error() != QNetworkReply.NoError:
                 if r.error() != QNetworkReply.OperationCanceledError:
-                    self.failed.emit("The download failed (" + r.errorString() + ").")
+                    self.failed.emit(tr("The download failed ({error}).").format(
+                        error=r.errorString()))
                 return
             expect = self._expected_hex()
             if not expect or _file_sha256(self.path) != expect:
-                self.failed.emit("The download was not applied: its sha256 does not match "
-                                 "the release.")
+                self.failed.emit(tr("The download was not applied: its sha256 does not "
+                                    "match the release."))
                 return
             try:
-                self.ready.emit(unpack(self.path, self.app_dir))
+                self.ready.emit(self._finish())
             except (ValueError, OSError, zipfile.BadZipFile) as e:
                 self.failed.emit(str(e))
         finally:
-            try:
-                os.remove(self.path)
-            except OSError:
-                pass
+            self._cleanup()
+
+    # (what InstallerUpdater does differently)
+    def _target(self):
+        return os.path.join(self.app_dir, STAGING + ".zip")
+
+    def _finish(self):
+        return unpack(self.path, self.app_dir)
+
+    def _folders(self):
+        return []
+
+    def _cleanup(self):
+        try:
+            os.remove(self.path)
+        except OSError:
+            pass
+
+
+class InstallerUpdater(PortableUpdater):
+    """Downloads the new setup for an installed copy into a fresh folder only this user can
+    write to, and checks its sha256 against the release. ready(path of the setup)."""
+
+    def __init__(self, url, version, parent=None, expected_sha256=None):
+        super().__init__(url, "", parent, expected_sha256)
+        self.version = version
+
+    def _target(self):
+        import tempfile
+        return os.path.join(tempfile.mkdtemp(prefix="kzsetup"), setup_name(self.version))
+
+    def _folders(self):
+        return [os.path.dirname(self.path)]
+
+    def _finish(self):
+        self._good = True               # checked: keep it for running
+        return self.path
+
+    def _cleanup(self):
+        if not getattr(self, "_good", False):
+            super()._cleanup()          # a failed or wrong download goes, with its folder
+            shutil.rmtree(os.path.dirname(self.path), ignore_errors=True)

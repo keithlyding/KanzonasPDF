@@ -13,12 +13,15 @@ it.
 
 import pymupdf
 
+from .i18n import tr
+
 KEY = "KZBackground"
 KINDS = ("color", "gradient", "image")
-DIRECTIONS = {"down": "Top to bottom", "right": "Left to right",
-              "diagonal": "Top left to bottom right", "up": "Bottom to top"}
-FITS = {"fit": "Fit (whole picture visible)", "fill": "Fill (cover the page, trim the edges)",
-        "stretch": "Stretch to the page", "center": "Center at its own size"}
+# (the keys are stored; the labels are only shown)
+DIRECTIONS = {"down": tr("Top to bottom"), "right": tr("Left to right"),
+              "diagonal": tr("Top left to bottom right"), "up": tr("Bottom to top")}
+FITS = {"fit": tr("Fit (whole picture visible)"), "fill": tr("Fill (cover the page, trim the edges)"),
+        "stretch": tr("Stretch to the page"), "center": tr("Center at its own size")}
 
 
 def _rgb(hexcolor):

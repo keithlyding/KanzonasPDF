@@ -10,6 +10,8 @@ from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtGui import (QColor, QContextMenuEvent, QSyntaxHighlighter, QTextCharFormat,
                            QTextCursor)
 
+from .i18n import tr
+
 WORD = re.compile(r"[A-Za-z][A-Za-z']*[A-Za-z]|[A-Za-z]")
 def _settings():
     from .paths import settings
@@ -145,7 +147,7 @@ def menu_for(edit, pos):
         a.triggered.connect(lambda _=False, s=s, c=cur: c.insertText(s))
         menu.insertAction(first, a)
     if not options:
-        a = menu.addAction("(no suggestions)")
+        a = menu.addAction(tr("(no suggestions)"))
         a.setEnabled(False)
         menu.insertAction(first, a)
     hl = getattr(edit, "_kz_spell", None)
@@ -154,7 +156,7 @@ def menu_for(edit, pos):
         add_word(word)
         if hl is not None:
             hl.rehighlight()
-    a = menu.addAction("Add to dictionary")
+    a = menu.addAction(tr("Add to dictionary"))
     a.triggered.connect(remember)
     menu.insertAction(first, a)
     menu.insertSeparator(first)

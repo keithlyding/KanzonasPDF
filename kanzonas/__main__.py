@@ -12,6 +12,11 @@ if sys.stdout is None:
 if sys.stderr is None:
     sys.stderr = open(os.devnull, "w")
 
+# The self-test checks English texts (the user manual names the commands in English): run it
+# in English whatever the language set (before main_window builds its translated tables)
+if "--selftest" in sys.argv[1:2]:
+    os.environ["KANZONAS_LANG"] = "en"
+
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
@@ -117,9 +122,12 @@ def main():
         server.newConnection.connect(incoming)
     from .branding import app_icon
     app.setWindowIcon(app_icon())
-    from . import paths, theme
+    from . import i18n, paths, theme
+    i18n.install_qt(app)                 # Qt's own buttons and dialogs in the same language
     theme.apply(app, paths.settings().value("theme", "system"))
     win = MainWindow()
+    # a setup closing KanzonasPDF to update it, or Windows shutting down, closes no windows
+    app.commitDataRequest.connect(win.windows_ending)
     win.show()
     win.recover_backups()
     if not files:

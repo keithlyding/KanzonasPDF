@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt, QEvent
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QPlainTextEdit,
                                QDialogButtonBox)
 
+from .i18n import tr
+
 
 class TextDialog(QDialog):
     """Multi-line text entry. Ctrl+Enter = OK, Esc = Cancel, Enter = new line."""
@@ -19,7 +21,7 @@ class TextDialog(QDialog):
         self.edit.installEventFilter(self)
         self.edit.selectAll()
         lay.addWidget(self.edit)
-        hint = QLabel("Ctrl+Enter to finish")
+        hint = QLabel(tr("Ctrl+Enter to finish"))
         hint.setStyleSheet("color: gray;")
         lay.addWidget(hint)
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)

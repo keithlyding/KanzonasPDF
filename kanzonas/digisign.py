@@ -18,6 +18,7 @@ import os
 
 
 from . import annotations as A
+from .i18n import tr
 
 for _name in ("pyhanko", "pyhanko_certvalidator"):
     logging.getLogger(_name).setLevel(logging.CRITICAL)
@@ -69,7 +70,7 @@ def load_signer(path, password):
     from pyhanko.sign import signers
     signer = signers.SimpleSigner.load_pkcs12(path, passphrase=password.encode() if password else None)
     if signer is None:
-        raise ValueError("Couldn't open that certificate. Is the password right?")
+        raise ValueError(tr("Couldn't open that certificate. Is the password right?"))
     return signer
 
 
@@ -169,16 +170,17 @@ def validate(pdf_bytes):
         except Exception as ex:
             info["error"] = str(ex)
         info["ok"] = info["intact"] and not info["modified"]
-        when = info["time"].strftime("%Y-%m-%d %H:%M") if info["time"] else "unknown time"
+        when = info["time"].strftime("%Y-%m-%d %H:%M") if info["time"] else tr("unknown time")
         if not info["intact"]:
-            state = "INVALID: the signed content was changed or the signature is damaged"
+            state = tr("INVALID: the signed content was changed or the signature is damaged")
         elif info["modified"]:
-            state = "changes were made after signing"
+            state = tr("changes were made after signing")
         else:
-            state = "unchanged since signing"
-        who = "identity confirmed" if info["trusted"] else \
-            "identity not verified (certificate not trusted on this computer)"
-        info["summary"] = f"Signed by {info['name'] or 'unknown'} on {when}: {state}; {who}."
+            state = tr("unchanged since signing")
+        who = tr("identity confirmed") if info["trusted"] else \
+            tr("identity not verified (certificate not trusted on this computer)")
+        info["summary"] = tr("Signed by {name} on {when}: {state}; {who}.").format(
+            name=info['name'] or tr("unknown"), when=when, state=state, who=who)
         results.append(info)
     return results
 
@@ -199,7 +201,8 @@ def _validate_timestamp(sig):
     except Exception as ex:
         info["error"] = str(ex)
     info["ok"] = info["intact"]
-    when = info["time"].strftime("%Y-%m-%d %H:%M") if info["time"] else "unknown time"
-    info["summary"] = (f"Timestamped by {info['name'] or 'a time server'} on {when}" +
-                       (": unchanged since." if info["ok"] else ": INVALID or changed."))
+    when = info["time"].strftime("%Y-%m-%d %H:%M") if info["time"] else tr("unknown time")
+    info["summary"] = (tr("Timestamped by {name} on {when}: unchanged since.") if info["ok"] else
+                       tr("Timestamped by {name} on {when}: INVALID or changed.")).format(
+        name=info['name'] or tr("a time server"), when=when)
     return info

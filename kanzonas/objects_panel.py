@@ -6,7 +6,9 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
                                QAbstractItemView, QHeaderView, QLabel, QPushButton)
 
-PAGE_ROW = "Page content (the original PDF: text, drawing, images)"
+from .i18n import tr
+
+PAGE_ROW = tr("Page content (the original PDF: text, drawing, images)")
 
 
 class ObjectsPanel(QWidget):
@@ -21,7 +23,7 @@ class ObjectsPanel(QWidget):
         self.title = QLabel()
         lay.addWidget(self.title)
         self.table = QTableWidget(0, 3)
-        self.table.setHorizontalHeaderLabels(["Lock", "Show", "Object (top is in front)"])
+        self.table.setHorizontalHeaderLabels([tr("Lock"), tr("Show"), tr("Object (top is in front)")])
         h = self.table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(1, QHeaderView.ResizeToContents)
@@ -34,15 +36,17 @@ class ObjectsPanel(QWidget):
         self.table.itemChanged.connect(self._changed)
         lay.addWidget(self.table)
         row = QHBoxLayout()
-        for key, text, tip in (("front", "Front", "Bring to front"), ("forward", "Up", "Bring forward"),
-                               ("backward", "Down", "Send backward"), ("back", "Back", "Send to back")):
+        for key, text, tip in (("front", tr("Front"), tr("Bring to front")),
+                               ("forward", tr("Up"), tr("Bring forward")),
+                               ("backward", tr("Down"), tr("Send backward")),
+                               ("back", tr("Back"), tr("Send to back"))):
             b = QPushButton(text)
             b.setToolTip(tip)
             b.clicked.connect(lambda _=False, k=key: self.arrange.emit(k))
             row.addWidget(b)
         lay.addLayout(row)
-        hint = QLabel("Click a row to select it, even if it's covered. Locked objects can't be "
-                      "clicked or moved on the page.")
+        hint = QLabel(tr("Click a row to select it, even if it's covered. Locked objects "
+                         "can't be clicked or moved on the page."))
         hint.setWordWrap(True)
         hint.setStyleSheet("color: gray;")
         lay.addWidget(hint)
@@ -61,7 +65,7 @@ class ObjectsPanel(QWidget):
             return
         index = view.current_page()
         objs = view.page_objects(index)
-        self.title.setText(f"Page {index + 1}: {len(objs)} markup(s)")
+        self.title.setText(tr("Page {page}: {n} markup(s)").format(page=index + 1, n=len(objs)))
         self.table.setRowCount(len(objs) + 1)
         sel = set(view.selected_xrefs()) if view.selection and view.selection[0] == index else set()
         for r, (xref, label, locked, hidden) in enumerate(objs):

@@ -8,24 +8,25 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QTableWidget, QTabl
                                QHeaderView, QCheckBox, QDialogButtonBox, QAbstractItemView)
 
 from . import sheets
+from .i18n import tr
 
 
 class SheetLinksDialog(QDialog):
     def __init__(self, parent, doc, folder):
         super().__init__(parent)
-        self.setWindowTitle("Link sheet callouts")
+        self.setWindowTitle(tr("Link sheet callouts"))
         self.doc = doc
         self.folder = folder
         self.result_plan = None
         self.resize(640, 480)
         lay = QVBoxLayout(self)
-        intro = QLabel("Sheet numbers read from the title blocks. Correct one by clicking it "
+        intro = QLabel(tr("Sheet numbers read from the title blocks. Correct one by clicking it "
                        "(leave it empty for a page that isn't a sheet). Every callout, note or "
-                       "index line naming one of these sheets becomes a link to its page.")
+                       "index line naming one of these sheets becomes a link to its page."))
         intro.setWordWrap(True)
         lay.addWidget(intro)
         self.table = QTableWidget(doc.page_count, 3)
-        self.table.setHorizontalHeaderLabels(["Page", "Sheet number", "Title"])
+        self.table.setHorizontalHeaderLabels([tr("Page"), tr("Sheet number"), tr("Title")])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.table.verticalHeader().hide()
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -40,16 +41,16 @@ class SheetLinksDialog(QDialog):
             self.table.setItem(i, 2, title)
         self.table.resizeColumnsToContents()
         lay.addWidget(self.table)
-        self.files = QCheckBox("Also link callouts to other PDFs in the same folder, named by "
-                               "sheet number (A-501 Details.pdf)")
+        self.files = QCheckBox(tr("Also link callouts to other PDFs in the same folder, named "
+                                  "by sheet number (A-501 Details.pdf)"))
         self.files.setChecked(bool(folder))
         self.files.setEnabled(bool(folder))
-        self.box = QCheckBox("Show a thin blue box around each link")
+        self.box = QCheckBox(tr("Show a thin blue box around each link"))
         self.box.setChecked(False)
         has_toc = bool(doc.get_toc())
-        self.marks = QCheckBox("Add bookmarks for the sheets (number and title)"
-                               + ("  (the document already has bookmarks: they would be replaced)"
-                                  if has_toc else ""))
+        self.marks = QCheckBox(tr("Add bookmarks for the sheets (number and title)")
+                               + ("  " + tr("(the document already has bookmarks: they would be "
+                                            "replaced)") if has_toc else ""))
         self.marks.setChecked(not has_toc)
         for w in (self.files, self.box, self.marks):
             lay.addWidget(w)
@@ -57,7 +58,7 @@ class SheetLinksDialog(QDialog):
         self.summary.setWordWrap(True)
         lay.addWidget(self.summary)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.button(QDialogButtonBox.Ok).setText("Create links")
+        btns.button(QDialogButtonBox.Ok).setText(tr("Create links"))
         btns.accepted.connect(self._accept)
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)
@@ -76,19 +77,22 @@ class SheetLinksDialog(QDialog):
         try:
             pl = self._plan()
         except Exception as ex:                  # an odd page must not block the dialog
-            self.summary.setText(f"Could not read the pages: {ex}")
+            self.summary.setText(tr("Could not read the pages: {error}").format(error=ex))
             return
         n_pages = len(pl["pages"])
         n_links = len(pl["links"])
         ext = sum(1 for _i, _r, t in pl["links"] if t[0] == "file")
-        text = f"{n_pages} sheet(s) found; {n_links} callout(s) will be linked"
         if ext:
-            text += f", {ext} of them to {len(pl['external'])} other PDF(s) in the folder"
-        text += "."
+            text = tr("{sheets} sheet(s) found; {links} callout(s) will be linked, {ext} of them "
+                      "to {files} other PDF(s) in the folder.").format(
+                sheets=n_pages, links=n_links, ext=ext, files=len(pl['external']))
+        else:
+            text = tr("{sheets} sheet(s) found; {links} callout(s) will be linked.").format(
+                sheets=n_pages, links=n_links)
         if pl["missing"]:
             names = sorted(pl["missing"], key=lambda k: -pl["missing"][k])[:8]
-            text += (" Not linked (no such sheet here or in the folder): " + ", ".join(names)
-                     + ("..." if len(pl["missing"]) > 8 else ""))
+            text += " " + tr("Not linked (no such sheet here or in the folder): {names}").format(
+                names=", ".join(names) + ("..." if len(pl["missing"]) > 8 else ""))
         self.summary.setText(text)
 
     def _accept(self):

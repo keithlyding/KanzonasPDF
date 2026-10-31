@@ -11,16 +11,18 @@ from fractions import Fraction
 import pymupdf
 
 from . import pdfcoords
+from .i18n import tr
 
 PT_M = 0.0254 / 72                        # meters per PDF point (paper size)
 UNITS = {"ft-in": 0.3048, "ft": 0.3048, "in": 0.0254, "yd": 0.9144, "mi": 1609.344,
          "m": 1.0, "cm": 0.01, "mm": 0.001, "km": 1000.0}
-UNIT_LABELS = {"ft-in": "Feet and inches (12'-6\")", "ft": "Feet (decimal)", "in": "Inches",
-               "yd": "Yards", "mi": "Miles", "m": "Meters", "cm": "Centimeters",
-               "mm": "Millimeters", "km": "Kilometers"}
-# (label, real length per paper length, display unit)
+UNIT_LABELS = {"ft-in": tr("Feet and inches (12'-6\")"), "ft": tr("Feet (decimal)"),
+               "in": tr("Inches"), "yd": tr("Yards"), "mi": tr("Miles"), "m": tr("Meters"),
+               "cm": tr("Centimeters"), "mm": tr("Millimeters"), "km": tr("Kilometers")}
+# (label, real length per paper length, display unit); the label is shown and kept in the
+# page's scale (/KZScale) as its description only
 PRESETS = [
-    ("1:1 (actual paper size)", 1, "in"),
+    (tr("1:1 (actual paper size)"), 1, "in"),
     ('1/16" = 1\'-0"', 192, "ft-in"), ('3/32" = 1\'-0"', 128, "ft-in"),
     ('1/8" = 1\'-0"', 96, "ft-in"), ('3/16" = 1\'-0"', 64, "ft-in"),
     ('1/4" = 1\'-0"', 48, "ft-in"), ('3/8" = 1\'-0"', 32, "ft-in"),
@@ -64,7 +66,7 @@ def get_scale(page):
             return float(f), unit, label, True
     except Exception:
         pass
-    return PT_M, "in", "not set (paper size)", False
+    return PT_M, "in", tr("not set (paper size)"), False
 
 
 def set_scale(page, m_per_pt, unit, label):
@@ -77,7 +79,7 @@ def scale_from_preset(ratio):
 
 def describe(page):
     _f, unit, label, ok = get_scale(page)
-    return f"Scale: {label}" + (f"  ({unit})" if ok else "")
+    return tr("Scale: {label}").format(label=label) + (f"  ({unit})" if ok else "")
 
 
 # ---- geometry -----------------------------------------------------------------------
@@ -154,7 +156,7 @@ def measure_text(kind, points, page, group="", props=None):
     if kind == "m_area":
         a = fmt_area(area(points) * f * f, unit)
         per = fmt_length(length(points + points[:1]) * f, unit)
-        return f"{a}\nPerimeter {per}"
+        return a + "\n" + tr("Perimeter {length}").format(length=per)
     if kind == "m_perimeter":
         return fmt_length(length(points + points[:1]) * f, unit)
     if kind == "m_volume":

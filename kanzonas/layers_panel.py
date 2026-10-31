@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
                                QPushButton, QLabel)
 
+from .i18n import tr
+
 
 class LayersPanel(QWidget):
     toggled = Signal(int, bool)        # layer number, visible
@@ -14,8 +16,8 @@ class LayersPanel(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(2, 2, 2, 2)
         row = QHBoxLayout()
-        show = QPushButton("Show all")
-        hide = QPushButton("Hide all")
+        show = QPushButton(tr("Show all"))
+        hide = QPushButton(tr("Hide all"))
         show.clicked.connect(lambda: self.allToggled.emit(True))
         hide.clicked.connect(lambda: self.allToggled.emit(False))
         row.addWidget(show)
@@ -25,7 +27,7 @@ class LayersPanel(QWidget):
         self.list = QListWidget()
         self.list.itemChanged.connect(self._changed)
         lay.addWidget(self.list)
-        self.empty = QLabel("This document has no layers.")
+        self.empty = QLabel(tr("This document has no layers."))
         self.empty.setStyleSheet("color: gray;")
         lay.addWidget(self.empty)
         self._loading = False
@@ -35,7 +37,7 @@ class LayersPanel(QWidget):
         self._loading = True
         self.list.clear()
         for c in configs:
-            it = QListWidgetItem("    " * int(c.get("depth", 0)) + (c.get("text") or "(unnamed)"))
+            it = QListWidgetItem("    " * int(c.get("depth", 0)) + (c.get("text") or tr("(unnamed)")))
             it.setData(Qt.UserRole, c["number"])
             if c.get("type") in ("checkbox", "radiobox"):
                 it.setFlags(it.flags() | Qt.ItemIsUserCheckable)

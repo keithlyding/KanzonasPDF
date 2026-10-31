@@ -34,6 +34,9 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
 2. **The version**: bump `__version__` in `kanzonas/__init__.py` (see "Take the version
    number at merge time" above).
 3. **CHANGELOG.md**: add a row for the new version (and fill in the previous row's commit).
+4. **RELEASE_NOTES.md**: a few plain-language lines under `## <version>` (New / Fixed) and their
+   Spanish translation under `## <version> (es)`. They go into the GitHub release and the app's
+   update box shows them to people updating; the build fails without them.
 
 ## Before pushing
 - `QT_QPA_PLATFORM=offscreen python -m kanzonas --selftest selftest.log` must exit 0.
