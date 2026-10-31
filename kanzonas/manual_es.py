@@ -196,7 +196,11 @@ desde cualquier carpeta, pero guarda la configuración en el equipo, como la ver
 <h2 id="navigate">Desplazarse por el documento</h2>
 <ul>
 <li><b>Página siguiente / anterior:</b> los botones &#9664; &#9654; junto al número de página (abajo a la derecha
-con la cinta, en la barra de herramientas con las barras de herramientas clásicas), las teclas de flecha derecha / izquierda, o escriba un número de página y presione Enter.</li>
+con la cinta, en la barra de herramientas con las barras de herramientas clásicas), las teclas de flecha derecha / izquierda
+o Av Pág / Re Pág, o escriba un número de página y presione Enter. <b>Inicio</b> y <b>Fin</b> van a la primera y a la
+última página. Lo mismo está en <b>Ver &gt; Ir a</b>: <b>Página siguiente</b>, <b>Página anterior</b>, <b>Primera
+página</b>, <b>Última página</b> e <b>Ir a la página...</b> (Ctrl+G: el cuadro de página, listo para un número), así que
+la paleta de comandos y la línea de comandos CAD también los encuentran ("página siguiente", "última página").</li>
 <li><b>Acercar / Alejar:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+rueda del mouse, el control deslizante de zoom o el cuadro de zoom
 (escriba un porcentaje, del 10% al 6400%; 25.5 y 25,5 funcionan igual). Un documento muy largo no puede llegar
 tan alto: todas sus páginas juntas deben caber en el tamaño máximo que Windows puede dibujar.
@@ -1169,7 +1173,9 @@ cuadrícula...).</li>
 <tr><td>Supr (en la lista de páginas)</td><td>Eliminar las páginas seleccionadas</td></tr>
 <tr><td>Ctrl+L</td><td>Bloquear las marcas seleccionadas</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Al frente / adelante / atrás / al fondo</td></tr>
-<tr><td>Left / Right</td><td>Página anterior / siguiente</td></tr>
+<tr><td>Izquierda / Derecha, Re Pág / Av Pág</td><td>Página anterior / siguiente</td></tr>
+<tr><td>Inicio / Fin</td><td>Primera / última página</td></tr>
+<tr><td>Ctrl+G</td><td>Ir a la página (el cuadro de página)</td></tr>
 <tr><td>Tab / Shift+Tab</td><td>Campo de formulario siguiente / anterior (Espacio o Enter lo rellena)</td></tr>
 <tr><td>Teclas de flecha (con algo seleccionado)</td><td>Moverlo 1 pt; con Shift, 10 pt; con Ctrl, 0.1 pt</td></tr>
 <tr><td>Ctrl+Shift+Plus / Minus</td><td>Girar la página</td></tr>

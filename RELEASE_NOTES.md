@@ -19,6 +19,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - A CAD command line at the bottom: type M, CO, RO, TR... (or any command's name) and press Enter, as in AutoCAD.
 - In CAD mode, one-letter tool shortcuts can keep working (File > Preferences > Mouse). If you used the CAD-style mouse before, they still work.
 - Free page movement: drag the page anywhere, even when it fits in the window.
+- View > Go to: next, previous, first and last page, and Go to page (Ctrl+G). Home and End go to the first and last page.
 - Faster on big CAD drawings: moving, copying, arrays and trimming are many times quicker.
 
 **Fixed**
@@ -42,6 +43,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Una línea de comandos CAD en la parte inferior: escriba M, CO, RO, TR... (o el nombre de cualquier comando) y presione Enter, como en AutoCAD.
 - En el modo CAD, los atajos de una letra de las herramientas pueden seguir funcionando (Archivo > Preferencias > Mouse). Si usaba el mouse estilo CAD antes, siguen funcionando.
 - Movimiento libre de la página: arrastre la página a cualquier lugar, aunque quepa en la ventana.
+- Ver > Ir a: página siguiente, anterior, primera y última, e Ir a la página (Ctrl+G). Inicio y Fin van a la primera y a la última página.
 - Más rápido en dibujos CAD grandes: mover, copiar, las matrices y recortar son mucho más rápidos.
 
 **Correcciones**

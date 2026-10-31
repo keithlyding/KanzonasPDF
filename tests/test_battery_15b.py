@@ -279,6 +279,39 @@ class TypingOption(Window):
         mouse_modes.apply(self.w.settings)
 
 
+class GoTo(Window):
+    def test_view_go_to_commands_and_home_end(self):
+        from PySide6.QtCore import QEvent
+        from PySide6.QtGui import QKeyEvent
+        v = self.open(5)
+        w = self.w
+
+        def at():
+            APP.processEvents()
+            return v.current_page()
+        w.a_last_page.trigger()
+        self.assertEqual(at(), 4)
+        w.a_prev_page.trigger()
+        self.assertEqual(at(), 3)
+        w.a_first_page.trigger()
+        self.assertEqual(at(), 0)
+        w.a_next_page.trigger()
+        self.assertEqual(at(), 1)
+        v.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_End, Qt.NoModifier))
+        self.assertEqual(at(), 4)
+        v.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Home, Qt.NoModifier))
+        self.assertEqual(at(), 0)
+        w._update_ui()
+        self.assertFalse(w.a_prev_page.isEnabled())
+        self.assertTrue(w.a_next_page.isEnabled())
+
+    def test_the_command_line_finds_them(self):
+        self.open(5)
+        line = self.w.cad_command_line()
+        self.assertEqual(line._pick("last page"), ("action", "Last page"))
+        self.assertEqual(line._pick("next page"), ("action", "Next page"))
+
+
 class Busy(unittest.TestCase):
     def test_no_busy_pointer_over_a_message_box(self):
         seen = []

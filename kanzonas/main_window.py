@@ -546,6 +546,19 @@ class MainWindow(QMainWindow):
         self.a_fit_width = self._act(tr("Fit &width"), lambda: v() and v().fit_width(), "Ctrl+2")
         self.a_fit_page = self._act(tr("Fit &page"), lambda: v() and v().fit_page(), "Ctrl+0")
         self.a_actual = self._act(tr("&Actual size"), lambda: v() and v().set_zoom(1.0), "Ctrl+1")
+        # going to pages: the keys (Right, Left, Home, End) are the document's own, so these
+        # carry no shortcut that would take arrows from a selection or Home / End from a box
+        # being typed in; as commands they're in the palette and on the CAD command line
+        self.a_next_page = self._act(tr("&Next page"), lambda: self._step_page(1),
+                                     tip=tr("Next page (Right arrow or Page Down)"))
+        self.a_prev_page = self._act(tr("&Previous page"), lambda: self._step_page(-1),
+                                     tip=tr("Previous page (Left arrow or Page Up)"))
+        self.a_first_page = self._act(tr("&First page"), lambda: self._step_page(-10 ** 9),
+                                      tip=tr("First page (Home)"))
+        self.a_last_page = self._act(tr("&Last page"), lambda: self._step_page(10 ** 9),
+                                     tip=tr("Last page (End)"))
+        self.a_goto_page = self._act(tr("&Go to page..."), self._goto_page_box, "Ctrl+G",
+                                     tip=tr("Type a page number in the page box and press Enter"))
         self.a_sidebar = self._act(tr("Page &thumbnails"), self._toggle_sidebar, "F4")
         self.a_sidebar.setCheckable(True)
         self.a_sidebar.setChecked(True)
@@ -934,6 +947,10 @@ class MainWindow(QMainWindow):
         m = self.view_menu = mb.addMenu(tr("&View"))
         m.addActions([self.a_zoom_in, self.a_zoom_out, self.a_actual, self.a_fit_width,
                       self.a_fit_page])
+        gm = m.addMenu(tr("Go to"))         # (every free letter is taken in this menu)
+        gm.addActions([self.a_next_page, self.a_prev_page, self.a_first_page, self.a_last_page])
+        gm.addSeparator()
+        gm.addAction(self.a_goto_page)
         m.addSeparator()
         m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
         m.addSeparator()
@@ -1362,6 +1379,11 @@ class MainWindow(QMainWindow):
         self.first_page_btn.setEnabled(self.prev_page_btn.isEnabled())
         self.next_page_btn.setEnabled(has and v.current_page() < v.page_count() - 1)
         self.last_page_btn.setEnabled(self.next_page_btn.isEnabled())
+        for a, b in ((self.a_next_page, self.next_page_btn), (self.a_prev_page, self.prev_page_btn),
+                     (self.a_first_page, self.first_page_btn),
+                     (self.a_last_page, self.last_page_btn)):
+            a.setEnabled(b.isEnabled())
+        self.a_goto_page.setEnabled(has)
         if has:
             self.page_spin.blockSignals(True)
             self.page_spin.setMaximum(v.page_count())
@@ -4012,6 +4034,22 @@ class MainWindow(QMainWindow):
         table.cellDoubleClicked.connect(lambda r, _c: v.open_attachment(rows[r][0], rows[r][1], rows[r][2]))
         fill()
         dlg.exec()
+
+    def _goto_page_box(self):
+        """View > Go to > Go to page... (Ctrl+G): the page box, ready to type a number in."""
+        if self.view() is None:
+            return
+        box = self.page_spin
+        if not box.isVisible():             # (a pulled-out window shows its own bar)
+            from PySide6.QtWidgets import QInputDialog
+            v = self.view()
+            n, ok = QInputDialog.getInt(self, tr("Go to page"), tr("Page:"),
+                                        v.current_page() + 1, 1, v.page_count())
+            if ok:
+                v.goto_page(n - 1)
+            return
+        box.setFocus()
+        box.selectAll()
 
     def _step_page(self, delta):
         v = self.view()

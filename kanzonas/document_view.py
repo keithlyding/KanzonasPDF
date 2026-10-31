@@ -3414,6 +3414,11 @@ class DocumentView(QScrollArea):
             # previous / next page (use Shift+arrows or the scrollbar to scroll sideways)
             self.goto_page(self.current_page() + (1 if e.key() == Qt.Key_Right else -1))
             return
+        if e.key() in (Qt.Key_Home, Qt.Key_End) and \
+                e.modifiers() in (Qt.NoModifier, Qt.ControlModifier):
+            # first / last page (View > Go to), as in other PDF readers
+            self.goto_page(0 if e.key() == Qt.Key_Home else self.page_count() - 1)
+            return
         if e.key() in (Qt.Key_Left, Qt.Key_Right) and e.modifiers() == Qt.ShiftModifier:
             bar = self.horizontalScrollBar()
             bar.setValue(bar.value() + (1 if e.key() == Qt.Key_Right else -1) * bar.singleStep() * 3)

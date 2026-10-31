@@ -203,7 +203,12 @@ from any folder but stores settings on the computer like the installed version.<
 <h2 id="navigate">Moving around</h2>
 <ul>
 <li><b>Next / previous page:</b> the &#9664; &#9654; buttons beside the page number (bottom right
-with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys, or type a page number and press Enter.</li>
+with the ribbon, in the toolbar with classic toolbars), the Right / Left arrow keys or Page Down /
+Page Up, or type a page number and press Enter. <b>Home</b> and <b>End</b> go to the first and
+last page. The same are in <b>View &gt; Go to</b>: <b>Next page</b>, <b>Previous page</b>,
+<b>First page</b>, <b>Last page</b> and <b>Go to page...</b> (Ctrl+G: the page box, ready for a
+number), so the command palette and the CAD command line find them too ("next page", "last
+page").</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, the zoom slider, or the zoom box
 (type a percent, from 10% to 6400%; 25.5 and 25,5 both work). A very long document can't go
 quite as high: all its pages together must stay within the largest size Windows can draw.
@@ -1186,7 +1191,9 @@ settings...).</li>
 <tr><td>Delete (in the page list)</td><td>Delete the selected pages</td></tr>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
-<tr><td>Left / Right</td><td>Previous / next page</td></tr>
+<tr><td>Left / Right, Page Up / Page Down</td><td>Previous / next page</td></tr>
+<tr><td>Home / End</td><td>First / last page</td></tr>
+<tr><td>Ctrl+G</td><td>Go to page (the page box)</td></tr>
 <tr><td>Tab / Shift+Tab</td><td>Next / previous form field (Space or Enter fills it)</td></tr>
 <tr><td>Arrow keys (something selected)</td><td>Move it 1 pt; with Shift 10 pt; with Ctrl 0.1 pt</td></tr>
 <tr><td>Ctrl+Shift+Plus / Minus</td><td>Rotate page</td></tr>

@@ -6946,3 +6946,39 @@ msgstr "{text} puede ser varios comandos: escriba más del nombre, o elija uno d
 
 msgid "Letters typed over the drawing go to the command line (off: one-letter tool shortcuts work, as in the other modes)"
 msgstr "Las letras escritas sobre el dibujo van a la línea de comandos (desactivado: los atajos de una letra de las herramientas funcionan, como en los otros modos)"
+
+msgid "&Next page"
+msgstr "&Página siguiente"
+
+msgid "&Previous page"
+msgstr "Página &anterior"
+
+msgid "&First page"
+msgstr "P&rimera página"
+
+msgid "&Last page"
+msgstr "Ú&ltima página"
+
+msgid "&Go to page..."
+msgstr "&Ir a la página..."
+
+msgid "Next page (Right arrow or Page Down)"
+msgstr "Página siguiente (flecha derecha o Av Pág)"
+
+msgid "Previous page (Left arrow or Page Up)"
+msgstr "Página anterior (flecha izquierda o Re Pág)"
+
+msgid "First page (Home)"
+msgstr "Primera página (Inicio)"
+
+msgid "Last page (End)"
+msgstr "Última página (Fin)"
+
+msgid "Type a page number in the page box and press Enter"
+msgstr "Escriba un número de página en el cuadro de página y presione Enter"
+
+msgid "Go to page"
+msgstr "Ir a la página"
+
+msgid "Page:"
+msgstr "Página:"
