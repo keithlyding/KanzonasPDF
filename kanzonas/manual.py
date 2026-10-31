@@ -338,6 +338,11 @@ command (or type it: see the command line below) and answer its prompt on the co
 click points on the page (they snap to line ends and corners like the drawing tools; hold Alt
 not to snap), type a value and press Enter, or click a button there. Escape (or Cancel) stops a
 command; right-click is Enter. Each change is one Ctrl+Z.</p>
+<p>So CAD mode needs no other tab for everyday work, the CAD tab also has the tools used most
+next to its commands (they stay on their own tabs too): <b>Markup</b> (Cloud, Text box, Callout,
+Line, Arrow, Polyline: their one-letter shortcuts type into the command line in CAD mode),
+<b>Measure</b> (Length, Area, Count, Calibrate Tape Measure), <b>Snap</b> (Snap to objects, Snap to grid, Snap to
+page) and <b>Clean up</b> (Erase content, Bring to front, Send to back).</p>
 <p><b>The command line</b>, along the bottom of the window in CAD mode, works like AutoCAD's.
 Just start typing over the drawing (you don't have to click in the line first) and press
 <b>Enter</b> (Space just types a space, as in "fit page"):</p>

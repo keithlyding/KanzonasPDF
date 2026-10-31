@@ -329,6 +329,11 @@ marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pe
 de la página (se ajustan a los extremos de las líneas y a las esquinas como con las herramientas de dibujo; mantenga
 presionada Alt para no ajustar), escriba un valor y presione Enter, o haga clic en un botón ahí. Escape (o Cancelar)
 detiene un comando; el clic derecho equivale a Enter. Cada cambio se deshace con un Ctrl+Z.</p>
+<p>Para que el modo CAD no necesite otra pestaña en el trabajo diario, la pestaña CAD también tiene las herramientas que más
+se usan junto a sus comandos (siguen también en sus propias pestañas): <b>Marcas</b> (Nube, Cuadro de texto, Llamada,
+Línea, Flecha, Polilínea: en el modo CAD sus atajos de una letra escriben en la línea de comandos), <b>Medir</b>
+(Longitud, Área, Conteo, Calibrar cinta métrica), <b>Ajuste</b> (Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página) y
+<b>Limpiar</b> (Borrar contenido, Traer al frente, Enviar al fondo).</p>
 <p><b>La línea de comandos</b>, a lo largo de la parte inferior de la ventana en el modo CAD, funciona como la de AutoCAD.
 Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Enter</b> (la
 barra espaciadora solo escribe un espacio, como en "ajustar página"):</p>

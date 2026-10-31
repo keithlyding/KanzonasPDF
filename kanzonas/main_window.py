@@ -4405,9 +4405,18 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("CAD"), [
             (tr("Select"), "large", [self.tool_actions["select"],
                                      self.tool_actions["editobjects"]]),
-            (tr("Modify"), "large", [c["move"], c["copy"], c["rotate"], c["scale"], c["mirror"],
+            # two rows, as the groups after them, so the tab fits a 1366-pixel-wide screen
+            (tr("Modify"), "small", [c["move"], c["copy"], c["rotate"], c["scale"], c["mirror"],
                                      c["delete"]]),
-            (tr("More"), "large", [c["align"], c["array"], c["trim"]]),
+            (tr("More"), "small", [c["align"], c["array"], c["trim"]]),
+            # what's used most next to the CAD commands, so CAD mode needs no other tab for it
+            # (the one-letter markup shortcuts type into the command line in CAD mode)
+            (tr("Markup"), "small", [t["cloud"], t["textbox"], t["callout"], t["line"],
+                                     t["arrow"], t["polyline"]]),
+            (tr("Measure"), "small", [t["m_length"], t["m_area"], t["m_count"],
+                                      t["m_calibrate"]]),
+            (tr("Snap"), "small", [self.a_snap_objects, self.a_snap_grid, self.a_snap_page]),
+            (tr("Clean up"), "small", [t["erasecontent"], A_["z_front"], A_["z_back"]]),
         ])
         self._cad_tab = r.widget(r.count() - 1)
         self._sync_mouse_actions()          # the CAD tab: only in CAD mouse mode

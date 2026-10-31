@@ -312,6 +312,22 @@ class GoTo(Window):
         self.assertEqual(line._pick("next page"), ("action", "Next page"))
 
 
+class CadTab(Window):
+    def test_the_cad_tab_has_what_cad_mode_needs_most(self):
+        from PySide6.QtWidgets import QToolButton
+        self.open()
+        self.w.set_mouse_mode("cad")
+        tab = self.w._cad_tab
+        on_tab = {b.defaultAction() for b in tab.findChildren(QToolButton) if b.defaultAction()}
+        t, A_ = self.w.tool_actions, self.w.arrange_actions
+        wanted = [t[k] for k in ("cloud", "textbox", "callout", "line", "arrow", "polyline",
+                                 "m_length", "m_area", "m_count", "m_calibrate",
+                                 "erasecontent")] + \
+            [self.w.a_snap_objects, self.w.a_snap_grid, self.w.a_snap_page, A_["z_front"],
+             A_["z_back"]] + [self.w.cad_actions[k] for k in ("move", "trim")]
+        self.assertEqual([a.text() for a in wanted if a not in on_tab], [])
+
+
 class Busy(unittest.TestCase):
     def test_no_busy_pointer_over_a_message_box(self):
         seen = []
