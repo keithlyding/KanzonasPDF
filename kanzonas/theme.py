@@ -43,6 +43,10 @@ ICONS = {
     "m_count": "counter", "m_calibrate": "tape-measure", "redact": "marker-cancel",
     "f_text": "form-textbox", "f_check": "checkbox-marked-outline", "f_radio": "radiobox-marked",
     "f_combo": "form-dropdown", "f_sign": "draw-pen", "f_initials": "alpha-i-box-outline",
+    # CAD tab
+    "cad_move": "cursor-move", "cad_copy": "content-copy", "cad_rotate": "rotate-right-variant",
+    "cad_scale": "resize", "cad_mirror": "reflect-horizontal", "cad_delete": "delete-outline",
+    "cad_align": "vector-link", "cad_array": "dots-grid", "cad_trim": "content-cut",
 }
 
 _mode = "light"

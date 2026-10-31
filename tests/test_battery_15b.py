@@ -326,6 +326,8 @@ class CadTab(Window):
             [self.w.a_snap_objects, self.w.a_snap_grid, self.w.a_snap_page, A_["z_front"],
              A_["z_back"]] + [self.w.cad_actions[k] for k in ("move", "trim")]
         self.assertEqual([a.text() for a in wanted if a not in on_tab], [])
+        # every CAD command has an icon (the theme draws them from the icon font)
+        self.assertEqual([k for k, a in self.w.cad_actions.items() if a.icon().isNull()], [])
 
 
 class Busy(unittest.TestCase):

@@ -6985,3 +6985,6 @@ msgstr "Página:"
 
 msgid "Clean up"
 msgstr "Limpiar"
+
+msgid "Calibrate"
+msgstr "Calibrar"

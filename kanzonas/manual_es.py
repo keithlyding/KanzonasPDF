@@ -823,7 +823,7 @@ texto funcionan con ella, y editarla de nuevo conserva su fuente.</li>
 <h2 id="measure">Medir</h2>
 <ul>
 <li>Primero defina la escala del dibujo: Medir &gt; <b>Establecer escala</b> (escalas predefinidas como 1/4" = 1'-0",
-1:100), o <b>Calibrar cinta métrica</b>: arrastre a lo largo de una dimensión conocida y escriba su longitud
+1:100), o <b>Calibrar cinta métrica</b> (Calibrar en la cinta): arrastre a lo largo de una dimensión conocida y escriba su longitud
 real. KanzonasPDF lee las notas de escala escritas en el plano (SCALE: 1/4" = 1'-0", 1" = 20',
 1:50, NTS, en el cuadro de rótulo o debajo de los títulos de los detalles): Establecer escala las ofrece como <b>Escala
 escrita en el plano</b>, que queda elegida automáticamente cuando el cuadro de rótulo tiene una, y la barra de estado

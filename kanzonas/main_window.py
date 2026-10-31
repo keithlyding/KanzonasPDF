@@ -3666,6 +3666,8 @@ class MainWindow(QMainWindow):
             getattr(self, attr).setIcon(theme.icon_named(name))
         for tid, a in self.tool_actions.items():
             a.setIcon(theme.icon(tid))
+        for key, a in getattr(self, "cad_actions", {}).items():
+            a.setIcon(theme.icon("cad_" + key))
         self.forms_btn.setIcon(theme.icon("forms"))
         for a, name in getattr(self, "_strip_icons", []):
             a.setIcon(theme.icon_named(name))
@@ -4267,6 +4269,7 @@ class MainWindow(QMainWindow):
         "tool_erasecontent": tr("Erase content"), "tool_capture": tr("Capture"),
         "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "tool_link": tr("Links"),
         "tool_editobjects": tr("Edit objects"), "tool_addtext": tr("Add text"),
+        "tool_m_calibrate": tr("Calibrate"),
     }
     RIBBON_ICONS = {
         "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square", "a_sheet_scales": "text-box-search-outline", "a_sheet_links": "link-variant-plus",

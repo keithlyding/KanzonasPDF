@@ -841,7 +841,7 @@ text work on it, and editing it again keeps its font.</li>
 <h2 id="measure">Measuring</h2>
 <ul>
 <li>Set the drawing scale first: Measure &gt; <b>Set scale</b> (presets such as 1/4" = 1'-0",
-1:100), or <b>Calibrate Tape Measure</b>: drag along a known dimension and type its real
+1:100), or <b>Calibrate Tape Measure</b> (Calibrate on the ribbon): drag along a known dimension and type its real
 length. KanzonasPDF reads the scale notes written on the sheet (SCALE: 1/4" = 1'-0", 1" = 20',
 1:50, NTS, in the title block or under detail titles): Set scale offers them as <b>Scale
 written on the sheet</b>, picked for you when the title block has one, and the status bar
