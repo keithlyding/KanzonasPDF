@@ -4,6 +4,7 @@ import json
 import math
 import os
 import re
+import shutil
 import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -104,6 +105,10 @@ class _busy:
         _busy.depth -= 1
         QApplication.restoreOverrideCursor()
         return False
+
+
+class OpenCanceled(Exception):
+    """Opening was canceled by the user (a password prompt): no error to show."""
 
 
 _JS_ACTION = re.compile(r"/S\s*/(JavaScript|Launch)\b")    # (Launch: runs a program)
@@ -244,11 +249,17 @@ class DocumentView(QScrollArea):
             self._orig_enc = {"needs_pass": bool(self.doc.needs_pass), "user_pw": None,
                               "owner_pw": None}
         if self.doc.needs_pass:
-            pw, ok = QInputDialog.getText(self, tr("Password required"),
-                                          tr("{name} is protected:").format(
-                                              name=os.path.basename(path)),
-                                          QLineEdit.Password)
-            rc = self.doc.authenticate(pw) if ok else 0
+            rc, prompt = 0, tr("{name} is protected:").format(name=os.path.basename(path))
+            for _try in range(3):           # a mistyped password can be typed again
+                pw, ok = QInputDialog.getText(self, tr("Password required"), prompt,
+                                              QLineEdit.Password)
+                if not ok:
+                    raise OpenCanceled()    # (Cancel: nothing to report)
+                rc = self.doc.authenticate(pw)
+                if rc:
+                    break
+                prompt = tr("Wrong password. {name} is protected:").format(
+                    name=os.path.basename(path))
             if not rc:
                 raise ValueError(tr("Wrong or missing password"))
             if rc & 2:
@@ -260,7 +271,7 @@ class DocumentView(QScrollArea):
         if self._orig_enc is not None:
             self._orig_enc["perms"] = self.doc.permissions
         try:
-            signed = self.doc.get_sigflags() >= 1
+            signed = self.doc.get_sigflags() >= 1 or self._has_filled_signature()
         except Exception:
             signed = False
         if self._orig_enc is None and not signed:
@@ -940,9 +951,24 @@ class DocumentView(QScrollArea):
     def _snapshot(self):
         # a protected file's undo copies keep its encryption, so saving after an undo can
         # still keep the original passwords and permissions (see save)
-        if self._orig_enc is not None and (self.doc.metadata or {}).get("encryption"):
-            return self.doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_KEEP)
-        return self.doc.tobytes()
+        keep = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
+        opts = {"encryption": pymupdf.PDF_ENCRYPT_KEEP} if keep else {}
+        # written through a temporary file: tobytes hands MuPDF's output to Python in tiny
+        # pieces, about three times slower, and a big plan set is copied on every edit
+        import tempfile
+        fd, tmp = tempfile.mkstemp(suffix=".pdf", prefix="kz-undo-")
+        os.close(fd)
+        try:
+            self.doc.save(tmp, **opts)
+            with open(tmp, "rb") as f:
+                return f.read()
+        except Exception:
+            return self.doc.tobytes(**opts)
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
 
     def _view_anchor(self):
         """Where the window is looking, as a fraction of the current page, so a rebuild
@@ -5052,8 +5078,8 @@ class DocumentView(QScrollArea):
         """Validate certificate signatures; signed files open read-only with a banner."""
         self.sig_results = []
         try:
-            if self.doc.get_sigflags() < 1:
-                return
+            if self.doc.get_sigflags() < 1 and not self._has_filled_signature():
+                return              # (some programs sign without setting /SigFlags)
             from . import digisign
             with open(self.path, "rb") as f:
                 self.sig_results = digisign.validate(f.read())
@@ -5603,6 +5629,9 @@ class DocumentView(QScrollArea):
             w.update()
             if value == "":
                 blank_appearance(self.doc, xref)   # (else the old text still shows)
+                fx = self._field_dict(w)           # (and the parent kept the old value)
+                if self.doc.xref_get_key(fx, "V")[0] != "null":
+                    self.doc.xref_set_key(fx, "V", "null")
         self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM)
 
     def _choose_option(self, index, xref):
@@ -6522,18 +6551,27 @@ class DocumentView(QScrollArea):
             raise RuntimeError(tr("This PDF hasn't been saved yet: use Save As to choose where."))
         self.commit_pending()
         path = os.path.abspath(path or self.path)
-        tmp = path + ".kanzonas-tmp"
+        # a link to the file: write the file it points to (replacing the link would cut it)
+        target = os.path.realpath(path)
+        tmp = target + ".kanzonas-tmp"
         if self._fonts_added:
             # Text edits may embed whole system fonts; keep only the glyphs actually used.
             try:
                 self.doc.subset_fonts()
+                # text added later must not get the cut-down fonts (see text_edit._insert_font)
+                self.doc.font_salt = getattr(self.doc, "font_salt", 0) + 1
             except Exception:
                 pass
             self._fonts_added = False
         sec = self.security
         try:
             self._write_file(tmp, sec)
-            os.replace(tmp, path)
+            if os.path.exists(target):
+                try:
+                    shutil.copymode(target, tmp)    # (the file keeps its permissions)
+                except OSError:
+                    pass
+            os.replace(tmp, target)
             self.disk_stamp = disk_stamp(path)
         except BaseException:
             # e.g. the file is locked by another program: don't leave the copy next to it

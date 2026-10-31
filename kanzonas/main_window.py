@@ -1423,14 +1423,21 @@ class MainWindow(QMainWindow):
 
     def open_file(self, path):
         path = os.path.abspath(path)
-        for i in range(self.tabs.count()):
-            w = self.tabs.widget(i)
-            if not w.untitled and os.path.normcase(w.path) == os.path.normcase(path):
-                # already open: show it, as it is on disk now if it changed since
-                if self._changed_on_disk(w) and self._may_reload(w):
-                    w = self._reload_tab(w) or w
-                self.tabs.setCurrentWidget(w)
-                return
+        for win in [self] + [x for x in windows() if x is not self]:
+            # (also in a pulled-out window: two copies of one file, each saved over the
+            # other's changes)
+            for i in range(win.tabs.count()):
+                w = win.tabs.widget(i)
+                if not w.untitled and os.path.normcase(w.path) == os.path.normcase(path):
+                    # already open: show it, as it is on disk now if it changed since
+                    if win._changed_on_disk(w) and win._may_reload(w):
+                        w = win._reload_tab(w) or w
+                    win.tabs.setCurrentWidget(w)
+                    if win is not self:
+                        win.showNormal() if win.isMinimized() else None
+                        win.raise_()
+                        win.activateWindow()
+                    return
         v = self._load_view(path)
         if v is None:
             return
@@ -1442,12 +1449,21 @@ class MainWindow(QMainWindow):
     def _load_view(self, path):
         """A view of the PDF at path, wired to this window (not in a tab yet); None if it
         can't be opened (the reason is shown)."""
+        from .document_view import OpenCanceled
         try:
             v = DocumentView(path)
+        except OpenCanceled:
+            return None
         except Exception as ex:
             QMessageBox.critical(self, tr("Could not open file"), f"{path}\n\n{ex}")
             return None
         self._connect_view(v)
+        if getattr(v.doc, "is_repaired", False):
+            # MuPDF rebuilt a damaged file to open it: parts may be missing, and saving over
+            # it replaces the damaged original for good
+            v.show_banner(tr("This file was damaged and has been repaired to open it: some "
+                             "content may be missing. Use Save As to keep the original "
+                             "as it is."))
         if v.read_only:
             QTimer.singleShot(0, lambda: QMessageBox.information(
                 self, tr("Protected document"), tr("This PDF is protected against changes. You can "
@@ -1565,6 +1581,25 @@ class MainWindow(QMainWindow):
             return False
         if v.untitled:
             return self.save_as()
+        from .document_view import disk_stamp
+        gone = getattr(v, "disk_stamp", None) is not None and disk_stamp(v.path) is None
+        if self._changed_on_disk(v) or gone:
+            # another program (or a colleague) changed, replaced or removed the file since it
+            # was opened here: saving would silently put this copy in its place
+            box = QMessageBox(QMessageBox.Warning, tr("Save"), (tr(
+                "{name} was deleted or moved since you opened it.") if gone else tr(
+                "{name} was changed by another program since you opened it. Saving replaces "
+                "that version with this one.")).format(name=os.path.basename(v.path)),
+                parent=self)
+            keep = box.addButton(tr("Save here anyway") if gone else tr("Replace it"),
+                                 QMessageBox.DestructiveRole)
+            other = box.addButton(tr("Save As..."), QMessageBox.AcceptRole)
+            box.addButton(QMessageBox.Cancel)
+            box.exec()
+            if box.clickedButton() is other:
+                return self.save_as()
+            if box.clickedButton() is not keep:
+                return False
         try:
             v.save()
         except Exception as ex:

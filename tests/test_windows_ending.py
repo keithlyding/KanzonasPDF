@@ -79,7 +79,10 @@ class WindowsEnding(unittest.TestCase):
         left = autosave.leftovers()
         self.assertEqual([os.path.basename(o) for _p, o, _t in left], ["two.pdf"])
 
-        # the next start reopens both (and offers the backup of the unsaved one)
+        # the next start reopens both (and offers the backup of the unsaved one); the
+        # windows of before are gone by then (Qt's quit after Windows ends the session)
+        for x in (w2, w):
+            x.close()
         again = MainWindow()
         self.addCleanup(lambda: (setattr(again, "_close_confirmed", True), again.close()))
         again.restore_session()

@@ -323,6 +323,38 @@ def _system_fonts():
     return _SYSTEM_FONTS
 
 
+_SUBSET = re.compile(r"^[A-Z]{6}\+")
+
+
+def _insert_font(page, name, **source):
+    """page.insert_font, but a name already on the page for a font cut down to the glyphs
+    used (Save keeps only those, and so do other programs) gets a fresh name: PyMuPDF
+    reuses the font already there under that name, and new letters came out invisible.
+    After a Save cut the document's fonts down (font_salt, set by the view), the font's
+    bytes get a few zero bytes added: MuPDF otherwise finds the same font file it embedded
+    before and hands back the cut-down copy, whatever the name. Returns the name to write
+    with."""
+    taken = {f[4]: f[3] for f in page.get_fonts()}
+    if name in taken and not _SUBSET.match(taken[name] or ""):
+        page.insert_font(fontname=name, **source)      # (already here, whole)
+        return name
+    if name in taken:
+        k = 2
+        while "%s_%d" % (name, k) in taken:
+            k += 1
+        name = "%s_%d" % (name, k)
+    salt = getattr(page.parent, "font_salt", 0)
+    if salt:
+        if "fontfile" in source:
+            with open(source["fontfile"], "rb") as f:
+                buf = f.read()
+        else:
+            buf = source["fontbuffer"]
+        source = {"fontbuffer": bytes(buf) + b"\0" * salt}
+    page.insert_font(fontname=name, **source)
+    return name
+
+
 def _system_font(page, span, text):
     """Use the installed copy of the span's font (like Acrobat does) if it has every glyph."""
     path = _system_fonts().get(_norm(span["font"]))
@@ -332,8 +364,7 @@ def _system_font(page, span, text):
         font = pymupdf.Font(fontfile=path)
         if not all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
             return None
-        name = "KZS" + _norm(span["font"])[:20]
-        page.insert_font(fontname=name, fontfile=path)
+        name = _insert_font(page, "KZS" + _norm(span["font"])[:20], fontfile=path)
         return name, font, {"fontfile": path}
     except Exception:
         return None
@@ -392,8 +423,8 @@ def _unicode_font(page, text):
     try:
         font = pymupdf.Font("cjk")
         if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
-            page.insert_font(fontname="KZUni", fontbuffer=font.buffer)
-            return "KZUni", font, {"fontbuffer": font.buffer}
+            name = _insert_font(page, "KZUni", fontbuffer=font.buffer)
+            return name, font, {"fontbuffer": font.buffer}
     except Exception:
         pass
     return None
@@ -425,8 +456,7 @@ def _broad_font(page, text):
         try:
             font = pymupdf.Font(fontfile=path)
             if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
-                name = "KZB" + key[:20]
-                page.insert_font(fontname=name, fontfile=path)
+                name = _insert_font(page, "KZB" + key[:20], fontfile=path)
                 return name, font, {"fontfile": path}
         except Exception:
             continue
@@ -481,8 +511,7 @@ def chosen_font(page, family, bold=False, italic=False, text=""):
             font = pymupdf.Font(fontfile=path)
             if not all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
                 return None
-            name = "KZF" + key[:20]
-            page.insert_font(fontname=name, fontfile=path)
+            name = _insert_font(page, "KZF" + key[:20], fontfile=path)
             return name, font, {"fontfile": path}
         except Exception:
             continue
@@ -509,8 +538,7 @@ def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
                                 "{names}. Remove or replace them and try again.").format(
                                     names=names))
     if found:
-        fontname, font, source = found
-        page.insert_font(fontname=fontname, **source)
+        fontname, font, source = found      # (already on the page: chosen_font inserted it)
     else:
         fontname = _BASE14_STYLE[(bool(bold), bool(italic))]
         font = pymupdf.Font(fontname)
@@ -548,7 +576,7 @@ def _scan_font(page, scan, text):
     try:
         font = pymupdf.Font(**source)
         if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
-            page.insert_font(fontname=name, **source)
+            name = _insert_font(page, name, **source)
             return (name, font, source), None
     except Exception:
         pass
@@ -1176,7 +1204,7 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
         return None, pymupdf.Rect(), []
     if found:
         fontname, fnt, source = found
-        page.insert_font(fontname=fontname, **source)
+        fontname = _insert_font(page, fontname, **source)
     else:
         fontname = _base14(main)
         fnt = pymupdf.Font(fontname)
@@ -1285,7 +1313,7 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
         fontname, font, source = found
         # applying the redaction drops fonts no text uses yet, including the one just
         # chosen: add it again (without this, writing failed: "need font file or buffer")
-        page.insert_font(fontname=fontname, **source)
+        fontname = _insert_font(page, fontname, **source)
     else:
         fontname = builtin or _base14(main)
         font = pymupdf.Font(fontname)

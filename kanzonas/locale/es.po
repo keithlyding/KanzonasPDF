@@ -7003,3 +7003,24 @@ msgstr "Firma digital"
 
 msgid "Another field is already called {name}: choose another name."
 msgstr "Ya hay otro campo llamado {name}: elija otro nombre."
+
+msgid "{name} was deleted or moved since you opened it."
+msgstr "{name} se eliminó o se movió desde que lo abrió."
+
+msgid "{name} was changed by another program since you opened it. Saving replaces that version with this one."
+msgstr "Otro programa cambió {name} desde que lo abrió. Al guardar, esa versión se reemplaza por esta."
+
+msgid "Save here anyway"
+msgstr "Guardar aquí de todos modos"
+
+msgid "Replace it"
+msgstr "Reemplazarlo"
+
+msgid "Save As..."
+msgstr "Guardar como..."
+
+msgid "Wrong password. {name} is protected:"
+msgstr "Contraseña incorrecta. {name} está protegido:"
+
+msgid "This file was damaged and has been repaired to open it: some content may be missing. Use Save As to keep the original as it is."
+msgstr "Este archivo estaba dañado y se reparó para abrirlo: puede faltar parte del contenido. Use Guardar como para conservar el original tal como está."
