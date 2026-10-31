@@ -314,5 +314,114 @@ class Everything(CadMode):
         self.assertEqual(len(lines(self.v.doc[0])), 2)
 
 
+class Battery16(Window):
+    """What the 1.6 break-it round found, fixed."""
+    TEXT = True
+
+    def annots(self):
+        page = self.v.doc[0]
+        return [(a.type[1], pymupdf.Rect(a.rect)) for a in page.annots()]
+
+    def own_text(self):
+        from kanzonas import text_edit
+        d = text_edit.page_text_dict(self.v.doc[0], 0)
+        return " ".join(s["text"] for b in d["blocks"] if b["type"] == 0
+                        for ln in b["lines"] for s in ln["spans"])
+
+    def add(self, fn):
+        self.v.modify(lambda: fn(self.v.doc[0]), [0])
+
+    def test_a_text_box_moves_whole_and_its_words_stay_its_own(self):
+        self.add(lambda p: p.add_freetext_annot(pymupdf.Rect(60, 60, 140, 90), "Box text"))
+        self.box(55, 55, 145, 95)
+        self.assertIsNone(self.v.obj_sel)           # (its words aren't the page's text)
+        self.type("m")
+        cmd = self.v._cad_cmd
+        cmd.click(0, pymupdf.Point(100, 75))
+        cmd.click(0, pymupdf.Point(100, 45))
+        kinds = [k for k, _r in self.annots()]
+        self.assertEqual(kinds, ["FreeText"])
+        self.assertAlmostEqual(self.annots()[0][1].y0, 30, delta=2)
+        self.assertNotIn("Box", self.own_text())
+
+    def test_moving_the_drawings_text_keeps_a_text_box_over_it(self):
+        self.add(lambda p: p.add_freetext_annot(pymupdf.Rect(55, 268, 80, 288), "x",
+                                                 fontsize=6))
+        item = [it for it in self.v.text_objects(0) if "PANEL" in str(it["lines"])][0]
+        self.v.select_objects(0, [item])
+        self.type("m")
+        cmd = self.v._cad_cmd
+        cmd.click(0, pymupdf.Point(60, 270))
+        cmd.click(0, pymupdf.Point(60, 230))
+        self.assertEqual([k for k, _r in self.annots()], ["FreeText"])
+        self.assertIn("PANEL", self.own_text())
+
+    def test_the_live_highlight_shows_markups_too(self):
+        self.add(lambda p: p.add_rect_annot(pymupdf.Rect(170, 60, 230, 120)))
+        steps = list(self.v.cad_preview_steps(0, Box(pymupdf.Rect(10, 10, 390, 295))))
+        outlines = [ln for lines, _r in steps for ln in lines]
+        self.assertGreaterEqual(len(outlines), 4)  # the markup's and the three lines'
+
+    def test_trim_leaves_a_line_crossing_no_cutting_edge(self):
+        self.box(140, 40, 160, 260)                 # the edge: the plumb line at x=150
+        self.type("tr")
+        self.v._cad_cmd.click(0, pymupdf.Point(250, 100))   # the other plumb line
+        self.type("")
+        self.assertIn((250, 50, 250, 250), lines(self.v.doc[0]))
+
+    def test_escape_drops_a_box_started_while_selecting(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        from kanzonas import cad_select
+        self.type("m")
+        pw = self.v.pages[0]
+        self.v._cad_pick = {"w": pw, "at": pymupdf.Point(10, 10), "now": None,
+                            "remove": False}
+        QTest.keyClick(self.v, Qt.Key_Escape)
+        self.assertIsNone(self.v._cad_cmd)
+        self.assertIsNone(self.v._cad_pick)
+        self.assertFalse(cad_select.cancel(self.v))
+
+    def test_arrow_keys_nudge_lines_and_markups_together(self):
+        self.add(lambda p: p.add_rect_annot(pymupdf.Rect(170, 60, 230, 120)))
+        self.box(140, 40, 260, 260)
+        y0 = self.annots()[0][1].y0
+        self.assertTrue(self.v.nudge(0, 1, 10))
+        self.assertIn((150, 60, 150, 260), lines(self.v.doc[0]))
+        self.assertAlmostEqual(self.annots()[0][1].y0, y0 + 10, delta=1)
+        self.v.undo()
+        self.assertIn((150, 50, 150, 250), lines(self.v.doc[0]))
+        self.assertAlmostEqual(self.annots()[0][1].y0, y0, delta=1)
+
+    def test_a_locked_comment_isnt_added_through_its_card(self):
+        from kanzonas import cad_select
+        def lock(p):
+            a = p.add_rect_annot(pymupdf.Rect(170, 60, 230, 120))
+            a.set_flags(pymupdf.PDF_ANNOT_IS_LOCKED)
+            a.update()
+        self.add(lock)
+        self.add(lambda p: p.add_rect_annot(pymupdf.Rect(300, 60, 360, 120)))
+        page = self.v.doc[0]
+        locked, other = [a.xref for a in page.annots()]
+        del page
+        self.v.select_xref(0, other)                # (another markup selected already)
+        cad_select.toggle(self.v.pages[0], "markup", locked, False)
+        self.assertEqual(self.v.selected_xrefs(), [other])
+
+    def test_a_mixed_selection_needs_annotating_too(self):
+        from unittest import mock
+        self.add(lambda p: p.add_rect_annot(pymupdf.Rect(170, 60, 230, 120)))
+        allowed = self.v.allowed
+        with mock.patch.object(self.v, "allowed", side_effect=lambda p: (
+                p != pymupdf.PDF_PERM_ANNOTATE and allowed(p))), \
+                mock.patch("kanzonas.document_view.QMessageBox.information") as said:
+            self.box(140, 40, 260, 260)
+            self.v.cad_apply("Moved", pymupdf.Matrix(1, 0, 0, 1, 0, 30))
+            self.v.delete_everything_selected()
+        self.assertTrue(said.called)
+        self.assertIn((150, 50, 150, 250), lines(self.v.doc[0]))
+        self.assertEqual(len(self.annots()), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

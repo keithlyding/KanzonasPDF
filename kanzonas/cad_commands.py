@@ -312,6 +312,10 @@ class CommandLine(QWidget):
                 if label.replace("&", "").lower().startswith(low):
                     cmd.choose(value)
                     return
+            if cmd.selecting:
+                self.show_for(cmd, tr("select objects (click them, or draw a box or a lasso), "
+                                      "then press Enter or right-click"), typing=False)
+                return
             cmd.typed(text)
             return
         if not text:
@@ -476,11 +480,24 @@ class Command:
     # ---- running -------------------------------------------------------------------------
     def start(self):
         v = self.v
-        if getattr(v, "_source", None) is not None or not v.allowed(pymupdf.PDF_PERM_MODIFY):
-            v.modify(lambda: None)          # says why it can't be changed (once, not per click)
+        # what it needs: the drawing changed (objects), annotating (markups), or both
+        perms = [pymupdf.PDF_PERM_MODIFY]
+        what = v.cad_targets() if self.needs_selection else None
+        if what is not None:
+            perms = {"objects": [pymupdf.PDF_PERM_MODIFY],
+                     "markups": [pymupdf.PDF_PERM_ANNOTATE]}.get(
+                what[0], [pymupdf.PDF_PERM_MODIFY, pymupdf.PDF_PERM_ANNOTATE])
+        elif self.needs_selection:      # (nothing selected yet: either may do)
+            perms = [pymupdf.PDF_PERM_MODIFY] if not v.allowed(pymupdf.PDF_PERM_ANNOTATE) \
+                else []
+        if getattr(v, "_source", None) is not None:
+            v.modify(lambda: None)          # (the split view says it's read-only)
             return False
+        for perm in perms:
+            if not v.allowed(perm):
+                v.modify(lambda: None, permission=perm)   # says why (once, not per click)
+                return False
         if self.needs_selection:
-            what = v.cad_targets()
             if what is None:
                 if not v.cad_select:
                     v.statusMessage.emit(tr("{command}: select what to change first (click "
@@ -534,6 +551,8 @@ class Command:
         """Show the prompt for the current step."""
 
     def finish(self, label=None):
+        from . import cad_select
+        cad_select.cancel(self.v)           # (a box started while selecting goes too)
         self.v._cad_cmd = None
         self.ui.done()
         self._repaint()
@@ -607,6 +626,13 @@ class Command:
     def paint(self, w, p):
         if w.index != self.page:
             return
+        # page to screen worked out once (to_screen_pt reads the page for each point: a
+        # big selection's outline took over a second to draw on each pointer move)
+        to = self.v.doc[w.index].rotation_matrix * pymupdf.Matrix(self.v.zoom, self.v.zoom)
+
+        def sp(q):
+            q = pymupdf.Point(q) * to
+            return QPointF(q.x, q.y)
         mats, start = self.preview()
         if mats and self.ghost:
             p.setPen(QPen(GHOST, 1, Qt.DashLine))
@@ -630,13 +656,13 @@ class Command:
                     lines_m = [[pymupdf.Point(q) * m for q in line] for line in lines]
                 for line in lines_m:
                     for a, b in zip(line, line[1:]):
-                        p.drawLine(w.to_screen_pt(a), w.to_screen_pt(b))
+                        p.drawLine(sp(a), sp(b))
         if start is not None and self.hover is not None:
             p.setPen(QPen(BAND, 1, Qt.DashLine))
-            p.drawLine(w.to_screen_pt(start), w.to_screen_pt(self.hover))
+            p.drawLine(sp(start), sp(self.hover))
         p.setPen(QPen(BAND, 1))
         for q in self.pts:
-            c = QPointF(w.to_screen_pt(q))
+            c = QPointF(sp(q))
             p.drawLine(c + QPointF(-5, 0), c + QPointF(5, 0))
             p.drawLine(c + QPointF(0, -5), c + QPointF(0, 5))
 
@@ -674,16 +700,19 @@ class Copy(Command):
 
     def step(self):
         if len(self.pts) >= 2:
+            rev = self.v.revision
             self.v.cad_apply(tr("Copied"), None, copies=[translate(self.pts[-1] - self.pts[0])],
                              keep=True)
-            self.made += 1
+            if self.v.revision != rev:      # (the drawing's text alone isn't copied)
+                self.made += 1
         self.ask()
 
     def enter(self):
         self.choose("done")
 
     def choose(self, value):
-        self.finish(tr("{n} copies made").format(n=self.made) if self.made else None)
+        self.finish((tr("1 copy made") if self.made == 1 else
+                     tr("{n} copies made").format(n=self.made)) if self.made else None)
 
     def cancel(self):
         self.choose("done")
@@ -917,7 +946,8 @@ class Array(Command):
                                 else 1 for it in items)
         else:
             many = copies * len(items)
-        if many > 20000:
+        marks = items["markups"] if kind == "both" else items if kind == "markups" else []
+        if many > 20000 or copies * len(marks) > 1000:
             from PySide6.QtWidgets import QMessageBox
             if QMessageBox.question(
                     v, tr("Array"), tr("This makes {n} new objects, which can take a while and "
@@ -952,8 +982,12 @@ class Array(Command):
     def step(self):
         if len(self.pts) == self._needed():
             n = self.rows * self.cols - 1
+            rev = self.v.revision
             self.v.cad_apply(tr("Array"), None, copies=self._matrices(self.pts))
-            self.finish(tr("Array: {n} copies made (Ctrl+Z undoes it)").format(n=n))
+            if self.v.revision != rev:
+                self.finish(tr("Array: {n} copies made (Ctrl+Z undoes it)").format(n=n))
+            else:                           # (the drawing's text alone isn't copied: it says)
+                self.finish()
         else:
             self.ask()
 
@@ -984,6 +1018,14 @@ class Trim(Command):
     def _take(self, what):
         kind, page, items = what
         self.edges = (page, self.v.cad_outlines(page, kind, items))
+        self._pages = len(self.v.pages)
+
+    def gone(self):
+        if self.edges is not None and len(self.v.pages) != getattr(self, "_pages", 0):
+            self.finish(tr("{command} canceled: the document changed under it. Select again "
+                           "and start it again.").format(command=self.title))
+            return True
+        return super().gone()
 
     def selected(self):
         what = self.v.cad_targets()
@@ -1005,6 +1047,8 @@ class Trim(Command):
                          choices=[(tr("Done"), "done")])
 
     def click(self, index, pt):
+        if self.gone():
+            return
         self.page = index
         edges = self.edges[1] if self.edges is not None and self.edges[0] == index else None
         if self.edges is not None and edges is None:

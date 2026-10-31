@@ -648,7 +648,8 @@ class PageWidget(QWidget):
             p.setPen(blue)
             at = self._edit.get("pos", QPointF())
             p.drawText(at + QPointF(14, -8), f"{A.angle(shown):.0f}\u00b0")
-        if not self._edit:
+        cad_objects = self.view.cad_select and self.view.tool == "editobjects"
+        if not self._edit and not cad_objects:  # (CAD mode changes markups by commands)
             p.setPen(QPen(blue, 1))
             p.setBrush(Qt.white)
             for hid, r in self._handles(model).items():
@@ -910,13 +911,14 @@ class PageWidget(QWidget):
                 p.drawRect(box)
 
     def _objects_menu(self, e, pdf):
+        """The Edit objects menu; False (no menu) when there's no object there."""
         from PySide6.QtWidgets import QMenu
         item = self.view.object_at(self.index, pdf)
         if item is not None and item["n"] not in {it["n"] for it in self._objects_here()}:
             self.view.select_objects(self.index, [item])
         items = self._objects_here()
         if not items:
-            return
+            return False
         one_pic = len(items) == 1 and items[0]["kind"] == "picture"
         has_text = any(it["kind"] == "text" for it in items)
         menu = QMenu(self)
@@ -940,8 +942,9 @@ class PageWidget(QWidget):
             a.setEnabled(not has_text)
         self._link_actions(menu, pdf, True)
         menu.addSeparator()
-        menu.addAction(tr("Delete") + "\tDel", self.view.delete_objects)
+        menu.addAction(tr("Delete") + "\tDel", self.view.delete_everything_selected)
         menu.exec(e.globalPosition().toPoint())
+        return True
 
     def _sig_box(self):
         """While dragging to size a signature / initials: its box in displayed page
@@ -1005,7 +1008,8 @@ class PageWidget(QWidget):
                     A.text_editable(v.selected_model):
                 sel = v.selection
                 menu.addAction(tr("Edit text..."), lambda: v.edit_annot_text(*sel))
-            menu.addAction(tr("Delete"), v.delete_selected)
+            # (all that's selected: in CAD mode, the drawing's objects selected with them too)
+            menu.addAction(tr("Delete"), v.delete_everything_selected)
         elif on_text:
             # right-click on selected text that is also highlighted: offer to remove the markup
             xref = v.annot_at(self.index, pdf)
@@ -1130,7 +1134,14 @@ class PageWidget(QWidget):
                 cmd.enter_key()
             return
         if e.button() == Qt.RightButton and self.view.tool == "editobjects":
-            self._objects_menu(e, self.to_pdf(e.position()))
+            pdf = self.to_pdf(e.position())
+            v = self.view
+            # CAD mode: a markup lies on top of the drawing, so it has its own menu
+            on_markup = v.cad_select and (self._card_at(e.position()) is not None or
+                                          v.annot_at(self.index, pdf) is not None)
+            if (on_markup or not self._objects_menu(e, pdf)) and v.cad_select and \
+                    not self._poly and self._edit is None:
+                self._content_menu(e, pdf)
             return
         if e.button() == Qt.RightButton and not self._poly and self._edit is None:
             self._content_menu(e, self.to_pdf(e.position()))

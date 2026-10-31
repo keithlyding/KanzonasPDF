@@ -331,7 +331,11 @@ scaled or mirrored). <b>Select</b> (the CAD tab, or V when letters aren't going 
 line) selects only your markups, or the characters of the page's text, the same way.</p>
 <ul>
 <li><b>Click</b> something to add it to the selection. <b>Shift+click</b> takes it out.
-<b>Escape</b> clears the whole selection. Clicking empty paper keeps the selection.</li>
+<b>Escape</b> clears the whole selection. Clicking empty paper keeps the selection. A markup lies
+on top of the drawing, so a click on it takes the markup. A locked markup isn't taken.</li>
+<li>The <b>arrow keys</b> nudge the whole selection, the drawing's objects and the markups
+together. Right-click a markup for its own menu, the drawing's objects for theirs. Selected
+markups show no resize handles here: change them with the CAD tab's commands, or with Select.</li>
 <li><b>Click, move, click</b>: click empty paper, move the pointer (the box follows it) and click
 again. Left to right it's a solid <b>blue window</b>: it takes what lies entirely inside it.
 Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line
@@ -422,8 +426,9 @@ own original.</li>
 <li><b>Trim</b>: as in AutoCAD, first the <b>cutting edges</b>: the lines selected before TR,
 or the ones you select when it asks, then Enter (Enter with nothing selected: every line cuts).
 Then click the part of a line to cut away: it goes up to the nearest cutting edges crossing it
-on either side (or to its end, when none crosses on that side); a line none crosses goes
-completely. The click picks the line nearest to it and isn't
+on either side (or to its end, when none crosses on that side). With no cutting edges chosen, a
+line none crosses goes completely; with cutting edges chosen, a line that crosses none of them
+stays (it says so). The click picks the line nearest to it and isn't
 snapped; a click right where lines cross says so instead (click a little to one side). Click
 again and again; Enter, Escape or Done ends it. It
 trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
@@ -478,7 +483,7 @@ text (highlights, underlines, strikeouts) stay with their text. With nothing sel
 Right turn the page as usual.</li>
 <li><b>Escape</b> clears the selection. With nothing selected, Escape puts down whatever tool
 is picked (a stamp, shape, measurement, Crop...) and goes back to your default tool: the Hand
-in the Hand mouse mode, Select in the Standard and CAD modes. It works even right after a
+in the Hand mouse mode, Select in the Standard mode, Edit objects in the CAD mode. It works even right after a
 dialog or a toolbar click took the keyboard focus.</li>
 </ul>
 
@@ -735,7 +740,8 @@ care.</li>
 <ul>
 <li>Edit objects tool (Shift+O; Home tab, Tools menu), like Bluebeam's Edit content: works on
 the pictures (logos, photos, scans) and vector shapes (lines, rectangles, circles, curves,
-filled areas, CAD line work) that are part of the page itself, not on markups. Point at an object
+filled areas, CAD line work) that are part of the page itself, not on markups (in the CAD
+mouse mode it takes the markups drawn on the drawing too: see CAD mode). Point at an object
 to see it outlined; click to select it. Lines are picked up within a few pixels; a filled shape
 is picked up anywhere inside it.</li>
 <li><b>Text:</b> the page's own text (what Add text wrote, and the text of the PDF) is selected a
@@ -743,7 +749,7 @@ paragraph at a time: click a word to select its paragraph, and everything Add te
 go comes together. A selection box takes text only when there are no pictures or shapes in it
 (so a box around a drawing detail selects its line work, not its labels); Ctrl+click adds text
 to a selection. In the <b>CAD</b> mouse mode, selecting works as in AutoCAD instead: a blue
-window (left to right) takes the lines, text and pictures entirely inside it, a green crossing
+window (left to right) takes the lines, text, pictures and markups entirely inside it, a green crossing
 box (right to left) everything it touches, text and line work together; clicks, boxes and
 lassos add to the selection, Shift takes out of it and Escape clears it, and the CAD tab's
 commands change it (see CAD mode). Press <b>Delete</b> (or Backspace) or right-click &gt; <b>Delete</b> to remove

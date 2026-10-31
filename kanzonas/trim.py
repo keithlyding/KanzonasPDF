@@ -118,6 +118,12 @@ def crossings(poly, cum, cutters):
     return sorted(out)
 
 
+def crosses(poly, cutters):
+    """True when any of cutters crosses (or touches) the polyline."""
+    poly = [pymupdf.Point(p) for p in poly]
+    return bool(crossings(poly, _cum(poly), cutters))
+
+
 def trim(poly, closed, click, cutters):
     """The pieces of the polyline left after trimming at click: [] when it all goes, None
     when the click is right on a crossing (it can't tell which side to cut away)."""

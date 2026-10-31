@@ -3196,7 +3196,8 @@ class DocumentView(QScrollArea):
         from .page_objects import overlap
         xrefs = self.cad_markups_in(index, region, crossing)     # (the markups too)
         if xrefs:
-            found = annotations.load_annots(self.doc[index], xrefs[:3000])
+            page = self.doc[index]          # (kept alive while its markups are read)
+            found = annotations.load_annots(page, xrefs[:3000])
             models = [(x, annotations.read(a)) for x, a in found.items()]
             yield self.cad_outlines(index, "markups",
                                     [(x, m) for x, m in models if m is not None]), []
@@ -3354,10 +3355,17 @@ class DocumentView(QScrollArea):
         key = ("obj", index, tuple(it["n"] for it in self.obj_sel[1])) if self.obj_sel else \
             ("annot", index)
         now = time.monotonic()
-        last = getattr(self, "_last_nudge", (None, 0.0))
-        self._merge_edit = last[0] == key and now - last[1] < 1.5
+        last = getattr(self, "_last_nudge", (None, 0.0, -1))
+        # (presses in a row only: another edit between them starts a new undo step)
+        self._merge_edit = last[0] == key and now - last[1] < 1.5 and \
+            last[2] == self.revision
         try:
-            if self.obj_sel is not None:
+            what = self.cad_targets() if self.obj_sel is not None and \
+                self.selection is not None else None
+            if what is not None and what[0] == "both":
+                # CAD mode's selection of the drawing's objects and markups: both move
+                self.cad_apply(tr("Moved"), pymupdf.Matrix(1, 0, 0, 1, d.x, d.y))
+            elif self.obj_sel is not None:
                 r = self.selected_objects_rect()
                 self.move_objects(r + (d.x, d.y, d.x, d.y))
             else:
@@ -3368,7 +3376,7 @@ class DocumentView(QScrollArea):
                 self.commit_models(index, changes)
         finally:
             self._merge_edit = False
-        self._last_nudge = (key, now)
+        self._last_nudge = (key, now, self.revision)
         self.statusMessage.emit(tr("Moved {step} pt (Shift+arrow: 10 pt, Ctrl+arrow: 0.1 pt; "
                                    "Ctrl+Z undoes the whole series)").format(step="%g" % step))
         return True
@@ -3979,26 +3987,38 @@ class DocumentView(QScrollArea):
                 return True
         return False
 
+    def _markups_on_lines(self, page, lines):
+        """_markups_on_line for many lines, the page's markups read once."""
+        boxes = [pymupdf.Rect(ln["bbox"]) for ln in lines]
+        if not boxes:
+            return []
+        out = []
+        for an in annotations.each_annot(page):
+            if self._on_box(an, boxes):
+                out.append(an.xref)
+        return out
+
+    @staticmethod
+    def _on_box(an, boxes):
+        t = an.type[0]
+        if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
+                 pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
+            v = an.vertices or []
+            quads = [pymupdf.Quad(v[k:k + 4]).rect for k in range(0, len(v) - 3, 4)]
+            # all of its marked area lies on one of these lines (mostly overlapping it)
+            return bool(quads) and any(
+                all(q.get_area() > 0 and (q & box).get_area() >= 0.5 * q.get_area()
+                    for q in quads) for box in boxes)
+        if t == pymupdf.PDF_ANNOT_TEXT:
+            r = an.rect
+            return any((box + (-4, -4, 4, 4)).contains(pymupdf.Point(r.x0, r.y0))
+                       for box in boxes)
+        return False
+
     def _markups_on_line(self, page, line):
         """xrefs of text markups (highlight, underline, comments...) and sticky notes sitting
         on this line of text: they travel with it when the text is moved."""
-        box = pymupdf.Rect(line["bbox"])
-        out = []
-        for an in annotations.each_annot(page):
-            t = an.type[0]
-            if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
-                     pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
-                v = an.vertices or []
-                quads = [pymupdf.Quad(v[k:k + 4]).rect for k in range(0, len(v) - 3, 4)]
-                # all of its marked area lies on this line (mostly overlapping it)
-                if quads and all(q.get_area() > 0 and (q & box).get_area() >= 0.5 * q.get_area()
-                                 for q in quads):
-                    out.append(an.xref)
-            elif t == pymupdf.PDF_ANNOT_TEXT:
-                r = an.rect
-                if (box + (-4, -4, 4, 4)).contains(pymupdf.Point(r.x0, r.y0)):
-                    out.append(an.xref)
-        return out
+        return self._markups_on_lines(page, [line])
 
     def add_text_at(self, index, pt):
         """Add text tool: type at pt; the text is written into the page itself (like
@@ -4410,11 +4430,8 @@ class DocumentView(QScrollArea):
             with _busy():
                 what = self.cad_targets()
                 rev = self.revision
-                if what is not None and what[0] == "both" and \
-                        not self.allowed(pymupdf.PDF_PERM_MODIFY):
-                    # the drawing can't be changed: neither is half of the selection
-                    self.modify(lambda: None)       # (says why)
-                    out = None
+                if what is not None and what[0] == "both" and self._both_refused():
+                    out = None              # (neither half of the selection changes)
                 elif what is not None and what[0] == "both":
                     # the drawing's objects and the markups, as one undo step
                     out = self._cad_apply(label, mat, copies, keep, only="objects")
@@ -4455,6 +4472,15 @@ class DocumentView(QScrollArea):
             elif it["n"] in by_n:
                 again.append(by_n[it["n"]])
         self.select_objects(index, again)
+
+    def _both_refused(self):
+        """A selection of the drawing's objects and markups together: True (saying why) when
+        the file allows changing only one of them, so neither half is changed alone."""
+        for perm in (pymupdf.PDF_PERM_MODIFY, pymupdf.PDF_PERM_ANNOTATE):
+            if not self.allowed(perm):
+                self.modify(lambda: None, permission=perm)      # (says why)
+                return True
+        return False
 
     def then_in_same_step(self, rev, fn):
         """Run fn; its edits join the edit made since revision rev (one Ctrl+Z undoes both).
@@ -4658,6 +4684,12 @@ class DocumentView(QScrollArea):
             m = best[6]
             others = (m["strokes"] if m["kind"] == "ink" else [])
             cutters += [list(s) for j, s in enumerate(others) if j != best[3]]
+        if edges is not None and not trim.crosses(poly, cutters):
+            # (AutoCAD too: with cutting edges chosen, a line crossing none stays whole)
+            self.statusMessage.emit(tr("Trim: that line doesn't cross a cutting edge, so it "
+                                       "stays. (To let every line cut, start Trim with nothing "
+                                       "selected and press Enter.)"))
+            return False
         pieces = trim.trim(poly, best[5], pt, cutters)
         if pieces is None:
             self.statusMessage.emit(tr("Trim: that's where lines cross. Click on the part of "
@@ -4850,26 +4882,29 @@ class DocumentView(QScrollArea):
         if not (dx or dy):
             return
         d = pymupdf.Point(offset)
-        order = sorted(lines, key=lambda ln: (pymupdf.Rect(ln["bbox"]).y0 * (-1 if dy > 0 else 1),
-                                              pymupdf.Rect(ln["bbox"]).x0 * (-1 if dx > 0 else 1)))
-        for line in order:
-            moving = []
-            for x in self._markups_on_line(page, line):
-                m = annotations.read(page.load_annot(x))
-                if m is not None:
-                    moving.append((x, m))
-            used = text_edit.replace_line(page, line, text_edit.line_text(line), offset,
-                                          scan=None)
-            if (used or "").startswith("KZ"):
-                self._fonts_added = True
-            for x, m in moving:
-                if "quads" in m:
-                    m = annotations.copy(m)
-                    m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d)
-                                  for q in m["quads"]]
-                else:
-                    m = annotations.moved(m, d)
-                annotations.replace(page, x, m)
+        on = self._markups_on_lines(page, lines)
+        found = annotations.load_annots(page, on)
+        moving = []
+        for x in on:
+            m = annotations.read(found[x]) if x in found else None
+            if m is not None:
+                moving.append((x, m))
+        del found
+        # all the lines at once (one redaction): one by one, a sheet's labels took a minute
+        used = text_edit.move_lines(page, lines, offset)
+        if any(u.startswith("KZ") for u in used):
+            self._fonts_added = True
+        changes = []
+        for x, m in moving:
+            if "quads" in m:
+                m = annotations.copy(m)
+                m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d)
+                              for q in m["quads"]]
+            else:
+                m = annotations.moved(m, d)
+            changes.append((x, m))
+        if changes:
+            annotations.replace_many(page, changes)
 
     def rotate_objects(self, degrees):
         from . import page_objects
@@ -4940,8 +4975,7 @@ class DocumentView(QScrollArea):
         both at once), as one undo step."""
         rev = self.revision
         if self.obj_sel is not None:
-            if self.selection is not None and not self.allowed(pymupdf.PDF_PERM_MODIFY):
-                self.modify(lambda: None)       # (says why: the drawing can't be changed)
+            if self.selection is not None and self._both_refused():
                 return
             self.delete_objects()
             if self.revision == rev:
