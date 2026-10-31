@@ -283,7 +283,7 @@ en su lugar).</li>
 <li><b>Buscar texto:</b> Ctrl+F; luego Enter / F3 para la coincidencia siguiente y Shift+Enter / Shift+F3
 para la anterior; las flechas arriba y abajo junto al cuadro Buscar hacen lo mismo. El contador junto
 al cuadro muestra en qué coincidencia está y cuántas hay ("3 de 120"; "Sin coincidencias" cuando
-no hay ninguna). La búsqueda empieza en la página donde está y muestra la primera coincidencia en cuanto
+no hay ninguna; una palabra dividida con un guion al final de una línea cuenta como una sola coincidencia). La búsqueda empieza en la página donde está y muestra la primera coincidencia en cuanto
 la encuentra; en los documentos largos sigue buscando en el resto en segundo plano (el contador indica
 "3 de 120+" y la barra de estado muestra cuántas páginas se han revisado) mientras usted sigue trabajando. La coincidencia
 en la que está se sombrea de naranja con un marco naranja grueso que sigue siendo lo bastante grande para verlo incluso cuando
@@ -294,7 +294,9 @@ o editar el documento inicia una búsqueda nueva.</li>
 marque <b>Coincidir mayúsculas y minúsculas</b> o <b>Solo palabras completas</b> si hace falta, elija <b>Todas las páginas</b> o esta
 página y haga clic en <b>Reemplazar todo</b>. Cambia el texto propio del PDF (no los comentarios). Cada línea
 que cambia se vuelve a escribir como lo hace Editar texto, con la fuente propia de la línea cuando esta tiene los
-caracteres. Las páginas con marcas de censura que aún no se han aplicado se omiten (se indica cuáles).
+caracteres. La línea se vuelve a escribir en su sitio y no se reajusta: cuando el texto nuevo se mete en otro
+texto o pasa del borde de la página, Reemplazar texto indica en qué páginas (Ctrl+Z lo deshace; Editar texto
+puede reajustar el párrafo). Las páginas con marcas de censura que aún no se han aplicado se omiten (se indica cuáles).
 Ctrl+Z deshace todo el reemplazo.</li>
 <li><b>Vista dividida</b> (F10) muestra una segunda vista del mismo archivo, que se desplaza de forma independiente.
 Es solo para mirar: haga los cambios en la vista principal.</li>
@@ -452,14 +454,18 @@ Haga <b>doble clic</b> en una palabra para seleccionarla, y haga clic <b>una ter
 El arrastre puede cruzar el espacio entre páginas, y las páginas intermedias se incluyen.
 <b>Copiar</b> (Ctrl+C) lo coloca en el portapapeles, con una línea en blanco entre páginas;
 <b>Cortar</b> (Ctrl+X) además quita esas letras
-de la página (Deshacer las recupera). <b>Seleccionar todo el texto</b> (Ctrl+A) selecciona todo el texto
+de la página (Deshacer las recupera); las líneas de arriba y de abajo conservan las suyas, incluso en
+texto muy apretado. En una página con marcas de censura que aún no se han aplicado, Cortar deja el texto
+donde está (cortar aplicaría las marcas): aplíquelas o quítelas primero. <b>Seleccionar todo el texto</b> (Ctrl+A) selecciona todo el texto
 de la página. Esc o un clic en otro lugar borra la selección.</li>
 <li><b>Menú contextual:</b> haga clic con el botón derecho en la página para Cortar, Copiar, Pegar, Eliminar (para las
 marcas seleccionadas) y Seleccionar todo el texto. Con texto seleccionado, también ofrece Resaltado, Subrayado, Tachar,
 Comentar el texto… y Marcar para censura para ese texto. Hacer clic con el botón derecho en una marca la selecciona
 primero.</li>
 <li><b>Marcas:</b> seleccione una o más marcas y luego Copiar o Cortar. <b>Pegar</b> (Ctrl+V) las coloca
-donde está el mouse, en cualquier página o en otro documento abierto.</li>
+donde está el mouse, en cualquier página o en otro documento abierto. Pegadas en una página girada de
+otra manera (una página girada), se giran para que se vean como donde las copió; un cuadro de texto
+se sigue leyendo derecho.</li>
 <li><b>Duplicar</b> (Ctrl+D): aparecen copias de las marcas seleccionadas ligeramente desplazadas, seleccionadas
 para que pueda arrastrarlas a su lugar. En la lista de páginas, Ctrl+D duplica las páginas seleccionadas.</li>
 <li><b>Imágenes y texto de otros programas:</b> Pegar coloca una imagen copiada (p. ej., una captura de pantalla)
@@ -508,7 +514,8 @@ agrega una nota adhesiva en cualquier lugar.</li>
 comentario y cada marca en orden de lectura, página por página, seleccionando cada uno. La barra de estado muestra
 "Marca 3 de 12". Al llegar al final vuelve al principio.</li>
 <li><b>Lista de marcas</b> (F7): todas las marcas en una tabla, empezando por la página 1 (haga clic en el encabezado de una columna
-para ordenar por ella); filtre, haga clic para ir a una marca, exporte a CSV (en el orden mostrado).</li>
+para ordenar por ella); filtre, haga clic para ir a una marca, exporte a CSV (en el orden mostrado). Hacer clic
+en una marca bloqueada lleva hasta ella sin seleccionarla, y Eliminar en la lista no la quita: desbloquéela primero.</li>
 <li><b>Mostrar marcas:</b> desmárquelo para ocultar todos los comentarios y las marcas y ver la página como si no tuviera
 marcas. No se elimina nada; márquelo de nuevo para que vuelvan. <b>Mostrar cuadros de comentario</b>
 oculta solo los cuadros amarillos junto al texto comentado.</li>
@@ -791,7 +798,8 @@ el texto (las letras conservan su tamaño). Presione Enter (o haga clic en otro 
 para terminar, Shift+Enter para empezar una línea nueva, Esc para cancelar. Guardar, cerrar el documento,
 Deshacer o un cambio de página también terminan una edición en curso, así que el texto escrito nunca se pierde.
 El texto de lado (girado en la página, o en una página girada) se abre en un cuadro vertical sobre el
-centro de la línea para que sea fácil escribir; el texto sigue girado en la página cuando termina.</li>
+centro de la línea para que sea fácil escribir, con el cursor donde hizo clic a lo largo de la línea; el texto
+sigue girado en la página cuando termina.</li>
 <li>Los resaltados, subrayados, tachados, comentarios y notas adhesivas de esa línea se mueven con ella.</li>
 <li>Se usa la fuente original cuando está incrustada o instalada y tiene todos los caracteres que
 escribió; si no, la fuente estándar más parecida o, para los caracteres que estas no pueden escribir (griego como
@@ -827,7 +835,9 @@ texto funcionan con ella, y editarla de nuevo conserva su fuente.</li>
 real. KanzonasPDF lee las notas de escala escritas en el plano (SCALE: 1/4" = 1'-0", 1" = 20',
 1:50, NTS, en el cuadro de rótulo o debajo de los títulos de los detalles): Establecer escala las ofrece como <b>Escala
 escrita en el plano</b>, que queda elegida automáticamente cuando el cuadro de rótulo tiene una, y la barra de estado
-menciona lo que dice el plano mientras no haya ninguna escala definida.</li>
+menciona lo que dice el plano mientras no haya ninguna escala definida. La escala de una página va con ella:
+las copias hechas con Duplicar páginas, Copiar páginas y Pegar, Extraer páginas, Insertar páginas desde archivo y
+Combinar archivos la conservan.</li>
 <li><b>Leer escalas de los cuadros de rótulo</b> (menú Medir, pestaña Medir): para todo un juego de una vez,
 cada página recibe la escala que indica su propio cuadro de rótulo; las páginas marcadas como sin escala o sin
 nota se dejan como están y se enumeran. Confíe, pero compruebe: un plano impreso a tamaño reducido (un

@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QListWidget, Q
                                QPushButton, QCheckBox, QLabel, QDialogButtonBox, QFileDialog,
                                QInputDialog, QLineEdit, QMessageBox, QAbstractItemView)
 
+from . import measure
 from .i18n import tr
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp", ".gif", ".webp")
@@ -83,6 +84,7 @@ def insert_files(doc, paths, pos, size):
                 raise ValueError(tr("{name} is password-protected: open it and use Combine "
                                     "files instead.").format(name=os.path.basename(path)))
             doc.insert_pdf(other, start_at=pos)
+            measure.copy_scales(other, doc, [(k, pos + k) for k in range(other.page_count)])
             pos += other.page_count
 
 
@@ -265,6 +267,7 @@ def combine(paths, out, bookmarks=True, ask_password=None, letter=True):
                         break
             start = result.page_count
             result.insert_pdf(src)
+            measure.copy_scales(src, result, [(k, start + k) for k in range(src.page_count)])
             inner = src.get_toc(simple=True)
             if bookmarks:
                 toc.append([1, os.path.splitext(os.path.basename(p))[0], start + 1])

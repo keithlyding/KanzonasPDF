@@ -4682,6 +4682,9 @@ class MainWindow(QMainWindow):
     def _delete_markup(self, index, xref):
         v = self.view()
         if v:
+            if v.markup_locked(index, xref):
+                QMessageBox.information(self, tr("Delete"), v.locked_note())
+                return
             v.select_xref(index, xref)
             v.delete_selected()
 
@@ -5060,6 +5063,8 @@ class MainWindow(QMainWindow):
                 what, tr("Select text or markups first")), 3000)
         elif op == "cut":
             what = v.cut()
+            if what == "blocked":
+                return                  # (it said why)
             self.statusBar().showMessage({"text": tr("Text cut"), "markups": tr("Markups cut")}.get(
                 what, tr("Select text or markups first")), 3000)
         elif op == "paste":

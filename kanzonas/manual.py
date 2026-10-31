@@ -292,7 +292,7 @@ wheel zooms instead.)</li>
 <li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+Enter / Shift+F3
 for the previous; the up and down arrows beside the Find box do the same. The count beside
 the box shows which match you're on and how many there are ("3 of 120"; "No matches" when
-there are none). The search starts at the page you're on and shows the first match as soon as
+there are none; a word split by a hyphen at a line's end counts as one match). The search starts at the page you're on and shows the first match as soon as
 it finds it; on long documents it keeps searching the rest in the background (the count reads
 "3 of 120+" and the status bar shows how many pages are done) while you keep working. The match
 you're on is shaded orange with a bold orange frame that stays big enough to spot even when
@@ -303,7 +303,9 @@ or editing the document starts a fresh search.</li>
 tick <b>Match case</b> or <b>Whole words only</b> if needed, choose <b>All pages</b> or this
 page, and click <b>Replace all</b>. It changes the PDF's own text (not comments). Each line
 that changes is rewritten like Edit text does it, in the line's own font when that has the
-characters. Pages with redaction marks that aren't applied yet are skipped (it says which).
+characters. A line is rewritten in place and doesn't rewrap: when the new text runs into other
+text or past the edge of the page, Replace text says on which pages (Ctrl+Z undoes it; Edit text
+can rewrap the paragraph). Pages with redaction marks that aren't applied yet are skipped (it says which).
 Ctrl+Z undoes the whole replacement.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.
 It's for looking only: make changes in the main view.</li>
@@ -469,14 +471,18 @@ dialog or a toolbar click took the keyboard focus.</li>
 The drag can cross the gap between pages, and the pages in between are included.
 <b>Copy</b> (Ctrl+C) puts it on the clipboard, with a blank line between pages;
 <b>Cut</b> (Ctrl+X) also removes those letters
-from the page (Undo brings them back). <b>Select all text</b> (Ctrl+A) selects the whole page's
+from the page (Undo brings them back); the lines above and below keep theirs, even in tightly set
+text. On a page with redaction marks that aren't applied yet, Cut leaves the text where it is
+(cutting would apply the marks): apply or remove them first. <b>Select all text</b> (Ctrl+A) selects the whole page's
 text. Escape or a click elsewhere clears the selection.</li>
 <li><b>Right-click menu:</b> right-click the page for Cut, Copy, Paste, Delete (for selected
 markups) and Select all text. With text selected, it also offers Highlight, Underline, Strike out,
 Comment on text... and Mark for redaction for that text. Right-clicking a markup selects it
 first.</li>
 <li><b>Markups:</b> select one or more markups, then Copy or Cut. <b>Paste</b> (Ctrl+V) puts them
-where the mouse is, on any page or in another open document.</li>
+where the mouse is, on any page or in another open document. Pasted on a page that's turned
+another way (a rotated page), they're turned to look as they did where you copied them; a text
+box still reads upright.</li>
 <li><b>Duplicate</b> (Ctrl+D): copies of the selected markups appear slightly offset, selected
 so you can drag them into place. In the page list, Ctrl+D duplicates the selected pages.</li>
 <li><b>Pictures and text from other programs:</b> Paste a copied picture (e.g. a screenshot)
@@ -525,7 +531,8 @@ adds a sticky note anywhere.</li>
 comment and markup in reading order, page by page, selecting each one. The status bar shows
 "Markup 3 of 12". It wraps around at the end.</li>
 <li><b>Markups list</b> (F7): all markups in a table, page 1 first (click a column heading
-to sort by it); filter, click to jump, export to CSV (in the order shown).</li>
+to sort by it); filter, click to jump, export to CSV (in the order shown). Clicking a locked
+markup jumps to it without selecting it, and the list's Delete leaves it: unlock it first.</li>
 <li><b>Show markups:</b> untick to hide every comment and markup and see the page as if
 unmarked. Nothing is deleted; tick it again to bring them back. <b>Show comment boxes</b>
 hides just the yellow boxes beside commented text.</li>
@@ -809,7 +816,8 @@ to (the letters keep their size). Press Enter (or click elsewhere)
 to finish, Shift+Enter to start a new line, Escape to cancel. Saving, closing the document,
 Undo or a page change also finish an edit in progress, so typed text is never lost.
 Sideways text (turned on the page, or on a rotated page) opens in an upright box over the
-middle of the line so it's easy to type; the text stays turned on the page when you finish.</li>
+middle of the line so it's easy to type, with the cursor where you clicked along the line; the
+text stays turned on the page when you finish.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
@@ -845,7 +853,9 @@ text work on it, and editing it again keeps its font.</li>
 length. KanzonasPDF reads the scale notes written on the sheet (SCALE: 1/4" = 1'-0", 1" = 20',
 1:50, NTS, in the title block or under detail titles): Set scale offers them as <b>Scale
 written on the sheet</b>, picked for you when the title block has one, and the status bar
-mentions what the sheet says while no scale is set.</li>
+mentions what the sheet says while no scale is set. A page's scale goes with it: copies made
+with Duplicate pages, Copy pages and Paste, Extract pages, Insert pages from file and Combine
+files keep it.</li>
 <li><b>Read scales from title blocks</b> (Measure menu, Measure tab): for a whole set at once,
 every page gets the scale its own title block says; pages marked not to scale or without a
 note are left as they are and listed. Trust but check: a sheet printed at reduced size (a

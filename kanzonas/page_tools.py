@@ -128,12 +128,20 @@ def remove_watermarks(doc, pages):
             page.delete_annot(a)
             total += 1
         xrefs = page.get_contents()
-        if not xrefs:
+        # a background added with Document > Background keeps its own stream (merged into
+        # the rest, Remove background could no longer find and take it out)
+        from . import background
+        bg = background.stream(page)
+        rest = [x for x in xrefs if x != bg]
+        if not rest:
             continue
-        data, n = _strip_watermarks(page.read_contents())
+        data, n = _strip_watermarks(b"\n".join(doc.xref_stream(x) or b"" for x in rest))
         if n:
-            doc.update_stream(xrefs[0], data)
-            page.set_contents(xrefs[0])
+            doc.update_stream(rest[0], data)
+            if bg in xrefs:
+                doc.xref_set_key(page.xref, "Contents", f"[{bg} 0 R {rest[0]} 0 R]")
+            else:
+                page.set_contents(rest[0])
             total += n
     return total
 

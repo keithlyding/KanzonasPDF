@@ -817,6 +817,30 @@ def transformed(model, mat):
     return m
 
 
+def page_turned(model, turn):
+    """Copy of the markup for a page turned `turn` degrees (a multiple of 90) less than the
+    one it was copied from, so it looks the same on screen there: its points and box turn
+    with the page (a box's sides swap on a quarter turn). Its own turn is kept: a markup's
+    rotation is counted from the page as shown (see write)."""
+    turn = int(round(turn / 90.0)) * 90 % 360
+    m = copy(model)
+    if not turn:
+        return m
+    mat = pymupdf.Matrix(turn)
+    if "points" in m:
+        m["points"] = [pymupdf.Point(q) * mat for q in m["points"]]
+    if "strokes" in m:
+        m["strokes"] = [[pymupdf.Point(q) * mat for q in s] for s in m["strokes"]]
+    if "quads" in m:
+        m["quads"] = [pymupdf.Quad(q) * mat for q in m["quads"]]
+    if "rect" in m:
+        r = pymupdf.Rect(m["rect"])
+        c = pymupdf.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2) * mat
+        w, h = (r.height, r.width) if turn in (90, 270) else (r.width, r.height)
+        m["rect"] = pymupdf.Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
+    return m
+
+
 def resized(model, new_rect):
     """Fit the annotation to new_rect (boxes directly, ink and lines by scaling)."""
     m = copy(model)

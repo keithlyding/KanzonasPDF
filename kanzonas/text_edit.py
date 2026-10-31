@@ -792,6 +792,34 @@ def paragraph_text(lines):
     return _paragraph_parts(lines)[0]
 
 
+def line_index(line, pt):
+    """Where in line_text(line) the point pt (on the page, unrotated coords) falls along
+    the line, in its own direction: the text cursor goes there when sideways text or a line
+    on a rotated page is clicked (its editor box is upright, so the click can't place it)."""
+    raw = line_text(line)
+    at = _along(pymupdf.Rect(pt, pt), line)[0]
+    pos, length, prev = 0, 0, None
+    for sp in line["spans"]:
+        if prev is not None:
+            gap = _along(pymupdf.Rect(sp["bbox"]), line)[0] - _along(pymupdf.Rect(prev["bbox"]), line)[1]
+            if gap > 0.15 * sp["size"] and not raw[:length].endswith(" ") and \
+                    not sp["text"].startswith(" "):
+                length += 1
+        a0, a1 = _along(pymupdf.Rect(sp["bbox"]), line)
+        n = len(sp["text"])
+        if at >= a1:
+            pos = length + n
+        elif at > a0 and n:
+            pos = length + int(round((at - a0) / max(a1 - a0, 0.01) * n))
+            break
+        else:
+            pos = length
+            break
+        length += n
+        prev = sp
+    return max(0, min(pos, len(raw)))
+
+
 def paragraph_index(lines, pt):
     """Where in paragraph_text(lines) the point pt (on the page) is: the text cursor goes
     there when a paragraph is clicked."""
