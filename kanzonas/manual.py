@@ -925,7 +925,10 @@ and title. Ctrl+Z undoes it all.</li>
 <h2 id="forms">Forms</h2>
 <ul>
 <li><b>Fill in:</b> with Select or Hand, click a field. Option buttons with the same group
-name are exclusive: choosing one clears the others in its group.</li>
+name are exclusive: choosing one clears the others in its group. A field's maximum length is
+kept to; a dropdown that allows it also takes a typed value (Type a value...). KanzonasPDF
+doesn't run a form's JavaScript: totals a form works out itself and number or date formats
+written as scripts don't update (check them, or fill such a form in Acrobat Reader).</li>
 <li><b>Next form field</b> (Tab) and <b>Previous form field</b> (Shift+Tab), in the Forms menu:
 go through the fields in reading order (page by page, top to bottom, left to right as the
 page is shown, also on a rotated page). The

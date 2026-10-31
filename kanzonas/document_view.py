@@ -5326,10 +5326,21 @@ class DocumentView(QScrollArea):
         for page in self.doc:
             for w in page.widgets():
                 v = w.field_value
-                if v not in (None, "", "Off", False) and \
-                        w.field_type != pymupdf.PDF_WIDGET_TYPE_BUTTON:
-                    return True
+                if v in (None, "", "Off", False) or \
+                        w.field_type == pymupdf.PDF_WIDGET_TYPE_BUTTON:
+                    continue
+                if w.field_type in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX,
+                                    pymupdf.PDF_WIDGET_TYPE_LISTBOX) and \
+                        self._preselected(w, v):
+                    continue                # (a dropdown shows its first choice untouched)
+                return True
         return False
+
+    def _preselected(self, w, value):
+        """value is what a choice field shows before anyone picks: its default (/DV; a
+        dropdown made here gets its first choice as default)."""
+        kind, dv = self.doc.xref_get_key(self._field_dict(w), "DV")
+        return kind == "string" and dv == value
 
     # ---- sanitize ---------------------------------------------------------------------------
     SANITIZE_OPTIONS = [  # (key, label, default)
@@ -5557,15 +5568,28 @@ class DocumentView(QScrollArea):
         elif t in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
             menu = QMenu(self)
             for c in w.choice_values or []:
-                label = c[1] if isinstance(c, (list, tuple)) else c
+                # a choice can have a value saved in the file apart from the text shown
+                # ([NY, New York]): the saved one is what the form's data needs
+                value, label = (c[0], c[1]) if isinstance(c, (list, tuple)) else (c, c)
                 act = menu.addAction(label)
+                act.setData(value)
                 act.setCheckable(True)
-                act.setChecked(label == w.field_value)
+                act.setChecked(w.field_value in (value, label))
+            typed = None
+            if w.field_type == pymupdf.PDF_WIDGET_TYPE_COMBOBOX and \
+                    w.field_flags & pymupdf.PDF_CH_FIELD_IS_EDIT:
+                menu.addSeparator()
+                typed = menu.addAction(tr("Type a value..."))
             pw = self.pages[index]
             r = pw.to_screen(w.rect)
             chosen = menu.exec(pw.mapToGlobal(r.bottomLeft().toPoint()))
-            if chosen is not None:
-                self._set_field(index, xref, chosen.text())
+            if chosen is not None and chosen is typed:
+                text, ok = QInputDialog.getText(self, w.field_name or tr("Dropdown"),
+                                                tr("Value:"), text=w.field_value or "")
+                if ok:
+                    self._set_field(index, xref, text)
+            elif chosen is not None:
+                self._set_field(index, xref, chosen.data())
         elif t == pymupdf.PDF_WIDGET_TYPE_SIGNATURE:
             self.requestSignature.emit(index, xref)
         elif t == pymupdf.PDF_WIDGET_TYPE_TEXT:
@@ -5615,6 +5639,9 @@ class DocumentView(QScrollArea):
         else:
             ed.setText(w.field_value or "")
             ed.selectAll()
+        maxlen = w.text_maxlen or 0         # the field's limit (a ZIP code, comb boxes)
+        if maxlen > 0 and not multiline:
+            ed.setMaxLength(maxlen)
         f = ed.font()
         size = w.text_fontsize or min(12.0, w.rect.height * 0.65)
         f.setPixelSize(max(8, int(size * self.zoom)))
@@ -5628,6 +5655,8 @@ class DocumentView(QScrollArea):
                 return
             done["x"] = True
             text = ed.toPlainText() if multiline else ed.text()
+            if maxlen > 0:
+                text = text[:maxlen]
             ed.hide()
             ed.deleteLater()
             if save and text != (w.field_value or ""):
@@ -5667,10 +5696,27 @@ class DocumentView(QScrollArea):
             shown = page.rotation_matrix                # reading order as the page is shown
             ws = [((w.rect * shown).normalize(), w.xref) for w in page.widgets()
                   if w.field_type != pymupdf.PDF_WIDGET_TYPE_BUTTON
-                  and not w.field_flags & 1]                         # 1 = read-only
-            ws.sort(key=lambda t: (round(t[0].y0), t[0].x0))
-            order += [(i, x) for _r, x in ws]
+                  and not w.field_flags & 1                          # 1 = read-only
+                  and not self._annot_flag(w.xref) & 2]              # 2 = hidden
+            ws.sort(key=lambda t: t[0].y0)
+            # a row is the fields side by side, even when their tops differ by a point or
+            # two (rounding each top put a field right of its neighbor first)
+            rows = []
+            for r, x in ws:
+                if rows and r.y0 - rows[-1][0] <= max(3.0, 0.5 * min(r.height, rows[-1][1])):
+                    rows[-1][2].append((r, x))
+                else:
+                    rows.append([r.y0, r.height, [(r, x)]])
+            for _y, _h, row in rows:
+                order += [(i, x) for _r, x in sorted(row, key=lambda t: t[0].x0)]
         return order
+
+    def _annot_flag(self, xref):
+        kind, val = self.doc.xref_get_key(xref, "F")
+        try:
+            return int(float(val)) if kind in ("int", "float") else 0
+        except ValueError:
+            return 0
 
     def next_field(self, back=False, current=None):
         """Tab / Shift+Tab: go to the next (previous) form field. Text fields open for typing;
@@ -5781,12 +5827,23 @@ class DocumentView(QScrollArea):
                 w.text_fontsize = 0          # auto size
             if tool == "f_combo":
                 w.choice_values = choices
-                w.field_value = choices[0]
+                w.field_value = choices[0]  # (also its default: see form_filled)
             if tool == "f_radio":
                 w.field_value = False
             pg = self.doc[index]
             before = {x for x, *_ in pg.annot_xrefs()}
             pg.add_widget(w)
+            made = [x for x, *_ in pg.annot_xrefs() if x not in before]
+            if tool == "f_combo":
+                for x in made:
+                    fx = self._field_dict(pg.load_widget(x))
+                    self.doc.xref_set_key(fx, "DV", pymupdf.get_pdf_str(choices[0]))
+            if pg.rotation:
+                # on a turned page the field's text turns with it (upright on screen and on
+                # paper), as Acrobat's fields do: the widget's /MK /R
+                for x in made:
+                    self.doc.xref_set_key(x, "MK/R", str(pg.rotation))
+                    pg.load_widget(x).update()
             if tool == "f_radio":
                 # (w.xref is not filled in by every PyMuPDF version: find the new widget)
                 made = [x for x, *_ in pg.annot_xrefs() if x not in before]
@@ -5854,6 +5911,16 @@ class DocumentView(QScrollArea):
                                         text=w.field_name)
         if not ok or not name.strip():
             return
+        mine = self._field_dict(w)
+        taken = {x.field_name for pg in self.doc for x in pg.widgets()
+                 if self._field_dict(x) != mine}
+        if name.strip() != w.field_name and name.strip() in taken and \
+                w.field_type != pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+            # (two fields with one name are one field: typing in one would fill both)
+            QMessageBox.information(self, tr("Field properties"), tr(
+                "Another field is already called {name}: choose another name.").format(
+                    name=name.strip()))
+            return
         choices = None
         if w.field_type in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
             cur = "\n".join(c[1] if isinstance(c, (list, tuple)) else c
@@ -5865,7 +5932,13 @@ class DocumentView(QScrollArea):
         def do():
             pg = self.doc[index]
             ww = pg.load_widget(xref)
-            ww.field_name = name.strip()
+            fx = self._field_dict(ww)
+            if fx != xref:
+                # the name lives on the field above the widget (KanzonasPDF's own fields,
+                # many Acrobat forms): naming the widget changed nothing
+                self.doc.xref_set_key(fx, "T", pymupdf.get_pdf_str(name.strip()))
+            else:
+                ww.field_name = name.strip()
             if choices:
                 ww.choice_values = choices
                 if ww.field_value not in choices:

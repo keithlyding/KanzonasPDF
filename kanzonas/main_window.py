@@ -3516,6 +3516,14 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, tr("Certificate"),
                                 tr("Couldn't use that certificate: {error}").format(error=ex))
             return
+        if getattr(v, "sig_results", None) and v.dirty:
+            # a signature covers the file's bytes as they are: signing a rewritten file (the
+            # changes made since opening) would break the signatures already in it
+            QMessageBox.warning(self, tr("Digital signature"), tr(
+                "This PDF is already digitally signed. Changes made since it was opened would "
+                "break that signature: close it without saving them (or undo them) to add "
+                "another signature."))
+            return
         base = os.path.splitext(v.path)[0]
         out, _ = QFileDialog.getSaveFileName(self, tr("Save signed copy as"), base + "_signed.pdf",
                                              PDF_FILTER)
@@ -3524,8 +3532,17 @@ class MainWindow(QMainWindow):
         replaced = self._writing_over(out, source=v)
         if replaced is None:
             return
+        if getattr(v, "sig_results", None):
+            # added to the file as it is (an incremental update), so earlier signatures stay
+            # valid; a rewrite of the whole file (tobytes) changed what they had signed
+            data = v._orig_data
+            if data is None:
+                with open(v.path, "rb") as f:
+                    data = f.read()
+        else:
+            data = v.doc.tobytes()
         try:
-            digisign.sign(v.doc.tobytes(), out, signer, reason.currentText(), location.text(),
+            digisign.sign(data, out, signer, reason.currentText(), location.text(),
                           lock.isChecked())
         except Exception as ex:
             QMessageBox.critical(self, tr("Signing failed"), str(ex))

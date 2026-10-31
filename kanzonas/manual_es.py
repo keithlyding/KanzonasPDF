@@ -907,7 +907,10 @@ y el título de cada plano. Ctrl+Z lo deshace todo.</li>
 <h2 id="forms">Formularios</h2>
 <ul>
 <li><b>Rellenar:</b> con Seleccionar o Mano, haga clic en un campo. Los botones de opción con el mismo nombre de
-grupo son excluyentes: elegir uno desmarca los demás de su grupo.</li>
+grupo son excluyentes: elegir uno desmarca los demás de su grupo. Se respeta la longitud máxima de un campo; una lista
+desplegable que lo permite también acepta un valor escrito (Escribir un valor...). KanzonasPDF no ejecuta el JavaScript
+de un formulario: los totales que el formulario calcula por sí mismo y los formatos de número o fecha escritos como scripts
+no se actualizan (revíselos, o rellene ese formulario en Acrobat Reader).</li>
 <li><b>Campo de formulario siguiente</b> (Tab) y <b>Campo de formulario anterior</b> (Shift+Tab), en el menú Formularios:
 recorren los campos en orden de lectura (página por página, de arriba abajo, de izquierda a derecha tal como se
 muestra la página, también en una página girada). El
