@@ -6767,7 +6767,7 @@ class DocumentView(QScrollArea):
         self.commit_pending()
         path = os.path.abspath(path or self.path)
         # a link to the file: write the file it points to (replacing the link would cut it)
-        target = os.path.realpath(path)
+        target = os.path.realpath(path) if os.path.islink(path) else path
         tmp = target + ".kanzonas-tmp"
         if self._fonts_added:
             # Text edits may embed whole system fonts; keep only the glyphs actually used.
