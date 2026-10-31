@@ -261,8 +261,8 @@ vínculos por usted a partir de los números de plano.</li>
 (funciona con cualquier herramienta). <b>Shift+rueda</b> siempre desplaza a la izquierda y a la derecha, en todos los
 modos del mouse y cuando un paso de la rueda pasaría de página. Shift+Left/Right también desplaza
 lateralmente.</li>
-<li><b>Modo del mouse</b> (menú Ver, el grupo <b>Mouse</b> de la pestaña Inicio, Preferencias &gt; Mouse): tres
-maneras de trabajar, cada una con sus propias opciones (vea Preferencias más abajo).
+<li><b>Modo del mouse</b> (los tres primeros botones de la pestaña Inicio, <b>Seleccionar</b>, <b>Mano</b> y <b>CAD</b>;
+el menú Ver; Preferencias &gt; Mouse): tres maneras de trabajar, cada una con sus propias opciones (vea Preferencias más abajo).
 <ul>
 <li><b>Mouse: Estándar (flecha, la rueda desplaza)</b>: KanzonasPDF se inicia con la herramienta Seleccionar (la
 flecha) y Escape vuelve a ella; la rueda desplaza y Ctrl+rueda acerca y aleja.</li>
@@ -313,8 +313,9 @@ Es solo para mirar: haga los cambios en la vista principal.</li>
 
 <h2 id="cad">Modo CAD: selección y la pestaña CAD</h2>
 <p>En el modo del mouse <b>CAD</b> (Ver &gt; Mouse: CAD, F11) KanzonasPDF selecciona y edita como un programa CAD.
-Funciona con <b>Seleccionar</b> (sus marcas y el texto de la página) y con <b>Editar objetos</b> (las líneas, el texto y
-las imágenes propios del dibujo).</p>
+Empieza con <b>Editar objetos</b>, que selecciona las líneas, el texto y las imágenes propios del dibujo (lo que
+selecciona un programa CAD); <b>Seleccionar</b> (la pestaña CAD, o V cuando las letras no van a la línea de comandos)
+selecciona del mismo modo sus marcas y el texto de la página.</p>
 <ul>
 <li>Haga <b>clic</b> en algo para agregarlo a la selección. <b>Shift+clic</b> lo quita. <b>Escape</b> borra toda la
 selección. Hacer clic en el papel vacío conserva la selección.</li>
@@ -335,8 +336,10 @@ momento mientras se mueve.</li>
 marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pestaña CAD lo mueve.</li>
 <li>Preferencias &gt; Mouse activa o desactiva cada una de estas funciones (vea Preferencias).</li>
 </ul>
-<p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Seleccione primero, luego haga clic en un comando
-(o escríbalo: vea la línea de comandos más abajo) y responda a su indicación en la línea de comandos: haga clic en puntos
+<p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Como en AutoCAD, seleccione primero y luego
+inicie un comando, o inicie primero el comando: sin nada seleccionado le pide <b>seleccionar objetos</b> (clics,
+recuadros, lazos como arriba), y <b>Enter</b> (o un clic derecho) continúa con lo seleccionado. Luego responda a su
+indicación en la línea de comandos: haga clic en puntos
 de la página (se ajustan a los extremos de las líneas y a las esquinas como con las herramientas de dibujo; mantenga
 presionada Alt para no ajustar), escriba un valor y presione Enter, o haga clic en un botón ahí. Escape (o Cancelar)
 detiene un comando; el clic derecho equivale a Enter. Cada cambio se deshace con un Ctrl+Z.</p>
@@ -397,9 +400,10 @@ recorte y en la misma capa, donde se ve exactamente igual que copiar cada objeto
 capas distintas) se copia objeto por objeto, lo que tarda más. Las copias de una selección así (Copiar, la copia de
 Simetría y las matrices de cualquier tamaño) se dibujan juntas encima de los originales, como los programas CAD dibujan
 los objetos nuevos; una selección repartida en capas o recortes distintos deja cada copia justo encima de su original.</li>
-<li><b>Recortar</b>: no hace falta seleccionar nada. Haga clic en la parte de una línea que quiere quitar: se quita hasta
-las líneas más cercanas que la cruzan a cada lado (o hasta su extremo, si nada la cruza de ese lado); una línea que nada
-cruza se quita entera. El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
+<li><b>Recortar</b>: como en AutoCAD, primero los <b>bordes de corte</b>: las líneas seleccionadas antes de TR, o las que
+seleccione cuando lo pide, y luego Enter (Enter sin nada seleccionado: todas las líneas cortan). Después haga clic en la
+parte de una línea que quiere quitar: se quita hasta los bordes de corte más cercanos que la cruzan a cada lado (o hasta su
+extremo, si ninguno la cruza de ese lado); una línea que ninguno cruza se quita entera. El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
 en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; Enter, Escape o Listo termina. Recorta las líneas y curvas propias del
 dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma; las
 formas rellenas y las imágenes no se recortan.</li>

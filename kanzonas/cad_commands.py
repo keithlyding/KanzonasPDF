@@ -305,7 +305,7 @@ class CommandLine(QWidget):
             if cmd.gone():
                 return
             if not text:
-                cmd.enter()
+                cmd.enter_key()
                 return
             low = text.lower()
             for label, value in self.choices:
@@ -482,10 +482,21 @@ class Command:
         if self.needs_selection:
             what = v.cad_targets()
             if what is None:
-                v.statusMessage.emit(tr("{command}: select what to change first (click it, or "
-                                        "draw a box or a lasso), then click {command}.").format(
-                    command=self.title))
-                return False
+                if not v.cad_select:
+                    v.statusMessage.emit(tr("{command}: select what to change first (click "
+                                            "it, or draw a box or a lasso), then click "
+                                            "{command}.").format(command=self.title))
+                    return False
+                # as in AutoCAD, the command first, then what it works on: select (clicks,
+                # boxes, lassos), then Enter or right-click goes on
+                self.selecting = True
+                from . import cad_select
+                cad_select.cancel(v)
+                v._cad_cmd = self
+                self.ui.show_for(self, tr("select objects (click them, or draw a box or a "
+                                          "lasso), then press Enter or right-click"),
+                                 typing=False)
+                return True
             self.kind, self.page, self.items = what
             self.ghost = v.cad_outlines(self.page, self.kind, self.items)
         self.rev = getattr(v, "revision", 0)
@@ -494,6 +505,30 @@ class Command:
         v._cad_cmd = self
         self.ask()
         return True
+
+    selecting = False                   # waiting for the selection (the command came first)
+
+    def selected(self):
+        """Enter while selecting: go on with what is selected now (start again, so a command
+        that asks something first, as Array, asks it now). True if it went on."""
+        if self.v.cad_targets() is None:
+            self.v.statusMessage.emit(tr("{command}: nothing is selected yet. Click objects, or "
+                                         "draw a box or a lasso, then press Enter (Escape "
+                                         "cancels).").format(command=self.title))
+            return False
+        self.selecting = False
+        self.v._cad_cmd = None
+        if not self.start():
+            self.ui.done()
+        return True
+
+    def enter_key(self):
+        """Enter (on the line, over the page, or a right-click): ends the selection step
+        first, then is the command's own Enter."""
+        if self.selecting:
+            self.selected()
+        else:
+            self.enter()
 
     def ask(self):
         """Show the prompt for the current step."""
@@ -524,7 +559,7 @@ class Command:
     def gone(self):
         """The document changed under the command (Delete, a page rotated or deleted, the
         selection cleared): what it was changing isn't there as it was. Ends it, saying so."""
-        if not self.needs_selection:
+        if not self.needs_selection or self.selecting:
             return False
         v = self.v
         if getattr(v, "revision", 0) == self.rev and self.page is not None and \
@@ -924,19 +959,53 @@ class Array(Command):
 
 
 class Trim(Command):
+    """As AutoCAD's TRIM: the cutting edges first (selected before, or selected now and
+    Enter; Enter with nothing selected: every line cuts), then click the parts to cut away;
+    Enter ends."""
     title = tr("Trim")
     needs_selection = False
     snap = False                        # the click picks a line: it must stay where it is
     done = 0
+    edges = None                        # (page, [polylines]) the chosen cutting edges
+
+    def start(self):
+        what = self.v.cad_targets()
+        if what is not None:
+            self._take(what)
+        elif self.v.cad_select:
+            self.selecting = True
+        return super().start()
+
+    def _take(self, what):
+        kind, page, items = what
+        self.edges = (page, self.v.cad_outlines(page, kind, items))
+
+    def selected(self):
+        what = self.v.cad_targets()
+        if what is not None:
+            self._take(what)
+        self.selecting = False
+        self.ask()
+        return True
 
     def ask(self):
+        if self.selecting:
+            self.ui.show_for(self, tr("select the cutting edges, then press Enter (Enter with "
+                                      "nothing selected: every line cuts)"))
+            return
         self.ui.show_for(self, tr("click the part of a line to cut away, up to the lines that "
-                                  "cross it (Enter or Escape when done)"),
+                                  "cross it (Enter or Escape when done)") if self.edges is None
+                         else tr("click the part of a line to cut away, up to the cutting "
+                                 "edges (Enter or Escape when done)"),
                          choices=[(tr("Done"), "done")])
 
     def click(self, index, pt):
         self.page = index
-        if self.v.cad_trim(index, pymupdf.Point(pt)):
+        edges = self.edges[1] if self.edges is not None and self.edges[0] == index else None
+        if self.edges is not None and edges is None:
+            self.v.statusMessage.emit(tr("Click on the page with the cutting edges."))
+            return
+        if self.v.cad_trim(index, pymupdf.Point(pt), edges):
             self.done += 1
         self.ask()
 
@@ -951,5 +1020,18 @@ class Trim(Command):
         self.choose("done")
 
 
+class Erase(Command):
+    """Delete (E), started with nothing selected: select, Enter, and it goes."""
+    title = tr("Delete")
+
+    def ask(self):
+        v, kind = self.v, self.kind
+        self.finish()
+        if kind == "objects":
+            v.delete_objects()
+        else:
+            v.delete_selected()
+
+
 COMMANDS = {"move": Move, "copy": Copy, "rotate": Rotate, "scale": Scale, "mirror": Mirror,
-            "align": Align, "array": Array, "trim": Trim}
+            "align": Align, "array": Array, "trim": Trim, "delete": Erase}

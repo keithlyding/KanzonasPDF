@@ -1118,13 +1118,16 @@ class PageWidget(QWidget):
             self.view.begin_pan(e.globalPosition())
             return
         cmd = self.view._cad_cmd
-        if cmd is not None:
+        if cmd is not None and cmd.selecting and e.button() == Qt.RightButton:
+            cmd.enter_key()                 # (selection done: the command goes on)
+            return
+        if cmd is not None and not cmd.selecting:
             # a CAD tab command takes the clicks (snapped); right-click = Enter
             if e.button() == Qt.LeftButton:
                 pos = self._snap(e.position(), e) if cmd.snap else e.position()
                 cmd.click(self.index, self.to_pdf(pos))
             elif e.button() == Qt.RightButton:
-                cmd.enter()
+                cmd.enter_key()
             return
         if e.button() == Qt.RightButton and self.view.tool == "editobjects":
             self._objects_menu(e, self.to_pdf(e.position()))
@@ -1384,7 +1387,8 @@ class PageWidget(QWidget):
             return
         pos = e.position()
         tool = self.view.tool
-        if self.view._cad_cmd is not None and not e.buttons():
+        if self.view._cad_cmd is not None and not e.buttons() and \
+                not self.view._cad_cmd.selecting:
             cmd = self.view._cad_cmd
             cmd.move(self.index, self.to_pdf(self._snap(pos, e) if cmd.snap else pos))
             return

@@ -4227,13 +4227,14 @@ class MainWindow(QMainWindow):
         for other in self._views():         # one command at a time in a window
             if other._cad_cmd is not None:
                 other._cad_cmd.cancel()
-        if key == "delete":
+        if key == "delete" and (v.obj_sel is not None or v.selection is not None):
             if v.obj_sel is not None:
                 v.delete_objects()
-            elif v.selection is not None:
-                v.delete_selected()
             else:
-                self.statusBar().showMessage(tr("Delete: select what to delete first."), 4000)
+                v.delete_selected()
+            return
+        if key == "delete" and not v.cad_select:
+            self.statusBar().showMessage(tr("Delete: select what to delete first."), 4000)
             return
         from . import cad_commands
         line = self.cad_command_line()
@@ -4342,7 +4343,7 @@ class MainWindow(QMainWindow):
     # short labels for ribbon buttons (the menus keep the full names)
     RIBBON_LABELS = {
         "a_fit_width": tr("Fit width"), "a_fit_page": tr("Fit page"), "a_actual": tr("Actual size"),
-        "a_cad_mouse": tr("CAD"), "a_mouse_standard": tr("Standard"), "a_mouse_hand": tr("Hand"),
+        "a_cad_mouse": tr("CAD"), "a_mouse_standard": tr("Select"), "a_mouse_hand": tr("Hand"),
         "a_free_pan": tr("Free movement"), "a_grid": tr("Grid"), "a_snap_grid": tr("Snap to grid"),
         "a_snap_objects": tr("Snap to objects"), "a_snap_page": tr("Snap to page"),
         "a_grid_settings": tr("Grid settings"),
@@ -4429,7 +4430,9 @@ class MainWindow(QMainWindow):
             lambda i: self._set_align_ref(self.ribbon_align_box.itemData(i)))
         r = self.ribbon = Ribbon()
         r.add_tab(tr("Home"), [
-            (tr("Tools"), "large", [t["select"], t["hand"], t["edittext"], t["addtext"], t["editobjects"],
+            # first, the three ways the mouse works: Select (the arrow), Hand, CAD
+            (tr("Mouse"), "large", [self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse]),
+            (tr("Tools"), "large", [t["edittext"], t["addtext"], t["editobjects"],
                                 t["capture"],
                                 t["erasecontent"]]),
             (tr("Mark up text"), "small", [t["highlight"], t["underline"], t["strikeout"],
@@ -4437,7 +4440,6 @@ class MainWindow(QMainWindow):
             (tr("Insert"), "large", [t["stamp"], t["image"], t["attach"], t["link"]]),
             (tr("Zoom"), "small", [self.a_fit_width, self.a_fit_page, self.a_actual,
                                self.a_zoom_in, self.a_zoom_out]),
-            (tr("Mouse"), "small", [self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse]),
             (tr("Sign"), "large", [t["signature"], t["initials"]]),
         ])
         # only markups here (PDF viewers can edit those); the Image tool and Erase content change

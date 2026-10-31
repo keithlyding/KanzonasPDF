@@ -7,6 +7,26 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.6
+
+**New**
+- The Home tab starts with the three ways the mouse works: Select, Hand and CAD.
+- CAD mode commands work as in AutoCAD both ways: select first and then the command, or the command first, then select and press Enter (or right-click).
+- Trim asks for the cutting edges first (select them and press Enter, or just Enter to let every line cut), then cuts up to those.
+
+**Fixed**
+- CAD mode's blue and green selection boxes select the drawing's own lines (they only took markups before, so on a plain drawing nothing was selected).
+
+## 1.6 (es)
+
+**Novedades**
+- La pestaña Inicio empieza con las tres maneras de usar el mouse: Seleccionar, Mano y CAD.
+- Los comandos del modo CAD funcionan como en AutoCAD de las dos maneras: seleccionar primero y luego el comando, o el comando primero, luego seleccionar y presionar Enter (o clic derecho).
+- Recortar pide primero los bordes de corte (selecciónelos y presione Enter, o solo Enter para que corten todas las líneas) y luego recorta hasta ellos.
+
+**Correcciones**
+- Los recuadros de selección azul y verde del modo CAD seleccionan las líneas propias del dibujo (antes solo tomaban marcas, así que en un dibujo sin marcas no se seleccionaba nada).
+
 ## 1.5.1
 
 **Fixed**

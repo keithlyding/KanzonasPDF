@@ -3563,7 +3563,7 @@ class DocumentView(QScrollArea):
             if e.key() == Qt.Key_Escape:
                 self._cad_cmd.cancel()
             else:
-                self._cad_cmd.enter()
+                self._cad_cmd.enter_key()
             return
         if e.key() == Qt.Key_Escape:
             from . import cad_select
@@ -4493,15 +4493,17 @@ class DocumentView(QScrollArea):
                 continue
             yield an
 
-    def cad_trim(self, index, pt):
+    def cad_trim(self, index, pt, edges=None):
         with _busy():
-            out = self._cad_trim(index, pt)
+            out = self._cad_trim(index, pt, edges)
         self._cad_seen()
         return out
 
-    def _cad_trim(self, index, pt):
+    def _cad_trim(self, index, pt, edges=None):
         """Trim at pt (the CAD tab): the clicked line of the drawing, or line markup, loses
-        the part between the nearest lines crossing it (or its end). True if it changed."""
+        the part between the nearest lines crossing it (or its end). edges: the cutting
+        edges chosen first (polylines in page coordinates), else every line cuts. True if it
+        changed."""
         from . import page_objects, trim
         tol = 6 / self.zoom
         page = self.doc[index]
@@ -4557,7 +4559,13 @@ class DocumentView(QScrollArea):
             r |= q
         r += (-1, -1, 1, 1)
         cutters = []
-        if objs is not None:
+        if edges is not None:
+            # only the cutting edges chosen (the line being cut isn't one of its own edges)
+            def same(a, b):
+                return len(a) == len(b) and all(abs(p.x - q.x) + abs(p.y - q.y) < 0.01
+                                                for p, q in zip(a, b))
+            cutters = [list(e) for e in edges if not same(list(e), list(poly))]
+        elif objs is not None:
             for it in objs.items:
                 if it["kind"] != "shape" or not page_objects.overlap(it["rect"], r):
                     continue
@@ -4565,14 +4573,14 @@ class DocumentView(QScrollArea):
                     if best[1] == "object" and it is best[2] and k == best[3]:
                         continue
                     cutters.append(line)
-        for an in self._trimmable_annots(page):
+        for an in self._trimmable_annots(page) if edges is None else ():
             if best[1] == "markup" and an.xref == best[2]:
                 continue
             if not page_objects.overlap(an.rect, r):
                 continue
             lines, _closed, _filled = self._annot_geometry(an)
             cutters += lines
-        if best[1] == "markup":
+        if best[1] == "markup" and edges is None:
             m = best[6]
             others = (m["strokes"] if m["kind"] == "ink" else [])
             cutters += [list(s) for j, s in enumerate(others) if j != best[3]]

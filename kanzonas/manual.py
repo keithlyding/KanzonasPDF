@@ -269,8 +269,9 @@ links for you from the sheet numbers.</li>
 (works with any tool). <b>Shift+wheel</b> always scrolls left and right, in every mouse mode and
 when one wheel step would otherwise turn the page. Shift+Left/Right scrolls
 sideways too.</li>
-<li><b>Mouse mode</b> (View menu, the Home tab's <b>Mouse</b> group, Preferences &gt; Mouse):
-three ways to work, each with its own options (see Preferences below).
+<li><b>Mouse mode</b> (the first three buttons of the Home tab, <b>Select</b>, <b>Hand</b> and
+<b>CAD</b>; the View menu; Preferences &gt; Mouse): three ways to work, each with its own
+options (see Preferences below).
 <ul>
 <li><b>Mouse: Standard (arrow, the wheel scrolls)</b>: KanzonasPDF starts with the Select tool
 (the arrow) and Escape goes back to it; the wheel scrolls and Ctrl+wheel zooms.</li>
@@ -322,8 +323,9 @@ It's for looking only: make changes in the main view.</li>
 
 <h2 id="cad">CAD mode: selecting and the CAD tab</h2>
 <p>In the <b>CAD</b> mouse mode (View &gt; Mouse: CAD, F11) KanzonasPDF selects and edits like a
-CAD program. It works with <b>Select</b> (your markups, and the text of the page) and with
-<b>Edit objects</b> (the drawing's own lines, text and pictures).</p>
+CAD program. It starts with <b>Edit objects</b>, which selects the drawing's own lines, text and
+pictures (what a CAD program selects); <b>Select</b> (the CAD tab, or V when letters aren't
+going to the command line) selects your markups and the text of the page the same way.</p>
 <ul>
 <li><b>Click</b> something to add it to the selection. <b>Shift+click</b> takes it out.
 <b>Escape</b> clears the whole selection. Clicking empty paper keeps the selection.</li>
@@ -344,8 +346,10 @@ let go. On a very big drawing it fills in over a moment while you move.</li>
 of one selected markup or object still resize it, and the CAD tab's <b>Move</b> moves.</li>
 <li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>
 </ul>
-<p>The <b>CAD</b> tab (and the CAD menu) shows only in CAD mode. Select first, then click a
-command (or type it: see the command line below) and answer its prompt on the command line:
+<p>The <b>CAD</b> tab (and the CAD menu) shows only in CAD mode. As in AutoCAD, either select
+first and then start a command, or start the command first: with nothing selected it asks you to
+<b>select objects</b> (clicks, boxes, lassos as above), and <b>Enter</b> (or a right-click) goes
+on with what you selected. Then answer its prompt on the command line:
 click points on the page (they snap to line ends and corners like the drawing tools; hold Alt
 not to snap), type a value and press Enter, or click a button there. Escape (or Cancel) stops a
 command; right-click is Enter. Each change is one Ctrl+Z.</p>
@@ -412,9 +416,11 @@ copied object by object, which takes longer. Copies of such a selection (Copy, M
 and arrays of any size) are drawn together on top of the originals, as CAD programs draw new
 objects; a selection spread over different layers or clipping keeps each copy right above its
 own original.</li>
-<li><b>Trim</b>: no selection needed. Click the part of a line to cut away: it goes up to the
-nearest lines crossing it on either side (or to its end, when nothing crosses on that side); a
-line nothing crosses goes completely. The click picks the line nearest to it and isn't
+<li><b>Trim</b>: as in AutoCAD, first the <b>cutting edges</b>: the lines selected before TR,
+or the ones you select when it asks, then Enter (Enter with nothing selected: every line cuts).
+Then click the part of a line to cut away: it goes up to the nearest cutting edges crossing it
+on either side (or to its end, when none crosses on that side); a line none crosses goes
+completely. The click picks the line nearest to it and isn't
 snapped; a click right where lines cross says so instead (click a little to one side). Click
 again and again; Enter, Escape or Done ends it. It
 trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
