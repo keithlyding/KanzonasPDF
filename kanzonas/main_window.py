@@ -371,8 +371,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(_title_base())
         self.resize(1300, 900)
         self.setAcceptDrops(True)
-        # start with the mouse mode's tool: the Hand (scroll by dragging, like most viewers)
-        # or Select (Standard and CAD)
+        # start with the mouse mode's tool: the Hand (scroll by dragging, like most viewers),
+        # Select (Standard) or Edit objects (CAD)
         from . import mouse_modes
         mouse_modes.apply(self.settings)
         self.tool = mouse_modes.default_tool(mouse_modes.mode(self.settings))
@@ -912,7 +912,6 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
-        self.tool_actions[self.tool].setChecked(True)
         self.tool_group.triggered.connect(lambda _a: self._clear_chest())
         for tid, label, sc, tip in MEASURE_TOOLS + EXTRA_TOOLS:
             a = QAction(label, self, checkable=True)
@@ -930,6 +929,8 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, t=tid: self.set_tool(t))
             self.tool_group.addAction(a)
             self.tool_actions[tid] = a
+        # (after every tool exists: CAD mode starts with Edit objects, one of the extra tools)
+        self.tool_actions[self.tool].setChecked(True)
 
     def _build_menus(self):
         mb = self.menuBar()
@@ -2046,8 +2047,8 @@ class MainWindow(QMainWindow):
         self._refresh_props()
 
     def default_tool(self):
-        """Hand or Select (the mouse mode: Hand, or Standard and CAD): the tool at start-up,
-        and the one Escape and a placed signature / date go back to."""
+        """The mouse mode's tool (Hand; Select in Standard; Edit objects in CAD): the tool at
+        start-up, and the one Escape and a placed signature / date go back to."""
         from . import mouse_modes
         return mouse_modes.default_tool(mouse_modes.mode(self.settings))
 

@@ -981,8 +981,8 @@ PIN); to replace it later, use File &gt; Preferences &gt; You &gt; Set up my sig
 initials.... To choose the size, <b>drag a box</b> instead of clicking: it's placed as wide as you
 drag (the height follows its proportions). The size used for a click is set in File &gt;
 Preferences &gt; You (2 in for a signature and 0.75 in for initials to start with). Afterwards the
-Hand or Select tool, whichever you used last, is active again, so you don't place a second one by
-accident. Like any picture on the page, a placed signature can be moved or deleted with Edit
+mouse mode's own tool (Hand, Select, or Edit objects in CAD mode) is active again, so you don't
+place a second one by accident. Like any picture on the page, a placed signature can be moved or deleted with Edit
 objects (or Ctrl+Z right after placing it).</li>
 <li><b>Date</b> (Ctrl+;, Protect tab and menu): click to write today's date there, for example
 next to a signature or in a document's own date field. Dating a form field (and signing a
@@ -1225,8 +1225,8 @@ settings...).</li>
 <tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Ctrl+click a link (Select tool)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
-<tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool, Hand or Select) / cancel a CAD command or a started selection box</td></tr>
-<tr><td>Delete</td><td>Delete selected markups</td></tr>
+<tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool: Hand, Select, or Edit objects in CAD mode) / cancel a CAD command or a started selection box</td></tr>
+<tr><td>Delete</td><td>Delete what's selected: markups, and in CAD mode the drawing's objects too</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>
 <tr><td>Ctrl+D</td><td>Duplicate selected markups (or pages, in the page list)</td></tr>

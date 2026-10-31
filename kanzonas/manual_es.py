@@ -960,8 +960,8 @@ PIN opcional); para reemplazarlas más adelante, use Archivo &gt; Preferencias &
 iniciales.... Para elegir el tamaño, <b>arrastre un cuadro</b> en lugar de hacer clic: se colocan con el ancho que
 arrastre (la altura sigue sus proporciones). El tamaño que se usa con un clic se define en Archivo &gt;
 Preferencias &gt; Usted (2 pulgadas para una firma y 0.75 pulgadas para las iniciales al principio). Después, la
-herramienta Mano o Seleccionar, la que haya usado por última vez, vuelve a estar activa, para que no coloque una segunda por
-accidente. Como cualquier imagen de la página, una firma colocada se puede mover o eliminar con Editar
+herramienta propia del modo del mouse (Mano, Seleccionar, o Editar objetos en el modo CAD) vuelve a estar activa, para que no
+coloque una segunda por accidente. Como cualquier imagen de la página, una firma colocada se puede mover o eliminar con Editar
 objetos (o con Ctrl+Z justo después de colocarla).</li>
 <li><b>Fecha</b> (Ctrl+;, pestaña y menú Proteger): haga clic para escribir allí la fecha de hoy, por ejemplo
 junto a una firma o en el propio campo de fecha de un documento. Poner la fecha en un campo de formulario (y firmar un
@@ -1203,8 +1203,8 @@ cuadrícula...).</li>
 <tr><td>Shift+clic (herramienta de dibujo)</td><td>Empezar una marca nueva encima de una existente</td></tr>
 <tr><td>Ctrl+clic, Ctrl+arrastrar</td><td>Seleccionar varias marcas</td></tr>
 <tr><td>Ctrl+clic en un vínculo (herramienta Seleccionar)</td><td>Abrir el vínculo, también en una marca convertida en vínculo (un clic normal con la herramienta Mano)</td></tr>
-<tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse, Mano o Seleccionar) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
-<tr><td>Supr</td><td>Eliminar las marcas seleccionadas</td></tr>
+<tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse: Mano, Seleccionar, o Editar objetos en el modo CAD) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
+<tr><td>Supr</td><td>Eliminar lo seleccionado: las marcas, y en el modo CAD también los objetos del dibujo</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas)</td></tr>
 <tr><td>Ctrl+A</td><td>Seleccionar todo el texto de la página (todas las páginas en la lista de páginas)</td></tr>
 <tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (o las páginas, en la lista de páginas)</td></tr>

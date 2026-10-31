@@ -217,7 +217,7 @@ class DocumentView(QScrollArea):
     signedDocument = Signal()
     oneShotPlaced = Signal()        # a signature / initials / date was placed
     selectToolRequested = Signal()
-    previousToolRequested = Signal()    # Escape: back to the default tool (Hand or Select)
+    previousToolRequested = Signal()    # Escape: back to the mouse mode's tool
     calibrateRequested = Signal(int, float)    # page index, drawn length in points
     scaleChanged = Signal()
     layersChanged = Signal()
@@ -4410,7 +4410,12 @@ class DocumentView(QScrollArea):
             with _busy():
                 what = self.cad_targets()
                 rev = self.revision
-                if what is not None and what[0] == "both":
+                if what is not None and what[0] == "both" and \
+                        not self.allowed(pymupdf.PDF_PERM_MODIFY):
+                    # the drawing can't be changed: neither is half of the selection
+                    self.modify(lambda: None)       # (says why)
+                    out = None
+                elif what is not None and what[0] == "both":
                     # the drawing's objects and the markups, as one undo step
                     out = self._cad_apply(label, mat, copies, keep, only="objects")
                     kept = self.obj_sel
@@ -4935,8 +4940,11 @@ class DocumentView(QScrollArea):
         both at once), as one undo step."""
         rev = self.revision
         if self.obj_sel is not None:
+            if self.selection is not None and not self.allowed(pymupdf.PDF_PERM_MODIFY):
+                self.modify(lambda: None)       # (says why: the drawing can't be changed)
+                return
             self.delete_objects()
-            if self.obj_sel is not None and self.revision == rev:
+            if self.revision == rev:
                 return                  # (asked about removing text, and canceled)
         if self.selection is not None:
             self.then_in_same_step(rev, self.delete_selected)

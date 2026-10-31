@@ -47,7 +47,8 @@ def lines(page):
                   for a, b in [it[1:3]])
 
 
-class CadMode(unittest.TestCase):
+class Window(unittest.TestCase):
+    """A window in CAD mode with the drawing open (no tests of its own)."""
     CLOUD = TEXT = False
 
     def setUp(self):
@@ -78,6 +79,9 @@ class CadMode(unittest.TestCase):
         from kanzonas import cad_select
         cad_select.pick(self.v.pages[0], Box(pymupdf.Rect(x0, y0, x1, y1)), False, False)
 
+
+
+class CadMode(Window):
     def test_cad_mode_selects_the_drawings_lines(self):
         self.assertEqual(self.v.tool, "editobjects")
         self.box(40, 40, 360, 260)
@@ -130,6 +134,75 @@ class CadMode(unittest.TestCase):
         self.type("")
         self.assertIsNone(self.v._cad_cmd)
         self.assertEqual(len(lines(self.v.doc[0])), 2)
+
+
+class StartsInCad(unittest.TestCase):
+    """A window made while the saved mouse mode is CAD (start-up, a pulled-out tab) starts
+    with Edit objects (it raised KeyError, and start-up then reset every setting)."""
+
+    def test_a_new_window_in_cad_mode(self):
+        w = main_window.MainWindow()
+        old = {k: w.settings.value(k) for k in ("mouse_mode", "mouse_before_cad")}
+
+        def back():
+            for k, v in old.items():
+                w.settings.setValue(k, v) if v is not None else w.settings.remove(k)
+            mouse_modes.apply(w.settings)
+        self.addCleanup(back)
+        self.addCleanup(lambda: [setattr(x, "_close_confirmed", True) or x.close()
+                                 for x in main_window.windows()])
+        w.set_mouse_mode("cad")
+        other = main_window.MainWindow()
+        self.assertEqual(other.tool, "editobjects")
+        self.assertTrue(other.tool_actions["editobjects"].isChecked())
+        w.open_file(drawing())
+        moved = w.detach_tab(0)
+        self.assertIsNotNone(moved)
+        self.assertEqual(moved.tabs.count(), 1)
+        self.assertEqual(moved.tool, "editobjects")
+
+
+class Protected(Window):
+    """A file whose drawing can't be changed (markups can): a selection holding both is
+    refused whole, with the reason, instead of changing only the markups."""
+    CLOUD = True
+
+    def setUp(self):
+        super().setUp()
+        allowed = self.v.allowed
+        from unittest import mock
+        patch = mock.patch.object(self.v, "allowed", side_effect=lambda p: (
+            p != pymupdf.PDF_PERM_MODIFY and allowed(p)))
+        patch.start()
+        self.addCleanup(patch.stop)
+        info = mock.patch("kanzonas.document_view.QMessageBox.information")
+        self.said = info.start()
+        self.addCleanup(info.stop)
+
+    def cloud_top(self):
+        page = self.v.doc[0]                # (kept alive while its annotation is read)
+        return pymupdf.Rect(next(page.annots()).rect).y0
+
+    def test_delete_and_move_of_both_are_refused_whole(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.box(140, 40, 260, 260)
+        QTest.keyClick(self.v, Qt.Key_Delete)
+        self.assertTrue(self.said.called)
+        self.assertEqual(len(list(self.v.doc[0].annots())), 1)
+        self.assertEqual(len(lines(self.v.doc[0])), 3)
+        self.box(140, 40, 260, 260)
+        self.type("m")
+        cmd = self.v._cad_cmd
+        if cmd is not None:                 # (Move may refuse to start at all)
+            cmd.click(0, pymupdf.Point(200, 150))
+            cmd.click(0, pymupdf.Point(200, 180))
+        self.assertLess(abs(self.cloud_top() - 60), 3)
+        self.assertEqual(len(lines(self.v.doc[0])), 3)
+        self.assertIn((150, 50, 150, 250), lines(self.v.doc[0]))
+        # through the command itself too: cad_apply refuses the whole selection
+        self.v.cad_apply("Moved", pymupdf.Matrix(1, 0, 0, 1, 0, 30))
+        self.assertLess(abs(self.cloud_top() - 60), 3)
 
 
 class Everything(CadMode):
