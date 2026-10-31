@@ -106,6 +106,84 @@ class _busy:
         return False
 
 
+_JS_ACTION = re.compile(r"/S\s*/(JavaScript|Launch)\b")    # (Launch: runs a program)
+
+
+def remove_scripts(doc):
+    """Take every JavaScript action, Launch action (runs a program) and automatic action
+    out of doc. PyMuPDF's scrub empties
+    the JavaScript actions stored as objects of their own; one written straight into a
+    catalog's /OpenAction, an /AA or a link's /A (a common way) stays, so this removes those
+    too: /AA (actions run on opening, closing, printing, page visits...) goes wherever it is,
+    an /OpenAction or /A only when it is (or leads to) JavaScript, and the document-level
+    scripts (the /JavaScript name tree) go."""
+    for xref in range(1, doc.xref_length()):
+        try:
+            keys = doc.xref_get_keys(xref)
+        except Exception:
+            continue
+        if "AA" in keys:
+            doc.xref_set_key(xref, "AA", "null")
+        for key in ("OpenAction", "A"):
+            if key not in keys:
+                continue
+            kind, val = doc.xref_get_key(xref, key)
+            if kind == "xref":
+                try:
+                    val = doc.xref_object(int(val.split()[0]))
+                except Exception:
+                    continue
+            if kind in ("dict", "xref") and (_JS_ACTION.search(val) or "/Next" in val and
+                                              "JavaScript" in val):
+                doc.xref_set_key(xref, key, "null")
+        if "Names" in keys and doc.xref_get_key(xref, "Names/JavaScript")[0] != "null":
+            doc.xref_set_key(xref, "Names/JavaScript", "null")
+
+
+def blank_appearance(doc, widget_xref):
+    """Make an emptied text / choice field look empty. PyMuPDF doesn't redraw a field set
+    to "" (its old text stayed on the page and in the file), so the field's normal
+    appearance is written over with an empty one."""
+    kind, val = doc.xref_get_key(widget_xref, "AP/N")
+    if kind == "xref":
+        doc.update_stream(int(val.split()[0]), b"/Tx BMC\nEMC\n")
+
+
+def clear_form_data(doc):
+    """Empty every form field (Sanitize > Data typed into form fields). The value is kept on
+    the field, which is often a parent dictionary above the widget (KanzonasPDF's own fields
+    since PyMuPDF 2.0, many Acrobat forms): PyMuPDF's scrub resets only the widget, so the
+    value stayed in the file. Each widget is emptied through PyMuPDF (new appearance), then
+    every field dictionary loses its /V."""
+    for i in range(doc.page_count):
+        page = doc[i]
+        for w in list(page.widgets() or []):
+            t = w.field_type
+            try:
+                if t in (pymupdf.PDF_WIDGET_TYPE_CHECKBOX, pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON):
+                    w.field_value = False
+                elif t in (pymupdf.PDF_WIDGET_TYPE_TEXT, pymupdf.PDF_WIDGET_TYPE_COMBOBOX,
+                           pymupdf.PDF_WIDGET_TYPE_LISTBOX):
+                    w.field_value = ""
+                else:
+                    continue
+                w.update()
+                if t != pymupdf.PDF_WIDGET_TYPE_CHECKBOX and \
+                        t != pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+                    blank_appearance(doc, w.xref)
+            except Exception:
+                pass
+    for xref in range(1, doc.xref_length()):
+        try:
+            keys = doc.xref_get_keys(xref)
+        except Exception:
+            continue
+        if "V" in keys and ("FT" in keys or "T" in keys or "Kids" in keys):
+            doc.xref_set_key(xref, "V", "null")
+            if "RV" in keys:
+                doc.xref_set_key(xref, "RV", "null")
+
+
 class _not_busy:
     """A message box while a command works: the usual pointer over it, the busy one after."""
 
@@ -4883,6 +4961,7 @@ class DocumentView(QScrollArea):
                                hidden_text=True, javascript=True, metadata=True,
                                redactions=False, remove_links=False, reset_fields=False,
                                reset_responses=True, thumbnails=True, xml_metadata=True)
+                remove_scripts(self.doc)
                 # scrub unlinks the old objects; a plain tobytes() would still carry them.
                 enc = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
                 data = self.doc.tobytes(
@@ -5278,6 +5357,14 @@ class DocumentView(QScrollArea):
                            reset_fields=opts.get("form_data", False),
                            reset_responses=opts.get("markups", False),
                            thumbnails=opts.get("thumbnails", False))
+            if opts.get("javascript"):
+                remove_scripts(self.doc)
+            if opts.get("thumbnails"):
+                for i in range(self.doc.page_count):   # (scrub left /Thumb in place)
+                    if self.doc.xref_get_key(self.doc.page_xref(i), "Thumb")[0] != "null":
+                        self.doc.xref_set_key(self.doc.page_xref(i), "Thumb", "null")
+            if opts.get("form_data"):
+                clear_form_data(self.doc)
             if opts.get("markups"):
                 for i in range(self.doc.page_count):
                     pg = self.doc[i]
@@ -5490,6 +5577,8 @@ class DocumentView(QScrollArea):
             w = pg.load_widget(xref)
             w.field_value = value
             w.update()
+            if value == "":
+                blank_appearance(self.doc, xref)   # (else the old text still shows)
         self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM)
 
     def _choose_option(self, index, xref):
