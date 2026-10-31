@@ -73,6 +73,15 @@ def set_scale(page, m_per_pt, unit, label):
     page.parent.xref_set_key(page.xref, KEY, pymupdf.get_pdf_str(f"{m_per_pt!r}|{unit}|{label}"))
 
 
+def copy_scales(src, dst, pairs):
+    """Give pages copied with insert_pdf their originals' scale (insert_pdf leaves out a
+    page's own keys). pairs: [(page index in src, index of its copy in dst)]."""
+    for i, k in pairs:
+        typ, val = src.xref_get_key(src.page_xref(i), KEY)
+        if typ == "string":
+            dst.xref_set_key(dst.page_xref(k), KEY, pymupdf.get_pdf_str(val))
+
+
 def scale_from_preset(ratio):
     return PT_M * ratio
 

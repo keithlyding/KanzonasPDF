@@ -6988,3 +6988,15 @@ msgstr "Limpiar"
 
 msgid "Calibrate"
 msgstr "Calibrar"
+
+msgid "This page has pending redactions; cutting text would apply them. Remove them first."
+msgstr "Esta página tiene censuras pendientes; cortar el texto las aplicaría. Quítelas primero."
+
+msgid "Replaced {n} (Ctrl+Z undoes it). On page {pages} the new text runs into other text or past the edge of the page."
+msgstr "Reemplazos: {n} (Ctrl+Z lo deshace). En la página {pages} el texto nuevo se mete en otro texto o pasa del borde de la página."
+
+msgid "On page {pages} the new text runs into other text or past the edge of the page (Ctrl+Z undoes it)."
+msgstr "En la página {pages} el texto nuevo se mete en otro texto o pasa del borde de la página (Ctrl+Z lo deshace)."
+
+msgid "This markup is locked. Untick Lock in the Objects panel (or use Arrange > Unlock all markups) to move, resize or delete it."
+msgstr "Esta marca está bloqueada. Desmarque Bloquear en el panel Objetos (o use Organizar > Desbloquear todas las marcas) para moverla, cambiar su tamaño o eliminarla."

@@ -11,6 +11,8 @@ A scanned page is one picture covering the whole page, so a background can't sho
 it.
 """
 
+import re
+
 import pymupdf
 
 from .i18n import tr
@@ -89,6 +91,20 @@ def has_background(page):
         return False
 
 
+def stream(page):
+    """xref of the content stream Background added to this page, or None."""
+    try:
+        typ, val = page.parent.xref_get_key(page.xref, KEY)
+        return int(val) if typ == "int" else None
+    except Exception:
+        return None
+
+
+# what apply() wraps the background in (as written, or as PyMuPDF rewrites the syntax)
+_BLOCK = re.compile(rb"/Artifact\s*<<\s*/Type\s*/Pagination\s*/Subtype\s*/Background\s*>>\s*BDC"
+                    rb"(?:(?!BDC|EMC).)*?EMC", re.S)
+
+
 def remove(page):
     """Remove the background Background added to this page, if any. True if removed."""
     doc = page.parent
@@ -98,12 +114,21 @@ def remove(page):
     x = int(val)
     contents = [c for c in page.get_contents() if c != x]
     data = doc.xref_stream(x) or b""
+    if x not in page.get_contents():
+        # its stream was merged into the page's other content (an older Remove watermarks
+        # did that): take its marked block out of there instead
+        for c in contents:
+            old = doc.xref_stream(c) or b""
+            m = _BLOCK.search(old)
+            if m:
+                data = m.group(0)
+                doc.update_stream(c, old[:m.start()] + old[m.end():])
+                break
     if contents:
         doc.xref_set_key(page.xref, "Contents", "[" + " ".join(f"{c} 0 R" for c in contents) + "]")
     else:
         doc.xref_set_key(page.xref, "Contents", "null")
     # drop the form it drew from the page's resources too
-    import re
     for name in re.findall(rb"/(fzFrm\d+)\s+Do", data):
         try:
             doc.xref_set_key(page.xref, "Resources/XObject/" + name.decode(), "null")
