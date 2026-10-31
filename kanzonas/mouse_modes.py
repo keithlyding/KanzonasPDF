@@ -73,7 +73,9 @@ def set_option(settings, m, key, on):
 
 
 def default_tool(m):
-    return "hand" if m == "hand" else "select"
+    # CAD mode selects the drawing's own lines, text and pictures (Edit objects), as a CAD
+    # program does: Select takes only markups, so a box on a plain drawing took nothing
+    return {"hand": "hand", "cad": "editobjects"}.get(m, "select")
 
 
 def apply(settings):

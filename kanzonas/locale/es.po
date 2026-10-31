@@ -7069,3 +7069,39 @@ msgstr "Imprimiendo..."
 
 msgid "Printing page {n} of {total}..."
 msgstr "Imprimiendo la página {n} de {total}..."
+
+msgid "select the cutting edges, then press Enter (Enter with nothing selected: every line cuts)"
+msgstr "seleccione los bordes de corte y presione Enter (Enter sin nada seleccionado: todas las líneas cortan)"
+
+msgid "click the part of a line to cut away, up to the cutting edges (Enter or Escape when done)"
+msgstr "haga clic en la parte de una línea que quiere quitar, hasta los bordes de corte (Enter o Escape al terminar)"
+
+msgid "Click on the page with the cutting edges."
+msgstr "Haga clic en la página de los bordes de corte."
+
+msgid "select objects (click them, or draw a box or a lasso), then press Enter or right-click"
+msgstr "seleccione objetos (haga clic en ellos, o dibuje un recuadro o un lazo) y presione Enter o haga clic derecho"
+
+msgid "{command}: nothing is selected yet. Click objects, or draw a box or a lasso, then press Enter (Escape cancels)."
+msgstr "{command}: todavía no hay nada seleccionado. Haga clic en objetos, o dibuje un recuadro o un lazo, y presione Enter (Escape cancela)."
+
+msgid "{n} object"
+msgstr "{n} objeto"
+
+msgid "{n} objects"
+msgstr "{n} objetos"
+
+msgid "{n} markup"
+msgstr "{n} marca"
+
+msgid "{n} markups"
+msgstr "{n} marcas"
+
+msgid "Selected {what}: type a command (M move, CO copy, RO rotate...) or press Delete; Shift+click takes out, Escape clears"
+msgstr "Seleccionado: {what}. Escriba un comando (M mover, CO copiar, RO girar...) o presione Supr; Shift+clic quita, Escape borra la selección"
+
+msgid "Trim: that line doesn't cross a cutting edge, so it stays. (To let every line cut, start Trim with nothing selected and press Enter.)"
+msgstr "Recortar: esa línea no cruza ningún borde de corte, así que se queda. (Para que corten todas las líneas, empiece Recortar sin nada seleccionado y presione Enter.)"
+
+msgid "1 copy made"
+msgstr "1 copia hecha"

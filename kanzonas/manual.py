@@ -269,8 +269,9 @@ links for you from the sheet numbers.</li>
 (works with any tool). <b>Shift+wheel</b> always scrolls left and right, in every mouse mode and
 when one wheel step would otherwise turn the page. Shift+Left/Right scrolls
 sideways too.</li>
-<li><b>Mouse mode</b> (View menu, the Home tab's <b>Mouse</b> group, Preferences &gt; Mouse):
-three ways to work, each with its own options (see Preferences below).
+<li><b>Mouse mode</b> (the first three buttons of the Home tab, <b>Select</b>, <b>Hand</b> and
+<b>CAD</b>; the View menu; Preferences &gt; Mouse): three ways to work, each with its own
+options (see Preferences below).
 <ul>
 <li><b>Mouse: Standard (arrow, the wheel scrolls)</b>: KanzonasPDF starts with the Select tool
 (the arrow) and Escape goes back to it; the wheel scrolls and Ctrl+wheel zooms.</li>
@@ -322,11 +323,19 @@ It's for looking only: make changes in the main view.</li>
 
 <h2 id="cad">CAD mode: selecting and the CAD tab</h2>
 <p>In the <b>CAD</b> mouse mode (View &gt; Mouse: CAD, F11) KanzonasPDF selects and edits like a
-CAD program. It works with <b>Select</b> (your markups, and the text of the page) and with
-<b>Edit objects</b> (the drawing's own lines, text and pictures).</p>
+CAD program. It starts with <b>Edit objects</b>, which selects everything at once: the drawing's
+own lines, text and pictures and the markups drawn on it (clouds, lines, notes...), in one
+selection. Move, Copy, Rotate, Scale, Mirror, Align, Array and Delete then work on all of it
+together, and one Ctrl+Z undoes it (the drawing's text only moves: it isn't copied, turned,
+scaled or mirrored). <b>Select</b> (the CAD tab, or V when letters aren't going to the command
+line) selects only your markups, or the characters of the page's text, the same way.</p>
 <ul>
 <li><b>Click</b> something to add it to the selection. <b>Shift+click</b> takes it out.
-<b>Escape</b> clears the whole selection. Clicking empty paper keeps the selection.</li>
+<b>Escape</b> clears the whole selection. Clicking empty paper keeps the selection. A markup lies
+on top of the drawing, so a click on it takes the markup. A locked markup isn't taken.</li>
+<li>The <b>arrow keys</b> nudge the whole selection, the drawing's objects and the markups
+together. Right-click a markup for its own menu, the drawing's objects for theirs. Selected
+markups show no resize handles here: change them with the CAD tab's commands, or with Select.</li>
 <li><b>Click, move, click</b>: click empty paper, move the pointer (the box follows it) and click
 again. Left to right it's a solid <b>blue window</b>: it takes what lies entirely inside it.
 Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line
@@ -344,8 +353,10 @@ let go. On a very big drawing it fills in over a moment while you move.</li>
 of one selected markup or object still resize it, and the CAD tab's <b>Move</b> moves.</li>
 <li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>
 </ul>
-<p>The <b>CAD</b> tab (and the CAD menu) shows only in CAD mode. Select first, then click a
-command (or type it: see the command line below) and answer its prompt on the command line:
+<p>The <b>CAD</b> tab (and the CAD menu) shows only in CAD mode. As in AutoCAD, either select
+first and then start a command, or start the command first: with nothing selected it asks you to
+<b>select objects</b> (clicks, boxes, lassos as above), and <b>Enter</b> (or a right-click) goes
+on with what you selected. Then answer its prompt on the command line:
 click points on the page (they snap to line ends and corners like the drawing tools; hold Alt
 not to snap), type a value and press Enter, or click a button there. Escape (or Cancel) stops a
 command; right-click is Enter. Each change is one Ctrl+Z.</p>
@@ -412,9 +423,12 @@ copied object by object, which takes longer. Copies of such a selection (Copy, M
 and arrays of any size) are drawn together on top of the originals, as CAD programs draw new
 objects; a selection spread over different layers or clipping keeps each copy right above its
 own original.</li>
-<li><b>Trim</b>: no selection needed. Click the part of a line to cut away: it goes up to the
-nearest lines crossing it on either side (or to its end, when nothing crosses on that side); a
-line nothing crosses goes completely. The click picks the line nearest to it and isn't
+<li><b>Trim</b>: as in AutoCAD, first the <b>cutting edges</b>: the lines selected before TR,
+or the ones you select when it asks, then Enter (Enter with nothing selected: every line cuts).
+Then click the part of a line to cut away: it goes up to the nearest cutting edges crossing it
+on either side (or to its end, when none crosses on that side). With no cutting edges chosen, a
+line none crosses goes completely; with cutting edges chosen, a line that crosses none of them
+stays (it says so). The click picks the line nearest to it and isn't
 snapped; a click right where lines cross says so instead (click a little to one side). Click
 again and again; Enter, Escape or Done ends it. It
 trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
@@ -469,7 +483,7 @@ text (highlights, underlines, strikeouts) stay with their text. With nothing sel
 Right turn the page as usual.</li>
 <li><b>Escape</b> clears the selection. With nothing selected, Escape puts down whatever tool
 is picked (a stamp, shape, measurement, Crop...) and goes back to your default tool: the Hand
-in the Hand mouse mode, Select in the Standard and CAD modes. It works even right after a
+in the Hand mouse mode, Select in the Standard mode, Edit objects in the CAD mode. It works even right after a
 dialog or a toolbar click took the keyboard focus.</li>
 </ul>
 
@@ -726,7 +740,8 @@ care.</li>
 <ul>
 <li>Edit objects tool (Shift+O; Home tab, Tools menu), like Bluebeam's Edit content: works on
 the pictures (logos, photos, scans) and vector shapes (lines, rectangles, circles, curves,
-filled areas, CAD line work) that are part of the page itself, not on markups. Point at an object
+filled areas, CAD line work) that are part of the page itself, not on markups (in the CAD
+mouse mode it takes the markups drawn on the drawing too: see CAD mode). Point at an object
 to see it outlined; click to select it. Lines are picked up within a few pixels; a filled shape
 is picked up anywhere inside it.</li>
 <li><b>Text:</b> the page's own text (what Add text wrote, and the text of the PDF) is selected a
@@ -734,7 +749,7 @@ paragraph at a time: click a word to select its paragraph, and everything Add te
 go comes together. A selection box takes text only when there are no pictures or shapes in it
 (so a box around a drawing detail selects its line work, not its labels); Ctrl+click adds text
 to a selection. In the <b>CAD</b> mouse mode, selecting works as in AutoCAD instead: a blue
-window (left to right) takes the lines, text and pictures entirely inside it, a green crossing
+window (left to right) takes the lines, text, pictures and markups entirely inside it, a green crossing
 box (right to left) everything it touches, text and line work together; clicks, boxes and
 lassos add to the selection, Shift takes out of it and Escape clears it, and the CAD tab's
 commands change it (see CAD mode). Press <b>Delete</b> (or Backspace) or right-click &gt; <b>Delete</b> to remove
@@ -972,8 +987,8 @@ PIN); to replace it later, use File &gt; Preferences &gt; You &gt; Set up my sig
 initials.... To choose the size, <b>drag a box</b> instead of clicking: it's placed as wide as you
 drag (the height follows its proportions). The size used for a click is set in File &gt;
 Preferences &gt; You (2 in for a signature and 0.75 in for initials to start with). Afterwards the
-Hand or Select tool, whichever you used last, is active again, so you don't place a second one by
-accident. Like any picture on the page, a placed signature can be moved or deleted with Edit
+mouse mode's own tool (Hand, Select, or Edit objects in CAD mode) is active again, so you don't
+place a second one by accident. Like any picture on the page, a placed signature can be moved or deleted with Edit
 objects (or Ctrl+Z right after placing it).</li>
 <li><b>Date</b> (Ctrl+;, Protect tab and menu): click to write today's date there, for example
 next to a signature or in a document's own date field. Dating a form field (and signing a
@@ -1216,8 +1231,8 @@ settings...).</li>
 <tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Ctrl+click a link (Select tool)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
-<tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool, Hand or Select) / cancel a CAD command or a started selection box</td></tr>
-<tr><td>Delete</td><td>Delete selected markups</td></tr>
+<tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool: Hand, Select, or Edit objects in CAD mode) / cancel a CAD command or a started selection box</td></tr>
+<tr><td>Delete</td><td>Delete what's selected: markups, and in CAD mode the drawing's objects too</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>
 <tr><td>Ctrl+D</td><td>Duplicate selected markups (or pages, in the page list)</td></tr>

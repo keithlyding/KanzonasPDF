@@ -21,6 +21,7 @@ import shiboken6
 from PySide6.QtCore import Qt, QPointF, QRectF, QTimer
 from PySide6.QtGui import QColor, QPen, QPolygonF
 
+from .i18n import tr
 from .page_objects import Box, Lasso
 
 BLUE = QColor(0, 120, 215)
@@ -60,7 +61,13 @@ def press(w, e, pos, pdf):
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     w._obj_edit = {"mode": hid, "start": pos, "preview": None}
                     return
-        target = ("object", v.object_at(w.index, pdf))
+        # CAD mode takes everything: a markup drawn over the drawing first (it lies on top),
+        # else the drawing's own line, text or picture
+        xref = w._card_at(pos)
+        if xref is None:
+            xref = v.annot_at(w.index, pdf)
+        target = ("markup", xref) if xref is not None else \
+            ("object", v.object_at(w.index, pdf))
     w._cad_down = {"start": pos, "pts": [pos], "dir": 0, "mode": None, "now": None,
                    "target": target, "remove": remove,
                    "link": getattr(w, "_link_press", None) is not None}
@@ -169,28 +176,71 @@ def pick(w, region, crossing, remove):
     if v.tool == "select":
         v.cad_select_region(w.index, region, crossing, remove)
         return
+    # Edit objects in CAD mode takes everything the region holds: the drawing's lines, text
+    # and pictures, and the markups drawn on it, in one selection (on one page)
+    if not remove:                      # (Shift on another page takes nothing out here)
+        if v.obj_sel is not None and v.obj_sel[0] != w.index:
+            v.clear_object_selection()
+        if v.selection is not None and v.selection[0] != w.index:
+            v.clear_selection()
     found = v.cad_objects(w.index, region, crossing)
     took = {it["n"] for it in found}
     have = w._objects_here()
     if remove:
-        v.select_objects(w.index, [it for it in have if it["n"] not in took])
+        if have:
+            v.select_objects(w.index, [it for it in have if it["n"] not in took])
     else:
         known = {it["n"] for it in have}
         v.select_objects(w.index, have + [it for it in found if it["n"] not in known])
+    marks = v.cad_markups_in(w.index, region, crossing)
+    mine = v.selected_xrefs() if v.selection is not None and v.selection[0] == w.index else []
+    if marks and remove:
+        if mine:
+            v._set_selection(w.index, [x for x in mine if x not in marks])
+    elif marks:
+        v._set_selection(w.index, mine + [x for x in marks if x not in mine])
+    say(v)
+
+
+def say(v):
+    """The status bar: what CAD mode's selection holds now, and what to do with it."""
+    objs = len(v.obj_sel[1]) if v.obj_sel is not None else 0
+    marks = len(v.selected_xrefs())
+    if not objs and not marks:
+        return
+    what = ", ".join(x for x in (
+        (tr("{n} object") if objs == 1 else tr("{n} objects")).format(n=objs) if objs else "",
+        (tr("{n} markup") if marks == 1 else tr("{n} markups")).format(n=marks) if marks
+        else "") if x)
+    v.statusMessage.emit(tr("Selected {what}: type a command (M move, CO copy, RO rotate...) "
+                            "or press Delete; Shift+click takes out, Escape clears").format(
+                                what=what))
 
 
 def toggle(w, kind, target, remove):
     """A click on one item: into the selection (Shift: out of it)."""
     v = w.view
+    if kind == "markup" and v.markup_locked(w.index, target):
+        v.statusMessage.emit(v.locked_note())
+        return
+    if v.tool == "editobjects" and not remove:      # (one selection, one page)
+        if v.obj_sel is not None and v.obj_sel[0] != w.index:
+            v.clear_object_selection()
+        if v.selection is not None and v.selection[0] != w.index:
+            v.clear_selection()
     if kind == "markup":
         have = v.selected_xrefs() if v.selection is not None and v.selection[0] == w.index \
             else []
         if (target in have) == remove:
             v.select_xref(w.index, target, add=bool(have))
+        if v.tool == "editobjects":
+            say(v)
         return
     here = {it["n"] for it in w._objects_here()}
     if (target["n"] in here) == remove:
         v.select_objects(w.index, [target], add=True)
+    if v.tool == "editobjects":
+        say(v)
 
 
 # ---- the live highlight ---------------------------------------------------------------

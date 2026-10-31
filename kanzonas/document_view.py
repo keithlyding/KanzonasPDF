@@ -217,7 +217,7 @@ class DocumentView(QScrollArea):
     signedDocument = Signal()
     oneShotPlaced = Signal()        # a signature / initials / date was placed
     selectToolRequested = Signal()
-    previousToolRequested = Signal()    # Escape: back to the default tool (Hand or Select)
+    previousToolRequested = Signal()    # Escape: back to the mouse mode's tool
     calibrateRequested = Signal(int, float)    # page index, drawn length in points
     scaleChanged = Signal()
     layersChanged = Signal()
@@ -3194,6 +3194,13 @@ class DocumentView(QScrollArea):
                 yield [], self.line_rects(self.cad_text(index, region, crossing))
             return
         from .page_objects import overlap
+        xrefs = self.cad_markups_in(index, region, crossing)     # (the markups too)
+        if xrefs:
+            page = self.doc[index]          # (kept alive while its markups are read)
+            found = annotations.load_annots(page, xrefs[:3000])
+            models = [(x, annotations.read(a)) for x, a in found.items()]
+            yield self.cad_outlines(index, "markups",
+                                    [(x, m) for x, m in models if m is not None]), []
         objs = self.content_objects(index)
         for it, taken in (objs.pick_steps(region, crossing) if objs is not None else ()):
             yield (self.object_lines(index, it) if taken else []), []
@@ -3348,10 +3355,17 @@ class DocumentView(QScrollArea):
         key = ("obj", index, tuple(it["n"] for it in self.obj_sel[1])) if self.obj_sel else \
             ("annot", index)
         now = time.monotonic()
-        last = getattr(self, "_last_nudge", (None, 0.0))
-        self._merge_edit = last[0] == key and now - last[1] < 1.5
+        last = getattr(self, "_last_nudge", (None, 0.0, -1))
+        # (presses in a row only: another edit between them starts a new undo step)
+        self._merge_edit = last[0] == key and now - last[1] < 1.5 and \
+            last[2] == self.revision
         try:
-            if self.obj_sel is not None:
+            what = self.cad_targets() if self.obj_sel is not None and \
+                self.selection is not None else None
+            if what is not None and what[0] == "both":
+                # CAD mode's selection of the drawing's objects and markups: both move
+                self.cad_apply(tr("Moved"), pymupdf.Matrix(1, 0, 0, 1, d.x, d.y))
+            elif self.obj_sel is not None:
                 r = self.selected_objects_rect()
                 self.move_objects(r + (d.x, d.y, d.x, d.y))
             else:
@@ -3362,7 +3376,7 @@ class DocumentView(QScrollArea):
                 self.commit_models(index, changes)
         finally:
             self._merge_edit = False
-        self._last_nudge = (key, now)
+        self._last_nudge = (key, now, self.revision)
         self.statusMessage.emit(tr("Moved {step} pt (Shift+arrow: 10 pt, Ctrl+arrow: 0.1 pt; "
                                    "Ctrl+Z undoes the whole series)").format(step="%g" % step))
         return True
@@ -3563,7 +3577,7 @@ class DocumentView(QScrollArea):
             if e.key() == Qt.Key_Escape:
                 self._cad_cmd.cancel()
             else:
-                self._cad_cmd.enter()
+                self._cad_cmd.enter_key()
             return
         if e.key() == Qt.Key_Escape:
             from . import cad_select
@@ -3573,11 +3587,9 @@ class DocumentView(QScrollArea):
         if drawing and e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):
             drawing[0].finish_poly(cancel=e.key() == Qt.Key_Escape)
             return
-        if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.selection is not None:
-            self.delete_selected()
-            return
-        if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.obj_sel is not None:
-            self.delete_objects()
+        if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and (
+                self.selection is not None or self.obj_sel is not None):
+            self.delete_everything_selected()
             return
         if e.key() == Qt.Key_Escape and self.cad_select and (
                 self.obj_sel is not None or self.text_sel or self.selection is not None):
@@ -3975,26 +3987,38 @@ class DocumentView(QScrollArea):
                 return True
         return False
 
+    def _markups_on_lines(self, page, lines):
+        """_markups_on_line for many lines, the page's markups read once."""
+        boxes = [pymupdf.Rect(ln["bbox"]) for ln in lines]
+        if not boxes:
+            return []
+        out = []
+        for an in annotations.each_annot(page):
+            if self._on_box(an, boxes):
+                out.append(an.xref)
+        return out
+
+    @staticmethod
+    def _on_box(an, boxes):
+        t = an.type[0]
+        if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
+                 pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
+            v = an.vertices or []
+            quads = [pymupdf.Quad(v[k:k + 4]).rect for k in range(0, len(v) - 3, 4)]
+            # all of its marked area lies on one of these lines (mostly overlapping it)
+            return bool(quads) and any(
+                all(q.get_area() > 0 and (q & box).get_area() >= 0.5 * q.get_area()
+                    for q in quads) for box in boxes)
+        if t == pymupdf.PDF_ANNOT_TEXT:
+            r = an.rect
+            return any((box + (-4, -4, 4, 4)).contains(pymupdf.Point(r.x0, r.y0))
+                       for box in boxes)
+        return False
+
     def _markups_on_line(self, page, line):
         """xrefs of text markups (highlight, underline, comments...) and sticky notes sitting
         on this line of text: they travel with it when the text is moved."""
-        box = pymupdf.Rect(line["bbox"])
-        out = []
-        for an in annotations.each_annot(page):
-            t = an.type[0]
-            if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
-                     pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
-                v = an.vertices or []
-                quads = [pymupdf.Quad(v[k:k + 4]).rect for k in range(0, len(v) - 3, 4)]
-                # all of its marked area lies on this line (mostly overlapping it)
-                if quads and all(q.get_area() > 0 and (q & box).get_area() >= 0.5 * q.get_area()
-                                 for q in quads):
-                    out.append(an.xref)
-            elif t == pymupdf.PDF_ANNOT_TEXT:
-                r = an.rect
-                if (box + (-4, -4, 4, 4)).contains(pymupdf.Point(r.x0, r.y0)):
-                    out.append(an.xref)
-        return out
+        return self._markups_on_lines(page, [line])
 
     def add_text_at(self, index, pt):
         """Add text tool: type at pt; the text is written into the page itself (like
@@ -4353,21 +4377,33 @@ class DocumentView(QScrollArea):
     # ---- CAD tab commands (cad_commands.py) ----------------------------------------------
     _cad_cmd = None             # the CAD command running, or None
 
-    def cad_targets(self):
+    def cad_targets(self, only=None):
         """What a CAD command works on: ("objects", page, items) for the drawing's own objects
         selected with Edit objects, ("markups", page, [(xref, model)]) for selected markups,
-        or None."""
+        ("both", page, {"objects": items, "markups": [(xref, model)]}) when CAD mode's
+        selection holds both on one page, or None. only: "objects" or "markups", that part
+        alone."""
+        objs = mark = None
         if self.obj_sel is not None and self.obj_sel[1]:
-            return "objects", self.obj_sel[0], list(self.obj_sel[1])
+            objs = ("objects", self.obj_sel[0], list(self.obj_sel[1]))
         if self.selection is not None:
             models = [(x, m) for x, m in self.selected_models() if m["kind"] != "field"]
             if models:
-                return "markups", self.selection[0], models
-        return None
+                mark = ("markups", self.selection[0], models)
+        if only == "objects":
+            return objs
+        if only == "markups":
+            return mark
+        if objs and mark and objs[1] == mark[1]:
+            return "both", objs[1], {"objects": objs[2], "markups": mark[2]}
+        return objs or mark
 
     def cad_outlines(self, index, kind, items):
         """The selection's outlines in page coordinates, for a command's preview."""
         out = []
+        if kind == "both":
+            return self.cad_outlines(index, "objects", items["objects"]) + \
+                self.cad_outlines(index, "markups", items["markups"])
         if kind == "objects":
             for it in items:
                 out += self.object_lines(index, it)
@@ -4392,7 +4428,22 @@ class DocumentView(QScrollArea):
     def cad_apply(self, label, mat, copies=None, keep=False):
         try:
             with _busy():
-                out = self._cad_apply(label, mat, copies, keep)
+                what = self.cad_targets()
+                rev = self.revision
+                if what is not None and what[0] == "both" and self._both_refused():
+                    out = None              # (neither half of the selection changes)
+                elif what is not None and what[0] == "both":
+                    # the drawing's objects and the markups, as one undo step
+                    out = self._cad_apply(label, mat, copies, keep, only="objects")
+                    kept = self.obj_sel
+                    self.then_in_same_step(
+                        rev, lambda: self._cad_apply(label, mat, copies, keep, only="markups"))
+                    if kept is not None and self.obj_sel is None:
+                        # (changing the markups dropped the page's objects as read before:
+                        # the same ones are selected again, so Copy goes on with both)
+                        self._reselect_objects(*kept)
+                else:
+                    out = self._cad_apply(label, mat, copies, keep)
         except Exception:
             if self._cad_cmd is not None:   # (a command that failed doesn't go on)
                 self._cad_cmd.finish()
@@ -4406,12 +4457,61 @@ class DocumentView(QScrollArea):
         if self._cad_cmd is not None:
             self._cad_cmd.rev = getattr(self, "revision", 0)
 
-    def _cad_apply(self, label, mat, copies=None, keep=False):
+    def _reselect_objects(self, index, items):
+        """Select again the objects items (read before the page changed) as the page is read
+        now: shapes and pictures by their place in the drawing order, text by its spot."""
+        objs = self.content_objects(index)
+        by_n = {it["n"]: it for it in (objs.items if objs else [])}
+        texts = self.text_objects(index) if any(it["kind"] == "text" for it in items) else []
+        again = []
+        for it in items:
+            if it["kind"] == "text":
+                r = it["rect"]
+                again += [t for t in texts if abs(t["rect"].x0 - r.x0) < 1.5 and
+                          abs(t["rect"].y0 - r.y0) < 1.5][:1]
+            elif it["n"] in by_n:
+                again.append(by_n[it["n"]])
+        self.select_objects(index, again)
+
+    def _both_refused(self):
+        """A selection of the drawing's objects and markups together: True (saying why) when
+        the file allows changing only one of them, so neither half is changed alone."""
+        for perm in (pymupdf.PDF_PERM_MODIFY, pymupdf.PDF_PERM_ANNOTATE):
+            if not self.allowed(perm):
+                self.modify(lambda: None, permission=perm)      # (says why)
+                return True
+        return False
+
+    def then_in_same_step(self, rev, fn):
+        """Run fn; its edits join the edit made since revision rev (one Ctrl+Z undoes both).
+        If nothing was changed since rev, fn's edits are a step of their own (they mustn't
+        join an older, unrelated one)."""
+        if self.revision != rev:
+            with self.one_undo_step():
+                return fn()
+        return fn()
+
+    def one_undo_step(self):
+        """with view.one_undo_step(): the edits made in it join the edit just before (one
+        Ctrl+Z undoes them together), as a burst of arrow-key nudges does."""
+        view = self
+
+        class _Joined:
+            def __enter__(self):
+                self.was = getattr(view, "_merge_edit", False)
+                view._merge_edit = True
+
+            def __exit__(self, *exc):
+                view._merge_edit = self.was
+                return False
+        return _Joined()
+
+    def _cad_apply(self, label, mat, copies=None, keep=False, only=None):
         """A CAD command's change to the selection, as one undo step: mat (a Matrix in page
         coordinates) moves / turns / scales / mirrors it; copies (a list of matrices) adds a
         copy for each instead. The drawing's own text only moves."""
         from . import cad_commands, page_objects
-        what = self.cad_targets()
+        what = self.cad_targets(only)
         if what is None:
             return
         kind, index, items = what
@@ -4493,15 +4593,17 @@ class DocumentView(QScrollArea):
                 continue
             yield an
 
-    def cad_trim(self, index, pt):
+    def cad_trim(self, index, pt, edges=None):
         with _busy():
-            out = self._cad_trim(index, pt)
+            out = self._cad_trim(index, pt, edges)
         self._cad_seen()
         return out
 
-    def _cad_trim(self, index, pt):
+    def _cad_trim(self, index, pt, edges=None):
         """Trim at pt (the CAD tab): the clicked line of the drawing, or line markup, loses
-        the part between the nearest lines crossing it (or its end). True if it changed."""
+        the part between the nearest lines crossing it (or its end). edges: the cutting
+        edges chosen first (polylines in page coordinates), else every line cuts. True if it
+        changed."""
         from . import page_objects, trim
         tol = 6 / self.zoom
         page = self.doc[index]
@@ -4557,7 +4659,13 @@ class DocumentView(QScrollArea):
             r |= q
         r += (-1, -1, 1, 1)
         cutters = []
-        if objs is not None:
+        if edges is not None:
+            # only the cutting edges chosen (the line being cut isn't one of its own edges)
+            def same(a, b):
+                return len(a) == len(b) and all(abs(p.x - q.x) + abs(p.y - q.y) < 0.01
+                                                for p, q in zip(a, b))
+            cutters = [list(e) for e in edges if not same(list(e), list(poly))]
+        elif objs is not None:
             for it in objs.items:
                 if it["kind"] != "shape" or not page_objects.overlap(it["rect"], r):
                     continue
@@ -4565,17 +4673,23 @@ class DocumentView(QScrollArea):
                     if best[1] == "object" and it is best[2] and k == best[3]:
                         continue
                     cutters.append(line)
-        for an in self._trimmable_annots(page):
+        for an in self._trimmable_annots(page) if edges is None else ():
             if best[1] == "markup" and an.xref == best[2]:
                 continue
             if not page_objects.overlap(an.rect, r):
                 continue
             lines, _closed, _filled = self._annot_geometry(an)
             cutters += lines
-        if best[1] == "markup":
+        if best[1] == "markup" and edges is None:
             m = best[6]
             others = (m["strokes"] if m["kind"] == "ink" else [])
             cutters += [list(s) for j, s in enumerate(others) if j != best[3]]
+        if edges is not None and not trim.crosses(poly, cutters):
+            # (AutoCAD too: with cutting edges chosen, a line crossing none stays whole)
+            self.statusMessage.emit(tr("Trim: that line doesn't cross a cutting edge, so it "
+                                       "stays. (To let every line cut, start Trim with nothing "
+                                       "selected and press Enter.)"))
+            return False
         pieces = trim.trim(poly, best[5], pt, cutters)
         if pieces is None:
             self.statusMessage.emit(tr("Trim: that's where lines cross. Click on the part of "
@@ -4768,26 +4882,29 @@ class DocumentView(QScrollArea):
         if not (dx or dy):
             return
         d = pymupdf.Point(offset)
-        order = sorted(lines, key=lambda ln: (pymupdf.Rect(ln["bbox"]).y0 * (-1 if dy > 0 else 1),
-                                              pymupdf.Rect(ln["bbox"]).x0 * (-1 if dx > 0 else 1)))
-        for line in order:
-            moving = []
-            for x in self._markups_on_line(page, line):
-                m = annotations.read(page.load_annot(x))
-                if m is not None:
-                    moving.append((x, m))
-            used = text_edit.replace_line(page, line, text_edit.line_text(line), offset,
-                                          scan=None)
-            if (used or "").startswith("KZ"):
-                self._fonts_added = True
-            for x, m in moving:
-                if "quads" in m:
-                    m = annotations.copy(m)
-                    m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d)
-                                  for q in m["quads"]]
-                else:
-                    m = annotations.moved(m, d)
-                annotations.replace(page, x, m)
+        on = self._markups_on_lines(page, lines)
+        found = annotations.load_annots(page, on)
+        moving = []
+        for x in on:
+            m = annotations.read(found[x]) if x in found else None
+            if m is not None:
+                moving.append((x, m))
+        del found
+        # all the lines at once (one redaction): one by one, a sheet's labels took a minute
+        used = text_edit.move_lines(page, lines, offset)
+        if any(u.startswith("KZ") for u in used):
+            self._fonts_added = True
+        changes = []
+        for x, m in moving:
+            if "quads" in m:
+                m = annotations.copy(m)
+                m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d)
+                              for q in m["quads"]]
+            else:
+                m = annotations.moved(m, d)
+            changes.append((x, m))
+        if changes:
+            annotations.replace_many(page, changes)
 
     def rotate_objects(self, degrees):
         from . import page_objects
@@ -4852,6 +4969,19 @@ class DocumentView(QScrollArea):
         label = {"front": tr("Brought to front"), "back": tr("Sent to back"),
                  "forward": tr("Brought forward"), "backward": tr("Sent backward")}[how]
         self.statusMessage.emit(tr("{what} (Ctrl+Z undoes it)").format(what=label))
+
+    def delete_everything_selected(self):
+        """Delete what is selected: the drawing's objects and the markups (CAD mode selects
+        both at once), as one undo step."""
+        rev = self.revision
+        if self.obj_sel is not None:
+            if self.selection is not None and self._both_refused():
+                return
+            self.delete_objects()
+            if self.revision == rev:
+                return                  # (asked about removing text, and canceled)
+        if self.selection is not None:
+            self.then_in_same_step(rev, self.delete_selected)
 
     def delete_objects(self):
         from . import page_objects

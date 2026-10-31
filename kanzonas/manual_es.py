@@ -261,8 +261,8 @@ vínculos por usted a partir de los números de plano.</li>
 (funciona con cualquier herramienta). <b>Shift+rueda</b> siempre desplaza a la izquierda y a la derecha, en todos los
 modos del mouse y cuando un paso de la rueda pasaría de página. Shift+Left/Right también desplaza
 lateralmente.</li>
-<li><b>Modo del mouse</b> (menú Ver, el grupo <b>Mouse</b> de la pestaña Inicio, Preferencias &gt; Mouse): tres
-maneras de trabajar, cada una con sus propias opciones (vea Preferencias más abajo).
+<li><b>Modo del mouse</b> (los tres primeros botones de la pestaña Inicio, <b>Seleccionar</b>, <b>Mano</b> y <b>CAD</b>;
+el menú Ver; Preferencias &gt; Mouse): tres maneras de trabajar, cada una con sus propias opciones (vea Preferencias más abajo).
 <ul>
 <li><b>Mouse: Estándar (flecha, la rueda desplaza)</b>: KanzonasPDF se inicia con la herramienta Seleccionar (la
 flecha) y Escape vuelve a ella; la rueda desplaza y Ctrl+rueda acerca y aleja.</li>
@@ -313,11 +313,18 @@ Es solo para mirar: haga los cambios en la vista principal.</li>
 
 <h2 id="cad">Modo CAD: selección y la pestaña CAD</h2>
 <p>En el modo del mouse <b>CAD</b> (Ver &gt; Mouse: CAD, F11) KanzonasPDF selecciona y edita como un programa CAD.
-Funciona con <b>Seleccionar</b> (sus marcas y el texto de la página) y con <b>Editar objetos</b> (las líneas, el texto y
-las imágenes propios del dibujo).</p>
+Empieza con <b>Editar objetos</b>, que selecciona todo a la vez: las líneas, el texto y las imágenes propios del
+dibujo y las marcas dibujadas encima (nubes, líneas, notas...), en una sola selección. Mover, Copiar, Girar, Escalar,
+Simetría, Alinear, Matriz y Eliminar trabajan entonces sobre todo junto, y un solo Ctrl+Z lo deshace (el texto del
+dibujo solo se mueve: no se copia, gira, escala ni refleja). <b>Seleccionar</b> (la pestaña CAD, o V cuando las letras
+no van a la línea de comandos) selecciona del mismo modo solo sus marcas, o los caracteres del texto de la página.</p>
 <ul>
 <li>Haga <b>clic</b> en algo para agregarlo a la selección. <b>Shift+clic</b> lo quita. <b>Escape</b> borra toda la
-selección. Hacer clic en el papel vacío conserva la selección.</li>
+selección. Hacer clic en el papel vacío conserva la selección. Una marca está encima del dibujo, así que un clic sobre ella
+toma la marca. Una marca bloqueada no se toma.</li>
+<li>Las <b>teclas de flecha</b> desplazan toda la selección, los objetos del dibujo y las marcas juntos. Haga clic derecho en
+una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo. Aquí las marcas seleccionadas no muestran
+controladores para cambiar su tamaño: cámbielas con los comandos de la pestaña CAD, o con Seleccionar.</li>
 <li><b>Clic, mover, clic</b>: haga clic en el papel vacío, mueva el puntero (el recuadro lo sigue) y vuelva a hacer
 clic. De izquierda a derecha es una <b>ventana azul</b> de línea continua: toma lo que queda completamente dentro. De
 derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua: toma todo lo que toca, incluida una
@@ -335,8 +342,10 @@ momento mientras se mueve.</li>
 marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pestaña CAD lo mueve.</li>
 <li>Preferencias &gt; Mouse activa o desactiva cada una de estas funciones (vea Preferencias).</li>
 </ul>
-<p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Seleccione primero, luego haga clic en un comando
-(o escríbalo: vea la línea de comandos más abajo) y responda a su indicación en la línea de comandos: haga clic en puntos
+<p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Como en AutoCAD, seleccione primero y luego
+inicie un comando, o inicie primero el comando: sin nada seleccionado le pide <b>seleccionar objetos</b> (clics,
+recuadros, lazos como arriba), y <b>Enter</b> (o un clic derecho) continúa con lo seleccionado. Luego responda a su
+indicación en la línea de comandos: haga clic en puntos
 de la página (se ajustan a los extremos de las líneas y a las esquinas como con las herramientas de dibujo; mantenga
 presionada Alt para no ajustar), escriba un valor y presione Enter, o haga clic en un botón ahí. Escape (o Cancelar)
 detiene un comando; el clic derecho equivale a Enter. Cada cambio se deshace con un Ctrl+Z.</p>
@@ -397,9 +406,11 @@ recorte y en la misma capa, donde se ve exactamente igual que copiar cada objeto
 capas distintas) se copia objeto por objeto, lo que tarda más. Las copias de una selección así (Copiar, la copia de
 Simetría y las matrices de cualquier tamaño) se dibujan juntas encima de los originales, como los programas CAD dibujan
 los objetos nuevos; una selección repartida en capas o recortes distintos deja cada copia justo encima de su original.</li>
-<li><b>Recortar</b>: no hace falta seleccionar nada. Haga clic en la parte de una línea que quiere quitar: se quita hasta
-las líneas más cercanas que la cruzan a cada lado (o hasta su extremo, si nada la cruza de ese lado); una línea que nada
-cruza se quita entera. El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
+<li><b>Recortar</b>: como en AutoCAD, primero los <b>bordes de corte</b>: las líneas seleccionadas antes de TR, o las que
+seleccione cuando lo pide, y luego Enter (Enter sin nada seleccionado: todas las líneas cortan). Después haga clic en la
+parte de una línea que quiere quitar: se quita hasta los bordes de corte más cercanos que la cruzan a cada lado (o hasta su
+extremo, si ninguno la cruza de ese lado). Sin bordes de corte elegidos, una línea que ninguno cruza se quita entera; con
+bordes de corte elegidos, una línea que no cruza ninguno se queda (lo indica). El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
 en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; Enter, Escape o Listo termina. Recorta las líneas y curvas propias del
 dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma; las
 formas rellenas y las imágenes no se recortan.</li>
@@ -452,7 +463,7 @@ texto (resaltados, subrayados, tachados) permanecen con su texto. Sin nada selec
 derecha pasan de página como siempre.</li>
 <li><b>Esc</b> borra la selección. Sin nada seleccionado, Esc suelta la herramienta que esté
 elegida (un sello, una forma, una medición, Recortar...) y vuelve a su herramienta predeterminada: la Mano en el modo
-del mouse Mano, Seleccionar en los modos Estándar y CAD. Funciona incluso justo después de que
+del mouse Mano, Seleccionar en el modo Estándar, Editar objetos en el modo CAD. Funciona incluso justo después de que
 un cuadro de diálogo o un clic en la barra de herramientas se haya llevado el foco del teclado.</li>
 </ul>
 
@@ -709,7 +720,8 @@ precaución.</li>
 <ul>
 <li>Herramienta Editar objetos (Shift+O; pestaña Inicio, menú Herramientas), como Editar contenido de Bluebeam: actúa sobre
 las imágenes (logotipos, fotos, escaneos) y las formas vectoriales (líneas, rectángulos, círculos, curvas,
-zonas con relleno, trazos de CAD) que forman parte de la propia página, no sobre las marcas. Coloque el puntero sobre un objeto
+zonas con relleno, trazos de CAD) que forman parte de la propia página, no sobre las marcas (en el modo del mouse CAD también toma
+las marcas dibujadas encima: vea Modo CAD). Coloque el puntero sobre un objeto
 para verlo contorneado; haga clic para seleccionarlo. Las líneas se detectan a unos pocos píxeles; una forma con relleno
 se detecta en cualquier punto de su interior.</li>
 <li><b>Texto:</b> el texto propio de la página (lo que escribió Agregar texto y el texto del PDF) se selecciona
@@ -717,7 +729,7 @@ párrafo a párrafo: haga clic en una palabra para seleccionar su párrafo; todo
 vez se selecciona junto. Un cuadro de selección toma texto solo cuando no contiene imágenes ni formas
 (así, un cuadro alrededor de un detalle de un dibujo selecciona sus trazos, no sus rótulos); Ctrl+clic agrega texto
 a una selección. En el modo del mouse <b>CAD</b>, la selección funciona como en AutoCAD: una ventana azul (de izquierda a
-derecha) toma las líneas, el texto y las imágenes que quedan completamente dentro, un recuadro de captura verde (de derecha
+derecha) toma las líneas, el texto, las imágenes y las marcas que quedan completamente dentro, un recuadro de captura verde (de derecha
 a izquierda) todo lo que toca, texto y trazos juntos; los clics, los recuadros y los lazos agregan a la selección, Shift
 quita, Escape la borra, y los comandos de la pestaña CAD la cambian (vea Modo CAD). Presione <b>Supr</b> (o Retroceso) o haga clic con el botón derecho &gt; <b>Eliminar</b> para quitarlo;
 arrástrelo para moverlo (los resaltados y otras marcas que tenga encima se mueven con él). Aquí el texto no se redimensiona,
@@ -954,8 +966,8 @@ PIN opcional); para reemplazarlas más adelante, use Archivo &gt; Preferencias &
 iniciales.... Para elegir el tamaño, <b>arrastre un cuadro</b> en lugar de hacer clic: se colocan con el ancho que
 arrastre (la altura sigue sus proporciones). El tamaño que se usa con un clic se define en Archivo &gt;
 Preferencias &gt; Usted (2 pulgadas para una firma y 0.75 pulgadas para las iniciales al principio). Después, la
-herramienta Mano o Seleccionar, la que haya usado por última vez, vuelve a estar activa, para que no coloque una segunda por
-accidente. Como cualquier imagen de la página, una firma colocada se puede mover o eliminar con Editar
+herramienta propia del modo del mouse (Mano, Seleccionar, o Editar objetos en el modo CAD) vuelve a estar activa, para que no
+coloque una segunda por accidente. Como cualquier imagen de la página, una firma colocada se puede mover o eliminar con Editar
 objetos (o con Ctrl+Z justo después de colocarla).</li>
 <li><b>Fecha</b> (Ctrl+;, pestaña y menú Proteger): haga clic para escribir allí la fecha de hoy, por ejemplo
 junto a una firma o en el propio campo de fecha de un documento. Poner la fecha en un campo de formulario (y firmar un
@@ -1197,8 +1209,8 @@ cuadrícula...).</li>
 <tr><td>Shift+clic (herramienta de dibujo)</td><td>Empezar una marca nueva encima de una existente</td></tr>
 <tr><td>Ctrl+clic, Ctrl+arrastrar</td><td>Seleccionar varias marcas</td></tr>
 <tr><td>Ctrl+clic en un vínculo (herramienta Seleccionar)</td><td>Abrir el vínculo, también en una marca convertida en vínculo (un clic normal con la herramienta Mano)</td></tr>
-<tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse, Mano o Seleccionar) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
-<tr><td>Supr</td><td>Eliminar las marcas seleccionadas</td></tr>
+<tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse: Mano, Seleccionar, o Editar objetos en el modo CAD) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
+<tr><td>Supr</td><td>Eliminar lo seleccionado: las marcas, y en el modo CAD también los objetos del dibujo</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas)</td></tr>
 <tr><td>Ctrl+A</td><td>Seleccionar todo el texto de la página (todas las páginas en la lista de páginas)</td></tr>
 <tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (o las páginas, en la lista de páginas)</td></tr>

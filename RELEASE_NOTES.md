@@ -7,6 +7,34 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.6
+
+**New**
+- The Home tab starts with the three ways the mouse works: Select, Hand and CAD.
+- CAD mode commands work as in AutoCAD both ways: select first and then the command, or the command first, then select and press Enter (or right-click).
+- Trim asks for the cutting edges first (select them and press Enter, or just Enter to let every line cut), then cuts up to those.
+
+**Fixed**
+- CAD mode's selection takes everything at once: the drawing's lines, text and pictures and your markups on it, by click, box or lasso (the boxes only took markups before, so on a plain drawing nothing was selected). Move, Copy, Rotate, Delete and the other CAD commands work on all of it together, and one Ctrl+Z undoes it.
+- Moving a text box, stamp or measurement no longer turns its words into page text, and moving the drawing's own text no longer removes a text box lying over it.
+- Moving a whole sheet's text in CAD mode is much faster (45 s down to about 3 s on a heavy sheet) and uses far less memory.
+- With cutting edges chosen, Trim leaves a line that crosses none of them instead of deleting it.
+- Arrow keys and the right-click Delete work on the whole CAD selection; a locked comment can't be picked up through its comment card.
+
+## 1.6 (es)
+
+**Novedades**
+- La pestaña Inicio empieza con las tres maneras de usar el mouse: Seleccionar, Mano y CAD.
+- Los comandos del modo CAD funcionan como en AutoCAD de las dos maneras: seleccionar primero y luego el comando, o el comando primero, luego seleccionar y presionar Enter (o clic derecho).
+- Recortar pide primero los bordes de corte (selecciónelos y presione Enter, o solo Enter para que corten todas las líneas) y luego recorta hasta ellos.
+
+**Correcciones**
+- La selección del modo CAD toma todo a la vez: las líneas, el texto y las imágenes del dibujo y sus marcas encima, con clic, recuadro o lazo (antes los recuadros solo tomaban marcas, así que en un dibujo sin marcas no se seleccionaba nada). Mover, Copiar, Girar, Eliminar y los demás comandos CAD trabajan sobre todo junto, y un solo Ctrl+Z lo deshace.
+- Mover un cuadro de texto, un sello o una medida ya no convierte sus palabras en texto de la página, y mover el texto propio del dibujo ya no quita un cuadro de texto que esté encima.
+- Mover todo el texto de un plano en el modo CAD es mucho más rápido (de 45 s a unos 3 s en un plano pesado) y usa mucha menos memoria.
+- Con bordes de corte elegidos, Recortar deja una línea que no cruza ninguno en lugar de borrarla.
+- Las teclas de flecha y Eliminar del clic derecho trabajan sobre toda la selección CAD; un comentario bloqueado no se puede tomar a través de su tarjeta.
+
 ## 1.5.1
 
 **Fixed**

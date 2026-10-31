@@ -134,12 +134,25 @@ class CommandLine(unittest.TestCase):
         self.line.run()
         self.assertEqual(self.w.tool, "rect")
 
-    def test_a_command_needs_a_selection_first(self):
+    def test_a_command_first_then_the_selection_then_enter(self):
+        # as AutoCAD: M with nothing selected asks for the selection; Enter goes on
         said = []
         self.v.statusMessage.connect(said.append)
+        self.v.set_tool("editobjects")
         self.type("m")
-        self.assertIsNone(self.v._cad_cmd)
-        self.assertIn("select what to change first", said[-1])
+        cmd = self.v._cad_cmd
+        self.assertIsNotNone(cmd)
+        self.assertTrue(cmd.selecting)
+        self.line.edit.setText("")
+        self.line.run()                     # Enter with nothing selected: says so, waits
+        self.assertIs(self.v._cad_cmd, cmd)
+        self.assertIn("nothing is selected yet", said[-1])
+        self.v.select_objects(0, self.v.content_objects(0).items)
+        self.line.run()                     # Enter: the selection is taken, on to the points
+        self.assertIsNotNone(self.v._cad_cmd)
+        self.assertFalse(self.v._cad_cmd.selecting)
+        self.assertTrue(self.v._cad_cmd.ghost)
+        self.v._cad_cmd.cancel()
 
     def test_keys_typed_over_the_drawing_go_to_the_line(self):
         self.line.take_key(key(Qt.Key_M, "m"))

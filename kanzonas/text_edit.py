@@ -35,6 +35,23 @@ def _along(rect, line):
     return (rect.y0, rect.y1) if dy > 0 else (-rect.y1, -rect.y0)
 
 
+def page_text_dict(page, flags):
+    """page.get_text("dict") of the page's own text only: not the words markups (text boxes,
+    stamps, measurement labels) and form fields draw over it. Those belong to the markup or
+    field: taken as page text, moving or editing them wrote their words into the page and
+    took the text box away. (Unrotated coordinates, as get_text gives.)"""
+    turn = page.rotation
+    if turn:
+        page.set_rotation(0)            # (as PyMuPDF's own get_textpage does)
+    try:
+        tp = pymupdf.TextPage(page.get_displaylist(annots=False).get_textpage(flags=flags))
+    finally:
+        if turn:
+            page.set_rotation(turn)
+    tp.parent = page
+    return page.get_text("dict", flags=flags, textpage=tp)
+
+
 def text_lines(page):
     """[(rect, line)] for every visual text line on the page (unrotated coords).
 
@@ -42,7 +59,7 @@ def text_lines(page):
     letter placed separately, another text block). Pieces on the same baseline that
     touch or nearly touch are merged, so editing a line never leaves a letter behind."""
     pieces = []
-    d = page.get_text("dict", flags=pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES)
+    d = page_text_dict(page, pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES)
     for b in d["blocks"]:
         if b.get("type") != 0:
             continue
@@ -623,10 +640,11 @@ def _remove_lines(page, lines, keep_links=True):
     a drawing set's sheet hyperlinks included)."""
     doc = page.parent
     saved = []
-    if keep_links:
-        for xref, kind, *_ in page.annot_xrefs():
-            if kind == pymupdf.PDF_ANNOT_LINK:
-                saved.append((xref, doc.xref_object(xref, compressed=True)))
+    for xref, kind, *_ in page.annot_xrefs():
+        # links, and text boxes (applying a redaction takes away a text box it touches, one
+        # lying over the moved or edited words, too)
+        if (kind == pymupdf.PDF_ANNOT_LINK and keep_links) or kind == pymupdf.PDF_ANNOT_FREE_TEXT:
+            saved.append((xref, doc.xref_object(xref, compressed=True)))
     for line in lines:
         for r in removal_bands(line):
             page.add_redact_annot(r, fill=False)
@@ -647,6 +665,11 @@ def _remove_lines(page, lines, keep_links=True):
                 val = doc.xref_object(int(val.split()[0]))
             items = re.findall(r"\d+ 0 R", val) if kind in ("array", "xref") else []
             doc.xref_set_key(page.xref, "Annots", "[" + " ".join(items + refs) + "]")
+            try:                        # (the open page lists the ones put back, too)
+                m = pymupdf.mupdf
+                m.pdf_sync_open_pages(m.pdf_document_from_fz_document(doc.this))
+            except Exception:
+                pass
 
 
 def delete_lines(page, lines, keep_links=False):
@@ -1271,6 +1294,50 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
         _fix_spaces(page, fontname, fnt)
     return fontname, pymupdf.Rect(min(left, left + indent), top, right,
                                   y - step + size * 0.25), bases
+
+
+def move_lines(page, lines, offset):
+    """Move these lines of the page's text by offset (points), each in its own font, size and
+    color, as replace_line(page, line, its own text, offset, scan=None) does one by one, but
+    with one redaction for all of them: one at a time, a drawing's 400 labels took most of a
+    minute. Returns the font names written with. Raises ValueError (before changing anything)
+    if a line can't be written."""
+    from .annotations import each_annot
+    if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
+        raise ValueError(tr("Apply or remove the redaction marks on this page before "
+                            "editing its text."))
+    plans = []
+    for line in lines:                  # 1) the fonts first: nothing goes if one can't write
+        text = line_text(line)
+        if not text.strip():
+            continue
+        main = main_span(line)
+        found, text = _font_for(page, main, text)
+        plans.append((line, text, main, found))
+    _remove_lines(page, lines)          # 2) all their letters out at once
+    inserted = {}                       # font name -> (name written with, Font)
+    used = []
+    # one drawing for all of them, added to the page once (page.insert_text adds each
+    # line on its own, reading the whole page each time: most of the time on a big sheet)
+    shape = page.new_shape()
+    for line, text, main, found in plans:   # 3) each written again, moved
+        if found:
+            fontname, font, source = found
+            if fontname not in inserted:
+                # (applying the redaction drops fonts no text uses yet: add it again)
+                inserted[fontname] = (_insert_font(page, fontname, **source), font)
+            name = inserted[fontname][0]
+        else:
+            name = _base14(main)
+        origin = pymupdf.Point(line["spans"][0]["origin"]) + offset
+        shape.insert_text(origin, text, fontsize=float(main["size"]), fontname=name,
+                          color=_rgb(main["color"]), rotate=line_rotation(line), lineheight=1.2)
+        used.append(name)
+    if plans:
+        shape.commit(True)
+    for name, font in inserted.values():
+        _fix_spaces(page, name, font)
+    return used
 
 
 def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None,
