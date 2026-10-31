@@ -7,6 +7,36 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.5.1
+
+**Fixed**
+- Text added after saving showed no letters. It shows now.
+- Save asks before replacing a file another program changed, and a file already open in another window isn't opened twice.
+- Editing big plan sets is much quicker (each markup or change on a 200-sheet set: 3 s before, under half a second now).
+- Sanitize and Apply redactions remove every script and program-launching link, and the data typed into forms.
+- A second digital signature no longer breaks the first, and signed PDFs are always recognized.
+- Forms: renaming fields, maximum length, dropdown values, fields on turned pages, tab order, and blank forms staying fillable after protecting them.
+- Moving pages could show one page twice and put markups on the wrong page.
+- Cut no longer applies pending redactions or removes letters from the lines around; Replace warns when text runs over.
+- A bad settings value can no longer stop KanzonasPDF from starting.
+- Printing follows each markup's "print" setting, shows its progress and can be canceled.
+- Combining files keeps a PDF's copy protection; many smaller fixes.
+
+## 1.5.1 (es)
+
+**Correcciones**
+- El texto agregado después de guardar no mostraba letras. Ahora se ve.
+- Guardar pregunta antes de reemplazar un archivo que otro programa cambió, y un archivo ya abierto en otra ventana no se abre dos veces.
+- Editar juegos de planos grandes es mucho más rápido (cada marca o cambio en un juego de 200 hojas: antes 3 s, ahora menos de medio segundo).
+- Sanear y Aplicar censuras quitan todos los scripts y los vínculos que inician programas, y los datos escritos en los formularios.
+- Una segunda firma digital ya no invalida la primera, y los PDF firmados siempre se reconocen.
+- Formularios: cambiar el nombre de los campos, la longitud máxima, los valores de las listas desplegables, los campos en páginas giradas, el orden de tabulación, y los formularios en blanco siguen rellenables después de protegerlos.
+- Mover páginas podía mostrar una página dos veces y poner marcas en la página equivocada.
+- Cortar ya no aplica censuras pendientes ni quita letras de las líneas cercanas; Reemplazar avisa cuando el texto se sale.
+- Un valor de configuración dañado ya no impide que KanzonasPDF se inicie.
+- La impresión respeta la opción "imprimir" de cada marca, muestra su progreso y se puede cancelar.
+- Combinar archivos conserva la protección contra copia de un PDF; muchas correcciones menores.
+
 ## 1.5
 
 **New**
