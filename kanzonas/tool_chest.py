@@ -48,15 +48,24 @@ def _starter():
     ]
 
 
+def _valid(items):
+    """The usable tools in a saved or imported chest: a name, a known tool and its style
+    (style values that don't fit the tool are left out)."""
+    out = []
+    for i in items if isinstance(items, list) else []:
+        if isinstance(i, dict) and i.get("tool") in A.DEFAULTS and \
+                isinstance(i.get("name"), str) and i["name"] and isinstance(i.get("props"), dict):
+            base = A.DEFAULTS[i["tool"]]
+            props = {k: v for k, v in i["props"].items() if k not in base or A._fits(base[k], v)}
+            out.append(dict(i, props=props))
+    return out
+
+
 def load():
-    raw = A._settings().value("tool_chest", None)
-    if raw is None:                       # never used: start with the starter set
+    from . import paths
+    if A._settings().value("tool_chest", None) is None:     # never used: the starter set
         return _starter()
-    try:
-        items = json.loads(raw or "[]")
-        return [i for i in items if i.get("tool") in A.DEFAULTS]
-    except (ValueError, TypeError):
-        return []
+    return _valid(paths.stored_json(A._settings(), "tool_chest", []))
 
 
 def save(items):
@@ -175,8 +184,7 @@ class ToolChestPanel(QWidget):
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
-            new = [i for i in data.get("items", []) if i.get("tool") in A.DEFAULTS
-                   and isinstance(i.get("props"), dict) and i.get("name")]
+            new = _valid(data.get("items", []))
         except (OSError, ValueError, AttributeError):
             QMessageBox.warning(self, tr("Tool chest"), tr("That file isn't a tool chest."))
             return

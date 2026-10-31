@@ -92,11 +92,9 @@ class Finder:
         self.paths = menu_paths(win.menuBar())
 
     def _recent(self):
-        try:
-            return [n for n in json.loads(self.win.settings.value("palette_recent", "[]") or "[]")
-                    if n in self.actions]
-        except (TypeError, ValueError):
-            return []
+        from . import paths
+        return [n for n in paths.stored_json(self.win.settings, "palette_recent", [])
+                if isinstance(n, str) and n in self.actions]
 
     def remember(self, name):
         """name was just run: it comes first among the recent commands."""

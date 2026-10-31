@@ -21,6 +21,7 @@ from . import paths
 
 INDEX = "index.json"
 KEEP_DAYS = 30
+MAX_MINUTES = 60            # (Preferences > Saving offers up to an hour)
 
 
 def default_folder():
@@ -30,7 +31,7 @@ def default_folder():
 def folder():
     """The backups folder: the one chosen in Preferences > Saving, else the default (in the
     data folder when portable). Falls back to the default if the chosen one can't be used."""
-    chosen = paths.settings().value("backup_dir", "") or ""
+    chosen = paths.stored_str(paths.settings(), "backup_dir")
     if chosen:
         try:
             os.makedirs(chosen, exist_ok=True)
@@ -135,7 +136,7 @@ class Autosaver(QObject):
         self.set_minutes(minutes)
 
     def set_minutes(self, minutes):
-        self.minutes = max(0, int(minutes))
+        self.minutes = max(0, min(int(minutes), MAX_MINUTES))
         if self.minutes:
             self.timer.start(self.minutes * 60_000)
         else:

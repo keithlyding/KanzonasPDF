@@ -45,15 +45,12 @@ FRACTIONS = [2, 4, 8, 16, 32, 64]
 
 def configure(settings):
     global FRACTION, DECIMALS, DEFAULT_UNIT
-    try:
-        f = int(settings.value("measure_fraction", 16))
-        FRACTION = f if f in FRACTIONS else 16
-    except (TypeError, ValueError):
-        FRACTION = 16
-    d = settings.value("measure_decimals", "auto")
-    DECIMALS = int(d) if str(d).isdigit() and int(d) <= 6 else None
-    u = settings.value("measure_unit", "ft-in")
-    DEFAULT_UNIT = u if u in UNITS else "ft-in"
+    from . import paths
+    f = paths.stored_int(settings, "measure_fraction", 16)
+    FRACTION = f if f in FRACTIONS else 16
+    d = paths.stored_int(settings, "measure_decimals", -1, 0, 6)     # (or "auto")
+    DECIMALS = None if d < 0 else d
+    DEFAULT_UNIT = paths.stored_str(settings, "measure_unit", "ft-in", UNITS)
 
 
 # ---- page scale ------------------------------------------------------------------

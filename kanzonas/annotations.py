@@ -183,6 +183,31 @@ def _settings():
     return paths.settings()
 
 
+def _all_saved():
+    """{tool: {prop: value}} as saved (anything that isn't is left out)."""
+    from . import paths
+    allp = paths.stored_json(_settings(), "tool_defaults", {})
+    return {k: p for k, p in allp.items() if isinstance(p, dict)}
+
+
+def _fits(default, v):
+    """True if a saved value can stand in for the default (a hand-edited or older setting
+    can hold anything): the same kind of value, a color may be none."""
+    if default is None or isinstance(default, str):
+        return v is None or isinstance(v, str)
+    if isinstance(default, bool):
+        return isinstance(v, bool)
+    if isinstance(default, (int, float)):
+        return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+    return isinstance(v, type(default))
+
+
+def _saved(kind, props):
+    """The tool's saved values that fit props."""
+    return {k: v for k, v in _all_saved().get(kind, {}).items()
+            if k in props and _fits(props[k], v)}
+
+
 # A Tool Chest item in use: (tool, props) that replace the tool's defaults until another
 # tool is picked normally.
 OVERRIDE = {"tool": None, "props": None}
@@ -200,11 +225,7 @@ def tool_props(kind):
     if OVERRIDE["tool"] == kind and OVERRIDE["props"] is not None:
         props.update({k: v for k, v in OVERRIDE["props"].items() if k in props})
     else:
-        try:
-            saved = json.loads(_settings().value("tool_defaults", "{}") or "{}").get(kind, {})
-            props.update({k: v for k, v in saved.items() if k in props})
-        except (ValueError, TypeError):
-            pass
+        props.update(_saved(kind, props))
     if "rotation" in props:
         props["rotation"] = 0              # new markups always start upright
     return props
@@ -213,11 +234,7 @@ def tool_props(kind):
 def saved_tool_props(kind):
     """The tool's saved default style (ignores a Tool Chest item in use)."""
     props = dict(DEFAULTS.get(kind, {}))
-    try:
-        saved = json.loads(_settings().value("tool_defaults", "{}") or "{}").get(kind, {})
-        props.update({k: v for k, v in saved.items() if k in props})
-    except (ValueError, TypeError):
-        pass
+    props.update(_saved(kind, props))
     return props
 
 
@@ -225,13 +242,9 @@ def set_tool_props(kind, props):
     if kind in TRANSIENT_TOOLS:
         _TRANSIENT[kind] = dict(props)
         return
-    s = _settings()
-    try:
-        allp = json.loads(s.value("tool_defaults", "{}") or "{}")
-    except (ValueError, TypeError):
-        allp = {}
+    allp = _all_saved()
     allp[kind] = props
-    s.setValue("tool_defaults", json.dumps(allp))
+    _settings().setValue("tool_defaults", json.dumps(allp))
 
 
 def reset_tool_props(kind):
@@ -240,21 +253,18 @@ def reset_tool_props(kind):
 
 def forget_saved_transient():
     """Drop Edit text font / size choices saved by versions before 1.2.1."""
-    s = _settings()
-    try:
-        allp = json.loads(s.value("tool_defaults", "{}") or "{}")
-    except (ValueError, TypeError):
-        return
+    allp = _all_saved()
     if any(k in allp for k in TRANSIENT_TOOLS):
         for k in TRANSIENT_TOOLS:
             allp.pop(k, None)
-        s.setValue("tool_defaults", json.dumps(allp))
+        _settings().setValue("tool_defaults", json.dumps(allp))
 
 
 def author():
     """Name on stamps and recorded on new markups (Edit > Your name on stamps and markups).
     Defaults to the Windows login name."""
-    name = _settings().value("author", "") or ""
+    from . import paths
+    name = paths.stored_str(_settings(), "author")
     if not name:
         try:
             name = getpass.getuser()

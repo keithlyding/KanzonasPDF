@@ -1108,7 +1108,10 @@ Apply.</li>
 of Windows; English; Español: menus, messages and this manual; a change shows the next time
 KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, Show menu bar,
 Show text labels on toolbars, Check for updates automatically. It also tells you where your
-settings are saved (the data folder in portable mode).</li>
+settings are saved (the data folder in portable mode). A saved setting that can't be used (one
+edited by hand, say) is replaced by its default. Should one still stop KanzonasPDF from starting,
+it starts with the default settings, says so, and lists the old ones in
+settings-before-reset.txt in the data folder.</li>
 <li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
 Set up my signature... / Set up my initials... with whether each is saved yet, and Change PIN...
 to set, change or remove the PIN that protects them (leave the new PIN empty to remove it), and

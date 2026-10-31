@@ -1090,7 +1090,10 @@ Aplicar.</li>
 Windows; English; Español: menús, mensajes y este manual; el cambio se ve la próxima vez que se
 inicia KanzonasPDF), Cinta (en lugar de barras de herramientas), Mostrar nombres de grupo
 en la cinta, Mostrar barra de menús, Mostrar etiquetas de texto en las barras de herramientas, Buscar actualizaciones automáticamente.
-También le indica dónde se guarda su configuración (la carpeta data en el modo portátil).</li>
+También le indica dónde se guarda su configuración (la carpeta data en el modo portátil). Una opción guardada
+que no se puede usar (editada a mano, por ejemplo) se reemplaza por su valor predeterminado. Si aun así una
+impidiera que KanzonasPDF se inicie, se inicia con la configuración predeterminada, lo avisa y anota la
+anterior en settings-before-reset.txt, en la carpeta de datos.</li>
 <li><b>Usted:</b> el Nombre del autor de las marcas (que se registra en las marcas nuevas y aparece en los sellos), y
 Configurar mi firma... / Configurar mis iniciales..., con la indicación de si cada una ya está guardada, y Cambiar PIN…
 para definir, cambiar o quitar el PIN que las protege (deje vacío el PIN nuevo para quitarlo), y

@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFile
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
                                QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit)
 
-from . import __version__, annotations, export, signatures, theme
+from . import __version__, annotations, export, paths, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
 from .i18n import tr
 from .properties import PropertiesPanel
@@ -387,7 +387,7 @@ class MainWindow(QMainWindow):
         self._refresh_props()
         QApplication.instance().installEventFilter(self)
 
-        geo = self.settings.value("geometry")
+        geo = paths.stored_bytes(self.settings, "geometry")
         if geo is not None:
             self.restoreGeometry(geo)
         self._restore_layout()
@@ -397,7 +397,7 @@ class MainWindow(QMainWindow):
         """Bring back the panels as they were when KanzonasPDF was last closed: which ones
         were open (Pages, Properties, Tool chest, Markups list), their sizes and sides, and
         which of Properties / Tool chest was in front."""
-        state = self.settings.value("window_state")
+        state = paths.stored_bytes(self.settings, "window_state")
         if state is None or not self.restoreState(state, LAYOUT_VERSION):
             return
         # the toolbars follow the ribbon / classic choice and the panel strip option, not the
@@ -690,7 +690,8 @@ class MainWindow(QMainWindow):
             a.triggered.connect(lambda _=False, k=key: self.set_theme(k))
             self.theme_group.addAction(a)
             self.theme_actions[key] = a
-        self.theme_actions[self.settings.value("theme", "system")].setChecked(True)
+        self.theme_actions[paths.stored_str(self.settings, "theme", "system",
+                                            self.theme_actions)].setChecked(True)
         # Mouse mode: Standard, Hand or CAD (mouse_modes.py), each with its own options
         self.mouse_group = QActionGroup(self)
         self.a_mouse_standard = self._act(tr("Mouse: Standard (arrow, the wheel scrolls)"),
@@ -764,18 +765,13 @@ class MainWindow(QMainWindow):
         DocumentView.thin_lines = self.a_thin_lines.isChecked()
         from . import autosave, measure
         measure.configure(self.settings)
-        try:
-            minutes = int(self.settings.value("autosave_minutes", 5))
-        except (TypeError, ValueError):
-            minutes = 5
+        minutes = paths.stored_int(self.settings, "autosave_minutes", 5, 0, 60)
         self.autosave = autosave.Autosaver(self, minutes)
         annotations.forget_saved_transient()    # an Edit text size saved before 1.2.1
-        DocumentView.open_view = self.settings.value("open_view", "width")
+        DocumentView.open_view = paths.stored_str(self.settings, "open_view", "width",
+                                                  ("width", "page", "actual", "last"))
         for kind in ("signature", "initials"):
-            try:
-                w = float(self.settings.value("sig_width_" + kind, 0) or 0)
-            except (TypeError, ValueError):
-                w = 0
+            w = paths.stored_float(self.settings, "sig_width_" + kind, 0)
             if 14 <= w <= 600:
                 DocumentView.SIG_WIDTH[kind] = w
         DocumentView.reopen_page = self.settings.value("reopen_page", "true") != "false"
@@ -865,8 +861,8 @@ class MainWindow(QMainWindow):
             self.align_ref_group.addAction(a)
             self.align_ref_actions[key] = a
             self._align_ref_short[key] = short
-        ref = self.settings.value("align_ref", "first")
-        self.align_ref_actions.get(ref, self.align_ref_actions["first"]).setChecked(True)
+        ref = paths.stored_str(self.settings, "align_ref", "first", self.align_ref_actions)
+        self.align_ref_actions[ref].setChecked(True)
         self.a_flatten = self._act(tr("&Flatten..."), self.flatten,
                                    tip=tr("Make annotations and form fields a permanent part of the page"))
         self.a_delete_annot = self._act(tr("Delete selected annotation"),
@@ -1415,8 +1411,12 @@ class MainWindow(QMainWindow):
             self.setWindowTitle(_title_base())
 
     # ---- files --------------------------------------------------------------
+    def _last_dir(self):
+        """The folder file dialogs start in (the last one used)."""
+        return paths.stored_str(self.settings, "last_dir")
+
     def open_dialog(self):
-        start = self.settings.value("last_dir", "")
+        start = self._last_dir()
         paths, _ = QFileDialog.getOpenFileNames(self, tr("Open PDF"), start, PDF_FILTER)
         for p in paths:
             self.open_file(p)
@@ -1455,7 +1455,7 @@ class MainWindow(QMainWindow):
                                                    "permissions password.")))
         v.check_digital_signatures()
         state = self._file_states().get(os.path.normcase(path))
-        if state:
+        if isinstance(state, dict) and state:
             v.initial_state = state            # reopen at the last page and zoom
         return v
 
@@ -1536,12 +1536,19 @@ class MainWindow(QMainWindow):
             else:
                 w._reload_tab(v)
 
+    def _recent(self):
+        """The remembered recent files (INI settings, when portable, give one entry as a str;
+        anything else that isn't a list of names is ignored)."""
+        recent = self.settings.value("recent") or []
+        if isinstance(recent, str):
+            recent = [recent]
+        if not isinstance(recent, (list, tuple)):
+            return []
+        return [p for p in recent if isinstance(p, str) and p][:10]
+
     def _add_recent(self, path):
         from . import paths
-        recent = self.settings.value("recent") or []
-        if isinstance(recent, str):         # INI settings (portable) give one entry as a str
-            recent = [recent]
-        recent = [p for p in (paths.follow_drive(r) for r in recent) if p != path]
+        recent = [p for p in (paths.follow_drive(r) for r in self._recent()) if p != path]
         recent.insert(0, path)
         self.settings.setValue("recent", recent[:10])
         self._rebuild_recent()
@@ -1549,11 +1556,8 @@ class MainWindow(QMainWindow):
     def _rebuild_recent(self):
         from . import paths
         self.recent_menu.clear()
-        recent = self.settings.value("recent") or []
-        if isinstance(recent, str):
-            recent = [recent]
         # portable: files on the stick follow it to its new drive letter on another PC
-        recent = [paths.follow_drive(p) for p in recent]
+        recent = [paths.follow_drive(p) for p in self._recent()]
         for p in recent:
             a = self.recent_menu.addAction(p)
             a.triggered.connect(lambda _=False, p=p: self.open_file(p))
@@ -1885,10 +1889,7 @@ class MainWindow(QMainWindow):
         that's turned on in Preferences > Start-up)."""
         if self.settings.value("restore_session", "false") != "true":
             return
-        try:
-            files = json.loads(self.settings.value("session_files", "[]") or "[]")
-        except ValueError:
-            files = []
+        files = paths.stored_json(self.settings, "session_files", [])
         # a file whose unsaved changes were just offered as a recovered copy is open already
         recovered = {os.path.normcase(v.path) for w in windows() for v in w._views()
                      if getattr(v, "recovered", False) and v.path}
@@ -2207,7 +2208,7 @@ class MainWindow(QMainWindow):
         if first and v.dirty:
             QMessageBox.information(self, tr("Combine files"), tr("The current document has unsaved "
                                                                   "changes; the combined PDF uses the saved file."))
-        dlg = CombineDialog(self, self.settings.value("last_dir", ""), first)
+        dlg = CombineDialog(self, self._last_dir(), first)
         replaced = self._guard_target(dlg)
         if dlg.exec() and dlg.result_path:
             self._written_over(replaced)
@@ -2229,7 +2230,7 @@ class MainWindow(QMainWindow):
 
     def pdf_from_images(self):
         from .combine import CombineDialog, IMAGE_FILTER
-        start = self.settings.value("last_dir", "")
+        start = self._last_dir()
         paths, _ = QFileDialog.getOpenFileNames(self, tr("Create PDF from images"), start,
                                                 IMAGE_FILTER)
         if not paths:
@@ -2250,7 +2251,7 @@ class MainWindow(QMainWindow):
             return
         pics = " ".join("*" + e for e in IMAGE_EXTS)
         paths, _ = QFileDialog.getOpenFileNames(
-            self, tr("Insert pages from"), self.settings.value("last_dir", ""),
+            self, tr("Insert pages from"), self._last_dir(),
             tr("PDFs and pictures") + f" (*.pdf {pics});;" + tr("PDF files") + " (*.pdf);;"
             + tr("Pictures") + f" ({pics})")
         if not paths:
@@ -2293,7 +2294,7 @@ class MainWindow(QMainWindow):
     def _open_untitled(self, doc):
         """Show a new, unsaved document in a tab named Untitled N."""
         from PySide6.QtCore import QStandardPaths
-        folder = self.settings.value("last_dir", "") or \
+        folder = self._last_dir() or \
             QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
         taken = {os.path.basename(w.path).lower() for w in
                  (x for win in windows() for x in win._views())}
@@ -2381,7 +2382,8 @@ class MainWindow(QMainWindow):
         acc = QComboBox()
         for key in ("auto", "fast", "normal", "high"):
             acc.addItem(ocrmod.ACCURACY_LABELS[key], key)
-        acc.setCurrentIndex(max(0, acc.findData(self.settings.value("ocr_accuracy", "auto"))))
+        acc.setCurrentIndex(max(0, acc.findData(paths.stored_str(self.settings, "ocr_accuracy",
+                                                                 "auto"))))
         acc.setToolTip(tr("Accuracy is how sharp a page image the recognizer gets. Higher is slower "
                           "and uses more memory; Auto starts fast and redoes a page sharper only "
                           "when its text is small or unclear."))
@@ -2591,10 +2593,8 @@ class MainWindow(QMainWindow):
         # presets (security policies): which options and permissions, never the passwords
         prow = QHBoxLayout()
         presets = QComboBox()
-        try:
-            saved = json.loads(self.settings.value("security_presets", "{}") or "{}")
-        except (ValueError, TypeError):
-            saved = {}
+        saved = {k: p for k, p in paths.stored_json(self.settings, "security_presets", {}).items()
+                 if isinstance(p, dict)}
         presets.addItem(tr("(choose a saved policy)"))
         presets.addItems(sorted(saved))
         save_p = QPushButton(tr("Save as policy..."))
@@ -3440,11 +3440,11 @@ class MainWindow(QMainWindow):
             win_list.addItem(tr("No signing certificates in your Windows Personal store"))
             win.setEnabled(False)
             win_list.setEnabled(False)
-        last = self.settings.value("sign_windows_cert", "")
+        last = paths.stored_str(self.settings, "sign_windows_cert")
         if last and win_list.findData(last) >= 0:
             win_list.setCurrentIndex(win_list.findData(last))
         win_list.currentIndexChanged.connect(lambda _: win.setChecked(True))
-        source = self.settings.value("sign_source", "")
+        source = paths.stored_str(self.settings, "sign_source")
         if win_certs and (source == "windows"
                           or (not source and not all(c["expired"] for c in win_certs))):
             win.setChecked(True)
@@ -3741,11 +3741,7 @@ class MainWindow(QMainWindow):
 
     # ---- remembered page & zoom per file ------------------------------------------------
     def _file_states(self):
-        import json
-        try:
-            return json.loads(self.settings.value("file_states", "{}") or "{}")
-        except (ValueError, TypeError):
-            return {}
+        return paths.stored_json(self.settings, "file_states", {})
 
     def _remember_state(self, v):
         import json
@@ -3822,21 +3818,21 @@ class MainWindow(QMainWindow):
         return out
 
     def _apply_saved_shortcuts(self):
-        import json
-        try:
-            saved = json.loads(self.settings.value("shortcuts", "{}") or "{}")
-        except (ValueError, TypeError):
-            saved = {}
+        """Give the commands the shortcuts saved in Keyboard shortcuts (the built-in ones
+        for the rest). Called again in every window when they're changed or reset."""
+        saved = paths.stored_json(self.settings, "shortcuts", {})
         acts = self._shortcut_actions()
         # the built-in shortcuts, so only the ones a user changes are saved (a later release
         # can then improve a default the user never touched)
-        self._default_shortcuts = {n: a.shortcut().toString() for n, a in acts.items()}
+        if not hasattr(self, "_default_shortcuts"):
+            self._default_shortcuts = {n: a.shortcut().toString() for n, a in acts.items()}
         renamed = {"CAD-style mouse (wheel zooms, hold wheel to pan)":     # before 1.5
                    "Mouse: CAD (wheel zooms, hold wheel to pan)"}
-        for name, seq in saved.items():
-            name = renamed.get(name, name)
-            if name in acts:
-                acts[name].setShortcut(QKeySequence(seq))
+        saved = {renamed.get(n, n): seq for n, seq in saved.items() if isinstance(seq, str)}
+        for name, a in acts.items():
+            seq = saved.get(name, self._default_shortcuts.get(name, ""))
+            if seq != a.shortcut().toString():
+                a.setShortcut(QKeySequence(seq))
 
     def edit_shortcuts(self):
         import json
@@ -3936,13 +3932,10 @@ class MainWindow(QMainWindow):
         DocumentView.snap_grid = self.a_snap_grid.isChecked()
         DocumentView.snap_objects = self.a_snap_objects.isChecked()
         DocumentView.snap_page = self.a_snap_page.isChecked()
-        unit = self.settings.value("grid_unit", "in")
-        try:
-            value = float(self.settings.value("grid_value", 0.5))
-            major = int(self.settings.value("grid_major", 4))
-        except (TypeError, ValueError):
-            value, major = 0.5, 4
-        DocumentView.grid_spacing = value * snapping.UNITS.get(unit, 72.0)
+        unit = paths.stored_str(self.settings, "grid_unit", "in", snapping.UNITS)
+        value = paths.stored_float(self.settings, "grid_value", 0.5, 0.001, 10000)
+        major = paths.stored_int(self.settings, "grid_major", 4, 1, 100)
+        DocumentView.grid_spacing = value * snapping.UNITS[unit]
         DocumentView.grid_major = major
         if save:
             for a, key in ((self.a_grid, "grid_on"), (self.a_snap_grid, "snap_grid"),
@@ -3965,8 +3958,9 @@ class MainWindow(QMainWindow):
         unit = QComboBox()
         for k, name in snapping.UNIT_NAMES.items():
             unit.addItem(name, k)
-        unit.setCurrentIndex(max(0, unit.findData(self.settings.value("grid_unit", "in"))))
-        value.setValue(float(self.settings.value("grid_value", 0.5)))
+        unit.setCurrentIndex(max(0, unit.findData(paths.stored_str(self.settings, "grid_unit",
+                                                                   "in"))))
+        value.setValue(paths.stored_float(self.settings, "grid_value", 0.5, 0.001, 10000))
         row = QWidget()
         rl = QHBoxLayout(row)
         rl.setContentsMargins(0, 0, 0, 0)
@@ -3975,7 +3969,7 @@ class MainWindow(QMainWindow):
         form.addRow(tr("Grid spacing (on paper)"), row)
         major = QSpinBox()
         major.setRange(1, 100)
-        major.setValue(int(self.settings.value("grid_major", 4)))
+        major.setValue(paths.stored_int(self.settings, "grid_major", 4, 1, 100))
         form.addRow(tr("Darker line every"), major)
         show = QCheckBox(tr("Show grid"))
         show.setChecked(self.a_grid.isChecked())
@@ -4485,10 +4479,7 @@ class MainWindow(QMainWindow):
         rt.addWidget(r)
         r.set_group_names(self.a_group_names.isChecked())
         self.addToolBar(rt)
-        try:
-            tab = int(self.settings.value("ribbon_tab", 0))
-        except (TypeError, ValueError):
-            tab = 0
+        tab = paths.stored_int(self.settings, "ribbon_tab", 0)
         r.setCurrentIndex(max(0, min(tab, r.count() - 1)))
         r.currentChanged.connect(lambda i: self.settings.setValue("ribbon_tab", i))
         if self.settings.value("ribbon_collapsed", "false") == "true":

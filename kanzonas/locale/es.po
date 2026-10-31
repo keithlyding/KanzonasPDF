@@ -7003,3 +7003,6 @@ msgstr "Firma digital"
 
 msgid "Another field is already called {name}: choose another name."
 msgstr "Ya hay otro campo llamado {name}: elija otro nombre."
+
+msgid "A saved setting couldn't be used, so KanzonasPDF started with the default settings. The old ones are listed in:\n{path}"
+msgstr "No se pudo usar una configuración guardada, así que KanzonasPDF se inició con la configuración predeterminada. La anterior está en:\n{path}"

@@ -460,10 +460,16 @@ class DocumentView(QScrollArea):
             self._fitted = False
             return
         state = getattr(self, "initial_state", None)
-        page = int(state.get("page", 0)) if state and self.reopen_page else 0
+        try:                    # (remembered in the settings: anything could be there)
+            page = int(state.get("page", 0)) if state and self.reopen_page else 0
+            zoom = float(state.get("zoom", 1.0)) if state else 1.0
+        except (TypeError, ValueError, OverflowError):
+            page, zoom = 0, 1.0
+        if not math.isfinite(zoom) or zoom <= 0:
+            zoom = 1.0
         mode = self.open_view
         if mode == "last" and state:
-            self.set_zoom(float(state.get("zoom", 1.0)))
+            self.set_zoom(zoom)
         elif mode == "width" or mode == "last":
             self.fit_width()
         elif mode == "actual":
