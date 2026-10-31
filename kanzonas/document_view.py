@@ -6318,15 +6318,16 @@ class DocumentView(QScrollArea):
     def insert_pdf(self, path, at):
         self.insert_files([path], at)
 
-    def insert_files(self, paths, at):
+    def insert_files(self, paths, at, owner=None):
         """Insert PDFs and pictures, in order, before page `at` (-1: at the end), as one undo
         step. Each picture becomes a page the size of the page it follows (the first page
-        when inserted at the start), turned to suit the picture."""
+        when inserted at the start), turned to suit the picture. owner: permissions passwords
+        of PDFs that don't allow copying (combine.owner_passwords)."""
         from .combine import insert_files
         n = self.doc.page_count
         ref = self.page_rects[min(max(at - 1, 0), n - 1) if at != -1 else n - 1]
         self.modify(lambda: insert_files(self.doc, paths, n if at == -1 else at,
-                                         (ref.width, ref.height)), structural=True)
+                                         (ref.width, ref.height), owner), structural=True)
 
     def insert_blank(self, at):
         r = self.page_rects[min(at, len(self.page_rects) - 1)]

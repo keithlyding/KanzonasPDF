@@ -35,8 +35,13 @@ o una lista como 1-3, 5), la orientación (Automática gira cada hoja para ajust
 (Ajustar al papel, o Tamaño real, que solo reduce las páginas demasiado grandes) y si se imprimen las marcas
 y los campos de formulario. <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
-y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.</p>
-<p>Copiar, extraer y exportar requieren el permiso de copia; Imprimir requiere el permiso de
+y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
+Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse
+solo en pantalla no se imprime, y una hecha para imprimirse sin verse en pantalla sí. Mientras imprime, una
+pequeña ventana indica en qué página va; <b>Cancelar</b> allí detiene el trabajo.</p>
+<p>Copiar, extraer y exportar requieren el permiso de copia, y también Combinar archivos e
+Insertar páginas desde archivo para cada PDF del que toman páginas: un PDF que no permite copiar se
+rechaza, a menos que escriba su contraseña de permisos (de propietario) cuando se le pida. Imprimir requiere el permiso de
 impresión y usa como máximo 150 ppp cuando la impresión de alta calidad está prohibida. Rellenar formularios
 y agregar marcas respetan sus permisos por separado: firmar un campo de formulario o ponerle la fecha solo necesita
 <b>Rellenar campos de formulario y firmar</b>, mientras que colocar una firma o la fecha en cualquier otro lugar

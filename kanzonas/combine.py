@@ -21,6 +21,66 @@ def is_image(path):
     return os.path.splitext(path)[1].lower() in IMAGE_EXTS
 
 
+# ---- PDFs that don't allow copying ---------------------------------------------------------
+# A PDF whose permissions forbid copying (it opens without a password; an owner password
+# sets what's allowed) can't be put into another PDF, which wouldn't carry its restrictions:
+# as File > Export refuses it, unless its permissions password is typed.
+def _copy_ok(src, owner_pw=None):
+    if src.permissions & pymupdf.PDF_PERM_COPY:
+        return True
+    return owner_pw is not None and bool(src.authenticate(owner_pw) & 4)
+
+
+def not_allowed(path):
+    """The message refusing a PDF whose pages may not be copied."""
+    return tr("{operation} is not allowed by this PDF's permissions.").format(
+        operation=tr("Copying the pages of {name}").format(name=os.path.basename(path)))
+
+
+def unlock_copy(src, path, ask_owner=None):
+    """The permissions password that lets src's pages be copied: "" when none is needed,
+    else asked with ask_owner(path) (-> password, or None to give up) until right.
+    PermissionError when it's not given."""
+    if _copy_ok(src):
+        return ""
+    while ask_owner is not None:
+        pw = ask_owner(path)
+        if pw is None:
+            break
+        if _copy_ok(src, pw):
+            return pw
+    raise PermissionError(not_allowed(path))
+
+
+def ask_owner_password(parent, path):
+    """Ask for the permissions password of a PDF that doesn't allow copying its pages."""
+    pw, ok = QInputDialog.getText(parent, tr("Password needed"),
+                                  tr("{name} doesn't allow copying its pages.\nIts permissions "
+                                     "(owner) password:").format(name=os.path.basename(path)),
+                                  QLineEdit.Password)
+    return pw if ok else None
+
+
+def owner_passwords(paths, ask_owner):
+    """{path: permissions password} for the PDFs in paths that don't allow copying their
+    pages (asked with ask_owner, see unlock_copy), before inserting them. PermissionError
+    when one isn't given. Files that won't open are left to insert_files to report."""
+    out = {}
+    for p in paths:
+        if is_image(p):
+            continue
+        try:
+            src = pymupdf.open(p)
+        except Exception:
+            continue
+        with src:
+            if not src.needs_pass:
+                pw = unlock_copy(src, p, ask_owner)
+                if pw:
+                    out[p] = pw
+    return out
+
+
 def _image_pdf(path):
     """The picture (every page of a multi-page TIFF) as a PDF; JPEGs stay JPEG inside and
     phone photos come out upright (MuPDF follows their EXIF orientation)."""
@@ -73,15 +133,18 @@ def image_pages(path, size):
     return out
 
 
-def insert_files(doc, paths, pos, size):
+def insert_files(doc, paths, pos, size, owner=None):
     """Insert the PDFs and pictures in `paths`, in order, into doc before page `pos`; each
-    picture page is fitted on a page of `size` (see image_pages)."""
+    picture page is fitted on a page of `size` (see image_pages). owner: {path: permissions
+    password} for PDFs that don't allow copying (owner_passwords)."""
     for path in paths:
         other = image_pages(path, size) if is_image(path) else pymupdf.open(path)
         with other:
             if other.needs_pass:
                 raise ValueError(tr("{name} is password-protected: open it and use Combine "
                                     "files instead.").format(name=os.path.basename(path)))
+            if not _copy_ok(other, (owner or {}).get(path)):
+                raise PermissionError(not_allowed(path))
             doc.insert_pdf(other, start_at=pos)
             pos += other.page_count
 
@@ -220,7 +283,8 @@ class CombineDialog(QDialog):
             return
         try:
             n = combine(paths, out, self.bookmarks.isChecked(), self._password,
-                        letter=self.letter.isChecked())
+                        letter=self.letter.isChecked(),
+                        ask_owner=lambda p: ask_owner_password(self, p))
         except Exception as e:
             QMessageBox.warning(self, self.title, tr("Couldn't make the PDF:\n{error}").format(error=e))
             return
@@ -241,10 +305,12 @@ def _shift(page, start):
     return page + start if page > 0 else -1       # -1: a bookmark with no target page
 
 
-def combine(paths, out, bookmarks=True, ask_password=None, letter=True):
+def combine(paths, out, bookmarks=True, ask_password=None, letter=True, ask_owner=None):
     """Write the PDFs and pictures in `paths`, in order, to `out`. Returns the page count, or
     None if a password was needed and not given. Each file's own bookmarks are kept, nested
-    under the file's bookmark when `bookmarks` is on. letter: see add_image."""
+    under the file's bookmark when `bookmarks` is on. letter: see add_image. A PDF that
+    doesn't allow copying needs its permissions password (ask_owner, see unlock_copy), else
+    PermissionError."""
     result = pymupdf.open()
     toc = []
     for p in paths:
@@ -263,6 +329,7 @@ def combine(paths, out, bookmarks=True, ask_password=None, letter=True):
                         return None
                     if src.authenticate(pw):
                         break
+            unlock_copy(src, p, ask_owner)
             start = result.page_count
             result.insert_pdf(src)
             inner = src.get_toc(simple=True)

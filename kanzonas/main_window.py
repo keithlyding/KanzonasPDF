@@ -2257,6 +2257,12 @@ class MainWindow(QMainWindow):
         if not paths:
             return
         self.settings.setValue("last_dir", os.path.dirname(paths[0]))
+        from .combine import owner_passwords, ask_owner_password
+        try:            # (a PDF that doesn't allow copying needs its permissions password)
+            owner = owner_passwords(paths, lambda p: ask_owner_password(self, p))
+        except PermissionError as ex:
+            QMessageBox.information(self, tr("Protected document"), str(ex))
+            return
         if not v:
             from . import new_pdf
             size = new_pdf.ask(self, self.settings) if any(map(is_image, paths)) else \
@@ -2266,7 +2272,7 @@ class MainWindow(QMainWindow):
             from .combine import insert_files
             doc = pymupdf.open()
             try:
-                insert_files(doc, paths, 0, size)
+                insert_files(doc, paths, 0, size, owner)
             except Exception as ex:
                 doc.close()
                 QMessageBox.critical(self, tr("Insert pages"), str(ex))
@@ -2280,7 +2286,7 @@ class MainWindow(QMainWindow):
         if not ok:
             return
         at = {0: v.current_page() + 1, 1: -1, 2: 0}[choices.index(where)]
-        v.insert_files(paths, at)           # shows what went wrong itself
+        v.insert_files(paths, at, owner)    # shows what went wrong itself
 
     def new_pdf(self):
         """File > New PDF: an unsaved document with one blank page of the chosen size; Save
