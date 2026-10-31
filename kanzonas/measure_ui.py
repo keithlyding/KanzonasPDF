@@ -1,6 +1,7 @@
 """Dialogs for measurement: setting the scale, and the measurement summary."""
 
 import csv
+import os
 import re
 
 from PySide6.QtCore import Qt
@@ -227,9 +228,15 @@ class SummaryDialog(QDialog):
     def _export(self):
         path, _ = QFileDialog.getSaveFileName(self, tr("Export measurements"), "measurements.csv",
                                               tr("CSV files") + " (*.csv)")
-        if path:
+        if not path:
+            return
+        from .export import csv_cell
+        try:
             with open(path, "w", newline="", encoding="utf-8-sig") as f:
-                from .export import csv_cell
                 w = csv.writer(f)
                 w.writerow(self.COLS)
                 w.writerows([[csv_cell(v) for v in row] for row in self.rows])
+        except OSError as ex:           # (open in Excel, read-only, a folder...)
+            QMessageBox.warning(self, tr("Export measurements"), tr(
+                "Couldn't save {name}:\n{error}").format(name=os.path.basename(path),
+                                                         error=ex.strerror or ex))

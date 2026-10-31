@@ -114,10 +114,8 @@ def timestamp(pdf_bytes, out_path, url, timestamper=None):
 
 # ---- trust & validation -------------------------------------------------------------
 def _trusted():
-    try:
-        return set(json.loads(A._settings().value("trusted_certs", "[]") or "[]"))
-    except (ValueError, TypeError):
-        return set()
+    from . import paths
+    return {c for c in paths.stored_json(A._settings(), "trusted_certs", []) if isinstance(c, str)}
 
 
 def trust(fingerprint):

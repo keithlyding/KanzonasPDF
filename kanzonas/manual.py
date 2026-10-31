@@ -42,8 +42,13 @@ or a list such as 1-3, 5), the orientation (Auto turns each sheet to fit its pag
 (Fit to paper, or Actual size, which only shrinks pages that are too big) and whether markups
 and form fields print. <b>Page setup...</b> sets the paper size and margins. Use the arrows
 under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
-rendered a strip at a time so even large drawings print sharp without using much memory.</p>
-<p>Copying, extracting and exporting require copying permission; Print requires printing
+rendered a strip at a time so even large drawings print sharp without using much memory.
+Markups and form fields follow their own print setting, as in Acrobat: one made to show on
+screen only doesn't print, and one made to print but not show on screen does. While it prints, a
+small window shows which page it's on; <b>Cancel</b> there stops the job.</p>
+<p>Copying, extracting and exporting require copying permission, and so do Combine files and
+Insert pages from file for each PDF they take pages from: a PDF that doesn't allow copying is
+refused unless you type its permissions (owner) password when asked. Print requires printing
 permission and uses at most 150 dpi when high-quality printing is forbidden. Form filling
 and adding markups honor their separate permissions: signing or dating a form field needs only
 <b>Filling in form fields and signing</b>, while placing a signature or the date anywhere else
@@ -88,7 +93,10 @@ and undo history come along. Drop a tab on another KanzonasPDF window's tabs (or
 it &gt; <b>Move to window</b>) to move it there. Each window has its own panels, tools and
 Find box, with the same settings. Closing the last tab of a pulled-out window closes that
 window; closing the main window (the first one) closes all of them, and reopening the last
-files at start-up brings back the documents from every window, in the main window.</li>
+files at start-up brings back the documents from every window, in the main window. Closing a
+pulled-out window with several documents asks only about that window's documents. View options
+(grid, snapping, comment boxes, highlight form fields, show markups, check spelling, theme, mouse
+mode) are the same in every window: change one and every window's menu follows.</li>
 <li><b>Closing KanzonasPDF:</b> with one document open, you're asked to save it if it has
 unsaved changes. With several documents open you get one question: it lists the ones with
 unsaved changes and offers <b>Save all</b>, <b>Don't save</b> or <b>Cancel</b> (Cancel keeps
@@ -210,7 +218,8 @@ last page. The same are in <b>View &gt; Go to</b>: <b>Next page</b>, <b>Previous
 number), so the command palette and the CAD command line find them too ("next page", "last
 page").</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, the zoom slider, or the zoom box
-(type a percent, from 10% to 6400%; 25.5 and 25,5 both work). A very long document can't go
+(type a percent, from 10% to 6400%; 25.5 and 25,5 both work, and so does 1,000 for 1000%; a
+zoom that isn't a whole percent shows one decimal). A very long document can't go
 quite as high: all its pages together must stay within the largest size Windows can draw.
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit width, at
 the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.
@@ -531,8 +540,9 @@ adds a sticky note anywhere.</li>
 comment and markup in reading order, page by page, selecting each one. The status bar shows
 "Markup 3 of 12". It wraps around at the end.</li>
 <li><b>Markups list</b> (F7): all markups in a table, page 1 first (click a column heading
-to sort by it); filter, click to jump, export to CSV (in the order shown). Clicking a locked
-markup jumps to it without selecting it, and the list's Delete leaves it: unlock it first.</li>
+to sort by it); filter, click to jump, export to CSV (in the order shown; if the file can't be
+written, open in Excel say, a message tells you). Clicking a locked markup jumps to it without
+selecting it, and the list's Delete leaves it: unlock it first.</li>
 <li><b>Show markups:</b> untick to hide every comment and markup and see the page as if
 unmarked. Nothing is deleted; tick it again to bring them back. <b>Show comment boxes</b>
 hides just the yellow boxes beside commented text.</li>
@@ -1103,7 +1113,9 @@ the pages you list; Ctrl+Z undoes either. A background can't show through a scan
 the scan is a picture covering the whole page; use a Watermark for those.</li>
 <li><b>Export</b> (File &gt; Export to): Microsoft Word (.docx), Microsoft Excel (.xlsx),
 Microsoft PowerPoint (.pptx), AutoCAD drawing (.dxf), Images (PNG), Images (JPEG),
-Plain text (.txt).</li>
+Plain text (.txt). Images make one picture per page, named after the name you choose plus the
+page number (plan_p1.png, plan_p2.png...); if any of them exist already, you're asked once
+before they're replaced.</li>
 </ul>
 
 <h2 id="preferences">Preferences</h2>
@@ -1118,7 +1130,10 @@ Apply.</li>
 of Windows; English; Español: menus, messages and this manual; a change shows the next time
 KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, Show menu bar,
 Show text labels on toolbars, Check for updates automatically. It also tells you where your
-settings are saved (the data folder in portable mode).</li>
+settings are saved (the data folder in portable mode). A saved setting that can't be used (one
+edited by hand, say) is replaced by its default. Should one still stop KanzonasPDF from starting,
+it starts with the default settings, says so, and lists the old ones in
+settings-before-reset.txt in the data folder.</li>
 <li><b>You:</b> the Author name for markups (recorded on new markups and shown on stamps), and
 Set up my signature... / Set up my initials... with whether each is saved yet, and Change PIN...
 to set, change or remove the PIN that protects them (leave the new PIN empty to remove it), and
@@ -1232,7 +1247,7 @@ settings...).</li>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>
 </table>
-<p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it.</p>
+<p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it. <b>Reset all to defaults</b> puts the built-in shortcuts back straight away. Changes apply in every window.</p>
 """
 
 

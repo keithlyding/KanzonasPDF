@@ -11,6 +11,7 @@ portable.txt can hold settings, one per line (the PortableApps.com package uses 
   updates=off        the program doesn't update itself (the PortableApps.com platform does)
 """
 
+import json
 import os
 import sys
 
@@ -81,3 +82,67 @@ def settings():
     if is_portable():
         return QSettings(os.path.join(data_dir(), "settings.ini"), QSettings.IniFormat)
     return QSettings(APP, APP)
+
+
+# ---- reading stored values ---------------------------------------------------------------
+# A setting can hold anything: an older or newer KanzonasPDF wrote it differently, or someone
+# edited the registry or settings.ini by hand. These read one value and fall back to the
+# default when it's missing or not what the program expects, so one bad value never stops
+# KanzonasPDF from starting or a dialog from opening.
+
+def _text(v):
+    """A stored value as text, or None. An .ini line with a comma reads back as a list of
+    its parts (author=Smith, John): the parts are joined again."""
+    if isinstance(v, str):
+        return v
+    if isinstance(v, (list, tuple)) and v and all(isinstance(x, str) for x in v):
+        return ", ".join(v)
+    return None
+
+
+def stored_str(settings, key, default="", choices=None):
+    """Text setting; default when missing, not text or not one of choices."""
+    v = _text(settings.value(key, default))
+    if v is None or (choices is not None and v not in choices):
+        return default
+    return v
+
+
+def stored_float(settings, key, default, lo=None, hi=None):
+    """Number setting; default when missing, not a finite number or outside lo..hi."""
+    import math
+    v = settings.value(key, default)
+    if isinstance(v, bool):
+        return default
+    try:
+        f = float(v)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    if not math.isfinite(f) or (lo is not None and f < lo) or (hi is not None and f > hi):
+        return default
+    return f
+
+
+def stored_int(settings, key, default, lo=None, hi=None):
+    """Whole-number setting; default when missing, not a number or outside lo..hi."""
+    f = stored_float(settings, key, default, lo, hi)
+    return default if f is default else int(f)
+
+
+def stored_json(settings, key, default):
+    """A list or dict kept as JSON text; default (whose type it must have) otherwise."""
+    v = _text(settings.value(key))
+    if v is None:
+        return default
+    try:
+        data = json.loads(v)
+    except (ValueError, RecursionError):
+        return default
+    return data if isinstance(data, type(default)) else default
+
+
+def stored_bytes(settings, key):
+    """A QByteArray setting (window geometry and layout), or None."""
+    from PySide6.QtCore import QByteArray
+    v = settings.value(key)
+    return v if isinstance(v, QByteArray) else None

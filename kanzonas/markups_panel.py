@@ -2,13 +2,15 @@
 Click a row to jump to it and select it. Export the list to CSV (opens in Excel)."""
 
 import csv
+import os
 
 import pymupdf
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,
                                QTableWidgetItem, QComboBox, QLineEdit, QPushButton, QLabel,
-                               QHeaderView, QAbstractItemView, QFileDialog)
+                               QHeaderView, QAbstractItemView, QFileDialog,
+                               QMessageBox)
 
 from . import annotations as A
 from .i18n import tr
@@ -216,12 +218,17 @@ class MarkupsPanel(QWidget):
                                               tr("CSV files") + " (*.csv)")
         if not path:
             return
-        with open(path, "w", newline="", encoding="utf-8-sig") as f:
-            from .export import csv_cell
-            w = csv.writer(f)
-            w.writerow(COLUMNS)
-            for r in range(self.table.rowCount()):
-                if not self.table.isRowHidden(r):
-                    # (comment text comes from the PDF: never a live spreadsheet formula)
-                    w.writerow([csv_cell(self.table.item(r, c).text())
-                                for c in range(len(COLUMNS))])
+        from .export import csv_cell
+        try:
+            with open(path, "w", newline="", encoding="utf-8-sig") as f:
+                w = csv.writer(f)
+                w.writerow(COLUMNS)
+                for r in range(self.table.rowCount()):
+                    if not self.table.isRowHidden(r):
+                        # (comment text comes from the PDF: never a live spreadsheet formula)
+                        w.writerow([csv_cell(self.table.item(r, c).text())
+                                    for c in range(len(COLUMNS))])
+        except OSError as ex:           # (open in Excel, read-only, a folder...)
+            QMessageBox.warning(self, tr("Export markups"), tr(
+                "Couldn't save {name}:\n{error}").format(name=os.path.basename(path),
+                                                         error=ex.strerror or ex))

@@ -4098,8 +4098,8 @@ msgid "Reset all to defaults"
 msgstr "Restablecer todos los valores predeterminados"
 
 #: main_window.py:3728
-msgid "Default shortcuts come back the next time you start the app."
-msgstr "Los métodos abreviados predeterminados vuelven la próxima vez que inicie la aplicación."
+msgid "The default shortcuts are back."
+msgstr "Se restablecieron los métodos abreviados predeterminados."
 
 #: main_window.py:3743
 msgid "Nothing was changed: these shortcuts are used twice:"
@@ -7036,3 +7036,36 @@ msgstr "En la página {pages} el texto nuevo se mete en otro texto o pasa del bo
 
 msgid "This markup is locked. Untick Lock in the Objects panel (or use Arrange > Unlock all markups) to move, resize or delete it."
 msgstr "Esta marca está bloqueada. Desmarque Bloquear en el panel Objetos (o use Organizar > Desbloquear todas las marcas) para moverla, cambiar su tamaño o eliminarla."
+
+msgid "A saved setting couldn't be used, so KanzonasPDF started with the default settings. The old ones are listed in:\n{path}"
+msgstr "No se pudo usar una configuración guardada, así que KanzonasPDF se inició con la configuración predeterminada. La anterior está en:\n{path}"
+
+msgid "{name} doesn't allow copying its pages.\nIts permissions (owner) password:"
+msgstr "{name} no permite copiar sus páginas.\nSu contraseña de permisos (de propietario):"
+
+msgid "Copying the pages of {name}"
+msgstr "Copiar las páginas de {name}"
+
+msgid "Close window"
+msgstr "Cerrar ventana"
+
+msgid "{count} documents are open in this window; {unsaved} with unsaved changes:\n{names}\n\nSave them before closing the window?"
+msgstr "Hay {count} documentos abiertos en esta ventana; {unsaved} con cambios sin guardar:\n{names}\n\n¿Guardarlos antes de cerrar la ventana?"
+
+msgid "{count} documents are open in this window. Close them all?"
+msgstr "Hay {count} documentos abiertos en esta ventana. ¿Cerrarlos todos?"
+
+msgid "{name} already exists. Replace it?"
+msgstr "{name} ya existe. ¿Reemplazarlo?"
+
+msgid "{n} of the pictures already exist, such as {name}. Replace them?"
+msgstr "Ya existen {n} de las imágenes, como {name}. ¿Reemplazarlas?"
+
+msgid "Couldn't save {name}:\n{error}"
+msgstr "No se pudo guardar {name}:\n{error}"
+
+msgid "Printing..."
+msgstr "Imprimiendo..."
+
+msgid "Printing page {n} of {total}..."
+msgstr "Imprimiendo la página {n} de {total}..."

@@ -249,6 +249,11 @@ def to_dxf(pdf_bytes, out_path, pages=None, units="inches", progress=None):
     return counts
 
 
+def image_path(out_base, fmt, i):
+    """The file to_images writes page i to: plan_p1.png, plan_p2.png..."""
+    return f"{out_base}_p{i + 1}.{fmt}"
+
+
 def to_images(pdf_bytes, out_base, fmt="png", dpi=200, pages=None, progress=None):
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
     paths = []
@@ -256,7 +261,7 @@ def to_images(pdf_bytes, out_base, fmt="png", dpi=200, pages=None, progress=None
         if progress:
             progress(i)
         pm = doc[i].get_pixmap(dpi=dpi, annots=True)
-        path = f"{out_base}_p{i + 1}.{fmt}"
+        path = image_path(out_base, fmt, i)
         if fmt in ("jpg", "jpeg"):
             pm.save(path, jpg_quality=90)
         else:

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget,
                                QSpinBox, QDoubleSpinBox, QMessageBox, QButtonGroup,
                                QRadioButton, QGroupBox, QScrollArea, QFrame)
 
+from . import paths
 from .i18n import tr
 
 
@@ -80,12 +81,11 @@ class PreferencesDialog(QDialog):
         for code, name in i18n.LANGUAGES.items():
             self.language.addItem(name, code)
         self.language.setCurrentIndex(max(0, self.language.findData(
-            str(win.settings.value("language", "auto")))))
+            paths.stored_str(win.settings, "language", "auto"))))
         form.addRow(tr("Language:"), self.language)
         for a in (win.a_ribbon, win.a_group_names, win.a_menu_bar, win.a_labels,
                   win.a_auto_updates):
             self._box(form, a)
-        from . import paths
         note = QLabel(tr("Settings are saved in the data folder next to KanzonasPDF.exe "
                          "(portable).") if paths.is_portable() else
                       tr("Settings are saved in your Windows user profile."))
@@ -201,7 +201,7 @@ class PreferencesDialog(QDialog):
                       "wouldn't have the password)."))
         note.setWordWrap(True)
         form.addRow(note)
-        self.backup_dir = win.settings.value("backup_dir", "") or ""
+        self.backup_dir = paths.stored_str(win.settings, "backup_dir")
         self.backup_label = QLabel()
         self.backup_label.setWordWrap(True)
         self.backup_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -318,19 +318,19 @@ class PreferencesDialog(QDialog):
         self.grid_value = QDoubleSpinBox()
         self.grid_value.setDecimals(3)
         self.grid_value.setRange(0.001, 10000)
-        self.grid_value.setValue(float(win.settings.value("grid_value", 0.5)))
+        self.grid_value.setValue(paths.stored_float(win.settings, "grid_value", 0.5, 0.001, 10000))
         self.grid_unit = QComboBox()
         for k, name in snapping.UNIT_NAMES.items():
             self.grid_unit.addItem(name, k)
         self.grid_unit.setCurrentIndex(max(0, self.grid_unit.findData(
-            win.settings.value("grid_unit", "in"))))
+            paths.stored_str(win.settings, "grid_unit", "in"))))
         row = QHBoxLayout()
         row.addWidget(self.grid_value)
         row.addWidget(self.grid_unit)
         gform.addRow(tr("Grid spacing (on paper):"), row)
         self.grid_major = QSpinBox()
         self.grid_major.setRange(1, 100)
-        self.grid_major.setValue(int(win.settings.value("grid_major", 4)))
+        self.grid_major.setValue(paths.stored_int(win.settings, "grid_major", 4, 1, 100))
         gform.addRow(tr("Darker line every:"), self.grid_major)
         for a in (win.a_grid, win.a_snap_grid, win.a_snap_objects, win.a_snap_page):
             self._box(gform, a)
@@ -345,7 +345,7 @@ class PreferencesDialog(QDialog):
         for key in ("auto", "fast", "normal", "high"):
             self.ocr.addItem(ocrmod.ACCURACY_LABELS[key], key)
         self.ocr.setCurrentIndex(max(0, self.ocr.findData(
-            win.settings.value("ocr_accuracy", "auto"))))
+            paths.stored_str(win.settings, "ocr_accuracy", "auto"))))
         form.addRow(tr("Default accuracy:"), self.ocr)
 
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel |
@@ -488,7 +488,7 @@ class PreferencesDialog(QDialog):
     def _apply(self):
         win = self.win
         lang = self.language.currentData()
-        if lang != str(win.settings.value("language", "auto")):
+        if lang != paths.stored_str(win.settings, "language", "auto"):
             win.settings.setValue("language", lang)
             QMessageBox.information(win, tr("Language"), tr("The new language shows the next time "
                                                                "KanzonasPDF starts."))
@@ -531,7 +531,7 @@ class PreferencesDialog(QDialog):
         else:
             win.apply_mouse_mode()
         win.settings.setValue("autosave_minutes", self.autosave.value())
-        if self.backup_dir != (win.settings.value("backup_dir", "") or ""):
+        if self.backup_dir != paths.stored_str(win.settings, "backup_dir"):
             win.autosave.discard_all()      # move the current copies to the new folder
             win.settings.setValue("backup_dir", self.backup_dir)
             if win.autosave.minutes:

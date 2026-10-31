@@ -472,10 +472,16 @@ class DocumentView(QScrollArea):
             self._fitted = False
             return
         state = getattr(self, "initial_state", None)
-        page = int(state.get("page", 0)) if state and self.reopen_page else 0
+        try:                    # (remembered in the settings: anything could be there)
+            page = int(state.get("page", 0)) if state and self.reopen_page else 0
+            zoom = float(state.get("zoom", 1.0)) if state else 1.0
+        except (TypeError, ValueError, OverflowError):
+            page, zoom = 0, 1.0
+        if not math.isfinite(zoom) or zoom <= 0:
+            zoom = 1.0
         mode = self.open_view
         if mode == "last" and state:
-            self.set_zoom(float(state.get("zoom", 1.0)))
+            self.set_zoom(zoom)
         elif mode == "width" or mode == "last":
             self.fit_width()
         elif mode == "actual":
@@ -6491,15 +6497,16 @@ class DocumentView(QScrollArea):
     def insert_pdf(self, path, at):
         self.insert_files([path], at)
 
-    def insert_files(self, paths, at):
+    def insert_files(self, paths, at, owner=None):
         """Insert PDFs and pictures, in order, before page `at` (-1: at the end), as one undo
         step. Each picture becomes a page the size of the page it follows (the first page
-        when inserted at the start), turned to suit the picture."""
+        when inserted at the start), turned to suit the picture. owner: permissions passwords
+        of PDFs that don't allow copying (combine.owner_passwords)."""
         from .combine import insert_files
         n = self.doc.page_count
         ref = self.page_rects[min(max(at - 1, 0), n - 1) if at != -1 else n - 1]
         self.modify(lambda: insert_files(self.doc, paths, n if at == -1 else at,
-                                         (ref.width, ref.height)), structural=True)
+                                         (ref.width, ref.height), owner), structural=True)
 
     def insert_blank(self, at):
         """A blank page before page index at, the size of the page it follows (as shown;

@@ -8,10 +8,10 @@ import pymupdf
 from PySide6.QtCore import QRectF, QSizeF, Qt
 from PySide6.QtGui import QColor, QImage, QPageLayout, QPageSize, QPainter, QPixmap
 from PySide6.QtPrintSupport import QPageSetupDialog, QPrinter, QPrinterInfo
-from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
-                               QFormLayout, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-                               QPushButton, QRadioButton, QSpinBox, QToolButton, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog,
+                               QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+                               QMessageBox, QProgressDialog, QPushButton, QRadioButton, QSpinBox,
+                               QToolButton, QVBoxLayout, QWidget)
 
 from .i18n import tr
 
@@ -38,6 +38,25 @@ def parse_pages(text, count):
     if not out:
         raise ValueError(text)
     return out
+
+
+def print_list(page, markups=True):
+    """page as it prints, as a pymupdf.DisplayList. With markups: the annotations and form
+    fields that have the Print flag, including ones hidden on screen (NoView), and not those
+    without it (PDF 12.5.3). The screen rendering (get_pixmap) follows the view flags."""
+    if not markups:
+        return page.get_displaylist(annots=False)
+    if not page.parent.is_pdf:
+        return page.get_displaylist(annots=True)
+    m = pymupdf.mupdf
+    dl = m.FzDisplayList(m.fz_bound_page(page.this))
+    dev = m.fz_new_list_device(dl)
+    try:
+        m.pdf_run_page_with_usage(m.pdf_page_from_fz_page(page.this), dev, m.FzMatrix(),
+                                  "Print", m.FzCookie())
+    finally:
+        m.fz_close_device(dev)
+    return pymupdf.DisplayList(dl)
 
 
 class PrintDialog(QDialog):
@@ -217,7 +236,9 @@ class PrintDialog(QDialog):
 
     # ---- preview ----------------------------------------------------------------------
     def _page_image(self, i, dpi):
-        pm = self.view.doc[i].get_pixmap(dpi=int(dpi), annots=self.markups.isChecked())
+        k = int(dpi) / 72.0
+        pm = print_list(self.view.doc[i], self.markups.isChecked()).get_pixmap(
+            matrix=pymupdf.Matrix(k, k))
         return QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
 
     def _draw_preview(self):
@@ -272,15 +293,40 @@ class PrintDialog(QDialog):
         v = self.view
         dpi = min(printer.resolution(), 600 if v.allowed(pymupdf.PDF_PERM_PRINT_HQ) else 150)
         painter = QPainter()
+        # a big sheet or many pages take a while: show how far it is and let it be stopped
+        # (the window keeps responding between pages and between strips of a page)
+        progress = QProgressDialog(tr("Printing..."), tr("Cancel"), 0, len(pages), self)
+        progress.setWindowTitle(tr("Print"))
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(400)
+        progress.setAutoReset(False)
         try:
-            return self._print_pages(printer, painter, pages, dpi)
+            return self._print_pages(printer, painter, pages, dpi, progress)
         finally:
             if painter.isActive():
                 painter.end()
+            progress.close()
+            progress.deleteLater()
 
-    def _print_pages(self, printer, painter, pages, dpi):
+    def _print_pages(self, printer, painter, pages, dpi, progress=None):
         first = True
-        for i in pages:
+
+        def going():
+            """Let the window respond; False once Cancel was clicked (the job is dropped)."""
+            if progress is None:
+                return True
+            QApplication.processEvents()
+            if progress.wasCanceled():
+                printer.abort()
+                return False
+            return True
+        for n, i in enumerate(pages):
+            if progress is not None:
+                progress.setLabelText(tr("Printing page {n} of {total}...").format(
+                    n=n + 1, total=len(pages)))
+                progress.setValue(n)
+            if not going():
+                return False
             paper, box = self.sheet(i)
             orient = QPageLayout.Landscape if paper.width() > paper.height() else QPageLayout.Portrait
             printer.setPageOrientation(orient)              # each sheet turned as previewed
@@ -293,8 +339,11 @@ class PrintDialog(QDialog):
                 printer.newPage()
             res = printer.resolution() / 72.0
             target = QRectF(box.x() * res, box.y() * res, box.width() * res, box.height() * res)
-            self._draw_bands(painter, i, target, dpi)
+            if not self._draw_bands(painter, i, target, dpi, going):
+                return False
             self._draw_links(painter, i, target)
+        if progress is not None:
+            progress.setValue(len(pages))
         return True
 
     def _draw_links(self, painter, i, target):
@@ -320,10 +369,12 @@ class PrintDialog(QDialog):
             else:
                 painter.drawRect(box)
 
-    def _draw_bands(self, painter, i, target, dpi):
+    def _draw_bands(self, painter, i, target, dpi, going=lambda: True):
         """Draw page i into target in horizontal bands of at most BAND_BYTES each, so a big
-        sheet at 600 dpi never needs one huge image in memory."""
+        sheet at 600 dpi never needs one huge image in memory. going() is asked before each
+        band; False (canceled) stops and returns False."""
         page = self.view.doc[i]
+        dl = print_list(page, self.markups.isChecked())       # read once, drawn per band
         r = page.rect
         k = dpi / 72.0
         rows = max(1, int(BAND_BYTES / max(1.0, r.width * k * 3)))   # pixel rows per band
@@ -331,12 +382,14 @@ class PrintDialog(QDialog):
         sy = target.height() / r.height
         y = r.y0
         while y < r.y1:
+            if y > r.y0 and not going():
+                return False
             y1 = min(r.y1, y + step)
             clip = pymupdf.Rect(r.x0, y, r.x1, y1)
-            pm = page.get_pixmap(matrix=pymupdf.Matrix(k, k), clip=clip,
-                                 annots=self.markups.isChecked())
+            pm = dl.get_pixmap(matrix=pymupdf.Matrix(k, k), clip=clip)
             img = QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
             painter.drawImage(QRectF(target.x(), target.y() + (y - r.y0) * sy,
                                      target.width(), (y1 - y) * sy), img)
             del img, pm
             y = y1
+        return True
