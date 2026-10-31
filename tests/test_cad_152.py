@@ -3,7 +3,8 @@ the drawing's own lines (Select takes only markups and text: on a plain drawing 
 nothing); the Home tab starts with the three mouse modes (Select, Hand, CAD); a command started
 with nothing selected asks for the selection and Enter goes on (as AutoCAD); Trim takes cutting
 edges, selected before TR or when it asks, and cuts only up to those; Delete started first
-works the same way.
+works the same way. One selection takes everything: the drawing's lines and text and the
+markups drawn on it, by box or by click; Move and Delete do them together, as one undo step.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_cad_152
 """
@@ -24,13 +25,17 @@ from kanzonas import main_window, mouse_modes  # noqa: E402
 from kanzonas.page_objects import Box  # noqa: E402
 
 
-def drawing():
-    """A level line crossed by two plumb lines."""
+def drawing(cloud=False, text=False):
+    """A level line crossed by two plumb lines (and a rectangle markup, and a label)."""
     d = pymupdf.open()
     p = d.new_page(width=400, height=300)
     p.draw_line((50, 150), (350, 150))
     p.draw_line((150, 50), (150, 250))
     p.draw_line((250, 50), (250, 250))
+    if cloud:
+        p.add_rect_annot(pymupdf.Rect(170, 60, 230, 120))
+    if text:
+        p.insert_text((60, 280), "PANEL A", fontsize=10)
     path = os.path.join(tempfile.mkdtemp(), "d.pdf")
     d.save(path)
     return path
@@ -43,6 +48,8 @@ def lines(page):
 
 
 class CadMode(unittest.TestCase):
+    CLOUD = TEXT = False
+
     def setUp(self):
         w = self.w = main_window.MainWindow()
         old = {k: w.settings.value(k) for k in ("mouse_mode", "mouse_before_cad")}
@@ -57,7 +64,7 @@ class CadMode(unittest.TestCase):
         w.resize(1000, 800)
         w.show()
         w.set_mouse_mode("cad")
-        w.open_file(drawing())
+        w.open_file(drawing(self.CLOUD, self.TEXT))
         APP.processEvents()
         self.v = w.view()
         self.addCleanup(lambda: setattr(self.v, "dirty", False))
@@ -122,6 +129,115 @@ class CadMode(unittest.TestCase):
         self.box(140, 40, 160, 260)
         self.type("")
         self.assertIsNone(self.v._cad_cmd)
+        self.assertEqual(len(lines(self.v.doc[0])), 2)
+
+
+class Everything(CadMode):
+    """CAD mode's selection takes the drawing's objects, its text and the markups together."""
+    CLOUD = TEXT = True
+
+    def markups(self):
+        return [pymupdf.Rect(a.rect) for a in self.v.doc[0].annots()]
+
+    def test_a_box_takes_lines_text_and_markups(self):
+        self.box(10, 10, 390, 295)
+        kinds = sorted(it["kind"] for it in self.v.obj_sel[1])
+        self.assertEqual(kinds.count("text"), 1)
+        self.assertEqual(len(kinds), 4)
+        self.assertEqual(len(self.v.selected_xrefs()), 1)
+        self.assertEqual(self.v.cad_targets()[0], "both")
+
+    def test_a_click_adds_a_markup_to_the_objects(self):
+        from kanzonas import cad_select
+        self.box(140, 40, 160, 260)                 # a plumb line
+        pw = self.v.pages[0]
+        xref = self.v.annot_at(0, pymupdf.Point(170, 90))
+        self.assertIsNotNone(xref)
+        cad_select.toggle(pw, "markup", xref, False)
+        self.assertEqual(len(self.v.obj_sel[1]), 1)
+        self.assertEqual(self.v.selected_xrefs(), [xref])
+
+    def test_move_moves_both_and_one_undo_puts_both_back(self):
+        self.box(140, 40, 260, 260)                 # both plumb lines and the markup
+        before_lines, before_marks = lines(self.v.doc[0]), self.markups()
+        self.type("m")
+        cmd = self.v._cad_cmd
+        cmd.click(0, pymupdf.Point(200, 150))
+        cmd.click(0, pymupdf.Point(200, 180))
+        self.assertIn((150, 80, 150, 280), lines(self.v.doc[0]))
+        self.assertAlmostEqual(self.markups()[0].y0, before_marks[0].y0 + 30, delta=1)
+        self.v.undo()
+        self.assertEqual(lines(self.v.doc[0]), before_lines)
+        self.assertAlmostEqual(self.markups()[0].y0, before_marks[0].y0, delta=1)
+
+    def test_delete_takes_both_and_one_undo_puts_both_back(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.box(140, 40, 260, 260)
+        QTest.keyClick(self.v, Qt.Key_Delete)
+        self.assertEqual(len(lines(self.v.doc[0])), 1)
+        self.assertEqual(self.markups(), [])
+        self.v.undo()
+        self.assertEqual(len(lines(self.v.doc[0])), 3)
+        self.assertEqual(len(self.markups()), 1)
+
+    def test_copy_places_both_each_time(self):
+        self.box(140, 40, 260, 260)
+        self.type("co")
+        cmd = self.v._cad_cmd
+        cmd.click(0, pymupdf.Point(200, 150))
+        cmd.click(0, pymupdf.Point(200, 170))       # a copy...
+        cmd.click(0, pymupdf.Point(200, 190))       # ...and another
+        self.type("")
+        self.assertEqual(len(self.markups()), 3)
+        self.assertIn((150, 90, 150, 290), lines(self.v.doc[0]))
+        self.assertIn((150, 70, 150, 270), lines(self.v.doc[0]))
+        self.assertIn((150, 50, 150, 250), lines(self.v.doc[0]))
+
+    def test_rotate_turns_both(self):
+        self.box(140, 40, 260, 260)
+        self.type("ro")
+        cmd = self.v._cad_cmd
+        cmd.click(0, pymupdf.Point(200, 150))       # the base point
+        self.type("90")
+        self.assertIn((100, 100, 300, 100), lines(self.v.doc[0]))   # (one plumb line, lying)
+        c = (self.markups()[0].tl + self.markups()[0].br) / 2       # (it was at 200, 90)
+        self.assertAlmostEqual(c.y, 150, delta=3)
+        self.assertAlmostEqual(abs(c.x - 200), 60, delta=3)
+
+    def test_after_a_move_both_stay_selected(self):
+        self.box(140, 40, 260, 260)
+        self.type("m")
+        cmd = self.v._cad_cmd
+        cmd.click(0, pymupdf.Point(200, 150))
+        cmd.click(0, pymupdf.Point(200, 180))
+        self.assertEqual(len(self.v.obj_sel[1]), 2)
+        self.assertEqual(len(self.v.selected_xrefs()), 1)
+
+    def test_array_copies_both_and_one_undo_takes_them_away(self):
+        from unittest import mock
+        from PySide6.QtWidgets import QDialog
+        self.box(140, 40, 260, 260)
+        with mock.patch.object(QDialog, "exec", return_value=QDialog.Accepted):  # 1 x 3
+            self.type("ar")
+        cmd = self.v._cad_cmd
+        cmd.click(0, pymupdf.Point(200, 150))
+        cmd.click(0, pymupdf.Point(200, 160))       # each column 10 lower
+        self.assertEqual(len(self.markups()), 3)
+        self.assertIn((150, 70, 150, 270), lines(self.v.doc[0]))
+        self.v.undo()
+        self.assertEqual(len(self.markups()), 1)
+        self.assertEqual(len(lines(self.v.doc[0])), 3)
+
+    def test_a_markup_alone_doesnt_join_an_older_undo_step(self):
+        self.box(140, 40, 160, 260)
+        self.type("e")                              # delete a plumb line: one step
+        self.box(165, 55, 235, 125)                 # now only the markup
+        self.assertIsNone(self.v.obj_sel)
+        self.type("e")
+        self.assertEqual(self.markups(), [])
+        self.v.undo()                               # brings back the markup only
+        self.assertEqual(len(self.markups()), 1)
         self.assertEqual(len(lines(self.v.doc[0])), 2)
 
 

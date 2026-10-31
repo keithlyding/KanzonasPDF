@@ -60,7 +60,13 @@ def press(w, e, pos, pdf):
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     w._obj_edit = {"mode": hid, "start": pos, "preview": None}
                     return
-        target = ("object", v.object_at(w.index, pdf))
+        # CAD mode takes everything: a markup drawn over the drawing first (it lies on top),
+        # else the drawing's own line, text or picture
+        xref = w._card_at(pos)
+        if xref is None:
+            xref = v.annot_at(w.index, pdf)
+        target = ("markup", xref) if xref is not None else \
+            ("object", v.object_at(w.index, pdf))
     w._cad_down = {"start": pos, "pts": [pos], "dir": 0, "mode": None, "now": None,
                    "target": target, "remove": remove,
                    "link": getattr(w, "_link_press", None) is not None}
@@ -169,6 +175,12 @@ def pick(w, region, crossing, remove):
     if v.tool == "select":
         v.cad_select_region(w.index, region, crossing, remove)
         return
+    # Edit objects in CAD mode takes everything the region holds: the drawing's lines, text
+    # and pictures, and the markups drawn on it, in one selection (on one page)
+    if v.obj_sel is not None and v.obj_sel[0] != w.index:
+        v.clear_object_selection()
+    if v.selection is not None and v.selection[0] != w.index:
+        v.clear_selection()
     found = v.cad_objects(w.index, region, crossing)
     took = {it["n"] for it in found}
     have = w._objects_here()
@@ -177,11 +189,23 @@ def pick(w, region, crossing, remove):
     else:
         known = {it["n"] for it in have}
         v.select_objects(w.index, have + [it for it in found if it["n"] not in known])
+    marks = v.cad_markups_in(w.index, region, crossing)
+    if marks:
+        mine = v.selected_xrefs() if v.selection is not None else []
+        if remove:
+            v._set_selection(w.index, [x for x in mine if x not in marks])
+        else:
+            v._set_selection(w.index, mine + [x for x in marks if x not in mine])
 
 
 def toggle(w, kind, target, remove):
     """A click on one item: into the selection (Shift: out of it)."""
     v = w.view
+    if v.tool == "editobjects":         # (one selection, one page)
+        if v.obj_sel is not None and v.obj_sel[0] != w.index:
+            v.clear_object_selection()
+        if v.selection is not None and v.selection[0] != w.index:
+            v.clear_selection()
     if kind == "markup":
         have = v.selected_xrefs() if v.selection is not None and v.selection[0] == w.index \
             else []

@@ -323,9 +323,12 @@ It's for looking only: make changes in the main view.</li>
 
 <h2 id="cad">CAD mode: selecting and the CAD tab</h2>
 <p>In the <b>CAD</b> mouse mode (View &gt; Mouse: CAD, F11) KanzonasPDF selects and edits like a
-CAD program. It starts with <b>Edit objects</b>, which selects the drawing's own lines, text and
-pictures (what a CAD program selects); <b>Select</b> (the CAD tab, or V when letters aren't
-going to the command line) selects your markups and the text of the page the same way.</p>
+CAD program. It starts with <b>Edit objects</b>, which selects everything at once: the drawing's
+own lines, text and pictures and the markups drawn on it (clouds, lines, notes...), in one
+selection. Move, Copy, Rotate, Scale, Mirror, Align, Array and Delete then work on all of it
+together, and one Ctrl+Z undoes it (the drawing's text only moves: it isn't copied, turned,
+scaled or mirrored). <b>Select</b> (the CAD tab, or V when letters aren't going to the command
+line) selects only your markups, or the characters of the page's text, the same way.</p>
 <ul>
 <li><b>Click</b> something to add it to the selection. <b>Shift+click</b> takes it out.
 <b>Escape</b> clears the whole selection. Clicking empty paper keeps the selection.</li>

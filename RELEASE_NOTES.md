@@ -15,7 +15,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Trim asks for the cutting edges first (select them and press Enter, or just Enter to let every line cut), then cuts up to those.
 
 **Fixed**
-- CAD mode's blue and green selection boxes select the drawing's own lines (they only took markups before, so on a plain drawing nothing was selected).
+- CAD mode's selection takes everything at once: the drawing's lines, text and pictures and your markups on it, by click, box or lasso (the boxes only took markups before, so on a plain drawing nothing was selected). Move, Copy, Rotate, Delete and the other CAD commands work on all of it together, and one Ctrl+Z undoes it.
 
 ## 1.6 (es)
 
@@ -25,7 +25,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Recortar pide primero los bordes de corte (selecciónelos y presione Enter, o solo Enter para que corten todas las líneas) y luego recorta hasta ellos.
 
 **Correcciones**
-- Los recuadros de selección azul y verde del modo CAD seleccionan las líneas propias del dibujo (antes solo tomaban marcas, así que en un dibujo sin marcas no se seleccionaba nada).
+- La selección del modo CAD toma todo a la vez: las líneas, el texto y las imágenes del dibujo y sus marcas encima, con clic, recuadro o lazo (antes los recuadros solo tomaban marcas, así que en un dibujo sin marcas no se seleccionaba nada). Mover, Copiar, Girar, Eliminar y los demás comandos CAD trabajan sobre todo junto, y un solo Ctrl+Z lo deshace.
 
 ## 1.5.1
 

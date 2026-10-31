@@ -3194,6 +3194,12 @@ class DocumentView(QScrollArea):
                 yield [], self.line_rects(self.cad_text(index, region, crossing))
             return
         from .page_objects import overlap
+        xrefs = self.cad_markups_in(index, region, crossing)     # (the markups too)
+        if xrefs:
+            found = annotations.load_annots(self.doc[index], xrefs[:3000])
+            models = [(x, annotations.read(a)) for x, a in found.items()]
+            yield self.cad_outlines(index, "markups",
+                                    [(x, m) for x, m in models if m is not None]), []
         objs = self.content_objects(index)
         for it, taken in (objs.pick_steps(region, crossing) if objs is not None else ()):
             yield (self.object_lines(index, it) if taken else []), []
@@ -3573,11 +3579,9 @@ class DocumentView(QScrollArea):
         if drawing and e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):
             drawing[0].finish_poly(cancel=e.key() == Qt.Key_Escape)
             return
-        if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.selection is not None:
-            self.delete_selected()
-            return
-        if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and self.obj_sel is not None:
-            self.delete_objects()
+        if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and (
+                self.selection is not None or self.obj_sel is not None):
+            self.delete_everything_selected()
             return
         if e.key() == Qt.Key_Escape and self.cad_select and (
                 self.obj_sel is not None or self.text_sel or self.selection is not None):
@@ -4353,21 +4357,33 @@ class DocumentView(QScrollArea):
     # ---- CAD tab commands (cad_commands.py) ----------------------------------------------
     _cad_cmd = None             # the CAD command running, or None
 
-    def cad_targets(self):
+    def cad_targets(self, only=None):
         """What a CAD command works on: ("objects", page, items) for the drawing's own objects
         selected with Edit objects, ("markups", page, [(xref, model)]) for selected markups,
-        or None."""
+        ("both", page, {"objects": items, "markups": [(xref, model)]}) when CAD mode's
+        selection holds both on one page, or None. only: "objects" or "markups", that part
+        alone."""
+        objs = mark = None
         if self.obj_sel is not None and self.obj_sel[1]:
-            return "objects", self.obj_sel[0], list(self.obj_sel[1])
+            objs = ("objects", self.obj_sel[0], list(self.obj_sel[1]))
         if self.selection is not None:
             models = [(x, m) for x, m in self.selected_models() if m["kind"] != "field"]
             if models:
-                return "markups", self.selection[0], models
-        return None
+                mark = ("markups", self.selection[0], models)
+        if only == "objects":
+            return objs
+        if only == "markups":
+            return mark
+        if objs and mark and objs[1] == mark[1]:
+            return "both", objs[1], {"objects": objs[2], "markups": mark[2]}
+        return objs or mark
 
     def cad_outlines(self, index, kind, items):
         """The selection's outlines in page coordinates, for a command's preview."""
         out = []
+        if kind == "both":
+            return self.cad_outlines(index, "objects", items["objects"]) + \
+                self.cad_outlines(index, "markups", items["markups"])
         if kind == "objects":
             for it in items:
                 out += self.object_lines(index, it)
@@ -4392,7 +4408,20 @@ class DocumentView(QScrollArea):
     def cad_apply(self, label, mat, copies=None, keep=False):
         try:
             with _busy():
-                out = self._cad_apply(label, mat, copies, keep)
+                what = self.cad_targets()
+                rev = self.revision
+                if what is not None and what[0] == "both":
+                    # the drawing's objects and the markups, as one undo step
+                    out = self._cad_apply(label, mat, copies, keep, only="objects")
+                    kept = self.obj_sel
+                    self.then_in_same_step(
+                        rev, lambda: self._cad_apply(label, mat, copies, keep, only="markups"))
+                    if kept is not None and self.obj_sel is None:
+                        # (changing the markups dropped the page's objects as read before:
+                        # the same ones are selected again, so Copy goes on with both)
+                        self._reselect_objects(*kept)
+                else:
+                    out = self._cad_apply(label, mat, copies, keep)
         except Exception:
             if self._cad_cmd is not None:   # (a command that failed doesn't go on)
                 self._cad_cmd.finish()
@@ -4406,12 +4435,52 @@ class DocumentView(QScrollArea):
         if self._cad_cmd is not None:
             self._cad_cmd.rev = getattr(self, "revision", 0)
 
-    def _cad_apply(self, label, mat, copies=None, keep=False):
+    def _reselect_objects(self, index, items):
+        """Select again the objects items (read before the page changed) as the page is read
+        now: shapes and pictures by their place in the drawing order, text by its spot."""
+        objs = self.content_objects(index)
+        by_n = {it["n"]: it for it in (objs.items if objs else [])}
+        texts = self.text_objects(index) if any(it["kind"] == "text" for it in items) else []
+        again = []
+        for it in items:
+            if it["kind"] == "text":
+                r = it["rect"]
+                again += [t for t in texts if abs(t["rect"].x0 - r.x0) < 1.5 and
+                          abs(t["rect"].y0 - r.y0) < 1.5][:1]
+            elif it["n"] in by_n:
+                again.append(by_n[it["n"]])
+        self.select_objects(index, again)
+
+    def then_in_same_step(self, rev, fn):
+        """Run fn; its edits join the edit made since revision rev (one Ctrl+Z undoes both).
+        If nothing was changed since rev, fn's edits are a step of their own (they mustn't
+        join an older, unrelated one)."""
+        if self.revision != rev:
+            with self.one_undo_step():
+                return fn()
+        return fn()
+
+    def one_undo_step(self):
+        """with view.one_undo_step(): the edits made in it join the edit just before (one
+        Ctrl+Z undoes them together), as a burst of arrow-key nudges does."""
+        view = self
+
+        class _Joined:
+            def __enter__(self):
+                self.was = getattr(view, "_merge_edit", False)
+                view._merge_edit = True
+
+            def __exit__(self, *exc):
+                view._merge_edit = self.was
+                return False
+        return _Joined()
+
+    def _cad_apply(self, label, mat, copies=None, keep=False, only=None):
         """A CAD command's change to the selection, as one undo step: mat (a Matrix in page
         coordinates) moves / turns / scales / mirrors it; copies (a list of matrices) adds a
         copy for each instead. The drawing's own text only moves."""
         from . import cad_commands, page_objects
-        what = self.cad_targets()
+        what = self.cad_targets(only)
         if what is None:
             return
         kind, index, items = what
@@ -4860,6 +4929,17 @@ class DocumentView(QScrollArea):
         label = {"front": tr("Brought to front"), "back": tr("Sent to back"),
                  "forward": tr("Brought forward"), "backward": tr("Sent backward")}[how]
         self.statusMessage.emit(tr("{what} (Ctrl+Z undoes it)").format(what=label))
+
+    def delete_everything_selected(self):
+        """Delete what is selected: the drawing's objects and the markups (CAD mode selects
+        both at once), as one undo step."""
+        rev = self.revision
+        if self.obj_sel is not None:
+            self.delete_objects()
+            if self.obj_sel is not None and self.revision == rev:
+                return                  # (asked about removing text, and canceled)
+        if self.selection is not None:
+            self.then_in_same_step(rev, self.delete_selected)
 
     def delete_objects(self):
         from . import page_objects

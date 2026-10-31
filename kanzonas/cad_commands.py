@@ -564,9 +564,9 @@ class Command:
         v = self.v
         if getattr(v, "revision", 0) == self.rev and self.page is not None and \
                 self.page < len(v.pages) and (
-                    (self.kind == "objects" and v.obj_sel is not None and
+                    (self.kind in ("objects", "both") and v.obj_sel is not None and
                      v.obj_sel[0] == self.page and v.obj_sel[1]) or
-                    (self.kind == "markups" and v.selection is not None and
+                    (self.kind in ("markups", "both") and v.selection is not None and
                      v.selection[0] == self.page)):
             return False
         self.finish(tr("{command} canceled: the document changed under it. Select again and "
@@ -904,7 +904,12 @@ class Array(Command):
             return False
         copies = rows.value() * cols.value() - 1
         kind, _page, items = v.cad_targets()
-        if kind == "objects":
+        if kind == "both":                  # (the markups count one each)
+            memo = {}
+            from .page_objects import group_size
+            many = copies * (sum(group_size(v.doc, it["xref"], memo) if it["kind"] == "group"
+                                 else 1 for it in items["objects"]) + len(items["markups"]))
+        elif kind == "objects":
             # a group (a placed drawing, a copy from a big array) counts what it draws
             from .page_objects import group_size
             memo = {}
@@ -1025,12 +1030,9 @@ class Erase(Command):
     title = tr("Delete")
 
     def ask(self):
-        v, kind = self.v, self.kind
+        v = self.v
         self.finish()
-        if kind == "objects":
-            v.delete_objects()
-        else:
-            v.delete_selected()
+        v.delete_everything_selected()
 
 
 COMMANDS = {"move": Move, "copy": Copy, "rotate": Rotate, "scale": Scale, "mirror": Mirror,

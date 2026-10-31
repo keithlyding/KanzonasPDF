@@ -4228,10 +4228,7 @@ class MainWindow(QMainWindow):
             if other._cad_cmd is not None:
                 other._cad_cmd.cancel()
         if key == "delete" and (v.obj_sel is not None or v.selection is not None):
-            if v.obj_sel is not None:
-                v.delete_objects()
-            else:
-                v.delete_selected()
+            v.delete_everything_selected()
             return
         if key == "delete" and not v.cad_select:
             self.statusBar().showMessage(tr("Delete: select what to delete first."), 4000)

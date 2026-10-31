@@ -313,9 +313,11 @@ Es solo para mirar: haga los cambios en la vista principal.</li>
 
 <h2 id="cad">Modo CAD: selección y la pestaña CAD</h2>
 <p>En el modo del mouse <b>CAD</b> (Ver &gt; Mouse: CAD, F11) KanzonasPDF selecciona y edita como un programa CAD.
-Empieza con <b>Editar objetos</b>, que selecciona las líneas, el texto y las imágenes propios del dibujo (lo que
-selecciona un programa CAD); <b>Seleccionar</b> (la pestaña CAD, o V cuando las letras no van a la línea de comandos)
-selecciona del mismo modo sus marcas y el texto de la página.</p>
+Empieza con <b>Editar objetos</b>, que selecciona todo a la vez: las líneas, el texto y las imágenes propios del
+dibujo y las marcas dibujadas encima (nubes, líneas, notas...), en una sola selección. Mover, Copiar, Girar, Escala,
+Simetría, Alinear, Matriz y Eliminar trabajan entonces sobre todo junto, y un solo Ctrl+Z lo deshace (el texto del
+dibujo solo se mueve: no se copia, gira, escala ni refleja). <b>Seleccionar</b> (la pestaña CAD, o V cuando las letras
+no van a la línea de comandos) selecciona del mismo modo solo sus marcas, o los caracteres del texto de la página.</p>
 <ul>
 <li>Haga <b>clic</b> en algo para agregarlo a la selección. <b>Shift+clic</b> lo quita. <b>Escape</b> borra toda la
 selección. Hacer clic en el papel vacío conserva la selección.</li>
