@@ -109,47 +109,70 @@ def delete_many(page, xrefs, keep_replies=False):
 # holds no text at all, on every page of a plan set.
 #
 # scrub() below runs PyMuPDF's own scrub, step for step, and leaves out only that search on
-# a page where it can't find anything: one where MuPDF's text extraction yields no
-# character. That is checked with page.get_textpage(flags=TEXT_PRESERVE_SPANS |
-# TEXT_COLLECT_VECTORS): the same MuPDF text device (stext-device.c, MuPDF 1.28) on the same
-# run of the page (contents, forms, markups), with these differences only:
+# a page where it can't find anything: one with no ActualText (or other marked-content
+# replacement text) anywhere it is run, and where MuPDF's text extraction yields no
+# character. ActualText is looked for first, with a device that only notes it
+# (_has_metatext): the page's run with TEXT_COLLECT_VECTORS crashed MuPDF 1.28 (a
+# segmentation fault, the app gone) on ActualText inside ActualText around a drawing, which
+# PyMuPDF's own search reads without trouble; and ActualText is the one way a character
+# appears without a text callback. Such a page gets PyMuPDF's own search, unchanged.
+# Otherwise the characters are checked with page.get_textpage(flags=TEXT_PRESERVE_SPANS):
+# the same MuPDF text device (stext-device.c, MuPDF 1.28) on the same run of the page
+# (contents, forms, markups), with these differences only:
 #   - characters come from the text callbacks (fill, stroke, clip, clip-stroke and ignore
-#     text: invisible text included) and from ActualText being placed; neither flag adds or
-#     removes a text callback;
+#     text: invisible text included) and from ActualText being placed (none here); no flag
+#     adds or removes a text callback;
 #   - with TEXT_COLLECT_STYLES the device takes text drawn twice (fill, then stroke) a second
 #     time, and may merge a character into one already there (fake bold): with no character
 #     from the first time there is nothing to take again or merge into;
-#   - ActualText with no text inside is placed in the box of what is drawn inside it; paths
-#     count for that box only when vectors are collected, with COLLECT_STYLES and
-#     COLLECT_VECTORS alike (the same fill_path / stroke_path callbacks): hence
-#     COLLECT_VECTORS here;
-#   - collected vectors become blocks of their own (type vector), never text.
-# So when that text page holds nothing but vector blocks, the search's dict would have no
-# text block, no span and nothing to redact: it is answered with the dict MuPDF gives for a
-# page without text, and the rest of scrub goes on exactly as before (the same steps in the
-# same order). A page with any other block gets PyMuPDF's own search, unchanged. Nothing is
-# narrowed: whatever would have been redacted still is. If a PyMuPDF update asks for the
-# search differently, the stand-in doesn't recognize it and PyMuPDF's own search runs.
+#   - with TEXT_COLLECT_STYLES paths are collected (to test text against), and only count
+#     for the box of an ActualText (none here); they never become text.
+# So when that text page holds no text block, the search's dict would have no text block,
+# no span and nothing to redact: it is answered with the dict MuPDF gives for a page without
+# text, and the rest of scrub goes on exactly as before (the same steps in the same order).
+# A page with any block gets PyMuPDF's own search, unchanged. Nothing is narrowed: whatever
+# would have been redacted still is. If a PyMuPDF update asks for the search differently,
+# the stand-in doesn't recognize it and PyMuPDF's own search runs.
 
 _HIDDEN_TEXT_FLAGS = pymupdf.TEXT_PRESERVE_SPANS | pymupdf.TEXT_COLLECT_STYLES
 skipped_searches = 0                # pages scrub() answered without the search (for tests)
 
 
+def _has_metatext(page):
+    """Anything in the page's run (contents, forms, patterns, markups) is marked with
+    ActualText (or Alt, E...): MuPDF's interpreter tells a device so with begin_metatext. A
+    device that does nothing else, so nothing that reads the text can crash. True when
+    unsure."""
+    m = pymupdf.mupdf
+    if not hasattr(m, "FzDevice2") or not hasattr(m.FzDevice2, "use_virtual_begin_metatext"):
+        return True
+
+    class Device(m.FzDevice2):
+        found = False
+
+        def __init__(self):
+            super().__init__()
+            self.use_virtual_begin_metatext()
+
+        def begin_metatext(self, *args):
+            self.found = True
+
+    try:
+        dev = Device()
+        m.fz_run_page(page.this, dev, m.FzMatrix(), m.FzCookie())
+        m.fz_close_device(dev)
+        return dev.found
+    except Exception:
+        return True
+
+
 def page_has_no_text(page):
     """MuPDF's text extraction finds no character on page (see above). False when unsure."""
-    m = pymupdf.mupdf
-    vector = getattr(m, "FZ_STEXT_BLOCK_VECTOR", None)
-    if vector is None or not hasattr(pymupdf, "TEXT_COLLECT_VECTORS"):
-        return False
     try:
-        tp = page.get_textpage(flags=pymupdf.TEXT_PRESERVE_SPANS |
-                               pymupdf.TEXT_COLLECT_VECTORS)
-        block = tp.this.m_internal.first_block
-        while block:
-            if block.type != vector:
-                return False
-            block = block.next
-        return True
+        if not isinstance(page.this, pymupdf.mupdf.FzPage) or _has_metatext(page):
+            return False
+        tp = page.get_textpage(flags=pymupdf.TEXT_PRESERVE_SPANS)
+        return not tp.this.m_internal.first_block
     except Exception:
         return False
 
