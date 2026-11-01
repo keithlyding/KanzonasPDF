@@ -2135,10 +2135,16 @@ class MainWindow(QMainWindow):
     _PLUS_KEYS = (Qt.Key_Plus, Qt.Key_Equal)
     _MINUS_KEYS = (Qt.Key_Minus, Qt.Key_Underscore)
 
+    # the only events looked at below: every event of the app passes through here (opening
+    # a 2,000-page set sends it 55,000), so the others leave at once
+    _FILTERED = frozenset((QEvent.Resize, QEvent.KeyPress, QEvent.ShortcutOverride))
+
     def eventFilter(self, obj, e):
+        t = e.type()
+        if t not in self._FILTERED:
+            return False
         if QApplication.closingDown():
             return False            # the app is being torn down: nothing here is safe to touch
-        t = e.type()
         if t == QEvent.Resize and obj is getattr(self, "thumbs", None):
             QTimer.singleShot(0, self._fit_thumbs)     # after the list has laid out its new size
         if t == QEvent.KeyPress and obj is getattr(self, "thumbs", None) and \

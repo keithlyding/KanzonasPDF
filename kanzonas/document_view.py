@@ -327,7 +327,14 @@ class DocumentView(QScrollArea):
         old = getattr(self, "pages", None)
         lay = self.widget().layout() if old and self.widget() is not None else None
         if lay is not None:
-            # reuse the page widgets: renumber them and add or remove the difference
+            # reuse the page widgets: renumber them and add or remove the difference.
+            # The page stack is hidden meanwhile: a widget added to a shown layout is shown
+            # later on its own, and each of those lays out every page after it again
+            # (500 pages inserted into 2,000: 9 s frozen); shown again, it's laid out once.
+            container = self.widget()
+            focus = QApplication.focusWidget()
+            had_focus = focus is not None and container.isAncestorOf(focus)
+            container.hide()
             n = self.doc.page_count
             for w in old[n:]:
                 lay.removeWidget(w)
@@ -340,7 +347,10 @@ class DocumentView(QScrollArea):
                 w = PageWidget(self, i)
                 lay.addWidget(w, 0, Qt.AlignHCenter)
                 old.append(w)
-            self.widget().adjustSize()
+            container.show()
+            container.adjustSize()
+            if had_focus:
+                self.setFocus()         # (hiding the pages took the keyboard focus away)
             self.verticalScrollBar().setValue(keep)
             return
         container = QWidget()
@@ -1875,8 +1885,9 @@ class DocumentView(QScrollArea):
 
         def do():
             toc = self.doc.get_toc(False)
-            for i in indices:
-                self.doc.delete_page(i)
+            # all at once: each delete_page walks every link and bookmark of the document
+            # (0.2 to 0.4 s per page on a 2,000-sheet set), delete_pages does it once
+            self.doc.delete_pages(indices)
             self._retarget_bookmarks(toc, set(indices), len(indices) + self.doc.page_count)
         self.modify(do, structural=True)
         return True
@@ -5443,12 +5454,29 @@ class DocumentView(QScrollArea):
                          color, tr("Edit anyway"), self._edit_signed)
 
     def _has_filled_signature(self):
-        """True if any signature field holds a signature (/V), false for empty ones only."""
+        """True if any signature field holds a signature (/V), false for empty ones only.
+        Read from the form's list of fields (/AcroForm /Fields and their /Kids), the same
+        test PyMuPDF's Widget.is_signed makes, instead of loading every field of every page
+        (0.4 s on a 1,000-field form, and it runs twice when a file opens)."""
         try:
-            for page in self.doc:
-                for w in page.widgets(types=[pymupdf.PDF_WIDGET_TYPE_SIGNATURE]):
-                    if w.is_signed:
+            m = pymupdf.mupdf
+            pdf = pymupdf._as_pdf_document(self.doc)
+            todo = [m.pdf_dict_getp(m.pdf_trailer(pdf), "Root/AcroForm/Fields")]
+            seen = set()
+            while todo:
+                arr = todo.pop()
+                for k in range(m.pdf_array_len(arr)):
+                    field = m.pdf_array_get(arr, k)
+                    num = m.pdf_to_num(field)
+                    if num:
+                        if num in seen:
+                            continue            # (a loop in a damaged file)
+                        seen.add(num)
+                    if m.pdf_signature_is_signed(pdf, field):
                         return True
+                    kids = m.pdf_dict_gets(field, "Kids")
+                    if m.pdf_is_array(kids):
+                        todo.append(kids)
         except Exception:
             return True
         return False
@@ -5974,7 +6002,7 @@ class DocumentView(QScrollArea):
                 fx = self._field_dict(w)           # (and the parent kept the old value)
                 if self.doc.xref_get_key(fx, "V")[0] != "null":
                     self.doc.xref_set_key(fx, "V", "null")
-        self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM)
+        self._value_change(lambda: self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM))
 
     def _choose_option(self, index, xref):
         """Option (radio) button: turn this one on and every other button of its group off.
@@ -5994,7 +6022,8 @@ class DocumentView(QScrollArea):
             w = pg.load_widget(xref)
             w.field_value = True
             w.update()
-        self.modify(do, sorted({index} | {i for i, _x in others}), permission=pymupdf.PDF_PERM_FORM)
+        self._value_change(lambda: self.modify(do, sorted({index} | {i for i, _x in others}),
+                                               permission=pymupdf.PDF_PERM_FORM))
 
     def _edit_text_field(self, index, xref):
         page = self.doc[index]
@@ -6059,8 +6088,39 @@ class DocumentView(QScrollArea):
 
     field_focus = None      # (page, xref) of the form field Tab moved to / last filled
 
+    _field_order = None     # (_field_order_key() when read, [(page, xref)]), see field_order
+
+    def _field_order_key(self):
+        # any change (an edit, undo, redo, pages added or moved) bumps revision or _gen; the
+        # split view follows its main view's document
+        src = getattr(self, "_source", None) or self
+        return (self.doc, src.revision, getattr(src, "_gen", 0))
+
+    def _same_key(self, a, b):
+        return a is not None and b is not None and a[0] is b[0] and a[1:] == b[1:]
+
     def field_order(self):
-        """Fillable fields in reading order: page by page, top to bottom, left to right."""
+        """Fillable fields in reading order: page by page, top to bottom, left to right.
+        Kept until the document changes: reading every field of a 1,000-field form takes
+        0.3 to 0.5 s, too slow for every Tab."""
+        key = self._field_order_key()
+        if self._field_order is not None and self._same_key(self._field_order[0], key):
+            return list(self._field_order[1])
+        order = self._read_field_order()
+        self._field_order = (key, order)
+        return list(order)
+
+    def _value_change(self, fn):
+        """Run fn, an edit that only fills in field values: the field order read before it
+        still holds afterwards (typing in a field and pressing Tab doesn't read them all)."""
+        cached = self._field_order
+        valid = cached is not None and self._same_key(cached[0], self._field_order_key())
+        done = fn()
+        if valid and done and self._field_order is cached:
+            self._field_order = (self._field_order_key(), cached[1])
+        return done
+
+    def _read_field_order(self):
         order = []
         for i in range(self.doc.page_count):
             page = self.doc[i]
