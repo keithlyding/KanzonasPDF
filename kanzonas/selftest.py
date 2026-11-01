@@ -277,6 +277,86 @@ def run(log_path):
         return "(" + ", ".join(f"{k} {took[k]:.2f}s" for k in limits) + ")"
     check("editing speed budget", t_edit_speed)
 
+    def t_heavy_speed():
+        # a heavy sheet (60,000 shapes) stays quick to work on: its drawing read for CAD
+        # (1.6.1: about 1.4 s, its outlines 1.1 s), a markup added and the page drawn again
+        # without drawing the sheet again (0.7 s), undone through MuPDF's journal (0.6 s,
+        # with a copy of the document), and the wheel zoom showing the page scaled at once
+        # (0.7 s to 2.3 s a notch before)
+        import random
+        import time
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance() or QApplication([])
+        from . import annotations, page_objects
+        from .document_view import DocumentView
+        rnd = random.Random(7)
+        out = [b"1 0 0 -1 0 800 cm 0.35 w 0.2 0.4 0.1 RG"]
+        for i in range(60000):
+            x, y = rnd.uniform(20, 1100), rnd.uniform(20, 700)
+            if i % 10 < 8:
+                out.append(b"%.2f %.2f m %.2f %.2f l S" % (x, y, x + rnd.uniform(-40, 40), y))
+            else:
+                out.append(b"%.2f %.2f 20 -15 re f" % (x, y))
+        d = pymupdf.open()
+        pg = d.new_page(width=1200, height=800)
+        x = d.get_new_xref()
+        d.update_object(x, "<<>>")
+        d.update_stream(x, b"\n".join(out))
+        pg.set_contents(x)
+        path = os.path.join(tempfile.mkdtemp(), "heavy.pdf")
+        d.save(path, deflate=True)
+        d.close()
+        times = {}
+        v = DocumentView(path)
+        try:
+            v.resize(1000, 700)
+            v.show()
+            app.processEvents()
+            t = time.perf_counter()
+            objs = page_objects.Objects(v.doc[0])
+            times["read"] = time.perf_counter() - t
+            t = time.perf_counter()
+            for it in objs.items:
+                objs.lines(it)
+            times["outlines"] = time.perf_counter() - t
+            assert len(objs.items) == 60000, f"{len(objs.items)} shapes read"
+            del objs
+            v.set_zoom(1.0)
+            w = v.pages[0]
+            w._pix = None
+            w._render()                     # (the sheet drawn once, as on opening)
+            t = time.perf_counter()
+            v._create(0, {"kind": "rect", "props": dict(annotations.DEFAULTS["rect"]),
+                          "rect": pymupdf.Rect(200, 200, 300, 300)})
+            w._pix = None
+            w._render()
+            times["markup"] = time.perf_counter() - t
+            assert w._pix is not None, "the page wasn't drawn again after the markup"
+            t = time.perf_counter()
+            v.undo()
+            w = v.pages[0]
+            w._pix = None
+            w._render()
+            times["undo"] = time.perf_counter() - t
+            assert w._pix is not None, "the page wasn't drawn again after the undo"
+            assert not list(v.doc[0].annots()), "the markup is still there after undo"
+            v._note_render_cost(0, 1.0)     # (heavy: drawn sharp once the wheel stops)
+            t = time.perf_counter()
+            v._quick_zoom()
+            v.set_zoom(1.25)
+            v.viewport().repaint()
+            times["zoom"] = time.perf_counter() - t
+        finally:
+            v.dirty = False
+            v.close_doc()
+        msg = ", ".join("%s %.0f ms" % (k, times[k] * 1000) for k in
+                        ("read", "outlines", "markup", "undo", "zoom"))
+        budget = {"read": 2.5, "outlines": 2.0, "markup": 0.3, "undo": 0.3, "zoom": 0.15}
+        over = [k for k in budget if times[k] > budget[k]]
+        assert not over, f"over budget: {over} ({msg})"
+        return "(" + msg + ")"
+    check("heavy drawing speed budget", t_heavy_speed)
+
     def t_everyday_speed():
         # what runs on each mouse move or keystroke stays a few milliseconds, and page work on
         # a long document stays quick (1.6 took: a text-selection drag 32-121 ms per move,
