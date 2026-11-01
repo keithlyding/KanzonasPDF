@@ -128,7 +128,26 @@ def run(log_path):
         pdf_speed.delete_many(pg, xs[:4])
         left = sorted(x for x, *_ in pg.annot_xrefs())
         assert left == sorted(xs[4:]), f"left after deleting 4 (and a reply): {left}"
-        return "(names, delete with replies)"
+        # Remove hidden information leaves out the slow hidden-text search only on a page
+        # with no text at all, and still removes hidden text elsewhere
+        d = pymupdf.open()
+        lines = d.new_page()
+        sh = lines.new_shape()
+        for i in range(200):
+            sh.draw_line((10, 10 + 3 * i), (500, 12 + 3 * i))
+        sh.finish(color=(0, 0, 0), width=0.5)
+        sh.commit()
+        hidden = d.new_page()
+        hidden.insert_text((72, 72), "Seen text", fontsize=12)
+        hidden.insert_text((72, 120), "Secret OCR layer", fontsize=12, render_mode=3)
+        before = pdf_speed.skipped_searches
+        pdf_speed.scrub(d, hidden_text=True, metadata=False, xml_metadata=False)
+        assert pdf_speed.skipped_searches == before + 1, \
+            "PyMuPDF changed: Remove hidden information searches pages with no text again " \
+            "(see pdf_speed.scrub)"
+        text = d[1].get_text()
+        assert "Seen" in text and "Secret" not in text, f"hidden text left: {text!r}"
+        return "(names, delete with replies, hidden-text search)"
     check("PyMuPDF speed fixes", t_pdf_speed)
 
     def t_undo_journal():
