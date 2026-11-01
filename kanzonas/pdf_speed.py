@@ -53,16 +53,17 @@ def can_delete_many():
         hasattr(pymupdf.Page, "_pdf_page") and hasattr(pymupdf.Page, "_delete_empty_annots")
 
 
-def delete_many(page, xrefs):
+def delete_many(page, xrefs, keep_replies=False):
     """Delete these annotations (xrefs) from page, as page.delete_annot does one at a time
     (with the replies to each, and its pop-up), looking through the page's markups once.
     xrefs no longer on the page are skipped. The caller must not hold Annot objects for
-    them (load them, read them, let them go, then delete)."""
+    them (load them, read them, let them go, then delete). keep_replies: the replies stay (a
+    markup written anew in its place: they are then pointed at the new one)."""
     xrefs = list(dict.fromkeys(xrefs))
     if not xrefs:
         return
-    if len(xrefs) < 4 or not can_delete_many():
-        for x in xrefs:                 # (a few: PyMuPDF's own way is as quick)
+    if not can_delete_many():
+        for x in xrefs:                 # (a PyMuPDF without what's needed: its own way)
             try:
                 a = page.load_annot(x)
             except Exception:
@@ -89,8 +90,8 @@ def delete_many(page, xrefs):
     for x in xrefs:
         if x not in found or x in gone:
             continue
-        for n, r in replies.get(x, ()):     # the replies to it go first, as in PyMuPDF
-            if n not in gone:
+        for n, r in () if keep_replies else replies.get(x, ()):
+            if n not in gone:               # (the replies to it go first, as in PyMuPDF)
                 m.pdf_delete_annot(pdfpage, r)
                 gone.add(n)
         m.pdf_delete_annot(pdfpage, found[x])

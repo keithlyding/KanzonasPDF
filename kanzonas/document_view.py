@@ -269,6 +269,15 @@ class _AnnotShot:
         return not (+self.rect + (-tol, -tol, tol, tol)).contains(pt)
 
 
+
+def _annot_flags(doc, xref):
+    """An annotation's /F flags, read without loading it."""
+    kind, val = doc.xref_get_key(xref, "F")
+    try:
+        return int(float(val)) if kind == "int" or kind == "float" else 0
+    except ValueError:
+        return 0
+
 class DocumentView(QScrollArea):
     _orig_data = None               # original file bytes (signed / protected files only)
     _orig_enc = None                # original protection, to keep it when saving edits
@@ -728,16 +737,15 @@ class DocumentView(QScrollArea):
     def set_object_flags(self, index, xrefs, locked=None, hidden=None):
         """Lock / unlock and hide / show markups (one undo step)."""
         def do():
-            pg = self.doc[index]
             for x in xrefs:
-                a = pg.load_annot(x)
-                f = a.flags or 0
+                f = _annot_flags(self.doc, x)
                 if locked is not None:
                     f = f | pymupdf.PDF_ANNOT_IS_LOCKED if locked else f & ~pymupdf.PDF_ANNOT_IS_LOCKED
                 if hidden is not None:
                     f = f | pymupdf.PDF_ANNOT_IS_HIDDEN if hidden else f & ~pymupdf.PDF_ANNOT_IS_HIDDEN
-                a.set_flags(f)
-                a.update()
+                # only the flags change: redrawing the markup (Annot.update) took a
+                # measurement's label and a text box's border color away
+                self.doc.xref_set_key(x, "F", str(f))
         if locked or hidden:
             self.clear_selection()
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
@@ -758,11 +766,9 @@ class DocumentView(QScrollArea):
 
         def do():
             for i, xrefs in locked.items():
-                pg = self.doc[i]
-                for x in xrefs:
-                    a = pg.load_annot(x)
-                    a.set_flags((a.flags or 0) & ~pymupdf.PDF_ANNOT_IS_LOCKED)
-                    a.update()
+                for x in xrefs:            # (the flags alone, as set_object_flags)
+                    self.doc.xref_set_key(
+                        x, "F", str(_annot_flags(self.doc, x) & ~pymupdf.PDF_ANNOT_IS_LOCKED))
         self.modify(do, list(locked), permission=pymupdf.PDF_PERM_ANNOTATE)
         return sum(len(x) for x in locked.values())
 
@@ -4398,6 +4404,7 @@ class DocumentView(QScrollArea):
                 from . import links
                 old = pymupdf.Rect(line["bbox"])
                 links.follow(page, old, old + (d.x, d.y, d.x, d.y), on="text")
+            changes = []
             for x, m in moving:
                 if "quads" in m:
                     m = annotations.copy(m)
@@ -4405,7 +4412,9 @@ class DocumentView(QScrollArea):
                                   for q in m["quads"]]
                 else:
                     m = annotations.moved(m, d)
-                annotations.replace(page, x, m)
+                changes.append((x, m))
+            if changes:                     # (moved where they are; a note keeps its replies)
+                annotations.replace_many(page, changes, olds=dict(moving))
             used["moved"] = len(moving)
         self.modify(do, [index])
         wanted = font

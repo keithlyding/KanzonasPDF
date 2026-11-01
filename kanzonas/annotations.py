@@ -983,8 +983,10 @@ def shift_in_place(page, xref, d, to_pdf=None):
         kind, val = doc.xref_get_key(xref, key)
         if kind == "null":
             continue
-        if kind != "array":
-            return False                # (an indirect array, or odd: write it anew instead)
+        if kind != "array" or "R" in val:
+            # (an indirect array, or one holding references to other objects: shifting its
+            # text would change the references, not the positions; write it anew instead)
+            return False
         edits.append((xref, key, _shift_pairs(val, v.x, v.y)))
     if not edits or edits[0][1] != "Rect":
         return False
@@ -992,7 +994,7 @@ def shift_in_place(page, xref, d, to_pdf=None):
     if kind == "xref":                  # its note's box goes along
         pop = int(val.split()[0])
         pk, pv = doc.xref_get_key(pop, "Rect")
-        if pk == "array":
+        if pk == "array" and "R" not in pv:
             edits.append((pop, "Rect", _shift_pairs(pv, v.x, v.y)))
     kind, val = doc.xref_get_key(xref, KZ_KEY)
     if kind == "string":
@@ -1057,16 +1059,32 @@ def replace_many(page, changes, olds=None):
             shifted.add(xref)
     # ...the old ones of the rest go in one look through the page (one at a time, each delete
     # looked through all the page's markups for replies: minutes for a few thousand)
-    pdf_speed.delete_many(page, [x for x, m in changes
-                                 if m["kind"] != "attach" and x not in shifted])
+    # (a markup not changed at all stays as it is)
+    unchanged = {x for x, m in changes if x not in shifted and m["kind"] != "attach" and
+                 _same(olds[x], m)}
+    rewrite = [x for x, m in changes
+               if m["kind"] != "attach" and x not in shifted and x not in unchanged]
+    # the replies to a markup written anew answer the new one (deleting it took them along)
+    doc = page.parent
+    answering = {}
+    if rewrite:
+        targets = {f"{x} 0 R": x for x in rewrite}
+        for x, _kind, *_ in page.annot_xrefs():
+            kind, val = doc.xref_get_key(x, "IRT")
+            if kind == "xref" and val in targets:
+                answering.setdefault(targets[val], []).append(x)
+    pdf_speed.delete_many(page, rewrite, keep_replies=True)
     for xref, model in changes:
-        if xref in shifted:
+        if xref in shifted or xref in unchanged:
             out.append((xref, olds[xref], xref))
             continue
         if model["kind"] == "attach":
             out.append((xref, olds[xref], replace(page, xref, model)))
             continue
-        out.append((xref, olds[xref], write(page, model).xref))
+        new = write(page, model).xref
+        for r in answering.get(xref, ()):
+            doc.xref_set_key(r, "IRT", f"{new} 0 R")
+        out.append((xref, olds[xref], new))
     # each new one takes its old one's place in the stacking order (anything else made on
     # the way, a pop-up note, stays on top as it was added)
     now = annot_order(page)

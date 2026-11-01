@@ -142,6 +142,10 @@ class MarkupsPanel(QWidget):
         # first page first (Qt's own default order is descending) until a header is clicked
         hh.setSortIndicator(0, Qt.AscendingOrder)
         self.table.setSortingEnabled(True)
+        # a header clicked (even back to Page): rows that tie keep that sort's order, not the
+        # page's; the next refresh fills the table again (a fill lists them in page order)
+        self._as_filled = False
+        hh.sortIndicatorChanged.connect(lambda *_: setattr(self, "_as_filled", False))
         hh.setSectionResizeMode(2, QHeaderView.Stretch)
         for c in (0, 1, 3, 4, 5):
             hh.setSectionResizeMode(c, QHeaderView.ResizeToContents)
@@ -195,6 +199,7 @@ class MarkupsPanel(QWidget):
             self.table.setRowCount(len(self._rows))
             for r, row in enumerate(self._rows):
                 self._set_row(r, row)
+            self._as_filled = True
         self.table.setUpdatesEnabled(True)
         for c in (0, 1, 3, 4, 5):
             self.table.resizeColumnToContents(c)
@@ -225,7 +230,8 @@ class MarkupsPanel(QWidget):
         if not (gone or changed or added):
             return True
         hh = self.table.horizontalHeader()
-        if len(gone) + len(changed) + len(added) > max(200, len(self._rows) // 4) or \
+        if not self._as_filled or \
+                len(gone) + len(changed) + len(added) > max(200, len(self._rows) // 4) or \
                 self.table.rowCount() != len(self._rows) - len(added) + len(gone) or \
                 hh.sortIndicatorSection() != 0 or hh.sortIndicatorOrder() != Qt.AscendingOrder:
             return False
