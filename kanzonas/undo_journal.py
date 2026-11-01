@@ -323,6 +323,24 @@ def usable():
 
 
 # ---- one document's journal -------------------------------------------------------------
+def _load_all(pdf):
+    """Read every object of a document not repaired yet, before its first edit. MuPDF
+    repairs a damaged file (a wrong offset in its table of objects) only when it first reads
+    the broken object, and that repair rebuilds the table from the file: every change made
+    so far is lost, also from the next save. A copy per edit (up to 1.6) read every object
+    at the first edit, so the repair came before any change; so it does here (14,000
+    objects: 0.06 s, once per document)."""
+    if pdf.m_internal.repair_attempted:
+        return                          # (MuPDF repairs a document only once)
+    for num in range(1, m.pdf_xref_len(pdf)):
+        try:
+            m.pdf_load_object(pdf, num)
+        except Exception:
+            pass                        # (a free or broken entry)
+        if pdf.m_internal.repair_attempted:
+            return
+
+
 class Journal:
     """MuPDF's journal of one document. Between edits an implicit operation stays open (see
     the module's docstring); an edit is begin() ... end() (or abandon()), each a journal
@@ -334,6 +352,7 @@ class Journal:
         self.doc = doc
         self.pdf = pymupdf._as_pdf_document(doc)
         self.raw = self.pdf.m_internal
+        _load_all(self.pdf)
         m.pdf_enable_journal(self.pdf)
         self.repaired = self.raw.repair_attempted
         self.epoch = 0              # one more each time the entries are all forgotten
