@@ -675,6 +675,8 @@ class DocumentView(QScrollArea):
         other.documentChanged.connect(self._mirror_changed)
         other.structureChanged.connect(self._mirror_structure)
         other.pageResized.connect(self._mirror_resized)
+        # (a layer shown or hidden in the main view is shown or hidden here too: same document)
+        other.layersChanged.connect(self._redraw_all)
         return self
 
     def _mirror_changed(self):
