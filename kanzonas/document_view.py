@@ -610,6 +610,9 @@ class DocumentView(QScrollArea):
         return self
 
     def _mirror_changed(self):
+        # what this (read-only) split view read from the pages is old too: the text, the
+        # markups under the pointer (a hover showed a moved note where it was), the objects
+        self._clear_caches()
         for w in self.pages:
             w.invalidate()
 
