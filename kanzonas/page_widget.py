@@ -190,7 +190,7 @@ def check_content(view, i, force=False):
             not any(k[0] == i for k in view._tiles):
         # nothing drawn from it is kept any more (scrolled far away): its key is let go
         # rather than read again to compare (a layer shown, Show markups, or an edit seen by
-        # the split view checks every page: 2,000 sheets visited took a second each time)
+        # the split view checks every page: 300 heavy sheets visited, 0.1-0.2 s each time)
         new = None
     else:
         try:
