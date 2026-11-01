@@ -143,6 +143,51 @@ class Battery(Quiet):
             with pymupdf.open(self.path("out.pdf")) as out:
                 self.assertEqual(annots(out), [2, 1, 1])     # (the copy has the markups)
 
+    def test_a_field_shown_on_two_pages(self):
+        # one field with a widget on page 1 and another on page 3: a value typed on page 1
+        # shows on both, but only page 1 was drawn again (also after an undo or redo through
+        # the journal, where a copy per edit drew every page again)
+        path = self.path("twin.pdf")
+        d = pymupdf.open()
+        for i in range(3):
+            d.new_page().insert_text((72, 72), "Page %d" % (i + 1))
+        parent = d.get_new_xref()
+        d.update_object(parent, "<</FT/Tx/T(who)/V(start)/DA(0 g /Helv 11 Tf)>>")
+        kids = []
+        for i, y in ((0, 100), (2, 200)):
+            x = d.get_new_xref()
+            d.update_object(x, "<</Type/Annot/Subtype/Widget/Rect[72 %d 300 %d]/Parent %d 0 R"
+                               "/P %d 0 R/F 4>>" % (y, y + 25, parent, d.page_xref(i)))
+            d.xref_set_key(d.page_xref(i), "Annots", "[%d 0 R]" % x)
+            kids.append(x)
+        d.xref_set_key(parent, "Kids", "[%d 0 R %d 0 R]" % tuple(kids))
+        d.xref_set_key(d.pdf_catalog(), "AcroForm", "<</Fields[%d 0 R]/DA(0 g /Helv 11 Tf)>>"
+                       % parent)
+        d.save(path)
+        d.close()
+        for journal in (True, False):
+            with self.subTest(journal=journal):
+                from kanzonas import document_view as DV
+                from kanzonas.document_view import DocumentView
+                DV.USE_JOURNAL = journal
+                v = DocumentView(path)
+                self.addCleanup(lambda v=v: v.doc.is_closed or v.close_doc())
+                v.resize(900, 700)
+                self.assertEqual(v._field_pages(0, kids[0]), [0, 2])
+                for step in ("type", "undo", "redo"):
+                    for w in v.pages:
+                        w.grab()                # (drawn: each keeps its picture)
+                    self.assertIsNotNone(v.pages[2]._pix)
+                    if step == "type":
+                        v._set_field(0, kids[0], "Jane Doe")
+                    else:
+                        getattr(v, step)()
+                    self.assertIsNone(v.pages[2]._pix, step)    # (drawn again)
+                    if journal or step == "type":   # (a copy brings back every page)
+                        self.assertIsNotNone(v.pages[1]._pix, step)  # (not this one)
+                v.dirty = False
+                v.close_doc()
+
     def test_the_authors_of_the_markups(self):
         # (Delete comments lists them: the page went before its markups were read, and
         # it raised "annotation not bound to any page" whenever there was a markup)
@@ -157,6 +202,40 @@ class Battery(Quiet):
             self.assertEqual(v.markup_authors(), sorted({"", annotations.author()}))
             v.dirty = False
             v.close_doc()
+
+    def test_reading_a_turned_page_between_undo_and_redo(self):
+        # PyMuPDF reads a rotated page's text and drawings with the page turned upright for
+        # a moment (/Rotate set to 0 and back), and so does Edit text: MuPDF dropped its
+        # entries to redo at that change, so on a document with a turned page, Redo did
+        # nothing once the page's text was read (Find, hover, Edit text, Edit objects...)
+        reads = {
+            "text": lambda v: v.doc[1].get_text(),
+            "words": lambda v: v.doc[1].get_text("words"),
+            "search": lambda v: v.doc[1].search_for("Contractor"),
+            "drawings": lambda v: v.doc[1].get_drawings(),
+            "texttrace": lambda v: v.doc[1].get_texttrace(),
+            "bboxlog": lambda v: v.doc[1].get_bboxlog(),
+            "edit text lines": lambda v: v._lines(1),
+            "objects": lambda v: (v.content_objects(1), v.text_objects(1)),
+        }
+        for label, read in reads.items():
+            with self.subTest(label):
+                v = self.view()
+                v.rotate_page(1, 90)
+                rect_markup(v, 0)
+                done = canon(v.doc)
+                v.undo()
+                v._clear_caches()
+                read(v)
+                self.assertEqual(v._journal.ahead(), v._redo[-1].names)
+                v.redo()
+                self.assertEqual(canon(v.doc), done)
+                self.assertEqual(v.doc[1].rotation, 90)
+                v.undo()
+                v.undo()
+                self.assertEqual(v.doc[1].rotation, 0)
+                v.dirty = False
+                v.close_doc()
 
     def test_a_failed_edit_and_the_steps_to_redo(self):
         # a failed edit takes nothing away from the steps to undo; but MuPDF drops its
