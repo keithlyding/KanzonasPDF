@@ -50,6 +50,17 @@ def nested_actualtext_doc():
     page_with(d, b"/Span <</ActualText (A)>> BDC /Fm0 Do EMC",
               "<</XObject<</Fm0 %d 0 R>>>>" % form)
     page_with(d, b"/Span <</ActualText (A)>> BDC 10 10 m 90 90 l S EMC")     # not nested
+    pat = d.get_new_xref()                              # in a pattern's tile
+    d.update_object(pat, "<</PatternType 1/PaintType 1/TilingType 1/BBox[0 0 20 20]/XStep 20"
+                         "/YStep 20/Resources<<>>>>")
+    d.update_stream(pat, b"/Span <</ActualText (A)>> BDC /Span <</ActualText (B)>> BDC "
+                         b"0 0 m 20 20 l S EMC EMC")
+    page_with(d, b"/Pattern cs /P0 scn 10 10 100 100 re f", "<</Pattern<</P0 %d 0 R>>>>" % pat)
+    p = d.new_page()                                    # in a markup's appearance
+    a = p.add_rect_annot(pymupdf.Rect(50, 50, 150, 150))
+    a._setAP(b"/Span <</ActualText (A)>> BDC /Span <</ActualText (B)>> BDC "
+             b"0 0 m 20 20 l S EMC EMC")
+    del a
     p = d.new_page()                                    # lines only: still skipped
     for i in range(50):
         p.draw_line((10 + i, 10), (10 + i, 300), width=0.3)
@@ -82,7 +93,7 @@ class HiddenTextSearch(unittest.TestCase):
         """, src, os.path.join(tmp, "quick.pdf"))
         self.assertEqual(r.returncode, 0, "the check crashed: %s" % r.stderr[-500:])
         flags, skipped = r.stdout.strip().splitlines()[-2:]
-        self.assertEqual(flags, "[False, False, False, False, True]")
+        self.assertEqual(flags, "[False, False, False, False, False, False, True]")
         self.assertEqual(skipped, "1")
         own = pymupdf.open(src)
         own.scrub(**SCRUB)
