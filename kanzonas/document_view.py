@@ -6756,7 +6756,32 @@ class DocumentView(QScrollArea):
                 fx = self._field_dict(w)           # (and the parent kept the old value)
                 if self.doc.xref_get_key(fx, "V")[0] != "null":
                     self.doc.xref_set_key(fx, "V", "null")
-        self._value_change(lambda: self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM))
+        pages = self._field_pages(index, xref)
+        self._value_change(lambda: self.modify(do, pages, permission=pymupdf.PDF_PERM_FORM))
+
+    def _field_pages(self, index, xref):
+        """The pages showing the field of widget xref on page index: one field can have a
+        widget on several pages (a name repeated on each page), and all of them show its
+        value. Those pages are drawn again after a value is typed, undone or redone (only
+        the page typed on was, and the others went on showing the old value). None: not
+        known (all pages)."""
+        pg = self.doc[index]
+        try:
+            fx = self._field_dict(pg.load_widget(xref))
+        except Exception:
+            return [index]
+        kind, kids = self.doc.xref_get_key(fx, "Kids")
+        widgets = [int(n) for n in re.findall(r"(\d+) 0 R", kids)] if kind == "array" else []
+        if len(widgets) < 2:
+            return [index]
+        where = {self.doc.page_xref(i): i for i in range(self.doc.page_count)}
+        pages = {index}
+        for x in widgets:
+            kind, p = self.doc.xref_get_key(x, "P")
+            if kind != "xref" or int(p.split()[0]) not in where:
+                return None
+            pages.add(where[int(p.split()[0])])
+        return sorted(pages)
 
     def _choose_option(self, index, xref):
         """Option (radio) button: turn this one on and every other button of its group off.
