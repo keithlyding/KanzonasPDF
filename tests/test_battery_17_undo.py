@@ -143,6 +143,21 @@ class Battery(Quiet):
             with pymupdf.open(self.path("out.pdf")) as out:
                 self.assertEqual(annots(out), [2, 1, 1])     # (the copy has the markups)
 
+    def test_the_authors_of_the_markups(self):
+        # (Delete comments lists them: the page went before its markups were read, and
+        # it raised "annotation not bound to any page" whenever there was a markup)
+        for undo in (False, True):
+            v = self.view()
+            rect_markup(v, 0)
+            rect_markup(v, 2)
+            if undo:
+                v.undo()
+            from kanzonas import annotations
+            # (the sample's own markups have no author)
+            self.assertEqual(v.markup_authors(), sorted({"", annotations.author()}))
+            v.dirty = False
+            v.close_doc()
+
     def test_a_failed_edit_and_the_steps_to_redo(self):
         # a failed edit takes nothing away from the steps to undo; but MuPDF drops its
         # entries to redo at an edit's first change, and taking the edit back doesn't bring

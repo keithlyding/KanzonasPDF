@@ -977,7 +977,8 @@ class DocumentView(QScrollArea):
     def markup_authors(self):
         names = set()
         for i in range(self.doc.page_count):
-            for an in annotations.each_annot(self.doc[i]):
+            page = self.doc[i]          # (kept alive while its markups are read)
+            for an in annotations.each_annot(page):
                 if an.type[0] != pymupdf.PDF_ANNOT_POPUP:
                     names.add(an.info.get("title", "") or "")
         return sorted(names)
