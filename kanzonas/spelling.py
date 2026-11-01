@@ -2,7 +2,8 @@
 get a red wavy underline, and right-clicking one offers corrections and Add to dictionary.
 Edit > Check spelling turns it on and off.
 
-The word list (pyspellchecker) loads the first time a text box opens, not at start-up."""
+The word list (pyspellchecker) loads a few seconds after start-up (load_soon), or the first
+time a word is checked, never during start-up."""
 
 import re
 
@@ -51,6 +52,21 @@ def _checker():
         from spellchecker import SpellChecker          # heavy: only when first needed
         _state["checker"] = SpellChecker(language="en")
     return _state["checker"]
+
+
+def load_soon(ms=4000):
+    """Load the word list a while after start-up, when nothing is going on, instead of at
+    the second letter typed in a text box (a pause of up to half a second). Only when spell
+    checking is on."""
+    from PySide6.QtCore import QTimer
+
+    def load():
+        if enabled() and _state["checker"] is None:
+            try:
+                _checker()
+            except Exception:
+                pass                    # (it tries again when first needed)
+    QTimer.singleShot(ms, load)
 
 
 def _skip(word):

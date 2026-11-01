@@ -319,25 +319,69 @@ def _norm(name):
 
 
 _SYSTEM_FONTS = None
+_FONT_SCAN = None                       # the scan system_fonts_soon() started, until done
 
 
 def _system_fonts():
     """{normalized name: font file} for fonts installed on this computer (scanned once)."""
-    global _SYSTEM_FONTS
+    global _SYSTEM_FONTS, _FONT_SCAN
     if _SYSTEM_FONTS is None:
-        _SYSTEM_FONTS = {}
-        dirs = [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),
-                os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Fonts"),
-                "/usr/share/fonts", os.path.expanduser("~/.fonts"), "/Library/Fonts"]
-        for d in dirs:
-            if not os.path.isdir(d):
-                continue
-            for f in glob.glob(os.path.join(d, "**", "*.[to]tf"), recursive=True):
-                try:
-                    _SYSTEM_FONTS.setdefault(_norm(pymupdf.Font(fontfile=f).name), f)
-                except Exception:
-                    pass
+        scan, _FONT_SCAN = _FONT_SCAN or _font_scan(), None
+        found = None
+        for found in scan:              # (finishes one already under way)
+            pass
+        if _SYSTEM_FONTS is None:
+            _SYSTEM_FONTS = found
     return _SYSTEM_FONTS
+
+
+def _font_scan(per_step=8):
+    """Scan the fonts folders: a generator that yields None every per_step fonts and the
+    finished {normalized name: font file} last."""
+    out = {}
+    dirs = [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Fonts"),
+            "/usr/share/fonts", os.path.expanduser("~/.fonts"), "/Library/Fonts"]
+    count = 0
+    for d in dirs:
+        if not os.path.isdir(d):
+            continue
+        for f in glob.glob(os.path.join(d, "**", "*.[to]tf"), recursive=True):
+            try:
+                out.setdefault(_norm(pymupdf.Font(fontfile=f).name), f)
+            except Exception:
+                pass
+            count += 1
+            if count % per_step == 0:
+                yield None
+    yield out
+
+
+def system_fonts_soon():
+    """Scan the installed fonts in idle time, a few at a time (Windows has hundreds), so the
+    first Edit text change doesn't wait for it. Call it once the window is up."""
+    from PySide6.QtCore import QTimer
+    global _FONT_SCAN
+    if _SYSTEM_FONTS is not None or _FONT_SCAN is not None:
+        return
+    _FONT_SCAN = _font_scan()
+
+    def step():
+        global _SYSTEM_FONTS, _FONT_SCAN
+        if _FONT_SCAN is None:
+            return                      # (done, or finished by _system_fonts)
+        try:
+            found = next(_FONT_SCAN)
+        except Exception:
+            _FONT_SCAN = None
+            return
+        if found is None:
+            QTimer.singleShot(0, step)
+            return
+        _FONT_SCAN = None
+        if _SYSTEM_FONTS is None:
+            _SYSTEM_FONTS = found
+    QTimer.singleShot(0, step)
 
 
 _SUBSET = re.compile(r"^[A-Z]{6}\+")
