@@ -172,6 +172,16 @@ def lines_path(lines):
     return path
 
 
+def tile_span(rect, dpr):
+    """(tx0, ty0, tx1, ty1): the tiles holding every device pixel the widget area rect (a
+    QRect, whole widget pixels) touches at dpr device pixels per widget pixel: at 150% a
+    widget pixel covers a device pixel and a half, and the last one, partly covered, may be
+    the first of the next tile (left unpainted, it kept what was on the screen before)."""
+    return (int(rect.left() * dpr) // TILE, int(rect.top() * dpr) // TILE,
+            (math.ceil((rect.right() + 1) * dpr - 1e-6) - 1) // TILE,
+            (math.ceil((rect.bottom() + 1) * dpr - 1e-6) - 1) // TILE)
+
+
 def check_content(view, i, force=False):
     """Before page i's kept content (display list, renders) is used after it may have
     changed (an edit, an undo, a layer shown): keep it if the page's content key is the one
@@ -432,8 +442,7 @@ class PageWidget(QWidget):
         rc = self.view._rc
         thin = self.view.thin_lines
         check_content(self.view, self.index)
-        tx0, ty0 = int(exposed.left() * dpr) // TILE, int(exposed.top() * dpr) // TILE
-        tx1, ty1 = int(exposed.right() * dpr) // TILE, int(exposed.bottom() * dpr) // TILE
+        tx0, ty0, tx1, ty1 = tile_span(exposed, dpr)
         missing = []
         for ty in range(ty0, ty1 + 1):
             for tx in range(tx0, tx1 + 1):
@@ -665,8 +674,7 @@ class PageWidget(QWidget):
         s = v.zoom * dpr
         s5 = round(s, 5)
         full = pymupdf.IRect(0, 0, int(self.width() * dpr), int(self.height() * dpr))
-        tx0, ty0 = int(vis.left() * dpr) // TILE, int(vis.top() * dpr) // TILE
-        tx1, ty1 = int(vis.right() * dpr) // TILE, int(vis.bottom() * dpr) // TILE
+        tx0, ty0, tx1, ty1 = tile_span(vis, dpr)
         missing = []
         for ty in range(ty0, ty1 + 1):
             for tx in range(tx0, tx1 + 1):

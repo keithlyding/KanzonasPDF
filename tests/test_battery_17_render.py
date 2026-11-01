@@ -248,5 +248,51 @@ class Forms(unittest.TestCase):
                             "page %d after undo" % i)
 
 
+class HighDpiTiles(unittest.TestCase):
+    def test_the_last_partly_covered_device_pixels_are_painted(self):
+        """At 150% screen scaling a widget pixel covers one and a half device pixels: a repaint
+        of an area ending inside a device pixel (a scroll exposes a strip) must still paint
+        that last device pixel, also where it's the first of the next tile (it kept what was
+        on the screen before: a line of old pixels)."""
+        from unittest import mock
+        from PySide6.QtCore import QRect
+        from PySide6.QtGui import QColor, QPainter
+        d = pymupdf.open()
+        p = d.new_page(width=2592, height=1728)
+        p.draw_rect(p.rect, color=None, fill=(0, 0, 1))
+        path = os.path.join(tempfile.mkdtemp(), "big.pdf")
+        d.save(path)
+        dpr = 1.5
+        with mock.patch.object(PW.PageWidget, "devicePixelRatioF", lambda self: dpr):
+            v = DocumentView(path)
+            v.resize(900, 700)
+            v.show()
+            APP.processEvents()
+            self.addCleanup(v.close_doc)
+            v.progressive = False
+            v.set_zoom(3.0)
+            w = v.pages[0]
+            self.assertTrue(w._tiled())
+            img = QImage(1200, 1200, QImage.Format_RGB32)
+            img.setDevicePixelRatio(dpr)
+            img.fill(QColor(255, 0, 255))           # (what was on the screen before)
+            painter = QPainter(img)
+            w._paint_tiles(painter, QRect(0, 0, 342, 342))  # device pixels 0 to 512
+            painter.end()
+            for x, y in ((511, 100), (512, 100), (100, 512), (512, 512)):
+                self.assertEqual(img.pixelColor(x, y).name(), "#0000ff", (x, y))
+            # and what's drawn later for an area is what a repaint of it asks for
+            v.progressive = True
+            v._note_render_cost(0, 1.0)
+            v._tiles.clear()
+            v._rc.clear()
+            with mock.patch.object(PW.PageWidget, "visibleRegion",
+                                   lambda self: __import__("PySide6.QtGui").QtGui.QRegion(
+                                       QRect(0, 0, 342, 342))):
+                self.assertTrue(w.render_step())
+                self.assertFalse(w.render_step())   # (nothing left: no repaint waits for it)
+            self.assertIn((0, round(v.zoom * dpr, 5), 1, 1), v._tiles)
+
+
 if __name__ == "__main__":
     unittest.main()
