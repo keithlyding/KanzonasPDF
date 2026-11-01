@@ -95,6 +95,15 @@ def run(log_path):
         v.set_zoom(4.0)
         app.processEvents()
         v.pages[0].repaint()
+        shown = time.perf_counter() - t
+        # (a heavy page is shown scaled at once and drawn sharp in short steps: the time is
+        # until every part in view is sharp)
+        timer = getattr(v, "_render_timer", None)
+        while time.perf_counter() - t < 30 and (
+                v._zooming or getattr(v, "_render_wait", None) or
+                (timer is not None and timer.isActive())):
+            app.processEvents()
+        v.pages[0].repaint()
         zoom = time.perf_counter() - t
         mem = _memory_mb()
         win.close_tab(win.tabs.currentIndex())
@@ -102,11 +111,12 @@ def run(log_path):
         assert startup < 5, f"start-up took {startup:.1f}s (limit 5s)"
         assert launch is None or launch < 8, f"launch to ready took {launch:.1f}s (limit 8s)"
         assert first < 5, f"opening a 60k-line sheet took {first:.1f}s (limit 5s)"
-        assert zoom < 5, f"zooming to 400% took {zoom:.1f}s (limit 5s)"
+        assert zoom < 5, f"zooming to 400% took {zoom:.1f}s to be sharp (limit 5s)"
+        assert shown < 0.5, f"zooming to 400% showed nothing for {shown:.1f}s (limit 0.5s)"
         assert mem > 1, "couldn't measure memory"
         assert mem < 800, f"memory {mem:.0f} MB (limit 800 MB)"
         lt = "n/a" if launch is None else f"{launch:.2f}s"
-        return f"(launch {lt}, window {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s, {mem:.0f} MB)"
+        return f"(launch {lt}, window {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s (shown {shown:.2f}s), {mem:.0f} MB)"
     check("performance budget", t_performance)
 
     def t_pdf_speed():
