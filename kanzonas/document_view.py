@@ -1245,6 +1245,7 @@ class DocumentView(QScrollArea):
 
     # ---- caches (cleared on every change) ------------------------------------
     def _clear_caches(self):
+        self._gen = getattr(self, "_gen", 0) + 1   # (anything read from the pages is old)
         self._dlists = {}              # page index -> parsed drawing (DisplayList)
         self._tiles = OrderedDict()    # (page, scale, tx, ty) -> rendered tile, LRU
         self._line_cache = {}
@@ -1268,6 +1269,7 @@ class DocumentView(QScrollArea):
     def _clear_page_caches(self, pages):
         """Forget what's cached for these pages only (an edit that leaves the others as
         they were)."""
+        self._gen = getattr(self, "_gen", 0) + 1
         pages = set(pages)
         for i in pages:
             self._dlists.pop(i, None)
@@ -3046,6 +3048,16 @@ class DocumentView(QScrollArea):
             return []
         return [self.selection[1]] + list(self.extra)
 
+    def selected_models_to_paint(self):
+        """selected_models() for painting: read again only when the selection or the document
+        changed (with thousands selected, reading them on every repaint took most of a
+        second, and the pointer lagged). Read only: change the models of selected_models()."""
+        key = (getattr(self, "_gen", 0), id(self.doc), self.selection, tuple(self.extra))
+        cached = getattr(self, "_paint_models", None)
+        if cached is None or cached[0] != key:
+            cached = self._paint_models = (key, self.selected_models())
+        return cached[1]
+
     def selected_models(self):
         """[(xref, model)] for everything selected, first-selected first."""
         if self.selection is None:
@@ -3183,24 +3195,15 @@ class DocumentView(QScrollArea):
         """cad_preview a little at a time: yields (outlines, text rects) for each thing looked
         at (often nothing), so the highlight can be worked out in short slices."""
         if self.tool == "select":
-            xrefs = self.cad_markups_in(index, region, crossing)
-            if xrefs:
-                page = self.doc[index]
-                found = annotations.load_annots(page, xrefs[:3000])
-                models = [(x, annotations.read(a)) for x, a in found.items()]
-                yield self.cad_outlines(index, "markups",
-                                        [(x, m) for x, m in models if m is not None]), []
-            else:
+            took = False
+            for lines, _r in self._markup_preview_steps(index, region, crossing):
+                took = took or bool(lines)
+                yield lines, []
+            if not took:
                 yield [], self.line_rects(self.cad_text(index, region, crossing))
             return
         from .page_objects import overlap
-        xrefs = self.cad_markups_in(index, region, crossing)     # (the markups too)
-        if xrefs:
-            page = self.doc[index]          # (kept alive while its markups are read)
-            found = annotations.load_annots(page, xrefs[:3000])
-            models = [(x, annotations.read(a)) for x, a in found.items()]
-            yield self.cad_outlines(index, "markups",
-                                    [(x, m) for x, m in models if m is not None]), []
+        yield from self._markup_preview_steps(index, region, crossing)    # (the markups too)
         objs = self.content_objects(index)
         for it, taken in (objs.pick_steps(region, crossing) if objs is not None else ()):
             yield (self.object_lines(index, it) if taken else []), []
@@ -3210,6 +3213,24 @@ class DocumentView(QScrollArea):
                         region.touches_rect(r) for r, _ln in it["lines"])):
                 r = it["rect"]
                 yield [[r.tl, r.tr, r.br, r.bl, r.tl]], []
+
+    def _markup_preview_steps(self, index, region, crossing):
+        """The markups part of cad_preview_steps: one step per markup (with thousands on a
+        page, reading them all in one step froze the pointer for over a second)."""
+        if not self.show_markups:
+            return
+        page = self.doc[index]              # (kept alive while its markups are read)
+        shown = 0
+        for an in annotations.each_annot(page):
+            lines = []
+            if shown < 3000 and an.type[0] != pymupdf.PDF_ANNOT_POPUP and not (an.flags or 0) & (
+                    pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN) and \
+                    self._annot_picked(an, region, crossing):
+                m = annotations.read(an)
+                if m is not None:
+                    lines = self.cad_outlines(index, "markups", [(an.xref, m)])
+                    shown += 1
+            yield lines, []
 
     def cad_text(self, index, region, crossing=False):
         """The characters a CAD region takes: inside a window, touched by a crossing one."""
@@ -3389,23 +3410,35 @@ class DocumentView(QScrollArea):
             self.delete_field(index, xref)
             return
         page = self.doc[index]
-        xrefs = [x for x in self.selected_xrefs() if not self.markup_locked(index, x)]
+        xrefs = self.selected_xrefs()
+        found = annotations.load_annots(page, xrefs)   # (one walk: one lookup each took minutes)
+        xrefs = [x for x in xrefs
+                 if not (x in found and (found[x].flags or 0) & pymupdf.PDF_ANNOT_IS_LOCKED)]
+        found.clear()
         self.clear_selection()
         if not xrefs:
             self.statusMessage.emit(self.locked_note())
             return
 
         def do():
-            from . import links
+            from . import links, pdf_speed
+            boxes = []
+            found = annotations.load_annots(page, xrefs)
             for x in xrefs:
                 try:
-                    box = annotations.bounds(annotations.read(page.load_annot(x)))
-                    page.delete_annot(page.load_annot(x))
+                    boxes.append(annotations.bounds(annotations.read(found[x])))
                 except Exception:
                     continue
-                mine = links.attached(page, box, "markup")    # the links made for it go too
-                if mine:
-                    links.remove(page, mine, keep_text=True)
+            found.clear()
+            # all in one look through the page (one at a time took minutes for thousands)
+            pdf_speed.delete_many(page, xrefs)
+            known = links.read(page)
+            mine = {}                   # the links made for them go too
+            for box in boxes:
+                for ln in links.attached(page, box, "markup", known=known):
+                    mine[ln["xref"]] = ln
+            if mine:
+                links.remove(page, list(mine.values()), keep_text=True)
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
 
     # ---- arrange: align, distribute, stacking order -------------------------------
@@ -4443,7 +4476,7 @@ class DocumentView(QScrollArea):
                         # the same ones are selected again, so Copy goes on with both)
                         self._reselect_objects(*kept)
                 else:
-                    out = self._cad_apply(label, mat, copies, keep)
+                    out = self._cad_apply(label, mat, copies, keep, what=what)
         except Exception:
             if self._cad_cmd is not None:   # (a command that failed doesn't go on)
                 self._cad_cmd.finish()
@@ -4506,12 +4539,13 @@ class DocumentView(QScrollArea):
                 return False
         return _Joined()
 
-    def _cad_apply(self, label, mat, copies=None, keep=False, only=None):
+    def _cad_apply(self, label, mat, copies=None, keep=False, only=None, what=None):
         """A CAD command's change to the selection, as one undo step: mat (a Matrix in page
         coordinates) moves / turns / scales / mirrors it; copies (a list of matrices) adds a
         copy for each instead. The drawing's own text only moves."""
         from . import cad_commands, page_objects
-        what = self.cad_targets(only)
+        if what is None:                    # (cad_apply passes what it has read already)
+            what = self.cad_targets(only)
         if what is None:
             return
         kind, index, items = what

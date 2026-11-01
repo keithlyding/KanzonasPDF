@@ -7,6 +7,18 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.6.1
+
+**Fixed**
+- Editing pages with many markups is much faster: with 1,000 markups on a page, adding them takes half a second instead of over three, moving them about two seconds instead of thirteen, and deleting them a third of a second instead of four.
+- The selection highlight and repainting no longer lag when thousands of markups are selected or under a CAD selection box.
+
+## 1.6.1 (es)
+
+**Correcciones**
+- Editar páginas con muchas marcas es mucho más rápido: con 1,000 marcas en una página, agregarlas tarda medio segundo en lugar de más de tres, moverlas unos dos segundos en lugar de trece, y eliminarlas un tercio de segundo en lugar de cuatro.
+- El resaltado de la selección y el redibujado ya no se retrasan cuando hay miles de marcas seleccionadas o dentro de un recuadro de selección CAD.
+
 ## 1.6
 
 **New**

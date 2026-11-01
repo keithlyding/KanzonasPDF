@@ -618,7 +618,7 @@ class PageWidget(QWidget):
                 return
             group = self._edit["preview"] if self._edit and self._edit.get("preview") else None
             if group is None:
-                group = [m for _x, m in self.view.selected_models()]
+                group = [m for _x, m in self.view.selected_models_to_paint()]
             for k, m in enumerate(group):
                 p.setPen(QPen(blue, 2 if k == 0 else 1, Qt.SolidLine if k == 0 else Qt.DashLine))
                 p.drawRect(self.to_screen(A.bounds(m), page).adjusted(-3, -3, 3, 3))

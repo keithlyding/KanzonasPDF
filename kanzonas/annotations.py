@@ -18,8 +18,10 @@ import weakref
 
 import pymupdf
 
-from . import pdfcoords
+from . import pdf_speed, pdfcoords
 from .i18n import tr
+
+pdf_speed.apply()                       # (adding markups doesn't slow down as they add up)
 
 
 def each_annot(page, types=None):
@@ -921,21 +923,25 @@ def replace_many(page, changes):
     order = annot_order(page)
     place = {x: k for k, x in enumerate(order)}
     out = []
-    for xref, model in changes:
+    olds = {}
+    for xref, _model in changes:            # read them all first...
         a = by_xref.pop(xref, None)
         if a is None:
             a = page.load_annot(xref)       # (raises, like replace(), if it's gone)
         try:
-            old = read(a)
+            olds[xref] = read(a)
         except Exception:
-            old = None
-        if model["kind"] == "attach":
-            del a
-            out.append((xref, old, replace(page, xref, model)))
-            continue
-        page.delete_annot(a)
+            olds[xref] = None
         del a
-        out.append((xref, old, write(page, model).xref))
+    by_xref.clear()
+    # ...then the old ones go in one look through the page (one at a time, each delete looked
+    # through all the page's markups for replies: minutes for a few thousand)
+    pdf_speed.delete_many(page, [x for x, m in changes if m["kind"] != "attach"])
+    for xref, model in changes:
+        if model["kind"] == "attach":
+            out.append((xref, olds[xref], replace(page, xref, model)))
+            continue
+        out.append((xref, olds[xref], write(page, model).xref))
     # each new one takes its old one's place in the stacking order (anything else made on
     # the way, a pop-up note, stays on top as it was added)
     now = annot_order(page)

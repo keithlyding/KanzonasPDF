@@ -109,6 +109,99 @@ def run(log_path):
         return f"(launch {lt}, window {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s, {mem:.0f} MB)"
     check("performance budget", t_performance)
 
+    def t_pdf_speed():
+        # the stand-ins for PyMuPDF's slow steps (pdf_speed.py) are in use and do what
+        # PyMuPDF's own do: unique markup names; a delete takes the replies with it
+        from . import annotations, pdf_speed
+        assert pdf_speed.applied and annotations.pdf_speed.applied, \
+            "PyMuPDF changed: its slow markup naming is back in use (see pdf_speed.py)"
+        assert pdf_speed.can_delete_many(), \
+            "PyMuPDF changed: the fast delete of many markups can't run (see pdf_speed.py)"
+        d = pymupdf.open()
+        pg = d.new_page()
+        xs = [pg.add_rect_annot(pymupdf.Rect(10 + 30 * i, 10, 30 + 30 * i, 30)).xref
+              for i in range(6)]
+        names = [d.xref_get_key(x, "NM")[1] for x in xs]
+        assert len(set(names)) == 6 and all(names), f"markup names not unique: {names}"
+        reply = pg.add_text_annot((15, 15), "reply").xref
+        d.xref_set_key(reply, "IRT", f"{xs[0]} 0 R")
+        pdf_speed.delete_many(pg, xs[:4])
+        left = sorted(x for x, *_ in pg.annot_xrefs())
+        assert left == sorted(xs[4:]), f"left after deleting 4 (and a reply): {left}"
+        return "(names, delete with replies)"
+    check("PyMuPDF speed fixes", t_pdf_speed)
+
+    def t_edit_speed():
+        # editing on a busy page stays quick: 1,000 markups added, moved and deleted, a
+        # sheet's 400 labels moved with its lines, the live CAD highlight in short steps, a
+        # repaint not reading the selection again (1.6 took 3 s, 14 s, 4 s...; 45 s to move
+        # a heavy sheet's text before it was done in one go)
+        import time
+        from PySide6.QtWidgets import QApplication
+        QApplication.instance() or QApplication([])
+        from . import annotations
+        from .document_view import DocumentView
+        from .page_objects import Box
+        d = pymupdf.open()
+        pg = d.new_page(width=2592, height=1728)
+        sh = pg.new_shape()
+        for i in range(20000):
+            x, y = (i * 37) % 2500, (i * 53) % 1700
+            sh.draw_line((x, y), (x + 40, y + 25))
+        sh.finish(color=(0, 0, 0), width=0.3)
+        sh.commit()
+        for i in range(400):
+            pg.insert_text((20 + (i % 20) * 125, 30 + (i // 20) * 80), "LABEL %d" % i, fontsize=9)
+        path = os.path.join(tempfile.mkdtemp(prefix="kzedit"), "edit.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        took = {}
+
+        def timed(name, fn):
+            t = time.perf_counter()
+            fn()
+            took[name] = time.perf_counter() - t
+
+        def add():
+            page = v.doc[0]
+            for i in range(1000):
+                x, y = 30 + (i % 50) * 50, 30 + (i // 50) * 40
+                page.add_rect_annot(pymupdf.Rect(x, y, x + 30, y + 20))
+
+        def everything():
+            page = v.doc[0]
+            return [a.xref for a in annotations.each_annot(page)]
+        try:
+            timed("add", lambda: v.modify(add, [0], permission=pymupdf.PDF_PERM_ANNOTATE))
+            v._set_selection(0, everything())
+            v.selected_models_to_paint()
+            timed("repaint", v.selected_models_to_paint)
+            timed("move", lambda: v.cad_apply("Moved", pymupdf.Matrix(1, 0, 0, 1, 5, 5)))
+            region = Box(pymupdf.Rect(-5, -5, 2600, 1735))
+            v.tool = "editobjects"
+            for _ in v.cad_preview_steps(0, region, False):
+                pass                        # (the page read once, as idle CAD mode does)
+            worst, last = 0.0, time.perf_counter()
+            for _ in v.cad_preview_steps(0, region, False):
+                now = time.perf_counter()
+                worst, last = max(worst, now - last), now
+            took["highlight step"] = worst
+            v._set_selection(0, everything())
+            timed("delete", v.delete_selected)
+            v.select_objects(0, v.cad_objects(0, region, False))
+            timed("sheet move", lambda: v.cad_apply("Moved", pymupdf.Matrix(1, 0, 0, 1, 5, 5)))
+            assert not list(annotations.each_annot(v.doc[0])), "markups left after Delete"
+        finally:
+            v.dirty = False
+            v.close_doc()
+        limits = {"add": 3, "repaint": 0.05, "move": 8, "highlight step": 0.25, "delete": 3,
+                  "sheet move": 6}
+        slow = [f"{k} {took[k]:.2f}s (limit {lim}s)" for k, lim in limits.items()
+                if took[k] >= lim]
+        assert not slow, "too slow: " + ", ".join(slow)
+        return "(" + ", ".join(f"{k} {took[k]:.2f}s" for k in limits) + ")"
+    check("editing speed budget", t_edit_speed)
+
     def t_efficiency():
         # the v0.81 audit's fixes stay in place: linear annotation walk, bounded undo, sliced
         # search, logarithmic page lookup, bounded per-page caches

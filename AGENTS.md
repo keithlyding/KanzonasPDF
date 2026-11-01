@@ -66,6 +66,15 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
   through qtawesome. The self-test check "performance budget" fails the build if one is loaded.
 - Budget (checked in the Windows build): start-up < 5 s, open + draw a 60,000-line sheet
   < 5 s, zoom to 400% < 5 s, peak memory < 800 MB. Typical today: ~0.3 s / 0.9 s / 0.6 s / 170 MB.
+- Editing budget (checked in the Windows build, self-test "editing speed budget"): on a 20,000-line
+  page, 1,000 markups added < 3 s, moved < 8 s, deleted < 3 s; a sheet's 400 labels moved with
+  its lines < 6 s; the live CAD highlight's longest step < 0.25 s; a repaint not reading the
+  selection again. Typical today: 0.5 / 2.4 / 0.3 / 0.9 s, 0.03 s.
+- Edit in bulk: one redaction, one write, one walk of the page's markups for many items, not
+  one per item (PyMuPDF's per-call steps read the whole page or all its markups each time).
+- `kanzonas/pdf_speed.py` replaces two PyMuPDF steps that slow down steeply with many markups
+  (naming a new markup; deleting many). The self-test check "PyMuPDF speed fixes" fails if a
+  PyMuPDF update renames what they replace: then read the new PyMuPDF code and update them.
 - Never redo expensive work on every mouse move or paint: cache per page and clear the cache
   in `DocumentView._clear_caches()` (see display lists, tiles, snap indexes).
 - Big pages render in tiles from a cached display list; keep it that way.
