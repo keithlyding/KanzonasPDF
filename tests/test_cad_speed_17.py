@@ -250,6 +250,29 @@ class Reading(unittest.TestCase):
         self.assertLess(lines, 2.0)
 
 
+class Lookup(unittest.TestCase):
+    def test_the_box_index_is_the_same_numbers(self):
+        import numpy as np
+        from kanzonas import hit_index
+        rnd = random.Random(2)
+        rects = [pymupdf.Rect(rnd.uniform(-1e4, 1e4), rnd.uniform(-10, 10),
+                              rnd.uniform(-1e4, 1e4), rnd.uniform(-1e6, 1e6))
+                 for _ in range(5000)] + [pymupdf.Rect(float("nan"), 1, 2, 3),
+                                          pymupdf.Rect(0, 0, float("inf"), 1)]
+        grow = [rnd.random() for _ in rects]
+        for g in (None, grow):
+            idx = hit_index.BoxIndex(iter(rects), g)
+            # as 1.6.1 made them
+            a = np.array([(r.x0, r.y0, r.x1, r.y1) for r in rects], dtype=float)
+            gg = 0 if g is None else np.asarray(g, dtype=float)
+            e = 1e-3 + 1e-6 * np.abs(a).max(axis=1)
+            want = (np.minimum(a[:, 0], a[:, 2]) - gg - e, np.minimum(a[:, 1], a[:, 3]) - gg - e,
+                    np.maximum(a[:, 0], a[:, 2]) + gg + e, np.maximum(a[:, 1], a[:, 3]) + gg + e)
+            for got, w in zip((idx.x0, idx.y0, idx.x1, idx.y1), want):
+                self.assertTrue(np.array_equal(got, w, equal_nan=True))
+        self.assertEqual(hit_index.BoxIndex([]).near(1, 1), [])
+
+
 class Editing(unittest.TestCase):
     def same_objects(self, a, b):
         self.assertEqual(len(a.found), len(b.found))
