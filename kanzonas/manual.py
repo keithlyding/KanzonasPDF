@@ -80,7 +80,8 @@ the files you choose.</li>
 tab replaces that file and closes that tab (asking first if it has unsaved changes); the same goes
 for Extract pages, Combine files and the copies saved by Compress, Timestamp and digital signing,
 except that the other tab then shows the new file. Undo is Ctrl+Z, redo is Ctrl+Y.
-Up to 30 steps are kept; on very large PDFs fewer, so undo history stays within a memory budget
+Up to 30 steps are kept. Each step keeps only what the edit changed, so undo and redo are quick
+and all 30 steps fit even on very large PDFs; the history still stays within a memory budget
 (256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10). The panels you had open
@@ -219,7 +220,10 @@ number), so the command palette and the CAD command line find them too ("next pa
 page").</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, the zoom slider, or the zoom box
 (type a percent, from 10% to 6400%; 25.5 and 25,5 both work, and so does 1,000 for 1000%; a
-zoom that isn't a whole percent shows one decimal). A very long document can't go
+zoom that isn't a whole percent shows one decimal). With the mouse wheel the page follows at
+once, a little blurred, and is drawn sharp as soon as the wheel stops. Heavy drawings and big
+scans fill in the same way after any zoom or scroll, the middle of the window first, so the
+window never waits for them. A very long document can't go
 quite as high: all its pages together must stay within the largest size Windows can draw.
 Fit width (Ctrl+2), fit page (Ctrl+0), actual size (Ctrl+1). Documents open at Fit width, at
 the page you were on last time; change this in File &gt; Preferences &gt; Opening documents.
