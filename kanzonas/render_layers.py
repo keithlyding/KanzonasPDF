@@ -15,17 +15,20 @@ it (erase, redaction, Edit text, Edit objects, a CAD command, a crop) gives a ne
 content is rendered again; a markup edit leaves it as it was.
 """
 
+import itertools
 import re
+import weakref
 import zlib
 from collections import OrderedDict
 
 import pymupdf
 
-CONTENT_BYTES = 64 * 1024 * 1024   # raw content renders kept per document view
+CONTENT_BYTES = 64 * 1024 * 1024   # raw content renders kept per document view ...
+CONTENT_BYTES_ALL = 160 * 1024 * 1024   # ... and for all open documents together
 BIG_IMAGE_PX = 4_000_000           # pictures this big are decoded once for all tiles ...
 DECODE_LIMIT = 128 * 1024 * 1024   # ... unless decoded they would take more memory than this
 
-_REF = re.compile(r"(\d+) 0 R")
+_REF = re.compile(r"(\d+) \d+ R")    # (any generation: a file updated in place has "5 1 R")
 
 
 def _crc(doc, xref):
@@ -202,13 +205,20 @@ def nbytes(pm):
 class ContentCache:
     """Raw renders of the pages' content (no markups) for one document view, least recently
     used dropped first beyond CONTENT_BYTES, with the content key each page's renders (and its
-    content display list) were made from."""
+    content display list) were made from. All the views' caches together keep at most
+    CONTENT_BYTES_ALL: the documents used longest ago give theirs up first (ten documents open
+    kept 64 MB each)."""
+
+    _all = weakref.WeakSet()
+    _clock = itertools.count()
 
     def __init__(self):
         self.renders = OrderedDict()   # (page, scale, tile or None, thin lines) -> Pixmap
         self.bytes = 0
         self.keys = {}                 # page -> content key of what's cached for it
         self.recheck = set()           # pages whose content may have changed since
+        self.used = next(self._clock)
+        ContentCache._all.add(self)
 
     def _key(self, i, s, tile, thin):
         return (i, round(s, 5), tile, bool(thin))
@@ -218,6 +228,7 @@ class ContentCache:
         pm = self.renders.get(k)
         if pm is not None:
             self.renders.move_to_end(k)
+            self.used = next(self._clock)
         return pm
 
     def put(self, i, s, tile, thin, pm):
@@ -227,9 +238,21 @@ class ContentCache:
             self.bytes -= nbytes(old)
         self.renders[k] = pm
         self.bytes += nbytes(pm)
+        self.used = next(self._clock)
         while self.bytes > CONTENT_BYTES and len(self.renders) > 1:
             _k, gone = self.renders.popitem(last=False)
             self.bytes -= nbytes(gone)
+        others = [c for c in list(ContentCache._all) if c is not self and c.renders]
+        total = self.bytes + sum(c.bytes for c in others)
+        for c in sorted(others, key=lambda c: c.used):
+            while total > CONTENT_BYTES_ALL and c.renders:
+                _k, gone = c.renders.popitem(last=False)
+                c.bytes -= nbytes(gone)
+                total -= nbytes(gone)
+        while total > CONTENT_BYTES_ALL and len(self.renders) > 1:
+            _k, gone = self.renders.popitem(last=False)
+            self.bytes -= nbytes(gone)
+            total -= nbytes(gone)
 
     def has_page(self, i):
         return any(k[0] == i for k in self.renders)

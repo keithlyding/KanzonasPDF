@@ -172,6 +172,16 @@ def lines_path(lines):
     return path
 
 
+def tile_span(rect, dpr):
+    """(tx0, ty0, tx1, ty1): the tiles holding every device pixel the widget area rect (a
+    QRect, whole widget pixels) touches at dpr device pixels per widget pixel: at 150% a
+    widget pixel covers a device pixel and a half, and the last one, partly covered, may be
+    the first of the next tile (left unpainted, it kept what was on the screen before)."""
+    return (int(rect.left() * dpr) // TILE, int(rect.top() * dpr) // TILE,
+            (math.ceil((rect.right() + 1) * dpr - 1e-6) - 1) // TILE,
+            (math.ceil((rect.bottom() + 1) * dpr - 1e-6) - 1) // TILE)
+
+
 def check_content(view, i, force=False):
     """Before page i's kept content (display list, renders) is used after it may have
     changed (an edit, an undo, a layer shown): keep it if the page's content key is the one
@@ -186,10 +196,17 @@ def check_content(view, i, force=False):
             view._dlists.pop(i, None)
             rc.drop_page(i)
         return
-    try:
-        new = RL.content_key(view.doc[i])
-    except Exception:
+    if i not in view._dlists and not rc.has_page(i) and \
+            not any(k[0] == i for k in view._tiles):
+        # nothing drawn from it is kept any more (scrolled far away): its key is let go
+        # rather than read again to compare (a layer shown, Show markups, or an edit seen by
+        # the split view checks every page: 300 heavy sheets visited, 0.1-0.2 s each time)
         new = None
+    else:
+        try:
+            new = RL.content_key(view.doc[i])
+        except Exception:
+            new = None
     if new is None or new != old:
         view._dlists.pop(i, None)
         rc.drop_page(i)
@@ -399,6 +416,12 @@ class PageWidget(QWidget):
         pix.setDevicePixelRatio(dpr)
         return pix
 
+    def _device_rect(self, dpr):
+        """The widget in device pixels, the last ones even when partly covered (3890 widget
+        pixels at 125% are 4862.5 device pixels: 4863 to paint)."""
+        return pymupdf.IRect(0, 0, math.ceil(self.width() * dpr - 1e-6),
+                             math.ceil(self.height() * dpr - 1e-6))
+
     def _tiled(self):
         """Drawn in tiles (only what's in view) rather than as one bitmap: a page bigger than
         FULL_LIMIT device pixels, or bigger than FULL_MIN and FULL_SCREENS windowfuls (a heavy
@@ -420,13 +443,12 @@ class PageWidget(QWidget):
         dpr = self.devicePixelRatioF()
         s = self.view.zoom * dpr
         s5 = round(s, 5)
-        full = pymupdf.IRect(0, 0, int(self.width() * dpr), int(self.height() * dpr))
+        full = self._device_rect(dpr)
         tiles = self.view._tiles
         rc = self.view._rc
         thin = self.view.thin_lines
         check_content(self.view, self.index)
-        tx0, ty0 = int(exposed.left() * dpr) // TILE, int(exposed.top() * dpr) // TILE
-        tx1, ty1 = int(exposed.right() * dpr) // TILE, int(exposed.bottom() * dpr) // TILE
+        tx0, ty0, tx1, ty1 = tile_span(exposed, dpr)
         missing = []
         for ty in range(ty0, ty1 + 1):
             for tx in range(tx0, tx1 + 1):
@@ -657,9 +679,8 @@ class PageWidget(QWidget):
         dpr = self.devicePixelRatioF()
         s = v.zoom * dpr
         s5 = round(s, 5)
-        full = pymupdf.IRect(0, 0, int(self.width() * dpr), int(self.height() * dpr))
-        tx0, ty0 = int(vis.left() * dpr) // TILE, int(vis.top() * dpr) // TILE
-        tx1, ty1 = int(vis.right() * dpr) // TILE, int(vis.bottom() * dpr) // TILE
+        full = self._device_rect(dpr)
+        tx0, ty0, tx1, ty1 = tile_span(vis, dpr)
         missing = []
         for ty in range(ty0, ty1 + 1):
             for tx in range(tx0, tx1 + 1):
