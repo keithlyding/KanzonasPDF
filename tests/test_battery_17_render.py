@@ -202,5 +202,51 @@ class Memory(unittest.TestCase):
                             expected(v.doc[0], v.zoom * w.devicePixelRatioF()))
 
 
+class Forms(unittest.TestCase):
+    def test_a_field_shown_on_several_pages_shows_its_new_value_on_each(self):
+        """A form field can have a widget on several pages (a name repeated at the top of each
+        page): filling it in on one page changes what every page shows."""
+        d = pymupdf.open()
+        for _n in range(3):
+            p = d.new_page(width=400, height=300)
+            w = pymupdf.Widget()
+            w.field_name = "Name"
+            w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+            w.rect = pymupdf.Rect(50, 50, 300, 80)
+            w.field_value = "first"
+            p.add_widget(w)
+        path = os.path.join(tempfile.mkdtemp(), "fields.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        v.resize(900, 1200)
+        v.show()
+        APP.processEvents()
+        self.addCleanup(v.close_doc)
+        self.addCleanup(lambda: setattr(v, "dirty", False))
+        v.set_zoom(1.0)
+        for w in v.pages:
+            w._render()
+        xref = next(v.doc[0].widgets()).xref
+        v._set_field(0, xref, "second")
+        v.viewport().repaint()
+        APP.processEvents()
+        for i, w in enumerate(v.pages):
+            self.assertEqual(next(v.doc[i].widgets()).field_value, "second")
+            if w._pix is None:
+                w._render()
+            self.assertTrue(w._pix.toImage().convertToFormat(QImage.Format_RGB32) ==
+                            expected(v.doc[i], v.zoom * w.devicePixelRatioF()),
+                            "page %d shows the old value" % i)
+        v.undo()
+        v.viewport().repaint()
+        APP.processEvents()
+        for i, w in enumerate(v.pages):
+            if w._pix is None:
+                w._render()
+            self.assertTrue(w._pix.toImage().convertToFormat(QImage.Format_RGB32) ==
+                            expected(v.doc[i], v.zoom * w.devicePixelRatioF()),
+                            "page %d after undo" % i)
+
+
 if __name__ == "__main__":
     unittest.main()

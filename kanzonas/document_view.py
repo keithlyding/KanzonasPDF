@@ -6745,7 +6745,31 @@ class DocumentView(QScrollArea):
                 fx = self._field_dict(w)           # (and the parent kept the old value)
                 if self.doc.xref_get_key(fx, "V")[0] != "null":
                     self.doc.xref_set_key(fx, "V", "null")
-        self._value_change(lambda: self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM))
+        self._value_change(lambda: self.modify(do, self._field_pages(index, xref),
+                                               permission=pymupdf.PDF_PERM_FORM))
+
+    def _field_pages(self, index, xref):
+        """The pages showing the field of widget xref (on page index): a field can have a
+        widget on several pages (a name repeated at the top of each), and each shows its
+        value. (Read from the field's widgets' /P; page index alone when they don't say.)"""
+        pages = {index}
+        try:
+            fx = xref if self.doc.xref_get_key(xref, "T")[0] != "null" else \
+                (self._parent_xref(xref) or xref)
+            kind, kids = self.doc.xref_get_key(fx, "Kids")
+            refs = [int(n) for n in re.findall(r"(\d+) \d+ R", kids)] if kind == "array" else []
+            owners = set()
+            for k in refs:
+                kind, val = self.doc.xref_get_key(k, "P")
+                if kind == "xref":
+                    owners.add(int(val.split()[0]))
+            if owners - {self.doc.page_xref(index)}:
+                for i in range(self.doc.page_count):
+                    if self.doc.page_xref(i) in owners:
+                        pages.add(i)
+        except Exception:
+            pass
+        return sorted(pages)
 
     def _choose_option(self, index, xref):
         """Option (radio) button: turn this one on and every other button of its group off.
