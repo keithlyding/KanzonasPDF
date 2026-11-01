@@ -82,9 +82,29 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
   KZProps in its geom list). tests/test_move_in_place.py checks every kind pixel for pixel.
 - Edit in bulk: one redaction, one write, one walk of the page's markups for many items, not
   one per item (PyMuPDF's per-call steps read the whole page or all its markups each time).
+- Heavy drawing budget (self-test "heavy drawing speed budget"), on a 60,000-shape sheet:
+  reading it for CAD < 2.5 s, its outlines < 2 s, a markup added and the page drawn again
+  < 0.3 s, that undone < 0.3 s, a wheel zoom shown < 0.15 s. "performance budget" times the
+  400% zoom until the page is sharp.
 - `kanzonas/pdf_speed.py` replaces two PyMuPDF steps that slow down steeply with many markups
-  (naming a new markup; deleting many). The self-test check "PyMuPDF speed fixes" fails if a
-  PyMuPDF update renames what they replace: then read the new PyMuPDF code and update them.
+  (naming a new markup; deleting many), and skips PyMuPDF's hidden-text search in scrub
+  (Apply redactions, Sanitize) only on pages with no character and no ActualText. The
+  self-test check "PyMuPDF speed fixes" fails if a PyMuPDF update renames what they replace
+  or the shortcut stops applying: then read the new PyMuPDF code and update them. Redaction
+  is a security feature: never skip work there unless it provably can't change the output.
+- Undo goes through MuPDF's journal (`kanzonas/undo_journal.py`), not a copy per edit. Every
+  change to a document goes through `DocumentView.modify` (a change made outside one folds
+  into the latest edit). MuPDF drops every step to redo at the first change of any kind, so
+  nothing may change the document between an undo and a redo except a new edit: a step
+  that changes and restores (PyMuPDF turning a rotated page upright to read it) runs inside
+  `undo_journal.detached`, and Save and page copies work on a copy while there are steps
+  to redo. It patches PyMuPDF and finds MuPDF's resource tables with ctypes; the self-test
+  check "undo through MuPDF's journal" fails if that stops working (the app would silently
+  fall back to a copy per edit). After a PyMuPDF update, run tests/test_undo_journal.py and
+  tests/test_battery_17_undo.py.
+- Page content is rendered without markups and kept by a content key (`render_layers.py`,
+  `DocumentView._content_key`): any content change must go through `modify` with its pages
+  (or `_clear_caches()`), or the old content render stays on screen.
 - Never redo expensive work on every mouse move or paint: cache per page and clear the cache
   in `DocumentView._clear_caches()` (see display lists, tiles, snap indexes).
 - Big pages render in tiles from a cached display list; keep it that way.
