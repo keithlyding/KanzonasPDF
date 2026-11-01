@@ -344,12 +344,64 @@ def _page_chain(page):
     return chain
 
 
+def _dict_names(doc, xref, key):
+    """The values (text) in dictionary key ("Resources/XObject") of object xref, following an
+    indirect dictionary; None when they can't be listed."""
+    t, v = doc.xref_get_key(xref, key)
+    if t == "null":
+        return []
+    if t == "xref":
+        sub = _xref_of(v)
+        return [doc.xref_get_key(sub, k)[1] for k in doc.xref_get_keys(sub)]
+    if t == "dict":
+        from .page_objects import _dict_keys
+        return [doc.xref_get_key(xref, key + "/" + k)[1] for k in _dict_keys(v)]
+    return None
+
+
+def _may_use_patterns(doc, chain, depth=0, seen=None):
+    """False only when nothing the walk could reach has a /Pattern resource: _Walker records
+    a fill only after "scn /Name" finds Name under /Pattern in the resources of the page (or
+    a parent it inherits from) or of a form it draws, and it reaches forms only through the
+    /XObject resources of those same dictionaries. So the walk over the content (seconds on
+    a sheet with 200,000 lines) can't find anything. Anything unexpected: True (walk)."""
+    seen = set() if seen is None else seen
+    if depth > MAX_DEPTH + 1:
+        return True
+    for xref, prefix in chain:
+        if doc.xref_get_key(xref, prefix + "/Pattern")[0] != "null":
+            return True
+        values = _dict_names(doc, xref, prefix + "/XObject")
+        if values is None:
+            return True
+        for v in values:
+            if not v.endswith(" 0 R") and not v.endswith(" R"):
+                if v.strip() and v.strip() != "null":
+                    return True         # (a form written inline? not seen in practice)
+                continue
+            try:
+                x = _xref_of(v)
+            except ValueError:
+                return True
+            if x in seen:
+                continue
+            seen.add(x)
+            if doc.xref_get_key(x, "Subtype")[1] != "/Form":
+                continue
+            if _may_use_patterns(doc, [(x, "Resources")], depth + 1, seen):
+                return True
+    return False
+
+
 def find_crossing(page, box):
     """The pattern-filled shapes on the page whose outline crosses `box` (PyMuPDF unrotated
     page coordinates). Call before the redaction; pass the result to repaint after it."""
+    chain = _page_chain(page)
+    if not _may_use_patterns(page.parent, chain):
+        return []                       # (no patterns anywhere it could look)
     box_pdf = pymupdf.Rect(box) * pdfcoords.to_pdf(page)
     w = _Walker(page.parent, box_pdf)
-    w.run(page.read_contents() or b"", _page_chain(page), pymupdf.Matrix(1, 1),
+    w.run(page.read_contents() or b"", chain, pymupdf.Matrix(1, 1),
           pymupdf.Matrix(1, 1), [], 0, set())
     return w.found
 

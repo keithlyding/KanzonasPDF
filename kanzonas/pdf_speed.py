@@ -98,3 +98,79 @@ def delete_many(page, xrefs, keep_replies=False):
         gone.add(x)
     page._delete_empty_annots()
     m.pdf_sync_annots(pdfpage)
+
+
+# ---- Remove hidden information: the hidden-text search on pages without any text -------
+# doc.scrub(hidden_text=True) looks on every page for text no one can see (invisible text, an
+# OCR layer, fully transparent text) with page.get_text("dict", flags=TEXT_PRESERVE_SPANS |
+# TEXT_COLLECT_STYLES) and redacts each such span. TEXT_COLLECT_STYLES has MuPDF collect
+# every line and fill of the page to test the text against (underline, strike-out), which
+# slows down steeply with the number of lines: 32 s for a CAD sheet of 200,000 lines that
+# holds no text at all, on every page of a plan set.
+#
+# scrub() below runs PyMuPDF's own scrub, step for step, and leaves out only that search on
+# a page where it can't find anything: one where MuPDF's text extraction yields no
+# character. That is checked with page.get_textpage(flags=TEXT_PRESERVE_SPANS |
+# TEXT_COLLECT_VECTORS): the same MuPDF text device (stext-device.c, MuPDF 1.28) on the same
+# run of the page (contents, forms, markups), with these differences only:
+#   - characters come from the text callbacks (fill, stroke, clip, clip-stroke and ignore
+#     text: invisible text included) and from ActualText being placed; neither flag adds or
+#     removes a text callback;
+#   - with TEXT_COLLECT_STYLES the device takes text drawn twice (fill, then stroke) a second
+#     time, and may merge a character into one already there (fake bold): with no character
+#     from the first time there is nothing to take again or merge into;
+#   - ActualText with no text inside is placed in the box of what is drawn inside it; paths
+#     count for that box only when vectors are collected, with COLLECT_STYLES and
+#     COLLECT_VECTORS alike (the same fill_path / stroke_path callbacks): hence
+#     COLLECT_VECTORS here;
+#   - collected vectors become blocks of their own (type vector), never text.
+# So when that text page holds nothing but vector blocks, the search's dict would have no
+# text block, no span and nothing to redact: it is answered with the dict MuPDF gives for a
+# page without text, and the rest of scrub goes on exactly as before (the same steps in the
+# same order). A page with any other block gets PyMuPDF's own search, unchanged. Nothing is
+# narrowed: whatever would have been redacted still is. If a PyMuPDF update asks for the
+# search differently, the stand-in doesn't recognize it and PyMuPDF's own search runs.
+
+_HIDDEN_TEXT_FLAGS = pymupdf.TEXT_PRESERVE_SPANS | pymupdf.TEXT_COLLECT_STYLES
+skipped_searches = 0                # pages scrub() answered without the search (for tests)
+
+
+def page_has_no_text(page):
+    """MuPDF's text extraction finds no character on page (see above). False when unsure."""
+    m = pymupdf.mupdf
+    vector = getattr(m, "FZ_STEXT_BLOCK_VECTOR", None)
+    if vector is None or not hasattr(pymupdf, "TEXT_COLLECT_VECTORS"):
+        return False
+    try:
+        tp = page.get_textpage(flags=pymupdf.TEXT_PRESERVE_SPANS |
+                               pymupdf.TEXT_COLLECT_VECTORS)
+        block = tp.this.m_internal.first_block
+        while block:
+            if block.type != vector:
+                return False
+            block = block.next
+        return True
+    except Exception:
+        return False
+
+
+def scrub(doc, **options):
+    """doc.scrub(**options), with the same result, leaving out the hidden-text search where
+    it can't find anything (see above)."""
+    if not options.get("hidden_text", True):
+        return doc.scrub(**options)
+    own = pymupdf.Page.get_text
+
+    def get_text(page, option="text", **kwargs):
+        global skipped_searches
+        if option == "dict" and kwargs == {"flags": _HIDDEN_TEXT_FLAGS} and \
+                type(page) is pymupdf.Page and page_has_no_text(page):
+            skipped_searches += 1
+            r = page.rect
+            return {"width": r.width, "height": r.height, "blocks": []}
+        return own(page, option, **kwargs)
+    pymupdf.Page.get_text = get_text
+    try:
+        return doc.scrub(**options)
+    finally:
+        pymupdf.Page.get_text = own
