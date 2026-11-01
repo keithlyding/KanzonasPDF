@@ -38,7 +38,6 @@ FULL_MIN = 4_000_000        # ... and above this too when it's more than FULL_SC
 FULL_SCREENS = 2.5          #     windowfuls (see PageWidget._tiled)
 HEAVY_S = 0.1               # a page whose content takes this long to render is drawn after
                             # showing it as it was (scaled), not while the window waits
-QUICK_S = 0.03              # while wheel zooming: pages quicker than this are drawn at once
 PREDECODE_AFTER_S = 0.25    # tiles this slow on a page with big pictures: decode them once
 SMALL_PREVIEW = 400         # px: the small copy of a page's bitmap kept once it's let go ...
 SMALL_PREVIEWS = 40         # ... for this many pages
@@ -195,6 +194,7 @@ def check_content(view, i, force=False):
         view._dlists.pop(i, None)
         rc.drop_page(i)
         view._img_info.pop(i, None)
+        view._img_big.pop(i, None)
         view._decoded = {d for d in view._decoded if d[0] != i}
         for key in [k for k in view._tiles if k[0] == i]:
             del view._tiles[key]
@@ -536,14 +536,19 @@ class PageWidget(QWidget):
         info = v._img_info.get(self.index)
         if info is None:
             info = []
-            for xref, w, h, nbytes in RL.big_images(page):
-                try:
-                    rects = page.get_image_rects(xref)
-                except Exception:
-                    rects = []
-                if rects:
-                    info.append((xref, w, h, nbytes, max(r.width for r in rects),
-                                 max(r.height for r in rects)))
+            big = self._big_images()
+            try:
+                # (matched by size: asking for xrefs has PyMuPDF checksum every picture)
+                shown = page.get_image_info() if big else []
+            except Exception:
+                shown = []
+            for xref, w, h, nbytes in big:
+                sizes = [(math.hypot(t[0], t[1]), math.hypot(t[2], t[3]))
+                         for t in (x["transform"] for x in shown
+                                   if x["width"] == w and x["height"] == h)]
+                if sizes:
+                    info.append((xref, w, h, nbytes, max(a for a, _b in sizes),
+                                 max(b for _a, b in sizes)))
             v._img_info[self.index] = info
         todo = []
         for xref, w, h, nbytes, rw, rh in info:
@@ -565,11 +570,19 @@ class PageWidget(QWidget):
         v = self.view
         if not v.progressive:
             return False
-        cost = v._render_cost(self.index)
+        # (a page with big pictures counts as heavy: its next zoom may need them decoded
+        # at another size, however quick it was the last time)
+        heavy = v._render_cost(self.index) >= HEAVY_S or bool(self._big_images())
         if v._zooming:
-            # (a light page is rendered at once: sharp costs no more than a stand-in)
-            return cost >= QUICK_S and (cost >= HEAVY_S or self._preview_source() is not None)
-        return cost >= HEAVY_S and self._preview_source() is not None
+            return heavy or self._preview_source() is not None
+        return heavy and self._preview_source() is not None
+
+    def _big_images(self):
+        v = self.view
+        big = v._img_big.get(self.index)
+        if big is None:
+            big = v._img_big[self.index] = RL.big_images(v.doc[self.index])
+        return big
 
     def _preview_source(self):
         """What a page not yet drawn at this zoom is shown with: its last bitmap (at another

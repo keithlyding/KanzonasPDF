@@ -23,7 +23,7 @@ import pymupdf
 
 CONTENT_BYTES = 64 * 1024 * 1024   # raw content renders kept per document view
 BIG_IMAGE_PX = 4_000_000           # pictures this big are decoded once for all tiles ...
-DECODE_LIMIT = 300 * 1024 * 1024   # ... unless decoded they would take more memory than this
+DECODE_LIMIT = 128 * 1024 * 1024   # ... unless decoded they would take more memory than this
 
 _REF = re.compile(r"(\d+) 0 R")
 

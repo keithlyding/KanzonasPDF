@@ -1555,6 +1555,7 @@ class DocumentView(QScrollArea):
         self._alists = {}              # page index -> its markups' DisplayList (None: none)
         self._tiles = OrderedDict()    # (page, scale, tx, ty) -> rendered tile, LRU
         self._img_info = {}            # page index -> its big pictures (PageWidget._predecode)
+        self._img_big = {}             # page index -> render_layers.big_images
         self._small_previews = OrderedDict()   # page -> (small QPixmap, page rect): drop_cache
         self._decoded = set()          # (page, xref, size) big pictures decoded into MuPDF's store
         # the pages' content renders outlive this (an undo, a page moved): each is checked

@@ -346,17 +346,16 @@ class Zooming(unittest.TestCase):
         s = v.zoom * w.devicePixelRatioF()
         same(self, w._pix.toImage(), expected(v.doc[0], s), "sharp after the wheel stopped")
 
-    def test_light_pages_are_drawn_at_once(self):
+    def test_with_nothing_to_show_a_light_page_is_drawn_at_once(self):
         v = self.view()
         w = v.pages[0]
         v._quick_zoom()
-        v.set_zoom(1.0)
-        v._costs.clear() if getattr(v, "_costs", None) else None
-        w._preview = None
         v.set_zoom(1.3)
+        w._preview = None
+        v._small_previews.clear()
         v.viewport().repaint()
-        APP.processEvents()
         self.assertIsNotNone(w._pix)                # no stand-in: rendered right away
+        self.settle(v)
 
     def test_a_heavy_page_is_drawn_after_showing_it_as_it_was(self):
         v = self.view()
