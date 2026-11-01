@@ -117,6 +117,34 @@ def _tail(pdf):
     return t
 
 
+class detached:
+    """with detached(doc): changes made in it aren't kept in the journal. Only for a change
+    taken back before the end, such as PyMuPDF's turning a rotated page upright to read its
+    text or drawings: MuPDF drops every entry to redo at the first change, so reading a
+    rotated page between an undo and a redo lost the steps to redo."""
+
+    def __init__(self, doc):
+        self.doc = doc
+        self.tail = None
+
+    def __enter__(self):
+        pdf = _pdf(self.doc)
+        if pdf is not None:
+            try:
+                t = _tail(pdf)
+            except Exception:
+                return self                 # (another MuPDF: kept in the journal, as before)
+            self.pdf, self.tail, self.journal = pdf, t, t.journal
+            t.journal = None
+        return self
+
+    def __exit__(self, *exc):
+        if self.tail is not None:
+            self.tail.journal = self.journal
+            self.tail = None
+        return False
+
+
 def reset_resources(doc_or_pdf):
     """Empty MuPDF's tables of the fonts, images and color spaces added to the document
     (they are made again as needed): after an undo, an entry may name an object that is
@@ -332,6 +360,20 @@ def install():
             copy.close()
     insert_pdf.__doc__ = insert.__doc__
     pymupdf.Document.insert_pdf = insert_pdf
+
+    # PyMuPDF reads a rotated page's text and drawings with the page turned upright for a
+    # moment (its /Rotate set to 0 and back): see detached
+    def upright(fn):
+        def call(self, *a, **k):
+            if not _JOURNALS or not self.rotation:
+                return fn(self, *a, **k)
+            with detached(self.parent):
+                return fn(self, *a, **k)
+        call.__name__ = fn.__name__
+        call.__doc__ = fn.__doc__
+        return call
+    for name in ("get_textpage", "get_texttrace", "get_bboxlog", "get_cdrawings"):
+        setattr(pymupdf.Page, name, upright(getattr(pymupdf.Page, name)))
 
 
 def _as_deleted(fn, gone):
