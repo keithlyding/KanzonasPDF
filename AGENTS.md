@@ -102,6 +102,10 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
   check "undo through MuPDF's journal" fails if that stops working (the app would silently
   fall back to a copy per edit). After a PyMuPDF update, run tests/test_undo_journal.py and
   tests/test_battery_17_undo.py.
+- Text is read through `Page.get_textpage`, which `text_guard.py` wraps: MuPDF 1.28 crashes
+  on nested ActualText, and such pages are read with TEXT_IGNORE_ACTUALTEXT. Read text through
+  PyMuPDF's page methods (or ask `text_guard.flags_for`), never with MuPDF's stext calls
+  directly; the self-test check "text reading guard" fails if the guard is off.
 - Page content is rendered without markups and kept by a content key (`render_layers.py`,
   `DocumentView._content_key`): any content change must go through `modify` with its pages
   (or `_clear_caches()`), or the old content render stays on screen.

@@ -41,7 +41,8 @@ def page_text_dict(page, flags):
     stamps, measurement labels) and form fields draw over it. Those belong to the markup or
     field: taken as page text, moving or editing them wrote their words into the page and
     took the text box away. (Unrotated coordinates, as get_text gives.)"""
-    from . import undo_journal
+    from . import text_guard, undo_journal
+    flags = text_guard.flags_for(page, flags)      # (MuPDF's crash on nested ActualText)
     turn = page.rotation
     # (turned upright for a moment, as PyMuPDF's own get_textpage does: not a change the
     # undo journal keeps, see undo_journal.detached)

@@ -19,6 +19,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Filling in a form field that appears on several pages updates every page that shows it.
 - At 125%, 150% and 175% Windows display scaling, big pages no longer leave thin lines of old pixels at tile and page edges.
 - Delete comments works again on documents with markups.
+- KanzonasPDF no longer closes suddenly when you search, select or copy text on certain pages (a picture or drawing marked with alternate text inside other alternate text, which crashed the PDF engine).
 
 ## 1.6.2 (es)
 
@@ -32,6 +33,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Llenar un campo de formulario que aparece en varias páginas actualiza todas las páginas que lo muestran.
 - Con la escala de pantalla de Windows al 125%, 150% y 175%, las páginas grandes ya no dejan líneas finas de píxeles viejos en los bordes de los mosaicos y de la página.
 - Eliminar comentarios vuelve a funcionar en documentos con marcas.
+- KanzonasPDF ya no se cierra de repente al buscar, seleccionar o copiar texto en ciertas páginas (una imagen o un dibujo marcado con texto alternativo dentro de otro texto alternativo, que hacía fallar el motor PDF).
 
 ## 1.6.1
 

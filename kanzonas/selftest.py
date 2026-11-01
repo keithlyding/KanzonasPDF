@@ -160,6 +160,33 @@ def run(log_path):
         return "(names, delete with replies, hidden-text search)"
     check("PyMuPDF speed fixes", t_pdf_speed)
 
+    def t_text_guard():
+        # MuPDF 1.28 ends the program (a segmentation fault) reading the text of a page with
+        # ActualText inside ActualText around a picture; text_guard.py reads such pages
+        # with TEXT_IGNORE_ACTUALTEXT. (If the guard is gone, this check ends the self-test:
+        # the build fails either way.)
+        from . import annotations, text_guard  # noqa: F401 (annotations puts it in place)
+        assert text_guard.applied, "PyMuPDF changed: the text reading guard is off " \
+            "(see text_guard.py)"
+        d = pymupdf.open()
+        pg = d.new_page()
+        pm = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 8, 8), False)
+        pm.clear_with(100)
+        pg.insert_image((300, 300, 340, 340), stream=pm.tobytes("png"))
+        name = d.get_page_images(0)[0][7]
+        x = pg.get_contents()[0]
+        d.update_stream(x, d.xref_stream(x) + (
+            b"\n/Span <</ActualText (A)>> BDC /Span <</ActualText (B)>> BDC "
+            b"q 40 0 0 40 100 600 cm /%s Do Q EMC EMC" % name.encode()))
+        assert text_guard.risky(pg), "a page with nested ActualText isn't recognized"
+        pg.get_text()
+        pg.search_for("A")
+        plain = d.new_page()
+        plain.insert_text((72, 72), "Plain text", fontsize=12)
+        assert not text_guard.risky(plain), "an ordinary page is read without ActualText"
+        return "(nested ActualText read safely)"
+    check("text reading guard", t_text_guard)
+
     def t_undo_journal():
         # undo and redo go through MuPDF's journal (undo_journal.py), not a copy of the
         # document per edit: its patches on PyMuPDF and the search for MuPDF's tables of
