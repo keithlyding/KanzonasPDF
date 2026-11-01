@@ -261,6 +261,50 @@ class Layers(unittest.TestCase):
         APP.processEvents()
         same(self, self.render(m, 0), expected(v.doc[0], m.zoom), "split view")
 
+    def test_layers_shown_or_hidden_redraw_the_content(self):
+        d = pymupdf.open()
+        p = d.new_page()
+        ocg = d.add_ocg("Walls", on=True)
+        p.draw_rect(pymupdf.Rect(100, 100, 300, 300), color=(0, 0, 0), fill=(0, 0, 1), oc=ocg)
+        path = os.path.join(tempfile.mkdtemp(), "layers.pdf")
+        d.save(path)
+        v = self.view(path)
+        v.set_zoom(1.0)
+        on = self.render(v, 0)
+        self.assertEqual(on.pixelColor(200, 200).blue(), 255)
+        number = v.layer_configs()[0]["number"]
+        v.set_layer(number, False)
+        off = self.render(v, 0)
+        self.assertEqual(off.pixelColor(200, 200).lightness(), 255)    # the paper
+        same(self, off, expected(v.doc[0], v.zoom * v.pages[0].devicePixelRatioF()))
+
+    def test_a_scan_is_decoded_once_for_its_tiles(self):
+        d = pymupdf.open()
+        p = d.new_page(width=2500, height=2000)
+        y, x = np.mgrid[0:4000, 0:5000]
+        img = ((x // 7 + y // 5) % 256).astype(np.uint8)          # a 20-megapixel gray scan
+        pm = pymupdf.Pixmap(pymupdf.csGRAY, 5000, 4000, img.tobytes(), False)
+        p.insert_image(p.rect, stream=pm.tobytes("jpg"))
+        path = os.path.join(tempfile.mkdtemp(), "scan.pdf")
+        d.save(path)
+        v = self.view(path)
+        v.set_zoom(0.9)                     # (drawn at half size: decoded at 1/2)
+        w = v.pages[0]
+        self.assertTrue(w._tiled())
+        # (a slow render of its tiles is what has the picture decoded once: as if slow here)
+        with mock.patch.object(PW, "PREDECODE_AFTER_S", 0):
+            v.viewport().repaint()
+            APP.processEvents()
+        self.assertEqual({(k[0], k[2]) for k in v._decoded}, {(0, 1)})
+        self.assertTrue([k for k in v._tiles if k[0] == 0])
+        # another zoom: decoded at its size before its tiles are rendered
+        v.set_zoom(1.8)
+        v.viewport().repaint()
+        APP.processEvents()
+        self.assertEqual({(k[0], k[2]) for k in v._decoded}, {(0, 1), (0, 0)})
+        s = round(v.zoom * w.devicePixelRatioF(), 5)
+        self.assertTrue([k for k in v._tiles if k[0] == 0 and k[1] == s])
+
 
 class Zooming(unittest.TestCase):
     def view(self):

@@ -656,12 +656,15 @@ class Thumbnails(unittest.TestCase):
         self.w.dock.show()
         self.w.left_tabs.setCurrentIndex(0)
         self.drawn = []
-        orig = pymupdf.Page.get_pixmap
+        # (1.7: a thumbnail is drawn by page_widget.thumbnail, from the page's render on
+        # screen when it has one, else with get_pixmap as before: each one drawn counts)
+        from kanzonas import page_widget
+        orig = page_widget.thumbnail
 
-        def counted(page, *a, **k):
-            self.drawn.append(page.parent.page_xref(page.number))
-            return orig(page, *a, **k)
-        p = mock.patch.object(pymupdf.Page, "get_pixmap", autospec=True, side_effect=counted)
+        def counted(view, i, s):
+            self.drawn.append(view.doc.page_xref(i))
+            return orig(view, i, s)
+        p = mock.patch.object(page_widget, "thumbnail", side_effect=counted)
         p.start()
         self.addCleanup(p.stop)
 

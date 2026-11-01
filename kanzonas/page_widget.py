@@ -39,6 +39,7 @@ FULL_SCREENS = 2.5          #     windowfuls (see PageWidget._tiled)
 HEAVY_S = 0.1               # a page whose content takes this long to render is drawn after
                             # showing it as it was (scaled), not while the window waits
 QUICK_S = 0.03              # while wheel zooming: pages quicker than this are drawn at once
+PREDECODE_AFTER_S = 0.25    # tiles this slow on a page with big pictures: decode them once
 SMALL_PREVIEW = 400         # px: the small copy of a page's bitmap kept once it's let go ...
 SMALL_PREVIEWS = 40         # ... for this many pages
 TILE = 512                  # tile size in device pixels
@@ -489,7 +490,8 @@ class PageWidget(QWidget):
             batches = [missing]
         else:
             batches = [[m for m in missing if m[1] == ty] for ty in sorted(rows)]
-        self._predecode(s)
+        if self.index in v._img_info:
+            self._predecode(s)
         for batch in batches:
             box = batch[0][2]
             for _tx, _ty, d in batch[1:]:
@@ -500,7 +502,12 @@ class PageWidget(QWidget):
                 t = time.perf_counter()
                 with screen_lines(v.thin_lines):
                     pm = RL.render(dl, s, clip)
-                v._note_render_cost(self.index, time.perf_counter() - t)
+                took = time.perf_counter() - t
+                v._note_render_cost(self.index, took)
+                if took >= PREDECODE_AFTER_S and self.index not in v._img_info:
+                    # slow: if it's a big picture decoded again for each piece, decode it once
+                    # now (and before the tiles of every other zoom of this page)
+                    self._predecode(s)
                 img = self._to_qimage(self._with_markups(pm, s, clip))
             except Exception:
                 for tx, ty, d in batch:
@@ -521,7 +528,9 @@ class PageWidget(QWidget):
 
     def _predecode(self, s):
         """A scanned page at high zoom: its big pictures decoded once, at the size the tiles
-        need, so each tile doesn't decode the whole JPEG again (render_layers.predecode)."""
+        need, so each tile doesn't decode the whole JPEG again (render_layers.predecode).
+        (Where they're drawn is read once per page, after a slow render: reading it runs the
+        page's drawing, a fifth of a second on a heavy sheet.)"""
         v = self.view
         page = v.doc[self.index]
         info = v._img_info.get(self.index)
