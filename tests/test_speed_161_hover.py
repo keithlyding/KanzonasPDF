@@ -691,11 +691,16 @@ class SetAside(Base):
         self.assertEqual(gc.get_freeze_count(), 0)             # (a small one: left alone)
         document_view._set_aside(None)
         self.assertEqual(gc.get_freeze_count(), 0)
+        # (Python 3.12 reports a few hundred objects as set aside after any full collection,
+        # with nothing set aside: 3.13 reports none. What matters is that nothing more stays)
+        gc.collect()
+        base = gc.get_freeze_count()
+        gc.unfreeze()
         document_view._set_aside(types.SimpleNamespace(
             items=[0] * document_view.FREEZE_ITEMS))
-        self.assertGreater(gc.get_freeze_count(), 0)
+        self.assertGreater(gc.get_freeze_count(), base + document_view.FREEZE_ITEMS // 2)
         document_view._collect_all()
-        self.assertEqual(gc.get_freeze_count(), 0)
+        self.assertLessEqual(gc.get_freeze_count(), base)
 
     def test_what_is_set_aside_is_still_freed(self):
         import weakref
