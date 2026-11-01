@@ -39,6 +39,7 @@ journal (the steps kept in it are dropped); without the resource tables found
 """
 
 import ctypes
+import weakref
 
 import pymupdf
 
@@ -114,6 +115,34 @@ def _tail(pdf):
     if t.journal != _address(raw.journal):
         raise RuntimeError("MuPDF's document layout isn't the one expected")
     return t
+
+
+class detached:
+    """with detached(doc): changes made in it aren't kept in the journal. Only for a change
+    taken back before the end, such as PyMuPDF's turning a rotated page upright to read its
+    text or drawings: MuPDF drops every entry to redo at the first change, so reading a
+    rotated page between an undo and a redo lost the steps to redo."""
+
+    def __init__(self, doc):
+        self.doc = doc
+        self.tail = None
+
+    def __enter__(self):
+        pdf = _pdf(self.doc)
+        if pdf is not None:
+            try:
+                t = _tail(pdf)
+            except Exception:
+                return self                 # (another MuPDF: kept in the journal, as before)
+            self.pdf, self.tail, self.journal = pdf, t, t.journal
+            t.journal = None
+        return self
+
+    def __exit__(self, *exc):
+        if self.tail is not None:
+            self.tail.journal = self.journal
+            self.tail = None
+        return False
 
 
 def reset_resources(doc_or_pdf):
@@ -201,6 +230,7 @@ def _touch(pdf, num):
 # of SPLIT_EVERY such steps; one undo step undoes them all.
 SPLIT_EVERY = 25
 _ACTIVE = {}                # pdf_document address -> Journal with an edit in progress
+_JOURNALS = weakref.WeakValueDictionary()   # pdf_document address -> its Journal
 
 
 def _tick(pdf):
@@ -288,6 +318,14 @@ def install():
                 self._kz_journal_broken = True
     pymupdf.Document.save = journaled_save
 
+    # an object an undo took back that the edit had made: MuPDF leaves its number with no
+    # entry at all (not a free one), and reading it threw, so a walk through every object
+    # (PyMuPDF's scrub: Sanitize, Apply redactions) failed after any undo. It reads as an
+    # object deleted would
+    for name, gone in (("xref_object", "null"), ("xref_get_key", ("null", "null")),
+                       ("xref_get_keys", [])):
+        setattr(pymupdf.Document, name, _as_deleted(getattr(pymupdf.Document, name), gone))
+
     def plain(fn):
         def call(self, *a, **k):
             if _pdf(self) is None or not pymupdf.g_use_extra:
@@ -302,6 +340,57 @@ def install():
         return call
     for name in ("_newPage", "insert_pdf"):
         setattr(pymupdf.Document, name, plain(getattr(pymupdf.Document, name)))
+
+    # Pages copied out of a document (Copy pages, Extract pages, the Capture tool) change it:
+    # PyMuPDF takes /P and /Popup out of the markups it copies, in the document copied
+    # from. MuPDF drops every entry to redo at the first change, so the steps to redo were
+    # lost (Redo then did nothing). With entries to redo, the pages come from a copy of
+    # the document instead (one write, only then), as Save does
+    insert = pymupdf.Document.insert_pdf
+
+    def insert_pdf(self, docsrc, *a, **k):
+        j = _JOURNALS.get(_ptr(getattr(_pdf(docsrc), "m_internal", None)) or 0)
+        if j is None or j.busy or not j.alive or not j.ahead() or \
+                not (k.get("annots", 1) or k.get("widgets", 1)):
+            return insert(self, docsrc, *a, **k)
+        copy = pymupdf.open("pdf", docsrc.tobytes())
+        try:
+            return insert(self, copy, *a, **k)
+        finally:
+            copy.close()
+    insert_pdf.__doc__ = insert.__doc__
+    pymupdf.Document.insert_pdf = insert_pdf
+
+    # PyMuPDF reads a rotated page's text and drawings with the page turned upright for a
+    # moment (its /Rotate set to 0 and back): see detached
+    def upright(fn):
+        def call(self, *a, **k):
+            if not _JOURNALS or not self.rotation:
+                return fn(self, *a, **k)
+            with detached(self.parent):
+                return fn(self, *a, **k)
+        call.__name__ = fn.__name__
+        call.__doc__ = fn.__doc__
+        return call
+    for name in ("get_textpage", "get_texttrace", "get_bboxlog", "get_cdrawings"):
+        setattr(pymupdf.Page, name, upright(getattr(pymupdf.Page, name)))
+
+
+def _as_deleted(fn, gone):
+    """fn (a Document method taking an object number first), giving gone instead of an
+    error for an object an undo took back (see install)."""
+    def call(self, xref, *a, **k):
+        try:
+            return fn(self, xref, *a, **k)
+        except Exception:
+            pdf = _pdf(self)
+            if pdf is None or not 0 < xref < m.pdf_xref_len(pdf) or \
+                    m.pdf_object_exists(pdf, xref):
+                raise
+            return list(gone) if isinstance(gone, list) else gone
+    call.__name__ = fn.__name__
+    call.__doc__ = fn.__doc__
+    return call
 
 
 def embedded_clean(doc):
@@ -323,6 +412,24 @@ def usable():
 
 
 # ---- one document's journal -------------------------------------------------------------
+def _load_all(pdf):
+    """Read every object of a document not repaired yet, before its first edit. MuPDF
+    repairs a damaged file (a wrong offset in its table of objects) only when it first reads
+    the broken object, and that repair rebuilds the table from the file: every change made
+    so far is lost, also from the next save. A copy per edit (up to 1.6) read every object
+    at the first edit, so the repair came before any change; so it does here (14,000
+    objects: 0.06 s, once per document)."""
+    if pdf.m_internal.repair_attempted:
+        return                          # (MuPDF repairs a document only once)
+    for num in range(1, m.pdf_xref_len(pdf)):
+        try:
+            m.pdf_load_object(pdf, num)
+        except Exception:
+            pass                        # (a free or broken entry)
+        if pdf.m_internal.repair_attempted:
+            return
+
+
 class Journal:
     """MuPDF's journal of one document. Between edits an implicit operation stays open (see
     the module's docstring); an edit is begin() ... end() (or abandon()), each a journal
@@ -334,6 +441,7 @@ class Journal:
         self.doc = doc
         self.pdf = pymupdf._as_pdf_document(doc)
         self.raw = self.pdf.m_internal
+        _load_all(self.pdf)
         m.pdf_enable_journal(self.pdf)
         self.repaired = self.raw.repair_attempted
         self.epoch = 0              # one more each time the entries are all forgotten
@@ -342,6 +450,7 @@ class Journal:
         self._parts = None          # the entries of the edit in progress
         self._ambient = False
         self._open()
+        _JOURNALS[_address(self.raw)] = self
 
     # (the implicit operation between edits)
     def _open(self):
@@ -489,6 +598,15 @@ class Journal:
         self._close()
         try:
             return m.pdf_undoredo_state(self.pdf)[1]
+        finally:
+            self._open()
+
+    def ahead(self):
+        """The names of the entries that can be redone, next first."""
+        self._close()
+        try:
+            pos, steps = m.pdf_undoredo_state(self.pdf)
+            return self._names(pos, steps)
         finally:
             self._open()
 

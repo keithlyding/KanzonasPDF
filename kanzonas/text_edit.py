@@ -7,6 +7,7 @@ baseline, size, color and direction. The original embedded font is reused when i
 contains every needed character; otherwise the closest standard font is used.
 """
 
+import contextlib
 import glob
 import math
 import os
@@ -40,14 +41,18 @@ def page_text_dict(page, flags):
     stamps, measurement labels) and form fields draw over it. Those belong to the markup or
     field: taken as page text, moving or editing them wrote their words into the page and
     took the text box away. (Unrotated coordinates, as get_text gives.)"""
+    from . import undo_journal
     turn = page.rotation
-    if turn:
-        page.set_rotation(0)            # (as PyMuPDF's own get_textpage does)
-    try:
-        tp = pymupdf.TextPage(page.get_displaylist(annots=False).get_textpage(flags=flags))
-    finally:
+    # (turned upright for a moment, as PyMuPDF's own get_textpage does: not a change the
+    # undo journal keeps, see undo_journal.detached)
+    with undo_journal.detached(page.parent) if turn else contextlib.nullcontext():
         if turn:
-            page.set_rotation(turn)
+            page.set_rotation(0)
+        try:
+            tp = pymupdf.TextPage(page.get_displaylist(annots=False).get_textpage(flags=flags))
+        finally:
+            if turn:
+                page.set_rotation(turn)
     tp.parent = page
     return page.get_text("dict", flags=flags, textpage=tp)
 

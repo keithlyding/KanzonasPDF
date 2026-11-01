@@ -979,7 +979,8 @@ class DocumentView(QScrollArea):
     def markup_authors(self):
         names = set()
         for i in range(self.doc.page_count):
-            for an in annotations.each_annot(self.doc[i]):
+            page = self.doc[i]          # (kept alive while its markups are read)
+            for an in annotations.each_annot(page):
                 if an.type[0] != pymupdf.PDF_ANNOT_POPUP:
                     names.add(an.info.get("title", "") or "")
         return sorted(names)
@@ -1562,6 +1563,18 @@ class DocumentView(QScrollArea):
                 pass
         journal.abandon()
         journal.set_trailer(before, whole=True)
+        # (a big edit is kept in several entries: the first one made dropped MuPDF's
+        # entries to redo, and taking the edit back doesn't bring them back. The steps to
+        # redo that used them go, so Redo isn't offered for nothing)
+        ahead, k = journal.ahead(), 0
+        for i in range(len(self._redo) - 1, -1, -1):
+            s = self._redo[i]
+            if not isinstance(s, _JStep) or s.journal is not journal:
+                break
+            if not s.valid or ahead[k:k + len(s.names)] != s.names:
+                del self._redo[:i + 1]
+                break
+            k += len(s.names)
         self._reread(None, True, dirty)
 
     def _reopen(self):
