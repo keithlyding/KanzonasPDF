@@ -168,13 +168,18 @@ class Autosaver(QObject):
             stem = os.path.splitext(os.path.basename(v.path or "Untitled"))[0]
             path = os.path.join(folder(), f"{stem} (unsaved changes {time.strftime('%Y-%m-%d %H%M%S')})-{uuid.uuid4().hex}.pdf")
             v._backup_path = path
+        # written straight to a file next to the copy, then put in its place in one step:
+        # tobytes hands MuPDF's output to Python in tiny pieces, several times slower, and
+        # the window is frozen while it runs (about 1 s for a 2,000-sheet set)
+        tmp = path + ".part"
         try:
-            data = v.doc.tobytes(garbage=1)
-            tmp = path + ".part"
-            with open(tmp, "wb") as f:
-                f.write(data)
+            v.doc.save(tmp, garbage=1)
             os.replace(tmp, path)
         except Exception:
+            try:
+                os.remove(tmp)          # no half-written copy left behind
+            except OSError:
+                pass
             return
         v._backup_rev = getattr(v, "revision", None)
         idx = _index()

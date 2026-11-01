@@ -14,12 +14,15 @@ Per-tool default styles are kept in QSettings so they persist between sessions.
 import getpass
 import json
 import math
+import re
 import weakref
 
 import pymupdf
 
-from . import pdfcoords
+from . import pdf_speed, pdfcoords
 from .i18n import tr
+
+pdf_speed.apply()                       # (adding markups doesn't slow down as they add up)
 
 
 def each_annot(page, types=None):
@@ -912,30 +915,176 @@ def set_annot_order(page, xrefs):
     page.parent.xref_set_key(page.xref, "Annots", "[" + " ".join(f"{x} 0 R" for x in xrefs) + "]")
 
 
-def replace_many(page, changes):
+_NUMBER = re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)")
+# the keys holding page positions, as x y pairs (InkList: lists of them)
+_POSITION_KEYS = ("Rect", "Vertices", "L", "QuadPoints", "InkList", "CL")
+
+
+def _same(a, b, tol=1e-3):
+    """Two model values equal (points, rects and quads within tol)."""
+    if isinstance(a, (pymupdf.Point, pymupdf.Rect, pymupdf.Quad)) or \
+            isinstance(b, (pymupdf.Point, pymupdf.Rect, pymupdf.Quad)):
+        try:
+            fa = [c for q in (a if isinstance(a, pymupdf.Quad) else [a]) for c in q]
+            fb = [c for q in (b if isinstance(b, pymupdf.Quad) else [b]) for c in q]
+        except TypeError:
+            return False
+        return len(fa) == len(fb) and all(abs(x - y) <= tol for x, y in zip(fa, fb))
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_same(a[k], b[k], tol) for k in a)
+    if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
+        return len(a) == len(b) and all(_same(x, y, tol) for x, y in zip(a, b))
+    if isinstance(a, float) or isinstance(b, float):
+        try:
+            return abs(a - b) <= tol
+        except TypeError:
+            return False
+    return a == b
+
+
+def translation(old, new):
+    """The Point d when model new is model old moved by d and nothing else changed (a Move,
+    a nudge, a drag, text moved with its highlights), else None."""
+    if not old or not new or old.get("kind") != new.get("kind") or \
+            new.get("kind") in ("field", "attach"):
+        return None
+    if old.get("quads") and new.get("quads"):
+        d = new["quads"][0].ul - old["quads"][0].ul
+    elif old.get("points") and new.get("points"):
+        d = pymupdf.Point(new["points"][0]) - pymupdf.Point(old["points"][0])
+    elif old.get("strokes") and new.get("strokes"):
+        d = pymupdf.Point(new["strokes"][0][0]) - pymupdf.Point(old["strokes"][0][0])
+    elif "rect" in old and "rect" in new:
+        d = new["rect"].tl - old["rect"].tl
+    else:
+        return None
+    if abs(d.x) < 1e-9 and abs(d.y) < 1e-9:
+        return None
+    want = moved(old, d)
+    a, b = dict(want), dict(new)
+    if "quads" in old:
+        a["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d) for q in old["quads"]]
+        a.pop("rect", None)             # (a text markup's box is worked out from its quads)
+        b.pop("rect", None)
+    return d if _same(a, b) else None
+
+
+def shift_in_place(page, xref, d, to_pdf=None):
+    """Move annotation xref by d (page coordinates) without writing it again: its box and
+    the positions it keeps are shifted, and its appearance (drawn into its box) moves with
+    them, exactly. One markup this way: about 0.07 ms, against about 2 ms to delete it and
+    write it anew (which also redraws it, and a box drawn by another program can grow by its
+    border each time). Returns False (nothing changed) when it can't be done this way."""
+    doc = page.parent
+    to_pdf = to_pdf or pdfcoords.to_pdf(page)
+    v = pymupdf.Point(d) * to_pdf - pymupdf.Point(0, 0) * to_pdf
+    edits = []
+    for key in _POSITION_KEYS:
+        kind, val = doc.xref_get_key(xref, key)
+        if kind == "null":
+            continue
+        if kind != "array" or "R" in val:
+            # (an indirect array, or one holding references to other objects: shifting its
+            # text would change the references, not the positions; write it anew instead)
+            return False
+        edits.append((xref, key, _shift_pairs(val, v.x, v.y)))
+    if not edits or edits[0][1] != "Rect":
+        return False
+    kind, val = doc.xref_get_key(xref, "Popup")
+    if kind == "xref":                  # its note's box goes along
+        pop = int(val.split()[0])
+        pk, pv = doc.xref_get_key(pop, "Rect")
+        if pk == "array" and "R" not in pv:
+            edits.append((pop, "Rect", _shift_pairs(pv, v.x, v.y)))
+    kind, val = doc.xref_get_key(xref, KZ_KEY)
+    if kind == "string":
+        try:
+            store = json.loads(val)
+        except ValueError:
+            store = None
+        geom = store.get("geom") if isinstance(store, dict) else None
+        if isinstance(geom, dict):
+            for k in ("box", "target", "at"):
+                if isinstance(geom.get(k), list):
+                    geom[k] = [c + (d.x if i % 2 == 0 else d.y) for i, c in enumerate(geom[k])]
+            edits.append((xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store))))
+    edits.append((xref, "M", pymupdf.get_pdf_str(pymupdf.get_pdf_now())))  # (modified now)
+    for x, key, value in edits:
+        doc.xref_set_key(x, key, value)
+    return True
+
+
+def _shift_pairs(text, dx, dy):
+    """A PDF array of x y pairs (nested or not) with dx, dy added to each pair."""
+    k = [0]
+
+    def add(m):
+        n = float(m.group(0)) + (dx if k[0] % 2 == 0 else dy)
+        k[0] += 1
+        return ("%.4f" % n).rstrip("0").rstrip(".") or "0"
+    return _NUMBER.sub(add, text)
+
+
+def replace_many(page, changes, olds=None):
     """replace() for several annotations at once ([(xref, model)], in that order), as when
     many markups are aligned, restyled or nudged together: each one is found in one walk of
     the page and the stacking order is read and written once, not once for each (N squared
-    steps: 18 s for 1,000 markups). Returns [(old xref, its old model or None, new xref)]."""
-    by_xref = load_annots(page, [x for x, _m in changes])
+    steps: 18 s for 1,000 markups). Returns [(old xref, its old model or None, new xref)].
+    olds: {xref: model} as the caller has just read them (they aren't read again)."""
+    known = dict(olds or {})
+    by_xref = load_annots(page, [x for x, _m in changes if x not in known])
     order = annot_order(page)
     place = {x: k for k, x in enumerate(order)}
     out = []
-    for xref, model in changes:
+    olds = known
+    for xref, _model in changes:            # read them all first...
+        if xref in olds:
+            continue
         a = by_xref.pop(xref, None)
         if a is None:
             a = page.load_annot(xref)       # (raises, like replace(), if it's gone)
         try:
-            old = read(a)
+            olds[xref] = read(a)
         except Exception:
-            old = None
-        if model["kind"] == "attach":
-            del a
-            out.append((xref, old, replace(page, xref, model)))
-            continue
-        page.delete_annot(a)
+            olds[xref] = None
         del a
-        out.append((xref, old, write(page, model).xref))
+    by_xref.clear()
+    # a markup only moved is moved where it is (exact, and about 30 times quicker); the rest
+    # are written anew
+    shifted = set()
+    to_pdf = pdfcoords.to_pdf(page)
+    for xref, model in changes:
+        d = translation(olds[xref], model)
+        if d is not None and shift_in_place(page, xref, d, to_pdf):
+            shifted.add(xref)
+    # ...the old ones of the rest go in one look through the page (one at a time, each delete
+    # looked through all the page's markups for replies: minutes for a few thousand)
+    # (a markup not changed at all stays as it is)
+    unchanged = {x for x, m in changes if x not in shifted and m["kind"] != "attach" and
+                 _same(olds[x], m)}
+    rewrite = [x for x, m in changes
+               if m["kind"] != "attach" and x not in shifted and x not in unchanged]
+    # the replies to a markup written anew answer the new one (deleting it took them along)
+    doc = page.parent
+    answering = {}
+    if rewrite:
+        targets = {f"{x} 0 R": x for x in rewrite}
+        for x, _kind, *_ in page.annot_xrefs():
+            kind, val = doc.xref_get_key(x, "IRT")
+            if kind == "xref" and val in targets:
+                answering.setdefault(targets[val], []).append(x)
+    pdf_speed.delete_many(page, rewrite, keep_replies=True)
+    for xref, model in changes:
+        if xref in shifted or xref in unchanged:
+            out.append((xref, olds[xref], xref))
+            continue
+        if model["kind"] == "attach":
+            out.append((xref, olds[xref], replace(page, xref, model)))
+            continue
+        new = write(page, model).xref
+        for r in answering.get(xref, ()):
+            doc.xref_set_key(r, "IRT", f"{new} 0 R")
+        out.append((xref, olds[xref], new))
     # each new one takes its old one's place in the stacking order (anything else made on
     # the way, a pop-up note, stays on top as it was added)
     now = annot_order(page)

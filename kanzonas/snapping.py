@@ -6,6 +6,7 @@ sheets with hundreds of thousands of lines.
 """
 
 import math
+from array import array
 
 import pymupdf
 
@@ -41,33 +42,89 @@ class PointIndex:
         return best
 
 
+class ContentIndex:
+    """PointIndex for the drawing's own points (no tags): each bucket keeps its points as
+    one array of x, y numbers, a tenth of the memory of a tuple per point (a 200,000-line
+    sheet has 600,000 of them)."""
+
+    def __init__(self):
+        self.buckets = {}               # (column, row) -> array("d", [x, y, x, y, ...])
+
+    def __len__(self):
+        return sum(len(b) for b in self.buckets.values()) // 2
+
+    def nearest(self, pt, tol, exclude=()):
+        best, best_d = None, tol
+        r = int(math.ceil(tol / CELL))
+        px, py = pt.x, pt.y
+        cx, cy = int(px // CELL), int(py // CELL)
+        hypot = math.hypot
+        for i in range(cx - r, cx + r + 1):
+            for j in range(cy - r, cy + r + 1):
+                b = self.buckets.get((i, j))
+                if b is None:
+                    continue
+                for k in range(0, len(b), 2):
+                    d = hypot(b[k] - px, b[k + 1] - py)
+                    if d <= best_d:
+                        best, best_d = (b[k], b[k + 1]), d
+        return None if best is None else pymupdf.Point(best)
+
+
 def content_index(page):
     """Snap points of the page's own vector drawing (line ends and midpoints, corners)."""
-    idx = PointIndex()
-    try:
-        paths = page.get_drawings()
-    except Exception:
-        return idx
-    for path in paths:
-        for it in path["items"]:
-            op = it[0]
-            if op == "l":
-                a, b = it[1], it[2]
-                idx.add(a.x, a.y)
-                idx.add(b.x, b.y)
-                idx.add((a.x + b.x) / 2, (a.y + b.y) / 2)
-            elif op == "c":
-                idx.add(it[1].x, it[1].y)
-                idx.add(it[4].x, it[4].y)
-            elif op == "re":
-                r = it[1]
-                for q in (r.tl, r.tr, r.bl, r.br):
-                    idx.add(q.x, q.y)
-            elif op == "qu":
-                q = it[1]
-                for p in (q.ul, q.ur, q.ll, q.lr):
-                    idx.add(p.x, p.y)
+    idx = None
+    for idx in content_index_steps(page):
+        pass
     return idx
+
+
+def content_index_steps(page, step=20000):
+    """content_index() a little at a time: a generator that yields None after reading the
+    drawing (one MuPDF call) and after every `step` paths it sorts into buckets, and the
+    finished ContentIndex last. The points are the ones get_drawings() gives, taken from
+    MuPDF's plain numbers (no Point object for each one: a third of the time)."""
+    idx = ContentIndex()
+    try:
+        paths = page.get_cdrawings()
+    except Exception:
+        yield idx
+        return
+    yield None
+    buckets = idx.buckets
+    get = buckets.get
+    for s in range(0, len(paths), step):
+        pts = []
+        add = pts.extend
+        for path in paths[s:s + step]:
+            for it in path["items"]:
+                op = it[0]
+                if op == "l":
+                    (ax, ay), (bx, by) = it[1], it[2]
+                    add((ax, ay, bx, by, (ax + bx) / 2, (ay + by) / 2))
+                elif op == "c":
+                    add(it[1])
+                    add(it[4])
+                elif op == "re":
+                    x0, y0, x1, y1 = it[1]
+                    if x1 < x0:         # (as Rect.normalize)
+                        x0, x1 = x1, x0
+                    if y1 < y0:
+                        y0, y1 = y1, y0
+                    add((x0, y0, x1, y0, x0, y1, x1, y1))
+                elif op == "qu":
+                    for q in it[1]:     # ul, ur, ll, lr
+                        add(q)
+        for k in range(0, len(pts), 2):
+            x, y = pts[k], pts[k + 1]
+            key = (int(x // CELL), int(y // CELL))
+            b = get(key)
+            if b is None:
+                b = buckets[key] = array("d")
+            b.append(x)
+            b.append(y)
+        yield None
+    yield idx
 
 
 def markup_points(model):

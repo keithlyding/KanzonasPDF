@@ -206,6 +206,11 @@ def main():
     if state["asked"]:
         deliver(state["waiting"])
     QTimer.singleShot(5000, win.start_update_check)    # once a day at most; never blocks start-up
+    # what the first typed word and the first Edit text change would wait for, made ready
+    # while nothing is going on: the spelling word list, the installed fonts
+    from . import spelling, text_edit
+    spelling.load_soon()
+    QTimer.singleShot(3000, text_edit.system_fonts_soon)
     sys.exit(app.exec())
 
 

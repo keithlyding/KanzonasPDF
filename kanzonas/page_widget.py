@@ -8,7 +8,7 @@ import math
 import pymupdf
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath,
-                           QFontMetrics)
+                           QFontMetrics, QTransform)
 from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
@@ -128,13 +128,38 @@ def night_samples(samples, width, height, stride):
     line on white paper becomes a white line on black, red stays red, a yellow highlight stays
     yellow. Per pixel: add (255 - max - min) to every channel. RGB bytes in, RGB bytes out
     (tightly packed)."""
+    return _night_array(samples, width, height, stride).tobytes()
+
+
+def _night_array(samples, width, height, stride):
+    """night_samples as a (height, width, 3) array of bytes. Worked in bytes, not wider
+    numbers (casting a big page to 16 bits and back took most of a second): a channel c
+    between the pixel's min and max becomes (c - min) + (255 - max), never below 0 or
+    above 255."""
     import numpy as np
     a = np.frombuffer(samples, dtype=np.uint8)
     rows = a[: height * stride].reshape(height, stride)[:, : width * 3].reshape(height, width, 3)
-    rows = rows.astype(np.int16)
-    offset = 255 - rows.max(axis=2) - rows.min(axis=2)
-    out = (rows + offset[:, :, None]).clip(0, 255).astype(np.uint8)
-    return out.tobytes()
+    r, g, b = rows[:, :, 0], rows[:, :, 1], rows[:, :, 2]
+    mx = np.maximum(np.maximum(r, g), b)
+    mn = np.minimum(np.minimum(r, g), b)
+    out = rows - mn[:, :, None]
+    np.subtract(255, mx, out=mx)
+    out += mx[:, :, None]
+    return out
+
+
+def lines_path(lines):
+    """Lines (lists of points) as one QPainterPath, in their own coordinates. Each piece is
+    on its own, so the path draws exactly as one drawLine per piece did (dashes start again
+    on each piece), but in one call: drawing a big selection a piece at a time from Python
+    took most of a second on each mouse move."""
+    path = QPainterPath()
+    move, to = path.moveTo, path.lineTo
+    for line in lines:
+        for a, b in zip(line, line[1:]):
+            move(a[0], a[1])
+            to(b[0], b[1])
+    return path
 
 
 class PageWidget(QWidget):
@@ -210,11 +235,17 @@ class PageWidget(QWidget):
         return dl
 
     def _to_qpixmap(self, pm, dpr):
+        # one copy of the pixels, not three: the image is read in place from the rendered
+        # pixmap (or night mode's array), both kept alive here until the conversion to
+        # 32 bits has made Qt's own copy. (Not .copy() then fromImage: Qt keeps an image
+        # of the screen's own format as it is, so it would go on pointing into this memory.)
         if self.view.night_mode:
-            data = night_samples(pm.samples, pm.width, pm.height, pm.stride)
-            img = QImage(data, pm.width, pm.height, pm.width * 3, QImage.Format_RGB888).copy()
+            data = _night_array(pm.samples_mv, pm.width, pm.height, pm.stride)
+            img = QImage(data.data, pm.width, pm.height, pm.width * 3, QImage.Format_RGB888)
         else:
-            img = QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
+            data = pm.samples_mv
+            img = QImage(data, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
+        img = img.convertToFormat(QImage.Format_RGB32)
         pix = QPixmap.fromImage(img)
         pix.setDevicePixelRatio(dpr)
         return pix
@@ -618,7 +649,7 @@ class PageWidget(QWidget):
                 return
             group = self._edit["preview"] if self._edit and self._edit.get("preview") else None
             if group is None:
-                group = [m for _x, m in self.view.selected_models()]
+                group = [m for _x, m in self.view.selected_models_to_paint()]
             for k, m in enumerate(group):
                 p.setPen(QPen(blue, 2 if k == 0 else 1, Qt.SolidLine if k == 0 else Qt.DashLine))
                 p.drawRect(self.to_screen(A.bounds(m), page).adjusted(-3, -3, 3, 3))
@@ -686,11 +717,30 @@ class PageWidget(QWidget):
             self._size = total
         return self._size
 
+    def _screen_transform(self, page):
+        """Unrotated PDF point -> widget point (to_screen_pt) as a QTransform."""
+        z = self.view.zoom
+        m = page.rotation_matrix
+        return QTransform(m.a * z, m.b * z, m.c * z, m.d * z, m.e * z, m.f * z)
+
     def _draw_object(self, p, item, page):
-        for line in self.view.object_lines(self.index, item):
-            pts = [self.to_screen_pt(q, page) for q in line]
-            for a_, b_ in zip(pts, pts[1:]):
-                p.drawLine(a_, b_)
+        p.drawPath(self._screen_transform(page).map(
+            lines_path(self.view.object_lines(self.index, item))))
+
+    def _selection_path(self, page):
+        """The selected objects' lines on screen, as one path (made once per selection,
+        moved onto the screen again only when the zoom or the page's turn changes)."""
+        sel = self.view.obj_sel
+        t = self._screen_transform(page)
+        key = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
+        got = getattr(self, "_sel_path", None)
+        if got is None or got[0] is not sel or got[1] != self.index:
+            path = lines_path(line for it in self._objects_here()
+                              for line in self.view.object_lines(self.index, it))
+            got = self._sel_path = (sel, self.index, path, None, None)
+        if got[3] != key:
+            got = self._sel_path = got[:3] + (key, t.map(got[2]))
+        return got[4]
 
     def _paint_objects(self, p, page):
         blue = QColor(0, 120, 215)
@@ -718,8 +768,7 @@ class PageWidget(QWidget):
             self._paint_object_ghost(p, ed, page)
         else:
             if len(items) <= 3000 and self._selected_size(items) <= 30000:
-                for it in items:
-                    self._draw_object(p, it, page)
+                p.drawPath(self._selection_path(page))
             elif len(items) <= 3000:            # (a huge drawing: each one's box)
                 for it in items:
                     p.drawRect(self.to_screen(it["rect"], page))
@@ -808,8 +857,7 @@ class PageWidget(QWidget):
         gp.translate(-src.left(), -src.top())
         gp.setPen(QPen(QColor(0, 90, 200), 1.75))
         gp.setBrush(Qt.NoBrush)
-        for it in items:
-            self._draw_object(gp, it, page)
+        gp.drawPath(self._selection_path(page))
         gp.end()
         ed["ghost_pm"] = QPixmap.fromImage(img)
         ed["ghost_rect"] = src

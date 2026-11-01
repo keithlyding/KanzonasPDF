@@ -1256,6 +1256,7 @@ class MainWindow(QMainWindow):
         self.thumbs.setDefaultDropAction(Qt.MoveAction)
         self.thumbs.setDropIndicatorShown(True)
         self.thumbs.model().rowsMoved.connect(self._on_thumb_moved)
+        self.thumbs.verticalScrollBar().valueChanged.connect(lambda *_: self._thumb_timer.start())
         self.lock_btn = QToolButton()
         self.lock_btn.setCheckable(True)
         self.lock_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
@@ -2135,10 +2136,21 @@ class MainWindow(QMainWindow):
     _PLUS_KEYS = (Qt.Key_Plus, Qt.Key_Equal)
     _MINUS_KEYS = (Qt.Key_Minus, Qt.Key_Underscore)
 
+    # the only events looked at below: every event of the app passes through here (opening
+    # a 2,000-page set sends it 55,000), so the others leave at once
+    _FILTERED = frozenset((QEvent.Resize, QEvent.KeyPress, QEvent.ShortcutOverride,
+                           QEvent.Show))
+
     def eventFilter(self, obj, e):
+        t = e.type()
+        if t not in self._FILTERED:
+            return False
+        if t == QEvent.Show:
+            if obj is getattr(self, "thumbs", None):
+                self._thumb_timer.start()       # the Pages panel shown: draw what's in view
+            return False
         if QApplication.closingDown():
             return False            # the app is being torn down: nothing here is safe to touch
-        t = e.type()
         if t == QEvent.Resize and obj is getattr(self, "thumbs", None):
             QTimer.singleShot(0, self._fit_thumbs)     # after the list has laid out its new size
         if t == QEvent.KeyPress and obj is getattr(self, "thumbs", None) and \
@@ -4042,6 +4054,7 @@ class MainWindow(QMainWindow):
                 for v in w._views():
                     for pw in v.pages:
                         pw.update()
+                    v._cad_prepare_soon()   # (CAD mode: snap points made ready while idle)
 
     def grid_settings(self):
         from PySide6.QtWidgets import QDoubleSpinBox
@@ -5015,7 +5028,7 @@ class MainWindow(QMainWindow):
     def _on_doc_changed(self):
         v = self.sender()
         if v is self.view():
-            self._queue_thumb(v.current_page(), front=True)
+            self._thumbs_changed(v)
         self._update_ui()
 
     def _on_structure_changed(self):
@@ -5065,6 +5078,7 @@ class MainWindow(QMainWindow):
         w = max(36, min(120, w))
         if self.thumbs.iconSize().width() != w:
             self.thumbs.setIconSize(QSize(w, w * 4 // 3))
+        self._thumb_timer.start()           # (other rows may be in view now)
 
     def _on_thumb_moved(self, *_):
         """Thumbnail dragged: apply the new order to the PDF after Qt finishes the drop (it
@@ -5168,68 +5182,174 @@ class MainWindow(QMainWindow):
             finally:
                 self._thumb_nav = False
 
-    # ---- thumbnails (rendered a few at a time so opening big files stays snappy) ----
-    def _rebuild_thumbs(self):
-        self._thumb_timer.stop()
-        self.thumbs.blockSignals(True)
-        self.thumbs.clear()
-        v = self.view()
-        self._thumb_queue = []
-        if v:
+    # ---- thumbnails (drawn a few at a time, only for the rows in view) ----------------
+    # Each document keeps the thumbnails it drew (DocumentView.thumb_icons, by page xref), so
+    # switching tabs shows them at once, pages added, removed or moved keep theirs, and an
+    # edit draws again only the pages it changed (DocumentView.take_thumb_changes). Only the
+    # rows in view, and a few around them, are drawn: a 2,000-page set doesn't draw 2,000.
+    THUMB_BUDGET = 0.03         # seconds of thumbnail drawing per turn of the event loop
+    THUMB_MARGIN = 8            # rows above and below the ones in view drawn ahead
+    THUMB_KEEP = 400            # thumbnails kept per document (about 30 MB), the oldest go
+    THUMB_KEEP_ALL = 1200       # ...and for all open documents together (about 80 MB)
+    _thumbs_of = None           # the view the page list shows
+    _thumb_index = {}           # page xref -> its row (= page index)
+    _thumb_blank = None
+
+    def _blank_thumb(self):
+        if self._thumb_blank is None:
             blank = QPixmap(120, 160)
             blank.fill(Qt.white)
-            for i in range(v.page_count()):
-                self.thumbs.addItem(QListWidgetItem(QIcon(blank), str(i + 1)))
-            self.thumbs.setCurrentRow(v.current_page())
-            self._thumb_queue = list(range(v.page_count()))
-            self._thumb_timer.start()
-        self.thumbs.blockSignals(False)
+            self._thumb_blank = QIcon(blank)
+        return self._thumb_blank
 
-    def _queue_thumb(self, i, front=False):
-        if i in self._thumb_queue:
-            self._thumb_queue.remove(i)
-        if front:
-            self._thumb_queue.insert(0, i)
-        else:
-            self._thumb_queue.append(i)
+    def _rebuild_thumbs(self):
+        """Bring the page list up to date with the current document: made again for another
+        document or another page order, else renumbered where it is. Thumbnails drawn
+        before are shown at once; the changed ones in view are drawn again."""
+        self._thumb_timer.stop()
+        v = self.view()
+        self.thumbs.blockSignals(True)
+        try:
+            if v is None:
+                self.thumbs.clear()
+                self._thumbs_of, self._thumb_index, self._thumb_queue = None, {}, []
+                return
+            self._stale_thumbs(v)
+            n = v.page_count()
+            xrefs = [v.doc.page_xref(i) for i in range(n)]
+            t = self.thumbs
+            if self._thumbs_of is v and t.count() == n and \
+                    all(t.item(i).data(Qt.UserRole) == x for i, x in enumerate(xrefs)):
+                for i in range(n):              # (after a drag: rows in place, new numbers)
+                    if t.item(i).text() != str(i + 1):
+                        t.item(i).setText(str(i + 1))
+            else:
+                t.clear()
+                cache, blank = v.thumb_icons, self._blank_thumb()
+                for i, x in enumerate(xrefs):
+                    got = cache.get(x)
+                    item = QListWidgetItem(got[0] if got else blank, str(i + 1))
+                    item.setData(Qt.UserRole, x)
+                    t.addItem(item)
+            self._thumbs_of = v
+            self._thumb_index = {x: i for i, x in reversed(list(enumerate(xrefs)))}
+            t.setCurrentRow(v.current_page())
+        finally:
+            self.thumbs.blockSignals(False)
         self._thumb_timer.start()
 
-    THUMB_BUDGET = 0.03         # seconds of thumbnail drawing per turn of the event loop
+    @staticmethod
+    def _stale_thumbs(v):
+        """Mark the thumbnails of the pages v changed since last time to be drawn again (they
+        stay shown until then)."""
+        changed = v.take_thumb_changes()
+        cache = v.thumb_icons
+        for x in (cache if changed is None else changed):
+            if x in cache:
+                cache[x][1] = False
+
+    def _thumbs_changed(self, v):
+        """v's pages changed (not their order): draw the changed ones in view again."""
+        if v is self._thumbs_of:
+            self._stale_thumbs(v)
+            self._thumb_timer.start()
 
     def _visible_thumb_rows(self):
-        vp = self.thumbs.viewport()
-        first = self.thumbs.indexAt(vp.rect().topLeft()).row()
-        last = self.thumbs.indexAt(vp.rect().bottomRight()).row()
+        t = self.thumbs
+        if not t.count():
+            return []
+        r = t.viewport().rect()
+        x = t.spacing() + 2             # (the spacing around the rows is no row's)
+
+        def row_at(y, step):
+            for k in range(0, 3 * t.spacing() + 3):
+                row = t.indexAt(QPoint(x, y + k * step)).row()
+                if row >= 0:
+                    return row
+            return -1
+        first = row_at(r.top(), 1)
+        last = row_at(r.bottom(), -1)
         if first < 0:
             return []
         if last < 0:
-            last = self.thumbs.count() - 1
+            last = t.count() - 1
         return list(range(first, last + 1))
+
+    def _thumb_rows(self):
+        """The rows to have drawn: the ones in view first, then a few below and above."""
+        rows = self._visible_thumb_rows()
+        if not rows:
+            return []
+        m, n = self.THUMB_MARGIN, self.thumbs.count()
+        return rows + list(range(rows[-1] + 1, min(n, rows[-1] + 1 + m))) + \
+            list(range(rows[0] - 1, max(-1, rows[0] - 1 - m), -1))
 
     def _thumb_step(self):
         v = self.view()
-        if not v or not self._thumb_queue:
+        if v is None or v is not self._thumbs_of or not self.thumbs.isVisible():
+            # (the Pages panel hidden: drawn once it shows, see eventFilter)
             self._thumb_timer.stop()
             return
-        if not self.thumbs.isVisible():
-            # the Pages panel is hidden: check back now and then instead of drawing
-            self._thumb_timer.setInterval(500)
-            return
-        self._thumb_timer.setInterval(0)
-        # thumbnails you can see first
-        queued = set(self._thumb_queue)
-        seen = [i for i in self._visible_thumb_rows() if i in queued]
-        if seen and self._thumb_queue[0] not in seen:
-            first = set(seen)
-            self._thumb_queue = seen + [i for i in self._thumb_queue if i not in first]
+        cache = v.thumb_icons
+        todo = []
+        for r in self._thumb_rows():
+            x = self.thumbs.item(r).data(Qt.UserRole)
+            got = cache.get(x)
+            if got is None or not got[1]:
+                todo.append((r, x))
+            else:
+                cache.move_to_end(x)            # (in view: kept longest)
         start = time.monotonic()
-        while self._thumb_queue and time.monotonic() - start < self.THUMB_BUDGET:
-            i = self._thumb_queue.pop(0)
-            if i >= v.page_count() or i >= self.thumbs.count():
-                continue
+        while todo and time.monotonic() - start < self.THUMB_BUDGET:
+            r, x = todo.pop(0)
+            i = self._thumb_index.get(x)
+            if i is None or i >= v.page_count() or v.doc.page_xref(i) != x:
+                self._rebuild_thumbs()          # (the list no longer matches the pages)
+                return
             page = v.doc[i]
             s = min(120 / page.rect.width, 160 / page.rect.height)
             pm = page.get_pixmap(matrix=pymupdf.Matrix(s, s), annots=True)
             img = QImage(pm.samples, pm.width, pm.height, pm.stride,
                          QImage.Format_RGB888).copy()
-            self.thumbs.item(i).setIcon(QIcon(QPixmap.fromImage(img)))
+            icon = QIcon(QPixmap.fromImage(img))
+            cache[x] = [icon, True]
+            cache.move_to_end(x)
+            self.thumbs.item(r).setIcon(icon)
+        self._thumb_queue = [r for r, _x in todo]
+        if not todo:
+            self._thumb_timer.stop()
+            self._trim_thumbs(v)
+
+    def _trim_other_thumbs(self, v):
+        """Ten long documents open kept 400 thumbnails each: the other documents' oldest go
+        first, so all of them together keep at most THUMB_KEEP_ALL (they're drawn again when
+        their document is shown)."""
+        from .document_view import DocumentView
+        views = [o for o in list(DocumentView._views or ()) if o is not v and
+                 getattr(o, "thumb_icons", None)]
+        total = len(getattr(v, "thumb_icons", None) or ()) + sum(len(o.thumb_icons) for o in views)
+        for o in views:
+            if total <= self.THUMB_KEEP_ALL:
+                break
+            cache = o.thumb_icons
+            drop = min(len(cache), total - self.THUMB_KEEP_ALL)
+            for x in list(cache)[:drop]:    # (least recently in view first)
+                del cache[x]
+            total -= drop
+
+    def _trim_thumbs(self, v):
+        """Keep at most THUMB_KEEP thumbnails of a document: the ones least recently in view
+        go (their rows show a blank page until they're in view again)."""
+        self._trim_other_thumbs(v)
+        cache = v.thumb_icons
+        extra = len(cache) - self.THUMB_KEEP
+        if extra <= 0:
+            return
+        t = self.thumbs
+        keep = {t.item(r).data(Qt.UserRole) for r in self._thumb_rows()}
+        for x in [x for x in cache if x not in keep][:extra]:
+            del cache[x]
+            r = self._thumb_index.get(x)
+            if v is self._thumbs_of and r is not None and r < t.count() and \
+                    t.item(r).data(Qt.UserRole) == x:
+                t.item(r).setIcon(self._blank_thumb())

@@ -7,6 +7,32 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.6.1
+
+**Fixed**
+- Editing pages with many markups is much faster: with 1,000 markups on a page, adding them takes under half a second instead of over three, moving them half a second instead of thirteen, and deleting them a third of a second instead of four.
+- Moving a markup no longer redraws it: it lands exactly where you put it, and a box made by another program no longer grows slightly each time it is moved.
+- Long documents: inserting, deleting and turning pages no longer freeze the window (inserting 500 pages into a 2,000-page set took about 9 seconds, now a tenth of a second); thumbnails are no longer redrawn when you switch tabs; autosave, big forms and the markups list are much quicker.
+- Every mouse move stays instant: selecting text, hovering over pages with many markups, Edit objects and Edit text, and the preview of CAD commands on big selections.
+- Heavy drawings: CAD edits and copies are two to three times faster, undo takes far less memory, snapping is ready sooner, and night mode draws ten times faster.
+- Restyling or editing a comment's markup no longer deletes the replies to it, and locking or hiding a measurement keeps its label.
+- A value being typed in a form field is no longer lost when a page is moved, turned or deleted.
+- Snapping follows Crop pages and the layers you show or hide.
+- The selection highlight and repainting no longer lag when thousands of markups are selected or under a CAD selection box.
+
+## 1.6.1 (es)
+
+**Correcciones**
+- Editar páginas con muchas marcas es mucho más rápido: con 1,000 marcas en una página, agregarlas tarda menos de medio segundo en lugar de más de tres, moverlas medio segundo en lugar de trece, y eliminarlas un tercio de segundo en lugar de cuatro.
+- Mover una marca ya no la vuelve a dibujar: queda exactamente donde la pone, y un recuadro hecho por otro programa ya no crece un poco cada vez que se mueve.
+- Documentos largos: insertar, eliminar y girar páginas ya no congela la ventana (insertar 500 páginas en un juego de 2,000 tardaba unos 9 segundos, ahora una décima de segundo); las miniaturas ya no se vuelven a dibujar al cambiar de pestaña; el autoguardado, los formularios grandes y la lista de marcas son mucho más rápidos.
+- Cada movimiento del mouse sigue siendo instantáneo: seleccionar texto, pasar sobre páginas con muchas marcas, Editar objetos y Editar texto, y la vista previa de los comandos CAD con selecciones grandes.
+- Planos pesados: las ediciones y copias CAD son dos a tres veces más rápidas, deshacer usa mucha menos memoria, el ajuste a objetos está listo antes y el modo nocturno dibuja diez veces más rápido.
+- Cambiar el estilo o editar la marca de un comentario ya no elimina sus respuestas, y bloquear u ocultar una medida conserva su etiqueta.
+- Un valor que se está escribiendo en un campo de formulario ya no se pierde al mover, girar o eliminar una página.
+- El ajuste a objetos sigue a Recortar páginas y a las capas que muestra u oculta.
+- El resaltado de la selección y el redibujado ya no se retrasan cuando hay miles de marcas seleccionadas o dentro de un recuadro de selección CAD.
+
 ## 1.6
 
 **New**

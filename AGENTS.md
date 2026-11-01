@@ -66,6 +66,25 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
   through qtawesome. The self-test check "performance budget" fails the build if one is loaded.
 - Budget (checked in the Windows build): start-up < 5 s, open + draw a 60,000-line sheet
   < 5 s, zoom to 400% < 5 s, peak memory < 800 MB. Typical today: ~0.3 s / 0.9 s / 0.6 s / 170 MB.
+- Editing budget (checked in the Windows build, self-test "editing speed budget"): on a 20,000-line
+  page, 1,000 markups added < 2 s, moved < 2 s, deleted < 1.5 s; a sheet's 400 labels moved
+  with its lines < 4 s; the live CAD highlight's longest step < 0.25 s; a repaint not reading
+  the selection again. Typical today: 0.4 / 0.5 / 0.3 / 1.0 s, 0.03 s.
+- Everyday budget (self-test "everyday speed budget"): a text-selection drag < 10 ms per move,
+  hover over 2,000 markups < 10 ms, Edit objects hover < 5 ms, night mode on 8 megapixels
+  < 0.5 s, a 15,000-piece command preview < 80 ms, Tab on a form < 20 ms, inserting 100 pages
+  into a shown 300-page document < 2.5 s, deleting 10 pages < 2.5 s. Per-move work goes
+  through cached per-page indexes (`hit_index.py`, `_hit_cache`), never a Python loop over
+  every character, markup or object; many pieces are drawn as one QPainterPath.
+- A markup that is only moved is moved where it is (`annotations.shift_in_place`: its box and
+  positions shifted, its drawing reused), never deleted and written anew; keep it that way
+  for any new markup kind (a key holding positions goes in `_POSITION_KEYS`, a position kept in
+  KZProps in its geom list). tests/test_move_in_place.py checks every kind pixel for pixel.
+- Edit in bulk: one redaction, one write, one walk of the page's markups for many items, not
+  one per item (PyMuPDF's per-call steps read the whole page or all its markups each time).
+- `kanzonas/pdf_speed.py` replaces two PyMuPDF steps that slow down steeply with many markups
+  (naming a new markup; deleting many). The self-test check "PyMuPDF speed fixes" fails if a
+  PyMuPDF update renames what they replace: then read the new PyMuPDF code and update them.
 - Never redo expensive work on every mouse move or paint: cache per page and clear the cache
   in `DocumentView._clear_caches()` (see display lists, tiles, snap indexes).
 - Big pages render in tiles from a cached display list; keep it that way.

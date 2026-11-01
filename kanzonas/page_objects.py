@@ -16,6 +16,7 @@ line width with it.
 
 import math
 import re
+import zlib
 
 import pymupdf
 
@@ -171,7 +172,9 @@ def scan(data):
     """Objects in a content stream, in drawing order. Each is a dict with "start", "end"
     (byte range of its drawing instructions), "ctm" (Matrix to PDF space) and either
     "name" (b"/Im1" for Do, None for an inline image) or "path": True with "box" (content
-    space bounds), "stroke", "fill" and "width"."""
+    space bounds), "stroke", "fill" and "width". "ctx" is (the marked content around it,
+    the clipping paths in effect, by their number in the stream): two objects with the same
+    one are drawn under the same clip, in the same layer."""
     out = []
     for _ in scan_steps(data, out):
         pass
@@ -189,6 +192,8 @@ def scan_steps(data, out):
     width = 1.0
     stack = []
     st = _new_state()
+    bdc, clips, nclip = [], [], 0
+    ctx = ((), ())
 
     def copy(s):
         return {k: (dict(v) if isinstance(v, dict) else list(v)) for k, v in s.items()}
@@ -197,6 +202,7 @@ def scan_steps(data, out):
         _note(st, op, data[start:end])
     path_start = None
     path_state = None
+    path_ctx = ctx
     clip = False
     xs, ys = [], []
     for op, args, start, end in _tokens(data):
@@ -208,6 +214,7 @@ def scan_steps(data, out):
             if path_start is None:
                 path_start = start
                 path_state = None
+                path_ctx = ctx
                 clip = False
                 xs, ys = [], []
             k = _CONSTRUCT[op]
@@ -224,6 +231,9 @@ def scan_steps(data, out):
             continue
         if op in (b"W", b"W*"):
             clip = True
+            clips.append(nclip)
+            nclip += 1
+            ctx = (ctx[0], tuple(clips))
             continue
         if path_start is not None and op in _STATE:
             if op == b"w" and args:
@@ -239,16 +249,26 @@ def scan_steps(data, out):
                             "path": True, "box": (min(xs), min(ys), max(xs), max(ys)),
                             "stroke": stroke, "fill": fill, "width": width,
                             "state": path_state if path_state is not None
-                            else _state_bytes(st)})
+                            else _state_bytes(st), "ctx": path_ctx})
             path_start = None
             if op in _PAINT or op == b"n":
                 continue
         note(op, start, end)
         if op == b"q":
-            stack.append((ctm, width, copy(st)))
+            stack.append((ctm, width, copy(st), len(clips)))
         elif op == b"Q":
             if stack:
-                ctm, width, st = stack.pop()
+                ctm, width, st, k = stack.pop()
+                if len(clips) > k:
+                    del clips[k:]
+                    ctx = (ctx[0], tuple(clips))
+        elif op in (b"BDC", b"BMC"):
+            bdc.append(data[start:end])
+            ctx = (tuple(bdc), ctx[1])
+        elif op == b"EMC":
+            if bdc:
+                bdc.pop()
+                ctx = (tuple(bdc), ctx[1])
         elif op == b"cm" and len(args) >= 6:
             vals = [_num(t) for t in args[-6:]]
             if None not in vals:
@@ -257,10 +277,10 @@ def scan_steps(data, out):
             width = _num(args[-1]) or 0.0
         elif op == b"Do" and args and isinstance(args[-1], bytes) and args[-1][:1] == b"/":
             out.append({"start": start, "end": end, "ctm": pymupdf.Matrix(ctm),
-                        "name": args[-1], "state": _state_bytes(st)})
+                        "name": args[-1], "state": _state_bytes(st), "ctx": ctx})
         elif op == b"BI":
             out.append({"start": start, "end": end, "ctm": pymupdf.Matrix(ctm), "name": None,
-                        "state": _state_bytes(st)})
+                        "state": _state_bytes(st), "ctx": ctx})
 
 
 def _bezier(p0, p1, p2, p3):
@@ -430,10 +450,44 @@ def _contents(page):
     return b"\n".join(doc.xref_stream(x) or b"" for x in page.get_contents())
 
 
-def _set_contents(page, data, compress=True):
-    """Give the page one new content stream (never edits a stream another page may share).
-    compress=False skips deflating it now (saving deflates everything anyway): on a big CAD
-    sheet that's a quarter of a second per edit."""
+def _put_stream(doc, xref, data):
+    """Write stream xref deflated quickly (zlib level 1): MuPDF's own compression packs it
+    tighter but took two seconds for a big CAD sheet's 7 MB drawing, and left uncompressed
+    the drawing made every undo step about four times bigger."""
+    doc.update_stream(xref, zlib.compress(data, 1), compress=False)
+    doc.xref_set_key(xref, "Filter", "/FlateDecode")     # (update_stream took it away)
+    # Save packs it tightly again (see pack_quick_streams): Save's own deflate leaves alone a
+    # stream already compressed, and files saved after a CAD edit came out up to half bigger
+    doc.xref_set_key(xref, QUICK_KEY, "true")
+    quick = getattr(doc, "_kz_quick", None)
+    if quick is None:
+        quick = doc._kz_quick = set()
+    quick.add(xref)
+
+
+QUICK_KEY = "KZQuick"
+
+
+def pack_quick_streams(doc):
+    """Compress tightly (MuPDF's deflate) the streams _put_stream wrote quickly, before a
+    Save: about a second for a big sheet's drawing, paid once when saving, not on each
+    edit. doc._kz_quick: the xrefs written so (carried from document to document by undo
+    and redo); each is checked for the mark, so one that changed since is left alone."""
+    for x in sorted(getattr(doc, "_kz_quick", ()) or ()):
+        try:
+            if x >= doc.xref_length() or doc.xref_get_key(x, QUICK_KEY)[1] != "true" or \
+                    not doc.xref_is_stream(x):
+                continue
+            data = doc.xref_stream(x)
+            doc.update_stream(x, data, compress=True)
+            doc.xref_set_key(x, QUICK_KEY, "null")
+        except Exception:
+            continue                    # (left as it is: still a valid, compressed stream)
+    # (the list stays: an undo after this Save brings back streams written quickly)
+
+
+def _set_contents(page, data):
+    """Give the page one new content stream (never edits a stream another page may share)."""
     doc = page.parent
     # The stream an earlier edit wrote for this page is written over (a new one each time
     # left every old drawing in the file: an undo step on a big sheet carried all of them)
@@ -442,7 +496,7 @@ def _set_contents(page, data, compress=True):
     if x is None:
         x = doc.get_new_xref()
         doc.update_object(x, "<</KzPage %d>>" % page.xref)
-    doc.update_stream(x, data, compress=compress)
+    _put_stream(doc, x, data)
     page.set_contents(x)
 
 
@@ -491,10 +545,11 @@ def _inv(m):
 class Objects:
     """The editable objects of one page, read once (cache it until the page changes)."""
 
-    def __init__(self, page, data=None, found=None):
+    def __init__(self, page, data=None, found=None, reuse=None):
         """data / found: the page's content and its scan when the caller already has them
-        (after a move: see transform), so a big drawing isn't read again."""
-        for _ in self.build_steps(page, data, found):
+        (after a move: see transform), so a big drawing isn't read again. reuse: {number in
+        found: the shape item it had before an edit that left it as it was} (see _rebuilt)."""
+        for _ in self.build_steps(page, data, found, reuse):
             pass
 
     @classmethod
@@ -504,7 +559,7 @@ class Objects:
         objs = cls.__new__(cls)
         return objs, objs.build_steps(page, None, None)
 
-    def build_steps(self, page, data, found):
+    def build_steps(self, page, data, found, reuse=None):
         self.data = _contents(page) if data is None else data
         self.tm = pdfcoords.to_page(page)
         self.items = []
@@ -533,9 +588,19 @@ class Objects:
         tm = self.tm
         tt = tuple(tm)
         Rect = pymupdf.Rect
+        reuse = reuse or {}
         for k, d in enumerate(self.found):
             if k % STEP == STEP - 1:
                 yield
+            old = reuse.get(k)
+            if old is not None:
+                # the same shape, only further along in the drawing: its box and outline
+                # stay (working them out again took a second on a 200,000-line sheet)
+                it = _Shape(old)
+                it["n"] = k
+                it["obj"] = d
+                self.items.append(it)
+                continue
             if d.get("path"):
                 # plain arithmetic: a big drawing has tens of thousands of these
                 a, b, c, e_, e, f = _mul(tuple(d["ctm"]), tt)
@@ -598,12 +663,26 @@ class Objects:
                 if pts else item["rect"]
         return item["tight"]
 
+    def at_index(self):
+        """The lookup at() finds the objects near a point with (made once)."""
+        from . import hit_index
+        near = getattr(self, "_at_index", None)
+        if near is None or near.size != len(self.items):
+            near = self._at_index = hit_index.BoxIndex(
+                (it["rect"] for it in self.items),
+                [it.get("width", 0) / 2 for it in self.items])
+            self._segments = {}
+        return near
+
     def at(self, pt, tol):
         """The topmost object at page point pt: a line within tol of it first, then a filled
         shape or picture under it."""
         pt = pymupdf.Point(pt)
         filled = None
-        for it in reversed(self.items):
+        items = self.items
+        # only the objects whose box is near: a quick lookup made once (going through all
+        # of a big drawing's objects took 40 ms on each mouse move)
+        for it in (items[i] for i in reversed(self.at_index().near(pt.x, pt.y, tol))):
             r = it["rect"]
             pad = tol + it.get("width", 0) / 2
             if not (r.x0 - pad <= pt.x <= r.x1 + pad and r.y0 - pad <= pt.y <= r.y1 + pad):
@@ -612,10 +691,18 @@ class Objects:
                 if pt in it["quad"] and filled is None and not it.get("whole"):
                     filled = it
                 continue
-            for line in self.lines(it):
-                if _near(line, pt, pad):
+            lines = self.lines(it)
+            if sum(len(line) for line in lines) > 64:
+                # a long line (a contour, a hatch): all its pieces at once
+                segs = self._segments.get(it["n"])
+                if segs is None or segs.lines is not lines:
+                    from .hit_index import Segments
+                    segs = self._segments[it["n"]] = Segments(lines)
+                if segs.near(pt, pad):
                     return it
-            if it["fill"] and filled is None and _inside(self.lines(it), pt):
+            elif any(_near(line, pt, pad) for line in lines):
+                return it
+            if it["fill"] and filled is None and _inside(lines, pt):
                 filled = it
         return filled
 
@@ -891,7 +978,7 @@ def _edit(page, ns, new, objs=None):
         pieces.append((d["start"], d["end"], new(data[d["start"]:d["end"]], d["ctm"]), n))
     new_data = _splice(data, pieces)
     _set_contents(page, new_data)
-    if not have or _contents(page) != new_data:
+    if not have:
         return None
     # the new scan: what was rewritten is scanned on its own, in its place and matrix
     by_n = {p[3]: p for p in pieces}
@@ -916,6 +1003,7 @@ def _edit(page, ns, new, objs=None):
             x["start"] += s_ + shift
             x["end"] += s_ + shift
             x["ctm"] = x["ctm"] * d["ctm"]
+            x["ctx"] = d.get("ctx")     # (a piece has no clipping or marked content)
             x["state"] = _state_after(d.get("state", b""), own) if own else d.get("state", b"")
             if x.get("path"):
                 x["width"] = d.get("width", x["width"])
@@ -976,9 +1064,30 @@ def transform(page, ns, t_page, objs=None):
         pieces.append((s, e, state + head + body + b"\nQ\n", n,
                        len(state) + len(head), len(body), _written(head), state))
     data = _splice(data, pieces)
-    _set_contents(page, data, compress=False)
+    _set_contents(page, data)
     same = objs is not None and objs.found is found      # (else its lines don't apply)
     return _moved(page, data, found, pieces, objs if same else None, t_page)
+
+
+def _scan_copies(heads, inner, tail=b"\nQ\n"):
+    """scan(b"".join(head + inner + tail for head in heads)) where each head is a
+    "q <a b c d e f> cm" wrapper and inner draws the same in each: inner is read once and
+    its objects repeated under each head's matrix (copying a big selection writes the same
+    instructions for every copy). Each copy starts from the same state (q ... Q), so the
+    result is exactly what reading it all would give."""
+    one = scan(inner)
+    out, pos = [], 0
+    for head in heads:
+        m = _written(head)
+        base = pos + len(head)
+        for x in one:
+            y = dict(x)
+            y["start"] += base
+            y["end"] += base
+            y["ctm"] = x["ctm"] * m
+            out.append(y)
+        pos = base + len(inner) + len(tail)
+    return out
 
 
 def _splice(data, pieces):
@@ -1005,14 +1114,22 @@ def _rebuilt(page, data, found, objs, origin):
     object left as it was, (old number, Matrix) for one moved or copied by that matrix (in
     page coordinates), None for one written anew. Lines already read carry over (moved
     along), so a big drawing's lines aren't read again after every command."""
-    new = Objects(page, data, found)
     if objs is None:
-        return new
+        return Objects(page, data, found)
     old = {it["n"]: it for it in objs.items}
+    # shapes left as they were (same matrix and box: only their place in the stream moved)
+    # are taken over as they are, with their outline
+    reuse = {}
+    for k, o in enumerate(origin):
+        if o is not None and o[1] is None:
+            src = old.get(o[0])
+            if src is not None and src["kind"] == "shape":
+                reuse[k] = src
+    new = Objects(page, data, found, reuse)
     Point = pymupdf.Point
     for it in new.items:
         o = origin[it["n"]] if it["n"] < len(origin) else None
-        if o is None:
+        if o is None or it["n"] in reuse:
             continue
         src = old.get(o[0])
         if src is None or "lines" not in src or src["kind"] != it["kind"]:
@@ -1106,17 +1223,18 @@ def copies(page, ns, matrices, objs=None, placed=None):
         state, body = _split(old) if old[:2] != b"BI" else (b"", old)
         c = tuple(d["ctm"])
         ci = _inv(c)
-        add = b"".join(b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % _mul(_mul(c, tp), ci) + body +
-                       b"\nQ\n" for tp in tps)
-        adds.append((d["end"], d["end"], add, n, state))
+        heads = [b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % _mul(_mul(c, tp), ci) for tp in tps]
+        add = b"".join(h + body + b"\nQ\n" for h in heads)
+        adds.append((d["end"], d["end"], add, n, state, heads, body))
     new_data = _splice(data, adds)
-    _set_contents(page, new_data, compress=False)
+    _set_contents(page, new_data)
+    got = {a[3]: _scan_copies(a[5], a[6]) for a in adds}
     if placed is not None:
         # where the originals are now: each one's copies come right after it
         placed["originals"], before = [], 0
         for a in adds:
             placed["originals"].append(a[3] + before)
-            before += len(scan(a[2]))
+            before += len(got[a[3]])
     if not have:
         return None
     # the new scan: each original, then its copies (scanned on their own, under its matrix)
@@ -1131,20 +1249,21 @@ def copies(page, ns, matrices, objs=None, placed=None):
         a = by_n.get(n)
         if a is None:
             continue
-        at, _e, add, _n, state = a
+        at, _e, add, _n, state = a[:5]
         after = _state_after(d.get("state", b""), state) if state else d.get("state", b"")
-        got = scan(add)
-        for k, x in enumerate(got):
+        mine = got[n]
+        for k, x in enumerate(mine):
             x = dict(x)
             x["start"] += at + shift
             x["end"] += at + shift
             x["ctm"] = x["ctm"] * d["ctm"]
+            x["ctx"] = d.get("ctx")
             x["state"] = after
             if x.get("path"):
                 x["width"] = d.get("width", x["width"])
             out.append(x)
             # (one object per copy: its lines are the original's, moved)
-            origin.append((n, matrices[k]) if len(got) == len(matrices) else None)
+            origin.append((n, matrices[k]) if len(mine) == len(matrices) else None)
         shift += len(add)
     return _rebuilt(page, new_data, out, objs, origin)
 
@@ -1160,18 +1279,18 @@ def _copies_together(page, data, found, ns, matrices, objs, placed=None):
     last = found[ns[-1]]
     ci = _inv(tuple(last["ctm"]))
     inner = b"\n".join([_DEFAULTS] + _standalone(data, found, ns))
-    add = b"".join(b"\nq\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" %
-                   _mul(tuple(tm * pymupdf.Matrix(t) * ~tm), ci) + inner + b"\nQ\n"
-                   for t in matrices)
+    heads = [b"\nq\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" %
+             _mul(tuple(tm * pymupdf.Matrix(t) * ~tm), ci) for t in matrices]
+    add = b"".join(h + inner + b"\nQ\n" for h in heads)
     at = last["end"]
     new_data = data[:at] + add + data[at:]
-    _set_contents(page, new_data, compress=False)
+    _set_contents(page, new_data)
     if placed is not None:
         placed["originals"] = list(ns)  # (the copies all come after them)
     if objs is None:
         return None
     after = _after_last(data, last)
-    got = scan(add)
+    got = _scan_copies(heads, inner)
     one_each = len(got) == len(matrices) * len(ns)
     out, origin = [], []
     for n, d in enumerate(found):
@@ -1182,12 +1301,17 @@ def _copies_together(page, data, found, ns, matrices, objs, placed=None):
         out.append(e)
         origin.append((n, None))
         if n == ns[-1]:
+            states = {}
             for k, x in enumerate(got):
                 x = dict(x)
                 x["start"] += at
                 x["end"] += at
                 x["ctm"] = x["ctm"] * last["ctm"]
-                x["state"] = _state_after(after, x.get("state", b""))
+                x["ctx"] = last.get("ctx")
+                own = x.get("state", b"")
+                if own not in states:   # (copies share a few distinct settings)
+                    states[own] = _state_after(after, own)
+                x["state"] = states[own]
                 out.append(x)
                 # (copy k // len(ns) of object ns[k % len(ns)]: its lines, moved)
                 origin.append((ns[k % len(ns)], matrices[k // len(ns)]) if one_each else None)
@@ -1280,7 +1404,10 @@ def _groupable(page, data, found, ns):
     pictures = {("/" + g[7]).encode() for g in page.get_images(full=True)}
     if any(not found[n].get("path") and found[n].get("name") not in pictures for n in ns):
         return False
-    return len(set(_contexts(data, [found[n]["start"] for n in ns]).values())) == 1
+    ctx = [found[n].get("ctx") for n in ns]
+    if None in ctx:                     # (entries made some other way: read the stream)
+        ctx = _contexts(data, [found[n]["start"] for n in ns]).values()
+    return len(set(ctx)) == 1
 
 
 def _standalone(data, found, ns):
@@ -1344,17 +1471,18 @@ def block_copies(page, ns, matrices, objs=None, placed=None):
     xref = doc.get_new_xref()
     doc.update_object(xref, "<</Type/XObject/Subtype/Form/BBox[%g %g %g %g]/Resources %s>>"
                       % (min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad, res))
-    doc.update_stream(xref, b"\n".join(body))
+    _put_stream(doc, xref, b"\n".join(body))
     name = b"KzBlock%d" % xref
     _set_resource(doc, page.xref, "XObject", name.decode(), "%d 0 R" % xref)
     last = found[ns[-1]]
     ci = _inv(tuple(last["ctm"]))
-    add = b"".join(b"\nq\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n/%s Do\nQ\n"
-                   % (_mul(tuple(tm * pymupdf.Matrix(t) * ~tm), ci) + (name,))
-                   for t in matrices)
+    heads = [b"\nq\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" % _mul(tuple(tm * pymupdf.Matrix(t) * ~tm),
+                                                                ci) for t in matrices]
+    inner = b"/%s Do" % name
+    add = b"".join(h + inner + b"\nQ\n" for h in heads)
     at = last["end"]
     new_data = data[:at] + add + data[at:]
-    _set_contents(page, new_data, compress=False)
+    _set_contents(page, new_data)
     if placed is not None:
         placed["originals"] = list(ns)  # (the copies all come after them)
     if not have:
@@ -1369,11 +1497,12 @@ def block_copies(page, ns, matrices, objs=None, placed=None):
         out.append(e)
         origin.append((n, None))
         if n == ns[-1]:
-            for x in scan(add):
+            for x in _scan_copies(heads, inner):
                 x = dict(x)
                 x["start"] += at
                 x["end"] += at
                 x["ctm"] = x["ctm"] * last["ctm"]
+                x["ctx"] = last.get("ctx")
                 x["state"] = after
                 out.append(x)
                 origin.append(None)
