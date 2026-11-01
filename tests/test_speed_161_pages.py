@@ -23,6 +23,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 APP = QApplication.instance() or QApplication([])
 
 from kanzonas.document_view import DocumentView, PAGE_GAP  # noqa: E402
+from kanzonas.page_widget import PageWidget  # noqa: E402
 
 
 def pump(seconds=0.05):
@@ -40,7 +41,8 @@ class Base(unittest.TestCase):
     def tearDown(self):
         for v in self.views:
             v.hide()
-            v.doc.close()
+            if not v.doc.is_closed:
+                v.doc.close()
             v.deleteLater()
         pump(0)
         self.tmp.cleanup()
@@ -184,6 +186,80 @@ class DeletePages(Base):
         with mock.patch("kanzonas.document_view.QMessageBox.information"):
             self.assertFalse(v.delete_pages([0, 1, 2]))
         self.assertEqual(v.doc.page_count, 3)
+
+
+# ---- 3: page sizes read without loading the pages; a page turned on its own -------------
+class PageSizes(InsertLayout):
+    def odd_pages(self, path):
+        d = pymupdf.open()
+        for k in range(14):
+            p = d.new_page(width=300 + 10 * k, height=500 - 7 * k)
+            p.set_rotation(90 * (k % 4))
+            if k % 3 == 1:
+                p.set_cropbox(pymupdf.Rect(10, 20, 200, 300))
+        doc = pymupdf.open(stream=d.tobytes(), filetype="pdf")
+        x = [doc.page_xref(i) for i in range(doc.page_count)]
+        doc.xref_set_key(x[5], "UserUnit", "2")
+        doc.xref_set_key(x[7], "Rotate", "45")               # (not a quarter turn)
+        doc.xref_set_key(x[8], "MediaBox", "[0 0 0 0]")      # (an unusable box)
+        doc.xref_set_key(x[9], "MediaBox", "[100 100 -50 -20]")
+        doc.xref_set_key(x[10], "Rotate", "null")            # inherited from the page tree
+        tree = int(doc.xref_get_key(doc.pdf_catalog(), "Pages")[1].split()[0])
+        doc.xref_set_key(tree, "Rotate", "90")
+        doc.save(path)
+
+    def test_same_sizes_as_loading_each_page(self):
+        path = self.path("odd.pdf")
+        self.odd_pages(path)
+        v = self.view(path)
+        with pymupdf.open(path) as d:
+            self.assertEqual(v.page_rects, [p.rect for p in d])
+
+    def test_a_page_held_through_a_move_is_noticed(self):
+        numbered_pdf(self.path("h.pdf"), 6)
+        v = self.view(self.path("h.pdf"))
+        self.assertFalse(v._stale_pages())
+        held = v.doc[2]._pdf_page()
+        v.doc.move_page(1, 4)
+        self.assertTrue(v._stale_pages())
+        del held
+
+    def test_turning_a_page_resizes_only_it(self):
+        numbered_pdf(self.path("r.pdf"), 30)
+        v = self.view(self.path("r.pdf"), show=True)
+        v.goto_page(12)
+        pump()
+        mirror = DocumentView.mirror(v)
+        self.views.append(mirror)
+        mirror.resize(600, 500)
+        mirror.show()
+        pump()
+        widgets = list(v.pages)
+        events = []
+        v.structureChanged.connect(lambda: events.append("structure"))
+        v.take_thumb_changes()
+        with mock.patch.object(PageWidget, "reuse", side_effect=AssertionError("rebuilt")):
+            v.rotate_page(12, 90)
+            pump()
+        self.assertEqual(events, [])
+        self.assertEqual(v.pages, widgets)
+        self.assertEqual(v.doc[12].rotation, 90)
+        self.check_layout(v)
+        self.assertEqual(v.current_page(), 12)              # still in view
+        self.assertEqual(v.page_rects, [p.rect for p in v.doc])
+        self.assertEqual(mirror.page_rects, v.page_rects)
+        self.assertEqual(mirror.pages[12].size(), mirror.pages[12].size().__class__(
+            max(1, int(v.page_rects[12].width * mirror.zoom)),
+            max(1, int(v.page_rects[12].height * mirror.zoom))))
+        self.assertEqual(v.thumbs_changed, {v.doc.page_xref(12)})
+        v.undo()
+        pump()
+        self.assertEqual(v.doc[12].rotation, 0)
+        self.check_layout(v)
+        v.redo()
+        pump()
+        self.assertEqual(v.doc[12].rotation, 90)
+        self.check_layout(v)
 
 
 # ---- 4: form fields ----------------------------------------------------------------------

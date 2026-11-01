@@ -208,7 +208,8 @@ class DocumentView(QScrollArea):
     _orig_enc = None                # original protection, to keep it when saving edits
     pageChanged = Signal(int)
     documentChanged = Signal()      # content edited (thumbnails / title need refresh)
-    structureChanged = Signal()     # pages added / removed / reordered / rotated
+    structureChanged = Signal()     # pages added / removed / reordered (undo, redo)
+    pageResized = Signal(int)       # a page turned: its size as shown changed
     zoomChanged = Signal(float)
     statusMessage = Signal(str)
     searchChanged = Signal(int, int, bool)   # match shown (1-based, 0 = none), matches, still searching
@@ -319,9 +320,28 @@ class DocumentView(QScrollArea):
     def page_count(self):
         return self.doc.page_count
 
+    def _read_page_rects(self):
+        """Each page's size as shown (what Page.rect gives), read from the page tree with
+        MuPDF's own pdf_bound_page steps instead of loading every page (2,000 sheets: 0.1 s
+        down to 0.02 s; a page with 5,000 markups isn't parsed just for its size)."""
+        try:
+            m = pymupdf.mupdf
+            pdf = pymupdf._as_pdf_document(self.doc)
+            rects = []
+            for i in range(self.doc.page_count):
+                box, ctm = m.FzRect(), m.FzMatrix()
+                m.pdf_page_obj_transform_box(m.pdf_lookup_page_obj(pdf, i), box, ctm,
+                                             m.FZ_CROP_BOX)
+                r = pymupdf.Rect(m.fz_transform_rect(box, ctm))
+                # (an unusable box: Page.rect makes one up, see Page.bound)
+                rects.append(self.doc[i].rect if r.is_infinite or r.is_empty else r)
+            return rects
+        except Exception:               # (another PyMuPDF)
+            return [p.rect for p in self.doc]
+
     def _build_pages(self):
         keep = self.verticalScrollBar().value()
-        self.page_rects = [p.rect for p in self.doc]
+        self.page_rects = self._read_page_rects()
         if self.zoom > self._zoom_cap():        # pages added at a high zoom: they must fit
             self.zoom = self._zoom_cap()
             self.zoomChanged.emit(self.zoom)
@@ -520,11 +540,18 @@ class DocumentView(QScrollArea):
         self._fitted = False
         other.documentChanged.connect(self._mirror_changed)
         other.structureChanged.connect(self._mirror_structure)
+        other.pageResized.connect(self._mirror_resized)
         return self
 
     def _mirror_changed(self):
         for w in self.pages:
             w.invalidate()
+
+    def _mirror_resized(self, index):
+        if 0 <= index < len(self.pages):
+            self.page_rects[index] = self._source.page_rects[index]
+            self.pages[index].update_size()
+            self.widget().adjustSize()
 
     def _mirror_structure(self):
         page = self.current_page()
@@ -1026,9 +1053,25 @@ class DocumentView(QScrollArea):
         PyMuPDF's move_page rearranges the page tree without renumbering those: a page held
         through a move (e.g. by an Annot in a reference cycle with its Page) then comes back
         for the number it used to have, so the view would show it twice."""
+        n = self.doc.page_count
+        try:
+            # only the pages MuPDF has loaded can be handed out stale: look at its list of
+            # them instead of loading every page (2,000 sheets: 0.14 s; a page with
+            # thousands of markups is parsed to be loaded)
+            m = pymupdf.mupdf
+            p = self.doc.this.m_internal.open
+            while p:
+                if p.chapter == 0 and 0 <= p.number < n and \
+                        m.ll_pdf_to_num(m.ll_pdf_page_from_fz_page(p).obj) \
+                        != self.doc.page_xref(p.number):
+                    return True
+                p = p.next
+            return False
+        except Exception:
+            pass
         try:
             return any(pymupdf.mupdf.pdf_to_num(self.doc[i]._pdf_page().obj())
-                       != self.doc.page_xref(i) for i in range(self.doc.page_count))
+                       != self.doc.page_xref(i) for i in range(n))
         except Exception:               # (another PyMuPDF: don't block the edit)
             return False
 
@@ -6515,9 +6558,37 @@ class DocumentView(QScrollArea):
 
     # ---- page operations --------------------------------------------------
     def rotate_page(self, index, delta):
+        """Turn one page. Not a structural change: no page moves, so only this page's
+        caches, size and thumbnail are redone, not every page's."""
         page = self.doc[index]
-        self.modify(lambda: page.set_rotation((page.rotation + delta) % 360), structural=True,
-                    changed=[index])
+        if self.modify(lambda: page.set_rotation((page.rotation + delta) % 360), [index]):
+            self._page_turned(index)
+
+    def _page_turned(self, index):
+        """Page index has a new size as shown: resize its widget (the pages after it move
+        along), keep the spot in view, and drop what was placed in page-as-shown terms."""
+        anchor = self._view_anchor()
+        self.search_hits.clear()            # (as after a structural change)
+        self._search_list = []
+        self._search_cur = None
+        if self.selection is not None and self.selection[0] == index:
+            self.clear_selection()
+        if self.field_focus is not None and self.field_focus[0] == index:
+            self.field_focus = None
+        w = self.pages[index]
+        for child in w.findChildren(QWidget, options=Qt.FindDirectChildrenOnly):
+            child.deleteLater()             # an on-page editor placed before the turn
+        self.page_rects[index] = self.doc[index].rect
+        if self.zoom > self._zoom_cap():
+            self.zoom = self._zoom_cap()
+            self.zoomChanged.emit(self.zoom)
+            self._relayout()
+        else:
+            w.update_size()
+            self.widget().adjustSize()
+        self._apply_view_anchor(anchor)
+        self.pageResized.emit(index)
+        self.selectionChanged.emit()
 
     def _ask_pages_scope(self, title, question):
         """"this", "all" or None (canceled)."""

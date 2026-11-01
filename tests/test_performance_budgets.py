@@ -96,7 +96,9 @@ class PerformanceBudgets(unittest.TestCase):
             v.pages[i]._display_list()
         self.rect(v)
         self.assertEqual(sorted(v._dlists), [1, 2, 3])
-        v.rotate_page(1, 90)                                 # structural: everything goes
+        v.rotate_page(1, 90)                    # (1.6.1: a turned page goes, the others stay)
+        self.assertEqual(sorted(v._dlists), [2, 3])
+        v.move_page(2, 1)                                    # structural: everything goes
         self.assertEqual(v._dlists, {})
 
     def test_annotation_walk_is_linear(self):
