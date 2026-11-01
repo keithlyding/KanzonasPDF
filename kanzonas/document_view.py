@@ -594,8 +594,8 @@ class DocumentView(QScrollArea):
                 keep.add(i)
         if self.obj_sel:
             keep.add(self.obj_sel[0])
-        for cache in (self._dlists, self._line_cache, self._row_cache, self._hover_para,
-                      self._word_cache, self._snap_markups, self._obj_cache,
+        for cache in (self._dlists, self._alists, self._line_cache, self._row_cache,
+                      self._hover_para, self._word_cache, self._snap_markups, self._obj_cache,
                       self._snap_content, self._hit_cache):
             if len(cache) <= PAGE_CACHE_PAGES:
                 continue
@@ -762,12 +762,14 @@ class DocumentView(QScrollArea):
     show_markups = True            # Review > Show markups (off: the page as if unmarked)
 
     def redraw_pages(self):
-        """Draw every page again from its display list (after a display option changed, such
-        as night mode); selections, search hits and caches of the page text are kept."""
+        """Draw every page again from its content render or display list (after a display
+        option changed, such as night mode); selections, search hits and caches of the page
+        text are kept."""
         self._tiles.clear()
+        self._small_previews.clear()
         for i in list(getattr(self, "_pix_pages", ())):
             if i < len(self.pages):
-                self.pages[i].drop_cache()
+                self.pages[i].redraw()
         self._pix_pages = set()
         for pw in self.pages:
             pw.update()
@@ -777,6 +779,96 @@ class DocumentView(QScrollArea):
         self._clear_caches()
         for pw in self.pages:
             pw.invalidate()
+
+    # ---- drawing heavy pages without making the window wait -------------------------------
+    progressive = True             # heavy pages: shown as they were (scaled) and drawn after
+    _zooming = False               # a Ctrl+wheel zoom in progress (until ZOOM_SETTLE_MS after)
+    ZOOM_SETTLE_MS = 150
+
+    def _quick_zoom(self):
+        """A wheel zoom step: until the wheel has stopped for ZOOM_SETTLE_MS, pages are shown
+        as they were, scaled (instantly), not rendered at each step; then drawn sharp."""
+        self._zooming = True
+        t = getattr(self, "_settle_timer", None)
+        if t is None:
+            t = self._settle_timer = QTimer(self)
+            t.setSingleShot(True)
+            t.timeout.connect(self._zoom_settled)
+        t.start(self.ZOOM_SETTLE_MS)
+
+    def _zoom_settled(self):
+        self._zooming = False
+        for w in getattr(self, "pages", ()):
+            if not w.visibleRegion().isEmpty():
+                w.update()
+        if getattr(self, "_render_wait", None):
+            self._render_timer.start(0)
+
+    def _note_render_cost(self, index, seconds):
+        costs = getattr(self, "_costs", None)
+        if costs is None:
+            costs = self._costs = OrderedDict()
+        costs[index] = seconds
+        costs.move_to_end(index)
+        while len(costs) > 64:
+            costs.popitem(last=False)
+
+    def _render_cost(self, index):
+        """How long page index's content took to render last time (seconds); for a page not
+        rendered yet, the most recent other page's (a heavy plan set's pages are alike)."""
+        costs = getattr(self, "_costs", None)
+        if not costs:
+            return 0.0
+        got = costs.get(index)
+        return got if got is not None else next(reversed(costs.values()))
+
+    def _render_later(self, widget):
+        """widget showed a stand-in: draw it sharp once the event loop is free (a Ctrl+wheel
+        zoom: once the wheel has stopped)."""
+        wait = getattr(self, "_render_wait", None)
+        if wait is None:
+            wait = self._render_wait = []
+            t = self._render_timer = QTimer(self)
+            t.setSingleShot(True)
+            t.timeout.connect(self._render_tick)
+        if widget not in wait:
+            wait.append(widget)
+        if not self._zooming:
+            self._render_timer.start(0)
+
+    def _render_tick(self):
+        """Draw one waiting page (the whole page, or its missing tiles in view), the one
+        nearest the middle of the window first, then let the event loop run before the
+        next: input stays responsive while a heavy drawing fills in."""
+        wait = self._render_wait
+        if self._zooming or self.doc.is_closed:
+            return
+        vp = self.viewport()
+        mid = vp.rect().center()
+        live = []
+        for w in wait:
+            try:
+                if w.parent() is not None and not w.isHidden() and \
+                        not w.visibleRegion().isEmpty():
+                    live.append(w)
+            except RuntimeError:            # (a page widget deleted meanwhile)
+                pass
+        wait[:] = []
+        if not live:
+            return
+
+        def dist(w):
+            c = w.mapTo(vp, w.visibleRegion().boundingRect().center())
+            return (c - mid).manhattanLength()
+        live.sort(key=dist)
+        w = live.pop(0)
+        try:
+            w.render_step()
+        except Exception:
+            pass
+        wait.extend(live)
+        if wait:
+            self._render_timer.start(0)
 
     # ---- objects: lock, hide, list (Objects panel) ---------------------------------------------
     def page_objects(self, index):
@@ -1063,12 +1155,14 @@ class DocumentView(QScrollArea):
         if self.wheel_zoom:
             if dy:
                 vp = self.viewport().mapFromGlobal(QCursor.pos())
+                self._quick_zoom()
                 self.zoom_at(self.zoom * 1.15 ** (dy / 120.0), vp)
             e.accept()
         elif ctrl:
             # zoom around the pointer, like CAD-style mouse, not around the window's center
             if dy:
                 vp = self.viewport().mapFromGlobal(e.globalPosition().toPoint())
+                self._quick_zoom()
                 self.zoom_at(self.zoom * (1.2 if dy > 0 else 1 / 1.2), vp)
             e.accept()
         elif self.page_wheel and dy and self._page_fits():
@@ -1734,8 +1828,19 @@ class DocumentView(QScrollArea):
     # ---- caches (cleared on every change) ------------------------------------
     def _clear_caches(self):
         self._gen = getattr(self, "_gen", 0) + 1   # (anything read from the pages is old)
-        self._dlists = {}              # page index -> parsed drawing (DisplayList)
+        self._dlists = {}              # page index -> parsed content, no markups (DisplayList)
+        self._alists = {}              # page index -> its markups' DisplayList (None: none)
         self._tiles = OrderedDict()    # (page, scale, tx, ty) -> rendered tile, LRU
+        self._img_info = {}            # page index -> its big pictures (PageWidget._predecode)
+        self._img_big = {}             # page index -> render_layers.big_images
+        self._small_previews = OrderedDict()   # page -> (small QPixmap, page rect): drop_cache
+        self._decoded = set()          # (page, xref, size) big pictures decoded into MuPDF's store
+        # the pages' content renders outlive this (an undo, a page moved): each is checked
+        # against its page's content key before it's used again (page_widget.check_content)
+        if not hasattr(self, "_rc"):
+            from .render_layers import ContentCache
+            self._rc = ContentCache()  # raw content renders and their content keys
+        self._rc.recheck = set(self._rc.keys)
         self._line_cache = {}
         self._row_cache = {}           # page index -> text_edit.paragraph_rows (Edit text)
         self._hover_para = {}          # page index -> {line id: what a click there edits}
@@ -1761,7 +1866,9 @@ class DocumentView(QScrollArea):
         self._gen = getattr(self, "_gen", 0) + 1
         pages = set(pages)
         for i in pages:
-            self._dlists.pop(i, None)
+            # (the parsed content stays: the page's content key tells after the edit whether
+            # it's still the same, see PageWidget.invalidate)
+            self._alists.pop(i, None)
             self._line_cache.pop(i, None)
             self._row_cache.pop(i, None)
             self._hover_para.pop(i, None)
@@ -7776,6 +7883,7 @@ class DocumentView(QScrollArea):
     def close_doc(self):
         self._undo, self._redo = [], []         # free the history (and the shared budget)
         self._journal, self._journal_bytes = None, 0
+        self._rc.clear()                        # (and the pages' content renders)
         gc.unfreeze()                           # (its drawings may be set aside: _set_aside)
         self._inline = None
         self._search_gen += 1                   # a Find still running stops here

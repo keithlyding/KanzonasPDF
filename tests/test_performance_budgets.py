@@ -95,9 +95,11 @@ class PerformanceBudgets(unittest.TestCase):
         for i in range(4):
             v.pages[i]._display_list()
         self.rect(v)
-        self.assertEqual(sorted(v._dlists), [1, 2, 3])
+        # (1.7: a markup added keeps even its own page's parsed content, only its markups
+        # are read again: render_layers.py)
+        self.assertEqual(sorted(v._dlists), [0, 1, 2, 3])
         v.rotate_page(1, 90)                    # (1.6.1: a turned page goes, the others stay)
-        self.assertEqual(sorted(v._dlists), [2, 3])
+        self.assertEqual(sorted(v._dlists), [0, 2, 3])
         v.move_page(2, 1)                                    # structural: everything goes
         self.assertEqual(v._dlists, {})
 
