@@ -186,10 +186,17 @@ def check_content(view, i, force=False):
             view._dlists.pop(i, None)
             rc.drop_page(i)
         return
-    try:
-        new = RL.content_key(view.doc[i])
-    except Exception:
+    if i not in view._dlists and not rc.has_page(i) and \
+            not any(k[0] == i for k in view._tiles):
+        # nothing drawn from it is kept any more (scrolled far away): its key is let go
+        # rather than read again to compare (a layer shown, Show markups, or an edit seen by
+        # the split view checks every page: 2,000 sheets visited took a second each time)
         new = None
+    else:
+        try:
+            new = RL.content_key(view.doc[i])
+        except Exception:
+            new = None
     if new is None or new != old:
         view._dlists.pop(i, None)
         rc.drop_page(i)
