@@ -18,6 +18,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - The split view now follows night mode, thin lines, Show markups, field shading and the layers you show or hide.
 - Filling in a form field that appears on several pages updates every page that shows it.
 - At 125%, 150% and 175% Windows display scaling, big pages no longer leave thin lines of old pixels at tile and page edges.
+- Delete comments works again on documents with markups.
 
 ## 1.6.2 (es)
 
@@ -30,6 +31,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - La vista dividida ahora sigue al modo nocturno, las líneas finas, Mostrar marcas, el sombreado de campos y las capas que muestra u oculta.
 - Llenar un campo de formulario que aparece en varias páginas actualiza todas las páginas que lo muestran.
 - Con la escala de pantalla de Windows al 125%, 150% y 175%, las páginas grandes ya no dejan líneas finas de píxeles viejos en los bordes de los mosaicos y de la página.
+- Eliminar comentarios vuelve a funcionar en documentos con marcas.
 
 ## 1.6.1
 
