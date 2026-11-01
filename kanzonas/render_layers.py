@@ -28,7 +28,7 @@ CONTENT_BYTES_ALL = 160 * 1024 * 1024   # ... and for all open documents togethe
 BIG_IMAGE_PX = 4_000_000           # pictures this big are decoded once for all tiles ...
 DECODE_LIMIT = 128 * 1024 * 1024   # ... unless decoded they would take more memory than this
 
-_REF = re.compile(r"(\d+) 0 R")
+_REF = re.compile(r"(\d+) \d+ R")    # (any generation: a file updated in place has "5 1 R")
 
 
 def _crc(doc, xref):

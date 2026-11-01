@@ -329,5 +329,27 @@ class HighDpiTiles(unittest.TestCase):
                 self.assertEqual(img.pixelColor(100, img.height() - 1).name(), "#0000ff", dpr)
 
 
+class ContentKeyReach(unittest.TestCase):
+    def test_objects_referenced_with_another_generation_are_in_the_key(self):
+        """A file updated in place can reference an object as "5 1 R": what it draws is part
+        of the page's content all the same."""
+        from kanzonas import render_layers as RL
+        d = pymupdf.open()
+        p = d.new_page()
+        fx = d.get_new_xref()
+        d.update_object(fx, "<</Type/XObject/Subtype/Form/BBox[0 0 100 100]>>")
+        d.update_stream(fx, b"1 0 0 rg 0 0 100 100 re f")
+        d.xref_set_key(p.xref, "Resources", "<</XObject<</F1 %d 1 R>>>>" % fx)
+        c = d.get_new_xref()
+        d.update_object(c, "<<>>")
+        d.update_stream(c, b"q 1 0 0 1 100 100 cm /F1 Do Q")
+        d.xref_set_key(p.xref, "Contents", "%d 0 R" % c)
+        self.assertEqual(p.get_pixmap().pixel(150, 692), (255, 0, 0))
+        before = RL.content_key(p)
+        d.update_stream(fx, b"0 0 1 rg 0 0 100 100 re f")
+        self.assertEqual(p.get_pixmap().pixel(150, 692), (0, 0, 255))
+        self.assertNotEqual(RL.content_key(p), before)
+
+
 if __name__ == "__main__":
     unittest.main()
