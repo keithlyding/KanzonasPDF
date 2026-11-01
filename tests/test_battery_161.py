@@ -149,5 +149,61 @@ class Markups(unittest.TestCase):
         self.assertEqual(len(now), 2)                           # (the note and its reply)
 
 
+class Pages(unittest.TestCase):
+    def view(self, pages=3):
+        d = pymupdf.open()
+        for i in range(pages):
+            pg = d.new_page()
+            pg.insert_text((72, 72), "page %d" % (i + 1))
+            w = pymupdf.Widget()
+            w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+            w.field_name = "f%d" % i
+            w.rect = pymupdf.Rect(72, 100, 300, 120)
+            pg.add_widget(w)
+        path = os.path.join(tempfile.mkdtemp(), "p.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        v.resize(800, 600)
+        v.show()
+        APP.processEvents()
+        self.addCleanup(v.close_doc)
+        self.addCleanup(lambda: setattr(v, "dirty", False))
+        return v
+
+    def values(self, v):
+        return {w.field_name: w.field_value for pg in v.doc for w in pg.widgets()}
+
+    def typing(self, v, index, text):
+        from PySide6.QtWidgets import QLineEdit
+        page = v.doc[index]
+        xref = next(page.widgets()).xref
+        del page
+        v._edit_text_field(index, xref)
+        ed = v.pages[index].findChildren(QLineEdit)[-1]
+        ed.setText(text)                    # (typed, not yet confirmed)
+
+    def test_a_value_being_typed_survives_turning_its_page(self):
+        v = self.view()
+        self.typing(v, 1, "typed before the turn")
+        v.rotate_page(1, 90)
+        APP.processEvents()
+        self.assertEqual(self.values(v)["f1"], "typed before the turn")
+
+    def test_a_value_being_typed_survives_deleting_an_earlier_page(self):
+        v = self.view()
+        self.typing(v, 2, "typed, then page 1 deleted")
+        self.assertTrue(v.delete_pages([0]))
+        APP.processEvents()
+        self.assertEqual(self.values(v)["f2"], "typed, then page 1 deleted")
+
+    def test_delete_pages_says_so_when_it_was_refused(self):
+        from unittest import mock
+        v = self.view()
+        with mock.patch.object(v, "allowed", return_value=False), \
+                mock.patch("kanzonas.document_view.QMessageBox.information"):
+            self.assertFalse(v.delete_pages([0]))
+        self.assertEqual(v.doc.page_count, 3)
+
+
 if __name__ == "__main__":
     unittest.main()

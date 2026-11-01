@@ -5190,6 +5190,7 @@ class MainWindow(QMainWindow):
     THUMB_BUDGET = 0.03         # seconds of thumbnail drawing per turn of the event loop
     THUMB_MARGIN = 8            # rows above and below the ones in view drawn ahead
     THUMB_KEEP = 400            # thumbnails kept per document (about 30 MB), the oldest go
+    THUMB_KEEP_ALL = 1200       # ...and for all open documents together (about 80 MB)
     _thumbs_of = None           # the view the page list shows
     _thumb_index = {}           # page xref -> its row (= page index)
     _thumb_blank = None
@@ -5319,9 +5320,27 @@ class MainWindow(QMainWindow):
             self._thumb_timer.stop()
             self._trim_thumbs(v)
 
+    def _trim_other_thumbs(self, v):
+        """Ten long documents open kept 400 thumbnails each: the other documents' oldest go
+        first, so all of them together keep at most THUMB_KEEP_ALL (they're drawn again when
+        their document is shown)."""
+        from .document_view import DocumentView
+        views = [o for o in list(DocumentView._views or ()) if o is not v and
+                 getattr(o, "thumb_icons", None)]
+        total = len(getattr(v, "thumb_icons", None) or ()) + sum(len(o.thumb_icons) for o in views)
+        for o in views:
+            if total <= self.THUMB_KEEP_ALL:
+                break
+            cache = o.thumb_icons
+            drop = min(len(cache), total - self.THUMB_KEEP_ALL)
+            for x in list(cache)[:drop]:    # (least recently in view first)
+                del cache[x]
+            total -= drop
+
     def _trim_thumbs(self, v):
         """Keep at most THUMB_KEEP thumbnails of a document: the ones least recently in view
         go (their rows show a blank page until they're in view again)."""
+        self._trim_other_thumbs(v)
         cache = v.thumb_icons
         extra = len(cache) - self.THUMB_KEEP
         if extra <= 0:

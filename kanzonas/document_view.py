@@ -390,6 +390,10 @@ class DocumentView(QScrollArea):
         self.setStyleSheet("QScrollArea { background: #525659; border: none; }")
         self.verticalScrollBar().valueChanged.connect(self._on_scroll)
         self.thumb_icons = OrderedDict()   # page xref -> [QIcon, still current] (page list)
+        import weakref
+        if DocumentView._views is None:
+            DocumentView._views = weakref.WeakSet()
+        DocumentView._views.add(self)       # (shared budgets: undo, thumbnails)
 
     # ---- page layout ----------------------------------------------------
     def page_count(self):
@@ -628,8 +632,13 @@ class DocumentView(QScrollArea):
     def _mirror_resized(self, index):
         if 0 <= index < len(self.pages):
             self.page_rects[index] = self._source.page_rects[index]
-            self.pages[index].update_size()
-            self.widget().adjustSize()
+            if self.zoom > self._zoom_cap():    # (as _page_turned: the pages must still fit)
+                self.zoom = self._zoom_cap()
+                self.zoomChanged.emit(self.zoom)
+                self._relayout()
+            else:
+                self.pages[index].update_size()
+                self.widget().adjustSize()
 
     def _mirror_structure(self):
         page = self.current_page()
@@ -1336,7 +1345,14 @@ class DocumentView(QScrollArea):
 
     def commit_pending(self):
         """Apply a text edit still open in the on-page editor (typed but not yet confirmed
-        with Enter), so Save, Undo, closing the tab or a page change doesn't drop it."""
+        with Enter), so Save, Undo, closing the tab or a page change doesn't drop it; and a
+        value typed in a form field."""
+        fin, self._field_finish = self._field_finish, None
+        if fin is not None:
+            try:
+                fin()
+            except RuntimeError:        # (its editor was already deleted)
+                pass
         if self._inline is not None:
             try:
                 self._inline.commit()   # clears _inline, then applies the edit
@@ -2064,8 +2080,7 @@ class DocumentView(QScrollArea):
             # (0.2 to 0.4 s per page on a 2,000-sheet set), delete_pages does it once
             self.doc.delete_pages(indices)
             self._retarget_bookmarks(toc, set(indices), len(indices) + self.doc.page_count)
-        self.modify(do, structural=True, changed=[])
-        return True
+        return bool(self.modify(do, structural=True, changed=[]))   # (False when refused)
 
     def _retarget_bookmarks(self, toc, gone, old_count):
         """After pages were deleted: a bookmark to one of them (toc: the bookmarks from
@@ -5764,7 +5779,16 @@ class DocumentView(QScrollArea):
         try:
             m = pymupdf.mupdf
             pdf = pymupdf._as_pdf_document(self.doc)
-            todo = [m.pdf_dict_getp(m.pdf_trailer(pdf), "Root/AcroForm/Fields")]
+            fields = m.pdf_dict_getp(m.pdf_trailer(pdf), "Root/AcroForm/Fields")
+            if not m.pdf_is_array(fields) or not m.pdf_array_len(fields):
+                # (no list of fields: a signature may still sit on a page) every page's
+                # signature fields, as before
+                for page in self.doc:
+                    for w in page.widgets(types=[pymupdf.PDF_WIDGET_TYPE_SIGNATURE]):
+                        if w.is_signed:
+                            return True
+                return False
+            todo = [fields]
             seen = set()
             while todo:
                 arr = todo.pop()
@@ -6357,6 +6381,8 @@ class DocumentView(QScrollArea):
             if done["x"]:
                 return
             done["x"] = True
+            if self._field_finish is finish:
+                self._field_finish = None
             text = ed.toPlainText() if multiline else ed.text()
             if maxlen > 0:
                 text = text[:maxlen]
@@ -6386,10 +6412,15 @@ class DocumentView(QScrollArea):
                 return False
         self._field_keys = Keys(ed)
         ed.installEventFilter(self._field_keys)
+        # (an edit made meanwhile, a page moved, turned or deleted, saves the typed value
+        # first, on the page it was typed on: the editor's own save came during the change,
+        # with the page number from before it, and the value was lost)
+        self._field_finish = finish
         ed.show()
         ed.setFocus()
 
     field_focus = None      # (page, xref) of the form field Tab moved to / last filled
+    _field_finish = None    # saves the form field being typed in (see commit_pending)
 
     _field_order = None     # (_field_order_key() when read, [(page, xref)]), see field_order
 
