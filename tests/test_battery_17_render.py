@@ -293,6 +293,41 @@ class HighDpiTiles(unittest.TestCase):
                 self.assertFalse(w.render_step())   # (nothing left: no repaint waits for it)
             self.assertIn((0, round(v.zoom * dpr, 5), 1, 1), v._tiles)
 
+    def test_the_page_edge_is_painted_to_its_last_device_pixel(self):
+        """A page 3890 widget pixels wide at 125% is 4862.5 device pixels: the tiles must
+        reach the half-covered last one (an unpainted line along the right and bottom edges
+        kept what was on the screen before)."""
+        import math
+        from unittest import mock
+        from PySide6.QtCore import QRect
+        from PySide6.QtGui import QColor, QPainter
+        d = pymupdf.open()
+        p = d.new_page(width=2592, height=1728)
+        p.draw_rect(p.rect, color=None, fill=(0, 0, 1))
+        path = os.path.join(tempfile.mkdtemp(), "big.pdf")
+        d.save(path)
+        for dpr in (1.25, 1.75):
+            with mock.patch.object(PW.PageWidget, "devicePixelRatioF", lambda self, d=dpr: d):
+                v = DocumentView(path)
+                v.resize(900, 700)
+                v.show()
+                APP.processEvents()
+                self.addCleanup(v.close_doc)
+                v.progressive = False
+                v.set_zoom(1.501)
+                w = v.pages[0]
+                self.assertTrue(w._tiled())
+                width, height = w.width(), w.height()
+                self.assertNotEqual(width * dpr, int(width * dpr))
+                img = QImage(math.ceil(width * dpr), math.ceil(height * dpr), QImage.Format_RGB32)
+                img.setDevicePixelRatio(dpr)
+                img.fill(QColor(255, 0, 255))
+                painter = QPainter(img)
+                w._paint_tiles(painter, QRect(0, 0, width, height))
+                painter.end()
+                self.assertEqual(img.pixelColor(img.width() - 1, 100).name(), "#0000ff", dpr)
+                self.assertEqual(img.pixelColor(100, img.height() - 1).name(), "#0000ff", dpr)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -416,6 +416,12 @@ class PageWidget(QWidget):
         pix.setDevicePixelRatio(dpr)
         return pix
 
+    def _device_rect(self, dpr):
+        """The widget in device pixels, the last ones even when partly covered (3890 widget
+        pixels at 125% are 4862.5 device pixels: 4863 to paint)."""
+        return pymupdf.IRect(0, 0, math.ceil(self.width() * dpr - 1e-6),
+                             math.ceil(self.height() * dpr - 1e-6))
+
     def _tiled(self):
         """Drawn in tiles (only what's in view) rather than as one bitmap: a page bigger than
         FULL_LIMIT device pixels, or bigger than FULL_MIN and FULL_SCREENS windowfuls (a heavy
@@ -437,7 +443,7 @@ class PageWidget(QWidget):
         dpr = self.devicePixelRatioF()
         s = self.view.zoom * dpr
         s5 = round(s, 5)
-        full = pymupdf.IRect(0, 0, int(self.width() * dpr), int(self.height() * dpr))
+        full = self._device_rect(dpr)
         tiles = self.view._tiles
         rc = self.view._rc
         thin = self.view.thin_lines
@@ -673,7 +679,7 @@ class PageWidget(QWidget):
         dpr = self.devicePixelRatioF()
         s = v.zoom * dpr
         s5 = round(s, 5)
-        full = pymupdf.IRect(0, 0, int(self.width() * dpr), int(self.height() * dpr))
+        full = self._device_rect(dpr)
         tx0, ty0, tx1, ty1 = tile_span(vis, dpr)
         missing = []
         for ty in range(ty0, ty1 + 1):
