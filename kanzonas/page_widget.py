@@ -673,6 +673,10 @@ class PageWidget(QWidget):
             try:
                 self._render()
             except Exception:
+                # (drawn at once at the next paint, as without deferring: white where
+                # MuPDF can't draw the page, not the blurred stand-in for good)
+                self._no_defer = round(v.zoom * self.devicePixelRatioF(), 5)
+                self.update()
                 return False
             self.update()
             return True
@@ -716,6 +720,8 @@ class PageWidget(QWidget):
         return QPointF(q.x * self.view.zoom, q.y * self.view.zoom)
 
     # ---- painting -------------------------------------------------------
+    _no_defer = None            # the scale at which drawing this page later failed
+
     def _render(self):
         """The whole page at the current zoom as one bitmap: its content (kept from before
         when it's the same) with its markups drawn over it."""
@@ -741,7 +747,7 @@ class PageWidget(QWidget):
                 s = self.view.zoom * self.devicePixelRatioF()
                 check_content(self.view, self.index)
                 if self.view._rc.get(self.index, s, None, self.view.thin_lines) is None \
-                        and self._defer(s):
+                        and self._no_defer != round(s, 5) and self._defer(s):
                     self._paint_preview(p, [QRectF(event.rect())], s)
                     self.view._render_later(self)
                 else:

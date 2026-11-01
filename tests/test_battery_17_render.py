@@ -351,5 +351,33 @@ class ContentKeyReach(unittest.TestCase):
         self.assertNotEqual(RL.content_key(p), before)
 
 
+class FailedRender(unittest.TestCase):
+    def test_a_heavy_page_mupdf_cant_draw_ends_white_not_blurred(self):
+        # (drawn later, its render failed: the stand-in stayed up for good)
+        from unittest import mock
+        v = DocumentView(layered_pdf())
+        v.resize(900, 700)
+        v.show()
+        APP.processEvents()
+        self.addCleanup(v.close_doc)
+        v.set_zoom(1.0)
+        v.viewport().repaint()
+        APP.processEvents()
+        w = v.pages[0]
+        v._note_render_cost(0, 1.0)             # (as a heavy sheet)
+        v.set_zoom(1.25)
+        v.viewport().repaint()
+        self.assertIn(w, v._render_wait)
+        with mock.patch.object(PW.PageWidget, "_render", side_effect=RuntimeError("bad")):
+            v._render_tick()
+            self.assertEqual(w._no_defer, round(1.25 * w.devicePixelRatioF(), 5))
+            img = QImage(w.size(), QImage.Format_RGB32)
+            img.fill(0xff00ff)
+            w.render(img)                       # (the direct path: white)
+        self.assertNotIn(w, v._render_wait)
+        c = img.pixelColor(w.width() // 2, w.height() // 2)
+        self.assertEqual((c.red(), c.green(), c.blue()), (255, 255, 255))
+
+
 if __name__ == "__main__":
     unittest.main()
