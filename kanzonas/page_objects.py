@@ -598,12 +598,26 @@ class Objects:
                 if pts else item["rect"]
         return item["tight"]
 
+    def at_index(self):
+        """The lookup at() finds the objects near a point with (made once)."""
+        from . import hit_index
+        near = getattr(self, "_at_index", None)
+        if near is None or near.size != len(self.items):
+            near = self._at_index = hit_index.BoxIndex(
+                (it["rect"] for it in self.items),
+                [it.get("width", 0) / 2 for it in self.items])
+            self._segments = {}
+        return near
+
     def at(self, pt, tol):
         """The topmost object at page point pt: a line within tol of it first, then a filled
         shape or picture under it."""
         pt = pymupdf.Point(pt)
         filled = None
-        for it in reversed(self.items):
+        items = self.items
+        # only the objects whose box is near: a quick lookup made once (going through all
+        # of a big drawing's objects took 40 ms on each mouse move)
+        for it in (items[i] for i in reversed(self.at_index().near(pt.x, pt.y, tol))):
             r = it["rect"]
             pad = tol + it.get("width", 0) / 2
             if not (r.x0 - pad <= pt.x <= r.x1 + pad and r.y0 - pad <= pt.y <= r.y1 + pad):
@@ -612,10 +626,18 @@ class Objects:
                 if pt in it["quad"] and filled is None and not it.get("whole"):
                     filled = it
                 continue
-            for line in self.lines(it):
-                if _near(line, pt, pad):
+            lines = self.lines(it)
+            if sum(len(line) for line in lines) > 64:
+                # a long line (a contour, a hatch): all its pieces at once
+                segs = self._segments.get(it["n"])
+                if segs is None or segs.lines is not lines:
+                    from .hit_index import Segments
+                    segs = self._segments[it["n"]] = Segments(lines)
+                if segs.near(pt, pad):
                     return it
-            if it["fill"] and filled is None and _inside(self.lines(it), pt):
+            elif any(_near(line, pt, pad) for line in lines):
+                return it
+            if it["fill"] and filled is None and _inside(lines, pt):
                 filled = it
         return filled
 
