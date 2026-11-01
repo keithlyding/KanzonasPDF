@@ -205,5 +205,74 @@ class Pages(unittest.TestCase):
         self.assertEqual(v.doc.page_count, 3)
 
 
+class Drawings(unittest.TestCase):
+    def view(self, build):
+        d = pymupdf.open()
+        p = d.new_page(width=600, height=400)
+        build(d, p)
+        path = os.path.join(tempfile.mkdtemp(), "d.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        v.zoom = 1.0
+        v.snap_objects = True
+        self.addCleanup(v.close_doc)
+        self.addCleanup(lambda: setattr(v, "dirty", False))
+        return v
+
+    def snap(self, v, x, y):
+        r = v.snap_point(0, P(x, y))
+        return None if r is None or r[1] != "object" else (round(r[0].x, 2), round(r[0].y, 2))
+
+    def test_a_file_saved_after_a_cad_edit_is_packed_tightly(self):
+        # (CAD edits write the drawing quickly compressed; Save packs it as tightly as
+        # before: files came out up to half bigger)
+        from kanzonas.page_objects import Box
+
+        def build(d, p):
+            sh = p.new_shape()
+            for i in range(4000):
+                x, y = (i * 37) % 560, (i * 53) % 360
+                sh.draw_line((x, y), (x + 20, y + 15))
+            sh.finish(color=(0, 0, 0), width=0.3)
+            sh.commit()
+        v = self.view(build)
+        v.select_objects(0, v.cad_objects(0, Box(pymupdf.Rect(-5, -5, 605, 405))))
+        v.cad_apply("Moved", pymupdf.Matrix(1, 0, 0, 1, 5, 5))
+        page = v.doc[0]
+        x = page.get_contents()[0]
+        del page
+        self.assertEqual(v.doc.xref_get_key(x, "KZQuick")[1], "true")
+        v.undo()
+        v.redo()                            # (an undo/redo in between: still known)
+        out = os.path.join(tempfile.mkdtemp(), "saved.pdf")
+        v.save(out)
+        d2 = pymupdf.open(out)
+        x2 = d2[0].get_contents()[0]
+        self.assertEqual(d2.xref_get_key(x2, "KZQuick")[0], "null")
+        raw = d2.xref_stream(x2)
+        import zlib
+        self.assertLessEqual(len(d2.xref_stream_raw(x2)), len(zlib.compress(raw, 6)) * 1.05)
+
+    def test_snapping_follows_crop_and_layers(self):
+        made = {}
+
+        def build(d, p):
+            p.draw_line((50, 60), (70, 80))
+            ocg = d.add_ocg("Walls", on=True)
+            made["ocg"] = ocg
+            p.draw_line((400, 350), (500, 350), oc=ocg)
+        v = self.view(build)
+        self.assertEqual(self.snap(v, 51, 61), (50.0, 60.0))
+        self.assertEqual(self.snap(v, 401, 351), (400.0, 350.0))
+        walls = next(c["number"] for c in v.layer_configs() if c["text"] == "Walls")
+        v.set_layer(walls, False)
+        self.assertIsNone(self.snap(v, 401, 351))           # (it snapped to the hidden line)
+        v.set_layer(walls, True)
+        self.assertEqual(self.snap(v, 401, 351), (400.0, 350.0))
+        v.crop_pages(0, pymupdf.Rect(10, 20, 590, 390))
+        self.assertEqual(self.snap(v, 41, 41), (40.0, 40.0))  # (it snapped where it was)
+        self.assertIsNone(self.snap(v, 51, 61))
+
+
 if __name__ == "__main__":
     unittest.main()

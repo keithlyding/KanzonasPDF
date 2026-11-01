@@ -890,6 +890,13 @@ class DocumentView(QScrollArea):
         for x in page.get_contents():
             raw = doc.xref_stream_raw(x) or b""
             out.append((x, len(raw), zlib.crc32(raw)))
+        # the points read also depend on the crop box and on the layers shown (snapping to
+        # where a line was before Crop, or to a hidden layer's lines)
+        out.append(tuple(page.cropbox))
+        try:
+            out.append(tuple((c.get("number"), c.get("on")) for c in doc.layer_ui_configs()))
+        except Exception:
+            pass
         return tuple(out)
 
     def _content_snaps(self, index):
@@ -1158,6 +1165,8 @@ class DocumentView(QScrollArea):
         """A document opened from _snapshot bytes (unlocked with the file's passwords when
         it keeps its encryption)."""
         fresh = pymupdf.open(stream=data, filetype="pdf")
+        # (the drawings compressed quickly since the last Save: Save packs them tightly)
+        fresh._kz_quick = set(getattr(getattr(self, "doc", None), "_kz_quick", ()) or ())
         if fresh.needs_pass and self._orig_enc is not None:
             for pw in (self._orig_enc.get("owner_pw"), self._orig_enc.get("user_pw")):
                 if pw and fresh.authenticate(pw):
@@ -5693,6 +5702,9 @@ class DocumentView(QScrollArea):
     def _redraw_all(self):
         self._dlists = {}
         self._tiles = OrderedDict()
+        # (a layer shown or hidden: the snap points are read again where they changed; the
+        # layers are part of their key)
+        self._snap_recheck = set(getattr(self, "_snap_content", {}))
         for w in self.pages:
             w.invalidate()
         self.thumbs_changed = None
@@ -7413,6 +7425,8 @@ class DocumentView(QScrollArea):
 
     def _write_file(self, tmp, sec):
         """Write the document to tmp the way save needs it (see save)."""
+        from . import page_objects
+        page_objects.pack_quick_streams(self.doc)       # (as tight as before 1.6.1)
         if not self.dirty and sec is None and self._orig_data is not None:
             # nothing changed: write the original bytes, so digital signatures stay valid
             # and protection stays exactly as it was

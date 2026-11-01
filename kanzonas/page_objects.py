@@ -456,6 +456,34 @@ def _put_stream(doc, xref, data):
     the drawing made every undo step about four times bigger."""
     doc.update_stream(xref, zlib.compress(data, 1), compress=False)
     doc.xref_set_key(xref, "Filter", "/FlateDecode")     # (update_stream took it away)
+    # Save packs it tightly again (see pack_quick_streams): Save's own deflate leaves alone a
+    # stream already compressed, and files saved after a CAD edit came out up to half bigger
+    doc.xref_set_key(xref, QUICK_KEY, "true")
+    quick = getattr(doc, "_kz_quick", None)
+    if quick is None:
+        quick = doc._kz_quick = set()
+    quick.add(xref)
+
+
+QUICK_KEY = "KZQuick"
+
+
+def pack_quick_streams(doc):
+    """Compress tightly (MuPDF's deflate) the streams _put_stream wrote quickly, before a
+    Save: about a second for a big sheet's drawing, paid once when saving, not on each
+    edit. doc._kz_quick: the xrefs written so (carried from document to document by undo
+    and redo); each is checked for the mark, so one that changed since is left alone."""
+    for x in sorted(getattr(doc, "_kz_quick", ()) or ()):
+        try:
+            if x >= doc.xref_length() or doc.xref_get_key(x, QUICK_KEY)[1] != "true" or \
+                    not doc.xref_is_stream(x):
+                continue
+            data = doc.xref_stream(x)
+            doc.update_stream(x, data, compress=True)
+            doc.xref_set_key(x, QUICK_KEY, "null")
+        except Exception:
+            continue                    # (left as it is: still a valid, compressed stream)
+    # (the list stays: an undo after this Save brings back streams written quickly)
 
 
 def _set_contents(page, data):
