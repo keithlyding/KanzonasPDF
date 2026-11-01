@@ -39,6 +39,7 @@ journal (the steps kept in it are dropped); without the resource tables found
 """
 
 import ctypes
+import weakref
 
 import pymupdf
 
@@ -201,6 +202,7 @@ def _touch(pdf, num):
 # of SPLIT_EVERY such steps; one undo step undoes them all.
 SPLIT_EVERY = 25
 _ACTIVE = {}                # pdf_document address -> Journal with an edit in progress
+_JOURNALS = weakref.WeakValueDictionary()   # pdf_document address -> its Journal
 
 
 def _tick(pdf):
@@ -288,6 +290,14 @@ def install():
                 self._kz_journal_broken = True
     pymupdf.Document.save = journaled_save
 
+    # an object an undo took back that the edit had made: MuPDF leaves its number with no
+    # entry at all (not a free one), and reading it threw, so a walk through every object
+    # (PyMuPDF's scrub: Sanitize, Apply redactions) failed after any undo. It reads as an
+    # object deleted would
+    for name, gone in (("xref_object", "null"), ("xref_get_key", ("null", "null")),
+                       ("xref_get_keys", [])):
+        setattr(pymupdf.Document, name, _as_deleted(getattr(pymupdf.Document, name), gone))
+
     def plain(fn):
         def call(self, *a, **k):
             if _pdf(self) is None or not pymupdf.g_use_extra:
@@ -302,6 +312,43 @@ def install():
         return call
     for name in ("_newPage", "insert_pdf"):
         setattr(pymupdf.Document, name, plain(getattr(pymupdf.Document, name)))
+
+    # Pages copied out of a document (Copy pages, Extract pages, the Capture tool) change it:
+    # PyMuPDF takes /P and /Popup out of the markups it copies, in the document copied
+    # from. MuPDF drops every entry to redo at the first change, so the steps to redo were
+    # lost (Redo then did nothing). With entries to redo, the pages come from a copy of
+    # the document instead (one write, only then), as Save does
+    insert = pymupdf.Document.insert_pdf
+
+    def insert_pdf(self, docsrc, *a, **k):
+        j = _JOURNALS.get(_ptr(getattr(_pdf(docsrc), "m_internal", None)) or 0)
+        if j is None or j.busy or not j.alive or not j.ahead() or \
+                not (k.get("annots", 1) or k.get("widgets", 1)):
+            return insert(self, docsrc, *a, **k)
+        copy = pymupdf.open("pdf", docsrc.tobytes())
+        try:
+            return insert(self, copy, *a, **k)
+        finally:
+            copy.close()
+    insert_pdf.__doc__ = insert.__doc__
+    pymupdf.Document.insert_pdf = insert_pdf
+
+
+def _as_deleted(fn, gone):
+    """fn (a Document method taking an object number first), giving gone instead of an
+    error for an object an undo took back (see install)."""
+    def call(self, xref, *a, **k):
+        try:
+            return fn(self, xref, *a, **k)
+        except Exception:
+            pdf = _pdf(self)
+            if pdf is None or not 0 < xref < m.pdf_xref_len(pdf) or \
+                    m.pdf_object_exists(pdf, xref):
+                raise
+            return list(gone) if isinstance(gone, list) else gone
+    call.__name__ = fn.__name__
+    call.__doc__ = fn.__doc__
+    return call
 
 
 def embedded_clean(doc):
@@ -361,6 +408,7 @@ class Journal:
         self._parts = None          # the entries of the edit in progress
         self._ambient = False
         self._open()
+        _JOURNALS[_address(self.raw)] = self
 
     # (the implicit operation between edits)
     def _open(self):
@@ -508,6 +556,15 @@ class Journal:
         self._close()
         try:
             return m.pdf_undoredo_state(self.pdf)[1]
+        finally:
+            self._open()
+
+    def ahead(self):
+        """The names of the entries that can be redone, next first."""
+        self._close()
+        try:
+            pos, steps = m.pdf_undoredo_state(self.pdf)
+            return self._names(pos, steps)
         finally:
             self._open()
 

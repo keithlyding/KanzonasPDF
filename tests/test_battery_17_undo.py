@@ -66,6 +66,116 @@ class Battery(Quiet):
                 self.assertEqual(annots(v.doc), [2, 1, 1, 1])
                 v.dirty = False
 
+    def test_redact_and_sanitize_after_an_undo(self):
+        # an undo leaves the numbers of the objects the edit had made with no entry at
+        # all, and PyMuPDF's scrub reads every object: Apply redactions (it cleans the file
+        # too) and Sanitize failed with "cannot find object in xref" after any undo, and
+        # the text wasn't redacted
+        from kanzonas import undo_journal
+        from unittest import mock
+        warned = []
+
+        def redact(v):
+            v.mark_redactions(0, [pymupdf.Rect(70, 55, 200, 80)])
+            v.apply_redactions()
+
+        def sanitize(v):
+            v.sanitize({"metadata": True, "javascript": True, "embedded_files": True,
+                        "thumbnails": True})
+        for label, edit in (("redact", redact), ("sanitize", sanitize)):
+            runs = []
+            for journal in (True, False):
+                with self.subTest(label, journal=journal), \
+                        mock.patch("PySide6.QtWidgets.QMessageBox.warning",
+                                   lambda *a, **k: warned.append(a[2])):
+                    v = self.view(journal)
+                    start = canon(v.doc)
+                    rect_markup(v, 0)
+                    v.undo()
+                    steps = len(v._undo)
+                    edit(v)
+                    self.assertEqual(warned, [])
+                    self.assertGreater(len(v._undo), steps)
+                    if label == "redact":
+                        self.assertNotIn("Contractor", v.doc[0].get_text())
+                    done = canon(v.doc)
+                    while len(v._undo) > steps:
+                        v.undo()
+                    self.assertEqual(canon(v.doc), start)
+                    runs.append(done)
+                    v.dirty = False
+                    v.close_doc()
+            self.assertEqual(runs[0], runs[1], label)
+        # (only an object an undo took back reads as deleted: a number past the end still
+        # raises)
+        v = self.view()
+        rect_markup(v, 0)
+        with self.assertRaises(Exception):
+            v.doc.xref_object(v.doc.xref_length() + 5)
+        self.assertTrue(undo_journal._installed)
+        v.dirty = False
+
+    def test_copying_pages_between_undo_and_redo(self):
+        # Copy pages, Extract pages and the Capture tool copy pages out with PyMuPDF's
+        # insert_pdf, which takes /P out of the copied markups in the document itself:
+        # MuPDF then dropped its entries to redo, and Redo did nothing
+        from kanzonas import capture
+        actions = {
+            "copy pages": lambda v: v.pages_bytes([0, 1, 2]),
+            "extract pages": lambda v: v.extract_pages(0, 2, self.path("out.pdf")),
+            "capture": lambda v: capture.snapshot(v.doc[2], pymupdf.Rect(50, 50, 400, 400)),
+        }
+        for label, act in actions.items():
+            with self.subTest(label):
+                v = self.view()
+                rect_markup(v, 0)
+                rect_markup(v, 2)
+                done = canon(v.doc)
+                v.undo()
+                act(v)
+                self.assertTrue(v.can_redo())
+                v.redo()
+                self.assertEqual(canon(v.doc), done)
+                self.assertEqual(annots(v.doc), [2, 1, 2, 1])
+                v.dirty = False
+                v.close_doc()
+        if os.path.exists(self.path("out.pdf")):
+            with pymupdf.open(self.path("out.pdf")) as out:
+                self.assertEqual(annots(out), [2, 1, 1])     # (the copy has the markups)
+
+    def test_a_failed_edit_and_the_steps_to_redo(self):
+        # a failed edit takes nothing away from the steps to undo; but MuPDF drops its
+        # entries to redo at an edit's first change, and taking the edit back doesn't bring
+        # them back: Redo was still offered, and did nothing. (A failed edit that changed
+        # nothing keeps them)
+        for many in (0, 5, 60):
+            with self.subTest(many=many):
+                v = self.view()
+                states = [canon(v.doc)]
+                for k in range(3):
+                    rect_markup(v, k)
+                    states.append(canon(v.doc))
+                v.undo()
+
+                def fails():
+                    pg = v.doc[3]
+                    for i in range(many):
+                        pg.add_rect_annot((10 + i, 10, 30 + i, 30))
+                    raise ValueError("halfway")
+                self.assertFalse(v.modify(fails, [3]))
+                self.assertEqual(canon(v.doc), states[2])
+                if not many:
+                    v.redo()
+                    self.assertEqual(canon(v.doc), states[3])
+                    v.undo()
+                else:
+                    self.assertFalse(v.can_redo())
+                for k in (1, 0):
+                    v.undo()
+                    self.assertEqual(canon(v.doc), states[k])
+                v.dirty = False
+                v.close_doc()
+
 
 if __name__ == "__main__":
     unittest.main()
