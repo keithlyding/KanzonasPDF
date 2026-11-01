@@ -95,6 +95,15 @@ def run(log_path):
         v.set_zoom(4.0)
         app.processEvents()
         v.pages[0].repaint()
+        shown = time.perf_counter() - t
+        # (a heavy page is shown scaled at once and drawn sharp in short steps: the time is
+        # until every part in view is sharp)
+        timer = getattr(v, "_render_timer", None)
+        while time.perf_counter() - t < 30 and (
+                v._zooming or getattr(v, "_render_wait", None) or
+                (timer is not None and timer.isActive())):
+            app.processEvents()
+        v.pages[0].repaint()
         zoom = time.perf_counter() - t
         mem = _memory_mb()
         win.close_tab(win.tabs.currentIndex())
@@ -102,11 +111,12 @@ def run(log_path):
         assert startup < 5, f"start-up took {startup:.1f}s (limit 5s)"
         assert launch is None or launch < 8, f"launch to ready took {launch:.1f}s (limit 8s)"
         assert first < 5, f"opening a 60k-line sheet took {first:.1f}s (limit 5s)"
-        assert zoom < 5, f"zooming to 400% took {zoom:.1f}s (limit 5s)"
+        assert zoom < 5, f"zooming to 400% took {zoom:.1f}s to be sharp (limit 5s)"
+        assert shown < 0.5, f"zooming to 400% showed nothing for {shown:.1f}s (limit 0.5s)"
         assert mem > 1, "couldn't measure memory"
         assert mem < 800, f"memory {mem:.0f} MB (limit 800 MB)"
         lt = "n/a" if launch is None else f"{launch:.2f}s"
-        return f"(launch {lt}, window {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s, {mem:.0f} MB)"
+        return f"(launch {lt}, window {startup:.2f}s, open {first:.2f}s, 400% {zoom:.2f}s (shown {shown:.2f}s), {mem:.0f} MB)"
     check("performance budget", t_performance)
 
     def t_pdf_speed():
@@ -128,8 +138,108 @@ def run(log_path):
         pdf_speed.delete_many(pg, xs[:4])
         left = sorted(x for x, *_ in pg.annot_xrefs())
         assert left == sorted(xs[4:]), f"left after deleting 4 (and a reply): {left}"
-        return "(names, delete with replies)"
+        # Remove hidden information leaves out the slow hidden-text search only on a page
+        # with no text at all, and still removes hidden text elsewhere
+        d = pymupdf.open()
+        lines = d.new_page()
+        sh = lines.new_shape()
+        for i in range(200):
+            sh.draw_line((10, 10 + 3 * i), (500, 12 + 3 * i))
+        sh.finish(color=(0, 0, 0), width=0.5)
+        sh.commit()
+        hidden = d.new_page()
+        hidden.insert_text((72, 72), "Seen text", fontsize=12)
+        hidden.insert_text((72, 120), "Secret OCR layer", fontsize=12, render_mode=3)
+        before = pdf_speed.skipped_searches
+        pdf_speed.scrub(d, hidden_text=True, metadata=False, xml_metadata=False)
+        assert pdf_speed.skipped_searches == before + 1, \
+            "PyMuPDF changed: Remove hidden information searches pages with no text again " \
+            "(see pdf_speed.scrub)"
+        text = d[1].get_text()
+        assert "Seen" in text and "Secret" not in text, f"hidden text left: {text!r}"
+        return "(names, delete with replies, hidden-text search)"
     check("PyMuPDF speed fixes", t_pdf_speed)
+
+    def t_text_guard():
+        # MuPDF 1.28 ends the program (a segmentation fault) reading the text of a page with
+        # ActualText inside ActualText around a picture; text_guard.py reads such pages
+        # with TEXT_IGNORE_ACTUALTEXT. (If the guard is gone, this check ends the self-test:
+        # the build fails either way.)
+        from . import annotations, text_guard  # noqa: F401 (annotations puts it in place)
+        assert text_guard.applied, "PyMuPDF changed: the text reading guard is off " \
+            "(see text_guard.py)"
+        d = pymupdf.open()
+        pg = d.new_page()
+        pm = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 8, 8), False)
+        pm.clear_with(100)
+        pg.insert_image((300, 300, 340, 340), stream=pm.tobytes("png"))
+        name = d.get_page_images(0)[0][7]
+        x = pg.get_contents()[0]
+        d.update_stream(x, d.xref_stream(x) + (
+            b"\n/Span <</ActualText (A)>> BDC /Span <</ActualText (B)>> BDC "
+            b"q 40 0 0 40 100 600 cm /%s Do Q EMC EMC" % name.encode()))
+        assert text_guard.risky(pg), "a page with nested ActualText isn't recognized"
+        pg.get_text()
+        pg.search_for("A")
+        plain = d.new_page()
+        plain.insert_text((72, 72), "Plain text", fontsize=12)
+        assert not text_guard.risky(plain), "an ordinary page is read without ActualText"
+        return "(nested ActualText read safely)"
+    check("text reading guard", t_text_guard)
+
+    def t_undo_journal():
+        # undo and redo go through MuPDF's journal (undo_journal.py), not a copy of the
+        # document per edit: its patches on PyMuPDF and the search for MuPDF's tables of
+        # added pictures must work with this PyMuPDF, or the app silently falls back to
+        # copies (a second per edit on a big plan set)
+        import tempfile
+        import time
+        from PySide6.QtWidgets import QApplication
+        QApplication.instance() or QApplication([])
+        from . import undo_journal
+        from .document_view import DocumentView, _JStep
+        assert undo_journal.usable(), \
+            "PyMuPDF changed: undo can't go through MuPDF's journal (see undo_journal.py)"
+        d = pymupdf.open()
+        for _ in range(3):
+            d.new_page().insert_text((72, 72), "Page text", fontsize=12)
+        pm = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 8, 8), False)
+        pm.clear_with(120)
+        png = pm.tobytes("png")
+        path = os.path.join(tempfile.mkdtemp(), "journal.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        try:
+            t = time.perf_counter()
+            v.modify(lambda: v.doc[0].add_rect_annot(pymupdf.Rect(50, 100, 150, 160)),
+                     pages=[0])
+            v.modify(lambda: v.doc[1].insert_image((50, 100, 90, 140), stream=png), pages=[1])
+            v.modify(lambda: v.doc.delete_page(2), structural=True)
+            took = time.perf_counter() - t
+            assert all(isinstance(s, _JStep) for s in v._undo), \
+                f"undo keeps copies: {[type(s).__name__ for s in v._undo]}"
+            for _ in range(3):
+                v.undo()
+            assert v.doc.page_count == 3 and not list(v.doc[0].annots()) and \
+                not v.doc[1].get_images(), "undo didn't bring the document back"
+            for _ in range(3):
+                v.redo()
+            assert v.doc.page_count == 2 and len(list(v.doc[0].annots())) == 1, \
+                "redo didn't make the edits again"
+            v.undo()
+            v.undo()
+            # (the same picture added again after an undo: MuPDF's table emptied)
+            v.modify(lambda: v.doc[1].insert_image((50, 100, 90, 140), stream=png), pages=[1])
+            x = v.doc[1].get_images()[0][0]
+            assert v.doc.xref_stream_raw(x), "a picture added again after an undo is empty"
+            v.save()
+            with pymupdf.open(path) as saved:
+                assert saved.page_count == 3 and saved[1].get_images(), "saved wrongly"
+        finally:
+            v.dirty = False
+            v.close_doc()
+        return "(3 edits in %.0f ms, undone, redone, saved)" % (took * 1000)
+    check("undo through MuPDF's journal", t_undo_journal)
 
     def t_edit_speed():
         # editing on a busy page stays quick: 1,000 markups added, moved and deleted, a
@@ -203,6 +313,86 @@ def run(log_path):
         assert not slow, "too slow: " + ", ".join(slow)
         return "(" + ", ".join(f"{k} {took[k]:.2f}s" for k in limits) + ")"
     check("editing speed budget", t_edit_speed)
+
+    def t_heavy_speed():
+        # a heavy sheet (60,000 shapes) stays quick to work on: its drawing read for CAD
+        # (1.6.1: about 1.4 s, its outlines 1.1 s), a markup added and the page drawn again
+        # without drawing the sheet again (0.7 s), undone through MuPDF's journal (0.6 s,
+        # with a copy of the document), and the wheel zoom showing the page scaled at once
+        # (0.7 s to 2.3 s a notch before)
+        import random
+        import time
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance() or QApplication([])
+        from . import annotations, page_objects
+        from .document_view import DocumentView
+        rnd = random.Random(7)
+        out = [b"1 0 0 -1 0 800 cm 0.35 w 0.2 0.4 0.1 RG"]
+        for i in range(60000):
+            x, y = rnd.uniform(20, 1100), rnd.uniform(20, 700)
+            if i % 10 < 8:
+                out.append(b"%.2f %.2f m %.2f %.2f l S" % (x, y, x + rnd.uniform(-40, 40), y))
+            else:
+                out.append(b"%.2f %.2f 20 -15 re f" % (x, y))
+        d = pymupdf.open()
+        pg = d.new_page(width=1200, height=800)
+        x = d.get_new_xref()
+        d.update_object(x, "<<>>")
+        d.update_stream(x, b"\n".join(out))
+        pg.set_contents(x)
+        path = os.path.join(tempfile.mkdtemp(), "heavy.pdf")
+        d.save(path, deflate=True)
+        d.close()
+        times = {}
+        v = DocumentView(path)
+        try:
+            v.resize(1000, 700)
+            v.show()
+            app.processEvents()
+            t = time.perf_counter()
+            objs = page_objects.Objects(v.doc[0])
+            times["read"] = time.perf_counter() - t
+            t = time.perf_counter()
+            for it in objs.items:
+                objs.lines(it)
+            times["outlines"] = time.perf_counter() - t
+            assert len(objs.items) == 60000, f"{len(objs.items)} shapes read"
+            del objs
+            v.set_zoom(1.0)
+            w = v.pages[0]
+            w._pix = None
+            w._render()                     # (the sheet drawn once, as on opening)
+            t = time.perf_counter()
+            v._create(0, {"kind": "rect", "props": dict(annotations.DEFAULTS["rect"]),
+                          "rect": pymupdf.Rect(200, 200, 300, 300)})
+            w._pix = None
+            w._render()
+            times["markup"] = time.perf_counter() - t
+            assert w._pix is not None, "the page wasn't drawn again after the markup"
+            t = time.perf_counter()
+            v.undo()
+            w = v.pages[0]
+            w._pix = None
+            w._render()
+            times["undo"] = time.perf_counter() - t
+            assert w._pix is not None, "the page wasn't drawn again after the undo"
+            assert not list(v.doc[0].annots()), "the markup is still there after undo"
+            v._note_render_cost(0, 1.0)     # (heavy: drawn sharp once the wheel stops)
+            t = time.perf_counter()
+            v._quick_zoom()
+            v.set_zoom(1.25)
+            v.viewport().repaint()
+            times["zoom"] = time.perf_counter() - t
+        finally:
+            v.dirty = False
+            v.close_doc()
+        msg = ", ".join("%s %.0f ms" % (k, times[k] * 1000) for k in
+                        ("read", "outlines", "markup", "undo", "zoom"))
+        budget = {"read": 2.5, "outlines": 2.0, "markup": 0.3, "undo": 0.3, "zoom": 0.15}
+        over = [k for k in budget if times[k] > budget[k]]
+        assert not over, f"over budget: {over} ({msg})"
+        return "(" + msg + ")"
+    check("heavy drawing speed budget", t_heavy_speed)
 
     def t_everyday_speed():
         # what runs on each mouse move or keystroke stays a few milliseconds, and page work on

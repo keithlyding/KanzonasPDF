@@ -7,6 +7,34 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.6.2
+
+**Fixed**
+- Undo and redo are much quicker on big files, and use far less memory: each step keeps only what the edit changed instead of a copy of the whole document. On an 80 MB drawing set an edit takes about a tenth of the time, and all 30 undo steps fit even on very large files.
+- Adding, moving or deleting a markup on a heavy drawing or a big scan no longer redraws the whole sheet: the page updates in a few hundredths of a second instead of up to several seconds.
+- Zooming with the mouse wheel follows at once on heavy drawings; the page is drawn sharp as soon as the wheel stops, the middle of the window first. Big scans decode their picture once, so panning and zooming them is several times faster.
+- Heavy CAD sheets: the first click, Erase content and reading a sheet for CAD mode are two to five times faster; Apply redactions and Sanitize on sheets without text take a couple of seconds instead of half a minute, and still remove hidden text exactly as before.
+- Thumbnails of heavy sheets appear almost at once.
+- The split view now follows night mode, thin lines, Show markups, field shading and the layers you show or hide.
+- Filling in a form field that appears on several pages updates every page that shows it.
+- At 125%, 150% and 175% Windows display scaling, big pages no longer leave thin lines of old pixels at tile and page edges.
+- Delete comments works again on documents with markups.
+- KanzonasPDF no longer closes suddenly when you search, select or copy text on certain pages (a picture or drawing marked with alternate text inside other alternate text, which crashed the PDF engine).
+
+## 1.6.2 (es)
+
+**Correcciones**
+- Deshacer y rehacer son mucho más rápidos en archivos grandes y usan mucha menos memoria: cada paso guarda solo lo que cambió la edición en lugar de una copia de todo el documento. En un juego de planos de 80 MB una edición tarda una décima parte, y los 30 pasos de deshacer caben incluso en archivos muy grandes.
+- Agregar, mover o eliminar una marca en un plano pesado o un escaneo grande ya no vuelve a dibujar toda la hoja: la página se actualiza en unas centésimas de segundo en lugar de hasta varios segundos.
+- El zoom con la rueda del mouse sigue al instante en planos pesados; la página se dibuja nítida en cuanto la rueda se detiene, primero el centro de la ventana. Los escaneos grandes decodifican su imagen una sola vez, así que desplazarlos y hacer zoom es varias veces más rápido.
+- Planos CAD pesados: el primer clic, Borrar contenido y la lectura de una hoja para el modo CAD son de dos a cinco veces más rápidos; Aplicar redacciones y Sanear en hojas sin texto tardan un par de segundos en lugar de medio minuto, y siguen quitando el texto oculto exactamente igual que antes.
+- Las miniaturas de las hojas pesadas aparecen casi al instante.
+- La vista dividida ahora sigue al modo nocturno, las líneas finas, Mostrar marcas, el sombreado de campos y las capas que muestra u oculta.
+- Llenar un campo de formulario que aparece en varias páginas actualiza todas las páginas que lo muestran.
+- Con la escala de pantalla de Windows al 125%, 150% y 175%, las páginas grandes ya no dejan líneas finas de píxeles viejos en los bordes de los mosaicos y de la página.
+- Eliminar comentarios vuelve a funcionar en documentos con marcas.
+- KanzonasPDF ya no se cierra de repente al buscar, seleccionar o copiar texto en ciertas páginas (una imagen o un dibujo marcado con texto alternativo dentro de otro texto alternativo, que hacía fallar el motor PDF).
+
 ## 1.6.1
 
 **Fixed**

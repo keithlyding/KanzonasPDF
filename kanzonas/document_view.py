@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
                                QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
 
-from . import annotations, dialogs, hit_index, signatures, text_edit
+from . import annotations, dialogs, hit_index, signatures, text_edit, undo_journal
 from .i18n import tr
 from .inline_editor import InlineEditor
 from .page_widget import PageWidget
@@ -29,10 +29,12 @@ MIN_ZOOM, MAX_ZOOM = 0.1, 64.0     # 10% to 6400%, the same ceiling as Acrobat a
 # an oversized sheet stops a little earlier so the window can still hold it.
 WIDGET_PX = 16_000_000
 UNDO_LIMIT = 30
-# Undo keeps whole-document copies, so the history also has a memory budget: per document,
-# and for all open documents together (the oldest steps go first; the latest is always kept)
+# The undo history also has a memory budget: per document, and for all open documents
+# together (the oldest steps go first; the latest is always kept). What counts: MuPDF's
+# journal of the changes, and the whole-document copies kept where it can't serve
 UNDO_BYTES_PER_DOC = 256 * 1024 * 1024
 UNDO_BYTES_TOTAL = 512 * 1024 * 1024
+USE_JOURNAL = True        # undo through MuPDF's journal (False: a copy per edit, as up to 1.6)
 PAGE_CACHE_PAGES = 24     # parsed per-page data kept for at most about this many pages
 FREEZE_ITEMS = 20_000     # a drawing with this many objects is set aside from the collector
 
@@ -56,6 +58,59 @@ def _collect_all():
 
 
 atexit.register(gc.unfreeze)    # (Python's last collection skips what's set aside)
+
+
+# The undo and redo lists hold three kinds of step: bytes (the whole document saved before
+# the edit, as up to 1.6, where the journal can't serve), _JStep (entries in MuPDF's journal)
+# and _DocStep (another document object to show instead: an edit that replaced it).
+class _JStep:
+    """An edit kept in MuPDF's journal (see undo_journal): the names of its entries, the
+    trailer before and after (the journal doesn't keep it), and the pages to read again
+    when it's undone or redone (None: all; structural: pages added, removed or moved)."""
+    __slots__ = ("journal", "epoch", "names", "pages", "structural", "trailer")
+
+    def __init__(self, journal, names, pages, structural, before, after):
+        self.journal = journal
+        self.epoch = journal.epoch
+        self.names = list(names)
+        self.pages = None if pages is None else set(pages)
+        self.structural = bool(structural)
+        self.trailer = journal.trailer_change(before, after) if before != after else None
+
+    def join(self, names, pages, structural, before, after):
+        """Another edit made part of this step (arrow-key nudges, one_undo_step)."""
+        self.names += names
+        self.pages = None if pages is None or self.pages is None else self.pages | set(pages)
+        self.structural = self.structural or bool(structural)
+        if before != after:
+            old, new = self.journal.trailer_change(before, after)
+            if self.trailer:
+                old = dict(old, **self.trailer[0])      # (the values from before the step)
+                new = dict(self.trailer[1], **new)
+            self.trailer = (old, new)
+
+    @property
+    def valid(self):
+        return self.journal.alive and self.epoch == self.journal.epoch
+
+
+class _DocStep:
+    """The document object to go back (or forward) to, with its journal; kept instead of a
+    copy when an edit replaced the document (Apply redactions cleans the file so)."""
+    __slots__ = ("doc", "journal", "cost")
+
+    def __init__(self, doc, journal):
+        self.doc = doc
+        self.journal = journal
+        try:
+            self.cost = int(pymupdf._as_pdf_document(doc).m_internal.file_size) + \
+                (journal.bytes if journal is not None else 0)
+        except Exception:
+            self.cost = 0
+
+    @property
+    def valid(self):
+        return not getattr(self.doc, "is_closed", True)
 
 
 _ERASER_CURSOR = None
@@ -539,8 +594,8 @@ class DocumentView(QScrollArea):
                 keep.add(i)
         if self.obj_sel:
             keep.add(self.obj_sel[0])
-        for cache in (self._dlists, self._line_cache, self._row_cache, self._hover_para,
-                      self._word_cache, self._snap_markups, self._obj_cache,
+        for cache in (self._dlists, self._alists, self._line_cache, self._row_cache,
+                      self._hover_para, self._word_cache, self._snap_markups, self._obj_cache,
                       self._snap_content, self._hit_cache):
             if len(cache) <= PAGE_CACHE_PAGES:
                 continue
@@ -620,6 +675,8 @@ class DocumentView(QScrollArea):
         other.documentChanged.connect(self._mirror_changed)
         other.structureChanged.connect(self._mirror_structure)
         other.pageResized.connect(self._mirror_resized)
+        # (a layer shown or hidden in the main view is shown or hidden here too: same document)
+        other.layersChanged.connect(self._redraw_all)
         return self
 
     def _mirror_changed(self):
@@ -707,12 +764,14 @@ class DocumentView(QScrollArea):
     show_markups = True            # Review > Show markups (off: the page as if unmarked)
 
     def redraw_pages(self):
-        """Draw every page again from its display list (after a display option changed, such
-        as night mode); selections, search hits and caches of the page text are kept."""
+        """Draw every page again from its content render or display list (after a display
+        option changed, such as night mode); selections, search hits and caches of the page
+        text are kept."""
         self._tiles.clear()
+        self._small_previews.clear()
         for i in list(getattr(self, "_pix_pages", ())):
             if i < len(self.pages):
-                self.pages[i].drop_cache()
+                self.pages[i].redraw()
         self._pix_pages = set()
         for pw in self.pages:
             pw.update()
@@ -722,6 +781,96 @@ class DocumentView(QScrollArea):
         self._clear_caches()
         for pw in self.pages:
             pw.invalidate()
+
+    # ---- drawing heavy pages without making the window wait -------------------------------
+    progressive = True             # heavy pages: shown as they were (scaled) and drawn after
+    _zooming = False               # a Ctrl+wheel zoom in progress (until ZOOM_SETTLE_MS after)
+    ZOOM_SETTLE_MS = 150
+
+    def _quick_zoom(self):
+        """A wheel zoom step: until the wheel has stopped for ZOOM_SETTLE_MS, pages are shown
+        as they were, scaled (instantly), not rendered at each step; then drawn sharp."""
+        self._zooming = True
+        t = getattr(self, "_settle_timer", None)
+        if t is None:
+            t = self._settle_timer = QTimer(self)
+            t.setSingleShot(True)
+            t.timeout.connect(self._zoom_settled)
+        t.start(self.ZOOM_SETTLE_MS)
+
+    def _zoom_settled(self):
+        self._zooming = False
+        for w in getattr(self, "pages", ()):
+            if not w.visibleRegion().isEmpty():
+                w.update()
+        if getattr(self, "_render_wait", None):
+            self._render_timer.start(0)
+
+    def _note_render_cost(self, index, seconds):
+        costs = getattr(self, "_costs", None)
+        if costs is None:
+            costs = self._costs = OrderedDict()
+        costs[index] = seconds
+        costs.move_to_end(index)
+        while len(costs) > 64:
+            costs.popitem(last=False)
+
+    def _render_cost(self, index):
+        """How long page index's content took to render last time (seconds); for a page not
+        rendered yet, the most recent other page's (a heavy plan set's pages are alike)."""
+        costs = getattr(self, "_costs", None)
+        if not costs:
+            return 0.0
+        got = costs.get(index)
+        return got if got is not None else next(reversed(costs.values()))
+
+    def _render_later(self, widget):
+        """widget showed a stand-in: draw it sharp once the event loop is free (a Ctrl+wheel
+        zoom: once the wheel has stopped)."""
+        wait = getattr(self, "_render_wait", None)
+        if wait is None:
+            wait = self._render_wait = []
+            t = self._render_timer = QTimer(self)
+            t.setSingleShot(True)
+            t.timeout.connect(self._render_tick)
+        if widget not in wait:
+            wait.append(widget)
+        if not self._zooming:
+            self._render_timer.start(0)
+
+    def _render_tick(self):
+        """Draw one waiting page (the whole page, or its missing tiles in view), the one
+        nearest the middle of the window first, then let the event loop run before the
+        next: input stays responsive while a heavy drawing fills in."""
+        wait = self._render_wait
+        if self._zooming or self.doc.is_closed:
+            return
+        vp = self.viewport()
+        mid = vp.rect().center()
+        live = []
+        for w in wait:
+            try:
+                if w.parent() is not None and not w.isHidden() and \
+                        not w.visibleRegion().isEmpty():
+                    live.append(w)
+            except RuntimeError:            # (a page widget deleted meanwhile)
+                pass
+        wait[:] = []
+        if not live:
+            return
+
+        def dist(w):
+            c = w.mapTo(vp, w.visibleRegion().boundingRect().center())
+            return (c - mid).manhattanLength()
+        live.sort(key=dist)
+        w = live.pop(0)
+        try:
+            w.render_step()
+        except Exception:
+            pass
+        wait.extend(live)
+        if wait:
+            self._render_timer.start(0)
 
     # ---- objects: lock, hide, list (Objects panel) ---------------------------------------------
     def page_objects(self, index):
@@ -830,7 +979,8 @@ class DocumentView(QScrollArea):
     def markup_authors(self):
         names = set()
         for i in range(self.doc.page_count):
-            for an in annotations.each_annot(self.doc[i]):
+            page = self.doc[i]          # (kept alive while its markups are read)
+            for an in annotations.each_annot(page):
                 if an.type[0] != pymupdf.PDF_ANNOT_POPUP:
                     names.add(an.info.get("title", "") or "")
         return sorted(names)
@@ -1008,12 +1158,14 @@ class DocumentView(QScrollArea):
         if self.wheel_zoom:
             if dy:
                 vp = self.viewport().mapFromGlobal(QCursor.pos())
+                self._quick_zoom()
                 self.zoom_at(self.zoom * 1.15 ** (dy / 120.0), vp)
             e.accept()
         elif ctrl:
             # zoom around the pointer, like CAD-style mouse, not around the window's center
             if dy:
                 vp = self.viewport().mapFromGlobal(e.globalPosition().toPoint())
+                self._quick_zoom()
                 self.zoom_at(self.zoom * (1.2 if dy > 0 else 1 / 1.2), vp)
             e.accept()
         elif self.page_wheel and dy and self._page_fits():
@@ -1204,6 +1356,11 @@ class DocumentView(QScrollArea):
     def _restore(self, data, dirty=True):
         """Show the document saved in data (undo, redo, a rolled-back edit); dirty: whether
         it then has unsaved changes."""
+        self._show_doc(self._open_snapshot(data), None, dirty)
+
+    def _show_doc(self, fresh, journal, dirty=True, close_old=True):
+        """Show the document object fresh (with its journal, None: none yet) instead of the
+        current one, which is closed unless close_old is False (a _DocStep keeps it)."""
         anchor = self._view_anchor()
         self._inline = None             # its widget goes with the rebuilt pages
         self.field_focus = None
@@ -1212,9 +1369,9 @@ class DocumentView(QScrollArea):
         self.selection = None
         self.selected_model = None
         self.extra = []
-        fresh = self._open_snapshot(data)
         old = self.doc
         self.doc = fresh
+        self._journal = journal
         from . import markups_panel
         markups_panel.carry_over(old, fresh)    # (the markups list reads only what differs)
         self.search_hits.clear()
@@ -1225,7 +1382,9 @@ class DocumentView(QScrollArea):
         self._search_gen += 1
         self.searchChanged.emit(0, 0, False)
         self._build_pages()
-        old.close()
+        if close_old:
+            old.close()
+            self._prune_history()       # (steps kept in its journal went with it)
         self._apply_view_anchor(anchor)
         # a fit that was queued by the rebuild runs after this returns; put the spot back
         if anchor is not None:
@@ -1264,9 +1423,11 @@ class DocumentView(QScrollArea):
         self.commit_pending()           # a text edit in progress becomes its own undo step
         from . import cad_select
         cad_select.drop(self)
-        # a burst of arrow-key nudges is one undo step: later presses reuse the first snapshot
+        # a burst of arrow-key nudges is one undo step: later presses join the first one
         merge = getattr(self, "_merge_edit", False) and bool(self._undo)
-        snap = None if merge else self._snapshot()
+        journal = self._journal_now()
+        # the edit is kept in MuPDF's journal; without it, a copy of the whole document
+        snap = None if merge or journal is not None else self._snapshot()
         # only the pages this edit touches lose their parsed drawings, text and snap points;
         # a structural change (pages added, removed, moved) or an unknown extent clears all
         if structural or pages is None:
@@ -1281,20 +1442,39 @@ class DocumentView(QScrollArea):
             # a page kept loaded only by a reference cycle (an Annot and its Page) would
             # come back under its old number once pages move: free those first
             _collect_all()
+        doc = self.doc
+        # (an edit made while another one runs is part of that one, and of its undo step)
+        nested = journal is not None and journal.busy
+        if nested:
+            journal = None
+        elif journal is not None:
+            before = journal.trailer()
+            journal.begin()
         try:
             fn()
         except Exception as ex:
+            if nested:
+                raise                   # (the edit around it takes it all back)
             with _not_busy():
                 QMessageBox.warning(self, tr("Edit failed"), str(ex))
             # rolled back: nothing changed
-            self._restore(snap if snap is not None else self._undo.pop(), dirty=was_dirty)
+            if journal is not None:
+                self._roll_back(doc, journal, before, was_dirty)
+            else:
+                self._restore(snap if snap is not None else self._undo.pop(), dirty=was_dirty)
             return
-        if snap is not None:
+        if journal is not None:
+            self._record(doc, journal, before, merge, pages, structural)
+        elif snap is not None:
             self._undo.append(snap)
+            if self.doc is not doc:
+                doc.close()             # (replaced by the edit: the copy is what undo uses)
         self._cad_prepare_soon()            # (in CAD mode: the changed page made ready again)
-        del self._undo[:-UNDO_LIMIT]
-        self._redo.clear()
-        self._trim_history()
+        if not nested:
+            del self._undo[:-UNDO_LIMIT]
+            self._redo.clear()
+            self._measure_journal()
+            self._trim_history()
         self.dirty = True
         # any edit can change the page text: the next Find searches again
         self._search_text = None
@@ -1304,12 +1484,14 @@ class DocumentView(QScrollArea):
         self._thumbs_stale(changed if structural else pages)
         if structural:
             if self._stale_pages():
-                # something still holds a page from before the change: open the document
-                # afresh from its bytes (which follow the page tree), as Undo does
-                old, self.doc = self.doc, self._open_snapshot(self._snapshot())
-                from . import markups_panel
-                markups_panel.carry_over(old, self.doc)
-                old.close()
+                # something still holds a page from before the change: MuPDF renumbers the
+                # pages it has loaded (as after an undo)
+                try:
+                    pymupdf.mupdf.pdf_sync_open_pages(pymupdf._as_pdf_document(self.doc))
+                except Exception:
+                    pass
+            if self._stale_pages():
+                self._reopen()
             self._inline = None
             self.field_focus = None     # its page may be gone or moved
             page = self.current_page()
@@ -1328,6 +1510,192 @@ class DocumentView(QScrollArea):
             for i in pages or []:
                 self.pages[i].invalidate()
             self.documentChanged.emit()
+        return True
+
+    # ---- undo through MuPDF's journal (see undo_journal) ------------------------------
+    _journal = None             # the journal of self.doc, started at its first edit
+    _journal_bytes = 0          # what it held when last measured
+
+    def _journal_now(self):
+        """The journal to keep the next edit in (None: keep a copy of the document)."""
+        j = self._journal
+        if j is not None and j.doc is self.doc and not j.alive and \
+                not getattr(self.doc, "is_closed", True):
+            # repaired, or saved with its objects renumbered: its entries no longer match
+            j.restart()
+            self._prune_history()
+        elif j is not None and (j.doc is not self.doc or not j.alive):
+            self._journal = j = None
+            self._prune_history()
+        if j is None and USE_JOURNAL and undo_journal.usable():
+            try:
+                self._journal = j = undo_journal.Journal(self.doc)
+            except Exception:
+                self._journal = j = None
+        return j
+
+    def _record(self, doc, journal, before, merge, pages, structural):
+        """The undo step for the edit just made (journal.begin ... now)."""
+        if self.doc is not doc:
+            # the edit replaced the document: undo shows the one before again, taken back
+            # to how it was before the edit
+            journal.abandon()
+            journal.set_trailer(before, whole=True)
+            self._journal = None        # (the new one's starts at its first edit)
+            self._undo.append(_DocStep(doc, journal))
+            return
+        names = journal.end()
+        after = journal.trailer()
+        top = self._undo[-1] if merge else None
+        if isinstance(top, _JStep) and top.journal is journal and top.valid:
+            top.join(names, pages, structural, before, after)
+        elif top is None:
+            self._undo.append(_JStep(journal, names, pages, structural, before, after))
+        # (else merged into a step that brings back a whole document: nothing to add)
+
+    def _roll_back(self, doc, journal, before, dirty):
+        """A failed edit: the document as it was before it."""
+        if self.doc is not doc:
+            fresh, self.doc = self.doc, doc
+            try:
+                fresh.close()
+            except Exception:
+                pass
+        journal.abandon()
+        journal.set_trailer(before, whole=True)
+        # (a big edit is kept in several entries: the first one made dropped MuPDF's
+        # entries to redo, and taking the edit back doesn't bring them back. The steps to
+        # redo that used them go, so Redo isn't offered for nothing)
+        ahead, k = journal.ahead(), 0
+        for i in range(len(self._redo) - 1, -1, -1):
+            s = self._redo[i]
+            if not isinstance(s, _JStep) or s.journal is not journal:
+                break
+            if not s.valid or ahead[k:k + len(s.names)] != s.names:
+                del self._redo[:i + 1]
+                break
+            k += len(s.names)
+        self._reread(None, True, dirty)
+
+    def _reopen(self):
+        """Something still holds a page from before a structural change: open the document
+        afresh from its bytes (which follow the page tree). The document object as it is
+        now stays for undo, taken back to before the edit."""
+        old, journal = self.doc, self._journal
+        data = self._snapshot()
+        top = self._undo[-1] if self._undo else None
+        keep = isinstance(top, _JStep) and top.journal is journal and top.valid and \
+            journal.undo(top.names)
+        if keep:
+            if top.trailer:
+                journal.set_trailer(top.trailer[0])
+            self._undo[-1] = _DocStep(old, journal)
+        self.doc = self._open_snapshot(data)
+        self._journal = None
+        from . import markups_panel
+        markups_panel.carry_over(old, self.doc)
+        if not keep:
+            old.close()
+            self._prune_history()
+
+    def _measure_journal(self):
+        j = self._journal
+        self._journal_bytes = j.measure() if j is not None and j.alive else 0
+
+    def _prune_history(self):
+        """Drop the steps that can no longer be undone or redone (their journal or document
+        is gone), with all those before them: undo goes back in order or not at all."""
+        for steps in (self._undo, self._redo):
+            bad = [i for i, s in enumerate(steps)
+                   if isinstance(s, (_JStep, _DocStep)) and not s.valid]
+            if bad:
+                del steps[:bad[-1] + 1]
+
+    def _reread(self, pages, structural, dirty=True):
+        """The view after the document changed in place (an undo or redo kept in the
+        journal, a rolled-back edit): what changed is read again, and the pages are made
+        again only when pages were added, removed or moved (pages: None, any)."""
+        anchor = self._view_anchor()
+        self._inline = None
+        self.field_focus = None
+        self.selection = None
+        self.selected_model = None
+        self.extra = []
+        self.search_hits.clear()
+        self._search_list = []
+        self._search_text = None
+        self._search_cur = None
+        self._search_todo = None
+        self._search_gen += 1
+        self.searchChanged.emit(0, 0, False)
+        n = self.doc.page_count
+        if structural or pages is None or n != len(self.pages):
+            self._clear_caches()
+            self.markups_changed = None
+            self._build_pages()
+            self._apply_view_anchor(anchor)
+            if anchor is not None:
+                QTimer.singleShot(0, lambda a=anchor: self._apply_view_anchor(a))
+            self.thumbs_changed = None
+        else:
+            pages = [i for i in pages if 0 <= i < n]
+            self._clear_page_caches(pages)
+            if self.markups_changed is not None:
+                self.markups_changed |= set(pages)
+            for i in pages:
+                self.pages[i].invalidate()
+            # (the page list draws the thumbnails in view again, as after an undo up to 1.6;
+            # tests/test_speed_161_pages checks that)
+            self.thumbs_changed = None
+            rects = self._read_page_rects()
+            for i in range(n):
+                if rects[i] != self.page_rects[i]:
+                    self._page_turned(i)        # (turned or cropped back)
+        self.dirty = dirty
+        self.structureChanged.emit()
+        self.selectionChanged.emit()
+
+    def _undo_step(self, step, way):
+        """Undo (way -1) or redo (1) one step; returns the step that does the opposite, or
+        None when it could not be done (its journal entries are gone)."""
+        if isinstance(step, _JStep):
+            journal = self._journal_now()
+            if journal is not step.journal or not step.valid:
+                return None
+            if not (journal.undo(step.names) if way < 0 else journal.redo(step.names)):
+                return None
+            if step.trailer:
+                journal.set_trailer(step.trailer[0 if way < 0 else 1])
+            self._reread(step.pages, step.structural)
+            return step
+        if isinstance(step, _DocStep):
+            back = _DocStep(self.doc, self._journal)
+            self._show_doc(step.doc, step.journal, close_old=False)
+            return back
+        back = self._snapshot()
+        self._restore(step)
+        return back
+
+    def _compact_journal(self):
+        """Over the memory budget with only the latest step left: MuPDF can't forget the
+        oldest entries of its journal, only all of them. The latest step becomes a copy of
+        the document before it (one Save's worth of time) and the journal is emptied.
+        True if that freed anything."""
+        j = self._journal
+        if j is None or not j.alive or not j.entries():
+            return False
+        top = self._undo[-1] if self._undo else None
+        if isinstance(top, _JStep) and top.journal is j and top.valid and j.undo(top.names):
+            if top.trailer:
+                j.set_trailer(top.trailer[0])
+            snap = self._snapshot()
+            j.redo(top.names)
+            if top.trailer:
+                j.set_trailer(top.trailer[1])
+            self._undo[-1] = snap
+        j.discard()
+        self._prune_history()
+        self._measure_journal()
         return True
 
     thumbs_changed = None       # page xrefs whose look changed since the page list last
@@ -1375,10 +1743,7 @@ class DocumentView(QScrollArea):
             self._cad_cmd.cancel()      # (its selection is gone with the change)
         cad_select.drop(self)
         self.commit_pending()
-        if self._undo:
-            self._redo.append(self._snapshot())
-            self._restore(self._undo.pop())
-            self._trim_history()
+        self._history_step(self._undo, self._redo, -1)
 
     def redo(self):
         from . import cad_select
@@ -1386,10 +1751,22 @@ class DocumentView(QScrollArea):
             self._cad_cmd.cancel()
         cad_select.drop(self)
         self.commit_pending()
-        if self._redo:
-            self._undo.append(self._snapshot())
-            self._restore(self._redo.pop())
-            self._trim_history()
+        self._history_step(self._redo, self._undo, 1)
+
+    def _history_step(self, source, target, way):
+        self._prune_history()
+        if not source:
+            return
+        back = self._undo_step(source.pop(), way)
+        if back is None:
+            # (its entries in the journal are gone: it, and what's before it, can't be
+            # undone any more)
+            source.clear()
+            self._reread(None, True, self.dirty)
+        else:
+            target.append(back)
+        self._measure_journal()
+        self._trim_history()
 
     # every change bumps the revision, so autosave can tell whether anything changed since
     # its last backup
@@ -1426,7 +1803,15 @@ class DocumentView(QScrollArea):
     _views = None                       # all open documents (weak), for the shared budget
 
     def history_bytes(self):
-        return sum(len(s) for s in self._undo) + sum(len(s) for s in self._redo)
+        """Memory the undo history holds: copies of the document, the documents kept by
+        _DocStep, and the journal (as last measured)."""
+        n = 0
+        for s in self._undo + self._redo:
+            if isinstance(s, _DocStep):
+                n += s.cost
+            elif not isinstance(s, _JStep):
+                n += len(s)
+        return n + (self._journal_bytes if self._journal is not None else 0)
 
     def _trim_history(self):
         """Keep undo/redo within UNDO_BYTES_PER_DOC for this document and UNDO_BYTES_TOTAL
@@ -1444,7 +1829,8 @@ class DocumentView(QScrollArea):
             if len(v._undo) > 1:
                 v._undo.pop(0)                  # the oldest step
                 return True
-            return False
+            # (what's left is in the journal, which can only be emptied as a whole)
+            return v._compact_journal()
         while self.history_bytes() > UNDO_BYTES_PER_DOC and drop_one(self):
             pass
         views = [v for v in DocumentView._views if hasattr(v, "_undo")]
@@ -1457,8 +1843,19 @@ class DocumentView(QScrollArea):
     # ---- caches (cleared on every change) ------------------------------------
     def _clear_caches(self):
         self._gen = getattr(self, "_gen", 0) + 1   # (anything read from the pages is old)
-        self._dlists = {}              # page index -> parsed drawing (DisplayList)
+        self._dlists = {}              # page index -> parsed content, no markups (DisplayList)
+        self._alists = {}              # page index -> its markups' DisplayList (None: none)
         self._tiles = OrderedDict()    # (page, scale, tx, ty) -> rendered tile, LRU
+        self._img_info = {}            # page index -> its big pictures (PageWidget._predecode)
+        self._img_big = {}             # page index -> render_layers.big_images
+        self._small_previews = OrderedDict()   # page -> (small QPixmap, page rect): drop_cache
+        self._decoded = set()          # (page, xref, size) big pictures decoded into MuPDF's store
+        # the pages' content renders outlive this (an undo, a page moved): each is checked
+        # against its page's content key before it's used again (page_widget.check_content)
+        if not hasattr(self, "_rc"):
+            from .render_layers import ContentCache
+            self._rc = ContentCache()  # raw content renders and their content keys
+        self._rc.recheck = set(self._rc.keys)
         self._line_cache = {}
         self._row_cache = {}           # page index -> text_edit.paragraph_rows (Edit text)
         self._hover_para = {}          # page index -> {line id: what a click there edits}
@@ -1484,7 +1881,9 @@ class DocumentView(QScrollArea):
         self._gen = getattr(self, "_gen", 0) + 1
         pages = set(pages)
         for i in pages:
-            self._dlists.pop(i, None)
+            # (the parsed content stays: the page's content key tells after the edit whether
+            # it's still the same, see PageWidget.invalidate)
+            self._alists.pop(i, None)
             self._line_cache.pop(i, None)
             self._row_cache.pop(i, None)
             self._hover_para.pop(i, None)
@@ -4673,11 +5072,22 @@ class DocumentView(QScrollArea):
                 self._prep_timer.start(0)
             return
         end = time.monotonic() + self.PREP_SLICE
-        for it in job["todo"]:
-            objs.lines(it)
-            if time.monotonic() > end:
-                self._prep_timer.start(0)   # more next time round, after any input
-                return
+        # (the collector paused meanwhile: a big drawing's outlines are hundreds of
+        # thousands of points, which it went through again and again)
+        enabled = gc.isenabled()
+        gc.disable()
+        try:
+            for it in job["todo"]:
+                objs.lines(it)
+                if time.monotonic() > end:
+                    self._prep_timer.start(0)   # more next time round, after any input
+                    return
+        finally:
+            if enabled:
+                gc.enable()
+        if not job.get("set_aside"):
+            job["set_aside"] = True
+            _set_aside(objs)                # (the outlines too, now they're all read)
         self._prepare_snaps(index, end)
 
     def _prepare_snaps(self, index, end):
@@ -5662,17 +6072,23 @@ class DocumentView(QScrollArea):
                                         graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                         text=pymupdf.PDF_REDACT_TEXT_REMOVE)
             if scrub:
-                self.doc.scrub(attached_files=True, clean_pages=True, embedded_files=True,
-                               hidden_text=True, javascript=True, metadata=True,
-                               redactions=False, remove_links=False, reset_fields=False,
-                               reset_responses=True, thumbnails=True, xml_metadata=True)
+                # (PyMuPDF's scrub, without its slow hidden-text search on pages with no
+                # text at all, where it can't find anything: see pdf_speed.py)
+                from . import pdf_speed
+                pdf_speed.scrub(self.doc, attached_files=True, clean_pages=True,
+                                embedded_files=True, hidden_text=True, javascript=True,
+                                metadata=True, redactions=False, remove_links=False,
+                                reset_fields=False, reset_responses=True, thumbnails=True,
+                                xml_metadata=True)
                 remove_scripts(self.doc)
                 # scrub unlinks the old objects; a plain tobytes() would still carry them.
                 enc = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
-                data = self.doc.tobytes(
-                    garbage=4, deflate=True,
-                    **({"encryption": pymupdf.PDF_ENCRYPT_KEEP} if enc else {}))
-                self.doc.close()
+                keep = {"encryption": pymupdf.PDF_ENCRYPT_KEEP} if enc else {}
+                # (written out as it is first: garbage=4 renumbers the objects of the
+                # document it writes, and undo keeps this one as it was, see modify)
+                clean = self._open_snapshot(self.doc.tobytes(garbage=1, **keep))
+                data = clean.tobytes(garbage=4, deflate=True, **keep)
+                clean.close()
                 self.doc = pymupdf.open(stream=data, filetype="pdf")
                 if self.doc.needs_pass and self._orig_enc is not None:
                     for pw in (self._orig_enc.get("owner_pw"), self._orig_enc.get("user_pw")):
@@ -6092,17 +6508,18 @@ class DocumentView(QScrollArea):
     def sanitize(self, opts):
         """Remove hidden or sensitive content (Protect > Sanitize document)."""
         def do():
-            self.doc.scrub(attached_files=opts.get("embedded_files", False),
-                           embedded_files=opts.get("embedded_files", False),
-                           clean_pages=True, hidden_text=opts.get("hidden_text", False),
-                           javascript=opts.get("javascript", False),
-                           metadata=opts.get("metadata", False),
-                           xml_metadata=opts.get("metadata", False),
-                           redactions=False, redact_images=0,
-                           remove_links=opts.get("links", False),
-                           reset_fields=opts.get("form_data", False),
-                           reset_responses=opts.get("markups", False),
-                           thumbnails=opts.get("thumbnails", False))
+            from . import pdf_speed
+            pdf_speed.scrub(self.doc, attached_files=opts.get("embedded_files", False),
+                            embedded_files=opts.get("embedded_files", False),
+                            clean_pages=True, hidden_text=opts.get("hidden_text", False),
+                            javascript=opts.get("javascript", False),
+                            metadata=opts.get("metadata", False),
+                            xml_metadata=opts.get("metadata", False),
+                            redactions=False, redact_images=0,
+                            remove_links=opts.get("links", False),
+                            reset_fields=opts.get("form_data", False),
+                            reset_responses=opts.get("markups", False),
+                            thumbnails=opts.get("thumbnails", False))
             if opts.get("javascript"):
                 remove_scripts(self.doc)
             if opts.get("thumbnails"):
@@ -6341,7 +6758,31 @@ class DocumentView(QScrollArea):
                 fx = self._field_dict(w)           # (and the parent kept the old value)
                 if self.doc.xref_get_key(fx, "V")[0] != "null":
                     self.doc.xref_set_key(fx, "V", "null")
-        self._value_change(lambda: self.modify(do, [index], permission=pymupdf.PDF_PERM_FORM))
+        self._value_change(lambda: self.modify(do, self._field_pages(index, xref),
+                                               permission=pymupdf.PDF_PERM_FORM))
+
+    def _field_pages(self, index, xref):
+        """The pages showing the field of widget xref (on page index): a field can have a
+        widget on several pages (a name repeated at the top of each), and each shows its
+        value. (Read from the field's widgets' /P; page index alone when they don't say.)"""
+        pages = {index}
+        try:
+            fx = xref if self.doc.xref_get_key(xref, "T")[0] != "null" else \
+                (self._parent_xref(xref) or xref)
+            kind, kids = self.doc.xref_get_key(fx, "Kids")
+            refs = [int(n) for n in re.findall(r"(\d+) \d+ R", kids)] if kind == "array" else []
+            owners = set()
+            for k in refs:
+                kind, val = self.doc.xref_get_key(k, "P")
+                if kind == "xref":
+                    owners.add(int(val.split()[0]))
+            if owners - {self.doc.page_xref(index)}:
+                for i in range(self.doc.page_count):
+                    if self.doc.page_xref(i) in owners:
+                        pages.add(i)
+        except Exception:
+            pass
+        return sorted(pages)
 
     def _choose_option(self, index, xref):
         """Option (radio) button: turn this one on and every other button of its group off.
@@ -7390,32 +7831,51 @@ class DocumentView(QScrollArea):
         # a link to the file: write the file it points to (replacing the link would cut it)
         target = os.path.realpath(path) if os.path.islink(path) else path
         tmp = target + ".kanzonas-tmp"
-        if self._fonts_added:
-            # Text edits may embed whole system fonts; keep only the glyphs actually used.
-            try:
-                self.doc.subset_fonts()
-                # text added later must not get the cut-down fonts (see text_edit._insert_font)
-                self.doc.font_salt = getattr(self.doc, "font_salt", 0) + 1
-            except Exception:
-                pass
-            self._fonts_added = False
-        sec = self.security
+        # with steps to redo in the journal, the save must not change the document: any
+        # change (fonts cut down, drawings packed, the attachments list opened) would drop
+        # them, even one taken back. It then works on a copy (one more write, only then)
+        journal = self._journal if self._journal is not None and self._journal.alive and \
+            self._journal.doc is self.doc else None
+        keep_redo = journal is not None and any(isinstance(s, _JStep) for s in self._redo)
+        real = self.doc
+        if keep_redo:
+            self.doc = self._open_snapshot(self._snapshot())
+        else:
+            # (PyMuPDF's own step before a save, which a document with a journal leaves here)
+            undo_journal.embedded_clean(self.doc)
+        subset = self._fonts_added
         try:
-            self._write_file(tmp, sec)
-            if os.path.exists(target):
+            if self._fonts_added:
+                # Text edits may embed whole system fonts; keep only the glyphs actually used.
                 try:
-                    shutil.copymode(target, tmp)    # (the file keeps its permissions)
+                    self.doc.subset_fonts()
+                    # text added later must not get the cut-down fonts (text_edit._insert_font)
+                    self.doc.font_salt = getattr(self.doc, "font_salt", 0) + 1
+                except Exception:
+                    pass
+                self._fonts_added = False
+            sec = self.security
+            try:
+                self._write_file(tmp, sec)
+                if os.path.exists(target):
+                    try:
+                        shutil.copymode(target, tmp)    # (the file keeps its permissions)
+                    except OSError:
+                        pass
+                os.replace(tmp, target)
+                self.disk_stamp = disk_stamp(path)
+            except BaseException:
+                # e.g. the file is locked by another program: don't leave the copy next to it
+                try:
+                    os.remove(tmp)
                 except OSError:
                     pass
-            os.replace(tmp, target)
-            self.disk_stamp = disk_stamp(path)
-        except BaseException:
-            # e.g. the file is locked by another program: don't leave the copy next to it
-            try:
-                os.remove(tmp)
-            except OSError:
-                pass
-            raise
+                raise
+        finally:
+            if keep_redo:
+                copy, self.doc = self.doc, real
+                copy.close()
+                self._fonts_added = subset      # (the document still has the whole fonts)
         self.path = path
         self.untitled = False
         if self.dirty or sec is not None:
@@ -7461,6 +7921,8 @@ class DocumentView(QScrollArea):
 
     def close_doc(self):
         self._undo, self._redo = [], []         # free the history (and the shared budget)
+        self._journal, self._journal_bytes = None, 0
+        self._rc.clear()                        # (and the pages' content renders)
         gc.unfreeze()                           # (its drawings may be set aside: _set_aside)
         self._inline = None
         self._search_gen += 1                   # a Find still running stops here

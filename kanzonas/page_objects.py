@@ -14,6 +14,8 @@ Clipping paths and objects inside Form XObjects aren't editable. Resizing a shap
 line width with it.
 """
 
+import functools
+import gc
 import math
 import re
 import zlib
@@ -39,6 +41,40 @@ CURVE_STEPS = 12
 _FILL = {b"g", b"rg", b"k", b"sc", b"scn"}
 _STROKE = {b"G", b"RG", b"K", b"SC", b"SCN"}
 _KEEP = {b"w", b"J", b"j", b"M", b"d", b"ri", b"i"}
+_NOTED = {b"cs", b"CS", b"gs"} | _FILL | _STROKE | _KEEP     # (what _note records)
+
+
+def _gc_paused(fn):
+    """Run fn with Python's garbage collector paused: reading or editing a big drawing makes
+    hundreds of thousands of small objects (no reference cycles among them), and the
+    collector went through all of them again and again meanwhile (a third of the time).
+    What it would have collected is collected later, as usual."""
+    @functools.wraps(fn)
+    def run(*args, **kwargs):
+        if not gc.isenabled():
+            return fn(*args, **kwargs)
+        gc.disable()
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            gc.enable()
+    return run
+
+
+def _gc_paused_steps(steps):
+    """A generator of steps (as Objects.steps gives) run with the collector paused while each
+    step runs (not between steps: the rest of the app runs then)."""
+    while True:
+        enabled = gc.isenabled()
+        gc.disable()
+        try:
+            next(steps)
+        except StopIteration:
+            return
+        finally:
+            if enabled:
+                gc.enable()
+        yield
 
 
 def _new_state():
@@ -168,6 +204,7 @@ def _tokens(data):
         i = j
 
 
+@_gc_paused
 def scan(data):
     """Objects in a content stream, in drawing order. Each is a dict with "start", "end"
     (byte range of its drawing instructions), "ctm" (Matrix to PDF space) and either
@@ -184,28 +221,191 @@ def scan(data):
 STEP = 1000                             # instructions read between two pauses (scan_steps)
 
 
+# A plain shape as CAD exports write hundreds of thousands of them: numbers and path
+# operators parted by spaces, then the paint operator (no state settings, clip, comment...).
+# scan_steps reads one of these at once (the general reader took a Python step per number).
+_SEP = rb"[ \t\r\n\f]+"
+_NUMB = rb"[+-]?(?:\d+(?:\.\d*)?|\.\d+)"     # (one way to match: no backtracking)
+_PR = _NUMB + _SEP + _NUMB + _SEP
+_PLAIN_PATH = re.compile(
+    rb"(?:(?:" + _PR + rb"[ml]|" + _PR + _PR + rb"(?:re|[vy])|" + _PR + _PR + _PR + rb"c|h)" +
+    _SEP + rb")++(S|s|F|f\*?|B\*?|b\*?)(?=[\s/\[\]()<>{}%]|\Z)")
+# (++: what the shape's operators took is never given back, so a long path that isn't
+# plain after all, ending in a clip or a state setting, is turned down in one pass)
+_NUMS = re.compile(_NUMB)
+# the path operators of a shape alone (what comes after them is read the general way). It
+# ends right after an operator: the spaces after it are left to the general reader, which
+# reads a run of them as one token (a run can hold characters _SEP doesn't take)
+_PATH_OP = (rb"(?:" + _PR + rb"[ml]|" + _PR + _PR + rb"(?:re|[vy])|" + _PR + _PR + _PR +
+            rb"c|h)(?=[\s/\[\]()<>{}%]|\Z)")
+_PLAIN_OPS = re.compile(_PATH_OP + rb"(?:" + _SEP + _PATH_OP + rb")*+")
+# the plainest of them, one straight line: "x0 y0 m x1 y1 l S"
+_LINE = re.compile(rb"(" + _NUMB + rb")" + _SEP + rb"(" + _NUMB + rb")" + _SEP + rb"m" + _SEP +
+                   rb"(" + _NUMB + rb")" + _SEP + rb"(" + _NUMB + rb")" + _SEP + rb"l" + _SEP +
+                   rb"(S|s|F|f\*?|B\*?|b\*?)(?=[\s/\[\]()<>{}%]|\Z)")
+_NUM_START = frozenset(b"+-.0123456789")
+QUICK = True        # read plain shapes at once (False: only the general way; tests compare)
+
+
+def _plain_xy(seg):
+    """The box's x and y values of a plain shape that has a rectangle (re) in it, as
+    scan_steps collects them."""
+    xs, ys, args = [], [], []
+    for t in seg.split():
+        k = _CONSTRUCT.get(t)
+        if k is None:
+            if t in _PAINT:
+                break
+            args.append(float(t))
+            continue
+        if t == b"re":
+            x, y, w, h = args
+            xs += [x, x + w]
+            ys += [y, y + h]
+        else:
+            xs += args[0::2]
+            ys += args[1::2]
+        args = []
+    return xs, ys
+
+
 def scan_steps(data, out):
     """scan() a little at a time: a generator that fills out, pausing (yield) every STEP
-    instructions, so a big drawing can be read in idle time without freezing the window."""
+    instructions, so a big drawing can be read in idle time without freezing the window.
+
+    Entries share what doesn't change between them (their "ctm" Matrix, "state" bytes and
+    "ctx"): nothing changes those in place, an edit puts new ones in its copies."""
     count = 0
     ctm = pymupdf.Matrix(1, 0, 0, 1, 0, 0)
     width = 1.0
     stack = []
     st = _new_state()
+    sb = None                           # _state_bytes(st), made when an object needs it
     bdc, clips, nclip = [], [], 0
     ctx = ((), ())
 
     def copy(s):
         return {k: (dict(v) if isinstance(v, dict) else list(v)) for k, v in s.items()}
 
-    def note(op, start, end):
-        _note(st, op, data[start:end])
     path_start = None
     path_state = None
     path_ctx = ctx
     clip = False
     xs, ys = [], []
-    for op, args, start, end in _tokens(data):
+    operands = []
+    op_start = None
+    i, n = 0, len(data)
+    match = _TOKEN.match
+    plain = _PLAIN_PATH.match
+    line = _LINE.match
+    plain_ops = _PLAIN_OPS.match
+    numbers = _NUMS.findall
+    num_start = _NUM_START
+    quick_start = _NUM_START if QUICK else frozenset()
+    paint_ops = _PAINT
+    while i < n:
+        c = data[i]
+        if c == 0x28:                   # "(" literal string (as _tokens reads it)
+            if op_start is None:
+                op_start = i
+            i = _skip_string(data, i)
+            operands.append(None)
+            continue
+        if c in quick_start and op_start is None and path_start is None:
+            lm = line(data, i)
+            if lm is not None:
+                # one straight line (most of a CAD drawing)
+                e = lm.end()
+                x0, y0, x1, y1, paint = lm.groups()
+                x0, y0, x1, y1 = float(x0), float(y0), float(x1), float(y1)
+                stroke, fill = paint_ops[paint]
+                if sb is None:
+                    sb = _state_bytes(st)
+                out.append({"start": i, "end": e, "ctm": ctm, "path": True,
+                            "box": (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)),
+                            "stroke": stroke, "fill": fill, "width": width,
+                            "state": sb, "ctx": ctx})
+                i = e
+                count += 1
+                if count >= STEP:
+                    count = 0
+                    yield
+                continue
+            pm = plain(data, i)
+            if pm is not None:
+                # a plain shape: what the general reader below makes of it, at once
+                e = pm.end()
+                if data.find(b"re", i, e) < 0:
+                    vals = list(map(float, numbers(data, i, e)))
+                    pxs, pys = vals[0::2], vals[1::2]
+                else:
+                    pxs, pys = _plain_xy(data[i:e])
+                if pxs:
+                    stroke, fill = paint_ops[pm.group(1)]
+                    if sb is None:
+                        sb = _state_bytes(st)
+                    out.append({"start": i, "end": e, "ctm": ctm, "path": True,
+                                "box": (min(pxs), min(pys), max(pxs), max(pys)),
+                                "stroke": stroke, "fill": fill, "width": width,
+                                "state": sb, "ctx": ctx})
+                i = e
+                count += 1
+                if count >= STEP:
+                    count = 0
+                    yield
+                continue
+            pm = plain_ops(data, i)
+            if pm is not None:
+                # a shape whose path is plain but not what follows it (a state setting
+                # before the paint: ".6 w h 0 0 1 RG S"): its path operators at once, as the
+                # general reader below takes them, which then goes on from there
+                e = pm.end()
+                if data.find(b"re", i, e) < 0:
+                    vals = list(map(float, numbers(data, i, e)))
+                    xs, ys = vals[0::2], vals[1::2]
+                else:
+                    xs, ys = _plain_xy(data[i:e])
+                path_start = i
+                path_state = None
+                path_ctx = ctx
+                clip = False
+                i = e
+                count += 1
+                if count >= STEP:
+                    count = 0
+                    yield
+                continue
+        m = match(data, i)
+        if m is None:
+            i += 1
+            continue
+        tok = m.group()
+        j = m.end()
+        c = tok[0]
+        if c in _WS or c == 0x25:
+            i = j
+            continue
+        if c in b"/<[]{}" or (c in num_start and _num(tok) is not None):
+            if op_start is None:
+                op_start = i
+            operands.append(tok)
+            i = j
+            continue
+        start = op_start if op_start is not None else i
+        if tok == b"BI":
+            k = data.find(b"ID", j)
+            while k >= 0 and not (data[k - 1] in _WS and (k + 2 >= n or data[k + 2] in _WS)):
+                k = data.find(b"ID", k + 2)
+            if k < 0:
+                return
+            j = _inline_end(data, k + 3)
+            op, args, start, end = b"BI", [], i, j
+        else:
+            op, args, end = tok, operands, j
+        operands = []
+        op_start = None
+        i = j
+        # one operator: op with its operands args, its bytes data[start:end]
         count += 1
         if count >= STEP:
             count = 0
@@ -239,26 +439,34 @@ def scan_steps(data, out):
             if op == b"w" and args:
                 width = _num(args[-1]) or 0.0
             if path_state is None:
-                path_state = _state_bytes(st)      # the state the path started with
-            note(op, start, end)
+                if sb is None:
+                    sb = _state_bytes(st)
+                path_state = sb                 # the state the path started with
+            _note(st, op, data[start:end])
+            sb = None
             continue
         if path_start is not None:
-            if op in _PAINT and not clip and xs:
-                stroke, fill = _PAINT[op]
-                out.append({"start": path_start, "end": end, "ctm": pymupdf.Matrix(ctm),
+            if op in paint_ops and not clip and xs:
+                stroke, fill = paint_ops[op]
+                if path_state is None and sb is None:
+                    sb = _state_bytes(st)
+                out.append({"start": path_start, "end": end, "ctm": ctm,
                             "path": True, "box": (min(xs), min(ys), max(xs), max(ys)),
                             "stroke": stroke, "fill": fill, "width": width,
-                            "state": path_state if path_state is not None
-                            else _state_bytes(st), "ctx": path_ctx})
+                            "state": path_state if path_state is not None else sb,
+                            "ctx": path_ctx})
             path_start = None
-            if op in _PAINT or op == b"n":
+            if op in paint_ops or op == b"n":
                 continue
-        note(op, start, end)
+        if op in _NOTED:
+            _note(st, op, data[start:end])
+            sb = None
         if op == b"q":
             stack.append((ctm, width, copy(st), len(clips)))
         elif op == b"Q":
             if stack:
                 ctm, width, st, k = stack.pop()
+                sb = None
                 if len(clips) > k:
                     del clips[k:]
                     ctx = (ctx[0], tuple(clips))
@@ -276,11 +484,15 @@ def scan_steps(data, out):
         elif op == b"w" and args:
             width = _num(args[-1]) or 0.0
         elif op == b"Do" and args and isinstance(args[-1], bytes) and args[-1][:1] == b"/":
-            out.append({"start": start, "end": end, "ctm": pymupdf.Matrix(ctm),
-                        "name": args[-1], "state": _state_bytes(st), "ctx": ctx})
+            if sb is None:
+                sb = _state_bytes(st)
+            out.append({"start": start, "end": end, "ctm": ctm,
+                        "name": args[-1], "state": sb, "ctx": ctx})
         elif op == b"BI":
-            out.append({"start": start, "end": end, "ctm": pymupdf.Matrix(ctm), "name": None,
-                        "state": _state_bytes(st), "ctx": ctx})
+            if sb is None:
+                sb = _state_bytes(st)
+            out.append({"start": start, "end": end, "ctm": ctm, "name": None,
+                        "state": sb, "ctx": ctx})
 
 
 def _bezier(p0, p1, p2, p3):
@@ -375,19 +587,51 @@ def _bezier_xy(p0, p1, p2, p3):
     return out
 
 
-def path_lines(data, obj, tm):
-    """A shape's outline as polylines in page coordinates: [[Point, ...], ...]."""
-    mat = obj["ctm"] * tm
-    ma, mb, mc, md, me, mf = mat.a, mat.b, mat.c, mat.d, mat.e, mat.f
+def _path_ops(raw):
+    """[(operator, [operand bytes])] of a shape's instructions as _path_tokens reads them,
+    without each one's bytes (path_lines doesn't need them). None as _path_tokens."""
+    if b"(" in raw or b"<" in raw or b"%" in raw:
+        return None
+    out, args = [], []
+    ops = _OPS
+    for t in raw.split():
+        if t in ops:
+            out.append((t, args))
+            args = []
+        elif t[:1].isalpha() and t not in (b"true", b"false", b"null"):
+            return None                 # an operator this shortcut doesn't know
+        else:
+            args.append(t)
+    return out
+
+
+def path_lines(data, obj, tm, mat=None):
+    """A shape's outline as polylines in page coordinates: [[Point, ...], ...]. mat: the
+    numbers (a, b, c, d, e, f) of obj["ctm"] * tm when the caller has them already."""
+    if mat is None:
+        mat = obj["ctm"] * tm
+        ma, mb, mc, md, me, mf = mat.a, mat.b, mat.c, mat.d, mat.e, mat.f
+    else:
+        ma, mb, mc, md, me, mf = mat
+    Point = pymupdf.Point
+    lm = _LINE.fullmatch(data, obj["start"], obj["end"]) if QUICK else None
+    if lm is not None:
+        # one straight line (as the general way below reads it)
+        x0, y0, x1, y1, paint = lm.groups()
+        x0, y0, x1, y1 = float(x0), float(y0), float(x1), float(y1)
+        line = [Point(x0 * ma + y0 * mc + me, x0 * mb + y0 * md + mf),
+                Point(x1 * ma + y1 * mc + me, x1 * mb + y1 * md + mf)]
+        if paint in (b"s", b"b", b"b*") and (x1, y1) != (x0, y0):
+            line.append(Point(x0 * ma + y0 * mc + me, x0 * mb + y0 * md + mf))
+        return [line]
     out = []
     cur = None
     first = last = None
-    Point = pymupdf.Point
     raw = data[obj["start"]:obj["end"]]
-    toks = _path_tokens(raw)
+    toks = _path_ops(raw)
     if toks is None:
-        toks = [(op, args, None) for op, args, _s, _e in _tokens(raw)]
-    for op, args, _raw in toks:
+        toks = [(op, args) for op, args, _s, _e in _tokens(raw)]
+    for op, args in toks:
         k = _CONSTRUCT.get(op)
         if k is None:
             if op in (b"s", b"b", b"b*") and cur and first is not None and cur[-1] != first:
@@ -549,15 +793,21 @@ class Objects:
         """data / found: the page's content and its scan when the caller already has them
         (after a move: see transform), so a big drawing isn't read again. reuse: {number in
         found: the shape item it had before an edit that left it as it was} (see _rebuilt)."""
-        for _ in self.build_steps(page, data, found, reuse):
-            pass
+        enabled = gc.isenabled()
+        gc.disable()                    # (see _gc_paused)
+        try:
+            for _ in self.build_steps(page, data, found, reuse):
+                pass
+        finally:
+            if enabled:
+                gc.enable()
 
     @classmethod
     def steps(cls, page):
         """(the Objects, a generator that reads them a little at a time): they're ready once
         it's run out (CAD mode reads a big page in idle time like this)."""
         objs = cls.__new__(cls)
-        return objs, objs.build_steps(page, None, None)
+        return objs, _gc_paused_steps(objs.build_steps(page, None, None))
 
     def build_steps(self, page, data, found, reuse=None):
         self.data = _contents(page) if data is None else data
@@ -588,7 +838,10 @@ class Objects:
         tm = self.tm
         tt = tuple(tm)
         Rect = pymupdf.Rect
+        make = object.__new__           # (a Rect made without its __init__: 10 times quicker)
+        sqrt = math.sqrt
         reuse = reuse or {}
+        last_ctm = None
         for k, d in enumerate(self.found):
             if k % STEP == STEP - 1:
                 yield
@@ -602,21 +855,27 @@ class Objects:
                 self.items.append(it)
                 continue
             if d.get("path"):
-                # plain arithmetic: a big drawing has tens of thousands of these
-                a, b, c, e_, e, f = _mul(tuple(d["ctm"]), tt)
-                det = a * e_ - b * c
-                if abs(det) < 1e-12:
+                # plain arithmetic: a big drawing has tens of thousands of these (sharing
+                # one matrix, worked out once)
+                ctm = d["ctm"]
+                if ctm is not last_ctm:
+                    last_ctm = ctm
+                    a, b, c, e_, e, f = _mul(tuple(ctm), tt)
+                    det = a * e_ - b * c
+                    flat = abs(det) < 1e-12
+                    scale = sqrt(abs(det))
+                if flat:
                     continue
                 x0, y0, x1, y1 = d["box"]
                 xs = (x0 * a + y0 * c + e, x1 * a + y0 * c + e, x0 * a + y1 * c + e,
                       x1 * a + y1 * c + e)
                 ys = (x0 * b + y0 * e_ + f, x1 * b + y0 * e_ + f, x0 * b + y1 * e_ + f,
                       x1 * b + y1 * e_ + f)
-                self.items.append(_Shape({"n": k, "kind": "shape",
-                                          "rect": Rect(min(xs), min(ys), max(xs), max(ys)),
-                                          "xref": 0, "stroke": d["stroke"], "fill": d["fill"],
-                                          "width": d["width"] * math.sqrt(abs(det)), "obj": d,
-                                          "_tm": tm}))
+                r = make(Rect)
+                r.x0, r.y0, r.x1, r.y1 = min(xs), min(ys), max(xs), max(ys)
+                self.items.append(_Shape(n=k, kind="shape", rect=r, xref=0,
+                                         stroke=d["stroke"], fill=d["fill"],
+                                         width=d["width"] * scale, obj=d, _tm=tm))
                 continue
             m = d["ctm"] * tm
             if abs(m.a * m.d - m.b * m.c) < 1e-12:
@@ -647,7 +906,13 @@ class Objects:
         """A shape's outline (cached), or the picture's outline."""
         if "lines" not in item:
             if item["kind"] == "shape":
-                item["lines"] = path_lines(self.data, item["obj"], self.tm)
+                obj = item["obj"]
+                memo = getattr(self, "_mat", None)
+                if memo is None or memo[0] is not obj["ctm"]:
+                    # (one matrix for the many shapes drawn under it)
+                    m = obj["ctm"] * self.tm
+                    memo = self._mat = (obj["ctm"], (m.a, m.b, m.c, m.d, m.e, m.f))
+                item["lines"] = path_lines(self.data, obj, self.tm, memo[1])
             else:
                 q = item["quad"]
                 item["lines"] = [[q.ul, q.ur, q.lr, q.ll, q.ul]]
@@ -964,6 +1229,7 @@ def _inside(lines, p):
 
 
 # ---- edits ---------------------------------------------------------------------------
+@_gc_paused
 def _edit(page, ns, new, objs=None):
     """Replace the drawing instructions of objects ns with new(old_bytes, ctm). objs: the
     page's Objects when the caller has them (saves reading a big drawing again)."""
@@ -986,9 +1252,12 @@ def _edit(page, ns, new, objs=None):
     for n, d in enumerate(found):
         p = by_n.get(n)
         if p is None:
-            e = dict(d)
-            e["start"] += shift
-            e["end"] += shift
+            if shift:
+                e = dict(d)
+                e["start"] += shift
+                e["end"] += shift
+            else:
+                e = d                   # (unchanged: shared, see _rebuilt)
             out.append(e)
             origin.append((n, None))
             continue
@@ -1025,6 +1294,7 @@ def _split(old):
 _WRAP = re.compile(rb"\nq ((?:-?[\d.]+ ){6})cm\n$")
 
 
+@_gc_paused
 def transform(page, ns, t_page, objs=None):
     """Apply t_page (a Matrix in unrotated page coordinates) to objects ns. An object this
     module moved before already sits in a  q <M> cm ... Q  wrapper: the new move is folded
@@ -1113,7 +1383,12 @@ def _rebuilt(page, data, found, objs, origin):
     the whole drawing). origin[k] says where entry k came from: (old number, None) for an
     object left as it was, (old number, Matrix) for one moved or copied by that matrix (in
     page coordinates), None for one written anew. Lines already read carry over (moved
-    along), so a big drawing's lines aren't read again after every command."""
+    along), so a big drawing's lines aren't read again after every command.
+
+    A scan entry an edit left exactly as it was (same place in the stream, same matrix) is
+    shared with the old Objects, not copied (copying 200,000 of them took a good part of a
+    small edit on a big sheet): nothing changes a scan entry in place, edits make new ones.
+    Items stay each Objects' own (marks on the new ones don't touch the old)."""
     if objs is None:
         return Objects(page, data, found)
     old = {it["n"]: it for it in objs.items}
@@ -1150,7 +1425,7 @@ def _moved(page, data, found, pieces, objs=None, t_page=None):
     the bytes added before them, and the moved one gets M in front of its matrix.
     An object's own state settings (CAD exporters put the color and width inside the shape)
     move in front of it, so its recorded state is the state after them."""
-    new = [dict(d) for d in found]
+    new = list(found)                   # (unchanged entries shared, see _rebuilt)
     by_n = {p[3]: p for p in pieces}
     shift = 0
     edits = sorted(pieces)                      # front to back
@@ -1162,10 +1437,13 @@ def _moved(page, data, found, pieces, objs=None, t_page=None):
             k += 1
         p = by_n.get(n)
         if p is None:
-            new[n]["start"] = d["start"] + shift
-            new[n]["end"] = d["end"] + shift
+            if shift:
+                new[n] = dict(d)
+                new[n]["start"] = d["start"] + shift
+                new[n]["end"] = d["end"] + shift
             continue
         s, e, piece, _n, off, size, m, state = p
+        new[n] = dict(d)
         new[n]["start"] = s + shift + off
         new[n]["end"] = new[n]["start"] + size
         new[n]["ctm"] = pymupdf.Matrix(m) * d["ctm"]
@@ -1196,6 +1474,7 @@ def rotate(page, ns, rect, degrees, objs=None):
     return transform(page, ns, t, objs)
 
 
+@_gc_paused
 def copies(page, ns, matrices, objs=None, placed=None):
     """Copies of objects ns, one for each Matrix in matrices (unrotated page coordinates): each
     drawn right after its original, in a  q <M> cm ... Q  wrapper, so it looks the same (the
@@ -1241,9 +1520,12 @@ def copies(page, ns, matrices, objs=None, placed=None):
     by_n = {a[3]: a for a in adds}
     out, origin, shift = [], [], 0
     for n, d in enumerate(found):
-        e = dict(d)
-        e["start"] += shift
-        e["end"] += shift
+        if shift:
+            e = dict(d)
+            e["start"] += shift
+            e["end"] += shift
+        else:
+            e = d                       # (unchanged: shared, see _rebuilt)
         out.append(e)
         origin.append((n, None))
         a = by_n.get(n)
@@ -1294,10 +1576,12 @@ def _copies_together(page, data, found, ns, matrices, objs, placed=None):
     one_each = len(got) == len(matrices) * len(ns)
     out, origin = [], []
     for n, d in enumerate(found):
-        e = dict(d)
         if d["start"] >= at:
+            e = dict(d)
             e["start"] += len(add)
             e["end"] += len(add)
+        else:
+            e = d                       # (unchanged: shared, see _rebuilt)
         out.append(e)
         origin.append((n, None))
         if n == ns[-1]:
@@ -1428,6 +1712,7 @@ def _after_last(data, last):
     return _state_after(last.get("state", b""), own) if own else last.get("state", b"")
 
 
+@_gc_paused
 def block_copies(page, ns, matrices, objs=None, placed=None):
     """Copies of objects ns by reference, for big arrays: the objects go once into a drawing
     group (a Form XObject, as CAD programs export blocks), and each copy is one line placing
@@ -1490,10 +1775,12 @@ def block_copies(page, ns, matrices, objs=None, placed=None):
     after = _after_last(data, last)
     out, origin = [], []
     for n, d in enumerate(found):
-        e = dict(d)
         if d["start"] >= at:
+            e = dict(d)
             e["start"] += len(add)
             e["end"] += len(add)
+        else:
+            e = d                       # (unchanged: shared, see _rebuilt)
         out.append(e)
         origin.append((n, None))
         if n == ns[-1]:

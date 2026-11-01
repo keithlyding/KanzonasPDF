@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
 from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint
-from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, QImage,
+from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap,
                            QPainter, QDrag, QMouseEvent, QCursor)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFileDialog, QMessageBox,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
@@ -1823,6 +1823,12 @@ class MainWindow(QMainWindow):
     def _views(self):
         return [self.tabs.widget(i) for i in range(self.tabs.count())]
 
+    def _views_drawn(self):
+        """The documents open in this window, and the second (split) view, which draws one of
+        them too: a view option (night mode, thin lines, Show markups) redraws both panes."""
+        sv = getattr(self, "_split_view", None)
+        return self._views() + ([sv] if sv is not None else [])
+
     @staticmethod
     def _all_views():
         """The documents open in every window (view options apply to all of them)."""
@@ -2975,7 +2981,7 @@ class MainWindow(QMainWindow):
         DocumentView.show_markups = on
         for w in windows():
             w.a_show_markups.setChecked(on)
-            for v in w._views():
+            for v in w._views_drawn():
                 v.refresh_markup_display()
         self.statusBar().showMessage(tr("Markups shown") if on else
                                      tr("Markups hidden (they're still in the document)"), 4000)
@@ -3035,7 +3041,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("highlight_fields", "true" if on else "false")
         for w in windows():
             w.a_hl_fields.setChecked(on)
-            for v in w._views():
+            for v in w._views_drawn():
                 for pw in v.pages:
                     pw.update()
 
@@ -4333,7 +4339,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("thin_lines", "true" if on else "false")
         for w in windows():
             w.a_thin_lines.setChecked(on)
-            for v in w._views():
+            for v in w._views_drawn():
                 v.redraw_pages()
         self.statusBar().showMessage(tr("Thin lines drawn at least a pixel wide") if on else
                                      tr("Lines drawn at their true width"), 3000)
@@ -4344,7 +4350,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("night_mode", "true" if on else "false")
         for w in windows():
             w.a_night.setChecked(on)
-            for v in w._views():
+            for v in w._views_drawn():
                 v.redraw_pages()
         self.statusBar().showMessage(tr("Night mode on: pages drawn white on black (F12 turns it "
                                         "off); printing and export are unchanged") if on else
@@ -5308,10 +5314,10 @@ class MainWindow(QMainWindow):
                 return
             page = v.doc[i]
             s = min(120 / page.rect.width, 160 / page.rect.height)
-            pm = page.get_pixmap(matrix=pymupdf.Matrix(s, s), annots=True)
-            img = QImage(pm.samples, pm.width, pm.height, pm.stride,
-                         QImage.Format_RGB888).copy()
-            icon = QIcon(QPixmap.fromImage(img))
+            # (from the page's render on screen when it has one: a heavy sheet isn't
+            # rendered again just for its thumbnail)
+            from .page_widget import thumbnail
+            icon = QIcon(QPixmap.fromImage(thumbnail(v, i, s)))
             cache[x] = [icon, True]
             cache.move_to_end(x)
             self.thumbs.item(r).setIcon(icon)

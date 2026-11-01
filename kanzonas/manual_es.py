@@ -73,7 +73,8 @@ los archivos que elija.</li>
 pestaña reemplaza ese archivo y cierra esa pestaña (y pregunta antes si tiene cambios sin guardar); lo mismo ocurre
 con Extraer páginas, Combinar archivos y las copias que guardan Comprimir, Sello de tiempo y la firma digital,
 salvo que en ese caso la otra pestaña muestra el archivo nuevo. Deshacer es Ctrl+Z; rehacer es Ctrl+Y.
-Se conservan hasta 30 pasos; en los PDF muy grandes, menos, para que el historial de deshacer no supere un límite de memoria
+Se conservan hasta 30 pasos. Cada paso guarda solo lo que cambió la edición, así que deshacer y rehacer son rápidos
+y los 30 pasos caben incluso en PDF muy grandes; el historial sigue sin superar un límite de memoria
 (256 MB por documento, 512 MB para todos los documentos abiertos juntos; los pasos más antiguos se descartan primero).</li>
 <li><b>Paneles:</b> Páginas/Marcadores/Capas a la izquierda (F4), Propiedades a la derecha (F6),
 Lista de marcas (F7), Caja de herramientas (F8), Marcadores (F9), Vista dividida (F10). Los paneles que tenía abiertos
@@ -211,7 +212,9 @@ página</b>, <b>Última página</b> e <b>Ir a la página...</b> (Ctrl+G: el cuad
 la paleta de comandos y la línea de comandos CAD también los encuentran ("página siguiente", "última página").</li>
 <li><b>Acercar / Alejar:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+rueda del mouse, el control deslizante de zoom o el cuadro de zoom
 (escriba un porcentaje, del 10% al 6400%; 25.5 y 25,5 funcionan igual, y 1,000 es 1000%; un zoom que no es
-un porcentaje entero se muestra con un decimal). Un documento muy largo no puede llegar
+un porcentaje entero se muestra con un decimal). Con la rueda del mouse la página sigue al instante, algo borrosa,
+y se dibuja nítida en cuanto la rueda se detiene. Los planos pesados y los escaneos grandes se completan igual después de
+cualquier zoom o desplazamiento, primero el centro de la ventana, así la ventana nunca los espera. Un documento muy largo no puede llegar
 tan alto: todas sus páginas juntas deben caber en el tamaño máximo que Windows puede dibujar.
 Ajustar al ancho (Ctrl+2), ajustar página (Ctrl+0), tamaño real (Ctrl+1). Los documentos se abren con Ajustar al ancho, en
 la página donde estaba la última vez; cámbielo en Archivo &gt; Preferencias &gt; Inicio y apertura.

@@ -19,10 +19,11 @@ import weakref
 
 import pymupdf
 
-from . import pdf_speed, pdfcoords
+from . import pdf_speed, pdfcoords, text_guard
 from .i18n import tr
 
 pdf_speed.apply()                       # (adding markups doesn't slow down as they add up)
+text_guard.apply()                      # (reading text can't crash MuPDF: see text_guard.py)
 
 
 def each_annot(page, types=None):
