@@ -313,6 +313,7 @@ class DocumentView(QScrollArea):
         self.setAlignment(Qt.AlignHCenter)
         self.setStyleSheet("QScrollArea { background: #525659; border: none; }")
         self.verticalScrollBar().valueChanged.connect(self._on_scroll)
+        self.thumb_icons = OrderedDict()   # page xref -> [QIcon, still current] (page list)
 
     # ---- page layout ----------------------------------------------------
     def page_count(self):
@@ -1061,12 +1062,16 @@ class DocumentView(QScrollArea):
         if anchor is not None:
             QTimer.singleShot(0, lambda a=anchor: self._apply_view_anchor(a))
         self.dirty = dirty
+        self.thumbs_changed = None
         self.structureChanged.emit()
         self.selectionChanged.emit()
 
-    def modify(self, fn, pages=None, structural=False, permission=pymupdf.PDF_PERM_MODIFY):
+    def modify(self, fn, pages=None, structural=False, permission=pymupdf.PDF_PERM_MODIFY,
+               changed=None):
         """Run an edit with an undo snapshot. pages = indices to repaint. Returns True when
-        the edit was made (not refused or rolled back)."""
+        the edit was made (not refused or rolled back). changed: for a structural edit, the
+        pages (indices once done) whose look changed, so the page list draws only those
+        thumbnails again ([] when pages were only added, removed or moved; None: any)."""
         if getattr(self, "_source", None) is not None:
             # the split view shares the main view's document but not its undo history or
             # unsaved-changes mark: edits must go through the main view
@@ -1128,6 +1133,7 @@ class DocumentView(QScrollArea):
         self._search_todo = None
         self._search_gen += 1
         self.searchChanged.emit(0, 0, False)
+        self._thumbs_stale(changed if structural else pages)
         if structural:
             if self._stale_pages():
                 # something still holds a page from before the change: open the document
@@ -1155,6 +1161,22 @@ class DocumentView(QScrollArea):
                 self.pages[i].invalidate()
             self.documentChanged.emit()
         return True
+
+    thumbs_changed = None       # page xrefs whose look changed since the page list last
+                                # took them (None: any page)
+
+    def _thumbs_stale(self, pages):
+        if pages is None:
+            self.thumbs_changed = None
+        elif self.thumbs_changed is not None:
+            n = self.doc.page_count
+            self.thumbs_changed |= {self.doc.page_xref(i) for i in pages if 0 <= i < n}
+
+    def take_thumb_changes(self):
+        """Pages (xrefs) whose thumbnails must be drawn again (None: all), and start counting
+        afresh."""
+        changed, self.thumbs_changed = self.thumbs_changed, set()
+        return changed
 
     def can_undo(self):
         return bool(self._undo)
@@ -1877,7 +1899,7 @@ class DocumentView(QScrollArea):
                     other, [(k, at + k) for k in range(other.page_count)], self.doc,
                     outside=lambda src, xref: xref if src == self._clip_id() and xref in mine
                     else None)
-        self.modify(do, structural=True)
+        self.modify(do, structural=True, changed=[])     # (the new pages are new to the list)
         self.goto_page(at)
         return "pages"
 
@@ -1893,7 +1915,7 @@ class DocumentView(QScrollArea):
             # (0.2 to 0.4 s per page on a 2,000-sheet set), delete_pages does it once
             self.doc.delete_pages(indices)
             self._retarget_bookmarks(toc, set(indices), len(indices) + self.doc.page_count)
-        self.modify(do, structural=True)
+        self.modify(do, structural=True, changed=[])
         return True
 
     def _retarget_bookmarks(self, toc, gone, old_count):
@@ -5388,6 +5410,7 @@ class DocumentView(QScrollArea):
         self._tiles = OrderedDict()
         for w in self.pages:
             w.invalidate()
+        self.thumbs_changed = None
         self.layersChanged.emit()
 
     # ---- bookmarks & page tools -----------------------------------------------------------
@@ -6493,7 +6516,8 @@ class DocumentView(QScrollArea):
     # ---- page operations --------------------------------------------------
     def rotate_page(self, index, delta):
         page = self.doc[index]
-        self.modify(lambda: page.set_rotation((page.rotation + delta) % 360), structural=True)
+        self.modify(lambda: page.set_rotation((page.rotation + delta) % 360), structural=True,
+                    changed=[index])
 
     def _ask_pages_scope(self, title, question):
         """"this", "all" or None (canceled)."""
@@ -6518,7 +6542,7 @@ class DocumentView(QScrollArea):
                 box = (rect + (cb.x0, cb.y0, cb.x0, cb.y0)) & page.mediabox
                 if box.width >= 2 and box.height >= 2:
                     page.set_cropbox(box)
-        self.modify(do, structural=True)
+        self.modify(do, structural=True, changed=list(targets))
         self.statusMessage.emit(tr("Cropped (Ctrl+Z undoes it; Pages > Remove crop shows the "
                                    "whole page again)"))
 
@@ -6532,7 +6556,7 @@ class DocumentView(QScrollArea):
             for i in targets:
                 page = self.doc[i]
                 page.set_cropbox(page.mediabox)
-        self.modify(do, structural=True)
+        self.modify(do, structural=True, changed=list(targets))
         self.statusMessage.emit(tr("Crop removed"))
 
     def delete_page(self, index):
@@ -6544,7 +6568,7 @@ class DocumentView(QScrollArea):
             toc = self.doc.get_toc(False)
             self.doc.delete_page(index)
             self._retarget_bookmarks(toc, {index}, self.doc.page_count + 1)
-        self.modify(do, structural=True)
+        self.modify(do, structural=True, changed=[])
 
     def move_page(self, index, delta):
         target = index + delta
@@ -6552,7 +6576,7 @@ class DocumentView(QScrollArea):
             return
         # move_page(pno, to) inserts *before* `to`; -1 means append at the end.
         to = target if delta < 0 else (target + 1 if target + 1 < self.doc.page_count else -1)
-        self.modify(lambda: self.doc.move_page(index, to), structural=True)
+        self.modify(lambda: self.doc.move_page(index, to), structural=True, changed=[])
         self.goto_page(target)
 
     def _parent_xref(self, xref):
@@ -6744,7 +6768,7 @@ class DocumentView(QScrollArea):
                 if i != k:
                     self.doc.move_page(i, k)        # (inserts before page k)
                     now.insert(k, now.pop(i))
-        if not self.modify(do, structural=True):
+        if not self.modify(do, structural=True, changed=[]):
             return False
         if show is not None:
             self.goto_page(order.index(show))
@@ -6762,14 +6786,15 @@ class DocumentView(QScrollArea):
         n = self.doc.page_count
         ref = self.page_rects[min(max(at - 1, 0), n - 1) if at != -1 else n - 1]
         self.modify(lambda: insert_files(self.doc, paths, n if at == -1 else at,
-                                         (ref.width, ref.height), owner), structural=True)
+                                         (ref.width, ref.height), owner), structural=True,
+                    changed=[])
 
     def insert_blank(self, at):
         """A blank page before page index at, the size of the page it follows (as shown;
         the first page's when it goes first)."""
         r = self.page_rects[max(0, min(at - 1, len(self.page_rects) - 1))]
         self.modify(lambda: self.doc.new_page(at, width=r.width, height=r.height),
-                    structural=True)
+                    structural=True, changed=[])
 
     def extract_pages(self, first, last, path):
         if not self.allowed(pymupdf.PDF_PERM_COPY):

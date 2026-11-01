@@ -565,5 +565,155 @@ class CommentCards(Base):
         self.assertEqual(cards, old)
 
 
+# ---- 7: page thumbnails --------------------------------------------------------------------
+class Thumbnails(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        from kanzonas.main_window import MainWindow
+        from PySide6.QtWidgets import QMessageBox
+        p = mock.patch.object(QMessageBox, "question", return_value=QMessageBox.Yes)
+        p.start()
+        self.addCleanup(p.stop)
+        self.w = MainWindow()
+        self.w.resize(1200, 800)
+        self.w.show()
+        self.w.dock.show()
+        self.w.left_tabs.setCurrentIndex(0)
+        self.drawn = []
+        orig = pymupdf.Page.get_pixmap
+
+        def counted(page, *a, **k):
+            self.drawn.append(page.parent.page_xref(page.number))
+            return orig(page, *a, **k)
+        p = mock.patch.object(pymupdf.Page, "get_pixmap", autospec=True, side_effect=counted)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def tearDown(self):
+        for v in self.w._views():
+            v.dirty = False
+        self.w._close_confirmed = True
+        self.w.close()
+        self.w.deleteLater()
+        pump(0.05)
+        self.tmp.cleanup()
+
+    def open(self, name, n):
+        path = os.path.join(self.tmp.name, name)
+        numbered_pdf(path, n)
+        self.w.open_file(path)
+        self.w.lock_btn.setChecked(False)
+        self.settle()
+        return self.w.view()
+
+    def settle(self):
+        for _ in range(4):
+            pump(0.05)
+            for _ in range(200):
+                if not self.w._thumb_timer.isActive():
+                    break
+                self.w._thumb_step()
+
+    def rows(self):
+        t = self.w.thumbs
+        return [(t.item(i).text(), t.item(i).data(0x0100)) for i in range(t.count())]
+
+    def check_list(self, v):
+        self.assertEqual(self.rows(), [(str(i + 1), v.doc.page_xref(i))
+                                       for i in range(v.doc.page_count)])
+
+    def icon_key(self, row):
+        return self.w.thumbs.item(row).icon().cacheKey()
+
+    def test_only_the_rows_in_view_are_drawn(self):
+        v = self.open("a.pdf", 300)
+        self.check_list(v)
+        in_view = self.w._thumb_rows()
+        self.assertTrue(in_view)
+        self.assertLess(len(self.drawn), 60)
+        self.assertEqual(set(self.drawn), {v.doc.page_xref(r) for r in in_view})
+        # scrolled to the end: those are drawn then
+        self.drawn.clear()
+        self.w.thumbs.scrollToBottom()
+        self.settle()
+        self.assertIn(v.doc.page_xref(299), self.drawn)
+        self.assertNotIn(v.doc.page_xref(0), self.drawn)
+
+    def test_kept_across_tabs_and_redrawn_only_where_changed(self):
+        v = self.open("a.pdf", 40)
+        first = {r: self.icon_key(r) for r in self.w._thumb_rows()}
+        self.open("b.pdf", 10)
+        self.drawn.clear()
+        self.w.tabs.setCurrentIndex(0)
+        self.settle()
+        self.assertEqual(self.drawn, [])                    # nothing drawn again
+        self.assertEqual({r: self.icon_key(r) for r in first}, first)
+        self.check_list(v)
+        # an edit on page 2: only page 2 again
+        v.modify(lambda: v.doc[1].add_rect_annot((10, 10, 60, 60)), [1])
+        self.settle()
+        self.assertEqual(self.drawn, [v.doc.page_xref(1)])
+        self.assertNotEqual(self.icon_key(1), first[1])
+        # pages added, removed, moved: the others keep their thumbnails
+        self.drawn.clear()
+        keys = {v.doc.page_xref(i): self.icon_key(i) for i in range(4)}
+        v.insert_blank(1)
+        self.settle()
+        self.check_list(v)
+        self.assertEqual(self.drawn, [v.doc.page_xref(1)])  # just the new page
+        self.assertEqual(self.icon_key(0), keys[v.doc.page_xref(0)])
+        self.assertEqual(self.icon_key(2), keys[v.doc.page_xref(2)])
+        self.drawn.clear()
+        v.move_page(3, -1)
+        v.delete_pages([1])
+        self.settle()
+        self.check_list(v)
+        self.assertEqual(self.drawn, [])
+        for i in range(3):
+            self.assertEqual(self.icon_key(i), keys[v.doc.page_xref(i)])
+        # a page rotated: that one again
+        v.rotate_page(2, 90)
+        self.settle()
+        self.assertEqual(self.drawn, [v.doc.page_xref(2)])
+        self.check_list(v)
+
+    def test_undo_keeps_the_list_and_draws_what_is_in_view(self):
+        v = self.open("a.pdf", 200)
+        v.modify(lambda: v.doc[0].add_rect_annot((10, 10, 60, 60)), [0])
+        self.settle()
+        items = [self.w.thumbs.item(i) for i in range(self.w.thumbs.count())]
+        self.w.thumbs.setCurrentRow(0)
+        self.drawn.clear()
+        with mock.patch.object(self.w.thumbs, "clear", side_effect=AssertionError("rebuilt")):
+            v.undo()
+            self.settle()
+        self.assertEqual([self.w.thumbs.item(i) for i in range(self.w.thumbs.count())], items)
+        self.assertEqual(set(self.drawn), {v.doc.page_xref(r) for r in self.w._thumb_rows()})
+        self.assertLess(len(self.drawn), 60)
+        self.check_list(v)
+        self.assertEqual(self.w.thumbs.currentRow(), v.current_page())
+
+    def test_hidden_panel_draws_nothing_until_shown(self):
+        self.w.dock.hide()
+        v = self.open("a.pdf", 50)
+        self.assertEqual(self.drawn, [])
+        self.w.dock.show()
+        self.settle()
+        self.assertTrue(self.drawn)
+        self.check_list(v)
+
+    def test_at_most_thumb_keep_per_document(self):
+        v = self.open("a.pdf", 200)
+        self.w.THUMB_KEEP = 30
+        for row in (60, 120, 199):
+            self.w.thumbs.scrollToItem(self.w.thumbs.item(row))
+            self.settle()
+        self.assertLessEqual(len(v.thumb_icons), 30)
+        blank = self.w._blank_thumb().cacheKey()
+        self.assertEqual(self.icon_key(0), blank)           # (drawn again when in view)
+        for r in self.w._visible_thumb_rows():
+            self.assertNotEqual(self.icon_key(r), blank)
+
+
 if __name__ == "__main__":
     unittest.main()
