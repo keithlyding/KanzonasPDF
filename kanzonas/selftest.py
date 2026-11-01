@@ -194,8 +194,10 @@ def run(log_path):
         finally:
             v.dirty = False
             v.close_doc()
-        limits = {"add": 3, "repaint": 0.05, "move": 8, "highlight step": 0.25, "delete": 3,
-                  "sheet move": 6}
+        # (about 4 times today's times on the build machine: a slow machine passes, a step
+        # that is slow again doesn't)
+        limits = {"add": 2, "repaint": 0.05, "move": 2, "highlight step": 0.25, "delete": 1.5,
+                  "sheet move": 4}
         slow = [f"{k} {took[k]:.2f}s (limit {lim}s)" for k, lim in limits.items()
                 if took[k] >= lim]
         assert not slow, "too slow: " + ", ".join(slow)

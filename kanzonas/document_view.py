@@ -3310,9 +3310,10 @@ class DocumentView(QScrollArea):
             return
         self.commit_models(index, [(xref, model)])
 
-    def commit_models(self, index, changes):
+    def commit_models(self, index, changes, olds=None):
         """Replace several annotations in one undo step, keeping their stacking order and
-        the selection (with the new xrefs)."""
+        the selection (with the new xrefs). olds: {xref: model} as just read (not read
+        again)."""
         changes = [(x, m) for x, m in changes if m["kind"] != "field"]
         if not changes:
             return
@@ -3324,13 +3325,23 @@ class DocumentView(QScrollArea):
             page = self.doc[index]
             known = links.read(page)        # read once; follow() keeps them current
             models = dict(changes)
-            for x, old, new in annotations.replace_many(page, changes):
+            for x, old, new in annotations.replace_many(page, changes, olds):
                 made[x] = new
                 if old is not None and known:
                     links.follow(page, annotations.bounds(old), annotations.bounds(models[x]),
                                  on="markup", known=known)
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
-        if made:
+        if made and sel and all(made.get(x, x) == x for x in sel) and \
+                self.selection is not None and self.selected_xrefs() == sel:
+            # moved where they are: the same markups stay selected (reading them all again
+            # to select them took as long as the move)
+            first = dict(changes).get(sel[0])
+            if first is not None:
+                self.selected_model = first
+            if 0 <= index < len(self.pages):
+                self.pages[index].update()
+            self.selectionChanged.emit()
+        elif made:
             self._set_selection(index, [made.get(x, x) for x in sel] or list(made.values()))
 
     def update_selected_props(self, props):
@@ -3390,11 +3401,12 @@ class DocumentView(QScrollArea):
                 r = self.selected_objects_rect()
                 self.move_objects(r + (d.x, d.y, d.x, d.y))
             else:
-                changes = [(x, annotations.moved(m, d)) for x, m in self.selected_models()
-                           if m["kind"] != "field" and annotations.movable(m)]
-                if not changes:
+                have = [(x, m) for x, m in self.selected_models()
+                        if m["kind"] != "field" and annotations.movable(m)]
+                if not have:
                     return False
-                self.commit_models(index, changes)
+                self.commit_models(index, [(x, annotations.moved(m, d)) for x, m in have],
+                                   olds=dict(have))
         finally:
             self._merge_edit = False
         self._last_nudge = (key, now, self.revision)
@@ -4467,10 +4479,14 @@ class DocumentView(QScrollArea):
                     out = None              # (neither half of the selection changes)
                 elif what is not None and what[0] == "both":
                     # the drawing's objects and the markups, as one undo step
+                    self._carried = set()
                     out = self._cad_apply(label, mat, copies, keep, only="objects")
                     kept = self.obj_sel
+                    # (the markups on the moved text went with it: not moved again)
+                    carried, self._carried = self._carried, set()
                     self.then_in_same_step(
-                        rev, lambda: self._cad_apply(label, mat, copies, keep, only="markups"))
+                        rev, lambda: self._cad_apply(label, mat, copies, keep, only="markups",
+                                                     skip=carried))
                     if kept is not None and self.obj_sel is None:
                         # (changing the markups dropped the page's objects as read before:
                         # the same ones are selected again, so Copy goes on with both)
@@ -4539,7 +4555,7 @@ class DocumentView(QScrollArea):
                 return False
         return _Joined()
 
-    def _cad_apply(self, label, mat, copies=None, keep=False, only=None, what=None):
+    def _cad_apply(self, label, mat, copies=None, keep=False, only=None, what=None, skip=()):
         """A CAD command's change to the selection, as one undo step: mat (a Matrix in page
         coordinates) moves / turns / scales / mirrors it; copies (a list of matrices) adds a
         copy for each instead. The drawing's own text only moves."""
@@ -4595,6 +4611,9 @@ class DocumentView(QScrollArea):
             self._objects_edit(label, lambda pg, ns: page_objects.transform(pg, ns, mat, objs))
             return
         # markups
+        items = [(x, m) for x, m in items if x not in skip]
+        if not items:
+            return
         usable = [(x, m) for x, m in items
                   if moving_only or m["kind"] not in annotations.MARKUP]
         if len(usable) < len(items):
@@ -4603,7 +4622,8 @@ class DocumentView(QScrollArea):
         if not usable:
             return
         if copies is None:
-            self.commit_models(index, [(x, annotations.transformed(m, mat)) for x, m in usable])
+            self.commit_models(index, [(x, annotations.transformed(m, mat)) for x, m in usable],
+                               olds=dict(usable))
             self.statusMessage.emit(tr("{what} (Ctrl+Z undoes it)").format(what=label))
             return
         models = self._next_counts([m for _x, m in usable])
@@ -4917,6 +4937,8 @@ class DocumentView(QScrollArea):
             return
         d = pymupdf.Point(offset)
         on = self._markups_on_lines(page, lines)
+        # (a CAD selection holding these markups too mustn't move them a second time)
+        self._carried = getattr(self, "_carried", set()) | set(on)
         found = annotations.load_annots(page, on)
         moving = []
         for x in on:
