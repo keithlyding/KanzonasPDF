@@ -4054,6 +4054,7 @@ class MainWindow(QMainWindow):
                 for v in w._views():
                     for pw in v.pages:
                         pw.update()
+                    v._cad_prepare_soon()   # (CAD mode: snap points made ready while idle)
 
     def grid_settings(self):
         from PySide6.QtWidgets import QDoubleSpinBox
