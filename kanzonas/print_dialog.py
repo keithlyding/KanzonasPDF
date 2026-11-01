@@ -387,7 +387,8 @@ class PrintDialog(QDialog):
             y1 = min(r.y1, y + step)
             clip = pymupdf.Rect(r.x0, y, r.x1, y1)
             pm = dl.get_pixmap(matrix=pymupdf.Matrix(k, k), clip=clip)
-            img = QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
+            # (the pixels themselves, not a copy: pm stays until the band is drawn)
+            img = QImage(pm.samples_mv, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
             painter.drawImage(QRectF(target.x(), target.y() + (y - r.y0) * sy,
                                      target.width(), (y1 - y) * sy), img)
             del img, pm
