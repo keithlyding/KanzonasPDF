@@ -1,5 +1,7 @@
 """Scrolling view of one open document, plus every editing operation on it."""
 
+import atexit
+import gc
 import json
 import math
 import os
@@ -16,7 +18,7 @@ from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
                                QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
 
-from . import annotations, dialogs, signatures, text_edit
+from . import annotations, dialogs, hit_index, signatures, text_edit
 from .i18n import tr
 from .inline_editor import InlineEditor
 from .page_widget import PageWidget
@@ -32,6 +34,28 @@ UNDO_LIMIT = 30
 UNDO_BYTES_PER_DOC = 256 * 1024 * 1024
 UNDO_BYTES_TOTAL = 512 * 1024 * 1024
 PAGE_CACHE_PAGES = 24     # parsed per-page data kept for at most about this many pages
+FREEZE_ITEMS = 20_000     # a drawing with this many objects is set aside from the collector
+
+
+def _set_aside(objs):
+    """A big drawing's objects (page_objects.Objects) stay until the page changes: hundreds
+    of thousands of Python objects that each full pass of Python's garbage collector went
+    through again (a quarter to half a second, at random moments: the pointer froze).
+    gc.freeze() sets everything alive now aside from those passes; what is set aside is
+    still freed as usual when nothing uses it any more, only a reference cycle among it
+    waits for _collect_all (a page change that needs it, or closing the file)."""
+    if objs is not None and len(objs.items) >= FREEZE_ITEMS:
+        gc.collect(1)               # (the youngest garbage first: quick)
+        gc.freeze()
+
+
+def _collect_all():
+    """gc.collect(), also of what _set_aside set aside."""
+    gc.unfreeze()
+    gc.collect()
+
+
+atexit.register(gc.unfreeze)    # (Python's last collection skips what's set aside)
 
 
 _ERASER_CURSOR = None
@@ -201,6 +225,48 @@ class _not_busy:
         for _ in range(self.n):
             QApplication.setOverrideCursor(Qt.WaitCursor)
         return False
+
+
+class _AnnotShot:
+    """What the hit test (DocumentView._annot_hit) reads of a markup, read once: moving the
+    mouse over a page with thousands of markups then tests the ones near it without loading
+    them again (loading one walks the page's list of markups: 6 ms each with 5,000). Its
+    kind, flags and box are read with the page's list of boxes; the rest (full) when it is
+    first needed. parent is set to the page only while testing (the measurement label test
+    reads it); label (the tooltip's kind of markup) is read when first shown."""
+    __slots__ = ("xref", "type", "flags", "rect", "full", "border", "vertices", "colors",
+                 "info", "parent", "label")
+
+    def __init__(self, annot):
+        self.xref = annot.xref
+        self.type = annot.type
+        self.flags = annot.flags
+        self.rect = annot.rect
+        self.full = False
+        self.border = self.vertices = self.colors = self.info = None
+        self.parent = None
+        self.label = None
+
+    def fill(self, annot):
+        self.border = annot.border
+        self.vertices = annot.vertices
+        self.colors = annot.colors
+        self.info = annot.info
+        self.full = True
+
+    # markups the hit test finds by their box alone (notes, text boxes, stamps...)
+    BY_BOX = frozenset((
+        pymupdf.PDF_ANNOT_TEXT, pymupdf.PDF_ANNOT_FREE_TEXT, pymupdf.PDF_ANNOT_STAMP,
+        pymupdf.PDF_ANNOT_FILE_ATTACHMENT, pymupdf.PDF_ANNOT_CARET,
+        pymupdf.PDF_ANNOT_REDACT, pymupdf.PDF_ANNOT_SOUND))
+
+    def decided(self, pt, tol):
+        """True when the hit test can run on what's read so far: a box-only kind, a
+        locked or hidden markup, or a point outside its box."""
+        if self.full or self.type[0] in self.BY_BOX or (self.flags or 0) & (
+                pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
+            return True
+        return not (+self.rect + (-tol, -tol, tol, tol)).contains(pt)
 
 
 class DocumentView(QScrollArea):
@@ -462,7 +528,7 @@ class DocumentView(QScrollArea):
             keep.add(self.obj_sel[0])
         for cache in (self._dlists, self._line_cache, self._row_cache, self._hover_para,
                       self._word_cache, self._snap_markups, self._obj_cache,
-                      self._snap_content):
+                      self._snap_content, self._hit_cache):
             if len(cache) <= PAGE_CACHE_PAGES:
                 continue
             for i in [i for i in cache
@@ -1187,8 +1253,7 @@ class DocumentView(QScrollArea):
         if structural:
             # a page kept loaded only by a reference cycle (an Annot and its Page) would
             # come back under its old number once pages move: free those first
-            import gc
-            gc.collect()
+            _collect_all()
         try:
             fn()
         except Exception as ex:
@@ -1364,6 +1429,7 @@ class DocumentView(QScrollArea):
         self._row_cache = {}           # page index -> text_edit.paragraph_rows (Edit text)
         self._hover_para = {}          # page index -> {line id: what a click there edits}
         self._word_cache = {}
+        self._hit_cache = {}           # page index -> {what: (list, hit_index lookup)}
         self._card_cache = {}
         self.text_sel = None           # [(page index, selected character units), ...]
         self._text_drag = None         # [(page, mode, words)] while a text drag is in progress
@@ -1389,10 +1455,11 @@ class DocumentView(QScrollArea):
             self._row_cache.pop(i, None)
             self._hover_para.pop(i, None)
             self._word_cache.pop(i, None)
+            self._hit_cache.pop(i, None)
             self._snap_markups.pop(i, None)
             self._obj_cache.pop(i, None)
             self._text_obj_cache.pop(i, None)
-            for key in ("fields", "links", "fieldx", "annotx", "review"):
+            for key in ("fields", "links", "fieldx", "annotx", "annothit", "review"):
                 self._card_cache.pop((key, i), None)
             self._card_cache.pop(i, None)
             self._snap_recheck.add(i)
@@ -1429,20 +1496,22 @@ class DocumentView(QScrollArea):
     # ---- text selection (live, like a normal text cursor) ---------------------
     NEAR = 12   # points: how close to text a drag must start to select text
 
-    def _word_near(self, words, pt, limit=None):
-        best, best_d = None, None
-        for i, w in enumerate(words):
-            r = pymupdf.Rect(w[:4])
-            if r.contains(pt):
-                return i
-            dx = max(r.x0 - pt.x, 0, pt.x - r.x1)
-            dy = max(r.y0 - pt.y, 0, pt.y - r.y1)
-            d = (dx * dx + 4 * dy * dy) ** 0.5
-            if best_d is None or d < best_d:
-                best, best_d = i, d
-        if limit is not None and (best_d is None or best_d > limit):
-            return None
-        return best
+    def _lookup(self, index, what, seq, make):
+        """make(seq), a hit_index lookup for seq (a list cached for page index), made once
+        and kept until seq is replaced or the page changes."""
+        cache = self._hit_cache.setdefault(index, {})
+        got = cache.get(what)
+        if got is None or got[0] is not seq:
+            got = cache[what] = (seq, make(seq))
+        return got[1]
+
+    def _text_index(self, index):
+        return self._lookup(index, "words", self._words(index), hit_index.TextIndex)
+
+    def _word_near(self, index, pt, limit=None):
+        """Index (in _words) of the character under pt, else the nearest one (heights count
+        double), or None if that is farther than limit."""
+        return self._text_index(index).near(pt, limit)
 
     @staticmethod
     def _reading_order(cands):
@@ -1458,12 +1527,12 @@ class DocumentView(QScrollArea):
                 rows[-1].append(w)
         return [w for row in rows for w in sorted(row, key=lambda w: w[0])]
 
-    @staticmethod
-    def _word_in_box(r, box):
-        if not r.intersects(box):
-            return False
-        inter = pymupdf.Rect(r) & box
-        return inter.get_area() >= 0.4 * r.get_area()
+    def _page_order(self, index):
+        """All the page's characters in reading order (_reading_order, worked once)."""
+        words = self._words(index)
+        if not words:
+            return []
+        return [words[i] for i in self._text_index(index).reading_order()]
 
     def text_selection(self, index, a, b):
         """('text'|'box', words) for a drag from a to b.
@@ -1471,31 +1540,24 @@ class DocumentView(QScrollArea):
         Starting on (or right next to) text selects like a text cursor: from the word under
         the start to the word under the mouse, in reading order, staying within the column
         of the start and end text. Starting away from text selects words inside the box."""
+        # (worked from the page's characters as plain numbers, looked up once per page:
+        # making a pymupdf.Rect of every character on each mouse move took 50-100 ms)
         words = self._words(index)
         if not words:
             return ("box", [])
-        si = self._word_near(words, a, self.NEAR)
+        ti = self._text_index(index)
+        si = ti.near(a, self.NEAR)
         if si is None:
             box = pymupdf.Rect(a, b).normalize()
-            return ("box", [w for w in words if self._word_in_box(pymupdf.Rect(w[:4]), box)])
-        ei = self._word_near(words, b)
+            return ("box", [words[i] for i in ti.in_box(box)])
+        ei = ti.near(b)
         ws, we = words[si], words[ei]
         if ws[5] == we[5]:                      # same text block: its own order
-            blk = [w for w in words if w[5] == ws[5]]
-            i, j = blk.index(ws), blk.index(we)
-            return ("text", blk[min(i, j):max(i, j) + 1])
+            first = ti.span[ws[5]][0]
+            i, j = si - first, ei - first
+            return ("text", words[first + min(i, j):first + max(i, j) + 1])
         # different blocks: geometric flow limited to the columns those blocks occupy
-        bb = {}
-        for w in words:
-            bb[w[5]] = bb.get(w[5], pymupdf.Rect(w[:4])) | pymupdf.Rect(w[:4])
-        span = bb[ws[5]] | bb[we[5]]
-        top, bottom = min(ws[1], we[1]), max(ws[3], we[3])
-        cands = [w for w in words
-                 if bb[w[5]].x1 > span.x0 and bb[w[5]].x0 < span.x1
-                 and w[3] > top and w[1] < bottom]
-        order = self._reading_order(cands)
-        i, j = order.index(ws), order.index(we)
-        return ("text", order[min(i, j):max(i, j) + 1])
+        return ("text", [words[i] for i in ti.flow(si, ei)])
 
     def text_selection_span(self, i0, a, i1, b, box=False):
         """[(page, mode, words)] for a drag from point a on page i0 to point b on page i1.
@@ -1510,9 +1572,11 @@ class DocumentView(QScrollArea):
             return [(i0, mode, words)]
         if i0 == i1:
             rect = pymupdf.Rect(a, b).normalize()
-            words = [w for w in self._words(i0) if self._word_in_box(pymupdf.Rect(w[:4]), rect)]
-            return [(i0, "box", words)]
-        started_on_text = bool(self._words(i0)) and self._word_near(self._words(i0), a, self.NEAR) is not None
+            words = self._words(i0)
+            if not words:
+                return [(i0, "box", [])]
+            return [(i0, "box", [words[i] for i in self._text_index(i0).in_box(rect)])]
+        started_on_text = bool(self._words(i0)) and self._word_near(i0, a, self.NEAR) is not None
         if box or not started_on_text:
             return self._box_span(i0, a, i1, b)
         return self._flow_span(i0, a, i1, b)
@@ -1523,7 +1587,7 @@ class DocumentView(QScrollArea):
             words = self._words(index)
             if not words:
                 return None
-            i = self._word_near(words, pt)
+            i = self._word_near(index, pt)
             return None if i is None else words[i]
 
         w0, w1 = anchor(i0, a), anchor(i1, b)
@@ -1534,7 +1598,7 @@ class DocumentView(QScrollArea):
         spans = []
 
         def chunk(index, word, through_end):
-            order = self._reading_order(self._words(index))
+            order = self._page_order(index)
             if not order or word is None:
                 return
             try:
@@ -1548,7 +1612,7 @@ class DocumentView(QScrollArea):
 
         chunk(first, first_w, True)
         for p in range(first + 1, last):
-            order = self._reading_order(self._words(p))
+            order = self._page_order(p)
             if order:
                 spans.append((p, "text", order))
         if last != first:
@@ -1629,17 +1693,17 @@ class DocumentView(QScrollArea):
             if 0 <= i < len(self.pages):
                 self.pages[i].update()
 
-    @staticmethod
-    def line_rects(words):
-        lines, order = {}, []
-        for w in words:
-            key = (w[5], w[6])
-            if key not in lines:
-                lines[key] = pymupdf.Rect(w[:4])
-                order.append(key)
-            else:
-                lines[key] |= pymupdf.Rect(w[:4])
-        return [lines[k] for k in order]
+    _line_rects_last = (None, 0, [])
+
+    @classmethod
+    def line_rects(cls, words):
+        """A box around each line of the selected characters, in the order they come (the
+        last answer is kept: each repaint of a selection asks again)."""
+        last, n, boxes = cls._line_rects_last
+        if last is not words or n != len(words):
+            boxes = hit_index.line_boxes(words)
+            cls._line_rects_last = (words, len(words), boxes)
+        return [pymupdf.Rect(b) for b in boxes]
 
     @staticmethod
     def _words_text(units):
@@ -1680,7 +1744,7 @@ class DocumentView(QScrollArea):
     def word_at(self, index, pt):
         """The characters of the word under pt (unrotated page point), or []."""
         words = self._words(index)
-        i = self._word_near(words, pt, self.NEAR) if words else None
+        i = self._word_near(index, pt, self.NEAR) if words else None
         if i is None or not words[i][4].strip():
             return []
         key = (words[i][5], words[i][6])
@@ -1695,7 +1759,7 @@ class DocumentView(QScrollArea):
     def line_at(self, index, pt):
         """The characters of the line of text under pt, or []."""
         words = self._words(index)
-        i = self._word_near(words, pt, self.NEAR) if words else None
+        i = self._word_near(index, pt, self.NEAR) if words else None
         if i is None:
             return []
         key = (words[i][5], words[i][6])
@@ -3040,51 +3104,96 @@ class DocumentView(QScrollArea):
         boxes = self._card_cache.get(key)
         if boxes is None:
             page = self.doc[index]              # keep the Page alive while reading its annots
+            shots = {}
+            for a in annotations.each_annot(page):
+                if a.type[0] != pymupdf.PDF_ANNOT_POPUP:
+                    shots[a.xref] = _AnnotShot(a)
             # plain numbers: building and testing pymupdf.Rect objects is slow in Python
-            boxes = [(tuple(a.rect), a.xref) for a in annotations.each_annot(page)
-                     if a.type[0] != pymupdf.PDF_ANNOT_POPUP]
+            boxes = [(tuple(shot.rect), x) for x, shot in shots.items()]
             self._card_cache[key] = boxes
+            self._card_cache[("annothit", index)] = shots
         return boxes
 
     def _hit_tol(self):
         """How near (in page points) a press must be to a markup's line: 4 screen pixels."""
         return 4.0 / max(self.zoom, 0.05)
 
-    def _annot_under(self, index, pt, tol=None):
-        """Like _annot_at, but loads only the annotations whose box is near the point.
-        Returns (page, annot): keep the page alive while using the annot."""
+    def _annot_shot_under(self, index, pt, tol=None):
+        """The markup _annot_at would find at pt, as an _AnnotShot (or None). Only the
+        markups whose box is near the point are tested, each from what was read of it the
+        first time it was near (loading a markup walks the page's list of them: 6 ms each
+        with 5,000). The last answer is kept: one mouse move asks several times."""
         if tol is None:
             tol = self._hit_tol()
-        page = self.doc[index]
+        boxes = self._annot_boxes(index)
+        key = (id(self.doc), index, pt.x, pt.y, tol)
+        memo = getattr(self, "_annot_memo", None)
+        if memo is not None and memo[0] == key and memo[1] is boxes:
+            return memo[2]
         px, py = pt.x, pt.y
-        near = [x for (x0, y0, x1, y1), x in self._annot_boxes(index)
+        near = [x for (x0, y0, x1, y1), x in boxes
                 if x0 - tol <= px <= x1 + tol and y0 - tol <= py <= y1 + tol]
-        hits = [an for an in (page.load_annot(x) for x in near)
-                if an is not None and self._annot_hit(an, pt, tol)]
-        return page, (min(hits, key=lambda an: an.rect.get_area()) if hits else None)
+        page = self.doc[index]
+        shots = self._card_cache.setdefault(("annothit", index), {})
+        missing = [x for x in near if x not in shots or not shots[x].decided(pt, tol)]
+        if missing:
+            for x, an in annotations.load_annots(page, missing).items():
+                shot = shots.get(x)
+                if shot is None:
+                    shot = shots[x] = _AnnotShot(an)
+                shot.fill(an)
+        hits = []
+        for x in near:
+            shot = shots.get(x)
+            if shot is None:
+                continue
+            shot.parent = page              # (what the measurement label test reads)
+            try:
+                if self._annot_hit(shot, pt, tol):
+                    hits.append(shot)
+            finally:
+                shot.parent = None
+        best = min(hits, key=lambda an: an.rect.get_area()) if hits else None
+        self._annot_memo = (key, boxes, best)
+        return best
+
+    def _annot_under(self, index, pt, tol=None):
+        """Like _annot_at, but loads only the annotation found (see _annot_shot_under).
+        Returns (page, annot): keep the page alive while using the annot."""
+        shot = self._annot_shot_under(index, pt, tol)
+        page = self.doc[index]
+        return page, (page.load_annot(shot.xref) if shot is not None else None)
 
     def annot_at(self, index, pt):
         """xref of the annotation under pt, or None. (Returns an id, not an Annot: an Annot
         becomes unusable once its Page object is garbage collected.)"""
         if not self.show_markups:
             return None
-        _page, a = self._annot_under(index, pt)
-        return a.xref if a is not None else None
+        shot = self._annot_shot_under(index, pt)
+        return shot.xref if shot is not None else None
+
+    def _shot_label(self, index, shot):
+        if shot.label is None:
+            page = self.doc[index]
+            a = page.load_annot(shot.xref)
+            if not shot.full:
+                shot.fill(a)
+            model = annotations.read(a)
+            shot.label = annotations.LABELS.get(model["kind"], a.type[1]) if model \
+                else a.type[1]
+        return shot.label
 
     def annot_label(self, index, pt):
         """The kind of markup under pt ("Cloud", "Highlight"...), or ""."""
-        _page, a = self._annot_under(index, pt)
-        if a is None:
-            return ""
-        model = annotations.read(a)
-        return annotations.LABELS.get(model["kind"], a.type[1]) if model else a.type[1]
+        shot = self._annot_shot_under(index, pt)
+        return "" if shot is None else self._shot_label(index, shot)
 
     def annot_tooltip(self, index, pt):
-        page, a = self._annot_under(index, pt)
-        if a is None:
+        shot = self._annot_shot_under(index, pt)
+        if shot is None:
             return ""
-        label = self.annot_label(index, pt)
-        content = a.info.get("content", "")
+        label = self._shot_label(index, shot)       # (reads the rest of it too)
+        content = shot.info.get("content", "")
         return f"{label}: {content}" if content else label
 
     @staticmethod
@@ -3815,14 +3924,21 @@ class DocumentView(QScrollArea):
             self._line_cache[index] = text_edit.text_lines(self.doc[index])
         return self._line_cache[index]
 
+    def _line_at(self, index, pt):
+        """text_edit.line_at on the page's lines, looking only at those near pt."""
+        lines = self._lines(index)
+        near = self._lookup(index, "lines", lines,
+                            lambda ls: hit_index.BoxIndex(r for r, _ln in ls))
+        return text_edit.line_at([lines[i] for i in near.near(pt.x, pt.y, 2)], pt)
+
     def text_line_rect(self, index, pt):
-        hit = text_edit.line_at(self._lines(index), pt)
+        hit = self._line_at(index, pt)
         return hit[0] if hit else None
 
     def text_target_rect(self, index, pt, one_line=False):
         """What a click with Edit text at pt edits, for the outline under the pointer: the
         whole paragraph (see edit_text_at), or the line (one_line: Alt held)."""
-        hit = text_edit.line_at(self._lines(index), pt)
+        hit = self._line_at(index, pt)
         if hit is None:
             return None
         rect, line = hit
@@ -3843,7 +3959,7 @@ class DocumentView(QScrollArea):
         """Edit text tool, press on a line and drag: move it by offset (PDF points) without
         changing its text or font; comments and highlights on it move along."""
         self.commit_pending()
-        hit = text_edit.line_at(self._lines(index), pt)
+        hit = self._line_at(index, pt)
         if hit is None or not (offset[0] or offset[1]):
             return
         _rect, line = hit
@@ -3979,7 +4095,7 @@ class DocumentView(QScrollArea):
         """Edit text tool, click: edit the paragraph there (words rewrap), or, with
         one_line (Alt+click), a scanned page, sideways text or a lone line, just the line."""
         self.commit_pending()          # finish the edit already in progress first
-        hit = text_edit.line_at(self._lines(index), pt)
+        hit = self._line_at(index, pt)
         if hit is None:
             self.statusMessage.emit(tr("No text there. Click on a line of text to edit it."))
             return
@@ -4425,6 +4541,7 @@ class DocumentView(QScrollArea):
                 cache[index] = None
             finally:
                 QApplication.restoreOverrideCursor()
+            _set_aside(cache[index])
         return cache[index]
 
     TEXT_N = 10 ** 9                   # Edit objects numbers text paragraphs from here
@@ -4443,7 +4560,10 @@ class DocumentView(QScrollArea):
         """The topmost picture or shape under PDF point pt, or None. Text comes first: what
         you click on a word is the text, even over a filled shape or picture."""
         pad = 2 / self.zoom
-        hits = [it for it in self.text_objects(index)
+        texts = self.text_objects(index)
+        near = self._lookup(index, "texts", texts,
+                            lambda t: hit_index.BoxIndex(it["rect"] for it in t))
+        hits = [it for it in (texts[i] for i in near.near(pt.x, pt.y, pad))
                 if (it["rect"] + (-pad, -pad, pad, pad)).contains(pt)]
         if hits:
             return min(hits, key=lambda it: it["rect"].get_area())
@@ -4508,6 +4628,8 @@ class DocumentView(QScrollArea):
                 self._prepare_read(index)
                 return
             self.text_objects(index)
+            if objs is not None:
+                objs.at_index()             # (what finds the object under the pointer)
             shapes = [it for it in (objs.items if objs is not None else ())
                       if it["kind"] == "shape" and "lines" not in it]
             self._prep_job = {"index": index, "objs": objs, "todo": iter(shapes)}
@@ -4583,6 +4705,7 @@ class DocumentView(QScrollArea):
             self._prep_read = None
             if index not in self._obj_cache:
                 self._obj_cache[index] = read["objs"]
+                _set_aside(read["objs"])
         except Exception:
             self._prep_read = None
             self._obj_cache.setdefault(index, None)     # (as content_objects does)
@@ -4941,6 +5064,7 @@ class DocumentView(QScrollArea):
                     lines = objs.lines(item)
                     got_item["lines"] = lines[:k] + [list(pc) for pc in pieces] + lines[k + 1:]
                 self._obj_cache[index] = got
+                _set_aside(got)
         else:
             _d, _w, xref, k, _poly, _closed, m = best
             models = []
@@ -4982,8 +5106,14 @@ class DocumentView(QScrollArea):
         return self.obj_sel[1] if self.obj_sel else []
 
     def selected_objects_rect(self):
+        """The box around the selected objects (worked out once per selection: a repaint
+        asks several times, and a big selection has tens of thousands)."""
         from .page_objects import bounding
-        return bounding(it["rect"] for it in self.selected_objects())
+        sel = self.obj_sel
+        got = getattr(self, "_sel_rect", None)
+        if got is None or got[0] is not sel:
+            got = self._sel_rect = (sel, bounding(it["rect"] for it in self.selected_objects()))
+        return pymupdf.Rect(got[1])
 
     def select_objects(self, index, items, add=False):
         """Select pictures / shapes on page index; add=True toggles them in the selection."""
@@ -5061,6 +5191,7 @@ class DocumentView(QScrollArea):
         if isinstance(fresh.get("objs"), page_objects.Objects) and before is not None:
             # a move / rotate worked out the page's objects without reading it again
             self._obj_cache[index] = fresh["objs"]
+            _set_aside(fresh["objs"])
         self.obj_sel = None
         if keep:
             objs = self.content_objects(index)
@@ -6787,8 +6918,7 @@ class DocumentView(QScrollArea):
         def do():
             # a page PyMuPDF still holds in a reference cycle (an Annot and its Page) stays
             # loaded through the bake and keeps its old list of markups: free those first
-            import gc
-            gc.collect()
+            _collect_all()
             held = self._hold_redactions(range(self.doc.page_count) if pages is None
                                          else pages)
             try:
@@ -7274,6 +7404,7 @@ class DocumentView(QScrollArea):
 
     def close_doc(self):
         self._undo, self._redo = [], []         # free the history (and the shared budget)
+        gc.unfreeze()                           # (its drawings may be set aside: _set_aside)
         self._inline = None
         self._search_gen += 1                   # a Find still running stops here
         self._search_todo = None

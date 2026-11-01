@@ -23,7 +23,7 @@ import math
 
 import pymupdf
 from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QColor, QPen
+from PySide6.QtGui import QColor, QPen, QTransform
 from PySide6.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout, QHBoxLayout, QLabel,
                                QLineEdit, QPushButton, QSpinBox, QWidget)
 
@@ -648,13 +648,23 @@ class Command:
                 mats = [pymupdf.Matrix(1, 0, 0, 1, 0, 0)]
             lines = self.ghost if self._ghost_size * len(mats) <= GHOST_SEGMENTS and \
                 box is self._ghost_box else None
-            for m in mats:
-                if lines is None:
+            if lines is not None:
+                # the outlines as one path, made once and moved by each matrix (a piece at a
+                # time from Python took half a second per mouse move with 15,000 pieces)
+                got = getattr(self, "_ghost_path", None)
+                if got is None or got[0] is not lines:
+                    from .page_widget import lines_path
+                    got = self._ghost_path = (lines, lines_path(lines))
+                brush = p.brush()
+                p.setBrush(Qt.NoBrush)
+                for m in mats:
+                    t = m * to
+                    p.drawPath(QTransform(t.a, t.b, t.c, t.d, t.e, t.f).map(got[1]))
+                p.setBrush(brush)
+            else:
+                for m in mats:
                     r = box
-                    lines_m = [[r.tl * m, r.tr * m, r.br * m, r.bl * m, r.tl * m]]
-                else:
-                    lines_m = [[pymupdf.Point(q) * m for q in line] for line in lines]
-                for line in lines_m:
+                    line = [r.tl * m, r.tr * m, r.br * m, r.bl * m, r.tl * m]
                     for a, b in zip(line, line[1:]):
                         p.drawLine(sp(a), sp(b))
         if start is not None and self.hover is not None:
