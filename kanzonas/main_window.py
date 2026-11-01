@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
 from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint
-from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap, QImage,
+from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap,
                            QPainter, QDrag, QMouseEvent, QCursor)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFileDialog, QMessageBox,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
@@ -5308,10 +5308,10 @@ class MainWindow(QMainWindow):
                 return
             page = v.doc[i]
             s = min(120 / page.rect.width, 160 / page.rect.height)
-            pm = page.get_pixmap(matrix=pymupdf.Matrix(s, s), annots=True)
-            img = QImage(pm.samples, pm.width, pm.height, pm.stride,
-                         QImage.Format_RGB888).copy()
-            icon = QIcon(QPixmap.fromImage(img))
+            # (from the page's render on screen when it has one: a heavy sheet isn't
+            # rendered again just for its thumbnail)
+            from .page_widget import thumbnail
+            icon = QIcon(QPixmap.fromImage(thumbnail(v, i, s)))
             cache[x] = [icon, True]
             cache.move_to_end(x)
             self.thumbs.item(r).setIcon(icon)

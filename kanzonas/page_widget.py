@@ -5,6 +5,8 @@ and turns mouse input into calls on the DocumentView, which owns all PDF edits.
 """
 
 import math
+import time
+
 import pymupdf
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath,
@@ -13,6 +15,7 @@ from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
 from . import cad_select
+from . import render_layers as RL
 from .i18n import tr
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
@@ -30,7 +33,14 @@ MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area", "m_angle", "m_ra
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}
 SIGN_TOOLS = {"signature", "initials"}
 HANDLE = 7          # handle size in px
-FULL_LIMIT = 16_000_000     # device pixels: above this a page is drawn in tiles
+FULL_LIMIT = 16_000_000     # device pixels: above this a page is drawn in tiles ...
+FULL_MIN = 4_000_000        # ... and above this too when it's more than FULL_SCREENS
+FULL_SCREENS = 2.5          #     windowfuls (see PageWidget._tiled)
+HEAVY_S = 0.1               # a page whose content takes this long to render is drawn after
+                            # showing it as it was (scaled), not while the window waits
+QUICK_S = 0.03              # while wheel zooming: pages quicker than this are drawn at once
+SMALL_PREVIEW = 400         # px: the small copy of a page's bitmap kept once it's let go ...
+SMALL_PREVIEWS = 40         # ... for this many pages
 TILE = 512                  # tile size in device pixels
 TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
@@ -162,6 +172,67 @@ def lines_path(lines):
     return path
 
 
+def check_content(view, i, force=False):
+    """Before page i's kept content (display list, renders) is used after it may have
+    changed (an edit, an undo, a layer shown): keep it if the page's content key is the one
+    it was made from, else let it go."""
+    rc = view._rc
+    if not force and i not in rc.recheck:
+        return
+    rc.recheck.discard(i)
+    old = rc.keys.get(i)
+    if old is None:
+        if i in view._dlists or rc.has_page(i):
+            view._dlists.pop(i, None)
+            rc.drop_page(i)
+        return
+    try:
+        new = RL.content_key(view.doc[i])
+    except Exception:
+        new = None
+    if new is None or new != old:
+        view._dlists.pop(i, None)
+        rc.drop_page(i)
+        view._img_info.pop(i, None)
+        view._decoded = {d for d in view._decoded if d[0] != i}
+        for key in [k for k in view._tiles if k[0] == i]:
+            del view._tiles[key]
+        if new is None:
+            rc.keys.pop(i, None)
+        else:
+            rc.keys[i] = new
+
+
+def thumbnail(view, i, s):
+    """Page i at zoom s for the page list, as a QImage: scaled down from the page's content
+    render on screen when there is one (with the markups drawn over it), else rendered from
+    its parsed drawing when it was parsed, else from the page (as before)."""
+    page = view.doc[i]
+    check_content(view, i)
+    rc = view._rc
+    size = (page.rect * pymupdf.Matrix(s, s)).round()
+    best = None
+    for (pi, ps, tile, _thin), pm in rc.renders.items():
+        if pi == i and tile is None and ps >= s and (best is None or ps < best[0]):
+            best = (ps, pm)
+    al = RL.annots_list(page) if best is not None or i in view._dlists else None
+    if best is not None:
+        ps, pm = best
+        if al is not None:
+            pm = RL.draw_over(pm, al, ps)
+        img = QImage(pm.samples_mv, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
+        return img.scaled(size.width, size.height, Qt.IgnoreAspectRatio,
+                          Qt.SmoothTransformation)
+    dl = view._dlists.get(i)
+    if dl is not None:
+        pm = RL.render(dl, s)
+        if al is not None:
+            pm = RL.draw_over(pm, al, s)
+    else:
+        pm = page.get_pixmap(matrix=pymupdf.Matrix(s, s), annots=True)
+    return QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
+
+
 class PageWidget(QWidget):
     def __init__(self, view, index):
         super().__init__()
@@ -184,6 +255,9 @@ class PageWidget(QWidget):
 
     def _reset_state(self):
         self._pix = None
+        self._preview = None        # (QPixmap, page rect): the page as last drawn whole
+        self._tile_scale = None     # the scale its tiles were last drawn at
+        self._failed = set()        # tiles MuPDF couldn't draw: (scale, tx, ty)
         self._drag_start = None     # shape tools / box selection
         self._drag_now = None
         self._text_sel = None       # (mode, words) while selecting text
@@ -208,18 +282,48 @@ class PageWidget(QWidget):
     def update_size(self):
         r = self.view.page_rects[self.index]
         z = self.view.zoom
-        self.setFixedSize(max(1, int(r.width * z)), max(1, int(r.height * z)))
+        size = (max(1, int(r.width * z)), max(1, int(r.height * z)))
+        if self._pix is not None and size != (self.width(), self.height()):
+            # (a new zoom: the page as it was is shown, scaled, until it's drawn sharp again)
+            self._preview = (self._pix, r)
+        self.setFixedSize(*size)
         self._pix = None
 
     def invalidate(self):
-        """Page content changed: forget its display list, bitmap and tiles."""
+        """The page changed: its markups are drawn again; its content too if that changed
+        (its content key is no longer the same: an erase, a redaction, a text edit...), else
+        its content render is reused (a markup added, moved, restyled or deleted)."""
         self._pix = None
-        self.view._dlists.pop(self.index, None)
+        self._preview = None
+        self._failed = set()
+        v = self.view
+        v._small_previews.pop(self.index, None)
+        v._alists.pop(self.index, None)
         self._drop_tiles()
+        check_content(v, self.index, force=True)
         self.update()
 
     def drop_cache(self):
+        """Far from the window: let the page's bitmaps go (memory). A small copy is kept
+        for a while: scrolled back to, a heavy page is shown with it until drawn sharp."""
+        pv = self._preview
+        if pv is not None and pv[0].width() * pv[0].height() > 0:
+            small = pv[0].scaled(SMALL_PREVIEW, SMALL_PREVIEW, Qt.KeepAspectRatio,
+                                 Qt.SmoothTransformation)
+            keep = self.view._small_previews
+            keep[self.index] = (small, pv[1])
+            keep.move_to_end(self.index)
+            while len(keep) > SMALL_PREVIEWS:
+                keep.popitem(last=False)
         self._pix = None
+        self._preview = None
+        self.view._rc.drop_page(self.index, whole_only=True)
+
+    def redraw(self):
+        """A display option changed (night mode, thin lines): draw the page again, from its
+        content render when it has one for the option."""
+        self._pix = None
+        self._preview = None
 
     def _drop_tiles(self):
         tiles = self.view._tiles
@@ -227,14 +331,56 @@ class PageWidget(QWidget):
             del tiles[key]
 
     def _display_list(self):
-        """The page's parsed drawing, made once and reused for every render and tile."""
-        dl = self.view._dlists.get(self.index)
+        """The page's content (without its markups) parsed once, as a DisplayList, and reused
+        for every render and tile while the content stays the same."""
+        v = self.view
+        check_content(v, self.index)
+        dl = v._dlists.get(self.index)
         if dl is None:
-            dl = self.view.doc[self.index].get_displaylist(annots=self.view.show_markups)
-            self.view._dlists[self.index] = dl
+            page = v.doc[self.index]
+            if self.index not in v._rc.keys:
+                v._rc.keys[self.index] = RL.content_key(page)
+            dl = page.get_displaylist(annots=False)
+            v._dlists[self.index] = dl
         return dl
 
-    def _to_qpixmap(self, pm, dpr):
+    def _annots(self):
+        """The page's markups and form fields as a DisplayList (None: none to draw, or
+        View > Show markups off)."""
+        v = self.view
+        if not v.show_markups:
+            return None
+        if self.index not in v._alists:
+            v._alists[self.index] = RL.annots_list(v.doc[self.index])
+        return v._alists[self.index]
+
+    def _content(self, s, clip=None, tile=None):
+        """The page's content rendered at zoom s (device pixels per point), whole or the clip,
+        as a pymupdf.Pixmap: the one kept from before when there is one."""
+        v = self.view
+        check_content(v, self.index)
+        thin = v.thin_lines
+        pm = v._rc.get(self.index, s, tile, thin)
+        if pm is None:
+            dl = self._display_list()
+            t = time.perf_counter()
+            with screen_lines(thin):
+                pm = RL.render(dl, s, clip)
+            v._note_render_cost(self.index, time.perf_counter() - t)
+            v._rc.put(self.index, s, tile, thin, pm)
+        return pm
+
+    def _with_markups(self, base, s, clip=None):
+        """base (the content at zoom s) with the markups drawn over it by MuPDF (blend modes,
+        opacity and all, as a whole-page render draws them)."""
+        al = self._annots()
+        if al is None:
+            return base
+        with screen_lines(self.view.thin_lines):
+            return RL.draw_over(base, al, s, clip)
+
+    def _to_qimage(self, pm):
+        """pm as a 32-bit QImage of its own (night mode applied)."""
         # one copy of the pixels, not three: the image is read in place from the rendered
         # pixmap (or night mode's array), both kept alive here until the conversion to
         # 32 bits has made Qt's own copy. (Not .copy() then fromImage: Qt keeps an image
@@ -245,48 +391,268 @@ class PageWidget(QWidget):
         else:
             data = pm.samples_mv
             img = QImage(data, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
-        img = img.convertToFormat(QImage.Format_RGB32)
-        pix = QPixmap.fromImage(img)
+        return img.convertToFormat(QImage.Format_RGB32)
+
+    def _to_qpixmap(self, pm, dpr):
+        pix = QPixmap.fromImage(self._to_qimage(pm))
         pix.setDevicePixelRatio(dpr)
         return pix
 
     def _tiled(self):
+        """Drawn in tiles (only what's in view) rather than as one bitmap: a page bigger than
+        FULL_LIMIT device pixels, or bigger than FULL_MIN and FULL_SCREENS windowfuls (a heavy
+        drawing at 400% isn't rendered whole to show a corner of it)."""
         dpr = self.devicePixelRatioF()
-        return self.width() * self.height() * dpr * dpr > FULL_LIMIT
+        px = self.width() * self.height() * dpr * dpr
+        if px <= FULL_MIN:
+            return False
+        if px > FULL_LIMIT:
+            return True
+        vp = self.view.viewport()
+        return px > FULL_SCREENS * vp.width() * vp.height() * dpr * dpr
 
     def _paint_tiles(self, p, exposed):
-        """Large page at high zoom: draw only the visible area, in cached tiles."""
+        """Large page at high zoom: draw only the visible area, in cached tiles. Missing tiles
+        are rendered together (MuPDF reads the drawing once for all of them); on a heavy page
+        with something to show meanwhile (the page as it was, scaled) they're drawn a moment
+        later instead (DocumentView._render_tick), so zooming and scrolling don't wait."""
         dpr = self.devicePixelRatioF()
         s = self.view.zoom * dpr
-        dl = self._display_list()
+        s5 = round(s, 5)
         full = pymupdf.IRect(0, 0, int(self.width() * dpr), int(self.height() * dpr))
         tiles = self.view._tiles
+        rc = self.view._rc
+        thin = self.view.thin_lines
+        check_content(self.view, self.index)
         tx0, ty0 = int(exposed.left() * dpr) // TILE, int(exposed.top() * dpr) // TILE
         tx1, ty1 = int(exposed.right() * dpr) // TILE, int(exposed.bottom() * dpr) // TILE
+        missing = []
         for ty in range(ty0, ty1 + 1):
             for tx in range(tx0, tx1 + 1):
-                key = (self.index, round(s, 5), tx, ty)
+                key = (self.index, s5, tx, ty)
                 hit = tiles.get(key)
                 if hit is None:
                     dev = pymupdf.IRect(tx * TILE, ty * TILE, (tx + 1) * TILE, (ty + 1) * TILE) & full
                     if dev.is_empty:
                         continue
-                    try:
-                        with screen_lines(self.view.thin_lines):
-                            pm = dl.get_pixmap(matrix=pymupdf.Matrix(s, s),
-                                               clip=pymupdf.Rect(dev) / s, alpha=False)
-                        hit = (self._to_qpixmap(pm, dpr), pm.x, pm.y)
-                    except Exception:
+                    if (s5, tx, ty) in self._failed:
                         p.fillRect(QRectF(dev.x0 / dpr, dev.y0 / dpr, dev.width / dpr,
                                           dev.height / dpr), Qt.white)
                         continue
-                    tiles[key] = hit
-                    while len(tiles) > TILE_LIMIT:
-                        tiles.popitem(last=False)
+                    raw = rc.get(self.index, s, (tx, ty), thin)
+                    if raw is None:
+                        missing.append((tx, ty, dev))
+                        continue
+                    try:            # (the content kept: only the markups are drawn again)
+                        clip = pymupdf.Rect(dev) / s
+                        pix = self._to_qpixmap(self._with_markups(raw, s, clip), dpr)
+                        hit = (pix, dev.x0, dev.y0)
+                    except Exception:
+                        missing.append((tx, ty, dev))
+                        continue
+                    self._keep_tile(key, hit)
                 else:
                     tiles.move_to_end(key)
                 pix, x, y = hit
                 p.drawPixmap(QPointF(x / dpr, y / dpr), pix)
+        if missing:
+            if self._defer(s):
+                self._paint_preview(p, [QRectF(d.x0 / dpr, d.y0 / dpr, d.width / dpr,
+                                               d.height / dpr) for _tx, _ty, d in missing], s)
+                self.view._render_later(self)
+                return
+            for key, hit in self._render_tiles(missing, s, dpr):
+                if hit is None:
+                    d = key
+                    p.fillRect(QRectF(d.x0 / dpr, d.y0 / dpr, d.width / dpr, d.height / dpr),
+                               Qt.white)
+                    continue
+                pix, x, y = hit
+                p.drawPixmap(QPointF(x / dpr, y / dpr), pix)
+        self._tile_scale = s5
+
+    def _keep_tile(self, key, hit):
+        tiles = self.view._tiles
+        tiles[key] = hit
+        while len(tiles) > TILE_LIMIT:
+            tiles.popitem(last=False)
+
+    def _render_tiles(self, missing, s, dpr):
+        """Render the tiles [(tx, ty, device rect)]: their content in one go (or a row at a
+        time when they're scattered), cut into tiles, the markups drawn over. Yields
+        (key, (QPixmap, x, y)), or (device rect, None) for a tile that couldn't be drawn."""
+        v = self.view
+        s5 = round(s, 5)
+        cols = {tx for tx, _ty, _d in missing}
+        rows = {ty for _tx, ty, _d in missing}
+        if (max(cols) - min(cols) + 1) * (max(rows) - min(rows) + 1) <= 2 * len(missing):
+            batches = [missing]
+        else:
+            batches = [[m for m in missing if m[1] == ty] for ty in sorted(rows)]
+        self._predecode(s)
+        for batch in batches:
+            box = batch[0][2]
+            for _tx, _ty, d in batch[1:]:
+                box = box | d
+            clip = pymupdf.Rect(box) / s
+            try:
+                dl = self._display_list()
+                t = time.perf_counter()
+                with screen_lines(v.thin_lines):
+                    pm = RL.render(dl, s, clip)
+                v._note_render_cost(self.index, time.perf_counter() - t)
+                img = self._to_qimage(self._with_markups(pm, s, clip))
+            except Exception:
+                for tx, ty, d in batch:
+                    self._failed.add((s5, tx, ty))
+                    yield d, None
+                continue
+            for tx, ty, d in batch:
+                v._rc.put(self.index, s, (tx, ty), v.thin_lines,
+                          pm if len(batch) == 1 else RL.cut(pm, d))
+                part = img if len(batch) == 1 else \
+                    img.copy(d.x0 - pm.x, d.y0 - pm.y, d.width, d.height)
+                pix = QPixmap.fromImage(part)
+                pix.setDevicePixelRatio(dpr)
+                hit = (pix, d.x0, d.y0)
+                key = (self.index, s5, tx, ty)
+                self._keep_tile(key, hit)
+                yield key, hit
+
+    def _predecode(self, s):
+        """A scanned page at high zoom: its big pictures decoded once, at the size the tiles
+        need, so each tile doesn't decode the whole JPEG again (render_layers.predecode)."""
+        v = self.view
+        page = v.doc[self.index]
+        info = v._img_info.get(self.index)
+        if info is None:
+            info = []
+            for xref, w, h, nbytes in RL.big_images(page):
+                try:
+                    rects = page.get_image_rects(xref)
+                except Exception:
+                    rects = []
+                if rects:
+                    info.append((xref, w, h, nbytes, max(r.width for r in rects),
+                                 max(r.height for r in rects)))
+            v._img_info[self.index] = info
+        todo = []
+        for xref, w, h, nbytes, rw, rh in info:
+            # (MuPDF decodes a picture drawn smaller at 1/2, 1/4... of its size)
+            dw, dh = max(1.0, rw * s), max(1.0, rh * s)
+            n = 0
+            while n < 6 and (w >> (n + 1)) >= dw and (h >> (n + 1)) >= dh:
+                n += 1
+            if (nbytes >> (2 * n)) > RL.DECODE_LIMIT or (self.index, xref, n) in v._decoded:
+                continue
+            v._decoded.add((self.index, xref, n))
+            todo.append((xref, dw, dh))
+        if todo:
+            RL.predecode(page, todo)
+
+    def _defer(self, s):
+        """Show something now (the page as it was, scaled) and render it sharp a moment later
+        instead of making the window wait: while Ctrl+wheel zooming, and for a heavy page."""
+        v = self.view
+        if not v.progressive:
+            return False
+        cost = v._render_cost(self.index)
+        if v._zooming:
+            # (a light page is rendered at once: sharp costs no more than a stand-in)
+            return cost >= QUICK_S and (cost >= HEAVY_S or self._preview_source() is not None)
+        return cost >= HEAVY_S and self._preview_source() is not None
+
+    def _preview_source(self):
+        """What a page not yet drawn at this zoom is shown with: its last bitmap (at another
+        zoom), else its thumbnail from the page list; None when there's neither."""
+        rect = self.view.page_rects[self.index]
+        for pv in (self._preview, self.view._small_previews.get(self.index)):
+            if pv is not None and pv[1] == rect:
+                return pv[0]
+        if self.view.night_mode:
+            return None                 # (the thumbnails aren't in night colors)
+        try:
+            got = self.view.thumb_icons.get(self.view.doc.page_xref(self.index))
+        except Exception:
+            got = None
+        if got and got[1]:
+            sizes = got[0].availableSizes()
+            if sizes:
+                return got[0].pixmap(max(sizes, key=lambda z: z.width()))
+        return None
+
+    def _paint_preview(self, p, rects, s):
+        """Fill rects (widget coordinates) with the page as last drawn: tiles of the zoom it
+        was last shown at, over its last bitmap (or its thumbnail), scaled to this zoom; the
+        paper color where there's neither."""
+        p.save()
+        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        area = QPainterPath()
+        for r in rects:
+            area.addRect(r)
+        p.setClipPath(area, Qt.IntersectClip)
+        paper = Qt.black if self.view.night_mode else Qt.white
+        src = self._preview_source()
+        if src is None:
+            for r in rects:
+                p.fillRect(r, paper)
+        else:
+            p.drawPixmap(QRectF(0, 0, self.width(), self.height()), src,
+                         QRectF(0, 0, src.width(), src.height()))
+        old = getattr(self, "_tile_scale", None)
+        if old and abs(old - round(s, 5)) > 1e-9:
+            f = s / old
+            dpr = self.devicePixelRatioF()
+            bound = area.boundingRect()
+            for (i, sc, _tx, _ty), (pix, x, y) in list(self.view._tiles.items()):
+                if i != self.index or sc != old:
+                    continue
+                r = QRectF(x * f / dpr, y * f / dpr, pix.width() * f / dpr,
+                           pix.height() * f / dpr)
+                if r.intersects(bound):
+                    p.drawPixmap(r, pix, QRectF(0, 0, pix.width(), pix.height()))
+        p.restore()
+
+    def render_step(self):
+        """Draw what's waiting to be drawn sharp on this page (DocumentView._render_tick):
+        the whole bitmap, or the missing tiles in view. Returns False when there was nothing
+        to do."""
+        v = self.view
+        if v.doc.is_closed or self.index >= v.doc.page_count:
+            return False
+        vis = self.visibleRegion().boundingRect()
+        if vis.isEmpty():
+            return False
+        if not self._tiled():
+            if self._pix is not None:
+                return False
+            try:
+                self._render()
+            except Exception:
+                return False
+            self.update()
+            return True
+        dpr = self.devicePixelRatioF()
+        s = v.zoom * dpr
+        s5 = round(s, 5)
+        full = pymupdf.IRect(0, 0, int(self.width() * dpr), int(self.height() * dpr))
+        tx0, ty0 = int(vis.left() * dpr) // TILE, int(vis.top() * dpr) // TILE
+        tx1, ty1 = int(vis.right() * dpr) // TILE, int(vis.bottom() * dpr) // TILE
+        missing = []
+        for ty in range(ty0, ty1 + 1):
+            for tx in range(tx0, tx1 + 1):
+                if (self.index, s5, tx, ty) in v._tiles or (s5, tx, ty) in self._failed or \
+                        v._rc.get(self.index, s, (tx, ty), v.thin_lines) is not None:
+                    continue
+                dev = pymupdf.IRect(tx * TILE, ty * TILE, (tx + 1) * TILE, (ty + 1) * TILE) & full
+                if not dev.is_empty:
+                    missing.append((tx, ty, dev))
+        if not missing:
+            return False
+        for _key, _hit in self._render_tiles(missing, s, dpr):
+            pass
+        self.update()
+        return True
 
     def to_pdf(self, pos):
         """Widget position -> unrotated PDF point (what PyMuPDF expects)."""
@@ -308,12 +674,13 @@ class PageWidget(QWidget):
 
     # ---- painting -------------------------------------------------------
     def _render(self):
+        """The whole page at the current zoom as one bitmap: its content (kept from before
+        when it's the same) with its markups drawn over it."""
         dpr = self.devicePixelRatioF()
         s = self.view.zoom * dpr
-        dl = self._display_list()
-        with screen_lines(self.view.thin_lines):
-            pm = dl.get_pixmap(matrix=pymupdf.Matrix(s, s), alpha=False)
+        pm = self._with_markups(self._content(s), s)
         self._pix = self._to_qpixmap(pm, dpr)
+        self._preview = (self._pix, self.view.page_rects[self.index])
         self.view._pix_pages.add(self.index)
 
     def paintEvent(self, event):
@@ -328,12 +695,20 @@ class PageWidget(QWidget):
             self._paint_tiles(p, event.rect())
         else:
             if self._pix is None:
-                try:
-                    self._render()
-                except Exception:
-                    p.fillRect(self.rect(), Qt.white)
-                    return
-            p.drawPixmap(0, 0, self._pix)
+                s = self.view.zoom * self.devicePixelRatioF()
+                check_content(self.view, self.index)
+                if self.view._rc.get(self.index, s, None, self.view.thin_lines) is None \
+                        and self._defer(s):
+                    self._paint_preview(p, [QRectF(event.rect())], s)
+                    self.view._render_later(self)
+                else:
+                    try:
+                        self._render()
+                    except Exception:
+                        p.fillRect(self.rect(), Qt.white)
+                        return
+            if self._pix is not None:
+                p.drawPixmap(0, 0, self._pix)
         page = self.view.doc[self.index]
         if self.view.grid_on:
             self._paint_grid(p, QRectF(event.rect()))
