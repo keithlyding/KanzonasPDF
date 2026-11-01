@@ -17,7 +17,8 @@ megabytes. The journal has gaps, filled here:
 - Saving (and tobytes) marks the document as just saved, after which the journal's undo
   of anything changed before did nothing: the mark is put back as it was. PyMuPDF's own
   step before a save that sets /PageMode for attachments is left out (it would have
-  dropped the redo steps).
+  dropped the redo steps): DocumentView.save does it itself (embedded_clean), inside the
+  edit it takes back when there are steps to redo.
 - MuPDF keeps fonts and images it added in tables, to give back the same object when the
   same one is added again: after an undo that object is gone, and a text box added again
   showed no text. Those tables are emptied after each undo and redo (reset_resources).
@@ -92,20 +93,23 @@ def _tail(pdf):
         journal = _address(raw.journal)
         step = ctypes.sizeof(ctypes.c_void_p)
         jo = _Tail.journal.offset
+        # (the first place holding the journal's address is its field: everything read up
+        # to it is inside the struct. Past it is memory the struct doesn't own, so the scan
+        # stops there whether or not the fields around it check out)
         for off in range(jo, _SCAN, step):
-            if ctypes.c_void_p.from_address(base + off).value != journal:
-                continue
-            t = _Tail.from_address(base + off - jo)
-            if (t.num_type3_fonts, t.max_type3_fonts, t.orphans_max, t.orphans_count,
-                    t.throw_on_repair) == (raw.num_type3_fonts, raw.max_type3_fonts,
-                                           raw.orphans_max, raw.orphans_count,
-                                           raw.throw_on_repair) and \
-                    (t.type3_fonts or 0) == (_ptr(raw.type3_fonts) or 0) and \
-                    (t.xfa or 0) == (_ptr(raw.xfa) or 0):
-                _TAIL_AT.append(off - jo)
+            if ctypes.c_void_p.from_address(base + off).value == journal:
                 break
         else:
             raise RuntimeError("MuPDF's document layout isn't the one expected")
+        t = _Tail.from_address(base + off - jo)
+        if (t.num_type3_fonts, t.max_type3_fonts, t.orphans_max, t.orphans_count,
+                t.throw_on_repair) != (raw.num_type3_fonts, raw.max_type3_fonts,
+                                       raw.orphans_max, raw.orphans_count,
+                                       raw.throw_on_repair) or \
+                (t.type3_fonts or 0) != (_ptr(raw.type3_fonts) or 0) or \
+                (t.xfa or 0) != (_ptr(raw.xfa) or 0):
+            raise RuntimeError("MuPDF's document layout isn't the one expected")
+        _TAIL_AT.append(off - jo)
     t = _Tail.from_address(base + _TAIL_AT[0])
     if t.journal != _address(raw.journal):
         raise RuntimeError("MuPDF's document layout isn't the one expected")
@@ -269,7 +273,7 @@ def install():
         raw = pdf.m_internal
         sections = raw.num_incremental_sections
         clean = pymupdf.JM_embedded_clean
-        pymupdf.JM_embedded_clean = lambda pdf: None
+        pymupdf.JM_embedded_clean = lambda pdf: None    # (see embedded_clean)
         incremental = k.get("incremental") or (len(a) > 6 and a[6])
         garbage = k.get("garbage", a[1] if len(a) > 1 else 0) or 0
         try:
@@ -298,6 +302,18 @@ def install():
         return call
     for name in ("_newPage", "insert_pdf"):
         setattr(pymupdf.Document, name, plain(getattr(pymupdf.Document, name)))
+
+
+def embedded_clean(doc):
+    """PyMuPDF's step before a save that the patched save leaves out for a document with a
+    journal (an attached file makes the reader open its list of attachments): the caller
+    does it where it can't drop the steps to redo."""
+    pdf = _pdf(doc)
+    if pdf is not None and _installed:
+        _CLEAN[0](pdf)
+
+
+_CLEAN = [pymupdf.JM_embedded_clean]
 
 
 def usable():

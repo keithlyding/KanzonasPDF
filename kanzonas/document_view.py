@@ -7669,45 +7669,51 @@ class DocumentView(QScrollArea):
         # a link to the file: write the file it points to (replacing the link would cut it)
         target = os.path.realpath(path) if os.path.islink(path) else path
         tmp = target + ".kanzonas-tmp"
-        # with steps to redo in the journal, what the save changes in the document (fonts
-        # cut down, drawings packed) is taken back once written: changed, it would drop them
+        # with steps to redo in the journal, the save must not change the document: any
+        # change (fonts cut down, drawings packed, the attachments list opened) would drop
+        # them, even one taken back. It then works on a copy (one more write, only then)
         journal = self._journal if self._journal is not None and self._journal.alive and \
             self._journal.doc is self.doc else None
-        if journal is None or not any(isinstance(s, _JStep) for s in self._redo):
-            journal = None
-        if journal is not None:
-            journal.begin()
+        keep_redo = journal is not None and any(isinstance(s, _JStep) for s in self._redo)
+        real = self.doc
+        if keep_redo:
+            self.doc = self._open_snapshot(self._snapshot())
+        else:
+            # (PyMuPDF's own step before a save, which a document with a journal leaves here)
+            undo_journal.embedded_clean(self.doc)
         subset = self._fonts_added
-        if self._fonts_added:
-            # Text edits may embed whole system fonts; keep only the glyphs actually used.
-            try:
-                self.doc.subset_fonts()
-                # text added later must not get the cut-down fonts (see text_edit._insert_font)
-                self.doc.font_salt = getattr(self.doc, "font_salt", 0) + 1
-            except Exception:
-                pass
-            self._fonts_added = False
-        sec = self.security
         try:
-            self._write_file(tmp, sec)
-            if os.path.exists(target):
+            if self._fonts_added:
+                # Text edits may embed whole system fonts; keep only the glyphs actually used.
                 try:
-                    shutil.copymode(target, tmp)    # (the file keeps its permissions)
+                    self.doc.subset_fonts()
+                    # text added later must not get the cut-down fonts (text_edit._insert_font)
+                    self.doc.font_salt = getattr(self.doc, "font_salt", 0) + 1
+                except Exception:
+                    pass
+                self._fonts_added = False
+            sec = self.security
+            try:
+                self._write_file(tmp, sec)
+                if os.path.exists(target):
+                    try:
+                        shutil.copymode(target, tmp)    # (the file keeps its permissions)
+                    except OSError:
+                        pass
+                os.replace(tmp, target)
+                self.disk_stamp = disk_stamp(path)
+            except BaseException:
+                # e.g. the file is locked by another program: don't leave the copy next to it
+                try:
+                    os.remove(tmp)
                 except OSError:
                     pass
-            os.replace(tmp, target)
-            self.disk_stamp = disk_stamp(path)
-        except BaseException:
-            # e.g. the file is locked by another program: don't leave the copy next to it
-            try:
-                os.remove(tmp)
-            except OSError:
-                pass
-            raise
+                raise
         finally:
-            if journal is not None:
-                journal.abandon()               # (the pages look the same either way)
-                self._fonts_added = subset      # (the whole fonts are back)
+            if keep_redo:
+                copy, self.doc = self.doc, real
+                copy.close()
+                self._fonts_added = subset      # (the document still has the whole fonts)
         self.path = path
         self.untitled = False
         if self.dirty or sec is not None:

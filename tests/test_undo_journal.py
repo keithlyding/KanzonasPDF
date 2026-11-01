@@ -612,15 +612,44 @@ class History(Quiet):
         # would have dropped the steps to redo
         v = self.view()
         rect_markup(v)
+        # (something the save really changes: a stream written quickly, to be packed)
+        from kanzonas import page_objects
+        page = v.doc[0]
+        x = page.get_contents()[0]
+        page_objects._put_stream(v.doc, x, v.doc.xref_stream(x))
+        del page
         rect_markup(v, 1)
         v._fonts_added = True                   # (as after a text edit)
         v.undo()
         v.save()
+        with pymupdf.open(v.path) as saved:     # (packed in the file, not in the document)
+            self.assertEqual(saved.xref_get_key(x, page_objects.QUICK_KEY)[0], "null")
+        self.assertEqual(v.doc.xref_get_key(x, page_objects.QUICK_KEY)[1], "true")
         self.assertTrue(v.can_redo())
         v.redo()
         self.assertEqual(len(list(v.doc[1].annots())), 2)
         with pymupdf.open(v.path) as saved:
             self.assertEqual(len(list(saved[1].annots())), 1)
+
+    def test_a_file_with_an_attachment_still_opens_its_attachments_list(self):
+        # (PyMuPDF sets /PageMode /UseAttachments before a save; with a journal the save
+        # leaves that to DocumentView.save, which must still do it, with or without steps
+        # to redo, and without dropping them)
+        for redo in (False, True):
+            v = self.view()
+            rect_markup(v)
+            rect_markup(v, 1)
+            if redo:
+                v.undo()
+            v.save()
+            with pymupdf.open(v.path) as saved:
+                self.assertEqual(saved.pdf_catalog() and saved.xref_get_key(
+                    saved.pdf_catalog(), "PageMode"), ("name", "/UseAttachments"))
+            self.assertEqual(v.can_redo(), redo)
+            if redo:                            # (and the redo really works)
+                v.redo()
+                self.assertEqual(len(list(v.doc[1].annots())), 2)
+                self.assertFalse(v.can_redo())
 
     def test_undo_back_to_the_saved_file_is_still_unsaved(self):
         # (as with copies: any undo leaves the document marked as changed)

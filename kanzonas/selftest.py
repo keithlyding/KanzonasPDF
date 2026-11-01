@@ -131,6 +131,60 @@ def run(log_path):
         return "(names, delete with replies)"
     check("PyMuPDF speed fixes", t_pdf_speed)
 
+    def t_undo_journal():
+        # undo and redo go through MuPDF's journal (undo_journal.py), not a copy of the
+        # document per edit: its patches on PyMuPDF and the search for MuPDF's tables of
+        # added pictures must work with this PyMuPDF, or the app silently falls back to
+        # copies (a second per edit on a big plan set)
+        import tempfile
+        import time
+        from PySide6.QtWidgets import QApplication
+        QApplication.instance() or QApplication([])
+        from . import undo_journal
+        from .document_view import DocumentView, _JStep
+        assert undo_journal.usable(), \
+            "PyMuPDF changed: undo can't go through MuPDF's journal (see undo_journal.py)"
+        d = pymupdf.open()
+        for _ in range(3):
+            d.new_page().insert_text((72, 72), "Page text", fontsize=12)
+        pm = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 8, 8), False)
+        pm.clear_with(120)
+        png = pm.tobytes("png")
+        path = os.path.join(tempfile.mkdtemp(), "journal.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        try:
+            t = time.perf_counter()
+            v.modify(lambda: v.doc[0].add_rect_annot(pymupdf.Rect(50, 100, 150, 160)),
+                     pages=[0])
+            v.modify(lambda: v.doc[1].insert_image((50, 100, 90, 140), stream=png), pages=[1])
+            v.modify(lambda: v.doc.delete_page(2), structural=True)
+            took = time.perf_counter() - t
+            assert all(isinstance(s, _JStep) for s in v._undo), \
+                f"undo keeps copies: {[type(s).__name__ for s in v._undo]}"
+            for _ in range(3):
+                v.undo()
+            assert v.doc.page_count == 3 and not list(v.doc[0].annots()) and \
+                not v.doc[1].get_images(), "undo didn't bring the document back"
+            for _ in range(3):
+                v.redo()
+            assert v.doc.page_count == 2 and len(list(v.doc[0].annots())) == 1, \
+                "redo didn't make the edits again"
+            v.undo()
+            v.undo()
+            # (the same picture added again after an undo: MuPDF's table emptied)
+            v.modify(lambda: v.doc[1].insert_image((50, 100, 90, 140), stream=png), pages=[1])
+            x = v.doc[1].get_images()[0][0]
+            assert v.doc.xref_stream_raw(x), "a picture added again after an undo is empty"
+            v.save()
+            with pymupdf.open(path) as saved:
+                assert saved.page_count == 3 and saved[1].get_images(), "saved wrongly"
+        finally:
+            v.dirty = False
+            v.close_doc()
+        return "(3 edits in %.0f ms, undone, redone, saved)" % (took * 1000)
+    check("undo through MuPDF's journal", t_undo_journal)
+
     def t_edit_speed():
         # editing on a busy page stays quick: 1,000 markups added, moved and deleted, a
         # sheet's 400 labels moved with its lines, the live CAD highlight in short steps, a
