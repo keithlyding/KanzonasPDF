@@ -233,10 +233,12 @@ _PLAIN_PATH = re.compile(
 # (++: what the shape's operators took is never given back, so a long path that isn't
 # plain after all, ending in a clip or a state setting, is turned down in one pass)
 _NUMS = re.compile(_NUMB)
-# the path operators of a shape alone (what comes after them is read the general way)
-_PLAIN_OPS = re.compile(
-    rb"(?:(?:" + _PR + rb"[ml]|" + _PR + _PR + rb"(?:re|[vy])|" + _PR + _PR + _PR + rb"c|h)" +
-    _SEP + rb")++")
+# the path operators of a shape alone (what comes after them is read the general way). It
+# ends right after an operator: the spaces after it are left to the general reader, which
+# reads a run of them as one token (a run can hold characters _SEP doesn't take)
+_PATH_OP = (rb"(?:" + _PR + rb"[ml]|" + _PR + _PR + rb"(?:re|[vy])|" + _PR + _PR + _PR +
+            rb"c|h)(?=[\s/\[\]()<>{}%]|\Z)")
+_PLAIN_OPS = re.compile(_PATH_OP + rb"(?:" + _SEP + _PATH_OP + rb")*+")
 # the plainest of them, one straight line: "x0 y0 m x1 y1 l S"
 _LINE = re.compile(rb"(" + _NUMB + rb")" + _SEP + rb"(" + _NUMB + rb")" + _SEP + rb"m" + _SEP +
                    rb"(" + _NUMB + rb")" + _SEP + rb"(" + _NUMB + rb")" + _SEP + rb"l" + _SEP +

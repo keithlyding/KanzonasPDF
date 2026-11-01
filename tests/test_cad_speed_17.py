@@ -43,7 +43,8 @@ OPS = ["m", "l", "c", "v", "y", "re", "h", "S", "s", "f", "F", "f*", "B", "B*", 
        "W", "W*", "q", "Q", "cm", "w", "gs", "cs", "CS", "scn", "SCN", "rg", "RG", "g", "G", "k",
        "K", "d", "J", "j", "M", "BT", "ET", "Tf", "Tj", "TJ", "Td", "Do", "BDC", "BMC", "EMC",
        "sh", "ri", "i", "hf", "Sx", "f*x", "mm", "true", "null"]
-SEPS = [" ", " ", " ", "\n", "\r\n", "\t", "  ", "\f", "\x0b", "\x00", ""]
+SEPS = [" ", " ", " ", "\n", "\r\n", "\t", "  ", "\f", "\x0b", "\x00", "",
+        " \x0b", "\r\n\x0b ", "\x00 ", " \x0c\t"]
 OTHER = ["/Name", "/GS0", "(str)", "(a(b)c)", "(esc\\) x)", "<414243>", "<<", ">>", "[", "]",
          "{", "}", "%comment\n", "<</MCID 3>>", "BI /W 2 /H 2 /BPC 8 /CS /G ID \x01\x02EI x EI",
          "(unterminated", "<zz>", ")"]
@@ -164,6 +165,15 @@ class Reading(unittest.TestCase):
         for t in range(1500):
             self.assert_same_scan(odd_content(rnd), "odd content %d" % t)
         self.assert_same_scan(cad_content(3000), "cad")
+
+    def test_spaces_after_a_path_are_read_as_one_run(self):
+        # " \x0b" is one run of white space to the general reader (and then an odd
+        # operator, as it doesn't start with a PDF white-space character): the shortcut
+        # must not take the " " of it
+        for data in (b"5. 12.000001\r\nl \x0bri 1.19 8.89 m 0.42 1.38 l s",
+                     b"1 1 m 2 2 l \x0b 3 3 l S", b"1 1 m 2 2 l\x0b 3 3 l S",
+                     b"1 1 m 2 2 l S \x0b 4 4 m 5 5 l S", b"1 1 m 2 2 lx S 1 1 m 2 2 l h\x00 S"):
+            self.assert_same_scan(data, data)
 
     def test_a_long_path_that_is_not_plain_is_turned_down_at_once(self):
         # thousands of lines, then a state setting before the paint (or a clip): the
