@@ -1045,6 +1045,8 @@ class DocumentView(QScrollArea):
         fresh = self._open_snapshot(data)
         old = self.doc
         self.doc = fresh
+        from . import markups_panel
+        markups_panel.carry_over(old, fresh)    # (the markups list reads only what differs)
         self.search_hits.clear()
         self._search_list = []
         self._search_text = None
@@ -1131,6 +1133,8 @@ class DocumentView(QScrollArea):
                 # something still holds a page from before the change: open the document
                 # afresh from its bytes (which follow the page tree), as Undo does
                 old, self.doc = self.doc, self._open_snapshot(self._snapshot())
+                from . import markups_panel
+                markups_panel.carry_over(old, self.doc)
                 old.close()
             self._inline = None
             self.field_focus = None     # its page may be gone or moved
@@ -3617,9 +3621,15 @@ class DocumentView(QScrollArea):
         if index not in self._card_cache:
             cards = []
             page = self.doc[index]
-            for a in annotations.each_annot(page):
-                if a.type[0] not in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
-                                     pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
+            # only text markups can be comments: pick them from the page's list of markups
+            # (no reading), then read just those (a page with 5,000 boxes: 0.4 s before)
+            kinds = (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
+                     pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY)
+            xrefs = [x for x, k, *_ in page.annot_xrefs() if k in kinds]
+            loaded = annotations.load_annots(page, xrefs) if xrefs else {}
+            for x in xrefs:
+                a = loaded.get(x)
+                if a is None or a.type[0] not in kinds:
                     continue
                 m = annotations.read(a)
                 if m and m["kind"] == "comment":

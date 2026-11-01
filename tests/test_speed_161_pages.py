@@ -400,5 +400,170 @@ class Autosave(Base):
             self.assertFalse([f for f in os.listdir(folder) if f.endswith(".pdf")])
 
 
+# ---- 6: markups list and comment boxes ---------------------------------------------------
+def markups_pdf(path, pages=4, per_page=6):
+    d = pymupdf.open()
+    for i in range(pages):
+        page = d.new_page()
+        page.insert_text((72, 72), "Some words to mark on page %d" % (i + 1))
+        for k in range(per_page):
+            r = pymupdf.Rect(60 + 40 * k, 200, 90 + 40 * k, 230)
+            a = page.add_rect_annot(r) if k % 3 else page.add_circle_annot(r)
+            a.set_info(content="mark %d.%d" % (i, k), title="author%d" % (k % 2))
+            a.set_colors(stroke=(k / per_page, 0, 1 - k / per_page))
+            a.update()
+        page.add_text_annot((400, 400 + i), "note on page %d" % (i + 1))
+    d.save(path)
+    d.close()
+
+
+def table(panel):
+    t = panel.table
+    return [tuple(t.item(r, c).text() for c in range(t.columnCount())) + (t.isRowHidden(r),)
+            for r in range(t.rowCount())]
+
+
+class MarkupsList(Base):
+    def setUp(self):
+        super().setUp()
+        from kanzonas.markups_panel import MarkupsPanel
+        self.panels = []
+        self.Panel = MarkupsPanel
+        markups_pdf(self.path("m.pdf"))
+        self.v = self.view(self.path("m.pdf"))
+
+    def tearDown(self):
+        for p in self.panels:
+            p.deleteLater()
+        super().tearDown()
+
+    def panel(self):
+        p = self.Panel()
+        self.panels.append(p)
+        return p
+
+    def same_as_a_fresh_list(self, panel, sort=None):
+        ref = self.panel()
+        if sort is not None:
+            ref.table.sortItems(*sort)
+        ref.type_filter.setCurrentText(panel.type_filter.currentText())
+        ref.text_filter.setText(panel.text_filter.text())
+        # a list filled from nothing known (another document object with the same pages)
+        fresh = pymupdf.open(stream=self.v.doc.tobytes(), filetype="pdf")
+        self.addCleanup(fresh.close)
+        ref.refresh(fresh)
+        self.assertEqual(table(panel), table(ref))
+        self.assertEqual(panel.count.text(), ref.count.text())
+
+    def edit(self, page, fn):
+        def do():
+            pg = self.v.doc[page]
+            fn(pg)
+        self.v.modify(do, [page])
+
+    def annot(self, pg, k):
+        return [a for a in pg.annots()][k]
+
+    def test_changes_shown_as_a_fresh_list_shows_them(self):
+        from kanzonas import markups_panel as MP
+        v, panel = self.v, self.panel()
+        panel.refresh(v.doc, v.take_markup_changes())
+        self.same_as_a_fresh_list(panel)
+        steps = [
+            (1, lambda pg: pg.add_rect_annot((300, 500, 340, 540))),           # added
+            (2, lambda pg: (lambda a: (a.set_info(content="changed text"), a.update()))(
+                self.annot(pg, 2))),                                            # text
+            (0, lambda pg: (lambda a: (a.set_colors(stroke=(0, 1, 0)), a.update()))(
+                self.annot(pg, 0))),                                            # color
+            (3, lambda pg: pg.delete_annot(self.annot(pg, 4))),                 # deleted
+            (1, lambda pg: (lambda a: (a.set_border(clouds=2), a.update()))(
+                self.annot(pg, 1))),                                            # cloud
+        ]
+        for page, fn in steps:
+            self.edit(page, fn)
+            with mock.patch.object(MP, "_row", wraps=MP._row) as reads, \
+                    mock.patch.object(panel, "_set_row", wraps=panel._set_row) as rows:
+                panel.refresh(v.doc, v.take_markup_changes())
+            self.assertLessEqual(reads.call_count, 1)       # only the markup that changed
+            self.assertLessEqual(rows.call_count, 1)        # and only its row replaced
+            self.same_as_a_fresh_list(panel)
+        # filtered: the same rows hidden
+        panel.text_filter.setText("author1")
+        self.edit(0, lambda pg: (lambda a: (a.set_info(title="author1"), a.update()))(
+            self.annot(pg, 0)))
+        panel.refresh(v.doc, v.take_markup_changes())
+        self.same_as_a_fresh_list(panel)
+        # undo reads only what differs from the document before
+        with mock.patch.object(MP, "_row", wraps=MP._row) as reads:
+            v.undo()
+            panel.refresh(v.doc, v.take_markup_changes())
+        self.assertLessEqual(reads.call_count, 1)
+        self.same_as_a_fresh_list(panel)
+
+    def test_sorted_by_another_column_comes_out_as_a_fresh_list(self):
+        from PySide6.QtCore import Qt
+        v, panel = self.v, self.panel()
+        panel.refresh(v.doc, v.take_markup_changes())
+        for col, order in ((1, Qt.AscendingOrder), (0, Qt.DescendingOrder), (3, Qt.DescendingOrder)):
+            panel.table.sortItems(col, order)
+            self.edit(0, lambda pg: pg.add_circle_annot((300, 600, 340, 640)))
+            self.edit(2, lambda pg: (lambda a: (a.set_info(content="zz"), a.update()))(
+                self.annot(pg, 3)))
+            panel.refresh(v.doc, v.take_markup_changes())
+            self.same_as_a_fresh_list(panel, (col, order))
+
+    def test_the_selected_markup_stays_selected(self):
+        v, panel = self.v, self.panel()
+        panel.refresh(v.doc, v.take_markup_changes())
+        panel.table.selectRow(8)
+        key = panel._key(8)
+        self.edit(3, lambda pg: pg.add_rect_annot((300, 500, 340, 540)))
+        self.edit(0, lambda pg: (lambda a: (a.set_info(content="other"), a.update()))(
+            self.annot(pg, 1)))
+        panel.refresh(v.doc, v.take_markup_changes())
+        rows = {i.row() for i in panel.table.selectedIndexes()}
+        self.assertEqual([panel._key(r) for r in rows], [key])
+
+    def test_pages_deleted_and_another_document(self):
+        v, panel = self.v, self.panel()
+        panel.refresh(v.doc, v.take_markup_changes())
+        v.delete_pages([1])
+        panel.refresh(v.doc, v.take_markup_changes())
+        self.same_as_a_fresh_list(panel)
+        markups_pdf(self.path("n.pdf"), pages=2, per_page=2)
+        other = self.view(self.path("n.pdf"))
+        panel.refresh(other.doc, other.take_markup_changes())
+        self.assertEqual(panel.table.rowCount(), 6)
+        panel.refresh(None)
+        self.assertEqual(panel.table.rowCount(), 0)
+
+
+class CommentCards(Base):
+    def test_same_cards_as_reading_every_markup(self):
+        from kanzonas import annotations as A
+        path = self.path("c.pdf")
+        markups_pdf(path, pages=1, per_page=30)
+        v = self.view(path)
+        words = v.doc[0].search_for("words")
+        quads = [r.quad for r in words]
+
+        def add():
+            pg = v.doc[0]
+            for style in ("highlight", "underline", "strikeout"):
+                A.write(pg, {"kind": "comment", "props": dict(A.DEFAULTS["comment"], markup=style),
+                             "quads": quads, "rect": words[0], "text": "said " + style})
+            pg.add_highlight_annot(words[0])                 # a plain highlight: no box
+        v.modify(add, [0])
+        cards = v.comment_cards(0)
+        old = []
+        page = v.doc[0]
+        for a in A.each_annot(page):
+            m = A.read(a)
+            if m and m["kind"] == "comment":
+                old.append((A.bounds(m), m.get("text", ""), a.xref))
+        self.assertEqual(len(cards), 3)
+        self.assertEqual(cards, old)
+
+
 if __name__ == "__main__":
     unittest.main()
