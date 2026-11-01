@@ -761,21 +761,51 @@ class DocumentView(QScrollArea):
     SNAP_PX = 9                    # snap distance on screen, pixels
 
     def _content_key(self, page):
+        # (with a checksum: a nudge can rewrite a drawing's numbers and keep its length)
+        import zlib
         doc = page.parent
-        return tuple((x, len(doc.xref_stream_raw(x) or b"")) for x in page.get_contents())
+        out = []
+        for x in page.get_contents():
+            raw = doc.xref_stream_raw(x) or b""
+            out.append((x, len(raw), zlib.crc32(raw)))
+        return tuple(out)
 
     def _content_snaps(self, index):
         from . import snapping
         page = self.doc[index]
+        # [(content key, snapping.ContentIndex)], newest first: the one before an edit is
+        # kept too, so an undo finds its points again instead of reading the drawing
         cached = self._snap_content.get(index)
-        if cached is not None and index in self._snap_recheck:
+        if cached and index in self._snap_recheck:
             self._snap_recheck.discard(index)
-            if cached[0] != self._content_key(page):
+            key = self._content_key(page)
+            hit = next((c for c in cached if c[0] == key), None)
+            if hit is None:
                 cached = None
-        if cached is None:
-            cached = (self._content_key(page), snapping.content_index(page))
-            self._snap_content[index] = cached
-        return cached[1]
+            elif hit is not cached[0]:
+                self._snap_content[index] = cached = [hit, cached[0]]
+        if not cached:
+            key = self._content_key(page)
+            job = getattr(self, "_snap_job", None)
+            idx = None
+            if job is not None and job["key"] == (self._prep_key(index), key):
+                # CAD mode was making them in idle time: finish that
+                self._snap_job = None
+                try:
+                    for idx in job["steps"]:
+                        pass
+                except Exception:
+                    idx = None
+            if idx is None:
+                idx = snapping.content_index(page)
+            self._snap_store(index, key, idx)
+            self._snap_recheck.discard(index)
+            cached = self._snap_content[index]
+        return cached[0][1]
+
+    def _snap_store(self, index, key, idx):
+        old = [c for c in (self._snap_content.get(index) or ()) if c[0] != key]
+        self._snap_content[index] = [(key, idx)] + old[:1]
 
     def snap_point(self, index, pt, exclude=()):
         """Snap a PDF point: to the nearest object point within SNAP_PX, else to the page
@@ -960,6 +990,9 @@ class DocumentView(QScrollArea):
         # still keep the original passwords and permissions (see save)
         keep = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
         opts = {"encryption": pymupdf.PDF_ENCRYPT_KEEP} if keep else {}
+        # garbage=1 leaves out what nothing uses any more (a drawing an edit replaced, a big
+        # sheet's 3 MB each time): no slower, and object numbers stay as they are
+        opts["garbage"] = 1
         # written through a temporary file: tobytes hands MuPDF's output to Python in tiny
         # pieces, about three times slower, and a big plan set is copied on every edit
         import tempfile
@@ -4291,8 +4324,17 @@ class DocumentView(QScrollArea):
         if index not in cache:
             from . import page_objects
             QApplication.setOverrideCursor(Qt.WaitCursor)
+            read = getattr(self, "_prep_read", None)
             try:
-                cache[index] = page_objects.Objects(self.doc[index])
+                if read is not None and read["key"] == self._prep_key(index):
+                    # CAD mode was already reading this page in idle time: finish that
+                    # instead of starting over (half of a big sheet may be read already)
+                    self._prep_read = None
+                    for _ in read["steps"]:
+                        pass
+                    cache[index] = read["objs"]
+                else:
+                    cache[index] = page_objects.Objects(self.doc[index])
             except Exception:
                 cache[index] = None
             finally:
@@ -4383,7 +4425,7 @@ class DocumentView(QScrollArea):
             shapes = [it for it in (objs.items if objs is not None else ())
                       if it["kind"] == "shape" and "lines" not in it]
             self._prep_job = {"index": index, "objs": objs, "todo": iter(shapes)}
-            if shapes:
+            if shapes or self.snap_objects:
                 self._prep_timer.start(0)
             return
         end = time.monotonic() + self.PREP_SLICE
@@ -4392,12 +4434,54 @@ class DocumentView(QScrollArea):
             if time.monotonic() > end:
                 self._prep_timer.start(0)   # more next time round, after any input
                 return
+        self._prepare_snaps(index, end)
+
+    def _prepare_snaps(self, index, end):
+        """With Snap to objects on, the page's snap points made ready in idle time too, last
+        (MuPDF reads the drawing for them in one go; sorting them is done in slices)."""
+        from . import snapping
+        if not self.snap_objects:
+            return
+        if self._snap_content.get(index) and index not in self._snap_recheck:
+            return                          # (ready)
+        if time.monotonic() >= end:
+            self._prep_timer.start(0)       # (next time round)
+            return
+        page = self.doc[index]
+        job = getattr(self, "_snap_job", None)
+        if job is None or job["key"][0] != self._prep_key(index):
+            key = self._content_key(page)
+            cached = self._snap_content.get(index)
+            if cached and any(c[0] == key for c in cached):
+                self._content_snaps(index)  # (one it made before: an undo)
+                return
+            job = self._snap_job = {"key": (self._prep_key(index), key),
+                                    "steps": snapping.content_index_steps(page)}
+        try:
+            while True:
+                idx = next(job["steps"])
+                if idx is not None:
+                    self._snap_job = None
+                    self._snap_store(index, job["key"][1], idx)
+                    self._snap_recheck.discard(index)
+                    return
+                if time.monotonic() >= end:
+                    break
+        except Exception:
+            self._snap_job = None
+            return
+        self._prep_timer.start(0)           # more next time round, after any input
+
+    def _prep_key(self, index):
+        """What an idle read of page index is good for: the same page of the same document,
+        not edited since (the cache is a new one after a change)."""
+        return (index, id(self.doc), getattr(self, "revision", 0), id(self._obj_cache))
 
     def _prepare_read(self, index):
         """One slice of reading page index's objects in idle time; they go into the cache
         when done, unless the page changed (or was read another way) meanwhile."""
         from . import page_objects
-        key = (index, id(self.doc), getattr(self, "revision", 0), id(self._obj_cache))
+        key = self._prep_key(index)
         read = getattr(self, "_prep_read", None)
         if read is None or read["key"] != key:
             try:
