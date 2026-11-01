@@ -49,7 +49,9 @@ OTHER = ["/Name", "/GS0", "(str)", "(a(b)c)", "(esc\\) x)", "<414243>", "<<", ">
          "(unterminated", "<zz>", ")"]
 STATE = ["q 1 0 0 1 5 5 cm", "Q", "0.5 w", "1 0 0 RG", "/OC /L1 BDC", "EMC",
          "0 0 100 100 re W n", "/Im1 Do", "/GS1 gs", "2 0 0 2 0 0 cm", "/CS0 cs 0.3 scn", "q",
-         "10 10 m 20 20 l 0.3 w S", "10 10 m 20 20 l W n", "0.2 0.4 0.6 rg"]
+         "10 10 m 20 20 l 0.3 w S", "10 10 m 20 20 l W n", "0.2 0.4 0.6 rg",
+         "1 2 m 3 4 l .6 w h .3 .12 0 RG S", "1 1 2 2 re 0 g f", "5 5 m 6 6 7 7 8 8 c 2 J\n0.5 w S",
+         "1 2 m 3 4 l 5 6 l h 1 j B*", "1 2 m 3 4 l 5 6 7 l S", "1 2 m 3 4 l /GS0 gs S"]
 
 
 def plain_shape(rnd):

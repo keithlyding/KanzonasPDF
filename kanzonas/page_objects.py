@@ -233,6 +233,10 @@ _PLAIN_PATH = re.compile(
 # (++: what the shape's operators took is never given back, so a long path that isn't
 # plain after all, ending in a clip or a state setting, is turned down in one pass)
 _NUMS = re.compile(_NUMB)
+# the path operators of a shape alone (what comes after them is read the general way)
+_PLAIN_OPS = re.compile(
+    rb"(?:(?:" + _PR + rb"[ml]|" + _PR + _PR + rb"(?:re|[vy])|" + _PR + _PR + _PR + rb"c|h)" +
+    _SEP + rb")++")
 # the plainest of them, one straight line: "x0 y0 m x1 y1 l S"
 _LINE = re.compile(rb"(" + _NUMB + rb")" + _SEP + rb"(" + _NUMB + rb")" + _SEP + rb"m" + _SEP +
                    rb"(" + _NUMB + rb")" + _SEP + rb"(" + _NUMB + rb")" + _SEP + rb"l" + _SEP +
@@ -292,6 +296,7 @@ def scan_steps(data, out):
     match = _TOKEN.match
     plain = _PLAIN_PATH.match
     line = _LINE.match
+    plain_ops = _PLAIN_OPS.match
     numbers = _NUMS.findall
     num_start = _NUM_START
     quick_start = _NUM_START if QUICK else frozenset()
@@ -341,6 +346,27 @@ def scan_steps(data, out):
                                 "box": (min(pxs), min(pys), max(pxs), max(pys)),
                                 "stroke": stroke, "fill": fill, "width": width,
                                 "state": sb, "ctx": ctx})
+                i = e
+                count += 1
+                if count >= STEP:
+                    count = 0
+                    yield
+                continue
+            pm = plain_ops(data, i)
+            if pm is not None:
+                # a shape whose path is plain but not what follows it (a state setting
+                # before the paint: ".6 w h 0 0 1 RG S"): its path operators at once, as the
+                # general reader below takes them, which then goes on from there
+                e = pm.end()
+                if data.find(b"re", i, e) < 0:
+                    vals = list(map(float, numbers(data, i, e)))
+                    xs, ys = vals[0::2], vals[1::2]
+                else:
+                    xs, ys = _plain_xy(data[i:e])
+                path_start = i
+                path_state = None
+                path_ctx = ctx
+                clip = False
                 i = e
                 count += 1
                 if count >= STEP:
