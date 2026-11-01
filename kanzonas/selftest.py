@@ -204,6 +204,100 @@ def run(log_path):
         return "(" + ", ".join(f"{k} {took[k]:.2f}s" for k in limits) + ")"
     check("editing speed budget", t_edit_speed)
 
+    def t_everyday_speed():
+        # what runs on each mouse move or keystroke stays a few milliseconds, and page work on
+        # a long document stays quick (1.6 took: a text-selection drag 32-121 ms per move,
+        # hover over many markups 70+ ms, Edit objects hover 15-19 ms, night mode 1.2 s per
+        # 8 megapixel page, a command's preview 450+ ms per move, inserting pages into a
+        # shown document seconds of layout, 0.2-0.4 s per deleted page, each Tab on a big
+        # form re-reading every field)
+        import time
+        from PySide6.QtCore import QPointF
+        from PySide6.QtGui import QColor, QImage, QPainter, QPen, QTransform
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance() or QApplication([])
+        from . import page_widget
+        from .document_view import DocumentView
+        P = pymupdf.Point
+        tmp = tempfile.mkdtemp(prefix="kzday")
+        d = pymupdf.open()
+        for i in range(300):
+            p = d.new_page()
+            for k in range(40):
+                p.insert_text((50, 60 + 17 * k), "Line %d of page %d: the quick brown fox "
+                              "jumps over the lazy dog" % (k, i), fontsize=10)
+        p = d[1]
+        for i in range(2000):
+            x, y = 20 + (i % 40) * 14, 20 + (i // 40) * 15
+            p.add_rect_annot(pymupdf.Rect(x, y, x + 10, y + 10))
+        for k in range(60):
+            w = pymupdf.Widget()
+            w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+            w.field_name = "f%d" % k
+            w.rect = pymupdf.Rect(50 + (k % 3) * 160, 60 + (k // 3) * 30, 190 + (k % 3) * 160,
+                                  80 + (k // 3) * 30)
+            d[2 + k // 20].add_widget(w)
+        path = os.path.join(tmp, "day.pdf")
+        d.save(path)
+        extra = pymupdf.open()
+        for i in range(100):
+            extra.new_page().insert_text((72, 72), "inserted %d" % i)
+        more = os.path.join(tmp, "more.pdf")
+        extra.save(more)
+        v = DocumentView(path)
+        v.resize(900, 700)
+        v.show()
+        app.processEvents()
+        took = {}
+
+        def per(name, n, fn):
+            t = time.perf_counter()
+            for k in range(n):
+                fn(k)
+            took[name] = (time.perf_counter() - t) / n
+        try:
+            v.text_selection(0, P(50, 60), P(300, 300))
+            per("text drag move", 30,
+                lambda k: v.text_selection(0, P(50, 52), P(60 + 12 * k, 70 + 20 * k)))
+            pts = [P(15 + (k * 37) % 560, 15 + (k * 53) % 760) for k in range(150)]
+            for q in pts:
+                v.annot_at(1, q)
+            per("markup hover", 150, lambda k: v.annot_at(1, pts[k]))
+            v.object_at(0, pts[0])
+            per("objects hover", 150, lambda k: v.object_at(0, pts[k]))
+            w, h = 3264, 2448                       # 8 megapixels
+            data = bytes(range(256)) * (w * h * 3 // 256)
+            per("night mode", 1, lambda k: page_widget.night_samples(data, w, h, w * 3))
+            lines = [[(10 + (k % 150) * 6, 10 + (k // 150) * 9),
+                      (14 + (k % 150) * 6, 15 + (k // 150) * 9)] for k in range(15000)]
+            img = QImage(1600, 1200, QImage.Format_RGB32)
+
+            def ghost(k):
+                path_ = page_widget.lines_path(lines)
+                pa = QPainter(img)
+                pa.setPen(QPen(QColor(0, 120, 215), 1))
+                pa.setTransform(QTransform().translate(k, k))
+                pa.drawPath(path_)
+                pa.end()
+            per("command preview", 3, ghost)
+            per("Tab on a form", 20, lambda k: v.field_order())
+            per("insert 100 pages", 1, lambda k: (v.insert_pdf(more, 150), app.processEvents()))
+            per("delete 10 pages", 1, lambda k: (v.delete_pages(list(range(20, 30))),
+                                                 app.processEvents()))
+            assert v.doc.page_count == 390, f"pages after insert and delete: {v.doc.page_count}"
+        finally:
+            v.dirty = False
+            v.close_doc()
+            v.deleteLater()
+        limits = {"text drag move": 0.01, "markup hover": 0.01, "objects hover": 0.005,
+                  "night mode": 0.5, "command preview": 0.08, "Tab on a form": 0.02,
+                  "insert 100 pages": 2.5, "delete 10 pages": 2.5}
+        slow = [f"{k} {took[k] * 1000:.1f} ms (limit {lim * 1000:g} ms)"
+                for k, lim in limits.items() if took[k] >= lim]
+        assert not slow, "too slow: " + ", ".join(slow)
+        return "(" + ", ".join(f"{k} {took[k] * 1000:.1f} ms" for k in limits) + ")"
+    check("everyday speed budget", t_everyday_speed)
+
     def t_efficiency():
         # the v0.81 audit's fixes stay in place: linear annotation walk, bounded undo, sliced
         # search, logarithmic page lookup, bounded per-page caches
