@@ -228,17 +228,24 @@ class BoxIndex:
         """rects: pymupdf.Rect each; grow: how much more to add around each (as a line's
         half width), or None."""
         import numpy as np
-        a = np.array([(r.x0, r.y0, r.x1, r.y1) for r in rects], dtype=float).reshape(-1, 4)
-        x0 = np.minimum(a[:, 0], a[:, 2])
-        x1 = np.maximum(a[:, 0], a[:, 2])
-        y0 = np.minimum(a[:, 1], a[:, 3])
-        y1 = np.maximum(a[:, 1], a[:, 3])
+        from operator import attrgetter
+        rects = rects if isinstance(rects, list) else list(rects)
+        n = len(rects)
+        # (each coordinate straight into its array: a list of 200,000 tuples first took
+        # most of a second for a big drawing)
+        ax0, ay0, ax1, ay1 = (np.fromiter(map(attrgetter(k), rects), dtype=float, count=n)
+                              for k in ("x0", "y0", "x1", "y1"))
+        x0 = np.minimum(ax0, ax1)
+        x1 = np.maximum(ax0, ax1)
+        y0 = np.minimum(ay0, ay1)
+        y1 = np.maximum(ay0, ay1)
         g = 0 if grow is None else np.asarray(grow, dtype=float)
         # a little room for rounding (MuPDF tests in 32-bit numbers)
-        e = 1e-3 + 1e-6 * np.abs(a).max(axis=1) if len(a) else 0
+        e = 1e-3 + 1e-6 * np.maximum.reduce([np.abs(ax0), np.abs(ay0), np.abs(ax1),
+                                             np.abs(ay1)]) if n else 0
         self.x0, self.y0 = x0 - g - e, y0 - g - e
         self.x1, self.y1 = x1 + g + e, y1 + g + e
-        self.size = len(a)
+        self.size = n
 
     def near(self, x, y, pad=0.0):
         """Indexes (in order) of the boxes within about pad of point (x, y)."""

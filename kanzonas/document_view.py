@@ -4950,11 +4950,22 @@ class DocumentView(QScrollArea):
                 self._prep_timer.start(0)
             return
         end = time.monotonic() + self.PREP_SLICE
-        for it in job["todo"]:
-            objs.lines(it)
-            if time.monotonic() > end:
-                self._prep_timer.start(0)   # more next time round, after any input
-                return
+        # (the collector paused meanwhile: a big drawing's outlines are hundreds of
+        # thousands of points, which it went through again and again)
+        enabled = gc.isenabled()
+        gc.disable()
+        try:
+            for it in job["todo"]:
+                objs.lines(it)
+                if time.monotonic() > end:
+                    self._prep_timer.start(0)   # more next time round, after any input
+                    return
+        finally:
+            if enabled:
+                gc.enable()
+        if not job.get("set_aside"):
+            job["set_aside"] = True
+            _set_aside(objs)                # (the outlines too, now they're all read)
         self._prepare_snaps(index, end)
 
     def _prepare_snaps(self, index, end):
@@ -5939,10 +5950,14 @@ class DocumentView(QScrollArea):
                                         graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                         text=pymupdf.PDF_REDACT_TEXT_REMOVE)
             if scrub:
-                self.doc.scrub(attached_files=True, clean_pages=True, embedded_files=True,
-                               hidden_text=True, javascript=True, metadata=True,
-                               redactions=False, remove_links=False, reset_fields=False,
-                               reset_responses=True, thumbnails=True, xml_metadata=True)
+                # (PyMuPDF's scrub, without its slow hidden-text search on pages with no
+                # text at all, where it can't find anything: see pdf_speed.py)
+                from . import pdf_speed
+                pdf_speed.scrub(self.doc, attached_files=True, clean_pages=True,
+                                embedded_files=True, hidden_text=True, javascript=True,
+                                metadata=True, redactions=False, remove_links=False,
+                                reset_fields=False, reset_responses=True, thumbnails=True,
+                                xml_metadata=True)
                 remove_scripts(self.doc)
                 # scrub unlinks the old objects; a plain tobytes() would still carry them.
                 enc = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
@@ -6371,17 +6386,18 @@ class DocumentView(QScrollArea):
     def sanitize(self, opts):
         """Remove hidden or sensitive content (Protect > Sanitize document)."""
         def do():
-            self.doc.scrub(attached_files=opts.get("embedded_files", False),
-                           embedded_files=opts.get("embedded_files", False),
-                           clean_pages=True, hidden_text=opts.get("hidden_text", False),
-                           javascript=opts.get("javascript", False),
-                           metadata=opts.get("metadata", False),
-                           xml_metadata=opts.get("metadata", False),
-                           redactions=False, redact_images=0,
-                           remove_links=opts.get("links", False),
-                           reset_fields=opts.get("form_data", False),
-                           reset_responses=opts.get("markups", False),
-                           thumbnails=opts.get("thumbnails", False))
+            from . import pdf_speed
+            pdf_speed.scrub(self.doc, attached_files=opts.get("embedded_files", False),
+                            embedded_files=opts.get("embedded_files", False),
+                            clean_pages=True, hidden_text=opts.get("hidden_text", False),
+                            javascript=opts.get("javascript", False),
+                            metadata=opts.get("metadata", False),
+                            xml_metadata=opts.get("metadata", False),
+                            redactions=False, redact_images=0,
+                            remove_links=opts.get("links", False),
+                            reset_fields=opts.get("form_data", False),
+                            reset_responses=opts.get("markups", False),
+                            thumbnails=opts.get("thumbnails", False))
             if opts.get("javascript"):
                 remove_scripts(self.doc)
             if opts.get("thumbnails"):

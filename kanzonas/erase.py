@@ -90,6 +90,44 @@ def _clip_outside(shape, rect, box):
             f"{b.x0:.3f} {b.y0:.3f} {b.width:.3f} {b.height:.3f} re W* n\n")
 
 
+def _crosses(path, box):
+    """A path (from get_drawings) crosses the edge of box: it isn't untouched, and isn't
+    fully inside (the redaction removes those)."""
+    r = pymupdf.Rect(path["rect"])
+    w = (path.get("width") or 1) / 2 + 0.01     # a level line has a zero-height rect
+    r = pymupdf.Rect(r.x0 - w, r.y0 - w, r.x1 + w, r.y1 + w)
+    return r.intersects(box) and not box.contains(r)
+
+
+def _drawings_near(page, box):
+    """page.get_drawings(), but only the paths that may cross box (each is a superset of what
+    _crosses takes, and comes exactly as get_drawings gives it).
+
+    get_drawings makes a Point, Rect or Quad of every number MuPDF hands over: on a sheet with
+    200,000 lines that took seconds, for the few dozen lines an erase box crosses. Here the
+    paths are sorted out from MuPDF's plain numbers first (get_cdrawings, which get_drawings
+    reads itself), and only those near the box are converted, by get_drawings' own code. The
+    test left out is a strict part of Rect.intersects (each box overlaps the other's span):
+    a path it rules out, _crosses rules out too."""
+    bx0, by0, bx1, by1 = box.x0, box.y0, box.x1, box.y1
+    near = []
+    for path in page.get_cdrawings():
+        rect = path.get("rect")
+        if rect is None or len(rect) != 4:
+            near.append(path)            # (something unexpected: let get_drawings say)
+            continue
+        w = (path.get("width") or 1) / 2 + 0.01
+        if (rect[0] - w < bx1 and bx0 < rect[2] + w and rect[1] - w < by1 and
+                by0 < rect[3] + w):
+            near.append(path)
+    # get_drawings converts what get_cdrawings gives: given just these
+    page.get_cdrawings = lambda *args, **kwargs: near
+    try:
+        return page.get_drawings()
+    finally:
+        del page.get_cdrawings
+
+
 def erase(page, box):
     """Remove everything of the page's own content inside `box` (unrotated page
     coordinates). Returns how many crossing shapes were redrawn. Annotations are untouched."""
@@ -101,14 +139,7 @@ def erase(page, box):
     except Exception:
         patterned = []                   # an odd content stream: hatches may still vanish
     ocgs = {v.get("name"): x for x, v in (doc.get_ocgs() or {}).items()}
-    crossing = []
-    for path in page.get_drawings():
-        r = pymupdf.Rect(path["rect"])
-        w = (path.get("width") or 1) / 2 + 0.01     # a level line has a zero-height rect
-        r = pymupdf.Rect(r.x0 - w, r.y0 - w, r.x1 + w, r.y1 + w)
-        if not r.intersects(box) or box.contains(r):
-            continue                     # untouched, or fully inside (redaction removes it)
-        crossing.append(path)
+    crossing = [path for path in _drawings_near(page, box) if _crosses(path, box)]
     page.add_redact_annot(box, fill=False)
     page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
                           graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
