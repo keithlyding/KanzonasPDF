@@ -27,9 +27,14 @@ megabytes. The journal has gaps, filled here:
   does in its compiled helper (new_page, insert_pdf) are run the plain Python way.
 - The document's trailer (where /Info is) isn't journaled: DocumentView keeps it per step
   (trailer(), set_trailer()).
+- A big edit kept as one entry slowed down steeply (see SPLIT_EVERY): it is cut into
+  several entries, undone together.
 
-What none of that covers (an edit that replaces the document, a damaged file repaired while
-being edited) makes the step fall back to a copy of the document (DocumentView.modify).
+Where the journal can't serve (see DocumentView.modify and the steps it keeps): an edit
+that replaces the document object keeps the one before for undo; a damaged file MuPDF
+repairs while it's edited, or a save that renumbers the document's objects, ends the
+journal (the steps kept in it are dropped); without the resource tables found
+(usable() False: another MuPDF), each edit keeps a copy of the document, as up to 1.6.
 """
 
 import ctypes
@@ -185,6 +190,33 @@ def _touch(pdf, num):
         m.pdf_array_delete(obj, m.pdf_array_len(obj) - 1)
 
 
+# An edit kept as one entry slows down steeply as it grows: each MuPDF step that opens an
+# operation of its own (adding a markup, setting its color...) merges into the edit's entry
+# by comparing every object recorded so far with every other (1,000 markups added in one
+# edit: 15 s instead of 0.6). So an edit in progress (Journal.begin) is cut into entries
+# of SPLIT_EVERY such steps; one undo step undoes them all.
+SPLIT_EVERY = 25
+_ACTIVE = {}                # pdf_document address -> Journal with an edit in progress
+
+
+def _tick(pdf):
+    """One more step of the edit in progress on pdf (a pdf_document)."""
+    if not _ACTIVE or pdf is None or pdf.m_internal is None:
+        return
+    j = _ACTIVE.get(_address(pdf.m_internal))
+    if j is not None:
+        j._calls += 1
+        if j._calls >= SPLIT_EVERY:
+            j._split()
+
+
+def _annot_pdf(annot):
+    try:
+        return pymupdf._pdf_annot_page(annot).doc()
+    except Exception:
+        return None
+
+
 def install():
     """Patch PyMuPDF (once) as the module's docstring says."""
     if _installed:
@@ -194,17 +226,39 @@ def install():
     update, delete = m.pdf_update_object, m.pdf_delete_object
 
     def update_object(pdf, num, obj):
-        if pdf.m_internal is not None and pdf.m_internal.journal:
-            _touch(pdf, num)
-        return update(pdf, num, obj)
+        if pdf.m_internal is None or not pdf.m_internal.journal:
+            return update(pdf, num, obj)
+        _touch(pdf, num)
+        update(pdf, num, obj)
+        _tick(pdf)
 
     def delete_object(pdf, num):
         if pdf.m_internal is None or not pdf.m_internal.journal:
             return delete(pdf, num)
         _touch(pdf, num)
-        return update(pdf, num, m.pdf_new_dict(pdf, 0))
+        update(pdf, num, m.pdf_new_dict(pdf, 0))
+        _tick(pdf)
     m.pdf_update_object = update_object
     m.pdf_delete_object = delete_object
+
+    # (the steps an edit of many markups repeats: see SPLIT_EVERY)
+    # (pdf_speed replaces JM_add_annot_id, and its test checks that: hooked after it instead)
+    postprocess = pymupdf.annot_postprocess
+
+    def annot_added(page, annot):
+        postprocess(page, annot)
+        if _ACTIVE:
+            _tick(_pdf(page.parent))
+    pymupdf.annot_postprocess = annot_added
+    annot_update = pymupdf.Annot.update
+
+    def update_annot(self, *a, **k):
+        out = annot_update(self, *a, **k)
+        if _ACTIVE:
+            _tick(_annot_pdf(self.this))
+        return out
+    update_annot.__doc__ = annot_update.__doc__
+    pymupdf.Annot.update = update_annot
 
     save = pymupdf.Document.save
 
@@ -269,6 +323,7 @@ class Journal:
         self.epoch = 0              # one more each time the entries are all forgotten
         self.bytes = 0              # what measure() found
         self._n = 0
+        self._parts = None          # the entries of the edit in progress
         self._ambient = False
         self._open()
 
@@ -292,33 +347,58 @@ class Journal:
             not getattr(doc, "_kz_journal_broken", False) and \
             self.raw.repair_attempted == self.repaired and bool(self.raw.journal)
 
-    def begin(self):
-        """Start an edit; returns its entry's name."""
-        self._close()
-        self._n += 1
-        name = "kz %d %d" % (id(self), self._n)
-        m.pdf_begin_operation(self.pdf, name)
-        return name
+    @property
+    def busy(self):
+        """An edit is in progress (between begin and end or abandon)."""
+        return self._parts is not None
 
-    def end(self, name):
-        """End the edit begun as name: [name] if it changed something (an entry was made),
-        else []."""
+    def begin(self):
+        """Start an edit (kept in one or more entries: see SPLIT_EVERY)."""
+        self._close()
+        self._parts = []
+        self._next_part()
+        _ACTIVE[_address(self.raw)] = self
+
+    def _next_part(self):
+        self._n += 1
+        self._name = "kz %d %d" % (id(self), self._n)
+        self._calls = 0
+        m.pdf_begin_operation(self.pdf, self._name)
+
+    def _end_part(self):
         m.pdf_end_operation(self.pdf)
+        pos, _steps = m.pdf_undoredo_state(self.pdf)
+        if pos > 0 and m.pdf_undoredo_step(self.pdf, pos - 1) == self._name:
+            self._parts.append(self._name)      # (nothing changed: no entry)
+
+    def _split(self):
+        self._end_part()
+        self._next_part()
+
+    def end(self):
+        """End the edit: the names of its entries, oldest first ([]: nothing changed)."""
+        _ACTIVE.pop(_address(self.raw), None)
         try:
-            pos, _steps = m.pdf_undoredo_state(self.pdf)
-            made = pos > 0 and m.pdf_undoredo_step(self.pdf, pos - 1) == name
+            self._end_part()
         finally:
+            parts, self._parts = self._parts, None
             self._open()
-        return [name] if made else []
+        return parts
 
     def abandon(self):
-        """Take back the edit begun last (it failed)."""
+        """Take back the edit in progress (it failed)."""
+        _ACTIVE.pop(_address(self.raw), None)
         try:
             m.pdf_abandon_operation(self.pdf)
+            for name in reversed(self._parts or []):
+                pos, _steps = m.pdf_undoredo_state(self.pdf)
+                if pos > 0 and m.pdf_undoredo_step(self.pdf, pos - 1) == name:
+                    m.pdf_undo(self.pdf)        # (left as steps to redo that none uses)
             # (unlike an undo, MuPDF's abandon leaves its caches of the objects as they were)
             m.pdf_empty_store(self.pdf)
             self._refresh()
         finally:
+            self._parts = None
             self._open()
 
     def _names(self, lo, hi):
@@ -368,7 +448,6 @@ class Journal:
         doc.InsertedImages = {}
         doc.FontInfos = []
         doc.Graftmaps = {}
-        doc._reset_page_refs()
         try:
             doc.init_doc()          # (its outline and metadata, read once by PyMuPDF)
         except Exception:

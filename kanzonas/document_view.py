@@ -1346,12 +1346,18 @@ class DocumentView(QScrollArea):
             # come back under its old number once pages move: free those first
             _collect_all()
         doc = self.doc
-        if journal is not None:
+        # (an edit made while another one runs is part of that one, and of its undo step)
+        nested = journal is not None and journal.busy
+        if nested:
+            journal = None
+        elif journal is not None:
             before = journal.trailer()
-            name = journal.begin()
+            journal.begin()
         try:
             fn()
         except Exception as ex:
+            if nested:
+                raise                   # (the edit around it takes it all back)
             with _not_busy():
                 QMessageBox.warning(self, tr("Edit failed"), str(ex))
             # rolled back: nothing changed
@@ -1361,16 +1367,17 @@ class DocumentView(QScrollArea):
                 self._restore(snap if snap is not None else self._undo.pop(), dirty=was_dirty)
             return
         if journal is not None:
-            self._record(doc, journal, name, before, merge, pages, structural)
+            self._record(doc, journal, before, merge, pages, structural)
         elif snap is not None:
             self._undo.append(snap)
             if self.doc is not doc:
                 doc.close()             # (replaced by the edit: the copy is what undo uses)
         self._cad_prepare_soon()            # (in CAD mode: the changed page made ready again)
-        del self._undo[:-UNDO_LIMIT]
-        self._redo.clear()
-        self._measure_journal()
-        self._trim_history()
+        if not nested:
+            del self._undo[:-UNDO_LIMIT]
+            self._redo.clear()
+            self._measure_journal()
+            self._trim_history()
         self.dirty = True
         # any edit can change the page text: the next Find searches again
         self._search_text = None
@@ -1430,8 +1437,8 @@ class DocumentView(QScrollArea):
                 self._journal = j = None
         return j
 
-    def _record(self, doc, journal, name, before, merge, pages, structural):
-        """The undo step for the edit just made in journal operation name."""
+    def _record(self, doc, journal, before, merge, pages, structural):
+        """The undo step for the edit just made (journal.begin ... now)."""
         if self.doc is not doc:
             # the edit replaced the document: undo shows the one before again, taken back
             # to how it was before the edit
@@ -1440,7 +1447,7 @@ class DocumentView(QScrollArea):
             self._journal = None        # (the new one's starts at its first edit)
             self._undo.append(_DocStep(doc, journal))
             return
-        names = journal.end(name)
+        names = journal.end()
         after = journal.trailer()
         top = self._undo[-1] if merge else None
         if isinstance(top, _JStep) and top.journal is journal and top.valid:

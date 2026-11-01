@@ -245,9 +245,9 @@ class Journal(Quiet):
                 j = UJ.Journal(d)
                 look(d)
                 before, t0 = canon(d), j.trailer()
-                name = j.begin()
+                j.begin()
                 edit(d)
-                names = j.end(name)
+                names = j.end()
                 t1 = j.trailer()
                 look(d)
                 after = canon(d)
@@ -271,10 +271,10 @@ class Journal(Quiet):
                 d = self.doc()
                 j = UJ.Journal(d)
                 before = canon(d)
-                name = j.begin()
+                j.begin()
                 d.set_toc([[1, "X", 2]])
                 d[0].add_rect_annot((10, 10, 50, 50))
-                names = j.end(name)
+                names = j.end()
                 after = canon(d)
                 if "op" in where:
                     d.tobytes(garbage=1)
@@ -291,11 +291,11 @@ class Journal(Quiet):
     def test_the_journal_is_not_written_into_the_file(self):
         d = self.doc()
         j = UJ.Journal(d)
-        name = j.begin()
+        j.begin()
         d[0].add_rect_annot((10, 10, 50, 50))
-        j.end(name)
+        names = j.end()
         data = d.tobytes(garbage=1)
-        for mark in (b"MuPDF-Journal", b"KZJournal", name.encode()):
+        for mark in (b"MuPDF-Journal", b"KZJournal", names[0].encode()):
             self.assertNotIn(mark, data)
 
     def test_the_same_picture_or_text_box_added_again_after_an_undo(self):
@@ -307,12 +307,12 @@ class Journal(Quiet):
             with self.subTest(label):
                 d = self.doc()
                 j = UJ.Journal(d)
-                name = j.begin()
+                j.begin()
                 edit(d)
-                j.undo(j.end(name))
-                name = j.begin()
+                j.undo(j.end())
+                j.begin()
                 edit(d)
-                j.end(name)
+                j.end()
                 back = pymupdf.open("pdf", d.tobytes(garbage=1))
                 for x in range(1, back.xref_length()):
                     for k, (kind, val) in ((k, back.xref_get_key(x, k))
@@ -343,10 +343,10 @@ class Journal(Quiet):
         c = d[1].get_contents()[0]
         names = []
         for k in range(2):                      # (the same stream changed twice)
-            name = j.begin()
+            j.begin()
             d.update_stream(c, d.xref_stream(c) + b"\n0 1 0 rg %d 30 50 50 re f\n" % k)
             d[1].add_rect_annot((200 + k, 200, 260, 260))
-            names.append(j.end(name))
+            names.append(j.end())
         after = canon(d)
         for n in reversed(names):
             j.undo(n)
@@ -523,6 +523,47 @@ class History(Quiet):
         self.assertEqual(len(v.pages), 4)
         v.undo()
         self.assertEqual(len(list(v.doc[0].annots())), 1)
+
+    def test_a_big_edit_is_cut_into_entries_and_undone_as_one(self):
+        # (kept as one entry, 1,000 markups added in one edit took 15 s instead of 0.6)
+        v = self.view()
+        start = canon(v.doc)
+
+        def many():
+            page = v.doc[0]
+            for i in range(600):
+                x, y = 30 + (i % 30) * 18, 30 + (i // 30) * 30
+                page.add_rect_annot(pymupdf.Rect(x, y, x + 12, y + 20))
+        t = time.perf_counter()
+        v.modify(many, [0])
+        took = time.perf_counter() - t
+        self.assertGreater(len(v._undo[-1].names), 10)
+        self.assertLess(took, 5.0)
+        self.assertEqual(len(list(v.doc[0].annots())), 601)
+        v.undo()
+        self.assertEqual(canon(v.doc), start)
+        v.redo()
+        self.assertEqual(len(list(v.doc[0].annots())), 601)
+
+        def fails():
+            many()
+            raise ValueError("after 600 markups")
+        v.modify(fails, [0])                    # (several entries made, then taken back)
+        self.assertEqual(len(list(v.doc[0].annots())), 601)
+        v.undo()
+        self.assertEqual(canon(v.doc), start)
+
+    def test_an_edit_made_during_another_is_part_of_it(self):
+        v = self.view()
+        start = canon(v.doc)
+
+        def outer():
+            v.doc[0].add_rect_annot((10, 10, 40, 40))
+            v.modify(lambda: v.doc[1].add_rect_annot((10, 10, 40, 40)), [1])
+        v.modify(outer, [0])
+        self.assertEqual(len(v._undo), 1)
+        v.undo()
+        self.assertEqual(canon(v.doc), start)
 
     def test_steps_before_a_cleaned_redaction_can_still_be_undone(self):
         # Apply redactions with cleanup replaces the document: undo goes back to the one
