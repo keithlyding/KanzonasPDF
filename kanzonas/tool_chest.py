@@ -18,7 +18,7 @@ from .i18n import tr
 
 # annotation kind -> tool that creates it
 KIND_TOOL = {k: k for k in A.DEFAULTS}
-KIND_TOOL.update({"rect": "rect"})
+KIND_TOOL.update({"rect": "rect", "opencloud": "cloud"})    # (a trimmed cloud: its style)
 
 
 def tool_for(model):

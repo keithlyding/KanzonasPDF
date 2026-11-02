@@ -84,6 +84,8 @@ DEFAULTS = {
     "cloud": {"stroke": "#d00000", "fill": None, "width": 1.5, "cloud": True, "opacity": 1.0},
     "polygon": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "polyline": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
+    # a cloud with part of it trimmed away (clouds.py): drawn along an open polyline
+    "opencloud": {"stroke": "#d00000", "width": 1.5, "opacity": 1.0},
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
                 "fontsize": 11, "head": "open", "opacity": 1.0},
     "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
@@ -114,6 +116,7 @@ LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": t
           "ink": tr("Pen"), "polygon": tr("Polygon"), "polyline": tr("Polyline"),
           "callout": tr("Callout"),
           "stamp": tr("Stamp"), "field": tr("Form field"), "cloud": tr("Cloud"),
+          "opencloud": tr("Cloud"),
           "m_length": tr("Length"), "m_poly": tr("Polylength"), "m_area": tr("Area"),
           "m_count": tr("Count"),
           "m_angle": tr("Angle"), "m_radius": tr("Radius"), "m_perimeter": tr("Perimeter"),
@@ -145,12 +148,12 @@ BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "at
 MEASURES = ("m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius", "m_perimeter",
             "m_volume")
 CLOSED_MEASURES = ("m_area", "m_perimeter", "m_volume")      # drawn as a closed outline
-POINTED = ("line", "arrow", "polygon", "polyline") + MEASURES   # geometry = list of points
-VERTEXED = ("polygon", "polyline", "m_poly", "m_angle") + CLOSED_MEASURES          # one handle per vertex                           # resizable via a rect
+POINTED = ("line", "arrow", "polygon", "polyline", "opencloud") + MEASURES   # geometry = list of points
+VERTEXED = ("polygon", "polyline", "opencloud", "m_poly", "m_angle") + CLOSED_MEASURES         # one handle per vertex                           # resizable via a rect
 # Shapes with a "rotation" property (degrees, counterclockwise as seen on screen). Boxes keep
 # their unrotated box and are drawn turned; point-based shapes have their points turned.
 # Text boxes and callouts only turn in 90 degree steps (a PDF text box limitation).
-ROTATABLE = ("rect", "ellipse", "cloud", "polygon", "polyline", "line", "arrow", "ink", "stamp", "image",
+ROTATABLE = ("rect", "ellipse", "cloud", "polygon", "polyline", "opencloud", "line", "arrow", "ink", "stamp", "image",
              "m_length", "m_poly", "m_area", "m_angle", "m_radius", "m_perimeter", "m_volume",
              "textbox", "callout")
 QUARTER_TURNS = ("textbox", "callout")
@@ -324,8 +327,14 @@ def read(annot):
     geom = stored.get("geom", {})
     if kind in ("line", "arrow"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
-    elif kind in ("polygon", "polyline", "m_poly", "m_angle") + CLOSED_MEASURES:
+    elif kind in ("polygon", "polyline", "opencloud", "m_poly", "m_angle") + CLOSED_MEASURES:
         model["points"] = [pymupdf.Point(v) for v in verts]
+        if kind in ("polyline", "opencloud") and isinstance(geom, dict):
+            # made by trimming a rectangle or polygon: its corners cut as the shape's did
+            if geom.get("sides"):
+                model["sides"] = True
+            if kind == "opencloud":
+                model["cloud"] = geom.get("cloud")
     elif kind in ("m_length", "m_radius"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
     elif kind == "m_count":
@@ -441,7 +450,7 @@ def write(page, model):
     elif kind == "m_count":
         c = model["points"][0]
         a = page.add_circle_annot(pymupdf.Rect(c.x - 5, c.y - 5, c.x + 5, c.y + 5))
-    elif kind == "polyline":
+    elif kind in ("polyline", "opencloud"):
         a = page.add_polyline_annot([(q.x, q.y) for q in model["points"]])
     elif kind == "callout":
         box, target = pymupdf.Rect(model["rect"]), model["points"][0]
@@ -525,7 +534,7 @@ def write(page, model):
         if kind in ("rect", "ellipse", "polygon") and p.get("cloud"):
             a.set_border(width=width, clouds=2)
         elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline",
-                      "m_length", "m_poly", "m_angle", "m_radius") + CLOSED_MEASURES:
+                      "opencloud", "m_length", "m_poly", "m_angle", "m_radius") + CLOSED_MEASURES:
             a.set_border(width=width)
     if p.get("opacity", 1) < 1:
         a.set_opacity(float(p["opacity"]))
@@ -587,6 +596,11 @@ def write(page, model):
         store["geom"] = {"box": list(model["rect"])}
     elif kind == "m_count":
         store["geom"] = {"at": list(model["points"][0]), "n": model.get("n", 1)}
+    elif kind == "opencloud":
+        from . import clouds
+        store["geom"] = {"cloud": clouds.cloud_of(model), "sides": bool(model.get("sides"))}
+    elif kind == "polyline" and model.get("sides"):
+        store["geom"] = {"sides": True}
     doc.xref_set_key(a.xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
     keep = (pymupdf.PDF_ANNOT_IS_LOCKED if model.get("locked") else 0) | \
         (pymupdf.PDF_ANNOT_IS_HIDDEN if model.get("hidden") else 0)
@@ -601,6 +615,9 @@ def write(page, model):
         anchor, lab_angle = measure.label_anchor(kind, model["points"], page)
         measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
                           stroke or (0, 0, 0), lab_angle)
+    if kind == "opencloud":
+        from . import clouds
+        clouds.appearance(page, a, model)       # (last: a setter after it would undo it)
     return a
 
 
@@ -769,6 +786,8 @@ def copy(model):
         m["points"] = [pymupdf.Point(q) for q in m["points"]]
     if "strokes" in m:
         m["strokes"] = [[pymupdf.Point(q) for q in s] for s in m["strokes"]]
+    if isinstance(m.get("cloud"), dict):
+        m["cloud"] = {k: list(v) if isinstance(v, list) else v for k, v in m["cloud"].items()}
     return m
 
 
@@ -798,6 +817,12 @@ def transformed(model, mat):
     if "quads" in m:
         d = pymupdf.Point(mat.e, mat.f)
         m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d) for q in m["quads"]]
+    if model["kind"] == "opencloud" and mat.a * mat.d - mat.b * mat.c < 0:
+        # mirrored: its bumps go to the other side of the way its points run (so they stay
+        # where the mirror puts them, outside)
+        from . import clouds
+        m["cloud"] = clouds.cloud_of(m)
+        m["cloud"]["flip"] = not m["cloud"]["flip"]
     if "rect" in m:
         r = pymupdf.Rect(m["rect"])
         c = pymupdf.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2) * mat
