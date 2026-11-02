@@ -11,6 +11,7 @@ survive a save and reopen exactly.
 Per-tool default styles are kept in QSettings so they persist between sessions.
 """
 
+import functools
 import getpass
 import json
 import math
@@ -778,11 +779,14 @@ def bounds(model):
             r |= q
         return r
     if model["kind"] in POINTED:
-        pts = path_points(model)
-        r = pymupdf.Rect(pts[0], pts[0])
-        for q in pts[1:]:
-            r |= q
-        return r
+        # (a curve's box is kept: each paint asks for every selected markup's box, and an
+        # arc or a bent line has hundreds of points)
+        if model["kind"] == "arc" or model.get("bend") is not None:
+            bend = model.get("bend")
+            return pymupdf.Rect(_curve_box(
+                model["kind"], tuple((q[0], q[1]) for q in model["points"]),
+                None if bend is None else (bend[0], bend[1])))
+        return _points_box(model["points"])
     if model["kind"] == "ink":
         pts = [q for s in model["strokes"] for q in s]
         r = pymupdf.Rect(pts[0], pts[0])
@@ -795,6 +799,20 @@ def bounds(model):
             r |= q.rect
         return r
     return pymupdf.Rect(model["rect"])
+
+
+def _points_box(pts):
+    xs = [q[0] for q in pts]
+    ys = [q[1] for q in pts]
+    return pymupdf.Rect(min(xs), min(ys), max(xs), max(ys))
+
+
+@functools.lru_cache(maxsize=4096)
+def _curve_box(kind, points, bend):
+    """(x0, y0, x1, y1) of an arc's or a bent line's curve."""
+    model = {"kind": kind, "points": [pymupdf.Point(q) for q in points],
+             "bend": None if bend is None else pymupdf.Point(bend)}
+    return tuple(_points_box(path_points(model)))
 
 
 def movable(model):

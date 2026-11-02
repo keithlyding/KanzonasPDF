@@ -105,6 +105,40 @@ class Speed(unittest.TestCase):
         took = best_of(v.pages[0].repaint)
         self.assertLess(took, 0.15, "%.0f ms a paint" % (took * 1000))
 
+    def test_many_curved_markups_selected_repaint_quickly(self):
+        # each paint drew every selected markup's box, worked out from its curve point by
+        # point (a curve's box: hundreds of points through PyMuPDF's Rect): 300 selected
+        # arcs took 140 ms a paint, 300 straight lines 15 ms
+        DocumentView.mouse_mode = "standard"
+        DocumentView.cad_select = False
+        d = pymupdf.open()
+        pg = d.new_page(width=1200, height=900)
+        for k in range(300):
+            x, y = 60 + (k % 30) * 36, 60 + (k // 30) * 36
+            if k % 2:
+                A.write(pg, {"kind": "arc", "props": dict(A.DEFAULTS["arc"]),
+                             "points": [P(x, y), P(x + 15, y - 12), P(x + 30, y)]})
+            else:
+                A.write(pg, {"kind": "line", "props": dict(A.DEFAULTS["line"]),
+                             "points": [P(x, y), P(x + 30, y)], "bend": P(x + 15, y - 12)})
+        path = os.path.join(tempfile.mkdtemp(), "curves.pdf")
+        d.save(path)
+        v = self.view(path)
+        v.set_tool("select")
+        page = v.doc[0]
+        xs = [a.xref for a in A.each_annot(page)]
+        del page
+        v._set_selection(0, xs)
+        took = best_of(v.pages[0].repaint)
+        self.assertLess(took, 0.06, "%.0f ms a paint" % (took * 1000))
+        # (the box is still the curve's)
+        m = v.selected_models()[1][1]
+        from kanzonas import curves
+        pts = curves.path(m)
+        want = pymupdf.Rect(min(q.x for q in pts), min(q.y for q in pts),
+                            max(q.x for q in pts), max(q.y for q in pts))
+        self.assertLess(max(abs(a - b) for a, b in zip(A.bounds(m), want)), 1e-9)
+
     def test_the_box_preview_glow_on_a_heavy_sheet(self):
         # the glow over what a box would take is drawn again on every pointer move: each
         # point was put on the screen by loading the page again (3,000 lines: 330 ms a
