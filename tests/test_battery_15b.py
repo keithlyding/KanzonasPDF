@@ -319,6 +319,9 @@ class CadTab(Window):
         self.w.set_mouse_mode("cad")
         tab = self.w._cad_tab
         on_tab = {b.defaultAction() for b in tab.findChildren(QToolButton) if b.defaultAction()}
+        for b in tab.findChildren(QToolButton):     # (and those under a button's arrow)
+            if b.menu() is not None:
+                on_tab.update(b.menu().actions())
         t, A_ = self.w.tool_actions, self.w.arrange_actions
         wanted = [t[k] for k in ("cloud", "textbox", "callout", "line", "arrow", "polyline",
                                  "m_length", "m_area", "m_count", "m_calibrate",

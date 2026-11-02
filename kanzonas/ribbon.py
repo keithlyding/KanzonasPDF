@@ -10,7 +10,7 @@ tab scrolls sideways (mouse wheel) when the window is too narrow for it.
 
 from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtWidgets import (QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,
-                               QToolButton, QLabel, QFrame, QSizePolicy, QScrollArea)
+                               QToolButton, QLabel, QFrame, QSizePolicy, QScrollArea, QMenu)
 
 LARGE_ICON = 20
 SMALL_ICON = 16
@@ -48,6 +48,56 @@ class _Strip(QScrollArea):
         h = self.widget().sizeHint()
         bar = self.horizontalScrollBar()
         return QSize(h.width(), h.height() + (bar.sizeHint().height() if bar.maximum() > 0 else 0))
+
+
+class SplitButton(QToolButton):
+    """A small ribbon button for several similar commands, as AutoCAD's ribbon has (Circle with
+    an arrow for Arc): clicking it runs the one its face shows, the arrow beside it lists them
+    all. The face starts as the first and then shows the one last used, or the tool that is
+    on (picked by its shortcut or a menu too). Made by split_button."""
+
+    def __init__(self, actions, parent=None):
+        super().__init__(parent)
+        self.setPopupMode(QToolButton.MenuButtonPopup)
+        menu = QMenu(self)
+        menu.addActions(actions)
+        self.setMenu(menu)
+        self.setDefaultAction(actions[0])
+        menu.triggered.connect(self.setDefaultAction)
+        for a in actions:
+            if a.isCheckable():
+                a.toggled.connect(self._toggled)
+        self.setAutoRaise(True)
+        self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.setIconSize(QSize(SMALL_ICON, SMALL_ICON))
+        self.setFixedHeight(SMALL_HEIGHT)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+    def _toggled(self, on):
+        a = self.sender()
+        if on and a is not None and a is not self.defaultAction():
+            self.setDefaultAction(a)
+
+    def sizeHint(self):
+        # as wide as its widest face, so the tab doesn't shift when the face changes
+        h = super().sizeHint()
+        fm = self.fontMetrics()
+        now = fm.horizontalAdvance(self.text())
+        most = max((fm.horizontalAdvance(a.iconText()) for a in self.menu().actions()),
+                   default=now)
+        return QSize(h.width() + max(0, most - now), h.height())
+
+    def minimumSizeHint(self):
+        return self.sizeHint()
+
+
+def split_button(actions):
+    """One ribbon button (SplitButton) for actions (the first is its face at the start); with
+    a single action, that action itself (a plain button). None when there is none."""
+    actions = [a for a in actions if a is not None]
+    if len(actions) < 2:
+        return actions[0] if actions else None
+    return SplitButton(actions)
 
 
 class Ribbon(QTabWidget):

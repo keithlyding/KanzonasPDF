@@ -86,6 +86,9 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("rect", tr("Rectangle"), "R", tr("Rectangle (R)")),
     ("ellipse", tr("Ellipse"), "E", tr("Ellipse (E)")),
     ("cloud", tr("Cloud"), "D", tr("Revision cloud: drag a box (D)")),
+    ("circle", tr("Circle"), "O", tr("Circle: from the center to a point on it (O)")),
+    ("mask", tr("Mask"), "", tr("Mask: a white box that hides what's under it on screen and in "
+                                "print; the content stays in the file (Redact removes it)")),
     ("polygon", tr("Polygon"), "Y", tr("Polygon: click each corner, double-click or Enter to finish (Y)")),
     ("line", tr("Line"), "L", tr("Line (L)")),
     ("arrow", tr("Arrow"), "A", tr("Arrow (A)")),
@@ -1183,7 +1186,8 @@ class MainWindow(QMainWindow):
         tt.setObjectName("tools")
         tt.setMovable(False)
         self.addToolBar(tt)
-        shapes = ("rect", "ellipse", "cloud", "polygon", "line", "arrow", "polyline", "ink")
+        shapes = ("rect", "ellipse", "circle", "cloud", "mask", "polygon", "line", "arrow",
+                  "polyline", "ink")
         main_tools = [self.tool_actions[t[0]] for t in TOOLS if t[0] not in shapes]
         tt.addActions(main_tools[:3])
         tt.addSeparator()
@@ -4210,11 +4214,18 @@ class MainWindow(QMainWindow):
         mouse_modes.apply(self.settings)
         for w in windows():
             w._sync_mouse_actions()
-        from . import cad_select
+        from . import cad_select, cad_draw
         for v in self._all_views():
             cad_select.drop(v)      # (a box drawn under the old options goes)
+            cad_draw.cancel(v)      # (and a shape started with a click)
             v.apply_canvas()        # open canvas around the pages, or not
             v._tool_cursor()        # a plus in CAD mode
+
+    def _split_tools(self, *ids):
+        """A ribbon button for these tools (ribbon.split_button): the first is its face, the
+        arrow lists them all. A tool this version doesn't have is left out."""
+        from .ribbon import split_button
+        return split_button([self.tool_actions[k] for k in ids if k in self.tool_actions])
 
     def _sync_mouse_actions(self):
         from . import mouse_modes
@@ -4428,7 +4439,7 @@ class MainWindow(QMainWindow):
     }
 
     def _build_ribbon(self):
-        from .ribbon import Ribbon
+        from .ribbon import Ribbon, split_button
         t = self.tool_actions
         A_ = self.arrange_actions
         for attr, label in self.RIBBON_LABELS.items():
@@ -4465,8 +4476,8 @@ class MainWindow(QMainWindow):
             (tr("Text"), "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
                                t["note"], t["textbox"]]),
             (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"]]),
-            (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["cloud"], t["polygon"], t["line"],
-                                 t["arrow"], t["polyline"], t["ink"]]),
+            (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["circle"], t["cloud"], t["mask"],
+                                 t["polygon"], t["line"], t["arrow"], t["polyline"], t["ink"]]),
             (tr("Erase"), "large", [t["eraser"]]),
             (tr("Styles"), "large", [self.a_props, self.a_chest]),
         ])
@@ -4539,13 +4550,23 @@ class MainWindow(QMainWindow):
                                      c["delete"]]),
             (tr("More"), "small", [c["align"], c["array"], c["trim"]]),
             # what's used most next to the CAD commands, so CAD mode needs no other tab for it
-            # (the one-letter markup shortcuts type into the command line in CAD mode)
-            (tr("Markup"), "small", [t["cloud"], t["textbox"], t["callout"], t["line"],
-                                     t["arrow"], t["polyline"]]),
-            (tr("Measure"), "small", [t["m_length"], t["m_area"], t["m_count"],
-                                      t["m_calibrate"]]),
-            (tr("Snap"), "small", [self.a_snap_objects, self.a_snap_grid, self.a_snap_page]),
-            (tr("Clean up"), "small", [t["erasecontent"], A_["z_front"], A_["z_back"]]),
+            # (the one-letter markup shortcuts type into the command line in CAD mode); similar
+            # tools share a button with an arrow for the others, as on AutoCAD's ribbon
+            (tr("Markup"), "small", [
+                self._split_tools("rect", "cloud", "polygon", "mask"),
+                self._split_tools("circle", "arc"),
+                self._split_tools("line", "polyline", "curve", "ink"), t["arrow"],
+                self._split_tools("textbox", "callout"), self._split_tools("stamp", "image")]),
+            # measuring and the snaps it uses
+            (tr("Measure"), "small", [
+                self._split_tools(*["m_length"] + [k for k, *_r in MEASURE_TOOLS
+                                                   if k != "m_length"]),
+                self.a_snap_objects, self.a_snap_grid, self.a_snap_page]),
+            (tr("Clean up"), "small", [
+                t["erasecontent"],
+                split_button([A_[k] for k in ("z_front", "z_forward", "z_backward", "z_back")]),
+                split_button([A_[k] for k in ("al_left", "al_hcenter", "al_right", "al_top",
+                                              "al_vmiddle", "al_bottom", "dist_h", "dist_v")])]),
         ])
         self._cad_tab = r.widget(r.count() - 1)
         self._sync_mouse_actions()          # the CAD tab: only in CAD mouse mode
@@ -5005,13 +5026,14 @@ class MainWindow(QMainWindow):
 
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):
-        from . import cad_select
+        from . import cad_select, cad_draw
         current = self.view()
         for v in self._views():             # a CAD command belongs to the tab it ran in
             if v is not current:
                 if v._cad_cmd is not None:
                     v._cad_cmd.cancel()
                 cad_select.drop(v)          # (and a box or lasso being drawn there)
+                cad_draw.cancel(v)          # (or a shape started with a click)
         self._rebuild_thumbs()
         self._refresh_bookmarks()
         self._refresh_layers()

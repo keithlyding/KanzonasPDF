@@ -14,20 +14,22 @@ from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath
 from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
+from . import cad_draw
 from . import cad_select
 from . import render_layers as RL
 from .i18n import tr
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
-SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
-               "m_length", "m_calibrate", "m_radius", "image", "placeholder", "erasecontent",
-               "capture", "crop", "link"}
+SHAPE_TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", "eraser", "cloud",
+               "callout", "m_length", "m_calibrate", "m_radius", "image", "placeholder",
+               "erasecontent", "capture", "crop", "link"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume"}
 # While one of these drawing tools is active, clicking an existing markup selects it for
 # moving / resizing / restyling (like the Select tool) instead of starting a new one.
-EDIT_IN_PLACE = {"rect", "ellipse", "cloud", "line", "arrow", "polygon", "polyline", "ink",
-                 "textbox", "callout", "note", "stamp", "m_length", "m_poly", "m_area", "m_count",
-                 "m_angle", "m_radius", "m_perimeter", "m_volume", "image", "attach", "placeholder"}
+EDIT_IN_PLACE = {"rect", "ellipse", "circle", "mask", "cloud", "line", "arrow", "polygon",
+                 "polyline", "ink", "textbox", "callout", "note", "stamp", "m_length", "m_poly",
+                 "m_area", "m_count", "m_angle", "m_radius", "m_perimeter", "m_volume", "image",
+                 "attach", "placeholder"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area", "m_angle", "m_radius",
                  "m_perimeter", "m_volume"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}
@@ -48,7 +50,7 @@ ROT_GAP = 26        # rotation handle distance above the selection, px
 # tools whose points snap (to the grid / to objects) while drawing
 SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "crop", "link"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "m_radius", "callout"}   # Shift = 45° steps
-SQUARE_TOOLS = {"rect", "ellipse", "cloud"}                               # Shift = square / circle
+SQUARE_TOOLS = {"rect", "ellipse", "cloud", "mask"}                       # Shift = square / circle
 
 
 def box_handles(r, h=HANDLE):
@@ -295,6 +297,8 @@ class PageWidget(QWidget):
         self._text_move = None      # Edit text: a line being dragged to a new place
         self._sig_drag = None       # signature / initials: press point while sizing
         self._sig_now = None
+        self._shape_press = None    # shape tools: (position, time) of the press (cad_draw.py)
+        self._shape_end = None      # CAD mode: a shape whose ending click is down (cad_draw.py)
 
     # ---- geometry -------------------------------------------------------
     def update_size(self):
@@ -854,28 +858,44 @@ class PageWidget(QWidget):
                 p.drawPixmap(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z), pm,
                              QRectF(pm.rect()))
                 p.setOpacity(1.0)
-        if self._drag_start is not None and self._drag_now is not None and tool in SHAPE_TOOLS:
+        # a shape being dragged, or (CAD mode) one started with a click that follows the pointer
+        shape = cad_draw.points(self) or (self._drag_start, self._drag_now)
+        if shape[0] is not None and shape[1] is not None and tool in SHAPE_TOOLS:
+            a, b = shape
             if tool == "eraser":
                 pen = QPen(QColor(220, 0, 0), 1.5, Qt.DashLine)
+            elif tool == "mask" and not self.view.tool_props(tool).get("stroke"):
+                pen = QPen(QColor(0, 120, 215), 1, Qt.DashLine)
             else:
                 pen = QPen(self.view.tool_color(tool),
                            max(1.0, float(self.view.tool_props(tool).get("width", 1)) * self.view.zoom))
             p.setPen(pen)
             if tool in ("line", "arrow", "m_length", "m_calibrate", "m_radius"):
-                p.drawLine(self._drag_start, self._drag_now)
+                p.drawLine(a, b)
                 if tool == "m_radius":
-                    d = self._drag_now - self._drag_start
+                    d = b - a
                     r = (d.x() ** 2 + d.y() ** 2) ** 0.5
-                    p.drawEllipse(self._drag_start, r, r)
+                    p.drawEllipse(a, r, r)
                 if tool in MEASURE_TOOLS:
-                    self._draw_readout(p, [self._drag_start, self._drag_now])
+                    self._draw_readout(p, [a, b])
             elif tool == "callout":
-                p.drawLine(self._drag_start, self._drag_now)
-                p.drawRect(QRectF(self._drag_now, self._drag_now + QPointF(160, 40) * self.view.zoom))
+                p.drawLine(a, b)
+                p.drawRect(QRectF(b, b + QPointF(160, 40) * self.view.zoom))
             elif tool == "ellipse":
-                p.drawEllipse(QRectF(self._drag_start, self._drag_now).normalized())
+                p.drawEllipse(QRectF(a, b).normalized())
+            elif tool == "circle":
+                d = b - a
+                r = (d.x() ** 2 + d.y() ** 2) ** 0.5
+                p.drawEllipse(a, r, r)
+                p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+                p.drawLine(a, b)                # the radius
+            elif tool == "mask":
+                fill = self.view.tool_props(tool).get("fill")
+                p.setBrush(QColor(fill) if fill else Qt.NoBrush)
+                p.drawRect(QRectF(a, b).normalized())
+                p.setBrush(Qt.NoBrush)
             else:
-                p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
+                p.drawRect(QRectF(a, b).normalized())
 
         if tool == "editobjects":
             self._paint_objects(p, page)
@@ -1605,6 +1625,8 @@ class PageWidget(QWidget):
             elif e.button() == Qt.RightButton:
                 cmd.enter_key()
             return
+        if e.button() == Qt.RightButton and cad_draw.cancel(self.view):
+            return                          # (CAD mode: a shape started with a click goes)
         if e.button() == Qt.RightButton and self.view.tool == "editobjects":
             pdf = self.to_pdf(e.position())
             v = self.view
@@ -1628,6 +1650,8 @@ class PageWidget(QWidget):
         tool = self.view.tool
         pos = e.position()
         pdf = self.to_pdf(pos)
+        if cad_draw.finish(self, e):
+            return                          # (CAD mode: the click that ends a shape)
 
         if tool in ("hand", "select") and not self.view.read_only:
             xref = self.view.widget_at(self.index, pdf)
@@ -1725,6 +1749,7 @@ class PageWidget(QWidget):
             self.update()
         elif tool in SHAPE_TOOLS:
             self._drag_start = self._drag_now = pos
+            self._shape_press = (e.position(), e.timestamp())   # (a click or a drag: cad_draw)
         elif tool == "ink":
             self._ink = [pos]
         elif tool == "edittext":
@@ -1880,6 +1905,8 @@ class PageWidget(QWidget):
             return
         if not e.buttons():
             cad_select.hover(self, e)
+            if cad_draw.hover(self, e):
+                return                      # (CAD mode: a shape started with a click follows)
         if not e.buttons():
             if tool in SIGN_TOOLS or tool == "stamp":
                 self._ghost = pos
@@ -1965,17 +1992,23 @@ class PageWidget(QWidget):
             self.view._set_text_drag(spans)
             self.view.autoscroll_toward(self.mapToGlobal(pos))
         elif self._drag_start is not None:
-            if tool in SNAP_TOOLS:
-                pos = self._snap(pos, e)
-            if shift_held(e) and tool in STRAIGHT_TOOLS:
-                pos = snap45(self._drag_start, pos)
-            elif shift_held(e) and tool in SQUARE_TOOLS:
-                pos = square_corner(self._drag_start, pos)
-            self._drag_now = pos
+            self._drag_now = self._shape_point(pos, e, self._drag_start)
             self.update()
         elif self._ink:
             self._ink.append(pos)
             self.update()
+
+    def _shape_point(self, pos, e, start):
+        """Where a shape drawn from widget point start ends with the pointer at pos: snapped,
+        and with Shift at 45 degree steps (lines) or square (boxes)."""
+        tool = self.view.tool
+        if tool in SNAP_TOOLS:
+            pos = self._snap(pos, e)
+        if shift_held(e) and tool in STRAIGHT_TOOLS:
+            pos = snap45(start, pos)
+        elif shift_held(e) and tool in SQUARE_TOOLS:
+            pos = square_corner(start, pos)
+        return pos
 
     def _update_select_cursor(self, pos, restore=False):
         model = self._selected_here()
@@ -2018,6 +2051,8 @@ class PageWidget(QWidget):
             return
         if e.button() != Qt.LeftButton:
             return
+        if cad_draw.released(self):
+            return                          # (CAD mode: the shape the click ended is made)
         tool = self.view.tool
         pos = e.position()
         if self._cad_down is not None:
@@ -2084,6 +2119,8 @@ class PageWidget(QWidget):
                                    (b - a).manhattanLength() < 4)
         elif self._drag_start is not None:
             a, b = self._drag_start, self._drag_now
+            if tool in SHAPE_TOOLS and cad_draw.start(self, e, a, b):
+                return                      # (CAD mode: a click starts it; a click ends it)
             self._drag_start = self._drag_now = None
             self.update()
             self.view.apply_drag_tool(self.index, tool, self.to_pdf(a), self.to_pdf(b),
@@ -2104,6 +2141,8 @@ class PageWidget(QWidget):
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 
     def mouseDoubleClickEvent(self, e):
+        if e.button() == Qt.LeftButton and cad_draw.finish(self, e):
+            return      # (CAD mode: a quick second click near the first ends the shape)
         cad_select.cancel(self.view)        # (a double-click selects a word: no box after it)
         if self.view.tool in POLY_TOOLS:
             # the double-click's first press already added this point

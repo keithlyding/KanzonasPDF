@@ -7105,3 +7105,24 @@ msgstr "Recortar: esa línea no cruza ningún borde de corte, así que se queda.
 
 msgid "1 copy made"
 msgstr "1 copia hecha"
+
+msgid "Circle"
+msgstr "Círculo"
+
+msgid "Mask"
+msgstr "Máscara"
+
+msgid "Circle: from the center to a point on it (O)"
+msgstr "Círculo: del centro a un punto del círculo (O)"
+
+msgid "Mask: a white box that hides what's under it on screen and in print; the content stays in the file (Redact removes it)"
+msgstr "Máscara: un cuadro blanco que oculta lo que hay debajo en pantalla y al imprimir; el contenido sigue en el archivo (Censurar lo elimina)"
+
+msgid "Circle: click a point on the circle, or type the radius and press Enter (Escape cancels)"
+msgstr "Círculo: haga clic en un punto del círculo, o escriba el radio y presione Enter (Escape cancela)"
+
+msgid "Click where it ends (Escape or a right-click cancels)"
+msgstr "Haga clic donde termina (Escape o un clic derecho cancela)"
+
+msgid "Circle: type the radius as a number (or 12'-6\"), or click a point on the circle"
+msgstr "Círculo: escriba el radio como un número (o 12'-6\"), o haga clic en un punto del círculo"

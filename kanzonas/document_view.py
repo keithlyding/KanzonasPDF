@@ -1119,6 +1119,7 @@ class DocumentView(QScrollArea):
     lasso = False               # CAD: holding the button and dragging draws a lasso
     type_to_line = False        # CAD: letters typed over the drawing go to the command line
     _cad_pick = None            # CAD: a click, move, click box in progress (cad_select.py)
+    _cad_shape = None           # CAD: a shape started with a click, ended by the next (cad_draw.py)
     hand_selects = True         # Hand: clicking a markup selects it
     free_pan = False            # Free page movement: the page can be dragged past its edges
     page_wheel = False          # one wheel step = one page when the page fits the window
@@ -1239,6 +1240,8 @@ class DocumentView(QScrollArea):
         # next click on the page would otherwise only apply it)
         self.commit_pending()
         cad_select.drop(self)           # (a lasso held while the mode changed selects nothing)
+        from . import cad_draw
+        cad_draw.cancel(self)           # (a shape started with a click belongs to the old tool)
         if self._cad_cmd is not None:
             self._cad_cmd.cancel()
         self.tool = tool
@@ -2685,6 +2688,13 @@ class DocumentView(QScrollArea):
         if tool == "image":
             self.place_image(index, a, b, is_click)
             return
+        if tool == "circle":
+            # from the center to a point on the circle: an ellipse markup in a square
+            r = abs(pymupdf.Point(b) - pymupdf.Point(a))
+            if not is_click and r > 0.5:
+                self._create(index, {"kind": "ellipse", "props": props,
+                                     "rect": pymupdf.Rect(a.x - r, a.y - r, a.x + r, a.y + r)})
+            return
         if tool == "placeholder":
             props = self.tool_props("placeholder")
             if is_click or disp.width < 12 or disp.height < 8:
@@ -2717,7 +2727,7 @@ class DocumentView(QScrollArea):
             return
         if is_click:
             return
-        kind = "rect" if tool == "cloud" else tool
+        kind = "rect" if tool in ("cloud", "mask") else tool
         model = {"kind": kind, "props": props, "rect": rect}
         if tool in ("line", "arrow"):
             model["points"] = [a, b]
@@ -4285,8 +4295,8 @@ class DocumentView(QScrollArea):
                 self._cad_cmd.enter_key()
             return
         if e.key() == Qt.Key_Escape:
-            from . import cad_select
-            if cad_select.cancel(self):
+            from . import cad_select, cad_draw
+            if cad_select.cancel(self) or cad_draw.cancel(self):
                 return
         drawing = [w for w in self.pages if w._poly]
         if drawing and e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):
