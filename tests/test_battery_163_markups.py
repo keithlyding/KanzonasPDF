@@ -79,5 +79,27 @@ class ShapesButton(unittest.TestCase):
             self.assertIn(a.text().replace("&", "").lower(), tip)
 
 
+class CircleShortcut(unittest.TestCase):
+    def test_o_given_to_another_command_before_stays_there(self):
+        """1.6.3 gives Circle the key O. Someone who had put O on another command in
+        Keyboard shortcuts (only changed shortcuts are saved) got O on two commands, and a
+        key on two commands runs neither: their O stopped working. Their own choice wins."""
+        import json
+        from kanzonas.main_window import MainWindow
+        w = MainWindow()
+        self.addCleanup(w.deleteLater)
+        self.addCleanup(w.settings.remove, "shortcuts")
+        self.assertEqual(w.tool_actions["circle"].shortcut().toString(), "O")
+        w.settings.setValue("shortcuts", json.dumps({"Fit page": "O"}))
+        w._apply_saved_shortcuts()
+        self.assertEqual(w.a_fit_page.shortcut().toString(), "O")
+        self.assertEqual(w.tool_actions["circle"].shortcut().toString(), "")
+        # back to the defaults: Circle has O again
+        w.settings.remove("shortcuts")
+        w._apply_saved_shortcuts()
+        self.assertEqual(w.a_fit_page.shortcut().toString(), "Ctrl+0")
+        self.assertEqual(w.tool_actions["circle"].shortcut().toString(), "O")
+
+
 if __name__ == "__main__":
     unittest.main()
