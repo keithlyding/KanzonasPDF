@@ -84,7 +84,14 @@ class DiskFull(unittest.TestCase):
         dl.ready.connect(lambda p: (out.setdefault("ready", p), loop.quit()))
         dl.failed.connect(lambda m: (out.setdefault("failed", m), loop.quit()))
         QTimer.singleShot(10000, loop.quit)
-        with mock.patch("builtins.open", opener):
+        real_fdopen = os.fdopen
+
+        def fdopener(fd, mode="r", *a, **k):        # (the download is made with mkstemp)
+            f = real_fdopen(fd, mode, *a, **k)
+            return Full(f) if "w" in mode else f
+
+        with mock.patch("builtins.open", opener), mock.patch.object(updates.os, "fdopen",
+                                                                    fdopener):
             dl.start()
             if not out:
                 loop.exec()
@@ -152,7 +159,7 @@ class Restart(unittest.TestCase):
         self.assertTrue(os.path.islink(link))
         with open(real, "rb") as f:
             self.assertEqual(f.read(), NEW_APPIMAGE)
-        self.assertEqual(popen.call_args[0][0], [os.path.realpath(real)])
+        self.assertEqual(popen.call_args[0][0][-1], os.path.realpath(real))   # (after the wait)
 
 
 @unittest.skipIf(os.name == "nt", "the Linux applications menu")

@@ -259,6 +259,16 @@ def replace_appimage(new, target):
     os.replace(new, target)
 
 
+def restart_command(target, pid=None):
+    """The command that starts the new AppImage once this process (pid) has ended: started
+    while this one still runs, it would find this one's single-instance server still
+    listening, hand its (empty) file list over to it and quit, so nothing would restart."""
+    pid = os.getpid() if pid is None else pid
+    wait = 'i=0; while kill -0 "$1" 2>/dev/null && [ "$i" -lt 150 ]; do sleep 0.2; ' \
+           'i=$((i+1)); done; exec "$2"'
+    return ["/bin/sh", "-c", wait, "kz-restart", str(pid), target]
+
+
 def restart_env(env=None):
     """The environment to start the new AppImage with: without what this AppImage's start-up
     set for itself (its folder, which goes away when it ends, and the library path

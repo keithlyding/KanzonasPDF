@@ -5110,7 +5110,8 @@ class MainWindow(QMainWindow):
                     "KanzonasPDF."))
                 return
             cwd = os.environ.get("OWD") or os.path.expanduser("~")
-            subprocess.Popen([target], env=updates.restart_env(),
+            # (started once this process has ended: see updates.restart_command)
+            subprocess.Popen(updates.restart_command(target), env=updates.restart_env(),
                              cwd=cwd if os.path.isdir(cwd) else None,
                              close_fds=True, start_new_session=True,
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,

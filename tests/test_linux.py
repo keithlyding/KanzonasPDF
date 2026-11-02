@@ -250,7 +250,9 @@ class AppImageUpdateNow(unittest.TestCase):
         with open(self.target, "rb") as f:
             self.assertEqual(f.read(), NEW_APPIMAGE)
         self.assertTrue(os.access(self.target, os.X_OK))
-        self.assertEqual(popen.call_args[0][0], [self.target])
+        cmd = popen.call_args[0][0]
+        # (through a shell that waits for this process to end, then runs the new AppImage)
+        self.assertEqual((cmd[0], cmd[-2], cmd[-1]), ("/bin/sh", str(os.getpid()), self.target))
         env = popen.call_args[1]["env"]
         self.assertNotIn("APPIMAGE", env)
         self.assertNotIn("APPDIR", env)
@@ -581,6 +583,28 @@ class SignOut(unittest.TestCase):
         backups = os.path.join(home, "data", "KanzonasPDF", "KanzonasPDF", "backups")
         self.assertTrue([n for n in os.listdir(backups) if n.endswith(".pdf")],
                         "no backup of the unsaved change")
+
+
+
+class RestartWaits(unittest.TestCase):
+    @unittest.skipUnless(os.path.exists("/bin/sh"), "needs a POSIX shell")
+    def test_the_new_appimage_starts_only_once_this_process_has_ended(self):
+        # (started while the old one still listened, it handed its files to it and quit)
+        import subprocess
+        import time
+        d = tempfile.mkdtemp()
+        out = os.path.join(d, "ran")
+        target = os.path.join(d, "new.sh")
+        with open(target, "w") as f:
+            f.write("#!/bin/sh\necho started > '%s'\n" % out)
+        os.chmod(target, 0o755)
+        old = subprocess.Popen(["sleep", "1"])
+        p = subprocess.Popen(updates.restart_command(target, old.pid))
+        time.sleep(0.4)
+        self.assertFalse(os.path.exists(out))
+        old.wait()
+        p.wait(timeout=10)
+        self.assertTrue(os.path.exists(out))
 
 
 if __name__ == "__main__":
