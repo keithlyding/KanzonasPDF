@@ -6995,8 +6995,8 @@ msgstr "Ir a la página"
 msgid "Page:"
 msgstr "Página:"
 
-msgid "Clean up"
-msgstr "Limpiar"
+msgid "Edit"
+msgstr "Editar"
 
 msgid "Calibrate"
 msgstr "Calibrar"

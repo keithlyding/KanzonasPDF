@@ -363,7 +363,11 @@ Right to left it's a dashed <b>green crossing box</b>: it takes everything it to
 running through it included. The first corner is marked as soon as you click, and the status
 bar asks for the other corner. A quick click counts as a click even if the mouse moved a little
 while you pressed, and clicking the first corner again keeps the box. Escape drops a box you
-started. Hold Shift on the second click to take things out instead.</li>
+started. Hold Shift on the second click to take things out instead. A box (or a lasso) can also
+start and end on the <b>gray area around the page</b>, handy when the sheet is covered. A filled
+shape or a picture covering the whole sheet (a background, a scan) counts as empty paper here: a
+click on it starts a box, and only a window around the whole sheet takes it (a filled shape also
+a click right on its edge).</li>
 <li><b>Hold the button and drag</b>: a <b>lasso</b> that follows the pointer. Drawn rightward at
 first it's a blue window lasso (what's entirely inside it); leftward, a green crossing lasso
 (what it touches). Shift+lasso takes things out.</li>
@@ -390,7 +394,7 @@ the button then shows the one used last (or the tool that's on). <b>Markup</b>: 
 Cloud, Polygon, Mask), Circle (arrow: Arc), Line (arrow: Polyline, Curve, Pen), Arrow, Text box (arrow: Callout),
 Stamp (arrow: Image); their one-letter shortcuts type into the command line in CAD mode.
 <b>Measure</b>: Length (arrow: Polylength, Area, Angle, Radius, Perimeter, Volume, Count,
-Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Clean up</b>: Erase
+Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Edit</b>: Erase
 content, Bring to front (arrow: Bring forward, Send backward, Send to back), Align left (arrow:
 the other alignments, Distribute horizontally and Distribute vertically), Edit text (arrow: Add
 text): Edit text changes the words already on the page, Add text types new text into the

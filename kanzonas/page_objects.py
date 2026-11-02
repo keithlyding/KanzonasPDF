@@ -835,6 +835,7 @@ class Objects:
                 continue
             groups[("/" + gname).encode()] = (xref, _form_box(doc, xref))
         page_area = abs(page.rect) or 1
+        big = 0.9 * page_area
         tm = self.tm
         tt = tuple(tm)
         Rect = pymupdf.Rect
@@ -876,6 +877,10 @@ class Objects:
                 self.items.append(_Shape(n=k, kind="shape", rect=r, xref=0,
                                          stroke=d["stroke"], fill=d["fill"],
                                          width=d["width"] * scale, obj=d, _tm=tm))
+                if d["fill"] and (r.x1 - r.x0) * (r.y1 - r.y0) >= big:
+                    # a filled shape covering the sheet (a background): picked by a box
+                    # around it, or a click on its edge, not by a click anywhere inside
+                    self.items[-1]["background"] = True
                 continue
             m = d["ctm"] * tm
             if abs(m.a * m.d - m.b * m.c) < 1e-12:
@@ -900,7 +905,9 @@ class Objects:
                     continue            # something else, not a picture
             quad = pymupdf.Rect(0, 0, 1, 1).quad.transform(m)
             self.items.append({"n": k, "kind": "picture", "rect": quad.rect, "xref": xref,
-                               "quad": quad, "obj": d})
+                               "quad": quad, "obj": d,
+                               # a picture filling the sheet (a scan): as a group above
+                               "background": abs(quad.rect) >= big})
 
     def lines(self, item):
         """A shape's outline (cached), or the picture's outline."""
@@ -953,7 +960,8 @@ class Objects:
             if not (r.x0 - pad <= pt.x <= r.x1 + pad and r.y0 - pad <= pt.y <= r.y1 + pad):
                 continue
             if it["kind"] in ("picture", "group"):
-                if pt in it["quad"] and filled is None and not it.get("whole"):
+                if pt in it["quad"] and filled is None and not it.get("whole") and \
+                        not it.get("background"):
                     filled = it
                 continue
             lines = self.lines(it)
@@ -967,7 +975,8 @@ class Objects:
                     return it
             elif any(_near(line, pt, pad) for line in lines):
                 return it
-            if it["fill"] and filled is None and _inside(lines, pt):
+            if it["fill"] and filled is None and not it.get("background") and \
+                    _inside(lines, pt):
                 filled = it
         return filled
 
@@ -980,8 +989,9 @@ class Objects:
     def pick(self, region, crossing=False):
         """Objects a CAD selection region (Box or Lasso) takes. A window (crossing False)
         takes the ones lying entirely inside it; a crossing region also the ones it touches:
-        a line running through it, a filled shape or a picture it is on. A group filling the
-        page is only taken whole (inside a window)."""
+        a line running through it, a filled shape or a picture it is on. A group, picture or
+        filled shape filling the page (a background) is only taken whole (inside a
+        window)."""
         return [it for it, taken in self.pick_steps(region, crossing) if taken]
 
     def pick_steps(self, region, crossing=False):
@@ -1006,7 +1016,7 @@ class Objects:
             if region.contains_rect(r) or not pic and not isinstance(region, Box) and \
                     region.contains_lines(self.lines(it)):
                 yield it, True
-            elif not crossing or it.get("whole"):
+            elif not crossing or it.get("whole") or it.get("background"):
                 yield it, False
             elif pic:
                 q = it["quad"]

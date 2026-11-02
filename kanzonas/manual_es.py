@@ -351,7 +351,10 @@ derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua
 línea que lo atraviese. La primera esquina se marca en cuanto hace clic, y la barra de estado pide la otra esquina. Un
 clic rápido cuenta como clic aunque el mouse se haya movido un poco al presionar, y hacer clic otra vez en la primera
 esquina conserva el recuadro. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para
-quitar elementos en lugar de agregarlos.</li>
+quitar elementos en lugar de agregarlos. Un recuadro (o un lazo) también puede empezar y terminar en el <b>área gris
+alrededor de la página</b>, útil cuando la hoja está cubierta. Una forma rellena o una imagen que cubre toda la hoja (un
+fondo, un escaneo) cuenta aquí como papel vacío: un clic en ella empieza un recuadro, y solo una ventana alrededor de toda
+la hoja la toma (una forma rellena, también un clic justo en su borde).</li>
 <li><b>Mantenga presionado el botón y arrastre</b>: un <b>lazo</b> que sigue al puntero. Si al principio lo dibuja hacia
 la derecha es un lazo de ventana azul (lo que queda completamente dentro); hacia la izquierda, un lazo de captura verde
 (lo que toca). Shift+lazo quita elementos.</li>
@@ -379,7 +382,7 @@ muestra luego la última usada (o la herramienta activa). <b>Marcas</b>: Rectán
 Línea (flecha: Polilínea, Curva, Lápiz), Flecha, Cuadro de texto (flecha: Llamada), Sello (flecha: Imagen); en el modo CAD sus atajos
 de una letra escriben en la línea de comandos. <b>Medir</b>: Longitud (flecha: Longitud de polilínea, Área, Ángulo, Radio,
 Perímetro, Volumen, Conteo, Calibrar cinta métrica), Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página.
-<b>Limpiar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
+<b>Editar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
 izquierda (flecha: las demás alineaciones, Distribuir horizontalmente y Distribuir verticalmente), Editar texto (flecha:
 Agregar texto): Editar texto cambia las palabras que ya están en la página, Agregar texto escribe texto nuevo en la
 página.</p>

@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
-from kanzonas import annotations, main_window, mouse_modes, page_widget  # noqa: E402
+from kanzonas import annotations, main_window, mouse_modes, page_objects, page_widget  # noqa: E402
 
 P = pymupdf.Point
 
@@ -138,6 +138,10 @@ class Rollover(CadWindow):
         self.cad()
 
     def hover(self, x, y):
+        # (the spot on screen: a move goes to whatever is under it, a scroll bar included)
+        p = self.at(x, y)
+        self.v.ensureVisible(self.page.x() + p.x(), self.page.y() + p.y(), 120, 120)
+        APP.processEvents()
         # (away first: a move to where the pointer already is sends nothing)
         QTest.mouseMove(self.page, self.at(x + 37, y + 41))
         QTest.mouseMove(self.page, self.at(x, y))
@@ -192,8 +196,8 @@ class Rollover(CadWindow):
         APP.processEvents()
         v = self.v = self.w.view()
         self.addCleanup(lambda: setattr(v, "dirty", False))
-        self.w.set_tool("editobjects")
         self.cad()
+        self.w.set_tool("editobjects")      # (after: CAD mode puts down its own start tool)
         got = self.hover(200, 150)
         self.assertIsNotNone(got)
         self.assertEqual(got["kind"], "object")
@@ -211,6 +215,85 @@ class Rollover(CadWindow):
         self.addCleanup(lambda: self.v._cad_cmd and self.v._cad_cmd.finish())
         from kanzonas import cad_select
         self.assertIsNone(cad_select._rollover_shown(self.page))
+
+
+class CoveredSheet(CadWindow):
+    """A sheet covered by one object (a filled background, a scan) left no empty paper to
+    start a selection box on (from a test of 1.7): a click on such a background starts a box,
+    and a box can start on the gray canvas off the page."""
+    def sheet(self, build):
+        d = pymupdf.open()
+        p = d.new_page(width=792, height=612)
+        build(p)
+        p.draw_line((200, 200), (300, 260), color=(0, 0, 1))
+        p.draw_line((500, 300), (650, 400), color=(0, 0, 1))
+        path = os.path.join(tempfile.mkdtemp(), "sheet.pdf")
+        d.save(path)
+        self.w.open_file(path)
+        APP.processEvents()
+        v = self.v = self.w.view()
+        self.addCleanup(lambda: setattr(v, "dirty", False))
+        self.cad()
+        self.w.set_tool("editobjects")      # (after: CAD mode puts down its own start tool)
+        return v
+
+    def test_a_click_on_a_filled_background_starts_a_box(self):
+        v = self.sheet(lambda p: p.draw_rect(p.rect, color=None, fill=(1, 1, 0.9)))
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(400, 100))
+        self.assertIsNotNone(v._cad_pick)                   # (a box, not the background)
+        self.assertIsNone(v.obj_sel)
+        QTest.mouseMove(self.page, self.at(250, 280))
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(250, 280))
+        APP.processEvents()
+        # from (400,100) to (250,280), right to left: a crossing box (it cuts the first line)
+        self.assertIsNotNone(v.obj_sel)
+        self.assertNotIn(True, [it.get("background") for it in v.obj_sel[1]])
+        # a window around the whole sheet still takes the background too
+        v.clear_object_selection()
+        v.select_objects(0, v.content_objects(0).pick(
+            page_objects.Box(pymupdf.Rect(-10, -10, 800, 620))))
+        self.assertIn(True, [it.get("background") for it in v.obj_sel[1]])
+
+    def test_a_click_on_a_full_page_scan_starts_a_box(self):
+        def scan(p):
+            pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 40, 30), False)
+            pix.set_rect(pix.irect, (250, 250, 250))
+            p.insert_image(p.rect, pixmap=pix)
+        v = self.sheet(scan)
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(400, 100))
+        self.assertIsNotNone(v._cad_pick)
+        self.assertIsNone(v.obj_sel)
+
+    def test_a_box_starts_on_the_gray_canvas(self):
+        v = self.sheet(lambda p: p.draw_rect(p.rect, color=None, fill=(1, 1, 1)))
+        canvas = v.widget()
+        g = self.page.geometry()
+        start = QPoint(g.left() - 25, g.top() + int(150 * v.zoom))     # (left of the page)
+        QTest.mouseClick(canvas, Qt.LeftButton, Qt.NoModifier, start)
+        self.assertIsNotNone(v._cad_pick)
+        self.assertLess(v._cad_pick["at"].x, 0)              # (off the page)
+        # the box shows on the canvas too while it's drawn
+        from kanzonas import cad_select
+        QTest.mouseMove(self.page, self.at(350, 300))
+        self.assertIsNotNone(cad_select._shape_now(self.page))
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(350, 300))
+        APP.processEvents()
+        self.assertIsNone(v._cad_pick)
+        got = v.obj_sel[1] if v.obj_sel else []
+        self.assertEqual(len(got), 1)                        # (the first line, inside it)
+
+    def test_a_held_drag_from_the_canvas_is_a_lasso(self):
+        v = self.sheet(lambda p: None)
+        canvas = v.widget()
+        g = self.page.geometry()
+        a = QPoint(g.left() - 25, g.top() + int(150 * v.zoom))
+        QTest.mousePress(canvas, Qt.LeftButton, Qt.NoModifier, a)
+        for k in range(1, 12):
+            QTest.mouseMove(canvas, a + QPoint(30 * k, 12 * k), 40)
+        self.assertIsNotNone(self.page._cad_down)
+        self.assertEqual(self.page._cad_down["mode"], "lasso")
+        QTest.mouseRelease(canvas, Qt.LeftButton, Qt.NoModifier, a + QPoint(330, 132), 40)
+        self.assertIsNone(self.page._cad_down)
 
 
 class Clicks(CadWindow):

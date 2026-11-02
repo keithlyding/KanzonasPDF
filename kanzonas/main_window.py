@@ -4625,9 +4625,9 @@ class MainWindow(QMainWindow):
                 self._split_tools(*["m_length"] + [k for k, *_r in MEASURE_TOOLS
                                                    if k != "m_length"]),
                 self.a_snap_objects, self.a_snap_grid, self.a_snap_page]),
-            # the page's own text and drawing: change the words (Add text under the arrow),
-            # erase, stacking order, align (in the second column's free slot: no wider)
-            (tr("Clean up"), "small", [
+            # the page's own text and drawing: erase, stacking order, align, change the words
+            # (Add text under the arrow; in the second column's free slot: no wider)
+            (tr("Edit"), "small", [
                 t["erasecontent"],
                 split_button([A_[k] for k in ("z_front", "z_forward", "z_backward", "z_back")]),
                 split_button([A_[k] for k in ("al_left", "al_hcenter", "al_right", "al_top",

@@ -428,6 +428,79 @@ def _annot_flags(doc, xref):
     except ValueError:
         return 0
 
+class _Canvas(QWidget):
+    """The gray canvas the pages lie on. In CAD mode a selection box or lasso can start (and
+    end) on it, off the page: a sheet covered by one object (a background, a scan) leaves no
+    empty paper to start a box on."""
+    def __init__(self, view):
+        super().__init__()
+        self._view = view
+        self.setMouseTracking(True)     # (a click, move, click box follows the pointer here)
+
+    def _page_at(self, pos):
+        """The page nearest to canvas point pos, and pos in that page's coordinates."""
+        best = None
+        for w in getattr(self._view, "pages", []):
+            if not w.isVisible():
+                continue
+            g = w.geometry()
+            dx = max(g.left() - pos.x(), 0, pos.x() - g.right())
+            dy = max(g.top() - pos.y(), 0, pos.y() - g.bottom())
+            d = dx + dy
+            if best is None or d < best[0]:
+                best = (d, w)
+        if best is None:
+            return None, None
+        w = best[1]
+        return w, QPointF(pos) - QPointF(w.pos())
+
+    def mousePressEvent(self, e):
+        from . import cad_select
+        v = self._view
+        if e.button() == Qt.LeftButton and getattr(v, "doc", None) is not None:
+            pk = v._cad_pick
+            if pk is not None:
+                w = pk["w"]
+                pos = QPointF(w.mapFromGlobal(e.globalPosition()))
+            else:
+                w, pos = self._page_at(e.position())
+            if w is not None and cad_select.active(w) and \
+                    (v._cad_cmd is None or v._cad_cmd.selecting):
+                cad_select.press(w, e, pos, w.to_pdf(pos), outside=True)
+                self._down = w
+                e.accept()
+                return
+        super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e):
+        from . import cad_select
+        w = getattr(self, "_down", None)
+        if w is not None and e.buttons() and w._cad_down is not None:
+            cad_select.move(w, e, QPointF(w.mapFromGlobal(e.globalPosition())))
+            return
+        if not e.buttons() and self._view._cad_pick is not None:
+            cad_select.hover(self._view._cad_pick["w"], e)
+            return
+        super().mouseMoveEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        from . import cad_select
+        w, self._down = getattr(self, "_down", None), None
+        if w is not None and w._cad_down is not None:
+            cad_select.release(w, e, QPointF(w.mapFromGlobal(e.globalPosition())))
+            return
+        super().mouseReleaseEvent(e)
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        from . import cad_select
+        p = QPainter(self)
+        try:
+            cad_select.paint_outside(self._view, p)
+        finally:
+            p.end()
+
+
 class DocumentView(QScrollArea):
     _orig_data = None               # original file bytes (signed / protected files only)
     _orig_enc = None                # original protection, to keep it when saving edits
@@ -603,7 +676,7 @@ class DocumentView(QScrollArea):
                 self.setFocus()         # (hiding the pages took the keyboard focus away)
             self.verticalScrollBar().setValue(keep)
             return
-        container = QWidget()
+        container = _Canvas(self)
         container.setStyleSheet("background: #525659;")
         lay = QVBoxLayout(container)
         lay.setSpacing(PAGE_GAP)

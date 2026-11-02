@@ -37,16 +37,21 @@ def _shift(e):
     return bool(e.modifiers() & Qt.ShiftModifier)
 
 
-def press(w, e, pos, pdf):
-    """A left press on page widget w (CAD mode, Select or Edit objects)."""
+def press(w, e, pos, pdf, outside=False):
+    """A left press on page widget w (CAD mode, Select or Edit objects). outside: on the
+    gray canvas around the pages (pos and pdf: the same point in w's terms, off the page),
+    where a press only starts a box or lasso."""
     v = w.view
     pick = v._cad_pick
+    v._cad_drag_w = w
     if pick is not None:                # the second click of a click, move, click box
         finish_box(v, pick, e)
         w._cad_down = {"ignore": True}
         return
     remove = _shift(e)
-    if v.tool == "select":
+    if outside:
+        target = ("markup", None)
+    elif v.tool == "select":
         model = w._selected_here()
         if model is not None and not v.extra and not remove:
             for hid, r in w._handles(model).items():       # handles still resize
@@ -58,7 +63,8 @@ def press(w, e, pos, pdf):
             if r.adjusted(-3, -3, 3, 3).contains(pos):
                 w._obj_edit = {"mode": hid, "start": pos, "preview": None}
                 return
-    target = target_at(w, pos, pdf)
+    if not outside:
+        target = target_at(w, pos, pdf)
     w._cad_down = {"start": pos, "pts": [pos], "dir": 0, "mode": None, "now": None,
                    "target": target, "remove": remove, "t": e.timestamp(),
                    "link": getattr(w, "_link_press", None) is not None}
@@ -112,6 +118,7 @@ def move(w, e, pos):
         d["now"] = pos
     _schedule(w)
     w.update()
+    _outside_update(w)
 
 
 def hover(w, e):
@@ -129,6 +136,7 @@ def hover(w, e):
     pick["now"] = QPointF(pw.mapFromGlobal(e.globalPosition()))
     _schedule(pw)
     pw.update()
+    _outside_update(pw)
 
 
 # ---- rollover: what a click would take, before the click (as AutoCAD highlights the object
@@ -199,6 +207,7 @@ def _rollover_shown(w):
 
 def release(w, e, pos):
     d, w._cad_down = w._cad_down, None
+    _outside_update(w)
     _clear(w)
     if d.get("ignore"):
         return
@@ -250,6 +259,7 @@ def finish_box(v, pk, e):
         return
     end = QPointF(pw.mapFromGlobal(e.globalPosition()))
     v._cad_pick = None
+    _outside_update(pw)
     _clear(pw)
     pw.update()
     a = QPointF(pw.to_screen_pt(pk["at"]))
@@ -268,6 +278,7 @@ def cancel(v):
     if shiboken6.isValid(pk["w"]):
         _clear(pk["w"])
         pk["w"].update()
+        _outside_update(pk["w"])
     return True
 
 
@@ -443,6 +454,75 @@ def _clear(w):
     if getattr(w, "_cad_preview", None) is not None:
         w._cad_preview = None
         w.update()
+
+
+# ---- the part of a box or lasso lying off the page, on the gray canvas around it (a box can
+# start and end there: a sheet covered by one object leaves no empty paper to start on)
+def _shape_now(w):
+    """The box ((a, b)) or lasso ([points]) being drawn from page widget w, in w's own
+    coordinates, or None."""
+    v = w.view
+    pk = v._cad_pick
+    if pk is not None and pk["w"] is w and shiboken6.isValid(w):
+        return "box", (QPointF(w.to_screen_pt(pk["at"])), pk["now"])
+    d = w._cad_down
+    if d is None or d.get("ignore"):
+        return None
+    if d["mode"] == "box" and d["now"] is not None:
+        return "box", (d["start"], d["now"])
+    if d["mode"] == "lasso" and len(d["pts"]) >= 2:
+        return "lasso", list(d["pts"])
+    return None
+
+
+def _outside_update(w):
+    """Repaint the canvas where the box or lasso is and was (only when it leaves the page:
+    on the page, the page widget draws it)."""
+    if not shiboken6.isValid(w):
+        return
+    canvas = w.parentWidget()
+    if canvas is None:
+        return
+    got = _shape_now(w)
+    old = getattr(w, "_outside_rect", None)
+    rect = None
+    if got is not None:
+        pts = list(got[1])
+        r = QRectF(pts[0], pts[0])
+        for q in pts[1:]:
+            r = r.united(QRectF(q, q))
+        if not QRectF(w.rect()).contains(r):
+            rect = r.translated(QPointF(w.pos())).toAlignedRect().adjusted(-4, -4, 4, 4)
+    w._outside_rect = rect
+    if old is not None:
+        canvas.update(old)
+    if rect is not None:
+        canvas.update(rect)
+
+
+def paint_outside(view, p):
+    """Paint on the canvas (view.widget()) the box or lasso being drawn, wherever it lies off
+    its page."""
+    w = getattr(view, "_cad_drag_w", None)
+    pk = view._cad_pick
+    if pk is not None:
+        w = pk["w"]
+    if w is None or not shiboken6.isValid(w):
+        return
+    got = _shape_now(w)
+    if got is None:
+        return
+    off = QPointF(w.pos())
+    if got[0] == "box":
+        a, b = got[1]
+        paint_box(p, a + off, b + off)
+    else:
+        pts = [q + off for q in got[1]]
+        crossing = w._cad_down is not None and w._cad_down.get("dir", 0) < 0
+        p.setPen(QPen(GREEN if crossing else BLUE, 1, Qt.DashLine if crossing else Qt.SolidLine))
+        p.setBrush(QColor(0, 180, 70, 45) if crossing else QColor(0, 120, 215, 45))
+        p.drawPolygon(QPolygonF(pts))
+        p.setBrush(Qt.NoBrush)
 
 
 def paint_box(p, a, b):
