@@ -381,6 +381,17 @@ def paint_box(p, a, b):
     p.setBrush(Qt.NoBrush)
 
 
+def _glow_path(w, pv):
+    """The highlight's lines (pv: w._cad_preview) on w's screen, as one path."""
+    from .page_widget import lines_path
+    t = w._screen_transform(w.view.doc[w.index])
+    key = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
+    got = getattr(w, "_glow", None)
+    if got is None or got[0] is not pv or got[1] != key:
+        got = w._glow = (pv, key, t.map(lines_path(pv[1])))
+    return got[2]
+
+
 def paint(w, p):
     pv = getattr(w, "_cad_preview", None)
     if pv is not None and (w._cad_down is not None or w.view._cad_pick is not None):
@@ -390,13 +401,11 @@ def paint(w, p):
         # grips, so the two never look alike)
         glow = QColor(color)
         glow.setAlpha(110)
-        pen = QPen(glow, 6)
-        pen.setCapStyle(Qt.RoundCap)
-        p.setPen(pen)
-        for line in lines:
-            pts = [QPointF(w.to_screen_pt(q)) for q in line]
-            for a, b in zip(pts, pts[1:]):
-                p.drawLine(a, b)
+        # one path, made once per step of the highlight and zoom: it's drawn on every pointer
+        # move (a point at a time, each loading the page, took 300 ms for 3,000 lines), with
+        # square ends (round ends on a path of many pieces are a hundred times slower)
+        p.setPen(QPen(glow, 6))
+        p.drawPath(_glow_path(w, pv))
         fill = QColor(color)
         fill.setAlpha(70)
         for r in rects:
