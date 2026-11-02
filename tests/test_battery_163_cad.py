@@ -110,5 +110,37 @@ class FlatBoxesStandard(Base):
         self.assertEqual(markups(self.v), [])
 
 
+class ToolChangedMidDrag(Base):
+    """A tool picked (by its key) while a markup is being dragged: the selection goes with
+    the old tool, and the release then failed (TypeError in mouseReleaseEvent: the move
+    looked for the selection that was gone)."""
+    MODE = "standard"
+
+    def test_the_release_after_a_tool_change_does_nothing(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        v = self.v
+        v.set_tool("rect")
+        self.drag((100, 100), (200, 180))
+        (_k, before, _p), = markups(v)
+        v.set_tool("select")
+        self.click((100, 140))                          # (on its left side: selected)
+        self.assertIsNotNone(v.selection)
+        errors = []
+        old = sys.excepthook
+        sys.excepthook = lambda *a: errors.append(a)
+        self.addCleanup(setattr, sys, "excepthook", old)
+        w = self.w()
+        QTest.mousePress(w, Qt.LeftButton, Qt.NoModifier, self.at((100, 140)))
+        QTest.mouseMove(w, self.at((130, 160)))
+        QTest.mouseMove(w, self.at((160, 180)))
+        v.set_tool("line")                              # (L pressed while dragging)
+        QTest.mouseRelease(w, Qt.LeftButton, Qt.NoModifier, self.at((160, 180)))
+        APP.processEvents()
+        self.assertEqual(errors, [])
+        (_k, after, _p), = markups(v)
+        self.assertEqual(after, before)                 # the drag went with the old tool
+
+
 if __name__ == "__main__":
     unittest.main()
