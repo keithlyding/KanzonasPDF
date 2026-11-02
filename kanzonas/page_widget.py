@@ -1667,8 +1667,8 @@ class PageWidget(QWidget):
                     return
         if self.view.cad_select:
             # (CAD mode: dragging draws a lasso, nothing moves; what a click takes, markups
-            # too, is highlighted by cad_select.rollover)
-            self.unsetCursor()
+            # too, gets the pick box cursor and fades: cad_select.rollover)
+            cad_select.apply_cursor(self)
             item = None
         else:
             item = self.view.object_at(self.index, self.to_pdf(pos))
@@ -2189,7 +2189,9 @@ class PageWidget(QWidget):
             over = self._card_at(pos)
         if over is not None:
             if self.view.cad_select and self.view.tool == "select":
-                self.unsetCursor()      # CAD mode: dragging draws a lasso, nothing moves
+                # CAD mode: dragging draws a lasso, nothing moves; the pick box shows a
+                # click takes it (cad_select.rollover)
+                cad_select.apply_cursor(self)
             else:
                 self.setCursor(Qt.SizeAllCursor)
             card = self._card_at(pos)

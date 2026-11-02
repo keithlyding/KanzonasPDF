@@ -156,18 +156,24 @@ class Rollover(CadWindow):
         self.assertTrue(got["lines"])
         self.assertIsNone(self.hover(600, 500))     # (empty paper: nothing)
 
-    def test_it_is_drawn(self):
-        self.hover(250, 225)
+    def test_the_cross_becomes_a_pick_box_over_it(self):
         from kanzonas import cad_select
-        drawn = []
-        own = cad_select.QPen
+        self.hover(250, 225)
+        self.assertEqual(self.page.cursor().pixmap().cacheKey(),
+                         cad_select.pick_cursor().pixmap().cacheKey())
+        self.hover(600, 500)                        # (empty paper: the plain cross again)
+        self.assertNotEqual(self.page.cursor().shape(), Qt.BitmapCursor)
 
-        def pen(*a):
-            drawn.append(a)
-            return own(*a)
-        with mock.patch.object(cad_select, "QPen", pen):
-            self.page.repaint()
-        self.assertTrue(any(len(a) == 2 and a[1] == 6 for a in drawn))
+    def test_it_fades(self):
+        # the arrow's pixels turn lighter while the pointer is over it
+        z = self.v.zoom
+        spot = (int(250 * z), int(225 * z))
+        self.hover(600, 500)
+        before = self.page.grab().toImage().pixelColor(*spot)
+        self.hover(250, 225)
+        after = self.page.grab().toImage().pixelColor(*spot)
+        self.assertGreater(after.lightness(), before.lightness() + 40, (before, after))
+        self.assertEqual(after.hue() == before.hue() or after.saturation() < 60, True)
 
     def test_a_locked_markup_does_not_light_up(self):
         page = self.v.doc[0]
@@ -177,7 +183,8 @@ class Rollover(CadWindow):
         del first, page
         self.v._clear_page_caches([0])
         got = self.hover(250, 225)
-        self.assertTrue(got is None or not got["lines"])
+        self.assertTrue(got is None or not got["takes"])
+        self.assertNotEqual(self.page.cursor().shape(), Qt.BitmapCursor)
 
     def test_a_selected_markup_is_not_lit_again(self):
         page = self.v.doc[0]

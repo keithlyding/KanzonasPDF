@@ -341,10 +341,11 @@ una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo
 controladores para cambiar su tamaño: cámbielas con los comandos de la pestaña CAD, o con Seleccionar.
 Lo seleccionado se dibuja con <b>línea discontinua</b> (trazos azules sobre blanco, así se ve incluso sobre una línea azul)
 con pequeños <b>pinzamientos</b> azules en sus extremos y esquinas, como en AutoCAD.</li>
-<li>Antes de hacer clic, lo que tomaría un clic <b>brilla</b> en azul mientras el puntero está encima (una marca, o con
-Editar objetos la línea, el texto o la imagen propios del dibujo), así ve lo que tomarán Mover, Copiar, Simetría, Escalar y
-los demás comandos. Lo que ya está seleccionado no brilla (se dibuja con línea discontinua), y nada brilla mientras un
-comando pide puntos.</li>
+<li>Antes de hacer clic, el puntero muestra lo que tomaría un clic: sobre algo que puede tomar (una marca, o con Editar
+objetos la línea, el texto o la imagen propios del dibujo) la cruz muestra un pequeño <b>cuadro de selección</b> en el
+centro, como en AutoCAD, y ese elemento se <b>atenúa</b> (se dibuja más claro) mientras el puntero está encima, así ve lo
+que tomarán Mover, Copiar, Simetría, Escalar y los demás comandos. Lo que ya está seleccionado no se atenúa (se dibuja con
+línea discontinua), una marca bloqueada no muestra ninguno de los dos, y ninguno aparece mientras un comando pide puntos.</li>
 <li><b>Clic, mover, clic</b>: haga clic en el papel vacío, mueva el puntero (el recuadro lo sigue) y vuelva a hacer
 clic. De izquierda a derecha es una <b>ventana azul</b> de línea continua: toma lo que queda completamente dentro. De
 derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua: toma todo lo que toca, incluida una

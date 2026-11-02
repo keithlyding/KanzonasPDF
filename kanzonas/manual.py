@@ -353,10 +353,12 @@ together. Right-click a markup for its own menu, the drawing's objects for their
 markups show no resize handles here: change them with the CAD tab's commands, or with Select.
 What's selected is drawn <b>dashed</b> (blue dashes over white, so it shows on a blue line too)
 with small blue <b>grips</b> on its ends and corners, as in AutoCAD.</li>
-<li>Before you click, what a click would take <b>glows</b> blue while the pointer is over it (a
-markup, or with Edit objects the drawing's own line, text or picture), so you can see what Move,
-Copy, Mirror, Scale and the other commands will get. Something already selected doesn't glow
-(it's drawn dashed), and nothing glows while a command asks for points.</li>
+<li>Before you click, the pointer shows what a click would take: over something it can take (a
+markup, or with Edit objects the drawing's own line, text or picture) the cross gets a small
+<b>pick box</b> in its middle, as in AutoCAD, and that item <b>fades</b> (is drawn lighter) while
+the pointer is over it, so you can see what Move, Copy, Mirror, Scale and the other commands will
+get. Something already selected doesn't fade (it's drawn dashed), a locked markup gets neither,
+and neither shows while a command asks for points.</li>
 <li><b>Click, move, click</b>: click empty paper, move the pointer (the box follows it) and click
 again. Left to right it's a solid <b>blue window</b>: it takes what lies entirely inside it.
 Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line

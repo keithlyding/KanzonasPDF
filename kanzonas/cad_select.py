@@ -139,8 +139,46 @@ def hover(w, e):
     _outside_update(pw)
 
 
-# ---- rollover: what a click would take, before the click (as AutoCAD highlights the object
-# under the cursor), so the user sees where Move, Mirror, Scale... can take something
+# ---- rollover: what a click would take, before the click, so the user sees where Move,
+# Mirror, Scale... can take something: the cross becomes a crosshair with a pick box (as in
+# AutoCAD) and the item fades (drawn lighter) while the pointer is over it
+_PICK_CURSOR = None
+
+
+def pick_cursor():
+    """The CAD cross with a pick box in its middle: a click here takes something."""
+    global _PICK_CURSOR
+    if _PICK_CURSOR is None:
+        from PySide6.QtGui import QCursor, QPixmap, QPainter
+        pm = QPixmap(33, 33)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        for color, width in ((QColor(255, 255, 255), 3), (QColor(0, 0, 0), 1)):
+            p.setPen(QPen(color, width))
+            p.setBrush(Qt.NoBrush)
+            p.drawLine(16, 0, 16, 10)
+            p.drawLine(16, 22, 16, 32)
+            p.drawLine(0, 16, 10, 16)
+            p.drawLine(22, 16, 32, 16)
+            p.drawRect(11, 11, 10, 10)
+        p.end()
+        _PICK_CURSOR = QCursor(pm, 16, 16)
+    return _PICK_CURSOR
+
+
+def apply_cursor(w):
+    """The pick box cursor over something a click takes, else the view's own cross."""
+    hv = _rollover_shown(w)
+    if hv is not None and hv["takes"]:
+        w.setCursor(pick_cursor())
+    else:
+        w.unsetCursor()
+
+
+_OPEN_KINDS = ("line", "arrow", "polyline", "ink", "arc", "opencloud", "m_length", "m_poly",
+               "m_angle", "m_radius")
+
+
 def rollover(w, pos):
     if not active(w) or w._cad_down is not None or w.view._cad_cmd is not None and \
             not w.view._cad_cmd.selecting:
@@ -158,9 +196,9 @@ def rollover(w, pos):
     old = getattr(w, "_cad_hover", None)
     if old is not None and old["key"] == key:
         return                          # (the same item: nothing read again)
-    lines = []
+    lines, fill, width, takes = [], False, 1.0, True
     if kind == "markup" and v.markup_locked(w.index, target):
-        pass                            # (a locked markup isn't taken: it doesn't glow)
+        takes = False                   # (a locked markup isn't taken: no pick box, no fade)
     elif kind == "markup":
         page = v.doc[w.index]
         annot = page.load_annot(target)
@@ -171,17 +209,24 @@ def rollover(w, pos):
         del annot
         if model is not None:
             lines = v.cad_outlines(w.index, "markups", [(target, model)])
+            width = float(model.get("props", {}).get("width", 1) or 1)
+            # a box-like markup (a shape, a stamp, a text box...) fades all over
+            fill = model["kind"] not in _OPEN_KINDS
         del page
     else:
         lines = v.object_lines(w.index, target)
+        width = float(target.get("width", 1) or 1)
+        fill = target["kind"] != "shape" or bool(target.get("fill"))
     w._cad_hover = {"key": key, "kind": kind, "target": target, "lines": lines[:LIMIT],
-                    "path": None}
+                    "fill": fill, "width": width, "takes": takes, "path": None}
+    apply_cursor(w)
     w.update()
 
 
 def clear_rollover(w):
     if getattr(w, "_cad_hover", None) is not None:
         w._cad_hover = None
+        w.unsetCursor()
         w.update()
 
 
@@ -385,6 +430,7 @@ def _region(w):
     return None
 
 
+FADE = 150                      # how much of the paper's color goes over a faded item (of 255)
 SLICE = 0.05                   # seconds of work per step of the live highlight
 LIMIT = 3000                    # outlines drawn at most
 
@@ -548,15 +594,36 @@ def _glow_path(w, pv):
 
 def paint(w, p):
     hv = _rollover_shown(w)
-    if hv is not None and hv["lines"]:
-        from .page_widget import lines_path
+    if hv is not None and hv["takes"] and hv["lines"]:
+        # the item drawn lighter: the paper's color over it, part see-through
+        from PySide6.QtGui import QPainterPath
         t = w._screen_transform(w.view.doc[w.index])
         zoom = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
         if hv["path"] is None or hv["path"][0] != zoom:
-            hv["path"] = (zoom, t.map(lines_path(hv["lines"])))
-        glow = QColor(BLUE)
-        glow.setAlpha(110)
-        p.setPen(QPen(glow, 6))             # (the same glow as a box's "what it would take")
+            area = None
+            if hv["fill"]:
+                area = QPainterPath()
+                area.setFillRule(Qt.WindingFill)
+                for line in hv["lines"]:
+                    if len(line) >= 3:
+                        area.addPolygon(QPolygonF([QPointF(q[0], q[1]) for q in line]))
+                area = t.map(area)
+            # (each line one stroke: drawn piece by piece, the see-through color doubles up
+            # where the pieces meet and a curve looks dotted)
+            strokes = QPainterPath()
+            for line in hv["lines"]:
+                if len(line) >= 2:
+                    strokes.moveTo(line[0][0], line[0][1])
+                    for q in line[1:]:
+                        strokes.lineTo(q[0], q[1])
+            hv["path"] = (zoom, t.map(strokes), area)
+        paper = QColor(0, 0, 0) if getattr(w.view, "night_mode", False) else \
+            QColor(255, 255, 255)
+        paper.setAlpha(FADE)
+        if hv["path"][2] is not None:
+            p.fillPath(hv["path"][2], paper)
+        scale = (abs(t.m11() * t.m22() - t.m12() * t.m21())) ** 0.5
+        p.setPen(QPen(paper, max(3.0, hv["width"] * scale + 2)))
         p.drawPath(hv["path"][1])
     pv = getattr(w, "_cad_preview", None)
     if pv is not None and (w._cad_down is not None or w.view._cad_pick is not None):
