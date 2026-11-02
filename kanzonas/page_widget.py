@@ -186,8 +186,9 @@ def paint_selected_path(p, path):
     """What's selected, drawn so it shows on anything, a blue line included: a white line
     under a dashed blue one (AutoCAD draws a selection dashed too)."""
     p.setBrush(Qt.NoBrush)
+    # (square ends: Qt strokes a path of many pieces with round ends a hundred times slower,
+    # 380 ms a paint for 2,500 selected lines)
     under = QPen(QColor(255, 255, 255, 230), 4)
-    under.setCapStyle(Qt.RoundCap)
     p.setPen(under)
     p.drawPath(path)
     dash = QPen(SELECTED, 2, Qt.CustomDashLine)
@@ -202,8 +203,7 @@ def paint_grips(p, points):
     p.setPen(QPen(Qt.white, 1))
     p.setBrush(SELECTED)
     h = 6
-    for q in points:
-        p.drawRect(QRectF(q.x() - h / 2, q.y() - h / 2, h, h))
+    p.drawRects([QRectF(q.x() - h / 2, q.y() - h / 2, h, h) for q in points])   # (one call)
     p.setBrush(Qt.NoBrush)
 
 
@@ -1295,9 +1295,12 @@ class PageWidget(QWidget):
             got = self._sel_path = got[:3] + (key, t.map(got[2]))
         return got[4]
 
-    def _selection_grips(self):
-        """The selected objects' grips, in page coordinates (worked out once per selection)."""
+    def _selection_grips(self, page):
+        """The selected objects' grips on the screen (worked out once per selection, put on
+        the screen again only when the zoom or the page's turn changes)."""
         sel = self.view.obj_sel
+        t = self._screen_transform(page)
+        key = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
         got = getattr(self, "_sel_grips", None)
         if got is None or got[0] is not sel or got[1] != self.index:
             out, seen = [], set()
@@ -1305,8 +1308,10 @@ class PageWidget(QWidget):
                 grip_points(self.view.object_lines(self.index, it), out, seen)
                 if len(out) >= GRIPS_MAX:
                     break
-            got = self._sel_grips = (sel, self.index, out)
-        return got[2]
+            got = self._sel_grips = (sel, self.index, out, None, None)
+        if got[3] != key:
+            got = self._sel_grips = got[:3] + (key, [t.map(QPointF(x, y)) for x, y in got[2]])
+        return got[4]
 
     def _paint_objects(self, p, page):
         blue = QColor(0, 120, 215)
@@ -1337,8 +1342,7 @@ class PageWidget(QWidget):
                 # (dashed over white, and grips on its ends and corners: a selection shows
                 # on a blue drawing too, and doesn't look like the box's preview glow)
                 paint_selected_path(p, self._selection_path(page))
-                t = self._screen_transform(page)
-                paint_grips(p, [t.map(QPointF(x, y)) for x, y in self._selection_grips()])
+                paint_grips(p, self._selection_grips(page))
             elif len(items) <= 3000:            # (a huge drawing: each one's box)
                 for it in items:
                     p.drawRect(self.to_screen(it["rect"], page))
