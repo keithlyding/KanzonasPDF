@@ -136,7 +136,7 @@ CAD usan líneas muy finas (una décima de punto o menos); con su ancho real cub
 parte de un píxel de pantalla al alejar y se ven de un gris pálido. Con esta opción activada siguen oscuras y
 legibles con cualquier zoom. Solo cambia la pantalla: la impresión, la exportación, el OCR, Comparar y el archivo
 guardado usan los anchos de línea reales. Su elección se recuerda.</li>
-<li><b>Tema:</b> Ver &gt; Tema (Igual que Windows, Claro, Oscuro). Ver &gt; Mostrar etiquetas de texto en las
+<li><b>Tema:</b> Ver &gt; Tema (Igual que Windows, o Igual que el sistema en Linux; Claro, Oscuro). Ver &gt; Mostrar etiquetas de texto en las
 barras de herramientas agrega nombres debajo de los iconos. Coloque el puntero sobre cualquier botón o cuadro de la barra de herramientas para ver una información sobre herramientas
 que indica qué hace y su método abreviado de teclado.</li>
 </ul>
@@ -200,6 +200,17 @@ uno). Describa lo que hizo y lo que ocurrió; por favor, no adjunte archivos PDF
 seguridad (censura, contraseñas, firmas) tienen allí su propio formulario privado.</li>
 <li>La descarga <b>KanzonasPDF-windows.zip</b> es el mismo programa sin el archivo portable.txt: se ejecuta
 desde cualquier carpeta, pero guarda la configuración en el equipo, como la versión instalada.</li>
+</ul>
+
+<h2 id="linux">KanzonasPDF en Linux</h2>
+<ul>
+<li><b>Instalar:</b> descargue <b>KanzonasPDF-x86_64.AppImage</b> de la página Releases, hágalo ejecutable (clic derecho &gt; Propiedades &gt; Permisos &gt; Permitir ejecutar el archivo como programa, o <code>chmod +x KanzonasPDF-x86_64.AppImage</code>) y haga doble clic en él. No necesita instalación ni permisos de administrador. Si no se abre y menciona FUSE o libfuse.so.2, instale FUSE 2 (Ubuntu 22.04 y Debian 12: <code>sudo apt install libfuse2</code>; Ubuntu 24.04 y posteriores: <code>sudo apt install libfuse2t64</code>; Fedora: <code>sudo dnf install fuse-libs</code>) o ábralo con <code>--appimage-extract-and-run</code>.</li>
+<li><b>Menú de aplicaciones y aplicación predeterminada para PDF:</b> Archivo &gt; Preferencias &gt; General &gt; <b>Agregar KanzonasPDF al menú de aplicaciones y abrir los PDF con él</b> agrega una entrada de menú y un icono solo para su usuario (en ~/.local/share) y hace que KanzonasPDF abra los archivos PDF. Desmárquelo para quitarlos de nuevo; la aplicación que abría los PDF antes vuelve a ser la predeterminada. Algunos escritorios muestran la nueva entrada solo después de cerrar sesión y volver a iniciarla. Si mueve la AppImage, ábrala una vez desde su nuevo lugar y la entrada del menú la sigue.</li>
+<li><b>Actualizar:</b> <b>Actualizar ahora</b> (en el aviso de actualización o en Ayuda &gt; Buscar actualizaciones) descarga la nueva AppImage solo desde GitHub, comprueba que su sha256 coincida con el publicado con la versión, la pone en lugar del archivo anterior (mismo nombre y lugar, así que la entrada del menú y la aplicación predeterminada siguen funcionando), le pide que guarde los documentos abiertos, se cierra y abre la nueva versión. Si deja un documento abierto, la nueva versión se abrirá la próxima vez que abra KanzonasPDF. Si la AppImage está en una carpeta que usted no puede cambiar, se abre la página de la versión: descargue el nuevo archivo y reemplace el anterior usted mismo. Ejecutado desde el código fuente, KanzonasPDF solo avisa de las nuevas versiones.</li>
+<li><b>Sus archivos:</b> la configuración se guarda en ~/.config/KanzonasPDF/KanzonasPDF.conf; las firmas, las imágenes de sellos, su certificado y las copias de seguridad, en ~/.local/share/KanzonasPDF/KanzonasPDF (Preferencias &gt; General muestra ambos). Al cerrar sesión o apagar el equipo con cambios sin guardar se conservan copias de seguridad, que se ofrecen en el próximo inicio, como en Windows.</li>
+<li><b>Fuentes:</b> Agregar texto y Editar texto usan las fuentes instaladas para fontconfig (/usr/share/fonts, ~/.local/share/fonts, ~/.fonts...): las fuentes TrueType y OpenType se incrustan; una fuente Type 1 no, y se usa Helvetica en su lugar. Sans Serif, Serif y Monospace usan la fuente que su sistema muestra para ellas.</li>
+<li><b>Diferencias con Windows:</b> la primera opción de Ver &gt; Tema es <b>Igual que el sistema</b> (el modo claro u oscuro del escritorio); la firma digital usa su certificado personal o un archivo .pfx/.p12 (no hay almacén de certificados de Windows); para imprimir hace falta una impresora configurada en el sistema (CUPS); las ventanas Abrir y Guardar son las del escritorio o las de Qt.</li>
+<li><b>Quitar:</b> desmarque la opción de Preferencias de arriba y luego elimine la AppImage. Para quitar también su configuración y sus archivos, elimine ~/.config/KanzonasPDF y ~/.local/share/KanzonasPDF.</li>
 </ul>
 
 <h2 id="navigate">Desplazarse por el documento</h2>
@@ -1034,7 +1045,7 @@ con su firma o sus iniciales guardadas y la fecha.</li>
 <li><b>Firmar digitalmente con certificado</b>, con un bloqueo opcional contra cambios (certificar).
 Elija de dónde proviene el certificado:
 <ul>
-<li><b>Certificado almacenado en Windows</b>: la lista muestra los certificados de firma de su
+<li><b>Certificado almacenado en Windows</b> (solo en Windows; no aparece en Linux): la lista muestra los certificados de firma de su
 almacén Personal de Windows, los mismos que usan Adobe Acrobat y PDF-XChange Editor (abra
 certmgr.msc &gt; Personal &gt; Certificados para verlos). Windows realiza la firma, así que
 también funcionan los certificados cuya clave no se puede copiar, las tarjetas inteligentes y los tokens USB; Windows pide
@@ -1175,9 +1186,9 @@ lo mismo que ese comando, así que puede cambiarla en cualquiera de los dos luga
 cierra la ventana; <b>Aplicar</b> los usa de inmediato y deja la ventana abierta, para que pueda ver
 el efecto y seguir ajustando; <b>Cancelar</b> la cierra sin los cambios hechos desde el último
 Aplicar.</li>
-<li><b>General:</b> tema (Igual que Windows, Claro, Oscuro), <b>Idioma</b> (Automático, el idioma de
-Windows; English; Español: menús, mensajes y este manual; el cambio se ve la próxima vez que se
-inicia KanzonasPDF), Cinta (en lugar de barras de herramientas), Mostrar nombres de grupo
+<li><b>General:</b> tema (Igual que Windows, o Igual que el sistema en Linux; Claro, Oscuro), <b>Idioma</b> (Automático, el idioma de
+Windows o del sistema; English; Español: menús, mensajes y este manual; el cambio se ve la próxima vez que se
+inicia KanzonasPDF), Cinta (en lugar de barras de herramientas), en Linux Agregar KanzonasPDF al menú de aplicaciones y abrir los PDF con él (vea KanzonasPDF en Linux), Mostrar nombres de grupo
 en la cinta, Mostrar barra de menús, Mostrar etiquetas de texto en las barras de herramientas, Buscar actualizaciones automáticamente.
 También le indica dónde se guarda su configuración (la carpeta data en el modo portátil). Una opción guardada
 que no se puede usar (editada a mano, por ejemplo) se reemplaza por su valor predeterminado. Si aun así una
@@ -1199,8 +1210,8 @@ documento (Ajustar al ancho de forma predeterminada; Ajustar página, la página
 cuando lo cerró) y si se debe volver a abrir en la página donde estaba la última vez.</li>
 <li><b>Guardado:</b> cada cuánto hacer copia de seguridad de los cambios sin guardar (cada 5 minutos de forma predeterminada; Desactivado lo
 desactiva). Se guarda una copia de cada documento con cambios sin guardar en la carpeta de copias de seguridad y se elimina cuando
-lo guarda o lo cierra. Si KanzonasPDF o Windows se detienen inesperadamente, el siguiente inicio ofrece abrir
-las copias. Cuando un instalador o el apagado de Windows cierran KanzonasPDF, no se puede preguntar nada, así que
+lo guarda o lo cierra. Si KanzonasPDF o el equipo se detienen inesperadamente, el siguiente inicio ofrece abrir
+las copias. Cuando un instalador o el apagado de Windows (en Linux, cerrar sesión o apagar) cierran KanzonasPDF, no se puede preguntar nada, así que
 los últimos cambios sin guardar de cada documento se escriben primero en su copia, y el siguiente inicio los ofrece
 de la misma manera. Cada una se abre en una pestaña con el nombre de su archivo original seguido de "(recuperado)", marcada como
 no guardada; Guardar pregunta dónde guardarla y ofrece el archivo original (o Sin título para un PDF que

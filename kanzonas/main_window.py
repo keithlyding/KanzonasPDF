@@ -710,7 +710,8 @@ class MainWindow(QMainWindow):
         self.a_labels.setChecked(self.settings.value("toolbar_labels", "false") == "true")
         self.theme_group = QActionGroup(self)
         self.theme_actions = {}
-        for key, label in (("system", tr("Match &Windows")), ("light", tr("&Light")),
+        match = tr("Match &Windows") if sys.platform == "win32" else tr("Match &system")
+        for key, label in (("system", match), ("light", tr("&Light")),
                            ("dark", tr("&Dark"))):
             a = QAction(label, self, checkable=True)
             a.triggered.connect(lambda _=False, k=key: self.set_theme(k))
