@@ -7,6 +7,18 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.7
+
+**New**
+- KanzonasPDF for Linux: download KanzonasPDF-x86_64.AppImage from the release page, make it executable and run it (see the README or Help > User manual > KanzonasPDF on Linux). It runs on Ubuntu 22.04, Debian 12, Fedora 36 and later.
+- On Linux, Preferences can add KanzonasPDF to the applications menu and make it the app that opens PDFs, and Update now replaces the AppImage with the new version.
+
+## 1.7 (es)
+
+**Novedades**
+- KanzonasPDF para Linux: descargue KanzonasPDF-x86_64.AppImage de la página de la versión, hágalo ejecutable y ábralo (vea el README o Ayuda > Manual del usuario > KanzonasPDF en Linux). Funciona en Ubuntu 22.04, Debian 12, Fedora 36 y posteriores.
+- En Linux, Preferencias puede agregar KanzonasPDF al menú de aplicaciones y hacer que abra los PDF, y Actualizar ahora reemplaza la AppImage por la nueva versión.
+
 ## 1.6.3
 
 **New**

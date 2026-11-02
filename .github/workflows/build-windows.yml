@@ -304,12 +304,15 @@ jobs:
     outputs:
       version: ${{ steps.ver.outputs.version }}
     env:
-      # appimagetool and the AppImage runtime (the small program at the start of every
-      # AppImage), pinned to exact release files and checked against their SHA-256
+      # appimagetool pinned to an exact release file and checked against its SHA-256. The
+      # AppImage runtime (the small program at the start of every AppImage) is the one at the
+      # start of appimagetool itself (an AppImage too): its first APPIMAGE_RUNTIME_BYTES
+      # bytes, checked against their own SHA-256, so it is pinned with appimagetool instead
+      # of appimagetool fetching the unpinned "continuous" runtime
       APPIMAGETOOL_URL: https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-x86_64.AppImage
-      APPIMAGETOOL_SHA256: PIN-ME
-      APPIMAGE_RUNTIME_URL: https://github.com/AppImage/type2-runtime/releases/download/PIN-ME/runtime-x86_64
-      APPIMAGE_RUNTIME_SHA256: PIN-ME
+      APPIMAGETOOL_SHA256: 46fdd785094c7f6e545b61afcfb0f3d98d8eab243f644b4b17698c01d06083d1
+      APPIMAGE_RUNTIME_BYTES: "692512"
+      APPIMAGE_RUNTIME_SHA256: 33a0fb9c4e2477d0cf1994a179e983633f3b3e77876b190bacff32f335551091
       # the oldest system supported (Ubuntu 22.04's glibc and GCC 12's libstdc++): the build
       # fails if a bundled file needs newer ones
       MAX_GLIBC: "2.35"
@@ -391,8 +394,19 @@ jobs:
             fi
           }
           fetch "$APPIMAGETOOL_URL" "$APPIMAGETOOL_SHA256" "$RUNNER_TEMP/tools/appimagetool-x86_64.AppImage"
-          fetch "$APPIMAGE_RUNTIME_URL" "$APPIMAGE_RUNTIME_SHA256" "$RUNNER_TEMP/tools/runtime-x86_64"
           chmod +x "$RUNNER_TEMP/tools/appimagetool-x86_64.AppImage"
+          # the runtime: the start of appimagetool (a type 2 AppImage: "AI\x02" at byte 8)
+          head -c "$APPIMAGE_RUNTIME_BYTES" "$RUNNER_TEMP/tools/appimagetool-x86_64.AppImage" > "$RUNNER_TEMP/tools/runtime-x86_64"
+          got=$(sha256sum "$RUNNER_TEMP/tools/runtime-x86_64" | cut -d' ' -f1)
+          if [ "$got" != "$APPIMAGE_RUNTIME_SHA256" ]; then
+            echo "::error::the runtime cut from appimagetool has SHA-256 $got, not the pinned $APPIMAGE_RUNTIME_SHA256"
+            exit 1
+          fi
+          python - "$RUNNER_TEMP/tools/runtime-x86_64" <<'PY'
+          import sys
+          d = open(sys.argv[1], "rb").read(16)
+          assert d[:4] == b"\x7fELF" and d[8:11] == b"AI\x02", "not a type 2 AppImage runtime"
+          PY
 
       - name: Make the AppImage (AppDir, excluded libraries, compatibility checks)
         run: |

@@ -5,19 +5,19 @@
 <h1 align="center">KanzonasPDF</h1>
 
 <p align="center">
-  <b>Free PDF markup, measuring and editing for construction and engineering, on Windows</b><br>
+  <b>Free PDF markup, measuring and editing for construction and engineering, on Windows and Linux</b><br>
   Open source (AGPL), no account, no telemetry, portable.
 </p>
 
 <p align="center">
-  <a href="https://github.com/keithlyding/KanzonasPDF/releases"><b>Download for Windows</b></a> ·
+  <a href="https://github.com/keithlyding/KanzonasPDF/releases"><b>Download for Windows and Linux</b></a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#feedback">Report a bug</a> ·
   <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
 </p>
 
 > Used daily for real work. Every release passes 400+ automated tests and a self-test of the
-> built program on Windows before it's published, and reported bugs have been fixed within days.
+> built program on Windows and Linux before it's published, and reported bugs have been fixed within days.
 
 ## Who it's for
 
