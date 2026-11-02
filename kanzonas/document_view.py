@@ -191,6 +191,8 @@ class OpenCanceled(Exception):
 
 
 _JS_ACTION = re.compile(r"/S\s*/(JavaScript|Launch)\b")    # (Launch: runs a program)
+# a script in another kind of action (a Rendition's /JS), or a web address that is one
+_JS_KEY = re.compile(r"/JS\b|/URI\s*\(\s*javascript:", re.IGNORECASE)
 
 
 def remove_scripts(doc):
@@ -200,7 +202,9 @@ def remove_scripts(doc):
     catalog's /OpenAction, an /AA or a link's /A (a common way) stays, so this removes those
     too: /AA (actions run on opening, closing, printing, page visits...) goes wherever it is,
     an /OpenAction or /A only when it is (or leads to) JavaScript, and the document-level
-    scripts (the /JavaScript name tree) go."""
+    scripts (the /JavaScript name tree) go. So do the scripts scrub doesn't know: the /JS of
+    any other action (a Rendition), javascript: web addresses, and an XFA form holding
+    scripts (Acrobat runs them; KanzonasPDF shows the form's ordinary fields)."""
     for xref in range(1, doc.xref_length()):
         try:
             keys = doc.xref_get_keys(xref)
@@ -208,6 +212,12 @@ def remove_scripts(doc):
             continue
         if "AA" in keys:
             doc.xref_set_key(xref, "AA", "null")
+        if "JS" in keys:
+            doc.xref_set_key(xref, "JS", "null")
+        if "URI" in keys:
+            kind, val = doc.xref_get_key(xref, "URI")
+            if kind == "string" and val.strip().lower().startswith("javascript:"):
+                doc.xref_set_key(xref, "URI", "null")
         for key in ("OpenAction", "A"):
             if key not in keys:
                 continue
@@ -218,10 +228,33 @@ def remove_scripts(doc):
                 except Exception:
                     continue
             if kind in ("dict", "xref") and (_JS_ACTION.search(val) or "/Next" in val and
-                                              "JavaScript" in val):
+                                              "JavaScript" in val or _JS_KEY.search(val)):
                 doc.xref_set_key(xref, key, "null")
         if "Names" in keys and doc.xref_get_key(xref, "Names/JavaScript")[0] != "null":
             doc.xref_set_key(xref, "Names/JavaScript", "null")
+    _remove_xfa_scripts(doc)
+
+
+def _remove_xfa_scripts(doc):
+    """An XFA form (the catalog's /AcroForm /XFA) whose packets hold a <script> goes: its
+    ordinary form fields stay (all KanzonasPDF fills in)."""
+    cat = doc.pdf_catalog()
+    kind, val = doc.xref_get_key(cat, "AcroForm/XFA")
+    if kind == "null":
+        return
+    parts = [int(n) for n in re.findall(r"(\d+) 0 R", val)]
+    scripted = not parts            # (written in place, not as streams: unsure, so it goes)
+    for x in parts:
+        try:
+            data = doc.xref_stream(x) if doc.xref_is_stream(x) else b""
+        except Exception:
+            data = b"<script"
+        if b"<script" in (data or b"").lower():
+            scripted = True
+    if scripted:
+        doc.xref_set_key(cat, "AcroForm/XFA", "null")
+        if doc.xref_get_key(cat, "NeedsRendering")[0] != "null":
+            doc.xref_set_key(cat, "NeedsRendering", "null")
 
 
 def blank_appearance(doc, widget_xref):
