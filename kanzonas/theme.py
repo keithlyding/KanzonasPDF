@@ -37,6 +37,7 @@ ICONS = {
     "erasecontent": "eraser-variant", "capture": "camera-outline", "crop": "crop", "link": "link-variant",
     "editobjects": "image-edit-outline", "addtext": "format-text-variant-outline",
     "signature": "signature-freehand", "initials": "signature-text", "date": "calendar-today",
+    "arc": "chart-arc", "curve": "vector-curve",
     "m_length": "ruler", "m_poly": "vector-polyline-edit", "m_area": "texture-box",
     "m_angle": "angle-acute", "m_radius": "radius-outline", "m_perimeter": "vector-square",
     "m_volume": "cube-outline",

@@ -130,6 +130,9 @@ def content_index_steps(page, step=20000):
 def markup_points(model):
     """Corners, edge midpoints and center of a markup; ends and midpoints of line segments."""
     pts = []
+    if model["kind"] == "arc" or model.get("bend") is not None:
+        from . import curves            # (its ends, its middle, an arc's center)
+        return curves.snap_points(model)
     if model["kind"] in A.POINTED:
         q = model["points"]
         pts += q

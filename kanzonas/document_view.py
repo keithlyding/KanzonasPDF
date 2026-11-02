@@ -2819,6 +2819,14 @@ class DocumentView(QScrollArea):
         self.scaleChanged.emit()
 
     def apply_poly(self, index, tool, pts):
+        if tool == "curve":
+            # the Curve tool: a line from the first click to the second, bent through the third
+            model = {"kind": "line", "props": self.tool_props(tool), "points": pts[:2],
+                     "rect": pymupdf.Rect()}
+            if len(pts) > 2:
+                model = annotations.bent(model, pts[2], 0.5 / max(self.zoom, 0.05))
+            self._create(index, model)
+            return
         self._create(index, {"kind": tool, "props": self.tool_props(tool), "points": pts,
                              "rect": pymupdf.Rect()})
 
@@ -4292,6 +4300,10 @@ class DocumentView(QScrollArea):
         if drawing and e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):
             drawing[0].finish_poly(cancel=e.key() == Qt.Key_Escape)
             return
+        if drawing and e.key() == Qt.Key_Backspace:
+            drawing[0]._poly.pop()          # (takes back the last point clicked)
+            drawing[0].update()
+            return
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and (
                 self.selection is not None or self.obj_sel is not None):
             self.delete_everything_selected()
@@ -5196,7 +5208,7 @@ class DocumentView(QScrollArea):
             if "strokes" in m:
                 out += [list(s) for s in m["strokes"]]
             elif "points" in m and m["kind"] in annotations.POINTED:
-                pts = list(m["points"])
+                pts = list(annotations.path_points(m))
                 out.append(pts + pts[:1] if m["kind"] in ("polygon", "m_area", "cloud")
                            else pts)
             elif "quads" in m:
@@ -5432,6 +5444,8 @@ class DocumentView(QScrollArea):
         for an in self._trimmable_annots(page):
             m = annotations.read(an)
             if m is None or m["kind"] not in ("line", "polyline", "ink"):
+                continue
+            if m.get("bend") is not None:   # (a bent line isn't trimmed: it would go straight)
                 continue
             strokes = m["strokes"] if m["kind"] == "ink" else [m["points"]]
             for k, poly in enumerate(strokes):

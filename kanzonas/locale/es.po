@@ -7108,3 +7108,15 @@ msgstr "1 copia hecha"
 
 msgid "Click the other corner: left to right takes what's inside, right to left what it touches (Escape cancels)"
 msgstr "Haga clic en la otra esquina: de izquierda a derecha toma lo que queda dentro, de derecha a izquierda lo que toca (Escape cancela)"
+
+msgid "Arc"
+msgstr "Arco"
+
+msgid "Curve"
+msgstr "Curva"
+
+msgid "Arc: click the start, a point it passes through, then the end"
+msgstr "Arco: haga clic en el inicio, en un punto por el que pasa y luego en el final"
+
+msgid "Curve: click the start, the end, then where it bends to (a line or arrow also bends by dragging its middle grip)"
+msgstr "Curva: haga clic en el inicio, en el final y luego hasta donde se curva (una línea o flecha también se curva arrastrando su pinzamiento central)"
