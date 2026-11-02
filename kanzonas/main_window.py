@@ -2745,6 +2745,17 @@ class MainWindow(QMainWindow):
         lay.addWidget(btns)
         if dlg.exec() != QDialog.Accepted:
             return
+        pending = v.security is not None and (v.security.get("open_pw") or
+                                              v.security.get("owner_pw"))
+        if not open_on.isChecked() and not restrict.isChecked() and \
+                (st["encrypted"] and v.security is None or pending) and \
+                QMessageBox.question(
+                    self, tr("Security properties"),
+                    tr("Neither a password to open nor restrictions are ticked: this takes the "
+                       "document's password protection off when you save.\n\nRemove its "
+                       "protection?"), QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No) != QMessageBox.Yes:
+            return
         perms = pymupdf.PDF_PERM_ACCESSIBILITY | sum(f for f, c in boxes if c.isChecked())
         v.set_security(open_pw.text() if open_on.isChecked() else "",
                        own_pw.text() if restrict.isChecked() else "", perms)
@@ -3422,7 +3433,9 @@ class MainWindow(QMainWindow):
         if replaced is None:
             return
         try:
-            before, after = page_tools.compress(v.doc.tobytes(), path, preset)
+            # (a protected document's copy keeps its passwords and permissions)
+            data, password, protect = v.copy_protection()
+            before, after = page_tools.compress(data, path, preset, password, protect)
         except Exception as ex:
             QMessageBox.critical(self, tr("Compress failed"), str(ex))
             return
@@ -3723,6 +3736,26 @@ class MainWindow(QMainWindow):
         except OSError as ex:
             QMessageBox.critical(self, tr("Compare"), str(ex))
             return
+        try:
+            probe = pymupdf.open(stream=old, filetype="pdf")
+        except Exception:
+            probe = None                # (not a PDF: the comparison reports it)
+        if probe is not None and probe.needs_pass:
+            # a protected earlier revision: its password, as when opening it
+            prompt = tr("{name} is protected:").format(name=os.path.basename(path))
+            while True:
+                pw, ok = QInputDialog.getText(self, tr("Password required"), prompt,
+                                              QLineEdit.Password)
+                if not ok:
+                    probe.close()
+                    return
+                if probe.authenticate(pw):
+                    break
+                prompt = tr("Wrong password. {name} is protected:").format(
+                    name=os.path.basename(path))
+            old = probe.tobytes()       # (compared in memory, unlocked)
+        if probe is not None:
+            probe.close()
         new = v.doc.tobytes()
         old_name, new_name = os.path.basename(path), os.path.basename(v.path)
         try:

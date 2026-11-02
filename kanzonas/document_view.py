@@ -191,6 +191,8 @@ class OpenCanceled(Exception):
 
 
 _JS_ACTION = re.compile(r"/S\s*/(JavaScript|Launch)\b")    # (Launch: runs a program)
+# a script in another kind of action (a Rendition's /JS), or a web address that is one
+_JS_KEY = re.compile(r"/JS\b|/URI\s*\(\s*javascript:", re.IGNORECASE)
 
 
 def remove_scripts(doc):
@@ -200,7 +202,9 @@ def remove_scripts(doc):
     catalog's /OpenAction, an /AA or a link's /A (a common way) stays, so this removes those
     too: /AA (actions run on opening, closing, printing, page visits...) goes wherever it is,
     an /OpenAction or /A only when it is (or leads to) JavaScript, and the document-level
-    scripts (the /JavaScript name tree) go."""
+    scripts (the /JavaScript name tree) go. So do the scripts scrub doesn't know: the /JS of
+    any other action (a Rendition), javascript: web addresses, and an XFA form holding
+    scripts (Acrobat runs them; KanzonasPDF shows the form's ordinary fields)."""
     for xref in range(1, doc.xref_length()):
         try:
             keys = doc.xref_get_keys(xref)
@@ -208,6 +212,12 @@ def remove_scripts(doc):
             continue
         if "AA" in keys:
             doc.xref_set_key(xref, "AA", "null")
+        if "JS" in keys:
+            doc.xref_set_key(xref, "JS", "null")
+        if "URI" in keys:
+            kind, val = doc.xref_get_key(xref, "URI")
+            if kind == "string" and val.strip().lower().startswith("javascript:"):
+                doc.xref_set_key(xref, "URI", "null")
         for key in ("OpenAction", "A"):
             if key not in keys:
                 continue
@@ -218,10 +228,33 @@ def remove_scripts(doc):
                 except Exception:
                     continue
             if kind in ("dict", "xref") and (_JS_ACTION.search(val) or "/Next" in val and
-                                              "JavaScript" in val):
+                                              "JavaScript" in val or _JS_KEY.search(val)):
                 doc.xref_set_key(xref, key, "null")
         if "Names" in keys and doc.xref_get_key(xref, "Names/JavaScript")[0] != "null":
             doc.xref_set_key(xref, "Names/JavaScript", "null")
+    _remove_xfa_scripts(doc)
+
+
+def _remove_xfa_scripts(doc):
+    """An XFA form (the catalog's /AcroForm /XFA) whose packets hold a <script> goes: its
+    ordinary form fields stay (all KanzonasPDF fills in)."""
+    cat = doc.pdf_catalog()
+    kind, val = doc.xref_get_key(cat, "AcroForm/XFA")
+    if kind == "null":
+        return
+    parts = [int(n) for n in re.findall(r"(\d+) 0 R", val)]
+    scripted = not parts            # (written in place, not as streams: unsure, so it goes)
+    for x in parts:
+        try:
+            data = doc.xref_stream(x) if doc.xref_is_stream(x) else b""
+        except Exception:
+            data = b"<script"
+        if b"<script" in (data or b"").lower():
+            scripted = True
+    if scripted:
+        doc.xref_set_key(cat, "AcroForm/XFA", "null")
+        if doc.xref_get_key(cat, "NeedsRendering")[0] != "null":
+            doc.xref_set_key(cat, "NeedsRendering", "null")
 
 
 def blank_appearance(doc, widget_xref):
@@ -266,6 +299,66 @@ def clear_form_data(doc):
             doc.xref_set_key(xref, "V", "null")
             if "RV" in keys:
                 doc.xref_set_key(xref, "RV", "null")
+
+
+# keys whose strings are text people read (not styles, codes or KanzonasPDF's own data):
+# structure tags' alternate text, ActualText, expansion and title, tooltips, notes, titles,
+# document information, page label prefixes (/P), destination names and file names
+_TEXT_KEYS = {"Alt", "ActualText", "E", "T", "TU", "TM", "Contents", "Title", "Subj",
+              "Subject", "Author", "Keywords", "Creator", "Producer", "P", "D", "Dest",
+              "F", "UF", "Desc"}
+
+
+def scrub_strings(doc, pat, clean):
+    """Every text string in doc's objects that pat matches, replaced by clean(text): what
+    Search & redact can't reach otherwise (a tagged PDF's alternate text and ActualText,
+    a link's note, page labels, named destinations...). Only strings people read are
+    looked at (_TEXT_KEYS, and the names of a name tree): a style (/DA) or KanzonasPDF's
+    own data (/KZ...) holding the word "fill" stays as it is. Redaction marks keep their
+    own text (a mark not applied yet keeps its term), and signatures and the encryption
+    dictionary are left alone (their strings are binary)."""
+    m = pymupdf.mupdf
+    pdf = pymupdf._as_pdf_document(doc)
+    skip = set()
+    enc = m.pdf_dict_gets(m.pdf_trailer(pdf), "Encrypt")
+    if m.pdf_is_indirect(enc):
+        skip.add(m.pdf_to_num(enc))
+    for xref in range(1, doc.xref_length()):
+        if xref in skip:
+            continue
+        try:
+            obj = m.pdf_load_object(pdf, xref)
+        except Exception:
+            continue
+        if not m.pdf_is_dict(obj):
+            continue
+        if m.pdf_to_name(m.pdf_dict_gets(obj, "Subtype")) == "Redact" or \
+                m.pdf_to_name(m.pdf_dict_gets(obj, "Type")) in ("Sig", "DocTimeStamp") or \
+                m.pdf_dict_gets(obj, "ByteRange").m_internal:
+            continue
+        todo = [(obj, "")]
+        while todo:
+            o, held_by = todo.pop()
+            is_dict = m.pdf_is_dict(o)
+            for i in range(m.pdf_dict_len(o) if is_dict else m.pdf_array_len(o)):
+                key = m.pdf_to_name(m.pdf_dict_get_key(o, i)) if is_dict else held_by
+                if key.startswith("KZ"):
+                    continue                    # (KanzonasPDF's own data: _scrub_terms)
+                val = m.pdf_dict_get_val(o, i) if is_dict else m.pdf_array_get(o, i)
+                if m.pdf_is_indirect(val):
+                    continue                    # (looked at as an object of its own)
+                if m.pdf_is_string(val):
+                    if not (key in _TEXT_KEYS if is_dict else key == "Names"):
+                        continue
+                    text = m.pdf_to_text_string(val)
+                    if pat.search(text):
+                        new = m.pdf_new_text_string(clean(text))
+                        if is_dict:
+                            m.pdf_dict_put(o, m.pdf_dict_get_key(o, i), new)
+                        else:
+                            m.pdf_array_put(o, i, new)
+                elif m.pdf_is_dict(val) or m.pdf_is_array(val):
+                    todo.append((val, key))
 
 
 class _not_busy:
@@ -6187,6 +6280,9 @@ class DocumentView(QScrollArea):
                 self.doc.del_xml_metadata()     # XMP copy of the properties
         except Exception:
             pass
+        # and anywhere else a string holds it: alternate text, ActualText, link notes,
+        # page labels, named destinations (the links naming them follow)
+        scrub_strings(self.doc, pat, clean)
 
     def remove_term(self, term):
         """Search & redact for text that's only in fields, notes, bookmarks or properties."""
@@ -7971,6 +8067,32 @@ class DocumentView(QScrollArea):
             finally:
                 original.close()
             self._orig_enc["user_pw"] = pw
+
+    def copy_protection(self):
+        """For a copy of this document made from it (Compress): (its bytes, the password
+        that opens them, the save options protecting the copy as Save protects the file).
+        None as options: keep the bytes' own encryption."""
+        sec = self.security
+        if sec is not None:
+            if not sec.get("open_pw") and not sec.get("owner_pw"):
+                return self.doc.tobytes(), None, {}         # (security being removed)
+            owner = sec.get("owner_pw") or sec.get("open_pw")
+            return self.doc.tobytes(), None, {
+                "encryption": pymupdf.PDF_ENCRYPT_AES_256, "owner_pw": owner,
+                "user_pw": sec.get("open_pw") or "",
+                "permissions": sec.get("perms", -1) if sec.get("owner_pw") else -1}
+        if self._orig_enc is None:
+            return self.doc.tobytes(), None, {}
+        enc = self._orig_enc
+        if (self.doc.metadata or {}).get("encryption"):
+            return (self.doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_KEEP),
+                    enc.get("owner_pw") or enc.get("user_pw"), None)
+        self._ask_original_passwords()          # (as save: never invented)
+        owner = enc["owner_pw"]
+        return self.doc.tobytes(), None, {
+            "encryption": pymupdf.PDF_ENCRYPT_AES_256, "owner_pw": owner,
+            "user_pw": enc.get("user_pw") or (owner if enc.get("needs_pass") else ""),
+            "permissions": enc.get("perms", -1)}
 
     def save(self, path=None):
         if path is None and self.untitled:
