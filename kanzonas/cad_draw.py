@@ -27,10 +27,12 @@ TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", "erase
 # size, new link text there, a callout); for the rest it would make nothing, so the shape
 # stays in progress (a double-click that shook doesn't lose it)
 CLICK_ENDS = {"textbox", "placeholder", "link", "callout"}
-CLICK_PX = 10           # a press released less than this far from where it went down is a click
+BOXES = {"rect", "ellipse", "cloud", "mask"}     # drawn as a box from corner to corner
+CLICK_PX = 10          # a press released less than this far from where it went down is a click
 QUICK_PX = 24           # ... and one released within QUICK_MS this far away too (a quick
 QUICK_MS = 250          #     click whose hand shook)
 SAME_PX = 4             # second point this close to the first: the same point
+MIN_RADIUS = 0.5        # pt: the smallest circle the Circle tool makes (DocumentView.apply_drag_tool)
 
 
 def on(v):
@@ -144,8 +146,11 @@ def finish(w, e):
     a = pw.to_screen_pt(pk["at"])
     b = pw._shape_point(_map(pw, e), e, a)
     same = (b - a).manhattanLength() < SAME_PX
-    if same and pk["tool"] not in CLICK_ENDS:
-        return True                     # (nothing to draw yet: it goes on)
+    flat = pk["tool"] in BOXES and (abs(b.x() - a.x()) < 0.5 or abs(b.y() - a.y()) < 0.5)
+    if (same and pk["tool"] not in CLICK_ENDS) or flat:
+        # (nothing to draw yet: it goes on; a box with no height, its corners level as
+        # snapping along a line puts them, too)
+        return True
     v._cad_shape = None
     pk["now"] = pw.to_pdf(b)
     w._shape_end = (pk, same)
@@ -205,11 +210,16 @@ def typed(v, text):
     from . import measure, measure_ui
     page = v.doc[pk["index"]]
     m_per_pt, unit, _label, _set = measure.get_scale(page)
+    t = text.strip()
+    if t.count(",") == 1 and "." not in t:
+        # a decimal comma, as the command line's other values take it (2,5 = 2.5, not 25)
+        t = t.replace(",", ".")
     try:
-        r = measure_ui.parse_length(text, unit) / m_per_pt
+        r = measure_ui.parse_length(t, unit) / m_per_pt
     except (ValueError, ZeroDivisionError, KeyError):
         r = None
-    if r is None or not 0 < r < 1e6:
+    # (a radius under half a point would draw nothing: Circle makes none that small)
+    if r is None or not MIN_RADIUS < r < 1e6:
         v.statusMessage.emit(tr("Circle: type the radius as a number (or 12'-6\"), or click a "
                                 "point on the circle"))
         return True

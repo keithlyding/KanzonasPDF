@@ -1250,6 +1250,10 @@ class DocumentView(QScrollArea):
             if w._ghost is not None or w._drag_start is not None or w._poly:
                 w._ghost, w._drag_start, w._drag_now, w._poly = None, None, None, []
                 w.update()
+            if w._edit is not None or w._obj_edit is not None:
+                # (a markup or object being dragged: the selection it moves goes below)
+                w._edit = w._obj_edit = None
+                w.update()
         self.clear_selection()
         self.clear_object_selection()
         self.clear_text_selection()
@@ -2727,6 +2731,8 @@ class DocumentView(QScrollArea):
             return
         if is_click:
             return
+        if tool not in ("line", "arrow") and (rect.width <= 0 or rect.height <= 0):
+            return      # a box with no height or width (its ends level, as snapping gives)
         kind = "rect" if tool in ("cloud", "mask") else tool
         model = {"kind": kind, "props": props, "rect": rect}
         if tool in ("line", "arrow"):
