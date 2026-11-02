@@ -222,12 +222,14 @@ Version References:
 class CompatibilityCheck(unittest.TestCase):
     """make_appimage.py with a stand-in objdump that reports chosen version needs."""
 
-    def run_check(self, refs, *limits):
+    def run_check(self, refs, *limits, ldd=None, bundled=()):
         tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmp, True)
         dist = os.path.join(tmp, "KanzonasPDF")
         os.makedirs(os.path.join(dist, "_internal"))
         shutil.copy2(shutil.which("true"), os.path.join(dist, "KanzonasPDF"))
+        for n in bundled:               # (copies PyInstaller took from the build machine)
+            shutil.copy2(shutil.which("true"), os.path.join(dist, "_internal", n))
         for n in ("LICENSE.txt", "NOTICE.txt"):
             with open(os.path.join(dist, n), "w") as f:
                 f.write(n)
@@ -241,6 +243,12 @@ class CompatibilityCheck(unittest.TestCase):
         with open(fake, "w") as f:
             f.write('#!/bin/sh\ncat "%s"\n' % report)
         os.chmod(fake, 0o755)
+        if ldd is not None:
+            with open(os.path.join(tmp, "ldd.txt"), "w") as f:
+                f.write(ldd)
+            with open(os.path.join(bindir, "ldd"), "w") as f:
+                f.write('#!/bin/sh\ncat "%s"\n' % os.path.join(tmp, "ldd.txt"))
+            os.chmod(os.path.join(bindir, "ldd"), 0o755)
         env = dict(os.environ, PATH=bindir + os.pathsep + os.environ.get("PATH", ""))
         r = subprocess.run([sys.executable, os.path.join(LINUX_DIR, "make_appimage.py"), dist,
                             os.path.join(tmp, "AppDir"), "--version", "9.9"] + list(limits),
@@ -255,6 +263,23 @@ class CompatibilityCheck(unittest.TestCase):
     def test_needs_the_oldest_system_has_pass(self):
         code, out = self.run_check(self.OK, *self.LIMITS)
         self.assertEqual(code, 0, out)
+
+    def test_the_c_library_and_libstdcxx_are_left_to_the_computer(self):
+        # (what the first CI run of 1.7 met: PyInstaller copied them in; removing them is
+        # the policy, and what needs them then takes the computer's own)
+        code, out = self.run_check(self.OK, *self.LIMITS,
+                                   bundled=("libc.so.6", "libstdc++.so.6", "libgcc_s.so.1"))
+        self.assertEqual(code, 0, out)
+        self.assertIn("_internal/libc.so.6", out)                  # said, not an error
+        self.assertNotIn("ERROR", out)
+
+    def test_a_library_neither_bundled_nor_on_the_computer_fails(self):
+        code, out = self.run_check(self.OK, *self.LIMITS, ldd=(
+            "\tlinux-vdso.so.1 (0x00007ffd)\n"
+            "\tlibmissing.so.7 => not found\n"
+            "\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f00)\n"))
+        self.assertEqual(code, 1, out)
+        self.assertIn("libmissing.so.7", out)
 
     def test_a_newer_glibc_fails(self):
         code, out = self.run_check(self.OK + [("libc.so.6", "GLIBC_2.38")], *self.LIMITS)
