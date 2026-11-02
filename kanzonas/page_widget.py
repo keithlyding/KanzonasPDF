@@ -1204,7 +1204,10 @@ class PageWidget(QWidget):
             return
         shown = self._edit["preview"] if self._edit and self._edit.get("preview") else model
         if self.view.cad_select and self.view.tool == "editobjects" and not self._edit:
-            self._paint_cad_markups(p, [shown], page)     # (no handles here: see below)
+            self._paint_cad_markups(p, [shown], page)
+            if not self._objects_here():
+                # one markup selected: its handles resize it here too (cad_select.press)
+                self._paint_handles(p, model)
             return
         p.setPen(QPen(blue, 1, Qt.DashLine))
         if A.turned(shown):
@@ -1231,8 +1234,13 @@ class PageWidget(QWidget):
             p.setPen(blue)
             at = self._edit.get("pos", QPointF())
             p.drawText(at + QPointF(14, -8), f"{A.angle(shown):.0f}\u00b0")
-        cad_objects = self.view.cad_select and self.view.tool == "editobjects"
-        if not self._edit and not cad_objects:  # (CAD mode changes markups by commands)
+        if not self._edit:
+            self._paint_handles(p, model)
+
+    def _paint_handles(self, p, model):
+        """The selected markup's handles (resize, turn, a line's ends and middle)."""
+        blue = QColor(0, 120, 215)
+        if True:
             p.setPen(QPen(blue, 1))
             p.setBrush(Qt.white)
             for hid, r in self._handles(model).items():
@@ -2066,6 +2074,9 @@ class PageWidget(QWidget):
             cmd = self.view._cad_cmd
             cmd.move(self.index, self.to_pdf(self._snap(pos, e) if cmd.snap else pos))
             return
+        if getattr(self, "_cad_resize", None) is not None and e.buttons():
+            cad_select.resize_move(self, e, pos)
+            return
         if self._cad_down is not None and e.buttons():
             cad_select.move(self, e, pos)
             return
@@ -2226,6 +2237,9 @@ class PageWidget(QWidget):
             return                          # (CAD mode: the shape the click ended is made)
         tool = self.view.tool
         pos = e.position()
+        if getattr(self, "_cad_resize", None) is not None:
+            cad_select.resize_release(self, e, pos)
+            return
         if self._cad_down is not None:
             cad_select.release(self, e, pos)
             return

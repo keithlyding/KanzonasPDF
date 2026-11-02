@@ -6526,6 +6526,9 @@ msgstr "Alineado"
 msgid "Distributed"
 msgstr "Distribuido"
 
+msgid "Resized"
+msgstr "Tamaño cambiado"
+
 #: cad
 msgid "Rows:"
 msgstr "Filas:"

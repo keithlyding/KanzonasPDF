@@ -49,12 +49,21 @@ def press(w, e, pos, pdf, outside=False):
         w._cad_down = {"ignore": True}
         return
     remove = _shift(e)
+    if not outside and not remove:
+        box = resize_box(w)             # several items, or markups and objects: one box
+        if box is not None:
+            from .page_widget import box_handles
+            for hid, r in box_handles(box).items():
+                if r.adjusted(-3, -3, 3, 3).contains(pos):
+                    w._cad_resize = {"mode": hid, "start": pos, "box": box, "now": None}
+                    return
     if outside:
         target = ("markup", None)
-    elif v.tool == "select":
+    elif v.tool == "select" or not w._objects_here():
+        # one markup selected: its own handles resize it (with Edit objects too)
         model = w._selected_here()
         if model is not None and not v.extra and not remove:
-            for hid, r in w._handles(model).items():       # handles still resize
+            for hid, r in w._handles(model).items():
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     w._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
                     return
@@ -166,8 +175,32 @@ def pick_cursor():
     return _PICK_CURSOR
 
 
+def handle_at(w, pos):
+    """The resize handle of a CAD selection under pos (widget point), or None."""
+    from .page_widget import box_handles
+    box = resize_box(w)
+    if box is not None:
+        for hid, r in box_handles(box).items():
+            if r.adjusted(-3, -3, 3, 3).contains(pos):
+                return hid
+        return None
+    v = w.view
+    model = w._selected_here()
+    if model is not None and not v.extra and not w._objects_here():
+        for hid, r in w._handles(model).items():
+            if r.adjusted(-3, -3, 3, 3).contains(pos):
+                return hid
+    return None
+
+
 def apply_cursor(w):
-    """The pick box cursor over something a click takes, else the view's own cross."""
+    """The pick box cursor over something a click takes, else the view's own cross (a
+    resize arrow over a handle)."""
+    hid = getattr(w, "_cad_handle", None)
+    if hid is not None:
+        from .page_widget import handle_cursor
+        w.setCursor(handle_cursor(hid))
+        return
     hv = _rollover_shown(w)
     if hv is not None and hv["takes"]:
         w.setCursor(pick_cursor())
@@ -182,9 +215,15 @@ _OPEN_KINDS = ("line", "arrow", "polyline", "ink", "arc", "opencloud", "m_length
 def rollover(w, pos):
     if not active(w) or w._cad_down is not None or w.view._cad_cmd is not None and \
             not w.view._cad_cmd.selecting:
+        w._cad_handle = None
         clear_rollover(w)
         return
     v = w.view
+    w._cad_handle = handle_at(w, pos)
+    if w._cad_handle is not None:
+        clear_rollover(w)
+        apply_cursor(w)                 # (a resize arrow: a drag here resizes)
+        return
     try:
         kind, target = target_at(w, pos, w.to_pdf(pos))
     except Exception:
@@ -226,7 +265,8 @@ def rollover(w, pos):
 def clear_rollover(w):
     if getattr(w, "_cad_hover", None) is not None:
         w._cad_hover = None
-        w.unsetCursor()
+        if getattr(w, "_cad_handle", None) is None:
+            w.unsetCursor()
         w.update()
 
 
@@ -280,20 +320,43 @@ def release(w, e, pos):
 
 
 def double_click(w, e):
-    """A double-click on page widget w in CAD selection with Edit objects: Qt sends it
-    instead of the second press, so it's taken as one. On the box's first corner (the first click looked as if it
-    hadn't taken, so it was clicked again) the box stays started; anywhere else it's a click.
-    True when handled."""
-    if not active(w) or w.view.tool != "editobjects" or e.button() != Qt.LeftButton:
-        return False                    # (with Select a double-click selects a word)
+    """A double-click on page widget w in CAD selection (Qt sends it instead of the second
+    press). On a markup it edits the markup's text (a text box's words, a shape's comment),
+    on the page's own text it opens Edit text there, as in AutoCAD a double-click edits
+    text. Otherwise, with Edit objects, it's taken as a click: on a box's first corner
+    (clicked again because the first click looked as if it hadn't taken) the box stays
+    started. True when handled."""
+    if not active(w) or e.button() != Qt.LeftButton:
+        return False
     v = w.view
     pk = v._cad_pick
     pos = e.position()
-    if pk is not None and pk["w"] is w and \
-            (pos - QPointF(w.to_screen_pt(pk["at"]))).manhattanLength() < STILL_PX:
+    pdf = w.to_pdf(pos)
+    same_spot = pk is not None and pk["w"] is w and \
+        (pos - QPointF(w.to_screen_pt(pk["at"]))).manhattanLength() < STILL_PX
+    if pk is None or same_spot:
+        # (on text, the double-click's first click may have started a box there: the
+        # double-click edits instead)
+        card = w._card_at(pos)
+        xref = card if card is not None else v.annot_at(w.index, pdf)
+        text = xref is None and v._line_at(w.index, pdf) is not None
+        if xref is not None and not v.markup_locked(w.index, xref) or text:
+            cancel(v)
+            w._cad_down = {"ignore": True}  # (its release does nothing)
+            if text:
+                v.clear_object_selection()
+                v.edit_text_at(w.index, pdf)
+            elif card is not None:
+                v.edit_annot_text(w.index, card)
+            else:
+                v.edit_annot_at(w.index, pdf)
+            return True
+    if v.tool != "editobjects":
+        return False                    # (with Select a double-click selects a word)
+    if same_spot:
         w._cad_down = {"ignore": True}  # (its release does nothing)
         return True
-    press(w, e, pos, w.to_pdf(pos))
+    press(w, e, pos, pdf)
     return True
 
 
@@ -571,6 +634,123 @@ def paint_outside(view, p):
         p.setBrush(Qt.NoBrush)
 
 
+# ---- resizing a CAD selection of several items (markups, or markups and the drawing's own
+# objects) by one box around them all: a handle dragged scales everything in it, one undo
+# step (one markup alone has its own handles; the drawing's objects alone, theirs)
+def _box_pdf(w):
+    """The box around what's selected on page widget w (unrotated page coordinates), when
+    it's several markups or markups and objects; else None."""
+    v = w.view
+    if not v.cad_select:
+        return None
+    marks = []
+    if v.selection is not None and v.selection[0] == w.index:
+        marks = v.selected_models_to_paint()
+    objs = w._objects_here()
+    if not (len(marks) >= 2 or marks and objs):
+        return None
+    key = (getattr(v, "_gen", 0), v.revision, v.selection, tuple(v.extra), id(v.obj_sel))
+    got = getattr(w, "_resize_box", None)
+    if got is None or got[0] != key:
+        from . import annotations
+        from .page_objects import bounding
+        rects = [annotations.bounds(m) for _x, m in marks]
+        if objs:
+            rects.append(v.selected_objects_rect())
+        got = w._resize_box = (key, bounding(rects))
+    return pymupdf.Rect(got[1])
+
+
+def resize_box(w):
+    """The box's rectangle on w's screen (a little outside what it holds), or None."""
+    r = _box_pdf(w)
+    if r is None or r.is_empty and r.width == 0 and r.height == 0:
+        return None
+    return QRectF(w.to_screen(r)).adjusted(-4, -4, 4, 4)
+
+
+def _resized(box, mode, d, free):
+    left, top, right, bottom = box.left(), box.top(), box.right(), box.bottom()
+    if "l" in mode:
+        left += d.x()
+    if "r" in mode:
+        right += d.x()
+    if "t" in mode:
+        top += d.y()
+    if "b" in mode:
+        bottom += d.y()
+    new = QRectF(QPointF(left, top), QPointF(right, bottom)).normalized()
+    if len(mode) == 2 and not free and box.width() > 0 and box.height() > 0:
+        # a corner keeps the proportions (Shift: free)
+        s_ = max(new.width() / box.width(), new.height() / box.height())
+        wd, ht = box.width() * s_, box.height() * s_
+        ax = box.right() if "l" in mode else box.left()
+        ay = box.bottom() if "t" in mode else box.top()
+        new = QRectF(ax - wd if "l" in mode else ax, ay - ht if "t" in mode else ay, wd, ht)
+    return new
+
+
+def resize_move(w, e, pos):
+    rz = w._cad_resize
+    if (pos - rz["start"]).manhattanLength() >= 3:
+        rz["now"] = _resized(rz["box"], rz["mode"], pos - rz["start"], _shift(e))
+        w.update()
+
+
+def resize_release(w, e, pos):
+    rz, w._cad_resize = w._cad_resize, None
+    w.update()
+    if rz["now"] is None:
+        return
+    new = _resized(rz["box"], rz["mode"], pos - rz["start"], _shift(e))
+    old = rz["box"]
+    if new.width() < 4 or new.height() < 4 or old.width() <= 0 or old.height() <= 0:
+        return
+    # the change on the screen (the boxes are 4 px outside what they hold), as a change of
+    # the page: through the page's own turn and the zoom, as it's drawn
+    io = old.adjusted(4, 4, -4, -4)
+    nw = new.adjusted(4, 4, -4, -4)
+    if io.width() <= 0 and io.height() <= 0:
+        return
+    sx = nw.width() / io.width() if io.width() > 0 else 1.0
+    sy = nw.height() / io.height() if io.height() > 0 else 1.0
+    if sx <= 0 or sy <= 0:
+        return
+    page = w.view.doc[w.index]
+    z = w.view.zoom
+    to_screen = pymupdf.Matrix(page.rotation_matrix) * pymupdf.Matrix(z, z)
+    del page
+    on_screen = pymupdf.Matrix(1, 0, 0, 1, -io.left(), -io.top()) * \
+        pymupdf.Matrix(sx, 0, 0, sy, 0, 0) * pymupdf.Matrix(1, 0, 0, 1, nw.left(), nw.top())
+    mat = to_screen * on_screen * ~to_screen
+    w.view.cad_apply(tr("Resized"), mat)
+
+
+def paint_resize(w, p):
+    rz = getattr(w, "_cad_resize", None)
+    blue = QColor(0, 120, 215)
+    if rz is not None:
+        if rz["now"] is not None:
+            p.setPen(QPen(blue, 1, Qt.DashLine))
+            p.setBrush(Qt.NoBrush)
+            p.drawRect(rz["now"])
+        return
+    if w._cad_down is not None or w.view._cad_pick is not None:
+        return
+    box = resize_box(w)
+    if box is None:
+        return
+    from .page_widget import box_handles
+    p.setPen(QPen(blue, 1, Qt.DashLine))
+    p.setBrush(Qt.NoBrush)
+    p.drawRect(box)
+    p.setPen(QPen(blue, 1))
+    p.setBrush(Qt.white)
+    for r in box_handles(box).values():
+        p.drawRect(r)
+    p.setBrush(Qt.NoBrush)
+
+
 def paint_box(p, a, b):
     """A selection box from a to b: left to right a blue window, right to left a green dashed
     crossing box."""
@@ -593,6 +773,7 @@ def _glow_path(w, pv):
 
 
 def paint(w, p):
+    paint_resize(w, p)
     hv = _rollover_shown(w)
     if hv is not None and hv["takes"] and hv["lines"]:
         # the item drawn lighter: the paper's color over it, part see-through

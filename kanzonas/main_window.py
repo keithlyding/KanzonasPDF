@@ -1496,10 +1496,12 @@ class MainWindow(QMainWindow):
                              "content may be missing. Use Save As to keep the original "
                              "as it is."))
         if v.read_only:
-            QTimer.singleShot(0, lambda: QMessageBox.information(
-                self, tr("Protected document"), tr("This PDF is protected against changes. You can "
-                                                   "read, search and print it. Use Protect > Unlock with password if you have its "
-                                                   "permissions password.")))
+            # no box on opening (a protected sheet is often only read): the window title says
+            # [protected], the status bar says why, and an attempt to change it explains
+            QTimer.singleShot(0, lambda: self.statusBar().showMessage(
+                tr("This PDF is protected against changes. You can "
+                   "read, search and print it. Use Protect > Unlock with password if you have its "
+                   "permissions password."), 10000))
         v.check_digital_signatures()
         state = self._file_states().get(os.path.normcase(path))
         if isinstance(state, dict) and state:

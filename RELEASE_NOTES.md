@@ -7,6 +7,26 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.7.2
+
+**New**
+- In CAD mode, double-click on text to edit it: the page's own text opens in Edit text, and a markup's text (a text box, a note) opens in its editor.
+- In CAD mode, selected items can be resized: one markup by its own handles, and several items (markups together with lines and shapes of the drawing) by one box with handles around them all.
+
+**Fixed**
+- Switching the mouse (for example from Select to Hand) no longer moves the page to the far left when you're zoomed out.
+- A PDF protected against changes no longer shows a message every time it opens. The message now appears when you try to change it, and Edit text says so before you start typing.
+
+## 1.7.2 (es)
+
+**Novedades**
+- En el modo CAD, haga doble clic en un texto para editarlo: el texto propio de la página se abre en Editar texto, y el texto de una marca (un cuadro de texto, una nota) en su editor.
+- En el modo CAD se puede cambiar el tamaño de lo seleccionado: una marca con sus propios controladores, y varios elementos (marcas junto con líneas y formas del dibujo) con un solo recuadro con controladores alrededor de todos.
+
+**Correcciones**
+- Cambiar el mouse (por ejemplo de Seleccionar a Mano) ya no lleva la página al extremo izquierdo cuando la vista está alejada.
+- Un PDF protegido contra cambios ya no muestra un mensaje cada vez que se abre. El mensaje aparece ahora al intentar cambiarlo, y Editar texto lo indica antes de empezar a escribir.
+
 ## 1.7.1
 
 **New**
