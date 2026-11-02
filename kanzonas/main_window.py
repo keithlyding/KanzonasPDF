@@ -90,6 +90,9 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("line", tr("Line"), "L", tr("Line (L)")),
     ("arrow", tr("Arrow"), "A", tr("Arrow (A)")),
     ("polyline", tr("Polyline"), "Shift+L", tr("Polyline: click each point, double-click or Enter to finish")),
+    ("arc", tr("Arc"), "", tr("Arc: click the start, a point it passes through, then the end")),
+    ("curve", tr("Curve"), "", tr("Curve: click the start, the end, then where it bends to (a "
+                                  "line or arrow also bends by dragging its middle grip)")),
     ("ink", tr("Pen"), "P", tr("Freehand pen (P)")),
     ("stamp", tr("Stamp"), "M", tr("Stamp (Approved, Draft, ... or your own image): click to place (M)")),
     ("image", tr("Image"), "", tr("Image: drag a box (or click) and pick a picture; it becomes part of "
@@ -1183,7 +1186,8 @@ class MainWindow(QMainWindow):
         tt.setObjectName("tools")
         tt.setMovable(False)
         self.addToolBar(tt)
-        shapes = ("rect", "ellipse", "cloud", "polygon", "line", "arrow", "polyline", "ink")
+        shapes = ("rect", "ellipse", "cloud", "polygon", "line", "arrow", "polyline", "arc", "curve",
+                  "ink")
         main_tools = [self.tool_actions[t[0]] for t in TOOLS if t[0] not in shapes]
         tt.addActions(main_tools[:3])
         tt.addSeparator()
@@ -4427,6 +4431,25 @@ class MainWindow(QMainWindow):
         "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline", "a_menu_bar": "menu",
     }
 
+    @staticmethod
+    def _ribbon_split(default, more):
+        """A small ribbon button for action default with a down arrow beside it that offers
+        the actions in more as well (the button stays default's: the CAD tab's Line, with
+        Curve under its arrow, keeps the tab fitting a 1366-pixel-wide screen)."""
+        from .ribbon import SMALL_HEIGHT, SMALL_ICON
+        b = QToolButton()
+        b.setDefaultAction(default)
+        b.setPopupMode(QToolButton.MenuButtonPopup)
+        menu = QMenu(b)
+        menu.addActions([default] + list(more))
+        b.setMenu(menu)
+        b.setAutoRaise(True)
+        b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        b.setIconSize(QSize(SMALL_ICON, SMALL_ICON))
+        b.setFixedHeight(SMALL_HEIGHT)
+        b.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        return b
+
     def _build_ribbon(self):
         from .ribbon import Ribbon
         t = self.tool_actions
@@ -4466,7 +4489,7 @@ class MainWindow(QMainWindow):
                                t["note"], t["textbox"]]),
             (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"]]),
             (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["cloud"], t["polygon"], t["line"],
-                                 t["arrow"], t["polyline"], t["ink"]]),
+                                 t["arrow"], t["polyline"], t["arc"], t["curve"], t["ink"]]),
             (tr("Erase"), "large", [t["eraser"]]),
             (tr("Styles"), "large", [self.a_props, self.a_chest]),
         ])
@@ -4540,7 +4563,8 @@ class MainWindow(QMainWindow):
             (tr("More"), "small", [c["align"], c["array"], c["trim"]]),
             # what's used most next to the CAD commands, so CAD mode needs no other tab for it
             # (the one-letter markup shortcuts type into the command line in CAD mode)
-            (tr("Markup"), "small", [t["cloud"], t["textbox"], t["callout"], t["line"],
+            (tr("Markup"), "small", [t["cloud"], t["textbox"], t["callout"],
+                                     self._ribbon_split(t["line"], [t["curve"]]),
                                      t["arrow"], t["polyline"]]),
             (tr("Measure"), "small", [t["m_length"], t["m_area"], t["m_count"],
                                       t["m_calibrate"]]),

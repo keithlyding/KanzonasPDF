@@ -52,6 +52,10 @@ def every_kind(rotation):
     add(p, "line", points=[P(200, 200), P(300, 250)])
     add(p, "arrow", points=[P(350, 200), P(450, 250)])
     add(p, "ink", strokes=[[P(500, 200), P(550, 240), P(600, 210)]])
+    add(p, "arc", points=[P(640, 200), P(700, 170), P(760, 200)])         # (curves.py)
+    add(p, "line", points=[P(560, 700), P(760, 700)], bend=P(660, 740))
+    add(p, "arrow", points=[P(560, 770), P(760, 750)], bend=P(660, 720),
+        props={"head": "closed"})
     add(p, "textbox", rect=pymupdf.Rect(50, 300, 200, 340), text="hello box")
     add(p, "note", rect=pymupdf.Rect(250, 300, 270, 320), text="sticky")
     add(p, "highlight", quads=[q1])
