@@ -165,7 +165,12 @@ def apply(app, mode):
     """mode: 'light' | 'dark' | 'system'."""
     global _mode
     _mode = "dark" if mode == "dark" or (mode == "system" and _system_prefers_dark()) else "light"
-    app.setStyle("Fusion")
+    import sys
+    if not (sys.platform.startswith("linux") and app.style() is not None
+            and app.style().name().lower() == "fusion"):
+        # (Linux: Fusion already. A new style object resets every toolbar's margins to the
+        # style's own: the ribbon, which has none, grew 4 pixels at each theme change)
+        app.setStyle("Fusion")
     if _mode == "light":
         app.setPalette(app.style().standardPalette())
         return
