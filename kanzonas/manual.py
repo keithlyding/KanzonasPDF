@@ -349,8 +349,14 @@ line) selects only your markups, or the characters of the page's text, the same 
 <b>Escape</b> clears the whole selection. Clicking empty paper keeps the selection. A markup lies
 on top of the drawing, so a click on it takes the markup. A locked markup isn't taken.</li>
 <li>The <b>arrow keys</b> nudge the whole selection, the drawing's objects and the markups
-together. Right-click a markup for its own menu, the drawing's objects for theirs. Selected
-markups show no resize handles here: change them with the CAD tab's commands, or with Select.
+together. Right-click a markup for its own menu, the drawing's objects for theirs.
+<b>Resizing:</b> one selected markup shows its own handles (a rectangle's corners and sides, a
+line's ends); the drawing's own shapes and pictures show handles around them; several items (or
+markups together with the drawing's objects) show one box with handles around them all. Drag a
+handle to resize; a corner keeps the proportions (hold Shift while dragging to resize freely;
+Shift at the click itself takes an item out of the selection). The whole change is one Ctrl+Z.
+The drawing's own text only moves. <b>Double-click</b> on text to edit it: the page's own text
+opens in Edit text, a markup's text (a text box, a note, a shape's comment) in its editor.
 What's selected is drawn <b>dashed</b> (blue dashes over white, so it shows on a blue line too)
 with small blue <b>grips</b> on its ends and corners, as in AutoCAD.</li>
 <li>Before you click, the pointer shows what a click would take: over something it can take (a

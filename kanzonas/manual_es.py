@@ -337,8 +337,15 @@ no van a la línea de comandos) selecciona del mismo modo solo sus marcas, o los
 selección. Hacer clic en el papel vacío conserva la selección. Una marca está encima del dibujo, así que un clic sobre ella
 toma la marca. Una marca bloqueada no se toma.</li>
 <li>Las <b>teclas de flecha</b> desplazan toda la selección, los objetos del dibujo y las marcas juntos. Haga clic derecho en
-una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo. Aquí las marcas seleccionadas no muestran
-controladores para cambiar su tamaño: cámbielas con los comandos de la pestaña CAD, o con Seleccionar.
+una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo.
+<b>Cambiar el tamaño:</b> una marca seleccionada muestra sus propios controladores (las esquinas y los lados de un
+rectángulo, los extremos de una línea); las formas e imágenes propias del dibujo muestran controladores a su alrededor;
+varios elementos (o marcas junto con objetos del dibujo) muestran un solo recuadro con controladores alrededor de todos.
+Arrastre un controlador para cambiar el tamaño; una esquina conserva las proporciones (mantenga presionada Shift mientras
+arrastra para cambiarlo libremente; Shift en el propio clic quita un elemento de la selección). Todo el cambio se deshace
+con un solo Ctrl+Z. El texto propio del dibujo solo se mueve. <b>Doble clic</b> en un texto para editarlo: el texto propio
+de la página se abre en Editar texto, el texto de una marca (un cuadro de texto, una nota, el comentario de una forma) en
+su editor.
 Lo seleccionado se dibuja con <b>línea discontinua</b> (trazos azules sobre blanco, así se ve incluso sobre una línea azul)
 con pequeños <b>pinzamientos</b> azules en sus extremos y esquinas, como en AutoCAD.</li>
 <li>Antes de hacer clic, el puntero muestra lo que tomaría un clic: sobre algo que puede tomar (una marca, o con Editar
