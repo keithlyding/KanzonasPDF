@@ -12,7 +12,7 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
-from PySide6.QtCore import Qt, Signal, QTimer, QObject, QEvent, QPointF, QRectF
+from PySide6.QtCore import Qt, Signal, QTimer, QObject, QEvent, QPoint, QPointF, QRectF
 from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor, QImage)
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
@@ -719,11 +719,25 @@ class DocumentView(QScrollArea):
             return
         h, v = self.horizontalScrollBar(), self.verticalScrollBar()
         hv, vv = h.value(), v.value()
+        # the page shown keeps its place on the screen. (Zoomed out, the pages are narrower
+        # than the window and centered in it: working from the scroll position alone put the
+        # page at the far left when the margin grew)
+        ref = None
+        if getattr(self, "pages", None):
+            ref = self.pages[max(0, min(self.current_page(), len(self.pages) - 1))]
+            if not ref.isVisible():
+                ref = None
+        before = ref.mapTo(vp, QPoint(0, 0)) if ref is not None else None
         self._canvas_margin = (mx, my)
         lay.setContentsMargins(mx, my, mx, my)
+        lay.activate()                  # (the pages placed in the new margins now)
         self.widget().adjustSize()
-        h.setValue(hv + mx - old[0])
-        v.setValue(vv + my - old[1])
+        if before is None:
+            h.setValue(hv + mx - old[0])
+            v.setValue(vv + my - old[1])
+        else:
+            h.setValue(ref.x() - before.x())
+            v.setValue(ref.y() - before.y())
 
     def _relayout(self):
         for w in self.pages:
