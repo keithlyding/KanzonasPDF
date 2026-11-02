@@ -3639,8 +3639,8 @@ class MainWindow(QMainWindow):
             # changes made since opening) would break the signatures already in it
             QMessageBox.warning(self, tr("Digital signature"), tr(
                 "This PDF is already digitally signed. Changes made since it was opened would "
-                "break that signature: close it without saving them (or undo them) to add "
-                "another signature."))
+                "break that signature: close it without saving them and open it again to "
+                "add another signature."))
             return
         base = os.path.splitext(v.path)[0]
         out, _ = QFileDialog.getSaveFileName(self, tr("Save signed copy as"), base + "_signed.pdf",

@@ -1058,13 +1058,16 @@ propia copia del texto). Un trazado vectorial que toca una marca se quita más a
 la parte que queda fuera de él. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto y los scripts, a menos que
 lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> también encuentra el texto donde no puede ir un cuadro: campos
 de formulario (valores, opciones de lista, información sobre herramientas y nombres), vínculos (direcciones web y de correo electrónico), notas
-de marcas, títulos de marcadores y propiedades del documento. Al aplicar, los campos, los vínculos, los sellos y los
+de marcas, títulos de marcadores, propiedades del documento, el texto alternativo de los PDF etiquetados, las notas de
+vínculos, las etiquetas de página y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
 archivos adjuntos que lo contienen se eliminan, y en las notas y los comentarios (que se quedan), los marcadores
-y las propiedades se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
+y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
 inmediato. Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
 <li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento, scripts,
-archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, miniaturas.</li>
-<li><b>Propiedades de seguridad (contraseñas y permisos):</b> cifrado AES-256.
+archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
+(los campos normales del formulario se conservan).</li>
+<li><b>Propiedades de seguridad (contraseñas y permisos):</b> cifrado AES-256. Si pulsa Aceptar sin marcar ninguna
+casilla en un documento protegido, se le pregunta antes de quitar su protección.
   <ul>
   <li><i>Contraseña de apertura:</i> nadie puede leer el archivo sin ella. Es una protección real; si
   la olvida, el archivo no se puede recuperar.</li>
@@ -1118,8 +1121,11 @@ marcan zonas; Aplicar censuras quita de forma permanente lo que hay debajo. Un t
 toca una marca se quita más allá del cuadro. Al aplicarlas se eliminan los metadatos, los archivos adjuntos, el texto oculto
 y los scripts, a menos que desactive esa opción. Revise el resultado antes de compartirlo.</li>
 <li><b>Encabezado y pie de página, números de página, Bates</b>, <b>Marca de agua</b>,
-<b>Comprimir (guardar una copia más pequeña)</b>, <b>Comparar documentos</b>, <b>Acoplar</b> (convertir las marcas en parte de la página).</li>
-<li><b>Comparar documentos...</b> (menú Documento, pestaña Páginas): elija la revisión anterior y luego
+<b>Comprimir (guardar una copia más pequeña)</b>, <b>Comparar documentos</b>, <b>Acoplar</b> (convertir las marcas en parte de la página).
+La copia más pequeña conserva la protección con contraseña del documento (contraseña de apertura, permisos), o la
+protección definida en Propiedades de seguridad y aún no guardada.</li>
+<li><b>Comparar documentos...</b> (menú Documento, pestaña Páginas): elija la revisión anterior (si está protegida con
+contraseña, KanzonasPDF la pide) y luego
 cómo comparar. <b>Texto, palabra por palabra</b> es para todo lo que se reacomoda (cartas,
 especificaciones, permisos, informes): las palabras de ambos documentos se comparan en orden
 de lectura, así que el texto que solo bajó una línea o una página no es un cambio. El resultado es una copia

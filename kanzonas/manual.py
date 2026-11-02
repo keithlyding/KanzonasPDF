@@ -1079,13 +1079,17 @@ own copy of the text). A vector path that touches a mark is removed past the box
 the part outside it. Applying scrubs metadata, attachments, hidden text, and scripts unless
 you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
 fields (values, list options, tooltips and names), links (web and email addresses), markup
-notes, bookmark titles and document properties. When you apply, fields, links, stamps and
+notes, bookmark titles, document properties, the alternate text of tagged PDFs, link notes,
+page labels and destination names. When you apply, fields, links, stamps and
 attached files containing it are deleted, and in notes and comments (they stay), bookmarks
-and properties it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
+and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
 away. Check the result before sharing; Undo works until you close the file.</li>
 <li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
-attached files, hidden text, links, comments, form data, thumbnails.</li>
-<li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption.
+attached files, hidden text, links, comments, form data, thumbnails. Scripts includes those in
+other actions (multimedia), javascript: links and an XFA form's scripts (the ordinary form fields
+stay).</li>
+<li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption. Clicking OK
+with neither box ticked on a protected document asks before taking its protection off.
   <ul>
   <li><i>Open password:</i> nobody can read the file without it. Real protection; if you
   forget it, the file can't be recovered.</li>
@@ -1139,9 +1143,11 @@ marks areas; Apply redactions permanently removes what's underneath. A vector pa
 touches a mark is removed past the box. Applying scrubs metadata, attachments, hidden text,
 and scripts unless you turn that off. Check the result before sharing.</li>
 <li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
-<b>Compress (save a smaller copy)</b>, <b>Compare documents</b>, <b>Flatten</b> (make markups part of the page).</li>
-<li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision, then
-how to compare. <b>Text, word by word</b> is for anything that reflows (letters,
+<b>Compress (save a smaller copy)</b>, <b>Compare documents</b>, <b>Flatten</b> (make markups part of the page).
+The smaller copy keeps the document's password protection (open password, permissions), or the
+protection set in Security properties and not saved yet.</li>
+<li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision (if it's
+password-protected, KanzonasPDF asks for its password), then how to compare. <b>Text, word by word</b> is for anything that reflows (letters,
 specifications, permits, reports): the words of both documents are compared in reading
 order, so text that only moved down a line or a page is not a change. The result is a copy
 of this document with the words added in it highlighted blue, a red mark where words of the

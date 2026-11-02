@@ -6998,8 +6998,8 @@ msgstr "Limpiar"
 msgid "Calibrate"
 msgstr "Calibrar"
 
-msgid "This PDF is already digitally signed. Changes made since it was opened would break that signature: close it without saving them (or undo them) to add another signature."
-msgstr "Este PDF ya tiene una firma digital. Los cambios hechos desde que se abrió invalidarían esa firma: ciérrelo sin guardarlos (o deshágalos) para agregar otra firma."
+msgid "This PDF is already digitally signed. Changes made since it was opened would break that signature: close it without saving them and open it again to add another signature."
+msgstr "Este PDF ya tiene una firma digital. Los cambios hechos desde que se abrió invalidarían esa firma: ciérrelo sin guardarlos y vuelva a abrirlo para agregar otra firma."
 
 msgid "Type a value..."
 msgstr "Escribir un valor..."
