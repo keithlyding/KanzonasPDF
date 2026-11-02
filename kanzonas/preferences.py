@@ -3,6 +3,8 @@
 Every checkbox is tied to the menu command that already does the job, so changing an option
 here or in its menu does the same thing and both always agree."""
 
+import sys
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget,
                                QCheckBox, QComboBox, QFormLayout, QLabel, QPushButton,
@@ -69,15 +71,17 @@ class PreferencesDialog(QDialog):
         # General
         page, form = self._tab(tabs, tr("General"))
         self.theme = QComboBox()
-        for key, label in (("system", tr("Match Windows")), ("light", tr("Light")),
-                           ("dark", tr("Dark"))):
+        linux = sys.platform.startswith("linux")
+        for key, label in (("system", tr("Match system") if linux else tr("Match Windows")),
+                           ("light", tr("Light")), ("dark", tr("Dark"))):
             self.theme.addItem(label, key)
         current = next((k for k, a in win.theme_actions.items() if a.isChecked()), "system")
         self.theme.setCurrentIndex(max(0, self.theme.findData(current)))
         form.addRow(tr("Theme:"), self.theme)
         from . import i18n
         self.language = QComboBox()
-        self.language.addItem(tr("Automatic (the language of Windows)"), "auto")
+        self.language.addItem(tr("Automatic (the language of the system)") if linux else
+                              tr("Automatic (the language of Windows)"), "auto")
         for code, name in i18n.LANGUAGES.items():
             self.language.addItem(name, code)
         self.language.setCurrentIndex(max(0, self.language.findData(
@@ -86,11 +90,37 @@ class PreferencesDialog(QDialog):
         for a in (win.a_ribbon, win.a_group_names, win.a_menu_bar, win.a_labels,
                   win.a_auto_updates):
             self._box(form, a)
-        note = QLabel(tr("Settings are saved in the data folder next to KanzonasPDF.exe "
-                         "(portable).") if paths.is_portable() else
-                      tr("Settings are saved in your Windows user profile."))
+        if paths.is_portable():
+            note = QLabel(tr("Settings are saved in the data folder next to KanzonasPDF.exe "
+                             "(portable)."))
+        elif linux:
+            import os
+            home = os.path.expanduser("~").rstrip("/")
+
+            def short(path):        # (~/.config/... as people write it)
+                return "~" + path[len(home):] if path.startswith(home + "/") else path
+            note = QLabel(tr("Settings are saved in {file}; your signatures, stamps and other "
+                             "files in {folder}.").format(file=short(win.settings.fileName()),
+                                                          folder=short(paths.data_dir())))
+            note.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        else:
+            note = QLabel(tr("Settings are saved in your Windows user profile."))
         note.setWordWrap(True)
         form.addRow(note)
+        self.desktop = None
+        from . import linux_desktop
+        if linux_desktop.available():
+            # Linux: the menu entry and default PDF app (Windows: the setup does it)
+            self.desktop = QCheckBox(tr("Add KanzonasPDF to the applications menu and open "
+                                        "PDFs with it"))
+            self.desktop.setChecked(linux_desktop.is_added())
+            form.addRow(self.desktop)
+            lab = QLabel(tr("For your user only: a menu entry and icon in ~/.local/share and "
+                            "KanzonasPDF as the default app for PDF files. Untick it to take "
+                            "them away again."))
+            lab.setWordWrap(True)
+            lab.setIndent(22)
+            form.addRow(lab)
 
         # You: name on markups, signature and initials
         from . import annotations
@@ -198,6 +228,11 @@ class PreferencesDialog(QDialog):
                       "folder and deleted when you save or close the document. If KanzonasPDF "
                       "or Windows stops unexpectedly, you're offered the copies the next time "
                       "it starts. Password-protected documents aren't backed up (the copy "
+                      "wouldn't have the password).") if not linux else
+                   tr("A copy of each document with unsaved changes is kept in the backups "
+                      "folder and deleted when you save or close the document. If KanzonasPDF "
+                      "or the computer stops unexpectedly, you're offered the copies the next "
+                      "time it starts. Password-protected documents aren't backed up (the copy "
                       "wouldn't have the password)."))
         note.setWordWrap(True)
         form.addRow(note)
@@ -485,8 +520,34 @@ class PreferencesDialog(QDialog):
         self._apply()
         self.accept()
 
+    def _apply_desktop(self):
+        """Linux: add or take away the menu entry and default PDF app, as ticked."""
+        from . import linux_desktop, __version__
+        want = self.desktop.isChecked()
+        if want == linux_desktop.is_added():
+            return
+        try:
+            if want:
+                notes = linux_desktop.add(__version__)
+            else:
+                linux_desktop.remove()
+                notes = []
+        except OSError as e:
+            QMessageBox.warning(self, tr("Preferences"), (tr(
+                "Couldn't add KanzonasPDF to the applications menu:\n{error}") if want else tr(
+                "Couldn't take KanzonasPDF out of the applications menu:\n{error}")).format(
+                    error=e))
+            self.desktop.setChecked(linux_desktop.is_added())
+            return
+        if want:
+            QMessageBox.information(self, tr("Preferences"), "\n\n".join([tr(
+                "KanzonasPDF is in the applications menu and opens PDF files. Some desktops "
+                "show the new menu entry only after you sign out and in again.")] + notes))
+
     def _apply(self):
         win = self.win
+        if self.desktop is not None:
+            self._apply_desktop()
         lang = self.language.currentData()
         if lang != paths.stored_str(win.settings, "language", "auto"):
             win.settings.setValue("language", lang)

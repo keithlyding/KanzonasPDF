@@ -3404,9 +3404,11 @@ class DocumentView(QScrollArea):
             # even checking that it exists makes Windows send your sign-in to that computer
             if QMessageBox.question(
                     self, tr("Link"),
-                    tr("This link points to a file on another computer:\n\n{path}\n\nOpening "
-                       "it sends your Windows sign-in to that computer. Open it?").format(
-                        path=path),
+                    (tr("This link points to a file on another computer:\n\n{path}\n\nOpening "
+                        "it sends your Windows sign-in to that computer. Open it?")
+                     if os.name == "nt" else
+                     tr("This link points to a file on another computer:\n\n{path}\n\n"
+                        "Open it?")).format(path=path),
                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
                 return
         if not os.path.exists(path):

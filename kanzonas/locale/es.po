@@ -7153,3 +7153,115 @@ msgstr "Círculo: escriba el radio como un número (o 12'-6\"), o haga clic en u
 
 msgid "Neither a password to open nor restrictions are ticked: this takes the document's password protection off when you save.\n\nRemove its protection?"
 msgstr "No está marcada ni una contraseña para abrir ni ninguna restricción: esto quita la protección con contraseña del documento al guardar.\n\n¿Quitar su protección?"
+
+#: Linux
+msgid ""
+"This link points to a file on another computer:\n"
+"\n"
+"{path}\n"
+"\n"
+"Open it?"
+msgstr ""
+"Este vínculo apunta a un archivo en otro equipo:\n"
+"\n"
+"{path}\n"
+"\n"
+"¿Desea abrirlo?"
+
+#: Linux
+msgid "KanzonasPDF couldn't find its own program file."
+msgstr "KanzonasPDF no encontró su propio archivo de programa."
+
+#: Linux
+msgid "KanzonasPDF is running from its source code: the menu entry runs it the same way."
+msgstr "KanzonasPDF se está ejecutando desde su código fuente: la entrada del menú lo ejecuta de la misma manera."
+
+#: Linux
+msgid "Open the release page to download the new version"
+msgstr "Abrir la página de la versión para descargar la nueva versión"
+
+#: Linux
+msgid "Update now downloads the new AppImage, checks it, closes KanzonasPDF (after asking to save your work), puts it in place of {name} and starts it again. Your settings are kept."
+msgstr "Actualizar ahora descarga la nueva AppImage, la comprueba, cierra KanzonasPDF (después de pedirle que guarde su trabajo), la pone en lugar de {name} y la vuelve a abrir. Su configuración se conserva."
+
+#: Linux
+msgid "The new version is in place. It starts the next time you open KanzonasPDF."
+msgstr "La nueva versión ya está instalada. Se abrirá la próxima vez que abra KanzonasPDF."
+
+#: Linux
+msgid ""
+"KanzonasPDF can't replace {path}: {reason}\n"
+"\n"
+"The release page opens so you can download the new {name} yourself."
+msgstr ""
+"KanzonasPDF no puede reemplazar {path}: {reason}\n"
+"\n"
+"Se abre la página de la versión para que descargue usted mismo el nuevo {name}."
+
+#: Linux
+msgid "You can still download {name} from the release page and put it in place of this one."
+msgstr "Aún puede descargar {name} desde la página de la versión y ponerlo en lugar de este."
+
+#: Linux
+msgid "The new version couldn't be put in place of {path} ({error}). The release page opens so you can download it yourself."
+msgstr "No se pudo poner la nueva versión en lugar de {path} ({error}). Se abre la página de la versión para que la descargue usted mismo."
+
+#: Linux
+msgid "Automatic (the language of the system)"
+msgstr "Automático (el idioma del sistema)"
+
+#: Linux
+msgid "Add KanzonasPDF to the applications menu and open PDFs with it"
+msgstr "Agregar KanzonasPDF al menú de aplicaciones y abrir los PDF con él"
+
+#: Linux
+msgid "For your user only: a menu entry and icon in ~/.local/share and KanzonasPDF as the default app for PDF files. Untick it to take them away again."
+msgstr "Solo para su usuario: una entrada de menú y un icono en ~/.local/share, y KanzonasPDF como aplicación predeterminada para los archivos PDF. Desmárquelo para quitarlos de nuevo."
+
+#: Linux
+msgid "A copy of each document with unsaved changes is kept in the backups folder and deleted when you save or close the document. If KanzonasPDF or the computer stops unexpectedly, you're offered the copies the next time it starts. Password-protected documents aren't backed up (the copy wouldn't have the password)."
+msgstr "Se guarda una copia de cada documento con cambios sin guardar en la carpeta de copias de seguridad y se elimina al guardar o cerrar el documento. Si KanzonasPDF o el equipo se detienen de forma inesperada, se le ofrecerán las copias la próxima vez que se inicie. Los documentos protegidos con contraseña no se copian (la copia no tendría la contraseña)."
+
+#: Linux
+msgid "Match system"
+msgstr "Igual que el sistema"
+
+#: Linux
+msgid "Settings are saved in {file}; your signatures, stamps and other files in {folder}."
+msgstr "La configuración se guarda en {file}; sus firmas, sellos y otros archivos, en {folder}."
+
+#: Linux
+msgid "KanzonasPDF is in the applications menu and opens PDF files. Some desktops show the new menu entry only after you sign out and in again."
+msgstr "KanzonasPDF está en el menú de aplicaciones y abre los archivos PDF. Algunos escritorios muestran la nueva entrada del menú solo después de cerrar sesión y volver a iniciarla."
+
+#: Linux
+msgid ""
+"Couldn't add KanzonasPDF to the applications menu:\n"
+"{error}"
+msgstr ""
+"No se pudo agregar KanzonasPDF al menú de aplicaciones:\n"
+"{error}"
+
+#: Linux
+msgid ""
+"Couldn't take KanzonasPDF out of the applications menu:\n"
+"{error}"
+msgstr ""
+"No se pudo quitar KanzonasPDF del menú de aplicaciones:\n"
+"{error}"
+
+#: Linux
+msgid "It belongs to another user."
+msgstr "Pertenece a otro usuario."
+
+#: Linux
+msgid "You don't have permission to change the folder it is in ({folder})."
+msgstr "No tiene permiso para cambiar la carpeta en la que está ({folder})."
+
+#: Linux
+msgid "Can't write next to {name} ({error})."
+msgstr "No se puede escribir junto a {name} ({error})."
+
+#: Linux
+msgid "The download isn't a KanzonasPDF AppImage."
+msgstr "La descarga no es una AppImage de KanzonasPDF."
