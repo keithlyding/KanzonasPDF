@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- AppStream metadata for the AppImage (software centers, AppImageHub). make_appimage.py
-     fills in @VERSION@ and @DATE@ and checks it with appstreamcli. -->
+     fills in @VERSION@ and @DATE@ and checks it with appstreamcli: the build machine's
+     (Ubuntu 22.04, AppStream 0.15) fails on warnings too, such as a url type it doesn't
+     know (vcs-browser, contribute). -->
 <component type="desktop-application">
   <id>io.github.keithlyding.kanzonaspdf</id>
   <name>KanzonasPDF</name>
@@ -22,7 +24,6 @@
   <icon type="stock">kanzonaspdf</icon>
   <url type="homepage">https://github.com/keithlyding/KanzonasPDF</url>
   <url type="bugtracker">https://github.com/keithlyding/KanzonasPDF/issues</url>
-  <url type="vcs-browser">https://github.com/keithlyding/KanzonasPDF</url>
   <categories>
     <category>Office</category>
     <category>Viewer</category>

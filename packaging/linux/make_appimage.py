@@ -11,8 +11,9 @@
 2. Removes the libraries in packaging/linux/excludelist (the computer's own are used).
 3. Checks the bundle: the desktop file and AppStream metadata, no excluded library left,
    every library a bundled file needs is in the bundle or on this machine, and (with
-   --max-glibc / --max-glibcxx) that nothing needs a newer glibc or C++ runtime than the
-   oldest system the AppImage supports. Lists what it takes from the computer.
+   --max-glibc / --max-glibcxx / --max-cxxabi / --max-libgcc) that nothing needs a newer
+   glibc, C++ runtime (libstdc++ and its C++ ABI) or libgcc_s than the oldest system the
+   AppImage supports. Lists what it takes from the computer.
 4. With --appimagetool, packs AppDir into the AppImage.
 Exits with 1 (and says why) when a check fails.
 """
@@ -38,6 +39,13 @@ LICENSES = ("LICENSE.txt", "NOTICE.txt", "LICENSE-AGPL-3.0.txt")
 OPTIONAL_PLUGINS = ("platforms/libqeglfs.so", "platforms/libqminimalegl.so",
                     "platforms/libqvkkhrdisplay.so", "platforms/libqlinuxfb.so",
                     "platforms/libqvnc.so", "egldeviceintegrations/")
+# the versioned libraries left to the computer (excludelist): every kind of version name
+# they define, so that a need for a newer one than the oldest supported system has is
+# caught (GCC 14 code needs CXXABI_1.3.15 even when it needs no newer GLIBCXX version)
+VERSIONED = ("GLIBC", "GLIBCXX", "CXXABI", "GCC")
+VERSION_NEED = re.compile(r"\b(%s)_(\d+(?:\.\d+)+)\b" % "|".join(VERSIONED))
+# version names without a number, and the glibc that brought them (-z pack-relative-relocs)
+NAMED_VERSIONS = {"GLIBC_ABI_DT_RELR": ("GLIBC", "2.36")}
 
 
 def fail(msg):
@@ -117,8 +125,8 @@ def prune(lib):
     print("Removed %d libraries the computer provides: %s" % (len(removed), ", ".join(sorted(removed))))
 
 
-def check(lib, max_glibc=None, max_glibcxx=None):
-    problems, host, need = [], set(), {"GLIBC": {}, "GLIBCXX": {}}
+def check(lib, max_glibc=None, max_glibcxx=None, max_cxxabi=None, max_libgcc=None):
+    problems, host, need = [], set(), {k: {} for k in VERSIONED}
     internal = os.path.join(lib, "_internal")
     names = excluded_names()
     env = dict(os.environ, LD_LIBRARY_PATH=internal)     # as the PyInstaller program runs
@@ -127,7 +135,12 @@ def check(lib, max_glibc=None, max_glibcxx=None):
         if os.path.basename(f) in names:
             problems.append("excluded library still in the bundle: " + rel)
         out = subprocess.run(["objdump", "-p", f], capture_output=True, text=True).stdout
-        for kind, v in re.findall(r"\b(GLIBC|GLIBCXX)_(\d+(?:\.\d+)+)\b", out):
+        found = VERSION_NEED.findall(out)
+        for name, (kind, v) in NAMED_VERSIONS.items():
+            if re.search(r"\b%s\b" % name, out):
+                found.append((kind, v))
+                print("%s needs %s (%s %s)" % (rel, name, kind, v))
+        for kind, v in found:
             if version_key(v) > version_key(need[kind].get("max", "0")):
                 need[kind]["max"], need[kind]["by"] = v, rel
         if not re.search(r"^\s+NEEDED\s", out, re.M):
@@ -161,7 +174,8 @@ def check(lib, max_glibc=None, max_glibcxx=None):
         print(r.stdout.strip())
         if r.returncode != 0:
             problems.append("desktop file not valid (desktop-file-validate)")
-    for kind, limit in (("GLIBC", max_glibc), ("GLIBCXX", max_glibcxx)):
+    for kind, limit in (("GLIBC", max_glibc), ("GLIBCXX", max_glibcxx),
+                        ("CXXABI", max_cxxabi), ("GCC", max_libgcc)):
         top = need[kind].get("max")
         if top:
             print("Newest %s needed: %s (by %s)" % (kind, top, need[kind]["by"]))
@@ -207,13 +221,17 @@ def main(argv=None):
     a.add_argument("--version", required=True)
     a.add_argument("--max-glibc", help="fail if a bundled file needs a newer glibc")
     a.add_argument("--max-glibcxx", help="fail if a bundled file needs a newer libstdc++")
+    a.add_argument("--max-cxxabi", help="fail if a bundled file needs a newer C++ ABI "
+                   "(libstdc++'s CXXABI_ versions)")
+    a.add_argument("--max-libgcc", help="fail if a bundled file needs a newer libgcc_s "
+                   "(GCC_ versions)")
     a.add_argument("--appimagetool", help="appimagetool AppImage; without it, stop at the AppDir")
     a.add_argument("--runtime-file", help="AppImage runtime (else appimagetool downloads one)")
     a.add_argument("--output", default=APP + "-x86_64.AppImage")
     args = a.parse_args(argv)
     lib = make_appdir(args.dist, args.appdir, args.version)
     prune(lib)
-    check(lib, args.max_glibc, args.max_glibcxx)
+    check(lib, args.max_glibc, args.max_glibcxx, args.max_cxxabi, args.max_libgcc)
     print("AppDir: %.0f MB" % (du(args.appdir) / 1e6))
     if args.appimagetool:
         pack(args.appdir, args.appimagetool, args.runtime_file, args.output)

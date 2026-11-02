@@ -44,6 +44,7 @@ RELEASES_PAGE = "https://github.com/" + REPO + "/releases"
 DAY = 24 * 3600
 PORTABLE_ZIP = "KanzonasPDF-portable.zip"
 APPIMAGE = "KanzonasPDF-x86_64.AppImage"    # the Linux release file (its name never changes)
+APPIMAGE_MAX_BYTES = 1500 * 1000 * 1000     # a download past this stops (the build allows 400 MB)
 STAGING = "_update"          # folder beside the exe that holds the unpacked new version
 # browser_download_url hosts a portable update is allowed to use. Anything else is refused.
 GITHUB_HOSTS = ("github.com", "objects.githubusercontent.com",
@@ -248,13 +249,13 @@ def is_appimage_file(path):
 
 def replace_appimage(new, target):
     """Put the checked new AppImage at target in one step: executable like the old one (and
-    by its owner in any case), then renamed over it. The running program keeps its own copy
-    open until it ends."""
+    by its owner in any case; never changeable by other users, even if the old one was),
+    then renamed over it. The running program keeps its own copy open until it ends."""
     try:
         mode = os.stat(target).st_mode & 0o777
     except OSError:
         mode = 0o755
-    os.chmod(new, mode | 0o100)
+    os.chmod(new, (mode | 0o100) & ~0o022)
     os.replace(new, target)
 
 
@@ -573,7 +574,7 @@ class PortableUpdater(QObject):
             return
         self.path = self._target()
         try:
-            self.file = open(self.path, "wb")
+            self.file = self._open()
         except OSError as e:
             self.failed.emit(self._write_error(e))
             return
@@ -649,6 +650,9 @@ class PortableUpdater(QObject):
     def _target(self):
         return os.path.join(self.app_dir, STAGING + ".zip")
 
+    def _open(self):
+        return open(self.path, "wb")
+
     def _finish(self):
         return unpack(self.path, self.app_dir)
 
@@ -691,12 +695,14 @@ class AppImageUpdater(PortableUpdater):
     """Downloads the new AppImage next to the running one (same disk: the rename that puts it
     in place is a single step), and checks its sha256 against the release and that it is an
     AppImage. ready(path of the checked download); the caller closes KanzonasPDF and calls
-    replace_appimage. A wrong or failed download is removed."""
+    replace_appimage. A wrong or failed download is removed, and so is one that grows past
+    APPIMAGE_MAX_BYTES (it would fill the disk)."""
 
     def __init__(self, url, appimage, parent=None, expected_sha256=None):
         super().__init__(url, os.path.dirname(os.path.abspath(appimage)), parent,
                          expected_sha256)
         self.appimage = os.path.abspath(appimage)
+        self._too_big = False
 
     def _write_error(self, e):
         return tr("Can't write next to {name} ({error}).").format(
@@ -729,8 +735,43 @@ class AppImageUpdater(PortableUpdater):
         return self._write_error(self._failed_write)
 
     def _target(self):
-        return os.path.join(self.app_dir, ".%s.update-%d" % (
-            os.path.basename(self.appimage), os.getpid()))
+        return None                     # (named when it's made: see _open)
+
+    def _open(self):
+        # a new file only this user can read or change, under a name nobody can guess and
+        # never through a link: the folder may be shared (/tmp, a team folder), and whoever
+        # else can add files there could otherwise prepare the name (a link to another of
+        # the user's files, or a file of theirs they change after it's checked)
+        import tempfile
+        fd, self.path = tempfile.mkstemp(
+            prefix=".%s.update-" % os.path.basename(self.appimage), dir=self.app_dir)
+        return os.fdopen(fd, "wb")
+
+    def start(self):
+        super().start()
+        if self.reply is not None:
+            self.reply.downloadProgress.connect(self._limit)
+
+    def _limit(self, received, total):
+        if not self._too_big and max(received, total) > APPIMAGE_MAX_BYTES:
+            self._too_big = True
+            self.reply.abort()
+
+    def _done(self):
+        st = getattr(self, "_state", None)
+        if not self._too_big or (st is not None and st["done"]):
+            super()._done()             # (or already cleared away: KanzonasPDF is quitting)
+            return
+        # stopped for its size (or it had all come already): never checked, never kept
+        blocked = self.blockSignals(True)
+        try:
+            super()._done()
+        finally:
+            self.blockSignals(blocked)
+        self._good = False
+        PortableUpdater._cleanup(self)
+        self.failed.emit(tr("The download was stopped: it is far bigger than an "
+                            "AppImage of KanzonasPDF."))
 
     def _finish(self):
         if not is_appimage_file(self.path):
