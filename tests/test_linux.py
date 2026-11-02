@@ -127,7 +127,8 @@ class AppImagePieces(unittest.TestCase):
                "QT_PLUGIN_PATH": "/tmp/.mount_KzAbc/usr/plugins",
                "XDG_DATA_DIRS": "/tmp/.mount_KzAbc/usr/share:/usr/share",
                "PATH": "/tmp/.mount_KzAbc/usr/bin:/usr/bin", "HOME": "/home/me"}
-        out = updates.restart_env(env)
+        with mock.patch.object(updates.os, "pathsep", ":"):     # (Linux's lists, on Windows too)
+            out = updates.restart_env(env)
         for key in ("APPIMAGE", "APPDIR", "ARGV0", "OWD", "QT_PLUGIN_PATH",
                     "LD_LIBRARY_PATH_ORIG"):
             self.assertNotIn(key, out)
@@ -311,6 +312,7 @@ class MenuEntry(unittest.TestCase):
         self.ran.append(args)
         return mock.Mock(returncode=0)
 
+    @unittest.skipUnless(LINUX, "Linux paths in the menu entry")
     def test_added_to_the_menu_and_as_the_pdf_app_then_taken_away(self):
         with mock.patch.object(linux_desktop.shutil, "which", lambda name: "/usr/bin/" + name):
             notes = linux_desktop.add("9.9", runner=self.runner)
@@ -364,6 +366,7 @@ class MenuEntry(unittest.TestCase):
         linux_desktop.remove(runner=self.runner)
         self.assertTrue(os.path.exists(desk))
 
+    @unittest.skipUnless(LINUX, "Linux paths in the menu entry (Windows: no menu entry)")
     def test_the_entry_follows_a_moved_appimage(self):
         with mock.patch.object(linux_desktop.shutil, "which", lambda name: None):
             linux_desktop.add(runner=self.runner)
@@ -469,8 +472,10 @@ class StartUp(unittest.TestCase):
     def test_files_from_a_file_manager(self):
         from kanzonas.__main__ import file_arguments
         d = tempfile.mkdtemp()
-        got = file_arguments(["--flag", "file://" + d + "/My%20Plan.pdf",
-                              os.path.join(d, "b.pdf")])
+        # (the address a file manager passes: file:///home/... or, on Windows, file:///C:/...)
+        url = QUrl.fromLocalFile(os.path.join(d, "My Plan.pdf")).toString(QUrl.FullyEncoded)
+        self.assertIn("My%20Plan.pdf", url)
+        got = file_arguments(["--flag", url, os.path.join(d, "b.pdf")])
         self.assertEqual(got, [os.path.join(d, "My Plan.pdf"), os.path.join(d, "b.pdf")])
 
     @unittest.skipUnless(LINUX, "the Linux socket")
