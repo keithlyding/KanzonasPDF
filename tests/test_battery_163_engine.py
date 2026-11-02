@@ -126,6 +126,54 @@ class Speed(unittest.TestCase):
         self.assertLess(took, 0.08, "%.0f ms a paint" % (took * 1000))
 
 
+class ArcHover(unittest.TestCase):
+    def test_hover_over_many_arcs(self):
+        # an arc is written as a PolyLine of hundreds of points (within 0.01 pt of the
+        # curve), and the hit test went through them a piece at a time in Python: the
+        # pointer over 80 arcs whose boxes hold it took 28 ms a move (budget: 10 ms)
+        import math
+        d = pymupdf.open()
+        pg = d.new_page(width=1200, height=900)
+        c = P(600, 450)
+        for k in range(80):
+            r = 150 + k * 4
+            A.write(pg, {"kind": "arc", "props": dict(A.DEFAULTS["arc"]),
+                         "points": [c + (r * math.cos(t), r * math.sin(t))
+                                    for t in (0.2, 2.0, 5.9)]})
+        path = os.path.join(tempfile.mkdtemp(), "arcs.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        self.addCleanup(v.close_doc)
+        v.set_zoom(1.0)
+        inside = [P(600 + 30 * math.cos(k), 450 + 30 * math.sin(k)) for k in range(60)]
+        on = [P(600 + 150 * math.cos(1.0 + k * 0.01), 450 + 150 * math.sin(1.0 + k * 0.01))
+              for k in range(60)]
+        for q in inside + on:
+            v.annot_at(0, q)                # (each markup read once, as moving does)
+        self.assertIsNone(v.annot_at(0, inside[0]))
+        self.assertIsNotNone(v.annot_at(0, on[0]))
+        t = time.perf_counter()
+        for q in inside + on:
+            v._annot_memo = None
+            v.annot_at(0, q)
+        took = (time.perf_counter() - t) / len(inside + on)
+        self.assertLess(took, 0.01, "%.1f ms a move" % (took * 1000))
+
+    def test_the_quick_hit_test_finds_what_the_slow_one_did(self):
+        import random as R
+        rnd = R.Random(5)
+        DV = DocumentView
+        for _ in range(300):
+            n = rnd.choice([2, 3, 30, 100, 400])
+            pts = [(rnd.uniform(0, 100), rnd.uniform(0, 100)) for _ in range(n)]
+            if rnd.random() < 0.2:
+                pts[1] = pts[0]                 # (a piece of no length)
+            q = P(rnd.uniform(-10, 110), rnd.uniform(-10, 110))
+            tol = rnd.choice([0.5, 2.0, 6.0])
+            slow = any(DV._seg_dist(q, pts[k], pts[k + 1]) <= tol for k in range(n - 1))
+            self.assertEqual(DV._near_path(q, pts, tol), slow)
+
+
 class LongCloud(unittest.TestCase):
     def test_a_part_of_a_cloud_with_thousands_of_points(self):
         # Trim on a cloud polygon of 3,000 points: each of its points was looked for among

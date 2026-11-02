@@ -290,7 +290,7 @@ class _AnnotShot:
     first needed. parent is set to the page only while testing (the measurement label test
     reads it); label (the tooltip's kind of markup) is read when first shown."""
     __slots__ = ("xref", "type", "flags", "rect", "full", "border", "vertices", "colors",
-                 "info", "parent", "label")
+                 "info", "parent", "label", "arrays")
 
     def __init__(self, annot):
         self.xref = annot.xref
@@ -301,10 +301,12 @@ class _AnnotShot:
         self.border = self.vertices = self.colors = self.info = None
         self.parent = None
         self.label = None
+        self.arrays = None
 
     def fill(self, annot):
         self.border = annot.border
         self.vertices = annot.vertices
+        self.arrays = None              # (long lines' points as arrays: DocumentView._near_path)
         self.colors = annot.colors
         self.info = annot.info
         self.full = True
@@ -3430,6 +3432,32 @@ class DocumentView(QScrollArea):
         return ((p.x - cx) ** 2 + (p.y - cy) ** 2) ** 0.5
 
     @classmethod
+    def _near_path(cls, p, pts, tol, shot=None, k=0):
+        """Some piece of the line through pts (a list of (x, y)) passes within tol of p.
+        A long one (an arc, a bent line, a pen stroke: hundreds of points) is measured in
+        one step, from its points as an array kept with the hit test's shot (stroke k):
+        a piece at a time in Python, 80 arcs under the pointer took 28 ms a move."""
+        n = len(pts)
+        if n < 24:
+            return any(cls._seg_dist(p, pts[k], pts[k + 1]) <= tol for k in range(n - 1))
+        import numpy as np
+        kept = getattr(shot, "arrays", None) if shot is not None else None
+        a = kept.get(k) if kept is not None else None
+        if a is None:
+            a = np.asarray(pts, dtype=float)[:, :2]
+            if isinstance(shot, _AnnotShot):
+                if shot.arrays is None:
+                    shot.arrays = {}
+                shot.arrays[k] = a
+        d = a[1:] - a[:-1]
+        L = (d * d).sum(axis=1)
+        w = (p.x - a[:-1, 0]) * d[:, 0] + (p.y - a[:-1, 1]) * d[:, 1]
+        t = np.clip(np.divide(w, L, out=np.zeros_like(w), where=L != 0), 0, 1)
+        cx = a[:-1, 0] + t * d[:, 0]
+        cy = a[:-1, 1] + t * d[:, 1]
+        return bool((((p.x - cx) ** 2 + (p.y - cy) ** 2) ** 0.5 <= tol).any())
+
+    @classmethod
     def _annot_hit(cls, annot, pt, tol=4.0):
         """Precise hit test: strokes must be clicked near the line, not anywhere in their box."""
         t = annot.type[0]
@@ -3442,11 +3470,10 @@ class DocumentView(QScrollArea):
         width = (annot.border or {}).get("width") or 1
         tol = tol + width
         if t == pymupdf.PDF_ANNOT_INK:
-            for stroke in annot.vertices or []:
+            for k, stroke in enumerate(annot.vertices or []):
                 if len(stroke) == 1 and cls._seg_dist(pt, stroke[0], stroke[0]) <= tol:
                     return True
-                if any(cls._seg_dist(pt, stroke[k], stroke[k + 1]) <= tol
-                       for k in range(len(stroke) - 1)):
+                if cls._near_path(pt, stroke, tol, annot, k):
                     return True
             return False
         if t in (pymupdf.PDF_ANNOT_LINE, pymupdf.PDF_ANNOT_POLY_LINE):
@@ -3454,7 +3481,7 @@ class DocumentView(QScrollArea):
             clouds = (annot.border or {}).get("clouds", 0) or 0
             if t == pymupdf.PDF_ANNOT_POLY_LINE and clouds > 0:
                 tol += clouds * 4 + width / 2      # an open cloud: its bumps are on it too
-            return any(cls._seg_dist(pt, v[k], v[k + 1]) <= tol for k in range(len(v) - 1))
+            return cls._near_path(pt, v, tol, annot)
         if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
                  pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
             v = annot.vertices or []
