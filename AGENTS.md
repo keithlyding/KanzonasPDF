@@ -18,9 +18,13 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
   the latest `main` into your branch, then set `__version__` to the next number after the one
   on `main` and add your CHANGELOG row above the newest one. Two branches with the same
   version conflict, and the second won't be released.
-- **Version numbers (from 0.90 on; 1.0 since 22 Oct 2026):** a bug-fix release bumps the last
-  number (1.0 -> 1.0.1 -> 1.0.2 ... 1.0.10); a release with a new feature bumps the middle one
-  (1.1, then 1.1.1 for its fixes). Plain numbers only (1.0, not 1.00). A 1.x release is a normal
+- **Version numbers (from 0.90 on; 1.0 since 22 Oct 2026):** bump the middle number (1.1, then
+  1.1.1 for its fixes) for a significant new capability: a new kind of work, a new panel or
+  mode, something that needs its own manual section or would headline a release (e.g. CAD mode
+  in 1.5, dimensions, opening DXF). Everything else bumps the last number (1.0 -> 1.0.1 ...
+  1.0.10): fixes, speed work however large, and small additions or usability improvements to
+  existing features, even when they add a tool (e.g. 1.6.3: click-click drawing, grips, Arc,
+  Mask, Trim on clouds). Plain numbers only (1.0, not 1.00). A 1.x release is a normal
   release on GitHub (only 0.x ones were marked pre-release).
 - Every push to any branch runs the full Windows build (~12 minutes). Push when a piece of
   work is done, not after every small edit.
