@@ -7266,5 +7266,9 @@ msgstr "No se puede escribir junto a {name} ({error})."
 msgid "The download isn't a KanzonasPDF AppImage."
 msgstr "La descarga no es una AppImage de KanzonasPDF."
 
+#: Linux
+msgid "The download was stopped: it is far bigger than an AppImage of KanzonasPDF."
+msgstr "Se detuvo la descarga: es mucho más grande que una AppImage de KanzonasPDF."
+
 msgid "Match &system"
 msgstr "Igual que el &sistema"
