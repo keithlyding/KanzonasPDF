@@ -126,5 +126,30 @@ class Speed(unittest.TestCase):
         self.assertLess(took, 0.08, "%.0f ms a paint" % (took * 1000))
 
 
+class LongCloud(unittest.TestCase):
+    def test_a_part_of_a_cloud_with_thousands_of_points(self):
+        # Trim on a cloud polygon of 3,000 points: each of its points was looked for among
+        # every arc's center (0.3 s of the trim's 1 s; on a slow machine much more), and its
+        # appearance worked out the page's matrix again for each point (0.1 s)
+        import math
+        from kanzonas import clouds
+        d = pymupdf.open()
+        pg = d.new_page(width=3000, height=2000)
+        n = 3000
+        pts = [P(1500 + 1300 * math.cos(t * 2 * math.pi / n),
+                 1000 + 900 * math.sin(t * 2 * math.pi / n)) for t in range(n)]
+        A.write(pg, {"kind": "polygon", "props": dict(A.DEFAULTS["polygon"], cloud=True),
+                     "points": pts})
+        cloud = clouds.closed_cloud(clouds.closed_shape(pg, pg.first_annot))
+        total = clouds._cum(cloud["verts"])[-1]
+        t = time.perf_counter()
+        got = clouds.part(cloud, 5.0, total - 5.0)
+        took = time.perf_counter() - t
+        self.assertIsNotNone(got)
+        self.assertGreater(len(got["verts"]), 2900)
+        self.assertEqual(len(got["phase"]), len(got["verts"]))
+        self.assertLess(took, 0.1, "%.2f s" % took)
+
+
 if __name__ == "__main__":
     unittest.main()

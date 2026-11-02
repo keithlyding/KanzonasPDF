@@ -25,6 +25,7 @@ draw_arc, draw_arc_seg, end_cloud), which follows Acrobat's: arcs of one radius,
 points spaced along the outline, each from where it meets the circle before to where it
 meets the one after, plus a short tail curling into the next.
 """
+import bisect
 import math
 
 import pymupdf
@@ -255,8 +256,9 @@ def appearance(page, annot, model):
     if head and head[0] == "q":
         body.append("Q")
     # its box: the arcs and the base line, with room for the line's width
+    to_pdf = pdfcoords.to_pdf(page)     # (once: worked out per point it took a second)
     for q in model["points"]:
-        p = pymupdf.Point(q) * pdfcoords.to_pdf(page)
+        p = pymupdf.Point(q) * to_pdf
         xs.append(p.x)
         ys.append(p.y)
     grow = float(model["props"].get("width", 1) or 0) + 1
@@ -402,8 +404,13 @@ def part(cloud, s0, s1):
     if not on:
         return None
 
+    places = sorted(c for _p, c in ring)
+
     def center_at(s):
-        return any(abs(c - s) <= eps for _p, c in ring)
+        # (by halving: a look through every arc for each point took seconds on a cloud
+        # with thousands of points)
+        k = bisect.bisect_left(places, s - eps)
+        return any(abs(c - s) <= eps for c in places[max(0, k - 1):k + 2])
     # how far past an arc's center the part starts
     back = [c for _p, c in ring if c <= s0 + eps]
     if start_ph is not None:
