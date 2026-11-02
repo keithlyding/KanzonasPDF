@@ -3451,6 +3451,9 @@ class DocumentView(QScrollArea):
             return False
         if t in (pymupdf.PDF_ANNOT_LINE, pymupdf.PDF_ANNOT_POLY_LINE):
             v = annot.vertices or []
+            clouds = (annot.border or {}).get("clouds", 0) or 0
+            if t == pymupdf.PDF_ANNOT_POLY_LINE and clouds > 0:
+                tol += clouds * 4 + width / 2      # an open cloud: its bumps are on it too
             return any(cls._seg_dist(pt, v[k], v[k + 1]) <= tol for k in range(len(v) - 1))
         if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
                  pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
@@ -5416,8 +5419,9 @@ class DocumentView(QScrollArea):
 
     def _cad_trim(self, index, pt, edges=None):
         """Trim at pt (the CAD tab): the clicked line of the drawing, or line markup, loses
-        the part between the nearest lines crossing it (or its end). edges: the cutting
-        edges chosen first (polylines in page coordinates), else every line cuts. True if it
+        the part between the nearest lines crossing it (or its end). A rectangle, polygon or
+        cloud markup is cut at its corners too (_trim_shape). edges: the cutting edges
+        chosen first (polylines in page coordinates), else every line cuts. True if it
         changed."""
         from . import page_objects, trim
         tol = 6 / self.zoom
@@ -5451,9 +5455,25 @@ class DocumentView(QScrollArea):
                 poly = shown if len(shown) == len(parts[k][1]) else \
                     [q * mat for q in parts[k][1]]
                 best = (d, "object", item, k, poly, parts[k][2], state, parts, paint, mat)
+        refused = None                      # (distance, why) the nearest shape that can't be
         for an in self._trimmable_annots(page):
             m = annotations.read(an)
-            if m is None or m["kind"] not in ("line", "polyline", "ink"):
+            if m is None:
+                continue
+            shape = self._trim_outline(page, an, m)
+            if shape is not None:
+                # a rectangle, polygon or cloud (its bumps are in reach), or what's left of one
+                poly = shape["poly"]
+                _s, d = trim.project(poly, trim._cum(poly), pt)
+                if d > tol + shape["reach"]:
+                    continue
+                if shape.get("why"):
+                    if refused is None or d < refused[0]:
+                        refused = (d, shape["why"])
+                elif best is None or d < best[0]:
+                    best = (d, "shape", an.xref, 0, poly, shape["closed"], m, shape)
+                continue
+            if m["kind"] not in ("line", "polyline", "ink"):
                 continue
             if m.get("bend") is not None:   # (a bent line isn't trimmed: it would go straight)
                 continue
@@ -5465,10 +5485,13 @@ class DocumentView(QScrollArea):
                 _s, d = trim.project(poly, trim._cum(poly), pt)
                 if d <= tol and (best is None or d < best[0]):
                     best = (d, "markup", an.xref, k, poly, False, m)
+        if refused is not None and (best is None or refused[0] < best[0]):
+            self.statusMessage.emit(refused[1])
+            return False
         if best is None:
-            self.statusMessage.emit(tr("Trim: no line there. Click on a line of the drawing or "
-                                       "a line markup (filled shapes and pictures aren't "
-                                       "trimmed)."))
+            self.statusMessage.emit(tr("Trim: no line there. Click on a line of the drawing, a "
+                                       "line markup, a rectangle, a polygon or a cloud (filled "
+                                       "shapes and pictures aren't trimmed)."))
             return False
         poly = best[4]
         r = pymupdf.Rect(poly[0], poly[0])
@@ -5491,7 +5514,7 @@ class DocumentView(QScrollArea):
                         continue
                     cutters.append(line)
         for an in self._trimmable_annots(page) if edges is None else ():
-            if best[1] == "markup" and an.xref == best[2]:
+            if best[1] in ("markup", "shape") and an.xref == best[2]:
                 continue
             if not page_objects.overlap(an.rect, r):
                 continue
@@ -5507,6 +5530,8 @@ class DocumentView(QScrollArea):
                                        "stays. (To let every line cut, start Trim with nothing "
                                        "selected and press Enter.)"))
             return False
+        if best[1] == "shape":
+            return self._trim_shape(index, pt, best, cutters)
         pieces = trim.trim(poly, best[5], pt, cutters)
         if pieces is None:
             self.statusMessage.emit(tr("Trim: that's where lines cross. Click on the part of "
@@ -5562,6 +5587,100 @@ class DocumentView(QScrollArea):
                     annotations.write(pg, mod)
             self.clear_selection()
             self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
+        return True
+
+    @staticmethod
+    def _trim_outline(page, an, m):
+        """How Trim sees a closed shape markup (rectangle, polygon, a cloud of either or an
+        ellipse cloud) or what's left of one (an open cloud, a polyline made from a
+        rectangle or polygon): {"poly" (page coordinates; a closed one's first point again
+        at its end, in the order its cloud's arcs go), "closed", "corners" (they cut),
+        "cloud" (clouds.closed_cloud / open_shape, or None), "reach" (how far from its line
+        a click still finds it)}, {"why", "poly", "reach"} for one it can't trim, or None
+        for any other markup (lines, polylines and pen strokes: _cad_trim)."""
+        from . import clouds, pdfcoords
+        kind = m["kind"]
+        width = float(m["props"].get("width", 1) or 0)
+        if kind == "opencloud":
+            cloud = clouds.open_shape(page, m)
+            if not cloud["centers"]:
+                return None
+            return {"poly": [pymupdf.Point(q) for q in m["points"]], "closed": False,
+                    "corners": bool(m.get("sides")), "cloud": cloud,
+                    "reach": cloud["radius"] + width / 2}
+        if kind == "polyline" and m.get("sides"):
+            return {"poly": [pymupdf.Point(q) for q in m["points"]], "closed": False,
+                    "corners": True, "cloud": None, "reach": 0.0}
+        if kind not in ("rect", "polygon", "ellipse") or not m["props"].get("stroke"):
+            return None
+        shape = clouds.closed_shape(page, an)
+        if shape is None:
+            return None
+        back = pdfcoords.to_page(page)
+        poly = [pymupdf.Point(v) * back for v in shape["verts"]]
+        cloud = clouds.closed_cloud(shape) if shape["clouds"] else None
+        reach = shape["width"] / 2 + (cloud["radius"] if cloud else 0.0)
+        if m["props"].get("fill"):
+            return {"poly": poly, "reach": reach,
+                    "why": tr("Trim: a filled shape can't be trimmed (set its fill to none in "
+                              "Properties first).")}
+        if cloud is None and not shape["corners"]:
+            return {"poly": poly, "reach": reach,
+                    "why": tr("Trim: an ellipse can't be trimmed (an ellipse drawn as a cloud "
+                              "can).")}
+        return {"poly": poly, "closed": True, "corners": shape["corners"], "cloud": cloud,
+                "reach": reach}
+
+    def _trim_shape(self, index, pt, best, cutters):
+        """Trim a rectangle, polygon or cloud markup (see _trim_outline): the part between
+        the nearest cuts on either side of the click goes, a cut being where another line
+        crosses it (or a chosen cutting edge) or one of its own corners. What's left of a
+        closed shape is one open markup from the gap round to the gap: a polyline, or an
+        open cloud whose arcs are drawn as they were (clouds.py). One undo step."""
+        from . import clouds, trim
+        _d, _w, xref, _k, poly, closed, m, shape = best
+        parts = trim.spans(poly, closed, pt, cutters, corners=shape["corners"])
+        if parts is None:
+            self.statusMessage.emit(tr("Trim: that's a corner of the shape or where lines "
+                                       "cross. Click on the side to cut away, a little away "
+                                       "from the corner."))
+            return False
+        page = self.doc[index]
+        models = []
+        for s0, s1 in parts:
+            if shape["cloud"] is not None:
+                n = clouds.part_model(page, m, shape["cloud"], s0, s1, shape["corners"])
+            else:
+                pts = [pymupdf.Point(q) for q in trim.along(poly, closed, s0, s1)]
+                if len(pts) < 2:
+                    continue
+                if m["kind"] == "polyline":
+                    n = annotations.copy(m)
+                else:
+                    props = dict(annotations.DEFAULTS["polyline"])
+                    props.update({k: v for k, v in m["props"].items() if k in props})
+                    props["rotation"] = 0
+                    n = {"kind": "polyline", "props": props, "text": m.get("text", ""),
+                         "author": m.get("author", ""), "created": m.get("created", ""),
+                         "locked": m.get("locked", False), "hidden": m.get("hidden", False),
+                         "sides": shape["corners"]}
+                n["points"] = pts
+            if n is not None:
+                models.append(n)
+        del page
+
+        def do():
+            pg = self.doc[index]
+            if models:
+                # (replies, its place in the stacking order and its dates go to the first)
+                annotations.replace_many(pg, [(xref, models[0])])
+            else:
+                pg.delete_annot(pg.load_annot(xref))
+            for mod in models[1:]:
+                annotations.write(pg, mod)
+        self.clear_selection()
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
         return True
 

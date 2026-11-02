@@ -446,7 +446,15 @@ stays (it says so). The click picks the line nearest to it and isn't
 snapped; a click right where lines cross says so instead (click a little to one side). Click
 again and again; Enter, Escape or Done ends it. It
 trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
-and line, polyline and pen markups; filled shapes and pictures aren't trimmed.</li>
+and line, polyline and pen markups. Rectangles, polygons and clouds are trimmed too, and their
+own corners cut as well as the lines crossing them: clicking a side of a lone rectangle or cloud
+takes that side away from corner to corner, and clicking again takes another. What is left is one
+open markup that starts and ends at the gap: a rectangle or polygon becomes a polyline (same
+color, width and opacity; its corners go on cutting), and a cloud stays a cloud, its remaining
+sides looking just as they did (it moves, turns, mirrors, restyles and trims like any markup;
+other PDF readers show it as drawn). A cloud ellipse is cut only where lines cross it. A click
+right on a corner says so instead (click on the side, a little away from the corner). Filled
+shapes (a Mask too), plain ellipses, arcs, bent lines and pictures aren't trimmed.</li>
 </ul>
 <p>On a big drawing, CAD mode reads the page's line work in the background while you aren't
 doing anything, a little at a time so the window never stops answering, so the first box,

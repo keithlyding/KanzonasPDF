@@ -6656,8 +6656,17 @@ msgid "Highlights and other text markups stay on their words: they can only be m
 msgstr "Los resaltados y otras marcas de texto se quedan sobre sus palabras: solo se pueden mover o copiar."
 
 #: cad
-msgid "Trim: no line there. Click on a line of the drawing or a line markup (filled shapes and pictures aren't trimmed)."
-msgstr "Recortar: no hay ninguna línea ahí. Haga clic en una línea del dibujo o en una marca de línea (las formas rellenas y las imágenes no se recortan)."
+msgid "Trim: no line there. Click on a line of the drawing, a line markup, a rectangle, a polygon or a cloud (filled shapes and pictures aren't trimmed)."
+msgstr "Recortar: no hay ninguna línea ahí. Haga clic en una línea del dibujo, una marca de línea, un rectángulo, un polígono o una nube (las formas rellenas y las imágenes no se recortan)."
+
+msgid "Trim: a filled shape can't be trimmed (set its fill to none in Properties first)."
+msgstr "Recortar: una forma rellena no se puede recortar (quítele antes el relleno en Propiedades)."
+
+msgid "Trim: an ellipse can't be trimmed (an ellipse drawn as a cloud can)."
+msgstr "Recortar: una elipse no se puede recortar (una elipse dibujada como nube sí)."
+
+msgid "Trim: that's a corner of the shape or where lines cross. Click on the side to cut away, a little away from the corner."
+msgstr "Recortar: ahí hay una esquina de la forma o se cruzan líneas. Haga clic en el lado que quiere quitar, un poco lejos de la esquina."
 
 #: cad
 msgid "The drawing's text can be moved here, not copied, turned, scaled or mirrored: it stays where it is (Edit text changes it)."

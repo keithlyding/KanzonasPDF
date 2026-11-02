@@ -425,8 +425,15 @@ parte de una línea que quiere quitar: se quita hasta los bordes de corte más c
 extremo, si ninguno la cruza de ese lado). Sin bordes de corte elegidos, una línea que ninguno cruza se quita entera; con
 bordes de corte elegidos, una línea que no cruza ninguno se queda (lo indica). El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
 en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; Enter, Escape o Listo termina. Recorta las líneas y curvas propias del
-dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma; las
-formas rellenas y las imágenes no se recortan.</li>
+dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma. También
+recorta rectángulos, polígonos y nubes, y sus propias esquinas cortan además de las líneas que los cruzan: un clic en un lado
+de un rectángulo o una nube sueltos quita ese lado de esquina a esquina, y otro clic quita otro lado. Lo que queda es una sola
+marca abierta que empieza y termina en el hueco: un rectángulo o polígono se vuelve una polilínea (mismo color, grosor y
+opacidad; sus esquinas siguen cortando) y una nube sigue siendo una nube, con los lados que quedan tal como estaban (se mueve,
+gira, refleja, cambia de estilo y se recorta como cualquier marca; otros lectores de PDF la muestran tal como está dibujada).
+Una nube en forma de elipse solo se corta donde la cruzan líneas. Un clic justo en una esquina lo indica en lugar de recortar
+(haga clic en el lado, un poco lejos de la esquina). Las formas rellenas (también una Máscara), las elipses normales, los
+arcos, las líneas curvadas y las imágenes no se recortan.</li>
 </ul>
 <p>En un dibujo grande, el modo CAD lee los trazos de la página en segundo plano mientras usted no hace nada, poco a
 poco para que la ventana siempre responda, así que el primer recuadro, lazo o comando empieza enseguida; el puntero

@@ -49,6 +49,8 @@ def every_kind(rotation):
     add(p, "rect", rect=pymupdf.Rect(350, 80, 450, 150), props={"cloud": True})
     add(p, "polygon", points=[P(500, 80), P(600, 80), P(550, 150)])
     add(p, "polyline", points=[P(50, 200), P(100, 250), P(150, 200)])
+    add(p, "opencloud", points=[P(50, 600), P(50, 700), P(200, 700)],     # (a trimmed cloud)
+        cloud={"i": 2, "phase": [0.3, 0.0, 0.0], "ends": [-1, 0, 1, 0], "flip": False})
     add(p, "line", points=[P(200, 200), P(300, 250)])
     add(p, "arrow", points=[P(350, 200), P(450, 250)])
     add(p, "ink", strokes=[[P(500, 200), P(550, 240), P(600, 210)]])
