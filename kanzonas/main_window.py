@@ -3725,6 +3725,26 @@ class MainWindow(QMainWindow):
         except OSError as ex:
             QMessageBox.critical(self, tr("Compare"), str(ex))
             return
+        try:
+            probe = pymupdf.open(stream=old, filetype="pdf")
+        except Exception:
+            probe = None                # (not a PDF: the comparison reports it)
+        if probe is not None and probe.needs_pass:
+            # a protected earlier revision: its password, as when opening it
+            prompt = tr("{name} is protected:").format(name=os.path.basename(path))
+            while True:
+                pw, ok = QInputDialog.getText(self, tr("Password required"), prompt,
+                                              QLineEdit.Password)
+                if not ok:
+                    probe.close()
+                    return
+                if probe.authenticate(pw):
+                    break
+                prompt = tr("Wrong password. {name} is protected:").format(
+                    name=os.path.basename(path))
+            old = probe.tobytes()       # (compared in memory, unlocked)
+        if probe is not None:
+            probe.close()
         new = v.doc.tobytes()
         old_name, new_name = os.path.basename(path), os.path.basename(v.path)
         try:
