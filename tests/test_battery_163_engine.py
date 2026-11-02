@@ -160,6 +160,97 @@ class Speed(unittest.TestCase):
         self.assertLess(took, 0.08, "%.0f ms a paint" % (took * 1000))
 
 
+def _cloud_then_trim(v, sides=(P(250, 520),), kind="cloud"):
+    v.apply_drag_tool(0, kind, P(150, 520), P(350, 700), False)
+    for at in sides:
+        v.cad_trim(0, at)
+
+
+def _bend(v):
+    x = v._create(0, {"kind": "arrow", "props": dict(A.DEFAULTS["arrow"]),
+                      "points": [P(100, 730), P(400, 760)], "rect": pymupdf.Rect()})
+    page = v.doc[0]
+    m = A.read(page.load_annot(x))
+    del page
+    v.commit_models(0, [(x, A.bent(m, P(250, 700), 0.5))], olds={x: m})
+
+
+def _click_click(v, tool, b):
+    from kanzonas import cad_draw
+    v.set_tool(tool)
+    pk = {"w": v.pages[0], "index": 0, "xref": v.doc.page_xref(0), "tool": tool,
+          "at": P(120, 520), "now": P(120, 520)}
+    v._cad_shape = pk
+    cad_draw.end(v, pk, b)
+    v.set_tool("hand")
+
+
+def _typed_circle(v):
+    from kanzonas import cad_draw
+    v.set_tool("circle")
+    v._cad_shape = {"w": v.pages[1], "index": 1, "xref": v.doc.page_xref(1),
+                    "tool": "circle", "at": P(300, 300), "now": P(300, 300)}
+    cad_draw.typed(v, "1.5")
+    v.set_tool("hand")
+
+
+def _mirror_open_cloud(v):
+    _cloud_then_trim(v)
+    page = v.doc[0]
+    xs = [a.xref for a in A.each_annot(page) if A.read(a)["kind"] == "opencloud"]
+    del page
+    v._set_selection(0, xs)
+    v.cad_apply("Mirrored", pymupdf.Matrix(-1, 0, 0, 1, 600, 0))
+
+
+NEW_EDITS = [
+    ("circle", lambda v: v.apply_drag_tool(0, "circle", P(300, 300), P(360, 340), False)),
+    ("mask", lambda v: v.apply_drag_tool(0, "mask", P(60, 50), P(220, 90), False)),
+    ("arc", lambda v: v.apply_poly(0, "arc", [P(100, 500), P(200, 430), P(320, 520)])),
+    ("curve", lambda v: v.apply_poly(2, "curve", [P(100, 500), P(320, 520), P(200, 430)])),
+    ("bend an arrow by its middle grip", _bend),
+    ("trim a cloud: an open cloud", _cloud_then_trim),
+    ("trim an open cloud again", lambda v: _cloud_then_trim(v, (P(250, 520), P(350, 610)))),
+    ("trim a rectangle: a polyline", lambda v: _cloud_then_trim(v, kind="rect")),
+    ("trim a markup on the page", lambda v: v.cad_trim(1, P(400, 400))),
+    ("click, move, click a line", lambda v: _click_click(v, "line", P(300, 580))),
+    ("click, move, click a circle", lambda v: _click_click(v, "circle", P(160, 560))),
+    ("typed circle radius", _typed_circle),
+    ("mirror an open cloud", _mirror_open_cloud),
+]
+
+
+class UndoNewKinds(unittest.TestCase):
+    """Every new kind of edit, undone and redone through MuPDF's journal, gives what a copy
+    per edit gives (as tests/test_undo_journal.py checks the older ones)."""
+
+    def test_every_new_edit_matches_the_copy_per_edit(self):
+        from tests.test_undo_journal import Quiet, SameAsCopies
+        for key in ("mouse_mode", "cad_select"):
+            self.addCleanup(setattr, DocumentView, key, getattr(DocumentView, key))
+        DocumentView.mouse_mode = "cad"
+        DocumentView.cad_select = True
+        q = Quiet("run")
+        q.setUp()
+        self.addCleanup(q.doCleanups)
+        for label, edit in NEW_EDITS:
+            with self.subTest(label):
+                runs = []
+                for journal in (True, False):
+                    v = q.view(journal)
+                    runs.append(SameAsCopies.run_sequence(self, v, edit))
+                    if journal:
+                        self.assertNotIn("bytes", [type(s).__name__ for s in v._undo])
+                    v.dirty = False
+                    v.close_doc()
+                j, c = runs
+                for k, (a, b) in enumerate(zip(j, c)):
+                    self.assertEqual(a, b, "state %d" % k)
+                self.assertEqual(j[0], j[2])            # (back to the start after undo)
+                self.assertEqual(j[1], j[3])
+                self.assertNotEqual(j[0], j[1], "the edit changed nothing")
+
+
 class ArcHover(unittest.TestCase):
     def test_hover_over_many_arcs(self):
         # an arc is written as a PolyLine of hundreds of points (within 0.01 pt of the
