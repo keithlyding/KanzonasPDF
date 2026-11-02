@@ -3832,8 +3832,9 @@ class MainWindow(QMainWindow):
         self.search.setToolTip(tr("Find text in this document (Ctrl+F). Enter or F3 = next match, "
                                   "Shift+Enter or Shift+F3 = previous"))
         self.shapes_btn.setToolTip(tr("Shapes: click for the shape shown, or the arrow to pick "
-                                      "another (rectangle, ellipse, cloud, polygon, line, arrow, "
-                                      "polyline, pen). Hold Shift for squares, circles and straight lines"))
+                                      "another (rectangle, ellipse, circle, cloud, mask, polygon, "
+                                      "line, arrow, polyline, arc, curve, pen). Hold Shift for "
+                                      "squares, circles and straight lines"))
         self.measure_btn.setToolTip(tr("Measure: click for the tool shown, or the arrow for length, "
                                        "polylength, area, count, calibrate and scale"))
 
@@ -3945,8 +3946,13 @@ class MainWindow(QMainWindow):
         renamed = {"CAD-style mouse (wheel zooms, hold wheel to pan)":     # before 1.5
                    "Mouse: CAD (wheel zooms, hold wheel to pan)"}
         saved = {renamed.get(n, n): seq for n, seq in saved.items() if isinstance(seq, str)}
+        # a key the user put on a command stays theirs: a later release's new default for
+        # another command (O for Circle in 1.6.3) would put it on two, and run neither
+        taken = {seq for n, seq in saved.items() if seq and n in acts}
         for name, a in acts.items():
             seq = saved.get(name, self._default_shortcuts.get(name, ""))
+            if name not in saved and seq in taken:
+                seq = ""
             if seq != a.shortcut().toString():
                 a.setShortcut(QKeySequence(seq))
 

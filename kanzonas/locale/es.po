@@ -4058,8 +4058,8 @@ msgid "Find text in this document (Ctrl+F). Enter or F3 = next match, Shift+Ente
 msgstr "Buscar texto en este documento (Ctrl+F). Enter o F3 = coincidencia siguiente, Shift+Enter o Shift+F3 = anterior"
 
 #: main_window.py:3565
-msgid "Shapes: click for the shape shown, or the arrow to pick another (rectangle, ellipse, cloud, polygon, line, arrow, polyline, pen). Hold Shift for squares, circles and straight lines"
-msgstr "Formas: haga clic para la forma mostrada, o en la flecha para elegir otra (rectángulo, elipse, nube, polígono, línea, flecha, polilínea, lápiz). Mantenga presionada Shift para cuadrados, círculos y líneas rectas"
+msgid "Shapes: click for the shape shown, or the arrow to pick another (rectangle, ellipse, circle, cloud, mask, polygon, line, arrow, polyline, arc, curve, pen). Hold Shift for squares, circles and straight lines"
+msgstr "Formas: haga clic para la forma mostrada, o en la flecha para elegir otra (rectángulo, elipse, círculo, nube, máscara, polígono, línea, flecha, polilínea, arco, curva, lápiz). Mantenga presionada Shift para cuadrados, círculos y líneas rectas"
 
 #: main_window.py:3568
 msgid "Measure: click for the tool shown, or the arrow for length, polylength, area, count, calibrate and scale"
