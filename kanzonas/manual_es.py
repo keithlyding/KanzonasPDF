@@ -453,7 +453,7 @@ En el modo del mouse <b>CAD</b>, Seleccionar funciona como en AutoCAD: ventanas 
 lazo, clics que agregan a la selección, Shift para quitar, Escape para borrarla, y arrastrar no mueve nada (vea Modo
 CAD).</li>
 <li>Con una herramienta de dibujo activa (rectángulo, línea, llamada, ...), hacer clic en una marca existente también la
-selecciona, así que no tiene que volver a la flecha. La <b>herramienta Mano</b> funciona igual:
+selecciona, así que no tiene que volver a la flecha (no en el modo CAD, donde una herramienta de dibujo siempre dibuja). La <b>herramienta Mano</b> funciona igual:
 haga clic en una marca (un resaltado, una nota, una forma...) para seleccionarla; arrastre en cualquier otro lugar para mover la
 página. Una marca convertida en vínculo abre su vínculo en su lugar cuando se hace clic en ella con la herramienta Mano, o
 Ctrl+clic con la herramienta Seleccionar (un clic normal con Seleccionar la selecciona). Una marca sobre un vínculo
@@ -591,7 +591,7 @@ enderezarla. La herramienta <b>Curva</b> dibuja una directamente: haga clic en e
 <li><b>Círculo</b> (O): arrastre desde el centro hasta un punto del círculo. En el modo CAD, haga
 clic en el centro y luego en un punto del círculo, o escriba el radio en la línea de comandos y
 presione Enter (en la unidad de medida de la página, la que muestra Medir &gt; Establecer escala;
-también vale 12'-6"; pulgadas sobre el papel si no hay escala). Crea una marca de elipse, así que
+también vale 12'-6", y la coma decimal, 2,5; pulgadas sobre el papel si no hay escala). Crea una marca de elipse, así que
 Propiedades, el borde de nube, mover y cambiar el tamaño funcionan como en una elipse.</li>
 <li><b>Máscara</b>: arrastre un cuadro sobre lo que quiere ocultar; queda cubierto por un cuadro
 blanco sin contorno (como la Cobertura de AutoCAD). En Propiedades puede cambiar su color de
@@ -615,7 +615,9 @@ punto, Esc para cancelar.</li>
 puntos, sin cambiar de herramienta. <b>Shift+clic sobre una marca</b> empieza en cambio una nueva justo ahí
 (para empezar una línea en el extremo de otra, por ejemplo): no se selecciona ni se mueve nada, y el
 punto se ajusta al extremo o a la esquina de la marca cuando el ajuste está activado. El puntero muestra la cruz
-de dibujo mientras se mantiene presionada Shift.</li>
+de dibujo mientras se mantiene presionada Shift. <b>En el modo CAD</b> una herramienta de dibujo siempre dibuja, como en
+AutoCAD, sin necesidad de Shift: un clic sobre una marca empieza la nueva ahí (ajustada a su extremo o esquina); seleccione
+marcas con Editar objetos o Seleccionar.</li>
 <li><b>Mantenga presionada Shift</b> mientras dibuja:
   <ul>
   <li>las líneas, las flechas, las mediciones y los segmentos de polilínea se ajustan a pasos de 45&deg; (horizontal,

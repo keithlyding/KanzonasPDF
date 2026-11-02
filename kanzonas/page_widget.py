@@ -1813,9 +1813,10 @@ class PageWidget(QWidget):
             self._objects_press(e, pos, pdf)
             return
         if tool in EDIT_IN_PLACE and not self._poly:
-            if shift_held(e):
+            if shift_held(e) or self.view.cad_select:
                 # Shift = draw a new one here even on top of a markup (to start a line at the
-                # end of another, say): no selecting or moving
+                # end of another, say): no selecting or moving. In CAD mode always, as in
+                # AutoCAD: a drawing tool draws (snapped to that end); Edit objects selects
                 if self.view.selection is not None:
                     self.view.clear_selection()
             elif self._press_on_markup(pos, pdf, ctrl_held(e)):
@@ -2095,8 +2096,9 @@ class PageWidget(QWidget):
                 if r != self._hover:
                     self._hover = r
                     self.update()
-            elif tool in EDIT_IN_PLACE and not self._poly and shift_held(e):
-                self.unsetCursor()              # Shift: the tool draws here, it doesn't move
+            elif tool in EDIT_IN_PLACE and not self._poly and \
+                    (shift_held(e) or self.view.cad_select):
+                self.unsetCursor()              # (the view's own: a plus in CAD mode)
             elif tool == "select" or (tool in EDIT_IN_PLACE and not self._poly):
                 self._update_select_cursor(pos, restore=tool != "select")
             return

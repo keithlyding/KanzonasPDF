@@ -475,7 +475,8 @@ In the <b>CAD</b> mouse mode, Select works as in AutoCAD instead: blue window an
 crossing boxes, a lasso, clicks that add to the selection, Shift to take out, Escape to clear,
 and dragging moves nothing (see CAD mode).</li>
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
-it too, so you don't have to switch back to the arrow. The <b>Hand tool</b> works the same way:
+it too, so you don't have to switch back to the arrow (not in CAD mode, where a drawing tool always
+draws). The <b>Hand tool</b> works the same way:
 click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
 page. A markup made a link opens its link instead when clicked with the Hand tool, or
 Ctrl+clicked with the Select tool (a plain click with Select selects it). A markup on a link
@@ -611,7 +612,7 @@ point; the ends stay where they are and an arrowhead follows the curve. Drag the
 straighten it. The <b>Curve</b> tool draws one directly: click the start, the end, then where it bends to.</li>
 <li><b>Circle</b> (O): drag from the center to a point on the circle. In CAD mode, click the
 center, then a point on the circle, or type the radius on the command line and press Enter (in
-the page's measuring unit, as Measure &gt; Set scale shows it, 12'-6" also works; inches on paper
+the page's measuring unit, as Measure &gt; Set scale shows it, 12'-6" also works, as does a decimal comma, 2,5; inches on paper
 when no scale is set). It makes an ellipse markup, so Properties, the cloud border, moving and
 resizing work as for an ellipse.</li>
 <li><b>Mask</b>: drag a box over what to hide; it's covered by a white box with no outline (like
@@ -634,7 +635,9 @@ Escape to cancel.</li>
 points, without changing tools. <b>Shift+click on a markup</b> starts a new one right there
 instead (to start a line at the end of another, say): nothing is selected or moved, and the
 point snaps to the markup's end or corner when snapping is on. The pointer shows the drawing
-cross while Shift is held.</li>
+cross while Shift is held. <b>In CAD mode</b> a drawing tool always draws, as in AutoCAD, with no
+Shift needed: a click on a markup starts the new one there (snapped to its end or corner); select
+markups with Edit objects or Select.</li>
 <li><b>Hold Shift</b> while drawing:
   <ul>
   <li>lines, arrows, measurements and polyline segments snap to 45&deg; steps (horizontal,

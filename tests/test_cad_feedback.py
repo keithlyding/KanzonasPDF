@@ -123,6 +123,29 @@ class Clicks(CadWindow):
         self.assertTrue(any("corner" in s for s in said))
 
 
+class DrawFromAMarkup(CadWindow):
+    def test_in_cad_mode_a_line_starts_on_a_markups_end(self):
+        # (AutoCAD draws from an object's endpoint; selecting is Edit objects' job. Before,
+        # the first click on the arrow selected it instead of starting the line)
+        self.cad()
+        self.w.set_tool("line")
+        w = self.page
+        n = len(list(self.v.doc[0].annots()))
+        end = self.at(400, 350)                 # (the first arrow's tip)
+        QTest.mouseClick(w, Qt.LeftButton, Qt.NoModifier, end)
+        QTest.mouseMove(w, self.at(500, 500))
+        QTest.mouseClick(w, Qt.LeftButton, Qt.NoModifier, self.at(500, 500))
+        APP.processEvents()
+        self.assertEqual(len(list(self.v.doc[0].annots())), n + 1)
+        self.assertIsNone(self.v.selection)
+
+    def test_in_standard_mode_the_first_click_still_selects(self):
+        self.w.set_tool("line")
+        QTest.mouseClick(self.v.pages[0], Qt.LeftButton, Qt.NoModifier, self.at(250, 225))
+        APP.processEvents()
+        self.assertIsNotNone(self.v.selection)
+
+
 class Selected(CadWindow):
     def setUp(self):
         super().setUp()
