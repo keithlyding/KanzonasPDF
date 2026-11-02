@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata for the AppImage (software centers, AppImageHub). make_appimage.py
+     fills in @VERSION@ and @DATE@ and checks it with appstreamcli. -->
+<component type="desktop-application">
+  <id>io.github.keithlyding.kanzonaspdf</id>
+  <name>KanzonasPDF</name>
+  <summary>Mark up, measure and edit PDF files</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-only</project_license>
+  <developer id="io.github.keithlyding">
+    <name>KanzonasPDF</name>
+  </developer>
+  <description>
+    <p>
+      A free PDF editor for construction and engineering: markups, revision clouds,
+      calibrated lengths, areas and volumes, CAD-style drawing, text editing, forms,
+      redaction, digital signatures, OCR and export to Word, Excel, PowerPoint and DXF.
+    </p>
+    <p>No account and no telemetry.</p>
+  </description>
+  <launchable type="desktop-id">kanzonaspdf.desktop</launchable>
+  <icon type="stock">kanzonaspdf</icon>
+  <url type="homepage">https://github.com/keithlyding/KanzonasPDF</url>
+  <url type="bugtracker">https://github.com/keithlyding/KanzonasPDF/issues</url>
+  <url type="vcs-browser">https://github.com/keithlyding/KanzonasPDF</url>
+  <categories>
+    <category>Office</category>
+    <category>Viewer</category>
+    <category>Graphics</category>
+  </categories>
+  <provides>
+    <binary>KanzonasPDF</binary>
+    <mediatype>application/pdf</mediatype>
+  </provides>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Markups and measurements on a drawing</caption>
+      <image>https://raw.githubusercontent.com/keithlyding/KanzonasPDF/main/docs/screenshot-markup.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>
