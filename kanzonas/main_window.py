@@ -3832,8 +3832,9 @@ class MainWindow(QMainWindow):
         self.search.setToolTip(tr("Find text in this document (Ctrl+F). Enter or F3 = next match, "
                                   "Shift+Enter or Shift+F3 = previous"))
         self.shapes_btn.setToolTip(tr("Shapes: click for the shape shown, or the arrow to pick "
-                                      "another (rectangle, ellipse, cloud, polygon, line, arrow, "
-                                      "polyline, pen). Hold Shift for squares, circles and straight lines"))
+                                      "another (rectangle, ellipse, circle, cloud, mask, polygon, "
+                                      "line, arrow, polyline, arc, curve, pen). Hold Shift for "
+                                      "squares, circles and straight lines"))
         self.measure_btn.setToolTip(tr("Measure: click for the tool shown, or the arrow for length, "
                                        "polylength, area, count, calibrate and scale"))
 

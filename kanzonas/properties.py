@@ -17,8 +17,8 @@ HEAD_NAMES = {"open": tr("open"), "closed": tr("closed"), "open (reversed)": tr(
 MARKUP_NAMES = {"highlight": tr("Highlight"), "underline": tr("Underline"),
                 "strikeout": tr("Strikeout"), "squiggly": tr("Squiggly")}
 
-BORDERLESS = ("textbox", "callout", "rect", "ellipse", "polygon", "m_area", "m_perimeter",
-              "m_volume")
+BORDERLESS = ("textbox", "callout", "rect", "ellipse", "circle", "mask", "polygon", "m_area",
+              "m_perimeter", "m_volume")
 
 
 class ColorButton(QToolButton):
