@@ -14,20 +14,26 @@ from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath
 from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
+from . import cad_draw
 from . import cad_select
+from . import curves
 from . import render_layers as RL
 from .i18n import tr
 
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
-SHAPE_TOOLS = {"textbox", "rect", "ellipse", "line", "arrow", "eraser", "cloud", "callout",
-               "m_length", "m_calibrate", "m_radius", "image", "placeholder", "erasecontent",
-               "capture", "crop", "link"}
-POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume"}
+SHAPE_TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", "eraser", "cloud",
+               "callout", "m_length", "m_calibrate", "m_radius", "image", "placeholder",
+               "erasecontent", "capture", "crop", "link"}
+POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume",
+              "arc", "curve"}
+# three clicks: Arc = start, a point it passes through, end; Curve = start, end, the bend
+CURVE_TOOLS = {"arc", "curve"}
 # While one of these drawing tools is active, clicking an existing markup selects it for
 # moving / resizing / restyling (like the Select tool) instead of starting a new one.
-EDIT_IN_PLACE = {"rect", "ellipse", "cloud", "line", "arrow", "polygon", "polyline", "ink",
-                 "textbox", "callout", "note", "stamp", "m_length", "m_poly", "m_area", "m_count",
-                 "m_angle", "m_radius", "m_perimeter", "m_volume", "image", "attach", "placeholder"}
+EDIT_IN_PLACE = {"rect", "ellipse", "circle", "mask", "cloud", "line", "arrow", "polygon",
+                 "polyline", "ink", "arc", "curve", "textbox", "callout", "note", "stamp",
+                 "m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius",
+                 "m_perimeter", "m_volume", "image", "attach", "placeholder"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area", "m_angle", "m_radius",
                  "m_perimeter", "m_volume"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}
@@ -48,7 +54,7 @@ ROT_GAP = 26        # rotation handle distance above the selection, px
 # tools whose points snap (to the grid / to objects) while drawing
 SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "crop", "link"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "m_radius", "callout"}   # Shift = 45° steps
-SQUARE_TOOLS = {"rect", "ellipse", "cloud"}                               # Shift = square / circle
+SQUARE_TOOLS = {"rect", "ellipse", "cloud", "mask"}                       # Shift = square / circle
 
 
 def box_handles(r, h=HANDLE):
@@ -170,6 +176,55 @@ def lines_path(lines):
             move(a[0], a[1])
             to(b[0], b[1])
     return path
+
+
+SELECTED = QColor(0, 120, 215)
+GRIPS_MAX = 1500        # grips drawn for a selection at most (a huge one shows its outline)
+CURVED_MAX = 300        # selected markups whose curves are drawn along them (more: 2,000 bent
+                        # lines took 0.14 s a paint)
+
+
+def paint_selected_path(p, path):
+    """What's selected, drawn so it shows on anything, a blue line included: a white line
+    under a dashed blue one (AutoCAD draws a selection dashed too)."""
+    p.setBrush(Qt.NoBrush)
+    # (square ends: Qt strokes a path of many pieces with round ends a hundred times slower,
+    # 380 ms a paint for 2,500 selected lines)
+    under = QPen(QColor(255, 255, 255, 230), 4)
+    p.setPen(under)
+    p.drawPath(path)
+    dash = QPen(SELECTED, 2, Qt.CustomDashLine)
+    dash.setDashPattern([3, 2])
+    p.setPen(dash)
+    p.drawPath(path)
+
+
+def paint_grips(p, points):
+    """Grips: small filled squares on the selected things' ends and corners, as AutoCAD
+    marks a selection (points: widget coordinates)."""
+    p.setPen(QPen(Qt.white, 1))
+    p.setBrush(SELECTED)
+    h = 6
+    p.drawRects([QRectF(q.x() - h / 2, q.y() - h / 2, h, h) for q in points])   # (one call)
+    p.setBrush(Qt.NoBrush)
+
+
+def grip_points(lines, out=None, seen=None):
+    """The grips of these lines (lists of points): each one's two ends, and its corners when
+    it has few (a curve read as many short pieces gets its ends only); none twice. Appended
+    to out (a list of (x, y)); stops at GRIPS_MAX."""
+    out = [] if out is None else out
+    seen = set() if seen is None else seen
+    for line in lines:
+        if len(out) >= GRIPS_MAX:
+            break
+        pts = line if len(line) <= 9 else (line[0], line[-1])
+        for q in pts:
+            key = (round(q[0], 1), round(q[1], 1))
+            if key not in seen:
+                seen.add(key)
+                out.append((q[0], q[1]))
+    return out
 
 
 def tile_span(rect, dpr):
@@ -295,6 +350,8 @@ class PageWidget(QWidget):
         self._text_move = None      # Edit text: a line being dragged to a new place
         self._sig_drag = None       # signature / initials: press point while sizing
         self._sig_now = None
+        self._shape_press = None    # shape tools: (position, time) of the press (cad_draw.py)
+        self._shape_end = None      # CAD mode: a shape whose ending click is down (cad_draw.py)
 
     # ---- geometry -------------------------------------------------------
     def update_size(self):
@@ -819,8 +876,12 @@ class PageWidget(QWidget):
                        max(1.0, float(self.view.tool_props(tool).get("width", 2)) * self.view.zoom))
             p.setPen(pen)
             pts = self._poly + ([self._poly_hover] if self._poly_hover is not None else [])
-            for a_, b_ in zip(pts, pts[1:]):
-                p.drawLine(a_, b_)
+            if tool in CURVE_TOOLS:
+                p.setBrush(Qt.NoBrush)
+                p.drawPath(self._curve_preview(tool, pts))
+            else:
+                for a_, b_ in zip(pts, pts[1:]):
+                    p.drawLine(a_, b_)
             if tool in ("polygon",) + A.CLOSED_MEASURES and len(pts) > 2:
                 p.setPen(QPen(self.view.tool_color(tool), 1, Qt.DashLine))
                 p.drawLine(pts[-1], pts[0])
@@ -854,28 +915,44 @@ class PageWidget(QWidget):
                 p.drawPixmap(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z), pm,
                              QRectF(pm.rect()))
                 p.setOpacity(1.0)
-        if self._drag_start is not None and self._drag_now is not None and tool in SHAPE_TOOLS:
+        # a shape being dragged, or (CAD mode) one started with a click that follows the pointer
+        shape = cad_draw.points(self) or (self._drag_start, self._drag_now)
+        if shape[0] is not None and shape[1] is not None and tool in SHAPE_TOOLS:
+            a, b = shape
             if tool == "eraser":
                 pen = QPen(QColor(220, 0, 0), 1.5, Qt.DashLine)
+            elif tool == "mask" and not self.view.tool_props(tool).get("stroke"):
+                pen = QPen(QColor(0, 120, 215), 1, Qt.DashLine)
             else:
                 pen = QPen(self.view.tool_color(tool),
                            max(1.0, float(self.view.tool_props(tool).get("width", 1)) * self.view.zoom))
             p.setPen(pen)
             if tool in ("line", "arrow", "m_length", "m_calibrate", "m_radius"):
-                p.drawLine(self._drag_start, self._drag_now)
+                p.drawLine(a, b)
                 if tool == "m_radius":
-                    d = self._drag_now - self._drag_start
+                    d = b - a
                     r = (d.x() ** 2 + d.y() ** 2) ** 0.5
-                    p.drawEllipse(self._drag_start, r, r)
+                    p.drawEllipse(a, r, r)
                 if tool in MEASURE_TOOLS:
-                    self._draw_readout(p, [self._drag_start, self._drag_now])
+                    self._draw_readout(p, [a, b])
             elif tool == "callout":
-                p.drawLine(self._drag_start, self._drag_now)
-                p.drawRect(QRectF(self._drag_now, self._drag_now + QPointF(160, 40) * self.view.zoom))
+                p.drawLine(a, b)
+                p.drawRect(QRectF(b, b + QPointF(160, 40) * self.view.zoom))
             elif tool == "ellipse":
-                p.drawEllipse(QRectF(self._drag_start, self._drag_now).normalized())
+                p.drawEllipse(QRectF(a, b).normalized())
+            elif tool == "circle":
+                d = b - a
+                r = (d.x() ** 2 + d.y() ** 2) ** 0.5
+                p.drawEllipse(a, r, r)
+                p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+                p.drawLine(a, b)                # the radius
+            elif tool == "mask":
+                fill = self.view.tool_props(tool).get("fill")
+                p.setBrush(QColor(fill) if fill else Qt.NoBrush)
+                p.drawRect(QRectF(a, b).normalized())
+                p.setBrush(Qt.NoBrush)
             else:
-                p.drawRect(QRectF(self._drag_start, self._drag_now).normalized())
+                p.drawRect(QRectF(a, b).normalized())
 
         if tool == "editobjects":
             self._paint_objects(p, page)
@@ -1020,6 +1097,9 @@ class PageWidget(QWidget):
             for i, q in enumerate(model["points"]):
                 s = self.to_screen_pt(q)
                 out[f"p{i}"] = QRectF(s.x() - h / 2, s.y() - h / 2, h, h)
+            if model["kind"] in ("line", "arrow"):         # (drag it to bend the line)
+                s = self.to_screen_pt(curves.grip(model))
+                out["mid"] = QRectF(s.x() - h / 2 - 1, s.y() - h / 2 - 1, h + 2, h + 2)
             out.update(self._rot_handle(model))
             return out
         if model["kind"] in A.VERTEXED:
@@ -1050,6 +1130,47 @@ class PageWidget(QWidget):
         c = QPointF(r.center().x(), r.top() - ROT_GAP)
         return {"rot": QRectF(c.x() - h / 2, c.y() - h / 2, h, h)}
 
+    def _model_lines(self, m, page, curved=True):
+        """A markup's outline as lines of widget points ((x, y) pairs), as the selection
+        shows it: its shape for lines and shapes with corners, else its box. curved: an arc
+        or a bent line along its curve (else through its points: quicker, for many)."""
+        def pt(q):
+            w = self.to_screen_pt(q, page)
+            return (w.x(), w.y())
+        if A.turned(m):
+            pts = [pt(q) for q in A.outline(m, 36)]
+            return [pts + pts[:1]]
+        if m["kind"] in ("line", "arrow", "m_length", "m_radius"):
+            return [[pt(q) for q in (A.path_points(m) if curved else m["points"])]]
+        if m["kind"] in A.VERTEXED:
+            pts = [pt(q) for q in (A.path_points(m) if curved else m["points"])]
+            if m["kind"] in ("polygon",) + A.CLOSED_MEASURES:
+                pts.append(pts[0])
+            return [pts]
+        if m["kind"] == "callout":
+            r = self.to_screen(m["rect"], page)
+            c = r.center()
+            return [[(r.left(), r.top()), (r.right(), r.top()), (r.right(), r.bottom()),
+                     (r.left(), r.bottom()), (r.left(), r.top())],
+                    [pt(m["points"][0]), (c.x(), c.y())]]
+        r = self.to_screen(A.bounds(m), page)
+        return [[(r.left(), r.top()), (r.right(), r.top()), (r.right(), r.bottom()),
+                 (r.left(), r.bottom()), (r.left(), r.top())]]
+
+    def _paint_cad_markups(self, p, models, page):
+        """Selected markups in CAD mode (changed by commands, not handles): dashed over white
+        with grips on their ends and corners, as selected drawing objects are, so a blue
+        markup shows as selected too."""
+        lines = []
+        curved = len(models) <= CURVED_MAX
+        for m in models:
+            try:
+                lines += self._model_lines(m, page, curved)
+            except Exception:
+                continue
+        paint_selected_path(p, lines_path(lines))
+        paint_grips(p, [QPointF(x, y) for x, y in grip_points(lines)])
+
     def _paint_selection(self, p, page):
         model = self._selected_here()
         if model is None:
@@ -1074,21 +1195,28 @@ class PageWidget(QWidget):
             group = self._edit["preview"] if self._edit and self._edit.get("preview") else None
             if group is None:
                 group = [m for _x, m in self.view.selected_models_to_paint()]
+            if self.view.cad_select and not self._edit and len(group) <= 2000:
+                self._paint_cad_markups(p, group, page)
+                return
             for k, m in enumerate(group):
                 p.setPen(QPen(blue, 2 if k == 0 else 1, Qt.SolidLine if k == 0 else Qt.DashLine))
                 p.drawRect(self.to_screen(A.bounds(m), page).adjusted(-3, -3, 3, 3))
             return
         shown = self._edit["preview"] if self._edit and self._edit.get("preview") else model
+        if self.view.cad_select and self.view.tool == "editobjects" and not self._edit:
+            self._paint_cad_markups(p, [shown], page)     # (no handles here: see below)
+            return
         p.setPen(QPen(blue, 1, Qt.DashLine))
         if A.turned(shown):
             pts = [self.to_screen_pt(q, page) for q in A.outline(shown, 36)]
             for a_, b_ in zip(pts, pts[1:] + pts[:1]):
                 p.drawLine(a_, b_)
         elif shown["kind"] in ("line", "arrow", "m_length", "m_radius"):
-            a, b = (self.to_screen_pt(q, page) for q in shown["points"])
-            p.drawLine(a, b)
+            pts = [self.to_screen_pt(q, page) for q in A.path_points(shown)]
+            for a_, b_ in zip(pts, pts[1:]):
+                p.drawLine(a_, b_)
         elif shown["kind"] in A.VERTEXED:
-            pts = [self.to_screen_pt(q, page) for q in shown["points"]]
+            pts = [self.to_screen_pt(q, page) for q in A.path_points(shown)]
             if shown["kind"] in ("polygon",) + A.CLOSED_MEASURES:
                 pts.append(pts[0])
             for a_, b_ in zip(pts, pts[1:]):
@@ -1112,6 +1240,11 @@ class PageWidget(QWidget):
                     top = QPointF(r.center().x(), r.center().y() + ROT_GAP)
                     p.drawLine(QPointF(r.center().x(), r.bottom()), top)
                     p.drawEllipse(r)
+                elif hid == "mid":          # a line's middle grip: a diamond
+                    c_ = r.center()
+                    d_ = r.width() / 2
+                    p.drawPolygon([c_ + QPointF(0, -d_), c_ + QPointF(d_, 0),
+                                   c_ + QPointF(0, d_), c_ + QPointF(-d_, 0)])
                 else:
                     p.drawRect(r)
             p.setBrush(Qt.NoBrush)
@@ -1166,6 +1299,24 @@ class PageWidget(QWidget):
             got = self._sel_path = got[:3] + (key, t.map(got[2]))
         return got[4]
 
+    def _selection_grips(self, page):
+        """The selected objects' grips on the screen (worked out once per selection, put on
+        the screen again only when the zoom or the page's turn changes)."""
+        sel = self.view.obj_sel
+        t = self._screen_transform(page)
+        key = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
+        got = getattr(self, "_sel_grips", None)
+        if got is None or got[0] is not sel or got[1] != self.index:
+            out, seen = [], set()
+            for it in self._objects_here():
+                grip_points(self.view.object_lines(self.index, it), out, seen)
+                if len(out) >= GRIPS_MAX:
+                    break
+            got = self._sel_grips = (sel, self.index, out, None, None)
+        if got[3] != key:
+            got = self._sel_grips = got[:3] + (key, [t.map(QPointF(x, y)) for x, y in got[2]])
+        return got[4]
+
     def _paint_objects(self, p, page):
         blue = QColor(0, 120, 215)
         p.setBrush(Qt.NoBrush)
@@ -1192,7 +1343,10 @@ class PageWidget(QWidget):
             self._paint_object_ghost(p, ed, page)
         else:
             if len(items) <= 3000 and self._selected_size(items) <= 30000:
-                p.drawPath(self._selection_path(page))
+                # (dashed over white, and grips on its ends and corners: a selection shows
+                # on a blue drawing too, and doesn't look like the box's preview glow)
+                paint_selected_path(p, self._selection_path(page))
+                paint_grips(p, self._selection_grips(page))
             elif len(items) <= 3000:            # (a huge drawing: each one's box)
                 for it in items:
                     p.drawRect(self.to_screen(it["rect"], page))
@@ -1313,9 +1467,9 @@ class PageWidget(QWidget):
         if A.turned(model):
             pts = [self.to_screen_pt(q, page) for q in A.outline(model, 24)]
         elif model["kind"] in ("line", "arrow", "m_length", "m_radius") and model.get("points"):
-            pts = [self.to_screen_pt(q, page) for q in model["points"]]
+            pts = [self.to_screen_pt(q, page) for q in A.path_points(model)]
         elif model["kind"] in A.VERTEXED and model.get("points"):
-            pts = [self.to_screen_pt(q, page) for q in model["points"]]
+            pts = [self.to_screen_pt(q, page) for q in A.path_points(model)]
             if model["kind"] in ("polygon",) + A.CLOSED_MEASURES and pts:
                 pts = pts + [pts[0]]
         elif model["kind"] == "ink":
@@ -1587,7 +1741,15 @@ class PageWidget(QWidget):
                 return xref
         return None
 
+    def _gone(self):
+        """The document is closed, or this page no longer in it (a widget waiting for its
+        deleteLater): no mouse event may touch the document."""
+        doc = self.view.doc
+        return doc.is_closed or self.index >= doc.page_count
+
     def mousePressEvent(self, e):
+        if self._gone():
+            return                      # (its tab is closing: the document is closed)
         if e.button() == Qt.MiddleButton:
             # hold the wheel down and drag to pan (CAD style), with any tool
             self._mid_pan = True
@@ -1605,6 +1767,8 @@ class PageWidget(QWidget):
             elif e.button() == Qt.RightButton:
                 cmd.enter_key()
             return
+        if e.button() == Qt.RightButton and cad_draw.cancel(self.view):
+            return                          # (CAD mode: a shape started with a click goes)
         if e.button() == Qt.RightButton and self.view.tool == "editobjects":
             pdf = self.to_pdf(e.position())
             v = self.view
@@ -1628,6 +1792,8 @@ class PageWidget(QWidget):
         tool = self.view.tool
         pos = e.position()
         pdf = self.to_pdf(pos)
+        if cad_draw.finish(self, e):
+            return                          # (CAD mode: the click that ends a shape)
 
         if tool in ("hand", "select") and not self.view.read_only:
             xref = self.view.widget_at(self.index, pdf)
@@ -1659,9 +1825,10 @@ class PageWidget(QWidget):
             self._objects_press(e, pos, pdf)
             return
         if tool in EDIT_IN_PLACE and not self._poly:
-            if shift_held(e):
+            if shift_held(e) or self.view.cad_select:
                 # Shift = draw a new one here even on top of a markup (to start a line at the
-                # end of another, say): no selecting or moving
+                # end of another, say): no selecting or moving. In CAD mode always, as in
+                # AutoCAD: a drawing tool draws (snapped to that end); Edit objects selects
                 if self.view.selection is not None:
                     self.view.clear_selection()
             elif self._press_on_markup(pos, pdf, ctrl_held(e)):
@@ -1688,7 +1855,7 @@ class PageWidget(QWidget):
                 pos = snap45(self._poly[-1], pos)
             self._poly.append(pos)
             self.update()
-            if tool == "m_angle" and len(self._poly) == 3:
+            if tool in ("m_angle", "arc", "curve") and len(self._poly) == 3:
                 self.finish_poly()          # an angle is three clicks: end, corner, end
             return
         if tool in FORM_TOOLS:
@@ -1725,6 +1892,7 @@ class PageWidget(QWidget):
             self.update()
         elif tool in SHAPE_TOOLS:
             self._drag_start = self._drag_now = pos
+            self._shape_press = (e.position(), e.timestamp())   # (a click or a drag: cad_draw)
         elif tool == "ink":
             self._ink = [pos]
         elif tool == "edittext":
@@ -1742,6 +1910,18 @@ class PageWidget(QWidget):
             self.view.add_text_at(self.index, pdf)
         elif tool in ("note", "attach"):
             self.view.apply_point_tool(self.index, tool, pdf)
+
+    def _curve_preview(self, tool, pts):
+        """The Arc or Curve being drawn (widget coordinates) through the points clicked and
+        the pointer: a straight line until there are three."""
+        q = [pymupdf.Point(t.x(), t.y()) for t in pts]
+        if len(q) >= 3:
+            q = curves.arc_path(*q[:3], tol=0.2) if tool == "arc" else \
+                curves.bend_path(q[0], q[1], q[2], tol=0.2)
+        path = QPainterPath(QPointF(q[0].x, q[0].y))
+        for t in q[1:]:
+            path.lineTo(t.x, t.y)
+        return path
 
     def _press_on_markup(self, pos, pdf, ctrl=False, cards=False):
         """Handle a press on a selected markup's handle or on any markup: select it and start
@@ -1803,8 +1983,11 @@ class PageWidget(QWidget):
         model = ed["model"]
         if ed["mode"] == "move":
             return A.moved(model, self._snapped_delta(model, pos, snap))
-        if snap and (ed["mode"] in ("p0", "p1") or ed["mode"].startswith("v")):
+        if snap and (ed["mode"] in ("p0", "p1", "mid") or ed["mode"].startswith("v")):
             pos = self._snap(pos, exclude=excl)
+        if ed["mode"] == "mid":
+            # bend the line through the grip; back onto the straight line (4 px) straightens it
+            return A.bent(model, self.to_pdf(pos), 4 / max(self.view.zoom, 0.05))
         if ed["mode"] == "rot":
             c = self.to_screen(A.bounds(model)).center()
             a0 = math.atan2(ed["start"].y() - c.y(), ed["start"].x() - c.x())
@@ -1865,6 +2048,8 @@ class PageWidget(QWidget):
         return A.resized(model, new)
 
     def mouseMoveEvent(self, e):
+        if self._gone():
+            return                      # (its tab is closing: the document is closed)
         if getattr(self, "_mid_pan", False):
             self.view.continue_pan(e.globalPosition())
             return
@@ -1880,6 +2065,8 @@ class PageWidget(QWidget):
             return
         if not e.buttons():
             cad_select.hover(self, e)
+            if cad_draw.hover(self, e):
+                return                      # (CAD mode: a shape started with a click follows)
         if not e.buttons():
             if tool in SIGN_TOOLS or tool == "stamp":
                 self._ghost = pos
@@ -1923,8 +2110,9 @@ class PageWidget(QWidget):
                 if r != self._hover:
                     self._hover = r
                     self.update()
-            elif tool in EDIT_IN_PLACE and not self._poly and shift_held(e):
-                self.unsetCursor()              # Shift: the tool draws here, it doesn't move
+            elif tool in EDIT_IN_PLACE and not self._poly and \
+                    (shift_held(e) or self.view.cad_select):
+                self.unsetCursor()              # (the view's own: a plus in CAD mode)
             elif tool == "select" or (tool in EDIT_IN_PLACE and not self._poly):
                 self._update_select_cursor(pos, restore=tool != "select")
             return
@@ -1965,17 +2153,23 @@ class PageWidget(QWidget):
             self.view._set_text_drag(spans)
             self.view.autoscroll_toward(self.mapToGlobal(pos))
         elif self._drag_start is not None:
-            if tool in SNAP_TOOLS:
-                pos = self._snap(pos, e)
-            if shift_held(e) and tool in STRAIGHT_TOOLS:
-                pos = snap45(self._drag_start, pos)
-            elif shift_held(e) and tool in SQUARE_TOOLS:
-                pos = square_corner(self._drag_start, pos)
-            self._drag_now = pos
+            self._drag_now = self._shape_point(pos, e, self._drag_start)
             self.update()
         elif self._ink:
             self._ink.append(pos)
             self.update()
+
+    def _shape_point(self, pos, e, start):
+        """Where a shape drawn from widget point start ends with the pointer at pos: snapped,
+        and with Shift at 45 degree steps (lines) or square (boxes)."""
+        tool = self.view.tool
+        if tool in SNAP_TOOLS:
+            pos = self._snap(pos, e)
+        if shift_held(e) and tool in STRAIGHT_TOOLS:
+            pos = snap45(start, pos)
+        elif shift_held(e) and tool in SQUARE_TOOLS:
+            pos = square_corner(start, pos)
+        return pos
 
     def _update_select_cursor(self, pos, restore=False):
         model = self._selected_here()
@@ -2001,6 +2195,8 @@ class PageWidget(QWidget):
             self.unsetCursor()
 
     def mouseReleaseEvent(self, e):
+        if self._gone():
+            return                      # (its tab is closing: the document is closed)
         press = getattr(self, "_link_press", None)
         self._link_press = None
         self._release(e)
@@ -2018,6 +2214,8 @@ class PageWidget(QWidget):
             return
         if e.button() != Qt.LeftButton:
             return
+        if cad_draw.released(self):
+            return                          # (CAD mode: the shape the click ended is made)
         tool = self.view.tool
         pos = e.position()
         if self._cad_down is not None:
@@ -2084,6 +2282,8 @@ class PageWidget(QWidget):
                                    (b - a).manhattanLength() < 4)
         elif self._drag_start is not None:
             a, b = self._drag_start, self._drag_now
+            if tool in SHAPE_TOOLS and cad_draw.start(self, e, a, b):
+                return                      # (CAD mode: a click starts it; a click ends it)
             self._drag_start = self._drag_now = None
             self.update()
             self.view.apply_drag_tool(self.index, tool, self.to_pdf(a), self.to_pdf(b),
@@ -2099,11 +2299,17 @@ class PageWidget(QWidget):
         pts, self._poly, self._poly_hover = self._poly, [], None
         self.update()
         tool = self.view.tool
-        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume") and len(pts) < 3):
+        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc") and len(pts) < 3):
             return
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 
     def mouseDoubleClickEvent(self, e):
+        if self._gone():
+            return                      # (its tab is closing: the document is closed)
+        if e.button() == Qt.LeftButton and cad_draw.finish(self, e):
+            return      # (CAD mode: a quick second click near the first ends the shape)
+        if cad_select.double_click(self, e):
+            return                          # (CAD selection: taken as a click, see there)
         cad_select.cancel(self.view)        # (a double-click selects a word: no box after it)
         if self.view.tool in POLY_TOOLS:
             # the double-click's first press already added this point

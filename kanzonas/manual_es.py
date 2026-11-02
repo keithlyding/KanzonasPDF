@@ -277,7 +277,7 @@ vuelve al modo que tenía): como en AutoCAD, la rueda del mouse acerca y aleja a
 la rueda mueve la hoja, de modo que puede recorrer un dibujo con cualquier herramienta activa. Como en Bluebeam,
 mantenga presionada <b>Ctrl</b> y gire la rueda para desplazarse hacia arriba y hacia abajo. Las páginas están sobre un
 lienzo abierto, el puntero es una <b>cruz</b> (excepto con la Mano), la selección funciona como en CAD y aparece la
-pestaña <b>CAD</b> con Mover, Copiar, Girar y los demás comandos CAD: vea <b>Modo CAD</b> más abajo.</li>
+pestaña <b>CAD</b>, al frente, con Mover, Copiar, Girar y los demás comandos CAD: vea <b>Modo CAD</b> más abajo.</li>
 </ul>
 Su elección se recuerda. (Antes de la versión 1.5 esto era el interruptor del mouse estilo CAD y una herramienta
 predeterminada; sus elecciones se conservan.)</li>
@@ -327,19 +327,24 @@ selección. Hacer clic en el papel vacío conserva la selección. Una marca est�
 toma la marca. Una marca bloqueada no se toma.</li>
 <li>Las <b>teclas de flecha</b> desplazan toda la selección, los objetos del dibujo y las marcas juntos. Haga clic derecho en
 una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo. Aquí las marcas seleccionadas no muestran
-controladores para cambiar su tamaño: cámbielas con los comandos de la pestaña CAD, o con Seleccionar.</li>
+controladores para cambiar su tamaño: cámbielas con los comandos de la pestaña CAD, o con Seleccionar.
+Lo seleccionado se dibuja con <b>línea discontinua</b> (trazos azules sobre blanco, así se ve incluso sobre una línea azul)
+con pequeños <b>pinzamientos</b> azules en sus extremos y esquinas, como en AutoCAD.</li>
 <li><b>Clic, mover, clic</b>: haga clic en el papel vacío, mueva el puntero (el recuadro lo sigue) y vuelva a hacer
 clic. De izquierda a derecha es una <b>ventana azul</b> de línea continua: toma lo que queda completamente dentro. De
 derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua: toma todo lo que toca, incluida una
-línea que lo atraviese. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para quitar
-elementos en lugar de agregarlos.</li>
+línea que lo atraviese. La primera esquina se marca en cuanto hace clic, y la barra de estado pide la otra esquina. Un
+clic rápido cuenta como clic aunque el mouse se haya movido un poco al presionar, y hacer clic otra vez en la primera
+esquina conserva el recuadro. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para
+quitar elementos en lugar de agregarlos.</li>
 <li><b>Mantenga presionado el botón y arrastre</b>: un <b>lazo</b> que sigue al puntero. Si al principio lo dibuja hacia
 la derecha es un lazo de ventana azul (lo que queda completamente dentro); hacia la izquierda, un lazo de captura verde
 (lo que toca). Shift+lazo quita elementos.</li>
 <li>Con Seleccionar, un recuadro o un lazo que no toma marcas selecciona texto: los caracteres dentro de una ventana, o
 los que toca un recuadro de captura (Ctrl+C los copia).</li>
-<li>Mientras dibuja un recuadro o un lazo, lo que tomaría <b>se resalta</b> (azul para una ventana, verde para un recuadro de
-captura), así que ve lo que obtendrá antes del segundo clic o antes de soltar. En un dibujo muy grande se completa en un
+<li>Mientras dibuja un recuadro o un lazo, lo que tomaría <b>brilla</b> (azul para una ventana, verde para un recuadro de
+captura), así que ve lo que obtendrá antes del segundo clic o antes de soltar; una vez tomado, se dibuja con línea
+discontinua y pinzamientos. En un dibujo muy grande se completa en un
 momento mientras se mueve.</li>
 <li>En el modo CAD arrastrar nunca mueve nada, así que nada se mueve por accidente: los controladores cuadrados de una
 marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pestaña CAD lo mueve.</li>
@@ -353,10 +358,14 @@ de la página (se ajustan a los extremos de las líneas y a las esquinas como co
 presionada Alt para no ajustar), escriba un valor y presione Enter, o haga clic en un botón ahí. Escape (o Cancelar)
 detiene un comando; el clic derecho equivale a Enter. Cada cambio se deshace con un Ctrl+Z.</p>
 <p>Para que el modo CAD no necesite otra pestaña en el trabajo diario, la pestaña CAD también tiene las herramientas que más
-se usan junto a sus comandos (siguen también en sus propias pestañas): <b>Marcas</b> (Nube, Cuadro de texto, Llamada,
-Línea, Flecha, Polilínea: en el modo CAD sus atajos de una letra escriben en la línea de comandos), <b>Medir</b>
-(Longitud, Área, Conteo, Calibrar cinta métrica), <b>Ajuste</b> (Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página) y
-<b>Limpiar</b> (Borrar contenido, Traer al frente, Enviar al fondo).</p>
+se usan junto a sus comandos (siguen también en sus propias pestañas). Las herramientas parecidas comparten un botón, como en la
+cinta de AutoCAD: haga clic en el botón para la herramienta que muestra, o en la flecha de al lado para elegir otra; el botón
+muestra luego la última usada (o la herramienta activa). <b>Marcas</b>: Rectángulo (flecha: Nube, Polígono, Máscara), Círculo (flecha: Arco),
+Línea (flecha: Polilínea, Curva, Lápiz), Flecha, Cuadro de texto (flecha: Llamada), Sello (flecha: Imagen); en el modo CAD sus atajos
+de una letra escriben en la línea de comandos. <b>Medir</b>: Longitud (flecha: Longitud de polilínea, Área, Ángulo, Radio,
+Perímetro, Volumen, Conteo, Calibrar cinta métrica), Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página.
+<b>Limpiar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
+izquierda (flecha: las demás alineaciones, Distribuir horizontalmente y Distribuir verticalmente).</p>
 <p><b>La línea de comandos</b>, a lo largo de la parte inferior de la ventana en el modo CAD, funciona como la de AutoCAD.
 Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Enter</b> (la
 barra espaciadora solo escribe un espacio, como en "ajustar página"):</p>
@@ -374,6 +383,7 @@ programa. Cualquier otra cosa no ejecuta nada: la línea indica <b>Comando desco
 coinciden) y conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Enter.
 Un ajuste que se activa escribiendo su nombre indica si ahora está activado o desactivado.</li>
 <li>Enter con la línea vacía repite el último comando.</li>
+<li>Mientras se dibuja un círculo (con el centro ya marcado), escriba su radio y presione Enter.</li>
 <li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
 de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para
 Eliminarlos).</li>
@@ -415,8 +425,15 @@ parte de una línea que quiere quitar: se quita hasta los bordes de corte más c
 extremo, si ninguno la cruza de ese lado). Sin bordes de corte elegidos, una línea que ninguno cruza se quita entera; con
 bordes de corte elegidos, una línea que no cruza ninguno se queda (lo indica). El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
 en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; Enter, Escape o Listo termina. Recorta las líneas y curvas propias del
-dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma; las
-formas rellenas y las imágenes no se recortan.</li>
+dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma. También
+recorta rectángulos, polígonos y nubes, y sus propias esquinas cortan además de las líneas que los cruzan: un clic en un lado
+de un rectángulo o una nube sueltos quita ese lado de esquina a esquina, y otro clic quita otro lado. Lo que queda es una sola
+marca abierta que empieza y termina en el hueco: un rectángulo o polígono se vuelve una polilínea (mismo color, grosor y
+opacidad; sus esquinas siguen cortando) y una nube sigue siendo una nube, con los lados que quedan tal como estaban (se mueve,
+gira, refleja, cambia de estilo y se recorta como cualquier marca; otros lectores de PDF la muestran tal como está dibujada).
+Una nube en forma de elipse solo se corta donde la cruzan líneas. Un clic justo en una esquina lo indica en lugar de recortar
+(haga clic en el lado, un poco lejos de la esquina). Las formas rellenas (también una Máscara), las elipses normales, los
+arcos, las líneas curvadas y las imágenes no se recortan.</li>
 </ul>
 <p>En un dibujo grande, el modo CAD lee los trazos de la página en segundo plano mientras usted no hace nada, poco a
 poco para que la ventana siempre responda, así que el primer recuadro, lazo o comando empieza enseguida; el puntero
@@ -436,7 +453,7 @@ En el modo del mouse <b>CAD</b>, Seleccionar funciona como en AutoCAD: ventanas 
 lazo, clics que agregan a la selección, Shift para quitar, Escape para borrarla, y arrastrar no mueve nada (vea Modo
 CAD).</li>
 <li>Con una herramienta de dibujo activa (rectángulo, línea, llamada, ...), hacer clic en una marca existente también la
-selecciona, así que no tiene que volver a la flecha. La <b>herramienta Mano</b> funciona igual:
+selecciona, así que no tiene que volver a la flecha (no en el modo CAD, donde una herramienta de dibujo siempre dibuja). La <b>herramienta Mano</b> funciona igual:
 haga clic en una marca (un resaltado, una nota, una forma...) para seleccionarla; arrastre en cualquier otro lugar para mover la
 página. Una marca convertida en vínculo abre su vínculo en su lugar cuando se hace clic en ella con la herramienta Mano, o
 Ctrl+clic con la herramienta Seleccionar (un clic normal con Seleccionar la selecciona). Una marca sobre un vínculo
@@ -563,14 +580,44 @@ señalan entonces cualquier cambio posterior.</li>
 
 <h2 id="shapes">Formas, líneas y el lápiz</h2>
 <ul>
-<li>Rectángulo (R), Elipse (E), Nube (D), Polígono (Y), Línea (L), Flecha (A), Polilínea
-(Shift+L), Lápiz (P). Las formas comparten un botón de la barra de herramientas: haga clic en su flecha para elegir otra.</li>
-<li><b>Polígono / polilínea:</b> haga clic en cada punto; doble clic o Enter para terminar, Esc para cancelar.</li>
+<li>Rectángulo (R), Elipse (E), Círculo (O), Nube (D), Máscara, Polígono (Y), Línea (L), Flecha (A),
+Polilínea (Shift+L), Arco, Curva, Lápiz (P). Las formas comparten un botón de la barra de herramientas: haga clic en su flecha para elegir otra.</li>
+<li><b>Arco</b> (como el ARCO de tres puntos de AutoCAD; en la pestaña CAD bajo la flecha de Círculo): haga clic en el inicio, en
+un punto por el que pasa el arco y luego en el final; el arco sigue al puntero antes del último clic. Arrastre sus tres puntos para
+cambiar su forma.</li>
+<li><b>Curvar una línea o flecha:</b> selecciónela y arrastre el rombo de su centro: se vuelve una curva suave que pasa por ese
+punto; los extremos se quedan donde están y la punta de flecha sigue la curva. Lleve el rombo de vuelta a la línea recta para
+enderezarla. La herramienta <b>Curva</b> dibuja una directamente: haga clic en el inicio, en el final y luego hasta donde se curva.</li>
+<li><b>Círculo</b> (O): arrastre desde el centro hasta un punto del círculo. En el modo CAD, haga
+clic en el centro y luego en un punto del círculo, o escriba el radio en la línea de comandos y
+presione Enter (en la unidad de medida de la página, la que muestra Medir &gt; Establecer escala;
+también vale 12'-6", y la coma decimal, 2,5; pulgadas sobre el papel si no hay escala). Crea una marca de elipse, así que
+Propiedades, el borde de nube, mover y cambiar el tamaño funcionan como en una elipse.</li>
+<li><b>Máscara</b>: arrastre un cuadro sobre lo que quiere ocultar; queda cubierto por un cuadro
+blanco sin contorno (como la Cobertura de AutoCAD). En Propiedades puede cambiar su color de
+relleno o darle un contorno (Sin borde vuelve a quitar el contorno). Oculta lo que hay debajo en pantalla y al imprimir, pero ese
+contenido sigue en el archivo: use Censurar para eliminarlo de verdad.</li>
+<li><b>En el modo CAD</b> las herramientas que dibujan de un punto a otro (Línea, Flecha,
+Rectángulo, Elipse, Círculo, Nube, Máscara, Cuadro de texto, Llamada, Longitud, Radio, Calibrar
+cinta métrica, el cuadro del Borrador, Borrar contenido, Capturar área, Recortar páginas,
+Vínculos, marcadores de posición de firma) funcionan como en AutoCAD: haga clic donde empieza,
+mueva el puntero (la forma lo sigue sin mantener el botón presionado) y haga clic donde termina.
+Se ajusta, y Shift funciona, igual que al arrastrar; presionar, arrastrar y soltar también sigue
+funcionando. Un clic que tiembla un poco sigue siendo un clic. Esc o un clic derecho cancela la
+forma que se está dibujando; acercar, alejar o desplazarse entre los dos clics no mueve su primer
+punto. Un clic sobre una marca con el Borrador la sigue eliminando de inmediato, un clic sobre un
+vínculo con la herramienta Vínculos lo sigue abriendo, y dos clics en el mismo lugar con Cuadro
+de texto crean uno del tamaño predeterminado. Nota, Sello, Conteo e Imagen se siguen colocando
+con un clic.</li>
+<li><b>Polígono / polilínea:</b> haga clic en cada punto; doble clic o Enter para terminar, Retroceso para quitar el último
+punto, Esc para cancelar.</li>
 <li>Con una herramienta de dibujo, hacer clic en una marca existente la selecciona, y arrastrar mueve la marca o sus
 puntos, sin cambiar de herramienta. <b>Shift+clic sobre una marca</b> empieza en cambio una nueva justo ahí
 (para empezar una línea en el extremo de otra, por ejemplo): no se selecciona ni se mueve nada, y el
 punto se ajusta al extremo o a la esquina de la marca cuando el ajuste está activado. El puntero muestra la cruz
-de dibujo mientras se mantiene presionada Shift.</li>
+de dibujo mientras se mantiene presionada Shift. <b>En el modo CAD</b> una herramienta de dibujo siempre dibuja, como en
+AutoCAD, sin necesidad de Shift: un clic sobre una marca empieza la nueva ahí (ajustada a su extremo o esquina); seleccione
+marcas con Editar objetos o Seleccionar.</li>
 <li><b>Mantenga presionada Shift</b> mientras dibuja:
   <ul>
   <li>las líneas, las flechas, las mediciones y los segmentos de polilínea se ajustan a pasos de 45&deg; (horizontal,
@@ -1011,13 +1058,16 @@ propia copia del texto). Un trazado vectorial que toca una marca se quita más a
 la parte que queda fuera de él. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto y los scripts, a menos que
 lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> también encuentra el texto donde no puede ir un cuadro: campos
 de formulario (valores, opciones de lista, información sobre herramientas y nombres), vínculos (direcciones web y de correo electrónico), notas
-de marcas, títulos de marcadores y propiedades del documento. Al aplicar, los campos, los vínculos, los sellos y los
+de marcas, títulos de marcadores, propiedades del documento, el texto alternativo de los PDF etiquetados, las notas de
+vínculos, las etiquetas de página y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
 archivos adjuntos que lo contienen se eliminan, y en las notas y los comentarios (que se quedan), los marcadores
-y las propiedades se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
+y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
 inmediato. Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
 <li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento, scripts,
-archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, miniaturas.</li>
-<li><b>Propiedades de seguridad (contraseñas y permisos):</b> cifrado AES-256.
+archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
+(los campos normales del formulario se conservan).</li>
+<li><b>Propiedades de seguridad (contraseñas y permisos):</b> cifrado AES-256. Si pulsa Aceptar sin marcar ninguna
+casilla en un documento protegido, se le pregunta antes de quitar su protección.
   <ul>
   <li><i>Contraseña de apertura:</i> nadie puede leer el archivo sin ella. Es una protección real; si
   la olvida, el archivo no se puede recuperar.</li>
@@ -1071,8 +1121,11 @@ marcan zonas; Aplicar censuras quita de forma permanente lo que hay debajo. Un t
 toca una marca se quita más allá del cuadro. Al aplicarlas se eliminan los metadatos, los archivos adjuntos, el texto oculto
 y los scripts, a menos que desactive esa opción. Revise el resultado antes de compartirlo.</li>
 <li><b>Encabezado y pie de página, números de página, Bates</b>, <b>Marca de agua</b>,
-<b>Comprimir (guardar una copia más pequeña)</b>, <b>Comparar documentos</b>, <b>Acoplar</b> (convertir las marcas en parte de la página).</li>
-<li><b>Comparar documentos...</b> (menú Documento, pestaña Páginas): elija la revisión anterior y luego
+<b>Comprimir (guardar una copia más pequeña)</b>, <b>Comparar documentos</b>, <b>Acoplar</b> (convertir las marcas en parte de la página).
+La copia más pequeña conserva la protección con contraseña del documento (contraseña de apertura, permisos), o la
+protección definida en Propiedades de seguridad y aún no guardada.</li>
+<li><b>Comparar documentos...</b> (menú Documento, pestaña Páginas): elija la revisión anterior (si está protegida con
+contraseña, KanzonasPDF la pide) y luego
 cómo comparar. <b>Texto, palabra por palabra</b> es para todo lo que se reacomoda (cartas,
 especificaciones, permisos, informes): las palabras de ambos documentos se comparan en orden
 de lectura, así que el texto que solo bajó una línea o una página no es un cambio. El resultado es una copia
@@ -1198,7 +1251,7 @@ cuadrícula...).</li>
 <tr><td>Shift+O</td><td>Editar objetos (las imágenes y formas propias de la página)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Resaltado / Subrayado / Tachado</td></tr>
 <tr><td>C / N / T / K</td><td>Comentario / Nota / Cuadro de texto / Llamada</td></tr>
-<tr><td>R / E / D / Y</td><td>Rectángulo / Elipse / Nube / Polígono</td></tr>
+<tr><td>R / E / O / D / Y</td><td>Rectángulo / Elipse / Círculo / Nube / Polígono</td></tr>
 <tr><td>L / A / Shift+L / P</td><td>Línea / Flecha / Polilínea / Lápiz</td></tr>
 <tr><td>M / X</td><td>Sello / Borrador</td></tr>
 <tr><td>G / I</td><td>Firma / Iniciales</td></tr>
@@ -1243,5 +1296,5 @@ cuadrícula...).</li>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Páginas / Propiedades / Marcas / Caja de herramientas / Marcadores / Vista dividida</td></tr>
 </table>
-<p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija. <b>Restablecer todos los valores predeterminados</b> vuelve a poner los métodos abreviados originales de inmediato. Los cambios se aplican en todas las ventanas.</p>
+<p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija. Una tecla que usted asignó a un comando sigue siendo suya: un atajo nuevo que una versión posterior da a otro comando no se la quita (ese comando queda sin atajo; Restablecer todos los valores predeterminados se lo devuelve). <b>Restablecer todos los valores predeterminados</b> vuelve a poner los métodos abreviados originales de inmediato. Los cambios se aplican en todas las ventanas.</p>
 """

@@ -149,8 +149,8 @@ class PreferencesDialog(QDialog):
         self.kinds = QListWidget()
         self.kinds.setMaximumWidth(170)
         for kind in annotations.DEFAULTS:
-            if kind in ("redact", "image", "placeholder"):
-                continue
+            if kind in ("redact", "image", "placeholder", "opencloud"):
+                continue                # (opencloud: what CAD Trim leaves of a cloud, no tool)
             it = QListWidgetItem(annotations.LABELS.get(kind, kind))
             it.setData(Qt.UserRole, kind)
             self.kinds.addItem(it)

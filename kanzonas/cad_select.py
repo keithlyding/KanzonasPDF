@@ -69,8 +69,25 @@ def press(w, e, pos, pdf):
         target = ("markup", xref) if xref is not None else \
             ("object", v.object_at(w.index, pdf))
     w._cad_down = {"start": pos, "pts": [pos], "dir": 0, "mode": None, "now": None,
-                   "target": target, "remove": remove,
+                   "target": target, "remove": remove, "t": e.timestamp(),
                    "link": getattr(w, "_link_press", None) is not None}
+
+
+# A press and release this quick, ending this close, is a click even if the pointer moved a
+# little meanwhile (clicking "on the way" to the box's other corner): a hand rarely keeps the
+# mouse still. Measured by the events' own times, so a moment the app was busy doesn't turn
+# a click into a lasso.
+CLICK_MS = 250
+CLICK_PX = 40
+STILL_PX = 10           # held longer: still a click while the pointer stays this close
+
+
+def _a_click(d, e, pos):
+    """The press and release in d (and e, at pos) make a click, not a lasso or a box."""
+    far = max([abs(q.x() - d["start"].x()) + abs(q.y() - d["start"].y())
+               for q in d["pts"] + [pos]])
+    held = e.timestamp() - d.get("t", e.timestamp())
+    return far < STILL_PX or (0 <= held < CLICK_MS and far < CLICK_PX)
 
 
 def move(w, e, pos):
@@ -112,6 +129,8 @@ def release(w, e, pos):
     if d.get("ignore"):
         return
     v = w.view
+    if d["mode"] is not None and _a_click(d, e, pos):
+        d["mode"] = None                # (a click with the hand moving a little)
     if d["mode"] == "lasso" and len(d["pts"]) >= 3:
         region = Lasso([w.to_pdf(p) for p in d["pts"]])
         pick(w, region, d["dir"] < 0, d["remove"])
@@ -127,7 +146,27 @@ def release(w, e, pos):
             # the second click doesn't move it
             v._cad_pick = {"w": w, "at": w.to_pdf(d["start"]), "now": d["start"],
                            "remove": d["remove"]}
+            v.statusMessage.emit(tr("Click the other corner: left to right takes what's "
+                                    "inside, right to left what it touches (Escape cancels)"))
     w.update()
+
+
+def double_click(w, e):
+    """A double-click on page widget w in CAD selection with Edit objects: Qt sends it
+    instead of the second press, so it's taken as one. On the box's first corner (the first click looked as if it
+    hadn't taken, so it was clicked again) the box stays started; anywhere else it's a click.
+    True when handled."""
+    if not active(w) or w.view.tool != "editobjects" or e.button() != Qt.LeftButton:
+        return False                    # (with Select a double-click selects a word)
+    v = w.view
+    pk = v._cad_pick
+    pos = e.position()
+    if pk is not None and pk["w"] is w and \
+            (pos - QPointF(w.to_screen_pt(pk["at"]))).manhattanLength() < STILL_PX:
+        w._cad_down = {"ignore": True}  # (its release does nothing)
+        return True
+    press(w, e, pos, w.to_pdf(pos))
+    return True
 
 
 def finish_box(v, pk, e):
@@ -342,23 +381,44 @@ def paint_box(p, a, b):
     p.setBrush(Qt.NoBrush)
 
 
+def _glow_path(w, pv):
+    """The highlight's lines (pv: w._cad_preview) on w's screen, as one path."""
+    from .page_widget import lines_path
+    t = w._screen_transform(w.view.doc[w.index])
+    key = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
+    got = getattr(w, "_glow", None)
+    if got is None or got[0] is not pv or got[1] != key:
+        got = w._glow = (pv, key, t.map(lines_path(pv[1])))
+    return got[2]
+
+
 def paint(w, p):
     pv = getattr(w, "_cad_preview", None)
     if pv is not None and (w._cad_down is not None or w.view._cad_pick is not None):
         crossing, lines, rects = pv
         color = QColor(GREEN if crossing else BLUE)
-        p.setPen(QPen(color, 2.5))
-        for line in lines:
-            pts = [QPointF(w.to_screen_pt(q)) for q in line]
-            for a, b in zip(pts, pts[1:]):
-                p.drawLine(a, b)
+        # (a soft glow: what the box would take. What's selected is drawn dashed, with
+        # grips, so the two never look alike)
+        glow = QColor(color)
+        glow.setAlpha(110)
+        # one path, made once per step of the highlight and zoom: it's drawn on every pointer
+        # move (a point at a time, each loading the page, took 300 ms for 3,000 lines), with
+        # square ends (round ends on a path of many pieces are a hundred times slower)
+        p.setPen(QPen(glow, 6))
+        p.drawPath(_glow_path(w, pv))
         fill = QColor(color)
         fill.setAlpha(70)
         for r in rects:
             p.fillRect(w.to_screen(r), fill)
     pk = w.view._cad_pick
     if pk is not None and pk["w"] is w:
-        paint_box(p, QPointF(w.to_screen_pt(pk["at"])), pk["now"])
+        a = QPointF(w.to_screen_pt(pk["at"]))
+        paint_box(p, a, pk["now"])
+        # the first corner, marked at once: the box shows it took before the pointer moves
+        p.setPen(QPen(BLUE, 1.5))
+        p.drawLine(a + QPointF(-7, 0), a + QPointF(7, 0))
+        p.drawLine(a + QPointF(0, -7), a + QPointF(0, 7))
+        p.drawRect(QRectF(a.x() - 3, a.y() - 3, 6, 6))
     d = w._cad_down
     if d is None or d.get("ignore"):
         return

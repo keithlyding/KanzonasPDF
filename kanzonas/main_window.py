@@ -86,10 +86,16 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("rect", tr("Rectangle"), "R", tr("Rectangle (R)")),
     ("ellipse", tr("Ellipse"), "E", tr("Ellipse (E)")),
     ("cloud", tr("Cloud"), "D", tr("Revision cloud: drag a box (D)")),
+    ("circle", tr("Circle"), "O", tr("Circle: from the center to a point on it (O)")),
+    ("mask", tr("Mask"), "", tr("Mask: a white box that hides what's under it on screen and in "
+                                "print; the content stays in the file (Redact removes it)")),
     ("polygon", tr("Polygon"), "Y", tr("Polygon: click each corner, double-click or Enter to finish (Y)")),
     ("line", tr("Line"), "L", tr("Line (L)")),
     ("arrow", tr("Arrow"), "A", tr("Arrow (A)")),
     ("polyline", tr("Polyline"), "Shift+L", tr("Polyline: click each point, double-click or Enter to finish")),
+    ("arc", tr("Arc"), "", tr("Arc: click the start, a point it passes through, then the end")),
+    ("curve", tr("Curve"), "", tr("Curve: click the start, the end, then where it bends to (a "
+                                  "line or arrow also bends by dragging its middle grip)")),
     ("ink", tr("Pen"), "P", tr("Freehand pen (P)")),
     ("stamp", tr("Stamp"), "M", tr("Stamp (Approved, Draft, ... or your own image): click to place (M)")),
     ("image", tr("Image"), "", tr("Image: drag a box (or click) and pick a picture; it becomes part of "
@@ -1183,7 +1189,8 @@ class MainWindow(QMainWindow):
         tt.setObjectName("tools")
         tt.setMovable(False)
         self.addToolBar(tt)
-        shapes = ("rect", "ellipse", "cloud", "polygon", "line", "arrow", "polyline", "ink")
+        shapes = ("rect", "ellipse", "circle", "cloud", "mask", "polygon", "line", "arrow",
+                  "polyline", "arc", "curve", "ink")
         main_tools = [self.tool_actions[t[0]] for t in TOOLS if t[0] not in shapes]
         tt.addActions(main_tools[:3])
         tt.addSeparator()
@@ -2738,6 +2745,17 @@ class MainWindow(QMainWindow):
         lay.addWidget(btns)
         if dlg.exec() != QDialog.Accepted:
             return
+        pending = v.security is not None and (v.security.get("open_pw") or
+                                              v.security.get("owner_pw"))
+        if not open_on.isChecked() and not restrict.isChecked() and \
+                (st["encrypted"] and v.security is None or pending) and \
+                QMessageBox.question(
+                    self, tr("Security properties"),
+                    tr("Neither a password to open nor restrictions are ticked: this takes the "
+                       "document's password protection off when you save.\n\nRemove its "
+                       "protection?"), QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No) != QMessageBox.Yes:
+            return
         perms = pymupdf.PDF_PERM_ACCESSIBILITY | sum(f for f, c in boxes if c.isChecked())
         v.set_security(open_pw.text() if open_on.isChecked() else "",
                        own_pw.text() if restrict.isChecked() else "", perms)
@@ -3415,7 +3433,9 @@ class MainWindow(QMainWindow):
         if replaced is None:
             return
         try:
-            before, after = page_tools.compress(v.doc.tobytes(), path, preset)
+            # (a protected document's copy keeps its passwords and permissions)
+            data, password, protect = v.copy_protection()
+            before, after = page_tools.compress(data, path, preset, password, protect)
         except Exception as ex:
             QMessageBox.critical(self, tr("Compress failed"), str(ex))
             return
@@ -3619,8 +3639,8 @@ class MainWindow(QMainWindow):
             # changes made since opening) would break the signatures already in it
             QMessageBox.warning(self, tr("Digital signature"), tr(
                 "This PDF is already digitally signed. Changes made since it was opened would "
-                "break that signature: close it without saving them (or undo them) to add "
-                "another signature."))
+                "break that signature: close it without saving them and open it again to "
+                "add another signature."))
             return
         base = os.path.splitext(v.path)[0]
         out, _ = QFileDialog.getSaveFileName(self, tr("Save signed copy as"), base + "_signed.pdf",
@@ -3716,6 +3736,26 @@ class MainWindow(QMainWindow):
         except OSError as ex:
             QMessageBox.critical(self, tr("Compare"), str(ex))
             return
+        try:
+            probe = pymupdf.open(stream=old, filetype="pdf")
+        except Exception:
+            probe = None                # (not a PDF: the comparison reports it)
+        if probe is not None and probe.needs_pass:
+            # a protected earlier revision: its password, as when opening it
+            prompt = tr("{name} is protected:").format(name=os.path.basename(path))
+            while True:
+                pw, ok = QInputDialog.getText(self, tr("Password required"), prompt,
+                                              QLineEdit.Password)
+                if not ok:
+                    probe.close()
+                    return
+                if probe.authenticate(pw):
+                    break
+                prompt = tr("Wrong password. {name} is protected:").format(
+                    name=os.path.basename(path))
+            old = probe.tobytes()       # (compared in memory, unlocked)
+        if probe is not None:
+            probe.close()
         new = v.doc.tobytes()
         old_name, new_name = os.path.basename(path), os.path.basename(v.path)
         try:
@@ -3825,8 +3865,9 @@ class MainWindow(QMainWindow):
         self.search.setToolTip(tr("Find text in this document (Ctrl+F). Enter or F3 = next match, "
                                   "Shift+Enter or Shift+F3 = previous"))
         self.shapes_btn.setToolTip(tr("Shapes: click for the shape shown, or the arrow to pick "
-                                      "another (rectangle, ellipse, cloud, polygon, line, arrow, "
-                                      "polyline, pen). Hold Shift for squares, circles and straight lines"))
+                                      "another (rectangle, ellipse, circle, cloud, mask, polygon, "
+                                      "line, arrow, polyline, arc, curve, pen). Hold Shift for "
+                                      "squares, circles and straight lines"))
         self.measure_btn.setToolTip(tr("Measure: click for the tool shown, or the arrow for length, "
                                        "polylength, area, count, calibrate and scale"))
 
@@ -3938,8 +3979,13 @@ class MainWindow(QMainWindow):
         renamed = {"CAD-style mouse (wheel zooms, hold wheel to pan)":     # before 1.5
                    "Mouse: CAD (wheel zooms, hold wheel to pan)"}
         saved = {renamed.get(n, n): seq for n, seq in saved.items() if isinstance(seq, str)}
+        # a key the user put on a command stays theirs: a later release's new default for
+        # another command (O for Circle in 1.6.3) would put it on two, and run neither
+        taken = {seq for n, seq in saved.items() if seq and n in acts}
         for name, a in acts.items():
             seq = saved.get(name, self._default_shortcuts.get(name, ""))
+            if name not in saved and seq in taken:
+                seq = ""
             if seq != a.shortcut().toString():
                 a.setShortcut(QKeySequence(seq))
 
@@ -4201,6 +4247,8 @@ class MainWindow(QMainWindow):
         self.apply_mouse_mode()
         for w in windows():                 # (a pulled-out window too; this ends CAD commands)
             w.set_tool(mouse_modes.default_tool(m))
+            if m == "cad" and old != "cad":
+                w.show_cad_tab()            # (its commands are what CAD mode is for)
         self.statusBar().showMessage(tr("Mouse: {mode}. {what}").format(
             mode=mouse_modes.labels()[m], what=mouse_modes.descriptions()[m]), 5000)
 
@@ -4210,11 +4258,28 @@ class MainWindow(QMainWindow):
         mouse_modes.apply(self.settings)
         for w in windows():
             w._sync_mouse_actions()
-        from . import cad_select
+        from . import cad_select, cad_draw
         for v in self._all_views():
             cad_select.drop(v)      # (a box drawn under the old options goes)
+            cad_draw.cancel(v)      # (and a shape started with a click)
             v.apply_canvas()        # open canvas around the pages, or not
             v._tool_cursor()        # a plus in CAD mode
+
+    def show_cad_tab(self):
+        """Bring the ribbon's CAD tab to the front (switching to CAD mode), when it's shown."""
+        ribbon = getattr(self, "ribbon", None)
+        cad_tab = getattr(self, "_cad_tab", None)
+        if ribbon is None or cad_tab is None:
+            return
+        i = ribbon.indexOf(cad_tab)
+        if i >= 0 and ribbon.isTabVisible(i):
+            ribbon.setCurrentIndex(i)
+
+    def _split_tools(self, *ids):
+        """A ribbon button for these tools (ribbon.split_button): the first is its face, the
+        arrow lists them all. A tool this version doesn't have is left out."""
+        from .ribbon import split_button
+        return split_button([self.tool_actions[k] for k in ids if k in self.tool_actions])
 
     def _sync_mouse_actions(self):
         from . import mouse_modes
@@ -4428,7 +4493,7 @@ class MainWindow(QMainWindow):
     }
 
     def _build_ribbon(self):
-        from .ribbon import Ribbon
+        from .ribbon import Ribbon, split_button
         t = self.tool_actions
         A_ = self.arrange_actions
         for attr, label in self.RIBBON_LABELS.items():
@@ -4465,8 +4530,9 @@ class MainWindow(QMainWindow):
             (tr("Text"), "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
                                t["note"], t["textbox"]]),
             (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"]]),
-            (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["cloud"], t["polygon"], t["line"],
-                                 t["arrow"], t["polyline"], t["ink"]]),
+            (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["circle"], t["cloud"], t["mask"],
+                                 t["polygon"], t["line"], t["arrow"], t["polyline"], t["arc"],
+                                 t["curve"], t["ink"]]),
             (tr("Erase"), "large", [t["eraser"]]),
             (tr("Styles"), "large", [self.a_props, self.a_chest]),
         ])
@@ -4539,13 +4605,23 @@ class MainWindow(QMainWindow):
                                      c["delete"]]),
             (tr("More"), "small", [c["align"], c["array"], c["trim"]]),
             # what's used most next to the CAD commands, so CAD mode needs no other tab for it
-            # (the one-letter markup shortcuts type into the command line in CAD mode)
-            (tr("Markup"), "small", [t["cloud"], t["textbox"], t["callout"], t["line"],
-                                     t["arrow"], t["polyline"]]),
-            (tr("Measure"), "small", [t["m_length"], t["m_area"], t["m_count"],
-                                      t["m_calibrate"]]),
-            (tr("Snap"), "small", [self.a_snap_objects, self.a_snap_grid, self.a_snap_page]),
-            (tr("Clean up"), "small", [t["erasecontent"], A_["z_front"], A_["z_back"]]),
+            # (the one-letter markup shortcuts type into the command line in CAD mode); similar
+            # tools share a button with an arrow for the others, as on AutoCAD's ribbon
+            (tr("Markup"), "small", [
+                self._split_tools("rect", "cloud", "polygon", "mask"),
+                self._split_tools("circle", "arc"),
+                self._split_tools("line", "polyline", "curve", "ink"), t["arrow"],
+                self._split_tools("textbox", "callout"), self._split_tools("stamp", "image")]),
+            # measuring and the snaps it uses
+            (tr("Measure"), "small", [
+                self._split_tools(*["m_length"] + [k for k, *_r in MEASURE_TOOLS
+                                                   if k != "m_length"]),
+                self.a_snap_objects, self.a_snap_grid, self.a_snap_page]),
+            (tr("Clean up"), "small", [
+                t["erasecontent"],
+                split_button([A_[k] for k in ("z_front", "z_forward", "z_backward", "z_back")]),
+                split_button([A_[k] for k in ("al_left", "al_hcenter", "al_right", "al_top",
+                                              "al_vmiddle", "al_bottom", "dist_h", "dist_v")])]),
         ])
         self._cad_tab = r.widget(r.count() - 1)
         self._sync_mouse_actions()          # the CAD tab: only in CAD mouse mode
@@ -5005,13 +5081,14 @@ class MainWindow(QMainWindow):
 
     # ---- signals from views --------------------------------------------------
     def _on_tab_changed(self, _):
-        from . import cad_select
+        from . import cad_select, cad_draw
         current = self.view()
         for v in self._views():             # a CAD command belongs to the tab it ran in
             if v is not current:
                 if v._cad_cmd is not None:
                     v._cad_cmd.cancel()
                 cad_select.drop(v)          # (and a box or lasso being drawn there)
+                cad_draw.cancel(v)          # (or a shape started with a click)
         self._rebuild_thumbs()
         self._refresh_bookmarks()
         self._refresh_layers()

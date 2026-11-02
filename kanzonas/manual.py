@@ -287,7 +287,7 @@ mode you had): like AutoCAD, the scroll wheel zooms in and out around the cursor
 wheel down moves the sheet, so you can navigate a drawing while any tool is active. Like
 Bluebeam, hold <b>Ctrl</b> and turn the wheel to scroll up and down. The pages sit on an open
 canvas, the pointer is a <b>plus</b> (except with the Hand), selecting works like CAD and the
-<b>CAD</b> tab appears with Move, Copy, Rotate and the other CAD commands: see
+<b>CAD</b> tab appears, in front, with Move, Copy, Rotate and the other CAD commands: see
 <b>CAD mode</b> below.</li>
 </ul>
 Your choice is remembered. (Before version 1.5 this was the CAD-style mouse switch and a
@@ -339,20 +339,24 @@ line) selects only your markups, or the characters of the page's text, the same 
 on top of the drawing, so a click on it takes the markup. A locked markup isn't taken.</li>
 <li>The <b>arrow keys</b> nudge the whole selection, the drawing's objects and the markups
 together. Right-click a markup for its own menu, the drawing's objects for theirs. Selected
-markups show no resize handles here: change them with the CAD tab's commands, or with Select.</li>
+markups show no resize handles here: change them with the CAD tab's commands, or with Select.
+What's selected is drawn <b>dashed</b> (blue dashes over white, so it shows on a blue line too)
+with small blue <b>grips</b> on its ends and corners, as in AutoCAD.</li>
 <li><b>Click, move, click</b>: click empty paper, move the pointer (the box follows it) and click
 again. Left to right it's a solid <b>blue window</b>: it takes what lies entirely inside it.
 Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line
-running through it included. Escape drops a box you started. Hold Shift on the second click to
-take things out instead.</li>
+running through it included. The first corner is marked as soon as you click, and the status
+bar asks for the other corner. A quick click counts as a click even if the mouse moved a little
+while you pressed, and clicking the first corner again keeps the box. Escape drops a box you
+started. Hold Shift on the second click to take things out instead.</li>
 <li><b>Hold the button and drag</b>: a <b>lasso</b> that follows the pointer. Drawn rightward at
 first it's a blue window lasso (what's entirely inside it); leftward, a green crossing lasso
 (what it touches). Shift+lasso takes things out.</li>
 <li>With Select, a box or lasso that takes no markups selects text: the characters inside a
 window, or the ones a crossing box touches (Ctrl+C copies them).</li>
-<li>While you draw a box or a lasso, what it would take <b>lights up</b> (blue for a window,
+<li>While you draw a box or a lasso, what it would take <b>glows</b> (blue for a window,
 green for a crossing box), so you see what you'll get before the second click or before you
-let go. On a very big drawing it fills in over a moment while you move.</li>
+let go; once taken, it's drawn dashed with grips. On a very big drawing it fills in over a moment while you move.</li>
 <li>Dragging never moves anything in CAD mode, so nothing moves by accident: the square handles
 of one selected markup or object still resize it, and the CAD tab's <b>Move</b> moves.</li>
 <li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>
@@ -365,10 +369,15 @@ click points on the page (they snap to line ends and corners like the drawing to
 not to snap), type a value and press Enter, or click a button there. Escape (or Cancel) stops a
 command; right-click is Enter. Each change is one Ctrl+Z.</p>
 <p>So CAD mode needs no other tab for everyday work, the CAD tab also has the tools used most
-next to its commands (they stay on their own tabs too): <b>Markup</b> (Cloud, Text box, Callout,
-Line, Arrow, Polyline: their one-letter shortcuts type into the command line in CAD mode),
-<b>Measure</b> (Length, Area, Count, Calibrate Tape Measure), <b>Snap</b> (Snap to objects, Snap to grid, Snap to
-page) and <b>Clean up</b> (Erase content, Bring to front, Send to back).</p>
+next to its commands (they stay on their own tabs too). Similar tools share one button, as on
+AutoCAD's ribbon: click the button for the tool it shows, or the arrow beside it to pick another;
+the button then shows the one used last (or the tool that's on). <b>Markup</b>: Rectangle (arrow:
+Cloud, Polygon, Mask), Circle (arrow: Arc), Line (arrow: Polyline, Curve, Pen), Arrow, Text box (arrow: Callout),
+Stamp (arrow: Image); their one-letter shortcuts type into the command line in CAD mode.
+<b>Measure</b>: Length (arrow: Polylength, Area, Angle, Radius, Perimeter, Volume, Count,
+Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Clean up</b>: Erase
+content, Bring to front (arrow: Bring forward, Send backward, Send to back), Align left (arrow:
+the other alignments, Distribute horizontally and Distribute vertically).</p>
 <p><b>The command line</b>, along the bottom of the window in CAD mode, works like AutoCAD's.
 Just start typing over the drawing (you don't have to click in the line first) and press
 <b>Enter</b> (Space just types a space, as in "fit page"):</p>
@@ -387,6 +396,7 @@ that several commands fit) and keeps what you typed, to correct it or to pick a 
 list with Up and Down and Enter. A setting switched by typing its name says whether it's now on
 or off.</li>
 <li>Enter on an empty line repeats the last command.</li>
+<li>While a circle is being drawn (its center clicked), type its radius and press Enter.</li>
 <li>While a command runs, the line says what to do next and takes what you type: an angle, a
 scale factor, or a choice (the first letters of a button's name will do: K for Keep them, D
 for Delete them).</li>
@@ -436,7 +446,15 @@ stays (it says so). The click picks the line nearest to it and isn't
 snapped; a click right where lines cross says so instead (click a little to one side). Click
 again and again; Enter, Escape or Done ends it. It
 trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
-and line, polyline and pen markups; filled shapes and pictures aren't trimmed.</li>
+and line, polyline and pen markups. Rectangles, polygons and clouds are trimmed too, and their
+own corners cut as well as the lines crossing them: clicking a side of a lone rectangle or cloud
+takes that side away from corner to corner, and clicking again takes another. What is left is one
+open markup that starts and ends at the gap: a rectangle or polygon becomes a polyline (same
+color, width and opacity; its corners go on cutting), and a cloud stays a cloud, its remaining
+sides looking just as they did (it moves, turns, mirrors, restyles and trims like any markup;
+other PDF readers show it as drawn). A cloud ellipse is cut only where lines cross it. A click
+right on a corner says so instead (click on the side, a little away from the corner). Filled
+shapes (a Mask too), plain ellipses, arcs, bent lines and pictures aren't trimmed.</li>
 </ul>
 <p>On a big drawing, CAD mode reads the page's line work in the background while you aren't
 doing anything, a little at a time so the window never stops answering, so the first box,
@@ -457,7 +475,8 @@ In the <b>CAD</b> mouse mode, Select works as in AutoCAD instead: blue window an
 crossing boxes, a lasso, clicks that add to the selection, Shift to take out, Escape to clear,
 and dragging moves nothing (see CAD mode).</li>
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
-it too, so you don't have to switch back to the arrow. The <b>Hand tool</b> works the same way:
+it too, so you don't have to switch back to the arrow (not in CAD mode, where a drawing tool always
+draws). The <b>Hand tool</b> works the same way:
 click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
 page. A markup made a link opens its link instead when clicked with the Hand tool, or
 Ctrl+clicked with the Select tool (a plain click with Select selects it). A markup on a link
@@ -584,14 +603,41 @@ then flag any later change.</li>
 
 <h2 id="shapes">Shapes, lines and the pen</h2>
 <ul>
-<li>Rectangle (R), Ellipse (E), Cloud (D), Polygon (Y), Line (L), Arrow (A), Polyline
-(Shift+L), Pen (P). The shapes share one toolbar button: click its arrow to pick another.</li>
-<li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Escape to cancel.</li>
+<li>Rectangle (R), Ellipse (E), Circle (O), Cloud (D), Mask, Polygon (Y), Line (L), Arrow (A),
+Polyline (Shift+L), Arc, Curve, Pen (P). The shapes share one toolbar button: click its arrow to pick another.</li>
+<li><b>Arc</b> (as AutoCAD's three-point ARC; on the CAD tab under Circle's arrow): click the start, a point the arc
+passes through, then the end; the arc follows the pointer before the last click. Drag its three points to reshape it.</li>
+<li><b>Bend a line or arrow:</b> select it and drag the diamond in its middle: it becomes a smooth curve through that
+point; the ends stay where they are and an arrowhead follows the curve. Drag the diamond back onto the straight line to
+straighten it. The <b>Curve</b> tool draws one directly: click the start, the end, then where it bends to.</li>
+<li><b>Circle</b> (O): drag from the center to a point on the circle. In CAD mode, click the
+center, then a point on the circle, or type the radius on the command line and press Enter (in
+the page's measuring unit, as Measure &gt; Set scale shows it, 12'-6" also works, as does a decimal comma, 2,5; inches on paper
+when no scale is set). It makes an ellipse markup, so Properties, the cloud border, moving and
+resizing work as for an ellipse.</li>
+<li><b>Mask</b>: drag a box over what to hide; it's covered by a white box with no outline (like
+AutoCAD's Wipeout). Properties can change its fill color or give it an outline (No border takes the outline away again). It hides what's
+under it on screen and in print, but that content stays in the file: use Redact to remove it
+for good.</li>
+<li><b>In CAD mode</b> the tools that draw from one point to another (Line, Arrow, Rectangle,
+Ellipse, Circle, Cloud, Mask, Text box, Callout, Length, Radius, Calibrate Tape Measure, the
+Eraser's box, Erase content, Capture area, Crop pages, Links, signature placeholders) work as in
+AutoCAD: click where it starts, move (the shape follows the pointer with no button held), and
+click where it ends. It snaps, and Shift works, as when dragging; pressing, dragging and letting
+go still works too. A click that shakes a little is still a click. Escape or a right-click
+cancels the shape being drawn; zooming or scrolling between the two clicks doesn't move its first
+point. A click on a markup with the Eraser still deletes it at once, a click on a link with the
+Links tool still opens it, and two clicks on the same spot with Text box make one of the default
+size. Note, Stamp, Count and Image still place with one click.</li>
+<li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Backspace to take back the last point,
+Escape to cancel.</li>
 <li>With a drawing tool, clicking an existing markup selects it, and dragging moves it or its
 points, without changing tools. <b>Shift+click on a markup</b> starts a new one right there
 instead (to start a line at the end of another, say): nothing is selected or moved, and the
 point snaps to the markup's end or corner when snapping is on. The pointer shows the drawing
-cross while Shift is held.</li>
+cross while Shift is held. <b>In CAD mode</b> a drawing tool always draws, as in AutoCAD, with no
+Shift needed: a click on a markup starts the new one there (snapped to its end or corner); select
+markups with Edit objects or Select.</li>
 <li><b>Hold Shift</b> while drawing:
   <ul>
   <li>lines, arrows, measurements and polyline segments snap to 45&deg; steps (horizontal,
@@ -1033,13 +1079,17 @@ own copy of the text). A vector path that touches a mark is removed past the box
 the part outside it. Applying scrubs metadata, attachments, hidden text, and scripts unless
 you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
 fields (values, list options, tooltips and names), links (web and email addresses), markup
-notes, bookmark titles and document properties. When you apply, fields, links, stamps and
+notes, bookmark titles, document properties, the alternate text of tagged PDFs, link notes,
+page labels and destination names. When you apply, fields, links, stamps and
 attached files containing it are deleted, and in notes and comments (they stay), bookmarks
-and properties it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
+and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
 away. Check the result before sharing; Undo works until you close the file.</li>
 <li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
-attached files, hidden text, links, comments, form data, thumbnails.</li>
-<li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption.
+attached files, hidden text, links, comments, form data, thumbnails. Scripts includes those in
+other actions (multimedia), javascript: links and an XFA form's scripts (the ordinary form fields
+stay).</li>
+<li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption. Clicking OK
+with neither box ticked on a protected document asks before taking its protection off.
   <ul>
   <li><i>Open password:</i> nobody can read the file without it. Real protection; if you
   forget it, the file can't be recovered.</li>
@@ -1093,9 +1143,11 @@ marks areas; Apply redactions permanently removes what's underneath. A vector pa
 touches a mark is removed past the box. Applying scrubs metadata, attachments, hidden text,
 and scripts unless you turn that off. Check the result before sharing.</li>
 <li><b>Header &amp; footer, page numbers, Bates</b>, <b>Watermark</b>,
-<b>Compress (save a smaller copy)</b>, <b>Compare documents</b>, <b>Flatten</b> (make markups part of the page).</li>
-<li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision, then
-how to compare. <b>Text, word by word</b> is for anything that reflows (letters,
+<b>Compress (save a smaller copy)</b>, <b>Compare documents</b>, <b>Flatten</b> (make markups part of the page).
+The smaller copy keeps the document's password protection (open password, permissions), or the
+protection set in Security properties and not saved yet.</li>
+<li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision (if it's
+password-protected, KanzonasPDF asks for its password), then how to compare. <b>Text, word by word</b> is for anything that reflows (letters,
 specifications, permits, reports): the words of both documents are compared in reading
 order, so text that only moved down a line or a page is not a change. The result is a copy
 of this document with the words added in it highlighted blue, a red mark where words of the
@@ -1221,7 +1273,7 @@ settings...).</li>
 <tr><td>Shift+O</td><td>Edit objects (the page's own pictures and shapes)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
 <tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>
-<tr><td>R / E / D / Y</td><td>Rectangle / Ellipse / Cloud / Polygon</td></tr>
+<tr><td>R / E / O / D / Y</td><td>Rectangle / Ellipse / Circle / Cloud / Polygon</td></tr>
 <tr><td>L / A / Shift+L / P</td><td>Line / Arrow / Polyline / Pen</td></tr>
 <tr><td>M / X</td><td>Stamp / Eraser</td></tr>
 <tr><td>G / I</td><td>Signature / Initials</td></tr>
@@ -1266,7 +1318,7 @@ settings...).</li>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>
 </table>
-<p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it. <b>Reset all to defaults</b> puts the built-in shortcuts back straight away. Changes apply in every window.</p>
+<p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it. A key you gave a command yourself stays yours: a new default that a later version gives another command doesn't take it (that command then shows no shortcut; Reset all to defaults gives it back). <b>Reset all to defaults</b> puts the built-in shortcuts back straight away. Changes apply in every window.</p>
 """
 
 

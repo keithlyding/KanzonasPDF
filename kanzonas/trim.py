@@ -2,7 +2,8 @@
 lines crossing it on either side of the click (or up to its end when nothing crosses on
 that side). A line that nothing crosses goes completely. Works on polylines in page
 coordinates; callers write the pieces back (page_objects.rewrite_path for the drawing's own
-line work, a markup's points for line markups)."""
+line work, a markup's points for line markups). A rectangle or polygon markup is also cut
+at its own corners (spans), so its sides go one at a time."""
 import math
 
 import pymupdf
@@ -169,3 +170,56 @@ def trim(poly, closed, click, cutters):
 
 def _length(pts):
     return _cum(pts)[-1]
+
+
+def spans(poly, closed, click, cutters, corners=False):
+    """trim() for a markup shape, as positions along it: [(s0, s1)] of the parts left ([]
+    when it all goes, None when the click is right on a cut). corners: its own corners cut
+    too, so a rectangle's or polygon's sides go one at a time (a closed one's first point
+    again at its end). On a closed one the part left can run past its start: s1 is then
+    more than its length (along() gives its points)."""
+    poly = [pymupdf.Point(p) for p in poly]
+    cum = _cum(poly)
+    total = cum[-1]
+    if total <= EPS:
+        return []
+    s, _d = project(poly, cum, click)
+    tol = 1e-4 * max(1.0, total)
+    found = crossings(poly, cum, cutters)
+    if corners:
+        found = sorted(found + cum[1:-1] + ([0.0] if closed else []))
+    cuts = []
+    for c in found:
+        if (closed or tol < c < total - tol) and not (cuts and c - cuts[-1] <= tol):
+            cuts.append(c)
+    if closed and len(cuts) > 1 and cuts[0] + total - cuts[-1] <= tol:
+        cuts.pop()
+    near = max(tol, 0.5)
+    if any(abs(c - s) <= near or (closed and abs(abs(c - s) - total) <= near) for c in cuts):
+        return None
+    before = [c for c in cuts if c < s - tol]
+    after = [c for c in cuts if c > s + tol]
+    if closed:
+        if len(cuts) < 2:
+            return []
+        lo = before[-1] if before else cuts[-1] - total
+        hi = after[0] if after else cuts[0] + total
+        s0 = hi - total if hi >= total else hi
+        s1 = s0 + (lo + total - hi)
+        return [(s0, s1)] if s1 - s0 > tol else []
+    lo = before[-1] if before else 0.0
+    hi = after[0] if after else total
+    out = []
+    if lo > tol:
+        out.append((0.0, lo))
+    if hi < total - tol:
+        out.append((hi, total))
+    return out
+
+
+def along(poly, closed, s0, s1):
+    """The points of the part of the polyline from s0 to s1 (see spans)."""
+    poly = [pymupdf.Point(p) for p in poly]
+    if closed and s1 > _cum(poly)[-1] + EPS:
+        poly = poly + poly[1:]
+    return piece(poly, _cum(poly), s0, s1)

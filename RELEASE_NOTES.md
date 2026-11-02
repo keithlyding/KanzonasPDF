@@ -7,6 +7,40 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.6.3
+
+**New**
+- In CAD mode, shapes are drawn like in AutoCAD: click where it starts, move, and click where it ends (no need to hold the button). Dragging still works.
+- New tools: Circle (click the center, then the edge, or type the radius), Arc (three points), Curve, and Mask (a white box that hides what's under it on screen and in print; use Redact to really remove content).
+- Bend a line or arrow: select it and drag the diamond in its middle to make it a smooth curve.
+- Trim now works on rectangles, polygons and clouds: click a side to take it away, corner to corner. A trimmed cloud stays a cloud.
+- The CAD tab groups similar tools under one button with a down arrow (Rectangle, Cloud, Polygon, Mask; Circle and Arc; Line, Polyline, Curve and Pen; all measurements; arrange and align), and switching to CAD mode brings the CAD tab to the front.
+
+**Fixed**
+- In CAD mode, selected items are easy to see: they're drawn dashed with small grips on their ends and corners, even when the item itself is blue.
+- The click, move, click selection box starts reliably: a click with the mouse moving slightly no longer turns into a lasso, and clicking the first corner again keeps the box. The first corner shows at once.
+- In CAD mode a drawing tool always draws, even when you start on a markup (it snaps to its end), as in AutoCAD.
+- Sanitize and Apply redactions now also remove scripts hidden in multimedia actions, javascript: links and XFA forms; Search & redact also replaces the text in tagged-PDF alternate text, link notes and page labels.
+- Compress keeps the document's password protection; Compare asks for a protected file's password; Security properties asks before removing protection.
+- Fixes and speed-ups from testing: drawing a box with level corners, a typed radius with a decimal comma, the Mask's outline after restyling, a keyboard shortcut you had set no longer taken by the new Circle key, and big selections, curves and long clouds stay quick.
+
+## 1.6.3 (es)
+
+**Novedades**
+- En el modo CAD, las formas se dibujan como en AutoCAD: haga clic donde empieza, mueva el mouse y haga clic donde termina (sin mantener presionado el botón). Arrastrar sigue funcionando.
+- Herramientas nuevas: Círculo (clic en el centro y luego en el borde, o escriba el radio), Arco (tres puntos), Curva y Máscara (un cuadro blanco que oculta lo que hay debajo en pantalla y al imprimir; use Censurar para eliminar contenido de verdad).
+- Curvar una línea o flecha: selecciónela y arrastre el rombo de su centro para convertirla en una curva suave.
+- Recortar ahora funciona en rectángulos, polígonos y nubes: haga clic en un lado para quitarlo, de esquina a esquina. Una nube recortada sigue siendo una nube.
+- La pestaña CAD agrupa las herramientas parecidas en un botón con una flecha (Rectángulo, Nube, Polígono, Máscara; Círculo y Arco; Línea, Polilínea, Curva y Lápiz; todas las medidas; organizar y alinear), y al pasar al modo CAD la pestaña CAD pasa al frente.
+
+**Correcciones**
+- En el modo CAD lo seleccionado se ve claramente: se dibuja con línea discontinua y pequeños pinzamientos en sus extremos y esquinas, aunque el elemento mismo sea azul.
+- El recuadro de selección de clic, mover, clic empieza sin fallar: un clic con el mouse moviéndose un poco ya no se convierte en lazo, y volver a hacer clic en la primera esquina conserva el recuadro. La primera esquina se muestra de inmediato.
+- En el modo CAD una herramienta de dibujo siempre dibuja, aunque empiece sobre una marca (se ajusta a su extremo), como en AutoCAD.
+- Sanear y Aplicar censuras ahora también quitan los scripts ocultos en acciones multimedia, vínculos javascript: y formularios XFA; Buscar y censurar también reemplaza el texto en el texto alternativo de los PDF etiquetados, las notas de vínculos y las etiquetas de página.
+- Comprimir conserva la protección con contraseña del documento; Comparar pide la contraseña de un archivo protegido; Propiedades de seguridad pregunta antes de quitar la protección.
+- Correcciones y mejoras de velocidad de las pruebas: dibujar un cuadro con esquinas al mismo nivel, un radio escrito con coma decimal, el contorno de la Máscara después de cambiar su estilo, un atajo de teclado que usted había asignado ya no se lo quita la nueva tecla de Círculo, y las selecciones grandes, las curvas y las nubes largas siguen siendo rápidas.
+
 ## 1.6.2
 
 **Fixed**

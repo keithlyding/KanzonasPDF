@@ -191,6 +191,8 @@ class OpenCanceled(Exception):
 
 
 _JS_ACTION = re.compile(r"/S\s*/(JavaScript|Launch)\b")    # (Launch: runs a program)
+# a script in another kind of action (a Rendition's /JS), or a web address that is one
+_JS_KEY = re.compile(r"/JS\b|/URI\s*\(\s*javascript:", re.IGNORECASE)
 
 
 def remove_scripts(doc):
@@ -200,7 +202,9 @@ def remove_scripts(doc):
     catalog's /OpenAction, an /AA or a link's /A (a common way) stays, so this removes those
     too: /AA (actions run on opening, closing, printing, page visits...) goes wherever it is,
     an /OpenAction or /A only when it is (or leads to) JavaScript, and the document-level
-    scripts (the /JavaScript name tree) go."""
+    scripts (the /JavaScript name tree) go. So do the scripts scrub doesn't know: the /JS of
+    any other action (a Rendition), javascript: web addresses, and an XFA form holding
+    scripts (Acrobat runs them; KanzonasPDF shows the form's ordinary fields)."""
     for xref in range(1, doc.xref_length()):
         try:
             keys = doc.xref_get_keys(xref)
@@ -208,6 +212,12 @@ def remove_scripts(doc):
             continue
         if "AA" in keys:
             doc.xref_set_key(xref, "AA", "null")
+        if "JS" in keys:
+            doc.xref_set_key(xref, "JS", "null")
+        if "URI" in keys:
+            kind, val = doc.xref_get_key(xref, "URI")
+            if kind == "string" and val.strip().lower().startswith("javascript:"):
+                doc.xref_set_key(xref, "URI", "null")
         for key in ("OpenAction", "A"):
             if key not in keys:
                 continue
@@ -218,10 +228,33 @@ def remove_scripts(doc):
                 except Exception:
                     continue
             if kind in ("dict", "xref") and (_JS_ACTION.search(val) or "/Next" in val and
-                                              "JavaScript" in val):
+                                              "JavaScript" in val or _JS_KEY.search(val)):
                 doc.xref_set_key(xref, key, "null")
         if "Names" in keys and doc.xref_get_key(xref, "Names/JavaScript")[0] != "null":
             doc.xref_set_key(xref, "Names/JavaScript", "null")
+    _remove_xfa_scripts(doc)
+
+
+def _remove_xfa_scripts(doc):
+    """An XFA form (the catalog's /AcroForm /XFA) whose packets hold a <script> goes: its
+    ordinary form fields stay (all KanzonasPDF fills in)."""
+    cat = doc.pdf_catalog()
+    kind, val = doc.xref_get_key(cat, "AcroForm/XFA")
+    if kind == "null":
+        return
+    parts = [int(n) for n in re.findall(r"(\d+) 0 R", val)]
+    scripted = not parts            # (written in place, not as streams: unsure, so it goes)
+    for x in parts:
+        try:
+            data = doc.xref_stream(x) if doc.xref_is_stream(x) else b""
+        except Exception:
+            data = b"<script"
+        if b"<script" in (data or b"").lower():
+            scripted = True
+    if scripted:
+        doc.xref_set_key(cat, "AcroForm/XFA", "null")
+        if doc.xref_get_key(cat, "NeedsRendering")[0] != "null":
+            doc.xref_set_key(cat, "NeedsRendering", "null")
 
 
 def blank_appearance(doc, widget_xref):
@@ -268,6 +301,66 @@ def clear_form_data(doc):
                 doc.xref_set_key(xref, "RV", "null")
 
 
+# keys whose strings are text people read (not styles, codes or KanzonasPDF's own data):
+# structure tags' alternate text, ActualText, expansion and title, tooltips, notes, titles,
+# document information, page label prefixes (/P), destination names and file names
+_TEXT_KEYS = {"Alt", "ActualText", "E", "T", "TU", "TM", "Contents", "Title", "Subj",
+              "Subject", "Author", "Keywords", "Creator", "Producer", "P", "D", "Dest",
+              "F", "UF", "Desc"}
+
+
+def scrub_strings(doc, pat, clean):
+    """Every text string in doc's objects that pat matches, replaced by clean(text): what
+    Search & redact can't reach otherwise (a tagged PDF's alternate text and ActualText,
+    a link's note, page labels, named destinations...). Only strings people read are
+    looked at (_TEXT_KEYS, and the names of a name tree): a style (/DA) or KanzonasPDF's
+    own data (/KZ...) holding the word "fill" stays as it is. Redaction marks keep their
+    own text (a mark not applied yet keeps its term), and signatures and the encryption
+    dictionary are left alone (their strings are binary)."""
+    m = pymupdf.mupdf
+    pdf = pymupdf._as_pdf_document(doc)
+    skip = set()
+    enc = m.pdf_dict_gets(m.pdf_trailer(pdf), "Encrypt")
+    if m.pdf_is_indirect(enc):
+        skip.add(m.pdf_to_num(enc))
+    for xref in range(1, doc.xref_length()):
+        if xref in skip:
+            continue
+        try:
+            obj = m.pdf_load_object(pdf, xref)
+        except Exception:
+            continue
+        if not m.pdf_is_dict(obj):
+            continue
+        if m.pdf_to_name(m.pdf_dict_gets(obj, "Subtype")) == "Redact" or \
+                m.pdf_to_name(m.pdf_dict_gets(obj, "Type")) in ("Sig", "DocTimeStamp") or \
+                m.pdf_dict_gets(obj, "ByteRange").m_internal:
+            continue
+        todo = [(obj, "")]
+        while todo:
+            o, held_by = todo.pop()
+            is_dict = m.pdf_is_dict(o)
+            for i in range(m.pdf_dict_len(o) if is_dict else m.pdf_array_len(o)):
+                key = m.pdf_to_name(m.pdf_dict_get_key(o, i)) if is_dict else held_by
+                if key.startswith("KZ"):
+                    continue                    # (KanzonasPDF's own data: _scrub_terms)
+                val = m.pdf_dict_get_val(o, i) if is_dict else m.pdf_array_get(o, i)
+                if m.pdf_is_indirect(val):
+                    continue                    # (looked at as an object of its own)
+                if m.pdf_is_string(val):
+                    if not (key in _TEXT_KEYS if is_dict else key == "Names"):
+                        continue
+                    text = m.pdf_to_text_string(val)
+                    if pat.search(text):
+                        new = m.pdf_new_text_string(clean(text))
+                        if is_dict:
+                            m.pdf_dict_put(o, m.pdf_dict_get_key(o, i), new)
+                        else:
+                            m.pdf_array_put(o, i, new)
+                elif m.pdf_is_dict(val) or m.pdf_is_array(val):
+                    todo.append((val, key))
+
+
 class _not_busy:
     """A message box while a command works: the usual pointer over it, the busy one after."""
 
@@ -290,7 +383,7 @@ class _AnnotShot:
     first needed. parent is set to the page only while testing (the measurement label test
     reads it); label (the tooltip's kind of markup) is read when first shown."""
     __slots__ = ("xref", "type", "flags", "rect", "full", "border", "vertices", "colors",
-                 "info", "parent", "label")
+                 "info", "parent", "label", "arrays")
 
     def __init__(self, annot):
         self.xref = annot.xref
@@ -301,10 +394,12 @@ class _AnnotShot:
         self.border = self.vertices = self.colors = self.info = None
         self.parent = None
         self.label = None
+        self.arrays = None
 
     def fill(self, annot):
         self.border = annot.border
         self.vertices = annot.vertices
+        self.arrays = None              # (long lines' points as arrays: DocumentView._near_path)
         self.colors = annot.colors
         self.info = annot.info
         self.full = True
@@ -1119,6 +1214,7 @@ class DocumentView(QScrollArea):
     lasso = False               # CAD: holding the button and dragging draws a lasso
     type_to_line = False        # CAD: letters typed over the drawing go to the command line
     _cad_pick = None            # CAD: a click, move, click box in progress (cad_select.py)
+    _cad_shape = None           # CAD: a shape started with a click, ended by the next (cad_draw.py)
     hand_selects = True         # Hand: clicking a markup selects it
     free_pan = False            # Free page movement: the page can be dragged past its edges
     page_wheel = False          # one wheel step = one page when the page fits the window
@@ -1239,6 +1335,8 @@ class DocumentView(QScrollArea):
         # next click on the page would otherwise only apply it)
         self.commit_pending()
         cad_select.drop(self)           # (a lasso held while the mode changed selects nothing)
+        from . import cad_draw
+        cad_draw.cancel(self)           # (a shape started with a click belongs to the old tool)
         if self._cad_cmd is not None:
             self._cad_cmd.cancel()
         self.tool = tool
@@ -1246,6 +1344,10 @@ class DocumentView(QScrollArea):
             # a stamp / signature preview or a shape half-drawn belongs to the old tool
             if w._ghost is not None or w._drag_start is not None or w._poly:
                 w._ghost, w._drag_start, w._drag_now, w._poly = None, None, None, []
+                w.update()
+            if w._edit is not None or w._obj_edit is not None:
+                # (a markup or object being dragged: the selection it moves goes below)
+                w._edit = w._obj_edit = None
                 w.update()
         self.clear_selection()
         self.clear_object_selection()
@@ -2685,6 +2787,13 @@ class DocumentView(QScrollArea):
         if tool == "image":
             self.place_image(index, a, b, is_click)
             return
+        if tool == "circle":
+            # from the center to a point on the circle: an ellipse markup in a square
+            r = abs(pymupdf.Point(b) - pymupdf.Point(a))
+            if not is_click and r > 0.5:
+                self._create(index, {"kind": "ellipse", "props": props,
+                                     "rect": pymupdf.Rect(a.x - r, a.y - r, a.x + r, a.y + r)})
+            return
         if tool == "placeholder":
             props = self.tool_props("placeholder")
             if is_click or disp.width < 12 or disp.height < 8:
@@ -2717,7 +2826,9 @@ class DocumentView(QScrollArea):
             return
         if is_click:
             return
-        kind = "rect" if tool == "cloud" else tool
+        if tool not in ("line", "arrow") and (rect.width <= 0 or rect.height <= 0):
+            return      # a box with no height or width (its ends level, as snapping gives)
+        kind = "rect" if tool in ("cloud", "mask") else tool
         model = {"kind": kind, "props": props, "rect": rect}
         if tool in ("line", "arrow"):
             model["points"] = [a, b]
@@ -2819,6 +2930,14 @@ class DocumentView(QScrollArea):
         self.scaleChanged.emit()
 
     def apply_poly(self, index, tool, pts):
+        if tool == "curve":
+            # the Curve tool: a line from the first click to the second, bent through the third
+            model = {"kind": "line", "props": self.tool_props(tool), "points": pts[:2],
+                     "rect": pymupdf.Rect()}
+            if len(pts) > 2:
+                model = annotations.bent(model, pts[2], 0.5 / max(self.zoom, 0.05))
+            self._create(index, model)
+            return
         self._create(index, {"kind": tool, "props": self.tool_props(tool), "points": pts,
                              "rect": pymupdf.Rect()})
 
@@ -3412,6 +3531,32 @@ class DocumentView(QScrollArea):
         return ((p.x - cx) ** 2 + (p.y - cy) ** 2) ** 0.5
 
     @classmethod
+    def _near_path(cls, p, pts, tol, shot=None, k=0):
+        """Some piece of the line through pts (a list of (x, y)) passes within tol of p.
+        A long one (an arc, a bent line, a pen stroke: hundreds of points) is measured in
+        one step, from its points as an array kept with the hit test's shot (stroke k):
+        a piece at a time in Python, 80 arcs under the pointer took 28 ms a move."""
+        n = len(pts)
+        if n < 24:
+            return any(cls._seg_dist(p, pts[k], pts[k + 1]) <= tol for k in range(n - 1))
+        import numpy as np
+        kept = getattr(shot, "arrays", None) if shot is not None else None
+        a = kept.get(k) if kept is not None else None
+        if a is None:
+            a = np.asarray(pts, dtype=float)[:, :2]
+            if isinstance(shot, _AnnotShot):
+                if shot.arrays is None:
+                    shot.arrays = {}
+                shot.arrays[k] = a
+        d = a[1:] - a[:-1]
+        L = (d * d).sum(axis=1)
+        w = (p.x - a[:-1, 0]) * d[:, 0] + (p.y - a[:-1, 1]) * d[:, 1]
+        t = np.clip(np.divide(w, L, out=np.zeros_like(w), where=L != 0), 0, 1)
+        cx = a[:-1, 0] + t * d[:, 0]
+        cy = a[:-1, 1] + t * d[:, 1]
+        return bool((((p.x - cx) ** 2 + (p.y - cy) ** 2) ** 0.5 <= tol).any())
+
+    @classmethod
     def _annot_hit(cls, annot, pt, tol=4.0):
         """Precise hit test: strokes must be clicked near the line, not anywhere in their box."""
         t = annot.type[0]
@@ -3424,16 +3569,18 @@ class DocumentView(QScrollArea):
         width = (annot.border or {}).get("width") or 1
         tol = tol + width
         if t == pymupdf.PDF_ANNOT_INK:
-            for stroke in annot.vertices or []:
+            for k, stroke in enumerate(annot.vertices or []):
                 if len(stroke) == 1 and cls._seg_dist(pt, stroke[0], stroke[0]) <= tol:
                     return True
-                if any(cls._seg_dist(pt, stroke[k], stroke[k + 1]) <= tol
-                       for k in range(len(stroke) - 1)):
+                if cls._near_path(pt, stroke, tol, annot, k):
                     return True
             return False
         if t in (pymupdf.PDF_ANNOT_LINE, pymupdf.PDF_ANNOT_POLY_LINE):
             v = annot.vertices or []
-            return any(cls._seg_dist(pt, v[k], v[k + 1]) <= tol for k in range(len(v) - 1))
+            clouds = (annot.border or {}).get("clouds", 0) or 0
+            if t == pymupdf.PDF_ANNOT_POLY_LINE and clouds > 0:
+                tol += clouds * 4 + width / 2      # an open cloud: its bumps are on it too
+            return cls._near_path(pt, v, tol, annot)
         if t in (pymupdf.PDF_ANNOT_HIGHLIGHT, pymupdf.PDF_ANNOT_UNDERLINE,
                  pymupdf.PDF_ANNOT_STRIKE_OUT, pymupdf.PDF_ANNOT_SQUIGGLY):
             v = annot.vertices or []
@@ -4285,12 +4432,16 @@ class DocumentView(QScrollArea):
                 self._cad_cmd.enter_key()
             return
         if e.key() == Qt.Key_Escape:
-            from . import cad_select
-            if cad_select.cancel(self):
+            from . import cad_select, cad_draw
+            if cad_select.cancel(self) or cad_draw.cancel(self):
                 return
         drawing = [w for w in self.pages if w._poly]
         if drawing and e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):
             drawing[0].finish_poly(cancel=e.key() == Qt.Key_Escape)
+            return
+        if drawing and e.key() == Qt.Key_Backspace:
+            drawing[0]._poly.pop()          # (takes back the last point clicked)
+            drawing[0].update()
             return
         if e.key() in (Qt.Key_Delete, Qt.Key_Backspace) and (
                 self.selection is not None or self.obj_sel is not None):
@@ -5196,7 +5347,7 @@ class DocumentView(QScrollArea):
             if "strokes" in m:
                 out += [list(s) for s in m["strokes"]]
             elif "points" in m and m["kind"] in annotations.POINTED:
-                pts = list(m["points"])
+                pts = list(annotations.path_points(m))
                 out.append(pts + pts[:1] if m["kind"] in ("polygon", "m_area", "cloud")
                            else pts)
             elif "quads" in m:
@@ -5394,8 +5545,9 @@ class DocumentView(QScrollArea):
 
     def _cad_trim(self, index, pt, edges=None):
         """Trim at pt (the CAD tab): the clicked line of the drawing, or line markup, loses
-        the part between the nearest lines crossing it (or its end). edges: the cutting
-        edges chosen first (polylines in page coordinates), else every line cuts. True if it
+        the part between the nearest lines crossing it (or its end). A rectangle, polygon or
+        cloud markup is cut at its corners too (_trim_shape). edges: the cutting edges
+        chosen first (polylines in page coordinates), else every line cuts. True if it
         changed."""
         from . import page_objects, trim
         tol = 6 / self.zoom
@@ -5429,9 +5581,27 @@ class DocumentView(QScrollArea):
                 poly = shown if len(shown) == len(parts[k][1]) else \
                     [q * mat for q in parts[k][1]]
                 best = (d, "object", item, k, poly, parts[k][2], state, parts, paint, mat)
+        refused = None                      # (distance, why) the nearest shape that can't be
         for an in self._trimmable_annots(page):
             m = annotations.read(an)
-            if m is None or m["kind"] not in ("line", "polyline", "ink"):
+            if m is None:
+                continue
+            shape = self._trim_outline(page, an, m)
+            if shape is not None:
+                # a rectangle, polygon or cloud (its bumps are in reach), or what's left of one
+                poly = shape["poly"]
+                _s, d = trim.project(poly, trim._cum(poly), pt)
+                if d > tol + shape["reach"]:
+                    continue
+                if shape.get("why"):
+                    if refused is None or d < refused[0]:
+                        refused = (d, shape["why"])
+                elif best is None or d < best[0]:
+                    best = (d, "shape", an.xref, 0, poly, shape["closed"], m, shape)
+                continue
+            if m["kind"] not in ("line", "polyline", "ink"):
+                continue
+            if m.get("bend") is not None:   # (a bent line isn't trimmed: it would go straight)
                 continue
             strokes = m["strokes"] if m["kind"] == "ink" else [m["points"]]
             for k, poly in enumerate(strokes):
@@ -5441,10 +5611,13 @@ class DocumentView(QScrollArea):
                 _s, d = trim.project(poly, trim._cum(poly), pt)
                 if d <= tol and (best is None or d < best[0]):
                     best = (d, "markup", an.xref, k, poly, False, m)
+        if refused is not None and (best is None or refused[0] < best[0]):
+            self.statusMessage.emit(refused[1])
+            return False
         if best is None:
-            self.statusMessage.emit(tr("Trim: no line there. Click on a line of the drawing or "
-                                       "a line markup (filled shapes and pictures aren't "
-                                       "trimmed)."))
+            self.statusMessage.emit(tr("Trim: no line there. Click on a line of the drawing, a "
+                                       "line markup, a rectangle, a polygon or a cloud (filled "
+                                       "shapes and pictures aren't trimmed)."))
             return False
         poly = best[4]
         r = pymupdf.Rect(poly[0], poly[0])
@@ -5467,7 +5640,7 @@ class DocumentView(QScrollArea):
                         continue
                     cutters.append(line)
         for an in self._trimmable_annots(page) if edges is None else ():
-            if best[1] == "markup" and an.xref == best[2]:
+            if best[1] in ("markup", "shape") and an.xref == best[2]:
                 continue
             if not page_objects.overlap(an.rect, r):
                 continue
@@ -5483,6 +5656,8 @@ class DocumentView(QScrollArea):
                                        "stays. (To let every line cut, start Trim with nothing "
                                        "selected and press Enter.)"))
             return False
+        if best[1] == "shape":
+            return self._trim_shape(index, pt, best, cutters)
         pieces = trim.trim(poly, best[5], pt, cutters)
         if pieces is None:
             self.statusMessage.emit(tr("Trim: that's where lines cross. Click on the part of "
@@ -5538,6 +5713,100 @@ class DocumentView(QScrollArea):
                     annotations.write(pg, mod)
             self.clear_selection()
             self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
+        return True
+
+    @staticmethod
+    def _trim_outline(page, an, m):
+        """How Trim sees a closed shape markup (rectangle, polygon, a cloud of either or an
+        ellipse cloud) or what's left of one (an open cloud, a polyline made from a
+        rectangle or polygon): {"poly" (page coordinates; a closed one's first point again
+        at its end, in the order its cloud's arcs go), "closed", "corners" (they cut),
+        "cloud" (clouds.closed_cloud / open_shape, or None), "reach" (how far from its line
+        a click still finds it)}, {"why", "poly", "reach"} for one it can't trim, or None
+        for any other markup (lines, polylines and pen strokes: _cad_trim)."""
+        from . import clouds, pdfcoords
+        kind = m["kind"]
+        width = float(m["props"].get("width", 1) or 0)
+        if kind == "opencloud":
+            cloud = clouds.open_shape(page, m)
+            if not cloud["centers"]:
+                return None
+            return {"poly": [pymupdf.Point(q) for q in m["points"]], "closed": False,
+                    "corners": bool(m.get("sides")), "cloud": cloud,
+                    "reach": cloud["radius"] + width / 2}
+        if kind == "polyline" and m.get("sides"):
+            return {"poly": [pymupdf.Point(q) for q in m["points"]], "closed": False,
+                    "corners": True, "cloud": None, "reach": 0.0}
+        if kind not in ("rect", "polygon", "ellipse") or not m["props"].get("stroke"):
+            return None
+        shape = clouds.closed_shape(page, an)
+        if shape is None:
+            return None
+        back = pdfcoords.to_page(page)
+        poly = [pymupdf.Point(v) * back for v in shape["verts"]]
+        cloud = clouds.closed_cloud(shape) if shape["clouds"] else None
+        reach = shape["width"] / 2 + (cloud["radius"] if cloud else 0.0)
+        if m["props"].get("fill"):
+            return {"poly": poly, "reach": reach,
+                    "why": tr("Trim: a filled shape can't be trimmed (set its fill to none in "
+                              "Properties first).")}
+        if cloud is None and not shape["corners"]:
+            return {"poly": poly, "reach": reach,
+                    "why": tr("Trim: an ellipse can't be trimmed (an ellipse drawn as a cloud "
+                              "can).")}
+        return {"poly": poly, "closed": True, "corners": shape["corners"], "cloud": cloud,
+                "reach": reach}
+
+    def _trim_shape(self, index, pt, best, cutters):
+        """Trim a rectangle, polygon or cloud markup (see _trim_outline): the part between
+        the nearest cuts on either side of the click goes, a cut being where another line
+        crosses it (or a chosen cutting edge) or one of its own corners. What's left of a
+        closed shape is one open markup from the gap round to the gap: a polyline, or an
+        open cloud whose arcs are drawn as they were (clouds.py). One undo step."""
+        from . import clouds, trim
+        _d, _w, xref, _k, poly, closed, m, shape = best
+        parts = trim.spans(poly, closed, pt, cutters, corners=shape["corners"])
+        if parts is None:
+            self.statusMessage.emit(tr("Trim: that's a corner of the shape or where lines "
+                                       "cross. Click on the side to cut away, a little away "
+                                       "from the corner."))
+            return False
+        page = self.doc[index]
+        models = []
+        for s0, s1 in parts:
+            if shape["cloud"] is not None:
+                n = clouds.part_model(page, m, shape["cloud"], s0, s1, shape["corners"])
+            else:
+                pts = [pymupdf.Point(q) for q in trim.along(poly, closed, s0, s1)]
+                if len(pts) < 2:
+                    continue
+                if m["kind"] == "polyline":
+                    n = annotations.copy(m)
+                else:
+                    props = dict(annotations.DEFAULTS["polyline"])
+                    props.update({k: v for k, v in m["props"].items() if k in props})
+                    props["rotation"] = 0
+                    n = {"kind": "polyline", "props": props, "text": m.get("text", ""),
+                         "author": m.get("author", ""), "created": m.get("created", ""),
+                         "locked": m.get("locked", False), "hidden": m.get("hidden", False),
+                         "sides": shape["corners"]}
+                n["points"] = pts
+            if n is not None:
+                models.append(n)
+        del page
+
+        def do():
+            pg = self.doc[index]
+            if models:
+                # (replies, its place in the stacking order and its dates go to the first)
+                annotations.replace_many(pg, [(xref, models[0])])
+            else:
+                pg.delete_annot(pg.load_annot(xref))
+            for mod in models[1:]:
+                annotations.write(pg, mod)
+        self.clear_selection()
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
         return True
 
@@ -6038,6 +6307,9 @@ class DocumentView(QScrollArea):
                 self.doc.del_xml_metadata()     # XMP copy of the properties
         except Exception:
             pass
+        # and anywhere else a string holds it: alternate text, ActualText, link notes,
+        # page labels, named destinations (the links naming them follow)
+        scrub_strings(self.doc, pat, clean)
 
     def remove_term(self, term):
         """Search & redact for text that's only in fields, notes, bookmarks or properties."""
@@ -7822,6 +8094,32 @@ class DocumentView(QScrollArea):
             finally:
                 original.close()
             self._orig_enc["user_pw"] = pw
+
+    def copy_protection(self):
+        """For a copy of this document made from it (Compress): (its bytes, the password
+        that opens them, the save options protecting the copy as Save protects the file).
+        None as options: keep the bytes' own encryption."""
+        sec = self.security
+        if sec is not None:
+            if not sec.get("open_pw") and not sec.get("owner_pw"):
+                return self.doc.tobytes(), None, {}         # (security being removed)
+            owner = sec.get("owner_pw") or sec.get("open_pw")
+            return self.doc.tobytes(), None, {
+                "encryption": pymupdf.PDF_ENCRYPT_AES_256, "owner_pw": owner,
+                "user_pw": sec.get("open_pw") or "",
+                "permissions": sec.get("perms", -1) if sec.get("owner_pw") else -1}
+        if self._orig_enc is None:
+            return self.doc.tobytes(), None, {}
+        enc = self._orig_enc
+        if (self.doc.metadata or {}).get("encryption"):
+            return (self.doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_KEEP),
+                    enc.get("owner_pw") or enc.get("user_pw"), None)
+        self._ask_original_passwords()          # (as save: never invented)
+        owner = enc["owner_pw"]
+        return self.doc.tobytes(), None, {
+            "encryption": pymupdf.PDF_ENCRYPT_AES_256, "owner_pw": owner,
+            "user_pw": enc.get("user_pw") or (owner if enc.get("needs_pass") else ""),
+            "permissions": enc.get("perms", -1)}
 
     def save(self, path=None):
         if path is None and self.untitled:

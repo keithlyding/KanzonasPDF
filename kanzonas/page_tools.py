@@ -189,10 +189,18 @@ COMPRESS = dict(zip((tr("Good quality (150 dpi images)"), tr("Smaller (100 dpi i
                      tr("Smallest (72 dpi images)")), COMPRESS_EN.values()))
 
 
-def compress(pdf_bytes, out_path, preset):
-    """Downsample/recompress images, subset fonts, drop unused objects."""
+def compress(pdf_bytes, out_path, preset, password=None, protect=None):
+    """Downsample/recompress images, subset fonts, drop unused objects. Protected bytes are
+    opened with password and keep their encryption; protect: the save options of the
+    protection to give the copy instead (DocumentView.copy_protection)."""
     threshold, target, quality = COMPRESS.get(preset) or COMPRESS_EN[preset]
     doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+    if doc.needs_pass and not doc.authenticate(password or ""):
+        doc.close()
+        raise PermissionError(tr("Wrong or missing password"))
+    if protect is None:
+        protect = {"encryption": pymupdf.PDF_ENCRYPT_KEEP} if \
+            (doc.metadata or {}).get("encryption") else {}
     try:
         doc.rewrite_images(dpi_threshold=threshold, dpi_target=target, quality=quality)
     except Exception:
@@ -202,7 +210,7 @@ def compress(pdf_bytes, out_path, preset):
     except Exception:
         pass
     doc.save(out_path, garbage=4, deflate=True, deflate_images=True, deflate_fonts=True,
-             clean=True, use_objstms=1)
+             clean=True, use_objstms=1, **protect)
     doc.close()
     return len(pdf_bytes), os.path.getsize(out_path)
 

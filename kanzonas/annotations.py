@@ -11,6 +11,7 @@ survive a save and reopen exactly.
 Per-tool default styles are kept in QSettings so they persist between sessions.
 """
 
+import functools
 import getpass
 import json
 import math
@@ -82,8 +83,16 @@ DEFAULTS = {
     "rect": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "ellipse": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "cloud": {"stroke": "#d00000", "fill": None, "width": 1.5, "cloud": True, "opacity": 1.0},
+    "circle": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
+    # a rectangle that hides what's under it (AutoCAD's Wipeout): paper white, no outline
+    "mask": {"stroke": None, "fill": "#ffffff", "width": 1.0, "cloud": False, "opacity": 1.0},
     "polygon": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "polyline": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
+    "arc": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
+    # the Curve tool draws a bent line (kind "line" with a "bend" point): its own style
+    "curve": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "rotation": 0},
+    # a cloud with part of it trimmed away (clouds.py): drawn along an open polyline
+    "opencloud": {"stroke": "#d00000", "width": 1.5, "opacity": 1.0},
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
                 "fontsize": 11, "head": "open", "opacity": 1.0},
     "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
@@ -112,8 +121,11 @@ LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": t
           "textbox": tr("Text box"),
           "rect": tr("Rectangle"), "ellipse": tr("Ellipse"), "line": tr("Line"), "arrow": tr("Arrow"),
           "ink": tr("Pen"), "polygon": tr("Polygon"), "polyline": tr("Polyline"),
+          "arc": tr("Arc"), "curve": tr("Curve"),
           "callout": tr("Callout"),
           "stamp": tr("Stamp"), "field": tr("Form field"), "cloud": tr("Cloud"),
+          "circle": tr("Circle"), "mask": tr("Mask"),
+          "opencloud": tr("Cloud"),
           "m_length": tr("Length"), "m_poly": tr("Polylength"), "m_area": tr("Area"),
           "m_count": tr("Count"),
           "m_angle": tr("Angle"), "m_radius": tr("Radius"), "m_perimeter": tr("Perimeter"),
@@ -145,12 +157,12 @@ BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "at
 MEASURES = ("m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius", "m_perimeter",
             "m_volume")
 CLOSED_MEASURES = ("m_area", "m_perimeter", "m_volume")      # drawn as a closed outline
-POINTED = ("line", "arrow", "polygon", "polyline") + MEASURES   # geometry = list of points
-VERTEXED = ("polygon", "polyline", "m_poly", "m_angle") + CLOSED_MEASURES          # one handle per vertex                           # resizable via a rect
+POINTED = ("line", "arrow", "polygon", "polyline", "arc", "opencloud") + MEASURES   # geometry = list of points
+VERTEXED = ("polygon", "polyline", "arc", "opencloud", "m_poly", "m_angle") + CLOSED_MEASURES   # one handle per vertex
 # Shapes with a "rotation" property (degrees, counterclockwise as seen on screen). Boxes keep
 # their unrotated box and are drawn turned; point-based shapes have their points turned.
 # Text boxes and callouts only turn in 90 degree steps (a PDF text box limitation).
-ROTATABLE = ("rect", "ellipse", "cloud", "polygon", "polyline", "line", "arrow", "ink", "stamp", "image",
+ROTATABLE = ("rect", "ellipse", "cloud", "polygon", "polyline", "arc", "opencloud", "line", "arrow", "ink", "stamp", "image",
              "m_length", "m_poly", "m_area", "m_angle", "m_radius", "m_perimeter", "m_volume",
              "textbox", "callout")
 QUARTER_TURNS = ("textbox", "callout")
@@ -322,10 +334,29 @@ def read(annot):
              "created": annot.info.get("creationDate", "")}
     verts = annot.vertices or []
     geom = stored.get("geom", {})
-    if kind in ("line", "arrow"):
+    if kind in ("line", "arrow") and geom.get("bend") and len(verts) >= 2:
+        # bent by its middle grip (curves.py): written as a PolyLine along the curve
+        model["points"] = [pymupdf.Point(verts[0]), pymupdf.Point(verts[-1])]
+        model["bend"] = pymupdf.Point(geom["bend"][:2])
+    elif kind in ("line", "arrow"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
-    elif kind in ("polygon", "polyline", "m_poly", "m_angle") + CLOSED_MEASURES:
+    elif kind == "arc":                 # (the three points it's drawn through)
+        g = geom.get("pts") or []
+        if len(g) >= 6:
+            model["points"] = [pymupdf.Point(g[i], g[i + 1]) for i in (0, 2, 4)]
+        elif verts:
+            model["points"] = [pymupdf.Point(verts[k])
+                               for k in (0, len(verts) // 2, len(verts) - 1)]
+        else:
+            return None
+    elif kind in ("polygon", "polyline", "opencloud", "m_poly", "m_angle") + CLOSED_MEASURES:
         model["points"] = [pymupdf.Point(v) for v in verts]
+        if kind in ("polyline", "opencloud") and isinstance(geom, dict):
+            # made by trimming a rectangle or polygon: its corners cut as the shape's did
+            if geom.get("sides"):
+                model["sides"] = True
+            if kind == "opencloud":
+                model["cloud"] = geom.get("cloud")
     elif kind in ("m_length", "m_radius"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
     elif kind == "m_count":
@@ -420,6 +451,9 @@ def write(page, model):
         a = page.add_rect_annot(model["rect"])
     elif kind == "ellipse":
         a = page.add_circle_annot(model["rect"])
+    elif kind == "arc" or (kind in ("line", "arrow") and model.get("bend") is not None):
+        from . import curves            # (drawn along the curve: curves.py)
+        a = page.add_polyline_annot([(q.x, q.y) for q in curves.path(model)])
     elif kind in ("line", "arrow"):
         a = page.add_line_annot(*model["points"][:2])
         if kind == "arrow":
@@ -441,7 +475,7 @@ def write(page, model):
     elif kind == "m_count":
         c = model["points"][0]
         a = page.add_circle_annot(pymupdf.Rect(c.x - 5, c.y - 5, c.x + 5, c.y + 5))
-    elif kind == "polyline":
+    elif kind in ("polyline", "opencloud"):
         a = page.add_polyline_annot([(q.x, q.y) for q in model["points"]])
     elif kind == "callout":
         box, target = pymupdf.Rect(model["rect"]), model["points"][0]
@@ -524,8 +558,8 @@ def write(page, model):
             a.set_colors(stroke=stroke)
         if kind in ("rect", "ellipse", "polygon") and p.get("cloud"):
             a.set_border(width=width, clouds=2)
-        elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline",
-                      "m_length", "m_poly", "m_angle", "m_radius") + CLOSED_MEASURES:
+        elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline", "arc",
+                      "opencloud", "m_length", "m_poly", "m_angle", "m_radius") + CLOSED_MEASURES:
             a.set_border(width=width)
     if p.get("opacity", 1) < 1:
         a.set_opacity(float(p["opacity"]))
@@ -569,6 +603,11 @@ def write(page, model):
         a.set_popup(_popup_rect(page, anchor))
         a.set_open(False)
     a.update()
+    if kind == "arrow" and model.get("bend") is not None:
+        # a bent arrow's head: set after update (PyMuPDF's update adds a second, smaller head
+        # of its own to a PolyLine) and drawn by MuPDF, as a straight arrow's is
+        a.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, HEADS.get(p.get("head"), HEADS["open"]))
+        pymupdf.mupdf.pdf_update_annot(a.this)
 
     doc = page.parent
     if kind in ("textbox", "callout") and width > 0 and stroke:
@@ -587,6 +626,15 @@ def write(page, model):
         store["geom"] = {"box": list(model["rect"])}
     elif kind == "m_count":
         store["geom"] = {"at": list(model["points"][0]), "n": model.get("n", 1)}
+    elif kind == "arc":
+        store["geom"] = {"pts": [c for q in model["points"][:3] for c in (q.x, q.y)]}
+    elif kind in ("line", "arrow") and model.get("bend") is not None:
+        store["geom"] = {"bend": list(pymupdf.Point(model["bend"]))}
+    elif kind == "opencloud":
+        from . import clouds
+        store["geom"] = {"cloud": clouds.cloud_of(model), "sides": bool(model.get("sides"))}
+    elif kind == "polyline" and model.get("sides"):
+        store["geom"] = {"sides": True}
     doc.xref_set_key(a.xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
     keep = (pymupdf.PDF_ANNOT_IS_LOCKED if model.get("locked") else 0) | \
         (pymupdf.PDF_ANNOT_IS_HIDDEN if model.get("hidden") else 0)
@@ -601,6 +649,9 @@ def write(page, model):
         anchor, lab_angle = measure.label_anchor(kind, model["points"], page)
         measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
                           stroke or (0, 0, 0), lab_angle)
+    if kind == "opencloud":
+        from . import clouds
+        clouds.appearance(page, a, model)       # (last: a setter after it would undo it)
     return a
 
 
@@ -713,6 +764,8 @@ def rotated(model, new_angle):
             m["points"] = [rotate_point(q, c, delta) for q in m["points"]]
         if "strokes" in m:
             m["strokes"] = [[rotate_point(q, c, delta) for q in s] for s in m["strokes"]]
+        if m.get("bend") is not None:
+            m["bend"] = rotate_point(m["bend"], c, delta)
     return m
 
 
@@ -726,10 +779,14 @@ def bounds(model):
             r |= q
         return r
     if model["kind"] in POINTED:
-        r = pymupdf.Rect(model["points"][0], model["points"][0])
-        for q in model["points"][1:]:
-            r |= q
-        return r
+        # (a curve's box is kept: each paint asks for every selected markup's box, and an
+        # arc or a bent line has hundreds of points)
+        if model["kind"] == "arc" or model.get("bend") is not None:
+            bend = model.get("bend")
+            return pymupdf.Rect(_curve_box(
+                model["kind"], tuple((q[0], q[1]) for q in model["points"]),
+                None if bend is None else (bend[0], bend[1])))
+        return _points_box(model["points"])
     if model["kind"] == "ink":
         pts = [q for s in model["strokes"] for q in s]
         r = pymupdf.Rect(pts[0], pts[0])
@@ -742,6 +799,20 @@ def bounds(model):
             r |= q.rect
         return r
     return pymupdf.Rect(model["rect"])
+
+
+def _points_box(pts):
+    xs = [q[0] for q in pts]
+    ys = [q[1] for q in pts]
+    return pymupdf.Rect(min(xs), min(ys), max(xs), max(ys))
+
+
+@functools.lru_cache(maxsize=4096)
+def _curve_box(kind, points, bend):
+    """(x0, y0, x1, y1) of an arc's or a bent line's curve."""
+    model = {"kind": kind, "points": [pymupdf.Point(q) for q in points],
+             "bend": None if bend is None else pymupdf.Point(bend)}
+    return tuple(_points_box(path_points(model)))
 
 
 def movable(model):
@@ -769,6 +840,31 @@ def copy(model):
         m["points"] = [pymupdf.Point(q) for q in m["points"]]
     if "strokes" in m:
         m["strokes"] = [[pymupdf.Point(q) for q in s] for s in m["strokes"]]
+    if m.get("bend") is not None:
+        m["bend"] = pymupdf.Point(m["bend"])
+    if isinstance(m.get("cloud"), dict):
+        m["cloud"] = {k: list(v) if isinstance(v, list) else v for k, v in m["cloud"].items()}
+    return m
+
+
+def path_points(model):
+    """The line a point-based markup draws (along the curve for an arc or a bent line)."""
+    if model["kind"] == "arc" or model.get("bend") is not None:
+        from . import curves
+        return curves.path(model)
+    return model["points"]
+
+
+def bent(model, grip, straight=0.0):
+    """Copy of a line or arrow with its middle grip moved to grip: it bends to pass through
+    grip, or is straight again when grip is within `straight` of the straight line."""
+    from . import curves
+    m = copy(model)
+    a, b = m["points"][:2]
+    if curves.seg_distance(grip, a, b) <= straight:
+        m.pop("bend", None)
+    else:
+        m["bend"] = pymupdf.Point(grip)
     return m
 
 
@@ -780,6 +876,8 @@ def moved(model, delta):
         m["points"] = [q + delta for q in m["points"]]
     if "strokes" in m:
         m["strokes"] = [[q + delta for q in s] for s in m["strokes"]]
+    if m.get("bend") is not None:
+        m["bend"] = m["bend"] + delta
     return m
 
 
@@ -793,11 +891,19 @@ def transformed(model, mat):
     m = copy(model)
     if "points" in m:
         m["points"] = [pymupdf.Point(q) * mat for q in m["points"]]
+    if m.get("bend") is not None:
+        m["bend"] = pymupdf.Point(m["bend"]) * mat
     if "strokes" in m:
         m["strokes"] = [[pymupdf.Point(q) * mat for q in s] for s in m["strokes"]]
     if "quads" in m:
         d = pymupdf.Point(mat.e, mat.f)
         m["quads"] = [pymupdf.Quad(q.ul + d, q.ur + d, q.ll + d, q.lr + d) for q in m["quads"]]
+    if model["kind"] == "opencloud" and mat.a * mat.d - mat.b * mat.c < 0:
+        # mirrored: its bumps go to the other side of the way its points run (so they stay
+        # where the mirror puts them, outside)
+        from . import clouds
+        m["cloud"] = clouds.cloud_of(m)
+        m["cloud"]["flip"] = not m["cloud"]["flip"]
     if "rect" in m:
         r = pymupdf.Rect(m["rect"])
         c = pymupdf.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2) * mat
@@ -843,6 +949,8 @@ def page_turned(model, turn):
     mat = pymupdf.Matrix(turn)
     if "points" in m:
         m["points"] = [pymupdf.Point(q) * mat for q in m["points"]]
+    if m.get("bend") is not None:
+        m["bend"] = pymupdf.Point(m["bend"]) * mat
     if "strokes" in m:
         m["strokes"] = [[pymupdf.Point(q) * mat for q in s] for s in m["strokes"]]
     if "quads" in m:
@@ -886,6 +994,8 @@ def resized(model, new_rect):
         return pymupdf.Point(new_rect.x0 + (q.x - old.x0) * sx, new_rect.y0 + (q.y - old.y0) * sy)
     if "points" in m:
         m["points"] = [f(q) for q in m["points"]]
+    if m.get("bend") is not None:
+        m["bend"] = f(m["bend"])
     if "strokes" in m:
         m["strokes"] = [[f(q) for q in s] for s in m["strokes"]]
     return m
@@ -1005,7 +1115,7 @@ def shift_in_place(page, xref, d, to_pdf=None):
             store = None
         geom = store.get("geom") if isinstance(store, dict) else None
         if isinstance(geom, dict):
-            for k in ("box", "target", "at"):
+            for k in ("box", "target", "at", "pts", "bend"):
                 if isinstance(geom.get(k), list):
                     geom[k] = [c + (d.x if i % 2 == 0 else d.y) for i, c in enumerate(geom[k])]
             edits.append((xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store))))

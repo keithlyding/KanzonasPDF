@@ -135,6 +135,10 @@ class Keys(Window):
         w._link_press = None
         cad_select.release(w, None, w.rect().center())
         self.assertIsNone(v._cad_pick)
+        # (with Select a double-click selects a word: no box after it. With Edit objects,
+        # CAD mode's default, clicking the first corner again keeps the box: see
+        # tests/test_cad_feedback.py)
+        v.tool = "select"
         v._cad_pick = {"w": w, "at": w.to_pdf(w.rect().center()), "now": w.rect().center(),
                        "remove": False}
         w.mouseDoubleClickEvent(mock.Mock(position=lambda: w.rect().center().toPointF(),

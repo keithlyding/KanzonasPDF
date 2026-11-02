@@ -282,6 +282,9 @@ class CommandLine(QWidget):
                     self.edit.clear()
                 elif self.command is not None:
                     self.command.cancel()
+                elif self._view() is not None:
+                    from . import cad_draw
+                    cad_draw.cancel(self._view())   # (a shape started with a click)
                 self._back_to_page()
                 return True
             if k in (Qt.Key_Up, Qt.Key_Down) and self.list is not None and self.list.isVisible():
@@ -294,6 +297,13 @@ class CommandLine(QWidget):
 
     def _typed(self):
         self.run()
+
+    def _view(self):
+        """The document view the line works on (None without a window or document)."""
+        try:
+            return self.win.view() if self.win is not None else None
+        except Exception:
+            return None
 
     def run(self):
         """Enter on the line."""
@@ -318,6 +328,14 @@ class CommandLine(QWidget):
                 return
             cmd.typed(text)
             return
+        v = self._view()
+        if v is not None:
+            from . import cad_draw
+            if cad_draw.typed(v, text):     # (a circle's radius, while one is drawn)
+                self.edit.clear()
+                self._hide_list()
+                self._back_to_page()
+                return
         if not text:
             self._back_to_page()
             if self.last is not None:
