@@ -4260,16 +4260,103 @@ class DocumentView(QScrollArea):
     def _display_bounds(self, page, model):
         return annotations.bounds(model) * page.rotation_matrix
 
+    def _arrange_items(self):
+        """What Align / Distribute move: the selected markups and the drawing's own objects
+        selected with Edit objects (CAD mode selects both), any mix of kinds, on one page.
+        Returns (page index, [(kind, key, box as seen on screen)]) with kind "markup" (key:
+        (xref, model)) or "object" (key: the Edit objects item); (None, []) for nothing."""
+        index, out = None, []
+        if self.selection is not None:
+            index = self.selection[0]
+            out = [("markup", (x, m), None) for x, m in self.selected_models()
+                   if annotations.movable(m)]
+        if self.obj_sel is not None and self.obj_sel[1] and index in (None, self.obj_sel[0]):
+            index = self.obj_sel[0]
+            out += [("object", it, None) for it in self.obj_sel[1]]
+        if not out:
+            return None, []
+        page = self.doc[index]
+        rot = page.rotation_matrix
+        boxes = []
+        for kind, key, _b in out:
+            if kind == "markup":
+                boxes.append((kind, key, self._display_bounds(page, key[1])))
+            else:
+                boxes.append((kind, key, pymupdf.Rect(key["rect"]) * rot))
+        return index, boxes
+
+    def _arrange_move(self, index, moves, label):
+        """moves: [(kind, key, (dx, dy) as seen on screen)] from _arrange_items: the
+        markups and the drawing's objects each move by their own offset, as one undo step."""
+        page = self.doc[index]
+        to_pdf = page.derotation_matrix
+        o = pymupdf.Point(0, 0) * to_pdf
+        marks, objs = [], {}
+        for kind, key, (dx, dy) in moves:
+            d = pymupdf.Point(dx, dy) * to_pdf - o
+            if kind == "markup":
+                marks.append((key[0], annotations.moved(key[1], d)))
+            else:
+                objs[key["n"]] = (key, d)
+        del page
+        if not objs:
+            self.commit_models(index, marks)
+            return
+        if marks and self._both_refused():
+            return
+        from . import links, page_objects
+        rev = self.revision
+        cache = self._obj_cache.get(index)
+
+        def move_shapes(page, ns):
+            # the ones with the same offset together: one pass over the drawing each
+            groups = {}
+            for n in ns:
+                if n in objs:
+                    d = objs[n][1]
+                    groups.setdefault((d.x, d.y), []).append(n)
+            got = cache
+            for (dx, dy), group in groups.items():
+                got = page_objects.transform(page, group, pymupdf.Matrix(1, 0, 0, 1, dx, dy),
+                                             got)
+            return got
+
+        def move_text(page, texts):
+            rects = []
+            for it in texts:
+                d = objs[it["n"]][1] if it["n"] in objs else pymupdf.Point(0, 0)
+                if it["n"] in objs:
+                    self._move_text_lines(page, [ln for _r, ln in it["lines"]], (d.x, d.y))
+                rects.append(it["rect"] + (d.x, d.y, d.x, d.y))
+            return rects
+
+        def move_links(page):
+            moved = 0
+            for it, d in objs.values():
+                r = pymupdf.Rect(it["rect"])
+                moved += links.follow(page, r, r + (d.x, d.y, d.x, d.y), on=self._obj_on(it))
+            return bool(moved)
+        self._carried = set()
+        self._objects_edit(label, move_shapes, text_fn=move_text, links_fn=move_links)
+        # (the markups on moved text went with it: not moved a second time)
+        carried, self._carried = self._carried, set()
+        marks = [(x, m) for x, m in marks if x not in carried]
+        if marks:
+            kept = self.obj_sel
+            self.then_in_same_step(rev, lambda: self.commit_models(index, marks))
+            if kept is not None and self.obj_sel is None:
+                self._reselect_objects(*kept)
+
     def align(self, how, ref="first"):
         """how: left, hcenter, right, top, vmiddle, bottom (as seen on screen).
-        ref: first selected (default), last selected, selection bounds, or page."""
-        models = [(x, m) for x, m in self.selected_models() if annotations.movable(m)]
-        if not models or (len(models) < 2 and ref != "page"):
-            self.statusMessage.emit(tr("Select two or more markups to align (or align to the page)."))
+        ref: first selected (default), last selected, selection bounds, or page. Works on
+        the selected markups and the drawing's objects together (any mix of kinds)."""
+        index, items = self._arrange_items()
+        if not items or (len(items) < 2 and ref != "page"):
+            self.statusMessage.emit(tr("Select two or more items to align (or align to the page)."))
             return
-        index = self.selection[0]
         page = self.doc[index]
-        boxes = [self._display_bounds(page, m) for _x, m in models]
+        boxes = [b for _k, _key, b in items]
         if ref == "page":
             target = pymupdf.Rect(page.rect)
         elif ref == "last":
@@ -4280,9 +4367,9 @@ class DocumentView(QScrollArea):
                 target |= b
         else:
             target = boxes[0]
-        to_pdf = page.derotation_matrix
-        out = []
-        for (x, m), b in zip(models, boxes):
+        del page
+        moves = []
+        for kind, key, b in items:
             dx = dy = 0.0
             if how == "left":
                 dx = target.x0 - b.x0
@@ -4297,36 +4384,32 @@ class DocumentView(QScrollArea):
             elif how == "vmiddle":
                 dy = (target.y0 + target.y1 - b.y0 - b.y1) / 2
             if abs(dx) > 1e-3 or abs(dy) > 1e-3:
-                d = pymupdf.Point(dx, dy) * to_pdf - pymupdf.Point(0, 0) * to_pdf
-                out.append((x, annotations.moved(m, d)))
-        self.commit_models(index, out)
+                moves.append((kind, key, (dx, dy)))
+        if moves:
+            self._arrange_move(index, moves, tr("Aligned"))
 
     def distribute(self, axis):
-        """Equal gaps between the selected markups, horizontally ('h') or vertically ('v');
-        the two outermost stay put."""
-        models = [(x, m) for x, m in self.selected_models() if annotations.movable(m)]
-        if len(models) < 3:
-            self.statusMessage.emit(tr("Select three or more markups to distribute."))
+        """Equal gaps between the selected markups and objects, horizontally ('h') or
+        vertically ('v'); the two outermost stay put."""
+        index, items = self._arrange_items()
+        if len(items) < 3:
+            self.statusMessage.emit(tr("Select three or more items to distribute."))
             return
-        index = self.selection[0]
-        page = self.doc[index]
-        items = [(x, m, self._display_bounds(page, m)) for x, m in models]
         lo = (lambda b: b.x0) if axis == "h" else (lambda b: b.y0)
         size = (lambda b: b.width) if axis == "h" else (lambda b: b.height)
         items.sort(key=lambda t: lo(t[2]) + size(t[2]) / 2)
         first, last = items[0][2], items[-1][2]
         span = lo(last) + size(last) - lo(first)
         gap = (span - sum(size(t[2]) for t in items)) / (len(items) - 1)
-        to_pdf = page.derotation_matrix
         pos = lo(first)
-        out = []
-        for x, m, b in items:
+        moves = []
+        for kind, key, b in items:
             d = pos - lo(b)
             pos += size(b) + gap
             if abs(d) > 1e-3:
-                v = pymupdf.Point(d, 0) if axis == "h" else pymupdf.Point(0, d)
-                out.append((x, annotations.moved(m, v * to_pdf - pymupdf.Point(0, 0) * to_pdf)))
-        self.commit_models(index, out)
+                moves.append((kind, key, (d, 0.0) if axis == "h" else (0.0, d)))
+        if moves:
+            self._arrange_move(index, moves, tr("Distributed"))
 
     def arrange(self, how):
         """how: front, back, forward, backward (stacking order of the selected markups, or of
@@ -5847,8 +5930,11 @@ class DocumentView(QScrollArea):
         for i in {old[0] if old else None, index}:
             if i is not None and 0 <= i < len(self.pages):
                 self.pages[i].update()
-        if bool(old) != bool(self.obj_sel):
-            self.selectionChanged.emit()        # menus: Arrange works on objects too
+        def count(sel):
+            return min(len(sel[1]), 3) if sel else 0
+        if count(old) != count(self.obj_sel):
+            # menus: Arrange works on objects too (Align needs two, Distribute three)
+            self.selectionChanged.emit()
         if items:
             pics = sum(1 for it in items if it["kind"] == "picture")
             groups = sum(1 for it in items if it["kind"] == "group")

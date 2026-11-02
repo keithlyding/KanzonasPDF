@@ -85,6 +85,9 @@ class OddClipboard(unittest.TestCase):
         md = QMimeData()
         md.setData(clip.MIME, b"\xff\xfe\x00markups:\x80\x81")
         QApplication.clipboard().setMimeData(md)
+        # (a QMimeData made in Python left on the clipboard crashes PySide when Qt shuts
+        # down; the app's own clip.put swaps it for plain text before then, so does this)
+        self.addCleanup(QApplication.clipboard().setText, "")
         self.assertEqual(clip.get(), (None, None))
         v = DocumentView(pdf())
         self.addCleanup(v.close_doc)

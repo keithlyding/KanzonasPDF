@@ -376,7 +376,9 @@ Línea (flecha: Polilínea, Curva, Lápiz), Flecha, Cuadro de texto (flecha: Lla
 de una letra escriben en la línea de comandos. <b>Medir</b>: Longitud (flecha: Longitud de polilínea, Área, Ángulo, Radio,
 Perímetro, Volumen, Conteo, Calibrar cinta métrica), Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página.
 <b>Limpiar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
-izquierda (flecha: las demás alineaciones, Distribuir horizontalmente y Distribuir verticalmente).</p>
+izquierda (flecha: las demás alineaciones, Distribuir horizontalmente y Distribuir verticalmente), Editar texto (flecha:
+Agregar texto): Editar texto cambia las palabras que ya están en la página, Agregar texto escribe texto nuevo en la
+página.</p>
 <p><b>La línea de comandos</b>, a lo largo de la parte inferior de la ventana en el modo CAD, funciona como la de AutoCAD.
 Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Enter</b> (la
 barra espaciadora solo escribe un espacio, como en "ajustar página"):</p>
@@ -706,11 +708,15 @@ Importar caja de herramientas comparte un cofre con otras personas.</li>
 
 <h2 id="arrange">Alinear, distribuir y orden de apilamiento (Organizar)</h2>
 <ul>
-<li>Seleccione dos o más marcas y luego use la barra de herramientas o el menú <b>Organizar</b>: Alinear a la izquierda,
-Alinear al centro (horizontalmente), Alinear a la derecha, Alinear arriba, Alinear al medio (verticalmente), Alinear abajo.</li>
+<li>Seleccione dos o más elementos y luego use la barra de herramientas o el menú <b>Organizar</b>: Alinear a la izquierda,
+Alinear al centro (horizontalmente), Alinear a la derecha, Alinear arriba, Alinear al medio (verticalmente), Alinear abajo.
+Los elementos pueden ser de cualquier tipo y estar mezclados: marcas, y las líneas, formas, imágenes y texto propios de la
+página seleccionados con Editar objetos o con un cuadro de selección del modo CAD. El texto de la página solo se mueve (su
+cuadro conserva su tamaño). Todo el cambio se deshace con un solo Ctrl+Z.</li>
 <li><b>Alinear respecto a:</b> Alinear con la primera seleccionada (el valor predeterminado), Alinear con la última seleccionada,
 Alinear con toda la selección o Alinear con la página. Elíjalo en la lista desplegable de la barra de herramientas o en Organizar &gt;
-Alinear respecto a. La primera marca seleccionada tiene un contorno más grueso.</li>
+Alinear respecto a. La primera marca seleccionada tiene un contorno más grueso. Cuando se seleccionan marcas y objetos
+propios de la página a la vez, las marcas cuentan como seleccionadas primero.</li>
 <li><b>Distribuir horizontalmente</b> / <b>Distribuir verticalmente</b> (tres o más): espacios iguales;
 las dos de los extremos no se mueven.</li>
 <li><b>Traer al frente</b> (Ctrl+Shift+]), <b>Traer adelante</b> (Ctrl+]),

@@ -86,6 +86,49 @@ class Tab(CadWindow):
         self.assertIsNot(ribbon.currentWidget(), self.w._cad_tab)
 
 
+class TextOnTheCadTab(CadWindow):
+    """Edit text on the CAD tab (its face), with Add text under its arrow (asked for in
+    1.7.1), and both work with the CAD mouse."""
+    def split(self):
+        from PySide6.QtWidgets import QToolButton
+        t = self.w.tool_actions
+        got = [b for b in self.w._cad_tab.findChildren(QToolButton) if b.menu() is not None
+               and t["edittext"] in b.menu().actions()]
+        self.assertEqual(len(got), 1)
+        return got[0]
+
+    def test_edit_text_is_the_face_and_add_text_is_under_the_arrow(self):
+        self.cad()
+        b = self.split()
+        t = self.w.tool_actions
+        self.assertIs(b.defaultAction(), t["edittext"])
+        self.assertEqual(b.menu().actions(), [t["edittext"], t["addtext"]])
+
+    def test_edit_text_opens_the_words_in_cad_mode(self):
+        page = self.v.doc[0]
+        page.insert_text((300, 500), "PUMP ROOM", fontsize=18)
+        del page
+        self.v._clear_page_caches([0])
+        self.cad()
+        self.split().defaultAction().trigger()
+        self.assertEqual(self.w.tool, "edittext")
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(330, 494))
+        APP.processEvents()
+        ed = self.v._inline
+        self.assertIsNotNone(ed)
+        self.assertIn("PUMP ROOM", ed.text.toPlainText())
+
+    def test_add_text_types_on_the_page_in_cad_mode(self):
+        self.cad()
+        self.split().menu().actions()[1].trigger()
+        self.assertEqual(self.w.tool, "addtext")
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(200, 540))
+        APP.processEvents()
+        ed = self.v._inline
+        self.assertIsNotNone(ed)
+        self.assertEqual(getattr(ed, "kz_tool", None), "addtext")
+
+
 class Clicks(CadWindow):
     def setUp(self):
         super().setUp()

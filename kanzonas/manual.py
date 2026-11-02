@@ -388,7 +388,9 @@ Stamp (arrow: Image); their one-letter shortcuts type into the command line in C
 <b>Measure</b>: Length (arrow: Polylength, Area, Angle, Radius, Perimeter, Volume, Count,
 Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Clean up</b>: Erase
 content, Bring to front (arrow: Bring forward, Send backward, Send to back), Align left (arrow:
-the other alignments, Distribute horizontally and Distribute vertically).</p>
+the other alignments, Distribute horizontally and Distribute vertically), Edit text (arrow: Add
+text): Edit text changes the words already on the page, Add text types new text into the
+page.</p>
 <p><b>The command line</b>, along the bottom of the window in CAD mode, works like AutoCAD's.
 Just start typing over the drawing (you don't have to click in the line first) and press
 <b>Enter</b> (Space just types a space, as in "fit page"):</p>
@@ -726,11 +728,15 @@ Import tool chest shares a chest with others.</li>
 
 <h2 id="arrange">Align, distribute and stacking order (Arrange)</h2>
 <ul>
-<li>Select two or more markups, then use the <b>Arrange</b> toolbar or menu: Align left,
-Align centers (horizontally), Align right, Align top, Align middles (vertically), Align bottom.</li>
+<li>Select two or more items, then use the <b>Arrange</b> toolbar or menu: Align left,
+Align centers (horizontally), Align right, Align top, Align middles (vertically), Align bottom.
+The items can be of any kind and mixed: markups, and the page's own lines, shapes, pictures and
+text selected with Edit objects or a CAD mode selection box. Text of the page only moves (its
+box keeps its size). The whole change is one Ctrl+Z.</li>
 <li><b>Align relative to:</b> Align to first selected (the default), Align to last selected,
 Align to whole selection, or Align to page. Choose it in the toolbar dropdown or Arrange &gt;
-Align relative to. The first-selected markup has a bolder outline.</li>
+Align relative to. The first-selected markup has a bolder outline. When markups and the
+page's own objects are selected together, the markups count as selected first.</li>
 <li><b>Distribute horizontally</b> / <b>Distribute vertically</b> (three or more): equal gaps,
 the outer two stay put.</li>
 <li><b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]),
