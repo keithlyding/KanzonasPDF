@@ -3422,7 +3422,9 @@ class MainWindow(QMainWindow):
         if replaced is None:
             return
         try:
-            before, after = page_tools.compress(v.doc.tobytes(), path, preset)
+            # (a protected document's copy keeps its passwords and permissions)
+            data, password, protect = v.copy_protection()
+            before, after = page_tools.compress(data, path, preset, password, protect)
         except Exception as ex:
             QMessageBox.critical(self, tr("Compress failed"), str(ex))
             return

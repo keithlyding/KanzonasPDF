@@ -7999,6 +7999,32 @@ class DocumentView(QScrollArea):
                 original.close()
             self._orig_enc["user_pw"] = pw
 
+    def copy_protection(self):
+        """For a copy of this document made from it (Compress): (its bytes, the password
+        that opens them, the save options protecting the copy as Save protects the file).
+        None as options: keep the bytes' own encryption."""
+        sec = self.security
+        if sec is not None:
+            if not sec.get("open_pw") and not sec.get("owner_pw"):
+                return self.doc.tobytes(), None, {}         # (security being removed)
+            owner = sec.get("owner_pw") or sec.get("open_pw")
+            return self.doc.tobytes(), None, {
+                "encryption": pymupdf.PDF_ENCRYPT_AES_256, "owner_pw": owner,
+                "user_pw": sec.get("open_pw") or "",
+                "permissions": sec.get("perms", -1) if sec.get("owner_pw") else -1}
+        if self._orig_enc is None:
+            return self.doc.tobytes(), None, {}
+        enc = self._orig_enc
+        if (self.doc.metadata or {}).get("encryption"):
+            return (self.doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_KEEP),
+                    enc.get("owner_pw") or enc.get("user_pw"), None)
+        self._ask_original_passwords()          # (as save: never invented)
+        owner = enc["owner_pw"]
+        return self.doc.tobytes(), None, {
+            "encryption": pymupdf.PDF_ENCRYPT_AES_256, "owner_pw": owner,
+            "user_pw": enc.get("user_pw") or (owner if enc.get("needs_pass") else ""),
+            "permissions": enc.get("perms", -1)}
+
     def save(self, path=None):
         if path is None and self.untitled:
             raise RuntimeError(tr("This PDF hasn't been saved yet: use Save As to choose where."))
