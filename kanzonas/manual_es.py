@@ -358,10 +358,14 @@ de la página (se ajustan a los extremos de las líneas y a las esquinas como co
 presionada Alt para no ajustar), escriba un valor y presione Enter, o haga clic en un botón ahí. Escape (o Cancelar)
 detiene un comando; el clic derecho equivale a Enter. Cada cambio se deshace con un Ctrl+Z.</p>
 <p>Para que el modo CAD no necesite otra pestaña en el trabajo diario, la pestaña CAD también tiene las herramientas que más
-se usan junto a sus comandos (siguen también en sus propias pestañas): <b>Marcas</b> (Nube, Cuadro de texto, Llamada,
-Línea, Flecha, Polilínea: en el modo CAD sus atajos de una letra escriben en la línea de comandos), <b>Medir</b>
-(Longitud, Área, Conteo, Calibrar cinta métrica), <b>Ajuste</b> (Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página) y
-<b>Limpiar</b> (Borrar contenido, Traer al frente, Enviar al fondo).</p>
+se usan junto a sus comandos (siguen también en sus propias pestañas). Las herramientas parecidas comparten un botón, como en la
+cinta de AutoCAD: haga clic en el botón para la herramienta que muestra, o en la flecha de al lado para elegir otra; el botón
+muestra luego la última usada (o la herramienta activa). <b>Marcas</b>: Rectángulo (flecha: Nube, Polígono, Máscara), Círculo (flecha: Arco),
+Línea (flecha: Polilínea, Curva, Lápiz), Flecha, Cuadro de texto (flecha: Llamada), Sello (flecha: Imagen); en el modo CAD sus atajos
+de una letra escriben en la línea de comandos. <b>Medir</b>: Longitud (flecha: Longitud de polilínea, Área, Ángulo, Radio,
+Perímetro, Volumen, Conteo, Calibrar cinta métrica), Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página.
+<b>Limpiar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
+izquierda (flecha: las demás alineaciones, Distribuir horizontalmente y Distribuir verticalmente).</p>
 <p><b>La línea de comandos</b>, a lo largo de la parte inferior de la ventana en el modo CAD, funciona como la de AutoCAD.
 Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Enter</b> (la
 barra espaciadora solo escribe un espacio, como en "ajustar página"):</p>
@@ -379,6 +383,7 @@ programa. Cualquier otra cosa no ejecuta nada: la línea indica <b>Comando desco
 coinciden) y conserva lo que escribió, para corregirlo o para elegir un comando de la lista con Arriba y Abajo y Enter.
 Un ajuste que se activa escribiendo su nombre indica si ahora está activado o desactivado.</li>
 <li>Enter con la línea vacía repite el último comando.</li>
+<li>Mientras se dibuja un círculo (con el centro ya marcado), escriba su radio y presione Enter.</li>
 <li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
 de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para
 Eliminarlos).</li>
@@ -568,9 +573,37 @@ señalan entonces cualquier cambio posterior.</li>
 
 <h2 id="shapes">Formas, líneas y el lápiz</h2>
 <ul>
-<li>Rectángulo (R), Elipse (E), Nube (D), Polígono (Y), Línea (L), Flecha (A), Polilínea
-(Shift+L), Lápiz (P). Las formas comparten un botón de la barra de herramientas: haga clic en su flecha para elegir otra.</li>
-<li><b>Polígono / polilínea:</b> haga clic en cada punto; doble clic o Enter para terminar, Esc para cancelar.</li>
+<li>Rectángulo (R), Elipse (E), Círculo (O), Nube (D), Máscara, Polígono (Y), Línea (L), Flecha (A),
+Polilínea (Shift+L), Arco, Curva, Lápiz (P). Las formas comparten un botón de la barra de herramientas: haga clic en su flecha para elegir otra.</li>
+<li><b>Arco</b> (como el ARCO de tres puntos de AutoCAD; en la pestaña CAD bajo la flecha de Círculo): haga clic en el inicio, en
+un punto por el que pasa el arco y luego en el final; el arco sigue al puntero antes del último clic. Arrastre sus tres puntos para
+cambiar su forma.</li>
+<li><b>Curvar una línea o flecha:</b> selecciónela y arrastre el rombo de su centro: se vuelve una curva suave que pasa por ese
+punto; los extremos se quedan donde están y la punta de flecha sigue la curva. Lleve el rombo de vuelta a la línea recta para
+enderezarla. La herramienta <b>Curva</b> dibuja una directamente: haga clic en el inicio, en el final y luego hasta donde se curva.</li>
+<li><b>Círculo</b> (O): arrastre desde el centro hasta un punto del círculo. En el modo CAD, haga
+clic en el centro y luego en un punto del círculo, o escriba el radio en la línea de comandos y
+presione Enter (en la unidad de medida de la página, la que muestra Medir &gt; Establecer escala;
+también vale 12'-6"; pulgadas sobre el papel si no hay escala). Crea una marca de elipse, así que
+Propiedades, el borde de nube, mover y cambiar el tamaño funcionan como en una elipse.</li>
+<li><b>Máscara</b>: arrastre un cuadro sobre lo que quiere ocultar; queda cubierto por un cuadro
+blanco sin contorno (como la Cobertura de AutoCAD). En Propiedades puede cambiar su color de
+relleno o darle un contorno. Oculta lo que hay debajo en pantalla y al imprimir, pero ese
+contenido sigue en el archivo: use Censurar para eliminarlo de verdad.</li>
+<li><b>En el modo CAD</b> las herramientas que dibujan de un punto a otro (Línea, Flecha,
+Rectángulo, Elipse, Círculo, Nube, Máscara, Cuadro de texto, Llamada, Longitud, Radio, Calibrar
+cinta métrica, el cuadro del Borrador, Borrar contenido, Capturar área, Recortar páginas,
+Vínculos, marcadores de posición de firma) funcionan como en AutoCAD: haga clic donde empieza,
+mueva el puntero (la forma lo sigue sin mantener el botón presionado) y haga clic donde termina.
+Se ajusta, y Shift funciona, igual que al arrastrar; presionar, arrastrar y soltar también sigue
+funcionando. Un clic que tiembla un poco sigue siendo un clic. Esc o un clic derecho cancela la
+forma que se está dibujando; acercar, alejar o desplazarse entre los dos clics no mueve su primer
+punto. Un clic sobre una marca con el Borrador la sigue eliminando de inmediato, un clic sobre un
+vínculo con la herramienta Vínculos lo sigue abriendo, y dos clics en el mismo lugar con Cuadro
+de texto crean uno del tamaño predeterminado. Nota, Sello, Conteo e Imagen se siguen colocando
+con un clic.</li>
+<li><b>Polígono / polilínea:</b> haga clic en cada punto; doble clic o Enter para terminar, Retroceso para quitar el último
+punto, Esc para cancelar.</li>
 <li>Con una herramienta de dibujo, hacer clic en una marca existente la selecciona, y arrastrar mueve la marca o sus
 puntos, sin cambiar de herramienta. <b>Shift+clic sobre una marca</b> empieza en cambio una nueva justo ahí
 (para empezar una línea en el extremo de otra, por ejemplo): no se selecciona ni se mueve nada, y el
@@ -1203,7 +1236,7 @@ cuadrícula...).</li>
 <tr><td>Shift+O</td><td>Editar objetos (las imágenes y formas propias de la página)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Resaltado / Subrayado / Tachado</td></tr>
 <tr><td>C / N / T / K</td><td>Comentario / Nota / Cuadro de texto / Llamada</td></tr>
-<tr><td>R / E / D / Y</td><td>Rectángulo / Elipse / Nube / Polígono</td></tr>
+<tr><td>R / E / O / D / Y</td><td>Rectángulo / Elipse / Círculo / Nube / Polígono</td></tr>
 <tr><td>L / A / Shift+L / P</td><td>Línea / Flecha / Polilínea / Lápiz</td></tr>
 <tr><td>M / X</td><td>Sello / Borrador</td></tr>
 <tr><td>G / I</td><td>Firma / Iniciales</td></tr>

@@ -369,10 +369,15 @@ click points on the page (they snap to line ends and corners like the drawing to
 not to snap), type a value and press Enter, or click a button there. Escape (or Cancel) stops a
 command; right-click is Enter. Each change is one Ctrl+Z.</p>
 <p>So CAD mode needs no other tab for everyday work, the CAD tab also has the tools used most
-next to its commands (they stay on their own tabs too): <b>Markup</b> (Cloud, Text box, Callout,
-Line, Arrow, Polyline: their one-letter shortcuts type into the command line in CAD mode),
-<b>Measure</b> (Length, Area, Count, Calibrate Tape Measure), <b>Snap</b> (Snap to objects, Snap to grid, Snap to
-page) and <b>Clean up</b> (Erase content, Bring to front, Send to back).</p>
+next to its commands (they stay on their own tabs too). Similar tools share one button, as on
+AutoCAD's ribbon: click the button for the tool it shows, or the arrow beside it to pick another;
+the button then shows the one used last (or the tool that's on). <b>Markup</b>: Rectangle (arrow:
+Cloud, Polygon, Mask), Circle (arrow: Arc), Line (arrow: Polyline, Curve, Pen), Arrow, Text box (arrow: Callout),
+Stamp (arrow: Image); their one-letter shortcuts type into the command line in CAD mode.
+<b>Measure</b>: Length (arrow: Polylength, Area, Angle, Radius, Perimeter, Volume, Count,
+Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Clean up</b>: Erase
+content, Bring to front (arrow: Bring forward, Send backward, Send to back), Align left (arrow:
+the other alignments, Distribute horizontally and Distribute vertically).</p>
 <p><b>The command line</b>, along the bottom of the window in CAD mode, works like AutoCAD's.
 Just start typing over the drawing (you don't have to click in the line first) and press
 <b>Enter</b> (Space just types a space, as in "fit page"):</p>
@@ -391,6 +396,7 @@ that several commands fit) and keeps what you typed, to correct it or to pick a 
 list with Up and Down and Enter. A setting switched by typing its name says whether it's now on
 or off.</li>
 <li>Enter on an empty line repeats the last command.</li>
+<li>While a circle is being drawn (its center clicked), type its radius and press Enter.</li>
 <li>While a command runs, the line says what to do next and takes what you type: an angle, a
 scale factor, or a choice (the first letters of a button's name will do: K for Keep them, D
 for Delete them).</li>
@@ -588,9 +594,34 @@ then flag any later change.</li>
 
 <h2 id="shapes">Shapes, lines and the pen</h2>
 <ul>
-<li>Rectangle (R), Ellipse (E), Cloud (D), Polygon (Y), Line (L), Arrow (A), Polyline
-(Shift+L), Pen (P). The shapes share one toolbar button: click its arrow to pick another.</li>
-<li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Escape to cancel.</li>
+<li>Rectangle (R), Ellipse (E), Circle (O), Cloud (D), Mask, Polygon (Y), Line (L), Arrow (A),
+Polyline (Shift+L), Arc, Curve, Pen (P). The shapes share one toolbar button: click its arrow to pick another.</li>
+<li><b>Arc</b> (as AutoCAD's three-point ARC; on the CAD tab under Circle's arrow): click the start, a point the arc
+passes through, then the end; the arc follows the pointer before the last click. Drag its three points to reshape it.</li>
+<li><b>Bend a line or arrow:</b> select it and drag the diamond in its middle: it becomes a smooth curve through that
+point; the ends stay where they are and an arrowhead follows the curve. Drag the diamond back onto the straight line to
+straighten it. The <b>Curve</b> tool draws one directly: click the start, the end, then where it bends to.</li>
+<li><b>Circle</b> (O): drag from the center to a point on the circle. In CAD mode, click the
+center, then a point on the circle, or type the radius on the command line and press Enter (in
+the page's measuring unit, as Measure &gt; Set scale shows it, 12'-6" also works; inches on paper
+when no scale is set). It makes an ellipse markup, so Properties, the cloud border, moving and
+resizing work as for an ellipse.</li>
+<li><b>Mask</b>: drag a box over what to hide; it's covered by a white box with no outline (like
+AutoCAD's Wipeout). Properties can change its fill color or give it an outline. It hides what's
+under it on screen and in print, but that content stays in the file: use Redact to remove it
+for good.</li>
+<li><b>In CAD mode</b> the tools that draw from one point to another (Line, Arrow, Rectangle,
+Ellipse, Circle, Cloud, Mask, Text box, Callout, Length, Radius, Calibrate Tape Measure, the
+Eraser's box, Erase content, Capture area, Crop pages, Links, signature placeholders) work as in
+AutoCAD: click where it starts, move (the shape follows the pointer with no button held), and
+click where it ends. It snaps, and Shift works, as when dragging; pressing, dragging and letting
+go still works too. A click that shakes a little is still a click. Escape or a right-click
+cancels the shape being drawn; zooming or scrolling between the two clicks doesn't move its first
+point. A click on a markup with the Eraser still deletes it at once, a click on a link with the
+Links tool still opens it, and two clicks on the same spot with Text box make one of the default
+size. Note, Stamp, Count and Image still place with one click.</li>
+<li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Backspace to take back the last point,
+Escape to cancel.</li>
 <li>With a drawing tool, clicking an existing markup selects it, and dragging moves it or its
 points, without changing tools. <b>Shift+click on a markup</b> starts a new one right there
 instead (to start a line at the end of another, say): nothing is selected or moved, and the
@@ -1225,7 +1256,7 @@ settings...).</li>
 <tr><td>Shift+O</td><td>Edit objects (the page's own pictures and shapes)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
 <tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>
-<tr><td>R / E / D / Y</td><td>Rectangle / Ellipse / Cloud / Polygon</td></tr>
+<tr><td>R / E / O / D / Y</td><td>Rectangle / Ellipse / Circle / Cloud / Polygon</td></tr>
 <tr><td>L / A / Shift+L / P</td><td>Line / Arrow / Polyline / Pen</td></tr>
 <tr><td>M / X</td><td>Stamp / Eraser</td></tr>
 <tr><td>G / I</td><td>Signature / Initials</td></tr>

@@ -82,6 +82,9 @@ DEFAULTS = {
     "rect": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "ellipse": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "cloud": {"stroke": "#d00000", "fill": None, "width": 1.5, "cloud": True, "opacity": 1.0},
+    "circle": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
+    # a rectangle that hides what's under it (AutoCAD's Wipeout): paper white, no outline
+    "mask": {"stroke": None, "fill": "#ffffff", "width": 1.0, "cloud": False, "opacity": 1.0},
     "polygon": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "polyline": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "arc": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
@@ -118,6 +121,7 @@ LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": t
           "arc": tr("Arc"), "curve": tr("Curve"),
           "callout": tr("Callout"),
           "stamp": tr("Stamp"), "field": tr("Form field"), "cloud": tr("Cloud"),
+          "circle": tr("Circle"), "mask": tr("Mask"),
           "m_length": tr("Length"), "m_poly": tr("Polylength"), "m_area": tr("Area"),
           "m_count": tr("Count"),
           "m_angle": tr("Angle"), "m_radius": tr("Radius"), "m_perimeter": tr("Perimeter"),

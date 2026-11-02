@@ -455,14 +455,15 @@ class InTheWindow(unittest.TestCase):
         self.assertIn(t["arc"], w.tool_group.actions())             # (Tools menu)
         self.assertIn(t["curve"], w.shapes_btn.menu().actions())    # (classic toolbar)
         w.set_mouse_mode("cad")
-        # the CAD tab's Line button keeps Line, with Curve under its arrow
+        # the CAD tab's Line button starts as Line, with Curve under its arrow; once Curve is
+        # in use its face shows Curve (as AutoCAD's ribbon shows the one used last)
         split = [b for b in w._cad_tab.findChildren(QToolButton) if b.menu() is not None and
                  b.defaultAction() is t["line"]]
         self.assertEqual(len(split), 1)
         self.assertIn(t["curve"], split[0].menu().actions())
         t["curve"].trigger()
         self.assertEqual(w.tool, "curve")
-        self.assertIs(split[0].defaultAction(), t["line"])
+        self.assertIs(split[0].defaultAction(), t["curve"])
 
 
 if __name__ == "__main__":
