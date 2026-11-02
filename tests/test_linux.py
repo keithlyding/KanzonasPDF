@@ -57,7 +57,8 @@ class AppImagePieces(unittest.TestCase):
         path = appimage_in(self.dir)
         with mock.patch.dict(os.environ, {"APPIMAGE": path}), \
                 mock.patch.object(sys, "platform", "linux"):
-            self.assertEqual(updates.running_appimage(), path)
+            # (the real file: a link is followed, and so is a short Windows folder name)
+            self.assertEqual(updates.running_appimage(), os.path.realpath(path))
             self.assertTrue(updates.can_update_appimage())
         with mock.patch.dict(os.environ, {"APPIMAGE": path}), \
                 mock.patch.object(sys, "platform", "win32"):
