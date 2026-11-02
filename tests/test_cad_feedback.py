@@ -63,6 +63,13 @@ class CadWindow(unittest.TestCase):
         self.w.set_mouse_mode("cad")
         APP.processEvents()
         self.page = self.v.pages[0]
+        # (QTest moves the real pointer: a window an earlier test left open would get the
+        # moves instead of this one)
+        for old in APP.topLevelWidgets():
+            if old.isVisible() and old is not self.w and not self.w.isAncestorOf(old):
+                old.hide()
+        self.w.raise_()
+        self.w.activateWindow()
 
     def at(self, x, y):
         return QPoint(int(x * self.v.zoom), int(y * self.v.zoom))

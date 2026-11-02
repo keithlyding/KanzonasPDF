@@ -1741,7 +1741,15 @@ class PageWidget(QWidget):
                 return xref
         return None
 
+    def _gone(self):
+        """The document is closed, or this page no longer in it (a widget waiting for its
+        deleteLater): no mouse event may touch the document."""
+        doc = self.view.doc
+        return doc.is_closed or self.index >= doc.page_count
+
     def mousePressEvent(self, e):
+        if self._gone():
+            return                      # (its tab is closing: the document is closed)
         if e.button() == Qt.MiddleButton:
             # hold the wheel down and drag to pan (CAD style), with any tool
             self._mid_pan = True
@@ -2040,6 +2048,8 @@ class PageWidget(QWidget):
         return A.resized(model, new)
 
     def mouseMoveEvent(self, e):
+        if self._gone():
+            return                      # (its tab is closing: the document is closed)
         if getattr(self, "_mid_pan", False):
             self.view.continue_pan(e.globalPosition())
             return
@@ -2185,6 +2195,8 @@ class PageWidget(QWidget):
             self.unsetCursor()
 
     def mouseReleaseEvent(self, e):
+        if self._gone():
+            return                      # (its tab is closing: the document is closed)
         press = getattr(self, "_link_press", None)
         self._link_press = None
         self._release(e)
@@ -2292,6 +2304,8 @@ class PageWidget(QWidget):
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 
     def mouseDoubleClickEvent(self, e):
+        if self._gone():
+            return                      # (its tab is closing: the document is closed)
         if e.button() == Qt.LeftButton and cad_draw.finish(self, e):
             return      # (CAD mode: a quick second click near the first ends the shape)
         if cad_select.double_click(self, e):
