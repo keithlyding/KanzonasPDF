@@ -1210,8 +1210,9 @@ the effect and keep adjusting; <b>Cancel</b> closes it without the changes made 
 Apply.</li>
 <li><b>General:</b> theme (Match Windows, or Match system on Linux; Light, Dark), <b>Language</b> (Automatic, the language
 of Windows or of the system; English; Español: menus, messages and this manual; a change shows the next time
-KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, on Linux Add KanzonasPDF to the applications menu and open PDFs with it (see KanzonasPDF on Linux), Show menu bar,
-Show text labels on toolbars, Check for updates automatically. It also tells you where your
+KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, Show menu bar,
+Show text labels on toolbars, Check for updates automatically, and on Linux Add KanzonasPDF to the
+applications menu and open PDFs with it (see KanzonasPDF on Linux). It also tells you where your
 settings are saved (the data folder in portable mode). A saved setting that can't be used (one
 edited by hand, say) is replaced by its default. Should one still stop KanzonasPDF from starting,
 it starts with the default settings, says so, and lists the old ones in

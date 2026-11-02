@@ -1188,8 +1188,9 @@ el efecto y seguir ajustando; <b>Cancelar</b> la cierra sin los cambios hechos d
 Aplicar.</li>
 <li><b>General:</b> tema (Igual que Windows, o Igual que el sistema en Linux; Claro, Oscuro), <b>Idioma</b> (Automático, el idioma de
 Windows o del sistema; English; Español: menús, mensajes y este manual; el cambio se ve la próxima vez que se
-inicia KanzonasPDF), Cinta (en lugar de barras de herramientas), en Linux Agregar KanzonasPDF al menú de aplicaciones y abrir los PDF con él (vea KanzonasPDF en Linux), Mostrar nombres de grupo
-en la cinta, Mostrar barra de menús, Mostrar etiquetas de texto en las barras de herramientas, Buscar actualizaciones automáticamente.
+inicia KanzonasPDF), Cinta (en lugar de barras de herramientas), Mostrar nombres de grupo
+en la cinta, Mostrar barra de menús, Mostrar etiquetas de texto en las barras de herramientas, Buscar actualizaciones automáticamente y, en Linux,
+Agregar KanzonasPDF al menú de aplicaciones y abrir los PDF con él (vea KanzonasPDF en Linux).
 También le indica dónde se guarda su configuración (la carpeta data en el modo portátil). Una opción guardada
 que no se puede usar (editada a mano, por ejemplo) se reemplaza por su valor predeterminado. Si aun así una
 impidiera que KanzonasPDF se inicie, se inicia con la configuración predeterminada, lo avisa y anota la

@@ -21,7 +21,7 @@ say which certificate is used.
 
 - **Committers and reviewers:** [@keithlyding](https://github.com/keithlyding) (project owner).
   Some changes are prepared with AI coding assistants. Every change goes through a pull request
-  to `main` and must pass the automated Windows build (unit tests and the program's self-test)
+  to `main` and must pass the automated Windows and Linux builds (unit tests and the program's self-test)
   before it is merged.
 - **Approvers:** [@keithlyding](https://github.com/keithlyding). Every release is approved by
   the owner before it is signed and published.
