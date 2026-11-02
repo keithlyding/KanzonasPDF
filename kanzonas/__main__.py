@@ -32,14 +32,22 @@ def first_instance(name):
     their files wait. (None, None): no way to tell, run on its own."""
     from PySide6.QtCore import QDir, QLockFile
     from PySide6.QtNetwork import QAbstractSocket, QLocalServer, QLocalSocket
-    lock = QLockFile((name if os.path.isabs(name) else os.path.join(QDir.tempPath(), name))
-                     + ".lock")
+    path = name if os.path.isabs(name) else os.path.join(QDir.tempPath(), name)
+    if sys.platform.startswith("linux") and (_made_by_someone_else(path)
+                                             or _made_by_someone_else(path + ".lock")):
+        # (the shared temporary folder, without a runtime folder: another user put a file
+        # at this user's name. Never hand them the files; run on its own)
+        return None, None
+    lock = QLockFile(path + ".lock")
     locked = lock.tryLock(10000)
     try:
         for _attempt in range(3):
             sock = QLocalSocket()
             sock.connectToServer(name)
             if sock.waitForConnected(3000):
+                if sys.platform.startswith("linux") and not _same_user(sock):
+                    sock.abort()
+                    return None, None
                 return None, sock
             server = QLocalServer()
             if sys.platform != "win32":
@@ -62,6 +70,31 @@ def first_instance(name):
             lock.unlock()
 
 
+def _made_by_someone_else(path):
+    """Linux: a file at path that belongs to another user."""
+    try:
+        return os.lstat(path).st_uid != os.getuid()
+    except OSError:
+        return False
+
+
+def _same_user(sock):
+    """Linux: the program listening at the other end of the connected QLocalSocket runs as
+    this user (the kernel says who it is). False when it can't be told."""
+    import socket
+    import struct
+    try:
+        fd = int(sock.socketDescriptor())
+        s = socket.socket(fileno=os.dup(fd))
+        try:
+            cred = s.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+        finally:
+            s.close()
+        return struct.unpack("3i", cred)[1] == os.getuid()
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 TOKEN_VAR = "XDG_ACTIVATION_TOKEN"     # Wayland's permission to bring a window to the front
 
 
@@ -76,7 +109,9 @@ def instance_name(app_name, user):
     runtime = os.environ.get("XDG_RUNTIME_DIR") or ""
     try:
         if os.path.isabs(runtime) and os.path.isdir(runtime) \
-                and os.stat(runtime).st_uid == os.getuid():
+                and os.stat(runtime).st_uid == os.getuid() \
+                and len(os.fsencode(os.path.join(runtime, name))) < 108:
+            # (a socket's path holds at most 107 bytes: a longer one can't be listened at)
             return os.path.join(runtime, name)
     except OSError:
         pass
@@ -90,12 +125,28 @@ def file_arguments(args):
     for p in args:
         if p.startswith("--"):
             continue
-        if p.startswith("file://"):
+        linux = sys.platform.startswith("linux")
+        if p.startswith("file://") or (linux and p.startswith("file:/")):
             from PySide6.QtCore import QUrl
-            local = QUrl(p).toLocalFile()
+            url = QUrl(p)
+            if linux and url.host().lower() == "localhost":
+                url.setHost("")         # (file://localhost/... is a file on this computer)
+            local = url.toLocalFile()
             if local:
                 p = local
         out.append(os.path.abspath(p))
+    return out
+
+
+def without_qt_options(args, qt_args):
+    """args (sys.argv after the program) without what Qt took for itself (-platform xcb,
+    -style ..., -display ...): qt_args is QApplication.arguments() after the program, the
+    same list with those taken out. Names that aren't UTF-8 are kept as Python has them."""
+    out, j = [], 0
+    for a in args:
+        if j < len(qt_args) and os.fsencode(a).decode("utf-8", "replace") == qt_args[j]:
+            out.append(a)
+            j += 1
     return out
 
 
@@ -156,7 +207,8 @@ def _build_window(app):
 
 
 def end_on_sigterm(app, win):
-    """Linux: signing out or shutting down ends programs with SIGTERM. Treat it as Windows
+    """Linux: signing out or shutting down ends programs with SIGTERM (and Ctrl+C or closing
+    the terminal it was started from, with SIGINT or SIGHUP). Treat it as Windows
     ending KanzonasPDF: keep the open files and backups of unsaved changes for the next
     start, without asking, then quit. (Python only sees a signal when Python code runs, so
     the signal wakes the Qt event loop through a socket.)"""
@@ -172,6 +224,15 @@ def end_on_sigterm(app, win):
         return None
     got = []
     signal.signal(signal.SIGTERM, lambda *_: got.append(1))
+    # Ctrl+C in the terminal it was started from, and that terminal closing, the same way
+    # (Ctrl+C otherwise stops whatever Python code runs at that moment, half done, and
+    # KanzonasPDF goes on). A signal set to be ignored (nohup, a background job) stays so.
+    for sig in (signal.SIGINT, signal.SIGHUP):
+        try:
+            if signal.getsignal(sig) is not signal.SIG_IGN:
+                signal.signal(sig, lambda *_: got.append(1))
+        except (OSError, ValueError):
+            pass
     notifier = QSocketNotifier(r.fileno(), QSocketNotifier.Type.Read, app)
 
     def woke():
@@ -211,7 +272,11 @@ def main():
     if sys.platform.startswith("linux"):
         # the menu entry it belongs to (Wayland shows that entry's name and icon for it)
         app.setDesktopFileName("kanzonaspdf")
-    files = file_arguments(sys.argv[1:])
+    args = sys.argv[1:]
+    if sys.platform.startswith("linux"):
+        # (Qt's own options, like -platform xcb on Wayland, aren't files to open)
+        args = without_qt_options(args, app.arguments()[1:])
+    files = file_arguments(args)
     # One window: if KanzonasPDF is already running, hand it the files and quit
     # (double-clicking PDFs opens them as tabs, like PDF-XChange).
     import getpass

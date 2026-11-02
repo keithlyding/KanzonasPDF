@@ -25,6 +25,8 @@ DESKTOP_ID = "kanzonaspdf.desktop"
 ICON_NAME = "kanzonaspdf"
 MIME_TYPES = ("application/pdf",)
 MARK = "X-KanzonasPDF-Added=true"      # in the entries KanzonasPDF wrote (only those go)
+PREVIOUS = "X-KanzonasPDF-Previous-Default="  # the PDF app this user had chosen before
+USER_COPY = ".before-kanzonaspdf"      # a kanzonaspdf.desktop the user made, put aside
 
 
 def available():
@@ -89,11 +91,19 @@ def exec_quote(arg):
 
 
 def _value(text):
-    """A plain value of the file: no line breaks, backslashes written twice."""
-    return " ".join(str(text).split()).replace("\\", "\\\\")
+    """A plain value of the file, escaped as the Desktop Entry specification asks
+    (a path keeps its spaces exactly: TryExec must name the file)."""
+    return (str(text).replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
+            .replace("\r", "\\r"))
 
 
-def entry_text(cmd, version="", source_dir=None):
+def _unvalue(text):
+    """A value of the file as written by _value (or by hand), unescaped."""
+    return re.sub(r"\\(.)", lambda m: {"s": " ", "n": "\n", "t": "\t", "r": "\r"}.get(
+        m.group(1), m.group(1)), text)
+
+
+def entry_text(cmd, version="", source_dir=None, previous=()):
     """The kanzonaspdf.desktop file for running cmd (a list of arguments)."""
     lines = [
         "[Desktop Entry]",
@@ -118,25 +128,63 @@ def entry_text(cmd, version="", source_dir=None):
         lines.append("Path=" + _value(source_dir))
     if version:
         lines.append("X-KanzonasPDF-Version=" + _value(version))
+    if previous:
+        lines.append(PREVIOUS + _value("".join(p + ";" for p in previous)))
     lines.append(MARK)
     return "\n".join(lines) + "\n"
 
 
 def is_added():
     """KanzonasPDF's own menu entry is there."""
+    return MARK in _entry_lines()
+
+
+def _entry_lines():
+    """The lines of the menu entry kanzonaspdf.desktop ([] when there's none)."""
     try:
         with open(desktop_path(), encoding="utf-8", errors="replace") as f:
-            return MARK in f.read()
+            return f.read().splitlines()
     except OSError:
-        return False
+        return []
+
+
+def _previous_default():
+    """The PDF apps this user had chosen before KanzonasPDF was added (kept in its entry)."""
+    for line in _entry_lines():
+        if line.startswith(PREVIOUS):
+            return [x for x in _unvalue(line[len(PREVIOUS):]).split(";")
+                    if x.strip() and x.strip() != DESKTOP_ID]
+    return []
+
+
+def _defaults_in_list(path, mime_type):
+    """The apps a mimeapps.list file names as the default for mime_type (its
+    [Default Applications] line), in order."""
+    try:
+        with open(path, encoding="utf-8", errors="surrogateescape") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return []
+    section = None
+    for line in lines:
+        head = line.strip()
+        if head.startswith("[") and head.endswith("]"):
+            section = head
+            continue
+        key, eq, value = line.partition("=")
+        if section == "[Default Applications]" and eq and key.strip() == mime_type:
+            return [x.strip() for x in value.split(";") if x.strip()]
+    return []
 
 
 def _write(path, data, mode="w"):
     """Write a file in one step (a temporary file beside it, renamed over it)."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = "%s.%d.tmp" % (path, os.getpid())
+    # (text: bytes that aren't UTF-8, read with surrogateescape, are written back as they were)
     with open(tmp, mode + ("b" if isinstance(data, bytes) else ""),
-              **({} if isinstance(data, bytes) else {"encoding": "utf-8"})) as f:
+              **({} if isinstance(data, bytes) else {"encoding": "utf-8",
+                                                     "errors": "surrogateescape"})) as f:
         f.write(data)
     os.replace(tmp, path)
 
@@ -163,11 +211,13 @@ def _icon_png():
     return bytes(data)
 
 
-def _set_default_in_list(path, desktop_id, mime_types, on):
+def _set_default_in_list(path, desktop_id, mime_types, on, restore=()):
     """Make desktop_id the default (on) for mime_types in a mimeapps.list file, or take it
-    out of the defaults and the added associations (off). Other lines stay as they are."""
+    out of the defaults and the added associations (off). Other lines stay as they are.
+    restore: when taking it out leaves no default (xdg-mime replaced the one there was),
+    these apps are the default again."""
     try:
-        with open(path, encoding="utf-8", errors="replace") as f:
+        with open(path, encoding="utf-8", errors="surrogateescape") as f:
             lines = f.read().splitlines()
     except OSError:
         lines = []
@@ -202,6 +252,8 @@ def _set_default_in_list(path, desktop_id, mime_types, on):
             if set_here:
                 new.insert(0, desktop_id)
                 done.add(key)
+            elif not new and not on and head == defaults and restore:
+                new = [x for x in restore if x != desktop_id]
             if new != ids:
                 body[i] = "%s=%s;" % (key, ";".join(new)) if new else None
                 changed = True
@@ -227,8 +279,16 @@ def add(version="", runner=subprocess.run):
     if not cmd or any("\n" in a or "\r" in a for a in cmd):
         raise OSError(tr("KanzonasPDF couldn't find its own program file."))
     notes = []
+    # what this user had chosen to open PDFs (xdg-mime replaces it): back when taken away
+    previous = (_previous_default() if is_added() else
+                [x for x in _defaults_in_list(mimeapps_path(), MIME_TYPES[0])
+                 if x != DESKTOP_ID])
     _write(icon_path(), _icon_png())
-    _write(desktop_path(), entry_text(cmd, version, _source_dir()))
+    if os.path.exists(desktop_path()) and not is_added():
+        # a kanzonaspdf.desktop this user made: put aside (not a .desktop name, so no menu
+        # shows it), and back when KanzonasPDF's own is taken away
+        os.replace(desktop_path(), desktop_path() + USER_COPY)
+    _write(desktop_path(), entry_text(cmd, version, _source_dir(), previous))
     os.chmod(desktop_path(), 0o755)         # (some desktops only trust executable entries)
     apps = os.path.dirname(desktop_path())
     _run(["update-desktop-database", apps], runner)
@@ -245,15 +305,19 @@ def add(version="", runner=subprocess.run):
 def remove(runner=subprocess.run):
     """Take away what add() wrote: the menu entry (only KanzonasPDF's own), its icon and
     KanzonasPDF as the default PDF app."""
+    previous = []
     if os.path.exists(desktop_path()):
         if not is_added():
             return                      # someone else's entry of that name: left alone
+        previous = _previous_default()
         os.remove(desktop_path())
+        if os.path.exists(desktop_path() + USER_COPY):
+            os.replace(desktop_path() + USER_COPY, desktop_path())     # the user's own back
     try:
         os.remove(icon_path())
     except FileNotFoundError:
         pass
-    _set_default_in_list(mimeapps_path(), DESKTOP_ID, MIME_TYPES, False)
+    _set_default_in_list(mimeapps_path(), DESKTOP_ID, MIME_TYPES, False, previous)
     apps = os.path.dirname(desktop_path())
     if os.path.isdir(apps):
         _run(["update-desktop-database", apps], runner)
@@ -274,11 +338,12 @@ def refresh(version="", runner=subprocess.run):
     except OSError:
         return False
     m = re.search(r"^TryExec=(.*)$", text, re.M)
-    old = m.group(1).replace("\\\\", "\\") if m else ""
+    old = _unvalue(m.group(1)) if m else ""
     if old and os.path.exists(old):
         return False
     try:
-        _write(desktop_path(), entry_text([os.path.abspath(appimage)], version))
+        _write(desktop_path(), entry_text([os.path.abspath(appimage)], version,
+                                          previous=_previous_default()))
         os.chmod(desktop_path(), 0o755)
     except OSError:
         return False

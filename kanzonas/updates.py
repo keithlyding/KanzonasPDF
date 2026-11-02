@@ -205,7 +205,9 @@ def running_appimage():
     if not sys.platform.startswith("linux"):
         return None
     path = os.environ.get("APPIMAGE") or ""
-    return os.path.abspath(path) if path and os.path.isfile(path) else None
+    # (the file itself, not a link to it: the update is renamed over what it names, and a
+    # link replaced by the new file would leave the real one old)
+    return os.path.realpath(path) if path and os.path.isfile(path) else None
 
 
 def can_update_appimage():
@@ -262,7 +264,13 @@ def restart_env(env=None):
     PyInstaller changed; its earlier value comes back from the LD_LIBRARY_PATH_ORIG copy)."""
     env = dict(os.environ if env is None else env)
     mount = env.get("APPDIR") or ""
-    for key in ("APPIMAGE", "APPDIR", "ARGV0", "OWD"):
+    if os.path.basename(mount.rstrip("/")).startswith("appimage_extracted_"):
+        # started with --appimage-extract-and-run (no FUSE on this computer): the new one
+        # must be started the same way, or it can't start at all
+        env["APPIMAGE_EXTRACT_AND_RUN"] = "1"
+    # (and the permission to come to the front this start was given: used up already)
+    for key in ("APPIMAGE", "APPDIR", "ARGV0", "OWD", "DESKTOP_STARTUP_ID",
+                "XDG_ACTIVATION_TOKEN"):
         env.pop(key, None)
     for key in ("LD_LIBRARY_PATH", "LD_PRELOAD"):
         if key + "_ORIG" in env:            # (PyInstaller keeps the value it replaced)
@@ -583,7 +591,7 @@ class PortableUpdater(QObject):
                          QNetworkRequest.NoLessSafeRedirectPolicy)
         req.setTransferTimeout(60000)
         self.reply = self.net.get(req)
-        self.reply.readyRead.connect(lambda: self.file.write(bytes(self.reply.readAll())))
+        self.reply.readyRead.connect(lambda: self._write(bytes(self.reply.readAll())))
         self.reply.downloadProgress.connect(lambda r, t: self.progress.emit(int(r), int(t)))
         self.reply.finished.connect(self._done)
 
@@ -601,9 +609,13 @@ class PortableUpdater(QObject):
                 _RUNNING.remove(st)
         r = self.reply
         r.deleteLater()
-        self.file.write(bytes(r.readAll()))
-        self.file.close()
+        self._write(bytes(r.readAll()))
+        self._close_file()
         try:
+            problem = self._write_problem()
+            if problem:
+                self.failed.emit(problem)
+                return
             if r.error() != QNetworkReply.NoError:
                 if r.error() != QNetworkReply.OperationCanceledError:
                     self.failed.emit(tr("The download failed ({error}).").format(
@@ -622,6 +634,15 @@ class PortableUpdater(QObject):
             self._cleanup()
 
     # (what InstallerUpdater and AppImageUpdater do differently)
+    def _write(self, data):
+        self.file.write(data)
+
+    def _close_file(self):
+        self.file.close()
+
+    def _write_problem(self):
+        return None
+
     def _write_error(self, e):
         return tr("Can't write next to KanzonasPDF.exe ({error}).").format(error=e)
 
@@ -680,6 +701,32 @@ class AppImageUpdater(PortableUpdater):
     def _write_error(self, e):
         return tr("Can't write next to {name} ({error}).").format(
             name=os.path.basename(self.appimage), error=e)
+
+    _failed_write = None                # the error writing the download met (disk full...)
+
+    def _write(self, data):
+        if self._failed_write is not None:
+            return
+        try:
+            self.file.write(data)
+        except OSError as e:
+            # (the disk filled up, or the folder went away): stop downloading; _done says
+            # so and removes what was written
+            self._failed_write = e
+            if self.reply is not None and self.reply.isRunning():
+                self.reply.abort()
+
+    def _close_file(self):
+        try:
+            self.file.close()
+        except OSError as e:
+            if self._failed_write is None:
+                self._failed_write = e
+
+    def _write_problem(self):
+        if self._failed_write is None:
+            return None
+        return self._write_error(self._failed_write)
 
     def _target(self):
         return os.path.join(self.app_dir, ".%s.update-%d" % (

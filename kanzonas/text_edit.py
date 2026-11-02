@@ -400,7 +400,9 @@ def font_dirs():
 
 def _font_files(d):
     """Font files (.ttf, .otf) under folder d. Windows: as its file names are written
-    (Windows doesn't tell upper from lower case); elsewhere also FONT.TTF, Font.Otf..."""
+    (Windows doesn't tell upper from lower case); elsewhere also FONT.TTF, Font.Otf... and
+    TrueType collections (.ttc: many Linux fonts, Chinese, Japanese and Korean ones among
+    them, come only as one; its first font is used)."""
     if os.name == "nt":
         return glob.glob(os.path.join(d, "**", "*.[to]tf"), recursive=True)
     out, seen = [], set()
@@ -412,7 +414,7 @@ def _font_files(d):
         seen.add(real)
         dirs.sort()
         out += [os.path.join(root, f) for f in sorted(files)
-                if f.lower().endswith((".ttf", ".otf"))]
+                if f.lower().endswith((".ttf", ".otf", ".ttc"))]
     return out
 
 
