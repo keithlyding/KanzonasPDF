@@ -31,6 +31,7 @@ CLICK_PX = 10           # a press released less than this far from where it went
 QUICK_PX = 24           # ... and one released within QUICK_MS this far away too (a quick
 QUICK_MS = 250          #     click whose hand shook)
 SAME_PX = 4             # second point this close to the first: the same point
+MIN_RADIUS = 0.5        # pt: the smallest circle the Circle tool makes (DocumentView.apply_drag_tool)
 
 
 def on(v):
@@ -205,11 +206,16 @@ def typed(v, text):
     from . import measure, measure_ui
     page = v.doc[pk["index"]]
     m_per_pt, unit, _label, _set = measure.get_scale(page)
+    t = text.strip()
+    if t.count(",") == 1 and "." not in t:
+        # a decimal comma, as the command line's other values take it (2,5 = 2.5, not 25)
+        t = t.replace(",", ".")
     try:
-        r = measure_ui.parse_length(text, unit) / m_per_pt
+        r = measure_ui.parse_length(t, unit) / m_per_pt
     except (ValueError, ZeroDivisionError, KeyError):
         r = None
-    if r is None or not 0 < r < 1e6:
+    # (a radius under half a point would draw nothing: Circle makes none that small)
+    if r is None or not MIN_RADIUS < r < 1e6:
         v.statusMessage.emit(tr("Circle: type the radius as a number (or 12'-6\"), or click a "
                                 "point on the circle"))
         return True
