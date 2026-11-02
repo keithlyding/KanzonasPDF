@@ -142,5 +142,40 @@ class ToolChangedMidDrag(Base):
         self.assertEqual(after, before)                 # the drag went with the old tool
 
 
+class CurvesSelectedInCad(Base):
+    """In CAD mode a selection is drawn dashed (Edit objects, or several markups): a bent
+    line's and an arc's dashes ran straight from point to point (the chord, and the arc's
+    three points as a V), not along the curve that is drawn."""
+
+    def lines_of(self, model):
+        v = self.v
+        page = v.doc[0]
+        w = self.w()
+        return [[pymupdf.Point(x, y) for x, y in ln] for ln in w._model_lines(model, page)]
+
+    def far_from(self, lines, q):
+        from kanzonas import curves
+        return min(curves.seg_distance(q, a, b) for ln in lines for a, b in zip(ln, ln[1:]))
+
+    def test_the_dashes_follow_the_curve(self):
+        P = pymupdf.Point
+        bent = {"kind": "line", "props": dict(A.DEFAULTS["line"]), "rect": pymupdf.Rect(),
+                "points": [P(100, 300), P(400, 300)], "bend": P(250, 220)}
+        arc = {"kind": "arc", "props": dict(A.DEFAULTS["arc"]), "rect": pymupdf.Rect(),
+               "points": [P(100, 500), P(150, 450), P(200, 500)]}
+        for m in (bent, arc):
+            with self.subTest(kind=m["kind"]):
+                lines = self.lines_of(m)                # (zoom 100%: widget = page points)
+                on = A.path_points(m)
+                for q in on[::7]:
+                    self.assertLess(self.far_from(lines, q), 0.5)
+                # not across the inside of the curve
+                a, b = m["points"][0], m["points"][-1]
+                if m["kind"] == "line":
+                    self.assertGreater(self.far_from(lines, (a + b) / 2), 30)
+                else:
+                    self.assertGreater(self.far_from(lines, P(125, 475)), 5)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -180,6 +180,8 @@ def lines_path(lines):
 
 SELECTED = QColor(0, 120, 215)
 GRIPS_MAX = 1500        # grips drawn for a selection at most (a huge one shows its outline)
+CURVED_MAX = 300        # selected markups whose curves are drawn along them (more: 2,000 bent
+                        # lines took 0.14 s a paint)
 
 
 def paint_selected_path(p, path):
@@ -1128,9 +1130,10 @@ class PageWidget(QWidget):
         c = QPointF(r.center().x(), r.top() - ROT_GAP)
         return {"rot": QRectF(c.x() - h / 2, c.y() - h / 2, h, h)}
 
-    def _model_lines(self, m, page):
+    def _model_lines(self, m, page, curved=True):
         """A markup's outline as lines of widget points ((x, y) pairs), as the selection
-        shows it: its shape for lines and shapes with corners, else its box."""
+        shows it: its shape for lines and shapes with corners, else its box. curved: an arc
+        or a bent line along its curve (else through its points: quicker, for many)."""
         def pt(q):
             w = self.to_screen_pt(q, page)
             return (w.x(), w.y())
@@ -1138,9 +1141,9 @@ class PageWidget(QWidget):
             pts = [pt(q) for q in A.outline(m, 36)]
             return [pts + pts[:1]]
         if m["kind"] in ("line", "arrow", "m_length", "m_radius"):
-            return [[pt(q) for q in m["points"]]]
+            return [[pt(q) for q in (A.path_points(m) if curved else m["points"])]]
         if m["kind"] in A.VERTEXED:
-            pts = [pt(q) for q in m["points"]]
+            pts = [pt(q) for q in (A.path_points(m) if curved else m["points"])]
             if m["kind"] in ("polygon",) + A.CLOSED_MEASURES:
                 pts.append(pts[0])
             return [pts]
@@ -1159,9 +1162,10 @@ class PageWidget(QWidget):
         with grips on their ends and corners, as selected drawing objects are, so a blue
         markup shows as selected too."""
         lines = []
+        curved = len(models) <= CURVED_MAX
         for m in models:
             try:
-                lines += self._model_lines(m, page)
+                lines += self._model_lines(m, page, curved)
             except Exception:
                 continue
         paint_selected_path(p, lines_path(lines))
