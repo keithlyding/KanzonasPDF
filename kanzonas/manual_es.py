@@ -1174,7 +1174,9 @@ las páginas que indique; Ctrl+Z deshace cualquiera de los dos. Un fondo no se p
 el escaneo es una imagen que cubre toda la página; para esas páginas use una Marca de agua.</li>
 <li><b>Exportar</b> (Archivo &gt; Exportar a): Microsoft Word (.docx), Microsoft Excel (.xlsx),
 Microsoft PowerPoint (.pptx), Dibujo de AutoCAD (.dxf), Imágenes (PNG), Imágenes (JPEG),
-Texto sin formato (.txt). Imágenes crea una imagen por página, con el nombre que elija más el número de
+Texto sin formato (.txt). PowerPoint crea una diapositiva por página con una imagen de la página (para mostrarla
+tal como se ve; el texto y los dibujos de una diapositiva no se pueden editar como texto y formas de PowerPoint).
+Imágenes crea una imagen por página, con el nombre que elija más el número de
 página (plano_p1.png, plano_p2.png...); si alguna ya existe, se le pregunta una vez antes de reemplazarlas.</li>
 </ul>
 

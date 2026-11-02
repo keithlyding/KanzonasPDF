@@ -1195,7 +1195,9 @@ the pages you list; Ctrl+Z undoes either. A background can't show through a scan
 the scan is a picture covering the whole page; use a Watermark for those.</li>
 <li><b>Export</b> (File &gt; Export to): Microsoft Word (.docx), Microsoft Excel (.xlsx),
 Microsoft PowerPoint (.pptx), AutoCAD drawing (.dxf), Images (PNG), Images (JPEG),
-Plain text (.txt). Images make one picture per page, named after the name you choose plus the
+Plain text (.txt). PowerPoint makes one slide per page holding a picture of the page (to
+show it as it looks; the text and drawings on a slide can't be edited as PowerPoint text and
+shapes). Images make one picture per page, named after the name you choose plus the
 page number (plan_p1.png, plan_p2.png...); if any of them exist already, you're asked once
 before they're replaced.</li>
 </ul>

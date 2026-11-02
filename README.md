@@ -16,7 +16,7 @@
   <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
 </p>
 
-> Used daily for real work. Every release passes 400+ automated tests and a self-test of the
+> Used daily for real work. Every release passes 950+ automated tests and a self-test of the
 > built program on Windows and Linux before it's published, and reported bugs have been fixed within days.
 
 ## Who it's for
