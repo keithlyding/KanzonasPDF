@@ -1120,7 +1120,9 @@ casilla en un documento protegido, se le pregunta antes de quitar su protección
   contraseña de permisos). <b>Desbloquear con contraseña</b> le permite editar un archivo restringido y
   acepta la contraseña de permisos de un archivo que ya le permite editar, para poder cambiar su
   protección; Propiedades de seguridad y Quitar seguridad piden primero esa contraseña cuando el
-  archivo tiene una.</li>
+  archivo tiene una. Un archivo protegido contra cambios se abre sin mensaje (el título de la
+  ventana dice [protegido] y la barra de estado explica por qué); al intentar cambiarlo se explica y se indica
+  Desbloquear con contraseña.</li>
 <li><b>Guardar conserva la protección:</b> un archivo protegido con contraseña sigue protegido cuando guarda
 sus cambios, exactamente como estaba: el mismo cifrado, la misma contraseña de apertura, la misma contraseña
 de permisos y las mismas restricciones, aunque usted no conozca la contraseña de permisos. (Solo en el caso

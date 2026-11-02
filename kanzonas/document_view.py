@@ -4850,6 +4850,9 @@ class DocumentView(QScrollArea):
         """Edit text tool, click: edit the paragraph there (words rewrap), or, with
         one_line (Alt+click), a scanned page, sideways text or a lone line, just the line."""
         self.commit_pending()          # finish the edit already in progress first
+        if not self.allowed(pymupdf.PDF_PERM_MODIFY):
+            self.modify(lambda: None, [index])      # says why, before any typing
+            return
         hit = self._line_at(index, pt)
         if hit is None:
             self.statusMessage.emit(tr("No text there. Click on a line of text to edit it."))

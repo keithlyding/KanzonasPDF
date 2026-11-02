@@ -1144,7 +1144,9 @@ with neither box ticked on a protected document asks before taking its protectio
   permissions password). <b>Unlock with password</b> lets you edit a restricted file and
   accepts the permissions password of a file that already lets you edit, so its protection can
   be changed; Security properties and Remove security ask for that password first when the
-  file has one.</li>
+  file has one. A file protected against changes opens without a message (the window title
+  says [protected] and the status bar says why); trying to change it explains and points to Unlock
+  with password.</li>
 <li><b>Saving keeps protection:</b> a password-protected file stays protected when you save
 your changes, exactly as it was: the same encryption, open password, permissions password and
 restrictions, even if you don't know the permissions password. (Only in the rare case that the
