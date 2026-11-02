@@ -353,6 +353,10 @@ together. Right-click a markup for its own menu, the drawing's objects for their
 markups show no resize handles here: change them with the CAD tab's commands, or with Select.
 What's selected is drawn <b>dashed</b> (blue dashes over white, so it shows on a blue line too)
 with small blue <b>grips</b> on its ends and corners, as in AutoCAD.</li>
+<li>Before you click, what a click would take <b>glows</b> blue while the pointer is over it (a
+markup, or with Edit objects the drawing's own line, text or picture), so you can see what Move,
+Copy, Mirror, Scale and the other commands will get. Something already selected doesn't glow
+(it's drawn dashed), and nothing glows while a command asks for points.</li>
 <li><b>Click, move, click</b>: click empty paper, move the pointer (the box follows it) and click
 again. Left to right it's a solid <b>blue window</b>: it takes what lies entirely inside it.
 Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line
@@ -458,8 +462,14 @@ line none crosses goes completely; with cutting edges chosen, a line that crosse
 stays (it says so). The click picks the line nearest to it and isn't
 snapped; a click right where lines cross says so instead (click a little to one side). Click
 again and again; Enter, Escape or Done ends it. It
-trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
-and line, polyline and pen markups. Rectangles, polygons and clouds are trimmed too, and their
+trims the drawing's own lines and curves (a trimmed curve stays a curve, cut exactly where the
+lines cross it), lines a drawing paints as thin filled bars (as some CAD programs write every
+line; the parts left are bars as thick as before), and line, arrow, polyline, pen, arc and
+curve markups: what's left of an arc is an arc of the same circle, of a curve (a bent line) the
+same curve, and an arrow keeps its head on the part at its tip (the other parts become plain
+lines). A circle or ellipse is cut where lines cross it: what's left of a circle is an arc,
+of an ellipse a polyline along it; with fewer than two lines crossing it, it goes completely, as
+in AutoCAD. Rectangles, polygons and clouds are trimmed too, and their
 own corners cut as well as the lines crossing them: clicking a side of a lone rectangle or cloud
 takes that side away from corner to corner, and clicking again takes another. What is left is one
 open markup that starts and ends at the gap: a rectangle or polygon becomes a polyline (same
@@ -467,7 +477,7 @@ color, width and opacity; its corners go on cutting), and a cloud stays a cloud,
 sides looking just as they did (it moves, turns, mirrors, restyles and trims like any markup;
 other PDF readers show it as drawn). A cloud ellipse is cut only where lines cross it. A click
 right on a corner says so instead (click on the side, a little away from the corner). Filled
-shapes (a Mask too), plain ellipses, arcs, bent lines and pictures aren't trimmed.</li>
+shapes (a Mask too, but not the thin bars above) and pictures aren't trimmed.</li>
 </ul>
 <p>On a big drawing, CAD mode reads the page's line work in the background while you aren't
 doing anything, a little at a time so the window never stops answering, so the first box,

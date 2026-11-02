@@ -6659,8 +6659,8 @@ msgid "Highlights and other text markups stay on their words: they can only be m
 msgstr "Los resaltados y otras marcas de texto se quedan sobre sus palabras: solo se pueden mover o copiar."
 
 #: cad
-msgid "Trim: no line there. Click on a line of the drawing, a line markup, a rectangle, a polygon or a cloud (filled shapes and pictures aren't trimmed)."
-msgstr "Recortar: no hay ninguna línea ahí. Haga clic en una línea del dibujo, una marca de línea, un rectángulo, un polígono o una nube (las formas rellenas y las imágenes no se recortan)."
+msgid "Trim: no line there. Click on a line or curve of the drawing, or on a line, arrow, arc, curve, circle, rectangle, polygon or cloud markup (filled shapes and pictures aren't trimmed)."
+msgstr "Recortar: no hay ninguna línea ahí. Haga clic en una línea o curva del dibujo, o en una marca de línea, flecha, arco, curva, círculo, rectángulo, polígono o nube (las formas rellenas y las imágenes no se recortan)."
 
 msgid "Trim: a filled shape can't be trimmed (set its fill to none in Properties first)."
 msgstr "Recortar: una forma rellena no se puede recortar (quítele antes el relleno en Propiedades)."

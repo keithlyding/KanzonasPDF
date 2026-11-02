@@ -223,3 +223,52 @@ def along(poly, closed, s0, s1):
     if closed and s1 > _cum(poly)[-1] + EPS:
         poly = poly + poly[1:]
     return piece(poly, _cum(poly), s0, s1)
+
+
+def index_at(poly, s, closed=False):
+    """Position s along the polyline as a point number with a fraction (2.5: halfway from
+    its third point to its fourth). On a closed one s can go past its length: round to the
+    start, the number goes on past the last point."""
+    import bisect
+    poly = [pymupdf.Point(p) for p in poly]
+    cum = _cum(poly)
+    total = cum[-1]
+    lap = 0
+    if closed and s > total + EPS and total > EPS:
+        s -= total
+        lap = len(poly) - 1
+    s = max(0.0, min(total, s))
+    k = max(0, min(len(cum) - 2, bisect.bisect_right(cum, s) - 1))
+    seg = cum[k + 1] - cum[k]
+    return lap + k + (0.0 if seg <= EPS else (s - cum[k]) / seg)
+
+
+BAR_MAX = 4.0           # pt: a filled bar this thin (or thinner) is a line drawn as a bar
+
+
+def bar(poly):
+    """A closed four-cornered outline that is a thin bar (a line some CAD programs draw as a
+    long filled rectangle): {"line" (its middle line, end to end), "half" (half its
+    width)}, or None."""
+    pts = [pymupdf.Point(p) for p in poly]
+    if len(pts) == 5 and abs(pts[0] - pts[-1]) <= 1e-6:
+        pts = pts[:4]
+    if len(pts) != 4:
+        return None
+    a, b, c, d = pts
+    s1, s2 = abs(b - a), abs(c - b)
+    if min(s1, s2) <= 1e-9:
+        return None
+    # a rectangle: opposite sides equal, a right angle
+    if abs(abs(d - c) - s1) > 0.02 * max(s1, s2) or abs(abs(a - d) - s2) > 0.02 * max(s1, s2):
+        return None
+    if abs((b - a).x * (c - b).x + (b - a).y * (c - b).y) > 0.02 * s1 * s2:
+        return None
+    short, long_ = min(s1, s2), max(s1, s2)
+    if short > BAR_MAX or long_ < 4 * short:
+        return None
+    if s1 < s2:                         # a-b and c-d are the ends
+        line = [(a + b) / 2, (c + d) / 2]
+    else:
+        line = [(b + c) / 2, (d + a) / 2]
+    return {"line": line, "half": short / 2}

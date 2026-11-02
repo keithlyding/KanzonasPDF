@@ -341,6 +341,10 @@ una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo
 controladores para cambiar su tamaño: cámbielas con los comandos de la pestaña CAD, o con Seleccionar.
 Lo seleccionado se dibuja con <b>línea discontinua</b> (trazos azules sobre blanco, así se ve incluso sobre una línea azul)
 con pequeños <b>pinzamientos</b> azules en sus extremos y esquinas, como en AutoCAD.</li>
+<li>Antes de hacer clic, lo que tomaría un clic <b>brilla</b> en azul mientras el puntero está encima (una marca, o con
+Editar objetos la línea, el texto o la imagen propios del dibujo), así ve lo que tomarán Mover, Copiar, Simetría, Escalar y
+los demás comandos. Lo que ya está seleccionado no brilla (se dibuja con línea discontinua), y nada brilla mientras un
+comando pide puntos.</li>
 <li><b>Clic, mover, clic</b>: haga clic en el papel vacío, mueva el puntero (el recuadro lo sigue) y vuelva a hacer
 clic. De izquierda a derecha es una <b>ventana azul</b> de línea continua: toma lo que queda completamente dentro. De
 derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua: toma todo lo que toca, incluida una
@@ -438,15 +442,21 @@ parte de una línea que quiere quitar: se quita hasta los bordes de corte más c
 extremo, si ninguno la cruza de ese lado). Sin bordes de corte elegidos, una línea que ninguno cruza se quita entera; con
 bordes de corte elegidos, una línea que no cruza ninguno se queda (lo indica). El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
 en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; Enter, Escape o Listo termina. Recorta las líneas y curvas propias del
-dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma. También
+dibujo (una curva recortada sigue siendo una curva, cortada exactamente donde la cruzan las líneas), las líneas que un
+dibujo pinta como barras finas rellenas (como escriben todas sus líneas algunos programas CAD; las partes que quedan son
+barras igual de gruesas) y las marcas de línea, flecha, polilínea, pluma, arco y curva: lo que queda de un arco es un arco
+del mismo círculo, de una curva (una línea curvada) la misma curva, y una flecha conserva la punta en la parte de su
+extremo (las demás partes pasan a ser líneas simples). Un círculo o una elipse se cortan donde los cruzan líneas: lo que
+queda de un círculo es un arco, de una elipse una polilínea a lo largo de ella; si la cruzan menos de dos líneas, se quita
+entera, como en AutoCAD. También
 recorta rectángulos, polígonos y nubes, y sus propias esquinas cortan además de las líneas que los cruzan: un clic en un lado
 de un rectángulo o una nube sueltos quita ese lado de esquina a esquina, y otro clic quita otro lado. Lo que queda es una sola
 marca abierta que empieza y termina en el hueco: un rectángulo o polígono se vuelve una polilínea (mismo color, grosor y
 opacidad; sus esquinas siguen cortando) y una nube sigue siendo una nube, con los lados que quedan tal como estaban (se mueve,
 gira, refleja, cambia de estilo y se recorta como cualquier marca; otros lectores de PDF la muestran tal como está dibujada).
 Una nube en forma de elipse solo se corta donde la cruzan líneas. Un clic justo en una esquina lo indica en lugar de recortar
-(haga clic en el lado, un poco lejos de la esquina). Las formas rellenas (también una Máscara), las elipses normales, los
-arcos, las líneas curvadas y las imágenes no se recortan.</li>
+(haga clic en el lado, un poco lejos de la esquina). Las formas rellenas (también una Máscara, pero no las barras finas
+de arriba) y las imágenes no se recortan.</li>
 </ul>
 <p>En un dibujo grande, el modo CAD lee los trazos de la página en segundo plano mientras usted no hace nada, poco a
 poco para que la ventana siempre responda, así que el primer recuadro, lazo o comando empieza enseguida; el puntero

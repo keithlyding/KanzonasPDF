@@ -1858,6 +1858,140 @@ def subpaths(data, obj):
     return b" ".join(state), [tuple(p_) for p_ in parts], paint
 
 
+# ---- a subpath's own lines and curves (Trim keeps a curve a curve) ----------------------
+FINE_STEPS = 48                 # a curve's steps when Trim looks for where lines cross it
+
+
+def segments(raw):
+    """A subpath's pieces as written (raw: its bytes from subpaths()), in the object's own
+    coordinates: ([("l", p0, p1) or ("c", p0, p1, p2, p3)], closed). None when it has
+    nothing but a point."""
+    toks = _path_tokens(raw)
+    if toks is None:
+        toks = [(op, args, raw[s_:e_]) for op, args, s_, e_ in _tokens(raw)]
+    segs, first, last, closed = [], None, None, False
+    for op, args, _raw in toks:
+        k = _CONSTRUCT.get(op)
+        if k is None:
+            continue
+        vals = [_num(t) for t in args[-k:]] if k else []
+        if k and (len(args) < k or None in vals):
+            continue
+        P = [pymupdf.Point(vals[i], vals[i + 1]) for i in range(0, len(vals), 2)]
+        if op == b"m":
+            first = last = P[0]
+        elif op == b"re":
+            x, y, w, h = vals
+            c = [pymupdf.Point(x, y), pymupdf.Point(x + w, y), pymupdf.Point(x + w, y + h),
+                 pymupdf.Point(x, y + h), pymupdf.Point(x, y)]
+            segs += [("l", a, b) for a, b in zip(c, c[1:])]
+            first = last = c[0]
+            closed = True
+        elif last is None:
+            continue
+        elif op == b"l":
+            segs.append(("l", last, P[0]))
+            last = P[0]
+        elif op == b"c":
+            segs.append(("c", last, P[0], P[1], P[2]))
+            last = P[2]
+        elif op == b"v":
+            segs.append(("c", last, last, P[0], P[1]))
+            last = P[1]
+        elif op == b"y":
+            segs.append(("c", last, P[0], P[1], P[1]))
+            last = P[1]
+        elif op == b"h" and first is not None:
+            if abs(last - first) > 1e-9:
+                segs.append(("l", last, first))
+            last = first
+            closed = True
+    return (segs, closed) if segs else None
+
+
+def has_curves(raw):
+    """A subpath's bytes (subpaths()) hold a curve."""
+    return any(op in (b"c", b"v", b"y") for op in raw.split())
+
+
+def _cubic_at(p0, p1, p2, p3, t):
+    u = 1 - t
+    return p0 * (u ** 3) + p1 * (3 * u * u * t) + p2 * (3 * u * t * t) + p3 * (t ** 3)
+
+
+def _cubic_part(p0, p1, p2, p3, t0, t1):
+    """The control points of the part of a cubic curve from t0 to t1 (the same curve)."""
+    def split(a, b, c, d, t):           # (de Casteljau: the part after t)
+        ab, bc, cd = a + (b - a) * t, b + (c - b) * t, c + (d - c) * t
+        abc, bcd = ab + (bc - ab) * t, bc + (cd - bc) * t
+        return abc + (bcd - abc) * t, bcd, cd, d
+    q = (p0, p1, p2, p3) if t0 <= 0 else split(p0, p1, p2, p3, t0)
+    if t1 >= 1:
+        return q
+    r = (t1 - t0) / (1 - t0) if t0 < 1 else 1.0
+
+    def before(a, b, c, d, t):          # (the part before t)
+        ab, bc, cd = a + (b - a) * t, b + (c - b) * t, c + (d - c) * t
+        abc, bcd = ab + (bc - ab) * t, bc + (cd - bc) * t
+        return a, ab, abc, abc + (bcd - abc) * t
+    return before(*q, r)
+
+
+def flatten(segs, steps=FINE_STEPS):
+    """(points, starts): the subpath as a polyline, a curve in `steps` equal steps of its
+    parameter, and where each piece's points start (its first point's number)."""
+    pts, starts = [segs[0][1]], []
+    for sg in segs:
+        starts.append(len(pts) - 1)
+        if sg[0] == "l":
+            pts.append(sg[2])
+        else:
+            pts += [_cubic_at(*sg[1:], i / steps) for i in range(1, steps + 1)]
+    return pts, starts
+
+
+def piece_ops(segs, starts, u0, u1, closed, steps=FINE_STEPS):
+    """The bytes of the part of the subpath from point number u0 to u1 (fractional, on its
+    flatten() polyline; on a closed one u1 can go past the end, round to the start), drawn
+    with its own lines and curves."""
+    n = len(segs)
+    total = starts[-1] + (1 if segs[-1][0] == "l" else steps)
+
+    def where(u):
+        lap = 0
+        if closed and u > total:
+            u, lap = u - total, n
+        j = max(0, min(n - 1, _bisect(starts, u) - 1))
+        size = 1 if segs[j][0] == "l" else steps
+        return j + lap, max(0.0, min(1.0, (u - starts[j]) / size))
+    j0, t0 = where(u0)
+    j1, t1 = where(u1)
+    out = []
+    for j in range(j0, j1 + 1):
+        sg = segs[j % n]
+        a = t0 if j == j0 else 0.0
+        b = t1 if j == j1 else 1.0
+        if b - a <= 1e-9 and not (j == j0 == j1):
+            continue
+        if sg[0] == "l":
+            p, q = sg[1] + (sg[2] - sg[1]) * a, sg[1] + (sg[2] - sg[1]) * b
+            if not out:
+                out.append(b"%.4f %.4f m" % (p.x, p.y))
+            out.append(b"%.4f %.4f l" % (q.x, q.y))
+        else:
+            c = _cubic_part(*sg[1:], a, b)
+            if not out:
+                out.append(b"%.4f %.4f m" % (c[0].x, c[0].y))
+            out.append(b"%.4f %.4f %.4f %.4f %.4f %.4f c" % (c[1].x, c[1].y, c[2].x, c[2].y,
+                                                              c[3].x, c[3].y))
+    return b" ".join(out)
+
+
+def _bisect(a, x):
+    import bisect
+    return bisect.bisect_right(a, x)
+
+
 def _polyline_ops(pts):
     out = [b"%.4f %.4f m" % (pts[0].x, pts[0].y)]
     out += [b"%.4f %.4f l" % (q.x, q.y) for q in pts[1:]]
@@ -1866,14 +2000,16 @@ def _polyline_ops(pts):
 
 def rewrite_path(page, n, state, parts, paint, objs=None):
     """Write path object n again from (state, [(subpath bytes, polyline, closed) or a list of
-    new polylines], paint): a subpath given as bytes is kept as it was, polylines are drawn as
-    straight lines. Nothing left: the object goes."""
+    new pieces], paint): a subpath given as bytes is kept as it was; a new piece is a
+    polyline (drawn as straight lines) or the bytes of an open subpath (piece_ops). Nothing
+    left: the object goes."""
     body = []
     for part in parts:
         if isinstance(part, bytes):
             body.append(part)
         else:
-            body += [_polyline_ops(pts) for pts in part if len(pts) >= 2]
+            body += [pts if isinstance(pts, bytes) else _polyline_ops(pts)
+                     for pts in part if isinstance(pts, bytes) or len(pts) >= 2]
     if not body:
         return delete(page, [n], objs)
     if paint == b"s" and parts and isinstance(parts[-1], bytes):

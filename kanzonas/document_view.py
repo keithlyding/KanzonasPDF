@@ -5645,27 +5645,49 @@ class DocumentView(QScrollArea):
             # (a click just beside a crossing means the line it's on)
             for item in objs.items:
                 r = item["rect"]
-                pad = tol + item.get("width", 0) / 2
-                if item["kind"] == "shape" and item["stroke"] and not item["fill"] and \
+                pad = tol + item.get("width", 0) / 2 + (trim.BAR_MAX / 2 if item["fill"] else 0)
+                # stroked lines, and lines drawn as thin filled bars (some CAD programs
+                # write every line that way)
+                if item["kind"] == "shape" and (item["stroke"] and not item["fill"] or
+                                                item["fill"] and not item["stroke"]) and \
                         r.x0 - pad <= pt.x <= r.x1 + pad and r.y0 - pad <= pt.y <= r.y1 + pad:
                     near.append(item)
-        nearest = None                      # (distance, item, subpath number)
+        nearest = None                      # (distance, item, subpath number, bar or None)
         for item in near:
             for k, poly in enumerate(objs.lines(item)):
                 if len(poly) < 2:
                     continue
+                bar = None
+                if item["fill"]:
+                    bar = trim.bar(poly)
+                    if bar is None:
+                        continue            # (a filled shape that isn't a line)
+                    poly = bar["line"]
+                reach = tol + (bar["half"] if bar else item.get("width", 0) / 2)
                 _s, d = trim.project(poly, trim._cum(poly), pt)
-                if d <= tol + item.get("width", 0) / 2 and (nearest is None or d < nearest[0]):
-                    nearest = (d, item, k)
+                if d <= reach and (nearest is None or d < nearest[0]):
+                    nearest = (d, item, k, bar)
         if nearest is not None:
-            d, item, k = nearest
+            d, item, k, bar = nearest
             state, parts, paint = page_objects.subpaths(objs.data, item["obj"])
             mat = item["obj"]["ctm"] * objs.tm
             if k < len(parts):
                 shown = objs.lines(item)[k]         # (the same subpath, already on the page)
                 poly = shown if len(shown) == len(parts[k][1]) else \
                     [q * mat for q in parts[k][1]]
-                best = (d, "object", item, k, poly, parts[k][2], state, parts, paint, mat)
+                curve, closed = None, parts[k][2]
+                if bar is not None:
+                    poly, closed = bar["line"], False
+                elif page_objects.has_curves(parts[k][0]):
+                    # a curve stays a curve: found finely, cut exactly (page_objects.segments)
+                    got = page_objects.segments(parts[k][0])
+                    if got is not None:
+                        segs, closed = got
+                        fine, starts = page_objects.flatten(segs)
+                        curve = (segs, starts)
+                        poly = [q * mat for q in fine]
+                best = (d, "object", item, k, poly, closed, state, parts, paint, mat,
+                        bar, curve)
         refused = None                      # (distance, why) the nearest shape that can't be
         for an in self._trimmable_annots(page):
             m = annotations.read(an)
@@ -5684,9 +5706,29 @@ class DocumentView(QScrollArea):
                 elif best is None or d < best[0]:
                     best = (d, "shape", an.xref, 0, poly, shape["closed"], m, shape)
                 continue
-            if m["kind"] not in ("line", "polyline", "ink"):
+            if m["kind"] == "ellipse":
+                # a circle or an ellipse (not filled, no cloud: _trim_outline): cut where
+                # lines cross it; what's left is an arc (of an ellipse: a polyline along it)
+                g = self._ellipse_geom(page, an, m)
+                if g is None:
+                    continue
+                poly = g["poly"]
+                _s, d = trim.project(poly, trim._cum(poly), pt)
+                if d <= tol and (best is None or d < best[0]):
+                    best = (d, "curve", an.xref, 0, poly, True, m, g)
                 continue
-            if m.get("bend") is not None:   # (a bent line isn't trimmed: it would go straight)
+            if m["kind"] not in ("line", "arrow", "polyline", "ink", "arc"):
+                continue
+            if m["kind"] == "arc" or m.get("bend") is not None:
+                # an arc or a bent line stays one: its parts are arcs / bent lines of the same
+                # curve (_curve_parts)
+                from . import curves
+                poly = [pymupdf.Point(q) for q in curves.path(m)]
+                if len(poly) < 2:
+                    continue
+                _s, d = trim.project(poly, trim._cum(poly), pt)
+                if d <= tol and (best is None or d < best[0]):
+                    best = (d, "curve", an.xref, 0, poly, False, m, None)
                 continue
             strokes = m["strokes"] if m["kind"] == "ink" else [m["points"]]
             for k, poly in enumerate(strokes):
@@ -5700,9 +5742,10 @@ class DocumentView(QScrollArea):
             self.statusMessage.emit(refused[1])
             return False
         if best is None:
-            self.statusMessage.emit(tr("Trim: no line there. Click on a line of the drawing, a "
-                                       "line markup, a rectangle, a polygon or a cloud (filled "
-                                       "shapes and pictures aren't trimmed)."))
+            self.statusMessage.emit(tr("Trim: no line there. Click on a line or curve of the "
+                                       "drawing, or on a line, arrow, arc, curve, circle, "
+                                       "rectangle, polygon or cloud markup (filled shapes and "
+                                       "pictures aren't trimmed)."))
             return False
         poly = best[4]
         r = pymupdf.Rect(poly[0], poly[0])
@@ -5725,7 +5768,7 @@ class DocumentView(QScrollArea):
                         continue
                     cutters.append(line)
         for an in self._trimmable_annots(page) if edges is None else ():
-            if best[1] in ("markup", "shape") and an.xref == best[2]:
+            if best[1] in ("markup", "shape", "curve") and an.xref == best[2]:
                 continue
             if not page_objects.overlap(an.rect, r):
                 continue
@@ -5743,13 +5786,17 @@ class DocumentView(QScrollArea):
             return False
         if best[1] == "shape":
             return self._trim_shape(index, pt, best, cutters)
+        if best[1] == "curve":
+            return self._trim_curve(index, pt, best, cutters)
+        if best[1] == "object" and (best[10] is not None or best[11] is not None):
+            return self._trim_object_exact(index, pt, best, cutters, objs)
         pieces = trim.trim(poly, best[5], pt, cutters)
         if pieces is None:
             self.statusMessage.emit(tr("Trim: that's where lines cross. Click on the part of "
                                        "the line to cut away, a little to one side."))
             return False
         if best[1] == "object":
-            _d, _w, item, k, _poly, _closed, state, parts, paint, mat = best
+            _d, _w, item, k, _poly, _closed, state, parts, paint, mat = best[:10]
             inv = ~mat
             new = [p_[0] if j != k else [[q * inv for q in pc] for pc in pieces]
                    for j, p_ in enumerate(parts)]
@@ -5784,8 +5831,10 @@ class DocumentView(QScrollArea):
                 for pc in pieces:
                     n = annotations.copy(m)
                     n["points"] = [pymupdf.Point(q) for q in pc]
-                    if m["kind"] == "line" and len(pc) > 2:
+                    if m["kind"] in ("line", "arrow") and len(pc) > 2:
                         n["points"] = [pc[0], pc[-1]]
+                    if m["kind"] == "arrow" and abs(n["points"][-1] - m["points"][1]) > 1e-3:
+                        n = self._as_line(n)        # (the head stays on the part at the tip)
                     models.append(n)
 
             def do():
@@ -5836,12 +5885,179 @@ class DocumentView(QScrollArea):
             return {"poly": poly, "reach": reach,
                     "why": tr("Trim: a filled shape can't be trimmed (set its fill to none in "
                               "Properties first).")}
-        if cloud is None and not shape["corners"]:
-            return {"poly": poly, "reach": reach,
-                    "why": tr("Trim: an ellipse can't be trimmed (an ellipse drawn as a cloud "
-                              "can).")}
+        if cloud is None and (not shape["corners"] or kind == "ellipse"):
+            return None             # (a circle or an ellipse: _cad_trim cuts it as a curve)
         return {"poly": poly, "closed": True, "corners": shape["corners"], "cloud": cloud,
                 "reach": reach}
+
+    @staticmethod
+    def _as_line(model):
+        """An arrow's part away from its tip: the same line without the head."""
+        n = annotations.copy(model)
+        props = dict(annotations.DEFAULTS["line"])
+        props.update({k: v for k, v in model["props"].items() if k in props})
+        n["kind"], n["props"] = "line", props
+        return n
+
+    @staticmethod
+    def _ellipse_geom(page, an, m):
+        """A circle or ellipse markup as Trim sees it: {"poly" (page coordinates, closed,
+        ELLIPSE_STEPS equal steps of its angle), "at" (angle -> point), "circle"}."""
+        from . import clouds, pdfcoords
+        if annotations.turned(m):
+            r = pymupdf.Rect(m["rect"])
+            c = pymupdf.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2)
+            rx, ry, rot = r.width / 2, r.height / 2, annotations.angle(m)
+        else:
+            shape = clouds.closed_shape(page, an)
+            if shape is None:
+                return None
+            back = pdfcoords.to_page(page)
+            pts = [pymupdf.Point(v) * back for v in shape["verts"]]
+            box = pymupdf.Rect(pts[0], pts[0])
+            for q in pts[1:]:
+                box |= q
+            c = pymupdf.Point((box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2)
+            rx, ry, rot = box.width / 2, box.height / 2, 0.0
+        if rx <= 0 or ry <= 0:
+            return None
+
+        def at(t):
+            q = pymupdf.Point(c.x + rx * math.cos(t), c.y + ry * math.sin(t))
+            return annotations.rotate_point(q, c, rot) if rot else q
+        n = DocumentView.ELLIPSE_STEPS
+        return {"poly": [at(2 * math.pi * k / n) for k in range(n)] + [at(0.0)], "at": at,
+                "circle": abs(rx - ry) <= 0.005 * max(rx, ry)}
+
+    ELLIPSE_STEPS = 360
+
+    def _trim_curve(self, index, pt, best, cutters):
+        """Trim an arc, a bent line or arrow, or a circle / ellipse markup: the part between
+        the nearest crossings on either side of the click goes. The parts left are the same
+        curve: arcs of the arc or circle (a circle cut once or not at all goes completely,
+        as in AutoCAD), bent lines of the bent line; an arrow keeps its head on the part at
+        its tip. One undo step."""
+        from . import curves, trim
+        _d, _w, xref, _k, poly, closed, m, g = best
+        parts = trim.spans(poly, closed, pt, cutters)
+        if parts is None:
+            self.statusMessage.emit(tr("Trim: that's where lines cross. Click on the part of "
+                                       "the line to cut away, a little to one side."))
+            return False
+        steps = len(poly) - 1
+        base = {"text": m.get("text", ""), "author": m.get("author", ""),
+                "created": m.get("created", ""), "locked": m.get("locked", False),
+                "hidden": m.get("hidden", False)}
+
+        def props_for(kind):
+            props = dict(annotations.DEFAULTS[kind])
+            props.update({k: v for k, v in m["props"].items() if k in props})
+            props["rotation"] = 0
+            return props
+        models = []
+        for s0, s1 in parts:
+            u0 = trim.index_at(poly, s0, closed)
+            u1 = trim.index_at(poly, s1, closed)
+            if m["kind"] == "ellipse":
+                t0, t1 = 2 * math.pi * u0 / steps, 2 * math.pi * u1 / steps
+                if g["circle"]:
+                    n = dict(base, kind="arc", props=props_for("arc"),
+                             points=[g["at"](t0), g["at"]((t0 + t1) / 2), g["at"](t1)])
+                else:
+                    k = max(2, int(math.ceil((t1 - t0) / (2 * math.pi / 180))))
+                    n = dict(base, kind="polyline", props=props_for("polyline"),
+                             points=[g["at"](t0 + (t1 - t0) * j / k) for j in range(k + 1)])
+            elif m["kind"] == "arc":
+                got = curves.arc_sweep(*m["points"][:3])
+                n = annotations.copy(m)
+                if got is None:                     # (its three points on one line)
+                    n["points"] = [pymupdf.Point(q) for q in trim.along(poly, False, s0, s1)]
+                    n["points"] = [n["points"][0], (n["points"][0] + n["points"][-1]) / 2,
+                                   n["points"][-1]]
+                else:
+                    center, r, a0, sweep = got
+
+                    def on(u):
+                        a = a0 + sweep * u / steps
+                        return pymupdf.Point(center.x + r * math.cos(a),
+                                             center.y + r * math.sin(a))
+                    n["points"] = [on(u0), on((u0 + u1) / 2), on(u1)]
+            else:                                   # a bent line or arrow
+                a, b = (pymupdf.Point(q) for q in m["points"][:2])
+                ctl = curves.bend_control(a, b, m["bend"])
+
+                def on(t):
+                    v = 1 - t
+                    return a * (v * v) + ctl * (2 * v * t) + b * (t * t)
+                t0, t1 = u0 / steps, u1 / steps
+                n = annotations.copy(m)
+                n["points"] = [on(t0), on(t1)]
+                n["bend"] = on((t0 + t1) / 2)
+                if m["kind"] == "arrow" and t1 < 1 - 1e-9:
+                    n = self._as_line(n)
+            models.append(n)
+
+        def do():
+            pg = self.doc[index]
+            if models:
+                annotations.replace_many(pg, [(xref, models[0])])
+            else:
+                pg.delete_annot(pg.load_annot(xref))
+            for mod in models[1:]:
+                annotations.write(pg, mod)
+        self.clear_selection()
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
+        return True
+
+    def _trim_object_exact(self, index, pt, best, cutters, objs):
+        """Trim one of the drawing's own curves (its parts keep their curves: cut exactly,
+        page_objects.piece_ops), or a line drawn as a thin filled bar (its parts are bars of
+        the same width)."""
+        from . import page_objects, trim
+        _d, _w, item, k, poly, closed, state, parts, paint, mat, bar, curve = best
+        spans = trim.spans(poly, closed, pt, cutters)
+        if spans is None:
+            self.statusMessage.emit(tr("Trim: that's where lines cross. Click on the part of "
+                                       "the line to cut away, a little to one side."))
+            return False
+        inv = ~mat
+        pieces, shown = [], []
+        for s0, s1 in spans:
+            line = [pymupdf.Point(q) for q in trim.along(poly, closed, s0, s1)]
+            if bar is not None:
+                a, b = line[0], line[-1]
+                d = b - a
+                if abs(d) <= 1e-9:
+                    continue
+                nrm = pymupdf.Point(-d.y, d.x) * (bar["half"] / abs(d))
+                box = [a + nrm, b + nrm, b - nrm, a - nrm, a + nrm]
+                pieces.append([q * inv for q in box])
+                shown.append(box)
+            else:
+                segs, starts = curve
+                pieces.append(page_objects.piece_ops(
+                    segs, starts, trim.index_at(poly, s0, closed),
+                    trim.index_at(poly, s1, closed), closed))
+                shown.append(line)
+        new = [p_[0] if j != k else pieces for j, p_ in enumerate(parts)]
+        fresh = {}
+
+        def do():
+            fresh["objs"] = page_objects.rewrite_path(self.doc[index], item["n"], state, new,
+                                                      paint, objs)
+        self.clear_object_selection()
+        self.modify(do, [index])
+        got = fresh.get("objs")
+        if isinstance(got, page_objects.Objects):
+            got_item = next((it for it in got.items if it["n"] == item["n"]), None)
+            if got_item is not None and pieces:
+                lines = objs.lines(item)
+                got_item["lines"] = lines[:k] + shown + lines[k + 1:]
+            self._obj_cache[index] = got
+            _set_aside(got)
+        self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
+        return True
 
     def _trim_shape(self, index, pt, best, cutters):
         """Trim a rectangle, polygon or cloud markup (see _trim_outline): the part between

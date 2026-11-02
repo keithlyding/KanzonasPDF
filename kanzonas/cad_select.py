@@ -53,24 +53,29 @@ def press(w, e, pos, pdf):
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     w._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
                     return
-        xref = w._card_at(pos)
-        target = ("markup", xref if xref is not None else v.annot_at(w.index, pdf))
-    else:
-        if w._objects_here() and not remove:
-            for hid, r in w._objects_handles().items():
-                if r.adjusted(-3, -3, 3, 3).contains(pos):
-                    w._obj_edit = {"mode": hid, "start": pos, "preview": None}
-                    return
-        # CAD mode takes everything: a markup drawn over the drawing first (it lies on top),
-        # else the drawing's own line, text or picture
-        xref = w._card_at(pos)
-        if xref is None:
-            xref = v.annot_at(w.index, pdf)
-        target = ("markup", xref) if xref is not None else \
-            ("object", v.object_at(w.index, pdf))
+    elif w._objects_here() and not remove:
+        for hid, r in w._objects_handles().items():
+            if r.adjusted(-3, -3, 3, 3).contains(pos):
+                w._obj_edit = {"mode": hid, "start": pos, "preview": None}
+                return
+    target = target_at(w, pos, pdf)
     w._cad_down = {"start": pos, "pts": [pos], "dir": 0, "mode": None, "now": None,
                    "target": target, "remove": remove, "t": e.timestamp(),
                    "link": getattr(w, "_link_press", None) is not None}
+
+
+def target_at(w, pos, pdf):
+    """What a click at pos (pdf: the same point on the page) takes: ("markup", xref) with
+    Select; with Edit objects everything, a markup drawn over the drawing first (it lies on
+    top), else ("object", the drawing's own line, text or picture). The target is None for
+    empty paper."""
+    v = w.view
+    xref = w._card_at(pos)
+    if xref is None:
+        xref = v.annot_at(w.index, pdf)
+    if v.tool == "select" or xref is not None:
+        return "markup", xref
+    return "object", v.object_at(w.index, pdf)
 
 
 # A press and release this quick, ending this close, is a click even if the pointer moved a
@@ -110,10 +115,13 @@ def move(w, e, pos):
 
 
 def hover(w, e):
-    """Pointer moved without a button: the click, move, click box follows it."""
+    """Pointer moved without a button: the click, move, click box follows it; with no box
+    started, what a click would take there is highlighted (rollover)."""
     pick = w.view._cad_pick
     if pick is None:
+        rollover(w, e.position())
         return
+    clear_rollover(w)
     pw = pick["w"]
     if not shiboken6.isValid(pw):       # (the pages were rebuilt)
         w.view._cad_pick = None
@@ -121,6 +129,72 @@ def hover(w, e):
     pick["now"] = QPointF(pw.mapFromGlobal(e.globalPosition()))
     _schedule(pw)
     pw.update()
+
+
+# ---- rollover: what a click would take, before the click (as AutoCAD highlights the object
+# under the cursor), so the user sees where Move, Mirror, Scale... can take something
+def rollover(w, pos):
+    if not active(w) or w._cad_down is not None or w.view._cad_cmd is not None and \
+            not w.view._cad_cmd.selecting:
+        clear_rollover(w)
+        return
+    v = w.view
+    try:
+        kind, target = target_at(w, pos, w.to_pdf(pos))
+    except Exception:
+        target = None
+    if target is None:
+        clear_rollover(w)
+        return
+    key = (kind, target if kind == "markup" else target["n"], v.revision, w.index)
+    old = getattr(w, "_cad_hover", None)
+    if old is not None and old["key"] == key:
+        return                          # (the same item: nothing read again)
+    lines = []
+    if kind == "markup" and v.markup_locked(w.index, target):
+        pass                            # (a locked markup isn't taken: it doesn't glow)
+    elif kind == "markup":
+        page = v.doc[w.index]
+        annot = page.load_annot(target)
+        model = None
+        if annot is not None:
+            from . import annotations
+            model = annotations.read(annot)
+        del annot
+        if model is not None:
+            lines = v.cad_outlines(w.index, "markups", [(target, model)])
+        del page
+    else:
+        lines = v.object_lines(w.index, target)
+    w._cad_hover = {"key": key, "kind": kind, "target": target, "lines": lines[:LIMIT],
+                    "path": None}
+    w.update()
+
+
+def clear_rollover(w):
+    if getattr(w, "_cad_hover", None) is not None:
+        w._cad_hover = None
+        w.update()
+
+
+def _rollover_shown(w):
+    """The rollover to draw now, or None (gone stale, or already selected: a selection is
+    drawn dashed with grips)."""
+    hv = getattr(w, "_cad_hover", None)
+    v = w.view
+    if hv is None or hv["key"][2] != v.revision or w._cad_down is not None or \
+            v._cad_pick is not None or not active(w):
+        return None
+    if v._cad_cmd is not None and not v._cad_cmd.selecting:
+        return None                     # (a command is asking for points, not objects)
+    if hv["kind"] == "markup":
+        if v.selection is not None and v.selection[0] == w.index and \
+                hv["target"] in v.selected_xrefs():
+            return None
+    elif v.obj_sel is not None and v.obj_sel[0] == w.index and \
+            any(it["n"] == hv["target"]["n"] for it in v.obj_sel[1]):
+        return None
+    return hv
 
 
 def release(w, e, pos):
@@ -393,6 +467,17 @@ def _glow_path(w, pv):
 
 
 def paint(w, p):
+    hv = _rollover_shown(w)
+    if hv is not None and hv["lines"]:
+        from .page_widget import lines_path
+        t = w._screen_transform(w.view.doc[w.index])
+        zoom = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
+        if hv["path"] is None or hv["path"][0] != zoom:
+            hv["path"] = (zoom, t.map(lines_path(hv["lines"])))
+        glow = QColor(BLUE)
+        glow.setAlpha(110)
+        p.setPen(QPen(glow, 6))             # (the same glow as a box's "what it would take")
+        p.drawPath(hv["path"][1])
     pv = getattr(w, "_cad_preview", None)
     if pv is not None and (w._cad_down is not None or w.view._cad_pick is not None):
         crossing, lines, rects = pv

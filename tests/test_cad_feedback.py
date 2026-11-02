@@ -129,6 +129,90 @@ class TextOnTheCadTab(CadWindow):
         self.assertEqual(getattr(ed, "kz_tool", None), "addtext")
 
 
+class Rollover(CadWindow):
+    """CAD mode: what a click would take is highlighted while the pointer is over it, before
+    any click (asked for after 1.7: "show something so the user knows when his mouse is over
+    an area that can be selected for moving, mirroring, scaling")."""
+    def setUp(self):
+        super().setUp()
+        self.cad()
+
+    def hover(self, x, y):
+        # (away first: a move to where the pointer already is sends nothing)
+        QTest.mouseMove(self.page, self.at(x + 37, y + 41))
+        QTest.mouseMove(self.page, self.at(x, y))
+        APP.processEvents()
+        from kanzonas import cad_select
+        return cad_select._rollover_shown(self.page)
+
+    def test_a_markup_under_the_pointer_lights_up(self):
+        got = self.hover(250, 225)                  # (on the first arrow)
+        self.assertIsNotNone(got)
+        self.assertEqual(got["kind"], "markup")
+        self.assertTrue(got["lines"])
+        self.assertIsNone(self.hover(600, 500))     # (empty paper: nothing)
+
+    def test_it_is_drawn(self):
+        self.hover(250, 225)
+        from kanzonas import cad_select
+        drawn = []
+        own = cad_select.QPen
+
+        def pen(*a):
+            drawn.append(a)
+            return own(*a)
+        with mock.patch.object(cad_select, "QPen", pen):
+            self.page.repaint()
+        self.assertTrue(any(len(a) == 2 and a[1] == 6 for a in drawn))
+
+    def test_a_locked_markup_does_not_light_up(self):
+        page = self.v.doc[0]
+        first = annotations.each_annot(page)[0]
+        first.set_flags((first.flags or 0) | pymupdf.PDF_ANNOT_IS_LOCKED)
+        first.update()
+        del first, page
+        self.v._clear_page_caches([0])
+        got = self.hover(250, 225)
+        self.assertTrue(got is None or not got["lines"])
+
+    def test_a_selected_markup_is_not_lit_again(self):
+        page = self.v.doc[0]
+        xs = [a.xref for a in annotations.each_annot(page)]
+        del page
+        self.v._set_selection(0, xs[:1])
+        self.assertIsNone(self.hover(250, 225))
+
+    def test_the_drawings_own_line_with_edit_objects(self):
+        d = pymupdf.open()
+        p = d.new_page(width=400, height=300)
+        p.draw_line((50, 150), (350, 150), color=(0, 0, 1))
+        path = os.path.join(tempfile.mkdtemp(), "line.pdf")
+        d.save(path)
+        self.w.open_file(path)
+        APP.processEvents()
+        v = self.v = self.w.view()
+        self.addCleanup(lambda: setattr(v, "dirty", False))
+        self.w.set_tool("editobjects")
+        self.cad()
+        got = self.hover(200, 150)
+        self.assertIsNotNone(got)
+        self.assertEqual(got["kind"], "object")
+        # once it's selected it's drawn as a selection instead
+        v.select_objects(0, [got["target"]])
+        self.assertIsNone(self.hover(201, 150))
+
+    def test_not_while_a_command_asks_for_points(self):
+        self.assertIsNotNone(self.hover(250, 225))
+        page = self.v.doc[0]
+        xs = [a.xref for a in annotations.each_annot(page)]
+        del page
+        self.v._set_selection(0, xs[1:])
+        self.w.start_cad_command("move")            # (asks for the base point)
+        self.addCleanup(lambda: self.v._cad_cmd and self.v._cad_cmd.finish())
+        from kanzonas import cad_select
+        self.assertIsNone(cad_select._rollover_shown(self.page))
+
+
 class Clicks(CadWindow):
     def setUp(self):
         super().setUp()
