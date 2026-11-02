@@ -2745,6 +2745,17 @@ class MainWindow(QMainWindow):
         lay.addWidget(btns)
         if dlg.exec() != QDialog.Accepted:
             return
+        pending = v.security is not None and (v.security.get("open_pw") or
+                                              v.security.get("owner_pw"))
+        if not open_on.isChecked() and not restrict.isChecked() and \
+                (st["encrypted"] and v.security is None or pending) and \
+                QMessageBox.question(
+                    self, tr("Security properties"),
+                    tr("Neither a password to open nor restrictions are ticked: this takes the "
+                       "document's password protection off when you save.\n\nRemove its "
+                       "protection?"), QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No) != QMessageBox.Yes:
+            return
         perms = pymupdf.PDF_PERM_ACCESSIBILITY | sum(f for f, c in boxes if c.isChecked())
         v.set_security(open_pw.text() if open_on.isChecked() else "",
                        own_pw.text() if restrict.isChecked() else "", perms)

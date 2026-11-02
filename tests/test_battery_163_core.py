@@ -311,5 +311,54 @@ class SearchRedactOutsideTheDrawing(unittest.TestCase):
         self.assertEqual(left, ["Redaction: word"])
 
 
+class SecurityPropertiesOk(unittest.TestCase):
+    """Security properties opens with both boxes unticked (the passwords aren't shown): OK
+    on a protected document took all its protection off at the next save, unasked."""
+    def window(self):
+        d = pymupdf.open()
+        d.new_page().insert_text((72, 72), "Protected words")
+        path = _tmp("p.pdf")
+        d.save(path, encryption=pymupdf.PDF_ENCRYPT_AES_256, owner_pw="owner", user_pw="user")
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        with mock.patch.object(QInputDialog, "getText", lambda *a, **k: ("owner", True)):
+            w.open_file(path)
+        v = w.view()
+        self.addCleanup(lambda: setattr(v, "dirty", False))
+        self.assertTrue(v.owner_authorized())
+        return w, v
+
+    def test_ok_without_boxes_asks_before_removing_the_protection(self):
+        w, v = self.window()
+        asked = []
+
+        def question(*a, **k):
+            asked.append(a[1:3])
+            return QMessageBox.No
+        with mock.patch.object(QDialog, "exec", lambda self: QDialog.Accepted), \
+                mock.patch.object(QMessageBox, "question", question):
+            w.security_properties()
+        self.assertEqual(len(asked), 1)
+        self.assertIsNone(v.security)               # nothing changes
+        with mock.patch.object(QDialog, "exec", lambda self: QDialog.Accepted), \
+                mock.patch.object(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes):
+            w.security_properties()
+        self.assertEqual((v.security["open_pw"], v.security["owner_pw"]), ("", ""))
+
+    def test_a_plain_document_is_not_asked_about(self):
+        d = pymupdf.open()
+        d.new_page()
+        path = _tmp("plain.pdf")
+        d.save(path)
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        w.open_file(path)
+        with mock.patch.object(QDialog, "exec", lambda self: QDialog.Accepted), \
+                mock.patch.object(QMessageBox, "question",
+                                  lambda *a, **k: self.fail("asked on a plain document")):
+            w.security_properties()
+        w.view().dirty = False
+
+
 if __name__ == "__main__":
     unittest.main()

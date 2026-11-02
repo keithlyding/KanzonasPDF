@@ -7150,3 +7150,6 @@ msgstr "Haga clic donde termina (Escape o un clic derecho cancela)"
 
 msgid "Circle: type the radius as a number (or 12'-6\"), or click a point on the circle"
 msgstr "Círculo: escriba el radio como un número (o 12'-6\"), o haga clic en un punto del círculo"
+
+msgid "Neither a password to open nor restrictions are ticked: this takes the document's password protection off when you save.\n\nRemove its protection?"
+msgstr "No está marcada ni una contraseña para abrir ni ninguna restricción: esto quita la protección con contraseña del documento al guardar.\n\n¿Quitar su protección?"
