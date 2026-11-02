@@ -152,12 +152,12 @@ def release(w, e, pos):
 
 
 def double_click(w, e):
-    """A double-click on page widget w in CAD selection: Qt sends it instead of the second
-    press, so it's taken as one. On the box's first corner (the first click looked as if it
+    """A double-click on page widget w in CAD selection with Edit objects: Qt sends it
+    instead of the second press, so it's taken as one. On the box's first corner (the first click looked as if it
     hadn't taken, so it was clicked again) the box stays started; anywhere else it's a click.
     True when handled."""
-    if not active(w) or e.button() != Qt.LeftButton:
-        return False
+    if not active(w) or w.view.tool != "editobjects" or e.button() != Qt.LeftButton:
+        return False                    # (with Select a double-click selects a word)
     v = w.view
     pk = v._cad_pick
     pos = e.position()
