@@ -11,7 +11,9 @@ PySide6_Addons==6.12.0        # LGPL-3.0
 shiboken6==6.12.0             # LGPL-3.0
 rapidocr_onnxruntime==1.2.3   # Apache-2.0
 onnxruntime==1.29.0           # MIT
-opencv-python==5.0.0.93       # Apache-2.0
+opencv-python==5.0.0.93       # Apache-2.0 (rapidocr asks for it; the builds replace it with:)
+opencv-python-headless==5.0.0.93  # Apache-2.0: the one shipped (pdf2docx asks for it; the same cv2
+                              # without its GUI. Both installed share cv2 and break each other)
 pdf2docx==0.5.13              # MIT
 python-docx==1.2.0            # MIT
 ezdxf==1.4.4                  # MIT

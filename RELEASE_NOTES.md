@@ -7,6 +7,30 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.7.1
+
+**New**
+- Trim works on arcs, curves, arrows, circles and ellipses. What's left of an arc or a curve is still an arc or a curve, an arrow keeps its head on the part with the tip, and a circle cut in two places leaves an arc. Curves that are part of the drawing stay smooth, and lines some CAD programs draw as thin filled bars are trimmed too.
+- In CAD mode, the pointer shows what a click will take: the cross gets a small pick box and the item turns lighter while the pointer is over it.
+- In CAD mode a selection box can start in the gray area around the page, and a sheet covered by a background or a scan no longer gets in the way of starting one.
+- The CAD tab has Edit text (with Add text under its arrow) in its Edit group (formerly Clean up).
+
+**Fixed**
+- Align and Distribute work on a mix of items: markups together with lines, shapes, pictures and text of the page itself. Before, the buttons stayed grayed out.
+- The app now includes one copy of the OpenCV picture library (used by OCR and by export to Word) instead of two copies that could conflict.
+
+## 1.7.1 (es)
+
+**Novedades**
+- Recortar funciona en arcos, curvas, flechas, círculos y elipses. Lo que queda de un arco o una curva sigue siendo un arco o una curva, una flecha conserva la punta en la parte de su extremo, y un círculo cortado en dos lugares deja un arco. Las curvas propias del dibujo siguen siendo suaves, y también se recortan las líneas que algunos programas CAD dibujan como barras finas rellenas.
+- En el modo CAD, el puntero muestra lo que tomará un clic: la cruz muestra un pequeño cuadro de selección y el elemento se ve más claro mientras el puntero está encima.
+- En el modo CAD un recuadro de selección puede empezar en el área gris alrededor de la página, y una hoja cubierta por un fondo o un escaneo ya no impide empezarlo.
+- La pestaña CAD tiene Editar texto (con Agregar texto bajo su flecha) en su grupo Editar (antes Limpiar).
+
+**Correcciones**
+- Alinear y Distribuir funcionan con una mezcla de elementos: marcas junto con líneas, formas, imágenes y texto de la propia página. Antes, los botones se quedaban desactivados.
+- La aplicación ahora incluye una sola copia de la biblioteca de imágenes OpenCV (que usan el OCR y la exportación a Word) en lugar de dos copias que podían entrar en conflicto.
+
 ## 1.7
 
 **New**

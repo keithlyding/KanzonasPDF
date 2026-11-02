@@ -37,40 +37,51 @@ def _shift(e):
     return bool(e.modifiers() & Qt.ShiftModifier)
 
 
-def press(w, e, pos, pdf):
-    """A left press on page widget w (CAD mode, Select or Edit objects)."""
+def press(w, e, pos, pdf, outside=False):
+    """A left press on page widget w (CAD mode, Select or Edit objects). outside: on the
+    gray canvas around the pages (pos and pdf: the same point in w's terms, off the page),
+    where a press only starts a box or lasso."""
     v = w.view
     pick = v._cad_pick
+    v._cad_drag_w = w
     if pick is not None:                # the second click of a click, move, click box
         finish_box(v, pick, e)
         w._cad_down = {"ignore": True}
         return
     remove = _shift(e)
-    if v.tool == "select":
+    if outside:
+        target = ("markup", None)
+    elif v.tool == "select":
         model = w._selected_here()
         if model is not None and not v.extra and not remove:
             for hid, r in w._handles(model).items():       # handles still resize
                 if r.adjusted(-3, -3, 3, 3).contains(pos):
                     w._edit = {"mode": hid, "start": pos, "model": model, "preview": None}
                     return
-        xref = w._card_at(pos)
-        target = ("markup", xref if xref is not None else v.annot_at(w.index, pdf))
-    else:
-        if w._objects_here() and not remove:
-            for hid, r in w._objects_handles().items():
-                if r.adjusted(-3, -3, 3, 3).contains(pos):
-                    w._obj_edit = {"mode": hid, "start": pos, "preview": None}
-                    return
-        # CAD mode takes everything: a markup drawn over the drawing first (it lies on top),
-        # else the drawing's own line, text or picture
-        xref = w._card_at(pos)
-        if xref is None:
-            xref = v.annot_at(w.index, pdf)
-        target = ("markup", xref) if xref is not None else \
-            ("object", v.object_at(w.index, pdf))
+    elif w._objects_here() and not remove:
+        for hid, r in w._objects_handles().items():
+            if r.adjusted(-3, -3, 3, 3).contains(pos):
+                w._obj_edit = {"mode": hid, "start": pos, "preview": None}
+                return
+    if not outside:
+        target = target_at(w, pos, pdf)
     w._cad_down = {"start": pos, "pts": [pos], "dir": 0, "mode": None, "now": None,
                    "target": target, "remove": remove, "t": e.timestamp(),
                    "link": getattr(w, "_link_press", None) is not None}
+
+
+def target_at(w, pos, pdf):
+    """What a click at pos (pdf: the same point on the page) takes: ("markup", xref) with
+    Select; with Edit objects everything, a markup drawn over the drawing first (it lies on
+    top), else ("object", the drawing's own line, text or picture). The target is None for
+    empty paper."""
+    v = w.view
+    xref = w._card_at(pos)
+    if xref is None:
+        xref = v.annot_at(w.index, pdf)
+    if v.tool == "select" or xref is not None:
+        return "markup", xref
+    return "object", v.object_at(w.index, pdf)
 
 
 # A press and release this quick, ending this close, is a click even if the pointer moved a
@@ -107,13 +118,17 @@ def move(w, e, pos):
         d["now"] = pos
     _schedule(w)
     w.update()
+    _outside_update(w)
 
 
 def hover(w, e):
-    """Pointer moved without a button: the click, move, click box follows it."""
+    """Pointer moved without a button: the click, move, click box follows it; with no box
+    started, what a click would take there is highlighted (rollover)."""
     pick = w.view._cad_pick
     if pick is None:
+        rollover(w, e.position())
         return
+    clear_rollover(w)
     pw = pick["w"]
     if not shiboken6.isValid(pw):       # (the pages were rebuilt)
         w.view._cad_pick = None
@@ -121,10 +136,123 @@ def hover(w, e):
     pick["now"] = QPointF(pw.mapFromGlobal(e.globalPosition()))
     _schedule(pw)
     pw.update()
+    _outside_update(pw)
+
+
+# ---- rollover: what a click would take, before the click, so the user sees where Move,
+# Mirror, Scale... can take something: the cross becomes a crosshair with a pick box (as in
+# AutoCAD) and the item fades (drawn lighter) while the pointer is over it
+_PICK_CURSOR = None
+
+
+def pick_cursor():
+    """The CAD cross with a pick box in its middle: a click here takes something."""
+    global _PICK_CURSOR
+    if _PICK_CURSOR is None:
+        from PySide6.QtGui import QCursor, QPixmap, QPainter
+        pm = QPixmap(33, 33)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        for color, width in ((QColor(255, 255, 255), 3), (QColor(0, 0, 0), 1)):
+            p.setPen(QPen(color, width))
+            p.setBrush(Qt.NoBrush)
+            p.drawLine(16, 0, 16, 10)
+            p.drawLine(16, 22, 16, 32)
+            p.drawLine(0, 16, 10, 16)
+            p.drawLine(22, 16, 32, 16)
+            p.drawRect(11, 11, 10, 10)
+        p.end()
+        _PICK_CURSOR = QCursor(pm, 16, 16)
+    return _PICK_CURSOR
+
+
+def apply_cursor(w):
+    """The pick box cursor over something a click takes, else the view's own cross."""
+    hv = _rollover_shown(w)
+    if hv is not None and hv["takes"]:
+        w.setCursor(pick_cursor())
+    else:
+        w.unsetCursor()
+
+
+_OPEN_KINDS = ("line", "arrow", "polyline", "ink", "arc", "opencloud", "m_length", "m_poly",
+               "m_angle", "m_radius")
+
+
+def rollover(w, pos):
+    if not active(w) or w._cad_down is not None or w.view._cad_cmd is not None and \
+            not w.view._cad_cmd.selecting:
+        clear_rollover(w)
+        return
+    v = w.view
+    try:
+        kind, target = target_at(w, pos, w.to_pdf(pos))
+    except Exception:
+        target = None
+    if target is None:
+        clear_rollover(w)
+        return
+    key = (kind, target if kind == "markup" else target["n"], v.revision, w.index)
+    old = getattr(w, "_cad_hover", None)
+    if old is not None and old["key"] == key:
+        return                          # (the same item: nothing read again)
+    lines, fill, width, takes = [], False, 1.0, True
+    if kind == "markup" and v.markup_locked(w.index, target):
+        takes = False                   # (a locked markup isn't taken: no pick box, no fade)
+    elif kind == "markup":
+        page = v.doc[w.index]
+        annot = page.load_annot(target)
+        model = None
+        if annot is not None:
+            from . import annotations
+            model = annotations.read(annot)
+        del annot
+        if model is not None:
+            lines = v.cad_outlines(w.index, "markups", [(target, model)])
+            width = float(model.get("props", {}).get("width", 1) or 1)
+            # a box-like markup (a shape, a stamp, a text box...) fades all over
+            fill = model["kind"] not in _OPEN_KINDS
+        del page
+    else:
+        lines = v.object_lines(w.index, target)
+        width = float(target.get("width", 1) or 1)
+        fill = target["kind"] != "shape" or bool(target.get("fill"))
+    w._cad_hover = {"key": key, "kind": kind, "target": target, "lines": lines[:LIMIT],
+                    "fill": fill, "width": width, "takes": takes, "path": None}
+    apply_cursor(w)
+    w.update()
+
+
+def clear_rollover(w):
+    if getattr(w, "_cad_hover", None) is not None:
+        w._cad_hover = None
+        w.unsetCursor()
+        w.update()
+
+
+def _rollover_shown(w):
+    """The rollover to draw now, or None (gone stale, or already selected: a selection is
+    drawn dashed with grips)."""
+    hv = getattr(w, "_cad_hover", None)
+    v = w.view
+    if hv is None or hv["key"][2] != v.revision or w._cad_down is not None or \
+            v._cad_pick is not None or not active(w):
+        return None
+    if v._cad_cmd is not None and not v._cad_cmd.selecting:
+        return None                     # (a command is asking for points, not objects)
+    if hv["kind"] == "markup":
+        if v.selection is not None and v.selection[0] == w.index and \
+                hv["target"] in v.selected_xrefs():
+            return None
+    elif v.obj_sel is not None and v.obj_sel[0] == w.index and \
+            any(it["n"] == hv["target"]["n"] for it in v.obj_sel[1]):
+        return None
+    return hv
 
 
 def release(w, e, pos):
     d, w._cad_down = w._cad_down, None
+    _outside_update(w)
     _clear(w)
     if d.get("ignore"):
         return
@@ -176,6 +304,7 @@ def finish_box(v, pk, e):
         return
     end = QPointF(pw.mapFromGlobal(e.globalPosition()))
     v._cad_pick = None
+    _outside_update(pw)
     _clear(pw)
     pw.update()
     a = QPointF(pw.to_screen_pt(pk["at"]))
@@ -194,6 +323,7 @@ def cancel(v):
     if shiboken6.isValid(pk["w"]):
         _clear(pk["w"])
         pk["w"].update()
+        _outside_update(pk["w"])
     return True
 
 
@@ -300,6 +430,7 @@ def _region(w):
     return None
 
 
+FADE = 150                      # how much of the paper's color goes over a faded item (of 255)
 SLICE = 0.05                   # seconds of work per step of the live highlight
 LIMIT = 3000                    # outlines drawn at most
 
@@ -371,6 +502,75 @@ def _clear(w):
         w.update()
 
 
+# ---- the part of a box or lasso lying off the page, on the gray canvas around it (a box can
+# start and end there: a sheet covered by one object leaves no empty paper to start on)
+def _shape_now(w):
+    """The box ((a, b)) or lasso ([points]) being drawn from page widget w, in w's own
+    coordinates, or None."""
+    v = w.view
+    pk = v._cad_pick
+    if pk is not None and pk["w"] is w and shiboken6.isValid(w):
+        return "box", (QPointF(w.to_screen_pt(pk["at"])), pk["now"])
+    d = w._cad_down
+    if d is None or d.get("ignore"):
+        return None
+    if d["mode"] == "box" and d["now"] is not None:
+        return "box", (d["start"], d["now"])
+    if d["mode"] == "lasso" and len(d["pts"]) >= 2:
+        return "lasso", list(d["pts"])
+    return None
+
+
+def _outside_update(w):
+    """Repaint the canvas where the box or lasso is and was (only when it leaves the page:
+    on the page, the page widget draws it)."""
+    if not shiboken6.isValid(w):
+        return
+    canvas = w.parentWidget()
+    if canvas is None:
+        return
+    got = _shape_now(w)
+    old = getattr(w, "_outside_rect", None)
+    rect = None
+    if got is not None:
+        pts = list(got[1])
+        r = QRectF(pts[0], pts[0])
+        for q in pts[1:]:
+            r = r.united(QRectF(q, q))
+        if not QRectF(w.rect()).contains(r):
+            rect = r.translated(QPointF(w.pos())).toAlignedRect().adjusted(-4, -4, 4, 4)
+    w._outside_rect = rect
+    if old is not None:
+        canvas.update(old)
+    if rect is not None:
+        canvas.update(rect)
+
+
+def paint_outside(view, p):
+    """Paint on the canvas (view.widget()) the box or lasso being drawn, wherever it lies off
+    its page."""
+    w = getattr(view, "_cad_drag_w", None)
+    pk = view._cad_pick
+    if pk is not None:
+        w = pk["w"]
+    if w is None or not shiboken6.isValid(w):
+        return
+    got = _shape_now(w)
+    if got is None:
+        return
+    off = QPointF(w.pos())
+    if got[0] == "box":
+        a, b = got[1]
+        paint_box(p, a + off, b + off)
+    else:
+        pts = [q + off for q in got[1]]
+        crossing = w._cad_down is not None and w._cad_down.get("dir", 0) < 0
+        p.setPen(QPen(GREEN if crossing else BLUE, 1, Qt.DashLine if crossing else Qt.SolidLine))
+        p.setBrush(QColor(0, 180, 70, 45) if crossing else QColor(0, 120, 215, 45))
+        p.drawPolygon(QPolygonF(pts))
+        p.setBrush(Qt.NoBrush)
+
+
 def paint_box(p, a, b):
     """A selection box from a to b: left to right a blue window, right to left a green dashed
     crossing box."""
@@ -393,6 +593,38 @@ def _glow_path(w, pv):
 
 
 def paint(w, p):
+    hv = _rollover_shown(w)
+    if hv is not None and hv["takes"] and hv["lines"]:
+        # the item drawn lighter: the paper's color over it, part see-through
+        from PySide6.QtGui import QPainterPath
+        t = w._screen_transform(w.view.doc[w.index])
+        zoom = (t.m11(), t.m12(), t.m21(), t.m22(), t.dx(), t.dy())
+        if hv["path"] is None or hv["path"][0] != zoom:
+            area = None
+            if hv["fill"]:
+                area = QPainterPath()
+                area.setFillRule(Qt.WindingFill)
+                for line in hv["lines"]:
+                    if len(line) >= 3:
+                        area.addPolygon(QPolygonF([QPointF(q[0], q[1]) for q in line]))
+                area = t.map(area)
+            # (each line one stroke: drawn piece by piece, the see-through color doubles up
+            # where the pieces meet and a curve looks dotted)
+            strokes = QPainterPath()
+            for line in hv["lines"]:
+                if len(line) >= 2:
+                    strokes.moveTo(line[0][0], line[0][1])
+                    for q in line[1:]:
+                        strokes.lineTo(q[0], q[1])
+            hv["path"] = (zoom, t.map(strokes), area)
+        paper = QColor(0, 0, 0) if getattr(w.view, "night_mode", False) else \
+            QColor(255, 255, 255)
+        paper.setAlpha(FADE)
+        if hv["path"][2] is not None:
+            p.fillPath(hv["path"][2], paper)
+        scale = (abs(t.m11() * t.m22() - t.m12() * t.m21())) ** 0.5
+        p.setPen(QPen(paper, max(3.0, hv["width"] * scale + 2)))
+        p.drawPath(hv["path"][1])
     pv = getattr(w, "_cad_preview", None)
     if pv is not None and (w._cad_down is not None or w.view._cad_pick is not None):
         crossing, lines, rects = pv

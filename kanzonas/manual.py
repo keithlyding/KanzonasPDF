@@ -353,13 +353,23 @@ together. Right-click a markup for its own menu, the drawing's objects for their
 markups show no resize handles here: change them with the CAD tab's commands, or with Select.
 What's selected is drawn <b>dashed</b> (blue dashes over white, so it shows on a blue line too)
 with small blue <b>grips</b> on its ends and corners, as in AutoCAD.</li>
+<li>Before you click, the pointer shows what a click would take: over something it can take (a
+markup, or with Edit objects the drawing's own line, text or picture) the cross gets a small
+<b>pick box</b> in its middle, as in AutoCAD, and that item <b>fades</b> (is drawn lighter) while
+the pointer is over it, so you can see what Move, Copy, Mirror, Scale and the other commands will
+get. Something already selected doesn't fade (it's drawn dashed), a locked markup gets neither,
+and neither shows while a command asks for points.</li>
 <li><b>Click, move, click</b>: click empty paper, move the pointer (the box follows it) and click
 again. Left to right it's a solid <b>blue window</b>: it takes what lies entirely inside it.
 Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line
 running through it included. The first corner is marked as soon as you click, and the status
 bar asks for the other corner. A quick click counts as a click even if the mouse moved a little
 while you pressed, and clicking the first corner again keeps the box. Escape drops a box you
-started. Hold Shift on the second click to take things out instead.</li>
+started. Hold Shift on the second click to take things out instead. A box (or a lasso) can also
+start and end on the <b>gray area around the page</b>, handy when the sheet is covered. A filled
+shape or a picture covering the whole sheet (a background, a scan) counts as empty paper here: a
+click on it starts a box, and only a window around the whole sheet takes it (a filled shape also
+a click right on its edge).</li>
 <li><b>Hold the button and drag</b>: a <b>lasso</b> that follows the pointer. Drawn rightward at
 first it's a blue window lasso (what's entirely inside it); leftward, a green crossing lasso
 (what it touches). Shift+lasso takes things out.</li>
@@ -386,9 +396,11 @@ the button then shows the one used last (or the tool that's on). <b>Markup</b>: 
 Cloud, Polygon, Mask), Circle (arrow: Arc), Line (arrow: Polyline, Curve, Pen), Arrow, Text box (arrow: Callout),
 Stamp (arrow: Image); their one-letter shortcuts type into the command line in CAD mode.
 <b>Measure</b>: Length (arrow: Polylength, Area, Angle, Radius, Perimeter, Volume, Count,
-Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Clean up</b>: Erase
+Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Edit</b>: Erase
 content, Bring to front (arrow: Bring forward, Send backward, Send to back), Align left (arrow:
-the other alignments, Distribute horizontally and Distribute vertically).</p>
+the other alignments, Distribute horizontally and Distribute vertically), Edit text (arrow: Add
+text): Edit text changes the words already on the page, Add text types new text into the
+page.</p>
 <p><b>The command line</b>, along the bottom of the window in CAD mode, works like AutoCAD's.
 Just start typing over the drawing (you don't have to click in the line first) and press
 <b>Enter</b> (Space just types a space, as in "fit page"):</p>
@@ -456,8 +468,14 @@ line none crosses goes completely; with cutting edges chosen, a line that crosse
 stays (it says so). The click picks the line nearest to it and isn't
 snapped; a click right where lines cross says so instead (click a little to one side). Click
 again and again; Enter, Escape or Done ends it. It
-trims the drawing's own lines and curves (a trimmed curve is redrawn as short straight pieces)
-and line, polyline and pen markups. Rectangles, polygons and clouds are trimmed too, and their
+trims the drawing's own lines and curves (a trimmed curve stays a curve, cut exactly where the
+lines cross it), lines a drawing paints as thin filled bars (as some CAD programs write every
+line; the parts left are bars as thick as before), and line, arrow, polyline, pen, arc and
+curve markups: what's left of an arc is an arc of the same circle, of a curve (a bent line) the
+same curve, and an arrow keeps its head on the part at its tip (the other parts become plain
+lines). A circle or ellipse is cut where lines cross it: what's left of a circle is an arc,
+of an ellipse a polyline along it; with fewer than two lines crossing it, it goes completely, as
+in AutoCAD. Rectangles, polygons and clouds are trimmed too, and their
 own corners cut as well as the lines crossing them: clicking a side of a lone rectangle or cloud
 takes that side away from corner to corner, and clicking again takes another. What is left is one
 open markup that starts and ends at the gap: a rectangle or polygon becomes a polyline (same
@@ -465,7 +483,7 @@ color, width and opacity; its corners go on cutting), and a cloud stays a cloud,
 sides looking just as they did (it moves, turns, mirrors, restyles and trims like any markup;
 other PDF readers show it as drawn). A cloud ellipse is cut only where lines cross it. A click
 right on a corner says so instead (click on the side, a little away from the corner). Filled
-shapes (a Mask too), plain ellipses, arcs, bent lines and pictures aren't trimmed.</li>
+shapes (a Mask too, but not the thin bars above) and pictures aren't trimmed.</li>
 </ul>
 <p>On a big drawing, CAD mode reads the page's line work in the background while you aren't
 doing anything, a little at a time so the window never stops answering, so the first box,
@@ -726,11 +744,15 @@ Import tool chest shares a chest with others.</li>
 
 <h2 id="arrange">Align, distribute and stacking order (Arrange)</h2>
 <ul>
-<li>Select two or more markups, then use the <b>Arrange</b> toolbar or menu: Align left,
-Align centers (horizontally), Align right, Align top, Align middles (vertically), Align bottom.</li>
+<li>Select two or more items, then use the <b>Arrange</b> toolbar or menu: Align left,
+Align centers (horizontally), Align right, Align top, Align middles (vertically), Align bottom.
+The items can be of any kind and mixed: markups, and the page's own lines, shapes, pictures and
+text selected with Edit objects or a CAD mode selection box. Text of the page only moves (its
+box keeps its size). The whole change is one Ctrl+Z.</li>
 <li><b>Align relative to:</b> Align to first selected (the default), Align to last selected,
 Align to whole selection, or Align to page. Choose it in the toolbar dropdown or Arrange &gt;
-Align relative to. The first-selected markup has a bolder outline.</li>
+Align relative to. The first-selected markup has a bolder outline. When markups and the
+page's own objects are selected together, the markups count as selected first.</li>
 <li><b>Distribute horizontally</b> / <b>Distribute vertically</b> (three or more): equal gaps,
 the outer two stay put.</li>
 <li><b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]),
@@ -1195,7 +1217,9 @@ the pages you list; Ctrl+Z undoes either. A background can't show through a scan
 the scan is a picture covering the whole page; use a Watermark for those.</li>
 <li><b>Export</b> (File &gt; Export to): Microsoft Word (.docx), Microsoft Excel (.xlsx),
 Microsoft PowerPoint (.pptx), AutoCAD drawing (.dxf), Images (PNG), Images (JPEG),
-Plain text (.txt). Images make one picture per page, named after the name you choose plus the
+Plain text (.txt). PowerPoint makes one slide per page holding a picture of the page (to
+show it as it looks; the text and drawings on a slide can't be edited as PowerPoint text and
+shapes). Images make one picture per page, named after the name you choose plus the
 page number (plan_p1.png, plan_p2.png...); if any of them exist already, you're asked once
 before they're replaced.</li>
 </ul>

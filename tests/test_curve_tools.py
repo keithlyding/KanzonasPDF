@@ -396,15 +396,22 @@ class Tools(unittest.TestCase):
         del pg
         d.close()
 
-    def test_a_bent_line_is_not_trimmed(self):
+    def test_a_bent_line_is_trimmed_and_stays_bent(self):
+        # (before 1.7.1 a bent line wasn't trimmed: it would have gone straight)
         v = self.view("select")
         self.line(v)
         self.drag(v, (250, 300), (250, 220))
         self.line(v, a=(250, 100), b=(250, 400))            # (crosses it)
         before = self.markups(v)
         top = curves.bend_path(P(100, 300), P(400, 300), P(250, 220))
-        self.assertFalse(v.cad_trim(0, top[len(top) // 4]))
-        self.assertEqual(len(self.markups(v)), len(before))
+        self.assertTrue(v.cad_trim(0, top[len(top) // 4]))
+        after = self.markups(v)
+        self.assertEqual(len(after), len(before))
+        bent = [m for _x, _t, m in after if m.get("bend") is not None]
+        self.assertEqual(len(bent), 1)                      # (the right half, still bent)
+        a, b = bent[0]["points"][:2]
+        self.assertLess(abs(min(a.x, b.x) - 250), 0.05)
+        self.assertLess(abs(max(a.x, b.x) - 400), 0.05)
 
     # ---- Curve tool -----------------------------------------------------------------
     def test_curve_tool_start_end_then_bend(self):

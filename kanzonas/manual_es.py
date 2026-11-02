@@ -341,13 +341,21 @@ una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo
 controladores para cambiar su tamaño: cámbielas con los comandos de la pestaña CAD, o con Seleccionar.
 Lo seleccionado se dibuja con <b>línea discontinua</b> (trazos azules sobre blanco, así se ve incluso sobre una línea azul)
 con pequeños <b>pinzamientos</b> azules en sus extremos y esquinas, como en AutoCAD.</li>
+<li>Antes de hacer clic, el puntero muestra lo que tomaría un clic: sobre algo que puede tomar (una marca, o con Editar
+objetos la línea, el texto o la imagen propios del dibujo) la cruz muestra un pequeño <b>cuadro de selección</b> en el
+centro, como en AutoCAD, y ese elemento se <b>atenúa</b> (se dibuja más claro) mientras el puntero está encima, así ve lo
+que tomarán Mover, Copiar, Simetría, Escalar y los demás comandos. Lo que ya está seleccionado no se atenúa (se dibuja con
+línea discontinua), una marca bloqueada no muestra ninguno de los dos, y ninguno aparece mientras un comando pide puntos.</li>
 <li><b>Clic, mover, clic</b>: haga clic en el papel vacío, mueva el puntero (el recuadro lo sigue) y vuelva a hacer
 clic. De izquierda a derecha es una <b>ventana azul</b> de línea continua: toma lo que queda completamente dentro. De
 derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua: toma todo lo que toca, incluida una
 línea que lo atraviese. La primera esquina se marca en cuanto hace clic, y la barra de estado pide la otra esquina. Un
 clic rápido cuenta como clic aunque el mouse se haya movido un poco al presionar, y hacer clic otra vez en la primera
 esquina conserva el recuadro. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para
-quitar elementos en lugar de agregarlos.</li>
+quitar elementos en lugar de agregarlos. Un recuadro (o un lazo) también puede empezar y terminar en el <b>área gris
+alrededor de la página</b>, útil cuando la hoja está cubierta. Una forma rellena o una imagen que cubre toda la hoja (un
+fondo, un escaneo) cuenta aquí como papel vacío: un clic en ella empieza un recuadro, y solo una ventana alrededor de toda
+la hoja la toma (una forma rellena, también un clic justo en su borde).</li>
 <li><b>Mantenga presionado el botón y arrastre</b>: un <b>lazo</b> que sigue al puntero. Si al principio lo dibuja hacia
 la derecha es un lazo de ventana azul (lo que queda completamente dentro); hacia la izquierda, un lazo de captura verde
 (lo que toca). Shift+lazo quita elementos.</li>
@@ -375,8 +383,10 @@ muestra luego la última usada (o la herramienta activa). <b>Marcas</b>: Rectán
 Línea (flecha: Polilínea, Curva, Lápiz), Flecha, Cuadro de texto (flecha: Llamada), Sello (flecha: Imagen); en el modo CAD sus atajos
 de una letra escriben en la línea de comandos. <b>Medir</b>: Longitud (flecha: Longitud de polilínea, Área, Ángulo, Radio,
 Perímetro, Volumen, Conteo, Calibrar cinta métrica), Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página.
-<b>Limpiar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
-izquierda (flecha: las demás alineaciones, Distribuir horizontalmente y Distribuir verticalmente).</p>
+<b>Editar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
+izquierda (flecha: las demás alineaciones, Distribuir horizontalmente y Distribuir verticalmente), Editar texto (flecha:
+Agregar texto): Editar texto cambia las palabras que ya están en la página, Agregar texto escribe texto nuevo en la
+página.</p>
 <p><b>La línea de comandos</b>, a lo largo de la parte inferior de la ventana en el modo CAD, funciona como la de AutoCAD.
 Simplemente empiece a escribir sobre el dibujo (no hace falta hacer clic antes en la línea) y presione <b>Enter</b> (la
 barra espaciadora solo escribe un espacio, como en "ajustar página"):</p>
@@ -436,15 +446,21 @@ parte de una línea que quiere quitar: se quita hasta los bordes de corte más c
 extremo, si ninguno la cruza de ese lado). Sin bordes de corte elegidos, una línea que ninguno cruza se quita entera; con
 bordes de corte elegidos, una línea que no cruza ninguno se queda (lo indica). El clic elige la línea más cercana y no se ajusta; un clic justo donde se cruzan líneas lo indica
 en lugar de recortar (haga clic un poco a un lado). Haga clic una y otra vez; Enter, Escape o Listo termina. Recorta las líneas y curvas propias del
-dibujo (una curva recortada se vuelve a dibujar con tramos rectos cortos) y las marcas de línea, polilínea y pluma. También
+dibujo (una curva recortada sigue siendo una curva, cortada exactamente donde la cruzan las líneas), las líneas que un
+dibujo pinta como barras finas rellenas (como escriben todas sus líneas algunos programas CAD; las partes que quedan son
+barras igual de gruesas) y las marcas de línea, flecha, polilínea, pluma, arco y curva: lo que queda de un arco es un arco
+del mismo círculo, de una curva (una línea curvada) la misma curva, y una flecha conserva la punta en la parte de su
+extremo (las demás partes pasan a ser líneas simples). Un círculo o una elipse se cortan donde los cruzan líneas: lo que
+queda de un círculo es un arco, de una elipse una polilínea a lo largo de ella; si la cruzan menos de dos líneas, se quita
+entera, como en AutoCAD. También
 recorta rectángulos, polígonos y nubes, y sus propias esquinas cortan además de las líneas que los cruzan: un clic en un lado
 de un rectángulo o una nube sueltos quita ese lado de esquina a esquina, y otro clic quita otro lado. Lo que queda es una sola
 marca abierta que empieza y termina en el hueco: un rectángulo o polígono se vuelve una polilínea (mismo color, grosor y
 opacidad; sus esquinas siguen cortando) y una nube sigue siendo una nube, con los lados que quedan tal como estaban (se mueve,
 gira, refleja, cambia de estilo y se recorta como cualquier marca; otros lectores de PDF la muestran tal como está dibujada).
 Una nube en forma de elipse solo se corta donde la cruzan líneas. Un clic justo en una esquina lo indica en lugar de recortar
-(haga clic en el lado, un poco lejos de la esquina). Las formas rellenas (también una Máscara), las elipses normales, los
-arcos, las líneas curvadas y las imágenes no se recortan.</li>
+(haga clic en el lado, un poco lejos de la esquina). Las formas rellenas (también una Máscara, pero no las barras finas
+de arriba) y las imágenes no se recortan.</li>
 </ul>
 <p>En un dibujo grande, el modo CAD lee los trazos de la página en segundo plano mientras usted no hace nada, poco a
 poco para que la ventana siempre responda, así que el primer recuadro, lazo o comando empieza enseguida; el puntero
@@ -706,11 +722,15 @@ Importar caja de herramientas comparte un cofre con otras personas.</li>
 
 <h2 id="arrange">Alinear, distribuir y orden de apilamiento (Organizar)</h2>
 <ul>
-<li>Seleccione dos o más marcas y luego use la barra de herramientas o el menú <b>Organizar</b>: Alinear a la izquierda,
-Alinear al centro (horizontalmente), Alinear a la derecha, Alinear arriba, Alinear al medio (verticalmente), Alinear abajo.</li>
+<li>Seleccione dos o más elementos y luego use la barra de herramientas o el menú <b>Organizar</b>: Alinear a la izquierda,
+Alinear al centro (horizontalmente), Alinear a la derecha, Alinear arriba, Alinear al medio (verticalmente), Alinear abajo.
+Los elementos pueden ser de cualquier tipo y estar mezclados: marcas, y las líneas, formas, imágenes y texto propios de la
+página seleccionados con Editar objetos o con un cuadro de selección del modo CAD. El texto de la página solo se mueve (su
+cuadro conserva su tamaño). Todo el cambio se deshace con un solo Ctrl+Z.</li>
 <li><b>Alinear respecto a:</b> Alinear con la primera seleccionada (el valor predeterminado), Alinear con la última seleccionada,
 Alinear con toda la selección o Alinear con la página. Elíjalo en la lista desplegable de la barra de herramientas o en Organizar &gt;
-Alinear respecto a. La primera marca seleccionada tiene un contorno más grueso.</li>
+Alinear respecto a. La primera marca seleccionada tiene un contorno más grueso. Cuando se seleccionan marcas y objetos
+propios de la página a la vez, las marcas cuentan como seleccionadas primero.</li>
 <li><b>Distribuir horizontalmente</b> / <b>Distribuir verticalmente</b> (tres o más): espacios iguales;
 las dos de los extremos no se mueven.</li>
 <li><b>Traer al frente</b> (Ctrl+Shift+]), <b>Traer adelante</b> (Ctrl+]),
@@ -1174,7 +1194,9 @@ las páginas que indique; Ctrl+Z deshace cualquiera de los dos. Un fondo no se p
 el escaneo es una imagen que cubre toda la página; para esas páginas use una Marca de agua.</li>
 <li><b>Exportar</b> (Archivo &gt; Exportar a): Microsoft Word (.docx), Microsoft Excel (.xlsx),
 Microsoft PowerPoint (.pptx), Dibujo de AutoCAD (.dxf), Imágenes (PNG), Imágenes (JPEG),
-Texto sin formato (.txt). Imágenes crea una imagen por página, con el nombre que elija más el número de
+Texto sin formato (.txt). PowerPoint crea una diapositiva por página con una imagen de la página (para mostrarla
+tal como se ve; el texto y los dibujos de una diapositiva no se pueden editar como texto y formas de PowerPoint).
+Imágenes crea una imagen por página, con el nombre que elija más el número de
 página (plano_p1.png, plano_p2.png...); si alguna ya existe, se le pregunta una vez antes de reemplazarlas.</li>
 </ul>
 

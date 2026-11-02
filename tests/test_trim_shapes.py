@@ -244,11 +244,13 @@ class TrimShapes(unittest.TestCase):
         self.assertLessEqual(bad, 30, (n, bad, worst))
         self.assertLessEqual(worst, 16, (n, bad, worst))
 
-    def test_a_plain_ellipse_and_a_filled_shape_say_why_not(self):
+    def test_a_lone_ellipse_goes_and_a_filled_shape_says_why_not(self):
+        # (a plain ellipse is trimmed as a curve since 1.7.1: tests/test_trim_curves.py;
+        # nothing crossing it, it all goes, as a line nothing crosses does)
         e = {"kind": "ellipse", "props": dict(A.DEFAULTS["ellipse"]), "rect": BOX}
         v = self.view(saved(e))
-        self.assertFalse(v.cad_trim(0, P(250, 100)))
-        self.assertIn("ellipse", self.said[-1])
+        self.assertTrue(v.cad_trim(0, P(250, 100)))
+        self.assertEqual(self.markups(v), [])
         v = self.view(saved(plain_rect(fill="#ffff00")))
         self.assertFalse(v.cad_trim(0, TOP))
         self.assertIn("filled", self.said[-1])

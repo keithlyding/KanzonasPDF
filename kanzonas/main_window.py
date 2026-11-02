@@ -1390,7 +1390,9 @@ class MainWindow(QMainWindow):
         self.a_unlock_all.setEnabled(has)
         if hasattr(self, "_objects_timer"):
             self._objects_timer.start()
-        n_sel = len(v.selected_xrefs()) if has else 0
+        # markups and the drawing's own objects (Edit objects, CAD mode) count alike: any
+        # mix of kinds aligns and distributes
+        n_sel = len(v.selected_xrefs()) + len(v.selected_objects()) if has else 0
         for key, a in self.arrange_actions.items():
             need = 3 if key.startswith("dist") else 2 if key.startswith("al_") and \
                 self._align_ref() != "page" else 1
@@ -4623,11 +4625,14 @@ class MainWindow(QMainWindow):
                 self._split_tools(*["m_length"] + [k for k, *_r in MEASURE_TOOLS
                                                    if k != "m_length"]),
                 self.a_snap_objects, self.a_snap_grid, self.a_snap_page]),
-            (tr("Clean up"), "small", [
+            # the page's own text and drawing: erase, stacking order, align, change the words
+            # (Add text under the arrow; in the second column's free slot: no wider)
+            (tr("Edit"), "small", [
                 t["erasecontent"],
                 split_button([A_[k] for k in ("z_front", "z_forward", "z_backward", "z_back")]),
                 split_button([A_[k] for k in ("al_left", "al_hcenter", "al_right", "al_top",
-                                              "al_vmiddle", "al_bottom", "dist_h", "dist_v")])]),
+                                              "al_vmiddle", "al_bottom", "dist_h", "dist_v")]),
+                self._split_tools("edittext", "addtext")]),
         ])
         self._cad_tab = r.widget(r.count() - 1)
         self._sync_mouse_actions()          # the CAD tab: only in CAD mouse mode

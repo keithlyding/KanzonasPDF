@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
-from kanzonas import annotations, main_window, mouse_modes, page_widget  # noqa: E402
+from kanzonas import annotations, main_window, mouse_modes, page_objects, page_widget  # noqa: E402
 
 P = pymupdf.Point
 
@@ -84,6 +84,223 @@ class Tab(CadWindow):
         # (back to Standard: the CAD tab goes, another one is in front)
         self.w.set_mouse_mode("standard")
         self.assertIsNot(ribbon.currentWidget(), self.w._cad_tab)
+
+
+class TextOnTheCadTab(CadWindow):
+    """Edit text on the CAD tab (its face), with Add text under its arrow (asked for in
+    1.7.1), and both work with the CAD mouse."""
+    def split(self):
+        from PySide6.QtWidgets import QToolButton
+        t = self.w.tool_actions
+        got = [b for b in self.w._cad_tab.findChildren(QToolButton) if b.menu() is not None
+               and t["edittext"] in b.menu().actions()]
+        self.assertEqual(len(got), 1)
+        return got[0]
+
+    def test_edit_text_is_the_face_and_add_text_is_under_the_arrow(self):
+        self.cad()
+        b = self.split()
+        t = self.w.tool_actions
+        self.assertIs(b.defaultAction(), t["edittext"])
+        self.assertEqual(b.menu().actions(), [t["edittext"], t["addtext"]])
+
+    def test_edit_text_opens_the_words_in_cad_mode(self):
+        page = self.v.doc[0]
+        page.insert_text((300, 500), "PUMP ROOM", fontsize=18)
+        del page
+        self.v._clear_page_caches([0])
+        self.cad()
+        self.split().defaultAction().trigger()
+        self.assertEqual(self.w.tool, "edittext")
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(330, 494))
+        APP.processEvents()
+        ed = self.v._inline
+        self.assertIsNotNone(ed)
+        self.assertIn("PUMP ROOM", ed.text.toPlainText())
+
+    def test_add_text_types_on_the_page_in_cad_mode(self):
+        self.cad()
+        self.split().menu().actions()[1].trigger()
+        self.assertEqual(self.w.tool, "addtext")
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(200, 540))
+        APP.processEvents()
+        ed = self.v._inline
+        self.assertIsNotNone(ed)
+        self.assertEqual(getattr(ed, "kz_tool", None), "addtext")
+
+
+class Rollover(CadWindow):
+    """CAD mode: what a click would take is highlighted while the pointer is over it, before
+    any click (asked for after 1.7: "show something so the user knows when his mouse is over
+    an area that can be selected for moving, mirroring, scaling")."""
+    def setUp(self):
+        super().setUp()
+        self.cad()
+
+    def hover(self, x, y):
+        # (the spot on screen: a move goes to whatever is under it, a scroll bar included)
+        p = self.at(x, y)
+        self.v.ensureVisible(self.page.x() + p.x(), self.page.y() + p.y(), 120, 120)
+        APP.processEvents()
+        # (away first: a move to where the pointer already is sends nothing)
+        QTest.mouseMove(self.page, self.at(x + 37, y + 41))
+        QTest.mouseMove(self.page, self.at(x, y))
+        APP.processEvents()
+        from kanzonas import cad_select
+        return cad_select._rollover_shown(self.page)
+
+    def test_a_markup_under_the_pointer_lights_up(self):
+        got = self.hover(250, 225)                  # (on the first arrow)
+        self.assertIsNotNone(got)
+        self.assertEqual(got["kind"], "markup")
+        self.assertTrue(got["lines"])
+        self.assertIsNone(self.hover(600, 500))     # (empty paper: nothing)
+
+    def test_the_cross_becomes_a_pick_box_over_it(self):
+        from kanzonas import cad_select
+        self.hover(250, 225)
+        self.assertEqual(self.page.cursor().pixmap().cacheKey(),
+                         cad_select.pick_cursor().pixmap().cacheKey())
+        self.hover(600, 500)                        # (empty paper: the plain cross again)
+        self.assertNotEqual(self.page.cursor().shape(), Qt.BitmapCursor)
+
+    def test_it_fades(self):
+        # the arrow's pixels turn lighter while the pointer is over it
+        z = self.v.zoom
+        spot = (int(250 * z), int(225 * z))
+        self.hover(600, 500)
+        before = self.page.grab().toImage().pixelColor(*spot)
+        self.hover(250, 225)
+        after = self.page.grab().toImage().pixelColor(*spot)
+        self.assertGreater(after.lightness(), before.lightness() + 40, (before, after))
+        self.assertEqual(after.hue() == before.hue() or after.saturation() < 60, True)
+
+    def test_a_locked_markup_does_not_light_up(self):
+        page = self.v.doc[0]
+        first = annotations.each_annot(page)[0]
+        first.set_flags((first.flags or 0) | pymupdf.PDF_ANNOT_IS_LOCKED)
+        first.update()
+        del first, page
+        self.v._clear_page_caches([0])
+        got = self.hover(250, 225)
+        self.assertTrue(got is None or not got["takes"])
+        self.assertNotEqual(self.page.cursor().shape(), Qt.BitmapCursor)
+
+    def test_a_selected_markup_is_not_lit_again(self):
+        page = self.v.doc[0]
+        xs = [a.xref for a in annotations.each_annot(page)]
+        del page
+        self.v._set_selection(0, xs[:1])
+        self.assertIsNone(self.hover(250, 225))
+
+    def test_the_drawings_own_line_with_edit_objects(self):
+        d = pymupdf.open()
+        p = d.new_page(width=400, height=300)
+        p.draw_line((50, 150), (350, 150), color=(0, 0, 1))
+        path = os.path.join(tempfile.mkdtemp(), "line.pdf")
+        d.save(path)
+        self.w.open_file(path)
+        APP.processEvents()
+        v = self.v = self.w.view()
+        self.addCleanup(lambda: setattr(v, "dirty", False))
+        self.cad()
+        self.w.set_tool("editobjects")      # (after: CAD mode puts down its own start tool)
+        got = self.hover(200, 150)
+        self.assertIsNotNone(got)
+        self.assertEqual(got["kind"], "object")
+        # once it's selected it's drawn as a selection instead
+        v.select_objects(0, [got["target"]])
+        self.assertIsNone(self.hover(201, 150))
+
+    def test_not_while_a_command_asks_for_points(self):
+        self.assertIsNotNone(self.hover(250, 225))
+        page = self.v.doc[0]
+        xs = [a.xref for a in annotations.each_annot(page)]
+        del page
+        self.v._set_selection(0, xs[1:])
+        self.w.start_cad_command("move")            # (asks for the base point)
+        self.addCleanup(lambda: self.v._cad_cmd and self.v._cad_cmd.finish())
+        from kanzonas import cad_select
+        self.assertIsNone(cad_select._rollover_shown(self.page))
+
+
+class CoveredSheet(CadWindow):
+    """A sheet covered by one object (a filled background, a scan) left no empty paper to
+    start a selection box on (from a test of 1.7): a click on such a background starts a box,
+    and a box can start on the gray canvas off the page."""
+    def sheet(self, build):
+        d = pymupdf.open()
+        p = d.new_page(width=792, height=612)
+        build(p)
+        p.draw_line((200, 200), (300, 260), color=(0, 0, 1))
+        p.draw_line((500, 300), (650, 400), color=(0, 0, 1))
+        path = os.path.join(tempfile.mkdtemp(), "sheet.pdf")
+        d.save(path)
+        self.w.open_file(path)
+        APP.processEvents()
+        v = self.v = self.w.view()
+        self.addCleanup(lambda: setattr(v, "dirty", False))
+        self.cad()
+        self.w.set_tool("editobjects")      # (after: CAD mode puts down its own start tool)
+        return v
+
+    def test_a_click_on_a_filled_background_starts_a_box(self):
+        v = self.sheet(lambda p: p.draw_rect(p.rect, color=None, fill=(1, 1, 0.9)))
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(400, 100))
+        self.assertIsNotNone(v._cad_pick)                   # (a box, not the background)
+        self.assertIsNone(v.obj_sel)
+        QTest.mouseMove(self.page, self.at(250, 280))
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(250, 280))
+        APP.processEvents()
+        # from (400,100) to (250,280), right to left: a crossing box (it cuts the first line)
+        self.assertIsNotNone(v.obj_sel)
+        self.assertNotIn(True, [it.get("background") for it in v.obj_sel[1]])
+        # a window around the whole sheet still takes the background too
+        v.clear_object_selection()
+        v.select_objects(0, v.content_objects(0).pick(
+            page_objects.Box(pymupdf.Rect(-10, -10, 800, 620))))
+        self.assertIn(True, [it.get("background") for it in v.obj_sel[1]])
+
+    def test_a_click_on_a_full_page_scan_starts_a_box(self):
+        def scan(p):
+            pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 40, 30), False)
+            pix.set_rect(pix.irect, (250, 250, 250))
+            p.insert_image(p.rect, pixmap=pix)
+        v = self.sheet(scan)
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(400, 100))
+        self.assertIsNotNone(v._cad_pick)
+        self.assertIsNone(v.obj_sel)
+
+    def test_a_box_starts_on_the_gray_canvas(self):
+        v = self.sheet(lambda p: p.draw_rect(p.rect, color=None, fill=(1, 1, 1)))
+        canvas = v.widget()
+        g = self.page.geometry()
+        start = QPoint(g.left() - 25, g.top() + int(150 * v.zoom))     # (left of the page)
+        QTest.mouseClick(canvas, Qt.LeftButton, Qt.NoModifier, start)
+        self.assertIsNotNone(v._cad_pick)
+        self.assertLess(v._cad_pick["at"].x, 0)              # (off the page)
+        # the box shows on the canvas too while it's drawn
+        from kanzonas import cad_select
+        QTest.mouseMove(self.page, self.at(350, 300))
+        self.assertIsNotNone(cad_select._shape_now(self.page))
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(350, 300))
+        APP.processEvents()
+        self.assertIsNone(v._cad_pick)
+        got = v.obj_sel[1] if v.obj_sel else []
+        self.assertEqual(len(got), 1)                        # (the first line, inside it)
+
+    def test_a_held_drag_from_the_canvas_is_a_lasso(self):
+        v = self.sheet(lambda p: None)
+        canvas = v.widget()
+        g = self.page.geometry()
+        a = QPoint(g.left() - 25, g.top() + int(150 * v.zoom))
+        QTest.mousePress(canvas, Qt.LeftButton, Qt.NoModifier, a)
+        for k in range(1, 12):
+            QTest.mouseMove(canvas, a + QPoint(30 * k, 12 * k), 40)
+        self.assertIsNotNone(self.page._cad_down)
+        self.assertEqual(self.page._cad_down["mode"], "lasso")
+        QTest.mouseRelease(canvas, Qt.LeftButton, Qt.NoModifier, a + QPoint(330, 132), 40)
+        self.assertIsNone(self.page._cad_down)
 
 
 class Clicks(CadWindow):

@@ -46,7 +46,22 @@ jobs:
           cache: pip                       # reuse downloaded packages between builds
 
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt -c constraints.txt pyinstaller
+        run: |
+          python -m pip install -r requirements.txt -c constraints.txt pyinstaller
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          # Only one OpenCV: rapidocr asks for opencv-python and pdf2docx for
+          # opencv-python-headless; both install into the same cv2 folder, and which one wins
+          # depends on install order (an outside audit found a broken mix). The headless one is
+          # kept (OCR needs no GUI), at the version pinned in constraints.txt.
+          $m = Select-String -Path constraints.txt -Pattern '^opencv-python-headless==([0-9.]+)'
+          if (-not $m) { throw "opencv-python-headless isn't pinned in constraints.txt" }
+          $v = $m.Matches[0].Groups[1].Value
+          python -m pip uninstall -y opencv-python opencv-python-headless
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m pip install --no-deps "opencv-python-headless==$v"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -c "import cv2; print('OpenCV', cv2.__version__)"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: Regression tests (security, document preservation, efficiency budgets)
         env:
@@ -352,8 +367,8 @@ jobs:
           python -m pip install -r requirements.txt -c constraints.txt pyinstaller
           # OpenCV (used by OCR) without its GUI: the GUI build carries Qt 5, FFmpeg and their X11
           # libraries (about 120 MB) and sets Qt 5 plugin paths in the environment when imported.
-          # Same version as the pinned opencv-python.
-          v=$(sed -n 's/^opencv-python==\([0-9.]*\).*/\1/p' constraints.txt)
+          # (only one OpenCV, as on Windows: the headless one pinned in constraints.txt)
+          v=$(sed -n 's/^opencv-python-headless==\([0-9.]*\).*/\1/p' constraints.txt)
           test -n "$v"
           python -m pip uninstall -y opencv-python opencv-python-headless
           python -m pip install --no-deps "opencv-python-headless==$v"

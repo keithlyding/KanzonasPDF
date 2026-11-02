@@ -832,12 +832,12 @@ msgid "Moved {step} pt (Shift+arrow: 10 pt, Ctrl+arrow: 0.1 pt; Ctrl+Z undoes th
 msgstr "Se movió {step} pt (Shift+flecha: 10 pt, Ctrl+flecha: 0.1 pt; Ctrl+Z deshace toda la serie)"
 
 #: document_view.py:2969
-msgid "Select two or more markups to align (or align to the page)."
-msgstr "Seleccione dos o más marcas para alinear (o alinee con la página)."
+msgid "Select two or more items to align (or align to the page)."
+msgstr "Seleccione dos o más elementos para alinear (o alinee con la página)."
 
 #: document_view.py:3010
-msgid "Select three or more markups to distribute."
-msgstr "Seleccione tres o más marcas para distribuir."
+msgid "Select three or more items to distribute."
+msgstr "Seleccione tres o más elementos para distribuir."
 
 #: document_view.py:3069
 msgid "markup"
@@ -6523,6 +6523,9 @@ msgstr "haga clic en el segundo punto de origen"
 msgid "Aligned"
 msgstr "Alineado"
 
+msgid "Distributed"
+msgstr "Distribuido"
+
 #: cad
 msgid "Rows:"
 msgstr "Filas:"
@@ -6656,8 +6659,8 @@ msgid "Highlights and other text markups stay on their words: they can only be m
 msgstr "Los resaltados y otras marcas de texto se quedan sobre sus palabras: solo se pueden mover o copiar."
 
 #: cad
-msgid "Trim: no line there. Click on a line of the drawing, a line markup, a rectangle, a polygon or a cloud (filled shapes and pictures aren't trimmed)."
-msgstr "Recortar: no hay ninguna línea ahí. Haga clic en una línea del dibujo, una marca de línea, un rectángulo, un polígono o una nube (las formas rellenas y las imágenes no se recortan)."
+msgid "Trim: no line there. Click on a line or curve of the drawing, or on a line, arrow, arc, curve, circle, rectangle, polygon or cloud markup (filled shapes and pictures aren't trimmed)."
+msgstr "Recortar: no hay ninguna línea ahí. Haga clic en una línea o curva del dibujo, o en una marca de línea, flecha, arco, curva, círculo, rectángulo, polígono o nube (las formas rellenas y las imágenes no se recortan)."
 
 msgid "Trim: a filled shape can't be trimmed (set its fill to none in Properties first)."
 msgstr "Recortar: una forma rellena no se puede recortar (quítele antes el relleno en Propiedades)."
@@ -6992,8 +6995,8 @@ msgstr "Ir a la página"
 msgid "Page:"
 msgstr "Página:"
 
-msgid "Clean up"
-msgstr "Limpiar"
+msgid "Edit"
+msgstr "Editar"
 
 msgid "Calibrate"
 msgstr "Calibrar"
