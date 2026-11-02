@@ -595,7 +595,7 @@ también vale 12'-6"; pulgadas sobre el papel si no hay escala). Crea una marca 
 Propiedades, el borde de nube, mover y cambiar el tamaño funcionan como en una elipse.</li>
 <li><b>Máscara</b>: arrastre un cuadro sobre lo que quiere ocultar; queda cubierto por un cuadro
 blanco sin contorno (como la Cobertura de AutoCAD). En Propiedades puede cambiar su color de
-relleno o darle un contorno. Oculta lo que hay debajo en pantalla y al imprimir, pero ese
+relleno o darle un contorno (Sin borde vuelve a quitar el contorno). Oculta lo que hay debajo en pantalla y al imprimir, pero ese
 contenido sigue en el archivo: use Censurar para eliminarlo de verdad.</li>
 <li><b>En el modo CAD</b> las herramientas que dibujan de un punto a otro (Línea, Flecha,
 Rectángulo, Elipse, Círculo, Nube, Máscara, Cuadro de texto, Llamada, Longitud, Radio, Calibrar
@@ -1288,5 +1288,5 @@ cuadrícula...).</li>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Páginas / Propiedades / Marcas / Caja de herramientas / Marcadores / Vista dividida</td></tr>
 </table>
-<p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija. <b>Restablecer todos los valores predeterminados</b> vuelve a poner los métodos abreviados originales de inmediato. Los cambios se aplican en todas las ventanas.</p>
+<p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija. Una tecla que usted asignó a un comando sigue siendo suya: un atajo nuevo que una versión posterior da a otro comando no se la quita (ese comando queda sin atajo; Restablecer todos los valores predeterminados se lo devuelve). <b>Restablecer todos los valores predeterminados</b> vuelve a poner los métodos abreviados originales de inmediato. Los cambios se aplican en todas las ventanas.</p>
 """

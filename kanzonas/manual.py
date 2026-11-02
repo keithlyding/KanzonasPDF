@@ -615,7 +615,7 @@ the page's measuring unit, as Measure &gt; Set scale shows it, 12'-6" also works
 when no scale is set). It makes an ellipse markup, so Properties, the cloud border, moving and
 resizing work as for an ellipse.</li>
 <li><b>Mask</b>: drag a box over what to hide; it's covered by a white box with no outline (like
-AutoCAD's Wipeout). Properties can change its fill color or give it an outline. It hides what's
+AutoCAD's Wipeout). Properties can change its fill color or give it an outline (No border takes the outline away again). It hides what's
 under it on screen and in print, but that content stays in the file: use Redact to remove it
 for good.</li>
 <li><b>In CAD mode</b> the tools that draw from one point to another (Line, Arrow, Rectangle,
@@ -1309,7 +1309,7 @@ settings...).</li>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>
 </table>
-<p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it. <b>Reset all to defaults</b> puts the built-in shortcuts back straight away. Changes apply in every window.</p>
+<p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it. A key you gave a command yourself stays yours: a new default that a later version gives another command doesn't take it (that command then shows no shortcut; Reset all to defaults gives it back). <b>Reset all to defaults</b> puts the built-in shortcuts back straight away. Changes apply in every window.</p>
 """
 
 
