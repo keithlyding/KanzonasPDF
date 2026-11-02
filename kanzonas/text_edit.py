@@ -12,6 +12,7 @@ import glob
 import math
 import os
 import re
+import sys
 
 import pymupdf
 
@@ -341,18 +342,90 @@ def _system_fonts():
     return _SYSTEM_FONTS
 
 
+def _fontconfig_dirs(conf="/etc/fonts/fonts.conf"):
+    """The font folders fontconfig is told about in its main file (<dir> lines; a
+    prefix="xdg" one is under each XDG data folder, ~ is the home folder)."""
+    try:
+        with open(conf, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+    except OSError:
+        return []
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    home = os.path.expanduser("~")
+    data_home = os.environ.get("XDG_DATA_HOME") or os.path.join(home, ".local", "share")
+    out = []
+    for attrs, d in re.findall(r"<dir\b([^>]*)>([^<]*)</dir>", text):
+        d = d.strip()
+        if not d:
+            continue
+        if re.search(r"prefix\s*=\s*[\"']xdg[\"']", attrs):
+            out.append(os.path.join(data_home, d))
+        elif d.startswith("~"):
+            out.append(home + d[1:])
+        elif os.path.isabs(d):
+            out.append(d)
+    return out
+
+
+def font_dirs():
+    """The folders installed fonts are in. Windows: the system's and this user's Fonts
+    folders. Linux: the folders fontconfig uses (the ones in its fonts.conf, the user's
+    ~/.local/share/fonts and ~/.fonts, /usr/share/fonts, /usr/local/share/fonts and the
+    fonts folder of every XDG data folder), each once, none inside another."""
+    if os.name == "nt" or sys.platform == "darwin":
+        return [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),
+                os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows",
+                             "Fonts"),
+                "/usr/share/fonts", os.path.expanduser("~/.fonts"), "/Library/Fonts"]
+    home = os.path.expanduser("~")
+    data_home = os.environ.get("XDG_DATA_HOME") or os.path.join(home, ".local", "share")
+    data_dirs = (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(":")
+    found = ([os.path.join(data_home, "fonts"), os.path.join(home, ".fonts")]
+             + _fontconfig_dirs()
+             + [os.path.join(d, "fonts") for d in data_dirs if os.path.isabs(d)]
+             + ["/usr/share/fonts", "/usr/local/share/fonts"])
+    real, out = [], []
+    for d in found:
+        if not os.path.isdir(d):
+            continue
+        r = os.path.realpath(d)
+        if any(r == k or r.startswith(k.rstrip(os.sep) + os.sep) for k in real):
+            continue                    # (scanned already, as part of a folder above it)
+        keep = [i for i, k in enumerate(real) if not k.startswith(r.rstrip(os.sep) + os.sep)]
+        real, out = [real[i] for i in keep], [out[i] for i in keep]
+        real.append(r)
+        out.append(d)
+    return out
+
+
+def _font_files(d):
+    """Font files (.ttf, .otf) under folder d. Windows: as its file names are written
+    (Windows doesn't tell upper from lower case); elsewhere also FONT.TTF, Font.Otf..."""
+    if os.name == "nt":
+        return glob.glob(os.path.join(d, "**", "*.[to]tf"), recursive=True)
+    out, seen = [], set()
+    for root, dirs, files in os.walk(d, followlinks=True):
+        real = os.path.realpath(root)
+        if real in seen:                # (a link back up the tree: walked already)
+            dirs[:] = []
+            continue
+        seen.add(real)
+        dirs.sort()
+        out += [os.path.join(root, f) for f in sorted(files)
+                if f.lower().endswith((".ttf", ".otf"))]
+    return out
+
+
 def _font_scan(per_step=8):
     """Scan the fonts folders: a generator that yields None every per_step fonts and the
     finished {normalized name: font file} last."""
     out = {}
-    dirs = [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),
-            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Fonts"),
-            "/usr/share/fonts", os.path.expanduser("~/.fonts"), "/Library/Fonts"]
+    dirs = font_dirs()
     count = 0
     for d in dirs:
         if not os.path.isdir(d):
             continue
-        for f in glob.glob(os.path.join(d, "**", "*.[to]tf"), recursive=True):
+        for f in _font_files(d):
             try:
                 out.setdefault(_norm(pymupdf.Font(fontfile=f).name), f)
             except Exception:
@@ -570,6 +643,12 @@ def chosen_font(page, family, bold=False, italic=False, text=""):
     base = _norm(family)
     style = ("bold" if bold else "") + ("italic" if italic else "")
     keys = ([base + style, base + style.replace("italic", "oblique")] if style else []) + [base]
+    if os.name != "nt" and not any(k in fonts for k in keys):
+        # Linux: a name fontconfig stands in for ("Sans Serif", "Monospace"...) is written
+        # with the font it stands for
+        real = _fontconfig_family(family)
+        if real and _norm(real) != base:
+            return chosen_font(page, real, bold, italic, text)
     for key in keys:
         path = fonts.get(key)
         if not path:
@@ -583,6 +662,18 @@ def chosen_font(page, family, bold=False, italic=False, text=""):
         except Exception:
             continue
     return None
+
+
+def _fontconfig_family(family):
+    """The installed family a font name resolves to on screen (Linux: "Sans Serif" is
+    "DejaVu Sans" on many systems), or None."""
+    try:
+        from PySide6.QtGui import QFont, QFontInfo, QGuiApplication
+        if QGuiApplication.instance() is None:
+            return None
+        return QFontInfo(QFont(family)).family() or None
+    except Exception:
+        return None
 
 
 def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
