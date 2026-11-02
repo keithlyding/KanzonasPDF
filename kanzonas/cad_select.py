@@ -351,11 +351,11 @@ def double_click(w, e):
             else:
                 v.edit_annot_at(w.index, pdf)
             return True
+    if v.tool != "editobjects":
+        return False                    # (with Select a double-click selects a word)
     if same_spot:
         w._cad_down = {"ignore": True}  # (its release does nothing)
         return True
-    if v.tool != "editobjects":
-        return False                    # (with Select a double-click selects a word)
     press(w, e, pos, pdf)
     return True
 
