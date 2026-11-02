@@ -1,0 +1,11 @@
+#!/bin/sh
+# Starts KanzonasPDF inside the AppImage (the PyInstaller folder is in usr/lib/KanzonasPDF).
+HERE="$(dirname "$(readlink -f "$0")")"
+
+# Qt and QML plugins the desktop points at (KDE sets QT_PLUGIN_PATH to its own Qt 6 plugins)
+# were built for another Qt: loaded into the bundled Qt they can crash it. Use only the
+# plugins inside the AppImage. QT_QPA_PLATFORMTHEME is left alone: a theme that isn't bundled
+# is simply not found.
+unset QT_PLUGIN_PATH QML_IMPORT_PATH QML2_IMPORT_PATH QT_QPA_PLATFORM_PLUGIN_PATH
+
+exec "$HERE/usr/lib/KanzonasPDF/KanzonasPDF" "$@"

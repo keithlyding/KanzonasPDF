@@ -767,6 +767,8 @@ def run(log_path):
                 else paths.app_dir()
             assert paths.data_dir("signatures").startswith(base)
             return f"(portable: {paths.data_dir()})"
+        if sys.platform != "win32":
+            return "(settings: %s)" % st.fileName()
         return "(installed: registry + AppData)"
     check("storage location", t_storage)
 

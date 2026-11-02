@@ -143,7 +143,7 @@ drawings use very thin lines (a tenth of a point or less); at their true width t
 part of a screen pixel when zoomed out and come out pale gray. With this on they stay dark and
 legible at any zoom. Only the screen changes: printing, export, OCR, Compare and the saved
 file use the true line widths. Your choice is remembered.</li>
-<li><b>Theme:</b> View &gt; Theme (Match Windows, Light, Dark). View &gt; Show text labels on
+<li><b>Theme:</b> View &gt; Theme (Match Windows, or Match system on Linux; Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
 saying what it does and its keyboard shortcut.</li>
 </ul>
@@ -207,6 +207,17 @@ one). Describe what you did and what happened; please don't attach confidential 
 problems (redaction, passwords, signatures) have their own private form there.</li>
 <li>The <b>KanzonasPDF-windows.zip</b> download is the same program without the portable.txt file: it runs
 from any folder but stores settings on the computer like the installed version.</li>
+</ul>
+
+<h2 id="linux">KanzonasPDF on Linux</h2>
+<ul>
+<li><b>Install:</b> download <b>KanzonasPDF-x86_64.AppImage</b> from the Releases page, make it executable (right-click &gt; Properties &gt; Permissions &gt; Allow executing file as program, or <code>chmod +x KanzonasPDF-x86_64.AppImage</code>) and double-click it. No installation or administrator rights are needed. If it doesn't start and mentions FUSE or libfuse.so.2, install FUSE 2 (Ubuntu 22.04 and Debian 12: <code>sudo apt install libfuse2</code>; Ubuntu 24.04 and later: <code>sudo apt install libfuse2t64</code>; Fedora: <code>sudo dnf install fuse-libs</code>) or start it with <code>--appimage-extract-and-run</code>.</li>
+<li><b>Applications menu and default PDF app:</b> File &gt; Preferences &gt; General &gt; <b>Add KanzonasPDF to the applications menu and open PDFs with it</b> adds a menu entry and icon for your user only (in ~/.local/share) and makes KanzonasPDF the app that opens PDF files. Untick it to take them away again; the app that opened PDFs before is the default again. If you had made a menu entry named kanzonaspdf.desktop yourself, it is put aside while KanzonasPDF's own is there and comes back when you untick the option. Some desktops show the new entry only after you sign out and in. If you move the AppImage, start it once from its new place and the menu entry follows it.</li>
+<li><b>Update:</b> <b>Update now</b> (in the update notice or Help &gt; Check for updates) downloads the new AppImage only from GitHub, checks that its sha256 matches the digest published with the release, puts it in place of the old file (same name and place, so the menu entry and default app keep working), asks to save open documents, closes and starts the new version. If you keep a document open, the new version starts the next time you open KanzonasPDF. If the AppImage is in a folder you can't change, the release page opens instead: download the new file and replace the old one yourself. If you start the AppImage with --appimage-extract-and-run, the new version is started the same way. Run from the source code, KanzonasPDF only tells you about new versions.</li>
+<li><b>Your files:</b> settings are kept in ~/.config/KanzonasPDF/KanzonasPDF.conf; signatures, stamp pictures, your certificate and backups in ~/.local/share/KanzonasPDF/KanzonasPDF (Preferences &gt; General shows both). Signing out or shutting down (or Ctrl+C or closing the terminal KanzonasPDF was started from) with unsaved changes keeps backup copies, which are offered at the next start, as on Windows.</li>
+<li><b>Fonts:</b> Add text and Edit text use the fonts installed for fontconfig (/usr/share/fonts, ~/.local/share/fonts, ~/.fonts...): TrueType and OpenType fonts are embedded (also TrueType collections, .ttc, such as most Chinese, Japanese and Korean fonts: the first font in the file); a Type 1 font isn't, and Helvetica is used instead. Sans Serif, Serif and Monospace use the font your system shows for them.</li>
+<li><b>Differences from Windows:</b> View &gt; Theme's first choice is <b>Match system</b> (the desktop's light or dark setting); digital signing uses your personal certificate or a .pfx/.p12 file (there's no Windows certificate store); printing needs a printer set up in the system (CUPS); the Open and Save windows are the desktop's own or Qt's.</li>
+<li><b>Remove:</b> untick the Preferences option above, then delete the AppImage. To remove your settings and files too, delete ~/.config/KanzonasPDF and ~/.local/share/KanzonasPDF.</li>
 </ul>
 
 <h2 id="navigate">Moving around</h2>
@@ -1055,7 +1066,7 @@ with your saved signature or initials and the date.</li>
 <li><b>Digitally sign with certificate</b>, with an optional lock against changes (certify).
 Choose where the certificate comes from:
 <ul>
-<li><b>Certificate stored in Windows</b>: the list shows the signing certificates in your
+<li><b>Certificate stored in Windows</b> (Windows only; not shown on Linux): the list shows the signing certificates in your
 Windows Personal store, the same ones Adobe Acrobat and PDF-XChange Editor use (open
 certmgr.msc &gt; Personal &gt; Certificates to see them). Windows does the signing, so
 certificates whose key can't be copied, smart cards and USB tokens work too; Windows asks for
@@ -1197,10 +1208,11 @@ the same as that command, so you can change it in either place. <b>OK</b> uses y
 closes the window; <b>Apply</b> uses them right away and leaves the window open, so you can see
 the effect and keep adjusting; <b>Cancel</b> closes it without the changes made since the last
 Apply.</li>
-<li><b>General:</b> theme (Match Windows, Light, Dark), <b>Language</b> (Automatic, the language
-of Windows; English; Español: menus, messages and this manual; a change shows the next time
+<li><b>General:</b> theme (Match Windows, or Match system on Linux; Light, Dark), <b>Language</b> (Automatic, the language
+of Windows or of the system; English; Español: menus, messages and this manual; a change shows the next time
 KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, Show menu bar,
-Show text labels on toolbars, Check for updates automatically. It also tells you where your
+Show text labels on toolbars, Check for updates automatically, and on Linux Add KanzonasPDF to the
+applications menu and open PDFs with it (see KanzonasPDF on Linux). It also tells you where your
 settings are saved (the data folder in portable mode). A saved setting that can't be used (one
 edited by hand, say) is replaced by its default. Should one still stop KanzonasPDF from starting,
 it starts with the default settings, says so, and lists the old ones in
@@ -1221,8 +1233,8 @@ at (Fit width by default; Fit page, the whole page in the window; Actual size; o
 when you closed it), and whether to reopen it at the page you were on last time.</li>
 <li><b>Saving:</b> how often to back up unsaved changes (every 5 minutes by default; Off turns it
 off). A copy of each document with unsaved changes is kept in the backups folder and deleted when
-you save or close it. If KanzonasPDF or Windows stops unexpectedly, the next start offers to open
-the copies. When a setup or Windows shutting down closes KanzonasPDF, nothing can be asked, so
+you save or close it. If KanzonasPDF or the computer stops unexpectedly, the next start offers to open
+the copies. When a setup or Windows shutting down (on Linux, signing out or shutting down) closes KanzonasPDF, nothing can be asked, so
 each document's latest unsaved changes are first written to its copy, and the next start offers
 them the same way. Each opens in a tab named after its original file with "(recovered)" added, marked as
 unsaved; Save asks where to keep it, offering the original file (or Untitled for a PDF that was

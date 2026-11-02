@@ -15,6 +15,11 @@ alone), and starts it again. The path to KanzonasPDF.exe never changes, so file 
 Installed copies update in place too (InstallerUpdater): download the release's setup, check
 its sha256 the same way, close KanzonasPDF (saving first), and run the setup quietly over the
 installation; it starts KanzonasPDF again when it's done.
+
+On Linux, the AppImage updates itself (AppImageUpdater): the release's
+KanzonasPDF-x86_64.AppImage is downloaded next to the running one ($APPIMAGE), checked the
+same way, and once KanzonasPDF has closed (saving first) it takes the old file's place in one
+step (a rename on the same disk) and is started again. Run from source, Linux only tells.
 """
 
 import hashlib
@@ -38,6 +43,8 @@ API = "https://api.github.com/repos/" + REPO + "/releases?per_page=20"
 RELEASES_PAGE = "https://github.com/" + REPO + "/releases"
 DAY = 24 * 3600
 PORTABLE_ZIP = "KanzonasPDF-portable.zip"
+APPIMAGE = "KanzonasPDF-x86_64.AppImage"    # the Linux release file (its name never changes)
+APPIMAGE_MAX_BYTES = 1500 * 1000 * 1000     # a download past this stops (the build allows 400 MB)
 STAGING = "_update"          # folder beside the exe that holds the unpacked new version
 # browser_download_url hosts a portable update is allowed to use. Anything else is refused.
 GITHUB_HOSTS = ("github.com", "objects.githubusercontent.com",
@@ -190,6 +197,106 @@ def can_self_update():
     from . import paths
     return (os.name == "nt" and getattr(sys, "frozen", False) and paths.is_portable()
             and not paths.platform_updates())
+
+
+def running_appimage():
+    """The AppImage file KanzonasPDF runs from on Linux ($APPIMAGE, set by the AppImage's
+    own start-up), or None (Windows, or run from source)."""
+    import sys
+    if not sys.platform.startswith("linux"):
+        return None
+    path = os.environ.get("APPIMAGE") or ""
+    # (the file itself, not a link to it: the update is renamed over what it names, and a
+    # link replaced by the new file would leave the real one old)
+    return os.path.realpath(path) if path and os.path.isfile(path) else None
+
+
+def can_update_appimage():
+    """True when this is the Linux AppImage: Update now replaces it with the new one."""
+    return running_appimage() is not None
+
+
+def appimage_unwritable(path):
+    """Why the AppImage at path can't be replaced by this user (text to show), or None when
+    it can: the new file is written next to it and renamed over it, so its folder must
+    take new files."""
+    folder = os.path.dirname(os.path.abspath(path))
+    if not os.access(folder, os.W_OK | os.X_OK):
+        return tr("You don't have permission to change the folder it is in ({folder}).") \
+            .format(folder=folder)
+    try:
+        st = os.stat(folder)
+        import stat as _stat
+        if st.st_mode & _stat.S_ISVTX and os.stat(path).st_uid != os.getuid() \
+                and st.st_uid != os.getuid():
+            # (a shared folder like /tmp: only a file's owner may replace it)
+            return tr("It belongs to another user.")
+    except OSError as e:
+        return str(e)
+    return None
+
+
+def is_appimage_file(path):
+    """The file at path is a Linux program packed as an AppImage (type 2: an ELF program
+    with AI 2 in its header)."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(11)
+    except OSError:
+        return False
+    return head[:4] == b"\x7fELF" and head[8:11] == b"AI\x02"
+
+
+def replace_appimage(new, target):
+    """Put the checked new AppImage at target in one step: executable like the old one (and
+    by its owner in any case; never changeable by other users, even if the old one was),
+    then renamed over it. The running program keeps its own copy open until it ends."""
+    try:
+        mode = os.stat(target).st_mode & 0o777
+    except OSError:
+        mode = 0o755
+    os.chmod(new, (mode | 0o100) & ~0o022)
+    os.replace(new, target)
+
+
+def restart_command(target, pid=None):
+    """The command that starts the new AppImage once this process (pid) has ended: started
+    while this one still runs, it would find this one's single-instance server still
+    listening, hand its (empty) file list over to it and quit, so nothing would restart."""
+    pid = os.getpid() if pid is None else pid
+    wait = 'i=0; while kill -0 "$1" 2>/dev/null && [ "$i" -lt 150 ]; do sleep 0.2; ' \
+           'i=$((i+1)); done; exec "$2"'
+    return ["/bin/sh", "-c", wait, "kz-restart", str(pid), target]
+
+
+def restart_env(env=None):
+    """The environment to start the new AppImage with: without what this AppImage's start-up
+    set for itself (its folder, which goes away when it ends, and the library path
+    PyInstaller changed; its earlier value comes back from the LD_LIBRARY_PATH_ORIG copy)."""
+    env = dict(os.environ if env is None else env)
+    mount = env.get("APPDIR") or ""
+    if os.path.basename(mount.rstrip("/")).startswith("appimage_extracted_"):
+        # started with --appimage-extract-and-run (no FUSE on this computer): the new one
+        # must be started the same way, or it can't start at all
+        env["APPIMAGE_EXTRACT_AND_RUN"] = "1"
+    # (and the permission to come to the front this start was given: used up already)
+    for key in ("APPIMAGE", "APPDIR", "ARGV0", "OWD", "DESKTOP_STARTUP_ID",
+                "XDG_ACTIVATION_TOKEN"):
+        env.pop(key, None)
+    for key in ("LD_LIBRARY_PATH", "LD_PRELOAD"):
+        if key + "_ORIG" in env:            # (PyInstaller keeps the value it replaced)
+            env[key] = env.pop(key + "_ORIG")
+    if mount:
+        mount = mount.rstrip("/")
+        for key, value in list(env.items()):
+            parts = value.split(os.pathsep)
+            kept = [p for p in parts if not (p == mount or p.startswith(mount + "/"))]
+            if kept != parts:
+                if any(kept):
+                    env[key] = os.pathsep.join(kept)
+                else:
+                    del env[key]
+    return env
 
 
 def setup_name(version):
@@ -477,9 +584,9 @@ class PortableUpdater(QObject):
             return
         self.path = self._target()
         try:
-            self.file = open(self.path, "wb")
+            self.file = self._open()
         except OSError as e:
-            self.failed.emit(tr("Can't write next to KanzonasPDF.exe ({error}).").format(error=e))
+            self.failed.emit(self._write_error(e))
             return
         st = self._state = {"done": False, "file": self.file, "paths": [self.path],
                             "folders": self._folders()}
@@ -495,7 +602,7 @@ class PortableUpdater(QObject):
                          QNetworkRequest.NoLessSafeRedirectPolicy)
         req.setTransferTimeout(60000)
         self.reply = self.net.get(req)
-        self.reply.readyRead.connect(lambda: self.file.write(bytes(self.reply.readAll())))
+        self.reply.readyRead.connect(lambda: self._write(bytes(self.reply.readAll())))
         self.reply.downloadProgress.connect(lambda r, t: self.progress.emit(int(r), int(t)))
         self.reply.finished.connect(self._done)
 
@@ -513,9 +620,13 @@ class PortableUpdater(QObject):
                 _RUNNING.remove(st)
         r = self.reply
         r.deleteLater()
-        self.file.write(bytes(r.readAll()))
-        self.file.close()
+        self._write(bytes(r.readAll()))
+        self._close_file()
         try:
+            problem = self._write_problem()
+            if problem:
+                self.failed.emit(problem)
+                return
             if r.error() != QNetworkReply.NoError:
                 if r.error() != QNetworkReply.OperationCanceledError:
                     self.failed.emit(tr("The download failed ({error}).").format(
@@ -533,9 +644,24 @@ class PortableUpdater(QObject):
         finally:
             self._cleanup()
 
-    # (what InstallerUpdater does differently)
+    # (what InstallerUpdater and AppImageUpdater do differently)
+    def _write(self, data):
+        self.file.write(data)
+
+    def _close_file(self):
+        self.file.close()
+
+    def _write_problem(self):
+        return None
+
+    def _write_error(self, e):
+        return tr("Can't write next to KanzonasPDF.exe ({error}).").format(error=e)
+
     def _target(self):
         return os.path.join(self.app_dir, STAGING + ".zip")
+
+    def _open(self):
+        return open(self.path, "wb")
 
     def _finish(self):
         return unpack(self.path, self.app_dir)
@@ -573,3 +699,96 @@ class InstallerUpdater(PortableUpdater):
         if not getattr(self, "_good", False):
             super()._cleanup()          # a failed or wrong download goes, with its folder
             shutil.rmtree(os.path.dirname(self.path), ignore_errors=True)
+
+
+class AppImageUpdater(PortableUpdater):
+    """Downloads the new AppImage next to the running one (same disk: the rename that puts it
+    in place is a single step), and checks its sha256 against the release and that it is an
+    AppImage. ready(path of the checked download); the caller closes KanzonasPDF and calls
+    replace_appimage. A wrong or failed download is removed, and so is one that grows past
+    APPIMAGE_MAX_BYTES (it would fill the disk)."""
+
+    def __init__(self, url, appimage, parent=None, expected_sha256=None):
+        super().__init__(url, os.path.dirname(os.path.abspath(appimage)), parent,
+                         expected_sha256)
+        self.appimage = os.path.abspath(appimage)
+        self._too_big = False
+
+    def _write_error(self, e):
+        return tr("Can't write next to {name} ({error}).").format(
+            name=os.path.basename(self.appimage), error=e)
+
+    _failed_write = None                # the error writing the download met (disk full...)
+
+    def _write(self, data):
+        if self._failed_write is not None:
+            return
+        try:
+            self.file.write(data)
+        except OSError as e:
+            # (the disk filled up, or the folder went away): stop downloading; _done says
+            # so and removes what was written
+            self._failed_write = e
+            if self.reply is not None and self.reply.isRunning():
+                self.reply.abort()
+
+    def _close_file(self):
+        try:
+            self.file.close()
+        except OSError as e:
+            if self._failed_write is None:
+                self._failed_write = e
+
+    def _write_problem(self):
+        if self._failed_write is None:
+            return None
+        return self._write_error(self._failed_write)
+
+    def _target(self):
+        return None                     # (named when it's made: see _open)
+
+    def _open(self):
+        # a new file only this user can read or change, under a name nobody can guess and
+        # never through a link: the folder may be shared (/tmp, a team folder), and whoever
+        # else can add files there could otherwise prepare the name (a link to another of
+        # the user's files, or a file of theirs they change after it's checked)
+        import tempfile
+        fd, self.path = tempfile.mkstemp(
+            prefix=".%s.update-" % os.path.basename(self.appimage), dir=self.app_dir)
+        return os.fdopen(fd, "wb")
+
+    def start(self):
+        super().start()
+        if self.reply is not None:
+            self.reply.downloadProgress.connect(self._limit)
+
+    def _limit(self, received, total):
+        if not self._too_big and max(received, total) > APPIMAGE_MAX_BYTES:
+            self._too_big = True
+            self.reply.abort()
+
+    def _done(self):
+        st = getattr(self, "_state", None)
+        if not self._too_big or (st is not None and st["done"]):
+            super()._done()             # (or already cleared away: KanzonasPDF is quitting)
+            return
+        # stopped for its size (or it had all come already): never checked, never kept
+        blocked = self.blockSignals(True)
+        try:
+            super()._done()
+        finally:
+            self.blockSignals(blocked)
+        self._good = False
+        PortableUpdater._cleanup(self)
+        self.failed.emit(tr("The download was stopped: it is far bigger than an "
+                            "AppImage of KanzonasPDF."))
+
+    def _finish(self):
+        if not is_appimage_file(self.path):
+            raise ValueError(tr("The download isn't a KanzonasPDF AppImage."))
+        self._good = True               # checked: kept for putting in place
+        return self.path
+
+    def _cleanup(self):
+        if not getattr(self, "_good", False):
+            super()._cleanup()

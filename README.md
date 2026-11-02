@@ -5,19 +5,19 @@
 <h1 align="center">KanzonasPDF</h1>
 
 <p align="center">
-  <b>Free PDF markup, measuring and editing for construction and engineering, on Windows</b><br>
+  <b>Free PDF markup, measuring and editing for construction and engineering, on Windows and Linux</b><br>
   Open source (AGPL), no account, no telemetry, portable.
 </p>
 
 <p align="center">
-  <a href="https://github.com/keithlyding/KanzonasPDF/releases"><b>Download for Windows</b></a> ·
+  <a href="https://github.com/keithlyding/KanzonasPDF/releases"><b>Download for Windows and Linux</b></a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#feedback">Report a bug</a> ·
   <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
 </p>
 
 > Used daily for real work. Every release passes 400+ automated tests and a self-test of the
-> built program on Windows before it's published, and reported bugs have been fixed within days.
+> built program on Windows and Linux before it's published, and reported bugs have been fixed within days.
 
 ## Who it's for
 
@@ -128,6 +128,52 @@ before it's published, and every release lists the SHA-256 checksum of each down
   signatures, stamps and tool chest.
 - To uninstall, use Windows Settings > Apps.
 
+### Linux (AppImage)
+
+KanzonasPDF also runs on Linux (64-bit x86 PCs) as a single file that needs no installation and
+no administrator rights:
+
+1. Download **`KanzonasPDF-x86_64.AppImage`** from the newest release on the
+   [Releases page](https://github.com/keithlyding/KanzonasPDF/releases). Put it where you keep
+   programs, for example a folder `~/Applications` in your home folder.
+2. Make it executable: right-click it > Properties > Permissions > "Allow executing file as
+   program", or in a terminal:
+
+   ```sh
+   chmod +x KanzonasPDF-x86_64.AppImage
+   ```
+
+3. Double-click it, or run `./KanzonasPDF-x86_64.AppImage` (add PDF files after it to open them).
+
+**If it doesn't start ("FUSE" / "libfuse.so.2" error):** AppImages need FUSE 2, which newer
+distributions don't install by default. On Ubuntu 22.04 and Debian 12:
+`sudo apt install libfuse2`; on Ubuntu 24.04 and later: `sudo apt install libfuse2t64`; on
+Fedora: `sudo dnf install fuse-libs`. Or, without installing anything, run it as
+`./KanzonasPDF-x86_64.AppImage --appimage-extract-and-run` (it starts a little slower).
+
+**Applications menu and default PDF app:** in KanzonasPDF, open File > Preferences > General
+and tick **Add KanzonasPDF to the applications menu and open PDFs with it**. This adds a menu
+entry and icon for your user only (in `~/.local/share`) and makes KanzonasPDF the app that opens
+PDF files. Unticking it takes them away again. Keep the AppImage where it was when you added it
+(if you move it, start it once from its new place and the menu entry follows it).
+
+**Updating:** when a new version is out, KanzonasPDF tells you (Help > Check for updates...).
+**Update now** downloads the new AppImage, checks its SHA-256 against the release, asks you to
+save your work, puts it in place of the old file (same name, same place, so the menu entry and
+default app keep working) and starts it again. If the AppImage is in a folder you can't change
+(for example one owned by root), it opens the release page instead: download the new file and
+replace the old one yourself. Your settings are kept.
+
+**Where your things are:** settings in `~/.config/KanzonasPDF/KanzonasPDF.conf`; signatures,
+stamp pictures, your certificate and backups in `~/.local/share/KanzonasPDF/KanzonasPDF`.
+
+**Removing:** untick the Preferences option above (or delete
+`~/.local/share/applications/kanzonaspdf.desktop` and
+`~/.local/share/icons/hicolor/256x256/apps/kanzonaspdf.png`), then delete the AppImage. To
+remove your settings and personal files too, delete the two folders above.
+
+Check a download against the release's `SHA256SUMS.txt` with `sha256sum KanzonasPDF-x86_64.AppImage`.
+
 ## Getting started
 
 - **Open a PDF:** drag it onto the window, or File > Open. Several PDFs open as tabs.
@@ -154,7 +200,9 @@ before it's published, and every release lists the SHA-256 checksum of each down
 
 ## Known limitations
 
-- Windows only.
+- Windows, and Linux on 64-bit x86 PCs (AppImage); no macOS version. On Linux, signing with
+  certificates from the Windows certificate store isn't available (use a personal certificate
+  or a .pfx/.p12 file), and printing needs a printer set up in the system (CUPS).
 - Saving changes to a digitally signed file invalidates its signatures (an unchanged signed
   file is saved as an exact copy).
 - Editing a paragraph rewrites it in one style (a bold word inside comes out like the rest), and
@@ -182,6 +230,10 @@ Qt ([PySide6](https://doc.qt.io/qtforpython-6/)). Project rules for changes are 
 **Run from source (Windows):** install Python 3.10+ from https://www.python.org/downloads/
 (tick "Add to PATH"), then double-click **`Start KanzonasPDF.bat`** (the first time, it installs
 the libraries it needs). Or: `pip install -r requirements.txt`, then `python run.py`.
+
+**Run from source (Linux):** `python3 -m pip install -r requirements.txt`, then
+`python3 run.py` (or `python3 -m kanzonas file.pdf`). The tests run offscreen:
+`QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -t .`
 
 **Self-test:** `python -m kanzonas --selftest selftest.log` checks the main features, the
 manual and the performance budget. The Windows build runs it on the packaged app, the installer

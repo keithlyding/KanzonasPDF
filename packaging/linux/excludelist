@@ -1,0 +1,112 @@
+# Libraries the AppImage must NOT carry: every Linux desktop has them, and a copy from the
+# build machine would be loaded instead of the computer's own and break things.
+# make_appimage.py removes these files (exact names, as PyInstaller copies them) from the
+# PyInstaller folder. Libraries a wheel bundles under a private, hashed name
+# (libfreetype-57f805ba.so.6...) are not affected.
+#
+# 1. Following the AppImage project's exclude list (github.com/AppImageCommunity/pkg2appimage,
+#    file "excludelist"): the C library and the loader, graphics drivers, X11 core, fonts.
+
+# C library (glibc) and the dynamic loader
+ld-linux.so.2
+ld-linux-x86-64.so.2
+libanl.so.1
+libBrokenLocale.so.1
+libc.so.6
+libcidn.so.1
+libdl.so.2
+libm.so.6
+libmvec.so.1
+libnsl.so.1
+libnss_compat.so.2
+libnss_dns.so.2
+libnss_files.so.2
+libnss_hesiod.so.2
+libnss_nis.so.2
+libnss_nisplus.so.2
+libpthread.so.0
+libresolv.so.2
+librt.so.1
+libthread_db.so.1
+libutil.so.1
+
+# OpenGL / EGL / Vulkan: must match the computer's graphics driver
+libEGL.so.1
+libGL.so.1
+libGLdispatch.so.0
+libGLESv2.so.2
+libGLX.so.0
+libOpenGL.so.0
+libdrm.so.2
+libgbm.so.1
+libglapi.so.0
+libvulkan.so.1
+libxcb-dri2.so.0
+libxcb-dri3.so.0
+
+# X11 core (tied to the X server / XWayland and to libGL)
+libX11.so.6
+libX11-xcb.so.1
+libxcb.so.1
+
+# fonts and text shaping: must read the computer's own font configuration
+libfontconfig.so.1
+libfreetype.so.6
+libharfbuzz.so.0
+libthai.so.0
+
+# low-level system libraries that are always there
+libasound.so.2
+libcom_err.so.2
+libexpat.so.1
+libgcc_s.so.1
+libgmp.so.10
+libgpg-error.so.0
+libICE.so.6
+libjack.so.0
+libp11-kit.so.0
+libpipewire-0.3.so.0
+libSM.so.6
+libusb-1.0.so.0
+libuuid.so.1
+libz.so.1
+
+# 2. Added for KanzonasPDF.
+#
+# The C++ runtime. Graphics drivers (Mesa's LLVM) need the computer's newer libstdc++; an
+# older bundled copy loaded first makes them fail. The build machine is the oldest system
+# this AppImage supports, so the computer's copy is never older than the one we built with
+# (the build checks the GLIBCXX versions the bundle needs).
+libstdc++.so.6
+
+# GLib and GTK 3: Qt uses them for the GTK look and native file dialogs, and GTK loads the
+# computer's own modules (GIO, pixbuf loaders, themes, input methods) that are built for the
+# computer's GLib/GTK: with an older bundled copy they fail ("undefined symbol"). Every
+# desktop has GLib; without GTK 3 Qt simply uses its own look and dialogs.
+libatk-1.0.so.0
+libatk-bridge-2.0.so.0
+libatspi.so.0
+libcairo.so.2
+libcairo-gobject.so.2
+libdatrie.so.1
+libepoxy.so.0
+libfribidi.so.0
+libgdk-3.so.0
+libgdk_pixbuf-2.0.so.0
+libgio-2.0.so.0
+libglib-2.0.so.0
+libgmodule-2.0.so.0
+libgobject-2.0.so.0
+libgraphite2.so.3
+libgthread-2.0.so.0
+libgtk-3.so.0
+libpango-1.0.so.0
+libpangocairo-1.0.so.0
+libpangoft2-1.0.so.0
+libpixman-1.so.0
+
+# Wayland client libraries: the graphics driver's EGL loads them too and may need the
+# computer's newer version
+libwayland-client.so.0
+libwayland-cursor.so.0
+libwayland-egl.so.1

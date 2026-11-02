@@ -1,4 +1,4 @@
-name: Build Windows app
+name: Build Windows and Linux apps
 
 on:
   push:
@@ -6,18 +6,37 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# the build jobs run tests and install packages: they only read. Only the publish job may
+# write (it makes the release and its tag).
 permissions:
-  contents: write
+  contents: read
 
 # a newer push to the same branch cancels the older, still-running build (only the newest
-# matters, and it publishes everything up to it); tag builds are never cancelled
+# matters). Not on main: a run cancelled while publishing leaves a release made but without
+# some of its downloads (they are uploaded one by one; the next run of that version skips
+# it), and a version cancelled earlier never gets a release (its notes never reach the
+# update box); main's builds wait their turn. Tag builds are never cancelled.
 concurrency:
   group: build-${{ github.ref }}
-  cancel-in-progress: ${{ startsWith(github.ref, 'refs/heads/') }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/heads/') && github.ref != 'refs/heads/main' }}
+
+# PyInstaller options of both builds (the Windows exe and the Linux AppImage's app folder;
+# --windowed and --icon only matter on Windows)
+env:
+  PYINSTALLER_OPTIONS: >-
+    --noconfirm --windowed --collect-all rapidocr_onnxruntime --collect-all docx
+    --collect-all pptx --collect-all pdf2docx --collect-all ezdxf --collect-all openpyxl
+    --collect-all pyhanko --collect-all pyhanko_certvalidator --collect-all qtawesome
+    --collect-all aiohttp --collect-all spellchecker --collect-data kanzonas
+    --icon assets/kanzonas.ico --exclude-module tkinter --exclude-module pymupdf.layout
+    --name KanzonasPDF
 
 jobs:
+  # Windows: the exe folder, setup, portable zip and PortableApps.com layout
   build:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
     steps:
       - uses: actions/checkout@v5
 
@@ -35,7 +54,7 @@ jobs:
         run: python -m unittest discover -s tests -p "test_*.py" -t .
 
       - name: Build exe
-        run: python -m PyInstaller --noconfirm --windowed --collect-all rapidocr_onnxruntime --collect-all docx --collect-all pptx --collect-all pdf2docx --collect-all ezdxf --collect-all openpyxl --collect-all pyhanko --collect-all pyhanko_certvalidator --collect-all qtawesome --collect-all aiohttp --collect-all spellchecker --collect-data kanzonas --icon assets/kanzonas.ico --exclude-module tkinter --exclude-module pymupdf.layout --name KanzonasPDF run.py
+        run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py
 
       - name: Smoke test (exe starts and opens a PDF)
         shell: pwsh
@@ -240,49 +259,6 @@ jobs:
           name: KanzonasPDF-v${{ steps.ver.outputs.version }}-setup
           path: dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
 
-      # Publishing: a push to main with a version that has no release yet publishes a
-      # draft unless the repository variable AUTO_RELEASE is 'true' (then it is a real
-      # release). Tag builds (refs/tags/v*) of a commit on main are always real releases. AUTO_RELEASE=false
-      # skips publishing (create a release or tag v<version> by hand; that builds and
-      # publishes).
-      - name: Is this version already released?
-        id: rel
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release view "v${{ steps.ver.outputs.version }}" --repo "${{ github.repository }}" *> $null
-          $new = if ($LASTEXITCODE -eq 0) { "false" } else { "true" }
-          "new=$new" >> $env:GITHUB_OUTPUT
-          Write-Host "Version ${{ steps.ver.outputs.version }}: new release = $new"
-          exit 0
-
-      # a v* tag publishes only when the tagged commit is already on main (reviewed through a
-      # pull request); a tag pushed on any other commit builds but doesn't publish
-      - name: Is the tagged commit on main?
-        id: onmain
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: pwsh
-        run: |
-          git fetch --no-tags --quiet origin main
-          git merge-base --is-ancestor "${{ github.sha }}" FETCH_HEAD
-          $on = if ($LASTEXITCODE -eq 0) { "true" } else { "false" }
-          "main=$on" >> $env:GITHUB_OUTPUT
-          Write-Host "Tagged commit on main: $on"
-          exit 0
-
-      - name: Checksums (SHA-256) of the downloads
-        id: sums
-        shell: pwsh
-        run: |
-          $files = "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe", "KanzonasPDF-portable.zip", "KanzonasPDF-windows.zip"
-          $lines = foreach ($f in $files) { "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 $f).Hash.ToLower(), (Split-Path $f -Leaf) }
-          $lines | Set-Content -Encoding ascii SHA256SUMS.txt
-          Get-Content SHA256SUMS.txt
-          "text<<KZSUMS" >> $env:GITHUB_OUTPUT
-          $lines >> $env:GITHUB_OUTPUT
-          "KZSUMS" >> $env:GITHUB_OUTPUT
-
       - name: winget manifests for this version (attached to the release; see packaging/winget)
         shell: pwsh
         run: |
@@ -309,6 +285,263 @@ jobs:
           python tools/release_notes.py "${{ steps.ver.outputs.version }}" --github-output
           if ($LASTEXITCODE -ne 0) { throw "Write the notes for this version in RELEASE_NOTES.md" }
 
+      # the Windows files of the release, for the publish job (only builds that can publish)
+      - name: Windows release files for publishing
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-windows
+          retention-days: 5
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
+            KanzonasPDF-portable.zip
+            KanzonasPDF-windows.zip
+            winget-manifests.zip
+
+  # ---------------------------------------------------------------------------------------
+  # Linux: an AppImage (x86_64). Built on the oldest Ubuntu it supports, so it runs on
+  # glibc 2.35 and newer (Ubuntu 22.04, Debian 12, Fedora 36 and later); PySide6 6.12's
+  # wheels need glibc 2.34. packaging/linux/make_appimage.py makes the AppDir and checks it.
+  linux:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    env:
+      # appimagetool pinned to an exact release file and checked against its SHA-256. The
+      # AppImage runtime (the small program at the start of every AppImage) is the one at the
+      # start of appimagetool itself (an AppImage too): its first APPIMAGE_RUNTIME_BYTES
+      # bytes, checked against their own SHA-256, so it is pinned with appimagetool instead
+      # of appimagetool fetching the unpinned "continuous" runtime
+      APPIMAGETOOL_URL: https://github.com/AppImage/appimagetool/releases/download/1.9.0/appimagetool-x86_64.AppImage
+      APPIMAGETOOL_SHA256: 46fdd785094c7f6e545b61afcfb0f3d98d8eab243f644b4b17698c01d06083d1
+      APPIMAGE_RUNTIME_BYTES: "692512"
+      APPIMAGE_RUNTIME_SHA256: 33a0fb9c4e2477d0cf1994a179e983633f3b3e77876b190bacff32f335551091
+      # the oldest system supported (Ubuntu 22.04's glibc, and GCC 12's libstdc++ with its
+      # C++ ABI and libgcc_s): the build fails if a bundled file needs newer ones (the build
+      # machine's own libstdc++ may be newer, so its self test alone wouldn't show it)
+      MAX_GLIBC: "2.35"
+      MAX_GLIBCXX: "3.4.30"
+      MAX_CXXABI: "1.3.13"
+      MAX_LIBGCC: "12.0.0"
+      # an AppImage much bigger than this means something unexpected got bundled
+      MAX_APPIMAGE_MB: "400"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: System libraries (bundled into the AppImage) and test tools
+        run: |
+          # Qt's X11 platform needs the xcb libraries (not on every desktop: they go into the
+          # AppImage); Xvfb and xdotool run the tests; appstream and desktop-file-utils check
+          # the metadata
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends \
+            libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
+            libegl1 libgl1 libopengl0 libdbus-1-3 libfontconfig1 libgtk-3-0 libcups2 \
+            xvfb xauth xdotool appstream desktop-file-utils
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt -c constraints.txt pyinstaller
+          # OpenCV (used by OCR) without its GUI: the GUI build carries Qt 5, FFmpeg and their X11
+          # libraries (about 120 MB) and sets Qt 5 plugin paths in the environment when imported.
+          # Same version as the pinned opencv-python.
+          v=$(sed -n 's/^opencv-python==\([0-9.]*\).*/\1/p' constraints.txt)
+          test -n "$v"
+          python -m pip uninstall -y opencv-python opencv-python-headless
+          python -m pip install --no-deps "opencv-python-headless==$v"
+          python -c "import cv2; print('OpenCV', cv2.__version__)"
+
+      - name: Regression tests (security, document preservation, efficiency budgets)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests -p "test_*.py" -t .
+
+      - name: Build the app folder (PyInstaller, the same options as Windows)
+        run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} --runtime-hook packaging/linux/pyi_rth_linux_env.py run.py
+
+      - name: License and source notice
+        run: |
+          # KanzonasPDF uses PyMuPDF/MuPDF (GNU AGPL 3.0): ship the license and say where the source is
+          # (the same files as the Windows build)
+          curl -fsSL --retry 3 https://www.gnu.org/licenses/agpl-3.0.txt -o dist/KanzonasPDF/LICENSE-AGPL-3.0.txt \
+            || echo "::warning::Couldn't download the AGPL text"
+          cp LICENSE dist/KanzonasPDF/LICENSE.txt
+          cat > dist/KanzonasPDF/NOTICE.txt <<'EOF'
+          KanzonasPDF is free software: you can redistribute it and/or modify it under the terms of
+          the GNU Affero General Public License version 3 (see LICENSE-AGPL-3.0.txt).
+          It is built on PyMuPDF / MuPDF (Artifex, AGPL 3.0), Qt for Python (LGPL 3.0) and other
+          open-source libraries. Complete source code: https://github.com/keithlyding/KanzonasPDF
+          EOF
+
+      - name: Read version
+        id: ver
+        run: echo "version=$(python -c 'import kanzonas; print(kanzonas.__version__)')" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch appimagetool and the AppImage runtime (pinned, checked)
+        run: |
+          mkdir -p "$RUNNER_TEMP/tools"
+          fetch() {   # url, expected sha256, file
+            if ! [[ "$2" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::No SHA-256 pinned for $1 (set it in the linux job's env)"
+              curl -fsSL --retry 3 -o "$3" "$1" && echo "That file's SHA-256 is $(sha256sum "$3" | cut -d' ' -f1): check it on the release page before pinning it."
+              exit 1
+            fi
+            curl -fsSL --retry 3 -o "$3" "$1"
+            got=$(sha256sum "$3" | cut -d' ' -f1)
+            if [ "$got" != "$2" ]; then
+              echo "::error::$1 has SHA-256 $got, not the pinned $2"
+              exit 1
+            fi
+          }
+          fetch "$APPIMAGETOOL_URL" "$APPIMAGETOOL_SHA256" "$RUNNER_TEMP/tools/appimagetool-x86_64.AppImage"
+          chmod +x "$RUNNER_TEMP/tools/appimagetool-x86_64.AppImage"
+          # the runtime: the start of appimagetool (a type 2 AppImage: "AI\x02" at byte 8)
+          head -c "$APPIMAGE_RUNTIME_BYTES" "$RUNNER_TEMP/tools/appimagetool-x86_64.AppImage" > "$RUNNER_TEMP/tools/runtime-x86_64"
+          got=$(sha256sum "$RUNNER_TEMP/tools/runtime-x86_64" | cut -d' ' -f1)
+          if [ "$got" != "$APPIMAGE_RUNTIME_SHA256" ]; then
+            echo "::error::the runtime cut from appimagetool has SHA-256 $got, not the pinned $APPIMAGE_RUNTIME_SHA256"
+            exit 1
+          fi
+          python - "$RUNNER_TEMP/tools/runtime-x86_64" <<'PY'
+          import sys
+          d = open(sys.argv[1], "rb").read(16)
+          assert d[:4] == b"\x7fELF" and d[8:11] == b"AI\x02", "not a type 2 AppImage runtime"
+          PY
+
+      - name: Make the AppImage (AppDir, excluded libraries, compatibility checks)
+        run: |
+          python packaging/linux/make_appimage.py dist/KanzonasPDF AppDir \
+            --version "${{ steps.ver.outputs.version }}" \
+            --max-glibc "$MAX_GLIBC" --max-glibcxx "$MAX_GLIBCXX" \
+            --max-cxxabi "$MAX_CXXABI" --max-libgcc "$MAX_LIBGCC" \
+            --appimagetool "$RUNNER_TEMP/tools/appimagetool-x86_64.AppImage" \
+            --runtime-file "$RUNNER_TEMP/tools/runtime-x86_64" \
+            --output KanzonasPDF-x86_64.AppImage
+
+      - name: Check the AppImage (size, contents)
+        run: |
+          size=$(stat -c %s KanzonasPDF-x86_64.AppImage)
+          echo "KanzonasPDF-x86_64.AppImage: $((size / 1000000)) MB"
+          if [ "$size" -gt $((MAX_APPIMAGE_MB * 1000000)) ]; then
+            echo "::error::The AppImage is bigger than $MAX_APPIMAGE_MB MB"; exit 1
+          fi
+          # what's really inside (not just the AppDir it was made from)
+          rm -rf squashfs-root
+          ./KanzonasPDF-x86_64.AppImage --appimage-extract > /dev/null
+          test -x squashfs-root/AppRun
+          test -f squashfs-root/kanzonaspdf.desktop
+          test -f squashfs-root/usr/lib/KanzonasPDF/LICENSE.txt
+          test -f squashfs-root/usr/lib/KanzonasPDF/NOTICE.txt
+          bad=$(grep -v '^\s*\(#\|$\)' packaging/linux/excludelist | while read -r lib; do
+                  find squashfs-root -name "$lib" -type f; done)
+          if [ -n "$bad" ]; then echo "::error::Libraries the computer provides are bundled: $bad"; exit 1; fi
+          rm -rf squashfs-root
+
+      - name: Self test (the AppImage; OCR, exports, signatures, forms)
+        run: |
+          # no FUSE on the build machines: the AppImage unpacks itself and runs
+          code=0
+          xvfb-run -a -s "-screen 0 1920x1080x24" \
+            ./KanzonasPDF-x86_64.AppImage --appimage-extract-and-run --selftest selftest-linux.log || code=$?
+          cat selftest-linux.log
+          if [ $code -ne 0 ]; then echo "::error::Self test failed with code $code"; exit 1; fi
+          if grep -q '^FAIL' selftest-linux.log; then echo "::error::Self test has failures"; exit 1; fi
+          grep -q '^PASS performance budget' selftest-linux.log
+
+      - name: Smoke test (the AppImage starts and opens a PDF)
+        run: packaging/linux/smoke_test.sh ./KanzonasPDF-x86_64.AppImage --appimage-extract-and-run
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: KanzonasPDF-v${{ steps.ver.outputs.version }}-linux
+          path: KanzonasPDF-x86_64.AppImage
+          compression-level: 0
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: linux-selftest-log
+          path: selftest-linux.log
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------------------
+  # Publishing, once both builds and their tests have passed (a failed Windows or Linux build
+  # publishes nothing). A push to main with a version that has no release yet publishes a
+  # draft unless the repository variable AUTO_RELEASE is 'true' (then it is a real
+  # release). Tag builds (refs/tags/v*) of a commit on main are always real releases. AUTO_RELEASE=false
+  # skips publishing (create a release or tag v<version> by hand; that builds and
+  # publishes). Builds of other branches don't run this job.
+  publish:
+    needs: [build, linux]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Same version on Windows and Linux
+        run: |
+          echo "Windows ${{ needs.build.outputs.version }}, Linux ${{ needs.linux.outputs.version }}"
+          test -n "$VERSION"
+          test "$VERSION" = "${{ needs.linux.outputs.version }}"
+
+      - name: Is this version already released?
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v$VERSION" --repo "${{ github.repository }}" > /dev/null 2>&1; then new=false; else new=true; fi
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          echo "Version $VERSION: new release = $new"
+
+      # a v* tag publishes only when the tagged commit is already on main (reviewed through a
+      # pull request); a tag pushed on any other commit builds but doesn't publish
+      - name: Is the tagged commit on main?
+        id: onmain
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git fetch --no-tags --quiet origin main
+          if git merge-base --is-ancestor "${{ github.sha }}" FETCH_HEAD; then on=true; else on=false; fi
+          echo "main=$on" >> "$GITHUB_OUTPUT"
+          echo "Tagged commit on main: $on"
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: release-windows
+          path: release
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: KanzonasPDF-v${{ needs.linux.outputs.version }}-linux
+          path: release
+
+      - name: Checksums (SHA-256) of the downloads
+        id: sums
+        working-directory: release
+        run: |
+          mv "dist-installer/KanzonasPDF-v$VERSION-setup.exe" .
+          chmod +x KanzonasPDF-x86_64.AppImage
+          sha256sum "KanzonasPDF-v$VERSION-setup.exe" KanzonasPDF-portable.zip KanzonasPDF-windows.zip \
+            KanzonasPDF-x86_64.AppImage winget-manifests.zip > ../SHA256SUMS.txt
+          cat ../SHA256SUMS.txt
+          { echo "text<<KZSUMS"; cat ../SHA256SUMS.txt; echo "KZSUMS"; } >> "$GITHUB_OUTPUT"
+
+      - name: Release notes (RELEASE_NOTES.md; the update box shows them)
+        id: notes
+        run: python3 tools/release_notes.py "$VERSION" --github-output
+
       - name: Publish release
         if: >-
           (startsWith(github.ref, 'refs/tags/v') && steps.onmain.outputs.main == 'true') ||
@@ -316,30 +549,34 @@ jobs:
            vars.AUTO_RELEASE != 'false')
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ steps.ver.outputs.version }}
+          tag_name: v${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
           draft: ${{ vars.AUTO_RELEASE != 'true' && !startsWith(github.ref, 'refs/tags/v') }}
-          name: KanzonasPDF ${{ steps.ver.outputs.version }}
-          prerelease: ${{ startsWith(steps.ver.outputs.version, '0.') }}
+          name: KanzonasPDF ${{ env.VERSION }}
+          prerelease: ${{ startsWith(env.VERSION, '0.') }}
           body: |
-            **Download `KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe`** and run it (no administrator rights needed).
+            **Download `KanzonasPDF-v${{ env.VERSION }}-setup.exe`** and run it (no administrator rights needed).
             **Portable (no install; settings stay with the app):** download `KanzonasPDF-portable.zip`, unzip it
             anywhere (e.g. a USB stick) and run `KanzonasPDF.exe`; settings stay in its `data` folder.
             To update, unzip the new one over the same folder (replace the files): the path to `KanzonasPDF.exe`
             stays the same, so it stays your default PDF app, and the `data` folder is kept.
+            **Linux (64-bit PC; Ubuntu 22.04, Debian 12, Fedora 36 or newer):** download `KanzonasPDF-x86_64.AppImage`,
+            make it executable (`chmod +x KanzonasPDF-x86_64.AppImage`, or Properties > Allow executing) and run it.
+            To update, replace the file with the new one.
 
             ${{ steps.notes.outputs.notes }}
 
-            All the details: [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ steps.ver.outputs.version }}/CHANGELOG.md).
+            All the details: [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ env.VERSION }}/CHANGELOG.md).
             Free software under the GNU AGPL 3.0. [Code signing policy](https://github.com/keithlyding/KanzonasPDF/blob/main/CODE_SIGNING_POLICY.md).
 
-            **Check your download (SHA-256):** in PowerShell, `Get-FileHash <file>` must show the same value.
+            **Check your download (SHA-256):** in PowerShell, `Get-FileHash <file>` (on Linux, `sha256sum <file>`) must show the same value.
             ```
             ${{ steps.sums.outputs.text }}
             ```
           files: |
             SHA256SUMS.txt
-            dist-installer/KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe
-            KanzonasPDF-portable.zip
-            KanzonasPDF-windows.zip
-            winget-manifests.zip
+            release/KanzonasPDF-v${{ env.VERSION }}-setup.exe
+            release/KanzonasPDF-portable.zip
+            release/KanzonasPDF-windows.zip
+            release/KanzonasPDF-x86_64.AppImage
+            release/winget-manifests.zip

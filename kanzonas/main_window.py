@@ -4,6 +4,7 @@ import json
 import math
 import os
 import re
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -709,7 +710,8 @@ class MainWindow(QMainWindow):
         self.a_labels.setChecked(self.settings.value("toolbar_labels", "false") == "true")
         self.theme_group = QActionGroup(self)
         self.theme_actions = {}
-        for key, label in (("system", tr("Match &Windows")), ("light", tr("&Light")),
+        match = tr("Match &Windows") if sys.platform == "win32" else tr("Match &system")
+        for key, label in (("system", match), ("light", tr("&Light")),
                            ("dark", tr("&Dark"))):
             a = QAction(label, self, checkable=True)
             a.triggered.connect(lambda _=False, k=key: self.set_theme(k))
@@ -3584,8 +3586,12 @@ class MainWindow(QMainWindow):
                          tr("I have reviewed this document"), tr("I agree to the terms")])
         location = QLineEdit()
         lock = QCheckBox(tr("Lock the document: no further changes allowed (certify)"))
-        form.addRow(win)
-        form.addRow(tr("Windows certificate"), win_list)
+        if os.name == "nt":
+            form.addRow(win)
+            form.addRow(tr("Windows certificate"), win_list)
+        else:                           # (no Windows certificate store here)
+            win.hide()
+            win_list.hide()
         form.addRow(mine)
         form.addRow(other)
         form.addRow(tr("Certificate file"), row)
@@ -4876,7 +4882,9 @@ class MainWindow(QMainWindow):
         news = QPushButton(tr("What's new"))
         news.setToolTip(tr("What changed since your version"))
         get = QPushButton(tr("Download"))
-        get.setToolTip(tr("Open the release page to download the installer or portable zip"))
+        get.setToolTip(tr("Open the release page to download the installer or portable zip")
+                       if sys.platform == "win32" else
+                       tr("Open the release page to download the new version"))
         upd = QPushButton(tr("Update now")) if self._self_update_url() else None
         if upd is not None:
             upd.setToolTip(self._update_now_text())
@@ -4956,6 +4964,8 @@ class MainWindow(QMainWindow):
             return updates.asset_url(upd.release)
         if updates.can_install_update():
             return updates.asset_url(upd.release, updates.setup_name(self._new_version()))
+        if updates.can_update_appimage():
+            return updates.asset_url(upd.release, updates.APPIMAGE)
         return None
 
     def _new_version(self):
@@ -4967,6 +4977,11 @@ class MainWindow(QMainWindow):
         if updates.can_self_update():
             return tr("Update now downloads it, closes KanzonasPDF, replaces the program files "
                       "in this folder (your data folder is kept) and starts it again.")
+        if updates.can_update_appimage():
+            return tr("Update now downloads the new AppImage, checks it, closes KanzonasPDF "
+                      "(after asking to save your work), puts it in place of {name} and starts "
+                      "it again. Your settings are kept.").format(
+                          name=os.path.basename(updates.running_appimage()))
         return tr("Update now downloads the new setup, checks it, closes KanzonasPDF (after "
                   "asking to save your work) and installs the new version over this one; "
                   "KanzonasPDF starts again when it's done. Your settings are kept.")
@@ -4982,6 +4997,8 @@ class MainWindow(QMainWindow):
             self.update_portable()
         elif updates.can_install_update():
             self.update_installed()
+        elif updates.can_update_appimage():
+            self.update_appimage()
 
     def _close_all_for_update(self):
         """Close every window before an update (asking about unsaved changes in all of them,
@@ -5024,6 +5041,81 @@ class MainWindow(QMainWindow):
                 shutil.rmtree(os.path.dirname(setup), ignore_errors=True)
                 return
             subprocess.Popen(updates.installer_command(setup, paths.app_dir()), close_fds=True)
+            QApplication.quit()
+        dl.progress.connect(progress)
+        dl.failed.connect(failed)
+        dl.ready.connect(ready)
+        dl.start()
+
+    def update_appimage(self):
+        """Linux AppImage: download the new one next to it and check it, put it in place of
+        the running file, close (saving first) and start it. When this user can't replace
+        the file, the release page opens instead."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtWidgets import QProgressDialog
+        from . import updates
+        url = self._self_update_url()
+        target = updates.running_appimage()
+        if not url or not target:
+            return
+        page = updates._page(self._upd.release or {})
+        why = updates.appimage_unwritable(target)
+        if why:
+            QMessageBox.information(self, tr("Update"), tr(
+                "KanzonasPDF can't replace {path}: {reason}\n\nThe release page opens so you "
+                "can download the new {name} yourself.").format(
+                    path=target, reason=why, name=updates.APPIMAGE))
+            QDesktopServices.openUrl(QUrl(page))
+            return
+        dl = updates.AppImageUpdater(url, target, self, expected_sha256=updates.asset_digest(
+            self._upd.release, updates.APPIMAGE))
+        prog = QProgressDialog(tr("Downloading the new KanzonasPDF..."), tr("Cancel"), 0, 0, self)
+        prog.setWindowTitle(tr("Update"))
+        prog.setMinimumDuration(0)
+        prog.canceled.connect(dl.cancel)
+
+        def progress(got, total):
+            if total > 0:
+                prog.setMaximum(total)
+                prog.setValue(got)
+
+        def failed(msg):
+            prog.close()
+            QMessageBox.warning(self, tr("Update"), msg + "\n\n" + tr(
+                "You can still download {name} from the release page and put it in place "
+                "of this one.").format(name=updates.APPIMAGE))
+
+        def ready(new):
+            import subprocess
+            prog.close()
+            # in place first (the running program keeps its own copy open until it ends),
+            # then close: a document kept open just means the new version starts next time
+            try:
+                updates.replace_appimage(new, target)
+            except OSError as e:
+                try:
+                    os.remove(new)
+                except OSError:
+                    pass
+                QMessageBox.warning(self, tr("Update"), tr(
+                    "The new version couldn't be put in place of {path} ({error}). The "
+                    "release page opens so you can download it yourself.").format(
+                        path=target, error=e))
+                QDesktopServices.openUrl(QUrl(page))
+                return
+            if not self._close_all_for_update():    # a document kept open: not now
+                QMessageBox.information(self, tr("Update"), tr(
+                    "The new version is in place. It starts the next time you open "
+                    "KanzonasPDF."))
+                return
+            cwd = os.environ.get("OWD") or os.path.expanduser("~")
+            # (started once this process has ended: see updates.restart_command)
+            subprocess.Popen(updates.restart_command(target), env=updates.restart_env(),
+                             cwd=cwd if os.path.isdir(cwd) else None,
+                             close_fds=True, start_new_session=True,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
             QApplication.quit()
         dl.progress.connect(progress)
         dl.failed.connect(failed)

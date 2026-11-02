@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=KanzonasPDF
+GenericName=PDF Editor
+Comment=Mark up, measure and edit PDF files
+Exec=KanzonasPDF %F
+Icon=kanzonaspdf
+Terminal=false
+Categories=Office;Viewer;Graphics;
+MimeType=application/pdf;
+Keywords=PDF;markup;measure;redact;sign;forms;CAD;
+StartupNotify=true
+StartupWMClass=KanzonasPDF

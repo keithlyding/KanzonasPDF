@@ -3,8 +3,10 @@
 This file is read by every coding agent working on this repo (Claude, ChatGPT/Codex, Grok...)
 and by people. `CLAUDE.md` just points here. Read all of it before editing.
 
-A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .exe by
-`.github/workflows/build-windows.yml`, which runs `KanzonasPDF.exe --selftest`.
+A free PDF reader/editor in Python (PySide6 + PyMuPDF) for Windows and Linux, built by
+`.github/workflows/build-windows.yml` into a Windows .exe (job `build`) and a Linux AppImage
+(job `linux`, packaging/linux/), each running its own `--selftest`; job `publish` releases both,
+and only when both are green.
 
 ## Branches and merging (several agents work here at once)
 - Start every task from the latest `main`, on a new branch of your own named
@@ -26,7 +28,7 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
   existing features, even when they add a tool (e.g. 1.6.3: click-click drawing, grips, Arc,
   Mask, Trim on clouds). Plain numbers only (1.0, not 1.00). A 1.x release is a normal
   release on GitHub (only 0.x ones were marked pre-release).
-- Every push to any branch runs the full Windows build (~12 minutes). Push when a piece of
+- Every push to any branch runs the full Windows and Linux builds (~12-15 minutes, in parallel). Push when a piece of
   work is done, not after every small edit.
 
 ## Every user-facing change must update, in the same commit:
@@ -59,6 +61,11 @@ A free Windows PDF reader/editor in Python (PySide6 + PyMuPDF), built into an .e
   a branch, read the release notes, and release when the Windows build is green.
 
 ## Conventions
+- Windows and Linux: anything platform-specific goes behind `sys.platform` and keeps the other
+  platform's behavior identical (Linux desktop integration: `linux_desktop.py`; AppImage
+  updates: `updates.py`). The AppImage builds on Ubuntu 22.04 (glibc 2.35); the build fails if
+  a bundled file needs a newer glibc/libstdc++. appimagetool is pinned by SHA-256 in the
+  workflow, and the AppImage runtime is cut from it (pinned too): update both together.
 - American spelling in all user-visible text.
 - Annotations: keep a Page object alive while using an Annot from it ("not bound to page").
 - PyMuPDF is not thread-safe: no worker threads touching a document; split long work into
