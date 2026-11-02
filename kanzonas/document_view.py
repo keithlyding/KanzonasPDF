@@ -301,6 +301,66 @@ def clear_form_data(doc):
                 doc.xref_set_key(xref, "RV", "null")
 
 
+# keys whose strings are text people read (not styles, codes or KanzonasPDF's own data):
+# structure tags' alternate text, ActualText, expansion and title, tooltips, notes, titles,
+# document information, page label prefixes (/P), destination names and file names
+_TEXT_KEYS = {"Alt", "ActualText", "E", "T", "TU", "TM", "Contents", "Title", "Subj",
+              "Subject", "Author", "Keywords", "Creator", "Producer", "P", "D", "Dest",
+              "F", "UF", "Desc"}
+
+
+def scrub_strings(doc, pat, clean):
+    """Every text string in doc's objects that pat matches, replaced by clean(text): what
+    Search & redact can't reach otherwise (a tagged PDF's alternate text and ActualText,
+    a link's note, page labels, named destinations...). Only strings people read are
+    looked at (_TEXT_KEYS, and the names of a name tree): a style (/DA) or KanzonasPDF's
+    own data (/KZ...) holding the word "fill" stays as it is. Redaction marks keep their
+    own text (a mark not applied yet keeps its term), and signatures and the encryption
+    dictionary are left alone (their strings are binary)."""
+    m = pymupdf.mupdf
+    pdf = pymupdf._as_pdf_document(doc)
+    skip = set()
+    enc = m.pdf_dict_gets(m.pdf_trailer(pdf), "Encrypt")
+    if m.pdf_is_indirect(enc):
+        skip.add(m.pdf_to_num(enc))
+    for xref in range(1, doc.xref_length()):
+        if xref in skip:
+            continue
+        try:
+            obj = m.pdf_load_object(pdf, xref)
+        except Exception:
+            continue
+        if not m.pdf_is_dict(obj):
+            continue
+        if m.pdf_to_name(m.pdf_dict_gets(obj, "Subtype")) == "Redact" or \
+                m.pdf_to_name(m.pdf_dict_gets(obj, "Type")) in ("Sig", "DocTimeStamp") or \
+                m.pdf_dict_gets(obj, "ByteRange").m_internal:
+            continue
+        todo = [(obj, "")]
+        while todo:
+            o, held_by = todo.pop()
+            is_dict = m.pdf_is_dict(o)
+            for i in range(m.pdf_dict_len(o) if is_dict else m.pdf_array_len(o)):
+                key = m.pdf_to_name(m.pdf_dict_get_key(o, i)) if is_dict else held_by
+                if key.startswith("KZ"):
+                    continue                    # (KanzonasPDF's own data: _scrub_terms)
+                val = m.pdf_dict_get_val(o, i) if is_dict else m.pdf_array_get(o, i)
+                if m.pdf_is_indirect(val):
+                    continue                    # (looked at as an object of its own)
+                if m.pdf_is_string(val):
+                    if not (key in _TEXT_KEYS if is_dict else key == "Names"):
+                        continue
+                    text = m.pdf_to_text_string(val)
+                    if pat.search(text):
+                        new = m.pdf_new_text_string(clean(text))
+                        if is_dict:
+                            m.pdf_dict_put(o, m.pdf_dict_get_key(o, i), new)
+                        else:
+                            m.pdf_array_put(o, i, new)
+                elif m.pdf_is_dict(val) or m.pdf_is_array(val):
+                    todo.append((val, key))
+
+
 class _not_busy:
     """A message box while a command works: the usual pointer over it, the busy one after."""
 
@@ -6214,6 +6274,9 @@ class DocumentView(QScrollArea):
                 self.doc.del_xml_metadata()     # XMP copy of the properties
         except Exception:
             pass
+        # and anywhere else a string holds it: alternate text, ActualText, link notes,
+        # page labels, named destinations (the links naming them follow)
+        scrub_strings(self.doc, pat, clean)
 
     def remove_term(self, term):
         """Search & redact for text that's only in fields, notes, bookmarks or properties."""
