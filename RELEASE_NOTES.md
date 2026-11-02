@@ -19,6 +19,10 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 **Fixed**
 - In CAD mode, selected items are easy to see: they're drawn dashed with small grips on their ends and corners, even when the item itself is blue.
 - The click, move, click selection box starts reliably: a click with the mouse moving slightly no longer turns into a lasso, and clicking the first corner again keeps the box. The first corner shows at once.
+- In CAD mode a drawing tool always draws, even when you start on a markup (it snaps to its end), as in AutoCAD.
+- Sanitize and Apply redactions now also remove scripts hidden in multimedia actions, javascript: links and XFA forms; Search & redact also replaces the text in tagged-PDF alternate text, link notes and page labels.
+- Compress keeps the document's password protection; Compare asks for a protected file's password; Security properties asks before removing protection.
+- Fixes and speed-ups from testing: drawing a box with level corners, a typed radius with a decimal comma, the Mask's outline after restyling, a keyboard shortcut you had set no longer taken by the new Circle key, and big selections, curves and long clouds stay quick.
 
 ## 1.6.3 (es)
 
@@ -32,6 +36,10 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 **Correcciones**
 - En el modo CAD lo seleccionado se ve claramente: se dibuja con línea discontinua y pequeños pinzamientos en sus extremos y esquinas, aunque el elemento mismo sea azul.
 - El recuadro de selección de clic, mover, clic empieza sin fallar: un clic con el mouse moviéndose un poco ya no se convierte en lazo, y volver a hacer clic en la primera esquina conserva el recuadro. La primera esquina se muestra de inmediato.
+- En el modo CAD una herramienta de dibujo siempre dibuja, aunque empiece sobre una marca (se ajusta a su extremo), como en AutoCAD.
+- Sanear y Aplicar censuras ahora también quitan los scripts ocultos en acciones multimedia, vínculos javascript: y formularios XFA; Buscar y censurar también reemplaza el texto en el texto alternativo de los PDF etiquetados, las notas de vínculos y las etiquetas de página.
+- Comprimir conserva la protección con contraseña del documento; Comparar pide la contraseña de un archivo protegido; Propiedades de seguridad pregunta antes de quitar la protección.
+- Correcciones y mejoras de velocidad de las pruebas: dibujar un cuadro con esquinas al mismo nivel, un radio escrito con coma decimal, el contorno de la Máscara después de cambiar su estilo, un atajo de teclado que usted había asignado ya no se lo quita la nueva tecla de Círculo, y las selecciones grandes, las curvas y las nubes largas siguen siendo rápidas.
 
 ## 1.6.2
 
