@@ -2727,6 +2727,8 @@ class DocumentView(QScrollArea):
             return
         if is_click:
             return
+        if tool not in ("line", "arrow") and (rect.width <= 0 or rect.height <= 0):
+            return      # a box with no height or width (its ends level, as snapping gives)
         kind = "rect" if tool in ("cloud", "mask") else tool
         model = {"kind": kind, "props": props, "rect": rect}
         if tool in ("line", "arrow"):

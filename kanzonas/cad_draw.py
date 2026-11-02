@@ -27,7 +27,8 @@ TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", "erase
 # size, new link text there, a callout); for the rest it would make nothing, so the shape
 # stays in progress (a double-click that shook doesn't lose it)
 CLICK_ENDS = {"textbox", "placeholder", "link", "callout"}
-CLICK_PX = 10           # a press released less than this far from where it went down is a click
+BOXES = {"rect", "ellipse", "cloud", "mask"}     # drawn as a box from corner to corner
+CLICK_PX = 10          # a press released less than this far from where it went down is a click
 QUICK_PX = 24           # ... and one released within QUICK_MS this far away too (a quick
 QUICK_MS = 250          #     click whose hand shook)
 SAME_PX = 4             # second point this close to the first: the same point
@@ -145,8 +146,11 @@ def finish(w, e):
     a = pw.to_screen_pt(pk["at"])
     b = pw._shape_point(_map(pw, e), e, a)
     same = (b - a).manhattanLength() < SAME_PX
-    if same and pk["tool"] not in CLICK_ENDS:
-        return True                     # (nothing to draw yet: it goes on)
+    flat = pk["tool"] in BOXES and (abs(b.x() - a.x()) < 0.5 or abs(b.y() - a.y()) < 0.5)
+    if (same and pk["tool"] not in CLICK_ENDS) or flat:
+        # (nothing to draw yet: it goes on; a box with no height, its corners level as
+        # snapping along a line puts them, too)
+        return True
     v._cad_shape = None
     pk["now"] = pw.to_pdf(b)
     w._shape_end = (pk, same)

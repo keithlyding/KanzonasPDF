@@ -6,12 +6,13 @@ bent lines; Trim on shapes and open clouds; split buttons): what broke when it w
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pymupdf  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
@@ -56,6 +57,57 @@ class CircleRadiusTyped(Base):
         self.assertIsNotNone(self.pending())                # still waiting for a radius
         self.assertTrue(said and "radius" in said[-1], said)
         cad_draw.cancel(self.v)
+
+
+class FlatBoxes(Base):
+    """Two corners level with each other (snapping along a line puts them so): a rectangle,
+    cloud, ellipse or mask with no height used to stop on an "Edit failed: rect is infinite
+    or empty" message box."""
+
+    def setUp(self):
+        super().setUp()
+        self.warned = []
+        patch = mock.patch.object(QMessageBox, "warning",
+                                  lambda *a, **k: self.warned.append(a[1:]))
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def test_a_flat_box_goes_on_to_a_real_corner(self):
+        for tool in ("rect", "cloud", "ellipse", "mask"):
+            with self.subTest(tool=tool):
+                self.v = self.view()
+                self.v.set_tool(tool)
+                self.click((100, 200))
+                self.move((250, 200))
+                self.click((250, 200))                  # level: nothing to draw yet
+                self.assertEqual(self.warned, [])
+                self.assertEqual(markups(self.v), [])
+                self.assertIsNotNone(self.pending())    # still drawing it
+                self.move((250, 260))
+                self.click((250, 260))
+                self.assertEqual(len(markups(self.v)), 1)
+                self.assertIsNone(self.pending())
+
+    def test_a_flat_drag_makes_nothing_quietly(self):
+        self.v.set_tool("rect")
+        self.v.apply_drag_tool(0, "rect", pymupdf.Point(100, 300), pymupdf.Point(300, 300),
+                               False)
+        self.v.apply_drag_tool(0, "ellipse", pymupdf.Point(100, 300), pymupdf.Point(100, 400),
+                               False)
+        self.assertEqual(self.warned, [])
+        self.assertEqual(markups(self.v), [])
+
+
+class FlatBoxesStandard(Base):
+    MODE = "standard"
+
+    def test_a_drag_along_a_line_makes_nothing_quietly(self):
+        warned = []
+        with mock.patch.object(QMessageBox, "warning", lambda *a, **k: warned.append(a[1:])):
+            self.v.set_tool("cloud")
+            self.drag((100, 300), (300, 300))
+        self.assertEqual(warned, [])
+        self.assertEqual(markups(self.v), [])
 
 
 if __name__ == "__main__":
