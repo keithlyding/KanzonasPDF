@@ -7105,3 +7105,6 @@ msgstr "Recortar: esa línea no cruza ningún borde de corte, así que se queda.
 
 msgid "1 copy made"
 msgstr "1 copia hecha"
+
+msgid "Click the other corner: left to right takes what's inside, right to left what it touches (Escape cancels)"
+msgstr "Haga clic en la otra esquina: de izquierda a derecha toma lo que queda dentro, de derecha a izquierda lo que toca (Escape cancela)"

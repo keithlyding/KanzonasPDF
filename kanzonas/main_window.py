@@ -4201,6 +4201,8 @@ class MainWindow(QMainWindow):
         self.apply_mouse_mode()
         for w in windows():                 # (a pulled-out window too; this ends CAD commands)
             w.set_tool(mouse_modes.default_tool(m))
+            if m == "cad" and old != "cad":
+                w.show_cad_tab()            # (its commands are what CAD mode is for)
         self.statusBar().showMessage(tr("Mouse: {mode}. {what}").format(
             mode=mouse_modes.labels()[m], what=mouse_modes.descriptions()[m]), 5000)
 
@@ -4215,6 +4217,16 @@ class MainWindow(QMainWindow):
             cad_select.drop(v)      # (a box drawn under the old options goes)
             v.apply_canvas()        # open canvas around the pages, or not
             v._tool_cursor()        # a plus in CAD mode
+
+    def show_cad_tab(self):
+        """Bring the ribbon's CAD tab to the front (switching to CAD mode), when it's shown."""
+        ribbon = getattr(self, "ribbon", None)
+        cad_tab = getattr(self, "_cad_tab", None)
+        if ribbon is None or cad_tab is None:
+            return
+        i = ribbon.indexOf(cad_tab)
+        if i >= 0 and ribbon.isTabVisible(i):
+            ribbon.setCurrentIndex(i)
 
     def _sync_mouse_actions(self):
         from . import mouse_modes

@@ -287,7 +287,7 @@ mode you had): like AutoCAD, the scroll wheel zooms in and out around the cursor
 wheel down moves the sheet, so you can navigate a drawing while any tool is active. Like
 Bluebeam, hold <b>Ctrl</b> and turn the wheel to scroll up and down. The pages sit on an open
 canvas, the pointer is a <b>plus</b> (except with the Hand), selecting works like CAD and the
-<b>CAD</b> tab appears with Move, Copy, Rotate and the other CAD commands: see
+<b>CAD</b> tab appears, in front, with Move, Copy, Rotate and the other CAD commands: see
 <b>CAD mode</b> below.</li>
 </ul>
 Your choice is remembered. (Before version 1.5 this was the CAD-style mouse switch and a
@@ -339,20 +339,24 @@ line) selects only your markups, or the characters of the page's text, the same 
 on top of the drawing, so a click on it takes the markup. A locked markup isn't taken.</li>
 <li>The <b>arrow keys</b> nudge the whole selection, the drawing's objects and the markups
 together. Right-click a markup for its own menu, the drawing's objects for theirs. Selected
-markups show no resize handles here: change them with the CAD tab's commands, or with Select.</li>
+markups show no resize handles here: change them with the CAD tab's commands, or with Select.
+What's selected is drawn <b>dashed</b> (blue dashes over white, so it shows on a blue line too)
+with small blue <b>grips</b> on its ends and corners, as in AutoCAD.</li>
 <li><b>Click, move, click</b>: click empty paper, move the pointer (the box follows it) and click
 again. Left to right it's a solid <b>blue window</b>: it takes what lies entirely inside it.
 Right to left it's a dashed <b>green crossing box</b>: it takes everything it touches, a line
-running through it included. Escape drops a box you started. Hold Shift on the second click to
-take things out instead.</li>
+running through it included. The first corner is marked as soon as you click, and the status
+bar asks for the other corner. A quick click counts as a click even if the mouse moved a little
+while you pressed, and clicking the first corner again keeps the box. Escape drops a box you
+started. Hold Shift on the second click to take things out instead.</li>
 <li><b>Hold the button and drag</b>: a <b>lasso</b> that follows the pointer. Drawn rightward at
 first it's a blue window lasso (what's entirely inside it); leftward, a green crossing lasso
 (what it touches). Shift+lasso takes things out.</li>
 <li>With Select, a box or lasso that takes no markups selects text: the characters inside a
 window, or the ones a crossing box touches (Ctrl+C copies them).</li>
-<li>While you draw a box or a lasso, what it would take <b>lights up</b> (blue for a window,
+<li>While you draw a box or a lasso, what it would take <b>glows</b> (blue for a window,
 green for a crossing box), so you see what you'll get before the second click or before you
-let go. On a very big drawing it fills in over a moment while you move.</li>
+let go; once taken, it's drawn dashed with grips. On a very big drawing it fills in over a moment while you move.</li>
 <li>Dragging never moves anything in CAD mode, so nothing moves by accident: the square handles
 of one selected markup or object still resize it, and the CAD tab's <b>Move</b> moves.</li>
 <li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>

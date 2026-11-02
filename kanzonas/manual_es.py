@@ -277,7 +277,7 @@ vuelve al modo que tenía): como en AutoCAD, la rueda del mouse acerca y aleja a
 la rueda mueve la hoja, de modo que puede recorrer un dibujo con cualquier herramienta activa. Como en Bluebeam,
 mantenga presionada <b>Ctrl</b> y gire la rueda para desplazarse hacia arriba y hacia abajo. Las páginas están sobre un
 lienzo abierto, el puntero es una <b>cruz</b> (excepto con la Mano), la selección funciona como en CAD y aparece la
-pestaña <b>CAD</b> con Mover, Copiar, Girar y los demás comandos CAD: vea <b>Modo CAD</b> más abajo.</li>
+pestaña <b>CAD</b>, al frente, con Mover, Copiar, Girar y los demás comandos CAD: vea <b>Modo CAD</b> más abajo.</li>
 </ul>
 Su elección se recuerda. (Antes de la versión 1.5 esto era el interruptor del mouse estilo CAD y una herramienta
 predeterminada; sus elecciones se conservan.)</li>
@@ -327,19 +327,24 @@ selección. Hacer clic en el papel vacío conserva la selección. Una marca est�
 toma la marca. Una marca bloqueada no se toma.</li>
 <li>Las <b>teclas de flecha</b> desplazan toda la selección, los objetos del dibujo y las marcas juntos. Haga clic derecho en
 una marca para ver su propio menú, y en los objetos del dibujo para ver el suyo. Aquí las marcas seleccionadas no muestran
-controladores para cambiar su tamaño: cámbielas con los comandos de la pestaña CAD, o con Seleccionar.</li>
+controladores para cambiar su tamaño: cámbielas con los comandos de la pestaña CAD, o con Seleccionar.
+Lo seleccionado se dibuja con <b>línea discontinua</b> (trazos azules sobre blanco, así se ve incluso sobre una línea azul)
+con pequeños <b>pinzamientos</b> azules en sus extremos y esquinas, como en AutoCAD.</li>
 <li><b>Clic, mover, clic</b>: haga clic en el papel vacío, mueva el puntero (el recuadro lo sigue) y vuelva a hacer
 clic. De izquierda a derecha es una <b>ventana azul</b> de línea continua: toma lo que queda completamente dentro. De
 derecha a izquierda es un <b>recuadro de captura verde</b> de línea discontinua: toma todo lo que toca, incluida una
-línea que lo atraviese. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para quitar
-elementos en lugar de agregarlos.</li>
+línea que lo atraviese. La primera esquina se marca en cuanto hace clic, y la barra de estado pide la otra esquina. Un
+clic rápido cuenta como clic aunque el mouse se haya movido un poco al presionar, y hacer clic otra vez en la primera
+esquina conserva el recuadro. Escape descarta un recuadro empezado. Mantenga presionada Shift en el segundo clic para
+quitar elementos en lugar de agregarlos.</li>
 <li><b>Mantenga presionado el botón y arrastre</b>: un <b>lazo</b> que sigue al puntero. Si al principio lo dibuja hacia
 la derecha es un lazo de ventana azul (lo que queda completamente dentro); hacia la izquierda, un lazo de captura verde
 (lo que toca). Shift+lazo quita elementos.</li>
 <li>Con Seleccionar, un recuadro o un lazo que no toma marcas selecciona texto: los caracteres dentro de una ventana, o
 los que toca un recuadro de captura (Ctrl+C los copia).</li>
-<li>Mientras dibuja un recuadro o un lazo, lo que tomaría <b>se resalta</b> (azul para una ventana, verde para un recuadro de
-captura), así que ve lo que obtendrá antes del segundo clic o antes de soltar. En un dibujo muy grande se completa en un
+<li>Mientras dibuja un recuadro o un lazo, lo que tomaría <b>brilla</b> (azul para una ventana, verde para un recuadro de
+captura), así que ve lo que obtendrá antes del segundo clic o antes de soltar; una vez tomado, se dibuja con línea
+discontinua y pinzamientos. En un dibujo muy grande se completa en un
 momento mientras se mueve.</li>
 <li>En el modo CAD arrastrar nunca mueve nada, así que nada se mueve por accidente: los controladores cuadrados de una
 marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pestaña CAD lo mueve.</li>

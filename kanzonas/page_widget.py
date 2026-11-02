@@ -172,6 +172,53 @@ def lines_path(lines):
     return path
 
 
+SELECTED = QColor(0, 120, 215)
+GRIPS_MAX = 1500        # grips drawn for a selection at most (a huge one shows its outline)
+
+
+def paint_selected_path(p, path):
+    """What's selected, drawn so it shows on anything, a blue line included: a white line
+    under a dashed blue one (AutoCAD draws a selection dashed too)."""
+    p.setBrush(Qt.NoBrush)
+    under = QPen(QColor(255, 255, 255, 230), 4)
+    under.setCapStyle(Qt.RoundCap)
+    p.setPen(under)
+    p.drawPath(path)
+    dash = QPen(SELECTED, 2, Qt.CustomDashLine)
+    dash.setDashPattern([3, 2])
+    p.setPen(dash)
+    p.drawPath(path)
+
+
+def paint_grips(p, points):
+    """Grips: small filled squares on the selected things' ends and corners, as AutoCAD
+    marks a selection (points: widget coordinates)."""
+    p.setPen(QPen(Qt.white, 1))
+    p.setBrush(SELECTED)
+    h = 6
+    for q in points:
+        p.drawRect(QRectF(q.x() - h / 2, q.y() - h / 2, h, h))
+    p.setBrush(Qt.NoBrush)
+
+
+def grip_points(lines, out=None, seen=None):
+    """The grips of these lines (lists of points): each one's two ends, and its corners when
+    it has few (a curve read as many short pieces gets its ends only); none twice. Appended
+    to out (a list of (x, y)); stops at GRIPS_MAX."""
+    out = [] if out is None else out
+    seen = set() if seen is None else seen
+    for line in lines:
+        if len(out) >= GRIPS_MAX:
+            break
+        pts = line if len(line) <= 9 else (line[0], line[-1])
+        for q in pts:
+            key = (round(q[0], 1), round(q[1], 1))
+            if key not in seen:
+                seen.add(key)
+                out.append((q[0], q[1]))
+    return out
+
+
 def tile_span(rect, dpr):
     """(tx0, ty0, tx1, ty1): the tiles holding every device pixel the widget area rect (a
     QRect, whole widget pixels) touches at dpr device pixels per widget pixel: at 150% a
@@ -1050,6 +1097,45 @@ class PageWidget(QWidget):
         c = QPointF(r.center().x(), r.top() - ROT_GAP)
         return {"rot": QRectF(c.x() - h / 2, c.y() - h / 2, h, h)}
 
+    def _model_lines(self, m, page):
+        """A markup's outline as lines of widget points ((x, y) pairs), as the selection
+        shows it: its shape for lines and shapes with corners, else its box."""
+        def pt(q):
+            w = self.to_screen_pt(q, page)
+            return (w.x(), w.y())
+        if A.turned(m):
+            pts = [pt(q) for q in A.outline(m, 36)]
+            return [pts + pts[:1]]
+        if m["kind"] in ("line", "arrow", "m_length", "m_radius"):
+            return [[pt(q) for q in m["points"]]]
+        if m["kind"] in A.VERTEXED:
+            pts = [pt(q) for q in m["points"]]
+            if m["kind"] in ("polygon",) + A.CLOSED_MEASURES:
+                pts.append(pts[0])
+            return [pts]
+        if m["kind"] == "callout":
+            r = self.to_screen(m["rect"], page)
+            c = r.center()
+            return [[(r.left(), r.top()), (r.right(), r.top()), (r.right(), r.bottom()),
+                     (r.left(), r.bottom()), (r.left(), r.top())],
+                    [pt(m["points"][0]), (c.x(), c.y())]]
+        r = self.to_screen(A.bounds(m), page)
+        return [[(r.left(), r.top()), (r.right(), r.top()), (r.right(), r.bottom()),
+                 (r.left(), r.bottom()), (r.left(), r.top())]]
+
+    def _paint_cad_markups(self, p, models, page):
+        """Selected markups in CAD mode (changed by commands, not handles): dashed over white
+        with grips on their ends and corners, as selected drawing objects are, so a blue
+        markup shows as selected too."""
+        lines = []
+        for m in models:
+            try:
+                lines += self._model_lines(m, page)
+            except Exception:
+                continue
+        paint_selected_path(p, lines_path(lines))
+        paint_grips(p, [QPointF(x, y) for x, y in grip_points(lines)])
+
     def _paint_selection(self, p, page):
         model = self._selected_here()
         if model is None:
@@ -1074,11 +1160,17 @@ class PageWidget(QWidget):
             group = self._edit["preview"] if self._edit and self._edit.get("preview") else None
             if group is None:
                 group = [m for _x, m in self.view.selected_models_to_paint()]
+            if self.view.cad_select and not self._edit and len(group) <= 2000:
+                self._paint_cad_markups(p, group, page)
+                return
             for k, m in enumerate(group):
                 p.setPen(QPen(blue, 2 if k == 0 else 1, Qt.SolidLine if k == 0 else Qt.DashLine))
                 p.drawRect(self.to_screen(A.bounds(m), page).adjusted(-3, -3, 3, 3))
             return
         shown = self._edit["preview"] if self._edit and self._edit.get("preview") else model
+        if self.view.cad_select and self.view.tool == "editobjects" and not self._edit:
+            self._paint_cad_markups(p, [shown], page)     # (no handles here: see below)
+            return
         p.setPen(QPen(blue, 1, Qt.DashLine))
         if A.turned(shown):
             pts = [self.to_screen_pt(q, page) for q in A.outline(shown, 36)]
@@ -1166,6 +1258,19 @@ class PageWidget(QWidget):
             got = self._sel_path = got[:3] + (key, t.map(got[2]))
         return got[4]
 
+    def _selection_grips(self):
+        """The selected objects' grips, in page coordinates (worked out once per selection)."""
+        sel = self.view.obj_sel
+        got = getattr(self, "_sel_grips", None)
+        if got is None or got[0] is not sel or got[1] != self.index:
+            out, seen = [], set()
+            for it in self._objects_here():
+                grip_points(self.view.object_lines(self.index, it), out, seen)
+                if len(out) >= GRIPS_MAX:
+                    break
+            got = self._sel_grips = (sel, self.index, out)
+        return got[2]
+
     def _paint_objects(self, p, page):
         blue = QColor(0, 120, 215)
         p.setBrush(Qt.NoBrush)
@@ -1192,7 +1297,11 @@ class PageWidget(QWidget):
             self._paint_object_ghost(p, ed, page)
         else:
             if len(items) <= 3000 and self._selected_size(items) <= 30000:
-                p.drawPath(self._selection_path(page))
+                # (dashed over white, and grips on its ends and corners: a selection shows
+                # on a blue drawing too, and doesn't look like the box's preview glow)
+                paint_selected_path(p, self._selection_path(page))
+                t = self._screen_transform(page)
+                paint_grips(p, [t.map(QPointF(x, y)) for x, y in self._selection_grips()])
             elif len(items) <= 3000:            # (a huge drawing: each one's box)
                 for it in items:
                     p.drawRect(self.to_screen(it["rect"], page))
@@ -2104,6 +2213,8 @@ class PageWidget(QWidget):
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 
     def mouseDoubleClickEvent(self, e):
+        if cad_select.double_click(self, e):
+            return                          # (CAD selection: taken as a click, see there)
         cad_select.cancel(self.view)        # (a double-click selects a word: no box after it)
         if self.view.tool in POLY_TOOLS:
             # the double-click's first press already added this point
