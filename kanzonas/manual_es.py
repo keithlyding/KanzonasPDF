@@ -233,9 +233,10 @@ Ajustar al ancho y Ajustar página siguen ajustando cuando la ventana o un panel
 usted elige un zoom.</li>
 <li><b>Miniaturas de páginas</b> (F4) muestra u oculta el panel izquierdo.</li>
 <li><b>Vínculos del PDF:</b> coloque el puntero sobre un vínculo para ver a dónde lleva. Con la herramienta <b>Mano</b>, haga clic
-en él (el puntero se convierte en una mano). Con la herramienta <b>Seleccionar</b>, haga <b>Ctrl+clic</b> en él: un clic normal
-selecciona o edita aquello sobre lo que está el vínculo, de modo que trabajar con texto, imágenes o marcas con vínculos nunca
-abre el vínculo por accidente. Editar texto, Editar objetos y la herramienta Vínculos nunca abren vínculos. Un vínculo a una página del documento lleva a esa página. Una dirección web o
+en él (el puntero se convierte en una mano). Con cualquier otra herramienta, en todos los modos del mouse (Estándar, Mano,
+CAD), haga <b>Ctrl+clic</b> en él (al mantener Ctrl sobre un vínculo se ve una mano y adónde lleva): un clic normal
+selecciona, dibuja sobre o edita aquello sobre lo que está el vínculo, de modo que trabajar con texto, imágenes o marcas con
+vínculos nunca abre el vínculo por accidente. Un vínculo a una página del documento lleva a esa página. Una dirección web o
 de correo electrónico pregunta primero y luego se abre en su navegador o en su programa de correo (marque <b>No volver a
 preguntar</b> para omitir la pregunta a partir de entonces). Un vínculo a otro PDF lo abre en una nueva pestaña; un
 vínculo a otro tipo de archivo pregunta antes de abrirlo, y solo se abren documentos, imágenes,
@@ -490,7 +491,7 @@ CAD).</li>
 selecciona, así que no tiene que volver a la flecha (no en el modo CAD, donde una herramienta de dibujo siempre dibuja). La <b>herramienta Mano</b> funciona igual:
 haga clic en una marca (un resaltado, una nota, una forma...) para seleccionarla; arrastre en cualquier otro lugar para mover la
 página. Una marca convertida en vínculo abre su vínculo en su lugar cuando se hace clic en ella con la herramienta Mano, o
-Ctrl+clic con la herramienta Seleccionar (un clic normal con Seleccionar la selecciona). Una marca sobre un vínculo
+Ctrl+clic con cualquier otra herramienta (un clic normal con Seleccionar la selecciona). Una marca sobre un vínculo
 que ya traía el PDF (un resaltado sobre una entrada de la tabla de contenido) se selecciona; haga clic en el vínculo
 junto a la marca para abrirlo.</li>
 <li><b>Contornos y rellenos:</b> un rectángulo, una elipse, una nube, un polígono o una medición de área
@@ -1307,7 +1308,7 @@ cuadrícula...).</li>
 <tr><td>Shift (al dibujar)</td><td>Líneas a 45&deg;, cuadrados y círculos</td></tr>
 <tr><td>Shift+clic (herramienta de dibujo)</td><td>Empezar una marca nueva encima de una existente</td></tr>
 <tr><td>Ctrl+clic, Ctrl+arrastrar</td><td>Seleccionar varias marcas</td></tr>
-<tr><td>Ctrl+clic en un vínculo (herramienta Seleccionar)</td><td>Abrir el vínculo, también en una marca convertida en vínculo (un clic normal con la herramienta Mano)</td></tr>
+<tr><td>Ctrl+clic en un vínculo (cualquier herramienta, cualquier modo del mouse)</td><td>Abrir el vínculo, también en una marca convertida en vínculo (un clic normal con la herramienta Mano)</td></tr>
 <tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse: Mano, Seleccionar, o Editar objetos en el modo CAD) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
 <tr><td>Supr</td><td>Eliminar lo seleccionado: las marcas, y en el modo CAD también los objetos del dibujo</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas)</td></tr>

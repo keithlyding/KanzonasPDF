@@ -242,9 +242,10 @@ Fit width and Fit page keep fitting when the window or a side panel changes size
 choose a zoom yourself.</li>
 <li><b>Page thumbnails</b> (F4) shows or hides the left panel.</li>
 <li><b>Links in the PDF:</b> point at a link to see where it goes. With the <b>Hand</b> tool, click
-it (the pointer becomes a hand). With the <b>Select</b> tool, <b>Ctrl+click</b> it: a plain click
-selects or edits what the link is on, so working on linked text, pictures or markups never
-opens the link by accident. Edit text, Edit objects and the Links tool never open links. A link to a page in the document goes there. A web or
+it (the pointer becomes a hand). With any other tool, in every mouse mode (Standard, Hand, CAD),
+<b>Ctrl+click</b> it (holding Ctrl over a link shows a hand and where it goes): a plain click
+selects, draws on or edits what the link is on, so working on linked text, pictures or markups
+never opens the link by accident. A link to a page in the document goes there. A web or
 email address asks first, then opens in your browser or email program (tick <b>Don't ask
 again</b> to skip the question from then on). A link to another PDF opens it in a new tab; a
 link to another kind of file asks before opening it, and only common documents, pictures,
@@ -514,7 +515,7 @@ it too, so you don't have to switch back to the arrow (not in CAD mode, where a 
 draws). The <b>Hand tool</b> works the same way:
 click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
 page. A markup made a link opens its link instead when clicked with the Hand tool, or
-Ctrl+clicked with the Select tool (a plain click with Select selects it). A markup on a link
+Ctrl+clicked with any other tool (a plain click with Select selects it). A markup on a link
 the PDF came with (a highlight on a table of contents entry) is selected; click the link
 beside the markup to open it.</li>
 <li><b>Outlines and fills:</b> a rectangle, ellipse, cloud, polygon or area measurement
@@ -1330,7 +1331,7 @@ settings...).</li>
 <tr><td>Shift (while drawing)</td><td>45&deg; lines, squares and circles</td></tr>
 <tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
-<tr><td>Ctrl+click a link (Select tool)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
+<tr><td>Ctrl+click a link (any tool, any mouse mode)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
 <tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool: Hand, Select, or Edit objects in CAD mode) / cancel a CAD command or a started selection box</td></tr>
 <tr><td>Delete</td><td>Delete what's selected: markups, and in CAD mode the drawing's objects too</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>

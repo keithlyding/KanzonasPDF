@@ -243,8 +243,55 @@ class Clicking(Base):
             self.click(v, (100, 96))
             self.assertEqual(len(opened), 2)
             v.set_tool("edittext")
+            self.click(v, (100, 96))
+            self.assertEqual(len(opened), 2)                     # a plain click edits
+            v.commit_pending()      # (a click outside an open editor only finishes the edit)
+            # (since 1.7.3 a Ctrl+click opens a link with every tool, in every mouse mode)
             self.click(v, (100, 96), Qt.ControlModifier)
-            self.assertEqual(len(opened), 2)                     # editing never opens it
+            self.assertEqual(len(opened), 3)
+
+    def test_ctrl_click_opens_a_link_with_any_tool_in_any_mouse_mode(self):
+        from kanzonas import cad_draw, cad_select
+        v = self.make()
+        v.add_link(0, pymupdf.Rect(70, 88, 250, 103), ("page", 1, "none"))
+        opened = []
+        old = DocumentView.cad_select
+        self.addCleanup(lambda: setattr(DocumentView, "cad_select", old))
+        with mock.patch.object(DocumentView, "follow_link", lambda self, ln: opened.append(ln)), \
+                mock.patch.object(DocumentView, "_ask_link", lambda *a, **k: None):
+            # (a plain click with the Links tool on a link edits it: its box is canceled)
+            for cad in (False, True):
+                DocumentView.cad_select = cad
+                for tool in ("select", "editobjects", "edittext", "addtext", "rect", "line",
+                             "highlight", "m_length", "link", "eraser", "stamp"):
+                    v.set_tool(tool)
+                    before, rev = len(opened), v.revision
+                    self.click(v, (100, 96))
+                    self.assertEqual(len(opened), before, (cad, tool, "plain click"))
+                    # (what the plain click started ends: an editor, a shape drawn click by
+                    # click, a box; a Ctrl+click while drawing a shape ends the shape)
+                    v.commit_pending()
+                    cad_draw.cancel(v)
+                    cad_select.cancel(v)
+                    v.pages[0].finish_poly(cancel=True)
+                    if v.revision != rev:
+                        v.undo()                # (a stamp placed, say: the link stays)
+                    self.click(v, (100, 96), Qt.ControlModifier)
+                    self.assertEqual(len(opened), before + 1, (cad, tool, "Ctrl+click"))
+                    self.assertIsNone(v._cad_pick)
+
+    def test_ctrl_over_a_link_shows_a_hand(self):
+        v = self.make()
+        v.add_link(0, pymupdf.Rect(70, 88, 250, 103), ("page", 1, "none"))
+        v.set_tool("editobjects")
+        w = v.pages[0]
+        pos = w.to_screen_pt(pymupdf.Point(100, 96))
+        w.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, pos, w.mapToGlobal(pos), Qt.NoButton,
+                                     Qt.NoButton, Qt.ControlModifier))
+        self.assertEqual(w.cursor().shape(), Qt.PointingHandCursor)
+        w.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, pos, w.mapToGlobal(pos), Qt.NoButton,
+                                     Qt.NoButton, Qt.NoModifier))
+        self.assertNotEqual(w.cursor().shape(), Qt.PointingHandCursor)
 
     def test_right_click_offers_add_edit_remove(self):
         v = self.make()
