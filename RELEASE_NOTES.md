@@ -7,6 +7,16 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.7.3
+
+**Fixed**
+- Links can be opened again in every mouse mode: hold Ctrl and click a link, whatever tool you're using (Select, Edit objects in CAD mode, the drawing and measuring tools...). Holding Ctrl over a link shows a hand and where it goes. With the Hand tool a plain click still opens it.
+
+## 1.7.3 (es)
+
+**Correcciones**
+- Los vínculos se pueden abrir de nuevo en todos los modos del mouse: mantenga presionada Ctrl y haga clic en un vínculo, sea cual sea la herramienta que use (Seleccionar, Editar objetos en el modo CAD, las herramientas de dibujo y medición...). Al mantener Ctrl sobre un vínculo se ve una mano y adónde lleva. Con la herramienta Mano, un clic normal lo sigue abriendo.
+
 ## 1.7.2
 
 **New**
