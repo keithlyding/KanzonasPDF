@@ -1816,13 +1816,17 @@ class PageWidget(QWidget):
                 self.view.fill_field(self.index, xref)
                 return
         # a click (press and release without dragging) on a link follows it, also on a markup
-        # made a link: with the Hand tool; with Select only on Ctrl+click, so clicking to
-        # select or edit what the link is on never opens it by accident
+        # made a link: with the Hand tool a plain click; with every other tool, in every mouse
+        # mode, a Ctrl+click, so clicking to select, draw on or edit what the link is on never
+        # opens it by accident
         self._link_press = None
-        if tool == "hand" or (tool == "select" and ctrl_held(e)):
+        if tool == "hand" or ctrl_held(e) and not self._poly:
             link = self.view.link_to_follow(self.index, pdf)
             if link is not None:
                 self._link_press = (link, pos)
+                if tool != "hand":
+                    cad_select.cancel(self.view)    # (no box left started under it)
+                    return              # (the release follows it: nothing else starts here)
         if cad_select.active(self):
             cad_select.press(self, e, pos, pdf)
             return
@@ -2069,6 +2073,19 @@ class PageWidget(QWidget):
             return
         pos = e.position()
         tool = self.view.tool
+        if not e.buttons() and tool != "hand" and not self._poly:
+            # Ctrl over a link, with any tool: a pointing hand and where it goes (a Ctrl+click
+            # follows it)
+            link = self.view.link_to_follow(self.index, self.to_pdf(pos)) \
+                if ctrl_held(e) else None
+            if link is not None:
+                self._ctrl_link = True
+                self.setCursor(Qt.PointingHandCursor)
+                QToolTip.showText(self.mapToGlobal(pos.toPoint()), self.view.link_tip(link), self)
+                return
+            if getattr(self, "_ctrl_link", False):
+                self._ctrl_link = False
+                self.unsetCursor()
         if self.view._cad_cmd is not None and not e.buttons() and \
                 not self.view._cad_cmd.selecting:
             cmd = self.view._cad_cmd
