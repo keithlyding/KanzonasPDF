@@ -4718,8 +4718,12 @@ class DocumentView(QScrollArea):
         if hit is None or not (offset[0] or offset[1]):
             return
         _rect, line = hit
+        from . import text_styles
+        styled = text_styles.read_line(self.doc[index], line)
         self._apply_text_edit(index, line, text_edit.line_text(line), offset, None,
-                              keep_font=True)
+                              keep_font=True,
+                              runs=text_styles.runs_of(styled.text, styled.keys),
+                              decor=styled.decor)
         self.statusMessage.emit(tr("Moved the line (Ctrl+Z undoes it)"))
 
     def _paragraph_of(self, index, line):
@@ -4764,9 +4768,14 @@ class DocumentView(QScrollArea):
         annotations.set_tool_props("edittext", dict(annotations.tool_props("edittext"),
                                                     fontsize=round(picked or size, 2)))
         self.textToolPropsChanged.emit()
+        from . import text_styles
+        # each word's own style (bold, italic, color, size, underline...), shown and kept
+        styled = text_styles.read_paragraph(self.doc[index], lines)
         ed = InlineEditor(w, w.to_screen(box), old,
                           chosen[0] if chosen else text_edit.font_family_hint(lines[0]),
-                          (picked or size) * self.zoom, click=w.to_screen_pt(pt))
+                          (picked or size) * self.zoom, click=w.to_screen_pt(pt),
+                          runs=text_styles.runs_of(styled.text, styled.keys), zoom=self.zoom,
+                          base=styled.main._replace(size=round(size, 2)))
         # the box covers the whole paragraph while you type, also when the screen font fits
         # its words on fewer lines than the page does
         from .inline_editor import MARGIN
@@ -4790,6 +4799,7 @@ class DocumentView(QScrollArea):
         def done(text, dx, dy, wrap_px):
             new_size = self._edit_size()
             font = self._edit_font()
+            runs = self._typed_runs(ed, text, styled)
             finished()
             if new_size is not None and abs(new_size - size) < 0.06:
                 new_size = None
@@ -4804,7 +4814,8 @@ class DocumentView(QScrollArea):
             def paras(t):
                 return [" ".join(p.split()) for p in t.split("\n")]
             if paras(text) == paras(old) and not dx and not dy and \
-                    wrap is None and font is None and new_size is None:
+                    wrap is None and font is None and new_size is None and \
+                    not text_styles.restyled(styled, runs):
                 return
             offset = (dx / self.zoom, dy / self.zoom)
             made = {}
@@ -4813,7 +4824,8 @@ class DocumentView(QScrollArea):
                 from . import links
                 pg = self.doc[index]
                 made["font"], made["box"], made["bases"] = text_edit.replace_paragraph(
-                    pg, lines, text, wrap, font, new_size, offset)
+                    pg, lines, text, wrap, font, new_size, offset, runs=runs,
+                    decor=styled.decor)
                 if offset[0] or offset[1]:
                     links.follow(pg, box, box + (offset[0], offset[1], offset[0], offset[1]),
                                  foreign=True)
@@ -4845,6 +4857,24 @@ class DocumentView(QScrollArea):
                                        "edits a single line."))
         ed.committed.connect(done)
         ed.canceled.connect(finished)
+
+    @staticmethod
+    def _typed_runs(ed, text, styled):
+        """[(text, Style)] of what was typed in the on-page editor ed: its words' styles, or,
+        when text isn't what the editor holds, the styles of the words kept from styled
+        (text_styles.Styled, as read from the page)."""
+        from . import text_styles
+        runs = None
+        try:
+            if ed.text.toPlainText() == text:
+                runs = ed.styled_runs()
+            ed.close_bar()
+        except RuntimeError:                # (its widget was already deleted)
+            runs = None
+        if runs is None:
+            keys = text_styles.restyle(styled.text, styled.keys, text, styled.main)
+            runs = text_styles.runs_of(text, keys)
+        return runs
 
     def edit_text_at(self, index, pt, one_line=False):
         """Edit text tool, click: edit the paragraph there (words rewrap), or, with
@@ -4900,10 +4930,19 @@ class DocumentView(QScrollArea):
             box = QRectF(c.x() - bw / 2, c.y() - bh / 2, bw, bh)
             box.moveLeft(max(0.0, min(box.left(), w.width() - bw)))
             box.moveTop(max(0.0, min(box.top(), w.height() - bh)))
+        from . import text_styles
+        if scan:
+            styled = None               # (written as the scan looks)
+        else:
+            styled = text_styles.read_line(page, line)
         ed = InlineEditor(w, box, old, chosen[0] if chosen else hint,
                           (new_size or size) * self.zoom,
                           click=w.to_screen_pt(pt) if upright else None,
-                          bold=bool(scan and scan["bold"] and not chosen))
+                          bold=bool(scan and scan["bold"] and not chosen),
+                          runs=text_styles.runs_of(styled.text, styled.keys) if styled else None,
+                          zoom=self.zoom,
+                          base=styled.main._replace(size=round(size, 2)) if styled else None,
+                          tools=styled is not None)
         if not upright:
             # the box is upright, the line isn't: put the cursor where the click falls along
             # the line instead (not the whole line selected, which typing would replace)
@@ -4921,20 +4960,23 @@ class DocumentView(QScrollArea):
         def done(text, dx, dy, wrap_px):
             new = self._edit_size()
             font = self._edit_font()
+            runs = self._typed_runs(ed, text, styled) if styled else None
             finished()
             if new is not None and abs(new - size) < 0.06:
                 new = None              # the size shown is the line's own: keep it exactly
             if not upright:
                 wrap_px = None          # the box's width isn't along the line
             if text == old and not dx and not dy and wrap_px is None and \
-                    font is None and new is None:
+                    font is None and new is None and \
+                    not (styled and text_styles.restyled(styled, runs)):
                 return
             # screen movement -> PDF (unrotated) points
             m = self.doc[index].derotation_matrix
             v = pymupdf.Point(dx / self.zoom, dy / self.zoom) * m - pymupdf.Point(0, 0) * m
             wrap = wrap_px / self.zoom if wrap_px else None
             self._apply_text_edit(index, line, text, (v.x, v.y), wrap, size=new, scan=scan,
-                                  font=font)
+                                  font=font, runs=runs,
+                                  decor=styled.decor if styled else ())
         ed.committed.connect(done)
         ed.canceled.connect(finished)
 
@@ -5072,17 +5114,30 @@ class DocumentView(QScrollArea):
         w = self.pages[index]
         top = pymupdf.Point(pt) * page.rotation_matrix          # displayed coordinates
         disp = pymupdf.Rect(top.x, top.y - size * 0.85, top.x + size * 12, top.y + size * 0.35)
+        from . import text_styles
+        start = text_styles.add_style(family, props.get("bold"), props.get("italic"), size,
+                                      annotations.to_rgb(props.get("text_color")) or (0, 0, 0))
         ed = InlineEditor(w, w.to_screen(disp * page.derotation_matrix), "",
-                          family or "sans", size * self.zoom)
+                          family or "sans", size * self.zoom, zoom=self.zoom, base=start)
         ed.kz_tool = "addtext"
         self._inline = ed
 
         def done(text, dx, dy, wrap_px):
             self._inline = None
+            runs = None
+            try:
+                if ed.text.toPlainText() == text:
+                    runs = ed.styled_runs()
+                ed.close_bar()
+            except RuntimeError:
+                runs = None
             if not text.strip():
                 return
             # the size can be changed in Properties while typing
             size = float(annotations.tool_props("addtext").get("fontsize") or 12)
+            if runs is not None and abs(size - start.size) > 0.001:
+                ratio = size / start.size       # (every word scaled alike)
+                runs = [(t, k._replace(size=round(k.size * ratio, 2))) for t, k in runs]
             m = self.doc[index].derotation_matrix
             v = pymupdf.Point(dx / self.zoom, dy / self.zoom) * m - pymupdf.Point(0, 0) * m
             origin = pymupdf.Point(pt) + v
@@ -5092,7 +5147,8 @@ class DocumentView(QScrollArea):
             def do():
                 used["font"] = text_edit.add_text(
                     self.doc[index], origin, text, family, props.get("bold"), props.get("italic"),
-                    size, annotations.to_rgb(props.get("text_color")) or (0, 0, 0), wrap)
+                    size, annotations.to_rgb(props.get("text_color")) or (0, 0, 0), wrap,
+                    runs=runs)
             self.modify(do, [index])
             font = used.get("font") or ""
             if font.startswith("KZ"):
@@ -5132,7 +5188,7 @@ class DocumentView(QScrollArea):
         return (p["font"], bool(p.get("bold")), bool(p.get("italic"))) if p.get("font") else None
 
     def _apply_text_edit(self, index, line, new, offset, wrap, keep_font=False, size=None,
-                         scan="auto", font=None):
+                         scan="auto", font=None, runs=None, decor=()):
         used = {}
         font = None if keep_font else font
 
@@ -5146,7 +5202,8 @@ class DocumentView(QScrollArea):
                         moving.append((x, m))
             info = {}
             used["font"] = text_edit.replace_line(page, line, new, offset, wrap, font,
-                                                  None if keep_font else size, scan, info)
+                                                  None if keep_font else size, scan, info,
+                                                  runs=runs, decor=decor)
             used["scan"] = info.get("scan")
             d = pymupdf.Point(offset)
             if d.x or d.y:
