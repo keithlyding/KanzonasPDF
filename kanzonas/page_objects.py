@@ -14,6 +14,7 @@ Clipping paths and objects inside Form XObjects aren't editable. Resizing a shap
 line width with it.
 """
 
+import bisect
 import functools
 import gc
 import math
@@ -1304,6 +1305,67 @@ def _split(old):
 _WRAP = re.compile(rb"\nq ((?:-?[\d.]+ ){6})cm\n$")
 
 
+CLIP_LOOK_BACK = 4096       # bytes before an object searched for the  q  that opens its clip
+CLIP_LOOK_AHEAD = 4096      # bytes after it searched for the  Q  that closes it
+_Q_OP = re.compile(rb"(?<![^\s\]>)])q(?=[\s/\[(<%]|\Z)")
+_DRAWS = frozenset((b"BT", b"Do", b"BI", b"sh", b"EI", b"Tj", b"TJ", b"'", b'"'))
+
+
+def _own_clip_span(data, starts, s, e):
+    """(start, end) of the  q ... Q  around the object drawn at data[s:e] when that span
+    sets a clipping path still in effect at the object and draws nothing else (no other
+    object of starts, no text), else None. starts: every object's start, in order.
+
+    Printer drivers ("Print to PDF" of a protected file) write a page as picture strips,
+    each one  q <x y w h> re W n <picture> Q : moving the picture alone left its clip
+    behind, so it went out of its own window and vanished. Such a clip is the object's own
+    and moves with it."""
+    k = bisect.bisect_left(starts, s)
+    lo = max(0, s - CLIP_LOOK_BACK, (starts[k - 1] + 1) if k else 0)
+    for q in reversed([m.start() for m in _Q_OP.finditer(data, lo, s)]):
+        end = _clip_span_end(data, q, s, e)
+        if end is None:
+            continue
+        j = bisect.bisect_left(starts, q)
+        if any(x != s for x in starts[j:bisect.bisect_left(starts, end)]):
+            return None
+        return q, end
+    return None
+
+
+def _clip_span_end(data, q, s, e):
+    """End of the  q ... Q  opened at data[q] when it holds the object at data[s:e] under
+    a clip set inside it, and draws nothing else; else None."""
+    depth, clips, seen = 0, [], False
+    # (only up to a little past the object: a big drawing isn't read, or copied, to its end
+    # for every object moved; a span that doesn't close by then isn't taken)
+    for op, _args, s_, e_ in _tokens(data[q:e + CLIP_LOOK_AHEAD]):
+        a = q + s_
+        if s <= a < e:
+            if not seen:
+                if not clips:
+                    return None         # (no clip of this span is in effect at it)
+                seen = True
+            continue
+        if a >= e and not seen:
+            return None
+        if op == b"q":
+            depth += 1
+        elif op == b"Q":
+            depth -= 1
+            while clips and clips[-1] > depth:
+                clips.pop()
+            if depth <= 0:
+                return q + e_ if seen else None
+        elif op in (b"W", b"W*"):
+            if seen:
+                return None
+            clips.append(depth)
+        elif op in _DRAWS or op in _PAINT:
+            return None                 # (it draws something else too)
+    return None
+
+
 @_gc_paused
 def transform(page, ns, t_page, objs=None):
     """Apply t_page (a Matrix in unrotated page coordinates) to objects ns. An object this
@@ -1323,11 +1385,23 @@ def transform(page, ns, t_page, objs=None):
         found = scan(data)
     pieces = []
     tp = tuple(t_pdf)
+    starts = None
     for n in sorted(set(ns), reverse=True):
         if n >= len(found):
             raise ValueError(tr("The object is no longer on the page."))
         d = found[n]
         s, e, ctm = d["start"], d["end"], d["ctm"]
+        ctx = d.get("ctx")
+        if ctx and ctx[1]:
+            # drawn under a clip: when the clip is its own, it moves along (else it went
+            # out of its own window and vanished)
+            if starts is None:
+                starts = [x["start"] for x in found]
+            span = _own_clip_span(data, starts, s, e)
+            piece = _clip_piece(data, span, d, n, t_pdf) if span is not None else None
+            if piece is not None:
+                pieces.append(piece)
+                continue
         c = tuple(ctm)
         m = _mul(_mul(c, tp), _inv(c))              # the move, in the object's own space
         old = data[s:e]
@@ -1347,6 +1421,39 @@ def transform(page, ns, t_page, objs=None):
     _set_contents(page, data)
     same = objs is not None and objs.found is found      # (else its lines don't apply)
     return _moved(page, data, found, pieces, objs if same else None, t_page)
+
+
+def _clip_piece(data, span, d, n, t_pdf):
+    """transform's piece for object n moved with its own clip: the whole  q ... Q  span
+    wrapped in (or a wrapper already there folded into) one  q M cm ... Q ."""
+    q0, q1 = span
+    s, e, ctm = d["start"], d["end"], d["ctm"]
+    # the matrices set inside the span before the object: ctm = inner x (ctm at q0)
+    inner, stack = pymupdf.Matrix(1, 0, 0, 1, 0, 0), []
+    for op, args, _s, _e in _tokens(data[q0:s]):
+        if op == b"q":
+            stack.append(inner)
+        elif op == b"Q":
+            if stack:
+                inner = stack.pop()
+        elif op == b"cm" and len(args) >= 6:
+            try:
+                inner = pymupdf.Matrix(*[float(v) for v in args[-6:]]) * inner
+            except (TypeError, ValueError):
+                return None
+    at_q = ~inner * ctm                         # the space at q0
+    move = at_q * t_pdf * ~at_q                 # the move, in that space
+    body = data[q0:q1]
+    w = _WRAP.search(data, max(0, q0 - 120), q0)
+    if w and w.end() == q0 and data[q1:q1 + 3] == b"\nQ\n":
+        outer = pymupdf.Matrix(*[float(v) for v in w.group(1).split()])
+        head = b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(move * outer)
+        new_ctm = inner * _written(head) * ~outer * at_q
+        return (w.start(), q1 + 3, head + body + b"\nQ\n", n, len(head) + s - q0, e - s,
+                new_ctm * ~ctm, b"")
+    head = b"\nq %.6f %.6f %.6f %.6f %.4f %.4f cm\n" % tuple(move)
+    new_ctm = inner * _written(head) * at_q
+    return (q0, q1, head + body + b"\nQ\n", n, len(head) + s - q0, e - s, new_ctm * ~ctm, b"")
 
 
 def _scan_copies(heads, inner, tail=b"\nQ\n"):

@@ -144,8 +144,10 @@ part of a screen pixel when zoomed out and come out pale gray. With this on they
 legible at any zoom. Only the screen changes: printing, export, OCR, Compare and the saved
 file use the true line widths. Your choice is remembered.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, or Match system on Linux; Light, Dark). View &gt; Show text labels on
-toolbars adds names under the icons. Hover over any toolbar button or box for a tooltip
-saying what it does and its keyboard shortcut.</li>
+toolbars adds names under the icons. Hover over any toolbar or ribbon button or box for a
+tooltip saying what it does and its keyboard shortcut (the one you set in Keyboard shortcuts);
+a button that holds several tools (Shapes, Measure) names the tool it shows and its key. On the
+CAD tab the tip gives the letters to type on the command line (Move: type M and press Enter).</li>
 </ul>
 
 <h2 id="free">Free of charge</h2>
@@ -315,8 +317,8 @@ jumps to the next or previous page, centered, instead of scrolling a little. As 
 in so that any edge of the page is outside the window, the wheel scrolls normally. Hold
 <b>Shift</b> to scroll left and right instead of turning the page. On by default; turn it off for smooth scrolling. Each mouse mode remembers its own setting. (In CAD mode the
 wheel zooms instead.)</li>
-<li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match and Shift+Enter / Shift+F3
-for the previous; the up and down arrows beside the Find box do the same. The count beside
+<li><b>Find text:</b> Ctrl+F, then Enter / F3 for the next match (Find next) and Shift+Enter /
+Shift+F3 for the previous (Find previous); the up and down arrows beside the Find box do the same. The count beside
 the box shows which match you're on and how many there are ("3 of 120"; "No matches" when
 there are none; a word split by a hyphen at a line's end counts as one match). The search starts at the page you're on and shows the first match as soon as
 it finds it; on long documents it keeps searching the rest in the background (the count reads
@@ -719,8 +721,15 @@ so a markup can be lined up exactly with the edge or the middle of the page.</li
 <li>A pink square shows an object snap, a green circle a page snap, a blue cross a grid snap.
 When several are on, a nearby object wins, then the page, then the grid.</li>
 <li>Snapping works for shapes, lines, measurements, polygons, callouts, text boxes, stamps,
-notes and counts, and when moving or resizing markups (a moved markup snaps by its
-top-left corner). The pen and text markup tools don't snap.</li>
+notes and counts, and when moving or resizing markups. The pen and text markup tools don't
+snap.</li>
+<li><b>Dragging a markup or a picture</b> (also a picture or other item of the page itself, moved
+with Edit objects) snaps its whole box: with Snap to page, its left edge, center or right edge
+lines up with the page's left edge, center or right edge, and its top, middle or bottom with the
+page's, each way on its own, and a green dashed guide shows what it lined up with (drop a picture
+near the middle of the sheet and it settles exactly in the middle); with Snap to objects, one of
+its corners, edge middles or center goes onto a nearby markup's point (a dragged markup also onto
+the drawing's own points); with Snap to grid, its top-left corner goes to the grid.</li>
 <li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
 </ul>
 

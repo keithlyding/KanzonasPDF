@@ -7481,3 +7481,6 @@ msgstr "No se encontró nada en la página revisada:"
 
 msgid "fonts embedded, pictures sharp enough, trim and bleed set, no hairlines."
 msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y sangrado establecidos, sin líneas finas."
+
+msgid "type {0} and press Enter"
+msgstr "escriba {0} y presione Enter"
