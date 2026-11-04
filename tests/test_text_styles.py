@@ -524,6 +524,22 @@ class Underlines(Fixture):
         self.assertEqual(len(bars), len(bases))               # one bar per line piece
         self.assertGreater(len(bars), 1)
 
+    def test_strike_line_over_a_word_in_one_piece_of_text(self):
+        # (one piece of text with a line through a word in it, as LibreOffice writes it:
+        # MuPDF splits the line there, and the letters are put back in order)
+        d = pymupdf.open()
+        p = d.new_page()
+        text = "all dimensions in the field before ordering materials and report"
+        p.insert_text((72, 100), text, fontsize=11)
+        x0 = 72 + pymupdf.get_text_length(text[:text.index("materials")], fontsize=11)
+        x1 = x0 + pymupdf.get_text_length("materials", fontsize=11)
+        p.draw_line((x0, 100 - 2.4), (x1, 100 - 2.4), width=0.8)
+        ln = text_edit.text_lines(p)[0][1]
+        st = text_styles.read_line(p, ln)
+        struck = "".join(c if k.strike else "_" for c, k in zip(st.text, st.keys))
+        self.assertEqual(struck.strip("_"), "materials")
+        self.assertEqual(len(st.decor), 1)
+
     def test_table_border_and_long_rule_are_not_underlines(self):
         def border(p):
             # a table cell around the paragraph: its bottom border just under the last line

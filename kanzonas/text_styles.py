@@ -189,17 +189,19 @@ def _area(lines):
 
 
 def _read_area(page, area):
-    """The letters around area as MuPDF reads them with their drawing styles: ({(char,
-    x, y): [char, flags, shear, a0, a1]} by origin, thin straight drawings nearby)."""
+    """The letters around area as MuPDF reads them with their drawing styles, and the thin
+    straight drawings nearby: ({(char, x, y): (row, index)} by each letter's origin, where
+    row is the letters on that baseline in order along it, each [char, flags, shear, a0,
+    a1]; the drawings). (MuPDF splits a line where its letters' style changes: the letters
+    are put in order along their baseline again.)"""
     tp, flags = te.page_textpage(page, _FLAGS, clip=area)
-    found = {}
+    rows = {}
     for b in tp.this:
         if b.m_internal.type != 0:
             continue
         for ln in b:
             d = ln.m_internal.dir
             dx, dy = d.x, d.y
-            seq = []
             for ch in ln:
                 c = ch.m_internal
                 q = c.quad
@@ -210,11 +212,17 @@ def _read_area(page, area):
                 try:
                     char = chr(c.c)
                 except (ValueError, OverflowError):
-                    char = "�"
-                seq.append([char, c.flags, (vx * dx + vy * dy) / h, min(a0, a1),
-                            max(a0, a1)])
-                found.setdefault((char, round(c.origin.x, 1), round(c.origin.y, 1)),
-                                 (seq, len(seq) - 1))
+                    char = "\ufffd"
+                ox, oy = c.origin.x, c.origin.y
+                key = (round(dx, 2), round(dy, 2), round(oy * dx - ox * dy, 2))
+                rows.setdefault(key, []).append(
+                    [char, c.flags, (vx * dx + vy * dy) / h, min(a0, a1), max(a0, a1),
+                     ox * dx + oy * dy, ox, oy])
+    found = {}
+    for row in rows.values():
+        row.sort(key=lambda e: e[5])
+        for i, e in enumerate(row):
+            found.setdefault((e[0], round(e[6], 1), round(e[7], 1)), (row, i))
     d = page.get_text("dict", flags=flags, textpage=tp)
     vecs = [b for b in d["blocks"] if b.get("type") == 3 and b.get("isrect", True)
             and b.get("alpha", 255)]
@@ -222,7 +230,7 @@ def _read_area(page, area):
 
 
 def _span_entries(span, found):
-    """Per character of the span: its [char, flags, shear, a0, a1] as read, or None."""
+    """Per character of the span: its [char, flags, shear, a0, a1, ...] as read, or None."""
     text = span["text"]
     out = [None] * len(text)
     if not text:
@@ -231,11 +239,11 @@ def _span_entries(span, found):
     hit = found.get((text[0], round(o[0], 1), round(o[1], 1)))
     if hit is None:
         return out
-    seq, i = hit
+    row, i = hit
     for k, ch in enumerate(text):
-        if i + k >= len(seq) or seq[i + k][0] != ch:
+        if i + k >= len(row) or row[i + k][0] != ch:
             break
-        out[k] = seq[i + k]
+        out[k] = row[i + k]
     return out
 
 
