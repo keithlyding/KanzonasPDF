@@ -441,6 +441,41 @@ class SameFont(Fixture):
             self.assertLess(bars[0].width, 2)                    # turned with the text
 
 
+class OneLine(Fixture):
+    def test_alt_click_keeps_the_lines_styles(self):
+        v = self.para_view({"verify": ("hebo", (0, 0, 0))}, under=("all",))
+        v.edit_text_at(0, pymupdf.Point(100, self.bases[0] - 3), one_line=True)
+        ed = v._inline
+        self.assertIsNotNone(ed.bar)
+        self.assertNotIn("field", ed.text.toPlainText())         # just the line
+        cursor_at(ed, 0)
+        QTest.keyClicks(ed.text, "Note: ")
+        select(ed, "contractor")
+        QTest.keyClick(ed.text, Qt.Key_I, Qt.ControlModifier)
+        ed.commit()
+        ws = word_styles(v.doc[0])
+        self.assertEqual(ws["verify"].font, "Helvetica-Bold")
+        self.assertEqual(ws["contractor"].font, "Helvetica-Oblique")
+        self.assertTrue(ws["all"].underline)
+        self.assertFalse(ws["Note:"].bold or ws["Note:"].underline)
+        self.assertEqual(len(drawn_bars(v.doc[0])), 1)
+
+    def test_a_dragged_line_keeps_its_styles_and_underline(self):
+        v = self.para_view({"verify": ("hebo", (0, 0, 0)), "contractor": ("helv", RED)},
+                           under=("all",))
+        before = drawn_bars(v.doc[0])
+        v.move_text_line(0, pymupdf.Point(100, self.bases[0] - 3), (0, 300))
+        page = v.doc[0]
+        ws = word_styles(page)
+        self.assertEqual(ws["verify"].font, "Helvetica-Bold")
+        self.assertEqual(ws["contractor"].color, 0xFF0000)
+        self.assertTrue(ws["all"].underline)
+        after = drawn_bars(page)
+        self.assertEqual(len(after), 1)
+        self.assertAlmostEqual(after[0].y0, before[0].y0 + 300, delta=0.6)
+        self.assertGreater(page.search_for("verify")[0].y0, 300)
+
+
 class Underlines(Fixture):
     def test_word_style_underline_is_read_and_moves_with_its_word(self):
         v = self.para_view(under=("field",), stroked_under=("writing",))

@@ -7481,3 +7481,27 @@ msgstr "No se encontró nada en la página revisada:"
 
 msgid "fonts embedded, pictures sharp enough, trim and bleed set, no hairlines."
 msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y sangrado establecidos, sin líneas finas."
+
+#: inline_editor.py
+msgid "Bold (Ctrl+B)"
+msgstr "Negrita (Ctrl+B)"
+
+#: inline_editor.py
+msgid "Italic (Ctrl+I)"
+msgstr "Cursiva (Ctrl+I)"
+
+#: inline_editor.py
+msgid "Underline (Ctrl+U)"
+msgstr "Subrayado (Ctrl+U)"
+
+#: inline_editor.py
+msgid "Strikethrough"
+msgstr "Tachado"
+
+#: inline_editor.py
+msgid "Larger text (Ctrl+])"
+msgstr "Texto más grande (Ctrl+])"
+
+#: inline_editor.py
+msgid "Smaller text (Ctrl+[)"
+msgstr "Texto más pequeño (Ctrl+[)"

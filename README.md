@@ -211,9 +211,11 @@ Check a download against the release's `SHA256SUMS.txt` with `sha256sum Kanzonas
   or a .pfx/.p12 file), and printing needs a printer set up in the system (CUPS).
 - Saving changes to a digitally signed file invalidates its signatures (an unchanged signed
   file is saved as an exact copy).
-- Editing a paragraph rewrites it in one style (a bold word inside comes out like the rest), and
-  a paragraph that grows doesn't push the content below it down. If the original font isn't
-  available, a close standard font is used.
+- Editing a paragraph keeps each word's font, size, bold, italic, color, underline and
+  strikethrough, but a paragraph that grows doesn't push the content below it down. Bold or
+  italic for a font with no bold or italic embedded or installed is drawn thicker or slanted
+  (as Word does); taking bold off a word in a bold font needs its regular style. If the
+  original font isn't available, a close standard font is used.
 - Edit objects moves, resizes and rotates pictures and vector shapes; text can be moved and
   deleted there (change its words with Edit text). Content grouped inside form XObjects can be
   edited after Ungroup.
