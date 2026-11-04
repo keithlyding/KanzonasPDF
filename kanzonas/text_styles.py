@@ -219,14 +219,58 @@ def _read_area(page, area):
                     [char, c.flags, (vx * dx + vy * dy) / h, min(a0, a1), max(a0, a1),
                      ox * dx + oy * dy, ox, oy])
     found = {}
+    thick = []
     for row in rows.values():
         row.sort(key=lambda e: e[5])
         for i, e in enumerate(row):
             found.setdefault((e[0], round(e[6], 1), round(e[7], 1)), (row, i))
+            if e[1] & _FILLED and e[1] & _STROKED:
+                thick.append(e)
+    if thick:
+        # filled and outlined: thickened only when outlined in its own color with a real
+        # stroke (not an outline effect, not a hairline)
+        strokes = _strokes(page)
+        for e in thick:
+            got = strokes.get((e[0], round(e[6], 1), round(e[7], 1)))
+            if got is None:
+                e[1] &= ~_STROKED
+            else:
+                e.append(got)               # (stroke width, stroke color)
     d = page.get_text("dict", flags=flags, textpage=tp)
     vecs = [b for b in d["blocks"] if b.get("type") == 3 and b.get("isrect", True)
             and b.get("alpha", 255)]
     return found, vecs
+
+
+def _strokes(page):
+    """{(char, x, y): (stroke width, sRGB color)} of the letters the page outlines."""
+    from contextlib import nullcontext
+    from . import undo_journal
+    turn = page.rotation
+    # (PyMuPDF turns a rotated page upright to read it: not a change to keep)
+    with undo_journal.detached(page.parent) if turn else nullcontext():
+        trace = page.get_texttrace()
+    out = {}
+    for sp in trace:
+        if sp.get("type") != 1 or not sp.get("linewidth"):
+            continue
+        col = tuple(sp.get("color") or (0,))
+        if len(col) == 1:
+            col = col * 3
+        elif len(col) == 4:
+            c, m, y, k = col
+            col = ((1 - c) * (1 - k), (1 - m) * (1 - k), (1 - y) * (1 - k))
+        for ch in sp.get("chars", ()):
+            try:
+                key = (chr(ch[0]), round(ch[2][0], 1), round(ch[2][1], 1))
+            except (ValueError, OverflowError, TypeError, IndexError):
+                continue
+            out[key] = (float(sp["linewidth"]), to_int(col[:3]))
+    return out
+
+
+def _same_color(a, b):
+    return all(abs(((a >> s) & 255) - ((b >> s) & 255)) <= 3 for s in (0, 8, 16))
 
 
 def _span_entries(span, found):
@@ -260,7 +304,8 @@ def _line_info(line, found):
         entries = _span_entries(s, found) if found else [None] * len(s["text"])
         styles = {}
         for ch, e in zip(s["text"], entries):
-            sb = bool(e and e[1] & _FILLED and e[1] & _STROKED)
+            sb = bool(e and e[1] & _FILLED and e[1] & _STROKED and len(e) > 8 and
+                      e[8][0] >= 0.01 * s["size"] and _same_color(e[8][1], s["color"]))
             si = bool(e and e[2] > 0.08)
             st = styles.get((sb, si))
             if st is None:

@@ -613,6 +613,31 @@ class Alignment(Fixture):
         self.assertTrue(word_styles(v.doc[0])["verify"].bold)
 
 
+class Reading(unittest.TestCase):
+    def test_thickened_text_is_bold_but_an_outline_or_a_hairline_isnt(self):
+        for rotation in (0, 90):
+            d = pymupdf.open()
+            p = d.new_page()
+            p.insert_text((72, 100), "thick", fontsize=12, render_mode=2, border_width=0.03,
+                          color=(1, 0, 0), fill=(1, 0, 0))
+            p.insert_text((72, 130), "outline", fontsize=12, render_mode=2, border_width=0.03,
+                          color=(0, 0, 0), fill=(1, 1, 0))
+            p.insert_text((72, 160), "hairline", fontsize=12, render_mode=2, border_width=0)
+            p.insert_text((72, 190), "slanted", fontsize=12,
+                          morph=(pymupdf.Point(72, 190), pymupdf.Matrix(1, 0, 0.21, 1, 0, 0)))
+            p.set_rotation(rotation)
+            got = {}
+            for _r, ln in text_edit.text_lines(p):
+                st = text_styles.read_line(p, ln)
+                got[st.text] = st.keys[0]
+            self.assertTrue(got["thick"].bold, rotation)
+            self.assertFalse(got["outline"].bold, rotation)
+            self.assertFalse(got["hairline"].bold, rotation)
+            self.assertTrue(got["slanted"].italic, rotation)
+            self.assertFalse(got["thick"].italic, rotation)
+            self.assertEqual(p.rotation, rotation)
+
+
 class Pieces(unittest.TestCase):
     def test_restyle_maps_kept_and_typed_letters(self):
         a, b = text_styles.Style(size=10), text_styles.Style(size=10, bold=True)
