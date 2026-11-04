@@ -856,6 +856,9 @@ class PageWidget(QWidget):
                 p.setPen(QPen(QColor(255, 140, 0), 2.5))
                 p.drawRect(self.to_screen(fr, page).adjusted(-2, -2, 2, 2))
 
+        if self.view.show_boxes:
+            self._paint_page_boxes(p, page)
+
         tool = self.view.tool
         self._paint_text_selection(p, page, tool)
         cad_select.paint(self, p)
@@ -2370,6 +2373,29 @@ class PageWidget(QWidget):
                 self._select_word(pdf, e)
         elif self.view.tool in TEXT_TOOLS:
             self._select_word(self.to_pdf(e.position()), e)
+
+    BOX_LOOKS = {"trimbox": (QColor(0, 150, 60), Qt.DashLine),
+                 "bleedbox": (QColor(220, 30, 30), Qt.DashLine),
+                 "artbox": (QColor(30, 90, 220), Qt.DotLine)}
+
+    def _paint_page_boxes(self, p, page):
+        """View > Show page boxes: the trim (green), bleed (red) and art (blue) boxes the page
+        has, each named inside one of its own corners (they're often only points apart: the
+        names would cover each other at the same corner) (on screen only)."""
+        names = {"trimbox": tr("Trim"), "bleedbox": tr("Bleed"), "artbox": tr("Art")}
+        f = p.font()
+        f.setPointSizeF(max(6.0, f.pointSizeF() * 0.8))
+        p.setFont(f)
+        p.setBrush(Qt.NoBrush)
+        for which, r in self.view.page_boxes_shown(self.index):
+            color, style = self.BOX_LOOKS[which]
+            sr = self.to_screen(r, page)
+            p.setPen(QPen(color, 1.2, style))
+            p.drawRect(sr)
+            p.setPen(color)
+            at = {"trimbox": Qt.AlignLeft | Qt.AlignTop, "bleedbox": Qt.AlignRight | Qt.AlignTop,
+                  "artbox": Qt.AlignLeft | Qt.AlignBottom}[which]
+            p.drawText(sr.adjusted(4, 2, -4, -2), int(at), names[which])
 
     def _select_word(self, pdf, e):
         """Double-click: select the word under the pointer (a third click selects the line)."""

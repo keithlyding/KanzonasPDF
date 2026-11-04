@@ -5,7 +5,7 @@ PDF-XChange's print dialogs; Windows' standard print dialog has no preview)."""
 import re
 
 import pymupdf
-from PySide6.QtCore import QRectF, QSizeF, Qt
+from PySide6.QtCore import QPointF, QRectF, QSizeF, Qt
 from PySide6.QtGui import QColor, QImage, QPageLayout, QPageSize, QPainter, QPixmap
 from PySide6.QtPrintSupport import QPageSetupDialog, QPrinter, QPrinterInfo
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog,
@@ -122,6 +122,12 @@ class PrintDialog(QDialog):
         self.markups = QCheckBox(tr("Print markups and form fields"))
         self.markups.setChecked(True)
         left.addRow("", self.markups)
+        self.marks = QCheckBox(tr("Crop marks (at the trim box; the drawing out to the bleed box)"))
+        self.marks.setToolTip(tr("Marks at the corners of each page's trim box, on the paper "
+                                 "only (the file isn't changed). Set the boxes with Set page "
+                                 "boxes (Print tab, or Pages > Print production); a page without "
+                                 "a trim box is marked at its edges."))
+        left.addRow("", self.marks)
 
         # preview
         self.picture = QLabel()
@@ -159,7 +165,8 @@ class PrintDialog(QDialog):
 
         for sig in (self.all_pages.toggled, self.current.toggled, self.some.toggled,
                     self.orientation.currentIndexChanged, self.size.currentIndexChanged,
-                    self.markups.toggled, self.printer_box.currentIndexChanged):
+                    self.markups.toggled, self.marks.toggled,
+                    self.printer_box.currentIndexChanged):
             sig.connect(self._changed)
         self.range_text.textChanged.connect(lambda _t: (self.some.setChecked(True),
                                                         self._changed()))
@@ -195,28 +202,64 @@ class PrintDialog(QDialog):
                 return None
         return list(range(v.page_count()))
 
+    def _marks_layout(self, i):
+        """print_production.marks_layout of page i when crop marks are on, else None."""
+        if not getattr(self, "marks", None) or not self.marks.isChecked():
+            return None
+        from . import print_production
+        return print_production.marks_layout(self.view.doc[i])
+
     def sheet(self, i):
-        """(paper size in points, page box on the paper in points) for page i."""
+        """(paper size in points, page box on the paper in points) for page i. With crop
+        marks, what's fitted on the paper is the trim box with room for the marks around it
+        (the page box can then reach past the paper: only the drawing out to the bleed box
+        is printed)."""
         layout = self.printer.pageLayout()
         paper = layout.pageSize().size(QPageSize.Unit.Point)
         w, h = paper.width(), paper.height()
         page = self.view.doc[i].rect                      # as displayed (rotation applied)
+        lay = self._marks_layout(i)
+        ext = lay["job"] if lay is not None else page
         mode = self.orientation.currentIndex()
-        landscape = (page.width > page.height) if mode == 0 else mode == 2
+        landscape = (ext.width > ext.height) if mode == 0 else mode == 2
         if landscape != (w > h):
             w, h = h, w
         m = layout.margins(QPageLayout.Unit.Point)
         area = QRectF(m.left(), m.top(), w - m.left() - m.right(), h - m.top() - m.bottom())
         if area.width() < 10 or area.height() < 10:
             area = QRectF(0, 0, w, h)
-        pw, ph = page.width, page.height
+        pw, ph = ext.width, ext.height
         k = min(area.width() / pw, area.height() / ph)
         if self.size.currentIndex() == 1:
             k = min(1.0, k)                                # actual size, unless too big
         bw, bh = pw * k, ph * k
-        box = QRectF(area.x() + (area.width() - bw) / 2, area.y() + (area.height() - bh) / 2,
-                     bw, bh)
+        ebox = QRectF(area.x() + (area.width() - bw) / 2, area.y() + (area.height() - bh) / 2,
+                      bw, bh)
+        box = QRectF(ebox.x() + (page.x0 - ext.x0) * k, ebox.y() + (page.y0 - ext.y0) * k,
+                     page.width * k, page.height * k)
         return QSizeF(w, h), box
+
+    def _to_target(self, i, target, r):
+        """Rect r (page as displayed) where it lands when the page is drawn into target."""
+        page = self.view.doc[i].rect
+        k = target.width() / max(1e-6, page.width)
+        return QRectF(target.x() + (r.x0 - page.x0) * k, target.y() + (r.y0 - page.y0) * k,
+                      r.width * k, r.height * k)
+
+    def _draw_marks(self, painter, i, target, lay):
+        """The crop marks of page i (lay: its marks layout) for the page drawn into target."""
+        from PySide6.QtGui import QPen
+        from . import print_production
+        page = self.view.doc[i].rect
+        k = target.width() / max(1e-6, page.width)
+        pen = QPen(Qt.black, max(0.5, print_production.MARK_WIDTH * k))
+        pen.setCapStyle(Qt.FlatCap)
+        painter.setPen(pen)
+        for x0, y0, x1, y1 in print_production.mark_lines(lay["trim"]):
+            painter.drawLine(QPointF(target.x() + (x0 - page.x0) * k,
+                                     target.y() + (y0 - page.y0) * k),
+                             QPointF(target.x() + (x1 - page.x0) * k,
+                                     target.y() + (y1 - page.y0) * k))
 
     def _changed(self, *_):
         self._apply_printer()
@@ -265,8 +308,15 @@ class PrintDialog(QDialog):
             p.fillRect(QRectF(ox + 3, oy + 3, paper.width() * k, paper.height() * k),
                        QColor(0, 0, 0, 60))
             p.fillRect(QRectF(ox, oy, paper.width() * k, paper.height() * k), Qt.white)
+            lay = self._marks_layout(i)
+            if lay is not None:
+                p.save()
+                p.setClipRect(self._to_target(i, target, lay["content"]))
             p.drawImage(target, img)
             self._draw_links(p, i, target)
+            if lay is not None:
+                p.restore()
+                self._draw_marks(p, i, target, lay)
         finally:
             p.end()
         self.picture.setPixmap(canvas)
@@ -339,9 +389,17 @@ class PrintDialog(QDialog):
                 printer.newPage()
             res = printer.resolution() / 72.0
             target = QRectF(box.x() * res, box.y() * res, box.width() * res, box.height() * res)
+            lay = self._marks_layout(i)
+            if lay is not None:
+                # only the drawing out to the bleed box; the marks go outside the trim box
+                painter.save()
+                painter.setClipRect(self._to_target(i, target, lay["content"]))
             if not self._draw_bands(painter, i, target, dpi, going):
                 return False
             self._draw_links(painter, i, target)
+            if lay is not None:
+                painter.restore()
+                self._draw_marks(painter, i, target, lay)
         if progress is not None:
             progress.setValue(len(pages))
         return True

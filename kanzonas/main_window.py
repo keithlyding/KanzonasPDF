@@ -621,6 +621,24 @@ class MainWindow(QMainWindow):
                                               "link to it (also to PDFs in the same folder)"))
         self.a_uncrop = self._act(tr("Remove cro&p..."), lambda: self._page_op("uncrop"),
                                   tip=tr("Show the whole page again on this page or all pages"))
+        # print production (print_production.py)
+        self.a_page_boxes = self._act(tr("Set page &boxes..."), self._page_boxes,
+                                      tip=tr("Trim box (the finished size), bleed box and art "
+                                             "box of the pages, for printing"))
+        self.a_fix_hairlines = self._act(tr("Fix &hairlines..."), self._fix_hairlines,
+                                         tip=tr("Draw lines thinner than a width you choose at "
+                                                "that width, so they don't print too faint"))
+        self.a_print_check = self._act(tr("Check for p&rinting..."), self._print_check,
+                                       tip=tr("Look for what often goes wrong at the printer: "
+                                              "fonts not embedded, low-resolution or RGB "
+                                              "pictures, mixed sheet sizes, no trim or bleed, "
+                                              "hairlines"))
+        self.a_show_boxes = self._act(tr("Show page bo&xes"), self._toggle_show_boxes,
+                                      tip=tr("Outline the trim (green), bleed (red) and art "
+                                             "(blue) boxes the pages have (on screen only)"))
+        self.a_show_boxes.setCheckable(True)
+        self.a_show_boxes.setChecked(self.settings.value("show_boxes", "false") == "true")
+        DocumentView.show_boxes = self.a_show_boxes.isChecked()
         self.a_ocr = self._act(tr("Recognize text (&OCR)..."), self.ocr,
                                tip=tr("Make scanned pages searchable and selectable"))
         self.a_props = self._act(tr("&Properties panel"), self._toggle_props, "F6")
@@ -985,6 +1003,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_night)
         m.addAction(self.a_thin_lines)
         m.addAction(self.a_hl_fields)
+        m.addAction(self.a_show_boxes)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
                       self.a_grid_settings])
@@ -1073,6 +1092,9 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_rot_l, self.a_rot_r])
         m.addActions([self.tool_actions["crop"], self.a_uncrop])
+        pm = m.addMenu(tr("Print pro&duction"))
+        pm.addActions([self.a_page_boxes, self.a_fix_hairlines, self.a_print_check,
+                       self.a_show_boxes])
         m.addSeparator()
         m.addActions([self.a_move_up, self.a_move_down, self.a_del_page])
         m.addSeparator()
@@ -1381,6 +1403,7 @@ class MainWindow(QMainWindow):
                   self.a_apply_sel_redact, self.a_unlock, self.a_set_scale, self.a_measure_summary,
                   self.a_sheet_scales,
                   self.a_compare, self.a_header, self.a_watermark, self.a_compress,
+                  self.a_page_boxes, self.a_fix_hairlines, self.a_print_check,
                   self.a_background, self.a_remove_bg, self.a_remove_wm,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
                   *self.export_actions):
@@ -3059,6 +3082,38 @@ class MainWindow(QMainWindow):
             v.flatten(pages, widgets=False)
             self.statusBar().showMessage(tr("Comments flattened"), 4000)
 
+    # ---- print production ------------------------------------------------------------
+    def _page_boxes(self):
+        v = self.view()
+        if v is None:
+            return
+        from .print_production_ui import PageBoxesDialog
+        PageBoxesDialog(self, v).exec()
+
+    def _fix_hairlines(self):
+        v = self.view()
+        if v is None:
+            return
+        from .print_production_ui import HairlinesDialog
+        HairlinesDialog(self, v).exec()
+
+    def _print_check(self):
+        v = self.view()
+        if v is None:
+            return
+        from .print_production_ui import check_for_printing
+        check_for_printing(self, v)
+
+    def _toggle_show_boxes(self):
+        on = self.a_show_boxes.isChecked()
+        DocumentView.show_boxes = on
+        self.settings.setValue("show_boxes", "true" if on else "false")
+        for w in windows():
+            w.a_show_boxes.setChecked(on)
+            for v in w._views_drawn():
+                for pw in v.pages:
+                    pw.update()
+
     def _toggle_hl_fields(self):
         on = self.a_hl_fields.isChecked()
         DocumentView.highlight_fields = on
@@ -4468,6 +4523,8 @@ class MainWindow(QMainWindow):
         "tool_redact": tr("Redact"), "tool_placeholder": tr("Placeholder"),
         "tool_erasecontent": tr("Erase content"), "tool_capture": tr("Capture"),
         "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "tool_link": tr("Links"),
+        "a_page_boxes": tr("Page boxes"), "a_fix_hairlines": tr("Fix hairlines"),
+        "a_print_check": tr("Check for printing"), "a_show_boxes": tr("Show boxes"),
         "tool_editobjects": tr("Edit objects"), "tool_addtext": tr("Add text"),
         "tool_m_calibrate": tr("Calibrate"),
     }
@@ -4490,6 +4547,8 @@ class MainWindow(QMainWindow):
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
         "a_combine": "file-document-multiple-outline",
         "a_insert_blank": "file-outline", "a_uncrop": "crop-free",
+        "a_page_boxes": "border-outside", "a_fix_hairlines": "format-line-weight",
+        "a_print_check": "printer-search", "a_show_boxes": "border-style",
         "a_from_images": "file-image-outline", "a_new": "file-document-plus-outline", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
         "a_remove_bg": "format-color-marker-cancel", "a_remove_wm": "water-off-outline",
@@ -4595,6 +4654,14 @@ class MainWindow(QMainWindow):
                                    self.a_bookmarks, self.a_sheet_links, self.a_attachments,
                                    self.a_compress, self.a_compare]),
             (tr("Convert"), "large", [self.a_ocr, self.a_flatten]),
+        ])
+        # print production (1.8): what a sheet needs before a plotter or a print shop
+        r.add_tab(tr("Print"), [
+            (tr("Print"), "large", [self.a_print]),
+            (tr("Prepare"), "large", [self.a_page_boxes, self.a_fix_hairlines,
+                                      self.a_print_check]),
+            (tr("Show"), "large", [self.a_show_boxes]),
+            (tr("Crop"), "large", [t["crop"], self.a_uncrop]),
         ])
         r.add_tab(tr("View"), [
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,

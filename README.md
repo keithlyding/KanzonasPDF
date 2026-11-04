@@ -84,6 +84,12 @@ most of the features above got here.
 - Fill in and create forms
 - Export to Word, Excel, PowerPoint, AutoCAD DXF, images and text
 
+**Print**
+- Print with a preview, sharp even for large sheets, with crop marks at the trim box
+- Print production for plotters and print shops: set trim, bleed and art boxes, fix
+  hairlines too thin to print, and check for common printing problems (fonts not embedded,
+  low-resolution or RGB pictures, mixed sheet sizes)
+
 **Built to stay fast and light:** it starts in well under a second, and every build checks
 start-up time and memory automatically. There's no background service, no account and no
 telemetry. It only goes online to check whether a newer version exists (you can turn that off)
