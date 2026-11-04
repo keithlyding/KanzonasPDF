@@ -9,10 +9,11 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
-from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint
+from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint, QObject
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap,
                            QPainter, QDrag, QMouseEvent, QCursor)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFileDialog, QMessageBox,
+                               QToolTip,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
                                QListWidgetItem, QDockWidget, QAbstractItemView, QToolButton,
                                QVBoxLayout, QHBoxLayout, QMenu, QProgressDialog,
@@ -359,6 +360,26 @@ class _FindBox(QLineEdit):
             self.previousRequested.emit()
             return
         super().keyPressEvent(e)
+
+class _GroupTip(QObject):
+    """The tip of a button for a group of tools (Shapes, Measure): the tool its face shows,
+    with its shortcut, then what the group holds. (A button takes its face's tip each time
+    that tool changes, so the group's text is put together when the tip is shown.)"""
+
+    @staticmethod
+    def text(button):
+        face = button.defaultAction()
+        group = button.property("kz_group_tip") or ""
+        return "\n".join(t for t in ((face.toolTip() if face else ""), group) if t)
+
+    def eventFilter(self, obj, e):
+        if e.type() == QEvent.ToolTip:
+            text = self.text(obj)
+            if text:
+                QToolTip.showText(e.globalPos(), text, obj)
+                return True
+        return False
+
 
 class MainWindow(QMainWindow):
     def __init__(self, primary=None):
@@ -3908,33 +3929,91 @@ class MainWindow(QMainWindow):
             self.main_tb.setIconSize(QSize(16, 16))      # slim quick bar above the ribbon
         for b in (self.shapes_btn, self.measure_btn, self.forms_btn):
             b.setToolButtonStyle(style)
-        # tooltips: what the button does, plus its shortcut (icon-only buttons stay discoverable)
-        tips = dict(BUTTON_TIPS)
-        tips.update({"a_" + k: v for k, v in ARRANGE_TIPS.items()})
-        acts = [(k, getattr(self, k)) for k in self.TOOLBAR_ICON_KEYS] + \
-            [("a_" + k, a) for k, a in self.arrange_actions.items()] + \
-            [("tool_" + k, a) for k, a in self.tool_actions.items()]
-        for key, a in acts:
-            base = a.property("kz_tip")
-            if base is None:                       # first time: remember the plain tip
-                base = tips.get(key) or a.toolTip() or a.text().split("\t")[0].replace("&", "")
-                sc0 = a.shortcut().toString()
-                if sc0 and base.endswith(f"({sc0})"):        # drop a shortcut already in the text
-                    base = base[:-len(sc0) - 2].rstrip()
-                a.setProperty("kz_tip", base)
-            sc = a.shortcut().toString(QKeySequence.NativeText)
-            extra = {"a_rot_l": "Ctrl+Shift+Minus", "a_rot_r": "Ctrl+Shift+Plus"}.get(key, sc)
-            a.setToolTip(f"{base} ({extra})" if extra else base)
+        self._refresh_tips()
         self.zoom_box.setToolTip(tr("Zoom level: pick one or type a percentage and press Enter"))
         self.page_spin.setToolTip(tr("Current page: type a page number and press Enter"))
         self.search.setToolTip(tr("Find text in this document (Ctrl+F). Enter or F3 = next match, "
                                   "Shift+Enter or Shift+F3 = previous"))
-        self.shapes_btn.setToolTip(tr("Shapes: click for the shape shown, or the arrow to pick "
-                                      "another (rectangle, ellipse, circle, cloud, mask, polygon, "
-                                      "line, arrow, polyline, arc, curve, pen). Hold Shift for "
-                                      "squares, circles and straight lines"))
-        self.measure_btn.setToolTip(tr("Measure: click for the tool shown, or the arrow for length, "
-                                       "polylength, area, count, calibrate and scale"))
+        # (the face's own tip, with its key, comes first: _GroupTip)
+        self.shapes_btn.setProperty("kz_group_tip", tr(
+            "Shapes: click for the shape shown, or the arrow to pick another (rectangle, "
+            "ellipse, circle, cloud, mask, polygon, line, arrow, polyline, arc, curve, pen). "
+            "Hold Shift for squares, circles and straight lines"))
+        self.measure_btn.setProperty("kz_group_tip", tr(
+            "Measure: click for the tool shown, or the arrow for length, polylength, area, "
+            "count, calibrate and scale"))
+        if not hasattr(self, "_group_tip"):
+            self._group_tip = _GroupTip(self)
+            self.shapes_btn.installEventFilter(self._group_tip)
+            self.measure_btn.installEventFilter(self._group_tip)
+        for b in (self.shapes_btn, self.measure_btn):
+            b.setToolTip(_GroupTip.text(b))
+
+    def _refresh_tips(self):
+        """Every command's tool tip says what it does and how to reach it from the keyboard:
+        its shortcut (the one set in Keyboard shortcuts), or on the CAD tab the letters typed
+        on the command line. Ribbon buttons, toolbars and split buttons show their command's
+        tip, so this covers them all. Called again when shortcuts or the language change."""
+        from .cad_commands import ALIASES
+        tips = dict(BUTTON_TIPS)
+        tips.update({"a_" + k: v for k, v in ARRANGE_TIPS.items()})
+        keyed = [(k, getattr(self, k)) for k in self.TOOLBAR_ICON_KEYS] + \
+            [("a_" + k, a) for k, a in self.arrange_actions.items()]
+        typed = {}
+        for alias, cmd in ALIASES.items():          # the shortest name for each command
+            if alias.isalpha() and len(alias) < len(typed.get(cmd, alias + "x")):
+                typed[cmd] = alias.upper()
+        cad = {id(a): typed.get(k) for k, a in getattr(self, "cad_actions", {}).items()}
+        named = {id(a): key for key, a in keyed}
+        acts = {}
+        for a in list(self.findChildren(QAction)) + [a for _k, a in keyed] + \
+                list(self.tool_actions.values()):
+            acts[id(a)] = a
+        special = {"a_rot_l": "Ctrl+Shift+Minus", "a_rot_r": "Ctrl+Shift+Plus"}
+        for i, a in acts.items():
+            if a.isSeparator() or a.menu() is not None:
+                continue
+            key = named.get(i)
+            now = a.toolTip()
+            if key in tips:
+                base = tips[key]
+            elif a.property("kz_tip_set") == now:       # (unchanged since the last time)
+                base = a.property("kz_tip") or ""
+            else:
+                # the command's own tip, without a key it ends with (a tool's "Rectangle (R)":
+                # after the key is changed, the old one mustn't stay)
+                base = now
+                for old in {a.shortcut().toString(),
+                            a.shortcut().toString(QKeySequence.NativeText),
+                            *(getattr(self, "_default_shortcuts", {}).get(n, "")
+                              for n in self._names_of(a))}:
+                    if old and base.endswith(f" ({old})"):
+                        base = base[:-len(old) - 3]
+                a.setProperty("kz_tip", base)
+            if not base:
+                continue
+            sc = special.get(key) or a.shortcut().toString(QKeySequence.NativeText)
+            if sc:
+                extra = sc
+            elif cad.get(i):
+                extra = tr("type {0} and press Enter").format(cad[i])
+            else:
+                extra = ""
+            plain = a.shortcut().toString()
+            if extra and (f"({extra})" in base or (plain and f"({plain})" in base)):
+                extra = ""                               # (the tip says it already)
+            added = f" ({extra})" if extra else ""
+            if a.toolTip() != base + added:
+                a.setToolTip(base + added)
+            a.setProperty("kz_tip_set", a.toolTip())
+
+    def _names_of(self, a):
+        """The names Keyboard shortcuts knows the command a by (for its built-in key)."""
+        if not hasattr(self, "_shortcut_names"):
+            self._shortcut_names = {}
+            for n, x in self._shortcut_actions().items():
+                self._shortcut_names.setdefault(id(x), []).append(n)
+        return self._shortcut_names.get(id(a), [])
 
     def _toggle_labels(self):
         self.settings.setValue("toolbar_labels", "true" if self.a_labels.isChecked() else "false")
@@ -4053,6 +4132,7 @@ class MainWindow(QMainWindow):
                 seq = ""
             if seq != a.shortcut().toString():
                 a.setShortcut(QKeySequence(seq))
+        self._refresh_tips()
 
     def edit_shortcuts(self):
         import json

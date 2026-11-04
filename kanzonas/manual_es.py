@@ -137,8 +137,10 @@ parte de un píxel de pantalla al alejar y se ven de un gris pálido. Con esta o
 legibles con cualquier zoom. Solo cambia la pantalla: la impresión, la exportación, el OCR, Comparar y el archivo
 guardado usan los anchos de línea reales. Su elección se recuerda.</li>
 <li><b>Tema:</b> Ver &gt; Tema (Igual que Windows, o Igual que el sistema en Linux; Claro, Oscuro). Ver &gt; Mostrar etiquetas de texto en las
-barras de herramientas agrega nombres debajo de los iconos. Coloque el puntero sobre cualquier botón o cuadro de la barra de herramientas para ver una información sobre herramientas
-que indica qué hace y su método abreviado de teclado.</li>
+barras de herramientas agrega nombres debajo de los iconos. Coloque el puntero sobre cualquier botón o cuadro de la barra de herramientas o de la cinta para ver una información sobre herramientas
+que indica qué hace y su método abreviado de teclado (el que haya establecido en Métodos abreviados de teclado);
+un botón que agrupa varias herramientas (Formas, Medir) nombra la herramienta que muestra y su tecla. En la
+pestaña CAD indica las letras que se escriben en la línea de comandos (Mover: escriba M y presione Enter).</li>
 </ul>
 
 <h2 id="free">Gratuito</h2>
@@ -304,8 +306,8 @@ salta a la página siguiente o anterior, centrada, en lugar de desplazarse un po
 de modo que algún borde de la página queda fuera de la ventana, la rueda se desplaza normalmente. Mantenga presionada
 <b>Shift</b> para desplazarse a la izquierda y a la derecha en lugar de pasar de página. Activado de forma predeterminada; desactívelo para un desplazamiento continuo. Cada modo del mouse recuerda su propio ajuste. (En el modo CAD la rueda acerca y aleja
 en su lugar).</li>
-<li><b>Buscar texto:</b> Ctrl+F; luego Enter / F3 para la coincidencia siguiente y Shift+Enter / Shift+F3
-para la anterior; las flechas arriba y abajo junto al cuadro Buscar hacen lo mismo. El contador junto
+<li><b>Buscar texto:</b> Ctrl+F; luego Enter / F3 para la coincidencia siguiente (Buscar siguiente) y Shift+Enter /
+Shift+F3 para la anterior (Buscar anterior); las flechas arriba y abajo junto al cuadro Buscar hacen lo mismo. El contador junto
 al cuadro muestra en qué coincidencia está y cuántas hay ("3 de 120"; "Sin coincidencias" cuando
 no hay ninguna; una palabra dividida con un guion al final de una línea cuenta como una sola coincidencia). La búsqueda empieza en la página donde está y muestra la primera coincidencia en cuanto
 la encuentra; en los documentos largos sigue buscando en el resto en segundo plano (el contador indica
