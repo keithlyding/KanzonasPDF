@@ -7,6 +7,22 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.8.1
+
+**Fixed**
+- Moving a picture strip no longer makes part of the page disappear. Files made by printing a protected PDF to PDF are often built from strips of pictures, each shown through its own window; moving one used to leave the window behind, so the picture vanished. Now the window moves with it.
+
+**New**
+- Every button's tool tip shows its keyboard shortcut, including keys you changed in Keyboard shortcuts. On the CAD tab the tip says what to type on the command line (Move: type M and press Enter).
+
+## 1.8.1 (es)
+
+**Correcciones**
+- Mover una franja de imagen ya no hace desaparecer parte de la página. Los archivos creados al imprimir a PDF un PDF protegido suelen estar hechos de franjas de imagen, cada una mostrada a través de su propia ventana; al mover una, la ventana se quedaba atrás y la imagen desaparecía. Ahora la ventana se mueve con ella.
+
+**Novedades**
+- La información sobre herramientas de cada botón muestra su método abreviado de teclado, incluidas las teclas que haya cambiado en Métodos abreviados de teclado. En la pestaña CAD indica qué escribir en la línea de comandos (Mover: escriba M y presione Enter).
+
 ## 1.8
 
 **New**
