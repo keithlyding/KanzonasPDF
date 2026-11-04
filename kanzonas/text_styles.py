@@ -11,8 +11,9 @@ is taken as that run's underline or strikethrough; anything longer than the text
 farther off or under spaces only (a table border, a title block's rule, a form's blank) is
 left alone.
 
-Writing (write_paragraph, write_rows): the words wrap across runs, each run in its own
-font, size and color. Bold and italic keep the line's font: the same family's real bold or
+Writing (wrap, pieces, write_row, write_lines; text_edit's replace_paragraph,
+replace_line and add_text use them): the words wrap across runs, each run in its own font,
+size and color. Bold and italic keep the line's font: the same family's real bold or
 italic when the PDF has it embedded or it's installed; otherwise the very same font is
 thickened (render mode 2, a stroke about 3% of the size in the text's color) or slanted
 (a shear of about 12 degrees). Only text the font can't write at all goes to another font,
@@ -87,7 +88,8 @@ def _even_sizes(keys, size):
 
 def to_int(rgb):
     """(r, g, b) 0..1 -> sRGB integer."""
-    r, g, b = (max(0, min(255, int(round(float(c) * 255)))) for c in (tuple(rgb) + (0, 0, 0))[:3])
+    r, g, b = (max(0, min(255, int(round(float(c) * 255))))
+               for c in (tuple(rgb) + (0, 0, 0))[:3])
     return (r << 16) | (g << 8) | b
 
 
@@ -137,8 +139,9 @@ def main_style(text, keys, default=None):
 
 def restyle(old_text, old_keys, new_text, default):
     """Styles for new_text, an edit of old_text whose letters had old_keys: letters kept
-    keep theirs; typed letters take the style of the letter before them (the one after,
-    at the start); a text typed from nothing takes default."""
+    keep theirs; letters typed over others take the style of the first one typed over
+    (a bold word changed stays bold); typed letters take the style of the letter before them
+    (the one after, at the start); a text typed from nothing takes default."""
     if not old_keys:
         return [default] * len(new_text)
     out = [None] * len(new_text)
@@ -148,6 +151,8 @@ def restyle(old_text, old_keys, new_text, default):
             out[j1:j2] = old_keys[i1:i2]
         elif tag == "replace" and i2 - i1 == j2 - j1:
             out[j1:j2] = old_keys[i1:i2]          # (letters typed over, one for one)
+        elif tag == "replace":
+            out[j1:j2] = [old_keys[i1]] * (j2 - j1)
     for j in range(len(out)):
         if out[j] is None:
             if j > 0:

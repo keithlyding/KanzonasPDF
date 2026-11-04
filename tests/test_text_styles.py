@@ -648,6 +648,10 @@ class Pieces(unittest.TestCase):
         self.assertEqual(got[4:8], [b] * 4)          # "twos": typed after a bold letter
         self.assertEqual(got[-1], a)
         self.assertEqual(text_styles.restyle("", [], "new", b), [b] * 3)
+        got = text_styles.restyle("a bold word", [a] * 2 + [b] * 4 + [a] * 5,
+                                  "a heavy word", a)
+        self.assertEqual(got[2:7], [b] * 5)          # a bold word typed over stays bold
+        self.assertEqual(got[7:], [a] * 5)
 
     def test_family_key_and_natural_style(self):
         self.assertEqual(text_styles.family_key("ABCDEF+Arial-BoldItalicMT"), "arial")
