@@ -599,6 +599,16 @@ def resolve_all(page, text, keys, family=None):
     return fonts, text, keys
 
 
+def used_name(fonts, main):
+    """The font name to report for styled text written with fonts ({Style: Font}): the
+    main style's; when that's a built-in PDF font but another run's font was embedded, that
+    one (Save then keeps only the letters used)."""
+    name = fonts[main].name
+    if not name.startswith("KZ"):
+        name = next((f.name for f in fonts.values() if f.name.startswith("KZ")), name)
+    return name
+
+
 def reinsert(page, fonts):
     """Applying the redaction drops fonts no text uses yet: add them again. Returns
     {Style: Font} with the names to write with."""

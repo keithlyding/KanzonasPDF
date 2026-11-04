@@ -393,8 +393,13 @@ def font_dirs():
     """The folders installed fonts are in. Windows: the system's and this user's Fonts
     folders. Linux: the folders fontconfig uses (the ones in its fonts.conf, the user's
     ~/.local/share/fonts and ~/.fonts, /usr/share/fonts, /usr/local/share/fonts and the
-    fonts folder of every XDG data folder), each once, none inside another."""
-    if os.name == "nt" or sys.platform == "darwin":
+    fonts folder of every XDG data folder), each once, none inside another. macOS: its
+    system, shared and user Fonts folders."""
+    if sys.platform == "darwin" and os.name != "nt":
+        # macOS (the font lookup is shared: no Mac build, but run from source it works)
+        return ["/System/Library/Fonts", "/Library/Fonts",
+                os.path.expanduser("~/Library/Fonts")]
+    if os.name == "nt":
         return [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),
                 os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows",
                              "Fonts"),
@@ -721,7 +726,7 @@ def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
             main = text_styles.main_style(text, keys)
             text_styles.write_lines(page, origin, page.rotation, list(zip(text, keys)), fonts,
                                     1.2 * main.size, wrap_width)
-            return fonts[main].name
+            return text_styles.used_name(fonts, main)
     found = chosen_font(page, family, bold, italic, text)
     if found is None and not _winansi_ok(text):
         # the chosen font (or Helvetica) lacks some characters: a font that has them
@@ -1544,8 +1549,8 @@ def _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset, st
     shape.commit(True)
     text_styles.fix_spaces(page, fonts)
     tail = max(k.size for k in keys) * 0.25
-    return fonts[main].name, pymupdf.Rect(min(left, left + indent), top, right,
-                                          y - step + tail), bases
+    box = pymupdf.Rect(min(left, left + indent), top, right, y - step + tail)
+    return text_styles.used_name(fonts, main), box, bases
 
 
 def move_lines(page, lines, offset):
@@ -1672,7 +1677,7 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
         text_styles.write_lines(page, pymupdf.Point(first["origin"]) + offset,
                                 line_rotation(line), list(zip(new_text, keys)), fonts, step,
                                 wrap_width)
-        return fonts[text_styles.main_style(new_text, keys)].name
+        return text_styles.used_name(fonts, text_styles.main_style(new_text, keys))
     if found:
         fontname, font, source = found
         # applying the redaction drops fonts no text uses yet, including the one just
