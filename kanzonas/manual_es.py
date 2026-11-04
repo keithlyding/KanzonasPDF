@@ -32,8 +32,8 @@ su propia identidad única, incluso en el caso de archivos con el mismo nombre.<
 <p><b>Imprimir</b> (menú Archivo, barra de herramientas, Ctrl+P) abre la ventana de impresión de KanzonasPDF con una vista previa
 de cada hoja tal como se imprimirá: elija la impresora y las copias, qué páginas (Todas, Página actual
 o una lista como 1-3, 5), la orientación (Automática gira cada hoja para ajustarla a su página), el tamaño
-(Ajustar al papel, o Tamaño real, que solo reduce las páginas demasiado grandes) y si se imprimen las marcas
-y los campos de formulario. <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
+(Ajustar al papel, o Tamaño real, que solo reduce las páginas demasiado grandes), si se imprimen las marcas
+y los campos de formulario, y las <b>Marcas de corte</b> (vea Producción de impresión). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
 y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
 Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse
@@ -98,7 +98,7 @@ todo abierto); cuando ninguno tiene cambios sin guardar, pregunta "¿Cerrarlos t
 en Preferencias &gt; Inicio y apertura &gt; <b>Preguntar antes de cerrar KanzonasPDF con varios documentos
 abiertos</b>). Cerrar una pestaña solo pregunta por ese documento.</li>
 <li><b>Cinta:</b> los comandos se agrupan en pestañas: Inicio, Marcas, Medir, Organizar, Revisar,
-Proteger, Formularios, Páginas y Ver. La pestaña <b>Marcas</b> solo tiene marcas: comentarios, notas, cuadros
+Proteger, Formularios, Páginas, Imprimir y Ver. La pestaña <b>Marcas</b> solo tiene marcas: comentarios, notas, cuadros
 de texto, llamadas, sellos, formas e iconos de archivos adjuntos. Las marcas siguen siendo editables en cualquier visor
 de PDF (Adobe Reader, navegadores) hasta que las acopla. Todo lo demás que agregue (imágenes,
 Agregar texto, firmas, iniciales, fechas) se escribe en la propia página, de modo que en un visor
@@ -1023,6 +1023,38 @@ carpeta (A-501 Details.pdf), se vincula a ese archivo. Las palabras que ya tiene
 así que los propios hipervínculos de AutoCAD se quedan y ejecutarlo dos veces no agrega nada. Opciones: un rectángulo azul delgado
 alrededor de los vínculos (desactivado de forma predeterminada, para mantener limpios los dibujos) y marcadores con el número
 y el título de cada plano. Ctrl+Z lo deshace todo.</li>
+</ul>
+
+<h2 id="printprod">Producción de impresión (pestaña Imprimir)</h2>
+<p>Lo que necesita una hoja antes de ir a un trazador o a una imprenta. La pestaña <b>Imprimir</b> tiene estos
+comandos junto a Imprimir y Recortar; también están en <b>Páginas &gt; Producción de impresión</b>.</p>
+<ul>
+<li><b>Establecer cuadros de página</b>: además del cuadro de recorte (lo que se muestra), una página PDF puede tener un
+<b>cuadro de recorte final</b> (el tamaño terminado, donde se corta la hoja), un <b>cuadro de sangrado</b> (hasta dónde
+llega el dibujo más allá del recorte final, para que no se vea un borde blanco después de cortar) y un <b>cuadro de
+arte</b> (el contenido significativo). Para cada uno elija Dejar como está, Establecer o Quitar; un cuadro se establece
+por sus márgenes hacia dentro desde la página tal como se muestra (los márgenes positivos van hacia dentro), en puntos,
+pulgadas o milímetros, en todas las páginas, la página actual o una lista de páginas. Un cuadro tiene que quedar dentro
+de toda la hoja de la página (su cuadro de medios), y el cuadro de sangrado tiene que contener el cuadro de recorte final:
+si no, lo indica y no cambia nada. Ctrl+Z lo deshace.</li>
+<li><b>Mostrar cuadros de página</b> (también en el menú Ver) delinea los cuadros que tiene una página: recorte final en
+verde, sangrado en rojo, arte en azul (solo en pantalla).</li>
+<li><b>Corregir líneas finas</b>: las líneas dibujadas más finas que un grosor que elija (0,25 pt de forma
+predeterminada; incluido un grosor de 0, que significa «lo más fino que puede dibujar el dispositivo», a menudo demasiado
+tenue en un trazador) se dibujan con el grosor que elija, en todas las páginas, la página actual o una lista de páginas.
+Funciona en el dibujo propio de la página y en los grupos de dibujo que coloca (un grupo que también colocan otras páginas
+ensancha sus líneas allí también); todo lo demás de cada línea queda igual. Las marcas conservan sus propios grosores.
+Ctrl+Z lo deshace.</li>
+<li><b>Revisar para imprimir</b> enumera lo que suele fallar en la imprenta, por tipo, cada cosa con su página (haga
+doble clic en una línea para ir allí): fuentes no incrustadas (la imprenta pone otra), imágenes de menos de 150 píxeles
+por pulgada a su tamaño impreso, imágenes en colores RGB (una prensa de cuatricromía las convierte), tamaños de hoja
+mezclados, páginas sin cuadro de recorte final o sin sangrado más allá de él, y líneas más finas que 0,25 pt (con un botón
+para Corregir líneas finas). Es una revisión rápida de problemas comunes, no una verificación previa según una norma de
+impresión como PDF/X.</li>
+<li><b>Marcas de corte</b> (en la ventana Imprimir): marcas en las esquinas del cuadro de recorte final de cada página,
+por fuera de él, y el dibujo impreso hasta el cuadro de sangrado; una página sin cuadro de recorte final se marca en sus
+bordes. Están solo en el papel: el archivo no cambia. El cuadro de recorte final, con espacio para las marcas, se ajusta
+al papel (Ajustar al papel o Tamaño real, como se elija allí).</li>
 </ul>
 
 <h2 id="forms">Formularios</h2>

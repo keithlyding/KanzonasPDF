@@ -7278,3 +7278,206 @@ msgstr "Se detuvo la descarga: es mucho más grande que una AppImage de Kanzonas
 
 msgid "Match &system"
 msgstr "Igual que el &sistema"
+
+msgid "Page boxes set on {n} page(s) (Ctrl+Z undoes it)"
+msgstr "Cuadros de página establecidos en {n} página(s) (Ctrl+Z lo deshace)"
+
+msgid "Page {n}: the bleed box has to hold the trim box (it reaches past it)."
+msgstr "Página {n}: el cuadro de sangrado tiene que contener el cuadro de recorte final (lo sobrepasa)."
+
+msgid "Page {n}: the {box} would have no size."
+msgstr "Página {n}: el {box} no tendría tamaño."
+
+msgid "Page {n}: the {box} would reach past the page's media box (its whole sheet): use smaller margins."
+msgstr "Página {n}: el {box} sobrepasaría el cuadro de medios de la página (toda su hoja): use márgenes más pequeños."
+
+msgid "Page boxes"
+msgstr "Cuadros de página"
+
+msgid "Fix hairlines"
+msgstr "Corregir líneas finas"
+
+msgid "Check for printing"
+msgstr "Revisar para imprimir"
+
+msgid "Show boxes"
+msgstr "Mostrar cuadros"
+
+msgid "Set page &boxes..."
+msgstr "Establecer &cuadros de página..."
+
+msgid "Fix &hairlines..."
+msgstr "Corregir &líneas finas..."
+
+msgid "Check for p&rinting..."
+msgstr "Revisar para i&mprimir..."
+
+msgid "Show page bo&xes"
+msgstr "Mostrar cuadros de pá&gina"
+
+msgid "Print pro&duction"
+msgstr "Pro&ducción de impresión"
+
+msgid "Trim box (the finished size), bleed box and art box of the pages, for printing"
+msgstr "Cuadro de recorte final (el tamaño terminado), cuadro de sangrado y cuadro de arte de las páginas, para imprimir"
+
+msgid "Draw lines thinner than a width you choose at that width, so they don't print too faint"
+msgstr "Dibujar las líneas más finas que un grosor que elija con ese grosor, para que no se impriman demasiado tenues"
+
+msgid "Look for what often goes wrong at the printer: fonts not embedded, low-resolution or RGB pictures, mixed sheet sizes, no trim or bleed, hairlines"
+msgstr "Buscar lo que suele fallar en la imprenta: fuentes no incrustadas, imágenes de baja resolución o RGB, tamaños de hoja mezclados, sin recorte final ni sangrado, líneas finas"
+
+msgid "Outline the trim (green), bleed (red) and art (blue) boxes the pages have (on screen only)"
+msgstr "Delinear los cuadros de recorte final (verde), sangrado (rojo) y arte (azul) que tienen las páginas (solo en pantalla)"
+
+msgid "Prepare"
+msgstr "Preparar"
+
+msgid "Bleed"
+msgstr "Sangrado"
+
+msgid "Art"
+msgstr "Arte"
+
+msgid "Crop marks (at the trim box; the drawing out to the bleed box)"
+msgstr "Marcas de corte (en el cuadro de recorte final; el dibujo hasta el cuadro de sangrado)"
+
+msgid "Marks at the corners of each page's trim box, on the paper only (the file isn't changed). Set the boxes with Set page boxes (Print tab, or Pages > Print production); a page without a trim box is marked at its edges."
+msgstr "Marcas en las esquinas del cuadro de recorte final de cada página, solo en el papel (el archivo no cambia). Establezca los cuadros con Establecer cuadros de página (pestaña Imprimir, o Páginas > Producción de impresión); una página sin cuadro de recorte final se marca en sus bordes."
+
+msgid "Fonts not embedded"
+msgstr "Fuentes no incrustadas"
+
+msgid "Low-resolution pictures"
+msgstr "Imágenes de baja resolución"
+
+msgid "RGB pictures"
+msgstr "Imágenes RGB"
+
+msgid "Mixed sheet sizes"
+msgstr "Tamaños de hoja mezclados"
+
+msgid "Trim and bleed"
+msgstr "Recorte final y sangrado"
+
+msgid "Hairlines"
+msgstr "Líneas finas"
+
+msgid "trim box"
+msgstr "cuadro de recorte final"
+
+msgid "bleed box"
+msgstr "cuadro de sangrado"
+
+msgid "art box"
+msgstr "cuadro de arte"
+
+msgid "The {box} would have no size."
+msgstr "El {box} no tendría tamaño."
+
+msgid "The {box} would reach past the page's media box (its whole sheet): use smaller margins."
+msgstr "El {box} sobrepasaría el cuadro de medios de la página (toda su hoja): use márgenes más pequeños."
+
+msgid "No trim box (the finished size): the printer trims to the page"
+msgstr "Sin cuadro de recorte final (el tamaño terminado): la imprenta recorta a la página"
+
+msgid "No bleed past the trim box: a drawing that runs to the edge may show a white line after trimming"
+msgstr "Sin sangrado más allá del cuadro de recorte final: un dibujo que llega al borde puede mostrar una línea blanca después del recorte"
+
+msgid "{n} pages of {w} × {h} pt ({inch}): pages {pages}"
+msgstr "{n} páginas de {w} × {h} pt ({inch}): páginas {pages}"
+
+msgid "Font not embedded: {font}"
+msgstr "Fuente no incrustada: {font}"
+
+msgid "Picture in RGB colors ({w} × {h} pixels): a four-color press converts it"
+msgstr "Imagen en colores RGB ({w} × {h} píxeles): una prensa de cuatricromía la convierte"
+
+msgid "{n} lines thinner than {w} pt (Fix hairlines widens them)"
+msgstr "{n} líneas más finas que {w} pt (Corregir líneas finas las ensancha)"
+
+msgid "Picture at {dpi} pixels per inch as printed ({w} × {h} pixels)"
+msgstr "Imagen a {dpi} píxeles por pulgada tal como se imprime ({w} × {h} píxeles)"
+
+msgid "Checking for printing..."
+msgstr "Revisando para imprimir..."
+
+msgid "Set page boxes"
+msgstr "Establecer cuadros de página"
+
+msgid "Box"
+msgstr "Cuadro"
+
+msgid "Trim box (finished size)"
+msgstr "Cuadro de recorte final (tamaño terminado)"
+
+msgid "Bleed box (drawing past the trim)"
+msgstr "Cuadro de sangrado (el dibujo más allá del recorte)"
+
+msgid "Art box (the meaningful content)"
+msgstr "Cuadro de arte (el contenido significativo)"
+
+msgid "Units"
+msgstr "Unidades"
+
+msgid "Lines drawn thinner than this (a width of 0 included: a plotter's thinnest line, often too faint to see) are drawn at the new width, in the page's own drawing and in the drawing groups it places. Markups keep their own widths. Ctrl+Z undoes it. (0.25 pt is about 0.09 mm.)"
+msgstr "Las líneas dibujadas más finas que esto (incluido un grosor de 0: la línea más fina de un trazador, a menudo demasiado tenue para verse) se dibujan con el nuevo grosor, en el dibujo propio de la página y en los grupos de dibujo que coloca. Las marcas conservan sus propios grosores. Ctrl+Z lo deshace. (0,25 pt son unos 0,09 mm.)"
+
+msgid "Lines thinner than"
+msgstr "Líneas más finas que"
+
+msgid "Draw them at"
+msgstr "Dibujarlas con"
+
+msgid "Check"
+msgstr "Revisar"
+
+msgid "What"
+msgstr "Qué"
+
+msgid "(This is a quick check of common problems, not a preflight against a printing standard such as PDF/X.)"
+msgstr "(Es una revisión rápida de problemas comunes, no una verificación previa según una norma de impresión como PDF/X.)"
+
+msgid "Fix hairlines..."
+msgstr "Corregir líneas finas..."
+
+msgid "Looks for fonts that aren't embedded, pictures of too low resolution at their printed size, RGB pictures, mixed sheet sizes, missing trim and bleed boxes, and hairlines."
+msgstr "Busca fuentes no incrustadas, imágenes de resolución demasiado baja para su tamaño impreso, imágenes RGB, tamaños de hoja mezclados, cuadros de recorte final y de sangrado que faltan, y líneas finas."
+
+msgid "Leave as is"
+msgstr "Dejar como está"
+
+msgid "Set"
+msgstr "Establecer"
+
+msgid "Margins are measured in from the page as shown (its crop box); positive margins go inward. A box has to stay within the page's whole sheet (media box). Current page: {w} × {h}."
+msgstr "Los márgenes se miden hacia dentro desde la página tal como se muestra (su cuadro de recorte); los márgenes positivos van hacia dentro. Un cuadro tiene que quedar dentro de toda la hoja de la página (cuadro de medios). Página actual: {w} × {h}."
+
+msgid "Fix hairlines: {n} lines now {w} pt wide (Ctrl+Z undoes it)"
+msgstr "Corregir líneas finas: {n} líneas ahora con {w} pt de grosor (Ctrl+Z lo deshace)"
+
+
+
+msgid "No lines thinner than {w} pt on these pages."
+msgstr "No hay líneas más finas que {w} pt en estas páginas."
+
+msgid "{what} ({n})"
+msgstr "{what} ({n})"
+
+msgid "{n} things to look at on {pages} pages checked."
+msgstr "{n} cosas que revisar en {pages} páginas revisadas."
+
+msgid "{n} things to look at on the page checked."
+msgstr "{n} cosas que revisar en la página revisada."
+
+msgid "Double-click a line to go to its page."
+msgstr "Haga doble clic en una línea para ir a su página."
+
+msgid "Nothing found on the {pages} pages checked:"
+msgstr "No se encontró nada en las {pages} páginas revisadas:"
+
+msgid "Nothing found on the page checked:"
+msgstr "No se encontró nada en la página revisada:"
+
+msgid "fonts embedded, pictures sharp enough, trim and bleed set, no hairlines."
+msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y sangrado establecidos, sin líneas finas."

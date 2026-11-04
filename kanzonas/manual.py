@@ -39,8 +39,8 @@ its own unique identity, even for files with the same name.</p>
 <p><b>Print</b> (File menu, toolbar, Ctrl+P) opens KanzonasPDF's print window with a preview
 of each sheet as it will print: pick the printer and copies, which pages (All, Current page,
 or a list such as 1-3, 5), the orientation (Auto turns each sheet to fit its page), the size
-(Fit to paper, or Actual size, which only shrinks pages that are too big) and whether markups
-and form fields print. <b>Page setup...</b> sets the paper size and margins. Use the arrows
+(Fit to paper, or Actual size, which only shrinks pages that are too big), whether markups
+and form fields print, and <b>Crop marks</b> (see Print production). <b>Page setup...</b> sets the paper size and margins. Use the arrows
 under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
 rendered a strip at a time so even large drawings print sharp without using much memory.
 Markups and form fields follow their own print setting, as in Acrobat: one made to show on
@@ -105,7 +105,7 @@ everything open); when none has unsaved changes it asks "Close them all and exit
 off in Preferences &gt; Start-up &gt; <b>Ask before closing KanzonasPDF with several documents
 open</b>). Closing a tab asks only about that document.</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Markup, Measure, Arrange, Review,
-Protect, Forms, Pages and View. The <b>Markup</b> tab has only markups: comments, notes, text
+Protect, Forms, Pages, Print and View. The <b>Markup</b> tab has only markups: comments, notes, text
 boxes, callouts, stamps, shapes and attached-file icons. Markups stay editable in any PDF
 viewer (Adobe Reader, browsers) until you flatten them. Everything else you add (pictures,
 Add text, signatures, initials, dates) is written into the page itself, so in a viewer it
@@ -1045,6 +1045,38 @@ folder (A-501 Details.pdf) links to that file. Words that already have a link ar
 so AutoCAD's own hyperlinks stay and running it twice adds nothing. Options: a thin blue box
 around the links (off by default, to keep drawings clean), and bookmarks named by sheet number
 and title. Ctrl+Z undoes it all.</li>
+</ul>
+
+<h2 id="printprod">Print production (Print tab)</h2>
+<p>What a sheet needs before it goes to a plotter or a print shop. The <b>Print</b> tab has these
+next to Print and Crop; they're also in <b>Pages &gt; Print production</b>.</p>
+<ul>
+<li><b>Set page boxes</b>: besides the crop box (what's shown), a PDF page can have a
+<b>trim box</b> (the finished size, where the sheet is cut), a <b>bleed box</b> (how far the
+drawing runs past the trim, so no white edge shows after cutting) and an <b>art box</b> (the
+meaningful content). For each, choose Leave as is, Set or Remove; set a box by its margins in
+from the page as shown (positive margins go inward), in points, inches or millimeters, on all
+pages, the current page or a list of pages. A box has to stay within the page's whole sheet
+(its media box), and the bleed box has to hold the trim box: it says so otherwise and changes
+nothing. Ctrl+Z undoes it.</li>
+<li><b>Show page boxes</b> (also in the View menu) outlines the boxes a page has: trim in
+green, bleed in red, art in blue (on screen only).</li>
+<li><b>Fix hairlines</b>: lines drawn thinner than a width you choose (0.25 pt by default;
+a width of 0 included, which means "the thinnest the device can draw", often too faint on
+a plotter) are drawn at the width you choose, on all pages, the current page or a list of
+pages. It works on the page's own drawing and on the drawing groups it places (a group other
+pages place too gets its lines widened there as well); everything else about each line stays
+the same. Markups keep their own widths. Ctrl+Z undoes it.</li>
+<li><b>Check for printing</b> lists what often goes wrong at the printer, by kind, each with
+its page (double-click a line to go there): fonts that aren't embedded (the printer puts in
+another), pictures of less than 150 pixels per inch at their printed size, pictures in RGB
+colors (a four-color press converts them), mixed sheet sizes, pages without a trim box or
+without bleed past it, and lines thinner than 0.25 pt (with a button for Fix hairlines). It is
+a quick check of common problems, not a preflight against a printing standard such as PDF/X.</li>
+<li><b>Crop marks</b> (in the Print window): marks at the corners of each page's trim box,
+outside it, and the drawing printed out to the bleed box; a page without a trim box is marked
+at its edges. They are on the paper only: the file isn't changed. The trim box with room for
+the marks is fitted to the paper (Fit to paper or Actual size, as set there).</li>
 </ul>
 
 <h2 id="forms">Forms</h2>

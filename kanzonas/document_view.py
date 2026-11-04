@@ -7976,6 +7976,83 @@ class DocumentView(QScrollArea):
         box.exec()
         return {this: "this", every: "all"}.get(box.clickedButton())
 
+    # ---- print production (print_production.py) -----------------------------------------
+    show_boxes = False             # trim, bleed and art boxes outlined (View > Show page boxes)
+
+    def set_page_boxes(self, pages, choices):
+        """choices: {"trimbox" / "bleedbox" / "artbox": margins in points in from the crop box
+        as shown (left, top, right, bottom), or None to remove it}, on pages; one undo step.
+        Raises ValueError (a sentence to show) before changing anything when a box wouldn't
+        fit on one of the pages."""
+        from . import print_production as pp
+        plan = []
+        for i in pages:
+            page = self.doc[i]
+            boxes = {}
+            for which, margins in choices.items():
+                boxes[which] = None if margins is None else pp.margins_box(page, margins)
+            trim = boxes.get("trimbox", pp.page_box(page, "trimbox"))
+            bleed = boxes.get("bleedbox", pp.page_box(page, "bleedbox"))
+            media = page.mediabox + (-0.01, -0.01, 0.01, 0.01)
+            for which, r in boxes.items():
+                if r is not None and (r.width < 1 or r.height < 1):
+                    raise ValueError(tr("Page {n}: the {box} would have no size.").format(
+                        n=i + 1, box=pp.box_label(which)))
+                if r is not None and not media.contains(r):
+                    raise ValueError(tr("Page {n}: the {box} would reach past the page's "
+                                        "media box (its whole sheet): use smaller margins.")
+                                     .format(n=i + 1, box=pp.box_label(which)))
+            if trim is not None and bleed is not None and \
+                    not (bleed + (-0.01, -0.01, 0.01, 0.01)).contains(trim):
+                raise ValueError(tr("Page {n}: the bleed box has to hold the trim box (it "
+                                    "reaches past it).").format(n=i + 1))
+            plan.append((i, boxes))
+
+        def do():
+            for i, boxes in plan:
+                page = self.doc[i]
+                for which, r in boxes.items():
+                    pp.set_box(page, which, r)
+        self.modify(do, [i for i, _b in plan])
+        self.statusMessage.emit(tr("Page boxes set on {n} page(s) (Ctrl+Z undoes it)").format(
+            n=len(plan)))
+
+    def fix_hairlines(self, pages, below, width):
+        """Lines thinner than below (points) drawn at width, on pages (and in the drawing
+        groups they place), as one undo step. How many were widened; None when the file
+        doesn't allow changes (it says so)."""
+        from . import print_production as pp
+        if not self.allowed(pymupdf.PDF_PERM_MODIFY):
+            self.modify(lambda: None, list(pages)[:1])      # (says why)
+            return None
+        with _busy():
+            todo = [i for i in pages if pp.find_hairlines(self.doc[i], below)["count"]]
+        if not todo:
+            return 0
+        done = {"n": 0}
+
+        def do():
+            for i in todo:
+                done["n"] += pp.fix_hairlines(self.doc[i], below, width)
+        with _busy():
+            # (a drawing group other pages place changes there too: every page drawn again)
+            self.modify(do)
+        return done["n"]
+
+    def page_boxes_shown(self, index):
+        """[(box name, rect in unrotated page coordinates)] of the boxes this page has set,
+        for View > Show page boxes (kept until the next change)."""
+        from . import print_production as pp
+        cache = self.__dict__.setdefault("_boxes_cache", {})
+        key = (index, self.revision)
+        if key not in cache:
+            if len(cache) > 64:
+                cache.clear()
+            page = self.doc[index]
+            cache[key] = [(w, r) for w in pp.BOXES
+                          for r in [pp.page_box(page, w)] if r is not None]
+        return cache[key]
+
     def crop_pages(self, index, rect, all_pages=False):
         """Crop page index (or every page) to rect, given in page index's unrotated page
         coordinates. Only the visible area changes (the crop box): Remove crop brings the

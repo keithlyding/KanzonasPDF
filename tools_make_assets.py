@@ -13,6 +13,12 @@ at the top to transparent at the bottom. Drawn here as vectors so it is sharp at
 simpler page without an outline. Outputs: kanzonas.ico, kanzonas.png, kanzonas-setup.ico
 (the installer's icon: same art on a blue tile),
 installer BMPs and the embedded copy kanzonas/branding_data.py.
+
+A "PDF" tag goes across the bottom, as KanzonasCAD's icon has its "CAD" (the owner's pick):
+the page, cactus and sunflower drawn 12% smaller and higher, a white rounded tag with a
+near-black border under them, the sunflower just overlapping its top, the letters in a heavy
+sans (Inter Black, squeezed to 78% width, as wide and tall as KanzonasCAD's letters) in the
+tile's red. Needs the Inter font installed (it says so if it isn't).
 """
 import base64
 import io
@@ -35,6 +41,17 @@ TILE = [RED_TOP, RED_BOTTOM]
 
 
 MARGIN = 3.0      # gap (in tile units of 256) kept between the artwork and the tile's edge
+
+# the tag (tile units of 256, measured on KanzonasCAD's icon so the two match)
+LABEL = "PDF"
+LABEL_COLOR = "#b30000"                     # the tile's red
+LABEL_FONT = "Inter"
+ART_SCALE, ART_PIVOT = 0.878, (85.7, 22.1)  # the art 12% smaller, toward the top
+TAG_RECT = (58.25, 162.5, 187.75, 81.75)    # outer: x, y, width, height
+TAG_BORDER, TAG_RADIUS = 3.5, 11.0
+TAG_BORDER_COLOR = "#0a100e"
+CAP_TOP, CAP_BOTTOM = 167.75, 239.75        # the letters' top and bottom
+LABEL_SQUEEZE = 0.783                       # width / height scale of the letters
 
 
 def _tile(p, size_units, radius):
@@ -126,18 +143,92 @@ def _outlined(p, r, width):
     p.drawImage(r, mark)
 
 
-def _big_art(p):
-    _fading_page(p, 256, 84, 62, 202, 224, 28)
+def _big_mark_rect():
     h = 178.0
     w = h * mark.width() / mark.height()
-    _outlined(p, QRectF(128 - w / 2, 58, w, h), 3.0)
+    return QRectF(128 - w / 2, 58, w, h)
+
+
+def _small_mark_rect():
+    h = 96.0
+    w = h * mark.width() / mark.height()
+    return QRectF(64 - w / 2, 28, w, h)
+
+
+def _big_art(p):
+    _fading_page(p, 256, 84, 62, 202, 224, 28)
+    _outlined(p, _big_mark_rect(), 3.0)
 
 
 def _small_art(p):
     _fading_page(p, 128, 39, 31, 103, 115, 16, line=False)
-    h = 96.0
-    w = h * mark.width() / mark.height()
-    _outlined(p, QRectF(64 - w / 2, 28, w, h), 2.2)
+    _outlined(p, _small_mark_rect(), 2.2)
+
+
+def _flower_only():
+    """The sunflower alone (its petals, center and their dark outlines), to draw over the
+    tag where it overlaps the tag's top."""
+    import numpy as np
+    img = mark.convertToFormat(QImage.Format_RGBA8888)
+    a = np.frombuffer(img.constBits(), np.uint8).reshape(img.height(), img.width(), 4).copy()
+    r, g, b, al = (a[..., i].astype(int) for i in range(4))
+    op = al > 128
+    yellow = op & (r > 180) & (g > 110) & (b < 110)
+    brown = op & (r > 70) & (r < 200) & (g < 120) & (b < 80) & (r > g + 25)
+    keep = yellow | brown
+    for _ in range(3):                          # (the petals' dark outlines too)
+        grown = keep.copy()
+        grown[1:] |= keep[:-1]
+        grown[:-1] |= keep[1:]
+        grown[:, 1:] |= keep[:, :-1]
+        grown[:, :-1] |= keep[:, 1:]
+        keep = grown
+    a[..., 3] = np.where(keep, a[..., 3], 0)
+    return QImage(a.tobytes(), img.width(), img.height(), img.width() * 4,
+                  QImage.Format_RGBA8888).copy()
+
+
+flower = _flower_only()
+
+
+def _big_flower(p):
+    p.drawImage(_big_mark_rect(), flower)
+
+
+def _small_flower(p):
+    p.drawImage(_small_mark_rect(), flower)
+
+
+def _tag(p, units):
+    """The white tag with LABEL across the bottom of the tile (tile units of `units`)."""
+    from PySide6.QtGui import QFont, QFontDatabase
+    k = units / 256
+    x, y, w, h = (v * k for v in TAG_RECT)
+    outer = QRectF(x, y, w, h)
+    p.setPen(Qt.NoPen)
+    p.setBrush(QColor(TAG_BORDER_COLOR))
+    p.drawRoundedRect(outer, TAG_RADIUS * k, TAG_RADIUS * k)
+    b = TAG_BORDER * k
+    p.setBrush(QColor("white"))
+    p.drawRoundedRect(outer.adjusted(b, b, -b, -b), (TAG_RADIUS - TAG_BORDER) * k,
+                      (TAG_RADIUS - TAG_BORDER) * k)
+    if LABEL_FONT not in QFontDatabase.families():
+        print(f"warning: the {LABEL_FONT} font isn't installed: the tag's letters will differ")
+    f = QFont(LABEL_FONT)
+    f.setPixelSize(400)
+    f.setWeight(QFont.Black)
+    path = QPainterPath()
+    path.addText(0, 0, f, LABEL)
+    box = path.boundingRect()
+    sy = (CAP_BOTTOM - CAP_TOP) * k / box.height()
+    sx = sy * LABEL_SQUEEZE
+    p.save()
+    p.translate(x + w / 2 - box.width() * sx / 2, CAP_TOP * k)
+    p.scale(sx, sy)
+    p.translate(-box.x(), -box.y())
+    p.setBrush(QColor(LABEL_COLOR))
+    p.drawPath(path)
+    p.restore()
 
 
 def _render(size, units, transform, art):
@@ -191,7 +282,7 @@ def _fit(units, radius, art, size=512):
     return make(lo)
 
 
-def _icon(size, units, radius, art):
+def _icon(size, units, radius, art, flower_art=None):
     fit = _fit(units, radius, art)
     img = QImage(size, size, QImage.Format_ARGB32_Premultiplied)
     img.fill(Qt.transparent)
@@ -200,8 +291,26 @@ def _icon(size, units, radius, art):
     p.setRenderHint(QPainter.SmoothPixmapTransform)
     p.scale(size / units, size / units)
     _tile(p, units, radius)
-    fit(p)
+
+    def placed():
+        if LABEL:                       # (smaller and higher, above the tag)
+            k = units / 256
+            px, py = ART_PIVOT[0] * k, ART_PIVOT[1] * k
+            p.translate(px, py)
+            p.scale(ART_SCALE, ART_SCALE)
+            p.translate(-px, -py)
+        fit(p)
+    p.save()
+    placed()
     art(p)
+    p.restore()
+    if LABEL:
+        _tag(p, units)
+        if flower_art is not None:      # the sunflower just over the tag's top
+            p.save()
+            placed()
+            flower_art(p)
+            p.restore()
     p.end()
     return img
 
@@ -209,12 +318,12 @@ def _icon(size, units, radius, art):
 def big_icon(size=512):
     """Red tile; the owner's cactus and sunflower stand in front of a white page whose top
     comes out above the cactus, as big as fits inside the tile."""
-    return _icon(size, 256, 44, _big_art)
+    return _icon(size, 256, 44, _big_art, _big_flower)
 
 
 def small_icon(size=128):
     """16-32 px: same layout, bolder and simpler (no page outline)."""
-    return _icon(size, 128, 24, _small_art)
+    return _icon(size, 128, 24, _small_art, _small_flower)
 
 
 def to_pil(qimg):
