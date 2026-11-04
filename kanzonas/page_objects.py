@@ -1306,6 +1306,7 @@ _WRAP = re.compile(rb"\nq ((?:-?[\d.]+ ){6})cm\n$")
 
 
 CLIP_LOOK_BACK = 4096       # bytes before an object searched for the  q  that opens its clip
+CLIP_LOOK_AHEAD = 4096      # bytes after it searched for the  Q  that closes it
 _Q_OP = re.compile(rb"(?<![^\s\]>)])q(?=[\s/\[(<%]|\Z)")
 _DRAWS = frozenset((b"BT", b"Do", b"BI", b"sh", b"EI", b"Tj", b"TJ", b"'", b'"'))
 
@@ -1336,7 +1337,9 @@ def _clip_span_end(data, q, s, e):
     """End of the  q ... Q  opened at data[q] when it holds the object at data[s:e] under
     a clip set inside it, and draws nothing else; else None."""
     depth, clips, seen = 0, [], False
-    for op, _args, s_, e_ in _tokens(data[q:]):
+    # (only up to a little past the object: a big drawing isn't read, or copied, to its end
+    # for every object moved; a span that doesn't close by then isn't taken)
+    for op, _args, s_, e_ in _tokens(data[q:e + CLIP_LOOK_AHEAD]):
         a = q + s_
         if s <= a < e:
             if not seen:
