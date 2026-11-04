@@ -235,8 +235,7 @@ class InlineEditor(QFrame):
         from .text_styles import Style
         size = fmt.property(P_SIZE)
         if not isinstance(size, (int, float)) or size <= 0:
-            px = fmt.font().pixelSize()
-            size = px / (self.zoom * self._scale) if px > 0 else self.base.size
+            size = self.base.size           # (not one of ours: setPlainText's)
         font = fmt.property(P_FONT)
         flags = fmt.property(P_FLAGS)
         family = fmt.property(P_FAMILY)

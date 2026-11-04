@@ -51,6 +51,7 @@ class Style(NamedTuple):
     underline: bool = False
     strike: bool = False
     family: str = ""
+    alt: int = 0                    # (1: runs its font can't write, given another one)
 
 
 _BOLD_WORDS = re.compile(r"bold|black|heavy|demi|semibold", re.I)
@@ -68,9 +69,20 @@ def span_style(span, bold=False, italic=False):
     """The Style of a span from the page's text (bold / italic: drawn so, thickened or
     slanted)."""
     flags = int(span.get("flags", 0)) & _KEEP_FLAGS
-    nb, ni = natural(span.get("font", ""), flags)
-    return Style(span.get("font", ""), flags, round(float(span["size"]), 2),
+    font = _SUBSET.sub("", span.get("font", ""))    # (two subsets of a font are one font)
+    nb, ni = natural(font, flags)
+    return Style(font, flags, round(float(span["size"]), 2),
                  int(span.get("color", 0)), nb or bold, ni or italic)
+
+
+_SUBSET = re.compile(r"^[A-Z]{6}\+")
+
+
+def _even_sizes(keys, size):
+    """Sizes within 1% of the paragraph's (10.98 for 11) are its size."""
+    size = round(float(size), 2)
+    return [k._replace(size=size) if k.size != size and abs(k.size - size) <= 0.01 * size
+            else k for k in keys]
 
 
 def to_int(rgb):
@@ -350,7 +362,7 @@ def read_paragraph(page, lines):
             out += [[c, k] for c, k, _e in t]
         if "".join(c for c, _k in out) != text:
             return _uniform(text, main_span)
-        keys = [k for _c, k in out]
+        keys = _even_sizes([k for _c, k in out], main_span["size"])
         return Styled(text, keys, decor, main_style(text, keys, span_style(main_span)))
     except Exception:
         return _uniform(text, main_span)        # (never let reading styles stop an edit)
@@ -365,7 +377,7 @@ def read_line(page, line):
         decor = _decorate(line, info, vecs, set())
         if "".join(c for c, _k, _e in info) != text:
             return _uniform(text, te.main_span(line))
-        keys = [k for _c, k, _e in info]
+        keys = _even_sizes([k for _c, k, _e in info], te.main_span(line)["size"])
         return Styled(text, keys, decor,
                       main_style(text, keys, span_style(te.main_span(line))))
     except Exception:
@@ -524,17 +536,48 @@ def _resolve_family(page, fam, b, i, text, st):
     return Font(found[0], found[1], found[2], b, i), text
 
 
+def _fallback(f):
+    """A font picked only for characters the text's own font lacks."""
+    return f.name.startswith(("KZUni", "KZB"))
+
+
 def resolve_all(page, text, keys, family=None):
     """{Style: Font} for every style in keys, and the text and keys again (look-alikes put
-    in for symbols no font has). Raises ValueError (nothing changed) when a run can't be
-    written."""
+    in for symbols no font has). A word whose font lacks some of its characters goes to
+    another font on its own (its style with alt=1): the style's other words keep theirs.
+    Raises ValueError (nothing changed) when a word can't be written."""
     groups = {}
     for c, k in zip(text, keys):
         if c != "\n":
             groups.setdefault(k, []).append(c)
     fonts, swap = {}, {}
-    for k, chars in groups.items():
+    for k, chars in list(groups.items()):
         f, t2 = resolve(page, k, "".join(chars), family)
+        if _fallback(f):
+            # some word has characters the font lacks: only those words go to another font
+            spans, i = [], 0
+            while i < len(text):
+                if keys[i] != k or text[i].isspace():
+                    i += 1
+                    continue
+                j = i
+                while j < len(text) and keys[j] == k and not text[j].isspace():
+                    j += 1
+                spans.append((i, j))
+                i = j
+            bad = [(i, j) for i, j in spans
+                   if _fallback(resolve(page, k, text[i:j], family)[0])]
+            if len(bad) < len(spans):
+                alt = k._replace(alt=1)
+                keys = list(keys)
+                for i, j in bad:
+                    keys[i:j] = [alt] * (j - i)
+                odd = "".join(text[i:j] for i, j in bad)
+                fonts[alt], t3 = resolve(page, alt, odd, family)
+                if t3 != odd:
+                    swap[alt] = True
+                chars = [c for c, kk in zip(text, keys) if kk == k and c != "\n"]
+                f, t2 = resolve(page, k, "".join(chars), family)
         fonts[k] = f
         if t2 != "".join(chars):
             swap[k] = True
