@@ -1275,13 +1275,9 @@ class DocumentView(QScrollArea):
         from . import snapping
         page = self.doc[index]
         if self.snap_objects:
-            tol = self.SNAP_PX / self.zoom
-            if index not in self._snap_markups:
-                self._snap_markups[index] = snapping.markup_index(page)
-            hits = [h for h in (self._snap_markups[index].nearest(pt, tol, exclude),
-                                self._content_snaps(index).nearest(pt, tol)) if h is not None]
-            if hits:
-                return min(hits, key=lambda h: abs(h - pt)), "object"
+            hit = self.snap_object_point(index, pt, exclude)
+            if hit is not None:
+                return hit, "object"
         if self.snap_page:
             hit = snapping.page_snap(page, pt, self.SNAP_PX / self.zoom)
             if hit is not None:
@@ -1289,6 +1285,19 @@ class DocumentView(QScrollArea):
         if self.snap_grid and self.grid_spacing > 0:
             return snapping.grid_snap(page, pt, self.grid_spacing), "grid"
         return None
+
+    def snap_object_point(self, index, pt, exclude=(), content=True):
+        """The nearest point of a markup (but those in exclude) or, with content, of the
+        page's drawing, within SNAP_PX of PDF point pt; None when none is that near."""
+        from . import snapping
+        tol = self.SNAP_PX / self.zoom
+        if index not in self._snap_markups:
+            self._snap_markups[index] = snapping.markup_index(self.doc[index])
+        hits = [self._snap_markups[index].nearest(pt, tol, exclude)]
+        if content:
+            hits.append(self._content_snaps(index).nearest(pt, tol))
+        hits = [h for h in hits if h is not None]
+        return min(hits, key=lambda h: abs(h - pt)) if hits else None
 
     # CAD-style mouse (View menu): the wheel zooms around the cursor, like AutoCAD.
     # Holding the wheel (middle button) down and dragging pans in either mode.

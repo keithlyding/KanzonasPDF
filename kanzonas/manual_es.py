@@ -700,8 +700,16 @@ de modo que una marca se puede alinear exactamente con el borde o con el centro 
 <li>Un cuadrado rosa indica un ajuste a un objeto; un círculo verde, un ajuste a la página; una cruz azul, un ajuste a la cuadrícula.
 Cuando hay varios activados, gana un objeto cercano, luego la página y luego la cuadrícula.</li>
 <li>El ajuste funciona con formas, líneas, mediciones, polígonos, llamadas, cuadros de texto, sellos,
-notas y conteos, y al mover o cambiar el tamaño de las marcas (una marca que se mueve se ajusta por su
-esquina superior izquierda). El lápiz y las herramientas de marcas de texto no se ajustan.</li>
+notas y conteos, y al mover o cambiar el tamaño de las marcas. El lápiz y las herramientas de marcas de
+texto no se ajustan.</li>
+<li><b>Al arrastrar una marca o una imagen</b> (también una imagen u otro elemento de la propia página, movido
+con Editar objetos) se ajusta todo su cuadro: con Ajustar a la página, su borde izquierdo, su centro o su borde
+derecho se alinean con el borde izquierdo, el centro o el borde derecho de la página, y su parte superior, su
+centro o su parte inferior con los de la página, cada dirección por separado, y una guía verde discontinua
+muestra con qué se alineó (suelte una imagen cerca del centro de la hoja y queda exactamente en el centro); con
+Ajustar a objetos, una de sus esquinas, los puntos medios de sus bordes o su centro va a un punto de una marca
+cercana (una marca arrastrada también a los puntos del propio dibujo); con Ajustar a la cuadrícula, su esquina
+superior izquierda va a la cuadrícula.</li>
 <li><b>Mantenga presionada Alt</b> mientras dibuja o arrastra para colocar un punto libremente, sin ajuste.</li>
 </ul>
 

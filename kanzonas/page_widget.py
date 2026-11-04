@@ -345,6 +345,7 @@ class PageWidget(QWidget):
         self._marquee = False       # Ctrl+drag with Select: selection box only, no text
         self._cad_down = None       # CAD mode: a press with Select / Edit objects (cad_select.py)
         self._snap_mark = None      # (widget point, "object" | "page" | "grid") last snap
+        self._snap_guides = []      # ("x" | "y", widget coordinate): a dragged box lined up
         self._obj_hover = None      # Edit objects: picture under the mouse
         self._obj_edit = None       # Edit objects: dragging / resizing the selected picture
         self._text_move = None      # Edit text: a line being dragged to a new place
@@ -1392,13 +1393,16 @@ class PageWidget(QWidget):
         self._obj_edit = {"mode": "move", "start": pos, "preview": None}
         self.update()
 
-    def _objects_preview(self, pos, free=False):
-        """The selection's new box on screen while dragging."""
+    def _objects_preview(self, pos, free=False, snap=False):
+        """The selection's new box on screen while dragging (a move snapped: _snap_box; the
+        page's drawing isn't a target, it holds the dragged objects' own points)."""
         ed = self._obj_edit
         r = QRectF(self.to_screen(self.view.selected_objects_rect()))
         d = pos - ed["start"]
         mode = ed["mode"]
         if mode == "move":
+            if snap:
+                d = self._snap_box(r, d, content=False)
             return r.translated(d)
         left, top, right, bottom = r.left(), r.top(), r.right(), r.bottom()
         if "l" in mode:
@@ -1514,6 +1518,8 @@ class PageWidget(QWidget):
 
     def _objects_release(self, e, pos):
         ed, self._obj_edit = self._obj_edit, None
+        self._snap_mark = None
+        self._snap_guides = []
         self.update()
         if ed["mode"] == "box":
             if ed.get("now") is None:
@@ -1736,6 +1742,15 @@ class PageWidget(QWidget):
             j += 1
 
     def _paint_snap_mark(self, p):
+        if self._snap_guides:
+            # a dragged box lined up with the page's edge or center: a guide across the page
+            pen = QPen(QColor(0, 150, 60), 1, Qt.DashLine)
+            p.setPen(pen)
+            for axis, at in self._snap_guides:
+                if axis == "x":
+                    p.drawLine(QPointF(at, 0), QPointF(at, self.height()))
+                else:
+                    p.drawLine(QPointF(0, at), QPointF(self.width(), at))
         if self._snap_mark is None:
             return
         pt, kind = self._snap_mark
@@ -1983,13 +1998,69 @@ class PageWidget(QWidget):
         return False
 
     def _snapped_delta(self, model, pos, snap):
-        """PDF move vector for a drag, snapping the markup's top-left corner (as displayed)."""
+        """PDF move vector for a drag, snapping the markup's box (as displayed): its corners,
+        edge middles and center to objects, its edges and center to the page's, its top-left
+        corner to the grid (_snap_box)."""
         ed = self._edit
         if not snap:
             return self.to_pdf(pos) - self.to_pdf(ed["start"])
-        corner = self.to_screen(A.bounds(model)).topLeft()
-        moved = self._snap(corner + (pos - ed["start"]), exclude=set(self.view.selected_xrefs()))
-        return self.to_pdf(moved) - self.to_pdf(corner)
+        box = self.to_screen(A.bounds(model))
+        d = self._snap_box(box, pos - ed["start"], exclude=set(self.view.selected_xrefs()))
+        corner = box.topLeft()
+        return self.to_pdf(corner + d) - self.to_pdf(corner)
+
+    def _snap_box(self, box, d, exclude=(), content=True):
+        """The drag d (widget) of a box (widget QRectF) snapped: one of the box's corners,
+        edge middles or center onto an object's point (snap to objects; content: the page's
+        drawing too); else, each way on its own, its left / center / right onto the page's
+        left / center / right and its top / middle / bottom onto the page's (snap to page,
+        with a guide line along what it lines up with); else its top-left corner to the grid.
+        A picture dragged near the middle of the sheet settles in the middle."""
+        v = self.view
+        self._snap_mark = None
+        self._snap_guides = []
+        moved = box.translated(d)
+        if v.snap_objects:
+            best = None
+            for x in (moved.left(), moved.center().x(), moved.right()):
+                for y in (moved.top(), moved.center().y(), moved.bottom()):
+                    at = QPointF(x, y)
+                    hit = v.snap_object_point(self.index, self.to_pdf(at), exclude, content)
+                    if hit is not None:
+                        sp = self.to_screen_pt(hit)
+                        gap = (sp - at).manhattanLength()
+                        if best is None or gap < best[0]:
+                            best = (gap, sp, at)
+            if best is not None:
+                self._snap_mark = (best[1], "object")
+                return d + (best[1] - best[2])
+        if v.snap_page:
+            page = v.doc[self.index]
+            pr = self.to_screen(page.rect * page.derotation_matrix)
+            tol = v.SNAP_PX
+            dx = dy = None
+            for at in (moved.left(), moved.center().x(), moved.right()):
+                for to in (pr.left(), pr.center().x(), pr.right()):
+                    if abs(to - at) <= tol and (dx is None or abs(to - at) < abs(dx[0])):
+                        dx = (to - at, to)
+            for at in (moved.top(), moved.center().y(), moved.bottom()):
+                for to in (pr.top(), pr.center().y(), pr.bottom()):
+                    if abs(to - at) <= tol and (dy is None or abs(to - at) < abs(dy[0])):
+                        dy = (to - at, to)
+            if dx is not None or dy is not None:
+                if dx is not None:
+                    self._snap_guides.append(("x", dx[1]))
+                if dy is not None:
+                    self._snap_guides.append(("y", dy[1]))
+                return d + QPointF(dx[0] if dx else 0.0, dy[0] if dy else 0.0)
+        if v.snap_grid and v.grid_spacing > 0:
+            from . import snapping
+            corner = moved.topLeft()
+            hit = self.to_screen_pt(snapping.grid_snap(v.doc[self.index], self.to_pdf(corner),
+                                                       v.grid_spacing))
+            self._snap_mark = (hit, "grid")
+            return d + (hit - corner)
+        return d
 
     def _edit_preview(self, pos, shift=False, snap=False):
         ed = self._edit
@@ -2173,7 +2244,8 @@ class PageWidget(QWidget):
                 if self._obj_edit["mode"] == "box":
                     self._obj_edit["now"] = pos
                 else:
-                    self._obj_edit["preview"] = self._objects_preview(pos, shift_held(e))
+                    self._obj_edit["preview"] = self._objects_preview(pos, shift_held(e),
+                                                                      self._snapping(e))
                     self._build_object_ghost()
                 self.update()
         elif self._edit is not None:
@@ -2245,8 +2317,9 @@ class PageWidget(QWidget):
                 self.view.follow_link(press[0])
 
     def _release(self, e):
-        if e.button() == Qt.LeftButton and self._snap_mark is not None and self._edit is not None:
+        if e.button() == Qt.LeftButton and self._edit is not None:
             self._snap_mark = None
+            self._snap_guides = []
         if e.button() == Qt.MiddleButton and getattr(self, "_mid_pan", False):
             self._mid_pan = False
             self.view.end_pan()
@@ -2433,8 +2506,9 @@ class PageWidget(QWidget):
             self._obj_hover = None
             self.update()
         self._poly_hover = None
-        if self._snap_mark is not None:
+        if self._snap_mark is not None or self._snap_guides:
             self._snap_mark = None
+            self._snap_guides = []
             self.update()
         if self._ghost is not None:
             self._ghost = None

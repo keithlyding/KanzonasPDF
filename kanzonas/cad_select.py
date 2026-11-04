@@ -624,9 +624,9 @@ def paint_outside(view, p):
     off = QPointF(w.pos())
     if got[0] == "box":
         a, b = got[1]
-        paint_box(p, a + off, b + off)
+        paint_box(p, QPointF(a) + off, QPointF(b) + off)      # (a QPoint + QPointF fails)
     else:
-        pts = [q + off for q in got[1]]
+        pts = [QPointF(q) + off for q in got[1]]
         crossing = w._cad_down is not None and w._cad_down.get("dir", 0) < 0
         p.setPen(QPen(GREEN if crossing else BLUE, 1, Qt.DashLine if crossing else Qt.SolidLine))
         p.setBrush(QColor(0, 180, 70, 45) if crossing else QColor(0, 120, 215, 45))

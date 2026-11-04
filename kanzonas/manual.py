@@ -721,8 +721,15 @@ so a markup can be lined up exactly with the edge or the middle of the page.</li
 <li>A pink square shows an object snap, a green circle a page snap, a blue cross a grid snap.
 When several are on, a nearby object wins, then the page, then the grid.</li>
 <li>Snapping works for shapes, lines, measurements, polygons, callouts, text boxes, stamps,
-notes and counts, and when moving or resizing markups (a moved markup snaps by its
-top-left corner). The pen and text markup tools don't snap.</li>
+notes and counts, and when moving or resizing markups. The pen and text markup tools don't
+snap.</li>
+<li><b>Dragging a markup or a picture</b> (also a picture or other item of the page itself, moved
+with Edit objects) snaps its whole box: with Snap to page, its left edge, center or right edge
+lines up with the page's left edge, center or right edge, and its top, middle or bottom with the
+page's, each way on its own, and a green dashed guide shows what it lined up with (drop a picture
+near the middle of the sheet and it settles exactly in the middle); with Snap to objects, one of
+its corners, edge middles or center goes onto a nearby markup's point (a dragged markup also onto
+the drawing's own points); with Snap to grid, its top-left corner goes to the grid.</li>
 <li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
 </ul>
 

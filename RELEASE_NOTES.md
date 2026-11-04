@@ -11,6 +11,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 
 **Fixed**
 - Moving a picture strip no longer makes part of the page disappear. Files made by printing a protected PDF to PDF are often built from strips of pictures, each shown through its own window; moving one used to leave the window behind, so the picture vanished. Now the window moves with it.
+- Snap to page now works when you drag a picture: its edges and its center line up with the page's edges and center, with a green guide line, so a picture dropped near the middle settles exactly in the middle. Dragged markups snap the same way (before, only their top-left corner snapped).
 
 **New**
 - Every button's tool tip shows its keyboard shortcut, including keys you changed in Keyboard shortcuts. On the CAD tab the tip says what to type on the command line (Move: type M and press Enter).
@@ -19,6 +20,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 
 **Correcciones**
 - Mover una franja de imagen ya no hace desaparecer parte de la página. Los archivos creados al imprimir a PDF un PDF protegido suelen estar hechos de franjas de imagen, cada una mostrada a través de su propia ventana; al mover una, la ventana se quedaba atrás y la imagen desaparecía. Ahora la ventana se mueve con ella.
+- Ajustar a la página ahora funciona al arrastrar una imagen: sus bordes y su centro se alinean con los bordes y el centro de la página, con una línea guía verde, así que una imagen soltada cerca del centro queda exactamente en el centro. Las marcas arrastradas se ajustan de la misma forma (antes solo se ajustaba su esquina superior izquierda).
 
 **Novedades**
 - La información sobre herramientas de cada botón muestra su método abreviado de teclado, incluidas las teclas que haya cambiado en Métodos abreviados de teclado. En la pestaña CAD indica qué escribir en la línea de comandos (Mover: escriba M y presione Enter).
