@@ -7,6 +7,26 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.8
+
+**New**
+- A new Print tab with print production tools for plotters and print shops:
+  - Set page boxes: the trim box (finished size), bleed box and art box of your pages. Show page boxes outlines them on screen.
+  - Fix hairlines: lines too thin to print well (including width 0) are drawn at a width you choose.
+  - Check for printing: a quick report of common printing problems (fonts not embedded, low-resolution or RGB pictures, mixed sheet sizes, no trim or bleed, hairlines), with a click to go to each page.
+  - Crop marks in the Print window, at the trim box, on the paper only.
+- A new icon: "PDF" on a tag across the bottom, to match KanzonasCAD.
+
+## 1.8 (es)
+
+**Novedades**
+- Una nueva pestaña Imprimir con herramientas de producción de impresión para trazadores e imprentas:
+  - Establecer cuadros de página: el cuadro de recorte final (tamaño terminado), el de sangrado y el de arte de sus páginas. Mostrar cuadros de página los delinea en pantalla.
+  - Corregir líneas finas: las líneas demasiado finas para imprimirse bien (incluido el grosor 0) se dibujan con el grosor que elija.
+  - Revisar para imprimir: un informe rápido de problemas de impresión comunes (fuentes no incrustadas, imágenes de baja resolución o RGB, tamaños de hoja mezclados, sin recorte final ni sangrado, líneas finas), con un clic para ir a cada página.
+  - Marcas de corte en la ventana Imprimir, en el cuadro de recorte final, solo en el papel.
+- Un nuevo icono: «PDF» en una etiqueta en la parte inferior, a juego con KanzonasCAD.
+
 ## 1.7.3
 
 **Fixed**
