@@ -174,6 +174,27 @@ class MachO(unittest.TestCase):
         problems, _n, _newest = make_app.check_binaries(app, "x86_64", "15.0")
         self.assertEqual(len(problems), 2)          # (the arm64-only program and cv2)
 
+    def test_qt_for_pythons_own_modules_name_their_sdk(self):
+        # (PySide6 6.12.0's bindings say macOS 26, the SDK's; Qt's own libraries are checked)
+        app, _lic = fake_app(self.dir, {
+            "MacOS/KanzonasPDF": macho("arm64"),
+            "Frameworks/PySide6/QtCore.abi3.so": macho("arm64", (26, 0, 0)),
+            "Frameworks/shiboken6/libshiboken6.abi3.6.12.dylib": macho("arm64", (26, 0, 0)),
+            "Frameworks/PySide6/Qt/lib/QtCore.framework/Versions/A/QtCore":
+                macho("arm64", (26, 0, 0)),
+            "Frameworks/other/PySide6/x.so": macho("arm64", (26, 0, 0))})
+        problems, n, newest = make_app.check_binaries(app, "arm64", "14.4")
+        self.assertEqual(n, 5)
+        self.assertEqual(sorted(p.split(":")[0] for p in problems),
+                         ["Contents/Frameworks/PySide6/Qt/lib/QtCore.framework/Versions/A/QtCore",
+                          "Contents/Frameworks/other/PySide6/x.so"])
+        # (and still: code for the other kind of Mac fails there too)
+        app2, _lic = fake_app(os.path.join(self.dir, "b"), {
+            "MacOS/KanzonasPDF": macho("arm64"),
+            "Frameworks/PySide6/QtGui.abi3.so": macho("x86_64", (26, 0, 0))})
+        problems, _n, _newest = make_app.check_binaries(app2, "arm64", "14.4")
+        self.assertEqual(len(problems), 1)
+
     def test_finishing_an_app(self):
         app, lic = fake_app(self.dir, {
             "MacOS/KanzonasPDF": macho("x86_64"),
@@ -297,7 +318,7 @@ class Workflow(unittest.TestCase):
         for part in ('--arch "${{ matrix.arch }}"', '--min-macos "$MACOS_MIN"', "--adhoc-sign",
                      "--licenses licenses"):
             self.assertIn(part, finish)
-        self.assertEqual(self.mac["env"]["MACOS_MIN"], "14.0")
+        self.assertEqual(self.mac["env"]["MACOS_MIN"], "14.4")
         # the order: built, finished, tested, then packed
         order = [s.get("name") or s.get("uses") for s in self.mac["steps"]]
         idx = {n: i for i, n in enumerate(order)}

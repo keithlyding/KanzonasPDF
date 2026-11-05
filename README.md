@@ -182,7 +182,7 @@ Check a download against the release's `SHA256SUMS.txt` with `sha256sum Kanzonas
 
 ### macOS (disk image)
 
-KanzonasPDF runs on macOS 14 (Sonoma) or newer, on Apple silicon and Intel Macs:
+KanzonasPDF runs on macOS 14.4 (Sonoma) or newer, on Apple silicon and Intel Macs:
 
 1. Download the disk image for your Mac from the newest release on the
    [Releases page](https://github.com/keithlyding/KanzonasPDF/releases):
@@ -245,7 +245,7 @@ Applications to the Trash (and delete those two to remove your settings and file
 
 ## Known limitations
 
-- Windows, Linux on 64-bit x86 PCs (AppImage) and macOS 14 or newer (Apple silicon and Intel).
+- Windows, Linux on 64-bit x86 PCs (AppImage) and macOS 14.4 or newer (Apple silicon and Intel).
   On Linux and macOS, signing with certificates from the Windows certificate store isn't
   available (use a personal certificate or a .pfx/.p12 file; the macOS keychain isn't used), and
   on Linux printing needs a printer set up in the system (CUPS).

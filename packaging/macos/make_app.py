@@ -2,7 +2,7 @@
 macos job of .github/workflows/build-windows.yml runs it; the checks run on any computer).
 
     python packaging/macos/make_app.py finish dist/KanzonasPDF.app --version 1.9 --arch arm64 \
-        [--min-macos 14.0] [--licenses DIR] [--adhoc-sign]
+        [--min-macos 14.4] [--licenses DIR] [--adhoc-sign]
     python packaging/macos/make_app.py dmg dist/KanzonasPDF.app KanzonasPDF-macos-arm64.dmg
 
 1. Info.plist: the bundle id, name and version, the icon, the oldest macOS it runs on, dark
@@ -24,6 +24,7 @@ Exits with 1 (and says why) when a check fails.
 import argparse
 import os
 import plistlib
+import re
 import shutil
 import struct
 import subprocess
@@ -222,9 +223,17 @@ def macho_files(top):
                 yield p, info
 
 
+# Qt for Python's own modules (PySide6 6.12.0: the Python bindings, libshiboken and
+# libpyside, not Qt itself) name the macOS of the SDK they were built with (26.0) as their
+# oldest. A library's oldest macOS isn't enforced when it's loaded, and they run on older
+# ones: the builds' tests and self-test run them on macOS 15. Qt's own libraries are checked.
+SDK_AS_MINIMUM = re.compile(r"^Contents/Frameworks/(PySide6|shiboken6)/[^/]+\.(so|dylib)$")
+
+
 def check_binaries(app, arch, min_macos):
     """Problems (text lines) with the app's programs and libraries: code missing for arch,
-    or needing a macOS newer than min_macos. Also returns how many were checked."""
+    or needing a macOS newer than min_macos. Also returns how many were checked and the
+    newest macOS one needs."""
     want = tuple(int(x) for x in min_macos.split("."))
     want = want + (0,) * (3 - len(want))
     problems, n, newest = [], 0, (0, 0, 0)
@@ -235,6 +244,9 @@ def check_binaries(app, arch, min_macos):
             problems.append(f"{rel}: no {arch} code (has {', '.join(sorted(info))})")
             continue
         minos = info[arch]
+        if minos and minos > want and SDK_AS_MINIMUM.match(rel):
+            print(f"(not checked: {rel} names macOS {'.'.join(map(str, minos))}, its SDK's)")
+            continue
         if minos:
             newest = max(newest, minos)
             if minos > want:
@@ -304,7 +316,7 @@ def main(argv=None):
     f.add_argument("app", help="the .app PyInstaller made (dist/KanzonasPDF.app)")
     f.add_argument("--version", required=True)
     f.add_argument("--arch", required=True, choices=sorted(CPU))
-    f.add_argument("--min-macos", default="14.0")
+    f.add_argument("--min-macos", default="14.4")
     f.add_argument("--licenses", help="folder with LICENSE.txt, NOTICE.txt, LICENSE-AGPL-3.0.txt")
     f.add_argument("--adhoc-sign", action="store_true")
     d = sub.add_parser("dmg", help="pack the (finished, signed) app in a disk image")

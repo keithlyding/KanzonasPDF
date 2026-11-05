@@ -494,7 +494,7 @@ jobs:
   # possible: PyMuPDF, ONNX Runtime, OpenCV and NumPy publish separate Apple silicon and
   # Intel builds, only Qt a universal one). Built on the oldest macOS GitHub still offers
   # for each; the app says it runs on MACOS_MIN and the build fails if anything in it needs
-  # a newer macOS (Qt 6.12 and ONNX Runtime need macOS 14). Unsigned for now: people allow it
+  # a newer macOS (Qt 6.12 needs macOS 14.4). Unsigned for now: people allow it
   # once in System Settings > Privacy & Security > Open Anyway (see the signing step below).
   macos:
     name: macos (${{ matrix.arch }})
@@ -511,7 +511,7 @@ jobs:
     outputs:
       version: ${{ steps.ver.outputs.version }}
     env:
-      MACOS_MIN: "14.0"
+      MACOS_MIN: "14.4"
       # a disk image much bigger than this means something unexpected got bundled
       MAX_DMG_MB: "450"
       # ---- Signing and notarization: OFF (no Apple Developer account yet) ----------------
@@ -771,7 +771,7 @@ jobs:
             **Linux (64-bit PC; Ubuntu 22.04, Debian 12, Fedora 36 or newer):** download `KanzonasPDF-x86_64.AppImage`,
             make it executable (`chmod +x KanzonasPDF-x86_64.AppImage`, or Properties > Allow executing) and run it.
             To update, replace the file with the new one.
-            **macOS 14 (Sonoma) or newer:** download `KanzonasPDF-macos-arm64.dmg` for a Mac with Apple silicon (M1 or later)
+            **macOS 14.4 (Sonoma) or newer:** download `KanzonasPDF-macos-arm64.dmg` for a Mac with Apple silicon (M1 or later)
             or `KanzonasPDF-macos-x86_64.dmg` for an Intel Mac, open it and drag KanzonasPDF to Applications.
             It isn't signed by Apple yet, so the first time macOS stops it ("Apple could not verify..."): click Done, then
             open System Settings > Privacy & Security, click **Open Anyway** next to "KanzonasPDF was blocked" and confirm.

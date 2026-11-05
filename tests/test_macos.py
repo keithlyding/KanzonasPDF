@@ -91,8 +91,13 @@ class Pieces(unittest.TestCase):
         for d in text_edit.font_dirs():
             for f in text_edit._font_files(d) if os.path.isdir(d) else []:
                 if f.lower().endswith(".ttf"):
-                    font = f
-                    break
+                    try:
+                        ok = all(pymupdf.Font(fontfile=f).has_glyph(ord(c)) for c in "Hello")
+                    except Exception:
+                        ok = False
+                    if ok:
+                        font = f
+                        break
             if font:
                 break
         if not font:
