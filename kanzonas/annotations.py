@@ -96,6 +96,9 @@ DEFAULTS = {
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
                 "fontsize": 11, "head": "open", "opacity": 1.0},
     "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    # a dimension (dimensions.py): its arrowheads are one of dimensions.HEADS
+    "m_dim": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "head": "closed",
+              "opacity": 1.0},
     "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_angle": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
@@ -126,7 +129,8 @@ LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": t
           "stamp": tr("Stamp"), "field": tr("Form field"), "cloud": tr("Cloud"),
           "circle": tr("Circle"), "mask": tr("Mask"),
           "opencloud": tr("Cloud"),
-          "m_length": tr("Length"), "m_poly": tr("Polylength"), "m_area": tr("Area"),
+          "m_length": tr("Length"), "m_dim": tr("Dimension"), "m_poly": tr("Polylength"),
+          "m_area": tr("Area"),
           "m_count": tr("Count"),
           "m_angle": tr("Angle"), "m_radius": tr("Radius"), "m_perimeter": tr("Perimeter"),
           "m_volume": tr("Volume"),
@@ -155,16 +159,17 @@ COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a c
 BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "attach", "redact",
          "placeholder")
 MEASURES = ("m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius", "m_perimeter",
-            "m_volume")
+            "m_volume", "m_dim")
 CLOSED_MEASURES = ("m_area", "m_perimeter", "m_volume")      # drawn as a closed outline
 POINTED = ("line", "arrow", "polygon", "polyline", "arc", "opencloud") + MEASURES   # geometry = list of points
-VERTEXED = ("polygon", "polyline", "arc", "opencloud", "m_poly", "m_angle") + CLOSED_MEASURES   # one handle per vertex
+VERTEXED = ("polygon", "polyline", "arc", "opencloud", "m_poly", "m_angle", "m_dim") + \
+    CLOSED_MEASURES     # one handle per vertex (a dimension's: its two points and its line)
 # Shapes with a "rotation" property (degrees, counterclockwise as seen on screen). Boxes keep
 # their unrotated box and are drawn turned; point-based shapes have their points turned.
 # Text boxes and callouts only turn in 90 degree steps (a PDF text box limitation).
 ROTATABLE = ("rect", "ellipse", "cloud", "polygon", "polyline", "arc", "opencloud", "line", "arrow", "ink", "stamp", "image",
              "m_length", "m_poly", "m_area", "m_angle", "m_radius", "m_perimeter", "m_volume",
-             "textbox", "callout")
+             "m_dim", "textbox", "callout")
 QUARTER_TURNS = ("textbox", "callout")
 for _k in ROTATABLE:
     DEFAULTS[_k]["rotation"] = 0
@@ -359,6 +364,16 @@ def read(annot):
                 model["cloud"] = geom.get("cloud")
     elif kind in ("m_length", "m_radius"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
+    elif kind == "m_dim":               # (the measured points and the dimension line's middle)
+        g = geom.get("pts") or []
+        if len(g) >= 6:
+            model["points"] = [pymupdf.Point(g[i], g[i + 1]) for i in (0, 2, 4)]
+        elif len(verts) >= 2:
+            from . import dimensions
+            model["points"] = dimensions.from_leader(verts[0], verts[1],
+                                                     dimensions.leader(annot))
+        else:
+            return None
     elif kind == "m_count":
         model["points"] = [pymupdf.Point(geom.get("at", annot.rect.tl + (5, 5)))]
         model["n"] = geom.get("n", 1)
@@ -465,6 +480,9 @@ def write(page, model):
     elif kind == "m_length":
         a = page.add_line_annot(*model["points"][:2])
         a.set_line_ends(pymupdf.PDF_ANNOT_LE_BUTT, pymupdf.PDF_ANNOT_LE_BUTT)
+    elif kind == "m_dim":
+        # (a Line annotation that other viewers show as a dimension: dimensions.finish)
+        a = page.add_line_annot(*model["points"][:2])
     elif kind == "m_radius":
         a = page.add_line_annot(*model["points"][:2])
         a.set_line_ends(pymupdf.PDF_ANNOT_LE_CIRCLE, pymupdf.PDF_ANNOT_LE_OPEN_ARROW)
@@ -554,12 +572,16 @@ def write(page, model):
             a.set_colors(stroke=stroke, fill=stroke)
         elif kind == "arrow" and "closed" in (p.get("head") or ""):
             a.set_colors(stroke=stroke, fill=stroke)
+        elif kind == "m_dim":
+            a.set_colors(stroke=stroke,
+                         fill=stroke if p.get("head", "closed") in ("closed", "dot") else None)
         else:
             a.set_colors(stroke=stroke)
         if kind in ("rect", "ellipse", "polygon") and p.get("cloud"):
             a.set_border(width=width, clouds=2)
         elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline", "arc",
-                      "opencloud", "m_length", "m_poly", "m_angle", "m_radius") + CLOSED_MEASURES:
+                      "opencloud", "m_length", "m_poly", "m_angle", "m_radius", "m_dim") + \
+                CLOSED_MEASURES:
             a.set_border(width=width)
     if p.get("opacity", 1) < 1:
         a.set_opacity(float(p["opacity"]))
@@ -577,6 +599,9 @@ def write(page, model):
         else:
             label_text = measure.measure_text(kind, model["points"], page, props=p)
             info["content"] = f"{LABELS[kind]}: " + label_text.replace("\n", ", ")
+            if kind == "m_dim":
+                # its caption (/Cap): other viewers that draw it anew show the length alone
+                info["content"] = label_text
     if kind == "image":
         info["content"] = text or model.get("filename") or tr("Image")
     if kind == "redact":
@@ -628,6 +653,10 @@ def write(page, model):
         store["geom"] = {"at": list(model["points"][0]), "n": model.get("n", 1)}
     elif kind == "arc":
         store["geom"] = {"pts": [c for q in model["points"][:3] for c in (q.x, q.y)]}
+    elif kind == "m_dim":               # (its third point kept halfway along its line)
+        from . import dimensions
+        store["geom"] = {"pts": [c for q in dimensions.normalized(model["points"])
+                                 for c in (q.x, q.y)]}
     elif kind in ("line", "arrow") and model.get("bend") is not None:
         store["geom"] = {"bend": list(pymupdf.Point(model["bend"]))}
     elif kind == "opencloud":
@@ -644,9 +673,17 @@ def write(page, model):
         from . import measure
         measure.add_circle(page, a, model["points"][0], model["points"][1], stroke or (0, 0, 0),
                            width)
+    if kind == "m_dim":
+        from . import dimensions
+        dimensions.finish(page, a, model)
     if label_text:
         from . import measure
-        anchor, lab_angle = measure.label_anchor(kind, model["points"], page)
+        if kind == "m_dim":
+            anchor, lab_angle = dimensions.label_place(model["points"], page,
+                                                       float(p.get("fontsize", 9)),
+                                                       p.get("width", 1))
+        else:
+            anchor, lab_angle = measure.label_anchor(kind, model["points"], page)
         measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
                           stroke or (0, 0, 0), lab_angle)
     if kind == "opencloud":
@@ -781,6 +818,9 @@ def bounds(model):
     if model["kind"] in POINTED:
         # (a curve's box is kept: each paint asks for every selected markup's box, and an
         # arc or a bent line has hundreds of points)
+        if model["kind"] == "m_dim":
+            from . import dimensions
+            return _points_box(dimensions.path(model["points"]))
         if model["kind"] == "arc" or model.get("bend") is not None:
             bend = model.get("bend")
             return pymupdf.Rect(_curve_box(
@@ -848,7 +888,11 @@ def copy(model):
 
 
 def path_points(model):
-    """The line a point-based markup draws (along the curve for an arc or a bent line)."""
+    """The line a point-based markup draws (along the curve for an arc or a bent line; a
+    dimension's extension lines and dimension line)."""
+    if model["kind"] == "m_dim":
+        from . import dimensions
+        return dimensions.path(model["points"])
     if model["kind"] == "arc" or model.get("bend") is not None:
         from . import curves
         return curves.path(model)
@@ -1004,6 +1048,11 @@ def resized(model, new_rect):
 def with_endpoint(model, i, pt):
     m = copy(model)
     m["points"][i] = pymupdf.Point(pt)
+    if m["kind"] == "m_dim" and len(m["points"]) >= 3:
+        # a measured point or the dimension line moved: measured again, the line's grip
+        # back in its middle
+        from . import dimensions
+        m["points"] = dimensions.normalized(m["points"])
     return m
 
 

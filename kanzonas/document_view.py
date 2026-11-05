@@ -383,7 +383,7 @@ class _AnnotShot:
     first needed. parent is set to the page only while testing (the measurement label test
     reads it); label (the tooltip's kind of markup) is read when first shown."""
     __slots__ = ("xref", "type", "flags", "rect", "full", "border", "vertices", "colors",
-                 "info", "parent", "label", "arrays")
+                 "info", "parent", "label", "arrays", "leader")
 
     def __init__(self, annot):
         self.xref = annot.xref
@@ -395,6 +395,7 @@ class _AnnotShot:
         self.parent = None
         self.label = None
         self.arrays = None
+        self.leader = None
 
     def fill(self, annot):
         self.border = annot.border
@@ -402,6 +403,12 @@ class _AnnotShot:
         self.arrays = None              # (long lines' points as arrays: DocumentView._near_path)
         self.colors = annot.colors
         self.info = annot.info
+        # (a Line's /LL: a dimension, drawn away from its points: dimensions.hit)
+        if annot.type[0] == pymupdf.PDF_ANNOT_LINE:
+            from . import dimensions
+            self.leader = dimensions.leader(annot)
+        else:
+            self.leader = 0.0
         self.full = True
 
     # markups the hit test finds by their box alone (notes, text boxes, stamps...)
@@ -3039,6 +3046,12 @@ class DocumentView(QScrollArea):
                 model = annotations.bent(model, pts[2], 0.5 / max(self.zoom, 0.05))
             self._create(index, model)
             return
+        if tool == "m_dim":
+            # (its two measured points, and its dimension line's middle: dimensions.py)
+            from . import dimensions
+            if len(pts) < 3 or abs(pymupdf.Point(pts[1]) - pymupdf.Point(pts[0])) < 0.5:
+                return
+            pts = dimensions.normalized(pts)
         self._create(index, {"kind": tool, "props": self.tool_props(tool), "points": pts,
                              "rect": pymupdf.Rect()})
 
@@ -3678,6 +3691,15 @@ class DocumentView(QScrollArea):
                 if cls._near_path(pt, stroke, tol, annot, k):
                     return True
             return False
+        if t == pymupdf.PDF_ANNOT_LINE:
+            # a dimension (/LL): its extension lines, dimension line and label
+            ll = getattr(annot, "leader", None)
+            if ll is None:
+                from . import dimensions
+                ll = dimensions.leader(annot)
+            if ll:
+                from . import dimensions
+                return dimensions.hit(pt, annot.vertices or [], ll, tol, cls._seg_dist)
         if t in (pymupdf.PDF_ANNOT_LINE, pymupdf.PDF_ANNOT_POLY_LINE):
             v = annot.vertices or []
             clouds = (annot.border or {}).get("clouds", 0) or 0

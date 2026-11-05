@@ -13,7 +13,9 @@ from .i18n import tr
 # arrowhead and comment-mark names as shown (the stored values are the keys)
 HEAD_NAMES = {"open": tr("open"), "closed": tr("closed"), "open (reversed)": tr("open (reversed)"),
               "closed (reversed)": tr("closed (reversed)"), "circle": tr("circle"),
-              "square": tr("square"), "diamond": tr("diamond"), "bar": tr("bar")}
+              "square": tr("square"), "diamond": tr("diamond"), "bar": tr("bar"),
+              # a dimension's (dimensions.HEADS): an architect's slash, a dot, or none
+              "slash": tr("slash"), "dot": tr("dot"), "none": tr("none")}
 MARKUP_NAMES = {"highlight": tr("Highlight"), "underline": tr("Underline"),
                 "strikeout": tr("Strikeout"), "squiggly": tr("Squiggly")}
 
@@ -104,8 +106,8 @@ class PropertiesPanel(QWidget):
         self.opacity = QSlider(Qt.Horizontal)
         self.opacity.setRange(10, 100)
         self.head = QComboBox()
-        for key in A.HEADS:
-            self.head.addItem(HEAD_NAMES.get(key, key), key)
+        self._heads = None
+        self._fill_heads(None)
         self.label = QComboBox()            # stamp choice
         self.label.setEditable(True)
         self.label.setInsertPolicy(QComboBox.NoInsert)
@@ -257,6 +259,7 @@ class PropertiesPanel(QWidget):
             self.fontsize.setSpecialValueText(tr("Keep the line's size") if keep else "")
             self.fontsize.setValue(float(props["fontsize"]))
         if "head" in props:
+            self._fill_heads(kind)
             self.head.setCurrentIndex(max(0, self.head.findData(props["head"])))
         if "depth" in props:
             self.depth.setValue(float(props["depth"] or 0))
@@ -284,6 +287,16 @@ class PropertiesPanel(QWidget):
             self.italic.setChecked(bool(props.get("italic")))
         self._props = dict(props)
         self._loading = False
+
+    def _fill_heads(self, kind):
+        """The arrowheads the kind of markup can have (a dimension's own set)."""
+        from . import dimensions
+        keys = tuple(dimensions.HEADS) if kind == "m_dim" else tuple(A.HEADS)
+        if keys != self._heads:
+            self.head.clear()
+            for key in keys:
+                self.head.addItem(HEAD_NAMES.get(key, key), key)
+            self._heads = keys
 
     def _fill_fonts(self, kind, current):
         if self._font_kind != kind:

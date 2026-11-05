@@ -4062,8 +4062,8 @@ msgid "Shapes: click for the shape shown, or the arrow to pick another (rectangl
 msgstr "Formas: haga clic para la forma mostrada, o en la flecha para elegir otra (rectángulo, elipse, círculo, nube, máscara, polígono, línea, flecha, polilínea, arco, curva, lápiz). Mantenga presionada Shift para cuadrados, círculos y líneas rectas"
 
 #: main_window.py:3568
-msgid "Measure: click for the tool shown, or the arrow for length, polylength, area, count, calibrate and scale"
-msgstr "Medir: haga clic para la herramienta mostrada, o en la flecha para longitud, polilongitud, área, conteo, calibración y escala"
+msgid "Measure: click for the tool shown, or the arrow for length, dimension, polylength, area, count, calibrate and scale"
+msgstr "Medir: haga clic para la herramienta mostrada, o en la flecha para longitud, cota, polilongitud, área, conteo, calibración y escala"
 
 #: main_window.py:3608
 msgid "Second view"
@@ -7484,3 +7484,24 @@ msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y
 
 msgid "type {0} and press Enter"
 msgstr "escriba {0} y presione Enter"
+
+msgid "Dimension"
+msgstr "Cota"
+
+msgid "Dimension: click the two points to measure, then where the dimension line goes (Shift+D)"
+msgstr "Cota: haga clic en los dos puntos que va a medir y luego donde va la línea de cota (Shift+D)"
+
+msgid "Dimension: click the second point (Escape cancels)"
+msgstr "Cota: haga clic en el segundo punto (Escape cancela)"
+
+msgid "Dimension: click where the dimension line goes"
+msgstr "Cota: haga clic donde va la línea de cota"
+
+msgid "slash"
+msgstr "barra oblicua"
+
+msgid "dot"
+msgstr "punto"
+
+msgid "Scale & snap"
+msgstr "Escala y ajuste"
