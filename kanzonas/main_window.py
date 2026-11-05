@@ -4075,6 +4075,7 @@ class MainWindow(QMainWindow):
             if mode in w.theme_actions:
                 w.theme_actions[mode].setChecked(True)
             w._apply_icons()
+            w._update_ui()              # ("Scale not set": a red that reads on the theme)
 
     # ---- remembered page & zoom per file ------------------------------------------------
     def _file_states(self):
