@@ -72,7 +72,7 @@ def messy_pdf(attachment=True, version20=True):
     p.draw_rect(pymupdf.Rect(300, 50, 400, 150), color=(0, 1, 0, 0), fill=(0.2, 0, 1, 0))
     pix = pymupdf.Pixmap(pymupdf.csCMYK, pymupdf.IRect(0, 0, 8, 8), False)
     pix.set_rect(pix.irect, (0, 200, 200, 0))
-    img = p.insert_image(pymupdf.Rect(300, 200, 360, 260), pixmap=pix)
+    p.insert_image(pymupdf.Rect(300, 200, 360, 260), pixmap=pix)
     img_xref = [i[0] for i in p.get_images()][0]
     d.xref_set_key(img_xref, "Interpolate", "true")
     # a blend mode PDF/A doesn't know, a transfer function, LZW, more text in Arial
@@ -303,6 +303,38 @@ class PartTwo(unittest.TestCase):
         result = pdfa.convert(d.tobytes(), path)
         self.assertEqual(result["part"], 2)
         self.assertEqual(result["remaining"], [])
+
+
+class KeepsAGoodOutputIntent(unittest.TestCase):
+    def test_cmyk_intent_kept_and_rgb_gets_a_profile(self):
+        d = pymupdf.open()
+        p = d.new_page()
+        p.draw_rect(pymupdf.Rect(50, 50, 150, 150), color=(1, 0, 0), fill=(0, 0, 1))
+        p.draw_rect(pymupdf.Rect(200, 50, 300, 150), color=(0, 1, 0, 0), fill=(0, 0, 1, 0))
+        prof = d.get_new_xref()
+        d.update_object(prof, "<< /N 4 >>")
+        d.update_stream(prof, pdfa.icc_profile("cmyk"))
+        oi = d.get_new_xref()
+        d.update_object(oi, "<< /Type /OutputIntent /S /GTS_PDFA1 /OutputConditionIdentifier "
+                            "(CMYK) /DestOutputProfile %d 0 R >>" % prof)
+        d.xref_set_key(d.pdf_catalog(), "OutputIntents", "[%d 0 R]" % oi)
+        found = pdfa.check(d)
+        self.assertIn("RGB colors are used without an RGB color profile.",
+                      [x.text for x in found])
+        self.assertNotIn("CMYK colors are used without a CMYK color profile.",
+                         [x.text for x in found])
+        path = os.path.join(tempfile.mkdtemp(), "k.pdf")
+        result = pdfa.convert(d.tobytes(), path)
+        self.assertEqual(result["remaining"], [])
+        with pymupdf.open(path) as out:
+            kind, val = out.xref_get_key(out.pdf_catalog(), "OutputIntents")
+            oi = int(re.findall(r"(\d+) 0 R", val)[0])
+            prof = int(out.xref_get_key(oi, "DestOutputProfile")[1].split()[0])
+            self.assertEqual(out.xref_stream(prof)[16:20], b"CMYK")
+            text = "\n".join(out.xref_object(x) for x in range(1, out.xref_length()))
+            self.assertIn("/DefaultRGB", text)
+            self.assertNotIn("/DefaultCMYK", text)
+            self.assertEqual(differing(d[0].get_pixmap(dpi=40), out[0].get_pixmap(dpi=40)), 0)
 
 
 class WhatCantBeFixed(unittest.TestCase):

@@ -7579,8 +7579,8 @@ msgstr "Ajustes de impresión que PDF/A no permite (funciones de transferencia o
 msgid "CMYK colors are used without a CMYK color profile."
 msgstr "Se usan colores CMYK sin un perfil de color CMYK."
 
-msgid "RGB colors are used with a CMYK output intent."
-msgstr "Se usan colores RGB con una intención de salida CMYK."
+msgid "RGB colors are used without an RGB color profile."
+msgstr "Se usan colores RGB sin un perfil de color RGB."
 
 msgid "This document is protected with a password. PDF/A doesn't allow encryption: remove its security first."
 msgstr "Este documento está protegido con contraseña. PDF/A no permite el cifrado: quite primero su seguridad."

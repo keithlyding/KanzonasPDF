@@ -385,10 +385,6 @@ def _filters(obj):
     return []
 
 
-def _is_cmyk_name(obj):
-    return _name(obj) == "DeviceCMYK"
-
-
 # the k / K operators or a DeviceCMYK color space (also an inline picture's /CMYK) in a
 # content stream; the RGB ones (rg / RG, DeviceRGB, inline /RGB)
 _CMYK_OPS = re.compile(rb"(?:^|[\s\]>)])[kK](?=[\s/\[(<%]|$)|/DeviceCMYK\b|/CMYK\b")
@@ -436,11 +432,11 @@ class _Pass:
         self.notes = []
         self._seen = set()
         self.part = 2
-        self.cmyk_ref = None            # the ICCBased CMYK color space (fixing)
+        self.icc_refs = {}              # "DeviceCMYK" / "DeviceRGB" -> its ICCBased space
         self.page_of = {}
-        self.uses_cmyk = False
-        self.uses_rgb = False
-        self.intent_cs = None           # the color space of the PDF/A output intent there was
+        # the color space of the PDF/A output intent: the one there is when PDF/A allows it,
+        # else the sRGB one Save as PDF/A puts in
+        self.intent_cs = "RGB"
         self.claimed = None             # (part, conformance) the file says it is
 
     # problems and notes
@@ -562,6 +558,7 @@ class _Pass:
                 "The output intent's color profile isn't one PDF/A allows."))
         else:
             self.intent_cs = found[1].strip()
+            return                      # (a good one stays, with its colors)
         if self.fix:
             # one PDF/A output intent with an sRGB profile (it replaces any others: PDF/A
             # wants every output intent to use the same profile)
@@ -1120,23 +1117,13 @@ class _Pass:
             v = m.pdf_dict_gets(d, key)
             if key == "CS" and _name(m.pdf_dict_gets(d, "S")) != "Transparency":
                 continue
-            if _is_cmyk_name(v):
-                self._cmyk_used(page)
-                if self.fix:
-                    m.pdf_dict_puts(d, key, self._cmyk())
-            elif _name(v) == "DeviceRGB":
-                self.uses_rgb_on(page)
+            if self._device_used(_name(v), page):
+                m.pdf_dict_puts(d, key, self._icc_space(_name(v)))
             r = m.pdf_resolve_indirect(v)
             if key == "ColorSpace" and m.pdf_is_dict(r):
                 for name, cs in list(_items(r)):
-                    if name.startswith("Default"):
-                        continue
-                    if _is_cmyk_name(cs):
-                        self._cmyk_used(page)
-                        if self.fix:
-                            m.pdf_dict_puts(r, name, self._cmyk())
-                    elif _name(cs) == "DeviceRGB":
-                        self.uses_rgb_on(page)
+                    if not name.startswith("Default") and self._device_used(_name(cs), page):
+                        m.pdf_dict_puts(r, name, self._icc_space(_name(cs)))
 
     def _array(self, a, page):
         """Color space arrays naming DeviceCMYK ([/Separation /Spot /DeviceCMYK fn],
@@ -1147,12 +1134,8 @@ class _Pass:
             return
         for k in range(1, n):
             v = m.pdf_array_get(a, k)
-            if m.pdf_is_name(v) and m.pdf_to_name(v) == "DeviceCMYK":
-                self._cmyk_used(page)
-                if self.fix:
-                    m.pdf_array_put(a, k, self._cmyk())
-            elif m.pdf_is_name(v) and m.pdf_to_name(v) == "DeviceRGB":
-                self.uses_rgb_on(page)
+            if m.pdf_is_name(v) and self._device_used(m.pdf_to_name(v), page):
+                m.pdf_array_put(a, k, self._icc_space(m.pdf_to_name(v)))
 
     def _bad_action(self, act):
         """The kind of action act is if PDF/A doesn't allow it (6.5.1), else False."""
@@ -1312,33 +1295,45 @@ class _Pass:
                      "KanzonasPDF's own copies."))
 
     # -- colors (6.2.4.3)
-    def _cmyk(self):
-        if self.cmyk_ref is None:
+    def _icc_space(self, device):
+        """The ICCBased color space standing for device ("DeviceCMYK" or "DeviceRGB"):
+        the profile MuPDF draws that device space with, so the colors stay as they are."""
+        if device not in self.icc_refs:
+            kind, n = ("cmyk", 4) if device == "DeviceCMYK" else ("rgb", 3)
             prof = self.doc.get_new_xref()
-            self.doc.update_object(prof, "<< /N 4 >>")
-            self.doc.update_stream(prof, icc_profile("cmyk"), compress=True)
+            self.doc.update_object(prof, "<< /N %d >>" % n)
+            self.doc.update_stream(prof, icc_profile(kind), compress=True)
             arr = self.doc.get_new_xref()
             self.doc.update_object(arr, "[/ICCBased %d 0 R]" % prof)
-            self.cmyk_ref = arr
-        return _ref(self.pdf, self.cmyk_ref)
+            self.icc_refs[device] = arr
+        return _ref(self.pdf, self.icc_refs[device])
 
-    def _cmyk_used(self, page):
-        self.uses_cmyk = True
-        if self.intent_cs != "CMYK":
+    def _needs_profile(self, device):
+        """6.2.4.3: DeviceRGB only with an RGB output intent, DeviceCMYK only with a CMYK
+        one (DeviceGray with any), unless a DefaultRGB / DefaultCMYK is set."""
+        return (device == "DeviceCMYK" and self.intent_cs != "CMYK") or \
+            (device == "DeviceRGB" and self.intent_cs != "RGB")
+
+    def _device_used(self, device, page):
+        """Note a device color space used on page; True when it is to be replaced now."""
+        if device not in ("DeviceCMYK", "DeviceRGB") or not self._needs_profile(device):
+            return False
+        if device == "DeviceCMYK":
             self.problem("color", page, tr("CMYK colors are used without a CMYK color profile."))
-
-    def uses_rgb_on(self, page):
-        self.uses_rgb = True
-        if self.intent_cs not in (None, "RGB"):
-            self.problem("color", page, tr("RGB colors are used with a CMYK output intent."))
+        else:
+            self.problem("color", page, tr("RGB colors are used without an RGB color profile."))
+        return self.fix
 
     def _colors(self):
-        """DeviceCMYK set by the content itself (k, K, cs with /DeviceCMYK, inline pictures):
-        a DefaultCMYK color space (the CMYK profile MuPDF draws with) in every resource
-        dictionary takes care of those (6.2.4.3: "a device independent DefaultCMYK colour
-        space has been set")."""
+        """Device colors set by the content itself (k, K, rg, RG, cs with /DeviceCMYK or
+        /DeviceRGB, inline pictures) that the output intent doesn't cover: a DefaultCMYK or
+        DefaultRGB color space (the profile MuPDF draws with) in every resource dictionary
+        takes care of them (6.2.4.3: "a device independent DefaultCMYK colour space has been
+        set")."""
         self._content_xrefs()
-        cmyk_somewhere = False
+        wanted = [d for d in ("DeviceCMYK", "DeviceRGB") if self._needs_profile(d)]
+        ops = {"DeviceCMYK": _CMYK_OPS, "DeviceRGB": _RGB_OPS}
+        found = set()
         for xref, page, holder in self.content_streams:
             self._tick()
             try:
@@ -1347,17 +1342,17 @@ class _Pass:
                 continue
             if not data:
                 continue
-            if _CMYK_OPS.search(data):
+            for device in wanted:
+                if not ops[device].search(data):
+                    continue
                 res = m.pdf_resolve_indirect(
                     m.pdf_dict_get_inheritable(holder, m.pdf_new_name("Resources")))
-                if m.pdf_is_dict(res) and \
-                        not m.pdf_is_null(m.pdf_dict_getp(res, "ColorSpace/DefaultCMYK")):
+                default = "ColorSpace/Default" + device[6:]
+                if m.pdf_is_dict(res) and not m.pdf_is_null(m.pdf_dict_getp(res, default)):
                     continue
-                cmyk_somewhere = True
-                self._cmyk_used(page)
-            if self.intent_cs not in (None, "RGB") and _RGB_OPS.search(data):
-                self.uses_rgb_on(page)
-        if not (self.fix and cmyk_somewhere):
+                found.add(device)
+                self._device_used(device, page)
+        if not (self.fix and found):
             return
         pdf = self.pdf
         holders = [m.pdf_load_object(pdf, self.doc[i].xref) for i in range(self.doc.page_count)]
@@ -1379,8 +1374,9 @@ class _Pass:
                 cs = m.pdf_new_dict(pdf, 1)
                 m.pdf_dict_puts(res, "ColorSpace", cs)
                 cs = _get(res, "ColorSpace")
-            if not _has(cs, "DefaultCMYK"):
-                m.pdf_dict_puts(cs, "DefaultCMYK", self._cmyk())
+            for device in found:
+                if not _has(cs, "Default" + device[6:]):
+                    m.pdf_dict_puts(cs, "Default" + device[6:], self._icc_space(device))
 
     # -- attached files (6.8)
     def _attachments(self):
