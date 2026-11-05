@@ -8330,6 +8330,24 @@ class DocumentView(QScrollArea):
                                          (ref.width, ref.height), owner), structural=True,
                     changed=[])
 
+    def replace_pages(self, src, pairs, scale=True):
+        """Pages > Replace pages: the pages' drawings become those of src's pages (pairs:
+        [(page index here, page index in src)]), keeping the pages, their markups, links,
+        form fields and everything pointing at them (replace_pages.replace). src is only
+        read. One undo step. Returns replace_pages.replace's report, None when refused."""
+        from . import replace_pages
+        pairs = [(int(i), int(j)) for i, j in pairs]
+        if not pairs:
+            return None
+        report = {}
+
+        def do():
+            report.update(replace_pages.replace(self.doc, src, pairs, scale))
+        # (structural: the pages may change size, so the page list and layout are made again)
+        if not self.modify(do, structural=True, changed=sorted({i for i, _j in pairs})):
+            return None
+        return report
+
     def insert_blank(self, at):
         """A blank page before page index at, the size of the page it follows (as shown;
         the first page's when it goes first)."""

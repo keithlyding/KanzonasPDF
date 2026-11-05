@@ -627,6 +627,10 @@ class MainWindow(QMainWindow):
         self.a_move_down = self._act(tr("Move page do&wn"), lambda: self._page_op("move", 1),
                                      "Ctrl+Shift+Down", tr("Move current page down (Ctrl+Shift+Down)"))
         self.a_insert_pdf = self._act(tr("&Insert pages from file..."), self.insert_from_file)
+        self.a_replace_pages = self._act(tr("Repl&ace pages..."), self.replace_pages,
+                                         tip=tr("Replace the drawings of pages with a new "
+                                                "revision's (by page or sheet number), keeping "
+                                                "their markups, links and bookmarks"))
         self.a_combine = self._act(tr("Co&mbine files..."), self.combine_files,
                                    tip=tr("Combine several PDFs, in the order you choose, into one "
                                           "new PDF"))
@@ -1119,7 +1123,8 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_move_up, self.a_move_down, self.a_del_page])
         m.addSeparator()
-        m.addActions([self.a_insert_pdf, self.a_insert_blank, self.a_extract])
+        m.addActions([self.a_insert_pdf, self.a_replace_pages, self.a_insert_blank,
+                      self.a_extract])
         m.addSeparator()
         m.addAction(self.a_sheet_links)
         sep = QAction(self)
@@ -1419,6 +1424,7 @@ class MainWindow(QMainWindow):
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_extract, self.a_ocr, self.a_flatten, self.a_sheet_links,
+                  self.a_replace_pages,
                   self.a_security, self.a_remove_security, self.a_sanitize, self.a_clear_sigs,
                   self.a_timestamp, self.a_multi_sign, self.a_apply_placeholders,
                   self.a_apply_sel_redact, self.a_unlock, self.a_set_scale, self.a_measure_summary,
@@ -2423,6 +2429,66 @@ class MainWindow(QMainWindow):
             return
         at = {0: v.current_page() + 1, 1: -1, 2: 0}[choices.index(where)]
         v.insert_files(paths, at, owner)    # shows what went wrong itself
+
+    def replace_pages(self):
+        """Pages > Replace pages: the drawings of pages here become a new revision's (pages
+        picked by number, or matched by sheet number and reviewed), keeping the pages, their
+        markups, links, form fields and bookmarks. One undo step."""
+        v = self.view()
+        if not v:
+            return
+        if not v.allowed(pymupdf.PDF_PERM_MODIFY):
+            v.modify(lambda: None)              # (refuses, saying why)
+            return
+        path, _ = QFileDialog.getOpenFileName(self, tr("Replace pages with pages from"),
+                                              self._last_dir(), PDF_FILTER)
+        if not path:
+            return
+        self.settings.setValue("last_dir", os.path.dirname(path))
+        from .combine import unlock_copy, ask_owner_password
+        try:
+            src = pymupdf.open(path)
+        except Exception as ex:
+            QMessageBox.critical(self, tr("Replace pages"),
+                                 tr("Couldn't open {name}:\n{error}").format(
+                                     name=os.path.basename(path), error=ex))
+            return
+        try:
+            if src.needs_pass:
+                QMessageBox.information(self, tr("Replace pages"),
+                                        tr("{name} is password-protected: open it, remove its "
+                                           "password and save it first.").format(
+                                            name=os.path.basename(path)))
+                return
+            try:            # (a PDF that doesn't allow copying needs its permissions password)
+                unlock_copy(src, path, lambda p: ask_owner_password(self, p))
+            except PermissionError as ex:
+                QMessageBox.information(self, tr("Protected document"), str(ex))
+                return
+            from .replace_pages_ui import ReplacePagesDialog
+            dlg = ReplacePagesDialog(self, v.doc, src, os.path.basename(path), v.current_page())
+            if dlg.exec() != QDialog.Accepted or not dlg.result_pairs:
+                return
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                report = v.replace_pages(src, dlg.result_pairs, dlg.scaled())
+            finally:
+                QApplication.restoreOverrideCursor()
+        finally:
+            src.close()
+        if report is None:
+            return
+        msg = tr("{n} page(s) replaced (Ctrl+Z undoes it)").format(n=report["pages"])
+        self.statusBar().showMessage(msg, 6000)
+        if report["check"]:
+            pages = ", ".join(str(i + 1) for i, _n in report["check"])
+            QMessageBox.information(
+                self, tr("Replace pages"),
+                msg + "\n\n" + tr("{n} link(s) lay over words of the old drawing that aren't in "
+                                   "the same place on the new one. They were kept where they "
+                                   "were: check them on page(s) {pages}.").format(
+                    n=sum(k for _i, k in report["check"]), pages=pages))
+        self._update_ui()
 
     def new_pdf(self):
         """File > New PDF: an unsaved document with one blank page of the chosen size; Save
@@ -4588,7 +4654,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": tr("Apply selected"), "a_apply_redact": tr("Apply all"),
         "a_security": tr("Security"), "a_remove_security": tr("Remove security"), "a_unlock": tr("Unlock"),
         "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"), "a_move_up": tr("Move up"),
-        "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files"), "a_from_images": tr("From images"), "a_new": tr("New PDF"),
+        "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files"), "a_from_images": tr("From images"), "a_new": tr("New PDF"),
         "a_insert_blank": tr("Blank page"), "a_extract": tr("Extract"), "a_header": tr("Header and footer"),
         "a_watermark": tr("Watermark"), "a_background": tr("Background"),
         "a_remove_bg": tr("Remove background"), "a_remove_wm": tr("Remove watermarks"), "a_bookmarks": tr("Bookmarks"), "a_attachments": tr("Attachments"),
@@ -4626,6 +4692,7 @@ class MainWindow(QMainWindow):
         "a_sanitize": "broom", "a_hl_fields": "format-color-highlight",
         "a_move_up": "arrow-up-bold-outline", "a_move_down": "arrow-down-bold-outline",
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
+        "a_replace_pages": "file-replace-outline",
         "a_combine": "file-document-multiple-outline",
         "a_insert_blank": "file-outline", "a_uncrop": "crop-free",
         "a_page_boxes": "border-outside", "a_fix_hairlines": "format-line-weight",
@@ -4728,8 +4795,10 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Pages"), [
             (tr("Rotate"), "large", [self.a_rot_l, self.a_rot_r]),
             (tr("Crop"), "large", [t["crop"], self.a_uncrop]),
+            # (Insert file and Replace pages share one button, so the tab is no wider)
             (tr("Organize"), "small", [self.a_move_up, self.a_move_down, self.a_del_page,
-                                   self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
+                                   split_button([self.a_insert_pdf, self.a_replace_pages]),
+                                   self.a_insert_blank, self.a_extract]),
             (tr("Create"), "large", [self.a_new, self.a_combine, self.a_from_images]),
             (tr("Document"), "small", [self.a_header, self.a_watermark, self.a_background,
                                    self.a_bookmarks, self.a_sheet_links, self.a_attachments,

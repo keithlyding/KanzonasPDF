@@ -7484,3 +7484,93 @@ msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y
 
 msgid "type {0} and press Enter"
 msgstr "escriba {0} y presione Enter"
+
+msgid "Replace"
+msgstr "Reemplazar"
+
+msgid "Repl&ace pages..."
+msgstr "Reem&plazar páginas..."
+
+msgid "Replace pages with pages from"
+msgstr "Reemplazar páginas con páginas de"
+
+msgid "Replace the drawings of pages with a new revision's (by page or sheet number), keeping their markups, links and bookmarks"
+msgstr "Reemplazar los dibujos de las páginas por los de una nueva revisión (por número de página o de plano), conservando sus marcas, vínculos y marcadores"
+
+msgid "{n} page(s) replaced (Ctrl+Z undoes it)"
+msgstr "Páginas reemplazadas: {n} (Ctrl+Z lo deshace)"
+
+msgid "Replace pages"
+msgstr "Reemplazar páginas"
+
+msgid "Couldn't open {name}:\n{error}"
+msgstr "No se pudo abrir {name}:\n{error}"
+
+msgid "{name} is password-protected: open it, remove its password and save it first."
+msgstr "{name} está protegido con contraseña: ábralo, quítele la contraseña y guárdelo primero."
+
+msgid "{n} link(s) lay over words of the old drawing that aren't in the same place on the new one. They were kept where they were: check them on page(s) {pages}."
+msgstr "Vínculos sobre palabras del dibujo anterior que no están en el mismo lugar en el nuevo: {n}. Se dejaron donde estaban: revíselos en las páginas {pages}."
+
+msgid "Type the pages to replace and the pages of the new file."
+msgstr "Escriba las páginas que se van a reemplazar y las páginas del archivo nuevo."
+
+msgid "{here} page(s) to replace but {new} page(s) of the new file: give as many of each."
+msgstr "Páginas a reemplazar: {here}, pero páginas del archivo nuevo: {new}. Indique la misma cantidad de cada una."
+
+msgid "By page numbers"
+msgstr "Por números de página"
+
+msgid "Match sheets by sheet number"
+msgstr "Emparejar planos por número de plano"
+
+msgid "Correct a match by typing the page of the new file in “Replaced by page”; leave it empty to keep the page as it is."
+msgstr "Corrija un emparejamiento escribiendo la página del archivo nuevo en “Reemplazada por la página”; déjela vacía para dejar la página como está."
+
+msgid "Markups on a page whose size changes"
+msgstr "Marcas en una página que cambia de tamaño"
+
+msgid "Scale them to the new page"
+msgstr "Escalarlas a la página nueva"
+
+msgid "Keep them at the same place (measured from the top-left corner)"
+msgstr "Mantenerlas en el mismo lugar (medido desde la esquina superior izquierda)"
+
+msgid "Reading sheet numbers..."
+msgstr "Leyendo los números de plano..."
+
+msgid "No page will be replaced."
+msgstr "No se reemplazará ninguna página."
+
+msgid "Replaced by page"
+msgstr "Reemplazada por la página"
+
+msgid "New sheet number"
+msgstr "Número de plano nuevo"
+
+msgid "New title"
+msgstr "Título nuevo"
+
+msgid "Replace the drawings of pages here with pages of {name} ({n} page(s)). Each page keeps its markups, links, form fields and bookmarks: only what is drawn on it changes."
+msgstr "Reemplace los dibujos de las páginas de este documento por páginas de {name} ({n} páginas). Cada página conserva sus marcas, vínculos, campos de formulario y marcadores: solo cambia lo que tiene dibujado."
+
+msgid "{n} page(s) will be replaced."
+msgstr "Páginas que se reemplazarán: {n}."
+
+msgid "Replace pages (1-{n}):"
+msgstr "Reemplazar las páginas (1-{n}):"
+
+msgid "with pages of the new file (1-{n}):"
+msgstr "por las páginas del archivo nuevo (1-{n}):"
+
+msgid "Page {page}: the new file has no page {n}."
+msgstr "Página {page}: el archivo nuevo no tiene página {n}."
+
+msgid "In the new file but matching no page here (not used): {names}"
+msgstr "En el archivo nuevo, sin pareja en este documento (no se usan): {names}"
+
+msgid "{n} of them change size."
+msgstr "De ellas, {n} cambian de tamaño."
+
+msgid "page {n}"
+msgstr "página {n}"
