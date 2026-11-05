@@ -86,10 +86,25 @@ def file_open_filter(deliver, parent=None):
 
 # ---- the application menu ----------------------------------------------------------------
 
+def menu_bar_actions(win):
+    """Every command in win's menu bar, its submenus' too."""
+    out = []
+
+    def walk(menu):
+        for a in menu.actions():
+            out.append(a)
+            if a.menu() is not None:
+                walk(a.menu())
+    walk(win.menuBar())
+    return out
+
+
 def set_menu_roles(win):
-    """About, Preferences and Quit go to the application menu; nothing else does."""
+    """About, Preferences and Quit go to the application menu; nothing else in the menu bar
+    does. (Only the commands whose role changes are touched: a changed command gives the
+    buttons showing it its tool tip again.)"""
     from PySide6.QtGui import QAction
-    for a in win.findChildren(QAction):
+    for a in menu_bar_actions(win):
         if a.menuRole() == QAction.MenuRole.TextHeuristicRole:
             a.setMenuRole(QAction.MenuRole.NoRole)
     win.a_about.setMenuRole(QAction.MenuRole.AboutRole)

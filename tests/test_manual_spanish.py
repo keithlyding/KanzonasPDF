@@ -74,7 +74,8 @@ win = MainWindow()
 dlg = manual.ManualDialog(win)
 out = {"lang": i18n.language(), "missing": manual.missing_from_manual(win),
        "sections": [a for a, _ in manual.sections()],
-       "spanish_html": manual.manual_html() is manual_es.MANUAL,
+       "spanish_html": (manual.manual_html() is manual_es.MANUAL) if sys.platform != "darwin"
+                       else manual.manual_html() == manual.for_mac(manual_es.MANUAL, True),
        "title": dlg.windowTitle(),
        "contents": [dlg.contents.item(i).text() for i in range(dlg.contents.count())],
        "found": dlg.find.setText("censura") or dlg.find_next()}

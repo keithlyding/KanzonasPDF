@@ -240,7 +240,7 @@ class PyMuPDFForIntelMacs(unittest.TestCase):
 
 
 class Scripts(unittest.TestCase):
-    @unittest.skipUnless(shutil.which("bash"), "needs bash")
+    @unittest.skipUnless(shutil.which("bash") and os.name != "nt", "needs bash (not Windows')")
     def test_smoke_test_script_is_valid_and_executable(self):
         path = os.path.join(MAC, "smoke_test.sh")
         subprocess.run(["bash", "-n", path], check=True)

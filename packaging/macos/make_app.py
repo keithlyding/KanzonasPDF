@@ -230,7 +230,7 @@ def check_binaries(app, arch, min_macos):
     problems, n, newest = [], 0, (0, 0, 0)
     for path, info in macho_files(app):
         n += 1
-        rel = os.path.relpath(path, app)
+        rel = os.path.relpath(path, app).replace(os.sep, "/")
         if arch not in info:
             problems.append(f"{rel}: no {arch} code (has {', '.join(sorted(info))})")
             continue

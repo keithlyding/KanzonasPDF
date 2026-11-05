@@ -9,9 +9,10 @@ runs before PySide's shutdown.
 
 Settings: QSettings resolves its folder once per process, so changing HOME inside a test does
 nothing after the first QSettings exists. The whole run is pointed at a fresh temporary folder
-here instead (on Linux and macOS; on Windows the native store is the registry and the path is
-ignored), so the tests never read or write the developer's real KanzonasPDF settings. Within a
-run the store is still shared, so a test that depends on a remembered option sets it."""
+here instead (on Linux; on Windows the native store is the registry and on macOS the user's
+preferences (cfprefsd), and the path is ignored: the macOS build clears what the tests left
+there), so on Linux the tests never read or write the developer's real KanzonasPDF settings.
+Within a run the store is still shared, so a test that depends on a remembered option sets it."""
 import atexit
 import gc
 import os

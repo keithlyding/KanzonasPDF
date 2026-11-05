@@ -502,8 +502,19 @@ def _insert_font(page, name, **source):
     return name
 
 
+# the standard fonts every PDF reader has built in, as _norm() writes their names
+_STANDARD_FONTS = {f + s for f in ("helvetica", "courier") for s in
+                   ("", "bold", "oblique", "boldoblique")} | \
+    {"times", "timesbold", "timesitalic", "timesbolditalic"}
+
+
 def _system_font(page, span, text):
     """Use the installed copy of the span's font (like Acrobat does) if it has every glyph."""
+    if sys.platform == "darwin" and _norm(span["font"]) in _STANDARD_FONTS \
+            and _winansi_ok(text):
+        # (macOS has Helvetica, Times and Courier installed: a PDF's standard font is
+        # written with the built-in one there too, as on Windows and Linux, which have none)
+        return None
     path = _system_fonts().get(_norm(span["font"]))
     if not path:
         return None

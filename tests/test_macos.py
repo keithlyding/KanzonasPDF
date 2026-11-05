@@ -83,6 +83,31 @@ class Pieces(unittest.TestCase):
         self.assertEqual(macos.dmg_name("x86_64"), "KanzonasPDF-macos-x86_64.dmg")
         self.assertEqual(macos.machine("aarch64"), "arm64")
 
+    def test_a_pdfs_helvetica_is_written_with_the_built_in_one(self):
+        # (a Mac has Helvetica, Times and Courier installed; Windows and Linux use the
+        # built-in ones because they have none: the same on a Mac)
+        import pymupdf
+        font = None
+        for d in text_edit.font_dirs():
+            for f in text_edit._font_files(d) if os.path.isdir(d) else []:
+                if f.lower().endswith(".ttf"):
+                    font = f
+                    break
+            if font:
+                break
+        if not font:
+            self.skipTest("no TrueType font installed")
+        doc = pymupdf.open()
+        page = doc.new_page()
+        span = {"font": "Helvetica-Bold", "flags": 16, "size": 12}
+        with mock.patch.object(text_edit, "_system_fonts", lambda: {"helveticabold": font}):
+            with mac():
+                self.assertIsNone(text_edit._system_font(page, span, "Hello"))
+            with mock.patch.object(sys, "platform", "linux"):
+                found = text_edit._system_font(page, span, "Hello")
+        self.assertIsNotNone(found)                 # (an installed font of that name is used)
+
+    @unittest.skipIf(os.name == "nt", "Mac paths")
     def test_the_app_bundle(self):
         self.assertEqual(macos.app_bundle("/Applications/KanzonasPDF.app/Contents/MacOS/KanzonasPDF"),
                          "/Applications/KanzonasPDF.app")
@@ -91,6 +116,7 @@ class Pieces(unittest.TestCase):
             "/private/var/folders/x/AppTranslocation/1234/d/KanzonasPDF.app"))
         self.assertFalse(macos.translocated("/Applications/KanzonasPDF.app"))
 
+    @unittest.skipIf(os.name == "nt", "Mac paths (Windows keeps its own fonts folders)")
     def test_fonts_in_the_macs_font_folders(self):
         with mac():
             dirs = text_edit.font_dirs()
@@ -106,6 +132,7 @@ class Pieces(unittest.TestCase):
         with mac(), mock.patch.dict(os.environ, {"XDG_RUNTIME_DIR": ""}):
             self.assertEqual(instance_name("KanzonasPDF", "me"), "KanzonasPDF-me")
 
+    @unittest.skipIf(os.name == "nt", "no resource module on Windows")
     def test_peak_memory_is_in_bytes_on_a_mac(self):
         from kanzonas import selftest
         usage = mock.Mock(ru_maxrss=300 * 1024 * 1024)
@@ -154,10 +181,12 @@ class ApplicationMenu(unittest.TestCase):
         self.assertEqual(w.a_about.menuRole(), R.AboutRole)
         self.assertEqual(w.a_prefs.menuRole(), R.PreferencesRole)
         self.assertEqual(w.a_exit.menuRole(), R.QuitRole)
-        others = [a for a in w.findChildren(QAction)
+        others = [a for a in macos.menu_bar_actions(w)
                   if a not in (w.a_about, w.a_prefs, w.a_exit)]
-        self.assertTrue(others)
+        self.assertGreater(len(others), 100)
         self.assertEqual({a.menuRole() for a in others}, {R.NoRole})
+        # the group buttons keep the tip that lists their tools
+        self.assertIn("ellipse", w.shapes_btn.toolTip())
 
     def test_mac_keys_for_quit_and_replace(self):
         w = window("darwin")

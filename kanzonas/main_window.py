@@ -443,6 +443,8 @@ class MainWindow(QMainWindow):
             # (once every menu command exists: the application menu's three, nothing else)
             from . import macos
             macos.set_menu_roles(self)
+            for b in (self.shapes_btn, self.measure_btn):    # (their tips, put together)
+                b.setToolTip(_GroupTip.text(b))
 
     def _restore_layout(self):
         """Bring back the panels as they were when KanzonasPDF was last closed: which ones
@@ -1063,7 +1065,11 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_lock, self.a_unlock_all])
         m.addSeparator()
-        hint = m.addAction(tr("Ctrl+click or drag a box with Select to pick several markups"))
+        hint = tr("Ctrl+click or drag a box with Select to pick several markups")
+        if sys.platform == "darwin":
+            from .macos import mac_keys
+            hint = mac_keys(hint, symbols=False)          # (Cmd+click)
+        hint = m.addAction(hint)
         hint.setEnabled(False)
         m = self.cad_menu = mb.addMenu(tr("&CAD"))
         m.addActions([self.cad_actions[k] for k in ("move", "copy", "rotate", "scale", "mirror",
