@@ -2440,8 +2440,9 @@ class MainWindow(QMainWindow):
         if not v.allowed(pymupdf.PDF_PERM_MODIFY):
             v.modify(lambda: None)              # (refuses, saying why)
             return
-        path, _ = QFileDialog.getOpenFileName(self, tr("Replace pages with pages from"),
-                                              self._last_dir(), PDF_FILTER)
+        from . import dialogs
+        path = dialogs.open_file(self, tr("Replace pages with pages from"), PDF_FILTER,
+                                 self._last_dir())
         if not path:
             return
         self.settings.setValue("last_dir", os.path.dirname(path))
