@@ -263,7 +263,8 @@ to `false` (Settings > Secrets and variables > Actions > Variables) to turn rele
 
 App icon and logo: the owner's artwork in `assets/` (after changing them, run
 `python tools_make_assets.py`). Toolbar icons: the Material Design Icons font that ships with
-QtAwesome.
+QtAwesome. The libraries, fonts and artwork KanzonasPDF uses, and their licenses, are listed in
+[NOTICE.md](NOTICE.md).
 
 ## Free, for good
 
