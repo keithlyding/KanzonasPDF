@@ -23,7 +23,7 @@ from .i18n import tr
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", "eraser", "cloud",
                "callout", "m_length", "m_calibrate", "m_radius", "image", "placeholder",
-               "erasecontent", "capture", "crop", "link"}
+               "erasecontent", "capture", "crop", "link", "legend"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume",
               "arc", "curve"}
 # three clicks: Arc = start, a point it passes through, end; Curve = start, end, the bend
@@ -33,7 +33,7 @@ CURVE_TOOLS = {"arc", "curve"}
 EDIT_IN_PLACE = {"rect", "ellipse", "circle", "mask", "cloud", "line", "arrow", "polygon",
                  "polyline", "ink", "arc", "curve", "textbox", "callout", "note", "stamp",
                  "m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius",
-                 "m_perimeter", "m_volume", "image", "attach", "placeholder"}
+                 "m_perimeter", "m_volume", "image", "attach", "placeholder", "legend"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area", "m_angle", "m_radius",
                  "m_perimeter", "m_volume"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}

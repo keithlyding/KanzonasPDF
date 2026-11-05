@@ -7484,3 +7484,51 @@ msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y
 
 msgid "type {0} and press Enter"
 msgstr "escriba {0} y presione Enter"
+
+#: annotations.py main_window.py legend.py
+msgid "Legend"
+msgstr "Leyenda"
+
+#: legend.py
+msgid "No markups yet"
+msgstr "Aún no hay marcas"
+
+#: main_window.py
+msgid "Le&gend"
+msgstr "Le&yenda"
+
+#: main_window.py
+msgid "Legend: click (or drag a box for its width) where a list of the page's markups goes, each with a sample, how many and measurement totals; it updates by itself"
+msgstr "Leyenda: haga clic (o arrastre un cuadro para fijar su ancho) donde va una lista de las marcas de la página, cada una con una muestra, cuántas hay y los totales de las mediciones; se actualiza sola"
+
+#: properties.py
+msgid "Whole document"
+msgstr "Todo el documento"
+
+#: properties.py
+msgid "Which markups the legend lists: those on its page, or those on every page"
+msgstr "Qué marcas lista la leyenda: las de su página o las de todas las páginas"
+
+#: properties.py
+msgid "Show the count"
+msgstr "Mostrar la cantidad"
+
+#: properties.py
+msgid "Show measurement totals"
+msgstr "Mostrar los totales de las mediciones"
+
+#: properties.py
+msgid "Total length, area or volume of each kind of measurement, in the page's units"
+msgstr "Longitud, área o volumen total de cada tipo de medición, en las unidades de la página"
+
+#: properties.py
+msgid "Border"
+msgstr "Borde"
+
+#: properties.py
+msgid "Markups from"
+msgstr "Marcas de"
+
+#: properties.py
+msgid "Text size"
+msgstr "Tamaño del texto"

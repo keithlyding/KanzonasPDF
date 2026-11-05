@@ -99,7 +99,7 @@ en Preferencias &gt; Inicio y apertura &gt; <b>Preguntar antes de cerrar Kanzona
 abiertos</b>). Cerrar una pestaña solo pregunta por ese documento.</li>
 <li><b>Cinta:</b> los comandos se agrupan en pestañas: Inicio, Marcas, Medir, Organizar, Revisar,
 Proteger, Formularios, Páginas, Imprimir y Ver. La pestaña <b>Marcas</b> solo tiene marcas: comentarios, notas, cuadros
-de texto, llamadas, sellos, formas e iconos de archivos adjuntos. Las marcas siguen siendo editables en cualquier visor
+de texto, llamadas, sellos, leyendas, formas e iconos de archivos adjuntos. Las marcas siguen siendo editables en cualquier visor
 de PDF (Adobe Reader, navegadores) hasta que las acopla. Todo lo demás que agregue (imágenes,
 Agregar texto, firmas, iniciales, fechas) se escribe en la propia página, de modo que en un visor
 se ve y se comporta como acoplado; Editar texto y Editar objetos (pestaña Inicio) siguen pudiendo cambiarlo aquí, como
@@ -390,7 +390,7 @@ detiene un comando; el clic derecho equivale a Enter. Cada cambio se deshace con
 se usan junto a sus comandos (siguen también en sus propias pestañas). Las herramientas parecidas comparten un botón, como en la
 cinta de AutoCAD: haga clic en el botón para la herramienta que muestra, o en la flecha de al lado para elegir otra; el botón
 muestra luego la última usada (o la herramienta activa). <b>Marcas</b>: Rectángulo (flecha: Nube, Polígono, Máscara), Círculo (flecha: Arco),
-Línea (flecha: Polilínea, Curva, Lápiz), Flecha, Cuadro de texto (flecha: Llamada), Sello (flecha: Imagen); en el modo CAD sus atajos
+Línea (flecha: Polilínea, Curva, Lápiz), Flecha, Cuadro de texto (flecha: Llamada), Sello (flecha: Imagen, Leyenda); en el modo CAD sus atajos
 de una letra escriben en la línea de comandos. <b>Medir</b>: Longitud (flecha: Longitud de polilínea, Área, Ángulo, Radio,
 Perímetro, Volumen, Conteo, Calibrar cinta métrica), Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página.
 <b>Editar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
@@ -507,7 +507,7 @@ vínculo; en ese caso, arrastre un cuadro alrededor de ella. Arrastre cualquier 
 Supr las elimina todas; los cambios en Propiedades se aplican a todas ellas.</li>
 <li><b>Eliminar:</b> Supr o Retroceso, o haga clic con el botón derecho en la marca &gt; <b>Eliminar</b>.
 <b>Editar el texto de un comentario:</b> haga doble clic en él, o haga clic con el botón derecho en él &gt; <b>Editar texto…</b>.
-Las mediciones, los sellos y los marcadores de posición de firma muestran un texto generado a partir de lo que son, así que
+Las mediciones, los sellos, las leyendas y los marcadores de posición de firma muestran un texto generado a partir de lo que son, así que
 no ofrecen Editar texto (para cambiar los valores de un sello para rellenar, haga doble clic en él); agregue una nota o un
 cuadro de texto para comentarlos.
 Si hace clic con el botón derecho en un texto resaltado que está seleccionado, el menú ofrece <b>Eliminar resaltado</b>.
@@ -637,7 +637,7 @@ contenido sigue en el archivo: use Censurar para eliminarlo de verdad.</li>
 <li><b>En el modo CAD</b> las herramientas que dibujan de un punto a otro (Línea, Flecha,
 Rectángulo, Elipse, Círculo, Nube, Máscara, Cuadro de texto, Llamada, Longitud, Radio, Calibrar
 cinta métrica, el cuadro del Borrador, Borrar contenido, Capturar área, Recortar páginas,
-Vínculos, marcadores de posición de firma) funcionan como en AutoCAD: haga clic donde empieza,
+Vínculos, marcadores de posición de firma, leyendas) funcionan como en AutoCAD: haga clic donde empieza,
 mueva el puntero (la forma lo sigue sin mantener el botón presionado) y haga clic donde termina.
 Se ajusta, y Shift funciona, igual que al arrastrar; presionar, arrastrar y soltar también sigue
 funcionando. Un clic que tiembla un poco sigue siendo un clic. Esc o un clic derecho cancela la
@@ -787,6 +787,33 @@ de envío</b> en la lista de sellos. Al hacer clic para colocar uno, un cuadro p
 fecha (la fecha empieza siendo la de hoy, en el formato de fecha de Preferencias &gt; Usted). Haga doble clic en uno ya
 colocado para cambiar lo que dice; cambia de tamaño para ajustarse. Su texto de comentario (en la Lista de marcas, en su CSV
 y en otros programas de PDF) se lee como "OC n.º OC-4471, Fecha de pedido 26/10/2026".</li>
+</ul>
+
+<h2 id="legends">Leyendas</h2>
+<ul>
+<li><b>Leyenda</b> (pestaña Marcas, Herramientas &gt; Leyenda; en la pestaña CAD bajo la flecha de
+Sello), como en Bluebeam: haga clic donde va su esquina superior izquierda, o arrastre un cuadro
+para fijar su ancho (el texto toma el tamaño que cabe). Coloca un cuadro que lista los tipos de
+marcas usados: cada fila tiene una pequeña muestra dibujada con el estilo de esa marca (color,
+grosor de línea, relleno, nube, punta de flecha...), su etiqueta (el nombre de la herramienta, o el
+asunto de la marca cuando lo tiene, como suelen tenerlo las marcas de Bluebeam; el nombre del grupo
+de un conteo; la palabra de un sello) y cuántas hay. Las marcas de un mismo tipo con estilos
+distintos (nubes rojas y nubes azules) tienen una fila cada una. Las mediciones muestran además su
+longitud, área o volumen total, en las unidades de la página (Medir &gt; Establecer escala).</li>
+<li><b>Se actualiza sola</b> cuando se agregan, cambian o eliminan marcas, como parte del mismo
+cambio: Ctrl+Z deshace la marca y la actualización de la leyenda juntas, y Rehacer vuelve a poner
+ambas. Nunca se cuenta a sí misma ni a otra leyenda, ni a las marcas ocultas, las marcas de censura
+o los marcadores de posición de firma.</li>
+<li><b>Opciones</b> (panel Propiedades: elíjalas antes de colocarla, con la herramienta Leyenda
+elegida, o en una leyenda seleccionada): <b>Título</b> (Leyenda al principio; vacío para ninguno),
+<b>Marcas de</b> <b>Esta página</b> o <b>Todo el documento</b> (todas las páginas, con los totales
+en las unidades de esta página), <b>Mostrar la cantidad</b>, <b>Mostrar los totales de las
+mediciones</b>, <b>Tamaño del texto</b>, <b>Borde</b> y su color, el relleno y el color del
+texto.</li>
+<li>Se mueve, cambia de tamaño (el texto crece o se achica con el cuadro), se copia, se bloquea y se
+deshace como cualquier marca. Es una marca de sello estándar con su propia apariencia, así que otros
+programas de PDF la muestran e imprimen tal como se ve aquí, y Acoplar comentarios la vuelve parte
+de la página.</li>
 </ul>
 
 <h2 id="images">Imágenes y archivos adjuntos (videos y más)</h2>

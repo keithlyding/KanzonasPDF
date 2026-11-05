@@ -152,6 +152,9 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
         "Remove crop shows the whole page again")),
     ("redact", tr("&Redact (mark text or area)"), "Shift+R",
      tr("Redact: drag across text, or drag a box over any area; then Apply redactions")),
+    ("legend", tr("Le&gend"), "",
+     tr("Legend: click (or drag a box for its width) where a list of the page's markups goes, "
+        "each with a sample, how many and measurement totals; it updates by itself")),
     ("placeholder", tr("Add signature &placeholder"), "",
      tr("Placeholder: drag a box where a signature or initials go (choose which in Properties); "
         "then Apply all signature placeholders")),
@@ -4679,7 +4682,8 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Markup"), [
             (tr("Text"), "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
                                t["note"], t["textbox"]]),
-            (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"]]),
+            (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"],
+                                               t["legend"]]),
             (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["circle"], t["cloud"], t["mask"],
                                  t["polygon"], t["line"], t["arrow"], t["polyline"], t["arc"],
                                  t["curve"], t["ink"]]),
@@ -4769,7 +4773,8 @@ class MainWindow(QMainWindow):
                 self._split_tools("rect", "cloud", "polygon", "mask"),
                 self._split_tools("circle", "arc"),
                 self._split_tools("line", "polyline", "curve", "ink"), t["arrow"],
-                self._split_tools("textbox", "callout"), self._split_tools("stamp", "image")]),
+                self._split_tools("textbox", "callout"),
+                self._split_tools("stamp", "image", "legend")]),
             # measuring and the snaps it uses
             (tr("Measure"), "small", [
                 self._split_tools(*["m_length"] + [k for k, *_r in MEASURE_TOOLS

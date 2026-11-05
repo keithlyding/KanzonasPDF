@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QPixmap, QIcon
 from PySide6.QtWidgets import (QWidget, QFormLayout, QVBoxLayout, QLabel, QToolButton,
                                QCheckBox, QDoubleSpinBox, QSlider, QComboBox, QHBoxLayout,
-                               QColorDialog, QPushButton)
+                               QColorDialog, QPushButton, QLineEdit)
 
 from . import annotations as A
 from . import stamps as ST
@@ -150,9 +150,26 @@ class PropertiesPanel(QWidget):
         style_row.addStretch(1)
         fr.addLayout(style_row)
         self._font_kind = None
+        # a legend's options (legend.py)
+        self.title_edit = QLineEdit()
+        self.scope = QComboBox()
+        self.scope.addItem(tr("This page"), "page")
+        self.scope.addItem(tr("Whole document"), "document")
+        self.scope.setToolTip(tr("Which markups the legend lists: those on its page, or those "
+                                 "on every page"))
+        self.show_count = QCheckBox(tr("Show the count"))
+        self.show_totals = QCheckBox(tr("Show measurement totals"))
+        self.show_totals.setToolTip(tr("Total length, area or volume of each kind of "
+                                       "measurement, in the page's units"))
+        self.border = QCheckBox(tr("Border"))
 
         self.rows = {}
-        for key, label, w in (("label", tr("Stamp"), label_row),
+        for key, label, w in (("title", tr("Title"), self.title_edit),
+                              ("scope", tr("Markups from"), self.scope),
+                              ("count", "", self.show_count),
+                              ("totals", "", self.show_totals),
+                              ("border", "", self.border),
+                              ("label", tr("Stamp"), label_row),
                               ("name", "", self.name),
                               ("date", "", self.date),
                               ("cloud", "", self.cloud),
@@ -197,6 +214,11 @@ class PropertiesPanel(QWidget):
         self.font.currentIndexChanged.connect(self._emit)
         self.bold.toggled.connect(self._emit)
         self.italic.toggled.connect(self._emit)
+        self.title_edit.editingFinished.connect(self._emit)
+        self.scope.currentIndexChanged.connect(self._emit)
+        self.show_count.toggled.connect(self._emit)
+        self.show_totals.toggled.connect(self._emit)
+        self.border.toggled.connect(self._emit)
         self.show_target(None, None)
 
     def show_target(self, kind, props, selected=False):
@@ -239,7 +261,7 @@ class PropertiesPanel(QWidget):
             # only shapes that can stand without an outline offer "No border"
             self.no_stroke.setVisible(kind in BORDERLESS)
             self.no_stroke.setChecked(props["stroke"] is None and kind in BORDERLESS)
-            self.rows["stroke"][0].setText(tr("Border color") if kind == "textbox" else
+            self.rows["stroke"][0].setText(tr("Border color") if kind in ("textbox", "legend") else
                                            tr("Color") if kind in A.MARKUP + ("note", "stamp")
                                            else tr("Line color"))
         if "fill" in props:
@@ -256,6 +278,8 @@ class PropertiesPanel(QWidget):
             self.fontsize.setMinimum(0 if keep else 4)
             self.fontsize.setSpecialValueText(tr("Keep the line's size") if keep else "")
             self.fontsize.setValue(float(props["fontsize"]))
+            self.rows["fontsize"][0].setText(tr("Text size") if kind == "legend"
+                                             else tr("Font size"))
         if "head" in props:
             self.head.setCurrentIndex(max(0, self.head.findData(props["head"])))
         if "depth" in props:
@@ -275,6 +299,16 @@ class PropertiesPanel(QWidget):
             self.opacity.setValue(int(round(float(props["opacity"]) * 100)))
         if "for" in props:
             self.for_who.setCurrentIndex(max(0, self.for_who.findData(props["for"])))
+        if "title" in props:
+            self.title_edit.setText(props["title"] or "")
+        if "scope" in props:
+            self.scope.setCurrentIndex(max(0, self.scope.findData(props["scope"])))
+        if "count" in props:
+            self.show_count.setChecked(bool(props["count"]))
+        if "totals" in props:
+            self.show_totals.setChecked(bool(props["totals"]))
+        if "border" in props:
+            self.border.setChecked(bool(props["border"]))
         if "font" in props:
             self._fill_fonts(kind, props.get("font") or "")
             page_text = kind != "textbox"           # comments can't use bold / italic fonts
@@ -376,6 +410,16 @@ class PropertiesPanel(QWidget):
             if self._kind != "textbox":
                 p["bold"] = self.bold.isChecked()
                 p["italic"] = self.italic.isChecked()
+        if "title" in p:
+            p["title"] = self.title_edit.text().strip()
+        if "scope" in p:
+            p["scope"] = self.scope.currentData() or "page"
+        if "count" in p:
+            p["count"] = self.show_count.isChecked()
+        if "totals" in p:
+            p["totals"] = self.show_totals.isChecked()
+        if "border" in p:
+            p["border"] = self.border.isChecked()
         if "rotation" in p:
             v = self.rotation.value()
             if self._kind in A.QUARTER_TURNS:
