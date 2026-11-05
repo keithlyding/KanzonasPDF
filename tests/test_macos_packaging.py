@@ -290,14 +290,10 @@ class Workflow(unittest.TestCase):
     def test_both_kinds_of_mac(self):
         from kanzonas import macos
         include = self.mac["strategy"]["matrix"]["include"]
-        runners = {m["arch"]: (m["runner"], m["shell"]) for m in include}
-        # (the Intel app on Apple silicon: every step's shell is Intel code, run by Rosetta 2)
-        self.assertEqual(runners, {"arm64": ("macos-15", "bash -e {0}"),
-                                   "x86_64": ("macos-15", "arch -x86_64 /bin/bash -e {0}")})
+        runners = {m["arch"]: m["runner"] for m in include}
+        # (each on its own kind of Mac: the oldest macOS GitHub has for it)
+        self.assertEqual(runners, {"arm64": "macos-15", "x86_64": "macos-15-intel"})
         self.assertEqual(self.mac["runs-on"], "${{ matrix.runner }}")
-        self.assertEqual(self.mac["defaults"]["run"]["shell"], "${{ matrix.shell }}")
-        for step in self.mac["steps"]:
-            self.assertNotIn("shell", step)          # (none runs outside it)
         self.assertIn('test "$(uname -m)" = "${{ matrix.arch }}"', self.script)
         self.assertFalse(self.mac["strategy"]["fail-fast"])
         self.assertEqual(self.mac["name"], "macos (${{ matrix.arch }})")

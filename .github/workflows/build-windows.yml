@@ -494,13 +494,11 @@ jobs:
   # possible: PyMuPDF, ONNX Runtime, OpenCV and NumPy publish separate Apple silicon and
   # Intel builds, only Qt a universal one). Built on the oldest macOS GitHub still offers;
   # the app says it runs on MACOS_MIN and the build fails if anything in it needs a newer
-  # macOS (Qt 6.12 needs macOS 14.4). The Intel app is built and tested on Apple silicon,
-  # run by Rosetta 2 (every step's shell runs as Intel code, so Python, pip, PyInstaller,
-  # the tests and the app are all Intel code too): GitHub's Intel Macs (a 2018 Mac mini's i7-8700B, 4 CPUs) are 3 to 5 times
-  # slower than the other build machines, too slow for the speed budgets, though every other
-  # check passes there (to build on one: runner macos-15-intel). Unsigned for now: people
-  # allow it once in System Settings > Privacy & Security > Open Anyway (see the signing
-  # steps below).
+  # macOS (Qt 6.12 needs macOS 14.4). Each kind of Mac builds and tests its own app: GitHub's
+  # Intel Macs (a 2018 Mac mini's i7-8700B, 4 CPUs) are 3 to 5 times slower than the other
+  # build machines, and the Intel app is slower there than the speed budgets allow (Rosetta 2
+  # on Apple silicon was slower still). Unsigned for now: people allow it once in System
+  # Settings > Privacy & Security > Open Anyway (see the signing steps below).
   macos:
     name: macos (${{ matrix.arch }})
     strategy:
@@ -509,14 +507,9 @@ jobs:
         include:
           - arch: arm64                  # Apple silicon (M1 and later)
             runner: macos-15
-            shell: bash -e {0}
-          - arch: x86_64                 # Intel, run by Rosetta 2 on Apple silicon
-            runner: macos-15
-            shell: arch -x86_64 /bin/bash -e {0}
+          - arch: x86_64                 # Intel
+            runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
-    defaults:
-      run:
-        shell: ${{ matrix.shell }}
     timeout-minutes: 120
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -537,15 +530,13 @@ jobs:
 
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"            # (a universal one: it runs as the shell does)
+          python-version: "3.12"
           cache: pip
 
       - name: The right kind of Mac
         run: |
           echo "$(uname -m) Mac, macOS $(sw_vers -productVersion), $(sysctl -n machdep.cpu.brand_string), $(sysctl -n hw.ncpu) CPUs"
           echo "Python: $(python -c 'import platform, sys; print(platform.machine(), sys.version)')"
-          # (Intel code on Apple silicon: Rosetta 2 runs it, and says so)
-          python -c "import subprocess; print('run by Rosetta 2:', subprocess.run(['sysctl', '-in', 'sysctl.proc_translated'], capture_output=True, text=True).stdout.strip() == '1')"
           test "$(uname -m)" = "${{ matrix.arch }}"
           test "$(python -c 'import platform; print(platform.machine())')" = "${{ matrix.arch }}"
 
