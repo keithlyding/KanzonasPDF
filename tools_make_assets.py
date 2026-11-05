@@ -17,8 +17,8 @@ installer BMPs and the embedded copy kanzonas/branding_data.py.
 A "PDF" tag goes across the bottom, as KanzonasCAD's icon has its "CAD" (the owner's pick):
 the page, cactus and sunflower drawn 12% smaller and higher, a white rounded tag with a
 near-black border under them, the sunflower just overlapping its top, the letters in a heavy
-sans (Inter Black, squeezed to 78% width, as wide and tall as KanzonasCAD's letters) in the
-tile's red. Needs the Inter font installed (it says so if it isn't).
+sans (Inter Black, squeezed to 78% width, as wide and tall as KanzonasCAD's letters) shading
+from the tile's red at the top to a deeper red at the bottom, as "PDF" in the logo. Needs the Inter font installed (it says so if it isn't).
 """
 import base64
 import io
@@ -44,7 +44,8 @@ MARGIN = 3.0      # gap (in tile units of 256) kept between the artwork and the 
 
 # the tag (tile units of 256, measured on KanzonasCAD's icon so the two match)
 LABEL = "PDF"
-LABEL_COLOR = "#b30000"                     # the tile's red
+LABEL_COLOR = "#b30000"                     # the tile's red, at the top of the letters
+LABEL_COLOR_BOTTOM = "#800000"              # shading to this at the bottom, as "PDF" in the logo
 LABEL_FONT = "Inter"
 ART_SCALE, ART_PIVOT = 0.878, (85.7, 22.1)  # the art 12% smaller, toward the top
 TAG_RECT = (58.25, 162.5, 187.75, 81.75)    # outer: x, y, width, height
@@ -226,7 +227,10 @@ def _tag(p, units):
     p.translate(x + w / 2 - box.width() * sx / 2, CAP_TOP * k)
     p.scale(sx, sy)
     p.translate(-box.x(), -box.y())
-    p.setBrush(QColor(LABEL_COLOR))
+    shade = QLinearGradient(0, box.y(), 0, box.y() + box.height())
+    shade.setColorAt(0, QColor(LABEL_COLOR))
+    shade.setColorAt(1, QColor(LABEL_COLOR_BOTTOM))
+    p.setBrush(shade)
     p.drawPath(path)
     p.restore()
 
