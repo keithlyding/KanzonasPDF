@@ -519,6 +519,7 @@ class DocumentView(QScrollArea):
     previousToolRequested = Signal()    # Escape: back to the mouse mode's tool
     calibrateRequested = Signal(int, float)    # page index, drawn length in points
     scaleChanged = Signal()
+    scaleDialogRequested = Signal(int)      # page index: open Set scale for it (a banner's button)
     layersChanged = Signal()
     requestSignature = Signal(int, int)      # page index, signature field xref
     textToolPropsChanged = Signal()          # Edit text: the line's font / size to show
@@ -1316,6 +1317,7 @@ class DocumentView(QScrollArea):
     free_pan = False            # Free page movement: the page can be dragged past its edges
     page_wheel = False          # one wheel step = one page when the page fits the window
     night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
+    show_scale_bar = False      # View > Show scale bar: a graphic scale on pages with a scale
     thin_lines = True           # Enhance thin lines: lines at least a pixel wide on screen
     untitled = False            # a new document never saved yet (File > New PDF)
     open_view = "width"         # zoom for newly opened files: width, page, actual, last
@@ -2070,6 +2072,8 @@ class DocumentView(QScrollArea):
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
         self._obj_cache = {}           # page index -> page_objects.Objects (Edit objects)
         self._text_obj_cache = {}      # page index -> paragraphs of text (Edit objects)
+        self._scale_cache = {}         # page index -> measure.get_scale (page_scale)
+        self._scale_bars = {}          # page index -> (how it was drawn, QPixmap | None)
         self.obj_sel = None            # (page index, [objects]) selected with Edit objects
         # the drawing's own line work rarely changes: re-check it lazily instead of dropping it
         if not hasattr(self, "_snap_content"):
@@ -2095,6 +2099,8 @@ class DocumentView(QScrollArea):
             self._snap_markups.pop(i, None)
             self._obj_cache.pop(i, None)
             self._text_obj_cache.pop(i, None)
+            self._scale_cache.pop(i, None)
+            self._scale_bars.pop(i, None)
             for key in ("fields", "links", "fieldx", "annotx", "annothit", "review"):
                 self._card_cache.pop((key, i), None)
             self._card_cache.pop(i, None)
@@ -2735,6 +2741,8 @@ class DocumentView(QScrollArea):
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if select and "xref" in made:
             self.select_xref(index, made["xref"])
+        if "xref" in made and model.get("kind") in annotations.MEASURES:
+            self.note_unscaled(index, model["kind"])
         return made.get("xref")
 
     def apply_text_tool(self, index, tool, a, b):
@@ -2989,6 +2997,67 @@ class DocumentView(QScrollArea):
                 text += "  |  " + tr("the sheet says NOT TO SCALE")
         return text
 
+    def page_scale(self, index):
+        """measure.get_scale for a page, read once (kept until the page changes)."""
+        from . import measure
+        got = self._scale_cache.get(index)
+        if got is None:
+            got = self._scale_cache[index] = measure.get_scale(self.doc[index])
+        return got
+
+    def scale_bar_pixmap(self, index, dpr, page_px):
+        """The page's scale bar (scale_display.bar_pixmap) as it is shown now, None when it
+        has no scale or is too small for one; made once per page, zoom and look."""
+        m_per_pt, unit, _label, ok = self.page_scale(index)
+        if not ok:
+            return None
+        key = (round(self.zoom, 6), dpr, page_px, self.night_mode, m_per_pt, unit)
+        got = self._scale_bars.get(index)
+        if got is None or got[0] != key:
+            from . import scale_display
+            got = self._scale_bars[index] = (key, scale_display.bar_pixmap(
+                m_per_pt, unit, self.zoom, dpr, page_px, self.night_mode, self.font()))
+        return got[1]
+
+    def note_unscaled(self, index, kind):
+        """The first measurement on a page with no scale (once per page of this document):
+        a banner says measurements are in paper size, with a button for Set scale. Count and
+        Angle don't depend on the scale and say nothing."""
+        if kind in ("m_count", "m_angle") or self.page_scale(index)[3]:
+            return
+        seen = self.__dict__.setdefault("_unscaled_noted", set())
+        key = self.doc[index].xref          # (the page, wherever it moves to)
+        if key in seen:
+            return
+        seen.add(key)
+        text = tr("Page {page} has no scale: measurements are in paper size until you set "
+                  "one.").format(page=index + 1)
+        b = getattr(self, "_banner", None)
+        if b is not None and not b.isHidden() and getattr(self, "_banner_kind", None) != "scale":
+            # (another banner says something that matters more: a status message instead)
+            self.statusMessage.emit(text + " " + tr("Measure > Set scale sets one."))
+            return
+        bar = self.verticalScrollBar()
+        was = b is not None and not b.isHidden()
+        self.show_banner("\u26a0 " + text, "#ffe9c7", tr("Set scale..."),
+                         lambda i=index: self.scaleDialogRequested.emit(i), closable=True)
+        self._banner_kind = "scale"
+        self._banner_page = key
+        if not was:
+            # the pages stay where they are on screen: the banner covers the top of the view
+            bar.setValue(bar.value() + self._banner.height())
+
+    def hide_banner(self):
+        b = getattr(self, "_banner", None)
+        if b is None or b.isHidden():
+            return
+        h = b.height()
+        b.hide()
+        self._banner_kind = None
+        self.setViewportMargins(0, 0, 0, 0)
+        bar = self.verticalScrollBar()
+        bar.setValue(bar.value() - h)
+
     def sheet_scale_note(self, index):
         """The scale note on the sheet (sheet_scale.sheet_scale), read once per page."""
         from . import sheet_scale
@@ -3028,7 +3097,19 @@ class DocumentView(QScrollArea):
                     annotations.write(pg, m)
         self.clear_selection()
         self.modify(do, list(scales))
+        self._scale_notice_done()
         self.scaleChanged.emit()
+
+    def _scale_notice_done(self):
+        """The 'no scale' banner goes once its page has a scale."""
+        if getattr(self, "_banner_kind", None) != "scale":
+            return
+        for i in range(self.doc.page_count):
+            if self.doc.page_xref(i) == getattr(self, "_banner_page", None):
+                if self.page_scale(i)[3]:
+                    self.hide_banner()
+                return
+        self.hide_banner()
 
     def apply_poly(self, index, tool, pts):
         if tool == "curve":
@@ -6930,7 +7011,7 @@ class DocumentView(QScrollArea):
             self.show_banner(tr("Editing a signed document: when saved, its digital signature "
                                 "will no longer validate."), "#fff4d6")
 
-    def show_banner(self, text, color="#fff4d6", button=None, callback=None):
+    def show_banner(self, text, color="#fff4d6", button=None, callback=None, closable=False):
         if getattr(self, "_banner", None) is None:
             self._banner = QWidget(self)
             lay = QHBoxLayout(self._banner)
@@ -6939,12 +7020,20 @@ class DocumentView(QScrollArea):
             self._banner_label.setWordWrap(True)
             self._banner_btn = QPushButton()
             self._banner_btn.clicked.connect(lambda: self._banner_cb and self._banner_cb())
+            self._banner_close = QPushButton("\u2715")
+            self._banner_close.setFlat(True)
+            self._banner_close.setFixedWidth(28)
+            self._banner_close.setToolTip(tr("Close"))
+            self._banner_close.clicked.connect(self.hide_banner)
             lay.addWidget(self._banner_label, 1)
             lay.addWidget(self._banner_btn)
+            lay.addWidget(self._banner_close)
         self._banner.setStyleSheet(f"background:{color}; color:#222; border-bottom:1px solid #bbb;")
         self._banner_label.setText(text)
         self._banner_cb = callback
+        self._banner_kind = None
         self._banner_btn.setVisible(button is not None)
+        self._banner_close.setVisible(closable)
         if button:
             self._banner_btn.setText(button)
         self._banner.show()

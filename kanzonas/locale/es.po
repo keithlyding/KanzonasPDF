@@ -7484,3 +7484,33 @@ msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y
 
 msgid "type {0} and press Enter"
 msgstr "escriba {0} y presione Enter"
+
+msgid "Scale not set"
+msgstr "Escala sin establecer"
+
+msgid "Page scale"
+msgstr "Escala de la página"
+
+msgid "Show scale &bar"
+msgstr "Mostrar &barra de escala"
+
+msgid "A graphic scale at the bottom left of each page that has a scale, in the drawing's units (on screen only: never printed or saved)"
+msgstr "Una escala gráfica en la esquina inferior izquierda de cada página que tiene escala, en las unidades del dibujo (solo en pantalla: nunca se imprime ni se guarda)"
+
+msgid "Scale bar"
+msgstr "Barra de escala"
+
+msgid "Click to set the scale (Measure > Set scale)"
+msgstr "Haga clic para establecer la escala (Medir > Establecer escala)"
+
+msgid "Scale bar on: it shows on the pages that have a scale (on screen only)"
+msgstr "Barra de escala activada: aparece en las páginas que tienen escala (solo en pantalla)"
+
+msgid "Page {page} has no scale: measurements are in paper size until you set one."
+msgstr "La página {page} no tiene escala: las medidas están en tamaño de papel hasta que establezca una."
+
+msgid "Measure > Set scale sets one."
+msgstr "Medir > Establecer escala la establece."
+
+msgid "Set scale..."
+msgstr "Establecer escala..."

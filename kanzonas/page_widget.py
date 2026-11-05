@@ -859,6 +859,8 @@ class PageWidget(QWidget):
 
         if self.view.show_boxes:
             self._paint_page_boxes(p, page)
+        if self.view.show_scale_bar:
+            self._paint_scale_bar(p)
 
         tool = self.view.tool
         self._paint_text_selection(p, page, tool)
@@ -2469,6 +2471,17 @@ class PageWidget(QWidget):
             at = {"trimbox": Qt.AlignLeft | Qt.AlignTop, "bleedbox": Qt.AlignRight | Qt.AlignTop,
                   "artbox": Qt.AlignLeft | Qt.AlignBottom}[which]
             p.drawText(sr.adjusted(4, 2, -4, -2), int(at), names[which])
+
+    def _paint_scale_bar(self, p):
+        """View > Show scale bar: the page's graphic scale at its bottom left corner (on
+        screen only; the picture is made once per page and zoom, see scale_bar_pixmap)."""
+        dpr = self.devicePixelRatioF()
+        pm = self.view.scale_bar_pixmap(self.index, dpr, self.width())
+        if pm is None:
+            return
+        from .scale_display import BAR_MARGIN
+        h = pm.height() / dpr
+        p.drawPixmap(QPointF(BAR_MARGIN, round(self.height() - h - BAR_MARGIN)), pm)
 
     def _select_word(self, pdf, e):
         """Double-click: select the word under the pointer (a third click selects the line)."""
