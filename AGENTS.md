@@ -31,6 +31,14 @@ and only when both are green.
 - Every push to any branch runs the full Windows and Linux builds (~12-15 minutes, in parallel). Push when a piece of
   work is done, not after every small edit.
 
+## Logos
+Every Kanzonas logo comes from the Kanzonas-Site repository's `brand/` folder
+(https://github.com/keithlyding/Kanzonas-Site), the single source of truth for logos (the owner's
+decision): its `make_logos.py`, artwork, fonts and `SPEC.md`. Never make or edit a logo here.
+To change one, change it there, copy its `kanzonas-logo-source.png` into `assets/` as its
+`brand/README.md` says, and run `tools_make_assets.py`, as a user-facing change. (The app
+icon is still drawn by `tools_make_assets.py` here.)
+
 ## Plans and decisions
 The order of work and the owner's decisions are in docs/ROADMAP.md: read it before starting a
 feature, and update it when a decision changes or a piece of work lands.
