@@ -31,6 +31,10 @@ and only when both are green.
 - Every push to any branch runs the full Windows and Linux builds (~12-15 minutes, in parallel). Push when a piece of
   work is done, not after every small edit.
 
+## Plans and decisions
+The order of work and the owner's decisions are in docs/ROADMAP.md: read it before starting a
+feature, and update it when a decision changes or a piece of work lands.
+
 ## Every user-facing change must update, in the same commit:
 1. **The user manual** `kanzonas/manual.py` (Help > User manual, F1). Describe new or changed
    tools, menu commands, shortcuts and behavior, and correct anything the change made untrue
