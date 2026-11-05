@@ -650,8 +650,12 @@ def draw(page, annot_xref, model, rows=None):
         ap = doc.get_new_xref()
         doc.update_object(ap, "<<>>")
         doc.xref_set_key(annot_xref, "AP", "<</N %d 0 R>>" % ap)
-    doc.update_object(ap, "<</Type/XObject/Subtype/Form/BBox[0 0 %s %s]/Matrix[1 0 0 1 0 0]"
-                          "/Resources%s>>" % (_f(pr.width), _f(pr.height), res))
+    # (changed key by key, never replaced with update_object: a stream object replaced that
+    # way came back without its stream after an undo, found by tests/battery_random.py)
+    for key, value in (("Type", "/XObject"), ("Subtype", "/Form"),
+                       ("BBox", "[0 0 %s %s]" % (_f(pr.width), _f(pr.height))),
+                       ("Matrix", "[1 0 0 1 0 0]"), ("Resources", res)):
+        doc.xref_set_key(ap, key, value)
     doc.update_stream(ap, stream)
     doc.xref_set_key(annot_xref, "Rect", "[%s %s %s %s]" % (_f(pr.x0), _f(pr.y0), _f(pr.x1),
                                                             _f(pr.y1)))
