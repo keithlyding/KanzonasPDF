@@ -419,7 +419,7 @@ class _Pass:
     """One walk over a document: records problems; with fix=True also fixes what it can
     (notes say what was changed, for the summary after saving)."""
 
-    def __init__(self, doc, fix, step=None):
+    def __init__(self, doc, fix, step=None, encrypted=None):
         self.doc = doc
         self.pdf = pymupdf._as_pdf_document(doc)
         self.fix = fix
@@ -434,6 +434,7 @@ class _Pass:
         # else the sRGB one Save as PDF/A puts in
         self.intent_cs = "RGB"
         self.claimed = None             # (part, conformance) the file says it is
+        self.encrypted = encrypted      # (None: as the document says)
 
     # problems and notes
     def problem(self, kind, page, text, fixable=True):
@@ -454,7 +455,8 @@ class _Pass:
     # -- the walk
     def run(self):
         doc = self.doc
-        if doc.is_encrypted or (doc.metadata or {}).get("encryption"):
+        if doc.is_encrypted or (self.encrypted is not False and
+                                (doc.metadata or {}).get("encryption")):
             # 6.1.3-2 (Save as PDF/A refuses such a document before getting here)
             self.problem("file", None, tr(
                 "The file is protected with a password (encrypted), which PDF/A doesn't allow. "
@@ -511,7 +513,7 @@ class _Pass:
         if meta is not None:
             try:
                 xml = _data(meta).decode("utf-8")
-            except (UnicodeDecodeError, RuntimeError):
+            except Exception:
                 xml = ""
         part = re.search(r"pdfaid:part(?:>|\s*=\s*[\"'])\s*(\d)", xml)
         conf = re.search(r"pdfaid:conformance(?:>|\s*=\s*[\"'])\s*([A-Za-z])", xml)
@@ -1693,10 +1695,12 @@ def pdfa_part_of(data):
 
 
 # ---- the commands --------------------------------------------------------------------------
-def check(doc, step=None):
+def check(doc, step=None, encrypted=None):
     """What keeps doc from being PDF/A-2b (or PDF/A-3b, when it says it is): [Problem].
-    Only reads doc. step(): called now and then; False stops (None is returned)."""
-    work = _Pass(doc, fix=False, step=step)
+    Only reads doc. step(): called now and then; False stops (None is returned).
+    encrypted: False when the file it came from was encrypted but won't be when saved
+    (its security is being removed)."""
+    work = _Pass(doc, fix=False, step=step, encrypted=encrypted)
     try:
         return work.run().problems
     except _Stopped:

@@ -119,7 +119,8 @@ def check_pdfa(window, view):
     view.commit_pending()
     progress, step = _progress(window, tr("Checking for PDF/A..."), tr("Check PDF/A"))
     try:
-        problems = pdfa.check(view.doc, step=step)
+        problems = pdfa.check(view.doc, step=step,
+                              encrypted=None if is_protected(view) else False)
     finally:
         progress.close()
         progress.deleteLater()
