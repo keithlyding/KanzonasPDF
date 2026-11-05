@@ -692,8 +692,8 @@ más oscuras.</li>
 <li><b>Ajustar a objetos:</b> los puntos saltan a las esquinas, los puntos medios de los bordes, los centros y
 los extremos de línea de las marcas cercanas, y a los extremos de línea, los puntos medios y las esquinas del propio dibujo (útil en planos de CAD).</li>
 <li>Las opciones de ajuste están en el menú Ver y en la barra de herramientas, en el grupo <b>Cuadrícula y ajuste</b> de
-las pestañas Ver y Medir de la cinta y en el grupo <b>Ajuste</b> de la pestaña Organizar, en Configuración de
-cuadrícula y en Preferencias &gt; Páginas y visualización.</li>
+la pestaña Ver de la cinta, en el grupo <b>Escala y ajuste</b> de la pestaña Medir y en el grupo <b>Ajuste</b> de la
+pestaña Organizar, en Configuración de cuadrícula y en Preferencias &gt; Páginas y visualización.</li>
 <li><b>Ajustar a la página</b>:
 los puntos saltan a las esquinas de la página, a los puntos medios de sus bordes y a su centro, y sobre sus bordes,
 de modo que una marca se puede alinear exactamente con el borde o con el centro de la página.</li>
@@ -968,6 +968,17 @@ una dimensión conocida después de leer las escalas, y use Calibrar cinta métr
 <b>Conteo</b> (Shift+C, con grupos con nombre). Los valores se actualizan cuando edita la marca o cambia
 la escala. Un marcador de Conteo copiado con Duplicar (Ctrl+D) o con copiar y pegar toma el siguiente
 número de su grupo.</li>
+<li><b>Cota</b> (Shift+D; pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña CAD),
+como la Cota de Bluebeam y la cota alineada de AutoCAD: haga clic en los dos puntos que va a medir, luego
+mueva el puntero y haga clic donde va la línea de cota (en el modo del mouse Estándar también puede
+arrastrar del primer punto al segundo y luego hacer clic). Dibuja dos líneas de extensión desde los
+puntos, una línea de cota con puntas de flecha entre ellas y la longitud sobre la línea, en la escala y la
+unidad de la página, igual que mide Longitud; el texto se lee derecho también en páginas giradas. Escape
+cancela. Arrastre sus pinzamientos para cambiarla: los dos puntos medidos (se vuelve a medir) o el
+pinzamiento en el medio de la línea de cota (más cerca o más lejos de los puntos). El color y el ancho de
+línea, la <b>Punta de flecha</b> (cerrada, abierta, barra oblicua, punto o ninguno) y el tamaño del texto
+están en Propiedades. Es una línea de cota PDF estándar, así que otros visores de PDF también la
+muestran.</li>
 <li>Más mediciones (pestaña Medir, grupo "Más", y menú Medir):
 <b>Ángulo</b>: haga clic en un extremo, en el vértice y luego en el otro extremo; muestra el ángulo en grados.
 <b>Radio</b>: arrastre desde el centro de un círculo hasta su borde; dibuja el círculo y muestra el
@@ -1342,6 +1353,7 @@ cuadrícula...).</li>
 <tr><td>M / X</td><td>Sello / Borrador</td></tr>
 <tr><td>G / I</td><td>Firma / Iniciales</td></tr>
 <tr><td>Shift+M / Shift+A / Shift+C</td><td>Longitud / Área / Conteo</td></tr>
+<tr><td>Shift+D</td><td>Cota</td></tr>
 <tr><td>Shift+R</td><td>Censurar</td></tr>
 <tr><td>Shift+E</td><td>Borrar contenido</td></tr>
 <tr><td>Shift+P</td><td>Capturar área</td></tr>
