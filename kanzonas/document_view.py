@@ -1662,6 +1662,18 @@ class DocumentView(QScrollArea):
             else:
                 self._restore(snap if snap is not None else self._undo.pop(), dirty=was_dirty)
             return
+        if not nested:
+            # the legends showing the markups changed (legend.py): drawn again in this same
+            # undo step, so Undo and Redo bring them back with the markups and nothing has
+            # to write to the document between an undo and a redo
+            more = self._refresh_legends(pages, structural)
+            if more and not structural and pages is not None:
+                more -= set(pages)
+                if more:
+                    self._clear_page_caches(more)
+                    if self.markups_changed is not None:
+                        self.markups_changed |= more
+                    pages = sorted(set(pages) | more)
         if journal is not None:
             self._record(doc, journal, before, merge, pages, structural)
         elif snap is not None:
@@ -1710,6 +1722,20 @@ class DocumentView(QScrollArea):
                 self.pages[i].invalidate()
             self.documentChanged.emit()
         return True
+
+    def _refresh_legends(self, pages, structural):
+        """Draw the legends again that the edit of pages changed (legend.refresh): the
+        pages whose legend was drawn again. A legend that can't be drawn stays as it was:
+        it never fails the edit."""
+        from . import legend
+        try:
+            return legend.refresh(self.doc, pages, structural, self._legend_where,
+                                  self._legend_sums)
+        except Exception:
+            # (what was read for the legends may be half done: read it again next time)
+            self._legend_where.clear()
+            self._legend_sums.clear()
+            return set()
 
     # ---- undo through MuPDF's journal (see undo_journal) ------------------------------
     _journal = None             # the journal of self.doc, started at its first edit
@@ -2065,6 +2091,8 @@ class DocumentView(QScrollArea):
         self._word_cache = {}
         self._hit_cache = {}           # page index -> {what: (list, hit_index lookup)}
         self._card_cache = {}
+        self._legend_where = {}        # page index -> its legends' xrefs (legend.refresh)
+        self._legend_sums = {}         # page index -> its markups counted (legend.page_summary)
         self.text_sel = None           # [(page index, selected character units), ...]
         self._text_drag = None         # [(page, mode, words)] while a text drag is in progress
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
@@ -2095,6 +2123,8 @@ class DocumentView(QScrollArea):
             self._snap_markups.pop(i, None)
             self._obj_cache.pop(i, None)
             self._text_obj_cache.pop(i, None)
+            self._legend_where.pop(i, None)
+            self._legend_sums.pop(i, None)
             for key in ("fields", "links", "fieldx", "annotx", "annothit", "review"):
                 self._card_cache.pop((key, i), None)
             self._card_cache.pop(i, None)
@@ -2876,6 +2906,9 @@ class DocumentView(QScrollArea):
                 self.erase_content(index, rect)
             return
         disp = (rect * page.rotation_matrix).normalize()       # as the page is shown
+        if tool == "legend":
+            self.place_legend(index, rect, is_click or disp.width < 20 or disp.height < 10)
+            return
         if tool == "textbox":
             if is_click or disp.width < 20 or disp.height < 10:
                 c = pymupdf.Point(a) * page.rotation_matrix
@@ -2934,6 +2967,22 @@ class DocumentView(QScrollArea):
         if tool in ("line", "arrow"):
             model["points"] = [a, b]
         self._create(index, model)
+
+    def place_legend(self, index, rect, at_point=False):
+        """A legend of the markups (legend.py) with its top-left corner (as shown) at rect's;
+        a box dragged sets its width, its text sized to fit. Returns its xref."""
+        from . import legend
+        page = self.doc[index]
+        props = self.tool_props("legend")
+        if not at_point:
+            rows = legend.rows_for(self.doc, index, props.get("scope") or "page")
+            _ops, w, _h = legend.layout(rows, props)
+            disp = (pymupdf.Rect(rect) * page.rotation_matrix).normalize()
+            if w > 0:
+                size = float(props.get("fontsize") or 9) * disp.width / w
+                props["fontsize"] = round(max(4.0, min(72.0, size)), 1)
+        del page
+        return self._create(index, {"kind": "legend", "props": props, "rect": pymupdf.Rect(rect)})
 
     # ---- measurement ------------------------------------------------------------------
     def live_measure(self, index, tool, pts):

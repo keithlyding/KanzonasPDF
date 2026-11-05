@@ -624,6 +624,7 @@ class Battery:
             (self.op_shape, 10), (self.op_line, 5), (self.op_poly, 4), (self.op_ink, 3),
             (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
             (self.op_measure, 2), (self.op_text_markup, 6), (self.op_attach, 1),
+            (self.op_legend, 2), (self.op_legend_options, 2),
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
             (self.op_retype, 3), (self.op_delete, 5), (self.op_duplicate, 2),
             (self.op_copy_paste, 2), (self.op_restack, 2), (self.op_eraser, 2),
@@ -688,6 +689,38 @@ class Battery:
             self.v.apply_drag_tool(i, self.rnd.choice(["m_length", "m_radius"]), a, b, False)
         else:
             self.v.apply_poly(i, "m_angle", [a, b, self.point(i, 40)])
+
+    def op_legend(self):
+        # a legend of the page's or the whole document's markups (legend.py): it draws
+        # itself again inside the steps that change what it lists, so every undo and redo
+        # after it is checked with it there
+        i = self.page()
+        a, b = self.box(i, 60, 240)
+        props = dict(annotations.tool_props("legend"),
+                     scope=self.rnd.choice(["page", "document"]),
+                     count=self.rnd.random() < 0.8, totals=self.rnd.random() < 0.8,
+                     border=self.rnd.random() < 0.8)
+        with mock.patch.object(self.v, "tool_props", lambda tool: dict(props)):
+            self.v.apply_drag_tool(i, "legend", a, b, self.rnd.random() < 0.5)
+
+    def op_legend_options(self):
+        # a legend's options changed (as in Properties): scope, columns, title, border, size
+        from kanzonas import legend
+        v = self.v
+        found = [(i, x) for i in range(v.doc.page_count) for x in legend.legends_on(v.doc[i])]
+        if not found:
+            return "none"
+        i, x = self.rnd.choice(found)
+        v.select_xref(i, x)
+        if v.selected_model is None:
+            return "none"
+        k = self.rnd.choice(["scope", "count", "totals", "border", "title", "fontsize"])
+        old = v.selected_model["props"].get(k)
+        value = {"scope": "document" if old == "page" else "page", "count": not old,
+                 "totals": not old, "border": not old, "title": self.typed(),
+                 "fontsize": self.rnd.choice([6, 9, 12, 16])}[k]
+        v.update_selected_props(dict(v.selected_model["props"], **{k: value}))
+        v.clear_selection()
 
     def op_text_markup(self):
         i = self.page()

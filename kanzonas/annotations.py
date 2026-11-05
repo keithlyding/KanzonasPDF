@@ -113,6 +113,10 @@ DEFAULTS = {
     "redact": {},
     "placeholder": {"for": "initials"},
     "attach": {"stroke": "#0050ff", "icon": "Paperclip", "opacity": 1.0},
+    # a list of the markups used (legend.py): this page's or the whole document's
+    "legend": {"title": tr("Legend"), "scope": "page", "count": True, "totals": True,
+               "fontsize": 9, "border": True, "stroke": "#000000", "fill": "#ffffff",
+               "text_color": "#000000"},
 }
 # display names (Markups list, Properties, measurement text in the markup): never read back
 LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": tr("Highlight"),
@@ -131,7 +135,7 @@ LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": t
           "m_angle": tr("Angle"), "m_radius": tr("Radius"), "m_perimeter": tr("Perimeter"),
           "m_volume": tr("Volume"),
           "image": tr("Image"), "attach": tr("Attached file"), "redact": tr("Redaction mark"),
-          "placeholder": tr("Signature placeholder")}
+          "placeholder": tr("Signature placeholder"), "legend": tr("Legend")}
 # fonts a text box comment can use: the standard ones every PDF viewer has, so it looks the
 # same everywhere (FreeText annotations can't carry other fonts reliably)
 COMMENT_FONTS = {"Helvetica": "helv", "Times": "TiRo", "Courier": "Cour"}
@@ -153,7 +157,7 @@ HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE
 MARKUP = ("highlight", "comment", "underline", "strikeout", "squiggly")
 COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a comment marks text      # tied to text: not movable
 BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "attach", "redact",
-         "placeholder")
+         "placeholder", "legend")
 MEASURES = ("m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius", "m_perimeter",
             "m_volume")
 CLOSED_MEASURES = ("m_area", "m_perimeter", "m_volume")      # drawn as a closed outline
@@ -384,7 +388,7 @@ def read(annot):
             props["icon"] = doc.xref_get_key(annot.xref, "Name")[1].lstrip("/") or props["icon"]
         except Exception:
             pass
-    elif kind in ("rect", "ellipse", "placeholder", "textbox") and geom.get("box"):
+    elif kind in ("rect", "ellipse", "placeholder", "textbox", "legend") and geom.get("box"):
         model["rect"] = pymupdf.Rect(geom["box"])
     elif kind in ("rect", "ellipse", "textbox") and stored:
         # made by an older version: the PDF rect includes half the border on each side
@@ -532,6 +536,10 @@ def write(page, model):
                                     fontname="helv", text_color=(0.75, 0, 0),
                                     fill_color=(1, 1, 0.75), border_width=1, align=1,
                                     rotate=page.rotation)
+    elif kind == "legend":
+        # a stamp whose appearance is the legend's drawing (legend.draw, at the end)
+        tl = pymupdf.Rect(model["rect"]).tl         # (its size comes from what it lists)
+        a = page.add_stamp_annot(pymupdf.Rect(tl, tl + (20, 20)), stamp=0)
     elif kind == "attach":
         a = page.add_file_annot(model["rect"].tl, model["file_bytes"], model["filename"],
                                 desc=text or model["filename"], icon=p.get("icon") or "Paperclip")
@@ -546,7 +554,7 @@ def write(page, model):
     else:
         raise ValueError("unknown annotation kind " + kind)
 
-    if kind not in ("textbox", "callout", "stamp", "image", "redact", "placeholder"):
+    if kind not in ("textbox", "callout", "stamp", "image", "redact", "placeholder", "legend"):
         if kind in ("rect", "ellipse", "polygon") + CLOSED_MEASURES:
             # stroke [] = no outline at all (width 0 alone still draws a hairline)
             a.set_colors(stroke=stroke if stroke else [], fill=fill)
@@ -652,6 +660,13 @@ def write(page, model):
     if kind == "opencloud":
         from . import clouds
         clouds.appearance(page, a, model)       # (last: a setter after it would undo it)
+    if kind == "legend":
+        from . import legend
+        doc.xref_set_key(a.xref, "NM", pymupdf.get_pdf_str(legend.new_name()))
+        doc.xref_set_key(a.xref, "Name", "/KZLegend")
+        doc.xref_set_key(a.xref, "Rotate", "null")
+        doc.xref_set_key(a.xref, "C", "null")       # (a stamp's color: the legend has none)
+        legend.draw(page, a.xref, model)        # (last: a setter after it would undo it)
     return a
 
 
@@ -826,7 +841,7 @@ def text_editable(model):
     if kind == "stamp":
         from . import stamps
         return (model["props"].get("label") or "").startswith(stamps.FORM_PREFIX)
-    return kind not in MEASURES + ("placeholder", "field")
+    return kind not in MEASURES + ("placeholder", "field", "legend")
 
 
 def copy(model):
@@ -934,6 +949,10 @@ def transformed(model, mat):
             m["props"]["rotation"] = round(new, 2) if model["kind"] not in QUARTER_TURNS \
                 else new
         m["rect"] = pymupdf.Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
+        if model["kind"] == "legend" and abs(sx * sy - 1) > 1e-6:
+            # (scaled: its text with it, as when its box is resized)
+            size = float(m["props"].get("fontsize") or 9)
+            m["props"]["fontsize"] = round(max(4.0, min(144.0, size * math.sqrt(sx * sy))), 1)
     return m
 
 
@@ -983,6 +1002,21 @@ def resized(model, new_rect):
         w, h = max(w, 2), max(h, 2)
         cx, cy = (new_rect.x0 + new_rect.x1) / 2, (new_rect.y0 + new_rect.y1) / 2
         m["rect"] = pymupdf.Rect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+        return m
+    if m["kind"] == "legend":
+        # a legend is as big as what it lists: its text grows or shrinks with the box, the
+        # corner opposite the one dragged staying where it is
+        k = min(new_rect.width / old.width if old.width else 1,
+                new_rect.height / old.height if old.height else 1)
+        size = float(m["props"].get("fontsize") or 9)
+        m["props"]["fontsize"] = round(max(4.0, min(144.0, size * k)), 1)
+        k = m["props"]["fontsize"] / size
+        w, h = old.width * k, old.height * k
+        x0 = new_rect.x1 - w if abs(new_rect.x1 - old.x1) < 1e-6 and \
+            abs(new_rect.x0 - old.x0) > 1e-6 else new_rect.x0
+        y0 = new_rect.y1 - h if abs(new_rect.y1 - old.y1) < 1e-6 and \
+            abs(new_rect.y0 - old.y0) > 1e-6 else new_rect.y0
+        m["rect"] = pymupdf.Rect(x0, y0, x0 + w, y0 + h)
         return m
     if m["kind"] in BOXED:
         m["rect"] = new_rect             # (a callout's target point stays where it is)

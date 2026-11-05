@@ -75,6 +75,9 @@ def every_kind(rotation):
     a.set_border(width=4)
     a.update()
     del a
+    # (legend.py: lists them all; off whole points, so no edge of its samples falls right on
+    # a pixel edge, where rounding may take a whole row either way)
+    add(p, "legend", rect=pymupdf.Rect(240.3, 520.3, 240.3, 520.3))
     # only the markups on the page (they are what's compared, pixel for pixel)
     for x in p.get_contents():
         d.update_stream(x, b"")
