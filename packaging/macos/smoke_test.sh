@@ -9,8 +9,9 @@
 # "Opened" is read from the recent files list the app keeps in its settings (macOS keeps
 # them for it in cfprefsd, readable with `defaults` while it runs); the window titles are
 # checked too when macOS lets this script read them (they need Screen Recording permission).
-#   packaging/macos/smoke_test.sh dist/KanzonasPDF.app
-# Needs Python with PyMuPDF (to make the PDFs).
+#   packaging/macos/smoke_test.sh dist/KanzonasPDF.app [screenshot.png]
+# Needs Python with PyMuPDF (to make the PDFs). When something fails, a screenshot is saved
+# where the second argument says (when macOS lets this script take one).
 set -u
 app="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 exe="$app/Contents/MacOS/KanzonasPDF"
@@ -52,8 +53,10 @@ result=0
 fail() { echo "FAIL: $*"; result=1; }
 
 echo "--- 1. opened from Finder (LaunchServices, an Apple event)"
-open -a "$app" "$work/kz-smoke-first.pdf" || fail "open couldn't start the app"
-if opened kz-smoke-first.pdf 90; then echo "opened kz-smoke-first.pdf"; else fail "kz-smoke-first.pdf didn't open"; fi
+# (the first start of a new app can be slow: macOS checks it)
+open --stdout "$work/app.out" --stderr "$work/app.err" -a "$app" "$work/kz-smoke-first.pdf" \
+  || fail "open couldn't start the app"
+if opened kz-smoke-first.pdf 180; then echo "opened kz-smoke-first.pdf"; else fail "kz-smoke-first.pdf didn't open"; fi
 [ "$(running)" -ge 1 ] || fail "the app isn't running"
 pid=$(pgrep -f "$exe" | head -1)
 
@@ -91,7 +94,12 @@ fi
 d=$(domain)
 echo "settings domain: $d"; defaults read "$d" recent 2>/dev/null
 
+if [ $result -ne 0 ]; then
+  echo "--- the app"; ps -o pid,etime,time,stat,command -p "$(pgrep -f "$exe" | head -1)" 2>/dev/null
+  if [ $# -ge 2 ]; then screencapture -x "$2" 2>/dev/null && echo "screenshot: $2"; fi
+fi
 pkill -TERM -f "$exe"; sleep 3; pkill -KILL -f "$exe" 2>/dev/null
+echo "--- the app's output"; tail -40 "$work/app.err" "$work/app.out" 2>/dev/null
 echo "--- second copy's output"; tail -20 "$work/second.log"
 rm -rf "$work"
 exit $result

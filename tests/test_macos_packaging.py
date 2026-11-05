@@ -290,7 +290,7 @@ class Workflow(unittest.TestCase):
     def test_both_kinds_of_mac(self):
         from kanzonas import macos
         runners = {m["arch"]: m["runner"] for m in self.mac["strategy"]["matrix"]["include"]}
-        self.assertEqual(runners, {"arm64": "macos-15", "x86_64": "macos-26-intel"})
+        self.assertEqual(runners, {"arm64": "macos-15", "x86_64": "macos-15-intel"})
         self.assertEqual(self.mac["runs-on"], "${{ matrix.runner }}")
         self.assertFalse(self.mac["strategy"]["fail-fast"])
         self.assertEqual(self.mac["name"], "macos (${{ matrix.arch }})")
@@ -313,7 +313,7 @@ class Workflow(unittest.TestCase):
                       "--selftest selftest-macos.log", selftest)
         self.assertIn("grep -q '^FAIL' selftest-macos.log", selftest)
         self.assertIn("grep -q '^PASS performance budget' selftest-macos.log", selftest)
-        self.assertIn("packaging/macos/smoke_test.sh dist/KanzonasPDF.app", self.script)
+        self.assertIn("packaging/macos/smoke_test.sh dist/KanzonasPDF.app smoke-macos.png", self.script)
         finish = self.steps["Finish the app (Info.plist, icon, licenses; architecture and "
                             "macOS version checks)"]["run"]
         for part in ('--arch "${{ matrix.arch }}"', '--min-macos "$MACOS_MIN"', "--adhoc-sign",

@@ -505,7 +505,7 @@ jobs:
           - arch: arm64                  # Apple silicon (M1 and later)
             runner: macos-15
           - arch: x86_64                 # Intel
-            runner: macos-26-intel
+            runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     outputs:
@@ -564,8 +564,10 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_*.py" -t .
           # (macOS keeps settings for programs itself, where tests can't put them aside as on
-          # Linux: what they left goes before the app is tested)
+          # Linux: what they left, and the files they left in the app's data folder, go before
+          # the app is tested: a backup left there would be offered at the app's start)
           defaults delete com.kanzonaspdf.KanzonasPDF 2>/dev/null || true
+          rm -rf "$HOME/Library/Application Support/KanzonasPDF"
 
       - name: Build the app (PyInstaller, the same options as Windows and Linux)
         run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py
@@ -629,7 +631,7 @@ jobs:
           grep -q '^PASS performance budget' selftest-macos.log
 
       - name: Smoke test (opened from Finder, a second PDF into the running app)
-        run: packaging/macos/smoke_test.sh dist/KanzonasPDF.app
+        run: packaging/macos/smoke_test.sh dist/KanzonasPDF.app smoke-macos.png
 
       - name: Disk image
         run: |
@@ -675,7 +677,9 @@ jobs:
         if: failure()
         with:
           name: macos-${{ matrix.arch }}-selftest-log
-          path: selftest-macos.log
+          path: |
+            selftest-macos.log
+            smoke-macos.png
           if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------------------
