@@ -209,6 +209,10 @@ def compress(pdf_bytes, out_path, preset, password=None, protect=None):
         doc.subset_fonts()
     except Exception:
         pass
+    # (garbage=4 merges equal objects: two markups alike without /P would become one,
+    # shown on two pages)
+    from .undo_journal import own_pages
+    own_pages(doc, range(doc.page_count))
     doc.save(out_path, garbage=4, deflate=True, deflate_images=True, deflate_fonts=True,
              clean=True, use_objstms=1, **protect)
     doc.close()

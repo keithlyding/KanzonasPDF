@@ -50,6 +50,14 @@ and only when both are green.
   (`-t .` loads `tests/__init__.py`, which tears Qt down in order at exit; without it the
   process can crash after reporting OK).
 - For CAD-related changes: `python tests/cad_samples.py DIR` then `python tests/cad_battery.py DIR`.
+- For changes to editing, undo/redo or anything `DocumentView.modify` runs (and after a
+  PyMuPDF update): `python tests/battery_random.py DIR --ops 2000 --seed S` with a few seeds.
+  Thousands of random edits through the app's own steps, with undo, redo and saves mixed in,
+  checking after every step that an undo gives back exactly the document from before and a
+  redo the one after, that the view draws what the document holds, and that Save and open
+  give the same document; it exits 1 and names the seed and step of each failure (rerun with
+  that seed to see it again). A short run of it is in the unit suite
+  (tests/test_battery_random.py). Never weaken one of its checks to get green: fix the cause.
 - New dependencies: add the minimum to `requirements.txt` and the exact version and license
   to `constraints.txt`; heavy ones must be imported lazily (see Performance).
 
@@ -108,11 +116,11 @@ and only when both are green.
   into the latest edit). MuPDF drops every step to redo at the first change of any kind, so
   nothing may change the document between an undo and a redo except a new edit: a step
   that changes and restores (PyMuPDF turning a rotated page upright to read it) runs inside
-  `undo_journal.detached`, and Save and page copies work on a copy while there are steps
-  to redo. It patches PyMuPDF and finds MuPDF's resource tables with ctypes; the self-test
+  `undo_journal.detached`, and Save works on a copy while there are steps to redo (pages
+  copied out of the document leave it exactly as it was: undo_journal's insert_pdf). It patches PyMuPDF and finds MuPDF's resource tables with ctypes; the self-test
   check "undo through MuPDF's journal" fails if that stops working (the app would silently
-  fall back to a copy per edit). After a PyMuPDF update, run tests/test_undo_journal.py and
-  tests/test_battery_17_undo.py.
+  fall back to a copy per edit). After a PyMuPDF update, run tests/test_undo_journal.py,
+  tests/test_battery_17_undo.py and tests/battery_random.py.
 - Text is read through `Page.get_textpage`, which `text_guard.py` wraps: MuPDF 1.28 crashes
   on nested ActualText, and such pages are read with TEXT_IGNORE_ACTUALTEXT. Read text through
   PyMuPDF's page methods (or ask `text_guard.flags_for`), never with MuPDF's stext calls
