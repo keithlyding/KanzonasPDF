@@ -69,7 +69,8 @@ preguntar</b> para usar siempre el tamaño que eligió; cámbielo, o vuelva a ha
 Preferencias &gt; Páginas y visualización &gt; Tamaño de página del nuevo PDF. Sin ningún documento abierto, Insertar página
 en blanco crea un PDF nuevo de la misma manera, e Insertar páginas desde archivo crea un PDF nuevo, sin guardar, a partir de
 los archivos que elija.</li>
-<li><b>Guardar:</b> Ctrl+S. <b>Guardar como:</b> Ctrl+Shift+S. Guardar como un archivo que está abierto en otra
+<li><b>Guardar:</b> Ctrl+S. <b>Guardar como:</b> Ctrl+Shift+S. (Para una copia de archivo, vea
+Guardar como PDF/A en Herramientas de documento.) Guardar como un archivo que está abierto en otra
 pestaña reemplaza ese archivo y cierra esa pestaña (y pregunta antes si tiene cambios sin guardar); lo mismo ocurre
 con Extraer páginas, Combinar archivos y las copias que guardan Comprimir, Sello de tiempo y la firma digital,
 salvo que en ese caso la otra pestaña muestra el archivo nuevo. Deshacer es Ctrl+Z; rehacer es Ctrl+Y.
@@ -1207,6 +1208,42 @@ y los scripts, a menos que desactive esa opción. Revise el resultado antes de c
 <b>Comprimir (guardar una copia más pequeña)</b>, <b>Comparar documentos</b>, <b>Acoplar</b> (convertir las marcas en parte de la página).
 La copia más pequeña conserva la protección con contraseña del documento (contraseña de apertura, permisos), o la
 protección definida en Propiedades de seguridad y aún no guardada.</li>
+<li><b>Guardar como PDF/A</b> (Archivo &gt; <b>Guardar como PDF/A...</b>): guarda una copia de archivo
+que cumple PDF/A-2b (ISO 19005-2, nivel B), la norma para conservar un documento legible y con el
+mismo aspecto durante décadas, que a menudo piden los tribunales, las oficinas de gobierno y los
+archivos. En la copia: todas las fuentes están incrustadas (una fuente estándar que no lo está, como
+Helvetica, Times, Courier, Symbol y ZapfDingbats, o Arial, Times New Roman y Courier New, que se
+muestran con ellas, se incrusta a partir de las copias propias de KanzonasPDF, las mismas fuentes
+con que las muestra, así que el texto se ve y mide exactamente igual que antes); los colores
+quedan definidos por un perfil de color (una intención de salida sRGB, y un perfil CMYK para los
+colores CMYK); los metadatos dicen que es PDF/A, con el título, el autor, el asunto y las palabras
+clave iguales en las propiedades del documento y en los metadatos XMP; no hay JavaScript ni
+acciones que abran un programa, reproduzcan contenido multimedia o se ejecuten solas (los vínculos a
+páginas y direcciones web se conservan); cada comentario y marca tiene su propia apariencia y está
+configurado para imprimirse, y los ocultos se quitan (PDF/A muestra todas las anotaciones, así que
+uno oculto aparecería); los campos de formulario quedan dibujados (en lugar de dejarlos al visor) y
+pierden sus acciones; la configuración de capas recibe un nombre; las funciones de transferencia,
+los modos de fusión desconocidos, el suavizado de imágenes ampliadas, la compresión LZW y las
+versiones de PDF posteriores a 1.7 se reemplazan por lo que PDF/A permite, sin cambiar el aspecto
+de las páginas. Los <b>archivos adjuntos</b> se conservan: si todos son a su vez archivos PDF/A,
+la copia es PDF/A-2b; si no, es PDF/A-3b, la parte de la norma que permite cualquier archivo
+adjunto (cada uno queda entonces registrado como archivo asociado al documento, con su tipo).
+Las <b>firmas digitales</b> se quitan (los campos quedan, vacíos): la copia es un archivo nuevo, en
+el que no podrían ser válidas; firme la copia si necesita una firma. Un documento <b>protegido con
+contraseña</b> no se puede guardar como PDF/A (un archivo de archivo debe abrirse sin contraseña):
+quite primero su seguridad (Proteger &gt; Quitar seguridad). El nombre propuesto es el del
+documento con _PDFA añadido. Como después de Guardar como, la pestaña muestra luego la copia (los
+cambios sin guardar están en ella; el archivo original queda como estaba), y una ventana indica lo
+que se cambió y enumera lo que no se pudo corregir, cada cosa con su página.</li>
+<li><b>Revisar PDF/A</b> (Archivo &gt; <b>Revisar PDF/A...</b>) enumera lo que impide que el
+documento, tal como está ahora, sea PDF/A, por tipo, cada cosa con su página (haga doble clic en
+una línea para ir allí) y si Guardar como PDF/A lo corrige; un botón allí lo guarda como PDF/A.
+Lo que no se puede corregir: una fuente que no está incrustada y no es una de las fuentes estándar
+(vuelva a crear el PDF con sus fuentes incrustadas), una fuente estándar cuyos anchos de carácter
+en el archivo difieren de los de la fuente estándar, una página de más de 200 pulgadas o de menos
+de 3 puntos, PostScript, partes guardadas en otros archivos, una compresión poco común. Revisa los
+requisitos comunes de PDF/A-2b (y de PDF/A-3b para un archivo que dice serlo), no todos: para una
+validación formal, use <b>veraPDF</b>, gratuito, de la PDF Association (verapdf.org).</li>
 <li><b>Comparar documentos...</b> (menú Documento, pestaña Páginas): elija la revisión anterior (si está protegida con
 contraseña, KanzonasPDF la pide) y luego
 cómo comparar. <b>Texto, palabra por palabra</b> es para todo lo que se reacomoda (cartas,

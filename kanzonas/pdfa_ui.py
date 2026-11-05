@@ -27,12 +27,12 @@ class ReportDialog(QDialog):
         self.view = view
         self.save_requested = False
         self.setWindowTitle(tr("Save as PDF/A") if after_save else tr("Check PDF/A"))
-        self.resize(760, 480)
+        self.resize(860, 500)
         labels = pdfa.kind_labels()
         tree = QTreeWidget()
         tree.setHeaderLabels([tr("What"), tr("Page")] +
                              ([] if after_save else [tr("Save as PDF/A")]))
-        tree.setColumnWidth(0, 540 if not after_save else 640)
+        tree.setColumnWidth(0, 620 if not after_save else 740)
         tree.setColumnWidth(1, 50)
         by_kind = {}
         for p in problems:

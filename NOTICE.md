@@ -14,6 +14,16 @@ libraries below (the exact versions and their licenses are in `constraints.txt`)
 - pyspellchecker, MIT - spell checking
 - QtAwesome, MIT, for its copy of the Material Design Icons font (Apache-2.0) - toolbar icons
 
+What PDF/A copies carry (File > Save as PDF/A): nothing is bundled for it; the copies get
+resources built into MuPDF, the same ones KanzonasPDF draws with:
+
+- Artifex's sRGB ICC profile (the output intent) and Artifex's CMYK SWOP ICC profile (for CMYK
+  colors), Copyright Artifex Software, part of MuPDF (AGPL-3.0).
+- The URW base-35 fonts (Nimbus Sans, Nimbus Roman, Nimbus Mono PS, Standard Symbols PS,
+  D050000L), Copyright URW++, part of MuPDF under the AGPL-3.0 with a font exception that lets
+  documents embed them: embedded in place of the standard 14 fonts (Helvetica, Times, Courier,
+  Symbol, ZapfDingbats) when a document uses them without embedding them.
+
 Artwork and type:
 
 - The app icon, logo and their cactus and sunflower are the owner's artwork (`assets/`).

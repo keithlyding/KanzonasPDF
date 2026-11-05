@@ -54,6 +54,9 @@ INTENTS = {"RelativeColorimetric", "AbsoluteColorimetric", "Perceptual", "Satura
 FILTERS = {"ASCIIHexDecode", "ASCII85Decode", "FlateDecode", "RunLengthDecode",
            "CCITTFaxDecode", "JBIG2Decode", "DCTDecode", "JPXDecode"}
 # filters MuPDF decodes to the plain data (an LZW stream with only these is re-compressed)
+# the keys _Pass._dict looks at (a dictionary with none of them is passed over)
+_KEYS_LOOKED_AT = {"AA", "A", "OpenAction", "Next", "Type", "Metadata", "TR", "TR2", "HTP",
+                   "HT", "BM", "RI", "ColorSpace", "CS", "Font"}
 _PLAIN_FILTERS = {"LZWDecode", "FlateDecode", "ASCIIHexDecode", "ASCII85Decode",
                   "RunLengthDecode"}
 # 6.2.11.3.3: the CMaps a font may use without embedding them (ISO 32000-1, Table 118)
@@ -176,6 +179,11 @@ def base_encoding(name):
     else:
         return None
     low.update({128 + i: n for i, n in enumerate(high) if n != "-"})
+    if name == "WinAnsiEncoding":
+        # (ISO 32000-1, Annex D, note 6: the unused codes above 40 octal show the bullet;
+        # MuPDF and veraPDF read them so)
+        for code in (127, 129, 141, 143, 144, 157):
+            low[code] = "bullet"
     return low
 
 
@@ -848,9 +856,8 @@ class _Pass:
         couldn't be valid (6.4.3: it would have to cover the whole file). The value goes,
         the field stays, empty (as Protect > Clear all digital signatures does)."""
         self.problem("signatures", i, tr(
-            "The document is digitally signed. A PDF/A copy is a new file, in which the "
-            "signature wouldn't be valid: it's removed (sign the PDF/A copy if it needs a "
-            "signature)."))
+            "Digitally signed: a signature can't stay valid in a PDF/A copy (a new file), so "
+            "it's removed."))
         if not self.fix:
             return
         holder = a
@@ -1024,7 +1031,20 @@ class _Pass:
                 m.pdf_dict_dels(obj, "Intent")
 
     def _dict(self, xref, d, page, top):
-        if _has(d, "AA"):
+        keys = {m.pdf_to_name(m.pdf_dict_get_key(d, i)) for i in range(m.pdf_dict_len(d))}
+        if not keys & _KEYS_LOOKED_AT:
+            return
+        if "Font" in keys:
+            # (resources: a font dictionary without its Type, which some programs leave
+            # out, is still a font)
+            fonts = _get(d, "Font")
+            if m.pdf_is_dict(fonts):
+                for _k, v in _items(fonts):
+                    f = m.pdf_resolve_indirect(v)
+                    if m.pdf_is_dict(f) and m.pdf_is_null(m.pdf_dict_gets(f, "Type")) and \
+                            _has(f, "Subtype"):
+                        self._font(xref, f, page)
+        if "AA" in keys:
             # 6.5.2, 6.4.1: no additional actions (on opening, closing, printing, on pages,
             # fields...); they are nearly always JavaScript
             self.problem("actions", page, tr("Actions that run on their own (when the "
@@ -1170,8 +1190,8 @@ class _Pass:
         sub = _name(m.pdf_dict_gets(d, "Subtype"))
         name = _name(m.pdf_dict_gets(d, "BaseFont")) or "?"
         shown = re.sub(r"^[A-Z]{6}\+", "", name)
-        if sub == "Type3":
-            return
+        if sub in ("Type3", "CIDFontType0", "CIDFontType2"):
+            return          # (a CIDFont is looked at with the Type 0 font it belongs to)
         if sub == "Type0":
             desc = _get(d, "DescendantFonts")
             cid = m.pdf_resolve_indirect(m.pdf_array_get(desc, 0)) \
@@ -1419,9 +1439,8 @@ class _Pass:
                         "relationship to the document).").format(name=label))
             else:
                 self.problem("attachments", page, tr(
-                    "Attached file {name} isn't PDF/A. PDF/A-2 allows only PDF/A attachments; "
-                    "Save as PDF/A saves such a document as PDF/A-3b, which allows any "
-                    "attachment.").format(name=label))
+                    "Attached file {name} isn't PDF/A: the copy is then PDF/A-3b, which allows "
+                    "it.").format(name=label))
         if not (self.fix and others):
             return
         self.part = 3
