@@ -1730,11 +1730,12 @@ class DocumentView(QScrollArea):
         from . import legend
         try:
             return legend.refresh(self.doc, pages, structural, self._legend_where,
-                                  self._legend_sums)
+                                  self._legend_sums, self._legend_items)
         except Exception:
             # (what was read for the legends may be half done: read it again next time)
             self._legend_where.clear()
             self._legend_sums.clear()
+            self._legend_items.clear()
             return set()
 
     # ---- undo through MuPDF's journal (see undo_journal) ------------------------------
@@ -2093,6 +2094,7 @@ class DocumentView(QScrollArea):
         self._card_cache = {}
         self._legend_where = {}        # page index -> its legends' xrefs (legend.refresh)
         self._legend_sums = {}         # page index -> its markups counted (legend.page_summary)
+        self._legend_items = {}        # markup xref -> (its object, what it adds to a legend)
         self.text_sel = None           # [(page index, selected character units), ...]
         self._text_drag = None         # [(page, mode, words)] while a text drag is in progress
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points

@@ -150,6 +150,13 @@ class Rows(LegendCase):
         self.assertEqual(rows["Length"]["total"], M.fmt_length(12 * 0.3048, "ft-in"))
         self.assertEqual(rows["Length"]["total"], "12'-0\"")
         self.assertEqual(rows["Area"]["total"], "16.00 sq ft")
+        # the page's scale changed: the totals follow (and Undo takes them back)
+        v.set_page_scale([0], M.scale_from_preset(96), "ft-in", '1/8" = 1\'-0"')
+        rows = {r["label"]: r for r in self.rows(v, x)}
+        self.assertEqual(rows["Length"]["total"], "24'-0\"")
+        v.undo()
+        rows = {r["label"]: r for r in self.rows(v, x)}
+        self.assertEqual(rows["Length"]["total"], "12'-0\"")
         # no totals column when it's turned off
         v._set_selection(0, [x])
         p = dict(self.read_m(v, x)["props"], totals=False)
@@ -273,8 +280,17 @@ class Updates(LegendCase):
         v = self.view()
         (r,) = self.add(v, 0, model("rect", rect=pymupdf.Rect(50, 50, 100, 90)))
         x = self.legend(v)
-        v.set_object_flags(0, [r], hidden=True) if False else None
         self.assertEqual(self.counts(v, x), {"Rectangle": 1})
+        v.set_object_flags(0, [r], hidden=True)            # (Objects panel: Hide)
+        self.assertEqual(self.counts(v, x), {})
+        v.set_object_flags(0, [r], hidden=False)
+        self.assertEqual(self.counts(v, x), {"Rectangle": 1})
+        # a locked legend keeps updating, and keeps its own look
+        v.set_object_flags(0, [x], locked=True)
+        self.add(v, 0, model("rect", rect=pymupdf.Rect(150, 50, 200, 90)))
+        self.assertEqual(self.counts(v, x), {"Rectangle": 2})
+        page = v.doc[0]
+        self.assertIn("Rectangle", page.get_text("text", clip=page.load_annot(x).rect))
 
     def test_many_markups_in_one_edit_draw_it_once(self):
         v = self.view()
@@ -360,3 +376,64 @@ class MoveAndUndo(LegendCase):
             v.redo()
             v.undo()
         v.redo()
+
+
+class Placing(LegendCase):
+    def test_the_tool_places_it_and_a_box_sets_its_width(self):
+        v = self.view()
+        self.add(v, 0, model("rect", rect=pymupdf.Rect(50, 50, 100, 90)))
+        v.apply_drag_tool(0, "legend", P(400, 300), P(400, 300), True)
+        (x,) = self.legend_xrefs(v)
+        r = self.box(v, x)
+        self.assertAlmostEqual(r.x0, 400, delta=0.01)
+        self.assertAlmostEqual(r.y0, 300, delta=0.01)
+        v.apply_drag_tool(0, "legend", P(100, 300), P(400, 340), False)
+        x2 = [k for k in self.legend_xrefs(v) if k != x][0]
+        self.assertAlmostEqual(self.box(v, x2).width, 300, delta=8)
+        self.assertGreater(self.read_m(v, x2)["props"]["fontsize"], 9)
+        self.assertEqual(self.counts(v, x2), {"Rectangle": 1})
+
+    def test_pages_duplicated_and_deleted(self):
+        v = self.view(pages=2)
+        self.add(v, 0, model("rect", rect=pymupdf.Rect(50, 50, 100, 90)))
+        self.legend(v, 1, scope="document")
+        v.duplicate_pages([0])
+        (x,) = self.legend_xrefs(v, 2)
+        self.assertEqual(self.counts(v, x, 2), {"Rectangle": 2})
+        v.delete_pages([0])
+        (x,) = self.legend_xrefs(v, 1)
+        self.assertEqual(self.counts(v, x, 1), {"Rectangle": 1})
+        v.undo()
+        (x,) = self.legend_xrefs(v, 2)
+        self.assertEqual(self.counts(v, x, 2), {"Rectangle": 2})
+
+    def test_properties_panel_offers_its_options(self):
+        from kanzonas.properties import PropertiesPanel
+        panel = PropertiesPanel()
+        self.addCleanup(panel.deleteLater)
+        got = []
+        panel.propsChanged.connect(got.append)
+        panel.show_target("legend", dict(A.DEFAULTS["legend"]))
+        for key in ("title", "scope", "count", "totals", "border", "fontsize", "stroke",
+                    "fill", "text_color"):
+            self.assertFalse(panel.rows[key][1].isHidden(), key)
+        self.assertTrue(panel.rows["label"][1].isHidden())
+        panel.scope.setCurrentIndex(panel.scope.findData("document"))
+        self.assertEqual(got[-1]["scope"], "document")
+        panel.show_totals.setChecked(False)
+        self.assertFalse(got[-1]["totals"])
+        panel.title_edit.setText("Electrical")
+        panel.title_edit.editingFinished.emit()
+        self.assertEqual(got[-1]["title"], "Electrical")
+
+    def test_in_the_menus_and_on_the_ribbon(self):
+        from PySide6.QtWidgets import QToolButton
+        from kanzonas.main_window import MainWindow
+        win = MainWindow()
+        self.addCleanup(win.deleteLater)
+        a = win.tool_actions["legend"]
+        tools = [m for m in win.menuBar().actions() if m.text() == "&Tools"][0].menu()
+        self.assertIn(a, tools.actions())
+        names = [win.ribbon.tabText(i) for i in range(win.ribbon.count())]
+        markup = win.ribbon.widget(names.index("Markup"))
+        self.assertTrue(any(b.defaultAction() is a for b in markup.findChildren(QToolButton)))

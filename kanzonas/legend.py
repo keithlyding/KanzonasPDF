@@ -17,7 +17,6 @@ A legend counts every markup of its page (or of the whole document) but no legen
 import json
 import math
 import uuid
-import weakref
 
 import pymupdf
 
@@ -118,58 +117,89 @@ def _style(model):
     return out
 
 
-def page_summary(doc, index):
+SKIP_TYPES = (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_LINK, pymupdf.PDF_ANNOT_WIDGET)
+
+
+def _item(page, a, scale):
+    """What markup a adds to a legend: {"key", "kind", "label", "style", "m", "m2", "m3"},
+    or None when it isn't counted."""
+    from . import annotations as A
+    from . import measure as M
+    try:
+        m = A.read(a)
+    except Exception:
+        m = None
+    if not m or m["kind"] in NOT_COUNTED or m.get("hidden"):
+        return None
+    subject = ""
+    try:
+        subject = a.info.get("subject", "") or ""
+    except Exception:
+        pass
+    kind = sample_kind(m)
+    style = _style(m)
+    label = label_of(m, subject)
+    item = {"key": json.dumps([label, kind, style], sort_keys=True), "kind": kind,
+            "label": label, "style": style, "m": 0.0, "m2": 0.0, "m3": 0.0}
+    pts = m.get("points")
+    if m["kind"] in LENGTHS + ("m_area", "m_volume") and pts:
+        f, unit = scale[0], scale[1]
+        if m["kind"] in ("m_length", "m_poly"):
+            item["m"] = M.length(pts) * f
+        elif m["kind"] == "m_perimeter":
+            item["m"] = M.length(pts + pts[:1]) * f
+        elif m["kind"] == "m_area":
+            item["m2"] = M.area(pts) * f * f
+        elif len(pts) >= 3:
+            item["m3"] = M.area(pts) * f * f * M.depth_m(m["props"], unit)
+    return item
+
+
+def page_summary(doc, index, items=None):
     """{row key: {"kind", "label", "style", "n", "m", "m2", "m3"}} for the markups of page
     index (lengths in meters, areas in square meters, volumes in cubic meters, by the page's
-    own scale). Hidden markups and legends aren't counted."""
+    own scale). Hidden markups and legends aren't counted.
+    items: {xref: (its object's text and the page's scale, what it adds)}, kept by the view
+    between edits, so only the markups whose object changed are read again (reading one is
+    about half a millisecond: 0.5 s for a page of 1,000 markups at every edit)."""
     from . import annotations as A
     from . import measure as M
     page = doc[index]
-    out = {}
-    scale = None
-    annots = []
-    a = page.first_annot
-    while a:
-        annots.append(a)
-        a = a.next
-        if a is not None:
-            # (tied to this page, as annotations.load_annots does: Annot.next gives each
-            # one a Page object of its own, in a reference cycle that keeps it loaded)
-            a.parent = weakref.proxy(page)
-    for a in annots:
-        try:
-            m = A.read(a)
-        except Exception:
-            m = None
-        if not m or m["kind"] in NOT_COUNTED or m.get("hidden"):
+    scale = M.get_scale(page)
+    tag = "%r|%s" % (scale[0], scale[1])
+    if items is None:
+        items = {}
+    found = []
+    todo = []
+    for x, typ, nm in page.annot_xrefs():
+        if typ in SKIP_TYPES or str(nm or "").startswith(NM_PREFIX):
             continue
-        subject = ""
-        try:
-            subject = a.info.get("subject", "") or ""
-        except Exception:
-            pass
-        kind = sample_kind(m)
-        style = _style(m)
-        label = label_of(m, subject)
-        key = json.dumps([label, kind, style], sort_keys=True)
-        row = out.get(key)
+        fp = doc.xref_object(x, compressed=True) + tag
+        known = items.get(x)
+        if known is None or known[0] != fp:
+            todo.append(x)
+        found.append((x, fp))
+    if todo:
+        fresh = A.load_annots(page, todo)
+        for x, fp in found:
+            if x in fresh:
+                items[x] = (fp, _item(page, fresh[x], scale))
+        fresh.clear()
+    out = {}
+    for x, fp in found:
+        known = items.get(x)
+        item = known[1] if known is not None and known[0] == fp else None
+        if item is None:
+            continue
+        row = out.get(item["key"])
         if row is None:
-            row = out[key] = {"kind": kind, "label": label, "style": style, "n": 0,
-                              "m": 0.0, "m2": 0.0, "m3": 0.0}
+            row = out[item["key"]] = {"kind": item["kind"], "label": item["label"],
+                                      "style": item["style"], "n": 0,
+                                      "m": 0.0, "m2": 0.0, "m3": 0.0}
         row["n"] += 1
-        if m["kind"] in LENGTHS + ("m_area", "m_volume") and m.get("points"):
-            if scale is None:
-                scale = M.get_scale(page)[0]
-            pts = m["points"]
-            if m["kind"] in ("m_length", "m_poly"):
-                row["m"] += M.length(pts) * scale
-            elif m["kind"] == "m_perimeter":
-                row["m"] += M.length(pts + pts[:1]) * scale
-            elif m["kind"] == "m_area":
-                row["m2"] += M.area(pts) * scale * scale
-            elif len(pts) >= 3:
-                f, unit = scale, M.get_scale(page)[1]
-                row["m3"] += M.area(pts) * f * f * M.depth_m(m["props"], unit)
+        row["m"] += item["m"]
+        row["m2"] += item["m2"]
+        row["m3"] += item["m3"]
     return out
 
 
@@ -637,7 +667,7 @@ def new_name():
 
 
 # ---- keeping legends up to date ------------------------------------------------------------
-def refresh(doc, pages, structural, where, summaries):
+def refresh(doc, pages, structural, where, summaries, items=None):
     """Bring the document's legends up to date after an edit of pages (None or structural:
     any page). where: {page index: [legend xrefs]} and summaries: {page index: its
     page_summary}, both kept by the view between edits and emptied for the pages an edit
@@ -665,7 +695,7 @@ def refresh(doc, pages, structural, where, summaries):
     def summary(d, i):
         s = summaries.get(i)
         if s is None:
-            s = summaries[i] = page_summary(d, i)
+            s = summaries[i] = page_summary(d, i, items)
         return s
     changed = set()
     from . import annotations as A
