@@ -505,7 +505,7 @@ jobs:
           - arch: arm64                  # Apple silicon (M1 and later)
             runner: macos-15
           - arch: x86_64                 # Intel
-            runner: macos-15-intel
+            runner: macos-26-intel
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     outputs:
@@ -544,7 +544,10 @@ jobs:
             python packaging/macos/pymupdf_standin.py "$RUNNER_TEMP/wheels"
             extra="--find-links $RUNNER_TEMP/wheels"
           fi
-          python -m pip install $extra -r requirements.txt -c constraints.txt pyinstaller
+          # (wheels only: a library built here from source would link to the build machine's
+          # own libraries, which need its newer macOS; constraints.txt pins the last versions
+          # with an Intel Mac build where newer ones have none)
+          python -m pip install --only-binary :all: $extra -r requirements.txt -c constraints.txt pyinstaller
           # (only one OpenCV, as on Windows and Linux: the headless one pinned in constraints.txt)
           v=$(sed -n 's/^opencv-python-headless==\([0-9.]*\).*/\1/p' constraints.txt)
           test -n "$v"

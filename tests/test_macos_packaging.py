@@ -290,7 +290,7 @@ class Workflow(unittest.TestCase):
     def test_both_kinds_of_mac(self):
         from kanzonas import macos
         runners = {m["arch"]: m["runner"] for m in self.mac["strategy"]["matrix"]["include"]}
-        self.assertEqual(runners, {"arm64": "macos-15", "x86_64": "macos-15-intel"})
+        self.assertEqual(runners, {"arm64": "macos-15", "x86_64": "macos-26-intel"})
         self.assertEqual(self.mac["runs-on"], "${{ matrix.runner }}")
         self.assertFalse(self.mac["strategy"]["fail-fast"])
         self.assertEqual(self.mac["name"], "macos (${{ matrix.arch }})")
@@ -300,7 +300,8 @@ class Workflow(unittest.TestCase):
 
     def test_the_same_pyinstaller_options_and_pins(self):
         self.assertIn("python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py", self.script)
-        self.assertIn("-r requirements.txt -c constraints.txt pyinstaller", self.script)
+        self.assertIn("--only-binary :all: $extra -r requirements.txt -c constraints.txt pyinstaller",
+                      self.script)
         self.assertIn("packaging/macos/pymupdf_standin.py", self.script)
 
     def test_tested_before_it_can_be_published(self):
