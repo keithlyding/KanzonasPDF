@@ -41,27 +41,6 @@ def dmg_name(name=None):
     return DMG[machine(name)]
 
 
-def app_bundle(executable=None):
-    """The KanzonasPDF.app folder this program runs from (…/X.app/Contents/MacOS/program), or
-    None (run from source, or not in an app bundle)."""
-    exe = os.path.abspath(executable or sys.executable)
-    macos = os.path.dirname(exe)
-    contents = os.path.dirname(macos)
-    bundle = os.path.dirname(contents)
-    if os.path.basename(macos) == "MacOS" and os.path.basename(contents) == "Contents" \
-            and bundle.endswith(".app"):
-        return bundle
-    return None
-
-
-def translocated(bundle=None):
-    """True when macOS runs the app from a read-only random place (App Translocation: an
-    app downloaded from the internet and opened where it was, inside the disk image or the
-    Downloads folder, before it was moved to Applications)."""
-    bundle = bundle if bundle is not None else app_bundle()
-    return bool(bundle) and "/AppTranslocation/" in bundle
-
-
 # ---- files opened from Finder ------------------------------------------------------------
 
 def file_open_filter(deliver, parent=None):

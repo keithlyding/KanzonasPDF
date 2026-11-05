@@ -112,15 +112,6 @@ class Pieces(unittest.TestCase):
                 found = text_edit._system_font(page, span, "Hello")
         self.assertIsNotNone(found)                 # (an installed font of that name is used)
 
-    @unittest.skipIf(os.name == "nt", "Mac paths")
-    def test_the_app_bundle(self):
-        self.assertEqual(macos.app_bundle("/Applications/KanzonasPDF.app/Contents/MacOS/KanzonasPDF"),
-                         "/Applications/KanzonasPDF.app")
-        self.assertIsNone(macos.app_bundle("/usr/bin/python3"))
-        self.assertTrue(macos.translocated(
-            "/private/var/folders/x/AppTranslocation/1234/d/KanzonasPDF.app"))
-        self.assertFalse(macos.translocated("/Applications/KanzonasPDF.app"))
-
     @unittest.skipIf(os.name == "nt", "Mac paths (Windows keeps its own fonts folders)")
     def test_fonts_in_the_macs_font_folders(self):
         with mac():
