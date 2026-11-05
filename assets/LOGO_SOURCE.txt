@@ -1,0 +1,6 @@
+# KanzonasPDF's logo comes from Kanzonas-Site, the single source of truth for every
+# Kanzonas logo. Written by tools/update_logo.py: don't edit by hand.
+repo: https://github.com/keithlyding/Kanzonas-Site
+commit: 4e3f1d2f15615b8b8d8318729788749c7f3afc6b
+path: brand/out/kanzonas-logo-source.png
+sha256: c523a14a50da0a598548659b04e8118b322f1f5fb389cfc4914a7a55e1579009
