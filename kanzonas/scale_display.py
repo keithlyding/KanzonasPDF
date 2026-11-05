@@ -8,7 +8,7 @@ The bar is a small picture made once per page, zoom and look and kept by the vie
 
 from PySide6.QtCore import Qt, QPointF, QRectF, QSize, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetricsF, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import (QLabel, QSizePolicy, QToolButton, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QToolButton, QVBoxLayout
 
 from . import measure as M
 from .i18n import tr
@@ -60,44 +60,61 @@ class ScaleStatusLabel(QLabel):
         super().mouseReleaseEvent(e)
 
 
-class ScalePanel(QWidget):
-    """The Measure tab's 'Page scale' group: the current page's scale in large type (a button
-    that opens Set scale) above the Show scale bar switch."""
+class ScalePanel(QToolButton):
+    """The Measure tab's 'Page scale' group: a button two rows tall that reads 'Set scale'
+    above the current page's scale in large type (red 'Scale not set' without one), and
+    opens Set scale; the Show scale bar switch is a small icon beside 'Set scale'. One width
+    whatever the scale, so the tab doesn't shift from page to page, and narrow enough for
+    the tab to fit a 1366-pixel screen in Spanish too: a longer label is elided (the tool
+    tip has it whole)."""
 
     def __init__(self, set_scale_action, scale_bar_action, parent=None):
         super().__init__(parent)
+        self.setAutoRaise(True)
+        self.setCursor(Qt.PointingHandCursor)
+        self.clicked.connect(set_scale_action.trigger)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setContentsMargins(4, 1, 4, 1)
         lay.setSpacing(0)
-        self.button = QToolButton()
-        self.button.setAutoRaise(True)
-        self.button.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        f = QFont(self.button.font())
-        f.setBold(True)
-        f.setPointSizeF(f.pointSizeF() * 1.25)
-        self.button.setFont(f)
-        self.button.setFixedHeight(24)
-        self.button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.button.setCursor(Qt.PointingHandCursor)
-        self.button.clicked.connect(set_scale_action.trigger)
+        self.caption = QLabel(set_scale_action.iconText() or tr("Set scale"))
+        f = QFont(self.font())
+        f.setPointSizeF(f.pointSizeF() * 0.85)
+        self.caption.setFont(f)
+        self.caption.setStyleSheet("color: gray;")
+        self.caption.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.bar = QToolButton()
         self.bar.setDefaultAction(scale_bar_action)
         self.bar.setAutoRaise(True)
-        self.bar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.bar.setIconSize(QSize(16, 16))
-        self.bar.setFixedHeight(20)
-        self.bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        lay.addWidget(self.button)
-        lay.addWidget(self.bar)
-        # one width whatever the page's scale, so the tab doesn't shift from page to page:
-        # room for 'Scale not set' and the usual labels; a longer one is elided (its tool
-        # tip has it whole)
-        fm = self.button.fontMetrics()
+        self.bar.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        self.bar.setIconSize(QSize(14, 14))
+        self.bar.setFixedSize(18, 18)
+        self.bar.setCursor(Qt.ArrowCursor)
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(2)
+        top.addWidget(self.caption, 1)
+        top.addWidget(self.bar)
+        lay.addLayout(top)
+        self.value = QLabel()
+        f = QFont(self.font())
+        f.setBold(True)
+        f.setPointSizeF(f.pointSizeF() * 1.25)
+        self.value.setFont(f)
+        self.caption.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.value.setAlignment(Qt.AlignCenter)
+        self.value.setAttribute(Qt.WA_TransparentForMouseEvents)
+        lay.addWidget(self.value)
+        fm = self.value.fontMetrics()
         self._text_w = max(fm.horizontalAdvance(tr("Scale not set")),
                            fm.horizontalAdvance('1-1/2" = 1\'-0"'))
-        self.setFixedWidth(max(self._text_w + 16, self.bar.sizeHint().width()))
+        self.setFixedWidth(max(self._text_w, self.caption.sizeHint().width() + 20) + 10)
+        from .ribbon import ROWS, SMALL_HEIGHT
+        self.setFixedHeight(ROWS * SMALL_HEIGHT)       # (as tall as the ribbon's large buttons)
         self._state = None
         self.show_scale(None, "")
+
+    def text(self):
+        return self.value.text()
 
     def show_scale(self, scale, tip):
         """scale: measure.get_scale's tuple for the current page, None with no document."""
@@ -107,11 +124,12 @@ class ScalePanel(QWidget):
         if state == self._state:
             return
         self._state = state
-        fm = self.button.fontMetrics()
-        self.button.setText(fm.elidedText(text, Qt.ElideRight, self._text_w).replace("&", "&&"))
-        self.button.setToolTip(tip)
-        self.button.setEnabled(scale is not None)
-        self.button.setStyleSheet("" if ok else "QToolButton { color: %s; }" % not_set_color())
+        fm = self.value.fontMetrics()
+        self.value.setText(fm.elidedText(text, Qt.ElideRight, self._text_w))
+        self.setToolTip(tip)
+        self.value.setEnabled(scale is not None)
+        self.caption.setEnabled(scale is not None)
+        self.value.setStyleSheet("" if ok else "color: %s;" % not_set_color())
 
 
 # ---- the graphic scale bar ------------------------------------------------------------------

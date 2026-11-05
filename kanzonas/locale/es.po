@@ -7486,7 +7486,7 @@ msgid "type {0} and press Enter"
 msgstr "escriba {0} y presione Enter"
 
 msgid "Scale not set"
-msgstr "Escala sin establecer"
+msgstr "Sin escala"
 
 msgid "Page scale"
 msgstr "Escala de la página"

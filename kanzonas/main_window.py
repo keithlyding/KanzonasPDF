@@ -4738,9 +4738,11 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Measure"), [
             (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
             (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_perimeter"], t["m_volume"]]),
-            (tr("Scale"), "small", [t["m_calibrate"], self.a_set_scale, self.a_sheet_scales,
-                                self.a_measure_summary]),
+            # the page's scale in large type opens Set scale (so no separate button for it),
+            # with the Show scale bar switch beside it: the tab still fits a 1366-pixel screen
             (tr("Page scale"), "large", [self.scale_panel]),
+            (tr("Scale"), "small", [t["m_calibrate"], self.a_sheet_scales,
+                                self.a_measure_summary]),
             (tr("Grid & snap"), "small", snap_group),
         ])
         r.add_tab(tr("Arrange"), [

@@ -981,15 +981,16 @@ written on the sheet</b>, picked for you when the title block has one, and the s
 mentions what the sheet says while no scale is set. A page's scale goes with it: copies made
 with Duplicate pages, Copy pages and Paste, Extract pages, Insert pages from file and Combine
 files keep it.</li>
-<li>The current page's scale is always in sight: in large type in the <b>Page scale</b> group
-of the Measure tab (1/4" = 1'-0", 1:100...) and in bold at the right of the status bar. A page
+<li>The current page's scale is always in sight: in large type under "Set scale" in the
+<b>Page scale</b> group of the Measure tab (1/4" = 1'-0", 1:100...) and in bold at the right of the status bar. A page
 with no scale shows a red <b>Scale not set</b> there, and its measurements are in paper size
 (inches on the sheet). Click either one to open Set scale; both follow the page you're on and
 change as soon as a scale is set, calibrated or undone. The first measurement on a page with no
 scale (once per page) also shows a banner above the page saying so, with a <b>Set scale...</b>
 button; it goes away when the page gets a scale, or with its close button. Count and Angle
-don't depend on the scale and don't show it.</li>
-<li><b>Show scale bar</b> (View menu, Measure menu, Measure tab under the page's scale, and
+don't depend on the scale and don't bring up the banner.</li>
+<li><b>Show scale bar</b> (View menu, Measure menu, the small icon beside "Set scale" in the
+Measure tab's Page scale group, and
 Preferences &gt; Pages and display): draws a graphic scale at the bottom left of every page
 that has a scale: alternating black and white segments with round numbers in the drawing's
 units (0 5' 10' 15' 20' for feet and inches, 0 1 2 3 4 m for meters; millimeters switch to

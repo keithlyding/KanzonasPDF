@@ -960,15 +960,16 @@ escrita en el plano</b>, que queda elegida automáticamente cuando el cuadro de 
 menciona lo que dice el plano mientras no haya ninguna escala definida. La escala de una página va con ella:
 las copias hechas con Duplicar páginas, Copiar páginas y Pegar, Extraer páginas, Insertar páginas desde archivo y
 Combinar archivos la conservan.</li>
-<li>La escala de la página actual está siempre a la vista: en letra grande en el grupo <b>Escala de la página</b>
-de la pestaña Medir (1/4" = 1'-0", 1:100...) y en negrita a la derecha de la barra de estado. Una página
-sin escala muestra ahí <b>Escala sin establecer</b> en rojo, y sus medidas están en tamaño de papel
+<li>La escala de la página actual está siempre a la vista: en letra grande debajo de "Establecer escala" en el
+grupo <b>Escala de la página</b> de la pestaña Medir (1/4" = 1'-0", 1:100...) y en negrita a la derecha de la barra de estado. Una página
+sin escala muestra ahí <b>Sin escala</b> en rojo, y sus medidas están en tamaño de papel
 (pulgadas sobre el plano). Haga clic en cualquiera de las dos para abrir Establecer escala; ambas siguen la página en la que está y
 cambian en cuanto se establece, se calibra o se deshace una escala. La primera medición en una página sin
 escala (una vez por página) también muestra un aviso encima de la página que lo indica, con un botón
 <b>Establecer escala...</b>; desaparece cuando la página recibe una escala, o con su botón de cerrar. Conteo y Ángulo
-no dependen de la escala y no lo muestran.</li>
-<li><b>Mostrar barra de escala</b> (menú Ver, menú Medir, pestaña Medir debajo de la escala de la página, y
+no dependen de la escala y no muestran el aviso.</li>
+<li><b>Mostrar barra de escala</b> (menú Ver, menú Medir, el pequeño icono junto a "Establecer escala" en el
+grupo Escala de la página de la pestaña Medir, y
 Preferencias &gt; Páginas y visualización): dibuja una escala gráfica en la esquina inferior izquierda de cada página
 que tiene escala: segmentos alternos negros y blancos con números redondos en las unidades del dibujo
 (0 5' 10' 15' 20' para pies y pulgadas, 0 1 2 3 4 m para metros; los milímetros pasan a
