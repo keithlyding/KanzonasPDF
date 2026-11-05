@@ -4796,10 +4796,11 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Pages"), [
             (tr("Rotate"), "large", [self.a_rot_l, self.a_rot_r]),
             (tr("Crop"), "large", [t["crop"], self.a_uncrop]),
-            # (Insert file and Replace pages share one button, so the tab is no wider)
+            # (Extract and Replace pages share one button, under Blank page, so the tab is
+            # hardly wider)
             (tr("Organize"), "small", [self.a_move_up, self.a_move_down, self.a_del_page,
-                                   split_button([self.a_insert_pdf, self.a_replace_pages]),
-                                   self.a_insert_blank, self.a_extract]),
+                                   self.a_insert_pdf, self.a_insert_blank,
+                                   split_button([self.a_extract, self.a_replace_pages])]),
             (tr("Create"), "large", [self.a_new, self.a_combine, self.a_from_images]),
             (tr("Document"), "small", [self.a_header, self.a_watermark, self.a_background,
                                    self.a_bookmarks, self.a_sheet_links, self.a_attachments,

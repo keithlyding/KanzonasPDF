@@ -252,9 +252,10 @@ def _map_annots(doc, page, t, tp):
         if old is None:
             continue
         if kind in _ICONS:
-            # (an icon keeps its size: its top-left corner goes where it goes)
-            c = pymupdf.Point(old.x0, old.y1) * t
-            new = pymupdf.Rect(c.x, c.y - old.height, c.x + old.width, c.y)
+            # (an icon keeps its size: its middle goes where it goes)
+            c = pymupdf.Point((old.x0 + old.x1) / 2, (old.y0 + old.y1) / 2) * t
+            w, h = old.width / 2, old.height / 2
+            new = pymupdf.Rect(c.x - w, c.y - h, c.x + w, c.y + h)
         else:
             new = _mapped_rect(old, t)
         doc.xref_set_key(xref, "Rect", _rect_array(new))

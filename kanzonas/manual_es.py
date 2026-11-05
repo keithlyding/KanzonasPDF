@@ -1017,7 +1017,7 @@ TIFF, BMP, GIF, WebP; elija varios a la vez), en el orden elegido, después de l
 final o al principio, como un solo paso de deshacer. Cada imagen se convierte en una página del tamaño de la página
 anterior, girada según convenga a la imagen. Sin nada abierto, crea con ellos un PDF nuevo, sin
 guardar.</li>
-<li><b>Reemplazar páginas</b> (menú Páginas; pestaña Páginas, en la flecha junto a Insertar archivo) pone una
+<li><b>Reemplazar páginas</b> (menú Páginas; pestaña Páginas, en la flecha junto a Extraer) pone una
 nueva revisión de los planos en lugar de los anteriores y conserva todo lo que se les agregó (Reemplazar páginas de
 Acrobat, la sustitución de hojas de Bluebeam). Elija el PDF de la nueva revisión y luego indique las páginas por
 número (las páginas 3-5 de este documento reemplazadas por las páginas 1-3 del archivo nuevo, emparejadas en orden) o

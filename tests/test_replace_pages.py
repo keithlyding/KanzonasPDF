@@ -176,9 +176,17 @@ class ReplacePages(unittest.TestCase):
         v = self.view()
         mk = self.rect_markup(v, 0, (300, 200, 400, 260))
         v.modify(lambda: measure.set_scale(v.doc[0], 0.01, "ft", "1:100"))
+        v.modify(lambda: v.doc[0].add_text_annot((500, 400), "a note").update())
+        note = [F.Rect(a.rect) for a in v.doc[0].annots(types=[F.PDF_ANNOT_TEXT])][0]
         _p, src = self.new_file([("A-101", "NEW 1")], size=(396, 306))
         v.replace_pages(src, [(0, 0)], scale=True)
         page = v.doc[0]
+        # (a note's icon keeps its size; its middle goes where the sheet's point went)
+        now = [F.Rect(a.rect) for a in page.annots(types=[F.PDF_ANNOT_TEXT])][0]
+        self.assertAlmostEqual(now.width, note.width, 2)
+        self.assertAlmostEqual(now.height, note.height, 2)
+        self.assertAlmostEqual((now.x0 + now.x1) / 2, (note.x0 + note.x1) / 4, 2)
+        self.assertAlmostEqual((now.y0 + now.y1) / 2, (note.y0 + note.y1) / 4, 2)
         self.assertTrue(near(page.rect, (0, 0, 396, 306)))
         model = annotations.read(page.load_annot(mk))
         self.assertTrue(near(model["rect"], (150, 100, 200, 130), 0.01), model["rect"])

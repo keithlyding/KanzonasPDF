@@ -1038,7 +1038,7 @@ TIFF, BMP, GIF, WebP; pick several at once), in the order chosen, after the curr
 end or at the beginning, as one undo step. Each picture becomes a page the size of the page
 before it, turned to suit the picture. With nothing open, it makes a new, unsaved PDF from
 them.</li>
-<li><b>Replace pages</b> (Pages menu; Pages tab, on the arrow beside Insert file) puts a new
+<li><b>Replace pages</b> (Pages menu; Pages tab, on the arrow beside Extract) puts a new
 revision of sheets in place of the old ones and keeps everything added to them (Acrobat's
 Replace Pages, Bluebeam's slip sheeting). Pick the PDF of the new revision, then either give the
 pages by number (pages 3-5 here replaced by pages 1-3 of the new file, paired in order) or
