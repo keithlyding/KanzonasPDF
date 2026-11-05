@@ -492,10 +492,15 @@ jobs:
   # ---------------------------------------------------------------------------------------
   # macOS: KanzonasPDF.app in a disk image, one for each kind of Mac (a universal app isn't
   # possible: PyMuPDF, ONNX Runtime, OpenCV and NumPy publish separate Apple silicon and
-  # Intel builds, only Qt a universal one). Built on the oldest macOS GitHub still offers
-  # for each; the app says it runs on MACOS_MIN and the build fails if anything in it needs
-  # a newer macOS (Qt 6.12 needs macOS 14.4). Unsigned for now: people allow it
-  # once in System Settings > Privacy & Security > Open Anyway (see the signing step below).
+  # Intel builds, only Qt a universal one). Built on the oldest macOS GitHub still offers;
+  # the app says it runs on MACOS_MIN and the build fails if anything in it needs a newer
+  # macOS (Qt 6.12 needs macOS 14.4). The Intel app is built and tested on Apple silicon,
+  # run by Rosetta 2 (an Intel Python, so pip, PyInstaller, the tests and the app are all
+  # Intel code): GitHub's Intel Macs (a 2018 Mac mini's i7-8700B, 4 CPUs) are 3 to 5 times
+  # slower than the other build machines, too slow for the speed budgets, though every other
+  # check passes there (to build on one: runner macos-15-intel). Unsigned for now: people
+  # allow it once in System Settings > Privacy & Security > Open Anyway (see the signing
+  # steps below).
   macos:
     name: macos (${{ matrix.arch }})
     strategy:
@@ -504,8 +509,10 @@ jobs:
         include:
           - arch: arm64                  # Apple silicon (M1 and later)
             runner: macos-15
-          - arch: x86_64                 # Intel
-            runner: macos-15-intel
+            python: arm64
+          - arch: x86_64                 # Intel, run by Rosetta 2 on Apple silicon
+            runner: macos-15
+            python: x64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     outputs:
@@ -528,13 +535,15 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          architecture: ${{ matrix.python }}
           cache: pip
 
       - name: The right kind of Mac
         run: |
-          echo "$(uname -m), macOS $(sw_vers -productVersion), Python $(python -c 'import platform; print(platform.machine())')"
-          echo "$(sysctl -n machdep.cpu.brand_string), $(sysctl -n hw.ncpu) CPUs, $(( $(sysctl -n hw.memsize) / 1073741824 )) GB"
-          test "$(uname -m)" = "${{ matrix.arch }}"
+          echo "$(uname -m) Mac, macOS $(sw_vers -productVersion), $(sysctl -n machdep.cpu.brand_string), $(sysctl -n hw.ncpu) CPUs"
+          echo "Python: $(python -c 'import platform, sys; print(platform.machine(), sys.version)')"
+          # (Intel code on Apple silicon: Rosetta 2 runs it, and says so)
+          python -c "import subprocess; print('run by Rosetta 2:', subprocess.run(['sysctl', '-in', 'sysctl.proc_translated'], capture_output=True, text=True).stdout.strip() == '1')"
           test "$(python -c 'import platform; print(platform.machine())')" = "${{ matrix.arch }}"
 
       - name: Install dependencies
@@ -558,7 +567,6 @@ jobs:
           python -c "import pymupdf, onnxruntime; print('PyMuPDF', pymupdf.__version__, 'MuPDF', pymupdf.mupdf_version, 'ONNX Runtime', onnxruntime.__version__)"
 
       - name: Regression tests (security, document preservation, efficiency budgets)
-        continue-on-error: true   # TEMP-ITERATION: see the later steps while fixing; remove
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
@@ -621,7 +629,6 @@ jobs:
           codesign --verify --deep --strict --verbose=2 dist/KanzonasPDF.app
 
       - name: Self test (inside the app; OCR, exports, signatures, forms)
-        continue-on-error: true   # TEMP-ITERATION: see the later steps while fixing; remove
         run: |
           code=0
           QT_QPA_PLATFORM=offscreen dist/KanzonasPDF.app/Contents/MacOS/KanzonasPDF --selftest selftest-macos.log || code=$?

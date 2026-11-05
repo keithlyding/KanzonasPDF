@@ -289,14 +289,24 @@ class Workflow(unittest.TestCase):
 
     def test_both_kinds_of_mac(self):
         from kanzonas import macos
-        runners = {m["arch"]: m["runner"] for m in self.mac["strategy"]["matrix"]["include"]}
-        self.assertEqual(runners, {"arm64": "macos-15", "x86_64": "macos-15-intel"})
+        include = self.mac["strategy"]["matrix"]["include"]
+        runners = {m["arch"]: (m["runner"], m["python"]) for m in include}
+        # (the Intel app on Apple silicon, an Intel Python run by Rosetta 2)
+        self.assertEqual(runners, {"arm64": ("macos-15", "arm64"), "x86_64": ("macos-15", "x64")})
         self.assertEqual(self.mac["runs-on"], "${{ matrix.runner }}")
+        setup = [s for s in self.mac["steps"] if "setup-python" in s.get("uses", "")][0]
+        self.assertEqual(setup["with"]["architecture"], "${{ matrix.python }}")
         self.assertFalse(self.mac["strategy"]["fail-fast"])
         self.assertEqual(self.mac["name"], "macos (${{ matrix.arch }})")
         for arch in runners:
             self.assertEqual(macos.DMG[arch], f"KanzonasPDF-macos-{arch}.dmg")
-        self.assertIn('test "$(uname -m)" = "${{ matrix.arch }}"', self.script)
+        self.assertIn("test \"$(python -c 'import platform; print(platform.machine())')\" = "
+                      "\"${{ matrix.arch }}\"", self.script)
+        # (the finished app is checked for that kind of Mac's code, whatever ran the build)
+        self.assertIn('--arch "${{ matrix.arch }}"', self.script)
+        # nothing is left to carry on past a failure
+        for step in self.mac["steps"]:
+            self.assertNotIn("continue-on-error", step)
 
     def test_the_same_pyinstaller_options_and_pins(self):
         self.assertIn("python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py", self.script)
