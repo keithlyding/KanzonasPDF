@@ -525,10 +525,12 @@ class _Pass:
                 or not self.claimed[1]:
             self.problem("metadata", None, tr(
                 "The file isn't marked as PDF/A (its metadata has no PDF/A identification)."))
-        elif re.search(r"<\?xpacket[^>]*\b(bytes|encoding)\s*=", xml) or \
-                not _info_matches_xmp(self.doc, xml):
+        elif re.search(r"<\?xpacket[^>]*\b(bytes|encoding)\s*=", xml):
+            # 6.6.2.1: no bytes or encoding attribute in the packet header. (The document
+            # properties and the XMP metadata aren't compared: PDF/A-2 doesn't require it,
+            # and Save as PDF/A writes them the same.)
             self.problem("metadata", None, tr(
-                "Its metadata (XMP) doesn't match the document properties."))
+                "Its metadata (XMP) has a header PDF/A doesn't allow."))
 
     # -- output intent (6.2.3)
     def _output_intent(self):
@@ -1677,17 +1679,6 @@ def xmp_packet(props, part, now=None):
     return "\n".join(lines) + "\n" + padding + '\n<?xpacket end="w"?>'
 
 
-def _info_matches_xmp(doc, xml):
-    """Whether the document information (title, author, subject, keywords, creator,
-    producer) is also in the XMP metadata, the same."""
-    info = doc.metadata or {}
-    for key in ("title", "author", "subject", "keywords", "creator", "producer"):
-        value = (info.get(key) or "").strip()
-        if value and _xml(value) not in xml and value not in xml:
-            return False
-    return True
-
-
 def pdfa_part_of(data):
     """The PDF/A part (1, 2, 3...) a PDF in data says it conforms to, or None (not a PDF, or
     not PDF/A)."""
@@ -1709,10 +1700,13 @@ def pdfa_part_of(data):
 def check(doc, step=None):
     """What keeps doc from being PDF/A-2b (or PDF/A-3b, when it says it is): [Problem].
     Only reads doc. step(): called now and then; False stops (None is returned)."""
+    work = _Pass(doc, fix=False, step=step)
     try:
-        return _Pass(doc, fix=False, step=step).run().problems
+        return work.run().problems
     except _Stopped:
         return None
+    finally:
+        work.__dict__.clear()       # (no MuPDF object of doc stays held: see convert)
 
 
 def convert(data, path, step=None):
@@ -1729,6 +1723,11 @@ def convert(data, path, step=None):
             work = _Pass(doc, fix=True, step=step).run()
         except _Stopped:
             return None
+        part, notes = work.part, work.notes
+        # MuPDF objects still held while saving can come out wrong in the file (a stream
+        # written without its data was seen): let go of every one first
+        work.__dict__.clear()
+        del work
         tmp = path + ".kanzonas-tmp"
         try:
             doc.save(tmp, garbage=3, deflate=True, encryption=pymupdf.PDF_ENCRYPT_NONE)
@@ -1743,7 +1742,7 @@ def convert(data, path, step=None):
         doc.close()
     out = pymupdf.open(path)
     try:
-        remaining = _Pass(out, fix=False).run().problems
+        remaining = check(out)
     finally:
         out.close()
-    return {"part": work.part, "notes": work.notes, "remaining": remaining}
+    return {"part": part, "notes": notes, "remaining": remaining}

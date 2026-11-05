@@ -305,6 +305,30 @@ class PartTwo(unittest.TestCase):
         self.assertEqual(result["remaining"], [])
 
 
+class DrawingGroups(unittest.TestCase):
+    def test_placed_pages_keep_their_drawing(self):
+        # a page placed on another (show_pdf_page: drawing groups inside drawing groups);
+        # the copy once lost such a group's data (a MuPDF object held while saving)
+        src = pymupdf.open()
+        sp = src.new_page()
+        sp.insert_text((72, 100), "Placed page text", fontname="tiro", fontsize=24)
+        sp.draw_rect(pymupdf.Rect(72, 150, 300, 250), fill=(0, 0.5, 1))
+        d = pymupdf.open()
+        p = d.new_page()
+        p.show_pdf_page(pymupdf.Rect(50, 50, 400, 400), src, 0)
+        p.insert_text((50, 500), "Own text", fontname="helv")
+        path = os.path.join(tempfile.mkdtemp(), "g.pdf")
+        result = pdfa.convert(d.tobytes(), path)
+        self.assertEqual(result["remaining"], [])
+        with pymupdf.open(path) as out:
+            for x in range(1, out.xref_length()):
+                if out.xref_get_key(x, "Length")[0] != "null":
+                    self.assertTrue(out.xref_is_stream(x), out.xref_object(x))
+            a, b = d[0].get_pixmap(dpi=40), out[0].get_pixmap(dpi=40)
+            self.assertEqual(differing(a, b), 0)
+            self.assertIn("Placed page text", out[0].get_text())
+
+
 class KeepsAGoodOutputIntent(unittest.TestCase):
     def test_cmyk_intent_kept_and_rgb_gets_a_profile(self):
         d = pymupdf.open()

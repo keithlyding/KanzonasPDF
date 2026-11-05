@@ -7585,8 +7585,8 @@ msgstr "Se usan colores RGB sin un perfil de color RGB."
 msgid "This document is protected with a password. PDF/A doesn't allow encryption: remove its security first."
 msgstr "Este documento está protegido con contraseña. PDF/A no permite el cifrado: quite primero su seguridad."
 
-msgid "Its metadata (XMP) doesn't match the document properties."
-msgstr "Sus metadatos (XMP) no coinciden con las propiedades del documento."
+msgid "Its metadata (XMP) has a header PDF/A doesn't allow."
+msgstr "Sus metadatos (XMP) tienen un encabezado que PDF/A no permite."
 
 msgid "The output intent's color profile isn't one PDF/A allows."
 msgstr "El perfil de color de la intención de salida no es uno que PDF/A permita."
