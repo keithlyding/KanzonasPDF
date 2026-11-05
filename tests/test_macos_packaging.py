@@ -290,12 +290,15 @@ class Workflow(unittest.TestCase):
     def test_both_kinds_of_mac(self):
         from kanzonas import macos
         include = self.mac["strategy"]["matrix"]["include"]
-        runners = {m["arch"]: (m["runner"], m["python"]) for m in include}
-        # (the Intel app on Apple silicon, an Intel Python run by Rosetta 2)
-        self.assertEqual(runners, {"arm64": ("macos-15", "arm64"), "x86_64": ("macos-15", "x64")})
+        runners = {m["arch"]: (m["runner"], m["shell"]) for m in include}
+        # (the Intel app on Apple silicon: every step's shell is Intel code, run by Rosetta 2)
+        self.assertEqual(runners, {"arm64": ("macos-15", "bash -e {0}"),
+                                   "x86_64": ("macos-15", "arch -x86_64 /bin/bash -e {0}")})
         self.assertEqual(self.mac["runs-on"], "${{ matrix.runner }}")
-        setup = [s for s in self.mac["steps"] if "setup-python" in s.get("uses", "")][0]
-        self.assertEqual(setup["with"]["architecture"], "${{ matrix.python }}")
+        self.assertEqual(self.mac["defaults"]["run"]["shell"], "${{ matrix.shell }}")
+        for step in self.mac["steps"]:
+            self.assertNotIn("shell", step)          # (none runs outside it)
+        self.assertIn('test "$(uname -m)" = "${{ matrix.arch }}"', self.script)
         self.assertFalse(self.mac["strategy"]["fail-fast"])
         self.assertEqual(self.mac["name"], "macos (${{ matrix.arch }})")
         for arch in runners:
