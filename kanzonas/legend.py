@@ -282,11 +282,10 @@ class _Ops:
     def add(self, *ops):
         self.out.extend(ops)
 
-    def alpha(self, opacity, multiply=False):
-        if opacity >= 0.999 and not multiply:
+    def alpha(self, opacity):
+        if opacity >= 0.999:
             return
-        key = (round(opacity, 2), multiply)
-        name = self.gs.setdefault(key, "G%d" % len(self.gs))
+        name = self.gs.setdefault(round(opacity, 2), "G%d" % len(self.gs))
         self.add("/%s gs" % name)
 
     def text(self, x, y, s, size, rgb=(0, 0, 0), bold=False):
@@ -339,7 +338,7 @@ class _Ops:
             self.add("h")
 
 
-def _paint(ops, stroke, fill, width, close=True):
+def _paint(ops, stroke, fill, width):
     """Fill and/or stroke the path just made."""
     if stroke and fill:
         ops.add(_color(fill, "rg"), _color(stroke, "RG"), "%s w" % _f(width), "B")
@@ -474,7 +473,7 @@ def _sample(ops, kind, style, x, y, w, h, fs):
         _paint(ops, stroke, fill, width)
     elif kind == "opencloud":
         ops.bumps([(x + m, cy + h * 0.2), (x1 - m, cy + h * 0.2)], h * 0.35, close=False)
-        _paint(ops, stroke, None, width, close=False)
+        _paint(ops, stroke, None, width)
     elif kind in ("polygon", "m_area", "m_perimeter", "m_volume"):
         pts = [(x + w * 0.08, y1 - m), (x + w * 0.25, y + m), (x + w * 0.7, y + m * 1.5),
                (x1 - m, y + h * 0.65), (x + w * 0.55, y1 - m)]
@@ -482,7 +481,7 @@ def _sample(ops, kind, style, x, y, w, h, fs):
         _paint(ops, stroke, fill, width)
     elif kind in ("polyline", "m_poly"):
         ops.path([(x + m, y1 - m), (x + w * 0.35, y + m), (x + w * 0.65, y1 - m), (x1 - m, y + m)])
-        _paint(ops, stroke, None, width, close=False)
+        _paint(ops, stroke, None, width)
     elif kind in ("arc", "curve", "ink"):
         ops.add("%s %s m" % (_f(x + m), _f(y1 - m)))
         if kind == "arc":
@@ -492,7 +491,7 @@ def _sample(ops, kind, style, x, y, w, h, fs):
         else:
             ops.curve((x + w * 0.2, y - h * 0.2), (x + w * 0.35, y1), (cx, cy))
             ops.curve((x + w * 0.65, y), (x + w * 0.8, y1 + h * 0.2), (x1 - m, y + m))
-        _paint(ops, stroke, None, width, close=False)
+        _paint(ops, stroke, None, width)
     elif kind in ("line", "arrow", "m_length", "m_radius", "m_angle"):
         a, b = (x + m, cy), (x1 - m, cy)
         rgb = stroke or (0, 0, 0)
@@ -637,26 +636,19 @@ def draw(page, annot_xref, model, rows=None):
         pymupdf.Matrix(1, 0, 0, 1, -pr.x0, -pr.y0)
     stream = ("q %s cm\n" % " ".join(_f(v) for v in tuple(frame)) + "\n".join(ops.out) +
               "\nQ\n").encode("latin-1")
-    gs = "".join("/%s<</Type/ExtGState/ca %s/CA %s%s>>" % (
-        name, _f(op), _f(op), "/BM/Multiply" if mult else "")
-        for (op, mult), name in ops.gs.items())
+    gs = "".join("/%s<</Type/ExtGState/ca %s/CA %s>>" % (name, _f(op), _f(op))
+                 for op, name in ops.gs.items())
     res = ("<</Font<</KZH<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>"
            "/KZB<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>>>"
            + ("/ExtGState<<%s>>" % gs if gs else "") + ">>")
-    typ, val = doc.xref_get_key(annot_xref, "AP/N")
-    if typ == "xref":
-        ap = int(val.split()[0])
-    else:
-        ap = doc.get_new_xref()
-        doc.update_object(ap, "<<>>")
-        doc.xref_set_key(annot_xref, "AP", "<</N %d 0 R>>" % ap)
-    # (changed key by key, never replaced with update_object: a stream object replaced that
-    # way came back without its stream after an undo, found by tests/battery_random.py)
-    for key, value in (("Type", "/XObject"), ("Subtype", "/Form"),
-                       ("BBox", "[0 0 %s %s]" % (_f(pr.width), _f(pr.height))),
-                       ("Matrix", "[1 0 0 1 0 0]"), ("Resources", res)):
-        doc.xref_set_key(ap, key, value)
+    # a new appearance object each time, the old one left as it was (a Save drops it): an
+    # appearance stream rewritten in place came back from an undo with the drawing of a
+    # later state, or none (MuPDF's journal; found by tests/battery_random.py, seed 1)
+    ap = doc.get_new_xref()
+    doc.update_object(ap, "<</Type/XObject/Subtype/Form/BBox[0 0 %s %s]/Matrix[1 0 0 1 0 0]"
+                          "/Resources%s>>" % (_f(pr.width), _f(pr.height), res))
     doc.update_stream(ap, stream)
+    doc.xref_set_key(annot_xref, "AP", "<</N %d 0 R>>" % ap)
     doc.xref_set_key(annot_xref, "Rect", "[%s %s %s %s]" % (_f(pr.x0), _f(pr.y0), _f(pr.x1),
                                                             _f(pr.y1)))
     doc.xref_set_key(annot_xref, "Contents",
