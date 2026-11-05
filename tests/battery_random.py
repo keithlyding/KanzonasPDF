@@ -413,7 +413,7 @@ class Battery:
                 if not now.same(before):
                     self.mismatch("Undo with nothing to undo changed the document", before, now)
             else:
-                if nu != mu - 1 or not self.budget_trim(nr, mr + 1):
+                if nu != mu - 1 or not self.budget_trim(nr, mr + 1, keep=0):
                     raise Failed("Undo: %d/%d steps to undo/redo, expected %d/%d" % (
                         nu, nr, mu - 1, mr + 1))
                 want = self.undone.pop()
@@ -474,11 +474,12 @@ class Battery:
         self.cur = now
         self.top = v._undo[-1] if v._undo else None
 
-    def budget_trim(self, n, expected):
+    def budget_trim(self, n, expected, keep=1):
         """n steps left in a list where expected were: the same, or the oldest dropped by
         the app's limits (--undo-limit; with a copy per edit, the history's memory budget,
-        DocumentView._trim_history, drops whole copies of the document)."""
-        return n == expected or (n < expected and n >= 1 and
+        DocumentView._trim_history, drops whole copies of the document: the steps to redo
+        first, all of them if need be, then the oldest to undo but the latest)."""
+        return n == expected or (keep <= n < expected and
                                  (self.undo_limit or not self.journal))
 
     # ---- invariants ---------------------------------------------------------------------
