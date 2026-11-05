@@ -1,13 +1,11 @@
 """The macOS app's packaging (packaging/macos) and the build workflow's macos job: Info.plist
 (bundle id, version, PDF as a document type, the oldest macOS), the icon, the Mach-O checks
-(code for the right kind of Mac, nothing needing a newer macOS), the stand-in PyMuPDF wheel
-for Intel Macs, the pins it relies on, and a release that waits for both Mac builds and
-carries their disk images (unsigned, with Open Anyway explained; signing ready but off).
+(code for the right kind of Mac, nothing needing a newer macOS), no Intel-only pins left, and
+a release that waits for the Apple silicon build and carries its disk image (unsigned, with
+Open Anyway explained; signing ready but off). No Intel Mac build, the owner's decision.
 
     python -m unittest tests.test_macos_packaging
 """
-import base64
-import hashlib
 import os
 import plistlib
 import re
@@ -17,7 +15,6 @@ import subprocess
 import sys
 import tempfile
 import unittest
-import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAC = os.path.join(ROOT, "packaging", "macos")
@@ -26,7 +23,6 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, MAC)
 
 import make_app  # noqa: E402
-import pymupdf_standin  # noqa: E402
 
 try:
     import yaml
@@ -221,43 +217,15 @@ class MachO(unittest.TestCase):
             make_app.finish(self.dir, "1.9", "arm64", "14.0", licenses=lic)
 
 
-class PyMuPDFForIntelMacs(unittest.TestCase):
-    def test_the_stand_in_asks_for_the_engine_of_the_same_version(self):
-        v = pymupdf_standin.pinned("pymupdf")
-        self.assertEqual(pymupdf_standin.pinned("pymupdf-lite"), v)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = pymupdf_standin.make_wheel(tmp, v)
-            self.assertEqual(os.path.basename(path), f"pymupdf-{v}-py3-none-any.whl")
-            with zipfile.ZipFile(path) as z:
-                names = z.namelist()
-                info = f"pymupdf-{v}.dist-info/"
-                self.assertEqual(sorted(names), sorted(info + n for n in ("METADATA", "WHEEL", "RECORD")))
-                meta = z.read(info + "METADATA").decode()
-                self.assertIn("Name: pymupdf\n", meta)
-                self.assertIn(f"Version: {v}\n", meta)
-                self.assertIn(f"Requires-Dist: pymupdf-lite=={v}\n", meta)
-                self.assertIn("Tag: py3-none-any", z.read(info + "WHEEL").decode())
-                for line in z.read(info + "RECORD").decode().splitlines():
-                    name, digest, size = line.split(",")
-                    if digest:
-                        data = z.read(name)
-                        want = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=")
-                        self.assertEqual(digest, "sha256=" + want.decode())
-                        self.assertEqual(int(size), len(data))
-
-    def test_pins_for_intel_macs_only(self):
+class Pins(unittest.TestCase):
+    def test_every_platform_gets_the_same_versions(self):
+        # (no Intel Mac build: no pins held back for it, every platform gets the patched ones)
         with open(os.path.join(ROOT, "constraints.txt"), encoding="utf-8") as f:
             text = f.read()
-        intel = 'sys_platform == "darwin" and platform_machine == "x86_64"'
-        other = 'sys_platform != "darwin" or platform_machine != "x86_64"'
-        self.assertRegex(text, r"(?m)^pymupdf-lite==[0-9.]+ ; " + re.escape(intel))
-        ort = re.findall(r"(?m)^onnxruntime==([0-9.]+) ; (.*?)  #", text)
-        self.assertEqual(sorted(m for _v, m in ort), sorted([intel, other]))
-        # (the weekly check reads the version before the marker)
-        sys.path.insert(0, os.path.join(ROOT, "tools"))
-        import check_dependencies
-        pins = check_dependencies.pinned(os.path.join(ROOT, "constraints.txt"))
-        self.assertEqual(pins["pymupdf"], pins["pymupdf-lite"])
+        self.assertNotIn("platform_machine", text)
+        self.assertNotIn("pymupdf-lite", text)
+        self.assertEqual(len(re.findall(r"(?m)^onnxruntime==", text)), 1)
+        self.assertFalse(os.path.exists(os.path.join(MAC, "pymupdf_standin.py")))
 
 
 class Scripts(unittest.TestCase):
@@ -287,31 +255,26 @@ class Workflow(unittest.TestCase):
         cls.script = "\n".join(s.get("run", "") for s in cls.mac["steps"])
         cls.steps = {s.get("name"): s for s in cls.mac["steps"]}
 
-    def test_both_kinds_of_mac(self):
+    def test_apple_silicon_only(self):
         from kanzonas import macos
-        include = self.mac["strategy"]["matrix"]["include"]
-        runners = {m["arch"]: m["runner"] for m in include}
-        # (each on its own kind of Mac: the oldest macOS GitHub has for it)
-        self.assertEqual(runners, {"arm64": "macos-15", "x86_64": "macos-15-intel"})
-        self.assertEqual(self.mac["runs-on"], "${{ matrix.runner }}")
-        self.assertIn('test "$(uname -m)" = "${{ matrix.arch }}"', self.script)
-        self.assertFalse(self.mac["strategy"]["fail-fast"])
-        self.assertEqual(self.mac["name"], "macos (${{ matrix.arch }})")
-        for arch in runners:
-            self.assertEqual(macos.DMG[arch], f"KanzonasPDF-macos-{arch}.dmg")
-        self.assertIn("test \"$(python -c 'import platform; print(platform.machine())')\" = "
-                      "\"${{ matrix.arch }}\"", self.script)
-        # (the finished app is checked for that kind of Mac's code, whatever ran the build)
-        self.assertIn('--arch "${{ matrix.arch }}"', self.script)
+        self.assertNotIn("strategy", self.mac)
+        self.assertEqual(self.mac["runs-on"], "macos-15")       # (the oldest macOS GitHub has)
+        self.assertEqual(self.mac["name"], "macos (arm64)")      # (the check's name)
+        self.assertEqual(macos.DMG, "KanzonasPDF-macos-arm64.dmg")
+        self.assertIn('test "$(uname -m)" = arm64', self.script)
+        self.assertIn("test \"$(python -c 'import platform; print(platform.machine())')\" = arm64",
+                      self.script)
+        self.assertIn("--arch arm64", self.script)               # (every Mach-O file checked)
+        for word in ("x86_64", "standin", "find-links"):
+            self.assertNotIn(word, self.script)
         # nothing is left to carry on past a failure
         for step in self.mac["steps"]:
             self.assertNotIn("continue-on-error", step)
 
     def test_the_same_pyinstaller_options_and_pins(self):
         self.assertIn("python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py", self.script)
-        self.assertIn("--only-binary :all: $extra -r requirements.txt -c constraints.txt pyinstaller",
+        self.assertIn("--only-binary :all: -r requirements.txt -c constraints.txt pyinstaller",
                       self.script)
-        self.assertIn("packaging/macos/pymupdf_standin.py", self.script)
 
     def test_tested_before_it_can_be_published(self):
         self.assertIn('python -m unittest discover -s tests -p "test_*.py" -t .', self.script)
@@ -325,7 +288,7 @@ class Workflow(unittest.TestCase):
         self.assertIn("packaging/macos/smoke_test.sh dist/KanzonasPDF.app smoke-macos.png", self.script)
         finish = self.steps["Finish the app (Info.plist, icon, licenses; architecture and "
                             "macOS version checks)"]["run"]
-        for part in ('--arch "${{ matrix.arch }}"', '--min-macos "$MACOS_MIN"', "--adhoc-sign",
+        for part in ("--arch arm64", '--min-macos "$MACOS_MIN"', "--adhoc-sign",
                      "--licenses licenses"):
             self.assertIn(part, finish)
         self.assertEqual(self.mac["env"]["MACOS_MIN"], "14.4")
@@ -359,7 +322,7 @@ class Workflow(unittest.TestCase):
         for s in self.mac["steps"]:
             self.assertNotIn("action-gh-release", s.get("uses", ""))
 
-    def test_the_release_carries_both_disk_images(self):
+    def test_the_release_carries_the_disk_image(self):
         pub = self.jobs["publish"]
         self.assertIn("macos", pub["needs"])
         steps = {s.get("name"): s for s in pub["steps"]}
@@ -368,20 +331,23 @@ class Workflow(unittest.TestCase):
         dl = [s for s in pub["steps"] if "download-artifact" in s.get("uses", "")
               and "macos" in str(s.get("with"))]
         self.assertEqual(len(dl), 1)
-        self.assertTrue(dl[0]["with"]["merge-multiple"])
+        # the artifact the macos job uploads is the one publish downloads
+        up = [s for s in self.mac["steps"] if "upload-artifact" in s.get("uses", "")
+              and "dmg" in str(s.get("with"))][0]["with"]
+        self.assertEqual(up["name"], "KanzonasPDF-v${{ steps.ver.outputs.version }}-macos-arm64")
+        self.assertEqual(dl[0]["with"]["name"],
+                         "KanzonasPDF-v${{ needs.macos.outputs.version }}-macos-arm64")
+        self.assertEqual(up["path"], "KanzonasPDF-macos-arm64.dmg")
         sums = steps["Checksums (SHA-256) of the downloads"]["run"]
         rel = steps["Publish release"]["with"]
-        for arch in ("arm64", "x86_64"):
-            name = f"KanzonasPDF-macos-{arch}.dmg"
-            self.assertIn(name, sums)
-            self.assertIn("release/" + name, rel["files"])
-            self.assertIn(name, rel["body"])
-            # the artifact the macos job uploads is the one publish downloads
-            self.assertIn(f"path: {name}".replace("arm64", "${{ matrix.arch }}")
-                          .replace("x86_64", "${{ matrix.arch }}"), self.text)
-        self.assertIn("Open Anyway", rel["body"])
-        self.assertIn("Privacy & Security", rel["body"])
-        self.assertIn("shasum -a 256", rel["body"])
+        name = "KanzonasPDF-macos-arm64.dmg"
+        self.assertIn(name, sums)
+        self.assertIn("release/" + name, rel["files"])
+        self.assertIn(name, rel["body"])
+        self.assertNotIn("x86_64.dmg", self.text)
+        for word in ("Apple silicon (M1 or newer)", "14.4", "no version for Intel Macs",
+                     "Open Anyway", "Privacy & Security", "shasum -a 256"):
+            self.assertIn(word, rel["body"])
 
 
 class Readme(unittest.TestCase):
@@ -389,9 +355,10 @@ class Readme(unittest.TestCase):
         with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as f:
             text = f.read()
         self.assertIn("### macOS (disk image)", text)
-        for word in ("KanzonasPDF-macos-arm64.dmg", "KanzonasPDF-macos-x86_64.dmg",
+        for word in ("KanzonasPDF-macos-arm64.dmg", "Apple silicon", "no version for Intel Macs",
                      "Open Anyway", "Privacy & Security", "shasum -a 256"):
             self.assertIn(word, text)
+        self.assertNotIn("x86_64.dmg", text)
         self.assertNotIn("no macOS version", text)
 
 

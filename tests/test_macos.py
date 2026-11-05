@@ -3,9 +3,9 @@ opens (QFileOpenEvent) reach the window; About, Preferences and Quit are in the 
 menu and nothing else is moved there; Quit is Command-Q and closes every window; Replace
 text leaves Command-H to macOS; tool tips and the manual's shortcut table say Cmd and
 Option; the fonts are looked for in the Mac's font folders; settings and the theme say
-"system", not "Windows"; the app never replaces itself (Download, with the disk image for
-this kind of Mac); the self-test reads the Mac's peak memory in bytes. Windows and Linux keep
-their own ways (checked where it matters).
+"system", not "Windows"; the app never replaces itself (Download names the disk image, which
+is for Apple silicon only: an Intel Mac is told there's none yet); the self-test reads the
+Mac's peak memory in bytes. Windows and Linux keep their own ways (checked where it matters).
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_macos
 """
@@ -79,9 +79,11 @@ class Keys(unittest.TestCase):
 
 class Pieces(unittest.TestCase):
     def test_the_disk_image_for_this_kind_of_mac(self):
-        self.assertEqual(macos.dmg_name("arm64"), "KanzonasPDF-macos-arm64.dmg")
-        self.assertEqual(macos.dmg_name("x86_64"), "KanzonasPDF-macos-x86_64.dmg")
-        self.assertEqual(macos.machine("aarch64"), "arm64")
+        # (Apple silicon only: one disk image, none for Intel Macs)
+        self.assertEqual(macos.DMG, "KanzonasPDF-macos-arm64.dmg")
+        self.assertFalse(macos.intel("arm64"))
+        self.assertFalse(macos.intel("aarch64"))
+        self.assertTrue(macos.intel("x86_64"))
 
     def test_a_pdfs_helvetica_is_written_with_the_built_in_one(self):
         # (a Mac has Helvetica, Times and Courier installed; Windows and Linux use the
@@ -266,7 +268,7 @@ class Updates(unittest.TestCase):
             self.assertFalse(updates.can_install_update())
             self.assertFalse(updates.can_update_appimage())
 
-    def test_download_says_which_disk_image(self):
+    def update_box_text(self, machine):
         w = window("darwin")
         self.addCleanup(close, w)
         w._upd = mock.Mock(release={"tag_name": "v99"}, releases=[], manual=True)
@@ -276,11 +278,22 @@ class Updates(unittest.TestCase):
             shown.append(" ".join(lab.text() for lab in dlg.findChildren(QLabel)))
             return 0
         with mac(), mock.patch.object(QDialog, "exec", fake_exec), \
-                mock.patch.object(macos.platform, "machine", lambda: "arm64"):
+                mock.patch.object(macos.platform, "machine", lambda: machine):
             self.assertIsNone(w._self_update_url())
             w._update_box("99", "https://github.com/x/releases/tag/v99")
-        self.assertIn("KanzonasPDF-macos-arm64.dmg", shown[0])
         self.assertNotIn("Update now", shown[0])
+        return shown[0]
+
+    def test_download_names_the_disk_image(self):
+        text = self.update_box_text("arm64")
+        self.assertIn("KanzonasPDF-macos-arm64.dmg", text)
+        self.assertNotIn("Intel", text)
+
+    def test_an_intel_mac_isnt_offered_a_download_that_cant_run(self):
+        # (run from source, or Intel code run by Rosetta 2: the disk image is Apple silicon's)
+        text = self.update_box_text("x86_64")
+        self.assertNotIn(".dmg", text)
+        self.assertIn("no version for Intel Macs yet", text)
 
 
 class Manual(unittest.TestCase):
@@ -320,7 +333,9 @@ class Manual(unittest.TestCase):
         for html in (manual.MANUAL, manual_es.MANUAL):
             start = html.index('<h2 id="macos">')
             chapter = html[start:html.index("<h2", start + 5)]
-            for word in ("KanzonasPDF-macos-arm64.dmg", "KanzonasPDF-macos-x86_64.dmg",
+            self.assertNotIn("x86_64.dmg", chapter)
+            self.assertIn("Intel", chapter)                 # (says there's none yet)
+            for word in ("KanzonasPDF-macos-arm64.dmg", "Apple silicon", "14.4",
                          "shasum -a 256", "~/Library/Fonts",
                          "com.kanzonaspdf.KanzonasPDF.plist"):
                 self.assertIn(word, chapter)

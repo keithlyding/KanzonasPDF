@@ -182,12 +182,12 @@ Check a download against the release's `SHA256SUMS.txt` with `sha256sum Kanzonas
 
 ### macOS (disk image)
 
-KanzonasPDF runs on macOS 14.4 (Sonoma) or newer, on Apple silicon and Intel Macs:
+KanzonasPDF runs on Macs with Apple silicon (M1 or newer; Apple menu > About This Mac says
+"Chip Apple M…") with macOS 14.4 (Sonoma) or newer. There's no version for Intel Macs yet; one
+may come later if people ask for it.
 
-1. Download the disk image for your Mac from the newest release on the
-   [Releases page](https://github.com/keithlyding/KanzonasPDF/releases):
-   **`KanzonasPDF-macos-arm64.dmg`** for a Mac with Apple silicon (M1 or later; Apple menu >
-   About This Mac says "Chip Apple M…"), or **`KanzonasPDF-macos-x86_64.dmg`** for an Intel Mac.
+1. Download **`KanzonasPDF-macos-arm64.dmg`** from the newest release on the
+   [Releases page](https://github.com/keithlyding/KanzonasPDF/releases).
 2. Open it and drag **KanzonasPDF** onto the **Applications** folder next to it. Eject the disk
    image, and start KanzonasPDF from Applications.
 3. **The first time: "Open Anyway".** KanzonasPDF isn't signed and notarized by Apple yet (that
@@ -199,8 +199,7 @@ KanzonasPDF runs on macOS 14.4 (Sonoma) or newer, on Apple silicon and Intel Mac
    macOS asks again after you install a new version.
 
 Only do this with a disk image from this project's Releases page. Check it first against the
-release's `SHA256SUMS.txt` in Terminal: `shasum -a 256 KanzonasPDF-macos-arm64.dmg` (or the
-Intel one).
+release's `SHA256SUMS.txt` in Terminal: `shasum -a 256 KanzonasPDF-macos-arm64.dmg`.
 
 **Opening PDFs:** double-click them, use Open With, or drag them onto KanzonasPDF in the Dock;
 a PDF opened while it runs opens as a new tab. To open every PDF with KanzonasPDF, select a PDF
@@ -245,7 +244,8 @@ Applications to the Trash (and delete those two to remove your settings and file
 
 ## Known limitations
 
-- Windows, Linux on 64-bit x86 PCs (AppImage) and macOS 14.4 or newer (Apple silicon and Intel).
+- Windows, Linux on 64-bit x86 PCs (AppImage) and macOS 14.4 or newer on Apple silicon (M1 or
+  newer); no version for Intel Macs yet.
   On Linux and macOS, signing with certificates from the Windows certificate store isn't
   available (use a personal certificate or a .pfx/.p12 file; the macOS keychain isn't used), and
   on Linux printing needs a printer set up in the system (CUPS).
@@ -286,9 +286,7 @@ the libraries it needs). Or: `pip install -r requirements.txt`, then `python run
 `QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -t .`
 
 **Run from source (macOS):** `python3 -m pip install -r requirements.txt`, then
-`python3 run.py`. (On an Intel Mac, first run `python3 packaging/macos/pymupdf_standin.py wheels`
-and add `--find-links wheels -c constraints.txt` to the pip command: PyMuPDF 2.0 has no Intel
-Mac build of its own.)
+`python3 run.py` (on a Mac with Apple silicon: PyMuPDF 2.0 has no Intel Mac build).
 
 **Self-test:** `python -m kanzonas --selftest selftest.log` checks the main features, the
 manual and the performance budget. The Windows build runs it on the packaged app, the installer

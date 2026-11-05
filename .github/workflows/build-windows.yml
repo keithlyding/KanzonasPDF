@@ -490,26 +490,16 @@ jobs:
           if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------------------
-  # macOS: KanzonasPDF.app in a disk image, one for each kind of Mac (a universal app isn't
-  # possible: PyMuPDF, ONNX Runtime, OpenCV and NumPy publish separate Apple silicon and
-  # Intel builds, only Qt a universal one). Built on the oldest macOS GitHub still offers;
-  # the app says it runs on MACOS_MIN and the build fails if anything in it needs a newer
-  # macOS (Qt 6.12 needs macOS 14.4). Each kind of Mac builds and tests its own app: GitHub's
-  # Intel Macs (a 2018 Mac mini's i7-8700B, 4 CPUs) are 3 to 5 times slower than the other
-  # build machines, and the Intel app is slower there than the speed budgets allow (Rosetta 2
-  # on Apple silicon was slower still). Unsigned for now: people allow it once in System
-  # Settings > Privacy & Security > Open Anyway (see the signing steps below).
+  # macOS: KanzonasPDF.app in a disk image, for Macs with Apple silicon (M1 and newer) only,
+  # the owner's decision: no Intel Mac build for now (PyMuPDF 2.0 and recent ONNX Runtime and
+  # cryptography have no Intel Mac builds, and GitHub's Intel Macs miss the speed budgets).
+  # Built on the oldest macOS GitHub still offers; the app says it runs on MACOS_MIN and the
+  # build fails if anything in it needs a newer macOS (Qt 6.12 needs macOS 14.4). Unsigned
+  # for now: people allow it once in System Settings > Privacy & Security > Open Anyway (see
+  # the signing steps below).
   macos:
-    name: macos (${{ matrix.arch }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: arm64                  # Apple silicon (M1 and later)
-            runner: macos-15
-          - arch: x86_64                 # Intel
-            runner: macos-15-intel
-    runs-on: ${{ matrix.runner }}
+    name: macos (arm64)
+    runs-on: macos-15
     timeout-minutes: 120
     outputs:
       version: ${{ steps.ver.outputs.version }}
@@ -537,21 +527,14 @@ jobs:
         run: |
           echo "$(uname -m) Mac, macOS $(sw_vers -productVersion), $(sysctl -n machdep.cpu.brand_string), $(sysctl -n hw.ncpu) CPUs"
           echo "Python: $(python -c 'import platform, sys; print(platform.machine(), sys.version)')"
-          test "$(uname -m)" = "${{ matrix.arch }}"
-          test "$(python -c 'import platform; print(platform.machine())')" = "${{ matrix.arch }}"
+          test "$(uname -m)" = arm64
+          test "$(python -c 'import platform; print(platform.machine())')" = arm64
 
       - name: Install dependencies
         run: |
-          extra=""
-          if [ "${{ matrix.arch }}" = x86_64 ]; then
-            # PyMuPDF 2.0 has no Intel Mac build; its engine, pymupdf-lite, does (see the script)
-            python packaging/macos/pymupdf_standin.py "$RUNNER_TEMP/wheels"
-            extra="--find-links $RUNNER_TEMP/wheels"
-          fi
           # (wheels only: a library built here from source would link to the build machine's
-          # own libraries, which need its newer macOS; constraints.txt pins the last versions
-          # with an Intel Mac build where newer ones have none)
-          python -m pip install --only-binary :all: $extra -r requirements.txt -c constraints.txt pyinstaller
+          # own libraries, which need its newer macOS)
+          python -m pip install --only-binary :all: -r requirements.txt -c constraints.txt pyinstaller
           # (only one OpenCV, as on Windows and Linux: the headless one pinned in constraints.txt)
           v=$(sed -n 's/^opencv-python-headless==\([0-9.]*\).*/\1/p' constraints.txt)
           test -n "$v"
@@ -595,7 +578,7 @@ jobs:
       - name: Finish the app (Info.plist, icon, licenses; architecture and macOS version checks)
         run: |
           python packaging/macos/make_app.py finish dist/KanzonasPDF.app \
-            --version "${{ steps.ver.outputs.version }}" --arch "${{ matrix.arch }}" \
+            --version "${{ steps.ver.outputs.version }}" --arch arm64 \
             --min-macos "$MACOS_MIN" --licenses licenses --adhoc-sign
           plutil -p dist/KanzonasPDF.app/Contents/Info.plist
 
@@ -636,7 +619,7 @@ jobs:
 
       - name: Disk image
         run: |
-          dmg="KanzonasPDF-macos-${{ matrix.arch }}.dmg"
+          dmg="KanzonasPDF-macos-arm64.dmg"
           python packaging/macos/make_app.py dmg dist/KanzonasPDF.app "$dmg"
           size=$(stat -f %z "$dmg")
           if [ "$size" -gt $((MAX_DMG_MB * 1000000)) ]; then
@@ -660,7 +643,7 @@ jobs:
           MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
           MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
         run: |
-          dmg="KanzonasPDF-macos-${{ matrix.arch }}.dmg"
+          dmg="KanzonasPDF-macos-arm64.dmg"
           codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$dmg"
           xcrun notarytool submit "$dmg" --apple-id "$MACOS_NOTARY_APPLE_ID" \
             --team-id "$MACOS_NOTARY_TEAM_ID" --password "$MACOS_NOTARY_PASSWORD" --wait
@@ -669,15 +652,15 @@ jobs:
 
       - uses: actions/upload-artifact@v6
         with:
-          name: KanzonasPDF-v${{ steps.ver.outputs.version }}-macos-${{ matrix.arch }}
-          path: KanzonasPDF-macos-${{ matrix.arch }}.dmg
+          name: KanzonasPDF-v${{ steps.ver.outputs.version }}-macos-arm64
+          path: KanzonasPDF-macos-arm64.dmg
           compression-level: 0
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v6
         if: failure()
         with:
-          name: macos-${{ matrix.arch }}-selftest-log
+          name: macos-arm64-selftest-log
           path: |
             selftest-macos.log
             smoke-macos.png
@@ -740,8 +723,7 @@ jobs:
 
       - uses: actions/download-artifact@v6
         with:
-          pattern: KanzonasPDF-v${{ needs.macos.outputs.version }}-macos-*
-          merge-multiple: true
+          name: KanzonasPDF-v${{ needs.macos.outputs.version }}-macos-arm64
           path: release
 
       - name: Checksums (SHA-256) of the downloads
@@ -751,7 +733,7 @@ jobs:
           mv "dist-installer/KanzonasPDF-v$VERSION-setup.exe" .
           chmod +x KanzonasPDF-x86_64.AppImage
           sha256sum "KanzonasPDF-v$VERSION-setup.exe" KanzonasPDF-portable.zip KanzonasPDF-windows.zip \
-            KanzonasPDF-x86_64.AppImage KanzonasPDF-macos-arm64.dmg KanzonasPDF-macos-x86_64.dmg \
+            KanzonasPDF-x86_64.AppImage KanzonasPDF-macos-arm64.dmg \
             winget-manifests.zip > ../SHA256SUMS.txt
           cat ../SHA256SUMS.txt
           { echo "text<<KZSUMS"; cat ../SHA256SUMS.txt; echo "KZSUMS"; } >> "$GITHUB_OUTPUT"
@@ -781,8 +763,8 @@ jobs:
             **Linux (64-bit PC; Ubuntu 22.04, Debian 12, Fedora 36 or newer):** download `KanzonasPDF-x86_64.AppImage`,
             make it executable (`chmod +x KanzonasPDF-x86_64.AppImage`, or Properties > Allow executing) and run it.
             To update, replace the file with the new one.
-            **macOS 14.4 (Sonoma) or newer:** download `KanzonasPDF-macos-arm64.dmg` for a Mac with Apple silicon (M1 or later)
-            or `KanzonasPDF-macos-x86_64.dmg` for an Intel Mac, open it and drag KanzonasPDF to Applications.
+            **Mac with Apple silicon (M1 or newer), macOS 14.4 (Sonoma) or newer:** download `KanzonasPDF-macos-arm64.dmg`,
+            open it and drag KanzonasPDF to Applications. (There's no version for Intel Macs yet.)
             It isn't signed by Apple yet, so the first time macOS stops it ("Apple could not verify..."): click Done, then
             open System Settings > Privacy & Security, click **Open Anyway** next to "KanzonasPDF was blocked" and confirm.
             You do this once for each new version. To update, drag the new one to Applications and choose Replace.
@@ -803,5 +785,4 @@ jobs:
             release/KanzonasPDF-windows.zip
             release/KanzonasPDF-x86_64.AppImage
             release/KanzonasPDF-macos-arm64.dmg
-            release/KanzonasPDF-macos-x86_64.dmg
             release/winget-manifests.zip

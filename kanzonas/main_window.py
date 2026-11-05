@@ -5123,11 +5123,15 @@ class MainWindow(QMainWindow):
         how = tr("Download opens the release page in your browser.")
         if sys.platform == "darwin":
             # (an unsigned Mac app doesn't replace itself: the new disk image is installed
-            # like the first one)
-            from .macos import dmg_name
-            how += " " + tr("Download {file} there, open it and drag KanzonasPDF to "
-                            "Applications, replacing the old one. Your settings are kept."
-                            ).format(file=dmg_name())
+            # like the first one; there is none for Intel Macs)
+            from . import macos
+            if macos.intel():
+                how += " " + tr("The Mac version is for Macs with Apple silicon (M1 or "
+                                "newer) only: there's no version for Intel Macs yet.")
+            else:
+                how += " " + tr("Download {file} there, open it and drag KanzonasPDF to "
+                                "Applications, replacing the old one. Your settings are "
+                                "kept.").format(file=macos.DMG)
         info = QLabel((self._update_now_text() + "\n\n" if self._self_update_url() else "")
                       + how)
         info.setWordWrap(True)

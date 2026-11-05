@@ -11,8 +11,8 @@ sys.platform == "darwin"; Windows and Linux never call it).
   text ("Options...", "Exit ...", Spanish ones) never moves a command there.
 - Qt maps the Ctrl of every shortcut to Command (Ctrl+S is Command-S) and Alt to Option.
   mac_keys() says so in texts that name keys (tool tips, the manual's shortcut table).
-- The release has one disk image per kind of Mac (dmg_name()); the app is unsigned, so it
-  never replaces itself: Download opens the release page.
+- The release has one disk image, for Macs with Apple silicon (DMG; none for Intel Macs yet);
+  the app is unsigned, so it never replaces itself: Download opens the release page.
 """
 
 import os
@@ -21,24 +21,20 @@ import re
 import sys
 
 BUNDLE_ID = "io.github.keithlyding.kanzonaspdf"
-# the release's disk images (names that never change, like the AppImage's)
-DMG = {"arm64": "KanzonasPDF-macos-arm64.dmg", "x86_64": "KanzonasPDF-macos-x86_64.dmg"}
+# the release's disk image (a name that never changes, like the AppImage's): Macs with Apple
+# silicon only, for now (no Intel Mac build)
+DMG = "KanzonasPDF-macos-arm64.dmg"
 
 
 def is_mac():
     return sys.platform == "darwin"
 
 
-def machine(name=None):
-    """'arm64' (Apple silicon) or 'x86_64' (Intel) for this Mac (or for a platform.machine()
-    name)."""
+def intel(name=None):
+    """True on an Intel Mac (or Intel code run by Rosetta 2), which the release has no
+    disk image for. name: a platform.machine() name instead of this computer's."""
     m = (name if name is not None else platform.machine()).lower()
-    return "arm64" if m in ("arm64", "aarch64") else "x86_64"
-
-
-def dmg_name(name=None):
-    """The release's disk image for this kind of Mac."""
-    return DMG[machine(name)]
+    return m not in ("arm64", "aarch64")
 
 
 # ---- files opened from Finder ------------------------------------------------------------
