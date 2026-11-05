@@ -550,6 +550,12 @@ class MainWindow(QMainWindow):
         self.a_open = self._act(tr("&Open..."), self.open_dialog, QKeySequence.Open)
         self.a_save = self._act(tr("&Save"), self.save, QKeySequence.Save)
         self.a_save_as = self._act(tr("Save &As..."), self.save_as, QKeySequence.SaveAs)
+        self.a_save_pdfa = self._act(tr("Save as P&DF/A..."), self.save_as_pdfa,
+                                     tip=tr("Save an archival copy (PDF/A-2b): fonts embedded, "
+                                            "colors defined, no scripts; the tab then shows it"))
+        self.a_check_pdfa = self._act(tr("Chec&k PDF/A..."), self.check_pdfa,
+                                      tip=tr("List what keeps this document from being PDF/A, "
+                                             "page by page, and what Save as PDF/A fixes"))
         self.a_print = self._act(tr("&Print..."), self.print_doc, QKeySequence.Print)
         self.a_close = self._act(tr("&Close tab"), lambda: self.close_tab(self.tabs.currentIndex()),
                                  QKeySequence.Close)
@@ -985,7 +991,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_new, self.a_open])
         self.recent_menu = m.addMenu(tr("Open &recent"))
         self._rebuild_recent()
-        m.addActions([self.a_save, self.a_save_as])
+        m.addActions([self.a_save, self.a_save_as, self.a_save_pdfa, self.a_check_pdfa])
         m.addActions([self.a_combine, self.a_from_images])
         em = m.addMenu(tr("&Export to"))
         em.addActions(self.export_actions)
@@ -1414,7 +1420,8 @@ class MainWindow(QMainWindow):
     def _update_ui(self):
         v = self.view()
         has = v is not None
-        for a in (self.a_save, self.a_save_as, self.a_print, self.a_close, self.a_detach,
+        for a in (self.a_save, self.a_save_as, self.a_save_pdfa, self.a_check_pdfa,
+                  self.a_print, self.a_close, self.a_detach,
                   self.a_find,
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
@@ -1713,6 +1720,19 @@ class MainWindow(QMainWindow):
         self.settings.setValue("last_dir", os.path.dirname(v.path))
         self._update_ui()
         return True
+
+    def save_as_pdfa(self):
+        v = self.view()
+        if not v:
+            return False
+        from . import pdfa_ui
+        return pdfa_ui.save_as_pdfa(self, v)
+
+    def check_pdfa(self):
+        v = self.view()
+        if v is not None:
+            from . import pdfa_ui
+            pdfa_ui.check_pdfa(self, v)
 
     def _confirm_close(self, v):
         v.commit_pending()               # typed text not yet confirmed counts as a change

@@ -623,6 +623,9 @@ class _Pass:
             if self.need_appearances:
                 self.problem("forms", None, tr("The form leaves drawing its fields to the "
                                                "viewer (NeedAppearances)."))
+                if self.fix:
+                    # (every field gets its appearance drawn here instead: _make_appearances)
+                    m.pdf_dict_dels(form, "NeedAppearances")
         else:
             self.need_appearances = False
         if _has(cat, "Perms"):
@@ -1460,7 +1463,6 @@ class _Pass:
             props["creationDate"] = ""          # (one that can't be read: dropped from both)
         doc.set_metadata(props)
         doc.set_xml_metadata(xmp_packet(props, self.part, now))
-        self.notes.insert(0, tr("Saved as PDF/A-{part}b.").format(part=self.part))
 
 
 class _Stopped(Exception):
