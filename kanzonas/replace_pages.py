@@ -17,6 +17,8 @@ new /Rect), never written anew, so markups of other programs come through exactl
 What was drawn into the old page belongs to the old drawing and goes with it: the underline
 of a link made with KanzonasPDF and the text a link wrote are drawn again on the new drawing;
 a link over words that aren't at the same place on the new drawing is reported to check.
+The layers the new drawings use join the document's /OCProperties (MuPDF reads that list once,
+when a file is opened: the Layers tab shows them after the file is opened again).
 """
 
 import json
@@ -159,7 +161,98 @@ def replace(doc, src, pairs, scale=True):
             report["check"].append((i, moved))
         _sync(page)
         report["pages"] += 1
+    _register_layers(pdf, spdf, graft, [j for _i, j in pairs])
     return report
+
+
+# ---- layers (optional content) of the new drawings -----------------------------------------
+def _used_layers(spdf, pages):
+    """Object numbers of the layers (OCGs) the new file's pages draw with: named in their
+    resources' /Properties (directly or through a membership dictionary) or on their forms
+    and pictures (/OC), at any depth."""
+    found, seen = set(), set()
+    name = m.pdf_new_name
+
+    def layer(obj):
+        if not obj.m_internal or not m.pdf_is_dict(obj):
+            return
+        typ = m.pdf_dict_get(obj, name("Type"))
+        if m.pdf_name_eq(typ, name("OCG")) and m.pdf_is_indirect(obj):
+            found.add(m.pdf_to_num(obj))
+        elif m.pdf_name_eq(typ, name("OCMD")):
+            ocgs = m.pdf_dict_get(obj, name("OCGs"))
+            if m.pdf_is_array(ocgs):
+                for k in range(m.pdf_array_len(ocgs)):
+                    layer(m.pdf_array_get(ocgs, k))
+            else:
+                layer(ocgs)
+
+    def walk(res):
+        if not res.m_internal or not m.pdf_is_dict(res):
+            return
+        if m.pdf_is_indirect(res):
+            if m.pdf_to_num(res) in seen:
+                return
+            seen.add(m.pdf_to_num(res))
+        props = m.pdf_dict_get(res, name("Properties"))
+        if m.pdf_is_dict(props):
+            for k in range(m.pdf_dict_len(props)):
+                layer(m.pdf_dict_get_val(props, k))
+        xobjs = m.pdf_dict_get(res, name("XObject"))
+        if m.pdf_is_dict(xobjs):
+            for k in range(m.pdf_dict_len(xobjs)):
+                x = m.pdf_dict_get_val(xobjs, k)
+                if not m.pdf_is_dict(x) or (m.pdf_is_indirect(x) and m.pdf_to_num(x) in seen):
+                    continue
+                if m.pdf_is_indirect(x):
+                    seen.add(m.pdf_to_num(x))
+                layer(m.pdf_dict_get(x, name("OC")))
+                walk(m.pdf_dict_get(x, name("Resources")))
+    for j in set(pages):
+        walk(m.pdf_dict_get_inheritable(m.pdf_lookup_page_obj(spdf, j), name("Resources")))
+    return found
+
+
+def _register_layers(pdf, spdf, graft, pages):
+    """The new drawings' layers join the document's list of layers (/OCProperties), on or off
+    as in the new file, so other readers, and KanzonasPDF's Layers tab once the file is
+    opened again, can show and hide them (unlisted, they would always show)."""
+    name = m.pdf_new_name
+    sroot = m.pdf_dict_get(m.pdf_trailer(spdf), name("Root"))
+    socp = m.pdf_dict_get(sroot, name("OCProperties"))
+    if not m.pdf_is_dict(socp):
+        return
+    used = _used_layers(spdf, pages)
+    if not used:
+        return
+    off = m.pdf_dict_get(m.pdf_dict_get(socp, name("D")), name("OFF"))
+    off_nums = {m.pdf_to_num(m.pdf_array_get(off, k)) for k in range(m.pdf_array_len(off))} \
+        if m.pdf_is_array(off) else set()
+    root = m.pdf_dict_get(m.pdf_trailer(pdf), name("Root"))
+    ocp = m.pdf_dict_get(root, name("OCProperties"))
+    if not m.pdf_is_dict(ocp):
+        ocp = m.pdf_dict_put_dict(root, name("OCProperties"), 2)
+    ocgs = m.pdf_dict_get(ocp, name("OCGs"))
+    if not m.pdf_is_array(ocgs):
+        ocgs = m.pdf_dict_put_array(ocp, name("OCGs"), len(used))
+    d = m.pdf_dict_get(ocp, name("D"))
+    if not m.pdf_is_dict(d):
+        d = m.pdf_dict_put_dict(ocp, name("D"), 2)
+    order = m.pdf_dict_get(d, name("Order"))
+    have = {m.pdf_to_num(m.pdf_array_get(ocgs, k)) for k in range(m.pdf_array_len(ocgs))}
+    for num in sorted(used):
+        ref = m.pdf_graft_mapped_object(graft, m.pdf_new_indirect(spdf, num, 0))
+        if m.pdf_to_num(ref) in have:
+            continue
+        have.add(m.pdf_to_num(ref))
+        m.pdf_array_push(ocgs, ref)
+        if m.pdf_is_array(order):
+            m.pdf_array_push(order, ref)
+        if num in off_nums:
+            arr = m.pdf_dict_get(d, name("OFF"))
+            if not m.pdf_is_array(arr):
+                arr = m.pdf_dict_put_array(d, name("OFF"), 1)
+            m.pdf_array_push(arr, ref)
 
 
 def _graft_drawing(doc, pdf, i, spdf, j, graft):

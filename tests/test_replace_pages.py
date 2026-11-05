@@ -327,6 +327,34 @@ class ReplacePages(unittest.TestCase):
             self.assertEqual(d[0].get_text().split("\n")[0], "OLD 1")
         self.assertTrue(mk)
 
+    def test_the_new_drawings_layers_come_along(self):
+        v = self.view()
+        d = F.open()
+        page = sheet(d, "A-101", "NEW 1")
+        walls = d.add_ocg("A-WALL", on=False)
+        notes = d.add_ocg("A-NOTE", on=True)
+        d.add_ocg("UNUSED", on=True)
+        page.insert_text((100, 300), "wall", fontsize=12, oc=walls)
+        page.draw_rect((100, 320, 200, 360), color=(0, 0, 0), oc=notes)
+        path = os.path.join(self.tmp, "layers.pdf")
+        d.save(path)
+        d.close()
+        src = F.open(path)
+        self.docs.append(src)
+        before = canon(v._snapshot())
+        v.replace_pages(src, [(0, 0)])
+        layers = {o["name"]: o["on"] for o in v.doc.get_ocgs().values()}
+        self.assertEqual(layers, {"A-WALL": False, "A-NOTE": True})
+        out = os.path.join(self.tmp, "layers-saved.pdf")
+        v.save(out)
+        with F.open(out) as saved:
+            self.assertEqual({o["name"]: o["on"] for o in saved.get_ocgs().values()},
+                             {"A-WALL": False, "A-NOTE": True})
+            self.assertNotIn("wall", saved[0].get_text())       # (its layer is off)
+        v.undo()
+        self.assertEqual(canon(v._snapshot()), before)
+        self.assertEqual(v.doc.get_ocgs(), {})
+
     def test_a_protected_document_refuses(self):
         path = make(os.path.join(self.tmp, "locked.pdf"), [("A-101", "OLD 1")])
         locked = os.path.join(self.tmp, "locked2.pdf")
