@@ -368,10 +368,6 @@ def _text(obj):
     return ""
 
 
-def _new_name(pdf, name):
-    return m.pdf_new_name(name)
-
-
 def _ref(pdf, xref):
     return m.pdf_new_indirect(pdf, xref, 0)
 
