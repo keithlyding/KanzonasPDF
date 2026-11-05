@@ -7,6 +7,18 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.8.2
+
+**New**
+- A refreshed logo (Help > About): "Kanzonas" and "PDF" set in clean, matching letters, with "PDF" in red. It matches KanzonasCAD's logo letter for letter.
+- The "PDF" on the icon shades from red to a deeper red, as in the logo.
+
+## 1.8.2 (es)
+
+**Novedades**
+- Un logotipo renovado (Ayuda > Acerca de): "Kanzonas" y "PDF" con letras limpias y a juego, con "PDF" en rojo. Coincide letra por letra con el logotipo de KanzonasCAD.
+- El "PDF" del icono pasa del rojo a un rojo más oscuro, como en el logotipo.
+
 ## 1.8.1
 
 **Fixed**
