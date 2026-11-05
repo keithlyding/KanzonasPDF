@@ -175,7 +175,7 @@ class Workflow(unittest.TestCase):
 
     def test_the_release_waits_for_both_builds_and_carries_the_appimage(self):
         pub = self.jobs["publish"]
-        self.assertEqual(sorted(pub["needs"]), ["build", "linux"])
+        self.assertEqual(sorted(pub["needs"]), ["build", "linux", "macos"])
         self.assertIn("refs/heads/main", pub["if"])
         self.assertIn("refs/tags/v", pub["if"])
         names = [s.get("name") for s in pub["steps"]]
@@ -189,7 +189,7 @@ class Workflow(unittest.TestCase):
         self.assertIn("SHA256SUMS.txt", rel["files"])
         self.assertIn("${{ steps.sums.outputs.text }}", rel["body"])
         # (nothing in the build jobs publishes)
-        for job in ("build", "linux"):
+        for job in ("build", "linux", "macos"):
             for s in self.jobs[job]["steps"]:
                 self.assertNotIn("action-gh-release", s.get("uses", ""))
 

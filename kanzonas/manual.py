@@ -7,6 +7,7 @@ language.
 """
 
 import re
+import sys
 
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QListWidget, QTextBrowser,
@@ -143,7 +144,7 @@ drawings use very thin lines (a tenth of a point or less); at their true width t
 part of a screen pixel when zoomed out and come out pale gray. With this on they stay dark and
 legible at any zoom. Only the screen changes: printing, export, OCR, Compare and the saved
 file use the true line widths. Your choice is remembered.</li>
-<li><b>Theme:</b> View &gt; Theme (Match Windows, or Match system on Linux; Light, Dark). View &gt; Show text labels on
+<li><b>Theme:</b> View &gt; Theme (Match Windows, or Match system on Linux and macOS; Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar or ribbon button or box for a
 tooltip saying what it does and its keyboard shortcut (the one you set in Keyboard shortcuts);
 a button that holds several tools (Shapes, Measure) names the tool it shows and its key. On the
@@ -220,6 +221,19 @@ from any folder but stores settings on the computer like the installed version.<
 <li><b>Fonts:</b> Add text and Edit text use the fonts installed for fontconfig (/usr/share/fonts, ~/.local/share/fonts, ~/.fonts...): TrueType and OpenType fonts are embedded (also TrueType collections, .ttc, such as most Chinese, Japanese and Korean fonts: the first font in the file); a Type 1 font isn't, and Helvetica is used instead. Sans Serif, Serif and Monospace use the font your system shows for them.</li>
 <li><b>Differences from Windows:</b> View &gt; Theme's first choice is <b>Match system</b> (the desktop's light or dark setting); digital signing uses your personal certificate or a .pfx/.p12 file (there's no Windows certificate store); printing needs a printer set up in the system (CUPS); the Open and Save windows are the desktop's own or Qt's.</li>
 <li><b>Remove:</b> untick the Preferences option above, then delete the AppImage. To remove your settings and files too, delete ~/.config/KanzonasPDF and ~/.local/share/KanzonasPDF.</li>
+</ul>
+
+<h2 id="macos">KanzonasPDF on macOS</h2>
+<ul>
+<li><b>Install:</b> from the Releases page, download the disk image for your Mac: <b>KanzonasPDF-macos-arm64.dmg</b> for a Mac with Apple silicon (M1 or later: Apple menu &gt; About This Mac says Chip Apple M...) or <b>KanzonasPDF-macos-x86_64.dmg</b> for a Mac with an Intel processor. It needs macOS 14 (Sonoma) or later. Open the disk image, drag KanzonasPDF onto the Applications folder beside it, then eject the disk image (start KanzonasPDF from Applications, not from the disk image).</li>
+<li><b>The first time you open it (Open Anyway):</b> KanzonasPDF isn't signed and notarized by Apple yet, so macOS stops it the first time and says Apple could not verify it is free of malware. Click <b>Done</b> (not Move to Trash). Then open System Settings &gt; <b>Privacy &amp; Security</b>, scroll down to Security, where it says KanzonasPDF was blocked, click <b>Open Anyway</b>, confirm with your password or Touch ID, and click <b>Open Anyway</b> once more. After that it opens like any other app. macOS asks again after you install a new version. Only do this with a disk image from this project's Releases page; you can check it first in Terminal with <code>shasum -a 256 KanzonasPDF-macos-arm64.dmg</code> (or the Intel one): the result must match the file's line in SHA256SUMS.txt on the release.</li>
+<li><b>Opening PDFs:</b> double-click a PDF, use Open With in Finder, drag PDFs onto KanzonasPDF in the Dock, or use File &gt; Open. A PDF opened while KanzonasPDF runs opens as a new tab in the same window. To open every PDF with it: select a PDF in Finder, choose File &gt; Get Info, pick KanzonasPDF under Open with and click <b>Change All...</b>.</li>
+<li><b>Keys:</b> where this manual says Ctrl, press Command (&#8984;), and where it says Alt, press Option (&#8997;): Ctrl+S is Command-S, Ctrl+click is Command-click, Alt+click is Option-click, Ctrl+wheel is Command with the mouse wheel. The menus, the tool tips and the Keyboard shortcuts table of this manual show the Mac's keys. About, Preferences (Command-K) and <b>Quit</b> (Command-Q, which closes every window, asking about unsaved changes) are in the KanzonasPDF menu, left of File. Replace text is Command-Option-F (Command-H hides the app on a Mac). For the function keys (F1 this manual, F11 CAD mode, F12 night mode...) hold fn on most Mac keyboards; if macOS uses a key for itself, change it in View &gt; Keyboard shortcuts or in System Settings &gt; Keyboard. The Delete key (&#9003;) deletes what's selected.</li>
+<li><b>Update:</b> KanzonasPDF tells you when there's a new version (Help &gt; Check for updates); on a Mac it doesn't replace itself. <b>Download</b> opens the release page: download the disk image for your Mac, drag KanzonasPDF onto Applications and choose Replace. Your settings are kept. If macOS stops the new version, allow it again with Open Anyway (above).</li>
+<li><b>Your files:</b> settings are kept in ~/Library/Preferences/com.kanzonaspdf.KanzonasPDF.plist; signatures, stamp pictures, your certificate and backups in ~/Library/Application Support/KanzonasPDF/KanzonasPDF (Preferences &gt; General shows both).</li>
+<li><b>Fonts:</b> Add text and Edit text use the fonts in /System/Library/Fonts, /Library/Fonts and your own ~/Library/Fonts: TrueType and OpenType fonts and TrueType collections (.ttc: the first font in the file) are embedded; other kinds (.dfont, Type 1) aren't, and Helvetica is used instead.</li>
+<li><b>Differences from Windows:</b> View &gt; Theme's first choice is <b>Match system</b> (the Mac's Light or Dark appearance); digital signing uses your personal certificate or a .pfx/.p12 file (there's no Windows certificate store, and the macOS keychain isn't used); the menu bar is always at the top of the screen, so View &gt; Show menu bar isn't offered; there's no portable version.</li>
+<li><b>Remove:</b> drag KanzonasPDF from Applications to the Trash. To remove your settings and files too, delete the two places above.</li>
 </ul>
 
 <h2 id="navigate">Moving around</h2>
@@ -1136,7 +1150,7 @@ with your saved signature or initials and the date.</li>
 <li><b>Digitally sign with certificate</b>, with an optional lock against changes (certify).
 Choose where the certificate comes from:
 <ul>
-<li><b>Certificate stored in Windows</b> (Windows only; not shown on Linux): the list shows the signing certificates in your
+<li><b>Certificate stored in Windows</b> (Windows only; not shown on Linux or macOS): the list shows the signing certificates in your
 Windows Personal store, the same ones Adobe Acrobat and PDF-XChange Editor use (open
 certmgr.msc &gt; Personal &gt; Certificates to see them). Windows does the signing, so
 certificates whose key can't be copied, smart cards and USB tokens work too; Windows asks for
@@ -1282,7 +1296,7 @@ the same as that command, so you can change it in either place. <b>OK</b> uses y
 closes the window; <b>Apply</b> uses them right away and leaves the window open, so you can see
 the effect and keep adjusting; <b>Cancel</b> closes it without the changes made since the last
 Apply.</li>
-<li><b>General:</b> theme (Match Windows, or Match system on Linux; Light, Dark), <b>Language</b> (Automatic, the language
+<li><b>General:</b> theme (Match Windows, or Match system on Linux and macOS; Light, Dark), <b>Language</b> (Automatic, the language
 of Windows or of the system; English; Español: menus, messages and this manual; a change shows the next time
 KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, Show menu bar,
 Show text labels on toolbars, Check for updates automatically, and on Linux Add KanzonasPDF to the
@@ -1409,11 +1423,39 @@ settings...).</li>
 
 
 def manual_html():
-    """The manual in the interface's language: Spanish when it's in Spanish, else English."""
+    """The manual in the interface's language: Spanish when it's in Spanish, else English
+    (on a Mac, its keyboard shortcuts table with the Mac's keys)."""
     if language() == "es":
         from . import manual_es
-        return manual_es.MANUAL
-    return MANUAL
+        html = manual_es.MANUAL
+    else:
+        html = MANUAL
+    if sys.platform == "darwin":
+        html = for_mac(html, language() == "es")
+    return html
+
+
+def for_mac(html, spanish=False):
+    """The manual with its keyboard shortcuts table as a Mac's keyboard has them: Cmd where
+    it says Ctrl, Option where it says Alt, Quit (Cmd+Q) added, Replace text on
+    Cmd+Option+F (Cmd+H hides the program on a Mac), and no menu bar row (the Mac's menu bar
+    is always there)."""
+    from .macos import mac_keys
+    start = html.find('<h2 id="shortcuts">')
+    end = html.find("</table>", start)
+    if start < 0 or end < 0:
+        return html
+    option = "Opci\u00f3n" if spanish else "Option"
+    table = html[start:end]
+    table = table.replace("<td>Ctrl+H</td>", "<td>Ctrl+Alt+F</td>")
+    table = re.sub(r"<tr><td>Ctrl\+Shift\+M</td>.*?</tr>\n", "", table)
+    table = table.replace("<td>Alt (", "<td>%s (" % option)
+    table = mac_keys(table, symbols=False, option=option)
+    quit_row = "<tr><td>Cmd+Q</td><td>%s</td></tr>\n" % (
+        "Salir (men\u00fa KanzonasPDF)" if spanish else "Quit (KanzonasPDF menu)")
+    head = table.find("</tr>\n") + len("</tr>\n")
+    table = table[:head] + quit_row + table[head:]
+    return html[:start] + table + html[end:]
 
 
 def sections():

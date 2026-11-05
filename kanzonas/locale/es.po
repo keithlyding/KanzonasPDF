@@ -7484,3 +7484,6 @@ msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y
 
 msgid "type {0} and press Enter"
 msgstr "escriba {0} y presione Enter"
+
+msgid "Download {file} there, open it and drag KanzonasPDF to Applications, replacing the old one. Your settings are kept."
+msgstr "Descargue allí {file}, ábralo y arrastre KanzonasPDF a Aplicaciones, reemplazando el anterior. Su configuración se conserva."

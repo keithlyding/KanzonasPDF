@@ -371,8 +371,13 @@ def font_dirs():
     """The folders installed fonts are in. Windows: the system's and this user's Fonts
     folders. Linux: the folders fontconfig uses (the ones in its fonts.conf, the user's
     ~/.local/share/fonts and ~/.fonts, /usr/share/fonts, /usr/local/share/fonts and the
-    fonts folder of every XDG data folder), each once, none inside another."""
-    if os.name == "nt" or sys.platform == "darwin":
+    fonts folder of every XDG data folder), each once, none inside another. macOS: its
+    system, shared and user Fonts folders."""
+    if sys.platform == "darwin" and os.name != "nt":
+        # macOS (the font lookup is shared: no Mac build, but run from source it works)
+        return ["/System/Library/Fonts", "/Library/Fonts",
+                os.path.expanduser("~/Library/Fonts")]
+    if os.name == "nt":
         return [os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"),
                 os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows",
                              "Fonts"),

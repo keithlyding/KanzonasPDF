@@ -71,8 +71,8 @@ class PreferencesDialog(QDialog):
         # General
         page, form = self._tab(tabs, tr("General"))
         self.theme = QComboBox()
-        linux = sys.platform.startswith("linux")
-        for key, label in (("system", tr("Match system") if linux else tr("Match Windows")),
+        unix = sys.platform != "win32"        # (Linux and macOS say the same)
+        for key, label in (("system", tr("Match system") if unix else tr("Match Windows")),
                            ("light", tr("Light")), ("dark", tr("Dark"))):
             self.theme.addItem(label, key)
         current = next((k for k, a in win.theme_actions.items() if a.isChecked()), "system")
@@ -80,7 +80,7 @@ class PreferencesDialog(QDialog):
         form.addRow(tr("Theme:"), self.theme)
         from . import i18n
         self.language = QComboBox()
-        self.language.addItem(tr("Automatic (the language of the system)") if linux else
+        self.language.addItem(tr("Automatic (the language of the system)") if unix else
                               tr("Automatic (the language of Windows)"), "auto")
         for code, name in i18n.LANGUAGES.items():
             self.language.addItem(name, code)
@@ -89,11 +89,13 @@ class PreferencesDialog(QDialog):
         form.addRow(tr("Language:"), self.language)
         for a in (win.a_ribbon, win.a_group_names, win.a_menu_bar, win.a_labels,
                   win.a_auto_updates):
+            if a is win.a_menu_bar and sys.platform == "darwin":
+                continue                # (the Mac's menu bar is always at the top of the screen)
             self._box(form, a)
         if paths.is_portable():
             note = QLabel(tr("Settings are saved in the data folder next to KanzonasPDF.exe "
                              "(portable)."))
-        elif linux:
+        elif unix:
             import os
             home = os.path.expanduser("~").rstrip("/")
 
@@ -228,7 +230,7 @@ class PreferencesDialog(QDialog):
                       "folder and deleted when you save or close the document. If KanzonasPDF "
                       "or Windows stops unexpectedly, you're offered the copies the next time "
                       "it starts. Password-protected documents aren't backed up (the copy "
-                      "wouldn't have the password).") if not linux else
+                      "wouldn't have the password).") if not unix else
                    tr("A copy of each document with unsaved changes is kept in the backups "
                       "folder and deleted when you save or close the document. If KanzonasPDF "
                       "or the computer stops unexpectedly, you're offered the copies the next "

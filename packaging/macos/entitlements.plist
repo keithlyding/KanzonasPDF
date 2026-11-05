@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Used only when the macos job signs with a Developer ID (MACOS_SIGNING "on" in
+     .github/workflows/build-windows.yml; off until there is an Apple Developer account).
+     The hardened runtime that notarization requires, with the two exceptions a PyInstaller
+     app needs: Python's ctypes makes executable memory for its callbacks (libffi), and
+     the bundled Python loads its extension modules. Nothing else (no camera, network
+     server, JIT...). -->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

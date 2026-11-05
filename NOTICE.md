@@ -4,6 +4,7 @@ KanzonasPDF is free software under the GNU AGPL-3.0 (see LICENSE). It is built o
 libraries below (the exact versions and their licenses are in `constraints.txt`):
 
 - PyMuPDF and MuPDF (Artifex), AGPL-3.0 - the PDF engine - https://github.com/pymupdf/PyMuPDF
+  (the Intel Mac app has it as pymupdf-lite, the same engine published on its own)
 - Qt for Python (PySide6), LGPL-3.0 - https://www.qt.io/qt-for-python
 - RapidOCR (rapidocr_onnxruntime), Apache-2.0, with ONNX Runtime (MIT) and OpenCV (Apache-2.0) -
   text recognition (OCR)

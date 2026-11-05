@@ -136,7 +136,7 @@ CAD usan líneas muy finas (una décima de punto o menos); con su ancho real cub
 parte de un píxel de pantalla al alejar y se ven de un gris pálido. Con esta opción activada siguen oscuras y
 legibles con cualquier zoom. Solo cambia la pantalla: la impresión, la exportación, el OCR, Comparar y el archivo
 guardado usan los anchos de línea reales. Su elección se recuerda.</li>
-<li><b>Tema:</b> Ver &gt; Tema (Igual que Windows, o Igual que el sistema en Linux; Claro, Oscuro). Ver &gt; Mostrar etiquetas de texto en las
+<li><b>Tema:</b> Ver &gt; Tema (Igual que Windows, o Igual que el sistema en Linux y macOS; Claro, Oscuro). Ver &gt; Mostrar etiquetas de texto en las
 barras de herramientas agrega nombres debajo de los iconos. Coloque el puntero sobre cualquier botón o cuadro de la barra de herramientas o de la cinta para ver una información sobre herramientas
 que indica qué hace y su método abreviado de teclado (el que haya establecido en Métodos abreviados de teclado);
 un botón que agrupa varias herramientas (Formas, Medir) nombra la herramienta que muestra y su tecla. En la
@@ -213,6 +213,19 @@ desde cualquier carpeta, pero guarda la configuración en el equipo, como la ver
 <li><b>Fuentes:</b> Agregar texto y Editar texto usan las fuentes instaladas para fontconfig (/usr/share/fonts, ~/.local/share/fonts, ~/.fonts...): las fuentes TrueType y OpenType se incrustan (también las colecciones TrueType, .ttc, como la mayoría de las fuentes chinas, japonesas y coreanas: la primera fuente del archivo); una fuente Type 1 no, y se usa Helvetica en su lugar. Sans Serif, Serif y Monospace usan la fuente que su sistema muestra para ellas.</li>
 <li><b>Diferencias con Windows:</b> la primera opción de Ver &gt; Tema es <b>Igual que el sistema</b> (el modo claro u oscuro del escritorio); la firma digital usa su certificado personal o un archivo .pfx/.p12 (no hay almacén de certificados de Windows); para imprimir hace falta una impresora configurada en el sistema (CUPS); las ventanas Abrir y Guardar son las del escritorio o las de Qt.</li>
 <li><b>Quitar:</b> desmarque la opción de Preferencias de arriba y luego elimine la AppImage. Para quitar también su configuración y sus archivos, elimine ~/.config/KanzonasPDF y ~/.local/share/KanzonasPDF.</li>
+</ul>
+
+<h2 id="macos">KanzonasPDF en macOS</h2>
+<ul>
+<li><b>Instalar:</b> en la página Releases, descargue la imagen de disco para su Mac: <b>KanzonasPDF-macos-arm64.dmg</b> para un Mac con Apple silicon (M1 o posterior: menú Apple &gt; Acerca de este Mac dice Chip Apple M...) o <b>KanzonasPDF-macos-x86_64.dmg</b> para un Mac con procesador Intel. Necesita macOS 14 (Sonoma) o posterior. Abra la imagen de disco, arrastre KanzonasPDF a la carpeta Aplicaciones que está a su lado y luego expulse la imagen de disco (abra KanzonasPDF desde Aplicaciones, no desde la imagen de disco).</li>
+<li><b>La primera vez que lo abre (Abrir igualmente):</b> KanzonasPDF aún no está firmado ni notarizado por Apple, así que macOS lo detiene la primera vez y dice que Apple no pudo verificar que esté libre de malware. Cierre el aviso con <b>OK</b> o <b>Aceptar</b> (no con Trasladar a la Papelera). Luego abra Ajustes del Sistema &gt; <b>Privacidad y seguridad</b>, desplácese hasta Seguridad, donde dice que se bloqueó KanzonasPDF, haga clic en <b>Abrir igualmente</b>, confirme con su contraseña o Touch ID y vuelva a hacer clic en <b>Abrir igualmente</b>. Después se abre como cualquier otra aplicación. macOS vuelve a preguntar después de instalar una nueva versión. Hágalo solo con una imagen de disco de la página Releases de este proyecto; puede comprobarla antes en Terminal con <code>shasum -a 256 KanzonasPDF-macos-arm64.dmg</code> (o la de Intel): el resultado debe coincidir con la línea del archivo en SHA256SUMS.txt de la versión.</li>
+<li><b>Abrir archivos PDF:</b> haga doble clic en un PDF, use Abrir con en el Finder, arrastre archivos PDF a KanzonasPDF en el Dock o use Archivo &gt; Abrir. Un PDF abierto mientras KanzonasPDF se ejecuta se abre como una nueva pestaña en la misma ventana. Para abrir todos los PDF con él: seleccione un PDF en el Finder, elija Archivo &gt; Obtener información, escoja KanzonasPDF en Abrir con y haga clic en <b>Cambiar todo...</b>.</li>
+<li><b>Teclas:</b> donde este manual dice Ctrl, pulse Comando (&#8984;), y donde dice Alt, pulse Opción (&#8997;): Ctrl+S es Comando-S, Ctrl+clic es Comando-clic, Alt+clic es Opción-clic, Ctrl+rueda es Comando con la rueda del ratón. Los menús, la información sobre herramientas y la tabla de métodos abreviados de teclado de este manual muestran las teclas del Mac. Acerca de, Preferencias (Comando-K) y <b>Salir</b> (Comando-Q, que cierra todas las ventanas y pregunta por los cambios sin guardar) están en el menú KanzonasPDF, a la izquierda de Archivo. Reemplazar texto es Comando-Opción-F (Comando-H oculta la aplicación en un Mac). Para las teclas de función (F1 este manual, F11 modo CAD, F12 modo nocturno...) mantenga pulsada fn en la mayoría de los teclados de Mac; si macOS usa una tecla para sí mismo, cámbiela en Ver &gt; Métodos abreviados de teclado o en Ajustes del Sistema &gt; Teclado. La tecla Eliminar (&#9003;) elimina lo seleccionado.</li>
+<li><b>Actualizar:</b> KanzonasPDF le avisa cuando hay una nueva versión (Ayuda &gt; Buscar actualizaciones); en un Mac no se reemplaza a sí mismo. <b>Descargar</b> abre la página de la versión: descargue la imagen de disco para su Mac, arrastre KanzonasPDF a Aplicaciones y elija Reemplazar. Su configuración se conserva. Si macOS detiene la nueva versión, vuelva a permitirla con Abrir igualmente (arriba).</li>
+<li><b>Sus archivos:</b> la configuración se guarda en ~/Library/Preferences/com.kanzonaspdf.KanzonasPDF.plist; las firmas, las imágenes de sellos, su certificado y las copias de seguridad, en ~/Library/Application Support/KanzonasPDF/KanzonasPDF (Preferencias &gt; General muestra ambos).</li>
+<li><b>Fuentes:</b> Agregar texto y Editar texto usan las fuentes de /System/Library/Fonts, /Library/Fonts y su propia carpeta ~/Library/Fonts: las fuentes TrueType y OpenType y las colecciones TrueType (.ttc: la primera fuente del archivo) se incrustan; otros tipos (.dfont, Type 1) no, y se usa Helvetica en su lugar.</li>
+<li><b>Diferencias con Windows:</b> la primera opción de Ver &gt; Tema es <b>Igual que el sistema</b> (el aspecto claro u oscuro del Mac); la firma digital usa su certificado personal o un archivo .pfx/.p12 (no hay almacén de certificados de Windows y no se usa el llavero de macOS); la barra de menús está siempre en la parte superior de la pantalla, así que no se ofrece Ver &gt; Mostrar barra de menús; no hay versión portátil.</li>
+<li><b>Quitar:</b> arrastre KanzonasPDF desde Aplicaciones a la Papelera. Para quitar también su configuración y sus archivos, elimine los dos lugares de arriba.</li>
 </ul>
 
 <h2 id="navigate">Desplazarse por el documento</h2>
@@ -1115,7 +1128,7 @@ con su firma o sus iniciales guardadas y la fecha.</li>
 <li><b>Firmar digitalmente con certificado</b>, con un bloqueo opcional contra cambios (certificar).
 Elija de dónde proviene el certificado:
 <ul>
-<li><b>Certificado almacenado en Windows</b> (solo en Windows; no aparece en Linux): la lista muestra los certificados de firma de su
+<li><b>Certificado almacenado en Windows</b> (solo en Windows; no aparece en Linux ni en macOS): la lista muestra los certificados de firma de su
 almacén Personal de Windows, los mismos que usan Adobe Acrobat y PDF-XChange Editor (abra
 certmgr.msc &gt; Personal &gt; Certificados para verlos). Windows realiza la firma, así que
 también funcionan los certificados cuya clave no se puede copiar, las tarjetas inteligentes y los tokens USB; Windows pide
@@ -1260,7 +1273,7 @@ lo mismo que ese comando, así que puede cambiarla en cualquiera de los dos luga
 cierra la ventana; <b>Aplicar</b> los usa de inmediato y deja la ventana abierta, para que pueda ver
 el efecto y seguir ajustando; <b>Cancelar</b> la cierra sin los cambios hechos desde el último
 Aplicar.</li>
-<li><b>General:</b> tema (Igual que Windows, o Igual que el sistema en Linux; Claro, Oscuro), <b>Idioma</b> (Automático, el idioma de
+<li><b>General:</b> tema (Igual que Windows, o Igual que el sistema en Linux y macOS; Claro, Oscuro), <b>Idioma</b> (Automático, el idioma de
 Windows o del sistema; English; Español: menús, mensajes y este manual; el cambio se ve la próxima vez que se
 inicia KanzonasPDF), Cinta (en lugar de barras de herramientas), Mostrar nombres de grupo
 en la cinta, Mostrar barra de menús, Mostrar etiquetas de texto en las barras de herramientas, Buscar actualizaciones automáticamente y, en Linux,
