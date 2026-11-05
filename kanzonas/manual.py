@@ -1056,9 +1056,8 @@ measured from the top-left corner. The underlines and text of links made with Ka
 drawn again on the new drawing; a link over words that aren't in the same place on the new
 drawing (a sheet callout that moved) stays where it was and is reported, so you can check it.
 Headers, footers, watermarks, backgrounds and text edits written into the old drawing go with
-it. The new drawings' layers join the document's layers, on or off as in the new file (the
-Layers tab lists them once the file is saved and opened again). The markups of the new file's
-pages aren't brought along, and the new file isn't changed.
+it. The new drawings' layers join the document's layers (Layers tab), on or off as in the new
+file. The markups of the new file's pages aren't brought along, and the new file isn't changed.
 Ctrl+Z undoes the whole replacement in one step. A document protected against changes refuses
 it.</li>
 <li>Pages menu: Insert blank page after current (the same size as the current page), Extract

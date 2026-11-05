@@ -112,7 +112,7 @@ def revision(path):
     """The new revision Replace pages takes drawings from: a page of the same size, a bigger
     one, a portrait page turned to show landscape, a half-size one and one cropped off its
     media box's corner, each with text, drawings, a picture, a sheet number and a markup of
-    its own (which doesn't come along)."""
+    its own (which doesn't come along); two of them draw on layers (one off)."""
     d = pymupdf.open()
     for i, (w, h, turn, crop) in enumerate([(612, 792, 0, None), (1224, 792, 0, None),
                                             (612, 792, 90, None), (306, 396, 0, None),
@@ -135,6 +135,13 @@ def revision(path):
                        stream=png_bytes(rgb=(200, 40 * i, 90)), rotate=turn)
         a = p.add_circle_annot(pymupdf.Rect(200, 300, 260, 340) * m)
         a.update()
+        if i in (1, 2):         # (drawn on layers: they join the document's layers)
+            if i == 1:
+                layers = [d.add_ocg("R-WALL", on=True), d.add_ocg("R-HIDDEN", on=False)]
+            p.insert_text(pymupdf.Point(60, 330) * m, "on a layer", fontsize=11, rotate=turn,
+                          oc=layers[0])
+            p.draw_line(pymupdf.Point(60, 350) * m, pymupdf.Point(300, 350) * m,
+                        color=(0, 0.5, 0), width=2, oc=layers[1])
     d.save(path, garbage=3, deflate=True)
     d.close()
     return path

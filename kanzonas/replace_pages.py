@@ -17,8 +17,8 @@ new /Rect), never written anew, so markups of other programs come through exactl
 What was drawn into the old page belongs to the old drawing and goes with it: the underline
 of a link made with KanzonasPDF and the text a link wrote are drawn again on the new drawing;
 a link over words that aren't at the same place on the new drawing is reported to check.
-The layers the new drawings use join the document's /OCProperties (MuPDF reads that list once,
-when a file is opened: the Layers tab shows them after the file is opened again).
+The layers the new drawings use join the document's /OCProperties, and MuPDF reads its list
+of layers again (undo_journal.reload_layers), so a layer that is off in the new file is off.
 """
 
 import json
@@ -26,7 +26,7 @@ import re
 
 import pymupdf
 
-from . import annotations, links, measure, pdfcoords, sheets
+from . import annotations, links, measure, pdfcoords, sheets, undo_journal
 from .i18n import tr
 
 m = pymupdf.mupdf
@@ -161,7 +161,7 @@ def replace(doc, src, pairs, scale=True):
             report["check"].append((i, moved))
         _sync(page)
         report["pages"] += 1
-    _register_layers(pdf, spdf, graft, [j for _i, j in pairs])
+    _register_layers(doc, pdf, spdf, graft, [j for _i, j in pairs])
     return report
 
 
@@ -213,7 +213,7 @@ def _used_layers(spdf, pages):
     return found
 
 
-def _register_layers(pdf, spdf, graft, pages):
+def _register_layers(doc, pdf, spdf, graft, pages):
     """The new drawings' layers join the document's list of layers (/OCProperties), on or off
     as in the new file, so other readers, and KanzonasPDF's Layers tab once the file is
     opened again, can show and hide them (unlisted, they would always show)."""
@@ -239,13 +239,20 @@ def _register_layers(pdf, spdf, graft, pages):
     if not m.pdf_is_dict(d):
         d = m.pdf_dict_put_dict(ocp, name("D"), 2)
     order = m.pdf_dict_get(d, name("Order"))
+    if not m.pdf_is_array(order):
+        # (the order layers are listed in; MuPDF lists none without it)
+        order = m.pdf_dict_put_array(d, name("Order"), m.pdf_array_len(ocgs) + len(used))
+        for k in range(m.pdf_array_len(ocgs)):
+            m.pdf_array_push(order, m.pdf_array_get(ocgs, k))
     have = {m.pdf_to_num(m.pdf_array_get(ocgs, k)) for k in range(m.pdf_array_len(ocgs))}
+    added = False
     for num in sorted(used):
         ref = m.pdf_graft_mapped_object(graft, m.pdf_new_indirect(spdf, num, 0))
         if m.pdf_to_num(ref) in have:
             continue
         have.add(m.pdf_to_num(ref))
         m.pdf_array_push(ocgs, ref)
+        added = True
         if m.pdf_is_array(order):
             m.pdf_array_push(order, ref)
         if num in off_nums:
@@ -253,6 +260,8 @@ def _register_layers(pdf, spdf, graft, pages):
             if not m.pdf_is_array(arr):
                 arr = m.pdf_dict_put_array(d, name("OFF"), 1)
             m.pdf_array_push(arr, ref)
+    if added:
+        undo_journal.reload_layers(doc)     # (MuPDF reads its list of layers again)
 
 
 def _graft_drawing(doc, pdf, i, spdf, j, graft):

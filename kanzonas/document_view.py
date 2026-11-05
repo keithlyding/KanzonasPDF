@@ -1571,6 +1571,7 @@ class DocumentView(QScrollArea):
         old = self.doc
         self.doc = fresh
         self._journal = journal
+        undo_journal.follow_layers(fresh)   # (one kept for undo may list other layers)
         from . import markups_panel
         markups_panel.carry_over(old, fresh)    # (the markups list reads only what differs)
         self.search_hits.clear()
@@ -1669,6 +1670,7 @@ class DocumentView(QScrollArea):
             if self.doc is not doc:
                 doc.close()             # (replaced by the edit: the copy is what undo uses)
         self._cad_prepare_soon()            # (in CAD mode: the changed page made ready again)
+        undo_journal.follow_layers(self.doc)    # (an edit that added layers: see there)
         if not nested:
             del self._undo[:-UNDO_LIMIT]
             self._redo.clear()
@@ -1814,6 +1816,7 @@ class DocumentView(QScrollArea):
         """The view after the document changed in place (an undo or redo kept in the
         journal, a rolled-back edit): what changed is read again, and the pages are made
         again only when pages were added, removed or moved (pages: None, any)."""
+        undo_journal.follow_layers(self.doc)    # (layers an undone edit added go)
         anchor = self._view_anchor()
         self._inline = None
         self.field_focus = None

@@ -345,6 +345,10 @@ class ReplacePages(unittest.TestCase):
         v.replace_pages(src, [(0, 0)])
         layers = {o["name"]: o["on"] for o in v.doc.get_ocgs().values()}
         self.assertEqual(layers, {"A-WALL": False, "A-NOTE": True})
+        # the Layers tab lists them, and the one off is hidden, right away
+        self.assertEqual(sorted((c["text"], c["on"]) for c in v.doc.layer_ui_configs()),
+                         [("A-NOTE", 1), ("A-WALL", 0)])
+        self.assertNotIn("wall", v.doc[0].get_text())
         out = os.path.join(self.tmp, "layers-saved.pdf")
         v.save(out)
         with F.open(out) as saved:
@@ -354,6 +358,10 @@ class ReplacePages(unittest.TestCase):
         v.undo()
         self.assertEqual(canon(v._snapshot()), before)
         self.assertEqual(v.doc.get_ocgs(), {})
+        self.assertEqual(v.doc.layer_ui_configs(), [])
+        v.redo()
+        self.assertEqual(len(v.doc.layer_ui_configs()), 2)
+        self.assertNotIn("wall", v.doc[0].get_text())
 
     def test_a_protected_document_refuses(self):
         path = make(os.path.join(self.tmp, "locked.pdf"), [("A-101", "OLD 1")])

@@ -1035,8 +1035,8 @@ esquina superior izquierda. Los subrayados y el texto de los vínculos hechos co
 el dibujo nuevo; un vínculo sobre palabras que no están en el mismo lugar en el dibujo nuevo (una referencia a un
 plano que se movió) se queda donde estaba y se informa, para que pueda revisarlo. Los encabezados, pies de página,
 marcas de agua, fondos y ediciones de texto escritos en el dibujo anterior se van con él. Las capas de los dibujos
-nuevos se suman a las capas del documento, activadas o desactivadas como en el archivo nuevo (la pestaña Capas las
-muestra cuando el archivo se guarda y se vuelve a abrir). Las marcas de las páginas del
+nuevos se suman a las capas del documento (pestaña Capas), activadas o desactivadas como en el archivo nuevo. Las
+marcas de las páginas del
 archivo nuevo no se traen, y el archivo nuevo no se modifica. Ctrl+Z deshace todo el reemplazo en un solo paso. Un
 documento protegido contra cambios lo rechaza.</li>
 <li>Menú Páginas: Insertar página en blanco después de la actual (del mismo tamaño que la página actual), Extraer
