@@ -7,6 +7,24 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.8.3
+
+**Fixed**
+- Redo is available right after an Undo. Undoing some changes (inserting a page, for example) left Redo grayed out, and Ctrl+Y did nothing, until something else happened in the window.
+- An edited markup stays in its place in the stack: after you changed a markup's text, color or size, it was drawn on top of the markups above it until the file was saved.
+- Duplicating, copying or extracting pages (and Capture area) no longer changes the document you copy from. Sticky notes on those pages lost the link to their pop-up, and the next Undo didn't bring the document back exactly as it was.
+- A page duplicated twice no longer shares its markups with its copy after Apply redactions or Copy pages: moving or deleting a markup on one page moved or deleted it on the other too.
+- Behind the scenes: a new test drives thousands of random edits, undos, redos and saves through the app and checks the document after every step, to catch bugs like these before a release.
+
+## 1.8.3 (es)
+
+**Correcciones**
+- Rehacer está disponible justo después de Deshacer. Al deshacer algunos cambios (insertar una página, por ejemplo), Rehacer quedaba atenuado y Ctrl+Y no hacía nada hasta que ocurría otra cosa en la ventana.
+- Una marca editada se queda en su lugar en la pila: después de cambiar el texto, el color o el tamaño de una marca, se dibujaba encima de las marcas que estaban sobre ella hasta guardar el archivo.
+- Duplicar, copiar o extraer páginas (y Capturar área) ya no cambia el documento del que se copia. Las notas adhesivas de esas páginas perdían el vínculo con su ventana emergente, y el siguiente Deshacer no devolvía el documento exactamente como estaba.
+- Una página duplicada dos veces ya no comparte sus marcas con su copia después de Aplicar censuras o Copiar páginas: mover o eliminar una marca en una página la movía o eliminaba también en la otra.
+- Internamente: una nueva prueba realiza miles de ediciones, deshacer, rehacer y guardados al azar en la aplicación y revisa el documento después de cada paso, para detectar errores como estos antes de publicar una versión.
+
 ## 1.8.2
 
 **New**

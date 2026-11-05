@@ -341,23 +341,41 @@ def install():
     for name in ("_newPage", "insert_pdf"):
         setattr(pymupdf.Document, name, plain(getattr(pymupdf.Document, name)))
 
-    # Pages copied out of a document (Copy pages, Extract pages, the Capture tool) change it:
-    # PyMuPDF takes /P and /Popup out of the markups it copies, in the document copied
-    # from. MuPDF drops every entry to redo at the first change, so the steps to redo were
-    # lost (Redo then did nothing). With entries to redo, the pages come from a copy of
-    # the document instead (one write, only then), as Save does
+    # Pages copied out of a document (Copy pages, Duplicate pages, Extract pages, the
+    # Capture tool) changed it: PyMuPDF takes /P and /Popup out of the markups it copies,
+    # and /P out of the form fields, in the document copied from. The open document then
+    # lost its notes' links to their pop-ups, folded into the latest edit (an undo of the
+    # next edit didn't give the document as it was before it: found by
+    # tests/battery_random.py), and MuPDF dropped every entry to redo (Redo did nothing).
+    # The markups of the pages copied are kept as they were and put back after, out of the
+    # journal (see detached): the document copied from is left exactly as it was
     insert = pymupdf.Document.insert_pdf
 
+    #
+    # The copies, for their part, come without /P (the page a markup is on), and two copies
+    # of one markup were then the same object to a write that merges equal objects (Copy
+    # pages and Extract pages write so, and Apply redactions cleans the file so): one markup
+    # on two pages, moved or deleted on both at once. Each copy gets its new page as /P
     def insert_pdf(self, docsrc, *a, **k):
-        j = _JOURNALS.get(_ptr(getattr(_pdf(docsrc), "m_internal", None)) or 0)
-        if j is None or j.busy or not j.alive or not j.ahead() or \
+        try:
+            src = pymupdf._as_pdf_document(docsrc, required=0)
+        except Exception:
+            src = None
+        if src is None or src.m_internal is None or \
                 not (k.get("annots", 1) or k.get("widgets", 1)):
             return insert(self, docsrc, *a, **k)
-        copy = pymupdf.open("pdf", docsrc.tobytes())
-        try:
-            return insert(self, copy, *a, **k)
-        finally:
-            copy.close()
+        j = _JOURNALS.get(_ptr(src.m_internal) or 0)
+        kept = _keep_annots(src, docsrc, k.get("from_page", -1), k.get("to_page", -1))
+        before = self.page_count
+        with detached(docsrc) if j is not None and not j.busy else _nothing():
+            try:
+                out = insert(self, docsrc, *a, **k)
+            finally:
+                _put_back(kept)
+        at = k.get("start_at", -1)
+        at = before if at is None or at < 0 or at > before else at
+        own_pages(self, range(at, at + self.page_count - before))
+        return out
     insert_pdf.__doc__ = insert.__doc__
     pymupdf.Document.insert_pdf = insert_pdf
 
@@ -374,6 +392,64 @@ def install():
         return call
     for name in ("get_textpage", "get_texttrace", "get_bboxlog", "get_cdrawings"):
         setattr(pymupdf.Page, name, upright(getattr(pymupdf.Page, name)))
+
+
+class _nothing:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _keep_annots(pdf, doc, first, last):
+    """[(markup dictionary, a copy of it)] of the pages from first to last (PyMuPDF's
+    insert_pdf range: -1 for the first or the last page; either way round)."""
+    n = doc.page_count
+    first = 0 if first is None or first < 0 or first >= n else first
+    last = n - 1 if last is None or last < 0 or last >= n else last
+    kept = []
+    for pno in range(min(first, last), max(first, last) + 1):
+        annots = m.pdf_dict_get(m.pdf_lookup_page_obj(pdf, pno), m.pdf_new_name("Annots"))
+        for i in range(m.pdf_array_len(annots)):
+            o = m.pdf_array_get(annots, i)
+            if m.pdf_is_dict(o):
+                kept.append((o, m.pdf_copy_dict(o)))
+    return kept
+
+
+def own_pages(doc, pages):
+    """Give each markup and form field of these pages (indices) that has no /P its page as
+    /P (see install: insert_pdf)."""
+    pdf = pymupdf._as_pdf_document(doc, required=0)
+    if pdf is None or pdf.m_internal is None:
+        return
+    P, ANNOTS = m.pdf_new_name("P"), m.pdf_new_name("Annots")
+    for pno in pages:
+        page = m.pdf_lookup_page_obj(pdf, pno)
+        annots = m.pdf_dict_get(page, ANNOTS)
+        ref = None
+        for i in range(m.pdf_array_len(annots)):
+            o = m.pdf_array_get(annots, i)
+            if m.pdf_is_dict(o) and not m.pdf_dict_get(o, P).m_internal:
+                if ref is None:
+                    ref = m.pdf_new_indirect(pdf, m.pdf_to_num(page), 0)
+                m.pdf_dict_put(o, P, ref)
+
+
+def _put_back(kept):
+    """Give each dictionary of _keep_annots its keys back, in their order."""
+    for o, was in kept:
+        n = m.pdf_dict_len(was)
+        if m.pdf_dict_len(o) == n and all(
+                m.pdf_objcmp(m.pdf_dict_get_key(o, i), m.pdf_dict_get_key(was, i)) == 0 and
+                m.pdf_objcmp(m.pdf_dict_get_val(o, i), m.pdf_dict_get_val(was, i)) == 0
+                for i in range(n)):
+            continue
+        for i in range(m.pdf_dict_len(o) - 1, -1, -1):
+            m.pdf_dict_del(o, m.pdf_dict_get_key(o, i))
+        for i in range(n):
+            m.pdf_dict_put(o, m.pdf_dict_get_key(was, i), m.pdf_dict_get_val(was, i))
 
 
 def _as_deleted(fn, gone):

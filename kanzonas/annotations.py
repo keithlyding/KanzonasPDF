@@ -1021,9 +1021,14 @@ def annot_order(page):
 
 
 def set_annot_order(page, xrefs):
-    """Rewrite /Annots in this order (back to front). Drop all Annot/Page objects of this
-    page afterwards and reload it: MuPDF keeps its own list for a loaded page."""
+    """Rewrite /Annots in this order (back to front)."""
     page.parent.xref_set_key(page.xref, "Annots", "[" + " ".join(f"{x} 0 R" for x in xrefs) + "]")
+    # MuPDF keeps its own list of a loaded page's markups, which it draws in that order, and
+    # gives the same loaded page to anyone asking for that page while it is held: a markup
+    # edited kept its place in the file but was drawn on top of the others until the page
+    # was freed or the file saved (found by tests/battery_random.py). The list is read again
+    # from /Annots (the markups already loaded are kept, so an Annot in use stays valid)
+    pymupdf.mupdf.pdf_sync_annots(pymupdf._as_pdf_page(page))
 
 
 _NUMBER = re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)")

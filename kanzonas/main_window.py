@@ -1742,6 +1742,7 @@ class MainWindow(QMainWindow):
             (v.calibrateRequested, self._calibrate),
             (v.layersChanged, lambda: self.sender() is self.view() and self._rebuild_thumbs()),
             (v.scaleChanged, self._update_ui),
+            (v.historyChanged, self._update_ui),
             (v.documentChanged, self._markups_timer.start),
             (v.structureChanged, self._markups_timer.start),
             (v.requestSignature, self._sign_field),

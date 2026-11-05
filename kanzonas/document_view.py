@@ -522,6 +522,7 @@ class DocumentView(QScrollArea):
     layersChanged = Signal()
     requestSignature = Signal(int, int)      # page index, signature field xref
     textToolPropsChanged = Signal()          # Edit text: the line's font / size to show
+    historyChanged = Signal()       # an undo or redo done: what can be undone / redone now
 
     def __init__(self, path, parent=None, doc=None):
         """doc: a new document not yet saved (File > New PDF); path is then the name Save
@@ -1965,6 +1966,10 @@ class DocumentView(QScrollArea):
             target.append(back)
         self._measure_journal()
         self._trim_history()
+        # (the view told of the change while the step was between the two lists: Redo
+        # stayed grayed out after an undo, and Ctrl+Y did nothing. Found by
+        # tests/battery_random.py)
+        self.historyChanged.emit()
 
     # every change bumps the revision, so autosave can tell whether anything changed since
     # its last backup
@@ -6762,6 +6767,9 @@ class DocumentView(QScrollArea):
                 # (written out as it is first: garbage=4 renumbers the objects of the
                 # document it writes, and undo keeps this one as it was, see modify)
                 clean = self._open_snapshot(self.doc.tobytes(garbage=1, **keep))
+                # (garbage=4 merges equal objects: two markups alike without /P, the page
+                # they are on, became one markup on two pages)
+                undo_journal.own_pages(clean, range(clean.page_count))
                 data = clean.tobytes(garbage=4, deflate=True, **keep)
                 clean.close()
                 self.doc = pymupdf.open(stream=data, filetype="pdf")
