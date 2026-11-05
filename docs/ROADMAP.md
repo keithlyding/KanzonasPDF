@@ -24,7 +24,20 @@ The owner sets this list; nothing below is promised until it's here.
 1. **Random editing battery** (in progress): thousands of random edits with undo and redo mixed
    in, checked after every step (the MuPDF undo journal is where subtle bugs hide); a short run
    on every build, the long one by hand before releases.
-2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
+2. **1.9** (in progress, chosen by the owner on 4 Nov 2026; each on its own branch, merged
+   together, then the full checks and a break-it battery before the owner says build):
+   - Dimension markups (measured, with extension lines and arrows): `claude/dimensions`.
+   - Replace pages / slip sheets: a new revision of a sheet, by page number or matched by sheet
+     number, keeping the markups, bookmarks and links: `claude/replace-pages`.
+   - Markup legends that update themselves: `claude/legends`.
+   - macOS, unsigned for now (Open Anyway once; signing can be added later): `claude/macos`.
+   - Save as PDF/A (PDF/A-2b) with a check; accessibility tagging later: `claude/pdfa`.
+   - The page's scale shown large on the Measure tab and the status bar (red when not set), a
+     notice on the first unscaled measurement, an on-screen scale bar: `claude/scale-display`.
+   - Edit text keeps each word's style; Bold, Italic, Underline, Strikethrough, color and size
+     for selected words, bold and italic in the line's own font: `claude/text-styles` (done).
+   - Then: the Spanish ribbon tabs fit a 1366-pixel screen; less memory for OCR.
+3. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
@@ -33,7 +46,8 @@ The owner sets this list; nothing below is promised until it's here.
   unlock features (README, "Free, for good").
 - **AGPL-3.0**, because the PDF engine, PyMuPDF / MuPDF, is AGPL.
 - **Windows and Linux**, the same features on both; Windows as an installer (this user or all
-  users), a portable zip and a PortableApps.com package; Linux as an AppImage.
+  users), a portable zip and a PortableApps.com package; Linux as an AppImage. macOS is coming
+  in 1.9 (unsigned until there's an Apple Developer account), with the same features.
 - **English and Spanish**: every user-facing text and the release notes in both.
 - **Standard PDF**: markups are standard PDF annotations, so Acrobat, Bluebeam and others see
   them; nothing locks a file to KanzonasPDF.
