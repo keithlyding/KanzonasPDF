@@ -53,7 +53,8 @@ def default_size():
 def build_pdf(pages):
     """A new PDF of scanned pages (main thread only). A picture page is its scanned size (its
     pixels at the resolution it was scanned at; a file from a watched folder keeps its own
-    size); JPEG pictures stay JPEG inside (no quality loss)."""
+    size); JPEG pictures stay JPEG inside (no quality loss). A PDF's pages come without
+    their links, form fields and comments."""
     out = pymupdf.open()
     try:
         for p in pages:
@@ -66,7 +67,10 @@ def build_pdf(pages):
                             out.page_count + src.page_count > 5 * net.MAX_PAGES:
                         raise ScanError(tr("Too many pages in one scan (more than {n}).").format(
                             n=net.MAX_PAGES))
-                    out.insert_pdf(src)
+                    # (its pages' drawing only: a PDF from the network or a shared folder
+                    # can carry links that run a script or a program, form fields and
+                    # comments, which a scanned page has no business bringing in)
+                    out.insert_pdf(src, links=False, annots=False, widgets=False)
                 continue
             img = pymupdf.open(stream=p.data, filetype=p.kind)
             pdf = pymupdf.open("pdf", img.convert_to_pdf())

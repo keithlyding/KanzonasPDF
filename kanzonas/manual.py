@@ -1227,7 +1227,8 @@ Tick <b>Make the pages searchable</b> to run Recognize text (OCR) on the new pag
 Network Folder, SMB) or FTP: choose the folder it scans into; each new PDF or picture (JPEG,
 PNG, TIFF) that arrives there while the window is open is added as scanned pages, once it has
 stopped growing and looks finished (a file that stays unfinished for a minute is reported as
-incomplete). Links to files elsewhere are left alone. Click Done
+incomplete). Links to files elsewhere are left alone. A PDF (from the folder or the scanner)
+brings its pages' drawing and text only, without links, form fields or comments. Click Done
 when they're all in.</li>
 </ul>
 <p>When it doesn't work, the window says why in plain words, and what to try:</p>

@@ -7,6 +7,9 @@
   computer on the network before refusing it, a thread for each (a host opening many slow
   connections piled threads up), and a chunk size of -1 read the request until the sender
   stopped, however much it sent;
+- a PDF that a scanner sent or that arrived in the watched folder brought its links (a
+  javascript: address, a link starting a program), form fields and comments into the
+  document;
 - the Scan window's messages took a device's name (or a fault, or a file name from the
   watched folder) with "<b>" or "<img ...>" in it for formatting;
 - the watched folder took a file that a printer or an FTP upload paused writing for two
@@ -191,6 +194,31 @@ class WatchedFolder(unittest.TestCase):
             os.close(fd)
         self.assertFalse(t.is_alive())
         self.assertEqual(len(out), 1)
+
+
+class ScannedPdf(unittest.TestCase):
+    def test_only_the_pages_drawing_comes_in(self):
+        import pymupdf
+        from kanzonas.scan_dialog import build_pdf
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_text((50, 50), "The scanned words")
+        p.insert_link({"kind": pymupdf.LINK_URI, "from": pymupdf.Rect(10, 10, 50, 50),
+                       "uri": "javascript:alert('LINKJS')"})
+        p.insert_link({"kind": pymupdf.LINK_LAUNCH, "from": pymupdf.Rect(60, 10, 90, 50),
+                       "file": "LAUNCHME.exe"})
+        p.add_text_annot((100, 100), "NOTEFROMSCANNER")
+        w = pymupdf.Widget()
+        w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+        w.field_name = "FIELDFROMSCANNER"
+        w.rect = pymupdf.Rect(100, 200, 200, 220)
+        p.add_widget(w)
+        out = build_pdf([net.Page(d.tobytes(), "pdf", 0, [])])
+        self.addCleanup(out.close)
+        data = out.tobytes(garbage=1, expand=255)
+        for word in (b"LINKJS", b"LAUNCHME", b"NOTEFROMSCANNER", b"FIELDFROMSCANNER"):
+            self.assertNotIn(word, data)
+        self.assertEqual(out[0].get_text().strip(), "The scanned words")
 
 
 class Window(unittest.TestCase):

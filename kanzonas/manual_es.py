@@ -1213,7 +1213,9 @@ Reconocer texto (OCR) en las páginas nuevas.</li>
 de red (Escanear a carpeta de red, SMB) o a FTP: elija la carpeta a la que escanea; cada PDF o
 imagen nuevo (JPEG, PNG, TIFF) que llega allí mientras la ventana está abierta se agrega como
 páginas escaneadas, una vez que deja de crecer y parece terminado (un archivo que sigue sin terminar
-durante un minuto se indica como incompleto). Los vínculos a archivos de otros lugares no se toman.
+durante un minuto se indica como incompleto). Los vínculos a archivos de otros lugares no se toman. Un PDF
+(de la carpeta o del escáner) trae solo el dibujo y el texto de sus páginas, sin vínculos, campos de
+formulario ni comentarios.
 Haga clic en Listo cuando estén todos.</li>
 </ul>
 <p>Cuando no funciona, la ventana dice por qué con palabras sencillas, y qué probar:</p>
