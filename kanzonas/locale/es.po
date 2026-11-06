@@ -7456,8 +7456,6 @@ msgstr "Los márgenes se miden hacia dentro desde la página tal como se muestra
 msgid "Fix hairlines: {n} lines now {w} pt wide (Ctrl+Z undoes it)"
 msgstr "Corregir líneas finas: {n} líneas ahora con {w} pt de grosor (Ctrl+Z lo deshace)"
 
-
-
 msgid "No lines thinner than {w} pt on these pages."
 msgstr "No hay líneas más finas que {w} pt en estas páginas."
 
@@ -7484,3 +7482,27 @@ msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y
 
 msgid "type {0} and press Enter"
 msgstr "escriba {0} y presione Enter"
+
+#: inline_editor.py
+msgid "Bold (Ctrl+B)"
+msgstr "Negrita (Ctrl+B)"
+
+#: inline_editor.py
+msgid "Italic (Ctrl+I)"
+msgstr "Cursiva (Ctrl+I)"
+
+#: inline_editor.py
+msgid "Underline (Ctrl+U)"
+msgstr "Subrayado (Ctrl+U)"
+
+#: inline_editor.py
+msgid "Strikethrough"
+msgstr "Tachado"
+
+#: inline_editor.py
+msgid "Larger text (Ctrl+])"
+msgstr "Texto más grande (Ctrl+])"
+
+#: inline_editor.py
+msgid "Smaller text (Ctrl+[)"
+msgstr "Texto más pequeño (Ctrl+[)"

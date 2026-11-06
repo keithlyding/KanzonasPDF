@@ -877,7 +877,8 @@ el texto y escriba (Enter termina, Shift+Enter empieza una línea nueva). El tex
 página, como Agregar texto de Acrobat: los visores de PDF no pueden cambiarlo, y Editar texto lo cambia más adelante.
 Elija la fuente (cualquier fuente instalada, además de Negrita y Cursiva), el tamaño y el color en Propiedades. El
 <b>Tamaño de fuente</b> también se puede cambiar mientras escribe: el texto se muestra en el tamaño nuevo de inmediato.
-Solo se guardan en el archivo las letras que se usan.</li>
+Los botones de estilo sobre el cuadro dan estilo a palabras sueltas, como en Editar texto (vea <b>Negrita, cursiva,
+subrayado y color para palabras sueltas</b> más abajo). Solo se guardan en el archivo las letras que se usan.</li>
 <li><b>Cambiar la fuente o el tamaño de una línea:</b> con la herramienta Editar texto, haga clic en la línea: Propiedades
 muestra su propio <b>Tamaño de fuente</b>. Cambie el tamaño, o elija una fuente (y Negrita / Cursiva), y presione
 Enter, cambiando el texto o no. La elección se aplica solo a esa línea: la siguiente línea en la que
@@ -898,8 +899,28 @@ Shift+Enter empieza un párrafo nuevo. Arrastre un controlador lateral para hace
 contorno para moverlo (los vínculos que tiene encima se mueven con él; los resaltados y subrayados dibujados en la página se quedan
 donde estaban, ya que las palabras se han movido dentro del párrafo). Un párrafo que se alarga crece
 hacia abajo; no empuja hacia abajo lo que tiene debajo, así que si ahora se superpone a otro texto o pasa del
-borde inferior de la página, la barra de estado lo indica (Ctrl+Z lo deshace). El párrafo se escribe con un solo
-estilo: una palabra en negrita o en color dentro de él sale como el resto.</li>
+borde inferior de la página, la barra de estado lo indica (Ctrl+Z lo deshace). Cada palabra conserva su propio estilo
+durante la edición y el reajuste: su fuente, su tamaño, la negrita, la cursiva, el color, el subrayado y el
+tachado. El cuadro los muestra como en la página.</li>
+<li><b>Negrita, cursiva, subrayado y color para palabras sueltas:</b> mientras edita (un párrafo, una
+línea, o texto nuevo con Agregar texto), seleccione palabras y use los botones sobre el cuadro:
+<b>Negrita</b> (Ctrl+B), <b>Cursiva</b> (Ctrl+I), <b>Subrayado</b> (Ctrl+U),
+<b>Tachado</b>, <b>Color del texto</b>, y <b>Texto más grande</b> (Ctrl+]) / <b>Texto más
+pequeño</b> (Ctrl+[), de un punto en un punto. Presione de nuevo un botón para quitar el estilo. Sin nada
+seleccionado, el botón fija el estilo de lo que escriba a continuación. El texto escrito junto a una palabra toma
+el estilo de esa palabra; el texto escrito en un cuadro vacío toma el estilo principal del párrafo.
+<br>La negrita y la cursiva conservan la fuente de la línea. Se usa la negrita o la cursiva real de la misma familia
+cuando está incrustada en el PDF o instalada en esta computadora (Arial Bold para Arial, Times New Roman Italic
+para Times New Roman...); cuando ninguno la tiene, la misma fuente se dibuja más gruesa (negrita) o
+inclinada (cursiva), como hace Word con una fuente sin negrita ni cursiva. Solo los caracteres que la fuente
+no puede escribir de ningún modo pasan a otra fuente, palabra por palabra. Quitar la negrita a una palabra escrita en una
+fuente negrita requiere el estilo normal de esa fuente (incrustado o instalado); sin él la palabra sigue
+en negrita.
+<br>Los subrayados y las líneas de tachado se dibujan en la página en el color de las palabras, una línea
+por cada línea de texto, y se mueven y se reajustan con sus palabras cuando se vuelve a editar el párrafo. Una
+línea fina dibujada justo debajo (o a través) de una serie de palabras y tan larga como ellas, como escribe los subrayados
+la exportación a PDF de Word, se lee como su subrayado; una línea más larga, el borde de una tabla o
+la raya de un cuadro de rótulo se quedan donde están.</li>
 <li><b>Qué cuenta como párrafo:</b> líneas de un mismo tamaño, una debajo de otra con un interlineado
 uniforme, alineadas por un lado (o centradas), que se ajustan como texto continuo. Termina en su
 última línea corta, de modo que los pasos numerados y los párrafos sin espacio entre ellos son cada uno
@@ -911,7 +932,8 @@ que tiene debajo); los elementos de lista, cada uno por separado (también una l
 dibujadas, donde cada línea es una oración independiente); el texto escaneado y el texto de lado, y las páginas
 giradas.</li>
 <li><b>Editar una línea:</b> haga <b>Alt+clic</b> en una línea para editar solo esa línea, incluso dentro de un
-párrafo. <b>Presione sobre una línea y arrastre</b> para moverla (su texto y su fuente se quedan como están).
+párrafo. <b>Presione sobre una línea y arrastre</b> para moverla (su texto y su fuente se quedan como están,
+también el estilo y el subrayado de cada palabra).
 Al editar una línea, el cursor va donde
 hizo clic, y la línea recibe un contorno discontinuo con controladores, como un objeto seleccionado. Escriba el
 cambio; arrastre el contorno para mover el texto, o arrastre un controlador para cambiar el ancho al que se ajusta
@@ -1329,6 +1351,8 @@ cuadrícula...).</li>
 <tr><th>Tecla</th><th>Acción</th></tr>
 <tr><td>V / H</td><td>Seleccionar / Mano</td></tr>
 <tr><td>Ctrl+E</td><td>Editar texto (clic: el párrafo; Alt+clic: una línea)</td></tr>
+<tr><td>Ctrl+B / Ctrl+I / Ctrl+U (al editar texto)</td><td>Negrita / Cursiva / Subrayado de las palabras seleccionadas</td></tr>
+<tr><td>Ctrl+] / Ctrl+[ (al editar texto)</td><td>Texto más grande / más pequeño (las palabras seleccionadas, de un punto en un punto)</td></tr>
 <tr><td>Ctrl+P</td><td>Imprimir (con vista previa)</td></tr>
 <tr><td>Ctrl+N</td><td>Nuevo PDF (página en blanco)</td></tr>
 <tr><td>Shift+T</td><td>Agregar texto (escrito en la página)</td></tr>

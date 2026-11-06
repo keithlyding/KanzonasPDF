@@ -898,7 +898,9 @@ goes and type (Enter finishes, Shift+Enter starts a new line). The text is writt
 itself, like Acrobat's Add Text: PDF viewers can't change it, and Edit text changes it later.
 Pick the font (any installed font, plus Bold and Italic), size and color in Properties. The
 <b>Font size</b> can also be changed while you type: the text shows at the new size right away.
-Only the letters used are stored in the file.</li>
+The style buttons above the box style single words, as in Edit text (see <b>Bold, italic,
+underline and color for single words</b> below). Only the letters used are stored in the
+file.</li>
 <li><b>Change a line's font or size:</b> with the Edit text tool, click the line: Properties
 shows its own <b>Font size</b>. Change the size, or pick a font (and Bold / Italic), and press
 Enter, with or without changing the text. The choice applies to that line only: the next line you
@@ -919,8 +921,28 @@ Shift+Enter starts a new paragraph. Drag a side handle to make it wider or narro
 outline to move it (links on it move along; highlights and underlines drawn into the page stay
 where they were, since the words have moved within it). A paragraph that gets longer grows
 downward; it doesn't push what's below it down, so if it now runs into other text or past the
-bottom of the page, the status bar says so (Ctrl+Z undoes it). The paragraph is written in one
-style: a bold or colored word inside it comes out like the rest.</li>
+bottom of the page, the status bar says so (Ctrl+Z undoes it). Each word keeps its own style
+through the edit and the rewrapping: its font, size, bold, italic, color, underline and
+strikethrough. The box shows them as on the page.</li>
+<li><b>Bold, italic, underline and color for single words:</b> while editing (a paragraph, a
+line, or new text with Add text), select words and use the buttons above the box:
+<b>Bold</b> (Ctrl+B), <b>Italic</b> (Ctrl+I), <b>Underline</b> (Ctrl+U),
+<b>Strikethrough</b>, <b>Text color</b>, and <b>Larger text</b> (Ctrl+]) / <b>Smaller
+text</b> (Ctrl+[), a point at a time. Press a button again to take the style off. With nothing
+selected, the button sets the style of what you type next. Text typed next to a word takes
+that word's style; text typed into an empty box takes the paragraph's main style.
+<br>Bold and italic keep the line's font. The same family's real bold or italic is used when
+it's embedded in the PDF or installed on this computer (Arial's Arial Bold, Times New Roman's
+Times New Roman Italic...); when neither has it, the very same font is drawn thicker (bold) or
+slanted (italic), as Word does for a font without a bold or italic. Only characters the font
+can't write at all go to another font, a word at a time. Taking bold off a word written in a
+bold font needs that font's regular style (embedded or installed); without it the word stays
+bold.
+<br>Underlines and strikethrough lines are drawn into the page in the words' color, one line
+per line of text, and move and rewrap with their words when the paragraph is edited again. A
+thin line drawn just under (or through) a run of words and as long as they are, as Word's PDF
+export writes underlines, is read as their underline; a longer line, a table border or a
+title block's rule is left where it is.</li>
 <li><b>What counts as a paragraph:</b> lines of one size, one under the other at an even line
 spacing, lined up on one side (or centered), that wrap like running text. It ends at its
 short last line, so numbered steps and paragraphs with no space between them are each their
@@ -932,7 +954,8 @@ under it); list items, each on its own (also a list of one-line items whose bull
 drawn, where every line is a sentence of its own); scanned and sideways text, and rotated
 pages.</li>
 <li><b>Edit one line:</b> <b>Alt+click</b> a line to edit just that line, even inside a
-paragraph. <b>Press on a line and drag</b> to move it (its text and font stay as they are).
+paragraph. <b>Press on a line and drag</b> to move it (its text and font stay as they are,
+each word's style and underline too).
 Editing a line: the cursor goes where you
 clicked, and the line gets a dashed outline with handles, like a selected object. Type the
 change; drag the outline to move the text, drag a handle to change the width the text wraps
@@ -1351,6 +1374,8 @@ settings...).</li>
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text (click: the paragraph; Alt+click: one line)</td></tr>
+<tr><td>Ctrl+B / Ctrl+I / Ctrl+U (editing text)</td><td>Bold / Italic / Underline the selected words</td></tr>
+<tr><td>Ctrl+] / Ctrl+[ (editing text)</td><td>Larger / smaller text (the selected words, a point at a time)</td></tr>
 <tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
 <tr><td>Ctrl+N</td><td>New PDF (blank page)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>

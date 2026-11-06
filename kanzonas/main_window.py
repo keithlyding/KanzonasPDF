@@ -19,7 +19,8 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFile
                                QVBoxLayout, QHBoxLayout, QMenu, QProgressDialog,
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
-                               QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit)
+                               QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit,
+                               QTextEdit)
 
 from . import __version__, annotations, export, paths, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
@@ -2106,7 +2107,8 @@ class MainWindow(QMainWindow):
         # keyboard focus to the page (unless you're typing somewhere), so Escape puts the
         # tool down even when it was picked from a toolbar button or a stamp menu
         v = self.view()
-        typing = isinstance(QApplication.focusWidget(), (QLineEdit, QAbstractSpinBox, QPlainTextEdit))
+        typing = isinstance(QApplication.focusWidget(), (QLineEdit, QAbstractSpinBox, QPlainTextEdit,
+                                                         QTextEdit))
         if v is not None and not typing:
             v.setFocus()
         self._refresh_props()
