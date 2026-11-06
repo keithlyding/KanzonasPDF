@@ -1808,14 +1808,16 @@ class MainWindow(QMainWindow):
             (v.previousToolRequested, lambda: self.set_tool(self.default_tool())),
             (v.calibrateRequested, self._calibrate),
             (v.scaleDialogRequested, lambda i: self._scale_dialog(None, i)),
-            (v.layersChanged, lambda: self.sender() is self.view() and self._rebuild_thumbs()),
+            # (the view is bound here: inside a lambda, sender() isn't the view that sent
+            # the signal, so a check on it was never true and these never ran)
+            (v.layersChanged, lambda v=v: v is self.view() and self._rebuild_thumbs()),
             (v.scaleChanged, self._update_ui),
             (v.historyChanged, self._update_ui),
             (v.documentChanged, self._markups_timer.start),
             (v.structureChanged, self._markups_timer.start),
             (v.requestSignature, self._sign_field),
             (v.textToolPropsChanged,
-             lambda: self.sender() is self.view() and self._refresh_props()),
+             lambda v=v: v is self.view() and self._refresh_props()),
             (v.pageChanged, self._on_page_changed),
             (v.zoomChanged, lambda _: self._update_ui()),
             (v.documentChanged, self._on_doc_changed),
