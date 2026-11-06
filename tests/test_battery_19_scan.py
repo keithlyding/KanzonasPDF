@@ -2,6 +2,8 @@
 
 - a page cut short (the device or the Wi-Fi dropped the connection mid-page) was taken as a
   scanned page, half a picture: http.client doesn't say a Content-Length wasn't met;
+- a job whose address (the device's Location) had a space in it failed ("Couldn't reach
+  ...: URL can't contain control characters": http.client refuses such a path);
 - Cancel while a page was arriving added the half that had come before it stopped;
 - the listener for scans started on the printer's panel read and parsed a request from any
   computer on the network before refusing it, a thread for each (a host opening many slow
@@ -84,6 +86,30 @@ class Pages(ServerCase):
                 got.append(page)
         self.assertEqual(got, [])
         self.assertLess(time.time() - t0, 2.5)
+
+
+class OddLocation(Escl):
+    """A device whose job address has a space in it."""
+
+    def do_POST(self):
+        self.server.st["posts"].append((self.path, self.body().decode()))
+        self.send(201, headers=[("Location", "/eSCL/Scan Jobs/123")])
+
+    def do_GET(self):
+        st = self.server.st
+        if self.path == "/eSCL/Scan%20Jobs/123/NextDocument":
+            if st["pages"]:
+                return self.send(200, st["pages"].pop(0), "image/jpeg")
+            return self.send(404)
+        return Escl.do_GET(self)
+
+
+class Addresses(ServerCase):
+    def test_a_job_address_with_a_space(self):
+        srv, port = self.server(OddLocation, pages=[picture(50, 50)])
+        s = scan_escl.EsclScanner(Device("x", "escl", "http://127.0.0.1:%d/eSCL" % port))
+        self.assertEqual(len(list(s.scan(ScanSettings()))), 1)
+        self.assertEqual(srv.st["deletes"], ["/eSCL/Scan%20Jobs/123"])
 
 
 class PanelListener(unittest.TestCase):

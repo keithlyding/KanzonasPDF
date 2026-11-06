@@ -23,7 +23,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from xml.sax.saxutils import escape
 
 from .i18n import tr
@@ -358,6 +358,9 @@ class Http:
 
     def _once(self, method, url, body, headers, limit, timeout):
         scheme, host, port, path = split_url(url)
+        # (a path from the device, a job's Location say, with a space or a character beyond
+        # ASCII in it: sent percent-encoded, as http.client refuses it as it is)
+        path = quote(path, safe="/?&=%:@!$'()*+,;~-._[]")
         if self.canceled:
             raise Canceled()
         if scheme == "https":
