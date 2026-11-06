@@ -339,7 +339,8 @@ def fault_message(code, reasons=()):
                   "and try again.")
     if "AttentionRequired" in reasons:
         return tr("The scanner needs attention: check the message on its panel.")
-    if code == "ServerErrorNotAcceptingJobs":
+    if code in ("ServerErrorNotAcceptingJobs", "ClientErrorInvalidScanIdentifier",
+                "ClientErrorInvalidDestinationToken"):
         return tr("The scanner isn't taking a scan from the computer right now. Check that it "
                   "isn't busy or showing a message. Some printers only take a WSD scan started on "
                   "their own panel: choose Scan, then to Computer (WSD), then click Scan here.")
