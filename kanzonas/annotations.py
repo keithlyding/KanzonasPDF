@@ -197,9 +197,20 @@ def to_rgb(hex_color):
 
 
 def to_hex(rgb):
+    """A PDF color (an annotation's /C or /IC: 1 gray, 3 RGB or 4 CMYK numbers) as #rrggbb.
+    (Other programs write gray and CMYK colors: read as RGB, a gray came out "#80" and broke
+    everything drawn from it, a CMYK cyan came out red.)"""
     if not rgb:
         return None
-    return "#" + "".join(f"{max(0, min(255, round(c * 255))):02x}" for c in rgb[:3])
+    rgb = tuple(rgb)
+    if len(rgb) == 1:
+        rgb = rgb * 3
+    elif len(rgb) == 4:
+        c, m_, y, k = rgb
+        rgb = ((1 - c) * (1 - k), (1 - m_) * (1 - k), (1 - y) * (1 - k))
+    elif len(rgb) != 3:
+        return None
+    return "#" + "".join(f"{max(0, min(255, round(c * 255))):02x}" for c in rgb)
 
 
 # ---- per-tool defaults (persist across sessions) ------------------------------
@@ -341,6 +352,11 @@ def read(annot):
              "hidden": bool(flags & pymupdf.PDF_ANNOT_IS_HIDDEN),
              "rect": pymupdf.Rect(annot.rect), "author": annot.info.get("title", ""),
              "created": annot.info.get("creationDate", "")}
+    subject = annot.info.get("subject", "")
+    if subject and kind != "legend":
+        # (its label in other programs and in legends, often set by Bluebeam: kept when it's
+        # written anew, restyled, measured again or copied)
+        model["subject"] = subject
     verts = annot.vertices or []
     geom = stored.get("geom", {})
     if kind in ("line", "arrow") and geom.get("bend") and len(verts) >= 2:
@@ -598,6 +614,8 @@ def write(page, model):
     now = pymupdf.get_pdf_now()
     info = {"title": model.get("author") or author(), "modDate": now,
             "creationDate": model.get("created") or now}
+    if model.get("subject"):
+        info["subject"] = model["subject"]
     label_text = None
     if kind in MEASURES:
         from . import measure
@@ -1224,12 +1242,14 @@ def _shift_pairs(text, dx, dy):
     return _NUMBER.sub(add, text)
 
 
-def replace_many(page, changes, olds=None):
+def replace_many(page, changes, olds=None, again=False):
     """replace() for several annotations at once ([(xref, model)], in that order), as when
     many markups are aligned, restyled or nudged together: each one is found in one walk of
     the page and the stacking order is read and written once, not once for each (N squared
     steps: 18 s for 1,000 markups). Returns [(old xref, its old model or None, new xref)].
-    olds: {xref: model} as the caller has just read them (they aren't read again)."""
+    olds: {xref: model} as the caller has just read them (they aren't read again).
+    again: every one is written anew, also when its model is the same (measurements after
+    the page's scale changed)."""
     known = dict(olds or {})
     by_xref = load_annots(page, [x for x, _m in changes if x not in known])
     order = annot_order(page)
@@ -1253,14 +1273,14 @@ def replace_many(page, changes, olds=None):
     shifted = set()
     to_pdf = pdfcoords.to_pdf(page)
     for xref, model in changes:
-        d = translation(olds[xref], model)
+        d = None if again else translation(olds[xref], model)
         if d is not None and shift_in_place(page, xref, d, to_pdf):
             shifted.add(xref)
     # ...the old ones of the rest go in one look through the page (one at a time, each delete
     # looked through all the page's markups for replies: minutes for a few thousand)
     # (a markup not changed at all stays as it is)
-    unchanged = {x for x, m in changes if x not in shifted and m["kind"] != "attach" and
-                 _same(olds[x], m)}
+    unchanged = set() if again else {x for x, m in changes if x not in shifted and
+                                     m["kind"] != "attach" and _same(olds[x], m)}
     rewrite = [x for x, m in changes
                if m["kind"] != "attach" and x not in shifted and x not in unchanged]
     # the replies to a markup written anew answer the new one (deleting it took them along)

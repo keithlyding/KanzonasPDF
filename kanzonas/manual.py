@@ -756,7 +756,8 @@ lines up with the page's left edge, center or right edge, and its top, middle or
 page's, each way on its own, and a green dashed guide shows what it lined up with (drop a picture
 near the middle of the sheet and it settles exactly in the middle); with Snap to objects, one of
 its corners, edge middles or center goes onto a nearby markup's point (a dragged markup also onto
-the drawing's own points); with Snap to grid, its top-left corner goes to the grid.</li>
+the drawing's own points; with both on, whichever is nearer); with Snap to grid, its top-left
+corner goes to the grid.</li>
 <li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
 </ul>
 
@@ -848,8 +849,9 @@ styles (red clouds and blue clouds) get a row each. Measurements also show their
 area or volume, in the page's units (Measure &gt; Set scale).</li>
 <li><b>It updates by itself</b> when markups are added, changed or deleted, as part of the same
 change: Ctrl+Z takes the markup and the legend's update back together, and Redo puts both back.
-It never counts itself or another legend, nor hidden markups, redaction marks or signature
-placeholders. Applying redactions draws it again from the markups left (see Redaction).</li>
+It never counts itself or another legend, nor hidden markups, redaction marks, signature
+placeholders, or the replies and review statuses of a comment thread (they're part of the markup
+they answer). Applying redactions draws it again from the markups left (see Redaction).</li>
 <li><b>Options</b> (Properties panel: set them before placing, with the Legend tool picked, or on
 a selected legend): <b>Title</b> (Legend to start with; empty for none), <b>Markups from</b>
 <b>This page</b> or the <b>Whole document</b> (every page, the totals in this page's units),
@@ -1158,9 +1160,12 @@ Pages here with no match are left alone, and the new file's sheets that match no
 listed under the list, so you know. Only the page's drawing changes (its content, page boxes
 and rotation): the page itself stays, so its markups, links, form fields, scale and bookmarks
 stay, and bookmarks and links from other pages still go to it. When a new page has another
-size, choose whether markups are <b>scaled to the new page</b> (stretched if its proportions
-differ; an even scale adjusts the page's measuring scale too) or <b>kept at the same place</b>,
-measured from the top-left corner. The underlines and text of links made with KanzonasPDF are
+size, choose whether markups are <b>scaled to the new page</b> (their text and line widths with
+them; stretched if its proportions differ; an even scale adjusts the page's measuring scale and
+its name too, 1/4" = 1'-0" becoming 1/2" = 1'-0" on a sheet twice the size) or <b>kept at the same place</b>,
+measured from the top-left corner. Measurements are measured again when what they measure changed
+(the new page brings its own scale, or the markups were stretched or scaled on a page with no
+scale). The underlines and text of links made with KanzonasPDF are
 drawn again on the new drawing; a link over words that aren't in the same place on the new
 drawing (a sheet callout that moved) stays where it was and is reported, so you can check it.
 Headers, footers, watermarks, backgrounds and text edits written into the old drawing go with

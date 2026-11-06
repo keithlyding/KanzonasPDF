@@ -22,6 +22,7 @@ of layers again (undo_journal.reload_layers), so a layer that is off in the new 
 """
 
 import json
+import math
 import re
 
 import pymupdf
@@ -134,6 +135,7 @@ def replace(doc, src, pairs, scale=True):
         page = doc[i]
         new = src[j]
         # what belongs to the old drawing, read before it goes
+        scale0 = measure.get_scale(page)
         before = _display(page)
         old_to_pdf = pdfcoords.to_pdf(page)
         old_rect = page.rect
@@ -155,6 +157,8 @@ def replace(doc, src, pairs, scale=True):
             report["markups"] += _map_annots(doc, page, t, tp)
             _map_scale(doc, page, k)
         _take_scale(doc, src, page, new)
+        if not _same_lengths(scale0, measure.get_scale(page), k):
+            _measure_again(page)
         report["relinked"] += _redraw_links(page, old_links, texts, tp, k)
         moved = _moved_words(page, old_links, words, tp)
         if moved:
@@ -344,7 +348,9 @@ def _map_annots(doc, page, t, tp):
     """Map every annotation of the page (markups, links, form fields, pop-ups) through t (PDF
     user space, old drawing -> new) and the geometry KanzonasPDF keeps through tp (page
     coordinates). Returns how many."""
-    turned = abs(t.b) > 1e-9 or abs(t.c) > 1e-9
+    # (turned a quarter or half way: a half turn has no b and c, but a and d below zero;
+    # missed, every markup's picture showed upside down, arrows pointing back)
+    turned = abs(t.b) > 1e-9 or abs(t.c) > 1e-9 or t.a < 0 or t.d < 0
     lin = pymupdf.Matrix(t.a, t.b, t.c, t.d, 0, 0)
     sx, sy = abs(pymupdf.Point(1, 0) * lin), abs(pymupdf.Point(0, 1) * lin)
     n = 0
@@ -361,6 +367,8 @@ def _map_annots(doc, page, t, tp):
         else:
             new = _mapped_rect(old, t)
         doc.xref_set_key(xref, "Rect", _rect_array(new))
+        if kind == pymupdf.PDF_ANNOT_LINE:
+            _map_leaders(doc, xref, t, lin)     # (before its /L is mapped)
         for key in _PAIRS:
             kt, kv = doc.xref_get_key(xref, key)
             if kt == "array" and "R" not in kv:
@@ -377,12 +385,63 @@ def _map_annots(doc, page, t, tp):
                     _fmt(v * s) for v, s in zip(d, f)))
         if turned and kind not in _ICONS:
             _turn_appearance(doc, xref, lin)
+            _turn_text(doc, xref, kind, t)
         _map_kzprops(doc, xref, tp)
         kt, kv = doc.xref_get_key(xref, "KZUnder")
         if kt == "array":
             doc.xref_set_key(xref, "KZUnder", _map_pairs(kv, tp))
         n += 1
     return n
+
+
+def _map_leaders(doc, xref, t, lin):
+    """A dimension's leader lines (/LL, /LLO: lengths to the left of its line, as other
+    viewers draw them; /LLE past it) scaled with it, as its /L is (kept as they were, a
+    dimension scaled to a bigger sheet showed its dimension line nearer than drawn in
+    programs that draw it from them)."""
+    kt, kv = doc.xref_get_key(xref, "L")
+    nums = [float(v) for v in _NUMBER.findall(kv)] if kt == "array" else []
+    if len(nums) != 4:
+        return
+    a, b = pymupdf.Point(nums[0], nums[1]), pymupdf.Point(nums[2], nums[3])
+    a2, b2 = a * t, b * t
+    u, u2 = b - a, b2 - a2
+    if abs(u) < 1e-9 or abs(u2) < 1e-9:
+        return
+    n = pymupdf.Point(-u.y, u.x) / abs(u)               # (left of a -> b, PDF space)
+    n2 = pymupdf.Point(-u2.y, u2.x) / abs(u2)
+    k = n * lin
+    across = k.x * n2.x + k.y * n2.y                    # (how much a length across grows)
+    for key, f in (("LL", across), ("LLO", across), ("LLE", abs(across))):
+        typ, val = doc.xref_get_key(xref, key)
+        if typ in ("int", "float", "real"):
+            try:
+                doc.xref_set_key(xref, key, _fmt(float(val) * f))
+            except ValueError:
+                pass
+
+
+def _turn_text(doc, xref, kind, t):
+    """The way a form field's text (/MK /R) or a text box's (/Rotate) runs, turned with its
+    appearance: a viewer that draws it anew (a field's value typed, a text box edited in
+    another program) drew it along the old drawing's way, sideways on the new one."""
+    deg = int(round(math.degrees(math.atan2(t.b, t.a)) / 90.0)) * 90
+    if kind == pymupdf.PDF_ANNOT_WIDGET:
+        key = "MK/R"
+    elif kind == pymupdf.PDF_ANNOT_FREE_TEXT:
+        key = "Rotate"
+    else:
+        return
+    typ, val = doc.xref_get_key(xref, key)
+    try:
+        old = int(float(val)) if typ in ("int", "float", "real") else 0
+    except ValueError:
+        old = 0
+    new = (old + deg) % 360
+    if key == "MK/R" and doc.xref_get_key(xref, "MK")[0] not in ("dict", "xref"):
+        doc.xref_set_key(xref, "MK", "<</R %d>>" % new)
+    else:
+        doc.xref_set_key(xref, key, str(new))
 
 
 def _turn_appearance(doc, xref, lin):
@@ -410,7 +469,10 @@ def _turn_appearance(doc, xref, lin):
 
 
 def _map_kzprops(doc, xref, tp):
-    """The geometry KanzonasPDF keeps for its markups (page coordinates)."""
+    """The geometry KanzonasPDF keeps for its markups (page coordinates), and on a page
+    scaled to another size their text size and line width, as their appearance now shows
+    them (left as they were, the next time one was drawn anew, a legend at any change of
+    the page's markups, measurements at Set scale, it jumped back to its old size)."""
     kt, kv = doc.xref_get_key(xref, annotations.KZ_KEY)
     if kt != "string":
         return
@@ -418,9 +480,20 @@ def _map_kzprops(doc, xref, tp):
         store = json.loads(kv)
     except ValueError:
         return
-    geom = store.get("geom") if isinstance(store, dict) else None
-    if not isinstance(geom, dict):
+    if not isinstance(store, dict):
         return
+    changed = False
+    f = abs(tp.a * tp.d - tp.b * tp.c) ** 0.5
+    props = store.get("props")
+    if abs(f - 1) > 1e-6 and isinstance(props, dict):
+        for key, low, high, digits in (("fontsize", 1.0, 144.0, 1), ("width", 0.0, 100.0, 2)):
+            v = props.get(key)
+            if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
+                props[key] = round(max(low, min(high, v * f)), digits)
+                changed = True
+    geom = store.get("geom")
+    if not isinstance(geom, dict):
+        geom = {}
     for key in ("box", "target", "at", "pts", "bend"):
         vals = geom.get(key)
         if not isinstance(vals, list) or len(vals) < 2 or \
@@ -432,16 +505,55 @@ def _map_kzprops(doc, xref, tp):
             geom[key] = [r.x0, r.y0, r.x1, r.y1] + vals[4:]
         else:
             geom[key] = [c for p in pts for c in (p.x, p.y)] + vals[2 * len(pts):]
-    doc.xref_set_key(xref, annotations.KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
+        changed = True
+    if changed:
+        doc.xref_set_key(xref, annotations.KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
 
 
 def _map_scale(doc, page, k):
-    """A page scaled evenly to the new size keeps measuring right: its scale goes along."""
+    """A page scaled evenly to the new size keeps measuring right: its scale goes along, and
+    a scale named by its ratio is named by the new one (a 1/4" = 1'-0" sheet scaled to twice
+    its size is drawn at 1/2" = 1'-0"; a calibrated one stays true as it says)."""
     if abs(k[0] - k[1]) > 0.01 * max(k) or abs(k[0] - 1) < 1e-6:
         return
     f, unit, label, ok = measure.get_scale(page)
     if ok:
-        measure.set_scale(page, f / ((k[0] + k[1]) / 2), unit, label)
+        f2 = f / ((k[0] + k[1]) / 2)
+        if label.strip() in ("", measure.preset_label(f)):
+            label = measure.preset_label(f2) or "1:%.4g" % (f2 / measure.PT_M)
+        measure.set_scale(page, f2, unit, label)
+
+
+def _same_lengths(scale0, scale1, k):
+    """True when the page's measurements still read what their labels say: the markups not
+    scaled and the scale the same, or scaled evenly with the scale following them."""
+    f0, unit0 = scale0[0], scale0[1]
+    f1, unit1 = scale1[0], scale1[1]
+    if unit0 != unit1 or abs(k[0] - k[1]) > 0.01 * max(k):
+        return False
+    return abs(f1 * (k[0] + k[1]) / 2 - f0) <= 1e-9 * f0
+
+
+def _measure_again(page):
+    """The page's measurements measured again (their labels said what they measured on the
+    old drawing, in its scale: the new page brought a scale of its own, or the markups were
+    stretched to another shape of sheet, or scaled on a page with no scale set)."""
+    xrefs = [x for x, typ, *_ in page.annot_xrefs()
+             if typ in (pymupdf.PDF_ANNOT_LINE, pymupdf.PDF_ANNOT_POLYGON,
+                        pymupdf.PDF_ANNOT_POLY_LINE, pymupdf.PDF_ANNOT_CIRCLE,
+                        pymupdf.PDF_ANNOT_SQUARE, pymupdf.PDF_ANNOT_INK)]
+    if not xrefs:
+        return
+    found = annotations.load_annots(page, xrefs)
+    models = []
+    for x in xrefs:
+        a = found.get(x)
+        m = annotations.read(a) if a is not None else None
+        if m and m["kind"] in annotations.MEASURES and m["kind"] != "m_count":
+            models.append((x, m))
+    found.clear()
+    if models:
+        annotations.replace_many(page, models, olds=dict(models), again=True)
 
 
 def _take_scale(doc, src, page, new):

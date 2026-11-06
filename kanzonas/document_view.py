@@ -2106,7 +2106,12 @@ class DocumentView(QScrollArea):
         self._card_cache = {}
         self._legend_where = {}        # page index -> its legends' xrefs (legend.refresh)
         self._legend_sums = {}         # page index -> its markups counted (legend.page_summary)
-        self._legend_items = {}        # markup xref -> (its object, what it adds to a legend)
+        # markup xref -> (its object, what it adds to a legend): kept through any change, as
+        # each is checked against its object's text before it's used (dropped at every page
+        # added, moved or undone, a legend of the whole document read all its markups again:
+        # 3 s for 10,000)
+        items = getattr(self, "_legend_items", None)
+        self._legend_items = items if items is not None and len(items) < 200000 else {}
         self.text_sel = None           # [(page index, selected character units), ...]
         self._text_drag = None         # [(page, mode, words)] while a text drag is in progress
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
@@ -2994,15 +2999,26 @@ class DocumentView(QScrollArea):
         from . import legend
         page = self.doc[index]
         props = self.tool_props("legend")
+        # (the markups as counted for the legends already there: read only once)
+        rows = legend.rows_for(self.doc, index, props.get("scope") or "page",
+                               self._legend_summary)
         if not at_point:
-            rows = legend.rows_for(self.doc, index, props.get("scope") or "page")
             _ops, w, _h = legend.layout(rows, props)
             disp = (pymupdf.Rect(rect) * page.rotation_matrix).normalize()
             if w > 0:
                 size = float(props.get("fontsize") or 9) * disp.width / w
                 props["fontsize"] = round(max(4.0, min(72.0, size)), 1)
         del page
-        return self._create(index, {"kind": "legend", "props": props, "rect": pymupdf.Rect(rect)})
+        return self._create(index, {"kind": "legend", "props": props, "rect": pymupdf.Rect(rect),
+                                    "rows": rows})
+
+    def _legend_summary(self, doc, index):
+        """legend.page_summary of a page, kept between edits (as legend.refresh keeps it)."""
+        from . import legend
+        got = self._legend_sums.get(index)
+        if got is None:
+            got = self._legend_sums[index] = legend.page_summary(doc, index, self._legend_items)
+        return got
 
     # ---- measurement ------------------------------------------------------------------
     def live_measure(self, index, tool, pts):
@@ -3120,12 +3136,17 @@ class DocumentView(QScrollArea):
         bar.setValue(bar.value() - h)
 
     def sheet_scale_note(self, index):
-        """The scale note on the sheet (sheet_scale.sheet_scale), read once per page."""
+        """The scale note on the sheet (sheet_scale.sheet_scale), read once per page drawing:
+        kept by the page and its content key, so a new drawing (Replace pages, Edit text on
+        the title block, an undo) is read again (kept by the page alone, Read scales from
+        title blocks and Set scale went on offering the old revision's scale)."""
         from . import sheet_scale
         cache = self.__dict__.setdefault("_sheet_scale_cache", {})
         page = self.doc[index]
-        key = page.xref
+        key = (page.xref, self._content_key(page))
         if key not in cache:
+            if len(cache) > 4 * max(1, self.doc.page_count):
+                cache.clear()               # (old drawings' notes don't pile up)
             try:
                 cache[key] = sheet_scale.sheet_scale(page)
             except Exception:
@@ -3153,9 +3174,10 @@ class DocumentView(QScrollArea):
                     m = annotations.read(a)
                     if m and m["kind"] in annotations.MEASURES and m["kind"] != "m_count":
                         models.append((a.xref, m))
-                for xref, m in models:
-                    pg.delete_annot(pg.load_annot(xref))
-                    annotations.write(pg, m)
+                # (written anew in one step that keeps their replies and their place in the
+                # stacking order: deleted one by one, their review threads went with them)
+                if models:
+                    annotations.replace_many(pg, models, olds=dict(models), again=True)
         self.clear_selection()
         self.modify(do, list(scales))
         self._scale_notice_done()
@@ -6963,6 +6985,8 @@ class DocumentView(QScrollArea):
                     # so no old copy of the text stays in its appearance or private data
                     model["text"] = clean(model.get("text") or "")
                     model["author"] = clean(model.get("author") or "")
+                    if pat.search(model.get("subject") or ""):
+                        model.pop("subject")        # (a subject holding it goes)
                     x = annotations.replace(pg, x, model)
                     if not self._annot_has(pg, x, pat):
                         continue

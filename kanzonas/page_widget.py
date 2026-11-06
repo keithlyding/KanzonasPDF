@@ -2058,13 +2058,16 @@ class PageWidget(QWidget):
         drawing too); else, each way on its own, its left / center / right onto the page's
         left / center / right and its top / middle / bottom onto the page's (snap to page,
         with a guide line along what it lines up with); else its top-left corner to the grid.
-        A picture dragged near the middle of the sheet settles in the middle."""
+        A picture dragged near the middle of the sheet settles in the middle. With both on,
+        the nearer one wins (each measured by the larger of its moves across and down): an
+        object first, whatever its distance, kept a picture dropped by the page's center
+        from settling there on any drawing with a line end near one of its corners."""
         v = self.view
         self._snap_mark = None
         self._snap_guides = []
         moved = box.translated(d)
+        best = None
         if v.snap_objects:
-            best = None
             for x in (moved.left(), moved.center().x(), moved.right()):
                 for y in (moved.top(), moved.center().y(), moved.bottom()):
                     at = QPointF(x, y)
@@ -2074,9 +2077,6 @@ class PageWidget(QWidget):
                         gap = (sp - at).manhattanLength()
                         if best is None or gap < best[0]:
                             best = (gap, sp, at)
-            if best is not None:
-                self._snap_mark = (best[1], "object")
-                return d + (best[1] - best[2])
         if v.snap_page:
             page = v.doc[self.index]
             pr = self.to_screen(page.rect * page.derotation_matrix)
@@ -2090,12 +2090,18 @@ class PageWidget(QWidget):
                 for to in (pr.top(), pr.center().y(), pr.bottom()):
                     if abs(to - at) <= tol and (dy is None or abs(to - at) < abs(dy[0])):
                         dy = (to - at, to)
-            if dx is not None or dy is not None:
+            far = max(abs(dx[0]) if dx else 0.0, abs(dy[0]) if dy else 0.0)
+            if (dx is not None or dy is not None) and (
+                    best is None or far <= max(abs(best[1].x() - best[2].x()),
+                                               abs(best[1].y() - best[2].y()))):
                 if dx is not None:
                     self._snap_guides.append(("x", dx[1]))
                 if dy is not None:
                     self._snap_guides.append(("y", dy[1]))
                 return d + QPointF(dx[0] if dx else 0.0, dy[0] if dy else 0.0)
+        if best is not None:
+            self._snap_mark = (best[1], "object")
+            return d + (best[1] - best[2])
         if v.snap_grid and v.grid_spacing > 0:
             from . import snapping
             corner = moved.topLeft()

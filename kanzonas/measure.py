@@ -60,7 +60,11 @@ def get_scale(page):
         typ, val = page.parent.xref_get_key(page.xref, KEY)
         if typ == "string":
             f, unit, label = (val.split("|", 2) + ["", ""])[:3]
-            return float(f), unit, label, True
+            f = float(f)
+            # (a scale that can't be one, as a file from elsewhere may hold: not set; a NaN
+            # one stopped the page drawing its scale bar, and every measurement on it)
+            if math.isfinite(f) and f > 0 and unit in UNITS:
+                return f, unit, label, True
     except Exception:
         pass
     return PT_M, "in", tr("not set (paper size)"), False
@@ -81,6 +85,14 @@ def copy_scales(src, dst, pairs):
 
 def scale_from_preset(ratio):
     return PT_M * ratio
+
+
+def preset_label(m_per_pt):
+    """The name of the preset scale (PRESETS) of m_per_pt meters per point, '' for none."""
+    for label, ratio, _unit in PRESETS:
+        if abs(PT_M * ratio - m_per_pt) <= 1e-9 * m_per_pt:
+            return label
+    return ""
 
 
 def describe(page):
