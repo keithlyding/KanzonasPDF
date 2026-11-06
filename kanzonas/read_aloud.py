@@ -85,7 +85,14 @@ class Reader(QObject):
         if cls is None:
             return None
         try:
-            eng = cls(self)             # (the system's default engine)
+            names = engines() if _engine_class is None else []
+            if names:
+                # the system's own voices, never Qt's silent test engine ("mock", which is
+                # in the PySide6 wheel and the app's folder too)
+                pick = [n for n in ("winrt", "sapi", "darwin", "speechd") if n in names]
+                eng = cls((pick or names)[0], self)
+            else:
+                eng = cls(self)
         except Exception:
             return None
         if hasattr(cls, "State") and eng.state() == cls.State.Error:

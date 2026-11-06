@@ -1202,6 +1202,15 @@ def run(log_path):
         return scanners.selftest_check()
     check("scanning", t_scanning)
 
+    def t_speech():
+        # View > Read aloud: Qt's text-to-speech and its plug-ins are in the build (imported
+        # only when reading starts, so PyInstaller must have found it inside a function)
+        from PySide6.QtTextToSpeech import QTextToSpeech
+        names = QTextToSpeech.availableEngines()
+        assert names, "no text-to-speech plug-ins"
+        return "(%s)" % ", ".join(names)
+    check("read aloud (speech)", t_speech)
+
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     return 0 if ok else 1
