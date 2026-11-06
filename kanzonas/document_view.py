@@ -7807,8 +7807,10 @@ class DocumentView(QScrollArea):
                   for w in self.doc[i].widgets(types=[pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON])
                   if w.field_name == name and (i, w.xref) != (index, xref)]
 
-        _n, form, more = self._recalc_plan(index, xref,
-                                           self.doc[index].load_widget(xref).on_state())
+        form, more = None, {}
+        if smart_forms.has_calculations(self.doc):
+            pg = self.doc[index]          # (kept alive while its widget is read)
+            _n, form, more = self._recalc_plan(index, xref, pg.load_widget(xref).on_state())
 
         def do():
             for _i, x in others:

@@ -1265,21 +1265,67 @@ al papel (Ajustar al papel o Tamaño real, como se elija allí).</li>
 <ul>
 <li><b>Rellenar:</b> con Seleccionar o Mano, haga clic en un campo. Los botones de opción con el mismo nombre de
 grupo son excluyentes: elegir uno desmarca los demás de su grupo. Se respeta la longitud máxima de un campo; una lista
-desplegable que lo permite también acepta un valor escrito (Escribir un valor...). KanzonasPDF no ejecuta el JavaScript
-de un formulario: los totales que el formulario calcula por sí mismo y los formatos de número o fecha escritos como scripts
-no se actualizan (revíselos, o rellene ese formulario en Acrobat Reader).</li>
+desplegable que lo permite también acepta un valor escrito (Escribir un valor...). KanzonasPDF nunca ejecuta el
+JavaScript de un formulario: reconoce los cálculos, formatos y comprobaciones estándar que escribe Acrobat y los hace
+por sí mismo (vea abajo); cualquier otro script se conserva en el archivo pero no se ejecuta, así que lo que calcularía
+no se actualiza (revíselo, o rellene ese formulario en Acrobat Reader).</li>
 <li><b>Campo de formulario siguiente</b> (Tab) y <b>Campo de formulario anterior</b> (Shift+Tab), en el menú Formularios:
-recorren los campos en orden de lectura (página por página, de arriba abajo, de izquierda a derecha tal como se
-muestra la página, también en una página girada). El
-campo actual recibe un contorno naranja; un campo de texto se abre para escribir (Tab avanza, Shift+Tab
+recorren los campos en el orden de tabulación de la página (si no se cambió con Establecer el orden de tabulación...:
+página por página, de arriba abajo, de izquierda a derecha tal como se muestra la página, también en una página
+girada). El campo actual recibe un contorno naranja; un campo de texto se abre para escribir (Tab avanza, Shift+Tab
 retrocede); en una casilla de verificación, un botón de opción, una lista desplegable o un campo de firma o de iniciales, presione
 <b>Espacio</b> o <b>Enter</b> para rellenarlo. Esc borra el contorno.</li>
 <li><b>Resaltar campos de formulario</b> (menú Ver o Formularios, activado de forma predeterminada) sombrea de azul cada campo que se puede rellenar
 con un contorno azul; los campos obligatorios reciben un contorno rojo. El sombreado solo se ve en pantalla.</li>
 <li><b>Crear:</b> menú Formularios: campo de texto, casilla de verificación, botón de opción, lista desplegable, campo de firma,
 campo de iniciales. Un <b>campo de iniciales</b> funciona como un campo de firma: quien rellena el
-formulario hace clic en él para poner allí sus iniciales guardadas. Haga doble clic en un campo para cambiar su nombre y
-sus opciones.</li>
+formulario hace clic en él para poner allí sus iniciales guardadas. Haga doble clic en un campo (con una herramienta de
+formulario), o haga clic derecho en él, para abrir sus Propiedades del campo.</li>
+<li><b>Detectar campos de formulario...</b> (menú Formularios, o clic derecho en la página con una herramienta de
+formulario) encuentra dónde van los campos en un formulario plano: un PDF sin campos, o uno escaneado después de
+Reconocer texto (OCR). Busca líneas en blanco después de una etiqueta ("Nombre: ____", dibujadas o escritas con guiones
+bajos) o con su etiqueta debajo, cuadros y celdas de tabla vacíos junto a una etiqueta o bajo un encabezado de columna
+(Cant. 1, Cant. 2, ...), cuadros con una etiqueta pequeña dentro, y cuadraditos con una etiqueta al lado (casillas de
+verificación); una etiqueta "Firma" o "Iniciales" crea un campo de firma o de iniciales, y una etiqueta "Fecha" un campo
+de fecha. Cada campo recibe el nombre de su etiqueta. Antes de cambiar nada, una lista muestra lo encontrado (cada uno
+también en la página como un cuadro naranja discontinuo): desmarque lo que no quiera (Seleccionar todo / No
+seleccionar nada), cambie un nombre o un tipo, y <b>Crear campos</b> los crea en un solo paso (Ctrl+Z lo deshace). Es
+prudente antes que entusiasta: una línea o un cuadro sin etiqueta cerca, el texto subrayado, las líneas entre párrafos y
+el borde de la página se dejan como están, así que agregue con las herramientas de arriba cualquier campo que no haya
+encontrado.</li>
+<li><b>Propiedades del campo...</b> (menú Formularios, o clic derecho en un campo; seleccione antes el campo con una
+herramienta de formulario, o llegue a él con Tab). <i>General:</i> nombre, información sobre herramientas (se muestra
+al dejar el puntero sobre el campo), Obligatorio, Solo lectura, las opciones de una lista desplegable y su Posición en
+el orden de tabulación. <i>Formato</i> (campos de texto): Número (decimales, estilo de separador como 1,234.56 o
+1.234,56, un símbolo de moneda antes o después del número, números negativos con un signo menos o entre paréntesis),
+Porcentaje (el valor es una fracción: 0.25, o 25% escrito, se muestra como 25.00%), Fecha (un formato como dd/mm/yyyy: d
+día, m mes, mmm Jan, mmmm January (los meses en inglés, como en Acrobat), yy o yyyy año) o Especial (código postal ZIP, código ZIP+4, número de teléfono, número
+de Seguro Social). El valor se guarda sin formato (1234.5) y se muestra con formato ($1,234.50). <i>Validar:</i> un
+rango en el que debe estar el valor (Desde / Hasta). <i>Calcular:</i> el valor del campo es la Suma, el Producto, el
+Promedio, el Mínimo o el Máximo de los campos que marque, o una Fórmula como <b>Precio * Cant + Envío</b> (nombres de
+campos, números, + - * / y paréntesis; un nombre con espacios lleva una barra invertida antes de cada espacio:
+Artículo\\ 1). Cada cambio es un solo paso para deshacer.</li>
+<li><b>Campos calculados</b>: se calculan en cuanto se rellena un campo que usan (Enter, Tab o un clic en otro lugar),
+cada uno después de los campos que usa, así que un subtotal alimenta un total; un campo vacío cuenta como 0 y una
+división entre cero deja vacío el resultado. En un campo calculado no se escribe. KanzonasPDF los calcula con su propio
+lector de fórmulas, y los guarda como lo hace Acrobat (sus llamadas estándar AFSimple_Calculate y la notación de campo
+simplificada, con el orden de cálculo del formulario), así que Acrobat y otros lectores también los calculan; un
+formulario hecho en Acrobat con esos cálculos se calcula aquí de la misma manera. Cualquier otro script de cálculo se
+muestra en Propiedades del campo como Cálculo personalizado (no se ejecuta).</li>
+<li><b>Comprobación de lo escrito:</b> un campo de número, porcentaje, teléfono, código postal o Seguro Social solo
+acepta los caracteres que corresponden mientras escribe. Un valor que no se ajusta al formato del campo (una fecha que
+no existe, un teléfono con pocos dígitos) o a su rango se rechaza: un mensaje dice por qué, el campo conserva su valor
+anterior y se abre otra vez con lo que escribió, para corregirlo. Los formatos y las comprobaciones se guardan como los
+estándar de Acrobat (AFNumber_Format, AFDate_FormatEx, AFRange_Validate y similares), así que otros lectores también
+los aplican.</li>
+<li><b>Campos obligatorios:</b> al Guardar e Imprimir, los campos obligatorios que siguen vacíos se marcan en rojo y se
+nombran en un aviso en la parte superior del documento (Ir al primero lo lleva allí); el archivo se guarda o se imprime
+de todos modos. <b>Comprobar campos obligatorios</b> (menú Formularios) hace lo mismo en cualquier momento; rellenar un
+campo marcado le quita la marca.</li>
+<li><b>Establecer el orden de tabulación...</b> (menú Formularios, o clic derecho con una herramienta de formulario): el
+orden en que Tab recorre los campos de una página: Por filas, Por columnas (para esta página o todas) o Manual:
+arrastre los campos en la lista, o use Subir y Bajar. Se guarda en la página, así que otros lectores también lo siguen;
+Posición en el orden de tabulación, en Propiedades del campo, mueve un solo campo.</li>
 </ul>
 
 <h2 id="sign">Proteger: firmas, contraseñas, censura</h2>

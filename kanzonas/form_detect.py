@@ -420,7 +420,10 @@ def detect(page, existing=()):
         if c.y1 - tb >= 11 and tb <= c.y0 + 0.6 * h:
             r = pymupdf.Rect(c.x0 + 1.5, tb + 1, c.x1 - 1.5, c.y1 - 1.5)
             add(_kind(label, "multiline" if r.height > 60 and w >= 100 else "text"), r, label, 1)
-        elif c.x1 - tr_ >= 60 and len({x.line for x in inside}) == 1:
+        elif c.x1 - tr_ >= 60 and len({x.line for x in inside}) == 1 and \
+                label.rstrip().endswith(":"):
+            # ("Name: [space]" in one box; a table's cell with words in it is data or a
+            # heading, not a label)
             r = pymupdf.Rect(tr_ + 3, c.y0 + 1.5, c.x1 - 1.5, c.y1 - 1.5)
             add(_kind(label), r, label, 1)
 

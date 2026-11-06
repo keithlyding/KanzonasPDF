@@ -975,8 +975,8 @@ def calc_order(form):
     def visit(n, path):
         if n in done:
             return True
-        if state.get(n) == "busy":
-            return False
+        if state.get(n):
+            return False            # (busy: a loop; done but not in order: in a loop)
         state[n] = "busy"
         ok = True
         for d in sorted(deps.get(n, ()), key=lambda x: rank.get(x, len(rank))):
