@@ -636,6 +636,21 @@ def _parse_dict(text):
     return entries
 
 
+_QQ = re.compile(rb"(?:^|(?<=[\s\]>)}]))([qQ])(?=[\s\[/(<%]|$)")
+
+
+def _nesting(data):
+    """The deepest q ... Q nesting in a content stream's data."""
+    depth = deepest = 0
+    for mo in _QQ.finditer(data):
+        if mo.group(1) == b"q":
+            depth += 1
+            deepest = max(deepest, depth)
+        elif depth:
+            depth -= 1
+    return deepest
+
+
 def _inline_images(data):
     """[_InlineImage] in a content stream's data, in order."""
     out = []
@@ -1232,17 +1247,45 @@ class _Pass:
                 o = todo.pop()
                 if m.pdf_is_dict(o):
                     self._dict(xref, o, page, o is obj)
-                    todo.extend(v for _k, v in _items(o)
-                                if not m.pdf_is_indirect(v) and (m.pdf_is_dict(v) or
-                                                                 m.pdf_is_array(v)))
+                    for k, v in _items(o):
+                        if m.pdf_is_indirect(v):
+                            continue
+                        if m.pdf_is_dict(v) or m.pdf_is_array(v):
+                            todo.append(v)
+                        elif m.pdf_is_string(v) or m.pdf_is_name(v):
+                            self._limits(v, page)
+                        if len(k) > 127:
+                            self._limits(None, page, name=k)
                 elif m.pdf_is_array(o):
                     self._array(o, page)
                     for k in range(m.pdf_array_len(o)):
                         v = m.pdf_array_get(o, k)
-                        if not m.pdf_is_indirect(v) and (m.pdf_is_dict(v) or m.pdf_is_array(v)):
+                        if m.pdf_is_indirect(v):
+                            continue
+                        if m.pdf_is_dict(v) or m.pdf_is_array(v):
                             todo.append(v)
+                        elif m.pdf_is_string(v) or m.pdf_is_name(v):
+                            self._limits(v, page)
+                elif m.pdf_is_string(o) or m.pdf_is_name(o):
+                    self._limits(o, page)
         for job in self.font_jobs:
             job()
+
+    def _limits(self, v, page, name=None):
+        """6.1.13: no string longer than 32,767 bytes, no name longer than 127 (reported:
+        they can't be shortened without losing what they say)."""
+        if name is None and m.pdf_is_string(v):
+            if m.pdf_to_str_len(v) <= 32767:
+                return
+            text = tr("A text in the file (a comment's, perhaps) is longer than PDF/A allows "
+                      "(32,767 bytes).")
+        else:
+            if name is None:
+                name = m.pdf_to_name(v)
+            if len(name.encode("utf-8")) <= 127:
+                return
+            text = tr("A name in the file is longer than PDF/A allows (127 bytes).")
+        self.problem("file", page, text, False)
 
     def _stream(self, xref, obj, page):
         filters = _filters(obj)
@@ -1692,6 +1735,11 @@ class _Pass:
                 data = self.doc.xref_stream(xref)
             except Exception:
                 continue
+            if data and data.count(b"q") > 28 and _nesting(data) > 28:
+                # 6.1.13: no more than 28 levels of saved graphics states (q ... Q)
+                self.problem("graphics", page, tr(
+                    "Drawing instructions are nested deeper than PDF/A allows (28 levels)."),
+                    False)
             if not data or b"BI" not in data:
                 continue
             out, changed = [], False

@@ -28,6 +28,9 @@ What the battery found:
   to be smoothed stayed so (veraPDF: 6.1.10-1, 6.2.8-3), with Check PDF/A finding nothing.
   They are now checked, and Save as PDF/A writes them again (decoded, compressed with Flate,
   not smoothed), drawing exactly as before.
+- Check PDF/A missed the implementation limits (6.1.13): a text longer than 32,767 bytes (a
+  long comment), a name longer than 127 bytes, drawing instructions nested deeper than 28
+  levels; Save as PDF/A then reported the copy clean. They are listed now (not fixable).
 - Find counted a word twice when part of it had been made larger or smaller (MuPDF gives each
   size its own rect, and each rect counted as a match): "contractor" with "actor" made larger
   was 2 matches, "The contractor shall" 3. Rects that go on from one another along a line are
@@ -393,6 +396,33 @@ class PdfA(unittest.TestCase):
             self.assertEqual(out[0].get_pixmap(dpi=72).samples,
                              plain[0].get_pixmap(dpi=72).samples)
         self.assertEqual(pdfa._lzw_decode(lzw(img * 20)), img * 20)     # (past 12-bit codes)
+
+    def test_limits_are_reported(self):
+        from kanzonas import pdfa
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_text((72, 72), "Limits", fontsize=12)
+        x = p.get_contents()[0]
+        d.update_stream(x, d.xref_stream(x) + b"\n" + b"q " * 30 + b"72 600 20 20 re f " +
+                        b"Q " * 30)
+        p.add_text_annot((300, 300), "x" * 40000)
+        d.xref_set_key(d.pdf_catalog(), "N" * 200, "true")
+        path = os.path.join(tempfile.mkdtemp(), "limits_A.pdf")
+        left = {q.text for q in pdfa.convert(d.tobytes(), path)["remaining"]}
+        self.assertEqual(left, {
+            "A text in the file (a comment's, perhaps) is longer than PDF/A allows "
+            "(32,767 bytes).",
+            "A name in the file is longer than PDF/A allows (127 bytes).",
+            "Drawing instructions are nested deeper than PDF/A allows (28 levels)."})
+        # (at the limits: nothing)
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_text((72, 72), "Limits", fontsize=12)
+        x = p.get_contents()[0]
+        d.update_stream(x, d.xref_stream(x) + b"\n" + b"q " * 27 + b"Q " * 27)
+        p.add_text_annot((300, 300), "x" * 32000)
+        d.xref_set_key(d.pdf_catalog(), "N" * 127, "true")
+        self.assertEqual(pdfa.convert(d.tobytes(), path)["remaining"], [])
 
 
 class RightToLeft(unittest.TestCase):
