@@ -59,15 +59,164 @@ def _inherited(doc, xref, key):
     return "null", "null"
 
 
+_NAMES = {}
+
+
+def _name(s):
+    n = _NAMES.get(s)
+    if n is None:
+        n = _NAMES[s] = pymupdf.mupdf.pdf_new_name(s)
+    return n
+
+
+def _get(obj, key):
+    """obj[key] (None when obj isn't a dictionary or has no key)."""
+    if obj is None:
+        return None
+    v = pymupdf.mupdf.pdf_dict_get(obj, _name(key))
+    return v if v.m_internal else None
+
+
+def _is(obj, name):
+    return obj is not None and bool(pymupdf.mupdf.pdf_name_eq(obj, _name(name)))
+
+
+class _Blending:
+    """MuPDF's test of whether resources use blending (pdf-page.c,
+    pdf_resources_use_blending and the ones it calls), worked out afresh: MuPDF keeps its
+    answer in each resource dictionary it read (an object "memo" that nothing clears), so
+    asked again after an edit it gives the answer from before."""
+
+    def __init__(self):
+        self.memo = {}                  # object number -> answer (False while being read)
+
+    def _once(self, obj, fn):
+        m = pymupdf.mupdf
+        if obj is None:
+            return False
+        if not m.pdf_is_indirect(obj):
+            return bool(fn(obj))
+        num = m.pdf_to_num(obj)
+        if num in self.memo:            # (asked before, or a cycle: no, as MuPDF says)
+            return self.memo[num]
+        self.memo[num] = False
+        self.memo[num] = got = bool(fn(obj))
+        return got
+
+    @staticmethod
+    def _extgstate(d):
+        bm = _get(d, "BM")
+        return bm is not None and not _is(bm, "Normal")
+
+    @staticmethod
+    def _values(d):
+        m = pymupdf.mupdf
+        if d is None:
+            return
+        for i in range(m.pdf_dict_len(d)):
+            yield m.pdf_dict_get_val(d, i)
+
+    def resources(self, rdb):
+        return self._once(rdb, self._resources)
+
+    def _resources(self, rdb):
+        if any(self._extgstate(v) for v in self._values(_get(rdb, "ExtGState"))):
+            return True
+        if any(self._once(v, self._pattern) for v in self._values(_get(rdb, "Pattern"))):
+            return True
+        return any(self._once(v, self._xobject) for v in self._values(_get(rdb, "XObject")))
+
+    def _pattern(self, d):
+        return self.resources(_get(d, "Resources")) or self._extgstate(_get(d, "ExtGState"))
+
+    def _xobject(self, d):
+        if _is(_get(_get(d, "Group"), "S"), "Transparency"):
+            return True
+        if _is(_get(d, "Subtype"), "Image") and _get(d, "SMask") is not None:
+            return True
+        return self.resources(_get(d, "Resources"))
+
+
+def _annot_ap(pdf, annot):
+    """The appearance stream MuPDF draws for a markup of a page just loaded (pdf_annot_ap:
+    the normal one, or the one its state /AS picks)."""
+    m = pymupdf.mupdf
+    ap_n = _get(_get(annot, "AP"), "N")
+    if ap_n is None:
+        return None
+    if m.pdf_is_indirect(ap_n) and m.pdf_obj_num_is_stream(pdf, m.pdf_to_num(ap_n)):
+        return ap_n
+    state = _get(annot, "AS")
+    if state is None:
+        return None
+    v = m.pdf_dict_get(ap_n, m.pdf_resolve_indirect_chain(state))
+    return v if v.m_internal else None
+
+
+def transparency(page):
+    """Whether MuPDF draws the page's content as a transparency group (1) or not (0), as it
+    works it out when it loads a page (pdf_load_page_imp): the page has a transparency
+    group, its resources use blending, or a markup's appearance does (the first markup
+    without an appearance ends the look, as there). MuPDF works this out only when it loads
+    a page, and a page stays loaded while anything holds it: a markup with a blend mode
+    added later (a highlight multiplies) or taken away leaves the page as it was, drawn a
+    few levels of color apart from the same page opened afresh."""
+    m = pymupdf.mupdf
+    pdf = pymupdf._as_pdf_document(page.parent)
+    obj = pymupdf._as_pdf_page(page).obj()
+    if _is(_get(_get(obj, "Group"), "S"), "Transparency"):
+        return 1
+    b = _Blending()
+    res = m.pdf_dict_get_inheritable(obj, _name("Resources"))
+    if res.m_internal and b.resources(res):
+        return 1
+    annots = _get(obj, "Annots")
+    if annots is None:
+        return 0
+    marks, widgets = [], []
+    for i in range(m.pdf_array_len(annots)):
+        a = m.pdf_array_get(annots, i)
+        if not m.pdf_is_dict(a):
+            continue
+        kind = _get(a, "Subtype")
+        if _is(kind, "Link") or _is(kind, "Popup"):
+            continue
+        (widgets if _is(kind, "Widget") else marks).append(a)
+    for group in (marks, widgets):
+        for a in group:
+            ap = _annot_ap(pdf, a)
+            if ap is None:
+                break
+            if b.resources(_get(ap, "Resources")):
+                return 1
+    return 0
+
+
+def sync_transparency(page):
+    """Set the loaded page's transparency to what a page loaded afresh has (transparency),
+    and return it (None: not known, as MuPDF has it)."""
+    try:
+        if not page.parent.is_pdf:
+            return None
+        t = transparency(page)
+        raw = pymupdf._as_pdf_page(page).m_internal
+        if raw.transparency != t:
+            raw.transparency = t
+        return t
+    except Exception:                   # (another PyMuPDF)
+        return None
+
+
 def content_key(page):
     """What a page's content looks like on screen depends on, as a comparable value: its
     content streams (checksummed, a nudge can keep a stream's length), every object its
     resources reach (the source of each, the checksum of each stream), the page's boxes,
-    rotation and transparency group, and the layers shown."""
+    rotation and transparency group, whether MuPDF draws it as a transparency group (its
+    markups can make it one: set right here, see transparency), and the layers shown."""
     doc = page.parent
     if not doc.is_pdf:
         return (page.number, tuple(page.rect))
-    out = [tuple(page.mediabox), tuple(page.cropbox), page.rotation]
+    out = [tuple(page.mediabox), tuple(page.cropbox), page.rotation, sync_transparency(page)]
     for x in page.get_contents():
         out.append((x,) + _crc(doc, x))
     kind, res = _inherited(doc, page.xref, "Resources")

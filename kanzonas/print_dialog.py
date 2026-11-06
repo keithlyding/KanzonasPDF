@@ -44,6 +44,8 @@ def print_list(page, markups=True):
     """page as it prints, as a pymupdf.DisplayList. With markups: the annotations and form
     fields that have the Print flag, including ones hidden on screen (NoView), and not those
     without it (PDF 12.5.3). The screen rendering (get_pixmap) follows the view flags."""
+    from .render_layers import sync_transparency
+    sync_transparency(page)             # (drawn as a page opened afresh: see there)
     if not markups:
         return page.get_displaylist(annots=False)
     if not page.parent.is_pdf:

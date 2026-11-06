@@ -5495,6 +5495,8 @@ class DocumentView(QScrollArea):
         if area.is_empty:
             return
         dpi = 300 if area.width * area.height < 200_000 else 200
+        from .render_layers import sync_transparency
+        sync_transparency(page)         # (drawn as a page opened afresh: see there)
         pix = page.get_pixmap(clip=area, dpi=dpi, annots=True, alpha=False)
         png = pix.tobytes("png")
         img = QImage.fromData(png, "PNG")

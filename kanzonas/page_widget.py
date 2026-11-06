@@ -306,6 +306,7 @@ def thumbnail(view, i, s):
         if al is not None:
             pm = RL.draw_over(pm, al, s)
     else:
+        RL.sync_transparency(page)          # (as a page opened afresh: see there)
         pm = page.get_pixmap(matrix=pymupdf.Matrix(s, s), annots=True)
     return QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
 
