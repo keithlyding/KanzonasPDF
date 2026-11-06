@@ -330,8 +330,10 @@ to `false` (Settings > Secrets and variables > Actions > Variables) to turn rele
 
 ## Credits
 
-App icon and logo: the owner's artwork in `assets/` (after changing them, run
-`python tools_make_assets.py`). Toolbar icons: the Material Design Icons font that ships with
+App icon: the owner's artwork in `assets/` (after changing it, run `python tools_make_assets.py`).
+Logo: every Kanzonas logo comes from [Kanzonas-Site](https://github.com/keithlyding/Kanzonas-Site)
+(`brand/`), the single source of truth; bring a new one in with `python tools/update_logo.py
+<site commit>` (`assets/LOGO_SOURCE.txt` records which). Toolbar icons: the Material Design Icons font that ships with
 QtAwesome. The libraries, fonts and artwork KanzonasPDF uses, and their licenses, are listed in
 [NOTICE.md](NOTICE.md).
 

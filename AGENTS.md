@@ -35,9 +35,11 @@ and only when both are green.
 Every Kanzonas logo comes from the Kanzonas-Site repository's `brand/` folder
 (https://github.com/keithlyding/Kanzonas-Site), the single source of truth for logos (the owner's
 decision): its `make_logos.py`, artwork, fonts and `SPEC.md`. Never make or edit a logo here.
-To change one, change it there, copy its `kanzonas-logo-source.png` into `assets/` as its
-`brand/README.md` says, and run `tools_make_assets.py`, as a user-facing change. (The app
-icon is still drawn by `tools_make_assets.py` here.)
+To change one, change it there, then here run `python tools/update_logo.py <that site commit>`
+on a branch (it copies `brand/out/kanzonas-logo-source.png` into `assets/` and
+`kanzonas/branding_data.py`, and records the commit and SHA-256 in `assets/LOGO_SOURCE.txt`;
+tests/test_logo_source.py fails if the logo here doesn't match that record), as a user-facing
+change. (The app icon is still drawn by `tools_make_assets.py` here.)
 
 ## Plans and decisions
 The order of work and the owner's decisions are in docs/ROADMAP.md: read it before starting a
