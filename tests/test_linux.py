@@ -419,6 +419,7 @@ class MenuEntry(unittest.TestCase):
 
 class Fonts(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "the Linux font folders")
+    @mock.patch.object(sys, "platform", "linux")        # (also run on a Mac: Linux's folders)
     def test_the_users_own_fonts_and_fontconfigs_folders_are_scanned(self):
         home = tempfile.mkdtemp()
         data = os.path.join(home, "data")

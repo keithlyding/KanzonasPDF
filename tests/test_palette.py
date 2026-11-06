@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import Qt  # noqa: E402
-from PySide6.QtGui import QAction  # noqa: E402
+from PySide6.QtGui import QAction, QKeySequence  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
@@ -52,7 +52,7 @@ class Palette(unittest.TestCase):
         it = pal.list.topLevelItem(0)
         self.assertEqual(it.data(0, Qt.UserRole), "Preferences")
         self.assertIn("File", it.text(1))
-        self.assertIn("Ctrl+K", it.text(2))
+        self.assertIn(QKeySequence("Ctrl+K").toString(QKeySequence.NativeText), it.text(2))
 
     def test_disabled_commands_are_not_offered(self):
         pal = CommandPalette(self.w)          # no document open: Save is disabled

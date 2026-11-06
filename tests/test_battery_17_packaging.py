@@ -350,7 +350,7 @@ class Workflow(unittest.TestCase):
         # the build jobs run tests and install packages: a token that can push to main (and
         # so publish a release) must not be within their reach
         self.assertEqual(self.wf["permissions"], {"contents": "read"})
-        for job in ("build", "linux"):
+        for job in ("build", "linux", "macos"):
             self.assertNotEqual((self.jobs[job].get("permissions") or {}).get("contents"),
                                 "write", job)
         self.assertEqual(self.jobs["publish"]["permissions"], {"contents": "write"})

@@ -20,8 +20,9 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/heads/') && github.ref != 'refs/heads/main' }}
 
-# PyInstaller options of both builds (the Windows exe and the Linux AppImage's app folder;
-# --windowed and --icon only matter on Windows)
+# PyInstaller options of every build (the Windows exe, the Linux AppImage's app folder and the
+# macOS app; --windowed makes the .app on macOS and matters on Windows, --icon only on
+# Windows: the Mac's icon is put in by packaging/macos/make_app.py)
 env:
   PYINSTALLER_OPTIONS: >-
     --noconfirm --windowed --collect-all rapidocr_onnxruntime --collect-all docx
@@ -489,14 +490,191 @@ jobs:
           if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------------------
-  # Publishing, once both builds and their tests have passed (a failed Windows or Linux build
-  # publishes nothing). A push to main with a version that has no release yet publishes a
+  # macOS: KanzonasPDF.app in a disk image, for Macs with Apple silicon (M1 and newer) only,
+  # the owner's decision: no Intel Mac build for now (PyMuPDF 2.0 and recent ONNX Runtime and
+  # cryptography have no Intel Mac builds, and GitHub's Intel Macs miss the speed budgets).
+  # Built on the oldest macOS GitHub still offers; the app says it runs on MACOS_MIN and the
+  # build fails if anything in it needs a newer macOS (Qt 6.12 needs macOS 14.4). Unsigned
+  # for now: people allow it once in System Settings > Privacy & Security > Open Anyway (see
+  # the signing steps below).
+  macos:
+    name: macos (arm64)
+    runs-on: macos-15
+    timeout-minutes: 120
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    env:
+      MACOS_MIN: "14.4"
+      # a disk image much bigger than this means something unexpected got bundled
+      MAX_DMG_MB: "450"
+      # ---- Signing and notarization: OFF (no Apple Developer account yet) ----------------
+      # To turn them on, set this to "on" and add the repository secrets the two steps
+      # marked "(signing)" read: MACOS_CERTIFICATE_P12 (the Developer ID Application
+      # certificate and key, a .p12 file in base64), MACOS_CERTIFICATE_PASSWORD,
+      # MACOS_SIGN_IDENTITY ("Developer ID Application: Name (TEAMID)"), MACOS_NOTARY_APPLE_ID,
+      # MACOS_NOTARY_TEAM_ID and MACOS_NOTARY_PASSWORD (an app-specific password). Then take
+      # "Open Anyway" out of the README, the manual and the release text.
+      MACOS_SIGNING: "off"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: The right kind of Mac
+        run: |
+          echo "$(uname -m) Mac, macOS $(sw_vers -productVersion), $(sysctl -n machdep.cpu.brand_string), $(sysctl -n hw.ncpu) CPUs"
+          echo "Python: $(python -c 'import platform, sys; print(platform.machine(), sys.version)')"
+          test "$(uname -m)" = arm64
+          test "$(python -c 'import platform; print(platform.machine())')" = arm64
+
+      - name: Install dependencies
+        run: |
+          # (wheels only: a library built here from source would link to the build machine's
+          # own libraries, which need its newer macOS)
+          python -m pip install --only-binary :all: -r requirements.txt -c constraints.txt pyinstaller
+          # (only one OpenCV, as on Windows and Linux: the headless one pinned in constraints.txt)
+          v=$(sed -n 's/^opencv-python-headless==\([0-9.]*\).*/\1/p' constraints.txt)
+          test -n "$v"
+          python -m pip uninstall -y opencv-python opencv-python-headless
+          python -m pip install --no-deps "opencv-python-headless==$v"
+          python -c "import cv2; print('OpenCV', cv2.__version__)"
+          python -c "import pymupdf, onnxruntime; print('PyMuPDF', pymupdf.__version__, 'MuPDF', pymupdf.mupdf_version, 'ONNX Runtime', onnxruntime.__version__)"
+
+      - name: Regression tests (security, document preservation, efficiency budgets)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m unittest discover -s tests -p "test_*.py" -t .
+          # (macOS keeps settings for programs itself, where tests can't put them aside as on
+          # Linux: what they left, and the files they left in the app's data folder, go before
+          # the app is tested: a backup left there would be offered at the app's start)
+          defaults delete com.kanzonaspdf.KanzonasPDF 2>/dev/null || true
+          rm -rf "$HOME/Library/Application Support/KanzonasPDF"
+
+      - name: Build the app (PyInstaller, the same options as Windows and Linux)
+        run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py
+
+      - name: License and source notice
+        run: |
+          # (the same files as the Windows and Linux builds, in the app's Contents/Resources)
+          mkdir -p licenses
+          curl -fsSL --retry 3 https://www.gnu.org/licenses/agpl-3.0.txt -o licenses/LICENSE-AGPL-3.0.txt \
+            || echo "::warning::Couldn't download the AGPL text"
+          cp LICENSE licenses/LICENSE.txt
+          cat > licenses/NOTICE.txt <<'TXT'
+          KanzonasPDF is free software: you can redistribute it and/or modify it under the terms of
+          the GNU Affero General Public License version 3 (see LICENSE-AGPL-3.0.txt).
+          It is built on PyMuPDF / MuPDF (Artifex, AGPL 3.0), Qt for Python (LGPL 3.0) and other
+          open-source libraries. Complete source code: https://github.com/keithlyding/KanzonasPDF
+          TXT
+
+      - name: Read version
+        id: ver
+        run: echo "version=$(python -c 'import kanzonas; print(kanzonas.__version__)')" >> "$GITHUB_OUTPUT"
+
+      - name: Finish the app (Info.plist, icon, licenses; architecture and macOS version checks)
+        run: |
+          python packaging/macos/make_app.py finish dist/KanzonasPDF.app \
+            --version "${{ steps.ver.outputs.version }}" --arch arm64 \
+            --min-macos "$MACOS_MIN" --licenses licenses --adhoc-sign
+          plutil -p dist/KanzonasPDF.app/Contents/Info.plist
+
+      # (signing) a Developer ID signature with the hardened runtime, replacing the ad hoc one
+      - name: Sign the app (signing; off until there is an Apple Developer account)
+        if: env.MACOS_SIGNING == 'on'
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: |
+          kc="$RUNNER_TEMP/signing.keychain-db"
+          kcpw=$(uuidgen)
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$kcpw" "$kc"
+          security set-keychain-settings -lut 3600 "$kc"
+          security unlock-keychain -p "$kcpw" "$kc"
+          security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$kcpw" "$kc"
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          codesign --force --deep --options runtime --timestamp \
+            --entitlements packaging/macos/entitlements.plist \
+            --sign "$MACOS_SIGN_IDENTITY" dist/KanzonasPDF.app
+          codesign --verify --deep --strict --verbose=2 dist/KanzonasPDF.app
+
+      - name: Self test (inside the app; OCR, exports, signatures, forms)
+        run: |
+          code=0
+          QT_QPA_PLATFORM=offscreen dist/KanzonasPDF.app/Contents/MacOS/KanzonasPDF --selftest selftest-macos.log || code=$?
+          cat selftest-macos.log
+          if [ $code -ne 0 ]; then echo "::error::Self test failed with code $code"; exit 1; fi
+          if grep -q '^FAIL' selftest-macos.log; then echo "::error::Self test has failures"; exit 1; fi
+          grep -q '^PASS performance budget' selftest-macos.log
+
+      - name: Smoke test (opened from Finder, a second PDF into the running app)
+        run: packaging/macos/smoke_test.sh dist/KanzonasPDF.app smoke-macos.png
+
+      - name: Disk image
+        run: |
+          dmg="KanzonasPDF-macos-arm64.dmg"
+          python packaging/macos/make_app.py dmg dist/KanzonasPDF.app "$dmg"
+          size=$(stat -f %z "$dmg")
+          if [ "$size" -gt $((MAX_DMG_MB * 1000000)) ]; then
+            echo "::error::$dmg is bigger than $MAX_DMG_MB MB"; exit 1
+          fi
+          # what's really inside: the app, signed, and the link to Applications
+          mnt=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg"
+          test -L "$mnt/Applications"
+          test -f "$mnt/KanzonasPDF.app/Contents/Resources/LICENSE.txt"
+          test -f "$mnt/KanzonasPDF.app/Contents/Resources/KanzonasPDF.icns"
+          codesign --verify --deep --strict "$mnt/KanzonasPDF.app"
+          hdiutil detach "$mnt"
+
+      # (signing) Apple checks the signed disk image; the ticket is stapled to it
+      - name: Notarize the disk image (signing; off until there is an Apple Developer account)
+        if: env.MACOS_SIGNING == 'on'
+        env:
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+          MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+        run: |
+          dmg="KanzonasPDF-macos-arm64.dmg"
+          codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$dmg"
+          xcrun notarytool submit "$dmg" --apple-id "$MACOS_NOTARY_APPLE_ID" \
+            --team-id "$MACOS_NOTARY_TEAM_ID" --password "$MACOS_NOTARY_PASSWORD" --wait
+          xcrun stapler staple "$dmg"
+          spctl --assess --type open --context context:primary-signature --verbose "$dmg"
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: KanzonasPDF-v${{ steps.ver.outputs.version }}-macos-arm64
+          path: KanzonasPDF-macos-arm64.dmg
+          compression-level: 0
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: macos-arm64-selftest-log
+          path: |
+            selftest-macos.log
+            smoke-macos.png
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------------------
+  # Publishing, once every build and its tests have passed (a failed Windows, Linux or macOS
+  # build publishes nothing). A push to main with a version that has no release yet publishes a
   # draft unless the repository variable AUTO_RELEASE is 'true' (then it is a real
   # release). Tag builds (refs/tags/v*) of a commit on main are always real releases. AUTO_RELEASE=false
   # skips publishing (create a release or tag v<version> by hand; that builds and
   # publishes). Builds of other branches don't run this job.
   publish:
-    needs: [build, linux]
+    needs: [build, linux, macos]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -506,11 +684,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Same version on Windows and Linux
+      - name: Same version on Windows, Linux and macOS
         run: |
-          echo "Windows ${{ needs.build.outputs.version }}, Linux ${{ needs.linux.outputs.version }}"
+          echo "Windows ${{ needs.build.outputs.version }}, Linux ${{ needs.linux.outputs.version }}, macOS ${{ needs.macos.outputs.version }}"
           test -n "$VERSION"
           test "$VERSION" = "${{ needs.linux.outputs.version }}"
+          test "$VERSION" = "${{ needs.macos.outputs.version }}"
 
       - name: Is this version already released?
         id: rel
@@ -542,6 +721,11 @@ jobs:
           name: KanzonasPDF-v${{ needs.linux.outputs.version }}-linux
           path: release
 
+      - uses: actions/download-artifact@v6
+        with:
+          name: KanzonasPDF-v${{ needs.macos.outputs.version }}-macos-arm64
+          path: release
+
       - name: Checksums (SHA-256) of the downloads
         id: sums
         working-directory: release
@@ -549,7 +733,8 @@ jobs:
           mv "dist-installer/KanzonasPDF-v$VERSION-setup.exe" .
           chmod +x KanzonasPDF-x86_64.AppImage
           sha256sum "KanzonasPDF-v$VERSION-setup.exe" KanzonasPDF-portable.zip KanzonasPDF-windows.zip \
-            KanzonasPDF-x86_64.AppImage winget-manifests.zip > ../SHA256SUMS.txt
+            KanzonasPDF-x86_64.AppImage KanzonasPDF-macos-arm64.dmg \
+            winget-manifests.zip > ../SHA256SUMS.txt
           cat ../SHA256SUMS.txt
           { echo "text<<KZSUMS"; cat ../SHA256SUMS.txt; echo "KZSUMS"; } >> "$GITHUB_OUTPUT"
 
@@ -578,13 +763,18 @@ jobs:
             **Linux (64-bit PC; Ubuntu 22.04, Debian 12, Fedora 36 or newer):** download `KanzonasPDF-x86_64.AppImage`,
             make it executable (`chmod +x KanzonasPDF-x86_64.AppImage`, or Properties > Allow executing) and run it.
             To update, replace the file with the new one.
+            **Mac with Apple silicon (M1 or newer), macOS 14.4 (Sonoma) or newer:** download `KanzonasPDF-macos-arm64.dmg`,
+            open it and drag KanzonasPDF to Applications. (There's no version for Intel Macs yet.)
+            It isn't signed by Apple yet, so the first time macOS stops it ("Apple could not verify..."): click Done, then
+            open System Settings > Privacy & Security, click **Open Anyway** next to "KanzonasPDF was blocked" and confirm.
+            You do this once for each new version. To update, drag the new one to Applications and choose Replace.
 
             ${{ steps.notes.outputs.notes }}
 
             All the details: [CHANGELOG.md](https://github.com/keithlyding/KanzonasPDF/blob/v${{ env.VERSION }}/CHANGELOG.md).
             Free software under the GNU AGPL 3.0. [Code signing policy](https://github.com/keithlyding/KanzonasPDF/blob/main/CODE_SIGNING_POLICY.md).
 
-            **Check your download (SHA-256):** in PowerShell, `Get-FileHash <file>` (on Linux, `sha256sum <file>`) must show the same value.
+            **Check your download (SHA-256):** in PowerShell, `Get-FileHash <file>` (on Linux, `sha256sum <file>`; on macOS, `shasum -a 256 <file>`) must show the same value.
             ```
             ${{ steps.sums.outputs.text }}
             ```
@@ -594,4 +784,5 @@ jobs:
             release/KanzonasPDF-portable.zip
             release/KanzonasPDF-windows.zip
             release/KanzonasPDF-x86_64.AppImage
+            release/KanzonasPDF-macos-arm64.dmg
             release/winget-manifests.zip

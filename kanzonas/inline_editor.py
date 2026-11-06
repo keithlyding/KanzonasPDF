@@ -13,6 +13,7 @@ takes that word's style; text typed into an empty box takes the paragraph's main
 """
 
 import re
+import sys
 
 from PySide6.QtCore import Qt, Signal, QEvent, QRect
 from PySide6.QtGui import (QColor, QFont, QFontDatabase, QFontMetricsF, QPainter, QPen,
@@ -82,6 +83,9 @@ class StyleBar(QFrame):
         def button(key, label, tip, slot, setup=None):
             b = QToolButton(self)
             b.setText(label)
+            if sys.platform == "darwin":
+                from .macos import mac_keys     # (Command, as the menus' tips say it)
+                tip = mac_keys(tip)
             b.setToolTip(tip)
             b.setAutoRaise(True)
             b.setFocusPolicy(Qt.NoFocus)        # the text keeps its selection

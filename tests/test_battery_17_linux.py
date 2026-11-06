@@ -280,10 +280,18 @@ class MenuEntry(unittest.TestCase):
 
 
 def _a_truetype_file():
+    """An installed TrueType font that can write "Hello" (macOS's first one may be a
+    Braille or symbol font)."""
+    import pymupdf
     for d in text_edit.font_dirs():
         for f in text_edit._font_files(d):
             if f.lower().endswith(".ttf"):
-                return f
+                try:
+                    font = pymupdf.Font(fontfile=f)
+                except Exception:
+                    continue
+                if all(font.has_glyph(ord(c)) for c in "Hello"):
+                    return f
     return None
 
 

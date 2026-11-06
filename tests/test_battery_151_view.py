@@ -288,10 +288,11 @@ class Windows(Window):
                                lambda box: seen.append((box.windowTitle(), box.text())) or 0):
             self.assertEqual(w2._ask_exit(2, []), "cancel")
             self.w._ask_exit(2, [])
-        self.assertEqual(seen[0][0], "Close window")
+        if sys.platform != "darwin":        # (Qt gives a Mac's message boxes no title)
+            self.assertEqual(seen[0][0], "Close window")
+            self.assertEqual(seen[1][0], "Close KanzonasPDF")
         self.assertIn("in this window", seen[0][1])
         self.assertNotIn("exit", seen[0][1])
-        self.assertEqual(seen[1][0], "Close KanzonasPDF")
 
     def test_view_options_are_checked_alike_in_every_window(self):
         w, w2 = self.w, self.two_windows()

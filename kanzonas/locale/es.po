@@ -7957,3 +7957,9 @@ msgstr "Marcas de"
 #: properties.py
 msgid "Text size"
 msgstr "Tamaño del texto"
+
+msgid "Download {file} there, open it and drag KanzonasPDF to Applications, replacing the old one. Your settings are kept."
+msgstr "Descargue allí {file}, ábralo y arrastre KanzonasPDF a Aplicaciones, reemplazando el anterior. Su configuración se conserva."
+
+msgid "The Mac version is for Macs with Apple silicon (M1 or newer) only: there's no version for Intel Macs yet."
+msgstr "La versión para Mac es solo para Mac con Apple silicon (M1 o posterior): todavía no hay versión para Mac con Intel."

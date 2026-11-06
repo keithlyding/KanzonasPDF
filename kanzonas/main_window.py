@@ -447,6 +447,12 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(geo)
         self._restore_layout()
         self._sync_mouse_actions()          # (after the saved layout: the CAD command line)
+        if sys.platform == "darwin":
+            # (once every menu command exists: the application menu's three, nothing else)
+            from . import macos
+            macos.set_menu_roles(self)
+            for b in (self.shapes_btn, self.measure_btn):    # (their tips, put together)
+                b.setToolTip(_GroupTip.text(b))
 
     def _restore_layout(self):
         """Bring back the panels as they were when KanzonasPDF was last closed: which ones
@@ -567,7 +573,12 @@ class MainWindow(QMainWindow):
         self.a_print = self._act(tr("&Print..."), self.print_doc, QKeySequence.Print)
         self.a_close = self._act(tr("&Close tab"), lambda: self.close_tab(self.tabs.currentIndex()),
                                  QKeySequence.Close)
-        self.a_exit = self._act(tr("E&xit"), self.close, "Alt+F4")
+        if sys.platform == "darwin":
+            # macOS: Quit (Command-Q, in the application menu) ends the whole program, from
+            # any window, as Mac programs do
+            self.a_exit = self._act(tr("E&xit"), self._quit_all, QKeySequence.Quit)
+        else:
+            self.a_exit = self._act(tr("E&xit"), self.close, "Alt+F4")
         self.a_detach = self._act(tr("Move tab to new &window"), self.detach_current, "Ctrl+Shift+N",
                                   tip=tr("Open this document in its own window (for a second "
                                          "monitor); drag the tab out of the tab bar does the same"))
@@ -576,8 +587,11 @@ class MainWindow(QMainWindow):
         self.a_undo = self._act(tr("&Undo"), lambda: v() and v().undo(), QKeySequence.Undo)
         self.a_redo = self._act(tr("&Redo"), lambda: v() and v().redo(), QKeySequence.Redo)
         self.a_find = self._act(tr("&Find"), self._focus_search, QKeySequence.Find)
-        self.a_replace = self._act(tr("R&eplace text..."), self.replace_text, "Ctrl+H",
-                                   tip=tr("Find text in the page and replace it (Ctrl+H)"))
+        # (macOS: Command-H hides the program; Command-Option-F is its Find and Replace)
+        replace_key = "Ctrl+Alt+F" if sys.platform == "darwin" else "Ctrl+H"
+        self.a_replace = self._act(tr("R&eplace text..."), self.replace_text, replace_key,
+                                   tip=tr("Find text in the page and replace it (Ctrl+H)")
+                                   .replace("Ctrl+H", replace_key))
         # clipboard: text, markups, or pages (when the page list has the focus)
         self.a_copy = self._act(tr("&Copy"), lambda: self._clipboard("copy"), QKeySequence.Copy,
                                 tip=tr("Copy the selected text, markups, or pages (in the page list)"))
@@ -934,6 +948,9 @@ class MainWindow(QMainWindow):
         self.a_menu_bar.setChecked(self.settings.value("menu_bar", "true") != "false")
         self.a_menu_bar.toggled.connect(self._toggle_menu_bar)
         self.addAction(self.a_menu_bar)            # shortcut works while the menu bar is hidden
+        if sys.platform == "darwin":
+            # (the Mac's menu bar is at the top of the screen, always)
+            self.a_menu_bar.setVisible(False)
         self.a_lock = self._act(tr("&Lock selected"), lambda: self._lock_selected(), "Ctrl+L",
                                 tip=tr("Lock the selected markups: they can't be clicked, moved or "
                                        "selected on the page (unlock in the Objects panel)"))
@@ -1074,7 +1091,11 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_lock, self.a_unlock_all])
         m.addSeparator()
-        hint = m.addAction(tr("Ctrl+click or drag a box with Select to pick several markups"))
+        hint = tr("Ctrl+click or drag a box with Select to pick several markups")
+        if sys.platform == "darwin":
+            from .macos import mac_keys
+            hint = mac_keys(hint, symbols=False)          # (Cmd+click)
+        hint = m.addAction(hint)
         hint.setEnabled(False)
         m = self.cad_menu = mb.addMenu(tr("&CAD"))
         m.addActions([self.cad_actions[k] for k in ("move", "copy", "rotate", "scale", "mirror",
@@ -1959,6 +1980,12 @@ class MainWindow(QMainWindow):
         QApplication.instance().removeEventFilter(self)
         _forget_window(next((r for r in _WINDOW_REFS if r() is self), None))
         e.accept()
+
+    def _quit_all(self):
+        """macOS Quit: close the primary window, which closes every window (asking about
+        unsaved changes in each), from whichever window it was chosen in."""
+        main = next((w for w in windows() if w.primary), self)
+        main.close()
 
     def _save_session(self, others=()):
         """Each open document's page and zoom; from the primary window also the files open
@@ -4140,8 +4167,13 @@ class MainWindow(QMainWindow):
             if extra and (f"({extra})" in base or (plain and f"({plain})" in base)):
                 extra = ""                               # (the tip says it already)
             added = f" ({extra})" if extra else ""
-            if a.toolTip() != base + added:
-                a.setToolTip(base + added)
+            tip = base + added
+            if sys.platform == "darwin":
+                # (Command and Option, as the Mac's keyboard says, also in the tip's own text)
+                from .macos import mac_keys
+                tip = mac_keys(tip)
+            if a.toolTip() != tip:
+                a.setToolTip(tip)
             a.setProperty("kz_tip_set", a.toolTip())
 
     def _names_of(self, a):
@@ -5034,7 +5066,8 @@ class MainWindow(QMainWindow):
         self.view_group.setVisible(ribbon)
         tb.setVisible(not ribbon)
         self.menuBar().setVisible(not ribbon or self.a_menu_bar.isChecked())
-        self.menu_btn.setVisible(ribbon and not self.a_menu_bar.isChecked())
+        self.menu_btn.setVisible(ribbon and not self.a_menu_bar.isChecked()
+                                 and sys.platform != "darwin")
 
     def _toggle_menu_bar(self, on):
         self.settings.setValue("menu_bar", "true" if on else "false")
@@ -5240,8 +5273,20 @@ class MainWindow(QMainWindow):
                          + "](" + page + ")")
         notes.setMarkdown("\n\n".join(parts))
         lay.addWidget(notes)
+        how = tr("Download opens the release page in your browser.")
+        if sys.platform == "darwin":
+            # (an unsigned Mac app doesn't replace itself: the new disk image is installed
+            # like the first one; there is none for Intel Macs)
+            from . import macos
+            if macos.intel():
+                how += " " + tr("The Mac version is for Macs with Apple silicon (M1 or "
+                                "newer) only: there's no version for Intel Macs yet.")
+            else:
+                how += " " + tr("Download {file} there, open it and drag KanzonasPDF to "
+                                "Applications, replacing the old one. Your settings are "
+                                "kept.").format(file=macos.DMG)
         info = QLabel((self._update_now_text() + "\n\n" if self._self_update_url() else "")
-                      + tr("Download opens the release page in your browser."))
+                      + how)
         info.setWordWrap(True)
         lay.addWidget(info)
         box = QDialogButtonBox()
