@@ -875,8 +875,14 @@ class DocumentView(QScrollArea):
         ws = [self.pages[i] for i in self.spread(index)] if self.two_up() else [self.pages[index]]
         left = min(w.x() for w in ws)
         right = max(w.x() + w.width() for w in ws)
+        mid = (left + right) / 2
+        if self.page_layout == "two_continuous" and len(ws) == 1 and self.page_count() > 1:
+            # a page alone in its spread (the cover, an odd last page): the middle of the
+            # book, where the pages above and below meet
+            mid = left - SPREAD_GAP / 2 if self._grid_cell(index)[1] == 1 else \
+                right + SPREAD_GAP / 2
         bar = self.horizontalScrollBar()
-        bar.setValue(int((left + right) / 2 - self.viewport().width() / 2))
+        bar.setValue(int(mid - self.viewport().width() / 2))
 
     def apply_canvas(self):
         """CAD mouse mode or Free page movement: open canvas about a window wide around the

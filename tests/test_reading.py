@@ -317,6 +317,21 @@ class ReadingOrder(unittest.TestCase):
         self.assertLess(html.index("left column"), html.index("right column"))
         doc.close()
 
+    def test_column_beside_a_picture_stays_in_its_column(self):
+        # the right column is empty beside a picture (pictures aren't read): the left
+        # column's text there still belongs between its paragraphs above and below
+        B = reading_text.Block
+
+        def blk(x0, y0, x1, y1, text):
+            return B((x0, y0, x1, y1), [[(text, (x0, y0, x1, y1))]], 10, False)
+        blocks = [blk(72, 40, 540, 60, "Title"),
+                  blk(72, 100, 290, 200, "L1"), blk(320, 100, 540, 200, "R1"),
+                  blk(72, 220, 290, 300, "L2"),                       # (a picture at the right)
+                  blk(72, 320, 290, 400, "L3"), blk(320, 320, 540, 400, "R3"),
+                  blk(72, 450, 540, 470, "Footer")]
+        order = [b.lines[0][0][0] for b in reading_text.order_blocks(blocks)]
+        self.assertEqual(order, ["Title", "L1", "L2", "L3", "R1", "R3", "Footer"])
+
     def test_hyphen_at_a_line_end_joined(self):
         self.assertEqual(reading_text.join_lines(["We are read-", "ing it. Well-", "Known"]),
                          "We are reading it. Well- Known")
@@ -455,6 +470,18 @@ class ReadAloud(_Base):
         n = len(eng.said)
         eng.finish()                            # (a late "ready" from the engine: nothing more)
         self.assertEqual(len(eng.said), n)
+
+    def test_a_late_ready_from_a_stop_skips_nothing(self):
+        w = self.w
+        w.a_read_page.trigger()
+        eng = _FakeTTS.made[-1]
+        eng.say = lambda text: eng.said.append(text)     # (begins speaking only later)
+        w.a_read_page.trigger()                 # again: the first reading is stopped
+        eng.stateChanged.emit(eng.State.Ready)  # the engine's late answer to that stop
+        APP.processEvents()
+        self.assertEqual(eng.said[-1], "Chapter 1")
+        self.assertEqual(w._reader.current.text, "Chapter 1")
+        w.a_read_stop.trigger()
 
     def test_the_page_then_stops_and_the_document_goes_on(self):
         w = self.w

@@ -7,6 +7,8 @@ which) shaded darker; the page scrolls to follow.
 QtTextToSpeech is imported only when reading starts (or when Preferences lists the voices):
 nothing of it is loaded at start-up."""
 
+import time
+
 import shiboken6
 from PySide6.QtCore import QObject, QTimer, Signal
 
@@ -74,6 +76,8 @@ class Reader(QObject):
         self.next_page = None       # the page after the queue (None: stop after it)
         self.last_page = None
         self._word = None
+        self._spoke = False         # the engine has begun saying the current sentence
+        self._said_at = 0.0
 
     # ---- the speech engine --------------------------------------------------------
     def _make_engine(self):
@@ -177,6 +181,8 @@ class Reader(QObject):
             return
         self.current = self.queue.pop(0)
         self._word = None
+        self._spoke = False
+        self._said_at = time.monotonic()
         self._mark()
         self.engine.say(self.current.text)
 
@@ -185,9 +191,13 @@ class Reader(QObject):
         S = getattr(cls, "State", None)
         if S is None or self.state == "stopped":
             return
-        if st == S.Ready and self.state == "speaking" and self.current is not None:
+        if st == S.Speaking:
+            self._spoke = True
+        elif st == S.Ready and self.state == "speaking" and self.current is not None and (
+                self._spoke or time.monotonic() - self._said_at > 0.5):
             # the sentence is said: the next one (after the event loop turns, so the engine
-            # has finished its own work)
+            # has finished its own work). (A Ready before this sentence was begun is the
+            # engine's answer to an earlier stop: it doesn't end this one.)
             self.current = None
             QTimer.singleShot(0, self._say_next)
         elif st == S.Error:

@@ -137,20 +137,30 @@ class _TopBar(QFrame):
         row = QHBoxLayout(self)
         row.setContentsMargins(6, 2, 6, 2)
         row.setSpacing(2)
+        from PySide6.QtWidgets import QMenu
+        layouts = QMenu(self)
+        layouts.addActions(list(win.layout_actions.values()))
+        layouts.addSeparator()
+        layouts.addAction(win.a_cover)
         for a in (win.a_prev_page, win.a_next_page, None, win.a_zoom_out, win.a_zoom_in,
-                  win.a_fit_width, win.a_fit_page, None, win.layout_actions["single"],
-                  win.layout_actions["continuous"], win.layout_actions["two"],
-                  win.layout_actions["two_continuous"], None, win.a_reflow, win.a_read_page,
-                  win.a_read_stop):
+                  win.a_fit_width, win.a_fit_page, None, layouts, win.a_reflow,
+                  win.a_read_page, win.a_read_stop):
             if a is None:
                 sep = QFrame()
                 sep.setFrameShape(QFrame.VLine)
                 row.addWidget(sep)
                 continue
             b = QToolButton()
-            b.setDefaultAction(a)
+            if isinstance(a, QMenu):            # (the page layouts, in one button)
+                b.setText(tr("Page layout"))
+                b.setMenu(a)
+                b.setPopupMode(QToolButton.InstantPopup)
+            else:
+                b.setDefaultAction(a)
+                # (an icon where the command has one; the words where it doesn't)
+                b.setToolButtonStyle(Qt.ToolButtonTextOnly if a.icon().isNull() else
+                                     Qt.ToolButtonIconOnly)
             b.setAutoRaise(True)
-            b.setToolButtonStyle(Qt.ToolButtonTextOnly)
             row.addWidget(b)
         row.addStretch(1)
         out = QToolButton()
