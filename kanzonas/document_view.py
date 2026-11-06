@@ -3120,12 +3120,17 @@ class DocumentView(QScrollArea):
         bar.setValue(bar.value() - h)
 
     def sheet_scale_note(self, index):
-        """The scale note on the sheet (sheet_scale.sheet_scale), read once per page."""
+        """The scale note on the sheet (sheet_scale.sheet_scale), read once per page drawing:
+        kept by the page and its content key, so a new drawing (Replace pages, Edit text on
+        the title block, an undo) is read again (kept by the page alone, Read scales from
+        title blocks and Set scale went on offering the old revision's scale)."""
         from . import sheet_scale
         cache = self.__dict__.setdefault("_sheet_scale_cache", {})
         page = self.doc[index]
-        key = page.xref
+        key = (page.xref, self._content_key(page))
         if key not in cache:
+            if len(cache) > 4 * max(1, self.doc.page_count):
+                cache.clear()               # (old drawings' notes don't pile up)
             try:
                 cache[key] = sheet_scale.sheet_scale(page)
             except Exception:

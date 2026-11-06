@@ -284,5 +284,31 @@ class OddScales(Case):
         self.assertTrue(measure.get_scale(page)[3])
 
 
+class ReplacedSheets(Case):
+    def scale_sheet(self, path, note, label="PLAN"):
+        d = pymupdf.open()
+        p = d.new_page(width=792, height=612)
+        p.insert_text((60, 80), label, fontsize=24)
+        p.insert_text((600, 560), "SCALE: " + note, fontsize=10)
+        del p
+        d.save(path)
+        d.close()
+        return path
+
+    def test_the_new_drawings_scale_note_is_read(self):
+        """The scale a sheet's title block says was read once per page and kept: after Replace
+        pages (or Edit text on the note) the status bar, Set scale and Read scales from title
+        blocks still went by the old revision's note."""
+        v = self.view(self.scale_sheet(self.path("old.pdf"), '1/4" = 1\'-0"'))
+        self.assertEqual(v.sheet_scale_note(0)["ratio"], 48)
+        src = pymupdf.open(self.scale_sheet(self.path("new.pdf"), '1/8" = 1\'-0"', "PLAN B"))
+        self.addCleanup(src.close)
+        v.replace_pages(src, [(0, 0)])
+        self.assertEqual(v.sheet_scale_note(0)["ratio"], 96)
+        self.assertIn('1/8"', v.page_scale_text(0))
+        v.undo()
+        self.assertEqual(v.sheet_scale_note(0)["ratio"], 48)
+
+
 if __name__ == "__main__":
     unittest.main()
