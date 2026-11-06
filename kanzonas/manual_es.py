@@ -1187,7 +1187,9 @@ Enable).</li>
 USB y los que tienen instalado el controlador del fabricante.</li>
 <li><b>SANE</b> (Linux): los escáneres que conoce el comando scanimage (instale el paquete
 sane-utils; sane-airscan le agrega los escáneres de red sin controladores).</li>
-<li>En macOS, por ahora eSCL y WSD (allí aún no se admiten escáneres USB).</li>
+<li>En macOS, por ahora eSCL y WSD (allí aún no se admiten escáneres USB). El primer
+escaneo pide permitir que KanzonasPDF encuentre dispositivos en su red local: elija <b>Permitir</b>
+(para cambiarlo después: Ajustes del Sistema &gt; Privacidad y seguridad &gt; Red local).</li>
 </ul>
 <p>Para escanear:</p>
 <ul>

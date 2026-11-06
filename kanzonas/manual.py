@@ -1205,7 +1205,9 @@ must first be turned on in the printer's web page (WSD set to Enable).</li>
 whose maker's driver is installed.</li>
 <li><b>SANE</b> (Linux): the scanners the scanimage command knows (install the sane-utils
 package; sane-airscan adds driverless network scanners to it).</li>
-<li>On macOS, eSCL and WSD for now (USB scanners aren't supported there yet).</li>
+<li>On macOS, eSCL and WSD for now (USB scanners aren't supported there yet). The first
+scan asks to let KanzonasPDF find devices on your local network: choose <b>Allow</b> (to change it
+later: System Settings &gt; Privacy &amp; Security &gt; Local Network).</li>
 </ul>
 <p>To scan:</p>
 <ul>
