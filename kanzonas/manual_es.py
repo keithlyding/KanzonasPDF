@@ -1458,7 +1458,8 @@ una línea para ir allí) y si Guardar como PDF/A lo corrige; un botón allí lo
 Lo que no se puede corregir: una fuente que no está incrustada y no es una de las fuentes estándar
 (vuelva a crear el PDF con sus fuentes incrustadas), una fuente estándar cuyos anchos de carácter
 en el archivo difieren de los de la fuente estándar, una página de más de 200 pulgadas o de menos
-de 3 puntos, PostScript, partes guardadas en otros archivos, una compresión poco común. Revisa los
+de 3 puntos, PostScript, partes guardadas en otros archivos, una compresión poco común, un texto de
+más de 32.767 bytes (un comentario muy largo) o instrucciones de dibujo anidadas a más de 28 niveles. Revisa los
 requisitos comunes de PDF/A-2b (y de PDF/A-3b para un archivo que dice serlo), no todos: para una
 validación formal, use <b>veraPDF</b>, gratuito, de la PDF Association (verapdf.org).</li>
 <li><b>Comparar documentos...</b> (menú Documento, pestaña Páginas): elija la revisión anterior (si está protegida con

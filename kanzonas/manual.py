@@ -1467,7 +1467,8 @@ whether Save as PDF/A fixes it; a button there saves it as PDF/A. What can't be 
 that isn't embedded and isn't one of the standard fonts (make the PDF again with its fonts
 embedded), a standard font whose character widths in the file differ from the standard
 font's, a page larger than 200 inches or smaller than 3 points, PostScript, parts kept in
-other files, an unusual compression. It checks the common requirements of PDF/A-2b (and of
+other files, an unusual compression, a text longer than 32,767 bytes (a very long comment) or
+drawing instructions nested more than 28 levels deep. It checks the common requirements of PDF/A-2b (and of
 PDF/A-3b for a file that says it is one), not every one: for a formal validation, use
 <b>veraPDF</b>, free, from the PDF Association (verapdf.org).</li>
 <li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision (if it's
