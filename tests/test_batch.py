@@ -489,6 +489,33 @@ class OutputRules(unittest.TestCase):
             self.assertIn("CONFIDENTIAL", doc[0].get_text())
 
 
+    def test_file_that_does_not_allow_changes(self):
+        """Opens without a password but its permissions forbid changes: its permissions
+        password is asked (or taken from Remove password); without it the file is skipped.
+        Edited, it keeps its protection."""
+        doc = pymupdf.open()
+        doc.new_page().insert_text((72, 72), "Restricted", fontsize=12)
+        path = os.path.join(self.f.dir, "restricted.pdf")
+        doc.save(path, encryption=pymupdf.PDF_ENCRYPT_AES_256, owner_pw="own",
+                 permissions=pymupdf.PDF_PERM_PRINT)
+        asked = []
+        b = run([path], [B.step("watermark")], self.f.out("r1"),
+                ask_password=lambda p, k: asked.append(k) or "own")
+        self.assertEqual(b.results[0].status, B.DONE, b.results[0].details())
+        self.assertEqual(asked, ["permissions"])
+        with pymupdf.open(b.results[0].outputs[0]) as out:
+            self.assertTrue(out.metadata["encryption"])
+            self.assertFalse(out.permissions & pymupdf.PDF_PERM_MODIFY)
+            self.assertIn("CONFIDENTIAL", out[0].get_text())
+        b = run([path], [B.step("watermark")], self.f.out("r2"), ask_password=lambda p, k: None)
+        self.assertEqual(b.results[0].status, B.SKIPPED)
+        self.assertIn("permissions password", b.results[0].reason)
+        b = run([path], [B.step("remove_password", password="own")], self.f.out("r3"))
+        self.assertEqual(b.results[0].status, B.DONE, b.results[0].details())
+        with pymupdf.open(b.results[0].outputs[0]) as out:
+            self.assertFalse(out.metadata["encryption"])
+
+
 class Report(unittest.TestCase):
     def test_failures_with_their_reasons(self):
         f = Folder()

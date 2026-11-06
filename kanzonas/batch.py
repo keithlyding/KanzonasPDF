@@ -842,7 +842,9 @@ class Batch:
     def _unlock(self, view):
         """A file that opens but doesn't allow changes: its permissions password (one given
         before, else asked)."""
-        for pw in self.passwords:
+        given = [st["options"].get("password") for st in self.steps
+                 if st["kind"] == "remove_password"]
+        for pw in self.passwords + [pw for pw in given if pw]:
             if view.unlock(pw):
                 return
         pw = None if self.output["protected"] == "skip" else \
