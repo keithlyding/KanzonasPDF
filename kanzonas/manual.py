@@ -107,7 +107,7 @@ off in Preferences &gt; Start-up &gt; <b>Ask before closing KanzonasPDF with sev
 open</b>). Closing a tab asks only about that document.</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Markup, Measure, Arrange, Review,
 Protect, Forms, Pages, Print and View. The <b>Markup</b> tab has only markups: comments, notes, text
-boxes, callouts, stamps, shapes and attached-file icons. Markups stay editable in any PDF
+boxes, callouts, stamps, legends, shapes and attached-file icons. Markups stay editable in any PDF
 viewer (Adobe Reader, browsers) until you flatten them. Everything else you add (pictures,
 Add text, signatures, initials, dates) is written into the page itself, so in a viewer it
 looks and acts flattened; Edit text and Edit objects (Home tab) still change it here, as
@@ -405,7 +405,7 @@ next to its commands (they stay on their own tabs too). Similar tools share one 
 AutoCAD's ribbon: click the button for the tool it shows, or the arrow beside it to pick another;
 the button then shows the one used last (or the tool that's on). <b>Markup</b>: Rectangle (arrow:
 Cloud, Polygon, Mask), Circle (arrow: Arc), Line (arrow: Polyline, Curve, Pen), Arrow, Text box (arrow: Callout),
-Stamp (arrow: Image); their one-letter shortcuts type into the command line in CAD mode.
+Stamp (arrow: Image, Legend); their one-letter shortcuts type into the command line in CAD mode.
 <b>Measure</b>: Length (arrow: Polylength, Area, Angle, Radius, Perimeter, Volume, Count,
 Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Edit</b>: Erase
 content, Bring to front (arrow: Bring forward, Send backward, Send to back), Align left (arrow:
@@ -533,7 +533,7 @@ link; drag a box around that one instead. Drag any selected markup to move them 
 Delete removes them all; Properties changes apply to all of them.</li>
 <li><b>Delete:</b> Delete or Backspace, or right-click the markup &gt; <b>Delete</b>.
 <b>Edit a comment's text:</b> double-click it, or right-click it &gt; <b>Edit text...</b>.
-Measurements, stamps and signature placeholders show text made from what they are, so they
+Measurements, stamps, legends and signature placeholders show text made from what they are, so they
 don't offer Edit text (double-click a fill-in stamp to change its values); add a note or a
 text box to comment on them.
 If you right-click highlighted text that's selected, the menu offers <b>Delete highlight</b>.
@@ -661,7 +661,7 @@ under it on screen and in print, but that content stays in the file: use Redact 
 for good.</li>
 <li><b>In CAD mode</b> the tools that draw from one point to another (Line, Arrow, Rectangle,
 Ellipse, Circle, Cloud, Mask, Text box, Callout, Length, Radius, Calibrate Tape Measure, the
-Eraser's box, Erase content, Capture area, Crop pages, Links, signature placeholders) work as in
+Eraser's box, Erase content, Capture area, Crop pages, Links, signature placeholders, legends) work as in
 AutoCAD: click where it starts, move (the shape follows the pointer with no button held), and
 click where it ends. It snaps, and Shift works, as when dragging; pressing, dragging and letting
 go still works too. A click that shakes a little is still a click. Escape or a right-click
@@ -809,6 +809,30 @@ submitted</b> in the stamp list. When you click to place one, a box asks for the
 date (the date starts as today, in your Preferences &gt; You date format). Double-click a placed
 one to change what it says; it resizes to fit. Its comment text (in the Markups list, its CSV
 and other PDF programs) reads like "PO # PO-4471, Date ordered 10/26/2026".</li>
+</ul>
+
+<h2 id="legends">Legends</h2>
+<ul>
+<li><b>Legend</b> (Markup tab, Tools &gt; Legend; on the CAD tab under Stamp's arrow), as in
+Bluebeam: click where its top-left corner goes, or drag a box to set its width (its text is
+sized to fit). It places a box listing the kinds of markups used: each row has a small sample
+drawn in that markup's own style (color, line width, fill, cloud, arrowhead...), its label (the
+tool's name, or the markup's subject when it has one, as markups from Bluebeam often do; a
+count's group name; a stamp's word) and how many there are. Markups of one kind in different
+styles (red clouds and blue clouds) get a row each. Measurements also show their total length,
+area or volume, in the page's units (Measure &gt; Set scale).</li>
+<li><b>It updates by itself</b> when markups are added, changed or deleted, as part of the same
+change: Ctrl+Z takes the markup and the legend's update back together, and Redo puts both back.
+It never counts itself or another legend, nor hidden markups, redaction marks or signature
+placeholders.</li>
+<li><b>Options</b> (Properties panel: set them before placing, with the Legend tool picked, or on
+a selected legend): <b>Title</b> (Legend to start with; empty for none), <b>Markups from</b>
+<b>This page</b> or the <b>Whole document</b> (every page, the totals in this page's units),
+<b>Show the count</b>, <b>Show measurement totals</b>, <b>Text size</b>, <b>Border</b> and its
+color, the fill and the text color.</li>
+<li>It moves, resizes (its text grows or shrinks with the box), copies, locks and undoes like
+any markup. It's a standard stamp markup with its own appearance, so other PDF programs show and
+print it as it looks here, and Flatten comments makes it part of the page.</li>
 </ul>
 
 <h2 id="images">Pictures and attached files (videos and more)</h2>

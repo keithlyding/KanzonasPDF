@@ -11,6 +11,7 @@ from PySide6.QtGui import (QPalette, QColor, QGuiApplication, QIcon, QIconEngine
 
 ICONS = {
     "image": "image-outline", "attach": "paperclip", "placeholder": "draw-pen",
+    "legend": "map-legend",
     "cad_mouse": "mouse-move-vertical", "free_pan": "pan", "grid": "grid", "snap_grid": "magnet",
     "snap_objects": "vector-point", "snap_page": "border-outside",
     # arrange
