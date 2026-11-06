@@ -5065,6 +5065,9 @@ class DocumentView(QScrollArea):
             return
         rect, line = hit
         old = text_edit.line_text(line)
+        if text_edit.right_to_left(old):
+            QMessageBox.information(self, tr("Edit text"), text_edit.right_to_left_message())
+            return
         w = self.pages[index]
         upright = (text_edit.line_rotation(line) + page.rotation) % 360 == 0
         size = text_edit.main_span(line)["size"]
@@ -5075,6 +5078,10 @@ class DocumentView(QScrollArea):
             scan = None
         if not one_line and not scan and upright:
             para = self._paragraph_of(index, line)
+            if para is not None and text_edit.right_to_left(text_edit.paragraph_text(para)):
+                QMessageBox.information(self, tr("Edit text"),
+                                        text_edit.right_to_left_message())
+                return
             if para is not None:
                 self._edit_paragraph(index, para, pt)
                 return

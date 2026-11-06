@@ -7,6 +7,11 @@ What the battery found:
   as the page measures it (in the PDF's glyph widths, rounded), and the font measures the
   same words a little wider, so that line no longer fit. A paragraph got narrower and longer
   with each edit, even an edit to its last word, and lines nobody touched rewrapped.
+- Hebrew and Arabic were rewritten backwards: a page's letters are written left to right,
+  unshaped, from the line's first letter in reading order (its right end), so a right-to-left
+  line edited (a word made bold), dragged, replaced in or moved with a drawing came out in
+  the wrong order and ran off the page's edge. Edit text, moving, Replace text and Add text
+  now refuse such text and say why, changing nothing.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_battery_19_text
 """
@@ -19,6 +24,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pymupdf  # noqa: E402
+from unittest import mock  # noqa: E402
+
 from PySide6.QtGui import QTextCursor  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
@@ -144,6 +151,42 @@ class Paragraphs(unittest.TestCase):
                             ws.setdefault(w, st.keys[st.text.index(w)])
                     self.assertTrue(ws["architect"].bold)
                     self.assertFalse(ws["the"].bold)
+
+
+
+class RightToLeft(unittest.TestCase):
+    HEBREW = "\u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd \u05d8\u05d5\u05d1"
+
+    def test_right_to_left_text_is_left_as_it_is(self):
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_htmlbox(pymupdf.Rect(72, 80, 500, 120),
+                         "<p dir='rtl' style='font-size:14px'>%s</p>" % self.HEBREW)
+        p.insert_text((72, 200), "Plain words on a line", fontsize=12)
+        v = open_view(d, self)
+        page = v.doc[0]
+        (_r, ln), = [(r, ln) for r, ln in text_edit.text_lines(page) if r.y1 < 150]
+        self.assertEqual(text_edit.line_text(ln), self.HEBREW)
+        before = page.get_text("rawdict")
+        pt = pymupdf.Point(ln["bbox"][0] + 5, (ln["bbox"][1] + ln["bbox"][3]) / 2)
+        with mock.patch("kanzonas.document_view.QMessageBox") as box:
+            v.edit_text_at(0, pt)                       # no editor: it says why
+            self.assertIsNone(v._inline)
+            self.assertIn("right to left", box.information.call_args[0][2])
+            v.move_text_line(0, pt, (10, 20))           # dragged: refused
+            self.assertIn("right to left", box.warning.call_args[0][2])
+            box.reset_mock()
+            v.replace_text("\u05d8\u05d5\u05d1", "\u05e8\u05e2")   # replaced in: refused
+            self.assertIn("right to left", box.warning.call_args[0][2])
+        self.assertEqual(v.doc[0].get_text("rawdict"), before)
+        self.assertFalse(v.dirty)
+        # an English line with Hebrew typed into it, and Add text: refused
+        (_r, en), = [(r, ln) for r, ln in text_edit.text_lines(page) if r.y0 > 150]
+        with self.assertRaises(ValueError):
+            text_edit.replace_line(v.doc[0], en, "Plain " + self.HEBREW)
+        with self.assertRaises(ValueError):
+            text_edit.add_text(v.doc[0], (72, 300), self.HEBREW)
+        self.assertEqual(v.doc[0].get_text("rawdict"), before)
 
 
 if __name__ == "__main__":

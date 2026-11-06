@@ -6295,6 +6295,10 @@ msgstr "Sello {name}"
 msgid "Emoji and other characters beyond U+FFFF can't be written into a PDF page here. Remove them and try again."
 msgstr "Los emojis y otros caracteres más allá de U+FFFF no se pueden escribir aquí en una página PDF. Quítelos e inténtelo de nuevo."
 
+#: text_edit.py
+msgid "Text written right to left (Hebrew, Arabic...) can't be rewritten here yet: it would come out in the wrong order. Nothing was changed."
+msgstr "El texto que se escribe de derecha a izquierda (hebreo, árabe...) todavía no se puede reescribir aquí: saldría en el orden equivocado. No se ha cambiado nada."
+
 #: text_edit.py:507 text_edit.py:646
 msgid "some characters"
 msgstr "algunos caracteres"

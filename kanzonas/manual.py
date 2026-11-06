@@ -1025,7 +1025,9 @@ font has a symbol you typed or that came from the PDF (a minus sign, a diameter 
 invisible narrow space...), a broader installed font such as Segoe UI is tried, then a look-alike
 is used (- for the minus sign, &Oslash; for the diameter sign, a normal space for an invisible
 one). Characters that can't be written at all, such as emoji, are named in a message, and
-nothing is changed. A line on a
+nothing is changed. Text written right to left (Hebrew, Arabic) can't be edited, moved or
+added yet (it would come out in the wrong order): a message says so, and nothing is changed.
+A line on a
 page that still has unapplied redaction marks can't be edited until you apply or remove them.</li>
 <li><b>Scanned pages</b> (a picture of the paper with recognized text over it, from your
 scanner's OCR or Recognize text): Edit text, Find and replace and moving a line change the

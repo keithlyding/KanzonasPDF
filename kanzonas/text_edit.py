@@ -13,6 +13,7 @@ import math
 import os
 import re
 import sys
+import unicodedata
 
 import pymupdf
 
@@ -258,6 +259,25 @@ def line_at(lines, pt):
     if not hits:
         return None
     return min(hits, key=lambda h: h[0].get_area())
+
+
+def right_to_left(text):
+    """True when text has letters written right to left (Hebrew, Arabic...)."""
+    return any(c > "\u058f" and unicodedata.bidirectional(c) in ("R", "AL") for c in text or "")
+
+
+def refuse_right_to_left(*texts):
+    """Raise ValueError when one of texts is written right to left. A page's letters are
+    written left to right, one after another, unshaped: Hebrew and Arabic came out in the
+    wrong order (and Arabic's letters unjoined), and a line edited, moved or replaced in
+    was rewritten backwards from where it started, off the page's edge."""
+    if any(right_to_left(t) for t in texts):
+        raise ValueError(right_to_left_message())
+
+
+def right_to_left_message():
+    return tr("Text written right to left (Hebrew, Arabic...) can't be rewritten here yet: "
+              "it would come out in the wrong order. Nothing was changed.")
 
 
 def line_text(line):
@@ -727,6 +747,7 @@ def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
     if any(ord(c) > 0xFFFF for c in text):
         raise ValueError(tr("Emoji and other characters beyond U+FFFF can't be written into "
                             "a PDF page here. Remove them and try again."))
+    refuse_right_to_left(text)
     if runs is not None:
         from . import text_styles
         rtext, keys = text_styles.keys_of(runs)
@@ -1451,6 +1472,7 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
     written). Raises ValueError (before changing anything) if no font can write it."""
     main = paragraph_layout(lines)["span"]
     text = new_text.strip()
+    refuse_right_to_left(paragraph_text(lines), text)
     found = None
     keys = _styled_text(runs, text, main, font, size) if runs is not None and text else None
     if keys is not None:
@@ -1591,6 +1613,7 @@ def move_lines(page, lines, offset):
         text = line_text(line)
         if not text.strip():
             continue
+        refuse_right_to_left(text)
         main = main_span(line)
         found, text = _font_for(page, main, text)
         plans.append((line, text, main, found))
@@ -1646,6 +1669,7 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
         # removing the old text applies every redaction on the page, pending ones included
         raise ValueError(tr("Apply or remove the redaction marks on this page before "
                             "editing its text."))
+    refuse_right_to_left(line_text(line), new_text)
 
     if scan == "auto":
         try:

@@ -1006,7 +1006,9 @@ fuente tiene un símbolo que escribió o que venía del PDF (un signo menos, un 
 espacio estrecho invisible...), se prueba una fuente instalada más amplia como Segoe UI, y luego se usa un carácter parecido
 (- para el signo menos, &Oslash; para el signo de diámetro, un espacio normal para uno
 invisible). Los caracteres que no se pueden escribir de ninguna manera, como los emojis, se indican en un mensaje, y
-no se cambia nada. Una línea de una
+no se cambia nada. El texto que se escribe de derecha a izquierda (hebreo, árabe) todavía no
+se puede editar, mover ni añadir (saldría en el orden equivocado): un mensaje lo dice, y no se
+cambia nada. Una línea de una
 página que todavía tiene marcas de censura sin aplicar no se puede editar hasta que las aplique o las quite.</li>
 <li><b>Páginas escaneadas</b> (una imagen del papel con texto reconocido encima, del OCR de su
 escáner o de Reconocer texto): Editar texto, Buscar y reemplazar y mover una línea también cambian la
