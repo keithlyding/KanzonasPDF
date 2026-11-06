@@ -1557,6 +1557,10 @@ Check accessibility.</li>
 (what it shows, or what it's for, in a sentence or two), or tick <b>Decorative</b> for a
 picture that only decorates: it becomes an artifact and leaves the tags. A document without
 tags is offered Auto-tag first (the descriptions are kept in the tags).</li>
+<li><b>Reading order...</b> shows the current page's tags numbered in the order screen
+readers read them, each drawn as a box over a picture of the page: drag a tag in the list (or
+use Move up and Move down) to change the order, then OK. Tags in different sections of the
+document stay in their sections.</li>
 <li><b>Title and language...</b>: the title screen readers announce, written in the document
 properties and the XMP metadata, and shown in the window's title bar instead of the file name;
 and the document's language (English (United States), Español (España)... or any language tag

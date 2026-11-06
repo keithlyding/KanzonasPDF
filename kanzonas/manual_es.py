@@ -1552,6 +1552,10 @@ una descripción (qué muestra, o para qué está, en una o dos frases), o marqu
 una imagen que solo decora: pasa a ser un artefacto y sale de las etiquetas. A un documento sin
 etiquetas se le ofrece primero Etiquetar automáticamente (las descripciones se guardan en las
 etiquetas).</li>
+<li><b>Orden de lectura...</b> muestra las etiquetas de la página actual numeradas en el orden en
+que las leen los lectores de pantalla, cada una dibujada como un recuadro sobre una imagen de la
+página: arrastre una etiqueta en la lista (o use Subir y Bajar) para cambiar el orden y pulse
+Aceptar. Las etiquetas de secciones distintas del documento se quedan en sus secciones.</li>
 <li><b>Título e idioma...</b>: el título que anuncian los lectores de pantalla, escrito en las
 propiedades del documento y en los metadatos XMP, y mostrado en la barra de título de la ventana en
 lugar del nombre del archivo; y el idioma del documento (English (United States), Español

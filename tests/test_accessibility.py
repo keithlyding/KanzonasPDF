@@ -294,8 +294,6 @@ class Check(unittest.TestCase):
         d.xref_set_key(lst.num, "A", "<</O /List /ListNumbering /Bullets>>")
         self.assertIn("numbering (Bullets) isn't one", texts_of(problems(d, "structure")))
         root = acc.Tree(d).root
-        rm = m_new_dict = None
-        del rm, m_new_dict
         rx = pymupdf.mupdf.pdf_to_num(pymupdf.mupdf.pdf_dict_gets(
             pymupdf.mupdf.pdf_dict_gets(pymupdf.mupdf.pdf_trailer(
                 pymupdf._as_pdf_document(d)), "Root"), "StructTreeRoot"))
@@ -744,7 +742,7 @@ class InTheApp(unittest.TestCase):
         sub = next(a.menu() for a in doc_menu.actions() if a.text() == "&Accessibility")
         texts_ = [a.text() for a in sub.actions() if not a.isSeparator()]
         self.assertEqual(texts_, ["Check &accessibility...", "Auto-&tag...", "Alt te&xt...",
-                                  "Title and &language...", "Form field t&ooltips...",
+                                  "&Reading order...", "Title and &language...", "Form field t&ooltips...",
                                   "Lin&k descriptions...", "Ta&b order follows the tags",
                                   "Mark as &decorative", "&Embed fonts",
                                   "Identify as PDF/&UA..."])
@@ -854,6 +852,28 @@ class InTheApp(unittest.TestCase):
         ui.mark_decorative(w, v)
         self.assertEqual(len(v._undo), 4)
         self.assertIn(b"/Artifact BMC", v.doc[0].read_contents())
+
+    def test_reading_order_window(self):
+        from kanzonas import accessibility_ui as ui
+        d = sample(1)
+        autotagged(d)
+        w, v = self.window(d)
+        before = [it["type"] for it in acc.page_order(v.doc, 0)]
+        self.assertEqual(before, ["P", "H1", "H2", "P", "H3", "L", "Figure", "Table", "P"])
+
+        def swap(dlg):
+            self.assertFalse(dlg.page.pixmap().isNull())        # (the page, numbered)
+            dlg.list.setCurrentRow(7)                           # the table before the figure
+            dlg._move(-1)
+            return QDialog.Accepted
+        with mock.patch.object(ui.ReadingOrderDialog, "exec", swap):
+            ui.reading_order(w, v)
+        after = [it["type"] for it in acc.page_order(v.doc, 0)]
+        self.assertEqual(after, ["P", "H1", "H2", "P", "H3", "L", "Table", "Figure", "P"])
+        self.assertEqual(tree_of(v.doc)[0][1][6][0], "Table")
+        self.assertEqual(len(v._undo), 1)
+        v.undo()
+        self.assertEqual([it["type"] for it in acc.page_order(v.doc, 0)], before)
 
 
 if __name__ == "__main__":

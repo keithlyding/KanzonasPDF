@@ -8,7 +8,8 @@ Thousands of random edits through the app's own steps (the ones the menus, tools
 call: markups of every kind added, moved, resized, recolored, retyped, duplicated, restacked
 and deleted; page text added, edited and replaced; pictures and shapes of the page moved,
 turned and deleted; pages rotated, inserted, duplicated, deleted, moved, reordered,
-cropped and replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
+cropped and replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied; accessibility: auto-tag, title and
+language, tab order, tooltips, link descriptions, alt text, decoration, fonts), in a main
 window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
 (kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
 
@@ -678,6 +679,7 @@ class Battery:
             (self.op_duplicate_page, 1), (self.op_crop, 2), (self.op_bookmarks, 1),
             (self.op_replace_pages, 2),
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
+            (self.op_accessibility, 3),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1130,6 +1132,64 @@ class Battery:
             v.apply_redactions(scrub=self.rnd.random() < 0.3)
         else:
             return "none"
+
+    def op_accessibility(self):
+        """Document > Accessibility: Auto-tag, Title and language, Tab order, Form field
+        tooltips, Link descriptions, Alt text (described or decorative), Mark as decorative
+        (pictures and shapes chosen with Edit objects), Embed fonts."""
+        from PySide6.QtWidgets import QDialog
+        from kanzonas import accessibility_ui as ui
+        v, w, rnd = self.v, self.win, self.rnd
+
+        def title(dlg):
+            if rnd.random() < 0.5:
+                dlg.title.setText(self.typed())
+            dlg.lang.setEditText(rnd.choice(["en-US", "es-ES", "fr"]))
+            return QDialog.Accepted
+
+        def alt(dlg):
+            for i in range(dlg.list.count()):
+                dlg.list.setCurrentRow(i)
+                k = rnd.random()
+                if k < 0.5:
+                    dlg.text.setPlainText(self.typed())
+                elif k < 0.7:
+                    dlg.decorative.setChecked(True)
+            return QDialog.Accepted
+
+        def review(dlg):
+            for row in range(dlg.table.rowCount()):
+                if rnd.random() < 0.5:
+                    dlg.table.item(row, 2).setText(self.typed())
+            return QDialog.Accepted
+        r = rnd.random()
+        with mock.patch.object(ui.TitleDialog, "exec", title), \
+                mock.patch.object(ui.AutoTagDialog, "exec", title), \
+                mock.patch.object(ui.AltTextDialog, "exec", alt), \
+                mock.patch.object(ui.ReviewDialog, "exec", review):
+            if r < 0.3:
+                ui.auto_tag(w, v)
+            elif r < 0.42:
+                ui.title_language(w, v)
+            elif r < 0.5:
+                ui.tab_order(w, v)
+            elif r < 0.6:
+                ui.field_tooltips(w, v)
+            elif r < 0.7:
+                ui.link_descriptions(w, v)
+            elif r < 0.82:
+                ui.alt_text(w, v)
+            elif r < 0.94:
+                i = self.page()
+                objs = v.content_objects(i)
+                items = [it for it in (objs.items if objs else [])
+                         if it["kind"] in ("picture", "shape", "group")]
+                if not items:
+                    return "none"
+                v.select_objects(i, rnd.sample(items, min(len(items), rnd.randint(1, 3))))
+                ui.mark_decorative(w, v)
+            else:
+                ui.embed_fonts(w, v)
 
     def op_undo(self):
         for _ in range(self.rnd.randint(1, 5)):

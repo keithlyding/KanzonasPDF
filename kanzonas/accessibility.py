@@ -243,9 +243,6 @@ class Tree:
             return None
         return self.by_num.get(_num(ref))
 
-    def text_of(self, node, limit=80):
-        """Some of the words a node holds (for the lists), read from its pages."""
-        return ""
 
 
 # ---- problems ------------------------------------------------------------------------------
@@ -486,6 +483,10 @@ class Checker:
         for n in tree.nodes:
             role = n.role
             if role is None:
+                if n.type not in tree.role_map:
+                    self.add("structure", n.page, tr("The tag {tag} doesn't map to a standard "
+                                                     "tag.").format(tag=n.type), None,
+                             "ISO 14289-1 7.1, Matterhorn 02-001", n.num)
                 continue
             if role in ("Figure", "Formula") and not ((n.alt or "").strip() or
                                                       (n.actual or "").strip()):
@@ -622,8 +623,7 @@ class Checker:
                 role = node.role if node is not None else None
                 if sub == "Link":
                     if self.tagged and role != "Link":
-                        self.add("annots", i, tr("A link isn't tagged as a Link."), "autotag"
-                                 if node is None and not self.tagged else None,
+                        self.add("annots", i, tr("A link isn't tagged as a Link."), None,
                                  "ISO 14289-1 7.18.5, Matterhorn 28-011")
                     if not has_contents:
                         self.add("annots", i, tr("A link has no description (Contents) for "
@@ -1093,6 +1093,7 @@ def figures(doc):
     the Figure (and Formula) elements, in document order."""
     tree = Tree(doc)
     out = []
+    pages = {}
     for n in tree.nodes:
         if n.role not in ("Figure", "Formula") or not n.num:
             continue
@@ -1100,13 +1101,41 @@ def figures(doc):
         if page is None:
             page = next((p for p, _mc in n.mcids if p is not None), None)
         out.append({"num": n.num, "page": page, "alt": n.alt or "", "type": n.role,
-                    "box": _figure_box(doc, n, page, tree)})
+                    "box": _figure_box(doc, n, page, pages)})
     return out
 
 
-def _figure_box(doc, n, page, tree):
+def marked_content(doc, index):
+    """{MCID: (box as shown or None, text)} of what page index draws in each marked-content
+    sequence with an MCID (the text in drawing order)."""
+    from . import autotag
+    pg = doc[index]
+    r = autotag.PageReader(pg).read()
+    gl = autotag.page_glyphs(pg) if r.exact and r.pieces else []
+    if len(gl) != r.glyphs:
+        gl = []
+    boxes, texts = {}, {}
+    for p in r.pieces:
+        mcs = [mc for k, mc, _s in p.mc if k == "mcid"]
+        if not mcs:
+            continue
+        mc = mcs[-1]
+        b = pymupdf.Rect(p.box) if p.box is not None else None
+        if p.g1 > p.g0 and gl:
+            for g in gl[p.g0:p.g1]:
+                r_ = pymupdf.Rect(g.x0, g.y0, g.x1, g.y1)
+                b = r_ if b is None else b | r_
+            texts[mc] = texts.get(mc, "") + "".join(g.c for g in gl[p.g0:p.g1])
+        if b is not None:
+            b &= pg.rect
+            if not b.is_empty:
+                boxes[mc] = b if mc not in boxes else boxes[mc] | b
+    return {mc: (boxes.get(mc), texts.get(mc, "")) for mc in set(boxes) | set(texts)}
+
+
+def _figure_box(doc, n, page, cache):
     """Where a figure is on its page (as shown): its BBox attribute, else what its marked
-    content draws."""
+    content draws. cache: {page: marked_content} shared by the figures of a document."""
     if page is None:
         return None
     a = m.pdf_resolve_indirect(m.pdf_dict_gets(n.obj, "A"))
@@ -1123,29 +1152,80 @@ def _figure_box(doc, n, page, tree):
     want = {mc for p, mc in n.mcids if p == page}
     if not want:
         return None
-    from . import autotag
-    pg = doc[page]
-    r = autotag.PageReader(pg).read()
+    if page not in cache:
+        cache[page] = marked_content(doc, page)
     box = None
-    glyph_ranges = []
-    for p in r.pieces:
-        if not any(k == "mcid" and mc in want for k, mc, _s in p.mc):
-            continue
-        if p.box is not None:
-            b = pymupdf.Rect(p.box)
+    for mc in want:
+        b = cache[page].get(mc, (None, ""))[0]
+        if b is not None:
             box = b if box is None else box | b
-        elif p.g1 > p.g0:
-            glyph_ranges.append((p.g0, p.g1))
-    if glyph_ranges and r.exact:
-        gl = autotag.page_glyphs(pg)
-        if len(gl) == r.glyphs:
-            for g0, g1 in glyph_ranges:
-                for g in gl[g0:g1]:
-                    b = pymupdf.Rect(g.x0, g.y0, g.x1, g.y1)
-                    box = b if box is None else box | b
-    if box is not None:
-        box = box & pg.rect
-    return box if box is not None and not box.is_empty else None
+    return box
+
+
+# -- reading order
+GROUPS = {"Document", "Part", "Art", "Sect", "Div", "NonStruct", "Private", "BlockQuote"}
+
+
+def page_order(doc, index):
+    """The tags of page index in reading order, for Reading order: [{"num", "type", "box",
+    "text", "parent"}]: the elements just inside a grouping element (Document, Sect, Div...)
+    that hold content of this page."""
+    tree = Tree(doc)
+    content = marked_content(doc, index)
+    out = []
+
+    def gather(n, acc_box, acc_text):
+        for p, mc in n.mcids:
+            if p == index and mc in content:
+                b, t = content[mc]
+                if b is not None:
+                    acc_box[0] = b if acc_box[0] is None else acc_box[0] | b
+                acc_text.append(t)
+        for k in n.kids:
+            gather(k, acc_box, acc_text)
+
+    def on_page(n):
+        if any(p == index for p, _mc in n.mcids):
+            return True
+        return any(on_page(k) for k in n.kids)
+    stack = [n for n in tree.nodes if n.parent is None][::-1]
+    while stack:
+        n = stack.pop()
+        if (n.role in GROUPS or n.role is None and n.kids) and n.kids:
+            stack.extend(reversed(n.kids))
+            continue
+        if not n.num or not on_page(n):
+            continue
+        box, text = [None], []
+        gather(n, box, text)
+        out.append({"num": n.num, "type": n.type, "box": box[0],
+                    "text": " ".join(" ".join(text).split())[:200],
+                    "parent": n.parent.num if n.parent is not None else 0})
+    return out
+
+
+def set_order(doc, items):
+    """items (page_order's, in a new order): each parent's /K gets its kids among them in
+    that order, in the places they held (kids of different parents keep their parents)."""
+    pdf = _pdf(doc)
+    by_parent = {}
+    for it in items:
+        by_parent.setdefault(it["parent"], []).append(it["num"])
+    root = tree_root(doc)
+    for parent, nums in by_parent.items():
+        obj = m.pdf_load_object(pdf, parent) if parent else root
+        if obj is None:
+            continue
+        k = m.pdf_resolve_indirect(m.pdf_dict_gets(obj, "K"))
+        if not m.pdf_is_array(k):
+            continue
+        slots = [i for i in range(m.pdf_array_len(k))
+                 if m.pdf_is_indirect(m.pdf_array_get(k, i)) and
+                 m.pdf_to_num(m.pdf_array_get(k, i)) in set(nums)]
+        if len(slots) != len(nums):
+            continue
+        for i, num in zip(slots, nums):
+            m.pdf_array_put(k, i, m.pdf_new_indirect(pdf, num, 0))
 
 
 def set_alt(doc, num, text):

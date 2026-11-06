@@ -842,6 +842,9 @@ class MainWindow(QMainWindow):
                ("alt_text", tr("Alt te&xt..."),
                 tr("Describe each figure for people who can't see it, or mark it "
                    "decorative")),
+               ("reading_order", tr("&Reading order..."),
+                tr("The current page's tags numbered in reading order over the page: drag "
+                   "them to change it")),
                ("title_language", tr("Title and &language..."),
                 tr("The title screen readers announce and the window shows, and the "
                    "document's language")),
@@ -863,6 +866,7 @@ class MainWindow(QMainWindow):
                    "nothing)"))]
         self.acc_actions = {}
         attrs = {"check_accessibility": "check", "auto_tag": "autotag", "alt_text": "alt",
+                 "reading_order": "order",
                  "title_language": "title", "field_tooltips": "tips",
                  "link_descriptions": "links", "tab_order": "tabs", "mark_decorative": "decor",
                  "embed_fonts": "fonts", "identify_pdfua": "pdfua"}
@@ -1214,7 +1218,8 @@ class MainWindow(QMainWindow):
         acts = self.acc_actions
         am.addActions([acts["check_accessibility"], acts["auto_tag"]])
         am.addSeparator()
-        am.addActions([acts[k] for k in ("alt_text", "title_language", "field_tooltips",
+        am.addActions([acts[k] for k in ("alt_text", "reading_order", "title_language",
+                                         "field_tooltips",
                                          "link_descriptions", "tab_order", "mark_decorative",
                                          "embed_fonts")])
         am.addSeparator()

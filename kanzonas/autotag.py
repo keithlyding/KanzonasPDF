@@ -1256,14 +1256,18 @@ def _grid_tables(page, reader, glyphs, usable):
             i = parent[i]
         return i
     tol = 2.0
+    import bisect
+    upright = sorted((e[1], j) for j, e in enumerate(lines) if e[0] == "v")
+    xs_sorted = [x for x, _j in upright]
     for i, a in enumerate(lines):
         if a[0] != "h":
             continue
-        for j, b in enumerate(lines):
-            if b[0] != "v":
-                continue
-            # a: y, x0, x1; b: x, y0, y1
-            if a[2] - tol <= b[1] <= a[3] + tol and b[2] - tol <= a[1] <= b[3] + tol:
+        # a: ("h", y, x0, x1); the upright lines whose x is within it: (x, y0, y1)
+        lo = bisect.bisect_left(xs_sorted, a[2] - tol)
+        hi = bisect.bisect_right(xs_sorted, a[3] + tol)
+        for _x, j in upright[lo:hi]:
+            b = lines[j]
+            if b[2] - tol <= a[1] <= b[3] + tol:
                 parent[find(i)] = find(j)
     groups = {}
     for i in range(len(lines)):

@@ -8845,3 +8845,24 @@ msgstr "Identificar como PDF/&UA..."
 
 msgid "Say in the file's metadata that it meets PDF/UA-1 (once the check finds nothing)"
 msgstr "Indicar en los metadatos del archivo que cumple PDF/UA-1 (cuando la comprobación no encuentre nada)"
+
+msgid "Reading order"
+msgstr "Orden de lectura"
+
+msgid "The reading order is the order of the document's tags, and this document isn't tagged: use Auto-tag first."
+msgstr "El orden de lectura es el orden de las etiquetas del documento, y este documento no está etiquetado: use primero Etiquetar automáticamente."
+
+msgid "Nothing on this page is tagged."
+msgstr "Nada de esta página está etiquetado."
+
+msgid "Screen readers read the tags of page {n} in this order. Drag a tag in the list (or use Move up and Move down) to change it; the numbers on the page follow. Tags in different sections stay in their sections."
+msgstr "Los lectores de pantalla leen las etiquetas de la página {n} en este orden. Arrastre una etiqueta en la lista (o use Subir y Bajar) para cambiarlo; los números de la página lo siguen. Las etiquetas de secciones distintas se quedan en sus secciones."
+
+msgid "Reading order of page {n} changed"
+msgstr "Se cambió el orden de lectura de la página {n}"
+
+msgid "&Reading order..."
+msgstr "Orden de &lectura..."
+
+msgid "The current page's tags numbered in reading order over the page: drag them to change it"
+msgstr "Las etiquetas de la página actual numeradas en orden de lectura sobre la página: arrástrelas para cambiarlo"

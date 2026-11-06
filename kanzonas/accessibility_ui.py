@@ -652,3 +652,133 @@ def mark_decorative(parent, view):
         view.clear_object_selection()
         _done(view, tr("Marked {n} objects as decorative").format(n=n["n"]) if n["n"] != 1
               else tr("Marked 1 object as decorative"))
+
+
+# ---- Reading order --------------------------------------------------------------------------
+class ReadingOrderDialog(QDialog):
+    """The current page's tags, numbered in reading order over a picture of the page; drag
+    them in the list (or Move up / Move down) to change the order."""
+
+    def __init__(self, parent, view, index):
+        super().__init__(parent)
+        self.view, self.index = view, index
+        self.setWindowTitle(tr("Reading order"))
+        self.resize(980, 640)
+        self.items = acc.page_order(view.doc, index)
+        lst = self.list = QListWidget()
+        lst.setDragDropMode(QListWidget.InternalMove)
+        lst.setMinimumWidth(360)
+        for k, it in enumerate(self.items):
+            w = QListWidgetItem()
+            w.setData(Qt.UserRole, k)
+            lst.addItem(w)
+        lst.model().rowsMoved.connect(lambda *_: self._refresh())
+        lst.currentRowChanged.connect(lambda *_: self._draw())
+        self.page = QLabel()
+        self.page.setAlignment(Qt.AlignCenter)
+        self.page.setMinimumSize(460, 560)
+        up = QPushButton(tr("Move up"))
+        down = QPushButton(tr("Move down"))
+        up.clicked.connect(lambda: self._move(-1))
+        down.clicked.connect(lambda: self._move(1))
+        note = QLabel(tr("Screen readers read the tags of page {n} in this order. Drag a tag "
+                         "in the list (or use Move up and Move down) to change it; the "
+                         "numbers on the page follow. Tags in different sections stay in "
+                         "their sections.").format(n=index + 1))
+        note.setWordWrap(True)
+        side = QVBoxLayout()
+        side.addWidget(lst, 1)
+        row = QHBoxLayout()
+        row.addWidget(up)
+        row.addWidget(down)
+        side.addLayout(row)
+        main = QHBoxLayout()
+        main.addLayout(side)
+        main.addWidget(self.page, 1)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        lay = QVBoxLayout(self)
+        lay.addWidget(note)
+        lay.addLayout(main, 1)
+        lay.addWidget(buttons)
+        self._base = None
+        self._refresh()
+
+    def order(self):
+        return [self.items[self.list.item(r).data(Qt.UserRole)]
+                for r in range(self.list.count())]
+
+    def _move(self, d):
+        r = self.list.currentRow()
+        if r < 0 or not 0 <= r + d < self.list.count():
+            return
+        it = self.list.takeItem(r)
+        self.list.insertItem(r + d, it)
+        self.list.setCurrentRow(r + d)
+        self._refresh()
+
+    def _refresh(self):
+        for r in range(self.list.count()):
+            it = self.items[self.list.item(r).data(Qt.UserRole)]
+            self.list.item(r).setText("%d. %s  %s" % (r + 1, it["type"], it["text"][:60]))
+        self._draw()
+
+    def _draw(self):
+        import pymupdf
+        from PySide6.QtCore import QRectF
+        from PySide6.QtGui import QColor, QFont, QPainter, QPen
+        pg = self.view.doc[self.index]
+        if self._base is None:
+            zoom = min(560 / max(pg.rect.height, 1), 460 / max(pg.rect.width, 1))
+            pix = pg.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)
+            self._zoom = zoom
+            self._base = QImage(pix.samples, pix.width, pix.height, pix.stride,
+                                QImage.Format_RGB888).copy()
+        img = self._base.copy()
+        p = QPainter(img)
+        p.setRenderHint(QPainter.Antialiasing)
+        z = self._zoom
+        cur = self.list.currentRow()
+        font = QFont()
+        font.setPixelSize(12)
+        font.setBold(True)
+        p.setFont(font)
+        for r, it in enumerate(self.order()):
+            b = it["box"]
+            if b is None:
+                continue
+            color = QColor(220, 30, 30) if r == cur else QColor(30, 90, 220)
+            p.setPen(QPen(color, 2 if r == cur else 1))
+            rect = QRectF(b.x0 * z, b.y0 * z, b.width * z, b.height * z)
+            p.drawRect(rect)
+            tag = QRectF(rect.x() - 1, rect.y() - 1, 22, 15)
+            p.fillRect(tag, color)
+            p.setPen(QColor(255, 255, 255))
+            p.drawText(tag, Qt.AlignCenter, str(r + 1))
+        p.end()
+        self.page.setPixmap(QPixmap.fromImage(img))
+
+
+def reading_order(parent, view):
+    """Document > Accessibility > Reading order: the current page's tags in order, to check
+    and change."""
+    doc = view.doc
+    if not acc.Tree(doc).root:
+        QMessageBox.information(parent, tr("Reading order"), tr(
+            "The reading order is the order of the document's tags, and this document isn't "
+            "tagged: use Auto-tag first."))
+        return
+    index = view.current_page()
+    dlg = ReadingOrderDialog(parent, view, index)
+    if not dlg.items:
+        QMessageBox.information(parent, tr("Reading order"),
+                                tr("Nothing on this page is tagged."))
+        return
+    if dlg.exec() != QDialog.Accepted:
+        return
+    order = dlg.order()
+    if [it["num"] for it in order] == [it["num"] for it in dlg.items]:
+        return
+    if view.modify(lambda: acc.set_order(view.doc, order), []):
+        _done(view, tr("Reading order of page {n} changed").format(n=index + 1))
