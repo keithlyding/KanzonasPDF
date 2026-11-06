@@ -16,6 +16,13 @@ What the battery found:
   line spacing apart whatever the size of their words (a word made 20 points larger in 11
   point text was written over the line above it, and read back as part of it). A line with
   larger words now sits lower, as far as they need.
+- A hidden word showed: a word inside a line drawn invisibly (render mode 3, as OCR layers
+  are; or at no opacity) was written again in ink when anything in its paragraph was edited,
+  when its line was dragged, when Replace text changed the line, or when the line was moved
+  with a drawing; a word in white was written in the line's color when the line was moved
+  with a drawing or changed by Replace text (each word kept only its line's main style
+  there). Each word now keeps its opacity, and lines with words in styles of their own keep
+  them when moved with a drawing or changed by Replace text.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_battery_19_text
 """
@@ -197,6 +204,79 @@ class Paragraphs(unittest.TestCase):
         rows = letters(v.doc[0])
         self.assertEqual(len(rows), 2, rows)
         self.assertLessEqual(rows[0][2], rows[1][1] + 0.5, rows)
+
+
+def hidden_word_page(kind):
+    """A page of five lines of text set as one, its first line with an invisible word in
+    it (kind: "tr3" render mode 3, "alpha0" no opacity, "white" white ink)."""
+    d = pymupdf.open()
+    p = d.new_page()
+    p.insert_text((72, 100), "x", fontname="helv", fontsize=11)     # (the font resource)
+    hide, show = {"tr3": (b"3 Tr", b"0 Tr"), "alpha0": (b"/GSa gs", b"/GSb gs"),
+                  "white": (b"1 1 1 rg", b"0 0 0 rg")}[kind]
+    rows = [b"all dimensions in the field ", b"before ordering materials and ",
+            b"report any discrepancies to the ", b"architect in writing within two"]
+    c = b"BT /helv 11 Tf 13.2 TL 72 742 Td (The contractor shall verify ) Tj " + hide + \
+        b" (SECRET ) Tj " + show + b" (now ) Tj T* "
+    c += b"".join(b"(" + r + b") Tj T* " for r in rows) + b"ET"
+    d.update_stream(p.get_contents()[0], c)
+    if kind == "alpha0":
+        a, b = d.get_new_xref(), d.get_new_xref()
+        d.update_object(a, "<</Type/ExtGState/ca 0/CA 0>>")
+        d.update_object(b, "<</Type/ExtGState/ca 1/CA 1>>")
+        kind_, val = d.xref_get_key(p.xref, "Resources")
+        target, key = (int(val.split()[0]), "ExtGState") if kind_ == "xref" else \
+            (p.xref, "Resources/ExtGState")
+        d.xref_set_key(target, key, "<</GSa %d 0 R/GSb %d 0 R>>" % (a, b))
+    return d
+
+
+def shows(page, word="SECRET"):
+    """True when word is drawn in ink one can see on the page."""
+    for sp in page.get_texttrace():
+        if word in "".join(chr(c[0]) for c in sp["chars"]):
+            ink = sp["type"] != 3 and sp["opacity"] > 0
+            white = tuple(sp["color"] or (0,)) in ((1.0, 1.0, 1.0), (1.0,))
+            if ink and not white:
+                return True
+    return False
+
+
+class HiddenWords(unittest.TestCase):
+    def test_a_hidden_word_stays_hidden(self):
+        steps = ("paragraph", "line", "drag", "replace", "drawing")
+        for kind in ("tr3", "alpha0", "white"):
+            for step in steps:
+                with self.subTest(kind=kind, step=step):
+                    v = open_view(hidden_word_page(kind), self)
+                    page = v.doc[0]
+                    (_r, first), = [(r, ln) for r, ln in text_edit.text_lines(page)
+                                    if "SECRET" in text_edit.line_text(ln)]
+                    self.assertFalse(shows(page))
+                    pt = pymupdf.Point(100, first["spans"][0]["origin"][1] - 3)
+                    if step in ("paragraph", "line"):
+                        v.edit_text_at(0, pt, one_line=step == "line")
+                        ed = v._inline
+                        self.assertIn("SECRET", ed.text.toPlainText())
+                        select(ed, "contractor")
+                        ed.toggle("bold")
+                        ed.commit()
+                    elif step == "drag":
+                        v.move_text_line(0, pt, (0, 300))
+                    elif step == "replace":
+                        self.assertEqual(v.replace_text("contractor", "builder")[0], 1)
+                    else:
+                        lines = [ln for _r, ln in text_edit.text_lines(page)]
+                        v.modify(lambda: text_edit.move_lines(v.doc[0], lines, (5, 300)),
+                                 [0])
+                    page = v.doc[0]
+                    text = page.get_text()
+                    self.assertIn("SECRET", text)              # (still there, to find)
+                    self.assertTrue("contractor" in text or "builder" in text)
+                    self.assertFalse(shows(page))
+                    if step in ("paragraph", "line"):
+                        self.assertTrue(page.search_for("contractor"))
+                    v.dirty = False
 
 
 class RightToLeft(unittest.TestCase):

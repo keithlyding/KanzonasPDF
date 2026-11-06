@@ -356,7 +356,7 @@ or editing the document starts a fresh search.</li>
 tick <b>Match case</b> or <b>Whole words only</b> if needed, choose <b>All pages</b> or this
 page, and click <b>Replace all</b>. It changes the PDF's own text (not comments). Each line
 that changes is rewritten like Edit text does it, in the line's own font when that has the
-characters. A line is rewritten in place and doesn't rewrap: when the new text runs into other
+characters, each word kept in its own style (bold, italic, color...). A line is rewritten in place and doesn't rewrap: when the new text runs into other
 text or past the edge of the page, Replace text says on which pages (Ctrl+Z undoes it; Edit text
 can rewrap the paragraph). Pages with redaction marks that aren't applied yet are skipped (it says which).
 Ctrl+Z undoes the whole replacement.</li>
@@ -1018,6 +1018,9 @@ Sideways text (turned on the page, or on a rotated page) opens in an upright box
 middle of the line so it's easy to type, with the cursor where you clicked along the line; the
 text stays turned on the page when you finish.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
+<li>Words the page draws invisibly (an OCR layer's words in a line, a hidden word) stay
+invisible when their line or paragraph is edited, dragged, changed by Replace text or moved with
+a drawing; the box shows them faint. See-through words keep their opacity.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
 &Omega; &Delta;, symbols, Chinese and other scripts), a built-in Unicode font. Only the letters

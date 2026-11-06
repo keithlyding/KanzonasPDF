@@ -30,6 +30,7 @@ P_FONT = QTextFormat.UserProperty + 1
 P_FLAGS = QTextFormat.UserProperty + 2
 P_SIZE = QTextFormat.UserProperty + 3          # points
 P_FAMILY = QTextFormat.UserProperty + 4
+P_ALPHA = QTextFormat.UserProperty + 5         # opacity 0..255 (0: invisible on the page)
 
 _HINT = {"sans": "Arial", "serif": "Times New Roman", "mono": "Courier New"}
 _FAMILIES = {}
@@ -226,8 +227,10 @@ class InlineEditor(QFrame):
         f.setUnderline(bool(style.underline))
         f.setStrikeOut(bool(style.strike))
         fmt.setFont(f)
+        # (invisible or see-through text shows faint)
         fmt.setForeground(QColor((style.color >> 16) & 255, (style.color >> 8) & 255,
-                                 style.color & 255))
+                                 style.color & 255, max(70, min(255, style.alpha))))
+        fmt.setProperty(P_ALPHA, int(style.alpha))
         fmt.setProperty(P_FONT, style.font or "")
         fmt.setProperty(P_FLAGS, int(style.flags))
         fmt.setProperty(P_SIZE, float(style.size))
@@ -243,13 +246,15 @@ class InlineEditor(QFrame):
         font = fmt.property(P_FONT)
         flags = fmt.property(P_FLAGS)
         family = fmt.property(P_FAMILY)
+        alpha = fmt.property(P_ALPHA)
         brush = fmt.foreground()
         color = _color_int(brush.color()) if brush.style() != Qt.NoBrush else self.base.color
         qf = fmt.font()
         return Style(font if isinstance(font, str) else self.base.font,
                      int(flags) if isinstance(flags, int) else self.base.flags,
                      round(float(size), 2), color, qf.bold(), qf.italic(), qf.underline(),
-                     qf.strikeOut(), family if isinstance(family, str) else self.base.family)
+                     qf.strikeOut(), family if isinstance(family, str) else self.base.family,
+                     alpha=int(alpha) if isinstance(alpha, int) else self.base.alpha)
 
     def _fill(self, runs):
         doc = self.text.document()

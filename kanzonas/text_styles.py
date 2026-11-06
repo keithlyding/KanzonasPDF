@@ -53,6 +53,7 @@ class Style(NamedTuple):
     strike: bool = False
     family: str = ""
     alt: int = 0                    # (1: runs its font can't write, given another one)
+    alpha: int = 255                # opacity, 0..255; 0: invisible (render mode 3, or no ink)
 
 
 _BOLD_WORDS = re.compile(r"bold|black|heavy|demi|semibold", re.I)
@@ -73,7 +74,8 @@ def span_style(span, bold=False, italic=False):
     font = _SUBSET.sub("", span.get("font", ""))    # (two subsets of a font are one font)
     nb, ni = natural(font, flags)
     return Style(font, flags, round(float(span["size"]), 2),
-                 int(span.get("color", 0)), nb or bold, ni or italic)
+                 int(span.get("color", 0)), nb or bold, ni or italic,
+                 alpha=max(0, min(255, int(span.get("alpha", 255)))))
 
 
 _SUBSET = re.compile(r"^[A-Z]{6}\+")
@@ -179,8 +181,9 @@ def plain(keys, main):
     bold or italic another way, none underlined or struck through): the text can be
     written as before, in one style."""
     nb, ni = natural(main.font, main.flags)
-    if main.underline or main.strike or main.bold != nb or main.italic != ni:
-        return False
+    if main.underline or main.strike or main.bold != nb or main.italic != ni or \
+            main.alpha != 255:
+        return False                # (invisible or see-through text stays so: see write_row)
     return all(k == main for k in keys)
 
 
@@ -873,14 +876,21 @@ def write_row(shape, origin, rotate, row_pieces, fonts):
         kw = {"fontsize": k.size, "fontname": f.name, "color": rgb, "rotate": rotate}
         if f.bold:
             kw.update(render_mode=2, fill=rgb, border_width=STROKE)
+        if k.alpha == 0:
+            # invisible letters (an OCR layer's, hidden words) stay invisible: written in
+            # every color, they showed what the page hid
+            kw["render_mode"] = 3
+        elif k.alpha < 255:
+            kw.update(fill_opacity=k.alpha / 255, stroke_opacity=k.alpha / 255)
         if f.italic:
             kw["morph"] = (pt, _shear(d, n))
         shape.insert_text(pt, text, **kw)
     for kind in ("underline", "strike"):
         group = []
         for p in list(row_pieces) + [None]:
-            on = p is not None and getattr(p[1], kind)
-            if group and (not on or p[1].color != group[0][1].color):
+            on = p is not None and getattr(p[1], kind) and p[1].alpha > 0
+            if group and (not on or p[1].color != group[0][1].color or
+                          p[1].alpha != group[0][1].alpha):
                 _bar(shape, at, kind, group, fonts)
                 group = []
             if on:
@@ -900,7 +910,7 @@ def _bar(shape, at, kind, group, fonts):
     r = pymupdf.Rect(min(p.x for p in pts), min(p.y for p in pts),
                      max(p.x for p in pts), max(p.y for p in pts))
     shape.draw_rect(r)
-    shape.finish(color=None, fill=_rgb(k.color), width=0)
+    shape.finish(color=None, fill=_rgb(k.color), width=0, fill_opacity=k.alpha / 255)
 
 
 def fix_spaces(page, fonts):

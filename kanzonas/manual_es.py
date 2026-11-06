@@ -344,7 +344,7 @@ o editar el documento inicia una búsqueda nueva.</li>
 marque <b>Coincidir mayúsculas y minúsculas</b> o <b>Solo palabras completas</b> si hace falta, elija <b>Todas las páginas</b> o esta
 página y haga clic en <b>Reemplazar todo</b>. Cambia el texto propio del PDF (no los comentarios). Cada línea
 que cambia se vuelve a escribir como lo hace Editar texto, con la fuente propia de la línea cuando esta tiene los
-caracteres. La línea se vuelve a escribir en su sitio y no se reajusta: cuando el texto nuevo se mete en otro
+caracteres, y cada palabra con su propio estilo (negrita, cursiva, color...). La línea se vuelve a escribir en su sitio y no se reajusta: cuando el texto nuevo se mete en otro
 texto o pasa del borde de la página, Reemplazar texto indica en qué páginas (Ctrl+Z lo deshace; Editar texto
 puede reajustar el párrafo). Las páginas con marcas de censura que aún no se han aplicado se omiten (se indica cuáles).
 Ctrl+Z deshace todo el reemplazo.</li>
@@ -999,6 +999,9 @@ El texto de lado (girado en la página, o en una página girada) se abre en un c
 centro de la línea para que sea fácil escribir, con el cursor donde hizo clic a lo largo de la línea; el texto
 sigue girado en la página cuando termina.</li>
 <li>Los resaltados, subrayados, tachados, comentarios y notas adhesivas de esa línea se mueven con ella.</li>
+<li>Las palabras que la página dibuja invisibles (las palabras de una capa de OCR en una línea, una palabra
+oculta) siguen invisibles cuando su línea o su párrafo se edita, se arrastra, se cambia con Reemplazar texto o
+se mueve con un dibujo; el cuadro las muestra tenues. Las palabras semitransparentes conservan su opacidad.</li>
 <li>Se usa la fuente original cuando está incrustada o instalada y tiene todos los caracteres que
 escribió; si no, la fuente estándar más parecida o, para los caracteres que estas no pueden escribir (griego como
 &Omega; &Delta;, símbolos, chino y otras escrituras), una fuente Unicode integrada. Solo se guardan las letras

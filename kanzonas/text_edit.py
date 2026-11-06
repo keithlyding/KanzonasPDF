@@ -1614,20 +1614,40 @@ def move_lines(page, lines, offset):
         raise ValueError(tr("Apply or remove the redaction marks on this page before "
                             "editing its text."))
     plans = []
+    styled, decor = [], []
     for line in lines:                  # 1) the fonts first: nothing goes if one can't write
         text = line_text(line)
         if not text.strip():
             continue
         refuse_right_to_left(text)
+        if mixed_styles(line):
+            # words in styles of their own (bold, colors, invisible words): each kept, as
+            # dragging the line with Edit text does (written in the line's main style, a
+            # hidden word showed)
+            from . import text_styles
+            st = text_styles.read_line(page, line)
+            fonts, t, keys = text_styles.resolve_all(page, st.text, st.keys)
+            styled.append((line, t, keys, fonts))
+            decor += st.decor
+            continue
         main = main_span(line)
         found, text = _font_for(page, main, text)
         plans.append((line, text, main, found))
-    _remove_lines(page, lines)          # 2) all their letters out at once
+    _remove_lines(page, lines, decor=decor)     # 2) all their letters out at once
     inserted = {}                       # font name -> (name written with, Font)
     used = []
     # one drawing for all of them, added to the page once (page.insert_text adds each
     # line on its own, reading the whole page each time: most of the time on a big sheet)
     shape = page.new_shape()
+    for line, text, keys, fonts in styled:
+        from . import text_styles
+        fonts = text_styles.reinsert(page, fonts)
+        origin = pymupdf.Point(line["spans"][0]["origin"]) + offset
+        text_styles.write_row(shape, origin, line_rotation(line),
+                              text_styles.pieces(list(zip(text, keys)), fonts), fonts)
+        inserted.update({f.name: (f.name, f.font) for f in fonts.values()
+                         if f.source is not None})
+        used.append(text_styles.used_name(fonts, text_styles.main_style(text, keys)))
     for line, text, main, found in plans:   # 3) each written again, moved
         if found:
             fontname, font, source = found
@@ -1641,11 +1661,26 @@ def move_lines(page, lines, offset):
         shape.insert_text(origin, text, fontsize=float(main["size"]), fontname=name,
                           color=_rgb(main["color"]), rotate=line_rotation(line), lineheight=1.2)
         used.append(name)
-    if plans:
+    if plans or styled:
         shape.commit(True)
     for name, font in inserted.values():
         _fix_spaces(page, name, font)
     return used
+
+
+def mixed_styles(line):
+    """True when a line's words aren't all in one style (font, size, color, bold, italic),
+    or some are invisible or see-through: written again in the line's main style, they
+    would lose theirs (and a hidden word would show)."""
+    seen = set()
+    for s in line["spans"]:
+        if not s["text"].strip():
+            continue
+        alpha = s.get("alpha", 255)
+        if alpha != 255:
+            return True
+        seen.add((s["font"], round(s["size"], 1), s["color"], s["flags"] & (_ITALIC | _BOLD)))
+    return len(seen) > 1
 
 
 def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None,
@@ -1698,6 +1733,13 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
     found = None
     builtin = None                      # a built-in PDF font matched to the scan
     keys = None
+    if runs is None and not scan and new_text.strip() and mixed_styles(line):
+        # (Replace text: the words kept keep their styles, a hidden word stays hidden)
+        from . import text_styles
+        styled = text_styles.read_line(page, line)
+        runs = text_styles.runs_of(new_text, text_styles.restyle(
+            styled.text, styled.keys, new_text, styled.main))
+        decor = styled.decor
     if runs is not None and not scan and new_text.strip():
         keys = _styled_text(runs, new_text, main, font, size, strip=False)
     if keys is not None:
