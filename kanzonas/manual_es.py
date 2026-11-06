@@ -1440,8 +1440,8 @@ páginas y direcciones web se conservan); cada comentario y marca tiene su propi
 configurado para imprimirse, y los ocultos se quitan (PDF/A muestra todas las anotaciones, así que
 uno oculto aparecería); los campos de formulario quedan dibujados (en lugar de dejarlos al visor) y
 pierden sus acciones; la configuración de capas recibe un nombre; las funciones de transferencia,
-los modos de fusión desconocidos, el suavizado de imágenes ampliadas, la compresión LZW y las
-versiones de PDF posteriores a 1.7 se reemplazan por lo que PDF/A permite, sin cambiar el aspecto
+los modos de fusión desconocidos, el suavizado de imágenes ampliadas, la compresión LZW (también
+la de las imágenes escritas dentro del contenido de una página) y las versiones de PDF posteriores a 1.7 se reemplazan por lo que PDF/A permite, sin cambiar el aspecto
 de las páginas. Los <b>archivos adjuntos</b> se conservan: si todos son a su vez archivos PDF/A,
 la copia es PDF/A-2b; si no, es PDF/A-3b, la parte de la norma que permite cualquier archivo
 adjunto (cada uno queda entonces registrado como archivo asociado al documento, con su tipo).

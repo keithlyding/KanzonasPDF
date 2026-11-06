@@ -23,13 +23,20 @@ What the battery found:
   with a drawing or changed by Replace text (each word kept only its line's main style
   there). Each word now keeps its opacity, and lines with words in styles of their own keep
   them when moved with a drawing or changed by Replace text.
+- Save as PDF/A said a copy was PDF/A when it wasn't: pictures written into a page's content
+  (inline images, BI ... ID ... EI) were never looked at, and one compressed with LZW or set
+  to be smoothed stayed so (veraPDF: 6.1.10-1, 6.2.8-3), with Check PDF/A finding nothing.
+  They are now checked, and Save as PDF/A writes them again (decoded, compressed with Flate,
+  not smoothed), drawing exactly as before.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_battery_19_text
 """
+import base64
 import os
 import sys
 import tempfile
 import unittest
+import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -277,6 +284,88 @@ class HiddenWords(unittest.TestCase):
                     if step in ("paragraph", "line"):
                         self.assertTrue(page.search_for("contractor"))
                     v.dirty = False
+
+
+def lzw(data):
+    """data LZW-encoded as PDF's LZWDecode reads it (9 to 12 bit codes, early change)."""
+    table = {bytes([i]): i for i in range(256)}
+    nxt, width, out, buf, nbits = 258, 9, bytearray(), 0, 0
+
+    def emit(code):
+        nonlocal buf, nbits
+        buf, nbits = (buf << width) | code, nbits + width
+        while nbits >= 8:
+            nbits -= 8
+            out.append((buf >> nbits) & 255)
+    emit(256)
+    w = b""
+    for c in data:
+        if w + bytes([c]) in table:
+            w += bytes([c])
+            continue
+        emit(table[w])
+        table[w + bytes([c])] = nxt
+        nxt += 1
+        if nxt >= (1 << width) and width < 12:
+            width += 1
+        if nxt >= 4094:
+            emit(256)
+            table = {bytes([i]): i for i in range(256)}
+            nxt, width = 258, 9
+        w = bytes([c])
+    if w:
+        emit(table[w])
+    emit(257)
+    if nbits:
+        out.append((buf << (8 - nbits)) & 255)
+    return bytes(out)
+
+
+class PdfA(unittest.TestCase):
+    def test_pictures_inside_the_content_are_made_pdfa(self):
+        from kanzonas import pdfa
+        img = bytes((x * 7 + y * 13) % 256 for y in range(40) for x in range(120))
+        parts = [
+            b"BI /W 40 /H 40 /CS /RGB /BPC 8 /F /LZW ID " + lzw(img) + b" EI",
+            b"BI /W 40 /H 40 /CS /RGB /BPC 8 /F [/A85 /LZW] ID " +
+            base64.a85encode(lzw(img), adobe=True)[2:] + b" EI",
+            b"BI /W 4 /H 1 /CS [/I /RGB 1 <ff000000ff00>] /BPC 8 /I true ID "
+            b"\x00\x01\x00\x01 EI",
+            b"BI /W 6 /H 1 /CS /G /BPC 8 /Interpolate true ID A EI B EI",   # ("EI" in its data)
+            b"BI /W 8 /H 2 /IM true /I true /F /AHx ID ff00ff00 > EI",
+            b"BI /W 40 /H 40 /CS /RGB /BPC 8 /F /Fl /I true ID " + zlib.compress(img) + b" EI",
+            b"BI /W 40 /H 40 /CS /RGB /BPC 8 /F /LZW /DP <</EarlyChange 1>> ID " + lzw(img) +
+            b" EI",
+        ]
+        content = b"".join(b"q 60 0 0 60 %d %d cm %s Q\n" % (72 + 70 * (i % 5), 600 - 100 * (i // 5),
+                                                             part)
+                           for i, part in enumerate(parts))
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_text((72, 72), "Pictures", fontsize=12)
+        x = p.get_contents()[0]
+        d.update_stream(x, d.xref_stream(x) + b"\n" + content)
+        found = {q.text for q in pdfa.check(d)}
+        self.assertIn("Part of the file uses LZW compression, which PDF/A doesn't allow.", found)
+        self.assertIn("A picture is set to be smoothed when enlarged (Interpolate).", found)
+        path = os.path.join(tempfile.mkdtemp(), "inline_A.pdf")
+        result = pdfa.convert(d.tobytes(), path)
+        self.assertEqual(result["remaining"], [])
+        with pymupdf.open(path) as out:
+            data = out[0].read_contents()
+            self.assertNotIn(b"/LZW", data)
+            self.assertNotIn(b"/I true", data)
+            self.assertNotIn(b"/Interpolate true", data)
+            # drawn exactly as the original drew without smoothing
+            plain = pymupdf.open()
+            q = plain.new_page()
+            q.insert_text((72, 72), "Pictures", fontsize=12)
+            y = q.get_contents()[0]
+            plain.update_stream(y, plain.xref_stream(y) + b"\n" + content.replace(
+                b"/I true", b"/I false").replace(b"/Interpolate true", b"/Interpolate false"))
+            self.assertEqual(out[0].get_pixmap(dpi=72).samples,
+                             plain[0].get_pixmap(dpi=72).samples)
+        self.assertEqual(pdfa._lzw_decode(lzw(img * 20)), img * 20)     # (past 12-bit codes)
 
 
 class RightToLeft(unittest.TestCase):

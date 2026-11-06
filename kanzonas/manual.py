@@ -1450,7 +1450,7 @@ to pages and web addresses stay); every comment and markup has its own appearanc
 to print, and hidden ones are removed (PDF/A shows every annotation, so a hidden one would
 appear); form fields are drawn (rather than left to the viewer) and lose their actions; layer
 settings get a name; transfer functions, unknown blend modes, smoothing of enlarged pictures,
-LZW compression and PDF versions above 1.7 are replaced by what PDF/A allows, without changing
+LZW compression (also of pictures written into a page's content) and PDF versions above 1.7 are replaced by what PDF/A allows, without changing
 how the pages look. <b>Attached files</b> stay: when they are all PDF/A files themselves, the
 copy is PDF/A-2b; otherwise it's PDF/A-3b, the part of the standard that allows any attached
 file (each is then listed as a file associated with the document, with its kind).
