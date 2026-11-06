@@ -84,7 +84,10 @@ class PageBoxesDialog(QDialog):
         self._k = UNITS[1][1]
         self.unit.currentIndexChanged.connect(self._unit_changed)
         grid = QGridLayout()
-        heads = [tr("Box"), "", tr("Left"), tr("Top"), tr("Right"), tr("Bottom")]
+        # (the box's edges: "Top" and "Bottom" are other words in Spanish than the Align
+        # commands')
+        heads = [tr("Box"), "", tr("Left"), tr("Top", ctx="edge"), tr("Right"),
+                 tr("Bottom", ctx="edge")]
         for c, h in enumerate(heads):
             grid.addWidget(QLabel("<b>%s</b>" % h if h else ""), 0, c)
         self.rows = {}
@@ -228,8 +231,10 @@ class HairlinesDialog(QDialog):
             QMessageBox.information(self, tr("Fix hairlines"), tr(
                 "No lines thinner than {w} pt on these pages.").format(w="%g" % below))
             return
-        self.view.statusMessage.emit(tr("Fix hairlines: {n} lines now {w} pt wide (Ctrl+Z "
-                                        "undoes it)").format(n=n, w="%g" % width))
+        self.view.statusMessage.emit((tr("Fix hairlines: {n} lines now {w} pt wide (Ctrl+Z "
+                                         "undoes it)") if n != 1 else
+                                      tr("Fix hairlines: {n} line now {w} pt wide (Ctrl+Z "
+                                         "undoes it)")).format(n=n, w="%g" % width))
         self.accept()
 
 

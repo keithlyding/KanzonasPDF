@@ -330,6 +330,9 @@ class MenuEntry(unittest.TestCase):
         self.assertIn('Exec="%s" %%F\n' % self.appimage, text)
         self.assertIn("MimeType=application/pdf;", text)
         self.assertIn("Icon=kanzonaspdf\n", text)
+        # a PDF viewer and editor first (the owner's decision), as the AppImage's own entry
+        self.assertIn("Comment=View, edit, annotate and sign PDF files\n", text)
+        self.assertIn("Comment[es]=Ve, edita, anota y firma archivos PDF\n", text)
         with open(icon, "rb") as f:
             self.assertEqual(f.read(8), b"\x89PNG\r\n\x1a\n")
         self.assertIn(["xdg-mime", "default", "kanzonaspdf.desktop", "application/pdf"],

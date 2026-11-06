@@ -1675,7 +1675,9 @@ class PageWidget(QWidget):
                     what=v.annot_label(self.index, pdf).lower()), remove)
         if has_text:
             menu.addSeparator()
-            for tool, label in (("highlight", tr("Highlight")), ("underline", tr("Underline")),
+            # (verbs, as Strike out: the tools' own names are nouns in Spanish)
+            for tool, label in (("highlight", tr("Highlight", ctx="verb")),
+                                ("underline", tr("Underline", ctx="verb")),
                                 ("strikeout", tr("Strike out")),
                                 ("comment", tr("Comment on text...")),
                                 ("redact", tr("Mark for redaction"))):
@@ -2535,7 +2537,8 @@ class PageWidget(QWidget):
         """View > Show page boxes: the trim (green), bleed (red) and art (blue) boxes the page
         has, each named inside one of its own corners (they're often only points apart: the
         names would cover each other at the same corner) (on screen only)."""
-        names = {"trimbox": tr("Trim"), "bleedbox": tr("Bleed"), "artbox": tr("Art")}
+        # (their own words: "Trim" alone is also the CAD tab's command, a verb in Spanish)
+        names = {"trimbox": tr("Trim box"), "bleedbox": tr("Bleed box"), "artbox": tr("Art box")}
         f = p.font()
         f.setPointSizeF(max(6.0, f.pointSizeF() * 0.8))
         p.setFont(f)

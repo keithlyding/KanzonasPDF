@@ -552,7 +552,7 @@ def layout(rows, props):
     any_total = show_t and any(r.get("total") for r in rows)
     label_w = max([_width(r["label"], fs) for r in rows] + [0])
     n_text = [str(r["n"]) for r in rows]
-    n_w = max([_width(t, fs) for t in n_text] + [_width(tr("Count"), head_s)]) if show_n else 0
+    n_w = max([_width(t, fs) for t in n_text] + [_width(tr("Count", ctx="legend"), head_s)]) if show_n else 0
     t_w = max([_width(r.get("total") or "", fs) for r in rows] +
               [_width(tr("Total"), head_s)]) if any_total else 0
     width = pad + sw + gap + label_w + (gap + n_w if show_n else 0) + \
@@ -579,8 +579,8 @@ def layout(rows, props):
     if rows and (show_n or any_total):
         hy = y + head_s
         if show_n:
-            body.append(lambda hy=hy: ops.text(x_n - _width(tr("Count"), head_s), hy,
-                                               tr("Count"), head_s, gray))
+            body.append(lambda hy=hy: ops.text(x_n - _width(tr("Count", ctx="legend"), head_s), hy,
+                                               tr("Count", ctx="legend"), head_s, gray))
         if any_total:
             body.append(lambda hy=hy: ops.text(x_t - _width(tr("Total"), head_s), hy,
                                                tr("Total"), head_s, gray))
