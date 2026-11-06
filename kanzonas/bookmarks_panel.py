@@ -69,8 +69,7 @@ def shift(toc, i, delta):
 
 def dest_of(e):
     """A copy of bookmark e's destination dict ({} for a [level, title, page] entry)."""
-    d = e[3] if len(e) > 3 and isinstance(e[3], dict) else {}
-    d = dict(d)
+    d = dict(e[3]) if len(e) > 3 and isinstance(e[3], dict) else {}
     d.pop("xref", None)                 # (set_toc gives every bookmark a new object)
     return d
 

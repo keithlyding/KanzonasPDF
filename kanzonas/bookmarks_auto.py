@@ -42,11 +42,18 @@ _BOLD_NAME = re.compile(r"bold|black|heavy|semibold|demi|extrabold|ultrabold|-bd
 # ---- reading the lines of a page -------------------------------------------------------------
 class Row:
     """One line of text as shown (pieces on the same baseline close together joined)."""
-    __slots__ = ("page", "text", "size", "bold", "chars", "rect", "yf0", "yf1", "alone")
+    __slots__ = ("page", "text", "size", "bold", "chars", "rect", "yf0", "yf1", "cells",
+                 "toc")
 
-    def __init__(self, page, text, size, bold, chars, rect, yf0, yf1, alone):
+    def __init__(self, page, text, size, bold, chars, rect, yf0, yf1, cells=1, toc=False):
         self.page, self.text, self.size, self.bold, self.chars = page, text, size, bold, chars
-        self.rect, self.yf0, self.yf1, self.alone = rect, yf0, yf1, alone
+        self.rect, self.yf0, self.yf1 = rect, yf0, yf1
+        self.cells = cells      # pieces of text on its row (3 or more: a table's row)
+        self.toc = toc          # a line of a table of contents: a page number at its right
+
+    @property
+    def alone(self):
+        return self.cells == 1
 
 
 def _line_pieces(page):
@@ -120,10 +127,12 @@ def page_rows(page, index):
                 last[6] = last[6] | p[6]
             else:
                 items.append(list(p))
-        alone = len(items) == 1
-        for it in items:
+        # a title and its page number (not a table's row of cells): a contents line
+        listed = len(items) in (2, 3) and _PAGE_REF.match(items[-1][1]) is not None
+        for k, it in enumerate(items):
+            toc = listed and k < len(items) - 1 and len(_LETTER.findall(it[1])) >= 3
             out.append((it[0], Row(index, it[1], it[2], it[3] >= 0.6 * it[4], it[4], it[5],
-                                   it[6].y0 / height, it[6].y1 / height, alone)))
+                                   it[6].y0 / height, it[6].y1 / height, len(items), toc)))
     out.sort(key=lambda x: x[0])
     return [r for _o, r in out]
 
@@ -132,17 +141,24 @@ def page_rows(page, index):
 _LEADER = re.compile(r"(\.\s?){4,}|…{2,}|_{4,}|(·\s?){4,}")
 _PAGE_NO = re.compile(r"^(page|p\.|pg\.?|página|pág\.)?\s*([0-9]+|[ivxlc]+)"
                       r"(\s*(of|/|de)\s*[0-9]+)?$", re.I)
+_PAGE_REF = re.compile(r"^([0-9]{1,4}|(?=[ivxlc])c{0,3}(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})|"
+                       r"[A-Z]?-?[0-9]{1,3}(-[0-9]{1,3})?)$")
+_CONTENTS = re.compile(r"^((table\s+of\s+)?contents|(tabla\s+de\s+)?contenidos?|índice)$", re.I)
 _LETTER = re.compile(r"[^\W\d_]")
 _DIGITS = re.compile(r"\d+")
 _RANKS = [
     (re.compile(r"^division\s+\d{1,2}\b", re.I), 0),
     (re.compile(r"^section\s+\d", re.I), 1),
-    (re.compile(r"^(chapter|appendix|annex|capítulo|capitulo|anexo|apéndice)\s+"
+    (re.compile(r"^(chapter|appendix|annex|attachment|exhibit|cap\u00edtulo|capitulo|anexo|"
+                r"ap\u00e9ndice)\s+"
                 r"([0-9]{1,3}|[ivxlc]{1,6}|[a-z])\b", re.I), 1),
     (re.compile(r"^part\s+([0-9]{1,2}|[ivx]{1,4}|[a-z]|one|two|three|four|five|six)\b", re.I), 2),
     (re.compile(r"^(article|artículo)\s+([0-9]{1,3}|[ivxlc]{1,6})\b", re.I), 3),
     (re.compile(r"^[IVX]{1,5}\.\s+\S"), 3),
 ]
+_BARE = re.compile(r"^(division|section|chapter|part|article|appendix|attachment|annex|exhibit|"
+                   r"schedule|capítulo|capitulo|anexo|artículo|sección|parte)\s+"
+                   r"[\w.\-]{1,12}$", re.I)
 _NUMBERED = re.compile(r"^(\d{1,3}(?:\.\d{1,3}){0,4})\.?\)?\s+(\S)")
 
 
@@ -167,7 +183,7 @@ def _caps(text):
 def _candidate(r, body, bold_body):
     """(True, numbering rank) when row r looks like a heading."""
     t = r.text
-    if len(t) < 2 or len(t) > 160 or _LEADER.search(t) or _PAGE_NO.match(t.strip(" -–—")):
+    if r.toc or len(t) < 2 or len(t) > 160 or _LEADER.search(t) or _PAGE_NO.match(t.strip(" -–—")):
         return False, None
     if len(_LETTER.findall(t)) < 2:
         return False, None
@@ -177,7 +193,7 @@ def _candidate(r, body, bold_body):
     rank = numbering(t)
     sentence = t.endswith((".", ";", ",")) and words > 5 and rank is None
     if r.size >= body * 1.12 and r.size - body >= 1.0:
-        return not (sentence and words > 10), rank
+        return r.cells <= 2 and not (sentence and words > 10), rank
     if r.size < body * 0.92:
         return False, None
     if r.bold and not bold_body and r.alone and words <= 12 and not sentence:
@@ -279,16 +295,29 @@ class HeadingScan:
         body = weights.most_common(1)[0][0]
         bold_body = sum(r.chars for r in rows if r.size == body and r.bold) > 0.5 * weights[body]
         furniture = self._furniture()
-        heads = []                      # [page, first, last, size, bold, rank, text, rect, n]
+        # a page with three lines or more ending in a page number is a table of contents
+        listing = Counter(r.page for r in rows if r.toc)
+        contents = {p for p, n in listing.items() if n >= 3}
+        # [page, first row, last row, size, bold, rank, text, rect, lines, last line's look]
+        heads = []
         for idx, r in enumerate(rows):
-            if idx in furniture:
+            if idx in furniture or r.page in contents:
                 continue
             ok, rank = _candidate(r, body, bold_body)
             if not ok:
                 continue
             h = heads[-1] if heads else None
-            if h is not None and h[0] == r.page and h[2] == idx - 1 and h[3] == r.size and \
-                    h[4] == r.bold and -0.2 * r.size <= r.rect.y0 - h[7].y1 < 0.9 * r.size:
+            close = h is not None and h[0] == r.page and h[2] == idx - 1
+            if close and h[8] == 1 and rank is None and _BARE.match(h[6]) and \
+                    -0.2 * r.size <= r.rect.y0 - h[7].y1 < 1.5 * max(h[3], r.size):
+                # "SECTION A" over "GENERAL CONDITIONS": one heading, whatever their looks
+                h[2], h[3], h[4] = idx, max(h[3], r.size), h[4] or r.bold
+                h[6] = h[6] + " - " + r.text
+                h[7] = h[7] | r.rect
+                h[9] = (r.size, r.bold)
+                continue
+            if close and h[9] == (r.size, r.bold) and \
+                    -0.2 * r.size <= r.rect.y0 - h[7].y1 < 0.9 * r.size:
                 h[2] = idx              # (the next line of the same heading, or a paragraph)
                 h[8] += 1
                 if rank is None or h[8] > 3:
@@ -297,7 +326,8 @@ class HeadingScan:
                     continue
                 h[8] -= 1
                 h[2] = idx - 1
-            heads.append([r.page, idx, idx, r.size, r.bold, rank, r.text, pymupdf.Rect(r.rect), 1])
+            heads.append([r.page, idx, idx, r.size, r.bold, rank, r.text, pymupdf.Rect(r.rect), 1,
+                          (r.size, r.bold)])
         heads = [h for h in heads if h[8] <= 3]         # four lines or more: a paragraph
         if not heads:
             return []
@@ -326,20 +356,28 @@ class HeadingScan:
         for key, g in groups.items():
             for h in g:
                 used[slot_of(h)].append(h)
-        order = sorted(used)
-        title = None
+        # set apart (listed unticked at level 1, not counted as a level): a "Contents"
+        # heading, the lines of a cover page (a first page with none of the looks that go
+        # on through the document), and one line bigger than all the rest near the start
+        # (the title)
         first_page = min(r.page for r in rows)
-        top = used[order[0]]
-        if len(order) > 1 and len(top) == 1 and top[0][0] <= first_page + 1:
-            title = top[0]              # one line bigger than all the rest: the title
-            order = order[1:]
+        aside = {id(h) for hs in used.values() for h in hs if _CONTENTS.match(h[6].strip())}
+        spread = {s for s, hs in used.items() if any(h[0] != first_page for h in hs)}
+        if spread and not any(h[0] == first_page for s in spread for h in used[s]):
+            aside |= {id(h) for hs in used.values() for h in hs if h[0] == first_page}
+        order = [s for s in sorted(used) if any(id(h) not in aside for h in used[s])]
+        if len(order) > 1:
+            top = [h for h in used[order[0]] if id(h) not in aside]
+            if len(top) == 1 and top[0][0] <= first_page + 2:
+                aside.add(id(top[0]))
+                order = order[1:]
         level_of = {s: k + 1 for k, s in enumerate(order)}
         for s in order[:MAX_LEVELS]:
             (size, bold), rank = slots[s]
             self.styles.append((_style_name(size, bold), level_of[s], len(used[s])))
         items = []
         for h in sorted((h for g in groups.values() for h in g), key=lambda h: (h[0], h[1])):
-            if h is title:
+            if id(h) in aside:
                 level, on = 1, False
             else:
                 level, on = level_of[slot_of(h)], True
@@ -601,12 +639,35 @@ def toc_entries(items, depth=MAX_LEVELS, titlecase=False):
     return normalize(out)
 
 
+def writable(doc, dest):
+    """A copy of a bookmark's destination (get_toc(simple=False)) that set_toc writes back
+    as it was: one to a named destination becomes one to the place it names (set_toc can't
+    write names, and would leave the bookmark going nowhere)."""
+    d = dict(dest or {})
+    d.pop("xref", None)                 # (set_toc gives every bookmark a new object)
+    page = d.get("page", -1)
+    if d.get("kind") == pymupdf.LINK_NAMED and 0 <= page < doc.page_count:
+        d["kind"] = pymupdf.LINK_GOTO
+        d.pop("nameddest", None)
+        d.pop("name", None)
+        to = d.get("to")
+        if to is not None:              # (given in PDF coordinates there, from the top here)
+            d["to"] = pymupdf.Point(to.x, doc.page_cropbox(page).height - to.y)
+    return d
+
+
+def writable_toc(doc, toc):
+    """toc (entries of 3 or 4) as set_toc should be given it (see writable)."""
+    return [list(e[:3]) + ([writable(doc, e[3])] if len(e) > 3 and isinstance(e[3], dict)
+                           else []) for e in toc]
+
+
 def combined(doc, new, replace=True):
     """The document's bookmarks after adding new (set_toc entries): new alone, or the
     bookmarks it had followed by new."""
     if replace:
         return normalize([list(e) for e in new])
-    return normalize([list(e) for e in doc.get_toc(False)] + [list(e) for e in new])
+    return normalize(writable_toc(doc, doc.get_toc(False)) + [list(e) for e in new])
 
 
 # ---- the table of contents page -------------------------------------------------------------------

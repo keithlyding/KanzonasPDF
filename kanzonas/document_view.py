@@ -7054,7 +7054,13 @@ class DocumentView(QScrollArea):
         self._go_to(page, to)
 
     def set_toc(self, toc):
-        self.modify(lambda: self.doc.set_toc(toc), [])
+        """The bookmarks become toc: [level, title, page] or [level, title, page, destination]
+        entries (get_toc(simple=False)), written back as they were (bookmarks_auto.writable)."""
+        from .bookmarks_auto import writable_toc
+
+        def do():
+            self.doc.set_toc(writable_toc(self.doc, toc))
+        self.modify(do, [])
         self.documentChanged.emit()
 
     def add_header_footer(self, spec):

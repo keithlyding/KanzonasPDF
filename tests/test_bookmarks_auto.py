@@ -233,6 +233,36 @@ class Headings(unittest.TestCase):
         self.assertFalse(any(t.startswith(("A.", "1.  Comply", "END OF", "KANZONAS", "08 71"))
                              for t in titles), titles)
 
+    def test_contents_page_parts_lists_and_two_line_headings(self):
+        # a contents page (titles with their page numbers) isn't read for headings; a table
+        # whose last column is numbers isn't a contents page; "SECTION A" over its title is
+        # one heading, even in two sizes
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_text((72, 72), "CONTENTS", fontsize=20, fontname="hebo")
+        for k, (t, n) in enumerate((("SECTION A", 2), ("SECTION B", 3), ("ATTACHMENT 1", 4))):
+            p.insert_text((72, 120 + 20 * k), t, fontsize=14, fontname="hebo")
+            p.insert_text((520, 120 + 20 * k), str(n), fontsize=14, fontname="hebo")
+        for k, (label, title) in enumerate((("SECTION A", "GENERAL CONDITIONS"),
+                                            ("SECTION B", "PERMIT CHANGES"),
+                                            ("ATTACHMENT 1", "Fee Selection Form"))):
+            p = d.new_page()
+            size = 20 if label.startswith("ATT") else 14
+            p.insert_text((250, 80), label, fontsize=size, fontname="hebo")
+            p.insert_text((180, 80 + size * 1.4), title, fontsize=16, fontname="hebo")
+            p.insert_textbox(pymupdf.Rect(72, 140, 540, 400), BODY * 4, fontsize=10)
+            if k == 0:                              # a parts list: letters, quantities
+                for j, (a, q) in enumerate((("A", 28), ("B", 6), ("C", 4), ("D", 4))):
+                    p.insert_text((80, 450 + 18 * j), a, fontsize=12, fontname="hebo")
+                    p.insert_text((120, 450 + 18 * j), str(q), fontsize=12)
+                    p.insert_text((170, 450 + 18 * j), "Hexagon bolt", fontsize=12)
+                p.insert_text((72, 600), "Notes on the parts", fontsize=16, fontname="hebo")
+        items = scan(BA.HeadingScan(d)).propose()
+        self.assertEqual([(it["title"], it["page"]) for it in items if it["on"]],
+                         [("SECTION A - GENERAL CONDITIONS", 1), ("Notes on the parts", 1),
+                          ("SECTION B - PERMIT CHANGES", 2),
+                          ("ATTACHMENT 1 - Fee Selection Form", 3)])
+
     def test_numbering_ranks(self):
         n = BA.numbering
         self.assertLess(n("SECTION 08 71 00 - DOOR HARDWARE"), n("PART 2 - PRODUCTS"))
@@ -578,6 +608,27 @@ class Panel(Quiet):
         v.undo()
         v.undo()
         self.assertFalse(v.doc.get_toc(False)[1][3].get("italic"))
+
+    def test_a_named_destination_keeps_going_to_its_place(self):
+        # (set_toc can't write a named destination: the bookmark went nowhere after any
+        # edit in the panel)
+        d = numbered(4)
+        d.set_toc([[1, "A", 1], [1, "B", 2]])
+        xrefs = d.get_outline_xrefs()
+        dests = d.get_new_xref()
+        d.update_object(dests, "<</chap3 [%d 0 R /XYZ 0 500 0]>>" % d.page_xref(2))
+        d.xref_set_key(d.pdf_catalog(), "Dests", "%d 0 R" % dests)
+        d.xref_set_key(xrefs[1], "Dest", "/chap3")
+        d.xref_set_key(xrefs[1], "A", "null")
+        w, v = self.window(d)
+        self.assertEqual(v.doc.get_toc(False)[1][3]["kind"], pymupdf.LINK_NAMED)
+        p = w.bookmarks
+        p.tree.setCurrentItem(p.tree.topLevelItem(0))
+        self.assertTrue(p.toggle_style("bold"))
+        b = v.doc.get_toc(False)[1]
+        self.assertEqual(b[2], 3)
+        self.assertEqual(b[3]["kind"], pymupdf.LINK_GOTO)
+        self.assertAlmostEqual(b[3]["to"].y, v.doc[2].rect.height - 500, delta=1)
 
     def test_bookmark_at_view_and_destination(self):
         w, v = self.window(numbered(5))

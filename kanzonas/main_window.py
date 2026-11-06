@@ -560,7 +560,13 @@ class MainWindow(QMainWindow):
     def _build_bookmark_actions(self):
         """Document > Bookmark tools (and the Bookmarks panel's ⋯ menu); Insert table of
         contents."""
-        from . import bookmarks_ui
+        def make(source):
+            from . import bookmarks_ui
+            return bookmarks_ui.make_bookmarks(self, source)
+
+        def toc():
+            from . import bookmarks_ui
+            return bookmarks_ui.insert_toc(self)
         bm = lambda: self.bookmarks                     # noqa: E731
         self.a_bm_add_view = self._act(
             tr("Add bookmark at current &view"), self.bookmark_here, "Ctrl+B",
@@ -571,16 +577,16 @@ class MainWindow(QMainWindow):
             tip=tr("The selected bookmark goes to the place the window shows now"))
         self.a_bm_headings = self._act(
             tr("Make bookmarks from &headings..."),
-            lambda: bookmarks_ui.make_bookmarks(self, "headings"),
+            lambda: make("headings"),
             tip=tr("Find the headings by their size, weight and numbering and make a bookmark "
                    "tree from them (you check it first)"))
         self.a_bm_tags = self._act(
             tr("Bookmarks from &tagged structure..."),
-            lambda: bookmarks_ui.make_bookmarks(self, "tags"),
+            lambda: make("tags"),
             tip=tr("Make the bookmarks from a tagged PDF's headings (H1-H6): exact"))
         self.a_bm_sheets = self._act(
             tr("Bookmarks from &sheet numbers..."),
-            lambda: bookmarks_ui.make_bookmarks(self, "sheets"),
+            lambda: make("sheets"),
             tip=tr("For a drawing set: a bookmark for each sheet, \"A-101  FIRST FLOOR PLAN\", "
                    "read from the title blocks"))
         self.a_bm_sort_page = self._act(tr("Sort bookmarks by &page"),
@@ -596,7 +602,7 @@ class MainWindow(QMainWindow):
                                      lambda: bm().toggle_style("italic"))
         self.a_bm_color = self._act(tr("Bookmark co&lor..."), lambda: bm().pick_color())
         self.a_toc = self._act(
-            tr("Insert table of &contents..."), lambda: bookmarks_ui.insert_toc(self),
+            tr("Insert table of &contents..."), toc,
             tip=tr("Pages listing the bookmarks with their page numbers, each line a link to "
                    "its page (again: updates the one made before)"))
         self.bookmark_tools = [self.a_bm_add_view, self.a_bm_set_dest, None,
