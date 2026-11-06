@@ -1163,6 +1163,10 @@ class Battery:
                     dlg.table.item(row, 2).setText(self.typed())
             return QDialog.Accepted
         r = rnd.random()
+        from kanzonas import autotag
+        if 0.7 <= r < 0.82 and not autotag.is_tagged(v.doc):
+            r = 0.0         # (Alt text on an untagged document offers Auto-tag first: a step
+            #                 of its own, then the descriptions; here Auto-tag alone)
         with mock.patch.object(ui.TitleDialog, "exec", title), \
                 mock.patch.object(ui.AutoTagDialog, "exec", title), \
                 mock.patch.object(ui.AltTextDialog, "exec", alt), \
