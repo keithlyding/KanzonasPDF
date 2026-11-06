@@ -678,6 +678,7 @@ class Battery:
             (self.op_duplicate_page, 1), (self.op_crop, 2), (self.op_bookmarks, 1),
             (self.op_replace_pages, 2),
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
+            (self.op_review, 5),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -926,6 +927,49 @@ class Battery:
         with mock.patch.object(v, "paste_target", lambda: (i, self.point(i, 60))):
             v.paste()
         v.clear_selection()
+
+    def op_review(self):
+        """Review (review.py, xfdf.py): a reply to a markup or to a reply, a reply's text
+        changed, a reply deleted, a review status or check mark set, or a page's comments
+        exported to XFDF and imported again as copies on another page."""
+        from kanzonas import review, xfdf
+        v = self.v
+        pages = [i for i in range(v.doc.page_count) if self.markups(i)]
+        if not pages:
+            return "none"
+        i = self.rnd.choice(pages)
+        t = v.threads(i)
+        linked = [x for x in self.markups(i) if x in t.links]
+        replies = [x for x in linked if t.links[x].role == "reply"]
+        roots = [x for x in self.markups(i) if x not in t.links]
+        what = self.rnd.choice(["reply", "reply", "nested", "status", "status", "edit",
+                                "delete", "exchange"])
+        if what == "nested" and replies:
+            v.reply_to(i, self.rnd.choice(replies), self.typed())
+        elif what == "edit" and replies:
+            v.edit_reply(i, self.rnd.choice(replies), self.typed())
+        elif what == "delete" and replies:
+            v.delete_reply(i, self.rnd.choice(replies))
+        elif what == "status" and roots:
+            pick = self.rnd.sample(roots, self.rnd.randint(1, min(3, len(roots))))
+            v.set_review_status(i, pick, self.rnd.choice(review.REVIEW + review.MARKED))
+        elif what == "exchange":
+            recs, _skipped = xfdf.records(v.doc, {i: roots[:6]})
+            recs = xfdf.from_xfdf(xfdf.to_xfdf(recs))
+            to = self.page()
+            names = {r["keys"]["NM"]: "copy-%d-%s" % (self.step, k) for k, r in enumerate(recs)}
+            for r in recs:
+                r["page"] = to
+                r["keys"]["NM"] = names[r["keys"]["NM"]]
+                if r.get("irt"):
+                    r["irt"] = names.get(r["irt"], r["irt"])
+            if not recs:
+                return "none"
+            v.import_comments(recs)
+        elif roots:
+            v.reply_to(i, self.rnd.choice(roots), self.typed())
+        else:
+            return "none"
 
     def op_restack(self):
         if self.select_some() is None:

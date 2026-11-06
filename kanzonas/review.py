@@ -186,12 +186,20 @@ def _rect_of(doc, xref):
         return pymupdf.Rect(0, 0, 18, 18)
 
 
-def _empty_appearance(doc):
-    """A Form XObject that draws nothing: a reply shows in its thread, never on the page."""
+def _empty_appearance(doc, w=18, h=18):
+    """A Form XObject that draws nothing, the size of the annotation's box: a reply shows in
+    its thread, never on the page. (With no appearance at all, MuPDF draws a note icon of
+    its own the next time it updates the page, and makes the box the icon's size; a status
+    has one too, so its box never changes either.)"""
     ap = doc.get_new_xref()
-    doc.update_object(ap, "<</Type/XObject/Subtype/Form/BBox[0 0 1 1]/Resources<<>>>>")
+    doc.update_object(ap, "<</Type/XObject/Subtype/Form/BBox[0 0 %s %s]/Resources<<>>>>" % (
+        _n(w), _n(h)))
     doc.update_stream(ap, b"")
     return ap
+
+
+def _n(v):
+    return ("%.4f" % v).rstrip("0").rstrip(".") or "0"
 
 
 def _append_annots(page, xrefs):
@@ -202,7 +210,8 @@ def _append_annots(page, xrefs):
 def _linked(page, parent, text, author, state=None, model=None):
     doc = page.parent
     r = _rect_of(doc, parent)
-    box = f"[{r.x0:g} {r.y1 - 18:g} {r.x0 + 18:g} {r.y1:g}]"     # (its parent's top left)
+    x0, y1 = round(r.x0, 4), round(r.y1, 4)
+    box = f"[{_n(x0)} {_n(y1 - 18)} {_n(x0 + 18)} {_n(y1)}]"     # (its parent's top left)
     now = pymupdf.get_pdf_now()
     body = (f"/Type/Annot/Subtype/Text/Rect{box}/P {page.xref} 0 R/IRT {parent} 0 R/RT/R"
             f"/T{pymupdf.get_pdf_str(author or '')}/Contents{pymupdf.get_pdf_str(text or '')}"
@@ -213,7 +222,8 @@ def _linked(page, parent, text, author, state=None, model=None):
         body += (f"/F {STATE_FLAGS}/State{pymupdf.get_pdf_str(state)}"
                  f"/StateModel{pymupdf.get_pdf_str(model or 'Review')}")
     else:
-        body += f"/F {REPLY_FLAGS}/AP<</N {_empty_appearance(doc)} 0 R>>"
+        body += f"/F {REPLY_FLAGS}"
+    body += f"/AP<</N {_empty_appearance(doc)} 0 R>>"
     x = doc.get_new_xref()
     doc.update_object(x, "<<" + body + ">>")
     return x

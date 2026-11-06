@@ -552,7 +552,9 @@ don't offer Edit text (double-click a fill-in stamp to change its values); add a
 text box to comment on them.
 If you right-click highlighted text that's selected, the menu offers <b>Delete highlight</b>.
 In the Markups list (F7), double-click a row to edit its text; right-click a row for
-<b>Edit text...</b> (when its text can be edited) and <b>Delete</b>, or press Delete.</li>
+<b>Edit text...</b> (when its text can be edited) and <b>Delete</b>, or press Delete.
+Deleting a markup that has replies asks first, and takes its replies and statuses with it
+(one Ctrl+Z brings them all back).</li>
 <li><b>Move with the arrow keys:</b> with markups selected (or pictures and shapes selected with
 Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> moves 10 pt and
 <b>Ctrl+arrow</b> 0.1 pt, for fine adjustments. A series of presses is one Ctrl+Z. Markups tied to
@@ -637,6 +639,36 @@ selecting it, and the list's Delete leaves it: unlock it first.</li>
 <li><b>Show markups:</b> untick to hide every comment and markup and see the page as if
 unmarked. Nothing is deleted; tick it again to bring them back. <b>Show comment boxes</b>
 hides just the yellow boxes beside commented text.</li>
+<li><b>Reply...</b> (Review menu, a markup's right-click menu, or a row of the Markups list):
+answers the selected markup, or a reply, with your name (Edit &gt; Author name for markups...) and the date. Replies are kept the standard PDF way (a note "in reply to" the markup),
+so Acrobat, PDF-XChange and Bluebeam show them as the same conversation, and theirs show here.
+A reply is never an icon on the page: it shows in the Markups list, indented under its markup,
+and above the text when you open the markup (double-click it, or Edit text...). Moving the
+markup moves its replies; to change or remove a reply, right-click it in the Markups list
+&gt; <b>Edit reply...</b> or <b>Delete reply</b> (the replies to it go too).</li>
+<li><b>Set status:</b> Accepted, Rejected, Cancelled, Completed or No status, and a separate
+<b>Marked</b> tick (a check mark for your own follow-up), for the selected markups, from the
+Review menu or the right-click menus. Each change is kept, with who made it and when (shown
+when you open the markup), and the latest is the markup's status. Statuses are stored as Acrobat
+stores them, so they travel with the file.</li>
+<li><b>Markups list</b> threads and statuses: the Replies column shows how many replies a
+markup has; click it to fold or unfold them. The Status column shows its status (a check mark
+when marked), and the second filter shows only the markups with one status (or no status, or
+marked, or unmarked). The text filter also finds a markup by the words of its replies. Sorting by
+any column keeps each thread under its markup.</li>
+<li><b>Export comments...</b> saves the comments (markups with their replies and statuses) as an
+XFDF file (the XML format Acrobat and other programs read; or FDF, its PDF form), to send them
+without the whole PDF. The Markups list's <b>Export comments...</b> button exports only the
+markups it shows (filter first). Pictures and attached files aren't exported: they stay in the
+PDF. <b>Import comments...</b> adds an XFDF or FDF file's comments to another copy of the
+document, on the same pages, as one undo step. A comment already in the document (the same
+name) is updated if it changed and left alone if not, so comments sent back and forth don't pile
+up, and replies attach to the markups they answer. Comments for pages the document doesn't have
+are skipped, and a message says how many were added, updated and skipped and why.</li>
+<li><b>Summarize comments...</b> makes a new PDF listing every comment: its page, type, author,
+date, status and text, with its replies indented below it. Sort it by page (with each page's
+thumbnail beside its comments, as Acrobat's summary does; untick Page thumbnails for a list
+alone), author, date or type. It opens in a new tab: print it (Ctrl+P) or save it (Ctrl+S).</li>
 <li><b>Delete comments:</b> everyone's, only yours, or only one person's, on all pages or the
 current page. Undo brings them back.</li>
 <li><b>Flatten comments:</b> makes comments and markups a permanent part of the page while form

@@ -527,7 +527,9 @@ no ofrecen Editar texto (para cambiar los valores de un sello para rellenar, hag
 cuadro de texto para comentarlos.
 Si hace clic con el botón derecho en un texto resaltado que está seleccionado, el menú ofrece <b>Eliminar resaltado</b>.
 En la Lista de marcas (F7), haga doble clic en una fila para editar su texto; haga clic con el botón derecho en una fila para
-<b>Editar texto…</b> (cuando su texto se puede editar) y <b>Eliminar</b>, o presione Supr.</li>
+<b>Editar texto…</b> (cuando su texto se puede editar) y <b>Eliminar</b>, o presione Supr.
+Eliminar una marca que tiene respuestas pregunta primero, y elimina con ella sus respuestas y
+estados (un Ctrl+Z los recupera todos).</li>
 <li><b>Mover con las teclas de flecha:</b> con marcas seleccionadas (o imágenes y formas seleccionadas con
 Editar objetos), cada pulsación de una tecla de flecha las mueve 1 pt; <b>Shift+flecha</b> las mueve 10 pt y
 <b>Ctrl+flecha</b> 0.1 pt, para ajustes finos. Una serie de pulsaciones se deshace con un solo Ctrl+Z. Las marcas ligadas al
@@ -612,6 +614,41 @@ en una marca bloqueada lleva hasta ella sin seleccionarla, y Eliminar en la list
 <li><b>Mostrar marcas:</b> desmárquelo para ocultar todos los comentarios y las marcas y ver la página como si no tuviera
 marcas. No se elimina nada; márquelo de nuevo para que vuelvan. <b>Mostrar cuadros de comentario</b>
 oculta solo los cuadros amarillos junto al texto comentado.</li>
+<li><b>Responder...</b> (menú Revisar, el menú del botón derecho de una marca o una fila de la Lista
+de marcas): responde a la marca seleccionada, o a una respuesta, con su nombre (Edición &gt; Nombre del
+autor de las marcas...) y la fecha. Las respuestas se guardan de la forma estándar de PDF (una nota
+"en respuesta a" la marca), así que Acrobat, PDF-XChange y Bluebeam las muestran como la misma
+conversación, y las de ellos se ven aquí. Una respuesta nunca es un icono en la página: se ve en la
+Lista de marcas, con sangría debajo de su marca, y encima del texto al abrir la marca (doble clic, o
+Editar texto…). Al mover la marca se mueven sus respuestas; para cambiar o quitar una respuesta, haga
+clic con el botón derecho en ella en la Lista de marcas &gt; <b>Editar respuesta...</b> o
+<b>Eliminar respuesta</b> (las respuestas a ella también se eliminan).</li>
+<li><b>Establecer estado:</b> Aceptado, Rechazado, Cancelado, Completado o Sin estado, y una casilla
+aparte, <b>Marcado</b> (una marca de verificación para su propio seguimiento), para las marcas
+seleccionadas, desde el menú Revisar o los menús del botón derecho. Cada cambio se conserva, con quién
+lo hizo y cuándo (se ve al abrir la marca), y el último es el estado de la marca. Los estados se guardan
+como los guarda Acrobat, así que viajan con el archivo.</li>
+<li><b>Lista de marcas</b>, conversaciones y estados: la columna Respuestas indica cuántas respuestas
+tiene una marca; haga clic en ella para plegarlas o desplegarlas. La columna Estado muestra su estado
+(con una marca de verificación si está marcada), y el segundo filtro muestra solo las marcas con un
+estado (o sin estado, o marcadas, o sin marcar). El filtro de texto también encuentra una marca por las
+palabras de sus respuestas. Al ordenar por cualquier columna, cada conversación queda debajo de su
+marca.</li>
+<li><b>Exportar comentarios...</b> guarda los comentarios (las marcas con sus respuestas y estados) en
+un archivo XFDF (el formato XML que leen Acrobat y otros programas; o FDF, su forma PDF), para
+enviarlos sin el PDF completo. El botón <b>Exportar comentarios...</b> de la Lista de marcas exporta
+solo las marcas que muestra (filtre primero). Las imágenes y los archivos adjuntos no se exportan: se
+quedan en el PDF. <b>Importar comentarios...</b> agrega los comentarios de un archivo XFDF o FDF a otra
+copia del documento, en las mismas páginas, como un solo paso para deshacer. Un comentario que ya está
+en el documento (con el mismo nombre) se actualiza si cambió y se deja como está si no, así que los
+comentarios que van y vienen no se acumulan, y las respuestas se unen a las marcas a las que
+responden. Los comentarios de páginas que el documento no tiene se omiten, y un mensaje indica cuántos
+se agregaron, actualizaron y omitieron, y por qué.</li>
+<li><b>Resumir comentarios...</b> crea un PDF nuevo con todos los comentarios: su página, tipo,
+autor, fecha, estado y texto, con sus respuestas con sangría debajo. Ordénelo por página (con la
+miniatura de cada página junto a sus comentarios, como el resumen de Acrobat; desmarque Miniaturas de
+las páginas para tener solo la lista), autor, fecha o tipo. Se abre en una pestaña nueva: imprímalo
+(Ctrl+P) o guárdelo (Ctrl+S).</li>
 <li><b>Eliminar comentarios:</b> los de todos, solo los suyos o solo los de una persona, en todas las páginas o en la
 página actual. Deshacer los recupera.</li>
 <li><b>Acoplar comentarios:</b> convierte los comentarios y las marcas en parte permanente de la página, mientras que los campos

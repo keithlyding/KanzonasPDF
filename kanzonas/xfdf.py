@@ -129,6 +129,8 @@ def _read_keys(doc, x):
         ends = [n for n in re.findall(r"/([A-Za-z]+)", val)]
         if len(ends) == 2:
             keys["LE"] = ends
+    elif kind == "name" and _NAME.match(val.lstrip("/")):
+        keys["LE"] = [val.lstrip("/"), "None"]     # (a callout's: one name)
     bs = {}
     kind, val = doc.xref_get_key(x, "BS/W")
     if kind in ("int", "float"):
@@ -475,7 +477,11 @@ def _pdf_dict(rec, page_key):
         parts.append("/InkList[%s]" % "".join("[%s]" % " ".join(_num(v) for v in g)
                                               for g in k["InkList"]))
     if k.get("LE"):
-        parts.append("/LE[/%s/%s]" % tuple(e if _NAME.match(e) else "None" for e in k["LE"]))
+        ends = tuple(e if _NAME.match(e) else "None" for e in k["LE"])
+        if rec["subtype"] == "FreeText":
+            parts.append("/LE/%s" % ends[0])        # (a callout's line has one end)
+        else:
+            parts.append("/LE[/%s/%s]" % ends)
     bs = k.get("BS") or {}
     if bs:
         parts.append("/BS<<%s%s%s>>" % (
@@ -703,8 +709,9 @@ def _appearances(page, redraw):
     for x, rec in redraw:
         k = rec["keys"]
         if rec.get("irt") and rec["subtype"] == "Text" and k.get("RT") != "Group":
-            if not k.get("State"):
-                doc.xref_set_key(x, "AP", "<</N %d 0 R>>" % review._empty_appearance(doc))
+            r = k["Rect"]
+            doc.xref_set_key(x, "AP", "<</N %d 0 R>>" % review._empty_appearance(
+                doc, abs(r[2] - r[0]), abs(r[3] - r[1])))
             continue
         (ours if k.get(A.KZ_KEY) else theirs).append((x, rec))
     if theirs:
@@ -746,8 +753,12 @@ def _appearances(page, redraw):
         for old, new in fresh.items():
             for c in threads.children.get(old, ()):
                 doc.xref_set_key(c, "IRT", "%d 0 R" % new)
+            from . import legend
+            kept_name = str(doc.xref_get_key(new, "NM")[1]).startswith(legend.NM_PREFIX)
             for key in ("NM", "M", "CreationDate", "T", "Subj"):
                 kind, val = doc.xref_get_key(old, key)
+                if key == "NM" and kept_name and not val.startswith(legend.NM_PREFIX):
+                    continue            # (a legend is known by its name: legend.py)
                 if kind == "string":
                     doc.xref_set_key(new, key, pymupdf.get_pdf_str(val))
             kind, val = doc.xref_get_key(old, "F")
