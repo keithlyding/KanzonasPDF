@@ -1485,7 +1485,7 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
         return None, pymupdf.Rect(), []
     if keys is not None:
         return _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset,
-                                       step)
+                                       step, size)
     if found:
         fontname, fnt, source = found
         fontname = _insert_font(page, fontname, **source)
@@ -1493,10 +1493,11 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
         fontname = _base14(main)
         fnt = pymupdf.Font(fontname)
     width = wrap_width or lay["width"]
+    fit = _fit_width(width, wrap_width, size)
     indent = lay["first_left"] - lay["left"]         # the first line's own start
     rows = []
     for part in text.split("\n"):                    # Shift+Enter: a new paragraph
-        wrapped = _wrap_indented(part, fnt, size, width, indent)
+        wrapped = _wrap_indented(part, fnt, size, fit, indent)
         rows += [(r, i == 0, i == len(wrapped) - 1) for i, r in enumerate(wrapped)]
     color = _rgb(main["color"])
     left, right = lay["left"] + offset[0], lay["left"] + offset[0] + width
@@ -1529,14 +1530,25 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
                                   y - step + size * 0.25), bases
 
 
-def _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset, step):
+def _fit_width(width, wrap_width, size):
+    """The width a paragraph's words are wrapped to. Its own width (wrap_width None) is
+    that of its longest line as the page measures it, in the PDF's glyph widths (often
+    rounded, in thousandths of the size); the font measures the same words a little wider,
+    so that line, written again, didn't fit any more: every edit pushed a word down and the
+    paragraph got narrower and longer with each one. A little room keeps the lines as they
+    were (less than a space and the shortest word: a word that didn't fit still doesn't)."""
+    return width if wrap_width else width + 0.12 * float(size)
+
+
+def _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset, step, size):
     """replace_paragraph's writing, each run in its own style (text_styles)."""
     from . import text_styles
     fonts = text_styles.reinsert(page, fonts)
     main = text_styles.main_style(text, keys)
     width = wrap_width or lay["width"]
     indent = lay["first_left"] - lay["left"]
-    rows = text_styles.wrap(list(zip(text, keys)), fonts, width, indent)
+    rows = text_styles.wrap(list(zip(text, keys)), fonts, _fit_width(width, wrap_width, size),
+                            indent)
     left, right = lay["left"] + offset[0], lay["left"] + offset[0] + width
     y = lay["first"] + offset[1]
     top = y - max(k.size for k in keys)
