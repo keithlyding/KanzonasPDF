@@ -235,10 +235,11 @@ class State:
 
 # MuPDF draws a page's content a level or two of color apart (out of 255) depending on
 # its markups: one with a blend mode (a highlight multiplies) makes it draw the whole page
-# as a transparency group. The view keeps the content drawn without the markups and draws
-# them over it, so a page drawn before such a markup was added (and kept: its content didn't
-# change) is that far from one drawn after. Seen from a person, the same page; content
-# drawn from old caches is off by far more (a line missing, markups in another order)
+# as a transparency group. Up to 1.8 the view kept a content render made before such a
+# markup was added (and MuPDF's page kept its old answer: up to 5 levels off); since 1.9 it
+# works the answer out again and draws the content again when it changes
+# (render_layers.transparency). A margin of a few levels is kept; content drawn from old
+# caches is off by far more (a line missing, markups in another order)
 SHADE = 3
 
 
