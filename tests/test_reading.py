@@ -539,6 +539,31 @@ class ReadAloud(_Base):
         self.assertEqual(eng.said, ["Does it end?"])
         w.a_read_stop.trigger()
 
+    def test_voice_and_speed_in_preferences(self):
+        from kanzonas.preferences import PreferencesDialog
+        w = self.w
+        w.settings.setValue("read_voice", "")
+        d = PreferencesDialog(w)
+        self.addCleanup(d.close)
+        self.assertEqual(d.voice.count(), 1)            # (the voices: only when opened)
+        d.voice.showPopup()
+        d.voice.hidePopup()
+        self.assertEqual([d.voice.itemText(i) for i in range(1, d.voice.count())],
+                         ["Anne", "Bob"])
+        d.voice.setCurrentIndex(d.voice.findData("Bob"))
+        d.rate.setValue(-4)
+        d.scroll_speed.setValue(120)
+        d._apply()
+        self.assertEqual(w.settings.value("read_voice"), "Bob")
+        self.assertEqual(int(w.settings.value("read_rate")), -4)
+        self.assertEqual(int(w.settings.value("autoscroll_speed")), 120)
+        eng = _FakeTTS.made[-1]
+        self.assertEqual((eng.voice, eng.rate), ("Bob", -0.4))     # (applied at once)
+        d2 = PreferencesDialog(w)                       # remembered
+        self.addCleanup(d2.close)
+        self.assertEqual(d2.voice.currentData(), "Bob")
+        self.assertEqual(d2.rate.value(), -4)
+
     def test_no_speech(self):
         with mock.patch.object(read_aloud, "_engine_class", None), \
                 mock.patch.object(read_aloud, "tts_class", return_value=None), \
