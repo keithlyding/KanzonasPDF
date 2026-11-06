@@ -1136,8 +1136,10 @@ enumeran debajo de la lista, para que lo sepa. Solo cambia el dibujo de la pági
 y su rotación): la página misma se queda, así que sus marcas, vínculos, campos de formulario, escala y marcadores se
 quedan, y los marcadores y vínculos de otras páginas siguen llevando a ella. Cuando una página nueva tiene otro
 tamaño, elija si las marcas se <b>escalan a la página nueva</b> (con su texto y sus grosores de línea; estiradas si sus proporciones difieren; una escala
-pareja ajusta también la escala de medición de la página) o se <b>mantienen en el mismo lugar</b>, medido desde la
-esquina superior izquierda. Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
+pareja ajusta también la escala de medición de la página y su nombre: 1/4" = 1'-0" pasa a 1/2" = 1'-0" en
+una hoja del doble de tamaño) o se <b>mantienen en el mismo lugar</b>, medido desde la
+esquina superior izquierda. Las mediciones se vuelven a medir cuando cambia lo que miden (la página nueva trae
+su propia escala, o las marcas se estiraron o escalaron en una página sin escala). Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
 el dibujo nuevo; un vínculo sobre palabras que no están en el mismo lugar en el dibujo nuevo (una referencia a un
 plano que se movió) se queda donde estaba y se informa, para que pueda revisarlo. Los encabezados, pies de página,
 marcas de agua, fondos y ediciones de texto escritos en el dibujo anterior se van con él. Las capas de los dibujos

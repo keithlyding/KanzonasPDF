@@ -134,6 +134,7 @@ def replace(doc, src, pairs, scale=True):
         page = doc[i]
         new = src[j]
         # what belongs to the old drawing, read before it goes
+        scale0 = measure.get_scale(page)
         before = _display(page)
         old_to_pdf = pdfcoords.to_pdf(page)
         old_rect = page.rect
@@ -155,6 +156,8 @@ def replace(doc, src, pairs, scale=True):
             report["markups"] += _map_annots(doc, page, t, tp)
             _map_scale(doc, page, k)
         _take_scale(doc, src, page, new)
+        if not _same_lengths(scale0, measure.get_scale(page), k):
+            _measure_again(page)
         report["relinked"] += _redraw_links(page, old_links, texts, tp, k)
         moved = _moved_words(page, old_links, words, tp)
         if moved:
@@ -475,12 +478,49 @@ def _map_kzprops(doc, xref, tp):
 
 
 def _map_scale(doc, page, k):
-    """A page scaled evenly to the new size keeps measuring right: its scale goes along."""
+    """A page scaled evenly to the new size keeps measuring right: its scale goes along, and
+    a scale named by its ratio is named by the new one (a 1/4" = 1'-0" sheet scaled to twice
+    its size is drawn at 1/2" = 1'-0"; a calibrated one stays true as it says)."""
     if abs(k[0] - k[1]) > 0.01 * max(k) or abs(k[0] - 1) < 1e-6:
         return
     f, unit, label, ok = measure.get_scale(page)
     if ok:
-        measure.set_scale(page, f / ((k[0] + k[1]) / 2), unit, label)
+        f2 = f / ((k[0] + k[1]) / 2)
+        if label.strip() in ("", measure.preset_label(f)):
+            label = measure.preset_label(f2) or "1:%.4g" % (f2 / measure.PT_M)
+        measure.set_scale(page, f2, unit, label)
+
+
+def _same_lengths(scale0, scale1, k):
+    """True when the page's measurements still read what their labels say: the markups not
+    scaled and the scale the same, or scaled evenly with the scale following them."""
+    f0, unit0 = scale0[0], scale0[1]
+    f1, unit1 = scale1[0], scale1[1]
+    if unit0 != unit1 or abs(k[0] - k[1]) > 0.01 * max(k):
+        return False
+    return abs(f1 * (k[0] + k[1]) / 2 - f0) <= 1e-9 * f0
+
+
+def _measure_again(page):
+    """The page's measurements measured again (their labels said what they measured on the
+    old drawing, in its scale: the new page brought a scale of its own, or the markups were
+    stretched to another shape of sheet, or scaled on a page with no scale set)."""
+    xrefs = [x for x, typ, *_ in page.annot_xrefs()
+             if typ in (pymupdf.PDF_ANNOT_LINE, pymupdf.PDF_ANNOT_POLYGON,
+                        pymupdf.PDF_ANNOT_POLY_LINE, pymupdf.PDF_ANNOT_CIRCLE,
+                        pymupdf.PDF_ANNOT_SQUARE, pymupdf.PDF_ANNOT_INK)]
+    if not xrefs:
+        return
+    found = annotations.load_annots(page, xrefs)
+    models = []
+    for x in xrefs:
+        a = found.get(x)
+        m = annotations.read(a) if a is not None else None
+        if m and m["kind"] in annotations.MEASURES and m["kind"] != "m_count":
+            models.append((x, m))
+    found.clear()
+    if models:
+        annotations.replace_many(page, models, olds=dict(models), again=True)
 
 
 def _take_scale(doc, src, page, new):

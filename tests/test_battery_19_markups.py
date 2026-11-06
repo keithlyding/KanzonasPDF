@@ -316,7 +316,9 @@ class ReplacedSheets(Case):
         dimension's leader lines (/LL, what other viewers draw it from) stayed as long as on
         the old sheet."""
         from kanzonas import dimensions
+        from kanzonas import measure
         v = self.view(self.scale_sheet(self.path("half.pdf"), '1/4" = 1\'-0"'))
+        v.set_page_scale([0], measure.scale_from_preset(48), "ft-in", '1/4" = 1\'-0"')
         (dim,) = self.add(v, 0, model("m_dim", points=[P(100, 300), P(300, 300), P(200, 260)]))
         x = self.legend(v)
         w0 = self.box(v, x).width
@@ -345,6 +347,56 @@ class ReplacedSheets(Case):
     def box(self, v, x):
         page = v.doc[0]
         return pymupdf.Rect(page.load_annot(x).rect)
+
+    def length_sheet(self, size, scale=None):
+        d = pymupdf.open()
+        p = d.new_page(width=size[0], height=size[1])
+        if scale:
+            from kanzonas import measure
+            measure.set_scale(p, *scale)
+        del p
+        path = self.path("sheet%dx%d.pdf" % size)
+        d.save(path)
+        d.close()
+        return path
+
+    def labels_and_totals(self, v, lg):
+        page = v.doc[0]
+        labels = [a.info["content"] for a in page.annots() if a.type[0] == pymupdf.PDF_ANNOT_LINE]
+        del page
+        return labels, [r["total"] for r in self.rows(v, lg)]
+
+    def test_measurements_read_what_they_measure_on_the_new_drawing(self):
+        """A measurement's label said what it measured on the old drawing: when the new page
+        brought its own scale, or the markups were stretched to another shape of sheet, or
+        scaled on a page with no scale set (paper inches), the labels no longer said what
+        their lines measure (a legend's total, worked out from them, disagreed). And a page
+        scale named by its ratio kept its name when the scale followed the markups to a
+        sheet twice the size (1/4" = 1'-0" for what is now 1/2" = 1'-0")."""
+        from tests.battery_random import canon
+        from kanzonas import measure
+        quarter = (measure.scale_from_preset(48), "ft-in", '1/4" = 1\'-0"')
+        eighth = (measure.scale_from_preset(96), "ft-in", '1/8" = 1\'-0"')
+        for name, new, scaled, want, label in (
+                ("own scale", ((792, 612), eighth), quarter, "21'-4\"", '1/8" = 1\'-0"'),
+                ("stretched", ((1584, 612), None), quarter, "21'-4\"", '1/4" = 1\'-0"'),
+                ("no scale", ((1584, 1224), None), None, "5.33 in", None),
+                ("twice", ((1584, 1224), None), quarter, "10'-8\"", '1/2" = 1\'-0"')):
+            with self.subTest(name):
+                v = self.view(self.length_sheet((792, 612), scaled))
+                self.add(v, 0, model("m_length", points=[P(100, 100), P(292, 100)]))
+                lg = self.legend(v)
+                before = canon(v._snapshot())
+                src = pymupdf.open(self.length_sheet(*new))
+                self.addCleanup(src.close)
+                v.replace_pages(src, [(0, 0)], scale=True)
+                labels, totals = self.labels_and_totals(v, lg)
+                self.assertEqual(labels, ["Length: " + want])
+                self.assertEqual(totals, [want])
+                if label:
+                    self.assertEqual(v.page_scale(0)[2], label)
+                v.undo()
+                self.assertEqual(canon(v._snapshot()), before)
 
 
 class LegendSpeed(Case):

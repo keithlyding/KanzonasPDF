@@ -87,6 +87,14 @@ def scale_from_preset(ratio):
     return PT_M * ratio
 
 
+def preset_label(m_per_pt):
+    """The name of the preset scale (PRESETS) of m_per_pt meters per point, '' for none."""
+    for label, ratio, _unit in PRESETS:
+        if abs(PT_M * ratio - m_per_pt) <= 1e-9 * m_per_pt:
+            return label
+    return ""
+
+
 def describe(page):
     _f, unit, label, ok = get_scale(page)
     return tr("Scale: {label}").format(label=label) + (f"  ({unit})" if ok else "")
