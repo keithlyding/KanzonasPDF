@@ -979,7 +979,8 @@ strikethrough. The box shows them as on the page.</li>
 line, or new text with Add text), select words and use the buttons above the box:
 <b>Bold</b> (Ctrl+B), <b>Italic</b> (Ctrl+I), <b>Underline</b> (Ctrl+U),
 <b>Strikethrough</b>, <b>Text color</b>, and <b>Larger text</b> (Ctrl+]) / <b>Smaller
-text</b> (Ctrl+[), a point at a time. Press a button again to take the style off. With nothing
+text</b> (Ctrl+[), a point at a time (a line with larger words moves down as far as they need,
+so they don't run into the line above). Press a button again to take the style off. With nothing
 selected, the button sets the style of what you type next. Text typed next to a word takes
 that word's style; text typed into an empty box takes the paragraph's main style.
 <br>Bold and italic keep the line's font. The same family's real bold or italic is used when

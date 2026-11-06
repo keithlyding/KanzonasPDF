@@ -1576,9 +1576,15 @@ def _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset, st
     top = y - max(k.size for k in keys)
     bases = []
     shape = page.new_shape()
+    prev = None
     for row, first, last in rows:
-        bases.append(y)
         row = text_styles.strip_row(row)
+        cur = text_styles.row_size(row, size)
+        if prev is not None:
+            # (farther apart where words in larger letters need the room)
+            y += text_styles.advance(step, size, prev, cur)
+        prev = cur
+        bases.append(y)
         start = left + indent if first else left
         spread = None
         if lay["align"] == "justify" and not last and \
@@ -1590,11 +1596,10 @@ def _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset, st
             "right": right - length, "center": (left + right - length) / 2}.get(
                 lay["align"], start)
         text_styles.write_row(shape, pymupdf.Point(x, y), 0, ps, fonts)
-        y += step
     shape.commit(True)
     text_styles.fix_spaces(page, fonts)
     tail = max(k.size for k in keys) * 0.25
-    box = pymupdf.Rect(min(left, left + indent), top, right, y - step + tail)
+    box = pymupdf.Rect(min(left, left + indent), top, right, y + tail)
     return text_styles.used_name(fonts, main), box, bases
 
 

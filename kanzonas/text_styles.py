@@ -911,15 +911,37 @@ def fix_spaces(page, fonts):
             te._fix_spaces(page, f.name, f.font)
 
 
+def row_size(row, size):
+    """The largest letter size in a row ([(char, key)]); size when it has no letters."""
+    return max((k.size for c, k in row if not c.isspace()), default=size)
+
+
+def advance(step, size, prev, cur):
+    """Baseline to baseline before a row whose largest letters are cur points, after one
+    whose largest are prev, in text of size points set step apart: step, or more when words
+    made larger (Larger text) would run into the row above (they overlapped it: the step
+    stayed the text's). (A tall row's letters rise about 0.8 of their size, the row above
+    hangs about 0.22 of its size below its baseline.)"""
+    need = 0.8 * cur + 0.22 * prev + 0.1 * size
+    return step if need <= step else need
+
+
 def write_lines(page, origin, rotate, chars, fonts, step, wrap_width=None):
-    """Write styled text from origin (the first baseline's start), lines step points apart,
-    left-aligned, wrapped to wrap_width (None: only at line breaks)."""
+    """Write styled text from origin (the first baseline's start), lines step points apart
+    (farther where words in larger letters need the room), left-aligned, wrapped to
+    wrap_width (None: only at line breaks)."""
     _d, n = direction(rotate)
     shape = page.new_shape()
     o = pymupdf.Point(origin)
+    size = step / 1.2
+    at, prev = 0.0, None
     for k, (row, _first, _last) in enumerate(wrap(chars, fonts, wrap_width)):
         row = strip_row(row) if wrap_width else row
-        pt = pymupdf.Point(o.x + n[0] * step * k, o.y + n[1] * step * k)
+        cur = row_size(row, size)
+        if prev is not None:
+            at += advance(step, size, prev, cur)
+        prev = cur
+        pt = pymupdf.Point(o.x + n[0] * at, o.y + n[1] * at)
         write_row(shape, pt, rotate, pieces(row, fonts), fonts)
     shape.commit(True)
     fix_spaces(page, fonts)

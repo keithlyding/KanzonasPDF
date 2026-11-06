@@ -960,7 +960,8 @@ tachado. El cuadro los muestra como en la página.</li>
 línea, o texto nuevo con Agregar texto), seleccione palabras y use los botones sobre el cuadro:
 <b>Negrita</b> (Ctrl+B), <b>Cursiva</b> (Ctrl+I), <b>Subrayado</b> (Ctrl+U),
 <b>Tachado</b>, <b>Color del texto</b>, y <b>Texto más grande</b> (Ctrl+]) / <b>Texto más
-pequeño</b> (Ctrl+[), de un punto en un punto. Presione de nuevo un botón para quitar el estilo. Sin nada
+pequeño</b> (Ctrl+[), de un punto en un punto (una línea con palabras más grandes baja lo que
+necesitan, para que no se monten sobre la de arriba). Presione de nuevo un botón para quitar el estilo. Sin nada
 seleccionado, el botón fija el estilo de lo que escriba a continuación. El texto escrito junto a una palabra toma
 el estilo de esa palabra; el texto escrito en un cuadro vacío toma el estilo principal del párrafo.
 <br>La negrita y la cursiva conservan la fuente de la línea. Se usa la negrita o la cursiva real de la misma familia

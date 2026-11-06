@@ -12,6 +12,10 @@ What the battery found:
   line edited (a word made bold), dragged, replaced in or moved with a drawing came out in
   the wrong order and ran off the page's edge. Edit text, moving, Replace text and Add text
   now refuse such text and say why, changing nothing.
+- Words made larger (Larger text) ran into the line above: the lines stayed the paragraph's
+  line spacing apart whatever the size of their words (a word made 20 points larger in 11
+  point text was written over the line above it, and read back as part of it). A line with
+  larger words now sits lower, as far as they need.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_battery_19_text
 """
@@ -152,6 +156,47 @@ class Paragraphs(unittest.TestCase):
                     self.assertTrue(ws["architect"].bold)
                     self.assertFalse(ws["the"].bold)
 
+
+    def test_larger_words_get_the_room_they_need(self):
+        def letters(page):
+            """[(baseline, top of the letters, bottom)] of each line, top to bottom."""
+            out = []
+            for _r, ln in text_edit.text_lines(page):
+                spans = ln["spans"]
+                top = min(s["origin"][1] - s["ascender"] * s["size"] for s in spans)
+                bot = max(s["origin"][1] - s["descender"] * s["size"] for s in spans)
+                out.append((spans[0]["origin"][1], top, bot))
+            return sorted(out)
+        # a paragraph's word made larger
+        d = pymupdf.open()
+        bases = embedded_paragraph(d.new_page(), code="helv")
+        v = open_view(d, self)
+        v.edit_text_at(0, pymupdf.Point(100, bases[0] - 3))
+        ed = v._inline
+        select(ed, "ordering")
+        for _i in range(20):
+            ed.grow_size(1)
+        ed.commit()
+        rows = letters(v.doc[0])
+        self.assertGreaterEqual(len(rows), len(bases), rows)
+        for a, b in zip(rows, rows[1:]):
+            self.assertLessEqual(a[2], b[1] + 0.5, (a, b))     # no letters over the line above
+        steps = [round(b[0] - a[0], 1) for a, b in zip(rows, rows[1:])]
+        self.assertEqual(steps.count(13.2), len(steps) - 2, steps)   # the others as they were
+        # Add text: a large word on the second line
+        d = pymupdf.open()
+        d.new_page()
+        v = open_view(d, self, tool="addtext")
+        v.add_text_at(0, pymupdf.Point(72, 200))
+        ed = v._inline
+        ed.text.insertPlainText("First line\nHuge second")
+        select(ed, "Huge")
+        for _i in range(24):
+            ed.grow_size(1)
+        ed.commit()
+        rows = letters(v.doc[0])
+        self.assertEqual(len(rows), 2, rows)
+        self.assertLessEqual(rows[0][2], rows[1][1] + 0.5, rows)
 
 
 class RightToLeft(unittest.TestCase):
