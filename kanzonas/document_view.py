@@ -3153,9 +3153,10 @@ class DocumentView(QScrollArea):
                     m = annotations.read(a)
                     if m and m["kind"] in annotations.MEASURES and m["kind"] != "m_count":
                         models.append((a.xref, m))
-                for xref, m in models:
-                    pg.delete_annot(pg.load_annot(xref))
-                    annotations.write(pg, m)
+                # (written anew in one step that keeps their replies and their place in the
+                # stacking order: deleted one by one, their review threads went with them)
+                if models:
+                    annotations.replace_many(pg, models, olds=dict(models), again=True)
         self.clear_selection()
         self.modify(do, list(scales))
         self._scale_notice_done()
@@ -6956,6 +6957,8 @@ class DocumentView(QScrollArea):
                     # so no old copy of the text stays in its appearance or private data
                     model["text"] = clean(model.get("text") or "")
                     model["author"] = clean(model.get("author") or "")
+                    if pat.search(model.get("subject") or ""):
+                        model.pop("subject")        # (a subject holding it goes)
                     x = annotations.replace(pg, x, model)
                     if not self._annot_has(pg, x, pat):
                         continue

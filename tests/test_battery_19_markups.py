@@ -145,5 +145,60 @@ class Replies(Case):
         self.assertEqual({r["label"]: r["n"] for r in self.rows(v, x)}, {"Cloud": 2})
 
 
+class Subjects(Case):
+    def measured_sheet(self):
+        v = self.view(sheet(self.path("scale.pdf"), width=600, height=600))
+        made = self.add(v, 0, model("m_length", points=[P(100, 200), P(300, 200)]),
+                        model("m_dim", points=[P(100, 100), P(300, 100), P(200, 80)]),
+                        model("rect", rect=pymupdf.Rect(400, 400, 450, 450)))
+        reply = {}
+
+        def subjects():
+            for x, name in zip(made, ("Duct run", "Opening", "Fire door")):
+                v.doc.xref_set_key(x, "Subj", pymupdf.get_pdf_str(name))
+            pg = v.doc[0]
+            r = pg.add_text_annot((100, 100), "Check this")
+            v.doc.xref_set_key(r.xref, "IRT", "%d 0 R" % made[1])
+            reply["x"] = r.xref
+        v.modify(subjects, [0])
+        return v, made, reply["x"]
+
+    def subjects(self, v):
+        page = v.doc[0]
+        return sorted(a.info["subject"] for a in page.annots() if a.info.get("subject"))
+
+    def test_set_scale_keeps_subjects_replies_and_order(self):
+        """Setting a page's scale measures its measurements again, each deleted and written
+        anew: their subjects (a legend's labels) were lost, their replies deleted with
+        them, and they went to the top of the stacking order."""
+        from kanzonas import measure
+        v, made, reply = self.measured_sheet()
+        x = self.legend(v)
+        order = A.annot_order(v.doc[0])
+        v.set_page_scale([0], measure.scale_from_preset(96), "ft-in", '1/8" = 1\'-0"')
+        self.assertEqual(self.subjects(v), ["Duct run", "Fire door", "Opening"])
+        self.assertEqual({r["label"]: r["total"] for r in self.rows(v, x)},
+                         {"Duct run": "22'-2 11/16\"", "Opening": "", "Fire door": ""})
+        page = v.doc[0]
+        dims = [a.xref for a in page.annots() if a.info.get("subject") == "Opening"]
+        del page
+        self.assertEqual(v.doc.xref_get_key(reply, "IRT"), ("xref", "%d 0 R" % dims[0]))
+        now = A.annot_order(v.doc[0])
+        self.assertEqual(now[2:], order[2:])            # (the two measurements kept their place)
+        self.assertEqual(len(now), len(order))
+
+    def test_restyled_and_copied_markups_keep_their_subject(self):
+        """A markup written anew (restyled, its text changed, copied) lost its subject, so a
+        legend listing it by its Bluebeam subject renamed its row to the tool's name."""
+        v, made, _reply = self.measured_sheet()
+        x = self.legend(v)
+        v._set_selection(0, [made[2]])
+        v.update_selected_props(dict(A.DEFAULTS["rect"], stroke="#00aa00"))
+        self.assertIn("Fire door", [r["label"] for r in self.rows(v, x)])
+        v._set_selection(0, [made[0]])
+        self.assertEqual(v.duplicate_selected(), 1)
+        self.assertEqual({r["label"]: r["n"] for r in self.rows(v, x)}["Duct run"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()
