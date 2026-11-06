@@ -38,7 +38,7 @@ AppID={app_id}
 Publisher=KanzonasPDF
 Homepage={home}
 Category=Office
-Description=Free PDF reader and editor: markups, measuring, forms, signing and editing
+Description=Free PDF viewer and editor: comments, editing, forms, signing and OCR
 Language=English
 
 [License]

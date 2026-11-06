@@ -9,9 +9,79 @@ self-promotion rule before posting.
 
 Settings (gear icon next to About on the repository page) > Topics:
 
-    pdf pdf-editor pdf-viewer pdf-annotation markup measurement construction cad
-    bluebeam-alternative acrobat-alternative windows portable python pyside6 pymupdf
-    open-source
+    pdf pdf-editor pdf-viewer pdf-annotation pdf-forms ocr redaction acrobat-alternative
+    windows linux portable open-source python pyside6 pymupdf markup measurement
+    bluebeam-alternative
+
+## AlternativeTo
+
+KanzonasPDF is first a general PDF viewer and editor and a free alternative to Acrobat; the
+measuring and CAD tools are extras. Lead with that. Fields as AlternativeTo's form asks them:
+
+**Name:** KanzonasPDF
+
+**Short description:**
+
+> Free, open-source PDF viewer and editor for Windows and Linux. Comment and mark up, edit a
+> PDF's own text, fill in and sign forms, OCR, redact and organize pages, with no account,
+> subscription or watermarks.
+
+**Description:**
+
+> KanzonasPDF is a free, open-source PDF viewer and editor for Windows and Linux, made as a
+> free alternative to Adobe Acrobat Pro and PDF-XChange Editor. Every feature is free, with no
+> watermarks, no account, no subscription and no telemetry.
+>
+> - Read: tabs, thumbnails, bookmarks, fast search with every match highlighted, split view,
+>   light and dark themes.
+> - Comment and mark up: highlights, sticky notes, text boxes, callouts, shapes, clouds,
+>   stamps, a tool chest of saved styles, and a markups list you can filter and export.
+>   Markups are standard PDF annotations, so other PDF apps see them.
+> - Edit the PDF itself: change its text in place (paragraphs rewrap as you type), find and
+>   replace, move, resize or delete pictures and shapes, add text, pictures, watermarks,
+>   headers, footers and page numbers.
+> - Forms and signing: fill in and create forms, place your signature and initials, and sign
+>   digitally with a certificate.
+> - Protect and clean up: passwords and permissions, redaction that also scrubs hidden data,
+>   and offline OCR that makes scans searchable.
+> - Pages and conversion: rotate, reorder, insert, extract, crop and combine; compare two
+>   versions of a document; export to Word, Excel and PowerPoint.
+> - Print with a preview, plus print-shop tools (trim and bleed boxes, crop marks, a check for
+>   common printing problems).
+> - For drawings and plans: calibrated measuring of lengths, areas and volumes, and, as a fun
+>   extra, AutoCAD-style editing tools.
+>
+> It starts in well under a second, runs from a USB stick (portable zip or PortableApps.com) or
+> installs without administrator rights, and is available in English and Spanish. Open source
+> under the AGPL-3.0.
+
+**License:** Free, Open Source (AGPL-3.0)
+
+**Platforms:** Windows, Linux (AppImage), PortableApps.com. (Mac: after it's released.)
+
+**Website:** https://pdf.kanzonas.com · **Source code:** https://github.com/keithlyding/KanzonasPDF
+
+**Linux note:** 64-bit x86 AppImage; needs glibc 2.35 or later (e.g. Ubuntu 22.04, Debian 12,
+Fedora 36 or newer)
+
+**Windows note:** Requires 64-bit Windows 10 or later
+
+**Alternative to:** Adobe Acrobat, PDF-XChange Editor, Foxit PDF Editor, Nitro PDF Pro,
+Master PDF Editor, Bluebeam Revu.
+
+**Features (tags):** Ad-free, No registration required, Privacy focused, Works offline,
+Portable, Lightweight, Dark mode, Tabbed interface, PDF annotation, Edit PDF text, Fill PDF
+forms, Create PDF forms, Digital signature, OCR, Redact PDFs, Merge PDF files, Compare PDF
+files, Password protection, Multilingual.
+
+**Screenshots** (in this order; captions to paste):
+1. `docs/screenshot-markup.png`: Reviewing a catalog: highlights, a cloud and callout, a
+   sticky note and a stamp, with the markups list.
+2. `docs/screenshot-edit-text.png`: Editing a paragraph of the PDF's own text; the words rewrap
+   as you type.
+3. `docs/screenshot-forms.png`: Filling in and signing an order form.
+4. `docs/screenshot-dark.png`: The dark theme.
+5. `docs/screenshot-measure.png`: Measuring a floor plan to scale.
 
 ## Reddit
 

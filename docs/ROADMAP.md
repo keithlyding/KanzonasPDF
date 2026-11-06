@@ -41,6 +41,10 @@ The owner sets this list; nothing below is promised until it's here.
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
+- **A PDF viewer and editor first**: KanzonasPDF is presented as a free, general PDF viewer and
+  editor and an alternative to Acrobat Pro and PDF-XChange Editor (README, store listings,
+  screenshots). Measuring for drawings is a feature for one audience; CAD mode is a fun extra,
+  not the headline (owner, 6 Nov 2026).
 - **Free, for good**: official releases stay free for personal and commercial use: no
   subscriptions, trials, paid tiers, required account or paid cloud service; donations never
   unlock features (README, "Free, for good").
