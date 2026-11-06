@@ -601,9 +601,52 @@ def check_total(sizes):
 
 
 # ---- discovery over UDP --------------------------------------------------------------------
+def _interface_ipv4():
+    """The IPv4 addresses of this computer's interfaces that are up, read with getifaddrs
+    (macOS and other BSDs: their struct sockaddr starts with its length)."""
+    import ctypes
+    import ctypes.util
+
+    class Sockaddr(ctypes.Structure):
+        _fields_ = [("sa_len", ctypes.c_uint8), ("sa_family", ctypes.c_uint8),
+                    ("sa_data", ctypes.c_uint8 * 14)]
+
+    class Ifaddrs(ctypes.Structure):
+        pass
+    Ifaddrs._fields_ = [("ifa_next", ctypes.POINTER(Ifaddrs)), ("ifa_name", ctypes.c_char_p),
+                        ("ifa_flags", ctypes.c_uint), ("ifa_addr", ctypes.POINTER(Sockaddr)),
+                        ("ifa_netmask", ctypes.POINTER(Sockaddr)),
+                        ("ifa_dstaddr", ctypes.POINTER(Sockaddr)), ("ifa_data", ctypes.c_void_p)]
+    libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.dylib")
+    libc.getifaddrs.argtypes = [ctypes.POINTER(ctypes.POINTER(Ifaddrs))]
+    libc.freeifaddrs.argtypes = [ctypes.POINTER(Ifaddrs)]
+    head = ctypes.POINTER(Ifaddrs)()
+    if libc.getifaddrs(ctypes.byref(head)) != 0:
+        return set()
+    addrs = set()
+    try:
+        p = head
+        while p:
+            a = p.contents.ifa_addr
+            if a and p.contents.ifa_flags & 1 and a.contents.sa_family == socket.AF_INET:  # up
+                # (sockaddr_in: length, family, port, then the address)
+                addrs.add(socket.inet_ntoa(bytes(a.contents.sa_data[2:6])))
+            p = p.contents.ifa_next
+    finally:
+        libc.freeifaddrs(head)
+    return addrs
+
+
 def local_ipv4():
     """This computer's IPv4 addresses (not loopback), to send discovery out of each network."""
     addrs = set()
+    if sys.platform == "darwin":
+        # (not the host name's addresses: a Mac's name.local is looked up over mDNS, which
+        # took 35 s on GitHub's Mac before discovery could send anything)
+        try:
+            addrs |= _interface_ipv4()
+        except (OSError, AttributeError, ValueError):
+            pass
     if sys.platform.startswith("linux"):
         try:
             import fcntl
@@ -620,11 +663,12 @@ def local_ipv4():
                 s.close()
         except (ImportError, OSError):
             pass
-    try:
-        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
-            addrs.add(info[4][0])
-    except OSError:
-        pass
+    if sys.platform != "darwin":
+        try:
+            for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+                addrs.add(info[4][0])
+        except OSError:
+            pass
     try:
         # the address of the default route (a UDP connect sends nothing)
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -653,9 +697,12 @@ def udp_exchange(sends, window, multicast_ttl=1, interfaces=None, max_packets=51
         if log is not None and line not in errors and len(errors) < 20:
             errors.append(line)
             log.append(line)
-    ifaces = interfaces if interfaces is not None else (local_ipv4() or ["0.0.0.0"])
     multicast = any(_is_multicast(dest[0]) for _p, dest, _d in sends)
-    for addr in (ifaces if multicast else ["0.0.0.0"]):
+    if not multicast:
+        ifaces = ["0.0.0.0"]        # (one unicast address: the interfaces aren't looked up)
+    else:
+        ifaces = interfaces if interfaces is not None else (local_ipv4() or ["0.0.0.0"])
+    for addr in ifaces:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.setblocking(False)

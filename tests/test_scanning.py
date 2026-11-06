@@ -610,6 +610,30 @@ def mdns_answer(qid, port):
 
 
 class Discovery(ServerCase):
+    def test_asking_one_address_doesnt_look_up_the_interfaces(self):
+        # (on a Mac, looking up the host name's addresses went over mDNS and took 35 s)
+        with mock.patch.object(net, "local_ipv4", side_effect=AssertionError("looked up")):
+            net.udp_exchange([(b"x", ("127.0.0.1", 9), 0.0)], 0.05)
+
+    def test_this_computers_addresses_are_read_quickly(self):
+        t0 = time.monotonic()
+        addrs = net.local_ipv4()
+        self.assertLess(time.monotonic() - t0, 3.0)
+        self.assertFalse([a for a in addrs if a.startswith("127.")])
+        if sys.platform == "darwin":                   # read from the interfaces themselves
+            route = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                route.connect(("192.0.2.1", 9))
+                own = route.getsockname()[0]
+            except OSError:
+                own = None
+            finally:
+                route.close()
+            found = net._interface_ipv4()
+            self.assertIn("127.0.0.1", found)
+            if own:
+                self.assertIn(own, found)
+
     def test_a_send_that_fails_goes_into_the_log(self):
         log = []
         refused = OSError(65, "No route to host")
