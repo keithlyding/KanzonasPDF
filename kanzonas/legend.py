@@ -651,9 +651,11 @@ def display_rect(page, rect, width, height):
 def draw(page, annot_xref, model, rows=None):
     """Draw the legend annot_xref (made by annotations.write) from model (its box's top-left
     corner as shown and its options): its appearance, box, contents and KZProps. rows: as
-    rows_for gives them (worked out here when None). Returns the box it now has."""
+    rows_for gives them (else model["rows"], else worked out here). Returns the box it now has."""
     doc = page.parent
     props = model["props"]
+    if rows is None:
+        rows = model.get("rows")
     if rows is None:
         rows = rows_for(doc, page.number, props.get("scope") or "page")
     ops, w, h = layout(rows, props)

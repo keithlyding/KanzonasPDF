@@ -2106,7 +2106,12 @@ class DocumentView(QScrollArea):
         self._card_cache = {}
         self._legend_where = {}        # page index -> its legends' xrefs (legend.refresh)
         self._legend_sums = {}         # page index -> its markups counted (legend.page_summary)
-        self._legend_items = {}        # markup xref -> (its object, what it adds to a legend)
+        # markup xref -> (its object, what it adds to a legend): kept through any change, as
+        # each is checked against its object's text before it's used (dropped at every page
+        # added, moved or undone, a legend of the whole document read all its markups again:
+        # 3 s for 10,000)
+        items = getattr(self, "_legend_items", None)
+        self._legend_items = items if items is not None and len(items) < 200000 else {}
         self.text_sel = None           # [(page index, selected character units), ...]
         self._text_drag = None         # [(page, mode, words)] while a text drag is in progress
         self._snap_markups = {}        # page index -> snapping.PointIndex of markup points
@@ -2994,15 +2999,26 @@ class DocumentView(QScrollArea):
         from . import legend
         page = self.doc[index]
         props = self.tool_props("legend")
+        # (the markups as counted for the legends already there: read only once)
+        rows = legend.rows_for(self.doc, index, props.get("scope") or "page",
+                               self._legend_summary)
         if not at_point:
-            rows = legend.rows_for(self.doc, index, props.get("scope") or "page")
             _ops, w, _h = legend.layout(rows, props)
             disp = (pymupdf.Rect(rect) * page.rotation_matrix).normalize()
             if w > 0:
                 size = float(props.get("fontsize") or 9) * disp.width / w
                 props["fontsize"] = round(max(4.0, min(72.0, size)), 1)
         del page
-        return self._create(index, {"kind": "legend", "props": props, "rect": pymupdf.Rect(rect)})
+        return self._create(index, {"kind": "legend", "props": props, "rect": pymupdf.Rect(rect),
+                                    "rows": rows})
+
+    def _legend_summary(self, doc, index):
+        """legend.page_summary of a page, kept between edits (as legend.refresh keeps it)."""
+        from . import legend
+        got = self._legend_sums.get(index)
+        if got is None:
+            got = self._legend_sums[index] = legend.page_summary(doc, index, self._legend_items)
+        return got
 
     # ---- measurement ------------------------------------------------------------------
     def live_measure(self, index, tool, pts):

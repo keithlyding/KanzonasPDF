@@ -347,5 +347,44 @@ class ReplacedSheets(Case):
         return pymupdf.Rect(page.load_annot(x).rect)
 
 
+class LegendSpeed(Case):
+    def test_whole_document_legend_reads_each_markup_once(self):
+        """A legend of the whole document read every markup of the document again (half a
+        millisecond each) after any page was added, deleted, moved or turned and after any
+        undo of such a change: 3 s per change, and again at the next edit, for 10,000
+        markups; placing one read them all twice."""
+        d = pymupdf.open()
+        for i in range(3):
+            p = d.new_page(width=800, height=600)
+            for k in range(30):
+                a = p.add_rect_annot(pymupdf.Rect(10 + k * 20, 10, 28 + k * 20, 28))
+                a.set_colors(stroke=(1, 0, 0))
+                a.update()
+                del a
+            del p
+        path = self.path("many.pdf")
+        d.save(path)
+        d.close()
+        v = self.view(path)
+        calls = []
+        real = L._item
+
+        def counted(page, a, scale):
+            calls.append(a.xref)
+            return real(page, a, scale)
+        with mock.patch.object(L, "_item", counted):
+            x = self.legend(v, scope="document")
+            self.assertEqual(len(calls), 90)
+            self.assertEqual(self.rows(v, x)[0]["n"], 90)
+            del calls[:]
+            v.insert_blank(1)
+            v.undo()
+            v.redo()
+            v.undo()
+            self.add(v, 2, model("rect", rect=pymupdf.Rect(50, 300, 100, 340)))
+            self.assertEqual(len(calls), 1)             # (the new one)
+        self.assertEqual(sorted(r["n"] for r in self.rows(v, x)), [1, 90])
+
+
 if __name__ == "__main__":
     unittest.main()
