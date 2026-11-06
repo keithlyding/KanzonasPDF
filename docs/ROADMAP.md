@@ -62,6 +62,9 @@ The owner sets this list; nothing below is promised until it's here.
 - **Releases**: every change goes through a pull request; the Windows and Linux builds must pass
   (a rule on `main` enforces it); merging a new version publishes it, with SHA-256 checksums.
 - **Signing**, when it comes, happens only in the automated build (CODE_SIGNING_POLICY.md).
-- **Branding shared with KanzonasCAD**: the same cactus and sunflower, the logo made by
-  KanzonasCAD's tools/make_logos.py ("Kanzonas" in Roboto Condensed Medium, "PDF" in Saira
-  Condensed, red as the icon), the icon's PDF tag matching KanzonasCAD's CAD tag.
+- **Branding shared with KanzonasCAD**: the same cactus and sunflower, the icon's PDF tag
+  matching KanzonasCAD's CAD tag.
+- **Logos come from the website repo** (owner, Nov 2026): every Kanzonas logo is made in
+  Kanzonas-Site's `brand/` folder, the single source of truth ("Kanzonas" in Roboto Condensed
+  Medium, "PDF" in Saira Condensed, red as the icon; brand/SPEC.md). Changed there, never
+  here; its files are copied in.

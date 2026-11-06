@@ -28,9 +28,10 @@ Artwork and type:
 
 - The app icon, logo and their cactus and sunflower are the owner's artwork (`assets/`).
 - The logo's lettering is set in Roboto Condensed ("Kanzonas"), Saira Condensed ("PDF") and
-  Inter (the tagline), all under the SIL Open Font License 1.1 (Google Fonts). The logo is made
-  by KanzonasCAD's `tools/make_logos.py`, which makes both apps' logos so they match. The icon's
+  Inter (the tagline), all under the SIL Open Font License 1.1 (Google Fonts). The logos are made
+  in the Kanzonas-Site repository's `brand/` folder (https://github.com/keithlyding/Kanzonas-Site), the single
+  source of truth for every Kanzonas logo. The icon's
   "PDF" tag is set in Inter Black (SIL OFL 1.1).
 
 Shared with KanzonasCAD (https://github.com/keithlyding/KanzonasCAD, MIT, same owner): its
-ribbon and theme started here, and its logo script makes this app's logo.
+ribbon and theme started here.

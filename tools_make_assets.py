@@ -4,7 +4,8 @@
 
 Sources (the owner's artwork):
 - assets/kanzonas-mark-source.png  cactus + sunflower
-- assets/kanzonas-logo-source.png  the owner's full logo (Help > About)
+- assets/kanzonas-logo-source.png  the full logo (Help > About), copied from Kanzonas-Site's
+  brand/out/ (the single source of truth for logos: change it there, never here)
 The app icon is a red tile (the color people associate with PDF apps); the cactus and
 sunflower stand in front of a page whose top comes out above the cactus, as in the owner's
 artwork, set a little to the right and lower (its top level with the top of the cactus),
