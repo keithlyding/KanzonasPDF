@@ -348,6 +348,72 @@ class ReplacedSheets(Case):
         page = v.doc[0]
         return pymupdf.Rect(page.load_annot(x).rect)
 
+    def test_a_field_on_a_turned_new_drawing_reads_upright_when_typed_in(self):
+        """The new drawing turned against the old one in PDF space (a landscape sheet saved
+        as a portrait page turned 90 degrees): a form field's appearance was turned with it,
+        but not the way its text runs (/MK /R), so once a value was typed in it was drawn
+        anew sideways, and clipped to a sliver."""
+        from tests.test_replace_pages import make
+        for rot in (90, 270):
+            with self.subTest(rotate=rot):
+                old = make(self.path("o.pdf"), [("A-1", "OLD")])
+                d = pymupdf.open(old)
+                w = pymupdf.Widget()
+                w.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+                w.field_name = "who"
+                w.rect = pymupdf.Rect(300, 300, 500, 330)
+                w.field_value = "HELLO"
+                w.text_fontsize = 14
+                d[0].add_widget(w)
+                form = self.path("form.pdf")
+                d.save(form)
+                d.close()
+                v = self.view(form)
+                v.dirty = False
+                src = pymupdf.open(make(self.path("n.pdf"), [("A-1", "NEW")], rotate=rot))
+                self.addCleanup(src.close)
+                v.replace_pages(src, [(0, 0)])
+                page = v.doc[0]
+                self.assertEqual(page.rotation, rot)
+                wd = next(page.widgets())
+                wd.field_value = "WORLD"
+                wd.update()
+                del wd
+                dirs = [pymupdf.Point(ln["dir"]) * page.rotation_matrix -
+                        pymupdf.Point(0, 0) * page.rotation_matrix
+                        for b in page.get_text("dict")["blocks"] for ln in b.get("lines", [])
+                        if "WORLD" in "".join(sp["text"] for sp in ln["spans"])]
+                self.assertEqual([(round(q.x, 3), round(q.y, 3)) for q in dirs], [(1, 0)])
+
+    def test_a_new_drawing_turned_half_way_keeps_markups_the_right_way_up(self):
+        """A new drawing turned 180 degrees in PDF space against the old one (the page's
+        /Rotate 180 where it was 0, or 270 where it was 90): the markups' places were mapped
+        but not their pictures (only quarter turns were taken for turns), so every markup
+        showed upside down: text boxes' text, arrows pointing back."""
+        from tests.test_replace_pages import make
+        for old_rot, new_rot in ((0, 180), (90, 270)):
+            with self.subTest(old=old_rot, new=new_rot):
+                v = self.view(make(self.path("o.pdf"), [("A-1", "SAME")], rotate=old_rot))
+                m = v.doc[0].derotation_matrix
+                self.add(v, 0, model("textbox", rect=(pymupdf.Rect(300, 300, 500, 340) * m)
+                                     .normalize(), text="HELLO"),
+                         model("arrow", points=[P(100, 400) * m, P(250, 400) * m]))
+
+                def shown():
+                    """The markups' part of the page as shown (rows 280-420, columns
+                    80-520): the sheet's label is elsewhere."""
+                    pix = v.doc[0].get_pixmap()
+                    self.assertEqual((pix.width, pix.height), (792, 612))
+                    n = pix.n
+                    return [bytes(pix.samples[(y * pix.width + 80) * n:(y * pix.width + 520) * n])
+                            for y in range(280, 420)]
+                before = shown()
+                src = pymupdf.open(make(self.path("n.pdf"), [("A-1", "SAME")], rotate=new_rot))
+                self.addCleanup(src.close)
+                v.replace_pages(src, [(0, 0)])
+                self.assertEqual(v.doc[0].rotation, new_rot)
+                self.assertEqual(shown(), before)
+
     def length_sheet(self, size, scale=None):
         d = pymupdf.open()
         p = d.new_page(width=size[0], height=size[1])

@@ -22,6 +22,7 @@ of layers again (undo_journal.reload_layers), so a layer that is off in the new 
 """
 
 import json
+import math
 import re
 
 import pymupdf
@@ -347,7 +348,9 @@ def _map_annots(doc, page, t, tp):
     """Map every annotation of the page (markups, links, form fields, pop-ups) through t (PDF
     user space, old drawing -> new) and the geometry KanzonasPDF keeps through tp (page
     coordinates). Returns how many."""
-    turned = abs(t.b) > 1e-9 or abs(t.c) > 1e-9
+    # (turned a quarter or half way: a half turn has no b and c, but a and d below zero;
+    # missed, every markup's picture showed upside down, arrows pointing back)
+    turned = abs(t.b) > 1e-9 or abs(t.c) > 1e-9 or t.a < 0 or t.d < 0
     lin = pymupdf.Matrix(t.a, t.b, t.c, t.d, 0, 0)
     sx, sy = abs(pymupdf.Point(1, 0) * lin), abs(pymupdf.Point(0, 1) * lin)
     n = 0
@@ -382,6 +385,7 @@ def _map_annots(doc, page, t, tp):
                     _fmt(v * s) for v, s in zip(d, f)))
         if turned and kind not in _ICONS:
             _turn_appearance(doc, xref, lin)
+            _turn_text(doc, xref, kind, t)
         _map_kzprops(doc, xref, tp)
         kt, kv = doc.xref_get_key(xref, "KZUnder")
         if kt == "array":
@@ -415,6 +419,29 @@ def _map_leaders(doc, xref, t, lin):
                 doc.xref_set_key(xref, key, _fmt(float(val) * f))
             except ValueError:
                 pass
+
+
+def _turn_text(doc, xref, kind, t):
+    """The way a form field's text (/MK /R) or a text box's (/Rotate) runs, turned with its
+    appearance: a viewer that draws it anew (a field's value typed, a text box edited in
+    another program) drew it along the old drawing's way, sideways on the new one."""
+    deg = int(round(math.degrees(math.atan2(t.b, t.a)) / 90.0)) * 90
+    if kind == pymupdf.PDF_ANNOT_WIDGET:
+        key = "MK/R"
+    elif kind == pymupdf.PDF_ANNOT_FREE_TEXT:
+        key = "Rotate"
+    else:
+        return
+    typ, val = doc.xref_get_key(xref, key)
+    try:
+        old = int(float(val)) if typ in ("int", "float", "real") else 0
+    except ValueError:
+        old = 0
+    new = (old + deg) % 360
+    if key == "MK/R" and doc.xref_get_key(xref, "MK")[0] not in ("dict", "xref"):
+        doc.xref_set_key(xref, "MK", "<</R %d>>" % new)
+    else:
+        doc.xref_set_key(xref, key, str(new))
 
 
 def _turn_appearance(doc, xref, lin):
