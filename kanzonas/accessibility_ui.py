@@ -379,9 +379,7 @@ def _thumb(doc, page, box, size=THUMB):
     pg = doc[page]
     if box is None or box.is_empty:
         box = pg.rect
-    clip = pymupdf.Rect(box) * pg.derotation_matrix
-    clip.normalize()
-    clip &= pg.mediabox if pg.rotation == 0 else clip
+    clip = pymupdf.Rect(box) & pg.rect          # (as shown: get_pixmap turns the page)
     zoom = min(4.0, size / max(box.width, box.height, 1))
     pix = pg.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), clip=clip, alpha=False,
                         annots=False)
