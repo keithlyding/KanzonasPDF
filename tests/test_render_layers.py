@@ -394,6 +394,47 @@ class PageTransparency(unittest.TestCase):
         self.assertIn(1, got)
 
 
+class DocumentReplaced(unittest.TestCase):
+    """Apply redactions with its clean-up opens the document anew, and an undo brings the
+    document object from before back: MuPDF's store of what it decoded for the pages (a
+    picture stamp's tiles...) is emptied then, so nothing drawn for another document object
+    is used again (seen: a stamp drawn a few pixels off a fresh open after the clean-up,
+    until the store was emptied; random battery, seed 1 of the dimensions work)."""
+
+    def test_store_emptied_when_the_document_object_changes(self):
+        v = DocumentView(marked_pdf())
+        v.resize(900, 700)
+        v.show()
+        APP.processEvents()
+        self.addCleanup(v.close_doc)
+        self.addCleanup(setattr, v, "dirty", False)
+        v.set_zoom(1.0)
+        v._create(0, {"kind": "stamp", "props": dict(A.DEFAULTS["stamp"]),
+                      "rect": pymupdf.Rect(450, 700, 650, 760)})      # (over the edge)
+        for w in v.pages:
+            w._render()
+        calls = []
+        real = pymupdf.TOOLS.store_shrink
+        with mock.patch.object(pymupdf.TOOLS, "store_shrink",
+                               side_effect=lambda n: (calls.append(n), real(n))):
+            v.insert_blank(1)               # (structural, the same document object: kept)
+            self.assertEqual(calls, [])
+            old = v.doc
+            v.mark_redactions(2, [pymupdf.Rect(60, 300, 120, 340)])
+            v.apply_redactions(scrub=True)
+            self.assertIsNot(v.doc, old)
+            self.assertEqual(calls, [100])
+            v.undo()
+            self.assertIs(v.doc, old)
+            self.assertEqual(calls, [100, 100])
+        s = v.zoom * v.pages[0].devicePixelRatioF()
+        for i in range(v.doc.page_count):
+            w = v.pages[i]
+            w._pix = None
+            w._render()
+            same(self, w._pix.toImage(), fresh(v, i, s), "page %d" % i)
+
+
 class Zooming(unittest.TestCase):
     def view(self):
         v = DocumentView(marked_pdf())

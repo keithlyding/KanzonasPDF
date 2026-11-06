@@ -558,10 +558,12 @@ class Redaction(LegendCase):
         # without its clean-up (a note, a picture) stayed in it, unused but readable
         v = self.view()
         self.setup_markups(v)
-        page = v.doc[0]
         pm = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 30, 20), False)
-        v.modify(lambda: page.insert_image(pymupdf.Rect(400, 300, 600, 450), pixmap=pm), [0])
-        del page
+
+        def picture():
+            page = v.doc[0]
+            page.insert_image(pymupdf.Rect(400, 300, 600, 450), pixmap=pm)
+        v.modify(picture, [0])
         v.mark_redactions(0, [pymupdf.Rect(45, 45, 105, 95), pymupdf.Rect(390, 290, 610, 460)])
         v.apply_redactions(scrub=False)
         data = v.signing_bytes()
