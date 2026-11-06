@@ -2549,16 +2549,8 @@ class DocumentView(QScrollArea):
         content = self.widget().mapFromGlobal(origin.mapToGlobal(pos))
         y = content.y()
         pages = self.pages
-        if self.two_up() or self.paged():
-            # (side by side, or the others hidden: the nearest page shown)
-            near = [i for i in (self.spread(self._shown) if self.paged() else
-                                range(len(pages))) if not pages[i].isHidden()]
-
-            def dist(i):
-                g = pages[i].geometry()
-                return max(g.left() - content.x(), 0, content.x() - g.right()) + \
-                    max(g.top() - y, 0, y - g.bottom())
-            best = min(near, key=dist) if near else origin.index
+        if self.paged():
+            near = self.spread(self._shown)         # (the others are hidden)
         else:
             lo, hi = 0, len(pages)
             while lo < hi:
@@ -2575,6 +2567,17 @@ class DocumentView(QScrollArea):
             else:
                 prev = pages[lo - 1]
                 best = lo - 1 if y - (prev.y() + prev.height()) <= pages[lo].y() - y else lo
+            # (two pages side by side: the page beside it may be the nearer one)
+            near = range(max(0, best - 2), min(len(pages), best + 3)) if self.two_up() \
+                else [best]
+        if len(near) > 1:
+            def dist(i):
+                g = pages[i].geometry()
+                return max(g.left() - content.x(), 0, content.x() - g.right()) + \
+                    max(g.top() - y, 0, y - g.bottom())
+            best = min(near, key=dist)
+        else:
+            best = near[0]
         w = pages[best]
         local = w.mapFromGlobal(origin.mapToGlobal(pos))
         clamped = QPointF(min(max(local.x(), 0), max(0, w.width() - 1)),

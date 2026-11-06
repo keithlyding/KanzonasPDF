@@ -47,10 +47,14 @@ def join_lines(lines):
 
 
 def read_page(page):
-    """The page's text blocks in reading order (see order_blocks)."""
+    """The page's text blocks in reading order (see order_blocks). The words' rects are in
+    the page's unrotated coordinates (like search hits). Text that runs sideways or upside
+    down (a drawing's title block, a scan turned with the page's rotation) is put in order as
+    a reader turning the page would read it."""
     flags = pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES
     tp = page.get_textpage(flags=flags)
     d = page.get_text("dict", textpage=tp)
+    turn = _reading_frame(d)
     words = {}
     for x0, y0, x1, y1, w, b, ln, _n in page.get_text("words", textpage=tp):
         words.setdefault((b, ln), []).append((w, (x0, y0, x1, y1)))
@@ -75,6 +79,10 @@ def read_page(page):
             continue
         size = sizes.most_common(1)[0][0]
         bold = bold * 2 > total
+        if turn is not None:
+            box = tuple((pymupdf.Rect(blk["bbox"]) * turn).normalize())
+            blocks.append(Block(box, lines, size, bold, len(blocks)))
+            continue
         pieces = []
         for line in lines:
             for piece in _pieces(line, size):
@@ -91,6 +99,24 @@ def read_page(page):
             b.src = (src, round(b.bbox[0] / 4))
             blocks.append(b)
     return _rejoin(order_blocks(blocks))
+
+
+def _reading_frame(d):
+    """None when most of the text runs left to right; else the turn (a matrix) after which
+    it does."""
+    dirs = Counter()
+    for blk in d.get("blocks", ()):
+        for line in blk.get("lines", ()):
+            dx, dy = line.get("dir", (1, 0))
+            n = sum(len(sp.get("text", "")) for sp in line.get("spans", ()))
+            dirs[(round(dx), round(dy))] += n
+    if not dirs:
+        return None
+    main = dirs.most_common(1)[0][0]
+    # (x, y) -> (x', y') so that the text runs along x' and the lines follow along y'
+    return {(0, 1): pymupdf.Matrix(0, -1, 1, 0, 0, 0),      # top to bottom: x' = y, y' = -x
+            (0, -1): pymupdf.Matrix(0, 1, -1, 0, 0, 0),     # bottom to top: x' = -y, y' = x
+            (-1, 0): pymupdf.Matrix(-1, 0, 0, -1, 0, 0)}.get(main)
 
 
 def _pieces(line, size):

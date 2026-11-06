@@ -226,6 +226,12 @@ class PageLayouts(_Base):
         self.assertEqual([v.spread(i) for i in range(4)], [[0], [1, 2], [1, 2], [3, 4]])
         # every page shown
         self.assertTrue(all(not w.isHidden() for w in v.pages))
+        # a text drag from page 2 across to page 3 beside it ends on page 3
+        right = v.pages[2]
+        pos = v.pages[1].mapFromGlobal(right.mapToGlobal(QPoint(right.width() // 2, 30)))
+        self.assertEqual(v.page_point_from(v.pages[1], QPointF(pos))[0], 2)
+        pos = v.pages[1].mapFromGlobal(right.mapToGlobal(QPoint(-5, 30)))   # (in the gap)
+        self.assertEqual(v.page_point_from(v.pages[1], QPointF(pos))[0], 1)
 
     def test_two_pages_one_spread_at_a_time(self):
         v = self.v
@@ -331,6 +337,21 @@ class ReadingOrder(unittest.TestCase):
                   blk(72, 450, 540, 470, "Footer")]
         order = [b.lines[0][0][0] for b in reading_text.order_blocks(blocks)]
         self.assertEqual(order, ["Title", "L1", "L2", "L3", "R1", "R3", "Footer"])
+
+    def test_a_turned_page_in_the_order_it_is_shown(self):
+        doc = pymupdf.open(self.path)
+        doc[0].set_rotation(90)
+        texts = [b.text() for b in reading_text.read_page(doc[0])]
+        self.assertEqual(texts[0], "Chapter 1")
+        self.assertEqual(len(texts), 6)
+        doc.close()
+        # text written sideways (bottom to top): read from its first line on
+        doc = pymupdf.open()
+        pg = doc.new_page()
+        for k, word in reversed(list(enumerate(("First", "Second", "Third")))):
+            pg.insert_text((100 + 30 * k, 500), word + " line", fontsize=12, rotate=90)
+        texts = [b.text() for b in reading_text.read_page(pg)]
+        self.assertEqual(texts, ["First line", "Second line", "Third line"])
 
     def test_hyphen_at_a_line_end_joined(self):
         self.assertEqual(reading_text.join_lines(["We are read-", "ing it. Well-", "Known"]),
