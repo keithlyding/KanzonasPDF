@@ -18,7 +18,7 @@ import time
 
 from . import scan_net as net
 from .i18n import tr
-from .scan_net import (Caps, Device, Page, ScanError, SourceCaps, child, children, descendants,
+from .scan_net import (Caps, Device, ScanError, SourceCaps, child, descendants,
                        local, parse_xml, text, xml_escape)
 
 SERVICES = ("_uscan._tcp.local", "_uscans._tcp.local")
@@ -376,6 +376,7 @@ class EsclScanner:
 
     def scan(self, settings, report=lambda _t: None):
         """Scan with ScanSettings; yields each Page as it arrives."""
+        self.http.canceled = False      # (a scan canceled before doesn't stop this one)
         caps = self.caps or self.capabilities()
         key = settings.source if settings.source in caps.sources else next(iter(caps.sources))
         src = caps.sources[key]

@@ -303,8 +303,13 @@ class ScanDialog(QDialog):
         self.printers = printers
         keep = self.device()
         known = {d.key() for d in found}
-        # the remembered or added scanner stays listed even when discovery misses it
-        extra = [d for d in self.devices if d.key() not in known]
+        named = {(d.protocol, d.name) for d in found}
+        # the remembered or added scanner stays listed even when discovery misses it (unless
+        # it was found again, at a new address)
+        extra = [d for d in self.devices if d.key() not in known and
+                 (d.protocol, d.name) not in named]
+        if keep is not None and keep.key() not in known and (keep.protocol, keep.name) in named:
+            keep = next(d for d in found if (d.protocol, d.name) == (keep.protocol, keep.name))
         self.devices = found + extra
         self._fill_list(select=keep.key() if keep else None)
         if found:
@@ -372,6 +377,9 @@ class ScanDialog(QDialog):
         if d.key() in self.caps:
             self._fill_options(self.caps[d.key()])
             return
+        if "caps" in self._busy and getattr(self, "_asking", None) == d.key():
+            return                      # (already being asked)
+        self._asking = d.key()
         self._say(tr("Asking {name} what it can do...").format(name=d.name))
         scanner = self._open(d)
         self._start("caps", lambda _p: scanner.capabilities(), d.key(), scanner)

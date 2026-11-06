@@ -250,6 +250,20 @@ class EsclScanning(ServerCase):
         self.assertIn("too large", cm.exception.message)
         self.assertEqual(srv.st["deletes"], ["/eSCL/ScanJobs/123"])   # the job is cleaned up
 
+    def test_cancel_while_the_page_is_coming(self):
+        srv, port = self.server(stall=3)
+        s = scan_escl.EsclScanner(Device("x", "escl", "http://127.0.0.1:%d/eSCL" % port))
+        s.caps = scan_escl.parse_capabilities(ESCL_CAPS)
+        threading.Timer(0.4, s.abort).start()
+        t0 = time.time()
+        with self.assertRaises(net.Canceled):
+            list(s.scan(ScanSettings()))
+        self.assertLess(time.time() - t0, 2.5)
+        self.assertEqual(srv.st["deletes"], ["/eSCL/ScanJobs/123"])      # the job is deleted
+        srv.st["stall"] = 0
+        srv.st["pages"] = [picture(20, 20)]
+        self.assertEqual(len(list(s.scan(ScanSettings()))), 1)          # and the next one works
+
     def test_other_address_tried_when_the_first_is_refused(self):
         _srv, port = self.server()
         d = Device("x", "escl", "http://127.0.0.1:%d/eSCL" % closed_port(), "127.0.0.1",
@@ -775,6 +789,23 @@ class Wia(unittest.TestCase):
             self.assertIn(part, s)
         self.assertEqual(seen["kw"]["stderr"], subprocess.STDOUT)
 
+    def test_capabilities_from_the_driver(self):
+        scripts = []
+
+        def run(cmd, timeout):
+            scripts.append(base64.b64decode(cmd[-1]).decode("utf-16-le"))
+            return 0, "HANDLING\t7\r\nRES\t100,200,300,600\r\n", ""
+        with mock.patch.object(scan_local, "run", run):
+            caps = scan_local.WiaScanner(Device("D", "wia", "dev-1")).capabilities()
+        self.assertEqual(sorted(caps.sources), ["duplex", "feeder", "platen"])
+        self.assertEqual(caps.sources["platen"].resolutions, [100, 200, 300, 600])
+        self.assertIn("$i.DeviceID -eq 'dev-1'", scripts[0])
+        self.assertIn("PropertyID -eq 3086", scripts[0])
+        with mock.patch.object(scan_local, "run", lambda c, t: (0, "RANGE\t50\t300\r\n", "")):
+            caps = scan_local.WiaScanner(Device("D", "wia", "x")).capabilities()
+        self.assertEqual(list(caps.sources), ["platen"])                  # a flatbed only
+        self.assertEqual(caps.sources["platen"].resolutions, [75, 100, 150, 200, 240, 300])
+
     def test_empty_feeder_message(self):
         with mock.patch.object(scan_local.subprocess, "Popen", lambda cmd, **kw: FakeProc(
                 b"ERROR\t80210003\tThere are no documents in the document feeder.\r\n")):
@@ -1025,6 +1056,13 @@ class ScanWindow(unittest.TestCase):
         self.w.settings.setValue("scan_device", json.dumps(self.dev.to_dict()))
         dlg = self.dialog(devices=[])
         self.assertEqual(dlg.device().key(), self.dev.key())
+
+    def test_remembered_scanner_found_at_a_new_address_is_replaced(self):
+        self.w.settings.setValue("scan_device", json.dumps(self.dev.to_dict()))
+        moved = Device("Fake MFP", "escl", "http://10.0.0.77/eSCL", "10.0.0.77")
+        dlg = self.dialog(devices=[moved])
+        self.assertEqual([d.address for d in dlg.devices], [moved.address])
+        self.assertEqual(dlg.device().address, moved.address)
 
     def test_add_by_address_in_the_window(self):
         dlg = self.dialog(devices=[])

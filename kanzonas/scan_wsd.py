@@ -28,7 +28,7 @@ from urllib.parse import unquote
 
 from . import scan_net as net
 from .i18n import tr
-from .scan_net import (Caps, Device, ScanError, SourceCaps, child, children, descendants, local,
+from .scan_net import (Caps, Device, ScanError, SourceCaps, child, children, descendants,
                        parse_xml, text, xml_escape)
 
 NS_SOAP = "http://www.w3.org/2003/05/soap-envelope"
@@ -518,6 +518,7 @@ class WsdScanner:
         return parse_status(root)
 
     def scan(self, settings, report=lambda _t: None):
+        self.http.canceled = False      # (a scan canceled before doesn't stop this one)
         caps = self.caps or self.capabilities()
         key = settings.source if settings.source in caps.sources else next(iter(caps.sources))
         src = caps.sources[key]

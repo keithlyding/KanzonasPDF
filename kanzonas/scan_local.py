@@ -137,6 +137,23 @@ foreach ($i in $m.DeviceInfos) {
 }
 """
 
+PS_CAPS = _PS_HEAD + """
+try {
+  $m = New-Object -ComObject WIA.DeviceManager
+  $info = $null
+  foreach ($i in $m.DeviceInfos) { if ($i.DeviceID -eq '@ID@') { $info = $i } }
+  if ($info -eq $null) { Write-Output "ERROR`tNOTFOUND`t"; exit 3 }
+  $dev = $info.Connect()
+  foreach ($p in $dev.Properties) { if ($p.PropertyID -eq 3086) { Write-Output ("HANDLING`t" + $p.Value) } }
+  foreach ($p in $dev.Items.Item(1).Properties) {
+    if ($p.PropertyID -eq 6147) {
+      if ($p.SubType -eq 2) { Write-Output ("RES`t" + (($p.SubTypeValues | ForEach-Object { $_ }) -join ',')) }
+      elseif ($p.SubType -eq 1) { Write-Output ("RANGE`t" + $p.SubTypeMin + "`t" + $p.SubTypeMax) }
+    }
+  }
+} catch { Write-Output ("ERROR`t" + (Hex $_) + "`t" + $_.Exception.Message); exit 2 }
+"""
+
 PS_SCAN = _PS_HEAD + """
 function SetProp($props, $id, $value) {
   foreach ($p in $props) { if ($p.PropertyID -eq $id) { try { $p.Value = $value } catch {}; return } }
@@ -240,10 +257,35 @@ class WiaScanner:
         self.canceled = False
 
     def capabilities(self):
-        # WIA's own settings vary by driver; these are what nearly every scanner takes (the
-        # driver adjusts a value it can't do exactly)
-        src = SourceCaps(resolutions=[75, 100, 150, 200, 300, 600])
-        return Caps({"platen": src, "feeder": src, "duplex": src}, self.device.name)
+        """What the driver says: feeder and duplex (WIA_DPS_DOCUMENT_HANDLING_CAPABILITIES)
+        and the resolutions; values every scanner takes when it says nothing."""
+        script = PS_CAPS.replace("@ID@", _ps_quote(self.device.address))
+        code, out, err = run(ps_command(script), LIST_TIMEOUT)
+        self.trail.append("WIA capabilities (exit %s): %s" % (code, (out + err).strip()[:2000]))
+        handling, dpis = 0, []
+        for line in out.splitlines():
+            kind, _t, rest = line.partition("\t")
+            if kind == "ERROR":
+                c, _t, msg = rest.partition("\t")
+                raise ScanError(wia_message(c, msg), "WIA %s: %s" % (c, msg))
+            if kind == "HANDLING" and rest.strip().lstrip("-").isdigit():
+                handling = int(rest.strip())
+            elif kind == "RES":
+                dpis = [int(v) for v in rest.split(",") if v.strip().isdigit()]
+            elif kind == "RANGE":
+                lo, _t, hi = rest.partition("\t")
+                if lo.strip().isdigit() and hi.strip().isdigit():
+                    dpis = [v for v in net.COMMON_DPI if int(lo) <= v <= int(hi)]
+        src = SourceCaps(resolutions=sorted(v for v in dpis if 0 < v <= 4800) or
+                         [75, 100, 150, 200, 300, 600])
+        sources = {}
+        if handling & 2 or not handling & 1:
+            sources["platen"] = src
+        if handling & 1:
+            sources["feeder"] = src
+        if handling & 1 and handling & 4:
+            sources["duplex"] = src
+        return Caps(sources, self.device.name, out[:4000])
 
     def abort(self):
         self.canceled = True
@@ -263,6 +305,7 @@ class WiaScanner:
         return re.sub(r"@([A-Z]+)@", lambda m: str(values[m.group(1)]), PS_SCAN)
 
     def scan(self, settings, report=lambda _t: None):
+        self.canceled = False
         folder = tempfile.mkdtemp(prefix="kanzonas-scan-")
         try:
             report(tr("Starting the scan..."))
@@ -423,6 +466,7 @@ class SaneScanner:
         return cmd, dpi
 
     def scan(self, settings, report=lambda _t: None):
+        self.canceled = False
         folder = tempfile.mkdtemp(prefix="kanzonas-scan-")
         try:
             cmd, dpi = self.command(settings, folder)
