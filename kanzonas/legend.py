@@ -120,6 +120,19 @@ def _style(model):
 SKIP_TYPES = (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_LINK, pymupdf.PDF_ANNOT_WIDGET)
 
 
+def _is_response(a):
+    """True for a reply to a markup or a review status (an /IRT that isn't a group's: Acrobat
+    and Bluebeam write a note for each reply in a review thread); they're part of the
+    markup they answer, not markups of the drawing."""
+    doc = a.parent.parent
+    try:
+        if doc.xref_get_key(a.xref, "IRT")[0] == "null":
+            return False
+        return doc.xref_get_key(a.xref, "RT")[1] != "/Group"
+    except Exception:
+        return False
+
+
 def _item(page, a, scale):
     """What markup a adds to a legend: {"key", "kind", "label", "style", "m", "m2", "m3"},
     or None when it isn't counted."""
@@ -129,7 +142,7 @@ def _item(page, a, scale):
         m = A.read(a)
     except Exception:
         m = None
-    if not m or m["kind"] in NOT_COUNTED or m.get("hidden"):
+    if not m or m["kind"] in NOT_COUNTED or m.get("hidden") or _is_response(a):
         return None
     subject = ""
     try:
@@ -158,7 +171,7 @@ def _item(page, a, scale):
 def page_summary(doc, index, items=None):
     """{row key: {"kind", "label", "style", "n", "m", "m2", "m3"}} for the markups of page
     index (lengths in meters, areas in square meters, volumes in cubic meters, by the page's
-    own scale). Hidden markups and legends aren't counted.
+    own scale). Hidden markups, replies (_is_response) and legends aren't counted.
     items: {xref: (its object's text and the page's scale, what it adds)}, kept by the view
     between edits, so only the markups whose object changed are read again (reading one is
     about half a millisecond: 0.5 s for a page of 1,000 markups at every edit)."""

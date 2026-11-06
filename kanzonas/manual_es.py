@@ -828,8 +828,9 @@ distintos (nubes rojas y nubes azules) tienen una fila cada una. Las mediciones 
 longitud, área o volumen total, en las unidades de la página (Medir &gt; Establecer escala).</li>
 <li><b>Se actualiza sola</b> cuando se agregan, cambian o eliminan marcas, como parte del mismo
 cambio: Ctrl+Z deshace la marca y la actualización de la leyenda juntas, y Rehacer vuelve a poner
-ambas. Nunca se cuenta a sí misma ni a otra leyenda, ni a las marcas ocultas, las marcas de censura
-o los marcadores de posición de firma. Aplicar censuras la vuelve a dibujar con las marcas que
+ambas. Nunca se cuenta a sí misma ni a otra leyenda, ni a las marcas ocultas, las marcas de censura,
+los marcadores de posición de firma, ni las respuestas y estados de revisión de un hilo de
+comentarios (son parte de la marca a la que responden). Aplicar censuras la vuelve a dibujar con las marcas que
 quedan (vea Censura).</li>
 <li><b>Opciones</b> (panel Propiedades: elíjalas antes de colocarla, con la herramienta Leyenda
 elegida, o en una leyenda seleccionada): <b>Título</b> (Leyenda al principio; vacío para ninguno),

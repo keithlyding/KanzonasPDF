@@ -848,8 +848,9 @@ styles (red clouds and blue clouds) get a row each. Measurements also show their
 area or volume, in the page's units (Measure &gt; Set scale).</li>
 <li><b>It updates by itself</b> when markups are added, changed or deleted, as part of the same
 change: Ctrl+Z takes the markup and the legend's update back together, and Redo puts both back.
-It never counts itself or another legend, nor hidden markups, redaction marks or signature
-placeholders. Applying redactions draws it again from the markups left (see Redaction).</li>
+It never counts itself or another legend, nor hidden markups, redaction marks, signature
+placeholders, or the replies and review statuses of a comment thread (they're part of the markup
+they answer). Applying redactions draws it again from the markups left (see Redaction).</li>
 <li><b>Options</b> (Properties panel: set them before placing, with the Legend tool picked, or on
 a selected legend): <b>Title</b> (Legend to start with; empty for none), <b>Markups from</b>
 <b>This page</b> or the <b>Whole document</b> (every page, the totals in this page's units),

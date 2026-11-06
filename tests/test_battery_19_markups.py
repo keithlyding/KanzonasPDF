@@ -116,5 +116,34 @@ class ForeignColors(Case):
         self.assertTrue(ops.out)
 
 
+class Replies(Case):
+    def test_replies_and_review_statuses_are_not_counted(self):
+        """A review thread from Acrobat or Bluebeam keeps each reply as a note answering the
+        markup (/IRT): a legend counted every reply (and every reply to a reply) as a sticky
+        note of the drawing. Markups grouped with another (/RT /Group) still count."""
+        d = pymupdf.open()
+        p = d.new_page(width=800, height=600)
+        xs = [d.get_new_xref() for _ in range(5)]
+        objs = ["<</Type/Annot/Subtype/Square/Rect[50 50 100 100]/C[1 0 0]/Subj(Cloud)>>",
+                "<</Type/Annot/Subtype/Text/Rect[50 50 70 70]/IRT %d 0 R/Contents(Agreed)"
+                "/Subj(Comment)>>" % xs[0],
+                "<</Type/Annot/Subtype/Text/Rect[50 50 70 70]/IRT %d 0 R/Contents(Me too)>>"
+                % xs[1],
+                "<</Type/Annot/Subtype/Text/Rect[50 50 70 70]/IRT %d 0 R/State(Accepted)"
+                "/StateModel(Review)>>" % xs[0],
+                "<</Type/Annot/Subtype/Square/Rect[150 50 200 100]/C[1 0 0]/Subj(Cloud)"
+                "/IRT %d 0 R/RT/Group>>" % xs[0]]
+        for x, o in zip(xs, objs):
+            d.update_object(x, o)
+        d.xref_set_key(p.xref, "Annots", "[%s]" % " ".join("%d 0 R" % x for x in xs))
+        del p
+        path = self.path("thread.pdf")
+        d.save(path)
+        d.close()
+        v = self.view(path)
+        x = self.legend(v)
+        self.assertEqual({r["label"]: r["n"] for r in self.rows(v, x)}, {"Cloud": 2})
+
+
 if __name__ == "__main__":
     unittest.main()
