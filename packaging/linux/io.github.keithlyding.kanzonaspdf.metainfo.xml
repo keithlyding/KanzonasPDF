@@ -6,7 +6,7 @@
 <component type="desktop-application">
   <id>io.github.keithlyding.kanzonaspdf</id>
   <name>KanzonasPDF</name>
-  <summary>Mark up, measure and edit PDF files</summary>
+  <summary>View, edit, annotate and sign PDF files</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>AGPL-3.0-only</project_license>
   <developer id="io.github.keithlyding">
@@ -14,9 +14,10 @@
   </developer>
   <description>
     <p>
-      A free PDF editor for construction and engineering: markups, revision clouds,
-      calibrated lengths, areas and volumes, CAD-style drawing, text editing, forms,
-      redaction, digital signatures, OCR and export to Word, Excel, PowerPoint and DXF.
+      A free, open-source PDF viewer and editor: comments and markups, editing the
+      PDF's own text and pictures, filling in and signing forms, digital signatures,
+      OCR, redaction, page tools, compare, and export to Word, Excel and PowerPoint.
+      For drawings and plans it also measures lengths, areas and volumes to scale.
     </p>
     <p>No account and no telemetry.</p>
   </description>
@@ -35,7 +36,7 @@
   </provides>
   <screenshots>
     <screenshot type="default">
-      <caption>Markups and measurements on a drawing</caption>
+      <caption>Reviewing a PDF: highlights, a cloud and callout, a note and a stamp</caption>
       <image>https://raw.githubusercontent.com/keithlyding/KanzonasPDF/main/docs/screenshot-markup.png</image>
     </screenshot>
   </screenshots>

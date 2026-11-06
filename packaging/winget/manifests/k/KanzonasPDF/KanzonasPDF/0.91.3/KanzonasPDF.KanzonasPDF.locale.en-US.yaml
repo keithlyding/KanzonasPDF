@@ -10,25 +10,25 @@ PackageUrl: https://github.com/keithlyding/KanzonasPDF
 License: AGPL-3.0
 LicenseUrl: https://github.com/keithlyding/KanzonasPDF/blob/main/LICENSE
 Copyright: Copyright (c) KanzonasPDF contributors
-ShortDescription: Free PDF markup, measuring and editing for construction and engineering
+ShortDescription: Free, open-source PDF viewer and editor
 Description: |-
-  A free, open-source PDF reader and editor for Windows: markups and comments, calibrated
-  measuring (length, area, angle, radius, perimeter, volume, count), stamps, forms, signatures,
-  editing page text and objects, page tools (rotate, move, crop, combine, create from images),
-  compare revisions, redaction, OCR and export. No account, no telemetry; a portable build is
-  available too.
+  A free, open-source PDF viewer and editor: comments and markups, stamps, editing the PDF's
+  own text, pictures and shapes, filling in and signing forms, digital signatures, OCR,
+  redaction, passwords, page tools (rotate, reorder, crop, combine, create from images),
+  compare revisions, export to Word, Excel and PowerPoint, and printing. Calibrated measuring
+  for drawings too. No account, no telemetry; a portable build is available too.
 Moniker: kanzonaspdf
 Tags:
 - annotate
-- cad
-- construction
-- drawing
+- forms
 - markup
-- measure
+- ocr
 - pdf
 - pdf-editor
+- pdf-viewer
 - portable
-- stamp
+- redaction
+- sign
 ReleaseNotesUrl: https://github.com/keithlyding/KanzonasPDF/blob/v0.91.3/CHANGELOG.md
 ManifestType: defaultLocale
 ManifestVersion: 1.6.0
