@@ -200,5 +200,59 @@ class Subjects(Case):
         self.assertEqual({r["label"]: r["n"] for r in self.rows(v, x)}["Duct run"], 2)
 
 
+class BoxSnapping(Case):
+    def setUp(self):
+        super().setUp()
+        for key in ("snap_page", "snap_objects", "snap_grid"):
+            self.addCleanup(setattr, DocumentView, key, getattr(DocumentView, key))
+        DocumentView.snap_page = DocumentView.snap_objects = True
+        DocumentView.snap_grid = False
+
+    def drop_near_center(self, line_end, off):
+        """A picture markup dragged so its center is off (px) from the page's center, the
+        drawing having a line ending at line_end: where its center lands, from the page's."""
+        from PySide6.QtCore import QPointF
+        d = pymupdf.open()
+        page = d.new_page(width=600, height=400)
+        page.draw_line(line_end, (line_end[0], 120), width=0.5)
+        del page
+        path = self.path("snap.pdf")
+        d.save(path)
+        d.close()
+        v = self.view(path)
+        v.resize(1200, 900)
+        v.show()
+        APP.processEvents()
+        v.set_zoom(1.0)
+        APP.processEvents()
+        self.addCleanup(v.hide)
+        pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 20, 12), False)
+        x = v._create(0, {"kind": "image", "props": dict(A.DEFAULTS["image"]),
+                          "rect": pymupdf.Rect(100, 80, 200, 140),
+                          "image_bytes": pix.tobytes("png")})
+        pw = v.pages[0]
+        page = v.doc[0]
+        c = pw.to_screen(page.rect * page.derotation_matrix).center()
+        del page
+        v.select_xref(0, x)
+        m = v.selected_model
+        box = pw.to_screen(A.bounds(m))
+        start = box.center()
+        pw._edit = {"mode": "move", "start": start, "model": m, "preview": None}
+        got = pw._edit_preview(start + (c - box.center()) + QPointF(*off), snap=True)
+        o = pw.to_screen(A.bounds(got)).center() - c
+        return round(o.x(), 2), round(o.y(), 2)
+
+    def test_page_center_wins_over_a_farther_line_end(self):
+        """The owner's picture that wouldn't snap to the page's center: with Snap to objects
+        on as well, any point of the drawing within reach of one of the picture's corners or
+        edge middles won, however much nearer the center was (here a line end 6 px from its
+        corner, the center 2 px away: it landed 8 px off the middle)."""
+        # (the picture 100 x 60 pt at 100%: its top-left corner lands at 252, 168)
+        self.assertEqual(self.drop_near_center((258, 168), (2, -2)), (0, 0))
+        # (a line end nearer than the center still wins: 1 px from the corner)
+        self.assertEqual(self.drop_near_center((253, 168), (2, -2)), (3, -2))
+
+
 if __name__ == "__main__":
     unittest.main()

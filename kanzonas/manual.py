@@ -756,7 +756,8 @@ lines up with the page's left edge, center or right edge, and its top, middle or
 page's, each way on its own, and a green dashed guide shows what it lined up with (drop a picture
 near the middle of the sheet and it settles exactly in the middle); with Snap to objects, one of
 its corners, edge middles or center goes onto a nearby markup's point (a dragged markup also onto
-the drawing's own points); with Snap to grid, its top-left corner goes to the grid.</li>
+the drawing's own points; with both on, whichever is nearer); with Snap to grid, its top-left
+corner goes to the grid.</li>
 <li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
 </ul>
 

@@ -734,7 +734,8 @@ derecho se alinean con el borde izquierdo, el centro o el borde derecho de la p�
 centro o su parte inferior con los de la página, cada dirección por separado, y una guía verde discontinua
 muestra con qué se alineó (suelte una imagen cerca del centro de la hoja y queda exactamente en el centro); con
 Ajustar a objetos, una de sus esquinas, los puntos medios de sus bordes o su centro va a un punto de una marca
-cercana (una marca arrastrada también a los puntos del propio dibujo); con Ajustar a la cuadrícula, su esquina
+cercana (una marca arrastrada también a los puntos del propio dibujo; con ambos activados, el más cercano);
+con Ajustar a la cuadrícula, su esquina
 superior izquierda va a la cuadrícula.</li>
 <li><b>Mantenga presionada Alt</b> mientras dibuja o arrastra para colocar un punto libremente, sin ajuste.</li>
 </ul>
