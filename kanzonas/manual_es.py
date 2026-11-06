@@ -1222,7 +1222,11 @@ Reconocer texto (OCR) en las páginas nuevas.</li>
 <li><b>Vigilar una carpeta...</b> es para una impresora que solo puede escanear a una carpeta
 de red (Escanear a carpeta de red, SMB) o a FTP: elija la carpeta a la que escanea; cada PDF o
 imagen nuevo (JPEG, PNG, TIFF) que llega allí mientras la ventana está abierta se agrega como
-páginas escaneadas. Haga clic en Listo cuando estén todos.</li>
+páginas escaneadas, una vez que deja de crecer y parece terminado (un archivo que sigue sin terminar
+durante un minuto se indica como incompleto). Los vínculos a archivos de otros lugares no se toman. Un PDF
+(de la carpeta o del escáner) trae solo el dibujo y el texto de sus páginas, sin vínculos, campos de
+formulario ni comentarios.
+Haga clic en Listo cuando estén todos.</li>
 </ul>
 <p>Cuando no funciona, la ventana dice por qué con palabras sencillas, y qué probar:</p>
 <ul>
@@ -1248,7 +1252,9 @@ issue en la página de GitHub de KanzonasPDF para que se pueda admitir.</li>
 <li>Seguridad: KanzonasPDF solo se comunica con el escáner que usted elige (o la dirección que
 escribe), lee sus respuestas con límites estrictos de tamaño y de tiempo, y no envía nada a
 ningún otro lugar. Los escáneres de red usan sus propios certificados autofirmados para HTTPS;
-cada uno se acepta solo para su escáner.</li>
+cada uno se acepta solo para su escáner. Un archivo escaneado (un TIFF de varias páginas, por
+ejemplo) puede tener como máximo 6.000 megapíxeles en total, muy por encima de 100 páginas Carta en
+color a 600 ppp: escanee menos páginas cada vez, o con una resolución más baja.</li>
 </ul>
 
 <h2 id="printprod">Producción de impresión (pestaña Imprimir)</h2>
@@ -1353,18 +1359,28 @@ se pueden seleccionar, mover y redimensionar; <b>Aplicar las censuras selecciona
 seleccionadas, y Aplicar censuras las aplica todas. Aplicar quita, no solo cubre: el texto, las imágenes
 y los trazos que están debajo de una marca, y cualquier <b>campo de formulario o marca</b> con el que se superponga una marca (guardan su
 propia copia del texto). Un trazado vectorial que toca una marca se quita más allá del cuadro, incluida
-la parte que queda fuera de él. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto y los scripts, a menos que
-lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> también encuentra el texto donde no puede ir un cuadro: campos
-de formulario (valores, opciones de lista, información sobre herramientas y nombres), vínculos (direcciones web y de correo electrónico), notas
-de marcas, títulos de marcadores, propiedades del documento, el texto alternativo de los PDF etiquetados, las notas de
-vínculos, las etiquetas de página y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
-archivos adjuntos que lo contienen se eliminan, y en las notas y los comentarios (que se quedan), los marcadores
-y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
+la parte que queda fuera de él. Una página censurada también pierde su miniatura y la copia privada de la página
+que algunos programas (Illustrator) guardan en el archivo. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto, los scripts
+y los datos privados de esos programas, a menos que
+lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> marca el texto de las
+páginas también donde lo tiene una capa oculta o donde la página está recortada, y lo encuentra donde no
+puede ir un cuadro: campos
+de formulario (valores, opciones de lista, información sobre herramientas y nombres, también de campos que no están en ninguna página),
+vínculos (direcciones web y de correo electrónico), notas
+de marcas (también su texto con formato), títulos y direcciones web de marcadores, propiedades del documento (también las propias de un
+programa), el texto alternativo de los PDF etiquetados, las notas de
+vínculos, las etiquetas de página, los nombres de capas y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
+archivos adjuntos que lo contienen se eliminan (y un formulario XFA que lo contiene: sus campos normales se conservan), y en las notas y los comentarios (que se quedan), los marcadores
+y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar dice dónde lo encontró (los
+campos, las notas, los vínculos, los marcadores y las propiedades, y en cuántos lugares más del archivo,
+como nombres de capas, direcciones web, datos de formularios y texto alternativo) y ofrece quitarlo de
 inmediato. Una <b>leyenda</b> se vuelve a dibujar con las marcas que quedan, en el mismo paso: sus
 filas ya no muestran lo censurado, y en su título el texto se reemplaza por [redacted] (un cuadro
 dibujado sobre una leyenda la quita). Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
-<li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento, scripts,
-archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
+<li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento (con los datos
+privados que algunos programas, como Illustrator, guardan en el archivo), scripts,
+archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios (con un formulario XFA, que guarda los datos
+otra vez; sus campos normales se conservan), miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
 (los campos normales del formulario se conservan).</li>
 <li><b>Propiedades de seguridad (contraseñas y permisos):</b> cifrado AES-256. Si pulsa Aceptar sin marcar ninguna
 casilla en un documento protegido, se le pregunta antes de quitar su protección.

@@ -3795,6 +3795,9 @@ msgstr "{n} marcador(es)"
 msgid "{n} document propert(ies)"
 msgstr "{n} propiedad(es) del documento"
 
+msgid "{n} other place(s) in the file (layer names, web addresses, form data, alternate text...)"
+msgstr "{n} lugar(es) más del archivo (nombres de capas, direcciones web, datos de formularios, texto alternativo...)"
+
 #: main_window.py:3212
 msgid "Marked {n} occurrence(s) on the pages."
 msgstr "Se marcaron {n} aparición(es) en las páginas."
@@ -8247,6 +8250,15 @@ msgstr "{name} no es un PDF."
 msgid "{name} is too large."
 msgstr "{name} es demasiado grande."
 
+msgid "{name} is a link to another file: it's left alone."
+msgstr "{name} es un vínculo a otro archivo: no se toma."
+
+msgid "{name} isn't a file."
+msgstr "{name} no es un archivo."
+
+msgid "{name} is incomplete (the printer may have stopped sending it)."
+msgstr "{name} está incompleto (puede que la impresora haya dejado de enviarlo)."
+
 msgid "Couldn't read {name}."
 msgstr "No se pudo leer {name}."
 
@@ -8288,6 +8300,12 @@ msgstr "Falló una conexión segura con {host}."
 
 msgid "Couldn't reach {host}: {error}"
 msgstr "No se pudo conectar con {host}: {error}"
+
+msgid "The scanned file is too large: its {n} pages have {mp} megapixels in all (at most {most}). Scan fewer pages at a time, or at a lower resolution."
+msgstr "El archivo escaneado es demasiado grande: sus {n} páginas tienen {mp} megapíxeles en total (como máximo {most}). Escanee menos páginas cada vez, o con una resolución más baja."
+
+msgid "The connection to {host} was cut before the scanner's answer was complete."
+msgstr "La conexión con {host} se cortó antes de que la respuesta del escáner estuviera completa."
 
 msgid "{host} sent KanzonasPDF to another address ({other}); for safety it doesn't follow."
 msgstr "{host} envió a KanzonasPDF a otra dirección ({other}); por seguridad no la sigue."

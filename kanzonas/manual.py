@@ -1236,7 +1236,10 @@ or <b>This document, after the current page</b> (Ctrl+Z takes them all out again
 Tick <b>Make the pages searchable</b> to run Recognize text (OCR) on the new pages.</li>
 <li><b>Watch a folder...</b> is for a printer that can only scan to a network folder (Scan to
 Network Folder, SMB) or FTP: choose the folder it scans into; each new PDF or picture (JPEG,
-PNG, TIFF) that arrives there while the window is open is added as scanned pages. Click Done
+PNG, TIFF) that arrives there while the window is open is added as scanned pages, once it has
+stopped growing and looks finished (a file that stays unfinished for a minute is reported as
+incomplete). Links to files elsewhere are left alone. A PDF (from the folder or the scanner)
+brings its pages' drawing and text only, without links, form fields or comments. Click Done
 when they're all in.</li>
 </ul>
 <p>When it doesn't work, the window says why in plain words, and what to try:</p>
@@ -1259,7 +1262,9 @@ serial numbers are left out). If your scanner still doesn't work, paste them int
 KanzonasPDF's GitHub page so it can be supported.</li>
 <li>Safety: KanzonasPDF only talks to the scanner you pick (or the address you type), reads its
 answers with strict limits on size and time, and sends nothing anywhere else. Network scanners
-use their own, self-signed certificates for HTTPS; one is accepted only for its scanner.</li>
+use their own, self-signed certificates for HTTPS; one is accepted only for its scanner. A
+scanned file (a multi-page TIFF, say) can have at most 6,000 megapixels in all, well above 100
+Letter pages in color at 600 dpi: scan fewer pages at a time, or at a lower resolution.</li>
 </ul>
 
 <h2 id="printprod">Print production (Print tab)</h2>
@@ -1364,18 +1369,27 @@ can be selected, moved and resized; <b>Apply selected redactions</b> applies onl
 ones, Apply redactions applies them all. Applying removes, not just covers: the text, images
 and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
 own copy of the text). A vector path that touches a mark is removed past the box, including
-the part outside it. Applying scrubs metadata, attachments, hidden text, and scripts unless
-you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
-fields (values, list options, tooltips and names), links (web and email addresses), markup
-notes, bookmark titles, document properties, the alternate text of tagged PDFs, link notes,
-page labels and destination names. When you apply, fields, links, stamps and
-attached files containing it are deleted, and in notes and comments (they stay), bookmarks
-and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
+the part outside it. A redacted page also loses its thumbnail and the private copy of the page
+some programs (Illustrator) keep in the file. Applying scrubs metadata, attachments, hidden
+text, scripts and such programs' private data unless
+you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> marks the text
+on the pages also where a layer that is hidden has it or where the page is cropped away, and finds
+it where a box can't go: form
+fields (values, list options, tooltips and names, also of fields on no page), links (web and
+email addresses), markup notes (also their formatted text), bookmark titles and web addresses,
+document properties (also a program's own), the alternate text of tagged PDFs, link notes,
+page labels, layer names and destination names. When you apply, fields, links, stamps and
+attached files containing it are deleted (and an XFA form holding it: its ordinary fields stay), and in notes and comments (they stay), bookmarks
+and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact says where it found it (the
+fields, notes, links, bookmarks and properties, and how many other places in the file, such as
+layer names, web addresses, form data and alternate text) and offers to remove it right
 away. A <b>legend</b> is drawn again from the markups left, in the same step: its rows no longer
 show what was redacted, and the text in its title is replaced by [redacted] (a box drawn over a
 legend removes it). Check the result before sharing; Undo works until you close the file.</li>
-<li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
-attached files, hidden text, links, comments, form data, thumbnails. Scripts includes those in
+<li><b>Sanitize document:</b> remove hidden data you choose: document information (with the
+private data some programs, like Illustrator, keep in the file), scripts,
+attached files, hidden text, links, comments, form data (with an XFA form, which keeps the
+data again; its ordinary fields stay), thumbnails. Scripts includes those in
 other actions (multimedia), javascript: links and an XFA form's scripts (the ordinary form fields
 stay).</li>
 <li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption. Clicking OK

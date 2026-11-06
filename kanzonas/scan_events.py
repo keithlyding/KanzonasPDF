@@ -55,7 +55,12 @@ def _read_chunked(rfile, limit):
     out = b""
     for _ in range(10000):
         line = rfile.readline(100)
-        size = int(line.split(b";")[0].strip() or b"0", 16)
+        size = line.split(b";")[0].strip() or b"0"
+        # (only hex digits: int() also takes "-1", and read(-1) reads until the sender
+        # stops, however much it sends)
+        if size.strip(b"0123456789abcdefABCDEF"):
+            raise ValueError("bad chunk size")
+        size = int(size, 16)
         if size == 0:
             rfile.readline(100)
             return out
@@ -104,8 +109,20 @@ class EventListener:
                 self._reply(405)
             do_GET = do_PUT = do_DELETE = do_HEAD = _refuse
 
-        self.server = ThreadingHTTPServer((bind_ip or local_ip_facing(printer_ip), 0), Handler)
-        self.server.daemon_threads = True
+        class Server(ThreadingHTTPServer):
+            daemon_threads = True
+
+            def verify_request(self, _request, client_address):
+                # anyone else is turned away before anything is read, and before a thread
+                # is started for them (the listener is on the network: a host sending
+                # nothing, or slowly, on many connections mustn't pile threads up here)
+                if client_address[0] == listener.printer_ip:
+                    return True
+                if len(listener.log) < 500:
+                    listener.log.append("%s refused" % client_address[0])
+                return False
+
+        self.server = Server((bind_ip or local_ip_facing(printer_ip), 0), Handler)
         self._thread = None
 
     @property

@@ -23,7 +23,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from xml.sax.saxutils import escape
 
 from .i18n import tr
@@ -38,6 +38,11 @@ MAX_IMAGE = 300 * 1024 * 1024  # bytes of one scanned page (uncompressed TIFF at
 MAX_PIXELS = 200_000_000       # a Letter page at 1200 dpi is 135 megapixels
 MAX_SIDE = 40_000              # pixels
 MAX_PAGES = 500                # pages in one job
+# pixels of all the pictures in one file (a multi-page TIFF: each picture is checked against
+# MAX_PIXELS, and 500 of them could each be that large, decoded on the main thread, a tiny
+# file when compressed): a 100-page job of Letter pages at 600 dpi (5,100 x 6,600 pixels
+# each) is 3.4 billion; 6 billion leaves room above it
+MAX_TOTAL_PIXELS = 6_000_000_000
 MAX_REDIRECTS = 3
 
 PROTOCOLS = {"escl": "eSCL (AirScan)", "wsd": "WSD", "wia": "WIA", "sane": "SANE"}
@@ -298,7 +303,7 @@ class Http:
 
     def __init__(self, base_url):
         self.scheme, self.host, self.port, self.base_path = split_url(base_url)
-        self._conn = None
+        self._sock = None
         self._lock = threading.Lock()
         self.canceled = False
         self.log = []               # (method, url, status) of each request, for Copy details
@@ -322,10 +327,13 @@ class Http:
     def abort(self):
         with self._lock:
             self.canceled = True
-            conn = self._conn
-        if conn is not None and conn.sock is not None:
+            sock = self._sock
+        if sock is not None:
             try:
-                conn.sock.shutdown(socket.SHUT_RDWR)
+                # (the socket itself: http.client lets go of it once the answer's headers
+                # are in, while the answer is still read from it; and under TLS the plain
+                # shutdown, which a read in another thread then returns from)
+                socket.socket.shutdown(sock, socket.SHUT_RDWR)
             except OSError:
                 pass
 
@@ -355,6 +363,9 @@ class Http:
 
     def _once(self, method, url, body, headers, limit, timeout):
         scheme, host, port, path = split_url(url)
+        # (a path from the device, a job's Location say, with a space or a character beyond
+        # ASCII in it: sent percent-encoded, as http.client refuses it as it is)
+        path = quote(path, safe="/?&=%:@!$'()*+,;~-._[]")
         if self.canceled:
             raise Canceled()
         if scheme == "https":
@@ -371,12 +382,12 @@ class Http:
         hdrs.update(headers or {})
         if isinstance(body, str):
             body = body.encode("utf-8")
-        with self._lock:
-            self._conn = conn
         try:
             try:
                 conn.connect()
                 conn.sock.settimeout(timeout)
+                with self._lock:
+                    self._sock = conn.sock
                 if self.canceled:
                     raise Canceled()
                 conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
@@ -401,27 +412,36 @@ class Http:
                         raise ScanError(tr("The scanner's answer was too large."),
                                         "%s: more than %d bytes" % (url, limit))
                     chunks.append(part)
+                # (Cancel shuts the connection down, which reads as the end of the answer;
+                # a device that drops the connection mid-page reads the same: http.client
+                # doesn't say a Content-Length was cut short, and half a picture opens)
+                if self.canceled:
+                    raise Canceled()
+                if size.isdigit() and got < int(size):
+                    raise NetError(tr("The connection to {host} was cut before the scanner's "
+                                      "answer was complete.").format(host=host), "unreachable",
+                                   "%s %s: %d of %s bytes" % (method, url, got, size))
                 self.log.append((method, url, resp.status))
                 return Response(resp.status, rh, b"".join(chunks), url)
             except ScanError:
                 raise
-            except ConnectionRefusedError as ex:
-                raise NetError(tr("{host} refused the connection on port {port}.").format(
-                    host=host, port=port), "refused", "%s %s: %s" % (method, url, ex))
-            except (socket.timeout, TimeoutError) as ex:
-                raise NetError(tr("{host} didn't answer in time.").format(host=host), "timeout",
-                               "%s %s: %s" % (method, url, ex))
-            except ssl.SSLError as ex:
-                raise NetError(tr("A secure connection to {host} failed.").format(host=host),
-                               "tls", "%s %s: %s" % (method, url, ex))
             except (OSError, http.client.HTTPException) as ex:
-                if self.canceled:
+                if self.canceled:           # (whatever a connection shut down gives)
                     raise Canceled()
+                if isinstance(ex, ConnectionRefusedError):
+                    raise NetError(tr("{host} refused the connection on port {port}.").format(
+                        host=host, port=port), "refused", "%s %s: %s" % (method, url, ex))
+                if isinstance(ex, (socket.timeout, TimeoutError)):
+                    raise NetError(tr("{host} didn't answer in time.").format(host=host),
+                                   "timeout", "%s %s: %s" % (method, url, ex))
+                if isinstance(ex, ssl.SSLError):
+                    raise NetError(tr("A secure connection to {host} failed.").format(
+                        host=host), "tls", "%s %s: %s" % (method, url, ex))
                 raise NetError(tr("Couldn't reach {host}: {error}").format(host=host, error=ex),
                                "unreachable", "%s %s: %r" % (method, url, ex))
         finally:
             with self._lock:
-                self._conn = None
+                self._sock = None
             conn.close()
 
 
@@ -552,7 +572,21 @@ def check_image(data, dpi):
             if w > MAX_SIDE or h > MAX_SIDE or w * h > MAX_PIXELS:
                 raise ScanError(tr("A scanned page was too large ({w} x {h} pixels): choose a "
                                    "lower resolution.").format(w=w, h=h))
+        check_total(sizes)
     return Page(bytes(data), kind, int(dpi or 0), sizes)
+
+
+def check_total(sizes):
+    """ScanError when the pictures of one file [(width, height)] have more than
+    MAX_TOTAL_PIXELS pixels in all."""
+    total = sum(int(w) * int(h) for w, h in sizes)
+    if total > MAX_TOTAL_PIXELS:
+        raise ScanError(tr("The scanned file is too large: its {n} pages have {mp} "
+                           "megapixels in all (at most {most}). Scan fewer pages at a time, "
+                           "or at a lower resolution.").format(
+                               n=len(sizes), mp=total // 1_000_000,
+                               most=MAX_TOTAL_PIXELS // 1_000_000),
+                        "%d pixels in %d pictures" % (total, len(sizes)))
 
 
 # ---- discovery over UDP --------------------------------------------------------------------

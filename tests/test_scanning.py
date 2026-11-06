@@ -1289,7 +1289,7 @@ class PanelScans(ServerCase):
         self.assertEqual(send_event(srv, context="not-ours"), 202)
         time.sleep(0.2)
         self.assertEqual(scans, [])
-        # from another address than the printer's
+        # from another address than the printer's: turned away before anything is read
         from kanzonas import scan_events
         other = scan_events.EventListener("10.9.9.9", lambda *a: scans.append(a), "127.0.0.1")
         other.start()
@@ -1297,10 +1297,12 @@ class PanelScans(ServerCase):
         import http.client
         _s, host, port, path = net.split_url(other.url)
         c = http.client.HTTPConnection(host, port, timeout=5)
-        c.request("POST", path, b"<a/>")
-        self.assertEqual(c.getresponse().status, 403)
+        with self.assertRaises((http.client.RemoteDisconnected, ConnectionError)):
+            c.request("POST", path, b"<a/>")
+            c.getresponse()
         c.close()
         self.assertEqual(scans, [])
+        self.assertIn("127.0.0.1 refused", other.log)
 
     def test_window_scans_when_the_printer_starts_it(self):
         srv, port = self.server(Wsd, pages=[picture(850, 1100)])
