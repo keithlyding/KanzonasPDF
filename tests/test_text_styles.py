@@ -209,9 +209,14 @@ class Buttons(Fixture):
         ed = self.open_paragraph(v)
         self.assertIsNotNone(ed.bar)
         tips = {k: b.toolTip() for k, b in ed.bar.buttons.items()}
-        self.assertEqual(tips["bold"], "Bold (Ctrl+B)")
-        self.assertEqual(tips["italic"], "Italic (Ctrl+I)")
-        self.assertEqual(tips["underline"], "Underline (Ctrl+U)")
+        if sys.platform == "darwin":                    # a Mac names the Command key: ⌘B
+            from kanzonas.macos import mac_keys
+        else:
+            def mac_keys(text):
+                return text
+        self.assertEqual(tips["bold"], mac_keys("Bold (Ctrl+B)"))
+        self.assertEqual(tips["italic"], mac_keys("Italic (Ctrl+I)"))
+        self.assertEqual(tips["underline"], mac_keys("Underline (Ctrl+U)"))
         self.assertEqual(tips["strike"], "Strikethrough")
         select(ed, "contractor")
         ed.bar.buttons["bold"].click()

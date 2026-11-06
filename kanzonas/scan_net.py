@@ -628,12 +628,20 @@ def local_ipv4():
 
 
 def udp_exchange(sends, window, multicast_ttl=1, interfaces=None, max_packets=512,
-                 cancel=None):
+                 cancel=None, log=None):
     """Send each (payload, (address, port), delay seconds) from a port of our own on every local
     network (multicast) or once (a unicast address), then read the answers that come back to
     that port for `window` seconds. [(data, sender IP)]. Nothing listens on a well-known port,
-    so only answers to these queries arrive."""
+    so only answers to these queries arrive. A socket that can't be opened or a datagram that
+    can't be sent goes into log (a list of lines), once for each error, for Copy details."""
     socks = []
+    errors = []
+
+    def note(what, err):
+        line = "UDP: %s: %s" % (what, err)
+        if log is not None and line not in errors and len(errors) < 20:
+            errors.append(line)
+            log.append(line)
     ifaces = interfaces if interfaces is not None else (local_ipv4() or ["0.0.0.0"])
     multicast = any(_is_multicast(dest[0]) for _p, dest, _d in sends)
     for addr in (ifaces if multicast else ["0.0.0.0"]):
@@ -645,7 +653,8 @@ def udp_exchange(sends, window, multicast_ttl=1, interfaces=None, max_packets=51
                 s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(addr))
             s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, multicast_ttl)
             socks.append(s)
-        except OSError:
+        except OSError as e:
+            note("couldn't open a socket on %s" % addr, e)
             continue
     out = []
     try:
@@ -661,8 +670,8 @@ def udp_exchange(sends, window, multicast_ttl=1, interfaces=None, max_packets=51
                 for s in socks:
                     try:
                         s.sendto(payload, dest)
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        note("couldn't send to %s:%s" % dest, e)
             if now >= window or len(out) >= max_packets or (cancel and cancel()):
                 break
             wait = min(window - now, (pending[0][2] - now) if pending else 0.2, 0.2)

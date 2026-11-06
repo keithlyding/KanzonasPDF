@@ -610,6 +610,13 @@ def mdns_answer(qid, port):
 
 
 class Discovery(ServerCase):
+    def test_a_send_that_fails_goes_into_the_log(self):
+        log = []
+        got = net.udp_exchange([(b"x", ("127.0.0.1", 0), 0.0)], 0.1, log=log)
+        self.assertEqual(got, [])
+        self.assertTrue(any(line.startswith("UDP: couldn't send to 127.0.0.1:0") for line in log),
+                        log)
+
     def test_mdns_answer_becomes_an_escl_device(self):
         def answer(data):
             qid = struct.unpack(">H", data[:2])[0]
@@ -617,8 +624,9 @@ class Discovery(ServerCase):
                     mdns_answer(qid, 8080)]
         port = udp_responder(answer, count=2)
         with mock.patch.object(scan_escl, "MDNS", ("127.0.0.1", port)):
-            found = scan_escl.browse(window=0.8, target="127.0.0.1")
-        self.assertEqual(len(found), 1)
+            log = []
+            found = scan_escl.browse(window=0.8, target="127.0.0.1", log=log)
+        self.assertEqual(len(found), 1, log)
         d = found[0]
         self.assertEqual((d.name, d.protocol, d.host), ("Dell Color MFP E525w", "escl", "127.0.0.1"))
         # reached at the address that answered, not the address the record names
@@ -646,7 +654,9 @@ class Discovery(ServerCase):
                     probe_matches(mid, "http://192.0.2.50:%d/dev" % http_port)]
         port = udp_responder(answer, count=3)
         with mock.patch.object(scan_wsd, "MULTICAST", ("127.0.0.1", port)):
-            scanners_, printers = scan_wsd.discover(window=0.8, target="127.0.0.1")
+            log = []
+            scanners_, printers = scan_wsd.discover(window=0.8, target="127.0.0.1", log=log)
+        self.assertTrue(seen, log)
         self.assertIn("<wsd:Types>wscn:ScanDeviceType</wsd:Types>", seen[0])
         self.assertEqual(printers, [])
         self.assertEqual(len(scanners_), 1)

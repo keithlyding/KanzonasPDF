@@ -118,12 +118,12 @@ def parse_message(d):
     return qid, bool(flags & 0x8000), records
 
 
-def _ask(questions, dest, window, cancel=None, interfaces=None):
+def _ask(questions, dest, window, cancel=None, interfaces=None, log=None):
     """[(sender IP, records)] of the answers to one query (sent twice, 0.4 s apart)."""
     qid = random.randrange(1, 0xFFFF)
     q = build_query(qid, questions)
     got = net.udp_exchange([(q, dest, 0.0), (q, dest, 0.4)], window, multicast_ttl=255,
-                           cancel=cancel, interfaces=interfaces)
+                           cancel=cancel, interfaces=interfaces, log=log)
     out = []
     for data, src in got:
         try:
@@ -139,7 +139,7 @@ def browse(window=2.5, cancel=None, target=None, log=None, interfaces=None):
     """eSCL scanners answering on the local network (or only `target`, an IP address, asked
     directly). Devices; what was heard goes into log (a list of lines)."""
     dest = (target, MDNS[1]) if target else MDNS
-    answers = _ask([(s, T_PTR) for s in SERVICES], dest, window, cancel, interfaces)
+    answers = _ask([(s, T_PTR) for s in SERVICES], dest, window, cancel, interfaces, log)
     if log is not None:
         log.append("mDNS %s: %d answer(s)%s" % (
             target or "multicast", len(answers),
