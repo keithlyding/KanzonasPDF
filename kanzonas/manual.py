@@ -113,7 +113,8 @@ looks and acts flattened; Edit text and Edit objects (Home tab) still change it 
 Acrobat and PDF-XChange can. Open, save, print, undo and redo sit left of the tabs, and the
 Find box (with its match count and up / down arrows) sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
-zoom box with zoom out / zoom in, like PDF-XChange Editor. The ribbon is compact: two rows of
+zoom box with zoom out / zoom in, like PDF-XChange Editor, and the current page's drawing
+scale (red when it has none; click it to set it). The ribbon is compact: two rows of
 buttons. If the window is too narrow for a tab, scroll it sideways with the mouse wheel or the
 thin bar under it. View &gt; <b>Show group names on ribbon</b> adds a name under each group of
 buttons (a little taller, like Microsoft Office). View &gt; <b>Show menu bar</b> (Ctrl+Shift+M)
@@ -1003,6 +1004,23 @@ written on the sheet</b>, picked for you when the title block has one, and the s
 mentions what the sheet says while no scale is set. A page's scale goes with it: copies made
 with Duplicate pages, Copy pages and Paste, Extract pages, Insert pages from file and Combine
 files keep it.</li>
+<li>The current page's scale is always in sight: in large type under "Set scale" in the
+<b>Page scale</b> group of the Measure tab (1/4" = 1'-0", 1:100...) and in bold at the right of the status bar. A page
+with no scale shows a red <b>Scale not set</b> there, and its measurements are in paper size
+(inches on the sheet). Click either one to open Set scale; both follow the page you're on and
+change as soon as a scale is set, calibrated or undone. The first measurement on a page with no
+scale (once per page) also shows a banner above the page saying so, with a <b>Set scale...</b>
+button; it goes away when the page gets a scale, or with its close button. Count and Angle
+don't depend on the scale and don't bring up the banner.</li>
+<li><b>Show scale bar</b> (View menu, Measure menu, the small icon beside "Set scale" in the
+Measure tab's Page scale group, and
+Preferences &gt; Pages and display): draws a graphic scale at the bottom left of every page
+that has a scale: alternating black and white segments with round numbers in the drawing's
+units (0 5' 10' 15' 20' for feet and inches, 0 1 2 3 4 m for meters; millimeters switch to
+meters for long runs). It picks a length that suits the zoom, so it stays a useful size as you
+zoom in and out, and it sits on a plate of its own so it reads on light and dark drawings
+(dark in night mode). It's on the screen only: it is never printed, exported or saved in the
+file. Your choice is remembered.</li>
 <li><b>Read scales from title blocks</b> (Measure menu, Measure tab): for a whole set at once,
 every page gets the scale its own title block says; pages marked not to scale or without a
 note are left as they are and listed. Trust but check: a sheet printed at reduced size (a
@@ -1360,7 +1378,7 @@ lasso off, a press, drag and release draws a box.</li>
 The note under Scroll one page per wheel step says when it applies: only while the whole page
 fits in the window, as after Fit page.</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
-Night mode (white lines on black), Enhance thin lines, <b>New PDF page size</b> (the size and
+Night mode (white lines on black), Enhance thin lines, Show scale bar, <b>New PDF page size</b> (the size and
 orientation File &gt; New PDF uses, or Ask every time),
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid

@@ -88,6 +88,73 @@ def describe(page):
     return tr("Scale: {label}").format(label=label) + (f"  ({unit})" if ok else "")
 
 
+# ---- graphic scale bar (View > Show scale bar; drawn on screen only) ----------------
+def _bar_steps(unit):
+    """Round segment lengths for a scale bar, shortest first: [(meters, value, kind)], value
+    in the drawing's unit ("in" or "ft" for feet and inches, kind saying which)."""
+    if unit == "ft-in":
+        out = [(i * 0.0254, i, "in") for i in (1, 2, 3, 6)]
+        feet = [1, 2, 4, 5] + [m * 10 ** k for k in range(1, 6) for m in (1, 2, 2.5, 5)]
+        return out + [(f * 0.3048, f, "ft") for f in feet]
+    size = UNITS.get(unit, 0.0254)
+    return [(m * 10 ** k * size, m * 10 ** k, unit)
+            for k in range(-3, 7) for m in (1, 2, 2.5, 5)]
+
+
+def _bar_number(v):
+    v = round(v, 6)
+    return f"{int(v):,}" if v == int(v) else f"{v:,.6g}"
+
+
+def _bar_label(v, kind, unit, last):
+    """A scale bar's number: feet and inches marked 5' and 6" (1'-6" past a foot), other
+    units plain with the unit named after the last one."""
+    if v == 0:
+        return "0"
+    if unit == "ft-in":
+        if kind == "in":
+            v = int(round(v))
+            if v < 12:
+                return f'{v}"'
+            return f"{v // 12}'" if v % 12 == 0 else f"{v // 12}'-{v % 12}\""
+        return _bar_number(v) + "'"
+    return _bar_number(v) + (" " + unit if last else "")
+
+
+def scale_bar(m_per_pt, unit, px_per_pt, max_px, segments=4):
+    """A graphic scale bar for a page with this scale drawn at px_per_pt screen pixels per PDF
+    point: (segment length in pixels, [the label at 0 and at the end of each segment]), with
+    the longest round segment that keeps the bar within max_px pixels; fewer segments when
+    even the shortest is too long for four. None when nothing fits."""
+    if m_per_pt <= 0 or px_per_pt <= 0 or max_px <= 0:
+        return None
+    px_per_m = px_per_pt / m_per_pt
+    steps = _bar_steps(unit)
+    pick = None
+    for step in steps:
+        if step[0] * px_per_m * segments <= max_px:
+            pick = step
+        else:
+            break
+    n = segments
+    if pick is None:
+        pick = steps[0]
+        n = int(max_px // (pick[0] * px_per_m))
+        if n < 1:
+            return None
+    meters, value, kind = pick
+    # long runs of millimeters read better in meters (1:50: 0 1 2 3 4 m, not 4,000 mm)
+    bigger = {"mm": ("m", 1.0), "cm": ("m", 1.0), "m": ("km", 1000.0)}.get(unit)
+    if bigger and meters >= bigger[1] - 1e-9:
+        unit = bigger[0]
+        value = kind = None
+    if value is None:
+        value = meters / UNITS[unit]
+        kind = unit
+    labels = [_bar_label(value * i, kind, unit, i == n) for i in range(n + 1)]
+    return meters * px_per_m, labels
+
+
 # ---- geometry -----------------------------------------------------------------------
 def length(points):
     return sum(abs(b - a) for a, b in zip(points, points[1:]))

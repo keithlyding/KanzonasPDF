@@ -422,7 +422,9 @@ class MainWindow(QMainWindow):
         self._build_actions()
         self._build_menus()
         self._build_toolbars()
-        self.scale_label = QLabel()
+        from .scale_display import ScaleStatusLabel
+        self.scale_label = ScaleStatusLabel()
+        self.scale_label.clicked.connect(self.set_scale)
         self.statusBar().addPermanentWidget(self.scale_label)
         self._thumb_queue = []
         self._thumb_timer = QTimer(self, interval=0)
@@ -661,6 +663,13 @@ class MainWindow(QMainWindow):
         self.a_show_boxes.setCheckable(True)
         self.a_show_boxes.setChecked(self.settings.value("show_boxes", "false") == "true")
         DocumentView.show_boxes = self.a_show_boxes.isChecked()
+        self.a_scale_bar = self._act(tr("Show scale &bar"), self._toggle_scale_bar,
+                                     tip=tr("A graphic scale at the bottom left of each page "
+                                            "that has a scale, in the drawing's units (on "
+                                            "screen only: never printed or saved)"))
+        self.a_scale_bar.setCheckable(True)
+        self.a_scale_bar.setChecked(self.settings.value("scale_bar", "false") == "true")
+        DocumentView.show_scale_bar = self.a_scale_bar.isChecked()
         self.a_ocr = self._act(tr("Recognize text (&OCR)..."), self.ocr,
                                tip=tr("Make scanned pages searchable and selectable"))
         self.a_props = self._act(tr("&Properties panel"), self._toggle_props, "F6")
@@ -1026,6 +1035,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_thin_lines)
         m.addAction(self.a_hl_fields)
         m.addAction(self.a_show_boxes)
+        m.addAction(self.a_scale_bar)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
                       self.a_grid_settings])
@@ -1078,6 +1088,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
         m.addSeparator()
         m.addActions([self.a_set_scale, self.a_sheet_scales, self.a_measure_summary])
+        m.addAction(self.a_scale_bar)
         m = mb.addMenu(tr("&Review"))
         m.addActions([self.tool_actions["comment"], self.tool_actions["note"]])
         m.addSeparator()
@@ -1467,7 +1478,7 @@ class MainWindow(QMainWindow):
                 self.zoom_slider.blockSignals(True)
                 self.zoom_slider.setValue(_zoom_to_slider(v.zoom))
                 self.zoom_slider.blockSignals(False)
-            self.scale_label.setText(v.page_scale_text(v.current_page()))
+            self._show_page_scale(v)
             # (the file name itself is never translated, only the words around it)
             name = tr("{name} [protected]").format(name=_doc_name(v)) if v.read_only \
                 else _doc_name(v)
@@ -1483,7 +1494,7 @@ class MainWindow(QMainWindow):
                     self.tabs.setTabToolTip(i, tip)
         else:
             self.page_total.setText(" / 0 ")
-            self.scale_label.setText("")
+            self._show_page_scale(None)
             self.setWindowTitle(_title_base())
 
     # ---- files --------------------------------------------------------------
@@ -1741,6 +1752,7 @@ class MainWindow(QMainWindow):
             (v.selectToolRequested, lambda: self.set_tool("select")),
             (v.previousToolRequested, lambda: self.set_tool(self.default_tool())),
             (v.calibrateRequested, self._calibrate),
+            (v.scaleDialogRequested, lambda i: self._scale_dialog(None, i)),
             (v.layersChanged, lambda: self.sender() is self.view() and self._rebuild_thumbs()),
             (v.scaleChanged, self._update_ui),
             (v.historyChanged, self._update_ui),
@@ -3266,6 +3278,36 @@ class MainWindow(QMainWindow):
     def set_scale(self):
         self._scale_dialog()
 
+    def _show_page_scale(self, v):
+        """The current page's scale in the status bar and on the Measure tab (red 'not set'
+        when it has none); both open Set scale when clicked."""
+        panel = getattr(self, "scale_panel", None)
+        if v is None:
+            self.scale_label.show_scale("", True, "")
+            if panel is not None:
+                panel.show_scale(None, "")
+            return
+        i = v.current_page()
+        text = v.page_scale_text(i)
+        scale = v.page_scale(i)
+        tip = text + "\n" + tr("Click to set the scale (Measure > Set scale)")
+        self.scale_label.show_scale(text, scale[3], tip)
+        if panel is not None:
+            panel.show_scale(scale, tip)
+
+    def _toggle_scale_bar(self):
+        on = self.a_scale_bar.isChecked()
+        DocumentView.show_scale_bar = on
+        self.settings.setValue("scale_bar", "true" if on else "false")
+        for w in windows():
+            w.a_scale_bar.setChecked(on)
+            for v in w._views_drawn():
+                for pw in v.pages:
+                    pw.update()
+        if on:
+            self.statusBar().showMessage(tr("Scale bar on: it shows on the pages that have a "
+                                            "scale (on screen only)"), 4000)
+
     def link_sheet_callouts(self):
         """Pages > Link sheet callouts...: sheet numbers from the title blocks, then a link on
         every callout, note and index line that names one of the sheets."""
@@ -4035,6 +4077,7 @@ class MainWindow(QMainWindow):
             if mode in w.theme_actions:
                 w.theme_actions[mode].setChecked(True)
             w._apply_icons()
+            w._update_ui()              # ("Scale not set": a red that reads on the theme)
 
     # ---- remembered page & zoom per file ------------------------------------------------
     def _file_states(self):
@@ -4608,6 +4651,7 @@ class MainWindow(QMainWindow):
         "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "tool_link": tr("Links"),
         "a_page_boxes": tr("Page boxes"), "a_fix_hairlines": tr("Fix hairlines"),
         "a_print_check": tr("Check for printing"), "a_show_boxes": tr("Show boxes"),
+        "a_scale_bar": tr("Scale bar"),
         "tool_editobjects": tr("Edit objects"), "tool_addtext": tr("Add text"),
         "tool_m_calibrate": tr("Calibrate"),
     }
@@ -4632,6 +4676,7 @@ class MainWindow(QMainWindow):
         "a_insert_blank": "file-outline", "a_uncrop": "crop-free",
         "a_page_boxes": "border-outside", "a_fix_hairlines": "format-line-weight",
         "a_print_check": "printer-search", "a_show_boxes": "border-style",
+        "a_scale_bar": "map-legend",
         "a_from_images": "file-image-outline", "a_new": "file-document-plus-outline", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
         "a_remove_bg": "format-color-marker-cancel", "a_remove_wm": "water-off-outline",
@@ -4662,6 +4707,8 @@ class MainWindow(QMainWindow):
         self.ribbon_align_box.setToolTip(self.align_ref_box.toolTip())
         self.ribbon_align_box.activated.connect(
             lambda i: self._set_align_ref(self.ribbon_align_box.itemData(i)))
+        from .scale_display import ScalePanel
+        self.scale_panel = ScalePanel(self.a_set_scale, self.a_scale_bar)
         r = self.ribbon = Ribbon()
         r.add_tab(tr("Home"), [
             # first, the three ways the mouse works: Select (the arrow), Hand, CAD
@@ -4694,7 +4741,10 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Measure"), [
             (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
             (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_perimeter"], t["m_volume"]]),
-            (tr("Scale"), "small", [t["m_calibrate"], self.a_set_scale, self.a_sheet_scales,
+            # the page's scale in large type opens Set scale (so no separate button for it),
+            # with the Show scale bar switch beside it: the tab still fits a 1366-pixel screen
+            (tr("Page scale"), "large", [self.scale_panel]),
+            (tr("Scale"), "small", [t["m_calibrate"], self.a_sheet_scales,
                                 self.a_measure_summary]),
             (tr("Grid & snap"), "small", snap_group),
         ])

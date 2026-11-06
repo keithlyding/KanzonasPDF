@@ -106,7 +106,8 @@ se ve y se comporta como acoplado; Editar texto y Editar objetos (pestaña Inici
 pueden hacerlo Acrobat y PDF-XChange. Abrir, guardar, imprimir, deshacer y rehacer están a la izquierda de las pestañas, y el
 cuadro Buscar (con su número de coincidencias y sus flechas arriba / abajo) está a su derecha. La barra inferior (barra de estado, abajo a la derecha) tiene la navegación de páginas (primera,
 anterior, número de página, siguiente, última página), Ajustar página, Ajustar al ancho, Tamaño real, un control deslizante de zoom y el
-cuadro de zoom con alejar / acercar, como PDF-XChange Editor. La cinta es compacta: dos filas de
+cuadro de zoom con alejar / acercar, como PDF-XChange Editor, y la escala del dibujo de la página actual (en rojo cuando no
+tiene ninguna; haga clic en ella para establecerla). La cinta es compacta: dos filas de
 botones. Si la ventana es demasiado estrecha para una pestaña, desplácela lateralmente con la rueda del mouse o con la
 barra delgada que hay debajo. Ver &gt; <b>Mostrar nombres de grupo en la cinta</b> agrega un nombre debajo de cada grupo de
 botones (la cinta queda un poco más alta, como en Microsoft Office). Ver &gt; <b>Mostrar barra de menús</b> (Ctrl+Shift+M)
@@ -981,6 +982,23 @@ escrita en el plano</b>, que queda elegida automáticamente cuando el cuadro de 
 menciona lo que dice el plano mientras no haya ninguna escala definida. La escala de una página va con ella:
 las copias hechas con Duplicar páginas, Copiar páginas y Pegar, Extraer páginas, Insertar páginas desde archivo y
 Combinar archivos la conservan.</li>
+<li>La escala de la página actual está siempre a la vista: en letra grande debajo de "Establecer escala" en el
+grupo <b>Escala de la página</b> de la pestaña Medir (1/4" = 1'-0", 1:100...) y en negrita a la derecha de la barra de estado. Una página
+sin escala muestra ahí <b>Sin escala</b> en rojo, y sus medidas están en tamaño de papel
+(pulgadas sobre el plano). Haga clic en cualquiera de las dos para abrir Establecer escala; ambas siguen la página en la que está y
+cambian en cuanto se establece, se calibra o se deshace una escala. La primera medición en una página sin
+escala (una vez por página) también muestra un aviso encima de la página que lo indica, con un botón
+<b>Establecer escala...</b>; desaparece cuando la página recibe una escala, o con su botón de cerrar. Conteo y Ángulo
+no dependen de la escala y no muestran el aviso.</li>
+<li><b>Mostrar barra de escala</b> (menú Ver, menú Medir, el pequeño icono junto a "Establecer escala" en el
+grupo Escala de la página de la pestaña Medir, y
+Preferencias &gt; Páginas y visualización): dibuja una escala gráfica en la esquina inferior izquierda de cada página
+que tiene escala: segmentos alternos negros y blancos con números redondos en las unidades del dibujo
+(0 5' 10' 15' 20' para pies y pulgadas, 0 1 2 3 4 m para metros; los milímetros pasan a
+metros en tramos largos). Elige una longitud adecuada al zoom, así que mantiene un tamaño útil al
+acercar y alejar, y está sobre un fondo propio para que se lea en dibujos claros y oscuros
+(oscuro en el modo nocturno). Es solo en pantalla: nunca se imprime, se exporta ni se guarda en el
+archivo. Su elección se recuerda.</li>
 <li><b>Leer escalas de los cuadros de rótulo</b> (menú Medir, pestaña Medir): para todo un juego de una vez,
 cada página recibe la escala que indica su propio cuadro de rótulo; las páginas marcadas como sin escala o sin
 nota se dejan como están y se enumeran. Confíe, pero compruebe: un plano impreso a tamaño reducido (un
@@ -1337,7 +1355,7 @@ presionar, arrastrar y soltar dibuja un recuadro.</li>
 La nota debajo de Desplazar una página por paso de la rueda indica cuándo se aplica: solo mientras la página entera cabe
 en la ventana, como después de Ajustar página.</li>
 <li><b>Páginas y visualización:</b> bloquear el orden de las páginas, Mostrar cuadros de comentario, Resaltar campos de formulario,
-Modo nocturno (líneas blancas sobre negro), Mejorar líneas finas, <b>Tamaño de página del nuevo PDF</b> (el tamaño y la
+Modo nocturno (líneas blancas sobre negro), Mejorar líneas finas, Mostrar barra de escala, <b>Tamaño de página del nuevo PDF</b> (el tamaño y la
 orientación que usa Archivo &gt; Nuevo PDF, o Preguntar cada vez),
 y <b>Cuadrícula y ajuste</b>, todo en un solo lugar: el espaciado y las unidades de la cuadrícula, el intervalo de la línea
 más oscura, Mostrar cuadrícula, Ajustar a la cuadrícula y Ajustar a objetos (la misma configuración que Ver &gt; Configuración de
