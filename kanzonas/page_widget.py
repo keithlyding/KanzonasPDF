@@ -25,17 +25,20 @@ SHAPE_TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", 
                "callout", "m_length", "m_calibrate", "m_radius", "image", "placeholder",
                "erasecontent", "capture", "crop", "link"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume",
-              "arc", "curve"}
+              "arc", "curve", "m_dim"}
 # three clicks: Arc = start, a point it passes through, end; Curve = start, end, the bend
 CURVE_TOOLS = {"arc", "curve"}
+# three clicks, the last one ends it: an angle's end, corner, end; a dimension's two points
+# and where its dimension line goes (a drag gives a dimension its two points too)
+THREE_CLICKS = {"m_angle", "arc", "curve", "m_dim"}
 # While one of these drawing tools is active, clicking an existing markup selects it for
 # moving / resizing / restyling (like the Select tool) instead of starting a new one.
 EDIT_IN_PLACE = {"rect", "ellipse", "circle", "mask", "cloud", "line", "arrow", "polygon",
                  "polyline", "ink", "arc", "curve", "textbox", "callout", "note", "stamp",
                  "m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius",
-                 "m_perimeter", "m_volume", "image", "attach", "placeholder"}
+                 "m_perimeter", "m_volume", "m_dim", "image", "attach", "placeholder"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area", "m_angle", "m_radius",
-                 "m_perimeter", "m_volume"}
+                 "m_perimeter", "m_volume", "m_dim"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}
 SIGN_TOOLS = {"signature", "initials"}
 HANDLE = 7          # handle size in px
@@ -342,6 +345,7 @@ class PageWidget(QWidget):
         self._ghost = None          # signature / stamp preview position (widget coords)
         self._poly = []             # polygon / polyline points so far (widget coords)
         self._poly_hover = None
+        self._dim_press = None      # Dimension: where its first point was pressed (a drag)
         self._marquee = False       # Ctrl+drag with Select: selection box only, no text
         self._cad_down = None       # CAD mode: a press with Select / Edit objects (cad_select.py)
         self._snap_mark = None      # (widget point, "object" | "page" | "grid") last snap
@@ -882,7 +886,9 @@ class PageWidget(QWidget):
                        max(1.0, float(self.view.tool_props(tool).get("width", 2)) * self.view.zoom))
             p.setPen(pen)
             pts = self._poly + ([self._poly_hover] if self._poly_hover is not None else [])
-            if tool in CURVE_TOOLS:
+            if tool == "m_dim":
+                self._paint_dim_preview(p, pts)
+            elif tool in CURVE_TOOLS:
                 p.setBrush(Qt.NoBrush)
                 p.drawPath(self._curve_preview(tool, pts))
             else:
@@ -1149,7 +1155,8 @@ class PageWidget(QWidget):
         if m["kind"] in ("line", "arrow", "m_length", "m_radius"):
             return [[pt(q) for q in (A.path_points(m) if curved else m["points"])]]
         if m["kind"] in A.VERTEXED:
-            pts = [pt(q) for q in (A.path_points(m) if curved else m["points"])]
+            pts = [pt(q) for q in (A.path_points(m) if curved or m["kind"] == "m_dim"
+                                   else m["points"])]
             if m["kind"] in ("polygon",) + A.CLOSED_MEASURES:
                 pts.append(pts[0])
             return [pts]
@@ -1893,8 +1900,11 @@ class PageWidget(QWidget):
                 pos = snap45(self._poly[-1], pos)
             self._poly.append(pos)
             self.update()
-            if tool in ("m_angle", "arc", "curve") and len(self._poly) == 3:
+            if tool in THREE_CLICKS and len(self._poly) == 3:
                 self.finish_poly()          # an angle is three clicks: end, corner, end
+            elif tool == "m_dim":
+                self._dim_press = pos if len(self._poly) == 1 else None
+                self._dim_status()
             return
         if tool in FORM_TOOLS:
             model = self._selected_here()
@@ -1949,6 +1959,22 @@ class PageWidget(QWidget):
         elif tool in ("note", "attach"):
             self.view.apply_point_tool(self.index, tool, pdf)
 
+    def _paint_dim_preview(self, p, pts):
+        """The Dimension being drawn (widget points): the measured line, then with the third
+        point its extension lines and dimension line (dimensions.py)."""
+        if len(pts) < 3:
+            if len(pts) == 2:
+                p.drawLine(pts[0], pts[1])
+            return
+        from . import dimensions
+        a, b, a2, b2, _n, _d = dimensions.geometry(
+            [pymupdf.Point(q.x(), q.y()) for q in pts[:3]])
+        path = QPainterPath(QPointF(a.x, a.y))
+        for q in (a2, b2, b):
+            path.lineTo(q.x, q.y)
+        p.setBrush(Qt.NoBrush)
+        p.drawPath(path)
+
     def _curve_preview(self, tool, pts):
         """The Arc or Curve being drawn (widget coordinates) through the points clicked and
         the pointer: a straight line until there are three."""
@@ -1960,6 +1986,14 @@ class PageWidget(QWidget):
         for t in q[1:]:
             path.lineTo(t.x, t.y)
         return path
+
+    def _dim_status(self):
+        """The status bar says what the Dimension tool's next click does."""
+        if len(self._poly) == 1:
+            self.view.statusMessage.emit(tr("Dimension: click the second point (Escape "
+                                            "cancels)"))
+        elif len(self._poly) == 2:
+            self.view.statusMessage.emit(tr("Dimension: click where the dimension line goes"))
 
     def _press_on_markup(self, pos, pdf, ctrl=False, cards=False):
         """Handle a press on a selected markup's handle or on any markup: select it and start
@@ -2099,6 +2133,10 @@ class PageWidget(QWidget):
             return A.with_endpoint(model, i, self.to_pdf(pos))
         if ed["mode"].startswith("v"):
             i = int(ed["mode"][1:])
+            if model["kind"] == "m_dim":
+                if shift and i < 2:         # (Shift: 45 degree steps from the other point)
+                    pos = snap45(self.to_screen_pt(model["points"][1 - i]), pos)
+                return A.with_endpoint(model, i, self.to_pdf(pos))
             if shift and len(model["points"]) > 1:
                 pos = snap45(self.to_screen_pt(model["points"][i - 1]), pos)
             return A.with_endpoint(model, i, self.to_pdf(pos))
@@ -2226,6 +2264,13 @@ class PageWidget(QWidget):
             elif tool == "select" or (tool in EDIT_IN_PLACE and not self._poly):
                 self._update_select_cursor(pos, restore=tool != "select")
             return
+        if self._dim_press is not None and tool == "m_dim" and len(self._poly) == 1:
+            # (a drag from its first point: the second follows the pointer, as Length's)
+            if tool in SNAP_TOOLS:
+                pos = self._snap(pos, e)
+            self._poly_hover = snap45(self._poly[0], pos) if shift_held(e) else pos
+            self.update()
+            return
         if tool == "hand":
             self.view.continue_pan(e.globalPosition())
         elif self._sig_drag is not None:
@@ -2332,6 +2377,20 @@ class PageWidget(QWidget):
             return                          # (CAD mode: the shape the click ended is made)
         tool = self.view.tool
         pos = e.position()
+        if self._dim_press is not None:
+            start, self._dim_press = self._dim_press, None
+            if tool == "m_dim" and len(self._poly) == 1 and \
+                    not cad_draw.is_click(start, pos, None):
+                # released after a drag: that's its second point; a click then places its line
+                if tool in SNAP_TOOLS:
+                    pos = self._snap(pos, e)
+                if shift_held(e):
+                    pos = snap45(self._poly[0], pos)
+                self._poly.append(pos)
+                self._poly_hover = pos
+                self._dim_status()
+                self.update()
+            return
         if getattr(self, "_cad_resize", None) is not None:
             cad_select.resize_release(self, e, pos)
             return
@@ -2416,7 +2475,9 @@ class PageWidget(QWidget):
         pts, self._poly, self._poly_hover = self._poly, [], None
         self.update()
         tool = self.view.tool
-        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc") and len(pts) < 3):
+        self._dim_press = None
+        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc", "m_dim")
+                                      and len(pts) < 3):
             return
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 
@@ -2428,6 +2489,22 @@ class PageWidget(QWidget):
         if cad_select.double_click(self, e):
             return                          # (CAD selection: taken as a click, see there)
         cad_select.cancel(self.view)        # (a double-click selects a word: no box after it)
+        if self.view.tool == "m_dim":
+            # two quick clicks are two of its points (a click on the last point adds none)
+            pos = e.position()
+            if self.view.tool in SNAP_TOOLS:
+                pos = self._snap(pos, e)
+            if self._poly and (pos - self._poly[-1]).manhattanLength() >= cad_draw.SAME_PX:
+                if shift_held(e):
+                    pos = snap45(self._poly[-1], pos)
+                self._poly.append(pos)
+                self._dim_press = None
+                if len(self._poly) >= 3:
+                    self.finish_poly()
+                else:
+                    self._dim_status()
+                    self.update()
+            return
         if self.view.tool in POLY_TOOLS:
             # the double-click's first press already added this point
             self.finish_poly()

@@ -122,6 +122,8 @@ FORM_TOOLS = [  # form design tools: drag a box (or click) to add a field
 ]
 MEASURE_TOOLS = [
     ("m_length", tr("Length"), "Shift+M", tr("Measure length: drag from point to point (Shift+M)")),
+    ("m_dim", tr("Dimension"), "Shift+D", tr("Dimension: click the two points to measure, then "
+                                             "where the dimension line goes (Shift+D)")),
     ("m_poly", tr("Polylength"), "", tr("Measure along a path: click points, double-click or Enter to finish")),
     ("m_area", tr("Area"), "Shift+A", tr("Measure area and perimeter: click corners, double-click or Enter (Shift+A)")),
     ("m_angle", tr("Angle"), "", tr("Measure an angle: click one end, the corner, then the other end")),
@@ -4072,8 +4074,8 @@ class MainWindow(QMainWindow):
             "ellipse, circle, cloud, mask, polygon, line, arrow, polyline, arc, curve, pen). "
             "Hold Shift for squares, circles and straight lines"))
         self.measure_btn.setProperty("kz_group_tip", tr(
-            "Measure: click for the tool shown, or the arrow for length, polylength, area, "
-            "count, calibrate and scale"))
+            "Measure: click for the tool shown, or the arrow for length, dimension, polylength, "
+            "area, count, calibrate and scale"))
         if not hasattr(self, "_group_tip"):
             self._group_tip = _GroupTip(self)
             self.shapes_btn.installEventFilter(self._group_tip)
@@ -4828,13 +4830,16 @@ class MainWindow(QMainWindow):
                       self.a_grid_settings]
         r.add_tab(tr("Measure"), [
             (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
-            (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_perimeter"], t["m_volume"]]),
+            # (Calibrate with the measuring tools and the scale's buttons with the snaps, so
+            # Dimension and the page's scale fit in without making the tab wider, in English
+            # or Spanish)
+            (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_dim"], t["m_perimeter"],
+                                   t["m_volume"], t["m_calibrate"]]),
             # the page's scale in large type opens Set scale (so no separate button for it),
             # with the Show scale bar switch beside it: the tab still fits a 1366-pixel screen
             (tr("Page scale"), "large", [self.scale_panel]),
-            (tr("Scale"), "small", [t["m_calibrate"], self.a_sheet_scales,
-                                self.a_measure_summary]),
-            (tr("Grid & snap"), "small", snap_group),
+            (tr("Scale & snap"), "small", [self.a_sheet_scales, self.a_measure_summary]
+             + snap_group),
         ])
         r.add_tab(tr("Arrange"), [
             (tr("Align"), "small", [A_["al_left"], A_["al_hcenter"], A_["al_right"], A_["al_top"],

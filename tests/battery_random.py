@@ -666,7 +666,8 @@ class Battery:
         return [
             (self.op_shape, 10), (self.op_line, 5), (self.op_poly, 4), (self.op_ink, 3),
             (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
-            (self.op_measure, 2), (self.op_text_markup, 6), (self.op_attach, 1),
+            (self.op_measure, 2), (self.op_dimension, 3), (self.op_text_markup, 6),
+            (self.op_attach, 1),
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
             (self.op_retype, 3), (self.op_delete, 5), (self.op_duplicate, 2),
             (self.op_copy_paste, 2), (self.op_restack, 2), (self.op_eraser, 2),
@@ -732,6 +733,57 @@ class Battery:
             self.v.apply_drag_tool(i, self.rnd.choice(["m_length", "m_radius"]), a, b, False)
         else:
             self.v.apply_poly(i, "m_angle", [a, b, self.point(i, 40)])
+
+    def op_dimension(self):
+        """Dimensions (dimensions.py): one drawn (its two points and where its line goes, as
+        the clicks give them to apply_poly), or one already there with a grip dragged (a
+        measured point, or its dimension line nearer or farther: measured again) or its
+        arrowheads changed. Moving, restyling and deleting them: the operations for all."""
+        v = self.v
+        have = [(i, x) for i in range(v.doc.page_count) for x in self.markups(i)
+                if self.kind(i, x) == "m_dim"]
+        r = self.rnd.random()
+        if not have or r < 0.4:
+            i = self.page()
+            a, b = self.box(i, 20, 250)
+            if self.rnd.random() < 0.5:
+                b = pymupdf.Point(b.x, a.y)             # (level, as most dimensions are)
+            c = (a + b) / 2 + pymupdf.Point(self.rnd.uniform(-60, 60),
+                                            self.rnd.uniform(-60, 60))
+            v.apply_poly(i, "m_dim", [a, b, c])
+            return None
+        i, x = self.rnd.choice(have)
+        v.select_xref(i, x)
+        m = v.selected_model
+        if m is None or m["kind"] != "m_dim":
+            v.clear_selection()
+            return "none"
+        if r < 0.85:
+            # a grip dragged, as page_widget's handles do it (v0, v1: a measured point; v2:
+            # the dimension line)
+            k = self.rnd.randrange(3)
+            to = m["points"][k] + pymupdf.Point(self.rnd.uniform(-50, 50),
+                                                self.rnd.uniform(-50, 50))
+            new = annotations.with_endpoint(m, k, to)
+            if abs(new["points"][1] - new["points"][0]) < 1:
+                v.clear_selection()
+                return "none"
+            v.commit_model(i, x, new)
+        else:
+            heads = [h for h in ("closed", "open", "slash", "dot", "none")
+                     if h != m["props"].get("head")]
+            v.update_selected_props({"head": self.rnd.choice(heads)})
+        v.clear_selection()
+
+    def kind(self, i, x):
+        """The kind of markup x of page i (annotations.read), or None."""
+        page = self.v.doc[i]
+        try:
+            m = annotations.read(page.load_annot(x))
+        except Exception:
+            m = None
+        del page
+        return m["kind"] if m else None
 
     def op_text_markup(self):
         i = self.page()

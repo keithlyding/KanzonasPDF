@@ -715,8 +715,8 @@ are shown.</li>
 <li><b>Snap to objects:</b> points jump to nearby markup corners, edge midpoints, centers and
 line ends, and to the drawing's own line ends, midpoints and corners (useful on CAD sheets).</li>
 <li>The snap options are in the View menu and toolbar, in the <b>Grid &amp; snap</b> group of
-the ribbon's View and Measure tabs and the <b>Snap</b> group of the Arrange tab, in Grid
-settings, and in Preferences &gt; Pages and display.</li>
+the ribbon's View tab, the <b>Scale &amp; snap</b> group of the Measure tab and the <b>Snap</b>
+group of the Arrange tab, in Grid settings, and in Preferences &gt; Pages and display.</li>
 <li><b>Snap to page</b>:
 points jump to the page's corners, the middles of its edges and its center, and onto its edges,
 so a markup can be lined up exactly with the edge or the middle of the page.</li>
@@ -1031,6 +1031,17 @@ one known dimension after reading the scales, and use Calibrate Tape Measure if 
 <b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
 the scale. A Count marker copied with Duplicate (Ctrl+D) or copy and paste takes the next
 number of its group.</li>
+<li><b>Dimension</b> (Shift+D; Measure tab, "More" group, the Measure menu and the CAD tab's
+Measure button), like Bluebeam's Dimension and AutoCAD's aligned dimension: click the two
+points to measure, then move the pointer and click where the dimension line goes (in the
+Standard mouse mode you can also drag from the first point to the second, then click). It
+draws two extension lines from the points, a dimension line with arrowheads between them
+and the length above the line, in the page's scale and unit as Length measures it; the text
+reads upright on turned pages too. Escape cancels. Drag its grips to change it: the two
+measured points (measured again) or the grip in the middle of the dimension line (nearer or
+farther from the points). Line color, width, <b>Arrowhead</b> (closed, open, slash, dot or
+none) and text size are in Properties. It is a standard PDF dimension line, so other PDF
+viewers show it as well.</li>
 <li>More measurements (Measure tab, "More" group, and the Measure menu):
 <b>Angle</b>: click one end, the corner, then the other end; it shows the angle in degrees.
 <b>Radius</b>: drag from the center of a circle to its edge; it draws the circle and shows the
@@ -1464,6 +1475,7 @@ settings...).</li>
 <tr><td>M / X</td><td>Stamp / Eraser</td></tr>
 <tr><td>G / I</td><td>Signature / Initials</td></tr>
 <tr><td>Shift+M / Shift+A / Shift+C</td><td>Length / Area / Count</td></tr>
+<tr><td>Shift+D</td><td>Dimension</td></tr>
 <tr><td>Shift+R</td><td>Redact</td></tr>
 <tr><td>Shift+E</td><td>Erase content</td></tr>
 <tr><td>Shift+P</td><td>Capture area</td></tr>

@@ -133,6 +133,10 @@ def markup_points(model):
     if model["kind"] == "arc" or model.get("bend") is not None:
         from . import curves            # (its ends, its middle, an arc's center)
         return curves.snap_points(model)
+    if model["kind"] == "m_dim":
+        # its measured points, the ends and middle of its dimension line (dimensions.py)
+        q = A.path_points(model)
+        return list(q) + [(q[1] + q[2]) / 2]
     if model["kind"] in A.POINTED:
         q = model["points"]
         pts += q

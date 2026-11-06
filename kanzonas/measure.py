@@ -226,6 +226,8 @@ def measure_text(kind, points, page, group="", props=None):
     f, unit, _label, _ok = get_scale(page)
     if kind in ("m_length", "m_poly"):
         return fmt_length(length(points) * f, unit)
+    if kind == "m_dim":                 # (between its two measured points)
+        return fmt_length(length(points[:2]) * f, unit)
     if kind == "m_area":
         a = fmt_area(area(points) * f * f, unit)
         per = fmt_length(length(points + points[:1]) * f, unit)
@@ -256,6 +258,8 @@ def raw_values(kind, points, page, props=None):
     base = "ft" if unit == "ft-in" else unit
     if kind in ("m_length", "m_poly"):
         return length(points) * f / UNITS[base], base
+    if kind == "m_dim":
+        return length(points[:2]) * f / UNITS[base], base
     if kind == "m_area":
         return area(points) * f * f / UNITS[base] ** 2, "sq " + base
     if kind == "m_perimeter":
