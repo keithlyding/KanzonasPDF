@@ -29,7 +29,8 @@ LIMIT = SCREEN - FRAME      # the widest a tab may be: a full-width window that 
 FONTS = ("Segoe UI", "Liberation Sans", "Arimo", "Arial")
 
 # What each tab had on it before the tabs were made to fit (1.9), on a button, under a
-# button's arrow or under a group's arrow: none of it may leave its tab.
+# button's arrow or under a group's arrow: none of it may leave its tab. (Accessibility's
+# Check, Auto-tag and Alt text joined the Pages tab, under the Document group's arrow.)
 ON_TABS = {
     "Home": "a_actual a_cad_mouse a_fit_page a_fit_width a_mouse_hand a_mouse_standard a_zoom_in "
             "a_zoom_out t:addtext t:attach t:capture t:comment t:editobjects t:edittext "
@@ -51,7 +52,8 @@ ON_TABS = {
                "a_sig_details a_timestamp a_unlock t:date t:initials t:placeholder t:redact "
                "t:signature",
     "Forms": "a_hl_fields t:f_check t:f_combo t:f_initials t:f_radio t:f_sign t:f_text",
-    "Pages": "a_attachments a_background a_bookmarks a_combine a_compare a_compress a_del_page "
+    "Pages": "a_acc_alt a_acc_autotag a_acc_check "
+             "a_attachments a_background a_bookmarks a_combine a_compare a_compress a_del_page "
              "a_extract a_flatten a_from_images a_header a_insert_blank a_insert_pdf "
              "a_move_down a_move_up a_new a_ocr a_replace_pages a_rot_l a_rot_r a_scan "
              "a_sheet_links a_uncrop a_watermark t:crop",

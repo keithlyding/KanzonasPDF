@@ -1578,7 +1578,8 @@ Other fonts can't be embedded afterwards: make the PDF again with its fonts embe
 <li><b>Identify as PDF/UA...</b> says in the file's XMP metadata that it meets PDF/UA-1; do it
 once Check accessibility finds nothing (it warns otherwise).</li>
 </ul>
-<p>The command palette (Ctrl+Shift+P) finds all of these by name too.</p>
+<p>Check accessibility, Auto-tag and Alt text are also on the Pages tab, under the Document
+group's arrow; the command palette (Ctrl+Shift+P) finds all of these by name.</p>
 
 <h2 id="preferences">Preferences</h2>
 <ul>

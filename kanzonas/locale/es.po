@@ -8412,3 +8412,436 @@ msgstr "Subrayar"
 msgctxt "legend"
 msgid "Count"
 msgstr "Cantidad"
+
+# ---- Document > Accessibility (accessibility.py, accessibility_ui.py, autotag.py)
+msgid "The document"
+msgstr "El documento"
+
+msgid "Page content and tags"
+msgstr "Contenido de las páginas y etiquetas"
+
+msgid "Headings, lists, tables and figures"
+msgstr "Títulos, listas, tablas y figuras"
+
+msgid "Links, comments and tab order"
+msgstr "Vínculos, comentarios y orden de tabulación"
+
+msgid "Fonts and text"
+msgstr "Fuentes y texto"
+
+msgid "Check these yourself"
+msgstr "Compruebe esto usted mismo"
+
+msgid "Auto-tag"
+msgstr "Etiquetar automáticamente"
+
+msgid "Title and language"
+msgstr "Título e idioma"
+
+msgid "Tab order"
+msgstr "Orden de tabulación"
+
+msgid "Alt text"
+msgstr "Texto alternativo"
+
+msgid "Link descriptions"
+msgstr "Descripciones de vínculos"
+
+msgid "Form field tooltips"
+msgstr "Información de los campos"
+
+msgid "Embed fonts"
+msgstr "Incrustar fuentes"
+
+msgid "Identify as PDF/UA"
+msgstr "Identificar como PDF/UA"
+
+msgid "The figure is no longer in the document's tags."
+msgstr "La figura ya no está en las etiquetas del documento."
+
+msgid "The document is locked with a password: open it with its password to check it."
+msgstr "El documento está bloqueado con una contraseña: ábralo con su contraseña para comprobarlo."
+
+msgid "The document isn't tagged: it has no structure for screen readers to follow (headings, paragraphs, lists, tables, pictures, reading order). Auto-tag makes one for documents with a simple layout."
+msgstr "El documento no está etiquetado: no tiene una estructura que puedan seguir los lectores de pantalla (títulos, párrafos, listas, tablas, imágenes, orden de lectura). Etiquetar automáticamente la crea en documentos con una composición sencilla."
+
+msgid "The tags are marked as suspect (the program that made them wasn't sure of them): check them."
+msgstr "Las etiquetas están marcadas como dudosas (el programa que las creó no estaba seguro de ellas): revíselas."
+
+msgid "The document has no XMP metadata (where its title is read from)."
+msgstr "El documento no tiene metadatos XMP (de donde se lee su título)."
+
+msgid "The document has no title."
+msgstr "El documento no tiene título."
+
+msgid "The window's title bar shows the file name, not the document's title (DisplayDocTitle isn't set)."
+msgstr "La barra de título de la ventana muestra el nombre del archivo, no el título del documento (DisplayDocTitle no está definido)."
+
+msgid "The document's language isn't set, so a screen reader may read it with the wrong voice and pronunciation."
+msgstr "El idioma del documento no está definido, así que un lector de pantalla puede leerlo con la voz y la pronunciación equivocadas."
+
+msgid "The file doesn't identify itself as PDF/UA (in its XMP metadata). Add the identifier once the rest of this list is fixed."
+msgstr "El archivo no se identifica como PDF/UA (en sus metadatos XMP). Añada el identificador cuando el resto de esta lista esté corregido."
+
+msgid "The document's security settings don't let assistive technology read its text. Change them in Protect > Security properties."
+msgstr "La configuración de seguridad del documento no deja que la tecnología de asistencia lea su texto. Cámbiela en Proteger > Propiedades de seguridad."
+
+msgid "The document uses both H and H1-H6 headings."
+msgstr "El documento usa a la vez títulos H y H1-H6."
+
+msgid "The reading order makes sense (the order screen readers read the tags in)."
+msgstr "El orden de lectura tiene sentido (el orden en que los lectores de pantalla leen las etiquetas)."
+
+msgid "Alternate text says what each picture shows, or why it's there."
+msgstr "El texto alternativo dice qué muestra cada imagen o para qué está."
+
+msgid "Headings, lists and tables are tagged as what they are, and nothing else is."
+msgstr "Los títulos, las listas y las tablas están etiquetados como lo que son, y nada más lo está."
+
+msgid "Text and its background contrast enough (4.5:1, or 3:1 for large text); color isn't the only way something is shown."
+msgstr "El texto contrasta lo suficiente con su fondo (4,5:1, o 3:1 para texto grande); el color no es la única manera de indicar algo."
+
+msgid "Headers, footers and page numbers are marked as artifacts; decoration too."
+msgstr "Los encabezados, los pies de página y los números de página están marcados como artefactos; la decoración también."
+
+msgid "Recognized text (OCR) is accurate."
+msgstr "El texto reconocido (OCR) es exacto."
+
+msgid "A selected object is tagged together with other content (text or other objects): it can't be marked as decoration on its own."
+msgstr "Un objeto seleccionado está etiquetado junto con otro contenido (texto u otros objetos): no se puede marcar como decoración por sí solo."
+
+msgid "The document has tags but doesn't say so (MarkInfo Marked is not true)."
+msgstr "El documento tiene etiquetas pero no lo indica (MarkInfo Marked no es true)."
+
+msgid "The title isn't in the XMP metadata (dc:title)."
+msgstr "El título no está en los metadatos XMP (dc:title)."
+
+msgid "The window's title bar is set to show the file name, not the document's title (DisplayDocTitle is false)."
+msgstr "La barra de título de la ventana está configurada para mostrar el nombre del archivo, no el título del documento (DisplayDocTitle es false)."
+
+msgid "A layer configuration has no name."
+msgstr "Una configuración de capas no tiene nombre."
+
+msgid "Content marked as an artifact sits inside tagged content."
+msgstr "Hay contenido marcado como artefacto dentro de contenido etiquetado."
+
+msgid "Tagged content sits inside content marked as an artifact."
+msgstr "Hay contenido etiquetado dentro de contenido marcado como artefacto."
+
+msgid "The tab order of the page's links and fields doesn't follow the document's structure (Tabs isn't S)."
+msgstr "El orden de tabulación de los vínculos y campos de la página no sigue la estructura del documento (Tabs no es S)."
+
+msgid "The document has {n} pages and no bookmarks: bookmarks let people move around a long document (Document > Bookmarks, or the Bookmarks panel)."
+msgstr "El documento tiene {n} páginas y ningún marcador: los marcadores permiten moverse por un documento largo (Documento > Marcadores, o el panel Marcadores)."
+
+msgid "A figure has no alternate text (a description for people who can't see it)."
+msgstr "Una figura no tiene texto alternativo (una descripción para quien no puede verla)."
+
+msgid "A formula has no alternate text."
+msgstr "Una fórmula no tiene texto alternativo."
+
+msgid "A table has no header cells (TH): screen readers can't say which column or row a cell belongs to. Check whether it has headers."
+msgstr "Una tabla no tiene celdas de encabezado (TH): los lectores de pantalla no pueden decir a qué columna o fila pertenece una celda. Compruebe si tiene encabezados."
+
+msgid "The document's language ({lang}) isn't a valid language tag."
+msgstr "El idioma del documento ({lang}) no es una etiqueta de idioma válida."
+
+msgid "{n} pieces of content are neither tagged nor marked as artifacts (decoration)."
+msgstr "{n} elementos de contenido no están etiquetados ni marcados como artefactos (decoración)."
+
+msgid "A section holds more than one H heading."
+msgstr "Una sección contiene más de un título H."
+
+msgid "The first heading is H{n}, not H1."
+msgstr "El primer título es H{n}, no H1."
+
+msgid "A link isn't tagged as a Link."
+msgstr "Un vínculo no está etiquetado como Link."
+
+msgid "A link has no description (Contents) for screen readers."
+msgstr "Un vínculo no tiene descripción (Contents) para los lectores de pantalla."
+
+msgid "The standard tag {tag} is mapped to {other}."
+msgstr "La etiqueta estándar {tag} está asignada a {other}."
+
+msgid "A table holds {what} where only rows belong."
+msgstr "Una tabla contiene {what} donde solo van filas."
+
+msgid "A table row isn't in a table."
+msgstr "Una fila de tabla no está en una tabla."
+
+msgid "A table row holds something other than cells."
+msgstr "Una fila de tabla contiene algo que no son celdas."
+
+msgid "A heading level is skipped: H{a} is followed by H{b}."
+msgstr "Se salta un nivel de título: a H{a} le sigue H{b}."
+
+msgid "A form field isn't tagged as a Form."
+msgstr "Un campo de formulario no está etiquetado como Form."
+
+msgid "A form field has no tooltip (a name screen readers say)."
+msgstr "Un campo de formulario no tiene información sobre el campo (un nombre que dicen los lectores de pantalla)."
+
+msgid "The text in font {font} can't be read as letters (no Unicode mapping): screen readers, search and copying get nonsense."
+msgstr "El texto en la fuente {font} no se puede leer como letras (no tiene correspondencia Unicode): los lectores de pantalla, la búsqueda y la copia obtienen texto sin sentido."
+
+msgid "Go to page {n}"
+msgstr "Ir a la página {n}"
+
+msgid "A table header cell (TH) doesn't say whether it heads a column or a row (Scope)."
+msgstr "Una celda de encabezado de tabla (TH) no indica si encabeza una columna o una fila (Scope)."
+
+msgid "A table part ({what}) isn't in a table."
+msgstr "Una parte de tabla ({what}) no está en una tabla."
+
+msgid "A table part ({what}) holds something other than rows."
+msgstr "Una parte de tabla ({what}) contiene algo que no son filas."
+
+msgid "A table cell isn't in a row."
+msgstr "Una celda de tabla no está en una fila."
+
+msgid "A printer's mark is tagged as content."
+msgstr "Una marca de impresora está etiquetada como contenido."
+
+msgid "The page has a trap network annotation, which PDF/UA doesn't allow."
+msgstr "La página tiene una anotación de red de reventado (trap network), que PDF/UA no permite."
+
+msgid "The tag {tag} is mapped in a circle."
+msgstr "La etiqueta {tag} está asignada en círculo."
+
+msgid "The tag {tag} doesn't map to a standard tag."
+msgstr "La etiqueta {tag} no se asigna a una etiqueta estándar."
+
+msgid "A list holds something other than list items."
+msgstr "Una lista contiene algo que no son elementos de lista."
+
+msgid "A list item isn't in a list."
+msgstr "Un elemento de lista no está en una lista."
+
+msgid "A list item holds something other than a label and a body."
+msgstr "Un elemento de lista contiene algo que no es una etiqueta y un cuerpo."
+
+msgid "A comment or markup ({kind}) isn't tagged as an Annot."
+msgstr "Un comentario o marca ({kind}) no está etiquetado como Annot."
+
+msgid "A comment or markup ({kind}) has no text describing it (Contents)."
+msgstr "Un comentario o marca ({kind}) no tiene texto que lo describa (Contents)."
+
+msgid "A list's numbering ({what}) isn't one PDF knows."
+msgstr "La numeración de una lista ({what}) no es una que PDF conozca."
+
+msgid "A list label or body isn't in a list item."
+msgstr "La etiqueta o el cuerpo de una lista no está en un elemento de lista."
+
+msgid "Checking accessibility..."
+msgstr "Comprobando la accesibilidad..."
+
+msgid "Check accessibility"
+msgstr "Comprobar accesibilidad"
+
+msgid "The tooltip is what screen readers say for a field (and what a tip shows over it). Each is offered from the words next to the field: check and correct them. Double-click a line to go to its page."
+msgstr "La información del campo es lo que dicen los lectores de pantalla para un campo (y lo que muestra una sugerencia sobre él). Cada una se propone a partir de las palabras junto al campo: revíselas y corríjalas. Haga doble clic en una línea para ir a su página."
+
+msgid "Field"
+msgstr "Campo"
+
+msgid "The description is what screen readers say for a link. Each is offered from the words the link covers, or where it goes: check and correct them. Double-click a line to go to its page."
+msgstr "La descripción es lo que dicen los lectores de pantalla para un vínculo. Cada una se propone a partir de las palabras que cubre el vínculo, o de adónde lleva: revíselas y corríjalas. Haga doble clic en una línea para ir a su página."
+
+msgid "Reading the pages..."
+msgstr "Leyendo las páginas..."
+
+msgid "Check the result with Check accessibility."
+msgstr "Revise el resultado con Comprobar accesibilidad."
+
+msgid "It checks what a program can check of PDF/UA (ISO 14289-1), the standard for accessible PDF that WCAG 2.1 and accessibility laws point to, following the Matterhorn Protocol of the PDF Association. Some things only a person can judge (listed at the end). For a formal validation, use PAC 2024 (free, for Windows: {pac}) or veraPDF's PDF/UA profile ({vera})."
+msgstr "Comprueba lo que un programa puede comprobar de PDF/UA (ISO 14289-1), la norma de PDF accesible a la que remiten WCAG 2.1 y las leyes de accesibilidad, según el Protocolo Matterhorn de la PDF Association. Algunas cosas solo las puede juzgar una persona (se enumeran al final). Para una validación formal, use PAC 2024 (gratuito, para Windows: {pac}) o el perfil PDF/UA de veraPDF ({vera})."
+
+msgid "Fix..."
+msgstr "Corregir..."
+
+msgid "Run the fix of the selected line, then check again"
+msgstr "Aplicar la corrección de la línea seleccionada y volver a comprobar"
+
+msgid "Check again"
+msgstr "Volver a comprobar"
+
+msgid "Nothing found among what a program can check. Check the last group yourself."
+msgstr "No se encontró nada entre lo que un programa puede comprobar. Revise usted mismo el último grupo."
+
+msgid "The title is what screen readers announce and the window shows (not the file name); the language sets the voice and pronunciation screen readers use."
+msgstr "El título es lo que anuncian los lectores de pantalla y muestra la ventana (no el nombre del archivo); el idioma define la voz y la pronunciación que usan los lectores de pantalla."
+
+msgid "Title and language set"
+msgstr "Título e idioma definidos"
+
+msgid "Tab order follows the structure on every page"
+msgstr "El orden de tabulación sigue la estructura en todas las páginas"
+
+msgid "Identified as PDF/UA-1"
+msgstr "Identificado como PDF/UA-1"
+
+msgid "This document has no form fields."
+msgstr "Este documento no tiene campos de formulario."
+
+msgid "This document has no links."
+msgstr "Este documento no tiene vínculos."
+
+msgid "What the picture shows, or what it's for, in a sentence or two"
+msgstr "Qué muestra la imagen, o para qué está, en una o dos frases"
+
+msgid "Decorative (an artifact: screen readers skip it)"
+msgstr "Decorativa (un artefacto: los lectores de pantalla la saltan)"
+
+msgid "Describe each figure for people who can't see it: what it shows, or what it's there for. A picture that only decorates is marked Decorative instead. Double-click a figure to go to its page."
+msgstr "Describa cada figura para quien no puede verla: qué muestra o para qué está. Una imagen que solo decora se marca como Decorativa. Haga doble clic en una figura para ir a su página."
+
+msgid "Decorative"
+msgstr "Decorativa"
+
+msgid "Alternate text is kept in the document's tags, and this document isn't tagged. Auto-tag it first?"
+msgstr "El texto alternativo se guarda en las etiquetas del documento, y este documento no está etiquetado. ¿Etiquetarlo automáticamente primero?"
+
+msgid "The document's tags have no figures."
+msgstr "Las etiquetas del documento no tienen figuras."
+
+msgid "Auto-tag gives this untagged document the tags screen readers follow: headings (by size and weight), paragraphs, bulleted and numbered lists, tables drawn with lines, figures (pictures: describe them afterwards with Alt text), links, form fields and comments, in reading order (top to bottom, columns left to right). Headers, footers, page numbers and drawn lines become artifacts (decoration). What it can't recognize for sure is tagged as a paragraph. It suits simple layouts: check the result with Check accessibility and, for a formal validation, PAC 2024 or veraPDF. The pages look the same; Ctrl+Z undoes it."
+msgstr "Etiquetar automáticamente da a este documento sin etiquetas las etiquetas que siguen los lectores de pantalla: títulos (por tamaño y grosor), párrafos, listas con viñetas y numeradas, tablas dibujadas con líneas, figuras (imágenes: descríbalas después con Texto alternativo), vínculos, campos de formulario y comentarios, en orden de lectura (de arriba abajo, columnas de izquierda a derecha). Los encabezados, los pies de página, los números de página y las líneas dibujadas pasan a ser artefactos (decoración). Lo que no puede reconocer con seguridad se etiqueta como párrafo. Es adecuado para composiciones sencillas: revise el resultado con Comprobar accesibilidad y, para una validación formal, con PAC 2024 o veraPDF. Las páginas se ven igual; Ctrl+Z lo deshace."
+
+msgid "This document is tagged already. Auto-tag is for untagged documents; use Check accessibility to see what its tags lack."
+msgstr "Este documento ya está etiquetado. Etiquetar automáticamente es para documentos sin etiquetas; use Comprobar accesibilidad para ver lo que les falta a sus etiquetas."
+
+msgid "Tagged {pages} pages: {h} headings, {p} paragraphs, {l} lists, {t} tables, {f} figures, {a} links, fields and comments."
+msgstr "Se etiquetaron {pages} páginas: {h} títulos, {p} párrafos, {l} listas, {t} tablas, {f} figuras, {a} vínculos, campos y comentarios."
+
+msgid "Figures need a description: Document > Accessibility > Alt text."
+msgstr "Las figuras necesitan una descripción: Documento > Accesibilidad > Texto alternativo."
+
+msgid "Mark as decorative"
+msgstr "Marcar como decorativo"
+
+msgid "Select the pictures or shapes with Edit objects first."
+msgstr "Seleccione primero las imágenes o formas con Editar objetos."
+
+msgid "Mark as decorative is for pictures and shapes: select only those."
+msgstr "Marcar como decorativo es para imágenes y formas: seleccione solo esas."
+
+msgid "Fix"
+msgstr "Corrección"
+
+msgid "Rule"
+msgstr "Regla"
+
+msgid "Embedded 1 font"
+msgstr "Se incrustó 1 fuente"
+
+msgid "Alternate text"
+msgstr "Texto alternativo"
+
+msgid "(no description)"
+msgstr "(sin descripción)"
+
+msgid "Page {n}: {what}"
+msgstr "Página {n}: {what}"
+
+msgid "Tagged {pages} pages"
+msgstr "Se etiquetaron {pages} páginas"
+
+msgid "Marked 1 object as decorative"
+msgstr "Se marcó 1 objeto como decorativo"
+
+msgid "{n} problems found; the fixes here deal with {fixable} of them (select a line and click Fix). Double-click a line to go to its page."
+msgstr "Se encontraron {n} problemas; las correcciones de aquí resuelven {fixable} (seleccione una línea y haga clic en Corregir). Haga doble clic en una línea para ir a su página."
+
+msgid "The check still finds {n} problems. A file that says it is PDF/UA should meet the standard: identify it anyway?"
+msgstr "La comprobación aún encuentra {n} problemas. Un archivo que dice ser PDF/UA debería cumplir la norma: ¿identificarlo de todos modos?"
+
+msgid "Tooltips set for {n} fields"
+msgstr "Información definida para {n} campos"
+
+msgid "Descriptions set for {n} links"
+msgstr "Descripciones definidas para {n} vínculos"
+
+msgid "Alt text: {n} described, {d} decorative"
+msgstr "Texto alternativo: {n} descritas, {d} decorativas"
+
+msgid "Embedded {n} fonts"
+msgstr "Se incrustaron {n} fuentes"
+
+msgid "Marked {n} objects as decorative"
+msgstr "Se marcaron {n} objetos como decorativos"
+
+msgid "Can't fix it here"
+msgstr "No se corrige aquí"
+
+msgid "The characters on this page couldn't be matched with its drawing instructions (an unusual font), so the page is tagged as one paragraph, in drawing order."
+msgstr "Los caracteres de esta página no se pudieron emparejar con sus instrucciones de dibujo (una fuente poco común), así que la página se etiquetó como un solo párrafo, en orden de dibujo."
+
+msgid "This page has marked content already, so it was left as it was (not tagged)."
+msgstr "Esta página ya tiene contenido marcado, así que se dejó como estaba (sin etiquetar)."
+
+msgid "Page {n}"
+msgstr "Página {n}"
+
+msgid "&Accessibility"
+msgstr "Accesi&bilidad"
+
+msgid "Check &accessibility..."
+msgstr "Comprobar &accesibilidad..."
+
+msgid "List what keeps this document from being accessible to screen readers (PDF/UA, WCAG), and what the fixes here deal with"
+msgstr "Enumerar lo que impide que este documento sea accesible para los lectores de pantalla (PDF/UA, WCAG) y lo que resuelven las correcciones de aquí"
+
+msgid "Auto-&tag..."
+msgstr "E&tiquetar automáticamente..."
+
+msgid "Tag an untagged document: headings, paragraphs, lists, tables, figures and reading order, for screen readers"
+msgstr "Etiquetar un documento sin etiquetas: títulos, párrafos, listas, tablas, figuras y orden de lectura, para los lectores de pantalla"
+
+msgid "Alt te&xt..."
+msgstr "Te&xto alternativo..."
+
+msgid "Describe each figure for people who can't see it, or mark it decorative"
+msgstr "Describir cada figura para quien no puede verla, o marcarla como decorativa"
+
+msgid "Title and &language..."
+msgstr "Título e &idioma..."
+
+msgid "The title screen readers announce and the window shows, and the document's language"
+msgstr "El título que anuncian los lectores de pantalla y muestra la ventana, y el idioma del documento"
+
+msgid "Form field t&ooltips..."
+msgstr "Información de los ca&mpos..."
+
+msgid "The name screen readers say for each form field"
+msgstr "El nombre que dicen los lectores de pantalla para cada campo de formulario"
+
+msgid "Lin&k descriptions..."
+msgstr "Descripciones de &vínculos..."
+
+msgid "What screen readers say for each link"
+msgstr "Lo que dicen los lectores de pantalla para cada vínculo"
+
+msgid "Ta&b order follows the tags"
+msgstr "Orden de ta&bulación según las etiquetas"
+
+msgid "Tab moves through links and fields in the order of the document's tags, on every page"
+msgstr "Tab recorre los vínculos y campos en el orden de las etiquetas del documento, en todas las páginas"
+
+msgid "Mark as &decorative"
+msgstr "Marcar como &decorativo"
+
+msgid "Make the pictures and shapes selected with Edit objects artifacts (decoration screen readers skip)"
+msgstr "Convertir las imágenes y formas seleccionadas con Editar objetos en artefactos (decoración que los lectores de pantalla saltan)"
+
+msgid "&Embed fonts"
+msgstr "Incrustar &fuentes"
+
+msgid "Embed the standard fonts that aren't (Helvetica, Times, Courier...), as Save as PDF/A does"
+msgstr "Incrustar las fuentes estándar que no lo están (Helvetica, Times, Courier...), como hace Guardar como PDF/A"
+
+msgid "Identify as PDF/&UA..."
+msgstr "Identificar como PDF/&UA..."
+
+msgid "Say in the file's metadata that it meets PDF/UA-1 (once the check finds nothing)"
+msgstr "Indicar en los metadatos del archivo que cumple PDF/UA-1 (cuando la comprobación no encuentre nada)"

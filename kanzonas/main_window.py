@@ -862,9 +862,14 @@ class MainWindow(QMainWindow):
                 tr("Say in the file's metadata that it meets PDF/UA-1 (once the check finds "
                    "nothing)"))]
         self.acc_actions = {}
+        attrs = {"check_accessibility": "check", "auto_tag": "autotag", "alt_text": "alt",
+                 "title_language": "title", "field_tooltips": "tips",
+                 "link_descriptions": "links", "tab_order": "tabs", "mark_decorative": "decor",
+                 "embed_fonts": "fonts", "identify_pdfua": "pdfua"}
         for name, text, tip in acc:
-            self.acc_actions[name] = self._act(text, lambda _=False, n=name:
-                                               self.accessibility(n), tip=tip)
+            a = self.acc_actions[name] = self._act(text, lambda _=False, n=name:
+                                                   self.accessibility(n), tip=tip)
+            setattr(self, "a_acc_" + attrs[name], a)         # (a_acc_check...: the ribbon's)
         self.a_search_redact = self._act(tr("&Search && redact..."), self.search_redact)
         self.a_apply_redact = self._act(tr("&Apply redactions..."), self.apply_redactions)
         self.a_digisign = self._act(tr("&Digitally sign with certificate..."), self.digital_sign)
@@ -5045,7 +5050,9 @@ class MainWindow(QMainWindow):
             (tr("Document"), "small", [
                 split_button([self.a_header, self.a_watermark, self.a_background]),
                 self.a_bookmarks, self.a_compare, self.a_compress],
-             [self.a_attachments, self.a_sheet_links]),
+             # (and accessibility: the rest of it in Document > Accessibility)
+             [self.a_attachments, self.a_sheet_links, self.a_acc_check, self.a_acc_autotag,
+              self.a_acc_alt]),
             (tr("Convert"), "large", [self.a_ocr, self.a_flatten]),
         ])
         # print production (1.8): what a sheet needs before a plotter or a print shop
