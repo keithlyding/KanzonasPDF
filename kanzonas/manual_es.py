@@ -108,7 +108,8 @@ pueden hacerlo Acrobat y PDF-XChange. Abrir, guardar, imprimir, deshacer y rehac
 cuadro Buscar (con su número de coincidencias y sus flechas arriba / abajo) está a su derecha. La barra inferior (barra de estado, abajo a la derecha) tiene la navegación de páginas (primera,
 anterior, número de página, siguiente, última página), Ajustar página, Ajustar al ancho, Tamaño real, un control deslizante de zoom y el
 cuadro de zoom con alejar / acercar, como PDF-XChange Editor, y la escala del dibujo de la página actual (en rojo cuando no
-tiene ninguna; haga clic en ella para establecerla). La cinta es compacta: dos filas de
+tiene ninguna; haga clic en ella para establecerla). Un mensaje de la barra inferior demasiado largo para el espacio a la
+izquierda de los controles de página termina en «...»; pase el mouse sobre él para leerlo entero. La cinta es compacta: dos filas de
 botones, y cada pestaña cabe en una pantalla de 1366 píxeles de ancho, en inglés y en español. Los comandos que se usan
 menos comparten un botón con una flecha al lado: haga clic en el botón para el comando que muestra, o en la flecha para
 los demás (el botón muestra luego el último usado). En la pestaña Inicio, la flecha de Resaltado tiene Subrayado y
@@ -560,7 +561,7 @@ texto muy apretado. En una página con marcas de censura que aún no se han apli
 donde está (cortar aplicaría las marcas): aplíquelas o quítelas primero. <b>Seleccionar todo el texto</b> (Ctrl+A) selecciona todo el texto
 de la página. Esc o un clic en otro lugar borra la selección.</li>
 <li><b>Menú contextual:</b> haga clic con el botón derecho en la página para Cortar, Copiar, Pegar, Eliminar (para las
-marcas seleccionadas) y Seleccionar todo el texto. Con texto seleccionado, también ofrece Resaltado, Subrayado, Tachar,
+marcas seleccionadas) y Seleccionar todo el texto. Con texto seleccionado, también ofrece Resaltar, Subrayar, Tachar,
 Comentar el texto… y Marcar para censura para ese texto. Hacer clic con el botón derecho en una marca la selecciona
 primero.</li>
 <li><b>Marcas:</b> seleccione una o más marcas y luego Copiar o Cortar. <b>Pegar</b> (Ctrl+V) las coloca
@@ -1252,7 +1253,8 @@ pulgadas o milímetros, en todas las páginas, la página actual o una lista de 
 de toda la hoja de la página (su cuadro de medios), y el cuadro de sangrado tiene que contener el cuadro de recorte final:
 si no, lo indica y no cambia nada. Ctrl+Z lo deshace.</li>
 <li><b>Mostrar cuadros de página</b> (también en el menú Ver) delinea los cuadros que tiene una página: recorte final en
-verde, sangrado en rojo, arte en azul (solo en pantalla).</li>
+verde, sangrado en rojo, arte en azul, cada uno con su nombre en una esquina (Recorte final, Sangrado, Arte; solo en
+pantalla).</li>
 <li><b>Corregir líneas finas</b>: las líneas dibujadas más finas que un grosor que elija (0,25 pt de forma
 predeterminada; incluido un grosor de 0, que significa «lo más fino que puede dibujar el dispositivo», a menudo demasiado
 tenue en un trazador) se dibujan con el grosor que elija, en todas las páginas, la página actual o una lista de páginas.

@@ -116,7 +116,8 @@ Acrobat and PDF-XChange can. Open, save, print, undo and redo sit left of the ta
 Find box (with its match count and up / down arrows) sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
 zoom box with zoom out / zoom in, like PDF-XChange Editor, and the current page's drawing
-scale (red when it has none; click it to set it). The ribbon is compact: two rows of
+scale (red when it has none; click it to set it). A message on the bottom bar too long for
+the room left of the page controls ends in "..."; hover over it to read all of it. The ribbon is compact: two rows of
 buttons, and every tab fits a screen 1366 pixels wide, in English and in Spanish. Commands used
 less often share a button with an arrow beside it: click the button for the command it shows,
 or the arrow for the others (the button then shows the one used last). On the Home tab,
@@ -1263,7 +1264,8 @@ pages, the current page or a list of pages. A box has to stay within the page's 
 (its media box), and the bleed box has to hold the trim box: it says so otherwise and changes
 nothing. Ctrl+Z undoes it.</li>
 <li><b>Show page boxes</b> (also in the View menu) outlines the boxes a page has: trim in
-green, bleed in red, art in blue (on screen only).</li>
+green, bleed in red, art in blue, each named in a corner (Trim box, Bleed box, Art box; on
+screen only).</li>
 <li><b>Fix hairlines</b>: lines drawn thinner than a width you choose (0.25 pt by default;
 a width of 0 included, which means "the thinnest the device can draw", often too faint on
 a plotter) are drawn at the width you choose, on all pages, the current page or a list of

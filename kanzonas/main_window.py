@@ -9,7 +9,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
-from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint, QObject
+from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint, QObject, QRect
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap,
                            QPainter, QDrag, QMouseEvent, QCursor)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFileDialog, QMessageBox,
@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFile
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
                                QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit,
-                               QTextEdit)
+                               QTextEdit, QStatusBar, QSizeGrip, QStyle, QStyleOption)
 
 from . import __version__, annotations, export, paths, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
@@ -387,12 +387,67 @@ class _GroupTip(QObject):
         return False
 
 
+class _StatusBar(QStatusBar):
+    """The status bar. A message too long for the room left of the page controls (often in
+    Spanish) ends in "..." instead of running under them; hover over it for all of it. (Qt
+    draws a message itself, from C++ as well, as with a menu command's status tip, so the
+    message is drawn here.)"""
+
+    def _controls(self):
+        """The widgets shown on the bar (beside a message: only the ones kept on it), not
+        its size grip or a tool tip's window."""
+        return [w for w in self.findChildren(QWidget, options=Qt.FindDirectChildrenOnly)
+                if w.isVisible() and not w.isWindow() and not isinstance(w, QSizeGrip)]
+
+    def message_rect(self):
+        """Where the message goes: from the left to the first control kept on the bar."""
+        right = self.width() - 12
+        for w in self._controls():
+            right = min(right, w.x() - 2)
+        return QRect(6, 0, max(0, right - 6), self.height())
+
+    def shown_message(self):
+        """The message as drawn (ending in "..." when it doesn't fit)."""
+        return self.fontMetrics().elidedText(self.currentMessage(), Qt.ElideRight,
+                                             self.message_rect().width())
+
+    def paintEvent(self, e):
+        msg = self.currentMessage()
+        if not msg:
+            return super().paintEvent(e)
+        # (as QStatusBar paints itself, with the message elided)
+        p = QPainter(self)
+        opt = QStyleOption()
+        opt.initFrom(self)
+        self.style().drawPrimitive(QStyle.PE_PanelStatusBar, opt, p, self)
+        for w in self._controls():
+            item = QStyleOption()
+            item.rect = w.geometry().adjusted(-2, -1, 2, 1)
+            item.palette = self.palette()
+            item.state = QStyle.State_None
+            self.style().drawPrimitive(QStyle.PE_FrameStatusBarItem, item, p, w)
+        p.setPen(self.palette().windowText().color())
+        p.drawText(self.message_rect(), int(Qt.AlignLeading | Qt.AlignVCenter |
+                                            Qt.TextSingleLine), self.shown_message())
+
+    def event(self, e):
+        if e.type() == QEvent.ToolTip and self.currentMessage() and \
+                self.message_rect().contains(e.pos()):
+            if self.shown_message() != self.currentMessage():
+                QToolTip.showText(e.globalPos(), self.currentMessage(), self)
+            else:
+                QToolTip.hideText()
+            return True
+        return super().event(e)
+
+
 class MainWindow(QMainWindow):
     def __init__(self, primary=None):
         """primary (the default): the app's main window, which owns the session (closing it
         closes the others). A window a tab was pulled out into is not: closing its last
         tab closes it."""
         super().__init__()
+        self.setStatusBar(_StatusBar(self))
         from . import paths
         self.settings = paths.settings()
         self.primary = True if primary is None else bool(primary)
