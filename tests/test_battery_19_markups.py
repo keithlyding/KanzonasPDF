@@ -254,5 +254,35 @@ class BoxSnapping(Case):
         self.assertEqual(self.drop_near_center((253, 168), (2, -2)), (3, -2))
 
 
+class OddScales(Case):
+    def test_a_scale_that_cant_be_one_reads_as_not_set(self):
+        """A page scale kept as not a number (or zero, negative, infinite, or in a unit this
+        version doesn't know, as a file from elsewhere may hold) was taken as set: with Show
+        scale bar on, drawing the page raised in its paint event (a painter left active) at
+        every repaint."""
+        from kanzonas import measure
+        for val in ("nan|in|x", "inf|in|x", "0|in|x", "-1|m|x", "1|furlong|x"):
+            with self.subTest(val=val):
+                d = pymupdf.open()
+                p = d.new_page(width=600, height=400)
+                d.xref_set_key(p.xref, measure.KEY, pymupdf.get_pdf_str(val))
+                self.assertFalse(measure.get_scale(p)[3])
+                del p
+                path = self.path("odd.pdf")
+                d.save(path)
+                d.close()
+                with mock.patch.object(DocumentView, "show_scale_bar", True):
+                    v = self.view(path)
+                    v.resize(900, 700)
+                    v.show()
+                    APP.processEvents()
+                    self.assertIsNone(v.scale_bar_pixmap(0, 1.0, v.pages[0].width()))
+                    v.pages[0].grab()
+                    v.hide()
+        page = pymupdf.open().new_page()
+        measure.set_scale(page, measure.scale_from_preset(96), "ft-in", "1/8\" = 1'-0\"")
+        self.assertTrue(measure.get_scale(page)[3])
+
+
 if __name__ == "__main__":
     unittest.main()

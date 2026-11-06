@@ -60,7 +60,11 @@ def get_scale(page):
         typ, val = page.parent.xref_get_key(page.xref, KEY)
         if typ == "string":
             f, unit, label = (val.split("|", 2) + ["", ""])[:3]
-            return float(f), unit, label, True
+            f = float(f)
+            # (a scale that can't be one, as a file from elsewhere may hold: not set; a NaN
+            # one stopped the page drawing its scale bar, and every measurement on it)
+            if math.isfinite(f) and f > 0 and unit in UNITS:
+                return f, unit, label, True
     except Exception:
         pass
     return PT_M, "in", tr("not set (paper size)"), False
