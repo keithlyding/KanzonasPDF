@@ -1359,7 +1359,9 @@ de marcas (también su texto con formato), títulos y direcciones web de marcado
 programa), el texto alternativo de los PDF etiquetados, las notas de
 vínculos, las etiquetas de página, los nombres de capas y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
 archivos adjuntos que lo contienen se eliminan (y un formulario XFA que lo contiene: sus campos normales se conservan), y en las notas y los comentarios (que se quedan), los marcadores
-y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
+y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar dice dónde lo encontró (los
+campos, las notas, los vínculos, los marcadores y las propiedades, y en cuántos lugares más del archivo,
+como nombres de capas, direcciones web, datos de formularios y texto alternativo) y ofrece quitarlo de
 inmediato. Una <b>leyenda</b> se vuelve a dibujar con las marcas que quedan, en el mismo paso: sus
 filas ya no muestran lo censurado, y en su título el texto se reemplaza por [redacted] (un cuadro
 dibujado sobre una leyenda la quita). Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>

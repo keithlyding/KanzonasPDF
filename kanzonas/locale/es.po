@@ -3795,6 +3795,9 @@ msgstr "{n} marcador(es)"
 msgid "{n} document propert(ies)"
 msgstr "{n} propiedad(es) del documento"
 
+msgid "{n} other place(s) in the file (layer names, web addresses, form data, alternate text...)"
+msgstr "{n} lugar(es) más del archivo (nombres de capas, direcciones web, datos de formularios, texto alternativo...)"
+
 #: main_window.py:3212
 msgid "Marked {n} occurrence(s) on the pages."
 msgstr "Se marcaron {n} aparición(es) en las páginas."

@@ -351,15 +351,24 @@ _TEXT_KEYS = {"Alt", "ActualText", "E", "T", "TU", "TM", "Contents", "RC", "Titl
 _TEXT_ARRAYS = {"Names", "V", "DV", "Opt"}
 
 
-def scrub_strings(doc, pat, clean):
+# the document information keys Search & redact counts as properties (hidden_matches)
+_INFO_COUNTED = {"Title", "Author", "Subject", "Keywords", "Creator", "Producer"}
+
+
+def scrub_strings(doc, pat, clean, count=False):
     """Every text string in doc's objects that pat matches, replaced by clean(text): what
     Search & redact can't reach otherwise (a tagged PDF's alternate text and ActualText,
-    a link's note, page labels, named destinations...). Only strings people read are
-    looked at (_TEXT_KEYS, _TEXT_ARRAYS, every string of the document information): a style
-    (/DA) or KanzonasPDF's
-    own data (/KZ...) holding the word "fill" stays as it is. Redaction marks keep their
-    own text (a mark not applied yet keeps its term), and signatures and the encryption
-    dictionary are left alone (their strings are binary)."""
+    a link's note, page labels, named destinations, layer names, web addresses, fields on
+    no page...). Only strings people read are looked at (_TEXT_KEYS, _TEXT_ARRAYS, every
+    string of the document information): a style (/DA) or KanzonasPDF's own data (/KZ...)
+    holding the word "fill" stays as it is. Redaction marks keep their own text (a mark
+    not applied yet keeps its term), and signatures and the encryption dictionary are left
+    alone (their strings are binary).
+
+    count: change nothing, and return how many such strings match, leaving out what
+    hidden_matches counts in its own places (markups and fields on pages, bookmark titles,
+    the standard properties)."""
+    found = 0
     m = pymupdf.mupdf
     pdf = pymupdf._as_pdf_document(doc)
     skip = set()
@@ -382,6 +391,11 @@ def scrub_strings(doc, pat, clean):
                 m.pdf_to_name(m.pdf_dict_gets(obj, "Type")) in ("Sig", "DocTimeStamp") or \
                 m.pdf_dict_gets(obj, "ByteRange").m_internal:
             continue
+        if count and m.pdf_dict_gets(obj, "Subtype").m_internal and \
+                m.pdf_dict_gets(obj, "Rect").m_internal:
+            continue                            # (a markup, a field or a link on a page)
+        outline = count and m.pdf_dict_gets(obj, "Title").m_internal and \
+            m.pdf_dict_gets(obj, "Parent").m_internal
         todo = [(obj, "")]
         while todo:
             o, held_by = todo.pop()
@@ -398,6 +412,12 @@ def scrub_strings(doc, pat, clean):
                             (key in _TEXT_KEYS if is_dict else key in _TEXT_ARRAYS)):
                         continue
                     text = m.pdf_to_text_string(val)
+                    if count:
+                        if o is obj and (outline and key == "Title" or
+                                         xref == info and key in _INFO_COUNTED):
+                            continue            # (counted as a bookmark or a property)
+                        found += bool(pat.search(text))
+                        continue
                     if pat.search(text):
                         new = m.pdf_new_text_string(clean(text))
                         if is_dict:
@@ -406,6 +426,30 @@ def scrub_strings(doc, pat, clean):
                             m.pdf_array_put(o, i, new)
                 elif m.pdf_is_dict(val) or m.pdf_is_array(val):
                     todo.append((val, key))
+    return found
+
+
+def _xfa_has(pat):
+    """A remove_xfa test: an XFA packet holding pat (&#84; and the like read as the
+    characters they stand for)."""
+    import html
+    return lambda data: bool(pat.search(html.unescape(data.decode("utf-8", "replace"))))
+
+
+def xfa_matches(doc, pat):
+    """True when the document's XFA form holds pat (nothing is changed)."""
+    cat = doc.pdf_catalog()
+    kind, val = doc.xref_get_key(cat, "AcroForm/XFA")
+    if kind == "null":
+        return False
+    test = _xfa_has(pat)
+    for x in [int(n) for n in re.findall(r"(\d+) 0 R", val)]:
+        try:
+            if doc.xref_is_stream(x) and test(doc.xref_stream(x) or b""):
+                return True
+        except Exception:
+            continue
+    return False
 
 
 class _not_busy:
@@ -6875,9 +6919,12 @@ class DocumentView(QScrollArea):
 
     def hidden_matches(self, text):
         """Where `text` occurs outside the page drawing (which page redaction can't reach):
-        {"fields", "markups", "bookmarks", "metadata"} -> count."""
+        {"fields", "markups", "links", "bookmarks", "metadata", "other"} -> count. "other":
+        every other place Apply redactions takes it out of (layer names, bookmarks' and
+        buttons' web addresses, fields on no page, an XFA form's data, alternate text, page
+        labels...): without it, "No matches" was said of a file still holding the text."""
         t = text.lower()
-        n = {"fields": 0, "markups": 0, "links": 0, "bookmarks": 0, "metadata": 0}
+        n = {"fields": 0, "markups": 0, "links": 0, "bookmarks": 0, "metadata": 0, "other": 0}
         for i in range(self.doc.page_count):
             pg = self.doc[i]
             for w in pg.widgets():
@@ -6893,6 +6940,10 @@ class DocumentView(QScrollArea):
         n["bookmarks"] = sum(1 for _l, title, _p in self.doc.get_toc() if t in title.lower())
         n["metadata"] = sum(1 for v in (self.doc.metadata or {}).values()
                             if isinstance(v, str) and t in v.lower())
+        pat, _clean = self._term_pattern({text})
+        if pat is not None:
+            n["other"] = scrub_strings(self.doc, pat, None, count=True) + \
+                xfa_matches(self.doc, pat)
         return n
 
     def _redaction_terms(self):
@@ -7050,11 +7101,8 @@ class DocumentView(QScrollArea):
                 self.doc.del_xml_metadata()     # XMP copy of the properties
         except Exception:
             pass
-        # an XFA form holds the values typed into the form again, as XML (&#84; and the
-        # like read as the characters they stand for)
-        import html
-        remove_xfa(self.doc, lambda data: bool(pat.search(
-            html.unescape(data.decode("utf-8", "replace")))))
+        # an XFA form holds the values typed into the form again, as XML
+        remove_xfa(self.doc, _xfa_has(pat))
         # and anywhere else a string holds it: alternate text, ActualText, link notes,
         # page labels, named destinations (the links naming them follow)
         scrub_strings(self.doc, pat, clean)

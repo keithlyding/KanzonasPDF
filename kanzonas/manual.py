@@ -1367,7 +1367,9 @@ email addresses), markup notes (also their formatted text), bookmark titles and 
 document properties (also a program's own), the alternate text of tagged PDFs, link notes,
 page labels, layer names and destination names. When you apply, fields, links, stamps and
 attached files containing it are deleted (and an XFA form holding it: its ordinary fields stay), and in notes and comments (they stay), bookmarks
-and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
+and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact says where it found it (the
+fields, notes, links, bookmarks and properties, and how many other places in the file, such as
+layer names, web addresses, form data and alternate text) and offers to remove it right
 away. A <b>legend</b> is drawn again from the markups left, in the same step: its rows no longer
 show what was redacted, and the text in its title is replaced by [redacted] (a box drawn over a
 legend removes it). Check the result before sharing; Undo works until you close the file.</li>
