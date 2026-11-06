@@ -513,6 +513,11 @@ class Battery:
             elif not now.same(before):
                 self.mismatch("an edit changed the document without an undo step", before,
                               now)
+            elif not self.budget_trim(nr, mr, keep=0):
+                # (an edit refused or taken back is no edit: the steps to redo stay. One
+                # refused after a change had lost them: Edit objects, seed 5, 1.9)
+                raise Failed("an edit that changed nothing left %d steps to redo, expected %d"
+                             % (nr, mr))
             if pushed or not now.same(before):
                 if nr:
                     raise Failed("an edit left %d steps to redo" % nr)

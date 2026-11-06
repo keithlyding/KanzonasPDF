@@ -898,11 +898,22 @@ def _remove_lines(page, lines, keep_links=True, decor=()):
 def delete_lines(page, lines, keep_links=False):
     """Take these lines of text out of the page; pictures and line art stay. Links on them
     go too, unless keep_links."""
+    refuse_with_marks(page, deleting=True)
+    _remove_lines(page, lines, keep_links)
+
+
+def refuse_with_marks(page, deleting=False):
+    """Raise ValueError when page has redaction marks not applied yet: taking text out of a
+    page applies every redaction mark on it, pending ones included. An edit that also changes
+    other things checks this before changing anything (an edit refused after a change is
+    taken back, but MuPDF has dropped the steps to redo by then)."""
     from .annotations import each_annot
     if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
+        if deleting:
+            raise ValueError(tr("Apply or remove the redaction marks on this page before "
+                                "deleting its text."))
         raise ValueError(tr("Apply or remove the redaction marks on this page before "
-                            "deleting its text."))
-    _remove_lines(page, lines, keep_links)
+                            "editing its text."))
 
 
 def _font_for(page, span, text):
@@ -1609,10 +1620,7 @@ def move_lines(page, lines, offset):
     with one redaction for all of them: one at a time, a drawing's 400 labels took most of a
     minute. Returns the font names written with. Raises ValueError (before changing anything)
     if a line can't be written."""
-    from .annotations import each_annot
-    if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
-        raise ValueError(tr("Apply or remove the redaction marks on this page before "
-                            "editing its text."))
+    refuse_with_marks(page)
     plans = []
     styled, decor = [], []
     for line in lines:                  # 1) the fonts first: nothing goes if one can't write
