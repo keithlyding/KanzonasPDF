@@ -818,7 +818,8 @@ longitud, área o volumen total, en las unidades de la página (Medir &gt; Estab
 <li><b>Se actualiza sola</b> cuando se agregan, cambian o eliminan marcas, como parte del mismo
 cambio: Ctrl+Z deshace la marca y la actualización de la leyenda juntas, y Rehacer vuelve a poner
 ambas. Nunca se cuenta a sí misma ni a otra leyenda, ni a las marcas ocultas, las marcas de censura
-o los marcadores de posición de firma.</li>
+o los marcadores de posición de firma. Aplicar censuras la vuelve a dibujar con las marcas que
+quedan (vea Censura).</li>
 <li><b>Opciones</b> (panel Propiedades: elíjalas antes de colocarla, con la herramienta Leyenda
 elegida, o en una leyenda seleccionada): <b>Título</b> (Leyenda al principio; vacío para ninguno),
 <b>Marcas de</b> <b>Esta página</b> o <b>Todo el documento</b> (todas las páginas, con los totales
@@ -1337,7 +1338,9 @@ de marcas, títulos de marcadores, propiedades del documento, el texto alternati
 vínculos, las etiquetas de página y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
 archivos adjuntos que lo contienen se eliminan, y en las notas y los comentarios (que se quedan), los marcadores
 y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
-inmediato. Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
+inmediato. Una <b>leyenda</b> se vuelve a dibujar con las marcas que quedan, en el mismo paso: sus
+filas ya no muestran lo censurado, y en su título el texto se reemplaza por [redacted] (un cuadro
+dibujado sobre una leyenda la quita). Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
 <li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento, scripts,
 archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
 (los campos normales del formulario se conservan).</li>

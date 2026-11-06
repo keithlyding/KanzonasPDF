@@ -3910,15 +3910,7 @@ class MainWindow(QMainWindow):
         replaced = self._writing_over(out, source=v)
         if replaced is None:
             return
-        if getattr(v, "sig_results", None):
-            # added to the file as it is (an incremental update), so earlier signatures stay
-            # valid; a rewrite of the whole file (tobytes) changed what they had signed
-            data = v._orig_data
-            if data is None:
-                with open(v.path, "rb") as f:
-                    data = f.read()
-        else:
-            data = v.doc.tobytes()
+        data = v.signing_bytes()
         try:
             digisign.sign(data, out, signer, reason.currentText(), location.text(),
                           lock.isChecked())

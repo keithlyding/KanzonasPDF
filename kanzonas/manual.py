@@ -838,7 +838,7 @@ area or volume, in the page's units (Measure &gt; Set scale).</li>
 <li><b>It updates by itself</b> when markups are added, changed or deleted, as part of the same
 change: Ctrl+Z takes the markup and the legend's update back together, and Redo puts both back.
 It never counts itself or another legend, nor hidden markups, redaction marks or signature
-placeholders.</li>
+placeholders. Applying redactions draws it again from the markups left (see Redaction).</li>
 <li><b>Options</b> (Properties panel: set them before placing, with the Legend tool picked, or on
 a selected legend): <b>Title</b> (Legend to start with; empty for none), <b>Markups from</b>
 <b>This page</b> or the <b>Whole document</b> (every page, the totals in this page's units),
@@ -1348,7 +1348,9 @@ notes, bookmark titles, document properties, the alternate text of tagged PDFs, 
 page labels and destination names. When you apply, fields, links, stamps and
 attached files containing it are deleted, and in notes and comments (they stay), bookmarks
 and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
-away. Check the result before sharing; Undo works until you close the file.</li>
+away. A <b>legend</b> is drawn again from the markups left, in the same step: its rows no longer
+show what was redacted, and the text in its title is replaced by [redacted] (a box drawn over a
+legend removes it). Check the result before sharing; Undo works until you close the file.</li>
 <li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
 attached files, hidden text, links, comments, form data, thumbnails. Scripts includes those in
 other actions (multimedia), javascript: links and an XFA form's scripts (the ordinary form fields

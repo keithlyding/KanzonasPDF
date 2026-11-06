@@ -6831,19 +6831,40 @@ class DocumentView(QScrollArea):
                     terms.add(c[len(self.REDACT_TAG):])
         return {t for t in terms if t.strip()}
 
+    def _marks(self, pg, only=None):
+        """The redaction marks of page pg (those whose xrefs are in only, when given):
+        (all their boxes, the boxes of those drawn by hand). Search & redact's marks are of
+        a word, also where a markup shows it (PyMuPDF reads markups' text with the page's):
+        a legend under one of those is drawn again without it (_redraw_legends), not deleted
+        as under a box drawn by hand."""
+        marks, hand = [], []
+        for a in pg.annots():
+            if a.type[0] != pymupdf.PDF_ANNOT_REDACT or (only is not None and a.xref not in only):
+                continue
+            r = pymupdf.Rect(a.rect)
+            marks.append(r)
+            if not (a.info.get("content") or "").startswith(self.REDACT_TAG):
+                hand.append(r)
+        return marks, hand
+
     @staticmethod
-    def _clear_under_marks(pg, rects):
+    def _clear_under_marks(pg, rects, legend_rects=None):
         """Delete form fields and markups that a redaction mark overlaps: page redaction only
-        cleans the page drawing, and a field or note keeps its own copy of the text."""
-        def hit(r):
+        cleans the page drawing, and a field or note keeps its own copy of the text. A legend
+        goes only under one of legend_rects (None: any mark); the others are drawn again from
+        the markups left (_redraw_legends)."""
+        from . import legend
+
+        def hit(r, rects=rects):
             r = pymupdf.Rect(r)
             return any(r.intersects(m) for m in rects)
         for w in list(pg.widgets()):
             if hit(w.rect):
                 pg.delete_widget(w)
+        legends = set(legend.legends_on(pg)) if legend_rects is not None else set()
         for x in [a.xref for a in pg.annots()
                   if a.type[0] not in (pymupdf.PDF_ANNOT_REDACT, pymupdf.PDF_ANNOT_POPUP)
-                  and hit(a.rect)]:
+                  and (hit(a.rect, legend_rects) if a.xref in legends else hit(a.rect))]:
             pg.delete_annot(pg.load_annot(x))
 
     # text a person typed or sees, in KanzonasPDF's private markup data (stamp labels, names
@@ -6876,24 +6897,41 @@ class DocumentView(QScrollArea):
     REDACT_DROP = ("stamp", "image", "attach")      # Search & redact deletes these whole
 
     def _annot_has(self, pg, xref, pat):
-        """The markup's note, subject, author or private text matches the redaction terms."""
+        """The markup's note, subject, author, private text or the text its appearance shows
+        (a stamp or text box made by another program can show words kept nowhere else)
+        matches the redaction terms."""
         a = pg.load_annot(xref)
         info = [a.info.get(k) or "" for k in ("content", "subject", "title")]
-        return any(pat.search(v) for v in info + self._private_text(xref))
+        if any(pat.search(v) for v in info + self._private_text(xref)):
+            return True
+        try:
+            return bool(pat.search(a.get_text() or ""))
+        except Exception:
+            return False
+
+    @staticmethod
+    def _term_pattern(terms):
+        """(a pattern finding any of the redaction terms, a function replacing them by
+        [redacted] in a text), or (None, None) with no terms."""
+        import re
+        if not terms:
+            return None, None
+        pat = re.compile("|".join(re.escape(t) for t in sorted(terms, key=len, reverse=True)),
+                         re.IGNORECASE)
+
+        def clean(v):
+            return pat.sub("[redacted]", v) if isinstance(v, str) else v
+        return pat, clean
 
     def _scrub_terms(self, terms):
         """Remove Search & redact terms from places outside the page drawing: form field
         values, option lists, tooltips and names and links (deleted), markup text (replaced
         by [redacted] in notes and comments; stamps, pictures and attachments are deleted),
         bookmark titles and document properties (replaced)."""
-        import re
-        if not terms:
+        pat, clean = self._term_pattern(terms)
+        if pat is None:
             return
-        pat = re.compile("|".join(re.escape(t) for t in sorted(terms, key=len, reverse=True)),
-                         re.IGNORECASE)
-
-        def clean(v):
-            return pat.sub("[redacted]", v) if isinstance(v, str) else v
+        from . import legend
         for i in range(self.doc.page_count):
             pg = self.doc[i]
             for w in list(pg.widgets()):
@@ -6904,7 +6942,11 @@ class DocumentView(QScrollArea):
             for ln in pg.get_links():
                 if any(pat.search(x) for x in self._link_texts(ln)):
                     pg.delete_link(ln)          # e.g. a mailto: or web address with the term
-            for x in [a.xref for a in pg.annots() if a.type[0] != pymupdf.PDF_ANNOT_REDACT]:
+            # (a legend shows the other markups' labels: drawn again from them once they
+            # are cleaned, below, rather than deleted)
+            legends = set(legend.legends_on(pg))
+            for x in [a.xref for a in pg.annots() if a.type[0] != pymupdf.PDF_ANNOT_REDACT
+                      and a.xref not in legends]:
                 if not self._annot_has(pg, x, pat):
                     continue
                 model = annotations.read(pg.load_annot(x))
@@ -6934,6 +6976,32 @@ class DocumentView(QScrollArea):
         # and anywhere else a string holds it: alternate text, ActualText, link notes,
         # page labels, named destinations (the links naming them follow)
         scrub_strings(self.doc, pat, clean)
+        self._redraw_legends(pat, clean)
+
+    def _redraw_legends(self, pat=None, clean=None):
+        """Draw every legend again from the markups as they are now (redaction took some
+        away or cleaned their text), inside the redaction's own step and before Apply
+        redactions writes the document anew: a legend never goes on showing a label of a
+        markup redacted. With the redaction terms (pat, and clean to take them out of a
+        text): a legend's title loses them, and a legend that would still show one (it
+        can't: its rows come from markups already cleaned) is deleted."""
+        from . import legend
+        legend.refresh(self.doc, None, True, {}, {}, {})
+        if pat is None:
+            return
+        for i in range(self.doc.page_count):
+            page = self.doc[i]
+            for x in legend.legends_on(page):
+                st = legend.stored(self.doc, x)
+                props = dict(annotations.DEFAULTS[legend.KIND], **(st.get("props") or {}))
+                title = props.get("title") or ""
+                if pat.search(title):
+                    props["title"] = clean(title)
+                    rect = pymupdf.Rect((st.get("geom") or {}).get("box") or
+                                        page.load_annot(x).rect)
+                    legend.draw(page, x, {"kind": legend.KIND, "props": props, "rect": rect})
+                if self._annot_has(page, x, pat):
+                    page.delete_annot(page.load_annot(x))
 
     def remove_term(self, term):
         """Search & redact for text that's only in fields, notes, bookmarks or properties."""
@@ -6955,18 +7023,21 @@ class DocumentView(QScrollArea):
         XML metadata, then rewrite the file so unlinked copies of that data are gone.
         """
         def do():
-            self._scrub_terms(self._redaction_terms())
+            terms = self._redaction_terms()
+            self._scrub_terms(terms)
             for i in range(self.doc.page_count):
                 pg = self.doc[i]
-                marks = [pymupdf.Rect(a.rect) for a in pg.annots()
-                         if a.type[0] == pymupdf.PDF_ANNOT_REDACT]
+                marks, hand = self._marks(pg)
                 if marks:
-                    self._clear_under_marks(pg, marks)
+                    self._clear_under_marks(pg, marks, hand)
                     # Secure redaction removes crossing paths completely. Keeping them
                     # behind an opaque fill would leave confidential geometry recoverable.
                     pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
                                         graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                         text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+            # (the markups under the marks are gone: the legends listing them are drawn
+            # again now, before the clean-up writes the document anew)
+            self._redraw_legends(*self._term_pattern(terms))
             if scrub:
                 # (PyMuPDF's scrub, without its slow hidden-text search on pages with no
                 # text at all, where it can't find anything: see pdf_speed.py)
@@ -7466,17 +7537,32 @@ class DocumentView(QScrollArea):
             for an in [a.xref for a in pg.annots()
                        if a.type[0] == pymupdf.PDF_ANNOT_REDACT and a.xref not in chosen]:
                 pg.delete_annot(pg.load_annot(an))
-            marks = [pymupdf.Rect(a.rect) for a in pg.annots()
-                     if a.type[0] == pymupdf.PDF_ANNOT_REDACT]
-            self._clear_under_marks(pg, marks)
+            marks, hand = self._marks(pg)
+            self._clear_under_marks(pg, marks, hand)
             pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
                                 graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                 text=pymupdf.PDF_REDACT_TEXT_REMOVE)
             for m in others:                       # put the other marks back
                 annotations.write(pg, m)
+            self._redraw_legends(*self._term_pattern(terms))
         self.clear_selection()
         self.modify(do, [index])
         return len(chosen)
+
+    def signing_bytes(self):
+        """The bytes Digital signature signs (as the signed copy's start)."""
+        if getattr(self, "sig_results", None):
+            # added to the file as it is (an incremental update), so earlier signatures stay
+            # valid; a rewrite of the whole file (tobytes) changed what they had signed
+            data = self._orig_data
+            if data is None:
+                with open(self.path, "rb") as f:
+                    data = f.read()
+            return data
+        # garbage=1: without what nothing uses any more (object numbers stay as they are):
+        # a markup or a picture Apply redactions took away, without its clean-up, stayed in
+        # the signed copy, unused but there to read
+        return self.doc.tobytes(garbage=1)
 
     # ---- digital signatures: clear, timestamp ---------------------------------------------------
     def clear_signatures(self):
