@@ -4992,8 +4992,8 @@ class MainWindow(QMainWindow):
             # background)
             (tr("Document"), "small", [
                 split_button([self.a_header, self.a_watermark, self.a_background]),
-                self.a_bookmarks, self.a_compare],
-             [self.a_attachments, self.a_sheet_links, self.a_compress]),
+                self.a_bookmarks, self.a_compare, self.a_compress],
+             [self.a_attachments, self.a_sheet_links]),
             (tr("Convert"), "large", [self.a_ocr, self.a_flatten]),
         ])
         # print production (1.8): what a sheet needs before a plotter or a print shop

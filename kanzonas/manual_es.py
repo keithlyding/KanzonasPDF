@@ -116,7 +116,7 @@ los demás (el botón muestra luego el último usado). En la pestaña Inicio, la
 Tachado, y la de Firmar tiene Iniciales; en la pestaña Páginas, la de Encabezado y pie tiene Marca de agua y Fondo, y la
 de Extraer tiene Reemplazar. Otros están en la lista de la flecha estrecha al final de un grupo: Configuración de
 cuadrícula junto a los interruptores de ajuste, Subir y Bajar en el grupo Ordenar de la pestaña Páginas, Archivos
-adjuntos, Referencias a planos y Comprimir en su grupo Documento, Contraer y Nombres de grupo en el grupo Cinta de la
+adjuntos y Referencias a planos en su grupo Documento, Contraer y Nombres de grupo en el grupo Cinta de la
 pestaña Ver, Alinear en el grupo Modificar de la pestaña CAD. En la pestaña Inicio, Alejar y Acercar son iconos debajo
 de Tamaño real. Si la ventana es demasiado estrecha para una pestaña, desplácela lateralmente con la rueda del mouse o
 con la barra delgada que hay debajo. Ver &gt; <b>Mostrar nombres de grupo en la cinta</b> agrega un nombre debajo de cada grupo de

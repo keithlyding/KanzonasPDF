@@ -124,7 +124,7 @@ or the arrow for the others (the button then shows the one used last). On the Ho
 Highlight's arrow has Underline and Strike, and Sign's has Initials; on the Pages tab, Header
 and footer's has Watermark and Background, and Extract's has Replace. Others are listed under
 the narrow arrow at the right end of a group: Grid settings beside the snap switches, Move up
-and Move down in the Pages tab's Organize group, Attachments, Sheet callouts and Compress in its
+and Move down in the Pages tab's Organize group, Attachments and Sheet callouts in its
 Document group, Collapse and Group names in the View tab's Ribbon group, Align in the CAD tab's
 Modify group. On the Home tab, Zoom out and Zoom in are icons under Actual size. If the window
 is too narrow for a tab, scroll it sideways with the mouse wheel or the thin bar under it. View &gt; <b>Show group names on ribbon</b> adds a name under each group of
