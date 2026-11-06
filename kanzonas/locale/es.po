@@ -8285,6 +8285,9 @@ msgstr "Falló una conexión segura con {host}."
 msgid "Couldn't reach {host}: {error}"
 msgstr "No se pudo conectar con {host}: {error}"
 
+msgid "The scanned file is too large: its {n} pages have {mp} megapixels in all (at most {most}). Scan fewer pages at a time, or at a lower resolution."
+msgstr "El archivo escaneado es demasiado grande: sus {n} páginas tienen {mp} megapíxeles en total (como máximo {most}). Escanee menos páginas cada vez, o con una resolución más baja."
+
 msgid "The connection to {host} was cut before the scanner's answer was complete."
 msgstr "La conexión con {host} se cortó antes de que la respuesta del escáner estuviera completa."
 

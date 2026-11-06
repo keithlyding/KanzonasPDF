@@ -38,6 +38,11 @@ MAX_IMAGE = 300 * 1024 * 1024  # bytes of one scanned page (uncompressed TIFF at
 MAX_PIXELS = 200_000_000       # a Letter page at 1200 dpi is 135 megapixels
 MAX_SIDE = 40_000              # pixels
 MAX_PAGES = 500                # pages in one job
+# pixels of all the pictures in one file (a multi-page TIFF: each picture is checked against
+# MAX_PIXELS, and 500 of them could each be that large, decoded on the main thread, a tiny
+# file when compressed): a 100-page job of Letter pages at 600 dpi (5,100 x 6,600 pixels
+# each) is 3.4 billion; 6 billion leaves room above it
+MAX_TOTAL_PIXELS = 6_000_000_000
 MAX_REDIRECTS = 3
 
 PROTOCOLS = {"escl": "eSCL (AirScan)", "wsd": "WSD", "wia": "WIA", "sane": "SANE"}
@@ -567,7 +572,21 @@ def check_image(data, dpi):
             if w > MAX_SIDE or h > MAX_SIDE or w * h > MAX_PIXELS:
                 raise ScanError(tr("A scanned page was too large ({w} x {h} pixels): choose a "
                                    "lower resolution.").format(w=w, h=h))
+        check_total(sizes)
     return Page(bytes(data), kind, int(dpi or 0), sizes)
+
+
+def check_total(sizes):
+    """ScanError when the pictures of one file [(width, height)] have more than
+    MAX_TOTAL_PIXELS pixels in all."""
+    total = sum(int(w) * int(h) for w, h in sizes)
+    if total > MAX_TOTAL_PIXELS:
+        raise ScanError(tr("The scanned file is too large: its {n} pages have {mp} "
+                           "megapixels in all (at most {most}). Scan fewer pages at a time, "
+                           "or at a lower resolution.").format(
+                               n=len(sizes), mp=total // 1_000_000,
+                               most=MAX_TOTAL_PIXELS // 1_000_000),
+                        "%d pixels in %d pictures" % (total, len(sizes)))
 
 
 # ---- discovery over UDP --------------------------------------------------------------------

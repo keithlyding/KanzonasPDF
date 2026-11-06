@@ -12,6 +12,10 @@
 - a PDF that a scanner sent or that arrived in the watched folder brought its links (a
   javascript: address, a link starting a program), form fields and comments into the
   document;
+- a multi-page TIFF had a size cap for each picture but none for all of them: 500
+  pictures of 200 megapixels each (a small file when compressed) were all decoded on the
+  main thread; and a file from the watched folder had its pictures decoded twice (checked
+  when it arrived, made into pages again at Done);
 - the Scan window's messages took a device's name (or a fault, or a file name from the
   watched folder) with "<b>" or "<img ...>" in it for formatting;
 - the watched folder took a file that a printer or an FTP upload paused writing for two
@@ -247,6 +251,41 @@ class ScannedPdf(unittest.TestCase):
         self.assertEqual(out[0].get_text().strip(), "The scanned words")
 
 
+def tiff_header(sizes):
+    """A TIFF whose pictures (one IFD each) claim sizes: only what's read before decoding."""
+    import struct
+    out = bytearray(b"II*\x00" + struct.pack("<I", 8))
+    for k, (w, h) in enumerate(sizes):
+        nxt = 8 + (k + 1) * (2 + 2 * 12 + 4) if k + 1 < len(sizes) else 0
+        out += struct.pack("<H", 2)
+        out += struct.pack("<HHII", 256, 4, 1, w) + struct.pack("<HHII", 257, 4, 1, h)
+        out += struct.pack("<I", nxt)
+    return bytes(out)
+
+
+class AllPixels(unittest.TestCase):
+    def test_a_multi_page_tiff_too_large_in_all(self):
+        # (each picture under the cap of one: 195 megapixels)
+        data = tiff_header([(15000, 13000)] * 40)
+        with self.assertRaises(ScanError) as cm:
+            net.check_image(data, 600)
+        self.assertIn("megapixels in all", cm.exception.message)
+        # a 100-page job of Letter pages at 600 dpi, in color, is fine
+        page = net.check_image(tiff_header([(5100, 6600)] * 100), 600)
+        self.assertEqual(len(page.sizes), 100)
+
+    def test_build_pdf_refuses_before_decoding(self):
+        from unittest import mock
+        from kanzonas import scan_dialog
+        page = net.Page(tiff_header([(15000, 13000)] * 40), "tiff", 600,
+                        [(15000, 13000)] * 40)
+        with mock.patch.object(scan_dialog.pymupdf, "open", wraps=scan_dialog.pymupdf.open) \
+                as opened:
+            with self.assertRaises(ScanError):
+                scan_dialog.build_pdf([page])
+        self.assertEqual([c for c in opened.call_args_list if c.kwargs.get("filetype")], [])
+
+
 class Window(unittest.TestCase):
     def test_a_devices_name_is_shown_as_it_is(self):
         from PySide6.QtCore import Qt
@@ -265,6 +304,38 @@ class Window(unittest.TestCase):
         for label in (dlg.status, dlg.panel_note):
             self.assertEqual(label.textFormat(), Qt.PlainText)
         self.assertIn("<b>Big</b>", dlg.status.text())
+
+    def test_a_watched_files_pictures_are_decoded_once(self):
+        from unittest import mock
+        from kanzonas import scan_dialog
+        from kanzonas.main_window import MainWindow
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        w.settings.remove("scan_device")
+        dlg = scan_dialog.ScanDialog(w, discover=lambda cancel=None, log=None: ([], []))
+        self.addCleanup(lambda: (dlg._stop(), dlg.deleteLater()))
+        wait_for(lambda: "find" not in dlg._busy)
+        path = os.path.join(tempfile.mkdtemp(), "scan.png")
+        with open(path, "wb") as f:
+            f.write(picture(300, 400, "PNG"))
+        decoded = []
+        real = scan_dialog.pymupdf.open
+
+        def opening(*a, **k):
+            if k.get("filetype") not in (None, "pdf"):
+                decoded.append(k["filetype"])
+            return real(*a, **k)
+        with mock.patch.object(scan_dialog.pymupdf, "open", opening):
+            dlg._got_watch("ok", [(path, scan_local.read_watched(path), None)])
+            self.assertEqual(decoded, ["png"])
+            dlg.rb_new.setChecked(True)
+            dlg.finish()
+        self.assertEqual(decoded, ["png"])              # (not again at Done)
+        doc = w.view().doc
+        self.addCleanup(lambda: setattr(w.view(), "dirty", False))
+        with scan_dialog.build_pdf([scan_local.read_watched(path)]) as want:   # (its own size)
+            self.assertEqual([p.rect for p in doc], [p.rect for p in want])
+            self.assertEqual(len(doc[0].get_images()), 1)
 
 
 if __name__ == "__main__":

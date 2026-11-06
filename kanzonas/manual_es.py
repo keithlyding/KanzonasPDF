@@ -1242,7 +1242,9 @@ issue en la página de GitHub de KanzonasPDF para que se pueda admitir.</li>
 <li>Seguridad: KanzonasPDF solo se comunica con el escáner que usted elige (o la dirección que
 escribe), lee sus respuestas con límites estrictos de tamaño y de tiempo, y no envía nada a
 ningún otro lugar. Los escáneres de red usan sus propios certificados autofirmados para HTTPS;
-cada uno se acepta solo para su escáner.</li>
+cada uno se acepta solo para su escáner. Un archivo escaneado (un TIFF de varias páginas, por
+ejemplo) puede tener como máximo 6.000 megapíxeles en total, muy por encima de 100 páginas Carta en
+color a 600 ppp: escanee menos páginas cada vez, o con una resolución más baja.</li>
 </ul>
 
 <h2 id="printprod">Producción de impresión (pestaña Imprimir)</h2>

@@ -72,6 +72,7 @@ def build_pdf(pages):
                     # comments, which a scanned page has no business bringing in)
                     out.insert_pdf(src, links=False, annots=False, widgets=False)
                 continue
+            net.check_total(p.sizes)        # (before anything is decoded)
             img = pymupdf.open(stream=p.data, filetype=p.kind)
             pdf = pymupdf.open("pdf", img.convert_to_pdf())
             img.close()
@@ -597,7 +598,13 @@ class ScanDialog(QDialog):
         for path, page, err in result:
             if page is not None:
                 try:
-                    build_pdf([page]).close()    # (it opens: checked before it's added)
+                    # (it opens: checked before it's added, and kept as the PDF pages made
+                    # here, so Done doesn't decode its pictures again)
+                    built = build_pdf([page])
+                    try:
+                        page = net.Page(built.tobytes(), "pdf", 0, [])
+                    finally:
+                        built.close()
                 except Exception as ex:
                     err = ex
             if err is not None:

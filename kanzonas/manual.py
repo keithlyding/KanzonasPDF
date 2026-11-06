@@ -1251,7 +1251,9 @@ serial numbers are left out). If your scanner still doesn't work, paste them int
 KanzonasPDF's GitHub page so it can be supported.</li>
 <li>Safety: KanzonasPDF only talks to the scanner you pick (or the address you type), reads its
 answers with strict limits on size and time, and sends nothing anywhere else. Network scanners
-use their own, self-signed certificates for HTTPS; one is accepted only for its scanner.</li>
+use their own, self-signed certificates for HTTPS; one is accepted only for its scanner. A
+scanned file (a multi-page TIFF, say) can have at most 6,000 megapixels in all, well above 100
+Letter pages in color at 600 dpi: scan fewer pages at a time, or at a lower resolution.</li>
 </ul>
 
 <h2 id="printprod">Print production (Print tab)</h2>
