@@ -16,6 +16,7 @@ turned into PDF pages on the main thread.
 """
 
 import http.client
+import _socket
 import socket
 import ssl
 import struct
@@ -336,6 +337,16 @@ class Http:
                 socket.socket.shutdown(sock, socket.SHUT_RDWR)
             except OSError:
                 pass
+            if sys.platform == "win32":
+                # Windows doesn't wake a read waiting in another thread at a shutdown, only
+                # at closesocket: closed now (Python's own close waits for http.client's file
+                # on the socket to be closed first); the read then fails, and is canceled.
+                # (Elsewhere the shutdown wakes it, and closing a descriptor another thread
+                # still reads could close a file opened in the meantime under its number.)
+                try:
+                    _socket.socket.close(sock)
+                except OSError:
+                    pass
 
     def request(self, method, path, body=None, headers=None, limit=MAX_XML,
                 timeout=READ_TIMEOUT):

@@ -45,12 +45,22 @@ class LongMessage(unittest.TestCase):
         return shown[-1] if shown else ""
 
     def test_a_long_message_is_cut_short_left_of_the_controls(self):
-        long = "Modo nocturno activado: páginas dibujadas en blanco sobre negro " * 6
+        # (long enough for the bar as wide as it is here, in this platform's font: the Windows
+        # job's bar and font measure differently from Linux's)
+        unit, fm = "Modo nocturno activado: páginas dibujadas en blanco sobre negro ", \
+            self.sb.fontMetrics()
+        n = 6
+        while fm.horizontalAdvance((unit * n).strip()) <= 2 * self.sb.message_rect().width() \
+                and n < 600:
+            n += 6
+        long = unit * n
         self.sb.showMessage(long.strip())
         self.addCleanup(self.sb.clearMessage)
         APP.processEvents()
         shown = self.sb.shown_message()
-        self.assertTrue(shown.endswith("…"), shown)
+        self.assertTrue(shown.endswith("…"), "%s (bar %d px, room %d px, message %d px)" % (
+            shown[-80:], self.sb.width(), self.sb.message_rect().width(),
+            fm.horizontalAdvance(long.strip())))
         room = self.sb.message_rect()
         self.assertLessEqual(self.sb.fontMetrics().horizontalAdvance(shown), room.width())
         controls = self.sb._controls()              # (the page controls...)
