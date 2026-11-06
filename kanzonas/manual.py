@@ -1361,14 +1361,15 @@ fields (values, list options, tooltips and names, also of fields on no page), li
 email addresses), markup notes (also their formatted text), bookmark titles and web addresses,
 document properties (also a program's own), the alternate text of tagged PDFs, link notes,
 page labels, layer names and destination names. When you apply, fields, links, stamps and
-attached files containing it are deleted, and in notes and comments (they stay), bookmarks
+attached files containing it are deleted (and an XFA form holding it: its ordinary fields stay), and in notes and comments (they stay), bookmarks
 and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
 away. A <b>legend</b> is drawn again from the markups left, in the same step: its rows no longer
 show what was redacted, and the text in its title is replaced by [redacted] (a box drawn over a
 legend removes it). Check the result before sharing; Undo works until you close the file.</li>
 <li><b>Sanitize document:</b> remove hidden data you choose: document information (with the
 private data some programs, like Illustrator, keep in the file), scripts,
-attached files, hidden text, links, comments, form data, thumbnails. Scripts includes those in
+attached files, hidden text, links, comments, form data (with an XFA form, which keeps the
+data again; its ordinary fields stay), thumbnails. Scripts includes those in
 other actions (multimedia), javascript: links and an XFA form's scripts (the ordinary form fields
 stay).</li>
 <li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption. Clicking OK

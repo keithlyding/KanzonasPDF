@@ -3,7 +3,8 @@ stayed readable in the saved file in places Apply redactions didn't reach:
 
 - Search & redact's term in a layer's name, a bookmark's web address, a form field on no
   page (or a list field's options), a note's rich text (/RC) when its plain text was
-  different, and (without the clean-up) a program's own document information key;
+  different, an XFA form's data (also after Sanitize's form data), and (without the
+  clean-up) a program's own document information key;
 - the words under any mark in the marked-content wrapper MuPDF leaves around them
   ("/Span <</ActualText (the words)>> BDC EMC"), without the clean-up and with Apply
   selected redactions (which never cleans up);
@@ -130,6 +131,34 @@ class SearchAndRedact(Case):
         self.assertEqual(v.doc.metadata["title"], "Report on [redacted]")
         self.assertIn(b"[redacted] Inc.", data)
 
+    def test_an_xfa_forms_data(self):
+        # (an XFA form, as government and tax forms often are, keeps every value typed into
+        # it again as XML in its datasets packet: the term stayed there, written plainly or
+        # as character references)
+        for data in (WORD.encode(), b"&#84;OPSECRET"):
+            for scrub in (True, False):
+                with self.subTest(data=data, scrub=scrub):
+                    d, _p = self.doc()
+                    xfa_with(d, b"<form><name>Mr " + data + b"</name></form>")
+                    v, saved = self.redact_word(d, scrub)
+                    self.assertNotIn(b"Mr " + data, saved)
+                    self.assertEqual(v.doc.xref_get_key(v.doc.pdf_catalog(), "AcroForm/XFA")[0],
+                                     "null")
+
+    def test_an_xfa_form_without_the_term_stays(self):
+        d, _p = self.doc()
+        xfa_with(d, b"<form><name>Mr Smith</name></form>")
+        v, saved = self.redact_word(d)
+        self.assertIn(b"Mr Smith", saved)
+
+
+def xfa_with(d, data):
+    x = d.get_new_xref()
+    d.update_object(x, "<<>>")
+    d.update_stream(x, b"<xfa:datasets xmlns:xfa='http://www.xfa.org/schema/xfa-data/1.0/'>"
+                       b"<xfa:data>" + data + b"</xfa:data></xfa:datasets>")
+    d.xref_set_key(d.pdf_catalog(), "AcroForm", "<</Fields[]/XFA[(datasets) %d 0 R]>>" % x)
+
 
 def _with_actual_text(d, p, words, y=300):
     """Add words to p's drawing inside a marked-content span carrying them as ActualText
@@ -203,6 +232,13 @@ class PageAsItWas(Case):
                 data = self.saved(v)
                 self.assertNotIn(b"AIPrivateData", data)
                 self.assertNotIn(WORD.encode(), data)
+
+    def test_sanitize_form_data_takes_the_xfa_forms_data_too(self):
+        d, _p = self.doc()
+        xfa_with(d, b"<form><name>XFAVALUE</name></form>")
+        v = self.view(d)
+        v.sanitize({"form_data": True})
+        self.assertNotIn(b"XFAVALUE", self.saved(v))
 
     def test_sanitize_removes_private_data(self):
         d, p = self.doc()

@@ -238,23 +238,33 @@ def remove_scripts(doc):
 def _remove_xfa_scripts(doc):
     """An XFA form (the catalog's /AcroForm /XFA) whose packets hold a <script> goes: its
     ordinary form fields stay (all KanzonasPDF fills in)."""
+    remove_xfa(doc, lambda data: b"<script" in data.lower())
+
+
+def remove_xfa(doc, test=None):
+    """Remove the document's XFA form (the catalog's /AcroForm /XFA: the form again, as XML,
+    with the values typed into it in its datasets packet) when test(the bytes of one of its
+    packets) is true (None: always); its ordinary form fields stay (all KanzonasPDF fills
+    in). True if it was removed."""
     cat = doc.pdf_catalog()
     kind, val = doc.xref_get_key(cat, "AcroForm/XFA")
     if kind == "null":
-        return
+        return False
     parts = [int(n) for n in re.findall(r"(\d+) 0 R", val)]
-    scripted = not parts            # (written in place, not as streams: unsure, so it goes)
+    found = not parts or test is None   # (written in place, not as streams: unsure, so it goes)
     for x in parts:
+        if found:
+            break
         try:
             data = doc.xref_stream(x) if doc.xref_is_stream(x) else b""
         except Exception:
-            data = b"<script"
-        if b"<script" in (data or b"").lower():
-            scripted = True
-    if scripted:
+            data = None
+        found = data is None or test(data or b"")
+    if found:
         doc.xref_set_key(cat, "AcroForm/XFA", "null")
         if doc.xref_get_key(cat, "NeedsRendering")[0] != "null":
             doc.xref_set_key(cat, "NeedsRendering", "null")
+    return found
 
 
 def blank_appearance(doc, widget_xref):
@@ -299,6 +309,8 @@ def clear_form_data(doc):
             doc.xref_set_key(xref, "V", "null")
             if "RV" in keys:
                 doc.xref_set_key(xref, "RV", "null")
+    # (an XFA form keeps every value again in its datasets packet)
+    remove_xfa(doc)
 
 
 def forget_redacted(page, clean=True):
@@ -7012,6 +7024,11 @@ class DocumentView(QScrollArea):
                 self.doc.del_xml_metadata()     # XMP copy of the properties
         except Exception:
             pass
+        # an XFA form holds the values typed into the form again, as XML (&#84; and the
+        # like read as the characters they stand for)
+        import html
+        remove_xfa(self.doc, lambda data: bool(pat.search(
+            html.unescape(data.decode("utf-8", "replace")))))
         # and anywhere else a string holds it: alternate text, ActualText, link notes,
         # page labels, named destinations (the links naming them follow)
         scrub_strings(self.doc, pat, clean)

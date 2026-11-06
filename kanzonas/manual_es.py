@@ -1352,14 +1352,15 @@ vínculos (direcciones web y de correo electrónico), notas
 de marcas (también su texto con formato), títulos y direcciones web de marcadores, propiedades del documento (también las propias de un
 programa), el texto alternativo de los PDF etiquetados, las notas de
 vínculos, las etiquetas de página, los nombres de capas y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
-archivos adjuntos que lo contienen se eliminan, y en las notas y los comentarios (que se quedan), los marcadores
+archivos adjuntos que lo contienen se eliminan (y un formulario XFA que lo contiene: sus campos normales se conservan), y en las notas y los comentarios (que se quedan), los marcadores
 y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
 inmediato. Una <b>leyenda</b> se vuelve a dibujar con las marcas que quedan, en el mismo paso: sus
 filas ya no muestran lo censurado, y en su título el texto se reemplaza por [redacted] (un cuadro
 dibujado sobre una leyenda la quita). Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
 <li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento (con los datos
 privados que algunos programas, como Illustrator, guardan en el archivo), scripts,
-archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
+archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios (con un formulario XFA, que guarda los datos
+otra vez; sus campos normales se conservan), miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
 (los campos normales del formulario se conservan).</li>
 <li><b>Propiedades de seguridad (contraseñas y permisos):</b> cifrado AES-256. Si pulsa Aceptar sin marcar ninguna
 casilla en un documento protegido, se le pregunta antes de quitar su protección.
