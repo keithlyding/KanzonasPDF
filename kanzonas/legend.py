@@ -175,6 +175,8 @@ def page_summary(doc, index, items=None):
         if typ in SKIP_TYPES or str(nm or "").startswith(NM_PREFIX):
             continue
         fp = doc.xref_object(x, compressed=True) + tag
+        if "/IRT" in fp and "/RT/Group" not in fp:
+            continue                    # (a reply or review status: part of its markup)
         known = items.get(x)
         if known is None or known[0] != fp:
             todo.append(x)

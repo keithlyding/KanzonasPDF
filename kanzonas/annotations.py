@@ -1252,10 +1252,18 @@ def replace_many(page, changes, olds=None):
     # are written anew
     shifted = set()
     to_pdf = pdfcoords.to_pdf(page)
+    o = pymupdf.Point(0, 0) * to_pdf
+    moves = {}
     for xref, model in changes:
         d = translation(olds[xref], model)
         if d is not None and shift_in_place(page, xref, d, to_pdf):
             shifted.add(xref)
+            v = pymupdf.Point(d) * to_pdf - o
+            moves[xref] = (v.x, v.y)
+    if moves:
+        # their replies and review statuses go along (one walk of the page: review.py)
+        from . import review
+        review.shift_replies(page, moves)
     # ...the old ones of the rest go in one look through the page (one at a time, each delete
     # looked through all the page's markups for replies: minutes for a few thousand)
     # (a markup not changed at all stays as it is)

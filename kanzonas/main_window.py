@@ -740,6 +740,28 @@ class MainWindow(QMainWindow):
         self.a_show_markups.setCheckable(True)
         self.a_show_markups.setChecked(True)
         self.a_delete_markups = self._act(tr("&Delete comments..."), self.delete_comments)
+        # replies, review status, comments exchanged as XFDF / FDF, summary (review.py)
+        self.a_reply = self._act(tr("&Reply..."), self.reply_to_selected,
+                                 tip=tr("Reply to the selected markup: replies show as a "
+                                        "thread in the Markups list and in other PDF programs"))
+        self.status_actions = {}
+        for key, label in (("Accepted", tr("Accepted")), ("Rejected", tr("Rejected")),
+                           ("Cancelled", tr("Cancelled")), ("Completed", tr("Completed")),
+                           ("None", tr("No status")), ("Marked", tr("Marked"))):
+            a = self._act(label, lambda _=False, k=key: self._set_review_status(k))
+            a.setCheckable(True)
+            self.status_actions[key] = a
+        self.a_export_comments = self._act(
+            tr("E&xport comments..."), self.export_comments,
+            tip=tr("Save the comments, their replies and statuses as an XFDF or FDF file, to "
+                   "send without the PDF"))
+        self.a_import_comments = self._act(
+            tr("&Import comments..."), self.import_comments,
+            tip=tr("Add the comments of an XFDF or FDF file to this document (one undo step)"))
+        self.a_summarize = self._act(
+            tr("Summari&ze comments..."), self.summarize_comments,
+            tip=tr("A new PDF listing every comment by page, author, date or type, with "
+                   "replies and statuses, to print or save"))
         self.a_flatten_markups = self._act(tr("&Flatten comments..."), self.flatten_comments,
                                            tip=tr("Make comments and markups part of the page; "
                                                   "form fields stay fillable"))
@@ -1133,7 +1155,17 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_prev_markup, self.a_next_markup, self.a_markups])
         m.addSeparator()
+        m.addAction(self.a_reply)
+        sm = self.status_menu = m.addMenu(tr("Set s&tatus"))
+        for key, a in self.status_actions.items():
+            if key == "Marked":
+                sm.addSeparator()
+            sm.addAction(a)
+        sm.aboutToShow.connect(self._status_menu_shown)
+        m.addSeparator()
         m.addActions([self.a_show_markups, self.a_cards])
+        m.addSeparator()
+        m.addActions([self.a_export_comments, self.a_import_comments, self.a_summarize])
         m.addSeparator()
         m.addActions([self.a_delete_markups, self.a_flatten_markups])
         m = mb.addMenu(tr("&Protect"))
@@ -1449,6 +1481,12 @@ class MainWindow(QMainWindow):
         self.markups.activated.connect(lambda i, x: self.view() and self.view().reveal(i, x))
         self.markups.editRequested.connect(self._edit_markup)
         self.markups.deleteRequested.connect(self._delete_markup)
+        self.markups.replyRequested.connect(
+            lambda i, x: self.view() and self.view().reply_to(i, x))
+        self.markups.statusRequested.connect(
+            lambda i, x, k: self.view() and self.view().set_review_status(i, [x], k))
+        self.markups.exportRequested.connect(
+            lambda only: self.view() and self._export_comments(only))
         self.markups_dock = QDockWidget(tr("Markups list"))
         self.markups_dock.setObjectName("markups")
         self.markups_dock.setWidget(self.markups)
@@ -1481,6 +1519,7 @@ class MainWindow(QMainWindow):
                   self.a_page_boxes, self.a_fix_hairlines, self.a_print_check,
                   self.a_background, self.a_remove_bg, self.a_remove_wm,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
+                  self.a_export_comments, self.a_import_comments, self.a_summarize,
                   *self.export_actions):
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
@@ -5185,12 +5224,68 @@ class MainWindow(QMainWindow):
 
     def _delete_markup(self, index, xref):
         v = self.view()
+        if v and v.is_reply(index, xref):
+            v.delete_reply(index, xref)         # (a reply alone, not its markup)
+            return
         if v:
             if v.markup_locked(index, xref):
                 QMessageBox.information(self, tr("Delete"), v.locked_note())
                 return
             v.select_xref(index, xref)
             v.delete_selected()
+
+    # ---- review: replies, status, comments exchanged, summary (review.py) ----------------
+    def reply_to_selected(self):
+        v = self.view()
+        if v is None:
+            return
+        if v.selection is None:
+            self.statusBar().showMessage(tr("Select a markup to reply to it."), 5000)
+            return
+        v.reply_to(*v.selection)
+
+    def _set_review_status(self, key):
+        v = self.view()
+        if v is None:
+            return
+        if v.selection is None:
+            self.statusBar().showMessage(tr("Select the markups to set their status."), 5000)
+            self._status_menu_shown()
+            return
+        index, xref = v.selection
+        if key == "Marked":
+            st = v.selected_status()
+            key = "Unmarked" if st and st[1] else "Marked"
+        v.set_review_status(index, v.selected_xrefs(), key)
+
+    def _status_menu_shown(self):
+        v = self.view()
+        st = v.selected_status() if v is not None else None
+        state, marked = st if st else ("", False)
+        for key, a in self.status_actions.items():
+            a.setChecked(bool(st) and (marked if key == "Marked" else
+                                       (state == key or (key == "None" and not state))))
+
+    def export_comments(self):
+        self._export_comments(None)
+
+    def _export_comments(self, only):
+        v = self.view()
+        if v is not None:
+            from . import review_ui
+            review_ui.export_comments(self, v, only)
+
+    def import_comments(self):
+        v = self.view()
+        if v is not None:
+            from . import review_ui
+            review_ui.import_comments(self, v)
+
+    def summarize_comments(self):
+        v = self.view()
+        if v is not None:
+            from . import review_ui
+            review_ui.summarize_comments(self, v)
 
     # ---- updates ---------------------------------------------------------------
     def _updater(self):

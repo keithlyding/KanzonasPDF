@@ -55,7 +55,8 @@ def can_delete_many():
 
 def delete_many(page, xrefs, keep_replies=False):
     """Delete these annotations (xrefs) from page, as page.delete_annot does one at a time
-    (with the replies to each, and its pop-up), looking through the page's markups once.
+    (with the replies to each, the replies to those, and its pop-up), looking through the
+    page's markups once.
     xrefs no longer on the page are skipped. The caller must not hold Annot objects for
     them (load them, read them, let them go, then delete). keep_replies: the replies stay (a
     markup written anew in its place: they are then pointed at the new one)."""
@@ -90,10 +91,15 @@ def delete_many(page, xrefs, keep_replies=False):
     for x in xrefs:
         if x not in found or x in gone:
             continue
-        for n, r in () if keep_replies else replies.get(x, ()):
-            if n not in gone:               # (the replies to it go first, as in PyMuPDF)
-                m.pdf_delete_annot(pdfpage, r)
-                gone.add(n)
+        # the replies to it go first, as in PyMuPDF, and the replies to those too (a thread
+        # of replies and review statuses: review.py)
+        todo = [] if keep_replies else [x]
+        while todo:
+            for n, r in replies.get(todo.pop(), ()):
+                if n not in gone and n != x:
+                    m.pdf_delete_annot(pdfpage, r)
+                    gone.add(n)
+                    todo.append(n)
         m.pdf_delete_annot(pdfpage, found[x])
         gone.add(x)
     page._delete_empty_annots()
