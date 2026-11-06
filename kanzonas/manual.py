@@ -1492,6 +1492,79 @@ page number (plan_p1.png, plan_p2.png...); if any of them exist already, you're 
 before they're replaced.</li>
 </ul>
 
+<h2 id="batch">Batch processing</h2>
+<p><b>Tools &gt; Batch processing...</b> (also in the File menu) does the same thing to many
+PDFs at once: an office makes 200 scanned invoices searchable and archives them as PDF/A, a
+law office Bates-numbers a set of discovery documents, CONFIDENTIAL goes on every file in a
+folder, the markups on 40 sheets are flattened, a folder is made small enough to email. You
+don't need a document open; the window stays open while you keep working.</p>
+<ul>
+<li><b>Files:</b> <b>Add files...</b>, <b>Add folder...</b> (its PDFs; tick <b>Include
+subfolders</b> for theirs too), or drop files and folders on the list. The list shows each
+file's page count ("protected" for one that needs a password to open). Files are processed
+in the order of the list: <b>Move up</b>, <b>Move down</b> and <b>Sort by name</b> set it, and
+Bates numbers and Combine follow it. A file open in a tab is read as it was last saved.
+<b>Password-protected files:</b> <b>Ask for the password</b> (asked once: the password is
+tried first on the next protected files, so a set that shares one password is asked once;
+<b>Skip this file</b> or <b>Skip all protected files</b> leave them out) or <b>Skip them</b>.
+A file that opens but doesn't allow changes needs its permissions password the same way. A
+digitally signed file is skipped when a step would change it (the signature would no longer
+be valid).</li>
+<li><b>Steps</b> run in the order listed, each with its options (click a step to see them;
+<b>Add step</b>, <b>Remove</b>, <b>Move up</b>, <b>Move down</b>). Each does exactly what the
+command of the same name does on an open document: <b>Recognize text (OCR)</b> (skips pages
+that already have text unless you untick it; Accuracy as in the OCR window); <b>Save as
+PDF/A</b> (after the steps that change the document; only Export and Combine can follow it;
+a password-protected file needs Remove password first); <b>Watermark</b> (text or a picture);
+<b>Header and footer</b> (tokens {page} {pages} {date} {file} {bates}); <b>Page numbers</b>;
+<b>Bates numbering</b> (prefix, first number, digits, position: the numbers continue from one
+file to the next in the order of the list, so the first file starts at the first number and
+each next one where the last left off; a file that fails or is skipped uses no numbers, and
+the report gives each file's first and last number); <b>Flatten comments</b> (redaction marks
+not applied yet stay marks unless you choose Apply them first); <b>Flatten form fields</b>
+(and, if ticked, comments and markups too); <b>Apply redactions</b> (the marks already in
+each file); <b>Search &amp; redact</b> (a list of words or phrases, one per line: every
+occurrence is marked and the marks are applied, with what's in fields, notes, bookmarks and
+properties removed as Search &amp; redact does; untick Apply to only mark them for review);
+<b>Sanitize document</b> (the same choices as Protect &gt; Sanitize document); <b>Reduce file
+size</b> (as Compress; a file that wouldn't get smaller is kept as it is); <b>Rotate pages</b>
+(all, odd, even, landscape or portrait pages, or a list); <b>Delete blank pages</b> (pages
+with no text and almost no ink, such as the blank backs of a two-sided scan; a page with
+markups, form fields, a page number or a few written words is kept, a file is never left
+without pages, and the report lists the pages deleted: check them); <b>Add password</b> and
+<b>Remove password</b> (as Security properties; to remove a permissions password, type it);
+<b>Set document properties</b> (title, author, subject, keywords; {name} is the file's name);
+<b>Export</b> (Word, Excel, PowerPoint, PNG or JPEG pictures, or text, made from the document
+as the steps before it left it, saved next to the PDF); <b>Combine all into one PDF</b> (the
+last step: the processed files in list order, a bookmark for each; tick Also save each file
+to keep them as well). The PDF of each file is written when the steps change documents; with
+only Export steps, only the exported files are.</li>
+<li><b>Recipes</b> keep a list of steps with their options under a name: choose one in
+<b>Recipe</b>, <b>Save recipe...</b> to keep the current steps, <b>Delete recipe</b> to remove
+one of yours. Ready-made ones: <b>Make searchable (OCR)</b>, <b>Archive (OCR + PDF/A)</b>,
+<b>Confidential (watermark + flatten)</b>, <b>Bates number for production</b> and <b>Shrink
+for email</b>. Passwords typed in steps are never saved in a recipe. The last steps and output
+choices are remembered for the next time.</li>
+<li><b>Output:</b> <b>A "Processed" folder next to each file</b> (the default), or <b>This
+folder</b>, where <b>Keep the folder structure</b> puts the files of a folder's subfolders in
+the same subfolders. <b>File name</b>: {name} (the file's own name), {n} (its number in the
+list: 001, 002...), {date} (today) and {bates} (its first Bates number), such as {name}_ocr.
+<b>If the file is already there:</b> Ask (Replace, Replace all, Skip, Skip all), Add a number
+(name (2).pdf), Replace it, or Skip the file. Results never replace the files they were made
+from unless you tick <b>Allow replacing the original files</b> (off every time the window
+opens); two files with the same name never overwrite each other. A "Processed" folder is left
+out when a folder is added again.</li>
+<li><b>Run</b> shows the progress of the file being processed and of all files. <b>Cancel</b>
+finishes the file being processed, then stops; click it again (<b>Stop now</b>) to stop at
+once, leaving that file out. A file's results appear all together or not at all: nothing
+half-written is ever left. One document is open at a time and its memory is freed before the
+next, so a long run doesn't use more memory as it goes.</li>
+<li>The <b>report</b> at the end lists each file as Done, Skipped or Failed with the reason
+(a wrong password, a file that isn't a PDF, a step that couldn't be done) and what it wrote;
+<b>Save report...</b> saves it as a CSV file (opens in Excel) or as text. <b>Report...</b>
+shows it again.</li>
+</ul>
+
 <h2 id="preferences">Preferences</h2>
 <ul>
 <li><b>File &gt; Preferences...</b> (Ctrl+K) gathers the options KanzonasPDF remembers in one

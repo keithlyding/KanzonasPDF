@@ -1482,6 +1482,88 @@ Imágenes crea una imagen por página, con el nombre que elija más el número d
 página (plano_p1.png, plano_p2.png...); si alguna ya existe, se le pregunta una vez antes de reemplazarlas.</li>
 </ul>
 
+<h2 id="batch">Procesamiento por lotes</h2>
+<p><b>Herramientas &gt; Procesamiento por lotes...</b> (también en el menú Archivo) hace lo mismo
+con muchos PDF a la vez: una oficina hace buscables 200 facturas escaneadas y las archiva como
+PDF/A, un despacho de abogados pone números Bates a un conjunto de documentos de exhibición,
+CONFIDENCIAL va en cada archivo de una carpeta, se acoplan las marcas de 40 planos, una carpeta
+se reduce para enviarla por correo. No hace falta tener un documento abierto; la ventana
+sigue abierta mientras usted trabaja.</p>
+<ul>
+<li><b>Archivos:</b> <b>Agregar archivos...</b>, <b>Agregar carpeta...</b> (sus PDF; marque
+<b>Incluir subcarpetas</b> para los de estas también), o suelte archivos y carpetas en la lista.
+La lista muestra las páginas de cada archivo ("protegido" si necesita contraseña para abrirse).
+Los archivos se procesan en el orden de la lista: <b>Subir</b>, <b>Bajar</b> y <b>Ordenar por
+nombre</b> lo cambian, y los números Bates y Combinar lo siguen. Un archivo abierto en una
+pestaña se lee tal como se guardó por última vez. <b>Archivos protegidos con contraseña:</b>
+<b>Pedir la contraseña</b> (se pide una vez: la contraseña se prueba primero en los siguientes
+archivos protegidos, así que para un grupo que comparte una contraseña se pregunta una sola vez;
+<b>Omitir este archivo</b> u <b>Omitir todos los archivos protegidos</b> los dejan fuera) u
+<b>Omitirlos</b>. Un archivo que se abre pero no permite cambios necesita su contraseña de
+permisos de la misma manera. Un archivo con firma digital se omite cuando un paso lo cambiaría
+(la firma dejaría de ser válida).</li>
+<li>Los <b>pasos</b> se hacen en el orden de la lista, cada uno con sus opciones (haga clic en
+un paso para verlas; <b>Agregar paso</b>, <b>Quitar</b>, <b>Subir</b>, <b>Bajar</b>). Cada uno
+hace exactamente lo que el comando del mismo nombre hace en un documento abierto: <b>Reconocer
+texto (OCR)</b> (omite las páginas que ya tienen texto, salvo que lo desmarque; la precisión
+como en la ventana de OCR); <b>Guardar como PDF/A</b> (después de los pasos que cambian el
+documento; solo Exportar y Combinar pueden ir después; un archivo protegido con contraseña
+necesita antes Quitar contraseña); <b>Marca de agua</b> (texto o imagen); <b>Encabezado y pie
+de página</b> (códigos {page} {pages} {date} {file} {bates}); <b>Números de página</b>;
+<b>Numeración Bates</b> (prefijo, primer número, dígitos, posición: los números siguen de un
+archivo al siguiente en el orden de la lista, así que el primer archivo empieza en el primer
+número y cada uno de los siguientes donde terminó el anterior; un archivo que falla o se omite
+no usa números, y el informe da el primer y el último número de cada archivo); <b>Acoplar
+comentarios</b> (las marcas de censura aún no aplicadas siguen siendo marcas, salvo que elija
+Aplicarlas primero); <b>Acoplar campos de formulario</b> (y, si lo marca, también comentarios
+y marcas); <b>Aplicar censuras</b> (las marcas que ya tiene cada archivo); <b>Buscar y
+censurar</b> (una lista de palabras o frases, una por línea: cada aparición se marca y las
+marcas se aplican, y lo que esté en campos, notas, marcadores y propiedades se quita como hace
+Buscar y censurar; desmarque Aplicar para solo marcarlas y revisarlas); <b>Sanear
+documento</b> (las mismas opciones que Proteger &gt; Sanear documento); <b>Reducir tamaño del
+archivo</b> (como Comprimir; un archivo que no quedaría más pequeño se deja como está);
+<b>Girar páginas</b> (todas, impares, pares, horizontales o verticales, o una lista);
+<b>Eliminar páginas en blanco</b> (páginas sin texto y casi sin tinta, como los reversos en
+blanco de un escaneo a doble cara; una página con marcas, campos de formulario, un número de
+página o unas pocas palabras escritas se conserva, un archivo nunca se queda sin páginas, y el
+informe lista las páginas eliminadas: revíselas); <b>Agregar contraseña</b> y <b>Quitar
+contraseña</b> (como Propiedades de seguridad; para quitar una contraseña de permisos,
+escríbala); <b>Establecer propiedades del documento</b> (título, autor, asunto, palabras clave;
+{name} es el nombre del archivo); <b>Exportar</b> (Word, Excel, PowerPoint, imágenes PNG o JPEG
+o texto, hecho a partir del documento tal como lo dejaron los pasos anteriores, guardado junto
+al PDF); <b>Combinar todo en un PDF</b> (el último paso: los archivos procesados en el orden de
+la lista, con un marcador para cada uno; marque Guardar también cada archivo para conservarlos
+también). El PDF de cada archivo se escribe cuando los pasos cambian documentos; con solo pasos
+Exportar, solo se escriben los archivos exportados.</li>
+<li>Las <b>recetas</b> guardan una lista de pasos con sus opciones bajo un nombre: elija una en
+<b>Receta</b>, <b>Guardar receta...</b> para conservar los pasos actuales, <b>Eliminar
+receta</b> para quitar una de las suyas. Recetas ya hechas: <b>Hacer buscable (OCR)</b>,
+<b>Archivar (OCR + PDF/A)</b>, <b>Confidencial (marca de agua + acoplar)</b>, <b>Numeración Bates
+para producción</b> y <b>Reducir para correo electrónico</b>. Las contraseñas escritas en los
+pasos nunca se guardan en una receta. Los últimos pasos y opciones de salida se recuerdan para
+la próxima vez.</li>
+<li><b>Salida:</b> <b>Una carpeta "Procesados" junto a cada archivo</b> (lo predeterminado) o
+<b>Esta carpeta</b>, donde <b>Conservar la estructura de carpetas</b> pone los archivos de las
+subcarpetas de una carpeta en las mismas subcarpetas. <b>Nombre del archivo</b>: {name} (el
+nombre del propio archivo), {n} (su número en la lista: 001, 002...), {date} (hoy) y {bates}
+(su primer número Bates), como {name}_ocr. <b>Si el archivo ya existe:</b> Preguntar
+(Reemplazar, Reemplazar todo, Omitir, Omitir todos), Agregar un número (nombre (2).pdf),
+Reemplazarlo u Omitir el archivo. Los resultados nunca reemplazan los archivos de los que se
+hicieron, salvo que marque <b>Permitir reemplazar los archivos originales</b> (desmarcado cada
+vez que se abre la ventana); dos archivos con el mismo nombre nunca se sobrescriben entre sí.
+Una carpeta "Procesados" se deja fuera cuando se vuelve a agregar una carpeta.</li>
+<li><b>Ejecutar</b> muestra el avance del archivo en proceso y de todos los archivos.
+<b>Cancelar</b> termina el archivo en proceso y luego se detiene; vuelva a hacer clic
+(<b>Detener ya</b>) para detenerse de inmediato, dejando fuera ese archivo. Los resultados de un
+archivo aparecen todos juntos o ninguno: nunca queda nada a medio escribir. Hay un solo
+documento abierto a la vez y su memoria se libera antes del siguiente, así que un proceso largo
+no usa más memoria a medida que avanza.</li>
+<li>El <b>informe</b> final lista cada archivo como Listo, Omitido o Con error, con el motivo
+(una contraseña incorrecta, un archivo que no es PDF, un paso que no se pudo hacer) y lo que
+escribió; <b>Guardar informe...</b> lo guarda como archivo CSV (se abre en Excel) o como texto.
+<b>Informe...</b> lo vuelve a mostrar.</li>
+</ul>
+
 <h2 id="preferences">Preferencias</h2>
 <ul>
 <li><b>Archivo &gt; Preferencias...</b> (Ctrl+K) reúne en una sola ventana las opciones que KanzonasPDF recuerda,

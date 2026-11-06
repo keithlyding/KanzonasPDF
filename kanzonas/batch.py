@@ -777,8 +777,6 @@ class Batch:
             try:
                 view = BatchDoc(item.path, self.passwords,
                                 None if protected_skip else self._ask_password)
-            except Skip:
-                raise
             except OSError as ex:
                 raise ValueError(tr("Couldn't read it: {error}").format(
                     error=ex.strerror or ex)) from None
@@ -824,7 +822,9 @@ class Batch:
             res.reason = "%s: %s" % (step_name, text) if step_name else text
         finally:
             if f is not None:
-                res.notes = f.notes + res.notes
+                if res.status == DONE:
+                    # (only then: a failed file's notes, its Bates numbers say, never were)
+                    res.notes = f.notes + res.notes
                 for tmp, _suffix in f.staged:
                     _remove(tmp)
                 if f.ready:
@@ -1208,8 +1208,7 @@ class Batch:
         if f.ready:
             _remove(f.ready)
         f.ready, f.ready_at = out, view.edits
-        f.notes.append(tr("{before} MB → {after} MB").format(
-            before="%.2f" % (now / 1e6), after="%.2f" % (after / 1e6)))
+        f.notes.append("%s → %s" % (file_size(now), file_size(after)))
 
     def _do_rotate(self, f, k, o):
         view = f.view
@@ -1345,6 +1344,11 @@ class Batch:
             res.status, res.reason = SKIPPED, str(ex)
         except Exception as ex:
             res.status, res.reason = FAILED, str(ex) or ex.__class__.__name__
+
+
+def file_size(n):
+    """1.25 MB, 340 KB."""
+    return "%.2f MB" % (n / 1e6) if n >= 1e6 else "%d KB" % max(1, round(n / 1e3))
 
 
 def _numbered(path):

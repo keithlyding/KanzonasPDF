@@ -39,7 +39,7 @@ class _FileList(QTreeWidget):
         h = self.header()
         h.setSectionResizeMode(0, QHeaderView.Interactive)
         self.setColumnWidth(0, 220)
-        self.setColumnWidth(1, 60)
+        self.setColumnWidth(1, 80)
         self.setColumnWidth(2, 90)
 
     def dragEnterEvent(self, e):
@@ -608,24 +608,34 @@ class BatchWindow(QDialog):
                                           "same subfolders of the output folder"))
         grid.addWidget(self.out_next, 0, 0, 1, 2)
         grid.addWidget(self.out_folder, 1, 0)
-        grid.addWidget(self.folder, 1, 1)
-        grid.addWidget(browse, 1, 2)
-        grid.addWidget(self.keep_structure, 1, 3)
+        row = QHBoxLayout()
+        row.addWidget(self.folder, 1)
+        row.addWidget(browse)
+        row.addWidget(self.keep_structure)
+        grid.addLayout(row, 1, 1)
         grid.addWidget(QLabel(tr("File name:")), 2, 0)
         self.pattern = QComboBox()
         self.pattern.setEditable(True)
         self.pattern.addItems(PATTERNS)
-        grid.addWidget(self.pattern, 2, 1)
-        grid.addWidget(QLabel(tr("{name}: the file's name, {n}: its number in the list, "
-                                 "{date}: today, {bates}: its first Bates number")), 2, 2, 1, 2)
+        self.pattern.setMinimumWidth(200)
+        row = QHBoxLayout()
+        row.addWidget(self.pattern)
+        hint = QLabel(tr("{name}: the file's name, {n}: its number in the list, "
+                         "{date}: today, {bates}: its first Bates number"))
+        hint.setWordWrap(True)
+        row.addWidget(hint, 1)
+        grid.addLayout(row, 2, 1)
         grid.addWidget(QLabel(tr("If the file is already there:")), 3, 0)
         self.overwrite = QComboBox()
         for value, text in OVERWRITE_CHOICES:
             self.overwrite.addItem(text, value)
-        grid.addWidget(self.overwrite, 3, 1)
         self.originals = QCheckBox(tr("Allow replacing the original files"))
         self.originals.setToolTip(tr("Off: a result never replaces the file it was made from"))
-        grid.addWidget(self.originals, 3, 2, 1, 2)
+        row = QHBoxLayout()
+        row.addWidget(self.overwrite)
+        row.addWidget(self.originals)
+        row.addStretch(1)
+        grid.addLayout(row, 3, 1)
         grid.setColumnStretch(1, 1)
         return box
 
@@ -697,6 +707,7 @@ class BatchWindow(QDialog):
             return
         probe = B.Batch(items, self.steps, out)
         if not out["replace_originals"] and B.changes_documents(probe.steps) and \
+                "{bates}" not in out["pattern"] and \
                 (probe.combine is None or probe.combine.get("keep_each")):
             clash = next((it for i, it in enumerate(items) if os.path.normcase(
                 probe.output_path(i, it)) == os.path.normcase(os.path.abspath(it.path))), None)

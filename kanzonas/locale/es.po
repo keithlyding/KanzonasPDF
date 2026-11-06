@@ -8355,3 +8355,823 @@ msgstr "Escanear a través de Windows (WIA) necesita el paquete comtypes, que fa
 
 msgid "The scanner didn't accept the subscription."
 msgstr "El escáner no aceptó la suscripción."
+
+#: batch.py:38
+msgid "Skipped"
+msgstr "Omitido"
+
+#: batch.py:38
+msgid "Failed"
+msgstr "Con error"
+
+#: batch.py:39
+msgid "Canceled"
+msgstr "Cancelado"
+
+#: batch.py:55
+msgid "Header, left"
+msgstr "Encabezado, izquierda"
+
+#: batch.py:55
+msgid "Header, center"
+msgstr "Encabezado, centro"
+
+#: batch.py:55
+msgid "Header, right"
+msgstr "Encabezado, derecha"
+
+#: batch.py:56
+msgid "Footer, left"
+msgstr "Pie de página, izquierda"
+
+#: batch.py:56
+msgid "Footer, center"
+msgstr "Pie de página, centro"
+
+#: batch.py:56
+msgid "Footer, right"
+msgstr "Pie de página, derecha"
+
+#: batch.py:385
+msgid "Make searchable (OCR)"
+msgstr "Hacer buscable (OCR)"
+
+#: batch.py:386
+msgid "Archive (OCR + PDF/A)"
+msgstr "Archivar (OCR + PDF/A)"
+
+#: batch.py:387
+msgid "Confidential (watermark + flatten)"
+msgstr "Confidencial (marca de agua + acoplar)"
+
+#: batch.py:389
+msgid "Bates number for production"
+msgstr "Numeración Bates para producción"
+
+#: batch.py:390
+msgid "Shrink for email"
+msgstr "Reducir para correo electrónico"
+
+#: batch.py:80
+msgid "Makes scanned pages searchable and selectable, as Recognize text (OCR) does."
+msgstr "Hace que las páginas escaneadas se puedan buscar y seleccionar, como Reconocer texto (OCR)."
+
+#: batch.py:86
+msgid "Makes each file a PDF/A-2b archival copy, as File > Save as PDF/A does. Put it after the steps that change the document; a password-protected file needs Remove password before it."
+msgstr "Convierte cada archivo en una copia de archivo PDF/A-2b, como Archivo > Guardar como PDF/A. Póngalo después de los pasos que cambian el documento; un archivo protegido con contraseña necesita Quitar contraseña antes."
+
+#: batch.py:90
+msgid "Writes text (or a picture) across the pages, as Document > Watermark does."
+msgstr "Escribe un texto (o una imagen) sobre las páginas, como Documento > Marca de agua."
+
+#: batch.py:100
+msgid "Text in the margins, as Document > Header & footer does. Tokens: {page} {pages} {date} {file} {bates}. Bates numbers continue from one file to the next, in the order of the list."
+msgstr "Texto en los márgenes, como Documento > Encabezado y pie de página. Códigos: {page} {pages} {date} {file} {bates}. Los números Bates siguen de un archivo al siguiente, en el orden de la lista."
+
+#: batch.py:107
+msgid "Page numbers"
+msgstr "Números de página"
+
+#: batch.py:107
+msgid "Numbers each file's pages. Tokens: {page} {pages}."
+msgstr "Numera las páginas de cada archivo. Códigos: {page} {pages}."
+
+#: batch.py:112
+msgid "A Bates number on every page, continuing from one file to the next in the order of the list (the first file starts at the first number)."
+msgstr "Un número Bates en cada página, que sigue de un archivo al siguiente en el orden de la lista (el primer archivo empieza en el primer número)."
+
+#: batch.py:120
+msgid "Makes comments and markups part of the page, as Review > Flatten comments does. Form fields stay fillable."
+msgstr "Hace que los comentarios y marcas formen parte de la página, como Revisar > Acoplar comentarios. Los campos de formulario se pueden seguir llenando."
+
+#: batch.py:125
+msgid "Flatten form fields"
+msgstr "Acoplar campos de formulario"
+
+#: batch.py:125
+msgid "Makes form fields and what's typed in them part of the page: they can't be filled in any more."
+msgstr "Hace que los campos de formulario y lo escrito en ellos formen parte de la página: ya no se pueden llenar."
+
+#: batch.py:129
+msgid "Permanently removes everything under the redaction marks already in each file, as Apply redactions does."
+msgstr "Elimina para siempre todo lo que está bajo las marcas de censura que ya tiene cada archivo, como Aplicar censuras."
+
+#: batch.py:134
+msgid "Marks every occurrence of each word or phrase for redaction, as Search & redact does, then applies the marks (with any marks already in the file)."
+msgstr "Marca para censura cada aparición de cada palabra o frase, como Buscar y censurar, y luego aplica las marcas (junto con las que ya tenga el archivo)."
+
+#: batch.py:142
+msgid "Removes hidden or sensitive information, as Protect > Sanitize document does."
+msgstr "Quita información oculta o confidencial, como Proteger > Sanear documento."
+
+#: batch.py:145
+msgid "Reduce file size"
+msgstr "Reducir tamaño del archivo"
+
+#: batch.py:145
+msgid "Makes pictures smaller and drops what isn't used, as Document > Compress does. A file that wouldn't get smaller is kept as it is."
+msgstr "Reduce las imágenes y quita lo que no se usa, como Documento > Comprimir. Un archivo que no quedaría más pequeño se deja como está."
+
+#: batch.py:152
+msgid "Rotate pages"
+msgstr "Girar páginas"
+
+#: batch.py:160
+msgid "Delete blank pages"
+msgstr "Eliminar páginas en blanco"
+
+#: batch.py:160
+msgid "Deletes pages with no text and almost no ink (blank sheets from a scanner, specks and all). A page with markups, form fields or a few written words is kept. The report lists the pages deleted."
+msgstr "Elimina las páginas sin texto y casi sin tinta (hojas en blanco de un escáner, aunque tengan alguna mota). Una página con marcas, campos de formulario o unas pocas palabras escritas se conserva. El informe lista las páginas eliminadas."
+
+#: batch.py:164
+msgid "Add password"
+msgstr "Agregar contraseña"
+
+#: batch.py:164
+msgid "Protects each file, as Protect > Security properties does (AES-256). Passwords aren't saved in recipes."
+msgstr "Protege cada archivo, como Proteger > Propiedades de seguridad (AES-256). Las contraseñas no se guardan en las recetas."
+
+#: batch.py:175
+msgid "Remove password"
+msgstr "Quitar contraseña"
+
+#: batch.py:175
+msgid "Takes the password protection off. A file that opens without a password but has a permissions password needs that password."
+msgstr "Quita la protección con contraseña. Un archivo que se abre sin contraseña pero tiene contraseña de permisos necesita esa contraseña."
+
+#: batch.py:179
+msgid "Set document properties"
+msgstr "Establecer propiedades del documento"
+
+#: batch.py:179
+msgid "{name} is the file's name. Empty boxes leave the property as it is."
+msgstr "{name} es el nombre del archivo. Las casillas vacías dejan la propiedad como está."
+
+#: batch.py:183
+msgid "Saves a copy in another format next to the PDF, as File > Export to does, from the document as the steps before it left it."
+msgstr "Guarda una copia en otro formato junto al PDF, como Archivo > Exportar a, a partir del documento tal como lo dejaron los pasos anteriores."
+
+#: batch.py:191
+msgid "Combine all into one PDF"
+msgstr "Combinar todo en un PDF"
+
+#: batch.py:191
+msgid "Puts the processed files together, in the order of the list, into one PDF (the last step)."
+msgstr "Une los archivos procesados, en el orden de la lista, en un solo PDF (el último paso)."
+
+#: batch.py:319
+msgid "Add at least one step."
+msgstr "Agregue al menos un paso."
+
+#: batch.py:324
+msgid "Combine all into one PDF must be the last step."
+msgstr "Combinar todo en un PDF debe ser el último paso."
+
+#: batch.py:463
+msgid "can't read"
+msgstr "no se puede leer"
+
+#: batch.py:853
+msgid "It doesn't allow changes, and its permissions password wasn't given."
+msgstr "No permite cambios y no se dio su contraseña de permisos."
+
+#: batch.py:869
+msgid "Processed"
+msgstr "Procesados"
+
+#: batch.py:328
+msgid "Save as PDF/A must come after the steps that change the document (only Export and Combine can follow it)."
+msgstr "Guardar como PDF/A debe ir después de los pasos que cambian el documento (solo Exportar y Combinar pueden ir después)."
+
+#: batch.py:458
+msgid "protected"
+msgstr "protegido"
+
+#: batch.py:460
+msgid "not a PDF"
+msgstr "no es un PDF"
+
+#: batch.py:592
+msgid "This PDF is protected against changes. Its permissions password is needed."
+msgstr "Este PDF está protegido contra cambios. Se necesita su contraseña de permisos."
+
+#: batch.py:632
+msgid "Its passwords are needed to keep its protection: add Remove password or Add password, or give its permissions password."
+msgstr "Se necesitan sus contraseñas para mantener su protección: agregue Quitar contraseña o Agregar contraseña, o dé su contraseña de permisos."
+
+#: batch.py:815
+msgid "Stopped: nothing was written for this file."
+msgstr "Detenido: no se escribió nada de este archivo."
+
+#: batch.py:988
+msgid "OCR: every page already has text."
+msgstr "OCR: todas las páginas ya tienen texto."
+
+#: batch.py:1062
+msgid "It's password-protected, and PDF/A doesn't allow encryption: put Remove password before Save as PDF/A."
+msgstr "Está protegido con contraseña y PDF/A no permite cifrado: ponga Quitar contraseña antes de Guardar como PDF/A."
+
+#: batch.py:1149
+msgid "No form fields to flatten"
+msgstr "No hay campos de formulario que acoplar"
+
+#: batch.py:1157
+msgid "No redaction marks to apply"
+msgstr "No hay marcas de censura que aplicar"
+
+#: batch.py:1205
+msgid "Already as small as it gets: kept as it was"
+msgstr "Ya es lo más pequeño posible: se dejó como estaba"
+
+#: batch.py:1228
+msgid "No page to turn"
+msgstr "Ninguna página que girar"
+
+#: batch.py:1243
+msgid "Every page looks blank: none was deleted"
+msgstr "Todas las páginas parecen en blanco: no se eliminó ninguna"
+
+#: batch.py:1266
+msgid "It had no password"
+msgstr "No tenía contraseña"
+
+#: batch.py:1318
+msgid "Not combined: the run was canceled."
+msgstr "No se combinó: el proceso se canceló."
+
+#: batch.py:1321
+msgid "No file to combine."
+msgstr "No hay archivos que combinar."
+
+#: batch.py:83
+msgid "Accuracy"
+msgstr "Precisión"
+
+#: batch.py:93
+msgid "Picture instead of text"
+msgstr "Imagen en lugar de texto"
+
+#: batch.py:123
+msgid "Redaction marks not applied yet"
+msgstr "Marcas de censura aún no aplicadas"
+
+#: batch.py:128
+msgid "Comments and markups too"
+msgstr "También comentarios y marcas"
+
+#: batch.py:137
+msgid "Words or phrases (one per line)"
+msgstr "Palabras o frases (una por línea)"
+
+#: batch.py:138
+msgid "Apply the redactions (untick to only mark them for review)"
+msgstr "Aplicar las censuras (desmarque para solo marcarlas y revisarlas)"
+
+#: batch.py:148
+msgid "Image quality"
+msgstr "Calidad de imagen"
+
+#: batch.py:153
+msgid "Turn"
+msgstr "Girar"
+
+#: batch.py:156
+msgid "Which pages"
+msgstr "Qué páginas"
+
+#: batch.py:169
+msgid "Allow printing"
+msgstr "Permitir imprimir"
+
+#: batch.py:170
+msgid "Allow copying text and images"
+msgstr "Permitir copiar texto e imágenes"
+
+#: batch.py:171
+msgid "Allow adding comments and markups"
+msgstr "Permitir agregar comentarios y marcas"
+
+#: batch.py:172
+msgid "Allow filling in form fields and signing"
+msgstr "Permitir llenar campos de formulario y firmar"
+
+#: batch.py:173
+msgid "Allow changing the document"
+msgstr "Permitir cambiar el documento"
+
+#: batch.py:174
+msgid "Allow inserting, deleting and rotating pages"
+msgstr "Permitir insertar, eliminar y girar páginas"
+
+#: batch.py:182
+msgid "Subject"
+msgstr "Asunto"
+
+#: batch.py:182
+msgid "Keywords"
+msgstr "Palabras clave"
+
+#: batch.py:186
+msgid "Format"
+msgstr "Formato"
+
+#: batch.py:190
+msgid "Picture resolution"
+msgstr "Resolución de las imágenes"
+
+#: batch.py:194
+msgid "File name"
+msgstr "Nombre del archivo"
+
+#: batch.py:195
+msgid "A bookmark for each file"
+msgstr "Un marcador para cada archivo"
+
+#: batch.py:196
+msgid "Also save each file"
+msgstr "Guardar también cada archivo"
+
+#: batch.py:331
+msgid "PDF/A doesn't allow passwords: leave out Add password, or make a separate run for it."
+msgstr "PDF/A no permite contraseñas: quite Agregar contraseña o hágalo en otro proceso."
+
+#: batch.py:536
+msgid "It's password-protected and no password was given."
+msgstr "Está protegido con contraseña y no se dio ninguna."
+
+#: batch.py:786
+msgid "It's digitally signed: changing it would make the signature invalid."
+msgstr "Tiene firma digital: cambiarlo invalidaría la firma."
+
+#: batch.py:890
+msgid "Its output would replace the original file. Choose another folder or name, or allow replacing the original files."
+msgstr "El resultado reemplazaría el archivo original. Elija otra carpeta u otro nombre, o permita reemplazar los archivos originales."
+
+#: batch.py:1073
+msgid "PDF/A-{part}b"
+msgstr "PDF/A-{part}b"
+
+#: batch.py:1160
+msgid "Applied {n} redaction(s)"
+msgstr "Se aplicaron {n} censura(s)"
+
+#: batch.py:1246
+msgid "Deleted blank page(s): {pages}"
+msgstr "Páginas en blanco eliminadas: {pages}"
+
+#: batch.py:1410
+msgid "Status"
+msgstr "Estado"
+
+#: batch.py:1410
+msgid "Output"
+msgstr "Salida"
+
+#: batch.py:1410
+msgid "Details"
+msgstr "Detalles"
+
+#: batch.py:110
+msgid "Position"
+msgstr "Posición"
+
+#: batch.py:115
+msgid "Bates prefix"
+msgstr "Prefijo Bates"
+
+#: batch.py:116
+msgid "First Bates number"
+msgstr "Primer número Bates"
+
+#: batch.py:117
+msgid "Bates digits"
+msgstr "Dígitos Bates"
+
+#: batch.py:311
+msgid "Page range {part} isn't valid."
+msgstr "El intervalo de páginas {part} no es válido."
+
+#: batch.py:741
+msgid "Not processed: the run was canceled."
+msgstr "No procesado: el proceso se canceló."
+
+#: batch.py:915
+msgid "{name} is open with unsaved changes."
+msgstr "{name} está abierto con cambios sin guardar."
+
+#: batch.py:1075
+msgid "PDF/A: {n} problem(s) couldn't be fixed (File > Check PDF/A lists them)"
+msgstr "PDF/A: no se pudieron corregir {n} problema(s) (Archivo > Revisar PDF/A los lista)"
+
+#: batch.py:1084
+msgid "{step}: none of the pages chosen are in this file."
+msgstr "{step}: ninguna de las páginas elegidas está en este archivo."
+
+#: batch.py:1098
+msgid "Bates {first} to {last}"
+msgstr "Bates {first} a {last}"
+
+#: batch.py:1140
+msgid "{n} redaction mark(s) not applied yet were kept as marks"
+msgstr "{n} marca(s) de censura aún no aplicadas se conservaron como marcas"
+
+#: batch.py:1182
+msgid "Redacted {n} match(es) on the pages"
+msgstr "Se censuraron {n} coincidencia(s) en las páginas"
+
+#: batch.py:1186
+msgid "{n} word(s) found only outside the pages (fields, notes, bookmarks, properties) were removed there"
+msgstr "{n} palabra(s) encontradas solo fuera de las páginas (campos, notas, marcadores, propiedades) se quitaron de ahí"
+
+#: batch.py:1323
+msgid "Combining {n} files..."
+msgstr "Combinando {n} archivos…"
+
+#: batch.py:1338
+msgid "{n} files, {pages} pages"
+msgstr "{n} archivos, {pages} páginas"
+
+#: batch.py:153
+msgid "90° clockwise"
+msgstr "90° en el sentido del reloj"
+
+#: batch.py:154
+msgid "180°"
+msgstr "180°"
+
+#: batch.py:155
+msgid "90° counterclockwise"
+msgstr "90° en sentido contrario al reloj"
+
+#: batch.py:157
+msgid "Odd pages"
+msgstr "Páginas impares"
+
+#: batch.py:157
+msgid "Even pages"
+msgstr "Páginas pares"
+
+#: batch.py:158
+msgid "Landscape pages"
+msgstr "Páginas horizontales"
+
+#: batch.py:158
+msgid "Portrait pages"
+msgstr "Páginas verticales"
+
+#: batch.py:187
+msgid "Microsoft Word (.docx)"
+msgstr "Microsoft Word (.docx)"
+
+#: batch.py:187
+msgid "Microsoft Excel (.xlsx)"
+msgstr "Microsoft Excel (.xlsx)"
+
+#: batch.py:188
+msgid "Microsoft PowerPoint (.pptx)"
+msgstr "Microsoft PowerPoint (.pptx)"
+
+#: batch.py:188
+msgid "Images (PNG)"
+msgstr "Imágenes (PNG)"
+
+#: batch.py:189
+msgid "Images (JPEG)"
+msgstr "Imágenes (JPEG)"
+
+#: batch.py:189
+msgid "Plain text (.txt)"
+msgstr "Texto sin formato (.txt)"
+
+#: batch.py:338
+msgid "{step}: type an open password, a permissions password, or both."
+msgstr "{step}: escriba una contraseña de apertura, una de permisos o ambas."
+
+#: batch.py:345
+msgid "{step}: type the words to look for."
+msgstr "{step}: escriba las palabras que buscar."
+
+#: batch.py:508
+msgid "It isn't a PDF KanzonasPDF can read ({error})."
+msgstr "No es un PDF que KanzonasPDF pueda leer ({error})."
+
+#: batch.py:533
+msgid "The password given doesn't open it."
+msgstr "La contraseña dada no lo abre."
+
+#: batch.py:955
+msgid "Nothing needed changing: copied as it was."
+msgstr "No hacía falta cambiar nada: se copió tal como estaba."
+
+#: batch.py:1342
+msgid "{n} file(s) left out: see above"
+msgstr "{n} archivo(s) quedaron fuera: vea arriba"
+
+#: batch.py:341
+msgid "{step}: use a different password for permissions: with the same one, anyone who can open it can change it."
+msgstr "{step}: use otra contraseña para los permisos: con la misma, cualquiera que pueda abrirlo puede cambiarlo."
+
+#: batch.py:369
+msgid "{step}: \"{pages}\" isn't a list of pages such as 1-3, 5, 8-."
+msgstr "{step}: \"{pages}\" no es una lista de páginas como 1-3, 5, 8-."
+
+#: batch.py:781
+msgid "Couldn't read it: {error}"
+msgstr "No se pudo leer: {error}"
+
+#: batch.py:356
+msgid "{step}: type something in at least one position."
+msgstr "{step}: escriba algo en al menos una posición."
+
+#: batch.py:349
+msgid "{step}: the picture {path} isn't there."
+msgstr "{step}: la imagen {path} no está."
+
+#: batch.py:352
+msgid "{step}: type the text or choose a picture."
+msgstr "{step}: escriba el texto o elija una imagen."
+
+#: batch.py:359
+msgid "{step}: type the text."
+msgstr "{step}: escriba el texto."
+
+#: batch.py:905
+msgid "{name} already exists."
+msgstr "{name} ya existe."
+
+#: batch.py:362
+msgid "{step}: type at least one property."
+msgstr "{step}: escriba al menos una propiedad."
+
+#: batch.py:364
+msgid "{step}: type a file name."
+msgstr "{step}: escriba un nombre de archivo."
+
+#: batch_ui.py:22
+msgid "Ask for the password"
+msgstr "Pedir la contraseña"
+
+#: batch_ui.py:22
+msgid "Skip them"
+msgstr "Omitirlos"
+
+#: batch_ui.py:23
+msgid "Ask"
+msgstr "Preguntar"
+
+#: batch_ui.py:23
+msgid "Add a number: name (2).pdf"
+msgstr "Agregar un número: nombre (2).pdf"
+
+#: batch_ui.py:24
+msgid "Skip the file"
+msgstr "Omitir el archivo"
+
+#: batch_ui.py:69
+msgid "{name} is password-protected. Its password:"
+msgstr "{name} está protegido con contraseña. Su contraseña:"
+
+#: batch_ui.py:70
+msgid "{name} doesn't allow changes. Its permissions password:"
+msgstr "{name} no permite cambios. Su contraseña de permisos:"
+
+#: batch_ui.py:75
+msgid "It's tried first on the next protected files, so a set that shares one password is asked once."
+msgstr "Se prueba primero en los siguientes archivos protegidos, así que para un grupo que comparte una contraseña se pregunta una sola vez."
+
+#: batch_ui.py:81
+msgid "Skip this file"
+msgstr "Omitir este archivo"
+
+#: batch_ui.py:82
+msgid "Skip all protected files"
+msgstr "Omitir todos los archivos protegidos"
+
+#: batch_ui.py:97
+msgid "Batch report"
+msgstr "Informe del proceso por lotes"
+
+#: batch_ui.py:124
+msgid "Save report..."
+msgstr "Guardar informe…"
+
+#: batch_ui.py:141
+msgid "Save report"
+msgstr "Guardar informe"
+
+#: batch_ui.py:171
+msgid "Batch processing"
+msgstr "Procesamiento por lotes"
+
+#: batch_ui.py:188
+msgid "Save recipe..."
+msgstr "Guardar receta…"
+
+#: batch_ui.py:190
+msgid "Delete recipe"
+msgstr "Eliminar receta"
+
+#: batch_ui.py:205
+msgid "Add files, add steps, then Run."
+msgstr "Agregue archivos, agregue pasos y luego Ejecutar."
+
+#: batch_ui.py:218
+msgid "Report..."
+msgstr "Informe…"
+
+#: batch_ui.py:223
+msgid "Run"
+msgstr "Ejecutar"
+
+#: batch_ui.py:228
+msgid "Finish the file being processed, then stop"
+msgstr "Terminar el archivo en proceso y luego detenerse"
+
+#: batch_ui.py:247
+msgid "Files"
+msgstr "Archivos"
+
+#: batch_ui.py:254
+msgid "Add folder..."
+msgstr "Agregar carpeta…"
+
+#: batch_ui.py:256
+msgid "Include subfolders"
+msgstr "Incluir subcarpetas"
+
+#: batch_ui.py:280
+msgid "Files are processed in this order (Bates numbers and Combine follow it). Drop files or folders here."
+msgstr "Los archivos se procesan en este orden (los números Bates y Combinar lo siguen). Suelte archivos o carpetas aquí."
+
+#: batch_ui.py:299
+msgid "Add folder"
+msgstr "Agregar carpeta"
+
+#: batch_ui.py:383
+msgid "Steps (done in this order)"
+msgstr "Pasos (en este orden)"
+
+#: batch_ui.py:391
+msgid "Add step"
+msgstr "Agregar paso"
+
+#: batch_ui.py:544
+msgid "(choose a recipe)"
+msgstr "(elija una receta)"
+
+#: batch_ui.py:568
+msgid "Save recipe"
+msgstr "Guardar receta"
+
+#: batch_ui.py:568
+msgid "Recipe name:"
+msgstr "Nombre de la receta:"
+
+#: batch_ui.py:595
+msgid "A \"Processed\" folder next to each file"
+msgstr "Una carpeta \"Procesados\" junto a cada archivo"
+
+#: batch_ui.py:596
+msgid "This folder:"
+msgstr "Esta carpeta:"
+
+#: batch_ui.py:605
+msgid "Keep the folder structure"
+msgstr "Conservar la estructura de carpetas"
+
+#: batch_ui.py:607
+msgid "Files from subfolders of an added folder go into the same subfolders of the output folder"
+msgstr "Los archivos de subcarpetas de una carpeta agregada van a las mismas subcarpetas de la carpeta de salida"
+
+#: batch_ui.py:626
+msgid "Allow replacing the original files"
+msgstr "Permitir reemplazar los archivos originales"
+
+#: batch_ui.py:627
+msgid "Off: a result never replaces the file it was made from"
+msgstr "Desmarcado: un resultado nunca reemplaza el archivo del que se hizo"
+
+#: batch_ui.py:633
+msgid "Output folder"
+msgstr "Carpeta de salida"
+
+#: batch_ui.py:34
+msgid "Folder"
+msgstr "Carpeta"
+
+#: batch_ui.py:129
+msgid "Open the output folder"
+msgstr "Abrir la carpeta de salida"
+
+#: batch_ui.py:183
+msgid "Recipe:"
+msgstr "Receta:"
+
+#: batch_ui.py:208
+msgid "This file:"
+msgstr "Este archivo:"
+
+#: batch_ui.py:212
+msgid "All files:"
+msgstr "Todos los archivos:"
+
+#: batch_ui.py:273
+msgid "Password-protected files:"
+msgstr "Archivos protegidos con contraseña:"
+
+#: batch_ui.py:565
+msgid "Add the steps first."
+msgstr "Agregue primero los pasos."
+
+#: batch_ui.py:614
+msgid "File name:"
+msgstr "Nombre del archivo:"
+
+#: batch_ui.py:619
+msgid "{name}: the file's name, {n}: its number in the list, {date}: today, {bates}: its first Bates number"
+msgstr "{name}: el nombre del archivo, {n}: su número en la lista, {date}: hoy, {bates}: su primer número Bates"
+
+#: batch_ui.py:621
+msgid "If the file is already there:"
+msgstr "Si el archivo ya existe:"
+
+#: batch_ui.py:690
+msgid "Add the files to process."
+msgstr "Agregue los archivos que procesar."
+
+#: batch_ui.py:694
+msgid "Choose the output folder."
+msgstr "Elija la carpeta de salida."
+
+#: batch_ui.py:778
+msgid "Stop now"
+msgstr "Detener ya"
+
+#: batch_ui.py:779
+msgid "Stop at once: the file being processed is left out (nothing half-written is left)"
+msgstr "Detener de inmediato: el archivo en proceso queda fuera (no queda nada a medio escribir)"
+
+#: batch_ui.py:781
+msgid "Finishing the current file, then stopping..."
+msgstr "Terminando el archivo actual; luego se detendrá…"
+
+#: batch_ui.py:784
+msgid "Stopping..."
+msgstr "Deteniendo…"
+
+#: batch_ui.py:822
+msgid "Skip"
+msgstr "Omitir"
+
+#: batch_ui.py:823
+msgid "Skip all"
+msgstr "Omitir todos"
+
+#: batch_ui.py:817
+msgid "{name} is already in {folder}."
+msgstr "{name} ya está en {folder}."
+
+#: batch_ui.py:833
+msgid "Stop the batch? The file being processed is left out; the files done so far stay."
+msgstr "¿Detener el proceso? El archivo en proceso queda fuera; los archivos ya terminados se conservan."
+
+#: batch_ui.py:102
+msgid "Done: {done}   Skipped: {skipped}   Failed: {failed}   Canceled: {canceled}"
+msgstr "Listos: {done}   Omitidos: {skipped}   Con error: {failed}   Cancelados: {canceled}"
+
+#: batch_ui.py:142
+msgid "CSV (opens in Excel)"
+msgstr "CSV (se abre en Excel)"
+
+#: batch_ui.py:470
+msgid "This step has no options."
+msgstr "Este paso no tiene opciones."
+
+#: batch_ui.py:585
+msgid "Delete the recipe {name}?"
+msgstr "¿Eliminar la receta {name}?"
+
+#: batch_ui.py:795
+msgid "Finished. Done: {done}, skipped: {skipped}, failed: {failed}."
+msgstr "Terminado. Listos: {done}, omitidos: {skipped}, con error: {failed}."
+
+#: batch_ui.py:574
+msgid "Replace the recipe {name}?"
+msgstr "¿Reemplazar la receta {name}?"
+
+#: batch_ui.py:705
+msgid "The results would replace the original files (such as {name}). Choose another folder or file name, or tick Allow replacing the original files."
+msgstr "Los resultados reemplazarían los archivos originales (como {name}). Elija otra carpeta u otro nombre de archivo, o marque Permitir reemplazar los archivos originales."
+
+#: batch_ui.py:534
+msgid "not saved in recipes"
+msgstr "no se guarda en las recetas"
+
+#: main_window.py:707
+msgid "&Batch processing..."
+msgstr "Procesamiento por &lotes..."
+
+#: main_window.py:708
+msgid "Do the same steps to many PDFs at once: OCR, PDF/A, Bates numbers, watermarks, flattening, smaller files"
+msgstr "Aplicar los mismos pasos a muchos PDF a la vez: OCR, PDF/A, números Bates, marcas de agua, acoplar, archivos más pequeños"

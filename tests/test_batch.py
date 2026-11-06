@@ -690,7 +690,7 @@ class Window(unittest.TestCase):
         from kanzonas.main_window import MainWindow
         from kanzonas import batch_ui
         win = MainWindow()
-        self.addCleanup(win.close)
+        self.addCleanup(lambda: (setattr(win, "_close_confirmed", True), win.close()))
         acts = {a.text() for m in win.menuBar().actions() if m.menu()
                 for a in m.menu().actions()}
         self.assertIn("&Batch processing...", acts)
