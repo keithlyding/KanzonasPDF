@@ -415,6 +415,10 @@ class Status(Base):
         self.assertEqual(shown("Unmarked"), [(0, a), (1, c)])
         self.assertEqual(shown(""), [(1, c)])
         self.assertEqual(shown(None), [(0, a), (0, b), (1, c)])
+        self.assertIsNone(panel.shown_markups())            # (all of them: export all)
+        shown("Accepted")
+        self.assertEqual(panel.shown_markups(), {0: [a]})   # (Export comments... the shown)
+        shown(None)
         # the list's own menu asks the window: the signal carries the markup and status
         got = []
         panel.statusRequested.connect(lambda *s: got.append(s))
