@@ -7,8 +7,10 @@ tests/test_battery_random.py runs in every build):
 Thousands of random edits through the app's own steps (the ones the menus, tools and keys
 call: markups of every kind added, moved, resized, recolored, retyped, duplicated, restacked
 and deleted; page text added, edited and replaced; pictures and shapes of the page moved,
-turned and deleted; pages rotated, inserted, duplicated, deleted, moved, reordered,
-cropped and replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
+turned and deleted; words styled in Edit text and Add text (bold, italic, underline,
+strikethrough, color, size); pages rotated, inserted, duplicated, deleted, moved, reordered,
+cropped, scanned in (File > Scan into the current document, with pictures made here) and
+replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
 window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
 (kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
 
@@ -671,7 +673,8 @@ class Battery:
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
             (self.op_retype, 3), (self.op_delete, 5), (self.op_duplicate, 2),
             (self.op_copy_paste, 2), (self.op_restack, 2), (self.op_eraser, 2),
-            (self.op_add_text, 3), (self.op_edit_text, 3), (self.op_replace_text, 1),
+            (self.op_add_text, 3), (self.op_edit_text, 3), (self.op_styled_text, 3),
+            (self.op_replace_text, 1), (self.op_scan, 1),
             (self.op_picture, 2), (self.op_objects, 4), (self.op_erase_content, 1),
             (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
             (self.op_delete_page, 2), (self.op_move_page, 2), (self.op_reorder, 1),
@@ -966,6 +969,100 @@ class Battery:
         parts[k] = self.rnd.choice(["", "new", parts[k].upper(), parts[k] + " more"])
         ed.text.setPlainText(" ".join(p for p in parts if p) or "x")
         ed.commit()
+
+    def op_styled_text(self):
+        """Edit text or Add text with words styled in the editor (text_styles.py), as its
+        buttons and keys do: bold, italic, underline, strikethrough, a color, a size up or
+        down, on a run of words picked at random; then Done (the editor's own commit)."""
+        from PySide6.QtGui import QColor, QTextCursor
+        v = self.v
+        i = self.page()
+        if self.rnd.random() < 0.3:
+            v.add_text_at(i, self.point(i, 60))
+            ed = v._inline
+            if ed is None:
+                return "none"
+            ed.text.setPlainText(self.typed() + " " + self.typed())
+        else:
+            words = self.words(i)
+            if not words:
+                return "none"
+            w = self.rnd.choice(words)
+            v.edit_text_at(i, pymupdf.Point((w[0] + w[2]) / 2, (w[1] + w[3]) / 2),
+                           one_line=self.rnd.random() < 0.3)
+            ed = v._inline
+            if ed is None:
+                return "none"
+        text = ed.text.toPlainText()
+        spans = [mt.span() for mt in re.finditer(r"\S+", text)]
+        if not spans:
+            ed.cancel()
+            return "none"
+        for _ in range(self.rnd.randint(1, 3)):
+            k = self.rnd.randrange(len(spans))
+            a, b = spans[k][0], spans[min(len(spans) - 1, k + self.rnd.randint(0, 3))][1]
+            cur = ed.text.textCursor()
+            cur.setPosition(a)
+            cur.setPosition(b, QTextCursor.KeepAnchor)
+            ed.text.setTextCursor(cur)
+            what = self.rnd.choice(["bold", "italic", "underline", "strike", "color", "size"])
+            if what == "color":
+                ed.set_color(QColor(self.color()))
+            elif what == "size":
+                ed.grow_size(self.rnd.choice([-1, 1, 2]))
+            else:
+                ed.toggle(what)
+        if self.rnd.random() < 0.3:             # and a word typed in its style
+            cur = ed.text.textCursor()
+            cur.setPosition(self.rnd.choice(spans)[1])
+            ed.text.setTextCursor(cur)
+            ed.text.insertPlainText(" " + self.typed())
+        ed.commit()
+
+    def op_scan(self):
+        """File > Scan, Done into the current document: scanned pictures (made here, JPEG or
+        PNG, with no scanner) put in after the current page, one undo step (scan_dialog's
+        own finish)."""
+        from kanzonas import scan_dialog, scan_net
+        from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+        from PySide6.QtGui import QColor, QImage, QPainter
+        v = self.v
+        if v.doc.page_count >= 10:
+            return self.op_delete_page()
+        v.goto_page(self.page())
+        dlg = scan_dialog.ScanDialog(self.win, discover=lambda cancel=None, log=None: ([], []),
+                                     open_scanner=lambda d: None)
+        try:
+            end = time.time() + 15
+            while "find" in dlg._busy and time.time() < end:
+                APP.processEvents()
+                time.sleep(0.005)
+            dpi = self.rnd.choice([50, 75, 100])
+            pages = []
+            for _ in range(self.rnd.randint(1, 2)):
+                w, h = int(8.5 * dpi), int(self.rnd.choice([11, 14]) * dpi)
+                if self.rnd.random() < 0.3:
+                    w, h = h, w
+                img = QImage(w, h, QImage.Format_RGB32)
+                img.fill(QColor(250, 250, 245))
+                p = QPainter(img)
+                for _ in range(12):
+                    p.fillRect(self.rnd.randrange(w), self.rnd.randrange(h),
+                               self.rnd.randint(5, w // 3), self.rnd.randint(2, 12),
+                               QColor(self.color()))
+                p.end()
+                data = QByteArray()
+                buf = QBuffer(data)
+                buf.open(QIODevice.WriteOnly)
+                img.save(buf, self.rnd.choice(["JPG", "PNG"]))
+                pages.append(scan_net.check_image(bytes(data), dpi))
+            dlg.pages = pages
+            dlg.rb_current.setChecked(True)
+            dlg.ocr.setChecked(False)
+            dlg.finish()
+        finally:
+            dlg._stop()
+            dlg.deleteLater()
 
     def op_replace_text(self):
         find, repl = self.rnd.choice([("text", "TEXT"), ("panel", "board"), ("TEXT", "text"),
