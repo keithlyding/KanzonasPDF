@@ -1195,6 +1195,13 @@ def run(log_path):
         assert "receive" in spelling.suggestions("recieve")
     check("spell check", t_spelling)
 
+    def t_scanning():
+        # File > Scan without a scanner: the XML guard, reading eSCL, and on Windows that
+        # comtypes (WIA) is in the exe
+        from . import scanners
+        return scanners.selftest_check()
+    check("scanning", t_scanning)
+
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     return 0 if ok else 1

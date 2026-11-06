@@ -665,6 +665,9 @@ class MainWindow(QMainWindow):
         self.a_from_images = self._act(tr("Create PDF from &images..."), self.pdf_from_images,
                                        tip=tr("Make a PDF from pictures: scans, phone photos "
                                               "(JPG, PNG, TIFF...), one page each"))
+        self.a_scan = self._act(tr("Scan..."), self.scan,      # (every letter of it is taken)
+                                tip=tr("Scan pages from a scanner or printer (on the network "
+                                       "or connected to this computer) into a PDF"))
         self.a_insert_blank = self._act(tr("Insert &blank page after current"),
                                         lambda: self._page_op("blank"))
         self.a_extract = self._act(tr("&Extract pages to new file..."), self.extract_pages)
@@ -1028,7 +1031,7 @@ class MainWindow(QMainWindow):
         self.recent_menu = m.addMenu(tr("Open &recent"))
         self._rebuild_recent()
         m.addActions([self.a_save, self.a_save_as, self.a_save_pdfa, self.a_check_pdfa])
-        m.addActions([self.a_combine, self.a_from_images])
+        m.addActions([self.a_combine, self.a_from_images, self.a_scan])
         em = m.addMenu(tr("&Export to"))
         em.addActions(self.export_actions)
         m.addAction(self.a_compare)
@@ -2449,6 +2452,13 @@ class MainWindow(QMainWindow):
             self._written_over(replaced)
             self.open_file(dlg.result_path)
             self.statusBar().showMessage(tr("Created {path}").format(path=dlg.result_path), 5000)
+
+    def scan(self):
+        """File > Scan: pages from a scanner (scan_dialog.py; nothing of it loads before)."""
+        from .scan_dialog import ScanDialog
+        dlg = ScanDialog(self)
+        dlg.exec()
+        dlg.deleteLater()
 
     def insert_from_file(self):
         """Pages > Insert pages from file: PDFs and pictures (each picture a page). With
@@ -4757,7 +4767,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": tr("Apply selected"), "a_apply_redact": tr("Apply all"),
         "a_security": tr("Security"), "a_remove_security": tr("Remove security"), "a_unlock": tr("Unlock"),
         "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"), "a_move_up": tr("Move up"),
-        "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files"), "a_from_images": tr("From images"), "a_new": tr("New PDF"),
+        "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files"), "a_from_images": tr("From images"), "a_new": tr("New PDF"), "a_scan": tr("Scan"),
         "a_insert_blank": tr("Blank page"), "a_extract": tr("Extract"), "a_header": tr("Header and footer"),
         "a_watermark": tr("Watermark"), "a_background": tr("Background"),
         "a_remove_bg": tr("Remove background"), "a_remove_wm": tr("Remove watermarks"), "a_bookmarks": tr("Bookmarks"), "a_attachments": tr("Attachments"),
@@ -4802,7 +4812,8 @@ class MainWindow(QMainWindow):
         "a_page_boxes": "border-outside", "a_fix_hairlines": "format-line-weight",
         "a_print_check": "printer-search", "a_show_boxes": "border-style",
         "a_scale_bar": "map-legend",
-        "a_from_images": "file-image-outline", "a_new": "file-document-plus-outline", "a_extract": "file-export-outline",
+        "a_from_images": "file-image-outline", "a_new": "file-document-plus-outline",
+        "a_scan": "scanner", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
         "a_remove_bg": "format-color-marker-cancel", "a_remove_wm": "water-off-outline",
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
@@ -4914,7 +4925,9 @@ class MainWindow(QMainWindow):
             (tr("Organize"), "small", [self.a_move_up, self.a_move_down, self.a_del_page,
                                    self.a_insert_pdf, self.a_insert_blank,
                                    split_button([self.a_extract, self.a_replace_pages])]),
-            (tr("Create"), "large", [self.a_new, self.a_combine, self.a_from_images]),
+            # (small buttons: with Scan, four fit in two columns, narrower than three large)
+            (tr("Create"), "small", [self.a_new, self.a_combine, self.a_from_images,
+                                     self.a_scan]),
             (tr("Document"), "small", [self.a_header, self.a_watermark, self.a_background,
                                    self.a_bookmarks, self.a_sheet_links, self.a_attachments,
                                    self.a_compress, self.a_compare]),
