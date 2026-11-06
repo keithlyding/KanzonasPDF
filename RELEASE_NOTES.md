@@ -28,6 +28,8 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Scanning: a page cut short by a dropped connection is reported instead of kept as half a page, Cancel stops a page that is still arriving, files in a watched folder are taken only once they're complete, and a scanned PDF brings only its pages (no links, fields or comments).
 - Save as PDF/A also fixes pictures stored inside the page content; Check PDF/A reports a few more things PDF/A doesn't allow. Saves that tidy the file (Compress, Save as PDF/A, Combine files) can no longer lose a page's drawing.
 - Pages look exactly like the file opened afresh after adding or undoing a highlight, or moving a picture stamp partly off the page.
+- Edit objects: deleting or moving shapes and text together on a page with redaction marks not applied yet no longer makes Redo unavailable.
+- Scanning on a Mac no longer waits about half a minute before looking for scanners, and the Mac asks once to let KanzonasPDF find devices on your network. On Windows, Cancel stops a page that is still arriving.
 - Find no longer counts a word twice when part of it is in another size, and its count goes when the last document closes. The ribbon fits a 1366-pixel screen in Spanish too, and recognizing text (OCR) uses less memory.
 
 ## 1.9 (es)
@@ -51,6 +53,8 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Escanear: una página cortada por una conexión caída se avisa en lugar de guardarse a medias, Cancelar detiene una página que todavía está llegando, los archivos de una carpeta vigilada se toman solo cuando están completos, y un PDF escaneado trae solo sus páginas (sin vínculos, campos ni comentarios).
 - Guardar como PDF/A también corrige las imágenes guardadas dentro del contenido de la página; Revisar PDF/A indica algunas cosas más que PDF/A no permite. Los guardados que ordenan el archivo (Comprimir, Guardar como PDF/A, Combinar archivos) ya no pueden perder el dibujo de una página.
 - Las páginas se ven exactamente como el archivo abierto de nuevo después de agregar o deshacer un resaltado, o de mover un sello con imagen en parte fuera de la página.
+- Editar objetos: eliminar o mover formas y texto a la vez en una página con marcas de censura sin aplicar ya no deja Rehacer sin efecto.
+- Escanear en un Mac ya no espera cerca de medio minuto antes de buscar escáneres, y el Mac pide una vez permitir que KanzonasPDF encuentre dispositivos en su red. En Windows, Cancelar detiene una página que todavía está llegando.
 - Buscar ya no cuenta dos veces una palabra que tiene una parte en otro tamaño, y su recuento desaparece al cerrar el último documento. La cinta de opciones cabe en una pantalla de 1366 píxeles también en español, y el reconocimiento de texto (OCR) usa menos memoria.
 
 ## 1.8.3
