@@ -1,7 +1,8 @@
 """What the 1.9 break-it battery found in redaction and Sanitize, fixed: what was redacted
 stayed readable in the saved file in places Apply redactions didn't reach:
 
-- Search & redact's term in a layer's name, a bookmark's web address, a form field on no
+- Search & redact's term in a hidden layer (searching reads only what is shown), in a
+  layer's name, a bookmark's web address, a form field on no
   page (or a list field's options), a note's rich text (/RC) when its plain text was
   different, an XFA form's data (also after Sanitize's form data), and (without the
   clean-up) a program's own document information key;
@@ -75,6 +76,15 @@ class Case(unittest.TestCase):
 
 
 class SearchAndRedact(Case):
+    def test_the_term_in_a_hidden_layer(self):
+        d, p = self.doc()
+        oc = d.add_ocg("Draft notes", on=False)
+        p.insert_text((50, 300), "Draft: %s again" % WORD, fontsize=12, oc=oc)
+        v, data = self.redact_word(d)
+        self.assertNotIn(WORD.encode(), data)
+        self.assertIn(b"Draft: ", data)                     # (the rest of the layer stays)
+        self.assertEqual([c["on"] for c in v.doc.layer_ui_configs()], [0])  # (still hidden)
+
     def test_a_layer_named_with_the_term(self):
         for scrub in (True, False):
             with self.subTest(scrub=scrub):
@@ -192,6 +202,9 @@ class PageAsItWas(Case):
                 data = self.saved(v)
                 self.assertNotIn(b"HIDDENWORDS", data)
                 self.assertIn("Other words stay", v.doc[0].get_text())
+                # (nor in what Digital signature signs)
+                with pymupdf.open("pdf", v.signing_bytes()) as signed:
+                    self.assertNotIn(b"HIDDENWORDS", signed.tobytes(expand=255))
 
     def test_the_thumbnail_of_a_redacted_page(self):
         # (a picture of the page as it was, words and all)

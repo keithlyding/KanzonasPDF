@@ -5497,8 +5497,26 @@ class DocumentView(QScrollArea):
                 a.update()
         self.modify(do, [index])
 
+    def _search_every_layer(self, text):
+        """{page index: rects} of text on every page, in the layers hidden too: searching
+        only reads what is shown, and a hidden layer's copy of the words (a plan's notes, a
+        draft's) stayed in the file after Search & redact. Searched in a copy without the
+        layers' settings, where everything shows (redaction then removes it from any
+        layer)."""
+        doc = self.doc
+        copy = None
+        if doc.xref_get_key(doc.pdf_catalog(), "OCProperties")[0] != "null":
+            copy = self._open_snapshot(self._snapshot())
+            copy.xref_set_key(copy.pdf_catalog(), "OCProperties", "null")
+        src = copy or doc
+        try:
+            return {i: src[i].search_for(text) for i in range(src.page_count)}
+        finally:
+            if copy is not None:
+                copy.close()
+
     def search_redact(self, text):
-        hits = {i: self.doc[i].search_for(text) for i in range(self.doc.page_count)}
+        hits = self._search_every_layer(text)
         hits = {i: h for i, h in hits.items() if h}
         if hits:
             def do():

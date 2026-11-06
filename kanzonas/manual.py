@@ -1359,7 +1359,8 @@ own copy of the text). A vector path that touches a mark is removed past the box
 the part outside it. A redacted page also loses its thumbnail and the private copy of the page
 some programs (Illustrator) keep in the file. Applying scrubs metadata, attachments, hidden
 text, scripts and such programs' private data unless
-you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
+you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> marks the text
+on the pages also where a layer that is hidden has it, and finds it where a box can't go: form
 fields (values, list options, tooltips and names, also of fields on no page), links (web and
 email addresses), markup notes (also their formatted text), bookmark titles and web addresses,
 document properties (also a program's own), the alternate text of tagged PDFs, link notes,
