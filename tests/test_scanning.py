@@ -612,10 +612,12 @@ def mdns_answer(qid, port):
 class Discovery(ServerCase):
     def test_a_send_that_fails_goes_into_the_log(self):
         log = []
-        got = net.udp_exchange([(b"x", ("127.0.0.1", 0), 0.0)], 0.1, log=log)
+        refused = OSError(65, "No route to host")
+        with mock.patch.object(socket.socket, "sendto", side_effect=refused):
+            got = net.udp_exchange([(b"x", ("127.0.0.1", 9), 0.0), (b"x", ("127.0.0.1", 9), 0.05)],
+                                   0.1, log=log)
         self.assertEqual(got, [])
-        self.assertTrue(any(line.startswith("UDP: couldn't send to 127.0.0.1:0") for line in log),
-                        log)
+        self.assertEqual(log, ["UDP: couldn't send to 127.0.0.1:9: [Errno 65] No route to host"])
 
     def test_mdns_answer_becomes_an_escl_device(self):
         def answer(data):
