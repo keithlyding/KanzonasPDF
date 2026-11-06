@@ -55,7 +55,8 @@ def can_delete_many():
 
 def delete_many(page, xrefs, keep_replies=False):
     """Delete these annotations (xrefs) from page, as page.delete_annot does one at a time
-    (with the replies to each, and its pop-up), looking through the page's markups once.
+    (with the replies to each, the replies to those, and its pop-up), looking through the
+    page's markups once.
     xrefs no longer on the page are skipped. The caller must not hold Annot objects for
     them (load them, read them, let them go, then delete). keep_replies: the replies stay (a
     markup written anew in its place: they are then pointed at the new one)."""
@@ -90,10 +91,15 @@ def delete_many(page, xrefs, keep_replies=False):
     for x in xrefs:
         if x not in found or x in gone:
             continue
-        for n, r in () if keep_replies else replies.get(x, ()):
-            if n not in gone:               # (the replies to it go first, as in PyMuPDF)
-                m.pdf_delete_annot(pdfpage, r)
-                gone.add(n)
+        # the replies to it go first, as in PyMuPDF, and the replies to those too (a thread
+        # of replies and review statuses: review.py)
+        todo = [] if keep_replies else [x]
+        while todo:
+            for n, r in replies.get(todo.pop(), ()):
+                if n not in gone and n != x:
+                    m.pdf_delete_annot(pdfpage, r)
+                    gone.add(n)
+                    todo.append(n)
         m.pdf_delete_annot(pdfpage, found[x])
         gone.add(x)
     page._delete_empty_annots()
@@ -177,9 +183,37 @@ def page_has_no_text(page):
         return False
 
 
+def remove_responses(doc):
+    """Delete every reply to a markup on its page (replies to replies, review statuses,
+    markups grouped with another: whatever has an /IRT to a markup of the page), in one walk
+    of each page. scrub(reset_responses=True) does this first: PyMuPDF's own step deletes
+    each markup's responses while walking a list of the page's markups made beforehand, and
+    fails on the first response it already deleted ("xref ... is not an annot of this
+    page"): any page with a reply to a reply (a review thread) made it fail."""
+    if not can_delete_many():
+        return
+    m = pymupdf.mupdf
+    for page in doc:
+        found, answering = set(), []
+        a = m.pdf_first_annot(page._pdf_page())
+        while a.m_internal:
+            obj = m.pdf_annot_obj(a)
+            found.add(m.pdf_to_num(obj))
+            irt = m.pdf_dict_gets(obj, "IRT")
+            if irt.m_internal:
+                answering.append((m.pdf_to_num(obj), m.pdf_to_num(irt)))
+            a = m.pdf_next_annot(a)
+        del a
+        doomed = [x for x, parent in answering if parent in found]
+        if doomed:
+            delete_many(page, doomed)
+
+
 def scrub(doc, **options):
     """doc.scrub(**options), with the same result, leaving out the hidden-text search where
     it can't find anything (see above)."""
+    if options.get("reset_responses", True):
+        remove_responses(doc)       # (first, with every thread whole: see there)
     if not options.get("hidden_text", True):
         return doc.scrub(**options)
     own = pymupdf.Page.get_text
