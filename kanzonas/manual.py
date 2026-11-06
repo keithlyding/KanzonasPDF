@@ -1353,17 +1353,21 @@ can be selected, moved and resized; <b>Apply selected redactions</b> applies onl
 ones, Apply redactions applies them all. Applying removes, not just covers: the text, images
 and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
 own copy of the text). A vector path that touches a mark is removed past the box, including
-the part outside it. Applying scrubs metadata, attachments, hidden text, and scripts unless
+the part outside it. A redacted page also loses its thumbnail and the private copy of the page
+some programs (Illustrator) keep in the file. Applying scrubs metadata, attachments, hidden
+text, scripts and such programs' private data unless
 you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
-fields (values, list options, tooltips and names), links (web and email addresses), markup
-notes, bookmark titles, document properties, the alternate text of tagged PDFs, link notes,
-page labels and destination names. When you apply, fields, links, stamps and
+fields (values, list options, tooltips and names, also of fields on no page), links (web and
+email addresses), markup notes (also their formatted text), bookmark titles and web addresses,
+document properties (also a program's own), the alternate text of tagged PDFs, link notes,
+page labels, layer names and destination names. When you apply, fields, links, stamps and
 attached files containing it are deleted, and in notes and comments (they stay), bookmarks
 and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
 away. A <b>legend</b> is drawn again from the markups left, in the same step: its rows no longer
 show what was redacted, and the text in its title is replaced by [redacted] (a box drawn over a
 legend removes it). Check the result before sharing; Undo works until you close the file.</li>
-<li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
+<li><b>Sanitize document:</b> remove hidden data you choose: document information (with the
+private data some programs, like Illustrator, keep in the file), scripts,
 attached files, hidden text, links, comments, form data, thumbnails. Scripts includes those in
 other actions (multimedia), javascript: links and an XFA form's scripts (the ordinary form fields
 stay).</li>

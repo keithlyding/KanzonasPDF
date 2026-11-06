@@ -301,19 +301,50 @@ def clear_form_data(doc):
                 doc.xref_set_key(xref, "RV", "null")
 
 
+def forget_redacted(page, clean=True):
+    """Take out what a page keeps of itself from before its redaction marks were applied:
+    the marked-content wrappers of the text taken away (MuPDF's redaction leaves
+    "/Span <</ActualText (the words)>> BDC EMC" around nothing, the words readable in the
+    file; clean: the page's drawing is cleaned, which drops them), its thumbnail (a picture
+    of the page as it was) and a program's private copy of it (/PieceInfo: Illustrator keeps
+    its whole drawing there)."""
+    if clean:
+        page.clean_contents()
+    doc = page.parent
+    for key in ("Thumb", "PieceInfo"):
+        if doc.xref_get_key(page.xref, key)[0] != "null":
+            doc.xref_set_key(page.xref, key, "null")
+
+
+def remove_private_data(doc):
+    """Remove every program's private data (/PieceInfo, on pages, drawings and the
+    document): Illustrator keeps a whole copy of the drawing there, which no reader shows."""
+    for xref in range(1, doc.xref_length()):
+        try:
+            if doc.xref_get_key(xref, "PieceInfo")[0] != "null":
+                doc.xref_set_key(xref, "PieceInfo", "null")
+        except Exception:
+            continue
+
+
 # keys whose strings are text people read (not styles, codes or KanzonasPDF's own data):
-# structure tags' alternate text, ActualText, expansion and title, tooltips, notes, titles,
-# document information, page label prefixes (/P), destination names and file names
-_TEXT_KEYS = {"Alt", "ActualText", "E", "T", "TU", "TM", "Contents", "Title", "Subj",
+# structure tags' alternate text, ActualText, expansion and title, tooltips, notes and their
+# rich text, titles, document information, page label prefixes (/P), destination names, file
+# names, layer names, web addresses (a bookmark's, a button's) and form field values (also
+# of a field on no page)
+_TEXT_KEYS = {"Alt", "ActualText", "E", "T", "TU", "TM", "Contents", "RC", "Title", "Subj",
               "Subject", "Author", "Keywords", "Creator", "Producer", "P", "D", "Dest",
-              "F", "UF", "Desc"}
+              "F", "UF", "Desc", "Name", "URI", "V", "DV", "RV"}
+# arrays whose strings are text: name trees' names, a list field's values and options
+_TEXT_ARRAYS = {"Names", "V", "DV", "Opt"}
 
 
 def scrub_strings(doc, pat, clean):
     """Every text string in doc's objects that pat matches, replaced by clean(text): what
     Search & redact can't reach otherwise (a tagged PDF's alternate text and ActualText,
     a link's note, page labels, named destinations...). Only strings people read are
-    looked at (_TEXT_KEYS, and the names of a name tree): a style (/DA) or KanzonasPDF's
+    looked at (_TEXT_KEYS, _TEXT_ARRAYS, every string of the document information): a style
+    (/DA) or KanzonasPDF's
     own data (/KZ...) holding the word "fill" stays as it is. Redaction marks keep their
     own text (a mark not applied yet keeps its term), and signatures and the encryption
     dictionary are left alone (their strings are binary)."""
@@ -323,6 +354,9 @@ def scrub_strings(doc, pat, clean):
     enc = m.pdf_dict_gets(m.pdf_trailer(pdf), "Encrypt")
     if m.pdf_is_indirect(enc):
         skip.add(m.pdf_to_num(enc))
+    # (every string of the document information is text: a program's own keys, /Company say)
+    info = m.pdf_dict_gets(m.pdf_trailer(pdf), "Info")
+    info = m.pdf_to_num(info) if m.pdf_is_indirect(info) else 0
     for xref in range(1, doc.xref_length()):
         if xref in skip:
             continue
@@ -348,7 +382,8 @@ def scrub_strings(doc, pat, clean):
                 if m.pdf_is_indirect(val):
                     continue                    # (looked at as an object of its own)
                 if m.pdf_is_string(val):
-                    if not (key in _TEXT_KEYS if is_dict else key == "Names"):
+                    if not (xref == info and o is obj or
+                            (key in _TEXT_KEYS if is_dict else key in _TEXT_ARRAYS)):
                         continue
                     text = m.pdf_to_text_string(val)
                     if pat.search(text):
@@ -6902,6 +6937,10 @@ class DocumentView(QScrollArea):
         matches the redaction terms."""
         a = pg.load_annot(xref)
         info = [a.info.get(k) or "" for k in ("content", "subject", "title")]
+        # (its rich text too: another program may have left a different text there)
+        typ, rc = self.doc.xref_get_key(xref, "RC")
+        if typ == "string":
+            info.append(rc)
         if any(pat.search(v) for v in info + self._private_text(xref)):
             return True
         try:
@@ -7035,6 +7074,8 @@ class DocumentView(QScrollArea):
                     pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
                                         graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                         text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+                    # (the clean-up below cleans every page's drawing anyway)
+                    forget_redacted(pg, clean=not scrub)
             # (the markups under the marks are gone: the legends listing them are drawn
             # again now, before the clean-up writes the document anew)
             self._redraw_legends(*self._term_pattern(terms))
@@ -7048,6 +7089,7 @@ class DocumentView(QScrollArea):
                                 reset_fields=False, reset_responses=True, thumbnails=True,
                                 xml_metadata=True)
                 remove_scripts(self.doc)
+                remove_private_data(self.doc)
                 # scrub unlinks the old objects; a plain tobytes() would still carry them.
                 enc = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
                 keep = {"encryption": pymupdf.PDF_ENCRYPT_KEEP} if enc else {}
@@ -7500,6 +7542,8 @@ class DocumentView(QScrollArea):
                             thumbnails=opts.get("thumbnails", False))
             if opts.get("javascript"):
                 remove_scripts(self.doc)
+            if opts.get("metadata"):
+                remove_private_data(self.doc)
             if opts.get("thumbnails"):
                 for i in range(self.doc.page_count):   # (scrub left /Thumb in place)
                     if self.doc.xref_get_key(self.doc.page_xref(i), "Thumb")[0] != "null":
@@ -7542,6 +7586,7 @@ class DocumentView(QScrollArea):
             pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
                                 graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                 text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+            forget_redacted(pg)
             for m in others:                       # put the other marks back
                 annotations.write(pg, m)
             self._redraw_legends(*self._term_pattern(terms))

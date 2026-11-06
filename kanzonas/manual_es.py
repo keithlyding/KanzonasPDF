@@ -1343,17 +1343,22 @@ se pueden seleccionar, mover y redimensionar; <b>Aplicar las censuras selecciona
 seleccionadas, y Aplicar censuras las aplica todas. Aplicar quita, no solo cubre: el texto, las imágenes
 y los trazos que están debajo de una marca, y cualquier <b>campo de formulario o marca</b> con el que se superponga una marca (guardan su
 propia copia del texto). Un trazado vectorial que toca una marca se quita más allá del cuadro, incluida
-la parte que queda fuera de él. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto y los scripts, a menos que
+la parte que queda fuera de él. Una página censurada también pierde su miniatura y la copia privada de la página
+que algunos programas (Illustrator) guardan en el archivo. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto, los scripts
+y los datos privados de esos programas, a menos que
 lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> también encuentra el texto donde no puede ir un cuadro: campos
-de formulario (valores, opciones de lista, información sobre herramientas y nombres), vínculos (direcciones web y de correo electrónico), notas
-de marcas, títulos de marcadores, propiedades del documento, el texto alternativo de los PDF etiquetados, las notas de
-vínculos, las etiquetas de página y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
+de formulario (valores, opciones de lista, información sobre herramientas y nombres, también de campos que no están en ninguna página),
+vínculos (direcciones web y de correo electrónico), notas
+de marcas (también su texto con formato), títulos y direcciones web de marcadores, propiedades del documento (también las propias de un
+programa), el texto alternativo de los PDF etiquetados, las notas de
+vínculos, las etiquetas de página, los nombres de capas y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
 archivos adjuntos que lo contienen se eliminan, y en las notas y los comentarios (que se quedan), los marcadores
 y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
 inmediato. Una <b>leyenda</b> se vuelve a dibujar con las marcas que quedan, en el mismo paso: sus
 filas ya no muestran lo censurado, y en su título el texto se reemplaza por [redacted] (un cuadro
 dibujado sobre una leyenda la quita). Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
-<li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento, scripts,
+<li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento (con los datos
+privados que algunos programas, como Illustrator, guardan en el archivo), scripts,
 archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
 (los campos normales del formulario se conservan).</li>
 <li><b>Propiedades de seguridad (contraseñas y permisos):</b> cifrado AES-256. Si pulsa Aceptar sin marcar ninguna
