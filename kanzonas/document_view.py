@@ -18,7 +18,8 @@ from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
                                QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
 
-from . import annotations, dialogs, hit_index, signatures, text_edit, undo_journal
+from . import annotations, dialogs, hit_index, signatures, smart_forms, text_edit, \
+    undo_journal
 from .i18n import tr
 from .inline_editor import InlineEditor
 from .page_widget import PageWidget
@@ -7650,21 +7651,129 @@ class DocumentView(QScrollArea):
         elif t == pymupdf.PDF_WIDGET_TYPE_SIGNATURE:
             self.requestSignature.emit(index, xref)
         elif t == pymupdf.PDF_WIDGET_TYPE_TEXT:
+            calc = smart_forms.field_scripts(self.doc, self._field_dict(w), xref)[0]
+            if calc and "custom" not in calc:
+                self.statusMessage.emit(tr(
+                    "{name} is calculated from other fields: it changes when they do (Forms > "
+                    "Field properties... shows how).").format(name=w.field_name))
+                return
             self._edit_text_field(index, xref)
 
+    def enter_field_value(self, index, xref, text):
+        """What someone typed into a text field: checked against the field's format and
+        range (a number field takes a number, a date field a date that exists, ...) and
+        filled in as the plain value the format shows. A value that doesn't fit is refused
+        with a message saying why (False)."""
+        pg = self.doc[index]
+        w = pg.load_widget(xref)
+        _calc, fmt, rng = smart_forms.field_scripts(self.doc, self._field_dict(w), xref)
+        ok, value, why = smart_forms.check_input(text, fmt, rng)
+        if not ok:
+            self.field_refused(w.field_name, why)
+            return False
+        if value != (w.field_value or ""):
+            self._set_field(index, xref, value)
+        return True
+
+    def field_refused(self, name, why):
+        msg = tr("{name}: {reason} The field keeps its value.").format(name=name, reason=why)
+        self.statusMessage.emit(msg)
+        with _not_busy():
+            QMessageBox.warning(self, tr("Form field"), msg)
+
     def _set_field(self, index, xref, value):
+        """Fill in a field (value as stored: a text field with a number format takes 1234.5
+        and shows $1,234.50) and work out the calculated fields that depend on it, in one
+        undo step."""
+        name, form, more = self._recalc_plan(index, xref, value)
+        fmt = None
+        if form is not None and name is not None and form.fields[name].ft == "Tx":
+            fmt = form.fields[name].fmt
+        elif form is None and self._is_text_widget(index, xref):
+            fx = self._field_dict(self.doc[index].load_widget(xref))
+            fmt = smart_forms.field_scripts(self.doc, fx, xref)[1]
+
         def do():
-            pg = self.doc[index]          # keep the page alive while using its widget
-            w = pg.load_widget(xref)
-            w.field_value = value
-            w.update()
-            if value == "":
-                blank_appearance(self.doc, xref)   # (else the old text still shows)
-                fx = self._field_dict(w)           # (and the parent kept the old value)
-                if self.doc.xref_get_key(fx, "V")[0] != "null":
-                    self.doc.xref_set_key(fx, "V", "null")
-        self._value_change(lambda: self.modify(do, self._field_pages(index, xref),
+            if fmt and "custom" not in fmt:
+                self._write_value(index, xref, value, fmt)
+            else:
+                self._write_plain(index, xref, value)
+            for n, v in more.items():
+                self._write_field(form, n, v)
+        pages = set(self._field_pages(index, xref))
+        if more:
+            pages |= self._form_pages(form, more)
+        self._value_change(lambda: self.modify(do, sorted(pages),
                                                permission=pymupdf.PDF_PERM_FORM))
+        self._recheck_required()
+
+    def _is_text_widget(self, index, xref):
+        return self.doc.xref_get_key(xref, "FT")[1] == "/Tx" or (
+            self.doc.xref_get_key(xref, "FT")[0] == "null" and
+            self.doc[index].load_widget(xref).field_type == pymupdf.PDF_WIDGET_TYPE_TEXT)
+
+    def _write_plain(self, index, xref, value):
+        pg = self.doc[index]          # keep the page alive while using its widget
+        w = pg.load_widget(xref)
+        w.field_value = value
+        w.update()
+        if value == "":
+            blank_appearance(self.doc, xref)   # (else the old text still shows)
+            fx = self._field_dict(w)           # (and the parent kept the old value)
+            if self.doc.xref_get_key(fx, "V")[0] != "null":
+                self.doc.xref_set_key(fx, "V", "null")
+
+    def _write_value(self, index, xref, raw, fmt):
+        """A text field with a format: the value stored as it is (/V 1234.5), the field
+        drawn showing it formatted ($1,234.50), as Acrobat does after running the format
+        script."""
+        shown = smart_forms.format_value(fmt, raw)
+        self._write_plain(index, xref, shown)
+        if raw != "" and shown != raw:
+            pg = self.doc[index]
+            fx = self._field_dict(pg.load_widget(xref))
+            self.doc.xref_set_key(fx, "V", pymupdf.get_pdf_str(raw))
+
+    def _write_field(self, form, name, raw):
+        """Write a (calculated) field's value into every widget of it."""
+        f = form.fields[name]
+        for wx in f.widgets:
+            i = form.widget_page.get(wx)
+            if i is None:
+                continue
+            if f.fmt and "custom" not in f.fmt:
+                self._write_value(i, wx, raw, f.fmt)
+            else:
+                self._write_plain(i, wx, raw)
+
+    @staticmethod
+    def _form_pages(form, names):
+        return {form.widget_page[w] for n in names for w in form.fields[n].widgets
+                if w in form.widget_page}
+
+    _smart = None       # (_field_order_key() when read, smart_forms.Form), see smart_form
+
+    def smart_form(self):
+        """The form's fields with their calculations, formats and checks (smart_forms.Form),
+        kept until the document changes other than by filling in values."""
+        key = self._field_order_key()
+        if self._smart is not None and self._same_key(self._smart[0], key):
+            return self._smart[1]
+        form = smart_forms.read_form(self.doc)
+        self._smart = (key, form)
+        return form
+
+    def _recalc_plan(self, index, xref, value):
+        """(field name, Form, {calculated field: new value}) for value filled into widget
+        xref; (None, None, {}) when the document has no calculated fields (the form isn't
+        read at all then)."""
+        if not smart_forms.has_calculations(self.doc):
+            return None, None, {}
+        form = self.smart_form()
+        name = form.by_widget.get(xref)
+        if name is None:
+            return None, form, {}
+        return name, form, smart_forms.recalculate(self.doc, form, {name: value})
 
     def _field_pages(self, index, xref):
         """The pages showing the field of widget xref (on page index): a field can have a
@@ -7698,6 +7807,9 @@ class DocumentView(QScrollArea):
                   for w in self.doc[i].widgets(types=[pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON])
                   if w.field_name == name and (i, w.xref) != (index, xref)]
 
+        _n, form, more = self._recalc_plan(index, xref,
+                                           self.doc[index].load_widget(xref).on_state())
+
         def do():
             for _i, x in others:
                 self.doc.xref_set_key(x, "AS", "/Off")
@@ -7707,10 +7819,16 @@ class DocumentView(QScrollArea):
             w = pg.load_widget(xref)
             w.field_value = True
             w.update()
-        self._value_change(lambda: self.modify(do, sorted({index} | {i for i, _x in others}),
+            for n, v in more.items():
+                self._write_field(form, n, v)
+        pages = {index} | {i for i, _x in others}
+        if more:
+            pages |= self._form_pages(form, more)
+        self._value_change(lambda: self.modify(do, sorted(pages),
                                                permission=pymupdf.PDF_PERM_FORM))
+        self._recheck_required()
 
-    def _edit_text_field(self, index, xref):
+    def _edit_text_field(self, index, xref, retry=None):
         page = self.doc[index]
         w = page.load_widget(xref)
         pw = self.pages[index]
@@ -7727,6 +7845,19 @@ class DocumentView(QScrollArea):
         maxlen = w.text_maxlen or 0         # the field's limit (a ZIP code, comb boxes)
         if maxlen > 0 and not multiline:
             ed.setMaxLength(maxlen)
+        _calc, fmt, _rng = smart_forms.field_scripts(self.doc, self._field_dict(w), xref)
+        allowed = smart_forms.keystroke_pattern(fmt)
+        if allowed and not multiline:
+            # (a number, percent, phone, ZIP or SSN field: letters can't be typed, as with
+            # Acrobat's keystroke scripts)
+            from PySide6.QtCore import QRegularExpression
+            from PySide6.QtGui import QRegularExpressionValidator
+            ed.setValidator(QRegularExpressionValidator(QRegularExpression(allowed), ed))
+        if retry is not None:
+            if multiline:
+                ed.setPlainText(retry)
+            else:
+                ed.setText(retry)
         f = ed.font()
         size = w.text_fontsize or min(12.0, w.rect.height * 0.65)
         f.setPixelSize(max(8, int(size * self.zoom)))
@@ -7735,7 +7866,7 @@ class DocumentView(QScrollArea):
         ed.setStyleSheet("background:#fffbe6; color:#000; border:2px solid #0078d7;")
         done = {"x": False}
 
-        def finish(save=True, next_field=None):
+        def finish(save=True, next_field=None, explicit=False):
             if done["x"]:
                 return
             done["x"] = True
@@ -7747,7 +7878,11 @@ class DocumentView(QScrollArea):
             ed.hide()
             ed.deleteLater()
             if save and text != (w.field_value or ""):
-                self._set_field(index, xref, text)
+                if not self.enter_field_value(index, xref, text):
+                    if next_field is not None or explicit:
+                        # (refused: typed again, with what was typed, to correct it)
+                        QTimer.singleShot(0, lambda: self._edit_text_field(index, xref, text))
+                    return
             if next_field is not None:
                 self.next_field(back=next_field == "back", current=(index, xref))
 
@@ -7763,7 +7898,7 @@ class DocumentView(QScrollArea):
                         return True
                     if e.key() in (Qt.Key_Return, Qt.Key_Enter) and (
                             not multiline or e.modifiers() & Qt.ControlModifier):
-                        finish()
+                        finish(explicit=True)
                         return True
                 elif e.type() == QEvent.FocusOut:
                     finish()
@@ -7807,9 +7942,13 @@ class DocumentView(QScrollArea):
         still holds afterwards (typing in a field and pressing Tab doesn't read them all)."""
         cached = self._field_order
         valid = cached is not None and self._same_key(cached[0], self._field_order_key())
+        smart = self._smart
+        smart_valid = smart is not None and self._same_key(smart[0], self._field_order_key())
         done = fn()
         if valid and done and self._field_order is cached:
             self._field_order = (self._field_order_key(), cached[1])
+        if smart_valid and done and self._smart is smart:
+            self._smart = (self._field_order_key(), smart[1])
         return done
 
     def _read_field_order(self):
@@ -7821,6 +7960,24 @@ class DocumentView(QScrollArea):
                   if w.field_type != pymupdf.PDF_WIDGET_TYPE_BUTTON
                   and not w.field_flags & 1                          # 1 = read-only
                   and not self._annot_flag(w.xref) & 2]              # 2 = hidden
+            tabs = self.doc.xref_get_key(page.xref, "Tabs")[1] if ws else None
+            if tabs in ("/A", "/W"):
+                # the order set by hand (Forms > Set tab order...): the fields' order in the
+                # page's /Annots
+                rank = {x: k for k, x in enumerate(annotations.annot_order(page))}
+                order += [(i, x) for _r, x in sorted(ws, key=lambda t: rank.get(t[1], 1e9))]
+                continue
+            if tabs == "/C":
+                # columns: left to right, each top to bottom
+                cols = []
+                for r, x in sorted(ws, key=lambda t: t[0].x0):
+                    if cols and r.x0 - cols[-1][0] <= max(3.0, 0.5 * min(r.width, cols[-1][1])):
+                        cols[-1][2].append((r, x))
+                    else:
+                        cols.append([r.x0, r.width, [(r, x)]])
+                for _x, _w, col in cols:
+                    order += [(i, x) for _r, x in sorted(col, key=lambda t: t[0].y0)]
+                continue
             ws.sort(key=lambda t: t[0].y0)
             # a row is the fields side by side, even when their tops differ by a point or
             # two (rounding each top put a field right of its neighbor first)
@@ -8076,6 +8233,363 @@ class DocumentView(QScrollArea):
             pg = self.doc[index]
             pg.delete_widget(pg.load_widget(xref))
         self.modify(do, [index])
+
+    # ---- smart forms: properties, calculations, tab order, required fields --------------
+    def field_props(self, index, xref):
+        """A field's properties as the Field properties dialog shows them."""
+        form = self.smart_form()
+        pg = self.doc[index]
+        w = pg.load_widget(xref)
+        name = form.by_widget.get(xref) or w.field_name
+        f = form.fields.get(name)
+        order = [x for i, x in self.field_order() if i == index]
+        choices = None
+        if w.field_type in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
+            choices = [c[1] if isinstance(c, (list, tuple)) else c for c in (w.choice_values or [])]
+        return {"name": name, "type": w.field_type, "type_name": w.field_type_string,
+                "tooltip": f.tu if f else "", "required": bool(w.field_flags & 2),
+                "readonly": bool(w.field_flags & 1),
+                "calc": f.calc if f else None, "format": f.fmt if f else None,
+                "range": f.rng if f else None, "choices": choices,
+                "tab": order.index(xref) + 1 if xref in order else 0, "tabs": len(order),
+                "fields": [n for n in form.names() if n != name]}
+
+    def set_field_props(self, index, xref, props):
+        """Change a field's properties (name, tooltip, required, read-only, choices,
+        calculation, format, range check, place in the tab order) in one undo step. The
+        calculation, format and check are written as the standard Acrobat actions and the
+        form's calculation order (/CO); the calculated fields are worked out again."""
+        old = self.field_props(index, xref)
+        name = (props.get("name") or old["name"]).strip()
+        pg = self.doc[index]
+        w = pg.load_widget(xref)
+        mine = self._field_dict(w)
+        if name != old["name"] and w.field_type != pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
+            taken = {x.field_name for q in self.doc for x in q.widgets()
+                     if self._field_dict(x) != mine}
+            if name in taken:
+                # (two fields with one name are one field: typing in one would fill both)
+                with _not_busy():
+                    QMessageBox.information(self, tr("Field properties"), tr(
+                        "Another field is already called {name}: choose another name.").format(
+                            name=name))
+                return False
+        if props.get("calc") and "formula" in props["calc"]:
+            smart_forms.parse_formula(props["calc"]["formula"])     # (raises if it's wrong)
+        form = self.smart_form()
+        f = form.fields.get(old["name"])
+        widgets = list(f.widgets) if f else [xref]
+        is_text = w.field_type == pymupdf.PDF_WIDGET_TYPE_TEXT
+        is_choice = w.field_type in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX,
+                                     pymupdf.PDF_WIDGET_TYPE_LISTBOX)
+        calc = props.get("calc", old["calc"]) if (is_text or is_choice) else old["calc"]
+        fmt = props.get("format", old["format"]) if is_text else old["format"]
+        rng = props.get("range", old["range"]) if (is_text or is_choice) else old["range"]
+        pages = {index} | {form.widget_page[x] for x in widgets if x in form.widget_page}
+        pages |= self._form_pages(form, [n for n, q in form.fields.items() if q.calc])
+        tab = props.get("tab")
+        choices = props.get("choices")
+        del w
+
+        def do():
+            p = self.doc[index]
+            ww = p.load_widget(xref)
+            fx = self._field_dict(ww)
+            if name != old["name"]:
+                if fx != xref:
+                    # the name lives on the field above the widget (KanzonasPDF's own
+                    # fields, many Acrobat forms): naming the widget changed nothing
+                    head, dot, _tail = old["name"].rpartition(".")
+                    part = name[len(head) + 1:] if dot and name.startswith(head + ".") else name
+                    self.doc.xref_set_key(fx, "T", pymupdf.get_pdf_str(part))
+                else:
+                    ww.field_name = name
+                    ww.update()
+            if choices and is_choice and choices != old["choices"]:
+                ww = p.load_widget(xref)
+                ww.choice_values = choices
+                if ww.field_value not in choices:
+                    ww.field_value = choices[0]
+                ww.update()
+            smart_forms.set_flags(self.doc, fx, widgets, required=props.get("required"),
+                                  readonly=props.get("readonly"))
+            if "tooltip" in props and (props["tooltip"] or "") != (old["tooltip"] or ""):
+                smart_forms.set_tooltip(self.doc, fx, props["tooltip"] or "")
+            if (calc, fmt, rng) != (old["calc"], old["format"], old["range"]):
+                smart_forms.write_actions(self.doc, fx, widgets, calc, fmt, rng)
+            fresh = smart_forms.read_form(self.doc)
+            smart_forms.write_co(self.doc, [fresh.fields[n].fx
+                                            for n in smart_forms.co_order(fresh)])
+            fresh.co = smart_forms.co_order(fresh)
+            if fmt != old["format"] and is_text:
+                raw = smart_forms.field_value(self.doc, fx)
+                if fmt and "custom" not in fmt:
+                    self._write_value(index, xref, raw, fmt)
+                elif raw:
+                    self._write_plain(index, xref, raw)
+            for n, v in smart_forms.recalculate(self.doc, fresh).items():
+                self._write_field(fresh, n, v)
+            if tab and tab != old["tab"]:
+                self._move_in_tab_order(index, xref, tab)
+        done = self.modify(do, sorted(pages))
+        self._recheck_required()
+        return done
+
+    def edit_field_properties(self, index, xref):
+        """Forms > Field properties... (or a double-click on a field with a form tool)."""
+        from . import form_ui
+        props = self.field_props(index, xref)
+        new = form_ui.edit_field(self, props)
+        if new is None:
+            return False
+        try:
+            return self.set_field_props(index, xref, new)
+        except smart_forms.FormulaError as ex:
+            with _not_busy():
+                QMessageBox.warning(self, tr("Field properties"),
+                                    tr("The formula can't be read: {error}").format(error=ex))
+            return False
+
+    def selected_field(self):
+        """(page, widget xref) of the field selected with a form tool, or the one Tab is on."""
+        if self.selection is not None and self.selected_model is not None and \
+                self.selected_model.get("kind") == "field":
+            return self.selection
+        return self.field_focus
+
+    # tab order: a page's /Tabs (R rows, C columns, A the order of its /Annots, which the
+    # manual order writes), read by _read_field_order
+    TAB_ORDERS = {"rows": "/R", "columns": "/C", "manual": "/A"}
+
+    def tab_order_of(self, index):
+        val = self.doc.xref_get_key(self.doc.page_xref(index), "Tabs")[1]
+        return {"/C": "columns", "/A": "manual", "/W": "manual"}.get(val, "rows")
+
+    def set_tab_order(self, pages, how, manual=None):
+        """Set Tab's order through the fields of these pages: "rows", "columns" or "manual"
+        (manual: {page: [widget xrefs in order]}). One undo step."""
+        def do():
+            for i in pages:
+                self.doc.xref_set_key(self.doc.page_xref(i), "Tabs", self.TAB_ORDERS[how])
+                if how == "manual" and manual and manual.get(i):
+                    self._annots_in_order(i, manual[i])
+        return self.modify(do, list(pages))
+
+    def _annots_in_order(self, index, xrefs):
+        """Put the page's fields in /Annots in this order (its other markups keep their
+        places)."""
+        page = self.doc[index]
+        order = annotations.annot_order(page)
+        want = [x for x in xrefs if x in order]
+        slots = [k for k, x in enumerate(order) if x in set(want)]
+        if [order[k] for k in slots] == want:
+            return
+        for k, x in zip(slots, want):
+            order[k] = x
+        annotations.set_annot_order(page, order)
+
+    def _move_in_tab_order(self, index, xref, pos):
+        """Give a field place pos (1-based) in its page's tab order (the page's order
+        becomes manual)."""
+        order = [x for i, x in self._read_field_order() if i == index]
+        if xref not in order:
+            return
+        order.remove(xref)
+        order.insert(max(0, min(len(order), pos - 1)), xref)
+        self.doc.xref_set_key(self.doc.page_xref(index), "Tabs", "/A")
+        self._annots_in_order(index, order)
+
+    def page_fields(self, index):
+        """[(widget xref, name, rect)] of a page's fillable fields in its tab order."""
+        pg = self.doc[index]
+        out = []
+        for i, x in self.field_order():
+            if i == index:
+                w = pg.load_widget(x)
+                out.append((x, w.field_name, pymupdf.Rect(w.rect)))
+        return out
+
+    # required fields: flagged (red) on Save and Print when they're empty, with a notice
+    _required_flags = None      # (_field_order_key(), {page: [rects]})
+
+    def empty_required(self):
+        """[(page, widget xref, name)] of required fields that are empty."""
+        if not self.doc.is_form_pdf:
+            return []
+        form = self.smart_form()
+        out = []
+        for name, f in form.fields.items():
+            if not f.ff & 2:
+                continue
+            if f.ft == "Sig":
+                filled = self.doc.xref_get_key(f.fx, "V")[0] != "null"
+            else:
+                v = smart_forms.field_value(self.doc, f.fx)
+                filled = v not in ("", "Off")
+            if filled:
+                continue
+            for wx in f.widgets:
+                if wx in form.widget_page:
+                    out.append((form.widget_page[wx], wx, name))
+        out.sort()
+        return out
+
+    def check_required_fields(self):
+        """On Save and Print: required fields that are empty are flagged in red and named in
+        a notice at the top (nothing is blocked). Returns their names."""
+        empty = self.empty_required()
+        self._flag_required(empty)
+        names = []
+        for _i, _x, n in empty:
+            if n not in names:
+                names.append(n)
+        if names:
+            shown = ", ".join(names[:8]) + (tr(" and {n} more").format(n=len(names) - 8)
+                                             if len(names) > 8 else "")
+            self.show_banner("\u26a0 " + tr("These required fields are empty: {names}.").format(
+                names=shown), "#ffe0e0", tr("Go to the first"),
+                lambda: self._goto_field(*empty[0][:2]), closable=True)
+            self._banner_kind = "required"
+        elif getattr(self, "_banner_kind", None) == "required":
+            self.hide_banner()
+        return names
+
+    def _flag_required(self, empty):
+        flags = {}
+        for i, x, _n in empty:
+            try:
+                flags.setdefault(i, []).append(pymupdf.Rect(self.doc[i].load_widget(x).rect))
+            except Exception:
+                pass
+        old = self._required_flags[1] if self._required_flags else {}
+        self._required_flags = (self._field_order_key(), flags) if flags else None
+        for i in set(old) | set(flags):
+            if 0 <= i < len(self.pages):
+                self.pages[i].update()
+
+    def _recheck_required(self):
+        """After a value is filled in: a flagged field that's no longer empty loses its flag
+        (and the notice goes once none is left)."""
+        if self._required_flags is None:
+            return
+        self.check_required_fields()
+
+    def required_flag_rects(self, index):
+        flags = self._required_flags
+        if flags is None:
+            return []
+        if not self._same_key(flags[0], self._field_order_key()):
+            return []           # (the document changed since: Save or Print flags again)
+        return flags[1].get(index, [])
+
+    def _goto_field(self, index, xref):
+        try:
+            pg = self.doc[index]
+            r = pg.load_widget(xref).rect * pg.rotation_matrix
+        except Exception:
+            return
+        self.goto_page(index, max(0, r.y0 * self.zoom - self.viewport().height() / 3))
+        self._set_field_focus(index, xref)
+
+    # detected fields (Forms > Detect form fields...)
+    def detect_fields(self, pages=None):
+        """What Detect form fields finds on these pages (all by default), nothing changed:
+        [{"page", "kind", "rect", "name", ...}]; names made unique against the form's own."""
+        from . import form_detect
+        pages = range(self.doc.page_count) if pages is None else pages
+        out = []
+        for i in pages:
+            pg = self.doc[i]
+            have = [pymupdf.Rect(w.rect) for w in pg.widgets()]
+            found = form_detect.detect(pg, have)
+            for f in found:
+                f["page"] = i
+                out.append(f)
+        taken = {w.field_name for pg in self.doc for w in pg.widgets()}
+        for f in out:
+            base, n, name = f["name"], 2, f["name"]
+            while name in taken:
+                name = "%s %d" % (base, n)
+                n += 1
+            taken.add(name)
+            f["name"] = name
+        return out
+
+    detect_preview = None       # (found, current row) while Detect form fields shows them
+
+    def set_detect_preview(self, found, current=None):
+        old = self.detect_preview
+        self.detect_preview = (found, current) if found else None
+        pages = {f["page"] for f in (found or [])} | {f["page"] for f in (old[0] if old else [])}
+        if found and current is not None and 0 <= current < len(found):
+            f = found[current]
+            pg = self.doc[f["page"]]
+            r = pymupdf.Rect(f["rect"]) * pg.rotation_matrix
+            self.goto_page(f["page"], max(0, r.y0 * self.zoom - self.viewport().height() / 3))
+        for i in pages:
+            if 0 <= i < len(self.pages):
+                self.pages[i].update()
+
+    def detect_preview_rects(self, index):
+        """[(rect, current)] of the fields Detect form fields found on a page."""
+        if self.detect_preview is None:
+            return []
+        found, cur = self.detect_preview
+        return [(f["rect"], k == cur) for k, f in enumerate(found) if f["page"] == index]
+
+    DETECTED_TOOL = {"text": "f_text", "date": "f_text", "check": "f_check",
+                     "signature": "f_sign", "initials": "f_initials", "multiline": "f_text"}
+
+    def create_detected_fields(self, found):
+        """Create the fields Detect form fields found (and the person kept): one undo step.
+        found: [{"page", "kind", "rect", "name"}]. Returns how many were made."""
+        if not found:
+            return 0
+        taken = {w.field_name for pg in self.doc for w in pg.widgets()}
+        items = []
+        for it in found:
+            name = (it.get("name") or "").strip() or self.FIELD_PREFIX[
+                self.DETECTED_TOOL.get(it["kind"], "f_text")]
+            base, n = name, 2
+            while name in taken:
+                name = "%s %d" % (base, n)
+                n += 1
+            taken.add(name)
+            items.append(dict(it, name=name))
+
+        def do():
+            for i in sorted({it["page"] for it in items}):
+                pg = self.doc[i]
+                for it in [t for t in items if t["page"] == i]:
+                    kind = it["kind"]
+                    w = pymupdf.Widget()
+                    w.field_type = self.FIELD_TYPES[self.DETECTED_TOOL.get(kind, "f_text")]
+                    w.rect = pymupdf.Rect(it["rect"])
+                    w.field_name = it["name"]
+                    w.border_color = (0.2, 0.35, 0.7)
+                    w.border_width = 1 if kind in ("check", "signature", "initials",
+                                                   "multiline") else 0
+                    w.fill_color = (0.92, 0.95, 1.0)
+                    if kind in ("text", "date", "multiline"):
+                        w.text_fontsize = 0
+                    if kind == "multiline":
+                        w.field_flags = pymupdf.PDF_TX_FIELD_IS_MULTILINE
+                    before = {x for x, *_ in pg.annot_xrefs()}
+                    pg.add_widget(w)
+                    made = [x for x, *_ in pg.annot_xrefs() if x not in before]
+                    if pg.rotation:
+                        for x in made:
+                            self.doc.xref_set_key(x, "MK/R", str(pg.rotation))
+                            pg.load_widget(x).update()
+                    if kind == "date":
+                        for x in made:
+                            fx = self._field_dict(pg.load_widget(x))
+                            smart_forms.write_actions(
+                                self.doc, fx, [x], None,
+                                {"kind": "date", "pattern": it.get("pattern", "mm/dd/yyyy")},
+                                None)
+        self.modify(do, sorted({it["page"] for it in items}))
+        return len(items)
 
     # ---- OCR ----------------------------------------------------------------
     def page_has_text(self, index):

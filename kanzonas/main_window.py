@@ -752,6 +752,22 @@ class MainWindow(QMainWindow):
         self.a_next_field = self._act(tr("&Next form field\tTab"),
                                       lambda: self.view() and self.view().next_field(),
                                       tip=tr("Go to the next form field (Tab; Space or Enter fills it)"))
+        self.a_detect_fields = self._act(
+            tr("&Detect form fields..."), self.detect_form_fields,
+            tip=tr("Find the blank lines, boxes and checkboxes of a flat (or scanned) form and "
+                   "make fields there: you see what was found before anything changes"))
+        self.a_field_props = self._act(
+            tr("Field p&roperties..."), self.field_properties,
+            tip=tr("The selected field's name, tooltip, required, calculation, format, range "
+                   "and place in the tab order (select it with a form tool, or Tab to it)"))
+        self.a_tab_order = self._act(
+            tr("Set &tab order..."), self.set_tab_order,
+            tip=tr("The order Tab goes through the page's fields: by rows, by columns or your "
+                   "own"))
+        self.a_check_required = self._act(
+            tr("Check &required fields"), self.check_required_fields,
+            tip=tr("Flag the required fields that are still empty (also done on Save and "
+                   "Print)"))
         self.a_prev_field = self._act(tr("&Previous form field\tShift+Tab"),
                                       lambda: self.view() and self.view().next_field(back=True),
                                       tip=tr("Go to the previous form field (Shift+Tab)"))
@@ -1155,8 +1171,10 @@ class MainWindow(QMainWindow):
         m = mb.addMenu(tr("F&orms"))
         m.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
         m.addSeparator()
+        m.addActions([self.a_detect_fields, self.a_field_props, self.a_tab_order])
+        m.addSeparator()
         m.addAction(self.a_hl_fields)
-        m.addActions([self.a_next_field, self.a_prev_field])
+        m.addActions([self.a_next_field, self.a_prev_field, self.a_check_required])
         hint = m.addAction(tr("To fill in a form: use Select or Hand and click a field"))
         hint.setEnabled(False)
         m = mb.addMenu(tr("&Pages"))
@@ -1481,7 +1499,8 @@ class MainWindow(QMainWindow):
                   self.a_page_boxes, self.a_fix_hairlines, self.a_print_check,
                   self.a_background, self.a_remove_bg, self.a_remove_wm,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
-                  *self.export_actions):
+                  self.a_detect_fields, self.a_field_props, self.a_tab_order,
+                  self.a_check_required, *self.export_actions):
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_lock.setEnabled(has and v.selection is not None)
@@ -1744,6 +1763,7 @@ class MainWindow(QMainWindow):
             return False
         self.autosave.discard(v)
         self.statusBar().showMessage(tr("Saved {path}").format(path=v.path), 4000)
+        v.check_required_fields()           # (a notice only: the file is saved)
         return True
 
     def save_as(self):
@@ -1766,6 +1786,7 @@ class MainWindow(QMainWindow):
         self._add_recent(v.path)
         self.settings.setValue("last_dir", os.path.dirname(v.path))
         self._update_ui()
+        v.check_required_fields()
         return True
 
     def save_as_pdfa(self):
@@ -2159,9 +2180,65 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v or not v.require_permission(pymupdf.PDF_PERM_PRINT, tr("Printing")):
             return
+        v.check_required_fields()           # (a notice only: printing goes on)
         from .print_dialog import PrintDialog
         if PrintDialog(self, v).exec():
             self.statusBar().showMessage(tr("Sent to printer"), 4000)
+
+    # ---- smart forms -------------------------------------------------------------
+    def detect_form_fields(self):
+        """Forms > Detect form fields...: on every page (or only the current one)."""
+        v = self.view()
+        if not v:
+            return
+        pages = list(range(v.doc.page_count))
+        if v.doc.page_count > 1:
+            box = QMessageBox(QMessageBox.Question, tr("Detect form fields"),
+                              tr("Look for form fields on which pages?"), parent=self)
+            every = box.addButton(tr("All pages"), QMessageBox.AcceptRole)
+            this = box.addButton(tr("This page"), QMessageBox.AcceptRole)
+            box.addButton(QMessageBox.Cancel)
+            box.exec()
+            if box.clickedButton() is this:
+                pages = [v.current_page()]
+            elif box.clickedButton() is not every:
+                return
+        from . import form_ui
+        n = form_ui.detect_fields(v, pages)
+        if n:
+            self.statusBar().showMessage(tr("Made {n} form field(s) (Ctrl+Z undoes it).").format(
+                n=n), 5000)
+
+    def field_properties(self):
+        v = self.view()
+        if not v:
+            return
+        sel = v.selected_field()
+        if sel is None:
+            QMessageBox.information(self, tr("Field properties"), tr(
+                "Select a field first: pick a form tool (Forms menu) and click the field, or "
+                "press Tab to go to it."))
+            return
+        v.edit_field_properties(*sel)
+
+    def set_tab_order(self):
+        v = self.view()
+        if not v:
+            return
+        sel = v.selected_field()
+        index = sel[0] if sel else v.current_page()
+        if not v.page_fields(index):
+            QMessageBox.information(self, tr("Set tab order"),
+                                    tr("Page {page} has no fields to fill in.").format(
+                                        page=index + 1))
+            return
+        from . import form_ui
+        form_ui.set_tab_order(v, index)
+
+    def check_required_fields(self):
+        v = self.view()
+        if v and not v.check_required_fields():
+            self.statusBar().showMessage(tr("Every required field is filled in."), 4000)
 
     # ---- tools / search / pages --------------------------------------------
     def set_tool(self, tool):
