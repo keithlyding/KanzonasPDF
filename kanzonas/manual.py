@@ -1154,8 +1154,8 @@ Pages here with no match are left alone, and the new file's sheets that match no
 listed under the list, so you know. Only the page's drawing changes (its content, page boxes
 and rotation): the page itself stays, so its markups, links, form fields, scale and bookmarks
 stay, and bookmarks and links from other pages still go to it. When a new page has another
-size, choose whether markups are <b>scaled to the new page</b> (stretched if its proportions
-differ; an even scale adjusts the page's measuring scale too) or <b>kept at the same place</b>,
+size, choose whether markups are <b>scaled to the new page</b> (their text and line widths with
+them; stretched if its proportions differ; an even scale adjusts the page's measuring scale too) or <b>kept at the same place</b>,
 measured from the top-left corner. The underlines and text of links made with KanzonasPDF are
 drawn again on the new drawing; a link over words that aren't in the same place on the new
 drawing (a sheet callout that moved) stays where it was and is reported, so you can check it.

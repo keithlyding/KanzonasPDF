@@ -361,6 +361,8 @@ def _map_annots(doc, page, t, tp):
         else:
             new = _mapped_rect(old, t)
         doc.xref_set_key(xref, "Rect", _rect_array(new))
+        if kind == pymupdf.PDF_ANNOT_LINE:
+            _map_leaders(doc, xref, t, lin)     # (before its /L is mapped)
         for key in _PAIRS:
             kt, kv = doc.xref_get_key(xref, key)
             if kt == "array" and "R" not in kv:
@@ -383,6 +385,33 @@ def _map_annots(doc, page, t, tp):
             doc.xref_set_key(xref, "KZUnder", _map_pairs(kv, tp))
         n += 1
     return n
+
+
+def _map_leaders(doc, xref, t, lin):
+    """A dimension's leader lines (/LL, /LLO: lengths to the left of its line, as other
+    viewers draw them; /LLE past it) scaled with it, as its /L is (kept as they were, a
+    dimension scaled to a bigger sheet showed its dimension line nearer than drawn in
+    programs that draw it from them)."""
+    kt, kv = doc.xref_get_key(xref, "L")
+    nums = [float(v) for v in _NUMBER.findall(kv)] if kt == "array" else []
+    if len(nums) != 4:
+        return
+    a, b = pymupdf.Point(nums[0], nums[1]), pymupdf.Point(nums[2], nums[3])
+    a2, b2 = a * t, b * t
+    u, u2 = b - a, b2 - a2
+    if abs(u) < 1e-9 or abs(u2) < 1e-9:
+        return
+    n = pymupdf.Point(-u.y, u.x) / abs(u)               # (left of a -> b, PDF space)
+    n2 = pymupdf.Point(-u2.y, u2.x) / abs(u2)
+    k = n * lin
+    across = k.x * n2.x + k.y * n2.y                    # (how much a length across grows)
+    for key, f in (("LL", across), ("LLO", across), ("LLE", abs(across))):
+        typ, val = doc.xref_get_key(xref, key)
+        if typ in ("int", "float", "real"):
+            try:
+                doc.xref_set_key(xref, key, _fmt(float(val) * f))
+            except ValueError:
+                pass
 
 
 def _turn_appearance(doc, xref, lin):
@@ -410,7 +439,10 @@ def _turn_appearance(doc, xref, lin):
 
 
 def _map_kzprops(doc, xref, tp):
-    """The geometry KanzonasPDF keeps for its markups (page coordinates)."""
+    """The geometry KanzonasPDF keeps for its markups (page coordinates), and on a page
+    scaled to another size their text size and line width, as their appearance now shows
+    them (left as they were, the next time one was drawn anew, a legend at any change of
+    the page's markups, measurements at Set scale, it jumped back to its old size)."""
     kt, kv = doc.xref_get_key(xref, annotations.KZ_KEY)
     if kt != "string":
         return
@@ -421,6 +453,13 @@ def _map_kzprops(doc, xref, tp):
     geom = store.get("geom") if isinstance(store, dict) else None
     if not isinstance(geom, dict):
         return
+    f = abs(tp.a * tp.d - tp.b * tp.c) ** 0.5
+    props = store.get("props")
+    if abs(f - 1) > 1e-6 and isinstance(props, dict):
+        for key, low, high, digits in (("fontsize", 1.0, 144.0, 1), ("width", 0.0, 100.0, 2)):
+            v = props.get(key)
+            if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
+                props[key] = round(max(low, min(high, v * f)), digits)
     for key in ("box", "target", "at", "pts", "bend"):
         vals = geom.get(key)
         if not isinstance(vals, list) or len(vals) < 2 or \

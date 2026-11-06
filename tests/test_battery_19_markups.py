@@ -309,6 +309,43 @@ class ReplacedSheets(Case):
         v.undo()
         self.assertEqual(v.sheet_scale_note(0)["ratio"], 48)
 
+    def test_markups_scaled_to_a_bigger_sheet_keep_their_new_size(self):
+        """Replaced by a sheet twice the size, with the markups scaled to it: their pictures
+        grow, but their text size and line width didn't, so the next time one was drawn anew
+        it shrank back (a legend at the next change of any markup on the page), and a
+        dimension's leader lines (/LL, what other viewers draw it from) stayed as long as on
+        the old sheet."""
+        from kanzonas import dimensions
+        v = self.view(self.scale_sheet(self.path("half.pdf"), '1/4" = 1\'-0"'))
+        (dim,) = self.add(v, 0, model("m_dim", points=[P(100, 300), P(300, 300), P(200, 260)]))
+        x = self.legend(v)
+        w0 = self.box(v, x).width
+        ll0 = float(v.doc.xref_get_key(dim, "LL")[1])
+        d = pymupdf.open()
+        d.new_page(width=1584, height=1224).insert_text((120, 160), "PLAN B", fontsize=48)
+        big = self.path("big.pdf")
+        d.save(big)
+        d.close()
+        src = pymupdf.open(big)
+        self.addCleanup(src.close)
+        v.replace_pages(src, [(0, 0)], scale=True)
+        self.assertAlmostEqual(self.box(v, x).width, 2 * w0, delta=2)
+        self.add(v, 0, model("rect", rect=pymupdf.Rect(50, 50, 100, 90)))
+        self.assertEqual(L.legends_on(v.doc[0]), [x])
+        self.assertAlmostEqual(self.box(v, x).width, 2 * w0, delta=4)       # (not w0)
+        self.assertAlmostEqual(float(v.doc.xref_get_key(dim, "LL")[1]), 2 * ll0, places=2)
+        page = v.doc[0]
+        a = page.load_annot(dim)
+        m = A.read(a)
+        from_ll = dimensions.from_leader(m["points"][0], m["points"][1], dimensions.leader(a))
+        del a, page
+        self.assertTrue(A._same(from_ll, m["points"], tol=0.05))
+        self.assertAlmostEqual(m["props"]["fontsize"], 18, delta=0.1)
+
+    def box(self, v, x):
+        page = v.doc[0]
+        return pymupdf.Rect(page.load_annot(x).rect)
+
 
 if __name__ == "__main__":
     unittest.main()
