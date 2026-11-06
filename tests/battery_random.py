@@ -1168,7 +1168,15 @@ class Battery:
                 mock.patch.object(ui.AltTextDialog, "exec", alt), \
                 mock.patch.object(ui.ReviewDialog, "exec", review):
             if r < 0.3:
-                ui.auto_tag(w, v)
+                # (tags change no page's look or words)
+                look = [(v.doc[i].get_pixmap(dpi=36, annots=False).samples,
+                         v.doc[i].get_text()) for i in range(v.doc.page_count)]
+                if ui.auto_tag(w, v):
+                    after = [(v.doc[i].get_pixmap(dpi=36, annots=False).samples,
+                              v.doc[i].get_text()) for i in range(v.doc.page_count)]
+                    bad = [i for i, (a, b) in enumerate(zip(look, after)) if a != b]
+                    if bad:
+                        raise Failed("Auto-tag changed pages %s" % bad)
             elif r < 0.42:
                 ui.title_language(w, v)
             elif r < 0.5:

@@ -460,8 +460,7 @@ class Checker:
             if untagged:
                 self.add("content", i, tr("{n} pieces of content are neither tagged nor "
                                           "marked as artifacts (decoration).").format(
-                    n=untagged), "autotag" if not self._any_mcid(r) else None,
-                    "ISO 14289-1 7.1, Matterhorn 01-005")
+                    n=untagged), None, "ISO 14289-1 7.1, Matterhorn 01-005")
             if art_in_tag:
                 self.add("content", i, tr("Content marked as an artifact sits inside tagged "
                                           "content."), None,
@@ -470,10 +469,6 @@ class Checker:
                 self.add("content", i, tr("Tagged content sits inside content marked as an "
                                           "artifact."), None,
                          "ISO 14289-1 7.1, Matterhorn 01-004")
-
-    @staticmethod
-    def _any_mcid(reader):
-        return bool(reader.mcids)
 
     # -- the structure tree
     def _structure(self):

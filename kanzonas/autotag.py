@@ -422,11 +422,14 @@ class PageReader:
         return m.pdf_new_dict(self.pdf, 1)
 
     def _font(self, res, name):
-        f = _get(_get(res, "Font"), name)
-        key = m.pdf_to_num(m.pdf_dict_gets(_get(res, "Font"), name)) or id(f)
-        got = self._fonts.get(key)
+        ref = m.pdf_dict_gets(_get(res, "Font"), name)
+        f = m.pdf_resolve_indirect(ref)
+        key = m.pdf_to_num(ref) if m.pdf_is_indirect(ref) else None
+        got = self._fonts.get(key) if key else None
         if got is None:
-            got = self._fonts[key] = font_codes(f) if m.pdf_is_dict(f) else _UNKNOWN
+            got = font_codes(f) if m.pdf_is_dict(f) else _UNKNOWN
+            if key:
+                self._fonts[key] = got
         return got
 
     def _mc_kind(self, res, args, data):
