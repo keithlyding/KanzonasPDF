@@ -14,6 +14,12 @@ libraries below (the exact versions and their licenses are in `constraints.txt`)
 - pyspellchecker, MIT - spell checking
 - QtAwesome, MIT, for its copy of the Material Design Icons font (Apache-2.0) - toolbar icons
 
+Scanning (File > Scan) needs no extra library: eSCL (AirScan), WSD (WS-Discovery and WS-Scan),
+multicast DNS, WIA (through Windows PowerShell) and SANE (through the `scanimage` command) are
+spoken with Python's standard library. It was written from the published eSCL and Microsoft
+WS-Scan schemas; sane-airscan (https://github.com/alexpevzner/sane-airscan, GPL-2.0 with an
+exception) was read as a reference for how real devices behave. No code was taken from it.
+
 Artwork and type:
 
 - The app icon, logo and their cactus and sunflower are the owner's artwork (`assets/`).

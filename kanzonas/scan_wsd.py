@@ -144,8 +144,10 @@ def metadata(url, endpoint, timeout=6.0):
 
 
 def _device_name(meta, fallback):
-    name = meta.get("name") or " ".join(x for x in (meta.get("manufacturer"), meta.get("model"))
-                                        if x)
+    maker, model = meta.get("manufacturer") or "", meta.get("model") or ""
+    if maker and model.lower().startswith(maker.lower()):
+        maker = ""                  # ("Dell" and "Dell Color MFP E525w")
+    name = meta.get("name") or " ".join(x for x in (maker, model) if x)
     return (name or fallback)[:120]
 
 

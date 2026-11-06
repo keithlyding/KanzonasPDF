@@ -1056,6 +1056,66 @@ around the links (off by default, to keep drawings clean), and bookmarks named b
 and title. Ctrl+Z undoes it all.</li>
 </ul>
 
+<h2 id="scan">Scanning</h2>
+<p><b>Scan...</b> (File menu, Pages tab &gt; Create group, or the command palette) scans pages
+from a scanner, or a printer that scans, into a PDF. It talks to most network printers without
+installing their drivers, in any of these ways:</p>
+<ul>
+<li><b>eSCL (AirScan)</b>: the driverless scanning of Mopria and Apple AirPrint printers (most
+printers made in the last ten years). Found on the network by itself.</li>
+<li><b>WSD</b> (Web Services on Devices): Microsoft's network scanning, which many printers
+offer (Dell, Brother, Canon, Epson, HP, Kyocera, Xerox...). Found by itself; on many printers it
+must first be turned on in the printer's web page (WSD set to Enable).</li>
+<li><b>WIA</b> (Windows): the scanners Windows itself knows, including USB scanners and those
+whose maker's driver is installed.</li>
+<li><b>SANE</b> (Linux): the scanners the scanimage command knows (install the sane-utils
+package; sane-airscan adds driverless network scanners to it).</li>
+<li>On macOS, eSCL and WSD for now (USB scanners aren't supported there yet).</li>
+</ul>
+<p>To scan:</p>
+<ul>
+<li>The window lists the scanners it found, each with how it's reached (eSCL, WSD, WIA or
+SANE) and its address; a printer found more than one way is listed for each. Pick one; the last
+scanner used is listed and picked for you. <b>Refresh</b> looks again.</li>
+<li><b>Add by address...</b>: when your printer isn't found (guest Wi-Fi, some routers and
+different subnets block discovery), type its IP address, shown on its panel or in its network
+configuration report (for example 192.168.1.20). KanzonasPDF tries eSCL first, then WSD.</li>
+<li>Choose the <b>Source</b> (Flatbed (glass), Document feeder, or Document feeder, both sides,
+when the scanner has them), <b>Color</b> (Color, Grayscale, Black and white),
+<b>Resolution</b> (what the scanner offers; 300 dpi suits documents and OCR) and <b>Page
+size</b> (Letter, Legal, A4, or the largest the scanner allows). They're remembered for next
+time.</li>
+<li>Click <b>Scan</b>. The window shows its progress, and <b>Cancel</b> stops it. From the
+document feeder, every page in it is scanned. Then <b>Scan more pages</b> adds more (put the
+next page on the glass, or the next stack in the feeder), and <b>Done</b> puts them all in a
+PDF.</li>
+<li><b>Put the pages in</b>: <b>A new document</b> (an unsaved tab; Save asks where to save it),
+or <b>This document, after the current page</b> (Ctrl+Z takes them all out again in one step).
+Tick <b>Make the pages searchable</b> to run Recognize text (OCR) on the new pages.</li>
+<li><b>Watch a folder...</b> is for a printer that can only scan to a network folder (Scan to
+Network Folder, SMB) or FTP: choose the folder it scans into; each new PDF or picture (JPEG,
+PNG, TIFF) that arrives there while the window is open is added as scanned pages. Click Done
+when they're all in.</li>
+</ul>
+<p>When it doesn't work, the window says why in plain words, and what to try:</p>
+<ul>
+<li><b>No scanners found</b>: the computer and the printer must be on the same network (not a
+guest Wi-Fi); try Add by address with the printer's IP address. If Windows asks whether to let
+KanzonasPDF use private networks, allow it: that's how the printers' answers get back.</li>
+<li><b>WSD scanning is turned off</b>: open the printer's web page (type http:// and its IP
+address in a web browser), find WSD (often under Network, Protocols or Services), set it to
+Enable, save, then click Refresh.</li>
+<li><b>The scanner isn't taking a scan from the computer</b>: some printers only accept a WSD
+scan started on their own panel: on the printer choose Scan, then Computer (WSD), then click
+Scan in KanzonasPDF.</li>
+<li><b>Copy details</b> copies what was found and the scanner's own answers (nothing personal;
+serial numbers are left out). If your scanner still doesn't work, paste them into an issue on
+KanzonasPDF's GitHub page so it can be supported.</li>
+<li>Safety: KanzonasPDF only talks to the scanner you pick (or the address you type), reads its
+answers with strict limits on size and time, and sends nothing anywhere else. Network scanners
+use their own, self-signed certificates for HTTPS; one is accepted only for its scanner.</li>
+</ul>
+
 <h2 id="printprod">Print production (Print tab)</h2>
 <p>What a sheet needs before it goes to a plotter or a print shop. The <b>Print</b> tab has these
 next to Print and Crop; they're also in <b>Pages &gt; Print production</b>.</p>

@@ -7484,3 +7484,363 @@ msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y
 
 msgid "type {0} and press Enter"
 msgstr "escriba {0} y presione Enter"
+
+# ---- File > Scan (scan_dialog.py, scanners.py, scan_net.py, scan_escl.py, scan_wsd.py,
+# scan_local.py)
+
+msgid "Scan"
+msgstr "Escanear"
+
+msgid "Scan..."
+msgstr "Escanear..."
+
+msgid "Scan pages from a scanner or printer (on the network or connected to this computer) into a PDF"
+msgstr "Escanear páginas desde un escáner o impresora (en la red o conectado a esta computadora) a un PDF"
+
+msgid "Flatbed (glass)"
+msgstr "Cama plana (vidrio)"
+
+msgid "Document feeder"
+msgstr "Alimentador de documentos"
+
+msgid "Document feeder, both sides"
+msgstr "Alimentador de documentos, ambas caras"
+
+msgid "Grayscale"
+msgstr "Escala de grises"
+
+msgid "Black and white"
+msgstr "Blanco y negro"
+
+msgid "Letter (8.5 x 11 in)"
+msgstr "Carta (8.5 x 11 pulg.)"
+
+msgid "Legal (8.5 x 14 in)"
+msgstr "Oficio (8.5 x 14 pulg.)"
+
+msgid "A4 (210 x 297 mm)"
+msgstr "A4 (210 x 297 mm)"
+
+msgid "Largest the scanner allows"
+msgstr "Lo más grande que permita el escáner"
+
+msgid "Refresh"
+msgstr "Actualizar"
+
+msgid "Look for scanners again"
+msgstr "Buscar escáneres de nuevo"
+
+msgid "Add by address..."
+msgstr "Agregar por dirección..."
+
+msgid "Type the printer's IP address when it isn't found (Wi-Fi and some routers block discovery)"
+msgstr "Escriba la dirección IP de la impresora cuando no se encuentra (el Wi-Fi y algunos routers bloquean la búsqueda)"
+
+msgid "Watch a folder..."
+msgstr "Vigilar una carpeta..."
+
+msgid "For a printer that scans to a network folder or FTP: new PDFs and pictures that arrive in the folder are taken as scanned pages"
+msgstr "Para una impresora que escanea a una carpeta de red o FTP: los PDF e imágenes nuevos que llegan a la carpeta se toman como páginas escaneadas"
+
+msgid "Source:"
+msgstr "Origen:"
+
+msgid "Color:"
+msgstr "Color:"
+
+msgid "Resolution:"
+msgstr "Resolución:"
+
+msgid "A new document"
+msgstr "Un documento nuevo"
+
+msgid "This document, after the current page"
+msgstr "Este documento, después de la página actual"
+
+msgid "Put the pages in:"
+msgstr "Poner las páginas en:"
+
+msgid "Make the pages searchable (recognize text, OCR)"
+msgstr "Hacer las páginas buscables (reconocer texto, OCR)"
+
+msgid "Copy details"
+msgstr "Copiar detalles"
+
+msgid "Copy what was found and the scanner's own answers, to send if your scanner doesn't work (nothing personal is included)"
+msgstr "Copiar lo que se encontró y las respuestas del propio escáner, para enviarlas si su escáner no funciona (no se incluye nada personal)"
+
+msgid "Put the scanned pages in the document"
+msgstr "Poner las páginas escaneadas en el documento"
+
+msgid "Looking for scanners..."
+msgstr "Buscando escáneres..."
+
+msgid "Add by address"
+msgstr "Agregar por dirección"
+
+msgid "The printer's IP address or name (on its panel, or in its network report), for example 192.168.1.20:"
+msgstr "La dirección IP o el nombre de la impresora (en su panel o en su informe de red), por ejemplo 192.168.1.20:"
+
+msgid "Starting the scan..."
+msgstr "Iniciando el escaneo..."
+
+msgid "Watch a folder"
+msgstr "Vigilar una carpeta"
+
+msgid "Copied the details: paste them into an email or a GitHub issue to the KanzonasPDF project."
+msgstr "Se copiaron los detalles: péguelos en un correo o en un issue de GitHub para el proyecto KanzonasPDF."
+
+msgid "Scanners and printers found:"
+msgstr "Escáneres e impresoras encontrados:"
+
+msgid "Scan more pages"
+msgstr "Escanear más páginas"
+
+msgid "Ready: put the pages on the glass or in the feeder, then click Scan."
+msgstr "Listo: ponga las páginas en el vidrio o en el alimentador y haga clic en Escanear."
+
+msgid "Canceled."
+msgstr "Cancelado."
+
+msgid "Asking {address} (eSCL, then WSD)..."
+msgstr "Consultando {address} (eSCL, luego WSD)..."
+
+msgid "Asking {name} what it can do..."
+msgstr "Preguntando a {name} qué puede hacer..."
+
+msgid "Scanned {n} page(s). Scan more pages, or click Done to put them in a document."
+msgstr "Se escanearon {n} página(s). Escanee más páginas o haga clic en Listo para ponerlas en un documento."
+
+msgid "Watching {folder}: scan into it from the printer (Scan to Network Folder or FTP); each new PDF or picture is added here as it arrives. Click Done when they're all in."
+msgstr "Vigilando {folder}: escanee a ella desde la impresora (Escanear a carpeta de red o FTP); cada PDF o imagen nuevo se agrega aquí al llegar. Haga clic en Listo cuando estén todos."
+
+msgid "{n} scanned page(s) added"
+msgstr "Se agregaron {n} página(s) escaneada(s)"
+
+msgid "{n} page(s) scanned"
+msgstr "{n} página(s) escaneada(s)"
+
+msgid "Found {n} scanner(s): pick one, then click Scan."
+msgstr "Se encontraron {n} escáner(es): elija uno y haga clic en Escanear."
+
+msgid "{dpi} dpi"
+msgstr "{dpi} ppp"
+
+msgid "Added {name} from the folder."
+msgstr "Se agregó {name} desde la carpeta."
+
+msgid "Discard the {n} scanned page(s)?"
+msgstr "¿Descartar las {n} página(s) escaneada(s)?"
+
+msgid "A scanned PDF is password-protected."
+msgstr "Un PDF escaneado está protegido con contraseña."
+
+msgid "{names} answered but offer no scanning over the network: open the printer's web page (http://{ip}) and set WSD to Enable, then click Refresh; or try Add by address..."
+msgstr "{names} respondió pero no ofrece escaneo por la red: abra la página web de la impresora (http://{ip}) y ponga WSD en Habilitar (Enable), luego haga clic en Actualizar; o pruebe Agregar por dirección..."
+
+msgid "No scanners found on this network. Tried: {tried}. Try Add by address... with the printer's IP address (on its panel or its network report), or Watch a folder... if the printer scans to a folder."
+msgstr "No se encontraron escáneres en esta red. Se probó: {tried}. Pruebe Agregar por dirección... con la dirección IP de la impresora (en su panel o en su informe de red), o Vigilar una carpeta... si la impresora escanea a una carpeta."
+
+msgid "Couldn't make the scanned pages into a PDF: {error}"
+msgstr "No se pudieron convertir las páginas escaneadas en un PDF: {error}"
+
+msgid "The pages scanned before are kept."
+msgstr "Las páginas escaneadas antes se conservan."
+
+msgid "Couldn't use {name}: {error}"
+msgstr "No se pudo usar {name}: {error}"
+
+msgid "Too many pages in one scan (more than {n})."
+msgstr "Demasiadas páginas en un escaneo (más de {n})."
+
+msgid "The document feeder is empty: put the pages in it, or choose the flatbed (glass)."
+msgstr "El alimentador de documentos está vacío: ponga las páginas en él o elija la cama plana (vidrio)."
+
+msgid "Paper is jammed in the document feeder: clear it (see the printer's panel) and try again."
+msgstr "Hay papel atascado en el alimentador de documentos: retírelo (vea el panel de la impresora) e intente de nuevo."
+
+msgid "The document feeder's cover is open: close it and try again."
+msgstr "La tapa del alimentador de documentos está abierta: ciérrela e intente de nuevo."
+
+msgid "The document feeder's output tray is full: empty it and try again."
+msgstr "La bandeja de salida del alimentador de documentos está llena: vacíela e intente de nuevo."
+
+msgid "The device's answer isn't an eSCL scanner description."
+msgstr "La respuesta del dispositivo no es una descripción de escáner eSCL."
+
+msgid "The scanner didn't say what it can scan from."
+msgstr "El escáner no indicó desde dónde puede escanear."
+
+msgid "The scanner isn't ready (it reports \"{state}\"): check its panel for a message."
+msgstr "El escáner no está listo (informa \"{state}\"): revise si hay un mensaje en su panel."
+
+msgid "The scanner is getting ready..."
+msgstr "El escáner se está preparando..."
+
+msgid "The scanner is busy (scanning, copying, or waiting for something on its panel): finish that, then try again."
+msgstr "El escáner está ocupado (escaneando, copiando o esperando algo en su panel): termine eso e intente de nuevo."
+
+msgid "The scanner finished without sending a page."
+msgstr "El escáner terminó sin enviar ninguna página."
+
+msgid "The scanner refused these settings (HTTP {status}): try another resolution, color or source."
+msgstr "El escáner rechazó esta configuración (HTTP {status}): pruebe otra resolución, color u origen."
+
+msgid "The scanner answered but not as an eSCL scanner (HTTP {status})."
+msgstr "El escáner respondió, pero no como un escáner eSCL (HTTP {status})."
+
+msgid "Scanning page {n}..."
+msgstr "Escaneando la página {n}..."
+
+msgid "The scanner stopped with an error (HTTP {status})."
+msgstr "El escáner se detuvo con un error (HTTP {status})."
+
+msgid "A cover of the scanner is open: close it and try again."
+msgstr "Una tapa del escáner está abierta: ciérrela e intente de nuevo."
+
+msgid "The scanner is off or not connected: turn it on, check its cable or network, and try again."
+msgstr "El escáner está apagado o no está conectado: enciéndalo, revise su cable o la red e intente de nuevo."
+
+msgid "The scanner is busy or warming up: wait a moment and try again."
+msgstr "El escáner está ocupado o calentándose: espere un momento e intente de nuevo."
+
+msgid "The scanner needs attention: check the message on its panel."
+msgstr "El escáner necesita atención: revise el mensaje en su panel."
+
+msgid "Windows no longer lists this scanner: click Refresh."
+msgstr "Windows ya no muestra este escáner: haga clic en Actualizar."
+
+msgid "Windows couldn't scan ({code}): {message}"
+msgstr "Windows no pudo escanear ({code}): {message}"
+
+msgid "Couldn't read the scanned page."
+msgstr "No se pudo leer la página escaneada."
+
+msgid "scanimage isn't installed (the sane-utils package)."
+msgstr "scanimage no está instalado (el paquete sane-utils)."
+
+msgid "The scanner stopped answering."
+msgstr "El escáner dejó de responder."
+
+msgid "{program} isn't installed."
+msgstr "{program} no está instalado."
+
+msgid "{program} didn't answer in time."
+msgstr "{program} no respondió a tiempo."
+
+msgid "A scanned page was too large ({mb} MB)."
+msgstr "Una página escaneada era demasiado grande ({mb} MB)."
+
+msgid "Scanner"
+msgstr "Escáner"
+
+msgid "{name} isn't a PDF."
+msgstr "{name} no es un PDF."
+
+msgid "{name} is too large."
+msgstr "{name} es demasiado grande."
+
+msgid "Couldn't read {name}."
+msgstr "No se pudo leer {name}."
+
+msgid "The scanner's answer was too large."
+msgstr "La respuesta del escáner era demasiado grande."
+
+msgid "The scanner sent an answer KanzonasPDF won't read (it declares entities)."
+msgstr "El escáner envió una respuesta que KanzonasPDF no leerá (declara entidades)."
+
+msgid "The scanner's answer isn't valid XML."
+msgstr "La respuesta del escáner no es XML válido."
+
+msgid "The scanner sent a page in a format KanzonasPDF doesn't read."
+msgstr "El escáner envió una página en un formato que KanzonasPDF no lee."
+
+msgid "A scanned page couldn't be read."
+msgstr "No se pudo leer una página escaneada."
+
+msgid "{url} isn't a valid address."
+msgstr "{url} no es una dirección válida."
+
+msgid "{host} kept redirecting."
+msgstr "{host} redirigió una y otra vez."
+
+msgid "Couldn't find the address of {host}: check the name, or type the printer's IP address (on its panel or network report)."
+msgstr "No se encontró la dirección de {host}: revise el nombre o escriba la dirección IP de la impresora (en su panel o en su informe de red)."
+
+msgid "A scanned page was too large ({w} x {h} pixels): choose a lower resolution."
+msgstr "Una página escaneada era demasiado grande ({w} x {h} píxeles): elija una resolución más baja."
+
+msgid "{host} refused the connection on port {port}."
+msgstr "{host} rechazó la conexión en el puerto {port}."
+
+msgid "{host} didn't answer in time."
+msgstr "{host} no respondió a tiempo."
+
+msgid "A secure connection to {host} failed."
+msgstr "Falló una conexión segura con {host}."
+
+msgid "Couldn't reach {host}: {error}"
+msgstr "No se pudo conectar con {host}: {error}"
+
+msgid "{host} sent KanzonasPDF to another address ({other}); for safety it doesn't follow."
+msgstr "{host} envió a KanzonasPDF a otra dirección ({other}); por seguridad no la sigue."
+
+msgid "The scanner isn't taking a scan from the computer right now. Check that it isn't busy or showing a message. Some printers only take a WSD scan started on their own panel: choose Scan, then to Computer (WSD), then click Scan here."
+msgstr "El escáner no acepta ahora un escaneo desde la computadora. Revise que no esté ocupado ni mostrando un mensaje. Algunas impresoras solo aceptan un escaneo WSD iniciado en su propio panel: elija Escanear, luego a Computadora (WSD), y haga clic en Escanear aquí."
+
+msgid "The scanner had no page to send: put the page on the glass or in the feeder and try again."
+msgstr "El escáner no tenía ninguna página que enviar: ponga la página en el vidrio o en el alimentador e intente de nuevo."
+
+msgid "The scanner refused these settings: try another resolution, color or source."
+msgstr "El escáner rechazó esta configuración: pruebe otra resolución, color u origen."
+
+msgid "The scan was canceled on the scanner."
+msgstr "El escaneo se canceló en el escáner."
+
+msgid "The scanner's answer couldn't be read."
+msgstr "No se pudo leer la respuesta del escáner."
+
+msgid "The scanner reported an error ({code})."
+msgstr "El escáner informó un error ({code})."
+
+msgid "The scanner didn't describe what it can do."
+msgstr "El escáner no describió lo que puede hacer."
+
+msgid "The scanner didn't start the scan."
+msgstr "El escáner no inició el escaneo."
+
+msgid "{host} answered the device question with an error (HTTP {status})."
+msgstr "{host} respondió a la consulta del dispositivo con un error (HTTP {status})."
+
+msgid "The scanner answered with an error (HTTP {status})."
+msgstr "El escáner respondió con un error (HTTP {status})."
+
+msgid "The scanner's answer had no picture in it."
+msgstr "La respuesta del escáner no traía ninguna imagen."
+
+msgid "eSCL (AirScan) and WSD on the network"
+msgstr "eSCL (AirScan) y WSD en la red"
+
+msgid "Unknown kind of scanner."
+msgstr "Tipo de escáner desconocido."
+
+msgid "Windows' own scanners (WIA)"
+msgstr "los escáneres del propio Windows (WIA)"
+
+msgid "Type the printer's IP address, for example 192.168.1.20."
+msgstr "Escriba la dirección IP de la impresora, por ejemplo 192.168.1.20."
+
+msgid "Nothing answered at {ip}. Check the address (it's on the printer's panel or its network report), that the printer is on, and that this computer is on the same network."
+msgstr "Nada respondió en {ip}. Revise la dirección (está en el panel de la impresora o en su informe de red), que la impresora esté encendida y que esta computadora esté en la misma red."
+
+msgid "SANE (scanimage)"
+msgstr "SANE (scanimage)"
+
+msgid "SANE isn't installed (the sane-utils package)"
+msgstr "SANE no está instalado (el paquete sane-utils)"
+
+msgid "The printer at {ip} answered over WSD, but offers no scanning that way: WSD scanning is turned off. Open its web page ({web}), set WSD (or WSD Scan) to Enable, then try again."
+msgstr "La impresora en {ip} respondió por WSD, pero no ofrece escaneo de esa forma: el escaneo WSD está desactivado. Abra su página web ({web}), ponga WSD (o WSD Scan) en Habilitar (Enable) e intente de nuevo."
+
+msgid "The printer answered but WSD scanning is turned off: open its web page ({web}) and set WSD to Enable (often under Network or Protocol settings), then try again. If it has no such setting, use Watch a folder... with its Scan to Network Folder."
+msgstr "La impresora respondió, pero el escaneo WSD está desactivado: abra su página web ({web}) y ponga WSD en Habilitar (Enable) (suele estar en la configuración de Red o de Protocolos) e intente de nuevo. Si no tiene esa opción, use Vigilar una carpeta... con su función Escanear a carpeta de red."

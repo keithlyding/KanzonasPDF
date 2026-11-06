@@ -1035,6 +1035,73 @@ alrededor de los vínculos (desactivado de forma predeterminada, para mantener l
 y el título de cada plano. Ctrl+Z lo deshace todo.</li>
 </ul>
 
+<h2 id="scan">Escanear</h2>
+<p><b>Escanear...</b> (menú Archivo, pestaña Páginas &gt; grupo Crear, o la paleta de comandos)
+escanea páginas desde un escáner, o una impresora que escanea, a un PDF. Se comunica con la
+mayoría de las impresoras de red sin instalar sus controladores, de cualquiera de estas formas:</p>
+<ul>
+<li><b>eSCL (AirScan)</b>: el escaneo sin controladores de las impresoras Mopria y Apple
+AirPrint (la mayoría de las impresoras fabricadas en los últimos diez años). Se encuentran solas
+en la red.</li>
+<li><b>WSD</b> (Web Services on Devices): el escaneo en red de Microsoft, que ofrecen muchas
+impresoras (Dell, Brother, Canon, Epson, HP, Kyocera, Xerox...). Se encuentran solas; en muchas
+impresoras primero hay que activarlo en la página web de la impresora (WSD en Habilitar,
+Enable).</li>
+<li><b>WIA</b> (Windows): los escáneres que el propio Windows conoce, incluidos los escáneres
+USB y los que tienen instalado el controlador del fabricante.</li>
+<li><b>SANE</b> (Linux): los escáneres que conoce el comando scanimage (instale el paquete
+sane-utils; sane-airscan le agrega los escáneres de red sin controladores).</li>
+<li>En macOS, por ahora eSCL y WSD (allí aún no se admiten escáneres USB).</li>
+</ul>
+<p>Para escanear:</p>
+<ul>
+<li>La ventana muestra los escáneres que encontró, cada uno con la forma de llegar a él (eSCL,
+WSD, WIA o SANE) y su dirección; una impresora encontrada de varias formas aparece una vez por
+cada una. Elija uno; el último escáner usado aparece y queda elegido. <b>Actualizar</b> busca
+de nuevo.</li>
+<li><b>Agregar por dirección...</b>: cuando su impresora no aparece (el Wi-Fi de invitados,
+algunos routers y las subredes distintas bloquean la búsqueda), escriba su dirección IP, que se
+ve en su panel o en su informe de configuración de red (por ejemplo 192.168.1.20). KanzonasPDF
+prueba primero eSCL y luego WSD.</li>
+<li>Elija el <b>Origen</b> (Cama plana (vidrio), Alimentador de documentos o Alimentador de
+documentos, ambas caras, si el escáner los tiene), el <b>Color</b> (Color, Escala de grises,
+Blanco y negro), la <b>Resolución</b> (la que ofrece el escáner; 300 ppp va bien para
+documentos y para el OCR) y el <b>Tamaño de página</b> (Carta, Oficio, A4 o lo más grande que
+permita el escáner). Se recuerdan para la próxima vez.</li>
+<li>Haga clic en <b>Escanear</b>. La ventana muestra el avance y <b>Cancelar</b> lo detiene.
+Desde el alimentador de documentos se escanean todas las páginas que tenga. Luego <b>Escanear
+más páginas</b> agrega más (ponga la página siguiente en el vidrio, o el siguiente montón en el
+alimentador) y <b>Listo</b> las pone todas en un PDF.</li>
+<li><b>Poner las páginas en</b>: <b>Un documento nuevo</b> (una pestaña sin guardar; Guardar
+pregunta dónde guardarlo) o <b>Este documento, después de la página actual</b> (Ctrl+Z las
+quita todas de nuevo en un paso). Marque <b>Hacer las páginas buscables</b> para ejecutar
+Reconocer texto (OCR) en las páginas nuevas.</li>
+<li><b>Vigilar una carpeta...</b> es para una impresora que solo puede escanear a una carpeta
+de red (Escanear a carpeta de red, SMB) o a FTP: elija la carpeta a la que escanea; cada PDF o
+imagen nuevo (JPEG, PNG, TIFF) que llega allí mientras la ventana está abierta se agrega como
+páginas escaneadas. Haga clic en Listo cuando estén todos.</li>
+</ul>
+<p>Cuando no funciona, la ventana dice por qué con palabras sencillas, y qué probar:</p>
+<ul>
+<li><b>No se encontraron escáneres</b>: la computadora y la impresora deben estar en la misma
+red (no en un Wi-Fi de invitados); pruebe Agregar por dirección con la dirección IP de la
+impresora. Si Windows pregunta si permite que KanzonasPDF use redes privadas, permítalo: así
+vuelven las respuestas de las impresoras.</li>
+<li><b>El escaneo WSD está desactivado</b>: abra la página web de la impresora (escriba http://
+y su dirección IP en un navegador web), busque WSD (suele estar en Red, Protocolos o
+Servicios), póngalo en Habilitar (Enable), guarde y haga clic en Actualizar.</li>
+<li><b>El escáner no acepta un escaneo desde la computadora</b>: algunas impresoras solo
+aceptan un escaneo WSD iniciado en su propio panel: en la impresora elija Escanear, luego
+Computadora (WSD), y haga clic en Escanear en KanzonasPDF.</li>
+<li><b>Copiar detalles</b> copia lo que se encontró y las respuestas del propio escáner (nada
+personal; los números de serie se omiten). Si su escáner sigue sin funcionar, péguelos en un
+issue en la página de GitHub de KanzonasPDF para que se pueda admitir.</li>
+<li>Seguridad: KanzonasPDF solo se comunica con el escáner que usted elige (o la dirección que
+escribe), lee sus respuestas con límites estrictos de tamaño y de tiempo, y no envía nada a
+ningún otro lugar. Los escáneres de red usan sus propios certificados autofirmados para HTTPS;
+cada uno se acepta solo para su escáner.</li>
+</ul>
+
 <h2 id="printprod">Producción de impresión (pestaña Imprimir)</h2>
 <p>Lo que necesita una hoja antes de ir a un trazador o a una imprenta. La pestaña <b>Imprimir</b> tiene estos
 comandos junto a Imprimir y Recortar; también están en <b>Páginas &gt; Producción de impresión</b>.</p>
