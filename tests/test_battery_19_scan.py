@@ -7,6 +7,8 @@
   computer on the network before refusing it, a thread for each (a host opening many slow
   connections piled threads up), and a chunk size of -1 read the request until the sender
   stopped, however much it sent;
+- the Scan window's messages took a device's name (or a fault, or a file name from the
+  watched folder) with "<b>" or "<img ...>" in it for formatting;
 - the watched folder took a file that a printer or an FTP upload paused writing for two
   seconds (half a page), followed links to files elsewhere on this computer (a share others
   write into could bring in any file the user can read), and a pipe put there in place of a
@@ -26,8 +28,8 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from tests.test_scanning import (APP, ESCL_CAPS, Escl, ServerCase, picture,  # noqa: E402,F401
-                                 serve)
+from tests.test_scanning import (APP, ESCL_CAPS, Escl, FakeScanner, ServerCase,  # noqa: E402
+                                 picture, wait_for)
 from kanzonas import scan_escl, scan_events, scan_local, scan_net as net  # noqa: E402
 from kanzonas.scan_net import Device, ScanError, ScanSettings  # noqa: E402
 
@@ -189,6 +191,26 @@ class WatchedFolder(unittest.TestCase):
             os.close(fd)
         self.assertFalse(t.is_alive())
         self.assertEqual(len(out), 1)
+
+
+class Window(unittest.TestCase):
+    def test_a_devices_name_is_shown_as_it_is(self):
+        from PySide6.QtCore import Qt
+        from kanzonas import scan_dialog
+        from kanzonas.main_window import MainWindow
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        w.settings.remove("scan_device")
+        dev = Device('<b>Big</b><img src="x.png">', "escl", "http://10.0.0.9/eSCL", "10.0.0.9")
+        fake = FakeScanner(dev, [])
+        dlg = scan_dialog.ScanDialog(w, discover=lambda cancel=None, log=None: ([], []),
+                                     open_scanner=lambda d: fake)
+        self.addCleanup(lambda: (dlg._stop(), dlg.deleteLater()))
+        wait_for(lambda: "find" not in dlg._busy)
+        dlg._say("Asking %s what it can do..." % dev.name)
+        for label in (dlg.status, dlg.panel_note):
+            self.assertEqual(label.textFormat(), Qt.PlainText)
+        self.assertIn("<b>Big</b>", dlg.status.text())
 
 
 if __name__ == "__main__":
