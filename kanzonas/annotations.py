@@ -197,9 +197,20 @@ def to_rgb(hex_color):
 
 
 def to_hex(rgb):
+    """A PDF color (an annotation's /C or /IC: 1 gray, 3 RGB or 4 CMYK numbers) as #rrggbb.
+    (Other programs write gray and CMYK colors: read as RGB, a gray came out "#80" and broke
+    everything drawn from it, a CMYK cyan came out red.)"""
     if not rgb:
         return None
-    return "#" + "".join(f"{max(0, min(255, round(c * 255))):02x}" for c in rgb[:3])
+    rgb = tuple(rgb)
+    if len(rgb) == 1:
+        rgb = rgb * 3
+    elif len(rgb) == 4:
+        c, m_, y, k = rgb
+        rgb = ((1 - c) * (1 - k), (1 - m_) * (1 - k), (1 - y) * (1 - k))
+    elif len(rgb) != 3:
+        return None
+    return "#" + "".join(f"{max(0, min(255, round(c * 255))):02x}" for c in rgb)
 
 
 # ---- per-tool defaults (persist across sessions) ------------------------------

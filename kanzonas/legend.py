@@ -243,8 +243,14 @@ def _f(v):
 
 
 def _rgb(hex_color):
+    """A color kept as #rrggbb -> (r, g, b), None when it's none or not one (a legend never
+    fails over one markup's odd color: it would stop updating)."""
     from . import annotations as A
-    return A.to_rgb(hex_color) if hex_color else None
+    try:
+        rgb = A.to_rgb(hex_color) if isinstance(hex_color, str) and hex_color else None
+    except ValueError:
+        return None
+    return rgb if rgb and len(rgb) == 3 else None
 
 
 def _color(rgb, op):
