@@ -1072,6 +1072,13 @@ permita el escáner). Se recuerdan para la próxima vez.</li>
 Desde el alimentador de documentos se escanean todas las páginas que tenga. Luego <b>Escanear
 más páginas</b> agrega más (ponga la página siguiente en el vidrio, o el siguiente montón en el
 alimentador) y <b>Listo</b> las pone todas en un PDF.</li>
+<li><b>Iniciar el escaneo en la impresora</b> (impresoras WSD): mientras la ventana muestra una
+impresora WSD, KanzonasPDF le pide que muestre esta computadora como destino de escaneo
+("KanzonasPDF - " y el nombre de la computadora). En el panel de la impresora elija Escanear,
+luego Escanear a computadora (WSD), elija ese nombre y presione Iniciar: las páginas llegan a la
+ventana, con la configuración de la ventana (elija allí el origen primero). Windows pregunta una
+vez si permite que KanzonasPDF use redes privadas: permítalo, o la impresora no puede llegar a
+la ventana. La impresora olvida esta computadora cuando se cierra la ventana.</li>
 <li><b>Poner las páginas en</b>: <b>Un documento nuevo</b> (una pestaña sin guardar; Guardar
 pregunta dónde guardarlo) o <b>Este documento, después de la página actual</b> (Ctrl+Z las
 quita todas de nuevo en un paso). Marque <b>Hacer las páginas buscables</b> para ejecutar
@@ -1091,8 +1098,14 @@ vuelven las respuestas de las impresoras.</li>
 y su dirección IP en un navegador web), busque WSD (suele estar en Red, Protocolos o
 Servicios), póngalo en Habilitar (Enable), guarde y haga clic en Actualizar.</li>
 <li><b>El escáner no acepta un escaneo desde la computadora</b>: algunas impresoras solo
-aceptan un escaneo WSD iniciado en su propio panel: en la impresora elija Escanear, luego
-Computadora (WSD), y haga clic en Escanear en KanzonasPDF.</li>
+escanean cuando el escaneo se inicia en su propio panel: deje abierta la ventana Escanear con la
+impresora elegida y, en la impresora, elija Escanear a computadora (WSD) y el nombre de esta
+computadora.</li>
+<li><b>Una Dell E525w, o una impresora parecida</b>: active WSD en su página web (arriba) y
+pruebe las dos formas: haga clic en Escanear en KanzonasPDF (iniciado desde la computadora); si
+la impresora no lo acepta, inicie el escaneo en el panel de la impresora con Escanear a
+computadora (WSD) y el nombre de esta computadora (iniciado desde la impresora). Si ninguna
+funciona, use Copiar detalles.</li>
 <li><b>Copiar detalles</b> copia lo que se encontró y las respuestas del propio escáner (nada
 personal; los números de serie se omiten). Si su escáner sigue sin funcionar, péguelos en un
 issue en la página de GitHub de KanzonasPDF para que se pueda admitir.</li>

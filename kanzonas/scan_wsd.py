@@ -36,6 +36,7 @@ NS_WSA = "http://schemas.xmlsoap.org/ws/2004/08/addressing"
 NS_WSD = "http://schemas.xmlsoap.org/ws/2005/04/discovery"
 NS_WSDP = "http://schemas.xmlsoap.org/ws/2006/02/devprof"
 NS_SCAN = "http://schemas.microsoft.com/windows/2006/08/wdp/scan"
+NS_WSE = "http://schemas.xmlsoap.org/ws/2004/08/eventing"
 ANONYMOUS = "http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous"
 PROBE = "http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe"
 TRANSFER_GET = "http://schemas.xmlsoap.org/ws/2004/09/transfer/Get"
@@ -59,14 +60,14 @@ def _id():
     return "urn:uuid:" + str(uuid.uuid4())
 
 
-def envelope(action, to, body, msg_id=None, extra_ns=""):
+def envelope(action, to, body, msg_id=None, extra_ns="", headers=""):
     return ('<?xml version="1.0" encoding="UTF-8"?>'
-            '<soap:Envelope xmlns:soap="%s" xmlns:wsa="%s" xmlns:wscn="%s"%s>'
+            '<soap:Envelope xmlns:soap="%s" xmlns:wsa="%s" xmlns:wscn="%s" xmlns:wse="%s"%s>'
             "<soap:Header><wsa:To>%s</wsa:To><wsa:Action>%s</wsa:Action>"
             "<wsa:MessageID>%s</wsa:MessageID><wsa:ReplyTo><wsa:Address>%s</wsa:Address>"
-            "</wsa:ReplyTo></soap:Header><soap:Body>%s</soap:Body></soap:Envelope>" % (
-                NS_SOAP, NS_WSA, NS_SCAN, extra_ns, xml_escape(to), xml_escape(action),
-                msg_id or _id(), ANONYMOUS, body))
+            "</wsa:ReplyTo>%s</soap:Header><soap:Body>%s</soap:Body></soap:Envelope>" % (
+                NS_SOAP, NS_WSA, NS_SCAN, NS_WSE, extra_ns, xml_escape(to), xml_escape(action),
+                msg_id or _id(), ANONYMOUS, headers, body))
 
 
 def probe_xml(msg_id, types):
@@ -421,9 +422,15 @@ def parse_status(root):
                                                                       "ScannerStateReason")]
 
 
-def ticket_xml(source, color, dpi, width, height, fmt, images):
+def ticket_xml(source, color, dpi, width, height, fmt, images, scan_id=None, dest_token=None):
     """A CreateScanJobRequest; width and height in 1/1000 inch. No MustHonor: the device may
-    adjust what it can't do exactly."""
+    adjust what it can't do exactly. scan_id and dest_token: for a scan started on the
+    printer's panel (its ScanAvailableEvent and our subscription's DestinationToken)."""
+    panel = ""
+    if scan_id:
+        panel = ("<wscn:ScanIdentifier>%s</wscn:ScanIdentifier>" % xml_escape(scan_id) +
+                 ("<wscn:DestinationToken>%s</wscn:DestinationToken>" % xml_escape(dest_token)
+                  if dest_token else ""))
     side = ("<wscn:ColorProcessing>%s</wscn:ColorProcessing>"
             "<wscn:Resolution><wscn:Width>%d</wscn:Width><wscn:Height>%d</wscn:Height>"
             "</wscn:Resolution><wscn:ScanRegion><wscn:ScanRegionXOffset>0"
@@ -433,7 +440,7 @@ def ticket_xml(source, color, dpi, width, height, fmt, images):
     sides = "<wscn:MediaFront>%s</wscn:MediaFront>" % side
     if source == "ADFDuplex":
         sides += "<wscn:MediaBack>%s</wscn:MediaBack>" % side
-    return ("<wscn:CreateScanJobRequest><wscn:ScanTicket><wscn:JobDescription>"
+    return ("<wscn:CreateScanJobRequest>%s<wscn:ScanTicket><wscn:JobDescription>"
             "<wscn:JobName>KanzonasPDF scan</wscn:JobName>"
             "<wscn:JobOriginatingUserName>KanzonasPDF</wscn:JobOriginatingUserName>"
             "<wscn:JobInformation>KanzonasPDF</wscn:JobInformation></wscn:JobDescription>"
@@ -443,7 +450,7 @@ def ticket_xml(source, color, dpi, width, height, fmt, images):
             "<wscn:Height>%d</wscn:Height></wscn:InputMediaSize></wscn:InputSize>"
             "<wscn:InputSource>%s</wscn:InputSource><wscn:MediaSides>%s</wscn:MediaSides>"
             "</wscn:DocumentParameters></wscn:ScanTicket></wscn:CreateScanJobRequest>" % (
-                xml_escape(fmt), images, width, height, source, sides))
+                panel, xml_escape(fmt), images, width, height, source, sides))
 
 
 class WsdScanner:
@@ -518,7 +525,9 @@ class WsdScanner:
             return "", []
         return parse_status(root)
 
-    def scan(self, settings, report=lambda _t: None):
+    def scan(self, settings, report=lambda _t: None, scan_id=None, dest_token=None):
+        """Scan with ScanSettings; yields each Page as it arrives. scan_id, dest_token: a
+        scan the user started on the printer's panel (scan_events.py)."""
         self.http.canceled = False      # (a scan canceled before doesn't stop this one)
         caps = self.caps or self.capabilities()
         key = settings.source if settings.source in caps.sources else next(iter(caps.sources))
@@ -531,7 +540,7 @@ class WsdScanner:
         dpi = net.nearest(src.resolutions, settings.dpi)
         w_in, h_in = net.region(settings, src)
         body = ticket_xml(SOURCES[key], mode, dpi, round(w_in * 1000), round(h_in * 1000), fmt,
-                          1 if key == "platen" else 0)
+                          1 if key == "platen" else 0, scan_id, dest_token)
         self.trail.append("CreateScanJob: " + body)
         report(tr("Starting the scan..."))
         for attempt in range(6):
@@ -606,3 +615,103 @@ class WsdScanner:
                               http=net.Http(self.http.base), timeout=3)
                 except ScanError:
                     pass
+
+
+# ---- WS-Eventing: scans started on the printer's panel (see scan_events.py) ---------------
+SUBSCRIBE = NS_WSE + "/Subscribe"
+RENEW = NS_WSE + "/Renew"
+UNSUBSCRIBE = NS_WSE + "/Unsubscribe"
+SCAN_AVAILABLE = NS_SCAN + "/ScanAvailableEvent"
+ACTION_DIALECT = "http://schemas.xmlsoap.org/ws/2006/02/devprof/Action"
+PUSH_MODE = NS_WSE + "/DeliveryModes/Push"
+EXPIRES = "PT1H"
+
+
+def subscribe_xml(notify_url, identifier, display_name, context, expires=EXPIRES):
+    """The body of a Subscribe to ScanAvailableEvent: the printer lists display_name as a scan
+    destination on its panel, and sends the event to notify_url."""
+    return ('<wse:Subscribe><wse:Delivery Mode="%s"><wse:NotifyTo><wsa:Address>%s</wsa:Address>'
+            "<wsa:ReferenceParameters><wse:Identifier>%s</wse:Identifier>"
+            "</wsa:ReferenceParameters></wse:NotifyTo></wse:Delivery>"
+            "<wse:Expires>%s</wse:Expires>"
+            '<wse:Filter Dialect="%s">%s</wse:Filter>'
+            "<wscn:ScanDestinations><wscn:ScanDestination>"
+            "<wscn:ClientDisplayName>%s</wscn:ClientDisplayName>"
+            "<wscn:ClientContext>%s</wscn:ClientContext>"
+            "</wscn:ScanDestination></wscn:ScanDestinations></wse:Subscribe>" % (
+                PUSH_MODE, xml_escape(notify_url), xml_escape(identifier), expires,
+                ACTION_DIALECT, SCAN_AVAILABLE, xml_escape(display_name), xml_escape(context)))
+
+
+def seconds(value, default=3600):
+    """Seconds of an xs:duration ("PT1H", "P0Y0M0DT30H0M0S") or until an xs:dateTime."""
+    import re
+    v = (value or "").strip()
+    m = re.match(r"^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?"
+                 r"(?:(\d+(?:\.\d+)?)S)?)?$", v)
+    if m and v not in ("P", "PT"):
+        y, mo, d, h, mi, sec = (float(x or 0) for x in m.groups())
+        return int(((y * 365 + mo * 30 + d) * 24 + h) * 3600 + mi * 60 + sec)
+    try:
+        from datetime import datetime, timezone
+        when = datetime.fromisoformat(v.replace("Z", "+00:00"))
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        left = (when - datetime.now(timezone.utc)).total_seconds()
+        return int(left) if left > 0 else default
+    except ValueError:
+        return default
+
+
+def _soap(service_url, action, to, body, headers="", timeout=net.READ_TIMEOUT):
+    """POST one SOAP message to the scan service's device: its root element, WsdFault for a
+    fault. (A To naming another host is still sent only to this device.)"""
+    h = net.Http(service_url)
+    target = to if to.lower().startswith(("http://", "https://")) else service_url
+    r = h.request("POST", target, envelope(action, to, body, headers=headers),
+                  {"Content-Type": SOAP_TYPE}, timeout=timeout)
+    root = parse_xml(r.body) if r.body.strip() else None
+    fault = fault_of(root) if root is not None else None
+    if fault:
+        raise WsdFault(fault[0], fault[1], r.status)
+    if r.status >= 400 or (root is None and r.status != 202 and action == SUBSCRIBE):
+        raise net.NetError(tr("The scanner answered with an error (HTTP {status}).").format(
+            status=r.status), "http", "%s: HTTP %d" % (action.rsplit("/", 1)[-1], r.status),
+            r.status)
+    return root
+
+
+def subscribe(service_url, notify_url, identifier, display_name, context, timeout=10):
+    """Subscribe to ScanAvailableEvent: {manager, params, expires, token}."""
+    from xml.etree.ElementTree import tostring
+    root = _soap(service_url, SUBSCRIBE, service_url,
+                 subscribe_xml(notify_url, identifier, display_name, context), timeout=timeout)
+    resp = descendants(root, "SubscribeResponse")
+    if not resp:
+        raise ScanError(tr("The scanner didn't accept the subscription."),
+                        "no SubscribeResponse")
+    resp = resp[0]
+    mgr = child(resp, "SubscriptionManager")
+    params = child(mgr, "ReferenceParameters")
+    echo = "".join(tostring(p, encoding="unicode") for p in (params if params is not None
+                                                             else []))[:4096]
+    token = ""
+    for d in descendants(resp, "DestinationResponse"):
+        if text(d, "ClientContext") == context or not token:
+            token = text(d, "DestinationToken")
+    return {"manager": text(mgr, "Address") or service_url, "params": echo,
+            "expires": seconds(text(resp, "Expires")), "token": token}
+
+
+def renew(service_url, sub, timeout=10):
+    """Renew a subscription: seconds until it expires."""
+    root = _soap(service_url, RENEW, sub["manager"],
+                 "<wse:Renew><wse:Expires>%s</wse:Expires></wse:Renew>" % EXPIRES,
+                 sub["params"], timeout=timeout)
+    return seconds(text(descendants(root, "Expires")[0]) if root is not None and
+                   descendants(root, "Expires") else "")
+
+
+def unsubscribe(service_url, sub, timeout=3):
+    _soap(service_url, UNSUBSCRIBE, sub["manager"], "<wse:Unsubscribe/>", sub["params"],
+          timeout=timeout)

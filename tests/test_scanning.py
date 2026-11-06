@@ -7,7 +7,6 @@ with their commands stood in for.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_scanning
 """
-import base64
 import io
 import json
 import os
@@ -346,6 +345,7 @@ class Hostile(ServerCase):
 
 # ---- a fake WS-Scan scanner -------------------------------------------------------------------
 SOAP_NS = ('xmlns:soap="http://www.w3.org/2003/05/soap-envelope" '
+           'xmlns:wse="http://schemas.xmlsoap.org/ws/2004/08/eventing" '
            'xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" '
            'xmlns:wscn="http://schemas.microsoft.com/windows/2006/08/wdp/scan" '
            'xmlns:wsdp="http://schemas.xmlsoap.org/ws/2006/02/devprof" '
@@ -438,6 +438,23 @@ class Wsd(Handler):
         if self.path == "/StableWSDiscoveryEndpoint/schemas-xmlsoap-org_ws_2005_04_discovery":
             mid = re.search(r"<wsa:MessageID>(.*?)</wsa:MessageID>", body).group(1)
             return self.send(200, probe_matches(mid, "http://127.0.0.1:%d/dev" % port))
+        if action == "Subscribe" and self.path == "/WDP/SCAN":
+            st["subscribe"] = body
+            ctx = re.search(r"<wscn:ClientContext>(.*?)</wscn:ClientContext>", body).group(1)
+            # (the manager named on another host: the client must stay on this device)
+            return self.send(200, soap(
+                "<wse:SubscribeResponse><wse:SubscriptionManager><wsa:Address>"
+                "http://192.0.2.77:%d/WDP/SCAN/sub</wsa:Address><wsa:ReferenceParameters>"
+                "<wse:Identifier>urn:uuid:sub-1</wse:Identifier></wsa:ReferenceParameters>"
+                "</wse:SubscriptionManager><wse:Expires>PT1H</wse:Expires>"
+                "<wscn:DestinationResponses><wscn:DestinationResponse><wscn:ClientContext>%s"
+                "</wscn:ClientContext><wscn:DestinationToken>dest-77</wscn:DestinationToken>"
+                "</wscn:DestinationResponse></wscn:DestinationResponses></wse:SubscribeResponse>"
+                % (port, ctx)), "application/soap+xml")
+        if action in ("Renew", "Unsubscribe") and self.path == "/WDP/SCAN/sub":
+            st.setdefault("eventing", []).append((action, body))
+            return self.send(200, soap("<wse:RenewResponse><wse:Expires>PT30M</wse:Expires>"
+                                       "</wse:RenewResponse>" if action == "Renew" else ""))
         if self.path != "/WDP/SCAN":
             return self.send(404)
         if action == "GetScannerElements":
@@ -745,73 +762,163 @@ class FakeProc:
         return 0
 
 
-class Wia(unittest.TestCase):
-    def test_listing(self):
-        calls = []
+# a stand-in for comtypes and WIA's scripting objects (as comtypes' late binding shows them)
+class Coll:
+    def __init__(self, items):
+        self.items = list(items)
 
-        def run(cmd, timeout):
-            calls.append(cmd)
-            return 0, "DEVICE\t{6BDD1FC6-810F-11D0-BEC7-08002BE2092F}\\0001\tDell E525w (WSD)\n", ""
-        with mock.patch.object(scan_local, "run", run):
-            found = scan_local.wia_devices()
-        self.assertEqual([(d.name, d.protocol) for d in found], [("Dell E525w (WSD)", "wia")])
-        cmd = calls[0]
-        self.assertTrue(cmd[0].lower().endswith("powershell.exe"))
-        self.assertEqual(cmd[1:7], ["-NoProfile", "-NonInteractive", "-Sta", "-ExecutionPolicy",
-                                    "Bypass", "-EncodedCommand"])
-        script = base64.b64decode(cmd[7]).decode("utf-16-le")
-        self.assertIn("New-Object -ComObject WIA.DeviceManager", script)
+    @property
+    def Count(self):
+        return len(self.items)
+
+    def Item(self, i):
+        if isinstance(i, str):
+            return next(x for x in self.items if x.Name == i)
+        return self.items[i - 1]
+
+
+class Prop:
+    def __init__(self, pid, value=0, name="", subtype=0, values=(), lo=0, hi=0):
+        self.PropertyID, self.Value, self.Name, self.SubType = pid, value, name, subtype
+        self.SubTypeValues, self.SubTypeMin, self.SubTypeMax = Coll(values), lo, hi
+
+
+class ComError(Exception):
+    def __init__(self, hresult, text):
+        super().__init__(hresult, text, None)
+        self.hresult, self.text = hresult, text
+
+
+class Picture:
+    def __init__(self, data, ext="png"):
+        self.data, self.FileExtension = data, ext
+
+    def SaveFile(self, path):
+        with open(path, "wb") as f:
+            f.write(self.data)
+
+
+class WiaItem:
+    def __init__(self, results, dpi_prop):
+        self.results, self.formats = list(results), []
+        self.Properties = Coll([Prop(p) for p in (6146, 4103, 6148, 6149, 6150, 6151, 6152)]
+                               + [dpi_prop])
+
+    def Transfer(self, fmt=None):
+        self.formats.append(fmt)
+        r = self.results.pop(0)
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+
+class WiaDevice:
+    def __init__(self, handling, item):
+        self.Properties = Coll([Prop(3086, handling), Prop(3088), Prop(3096)])
+        self.Items = Coll([item])
+
+
+class WiaInfo:
+    def __init__(self, dev_id, kind, name, device=None):
+        self.DeviceID, self.Type, self.device = dev_id, kind, device
+        self.Properties = Coll([Prop(7, name, "Name")])
+
+    def Connect(self):
+        return self.device
+
+
+def fake_comtypes(infos, calls):
+    import types
+    ct = types.ModuleType("comtypes")
+    client = types.ModuleType("comtypes.client")
+    ct.COINIT_APARTMENTTHREADED = 2
+    ct.COMError = ComError
+    ct.CoInitializeEx = lambda flags: calls.append(("init", flags, threading.get_ident()))
+    ct.CoUninitialize = lambda: calls.append(("uninit", threading.get_ident()))
+
+    def create(progid, dynamic=False):
+        calls.append(("create", progid, dynamic))
+        m = types.SimpleNamespace(DeviceInfos=Coll(infos))
+        return m
+    client.CreateObject = create
+    ct.client = client
+    return mock.patch.dict(sys.modules, {"comtypes": ct, "comtypes.client": client})
+
+
+EMPTY = ComError(-2145320957, "There are no documents in the document feeder.")  # 0x80210003
+
+
+class Wia(unittest.TestCase):
+    def setup(self, results=(), handling=7, dpi=None):
+        self.calls = []
+        dpi = dpi or Prop(6147, 300, subtype=2, values=[100, 200, 300, 600])
+        self.item = WiaItem(results, dpi)
+        self.dev = WiaDevice(handling, self.item)
+        infos = [WiaInfo("{CAM}\\0001", 2, "A camera"),
+                 WiaInfo("{6BDD}\\0002", 1, "Dell E525w (WSD)", self.dev)]
+        p = fake_comtypes(infos, self.calls)
+        p.start()
+        self.addCleanup(p.stop)
+        return Device("Dell E525w (WSD)", "wia", "{6BDD}\\0002")
+
+    def balanced(self):
+        inits = [c for c in self.calls if c[0] == "init"]
+        self.assertEqual(len(inits), len([c for c in self.calls if c[0] == "uninit"]))
+        self.assertTrue(all(c[1] == 2 for c in inits))                  # single-threaded COM
+        self.assertTrue(all(c[2] for c in self.calls if c[0] == "create"))   # late-bound
+
+    def test_listing(self):
+        self.setup()
+        found = scan_local.wia_devices()
+        self.assertEqual([(d.name, d.protocol, d.address) for d in found],
+                         [("Dell E525w (WSD)", "wia", "{6BDD}\\0002")])
+        self.balanced()
+
+    def test_no_comtypes_is_a_plain_message(self):
+        with mock.patch.dict(sys.modules, {"comtypes": None}):
+            log = []
+            self.assertEqual(scan_local.wia_devices(log), [])
+            self.assertIn("comtypes", log[0])
+
+    def test_capabilities_from_the_driver(self):
+        d = self.setup(handling=7)
+        caps = scan_local.WiaScanner(d).capabilities()
+        self.assertEqual(sorted(caps.sources), ["duplex", "feeder", "platen"])
+        self.assertEqual(caps.sources["platen"].resolutions, [100, 200, 300, 600])
+        d = self.setup(handling=0, dpi=Prop(6147, 300, subtype=1, lo=50, hi=300))
+        caps = scan_local.WiaScanner(d).capabilities()
+        self.assertEqual(list(caps.sources), ["platen"])                  # a flatbed only
+        self.assertEqual(caps.sources["platen"].resolutions, [75, 100, 150, 200, 240, 300])
+        self.balanced()
 
     def test_feeder_scan(self):
         pngs = [picture(255, 330, "PNG"), picture(255, 330, "PNG")]
-        seen = {}
-
-        def popen(cmd, **kw):
-            script = base64.b64decode(cmd[-1]).decode("utf-16-le")
-            seen["script"], seen["kw"] = script, kw
-            folder = re.search(r"Join-Path '([^']+)'", script).group(1)
-            out = ""
-            for i, data in enumerate(pngs, 1):
-                path = os.path.join(folder, "page%04d.png" % i)
-                with open(path, "wb") as f:
-                    f.write(data)
-                out += "PAGE\t%s\r\n" % path
-            return FakeProc((out + "DONE\r\n").encode())
-        dev = Device("Dell", "wia", "{6BDD}\\0001 it's")
-        with mock.patch.object(scan_local.subprocess, "Popen", popen):
-            pages = list(scan_local.WiaScanner(dev).scan(ScanSettings("feeder", "gray", 150)))
+        d = self.setup([Picture(pngs[0]), Picture(pngs[1]), EMPTY])
+        pages = list(scan_local.WiaScanner(d).scan(ScanSettings("feeder", "gray", 150)))
         self.assertEqual([p.data for p in pages], pngs)
-        s = seen["script"]
-        for part in ("$i.DeviceID -eq '{6BDD}\\0001 it''s'", "SetProp $dev.Properties 3088 1",
-                     "SetProp $dev.Properties 3096 0", "SetProp $item.Properties 6146 2",
-                     "SetProp $item.Properties 6147 150", "SetProp $item.Properties 6151 1275",
-                     "{B96B3CAE-0728-11D3-9D7B-0000F81EF32E}", "if ($false) { break }"):
-            self.assertIn(part, s)
-        self.assertEqual(seen["kw"]["stderr"], subprocess.STDOUT)
+        dev, item = self.dev.Properties, self.item.Properties
+        self.assertEqual((dev.items[1].Value, dev.items[2].Value), (1, 0))   # feeder, all pages
+        values = {p.PropertyID: p.Value for p in item.items}
+        self.assertEqual((values[6146], values[4103], values[6147], values[6148], values[6151],
+                          values[6152]), (2, 2, 150, 150, 1275, 1650))
+        self.assertEqual(self.item.formats, ["{B96B3CAE-0728-11D3-9D7B-0000F81EF32E}"] * 3)
+        self.balanced()
 
-    def test_capabilities_from_the_driver(self):
-        scripts = []
-
-        def run(cmd, timeout):
-            scripts.append(base64.b64decode(cmd[-1]).decode("utf-16-le"))
-            return 0, "HANDLING\t7\r\nRES\t100,200,300,600\r\n", ""
-        with mock.patch.object(scan_local, "run", run):
-            caps = scan_local.WiaScanner(Device("D", "wia", "dev-1")).capabilities()
-        self.assertEqual(sorted(caps.sources), ["duplex", "feeder", "platen"])
-        self.assertEqual(caps.sources["platen"].resolutions, [100, 200, 300, 600])
-        self.assertIn("$i.DeviceID -eq 'dev-1'", scripts[0])
-        self.assertIn("PropertyID -eq 3086", scripts[0])
-        with mock.patch.object(scan_local, "run", lambda c, t: (0, "RANGE\t50\t300\r\n", "")):
-            caps = scan_local.WiaScanner(Device("D", "wia", "x")).capabilities()
-        self.assertEqual(list(caps.sources), ["platen"])                  # a flatbed only
-        self.assertEqual(caps.sources["platen"].resolutions, [75, 100, 150, 200, 240, 300])
+    def test_glass_takes_one_page_and_falls_back_to_the_drivers_format(self):
+        bmp = picture(40, 50, "BMP")
+        d = self.setup([ComError(-2147024809, "bad format"), Picture(bmp, "bmp"),
+                        Picture(bmp, "bmp")])
+        pages = list(scan_local.WiaScanner(d).scan(ScanSettings("platen", "bw", 300)))
+        self.assertEqual([p.kind for p in pages], ["bmp"])
+        self.assertEqual(self.item.formats, ["{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}", None])
 
     def test_empty_feeder_message(self):
-        with mock.patch.object(scan_local.subprocess, "Popen", lambda cmd, **kw: FakeProc(
-                b"ERROR\t80210003\tThere are no documents in the document feeder.\r\n")):
-            with self.assertRaises(ScanError) as cm:
-                list(scan_local.WiaScanner(Device("D", "wia", "x")).scan(ScanSettings("feeder")))
+        d = self.setup([EMPTY])
+        with self.assertRaises(ScanError) as cm:
+            list(scan_local.WiaScanner(d).scan(ScanSettings("feeder")))
         self.assertIn("feeder is empty", cm.exception.message)
+        self.assertIn("80210003", cm.exception.details)
+        self.balanced()
 
 
 SANE_OPTIONS = """
@@ -1066,7 +1173,7 @@ class ScanWindow(unittest.TestCase):
 
     def test_add_by_address_in_the_window(self):
         dlg = self.dialog(devices=[])
-        added = Device("Added", "wsd", "http://10.0.0.3/WDP/SCAN", "10.0.0.3")
+        added = Device("Added", "escl", "http://10.0.0.3/eSCL", "10.0.0.3")
         dlg._add = lambda text, log=None: added
         with mock.patch.object(scan_dialog.QInputDialog, "getText",
                                lambda *a, **k: ("10.0.0.3", True)):
@@ -1083,8 +1190,19 @@ class ScanWindow(unittest.TestCase):
         src = pymupdf.open()
         src.new_page(width=300, height=400)
         src.save(os.path.join(folder, "Scan_0001.pdf"))
-        dlg._poll_folder()
-        dlg._poll_folder()
+        main = threading.get_ident()
+        looked = []
+        real = scan_local.FolderWatch.poll
+
+        def poll(watch):
+            looked.append(threading.get_ident())
+            return real(watch)
+        with mock.patch.object(scan_local.FolderWatch, "poll", poll):
+            for _ in range(2):
+                dlg._poll_folder()
+                wait_for(lambda: "watch" not in dlg._busy)
+        self.assertEqual(len(looked), 2)
+        self.assertNotIn(main, looked)                 # the folder is read in a worker thread
         self.assertEqual(len(dlg.pages), 1)
         self.assertTrue(dlg.b_done.isEnabled())
         dlg.b_done.click()
@@ -1104,6 +1222,118 @@ class ScanWindow(unittest.TestCase):
         self.assertEqual(self.w.a_scan.iconText(), "Scan")
 
 
+# ---- scans started on the printer's panel (WS-Eventing) ------------------------------------
+def send_event(srv, sid="scan-id-1", identifier=None, context=None, path=None, body=None):
+    """The fake printer sends ScanAvailableEvent to the address KanzonasPDF subscribed with."""
+    import http.client
+    sub = srv.st["subscribe"]
+    url = re.search(r"<wse:NotifyTo><wsa:Address>(.*?)</wsa:Address>", sub).group(1)
+    ident = identifier or re.search(r"<wse:Identifier>(.*?)</wse:Identifier>", sub).group(1)
+    ctx = context or re.search(r"<wscn:ClientContext>(.*?)</wscn:ClientContext>", sub).group(1)
+    _scheme, host, port, upath = net.split_url(url)
+    body = body if body is not None else soap(
+        "<wscn:ScanAvailableEvent><wscn:ClientContext>%s</wscn:ClientContext>"
+        "<wscn:ScanIdentifier>%s</wscn:ScanIdentifier></wscn:ScanAvailableEvent>" % (ctx, sid),
+        "http://schemas.microsoft.com/windows/2006/08/wdp/scan/ScanAvailableEvent").replace(
+        b"</soap:Header>", b"<wse:Identifier>" + ident.encode() + b"</wse:Identifier>"
+        b"</soap:Header>")
+    c = http.client.HTTPConnection(host, port, timeout=5)
+    c.request("POST", path or upath, body, {"Content-Type": "application/soap+xml"})
+    status = c.getresponse().status
+    c.close()
+    return status
+
+
+class PanelScans(ServerCase):
+    def link(self):
+        from kanzonas import scan_events
+        srv, port = self.server(Wsd, pages=[picture(100, 100)])
+        d = Device("Dell", "wsd", "http://127.0.0.1:%d/WDP/SCAN" % port, "127.0.0.1")
+        scans, states = [], []
+        link = scan_events.PanelLink(d, lambda sid, token: scans.append((sid, token)),
+                                     lambda ok, err: states.append((ok, err)),
+                                     name="KanzonasPDF - TESTPC")
+        link.start()
+        self.addCleanup(lambda: link.stop(wait=True))
+        wait_for(lambda: states)
+        self.assertEqual(states, [(True, None)])
+        return srv, link, scans
+
+    def test_subscribe_event_renew_unsubscribe(self):
+        srv, link, scans = self.link()
+        sub = srv.st["subscribe"]
+        for part in ("<wscn:ClientDisplayName>KanzonasPDF - TESTPC</wscn:ClientDisplayName>",
+                     '<wse:Filter Dialect="http://schemas.xmlsoap.org/ws/2006/02/devprof/Action">'
+                     "http://schemas.microsoft.com/windows/2006/08/wdp/scan/ScanAvailableEvent<",
+                     "<wse:Expires>PT1H</wse:Expires>", "<wsa:Address>http://127.0.0.1:"):
+            self.assertIn(part, sub)
+        self.assertEqual(send_event(srv), 202)
+        wait_for(lambda: scans)
+        self.assertEqual(scans, [("scan-id-1", "dest-77")])
+        link.renew()
+        action, body = srv.st["eventing"][0]
+        self.assertEqual(action, "Renew")
+        self.assertIn("urn:uuid:sub-1</", body)                 # its reference parameters
+        self.assertIn("<wsa:To>http://192.0.2.77:", body)
+        link.stop(wait=True)
+        self.assertEqual([a for a, _b in srv.st["eventing"]], ["Renew", "Unsubscribe"])
+        self.assertIn("urn:uuid:sub-1</", srv.st["eventing"][1][1])
+
+    def test_listener_refuses_what_isnt_the_printers_event(self):
+        srv, link, scans = self.link()
+        self.assertEqual(send_event(srv, path="/kanzonas-scan/guess"), 404)
+        self.assertEqual(send_event(srv, identifier="urn:uuid:someone-else"), 403)
+        self.assertEqual(send_event(srv, body=b"<a>" + b"x" * 70000 + b"</a>"), 413)
+        self.assertEqual(send_event(srv, body=b'<?xml version="1.0"?><!DOCTYPE a [<!ENTITY x '
+                                              b'"y">]><a>&x;</a>'), 400)
+        self.assertEqual(send_event(srv, context="not-ours"), 202)
+        time.sleep(0.2)
+        self.assertEqual(scans, [])
+        # from another address than the printer's
+        from kanzonas import scan_events
+        other = scan_events.EventListener("10.9.9.9", lambda *a: scans.append(a), "127.0.0.1")
+        other.start()
+        self.addCleanup(other.stop)
+        import http.client
+        _s, host, port, path = net.split_url(other.url)
+        c = http.client.HTTPConnection(host, port, timeout=5)
+        c.request("POST", path, b"<a/>")
+        self.assertEqual(c.getresponse().status, 403)
+        c.close()
+        self.assertEqual(scans, [])
+
+    def test_window_scans_when_the_printer_starts_it(self):
+        srv, port = self.server(Wsd, pages=[picture(850, 1100)])
+        dev = Device("Dell E525w", "wsd", "http://127.0.0.1:%d/WDP/SCAN" % port, "127.0.0.1")
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        w.settings.setValue("scan_dpi", "100")
+        w.settings.remove("scan_device")
+        w.settings.setValue("scan_source", "platen")
+        dlg = scan_dialog.ScanDialog(w, discover=lambda cancel=None, log=None: ([dev], []))
+        self.addCleanup(lambda: (dlg._stop(), dlg.deleteLater()))
+        wait_for(lambda: "subscribe" in srv.st and "can also start" in dlg.panel_note.text())
+        self.assertIn("Scan to Computer (WSD)", dlg.panel_note.text())
+        self.assertEqual(send_event(srv, "panel-42"), 202)
+        wait_for(lambda: dlg.pages and "scan" not in dlg._busy)
+        create = next(b for _p, a, b in srv.st["requests"] if a == "CreateScanJob")
+        self.assertIn("<wscn:CreateScanJobRequest><wscn:ScanIdentifier>panel-42</wscn:"
+                      "ScanIdentifier><wscn:DestinationToken>dest-77</wscn:DestinationToken>"
+                      "<wscn:ScanTicket>", create)
+        self.assertIn("panel: subscribed", dlg.details())
+        dlg.b_done.click()
+        self.assertEqual([(round(p.rect.width), round(p.rect.height)) for p in w.view().doc],
+                         [(612, 792)])
+        wait_for(lambda: [a for a, _b in srv.st.get("eventing", [])] == ["Unsubscribe"])
+
+
+class SelfTest(unittest.TestCase):
+    def test_the_built_apps_check(self):
+        with mock.patch.object(scan_local, "wia_devices", lambda log=None: []):
+            detail = scanners.selftest_check()
+        self.assertIn("XML guard", detail)
+
+
 class Startup(unittest.TestCase):
     def test_nothing_of_scanning_loads_at_start(self):
         code = ("import os, sys, tempfile\nsys.path.insert(0, %r)\n"
@@ -1113,8 +1343,8 @@ class Startup(unittest.TestCase):
                 "    QSettings.setPath(f, QSettings.UserScope, d)\n"
                 "from PySide6.QtWidgets import QApplication\napp = QApplication([])\n"
                 "from kanzonas.main_window import MainWindow\nw = MainWindow()\n"
-                "print('LOADED', sorted(m for m in sys.modules if m.startswith('kanzonas.scan')"
-                " and m != 'kanzonas.scan_text'))\nsys.stdout.flush()\nos._exit(0)\n" % ROOT)
+                "print('LOADED', sorted(m for m in sys.modules if (m.startswith('kanzonas.scan')"
+                " and m != 'kanzonas.scan_text') or m.startswith('comtypes')))\nsys.stdout.flush()\nos._exit(0)\n" % ROOT)
         out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
                              timeout=120, env=dict(os.environ, QT_QPA_PLATFORM="offscreen"))
         line = next(x for x in out.stdout.splitlines() if x.startswith("LOADED"))

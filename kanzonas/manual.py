@@ -1089,6 +1089,13 @@ time.</li>
 document feeder, every page in it is scanned. Then <b>Scan more pages</b> adds more (put the
 next page on the glass, or the next stack in the feeder), and <b>Done</b> puts them all in a
 PDF.</li>
+<li><b>Starting the scan on the printer</b> (WSD printers): while the window shows a WSD
+printer, KanzonasPDF asks it to list this computer as a scan destination ("KanzonasPDF - " and
+the computer's name). On the printer's panel choose Scan, then Scan to Computer (WSD), pick that
+name and press Start: the pages come into the window, with the window's settings (choose the
+source there first). Windows asks once whether to allow KanzonasPDF on private networks: allow
+it, or the printer can't reach the window. The printer forgets this computer when the window
+closes.</li>
 <li><b>Put the pages in</b>: <b>A new document</b> (an unsaved tab; Save asks where to save it),
 or <b>This document, after the current page</b> (Ctrl+Z takes them all out again in one step).
 Tick <b>Make the pages searchable</b> to run Recognize text (OCR) on the new pages.</li>
@@ -1105,9 +1112,13 @@ KanzonasPDF use private networks, allow it: that's how the printers' answers get
 <li><b>WSD scanning is turned off</b>: open the printer's web page (type http:// and its IP
 address in a web browser), find WSD (often under Network, Protocols or Services), set it to
 Enable, save, then click Refresh.</li>
-<li><b>The scanner isn't taking a scan from the computer</b>: some printers only accept a WSD
-scan started on their own panel: on the printer choose Scan, then Computer (WSD), then click
-Scan in KanzonasPDF.</li>
+<li><b>The scanner isn't taking a scan from the computer</b>: some printers only scan when the
+scan is started on their own panel: keep the Scan window open with the printer picked, then on
+the printer choose Scan to Computer (WSD) and this computer's name.</li>
+<li><b>A Dell E525w, or a printer like it</b>: turn WSD on in its web page (above), then try
+both ways: click Scan in KanzonasPDF (started from the computer); if the printer doesn't take
+it, start the scan on the printer's panel with Scan to Computer (WSD) and this computer's name
+(started from the printer). If neither works, use Copy details.</li>
 <li><b>Copy details</b> copies what was found and the scanner's own answers (nothing personal;
 serial numbers are left out). If your scanner still doesn't work, paste them into an issue on
 KanzonasPDF's GitHub page so it can be supported.</li>

@@ -7844,3 +7844,35 @@ msgstr "La impresora en {ip} respondió por WSD, pero no ofrece escaneo de esa f
 
 msgid "The printer answered but WSD scanning is turned off: open its web page ({web}) and set WSD to Enable (often under Network or Protocol settings), then try again. If it has no such setting, use Watch a folder... with its Scan to Network Folder."
 msgstr "La impresora respondió, pero el escaneo WSD está desactivado: abra su página web ({web}) y ponga WSD en Habilitar (Enable) (suele estar en la configuración de Red o de Protocolos) e intente de nuevo. Si no tiene esa opción, use Vigilar una carpeta... con su función Escanear a carpeta de red."
+
+# ---- File > Scan: scans started on the printer's panel (scan_events.py), WIA
+
+msgid "Letting the printer list this computer on its panel..."
+msgstr "Pidiendo a la impresora que muestre esta computadora en su panel..."
+
+msgid "The printer started a scan: receiving the pages..."
+msgstr "La impresora inició un escaneo: recibiendo las páginas..."
+
+msgid "The printer started a scan, but another one is still running here."
+msgstr "La impresora inició un escaneo, pero aquí todavía hay otro en curso."
+
+msgid "You can also start the scan on the printer: choose Scan to Computer (WSD) on its panel and pick \"{name}\"; the pages come here, with the settings above."
+msgstr "También puede iniciar el escaneo en la impresora: elija Escanear a computadora (WSD) en su panel y luego \"{name}\"; las páginas llegan aquí, con la configuración de arriba."
+
+msgid "If Windows asks whether to allow KanzonasPDF on private networks, allow it: that's how the printer reaches this window."
+msgstr "Si Windows pregunta si permite que KanzonasPDF use redes privadas, permítalo: así la impresora llega a esta ventana."
+
+msgid "Scans started on the printer's panel can't come here: {error}"
+msgstr "Los escaneos iniciados en el panel de la impresora no pueden llegar aquí: {error}"
+
+msgid "This computer has no network that reaches {ip}."
+msgstr "Esta computadora no tiene ninguna red que llegue a {ip}."
+
+msgid "Couldn't wait for the printer's scans: {error}"
+msgstr "No se pudo esperar los escaneos de la impresora: {error}"
+
+msgid "Scanning through Windows (WIA) needs the comtypes package, which is missing from this copy of KanzonasPDF."
+msgstr "Escanear a través de Windows (WIA) necesita el paquete comtypes, que falta en esta copia de KanzonasPDF."
+
+msgid "The scanner didn't accept the subscription."
+msgstr "El escáner no aceptó la suscripción."

@@ -244,3 +244,31 @@ def details_report(devices, printers, log, device=None, caps=None, error=None, t
         if getattr(error, "details", ""):
             lines.append("  " + error.details[:3000])
     return _scrub("\n".join(lines))
+
+
+# ---- for the built app's --selftest ---------------------------------------------------------
+_SAMPLE_CAPS = (b'<scan:ScannerCapabilities xmlns:scan="http://schemas.hp.com/imaging/escl/2011/'
+                b'05/03" xmlns:pwg="http://www.pwg.org/schemas/2010/12/sm"><pwg:MakeAndModel>'
+                b"Test</pwg:MakeAndModel><scan:Platen><scan:PlatenInputCaps><scan:MaxWidth>2550"
+                b"</scan:MaxWidth><scan:MaxHeight>3300</scan:MaxHeight><scan:ColorMode>RGB24"
+                b"</scan:ColorMode><scan:DiscreteResolution><scan:XResolution>300</scan:XResolution>"
+                b"<scan:YResolution>300</scan:YResolution></scan:DiscreteResolution>"
+                b"</scan:PlatenInputCaps></scan:Platen></scan:ScannerCapabilities>")
+
+
+def selftest_check():
+    """What can be checked without a scanner: the XML guard refuses a DTD, an eSCL answer is
+    read, and on Windows comtypes (WIA) is bundled and WIA can be asked."""
+    from . import scan_escl, scan_local
+    try:
+        net.parse_xml(b'<!DOCTYPE a [<!ENTITY x "y">]><a>&x;</a>')
+        raise AssertionError("a DTD was accepted")
+    except net.XmlRefused:
+        pass
+    caps = scan_escl.parse_capabilities(_SAMPLE_CAPS)
+    assert caps.sources["platen"].resolutions == [300], caps
+    detail = "(XML guard, eSCL"
+    if sys.platform == "win32":
+        import comtypes.client  # noqa: F401  (bundled: scanning through WIA needs it)
+        detail += ", comtypes, WIA: %d scanner(s)" % len(scan_local.wia_devices())
+    return detail + ")"

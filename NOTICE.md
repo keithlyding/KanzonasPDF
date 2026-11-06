@@ -12,11 +12,12 @@ libraries below (the exact versions and their licenses are in `constraints.txt`)
 - pyHanko and pyhanko-certvalidator, MIT - digital signatures
 - aiohttp, Apache-2.0 and MIT
 - pyspellchecker, MIT - spell checking
+- comtypes, MIT - Windows only: scanning through WIA (Windows Image Acquisition)
 - QtAwesome, MIT, for its copy of the Material Design Icons font (Apache-2.0) - toolbar icons
 
-Scanning (File > Scan) needs no extra library: eSCL (AirScan), WSD (WS-Discovery and WS-Scan),
-multicast DNS, WIA (through Windows PowerShell) and SANE (through the `scanimage` command) are
-spoken with Python's standard library. It was written from the published eSCL and Microsoft
+Scanning (File > Scan): eSCL (AirScan), WSD (WS-Discovery, WS-Scan and WS-Eventing) and
+multicast DNS are spoken with Python's standard library, WIA through comtypes (above) and SANE
+through the `scanimage` command. It was written from the published eSCL and Microsoft
 WS-Scan schemas; sane-airscan (https://github.com/alexpevzner/sane-airscan, GPL-2.0 with an
 exception) was read as a reference for how real devices behave. No code was taken from it.
 

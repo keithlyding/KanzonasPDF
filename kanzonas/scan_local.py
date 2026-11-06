@@ -1,18 +1,17 @@
 """File > Scan through the computer's own scanner drivers, and watching a folder.
 
 - Windows: WIA (Windows Image Acquisition), through its scripting objects (WIA.DeviceManager)
-  in a Windows PowerShell process, so USB scanners, vendor WIA drivers and the network scanners
-  Windows has already added all work, with nothing to install.
+  over COM with comtypes (imported only here, only on Windows), so USB scanners, vendor WIA
+  drivers and the network scanners Windows has already added all work.
 - Linux: SANE, through the `scanimage` command when it's installed (the sane-utils package).
 - macOS: neither yet (eSCL and WSD work there).
 - Any system: a folder a printer scans into (Scan to Network Folder, FTP, a USB stick copied
   over): new PDFs and pictures that appear in it are taken as scanned pages.
 
-The commands run with fixed arguments (no shell); what they print and the files they write are
-checked like anything from the network (scan_net.check_image).
+scanimage runs with fixed arguments (no shell); the files WIA and scanimage write are checked
+like anything from the network (scan_net.check_image).
 """
 
-import base64
 import os
 import re
 import shutil
@@ -110,118 +109,121 @@ def _read_page(path, dpi):
 
 
 # ---- Windows: WIA ---------------------------------------------------------------------------
+# WIA's scripting objects (WIA.DeviceManager, the ones VBScript and PowerShell use) through COM
+# with comtypes, late-bound (IDispatch: nothing is generated or written to disk). COM is set up
+# per thread: each call below starts and ends it in the worker thread it runs in, and lets go
+# of every WIA object before ending it.
 WIA_FORMATS = {"jpeg": "{B96B3CAE-0728-11D3-9D7B-0000F81EF32E}",
                "png": "{B96B3CAF-0728-11D3-9D7B-0000F81EF32E}",
                "bmp": "{B96B3CAB-0728-11D3-9D7B-0000F81EF32E}"}
 WIA_INTENT = {"color": 1, "gray": 2, "bw": 4}      # WIA_IPS_CUR_INTENT
 WIA_DATATYPE = {"color": 3, "gray": 2, "bw": 0}    # WIA_IPA_DATATYPE
 WIA_HANDLING = {"platen": 2, "feeder": 1, "duplex": 5}     # WIA_DPS_DOCUMENT_HANDLING_SELECT
+WIA_PAPER_EMPTY = "80210003"
 WIA_ERRORS = {
     "80210003": "empty", "80210002": "jam", "80210004": "jam", "80210016": "open",
     "80210005": "offline", "8021000A": "offline", "80210015": "offline", "80210006": "busy",
     "80210007": "warming", "80210008": "attention",
 }
-
-_PS_HEAD = ("$ErrorActionPreference = 'Stop'\n"
-            "[Console]::OutputEncoding = [Text.Encoding]::UTF8\n"
-            "function Hex($e) { '{0:X8}' -f $e.Exception.HResult }\n")
-
-PS_LIST = _PS_HEAD + """
-$m = New-Object -ComObject WIA.DeviceManager
-foreach ($i in $m.DeviceInfos) {
-  if ($i.Type -eq 1) {
-    $n = ''
-    try { $n = $i.Properties.Item('Name').Value } catch {}
-    Write-Output ("DEVICE`t" + $i.DeviceID + "`t" + $n)
-  }
-}
-"""
-
-PS_CAPS = _PS_HEAD + """
-try {
-  $m = New-Object -ComObject WIA.DeviceManager
-  $info = $null
-  foreach ($i in $m.DeviceInfos) { if ($i.DeviceID -eq '@ID@') { $info = $i } }
-  if ($info -eq $null) { Write-Output "ERROR`tNOTFOUND`t"; exit 3 }
-  $dev = $info.Connect()
-  foreach ($p in $dev.Properties) { if ($p.PropertyID -eq 3086) { Write-Output ("HANDLING`t" + $p.Value) } }
-  foreach ($p in $dev.Items.Item(1).Properties) {
-    if ($p.PropertyID -eq 6147) {
-      if ($p.SubType -eq 2) { Write-Output ("RES`t" + (($p.SubTypeValues | ForEach-Object { $_ }) -join ',')) }
-      elseif ($p.SubType -eq 1) { Write-Output ("RANGE`t" + $p.SubTypeMin + "`t" + $p.SubTypeMax) }
-    }
-  }
-} catch { Write-Output ("ERROR`t" + (Hex $_) + "`t" + $_.Exception.Message); exit 2 }
-"""
-
-PS_SCAN = _PS_HEAD + """
-function SetProp($props, $id, $value) {
-  foreach ($p in $props) { if ($p.PropertyID -eq $id) { try { $p.Value = $value } catch {}; return } }
-}
-try {
-  $m = New-Object -ComObject WIA.DeviceManager
-  $info = $null
-  foreach ($i in $m.DeviceInfos) { if ($i.DeviceID -eq '@ID@') { $info = $i } }
-  if ($info -eq $null) { Write-Output "ERROR`tNOTFOUND`t"; exit 3 }
-  $dev = $info.Connect()
-  SetProp $dev.Properties 3088 @HANDLING@
-  SetProp $dev.Properties 3096 @PAGES@
-  $item = $dev.Items.Item(1)
-  SetProp $item.Properties 6146 @INTENT@
-  SetProp $item.Properties 4103 @DATATYPE@
-  SetProp $item.Properties 6147 @DPI@
-  SetProp $item.Properties 6148 @DPI@
-  SetProp $item.Properties 6149 0
-  SetProp $item.Properties 6150 0
-  SetProp $item.Properties 6151 @WIDTH@
-  SetProp $item.Properties 6152 @HEIGHT@
-  $n = 0
-  while ($n -lt @MAX@) {
-    try { $img = $item.Transfer('@FORMAT@') }
-    catch {
-      $code = Hex $_
-      if ($n -gt 0 -and $code -eq '80210003') { break }
-      if ($n -eq 0 -and $code -ne '80210003') {
-        try { $img = $item.Transfer() } catch { Write-Output ("ERROR`t" + (Hex $_) + "`t" + $_.Exception.Message); exit 2 }
-      } else { Write-Output ("ERROR`t" + $code + "`t" + $_.Exception.Message); exit 2 }
-    }
-    $n++
-    $path = Join-Path '@DIR@' ('page{0:D4}.{1}' -f $n, $img.FileExtension)
-    $img.SaveFile($path)
-    Write-Output ("PAGE`t" + $path)
-    if (@ONE@) { break }
-  }
-  Write-Output "DONE"
-} catch { Write-Output ("ERROR`t" + (Hex $_) + "`t" + $_.Exception.Message); exit 2 }
-"""
+SCANNER_DEVICE = 1                                 # WiaDeviceType.ScannerDeviceType
+P_HANDLING_CAPS, P_HANDLING, P_PAGES = 3086, 3088, 3096
+P_INTENT, P_DATATYPE, P_XRES, P_YRES = 6146, 4103, 6147, 6148
+P_XPOS, P_YPOS, P_WIDTH, P_HEIGHT = 6149, 6150, 6151, 6152
 
 
-def powershell():
-    root = os.environ.get("SystemRoot", r"C:\Windows")
-    exe = os.path.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
-    return exe if os.path.isfile(exe) else (shutil.which("powershell") or "powershell.exe")
+def _comtypes():
+    try:
+        import comtypes
+        import comtypes.client
+    except ImportError:
+        raise ScanError(tr("Scanning through Windows (WIA) needs the comtypes package, which "
+                           "is missing from this copy of KanzonasPDF."))
+    return comtypes
 
 
-def ps_command(script):
-    """The command line that runs a PowerShell script (passed encoded: no quoting issues)."""
-    return [powershell(), "-NoProfile", "-NonInteractive", "-Sta", "-ExecutionPolicy", "Bypass",
-            "-EncodedCommand", base64.b64encode(script.encode("utf-16-le")).decode("ascii")]
+def hresult(ex):
+    """A COM error's code as 8 hex digits ("80210003"), or ""."""
+    args = getattr(ex, "hresult", None), *getattr(ex, "args", ())
+    for a in args:
+        if isinstance(a, int):
+            return "%08X" % (a & 0xFFFFFFFF)
+    return ""
 
 
-def _ps_quote(s):
-    return str(s).replace("'", "''")
+def com_call(fn):
+    """fn(comtypes) with COM set up in this thread; COM errors become ScanErrors. Every WIA
+    object is let go of (and an error's traceback with them) before COM is shut down."""
+    ct = _comtypes()
+    ct.CoInitializeEx(ct.COINIT_APARTMENTTHREADED)
+    result, err = None, None
+    try:
+        result = fn(ct)
+    except ScanError as ex:
+        err = ex.with_traceback(None)
+    except Exception as ex:                 # COMError, or a WIA object missing a member
+        code = hresult(ex)
+        text = (getattr(ex, "text", None) or (ex.args[1] if len(ex.args) > 1 else "") or
+                str(ex))
+        err = ScanError(wia_message(code, text), "WIA %s: %s" % (code, text))
+    finally:
+        import gc
+        gc.collect()
+        ct.CoUninitialize()
+    if err is not None:
+        raise err
+    return result
+
+
+def _manager(ct):
+    return ct.client.CreateObject("WIA.DeviceManager", dynamic=True)
+
+
+def _items(collection):
+    return [collection.Item(i) for i in range(1, int(collection.Count) + 1)]
+
+
+def _prop(props, pid):
+    return next((p for p in _items(props) if int(p.PropertyID) == pid), None)
+
+
+def _set(props, pid, value):
+    """Set a WIA property; a value the driver refuses is left as the driver has it."""
+    p = _prop(props, pid)
+    if p is not None:
+        try:
+            p.Value = value
+        except Exception:
+            pass
+
+
+def _connect(ct, device_id):
+    for info in _items(_manager(ct).DeviceInfos):
+        if str(info.DeviceID) == device_id:
+            return info.Connect()
+    raise ScanError(wia_message("NOTFOUND", ""), "WIA device %s not listed" % device_id)
 
 
 def wia_devices(log=None):
-    code, out, err = run(ps_command(PS_LIST), LIST_TIMEOUT)
-    devices = []
-    for line in out.splitlines():
-        parts = line.split("\t")
-        if len(parts) >= 3 and parts[0] == "DEVICE" and parts[1]:
-            devices.append(Device(parts[2] or tr("Scanner"), "wia", parts[1]))
+    def find(ct):
+        out = []
+        for info in _items(_manager(ct).DeviceInfos):
+            if int(info.Type) != SCANNER_DEVICE:
+                continue
+            name = ""
+            try:
+                name = str(info.Properties.Item("Name").Value)
+            except Exception:
+                pass
+            out.append(Device(name or tr("Scanner"), "wia", str(info.DeviceID)))
+        return out
+    try:
+        devices = com_call(find)
+    except ScanError as ex:
+        if log is not None:
+            log.append("WIA: %s" % (ex.details or ex.message))
+        return []
     if log is not None:
-        log.append("WIA: %d scanner(s)%s" % (len(devices), "" if code == 0 else
-                                             " (exit %s: %s)" % (code, err.strip()[:200])))
+        log.append("WIA: %d scanner(s)" % len(devices))
     return devices
 
 
@@ -244,7 +246,8 @@ def wia_message(code, message, pages=0):
         return tr("The scanner needs attention: check the message on its panel.")
     if code == "NOTFOUND":
         return tr("Windows no longer lists this scanner: click Refresh.")
-    return tr("Windows couldn't scan ({code}): {message}").format(code=code, message=message)
+    return tr("Windows couldn't scan ({code}): {message}").format(code=code or "?",
+                                                                 message=message)
 
 
 class WiaScanner:
@@ -252,30 +255,28 @@ class WiaScanner:
 
     def __init__(self, device):
         self.device = device
-        self.proc = None
         self.trail = []
         self.canceled = False
 
     def capabilities(self):
         """What the driver says: feeder and duplex (WIA_DPS_DOCUMENT_HANDLING_CAPABILITIES)
         and the resolutions; values every scanner takes when it says nothing."""
-        script = PS_CAPS.replace("@ID@", _ps_quote(self.device.address))
-        code, out, err = run(ps_command(script), LIST_TIMEOUT)
-        self.trail.append("WIA capabilities (exit %s): %s" % (code, (out + err).strip()[:2000]))
-        handling, dpis = 0, []
-        for line in out.splitlines():
-            kind, _t, rest = line.partition("\t")
-            if kind == "ERROR":
-                c, _t, msg = rest.partition("\t")
-                raise ScanError(wia_message(c, msg), "WIA %s: %s" % (c, msg))
-            if kind == "HANDLING" and rest.strip().lstrip("-").isdigit():
-                handling = int(rest.strip())
-            elif kind == "RES":
-                dpis = [int(v) for v in rest.split(",") if v.strip().isdigit()]
-            elif kind == "RANGE":
-                lo, _t, hi = rest.partition("\t")
-                if lo.strip().isdigit() and hi.strip().isdigit():
-                    dpis = [v for v in net.COMMON_DPI if int(lo) <= v <= int(hi)]
+        def ask(ct):
+            dev = _connect(ct, self.device.address)
+            p = _prop(dev.Properties, P_HANDLING_CAPS)
+            handling = int(p.Value) if p is not None else 0
+            dpis = []
+            x = _prop(dev.Items.Item(1).Properties, P_XRES)
+            if x is not None:
+                kind = int(x.SubType)
+                if kind == 2:                       # a list
+                    dpis = [int(v) for v in _items(x.SubTypeValues)]
+                elif kind == 1:                     # a range
+                    lo, hi = int(x.SubTypeMin), int(x.SubTypeMax)
+                    dpis = [v for v in net.COMMON_DPI if lo <= v <= hi]
+            return handling, dpis
+        handling, dpis = com_call(ask)
+        self.trail.append("WIA capabilities: handling %s, resolutions %s" % (handling, dpis))
         src = SourceCaps(resolutions=sorted(v for v in dpis if 0 < v <= 4800) or
                          [75, 100, 150, 200, 300, 600])
         sources = {}
@@ -285,55 +286,62 @@ class WiaScanner:
             sources["feeder"] = src
         if handling & 1 and handling & 4:
             sources["duplex"] = src
-        return Caps(sources, self.device.name, out[:4000])
+        return Caps(sources, self.device.name,
+                    "WIA document handling %s, resolutions %s" % (handling, dpis))
 
     def abort(self):
+        # (a page the driver is transferring can't be interrupted: the scan stops after it)
         self.canceled = True
-        if self.proc:
-            self.proc.kill()
 
-    def script(self, settings, folder):
+    def _transfer(self, ct, settings, folder, report):
         w_in, h_in = net.region(settings, SourceCaps(max_w=8.5, max_h=14.0))
-        fmt = "png" if settings.color == "bw" else "jpeg"
-        values = {"ID": _ps_quote(self.device.address), "DIR": _ps_quote(folder),
-                  "HANDLING": WIA_HANDLING[settings.source],
-                  "PAGES": 1 if settings.source == "platen" else 0,
-                  "INTENT": WIA_INTENT[settings.color], "DATATYPE": WIA_DATATYPE[settings.color],
-                  "DPI": int(settings.dpi), "WIDTH": round(w_in * settings.dpi),
-                  "HEIGHT": round(h_in * settings.dpi), "FORMAT": WIA_FORMATS[fmt],
-                  "MAX": net.MAX_PAGES, "ONE": "$true" if settings.source == "platen" else "$false"}
-        return re.sub(r"@([A-Z]+)@", lambda m: str(values[m.group(1)]), PS_SCAN)
+        dpi = int(settings.dpi)
+        dev = _connect(ct, self.device.address)
+        _set(dev.Properties, P_HANDLING, WIA_HANDLING[settings.source])
+        _set(dev.Properties, P_PAGES, 1 if settings.source == "platen" else 0)
+        item = dev.Items.Item(1)
+        for pid, value in ((P_INTENT, WIA_INTENT[settings.color]),
+                           (P_DATATYPE, WIA_DATATYPE[settings.color]), (P_XRES, dpi),
+                           (P_YRES, dpi), (P_XPOS, 0), (P_YPOS, 0),
+                           (P_WIDTH, round(w_in * dpi)), (P_HEIGHT, round(h_in * dpi))):
+            _set(item.Properties, pid, value)
+        fmt = WIA_FORMATS["png" if settings.color == "bw" else "jpeg"]
+        paths = []
+        while len(paths) < net.MAX_PAGES and not self.canceled:
+            report(tr("Scanning page {n}...").format(n=len(paths) + 1))
+            try:
+                img = item.Transfer(fmt)
+            except Exception as ex:
+                code = hresult(ex)
+                if paths and code == WIA_PAPER_EMPTY:
+                    break                           # (the feeder is done)
+                if paths or code == WIA_PAPER_EMPTY:
+                    raise
+                img = item.Transfer()               # (a driver without that format)
+            path = os.path.join(folder, "page%04d.%s" % (len(paths) + 1,
+                                                         str(img.FileExtension or "bmp")))
+            img.SaveFile(path)
+            img = None
+            paths.append(path)
+            if settings.source == "platen":
+                break
+        return paths
 
     def scan(self, settings, report=lambda _t: None):
         self.canceled = False
         folder = tempfile.mkdtemp(prefix="kanzonas-scan-")
         try:
             report(tr("Starting the scan..."))
-            self.proc = _Proc(ps_command(self.script(settings, folder)), net.PAGE_TIMEOUT,
-                              stderr=subprocess.STDOUT)
-            pages, error = 0, None
-            for line in self.proc.lines(self.proc.p.stdout):
-                kind, _t, rest = line.partition("\t")
-                if kind == "PAGE":
-                    path = os.path.join(folder, os.path.basename(rest))
-                    pages += 1
-                    yield _read_page(path, settings.dpi)
-                    report(tr("Scanning page {n}...").format(n=pages + 1))
-                elif kind == "ERROR":
-                    code, _t, msg = rest.partition("\t")
-                    error = ScanError(wia_message(code, msg, pages), "WIA %s: %s" % (code, msg))
-            self.proc.finish()
+            paths = com_call(lambda ct: self._transfer(ct, settings, folder, report))
+            if self.canceled and not paths:
+                raise net.Canceled()
+            if not paths:
+                raise ScanError(tr("The scanner finished without sending a page."))
+            for path in paths:
+                yield _read_page(path, settings.dpi)
             if self.canceled:
                 raise net.Canceled()
-            if self.proc.timed_out:
-                raise ScanError(tr("The scanner stopped answering."))
-            if error:
-                raise error
-            if not pages:
-                raise ScanError(tr("The scanner finished without sending a page."))
         finally:
-            if self.proc:
-                self.proc.kill()
             shutil.rmtree(folder, ignore_errors=True)
 
 

@@ -13,6 +13,7 @@ only there are they made into PDF pages (PyMuPDF isn't thread-safe).
 
 import json
 import os
+import sys
 import threading
 
 import pymupdf
@@ -109,6 +110,7 @@ class ScanDialog(QDialog):
         self.error = None
         self.trail = []
         self.watch = None
+        self.link = None                # the WSD printer this computer is listed on (panel)
         self._gen = {}
         self._busy = set()
         self._bridge = _Bridge(self)
@@ -176,6 +178,11 @@ class ScanDialog(QDialog):
         self.status.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status.setMinimumHeight(48)
         lay.addWidget(self.status)
+        self.panel_note = QLabel()
+        self.panel_note.setWordWrap(True)
+        self.panel_note.setStyleSheet("color: gray;")
+        self.panel_note.setVisible(False)
+        lay.addWidget(self.panel_note)
         self.progress = QProgressBar()
         self.progress.setRange(0, 0)
         self.progress.setVisible(False)
@@ -250,7 +257,7 @@ class ScanDialog(QDialog):
         self.list.setEnabled(not scanning)
         for w in (self.source, self.color, self.dpi, self.page_size):
             w.setEnabled(not scanning)
-        self.progress.setVisible(bool(self._busy))
+        self.progress.setVisible(bool(self._busy - {"watch"}))
         n = len(self.pages)
         self.count.setText(tr("{n} page(s) scanned").format(n=n) if n else "")
 
@@ -374,6 +381,8 @@ class ScanDialog(QDialog):
         if d is None or "scan" in self._busy:
             self._update()
             return
+        if self.link is not None and self.link.device.key() != d.key():
+            self._unlink()
         if d.key() in self.caps:
             self._fill_options(self.caps[d.key()])
             return
@@ -397,6 +406,8 @@ class ScanDialog(QDialog):
         if d is not None and d.key() == key:
             self._fill_options(result)
             self._say(tr("Ready: put the pages on the glass or in the feeder, then click Scan."))
+            if d.protocol == "wsd" and self.link is None:
+                self._link(d)
 
     def _fill_options(self, caps):
         s = self.settings
@@ -439,7 +450,9 @@ class ScanDialog(QDialog):
                             size=self.page_size.currentData() or "letter")
 
     # ---- scanning --------------------------------------------------------------------------
-    def scan(self):
+    def scan(self, panel=None):
+        """Scan with the window's settings. panel: (ScanIdentifier, DestinationToken) of a
+        scan started on the printer's panel."""
         d = self.device()
         if d is None or d.key() not in self.caps:
             return
@@ -450,9 +463,11 @@ class ScanDialog(QDialog):
         self._remember()
         self._say(tr("Starting the scan..."))
 
+        extra = {"scan_id": panel[0], "dest_token": panel[1]} if panel else {}
+
         def job(progress):
             n = 0
-            for page in scanner.scan(settings, lambda t: progress("status", t)):
+            for page in scanner.scan(settings, lambda t: progress("status", t), **extra):
                 progress("page", page)
                 n += 1
             return n
@@ -487,6 +502,54 @@ class ScanDialog(QDialog):
             self._say(tr("Canceled."))
         self._update()
 
+    # ---- scans started on the printer's panel (WSD, scan_events.py) ----------------------
+    def _link(self, device):
+        from .scan_events import PanelLink
+        gen = self._gen["panel"] = self._gen.get("panel", 0) + 1
+        bridge = self._bridge
+
+        def emit(*ev):
+            try:
+                bridge.event.emit(("panel", gen) + ev)
+            except RuntimeError:        # (the window is gone)
+                pass
+        self.link = PanelLink(device, lambda sid, token: emit("scan", sid, token),
+                              lambda ok, err: emit("state", ok, err))
+        self.panel_note.setText(tr("Letting the printer list this computer on its panel..."))
+        self.panel_note.setVisible(True)
+        self.link.start()
+
+    def _unlink(self):
+        if self.link is not None:
+            self.link.stop()
+            self.link = None
+            self._gen["panel"] = self._gen.get("panel", 0) + 1
+        self.panel_note.setVisible(False)
+
+    def _got_panel(self, what, *args):
+        if what == "state":
+            ok, err = args
+            if ok:
+                note = tr("You can also start the scan on the printer: choose Scan to Computer "
+                          "(WSD) on its panel and pick \"{name}\"; the pages come here, with the "
+                          "settings above.").format(name=self.link.name if self.link else "")
+                if sys.platform == "win32":
+                    note += " " + tr("If Windows asks whether to allow KanzonasPDF on private "
+                                     "networks, allow it: that's how the printer reaches this "
+                                     "window.")
+            else:
+                note = tr("Scans started on the printer's panel can't come here: {error}").format(
+                    error=getattr(err, "message", err))
+            self.panel_note.setText(note)
+            return
+        if what == "scan":
+            if "scan" in self._busy:
+                self._say(tr("The printer started a scan, but another one is still running "
+                             "here."))
+                return
+            self._say(tr("The printer started a scan: receiving the pages..."))
+            self.scan(panel=args)
+
     # ---- a watched folder -------------------------------------------------------------------
     def watch_folder(self):
         from .scan_local import FolderWatch
@@ -502,20 +565,39 @@ class ScanDialog(QDialog):
                      "when they're all in.").format(folder=folder))
 
     def _poll_folder(self):
+        """Look at the watched folder in a worker thread (a slow network share mustn't make
+        the window stutter); only making the finished files into pages happens here."""
         from .scan_local import read_watched
-        if self.watch is None:
+        if self.watch is None or "watch" in self._busy:
             return
-        for path in self.watch.poll():
-            try:
-                page = read_watched(path)
-                build_pdf([page]).close()        # (it opens: checked before it's added)
-            except Exception as ex:
+        watch = self.watch
+
+        def look(_progress):
+            out = []
+            for path in watch.poll():
+                try:
+                    out.append((path, read_watched(path), None))
+                except Exception as ex:
+                    out.append((path, None, ex))
+            return out
+        self._start("watch", look)
+
+    def _got_watch(self, what, result):
+        if what == "error":
+            self._say(getattr(result, "message", str(result)))
+            return
+        for path, page, err in result:
+            if page is not None:
+                try:
+                    build_pdf([page]).close()    # (it opens: checked before it's added)
+                except Exception as ex:
+                    err = ex
+            if err is not None:
                 self._say(tr("Couldn't use {name}: {error}").format(
-                    name=os.path.basename(path), error=getattr(ex, "message", ex)))
+                    name=os.path.basename(path), error=getattr(err, "message", err)))
                 continue
             self.pages.append(page)
             self._say(tr("Added {name} from the folder.").format(name=os.path.basename(path)))
-        self._update()
 
     # ---- Done: the pages into a document -------------------------------------------------
     def finish(self):
@@ -561,8 +643,12 @@ class ScanDialog(QDialog):
         from . import scanners
         d = self.device()
         caps = self.caps.get(d.key()) if d else None
+        trail = list(self.trail)
+        if self.link is not None:
+            trail += ["panel: " + x for x in self.link.log + (
+                self.link.listener.log if self.link.listener else [])]
         return scanners.details_report(self.devices, self.printers, self.log, d, caps,
-                                       self.error, self.trail)
+                                       self.error, trail)
 
     def copy_details(self):
         QApplication.clipboard().setText(self.details())
@@ -579,8 +665,13 @@ class ScanDialog(QDialog):
         self._stop()
         super().reject()
 
+    def done(self, result):
+        self._stop()                    # (accepted or rejected: stop listening, unsubscribe)
+        super().done(result)
+
     def _stop(self):
         self._watch_timer.stop()
+        self._unlink()
         if self.scanner is not None:
             self.scanner.abort()
         for k in list(self._gen):
