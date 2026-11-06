@@ -7,6 +7,7 @@ language.
 """
 
 import re
+import sys
 
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QListWidget, QTextBrowser,
@@ -76,7 +77,8 @@ again</b> to always use the size you chose; change it, or go back to being asked
 Preferences &gt; Pages and display &gt; New PDF page size. With no document open, Insert blank
 page starts a new PDF the same way, and Insert pages from file makes a new, unsaved PDF from
 the files you choose.</li>
-<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Saving as a file that's open in another
+<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. (For an archival copy, see Save as PDF/A
+in Document tools.) Saving as a file that's open in another
 tab replaces that file and closes that tab (asking first if it has unsaved changes); the same goes
 for Extract pages, Combine files and the copies saved by Compress, Timestamp and digital signing,
 except that the other tab then shows the new file. Undo is Ctrl+Z, redo is Ctrl+Y.
@@ -106,16 +108,26 @@ off in Preferences &gt; Start-up &gt; <b>Ask before closing KanzonasPDF with sev
 open</b>). Closing a tab asks only about that document.</li>
 <li><b>Ribbon:</b> commands are grouped on tabs: Home, Markup, Measure, Arrange, Review,
 Protect, Forms, Pages, Print and View. The <b>Markup</b> tab has only markups: comments, notes, text
-boxes, callouts, stamps, shapes and attached-file icons. Markups stay editable in any PDF
+boxes, callouts, stamps, legends, shapes and attached-file icons. Markups stay editable in any PDF
 viewer (Adobe Reader, browsers) until you flatten them. Everything else you add (pictures,
 Add text, signatures, initials, dates) is written into the page itself, so in a viewer it
 looks and acts flattened; Edit text and Edit objects (Home tab) still change it here, as
 Acrobat and PDF-XChange can. Open, save, print, undo and redo sit left of the tabs, and the
 Find box (with its match count and up / down arrows) sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
-zoom box with zoom out / zoom in, like PDF-XChange Editor. The ribbon is compact: two rows of
-buttons. If the window is too narrow for a tab, scroll it sideways with the mouse wheel or the
-thin bar under it. View &gt; <b>Show group names on ribbon</b> adds a name under each group of
+zoom box with zoom out / zoom in, like PDF-XChange Editor, and the current page's drawing
+scale (red when it has none; click it to set it). A message on the bottom bar too long for
+the room left of the page controls ends in "..."; hover over it to read all of it. The ribbon is compact: two rows of
+buttons, and every tab fits a screen 1366 pixels wide, in English and in Spanish. Commands used
+less often share a button with an arrow beside it: click the button for the command it shows,
+or the arrow for the others (the button then shows the one used last). On the Home tab,
+Highlight's arrow has Underline and Strike, and Sign's has Initials; on the Pages tab, Header
+and footer's has Watermark and Background, and Extract's has Replace. Others are listed under
+the narrow arrow at the right end of a group: Grid settings beside the snap switches, Move up
+and Move down in the Pages tab's Organize group, Attachments and Sheet callouts in its
+Document group, Collapse and Group names in the View tab's Ribbon group, Align in the CAD tab's
+Modify group. On the Home tab, Zoom out and Zoom in are icons under Actual size. If the window
+is too narrow for a tab, scroll it sideways with the mouse wheel or the thin bar under it. View &gt; <b>Show group names on ribbon</b> adds a name under each group of
 buttons (a little taller, like Microsoft Office). View &gt; <b>Show menu bar</b> (Ctrl+Shift+M)
 hides or shows the File, Edit, View... menu bar; when it's hidden, the &#9776; button at the right
 of the ribbon tabs has every menu, and all keyboard shortcuts still work. <b>Collapse ribbon</b>
@@ -143,7 +155,7 @@ drawings use very thin lines (a tenth of a point or less); at their true width t
 part of a screen pixel when zoomed out and come out pale gray. With this on they stay dark and
 legible at any zoom. Only the screen changes: printing, export, OCR, Compare and the saved
 file use the true line widths. Your choice is remembered.</li>
-<li><b>Theme:</b> View &gt; Theme (Match Windows, or Match system on Linux; Light, Dark). View &gt; Show text labels on
+<li><b>Theme:</b> View &gt; Theme (Match Windows, or Match system on Linux and macOS; Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar or ribbon button or box for a
 tooltip saying what it does and its keyboard shortcut (the one you set in Keyboard shortcuts);
 a button that holds several tools (Shapes, Measure) names the tool it shows and its key. On the
@@ -220,6 +232,19 @@ from any folder but stores settings on the computer like the installed version.<
 <li><b>Fonts:</b> Add text and Edit text use the fonts installed for fontconfig (/usr/share/fonts, ~/.local/share/fonts, ~/.fonts...): TrueType and OpenType fonts are embedded (also TrueType collections, .ttc, such as most Chinese, Japanese and Korean fonts: the first font in the file); a Type 1 font isn't, and Helvetica is used instead. Sans Serif, Serif and Monospace use the font your system shows for them.</li>
 <li><b>Differences from Windows:</b> View &gt; Theme's first choice is <b>Match system</b> (the desktop's light or dark setting); digital signing uses your personal certificate or a .pfx/.p12 file (there's no Windows certificate store); printing needs a printer set up in the system (CUPS); the Open and Save windows are the desktop's own or Qt's.</li>
 <li><b>Remove:</b> untick the Preferences option above, then delete the AppImage. To remove your settings and files too, delete ~/.config/KanzonasPDF and ~/.local/share/KanzonasPDF.</li>
+</ul>
+
+<h2 id="macos">KanzonasPDF on macOS</h2>
+<ul>
+<li><b>Install:</b> from the Releases page, download <b>KanzonasPDF-macos-arm64.dmg</b>. It is for Macs with Apple silicon (M1 or newer: Apple menu &gt; About This Mac says Chip Apple M...) and macOS 14.4 (Sonoma) or later. There's no version for Macs with an Intel processor yet; one may come later if people ask for it. Open the disk image, drag KanzonasPDF onto the Applications folder beside it, then eject the disk image (start KanzonasPDF from Applications, not from the disk image).</li>
+<li><b>The first time you open it (Open Anyway):</b> KanzonasPDF isn't signed and notarized by Apple yet, so macOS stops it the first time and says Apple could not verify it is free of malware. Click <b>Done</b> (not Move to Trash). Then open System Settings &gt; <b>Privacy &amp; Security</b>, scroll down to Security, where it says KanzonasPDF was blocked, click <b>Open Anyway</b>, confirm with your password or Touch ID, and click <b>Open Anyway</b> once more. After that it opens like any other app. macOS asks again after you install a new version. Only do this with a disk image from this project's Releases page; you can check it first in Terminal with <code>shasum -a 256 KanzonasPDF-macos-arm64.dmg</code>: the result must match the file's line in SHA256SUMS.txt on the release.</li>
+<li><b>Opening PDFs:</b> double-click a PDF, use Open With in Finder, drag PDFs onto KanzonasPDF in the Dock, or use File &gt; Open. A PDF opened while KanzonasPDF runs opens as a new tab in the same window. To open every PDF with it: select a PDF in Finder, choose File &gt; Get Info, pick KanzonasPDF under Open with and click <b>Change All...</b>.</li>
+<li><b>Keys:</b> where this manual says Ctrl, press Command (&#8984;), and where it says Alt, press Option (&#8997;): Ctrl+S is Command-S, Ctrl+click is Command-click, Alt+click is Option-click, Ctrl+wheel is Command with the mouse wheel. The menus, the tool tips and the Keyboard shortcuts table of this manual show the Mac's keys. About, Preferences (Command-K) and <b>Quit</b> (Command-Q, which closes every window, asking about unsaved changes) are in the KanzonasPDF menu, left of File. Replace text is Command-Option-F (Command-H hides the app on a Mac). For the function keys (F1 this manual, F11 CAD mode, F12 night mode...) hold fn on most Mac keyboards; if macOS uses a key for itself, change it in View &gt; Keyboard shortcuts or in System Settings &gt; Keyboard. The Delete key (&#9003;) deletes what's selected.</li>
+<li><b>Update:</b> KanzonasPDF tells you when there's a new version (Help &gt; Check for updates); on a Mac it doesn't replace itself. <b>Download</b> opens the release page: download the new disk image, drag KanzonasPDF onto Applications and choose Replace. Your settings are kept. If macOS stops the new version, allow it again with Open Anyway (above).</li>
+<li><b>Your files:</b> settings are kept in ~/Library/Preferences/com.kanzonaspdf.KanzonasPDF.plist; signatures, stamp pictures, your certificate and backups in ~/Library/Application Support/KanzonasPDF/KanzonasPDF (Preferences &gt; General shows both).</li>
+<li><b>Fonts:</b> Add text and Edit text use the fonts in /System/Library/Fonts, /Library/Fonts and your own ~/Library/Fonts: TrueType and OpenType fonts and TrueType collections (.ttc: the first font in the file) are embedded; other kinds (.dfont, Type 1) aren't, and Helvetica is used instead.</li>
+<li><b>Differences from Windows:</b> View &gt; Theme's first choice is <b>Match system</b> (the Mac's Light or Dark appearance); digital signing uses your personal certificate or a .pfx/.p12 file (there's no Windows certificate store, and the macOS keychain isn't used); the menu bar is always at the top of the screen, so View &gt; Show menu bar isn't offered; there's no portable version.</li>
+<li><b>Remove:</b> drag KanzonasPDF from Applications to the Trash. To remove your settings and files too, delete the two places above.</li>
 </ul>
 
 <h2 id="navigate">Moving around</h2>
@@ -331,7 +356,7 @@ or editing the document starts a fresh search.</li>
 tick <b>Match case</b> or <b>Whole words only</b> if needed, choose <b>All pages</b> or this
 page, and click <b>Replace all</b>. It changes the PDF's own text (not comments). Each line
 that changes is rewritten like Edit text does it, in the line's own font when that has the
-characters. A line is rewritten in place and doesn't rewrap: when the new text runs into other
+characters, each word kept in its own style (bold, italic, color...). A line is rewritten in place and doesn't rewrap: when the new text runs into other
 text or past the edge of the page, Replace text says on which pages (Ctrl+Z undoes it; Edit text
 can rewrap the paragraph). Pages with redaction marks that aren't applied yet are skipped (it says which).
 Ctrl+Z undoes the whole replacement.</li>
@@ -403,9 +428,10 @@ next to its commands (they stay on their own tabs too). Similar tools share one 
 AutoCAD's ribbon: click the button for the tool it shows, or the arrow beside it to pick another;
 the button then shows the one used last (or the tool that's on). <b>Markup</b>: Rectangle (arrow:
 Cloud, Polygon, Mask), Circle (arrow: Arc), Line (arrow: Polyline, Curve, Pen), Arrow, Text box (arrow: Callout),
-Stamp (arrow: Image); their one-letter shortcuts type into the command line in CAD mode.
+Stamp (arrow: Image, Legend); their one-letter shortcuts type into the command line in CAD mode.
 <b>Measure</b>: Length (arrow: Polylength, Area, Angle, Radius, Perimeter, Volume, Count,
-Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Edit</b>: Erase
+Calibrate Tape Measure), and under it Snap to objects, Snap to grid and Snap to page as icons
+(as on AutoCAD's status bar; hover over one for its name). <b>Edit</b>: Erase
 content, Bring to front (arrow: Bring forward, Send backward, Send to back), Align left (arrow:
 the other alignments, Distribute horizontally and Distribute vertically), Edit text (arrow: Add
 text): Edit text changes the words already on the page, Add text types new text into the
@@ -531,7 +557,7 @@ link; drag a box around that one instead. Drag any selected markup to move them 
 Delete removes them all; Properties changes apply to all of them.</li>
 <li><b>Delete:</b> Delete or Backspace, or right-click the markup &gt; <b>Delete</b>.
 <b>Edit a comment's text:</b> double-click it, or right-click it &gt; <b>Edit text...</b>.
-Measurements, stamps and signature placeholders show text made from what they are, so they
+Measurements, stamps, legends and signature placeholders show text made from what they are, so they
 don't offer Edit text (double-click a fill-in stamp to change its values); add a note or a
 text box to comment on them.
 If you right-click highlighted text that's selected, the menu offers <b>Delete highlight</b>.
@@ -659,7 +685,7 @@ under it on screen and in print, but that content stays in the file: use Redact 
 for good.</li>
 <li><b>In CAD mode</b> the tools that draw from one point to another (Line, Arrow, Rectangle,
 Ellipse, Circle, Cloud, Mask, Text box, Callout, Length, Radius, Calibrate Tape Measure, the
-Eraser's box, Erase content, Capture area, Crop pages, Links, signature placeholders) work as in
+Eraser's box, Erase content, Capture area, Crop pages, Links, signature placeholders, legends) work as in
 AutoCAD: click where it starts, move (the shape follows the pointer with no button held), and
 click where it ends. It snaps, and Shift works, as when dragging; pressing, dragging and letting
 go still works too. A click that shakes a little is still a click. Escape or a right-click
@@ -706,15 +732,16 @@ The capture also pastes as a picture into Word, Excel, email and other programs.
 <ul>
 <li><b>Show grid</b> (View menu or toolbar) draws a grid over the page. It's only on screen:
 it isn't saved in or printed with the PDF.</li>
-<li><b>Grid settings</b> (View menu): the spacing in inches, millimeters or points, measured on
+<li><b>Grid settings</b> (View menu; on the ribbon under the arrow at the right of the snap
+switches): the spacing in inches, millimeters or points, measured on
 the paper, and how often a darker line is drawn. When zoomed far out, only the darker lines
 are shown.</li>
 <li><b>Snap to grid:</b> points you draw or drag jump to the nearest grid intersection.</li>
 <li><b>Snap to objects:</b> points jump to nearby markup corners, edge midpoints, centers and
 line ends, and to the drawing's own line ends, midpoints and corners (useful on CAD sheets).</li>
 <li>The snap options are in the View menu and toolbar, in the <b>Grid &amp; snap</b> group of
-the ribbon's View and Measure tabs and the <b>Snap</b> group of the Arrange tab, in Grid
-settings, and in Preferences &gt; Pages and display.</li>
+the ribbon's View tab, the <b>Scale &amp; snap</b> group of the Measure tab and the <b>Snap</b>
+group of the Arrange tab, in Grid settings, and in Preferences &gt; Pages and display.</li>
 <li><b>Snap to page</b>:
 points jump to the page's corners, the middles of its edges and its center, and onto its edges,
 so a markup can be lined up exactly with the edge or the middle of the page.</li>
@@ -729,7 +756,8 @@ lines up with the page's left edge, center or right edge, and its top, middle or
 page's, each way on its own, and a green dashed guide shows what it lined up with (drop a picture
 near the middle of the sheet and it settles exactly in the middle); with Snap to objects, one of
 its corners, edge middles or center goes onto a nearby markup's point (a dragged markup also onto
-the drawing's own points); with Snap to grid, its top-left corner goes to the grid.</li>
+the drawing's own points; with both on, whichever is nearer); with Snap to grid, its top-left
+corner goes to the grid.</li>
 <li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
 </ul>
 
@@ -807,6 +835,31 @@ submitted</b> in the stamp list. When you click to place one, a box asks for the
 date (the date starts as today, in your Preferences &gt; You date format). Double-click a placed
 one to change what it says; it resizes to fit. Its comment text (in the Markups list, its CSV
 and other PDF programs) reads like "PO # PO-4471, Date ordered 10/26/2026".</li>
+</ul>
+
+<h2 id="legends">Legends</h2>
+<ul>
+<li><b>Legend</b> (Markup tab, Tools &gt; Legend; on the CAD tab under Stamp's arrow), as in
+Bluebeam: click where its top-left corner goes, or drag a box to set its width (its text is
+sized to fit). It places a box listing the kinds of markups used: each row has a small sample
+drawn in that markup's own style (color, line width, fill, cloud, arrowhead...), its label (the
+tool's name, or the markup's subject when it has one, as markups from Bluebeam often do; a
+count's group name; a stamp's word) and how many there are. Markups of one kind in different
+styles (red clouds and blue clouds) get a row each. Measurements also show their total length,
+area or volume, in the page's units (Measure &gt; Set scale).</li>
+<li><b>It updates by itself</b> when markups are added, changed or deleted, as part of the same
+change: Ctrl+Z takes the markup and the legend's update back together, and Redo puts both back.
+It never counts itself or another legend, nor hidden markups, redaction marks, signature
+placeholders, or the replies and review statuses of a comment thread (they're part of the markup
+they answer). Applying redactions draws it again from the markups left (see Redaction).</li>
+<li><b>Options</b> (Properties panel: set them before placing, with the Legend tool picked, or on
+a selected legend): <b>Title</b> (Legend to start with; empty for none), <b>Markups from</b>
+<b>This page</b> or the <b>Whole document</b> (every page, the totals in this page's units),
+<b>Show the count</b>, <b>Show measurement totals</b>, <b>Text size</b>, <b>Border</b> and its
+color, the fill and the text color.</li>
+<li>It moves, resizes (its text grows or shrinks with the box), copies, locks and undoes like
+any markup. It's a standard stamp markup with its own appearance, so other PDF programs show and
+print it as it looks here, and Flatten comments makes it part of the page.</li>
 </ul>
 
 <h2 id="images">Pictures and attached files (videos and more)</h2>
@@ -898,7 +951,9 @@ goes and type (Enter finishes, Shift+Enter starts a new line). The text is writt
 itself, like Acrobat's Add Text: PDF viewers can't change it, and Edit text changes it later.
 Pick the font (any installed font, plus Bold and Italic), size and color in Properties. The
 <b>Font size</b> can also be changed while you type: the text shows at the new size right away.
-Only the letters used are stored in the file.</li>
+The style buttons above the box style single words, as in Edit text (see <b>Bold, italic,
+underline and color for single words</b> below). Only the letters used are stored in the
+file.</li>
 <li><b>Change a line's font or size:</b> with the Edit text tool, click the line: Properties
 shows its own <b>Font size</b>. Change the size, or pick a font (and Bold / Italic), and press
 Enter, with or without changing the text. The choice applies to that line only: the next line you
@@ -919,8 +974,29 @@ Shift+Enter starts a new paragraph. Drag a side handle to make it wider or narro
 outline to move it (links on it move along; highlights and underlines drawn into the page stay
 where they were, since the words have moved within it). A paragraph that gets longer grows
 downward; it doesn't push what's below it down, so if it now runs into other text or past the
-bottom of the page, the status bar says so (Ctrl+Z undoes it). The paragraph is written in one
-style: a bold or colored word inside it comes out like the rest.</li>
+bottom of the page, the status bar says so (Ctrl+Z undoes it). Each word keeps its own style
+through the edit and the rewrapping: its font, size, bold, italic, color, underline and
+strikethrough. The box shows them as on the page.</li>
+<li><b>Bold, italic, underline and color for single words:</b> while editing (a paragraph, a
+line, or new text with Add text), select words and use the buttons above the box:
+<b>Bold</b> (Ctrl+B), <b>Italic</b> (Ctrl+I), <b>Underline</b> (Ctrl+U),
+<b>Strikethrough</b>, <b>Text color</b>, and <b>Larger text</b> (Ctrl+]) / <b>Smaller
+text</b> (Ctrl+[), a point at a time (a line with larger words moves down as far as they need,
+so they don't run into the line above). Press a button again to take the style off. With nothing
+selected, the button sets the style of what you type next. Text typed next to a word takes
+that word's style; text typed into an empty box takes the paragraph's main style.
+<br>Bold and italic keep the line's font. The same family's real bold or italic is used when
+it's embedded in the PDF or installed on this computer (Arial's Arial Bold, Times New Roman's
+Times New Roman Italic...); when neither has it, the very same font is drawn thicker (bold) or
+slanted (italic), as Word does for a font without a bold or italic. Only characters the font
+can't write at all go to another font, a word at a time. Taking bold off a word written in a
+bold font needs that font's regular style (embedded or installed); without it the word stays
+bold.
+<br>Underlines and strikethrough lines are drawn into the page in the words' color, one line
+per line of text, and move and rewrap with their words when the paragraph is edited again. A
+thin line drawn just under (or through) a run of words and as long as they are, as Word's PDF
+export writes underlines, is read as their underline; a longer line, a table border or a
+title block's rule is left where it is.</li>
 <li><b>What counts as a paragraph:</b> lines of one size, one under the other at an even line
 spacing, lined up on one side (or centered), that wrap like running text. It ends at its
 short last line, so numbered steps and paragraphs with no space between them are each their
@@ -932,7 +1008,8 @@ under it); list items, each on its own (also a list of one-line items whose bull
 drawn, where every line is a sentence of its own); scanned and sideways text, and rotated
 pages.</li>
 <li><b>Edit one line:</b> <b>Alt+click</b> a line to edit just that line, even inside a
-paragraph. <b>Press on a line and drag</b> to move it (its text and font stay as they are).
+paragraph. <b>Press on a line and drag</b> to move it (its text and font stay as they are,
+each word's style and underline too).
 Editing a line: the cursor goes where you
 clicked, and the line gets a dashed outline with handles, like a selected object. Type the
 change; drag the outline to move the text, drag a handle to change the width the text wraps
@@ -943,6 +1020,9 @@ Sideways text (turned on the page, or on a rotated page) opens in an upright box
 middle of the line so it's easy to type, with the cursor where you clicked along the line; the
 text stays turned on the page when you finish.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
+<li>Words the page draws invisibly (an OCR layer's words in a line, a hidden word) stay
+invisible when their line or paragraph is edited, dragged, changed by Replace text or moved with
+a drawing; the box shows them faint. See-through words keep their opacity.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
 &Omega; &Delta;, symbols, Chinese and other scripts), a built-in Unicode font. Only the letters
@@ -951,7 +1031,9 @@ font has a symbol you typed or that came from the PDF (a minus sign, a diameter 
 invisible narrow space...), a broader installed font such as Segoe UI is tried, then a look-alike
 is used (- for the minus sign, &Oslash; for the diameter sign, a normal space for an invisible
 one). Characters that can't be written at all, such as emoji, are named in a message, and
-nothing is changed. A line on a
+nothing is changed. Text written right to left (Hebrew, Arabic) can't be edited, moved or
+added yet (it would come out in the wrong order): a message says so, and nothing is changed.
+A line on a
 page that still has unapplied redaction marks can't be edited until you apply or remove them.</li>
 <li><b>Scanned pages</b> (a picture of the paper with recognized text over it, from your
 scanner's OCR or Recognize text): Edit text, Find and replace and moving a line change the
@@ -980,6 +1062,23 @@ written on the sheet</b>, picked for you when the title block has one, and the s
 mentions what the sheet says while no scale is set. A page's scale goes with it: copies made
 with Duplicate pages, Copy pages and Paste, Extract pages, Insert pages from file and Combine
 files keep it.</li>
+<li>The current page's scale is always in sight: in large type under "Set scale" in the
+<b>Page scale</b> group of the Measure tab (1/4" = 1'-0", 1:100...) and in bold at the right of the status bar. A page
+with no scale shows a red <b>Scale not set</b> there, and its measurements are in paper size
+(inches on the sheet). Click either one to open Set scale; both follow the page you're on and
+change as soon as a scale is set, calibrated or undone. The first measurement on a page with no
+scale (once per page) also shows a banner above the page saying so, with a <b>Set scale...</b>
+button; it goes away when the page gets a scale, or with its close button. Count and Angle
+don't depend on the scale and don't bring up the banner.</li>
+<li><b>Show scale bar</b> (View menu, Measure menu, the small icon beside "Set scale" in the
+Measure tab's Page scale group, and
+Preferences &gt; Pages and display): draws a graphic scale at the bottom left of every page
+that has a scale: alternating black and white segments with round numbers in the drawing's
+units (0 5' 10' 15' 20' for feet and inches, 0 1 2 3 4 m for meters; millimeters switch to
+meters for long runs). It picks a length that suits the zoom, so it stays a useful size as you
+zoom in and out, and it sits on a plate of its own so it reads on light and dark drawings
+(dark in night mode). It's on the screen only: it is never printed, exported or saved in the
+file. Your choice is remembered.</li>
 <li><b>Read scales from title blocks</b> (Measure menu, Measure tab): for a whole set at once,
 every page gets the scale its own title block says; pages marked not to scale or without a
 note are left as they are and listed. Trust but check: a sheet printed at reduced size (a
@@ -989,6 +1088,17 @@ one known dimension after reading the scales, and use Calibrate Tape Measure if 
 <b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
 the scale. A Count marker copied with Duplicate (Ctrl+D) or copy and paste takes the next
 number of its group.</li>
+<li><b>Dimension</b> (Shift+D; Measure tab, "More" group, the Measure menu and the CAD tab's
+Measure button), like Bluebeam's Dimension and AutoCAD's aligned dimension: click the two
+points to measure, then move the pointer and click where the dimension line goes (in the
+Standard mouse mode you can also drag from the first point to the second, then click). It
+draws two extension lines from the points, a dimension line with arrowheads between them
+and the length above the line, in the page's scale and unit as Length measures it; the text
+reads upright on turned pages too. Escape cancels. Drag its grips to change it: the two
+measured points (measured again) or the grip in the middle of the dimension line (nearer or
+farther from the points). Line color, width, <b>Arrowhead</b> (closed, open, slash, dot or
+none) and text size are in Properties. It is a standard PDF dimension line, so other PDF
+viewers show it as well.</li>
 <li>More measurements (Measure tab, "More" group, and the Measure menu):
 <b>Angle</b>: click one end, the corner, then the other end; it shows the angle in degrees.
 <b>Radius</b>: drag from the center of a circle to its edge; it draws the circle and shows the
@@ -1018,8 +1128,8 @@ blank page, Cut, Paste and Duplicate pages). Using one of those asks whether to 
 Copying pages, rotating and extracting work while locked.</li>
 <li><b>Reorder:</b> unlock the page list, then drag thumbnails (several selected pages move
 together, and Ctrl+Z undoes the whole drag); or Move page up / Move page down
-(Ctrl+Shift+Up / Down).</li>
-<li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine files): makes one
+(Ctrl+Shift+Up / Down; on the Pages tab, under the Organize group's arrow).</li>
+<li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine): makes one
 new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
 open document is already in the list. Drag them, or use Move up / Move down / Sort by name, to
 set the order, top to bottom. With "Add a bookmark for each file" ticked, each file gets a
@@ -1038,13 +1148,38 @@ TIFF, BMP, GIF, WebP; pick several at once), in the order chosen, after the curr
 end or at the beginning, as one undo step. Each picture becomes a page the size of the page
 before it, turned to suit the picture. With nothing open, it makes a new, unsaved PDF from
 them.</li>
+<li><b>Replace pages</b> (Pages menu; Pages tab, on the arrow beside Extract) puts a new
+revision of sheets in place of the old ones and keeps everything added to them (Acrobat's
+Replace Pages, Bluebeam's slip sheeting). Pick the PDF of the new revision, then either give the
+pages by number (pages 3-5 here replaced by pages 1-3 of the new file, paired in order) or
+choose <b>Match sheets by sheet number</b>: the sheet numbers are read from the title blocks of
+both files (as Link sheet callouts reads them) and each page here is paired with the new file's
+page that has the same number. Check the list before clicking Replace: correct a pairing by
+typing the new file's page under "Replaced by page", or empty it to leave that page as it is.
+Pages here with no match are left alone, and the new file's sheets that match no page are
+listed under the list, so you know. Only the page's drawing changes (its content, page boxes
+and rotation): the page itself stays, so its markups, links, form fields, scale and bookmarks
+stay, and bookmarks and links from other pages still go to it. When a new page has another
+size, choose whether markups are <b>scaled to the new page</b> (their text and line widths with
+them; stretched if its proportions differ; an even scale adjusts the page's measuring scale and
+its name too, 1/4" = 1'-0" becoming 1/2" = 1'-0" on a sheet twice the size) or <b>kept at the same place</b>,
+measured from the top-left corner. Measurements are measured again when what they measure changed
+(the new page brings its own scale, or the markups were stretched or scaled on a page with no
+scale). The underlines and text of links made with KanzonasPDF are
+drawn again on the new drawing; a link over words that aren't in the same place on the new
+drawing (a sheet callout that moved) stays where it was and is reported, so you can check it.
+Headers, footers, watermarks, backgrounds and text edits written into the old drawing go with
+it. The new drawings' layers join the document's layers (Layers tab), on or off as in the new
+file. The markups of the new file's pages aren't brought along, and the new file isn't changed.
+Ctrl+Z undoes the whole replacement in one step. A document protected against changes refuses
+it.</li>
 <li>Pages menu: Insert blank page after current (the same size as the current page), Extract
 pages to new file (to a new file, not the document itself), Delete pages (the pages selected in
 the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
 deleted page then goes to the page after it (or the last page).</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
-<li><b>Link sheet callouts</b> (Pages menu, Pages tab): for a drawing set plotted without
+<li><b>Link sheet callouts</b> (Pages menu; Pages tab, under the Document group's arrow): for a drawing set plotted without
 hyperlinks. KanzonasPDF reads each page's sheet number and title from its title block (the
 value after a SHEET, SHEET NO or DWG NO caption, or the largest sheet-like number in the
 title block area) and shows them for correction. Then every callout bubble, note or index line
@@ -1054,6 +1189,84 @@ folder (A-501 Details.pdf) links to that file. Words that already have a link ar
 so AutoCAD's own hyperlinks stay and running it twice adds nothing. Options: a thin blue box
 around the links (off by default, to keep drawings clean), and bookmarks named by sheet number
 and title. Ctrl+Z undoes it all.</li>
+</ul>
+
+<h2 id="scan">Scanning</h2>
+<p><b>Scan...</b> (File menu, Pages tab &gt; Create group, or the command palette) scans pages
+from a scanner, or a printer that scans, into a PDF. It talks to most network printers without
+installing their drivers, in any of these ways:</p>
+<ul>
+<li><b>eSCL (AirScan)</b>: the driverless scanning of Mopria and Apple AirPrint printers (most
+printers made in the last ten years). Found on the network by itself.</li>
+<li><b>WSD</b> (Web Services on Devices): Microsoft's network scanning, which many printers
+offer (Dell, Brother, Canon, Epson, HP, Kyocera, Xerox...). Found by itself; on many printers it
+must first be turned on in the printer's web page (WSD set to Enable).</li>
+<li><b>WIA</b> (Windows): the scanners Windows itself knows, including USB scanners and those
+whose maker's driver is installed.</li>
+<li><b>SANE</b> (Linux): the scanners the scanimage command knows (install the sane-utils
+package; sane-airscan adds driverless network scanners to it).</li>
+<li>On macOS, eSCL and WSD for now (USB scanners aren't supported there yet). The first
+scan asks to let KanzonasPDF find devices on your local network: choose <b>Allow</b> (to change it
+later: System Settings &gt; Privacy &amp; Security &gt; Local Network).</li>
+</ul>
+<p>To scan:</p>
+<ul>
+<li>The window lists the scanners it found, each with how it's reached (eSCL, WSD, WIA or
+SANE) and its address; a printer found more than one way is listed for each. Pick one; the last
+scanner used is listed and picked for you. <b>Refresh</b> looks again.</li>
+<li><b>Add by address...</b>: when your printer isn't found (guest Wi-Fi, some routers and
+different subnets block discovery), type its IP address, shown on its panel or in its network
+configuration report (for example 192.168.1.20). KanzonasPDF tries eSCL first, then WSD.</li>
+<li>Choose the <b>Source</b> (Flatbed (glass), Document feeder, or Document feeder, both sides,
+when the scanner has them), <b>Color</b> (Color, Grayscale, Black and white),
+<b>Resolution</b> (what the scanner offers; 300 dpi suits documents and OCR) and <b>Page
+size</b> (Letter, Legal, A4, or the largest the scanner allows). They're remembered for next
+time.</li>
+<li>Click <b>Scan</b>. The window shows its progress, and <b>Cancel</b> stops it. From the
+document feeder, every page in it is scanned. Then <b>Scan more pages</b> adds more (put the
+next page on the glass, or the next stack in the feeder), and <b>Done</b> puts them all in a
+PDF.</li>
+<li><b>Starting the scan on the printer</b> (WSD printers): while the window shows a WSD
+printer, KanzonasPDF asks it to list this computer as a scan destination ("KanzonasPDF - " and
+the computer's name). On the printer's panel choose Scan, then Scan to Computer (WSD), pick that
+name and press Start: the pages come into the window, with the window's settings (choose the
+source there first). Windows asks once whether to allow KanzonasPDF on private networks: allow
+it, or the printer can't reach the window. The printer forgets this computer when the window
+closes.</li>
+<li><b>Put the pages in</b>: <b>A new document</b> (an unsaved tab; Save asks where to save it),
+or <b>This document, after the current page</b> (Ctrl+Z takes them all out again in one step).
+Tick <b>Make the pages searchable</b> to run Recognize text (OCR) on the new pages.</li>
+<li><b>Watch a folder...</b> is for a printer that can only scan to a network folder (Scan to
+Network Folder, SMB) or FTP: choose the folder it scans into; each new PDF or picture (JPEG,
+PNG, TIFF) that arrives there while the window is open is added as scanned pages, once it has
+stopped growing and looks finished (a file that stays unfinished for a minute is reported as
+incomplete). Links to files elsewhere are left alone. A PDF (from the folder or the scanner)
+brings its pages' drawing and text only, without links, form fields or comments. Click Done
+when they're all in.</li>
+</ul>
+<p>When it doesn't work, the window says why in plain words, and what to try:</p>
+<ul>
+<li><b>No scanners found</b>: the computer and the printer must be on the same network (not a
+guest Wi-Fi); try Add by address with the printer's IP address. If Windows asks whether to let
+KanzonasPDF use private networks, allow it: that's how the printers' answers get back.</li>
+<li><b>WSD scanning is turned off</b>: open the printer's web page (type http:// and its IP
+address in a web browser), find WSD (often under Network, Protocols or Services), set it to
+Enable, save, then click Refresh.</li>
+<li><b>The scanner isn't taking a scan from the computer</b>: some printers only scan when the
+scan is started on their own panel: keep the Scan window open with the printer picked, then on
+the printer choose Scan to Computer (WSD) and this computer's name.</li>
+<li><b>A Dell E525w, or a printer like it</b>: turn WSD on in its web page (above), then try
+both ways: click Scan in KanzonasPDF (started from the computer); if the printer doesn't take
+it, start the scan on the printer's panel with Scan to Computer (WSD) and this computer's name
+(started from the printer). If neither works, use Copy details.</li>
+<li><b>Copy details</b> copies what was found and the scanner's own answers (nothing personal;
+serial numbers are left out). If your scanner still doesn't work, paste them into an issue on
+KanzonasPDF's GitHub page so it can be supported.</li>
+<li>Safety: KanzonasPDF only talks to the scanner you pick (or the address you type), reads its
+answers with strict limits on size and time, and sends nothing anywhere else. Network scanners
+use their own, self-signed certificates for HTTPS; one is accepted only for its scanner. A
+scanned file (a multi-page TIFF, say) can have at most 6,000 megapixels in all, well above 100
+Letter pages in color at 600 dpi: scan fewer pages at a time, or at a lower resolution.</li>
 </ul>
 
 <h2 id="printprod">Print production (Print tab)</h2>
@@ -1069,7 +1282,8 @@ pages, the current page or a list of pages. A box has to stay within the page's 
 (its media box), and the bleed box has to hold the trim box: it says so otherwise and changes
 nothing. Ctrl+Z undoes it.</li>
 <li><b>Show page boxes</b> (also in the View menu) outlines the boxes a page has: trim in
-green, bleed in red, art in blue (on screen only).</li>
+green, bleed in red, art in blue, each named in a corner (Trim box, Bleed box, Art box; on
+screen only).</li>
 <li><b>Fix hairlines</b>: lines drawn thinner than a width you choose (0.25 pt by default;
 a width of 0 included, which means "the thinnest the device can draw", often too faint on
 a plotter) are drawn at the width you choose, on all pages, the current page or a list of
@@ -1136,7 +1350,7 @@ with your saved signature or initials and the date.</li>
 <li><b>Digitally sign with certificate</b>, with an optional lock against changes (certify).
 Choose where the certificate comes from:
 <ul>
-<li><b>Certificate stored in Windows</b> (Windows only; not shown on Linux): the list shows the signing certificates in your
+<li><b>Certificate stored in Windows</b> (Windows only; not shown on Linux or macOS): the list shows the signing certificates in your
 Windows Personal store, the same ones Adobe Acrobat and PDF-XChange Editor use (open
 certmgr.msc &gt; Personal &gt; Certificates to see them). Windows does the signing, so
 certificates whose key can't be copied, smart cards and USB tokens work too; Windows asks for
@@ -1157,16 +1371,27 @@ can be selected, moved and resized; <b>Apply selected redactions</b> applies onl
 ones, Apply redactions applies them all. Applying removes, not just covers: the text, images
 and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
 own copy of the text). A vector path that touches a mark is removed past the box, including
-the part outside it. Applying scrubs metadata, attachments, hidden text, and scripts unless
-you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> also finds the text where a box can't go: form
-fields (values, list options, tooltips and names), links (web and email addresses), markup
-notes, bookmark titles, document properties, the alternate text of tagged PDFs, link notes,
-page labels and destination names. When you apply, fields, links, stamps and
-attached files containing it are deleted, and in notes and comments (they stay), bookmarks
-and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact offers to remove it right
-away. Check the result before sharing; Undo works until you close the file.</li>
-<li><b>Sanitize document:</b> remove hidden data you choose: document information, scripts,
-attached files, hidden text, links, comments, form data, thumbnails. Scripts includes those in
+the part outside it. A redacted page also loses its thumbnail and the private copy of the page
+some programs (Illustrator) keep in the file. Applying scrubs metadata, attachments, hidden
+text, scripts and such programs' private data unless
+you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> marks the text
+on the pages also where a layer that is hidden has it or where the page is cropped away, and finds
+it where a box can't go: form
+fields (values, list options, tooltips and names, also of fields on no page), links (web and
+email addresses), markup notes (also their formatted text), bookmark titles and web addresses,
+document properties (also a program's own), the alternate text of tagged PDFs, link notes,
+page labels, layer names and destination names. When you apply, fields, links, stamps and
+attached files containing it are deleted (and an XFA form holding it: its ordinary fields stay), and in notes and comments (they stay), bookmarks
+and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact says where it found it (the
+fields, notes, links, bookmarks and properties, and how many other places in the file, such as
+layer names, web addresses, form data and alternate text) and offers to remove it right
+away. A <b>legend</b> is drawn again from the markups left, in the same step: its rows no longer
+show what was redacted, and the text in its title is replaced by [redacted] (a box drawn over a
+legend removes it). Check the result before sharing; Undo works until you close the file.</li>
+<li><b>Sanitize document:</b> remove hidden data you choose: document information (with the
+private data some programs, like Illustrator, keep in the file), scripts,
+attached files, hidden text, links, comments, form data (with an XFA form, which keeps the
+data again; its ordinary fields stay), thumbnails. Scripts includes those in
 other actions (multimedia), javascript: links and an XFA form's scripts (the ordinary form fields
 stay).</li>
 <li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption. Clicking OK
@@ -1215,9 +1440,12 @@ already contain text</b> (on by default, so text isn't duplicated), and the <b>a
 <b>High</b> (400 dpi, and it checks every orientation, for small print, poor scans and
 sideways or upside-down pages; the slowest); or <b>Auto</b> (the default), which reads each
 page fast and redoes it at High resolution only when the text came out small or unclear.
-Higher accuracy takes longer and uses more memory, and it never renders a scan sharper than
+Higher accuracy takes longer, and it never renders a scan sharper than
 it was scanned (that only adds blur), so on a 200 dpi scan Normal and High read at 200 dpi.
-Your choice is remembered. At every accuracy, a page scanned upside down is noticed and read
+Your choice is remembered. A page is read a tile at a time, each drawn only when it's
+read, so even a 42 x 30 inch sheet at High needs about as much memory as a letter page; the
+memory OCR used goes back to the system when it's done, and the OCR engine's own (about 45 MB)
+two minutes after the last page it read. At every accuracy, a page scanned upside down is noticed and read
 turned upright, and lines that are upside down or standing up on the page get their text
 where their letters are, so Find and Search &amp; redact cover the right words. Edit text then
 changes the scan's words in a matching font (see Editing the PDF's own text).</li>
@@ -1229,6 +1457,41 @@ and scripts unless you turn that off. Check the result before sharing.</li>
 <b>Compress (save a smaller copy)</b>, <b>Compare documents</b>, <b>Flatten</b> (make markups part of the page).
 The smaller copy keeps the document's password protection (open password, permissions), or the
 protection set in Security properties and not saved yet.</li>
+<li><b>Save as PDF/A</b> (File &gt; <b>Save as PDF/A...</b>): saves an archival copy that follows
+PDF/A-2b (ISO 19005-2, level B), the standard for keeping a document readable and looking the
+same for decades, which courts, government offices and archives often ask for. In the copy:
+every font is embedded (a standard font that isn't, such as Helvetica, Times, Courier, Symbol
+and ZapfDingbats, or Arial, Times New Roman and Courier New, which are shown with them, is
+embedded from KanzonasPDF's own copies, the very fonts it shows them with, so the text looks
+and measures exactly as before); colors are defined by a color profile (an sRGB output
+intent, and a CMYK profile for CMYK colors); the metadata says it's PDF/A, with the title,
+author, subject and keywords the same in the document properties and the XMP metadata; there
+is no JavaScript and no action that launches a program, plays media or runs on its own (links
+to pages and web addresses stay); every comment and markup has its own appearance and is set
+to print, and hidden ones are removed (PDF/A shows every annotation, so a hidden one would
+appear); form fields are drawn (rather than left to the viewer) and lose their actions; layer
+settings get a name; transfer functions, unknown blend modes, smoothing of enlarged pictures,
+LZW compression (also of pictures written into a page's content) and PDF versions above 1.7 are replaced by what PDF/A allows, without changing
+how the pages look. <b>Attached files</b> stay: when they are all PDF/A files themselves, the
+copy is PDF/A-2b; otherwise it's PDF/A-3b, the part of the standard that allows any attached
+file (each is then listed as a file associated with the document, with its kind).
+<b>Digital signatures</b> are removed (the fields stay, empty): the copy is a new file, in which
+they couldn't be valid; sign the copy if it needs a signature. A <b>password-protected</b>
+document can't be saved as PDF/A (an archive must open without a password): remove its
+security first (Protect &gt; Remove security). The name offered is the document's with _PDFA
+added. As after Save As, the tab then shows the copy (unsaved changes are in it; the original
+file stays as it was), and a window says what was changed and lists what couldn't be fixed,
+each with its page.</li>
+<li><b>Check PDF/A</b> (File &gt; <b>Check PDF/A...</b>) lists what keeps the document, as it is
+now, from being PDF/A, by kind, each with its page (double-click a line to go there) and
+whether Save as PDF/A fixes it; a button there saves it as PDF/A. What can't be fixed: a font
+that isn't embedded and isn't one of the standard fonts (make the PDF again with its fonts
+embedded), a standard font whose character widths in the file differ from the standard
+font's, a page larger than 200 inches or smaller than 3 points, PostScript, parts kept in
+other files, an unusual compression, a text longer than 32,767 bytes (a very long comment) or
+drawing instructions nested more than 28 levels deep. It checks the common requirements of PDF/A-2b (and of
+PDF/A-3b for a file that says it is one), not every one: for a formal validation, use
+<b>veraPDF</b>, free, from the PDF Association (verapdf.org).</li>
 <li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision (if it's
 password-protected, KanzonasPDF asks for its password), then how to compare. <b>Text, word by word</b> is for anything that reflows (letters,
 specifications, permits, reports): the words of both documents are compared in reading
@@ -1257,7 +1520,7 @@ added by apps that mark them as watermarks (Adobe Acrobat, PDF-XChange and other
 watermark annotations. Ctrl+Z undoes it. A "watermark" that is just ordinary text or a picture
 in the page can't be told apart from the rest of the page; remove it with Erase content or
 Edit objects.</li>
-<li><b>Background...</b> (Document menu; Pages tab): puts a <b>solid color</b>, a <b>gradient</b>
+<li><b>Background...</b> (Document menu; Pages tab, on the arrow beside Header and footer): puts a <b>solid color</b>, a <b>gradient</b>
 (two colors, top to bottom, bottom to top, left to right or diagonal) or a <b>picture</b> (Fit,
 Fill, Stretch to the page, or Center at its own size) behind everything on the page, at the
 opacity you choose. Apply it to the current page, all pages, or pages such as 1-3, 7. It's saved
@@ -1282,7 +1545,7 @@ the same as that command, so you can change it in either place. <b>OK</b> uses y
 closes the window; <b>Apply</b> uses them right away and leaves the window open, so you can see
 the effect and keep adjusting; <b>Cancel</b> closes it without the changes made since the last
 Apply.</li>
-<li><b>General:</b> theme (Match Windows, or Match system on Linux; Light, Dark), <b>Language</b> (Automatic, the language
+<li><b>General:</b> theme (Match Windows, or Match system on Linux and macOS; Light, Dark), <b>Language</b> (Automatic, the language
 of Windows or of the system; English; Español: menus, messages and this manual; a change shows the next time
 KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, Show menu bar,
 Show text labels on toolbars, Check for updates automatically, and on Linux Add KanzonasPDF to the
@@ -1337,7 +1600,7 @@ lasso off, a press, drag and release draws a box.</li>
 The note under Scroll one page per wheel step says when it applies: only while the whole page
 fits in the window, as after Fit page.</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
-Night mode (white lines on black), Enhance thin lines, <b>New PDF page size</b> (the size and
+Night mode (white lines on black), Enhance thin lines, Show scale bar, <b>New PDF page size</b> (the size and
 orientation File &gt; New PDF uses, or Ask every time),
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid
@@ -1351,6 +1614,8 @@ settings...).</li>
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text (click: the paragraph; Alt+click: one line)</td></tr>
+<tr><td>Ctrl+B / Ctrl+I / Ctrl+U (editing text)</td><td>Bold / Italic / Underline the selected words</td></tr>
+<tr><td>Ctrl+] / Ctrl+[ (editing text)</td><td>Larger / smaller text (the selected words, a point at a time)</td></tr>
 <tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
 <tr><td>Ctrl+N</td><td>New PDF (blank page)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>
@@ -1364,6 +1629,7 @@ settings...).</li>
 <tr><td>M / X</td><td>Stamp / Eraser</td></tr>
 <tr><td>G / I</td><td>Signature / Initials</td></tr>
 <tr><td>Shift+M / Shift+A / Shift+C</td><td>Length / Area / Count</td></tr>
+<tr><td>Shift+D</td><td>Dimension</td></tr>
 <tr><td>Shift+R</td><td>Redact</td></tr>
 <tr><td>Shift+E</td><td>Erase content</td></tr>
 <tr><td>Shift+P</td><td>Capture area</td></tr>
@@ -1409,11 +1675,39 @@ settings...).</li>
 
 
 def manual_html():
-    """The manual in the interface's language: Spanish when it's in Spanish, else English."""
+    """The manual in the interface's language: Spanish when it's in Spanish, else English
+    (on a Mac, its keyboard shortcuts table with the Mac's keys)."""
     if language() == "es":
         from . import manual_es
-        return manual_es.MANUAL
-    return MANUAL
+        html = manual_es.MANUAL
+    else:
+        html = MANUAL
+    if sys.platform == "darwin":
+        html = for_mac(html, language() == "es")
+    return html
+
+
+def for_mac(html, spanish=False):
+    """The manual with its keyboard shortcuts table as a Mac's keyboard has them: Cmd where
+    it says Ctrl, Option where it says Alt, Quit (Cmd+Q) added, Replace text on
+    Cmd+Option+F (Cmd+H hides the program on a Mac), and no menu bar row (the Mac's menu bar
+    is always there)."""
+    from .macos import mac_keys
+    start = html.find('<h2 id="shortcuts">')
+    end = html.find("</table>", start)
+    if start < 0 or end < 0:
+        return html
+    option = "Opci\u00f3n" if spanish else "Option"
+    table = html[start:end]
+    table = table.replace("<td>Ctrl+H</td>", "<td>Ctrl+Alt+F</td>")
+    table = re.sub(r"<tr><td>Ctrl\+Shift\+M</td>.*?</tr>\n", "", table)
+    table = table.replace("<td>Alt (", "<td>%s (" % option)
+    table = mac_keys(table, symbols=False, option=option)
+    quit_row = "<tr><td>Cmd+Q</td><td>%s</td></tr>\n" % (
+        "Salir (men\u00fa KanzonasPDF)" if spanish else "Quit (KanzonasPDF menu)")
+    head = table.find("</tr>\n") + len("</tr>\n")
+    table = table[:head] + quit_row + table[head:]
+    return html[:start] + table + html[end:]
 
 
 def sections():

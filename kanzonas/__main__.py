@@ -102,7 +102,8 @@ def instance_name(app_name, user):
     """The name the running KanzonasPDF listens at for files opened while it runs. Windows: a
     pipe name of this user's. Linux: a socket in this user's own runtime folder
     ($XDG_RUNTIME_DIR, which no other user can enter), so nobody else can take the name
-    first; the shared temporary folder when there is none."""
+    first; the shared temporary folder when there is none. macOS: the user's own temporary
+    folder ($TMPDIR, which only this user can enter), where Qt puts a plain name."""
     name = f"{app_name}-{user}"
     if sys.platform == "win32":
         return name
@@ -341,6 +342,11 @@ def main():
             conn.readyRead.connect(read)
     if server is not None:
         server.newConnection.connect(incoming)
+    if sys.platform == "darwin":
+        # macOS: Finder's open requests (double-click, Open With, the Dock icon) come as
+        # events, at launch and while it runs, never as a second copy of the program
+        from . import macos
+        app.installEventFilter(macos.file_open_filter(deliver, app))
     from .branding import app_icon
     app.setWindowIcon(app_icon())
     from . import i18n, paths, theme

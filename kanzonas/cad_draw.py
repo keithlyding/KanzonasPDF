@@ -22,11 +22,11 @@ from .i18n import tr
 # picture with one click)
 TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", "eraser", "cloud",
          "callout", "m_length", "m_calibrate", "m_radius", "placeholder", "erasecontent",
-         "capture", "crop", "link"}
+         "capture", "crop", "link", "legend"}
 # a second click on the first point ends these as a click does (a text box of the default
 # size, new link text there, a callout); for the rest it would make nothing, so the shape
 # stays in progress (a double-click that shook doesn't lose it)
-CLICK_ENDS = {"textbox", "placeholder", "link", "callout"}
+CLICK_ENDS = {"textbox", "placeholder", "link", "callout", "legend"}
 BOXES = {"rect", "ellipse", "cloud", "mask"}     # drawn as a box from corner to corner
 CLICK_PX = 10          # a press released less than this far from where it went down is a click
 QUICK_PX = 24           # ... and one released within QUICK_MS this far away too (a quick

@@ -25,13 +25,15 @@ class OneOpenCV(unittest.TestCase):
         self.assertIsNotNone(headless, "opencv-python-headless isn't pinned")
         self.assertEqual(gui.group(1), headless.group(1))
 
-    def test_both_builds_keep_only_the_headless_one(self):
+    def test_every_build_keeps_only_the_headless_one(self):
         wf = read(".github", "workflows", "build-windows.yml")
-        # (each job removes both, then installs the pinned headless one without dependencies)
-        self.assertEqual(wf.count("pip uninstall -y opencv-python opencv-python-headless"), 2)
+        # (each job removes both, then installs the pinned headless one without dependencies:
+        # Windows, Linux and macOS, whose one job builds both kinds of Mac)
+        jobs = 3
+        self.assertEqual(wf.count("pip uninstall -y opencv-python opencv-python-headless"), jobs)
         self.assertEqual(len(re.findall(r'pip install --no-deps "opencv-python-headless==\$v"',
-                                        wf)), 2)
-        self.assertEqual(wf.count("^opencv-python-headless=="), 2)
+                                        wf)), jobs)
+        self.assertEqual(wf.count("^opencv-python-headless=="), jobs)
 
 
 if __name__ == "__main__":

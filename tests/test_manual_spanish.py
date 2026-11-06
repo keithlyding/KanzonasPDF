@@ -50,7 +50,10 @@ class SameShape(unittest.TestCase):
     def test_english_interface_shows_the_english_manual(self):
         from kanzonas import i18n
         self.assertEqual(i18n.language(), "en")         # tests/__init__.py runs in English
-        self.assertIs(manual.manual_html(), manual.MANUAL)
+        if sys.platform == "darwin":        # (with the Mac's keys in the shortcut table)
+            self.assertEqual(manual.manual_html(), manual.for_mac(manual.MANUAL))
+        else:
+            self.assertIs(manual.manual_html(), manual.MANUAL)
         self.assertEqual(manual.sections()[0][0], ids(manual.MANUAL)[0])
 
 
@@ -71,7 +74,8 @@ win = MainWindow()
 dlg = manual.ManualDialog(win)
 out = {"lang": i18n.language(), "missing": manual.missing_from_manual(win),
        "sections": [a for a, _ in manual.sections()],
-       "spanish_html": manual.manual_html() is manual_es.MANUAL,
+       "spanish_html": (manual.manual_html() is manual_es.MANUAL) if sys.platform != "darwin"
+                       else manual.manual_html() == manual.for_mac(manual_es.MANUAL, True),
        "title": dlg.windowTitle(),
        "contents": [dlg.contents.item(i).text() for i in range(dlg.contents.count())],
        "found": dlg.find.setText("censura") or dlg.find_next()}

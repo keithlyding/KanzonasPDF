@@ -5,20 +5,20 @@
 <h1 align="center">KanzonasPDF</h1>
 
 <p align="center">
-  <b>A free, open-source PDF viewer and editor for Windows and Linux</b><br>
+  <b>A free, open-source PDF viewer and editor for Windows, Linux and macOS</b><br>
   Read, comment, edit, fill in, sign, protect and print PDFs. No account, no subscription,<br>
   no watermarks, no telemetry. Installer or portable.
 </p>
 
 <p align="center">
-  <a href="https://github.com/keithlyding/KanzonasPDF/releases"><b>Download for Windows and Linux</b></a> ·
+  <a href="https://github.com/keithlyding/KanzonasPDF/releases"><b>Download for Windows, Linux and macOS</b></a> ·
   <a href="#getting-started">Getting started</a> ·
   <a href="#feedback">Report a bug</a> ·
   <a href="CODE_SIGNING_POLICY.md">Code signing policy</a>
 </p>
 
 > Used daily for real work. Every release passes 1,000+ automated tests and a self-test of the
-> built program on Windows and Linux before it's published, and reported bugs have been fixed within days.
+> built program on Windows, Linux and macOS before it's published, and reported bugs have been fixed within days.
 
 ![KanzonasPDF reviewing a catalog page: highlighted text, a revision cloud with a callout, a sticky note and an APPROVED stamp, with the Markups list below](docs/screenshot-markup.png)
 
@@ -200,12 +200,50 @@ remove your settings and personal files too, delete the two folders above.
 
 Check a download against the release's `SHA256SUMS.txt` with `sha256sum KanzonasPDF-x86_64.AppImage`.
 
+### macOS (disk image)
+
+KanzonasPDF runs on Macs with Apple silicon (M1 or newer; Apple menu > About This Mac says
+"Chip Apple M…") with macOS 14.4 (Sonoma) or newer. There's no version for Intel Macs yet; one
+may come later if people ask for it.
+
+1. Download **`KanzonasPDF-macos-arm64.dmg`** from the newest release on the
+   [Releases page](https://github.com/keithlyding/KanzonasPDF/releases).
+2. Open it and drag **KanzonasPDF** onto the **Applications** folder next to it. Eject the disk
+   image, and start KanzonasPDF from Applications.
+3. **The first time: "Open Anyway".** KanzonasPDF isn't signed and notarized by Apple yet (that
+   needs a paid Apple developer account), so macOS stops it the first time with a message that
+   Apple could not verify it is free of malware. Click **Done** (not Move to Trash). Then open
+   **System Settings > Privacy & Security**, scroll down to **Security**, where it says
+   "KanzonasPDF was blocked to protect your Mac", click **Open Anyway**, confirm with your
+   password or Touch ID, and click **Open Anyway** again. After that it opens like any other app.
+   macOS asks again after you install a new version.
+
+Only do this with a disk image from this project's Releases page. Check it first against the
+release's `SHA256SUMS.txt` in Terminal: `shasum -a 256 KanzonasPDF-macos-arm64.dmg`.
+
+**Opening PDFs:** double-click them, use Open With, or drag them onto KanzonasPDF in the Dock;
+a PDF opened while it runs opens as a new tab. To open every PDF with KanzonasPDF, select a PDF
+in Finder, choose File > Get Info, pick KanzonasPDF under "Open with" and click **Change All…**.
+
+**Keys:** Command (⌘) where Windows uses Ctrl, Option (⌥) for Alt; the menus, tool tips and the
+manual's shortcut table show the Mac's keys. Quit (⌘Q), Preferences and About are in the
+KanzonasPDF menu.
+
+**Updating:** KanzonasPDF tells you when a new version is out (Help > Check for updates...), but
+on a Mac it doesn't replace itself: download the new disk image, drag KanzonasPDF to
+Applications and choose **Replace**. Your settings are kept.
+
+**Where your things are:** settings in `~/Library/Preferences/com.kanzonaspdf.KanzonasPDF.plist`;
+signatures, stamp pictures, your certificate and backups in
+`~/Library/Application Support/KanzonasPDF/KanzonasPDF`. **Removing:** drag KanzonasPDF from
+Applications to the Trash (and delete those two to remove your settings and files too).
+
 ## Getting started
 
 - **Open a PDF:** drag it onto the window, or File > Open. Several PDFs open as tabs.
 - **The user manual is built in:** press **F1** (Help > User manual). It covers every tool,
   menu command and keyboard shortcut.
-- **Make it yours:** File > Preferences (**Ctrl+K**) has your name for markups, your signature,
+- **Make it yours:** File > Preferences (**Ctrl+K**; on a Mac, KanzonasPDF > Preferences, **⌘K**) has your name for markups, your signature,
   default markup styles, the zoom documents open at, mouse and scrolling options, automatic
   backups and more.
 - **Keyboard shortcuts:** View > Keyboard shortcuts... lists them all, and you can change them.
@@ -226,14 +264,22 @@ Check a download against the release's `SHA256SUMS.txt` with `sha256sum Kanzonas
 
 ## Known limitations
 
-- Windows, and Linux on 64-bit x86 PCs (AppImage); no macOS version. On Linux, signing with
-  certificates from the Windows certificate store isn't available (use a personal certificate
-  or a .pfx/.p12 file), and printing needs a printer set up in the system (CUPS).
+- Windows, Linux on 64-bit x86 PCs (AppImage) and macOS 14.4 or newer on Apple silicon (M1 or
+  newer); no version for Intel Macs yet.
+  On Linux and macOS, signing with certificates from the Windows certificate store isn't
+  available (use a personal certificate or a .pfx/.p12 file; the macOS keychain isn't used), and
+  on Linux printing needs a printer set up in the system (CUPS).
+- The macOS app isn't signed or notarized by Apple yet: macOS blocks it the first time, and
+  you allow it once in System Settings > Privacy & Security > **Open Anyway** (again after each
+  update). It doesn't update itself: Update now isn't offered on a Mac, Download opens the
+  release page.
 - Saving changes to a digitally signed file invalidates its signatures (an unchanged signed
   file is saved as an exact copy).
-- Editing a paragraph rewrites it in one style (a bold word inside comes out like the rest), and
-  a paragraph that grows doesn't push the content below it down. If the original font isn't
-  available, a close standard font is used.
+- Editing a paragraph keeps each word's font, size, bold, italic, color, underline and
+  strikethrough, but a paragraph that grows doesn't push the content below it down. Bold or
+  italic for a font with no bold or italic embedded or installed is drawn thicker or slanted
+  (as Word does); taking bold off a word in a bold font needs its regular style. If the
+  original font isn't available, a close standard font is used.
 - Edit objects moves, resizes and rotates pictures and vector shapes; text can be moved and
   deleted there (change its words with Edit text). Content grouped inside form XObjects can be
   edited after Ungroup.
@@ -261,9 +307,12 @@ the libraries it needs). Or: `pip install -r requirements.txt`, then `python run
 `python3 run.py` (or `python3 -m kanzonas file.pdf`). The tests run offscreen:
 `QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -t .`
 
+**Run from source (macOS):** `python3 -m pip install -r requirements.txt`, then
+`python3 run.py` (on a Mac with Apple silicon: PyMuPDF 2.0 has no Intel Mac build).
+
 **Self-test:** `python -m kanzonas --selftest selftest.log` checks the main features, the
 manual and the performance budget. The Windows build runs it on the packaged app, the installer
-and an upgrade.
+and an upgrade; the Linux and macOS builds on the AppImage and the app.
 
 **Build an .exe:** double-click `build_windows.bat`; the app ends up in
 `dist\KanzonasPDF\KanzonasPDF.exe`.
@@ -281,8 +330,10 @@ to `false` (Settings > Secrets and variables > Actions > Variables) to turn rele
 
 ## Credits
 
-App icon and logo: the owner's artwork in `assets/` (after changing them, run
-`python tools_make_assets.py`). Toolbar icons: the Material Design Icons font that ships with
+App icon: the owner's artwork in `assets/` (after changing it, run `python tools_make_assets.py`).
+Logo: every Kanzonas logo comes from [Kanzonas-Site](https://github.com/keithlyding/Kanzonas-Site)
+(`brand/`), the single source of truth; bring a new one in with `python tools/update_logo.py
+<site commit>` (`assets/LOGO_SOURCE.txt` records which). Toolbar icons: the Material Design Icons font that ships with
 QtAwesome. The libraries, fonts and artwork KanzonasPDF uses, and their licenses, are listed in
 [NOTICE.md](NOTICE.md).
 

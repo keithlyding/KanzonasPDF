@@ -11,6 +11,7 @@ from PySide6.QtGui import (QPalette, QColor, QGuiApplication, QIcon, QIconEngine
 
 ICONS = {
     "image": "image-outline", "attach": "paperclip", "placeholder": "draw-pen",
+    "legend": "map-legend",
     "cad_mouse": "mouse-move-vertical", "free_pan": "pan", "grid": "grid", "snap_grid": "magnet",
     "snap_objects": "vector-point", "snap_page": "border-outside",
     # arrange
@@ -39,7 +40,8 @@ ICONS = {
     "editobjects": "image-edit-outline", "addtext": "format-text-variant-outline",
     "signature": "signature-freehand", "initials": "signature-text", "date": "calendar-today",
     "arc": "chart-arc", "curve": "vector-curve",
-    "m_length": "ruler", "m_poly": "vector-polyline-edit", "m_area": "texture-box",
+    "m_length": "ruler", "m_dim": "arrow-left-right", "m_poly": "vector-polyline-edit",
+    "m_area": "texture-box",
     "m_angle": "angle-acute", "m_radius": "radius-outline", "m_perimeter": "vector-square",
     "m_volume": "cube-outline",
     "m_count": "counter", "m_calibrate": "tape-measure", "redact": "marker-cancel",

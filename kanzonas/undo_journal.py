@@ -145,6 +145,46 @@ class detached:
         return False
 
 
+# ---- MuPDF's list of layers --------------------------------------------------------------
+# MuPDF reads the document's layers (/OCProperties) once and keeps them, with which are shown,
+# apart from the document: layers added by an edit (Replace pages brings the new drawings'
+# layers) showed even when off, and stayed listed after an undo. follow_layers reads them
+# again when /OCProperties changed (only then: it also forgets layers shown or hidden in the
+# Layers tab, which aren't kept in the document).
+def _layers_state(doc):
+    try:
+        typ, val = doc.xref_get_key(doc.pdf_catalog(), "OCProperties")
+        if typ == "xref":
+            val = doc.xref_object(int(val.split()[0]), compressed=True)
+        return val
+    except Exception:
+        return None
+
+
+def reload_layers(doc):
+    """MuPDF reads the document's layers again."""
+    try:
+        raw = pymupdf._as_pdf_document(doc).m_internal
+        old = raw.ocg
+        raw.ocg = old           # (fails here, before anything is freed, if it can't be set)
+        if old is not None:
+            m.ll_pdf_drop_ocg(raw)
+            raw.ocg = None
+        m.ll_pdf_read_ocg(raw)
+    except Exception:
+        pass
+    doc._kz_layers = _layers_state(doc)
+
+
+def follow_layers(doc):
+    """Read the layers again when /OCProperties changed since the last call for doc."""
+    now = _layers_state(doc)
+    seen = getattr(doc, "_kz_layers", None)
+    if seen is not None and seen != now:
+        reload_layers(doc)
+    doc._kz_layers = now
+
+
 def reset_resources(doc_or_pdf):
     """Empty MuPDF's tables of the fonts, images and color spaces added to the document
     (they are made again as needed): after an undo, an entry may name an object that is

@@ -9,7 +9,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
-from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint, QObject
+from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint, QObject, QRect
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap,
                            QPainter, QDrag, QMouseEvent, QCursor)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFileDialog, QMessageBox,
@@ -19,7 +19,8 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFile
                                QVBoxLayout, QHBoxLayout, QMenu, QProgressDialog,
                                QInputDialog, QWidget, QSizePolicy, QApplication, QScrollArea,
                                QDialog, QFormLayout, QRadioButton, QDialogButtonBox, QCheckBox,
-                               QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit)
+                               QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit,
+                               QTextEdit, QStatusBar, QSizeGrip, QStyle, QStyleOption)
 
 from . import __version__, annotations, export, paths, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
@@ -121,6 +122,8 @@ FORM_TOOLS = [  # form design tools: drag a box (or click) to add a field
 ]
 MEASURE_TOOLS = [
     ("m_length", tr("Length"), "Shift+M", tr("Measure length: drag from point to point (Shift+M)")),
+    ("m_dim", tr("Dimension"), "Shift+D", tr("Dimension: click the two points to measure, then "
+                                             "where the dimension line goes (Shift+D)")),
     ("m_poly", tr("Polylength"), "", tr("Measure along a path: click points, double-click or Enter to finish")),
     ("m_area", tr("Area"), "Shift+A", tr("Measure area and perimeter: click corners, double-click or Enter (Shift+A)")),
     ("m_angle", tr("Angle"), "", tr("Measure an angle: click one end, the corner, then the other end")),
@@ -152,6 +155,9 @@ EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
         "Remove crop shows the whole page again")),
     ("redact", tr("&Redact (mark text or area)"), "Shift+R",
      tr("Redact: drag across text, or drag a box over any area; then Apply redactions")),
+    ("legend", tr("Le&gend"), "",
+     tr("Legend: click (or drag a box for its width) where a list of the page's markups goes, "
+        "each with a sample, how many and measurement totals; it updates by itself")),
     ("placeholder", tr("Add signature &placeholder"), "",
      tr("Placeholder: drag a box where a signature or initials go (choose which in Properties); "
         "then Apply all signature placeholders")),
@@ -381,12 +387,67 @@ class _GroupTip(QObject):
         return False
 
 
+class _StatusBar(QStatusBar):
+    """The status bar. A message too long for the room left of the page controls (often in
+    Spanish) ends in "..." instead of running under them; hover over it for all of it. (Qt
+    draws a message itself, from C++ as well, as with a menu command's status tip, so the
+    message is drawn here.)"""
+
+    def _controls(self):
+        """The widgets shown on the bar (beside a message: only the ones kept on it), not
+        its size grip or a tool tip's window."""
+        return [w for w in self.findChildren(QWidget, options=Qt.FindDirectChildrenOnly)
+                if w.isVisible() and not w.isWindow() and not isinstance(w, QSizeGrip)]
+
+    def message_rect(self):
+        """Where the message goes: from the left to the first control kept on the bar."""
+        right = self.width() - 12
+        for w in self._controls():
+            right = min(right, w.x() - 2)
+        return QRect(6, 0, max(0, right - 6), self.height())
+
+    def shown_message(self):
+        """The message as drawn (ending in "..." when it doesn't fit)."""
+        return self.fontMetrics().elidedText(self.currentMessage(), Qt.ElideRight,
+                                             self.message_rect().width())
+
+    def paintEvent(self, e):
+        msg = self.currentMessage()
+        if not msg:
+            return super().paintEvent(e)
+        # (as QStatusBar paints itself, with the message elided)
+        p = QPainter(self)
+        opt = QStyleOption()
+        opt.initFrom(self)
+        self.style().drawPrimitive(QStyle.PE_PanelStatusBar, opt, p, self)
+        for w in self._controls():
+            item = QStyleOption()
+            item.rect = w.geometry().adjusted(-2, -1, 2, 1)
+            item.palette = self.palette()
+            item.state = QStyle.State_None
+            self.style().drawPrimitive(QStyle.PE_FrameStatusBarItem, item, p, w)
+        p.setPen(self.palette().windowText().color())
+        p.drawText(self.message_rect(), int(Qt.AlignLeading | Qt.AlignVCenter |
+                                            Qt.TextSingleLine), self.shown_message())
+
+    def event(self, e):
+        if e.type() == QEvent.ToolTip and self.currentMessage() and \
+                self.message_rect().contains(e.pos()):
+            if self.shown_message() != self.currentMessage():
+                QToolTip.showText(e.globalPos(), self.currentMessage(), self)
+            else:
+                QToolTip.hideText()
+            return True
+        return super().event(e)
+
+
 class MainWindow(QMainWindow):
     def __init__(self, primary=None):
         """primary (the default): the app's main window, which owns the session (closing it
         closes the others). A window a tab was pulled out into is not: closing its last
         tab closes it."""
         super().__init__()
+        self.setStatusBar(_StatusBar(self))
         from . import paths
         self.settings = paths.settings()
         self.primary = True if primary is None else bool(primary)
@@ -421,7 +482,9 @@ class MainWindow(QMainWindow):
         self._build_actions()
         self._build_menus()
         self._build_toolbars()
-        self.scale_label = QLabel()
+        from .scale_display import ScaleStatusLabel
+        self.scale_label = ScaleStatusLabel()
+        self.scale_label.clicked.connect(self.set_scale)
         self.statusBar().addPermanentWidget(self.scale_label)
         self._thumb_queue = []
         self._thumb_timer = QTimer(self, interval=0)
@@ -439,6 +502,12 @@ class MainWindow(QMainWindow):
             self.restoreGeometry(geo)
         self._restore_layout()
         self._sync_mouse_actions()          # (after the saved layout: the CAD command line)
+        if sys.platform == "darwin":
+            # (once every menu command exists: the application menu's three, nothing else)
+            from . import macos
+            macos.set_menu_roles(self)
+            for b in (self.shapes_btn, self.measure_btn):    # (their tips, put together)
+                b.setToolTip(_GroupTip.text(b))
 
     def _restore_layout(self):
         """Bring back the panels as they were when KanzonasPDF was last closed: which ones
@@ -550,10 +619,21 @@ class MainWindow(QMainWindow):
         self.a_open = self._act(tr("&Open..."), self.open_dialog, QKeySequence.Open)
         self.a_save = self._act(tr("&Save"), self.save, QKeySequence.Save)
         self.a_save_as = self._act(tr("Save &As..."), self.save_as, QKeySequence.SaveAs)
+        self.a_save_pdfa = self._act(tr("Save as P&DF/A..."), self.save_as_pdfa,
+                                     tip=tr("Save an archival copy (PDF/A-2b): fonts embedded, "
+                                            "colors defined, no scripts; the tab then shows it"))
+        self.a_check_pdfa = self._act(tr("Chec&k PDF/A..."), self.check_pdfa,
+                                      tip=tr("List what keeps this document from being PDF/A, "
+                                             "page by page, and what Save as PDF/A fixes"))
         self.a_print = self._act(tr("&Print..."), self.print_doc, QKeySequence.Print)
         self.a_close = self._act(tr("&Close tab"), lambda: self.close_tab(self.tabs.currentIndex()),
                                  QKeySequence.Close)
-        self.a_exit = self._act(tr("E&xit"), self.close, "Alt+F4")
+        if sys.platform == "darwin":
+            # macOS: Quit (Command-Q, in the application menu) ends the whole program, from
+            # any window, as Mac programs do
+            self.a_exit = self._act(tr("E&xit"), self._quit_all, QKeySequence.Quit)
+        else:
+            self.a_exit = self._act(tr("E&xit"), self.close, "Alt+F4")
         self.a_detach = self._act(tr("Move tab to new &window"), self.detach_current, "Ctrl+Shift+N",
                                   tip=tr("Open this document in its own window (for a second "
                                          "monitor); drag the tab out of the tab bar does the same"))
@@ -562,8 +642,11 @@ class MainWindow(QMainWindow):
         self.a_undo = self._act(tr("&Undo"), lambda: v() and v().undo(), QKeySequence.Undo)
         self.a_redo = self._act(tr("&Redo"), lambda: v() and v().redo(), QKeySequence.Redo)
         self.a_find = self._act(tr("&Find"), self._focus_search, QKeySequence.Find)
-        self.a_replace = self._act(tr("R&eplace text..."), self.replace_text, "Ctrl+H",
-                                   tip=tr("Find text in the page and replace it (Ctrl+H)"))
+        # (macOS: Command-H hides the program; Command-Option-F is its Find and Replace)
+        replace_key = "Ctrl+Alt+F" if sys.platform == "darwin" else "Ctrl+H"
+        self.a_replace = self._act(tr("R&eplace text..."), self.replace_text, replace_key,
+                                   tip=tr("Find text in the page and replace it (Ctrl+H)")
+                                   .replace("Ctrl+H", replace_key))
         # clipboard: text, markups, or pages (when the page list has the focus)
         self.a_copy = self._act(tr("&Copy"), lambda: self._clipboard("copy"), QKeySequence.Copy,
                                 tip=tr("Copy the selected text, markups, or pages (in the page list)"))
@@ -627,12 +710,19 @@ class MainWindow(QMainWindow):
         self.a_move_down = self._act(tr("Move page do&wn"), lambda: self._page_op("move", 1),
                                      "Ctrl+Shift+Down", tr("Move current page down (Ctrl+Shift+Down)"))
         self.a_insert_pdf = self._act(tr("&Insert pages from file..."), self.insert_from_file)
+        self.a_replace_pages = self._act(tr("Repl&ace pages..."), self.replace_pages,
+                                         tip=tr("Replace the drawings of pages with a new "
+                                                "revision's (by page or sheet number), keeping "
+                                                "their markups, links and bookmarks"))
         self.a_combine = self._act(tr("Co&mbine files..."), self.combine_files,
                                    tip=tr("Combine several PDFs, in the order you choose, into one "
                                           "new PDF"))
         self.a_from_images = self._act(tr("Create PDF from &images..."), self.pdf_from_images,
                                        tip=tr("Make a PDF from pictures: scans, phone photos "
                                               "(JPG, PNG, TIFF...), one page each"))
+        self.a_scan = self._act(tr("Scan..."), self.scan,      # (every letter of it is taken)
+                                tip=tr("Scan pages from a scanner or printer (on the network "
+                                       "or connected to this computer) into a PDF"))
         self.a_insert_blank = self._act(tr("Insert &blank page after current"),
                                         lambda: self._page_op("blank"))
         self.a_extract = self._act(tr("&Extract pages to new file..."), self.extract_pages)
@@ -660,6 +750,13 @@ class MainWindow(QMainWindow):
         self.a_show_boxes.setCheckable(True)
         self.a_show_boxes.setChecked(self.settings.value("show_boxes", "false") == "true")
         DocumentView.show_boxes = self.a_show_boxes.isChecked()
+        self.a_scale_bar = self._act(tr("Show scale &bar"), self._toggle_scale_bar,
+                                     tip=tr("A graphic scale at the bottom left of each page "
+                                            "that has a scale, in the drawing's units (on "
+                                            "screen only: never printed or saved)"))
+        self.a_scale_bar.setCheckable(True)
+        self.a_scale_bar.setChecked(self.settings.value("scale_bar", "false") == "true")
+        DocumentView.show_scale_bar = self.a_scale_bar.isChecked()
         self.a_ocr = self._act(tr("Recognize text (&OCR)..."), self.ocr,
                                tip=tr("Make scanned pages searchable and selectable"))
         self.a_props = self._act(tr("&Properties panel"), self._toggle_props, "F6")
@@ -909,6 +1006,9 @@ class MainWindow(QMainWindow):
         self.a_menu_bar.setChecked(self.settings.value("menu_bar", "true") != "false")
         self.a_menu_bar.toggled.connect(self._toggle_menu_bar)
         self.addAction(self.a_menu_bar)            # shortcut works while the menu bar is hidden
+        if sys.platform == "darwin":
+            # (the Mac's menu bar is at the top of the screen, always)
+            self.a_menu_bar.setVisible(False)
         self.a_lock = self._act(tr("&Lock selected"), lambda: self._lock_selected(), "Ctrl+L",
                                 tip=tr("Lock the selected markups: they can't be clicked, moved or "
                                        "selected on the page (unlock in the Objects panel)"))
@@ -985,8 +1085,8 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_new, self.a_open])
         self.recent_menu = m.addMenu(tr("Open &recent"))
         self._rebuild_recent()
-        m.addActions([self.a_save, self.a_save_as])
-        m.addActions([self.a_combine, self.a_from_images])
+        m.addActions([self.a_save, self.a_save_as, self.a_save_pdfa, self.a_check_pdfa])
+        m.addActions([self.a_combine, self.a_from_images, self.a_scan])
         em = m.addMenu(tr("&Export to"))
         em.addActions(self.export_actions)
         m.addAction(self.a_compare)
@@ -1025,6 +1125,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_thin_lines)
         m.addAction(self.a_hl_fields)
         m.addAction(self.a_show_boxes)
+        m.addAction(self.a_scale_bar)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
                       self.a_grid_settings])
@@ -1048,7 +1149,11 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_lock, self.a_unlock_all])
         m.addSeparator()
-        hint = m.addAction(tr("Ctrl+click or drag a box with Select to pick several markups"))
+        hint = tr("Ctrl+click or drag a box with Select to pick several markups")
+        if sys.platform == "darwin":
+            from .macos import mac_keys
+            hint = mac_keys(hint, symbols=False)          # (Cmd+click)
+        hint = m.addAction(hint)
         hint.setEnabled(False)
         m = self.cad_menu = mb.addMenu(tr("&CAD"))
         m.addActions([self.cad_actions[k] for k in ("move", "copy", "rotate", "scale", "mirror",
@@ -1077,6 +1182,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.tool_actions[t[0]] for t in MEASURE_TOOLS])
         m.addSeparator()
         m.addActions([self.a_set_scale, self.a_sheet_scales, self.a_measure_summary])
+        m.addAction(self.a_scale_bar)
         m = mb.addMenu(tr("&Review"))
         m.addActions([self.tool_actions["comment"], self.tool_actions["note"]])
         m.addSeparator()
@@ -1119,7 +1225,8 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_move_up, self.a_move_down, self.a_del_page])
         m.addSeparator()
-        m.addActions([self.a_insert_pdf, self.a_insert_blank, self.a_extract])
+        m.addActions([self.a_insert_pdf, self.a_replace_pages, self.a_insert_blank,
+                      self.a_extract])
         m.addSeparator()
         m.addAction(self.a_sheet_links)
         sep = QAction(self)
@@ -1414,11 +1521,13 @@ class MainWindow(QMainWindow):
     def _update_ui(self):
         v = self.view()
         has = v is not None
-        for a in (self.a_save, self.a_save_as, self.a_print, self.a_close, self.a_detach,
+        for a in (self.a_save, self.a_save_as, self.a_save_pdfa, self.a_check_pdfa,
+                  self.a_print, self.a_close, self.a_detach,
                   self.a_find,
                   self.a_find_next, self.a_find_prev, self.a_zoom_in, self.a_zoom_out,
                   self.a_fit_width, self.a_fit_page, self.a_actual, self.a_rot_l, self.a_rot_r,
                   self.a_del_page, self.a_move_up, self.a_move_down, self.a_extract, self.a_ocr, self.a_flatten, self.a_sheet_links,
+                  self.a_replace_pages,
                   self.a_security, self.a_remove_security, self.a_sanitize, self.a_clear_sigs,
                   self.a_timestamp, self.a_multi_sign, self.a_apply_placeholders,
                   self.a_apply_sel_redact, self.a_unlock, self.a_set_scale, self.a_measure_summary,
@@ -1466,7 +1575,7 @@ class MainWindow(QMainWindow):
                 self.zoom_slider.blockSignals(True)
                 self.zoom_slider.setValue(_zoom_to_slider(v.zoom))
                 self.zoom_slider.blockSignals(False)
-            self.scale_label.setText(v.page_scale_text(v.current_page()))
+            self._show_page_scale(v)
             # (the file name itself is never translated, only the words around it)
             name = tr("{name} [protected]").format(name=_doc_name(v)) if v.read_only \
                 else _doc_name(v)
@@ -1482,7 +1591,7 @@ class MainWindow(QMainWindow):
                     self.tabs.setTabToolTip(i, tip)
         else:
             self.page_total.setText(" / 0 ")
-            self.scale_label.setText("")
+            self._show_page_scale(None)
             self.setWindowTitle(_title_base())
 
     # ---- files --------------------------------------------------------------
@@ -1714,6 +1823,19 @@ class MainWindow(QMainWindow):
         self._update_ui()
         return True
 
+    def save_as_pdfa(self):
+        v = self.view()
+        if not v:
+            return False
+        from . import pdfa_ui
+        return pdfa_ui.save_as_pdfa(self, v)
+
+    def check_pdfa(self):
+        v = self.view()
+        if v is not None:
+            from . import pdfa_ui
+            pdfa_ui.check_pdfa(self, v)
+
     def _confirm_close(self, v):
         v.commit_pending()               # typed text not yet confirmed counts as a change
         if not v.dirty:
@@ -1740,14 +1862,17 @@ class MainWindow(QMainWindow):
             (v.selectToolRequested, lambda: self.set_tool("select")),
             (v.previousToolRequested, lambda: self.set_tool(self.default_tool())),
             (v.calibrateRequested, self._calibrate),
-            (v.layersChanged, lambda: self.sender() is self.view() and self._rebuild_thumbs()),
+            (v.scaleDialogRequested, lambda i: self._scale_dialog(None, i)),
+            # (the view is bound here: inside a lambda, sender() isn't the view that sent
+            # the signal, so a check on it was never true and these never ran)
+            (v.layersChanged, lambda v=v: v is self.view() and self._rebuild_thumbs()),
             (v.scaleChanged, self._update_ui),
             (v.historyChanged, self._update_ui),
             (v.documentChanged, self._markups_timer.start),
             (v.structureChanged, self._markups_timer.start),
             (v.requestSignature, self._sign_field),
             (v.textToolPropsChanged,
-             lambda: self.sender() is self.view() and self._refresh_props()),
+             lambda v=v: v is self.view() and self._refresh_props()),
             (v.pageChanged, self._on_page_changed),
             (v.zoomChanged, lambda _: self._update_ui()),
             (v.documentChanged, self._on_doc_changed),
@@ -1915,6 +2040,12 @@ class MainWindow(QMainWindow):
         QApplication.instance().removeEventFilter(self)
         _forget_window(next((r for r in _WINDOW_REFS if r() is self), None))
         e.accept()
+
+    def _quit_all(self):
+        """macOS Quit: close the primary window, which closes every window (asking about
+        unsaved changes in each), from whichever window it was chosen in."""
+        main = next((w for w in windows() if w.primary), self)
+        main.close()
 
     def _save_session(self, others=()):
         """Each open document's page and zoom; from the primary window also the files open
@@ -2106,7 +2237,8 @@ class MainWindow(QMainWindow):
         # keyboard focus to the page (unless you're typing somewhere), so Escape puts the
         # tool down even when it was picked from a toolbar button or a stamp menu
         v = self.view()
-        typing = isinstance(QApplication.focusWidget(), (QLineEdit, QAbstractSpinBox, QPlainTextEdit))
+        typing = isinstance(QApplication.focusWidget(), (QLineEdit, QAbstractSpinBox, QPlainTextEdit,
+                                                         QTextEdit))
         if v is not None and not typing:
             v.setFocus()
         self._refresh_props()
@@ -2378,6 +2510,13 @@ class MainWindow(QMainWindow):
             self.open_file(dlg.result_path)
             self.statusBar().showMessage(tr("Created {path}").format(path=dlg.result_path), 5000)
 
+    def scan(self):
+        """File > Scan: pages from a scanner (scan_dialog.py; nothing of it loads before)."""
+        from .scan_dialog import ScanDialog
+        dlg = ScanDialog(self)
+        dlg.exec()
+        dlg.deleteLater()
+
     def insert_from_file(self):
         """Pages > Insert pages from file: PDFs and pictures (each picture a page). With
         nothing open they make a new, unsaved PDF."""
@@ -2423,6 +2562,67 @@ class MainWindow(QMainWindow):
             return
         at = {0: v.current_page() + 1, 1: -1, 2: 0}[choices.index(where)]
         v.insert_files(paths, at, owner)    # shows what went wrong itself
+
+    def replace_pages(self):
+        """Pages > Replace pages: the drawings of pages here become a new revision's (pages
+        picked by number, or matched by sheet number and reviewed), keeping the pages, their
+        markups, links, form fields and bookmarks. One undo step."""
+        v = self.view()
+        if not v:
+            return
+        if not v.allowed(pymupdf.PDF_PERM_MODIFY):
+            v.modify(lambda: None)              # (refuses, saying why)
+            return
+        from . import dialogs
+        path = dialogs.open_file(self, tr("Replace pages with pages from"), PDF_FILTER,
+                                 self._last_dir())
+        if not path:
+            return
+        self.settings.setValue("last_dir", os.path.dirname(path))
+        from .combine import unlock_copy, ask_owner_password
+        try:
+            src = pymupdf.open(path)
+        except Exception as ex:
+            QMessageBox.critical(self, tr("Replace pages"),
+                                 tr("Couldn't open {name}:\n{error}").format(
+                                     name=os.path.basename(path), error=ex))
+            return
+        try:
+            if src.needs_pass:
+                QMessageBox.information(self, tr("Replace pages"),
+                                        tr("{name} is password-protected: open it, remove its "
+                                           "password and save it first.").format(
+                                            name=os.path.basename(path)))
+                return
+            try:            # (a PDF that doesn't allow copying needs its permissions password)
+                unlock_copy(src, path, lambda p: ask_owner_password(self, p))
+            except PermissionError as ex:
+                QMessageBox.information(self, tr("Protected document"), str(ex))
+                return
+            from .replace_pages_ui import ReplacePagesDialog
+            dlg = ReplacePagesDialog(self, v.doc, src, os.path.basename(path), v.current_page())
+            if dlg.exec() != QDialog.Accepted or not dlg.result_pairs:
+                return
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                report = v.replace_pages(src, dlg.result_pairs, dlg.scaled())
+            finally:
+                QApplication.restoreOverrideCursor()
+        finally:
+            src.close()
+        if report is None:
+            return
+        msg = tr("{n} page(s) replaced (Ctrl+Z undoes it)").format(n=report["pages"])
+        self.statusBar().showMessage(msg, 6000)
+        if report["check"]:
+            pages = ", ".join(str(i + 1) for i, _n in report["check"])
+            QMessageBox.information(
+                self, tr("Replace pages"),
+                msg + "\n\n" + tr("{n} link(s) lay over words of the old drawing that aren't in "
+                                   "the same place on the new one. They were kept where they "
+                                   "were: check them on page(s) {pages}.").format(
+                    n=sum(k for _i, k in report["check"]), pages=pages))
+        self._update_ui()
 
     def new_pdf(self):
         """File > New PDF: an unsaved document with one blank page of the chosen size; Save
@@ -3264,6 +3464,36 @@ class MainWindow(QMainWindow):
     def set_scale(self):
         self._scale_dialog()
 
+    def _show_page_scale(self, v):
+        """The current page's scale in the status bar and on the Measure tab (red 'not set'
+        when it has none); both open Set scale when clicked."""
+        panel = getattr(self, "scale_panel", None)
+        if v is None:
+            self.scale_label.show_scale("", True, "")
+            if panel is not None:
+                panel.show_scale(None, "")
+            return
+        i = v.current_page()
+        text = v.page_scale_text(i)
+        scale = v.page_scale(i)
+        tip = text + "\n" + tr("Click to set the scale (Measure > Set scale)")
+        self.scale_label.show_scale(text, scale[3], tip)
+        if panel is not None:
+            panel.show_scale(scale, tip)
+
+    def _toggle_scale_bar(self):
+        on = self.a_scale_bar.isChecked()
+        DocumentView.show_scale_bar = on
+        self.settings.setValue("scale_bar", "true" if on else "false")
+        for w in windows():
+            w.a_scale_bar.setChecked(on)
+            for v in w._views_drawn():
+                for pw in v.pages:
+                    pw.update()
+        if on:
+            self.statusBar().showMessage(tr("Scale bar on: it shows on the pages that have a "
+                                            "scale (on screen only)"), 4000)
+
     def link_sheet_callouts(self):
         """Pages > Link sheet callouts...: sheet numbers from the title blocks, then a link on
         every callout, note and index line that names one of the sheets."""
@@ -3544,7 +3774,9 @@ class MainWindow(QMainWindow):
                 (tr("{n} form field(s)"), hidden["fields"]),
                 (tr("{n} markup note(s)"), hidden["markups"]), (tr("{n} link(s)"), hidden["links"]),
                 (tr("{n} bookmark(s)"), hidden["bookmarks"]),
-                (tr("{n} document propert(ies)"), hidden["metadata"])) if c]
+                (tr("{n} document propert(ies)"), hidden["metadata"]),
+                (tr("{n} other place(s) in the file (layer names, web addresses, form data, "
+                    "alternate text...)"), hidden.get("other", 0))) if c]
             msg = (tr("Marked {n} occurrence(s) on the pages.").format(n=n) if n else
                    tr("No matches on the pages."))
             if extra and not n:
@@ -3737,15 +3969,7 @@ class MainWindow(QMainWindow):
         replaced = self._writing_over(out, source=v)
         if replaced is None:
             return
-        if getattr(v, "sig_results", None):
-            # added to the file as it is (an incremental update), so earlier signatures stay
-            # valid; a rewrite of the whole file (tobytes) changed what they had signed
-            data = v._orig_data
-            if data is None:
-                with open(v.path, "rb") as f:
-                    data = f.read()
-        else:
-            data = v.doc.tobytes()
+        data = v.signing_bytes()
         try:
             digisign.sign(data, out, signer, reason.currentText(), location.text(),
                           lock.isChecked())
@@ -3941,8 +4165,8 @@ class MainWindow(QMainWindow):
             "ellipse, circle, cloud, mask, polygon, line, arrow, polyline, arc, curve, pen). "
             "Hold Shift for squares, circles and straight lines"))
         self.measure_btn.setProperty("kz_group_tip", tr(
-            "Measure: click for the tool shown, or the arrow for length, polylength, area, "
-            "count, calibrate and scale"))
+            "Measure: click for the tool shown, or the arrow for length, dimension, polylength, "
+            "area, count, calibrate and scale"))
         if not hasattr(self, "_group_tip"):
             self._group_tip = _GroupTip(self)
             self.shapes_btn.installEventFilter(self._group_tip)
@@ -4004,8 +4228,13 @@ class MainWindow(QMainWindow):
             if extra and (f"({extra})" in base or (plain and f"({plain})" in base)):
                 extra = ""                               # (the tip says it already)
             added = f" ({extra})" if extra else ""
-            if a.toolTip() != base + added:
-                a.setToolTip(base + added)
+            tip = base + added
+            if sys.platform == "darwin":
+                # (Command and Option, as the Mac's keyboard says, also in the tip's own text)
+                from .macos import mac_keys
+                tip = mac_keys(tip)
+            if a.toolTip() != tip:
+                a.setToolTip(tip)
             a.setProperty("kz_tip_set", a.toolTip())
 
     def _names_of(self, a):
@@ -4033,6 +4262,7 @@ class MainWindow(QMainWindow):
             if mode in w.theme_actions:
                 w.theme_actions[mode].setChecked(True)
             w._apply_icons()
+            w._update_ui()              # ("Scale not set": a red that reads on the theme)
 
     # ---- remembered page & zoom per file ------------------------------------------------
     def _file_states(self):
@@ -4572,8 +4802,9 @@ class MainWindow(QMainWindow):
     RIBBON_LABELS = {
         "a_fit_width": tr("Fit width"), "a_fit_page": tr("Fit page"), "a_actual": tr("Actual size"),
         "a_cad_mouse": tr("CAD"), "a_mouse_standard": tr("Select"), "a_mouse_hand": tr("Hand"),
-        "a_free_pan": tr("Free movement"), "a_grid": tr("Grid"), "a_snap_grid": tr("Snap to grid"),
-        "a_snap_objects": tr("Snap to objects"), "a_snap_page": tr("Snap to page"),
+        "a_free_pan": tr("Free movement"), "a_grid": tr("Grid"),
+        "a_snap_grid": tr("Snap to grid", ctx="ribbon"),
+        "a_snap_objects": tr("Snap to objects"), "a_snap_page": tr("Snap to page", ctx="ribbon"),
         "a_grid_settings": tr("Grid settings"),
         "a_set_scale": tr("Set scale"), "a_sheet_scales": tr("Sheet scales"), "a_measure_summary": tr("Summary"), "a_ocr": tr("OCR"),
         "a_rot_l": tr("Rotate left"), "a_rot_r": tr("Rotate right"), "a_lock": tr("Lock"),
@@ -4588,7 +4819,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": tr("Apply selected"), "a_apply_redact": tr("Apply all"),
         "a_security": tr("Security"), "a_remove_security": tr("Remove security"), "a_unlock": tr("Unlock"),
         "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"), "a_move_up": tr("Move up"),
-        "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files"), "a_from_images": tr("From images"), "a_new": tr("New PDF"),
+        "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files", ctx="ribbon"), "a_from_images": tr("From images"), "a_new": tr("New PDF"), "a_scan": tr("Scan"),
         "a_insert_blank": tr("Blank page"), "a_extract": tr("Extract"), "a_header": tr("Header and footer"),
         "a_watermark": tr("Watermark"), "a_background": tr("Background"),
         "a_remove_bg": tr("Remove background"), "a_remove_wm": tr("Remove watermarks"), "a_bookmarks": tr("Bookmarks"), "a_attachments": tr("Attachments"),
@@ -4606,7 +4837,9 @@ class MainWindow(QMainWindow):
         "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "tool_link": tr("Links"),
         "a_page_boxes": tr("Page boxes"), "a_fix_hairlines": tr("Fix hairlines"),
         "a_print_check": tr("Check for printing"), "a_show_boxes": tr("Show boxes"),
+        "a_scale_bar": tr("Scale bar"),
         "tool_editobjects": tr("Edit objects"), "tool_addtext": tr("Add text"),
+        "tool_attach": tr("Attach file", ctx="ribbon"),
         "tool_m_calibrate": tr("Calibrate"),
     }
     RIBBON_ICONS = {
@@ -4626,11 +4859,14 @@ class MainWindow(QMainWindow):
         "a_sanitize": "broom", "a_hl_fields": "format-color-highlight",
         "a_move_up": "arrow-up-bold-outline", "a_move_down": "arrow-down-bold-outline",
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
+        "a_replace_pages": "file-replace-outline",
         "a_combine": "file-document-multiple-outline",
         "a_insert_blank": "file-outline", "a_uncrop": "crop-free",
         "a_page_boxes": "border-outside", "a_fix_hairlines": "format-line-weight",
         "a_print_check": "printer-search", "a_show_boxes": "border-style",
-        "a_from_images": "file-image-outline", "a_new": "file-document-plus-outline", "a_extract": "file-export-outline",
+        "a_scale_bar": "map-legend",
+        "a_from_images": "file-image-outline", "a_new": "file-document-plus-outline",
+        "a_scan": "scanner", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
         "a_remove_bg": "format-color-marker-cancel", "a_remove_wm": "water-off-outline",
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
@@ -4643,7 +4879,7 @@ class MainWindow(QMainWindow):
     }
 
     def _build_ribbon(self):
-        from .ribbon import Ribbon, split_button
+        from .ribbon import Ribbon, Stack, Icons, split_button
         t = self.tool_actions
         A_ = self.arrange_actions
         for attr, label in self.RIBBON_LABELS.items():
@@ -4660,50 +4896,63 @@ class MainWindow(QMainWindow):
         self.ribbon_align_box.setToolTip(self.align_ref_box.toolTip())
         self.ribbon_align_box.activated.connect(
             lambda i: self._set_align_ref(self.ribbon_align_box.itemData(i)))
+        from .scale_display import ScalePanel
+        self.scale_panel = ScalePanel(self.a_set_scale, self.a_scale_bar)
         r = self.ribbon = Ribbon()
+        # Every tab fits a 1366-pixel-wide screen in English and in Spanish, at Windows' own
+        # font (tests/test_ribbon_fits.py): commands used less often share a button with an
+        # arrow (split_button) or are listed under the group's arrow (its last element), the
+        # ones used most stay large. The same layout in every language.
+        snap = [self.a_snap_objects, self.a_snap_grid, self.a_snap_page, self.a_grid]
         r.add_tab(tr("Home"), [
             # first, the three ways the mouse works: Select (the arrow), Hand, CAD
             (tr("Mouse"), "large", [self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse]),
             (tr("Tools"), "large", [t["edittext"], t["addtext"], t["editobjects"],
-                                t["capture"],
-                                t["erasecontent"]]),
-            (tr("Mark up text"), "small", [t["highlight"], t["underline"], t["strikeout"],
-                                       t["comment"], t["note"], t["textbox"]]),
-            (tr("Insert"), "large", [t["stamp"], t["image"], t["attach"], t["link"]]),
+                                    Stack([t["capture"], t["erasecontent"]])]),
+            # (Underline and Strike under Highlight's arrow, as all of them on the Markup tab)
+            (tr("Mark up text"), "small", [
+                split_button([t["highlight"], t["underline"], t["strikeout"]]), t["comment"],
+                t["note"], t["textbox"]]),
+            (tr("Insert"), "large", [t["stamp"], t["image"], Stack([t["attach"], t["link"]])]),
+            # (the status bar has the zoom too)
             (tr("Zoom"), "small", [self.a_fit_width, self.a_fit_page, self.a_actual,
-                               self.a_zoom_in, self.a_zoom_out]),
-            (tr("Sign"), "large", [t["signature"], t["initials"]]),
+                                   Icons([self.a_zoom_out, self.a_zoom_in])]),
+            # (Initials under Sign's arrow; both on the Protect tab)
+            (tr("Sign"), "large", [split_button([t["signature"], t["initials"]], large=True)]),
         ])
         # only markups here (PDF viewers can edit those); the Image tool and Erase content change
         # the page itself and live on the Home tab with Add text and Edit objects
         r.add_tab(tr("Markup"), [
             (tr("Text"), "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
-                               t["note"], t["textbox"]]),
-            (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"]]),
+                                   t["note"], t["textbox"]]),
+            (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"],
+                                               t["legend"]]),
             (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["circle"], t["cloud"], t["mask"],
-                                 t["polygon"], t["line"], t["arrow"], t["polyline"], t["arc"],
-                                 t["curve"], t["ink"]]),
+                                     t["polygon"], t["line"], t["arrow"], t["polyline"], t["arc"],
+                                     t["curve"], t["ink"]]),
             (tr("Erase"), "large", [t["eraser"]]),
-            (tr("Styles"), "large", [self.a_props, self.a_chest]),
+            (tr("Styles"), "small", [self.a_props, self.a_chest]),
         ])
-        # snapping is offered where it's used: Measure, Arrange (lining markups up) and View
-        snap_group = [self.a_snap_grid, self.a_snap_objects, self.a_snap_page, self.a_grid,
-                      self.a_grid_settings]
+        # snapping is offered where it's used: Measure, Arrange (lining markups up) and View;
+        # Grid settings (a window) under the group's arrow
         r.add_tab(tr("Measure"), [
             (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
-            (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_perimeter"], t["m_volume"]]),
-            (tr("Scale"), "small", [t["m_calibrate"], self.a_set_scale, self.a_sheet_scales,
-                                self.a_measure_summary]),
-            (tr("Grid & snap"), "small", snap_group),
+            (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_dim"], t["m_perimeter"],
+                                   t["m_volume"], t["m_calibrate"]]),
+            # the page's scale in large type opens Set scale (so no separate button for it),
+            # with the Show scale bar switch beside it
+            (tr("Page scale"), "large", [self.scale_panel]),
+            (tr("Scale & snap"), "small", [self.a_sheet_scales, self.a_measure_summary] + snap,
+             [self.a_grid_settings]),
         ])
         r.add_tab(tr("Arrange"), [
             (tr("Align"), "small", [A_["al_left"], A_["al_hcenter"], A_["al_right"], A_["al_top"],
-                                A_["al_vmiddle"], A_["al_bottom"]]),
+                                    A_["al_vmiddle"], A_["al_bottom"]]),
             (tr("Align to"), "small", [self.ribbon_align_box]),
             (tr("Distribute"), "small", [A_["dist_h"], A_["dist_v"]]),
             (tr("Order"), "small", [A_["z_front"], A_["z_forward"], A_["z_backward"], A_["z_back"]]),
             (tr("Lock"), "large", [self.a_lock, self.a_unlock_all]),
-            (tr("Snap"), "small", snap_group),
+            (tr("Snap"), "small", snap, [self.a_grid_settings]),
         ])
         r.add_tab(tr("Review"), [
             (tr("Add"), "large", [t["comment"], t["note"]]),
@@ -4713,13 +4962,13 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab(tr("Protect"), [
             (tr("Sign"), "large", [t["signature"], t["initials"], t["date"], self.a_multi_sign]),
-            (tr("Placeholders"), "large", [t["placeholder"], self.a_apply_placeholders]),
+            (tr("Placeholders"), "small", [t["placeholder"], self.a_apply_placeholders]),
             (tr("Digital signatures"), "small", [self.a_digisign, self.a_timestamp,
-                                             self.a_sig_details, self.a_clear_sigs]),
+                                                 self.a_sig_details, self.a_clear_sigs]),
             (tr("Redact"), "small", [t["redact"], self.a_search_redact, self.a_apply_sel_redact,
-                                 self.a_apply_redact]),
+                                     self.a_apply_redact]),
             (tr("Security"), "large", [self.a_security, self.a_remove_security, self.a_unlock,
-                                   self.a_sanitize]),
+                                       self.a_sanitize]),
         ])
         r.add_tab(tr("Forms"), [
             (tr("Add fields"), "large", [t[k] for k, _l, _t in FORM_TOOLS]),
@@ -4728,12 +4977,19 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Pages"), [
             (tr("Rotate"), "large", [self.a_rot_l, self.a_rot_r]),
             (tr("Crop"), "large", [t["crop"], self.a_uncrop]),
-            (tr("Organize"), "small", [self.a_move_up, self.a_move_down, self.a_del_page,
-                                   self.a_insert_pdf, self.a_insert_blank, self.a_extract]),
-            (tr("Create"), "large", [self.a_new, self.a_combine, self.a_from_images]),
-            (tr("Document"), "small", [self.a_header, self.a_watermark, self.a_background,
-                                   self.a_bookmarks, self.a_sheet_links, self.a_attachments,
-                                   self.a_compress, self.a_compare]),
+            # (Extract and Replace pages share one button; moving pages is mostly done by
+            # dragging them in the Pages panel: Move up and down under the arrow)
+            (tr("Organize"), "small", [self.a_insert_pdf, self.a_insert_blank, self.a_del_page,
+                                       split_button([self.a_extract, self.a_replace_pages])],
+             [self.a_move_up, self.a_move_down]),
+            (tr("Create"), "small", [self.a_new, self.a_combine, self.a_from_images,
+                                     self.a_scan]),
+            # (what's put on every page shares a button: header and footer, watermark,
+            # background)
+            (tr("Document"), "small", [
+                split_button([self.a_header, self.a_watermark, self.a_background]),
+                self.a_bookmarks, self.a_compare, self.a_compress],
+             [self.a_attachments, self.a_sheet_links]),
             (tr("Convert"), "large", [self.a_ocr, self.a_flatten]),
         ])
         # print production (1.8): what a sheet needs before a plotter or a print shop
@@ -4746,22 +5002,22 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab(tr("View"), [
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
-                                 self.a_split]),
-            (tr("Display"), "small", [self.a_hl_fields, self.a_show_markups, self.a_free_pan,
-                                  self.a_night]),
-            (tr("Grid & snap"), "small", snap_group),
-            (tr("Ribbon"), "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
-                                 self.a_menu_bar]),
+                                     self.a_split]),
+            (tr("Display"), "small", [self.a_night, self.a_show_markups, self.a_hl_fields,
+                                      self.a_free_pan]),
+            (tr("Grid & snap"), "small", snap, [self.a_grid_settings]),
+            # (Collapse is also a double-click on a tab, or Ctrl+F1)
+            (tr("Ribbon"), "small", [self.a_ribbon, self.a_menu_bar],
+             [self.a_collapse, self.a_group_names]),
             (tr("Help"), "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
         ])
         c = self.cad_actions
         r.add_tab(tr("CAD"), [
             (tr("Select"), "large", [self.tool_actions["select"],
                                      self.tool_actions["editobjects"]]),
-            # two rows, as the groups after them, so the tab fits a 1366-pixel-wide screen
+            # AutoCAD's Modify panel (Align, used less, under the arrow)
             (tr("Modify"), "small", [c["move"], c["copy"], c["rotate"], c["scale"], c["mirror"],
-                                     c["delete"]]),
-            (tr("More"), "small", [c["align"], c["array"], c["trim"]]),
+                                     c["delete"], c["array"], c["trim"]], [c["align"]]),
             # what's used most next to the CAD commands, so CAD mode needs no other tab for it
             # (the one-letter markup shortcuts type into the command line in CAD mode); similar
             # tools share a button with an arrow for the others, as on AutoCAD's ribbon
@@ -4769,14 +5025,15 @@ class MainWindow(QMainWindow):
                 self._split_tools("rect", "cloud", "polygon", "mask"),
                 self._split_tools("circle", "arc"),
                 self._split_tools("line", "polyline", "curve", "ink"), t["arrow"],
-                self._split_tools("textbox", "callout"), self._split_tools("stamp", "image")]),
-            # measuring and the snaps it uses
+                self._split_tools("textbox", "callout"),
+                self._split_tools("stamp", "image", "legend")]),
+            # measuring and the snaps it uses (icons, as on AutoCAD's status bar)
             (tr("Measure"), "small", [
                 self._split_tools(*["m_length"] + [k for k, *_r in MEASURE_TOOLS
                                                    if k != "m_length"]),
-                self.a_snap_objects, self.a_snap_grid, self.a_snap_page]),
+                Icons([self.a_snap_objects, self.a_snap_grid, self.a_snap_page])]),
             # the page's own text and drawing: erase, stacking order, align, change the words
-            # (Add text under the arrow; in the second column's free slot: no wider)
+            # (Add text under the arrow)
             (tr("Edit"), "small", [
                 t["erasecontent"],
                 split_button([A_[k] for k in ("z_front", "z_forward", "z_backward", "z_back")]),
@@ -4881,7 +5138,8 @@ class MainWindow(QMainWindow):
         self.view_group.setVisible(ribbon)
         tb.setVisible(not ribbon)
         self.menuBar().setVisible(not ribbon or self.a_menu_bar.isChecked())
-        self.menu_btn.setVisible(ribbon and not self.a_menu_bar.isChecked())
+        self.menu_btn.setVisible(ribbon and not self.a_menu_bar.isChecked()
+                                 and sys.platform != "darwin")
 
     def _toggle_menu_bar(self, on):
         self.settings.setValue("menu_bar", "true" if on else "false")
@@ -5087,8 +5345,20 @@ class MainWindow(QMainWindow):
                          + "](" + page + ")")
         notes.setMarkdown("\n\n".join(parts))
         lay.addWidget(notes)
+        how = tr("Download opens the release page in your browser.")
+        if sys.platform == "darwin":
+            # (an unsigned Mac app doesn't replace itself: the new disk image is installed
+            # like the first one; there is none for Intel Macs)
+            from . import macos
+            if macos.intel():
+                how += " " + tr("The Mac version is for Macs with Apple silicon (M1 or "
+                                "newer) only: there's no version for Intel Macs yet.")
+            else:
+                how += " " + tr("Download {file} there, open it and drag KanzonasPDF to "
+                                "Applications, replacing the old one. Your settings are "
+                                "kept.").format(file=macos.DMG)
         info = QLabel((self._update_now_text() + "\n\n" if self._self_update_url() else "")
-                      + tr("Download opens the release page in your browser."))
+                      + how)
         info.setWordWrap(True)
         lay.addWidget(info)
         box = QDialogButtonBox()
@@ -5341,6 +5611,12 @@ class MainWindow(QMainWindow):
         self._refresh_layers()
         self._markups_timer.start()
         self._refresh_props()
+        # the count beside Find is the shown tab's own search ("3 of 120"), nothing once the
+        # last document is closed (it stayed with no document to go through)
+        if current is not None:
+            self._show_find_count(*current.search_position())
+        else:
+            self._show_find_count(0, 0, False)
         self._update_ui()
 
     def _on_page_changed(self, page):

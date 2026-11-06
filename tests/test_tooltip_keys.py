@@ -47,7 +47,8 @@ class TooltipKeys(unittest.TestCase):
                 self.assertIn(sc, b.toolTip(), a.text())
         self.assertGreater(n, 50)
         # the ones that didn't before 1.8.1
-        self.assertEqual(self.w.a_new.toolTip().count("(Ctrl+N)"), 1)
+        new = QKeySequence("Ctrl+N").toString(QKeySequence.NativeText)     # (macOS: ⌘N)
+        self.assertEqual(self.w.a_new.toolTip().count("(%s)" % new), 1)
         for name in ("a_thumbs", "a_props", "a_markups"):
             a = getattr(self.w, name, None)
             if a is not None and not a.shortcut().isEmpty():

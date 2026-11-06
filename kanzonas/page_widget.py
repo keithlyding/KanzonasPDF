@@ -23,19 +23,23 @@ from .i18n import tr
 TEXT_TOOLS = {"select", "highlight", "underline", "strikeout", "comment", "redact"}
 SHAPE_TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", "eraser", "cloud",
                "callout", "m_length", "m_calibrate", "m_radius", "image", "placeholder",
-               "erasecontent", "capture", "crop", "link"}
+               "erasecontent", "capture", "crop", "link", "legend"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume",
-              "arc", "curve"}
+              "arc", "curve", "m_dim"}
 # three clicks: Arc = start, a point it passes through, end; Curve = start, end, the bend
 CURVE_TOOLS = {"arc", "curve"}
+# three clicks, the last one ends it: an angle's end, corner, end; a dimension's two points
+# and where its dimension line goes (a drag gives a dimension its two points too)
+THREE_CLICKS = {"m_angle", "arc", "curve", "m_dim"}
 # While one of these drawing tools is active, clicking an existing markup selects it for
 # moving / resizing / restyling (like the Select tool) instead of starting a new one.
 EDIT_IN_PLACE = {"rect", "ellipse", "circle", "mask", "cloud", "line", "arrow", "polygon",
                  "polyline", "ink", "arc", "curve", "textbox", "callout", "note", "stamp",
                  "m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius",
-                 "m_perimeter", "m_volume", "image", "attach", "placeholder"}
+                 "m_perimeter", "m_volume", "m_dim", "image", "attach", "placeholder",
+                 "legend"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area", "m_angle", "m_radius",
-                 "m_perimeter", "m_volume"}
+                 "m_perimeter", "m_volume", "m_dim"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}
 SIGN_TOOLS = {"signature", "initials"}
 HANDLE = 7          # handle size in px
@@ -302,6 +306,7 @@ def thumbnail(view, i, s):
         if al is not None:
             pm = RL.draw_over(pm, al, s)
     else:
+        RL.sync_transparency(page)          # (as a page opened afresh: see there)
         pm = page.get_pixmap(matrix=pymupdf.Matrix(s, s), annots=True)
     return QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
 
@@ -342,6 +347,7 @@ class PageWidget(QWidget):
         self._ghost = None          # signature / stamp preview position (widget coords)
         self._poly = []             # polygon / polyline points so far (widget coords)
         self._poly_hover = None
+        self._dim_press = None      # Dimension: where its first point was pressed (a drag)
         self._marquee = False       # Ctrl+drag with Select: selection box only, no text
         self._cad_down = None       # CAD mode: a press with Select / Edit objects (cad_select.py)
         self._snap_mark = None      # (widget point, "object" | "page" | "grid") last snap
@@ -427,7 +433,10 @@ class PageWidget(QWidget):
         if not v.show_markups:
             return None
         if self.index not in v._alists:
-            v._alists[self.index] = RL.annots_list(v.doc[self.index])
+            page = v.doc[self.index]
+            # (drawn again after a change: its pictures decoded afresh, as when opened)
+            RL.forget_pictures(page.parent, RL.markup_pictures(page))
+            v._alists[self.index] = RL.annots_list(page)
         return v._alists[self.index]
 
     def _content(self, s, clip=None, tile=None):
@@ -859,6 +868,8 @@ class PageWidget(QWidget):
 
         if self.view.show_boxes:
             self._paint_page_boxes(p, page)
+        if self.view.show_scale_bar:
+            self._paint_scale_bar(p)
 
         tool = self.view.tool
         self._paint_text_selection(p, page, tool)
@@ -880,7 +891,9 @@ class PageWidget(QWidget):
                        max(1.0, float(self.view.tool_props(tool).get("width", 2)) * self.view.zoom))
             p.setPen(pen)
             pts = self._poly + ([self._poly_hover] if self._poly_hover is not None else [])
-            if tool in CURVE_TOOLS:
+            if tool == "m_dim":
+                self._paint_dim_preview(p, pts)
+            elif tool in CURVE_TOOLS:
                 p.setBrush(Qt.NoBrush)
                 p.drawPath(self._curve_preview(tool, pts))
             else:
@@ -1147,7 +1160,8 @@ class PageWidget(QWidget):
         if m["kind"] in ("line", "arrow", "m_length", "m_radius"):
             return [[pt(q) for q in (A.path_points(m) if curved else m["points"])]]
         if m["kind"] in A.VERTEXED:
-            pts = [pt(q) for q in (A.path_points(m) if curved else m["points"])]
+            pts = [pt(q) for q in (A.path_points(m) if curved or m["kind"] == "m_dim"
+                                   else m["points"])]
             if m["kind"] in ("polygon",) + A.CLOSED_MEASURES:
                 pts.append(pts[0])
             return [pts]
@@ -1665,7 +1679,9 @@ class PageWidget(QWidget):
                     what=v.annot_label(self.index, pdf).lower()), remove)
         if has_text:
             menu.addSeparator()
-            for tool, label in (("highlight", tr("Highlight")), ("underline", tr("Underline")),
+            # (verbs, as Strike out: the tools' own names are nouns in Spanish)
+            for tool, label in (("highlight", tr("Highlight", ctx="verb")),
+                                ("underline", tr("Underline", ctx="verb")),
                                 ("strikeout", tr("Strike out")),
                                 ("comment", tr("Comment on text...")),
                                 ("redact", tr("Mark for redaction"))):
@@ -1891,8 +1907,11 @@ class PageWidget(QWidget):
                 pos = snap45(self._poly[-1], pos)
             self._poly.append(pos)
             self.update()
-            if tool in ("m_angle", "arc", "curve") and len(self._poly) == 3:
+            if tool in THREE_CLICKS and len(self._poly) == 3:
                 self.finish_poly()          # an angle is three clicks: end, corner, end
+            elif tool == "m_dim":
+                self._dim_press = pos if len(self._poly) == 1 else None
+                self._dim_status()
             return
         if tool in FORM_TOOLS:
             model = self._selected_here()
@@ -1947,6 +1966,22 @@ class PageWidget(QWidget):
         elif tool in ("note", "attach"):
             self.view.apply_point_tool(self.index, tool, pdf)
 
+    def _paint_dim_preview(self, p, pts):
+        """The Dimension being drawn (widget points): the measured line, then with the third
+        point its extension lines and dimension line (dimensions.py)."""
+        if len(pts) < 3:
+            if len(pts) == 2:
+                p.drawLine(pts[0], pts[1])
+            return
+        from . import dimensions
+        a, b, a2, b2, _n, _d = dimensions.geometry(
+            [pymupdf.Point(q.x(), q.y()) for q in pts[:3]])
+        path = QPainterPath(QPointF(a.x, a.y))
+        for q in (a2, b2, b):
+            path.lineTo(q.x, q.y)
+        p.setBrush(Qt.NoBrush)
+        p.drawPath(path)
+
     def _curve_preview(self, tool, pts):
         """The Arc or Curve being drawn (widget coordinates) through the points clicked and
         the pointer: a straight line until there are three."""
@@ -1958,6 +1993,14 @@ class PageWidget(QWidget):
         for t in q[1:]:
             path.lineTo(t.x, t.y)
         return path
+
+    def _dim_status(self):
+        """The status bar says what the Dimension tool's next click does."""
+        if len(self._poly) == 1:
+            self.view.statusMessage.emit(tr("Dimension: click the second point (Escape "
+                                            "cancels)"))
+        elif len(self._poly) == 2:
+            self.view.statusMessage.emit(tr("Dimension: click where the dimension line goes"))
 
     def _press_on_markup(self, pos, pdf, ctrl=False, cards=False):
         """Handle a press on a selected markup's handle or on any markup: select it and start
@@ -2015,13 +2058,16 @@ class PageWidget(QWidget):
         drawing too); else, each way on its own, its left / center / right onto the page's
         left / center / right and its top / middle / bottom onto the page's (snap to page,
         with a guide line along what it lines up with); else its top-left corner to the grid.
-        A picture dragged near the middle of the sheet settles in the middle."""
+        A picture dragged near the middle of the sheet settles in the middle. With both on,
+        the nearer one wins (each measured by the larger of its moves across and down): an
+        object first, whatever its distance, kept a picture dropped by the page's center
+        from settling there on any drawing with a line end near one of its corners."""
         v = self.view
         self._snap_mark = None
         self._snap_guides = []
         moved = box.translated(d)
+        best = None
         if v.snap_objects:
-            best = None
             for x in (moved.left(), moved.center().x(), moved.right()):
                 for y in (moved.top(), moved.center().y(), moved.bottom()):
                     at = QPointF(x, y)
@@ -2031,9 +2077,6 @@ class PageWidget(QWidget):
                         gap = (sp - at).manhattanLength()
                         if best is None or gap < best[0]:
                             best = (gap, sp, at)
-            if best is not None:
-                self._snap_mark = (best[1], "object")
-                return d + (best[1] - best[2])
         if v.snap_page:
             page = v.doc[self.index]
             pr = self.to_screen(page.rect * page.derotation_matrix)
@@ -2047,12 +2090,18 @@ class PageWidget(QWidget):
                 for to in (pr.top(), pr.center().y(), pr.bottom()):
                     if abs(to - at) <= tol and (dy is None or abs(to - at) < abs(dy[0])):
                         dy = (to - at, to)
-            if dx is not None or dy is not None:
+            far = max(abs(dx[0]) if dx else 0.0, abs(dy[0]) if dy else 0.0)
+            if (dx is not None or dy is not None) and (
+                    best is None or far <= max(abs(best[1].x() - best[2].x()),
+                                               abs(best[1].y() - best[2].y()))):
                 if dx is not None:
                     self._snap_guides.append(("x", dx[1]))
                 if dy is not None:
                     self._snap_guides.append(("y", dy[1]))
                 return d + QPointF(dx[0] if dx else 0.0, dy[0] if dy else 0.0)
+        if best is not None:
+            self._snap_mark = (best[1], "object")
+            return d + (best[1] - best[2])
         if v.snap_grid and v.grid_spacing > 0:
             from . import snapping
             corner = moved.topLeft()
@@ -2097,6 +2146,10 @@ class PageWidget(QWidget):
             return A.with_endpoint(model, i, self.to_pdf(pos))
         if ed["mode"].startswith("v"):
             i = int(ed["mode"][1:])
+            if model["kind"] == "m_dim":
+                if shift and i < 2:         # (Shift: 45 degree steps from the other point)
+                    pos = snap45(self.to_screen_pt(model["points"][1 - i]), pos)
+                return A.with_endpoint(model, i, self.to_pdf(pos))
             if shift and len(model["points"]) > 1:
                 pos = snap45(self.to_screen_pt(model["points"][i - 1]), pos)
             return A.with_endpoint(model, i, self.to_pdf(pos))
@@ -2224,6 +2277,13 @@ class PageWidget(QWidget):
             elif tool == "select" or (tool in EDIT_IN_PLACE and not self._poly):
                 self._update_select_cursor(pos, restore=tool != "select")
             return
+        if self._dim_press is not None and tool == "m_dim" and len(self._poly) == 1:
+            # (a drag from its first point: the second follows the pointer, as Length's)
+            if tool in SNAP_TOOLS:
+                pos = self._snap(pos, e)
+            self._poly_hover = snap45(self._poly[0], pos) if shift_held(e) else pos
+            self.update()
+            return
         if tool == "hand":
             self.view.continue_pan(e.globalPosition())
         elif self._sig_drag is not None:
@@ -2330,6 +2390,20 @@ class PageWidget(QWidget):
             return                          # (CAD mode: the shape the click ended is made)
         tool = self.view.tool
         pos = e.position()
+        if self._dim_press is not None:
+            start, self._dim_press = self._dim_press, None
+            if tool == "m_dim" and len(self._poly) == 1 and \
+                    not cad_draw.is_click(start, pos, None):
+                # released after a drag: that's its second point; a click then places its line
+                if tool in SNAP_TOOLS:
+                    pos = self._snap(pos, e)
+                if shift_held(e):
+                    pos = snap45(self._poly[0], pos)
+                self._poly.append(pos)
+                self._poly_hover = pos
+                self._dim_status()
+                self.update()
+            return
         if getattr(self, "_cad_resize", None) is not None:
             cad_select.resize_release(self, e, pos)
             return
@@ -2414,7 +2488,9 @@ class PageWidget(QWidget):
         pts, self._poly, self._poly_hover = self._poly, [], None
         self.update()
         tool = self.view.tool
-        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc") and len(pts) < 3):
+        self._dim_press = None
+        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc", "m_dim")
+                                      and len(pts) < 3):
             return
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 
@@ -2426,6 +2502,22 @@ class PageWidget(QWidget):
         if cad_select.double_click(self, e):
             return                          # (CAD selection: taken as a click, see there)
         cad_select.cancel(self.view)        # (a double-click selects a word: no box after it)
+        if self.view.tool == "m_dim":
+            # two quick clicks are two of its points (a click on the last point adds none)
+            pos = e.position()
+            if self.view.tool in SNAP_TOOLS:
+                pos = self._snap(pos, e)
+            if self._poly and (pos - self._poly[-1]).manhattanLength() >= cad_draw.SAME_PX:
+                if shift_held(e):
+                    pos = snap45(self._poly[-1], pos)
+                self._poly.append(pos)
+                self._dim_press = None
+                if len(self._poly) >= 3:
+                    self.finish_poly()
+                else:
+                    self._dim_status()
+                    self.update()
+            return
         if self.view.tool in POLY_TOOLS:
             # the double-click's first press already added this point
             self.finish_poly()
@@ -2455,7 +2547,8 @@ class PageWidget(QWidget):
         """View > Show page boxes: the trim (green), bleed (red) and art (blue) boxes the page
         has, each named inside one of its own corners (they're often only points apart: the
         names would cover each other at the same corner) (on screen only)."""
-        names = {"trimbox": tr("Trim"), "bleedbox": tr("Bleed"), "artbox": tr("Art")}
+        # (their own words: "Trim" alone is also the CAD tab's command, a verb in Spanish)
+        names = {"trimbox": tr("Trim box"), "bleedbox": tr("Bleed box"), "artbox": tr("Art box")}
         f = p.font()
         f.setPointSizeF(max(6.0, f.pointSizeF() * 0.8))
         p.setFont(f)
@@ -2469,6 +2562,17 @@ class PageWidget(QWidget):
             at = {"trimbox": Qt.AlignLeft | Qt.AlignTop, "bleedbox": Qt.AlignRight | Qt.AlignTop,
                   "artbox": Qt.AlignLeft | Qt.AlignBottom}[which]
             p.drawText(sr.adjusted(4, 2, -4, -2), int(at), names[which])
+
+    def _paint_scale_bar(self, p):
+        """View > Show scale bar: the page's graphic scale at its bottom left corner (on
+        screen only; the picture is made once per page and zoom, see scale_bar_pixmap)."""
+        dpr = self.devicePixelRatioF()
+        pm = self.view.scale_bar_pixmap(self.index, dpr, self.width())
+        if pm is None:
+            return
+        from .scale_display import BAR_MARGIN
+        h = pm.height() / dpr
+        p.drawPixmap(QPointF(BAR_MARGIN, round(self.height() - h - BAR_MARGIN)), pm)
 
     def _select_word(self, pdf, e):
         """Double-click: select the word under the pointer (a third click selects the line)."""

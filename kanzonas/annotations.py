@@ -96,6 +96,9 @@ DEFAULTS = {
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
                 "fontsize": 11, "head": "open", "opacity": 1.0},
     "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
+    # a dimension (dimensions.py): its arrowheads are one of dimensions.HEADS
+    "m_dim": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "head": "closed",
+              "opacity": 1.0},
     "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_angle": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
@@ -113,6 +116,10 @@ DEFAULTS = {
     "redact": {},
     "placeholder": {"for": "initials"},
     "attach": {"stroke": "#0050ff", "icon": "Paperclip", "opacity": 1.0},
+    # a list of the markups used (legend.py): this page's or the whole document's
+    "legend": {"title": tr("Legend"), "scope": "page", "count": True, "totals": True,
+               "fontsize": 9, "border": True, "stroke": "#000000", "fill": "#ffffff",
+               "text_color": "#000000"},
 }
 # display names (Markups list, Properties, measurement text in the markup): never read back
 LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": tr("Highlight"),
@@ -126,12 +133,13 @@ LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": t
           "stamp": tr("Stamp"), "field": tr("Form field"), "cloud": tr("Cloud"),
           "circle": tr("Circle"), "mask": tr("Mask"),
           "opencloud": tr("Cloud"),
-          "m_length": tr("Length"), "m_poly": tr("Polylength"), "m_area": tr("Area"),
+          "m_length": tr("Length"), "m_dim": tr("Dimension"), "m_poly": tr("Polylength"),
+          "m_area": tr("Area"),
           "m_count": tr("Count"),
           "m_angle": tr("Angle"), "m_radius": tr("Radius"), "m_perimeter": tr("Perimeter"),
           "m_volume": tr("Volume"),
           "image": tr("Image"), "attach": tr("Attached file"), "redact": tr("Redaction mark"),
-          "placeholder": tr("Signature placeholder")}
+          "placeholder": tr("Signature placeholder"), "legend": tr("Legend")}
 # fonts a text box comment can use: the standard ones every PDF viewer has, so it looks the
 # same everywhere (FreeText annotations can't carry other fonts reliably)
 COMMENT_FONTS = {"Helvetica": "helv", "Times": "TiRo", "Courier": "Cour"}
@@ -153,18 +161,19 @@ HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE
 MARKUP = ("highlight", "comment", "underline", "strikeout", "squiggly")
 COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a comment marks text      # tied to text: not movable
 BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "attach", "redact",
-         "placeholder")
+         "placeholder", "legend")
 MEASURES = ("m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius", "m_perimeter",
-            "m_volume")
+            "m_volume", "m_dim")
 CLOSED_MEASURES = ("m_area", "m_perimeter", "m_volume")      # drawn as a closed outline
 POINTED = ("line", "arrow", "polygon", "polyline", "arc", "opencloud") + MEASURES   # geometry = list of points
-VERTEXED = ("polygon", "polyline", "arc", "opencloud", "m_poly", "m_angle") + CLOSED_MEASURES   # one handle per vertex
+VERTEXED = ("polygon", "polyline", "arc", "opencloud", "m_poly", "m_angle", "m_dim") + \
+    CLOSED_MEASURES     # one handle per vertex (a dimension's: its two points and its line)
 # Shapes with a "rotation" property (degrees, counterclockwise as seen on screen). Boxes keep
 # their unrotated box and are drawn turned; point-based shapes have their points turned.
 # Text boxes and callouts only turn in 90 degree steps (a PDF text box limitation).
 ROTATABLE = ("rect", "ellipse", "cloud", "polygon", "polyline", "arc", "opencloud", "line", "arrow", "ink", "stamp", "image",
              "m_length", "m_poly", "m_area", "m_angle", "m_radius", "m_perimeter", "m_volume",
-             "textbox", "callout")
+             "m_dim", "textbox", "callout")
 QUARTER_TURNS = ("textbox", "callout")
 for _k in ROTATABLE:
     DEFAULTS[_k]["rotation"] = 0
@@ -188,9 +197,20 @@ def to_rgb(hex_color):
 
 
 def to_hex(rgb):
+    """A PDF color (an annotation's /C or /IC: 1 gray, 3 RGB or 4 CMYK numbers) as #rrggbb.
+    (Other programs write gray and CMYK colors: read as RGB, a gray came out "#80" and broke
+    everything drawn from it, a CMYK cyan came out red.)"""
     if not rgb:
         return None
-    return "#" + "".join(f"{max(0, min(255, round(c * 255))):02x}" for c in rgb[:3])
+    rgb = tuple(rgb)
+    if len(rgb) == 1:
+        rgb = rgb * 3
+    elif len(rgb) == 4:
+        c, m_, y, k = rgb
+        rgb = ((1 - c) * (1 - k), (1 - m_) * (1 - k), (1 - y) * (1 - k))
+    elif len(rgb) != 3:
+        return None
+    return "#" + "".join(f"{max(0, min(255, round(c * 255))):02x}" for c in rgb)
 
 
 # ---- per-tool defaults (persist across sessions) ------------------------------
@@ -332,6 +352,11 @@ def read(annot):
              "hidden": bool(flags & pymupdf.PDF_ANNOT_IS_HIDDEN),
              "rect": pymupdf.Rect(annot.rect), "author": annot.info.get("title", ""),
              "created": annot.info.get("creationDate", "")}
+    subject = annot.info.get("subject", "")
+    if subject and kind != "legend":
+        # (its label in other programs and in legends, often set by Bluebeam: kept when it's
+        # written anew, restyled, measured again or copied)
+        model["subject"] = subject
     verts = annot.vertices or []
     geom = stored.get("geom", {})
     if kind in ("line", "arrow") and geom.get("bend") and len(verts) >= 2:
@@ -359,6 +384,16 @@ def read(annot):
                 model["cloud"] = geom.get("cloud")
     elif kind in ("m_length", "m_radius"):
         model["points"] = [pymupdf.Point(v) for v in verts[:2]]
+    elif kind == "m_dim":               # (the measured points and the dimension line's middle)
+        g = geom.get("pts") or []
+        if len(g) >= 6:
+            model["points"] = [pymupdf.Point(g[i], g[i + 1]) for i in (0, 2, 4)]
+        elif len(verts) >= 2:
+            from . import dimensions
+            model["points"] = dimensions.from_leader(verts[0], verts[1],
+                                                     dimensions.leader(annot))
+        else:
+            return None
     elif kind == "m_count":
         model["points"] = [pymupdf.Point(geom.get("at", annot.rect.tl + (5, 5)))]
         model["n"] = geom.get("n", 1)
@@ -384,7 +419,7 @@ def read(annot):
             props["icon"] = doc.xref_get_key(annot.xref, "Name")[1].lstrip("/") or props["icon"]
         except Exception:
             pass
-    elif kind in ("rect", "ellipse", "placeholder", "textbox") and geom.get("box"):
+    elif kind in ("rect", "ellipse", "placeholder", "textbox", "legend") and geom.get("box"):
         model["rect"] = pymupdf.Rect(geom["box"])
     elif kind in ("rect", "ellipse", "textbox") and stored:
         # made by an older version: the PDF rect includes half the border on each side
@@ -465,6 +500,9 @@ def write(page, model):
     elif kind == "m_length":
         a = page.add_line_annot(*model["points"][:2])
         a.set_line_ends(pymupdf.PDF_ANNOT_LE_BUTT, pymupdf.PDF_ANNOT_LE_BUTT)
+    elif kind == "m_dim":
+        # (a Line annotation that other viewers show as a dimension: dimensions.finish)
+        a = page.add_line_annot(*model["points"][:2])
     elif kind == "m_radius":
         a = page.add_line_annot(*model["points"][:2])
         a.set_line_ends(pymupdf.PDF_ANNOT_LE_CIRCLE, pymupdf.PDF_ANNOT_LE_OPEN_ARROW)
@@ -532,6 +570,10 @@ def write(page, model):
                                     fontname="helv", text_color=(0.75, 0, 0),
                                     fill_color=(1, 1, 0.75), border_width=1, align=1,
                                     rotate=page.rotation)
+    elif kind == "legend":
+        # a stamp whose appearance is the legend's drawing (legend.draw, at the end)
+        tl = pymupdf.Rect(model["rect"]).tl         # (its size comes from what it lists)
+        a = page.add_stamp_annot(pymupdf.Rect(tl, tl + (20, 20)), stamp=0)
     elif kind == "attach":
         a = page.add_file_annot(model["rect"].tl, model["file_bytes"], model["filename"],
                                 desc=text or model["filename"], icon=p.get("icon") or "Paperclip")
@@ -546,7 +588,7 @@ def write(page, model):
     else:
         raise ValueError("unknown annotation kind " + kind)
 
-    if kind not in ("textbox", "callout", "stamp", "image", "redact", "placeholder"):
+    if kind not in ("textbox", "callout", "stamp", "image", "redact", "placeholder", "legend"):
         if kind in ("rect", "ellipse", "polygon") + CLOSED_MEASURES:
             # stroke [] = no outline at all (width 0 alone still draws a hairline)
             a.set_colors(stroke=stroke if stroke else [], fill=fill)
@@ -554,12 +596,16 @@ def write(page, model):
             a.set_colors(stroke=stroke, fill=stroke)
         elif kind == "arrow" and "closed" in (p.get("head") or ""):
             a.set_colors(stroke=stroke, fill=stroke)
+        elif kind == "m_dim":
+            a.set_colors(stroke=stroke,
+                         fill=stroke if p.get("head", "closed") in ("closed", "dot") else None)
         else:
             a.set_colors(stroke=stroke)
         if kind in ("rect", "ellipse", "polygon") and p.get("cloud"):
             a.set_border(width=width, clouds=2)
         elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline", "arc",
-                      "opencloud", "m_length", "m_poly", "m_angle", "m_radius") + CLOSED_MEASURES:
+                      "opencloud", "m_length", "m_poly", "m_angle", "m_radius", "m_dim") + \
+                CLOSED_MEASURES:
             a.set_border(width=width)
     if p.get("opacity", 1) < 1:
         a.set_opacity(float(p["opacity"]))
@@ -568,6 +614,8 @@ def write(page, model):
     now = pymupdf.get_pdf_now()
     info = {"title": model.get("author") or author(), "modDate": now,
             "creationDate": model.get("created") or now}
+    if model.get("subject"):
+        info["subject"] = model["subject"]
     label_text = None
     if kind in MEASURES:
         from . import measure
@@ -577,6 +625,9 @@ def write(page, model):
         else:
             label_text = measure.measure_text(kind, model["points"], page, props=p)
             info["content"] = f"{LABELS[kind]}: " + label_text.replace("\n", ", ")
+            if kind == "m_dim":
+                # its caption (/Cap): other viewers that draw it anew show the length alone
+                info["content"] = label_text
     if kind == "image":
         info["content"] = text or model.get("filename") or tr("Image")
     if kind == "redact":
@@ -628,6 +679,10 @@ def write(page, model):
         store["geom"] = {"at": list(model["points"][0]), "n": model.get("n", 1)}
     elif kind == "arc":
         store["geom"] = {"pts": [c for q in model["points"][:3] for c in (q.x, q.y)]}
+    elif kind == "m_dim":               # (its third point kept halfway along its line)
+        from . import dimensions
+        store["geom"] = {"pts": [c for q in dimensions.normalized(model["points"])
+                                 for c in (q.x, q.y)]}
     elif kind in ("line", "arrow") and model.get("bend") is not None:
         store["geom"] = {"bend": list(pymupdf.Point(model["bend"]))}
     elif kind == "opencloud":
@@ -644,14 +699,29 @@ def write(page, model):
         from . import measure
         measure.add_circle(page, a, model["points"][0], model["points"][1], stroke or (0, 0, 0),
                            width)
+    if kind == "m_dim":
+        from . import dimensions
+        dimensions.finish(page, a, model)
     if label_text:
         from . import measure
-        anchor, lab_angle = measure.label_anchor(kind, model["points"], page)
+        if kind == "m_dim":
+            anchor, lab_angle = dimensions.label_place(model["points"], page,
+                                                       float(p.get("fontsize", 9)),
+                                                       p.get("width", 1))
+        else:
+            anchor, lab_angle = measure.label_anchor(kind, model["points"], page)
         measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
                           stroke or (0, 0, 0), lab_angle)
     if kind == "opencloud":
         from . import clouds
         clouds.appearance(page, a, model)       # (last: a setter after it would undo it)
+    if kind == "legend":
+        from . import legend
+        doc.xref_set_key(a.xref, "NM", pymupdf.get_pdf_str(legend.new_name()))
+        doc.xref_set_key(a.xref, "Name", "/KZLegend")
+        doc.xref_set_key(a.xref, "Rotate", "null")
+        doc.xref_set_key(a.xref, "C", "null")       # (a stamp's color: the legend has none)
+        legend.draw(page, a.xref, model)        # (last: a setter after it would undo it)
     return a
 
 
@@ -781,6 +851,9 @@ def bounds(model):
     if model["kind"] in POINTED:
         # (a curve's box is kept: each paint asks for every selected markup's box, and an
         # arc or a bent line has hundreds of points)
+        if model["kind"] == "m_dim":
+            from . import dimensions
+            return _points_box(dimensions.path(model["points"]))
         if model["kind"] == "arc" or model.get("bend") is not None:
             bend = model.get("bend")
             return pymupdf.Rect(_curve_box(
@@ -826,7 +899,7 @@ def text_editable(model):
     if kind == "stamp":
         from . import stamps
         return (model["props"].get("label") or "").startswith(stamps.FORM_PREFIX)
-    return kind not in MEASURES + ("placeholder", "field")
+    return kind not in MEASURES + ("placeholder", "field", "legend")
 
 
 def copy(model):
@@ -848,7 +921,11 @@ def copy(model):
 
 
 def path_points(model):
-    """The line a point-based markup draws (along the curve for an arc or a bent line)."""
+    """The line a point-based markup draws (along the curve for an arc or a bent line; a
+    dimension's extension lines and dimension line)."""
+    if model["kind"] == "m_dim":
+        from . import dimensions
+        return dimensions.path(model["points"])
     if model["kind"] == "arc" or model.get("bend") is not None:
         from . import curves
         return curves.path(model)
@@ -934,6 +1011,10 @@ def transformed(model, mat):
             m["props"]["rotation"] = round(new, 2) if model["kind"] not in QUARTER_TURNS \
                 else new
         m["rect"] = pymupdf.Rect(c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
+        if model["kind"] == "legend" and abs(sx * sy - 1) > 1e-6:
+            # (scaled: its text with it, as when its box is resized)
+            size = float(m["props"].get("fontsize") or 9)
+            m["props"]["fontsize"] = round(max(4.0, min(144.0, size * math.sqrt(sx * sy))), 1)
     return m
 
 
@@ -984,6 +1065,21 @@ def resized(model, new_rect):
         cx, cy = (new_rect.x0 + new_rect.x1) / 2, (new_rect.y0 + new_rect.y1) / 2
         m["rect"] = pymupdf.Rect(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
         return m
+    if m["kind"] == "legend":
+        # a legend is as big as what it lists: its text grows or shrinks with the box, the
+        # corner opposite the one dragged staying where it is
+        k = min(new_rect.width / old.width if old.width else 1,
+                new_rect.height / old.height if old.height else 1)
+        size = float(m["props"].get("fontsize") or 9)
+        m["props"]["fontsize"] = round(max(4.0, min(144.0, size * k)), 1)
+        k = m["props"]["fontsize"] / size
+        w, h = old.width * k, old.height * k
+        x0 = new_rect.x1 - w if abs(new_rect.x1 - old.x1) < 1e-6 and \
+            abs(new_rect.x0 - old.x0) > 1e-6 else new_rect.x0
+        y0 = new_rect.y1 - h if abs(new_rect.y1 - old.y1) < 1e-6 and \
+            abs(new_rect.y0 - old.y0) > 1e-6 else new_rect.y0
+        m["rect"] = pymupdf.Rect(x0, y0, x0 + w, y0 + h)
+        return m
     if m["kind"] in BOXED:
         m["rect"] = new_rect             # (a callout's target point stays where it is)
         return m
@@ -1004,6 +1100,11 @@ def resized(model, new_rect):
 def with_endpoint(model, i, pt):
     m = copy(model)
     m["points"][i] = pymupdf.Point(pt)
+    if m["kind"] == "m_dim" and len(m["points"]) >= 3:
+        # a measured point or the dimension line moved: measured again, the line's grip
+        # back in its middle
+        from . import dimensions
+        m["points"] = dimensions.normalized(m["points"])
     return m
 
 
@@ -1141,12 +1242,14 @@ def _shift_pairs(text, dx, dy):
     return _NUMBER.sub(add, text)
 
 
-def replace_many(page, changes, olds=None):
+def replace_many(page, changes, olds=None, again=False):
     """replace() for several annotations at once ([(xref, model)], in that order), as when
     many markups are aligned, restyled or nudged together: each one is found in one walk of
     the page and the stacking order is read and written once, not once for each (N squared
     steps: 18 s for 1,000 markups). Returns [(old xref, its old model or None, new xref)].
-    olds: {xref: model} as the caller has just read them (they aren't read again)."""
+    olds: {xref: model} as the caller has just read them (they aren't read again).
+    again: every one is written anew, also when its model is the same (measurements after
+    the page's scale changed)."""
     known = dict(olds or {})
     by_xref = load_annots(page, [x for x, _m in changes if x not in known])
     order = annot_order(page)
@@ -1170,14 +1273,14 @@ def replace_many(page, changes, olds=None):
     shifted = set()
     to_pdf = pdfcoords.to_pdf(page)
     for xref, model in changes:
-        d = translation(olds[xref], model)
+        d = None if again else translation(olds[xref], model)
         if d is not None and shift_in_place(page, xref, d, to_pdf):
             shifted.add(xref)
     # ...the old ones of the rest go in one look through the page (one at a time, each delete
     # looked through all the page's markups for replies: minutes for a few thousand)
     # (a markup not changed at all stays as it is)
-    unchanged = {x for x, m in changes if x not in shifted and m["kind"] != "attach" and
-                 _same(olds[x], m)}
+    unchanged = set() if again else {x for x, m in changes if x not in shifted and
+                                     m["kind"] != "attach" and _same(olds[x], m)}
     rewrite = [x for x, m in changes
                if m["kind"] != "attach" and x not in shifted and x not in unchanged]
     # the replies to a markup written anew answer the new one (deleting it took them along)

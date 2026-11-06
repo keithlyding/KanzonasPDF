@@ -3795,6 +3795,9 @@ msgstr "{n} marcador(es)"
 msgid "{n} document propert(ies)"
 msgstr "{n} propiedad(es) del documento"
 
+msgid "{n} other place(s) in the file (layer names, web addresses, form data, alternate text...)"
+msgstr "{n} lugar(es) más del archivo (nombres de capas, direcciones web, datos de formularios, texto alternativo...)"
+
 #: main_window.py:3212
 msgid "Marked {n} occurrence(s) on the pages."
 msgstr "Se marcaron {n} aparición(es) en las páginas."
@@ -4062,8 +4065,8 @@ msgid "Shapes: click for the shape shown, or the arrow to pick another (rectangl
 msgstr "Formas: haga clic para la forma mostrada, o en la flecha para elegir otra (rectángulo, elipse, círculo, nube, máscara, polígono, línea, flecha, polilínea, arco, curva, lápiz). Mantenga presionada Shift para cuadrados, círculos y líneas rectas"
 
 #: main_window.py:3568
-msgid "Measure: click for the tool shown, or the arrow for length, polylength, area, count, calibrate and scale"
-msgstr "Medir: haga clic para la herramienta mostrada, o en la flecha para longitud, polilongitud, área, conteo, calibración y escala"
+msgid "Measure: click for the tool shown, or the arrow for length, dimension, polylength, area, count, calibrate and scale"
+msgstr "Medir: haga clic para la herramienta mostrada, o en la flecha para longitud, cota, polilongitud, área, conteo, calibración y escala"
 
 #: main_window.py:3608
 msgid "Second view"
@@ -4299,7 +4302,7 @@ msgstr "Sello de tiempo"
 
 #: main_window.py:3962
 msgid "Signature details"
-msgstr "Detalles de la firma"
+msgstr "Detalles de firma"
 
 #: main_window.py:3963
 msgid "Clear signatures"
@@ -4419,11 +4422,11 @@ msgstr "Etiquetas de barras"
 
 #: main_window.py:3973
 msgid "Shortcuts"
-msgstr "Métodos abreviados"
+msgstr "Atajos"
 
 #: main_window.py:3974
 msgid "User manual"
-msgstr "Manual del usuario"
+msgstr "Manual"
 
 #: main_window.py:3974
 msgid "Command palette"
@@ -4479,11 +4482,11 @@ msgstr "Abajo"
 
 #: main_window.py:3978
 msgid "Horizontally"
-msgstr "Horizontalmente"
+msgstr "Horizontal"
 
 #: main_window.py:3978
 msgid "Vertically"
-msgstr "Verticalmente"
+msgstr "Vertical"
 
 #: main_window.py:3978
 msgid "To front"
@@ -6295,6 +6298,10 @@ msgstr "Sello {name}"
 msgid "Emoji and other characters beyond U+FFFF can't be written into a PDF page here. Remove them and try again."
 msgstr "Los emojis y otros caracteres más allá de U+FFFF no se pueden escribir aquí en una página PDF. Quítelos e inténtelo de nuevo."
 
+#: text_edit.py
+msgid "Text written right to left (Hebrew, Arabic...) can't be rewritten here yet: it would come out in the wrong order. Nothing was changed."
+msgstr "El texto que se escribe de derecha a izquierda (hebreo, árabe...) todavía no se puede reescribir aquí: saldría en el orden equivocado. No se ha cambiado nada."
+
 #: text_edit.py:507 text_edit.py:646
 msgid "some characters"
 msgstr "algunos caracteres"
@@ -7333,10 +7340,13 @@ msgstr "Delinear los cuadros de recorte final (verde), sangrado (rojo) y arte (a
 msgid "Prepare"
 msgstr "Preparar"
 
-msgid "Bleed"
+msgid "Trim box"
+msgstr "Recorte final"
+
+msgid "Bleed box"
 msgstr "Sangrado"
 
-msgid "Art"
+msgid "Art box"
 msgstr "Arte"
 
 msgid "Crop marks (at the trim box; the drawing out to the bleed box)"
@@ -7387,6 +7397,9 @@ msgstr "Sin sangrado más allá del cuadro de recorte final: un dibujo que llega
 msgid "{n} pages of {w} × {h} pt ({inch}): pages {pages}"
 msgstr "{n} páginas de {w} × {h} pt ({inch}): páginas {pages}"
 
+msgid "{n} page of {w} × {h} pt ({inch}): page {pages}"
+msgstr "{n} página de {w} × {h} pt ({inch}): página {pages}"
+
 msgid "Font not embedded: {font}"
 msgstr "Fuente no incrustada: {font}"
 
@@ -7395,6 +7408,9 @@ msgstr "Imagen en colores RGB ({w} × {h} píxeles): una prensa de cuatricromía
 
 msgid "{n} lines thinner than {w} pt (Fix hairlines widens them)"
 msgstr "{n} líneas más finas que {w} pt (Corregir líneas finas las ensancha)"
+
+msgid "{n} line thinner than {w} pt (Fix hairlines widens it)"
+msgstr "{n} línea más fina que {w} pt (Corregir líneas finas la ensancha)"
 
 msgid "Picture at {dpi} pixels per inch as printed ({w} × {h} pixels)"
 msgstr "Imagen a {dpi} píxeles por pulgada tal como se imprime ({w} × {h} píxeles)"
@@ -7456,7 +7472,8 @@ msgstr "Los márgenes se miden hacia dentro desde la página tal como se muestra
 msgid "Fix hairlines: {n} lines now {w} pt wide (Ctrl+Z undoes it)"
 msgstr "Corregir líneas finas: {n} líneas ahora con {w} pt de grosor (Ctrl+Z lo deshace)"
 
-
+msgid "Fix hairlines: {n} line now {w} pt wide (Ctrl+Z undoes it)"
+msgstr "Corregir líneas finas: {n} línea ahora con {w} pt de grosor (Ctrl+Z lo deshace)"
 
 msgid "No lines thinner than {w} pt on these pages."
 msgstr "No hay líneas más finas que {w} pt en estas páginas."
@@ -7484,3 +7501,948 @@ msgstr "fuentes incrustadas, imágenes suficientemente nítidas, recorte final y
 
 msgid "type {0} and press Enter"
 msgstr "escriba {0} y presione Enter"
+
+#: inline_editor.py
+msgid "Bold (Ctrl+B)"
+msgstr "Negrita (Ctrl+B)"
+
+#: inline_editor.py
+msgid "Italic (Ctrl+I)"
+msgstr "Cursiva (Ctrl+I)"
+
+#: inline_editor.py
+msgid "Underline (Ctrl+U)"
+msgstr "Subrayado (Ctrl+U)"
+
+#: inline_editor.py
+msgid "Strikethrough"
+msgstr "Tachado"
+
+#: inline_editor.py
+msgid "Larger text (Ctrl+])"
+msgstr "Texto más grande (Ctrl+])"
+
+#: inline_editor.py
+msgid "Smaller text (Ctrl+[)"
+msgstr "Texto más pequeño (Ctrl+[)"
+
+msgid "Scale not set"
+msgstr "Sin escala"
+
+msgid "Page scale"
+msgstr "Escala de la página"
+
+msgid "Show scale &bar"
+msgstr "Mostrar &barra de escala"
+
+msgid "A graphic scale at the bottom left of each page that has a scale, in the drawing's units (on screen only: never printed or saved)"
+msgstr "Una escala gráfica en la esquina inferior izquierda de cada página que tiene escala, en las unidades del dibujo (solo en pantalla: nunca se imprime ni se guarda)"
+
+msgid "Scale bar"
+msgstr "Barra de escala"
+
+msgid "Click to set the scale (Measure > Set scale)"
+msgstr "Haga clic para establecer la escala (Medir > Establecer escala)"
+
+msgid "Scale bar on: it shows on the pages that have a scale (on screen only)"
+msgstr "Barra de escala activada: aparece en las páginas que tienen escala (solo en pantalla)"
+
+msgid "Page {page} has no scale: measurements are in paper size until you set one."
+msgstr "La página {page} no tiene escala: las medidas están en tamaño de papel hasta que establezca una."
+
+msgid "Measure > Set scale sets one."
+msgstr "Medir > Establecer escala la establece."
+
+msgid "Set scale..."
+msgstr "Establecer escala..."
+
+# PDF/A (pdfa.py, pdfa_ui.py)
+msgid "Save as P&DF/A..."
+msgstr "Guardar como P&DF/A..."
+
+msgid "Chec&k PDF/A..."
+msgstr "Re&visar PDF/A..."
+
+msgid "Save an archival copy (PDF/A-2b): fonts embedded, colors defined, no scripts; the tab then shows it"
+msgstr "Guardar una copia de archivo (PDF/A-2b): fuentes incrustadas, colores definidos, sin scripts; luego la pestaña la muestra"
+
+msgid "List what keeps this document from being PDF/A, page by page, and what Save as PDF/A fixes"
+msgstr "Enumerar lo que impide que este documento sea PDF/A, página por página, y lo que corrige Guardar como PDF/A"
+
+msgid "The file"
+msgstr "El archivo"
+
+msgid "Metadata and PDF/A identification"
+msgstr "Metadatos e identificación PDF/A"
+
+msgid "Colors"
+msgstr "Colores"
+
+msgid "Fonts"
+msgstr "Fuentes"
+
+msgid "Comments, markups and links"
+msgstr "Comentarios, marcas y vínculos"
+
+msgid "Scripts and actions"
+msgstr "Scripts y acciones"
+
+msgid "Pictures, drawings and transparency"
+msgstr "Imágenes, dibujos y transparencia"
+
+msgid "Attached files"
+msgstr "Archivos adjuntos"
+
+msgid "Digitally signed: a signature can't stay valid in a PDF/A copy (a new file), so it's removed."
+msgstr "Firmado digitalmente: una firma no puede seguir siendo válida en una copia PDF/A (un archivo nuevo), así que se quita."
+
+msgid "Removed the digital signatures (they wouldn't be valid in the new file)."
+msgstr "Se quitaron las firmas digitales (no serían válidas en el archivo nuevo)."
+
+msgid "Embedded the standard fonts (Helvetica, Times, Courier...) from KanzonasPDF's own copies."
+msgstr "Se incrustaron las fuentes estándar (Helvetica, Times, Courier...) a partir de las copias propias de KanzonasPDF."
+
+msgid "The document has attached files that aren't PDF/A, so it was saved as PDF/A-3b, the part of the standard that allows any attached file (PDF/A-2b allows only PDF/A attachments)."
+msgstr "El documento tiene archivos adjuntos que no son PDF/A, así que se guardó como PDF/A-3b, la parte de la norma que permite cualquier archivo adjunto (PDF/A-2b solo permite adjuntos PDF/A)."
+
+msgid "The file is protected with a password (encrypted), which PDF/A doesn't allow. Remove its security first (Protect > Remove security)."
+msgstr "El archivo está protegido con contraseña (cifrado), lo que PDF/A no permite. Quite primero su seguridad (Proteger > Quitar seguridad)."
+
+msgid "The file isn't marked as PDF/A (its metadata has no PDF/A identification)."
+msgstr "El archivo no está marcado como PDF/A (sus metadatos no tienen la identificación PDF/A)."
+
+msgid "There's no output intent (the color profile PDF/A requires for the colors the pages use)."
+msgstr "No hay intención de salida (el perfil de color que PDF/A exige para los colores que usan las páginas)."
+
+msgid "The file has no identifier (ID)."
+msgstr "El archivo no tiene identificador (ID)."
+
+msgid "The document lists viewer features it requires (Requirements), which PDF/A doesn't allow."
+msgstr "El documento enumera funciones del visor que requiere (Requirements), lo que PDF/A no permite."
+
+msgid "The document asks the viewer to build its pages (an XFA form)."
+msgstr "El documento pide al visor que construya sus páginas (un formulario XFA)."
+
+msgid "The layer settings lack a name, don't list every layer, or switch layers automatically."
+msgstr "La configuración de capas no tiene nombre, no enumera todas las capas o cambia las capas automáticamente."
+
+msgid "A form field has no appearance."
+msgstr "Un campo de formulario no tiene apariencia."
+
+msgid "Removed annotations that were hidden or of kinds PDF/A doesn't allow."
+msgstr "Se quitaron anotaciones que estaban ocultas o de tipos que PDF/A no permite."
+
+msgid "Part of the file uses LZW compression, which PDF/A doesn't allow."
+msgstr "Una parte del archivo usa compresión LZW, que PDF/A no permite."
+
+msgid "A picture is set to be smoothed when enlarged (Interpolate)."
+msgstr "Una imagen está configurada para suavizarse al ampliarse (Interpolate)."
+
+msgid "Actions that run on their own (when the document opens, closes or prints, or on a page or a field)."
+msgstr "Acciones que se ejecutan solas (al abrir, cerrar o imprimir el documento, o en una página o un campo)."
+
+msgid "A form field runs an action when clicked, which PDF/A doesn't allow."
+msgstr "Un campo de formulario ejecuta una acción al hacer clic, lo que PDF/A no permite."
+
+msgid "Printing settings PDF/A doesn't allow (transfer functions or halftones)."
+msgstr "Ajustes de impresión que PDF/A no permite (funciones de transferencia o semitonos)."
+
+msgid "CMYK colors are used without a CMYK color profile."
+msgstr "Se usan colores CMYK sin un perfil de color CMYK."
+
+msgid "RGB colors are used without an RGB color profile."
+msgstr "Se usan colores RGB sin un perfil de color RGB."
+
+msgid "This document is protected with a password. PDF/A doesn't allow encryption: remove its security first."
+msgstr "Este documento está protegido con contraseña. PDF/A no permite el cifrado: quite primero su seguridad."
+
+msgid "Its metadata (XMP) has a header PDF/A doesn't allow."
+msgstr "Sus metadatos (XMP) tienen un encabezado que PDF/A no permite."
+
+msgid "The output intent's color profile isn't one PDF/A allows."
+msgstr "El perfil de color de la intención de salida no es uno que PDF/A permita."
+
+msgid "The document contains JavaScript."
+msgstr "El documento contiene JavaScript."
+
+msgid "The document has an alternate presentation (a slide show), which PDF/A doesn't allow."
+msgstr "El documento tiene una presentación alternativa (una presentación de diapositivas), lo que PDF/A no permite."
+
+msgid "The form is an XFA form; its dynamic part isn't allowed (the fields themselves stay)."
+msgstr "El formulario es un formulario XFA; su parte dinámica no está permitida (los campos se conservan)."
+
+msgid "The form leaves drawing its fields to the viewer (NeedAppearances)."
+msgstr "El formulario deja al visor el dibujo de sus campos (NeedAppearances)."
+
+msgid "The page has presentation steps (PresSteps)."
+msgstr "La página tiene pasos de presentación (PresSteps)."
+
+msgid "Part of the file is kept in another file (an external stream)."
+msgstr "Una parte del archivo se guarda en otro archivo (un flujo externo)."
+
+msgid "A picture has alternate versions or OPI links."
+msgstr "Una imagen tiene versiones alternativas o vínculos OPI."
+
+msgid "A picture has a number of bits per color PDF/A doesn't allow."
+msgstr "Una imagen tiene una cantidad de bits por color que PDF/A no permite."
+
+#: pdfa.py
+msgid "A text in the file (a comment's, perhaps) is longer than PDF/A allows (32,767 bytes)."
+msgstr "Un texto del archivo (el de un comentario, quizá) es más largo de lo que PDF/A permite (32.767 bytes)."
+
+#: pdfa.py
+msgid "A name in the file is longer than PDF/A allows (127 bytes)."
+msgstr "Un nombre del archivo es más largo de lo que PDF/A permite (127 bytes)."
+
+#: pdfa.py
+msgid "Drawing instructions are nested deeper than PDF/A allows (28 levels)."
+msgstr "Las instrucciones de dibujo están anidadas a más profundidad de la que PDF/A permite (28 niveles)."
+
+msgid "Font {font} isn't embedded."
+msgstr "La fuente {font} no está incrustada."
+
+msgid "The file is PDF {version}; PDF/A-2 is based on PDF 1.7."
+msgstr "El archivo es PDF {version}; PDF/A-2 se basa en PDF 1.7."
+
+msgid "Removed the document's JavaScript."
+msgstr "Se quitó el JavaScript del documento."
+
+msgid "Default"
+msgstr "Predeterminada"
+
+msgid "Configuration"
+msgstr "Configuración"
+
+msgid "The page takes its resources (fonts, pictures) from the page tree."
+msgstr "La página toma sus recursos (fuentes, imágenes) del árbol de páginas."
+
+msgid "A button's appearance isn't stored as PDF/A requires."
+msgstr "La apariencia de un botón no está guardada como PDF/A exige."
+
+msgid "A {kind} annotation has no appearance."
+msgstr "Una anotación {kind} no tiene apariencia."
+
+msgid "A PostScript drawing (PDF/A doesn't allow PostScript)."
+msgstr "Un dibujo PostScript (PDF/A no permite PostScript)."
+
+msgid "A rendering intent PDF/A doesn't allow ({name})."
+msgstr "Una intención de representación que PDF/A no permite ({name})."
+
+msgid "Removed scripts and actions PDF/A doesn't allow."
+msgstr "Se quitaron scripts y acciones que PDF/A no permite."
+
+msgid "Font {font} isn't embedded, and KanzonasPDF has no copy of it to embed."
+msgstr "La fuente {font} no está incrustada, y KanzonasPDF no tiene una copia de ella para incrustarla."
+
+msgid "Font {font} isn't embedded, and the standard font that could replace it has other character widths or encoding."
+msgstr "La fuente {font} no está incrustada, y la fuente estándar que podría reemplazarla tiene otros anchos de carácter u otra codificación."
+
+msgid "The page is smaller than 3 points or larger than 14,400 points (200 inches) on a side."
+msgstr "La página mide menos de 3 puntos o más de 14,400 puntos (200 pulgadas) de lado."
+
+msgid "A {kind} annotation, a kind PDF/A doesn't allow (3D, sound, movie or multimedia); it's removed."
+msgstr "Una anotación {kind}, un tipo que PDF/A no permite (3D, sonido, película o multimedia); se quita."
+
+msgid "A hidden {kind} annotation; PDF/A shows every annotation, so it's removed."
+msgstr "Una anotación {kind} oculta; PDF/A muestra todas las anotaciones, así que se quita."
+
+msgid "A {kind} annotation has rollover or pressed appearances, which PDF/A doesn't allow."
+msgstr "Una anotación {kind} tiene apariencias al pasar el mouse o al presionarla, que PDF/A no permite."
+
+msgid "A field's appearance isn't stored as PDF/A requires."
+msgstr "La apariencia de un campo no está guardada como PDF/A exige."
+
+msgid "Part of the file uses a compression PDF/A doesn't allow ({name})."
+msgstr "Una parte del archivo usa una compresión que PDF/A no permite ({name})."
+
+msgid "A drawing refers to another file or holds PostScript code (OPI, PS or Ref)."
+msgstr "Un dibujo hace referencia a otro archivo o contiene código PostScript (OPI, PS o Ref)."
+
+msgid "A blend mode PDF/A doesn't allow ({name})."
+msgstr "Un modo de fusión que PDF/A no permite ({name})."
+
+msgid "Font {font} uses a character map (CMap) that isn't embedded ({cmap})."
+msgstr "La fuente {font} usa un mapa de caracteres (CMap) que no está incrustado ({cmap})."
+
+msgid "Font {font} lacks its CIDToGIDMap."
+msgstr "A la fuente {font} le falta su CIDToGIDMap."
+
+msgid "Font {font} is of a kind PDF/A doesn't allow."
+msgstr "La fuente {font} es de un tipo que PDF/A no permite."
+
+msgid "Font {font} has no character widths."
+msgstr "La fuente {font} no tiene anchos de carácter."
+
+msgid "Attached file {name} lacks its file name in one of the two forms."
+msgstr "Al archivo adjunto {name} le falta su nombre de archivo en una de las dos formas."
+
+msgid "Attached file {name} isn't PDF/A: the copy is then PDF/A-3b, which allows it."
+msgstr "El archivo adjunto {name} no es PDF/A: la copia es entonces PDF/A-3b, que lo permite."
+
+msgid "A {kind} annotation isn't set to print."
+msgstr "Una anotación {kind} no está configurada para imprimirse."
+
+msgid "An action PDF/A doesn't allow ({action})."
+msgstr "Una acción que PDF/A no permite ({action})."
+
+msgid "Attached file {name} lacks what PDF/A-3 requires (its kind and its relationship to the document)."
+msgstr "Al archivo adjunto {name} le falta lo que PDF/A-3 exige (su tipo y su relación con el documento)."
+
+msgid "Checking for PDF/A..."
+msgstr "Revisando PDF/A..."
+
+msgid "Check PDF/A"
+msgstr "Revisar PDF/A"
+
+msgid "Save as PDF/A"
+msgstr "Guardar como PDF/A"
+
+msgid "Saving as PDF/A..."
+msgstr "Guardando como PDF/A..."
+
+msgid "It checks the common requirements of PDF/A-2b; for a formal validation, use veraPDF (free, from the PDF Association: {url})."
+msgstr "Revisa los requisitos comunes de PDF/A-2b; para una validación formal, use veraPDF (gratuito, de la PDF Association: {url})."
+
+msgid "This document is protected with a password, and PDF/A doesn't allow encryption (an archive must open without one). Remove its security first (Protect > Remove security), then save it as PDF/A."
+msgstr "Este documento está protegido con contraseña, y PDF/A no permite el cifrado (un archivo de archivo debe abrirse sin contraseña). Quite primero su seguridad (Proteger > Quitar seguridad) y luego guárdelo como PDF/A."
+
+msgid "Nothing found: the document meets the requirements checked."
+msgstr "No se encontró nada: el documento cumple los requisitos revisados."
+
+msgid "Save as PDF/A..."
+msgstr "Guardar como PDF/A..."
+
+msgid "Saved {path} as PDF/A-{part}b."
+msgstr "Se guardó {path} como PDF/A-{part}b."
+
+msgid "These could not be fixed, so the copy doesn't fully conform yet. Double-click a line to go to its page."
+msgstr "Esto no se pudo corregir, así que la copia aún no cumple del todo. Haga doble clic en una línea para ir a su página."
+
+msgid "Nothing left that the check finds."
+msgstr "No queda nada que la revisión encuentre."
+
+msgid "{n} things keep this document from being PDF/A; Save as PDF/A fixes {fixable} of them. Double-click a line to go to its page."
+msgstr "{n} cosas impiden que este documento sea PDF/A; Guardar como PDF/A corrige {fixable} de ellas. Haga doble clic en una línea para ir a su página."
+
+msgid "Fixes it"
+msgstr "Lo corrige"
+
+msgid "Can't fix it"
+msgstr "No lo puede corregir"
+
+msgid "Replace"
+msgstr "Reemplazar"
+
+msgid "Repl&ace pages..."
+msgstr "Reem&plazar páginas..."
+
+msgid "Replace pages with pages from"
+msgstr "Reemplazar páginas con páginas de"
+
+msgid "Replace the drawings of pages with a new revision's (by page or sheet number), keeping their markups, links and bookmarks"
+msgstr "Reemplazar los dibujos de las páginas por los de una nueva revisión (por número de página o de plano), conservando sus marcas, vínculos y marcadores"
+
+msgid "{n} page(s) replaced (Ctrl+Z undoes it)"
+msgstr "Páginas reemplazadas: {n} (Ctrl+Z lo deshace)"
+
+msgid "Replace pages"
+msgstr "Reemplazar páginas"
+
+msgid "Couldn't open {name}:\n{error}"
+msgstr "No se pudo abrir {name}:\n{error}"
+
+msgid "{name} is password-protected: open it, remove its password and save it first."
+msgstr "{name} está protegido con contraseña: ábralo, quítele la contraseña y guárdelo primero."
+
+msgid "{n} link(s) lay over words of the old drawing that aren't in the same place on the new one. They were kept where they were: check them on page(s) {pages}."
+msgstr "Vínculos sobre palabras del dibujo anterior que no están en el mismo lugar en el nuevo: {n}. Se dejaron donde estaban: revíselos en las páginas {pages}."
+
+msgid "Type the pages to replace and the pages of the new file."
+msgstr "Escriba las páginas que se van a reemplazar y las páginas del archivo nuevo."
+
+msgid "{here} page(s) to replace but {new} page(s) of the new file: give as many of each."
+msgstr "Páginas a reemplazar: {here}, pero páginas del archivo nuevo: {new}. Indique la misma cantidad de cada una."
+
+msgid "By page numbers"
+msgstr "Por números de página"
+
+msgid "Match sheets by sheet number"
+msgstr "Emparejar planos por número de plano"
+
+msgid "Correct a match by typing the page of the new file in “Replaced by page”; leave it empty to keep the page as it is."
+msgstr "Corrija un emparejamiento escribiendo la página del archivo nuevo en “Reemplazada por la página”; déjela vacía para dejar la página como está."
+
+msgid "Markups on a page whose size changes"
+msgstr "Marcas en una página que cambia de tamaño"
+
+msgid "Scale them to the new page"
+msgstr "Escalarlas a la página nueva"
+
+msgid "Keep them at the same place (measured from the top-left corner)"
+msgstr "Mantenerlas en el mismo lugar (medido desde la esquina superior izquierda)"
+
+msgid "Reading sheet numbers..."
+msgstr "Leyendo los números de plano..."
+
+msgid "No page will be replaced."
+msgstr "No se reemplazará ninguna página."
+
+msgid "Replaced by page"
+msgstr "Reemplazada por la página"
+
+msgid "New sheet number"
+msgstr "Número de plano nuevo"
+
+msgid "New title"
+msgstr "Título nuevo"
+
+msgid "Replace the drawings of pages here with pages of {name} ({n} page(s)). Each page keeps its markups, links, form fields and bookmarks: only what is drawn on it changes."
+msgstr "Reemplace los dibujos de las páginas de este documento por páginas de {name} ({n} páginas). Cada página conserva sus marcas, vínculos, campos de formulario y marcadores: solo cambia lo que tiene dibujado."
+
+msgid "{n} page(s) will be replaced."
+msgstr "Páginas que se reemplazarán: {n}."
+
+msgid "Replace pages (1-{n}):"
+msgstr "Reemplazar las páginas (1-{n}):"
+
+msgid "with pages of the new file (1-{n}):"
+msgstr "por las páginas del archivo nuevo (1-{n}):"
+
+msgid "Page {page}: the new file has no page {n}."
+msgstr "Página {page}: el archivo nuevo no tiene página {n}."
+
+msgid "In the new file but matching no page here (not used): {names}"
+msgstr "En el archivo nuevo, sin pareja en este documento (no se usan): {names}"
+
+msgid "{n} of them change size."
+msgstr "De ellas, {n} cambian de tamaño."
+
+msgid "page {n}"
+msgstr "página {n}"
+
+msgid "Dimension"
+msgstr "Cota"
+
+msgid "Dimension: click the two points to measure, then where the dimension line goes (Shift+D)"
+msgstr "Cota: haga clic en los dos puntos que va a medir y luego donde va la línea de cota (Shift+D)"
+
+msgid "Dimension: click the second point (Escape cancels)"
+msgstr "Cota: haga clic en el segundo punto (Escape cancela)"
+
+msgid "Dimension: click where the dimension line goes"
+msgstr "Cota: haga clic donde va la línea de cota"
+
+msgid "slash"
+msgstr "barra oblicua"
+
+msgid "dot"
+msgstr "punto"
+
+msgid "Scale & snap"
+msgstr "Escala y ajuste"
+
+#: annotations.py main_window.py legend.py
+msgid "Legend"
+msgstr "Leyenda"
+
+#: legend.py
+msgid "No markups yet"
+msgstr "Aún no hay marcas"
+
+#: main_window.py
+msgid "Le&gend"
+msgstr "Le&yenda"
+
+#: main_window.py
+msgid "Legend: click (or drag a box for its width) where a list of the page's markups goes, each with a sample, how many and measurement totals; it updates by itself"
+msgstr "Leyenda: haga clic (o arrastre un cuadro para fijar su ancho) donde va una lista de las marcas de la página, cada una con una muestra, cuántas hay y los totales de las mediciones; se actualiza sola"
+
+#: properties.py
+msgid "Whole document"
+msgstr "Todo el documento"
+
+#: properties.py
+msgid "Which markups the legend lists: those on its page, or those on every page"
+msgstr "Qué marcas lista la leyenda: las de su página o las de todas las páginas"
+
+#: properties.py
+msgid "Show the count"
+msgstr "Mostrar la cantidad"
+
+#: properties.py
+msgid "Show measurement totals"
+msgstr "Mostrar los totales de las mediciones"
+
+#: properties.py
+msgid "Total length, area or volume of each kind of measurement, in the page's units"
+msgstr "Longitud, área o volumen total de cada tipo de medición, en las unidades de la página"
+
+#: properties.py
+msgid "Border"
+msgstr "Borde"
+
+#: properties.py
+msgid "Markups from"
+msgstr "Marcas de"
+
+#: properties.py
+msgid "Text size"
+msgstr "Tamaño del texto"
+
+msgid "Download {file} there, open it and drag KanzonasPDF to Applications, replacing the old one. Your settings are kept."
+msgstr "Descargue allí {file}, ábralo y arrastre KanzonasPDF a Aplicaciones, reemplazando el anterior. Su configuración se conserva."
+
+msgid "The Mac version is for Macs with Apple silicon (M1 or newer) only: there's no version for Intel Macs yet."
+msgstr "La versión para Mac es solo para Mac con Apple silicon (M1 o posterior): todavía no hay versión para Mac con Intel."
+
+# ---- File > Scan (scan_dialog.py, scanners.py, scan_net.py, scan_escl.py, scan_wsd.py,
+# scan_local.py)
+
+msgid "Scan"
+msgstr "Escanear"
+
+msgid "Scan..."
+msgstr "Escanear..."
+
+msgid "Scan pages from a scanner or printer (on the network or connected to this computer) into a PDF"
+msgstr "Escanear páginas desde un escáner o impresora (en la red o conectado a esta computadora) a un PDF"
+
+msgid "Flatbed (glass)"
+msgstr "Cama plana (vidrio)"
+
+msgid "Document feeder"
+msgstr "Alimentador de documentos"
+
+msgid "Document feeder, both sides"
+msgstr "Alimentador de documentos, ambas caras"
+
+msgid "Grayscale"
+msgstr "Escala de grises"
+
+msgid "Black and white"
+msgstr "Blanco y negro"
+
+msgid "Letter (8.5 x 11 in)"
+msgstr "Carta (8.5 x 11 pulg.)"
+
+msgid "Legal (8.5 x 14 in)"
+msgstr "Oficio (8.5 x 14 pulg.)"
+
+msgid "A4 (210 x 297 mm)"
+msgstr "A4 (210 x 297 mm)"
+
+msgid "Largest the scanner allows"
+msgstr "Lo más grande que permita el escáner"
+
+msgid "Refresh"
+msgstr "Actualizar"
+
+msgid "Look for scanners again"
+msgstr "Buscar escáneres de nuevo"
+
+msgid "Add by address..."
+msgstr "Agregar por dirección..."
+
+msgid "Type the printer's IP address when it isn't found (Wi-Fi and some routers block discovery)"
+msgstr "Escriba la dirección IP de la impresora cuando no se encuentra (el Wi-Fi y algunos routers bloquean la búsqueda)"
+
+msgid "Watch a folder..."
+msgstr "Vigilar una carpeta..."
+
+msgid "For a printer that scans to a network folder or FTP: new PDFs and pictures that arrive in the folder are taken as scanned pages"
+msgstr "Para una impresora que escanea a una carpeta de red o FTP: los PDF e imágenes nuevos que llegan a la carpeta se toman como páginas escaneadas"
+
+msgid "Source:"
+msgstr "Origen:"
+
+msgid "Color:"
+msgstr "Color:"
+
+msgid "Resolution:"
+msgstr "Resolución:"
+
+msgid "A new document"
+msgstr "Un documento nuevo"
+
+msgid "This document, after the current page"
+msgstr "Este documento, después de la página actual"
+
+msgid "Put the pages in:"
+msgstr "Poner las páginas en:"
+
+msgid "Make the pages searchable (recognize text, OCR)"
+msgstr "Hacer las páginas buscables (reconocer texto, OCR)"
+
+msgid "Copy details"
+msgstr "Copiar detalles"
+
+msgid "Copy what was found and the scanner's own answers, to send if your scanner doesn't work (nothing personal is included)"
+msgstr "Copiar lo que se encontró y las respuestas del propio escáner, para enviarlas si su escáner no funciona (no se incluye nada personal)"
+
+msgid "Put the scanned pages in the document"
+msgstr "Poner las páginas escaneadas en el documento"
+
+msgid "Looking for scanners..."
+msgstr "Buscando escáneres..."
+
+msgid "Add by address"
+msgstr "Agregar por dirección"
+
+msgid "The printer's IP address or name (on its panel, or in its network report), for example 192.168.1.20:"
+msgstr "La dirección IP o el nombre de la impresora (en su panel o en su informe de red), por ejemplo 192.168.1.20:"
+
+msgid "Starting the scan..."
+msgstr "Iniciando el escaneo..."
+
+msgid "Watch a folder"
+msgstr "Vigilar una carpeta"
+
+msgid "Copied the details: paste them into an email or a GitHub issue to the KanzonasPDF project."
+msgstr "Se copiaron los detalles: péguelos en un correo o en un issue de GitHub para el proyecto KanzonasPDF."
+
+msgid "Scanners and printers found:"
+msgstr "Escáneres e impresoras encontrados:"
+
+msgid "Scan more pages"
+msgstr "Escanear más páginas"
+
+msgid "Ready: put the pages on the glass or in the feeder, then click Scan."
+msgstr "Listo: ponga las páginas en el vidrio o en el alimentador y haga clic en Escanear."
+
+msgid "Canceled."
+msgstr "Cancelado."
+
+msgid "Asking {address} (eSCL, then WSD)..."
+msgstr "Consultando {address} (eSCL, luego WSD)..."
+
+msgid "Asking {name} what it can do..."
+msgstr "Preguntando a {name} qué puede hacer..."
+
+msgid "Scanned {n} page(s). Scan more pages, or click Done to put them in a document."
+msgstr "Se escanearon {n} página(s). Escanee más páginas o haga clic en Listo para ponerlas en un documento."
+
+msgid "Watching {folder}: scan into it from the printer (Scan to Network Folder or FTP); each new PDF or picture is added here as it arrives. Click Done when they're all in."
+msgstr "Vigilando {folder}: escanee a ella desde la impresora (Escanear a carpeta de red o FTP); cada PDF o imagen nuevo se agrega aquí al llegar. Haga clic en Listo cuando estén todos."
+
+msgid "{n} scanned page(s) added"
+msgstr "Se agregaron {n} página(s) escaneada(s)"
+
+msgid "{n} page(s) scanned"
+msgstr "{n} página(s) escaneada(s)"
+
+msgid "Found {n} scanner(s): pick one, then click Scan."
+msgstr "Se encontraron {n} escáner(es): elija uno y haga clic en Escanear."
+
+msgid "{dpi} dpi"
+msgstr "{dpi} ppp"
+
+msgid "Added {name} from the folder."
+msgstr "Se agregó {name} desde la carpeta."
+
+msgid "Discard the {n} scanned page(s)?"
+msgstr "¿Descartar las {n} página(s) escaneada(s)?"
+
+msgid "A scanned PDF is password-protected."
+msgstr "Un PDF escaneado está protegido con contraseña."
+
+msgid "{names} answered but offer no scanning over the network: open the printer's web page (http://{ip}) and set WSD to Enable, then click Refresh; or try Add by address..."
+msgstr "{names} respondió pero no ofrece escaneo por la red: abra la página web de la impresora (http://{ip}) y ponga WSD en Habilitar (Enable), luego haga clic en Actualizar; o pruebe Agregar por dirección..."
+
+msgid "No scanners found on this network. Tried: {tried}. Try Add by address... with the printer's IP address (on its panel or its network report), or Watch a folder... if the printer scans to a folder."
+msgstr "No se encontraron escáneres en esta red. Se probó: {tried}. Pruebe Agregar por dirección... con la dirección IP de la impresora (en su panel o en su informe de red), o Vigilar una carpeta... si la impresora escanea a una carpeta."
+
+msgid "Couldn't make the scanned pages into a PDF: {error}"
+msgstr "No se pudieron convertir las páginas escaneadas en un PDF: {error}"
+
+msgid "The pages scanned before are kept."
+msgstr "Las páginas escaneadas antes se conservan."
+
+msgid "Couldn't use {name}: {error}"
+msgstr "No se pudo usar {name}: {error}"
+
+msgid "Too many pages in one scan (more than {n})."
+msgstr "Demasiadas páginas en un escaneo (más de {n})."
+
+msgid "The document feeder is empty: put the pages in it, or choose the flatbed (glass)."
+msgstr "El alimentador de documentos está vacío: ponga las páginas en él o elija la cama plana (vidrio)."
+
+msgid "Paper is jammed in the document feeder: clear it (see the printer's panel) and try again."
+msgstr "Hay papel atascado en el alimentador de documentos: retírelo (vea el panel de la impresora) e intente de nuevo."
+
+msgid "The document feeder's cover is open: close it and try again."
+msgstr "La tapa del alimentador de documentos está abierta: ciérrela e intente de nuevo."
+
+msgid "The document feeder's output tray is full: empty it and try again."
+msgstr "La bandeja de salida del alimentador de documentos está llena: vacíela e intente de nuevo."
+
+msgid "The device's answer isn't an eSCL scanner description."
+msgstr "La respuesta del dispositivo no es una descripción de escáner eSCL."
+
+msgid "The scanner didn't say what it can scan from."
+msgstr "El escáner no indicó desde dónde puede escanear."
+
+msgid "The scanner isn't ready (it reports \"{state}\"): check its panel for a message."
+msgstr "El escáner no está listo (informa \"{state}\"): revise si hay un mensaje en su panel."
+
+msgid "The scanner is getting ready..."
+msgstr "El escáner se está preparando..."
+
+msgid "The scanner is busy (scanning, copying, or waiting for something on its panel): finish that, then try again."
+msgstr "El escáner está ocupado (escaneando, copiando o esperando algo en su panel): termine eso e intente de nuevo."
+
+msgid "The scanner finished without sending a page."
+msgstr "El escáner terminó sin enviar ninguna página."
+
+msgid "The scanner refused these settings (HTTP {status}): try another resolution, color or source."
+msgstr "El escáner rechazó esta configuración (HTTP {status}): pruebe otra resolución, color u origen."
+
+msgid "The scanner answered but not as an eSCL scanner (HTTP {status})."
+msgstr "El escáner respondió, pero no como un escáner eSCL (HTTP {status})."
+
+msgid "Scanning page {n}..."
+msgstr "Escaneando la página {n}..."
+
+msgid "The scanner stopped with an error (HTTP {status})."
+msgstr "El escáner se detuvo con un error (HTTP {status})."
+
+msgid "A cover of the scanner is open: close it and try again."
+msgstr "Una tapa del escáner está abierta: ciérrela e intente de nuevo."
+
+msgid "The scanner is off or not connected: turn it on, check its cable or network, and try again."
+msgstr "El escáner está apagado o no está conectado: enciéndalo, revise su cable o la red e intente de nuevo."
+
+msgid "The scanner is busy or warming up: wait a moment and try again."
+msgstr "El escáner está ocupado o calentándose: espere un momento e intente de nuevo."
+
+msgid "The scanner needs attention: check the message on its panel."
+msgstr "El escáner necesita atención: revise el mensaje en su panel."
+
+msgid "Windows no longer lists this scanner: click Refresh."
+msgstr "Windows ya no muestra este escáner: haga clic en Actualizar."
+
+msgid "Windows couldn't scan ({code}): {message}"
+msgstr "Windows no pudo escanear ({code}): {message}"
+
+msgid "Couldn't read the scanned page."
+msgstr "No se pudo leer la página escaneada."
+
+msgid "scanimage isn't installed (the sane-utils package)."
+msgstr "scanimage no está instalado (el paquete sane-utils)."
+
+msgid "The scanner stopped answering."
+msgstr "El escáner dejó de responder."
+
+msgid "{program} isn't installed."
+msgstr "{program} no está instalado."
+
+msgid "{program} didn't answer in time."
+msgstr "{program} no respondió a tiempo."
+
+msgid "A scanned page was too large ({mb} MB)."
+msgstr "Una página escaneada era demasiado grande ({mb} MB)."
+
+msgid "Scanner"
+msgstr "Escáner"
+
+msgid "{name} isn't a PDF."
+msgstr "{name} no es un PDF."
+
+msgid "{name} is too large."
+msgstr "{name} es demasiado grande."
+
+msgid "{name} is a link to another file: it's left alone."
+msgstr "{name} es un vínculo a otro archivo: no se toma."
+
+msgid "{name} isn't a file."
+msgstr "{name} no es un archivo."
+
+msgid "{name} is incomplete (the printer may have stopped sending it)."
+msgstr "{name} está incompleto (puede que la impresora haya dejado de enviarlo)."
+
+msgid "Couldn't read {name}."
+msgstr "No se pudo leer {name}."
+
+msgid "The scanner's answer was too large."
+msgstr "La respuesta del escáner era demasiado grande."
+
+msgid "The scanner sent an answer KanzonasPDF won't read (it declares entities)."
+msgstr "El escáner envió una respuesta que KanzonasPDF no leerá (declara entidades)."
+
+msgid "The scanner's answer isn't valid XML."
+msgstr "La respuesta del escáner no es XML válido."
+
+msgid "The scanner sent a page in a format KanzonasPDF doesn't read."
+msgstr "El escáner envió una página en un formato que KanzonasPDF no lee."
+
+msgid "A scanned page couldn't be read."
+msgstr "No se pudo leer una página escaneada."
+
+msgid "{url} isn't a valid address."
+msgstr "{url} no es una dirección válida."
+
+msgid "{host} kept redirecting."
+msgstr "{host} redirigió una y otra vez."
+
+msgid "Couldn't find the address of {host}: check the name, or type the printer's IP address (on its panel or network report)."
+msgstr "No se encontró la dirección de {host}: revise el nombre o escriba la dirección IP de la impresora (en su panel o en su informe de red)."
+
+msgid "A scanned page was too large ({w} x {h} pixels): choose a lower resolution."
+msgstr "Una página escaneada era demasiado grande ({w} x {h} píxeles): elija una resolución más baja."
+
+msgid "{host} refused the connection on port {port}."
+msgstr "{host} rechazó la conexión en el puerto {port}."
+
+msgid "{host} didn't answer in time."
+msgstr "{host} no respondió a tiempo."
+
+msgid "A secure connection to {host} failed."
+msgstr "Falló una conexión segura con {host}."
+
+msgid "Couldn't reach {host}: {error}"
+msgstr "No se pudo conectar con {host}: {error}"
+
+msgid "The scanned file is too large: its {n} pages have {mp} megapixels in all (at most {most}). Scan fewer pages at a time, or at a lower resolution."
+msgstr "El archivo escaneado es demasiado grande: sus {n} páginas tienen {mp} megapíxeles en total (como máximo {most}). Escanee menos páginas cada vez, o con una resolución más baja."
+
+msgid "The connection to {host} was cut before the scanner's answer was complete."
+msgstr "La conexión con {host} se cortó antes de que la respuesta del escáner estuviera completa."
+
+msgid "{host} sent KanzonasPDF to another address ({other}); for safety it doesn't follow."
+msgstr "{host} envió a KanzonasPDF a otra dirección ({other}); por seguridad no la sigue."
+
+msgid "The scanner isn't taking a scan from the computer right now. Check that it isn't busy or showing a message. Some printers only take a WSD scan started on their own panel: choose Scan, then to Computer (WSD), then click Scan here."
+msgstr "El escáner no acepta ahora un escaneo desde la computadora. Revise que no esté ocupado ni mostrando un mensaje. Algunas impresoras solo aceptan un escaneo WSD iniciado en su propio panel: elija Escanear, luego a Computadora (WSD), y haga clic en Escanear aquí."
+
+msgid "The scanner had no page to send: put the page on the glass or in the feeder and try again."
+msgstr "El escáner no tenía ninguna página que enviar: ponga la página en el vidrio o en el alimentador e intente de nuevo."
+
+msgid "The scanner refused these settings: try another resolution, color or source."
+msgstr "El escáner rechazó esta configuración: pruebe otra resolución, color u origen."
+
+msgid "The scan was canceled on the scanner."
+msgstr "El escaneo se canceló en el escáner."
+
+msgid "The scanner's answer couldn't be read."
+msgstr "No se pudo leer la respuesta del escáner."
+
+msgid "The scanner reported an error ({code})."
+msgstr "El escáner informó un error ({code})."
+
+msgid "The scanner didn't describe what it can do."
+msgstr "El escáner no describió lo que puede hacer."
+
+msgid "The scanner didn't start the scan."
+msgstr "El escáner no inició el escaneo."
+
+msgid "{host} answered the device question with an error (HTTP {status})."
+msgstr "{host} respondió a la consulta del dispositivo con un error (HTTP {status})."
+
+msgid "The scanner answered with an error (HTTP {status})."
+msgstr "El escáner respondió con un error (HTTP {status})."
+
+msgid "The scanner's answer had no picture in it."
+msgstr "La respuesta del escáner no traía ninguna imagen."
+
+msgid "eSCL (AirScan) and WSD on the network"
+msgstr "eSCL (AirScan) y WSD en la red"
+
+msgid "Unknown kind of scanner."
+msgstr "Tipo de escáner desconocido."
+
+msgid "Windows' own scanners (WIA)"
+msgstr "los escáneres del propio Windows (WIA)"
+
+msgid "Type the printer's IP address, for example 192.168.1.20."
+msgstr "Escriba la dirección IP de la impresora, por ejemplo 192.168.1.20."
+
+msgid "Nothing answered at {ip}. Check the address (it's on the printer's panel or its network report), that the printer is on, and that this computer is on the same network."
+msgstr "Nada respondió en {ip}. Revise la dirección (está en el panel de la impresora o en su informe de red), que la impresora esté encendida y que esta computadora esté en la misma red."
+
+msgid "SANE (scanimage)"
+msgstr "SANE (scanimage)"
+
+msgid "SANE isn't installed (the sane-utils package)"
+msgstr "SANE no está instalado (el paquete sane-utils)"
+
+msgid "The printer at {ip} answered over WSD, but offers no scanning that way: WSD scanning is turned off. Open its web page ({web}), set WSD (or WSD Scan) to Enable, then try again."
+msgstr "La impresora en {ip} respondió por WSD, pero no ofrece escaneo de esa forma: el escaneo WSD está desactivado. Abra su página web ({web}), ponga WSD (o WSD Scan) en Habilitar (Enable) e intente de nuevo."
+
+msgid "The printer answered but WSD scanning is turned off: open its web page ({web}) and set WSD to Enable (often under Network or Protocol settings), then try again. If it has no such setting, use Watch a folder... with its Scan to Network Folder."
+msgstr "La impresora respondió, pero el escaneo WSD está desactivado: abra su página web ({web}) y ponga WSD en Habilitar (Enable) (suele estar en la configuración de Red o de Protocolos) e intente de nuevo. Si no tiene esa opción, use Vigilar una carpeta... con su función Escanear a carpeta de red."
+
+# ---- File > Scan: scans started on the printer's panel (scan_events.py), WIA
+
+msgid "Letting the printer list this computer on its panel..."
+msgstr "Pidiendo a la impresora que muestre esta computadora en su panel..."
+
+msgid "The printer started a scan: receiving the pages..."
+msgstr "La impresora inició un escaneo: recibiendo las páginas..."
+
+msgid "The printer started a scan, but another one is still running here."
+msgstr "La impresora inició un escaneo, pero aquí todavía hay otro en curso."
+
+msgid "You can also start the scan on the printer: choose Scan to Computer (WSD) on its panel and pick \"{name}\"; the pages come here, with the settings above."
+msgstr "También puede iniciar el escaneo en la impresora: elija Escanear a computadora (WSD) en su panel y luego \"{name}\"; las páginas llegan aquí, con la configuración de arriba."
+
+msgid "If Windows asks whether to allow KanzonasPDF on private networks, allow it: that's how the printer reaches this window."
+msgstr "Si Windows pregunta si permite que KanzonasPDF use redes privadas, permítalo: así la impresora llega a esta ventana."
+
+msgid "Scans started on the printer's panel can't come here: {error}"
+msgstr "Los escaneos iniciados en el panel de la impresora no pueden llegar aquí: {error}"
+
+msgid "This computer has no network that reaches {ip}."
+msgstr "Esta computadora no tiene ninguna red que llegue a {ip}."
+
+msgid "Couldn't wait for the printer's scans: {error}"
+msgstr "No se pudo esperar los escaneos de la impresora: {error}"
+
+msgid "Scanning through Windows (WIA) needs the comtypes package, which is missing from this copy of KanzonasPDF."
+msgstr "Escanear a través de Windows (WIA) necesita el paquete comtypes, que falta en esta copia de KanzonasPDF."
+
+msgid "The scanner didn't accept the subscription."
+msgstr "El escáner no aceptó la suscripción."
+
+# ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
+# ribbon tab fits a 1366-pixel screen in Spanish; the menus keep the full names
+msgctxt "ribbon"
+msgid "Snap to grid"
+msgstr "Ajustar a cuadrícula"
+
+msgctxt "ribbon"
+msgid "Snap to page"
+msgstr "Ajustar a página"
+
+msgctxt "ribbon"
+msgid "Combine files"
+msgstr "Combinar"
+
+msgctxt "ribbon"
+msgid "Attach file"
+msgstr "Adjuntar"
+
+msgid "More in {group}: {commands}"
+msgstr "Más en {group}: {commands}"
+
+# ---- the same English word with another meaning there (msgctxt)
+# a box's edges (Print > Page boxes), not the Align commands
+msgctxt "edge"
+msgid "Top"
+msgstr "Superior"
+
+msgctxt "edge"
+msgid "Bottom"
+msgstr "Inferior"
+
+# what to do with selected text (right-click), not the markup's name
+msgctxt "verb"
+msgid "Highlight"
+msgstr "Resaltar"
+
+msgctxt "verb"
+msgid "Underline"
+msgstr "Subrayar"
+
+# a legend's column: how many of each markup, not the Count measuring tool
+msgctxt "legend"
+msgid "Count"
+msgstr "Cantidad"

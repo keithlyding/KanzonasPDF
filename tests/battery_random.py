@@ -7,8 +7,10 @@ tests/test_battery_random.py runs in every build):
 Thousands of random edits through the app's own steps (the ones the menus, tools and keys
 call: markups of every kind added, moved, resized, recolored, retyped, duplicated, restacked
 and deleted; page text added, edited and replaced; pictures and shapes of the page moved,
-turned and deleted; pages rotated, inserted, duplicated, deleted, moved, reordered and
-cropped; bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
+turned and deleted; words styled in Edit text and Add text (bold, italic, underline,
+strikethrough, color, size); pages rotated, inserted, duplicated, deleted, moved, reordered,
+cropped, scanned in (File > Scan into the current document, with pictures made here) and
+replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
 window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
 (kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
 
@@ -108,6 +110,45 @@ def sample(path, pages=4):
     return path
 
 
+def revision(path):
+    """The new revision Replace pages takes drawings from: a page of the same size, a bigger
+    one, a portrait page turned to show landscape, a half-size one and one cropped off its
+    media box's corner, each with text, drawings, a picture, a sheet number and a markup of
+    its own (which doesn't come along); two of them draw on layers (one off)."""
+    d = pymupdf.open()
+    for i, (w, h, turn, crop) in enumerate([(612, 792, 0, None), (1224, 792, 0, None),
+                                            (612, 792, 90, None), (306, 396, 0, None),
+                                            (700, 900, 0, (40, 60, 652, 852))]):
+        p = d.new_page(width=w, height=h)
+        if crop:
+            p.set_cropbox(pymupdf.Rect(crop))
+        p.set_rotation(turn)
+        m = p.derotation_matrix
+        r = p.rect
+        p.insert_text(pymupdf.Point(60, 60) * m, "Revision B sheet %d" % (i + 1),
+                      fontsize=14, rotate=turn)
+        p.insert_text(pymupdf.Point(r.width - 150, r.height - 30) * m,
+                      "SHEET NO: R-%d" % (i + 1), fontsize=9, rotate=turn)
+        p.draw_rect(pymupdf.Rect(20, 20, r.width - 20, r.height - 20) * m, color=(0, 0, 0.6),
+                    width=1.5)
+        p.draw_line(pymupdf.Point(40, 120) * m, pymupdf.Point(r.width - 40, 200) * m,
+                    color=(0.7, 0, 0), width=1)
+        p.insert_image(pymupdf.Rect(80, 220, 160, 280) * m,
+                       stream=png_bytes(rgb=(200, 40 * i, 90)), rotate=turn)
+        a = p.add_circle_annot(pymupdf.Rect(200, 300, 260, 340) * m)
+        a.update()
+        if i in (1, 2):         # (drawn on layers: they join the document's layers)
+            if i == 1:
+                layers = [d.add_ocg("R-WALL", on=True), d.add_ocg("R-HIDDEN", on=False)]
+            p.insert_text(pymupdf.Point(60, 330) * m, "on a layer", fontsize=11, rotate=turn,
+                          oc=layers[0])
+            p.draw_line(pymupdf.Point(60, 350) * m, pymupdf.Point(300, 350) * m,
+                        color=(0, 0.5, 0), width=2, oc=layers[1])
+    d.save(path, garbage=3, deflate=True)
+    d.close()
+    return path
+
+
 # ---- comparing documents ---------------------------------------------------------------------
 def canon(data):
     """A document's bytes (as written by DocumentView._snapshot) as bytes that two documents
@@ -194,10 +235,11 @@ class State:
 
 # MuPDF draws a page's content a level or two of color apart (out of 255) depending on
 # its markups: one with a blend mode (a highlight multiplies) makes it draw the whole page
-# as a transparency group. The view keeps the content drawn without the markups and draws
-# them over it, so a page drawn before such a markup was added (and kept: its content didn't
-# change) is that far from one drawn after. Seen from a person, the same page; content
-# drawn from old caches is off by far more (a line missing, markups in another order)
+# as a transparency group. Up to 1.8 the view kept a content render made before such a
+# markup was added (and MuPDF's page kept its old answer: up to 5 levels off); since 1.9 it
+# works the answer out again and draws the content again when it changes
+# (render_layers.transparency). A margin of a few levels is kept; content drawn from old
+# caches is off by far more (a line missing, markups in another order)
 SHADE = 3
 
 
@@ -259,7 +301,10 @@ class Battery:
         attachment = os.path.join(self.out, "attached.txt")
         with open(attachment, "w") as f:
             f.write("an attached file")
-        files = {"Insert image": picture}
+        self.revision = revision(os.path.join(self.out, "revision.pdf"))
+        with open(self.revision, "rb") as f:
+            self.revision_hash = hashlib.sha256(f.read()).hexdigest()
+        files = {"Insert image": picture, "Replace pages with pages from": self.revision}
         return [mock.patch.object(QMessageBox, name, box(name))
                 for name in ("information", "warning", "critical", "question")] + [
             mock.patch.object(QMessageBox, "exec", lambda self: QMessageBox.Cancel),
@@ -267,7 +312,8 @@ class Battery:
                               lambda parent, title, label, text="":
                               (battery.typed(text), True)),
             mock.patch.object(dialogs, "open_file",
-                              lambda parent, title, f="": files.get(title, attachment)),
+                              lambda parent, title, f="", folder="":
+                              files.get(title, attachment)),
             mock.patch.object(DV, "USE_JOURNAL", self.journal),
             mock.patch.object(DV, "UNDO_LIMIT", self.undo_limit or 10 ** 9)]
 
@@ -467,6 +513,11 @@ class Battery:
             elif not now.same(before):
                 self.mismatch("an edit changed the document without an undo step", before,
                               now)
+            elif not self.budget_trim(nr, mr, keep=0):
+                # (an edit refused or taken back is no edit: the steps to redo stay. One
+                # refused after a change had lost them: Edit objects, seed 5, 1.9)
+                raise Failed("an edit that changed nothing left %d steps to redo, expected %d"
+                             % (nr, mr))
             if pushed or not now.same(before):
                 if nr:
                     raise Failed("an edit left %d steps to redo" % nr)
@@ -623,15 +674,18 @@ class Battery:
         return [
             (self.op_shape, 10), (self.op_line, 5), (self.op_poly, 4), (self.op_ink, 3),
             (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
-            (self.op_measure, 2), (self.op_text_markup, 6), (self.op_attach, 1),
+            (self.op_measure, 2), (self.op_dimension, 3), (self.op_text_markup, 6),
+            (self.op_attach, 1), (self.op_legend, 2), (self.op_legend_options, 2),
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
             (self.op_retype, 3), (self.op_delete, 5), (self.op_duplicate, 2),
             (self.op_copy_paste, 2), (self.op_restack, 2), (self.op_eraser, 2),
-            (self.op_add_text, 3), (self.op_edit_text, 3), (self.op_replace_text, 1),
+            (self.op_add_text, 3), (self.op_edit_text, 3), (self.op_styled_text, 3),
+            (self.op_replace_text, 1), (self.op_scan, 1),
             (self.op_picture, 2), (self.op_objects, 4), (self.op_erase_content, 1),
             (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
             (self.op_delete_page, 2), (self.op_move_page, 2), (self.op_reorder, 1),
             (self.op_duplicate_page, 1), (self.op_crop, 2), (self.op_bookmarks, 1),
+            (self.op_replace_pages, 2),
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
@@ -688,6 +742,89 @@ class Battery:
             self.v.apply_drag_tool(i, self.rnd.choice(["m_length", "m_radius"]), a, b, False)
         else:
             self.v.apply_poly(i, "m_angle", [a, b, self.point(i, 40)])
+
+    def op_dimension(self):
+        """Dimensions (dimensions.py): one drawn (its two points and where its line goes, as
+        the clicks give them to apply_poly), or one already there with a grip dragged (a
+        measured point, or its dimension line nearer or farther: measured again) or its
+        arrowheads changed. Moving, restyling and deleting them: the operations for all."""
+        v = self.v
+        have = [(i, x) for i in range(v.doc.page_count) for x in self.markups(i)
+                if self.kind(i, x) == "m_dim"]
+        r = self.rnd.random()
+        if not have or r < 0.4:
+            i = self.page()
+            a, b = self.box(i, 20, 250)
+            if self.rnd.random() < 0.5:
+                b = pymupdf.Point(b.x, a.y)             # (level, as most dimensions are)
+            c = (a + b) / 2 + pymupdf.Point(self.rnd.uniform(-60, 60),
+                                            self.rnd.uniform(-60, 60))
+            v.apply_poly(i, "m_dim", [a, b, c])
+            return None
+        i, x = self.rnd.choice(have)
+        v.select_xref(i, x)
+        m = v.selected_model
+        if m is None or m["kind"] != "m_dim":
+            v.clear_selection()
+            return "none"
+        if r < 0.85:
+            # a grip dragged, as page_widget's handles do it (v0, v1: a measured point; v2:
+            # the dimension line)
+            k = self.rnd.randrange(3)
+            to = m["points"][k] + pymupdf.Point(self.rnd.uniform(-50, 50),
+                                                self.rnd.uniform(-50, 50))
+            new = annotations.with_endpoint(m, k, to)
+            if abs(new["points"][1] - new["points"][0]) < 1:
+                v.clear_selection()
+                return "none"
+            v.commit_model(i, x, new)
+        else:
+            heads = [h for h in ("closed", "open", "slash", "dot", "none")
+                     if h != m["props"].get("head")]
+            v.update_selected_props({"head": self.rnd.choice(heads)})
+        v.clear_selection()
+
+    def kind(self, i, x):
+        """The kind of markup x of page i (annotations.read), or None."""
+        page = self.v.doc[i]
+        try:
+            m = annotations.read(page.load_annot(x))
+        except Exception:
+            m = None
+        del page
+        return m["kind"] if m else None
+
+    def op_legend(self):
+        # a legend of the page's or the whole document's markups (legend.py): it draws
+        # itself again inside the steps that change what it lists, so every undo and redo
+        # after it is checked with it there
+        i = self.page()
+        a, b = self.box(i, 60, 240)
+        props = dict(annotations.tool_props("legend"),
+                     scope=self.rnd.choice(["page", "document"]),
+                     count=self.rnd.random() < 0.8, totals=self.rnd.random() < 0.8,
+                     border=self.rnd.random() < 0.8)
+        with mock.patch.object(self.v, "tool_props", lambda tool: dict(props)):
+            self.v.apply_drag_tool(i, "legend", a, b, self.rnd.random() < 0.5)
+
+    def op_legend_options(self):
+        # a legend's options changed (as in Properties): scope, columns, title, border, size
+        from kanzonas import legend
+        v = self.v
+        found = [(i, x) for i in range(v.doc.page_count) for x in legend.legends_on(v.doc[i])]
+        if not found:
+            return "none"
+        i, x = self.rnd.choice(found)
+        v.select_xref(i, x)
+        if v.selected_model is None:
+            return "none"
+        k = self.rnd.choice(["scope", "count", "totals", "border", "title", "fontsize"])
+        old = v.selected_model["props"].get(k)
+        value = {"scope": "document" if old == "page" else "page", "count": not old,
+                 "totals": not old, "border": not old, "title": self.typed(),
+                 "fontsize": self.rnd.choice([6, 9, 12, 16])}[k]
+        v.update_selected_props(dict(v.selected_model["props"], **{k: value}))
+        v.clear_selection()
 
     def op_text_markup(self):
         i = self.page()
@@ -839,6 +976,100 @@ class Battery:
         ed.text.setPlainText(" ".join(p for p in parts if p) or "x")
         ed.commit()
 
+    def op_styled_text(self):
+        """Edit text or Add text with words styled in the editor (text_styles.py), as its
+        buttons and keys do: bold, italic, underline, strikethrough, a color, a size up or
+        down, on a run of words picked at random; then Done (the editor's own commit)."""
+        from PySide6.QtGui import QColor, QTextCursor
+        v = self.v
+        i = self.page()
+        if self.rnd.random() < 0.3:
+            v.add_text_at(i, self.point(i, 60))
+            ed = v._inline
+            if ed is None:
+                return "none"
+            ed.text.setPlainText(self.typed() + " " + self.typed())
+        else:
+            words = self.words(i)
+            if not words:
+                return "none"
+            w = self.rnd.choice(words)
+            v.edit_text_at(i, pymupdf.Point((w[0] + w[2]) / 2, (w[1] + w[3]) / 2),
+                           one_line=self.rnd.random() < 0.3)
+            ed = v._inline
+            if ed is None:
+                return "none"
+        text = ed.text.toPlainText()
+        spans = [mt.span() for mt in re.finditer(r"\S+", text)]
+        if not spans:
+            ed.cancel()
+            return "none"
+        for _ in range(self.rnd.randint(1, 3)):
+            k = self.rnd.randrange(len(spans))
+            a, b = spans[k][0], spans[min(len(spans) - 1, k + self.rnd.randint(0, 3))][1]
+            cur = ed.text.textCursor()
+            cur.setPosition(a)
+            cur.setPosition(b, QTextCursor.KeepAnchor)
+            ed.text.setTextCursor(cur)
+            what = self.rnd.choice(["bold", "italic", "underline", "strike", "color", "size"])
+            if what == "color":
+                ed.set_color(QColor(self.color()))
+            elif what == "size":
+                ed.grow_size(self.rnd.choice([-1, 1, 2]))
+            else:
+                ed.toggle(what)
+        if self.rnd.random() < 0.3:             # and a word typed in its style
+            cur = ed.text.textCursor()
+            cur.setPosition(self.rnd.choice(spans)[1])
+            ed.text.setTextCursor(cur)
+            ed.text.insertPlainText(" " + self.typed())
+        ed.commit()
+
+    def op_scan(self):
+        """File > Scan, Done into the current document: scanned pictures (made here, JPEG or
+        PNG, with no scanner) put in after the current page, one undo step (scan_dialog's
+        own finish)."""
+        from kanzonas import scan_dialog, scan_net
+        from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+        from PySide6.QtGui import QColor, QImage, QPainter
+        v = self.v
+        if v.doc.page_count >= 10:
+            return self.op_delete_page()
+        v.goto_page(self.page())
+        dlg = scan_dialog.ScanDialog(self.win, discover=lambda cancel=None, log=None: ([], []),
+                                     open_scanner=lambda d: None)
+        try:
+            end = time.time() + 15
+            while "find" in dlg._busy and time.time() < end:
+                APP.processEvents()
+                time.sleep(0.005)
+            dpi = self.rnd.choice([50, 75, 100])
+            pages = []
+            for _ in range(self.rnd.randint(1, 2)):
+                w, h = int(8.5 * dpi), int(self.rnd.choice([11, 14]) * dpi)
+                if self.rnd.random() < 0.3:
+                    w, h = h, w
+                img = QImage(w, h, QImage.Format_RGB32)
+                img.fill(QColor(250, 250, 245))
+                p = QPainter(img)
+                for _ in range(12):
+                    p.fillRect(self.rnd.randrange(w), self.rnd.randrange(h),
+                               self.rnd.randint(5, w // 3), self.rnd.randint(2, 12),
+                               QColor(self.color()))
+                p.end()
+                data = QByteArray()
+                buf = QBuffer(data)
+                buf.open(QIODevice.WriteOnly)
+                img.save(buf, self.rnd.choice(["JPG", "PNG"]))
+                pages.append(scan_net.check_image(bytes(data), dpi))
+            dlg.pages = pages
+            dlg.rb_current.setChecked(True)
+            dlg.ocr.setChecked(False)
+            dlg.finish()
+        finally:
+            dlg._stop()
+            dlg.deleteLater()
+
     def op_replace_text(self):
         find, repl = self.rnd.choice([("text", "TEXT"), ("panel", "board"), ("TEXT", "text"),
                                       ("agrees", "agreed"), ("board", "panel")])
@@ -935,6 +1166,37 @@ class Battery:
         m = self.rnd.uniform(5, 60)
         v.crop_pages(i, pymupdf.Rect(m, m, cb.width - m, cb.height - m),
                      all_pages=self.rnd.random() < 0.2)
+
+    def op_replace_pages(self):
+        """Pages > Replace pages, through the window's own step: one to three pages from
+        the revision (revision()), picked by page numbers or in the sheet-number list (set
+        by hand there: the battery's pages have no sheet numbers), markups scaled to a new
+        size or kept in place. The revision file must stay as it was."""
+        from kanzonas.replace_pages_ui import ReplacePagesDialog
+        from PySide6.QtWidgets import QDialog
+        rnd = self.rnd
+
+        def answer(dlg):
+            n, k = dlg.doc.page_count, dlg.src.page_count
+            here = rnd.sample(range(n), rnd.randint(1, min(3, n)))
+            if rnd.random() < 0.5:
+                new = rnd.sample(range(k), len(here))
+                dlg.here.setText(", ".join(str(i + 1) for i in here))
+                dlg.new.setText(", ".join(str(j + 1) for j in new))
+            else:
+                dlg.by_sheets.setChecked(True)
+                for row in range(dlg.table.rowCount()):
+                    dlg.table.item(row, 2).setText("")
+                for i in here:          # (one new sheet may replace several pages here)
+                    dlg.table.item(i, 2).setText(str(rnd.randrange(k) + 1))
+            (dlg.scale if rnd.random() < 0.5 else dlg.keep).setChecked(True)
+            dlg._accept()
+            return QDialog.Accepted if dlg.result_pairs else QDialog.Rejected
+        with mock.patch.object(ReplacePagesDialog, "exec", answer):
+            self.win.a_replace_pages.trigger()
+        with open(self.revision, "rb") as f:
+            if hashlib.sha256(f.read()).hexdigest() != self.revision_hash:
+                raise Failed("Replace pages changed the file the pages came from")
 
     def op_bookmarks(self):
         v = self.v

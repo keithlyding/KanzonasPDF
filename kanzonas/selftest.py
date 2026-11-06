@@ -1,5 +1,6 @@
 """`KanzonasPDF.exe --selftest log.txt`: checks that the bundled features really work in
-the built app (OCR engine, every export, signatures, forms). Used by the Windows build."""
+the built app (OCR engine, every export, signatures, forms). Used by the Windows, Linux and
+macOS builds."""
 
 import os
 import sys
@@ -10,7 +11,7 @@ import pymupdf
 
 
 def _memory_mb():
-    """Peak memory of this process in MB (Windows and Linux)."""
+    """Peak memory of this process in MB (Windows, Linux and macOS)."""
     try:
         import ctypes
         from ctypes import wintypes
@@ -33,7 +34,9 @@ def _memory_mb():
         return pmc.PeakWorkingSetSize / 1e6
     except (AttributeError, OSError):
         import resource
-        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        # (in kilobytes on Linux, in bytes on macOS)
+        return peak / (1024 * 1024 if sys.platform == "darwin" else 1024)
 
 
 def run(log_path):
@@ -1191,6 +1194,13 @@ def run(log_path):
         assert not spelling.is_known("recieve") and not spelling.is_known("colour")
         assert "receive" in spelling.suggestions("recieve")
     check("spell check", t_spelling)
+
+    def t_scanning():
+        # File > Scan without a scanner: the XML guard, reading eSCL, and on Windows that
+        # comtypes (WIA) is in the exe
+        from . import scanners
+        return scanners.selftest_check()
+    check("scanning", t_scanning)
 
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")

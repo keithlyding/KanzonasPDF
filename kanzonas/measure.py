@@ -60,7 +60,11 @@ def get_scale(page):
         typ, val = page.parent.xref_get_key(page.xref, KEY)
         if typ == "string":
             f, unit, label = (val.split("|", 2) + ["", ""])[:3]
-            return float(f), unit, label, True
+            f = float(f)
+            # (a scale that can't be one, as a file from elsewhere may hold: not set; a NaN
+            # one stopped the page drawing its scale bar, and every measurement on it)
+            if math.isfinite(f) and f > 0 and unit in UNITS:
+                return f, unit, label, True
     except Exception:
         pass
     return PT_M, "in", tr("not set (paper size)"), False
@@ -83,9 +87,84 @@ def scale_from_preset(ratio):
     return PT_M * ratio
 
 
+def preset_label(m_per_pt):
+    """The name of the preset scale (PRESETS) of m_per_pt meters per point, '' for none."""
+    for label, ratio, _unit in PRESETS:
+        if abs(PT_M * ratio - m_per_pt) <= 1e-9 * m_per_pt:
+            return label
+    return ""
+
+
 def describe(page):
     _f, unit, label, ok = get_scale(page)
     return tr("Scale: {label}").format(label=label) + (f"  ({unit})" if ok else "")
+
+
+# ---- graphic scale bar (View > Show scale bar; drawn on screen only) ----------------
+def _bar_steps(unit):
+    """Round segment lengths for a scale bar, shortest first: [(meters, value, kind)], value
+    in the drawing's unit ("in" or "ft" for feet and inches, kind saying which)."""
+    if unit == "ft-in":
+        out = [(i * 0.0254, i, "in") for i in (1, 2, 3, 6)]
+        feet = [1, 2, 4, 5] + [m * 10 ** k for k in range(1, 6) for m in (1, 2, 2.5, 5)]
+        return out + [(f * 0.3048, f, "ft") for f in feet]
+    size = UNITS.get(unit, 0.0254)
+    return [(m * 10 ** k * size, m * 10 ** k, unit)
+            for k in range(-3, 7) for m in (1, 2, 2.5, 5)]
+
+
+def _bar_number(v):
+    v = round(v, 6)
+    return f"{int(v):,}" if v == int(v) else f"{v:,.6g}"
+
+
+def _bar_label(v, kind, unit, last):
+    """A scale bar's number: feet and inches marked 5' and 6" (1'-6" past a foot), other
+    units plain with the unit named after the last one."""
+    if v == 0:
+        return "0"
+    if unit == "ft-in":
+        if kind == "in":
+            v = int(round(v))
+            if v < 12:
+                return f'{v}"'
+            return f"{v // 12}'" if v % 12 == 0 else f"{v // 12}'-{v % 12}\""
+        return _bar_number(v) + "'"
+    return _bar_number(v) + (" " + unit if last else "")
+
+
+def scale_bar(m_per_pt, unit, px_per_pt, max_px, segments=4):
+    """A graphic scale bar for a page with this scale drawn at px_per_pt screen pixels per PDF
+    point: (segment length in pixels, [the label at 0 and at the end of each segment]), with
+    the longest round segment that keeps the bar within max_px pixels; fewer segments when
+    even the shortest is too long for four. None when nothing fits."""
+    if m_per_pt <= 0 or px_per_pt <= 0 or max_px <= 0:
+        return None
+    px_per_m = px_per_pt / m_per_pt
+    steps = _bar_steps(unit)
+    pick = None
+    for step in steps:
+        if step[0] * px_per_m * segments <= max_px:
+            pick = step
+        else:
+            break
+    n = segments
+    if pick is None:
+        pick = steps[0]
+        n = int(max_px // (pick[0] * px_per_m))
+        if n < 1:
+            return None
+    meters, value, kind = pick
+    # long runs of millimeters read better in meters (1:50: 0 1 2 3 4 m, not 4,000 mm)
+    bigger = {"mm": ("m", 1.0), "cm": ("m", 1.0), "m": ("km", 1000.0)}.get(unit)
+    if bigger and meters >= bigger[1] - 1e-9:
+        unit = bigger[0]
+        value = kind = None
+    if value is None:
+        value = meters / UNITS[unit]
+        kind = unit
+    labels = [_bar_label(value * i, kind, unit, i == n) for i in range(n + 1)]
+    return meters * px_per_m, labels
 
 
 # ---- geometry -----------------------------------------------------------------------
@@ -159,6 +238,8 @@ def measure_text(kind, points, page, group="", props=None):
     f, unit, _label, _ok = get_scale(page)
     if kind in ("m_length", "m_poly"):
         return fmt_length(length(points) * f, unit)
+    if kind == "m_dim":                 # (between its two measured points)
+        return fmt_length(length(points[:2]) * f, unit)
     if kind == "m_area":
         a = fmt_area(area(points) * f * f, unit)
         per = fmt_length(length(points + points[:1]) * f, unit)
@@ -189,6 +270,8 @@ def raw_values(kind, points, page, props=None):
     base = "ft" if unit == "ft-in" else unit
     if kind in ("m_length", "m_poly"):
         return length(points) * f / UNITS[base], base
+    if kind == "m_dim":
+        return length(points[:2]) * f / UNITS[base], base
     if kind == "m_area":
         return area(points) * f * f / UNITS[base] ** 2, "sq " + base
     if kind == "m_perimeter":

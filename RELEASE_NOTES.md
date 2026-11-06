@@ -7,6 +7,56 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.9
+
+**New**
+- **Scan** (File > Scan...): scan straight into a PDF from a scanner, or a printer that scans, without installing its driver: most network printers (eSCL/AirScan and WSD), the scanners Windows knows, and SANE on Linux. Pages started on the printer's own panel can come in too, and a folder can be watched for scans.
+- **Edit text keeps each word's style**, and you can make words **Bold**, *Italic*, Underline or Strikethrough, or change their color and size, in the line's own font. Add text does the same.
+- **Dimension** markups: a measured line with extension lines and arrows.
+- **Legend** markups: a list of the page's or document's markups (kind, color, count, totals) that keeps itself up to date as you add, change or delete markups.
+- **Replace pages** (Pages tab): put in a new revision of a page or drawing and keep its markups, links and bookmarks; pages are matched by number or by sheet number.
+- **Save as PDF/A...** and **Check PDF/A...** (File menu): an archival copy (PDF/A-2b), and a list of what keeps a file from being one.
+- The page's scale shown large on the Measure tab and in the status bar (red when it isn't set), a notice the first time you measure an unscaled page, and an on-screen **Scale bar**.
+- **KanzonasPDF for Mac** with Apple silicon (M1 or newer), macOS 14.4 or newer.
+
+**Fixed**
+- Redaction leaves nothing behind: Search & redact also finds the text in hidden layers, in parts of a page that were cropped away, and in other places in the file (layer names, web addresses, form data), and offers to remove it there. Applying redactions no longer leaves copies in a note's formatted text, hidden form fields, XFA form data, page thumbnails, the hidden text that describes the redacted words, review threads, or the private data some programs (like Illustrator) keep. Legends are redrawn without the redacted words, and a signed copy made after redacting no longer contains what was removed.
+- Edit text: words a page hides (a scan's recognized text) stay hidden when you edit, move or replace text near them; words made larger no longer overlap the line above; editing a paragraph no longer moves words to the next line. Hebrew and Arabic are left as they are, with a message, instead of being written backwards.
+- A picture dropped near the middle of the page snaps to the center even with Snap to objects on.
+- Replace pages keeps markups the right way up on a turned sheet, and text sizes, line widths and measurements follow a sheet of another size.
+- Markups keep their subject (their name in legends) when restyled, copied or measured again; Set scale no longer deletes replies to measurements; colors from other programs (gray, CMYK) read correctly.
+- Scanning: a page cut short by a dropped connection is reported instead of kept as half a page, Cancel stops a page that is still arriving, files in a watched folder are taken only once they're complete, and a scanned PDF brings only its pages (no links, fields or comments).
+- Save as PDF/A also fixes pictures stored inside the page content; Check PDF/A reports a few more things PDF/A doesn't allow. Saves that tidy the file (Compress, Save as PDF/A, Combine files) can no longer lose a page's drawing.
+- Pages look exactly like the file opened afresh after adding or undoing a highlight, or moving a picture stamp partly off the page.
+- Edit objects: deleting or moving shapes and text together on a page with redaction marks not applied yet no longer makes Redo unavailable.
+- Scanning on a Mac no longer waits about half a minute before looking for scanners, and the Mac asks once to let KanzonasPDF find devices on your network. On Windows, Cancel stops a page that is still arriving.
+- Find no longer counts a word twice when part of it is in another size, and its count goes when the last document closes. The ribbon fits a 1366-pixel screen in Spanish too, and recognizing text (OCR) uses less memory.
+
+## 1.9 (es)
+
+**Novedades**
+- **Escanear** (Archivo > Escanear...): escanee directamente a un PDF desde un escáner, o una impresora que escanea, sin instalar su controlador: la mayoría de las impresoras de red (eSCL/AirScan y WSD), los escáneres que Windows conoce y SANE en Linux. También pueden llegar las páginas iniciadas en el panel de la impresora, y se puede vigilar una carpeta de escaneos.
+- **Editar texto conserva el estilo de cada palabra**, y puede poner palabras en **Negrita**, *Cursiva*, Subrayado o Tachado, o cambiar su color y tamaño, con la fuente de la propia línea. Agregar texto hace lo mismo.
+- Marcas de **Cota**: una línea medida con líneas de extensión y flechas.
+- Marcas de **Leyenda**: una lista de las marcas de la página o del documento (tipo, color, cantidad, totales) que se mantiene al día al agregar, cambiar o eliminar marcas.
+- **Reemplazar páginas** (pestaña Páginas): ponga una nueva revisión de una página o un plano y conserve sus marcas, vínculos y marcadores; las páginas se emparejan por número o por número de hoja.
+- **Guardar como PDF/A...** y **Revisar PDF/A...** (menú Archivo): una copia de archivo (PDF/A-2b), y una lista de lo que impide que un archivo lo sea.
+- La escala de la página se muestra en grande en la pestaña Medir y en la barra de estado (en rojo cuando no está establecida), un aviso la primera vez que mide en una página sin escala, y una **Barra de escala** en pantalla.
+- **KanzonasPDF para Mac** con Apple silicon (M1 o posterior), macOS 14.4 o posterior.
+
+**Correcciones**
+- La censura no deja nada atrás: Buscar y censurar también encuentra el texto en capas ocultas, en las partes recortadas de una página y en otros lugares del archivo (nombres de capas, direcciones web, datos de formularios), y ofrece quitarlo de allí. Aplicar censuras ya no deja copias en el texto con formato de una nota, campos de formulario ocultos, datos de formularios XFA, miniaturas de página, el texto oculto que describe las palabras censuradas, hilos de revisión ni los datos privados que algunos programas (como Illustrator) guardan. Las leyendas se vuelven a dibujar sin las palabras censuradas, y una copia firmada hecha después de censurar ya no contiene lo que se quitó.
+- Editar texto: las palabras que la página oculta (el texto reconocido de un escaneo) siguen ocultas al editar, mover o reemplazar el texto de su alrededor; las palabras agrandadas ya no se montan sobre la línea de arriba; editar un párrafo ya no pasa palabras a la línea siguiente. El hebreo y el árabe se dejan como están, con un mensaje, en lugar de escribirse al revés.
+- Una imagen soltada cerca del centro de la página se ajusta al centro aunque Ajustar a objetos esté activado.
+- Reemplazar páginas deja las marcas derechas en una hoja girada, y los tamaños de texto, los grosores de línea y las mediciones siguen a una hoja de otro tamaño.
+- Las marcas conservan su asunto (su nombre en las leyendas) al cambiarles el estilo, copiarlas o volver a medirlas; Establecer escala ya no borra las respuestas a las mediciones; los colores de otros programas (gris, CMYK) se leen bien.
+- Escanear: una página cortada por una conexión caída se avisa en lugar de guardarse a medias, Cancelar detiene una página que todavía está llegando, los archivos de una carpeta vigilada se toman solo cuando están completos, y un PDF escaneado trae solo sus páginas (sin vínculos, campos ni comentarios).
+- Guardar como PDF/A también corrige las imágenes guardadas dentro del contenido de la página; Revisar PDF/A indica algunas cosas más que PDF/A no permite. Los guardados que ordenan el archivo (Comprimir, Guardar como PDF/A, Combinar archivos) ya no pueden perder el dibujo de una página.
+- Las páginas se ven exactamente como el archivo abierto de nuevo después de agregar o deshacer un resaltado, o de mover un sello con imagen en parte fuera de la página.
+- Editar objetos: eliminar o mover formas y texto a la vez en una página con marcas de censura sin aplicar ya no deja Rehacer sin efecto.
+- Escanear en un Mac ya no espera cerca de medio minuto antes de buscar escáneres, y el Mac pide una vez permitir que KanzonasPDF encuentre dispositivos en su red. En Windows, Cancelar detiene una página que todavía está llegando.
+- Buscar ya no cuenta dos veces una palabra que tiene una parte en otro tamaño, y su recuento desaparece al cerrar el último documento. La cinta de opciones cabe en una pantalla de 1366 píxeles también en español, y el reconocimiento de texto (OCR) usa menos memoria.
+
 ## 1.8.3
 
 **Fixed**

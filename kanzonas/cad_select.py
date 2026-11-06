@@ -209,7 +209,7 @@ def apply_cursor(w):
 
 
 _OPEN_KINDS = ("line", "arrow", "polyline", "ink", "arc", "opencloud", "m_length", "m_poly",
-               "m_angle", "m_radius")
+               "m_angle", "m_radius", "m_dim")
 
 
 def rollover(w, pos):
