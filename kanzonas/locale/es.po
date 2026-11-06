@@ -6295,6 +6295,10 @@ msgstr "Sello {name}"
 msgid "Emoji and other characters beyond U+FFFF can't be written into a PDF page here. Remove them and try again."
 msgstr "Los emojis y otros caracteres más allá de U+FFFF no se pueden escribir aquí en una página PDF. Quítelos e inténtelo de nuevo."
 
+#: text_edit.py
+msgid "Text written right to left (Hebrew, Arabic...) can't be rewritten here yet: it would come out in the wrong order. Nothing was changed."
+msgstr "El texto que se escribe de derecha a izquierda (hebreo, árabe...) todavía no se puede reescribir aquí: saldría en el orden equivocado. No se ha cambiado nada."
+
 #: text_edit.py:507 text_edit.py:646
 msgid "some characters"
 msgstr "algunos caracteres"
@@ -7678,6 +7682,18 @@ msgstr "Una imagen tiene versiones alternativas o vínculos OPI."
 
 msgid "A picture has a number of bits per color PDF/A doesn't allow."
 msgstr "Una imagen tiene una cantidad de bits por color que PDF/A no permite."
+
+#: pdfa.py
+msgid "A text in the file (a comment's, perhaps) is longer than PDF/A allows (32,767 bytes)."
+msgstr "Un texto del archivo (el de un comentario, quizá) es más largo de lo que PDF/A permite (32.767 bytes)."
+
+#: pdfa.py
+msgid "A name in the file is longer than PDF/A allows (127 bytes)."
+msgstr "Un nombre del archivo es más largo de lo que PDF/A permite (127 bytes)."
+
+#: pdfa.py
+msgid "Drawing instructions are nested deeper than PDF/A allows (28 levels)."
+msgstr "Las instrucciones de dibujo están anidadas a más profundidad de la que PDF/A permite (28 niveles)."
 
 msgid "Font {font} isn't embedded."
 msgstr "La fuente {font} no está incrustada."

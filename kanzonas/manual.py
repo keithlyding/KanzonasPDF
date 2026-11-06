@@ -356,7 +356,7 @@ or editing the document starts a fresh search.</li>
 tick <b>Match case</b> or <b>Whole words only</b> if needed, choose <b>All pages</b> or this
 page, and click <b>Replace all</b>. It changes the PDF's own text (not comments). Each line
 that changes is rewritten like Edit text does it, in the line's own font when that has the
-characters. A line is rewritten in place and doesn't rewrap: when the new text runs into other
+characters, each word kept in its own style (bold, italic, color...). A line is rewritten in place and doesn't rewrap: when the new text runs into other
 text or past the edge of the page, Replace text says on which pages (Ctrl+Z undoes it; Edit text
 can rewrap the paragraph). Pages with redaction marks that aren't applied yet are skipped (it says which).
 Ctrl+Z undoes the whole replacement.</li>
@@ -979,7 +979,8 @@ strikethrough. The box shows them as on the page.</li>
 line, or new text with Add text), select words and use the buttons above the box:
 <b>Bold</b> (Ctrl+B), <b>Italic</b> (Ctrl+I), <b>Underline</b> (Ctrl+U),
 <b>Strikethrough</b>, <b>Text color</b>, and <b>Larger text</b> (Ctrl+]) / <b>Smaller
-text</b> (Ctrl+[), a point at a time. Press a button again to take the style off. With nothing
+text</b> (Ctrl+[), a point at a time (a line with larger words moves down as far as they need,
+so they don't run into the line above). Press a button again to take the style off. With nothing
 selected, the button sets the style of what you type next. Text typed next to a word takes
 that word's style; text typed into an empty box takes the paragraph's main style.
 <br>Bold and italic keep the line's font. The same family's real bold or italic is used when
@@ -1017,6 +1018,9 @@ Sideways text (turned on the page, or on a rotated page) opens in an upright box
 middle of the line so it's easy to type, with the cursor where you clicked along the line; the
 text stays turned on the page when you finish.</li>
 <li>Highlights, underlines, strikeouts, comments and sticky notes on that line move with it.</li>
+<li>Words the page draws invisibly (an OCR layer's words in a line, a hidden word) stay
+invisible when their line or paragraph is edited, dragged, changed by Replace text or moved with
+a drawing; the box shows them faint. See-through words keep their opacity.</li>
 <li>The original font is used when it's embedded or installed and has every character you
 typed; otherwise the closest standard font, or, for characters those can't write (Greek such as
 &Omega; &Delta;, symbols, Chinese and other scripts), a built-in Unicode font. Only the letters
@@ -1025,7 +1029,9 @@ font has a symbol you typed or that came from the PDF (a minus sign, a diameter 
 invisible narrow space...), a broader installed font such as Segoe UI is tried, then a look-alike
 is used (- for the minus sign, &Oslash; for the diameter sign, a normal space for an invisible
 one). Characters that can't be written at all, such as emoji, are named in a message, and
-nothing is changed. A line on a
+nothing is changed. Text written right to left (Hebrew, Arabic) can't be edited, moved or
+added yet (it would come out in the wrong order): a message says so, and nothing is changed.
+A line on a
 page that still has unapplied redaction marks can't be edited until you apply or remove them.</li>
 <li><b>Scanned pages</b> (a picture of the paper with recognized text over it, from your
 scanner's OCR or Recognize text): Edit text, Find and replace and moving a line change the
@@ -1444,7 +1450,7 @@ to pages and web addresses stay); every comment and markup has its own appearanc
 to print, and hidden ones are removed (PDF/A shows every annotation, so a hidden one would
 appear); form fields are drawn (rather than left to the viewer) and lose their actions; layer
 settings get a name; transfer functions, unknown blend modes, smoothing of enlarged pictures,
-LZW compression and PDF versions above 1.7 are replaced by what PDF/A allows, without changing
+LZW compression (also of pictures written into a page's content) and PDF versions above 1.7 are replaced by what PDF/A allows, without changing
 how the pages look. <b>Attached files</b> stay: when they are all PDF/A files themselves, the
 copy is PDF/A-2b; otherwise it's PDF/A-3b, the part of the standard that allows any attached
 file (each is then listed as a file associated with the document, with its kind).
@@ -1461,7 +1467,8 @@ whether Save as PDF/A fixes it; a button there saves it as PDF/A. What can't be 
 that isn't embedded and isn't one of the standard fonts (make the PDF again with its fonts
 embedded), a standard font whose character widths in the file differ from the standard
 font's, a page larger than 200 inches or smaller than 3 points, PostScript, parts kept in
-other files, an unusual compression. It checks the common requirements of PDF/A-2b (and of
+other files, an unusual compression, a text longer than 32,767 bytes (a very long comment) or
+drawing instructions nested more than 28 levels deep. It checks the common requirements of PDF/A-2b (and of
 PDF/A-3b for a file that says it is one), not every one: for a formal validation, use
 <b>veraPDF</b>, free, from the PDF Association (verapdf.org).</li>
 <li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision (if it's

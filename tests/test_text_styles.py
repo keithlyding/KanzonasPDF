@@ -517,9 +517,10 @@ class Underlines(Fixture):
         ws = word_styles(page)
         for w in ("verify", "all", "dimensions", "field", "ordering", "materials"):
             self.assertTrue(ws[w].underline, w)
+        under = ("verify", "all", "dimensions", "field", "ordering", "materials")
         bases = sorted({round(ln["spans"][0]["origin"][1], 1)
                         for _r, ln in text_edit.text_lines(page)
-                        if any(w in text_edit.line_text(ln) for w in ("verify", "materials"))})
+                        if any(w in text_edit.line_text(ln).split() for w in under)})
         bars = drawn_bars(page)
         self.assertEqual(len(bars), len(bases))               # one bar per line piece
         self.assertGreater(len(bars), 1)

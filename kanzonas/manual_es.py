@@ -344,7 +344,7 @@ o editar el documento inicia una búsqueda nueva.</li>
 marque <b>Coincidir mayúsculas y minúsculas</b> o <b>Solo palabras completas</b> si hace falta, elija <b>Todas las páginas</b> o esta
 página y haga clic en <b>Reemplazar todo</b>. Cambia el texto propio del PDF (no los comentarios). Cada línea
 que cambia se vuelve a escribir como lo hace Editar texto, con la fuente propia de la línea cuando esta tiene los
-caracteres. La línea se vuelve a escribir en su sitio y no se reajusta: cuando el texto nuevo se mete en otro
+caracteres, y cada palabra con su propio estilo (negrita, cursiva, color...). La línea se vuelve a escribir en su sitio y no se reajusta: cuando el texto nuevo se mete en otro
 texto o pasa del borde de la página, Reemplazar texto indica en qué páginas (Ctrl+Z lo deshace; Editar texto
 puede reajustar el párrafo). Las páginas con marcas de censura que aún no se han aplicado se omiten (se indica cuáles).
 Ctrl+Z deshace todo el reemplazo.</li>
@@ -960,7 +960,8 @@ tachado. El cuadro los muestra como en la página.</li>
 línea, o texto nuevo con Agregar texto), seleccione palabras y use los botones sobre el cuadro:
 <b>Negrita</b> (Ctrl+B), <b>Cursiva</b> (Ctrl+I), <b>Subrayado</b> (Ctrl+U),
 <b>Tachado</b>, <b>Color del texto</b>, y <b>Texto más grande</b> (Ctrl+]) / <b>Texto más
-pequeño</b> (Ctrl+[), de un punto en un punto. Presione de nuevo un botón para quitar el estilo. Sin nada
+pequeño</b> (Ctrl+[), de un punto en un punto (una línea con palabras más grandes baja lo que
+necesitan, para que no se monten sobre la de arriba). Presione de nuevo un botón para quitar el estilo. Sin nada
 seleccionado, el botón fija el estilo de lo que escriba a continuación. El texto escrito junto a una palabra toma
 el estilo de esa palabra; el texto escrito en un cuadro vacío toma el estilo principal del párrafo.
 <br>La negrita y la cursiva conservan la fuente de la línea. Se usa la negrita o la cursiva real de la misma familia
@@ -998,6 +999,9 @@ El texto de lado (girado en la página, o en una página girada) se abre en un c
 centro de la línea para que sea fácil escribir, con el cursor donde hizo clic a lo largo de la línea; el texto
 sigue girado en la página cuando termina.</li>
 <li>Los resaltados, subrayados, tachados, comentarios y notas adhesivas de esa línea se mueven con ella.</li>
+<li>Las palabras que la página dibuja invisibles (las palabras de una capa de OCR en una línea, una palabra
+oculta) siguen invisibles cuando su línea o su párrafo se edita, se arrastra, se cambia con Reemplazar texto o
+se mueve con un dibujo; el cuadro las muestra tenues. Las palabras semitransparentes conservan su opacidad.</li>
 <li>Se usa la fuente original cuando está incrustada o instalada y tiene todos los caracteres que
 escribió; si no, la fuente estándar más parecida o, para los caracteres que estas no pueden escribir (griego como
 &Omega; &Delta;, símbolos, chino y otras escrituras), una fuente Unicode integrada. Solo se guardan las letras
@@ -1006,7 +1010,9 @@ fuente tiene un símbolo que escribió o que venía del PDF (un signo menos, un 
 espacio estrecho invisible...), se prueba una fuente instalada más amplia como Segoe UI, y luego se usa un carácter parecido
 (- para el signo menos, &Oslash; para el signo de diámetro, un espacio normal para uno
 invisible). Los caracteres que no se pueden escribir de ninguna manera, como los emojis, se indican en un mensaje, y
-no se cambia nada. Una línea de una
+no se cambia nada. El texto que se escribe de derecha a izquierda (hebreo, árabe) todavía no
+se puede editar, mover ni añadir (saldría en el orden equivocado): un mensaje lo dice, y no se
+cambia nada. Una línea de una
 página que todavía tiene marcas de censura sin aplicar no se puede editar hasta que las aplique o las quite.</li>
 <li><b>Páginas escaneadas</b> (una imagen del papel con texto reconocido encima, del OCR de su
 escáner o de Reconocer texto): Editar texto, Buscar y reemplazar y mover una línea también cambian la
@@ -1434,8 +1440,8 @@ páginas y direcciones web se conservan); cada comentario y marca tiene su propi
 configurado para imprimirse, y los ocultos se quitan (PDF/A muestra todas las anotaciones, así que
 uno oculto aparecería); los campos de formulario quedan dibujados (en lugar de dejarlos al visor) y
 pierden sus acciones; la configuración de capas recibe un nombre; las funciones de transferencia,
-los modos de fusión desconocidos, el suavizado de imágenes ampliadas, la compresión LZW y las
-versiones de PDF posteriores a 1.7 se reemplazan por lo que PDF/A permite, sin cambiar el aspecto
+los modos de fusión desconocidos, el suavizado de imágenes ampliadas, la compresión LZW (también
+la de las imágenes escritas dentro del contenido de una página) y las versiones de PDF posteriores a 1.7 se reemplazan por lo que PDF/A permite, sin cambiar el aspecto
 de las páginas. Los <b>archivos adjuntos</b> se conservan: si todos son a su vez archivos PDF/A,
 la copia es PDF/A-2b; si no, es PDF/A-3b, la parte de la norma que permite cualquier archivo
 adjunto (cada uno queda entonces registrado como archivo asociado al documento, con su tipo).
@@ -1452,7 +1458,8 @@ una línea para ir allí) y si Guardar como PDF/A lo corrige; un botón allí lo
 Lo que no se puede corregir: una fuente que no está incrustada y no es una de las fuentes estándar
 (vuelva a crear el PDF con sus fuentes incrustadas), una fuente estándar cuyos anchos de carácter
 en el archivo difieren de los de la fuente estándar, una página de más de 200 pulgadas o de menos
-de 3 puntos, PostScript, partes guardadas en otros archivos, una compresión poco común. Revisa los
+de 3 puntos, PostScript, partes guardadas en otros archivos, una compresión poco común, un texto de
+más de 32.767 bytes (un comentario muy largo) o instrucciones de dibujo anidadas a más de 28 niveles. Revisa los
 requisitos comunes de PDF/A-2b (y de PDF/A-3b para un archivo que dice serlo), no todos: para una
 validación formal, use <b>veraPDF</b>, gratuito, de la PDF Association (verapdf.org).</li>
 <li><b>Comparar documentos...</b> (menú Documento, pestaña Páginas): elija la revisión anterior (si está protegida con

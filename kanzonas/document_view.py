@@ -5065,6 +5065,9 @@ class DocumentView(QScrollArea):
             return
         rect, line = hit
         old = text_edit.line_text(line)
+        if text_edit.right_to_left(old):
+            QMessageBox.information(self, tr("Edit text"), text_edit.right_to_left_message())
+            return
         w = self.pages[index]
         upright = (text_edit.line_rotation(line) + page.rotation) % 360 == 0
         size = text_edit.main_span(line)["size"]
@@ -5075,6 +5078,10 @@ class DocumentView(QScrollArea):
             scan = None
         if not one_line and not scan and upright:
             para = self._paragraph_of(index, line)
+            if para is not None and text_edit.right_to_left(text_edit.paragraph_text(para)):
+                QMessageBox.information(self, tr("Edit text"),
+                                        text_edit.right_to_left_message())
+                return
             if para is not None:
                 self._edit_paragraph(index, para, pt)
                 return
@@ -8781,6 +8788,21 @@ class DocumentView(QScrollArea):
         groups = [[k] for k in range(len(rects))]
         if len(rects) < 2:
             return groups
+
+        def touches(a, b):
+            """b goes on from a along the same (level) line: one match whose letters change
+            size there (MuPDF gives each size its own rect: a word half made larger with
+            Edit text's Larger text counted as two matches). Matches apart have at least a
+            letter between them."""
+            h = min(a.height, b.height)
+            return min(a.y1, b.y1) - max(a.y0, b.y0) >= 0.5 * h and \
+                abs(b.x0 - a.x1) <= 0.1 * h
+        joined = []
+        for k, r in enumerate(rects):
+            if joined and touches(rects[k - 1], r):
+                joined[-1].append(k)
+            else:
+                joined.append([k])
         words = textpage.extractWORDS()
         ends = {}                       # where such words end, by line
         for n, w in enumerate(words):
@@ -8788,21 +8810,26 @@ class DocumentView(QScrollArea):
                     (n + 1 == len(words) or words[n + 1][5:7] != w[5:7]):   # last on its line
                 ends.setdefault(round(w[1]), []).append(w)
         if not ends:
-            return groups
+            return joined
 
         def hyphen_end(r):
             return any(abs(r.x1 - w[2]) < 0.5 and abs(r.y0 - w[1]) < 0.5 and
                        abs(r.y1 - w[3]) < 0.5
                        for y in (round(r.y0) - 1, round(r.y0), round(r.y0) + 1)
                        for w in ends.get(y, ()))
+        def one_line(g):
+            first = rects[g[0]]
+            return all(abs(rects[k].y0 - first.y0) <= 0.5 * first.height for k in g)
         out = []
-        for k, r in enumerate(rects):
-            prev = rects[k - 1] if k else None
-            if prev is not None and len(out[-1]) == 1 and \
+        for group in joined:
+            prev = rects[out[-1][-1]] if out else None
+            r = rects[group[0]]
+            # (a match already joined across a line's end takes no more)
+            if prev is not None and one_line(out[-1]) and \
                     r.y0 > prev.y0 + 0.5 * prev.height and hyphen_end(prev):
-                out[-1].append(k)
+                out[-1] += group
             else:
-                out.append([k])
+                out.append(list(group))
         return out
 
     def _matches(self, index):
