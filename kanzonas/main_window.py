@@ -4751,8 +4751,9 @@ class MainWindow(QMainWindow):
     RIBBON_LABELS = {
         "a_fit_width": tr("Fit width"), "a_fit_page": tr("Fit page"), "a_actual": tr("Actual size"),
         "a_cad_mouse": tr("CAD"), "a_mouse_standard": tr("Select"), "a_mouse_hand": tr("Hand"),
-        "a_free_pan": tr("Free movement"), "a_grid": tr("Grid"), "a_snap_grid": tr("Snap to grid"),
-        "a_snap_objects": tr("Snap to objects"), "a_snap_page": tr("Snap to page"),
+        "a_free_pan": tr("Free movement"), "a_grid": tr("Grid"),
+        "a_snap_grid": tr("Snap to grid", ctx="ribbon"),
+        "a_snap_objects": tr("Snap to objects"), "a_snap_page": tr("Snap to page", ctx="ribbon"),
         "a_grid_settings": tr("Grid settings"),
         "a_set_scale": tr("Set scale"), "a_sheet_scales": tr("Sheet scales"), "a_measure_summary": tr("Summary"), "a_ocr": tr("OCR"),
         "a_rot_l": tr("Rotate left"), "a_rot_r": tr("Rotate right"), "a_lock": tr("Lock"),
@@ -4767,7 +4768,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": tr("Apply selected"), "a_apply_redact": tr("Apply all"),
         "a_security": tr("Security"), "a_remove_security": tr("Remove security"), "a_unlock": tr("Unlock"),
         "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"), "a_move_up": tr("Move up"),
-        "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files"), "a_from_images": tr("From images"), "a_new": tr("New PDF"), "a_scan": tr("Scan"),
+        "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files", ctx="ribbon"), "a_from_images": tr("From images"), "a_new": tr("New PDF"), "a_scan": tr("Scan"),
         "a_insert_blank": tr("Blank page"), "a_extract": tr("Extract"), "a_header": tr("Header and footer"),
         "a_watermark": tr("Watermark"), "a_background": tr("Background"),
         "a_remove_bg": tr("Remove background"), "a_remove_wm": tr("Remove watermarks"), "a_bookmarks": tr("Bookmarks"), "a_attachments": tr("Attachments"),
@@ -4787,6 +4788,7 @@ class MainWindow(QMainWindow):
         "a_print_check": tr("Check for printing"), "a_show_boxes": tr("Show boxes"),
         "a_scale_bar": tr("Scale bar"),
         "tool_editobjects": tr("Edit objects"), "tool_addtext": tr("Add text"),
+        "tool_attach": tr("Attach file", ctx="ribbon"),
         "tool_m_calibrate": tr("Calibrate"),
     }
     RIBBON_ICONS = {
@@ -4826,7 +4828,7 @@ class MainWindow(QMainWindow):
     }
 
     def _build_ribbon(self):
-        from .ribbon import Ribbon, split_button
+        from .ribbon import Ribbon, Stack, Icons, split_button
         t = self.tool_actions
         A_ = self.arrange_actions
         for attr, label in self.RIBBON_LABELS.items():
@@ -4846,56 +4848,60 @@ class MainWindow(QMainWindow):
         from .scale_display import ScalePanel
         self.scale_panel = ScalePanel(self.a_set_scale, self.a_scale_bar)
         r = self.ribbon = Ribbon()
+        # Every tab fits a 1366-pixel-wide screen in English and in Spanish, at Windows' own
+        # font (tests/test_ribbon_fits.py): commands used less often share a button with an
+        # arrow (split_button) or are listed under the group's arrow (its last element), the
+        # ones used most stay large. The same layout in every language.
+        snap = [self.a_snap_objects, self.a_snap_grid, self.a_snap_page, self.a_grid]
         r.add_tab(tr("Home"), [
             # first, the three ways the mouse works: Select (the arrow), Hand, CAD
             (tr("Mouse"), "large", [self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse]),
             (tr("Tools"), "large", [t["edittext"], t["addtext"], t["editobjects"],
-                                t["capture"],
-                                t["erasecontent"]]),
-            (tr("Mark up text"), "small", [t["highlight"], t["underline"], t["strikeout"],
-                                       t["comment"], t["note"], t["textbox"]]),
-            (tr("Insert"), "large", [t["stamp"], t["image"], t["attach"], t["link"]]),
+                                    Stack([t["capture"], t["erasecontent"]])]),
+            # (Underline and Strike under Highlight's arrow, as all of them on the Markup tab)
+            (tr("Mark up text"), "small", [
+                split_button([t["highlight"], t["underline"], t["strikeout"]]), t["comment"],
+                t["note"], t["textbox"]]),
+            (tr("Insert"), "large", [t["stamp"], t["image"], Stack([t["attach"], t["link"]])]),
+            # (the status bar has the zoom too)
             (tr("Zoom"), "small", [self.a_fit_width, self.a_fit_page, self.a_actual,
-                               self.a_zoom_in, self.a_zoom_out]),
-            (tr("Sign"), "large", [t["signature"], t["initials"]]),
+                                   Icons([self.a_zoom_out, self.a_zoom_in])]),
+            # (Initials under Sign's arrow; both on the Protect tab)
+            (tr("Sign"), "large", [split_button([t["signature"], t["initials"]], large=True)]),
         ])
         # only markups here (PDF viewers can edit those); the Image tool and Erase content change
         # the page itself and live on the Home tab with Add text and Edit objects
         r.add_tab(tr("Markup"), [
             (tr("Text"), "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
-                               t["note"], t["textbox"]]),
+                                   t["note"], t["textbox"]]),
             (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"],
                                                t["legend"]]),
             (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["circle"], t["cloud"], t["mask"],
-                                 t["polygon"], t["line"], t["arrow"], t["polyline"], t["arc"],
-                                 t["curve"], t["ink"]]),
+                                     t["polygon"], t["line"], t["arrow"], t["polyline"], t["arc"],
+                                     t["curve"], t["ink"]]),
             (tr("Erase"), "large", [t["eraser"]]),
-            (tr("Styles"), "large", [self.a_props, self.a_chest]),
+            (tr("Styles"), "small", [self.a_props, self.a_chest]),
         ])
-        # snapping is offered where it's used: Measure, Arrange (lining markups up) and View
-        snap_group = [self.a_snap_grid, self.a_snap_objects, self.a_snap_page, self.a_grid,
-                      self.a_grid_settings]
+        # snapping is offered where it's used: Measure, Arrange (lining markups up) and View;
+        # Grid settings (a window) under the group's arrow
         r.add_tab(tr("Measure"), [
             (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
-            # (Calibrate with the measuring tools and the scale's buttons with the snaps, so
-            # Dimension and the page's scale fit in without making the tab wider, in English
-            # or Spanish)
             (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_dim"], t["m_perimeter"],
                                    t["m_volume"], t["m_calibrate"]]),
             # the page's scale in large type opens Set scale (so no separate button for it),
-            # with the Show scale bar switch beside it: the tab still fits a 1366-pixel screen
+            # with the Show scale bar switch beside it
             (tr("Page scale"), "large", [self.scale_panel]),
-            (tr("Scale & snap"), "small", [self.a_sheet_scales, self.a_measure_summary]
-             + snap_group),
+            (tr("Scale & snap"), "small", [self.a_sheet_scales, self.a_measure_summary] + snap,
+             [self.a_grid_settings]),
         ])
         r.add_tab(tr("Arrange"), [
             (tr("Align"), "small", [A_["al_left"], A_["al_hcenter"], A_["al_right"], A_["al_top"],
-                                A_["al_vmiddle"], A_["al_bottom"]]),
+                                    A_["al_vmiddle"], A_["al_bottom"]]),
             (tr("Align to"), "small", [self.ribbon_align_box]),
             (tr("Distribute"), "small", [A_["dist_h"], A_["dist_v"]]),
             (tr("Order"), "small", [A_["z_front"], A_["z_forward"], A_["z_backward"], A_["z_back"]]),
             (tr("Lock"), "large", [self.a_lock, self.a_unlock_all]),
-            (tr("Snap"), "small", snap_group),
+            (tr("Snap"), "small", snap, [self.a_grid_settings]),
         ])
         r.add_tab(tr("Review"), [
             (tr("Add"), "large", [t["comment"], t["note"]]),
@@ -4905,13 +4911,13 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab(tr("Protect"), [
             (tr("Sign"), "large", [t["signature"], t["initials"], t["date"], self.a_multi_sign]),
-            (tr("Placeholders"), "large", [t["placeholder"], self.a_apply_placeholders]),
+            (tr("Placeholders"), "small", [t["placeholder"], self.a_apply_placeholders]),
             (tr("Digital signatures"), "small", [self.a_digisign, self.a_timestamp,
-                                             self.a_sig_details, self.a_clear_sigs]),
+                                                 self.a_sig_details, self.a_clear_sigs]),
             (tr("Redact"), "small", [t["redact"], self.a_search_redact, self.a_apply_sel_redact,
-                                 self.a_apply_redact]),
+                                     self.a_apply_redact]),
             (tr("Security"), "large", [self.a_security, self.a_remove_security, self.a_unlock,
-                                   self.a_sanitize]),
+                                       self.a_sanitize]),
         ])
         r.add_tab(tr("Forms"), [
             (tr("Add fields"), "large", [t[k] for k, _l, _t in FORM_TOOLS]),
@@ -4920,17 +4926,19 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Pages"), [
             (tr("Rotate"), "large", [self.a_rot_l, self.a_rot_r]),
             (tr("Crop"), "large", [t["crop"], self.a_uncrop]),
-            # (Extract and Replace pages share one button, under Blank page, so the tab is
-            # hardly wider)
-            (tr("Organize"), "small", [self.a_move_up, self.a_move_down, self.a_del_page,
-                                   self.a_insert_pdf, self.a_insert_blank,
-                                   split_button([self.a_extract, self.a_replace_pages])]),
-            # (small buttons: with Scan, four fit in two columns, narrower than three large)
+            # (Extract and Replace pages share one button; moving pages is mostly done by
+            # dragging them in the Pages panel: Move up and down under the arrow)
+            (tr("Organize"), "small", [self.a_insert_pdf, self.a_insert_blank, self.a_del_page,
+                                       split_button([self.a_extract, self.a_replace_pages])],
+             [self.a_move_up, self.a_move_down]),
             (tr("Create"), "small", [self.a_new, self.a_combine, self.a_from_images,
                                      self.a_scan]),
-            (tr("Document"), "small", [self.a_header, self.a_watermark, self.a_background,
-                                   self.a_bookmarks, self.a_sheet_links, self.a_attachments,
-                                   self.a_compress, self.a_compare]),
+            # (what's put on every page shares a button: header and footer, watermark,
+            # background)
+            (tr("Document"), "small", [
+                split_button([self.a_header, self.a_watermark, self.a_background]),
+                self.a_bookmarks, self.a_compare],
+             [self.a_attachments, self.a_sheet_links, self.a_compress]),
             (tr("Convert"), "large", [self.a_ocr, self.a_flatten]),
         ])
         # print production (1.8): what a sheet needs before a plotter or a print shop
@@ -4943,22 +4951,22 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab(tr("View"), [
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
-                                 self.a_split]),
-            (tr("Display"), "small", [self.a_hl_fields, self.a_show_markups, self.a_free_pan,
-                                  self.a_night]),
-            (tr("Grid & snap"), "small", snap_group),
-            (tr("Ribbon"), "small", [self.a_ribbon, self.a_collapse, self.a_group_names,
-                                 self.a_menu_bar]),
+                                     self.a_split]),
+            (tr("Display"), "small", [self.a_night, self.a_show_markups, self.a_hl_fields,
+                                      self.a_free_pan]),
+            (tr("Grid & snap"), "small", snap, [self.a_grid_settings]),
+            # (Collapse is also a double-click on a tab, or Ctrl+F1)
+            (tr("Ribbon"), "small", [self.a_ribbon, self.a_menu_bar],
+             [self.a_collapse, self.a_group_names]),
             (tr("Help"), "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
         ])
         c = self.cad_actions
         r.add_tab(tr("CAD"), [
             (tr("Select"), "large", [self.tool_actions["select"],
                                      self.tool_actions["editobjects"]]),
-            # two rows, as the groups after them, so the tab fits a 1366-pixel-wide screen
+            # AutoCAD's Modify panel (Align, used less, under the arrow)
             (tr("Modify"), "small", [c["move"], c["copy"], c["rotate"], c["scale"], c["mirror"],
-                                     c["delete"]]),
-            (tr("More"), "small", [c["align"], c["array"], c["trim"]]),
+                                     c["delete"], c["array"], c["trim"]], [c["align"]]),
             # what's used most next to the CAD commands, so CAD mode needs no other tab for it
             # (the one-letter markup shortcuts type into the command line in CAD mode); similar
             # tools share a button with an arrow for the others, as on AutoCAD's ribbon
@@ -4968,13 +4976,13 @@ class MainWindow(QMainWindow):
                 self._split_tools("line", "polyline", "curve", "ink"), t["arrow"],
                 self._split_tools("textbox", "callout"),
                 self._split_tools("stamp", "image", "legend")]),
-            # measuring and the snaps it uses
+            # measuring and the snaps it uses (icons, as on AutoCAD's status bar)
             (tr("Measure"), "small", [
                 self._split_tools(*["m_length"] + [k for k, *_r in MEASURE_TOOLS
                                                    if k != "m_length"]),
-                self.a_snap_objects, self.a_snap_grid, self.a_snap_page]),
+                Icons([self.a_snap_objects, self.a_snap_grid, self.a_snap_page])]),
             # the page's own text and drawing: erase, stacking order, align, change the words
-            # (Add text under the arrow; in the second column's free slot: no wider)
+            # (Add text under the arrow)
             (tr("Edit"), "small", [
                 t["erasecontent"],
                 split_button([A_[k] for k in ("z_front", "z_forward", "z_backward", "z_back")]),

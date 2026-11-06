@@ -117,8 +117,16 @@ Find box (with its match count and up / down arrows) sits right of them. The bot
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
 zoom box with zoom out / zoom in, like PDF-XChange Editor, and the current page's drawing
 scale (red when it has none; click it to set it). The ribbon is compact: two rows of
-buttons. If the window is too narrow for a tab, scroll it sideways with the mouse wheel or the
-thin bar under it. View &gt; <b>Show group names on ribbon</b> adds a name under each group of
+buttons, and every tab fits a screen 1366 pixels wide, in English and in Spanish. Commands used
+less often share a button with an arrow beside it: click the button for the command it shows,
+or the arrow for the others (the button then shows the one used last). On the Home tab,
+Highlight's arrow has Underline and Strike, and Sign's has Initials; on the Pages tab, Header
+and footer's has Watermark and Background, and Extract's has Replace. Others are listed under
+the narrow arrow at the right end of a group: Grid settings beside the snap switches, Move up
+and Move down in the Pages tab's Organize group, Attachments, Sheet callouts and Compress in its
+Document group, Collapse and Group names in the View tab's Ribbon group, Align in the CAD tab's
+Modify group. On the Home tab, Zoom out and Zoom in are icons under Actual size. If the window
+is too narrow for a tab, scroll it sideways with the mouse wheel or the thin bar under it. View &gt; <b>Show group names on ribbon</b> adds a name under each group of
 buttons (a little taller, like Microsoft Office). View &gt; <b>Show menu bar</b> (Ctrl+Shift+M)
 hides or shows the File, Edit, View... menu bar; when it's hidden, the &#9776; button at the right
 of the ribbon tabs has every menu, and all keyboard shortcuts still work. <b>Collapse ribbon</b>
@@ -421,7 +429,8 @@ the button then shows the one used last (or the tool that's on). <b>Markup</b>: 
 Cloud, Polygon, Mask), Circle (arrow: Arc), Line (arrow: Polyline, Curve, Pen), Arrow, Text box (arrow: Callout),
 Stamp (arrow: Image, Legend); their one-letter shortcuts type into the command line in CAD mode.
 <b>Measure</b>: Length (arrow: Polylength, Area, Angle, Radius, Perimeter, Volume, Count,
-Calibrate Tape Measure), Snap to objects, Snap to grid, Snap to page. <b>Edit</b>: Erase
+Calibrate Tape Measure), and under it Snap to objects, Snap to grid and Snap to page as icons
+(as on AutoCAD's status bar; hover over one for its name). <b>Edit</b>: Erase
 content, Bring to front (arrow: Bring forward, Send backward, Send to back), Align left (arrow:
 the other alignments, Distribute horizontally and Distribute vertically), Edit text (arrow: Add
 text): Edit text changes the words already on the page, Add text types new text into the
@@ -722,7 +731,8 @@ The capture also pastes as a picture into Word, Excel, email and other programs.
 <ul>
 <li><b>Show grid</b> (View menu or toolbar) draws a grid over the page. It's only on screen:
 it isn't saved in or printed with the PDF.</li>
-<li><b>Grid settings</b> (View menu): the spacing in inches, millimeters or points, measured on
+<li><b>Grid settings</b> (View menu; on the ribbon under the arrow at the right of the snap
+switches): the spacing in inches, millimeters or points, measured on
 the paper, and how often a darker line is drawn. When zoomed far out, only the darker lines
 are shown.</li>
 <li><b>Snap to grid:</b> points you draw or drag jump to the nearest grid intersection.</li>
@@ -1109,8 +1119,8 @@ blank page, Cut, Paste and Duplicate pages). Using one of those asks whether to 
 Copying pages, rotating and extracting work while locked.</li>
 <li><b>Reorder:</b> unlock the page list, then drag thumbnails (several selected pages move
 together, and Ctrl+Z undoes the whole drag); or Move page up / Move page down
-(Ctrl+Shift+Up / Down).</li>
-<li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine files): makes one
+(Ctrl+Shift+Up / Down; on the Pages tab, under the Organize group's arrow).</li>
+<li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine): makes one
 new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
 open document is already in the list. Drag them, or use Move up / Move down / Sort by name, to
 set the order, top to bottom. With "Add a bookmark for each file" ticked, each file gets a
@@ -1157,7 +1167,7 @@ the page list, or the current page; it asks first, and Ctrl+Z brings them back).
 deleted page then goes to the page after it (or the last page).</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
-<li><b>Link sheet callouts</b> (Pages menu, Pages tab): for a drawing set plotted without
+<li><b>Link sheet callouts</b> (Pages menu; Pages tab, under the Document group's arrow): for a drawing set plotted without
 hyperlinks. KanzonasPDF reads each page's sheet number and title from its title block (the
 value after a SHEET, SHEET NO or DWG NO caption, or the largest sheet-like number in the
 title block area) and shows them for correction. Then every callout bubble, note or index line
@@ -1475,7 +1485,7 @@ added by apps that mark them as watermarks (Adobe Acrobat, PDF-XChange and other
 watermark annotations. Ctrl+Z undoes it. A "watermark" that is just ordinary text or a picture
 in the page can't be told apart from the rest of the page; remove it with Erase content or
 Edit objects.</li>
-<li><b>Background...</b> (Document menu; Pages tab): puts a <b>solid color</b>, a <b>gradient</b>
+<li><b>Background...</b> (Document menu; Pages tab, on the arrow beside Header and footer): puts a <b>solid color</b>, a <b>gradient</b>
 (two colors, top to bottom, bottom to top, left to right or diagonal) or a <b>picture</b> (Fit,
 Fill, Stretch to the page, or Center at its own size) behind everything on the page, at the
 opacity you choose. Apply it to the current page, all pages, or pages such as 1-3, 7. It's saved

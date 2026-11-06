@@ -4299,7 +4299,7 @@ msgstr "Sello de tiempo"
 
 #: main_window.py:3962
 msgid "Signature details"
-msgstr "Detalles de la firma"
+msgstr "Detalles de firma"
 
 #: main_window.py:3963
 msgid "Clear signatures"
@@ -4419,11 +4419,11 @@ msgstr "Etiquetas de barras"
 
 #: main_window.py:3973
 msgid "Shortcuts"
-msgstr "Métodos abreviados"
+msgstr "Atajos"
 
 #: main_window.py:3974
 msgid "User manual"
-msgstr "Manual del usuario"
+msgstr "Manual"
 
 #: main_window.py:3974
 msgid "Command palette"
@@ -4479,11 +4479,11 @@ msgstr "Abajo"
 
 #: main_window.py:3978
 msgid "Horizontally"
-msgstr "Horizontalmente"
+msgstr "Horizontal"
 
 #: main_window.py:3978
 msgid "Vertically"
-msgstr "Verticalmente"
+msgstr "Vertical"
 
 #: main_window.py:3978
 msgid "To front"
@@ -8355,3 +8355,24 @@ msgstr "Escanear a través de Windows (WIA) necesita el paquete comtypes, que fa
 
 msgid "The scanner didn't accept the subscription."
 msgstr "El escáner no aceptó la suscripción."
+
+# ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
+# ribbon tab fits a 1366-pixel screen in Spanish; the menus keep the full names
+msgctxt "ribbon"
+msgid "Snap to grid"
+msgstr "Ajustar a cuadrícula"
+
+msgctxt "ribbon"
+msgid "Snap to page"
+msgstr "Ajustar a página"
+
+msgctxt "ribbon"
+msgid "Combine files"
+msgstr "Combinar"
+
+msgctxt "ribbon"
+msgid "Attach file"
+msgstr "Adjuntar"
+
+msgid "More in {group}: {commands}"
+msgstr "Más en {group}: {commands}"
