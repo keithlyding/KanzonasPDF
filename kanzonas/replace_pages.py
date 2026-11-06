@@ -480,9 +480,9 @@ def _map_kzprops(doc, xref, tp):
         store = json.loads(kv)
     except ValueError:
         return
-    geom = store.get("geom") if isinstance(store, dict) else None
-    if not isinstance(geom, dict):
+    if not isinstance(store, dict):
         return
+    changed = False
     f = abs(tp.a * tp.d - tp.b * tp.c) ** 0.5
     props = store.get("props")
     if abs(f - 1) > 1e-6 and isinstance(props, dict):
@@ -490,6 +490,10 @@ def _map_kzprops(doc, xref, tp):
             v = props.get(key)
             if isinstance(v, (int, float)) and not isinstance(v, bool) and v > 0:
                 props[key] = round(max(low, min(high, v * f)), digits)
+                changed = True
+    geom = store.get("geom")
+    if not isinstance(geom, dict):
+        geom = {}
     for key in ("box", "target", "at", "pts", "bend"):
         vals = geom.get(key)
         if not isinstance(vals, list) or len(vals) < 2 or \
@@ -501,7 +505,9 @@ def _map_kzprops(doc, xref, tp):
             geom[key] = [r.x0, r.y0, r.x1, r.y1] + vals[4:]
         else:
             geom[key] = [c for p in pts for c in (p.x, p.y)] + vals[2 * len(pts):]
-    doc.xref_set_key(xref, annotations.KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
+        changed = True
+    if changed:
+        doc.xref_set_key(xref, annotations.KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
 
 
 def _map_scale(doc, page, k):

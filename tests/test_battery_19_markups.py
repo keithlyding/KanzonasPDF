@@ -319,7 +319,8 @@ class ReplacedSheets(Case):
         from kanzonas import measure
         v = self.view(self.scale_sheet(self.path("half.pdf"), '1/4" = 1\'-0"'))
         v.set_page_scale([0], measure.scale_from_preset(48), "ft-in", '1/4" = 1\'-0"')
-        (dim,) = self.add(v, 0, model("m_dim", points=[P(100, 300), P(300, 300), P(200, 260)]))
+        (dim, ln) = self.add(v, 0, model("m_dim", points=[P(100, 300), P(300, 300), P(200, 260)]),
+                             model("line", points=[P(100, 500), P(300, 500)]))
         x = self.legend(v)
         w0 = self.box(v, x).width
         ll0 = float(v.doc.xref_get_key(dim, "LL")[1])
@@ -343,6 +344,9 @@ class ReplacedSheets(Case):
         del a, page
         self.assertTrue(A._same(from_ll, m["points"], tol=0.05))
         self.assertAlmostEqual(m["props"]["fontsize"], 18, delta=0.1)
+        page = v.doc[0]
+        self.assertAlmostEqual(A.read(page.load_annot(ln))["props"]["width"], 4, delta=0.01)
+        del page
 
     def box(self, v, x):
         page = v.doc[0]
