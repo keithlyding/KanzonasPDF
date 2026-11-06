@@ -556,6 +556,24 @@ class Required(Quiet):
         self.assertEqual(v.required_flag_rects(0), [])
         self.assertNotEqual(getattr(v, "_banner_kind", None), "required")
 
+    def test_required_checkbox_and_option_group(self):
+        v = self.open(self.text_fields("name"))
+        v.create_field(0, "f_check", P(320, 90), P(320, 90), True)
+        with mock.patch("PySide6.QtWidgets.QInputDialog.getItem", return_value=("Pick", True)):
+            for y in (150, 180):
+                v.create_field(0, "f_radio", P(320, y), P(320, y), True)
+        pg = v.doc[0]
+        ws = {w.xref: w.field_type for w in pg.widgets()}
+        check = next(x for x, t in ws.items() if t == pymupdf.PDF_WIDGET_TYPE_CHECKBOX)
+        radios = [x for x, t in ws.items() if t == pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON]
+        v.set_field_props(0, check, {"required": True})
+        v.set_field_props(0, radios[0], {"required": True})
+        v.set_field_props(0, radios[1], {"required": True})
+        self.assertEqual(sorted(v.check_required_fields()), ["Check1", "Pick"])
+        v.fill_field(0, check)
+        v.fill_field(0, radios[1])
+        self.assertEqual(v.check_required_fields(), [])
+
     def test_save_and_print_show_the_notice_but_go_on(self):
         from kanzonas.main_window import MainWindow
         path = os.path.join(self.tmp.name, "req.pdf")
@@ -672,6 +690,27 @@ class TabOrder(Quiet):
         self.assertEqual(d.xref_get_key(d[0].xref, "Tabs"), ("name", "/A"))
         d.close()
         v.undo()
+        self.assertEqual(self.names(v), ["r0c0", "r1c0", "r0c1", "r1c1"])
+
+    def test_the_tab_order_window(self):
+        from kanzonas import form_ui
+        v = self.open(self.grid)
+        dlg = form_ui.TabOrderDialog(v, 0)
+        self.assertTrue(dlg.rows.isChecked())
+        self.assertEqual([dlg.list.item(k).text() for k in range(4)],
+                         ["r0c0", "r0c1", "r1c0", "r1c1"])
+        dlg.list.setCurrentRow(3)
+        dlg._move(-1)
+        dlg._move(-1)
+        self.assertTrue(dlg.manual.isChecked())
+        dlg.apply()
+        dlg.close()
+        self.assertEqual(self.names(v), ["r0c0", "r1c1", "r0c1", "r1c0"])
+        dlg = form_ui.TabOrderDialog(v, 0)
+        self.assertTrue(dlg.manual.isChecked())
+        dlg.cols.setChecked(True)
+        dlg.apply()
+        dlg.close()
         self.assertEqual(self.names(v), ["r0c0", "r1c0", "r0c1", "r1c1"])
 
     def test_place_in_the_tab_order_from_field_properties(self):

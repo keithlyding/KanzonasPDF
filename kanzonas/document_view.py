@@ -8281,11 +8281,11 @@ class DocumentView(QScrollArea):
                                             for n in smart_forms.co_order(fresh)])
             fresh.co = smart_forms.co_order(fresh)
             if fmt != old["format"] and is_text:
+                # the value shown again with the new format, in every widget of the field
                 raw = smart_forms.field_value(self.doc, fx)
-                if fmt and "custom" not in fmt:
-                    self._write_value(index, xref, raw, fmt)
-                elif raw:
-                    self._write_plain(index, xref, raw)
+                n = fresh.by_widget.get(xref)
+                if raw and n is not None:
+                    self._write_field(fresh, n, raw)
             for n, v in smart_forms.recalculate(self.doc, fresh).items():
                 self._write_field(fresh, n, v)
             if tab and tab != old["tab"]:
@@ -8382,6 +8382,10 @@ class DocumentView(QScrollArea):
                 continue
             if f.ft == "Sig":
                 filled = self.doc.xref_get_key(f.fx, "V")[0] != "null"
+            elif f.ft == "Btn":
+                # a checkbox or an option group: filled when any of its buttons is on
+                filled = any(self.doc.xref_get_key(w, "AS")[1] not in ("/Off", "null", "")
+                             for w in f.widgets)
             else:
                 v = smart_forms.field_value(self.doc, f.fx)
                 filled = v not in ("", "Off")
