@@ -8355,3 +8355,167 @@ msgstr "Escanear a través de Windows (WIA) necesita el paquete comtypes, que fa
 
 msgid "The scanner didn't accept the subscription."
 msgstr "El escáner no aceptó la suscripción."
+
+# View: full screen, presentation, page layout, reading view, read aloud, auto scroll
+
+msgid "Reading"
+msgstr "Lectura"
+
+msgid "The voice View > Read aloud reads with (the voices installed on this computer)"
+msgstr "La voz con la que lee Ver > Leer en voz alta (las voces instaladas en este equipo)"
+
+msgid "Read aloud voice:"
+msgstr "Voz para leer en voz alta:"
+
+msgid "Slower to the left, faster to the right; the middle is the voice's normal speed"
+msgstr "Más lento a la izquierda, más rápido a la derecha; en el centro, la velocidad normal de la voz"
+
+msgid "Test"
+msgstr "Probar"
+
+msgid "Reading speed:"
+msgstr "Velocidad de lectura:"
+
+msgid " pixels a second"
+msgstr " píxeles por segundo"
+
+msgid "Auto scroll speed:"
+msgstr "Velocidad del desplazamiento automático:"
+
+msgid "While Auto scroll runs, the Up and Down arrow keys change its speed. The Reading view's text size is set with its A+ and A− buttons or Ctrl+wheel."
+msgstr "Mientras funciona el desplazamiento automático, las flechas arriba y abajo cambian su velocidad. El tamaño de letra de la Vista de lectura se ajusta con sus botones A+ y A− o con Ctrl+rueda."
+
+msgid "The system's default voice"
+msgstr "La voz predeterminada del sistema"
+
+msgid "Slower"
+msgstr "Más lento"
+
+msgid "Faster"
+msgstr "Más rápido"
+
+msgid "Presentation"
+msgstr "Presentación"
+
+msgid "No speech is available on this computer: the system's text-to-speech couldn't be started."
+msgstr "No hay voz disponible en este equipo: no se pudo iniciar la conversión de texto a voz del sistema."
+
+msgid "No speech is available on this computer. Install Speech Dispatcher (the speech-dispatcher package, with a voice such as espeak-ng) and try again."
+msgstr "No hay voz disponible en este equipo. Instale Speech Dispatcher (el paquete speech-dispatcher, con una voz como espeak-ng) y vuelva a intentarlo."
+
+msgid "This is how KanzonasPDF reads to you."
+msgstr "Así es como KanzonasPDF le lee."
+
+msgid "Finished reading."
+msgstr "Lectura terminada."
+
+msgid "The speech stopped with an error."
+msgstr "La voz se detuvo por un error."
+
+msgid "There's no text to read on this page. A scanned page needs Recognize text (OCR) first."
+msgstr "No hay texto que leer en esta página. Una página escaneada necesita primero Reconocer texto (OCR)."
+
+msgid "Full screen"
+msgstr "Pantalla completa"
+
+msgid "Single page"
+msgstr "Una sola página"
+
+msgid "Continuous"
+msgstr "Continua"
+
+msgid "Two pages"
+msgstr "Dos páginas"
+
+msgid "Two pages continuous"
+msgstr "Dos páginas continuas"
+
+msgid "One page at a time; scrolling past its end turns the page"
+msgstr "Una página cada vez; al desplazarse más allá de su final, pasa a la siguiente"
+
+msgid "The pages one under the other, scrolling from one to the next"
+msgstr "Las páginas una debajo de otra, desplazándose de una a la siguiente"
+
+msgid "Two pages side by side, one spread at a time"
+msgstr "Dos páginas lado a lado, un par cada vez"
+
+msgid "Two pages side by side, the spreads one under the other"
+msgstr "Dos páginas lado a lado, los pares uno debajo de otro"
+
+msgid "Show cover page separately"
+msgstr "Mostrar la portada aparte"
+
+msgid "Reading view"
+msgstr "Vista de lectura"
+
+msgid "Read this page"
+msgstr "Leer esta página"
+
+msgid "Read from selected text"
+msgstr "Leer desde el texto seleccionado"
+
+msgid "Read the whole document"
+msgstr "Leer todo el documento"
+
+msgid "Pause or resume reading"
+msgstr "Pausar o reanudar la lectura"
+
+msgid "Stop reading"
+msgstr "Detener la lectura"
+
+msgid "Auto scroll"
+msgstr "Desplazamiento automático"
+
+msgid "Page layout"
+msgstr "Disposición de páginas"
+
+msgid "Read aloud"
+msgstr "Leer en voz alta"
+
+msgid "Full screen: Escape leaves it; the top edge has a bar"
+msgstr "Pantalla completa: Escape sale; en el borde superior hay una barra"
+
+msgid "Only the pages, on the whole screen: no toolbars, panels or menus. Move the pointer to the top edge for a slim bar; Escape leaves full screen"
+msgstr "Solo las páginas, en toda la pantalla: sin barras de herramientas, paneles ni menús. Lleve el puntero al borde superior para ver una barra delgada; Escape sale de la pantalla completa"
+
+msgid "Show the pages one at a time on the whole screen, for an audience: click or Space for the next page, B / W for a black or white screen, L for a laser pointer, Escape to end"
+msgstr "Mostrar las páginas de una en una en toda la pantalla, para un público: clic o Espacio para la página siguiente, B / W para una pantalla negra o blanca, L para un puntero láser, Escape para terminar"
+
+msgid "With two pages side by side, the first page alone on the right, so a book's left and right pages line up"
+msgstr "Con dos páginas lado a lado, la primera página sola a la derecha, para que coincidan las páginas izquierda y derecha de un libro"
+
+msgid "The page's text in a side panel, reflowed in large type you can make bigger or smaller (Ctrl+wheel), for small screens and tired eyes; the PDF isn't changed"
+msgstr "El texto de la página en un panel lateral, recompuesto con letra grande que puede agrandar o reducir (Ctrl+rueda), para pantallas pequeñas y vistas cansadas; el PDF no cambia"
+
+msgid "Read the page aloud with the computer's voice"
+msgstr "Leer la página en voz alta con la voz del equipo"
+
+msgid "Read aloud from the selected text (or from the top of this page) to the end of the document"
+msgstr "Leer en voz alta desde el texto seleccionado (o desde el principio de esta página) hasta el final del documento"
+
+msgid "Read the document aloud from the first page"
+msgstr "Leer el documento en voz alta desde la primera página"
+
+msgid "Scroll the document slowly by itself; Up and Down arrows change the speed, Escape stops"
+msgstr "Desplazar el documento despacio por sí solo; las flechas arriba y abajo cambian la velocidad, Escape lo detiene"
+
+msgid "Exit full screen"
+msgstr "Salir de pantalla completa"
+
+msgid "Back to the window with its toolbars and panels (Escape)"
+msgstr "Volver a la ventana con sus barras de herramientas y paneles (Escape)"
+
+msgid "Smaller text (Ctrl+wheel)"
+msgstr "Letra más pequeña (Ctrl+rueda)"
+
+msgid "Larger text (Ctrl+wheel)"
+msgstr "Letra más grande (Ctrl+rueda)"
+
+msgid "Auto scroll: {speed} pixels a second (Up and Down change it, Escape stops)"
+msgstr "Desplazamiento automático: {speed} píxeles por segundo (arriba y abajo lo cambian, Escape lo detiene)"
+
+msgid "Page {n} of {count}"
+msgstr "Página {n} de {count}"
+
+msgid "There's no text on this page. A scanned page needs Recognize text (OCR) first."
+msgstr "No hay texto en esta página. Una página escaneada necesita primero Reconocer texto (OCR)."

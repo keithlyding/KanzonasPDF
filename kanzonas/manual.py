@@ -355,6 +355,73 @@ Ctrl+Z undoes the whole replacement.</li>
 It's for looking only: make changes in the main view.</li>
 </ul>
 
+<h2 id="reading">Reading comfortably</h2>
+<p>The View menu has ways to read a document more comfortably: on the whole screen, one page or
+two side by side, as large plain text, or read aloud.</p>
+<ul>
+<li><b>Full screen</b> (View menu, Ctrl+Shift+L): only the pages, on the whole screen: the
+toolbars or ribbon, menu bar, panels, tabs and status bar are hidden. Move the pointer to the
+very top edge of the screen and a slim bar comes down with the previous and next page, zoom,
+the page layouts, Reading view, Read this page and <b>Exit full screen</b>; it goes away when
+the pointer moves down again. <b>Escape</b> leaves full screen (when a tool is picked, the
+first Escape puts it down, as usual, and the next one leaves), and so does Ctrl+Shift+L again.
+Everything comes back as it was. (F11, which many programs use for this, switches the CAD mouse
+mode in KanzonasPDF, and Ctrl+L locks markups; Ctrl+Shift+L is free and close to Acrobat's
+Ctrl+L.)</li>
+<li><b>Presentation</b> (View menu, F5): the pages one at a time, each fitted to the whole
+screen on black, for showing to an audience. Next page: click, Space, the Right or Down arrow,
+Page Down, Enter or N (or turn the wheel). Previous page: right-click, Backspace, the Left or Up
+arrow, Page Up or P. <b>Home</b> and <b>End</b> go to the first and last page; type a page
+number and press Enter to go there. <b>B</b> (or the period key) turns the screen black and
+<b>W</b> (or the comma key) white, to take the audience's eyes off the slide; any key brings the
+page back. <b>L</b> shows a <b>laser pointer</b>: a red dot that follows the mouse. The mouse
+pointer hides itself after two seconds without moving. <b>Escape</b> ends the presentation, and
+the window shows the page you ended on. Markups are shown as they are on the page (unless Show
+markups is off).</li>
+<li><b>Page layout</b> (View menu), remembered for each document like its page and zoom:
+<ul>
+<li><b>Single page</b> (Ctrl+5): one page at a time. Scroll to its end (wheel, Page Down or the
+Down arrow at the bottom of the page) and the next page takes its place; at the top, Page Up or
+the Up arrow goes back to the end of the page before.</li>
+<li><b>Continuous</b> (Ctrl+6): the pages one under the other (how KanzonasPDF has always shown
+them).</li>
+<li><b>Two pages</b> (Ctrl+7): two pages side by side, one spread at a time, turning like
+Single page.</li>
+<li><b>Two pages continuous</b> (Ctrl+8): two pages side by side, the spreads one under the
+other.</li>
+<li><b>Show cover page separately</b>: with two pages side by side, the first page (a book's
+cover) is alone on the right, so the left and right pages of the book line up: 2 and 3, 4 and
+5, and so on. Without it, the pages pair 1 and 2, 3 and 4.</li>
+</ul>
+With two pages side by side, the Left and Right arrows, Next page and Previous page move a
+whole spread; Fit width fits the two pages across the window and Fit page the whole spread.</li>
+<li><b>Reading view</b> (View menu, Ctrl+4): the page's text in a panel at the side, reflowed as
+plain paragraphs in large type that wraps to the panel's width, for a small screen or tired
+eyes. Headings are larger, as they are on the page; pictures are left out. Columns are read in
+order (the left column, then the right one), as well as the page's text allows. Make the type
+larger or smaller with <b>A+</b> and <b>A&minus;</b> or Ctrl+wheel in the panel (remembered).
+The panel follows the page you're on, and the PDF isn't changed. A scanned page has no text to
+show until it has been through Recognize text (OCR).</li>
+<li><b>Read aloud</b> (View menu), with the computer's own voices (Windows voices on Windows,
+the system voices on macOS, Speech Dispatcher on Linux):
+<ul>
+<li><b>Read this page</b> (Ctrl+Shift+V) reads the page you're on.</li>
+<li><b>Read from selected text</b> reads from the text you selected with the Select tool (or
+from the top of the page) to the end of the document.</li>
+<li><b>Read the whole document</b> (Ctrl+Shift+B) reads from the first page to the last.</li>
+<li><b>Pause or resume reading</b> (Ctrl+Shift+C) and <b>Stop reading</b> (Ctrl+Shift+E).</li>
+</ul>
+The text is read a sentence at a time in the order a reader takes it (headings, then columns
+one after the other). The sentence being read is shaded light blue on the page and the word
+being spoken darker blue (with voices that tell which word they're on), and the page scrolls to
+follow. Choose the voice and the speed in File &gt; Preferences &gt; Reading. On Linux, install
+Speech Dispatcher (the speech-dispatcher package, with a voice such as espeak-ng) if reading
+says no speech is available.</li>
+<li><b>Auto scroll</b> (View menu, Ctrl+Shift+A): the document scrolls slowly by itself. The Up
+and Down arrow keys make it slower or faster (the speed is remembered), and Escape or Auto
+scroll again stops it. In Single page and Two pages it turns the pages too.</li>
+</ul>
+
 <h2 id="cad">CAD mode: selecting and the CAD tab</h2>
 <p>In the <b>CAD</b> mouse mode (View &gt; Mouse: CAD, F11) KanzonasPDF selects and edits like a
 CAD program. It starts with <b>Edit objects</b>, which selects everything at once: the drawing's
@@ -1560,6 +1627,9 @@ orientation File &gt; New PDF uses, or Ask every time),
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid
 settings...).</li>
+<li><b>Reading:</b> the voice Read aloud reads with (the voices installed on the computer; the
+list is filled when you open it) and its speed, with <b>Test</b> to hear them, and the Auto
+scroll speed.</li>
 <li><b>OCR:</b> the accuracy the Recognize text dialog starts with.</li>
 <li>Changes apply when you click OK; Cancel leaves everything as it was.</li>
 </ul>
@@ -1621,6 +1691,13 @@ settings...).</li>
 <tr><td>F11</td><td>CAD mouse mode on / off (off goes back to Standard or Hand, whichever you had)</td></tr>
 <tr><td>Letters, Enter (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode (Shift+letter ones do), unless Preferences &gt; Mouse turns typing to the command line off.</td></tr>
 <tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
+<tr><td>Ctrl+Shift+L / F5</td><td>Full screen (Escape leaves it) / Presentation</td></tr>
+<tr><td>B / W / L (presentation)</td><td>Black screen / white screen / laser pointer</td></tr>
+<tr><td>Ctrl+5 / Ctrl+6 / Ctrl+7 / Ctrl+8</td><td>Single page / Continuous / Two pages / Two pages continuous</td></tr>
+<tr><td>Ctrl+4</td><td>Reading view (the page's text reflowed)</td></tr>
+<tr><td>Ctrl+Shift+V / Ctrl+Shift+B</td><td>Read this page / the whole document aloud</td></tr>
+<tr><td>Ctrl+Shift+C / Ctrl+Shift+E</td><td>Pause or resume / stop reading aloud</td></tr>
+<tr><td>Ctrl+Shift+A</td><td>Auto scroll (Up / Down: slower / faster)</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>

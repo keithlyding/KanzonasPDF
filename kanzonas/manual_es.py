@@ -343,6 +343,80 @@ Ctrl+Z deshace todo el reemplazo.</li>
 Es solo para mirar: haga los cambios en la vista principal.</li>
 </ul>
 
+<h2 id="reading">Leer con comodidad</h2>
+<p>El menú Ver tiene formas de leer un documento con más comodidad: en toda la pantalla, una
+página o dos lado a lado, como texto grande y sencillo, o en voz alta.</p>
+<ul>
+<li><b>Pantalla completa</b> (menú Ver, Ctrl+Shift+L): solo las páginas, en toda la pantalla:
+se ocultan las barras de herramientas o la cinta, la barra de menús, los paneles, las pestañas y
+la barra de estado. Lleve el puntero hasta el borde superior de la pantalla y baja una barra
+delgada con la página anterior y la siguiente, el zoom, las disposiciones de páginas, Vista de
+lectura, Leer esta página y <b>Salir de pantalla completa</b>; se va cuando el puntero vuelve a
+bajar. <b>Escape</b> sale de la pantalla completa (si hay una herramienta elegida, el primer
+Escape la suelta, como siempre, y el siguiente sale), y también Ctrl+Shift+L otra vez. Todo
+vuelve a quedar como estaba. (F11, que muchos programas usan para esto, activa el modo de ratón
+CAD en KanzonasPDF, y Ctrl+L bloquea marcas; Ctrl+Shift+L está libre y se parece al Ctrl+L de
+Acrobat.)</li>
+<li><b>Presentación</b> (menú Ver, F5): las páginas de una en una, cada una ajustada a toda la
+pantalla sobre fondo negro, para mostrarlas a un público. Página siguiente: clic, Espacio, la
+flecha derecha o abajo, Av Pág, Intro o N (o gire la rueda). Página anterior: clic derecho,
+Retroceso, la flecha izquierda o arriba, Re Pág o P. <b>Inicio</b> y <b>Fin</b> van a la primera
+y a la última página; escriba un número de página y pulse Intro para ir a ella. <b>B</b> (o la
+tecla del punto) pone la pantalla en negro y <b>W</b> (o la tecla de la coma) en blanco, para
+que el público deje de mirar la diapositiva; cualquier tecla devuelve la página. <b>L</b> muestra
+un <b>puntero láser</b>: un punto rojo que sigue al ratón. El puntero del ratón se oculta tras
+dos segundos sin moverse. <b>Escape</b> termina la presentación y la ventana muestra la página
+en la que terminó. Las marcas se muestran como están en la página (salvo que Mostrar marcas esté
+desactivado).</li>
+<li><b>Disposición de páginas</b> (menú Ver), que se recuerda para cada documento, como su
+página y su zoom:
+<ul>
+<li><b>Una sola página</b> (Ctrl+5): una página cada vez. Desplácese hasta su final (rueda, Av
+Pág o la flecha abajo al pie de la página) y la página siguiente ocupa su lugar; arriba, Re Pág
+o la flecha arriba vuelve al final de la página anterior.</li>
+<li><b>Continua</b> (Ctrl+6): las páginas una debajo de otra (como KanzonasPDF las ha mostrado
+siempre).</li>
+<li><b>Dos páginas</b> (Ctrl+7): dos páginas lado a lado, un par cada vez, que pasan como en
+Una sola página.</li>
+<li><b>Dos páginas continuas</b> (Ctrl+8): dos páginas lado a lado, los pares uno debajo de
+otro.</li>
+<li><b>Mostrar la portada aparte</b>: con dos páginas lado a lado, la primera página (la
+portada de un libro) queda sola a la derecha, de modo que las páginas izquierda y derecha del
+libro coinciden: 2 y 3, 4 y 5, etc. Sin ella, las páginas se emparejan 1 y 2, 3 y 4.</li>
+</ul>
+Con dos páginas lado a lado, las flechas izquierda y derecha, Página siguiente y Página anterior
+avanzan un par entero; Ajustar al ancho ajusta las dos páginas al ancho de la ventana y Ajustar
+página el par completo.</li>
+<li><b>Vista de lectura</b> (menú Ver, Ctrl+4): el texto de la página en un panel lateral,
+recompuesto en párrafos sencillos con letra grande que se ajusta al ancho del panel, para una
+pantalla pequeña o una vista cansada. Los títulos son más grandes, como en la página; las
+imágenes se omiten. Las columnas se leen en orden (la columna izquierda y luego la derecha), en
+la medida en que el texto de la página lo permite. Agrande o reduzca la letra con <b>A+</b> y
+<b>A&minus;</b> o con Ctrl+rueda en el panel (se recuerda). El panel sigue la página en la que
+está, y el PDF no cambia. Una página escaneada no tiene texto que mostrar hasta que pasa por
+Reconocer texto (OCR).</li>
+<li><b>Leer en voz alta</b> (menú Ver), con las voces propias del equipo (las voces de Windows
+en Windows, las voces del sistema en macOS, Speech Dispatcher en Linux):
+<ul>
+<li><b>Leer esta página</b> (Ctrl+Shift+V) lee la página en la que está.</li>
+<li><b>Leer desde el texto seleccionado</b> lee desde el texto que seleccionó con la herramienta
+Seleccionar (o desde el principio de la página) hasta el final del documento.</li>
+<li><b>Leer todo el documento</b> (Ctrl+Shift+B) lee desde la primera página hasta la última.</li>
+<li><b>Pausar o reanudar la lectura</b> (Ctrl+Shift+C) y <b>Detener la lectura</b>
+(Ctrl+Shift+E).</li>
+</ul>
+El texto se lee frase a frase en el orden en que lo lee una persona (los títulos y luego las
+columnas, una tras otra). La frase que se está leyendo se sombrea en azul claro en la página y la
+palabra que se pronuncia en azul más oscuro (con las voces que indican en qué palabra van), y la
+página se desplaza para seguirla. Elija la voz y la velocidad en Archivo &gt; Preferencias &gt;
+Lectura. En Linux, instale Speech Dispatcher (el paquete speech-dispatcher, con una voz como
+espeak-ng) si la lectura dice que no hay voz disponible.</li>
+<li><b>Desplazamiento automático</b> (menú Ver, Ctrl+Shift+A): el documento se desplaza
+despacio por sí solo. Las flechas arriba y abajo lo hacen más lento o más rápido (la velocidad
+se recuerda), y Escape o Desplazamiento automático otra vez lo detiene. En Una sola página y Dos
+páginas también pasa las páginas.</li>
+</ul>
+
 <h2 id="cad">Modo CAD: selección y la pestaña CAD</h2>
 <p>En el modo del mouse <b>CAD</b> (Ver &gt; Mouse: CAD, F11) KanzonasPDF selecciona y edita como un programa CAD.
 Empieza con <b>Editar objetos</b>, que selecciona todo a la vez: las líneas, el texto y las imágenes propios del
@@ -1550,6 +1624,9 @@ orientación que usa Archivo &gt; Nuevo PDF, o Preguntar cada vez),
 y <b>Cuadrícula y ajuste</b>, todo en un solo lugar: el espaciado y las unidades de la cuadrícula, el intervalo de la línea
 más oscura, Mostrar cuadrícula, Ajustar a la cuadrícula y Ajustar a objetos (la misma configuración que Ver &gt; Configuración de
 cuadrícula...).</li>
+<li><b>Lectura:</b> la voz con la que lee Leer en voz alta (las voces instaladas en el equipo;
+la lista se llena al abrirla) y su velocidad, con <b>Probar</b> para oírlas, y la velocidad del
+Desplazamiento automático.</li>
 <li><b>OCR:</b> la precisión con la que empieza el cuadro de diálogo Reconocer texto.</li>
 <li>Los cambios se aplican cuando hace clic en Aceptar; Cancelar deja todo como estaba.</li>
 </ul>
@@ -1611,6 +1688,13 @@ cuadrícula...).</li>
 <tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
 <tr><td>Letras, Enter (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Enter lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD (los de Shift y una letra, sí), salvo que Preferencias &gt; Mouse desactive escribir en la línea de comandos.</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
+<tr><td>Ctrl+Shift+L / F5</td><td>Pantalla completa (Escape sale) / Presentación</td></tr>
+<tr><td>B / W / L (presentación)</td><td>Pantalla negra / pantalla blanca / puntero láser</td></tr>
+<tr><td>Ctrl+5 / Ctrl+6 / Ctrl+7 / Ctrl+8</td><td>Una sola página / Continua / Dos páginas / Dos páginas continuas</td></tr>
+<tr><td>Ctrl+4</td><td>Vista de lectura (el texto de la página recompuesto)</td></tr>
+<tr><td>Ctrl+Shift+V / Ctrl+Shift+B</td><td>Leer en voz alta esta página / todo el documento</td></tr>
+<tr><td>Ctrl+Shift+C / Ctrl+Shift+E</td><td>Pausar o reanudar / detener la lectura en voz alta</td></tr>
+<tr><td>Ctrl+Shift+A</td><td>Desplazamiento automático (arriba / abajo: más lento / más rápido)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Páginas / Propiedades / Marcas / Caja de herramientas / Marcadores / Vista dividida</td></tr>

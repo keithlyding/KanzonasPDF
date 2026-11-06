@@ -846,6 +846,14 @@ class PageWidget(QWidget):
                     p.setPen(QPen(QColor(255, 90, 0), 2.5))
                     p.drawRect(frame)
 
+        rm = self.view.read_mark
+        if rm is not None and rm[0] == self.index:
+            # Read aloud: the sentence being read, the word being spoken darker
+            for r in rm[1]:
+                p.fillRect(self.to_screen(r, page), QColor(90, 170, 255, 45))
+            for r in rm[2]:
+                p.fillRect(self.to_screen(r, page), QColor(30, 120, 255, 110))
+
         self._paint_comment_cards(p, page)
 
         if self.view.highlight_fields and self.view.tool not in FORM_TOOLS:

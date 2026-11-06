@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pymupdf
 from PySide6.QtCore import Qt, Signal, QTimer, QObject, QEvent, QPoint, QPointF, QRectF
 from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor, QImage)
-from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
+from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QGridLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
                                QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
 
@@ -24,6 +24,10 @@ from .inline_editor import InlineEditor
 from .page_widget import PageWidget
 
 PAGE_GAP = 12
+SPREAD_GAP = 6          # between the two pages of a spread (View > Page layout > Two pages)
+# View > Page layout: one page at a time, pages one under the other, two side by side (one
+# spread at a time), two side by side one under the other
+PAGE_LAYOUTS = ("single", "continuous", "two", "two_continuous")
 MIN_ZOOM, MAX_ZOOM = 0.1, 64.0     # 10% to 6400%, the same ceiling as Acrobat and PDF-XChange
 # Qt refuses a widget larger than this on one side. A normal page still reaches 6400%;
 # an oversized sheet stops a little earlier so the window can still hold it.
@@ -531,6 +535,7 @@ class DocumentView(QScrollArea):
     requestSignature = Signal(int, int)      # page index, signature field xref
     textToolPropsChanged = Signal()          # Edit text: the line's font / size to show
     historyChanged = Signal()       # an undo or redo done: what can be undone / redone now
+    pageLayoutChanged = Signal()    # View > Page layout changed (the menu's tick follows)
 
     def __init__(self, path, parent=None, doc=None):
         """doc: a new document not yet saved (File > New PDF); path is then the name Save
@@ -677,8 +682,14 @@ class DocumentView(QScrollArea):
                 w.reuse(i)
             for i in range(len(old), n):
                 w = PageWidget(self, i)
-                lay.addWidget(w, 0, Qt.AlignHCenter)
+                if not self.two_up():
+                    lay.addWidget(w, 0, Qt.AlignHCenter)
                 old.append(w)
+            if self.two_up():
+                self._lay_out_pages(container)      # (a page's place in its spread changed)
+            if self.paged():
+                self._shown = self.spread_start(min(self._shown, n - 1))
+                self._show_spread(None)
             container.show()
             container.adjustSize()
             if had_focus:
@@ -687,28 +698,185 @@ class DocumentView(QScrollArea):
             return
         container = _Canvas(self)
         container.setStyleSheet("background: #525659;")
-        lay = QVBoxLayout(container)
-        lay.setSpacing(PAGE_GAP)
-        lay.setContentsMargins(PAGE_GAP, PAGE_GAP, PAGE_GAP, PAGE_GAP)
-        self.pages = []
-        for i in range(self.doc.page_count):
-            w = PageWidget(self, i)
-            lay.addWidget(w, 0, Qt.AlignHCenter)
-            self.pages.append(w)
-        self.setWidget(container)
+        self.pages = [PageWidget(self, i) for i in range(self.doc.page_count)]
         self._canvas_margin = (PAGE_GAP, PAGE_GAP)
+        self._lay_out_pages(container)
+        self.setWidget(container)
         self.apply_canvas()
         container.adjustSize()
         self.verticalScrollBar().setValue(keep)
 
+    # ---- View > Page layout: single page, continuous, two pages (spreads) ----------------
+    page_layout = "continuous"
+    cover_page = False      # two pages: the first page alone, on the right, like a book's cover
+    _shown = 0              # single page / two pages: the (first) page shown
+
+    def two_up(self):
+        return self.page_layout in ("two", "two_continuous")
+
+    def paged(self):
+        """One page (or spread) at a time: the others are hidden."""
+        return self.page_layout in ("single", "two")
+
+    def spread_start(self, index):
+        """The first page of the spread page index is in (index itself when one page is
+        shown across)."""
+        index = max(0, index)
+        if not self.two_up():
+            return index
+        if self.cover_page:
+            return 0 if index == 0 else index - (index + 1) % 2
+        return index - index % 2
+
+    def spread(self, index):
+        """The pages shown side by side with page index, left to right."""
+        s = self.spread_start(index)
+        n = len(getattr(self, "pages", ()) or ()) or self.doc.page_count
+        if not self.two_up() or self.cover_page and s == 0:
+            return [s]
+        return [p for p in (s, s + 1) if p < n]
+
+    def _grid_cell(self, index):
+        """(row, column) of a page in a two-page layout."""
+        k = index + 1 if self.cover_page else index
+        return k // 2, k % 2
+
+    def page_after(self, index, step):
+        """The page step pages (two-page layouts: spreads) after index, before it when
+        step is negative; kept within the document."""
+        n = self.page_count()
+        if not self.two_up():
+            return max(0, min(n - 1, index + step))
+        if step >= n:
+            return self.spread_start(n - 1)
+        if step <= -n:
+            return 0
+        s = self.spread_start(min(max(index, 0), n - 1))
+        for _ in range(abs(step)):
+            if step > 0:
+                nxt = s + len(self.spread(s))
+                if nxt >= n:
+                    break
+                s = nxt
+            elif s > 0:
+                s = self.spread_start(s - 1)
+        return s
+
+    def _lay_out_pages(self, container):
+        """Put the page widgets in a new layout for the page layout in use: a column, or a
+        grid of spreads (the left page against the right one)."""
+        import shiboken6
+        old = container.layout()
+        if old is not None:
+            shiboken6.delete(old)       # (the pages stay: they belong to the container)
+        if self.two_up():
+            lay = QGridLayout(container)
+            lay.setHorizontalSpacing(SPREAD_GAP)
+            lay.setVerticalSpacing(PAGE_GAP)
+            for i, w in enumerate(self.pages):
+                r, c = self._grid_cell(i)
+                lay.addWidget(w, r, c, (Qt.AlignRight if c == 0 else Qt.AlignLeft) | Qt.AlignTop)
+        else:
+            lay = QVBoxLayout(container)
+            lay.setSpacing(PAGE_GAP)
+            for w in self.pages:
+                lay.addWidget(w, 0, Qt.AlignHCenter)
+        mx, my = getattr(self, "_canvas_margin", (PAGE_GAP, PAGE_GAP))
+        lay.setContentsMargins(mx, my, mx, my)
+        return lay
+
+    def _show_spread(self, before):
+        """Single page / two pages: show the spread of self._shown and hide the others
+        (before: the pages shown until now; None: look at every page)."""
+        want = set(self.spread(self._shown)) if self.paged() else None
+        todo = range(len(self.pages)) if before is None else set(before) | want
+        for i in todo:
+            if i < len(self.pages):
+                vis = want is None or i in want
+                if self.pages[i].isHidden() == vis:
+                    self.pages[i].setVisible(vis)
+        lay = self.widget().layout() if self.widget() is not None else None
+        if lay is not None:
+            lay.activate()              # (the shown pages placed now: their y is used next)
+            self.widget().adjustSize()
+
+    def _show_index(self, index):
+        """Single page / two pages: make page index the one shown (no scrolling)."""
+        if not self.paged() or not getattr(self, "pages", None):
+            return
+        start = self.spread_start(max(0, min(index, len(self.pages) - 1)))
+        if start != self._shown or self.pages[start].isHidden():
+            before = self.spread(self._shown)
+            self._shown = start
+            self._show_spread(before)
+
+    def set_page_layout(self, layout, cover=None):
+        """View > Page layout. The page in view stays in view; Fit width / Fit page fit
+        the new layout."""
+        if layout not in PAGE_LAYOUTS:
+            layout = "continuous"
+        cover = self.cover_page if cover is None else bool(cover)
+        if layout == self.page_layout and cover == self.cover_page:
+            return
+        page = self.current_page() if getattr(self, "pages", None) else 0
+        was_grid = self.two_up()
+        self.page_layout, self.cover_page = layout, cover
+        self.pageLayoutChanged.emit()
+        if not getattr(self, "pages", None) or self.widget() is None:
+            return
+        container = self.widget()
+        if was_grid or self.two_up():
+            self._lay_out_pages(container)
+        self._shown = self.spread_start(page)
+        self._show_spread(None)
+        if self.fit_mode == "width":
+            self.fit_width()
+        elif self.fit_mode == "page":
+            self.fit_page()
+        self.goto_page(page)
+        if not self.fit_mode == "page":
+            self.center_horizontally(page)
+
+    def _at_page_edge(self, forward):
+        """Single page / two pages: the bottom (forward) or top of the pages shown is in the
+        window (with Free page movement the canvas goes on past it)."""
+        bar = self.verticalScrollBar()
+        ws = [self.pages[i] for i in self.spread(self.current_page())]
+        if forward:
+            bottom = max(w.y() + w.height() for w in ws)
+            return bar.value() >= bar.maximum() or \
+                bottom <= bar.value() + self.viewport().height()
+        return bar.value() <= bar.minimum() or min(w.y() for w in ws) >= bar.value()
+
+    def _paged_edge(self, forward):
+        """Single page / two pages, scrolled to the bottom (top): the next (previous) page.
+        True when it turned."""
+        cur = self.current_page()
+        if not self._at_page_edge(forward):
+            return False
+        nxt = self.page_after(cur, 1 if forward else -1)
+        if nxt == cur:
+            return False
+        self.goto_page(nxt)
+        if not forward:                 # (reading back up: its bottom first)
+            ws = [self.pages[i] for i in self.spread(nxt)]
+            bottom = max(w.y() + w.height() for w in ws)
+            bar = self.verticalScrollBar()
+            bar.setValue(max(bar.value(), int(bottom + PAGE_GAP - self.viewport().height())))
+        return True
+
     def center_horizontally(self, index=None):
-        """Scroll sideways so the page is centered in the window (needed in CAD mouse mode,
-        where open canvas lies left and right of the pages)."""
+        """Scroll sideways so the page (two-page layouts: its spread) is centered in the
+        window (needed in CAD mouse mode, where open canvas lies left and right of the
+        pages)."""
         if not getattr(self, "pages", None):
             return
-        w = self.pages[self.current_page() if index is None else index]
+        index = self.current_page() if index is None else index
+        ws = [self.pages[i] for i in self.spread(index)] if self.two_up() else [self.pages[index]]
+        left = min(w.x() for w in ws)
+        right = max(w.x() + w.width() for w in ws)
         bar = self.horizontalScrollBar()
-        bar.setValue(int(w.x() + w.width() / 2 - self.viewport().width() / 2))
+        bar.setValue(int((left + right) / 2 - self.viewport().width() / 2))
 
     def apply_canvas(self):
         """CAD mouse mode or Free page movement: open canvas about a window wide around the
@@ -787,7 +955,7 @@ class DocumentView(QScrollArea):
             keep.add(self.obj_sel[0])
         for cache in (self._dlists, self._alists, self._line_cache, self._row_cache,
                       self._hover_para, self._word_cache, self._snap_markups, self._obj_cache,
-                      self._snap_content, self._hit_cache):
+                      self._snap_content, self._hit_cache, self._reading_cache):
             if len(cache) <= PAGE_CACHE_PAGES:
                 continue
             for i in [i for i in cache
@@ -797,6 +965,8 @@ class DocumentView(QScrollArea):
     def current_page(self):
         if not getattr(self, "pages", None):
             return 0
+        if self.paged():
+            return min(self._shown, len(self.pages) - 1)
         mid = self.verticalScrollBar().value() + self.viewport().height() // 3
         pages = self.pages
         # pages are stacked top to bottom: binary-search for the first one reaching mid
@@ -812,6 +982,7 @@ class DocumentView(QScrollArea):
 
     def goto_page(self, index, y_offset=0):
         index = max(0, min(index, len(self.pages) - 1))
+        self._show_index(index)
         self.verticalScrollBar().setValue(self.pages[index].y() - PAGE_GAP + int(y_offset))
         self._on_scroll()
 
@@ -835,6 +1006,9 @@ class DocumentView(QScrollArea):
             page, zoom = 0, 1.0
         if not math.isfinite(zoom) or zoom <= 0:
             zoom = 1.0
+        if state and state.get("layout") in PAGE_LAYOUTS:
+            # (remembered per document, like the page and the zoom)
+            self.set_page_layout(state["layout"], bool(state.get("cover")))
         mode = self.open_view
         if mode == "last" and state:
             self.set_zoom(zoom)
@@ -938,6 +1112,8 @@ class DocumentView(QScrollArea):
         avail = self.viewport().width() - 2 * PAGE_GAP - 4
         if not self.verticalScrollBar().isVisible():
             avail -= self.verticalScrollBar().sizeHint().width()
+        if self.two_up() and len(self.page_rects) > 1:
+            widest, avail = 2 * widest, avail - SPREAD_GAP     # (a spread across the window)
         self.set_zoom(avail / widest, keep_fit=True)
         self.fit_mode = "width"
         self.center_horizontally()
@@ -947,7 +1123,13 @@ class DocumentView(QScrollArea):
         avail_w = self.viewport().width() - 2 * PAGE_GAP
         avail_h = self.viewport().height() - 2 * PAGE_GAP
         page = self.current_page()
-        self.set_zoom(min(avail_w / r.width, avail_h / r.height), keep_fit=True)
+        width, height = r.width, r.height
+        if self.two_up():                       # the whole spread in the window
+            rects = [self.page_rects[i] for i in self.spread(page)]
+            width = sum(x.width for x in rects)
+            height = max(x.height for x in rects)
+            avail_w -= SPREAD_GAP * (len(rects) - 1)
+        self.set_zoom(min(avail_w / width, avail_h / height), keep_fit=True)
         self.fit_mode = "page"
         self.show_whole_page(page)
 
@@ -1376,10 +1558,24 @@ class DocumentView(QScrollArea):
             if abs(self._wheel_acc) >= 120:         # touchpads send many small steps
                 step = -1 if self._wheel_acc > 0 else 1
                 self._wheel_acc = 0
-                self.show_whole_page(self.current_page() + step)
+                self.show_whole_page(self.page_after(self.current_page(), step))
+            e.accept()
+        elif self.paged() and dy and self._paged_wheel(dy):
             e.accept()
         else:
             super().wheelEvent(e)
+
+    def _paged_wheel(self, dy):
+        """Single page / two pages: the wheel at the bottom (top) of the page turns to the
+        next (previous) one, after a full wheel step against the edge."""
+        if not self._at_page_edge(dy < 0):
+            self._edge_acc = 0
+            return False
+        self._edge_acc = getattr(self, "_edge_acc", 0) + abs(dy)
+        if self._edge_acc >= 120:
+            self._edge_acc = 0
+            self._paged_edge(dy < 0)
+        return True
 
     def _page_fits(self):
         if not getattr(self, "pages", None):
@@ -1392,6 +1588,7 @@ class DocumentView(QScrollArea):
     def show_whole_page(self, index):
         """Scroll so page `index` is centered top to bottom in the window."""
         index = max(0, min(index, len(self.pages) - 1))
+        self._show_index(index)
         w = self.pages[index]
         self.verticalScrollBar().setValue(int(w.y() - (self.viewport().height() - w.height()) / 2))
         self.center_horizontally(index)
@@ -1403,7 +1600,7 @@ class DocumentView(QScrollArea):
         cpos = cont.mapFrom(self.viewport(), vp_pos)
         target = None
         for w in self.pages:
-            if w.geometry().contains(cpos):
+            if w.geometry().contains(cpos) and not w.isHidden():
                 target = w
                 break
         if target is None:
@@ -1516,6 +1713,7 @@ class DocumentView(QScrollArea):
             return                      # (queued with a timer: the view may be gone by now)
         page, vfrac, h_off = anchor
         page = max(0, min(page, len(self.pages) - 1))
+        self._show_index(page)
         w = self.pages[page]
         self.verticalScrollBar().setValue(int(w.y() + vfrac * w.height()))
         self.horizontalScrollBar().setValue(int(w.x() + h_off))
@@ -2102,6 +2300,7 @@ class DocumentView(QScrollArea):
         self._row_cache = {}           # page index -> text_edit.paragraph_rows (Edit text)
         self._hover_para = {}          # page index -> {line id: what a click there edits}
         self._word_cache = {}
+        self._reading_cache = {}       # page index -> reading_text blocks (Reading view, Read aloud)
         self._hit_cache = {}           # page index -> {what: (list, hit_index lookup)}
         self._card_cache = {}
         self._legend_where = {}        # page index -> its legends' xrefs (legend.refresh)
@@ -2135,6 +2334,7 @@ class DocumentView(QScrollArea):
             self._row_cache.pop(i, None)
             self._hover_para.pop(i, None)
             self._word_cache.pop(i, None)
+            self._reading_cache.pop(i, None)
             self._hit_cache.pop(i, None)
             self._snap_markups.pop(i, None)
             self._obj_cache.pop(i, None)
@@ -2176,6 +2376,16 @@ class DocumentView(QScrollArea):
                             n += 1
             self._word_cache[index] = out
         return self._word_cache[index]
+
+    read_mark = None    # Read aloud: (page, [sentence rects], [word rects]) shaded on the page
+
+    def reading_blocks(self, index):
+        """The page's text blocks in reading order (reading_text.read_page), read once."""
+        got = self._reading_cache.get(index)
+        if got is None:
+            from . import reading_text
+            got = self._reading_cache[index] = reading_text.read_page(self.doc[index])
+        return got
 
     # ---- text selection (live, like a normal text cursor) ---------------------
     NEAR = 12   # points: how close to text a drag must start to select text
@@ -2333,21 +2543,32 @@ class DocumentView(QScrollArea):
         content = self.widget().mapFromGlobal(origin.mapToGlobal(pos))
         y = content.y()
         pages = self.pages
-        lo, hi = 0, len(pages)
-        while lo < hi:
-            m = (lo + hi) // 2
-            w = pages[m]
-            if w.y() + w.height() >= y:
-                hi = m
-            else:
-                lo = m + 1
-        if lo >= len(pages):
-            best = len(pages) - 1
-        elif y >= pages[lo].y() or lo == 0:
-            best = lo
+        if self.two_up() or self.paged():
+            # (side by side, or the others hidden: the nearest page shown)
+            near = [i for i in (self.spread(self._shown) if self.paged() else
+                                range(len(pages))) if not pages[i].isHidden()]
+
+            def dist(i):
+                g = pages[i].geometry()
+                return max(g.left() - content.x(), 0, content.x() - g.right()) + \
+                    max(g.top() - y, 0, y - g.bottom())
+            best = min(near, key=dist) if near else origin.index
         else:
-            prev = pages[lo - 1]
-            best = lo - 1 if y - (prev.y() + prev.height()) <= pages[lo].y() - y else lo
+            lo, hi = 0, len(pages)
+            while lo < hi:
+                m = (lo + hi) // 2
+                w = pages[m]
+                if w.y() + w.height() >= y:
+                    hi = m
+                else:
+                    lo = m + 1
+            if lo >= len(pages):
+                best = len(pages) - 1
+            elif y >= pages[lo].y() or lo == 0:
+                best = lo
+            else:
+                prev = pages[lo - 1]
+                best = lo - 1 if y - (prev.y() + prev.height()) <= pages[lo].y() - y else lo
         w = pages[best]
         local = w.mapFromGlobal(origin.mapToGlobal(pos))
         clamped = QPointF(min(max(local.x(), 0), max(0, w.width() - 1)),
@@ -4831,8 +5052,13 @@ class DocumentView(QScrollArea):
                 return
         if e.key() in (Qt.Key_Left, Qt.Key_Right) and not e.modifiers():
             # previous / next page (use Shift+arrows or the scrollbar to scroll sideways)
-            self.goto_page(self.current_page() + (1 if e.key() == Qt.Key_Right else -1))
+            self.goto_page(self.page_after(self.current_page(),
+                                           1 if e.key() == Qt.Key_Right else -1))
             return
+        if self.paged() and not e.modifiers() and e.key() in (
+                Qt.Key_PageDown, Qt.Key_PageUp, Qt.Key_Down, Qt.Key_Up) and \
+                self._paged_edge(e.key() in (Qt.Key_PageDown, Qt.Key_Down)):
+            return              # (single page / two pages: past the edge, the next page)
         if e.key() in (Qt.Key_Home, Qt.Key_End) and \
                 e.modifiers() in (Qt.NoModifier, Qt.ControlModifier):
             # first / last page (View > Go to), as in other PDF readers
@@ -7859,6 +8085,7 @@ class DocumentView(QScrollArea):
         self._set_field_focus(index, xref)
         pg = self.doc[index]
         w = pg.load_widget(xref)
+        self._show_index(index)
         top = self.pages[index].y() + (w.rect * pg.rotation_matrix).y0 * self.zoom
         vbar = self.verticalScrollBar()
         if not vbar.value() + 20 <= top <= vbar.value() + self.viewport().height() - 40:
@@ -8752,6 +8979,7 @@ class DocumentView(QScrollArea):
         old = self._search_cur
         self._search_cur = hit
         i, k = hit
+        self._show_index(i)
         w = self.pages[i]
         if self.fit_mode == "page":
             # whole-page view: bring the match's page in front, centered, not just the match
