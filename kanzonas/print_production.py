@@ -255,13 +255,16 @@ def check(doc, pages=None, hairline=0.25, low_dpi=LOW_DPI, step=None):
         if hairline:
             n = find_hairlines(page, hairline)["count"]
             if n:
-                out.append(("hairlines", i, tr("{n} lines thinner than {w} pt (Fix "
-                                               "hairlines widens them)").format(
-                    n=n, w="%g" % hairline)))
+                out.append(("hairlines", i, (tr("{n} lines thinner than {w} pt (Fix "
+                                                "hairlines widens them)") if n != 1 else
+                                             tr("{n} line thinner than {w} pt (Fix hairlines "
+                                                "widens it)")).format(n=n, w="%g" % hairline)))
     if len(sizes) > 1:
         for (w, h), where in sorted(sizes.items(), key=lambda kv: -len(kv[1])):
-            out.append(("sizes", where[0], tr("{n} pages of {w} × {h} pt ({inch}): pages "
-                                               "{pages}").format(
+            out.append(("sizes", where[0], (tr("{n} pages of {w} × {h} pt ({inch}): pages "
+                                                "{pages}") if len(where) != 1 else
+                                             tr("{n} page of {w} × {h} pt ({inch}): page "
+                                                "{pages}")).format(
                 n=len(where), w=w, h=h, inch="%.2f × %.2f in" % (w / 72, h / 72),
                 pages=_page_list(where))))
     return out

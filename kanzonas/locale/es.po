@@ -4299,7 +4299,7 @@ msgstr "Sello de tiempo"
 
 #: main_window.py:3962
 msgid "Signature details"
-msgstr "Detalles de la firma"
+msgstr "Detalles de firma"
 
 #: main_window.py:3963
 msgid "Clear signatures"
@@ -4419,11 +4419,11 @@ msgstr "Etiquetas de barras"
 
 #: main_window.py:3973
 msgid "Shortcuts"
-msgstr "Métodos abreviados"
+msgstr "Atajos"
 
 #: main_window.py:3974
 msgid "User manual"
-msgstr "Manual del usuario"
+msgstr "Manual"
 
 #: main_window.py:3974
 msgid "Command palette"
@@ -4479,11 +4479,11 @@ msgstr "Abajo"
 
 #: main_window.py:3978
 msgid "Horizontally"
-msgstr "Horizontalmente"
+msgstr "Horizontal"
 
 #: main_window.py:3978
 msgid "Vertically"
-msgstr "Verticalmente"
+msgstr "Vertical"
 
 #: main_window.py:3978
 msgid "To front"
@@ -7333,10 +7333,13 @@ msgstr "Delinear los cuadros de recorte final (verde), sangrado (rojo) y arte (a
 msgid "Prepare"
 msgstr "Preparar"
 
-msgid "Bleed"
+msgid "Trim box"
+msgstr "Recorte final"
+
+msgid "Bleed box"
 msgstr "Sangrado"
 
-msgid "Art"
+msgid "Art box"
 msgstr "Arte"
 
 msgid "Crop marks (at the trim box; the drawing out to the bleed box)"
@@ -7387,6 +7390,9 @@ msgstr "Sin sangrado más allá del cuadro de recorte final: un dibujo que llega
 msgid "{n} pages of {w} × {h} pt ({inch}): pages {pages}"
 msgstr "{n} páginas de {w} × {h} pt ({inch}): páginas {pages}"
 
+msgid "{n} page of {w} × {h} pt ({inch}): page {pages}"
+msgstr "{n} página de {w} × {h} pt ({inch}): página {pages}"
+
 msgid "Font not embedded: {font}"
 msgstr "Fuente no incrustada: {font}"
 
@@ -7395,6 +7401,9 @@ msgstr "Imagen en colores RGB ({w} × {h} píxeles): una prensa de cuatricromía
 
 msgid "{n} lines thinner than {w} pt (Fix hairlines widens them)"
 msgstr "{n} líneas más finas que {w} pt (Corregir líneas finas las ensancha)"
+
+msgid "{n} line thinner than {w} pt (Fix hairlines widens it)"
+msgstr "{n} línea más fina que {w} pt (Corregir líneas finas la ensancha)"
 
 msgid "Picture at {dpi} pixels per inch as printed ({w} × {h} pixels)"
 msgstr "Imagen a {dpi} píxeles por pulgada tal como se imprime ({w} × {h} píxeles)"
@@ -7455,6 +7464,9 @@ msgstr "Los márgenes se miden hacia dentro desde la página tal como se muestra
 
 msgid "Fix hairlines: {n} lines now {w} pt wide (Ctrl+Z undoes it)"
 msgstr "Corregir líneas finas: {n} líneas ahora con {w} pt de grosor (Ctrl+Z lo deshace)"
+
+msgid "Fix hairlines: {n} line now {w} pt wide (Ctrl+Z undoes it)"
+msgstr "Corregir líneas finas: {n} línea ahora con {w} pt de grosor (Ctrl+Z lo deshace)"
 
 msgid "No lines thinner than {w} pt on these pages."
 msgstr "No hay líneas más finas que {w} pt en estas páginas."
@@ -8355,3 +8367,48 @@ msgstr "Escanear a través de Windows (WIA) necesita el paquete comtypes, que fa
 
 msgid "The scanner didn't accept the subscription."
 msgstr "El escáner no aceptó la suscripción."
+
+# ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
+# ribbon tab fits a 1366-pixel screen in Spanish; the menus keep the full names
+msgctxt "ribbon"
+msgid "Snap to grid"
+msgstr "Ajustar a cuadrícula"
+
+msgctxt "ribbon"
+msgid "Snap to page"
+msgstr "Ajustar a página"
+
+msgctxt "ribbon"
+msgid "Combine files"
+msgstr "Combinar"
+
+msgctxt "ribbon"
+msgid "Attach file"
+msgstr "Adjuntar"
+
+msgid "More in {group}: {commands}"
+msgstr "Más en {group}: {commands}"
+
+# ---- the same English word with another meaning there (msgctxt)
+# a box's edges (Print > Page boxes), not the Align commands
+msgctxt "edge"
+msgid "Top"
+msgstr "Superior"
+
+msgctxt "edge"
+msgid "Bottom"
+msgstr "Inferior"
+
+# what to do with selected text (right-click), not the markup's name
+msgctxt "verb"
+msgid "Highlight"
+msgstr "Resaltar"
+
+msgctxt "verb"
+msgid "Underline"
+msgstr "Subrayar"
+
+# a legend's column: how many of each markup, not the Count measuring tool
+msgctxt "legend"
+msgid "Count"
+msgstr "Cantidad"

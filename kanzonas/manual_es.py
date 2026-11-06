@@ -108,9 +108,18 @@ pueden hacerlo Acrobat y PDF-XChange. Abrir, guardar, imprimir, deshacer y rehac
 cuadro Buscar (con su número de coincidencias y sus flechas arriba / abajo) está a su derecha. La barra inferior (barra de estado, abajo a la derecha) tiene la navegación de páginas (primera,
 anterior, número de página, siguiente, última página), Ajustar página, Ajustar al ancho, Tamaño real, un control deslizante de zoom y el
 cuadro de zoom con alejar / acercar, como PDF-XChange Editor, y la escala del dibujo de la página actual (en rojo cuando no
-tiene ninguna; haga clic en ella para establecerla). La cinta es compacta: dos filas de
-botones. Si la ventana es demasiado estrecha para una pestaña, desplácela lateralmente con la rueda del mouse o con la
-barra delgada que hay debajo. Ver &gt; <b>Mostrar nombres de grupo en la cinta</b> agrega un nombre debajo de cada grupo de
+tiene ninguna; haga clic en ella para establecerla). Un mensaje de la barra inferior demasiado largo para el espacio a la
+izquierda de los controles de página termina en «...»; pase el mouse sobre él para leerlo entero. La cinta es compacta: dos filas de
+botones, y cada pestaña cabe en una pantalla de 1366 píxeles de ancho, en inglés y en español. Los comandos que se usan
+menos comparten un botón con una flecha al lado: haga clic en el botón para el comando que muestra, o en la flecha para
+los demás (el botón muestra luego el último usado). En la pestaña Inicio, la flecha de Resaltado tiene Subrayado y
+Tachado, y la de Firmar tiene Iniciales; en la pestaña Páginas, la de Encabezado y pie tiene Marca de agua y Fondo, y la
+de Extraer tiene Reemplazar. Otros están en la lista de la flecha estrecha al final de un grupo: Configuración de
+cuadrícula junto a los interruptores de ajuste, Subir y Bajar en el grupo Ordenar de la pestaña Páginas, Archivos
+adjuntos y Referencias a planos en su grupo Documento, Contraer y Nombres de grupo en el grupo Cinta de la
+pestaña Ver, Alinear en el grupo Modificar de la pestaña CAD. En la pestaña Inicio, Alejar y Acercar son iconos debajo
+de Tamaño real. Si la ventana es demasiado estrecha para una pestaña, desplácela lateralmente con la rueda del mouse o
+con la barra delgada que hay debajo. Ver &gt; <b>Mostrar nombres de grupo en la cinta</b> agrega un nombre debajo de cada grupo de
 botones (la cinta queda un poco más alta, como en Microsoft Office). Ver &gt; <b>Mostrar barra de menús</b> (Ctrl+Shift+M)
 oculta o muestra la barra de menús Archivo, Editar, Ver...; cuando está oculta, el botón &#9776; a la derecha
 de las pestañas de la cinta tiene todos los menús, y todos los métodos abreviados de teclado siguen funcionando. <b>Contraer cinta</b>
@@ -407,7 +416,8 @@ cinta de AutoCAD: haga clic en el botón para la herramienta que muestra, o en l
 muestra luego la última usada (o la herramienta activa). <b>Marcas</b>: Rectángulo (flecha: Nube, Polígono, Máscara), Círculo (flecha: Arco),
 Línea (flecha: Polilínea, Curva, Lápiz), Flecha, Cuadro de texto (flecha: Llamada), Sello (flecha: Imagen, Leyenda); en el modo CAD sus atajos
 de una letra escriben en la línea de comandos. <b>Medir</b>: Longitud (flecha: Longitud de polilínea, Área, Ángulo, Radio,
-Perímetro, Volumen, Conteo, Calibrar cinta métrica), Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página.
+Perímetro, Volumen, Conteo, Calibrar cinta métrica) y, debajo, Ajustar a objetos, Ajustar a la cuadrícula y Ajustar a
+la página como iconos (como en la barra de estado de AutoCAD; pase el mouse sobre uno para ver su nombre).
 <b>Editar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
 izquierda (flecha: las demás alineaciones, Distribuir horizontalmente y Distribuir verticalmente), Editar texto (flecha:
 Agregar texto): Editar texto cambia las palabras que ya están en la página, Agregar texto escribe texto nuevo en la
@@ -551,7 +561,7 @@ texto muy apretado. En una página con marcas de censura que aún no se han apli
 donde está (cortar aplicaría las marcas): aplíquelas o quítelas primero. <b>Seleccionar todo el texto</b> (Ctrl+A) selecciona todo el texto
 de la página. Esc o un clic en otro lugar borra la selección.</li>
 <li><b>Menú contextual:</b> haga clic con el botón derecho en la página para Cortar, Copiar, Pegar, Eliminar (para las
-marcas seleccionadas) y Seleccionar todo el texto. Con texto seleccionado, también ofrece Resaltado, Subrayado, Tachar,
+marcas seleccionadas) y Seleccionar todo el texto. Con texto seleccionado, también ofrece Resaltar, Subrayar, Tachar,
 Comentar el texto… y Marcar para censura para ese texto. Hacer clic con el botón derecho en una marca la selecciona
 primero.</li>
 <li><b>Marcas:</b> seleccione una o más marcas y luego Copiar o Cortar. <b>Pegar</b> (Ctrl+V) las coloca
@@ -700,7 +710,8 @@ La captura también se pega como imagen en Word, Excel, el correo electrónico y
 <ul>
 <li><b>Mostrar cuadrícula</b> (menú Ver o barra de herramientas) dibuja una cuadrícula sobre la página. Solo está en pantalla:
 no se guarda en el PDF ni se imprime con él.</li>
-<li><b>Configuración de cuadrícula</b> (menú Ver): el espaciado en pulgadas, milímetros o puntos, medido en
+<li><b>Configuración de cuadrícula</b> (menú Ver; en la cinta, en la flecha a la derecha de los interruptores de
+ajuste): el espaciado en pulgadas, milímetros o puntos, medido en
 el papel, y cada cuánto se dibuja una línea más oscura. Con el zoom muy alejado, solo se muestran las líneas
 más oscuras.</li>
 <li><b>Ajustar a la cuadrícula:</b> los puntos que dibuja o arrastra saltan a la intersección de la cuadrícula más cercana.</li>
@@ -1090,8 +1101,8 @@ página en blanco, Cortar, Pegar y Duplicar páginas). Usar uno de ellos pregunt
 Copiar páginas, girar y extraer funcionan mientras está bloqueado.</li>
 <li><b>Reordenar:</b> desbloquee la lista de páginas y arrastre las miniaturas (varias páginas seleccionadas se mueven
 juntas, y Ctrl+Z deshace todo el arrastre); o use Mover página hacia arriba / Mover página hacia abajo
-(Ctrl+Shift+Up / Down).</li>
-<li><b>Combinar archivos</b> (Archivo &gt; Combinar archivos..., o pestaña Páginas &gt; Combinar archivos): crea un
+(Ctrl+Shift+Up / Down; en la pestaña Páginas, en la flecha del grupo Ordenar).</li>
+<li><b>Combinar archivos</b> (Archivo &gt; Combinar archivos..., o pestaña Páginas &gt; Combinar): crea un
 PDF nuevo a partir de varios. Agregue los PDF (Agregar archivos…, o suéltelos en la lista desde el Explorador); el
 documento abierto ya está en la lista. Arrástrelos, o use Subir / Bajar / Ordenar por nombre, para
 definir el orden, de arriba abajo. Con "Agregar un marcador para cada archivo" marcado, cada archivo recibe un
@@ -1138,7 +1149,7 @@ la lista de páginas, o la página actual; pregunta primero, y Ctrl+Z las recupe
 página eliminada lleva entonces a la página siguiente (o a la última página).</li>
 <li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional.</li>
 <li>Pestaña <b>Marcadores</b>: agregue, cambie el nombre, reordene y aplique sangría a los marcadores.</li>
-<li><b>Vincular referencias a planos</b> (menú Páginas, pestaña Páginas): para un juego de planos trazado sin
+<li><b>Vincular referencias a planos</b> (menú Páginas; pestaña Páginas, en la flecha del grupo Documento): para un juego de planos trazado sin
 hipervínculos. KanzonasPDF lee el número y el título de cada plano en su cuadro de rótulo (el
 valor que sigue a un rótulo SHEET, SHEET NO o DWG NO, o el número con aspecto de número de plano más grande de la
 zona del cuadro de rótulo) y los muestra para que los corrija. Luego, cada globo de llamada, nota o línea de índice
@@ -1243,7 +1254,8 @@ pulgadas o milímetros, en todas las páginas, la página actual o una lista de 
 de toda la hoja de la página (su cuadro de medios), y el cuadro de sangrado tiene que contener el cuadro de recorte final:
 si no, lo indica y no cambia nada. Ctrl+Z lo deshace.</li>
 <li><b>Mostrar cuadros de página</b> (también en el menú Ver) delinea los cuadros que tiene una página: recorte final en
-verde, sangrado en rojo, arte en azul (solo en pantalla).</li>
+verde, sangrado en rojo, arte en azul, cada uno con su nombre en una esquina (Recorte final, Sangrado, Arte; solo en
+pantalla).</li>
 <li><b>Corregir líneas finas</b>: las líneas dibujadas más finas que un grosor que elija (0,25 pt de forma
 predeterminada; incluido un grosor de 0, que significa «lo más fino que puede dibujar el dispositivo», a menudo demasiado
 tenue en un trazador) se dibujan con el grosor que elija, en todas las páginas, la página actual o una lista de páginas.
@@ -1390,9 +1402,12 @@ ya contienen texto</b> (activado de forma predeterminada, para que el texto no s
 <b>Alta</b> (400 ppp, y revisa todas las orientaciones, para letra pequeña, escaneos de mala calidad y
 páginas de lado o al revés; la más lenta); o <b>Automática</b> (el valor predeterminado), que lee cada
 página rápido y la vuelve a procesar con resolución Alta solo cuando el texto salió pequeño o poco claro.
-Una precisión mayor tarda más y usa más memoria, y nunca procesa un escaneo con más nitidez de la
+Una precisión mayor tarda más, y nunca procesa un escaneo con más nitidez de la
 que se escaneó (eso solo agrega desenfoque), así que en un escaneo de 200 ppp Normal y Alta leen a 200 ppp.
-Su elección se recuerda. Con cualquier precisión, una página escaneada al revés se detecta y se lee
+Su elección se recuerda. Una página se lee de a un mosaico por vez, cada uno dibujado solo cuando se lee,
+así que incluso un plano de 42 x 30 pulgadas en Alta necesita más o menos la misma memoria que una página carta; la
+memoria que usó el OCR vuelve al sistema cuando termina, y la del propio motor de OCR (unos 45 MB) dos minutos
+después de la última página que leyó. Con cualquier precisión, una página escaneada al revés se detecta y se lee
 girada a la posición correcta, y las líneas que están al revés o en vertical en la página reciben su texto
 donde están sus letras, de modo que Buscar, así como Buscar y censurar, abarcan las palabras correctas. Editar texto cambia
 luego las palabras del escaneo con una fuente que coincide (vea Editar el texto propio del PDF).</li>
@@ -1469,7 +1484,7 @@ agregadas por aplicaciones que las identifican como marcas de agua (Adobe Acroba
 anotaciones de marca de agua. Ctrl+Z lo deshace. Una "marca de agua" que es solo texto normal o una imagen
 de la página no se puede distinguir del resto de la página; quítela con Borrar contenido o
 Editar objetos.</li>
-<li><b>Fondo...</b> (menú Documento; pestaña Páginas): pone un <b>color sólido</b>, un <b>degradado</b>
+<li><b>Fondo...</b> (menú Documento; pestaña Páginas, en la flecha junto a Encabezado y pie): pone un <b>color sólido</b>, un <b>degradado</b>
 (dos colores, de arriba abajo, de abajo arriba, de izquierda a derecha o en diagonal) o una <b>imagen</b> (Ajustar,
 Rellenar, Estirar a la página o Centrar en su propio tamaño) detrás de todo lo que hay en la página, con la
 opacidad que elija. Aplíquelo a la página actual, a todas las páginas o a páginas como 1-3, 7. Se guarda
