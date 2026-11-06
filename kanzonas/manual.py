@@ -76,7 +76,8 @@ again</b> to always use the size you chose; change it, or go back to being asked
 Preferences &gt; Pages and display &gt; New PDF page size. With no document open, Insert blank
 page starts a new PDF the same way, and Insert pages from file makes a new, unsaved PDF from
 the files you choose.</li>
-<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. Saving as a file that's open in another
+<li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. (For an archival copy, see Save as PDF/A
+in Document tools.) Saving as a file that's open in another
 tab replaces that file and closes that tab (asking first if it has unsaved changes); the same goes
 for Extract pages, Combine files and the copies saved by Compress, Timestamp and digital signing,
 except that the other tab then shows the new file. Undo is Ctrl+Z, redo is Ctrl+Y.
@@ -1270,6 +1271,40 @@ and scripts unless you turn that off. Check the result before sharing.</li>
 <b>Compress (save a smaller copy)</b>, <b>Compare documents</b>, <b>Flatten</b> (make markups part of the page).
 The smaller copy keeps the document's password protection (open password, permissions), or the
 protection set in Security properties and not saved yet.</li>
+<li><b>Save as PDF/A</b> (File &gt; <b>Save as PDF/A...</b>): saves an archival copy that follows
+PDF/A-2b (ISO 19005-2, level B), the standard for keeping a document readable and looking the
+same for decades, which courts, government offices and archives often ask for. In the copy:
+every font is embedded (a standard font that isn't, such as Helvetica, Times, Courier, Symbol
+and ZapfDingbats, or Arial, Times New Roman and Courier New, which are shown with them, is
+embedded from KanzonasPDF's own copies, the very fonts it shows them with, so the text looks
+and measures exactly as before); colors are defined by a color profile (an sRGB output
+intent, and a CMYK profile for CMYK colors); the metadata says it's PDF/A, with the title,
+author, subject and keywords the same in the document properties and the XMP metadata; there
+is no JavaScript and no action that launches a program, plays media or runs on its own (links
+to pages and web addresses stay); every comment and markup has its own appearance and is set
+to print, and hidden ones are removed (PDF/A shows every annotation, so a hidden one would
+appear); form fields are drawn (rather than left to the viewer) and lose their actions; layer
+settings get a name; transfer functions, unknown blend modes, smoothing of enlarged pictures,
+LZW compression and PDF versions above 1.7 are replaced by what PDF/A allows, without changing
+how the pages look. <b>Attached files</b> stay: when they are all PDF/A files themselves, the
+copy is PDF/A-2b; otherwise it's PDF/A-3b, the part of the standard that allows any attached
+file (each is then listed as a file associated with the document, with its kind).
+<b>Digital signatures</b> are removed (the fields stay, empty): the copy is a new file, in which
+they couldn't be valid; sign the copy if it needs a signature. A <b>password-protected</b>
+document can't be saved as PDF/A (an archive must open without a password): remove its
+security first (Protect &gt; Remove security). The name offered is the document's with _PDFA
+added. As after Save As, the tab then shows the copy (unsaved changes are in it; the original
+file stays as it was), and a window says what was changed and lists what couldn't be fixed,
+each with its page.</li>
+<li><b>Check PDF/A</b> (File &gt; <b>Check PDF/A...</b>) lists what keeps the document, as it is
+now, from being PDF/A, by kind, each with its page (double-click a line to go there) and
+whether Save as PDF/A fixes it; a button there saves it as PDF/A. What can't be fixed: a font
+that isn't embedded and isn't one of the standard fonts (make the PDF again with its fonts
+embedded), a standard font whose character widths in the file differ from the standard
+font's, a page larger than 200 inches or smaller than 3 points, PostScript, parts kept in
+other files, an unusual compression. It checks the common requirements of PDF/A-2b (and of
+PDF/A-3b for a file that says it is one), not every one: for a formal validation, use
+<b>veraPDF</b>, free, from the PDF Association (verapdf.org).</li>
 <li><b>Compare documents...</b> (Document menu, Pages tab): pick the earlier revision (if it's
 password-protected, KanzonasPDF asks for its password), then how to compare. <b>Text, word by word</b> is for anything that reflows (letters,
 specifications, permits, reports): the words of both documents are compared in reading

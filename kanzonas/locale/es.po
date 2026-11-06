@@ -7536,3 +7536,265 @@ msgstr "Medir > Establecer escala la establece."
 
 msgid "Set scale..."
 msgstr "Establecer escala..."
+
+# PDF/A (pdfa.py, pdfa_ui.py)
+msgid "Save as P&DF/A..."
+msgstr "Guardar como P&DF/A..."
+
+msgid "Chec&k PDF/A..."
+msgstr "Re&visar PDF/A..."
+
+msgid "Save an archival copy (PDF/A-2b): fonts embedded, colors defined, no scripts; the tab then shows it"
+msgstr "Guardar una copia de archivo (PDF/A-2b): fuentes incrustadas, colores definidos, sin scripts; luego la pestaña la muestra"
+
+msgid "List what keeps this document from being PDF/A, page by page, and what Save as PDF/A fixes"
+msgstr "Enumerar lo que impide que este documento sea PDF/A, página por página, y lo que corrige Guardar como PDF/A"
+
+msgid "The file"
+msgstr "El archivo"
+
+msgid "Metadata and PDF/A identification"
+msgstr "Metadatos e identificación PDF/A"
+
+msgid "Colors"
+msgstr "Colores"
+
+msgid "Fonts"
+msgstr "Fuentes"
+
+msgid "Comments, markups and links"
+msgstr "Comentarios, marcas y vínculos"
+
+msgid "Scripts and actions"
+msgstr "Scripts y acciones"
+
+msgid "Pictures, drawings and transparency"
+msgstr "Imágenes, dibujos y transparencia"
+
+msgid "Attached files"
+msgstr "Archivos adjuntos"
+
+msgid "Digitally signed: a signature can't stay valid in a PDF/A copy (a new file), so it's removed."
+msgstr "Firmado digitalmente: una firma no puede seguir siendo válida en una copia PDF/A (un archivo nuevo), así que se quita."
+
+msgid "Removed the digital signatures (they wouldn't be valid in the new file)."
+msgstr "Se quitaron las firmas digitales (no serían válidas en el archivo nuevo)."
+
+msgid "Embedded the standard fonts (Helvetica, Times, Courier...) from KanzonasPDF's own copies."
+msgstr "Se incrustaron las fuentes estándar (Helvetica, Times, Courier...) a partir de las copias propias de KanzonasPDF."
+
+msgid "The document has attached files that aren't PDF/A, so it was saved as PDF/A-3b, the part of the standard that allows any attached file (PDF/A-2b allows only PDF/A attachments)."
+msgstr "El documento tiene archivos adjuntos que no son PDF/A, así que se guardó como PDF/A-3b, la parte de la norma que permite cualquier archivo adjunto (PDF/A-2b solo permite adjuntos PDF/A)."
+
+msgid "The file is protected with a password (encrypted), which PDF/A doesn't allow. Remove its security first (Protect > Remove security)."
+msgstr "El archivo está protegido con contraseña (cifrado), lo que PDF/A no permite. Quite primero su seguridad (Proteger > Quitar seguridad)."
+
+msgid "The file isn't marked as PDF/A (its metadata has no PDF/A identification)."
+msgstr "El archivo no está marcado como PDF/A (sus metadatos no tienen la identificación PDF/A)."
+
+msgid "There's no output intent (the color profile PDF/A requires for the colors the pages use)."
+msgstr "No hay intención de salida (el perfil de color que PDF/A exige para los colores que usan las páginas)."
+
+msgid "The file has no identifier (ID)."
+msgstr "El archivo no tiene identificador (ID)."
+
+msgid "The document lists viewer features it requires (Requirements), which PDF/A doesn't allow."
+msgstr "El documento enumera funciones del visor que requiere (Requirements), lo que PDF/A no permite."
+
+msgid "The document asks the viewer to build its pages (an XFA form)."
+msgstr "El documento pide al visor que construya sus páginas (un formulario XFA)."
+
+msgid "The layer settings lack a name, don't list every layer, or switch layers automatically."
+msgstr "La configuración de capas no tiene nombre, no enumera todas las capas o cambia las capas automáticamente."
+
+msgid "A form field has no appearance."
+msgstr "Un campo de formulario no tiene apariencia."
+
+msgid "Removed annotations that were hidden or of kinds PDF/A doesn't allow."
+msgstr "Se quitaron anotaciones que estaban ocultas o de tipos que PDF/A no permite."
+
+msgid "Part of the file uses LZW compression, which PDF/A doesn't allow."
+msgstr "Una parte del archivo usa compresión LZW, que PDF/A no permite."
+
+msgid "A picture is set to be smoothed when enlarged (Interpolate)."
+msgstr "Una imagen está configurada para suavizarse al ampliarse (Interpolate)."
+
+msgid "Actions that run on their own (when the document opens, closes or prints, or on a page or a field)."
+msgstr "Acciones que se ejecutan solas (al abrir, cerrar o imprimir el documento, o en una página o un campo)."
+
+msgid "A form field runs an action when clicked, which PDF/A doesn't allow."
+msgstr "Un campo de formulario ejecuta una acción al hacer clic, lo que PDF/A no permite."
+
+msgid "Printing settings PDF/A doesn't allow (transfer functions or halftones)."
+msgstr "Ajustes de impresión que PDF/A no permite (funciones de transferencia o semitonos)."
+
+msgid "CMYK colors are used without a CMYK color profile."
+msgstr "Se usan colores CMYK sin un perfil de color CMYK."
+
+msgid "RGB colors are used without an RGB color profile."
+msgstr "Se usan colores RGB sin un perfil de color RGB."
+
+msgid "This document is protected with a password. PDF/A doesn't allow encryption: remove its security first."
+msgstr "Este documento está protegido con contraseña. PDF/A no permite el cifrado: quite primero su seguridad."
+
+msgid "Its metadata (XMP) has a header PDF/A doesn't allow."
+msgstr "Sus metadatos (XMP) tienen un encabezado que PDF/A no permite."
+
+msgid "The output intent's color profile isn't one PDF/A allows."
+msgstr "El perfil de color de la intención de salida no es uno que PDF/A permita."
+
+msgid "The document contains JavaScript."
+msgstr "El documento contiene JavaScript."
+
+msgid "The document has an alternate presentation (a slide show), which PDF/A doesn't allow."
+msgstr "El documento tiene una presentación alternativa (una presentación de diapositivas), lo que PDF/A no permite."
+
+msgid "The form is an XFA form; its dynamic part isn't allowed (the fields themselves stay)."
+msgstr "El formulario es un formulario XFA; su parte dinámica no está permitida (los campos se conservan)."
+
+msgid "The form leaves drawing its fields to the viewer (NeedAppearances)."
+msgstr "El formulario deja al visor el dibujo de sus campos (NeedAppearances)."
+
+msgid "The page has presentation steps (PresSteps)."
+msgstr "La página tiene pasos de presentación (PresSteps)."
+
+msgid "Part of the file is kept in another file (an external stream)."
+msgstr "Una parte del archivo se guarda en otro archivo (un flujo externo)."
+
+msgid "A picture has alternate versions or OPI links."
+msgstr "Una imagen tiene versiones alternativas o vínculos OPI."
+
+msgid "A picture has a number of bits per color PDF/A doesn't allow."
+msgstr "Una imagen tiene una cantidad de bits por color que PDF/A no permite."
+
+msgid "Font {font} isn't embedded."
+msgstr "La fuente {font} no está incrustada."
+
+msgid "The file is PDF {version}; PDF/A-2 is based on PDF 1.7."
+msgstr "El archivo es PDF {version}; PDF/A-2 se basa en PDF 1.7."
+
+msgid "Removed the document's JavaScript."
+msgstr "Se quitó el JavaScript del documento."
+
+msgid "Default"
+msgstr "Predeterminada"
+
+msgid "Configuration"
+msgstr "Configuración"
+
+msgid "The page takes its resources (fonts, pictures) from the page tree."
+msgstr "La página toma sus recursos (fuentes, imágenes) del árbol de páginas."
+
+msgid "A button's appearance isn't stored as PDF/A requires."
+msgstr "La apariencia de un botón no está guardada como PDF/A exige."
+
+msgid "A {kind} annotation has no appearance."
+msgstr "Una anotación {kind} no tiene apariencia."
+
+msgid "A PostScript drawing (PDF/A doesn't allow PostScript)."
+msgstr "Un dibujo PostScript (PDF/A no permite PostScript)."
+
+msgid "A rendering intent PDF/A doesn't allow ({name})."
+msgstr "Una intención de representación que PDF/A no permite ({name})."
+
+msgid "Removed scripts and actions PDF/A doesn't allow."
+msgstr "Se quitaron scripts y acciones que PDF/A no permite."
+
+msgid "Font {font} isn't embedded, and KanzonasPDF has no copy of it to embed."
+msgstr "La fuente {font} no está incrustada, y KanzonasPDF no tiene una copia de ella para incrustarla."
+
+msgid "Font {font} isn't embedded, and the standard font that could replace it has other character widths or encoding."
+msgstr "La fuente {font} no está incrustada, y la fuente estándar que podría reemplazarla tiene otros anchos de carácter u otra codificación."
+
+msgid "The page is smaller than 3 points or larger than 14,400 points (200 inches) on a side."
+msgstr "La página mide menos de 3 puntos o más de 14,400 puntos (200 pulgadas) de lado."
+
+msgid "A {kind} annotation, a kind PDF/A doesn't allow (3D, sound, movie or multimedia); it's removed."
+msgstr "Una anotación {kind}, un tipo que PDF/A no permite (3D, sonido, película o multimedia); se quita."
+
+msgid "A hidden {kind} annotation; PDF/A shows every annotation, so it's removed."
+msgstr "Una anotación {kind} oculta; PDF/A muestra todas las anotaciones, así que se quita."
+
+msgid "A {kind} annotation has rollover or pressed appearances, which PDF/A doesn't allow."
+msgstr "Una anotación {kind} tiene apariencias al pasar el mouse o al presionarla, que PDF/A no permite."
+
+msgid "A field's appearance isn't stored as PDF/A requires."
+msgstr "La apariencia de un campo no está guardada como PDF/A exige."
+
+msgid "Part of the file uses a compression PDF/A doesn't allow ({name})."
+msgstr "Una parte del archivo usa una compresión que PDF/A no permite ({name})."
+
+msgid "A drawing refers to another file or holds PostScript code (OPI, PS or Ref)."
+msgstr "Un dibujo hace referencia a otro archivo o contiene código PostScript (OPI, PS o Ref)."
+
+msgid "A blend mode PDF/A doesn't allow ({name})."
+msgstr "Un modo de fusión que PDF/A no permite ({name})."
+
+msgid "Font {font} uses a character map (CMap) that isn't embedded ({cmap})."
+msgstr "La fuente {font} usa un mapa de caracteres (CMap) que no está incrustado ({cmap})."
+
+msgid "Font {font} lacks its CIDToGIDMap."
+msgstr "A la fuente {font} le falta su CIDToGIDMap."
+
+msgid "Font {font} is of a kind PDF/A doesn't allow."
+msgstr "La fuente {font} es de un tipo que PDF/A no permite."
+
+msgid "Font {font} has no character widths."
+msgstr "La fuente {font} no tiene anchos de carácter."
+
+msgid "Attached file {name} lacks its file name in one of the two forms."
+msgstr "Al archivo adjunto {name} le falta su nombre de archivo en una de las dos formas."
+
+msgid "Attached file {name} isn't PDF/A: the copy is then PDF/A-3b, which allows it."
+msgstr "El archivo adjunto {name} no es PDF/A: la copia es entonces PDF/A-3b, que lo permite."
+
+msgid "A {kind} annotation isn't set to print."
+msgstr "Una anotación {kind} no está configurada para imprimirse."
+
+msgid "An action PDF/A doesn't allow ({action})."
+msgstr "Una acción que PDF/A no permite ({action})."
+
+msgid "Attached file {name} lacks what PDF/A-3 requires (its kind and its relationship to the document)."
+msgstr "Al archivo adjunto {name} le falta lo que PDF/A-3 exige (su tipo y su relación con el documento)."
+
+msgid "Checking for PDF/A..."
+msgstr "Revisando PDF/A..."
+
+msgid "Check PDF/A"
+msgstr "Revisar PDF/A"
+
+msgid "Save as PDF/A"
+msgstr "Guardar como PDF/A"
+
+msgid "Saving as PDF/A..."
+msgstr "Guardando como PDF/A..."
+
+msgid "It checks the common requirements of PDF/A-2b; for a formal validation, use veraPDF (free, from the PDF Association: {url})."
+msgstr "Revisa los requisitos comunes de PDF/A-2b; para una validación formal, use veraPDF (gratuito, de la PDF Association: {url})."
+
+msgid "This document is protected with a password, and PDF/A doesn't allow encryption (an archive must open without one). Remove its security first (Protect > Remove security), then save it as PDF/A."
+msgstr "Este documento está protegido con contraseña, y PDF/A no permite el cifrado (un archivo de archivo debe abrirse sin contraseña). Quite primero su seguridad (Proteger > Quitar seguridad) y luego guárdelo como PDF/A."
+
+msgid "Nothing found: the document meets the requirements checked."
+msgstr "No se encontró nada: el documento cumple los requisitos revisados."
+
+msgid "Save as PDF/A..."
+msgstr "Guardar como PDF/A..."
+
+msgid "Saved {path} as PDF/A-{part}b."
+msgstr "Se guardó {path} como PDF/A-{part}b."
+
+msgid "These could not be fixed, so the copy doesn't fully conform yet. Double-click a line to go to its page."
+msgstr "Esto no se pudo corregir, así que la copia aún no cumple del todo. Haga doble clic en una línea para ir a su página."
+
+msgid "Nothing left that the check finds."
+msgstr "No queda nada que la revisión encuentre."
+
+msgid "{n} things keep this document from being PDF/A; Save as PDF/A fixes {fixable} of them. Double-click a line to go to its page."
+msgstr "{n} cosas impiden que este documento sea PDF/A; Guardar como PDF/A corrige {fixable} de ellas. Haga doble clic en una línea para ir a su página."
+
+msgid "Fixes it"
+msgstr "Lo corrige"
+
+msgid "Can't fix it"
+msgstr "No lo puede corregir"
