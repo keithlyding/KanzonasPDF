@@ -6658,6 +6658,11 @@ class DocumentView(QScrollArea):
 
         def do():
             page = self.doc[index]
+            if texts and text_fn is not None:
+                # (refused before anything changes: the shapes' change would already have
+                # dropped every step to redo, and taking the edit back doesn't bring them
+                # back. Random battery, seed 5)
+                text_edit.refuse_with_marks(page, deleting=not keep)
             if ns:
                 fresh["objs"] = fn(page, ns)
             # the links made for these objects go along (links_fn); before the text when
