@@ -2,10 +2,10 @@
 stayed readable in the saved file in places Apply redactions didn't reach:
 
 - Search & redact's term in a hidden layer or outside the page's visible area (a page
-  cropped: searching reads only what is shown), in a layer's name, a bookmark's web address, a form field on no
-  page (or a list field's options), a note's rich text (/RC) when its plain text was
-  different, an XFA form's data (also after Sanitize's form data), and (without the
-  clean-up) a program's own document information key;
+  cropped: searching reads only what is shown), in a layer's name, a bookmark's web
+  address, a form field on no page (or a list field's options), a note's rich text (/RC)
+  when its plain text was different, an XFA form's data (also after Sanitize's form data),
+  and (without the clean-up) a program's own document information key;
 - the words under any mark in the marked-content wrapper MuPDF leaves around them
   ("/Span <</ActualText (the words)>> BDC EMC"), without the clean-up and with Apply
   selected redactions (which never cleans up);

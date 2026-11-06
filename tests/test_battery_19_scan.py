@@ -33,8 +33,8 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from tests.test_scanning import (APP, ESCL_CAPS, Escl, FakeScanner, ServerCase,  # noqa: E402
-                                 picture, wait_for)
+from tests.test_scanning import (APP, ESCL_CAPS, Escl, FakeScanner,  # noqa: E402,F401
+                                 ServerCase, picture, wait_for)
 from kanzonas import scan_escl, scan_events, scan_local, scan_net as net  # noqa: E402
 from kanzonas.scan_net import Device, ScanError, ScanSettings  # noqa: E402
 
