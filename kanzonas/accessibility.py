@@ -1035,30 +1035,46 @@ def set_tooltips(doc, tips):
 
 # -- links
 def links(doc):
-    """[{"xref", "page", "rect", "contents", "uri", "suggestion"}] of every link."""
+    """[{"xref", "page", "rect", "contents", "uri", "suggestion"}] of every link (read from
+    the annotations themselves)."""
+    from . import pdfcoords
+    pdf = _pdf(doc)
+    pages = {doc.page_xref(i): i for i in range(doc.page_count)}
     out = []
     for i in range(doc.page_count):
         page = doc[i]
         xs = [x for x, t, _id in page.annot_xrefs() if t == pymupdf.PDF_ANNOT_LINK]
         if not xs:
             continue
-        by = {ln.get("xref"): ln for ln in page.get_links()}
+        tm = pdfcoords.to_page(page)
         for x in xs:
-            ln = by.get(x, {})
-            rect = pymupdf.Rect(ln.get("from") or (0, 0, 0, 0))
-            k, v = doc.xref_get_key(x, "Contents")
-            contents = _text(m.pdf_dict_gets(m.pdf_load_object(_pdf(doc), x), "Contents")) \
-                if k == "string" else ""
+            obj = m.pdf_load_object(pdf, x)
+            rect = pymupdf.Rect(0, 0, 0, 0)
+            r = _get(obj, "Rect")
+            if m.pdf_is_array(r) and m.pdf_array_len(r) == 4:
+                rect = (pymupdf.Rect([m.pdf_to_real(m.pdf_array_get(r, k))
+                                      for k in range(4)]) * tm).normalize()
+            contents = _text(m.pdf_dict_gets(obj, "Contents")) or ""
+            action = _get(obj, "A")
+            uri = ""
+            dest = m.pdf_dict_gets(obj, "Dest")
+            if m.pdf_is_dict(action):
+                uri = _text(m.pdf_dict_gets(action, "URI")) or ""
+                if _name(m.pdf_dict_gets(action, "S")) == "GoTo":
+                    dest = m.pdf_dict_gets(action, "D")
+            target = None
+            d = m.pdf_resolve_indirect(dest)
+            if m.pdf_is_array(d) and m.pdf_array_len(d):
+                target = pages.get(_num(m.pdf_array_get(d, 0)))
             words = " ".join(page.get_textbox(rect).split()) if not rect.is_empty else ""
-            uri = ln.get("uri") or ""
             if not words:
                 if uri:
                     words = uri
-                elif ln.get("kind") == pymupdf.LINK_GOTO and ln.get("page", -1) >= 0:
-                    words = tr("Go to page {n}").format(n=ln["page"] + 1)
-                elif ln.get("kind") == pymupdf.LINK_NAMED:
-                    words = ln.get("name") or ""
-            out.append({"xref": x, "page": i, "rect": rect, "contents": contents or "",
+                elif target is not None:
+                    words = tr("Go to page {n}").format(n=target + 1)
+                elif m.pdf_is_string(d) or m.pdf_is_name(d):
+                    words = _text(d) or _name(d) or ""
+            out.append({"xref": x, "page": i, "rect": rect, "contents": contents,
                         "uri": uri, "suggestion": words[:300]})
     return out
 
@@ -1211,7 +1227,7 @@ def _drop_parents(doc, tree, page, mcids):
         return
     for mc in mcids:
         if 0 <= mc < m.pdf_array_len(arr):
-            m.pdf_array_put(arr, mc, m.pdf_new_null())
+            m.pdf_array_put(arr, mc, m.PdfObj())
 
 
 def _unlink(doc, node):

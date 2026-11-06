@@ -832,6 +832,39 @@ class MainWindow(QMainWindow):
         self.a_attachments = self._act(tr("A&ttachments..."), self.show_attachments,
                                        tip=tr("Files embedded in this PDF: open, save or delete them"))
         self.a_bookmarks = self._act(tr("&Bookmarks"), self._show_bookmarks, "F9")
+        # Document > Accessibility (accessibility_ui.py)
+        acc = [("check_accessibility", tr("Check &accessibility..."),
+                tr("List what keeps this document from being accessible to screen readers "
+                   "(PDF/UA, WCAG), and what the fixes here deal with")),
+               ("auto_tag", tr("Auto-&tag..."),
+                tr("Tag an untagged document: headings, paragraphs, lists, tables, figures "
+                   "and reading order, for screen readers")),
+               ("alt_text", tr("Alt te&xt..."),
+                tr("Describe each figure for people who can't see it, or mark it "
+                   "decorative")),
+               ("title_language", tr("Title and &language..."),
+                tr("The title screen readers announce and the window shows, and the "
+                   "document's language")),
+               ("field_tooltips", tr("Form field t&ooltips..."),
+                tr("The name screen readers say for each form field")),
+               ("link_descriptions", tr("Lin&k descriptions..."),
+                tr("What screen readers say for each link")),
+               ("tab_order", tr("Ta&b order follows the tags"),
+                tr("Tab moves through links and fields in the order of the document's tags, "
+                   "on every page")),
+               ("mark_decorative", tr("Mark as &decorative"),
+                tr("Make the pictures and shapes selected with Edit objects artifacts "
+                   "(decoration screen readers skip)")),
+               ("embed_fonts", tr("&Embed fonts"),
+                tr("Embed the standard fonts that aren't (Helvetica, Times, Courier...), as "
+                   "Save as PDF/A does")),
+               ("identify_pdfua", tr("Identify as PDF/&UA..."),
+                tr("Say in the file's metadata that it meets PDF/UA-1 (once the check finds "
+                   "nothing)"))]
+        self.acc_actions = {}
+        for name, text, tip in acc:
+            self.acc_actions[name] = self._act(text, lambda _=False, n=name:
+                                               self.accessibility(n), tip=tip)
         self.a_search_redact = self._act(tr("&Search && redact..."), self.search_redact)
         self.a_apply_redact = self._act(tr("&Apply redactions..."), self.apply_redactions)
         self.a_digisign = self._act(tr("&Digitally sign with certificate..."), self.digital_sign)
@@ -1172,6 +1205,15 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_bookmarks)
         m.addAction(self.a_attachments)
+        am = m.addMenu(tr("&Accessibility"))
+        acts = self.acc_actions
+        am.addActions([acts["check_accessibility"], acts["auto_tag"]])
+        am.addSeparator()
+        am.addActions([acts[k] for k in ("alt_text", "title_language", "field_tooltips",
+                                         "link_descriptions", "tab_order", "mark_decorative",
+                                         "embed_fonts")])
+        am.addSeparator()
+        am.addAction(acts["identify_pdfua"])
         m.addSeparator()
         rm = m.addMenu(tr("&Redaction"))
         rm.addActions([self.tool_actions["redact"], self.a_search_redact,
@@ -1536,8 +1578,9 @@ class MainWindow(QMainWindow):
                   self.a_page_boxes, self.a_fix_hairlines, self.a_print_check,
                   self.a_background, self.a_remove_bg, self.a_remove_wm,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
-                  *self.export_actions):
+                  *self.export_actions, *self.acc_actions.values()):
             a.setEnabled(has)
+        self.acc_actions["mark_decorative"].setEnabled(has and v.obj_sel is not None)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_lock.setEnabled(has and v.selection is not None)
         self.a_unlock_all.setEnabled(has)
@@ -1829,6 +1872,13 @@ class MainWindow(QMainWindow):
             return False
         from . import pdfa_ui
         return pdfa_ui.save_as_pdfa(self, v)
+
+    def accessibility(self, name):
+        """Document > Accessibility: name is the command in accessibility_ui."""
+        v = self.view()
+        if v is not None:
+            from . import accessibility_ui
+            getattr(accessibility_ui, name)(self, v)
 
     def check_pdfa(self):
         v = self.view()

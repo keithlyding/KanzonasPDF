@@ -389,7 +389,7 @@ class PageReader:
     BMC EMC); glyphs: the number of glyphs the content shows (as MuPDF's trace counts them);
     exact: False when a font's codes couldn't be told apart."""
 
-    def __init__(self, page, data=None, props=None):
+    def __init__(self, page, data=None, turn=None):
         self.page = page
         self.doc = page.parent
         self.pdf = pymupdf._as_pdf_document(self.doc)
@@ -398,7 +398,10 @@ class PageReader:
         page_obj = m.pdf_load_object(self.pdf, page.xref)
         self.resources = self._page_resources(page_obj)
         # PDF user space -> the page as shown
-        self.to_shown = tuple(pdfcoords.to_page(page) * page.rotation_matrix)
+        shown = pdfcoords.to_page(page) * page.rotation_matrix
+        if turn is not None:
+            shown = shown * turn
+        self.to_shown = tuple(shown)
         self.pieces = []
         self.events = []
         self.glyphs = 0
@@ -1078,9 +1081,33 @@ class Layout:
         self.index = page.number
         self.ok = True
         self.why = ""
-        r = self.reader = PageReader(page).read()
         g = self.glyphs = page_glyphs(page)
-        self.rect = tuple(page.rect)
+        # most of the text running another way (a landscape page drawn sideways): the page
+        # is read turned so that it runs left to right
+        turn = None
+        rect = pymupdf.Rect(page.rect)
+        dirs = {}
+        for gl in g:
+            dirs[gl.dir] = dirs.get(gl.dir, 0) + 1
+        if dirs:
+            main = max(dirs.items(), key=lambda kv: kv[1])[0]
+            if main in ((0.0, 1.0), (-1.0, 0.0), (0.0, -1.0)) and dirs[main] > 0.5 * len(g):
+                turn = pymupdf.Matrix(-math.degrees(math.atan2(main[1], main[0])))
+                r = (rect * turn).normalize()
+                turn = turn * pymupdf.Matrix(1, 0, 0, 1, -r.x0, -r.y0)   # (at 0, 0 again)
+                rect = (rect * turn).normalize()
+                for gl in g:
+                    p = pymupdf.Point(gl.x, gl.y) * turn
+                    b = (pymupdf.Rect(gl.x0, gl.y0, gl.x1, gl.y1) * turn).normalize()
+                    gl.x, gl.y = p.x, p.y
+                    gl.x0, gl.y0, gl.x1, gl.y1 = b.x0, b.y0, b.x1, b.y1
+                    d = pymupdf.Point(gl.dir) * pymupdf.Matrix(turn.a, turn.b, turn.c,
+                                                               turn.d, 0, 0)
+                    gl.dir = (round(d.x, 2), round(d.y, 2))
+                    gl.horiz = abs(d.y) < 0.02 and d.x > 0
+        self.turn = turn
+        r = self.reader = PageReader(page, turn=turn).read()
+        self.rect = tuple(rect)
         self.tables = []
         self.figures = []
         self.lines = []
@@ -1320,13 +1347,15 @@ def _header_row(texts, nrow, ncol):
 
 
 # ---- the document's survey (first pass) -------------------------------------------------
-def _band(block, rect):
+def _band(box, rect, lines=1):
+    """"top" or "bottom" when a line (or a block of at most two lines) sits in the page's
+    top or bottom tenth, where headers and footers go."""
     h = rect[3] - rect[1]
-    if len(block.lines) > 2:
+    if lines > 2:
         return None
-    if block.y1 <= rect[1] + 0.12 * h:
+    if box[3] <= rect[1] + 0.1 * h:
         return "top"
-    if block.y0 >= rect[1] + 0.88 * h:
+    if box[1] >= rect[1] + 0.9 * h:
         return "bottom"
     return None
 
@@ -1350,10 +1379,11 @@ class Survey:
         self.body = 10.0
 
     def add(self, layout):
-        for b in layout.blocks:
-            band = _band(b, layout.rect)
+        for ln in layout.lines:
+            band = _band((ln.x0, ln.y0, ln.x1, ln.y1), layout.rect)
             if band:
-                self.bands.setdefault((band, _norm(b.text)), set()).add(layout.index)
+                self.bands.setdefault(self._band_key(band, ln), set()).add(layout.index)
+        for b in layout.blocks:
             n = sum(len(ln.gl) for ln in b.lines)
             key = round(b.size * 2) / 2
             self.sizes[key] = self.sizes.get(key, 0) + n
@@ -1376,18 +1406,28 @@ class Survey:
         size, bold = st
         return size >= 1.15 * self.body or (bold and size >= 0.95 * self.body)
 
-    def repeated(self, layout, block):
-        band = _band(block, layout.rect)
+    def repeated(self, layout, line):
+        """HEADER or FOOTER when the line is a page header or footer (a page number, or
+        the same words in the same place on many pages), else None."""
+        band = _band((line.x0, line.y0, line.x1, line.y1), layout.rect)
         if band is None:
             return None
-        text = block.text.strip()
+        text = line.text.strip()
         kind = HEADER if band == "top" else FOOTER
-        if _PAGE_NUMBER.match(text):
+        if _PAGE_NUMBER.match(text) and line.size <= 1.3 * self.body:
             return kind
+        if line.size > 1.15 * self.body:
+            return None                 # (big: a heading, not a running header)
         need = max(2, int(0.4 * self.pages + 0.999)) if self.pages > 1 else 10 ** 9
-        if len(self.bands.get((band, _norm(text)), ())) >= need:
+        if len(self.bands.get(self._band_key(band, line), ())) >= need:
             return kind
         return None
+
+    @staticmethod
+    def _band_key(band, line):
+        """Lines in the same band, with the same words (any number in them), in the same
+        place (within a few points), at the same size, are a running header or footer."""
+        return (band, _norm(line.text), round(line.y0 / 6), round(line.size))
 
 
 # ---- one page's tags -----------------------------------------------------------------
@@ -1414,11 +1454,13 @@ class PagePlan:
         self.keys = {}
 
 
-def _annotations(page):
+def _annotations(page, turn=None):
     """[(xref, subtype, box as shown)] of the markups, links and fields screen readers must
     find (not popups, printer marks or hidden ones)."""
     doc = page.parent
     to_shown = pdfcoords.to_page(page) * page.rotation_matrix
+    if turn is not None:
+        to_shown = to_shown * turn
     out = []
     for xref, _t, _id in page.annot_xrefs():
         sub = doc.xref_get_key(xref, "Subtype")[1].lstrip("/")
@@ -1516,19 +1558,21 @@ def plan_page(page, layout, survey, state):
     """The PagePlan of one page (state: what carries from page to page: the level of the
     heading before)."""
     plan = PagePlan(layout.index)
-    annots = _annotations(page)
+    annots = _annotations(page, getattr(layout, "turn", None))
     if not layout.ok:
         _whole_page(plan, layout, annots)
         return plan
     glyphs = layout.glyphs
     items = []
-    for b in layout.blocks:
-        art = survey.repeated(layout, b)
-        if art is not None:
-            for ln in b.lines:
-                for i in ln.gl:
-                    glyphs[i].owner = art
+    body = []
+    for ln in layout.lines:
+        art = survey.repeated(layout, ln)
+        if art is None:
+            body.append(ln)
             continue
+        for i in ln.gl:
+            glyphs[i].owner = art
+    for b in _make_blocks(body):
         items.append(_Item(b.box, "block", b, tall=len(b.lines) > 1))
     for t in layout.tables:
         items.append(_Item(t["box"], "table", t, tall=True))
@@ -1617,7 +1661,8 @@ def plan_page(page, layout, survey, state):
         elif it.kind == "figure":
             f = it.obj
             e = Elem("Figure", page.number, label=tr("Picture"))
-            e.box = f["box"]
+            e.box = f["box"] if layout.turn is None else \
+                tuple((pymupdf.Rect(f["box"]) * ~layout.turn).normalize())
             f["elem"] = e
             tops.append((it, e))
         else:
@@ -1978,4 +2023,26 @@ def notes(plans):
         elif p.note in ("left", "tagged"):
             out.append((p.index, tr("This page has marked content already, so it was left "
                                     "as it was (not tagged).")))
+    return out
+
+
+def counts(plans):
+    """{"H", "P", "L", "Table", "Figure", "Annot" (links, fields, comments)}: how many of
+    each the plans tag."""
+    out = {"H": 0, "P": 0, "L": 0, "Table": 0, "Figure": 0, "Annot": 0}
+
+    def walk(e):
+        t = e.type
+        if t.startswith("H") and t[1:].isdigit():
+            out["H"] += 1
+        elif t in ("P", "L", "Table", "Figure"):
+            out[t] += 1
+        elif t in ("Link", "Form", "Annot"):
+            out["Annot"] += 1
+        for k in e.kids:
+            if isinstance(k, Elem):
+                walk(k)
+    for p in plans:
+        for e in p.elems:
+            walk(e)
     return out
