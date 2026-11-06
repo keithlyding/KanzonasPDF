@@ -1224,12 +1224,14 @@ def _shift_pairs(text, dx, dy):
     return _NUMBER.sub(add, text)
 
 
-def replace_many(page, changes, olds=None):
+def replace_many(page, changes, olds=None, redraw=False):
     """replace() for several annotations at once ([(xref, model)], in that order), as when
     many markups are aligned, restyled or nudged together: each one is found in one walk of
     the page and the stacking order is read and written once, not once for each (N squared
     steps: 18 s for 1,000 markups). Returns [(old xref, its old model or None, new xref)].
-    olds: {xref: model} as the caller has just read them (they aren't read again)."""
+    olds: {xref: model} as the caller has just read them (they aren't read again).
+    redraw: each one is written anew even when only moved or not changed (its drawing made
+    again: a measurement after its scale changed)."""
     known = dict(olds or {})
     by_xref = load_annots(page, [x for x, _m in changes if x not in known])
     order = annot_order(page)
@@ -1255,7 +1257,7 @@ def replace_many(page, changes, olds=None):
     o = pymupdf.Point(0, 0) * to_pdf
     moves = {}
     for xref, model in changes:
-        d = translation(olds[xref], model)
+        d = None if redraw else translation(olds[xref], model)
         if d is not None and shift_in_place(page, xref, d, to_pdf):
             shifted.add(xref)
             v = pymupdf.Point(d) * to_pdf - o
@@ -1268,7 +1270,7 @@ def replace_many(page, changes, olds=None):
     # looked through all the page's markups for replies: minutes for a few thousand)
     # (a markup not changed at all stays as it is)
     unchanged = {x for x, m in changes if x not in shifted and m["kind"] != "attach" and
-                 _same(olds[x], m)}
+                 not redraw and _same(olds[x], m)}
     rewrite = [x for x, m in changes
                if m["kind"] != "attach" and x not in shifted and x not in unchanged]
     # the replies to a markup written anew answer the new one (deleting it took them along)
@@ -1322,8 +1324,14 @@ def replace(page, xref, model):
         return xref
     order = annot_order(page)
     pos = order.index(xref) if xref in order else None
-    page.delete_annot(page.load_annot(xref))
+    # the replies to it answer the new one (review.py): deleting it took them along
+    doc = page.parent
+    from . import review
+    answering = review.Threads(page).children.get(xref, ())
+    pdf_speed.delete_many(page, [xref], keep_replies=True)
     new = write(page, model).xref
+    for r in answering:
+        doc.xref_set_key(r, "IRT", f"{new} 0 R")
     if pos is not None:
         order = annot_order(page)
         if new in order:

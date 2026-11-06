@@ -342,6 +342,42 @@ class Replies(Base):
             t = self.threads(v)
             self.assertEqual(t.links, {}, how)
 
+    def test_redaction_over_a_thread(self):
+        """A redaction mark over a markup takes it with its whole thread; Search & redact
+        cleans a reply where it is (its thread kept)."""
+        v = self.view()
+        box = self.rect(v, box=(300, 600, 360, 640))
+        r = v.reply_to(0, box, "one")
+        v.reply_to(0, r, "two")
+        keep = self.rect(v, box=(100, 300, 160, 340))
+        r2 = v.reply_to(0, keep, "the words plan")
+        v.mark_redactions(0, [R(290, 590, 370, 650)])
+        v.search_redact("words")
+        v.apply_redactions(scrub=False)
+        self.assertEqual(self.boxes, [])
+        t = self.threads(v)
+        xs = {x for x, *_ in v.doc[0].annot_xrefs()}
+        self.assertNotIn(box, xs)
+        self.assertEqual([ln.text for _d, ln in t.replies(keep)], ["the [redacted] plan"])
+        self.assertEqual(t.root(r2), keep)
+
+    def test_new_scale_keeps_a_measurements_replies(self):
+        v = self.view()
+        m = self.add(v, 0, model("m_length", points=[P(100, 600), P(300, 600)]))
+        r = v.reply_to(0, m, "check this length")
+        page = v.doc[0]
+        before = page.load_annot(m).info["content"]
+        del page
+        v.set_page_scale([0], 0.01, "m", "1:100")
+        t = self.threads(v)
+        roots = [x for x in t.order if not t.is_linked(x)]
+        self.assertEqual(len(roots), 1)
+        page = v.doc[0]
+        self.assertNotEqual(page.load_annot(roots[0]).info["content"], before)
+        del page
+        self.assertEqual(t.root(r), roots[0])
+        self.assertEqual(self.boxes, [])
+
     def test_legend_doesnt_count_replies(self):
         from kanzonas import legend as L
         v = self.view()

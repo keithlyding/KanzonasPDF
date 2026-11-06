@@ -3249,9 +3249,10 @@ class DocumentView(QScrollArea):
                     m = annotations.read(a)
                     if m and m["kind"] in annotations.MEASURES and m["kind"] != "m_count":
                         models.append((a.xref, m))
-                for xref, m in models:
-                    pg.delete_annot(pg.load_annot(xref))
-                    annotations.write(pg, m)
+                a = None
+                if models:
+                    # (measured again with the new scale; replies stay with them)
+                    annotations.replace_many(pg, models, olds=dict(models), redraw=True)
         self.clear_selection()
         self.modify(do, list(scales))
         self._scale_notice_done()
@@ -6967,10 +6968,11 @@ class DocumentView(QScrollArea):
         for w in list(pg.widgets()):
             if hit(w.rect):
                 pg.delete_widget(w)
-        for x in [a.xref for a in pg.annots()
+        doomed = [a.xref for a in pg.annots()
                   if a.type[0] not in (pymupdf.PDF_ANNOT_REDACT, pymupdf.PDF_ANNOT_POPUP)
-                  and hit(a.rect)]:
-            pg.delete_annot(pg.load_annot(x))
+                  and hit(a.rect)]
+        from . import pdf_speed
+        pdf_speed.delete_many(pg, doomed)       # (with their replies: one walk)
 
     # text a person typed or sees, in KanzonasPDF's private markup data (stamp labels, names
     # and dates, notes): the rest is structure (kind, colors, geometry, picture data), where a
@@ -7030,8 +7032,20 @@ class DocumentView(QScrollArea):
             for ln in pg.get_links():
                 if any(pat.search(x) for x in self._link_texts(ln)):
                     pg.delete_link(ln)          # e.g. a mailto: or web address with the term
+            replies = review.Threads(pg).links
             for x in [a.xref for a in pg.annots() if a.type[0] != pymupdf.PDF_ANNOT_REDACT]:
-                if not self._annot_has(pg, x, pat):
+                try:
+                    if not self._annot_has(pg, x, pat):
+                        continue
+                except Exception:
+                    continue            # (gone with the markup it answered)
+                if x in replies:
+                    # a reply or status: its text and name cleaned where it is (written
+                    # anew it would lose its thread)
+                    ln = replies[x]
+                    review.edit_reply(self.doc, x, clean(ln.text or ""))
+                    self.doc.xref_set_key(x, "T", pymupdf.get_pdf_str(clean(ln.author or "")))
+                    self.doc.xref_set_key(x, "Subj", "null")
                     continue
                 model = annotations.read(pg.load_annot(x))
                 if model is not None and model["kind"] not in self.REDACT_DROP and \
@@ -7562,10 +7576,10 @@ class DocumentView(QScrollArea):
             if opts.get("form_data"):
                 clear_form_data(self.doc)
             if opts.get("markups"):
+                from . import pdf_speed
                 for i in range(self.doc.page_count):
                     pg = self.doc[i]
-                    for x in [a.xref for a in pg.annots()]:
-                        pg.delete_annot(pg.load_annot(x))
+                    pdf_speed.delete_many(pg, [x for x, *_ in pg.annot_xrefs()])
         self.clear_selection()
         self.modify(do, structural=True)
 
