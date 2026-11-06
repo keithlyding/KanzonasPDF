@@ -1399,9 +1399,12 @@ ya contienen texto</b> (activado de forma predeterminada, para que el texto no s
 <b>Alta</b> (400 ppp, y revisa todas las orientaciones, para letra pequeña, escaneos de mala calidad y
 páginas de lado o al revés; la más lenta); o <b>Automática</b> (el valor predeterminado), que lee cada
 página rápido y la vuelve a procesar con resolución Alta solo cuando el texto salió pequeño o poco claro.
-Una precisión mayor tarda más y usa más memoria, y nunca procesa un escaneo con más nitidez de la
+Una precisión mayor tarda más, y nunca procesa un escaneo con más nitidez de la
 que se escaneó (eso solo agrega desenfoque), así que en un escaneo de 200 ppp Normal y Alta leen a 200 ppp.
-Su elección se recuerda. Con cualquier precisión, una página escaneada al revés se detecta y se lee
+Su elección se recuerda. Una página se lee de a un mosaico por vez, cada uno dibujado solo cuando se lee,
+así que incluso un plano de 42 x 30 pulgadas en Alta necesita más o menos la misma memoria que una página carta; la
+memoria que usó el OCR vuelve al sistema cuando termina, y la del propio motor de OCR (unos 45 MB) dos minutos
+después de la última página que leyó. Con cualquier precisión, una página escaneada al revés se detecta y se lee
 girada a la posición correcta, y las líneas que están al revés o en vertical en la página reciben su texto
 donde están sus letras, de modo que Buscar, así como Buscar y censurar, abarcan las palabras correctas. Editar texto cambia
 luego las palabras del escaneo con una fuente que coincide (vea Editar el texto propio del PDF).</li>

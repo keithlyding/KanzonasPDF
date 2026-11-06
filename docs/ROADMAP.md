@@ -36,7 +36,8 @@ The owner sets this list; nothing below is promised until it's here.
      notice on the first unscaled measurement, an on-screen scale bar: `claude/scale-display`.
    - Edit text keeps each word's style; Bold, Italic, Underline, Strikethrough, color and size
      for selected words, bold and italic in the line's own font: `claude/text-styles` (done).
-   - Then: the Spanish ribbon tabs fit a 1366-pixel screen; less memory for OCR.
+   - Then: the Spanish ribbon tabs fit a 1366-pixel screen; less memory for OCR (both done:
+     `claude/1.9-ui-fixes`, with small fixes found by screenshots).
 3. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 

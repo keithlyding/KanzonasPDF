@@ -8093,8 +8093,7 @@ class DocumentView(QScrollArea):
         results = {}
         pool = ThreadPoolExecutor(max_workers=1)
 
-        def ocr_image(rendering):
-            fut = pool.submit(ocr.recognize, rendering, dlg.wasCanceled)
+        def wait(fut):
             while not fut.done():       # keep the window responsive while OCR runs
                 QApplication.processEvents()
                 time.sleep(0.03)
@@ -8102,13 +8101,26 @@ class DocumentView(QScrollArea):
                     return None
             return fut.result()
 
+        def ocr_image(rendering):
+            # the tiles are rendered here (PyMuPDF: this thread) and read in the worker
+            res = ocr.recognize(rendering, dlg.wasCanceled, executor=pool, wait=wait)
+            return None if dlg.wasCanceled() else res
+
+        def to_read(i, dpi, turn=0):
+            # (one display list for a page's readings: made once, each tile drawn from it)
+            if lists.get(i) is None:
+                lists.clear()
+                lists[i] = self.doc[i].get_displaylist(annots=False)
+            return ocr.Rendering(self.doc[i], turn, dpi=dpi, displaylist=lists[i])
+        lists = {}
+
         try:
             for n, i in enumerate(pages):
                 dlg.setLabelText(tr("Recognizing text on page {page} ({n} of {total})...").format(
                     page=i + 1, n=n + 1, total=len(pages)))
                 dpi = ocr.page_dpi(self.doc[i],
                                    ocr.ACCURACY_DPI.get(accuracy, ocr.ACCURACY_DPI["fast"]))
-                best = ocr.Rendering(self.doc[i], dpi=dpi)
+                best = to_read(i, dpi)
                 res = ocr_image(best)
                 if res is None:
                     break
@@ -8117,7 +8129,7 @@ class DocumentView(QScrollArea):
                     dlg.setLabelText(tr("Page {page}: small or unclear text, recognizing "
                                         "again at higher resolution...").format(page=i + 1))
                     dpi = sharper
-                    best = ocr.Rendering(self.doc[i], dpi=dpi)
+                    best = to_read(i, dpi)
                     res = ocr_image(best)
                     if res is None:
                         break
@@ -8127,7 +8139,7 @@ class DocumentView(QScrollArea):
                     # wasn't sure about read right then), keep the better reading
                     dlg.setLabelText(tr("Page {page}: upside down, recognizing it turned...")
                                      .format(page=i + 1))
-                    r = ocr.Rendering(self.doc[i], 180, dpi=dpi)
+                    r = to_read(i, dpi, 180)
                     alt = ocr_image(r)
                     if alt is None:
                         break
@@ -8142,7 +8154,7 @@ class DocumentView(QScrollArea):
                     for extra in turns:
                         if extra == turn:
                             continue
-                        r = ocr.Rendering(self.doc[i], extra, dpi=dpi)
+                        r = to_read(i, dpi, extra)
                         alt = ocr_image(r)
                         if alt is None:
                             break
@@ -8152,7 +8164,8 @@ class DocumentView(QScrollArea):
                             best, res = r, alt
                     if dlg.wasCanceled():
                         break
-                best.release()              # keep the text, not the full-size image
+                best.release()              # keep the text, not the page
+                lists.clear()
                 results[i] = (res, best)
                 dlg.setValue(n + 1)
         except Exception as ex:
@@ -8161,6 +8174,12 @@ class DocumentView(QScrollArea):
         finally:
             pool.shutdown(wait=False, cancel_futures=True)
             dlg.close()
+            lists.clear()
+            # the memory the tiles took back to the system now, the engine's once it's
+            # been unused a while (the next job soon after reuses it)
+            ocr.trim_memory()
+            QTimer.singleShot(int(ocr.ENGINE_IDLE_S * 1000) + 1000,
+                              lambda: ocr.release_engine(ocr.ENGINE_IDLE_S))
         if not results:
             return
         counts = {}
