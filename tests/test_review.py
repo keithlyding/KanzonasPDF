@@ -325,6 +325,23 @@ class Replies(Base):
         self.assertEqual(len(roots), 1)
         self.assertEqual(t.root(r), roots[0])
 
+    def test_apply_redactions_and_sanitize_with_threads(self):
+        """Clean-up removes replies (PyMuPDF's own step failed on a reply to a reply)."""
+        for how in ("redact", "sanitize"):
+            v = self.view()
+            box = self.rect(v)
+            r = v.reply_to(0, box, "one")
+            v.reply_to(0, r, "two")
+            v.set_review_status(0, [box], "Accepted")
+            if how == "redact":
+                v.mark_redactions(0, [R(300, 600, 400, 650)])
+                v.apply_redactions(scrub=True)
+            else:
+                v.sanitize({"markups": True})
+            self.assertEqual(self.boxes, [], how)
+            t = self.threads(v)
+            self.assertEqual(t.links, {}, how)
+
     def test_legend_doesnt_count_replies(self):
         from kanzonas import legend as L
         v = self.view()
@@ -465,6 +482,11 @@ class Exchange(Base):
         self.add(v, 1, model("textbox", rect=R(100, 400, 300, 460), text="Text box"))
         self.add(v, 2, model("note", rect=R(500, 100, 520, 120), text="Sticky"))
         self.add(v, 2, model("m_length", points=[P(100, 600), P(300, 600)]))
+        self.add(v, 2, model("callout", rect=R(300, 300, 420, 340), points=[P(250, 250)],
+                             text="Callout"))
+        self.add(v, 2, model("stamp", rect=R(100, 680, 220, 730), detail="Tester 11/6/2026"))
+        self.add(v, 1, model("m_dim", points=[P(100, 700), P(300, 700), P(200, 720)]))
+        self.add(v, 1, model("m_area", points=[P(400, 500), P(500, 500), P(450, 580)]))
         r = v.reply_to(0, a, "Reply \u00e9\u00e8 \u2603 <&>")
         v.reply_to(0, r, "Second level")
         v.set_review_status(0, [a], "Accepted")
@@ -529,7 +551,8 @@ class Exchange(Base):
         tags = sorted(el.tag[len(ns):] for el in annots)
         self.assertEqual(tags, sorted(["square", "square", "highlight", "line", "polygon",
                                        "ink", "freetext", "text", "line", "text", "text",
-                                       "text", "text"]))
+                                       "text", "text", "freetext", "stamp", "line",
+                                       "polygon"]))
         self.assertEqual(root.find(ns + "f").get("href"), "doc.pdf")
         names = {el.get("name") for el in annots}
         import re
@@ -568,8 +591,8 @@ class Exchange(Base):
         rep = small.import_comments(xfdf.from_xfdf(data))
         on0 = sum(1 for r in recs if r["page"] == 0)
         self.assertEqual(rep.added, on0)
-        self.assertEqual(rep.skipped, {"page 2 isn't in this document": 3,
-                                       "page 3 isn't in this document": 2})
+        self.assertEqual(rep.skipped, {"page 2 isn't in this document": 5,
+                                       "page 3 isn't in this document": 4})
         self.assertIn("page 3 isn't in this document", rep.text())
         t = self.threads(small)
         roots = [x for x in t.order if not t.is_linked(x)]
@@ -597,6 +620,69 @@ class Exchange(Base):
         texts = [ln.text for x in t.order if not t.is_linked(x) for _d, ln in t.replies(x)]
         self.assertIn("From the colleague", texts)
         self.assertEqual(note, note)
+
+    def test_xfdf_from_another_program(self):
+        """An XFDF file as Acrobat writes one (no KanzonasPDF style): a highlight with a
+        reply and a status, a cloudy square, a polygon and an ink drawing."""
+        data = b"""<?xml version="1.0" encoding="UTF-8" ?>
+<xfdf xmlns="http://ns.adobe.com/xfdf/" xml:space="preserve"><annots>
+<highlight color="#FFFF00" creationdate="D:20261101090000-05'00'" flags="print"
+ date="D:20261101090000-05'00'" name="0d9c3a3e-aaaa" page="0"
+ coords="72,754.9,150,754.9,72,738.4,150,738.4" rect="71,737,151,756"
+ subject="Highlight" title="Reviewer One"><contents>Rephrase this</contents>
+ <popup flags="print,nozoom,norotate" open="no" page="0" rect="400,600,580,700"/></highlight>
+<text color="#FFFF00" creationdate="D:20261102090000-05'00'" flags="print,nozoom,norotate"
+ date="D:20261102090000-05'00'" name="0d9c3a3e-bbbb" page="0" rect="71,737,91,757"
+ subject="Sticky Note" title="Author Two" icon="Comment" inreplyto="0d9c3a3e-aaaa"
+ replyType="reply"><contents>Done</contents></text>
+<text color="#FFFF00" creationdate="D:20261102090100-05'00'"
+ flags="hidden,print,nozoom,norotate" date="D:20261102090100-05'00'"
+ name="0d9c3a3e-cccc" page="0" rect="71,737,91,757" title="Author Two"
+ inreplyto="0d9c3a3e-aaaa" state="Completed" statemodel="Review"
+ replyType="reply"><contents>Completed set by Author Two</contents></text>
+<square color="#FF0000" date="D:20261101090000" name="0d9c3a3e-dddd" page="1"
+ rect="100,100,300,200" width="2" style="cloudy" intensity="2" title="Reviewer One"/>
+<polygon color="#0000FF" date="D:20261101090000" name="0d9c3a3e-eeee" page="1"
+ rect="300,300,420,420" width="1" title="Reviewer One">
+ <vertices>310,310;410,320;360,410</vertices></polygon>
+<ink color="#00AA00" date="D:20261101090000" name="0d9c3a3e-ffff" page="1"
+ rect="50,500,200,600" width="3" title="Reviewer One">
+ <inklist><gesture>60,510;100,590;190,520</gesture></inklist></ink>
+</annots><f href="review.pdf"/></xfdf>"""
+        v = self.view()
+        rep = v.import_comments(xfdf.from_xfdf(data))
+        self.assertEqual((rep.added, rep.skipped), (6, {}))
+        t = self.threads(v)
+        roots = [x for x in t.order if not t.is_linked(x) and
+                 v.doc.xref_get_key(x, "Subtype")[1] != "/Popup"]
+        self.assertEqual(len(roots), 1)
+        hl = roots[0]
+        self.assertEqual([(ln.author, ln.text) for _d, ln in t.replies(hl)],
+                         [("Author Two", "Done")])
+        self.assertEqual(t.status(hl)[0], "Completed")
+        self.assertEqual(v.doc.xref_get_key(hl, "T")[1], "Reviewer One")
+        page = v.doc[0]
+        a = page.load_annot(hl)
+        self.assertEqual(a.type[1], "Highlight")
+        self.assertEqual(a.info["content"], "Rephrase this")
+        self.assertIsNotNone(a.popup_rect)
+        del a, page
+        page = v.doc[1]
+        kinds = sorted(a.type[1] for a in page.annots())
+        self.assertEqual(kinds, ["Ink", "Polygon", "Square"])
+        sq = [a for a in page.annots() if a.type[1] == "Square"][0]
+        self.assertEqual(sq.border.get("clouds"), 2)
+        self.assertEqual(v.doc.xref_get_key(sq.xref, "AP")[0], "dict")     # (drawn by MuPDF)
+        ink = [a for a in page.annots() if a.type[1] == "Ink"][0]
+        self.assertEqual([[tuple(round(c) for c in p) for p in g] for g in ink.vertices],
+                         [[(60, 792 - 510), (100, 792 - 590), (190, 792 - 520)]])
+        # exported again, it says the same
+        recs, _ = xfdf.records(v.doc)
+        again = {r["keys"]["NM"]: r for r in xfdf.from_xfdf(xfdf.to_xfdf(recs))}
+        self.assertEqual(again["0d9c3a3e-bbbb"]["irt"], "0d9c3a3e-aaaa")
+        self.assertEqual(again["0d9c3a3e-cccc"]["keys"]["State"], "Completed")
+        self.assertEqual(again["0d9c3a3e-eeee"]["keys"]["Vertices"],
+                         [310, 310, 410, 320, 360, 410])
 
     def test_bad_files(self):
         with self.assertRaises(ValueError):
