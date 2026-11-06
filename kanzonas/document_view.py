@@ -5498,19 +5498,27 @@ class DocumentView(QScrollArea):
         self.modify(do, [index])
 
     def _search_every_layer(self, text):
-        """{page index: rects} of text on every page, in the layers hidden too: searching
-        only reads what is shown, and a hidden layer's copy of the words (a plan's notes, a
-        draft's) stayed in the file after Search & redact. Searched in a copy without the
-        layers' settings, where everything shows (redaction then removes it from any
-        layer)."""
+        """{page index: rects} of text on every page, in the layers hidden too and outside
+        the page's visible area (a page cropped keeps all it had): searching only reads what
+        is shown, and a hidden layer's copy of the words (a plan's notes, a draft's) or the
+        words cropped away stayed in the file after Search & redact. Searched in a copy
+        without the layers' settings, where everything shows, with no clip (redaction then
+        removes it from any layer, and outside the visible area too)."""
         doc = self.doc
         copy = None
         if doc.xref_get_key(doc.pdf_catalog(), "OCProperties")[0] != "null":
             copy = self._open_snapshot(self._snapshot())
             copy.xref_set_key(copy.pdf_catalog(), "OCProperties", "null")
         src = copy or doc
+        flags = pymupdf.TEXT_DEHYPHENATE | pymupdf.TEXT_PRESERVE_WHITESPACE | \
+            pymupdf.TEXT_PRESERVE_LIGATURES         # (search_for's own, without the clip)
         try:
-            return {i: src[i].search_for(text) for i in range(src.page_count)}
+            out = {}
+            for i in range(src.page_count):
+                page = src[i]
+                tp = page.get_textpage(clip=pymupdf.INFINITE_RECT(), flags=flags)
+                out[i] = page.search_for(text, textpage=tp)
+            return out
         finally:
             if copy is not None:
                 copy.close()

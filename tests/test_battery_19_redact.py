@@ -1,8 +1,8 @@
 """What the 1.9 break-it battery found in redaction and Sanitize, fixed: what was redacted
 stayed readable in the saved file in places Apply redactions didn't reach:
 
-- Search & redact's term in a hidden layer (searching reads only what is shown), in a
-  layer's name, a bookmark's web address, a form field on no
+- Search & redact's term in a hidden layer or outside the page's visible area (a page
+  cropped: searching reads only what is shown), in a layer's name, a bookmark's web address, a form field on no
   page (or a list field's options), a note's rich text (/RC) when its plain text was
   different, an XFA form's data (also after Sanitize's form data), and (without the
   clean-up) a program's own document information key;
@@ -84,6 +84,17 @@ class SearchAndRedact(Case):
         self.assertNotIn(WORD.encode(), data)
         self.assertIn(b"Draft: ", data)                     # (the rest of the layer stays)
         self.assertEqual([c["on"] for c in v.doc.layer_ui_configs()], [0])  # (still hidden)
+
+    def test_the_term_cropped_away(self):
+        # (Crop pages hides what's outside the box; it stays in the file)
+        d, p = self.doc()
+        p.insert_text((50, 650), "Cropped %s words" % WORD, fontsize=12)
+        p.insert_text((50, 760), "Past the edge %s too" % WORD, fontsize=12)   # (page: 700)
+        p.set_cropbox(pymupdf.Rect(0, 0, 500, 400))
+        v, data = self.redact_word(d)
+        self.assertNotIn(WORD.encode(), data)
+        self.assertIn(b"Cropped ", data)
+        self.assertEqual(v.doc[0].rect, pymupdf.Rect(0, 0, 500, 400))
 
     def test_a_layer_named_with_the_term(self):
         for scrub in (True, False):

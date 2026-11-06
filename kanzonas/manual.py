@@ -1360,7 +1360,8 @@ the part outside it. A redacted page also loses its thumbnail and the private co
 some programs (Illustrator) keep in the file. Applying scrubs metadata, attachments, hidden
 text, scripts and such programs' private data unless
 you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> marks the text
-on the pages also where a layer that is hidden has it, and finds it where a box can't go: form
+on the pages also where a layer that is hidden has it or where the page is cropped away, and finds
+it where a box can't go: form
 fields (values, list options, tooltips and names, also of fields on no page), links (web and
 email addresses), markup notes (also their formatted text), bookmark titles and web addresses,
 document properties (also a program's own), the alternate text of tagged PDFs, link notes,

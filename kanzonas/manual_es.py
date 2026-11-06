@@ -1351,7 +1351,8 @@ la parte que queda fuera de él. Una página censurada también pierde su miniat
 que algunos programas (Illustrator) guardan en el archivo. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto, los scripts
 y los datos privados de esos programas, a menos que
 lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> marca el texto de las
-páginas también donde lo tiene una capa oculta, y lo encuentra donde no puede ir un cuadro: campos
+páginas también donde lo tiene una capa oculta o donde la página está recortada, y lo encuentra donde no
+puede ir un cuadro: campos
 de formulario (valores, opciones de lista, información sobre herramientas y nombres, también de campos que no están en ninguna página),
 vínculos (direcciones web y de correo electrónico), notas
 de marcas (también su texto con formato), títulos y direcciones web de marcadores, propiedades del documento (también las propias de un
