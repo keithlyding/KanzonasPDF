@@ -20,3 +20,4 @@ if "onnxruntime" not in _sys.modules:
 del _sys, _os
 
 from . import pdfcoords as _pdfcoords  # noqa: E402,F401  (gives PyMuPDF the right page matrix)
+from . import save_guard as _save_guard  # noqa: E402,F401  (compacting saves keep held streams)
