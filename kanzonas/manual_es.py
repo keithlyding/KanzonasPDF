@@ -1212,7 +1212,9 @@ Reconocer texto (OCR) en las páginas nuevas.</li>
 <li><b>Vigilar una carpeta...</b> es para una impresora que solo puede escanear a una carpeta
 de red (Escanear a carpeta de red, SMB) o a FTP: elija la carpeta a la que escanea; cada PDF o
 imagen nuevo (JPEG, PNG, TIFF) que llega allí mientras la ventana está abierta se agrega como
-páginas escaneadas. Haga clic en Listo cuando estén todos.</li>
+páginas escaneadas, una vez que deja de crecer y parece terminado (un archivo que sigue sin terminar
+durante un minuto se indica como incompleto). Los vínculos a archivos de otros lugares no se toman.
+Haga clic en Listo cuando estén todos.</li>
 </ul>
 <p>Cuando no funciona, la ventana dice por qué con palabras sencillas, y qué probar:</p>
 <ul>

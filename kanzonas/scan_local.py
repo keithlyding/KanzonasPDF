@@ -522,56 +522,122 @@ def sane_message(text):
 
 
 # ---- a folder the printer scans into ------------------------------------------------------
+WATCH_GIVE_UP = 60.0        # seconds a file that looks unfinished is waited for
+
+
+def _tail(path, n):
+    with open(path, "rb") as f:
+        f.seek(0, os.SEEK_END)
+        f.seek(max(0, f.tell() - n))
+        return f.read()
+
+
+def looks_complete(path):
+    """False when a file that arrived is visibly unfinished (the printer or the FTP upload
+    is still writing it, or stopped): a JPEG without its end marker, a PNG without its last
+    chunk, a PDF without %%EOF near its end. True when it can't be told (TIFF)."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(8)
+        tail = _tail(path, 2048)
+    except OSError:
+        return True                 # (read_watched says what's wrong)
+    return _complete(head, tail)
+
+
+def _complete(head, tail):
+    kind = net.image_kind(head)
+    if kind == "jpeg":
+        return tail.rstrip(b"\0\r\n ").endswith(b"\xff\xd9")
+    if kind == "png":
+        return tail.endswith(b"IEND\xaeB`\x82")
+    if kind == "pdf":
+        return b"%%EOF" in tail
+    return True
+
+
 class FolderWatch:
     """New PDFs and pictures in a folder. Files already there when watching starts are left
-    alone; a new file is taken once its size has stayed the same between two looks (the
-    printer may still be writing it)."""
+    alone; a new file is taken once its size and time have stayed the same between two
+    looks and it doesn't look unfinished (the printer may still be writing it, an FTP
+    upload may pause), or once it hasn't changed for WATCH_GIVE_UP seconds (read_watched
+    then says it's incomplete). Links to other files, and anything that isn't a plain file,
+    are left alone (a share others write into could link to a file of this computer)."""
 
-    def __init__(self, folder):
+    def __init__(self, folder, clock=None):
+        import time
         self.folder = folder
+        self.clock = clock or time.monotonic
         self.known = set(self._names())
-        self.sizes = {}
+        self.sizes = {}             # name -> ((size, time), when that was first seen)
 
     def _names(self):
         try:
             with os.scandir(self.folder) as it:
                 return [e.name for _i, e in zip(range(20000), it)
-                        if e.is_file() and os.path.splitext(e.name)[1].lower() in WATCH_EXTS]
+                        if e.is_file(follow_symlinks=False) and not e.is_symlink()
+                        and os.path.splitext(e.name)[1].lower() in WATCH_EXTS]
         except OSError:
             return []
 
     def poll(self):
         """Paths of the files that have arrived complete since the last look."""
         ready = []
+        now = self.clock()
         for name in self._names():
             if name in self.known:
                 continue
             path = os.path.join(self.folder, name)
             try:
-                size = os.path.getsize(path)
+                st = os.stat(path, follow_symlinks=False)
             except OSError:
                 continue
-            if size > 0 and self.sizes.get(name) == size:
+            stamp = (st.st_size, st.st_mtime_ns)
+            seen = self.sizes.get(name)
+            if st.st_size > 0 and seen is not None and seen[0] == stamp and (
+                    looks_complete(path) or now - seen[1] >= WATCH_GIVE_UP):
                 self.known.add(name)
                 self.sizes.pop(name, None)
                 ready.append(path)
-            else:
-                self.sizes[name] = size
+            elif seen is None or seen[0] != stamp:
+                self.sizes[name] = (stamp, now)
         return sorted(ready)
+
+
+def _read_plain_file(path, limit):
+    """The bytes of path, a plain file (not a link, a pipe or a device: opening a pipe would
+    wait for a writer forever), of at most limit bytes."""
+    import stat
+    name = os.path.basename(path)
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0) | \
+        getattr(os, "O_NONBLOCK", 0)
+    try:
+        if os.path.islink(path):
+            raise ScanError(tr("{name} is a link to another file: it's left alone.").format(
+                name=name))
+        fd = os.open(path, flags)
+        with os.fdopen(fd, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise ScanError(tr("{name} isn't a file.").format(name=name))
+            if st.st_size > limit:
+                raise ScanError(tr("{name} is too large.").format(name=name))
+            data = f.read(limit + 1)
+    except OSError as ex:
+        raise ScanError(tr("Couldn't read {name}.").format(name=name), str(ex))
+    if len(data) > limit:
+        raise ScanError(tr("{name} is too large.").format(name=name))
+    return data
 
 
 def read_watched(path):
     """A Page of a file that arrived in the watched folder (its own size: dpi 0)."""
+    data = _read_plain_file(path, MAX_WATCHED_FILE)
+    if not _complete(data[:8], data[-2048:]):
+        raise ScanError(tr("{name} is incomplete (the printer may have stopped sending "
+                           "it).").format(name=os.path.basename(path)))
     if os.path.splitext(path)[1].lower() == ".pdf":
-        try:
-            if os.path.getsize(path) > MAX_WATCHED_FILE:
-                raise ScanError(tr("{name} is too large.").format(name=os.path.basename(path)))
-            with open(path, "rb") as f:
-                data = f.read()
-        except OSError as ex:
-            raise ScanError(tr("Couldn't read {name}.").format(name=os.path.basename(path)),
-                            str(ex))
         if not data.startswith(b"%PDF-"):
             raise ScanError(tr("{name} isn't a PDF.").format(name=os.path.basename(path)))
         return net.Page(data, "pdf", 0, [])
-    return _read_page(path, 0)
+    return net.check_image(data, 0)

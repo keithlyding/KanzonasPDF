@@ -298,7 +298,7 @@ class Http:
 
     def __init__(self, base_url):
         self.scheme, self.host, self.port, self.base_path = split_url(base_url)
-        self._conn = None
+        self._sock = None
         self._lock = threading.Lock()
         self.canceled = False
         self.log = []               # (method, url, status) of each request, for Copy details
@@ -322,10 +322,13 @@ class Http:
     def abort(self):
         with self._lock:
             self.canceled = True
-            conn = self._conn
-        if conn is not None and conn.sock is not None:
+            sock = self._sock
+        if sock is not None:
             try:
-                conn.sock.shutdown(socket.SHUT_RDWR)
+                # (the socket itself: http.client lets go of it once the answer's headers
+                # are in, while the answer is still read from it; and under TLS the plain
+                # shutdown, which a read in another thread then returns from)
+                socket.socket.shutdown(sock, socket.SHUT_RDWR)
             except OSError:
                 pass
 
@@ -371,12 +374,12 @@ class Http:
         hdrs.update(headers or {})
         if isinstance(body, str):
             body = body.encode("utf-8")
-        with self._lock:
-            self._conn = conn
         try:
             try:
                 conn.connect()
                 conn.sock.settimeout(timeout)
+                with self._lock:
+                    self._sock = conn.sock
                 if self.canceled:
                     raise Canceled()
                 conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
@@ -401,27 +404,36 @@ class Http:
                         raise ScanError(tr("The scanner's answer was too large."),
                                         "%s: more than %d bytes" % (url, limit))
                     chunks.append(part)
+                # (Cancel shuts the connection down, which reads as the end of the answer;
+                # a device that drops the connection mid-page reads the same: http.client
+                # doesn't say a Content-Length was cut short, and half a picture opens)
+                if self.canceled:
+                    raise Canceled()
+                if size.isdigit() and got < int(size):
+                    raise NetError(tr("The connection to {host} was cut before the scanner's "
+                                      "answer was complete.").format(host=host), "unreachable",
+                                   "%s %s: %d of %s bytes" % (method, url, got, size))
                 self.log.append((method, url, resp.status))
                 return Response(resp.status, rh, b"".join(chunks), url)
             except ScanError:
                 raise
-            except ConnectionRefusedError as ex:
-                raise NetError(tr("{host} refused the connection on port {port}.").format(
-                    host=host, port=port), "refused", "%s %s: %s" % (method, url, ex))
-            except (socket.timeout, TimeoutError) as ex:
-                raise NetError(tr("{host} didn't answer in time.").format(host=host), "timeout",
-                               "%s %s: %s" % (method, url, ex))
-            except ssl.SSLError as ex:
-                raise NetError(tr("A secure connection to {host} failed.").format(host=host),
-                               "tls", "%s %s: %s" % (method, url, ex))
             except (OSError, http.client.HTTPException) as ex:
-                if self.canceled:
+                if self.canceled:           # (whatever a connection shut down gives)
                     raise Canceled()
+                if isinstance(ex, ConnectionRefusedError):
+                    raise NetError(tr("{host} refused the connection on port {port}.").format(
+                        host=host, port=port), "refused", "%s %s: %s" % (method, url, ex))
+                if isinstance(ex, (socket.timeout, TimeoutError)):
+                    raise NetError(tr("{host} didn't answer in time.").format(host=host),
+                                   "timeout", "%s %s: %s" % (method, url, ex))
+                if isinstance(ex, ssl.SSLError):
+                    raise NetError(tr("A secure connection to {host} failed.").format(
+                        host=host), "tls", "%s %s: %s" % (method, url, ex))
                 raise NetError(tr("Couldn't reach {host}: {error}").format(host=host, error=ex),
                                "unreachable", "%s %s: %r" % (method, url, ex))
         finally:
             with self._lock:
-                self._conn = None
+                self._sock = None
             conn.close()
 
 
