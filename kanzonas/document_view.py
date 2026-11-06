@@ -651,7 +651,6 @@ class DocumentView(QScrollArea):
             return [p.rect for p in self.doc]
 
     def _build_pages(self):
-        self._forget_old_document()
         keep = self.verticalScrollBar().value()
         self.page_rects = self._read_page_rects()
         if self.zoom > self._zoom_cap():        # pages added at a high zoom: they must fit
@@ -2086,7 +2085,6 @@ class DocumentView(QScrollArea):
     # ---- caches (cleared on every change) ------------------------------------
     def _clear_caches(self):
         self._gen = getattr(self, "_gen", 0) + 1   # (anything read from the pages is old)
-        self._forget_old_document()
         self._dlists = {}              # page index -> parsed content, no markups (DisplayList)
         self._alists = {}              # page index -> its markups' DisplayList (None: none)
         self._tiles = OrderedDict()    # (page, scale, tx, ty) -> rendered tile, LRU
@@ -2123,27 +2121,6 @@ class DocumentView(QScrollArea):
         self._snap_recheck = set(self._snap_content)
         if not hasattr(self, "_pix_pages"):
             self._pix_pages = set()    # page indexes whose widget may hold a rendered bitmap
-
-    def _forget_old_document(self):
-        """The view now shows another document object than its caches were made from (Apply
-        redactions' clean-up opened the document anew, an undo or redo brought the one before
-        back, a reopen): MuPDF's store of what it decoded and parsed (pictures and their
-        tiles, fonts...) is emptied, so nothing drawn from a document object no longer shown
-        is used again. (Seen: after the clean-up, a picture stamp drawn a few pixels off a
-        fresh open, until the store was emptied: random battery, seed 1.)"""
-        doc = getattr(self, "doc", None)
-        if doc is None:
-            return
-        token = getattr(doc, "_kz_view_token", None)
-        if token is None:
-            token = doc._kz_view_token = object()   # (the document object, not kept alive)
-        was = getattr(self, "_cache_token", None)
-        if was is not None and was is not token:
-            try:
-                pymupdf.TOOLS.store_shrink(100)
-            except Exception:
-                pass
-        self._cache_token = token
 
     def _clear_page_caches(self, pages):
         """Forget what's cached for these pages only (an edit that leaves the others as

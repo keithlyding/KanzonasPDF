@@ -246,6 +246,61 @@ def content_key(page):
     return tuple(out)
 
 
+def markup_pictures(page):
+    """The object numbers of the pictures the page's stamps draw (a stamp's picture, an
+    image markup's: in their appearances' resources, and in the forms they draw). Only
+    stamps are looked at (the markups that draw pictures; a page of 1,000 other markups:
+    no time)."""
+    doc = page.parent
+    out = set()
+    todo = []
+    for x, t, _nm in page.annot_xrefs():
+        if t != pymupdf.PDF_ANNOT_STAMP:
+            continue
+        kind, val = doc.xref_get_key(x, "AP/N")
+        if kind == "xref":
+            todo.append((int(val.split()[0]), 1))
+    seen = set()
+    while todo:
+        x, depth = todo.pop()
+        if x in seen:
+            continue
+        seen.add(x)
+        kind, val = doc.xref_get_key(x, "Resources/XObject")
+        if kind == "xref":
+            kind, val = "dict", doc.xref_object(int(val.split()[0]), compressed=True)
+        if kind != "dict":
+            continue
+        for n in _REF.findall(val):
+            n = int(n)
+            sub = doc.xref_get_key(n, "Subtype")[1]
+            if sub == "/Image":
+                out.add(n)
+                mask = doc.xref_get_key(n, "SMask")
+                if mask[0] == "xref":
+                    out.add(int(mask[1].split()[0]))
+            elif sub == "/Form" and depth < 3:
+                todo.append((n, depth + 1))
+    return out
+
+
+def forget_pictures(doc, xrefs):
+    """Let MuPDF's store forget the pictures xrefs, decoded and in tiles: drawn next, each
+    is read and decoded afresh, as in a document just opened. (MuPDF keeps a picture's
+    decoded tiles and draws part of it from a whole one decoded earlier, a few levels of
+    color apart from decoding just that part: a stamp moved over the page's edge was drawn
+    up to 145 levels off a fresh open.)"""
+    if not xrefs or not doc.is_pdf:
+        return
+    m = pymupdf.mupdf
+    pdf = pymupdf._as_pdf_document(doc)
+    for x in xrefs:
+        try:
+            m.pdf_purge_object_from_store(pdf, x)
+        except Exception:
+            pass
+
+
 def annots_list(page):
     """The page's markups and form fields as the screen shows them (the View flags) as a
     pymupdf.DisplayList, or None when there's nothing of them to draw."""

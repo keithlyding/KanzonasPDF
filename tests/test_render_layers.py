@@ -394,45 +394,38 @@ class PageTransparency(unittest.TestCase):
         self.assertIn(1, got)
 
 
-class DocumentReplaced(unittest.TestCase):
-    """Apply redactions with its clean-up opens the document anew, and an undo brings the
-    document object from before back: MuPDF's store of what it decoded for the pages (a
-    picture stamp's tiles...) is emptied then, so nothing drawn for another document object
-    is used again (seen: a stamp drawn a few pixels off a fresh open after the clean-up,
-    until the store was emptied; random battery, seed 1 of the dimensions work)."""
+class PictureOverTheEdge(unittest.TestCase):
+    """MuPDF keeps a picture's decoded tiles, and draws part of a picture from the whole one
+    decoded earlier: a picture stamp drawn whole, then moved over the page's edge, was drawn
+    up to 145 levels of color off the same page opened afresh (which decodes just the part
+    shown). Random battery, seed 1 of the dimensions work (step 974). The markups drawn again
+    after a change have their pictures decoded afresh."""
 
-    def test_store_emptied_when_the_document_object_changes(self):
-        v = DocumentView(marked_pdf())
+    def test_stamp_moved_over_the_edge(self):
+        from tests import battery_random as BR
+        path = BR.sample(os.path.join(tempfile.mkdtemp(), "edge.pdf"), pages=3)
+        v = DocumentView(path)
         v.resize(900, 700)
         v.show()
         APP.processEvents()
         self.addCleanup(v.close_doc)
         self.addCleanup(setattr, v, "dirty", False)
-        v.set_zoom(1.0)
+        v.set_zoom(0.5)
+        w = v.pages[0]
+        s = v.zoom * w.devicePixelRatioF()
         v._create(0, {"kind": "stamp", "props": dict(A.DEFAULTS["stamp"]),
-                      "rect": pymupdf.Rect(450, 700, 650, 760)})      # (over the edge)
-        for w in v.pages:
-            w._render()
-        calls = []
-        real = pymupdf.TOOLS.store_shrink
-        with mock.patch.object(pymupdf.TOOLS, "store_shrink",
-                               side_effect=lambda n: (calls.append(n), real(n))):
-            v.insert_blank(1)               # (structural, the same document object: kept)
-            self.assertEqual(calls, [])
-            old = v.doc
-            v.mark_redactions(2, [pymupdf.Rect(60, 300, 120, 340)])
-            v.apply_redactions(scrub=True)
-            self.assertIsNot(v.doc, old)
-            self.assertEqual(calls, [100])
-            v.undo()
-            self.assertIs(v.doc, old)
-            self.assertEqual(calls, [100, 100])
-        s = v.zoom * v.pages[0].devicePixelRatioF()
-        for i in range(v.doc.page_count):
-            w = v.pages[i]
+                      "rect": pymupdf.Rect(200, 300, 320, 340)})
+        for d in (pymupdf.Point(-236, -78), pymupdf.Point(150, 80), pymupdf.Point(-150, -80)):
             w._pix = None
             w._render()
-            same(self, w._pix.toImage(), fresh(v, i, s), "page %d" % i)
+            x = max(x for x, t, *_ in v.doc[0].annot_xrefs() if t == pymupdf.PDF_ANNOT_STAMP)
+            v.select_xref(0, x)
+            m = v.selected_model
+            v.commit_models(0, [(x, A.moved(m, d))], olds={x: m})
+            v.clear_selection()
+            w._pix = None
+            w._render()
+            same(self, w._pix.toImage(), fresh(v, 0, s), "moved by %s" % d)
 
 
 class Zooming(unittest.TestCase):

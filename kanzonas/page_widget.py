@@ -433,7 +433,10 @@ class PageWidget(QWidget):
         if not v.show_markups:
             return None
         if self.index not in v._alists:
-            v._alists[self.index] = RL.annots_list(v.doc[self.index])
+            page = v.doc[self.index]
+            # (drawn again after a change: its pictures decoded afresh, as when opened)
+            RL.forget_pictures(page.parent, RL.markup_pictures(page))
+            v._alists[self.index] = RL.annots_list(page)
         return v._alists[self.index]
 
     def _content(self, s, clip=None, tile=None):
