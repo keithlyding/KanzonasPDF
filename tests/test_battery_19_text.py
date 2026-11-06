@@ -28,6 +28,10 @@ What the battery found:
   to be smoothed stayed so (veraPDF: 6.1.10-1, 6.2.8-3), with Check PDF/A finding nothing.
   They are now checked, and Save as PDF/A writes them again (decoded, compressed with Flate,
   not smoothed), drawing exactly as before.
+- Find counted a word twice when part of it had been made larger or smaller (MuPDF gives each
+  size its own rect, and each rect counted as a match): "contractor" with "actor" made larger
+  was 2 matches, "The contractor shall" 3. Rects that go on from one another along a line are
+  one match.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_battery_19_text
 """
@@ -211,6 +215,29 @@ class Paragraphs(unittest.TestCase):
         rows = letters(v.doc[0])
         self.assertEqual(len(rows), 2, rows)
         self.assertLessEqual(rows[0][2], rows[1][1] + 0.5, rows)
+
+    def test_find_counts_a_word_partly_resized_once(self):
+        d = pymupdf.open()
+        p = d.new_page()
+        bases = embedded_paragraph(p, code="helv")
+        p.insert_text((72, 400), "contractor", fontsize=11)        # one under the other:
+        p.insert_text((72, 413.2), "contractor", fontsize=11)      # two matches
+        v = open_view(d, self)
+        v.edit_text_at(0, pymupdf.Point(100, bases[0] - 3))
+        ed = v._inline
+        i = ed.text.toPlainText().index("contractor")
+        cur = ed.text.textCursor()
+        cur.setPosition(i + 5)
+        cur.setPosition(i + 10, QTextCursor.KeepAnchor)
+        ed.text.setTextCursor(cur)
+        for _k in range(4):
+            ed.grow_size(1)
+        ed.commit()
+        self.assertEqual(v.find("contractor"), 3)
+        v.clear_search()
+        self.assertEqual(v.find("The contractor shall"), 1)
+        v.clear_search()
+        self.assertEqual(v.find("all"), 2)              # (shall, all: apart, two)
 
 
 def hidden_word_page(kind):
