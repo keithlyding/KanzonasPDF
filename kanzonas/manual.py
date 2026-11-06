@@ -1080,6 +1080,28 @@ TIFF, BMP, GIF, WebP; pick several at once), in the order chosen, after the curr
 end or at the beginning, as one undo step. Each picture becomes a page the size of the page
 before it, turned to suit the picture. With nothing open, it makes a new, unsaved PDF from
 them.</li>
+<li><b>Replace pages</b> (Pages menu; Pages tab, on the arrow beside Extract) puts a new
+revision of sheets in place of the old ones and keeps everything added to them (Acrobat's
+Replace Pages, Bluebeam's slip sheeting). Pick the PDF of the new revision, then either give the
+pages by number (pages 3-5 here replaced by pages 1-3 of the new file, paired in order) or
+choose <b>Match sheets by sheet number</b>: the sheet numbers are read from the title blocks of
+both files (as Link sheet callouts reads them) and each page here is paired with the new file's
+page that has the same number. Check the list before clicking Replace: correct a pairing by
+typing the new file's page under "Replaced by page", or empty it to leave that page as it is.
+Pages here with no match are left alone, and the new file's sheets that match no page are
+listed under the list, so you know. Only the page's drawing changes (its content, page boxes
+and rotation): the page itself stays, so its markups, links, form fields, scale and bookmarks
+stay, and bookmarks and links from other pages still go to it. When a new page has another
+size, choose whether markups are <b>scaled to the new page</b> (stretched if its proportions
+differ; an even scale adjusts the page's measuring scale too) or <b>kept at the same place</b>,
+measured from the top-left corner. The underlines and text of links made with KanzonasPDF are
+drawn again on the new drawing; a link over words that aren't in the same place on the new
+drawing (a sheet callout that moved) stays where it was and is reported, so you can check it.
+Headers, footers, watermarks, backgrounds and text edits written into the old drawing go with
+it. The new drawings' layers join the document's layers (Layers tab), on or off as in the new
+file. The markups of the new file's pages aren't brought along, and the new file isn't changed.
+Ctrl+Z undoes the whole replacement in one step. A document protected against changes refuses
+it.</li>
 <li>Pages menu: Insert blank page after current (the same size as the current page), Extract
 pages to new file (to a new file, not the document itself), Delete pages (the pages selected in
 the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a

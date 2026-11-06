@@ -1573,6 +1573,7 @@ class DocumentView(QScrollArea):
         old = self.doc
         self.doc = fresh
         self._journal = journal
+        undo_journal.follow_layers(fresh)   # (one kept for undo may list other layers)
         from . import markups_panel
         markups_panel.carry_over(old, fresh)    # (the markups list reads only what differs)
         self.search_hits.clear()
@@ -1671,6 +1672,7 @@ class DocumentView(QScrollArea):
             if self.doc is not doc:
                 doc.close()             # (replaced by the edit: the copy is what undo uses)
         self._cad_prepare_soon()            # (in CAD mode: the changed page made ready again)
+        undo_journal.follow_layers(self.doc)    # (an edit that added layers: see there)
         if not nested:
             del self._undo[:-UNDO_LIMIT]
             self._redo.clear()
@@ -1816,6 +1818,7 @@ class DocumentView(QScrollArea):
         """The view after the document changed in place (an undo or redo kept in the
         journal, a rolled-back edit): what changed is read again, and the pages are made
         again only when pages were added, removed or moved (pages: None, any)."""
+        undo_journal.follow_layers(self.doc)    # (layers an undone edit added go)
         anchor = self._view_anchor()
         self._inline = None
         self.field_focus = None
@@ -8475,6 +8478,24 @@ class DocumentView(QScrollArea):
         self.modify(lambda: insert_files(self.doc, paths, n if at == -1 else at,
                                          (ref.width, ref.height), owner), structural=True,
                     changed=[])
+
+    def replace_pages(self, src, pairs, scale=True):
+        """Pages > Replace pages: the pages' drawings become those of src's pages (pairs:
+        [(page index here, page index in src)]), keeping the pages, their markups, links,
+        form fields and everything pointing at them (replace_pages.replace). src is only
+        read. One undo step. Returns replace_pages.replace's report, None when refused."""
+        from . import replace_pages
+        pairs = [(int(i), int(j)) for i, j in pairs]
+        if not pairs:
+            return None
+        report = {}
+
+        def do():
+            report.update(replace_pages.replace(self.doc, src, pairs, scale))
+        # (structural: the pages may change size, so the page list and layout are made again)
+        if not self.modify(do, structural=True, changed=sorted({i for i, _j in pairs})):
+            return None
+        return report
 
     def insert_blank(self, at):
         """A blank page before page index at, the size of the page it follows (as shown;

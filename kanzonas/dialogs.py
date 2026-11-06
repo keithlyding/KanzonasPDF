@@ -46,10 +46,11 @@ def get_text(parent, title, label, text=""):
     return dlg.edit.toPlainText(), ok
 
 
-def open_file(parent, title, file_filter=""):
-    """File picker (a function so tests can replace it). Returns a path or ''."""
+def open_file(parent, title, file_filter="", folder=""):
+    """File picker (a function so tests can replace it), starting in folder. Returns a path
+    or ''."""
     from PySide6.QtWidgets import QFileDialog
-    path, _ = QFileDialog.getOpenFileName(parent, title, "", file_filter)
+    path, _ = QFileDialog.getOpenFileName(parent, title, folder, file_filter)
     return path
 
 

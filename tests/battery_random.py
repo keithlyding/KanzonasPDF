@@ -7,8 +7,8 @@ tests/test_battery_random.py runs in every build):
 Thousands of random edits through the app's own steps (the ones the menus, tools and keys
 call: markups of every kind added, moved, resized, recolored, retyped, duplicated, restacked
 and deleted; page text added, edited and replaced; pictures and shapes of the page moved,
-turned and deleted; pages rotated, inserted, duplicated, deleted, moved, reordered and
-cropped; bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
+turned and deleted; pages rotated, inserted, duplicated, deleted, moved, reordered,
+cropped and replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
 window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
 (kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
 
@@ -103,6 +103,45 @@ def sample(path, pages=4):
     d.set_toc([[1, "First", 1], [2, "Second", 2], [1, "Third", 3]])
     d.set_metadata({"title": "Battery", "author": "Me"})
     d.embfile_add("note.txt", b"attached text")
+    d.save(path, garbage=3, deflate=True)
+    d.close()
+    return path
+
+
+def revision(path):
+    """The new revision Replace pages takes drawings from: a page of the same size, a bigger
+    one, a portrait page turned to show landscape, a half-size one and one cropped off its
+    media box's corner, each with text, drawings, a picture, a sheet number and a markup of
+    its own (which doesn't come along); two of them draw on layers (one off)."""
+    d = pymupdf.open()
+    for i, (w, h, turn, crop) in enumerate([(612, 792, 0, None), (1224, 792, 0, None),
+                                            (612, 792, 90, None), (306, 396, 0, None),
+                                            (700, 900, 0, (40, 60, 652, 852))]):
+        p = d.new_page(width=w, height=h)
+        if crop:
+            p.set_cropbox(pymupdf.Rect(crop))
+        p.set_rotation(turn)
+        m = p.derotation_matrix
+        r = p.rect
+        p.insert_text(pymupdf.Point(60, 60) * m, "Revision B sheet %d" % (i + 1),
+                      fontsize=14, rotate=turn)
+        p.insert_text(pymupdf.Point(r.width - 150, r.height - 30) * m,
+                      "SHEET NO: R-%d" % (i + 1), fontsize=9, rotate=turn)
+        p.draw_rect(pymupdf.Rect(20, 20, r.width - 20, r.height - 20) * m, color=(0, 0, 0.6),
+                    width=1.5)
+        p.draw_line(pymupdf.Point(40, 120) * m, pymupdf.Point(r.width - 40, 200) * m,
+                    color=(0.7, 0, 0), width=1)
+        p.insert_image(pymupdf.Rect(80, 220, 160, 280) * m,
+                       stream=png_bytes(rgb=(200, 40 * i, 90)), rotate=turn)
+        a = p.add_circle_annot(pymupdf.Rect(200, 300, 260, 340) * m)
+        a.update()
+        if i in (1, 2):         # (drawn on layers: they join the document's layers)
+            if i == 1:
+                layers = [d.add_ocg("R-WALL", on=True), d.add_ocg("R-HIDDEN", on=False)]
+            p.insert_text(pymupdf.Point(60, 330) * m, "on a layer", fontsize=11, rotate=turn,
+                          oc=layers[0])
+            p.draw_line(pymupdf.Point(60, 350) * m, pymupdf.Point(300, 350) * m,
+                        color=(0, 0.5, 0), width=2, oc=layers[1])
     d.save(path, garbage=3, deflate=True)
     d.close()
     return path
@@ -259,7 +298,10 @@ class Battery:
         attachment = os.path.join(self.out, "attached.txt")
         with open(attachment, "w") as f:
             f.write("an attached file")
-        files = {"Insert image": picture}
+        self.revision = revision(os.path.join(self.out, "revision.pdf"))
+        with open(self.revision, "rb") as f:
+            self.revision_hash = hashlib.sha256(f.read()).hexdigest()
+        files = {"Insert image": picture, "Replace pages with pages from": self.revision}
         return [mock.patch.object(QMessageBox, name, box(name))
                 for name in ("information", "warning", "critical", "question")] + [
             mock.patch.object(QMessageBox, "exec", lambda self: QMessageBox.Cancel),
@@ -267,7 +309,8 @@ class Battery:
                               lambda parent, title, label, text="":
                               (battery.typed(text), True)),
             mock.patch.object(dialogs, "open_file",
-                              lambda parent, title, f="": files.get(title, attachment)),
+                              lambda parent, title, f="", folder="":
+                              files.get(title, attachment)),
             mock.patch.object(DV, "USE_JOURNAL", self.journal),
             mock.patch.object(DV, "UNDO_LIMIT", self.undo_limit or 10 ** 9)]
 
@@ -632,6 +675,7 @@ class Battery:
             (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
             (self.op_delete_page, 2), (self.op_move_page, 2), (self.op_reorder, 1),
             (self.op_duplicate_page, 1), (self.op_crop, 2), (self.op_bookmarks, 1),
+            (self.op_replace_pages, 2),
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
@@ -935,6 +979,37 @@ class Battery:
         m = self.rnd.uniform(5, 60)
         v.crop_pages(i, pymupdf.Rect(m, m, cb.width - m, cb.height - m),
                      all_pages=self.rnd.random() < 0.2)
+
+    def op_replace_pages(self):
+        """Pages > Replace pages, through the window's own step: one to three pages from
+        the revision (revision()), picked by page numbers or in the sheet-number list (set
+        by hand there: the battery's pages have no sheet numbers), markups scaled to a new
+        size or kept in place. The revision file must stay as it was."""
+        from kanzonas.replace_pages_ui import ReplacePagesDialog
+        from PySide6.QtWidgets import QDialog
+        rnd = self.rnd
+
+        def answer(dlg):
+            n, k = dlg.doc.page_count, dlg.src.page_count
+            here = rnd.sample(range(n), rnd.randint(1, min(3, n)))
+            if rnd.random() < 0.5:
+                new = rnd.sample(range(k), len(here))
+                dlg.here.setText(", ".join(str(i + 1) for i in here))
+                dlg.new.setText(", ".join(str(j + 1) for j in new))
+            else:
+                dlg.by_sheets.setChecked(True)
+                for row in range(dlg.table.rowCount()):
+                    dlg.table.item(row, 2).setText("")
+                for i in here:          # (one new sheet may replace several pages here)
+                    dlg.table.item(i, 2).setText(str(rnd.randrange(k) + 1))
+            (dlg.scale if rnd.random() < 0.5 else dlg.keep).setChecked(True)
+            dlg._accept()
+            return QDialog.Accepted if dlg.result_pairs else QDialog.Rejected
+        with mock.patch.object(ReplacePagesDialog, "exec", answer):
+            self.win.a_replace_pages.trigger()
+        with open(self.revision, "rb") as f:
+            if hashlib.sha256(f.read()).hexdigest() != self.revision_hash:
+                raise Failed("Replace pages changed the file the pages came from")
 
     def op_bookmarks(self):
         v = self.v

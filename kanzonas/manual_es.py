@@ -1058,6 +1058,28 @@ TIFF, BMP, GIF, WebP; elija varios a la vez), en el orden elegido, después de l
 final o al principio, como un solo paso de deshacer. Cada imagen se convierte en una página del tamaño de la página
 anterior, girada según convenga a la imagen. Sin nada abierto, crea con ellos un PDF nuevo, sin
 guardar.</li>
+<li><b>Reemplazar páginas</b> (menú Páginas; pestaña Páginas, en la flecha junto a Extraer) pone una
+nueva revisión de los planos en lugar de los anteriores y conserva todo lo que se les agregó (Reemplazar páginas de
+Acrobat, la sustitución de hojas de Bluebeam). Elija el PDF de la nueva revisión y luego indique las páginas por
+número (las páginas 3-5 de este documento reemplazadas por las páginas 1-3 del archivo nuevo, emparejadas en orden) o
+elija <b>Emparejar planos por número de plano</b>: los números de plano se leen en los cuadros de rótulo de
+ambos archivos (como los lee Vincular referencias a planos) y cada página de este documento se empareja con la página del
+archivo nuevo que tiene el mismo número. Revise la lista antes de hacer clic en Reemplazar: corrija un emparejamiento
+escribiendo la página del archivo nuevo en "Reemplazada por la página", o déjela vacía para dejar esa página como está.
+Las páginas sin pareja se dejan como están, y los planos del archivo nuevo que no corresponden a ninguna página se
+enumeran debajo de la lista, para que lo sepa. Solo cambia el dibujo de la página (su contenido, sus cuadros de página
+y su rotación): la página misma se queda, así que sus marcas, vínculos, campos de formulario, escala y marcadores se
+quedan, y los marcadores y vínculos de otras páginas siguen llevando a ella. Cuando una página nueva tiene otro
+tamaño, elija si las marcas se <b>escalan a la página nueva</b> (estiradas si sus proporciones difieren; una escala
+pareja ajusta también la escala de medición de la página) o se <b>mantienen en el mismo lugar</b>, medido desde la
+esquina superior izquierda. Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
+el dibujo nuevo; un vínculo sobre palabras que no están en el mismo lugar en el dibujo nuevo (una referencia a un
+plano que se movió) se queda donde estaba y se informa, para que pueda revisarlo. Los encabezados, pies de página,
+marcas de agua, fondos y ediciones de texto escritos en el dibujo anterior se van con él. Las capas de los dibujos
+nuevos se suman a las capas del documento (pestaña Capas), activadas o desactivadas como en el archivo nuevo. Las
+marcas de las páginas del
+archivo nuevo no se traen, y el archivo nuevo no se modifica. Ctrl+Z deshace todo el reemplazo en un solo paso. Un
+documento protegido contra cambios lo rechaza.</li>
 <li>Menú Páginas: Insertar página en blanco después de la actual (del mismo tamaño que la página actual), Extraer
 páginas a un archivo nuevo (a un archivo nuevo, no al propio documento), Eliminar páginas (las páginas seleccionadas en
 la lista de páginas, o la página actual; pregunta primero, y Ctrl+Z las recupera). Un marcador a una
