@@ -7024,8 +7024,34 @@ class DocumentView(QScrollArea):
         self.layersChanged.emit()
 
     # ---- bookmarks & page tools -----------------------------------------------------------
-    def get_toc(self):
-        return self.doc.get_toc(simple=True)
+    def get_toc(self, simple=True):
+        return self.doc.get_toc(simple=simple)
+
+    def view_destination(self):
+        """(page index, point on it (unrotated), suggested title) for a bookmark to what the
+        window shows: the selected text's place and words when text is selected, else the
+        top-left corner of the window on the current page. None with no pages."""
+        if not getattr(self, "pages", None):
+            return None
+        if self.text_sel:
+            index, units = self.text_sel[0]
+            if units and 0 <= index < self.doc.page_count:
+                page = self.doc[index]
+                shown = pymupdf.Rect(units[0][:4]) * page.rotation_matrix
+                for u in units[1:]:
+                    shown |= pymupdf.Rect(u[:4]) * page.rotation_matrix
+                to = pymupdf.Point(0, max(0.0, shown.y0 - 4)) * page.derotation_matrix
+                return index, to, " ".join(self.selected_text().split())[:200]
+        i = self.current_page()
+        w = self.pages[i]
+        x = max(0, self.horizontalScrollBar().value() - w.x())
+        y = max(0, self.verticalScrollBar().value() - w.y())
+        to = w.to_pdf(QPointF(x, y))
+        return i, pymupdf.Point(max(0.0, to.x), max(0.0, to.y)), ""
+
+    def go_to_destination(self, page, to=None):
+        """Show page (index) from point to (unrotated) on it, as a bookmark or link does."""
+        self._go_to(page, to)
 
     def set_toc(self, toc):
         self.modify(lambda: self.doc.set_toc(toc), [])

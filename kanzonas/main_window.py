@@ -557,6 +557,76 @@ class MainWindow(QMainWindow):
             a.setStatusTip(tip)
         return a
 
+    def _build_bookmark_actions(self):
+        """Document > Bookmark tools (and the Bookmarks panel's ⋯ menu); Insert table of
+        contents."""
+        from . import bookmarks_ui
+        bm = lambda: self.bookmarks                     # noqa: E731
+        self.a_bm_add_view = self._act(
+            tr("Add bookmark at current &view"), self.bookmark_here, "Ctrl+B",
+            tr("A bookmark to the place the window shows (to the selected text, named after "
+               "it, when text is selected)"))
+        self.a_bm_set_dest = self._act(
+            tr("Set bookmark &destination to current view"), self.bookmark_destination_here,
+            tip=tr("The selected bookmark goes to the place the window shows now"))
+        self.a_bm_headings = self._act(
+            tr("Make bookmarks from &headings..."),
+            lambda: bookmarks_ui.make_bookmarks(self, "headings"),
+            tip=tr("Find the headings by their size, weight and numbering and make a bookmark "
+                   "tree from them (you check it first)"))
+        self.a_bm_tags = self._act(
+            tr("Bookmarks from &tagged structure..."),
+            lambda: bookmarks_ui.make_bookmarks(self, "tags"),
+            tip=tr("Make the bookmarks from a tagged PDF's headings (H1-H6): exact"))
+        self.a_bm_sheets = self._act(
+            tr("Bookmarks from &sheet numbers..."),
+            lambda: bookmarks_ui.make_bookmarks(self, "sheets"),
+            tip=tr("For a drawing set: a bookmark for each sheet, \"A-101  FIRST FLOOR PLAN\", "
+                   "read from the title blocks"))
+        self.a_bm_sort_page = self._act(tr("Sort bookmarks by &page"),
+                                        lambda: bm().sort("page"))
+        self.a_bm_sort_name = self._act(tr("Sort bookmarks by &name"),
+                                        lambda: bm().sort("name"))
+        self.a_bm_expand = self._act(tr("&Expand all bookmarks"), lambda: bm().expand_all())
+        self.a_bm_collapse = self._act(tr("C&ollapse all bookmarks"),
+                                       lambda: bm().collapse_all())
+        self.a_bm_bold = self._act(tr("&Bold bookmark (on/off)"),
+                                   lambda: bm().toggle_style("bold"))
+        self.a_bm_italic = self._act(tr("&Italic bookmark (on/off)"),
+                                     lambda: bm().toggle_style("italic"))
+        self.a_bm_color = self._act(tr("Bookmark co&lor..."), lambda: bm().pick_color())
+        self.a_toc = self._act(
+            tr("Insert table of &contents..."), lambda: bookmarks_ui.insert_toc(self),
+            tip=tr("Pages listing the bookmarks with their page numbers, each line a link to "
+                   "its page (again: updates the one made before)"))
+        self.bookmark_tools = [self.a_bm_add_view, self.a_bm_set_dest, None,
+                               self.a_bm_headings, self.a_bm_tags, self.a_bm_sheets, None,
+                               self.a_bm_sort_page, self.a_bm_sort_name, self.a_bm_expand,
+                               self.a_bm_collapse, None, self.a_bm_bold, self.a_bm_italic,
+                               self.a_bm_color]
+        self.bookmark_actions = [a for a in self.bookmark_tools if a is not None] + [self.a_toc]
+        self.bookmarks.set_menu_actions(self.bookmark_tools + [None, self.a_toc])  # (panel's ⋯)
+
+    def bookmark_here(self):
+        """Ctrl+B: a bookmark to what the window shows (not while typing in a text box)."""
+        from PySide6.QtWidgets import QLineEdit, QPlainTextEdit, QTextEdit
+        if self.view() is None or isinstance(QApplication.focusWidget(),
+                                             (QLineEdit, QTextEdit, QPlainTextEdit)):
+            return
+        self._show_bookmarks()
+        self.bookmarks.add_at_view()
+
+    def bookmark_destination_here(self):
+        if self.view() is None:
+            return
+        if self.bookmarks._index() is None:
+            self._show_bookmarks()
+            self.statusBar().showMessage(tr("Select a bookmark in the Bookmarks panel first"),
+                                         4000)
+            return
+        if self.bookmarks.set_destination():
+            self.statusBar().showMessage(tr("The bookmark now goes to this view"), 4000)
+
     def _build_actions(self):
         v = self.view
         self.a_new = self._act(tr("&New PDF..."), self.new_pdf, QKeySequence.New,
@@ -777,6 +847,7 @@ class MainWindow(QMainWindow):
         self.a_attachments = self._act(tr("A&ttachments..."), self.show_attachments,
                                        tip=tr("Files embedded in this PDF: open, save or delete them"))
         self.a_bookmarks = self._act(tr("&Bookmarks"), self._show_bookmarks, "F9")
+        self._build_bookmark_actions()
         self.a_search_redact = self._act(tr("&Search && redact..."), self.search_redact)
         self.a_apply_redact = self._act(tr("&Apply redactions..."), self.apply_redactions)
         self.a_digisign = self._act(tr("&Digitally sign with certificate..."), self.digital_sign)
@@ -1116,6 +1187,13 @@ class MainWindow(QMainWindow):
                       self.a_remove_bg])
         m.addSeparator()
         m.addAction(self.a_bookmarks)
+        bmm = m.addMenu(tr("Bookmar&k tools"))
+        for a in self.bookmark_tools:
+            if a is None:
+                bmm.addSeparator()
+            else:
+                bmm.addAction(a)
+        m.addAction(self.a_toc)
         m.addAction(self.a_attachments)
         m.addSeparator()
         rm = m.addMenu(tr("&Redaction"))
@@ -1172,6 +1250,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_insert_pdf, self.a_replace_pages, self.a_insert_blank,
                       self.a_extract])
+        m.addAction(self.a_toc)
         m.addSeparator()
         m.addAction(self.a_sheet_links)
         sep = QAction(self)
@@ -1401,6 +1480,9 @@ class MainWindow(QMainWindow):
         self.bookmarks.current_page = lambda: self.view().current_page() if self.view() else 0
         self.bookmarks.jump.connect(lambda i: self.view() and self.view().goto_page(i))
         self.bookmarks.changed.connect(lambda toc: self.view() and self.view().set_toc(toc))
+        self.bookmarks.jump_to.connect(
+            lambda i, to: self.view() and self.view().go_to_destination(i, to))
+        self.bookmarks.current_view = lambda: self.view().view_destination() if self.view() else None
         self.left_tabs.addTab(self._narrowable(self.bookmarks), tr("Bookmarks"))
         from .layers_panel import LayersPanel
         self.layers = LayersPanel()
@@ -1482,6 +1564,8 @@ class MainWindow(QMainWindow):
                   self.a_background, self.a_remove_bg, self.a_remove_wm,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
                   *self.export_actions):
+            a.setEnabled(has)
+        for a in self.bookmark_actions:
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_lock.setEnabled(has and v.selection is not None)
@@ -3565,7 +3649,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_bookmarks(self):
         v = self.view()
-        self.bookmarks.set_toc(v.get_toc() if v else [])
+        self.bookmarks.set_toc(v.get_toc(simple=False) if v else [])
 
     def header_footer(self):
         from .page_tools import HeaderFooterDialog
