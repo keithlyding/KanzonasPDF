@@ -5539,6 +5539,12 @@ class MainWindow(QMainWindow):
         self._refresh_layers()
         self._markups_timer.start()
         self._refresh_props()
+        # the count beside Find is the shown tab's own search ("3 of 120"), nothing once the
+        # last document is closed (it stayed with no document to go through)
+        if current is not None:
+            self._show_find_count(*current.search_position())
+        else:
+            self._show_find_count(0, 0, False)
         self._update_ui()
 
     def _on_page_changed(self, page):
