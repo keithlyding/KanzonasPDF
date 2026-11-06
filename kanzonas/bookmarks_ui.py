@@ -262,6 +262,11 @@ def make_bookmarks(window, source, dialog_hook=None):
         window.statusBar().showMessage(tr("Stopped: no bookmarks were made"), 4000)
         return None
     items = scan.propose()
+    if not items and source == "headings" and not scan.rows:
+        QMessageBox.information(window, titles[source],
+                                tr("This document has no text to find headings in (scanned "
+                                   "pages: run Recognize text (OCR) first)."))
+        return None
     if not items:
         msg = {"headings": tr("No headings were found: the text is all the same size and "
                               "weight, with no numbered headings."),

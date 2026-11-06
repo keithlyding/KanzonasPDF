@@ -562,6 +562,16 @@ class InTheWindow(Quiet):
         w, v = self.window(numbered(2))
         self.assertIsNone(bookmarks_ui.insert_toc(w, lambda dlg: True))
         self.assertEqual(v.doc.page_count, 2)
+        self.assertFalse(v.can_undo())
+
+    def test_no_text_no_headings(self):
+        d = pymupdf.open()
+        d.new_page().draw_rect((100, 100, 300, 300))
+        w, v = self.window(d, "scan.pdf")
+        with mock.patch.object(QMessageBox, "information") as box:
+            self.assertIsNone(bookmarks_ui.make_bookmarks(w, "headings", accept))
+        self.assertIn("Recognize text (OCR)", box.call_args[0][2])
+        self.assertFalse(v.can_undo())
 
     def test_every_command_in_the_manual_and_menus(self):
         w, _v = self.window(numbered(2))

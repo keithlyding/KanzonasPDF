@@ -589,6 +589,10 @@ msgstr "Primero seleccione un marcador en el panel Marcadores"
 msgid "The bookmark now goes to this view"
 msgstr "El marcador ahora lleva a esta vista"
 
+#: bookmarks_ui.py:267
+msgid "This document has no text to find headings in (scanned pages: run Recognize text (OCR) first)."
+msgstr "Este documento no tiene texto en el cual buscar títulos (páginas escaneadas: ejecute primero Reconocer texto (OCR))."
+
 #: combine.py:16 main_window.py:2120
 msgid "Pictures"
 msgstr "Imágenes"

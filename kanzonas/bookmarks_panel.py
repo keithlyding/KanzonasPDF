@@ -122,6 +122,13 @@ class BookmarksPanel(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(2, 2, 2, 2)
         bar = QHBoxLayout()
+        self.more = QToolButton()               # (second, so a narrow panel still shows it)
+        self.more.setText("⋯")
+        self.more.setToolTip(tr("More bookmark tools: make bookmarks from headings, a table "
+                                "of contents, sort, style..."))
+        self.more.setPopupMode(QToolButton.InstantPopup)
+        self.menu = QMenu(self.more)
+        self.more.setMenu(self.menu)
         for text, tip, fn in (("+", tr("Add a bookmark to the current page"), self._add),
                               (tr("Rename"), tr("Rename"), self._rename),
                               ("✕", tr("Delete"), self._delete),
@@ -134,14 +141,8 @@ class BookmarksPanel(QWidget):
             b.setToolTip(tip)
             b.clicked.connect(fn)
             bar.addWidget(b)
-        self.more = QToolButton()
-        self.more.setText("⋯")
-        self.more.setToolTip(tr("More bookmark tools: make bookmarks from headings, a table "
-                                "of contents, sort, style..."))
-        self.more.setPopupMode(QToolButton.InstantPopup)
-        self.menu = QMenu(self.more)
-        self.more.setMenu(self.menu)
-        bar.addWidget(self.more)
+            if text == "+":
+                bar.addWidget(self.more)
         bar.addStretch(1)
         lay.addLayout(bar)
         self.tree = QTreeWidget()
