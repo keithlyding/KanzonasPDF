@@ -245,6 +245,350 @@ msgstr "Cambiar nombre del marcador"
 msgid "Name:"
 msgstr "Nombre:"
 
+#: bookmarks_auto.py:509
+msgid "Hazardous Materials"
+msgstr "Materiales peligrosos"
+
+#: bookmarks_auto.py:509
+msgid "Survey / Mapping"
+msgstr "Topografía / Cartografía"
+
+#: bookmarks_auto.py:510
+msgid "Geotechnical"
+msgstr "Geotecnia"
+
+#: bookmarks_auto.py:510
+msgid "Civil Works"
+msgstr "Obras civiles"
+
+#: bookmarks_auto.py:510
+msgid "Civil"
+msgstr "Civil"
+
+#: bookmarks_auto.py:511
+msgid "Structural"
+msgstr "Estructural"
+
+#: bookmarks_auto.py:511
+msgid "Architectural"
+msgstr "Arquitectura"
+
+#: bookmarks_auto.py:512
+msgid "Interiors"
+msgstr "Interiores"
+
+#: bookmarks_auto.py:512
+msgid "Equipment"
+msgstr "Equipos"
+
+#: bookmarks_auto.py:512
+msgid "Fire Protection"
+msgstr "Protección contra incendios"
+
+#: bookmarks_auto.py:513
+msgid "Plumbing"
+msgstr "Plomería"
+
+#: bookmarks_auto.py:513
+msgid "Process"
+msgstr "Procesos"
+
+#: bookmarks_auto.py:513
+msgid "Mechanical"
+msgstr "Mecánica"
+
+#: bookmarks_auto.py:513
+msgid "Electrical"
+msgstr "Eléctrica"
+
+#: bookmarks_auto.py:514
+msgid "Telecommunications"
+msgstr "Telecomunicaciones"
+
+#: bookmarks_auto.py:514
+msgid "Resource"
+msgstr "Recursos"
+
+#: bookmarks_auto.py:514 bookmarks_auto.py:546
+msgid "Other Disciplines"
+msgstr "Otras disciplinas"
+
+#: bookmarks_auto.py:515
+msgid "Contractor / Shop Drawings"
+msgstr "Contratista / Planos de taller"
+
+#: bookmarks_auto.py:515
+msgid "Operations"
+msgstr "Operaciones"
+
+#: bookmarks_auto.py:192
+msgid "bold"
+msgstr "negrita"
+
+#: bookmarks_panel.py:140
+msgid "More bookmark tools: make bookmarks from headings, a table of contents, sort, style..."
+msgstr "Más herramientas de marcadores: crear marcadores a partir de los títulos, una tabla de contenido, ordenar, estilo..."
+
+#: bookmarks_panel.py:156
+msgid "No bookmarks. Click + to add one for the current page, or ⋯ to make them from the headings."
+msgstr "No hay marcadores. Haga clic en + para agregar uno para la página actual, o en ⋯ para crearlos a partir de los títulos."
+
+#: bookmarks_panel.py:369
+msgid "Bookmark color"
+msgstr "Color del marcador"
+
+#: bookmarks_ui.py:247
+msgid "Make bookmarks from headings"
+msgstr "Crear marcadores a partir de los títulos"
+
+#: bookmarks_ui.py:248
+msgid "Bookmarks from tagged structure"
+msgstr "Marcadores desde la estructura etiquetada"
+
+#: bookmarks_ui.py:249
+msgid "Bookmarks from sheet numbers"
+msgstr "Marcadores desde los números de plano"
+
+#: bookmarks_ui.py:258
+msgid "Reading the headings..."
+msgstr "Leyendo los títulos..."
+
+#: bookmarks_ui.py:258
+msgid "Reading the tags..."
+msgstr "Leyendo las etiquetas..."
+
+#: bookmarks_ui.py:55 bookmarks_ui.py:121 bookmarks_ui.py:204
+msgid "Make bookmarks"
+msgstr "Crear marcadores"
+
+#: bookmarks_ui.py:71
+msgid "Group the sheets by discipline (A - Architectural, S - Structural...)"
+msgstr "Agrupar los planos por disciplina (A - Arquitectura, S - Estructural...)"
+
+#: bookmarks_ui.py:81
+msgid "Names in capitals in Title Case"
+msgstr "Nombres en mayúsculas con mayúscula inicial en cada palabra"
+
+#: bookmarks_ui.py:82
+msgid "FIRST FLOOR PLAN becomes First Floor Plan"
+msgstr "PLANTA DEL PRIMER PISO se vuelve Planta del Primer Piso"
+
+#: bookmarks_ui.py:109
+msgid "Untick what shouldn't be a bookmark; double-click a name to change it; click one to see it on its page."
+msgstr "Desmarque lo que no deba ser un marcador; haga doble clic en un nombre para cambiarlo; haga clic en uno para verlo en su página."
+
+#: bookmarks_ui.py:114
+msgid "Replace the bookmarks the document has"
+msgstr "Reemplazar los marcadores que tiene el documento"
+
+#: bookmarks_ui.py:115
+msgid "Add these after the bookmarks the document has"
+msgstr "Agregar estos después de los marcadores que tiene el documento"
+
+#: bookmarks_ui.py:234
+msgid "{n} sheet(s) found by their title blocks; {none} page(s) without a sheet number are left out."
+msgstr "Se encontraron {n} plano(s) por sus cuadros de rótulo; se omiten {none} página(s) sin número de plano."
+
+#: bookmarks_ui.py:252
+msgid "This PDF isn't tagged: it has no structure to read the headings from. Use Make bookmarks from headings, which finds them by their look."
+msgstr "Este PDF no está etiquetado: no tiene una estructura de la cual leer los títulos. Use Crear marcadores a partir de los títulos, que los encuentra por su aspecto."
+
+#: bookmarks_ui.py:262
+msgid "Stopped: no bookmarks were made"
+msgstr "Detenido: no se crearon marcadores"
+
+#: bookmarks_ui.py:297 bookmarks_ui.py:358 bookmarks_ui.py:369
+msgid "Insert table of contents"
+msgstr "Insertar tabla de contenido"
+
+#: bookmarks_ui.py:304
+msgid "Title:"
+msgstr "Título:"
+
+#: bookmarks_ui.py:308 bookmarks_ui.py:75
+msgid "Levels:"
+msgstr "Niveles:"
+
+#: bookmarks_ui.py:310
+msgid "The size of the page it goes before"
+msgstr "El tamaño de la página que la sigue"
+
+#: bookmarks_ui.py:316
+msgid "At the start of the document"
+msgstr "Al principio del documento"
+
+#: bookmarks_ui.py:331
+msgid "Each line links to its page; the page numbers count the new pages. Bookmarks that go elsewhere (a web page, another file) are left out."
+msgstr "Cada línea es un vínculo a su página; los números de página cuentan las páginas nuevas. Se omiten los marcadores que llevan a otro lugar (una página web, otro archivo)."
+
+#: bookmarks_ui.py:359
+msgid "This document has no bookmarks to list. Make them first (Document > Bookmark tools > Make bookmarks from headings...), or add them in the Bookmarks panel."
+msgstr "Este documento no tiene marcadores para listar. Créelos primero (Documento > Herramientas de marcadores > Crear marcadores a partir de los títulos...) o agréguelos en el panel Marcadores."
+
+#: bookmarks_ui.py:370
+msgid "None of the bookmarks goes to a page of this document."
+msgstr "Ninguno de los marcadores lleva a una página de este documento."
+
+#: bookmarks_ui.py:88
+msgid "Bookmark"
+msgstr "Marcador"
+
+#: bookmarks_ui.py:96
+msgid "Tick all"
+msgstr "Marcar todos"
+
+#: bookmarks_ui.py:97
+msgid "Untick all"
+msgstr "Desmarcar todos"
+
+#: bookmarks_ui.py:98
+msgid "Make the selected bookmarks one level higher"
+msgstr "Subir un nivel los marcadores seleccionados"
+
+#: bookmarks_ui.py:100
+msgid "Make the selected bookmarks one level lower (under the one before)"
+msgstr "Bajar un nivel los marcadores seleccionados (bajo el anterior)"
+
+#: bookmarks_ui.py:205
+msgid "Nothing is ticked: tick the bookmarks to make."
+msgstr "No hay nada marcado: marque los marcadores que quiere crear."
+
+#: bookmarks_ui.py:229
+msgid "{n} heading(s) found by their size, weight and numbering. {looks}"
+msgstr "Se encontraron {n} título(s) por su tamaño, grosor y numeración. {looks}"
+
+#: bookmarks_ui.py:232
+msgid "{n} heading(s) found in the document's tags (H1-H6)."
+msgstr "Se encontraron {n} título(s) en las etiquetas del documento (H1-H6)."
+
+#: bookmarks_ui.py:266
+msgid "No headings were found: the text is all the same size and weight, with no numbered headings."
+msgstr "No se encontraron títulos: todo el texto tiene el mismo tamaño y grosor, sin títulos numerados."
+
+#: bookmarks_ui.py:268
+msgid "The tags have no headings (H1-H6)."
+msgstr "Las etiquetas no tienen títulos (H1-H6)."
+
+#: bookmarks_ui.py:269
+msgid "No sheet numbers were found in title blocks."
+msgstr "No se encontraron números de plano en los cuadros de rótulo."
+
+#: bookmarks_ui.py:288
+msgid "{n} bookmark(s) made (Ctrl+Z undoes it)"
+msgstr "Se crearon {n} marcador(es) (Ctrl+Z lo deshace)"
+
+#: bookmarks_ui.py:384
+msgid "Table of contents inserted: {n} page(s) from page {page} (Ctrl+Z undoes it)"
+msgstr "Tabla de contenido insertada: {n} página(s) desde la página {page} (Ctrl+Z lo deshace)"
+
+#: bookmarks_ui.py:98
+msgid "Level up"
+msgstr "Subir de nivel"
+
+#: bookmarks_ui.py:100
+msgid "Level down"
+msgstr "Bajar de nivel"
+
+#: bookmarks_ui.py:317
+msgid "Before the current page (page {page})"
+msgstr "Antes de la página actual (página {page})"
+
+#: bookmarks_ui.py:227
+msgid "level {level}: {look} ({n})"
+msgstr "nivel {level}: {look} ({n})"
+
+#: bookmarks_ui.py:318
+msgid "In place of the table of contents made before (pages {first}-{last})"
+msgstr "En lugar de la tabla de contenido creada antes (páginas {first}-{last})"
+
+#: main_window.py:566
+msgid "Add bookmark at current &view"
+msgstr "Agregar marcador en la &vista actual"
+
+#: main_window.py:567
+msgid "A bookmark to the place the window shows (to the selected text, named after it, when text is selected)"
+msgstr "Un marcador al lugar que muestra la ventana (al texto seleccionado, con su nombre, cuando hay texto seleccionado)"
+
+#: main_window.py:570
+msgid "Set bookmark &destination to current view"
+msgstr "Llevar el &destino del marcador a la vista actual"
+
+#: main_window.py:573
+msgid "Make bookmarks from &headings..."
+msgstr "Crear marcadores a partir de los &títulos..."
+
+#: main_window.py:578
+msgid "Bookmarks from &tagged structure..."
+msgstr "Marcadores desde la estructura &etiquetada..."
+
+#: main_window.py:582
+msgid "Bookmarks from &sheet numbers..."
+msgstr "Marcadores desde los números de &plano..."
+
+#: main_window.py:586
+msgid "Sort bookmarks by &page"
+msgstr "Ordenar los marcadores por &página"
+
+#: main_window.py:588
+msgid "Sort bookmarks by &name"
+msgstr "Ordenar los marcadores por &nombre"
+
+#: main_window.py:590
+msgid "&Expand all bookmarks"
+msgstr "&Expandir todos los marcadores"
+
+#: main_window.py:591
+msgid "C&ollapse all bookmarks"
+msgstr "C&ontraer todos los marcadores"
+
+#: main_window.py:593
+msgid "&Bold bookmark (on/off)"
+msgstr "Marcador en &negrita (sí/no)"
+
+#: main_window.py:595
+msgid "&Italic bookmark (on/off)"
+msgstr "Marcador en c&ursiva (sí/no)"
+
+#: main_window.py:597
+msgid "Bookmark co&lor..."
+msgstr "Co&lor del marcador..."
+
+#: main_window.py:599
+msgid "Insert table of &contents..."
+msgstr "Insertar tabla de &contenido..."
+
+#: main_window.py:1190
+msgid "Bookmar&k tools"
+msgstr "Herramientas de mar&cadores"
+
+#: main_window.py:571
+msgid "The selected bookmark goes to the place the window shows now"
+msgstr "El marcador seleccionado lleva al lugar que muestra ahora la ventana"
+
+#: main_window.py:575
+msgid "Find the headings by their size, weight and numbering and make a bookmark tree from them (you check it first)"
+msgstr "Encontrar los títulos por su tamaño, grosor y numeración y crear con ellos un árbol de marcadores (usted lo revisa primero)"
+
+#: main_window.py:580
+msgid "Make the bookmarks from a tagged PDF's headings (H1-H6): exact"
+msgstr "Crear los marcadores a partir de los títulos de un PDF etiquetado (H1-H6): exactos"
+
+#: main_window.py:584
+msgid "For a drawing set: a bookmark for each sheet, \"A-101  FIRST FLOOR PLAN\", read from the title blocks"
+msgstr "Para un juego de planos: un marcador para cada plano, \"A-101  PLANTA DEL PRIMER PISO\", leído de los cuadros de rótulo"
+
+#: main_window.py:600
+msgid "Pages listing the bookmarks with their page numbers, each line a link to its page (again: updates the one made before)"
+msgstr "Páginas que listan los marcadores con sus números de página, cada línea un vínculo a su página (otra vez: actualiza la creada antes)"
+
+#: main_window.py:624
+msgid "Select a bookmark in the Bookmarks panel first"
+msgstr "Primero seleccione un marcador en el panel Marcadores"
+
+#: main_window.py:628
+msgid "The bookmark now goes to this view"
+msgstr "El marcador ahora lleva a esta vista"
+
 #: combine.py:16 main_window.py:2120
 msgid "Pictures"
 msgstr "Imágenes"

@@ -8,9 +8,11 @@ Thousands of random edits through the app's own steps (the ones the menus, tools
 call: markups of every kind added, moved, resized, recolored, retyped, duplicated, restacked
 and deleted; page text added, edited and replaced; pictures and shapes of the page moved,
 turned and deleted; pages rotated, inserted, duplicated, deleted, moved, reordered,
-cropped and replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
-window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
-(kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
+cropped and replaced from another PDF (Replace pages); bookmarks (also made from
+headings and sheet numbers, sorted and styled) and tables of contents, watermarks, form
+fields, flattening, redaction marks applied), in a main window, with undo and redo runs and
+saves mixed in. Undo goes through MuPDF's journal (kanzonas/undo_journal.py), which MuPDF
+makes fragile: this is what finds its bugs.
 
 Checked:
 - after every step: nothing raised and no edit failed (modify's "Edit failed" box), the view
@@ -676,6 +678,7 @@ class Battery:
             (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
             (self.op_delete_page, 2), (self.op_move_page, 2), (self.op_reorder, 1),
             (self.op_duplicate_page, 1), (self.op_crop, 2), (self.op_bookmarks, 1),
+            (self.op_auto_bookmarks, 2),
             (self.op_replace_pages, 2),
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
@@ -1102,6 +1105,60 @@ class Battery:
                                      self.rnd.randint(1, n)]
                                     for _ in range(self.rnd.randint(0, 4))]
         v.set_toc(toc)
+
+    def op_auto_bookmarks(self):
+        """Bookmark generation (from headings or sheet numbers, through the preview, replacing
+        or adding), a table of contents inserted or updated, the panel's sort and styles."""
+        from kanzonas import bookmarks_ui
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QDialog
+        v, rnd, win = self.v, self.rnd, self.win
+        r = rnd.random()
+        if r < 0.35:
+            def preview(dlg):
+                if dlg.sheet_scan is None:
+                    dlg.depth.setValue(rnd.randint(1, 3))
+                else:
+                    dlg.group.setChecked(rnd.random() < 0.5)
+                dlg.titlecase.setChecked(rnd.random() < 0.3)
+                dlg.mode_add.setChecked(rnd.random() < 0.3)
+                n = dlg.tree.topLevelItemCount()
+                if n > 1 and rnd.random() < 0.5:
+                    dlg.tree.topLevelItem(rnd.randrange(n)).setCheckState(0, Qt.Unchecked)
+                dlg._accept()
+                return dlg.result() == QDialog.Accepted
+            bookmarks_ui.make_bookmarks(win, rnd.choice(["headings", "headings", "sheets"]),
+                                        preview)
+            return None
+        if r < 0.7:
+            if not v.doc.get_toc():
+                return "none"
+
+            def toc(dlg):
+                dlg.depth.setValue(rnd.randint(1, 3))
+                if rnd.random() < 0.3:
+                    dlg.title.setText(self.typed())
+                if dlg.old and rnd.random() < 0.8:
+                    dlg.at_old.setChecked(True)
+                elif v.doc.page_count >= 10:
+                    return False                # (keep the document small)
+                else:
+                    (dlg.at_start if rnd.random() < 0.5 else dlg.at_current).setChecked(True)
+                dlg.size.setCurrentIndex(rnd.randrange(dlg.size.count()))
+                return True
+            bookmarks_ui.insert_toc(win, toc)
+            return None
+        p = win.bookmarks
+        if not p.toc:
+            return "none"
+        p.tree.setCurrentItem(p.tree.topLevelItem(rnd.randrange(p.tree.topLevelItemCount())))
+        if r < 0.8:
+            p.sort(rnd.choice(["page", "name"]))
+        elif r < 0.9:
+            p.toggle_style(rnd.choice(["bold", "italic"]))
+        else:
+            p.set_color(rnd.choice([None, (1, 0, 0), (0, 0.5, 0)]))
+        return None
 
     def op_watermark(self):
         v = self.v

@@ -1156,7 +1156,8 @@ pages to new file (to a new file, not the document itself), Delete pages (the pa
 the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
 deleted page then goes to the page after it (or the last page).</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
-<li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
+<li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks, make them from the
+headings, and insert a table of contents (see Bookmarks and table of contents).</li>
 <li><b>Link sheet callouts</b> (Pages menu, Pages tab): for a drawing set plotted without
 hyperlinks. KanzonasPDF reads each page's sheet number and title from its title block (the
 value after a SHEET, SHEET NO or DWG NO caption, or the largest sheet-like number in the
@@ -1168,6 +1169,64 @@ so AutoCAD's own hyperlinks stay and running it twice adds nothing. Options: a t
 around the links (off by default, to keep drawings clean), and bookmarks named by sheet number
 and title. Ctrl+Z undoes it all.</li>
 </ul>
+
+<h2 id="bookmarks">Bookmarks and table of contents</h2>
+<p>Bookmarks (the PDF's outline) are listed in the <b>Bookmarks</b> panel (F9). Click one to go
+to its place. The buttons above the list add a bookmark to the current page (+), rename, delete,
+move up and down, and indent (make it a child of the one above) or outdent. The <b>⋯</b> button,
+a right-click in the list, and <b>Document &gt; Bookmark tools</b> have the rest. Every change is
+one undo step (Ctrl+Z), and editing one bookmark keeps the others' places, zoom and styles.</p>
+<ul>
+<li><b>Add bookmark at current view</b> (Ctrl+B, when you're not editing text): a bookmark to
+the place the window shows, after the selected bookmark. With text selected, the bookmark goes
+to that text and is named after it.</li>
+<li><b>Set bookmark destination to current view</b>: the selected bookmark now goes to the
+place the window shows (its name and style stay).</li>
+<li><b>Sort bookmarks by page</b> (in page order, then from the top of the page down) or
+<b>Sort bookmarks by name</b> (numbers in number order: A-2 before A-10). Each bookmark's
+children move with it and are sorted too.</li>
+<li><b>Expand all bookmarks</b> and <b>Collapse all bookmarks</b> open or fold the whole list
+(only in the panel; the document doesn't change).</li>
+<li><b>Bold bookmark (on/off)</b>, <b>Italic bookmark (on/off)</b> and <b>Bookmark
+color...</b> style the selected bookmark. They're saved in the PDF, so Acrobat and other
+readers show them too.</li>
+</ul>
+<p><b>Making bookmarks from the document.</b> Three commands find the bookmarks for you. Each
+reads the pages with a progress bar (Cancel stops it), then shows what it found as a tree to
+check before anything changes: untick what shouldn't be a bookmark, double-click a name to
+change it, select bookmarks and click <b>Level up</b> or <b>Level down</b>, and choose how many
+<b>Levels</b> to keep (1 to 3). Clicking a bookmark there shows its place on the page. Tick
+<b>Names in capitals in Title Case</b> to write FIRST FLOOR PLAN as First Floor Plan. When the
+document already has bookmarks, choose whether the new ones replace them or come after them.
+<b>Make bookmarks</b> makes them all as one undo step.</p>
+<ul>
+<li><b>Make bookmarks from headings...</b> finds the headings by their look: text clearly
+bigger than the body text, bold lines alone on their row, and numbered headings (1.2 Scope,
+SECTION 08 71 00, PART 2 - PRODUCTS, Chapter 3). The levels are the same throughout the
+document: bigger text is a higher level, then bold, then the numbering (SECTION over PART over
+1.1 over 1.1.1); the window says which look became which level. Headers, footers and page
+numbers repeated on page after page are left out, and so are the lines of a table of contents
+page. A single line bigger than everything else at the start (the document's title) is listed
+unticked. It's quick even on long documents (a second or two for 500 pages).</li>
+<li><b>Bookmarks from tagged structure...</b> is for tagged PDFs (most PDFs saved from Word,
+and accessible PDFs): their headings are marked H1 to H6, so the bookmarks are exactly the
+document's headings and levels. On a PDF without tags it says so.</li>
+<li><b>Bookmarks from sheet numbers...</b> is for drawing sets: a bookmark for each sheet,
+named by its sheet number and title (A-101  FIRST FLOOR PLAN), read from the title blocks as
+Link sheet callouts reads them. Tick <b>Group the sheets by discipline</b> to put them under
+G - General, A - Architectural, S - Structural, M - Mechanical and so on (the U.S. National CAD
+Standard's letters).</li>
+</ul>
+<p><b>Insert table of contents...</b> (Document menu, Pages menu, or the Bookmarks panel's ⋯)
+adds pages listing the bookmarks: a title, each bookmark with dotted leaders and its page number,
+levels indented and in smaller type, and each line a link to its page. Choose the title, how
+many levels to list, where it goes (at the start of the document, or before the current page)
+and the page size (the size of the page it goes before, Letter or A4). The page numbers are the
+pages' numbers after the new pages are inserted. Run it again after changing the bookmarks and
+choose <b>In place of the table of contents made before</b>: the old pages are replaced by new
+ones, instead of adding another table. Bookmarks that go to a web page or another file aren't
+listed, and the headings on the table's own pages are never made into bookmarks. It's one undo
+step, and it asks to unlock the page order when the page list is locked.</p>
 
 <h2 id="scan">Scanning</h2>
 <p><b>Scan...</b> (File menu, Pages tab &gt; Create group, or the command palette) scans pages
@@ -1571,6 +1630,7 @@ settings...).</li>
 <tr><td>Ctrl+E</td><td>Edit text (click: the paragraph; Alt+click: one line)</td></tr>
 <tr><td>Ctrl+B / Ctrl+I / Ctrl+U (editing text)</td><td>Bold / Italic / Underline the selected words</td></tr>
 <tr><td>Ctrl+] / Ctrl+[ (editing text)</td><td>Larger / smaller text (the selected words, a point at a time)</td></tr>
+<tr><td>Ctrl+B (not editing text)</td><td>Add bookmark at current view</td></tr>
 <tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
 <tr><td>Ctrl+N</td><td>New PDF (blank page)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>
