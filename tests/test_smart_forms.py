@@ -422,15 +422,18 @@ def acrobat_form(d):
         js('AFSimple_Calculate("SUM", new Array ("Price"));'),
         js('AFNumber_Format(2, 0, 0, 0, "$", true);'),
         js('AFNumber_Keystroke(2, 0, 0, 0, "$", true);')))
-    avg = widget("Avg", 610, "/AA << /C %s >>" % js('AFSimple_Calculate("AVG", "Price.0, Price.1");'))
+    avg = widget("Avg", 610, "/AA << /C %s >>" % js(
+        'AFSimple_Calculate("AVG", "Price.0, Price.1");'))
     sfn = widget("Double", 580, "/AA << /C %s >>" % js(
         '/** BVCALC Total*2 EVCALC **/ event.value = AFMakeNumber(getField("Total").value)*2;'))
     custom = widget("Secret", 550, "/AA << /C %s >>" % js(
         'event.value = 42; app.launchURL("http://example.com");'))
     fields = [group, total, avg, sfn, custom]
     d.xref_set_key(p.xref, "Annots", "[%s]" % " ".join(f"{k} 0 R" for k in kids + fields[1:]))
-    d.xref_set_key(d.pdf_catalog(), "AcroForm", "<< /Fields [%s] /CO [%s] /DA (/Helv 0 Tf 0 g) >>" % (
-        " ".join(f"{k} 0 R" for k in fields), " ".join(f"{k} 0 R" for k in fields[1:])))
+    d.xref_set_key(d.pdf_catalog(), "AcroForm",
+                   "<< /Fields [%s] /CO [%s] /DA (/Helv 0 Tf 0 g) >>" % (
+                       " ".join(f"{k} 0 R" for k in fields),
+                       " ".join(f"{k} 0 R" for k in fields[1:])))
 
 
 class AcrobatForms(Quiet):
@@ -527,7 +530,8 @@ class Formats(Quiet):
                           "currency": "€", "prepend": False})
         self.assertEqual(S.read_format("AFDate_FormatEx(\"dd/mm/yyyy\");"),
                          {"kind": "date", "pattern": "dd/mm/yyyy"})
-        self.assertEqual(S.read_format("AFDate_Format(2);"), {"kind": "date", "pattern": "mm/dd/yy"})
+        self.assertEqual(S.read_format("AFDate_Format(2);"),
+                         {"kind": "date", "pattern": "mm/dd/yy"})
         self.assertEqual(S.read_format("AFSpecial_Format(3);"), {"kind": "special", "which": 3})
         self.assertEqual(S.read_validate("AFRange_Validate(true, 1, false, 0);"),
                          {"min": 1.0, "max": None})
@@ -718,6 +722,62 @@ class Dialogs(Quiet):
         self.assertIsNone(v.detect_preview)
         self.assertEqual(len(chosen), len(found) - 1)
         self.assertEqual(chosen[0]["name"], "Applicant")
+
+
+class Menus(Quiet):
+    def test_forms_menu_and_right_click(self):
+        from PySide6.QtCore import QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtWidgets import QMenu
+        from kanzonas.main_window import MainWindow
+        path = os.path.join(self.tmp.name, "menus.pdf")
+        d = pymupdf.open()
+        self.text_fields("a", "b")(d)
+        d.save(path)
+        win = MainWindow()
+        self.addCleanup(win.close)
+        win.open_file(path)
+        v = win.view()
+        forms = next(a.menu() for a in win.menuBar().actions()
+                     if a.menu() and a.text().replace("&", "") == "Forms")
+        texts = [a.text() for a in forms.actions()]
+        for act in (win.a_detect_fields, win.a_field_props, win.a_tab_order,
+                    win.a_check_required):
+            self.assertIn(act.text(), texts)
+            self.assertTrue(act.isEnabled())
+        # Field properties... with no field selected says how to select one
+        with mock.patch.object(QMessageBox, "information") as info:
+            win.field_properties()
+            info.assert_called_once()
+        # right-click on a field: its own menu
+        shown = []
+
+        class Menu(QMenu):
+            def exec(self, *_a):
+                shown.append([x.text() for x in self.actions() if not x.isSeparator()])
+        pw = v.pages[0]
+        pg = v.doc[0]
+        r = pg.first_widget.rect
+        pos = QPointF((r.x0 + 5) * v.zoom, (r.y0 + 5) * v.zoom)
+        ev = QMouseEvent(QMouseEvent.MouseButtonPress, pos, pw.mapToGlobal(pos),
+                         Qt.RightButton, Qt.RightButton, Qt.NoModifier)
+        with mock.patch("PySide6.QtWidgets.QMenu", Menu):
+            pw._content_menu(ev, pw.to_pdf(pos))
+            win.set_tool("f_text")
+            pw._content_menu(ev, pw.to_pdf(pos))
+            far = QPointF(500 * v.zoom, 700 * v.zoom)
+            pw._content_menu(QMouseEvent(QMouseEvent.MouseButtonPress, far, pw.mapToGlobal(far),
+                                         Qt.RightButton, Qt.RightButton, Qt.NoModifier),
+                             pw.to_pdf(far))
+        self.assertEqual(shown[0], ["Field properties...", "Set tab order..."])
+        self.assertEqual(shown[1], ["Field properties...", "Set tab order...", "Delete field"])
+        self.assertEqual(shown[2][:2], ["Detect form fields...", "Set tab order..."])
+        # with a field selected, Field properties... opens it
+        self.assertEqual(v.selected_field()[1], pg.first_widget.xref)
+        with mock.patch("kanzonas.form_ui.edit_field", return_value=None) as edit:
+            win.field_properties()
+            self.assertEqual(edit.call_args[0][1]["name"], "a")
+        v.dirty = False
 
 
 if __name__ == "__main__":

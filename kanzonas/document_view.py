@@ -8185,49 +8185,6 @@ class DocumentView(QScrollArea):
         self.pages[index].update()
         self.selectionChanged.emit()
 
-    def edit_field_properties(self, index, xref):
-        page = self.doc[index]
-        w = page.load_widget(xref)
-        name, ok = QInputDialog.getText(self, tr("Field properties"),
-                                        tr("{kind} field name:").format(kind=w.field_type_string),
-                                        text=w.field_name)
-        if not ok or not name.strip():
-            return
-        mine = self._field_dict(w)
-        taken = {x.field_name for pg in self.doc for x in pg.widgets()
-                 if self._field_dict(x) != mine}
-        if name.strip() != w.field_name and name.strip() in taken and \
-                w.field_type != pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
-            # (two fields with one name are one field: typing in one would fill both)
-            QMessageBox.information(self, tr("Field properties"), tr(
-                "Another field is already called {name}: choose another name.").format(
-                    name=name.strip()))
-            return
-        choices = None
-        if w.field_type in (pymupdf.PDF_WIDGET_TYPE_COMBOBOX, pymupdf.PDF_WIDGET_TYPE_LISTBOX):
-            cur = "\n".join(c[1] if isinstance(c, (list, tuple)) else c
-                            for c in (w.choice_values or []))
-            text, ok = dialogs.get_text(self, tr("Dropdown"), tr("Choices, one per line:"), cur)
-            if ok:
-                choices = [c.strip() for c in text.splitlines() if c.strip()]
-
-        def do():
-            pg = self.doc[index]
-            ww = pg.load_widget(xref)
-            fx = self._field_dict(ww)
-            if fx != xref:
-                # the name lives on the field above the widget (KanzonasPDF's own fields,
-                # many Acrobat forms): naming the widget changed nothing
-                self.doc.xref_set_key(fx, "T", pymupdf.get_pdf_str(name.strip()))
-            else:
-                ww.field_name = name.strip()
-            if choices:
-                ww.choice_values = choices
-                if ww.field_value not in choices:
-                    ww.field_value = choices[0]
-            ww.update()
-        self.modify(do, [index])
-
     def delete_field(self, index, xref):
         self.clear_selection()
 

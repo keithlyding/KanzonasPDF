@@ -23,7 +23,7 @@ import pymupdf
 
 TOL = 1.6               # points: lines this close are the same line
 MIN_LINE = 30           # a blank line is at least this long
-MAX_SEGMENTS = 3000     # more line pieces than this: a drawing, not a form
+MAX_SEGMENTS = 2000     # more line pieces than this: a drawing, not a form
 
 SIGNATURE = re.compile(r"\b(signature|sign here|signed|firma)\b", re.I)
 INITIALS = re.compile(r"\b(initials?|iniciales)\b", re.I)
@@ -218,38 +218,60 @@ def _merge(segs):
             else:
                 joined.append([a, b])
         lines[pos] = [tuple(s) for s in joined]
-    return lines
+    return _Lines(lines)
+
+
+class _Lines(dict):
+    """{position: [(start, end)]} with a sorted list of positions for quick lookups."""
+
+    def __init__(self, d):
+        super().__init__(d)
+        self.keys_sorted = sorted(d)
 
 
 def _covers(lines, pos, a, b):
-    for p, spans in lines.items():
-        if abs(p - pos) <= TOL:
-            for s0, s1 in spans:
-                if s0 <= a + TOL and s1 >= b - TOL:
-                    return True
+    import bisect
+    ks = lines.keys_sorted
+    k = bisect.bisect_left(ks, pos - TOL)
+    while k < len(ks) and ks[k] <= pos + TOL:
+        for s0, s1 in lines[ks[k]]:
+            if s0 <= a + TOL and s1 >= b - TOL:
+                return True
+        k += 1
     return False
+
+
+def _near(lines, pos):
+    """The spans of the lines within TOL of pos."""
+    import bisect
+    ks = lines.keys_sorted
+    k = bisect.bisect_left(ks, pos - TOL)
+    out = []
+    while k < len(ks) and ks[k] <= pos + TOL:
+        out += lines[ks[k]]
+        k += 1
+    return out
 
 
 def _cells(H, V):
     """The boxes the lines close: each found from its top-left corner as the smallest box
     with all four sides drawn."""
-    ys, xs = sorted(H), sorted(V)
+    import bisect
+    ys, xs = H.keys_sorted, V.keys_sorted
     cells = []
     for ya in ys:
+        y_from = bisect.bisect_right(ys, ya + 3)
         for xa in xs:
             if not _covers(V, xa, ya, ya + 3) or not _covers(H, ya, xa, xa + 3):
                 continue
             found = None
-            for yb in ys:
-                if yb <= ya + 5:
-                    continue
+            x_from = bisect.bisect_right(xs, xa + 3)
+            for yb in ys[y_from:]:
                 if not _covers(V, xa, ya, yb):
                     break
                 if not _covers(H, yb, xa, xa + 3):
                     continue
-                for xb in xs:
-                    if xb <= xa + 5:
-                        continue
+                for xb in xs[x_from:]:
                     if not (_covers(H, ya, xa, xb) and _covers(H, yb, xa, xb)):
                         break
                     if _covers(V, xb, ya, yb):
@@ -365,19 +387,37 @@ def detect(page, existing=()):
         found.append({"kind": kind, "rect": rect, "name": name, "label": label, "prio": prio})
 
     # 1. boxes and table cells
-    cells = _cells(H, V) if len(hs) + len(vs) else []
+    # (the search is from every corner: a page ruled like graph paper is no form)
+    cells = _cells(H, V) if hs and vs and len(H) * len(V) <= 8000 else []
     cells = [c for c in cells if abs(c) < 0.25 * abs(page.mediabox)]
-    edge_h = set()                      # (y, x0, x1) of cell sides: not blank lines
+    edge_h = {}                         # y -> [(x0, x1)] of cell sides: not blank lines
     for c in cells:
-        edge_h.add((round(c.y0), round(c.x0), round(c.x1)))
-        edge_h.add((round(c.y1), round(c.x0), round(c.x1)))
+        for y in (c.y0, c.y1):
+            edge_h.setdefault(round(y), []).append((c.x0, c.x1))
     text_cells = {i: _words_in(words, c) for i, c in enumerate(cells)}
 
-    def same_row(a, b):
-        return abs(a.y0 - b.y0) <= 2 * TOL and abs(a.y1 - b.y1) <= 2 * TOL
+    # the cells of each row and column, found through buckets (not a walk of every cell)
+    by_row, by_col = {}, {}
+    for k, c in enumerate(cells):
+        by_row.setdefault((round(c.y0 / 4), round(c.y1 / 4)), []).append(k)
+        by_col.setdefault((round(c.x0 / 4), round(c.x1 / 4)), []).append(k)
 
-    def same_col(a, b):
-        return abs(a.x0 - b.x0) <= 2 * TOL and abs(a.x1 - b.x1) <= 2 * TOL
+    def lined_up(index, i, lo, hi):
+        c = cells[i]
+        a, b = round(getattr(c, lo) / 4), round(getattr(c, hi) / 4)
+        out = []
+        for ka in (a - 1, a, a + 1):
+            for kb in (b - 1, b, b + 1):
+                out += [k for k in index.get((ka, kb), ()) if k != i and
+                        abs(getattr(cells[k], lo) - getattr(c, lo)) <= 2 * TOL and
+                        abs(getattr(cells[k], hi) - getattr(c, hi)) <= 2 * TOL]
+        return out
+
+    def row_of(i):
+        return lined_up(by_row, i, "y0", "y1")
+
+    def col_of(i):
+        return lined_up(by_col, i, "x0", "x1")
 
     for i, c in enumerate(cells):
         inside = text_cells[i]
@@ -387,15 +427,15 @@ def detect(page, existing=()):
             if not text:
                 text, _r = _left_label(words, c.x0, c.y1)
             if not text:
-                text = _header(cells, text_cells, i, same_col)
+                text = _header(cells, text_cells, i, col_of)
             if text:
                 add("check", c, text, 0)
             continue
         if w < 30 or h < 10:
             continue
         if not inside:
-            row = _row_label(cells, text_cells, i, same_row)
-            head = _header(cells, text_cells, i, same_col)
+            row = _row_label(cells, text_cells, i, row_of)
+            head = _header(cells, text_cells, i, col_of)
             if row and head:
                 label = row + " " + head
             else:
@@ -442,14 +482,13 @@ def detect(page, existing=()):
     blanks = []
     for y, spans in H.items():
         for x0, x1 in spans:
-            if x1 - x0 < MIN_LINE or (round(y), round(x0), round(x1)) in edge_h:
+            if x1 - x0 < MIN_LINE:
                 continue
-            if any(abs(round(y) - ey) <= 2 and x0 >= ex0 - 2 and x1 <= ex1 + 2
-                   for ey, ex0, ex1 in edge_h):
-                continue
+            if any(ex0 - 2 <= x1 and ex1 + 2 >= x0
+                   for ey in range(round(y) - 2, round(y) + 3) for ex0, ex1 in edge_h.get(ey, ())):
+                continue                # (a side of a box found above)
             # a table's line: a vertical line meets it at an end
-            if any(abs(vx - x0) <= TOL or abs(vx - x1) <= TOL
-                   for vx, sp in V.items() for a, b in sp if a - TOL <= y <= b + TOL):
+            if any(a - TOL <= y <= b + TOL for vx in (x0, x1) for a, b in _near(V, vx)):
                 continue
             blanks.append((y, x0, x1, None, None))
     for x0, x1, y, line, size in unders:
@@ -507,41 +546,32 @@ def _right_label(words, r):
     return " ".join(w.text for w in group), None
 
 
-def _row_label(cells, text_cells, i, same_row):
+def _row_label(cells, text_cells, i, row_of):
     """The text of the nearest cell left of cell i in its row (with only empty cells
     between)."""
     c = cells[i]
-    left = sorted([k for k, d in enumerate(cells) if k != i and same_row(d, c) and
-                   d.x1 <= c.x0 + TOL], key=lambda k: -cells[k].x1)
+    left = sorted([k for k in row_of(i) if cells[k].x1 <= c.x0 + TOL],
+                  key=lambda k: -cells[k].x1)
     for k in left:
         if text_cells[k]:
             return " ".join(w.text for w in sorted(text_cells[k], key=lambda w: (w.rect.y0,
                                                                                  w.rect.x0)))
-        if cells[k].width <= 20:
-            continue                     # (a checkbox cell between)
     return None
 
 
-def _header(cells, text_cells, i, same_col):
+def _header(cells, text_cells, i, col_of):
     """The text of the nearest cell above cell i in its column (a column heading), and the
     row number when the rows under it are blank ("Qty 2")."""
     c = cells[i]
-    up = sorted([k for k, d in enumerate(cells) if k != i and same_col(d, c) and
-                 d.y1 <= c.y0 + TOL], key=lambda k: -cells[k].y1)
+    up = sorted([k for k in col_of(i) if cells[k].y1 <= c.y0 + TOL], key=lambda k: -cells[k].y1)
     blank = 0
     for k in up:
         if text_cells[k]:
             head = " ".join(w.text for w in sorted(text_cells[k], key=lambda w: (w.rect.y0,
                                                                                  w.rect.x0)))
-            return head if blank == 0 and not _has_rows_below(cells, text_cells, k, i,
-                                                              same_col) else \
-                "%s %d" % (head, blank + 1)
+            # more than one blank cell under a heading: they're numbered (Qty 1, Qty 2)
+            below = sum(1 for j in col_of(k) if cells[j].y0 >= cells[k].y1 - TOL and
+                        not text_cells[j])
+            return head if blank == 0 and below <= 1 else "%s %d" % (head, blank + 1)
         blank += 1
     return None
-
-
-def _has_rows_below(cells, text_cells, head, i, same_col):
-    """More than one blank cell under a heading: they're numbered (Qty 1, Qty 2, ...)."""
-    c = cells[head]
-    return sum(1 for k, d in enumerate(cells) if same_col(d, c) and d.y0 >= c.y1 - TOL and
-               not text_cells[k]) > 1
