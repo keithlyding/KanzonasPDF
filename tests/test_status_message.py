@@ -29,6 +29,16 @@ class LongMessage(unittest.TestCase):
         cls.w.show()
         APP.processEvents()
         cls.sb = cls.w.statusBar()
+        if not cls.sb.fontMetrics().horizontalAdvance("Modo"):
+            # (Qt's offscreen platform on Windows finds no font, so every text measures 0 px
+            # and none is too long: the bar is given PyMuPDF's own Helvetica to measure with)
+            import pymupdf
+            from PySide6.QtCore import QByteArray
+            from PySide6.QtGui import QFont, QFontDatabase
+            i = QFontDatabase.addApplicationFontFromData(
+                QByteArray(bytes(pymupdf.Font("helv").buffer)))
+            cls.sb.setFont(QFont(QFontDatabase.applicationFontFamilies(i)[0], 9))
+            APP.processEvents()
 
     @classmethod
     def tearDownClass(cls):
