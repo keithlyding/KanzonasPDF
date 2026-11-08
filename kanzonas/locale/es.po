@@ -8575,8 +8575,8 @@ msgstr "Porcentaje"
 msgid "Special (ZIP, phone, SSN)"
 msgstr "Especial (código postal, teléfono, Seguro Social)"
 
-msgid "The value is a fraction: 0.25 (or 25% typed) shows as 25.00%."
-msgstr "El valor es una fracción: 0.25 (o 25% escrito) se muestra como 25.00%."
+msgid "A number typed is a percent: 25 or 25% shows as 25.00%. The value is kept as a fraction, 0.25, as Acrobat keeps it."
+msgstr "Un número escrito es un porcentaje: 25 o 25% se muestra como 25.00%. El valor se guarda como fracción, 0.25, como lo guarda Acrobat."
 
 msgid "d day, m month (mmm Jan, mmmm January), yy or yyyy year."
 msgstr "d día, m mes (mmm Jan, mmmm January: meses en inglés, como en Acrobat), yy o yyyy año."

@@ -121,7 +121,10 @@ class FieldPropertiesDialog(QDialog):
         self.psep = QComboBox()
         self.psep.addItems(SEPARATORS)
         f.addRow(tr("Separator style:"), self.psep)
-        f.addRow(QLabel(tr("The value is a fraction: 0.25 (or 25% typed) shows as 25.00%.")))
+        note = QLabel(tr("A number typed is a percent: 25 or 25% shows as 25.00%. The value is "
+                         "kept as a fraction, 0.25, as Acrobat keeps it."))
+        note.setWordWrap(True)
+        f.addRow(note)
         st.addWidget(pct)
         dt = QWidget()
         f = QFormLayout(dt)
