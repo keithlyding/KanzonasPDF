@@ -29,6 +29,12 @@ Check accessibility) and bookmarks, fixed:
   recursing): the Bookmarks panel stayed empty and Delete pages failed ("maximum
   recursion depth exceeded"); 100,000 bookmarks took 26 s to read when the file opened and
   32 s to write (a list searched for each): now 3.6 s and 3.7 s;
+- a note (or any markup with a pop-up) added to a tagged document that passed veraPDF's
+  PDF/UA-1 check made it fail 7.18.1-1 and 7.18.1-2: the pop-up wasn't tagged, nor
+  described (veraPDF 1.28.2's rules exempt only Widget, PrinterMark and Link annotations,
+  hidden ones and those outside the crop box). Now the pop-up is in its markup's Annot
+  element, its Contents the markup's (also from Auto-tag, and kept the same when the
+  note's text changes); checked with veraPDF 1.28.2: passes again;
 - Delete pages moved the bookmarks of a deleted page one by one, each reading the whole
   outline again (set_toc_item): 1,000 of 3,000 bookmarks took 10 s;
 - Check accessibility's "long document without bookmarks" offered no fix: now Make
@@ -345,6 +351,53 @@ class Outlines(Case):
                                           "zoom")}] for lv, t, p, dest in ours]
         BA.PYMUPDF_OWN["_extend_toc_items"](d, items)
         self.assertEqual(items, ours)
+
+
+class Popups(Case):
+    def test_a_note_and_its_popup_tagged_together(self):
+        from tests.battery_random import canon
+        from tests.test_accessibility import autotagged, sample
+        d = sample(2)
+        autotagged(d)
+        v = self.view(d)
+        before = canon(v._snapshot())
+        v.modify(lambda: v.doc[1].add_text_annot((400, 400), "A note"), [1])
+        self.assertEqual(tag_upkeep.problems(v.doc), [])
+        after = canon(v._snapshot())
+        note = next(a.xref for a in v.doc[1].annots() if a.type[1] == "Text")
+        pop = int(v.doc.xref_get_key(note, "Popup")[1].split()[0])
+        self.assertEqual(tag_upkeep.popup_of(v.doc, pop), note)
+        tree = tag_upkeep.Tree(v.doc)
+        (el,) = tree.objr[note]
+        self.assertEqual(el.type, "Annot")
+        self.assertEqual(tree.objr[pop], [el])
+        self.assertEqual(v.doc.xref_get_key(pop, "Contents"), ("string", "A note"))
+        v.undo()
+        self.assertEqual(canon(v._snapshot()), before)
+        v.redo()
+        self.assertEqual(canon(v._snapshot()), after)
+        # its text changed: the popup's follows; the note deleted: both leave the tags
+        v.modify(lambda: v.doc.xref_set_key(note, "Contents", "(Changed)"), [1])
+        self.assertEqual(v.doc.xref_get_key(pop, "Contents"), ("string", "Changed"))
+
+        def delete():
+            page = v.doc[1]
+            page.delete_annot(next(a for a in page.annots() if a.xref == note))
+        v.modify(delete, [1])
+        self.assertEqual(tag_upkeep.problems(v.doc), [])
+        self.assertNotIn("Annot", [e.type for e in tag_upkeep.Tree(v.doc).els])
+
+    def test_auto_tag_tags_popups_with_their_markups(self):
+        from kanzonas import autotag
+        from tests.test_accessibility import sample
+        d = sample(1)
+        d[0].add_text_annot((400, 400), "Before tagging")
+        autotag.apply(d, autotag.make_plans(d))
+        self.assertEqual(tag_upkeep.problems(d), [])
+        tree = tag_upkeep.Tree(d)
+        els = [e for e in tree.els if e.type == "Annot"]
+        self.assertEqual(len(els), 1)
+        self.assertEqual(len(els[0].objrs), 2)
 
 
 class Retarget(Case):

@@ -2047,6 +2047,10 @@ def apply(doc, plans, lang=None):
     # tagged now by what they hold (an element of the type each MCID's marking names, the
     # rest as any content added to a tagged page)
     left = [p.index for p in plans if p.note in ("tagged", "left")]
+    # (and pages with popups: each is tagged in its markup's element, see tag_upkeep)
+    left += [p.index for p in plans if p.index not in left and any(
+        doc.xref_get_key(x, "Subtype")[1] == "/Popup" for x, _t, _id in
+        doc[p.index].annot_xrefs())]
     if left:
         from . import tag_upkeep
         tag_upkeep.refresh(doc, left)

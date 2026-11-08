@@ -51,7 +51,7 @@ m = pymupdf.mupdf
 
 GROUPS = {"Document", "Part", "Art", "Sect", "Div", "NonStruct", "Private", "BlockQuote"}
 GRID = {"TR", "TH", "TD", "THead", "TBody", "TFoot"}
-SKIP_ANNOTS = {"Popup", "PrinterMark", "TrapNet"}
+SKIP_ANNOTS = {"PrinterMark", "TrapNet"}
 _ANNOT_TAG = {"Link": "Link", "Widget": "Form"}
 _MCID = re.compile(rb"/MCID\s+(\d+)")
 _SECRET_KEYS = ("Alt", "ActualText", "E", "T")
@@ -135,9 +135,11 @@ def number_tree(obj, out=None, depth=0):
 
 def _annot_list(doc, page_xref, pdf):
     """[(annot object number, subtype, shown)] of a page's /Annots (shown: not hidden and not
-    a popup, printer's mark or trap network)."""
+    a printer's mark or trap network; a popup only when the markup it opens from is shown:
+    it is tagged in that markup's element, see popup_of)."""
     out = []
     page = m.pdf_load_object(pdf, page_xref)
+    popups = {}
     for a in _items(m.pdf_dict_gets(page, "Annots")):
         num = _num(a)
         obj = m.pdf_resolve_indirect(a)
@@ -146,8 +148,38 @@ def _annot_list(doc, page_xref, pdf):
         sub = _name(m.pdf_dict_gets(obj, "Subtype")) or ""
         f = _get(obj, "F")
         hidden = m.pdf_is_int(f) and m.pdf_to_int(f) & 2
-        out.append((num, sub, not hidden and sub not in SKIP_ANNOTS))
+        if sub == "Popup" and not hidden:
+            popups[len(out)] = _num(m.pdf_dict_gets(obj, "Parent"))
+        out.append((num, sub, not hidden and sub not in SKIP_ANNOTS and sub != "Popup"))
+    if popups:
+        shown = {num for num, sub, sh in out if sh}
+        for k, parent in popups.items():
+            if parent in shown:
+                out[k] = (out[k][0], out[k][1], True)
     return out
+
+
+def popup_of(doc, num):
+    """The markup a popup annotation opens from (its object number), or 0."""
+    kind, val = doc.xref_get_key(num, "Parent")
+    if doc.xref_get_key(num, "Subtype")[1] != "/Popup" or kind != "xref":
+        return 0
+    try:
+        return int(val.split()[0])
+    except (ValueError, IndexError):
+        return 0
+
+
+def _mirror_contents(doc, popup, parent):
+    """A popup's Contents kept the same as its markup's: PDF/UA (veraPDF, 7.18.1) wants
+    every annotation shown described, and a reader shows the markup's text in it anyway."""
+    want = doc.xref_get_key(parent, "Contents")
+    have = doc.xref_get_key(popup, "Contents")
+    if want[0] == "string" and want[1]:
+        if have != want:
+            doc.xref_set_key(popup, "Contents", pymupdf.get_pdf_str(want[1]))
+    elif have[0] != "null":
+        doc.xref_set_key(popup, "Contents", "null")
 
 
 def _page_forms(pdf, page_xref, seen):
@@ -791,6 +823,7 @@ class _Upkeep:
         self.changed = set()
         self.candidates = []            # [(El, page index, class)] left empty by this edit
         self.waiting = []               # [(page index, group, [(mcid, tag)])] to place
+        self.popups = []                # [(page index, popup, its markup)] to tag
         self._key_users = None
 
     # -- keys
@@ -1215,6 +1248,9 @@ class _Upkeep:
                     tree.prune(e)
                     self.pt_dirty = True
         for num, sub, shown in here:
+            parent = popup_of(doc, num) if shown and sub == "Popup" else 0
+            if parent:
+                _mirror_contents(doc, num, parent)
             if not shown or self.annot_ok(num, px):
                 continue
             for e in list(tree.objr.get(num, ())):
@@ -1226,7 +1262,10 @@ class _Upkeep:
                     tree.drop_objr(e, num)
                     tree.prune(e)
             owner = tree.objr.get(num, [None])[0]
-            if owner is None:
+            if owner is None and parent:
+                # (a popup: in the element of the markup it opens from, once that has one)
+                self.popups.append((i, num, parent))
+            elif owner is None:
                 rect = doc.xref_get_key(num, "Rect")[1]
                 try:
                     box = pymupdf.Rect([float(v) for v in rect.strip("[]").split()])
@@ -1350,6 +1389,16 @@ class _Upkeep:
             for mc, _u in mcids:
                 tree.add_mcid(e, px, mc)
                 tags[(i, mc)] = e.type
+        for i, num, parent in self.popups:
+            owners = tree.objr.get(parent, ())
+            if len(owners) != 1 or tree.objr.get(num):
+                continue
+            px = self.page_xrefs[i]
+            tree.add_objr(owners[0], num, px)
+            key = self.new_key()
+            doc.xref_set_key(num, "StructParent", str(key))
+            self.set_entry(key, m.pdf_new_indirect(pdf, owners[0].num, 0))
+            self._key_users = None
         for i, st in self.states.items():
             edits = list(st.edits)
             for k, (pi, g, mcids) in enumerate(self.waiting):

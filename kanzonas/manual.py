@@ -1925,7 +1925,8 @@ paragraph, in the reading order where the page shows it; a heading, list item or
 rewritten stays what it was); a picture moved with Edit objects or CAD mode, also onto another
 page, keeps its figure and its alternate text, and a picture pasted is a new figure (Check
 accessibility asks for its description); lines and shapes added are artifacts; markups, links
-and fields added are tagged, and leave the tags when deleted; pages duplicated, inserted,
+and fields added are tagged (a note's pop-up together with its note, described by the note's
+text, as veraPDF's PDF/UA check wants), and leave the tags when deleted; pages duplicated, inserted,
 replaced (Replace pages: the new drawing is tagged anew) or deleted take their tags along;
 Header &amp; footer and Bates numbers are pagination artifacts. Apply redactions (and Sanitize
 document's hidden text) also takes out the alternate text, ActualText and expansion of the

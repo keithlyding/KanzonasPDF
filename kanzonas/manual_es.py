@@ -1939,7 +1939,8 @@ título, un elemento de lista o una celda de tabla reescritos siguen siendo lo q
 imagen movida con Editar objetos o en el modo CAD, también a otra página, conserva su figura y
 su texto alternativo, y una imagen pegada es una figura nueva (Comprobar accesibilidad pide su
 descripción); las líneas y formas agregadas son artefactos; los marcados, vínculos y campos
-agregados se etiquetan, y salen de las etiquetas al eliminarlos; las páginas duplicadas,
+agregados se etiquetan (la ventana emergente de una nota junto con su nota, descrita con el
+texto de la nota, como pide la comprobación PDF/UA de veraPDF), y salen de las etiquetas al eliminarlos; las páginas duplicadas,
 insertadas, reemplazadas (Reemplazar páginas: el dibujo nuevo se etiqueta de nuevo) o
 eliminadas se llevan sus etiquetas; Encabezado y pie de página y los números Bates son
 artefactos de paginación. Aplicar censuras (y el texto oculto de Sanear documento) quita
