@@ -28,6 +28,7 @@ adding another one.
 
 import html
 import re
+import sys
 from collections import Counter, defaultdict
 
 import pymupdf
@@ -394,6 +395,103 @@ def _item(level, title, page, rect, on=True):
     title = (text.rstrip(" .:–—-").lstrip(" –—-") or text)[:200]
     return {"level": level, "title": title, "page": page,
             "to": pymupdf.Point(0, max(0.0, rect.y0 - 2)), "on": on}
+
+
+# ---- outlines nested deep ------------------------------------------------------------------
+def _outline_depth(doc):
+    """How many levels deep the document's outline goes (as MuPDF read it)."""
+    deepest = 0
+    todo = [(doc.outline, 1)] if doc.outline else []
+    while todo:
+        o, lvl = todo.pop()
+        while o is not None and o.this.m_internal:
+            deepest = max(deepest, lvl)
+            if o.down:
+                todo.append((o.down, lvl + 1))
+            o = o.next
+    return deepest
+
+
+def _outline_xrefs(obj, xrefs):
+    """PyMuPDF's JM_outline_xrefs (the object numbers of the outline items from obj, in
+    order: each item, the items under it, then the next), without recursing, and with
+    the items seen in a set (it searched its list for each: 100,000 bookmarks took half a
+    minute to write)."""
+    m = pymupdf.mupdf
+    get, is_dict, num = m.pdf_dict_gets, m.pdf_is_dict, m.pdf_to_num
+    seen = set(xrefs)
+    todo = [obj]
+    while todo:
+        this = todo.pop()
+        while this.m_internal:
+            x = num(this)
+            if x in seen or get(this, "Type").m_internal:
+                break                   # (a loop, or the top of the outline)
+            xrefs.append(x)
+            seen.add(x)
+            first = get(this, "First")
+            nxt = get(this, "Next")
+            if not is_dict(nxt):
+                nxt = None
+            if is_dict(first):
+                if nxt is not None:
+                    todo.append(nxt)
+                this = first
+            elif nxt is not None:
+                this = nxt
+            else:
+                break
+    return xrefs
+
+
+PYMUPDF_OWN = {}                # PyMuPDF's own steps replaced below (for the tests)
+
+
+def apply_deep_outlines():
+    """Wrap Document.get_toc and replace JM_outline_xrefs (once): PyMuPDF reads the outline
+    recursing, one call per level, so a file whose bookmarks nest a thousand levels deep
+    raised RecursionError everywhere the bookmarks are read or written: the Bookmarks
+    panel stayed empty and deleting a page (which moves the bookmarks) failed. get_toc is
+    read again with room for the depth."""
+    own = pymupdf.Document.get_toc
+    if getattr(own, "_kz_deep", False):
+        return
+    if hasattr(pymupdf, "JM_outline_xrefs"):
+        PYMUPDF_OWN["JM_outline_xrefs"] = pymupdf.JM_outline_xrefs
+        pymupdf.JM_outline_xrefs = _outline_xrefs
+
+    def get_toc(doc, simple=True):
+        try:
+            return own(doc, simple)
+        except RecursionError:
+            pass
+        old = sys.getrecursionlimit()
+        sys.setrecursionlimit(old + 4 * _outline_depth(doc) + 200)
+        try:
+            return own(doc, simple)
+        finally:
+            sys.setrecursionlimit(old)
+    get_toc.__doc__ = own.__doc__
+    get_toc._kz_deep = True
+    pymupdf.Document.get_toc = get_toc
+    # (the styles of many bookmarks: PyMuPDF's compiled helper searches a list for each,
+    # 25 s for 100,000 when a file opened; its own Python steps, through the outline_xrefs
+    # above, take a second)
+    extend = getattr(pymupdf.Document, "_extend_toc_items", None)
+    if extend is not None and hasattr(pymupdf, "g_use_extra"):
+        def _extend_toc_items(doc, items):
+            if len(items) < 2000 or not pymupdf.g_use_extra:
+                return extend(doc, items)
+            pymupdf.g_use_extra = False
+            try:
+                return extend(doc, items)
+            finally:
+                pymupdf.g_use_extra = True
+        PYMUPDF_OWN["_extend_toc_items"] = extend
+        pymupdf.Document._extend_toc_items = _extend_toc_items
+
+
+apply_deep_outlines()
 
 
 # ---- tagged PDFs ---------------------------------------------------------------------------

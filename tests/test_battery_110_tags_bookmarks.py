@@ -23,6 +23,10 @@ Check accessibility) and bookmarks, fixed:
   their MCIDs in no element: the document came out of Auto-tag with its tags out of step
   (Check accessibility: "MCID 0 is in no element" on every page). Now tagged by that
   marking;
+- bookmarks nested a thousand levels deep (PyMuPDF reads and writes the outline
+  recursing): the Bookmarks panel stayed empty and Delete pages failed ("maximum
+  recursion depth exceeded"); 100,000 bookmarks took 26 s to read when the file opened and
+  32 s to write (a list searched for each): now 3.6 s and 3.7 s;
 - Check accessibility's "long document without bookmarks" offered no fix: now Make
   bookmarks (from the tags' headings on a tagged document, else from the headings' look).
 
@@ -263,6 +267,65 @@ class AutoTagAndCheck(Case):
         with mock.patch.object(bookmarks_ui, "make_bookmarks") as make:
             accessibility_ui.run_fix(None, window, v, p.fix)
         make.assert_called_once_with(window, "headings")
+
+
+class Outlines(Case):
+    def deep(self, levels):
+        d = pymupdf.open()
+        for i in range(3):
+            d.new_page().insert_text((72, 72), "Page %d" % (i + 1))
+        xs = [d.get_new_xref() for _ in range(levels)]
+        top = d.get_new_xref()
+        d.update_object(top, "<</Type /Outlines /First %d 0 R /Last %d 0 R /Count 1>>" % (
+            xs[0], xs[0]))
+        for k, x in enumerate(xs):
+            kid = " /First %d 0 R /Last %d 0 R /Count 1" % (xs[k + 1], xs[k + 1]) \
+                if k + 1 < levels else ""
+            d.update_object(x, "<</Title (Level %d) /Parent %d 0 R /Dest [%d 0 R /Fit]%s>>" % (
+                k + 1, top if k == 0 else xs[k - 1], d[k % 3].xref, kid))
+        d.xref_set_key(d.pdf_catalog(), "Outlines", "%d 0 R" % top)
+        return d
+
+    def test_bookmarks_nested_deep_are_read_moved_and_written(self):
+        v = self.view(self.deep(1500))
+        toc = v.doc.get_toc(False)
+        self.assertEqual(len(toc), 1500)
+        self.assertEqual(toc[-1][:2], [1500, "Level 1500"])
+        self.assertTrue(v.delete_pages([1]))
+        self.assertEqual(v.doc.page_count, 2)
+        self.assertEqual(len(v.doc.get_toc()), 1500)
+        v.undo()
+        self.assertEqual(v.doc.page_count, 3)
+        v.set_toc(v.doc.get_toc(False)[:10])
+        self.assertEqual(len(v.doc.get_toc()), 10)
+
+    def test_the_outline_read_as_pymupdf_reads_it(self):
+        from kanzonas import bookmarks_auto as BA
+        d = pymupdf.open()
+        for i in range(20):
+            d.new_page()
+        toc = []
+        for i in range(2500):
+            e = {"kind": pymupdf.LINK_GOTO, "page": i % 20, "to": pymupdf.Point(0, i % 700)}
+            if i % 7 == 0:
+                e["bold"] = True
+            if i % 5 == 0:
+                e["color"] = (1, 0, 0)
+            if i % 11 == 0:
+                e["italic"] = True
+            toc.append([[1, 2, 3, 3, 2][i % 5] if i else 1, "Mark %d" % i, i % 20 + 1, e])
+        d.set_toc(toc)
+        d = pymupdf.open("pdf", d.tobytes())
+        first = m.pdf_dict_getl(m.pdf_trailer(tag_upkeep._pdf(d)), pymupdf.PDF_NAME("Root"),
+                                pymupdf.PDF_NAME("Outlines"), pymupdf.PDF_NAME("First"))
+        self.assertEqual(BA._outline_xrefs(first, []),
+                         BA.PYMUPDF_OWN["JM_outline_xrefs"](first, []))
+        ours = d.get_toc(False)
+        items = [[lv, t, p, {k: v for k, v in dest.items()
+                             if k not in ("xref", "bold", "italic", "collapse", "color",
+                                          "zoom")}] for lv, t, p, dest in ours]
+        BA.PYMUPDF_OWN["_extend_toc_items"](d, items)
+        self.assertEqual(items, ours)
 
 
 class TableOfContents(Case):
