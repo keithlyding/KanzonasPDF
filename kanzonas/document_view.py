@@ -822,7 +822,38 @@ class DocumentView(QScrollArea):
         except Exception:               # (another PyMuPDF)
             return [p.rect for p in self.doc]
 
+    def _warm_tags(self):
+        """A tagged document's structure tree read once nothing happens for a moment
+        (tag_upkeep keeps it between edits; an undo or redo makes it old): opened, or after
+        undoing or redoing, the next edit doesn't wait for it. (Ctrl+Z held down reads it
+        once, when it stops.)"""
+        t = getattr(self, "_warm_timer", None)
+        if t is None:
+            t = self._warm_timer = QTimer(self)
+            t.setSingleShot(True)
+            t.setInterval(300)
+            t.timeout.connect(self._warm_now)
+        t.start()
+
+    def _warm_now(self):
+        doc = self.doc
+        if doc is None or getattr(doc, "is_closed", True) or getattr(self, "_inline", None):
+            return
+        from . import tag_upkeep
+        try:
+            if tag_upkeep.is_tagged(doc):
+                self._journal_now()     # (made now, not at the first edit: see tag_upkeep)
+                tree = tag_upkeep.warm(doc)
+                if tree is not None and len(tree.els) >= FREEZE_ITEMS // 4:
+                    # (tens of thousands of objects kept: set aside from the collector's
+                    # full passes, as a big drawing's are, see _set_aside)
+                    gc.collect(1)
+                    gc.freeze()
+        except Exception:
+            pass
+
     def _build_pages(self):
+        self._warm_tags()
         keep = self.verticalScrollBar().value()
         self.page_rects = self._read_page_rects()
         if self.zoom > self._zoom_cap():        # pages added at a high zoom: they must fit
@@ -2490,6 +2521,7 @@ class DocumentView(QScrollArea):
             target.append(back)
         self._measure_journal()
         self._trim_history()
+        self._warm_tags()
         # (the view told of the change while the step was between the two lists: Redo
         # stayed grayed out after an undo, and Ctrl+Y did nothing. Found by
         # tests/battery_random.py)
@@ -3704,7 +3736,9 @@ class DocumentView(QScrollArea):
             after = next((p for p in range(dest["page"] + 1, old_count) if p not in gone), None)
             new = self.doc.page_count - 1 if after is None else \
                 after - sum(1 for g in gone if g < after)
-            self.doc.set_toc_item(idx, dest_dict=dict(dest, page=new, to=pymupdf.Point(0, 0)))
+            # (its own object written: set_toc_item reads the whole outline for each)
+            from .bookmarks_auto import set_toc_dest
+            set_toc_dest(self.doc, idx, dict(dest, page=new, to=pymupdf.Point(0, 0)))
             if not dest.get("color") and dest.get("xref"):
                 self.doc.xref_set_key(dest["xref"], "C", "null")   # not grayed out
 

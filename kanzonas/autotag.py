@@ -1973,7 +1973,8 @@ def apply(doc, plans, lang=None):
     """Write the plans: content, structure elements, the tree's root and parent tree, the
     catalog's /MarkInfo and /Lang, each page's /StructParents and /Tabs. Run it inside
     DocumentView.modify (one undo step). Returns the number of elements written."""
-    from . import page_objects
+    from . import page_objects, tag_upkeep
+    tag_upkeep.forget_tree(doc)
     cat = doc.pdf_catalog()
     root = doc.get_new_xref()
     doc.update_object(root, "<</Type /StructTreeRoot>>")
@@ -2047,6 +2048,10 @@ def apply(doc, plans, lang=None):
     # tagged now by what they hold (an element of the type each MCID's marking names, the
     # rest as any content added to a tagged page)
     left = [p.index for p in plans if p.note in ("tagged", "left")]
+    # (and pages with popups: each is tagged in its markup's element, see tag_upkeep)
+    left += [p.index for p in plans if p.index not in left and any(
+        doc.xref_get_key(x, "Subtype")[1] == "/Popup" for x, _t, _id in
+        doc[p.index].annot_xrefs())]
     if left:
         from . import tag_upkeep
         tag_upkeep.refresh(doc, left)

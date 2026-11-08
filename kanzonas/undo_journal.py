@@ -532,6 +532,18 @@ def embedded_clean(doc):
 _CLEAN = [pymupdf.JM_embedded_clean]
 
 
+def state(doc):
+    """What tells a document's objects apart from what they were when it was last asked,
+    as far as the journal goes: (journal, epoch, turns) changes after every undo, redo,
+    edit taken back or journal forgotten; None without a journal."""
+    try:
+        pdf = pymupdf._as_pdf_document(doc, required=0)
+        j = _JOURNALS.get(_address(pdf.m_internal)) if pdf.m_internal is not None else None
+    except Exception:
+        return None
+    return (id(j), j.epoch, j.turns) if j is not None else None
+
+
 def usable():
     """True when undo can go through the journal in this PyMuPDF / MuPDF."""
     install()
@@ -572,6 +584,7 @@ class Journal:
         m.pdf_enable_journal(self.pdf)
         self.repaired = self.raw.repair_attempted
         self.epoch = 0              # one more each time the entries are all forgotten
+        self.turns = 0              # one more after each undo, redo or edit taken back
         self.bytes = 0              # what measure() found
         self._n = 0
         self._parts = None          # the entries of the edit in progress
@@ -690,6 +703,7 @@ class Journal:
 
     def _refresh(self):
         """What PyMuPDF and MuPDF keep about the document that the undo made old."""
+        self.turns += 1             # (what was read of it is old too: tag_upkeep's cache)
         doc = self.doc
         try:
             m.ll_pdf_drop_page_tree_internal(self.raw)

@@ -447,6 +447,31 @@ def _outline_xrefs(obj, xrefs):
 PYMUPDF_OWN = {}                # PyMuPDF's own steps replaced below (for the tests)
 
 
+def set_toc_dest(doc, idx, dest):
+    """Document.set_toc_item(idx, dest_dict=dest) for a bookmark to a page (dest a
+    get_toc(False) destination, with its "xref"), without reading the whole outline to find
+    the bookmark's object (set_toc_item does, so moving 1,000 of 3,000 bookmarks took
+    10 s): dest's own xref is written."""
+    xref = dest.get("xref")
+    if not xref or dest.get("kind") != pymupdf.LINK_GOTO:
+        doc.set_toc_item(idx, dest_dict=dest)
+        return
+    dest = dict(dest)
+    pno = dest["page"]
+    to = pymupdf.Point(dest.get("to", pymupdf.Point(72, 36)))
+    to.y = doc.page_cropbox(pno).height - to.y
+    dest["to"] = to
+    action = pymupdf.utils.getDestStr(doc.page_xref(pno), dest)
+    if not action.startswith("/A"):
+        raise ValueError("bad bookmark dest")
+    color = dest.get("color")
+    if color:
+        color = list(map(float, color))
+    doc._update_toc_item(xref, action=action[2:], title=None, color=color,
+                         flags=dest.get("italic", False) + 2 * dest.get("bold", False),
+                         collapse=dest.get("collapse"))
+
+
 def apply_deep_outlines():
     """Wrap Document.get_toc and replace JM_outline_xrefs (once): PyMuPDF reads the outline
     recursing, one call per level, so a file whose bookmarks nest a thousand levels deep
@@ -1116,7 +1141,7 @@ def insert_toc(doc, at=0, title=None, depth=MAX_LEVELS, size=None, replace=True)
     first = at
     for idx in to_old:
         dest = toc[idx][3]
-        doc.set_toc_item(idx, dest_dict=dict(dest, page=first, to=pymupdf.Point(0, 0)))
+        set_toc_dest(doc, idx, dict(dest, page=first, to=pymupdf.Point(0, 0)))
         if not dest.get("color") and dest.get("xref"):
             doc.xref_set_key(dest["xref"], "C", "null")         # (not grayed out)
     _tag_toc(doc, first, len(pages))
@@ -1134,10 +1159,9 @@ def _tag_toc(doc, first, count):
         return
     pages = list(range(first, first + count))
     tu.refresh(doc, None, True, pages)          # (everything tagged, in step)
-    tree = tu.Tree(doc)
+    tree = tu.kept_tree(doc)                    # (changed here, and kept: the refresh below)
     if tree.root is None:
         return
-    m = pymupdf.mupdf
     toc = None
     moved = []
     for i in pages:
