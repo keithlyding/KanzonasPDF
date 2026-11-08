@@ -24,6 +24,12 @@ a decision changes or a piece of work lands. Details of each version are in
   owner's priority, for the owner's Dell E525w); styled words in Edit text; Dimension and Legend markups;
   Replace pages; Save as PDF/A and Check PDF/A; the page scale shown, with a scale bar; macOS
   (Apple silicon, unsigned); then a break-it battery (text, markups, scanning and redaction).
+- 1.9.1: text editing, from the owner's use (8 Nov: "Editing text is a pain... I can't copy a
+  text box and move it elsewhere"): Properties' Bold, Italic and size change the selected words
+  while editing; what Add text writes is remembered as one block (a /KZText marked-content
+  marker holding numbers only, never the words, so redaction can take them all) and Edit text
+  opens all of it; Edit objects copies, cuts, pastes and duplicates the page's text with its
+  styles, also into another document.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
@@ -43,11 +49,6 @@ The owner sets this list; nothing below is promised until it's here.
      `claude/comments`.
    - Accessibility (Check accessibility against PDF/UA, Auto-tag, alt text, reading order):
      `claude/accessibility`.
-   - Text editing (owner, 8 Nov: "Editing text is a pain... I can't copy a text box and move it
-     elsewhere"): what Add text writes is remembered as one block (a /KZText marked-content
-     marker holding numbers only, never the words, so redaction can take them all), Edit text
-     opens all of it; Edit objects copies, cuts, pastes and duplicates the page's text with its
-     styles, also into another document: `claude/text-editing-fixes`.
 2. **French, German and Portuguese** (the app and the manual), after 1.10's features (owner,
    6 Nov).
 3. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath

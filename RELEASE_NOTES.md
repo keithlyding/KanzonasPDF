@@ -7,6 +7,26 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.9.1
+
+**New**
+- Text you add is remembered as one piece. Click any line of it with Edit text and the whole text opens, with its line breaks and each word's style, and goes back exactly where it was.
+- With Edit objects, copy, cut, paste and duplicate the page's own text (Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D), keeping its fonts and styles, on any page or into another document. Duplicate copies pictures and shapes too, and CAD Copy now copies text.
+
+**Fixed**
+- While you edit text, Bold, Italic and Font size in Properties change the words you selected, and they stay selected (before, clicking Bold there lost the selection and did nothing). With nothing selected, they change all the text in the box, and Properties shows the style of the selected words.
+- The small style bar above the text being edited is easy to read, and shows which styles the selected words have.
+
+## 1.9.1 (es)
+
+**Novedades**
+- El texto que agrega se recuerda como una sola pieza. Haga clic en cualquiera de sus líneas con Editar texto y se abre entero, con sus saltos de línea y el estilo de cada palabra, y vuelve exactamente a su lugar.
+- Con Editar objetos, copie, corte, pegue y duplique el texto propio de la página (Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D) con sus fuentes y estilos, en cualquier página o en otro documento. Duplicar también copia imágenes y formas, y Copiar de CAD ahora copia el texto.
+
+**Correcciones**
+- Mientras edita texto, la Negrita, la Cursiva y el Tamaño de fuente de Propiedades cambian las palabras que seleccionó, y siguen seleccionadas (antes, hacer clic allí en Negrita perdía la selección y no hacía nada). Sin nada seleccionado, cambian todo el texto del cuadro, y Propiedades muestra el estilo de las palabras seleccionadas.
+- La pequeña barra de estilos sobre el texto que se edita se lee con facilidad y muestra qué estilos tienen las palabras seleccionadas.
+
 ## 1.9
 
 **New**
