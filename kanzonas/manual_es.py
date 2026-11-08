@@ -1177,7 +1177,8 @@ juntas, y Ctrl+Z deshace todo el arrastre); o use Mover página hacia arriba / M
 PDF nuevo a partir de varios. Agregue los PDF (Agregar archivos…, o suéltelos en la lista desde el Explorador); el
 documento abierto ya está en la lista. Arrástrelos, o use Subir / Bajar / Ordenar por nombre, para
 definir el orden, de arriba abajo. Con "Agregar un marcador para cada archivo" marcado, cada archivo recibe un
-marcador con su nombre y conserva sus propios marcadores debajo. Haga clic en Combinar…, elija un nombre,
+marcador con su nombre y conserva sus propios marcadores debajo (cada uno sigue llevando a su lugar de la
+página, con su propio estilo). Haga clic en Combinar…, elija un nombre,
 y el PDF combinado se abre. Los archivos protegidos con contraseña piden su contraseña. Los archivos originales
 no se modifican, y el PDF nuevo no puede reemplazar a ninguno de ellos.</li>
 <li>Combinar archivos también acepta imágenes (JPG, PNG, TIFF, BMP, GIF, WebP): cada una se convierte en una página.
@@ -1208,7 +1209,9 @@ tamaño, elija si las marcas se <b>escalan a la página nueva</b> (con su texto 
 pareja ajusta también la escala de medición de la página y su nombre: 1/4" = 1'-0" pasa a 1/2" = 1'-0" en
 una hoja del doble de tamaño) o se <b>mantienen en el mismo lugar</b>, medido desde la
 esquina superior izquierda. Las mediciones se vuelven a medir cuando cambia lo que miden (la página nueva trae
-su propia escala, o las marcas se estiraron o escalaron en una página sin escala). Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
+su propia escala, o las marcas se estiraron o escalaron en una página sin escala). Un marcador a un lugar de la
+página lleva al mismo lugar del dibujo nuevo, como se colocan las marcas. Una página de tabla de contenido que
+se reemplaza es desde entonces una página común. Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
 el dibujo nuevo; un vínculo sobre palabras que no están en el mismo lugar en el dibujo nuevo (una referencia a un
 plano que se movió) se queda donde estaba y se informa, para que pueda revisarlo. Los encabezados, pies de página,
 marcas de agua, fondos y ediciones de texto escritos en el dibujo anterior se van con él. Las capas de los dibujos
@@ -1502,7 +1505,7 @@ de formulario (valores, opciones de lista, información sobre herramientas y nom
 vínculos (direcciones web y de correo electrónico), notas
 de marcas (también su texto con formato), títulos y direcciones web de marcadores, propiedades del documento (también las propias de un
 programa), el texto alternativo de los PDF etiquetados, las notas de
-vínculos, las etiquetas de página, los nombres de capas y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
+vínculos, las etiquetas de página, los nombres de capas, los nombres de destinos y el título que recuerda una tabla de contenido. Al aplicar, los campos, los vínculos, los sellos y los
 archivos adjuntos que lo contienen se eliminan (y un formulario XFA que lo contiene: sus campos normales se conservan), y en las notas y los comentarios (que se quedan), los marcadores
 y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar dice dónde lo encontró (los
 campos, las notas, los vínculos, los marcadores y las propiedades, y en cuántos lugares más del archivo,

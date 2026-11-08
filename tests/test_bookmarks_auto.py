@@ -481,6 +481,124 @@ class TableOfContents(unittest.TestCase):
         self.assertEqual(toc_lines(d, 0)[:2], [("One", 2, 1), (long, 3, 2)])
 
 
+# ---- with the other page tools ------------------------------------------------------------------
+class WithOtherTools(unittest.TestCase):
+    def test_replace_pages_keeps_a_bookmarks_spot_and_drops_the_table_mark(self):
+        """Replace pages: a bookmark to a spot on a page goes to the same spot of the
+        drawing on the new, larger page (as its markups do); a table of contents page
+        replaced by a drawing is no longer the table (making it again doesn't delete it)."""
+        from kanzonas import replace_pages
+        d = numbered(4)
+        d.set_toc([[1, "Spot", 3, {"kind": pymupdf.LINK_GOTO, "page": 2,
+                                   "to": pymupdf.Point(100, 300), "bold": True,
+                                   "color": (1, 0, 0)}], [1, "Four", 4]])
+        BA.insert_toc(d, 0)
+        self.assertEqual(BA.toc_pages(d), [0])
+        new = pymupdf.open()
+        for _ in range(2):
+            new.new_page(width=1190, height=1684).insert_text((72, 72), "NEW", fontsize=12)
+        replace_pages.replace(d, new, [(0, 0), (3, 1)], scale=True)
+        self.assertEqual(BA.toc_pages(d), [])
+        e = d.get_toc(False)[0]
+        self.assertEqual(e[2], 4)
+        self.assertAlmostEqual(e[3]["to"].x, 200, delta=1)
+        self.assertAlmostEqual(e[3]["to"].y, 600, delta=1)
+        self.assertTrue(e[3].get("bold"))
+        self.assertEqual(tuple(e[3]["color"]), (1, 0, 0))
+
+    def test_combine_keeps_destinations_and_styles(self):
+        from kanzonas import combine
+        tmp = tempfile.mkdtemp()
+        paths = []
+        for k in range(2):
+            d = numbered(3)
+            d.set_toc([[1, "Start %d" % k, 1],
+                       [2, "Spot %d" % k, 3, {"kind": pymupdf.LINK_GOTO, "page": 2,
+                                              "to": pymupdf.Point(50, 400), "italic": True,
+                                              "color": (0, 0, 1)}],
+                       [1, "Web", -1, {"kind": pymupdf.LINK_URI, "uri": "https://example.com"}]])
+            paths.append(os.path.join(tmp, "f%d.pdf" % k))
+            d.save(paths[-1])
+        out = os.path.join(tmp, "out.pdf")
+        combine.combine(paths, out, bookmarks=True)
+        with pymupdf.open(out) as r:
+            toc = r.get_toc(False)
+            self.assertEqual([e[:3] for e in toc],
+                             [[1, "f0", 1], [2, "Start 0", 1], [3, "Spot 0", 3], [2, "Web", -1],
+                              [1, "f1", 4], [2, "Start 1", 4], [3, "Spot 1", 6], [2, "Web", -1]])
+            spot = toc[6][3]
+            self.assertAlmostEqual(spot["to"].y, 400, delta=1)
+            self.assertTrue(spot.get("italic"))
+            self.assertEqual(tuple(spot["color"]), (0, 0, 1))
+            self.assertEqual(toc[7][3].get("uri"), "https://example.com")
+
+
+class Redaction(unittest.TestCase):
+    def test_no_copy_of_a_redacted_title_stays(self):
+        """Search & redact takes the term out of the bookmarks (styled ones too, the panel
+        showing them) and out of the title a table of contents page remembers; Apply
+        redactions on a table's page takes its remembered title away."""
+        from kanzonas.document_view import DocumentView
+        word = "TOPSECRET"
+        tmp = tempfile.mkdtemp()
+        for scrub in (True, False):
+            d = numbered(4)
+            d[2].insert_text((72, 500), "The %s part" % word, fontsize=12)
+            d.set_toc([[1, "Intro", 1],
+                       [1, "The %s part" % word, 3, {"kind": pymupdf.LINK_GOTO, "page": 2,
+                                                    "to": pymupdf.Point(0, 480),
+                                                    "bold": True, "color": (1, 0, 0)}]])
+            BA.insert_toc(d, 0, title="%s contents" % word)
+            path = os.path.join(tmp, "in%d.pdf" % scrub)
+            d.save(path)
+            v = DocumentView(path)
+            self.addCleanup(lambda v=v: (setattr(v, "dirty", False), v.close_doc()))
+            self.assertGreater(v.search_redact(word), 0)
+            v.apply_redactions(scrub)
+            out = os.path.join(tmp, "out%d.pdf" % scrub)
+            v.save(out)
+            with pymupdf.open(out) as r:
+                self.assertNotIn(word.encode(), r.tobytes(expand=255))
+                e = r.get_toc(False)[1]
+                self.assertEqual(e[1], "The [redacted] part")
+                self.assertTrue(e[3].get("bold"))
+        # a mark drawn over the table's page (not a search): its remembered title goes
+        d = numbered(2)
+        d.set_toc([[1, "One", 1]])
+        BA.insert_toc(d, 0, title="Private list")
+        d[0].add_redact_annot(pymupdf.Rect(40, 40, 400, 90))
+        path = os.path.join(tmp, "marked.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        self.addCleanup(lambda: (setattr(v, "dirty", False), v.close_doc()))
+        v.apply_redactions(False)
+        self.assertNotIn("title", BA.toc_settings(v.doc))
+        self.assertEqual(BA.toc_pages(v.doc), [0])
+
+    def test_a_bookmark_to_a_named_destination_still_goes_there(self):
+        """Search & redact rewrites the bookmarks when a title has the term: one to a
+        named destination kept going nowhere."""
+        from kanzonas.document_view import DocumentView
+        d = numbered(4)
+        d[1].insert_text((72, 500), "SECRET words", fontsize=12)
+        d.set_toc([[1, "SECRET plan", 2], [1, "Named", 3]])
+        x = d.get_toc(False)[1][3]["xref"]
+        names = d.get_new_xref()
+        d.update_object(names, "<</Names[(sec)[%d 0 R/XYZ 0 500 0]]>>" % d.page_xref(2))
+        d.xref_set_key(d.pdf_catalog(), "Names", "<</Dests %d 0 R>>" % names)
+        d.xref_set_key(x, "A", "null")
+        d.xref_set_key(x, "Dest", "(sec)")
+        path = os.path.join(tempfile.mkdtemp(), "named.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        self.addCleanup(lambda: (setattr(v, "dirty", False), v.close_doc()))
+        self.assertGreater(v.search_redact("SECRET"), 0)
+        v.apply_redactions(False)
+        toc = v.doc.get_toc(False)
+        self.assertEqual([e[:3] for e in toc], [[1, "[redacted] plan", 2], [1, "Named", 3]])
+        self.assertAlmostEqual(toc[1][3]["to"].y, v.doc[2].rect.height - 500, delta=1)
+
+
 # ---- in the window: one undo step each ----------------------------------------------------------
 class Quiet(unittest.TestCase):
     def setUp(self):

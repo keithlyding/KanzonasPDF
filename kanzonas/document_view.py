@@ -319,12 +319,14 @@ def forget_redacted(page, clean=True):
     "/Span <</ActualText (the words)>> BDC EMC" around nothing, the words readable in the
     file; clean: the page's drawing is cleaned, which drops them), its thumbnail (a picture
     of the page as it was) and a program's private copy of it (/PieceInfo: Illustrator keeps
-    its whole drawing there)."""
-    from . import added_text
+    its whole drawing there), and the title a table of contents page remembers
+    (bookmarks_auto: it's drawn on the page, and may have been under a mark)."""
+    from . import added_text, bookmarks_auto
     added_text.prune(page)              # (an added block's marker with nothing left in it)
     if clean:
         page.clean_contents()
     doc = page.parent
+    bookmarks_auto.forget_title(page)
     for key in ("Thumb", "PieceInfo"):
         if doc.xref_get_key(page.xref, key)[0] != "null":
             doc.xref_set_key(page.xref, key, "null")
@@ -7700,8 +7702,12 @@ class DocumentView(QScrollArea):
                 # private data can hold the text too
                 pg.delete_annot(pg.load_annot(x))
         toc = self.doc.get_toc(simple=False)
+        from .bookmarks_auto import clean_title, writable_toc
         if any(pat.search(e[1]) for e in toc):
-            self.doc.set_toc([[e[0], clean(e[1])] + e[2:] for e in toc])
+            # (written back as they were: one to a named destination keeps going to its
+            # place, set_toc can't write the name and left it going nowhere)
+            self.doc.set_toc(writable_toc(self.doc, [[e[0], clean(e[1])] + e[2:] for e in toc]))
+        clean_title(self.doc, pat, clean)       # (a table of contents' own title)
         meta = self.doc.metadata or {}
         if any(pat.search(v) for v in meta.values() if isinstance(v, str)):
             self.doc.set_metadata({k: clean(v) for k, v in meta.items() if v is not None})

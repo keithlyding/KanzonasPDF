@@ -1197,7 +1197,8 @@ together, and Ctrl+Z undoes the whole drag); or Move page up / Move page down
 new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
 open document is already in the list. Drag them, or use Move up / Move down / Sort by name, to
 set the order, top to bottom. With "Add a bookmark for each file" ticked, each file gets a
-bookmark named after it and keeps its own bookmarks underneath. Click Combine..., choose a name,
+bookmark named after it and keeps its own bookmarks underneath (each still going to its spot
+on the page, in its own style). Click Combine..., choose a name,
 and the combined PDF opens. Password-protected files ask for their password. The original files
 aren't changed, and the new PDF can't replace one of them.</li>
 <li>Combine files also takes pictures (JPG, PNG, TIFF, BMP, GIF, WebP): each becomes a page.
@@ -1229,7 +1230,8 @@ them; stretched if its proportions differ; an even scale adjusts the page's meas
 its name too, 1/4" = 1'-0" becoming 1/2" = 1'-0" on a sheet twice the size) or <b>kept at the same place</b>,
 measured from the top-left corner. Measurements are measured again when what they measure changed
 (the new page brings its own scale, or the markups were stretched or scaled on a page with no
-scale). The underlines and text of links made with KanzonasPDF are
+scale). A bookmark to a spot on the page goes to the same spot of the new drawing, as the markups
+are placed. A table of contents page that is replaced is an ordinary page from then on. The underlines and text of links made with KanzonasPDF are
 drawn again on the new drawing; a link over words that aren't in the same place on the new
 drawing (a sheet callout that moved) stays where it was and is reported, so you can check it.
 Headers, footers, watermarks, backgrounds and text edits written into the old drawing go with
@@ -1506,7 +1508,7 @@ it where a box can't go: form
 fields (values, list options, tooltips and names, also of fields on no page), links (web and
 email addresses), markup notes (also their formatted text), bookmark titles and web addresses,
 document properties (also a program's own), the alternate text of tagged PDFs, link notes,
-page labels, layer names and destination names. When you apply, fields, links, stamps and
+page labels, layer names, destination names and the title a table of contents remembers. When you apply, fields, links, stamps and
 attached files containing it are deleted (and an XFA form holding it: its ordinary fields stay), and in notes and comments (they stay), bookmarks
 and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact says where it found it (the
 fields, notes, links, bookmarks and properties, and how many other places in the file, such as

@@ -700,6 +700,25 @@ def toc_settings(doc, pages=None):
     return out
 
 
+def forget_title(page):
+    """Apply redactions on a table of contents page: the title it remembers goes (the
+    marks may have covered it on the page; the next table made in its place takes the
+    default title)."""
+    doc = page.parent
+    if doc.xref_get_key(page.xref, TOC_KEY + "/Title")[0] != "null":
+        doc.xref_set_key(page.xref, TOC_KEY + "/Title", "null")
+
+
+def clean_title(doc, pat, clean):
+    """Search & redact: the title the table of contents pages remember, the terms (pat)
+    taken out of it (clean)."""
+    for i in toc_pages(doc):
+        x = doc.page_xref(i)
+        kind, t = doc.xref_get_key(x, TOC_KEY + "/Title")
+        if kind == "string" and pat.search(t):
+            doc.xref_set_key(x, TOC_KEY + "/Title", pymupdf.get_pdf_str(clean(t)))
+
+
 def _encodable(texts):
     try:
         for t in texts:
