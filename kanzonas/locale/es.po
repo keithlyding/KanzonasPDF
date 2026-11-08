@@ -8592,6 +8592,9 @@ msgstr "No exportados (las imágenes y los archivos adjuntos se quedan en el PDF
 msgid "This XFDF file declares a DTD or entities, which aren't allowed."
 msgstr "Este archivo XFDF declara una DTD o entidades, que no se permiten."
 
+msgid "This comment file is too large to import."
+msgstr "Este archivo de comentarios es demasiado grande para importarlo."
+
 msgid "This isn't an XFDF file."
 msgstr "Este no es un archivo XFDF."
 

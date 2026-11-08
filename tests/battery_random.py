@@ -942,8 +942,9 @@ class Battery:
 
     def op_review(self):
         """Review (review.py, xfdf.py): a reply to a markup or to a reply, a reply's text
-        changed, a reply deleted, a review status or check mark set, or a page's comments
-        exported to XFDF and imported again as copies on another page."""
+        changed, a reply deleted, a review status or check mark set, a page's comments
+        exported to XFDF or FDF and imported again as copies on another page, or sent back
+        with one of them changed."""
         from kanzonas import review, xfdf
         v = self.v
         pages = [i for i in range(v.doc.page_count) if self.markups(i)]
@@ -955,7 +956,7 @@ class Battery:
         replies = [x for x in linked if t.links[x].role == "reply"]
         roots = [x for x in self.markups(i) if x not in t.links]
         what = self.rnd.choice(["reply", "reply", "nested", "status", "status", "edit",
-                                "delete", "exchange"])
+                                "delete", "exchange", "exchange", "resend"])
         if what == "nested" and replies:
             v.reply_to(i, self.rnd.choice(replies), self.typed())
         elif what == "edit" and replies:
@@ -965,9 +966,26 @@ class Battery:
         elif what == "status" and roots:
             pick = self.rnd.sample(roots, self.rnd.randint(1, min(3, len(roots))))
             v.set_review_status(i, pick, self.rnd.choice(review.REVIEW + review.MARKED))
+        elif what == "resend":
+            # the page's comments sent back with one changed: that one is replaced (its
+            # thread kept), the rest are already there (XFDF or FDF)
+            recs, _skipped = xfdf.records(v.doc, {i: roots[:6]})
+            if not recs:
+                return "none"
+            fdf = self.rnd.random() < 0.5
+            recs = xfdf.from_fdf(xfdf.to_fdf(recs)) if fdf else \
+                xfdf.from_xfdf(xfdf.to_xfdf(recs, "", xfdf.file_ids(v.doc)))
+            changed = self.rnd.choice(recs)
+            changed["keys"]["Contents"] = self.typed()
+            changed["keys"].pop("RC", None)
+            changed["keys"]["M"] = "D:20261108120000Z"
+            v.import_comments(recs)
         elif what == "exchange":
             recs, _skipped = xfdf.records(v.doc, {i: roots[:6]})
-            recs = xfdf.from_xfdf(xfdf.to_xfdf(recs))
+            if self.rnd.random() < 0.5:
+                recs = xfdf.from_xfdf(xfdf.to_xfdf(recs))
+            else:
+                recs = xfdf.from_fdf(xfdf.to_fdf(recs))
             to = self.page()
             names = {r["keys"]["NM"]: "copy-%d-%s" % (self.step, k) for k, r in enumerate(recs)}
             for r in recs:

@@ -278,6 +278,51 @@ def shift_replies(page, moved, threads=None):
                     doc.xref_set_key(t, "Rect", A._shift_pairs(val, dx, dy))
 
 
+def move_threads(src, dest, moved):
+    """The replies and statuses of markups moved to another page go with them: moved {old
+    xref on page src: its new xref on page dest}. The same objects (and their pop-ups) leave
+    src's /Annots for dest's, answer the new markup and keep their place beside it. Returns
+    the old xrefs whose threads went (call pdf_speed.delete_many(src, those,
+    keep_replies=True) for the markups themselves afterwards)."""
+    if not moved:
+        return set()
+    doc = src.parent
+    threads = Threads(src)
+    carried, done = [], set()
+    for old, new in moved.items():
+        kids = [c for c in threads.descendants([old]) if c not in moved]
+        if not kids:
+            continue
+        done.add(old)
+        o, n = _rect_of(doc, old), _rect_of(doc, new)
+        dx, dy = n.x0 - o.x0, n.y1 - o.y1
+        for c in kids:
+            if c in carried:
+                continue
+            carried.append(c)
+            parent = threads.links[c].parent
+            if parent == old:
+                doc.xref_set_key(c, "IRT", f"{new} 0 R")
+            targets = [c]
+            kind, val = doc.xref_get_key(c, "Popup")
+            if kind == "xref":
+                pop = int(val.split()[0])
+                targets.append(pop)
+                carried.append(pop)
+            for t in targets:
+                doc.xref_set_key(t, "P", f"{dest.xref} 0 R")
+                kind, val = doc.xref_get_key(t, "Rect")
+                if kind == "array" and "R" not in val:
+                    doc.xref_set_key(t, "Rect", A._shift_pairs(val, dx, dy))
+    if carried:
+        gone = set(carried)
+        A.set_annot_order(src, [x for x in A.annot_order(src) if x not in gone])
+        there = A.annot_order(dest)
+        have = set(there)
+        A.set_annot_order(dest, there + [x for x in carried if x not in have])
+    return done
+
+
 # ---- the comment summary ----------------------------------------------------------------------
 SORTS = ("page", "author", "date", "type")
 

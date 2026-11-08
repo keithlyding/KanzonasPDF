@@ -16,6 +16,20 @@ Importing matches markups by name (/NM): one already in the document is replaced
 imported one differs and skipped when it's the same, so comments sent back and forth don't
 pile up. Markups for pages the document doesn't have are skipped and reported; pictures and
 attached files aren't exchanged (their contents aren't part of a comment file).
+
+Names and formats follow the XFDF specification (checked against Apache PDFBox's XFDF reader,
+pdmodel/fdf, and files Acrobat writes): rect "x1,y1,x2,y2", colors "#RRGGBB", dates as PDF
+dates (D:YYYYMMDDHHmmSSOHH'mm'), flags by name, coords in /QuadPoints order, <vertices> and
+<gesture> as "x,y;x,y", the note's text in <contents> and its rich text (/RC) in
+<contents-richtext> (Acrobat often writes only that), <popup> inside its markup, <f> and
+<ids> before <annots>. In FDF (ISO 32000-1 12.7.8, Table 248) every annotation, its pop-up
+too, carries /Page (0 = the first) and is listed in /Annots.
+
+A comment file is untrusted: XML is read with expat directly, refusing any DOCTYPE (so no
+entity declarations, external entities or entity expansion), with caps on size, depth and
+element count; FDF is read as plain values only. Only the keys listed below are carried,
+so no action (/A, /AA: JavaScript, Launch...), appearance or reference from the file ever
+reaches the document.
 """
 
 import json
@@ -32,6 +46,11 @@ from .i18n import tr
 
 NS = "http://ns.adobe.com/xfdf/"
 KZ_NS = "https://kanzonas.com/ns/xfdf/1"
+XHTML_NS = "http://www.w3.org/1999/xhtml"
+MAX_BYTES = 64 * 1024 * 1024        # a comment file (thousands of ink drawings: a few MB)
+MAX_ELEMENTS = 1_000_000
+MAX_DEPTH = 64
+MAX_RECORDS = 200_000
 _SKIP = (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_WIDGET, pymupdf.PDF_ANNOT_LINK)
 
 # PDF subtype -> XFDF element
@@ -48,11 +67,11 @@ _NAME = re.compile(r"^[A-Za-z0-9#._+-]{1,64}$")
 _REF = re.compile(r"\d+\s+\d+\s+R")
 
 # the keys carried, by kind of value
-STRINGS = ("T", "Contents", "Subj", "M", "CreationDate", "NM", "State", "StateModel", "DA",
-           "DS", A.KZ_KEY)
+STRINGS = ("T", "Contents", "RC", "Subj", "M", "CreationDate", "NM", "State", "StateModel",
+           "DA", "DS", A.KZ_KEY)
 NUMBERS = ("F", "CA", "Rotate", "Q", "LL", "LLE", "LLO")
-NAMES = ("Name", "IT", "RT")
-ARRAYS = ("Rect", "C", "IC", "QuadPoints", "Vertices", "L", "RD", "CL")
+NAMES = ("Name", "IT", "RT", "CP", "Sy")
+ARRAYS = ("Rect", "C", "IC", "QuadPoints", "Vertices", "L", "RD", "CL", "CO")
 BOOLS = ("Open", "Cap")
 
 
@@ -89,6 +108,227 @@ def _rgb(h):
     if not re.fullmatch(r"[0-9A-Fa-f]{6}", h):
         return None
     return [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+
+
+# ---- dates -------------------------------------------------------------------------------------
+_ISO = re.compile(r"^\s*(\d{4})-(\d\d)-(\d\d)(?:[T ](\d\d):(\d\d)(?::(\d\d))?(?:\.\d+)?)?"
+                  r"\s*(Z|[+-]\d\d(?::?\d\d)?)?\s*$")
+
+
+def date_in(v):
+    """A date from a comment file as a PDF date: XFDF's own form (D:YYYYMMDDHHmmSSOHH'mm')
+    as it is, digits alone with D: put before them, ISO 8601 (some programs write that)
+    turned into it."""
+    v = (v or "").strip()
+    m = _ISO.match(v)
+    if m:
+        y, mo, d, h, mi, sec, tz = m.groups()
+        out = "D:%s%s%s%s%s%s" % (y, mo, d, h or "00", mi or "00", sec or "00")
+        if tz == "Z":
+            out += "Z"
+        elif tz:
+            out += "%s%s'%s'" % (tz[0], tz[1:3], tz.replace(":", "")[3:5] or "00")
+        return out
+    if re.fullmatch(r"\d{4,14}.*", v):
+        return "D:" + v
+    return v
+
+
+def date_out(v):
+    """A PDF date for XFDF (with its D:)."""
+    v = (v or "").strip()
+    return "D:" + v if re.fullmatch(r"\d{4,14}.*", v) else v
+
+
+# ---- XML, safely -----------------------------------------------------------------------------
+_BAD_XML = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff\ud800-\udfff]")
+
+
+def _xml_text(v):
+    """Text XML can hold (control characters other than tab and line ends left out: one
+    would make the whole file unreadable for Acrobat)."""
+    return _BAD_XML.sub("", v or "")
+
+
+def _escape_text(v):
+    # (a carriage return written as itself would be read back as a line feed)
+    return escape(_xml_text(v), {"\r": "&#13;"})
+
+
+def _to_utf8(data):
+    """The XML as UTF-8 bytes (UTF-16 with its byte-order mark, or an encoding the XML
+    declaration names, decoded first)."""
+    if isinstance(data, str):
+        return data.encode("utf-8")
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return data.decode("utf-16").encode("utf-8")
+    if data[:3] == b"\xef\xbb\xbf":
+        return data[3:]
+    m = re.match(rb"\s*<\?xml[^>]*?encoding\s*=\s*[\"']([A-Za-z0-9._-]{1,40})[\"']", data[:200])
+    if m and m.group(1).lower().replace(b"_", b"-") not in (b"utf-8", b"utf8", b"us-ascii",
+                                                            b"ascii"):
+        return data.decode(m.group(1).decode("ascii")).encode("utf-8")
+    return data
+
+
+def parse_xml(data):
+    """(root element, {element: raw XML of its content}) of untrusted XML, the raw content
+    kept for <contents-richtext> elements only. Tags are "{namespace}name". Refuses a DOCTYPE
+    (and with it every entity declaration and external entity), more than MAX_BYTES,
+    MAX_DEPTH levels or MAX_ELEMENTS elements. Raises ValueError."""
+    import xml.parsers.expat as expat
+    if len(data) > MAX_BYTES:
+        raise ValueError(tr("This comment file is too large to import."))
+    try:
+        data = _to_utf8(data)
+    except (LookupError, UnicodeError) as ex:
+        raise ValueError(tr("This isn't a readable XFDF file: {error}").format(error=ex))
+    p = expat.ParserCreate("UTF-8", namespace_separator="}")
+    p.buffer_text = True
+    try:
+        p.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_NEVER)
+    except AttributeError:
+        pass
+    root, stack, count, raws, rich = [], [], [0], {}, []
+
+    def refuse(*_args):
+        raise ValueError(tr("This XFDF file declares a DTD or entities, which aren't "
+                            "allowed."))
+
+    def qn(name):
+        return "{" + name if "}" in name else name
+
+    def start(name, attrs):
+        count[0] += 1
+        if count[0] > MAX_ELEMENTS or len(stack) >= MAX_DEPTH:
+            raise ValueError(tr("This comment file is too large to import."))
+        el = ET.Element(qn(name), {qn(k): v for k, v in attrs.items()})
+        if rich and rich[-1][1] is None and len(stack) == rich[-1][2] + 1:
+            rich[-1][1] = p.CurrentByteIndex       # (its first element starts here)
+        if stack:
+            stack[-1].append(el)
+        elif root:
+            raise ValueError(tr("This isn't a readable XFDF file: {error}").format(
+                error="two root elements"))
+        else:
+            root.append(el)
+        stack.append(el)
+        if _local(el.tag) == "contents-richtext":
+            rich.append([el, None, len(stack) - 1])
+
+    def end(_name):
+        el = stack.pop()
+        if rich and rich[-1][0] is el:
+            _el, at, _depth = rich.pop()
+            if at is not None:
+                raws[el] = data[at:p.CurrentByteIndex].decode("utf-8", "replace").strip()
+
+    def chars(text):
+        if not stack:
+            return
+        el = stack[-1]
+        if len(el):
+            el[-1].tail = (el[-1].tail or "") + text
+        else:
+            el.text = (el.text or "") + text
+
+    p.StartDoctypeDeclHandler = refuse
+    p.EntityDeclHandler = refuse
+    p.UnparsedEntityDeclHandler = refuse
+    p.NotationDeclHandler = refuse
+    p.ExternalEntityRefHandler = refuse
+    p.StartElementHandler = start
+    p.EndElementHandler = end
+    p.CharacterDataHandler = chars
+    try:
+        p.Parse(data, True)
+    except expat.ExpatError as ex:
+        raise ValueError(tr("This isn't a readable XFDF file: {error}").format(error=ex))
+    if not root:
+        raise ValueError(tr("This isn't an XFDF file."))
+    return root[0], raws
+
+
+# ---- rich text (/RC: XHTML, ISO 32000-1 12.7.3.4) ----------------------------------------------
+_BLOCKS = {"p", "div", "li", "h1", "h2", "h3", "h4", "h5", "h6", "body"}
+
+
+def rich_plain(el):
+    """The plain text of a rich-text element: its paragraphs on lines of their own."""
+    out = []
+
+    def walk(e, inside):
+        tag = _local(e.tag) if isinstance(e.tag, str) else ""
+        block = tag in _BLOCKS and tag != "body"
+        if tag == "br":
+            out.append("\n")
+        if block and out and not out[-1].endswith("\n"):
+            out.append("\n")
+        if e.text and (inside or block or e.text.strip()):
+            out.append(e.text)
+        for c in e:
+            walk(c, inside or block)
+            if c.tail and (inside or block or c.tail.strip()):
+                out.append(c.tail)
+        if block:
+            out.append("\n")
+    walk(el, False)
+    lines = "".join(out).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    return "\n".join(line.rstrip() for line in lines).strip()
+
+
+def _plain_of_rc(rc):
+    """The plain text of an /RC string, or None when it isn't readable rich text."""
+    rc = re.sub(r"^\s*<\?xml[^>]*\?>", "", rc or "").strip()
+    if not rc.startswith("<"):
+        return None
+    try:
+        root, _raws = parse_xml(rc.encode("utf-8"))
+    except ValueError:
+        return None
+    return rich_plain(root)
+
+
+def _same_words(a, b):
+    return " ".join((a or "").split()) == " ".join((b or "").split())
+
+
+def _settle_rich(keys):
+    """A markup's rich text kept only when it says what its plain text says (another
+    program's edit may have changed one only; the plain text is what's shown and searched):
+    with no plain text, the rich text's becomes it."""
+    rc = keys.get("RC")
+    if rc is None:
+        return
+    plain = _plain_of_rc(rc)
+    if plain is None:
+        del keys["RC"]
+    elif not keys.get("Contents"):
+        keys["Contents"] = plain
+    elif not _same_words(plain, keys["Contents"]):
+        del keys["RC"]
+
+
+def _rich_for_xfdf(rc):
+    """An /RC string as the inside of <contents-richtext>: without its XML declaration, its
+    first element in the XHTML namespace (or else it would be in XFDF's)."""
+    rc = re.sub(r"^\s*<\?xml[^>]*\?>", "", rc).strip()
+    m = re.match(r"<([A-Za-z_][\w.-]*)([^>]*)>", rc)
+    if m and "xmlns=" not in m.group(2) and ":" not in m.group(1):
+        rc = "<%s xmlns=\"%s\"%s" % (m.group(1), XHTML_NS, rc[len(m.group(1)) + 1:])
+    return _xml_text(rc)
+
+
+def file_ids(doc):
+    """The document's file identifiers (the trailer's /ID) as hex, or None."""
+    try:
+        kind, val = doc.xref_get_key(-1, "ID")
+    except Exception:
+        return None
+    if kind != "array":
+        return None
+    ids = re.findall(r"<([0-9A-Fa-f]*)>", val)
+    return (ids[0].upper(), ids[1].upper()) if len(ids) == 2 else None
 
 
 # ---- reading a document's markups as records -------------------------------------------------
@@ -160,10 +400,11 @@ def _skipped_kind(doc, x, subtype, keys):
     """Why this markup isn't exchanged (a picture, an attached file...), or ""."""
     if subtype not in ELEMENTS:
         return subtype or "?"
-    if doc.xref_get_key(x, "KZImage")[0] != "null":
+    if doc is not None and doc.xref_get_key(x, "KZImage")[0] != "null":
         return "Image"
     try:
-        kind = json.loads(keys.get(A.KZ_KEY) or "{}").get("kind")
+        stored = json.loads(keys.get(A.KZ_KEY) or "{}")
+        kind = stored.get("kind") if isinstance(stored, dict) else None
     except ValueError:
         kind = None
     if kind in ("image", "attach"):
@@ -199,6 +440,7 @@ def records(doc, only=None):
                 continue
             names[x] = keys.get("NM") or nm or "kz-" + str(uuid.uuid4())
             keys["NM"] = names[x]
+            _settle_rich(keys)
             rec = {"page": i, "subtype": sub, "keys": keys, "xref": x}
             ln = threads.links.get(x)
             if ln is not None:
@@ -206,10 +448,9 @@ def records(doc, only=None):
             kind, val = doc.xref_get_key(x, "Popup")
             if kind == "xref":
                 p = int(val.split()[0])
-                pk, pv = doc.xref_get_key(p, "Rect")
-                ok, ov = doc.xref_get_key(p, "Open")
-                if pk == "array" and not _REF.search(pv):
-                    rec["popup"] = {"rect": _nums(pv), "open": ov == "true"}
+                rec["popup"] = _popup_of(doc, p)
+                if rec["popup"] is None:
+                    del rec["popup"]
             out.append(rec)
     for rec in out:
         if "irt" in rec:
@@ -218,6 +459,35 @@ def records(doc, only=None):
                 del rec["irt"]
         rec.pop("xref", None)
     return out, skipped
+
+
+def _popup_of(doc, p):
+    """A pop-up note's place, whether it's open and its flags, or None."""
+    pk, pv = doc.xref_get_key(p, "Rect")
+    if pk != "array" or _REF.search(pv):
+        return None
+    try:
+        rect = _nums(pv)
+    except ValueError:
+        return None
+    if len(rect) != 4:
+        return None
+    ok, ov = doc.xref_get_key(p, "Open")
+    fk, fv = doc.xref_get_key(p, "F")
+    return {"rect": rect, "open": ov == "true",
+            "flags": int(float(fv)) if fk in ("int", "float") else POPUP_FLAGS}
+
+
+POPUP_FLAGS = 28                    # print, no zoom, no rotate (as Acrobat writes them)
+
+
+def _flag_names(f):
+    return ",".join(n for b, n in enumerate(FLAG_NAMES) if int(f) & (1 << b))
+
+
+def _flags_of(text):
+    return sum(1 << FLAG_NAMES.index(n.strip().lower()) for n in (text or "").split(",")
+               if n.strip().lower() in FLAG_NAMES)
 
 
 # ---- XFDF ------------------------------------------------------------------------------------
@@ -230,7 +500,7 @@ def _attrs(rec):
                       ("CreationDate", "creationdate"), ("State", "state"),
                       ("StateModel", "statemodel")):
         if k.get(key):
-            at.append((name, k[key]))
+            at.append((name, date_out(k[key]) if key in ("M", "CreationDate") else k[key]))
     if _hex(k.get("C")):
         at.append(("color", _hex(k["C"])))
     if _hex(k.get("IC")):
@@ -238,8 +508,7 @@ def _attrs(rec):
     if "CA" in k:
         at.append(("opacity", _num(k["CA"])))
     if "F" in k:
-        f = int(k["F"])
-        at.append(("flags", ",".join(n for b, n in enumerate(FLAG_NAMES) if f & (1 << b))))
+        at.append(("flags", _flag_names(k["F"])))
     if rec.get("irt"):
         at.append(("inreplyto", rec["irt"]))
         at.append(("replyType", "group" if k.get("RT") == "Group" else "reply"))
@@ -276,8 +545,17 @@ def _attrs(rec):
             at.append((name, _num(k[key])))
     if "Cap" in k:
         at.append(("caption", "yes" if k["Cap"] else "no"))
+    if k.get("CP") in ("Inline", "Top"):
+        at.append(("caption-style", k["CP"]))
+    if len(k.get("CO") or ()) == 2:
+        at.append(("caption-offset-h", _num(k["CO"][0])))
+        at.append(("caption-offset-v", _num(k["CO"][1])))
+    if rec["subtype"] == "Caret" and "Sy" in k:
+        at.append(("symbol", "paragraph" if k["Sy"] == "P" else "None"))
     if "Open" in k:
-        at.append(("open", "yes" if k["Open"] else "no"))
+        # (a note's /Open has no XFDF attribute of its own: its <popup open> says it for
+        # other programs)
+        at.append(("kz:open", "yes" if k["Open"] else "no"))
     if k.get("RD"):
         at.append(("fringe", ",".join(_num(v) for v in k["RD"])))
     if k.get("CL"):
@@ -292,21 +570,30 @@ def _pairs(nums):
                     for i in range(0, len(nums) - 1, 2))
 
 
-def to_xfdf(recs, filename=""):
-    """The records as an XFDF document (bytes, UTF-8)."""
+def to_xfdf(recs, filename="", ids=None):
+    """The records as an XFDF document (bytes, UTF-8). ids: the document's file identifiers
+    (file_ids), which Acrobat checks the comments against."""
     lines = ['<?xml version="1.0" encoding="UTF-8"?>',
-             '<xfdf xmlns="%s" xmlns:kz="%s" xml:space="preserve">' % (NS, KZ_NS), "<annots>"]
+             '<xfdf xmlns="%s" xmlns:kz="%s" xml:space="preserve">' % (NS, KZ_NS)]
+    if filename:
+        lines.append("<f href=%s/>" % quoteattr(_xml_text(filename)))
+    if ids:
+        lines.append('<ids original="%s" modified="%s"/>' % ids)
+    lines.append("<annots>")
     for rec in recs:
         tag = ELEMENTS[rec["subtype"]]
         k = rec["keys"]
-        head = "<%s %s" % (tag, " ".join("%s=%s" % (n, quoteattr(v)) for n, v in _attrs(rec)))
+        head = "<%s %s" % (tag, " ".join("%s=%s" % (n, quoteattr(_xml_text(str(v))))
+                                         for n, v in _attrs(rec)))
         body = []
         if k.get("Contents"):
-            body.append("<contents>%s</contents>" % escape(k["Contents"]))
+            body.append("<contents>%s</contents>" % _escape_text(k["Contents"]))
+        if k.get("RC"):
+            body.append("<contents-richtext>%s</contents-richtext>" % _rich_for_xfdf(k["RC"]))
         if k.get("DA"):
-            body.append("<defaultappearance>%s</defaultappearance>" % escape(k["DA"]))
+            body.append("<defaultappearance>%s</defaultappearance>" % _escape_text(k["DA"]))
         if k.get("DS"):
-            body.append("<defaultstyle>%s</defaultstyle>" % escape(k["DS"]))
+            body.append("<defaultstyle>%s</defaultstyle>" % _escape_text(k["DS"]))
         if k.get("Vertices"):
             body.append("<vertices>%s</vertices>" % _pairs(k["Vertices"]))
         if k.get("InkList"):
@@ -314,13 +601,12 @@ def to_xfdf(recs, filename=""):
                 "<gesture>%s</gesture>" % _pairs(g) for g in k["InkList"]))
         if rec.get("popup"):
             p = rec["popup"]
-            body.append('<popup page="%d" rect="%s" open="%s" flags="print,nozoom,norotate"/>'
+            body.append('<popup page="%d" rect="%s" open="%s" flags="%s"/>'
                         % (rec["page"], ",".join(_num(v) for v in p["rect"]),
-                           "yes" if p.get("open") else "no"))
+                           "yes" if p.get("open") else "no",
+                           _flag_names(p.get("flags", POPUP_FLAGS))))
         lines.append(head + (">" + "".join(body) + "</%s>" % tag if body else "/>"))
     lines.append("</annots>")
-    if filename:
-        lines.append("<f href=%s/>" % quoteattr(filename))
     lines.append("</xfdf>")
     return ("\n".join(lines) + "\n").encode("utf-8")
 
@@ -331,13 +617,8 @@ def _local(tag):
 
 def from_xfdf(data):
     """The records in an XFDF document (bytes). Raises ValueError for a file that isn't
-    XFDF."""
-    if re.search(rb"<!(DOCTYPE|ENTITY)", data[:4096] if isinstance(data, bytes) else b""):
-        raise ValueError(tr("This XFDF file declares a DTD or entities, which aren't allowed."))
-    try:
-        root = ET.fromstring(data)
-    except ET.ParseError as ex:
-        raise ValueError(tr("This isn't a readable XFDF file: {error}").format(error=ex))
+    XFDF, or that KanzonasPDF won't read (a DTD or entities, too large)."""
+    root, raws = parse_xml(data)
     if _local(root.tag) != "xfdf":
         raise ValueError(tr("This isn't an XFDF file."))
     out = []
@@ -345,13 +626,17 @@ def from_xfdf(data):
         if _local(annots.tag) != "annots":
             continue
         for el in annots:
-            rec = _xfdf_record(el)
+            if not isinstance(el.tag, str):
+                continue
+            rec = _xfdf_record(el, raws)
             if rec is not None:
                 out.append(rec)
+            if len(out) > MAX_RECORDS:
+                raise ValueError(tr("This comment file is too large to import."))
     return out
 
 
-def _xfdf_record(el):
+def _xfdf_record(el, raws=None):
     tag = _local(el.tag)
     sub = SUBTYPES.get(tag)
     at = {_local(k) if not k.startswith("{" + KZ_NS) else "kz:" + _local(k): v
@@ -371,16 +656,14 @@ def _xfdf_record(el):
                           ("State", "state"), ("StateModel", "statemodel"),
                           (A.KZ_KEY, "kz:props")):
             if name in at:
-                k[key] = at[name]
+                k[key] = date_in(at[name]) if key in ("M", "CreationDate") else at[name]
         for key, name in (("C", "color"), ("IC", "interior-color")):
             if _rgb(at.get(name)):
                 k[key] = _rgb(at[name])
         if "opacity" in at:
             k["CA"] = max(0.0, min(1.0, float(at["opacity"])))
         if "flags" in at:
-            k["F"] = float(sum(1 << FLAG_NAMES.index(n.strip().lower())
-                               for n in at["flags"].split(",")
-                               if n.strip().lower() in FLAG_NAMES))
+            k["F"] = float(_flags_of(at["flags"]))
         if "intent" in at and _NAME.match(at["intent"]):
             k["IT"] = at["intent"]
         if "icon" in at and _NAME.match(at["icon"]):
@@ -416,8 +699,17 @@ def _xfdf_record(el):
                 k[key] = float(at[name])
         if "caption" in at:
             k["Cap"] = at["caption"] == "yes"
-        if "open" in at:
-            k["Open"] = at["open"] == "yes"
+        if at.get("caption-style") in ("Inline", "Top"):
+            k["CP"] = at["caption-style"]
+        if "caption-offset-h" in at or "caption-offset-v" in at:
+            k["CO"] = [float(at.get("caption-offset-h") or 0),
+                       float(at.get("caption-offset-v") or 0)]
+        if sub == "Caret" and "symbol" in at:
+            k["Sy"] = "P" if at["symbol"] == "paragraph" else "None"
+        for name in ("kz:open", "open"):       # (ours; "open" as some programs write it)
+            if name in at:
+                k["Open"] = at[name] == "yes"
+                break
         if "fringe" in at:
             k["RD"] = _nums(at["fringe"])
         if "callout" in at:
@@ -429,12 +721,17 @@ def _xfdf_record(el):
     rec = {"page": page, "subtype": sub, "keys": k}
     if at.get("inreplyto"):
         rec["irt"] = at["inreplyto"]
+    rich = None
     for child in el:
+        if not isinstance(child.tag, str):
+            continue
         name = _local(child.tag)
         text = child.text or ""
         try:
             if name == "contents":
                 k["Contents"] = "".join(child.itertext())
+            elif name == "contents-richtext":
+                rich = child
             elif name == "defaultappearance":
                 k["DA"] = text
             elif name == "defaultstyle":
@@ -446,9 +743,24 @@ def _xfdf_record(el):
             elif name == "popup":
                 rect = _nums(child.attrib.get("rect", ""))
                 if len(rect) == 4:
-                    rec["popup"] = {"rect": rect, "open": child.attrib.get("open") == "yes"}
+                    rec["popup"] = {"rect": rect, "open": child.attrib.get("open") == "yes",
+                                    "flags": _flags_of(child.attrib["flags"])
+                                    if "flags" in child.attrib else POPUP_FLAGS}
         except ValueError:
             pass
+    if rich is not None:
+        # the rich text: its elements as written (an XHTML <body>), or markup written as
+        # text; its plain text is the note's text when there's no <contents>
+        raw = (raws or {}).get(rich)
+        if raw is None and (rich.text or "").strip().startswith("<"):
+            raw = rich.text.strip()
+        if raw is not None:
+            k["RC"] = raw
+            _settle_rich(k)
+        if "RC" not in k and not k.get("Contents"):
+            plain = rich_plain(rich)
+            if plain:
+                k["Contents"] = plain
     return rec
 
 
@@ -493,8 +805,8 @@ def _pdf_dict(rec, page_key):
     return "".join(parts)
 
 
-def to_fdf(recs, filename=""):
-    """The records as an FDF file (bytes)."""
+def to_fdf(recs, filename="", ids=None):
+    """The records as an FDF file (bytes). ids: the document's file identifiers (file_ids)."""
     objs = {}
     num = {}
     n = 2
@@ -507,15 +819,20 @@ def to_fdf(recs, filename=""):
         body = _pdf_dict(rec, "/Page %d" % rec["page"])
         if rec.get("irt") in num:
             body += "/IRT %d 0 R" % num[rec["irt"]]
-        if rec.get("popup"):
-            p = rec["popup"]
-            body += "/Popup %d 0 R" % (x + 1)
-            objs[x + 1] = "<</Type/Annot/Subtype/Popup/Rect[%s]/Open %s/Parent %d 0 R/F 28>>" % (
-                " ".join(_num(v) for v in p["rect"]), "true" if p.get("open") else "false", x)
         objs[x] = "<<" + body + ">>"
         annots.append(x)
-    objs[1] = "<</FDF<<%s/Annots[%s]>>>>" % (
+        if rec.get("popup"):
+            # (an annotation of the FDF too: listed in /Annots, with its page, Table 248)
+            p = rec["popup"]
+            objs[x] = "<<" + body + "/Popup %d 0 R>>" % (x + 1)
+            objs[x + 1] = ("<</Type/Annot/Subtype/Popup/Page %d/Rect[%s]/Open %s/Parent %d 0 R"
+                           "/F %d>>" % (rec["page"], " ".join(_num(v) for v in p["rect"]),
+                                        "true" if p.get("open") else "false", x,
+                                        int(p.get("flags", POPUP_FLAGS))))
+            annots.append(x + 1)
+    objs[1] = "<</FDF<<%s%s/Annots[%s]>>/Type/Catalog>>" % (
         "/F%s" % pymupdf.get_pdf_str(filename) if filename else "",
+        "/ID[<%s><%s>]" % ids if ids else "",
         " ".join("%d 0 R" % x for x in annots))
     out = ["%FDF-1.2", "%\xe2\xe3\xcf\xd3"]
     for x in sorted(objs):
@@ -526,6 +843,8 @@ def to_fdf(recs, filename=""):
 
 def from_fdf(data):
     """The records in an FDF file (bytes). Raises ValueError for a file that isn't FDF."""
+    if len(data) > MAX_BYTES:
+        raise ValueError(tr("This comment file is too large to import."))
     if not data.lstrip()[:8].startswith(b"%FDF"):
         raise ValueError(tr("This isn't an FDF file."))
     try:
@@ -540,16 +859,26 @@ def from_fdf(data):
         kind, val = fdf.xref_get_key(rx, "FDF/Annots")
         if kind == "xref":
             val = fdf.xref_object(int(val.split()[0]), compressed=True)
-        xs = [int(a) for a in re.findall(r"(\d+)\s+0\s+R", val or "")]
+        xs = [int(a) for a in re.findall(r"(\d+)\s+\d+\s+R", val or "")]
+        if len(xs) > MAX_RECORDS:
+            raise ValueError(tr("This comment file is too large to import."))
         out, names = [], {}
-        for x in xs:
+        for x in dict.fromkeys(xs):
+            if not 0 < x < fdf.xref_length():
+                continue
             kind, sub = fdf.xref_get_key(x, "Subtype")
             sub = sub.lstrip("/")
+            if sub == "Popup":
+                continue                # (read with the markup it belongs to)
             if sub not in ELEMENTS:
                 out.append({"subtype": sub, "page": -1, "keys": {}, "unknown": True})
                 continue
             keys = _read_keys(fdf, x)
             keys.setdefault("NM", "kz-" + str(uuid.uuid4()))
+            for key in ("M", "CreationDate"):
+                if key in keys:
+                    keys[key] = date_in(keys[key])
+            _settle_rich(keys)
             names[x] = keys["NM"]
             pk, pv = fdf.xref_get_key(x, "Page")
             rec = {"page": int(pv) if pk == "int" else -1, "subtype": sub, "keys": keys}
@@ -558,11 +887,9 @@ def from_fdf(data):
                 rec["irt"] = int(irt.split()[0])
             kind, pop = fdf.xref_get_key(x, "Popup")
             if kind == "xref":
-                p = int(pop.split()[0])
-                rk, rv = fdf.xref_get_key(p, "Rect")
-                ok, ov = fdf.xref_get_key(p, "Open")
-                if rk == "array" and not _REF.search(rv):
-                    rec["popup"] = {"rect": _nums(rv), "open": ov == "true"}
+                popup = _popup_of(fdf, int(pop.split()[0]))
+                if popup is not None:
+                    rec["popup"] = popup
             out.append(rec)
         for rec in out:
             if isinstance(rec.get("irt"), int):
@@ -628,6 +955,10 @@ def import_records(doc, recs):
             rep.skip(tr("no position"))
             continue
         rec["keys"].setdefault("NM", "kz-" + str(uuid.uuid4()))
+        if _skipped_kind(None, None, rec["subtype"], rec["keys"]):
+            # (KanzonasPDF's style for a picture or attached file, whose contents aren't in
+            # a comment file: drawn as the file says, by MuPDF)
+            rec["keys"].pop(A.KZ_KEY, None)
         by_page.setdefault(rec["page"], []).append(rec)
     made = {}                                   # name -> new xref (across pages)
     existing = {}                               # name -> (page index, xref)
@@ -657,9 +988,10 @@ def import_records(doc, recs):
             if rec.get("popup"):
                 p = doc.get_new_xref()
                 doc.update_object(p, "<</Type/Annot/Subtype/Popup/Rect[%s]/Open %s/Parent %d 0 R"
-                                     "/F 28/P %d 0 R>>" % (
+                                     "/F %d/P %d 0 R>>" % (
                                          " ".join(_num(v) for v in rec["popup"]["rect"]),
                                          "true" if rec["popup"].get("open") else "false", x,
+                                         int(rec["popup"].get("flags", POPUP_FLAGS)) & 1023,
                                          page.xref))
                 doc.xref_set_key(x, "Popup", "%d 0 R" % p)
                 new.append(p)
@@ -685,17 +1017,39 @@ def import_records(doc, recs):
         if new:
             review._append_annots(page, new)
         redraws.append((i, redraw))
+    # a reply answers a markup of its own page (the standard's rule; links() reads no other),
+    # and never itself through others (a file whose replies go round in a circle)
+    page_of = {x: rec["page"] for x, rec in _redrawn(redraws)}
+    for name, (i, x) in existing.items():
+        page_of.setdefault(x, i)
+    parent_of = {}
     for x, rec in replies:
         parent = made.get(rec["irt"])
         if parent is None and rec["irt"] in existing:
             parent = existing[rec["irt"]][1]
-        if parent is not None and parent != x:
+        if parent is None or parent == x or page_of.get(parent) != rec["page"]:
+            continue
+        up, seen = parent, {x}
+        while up in parent_of and up not in seen:
+            seen.add(up)
+            up = parent_of[up]
+        if up in seen:
+            continue
+        parent_of[x] = parent
+    for x, rec in replies:
+        parent = parent_of.get(x)
+        if parent is not None:
             doc.xref_set_key(x, "IRT", "%d 0 R" % parent)
             if rec["keys"].get("RT") != "Group":
                 doc.xref_set_key(x, "RT", "/R")
     for i, redraw in redraws:
         _appearances(doc[i], redraw)
     return rep
+
+
+def _redrawn(redraws):
+    for _i, redraw in redraws:
+        yield from redraw
 
 
 def _appearances(page, redraw):

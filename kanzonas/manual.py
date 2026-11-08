@@ -706,7 +706,10 @@ PDF. <b>Import comments...</b> adds an XFDF or FDF file's comments to another co
 document, on the same pages, as one undo step. A comment already in the document (the same
 name) is updated if it changed and left alone if not, so comments sent back and forth don't pile
 up, and replies attach to the markups they answer. Comments for pages the document doesn't have
-are skipped, and a message says how many were added, updated and skipped and why.</li>
+are skipped, and a message says how many were added, updated and skipped and why. Notes written
+as rich text (as Acrobat writes them) keep their text and formatting both ways. A comment file
+can't run anything: links, scripts and other actions in it are left out, and a file that
+declares XML entities or is larger than 64 MB isn't read.</li>
 <li><b>Summarize comments...</b> makes a new PDF listing every comment: its page, type, author,
 date, status and text, with its replies indented below it. Sort it by page (with each page's
 thumbnail beside its comments, as Acrobat's summary does; untick Page thumbnails for a list

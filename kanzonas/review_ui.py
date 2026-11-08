@@ -58,7 +58,8 @@ def export_comments(win, view, only=None):
     if not fdf and not path.lower().endswith(".xfdf"):
         path += ".xfdf"
     name = os.path.basename(view.path or "")
-    data = xfdf.to_fdf(recs, name) if fdf else xfdf.to_xfdf(recs, name)
+    ids = xfdf.file_ids(view.doc)
+    data = xfdf.to_fdf(recs, name, ids) if fdf else xfdf.to_xfdf(recs, name, ids)
     try:
         with open(path, "wb") as f:
             f.write(data)
@@ -82,7 +83,9 @@ def read_comment_file(path):
     """Records from an XFDF or FDF file (by its contents). Raises ValueError."""
     from . import xfdf
     with open(path, "rb") as f:
-        data = f.read()
+        data = f.read(xfdf.MAX_BYTES + 1)       # (a larger one is refused unread)
+    if len(data) > xfdf.MAX_BYTES:
+        raise ValueError(tr("This comment file is too large to import."))
     if data.lstrip()[:4] == b"%FDF":
         return xfdf.from_fdf(data)
     return xfdf.from_xfdf(data)

@@ -684,7 +684,10 @@ copia del documento, en las mismas páginas, como un solo paso para deshacer. Un
 en el documento (con el mismo nombre) se actualiza si cambió y se deja como está si no, así que los
 comentarios que van y vienen no se acumulan, y las respuestas se unen a las marcas a las que
 responden. Los comentarios de páginas que el documento no tiene se omiten, y un mensaje indica cuántos
-se agregaron, actualizaron y omitieron, y por qué.</li>
+se agregaron, actualizaron y omitieron, y por qué. Las notas escritas como texto enriquecido (como
+las escribe Acrobat) conservan su texto y su formato en ambos sentidos. Un archivo de comentarios no
+puede ejecutar nada: los vínculos, scripts y otras acciones que contenga se omiten, y no se lee un
+archivo que declare entidades XML o que pase de 64 MB.</li>
 <li><b>Resumir comentarios...</b> crea un PDF nuevo con todos los comentarios: su página, tipo,
 autor, fecha, estado y texto, con sus respuestas con sangría debajo. Ordénelo por página (con la
 miniatura de cada página junto a sus comentarios, como el resumen de Acrobat; desmarque Miniaturas de

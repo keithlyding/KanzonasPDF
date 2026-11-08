@@ -2998,7 +2998,11 @@ class DocumentView(QScrollArea):
                 text_edit.delete_lines(pg, [ln for it in texts for _r, ln in it["lines"]])
             if xrefs:
                 from . import pdf_speed
-                pdf_speed.delete_many(pg, xrefs)
+                # (their replies and statuses go with them: review.py)
+                went = review.move_threads(pg, self.doc[dest],
+                                           dict(zip(xrefs, made["xrefs"])))
+                pdf_speed.delete_many(pg, [x for x in xrefs if x in went], keep_replies=True)
+                pdf_speed.delete_many(pg, [x for x in xrefs if x not in went])
         pages = [dest] if copy else [src, dest]
         keep = (self.obj_sel, self.selection, list(self.extra))
         if not copy:
@@ -7796,7 +7800,7 @@ class DocumentView(QScrollArea):
         pat, clean = self._term_pattern(terms)
         if pat is None:
             return
-        from . import legend
+        from . import legend, pdf_speed
         for i in range(self.doc.page_count):
             pg = self.doc[i]
             for w in list(pg.widgets()):
@@ -7829,7 +7833,6 @@ class DocumentView(QScrollArea):
                         continue
                     # (still showing it, in a drawing of its own: it goes, with the
                     # replies to it)
-                    from . import pdf_speed
                     pdf_speed.delete_many(pg, [x])
                     continue
                 model = annotations.read(pg.load_annot(x))
@@ -7846,7 +7849,6 @@ class DocumentView(QScrollArea):
                         continue
                 # anything else goes whole: its appearance (a stamp's picture, say) or
                 # private data can hold the text too (with its thread, in one walk)
-                from . import pdf_speed
                 pdf_speed.delete_many(pg, [x])
         toc = self.doc.get_toc(simple=False)
         if any(pat.search(e[1]) for e in toc):

@@ -311,6 +311,48 @@ class Replies(Base):
         self.assertAlmostEqual(after.y0 - before.y0, -40, 3)
         self.assertEqual(v.doc.xref_get_key(r, "IRT")[1], f"{box} 0 R")
 
+    def test_moved_to_another_page_its_thread_goes_along(self):
+        """CAD mode's Move (or a selection dragged) onto another page: the markup is written
+        there anew, and its replies, the replies to those, their pop-ups and its statuses go
+        with it (a copy leaves them with the original). One undo step."""
+        v = self.view()
+        box = self.rect(v)
+        r = v.reply_to(0, box, "follows")
+        r2 = v.reply_to(0, r, "and this")
+        v.set_review_status(0, [box], "Accepted")
+        other = self.rect(v, box=(300, 500, 340, 540))
+        r3 = v.reply_to(0, other, "stays")
+        pop = v.doc.get_new_xref()
+        v.doc.update_object(pop, "<</Type/Annot/Subtype/Popup/Rect[400 600 500 700]/Parent "
+                                 "%d 0 R/P %d 0 R>>" % (r, v.doc[0].xref))
+        v.doc.xref_set_key(r, "Popup", "%d 0 R" % pop)
+        A.set_annot_order(v.doc[0], A.annot_order(v.doc[0]) + [pop])
+        before = {i: v.doc[i].annot_xrefs() for i in range(2)}
+        v.select_xref(0, box)
+        self.assertTrue(v.transfer_selection(1, P(10, 20)))
+        t0, t1 = self.threads(v, 0), self.threads(v, 1)
+        roots = [x for x in t1.order if not t1.is_linked(x)]
+        self.assertEqual(len(roots), 1)
+        new = roots[0]
+        self.assertEqual([(d, ln.text) for d, ln in t1.replies(new)],
+                         [(1, "follows"), (2, "and this")])
+        self.assertEqual(t1.status(new)[0], "Accepted")
+        self.assertEqual(v.doc.xref_get_key(r, "P")[1], "%d 0 R" % v.doc[1].xref)
+        self.assertEqual(v.doc.xref_get_key(pop, "P")[1], "%d 0 R" % v.doc[1].xref)
+        self.assertIn(pop, A.annot_order(v.doc[1]))
+        self.assertNotIn(pop, A.annot_order(v.doc[0]))
+        self.assertEqual({x for x, *_ in v.doc[0].annot_xrefs()}, {other, r3})
+        self.assertEqual(t0.root(r3), other)
+        self.assertEqual(r2 in t1.links, True)
+        v.undo()
+        self.assertEqual({i: v.doc[i].annot_xrefs() for i in range(2)}, before)
+        self.assertEqual(self.threads(v, 0).root(r2), box)
+        # a copy: the replies stay with the original
+        v.select_xref(0, box)
+        self.assertTrue(v.transfer_selection(1, P(10, 20), copy=True))
+        self.assertEqual(self.threads(v, 1).links, {})
+        self.assertEqual(self.threads(v, 0).root(r2), box)
+
     def test_a_markup_written_anew_keeps_its_thread(self):
         v = self.view()
         box = self.rect(v)
