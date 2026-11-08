@@ -525,8 +525,9 @@ doing anything, a little at a time so the window never stops answering, so the f
 lasso or command starts at once; the pointer shows a busy cursor while a command works. A
 window box takes a curve when the curve as drawn lies inside it (its control points may stick
 out).</p>
-<p>What the commands don't do: the drawing's own text only moves (Move); copying, turning,
-scaling or mirroring leaves it where it is and says so (Edit text changes it). Highlights and
+<p>What the commands don't do: the drawing's own text moves (Move) and is copied (Copy, Array:
+as page text, each word in its own style, as Edit objects copies it), but turning, scaling or
+mirroring leaves it where it is and says so (Edit text changes it). Highlights and
 other text markups stay on their words, so they only move and copy. A mirrored picture or stamp
 keeps reading the right way round, and text boxes turn in quarter turns.</p>
 
@@ -594,9 +595,20 @@ where the mouse is, on any page or in another open document. Pasted on a page th
 another way (a rotated page), they're turned to look as they did where you copied them; a text
 box still reads upright.</li>
 <li><b>Duplicate</b> (Ctrl+D): copies of the selected markups appear slightly offset, selected
-so you can drag them into place. In the page list, Ctrl+D duplicates the selected pages.</li>
+so you can drag them into place. In the page list, Ctrl+D duplicates the selected pages; with
+the Edit objects tool, the selected text, pictures and shapes of the page.</li>
+<li><b>The page's own text</b> (Edit objects tool): select text and <b>Copy</b> (Ctrl+C),
+<b>Cut</b> (Ctrl+X) or <b>Duplicate</b> (Ctrl+D), from the keys, the Edit menu or the right-click
+menu. <b>Paste</b> (Ctrl+V) writes it into the page where the mouse is, on any page or in another
+open document, as Add text does: with its font (embedded with it, so it shows the same where the
+other document doesn't have it), size, color, bold, italic, underline and strikethrough, the
+width it wraps to and its line breaks. Each piece pasted is then one block for Edit text (see
+<b>Edit text you added</b>). Other programs get the plain words. Text of the PDF that wasn't
+added here is copied too: running text keeps wrapping to its width, other lines keep their line
+breaks, left-aligned. Ctrl+Z undoes a paste, a cut or a duplicate in one step.</li>
 <li><b>Pictures and text from other programs:</b> Paste a copied picture (e.g. a screenshot)
-as an image markup, or copied text as a text box, where the mouse is.</li>
+as an image markup, or copied text as a text box, where the mouse is. With the Edit objects
+tool, copied text goes into the page itself instead, in Add text's font, size and color.</li>
 <li><b>Pages:</b> unlock the page list (lock button above the thumbnails), select thumbnails
 (Ctrl+click adds or removes one page, Shift+click selects a run of pages), then right-click any
 of the selected pages (the whole selection stays selected) or use the Pages menu:
@@ -905,7 +917,9 @@ window (left to right) takes the lines, text, pictures and markups entirely insi
 box (right to left) everything it touches, text and line work together; clicks, boxes and
 lassos add to the selection, Shift takes out of it and Escape clears it, and the CAD tab's
 commands change it (see CAD mode). Press <b>Delete</b> (or Backspace) or right-click &gt; <b>Delete</b> to remove
-it; drag it to move it (highlights and other markups on it move along). Text isn't resized,
+it; drag it to move it (highlights and other markups on it move along). Copy, Cut, Paste and
+Duplicate (Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D) copy it with its styles as page text, also to another
+page or document (see Copy, cut and paste). Text isn't resized,
 rotated or re-stacked here: change its words, font and size with Edit text. Pictures and lines
 under it stay. If other text overlaps it so closely that some of its letters would go too,
 KanzonasPDF asks first. Invisible text (a scanner's recognized-text layer) isn't selected.</li>
@@ -926,9 +940,14 @@ and the page itself changes only when you let go, so a large group stays quick t
 Drag a corner handle to resize it, keeping its proportions
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
 scales its line thickness.</li>
-<li>Delete (or Backspace) deletes the selection. Right-click for Ungroup (groups), Rotate clockwise, Rotate
+<li>Delete (or Backspace) deletes the selection. Right-click for Cut, Copy, Paste and Duplicate,
+Ungroup (groups), Rotate clockwise, Rotate
 counterclockwise, the stacking order commands and Delete, and, for one picture, Copy picture
 (Ctrl+V pastes it as an image markup) and Save picture as.... Escape deselects.</li>
+<li><b>Duplicate</b> (Ctrl+D) puts copies of the selected text, pictures and shapes slightly
+down and to the right on the same page, selected, so you can drag them into place. Pictures and
+shapes are copied on their own page only: Copy takes the selected text (or one picture, as an
+image markup), not shapes.</li>
 <li><b>Stacking order:</b> when the page's own objects cover each other, select one and use
 <b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]), <b>Send backward</b>
 (Ctrl+[) or <b>Send to back</b> (Ctrl+Shift+[), from the right-click menu or Arrange. Front and
@@ -939,8 +958,8 @@ lands.</li>
 <li>Only the selected objects change: moving, resizing and rotating keep their place in the
 drawing order (text printed over a picture stays on top), their colors and line styles, and
 pictures aren't recompressed, so quality doesn't drop. Ctrl+Z undoes each change.</li>
-<li>Text can't be selected with this tool (use Edit text), and neither can objects inside a grouped
-object (a form XObject; use Ungroup first) or clipping outlines. On very large drawings, the first click on a page
+<li>Objects inside a grouped object (a form XObject; use Ungroup first) and clipping outlines
+can't be selected with this tool. On very large drawings, the first click on a page
 takes a moment while the page is read.</li>
 </ul>
 
@@ -952,8 +971,20 @@ itself, like Acrobat's Add Text: PDF viewers can't change it, and Edit text chan
 Pick the font (any installed font, plus Bold and Italic), size and color in Properties. The
 <b>Font size</b> can also be changed while you type: the text shows at the new size right away.
 The style buttons above the box style single words, as in Edit text (see <b>Bold, italic,
-underline and color for single words</b> below). Only the letters used are stored in the
-file.</li>
+underline and color for single words</b> below). Drag a side handle of the box to make it
+narrower, and the words wrap to its width. Only the letters used are stored in the
+file. What Add text writes is remembered as one block: Edit text opens all of it again (see
+<b>Edit text you added</b> below).</li>
+<li><b>Edit text you added:</b> with the Edit text tool, click any line of text written with
+Add text (or pasted with Edit objects): all of it opens, in a box of the width its words wrap
+to (as wide as its lines when they didn't wrap), with its line breaks (Shift+Enter) and each
+word in its own style, the cursor on the word you clicked. Press Enter and it's written back as
+one block from where it started, wrapped to the same width: editing it again and again, saving
+and opening the file again don't move it. Drag a side handle to change the width, or the
+outline to move it. Alt+click still edits one line. Text added with KanzonasPDF 1.9 or before,
+or by other programs, is edited as before (a paragraph, or a line). Moved with Edit objects, it
+stays one block; a redaction applied over some of its words makes the rest ordinary text of
+the page.</li>
 <li><b>Change a line's font or size:</b> with the Edit text tool, click the line: Properties
 shows the style of the text at the cursor. Change the <b>Font size</b>, <b>Bold</b> or
 <b>Italic</b> there and it applies to the words selected in the box (they stay selected), or to
@@ -1647,9 +1678,9 @@ settings...).</li>
 <tr><td>Ctrl+click a link (any tool, any mouse mode)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
 <tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool: Hand, Select, or Edit objects in CAD mode) / cancel a CAD command or a started selection box</td></tr>
 <tr><td>Delete</td><td>Delete what's selected: markups, and in CAD mode the drawing's objects too</td></tr>
-<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages)</td></tr>
+<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages; with Edit objects, the page's own text with its styles)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>
-<tr><td>Ctrl+D</td><td>Duplicate selected markups (or pages, in the page list)</td></tr>
+<tr><td>Ctrl+D</td><td>Duplicate selected markups (with Edit objects, the selected text, pictures and shapes; pages, in the page list)</td></tr>
 <tr><td>Delete (in the page list)</td><td>Delete the selected pages</td></tr>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>

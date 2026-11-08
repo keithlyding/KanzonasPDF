@@ -1584,6 +1584,17 @@ class PageWidget(QWidget):
         a = menu.addAction(tr("Save picture as..."), self.view.save_picture)
         a.setEnabled(one_pic and bool(items[0]["xref"]))
         menu.addSeparator()
+        # the text with its styles (Ctrl+V pastes it as page text, here or elsewhere);
+        # Duplicate copies pictures and shapes too, on their page
+        win = self.window()
+        for what, label, keys, on in (("cut", tr("Cut"), "Ctrl+X", has_text),
+                                      ("copy", tr("Copy"), "Ctrl+C", has_text or one_pic),
+                                      ("paste", tr("Paste"), "Ctrl+V", True),
+                                      ("dup", tr("Duplicate"), "Ctrl+D", True)):
+            a = menu.addAction(f"{label}\t{keys}")
+            a.triggered.connect(lambda _=False, w=what: win._clipboard(w))
+            a.setEnabled(on)
+        menu.addSeparator()
         a = menu.addAction(tr("Ungroup"), self.view.ungroup_objects)
         a.setEnabled(any(it["kind"] == "group" for it in items))
         menu.addSeparator()

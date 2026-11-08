@@ -54,6 +54,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import tests  # noqa: E402,F401  (settings in a scratch folder, Qt torn down in order)
 
 import pymupdf  # noqa: E402
+from PySide6.QtCore import QPoint  # noqa: E402
 from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
@@ -680,6 +681,7 @@ class Battery:
             (self.op_retype, 3), (self.op_delete, 5), (self.op_duplicate, 2),
             (self.op_copy_paste, 2), (self.op_restack, 2), (self.op_eraser, 2),
             (self.op_add_text, 3), (self.op_edit_text, 3), (self.op_styled_text, 3),
+            (self.op_added_block, 3), (self.op_page_text_clip, 3),
             (self.op_replace_text, 1), (self.op_scan, 1),
             (self.op_picture, 2), (self.op_objects, 4), (self.op_erase_content, 1),
             (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
@@ -954,8 +956,90 @@ class Battery:
         ed = v._inline
         if ed is None:
             return "none"
-        ed.text.setPlainText(self.typed())
+        if self.rnd.random() < 0.4:
+            # a box made narrower (the words wrap) and lines of their own (Shift+Enter)
+            parts = [self.typed() + " " + self.typed() for _ in range(self.rnd.randint(1, 3))]
+            ed.text.setPlainText("\n".join(parts))
+            if self.rnd.random() < 0.7:
+                ed.resized_by_user = True
+                ed.resize(int(self.rnd.uniform(60, 160) * v.zoom), ed.height())
+        else:
+            ed.text.setPlainText(self.typed())
         ed.commit()
+
+    def op_added_block(self):
+        """Edit text on text Add text wrote (a marked block, added_text): all of it opens,
+        its words are retyped, styled or broken onto lines of their own, its box sometimes
+        made wider or narrower or moved; written back as one block."""
+        from PySide6.QtGui import QTextCursor
+        v = self.v
+        pages = [i for i in range(v.doc.page_count) if v._added_blocks(i)]
+        if not pages:
+            return self.op_add_text()
+        i = self.rnd.choice(pages)
+        blk = self.rnd.choice(v._added_blocks(i))
+        r, ln = self.rnd.choice(blk.lines)
+        v.edit_text_at(i, pymupdf.Point(r.x0 + 1, (r.y0 + r.y1) / 2))
+        ed = v._inline
+        if ed is None:
+            return "none"
+        text = ed.text.toPlainText()
+        what = self.rnd.choice(["retype", "style", "break", "width", "move", "same"])
+        if what == "retype":
+            parts = text.split(" ")
+            k = self.rnd.randrange(len(parts))
+            parts[k] = self.rnd.choice(["", "new", parts[k].upper(), parts[k] + " more"])
+            ed.text.setPlainText(" ".join(p for p in parts if p) or "x")
+        elif what == "style":
+            spans = [mt.span() for mt in re.finditer(r"\S+", text)]
+            if spans:
+                a, b = self.rnd.choice(spans)
+                cur = ed.text.textCursor()
+                cur.setPosition(a)
+                cur.setPosition(b, QTextCursor.KeepAnchor)
+                ed.text.setTextCursor(cur)
+                ed.toggle(self.rnd.choice(["bold", "italic", "underline", "strike"]))
+        elif what == "break" and " " in text:
+            k = self.rnd.choice([m.start() for m in re.finditer(" ", text)])
+            ed.text.setPlainText(text[:k] + "\n" + text[k + 1:])
+        elif what == "width":
+            ed.resized_by_user = True
+            ed.resize(max(60, int(ed.width() * self.rnd.uniform(0.6, 1.5))), ed.height())
+        elif what == "move":
+            ed.move(ed.pos() + QPoint(self.rnd.randint(-30, 30), self.rnd.randint(-30, 30)))
+        ed.commit()
+
+    def op_page_text_clip(self):
+        """Edit objects: the page's own text (added blocks and the page's paragraphs) copied
+        and pasted (here, on another page), cut (pasted by a later step), pasted again, or
+        duplicated."""
+        v = self.v
+        i = self.page()
+        texts = v.text_objects(i)
+        if not texts:
+            return "none"
+        self.win.set_tool("editobjects")
+        try:
+            pick = self.rnd.sample(texts, self.rnd.randint(1, min(2, len(texts))))
+            v.select_objects(i, pick)
+            what = self.rnd.choice(["copy", "copy", "cut", "dup", "paste"])
+            if what == "dup":
+                v.duplicate_objects()
+                return None
+            if what == "cut":           # (pasted by a later step: each is one step)
+                v.cut()
+                return None
+            if what == "copy" and v.copy() != "pagetext":
+                return "none"
+            from kanzonas import clip
+            if clip.get()[0] != "pagetext":
+                return "none"
+            j = self.page()
+            with mock.patch.object(v, "paste_target", lambda: (j, self.point(j, 60))):
+                v.paste()
+        finally:
+            v.clear_object_selection()
+            self.win.set_tool("hand")
 
     def op_edit_text(self):
         v = self.v

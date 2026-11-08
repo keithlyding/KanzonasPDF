@@ -6682,8 +6682,8 @@ msgid "Trim: that's a corner of the shape or where lines cross. Click on the sid
 msgstr "Recortar: ahí hay una esquina de la forma o se cruzan líneas. Haga clic en el lado que quiere quitar, un poco lejos de la esquina."
 
 #: cad
-msgid "The drawing's text can be moved here, not copied, turned, scaled or mirrored: it stays where it is (Edit text changes it)."
-msgstr "Aquí el texto del dibujo se puede mover, pero no copiar, girar, escalar ni reflejar: se queda donde está (Editar texto lo cambia)."
+msgid "The drawing's text can be moved or copied here, not turned, scaled or mirrored: it stays where it is (Edit text changes it)."
+msgstr "Aquí el texto del dibujo se puede mover o copiar, pero no girar, escalar ni reflejar: se queda donde está (Editar texto lo cambia)."
 
 #: cad
 msgid "CAD"
@@ -8446,3 +8446,40 @@ msgstr "Subrayar"
 msgctxt "legend"
 msgid "Count"
 msgstr "Cantidad"
+
+# Edit text on text Add text wrote (one block); page text copied with Edit objects
+msgid "Editing the text you added: all of it, as one block. Alt+click edits a single line."
+msgstr "Editando el texto que agregó: todo, como un solo bloque. Alt+clic edita una sola línea."
+
+msgid "Text rewritten (Ctrl+Z undoes it). Alt+click edits a single line."
+msgstr "Texto reescrito (Ctrl+Z lo deshace). Alt+clic edita una sola línea."
+
+msgid "The text wasn't changed."
+msgstr "El texto no se cambió."
+
+msgid "The text now runs past the edge of the page. Ctrl+Z undoes it; drag a side of the box to change its width."
+msgstr "Ahora el texto pasa del borde de la página. Ctrl+Z lo deshace; arrastre un lado del cuadro para cambiar su ancho."
+
+msgid "{font} isn't installed in that style or lacks some of these characters; kept the text's own font."
+msgstr "{font} no está instalada en ese estilo o le faltan algunos de estos caracteres; se mantuvo la fuente propia del texto."
+
+msgid "{fonts} isn't in this document or installed here: used a standard font for it."
+msgstr "{fonts} no está en este documento ni instalada aquí: se usó una fuente estándar en su lugar."
+
+msgid "Text pasted into the page (Ctrl+Z undoes it). Edit text changes it."
+msgstr "Texto pegado en la página (Ctrl+Z lo deshace). Editar texto lo cambia."
+
+msgid "Duplicating"
+msgstr "Duplicar"
+
+msgid "Duplicated (Ctrl+Z undoes it)"
+msgstr "Duplicado (Ctrl+Z lo deshace)"
+
+msgid "Nothing was duplicated"
+msgstr "No se duplicó nada"
+
+msgid "Text copied with its styles: Ctrl+V pastes it as page text"
+msgstr "Texto copiado con sus estilos: Ctrl+V lo pega como texto de la página"
+
+msgid "Duplicate"
+msgstr "Duplicar"

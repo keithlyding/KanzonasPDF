@@ -5756,6 +5756,11 @@ class MainWindow(QMainWindow):
         v = self.view()
         if v is None:
             return
+        if op == "dup" and not self.thumbs.hasFocus() and v.tool == "editobjects" and \
+                v.obj_sel is not None:
+            if not v.duplicate_objects():
+                self.statusBar().showMessage(tr("Nothing was duplicated"), 3000)
+            return
         if op == "dup" and not self.thumbs.hasFocus():
             n = v.duplicate_selected()
             self.statusBar().showMessage(tr("Duplicated {n} markup(s)").format(n=n) if n else
@@ -5770,6 +5775,8 @@ class MainWindow(QMainWindow):
         if op == "copy":
             what = v.copy()
             self.statusBar().showMessage({"text": tr("Text copied"),
+                                          "pagetext": tr("Text copied with its styles: "
+                                                         "Ctrl+V pastes it as page text"),
                                           "markups": tr("Markups copied"),
                                           "picture": tr("Picture copied: Ctrl+V pastes it as "
                                                         "an image markup")}.get(
@@ -5778,7 +5785,8 @@ class MainWindow(QMainWindow):
             what = v.cut()
             if what == "blocked":
                 return                  # (it said why)
-            self.statusBar().showMessage({"text": tr("Text cut"), "markups": tr("Markups cut")}.get(
+            self.statusBar().showMessage({"text": tr("Text cut"), "pagetext": tr("Text cut"),
+                                          "markups": tr("Markups cut")}.get(
                 what, tr("Select text or markups first")), 3000)
         elif op == "paste":
             what = v.paste()
