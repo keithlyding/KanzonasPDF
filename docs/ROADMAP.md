@@ -44,7 +44,12 @@ The owner sets this list; nothing below is promised until it's here.
      scroll): `claude/reading`.
    - Batch processing (Action wizard-style steps over many files, into a Processed folder):
      `claude/batch`. Search & redact in a batch applies by default (owner, 6 Nov: the originals
-     stay); when only marking, the results say plainly that nothing was removed yet.
+     stay); when only marking, the results say plainly that nothing was removed yet, and those
+     files are named name-marked (unless the user's own name pattern says otherwise). Batch
+     redaction and OCR run the single-file commands' own code (DocumentView's redaction steps,
+     ocr.read_page), with a check after redacting that the words are gone (done, merged with
+     1.9.1; it found a mark over part of a tagged span leaving the span's ActualText, fixed for
+     both).
    - Bookmarks made from headings, tags or sheet numbers, and Insert table of contents:
      `claude/bookmarks`.
    - Smart forms (calculations, formats and validation from the standard calls, never running

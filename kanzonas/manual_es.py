@@ -1425,7 +1425,8 @@ seleccionadas, y Aplicar censuras las aplica todas. Aplicar quita, no solo cubre
 y los trazos que están debajo de una marca, y cualquier <b>campo de formulario o marca</b> con el que se superponga una marca (guardan su
 propia copia del texto). Un trazado vectorial que toca una marca se quita más allá del cuadro, incluida
 la parte que queda fuera de él. Una página censurada también pierde su miniatura y la copia privada de la página
-que algunos programas (Illustrator) guardan en el archivo. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto, los scripts
+que algunos programas (Illustrator) guardan en el archivo, y un fragmento etiquetado (las palabras guardadas otra vez como
+ActualText, para leerlas y copiarlas) que una marca cubre aunque sea en parte pierde esa copia de sus palabras. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto, los scripts
 y los datos privados de esos programas, a menos que
 lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> marca el texto de las
 páginas también donde lo tiene una capa oculta o donde la página está recortada, y lo encuentra donde no
@@ -1616,7 +1617,8 @@ permisos de la misma manera. Un archivo con firma digital se omite cuando un pas
 un paso para verlas; <b>Agregar paso</b>, <b>Quitar</b>, <b>Subir</b>, <b>Bajar</b>). Cada uno
 hace exactamente lo que el comando del mismo nombre hace en un documento abierto: <b>Reconocer
 texto (OCR)</b> (omite las páginas que ya tienen texto, salvo que lo desmarque; la precisión
-como en la ventana de OCR); <b>Guardar como PDF/A</b> (después de los pasos que cambian el
+como en la ventana de OCR; las páginas las lee el mismo OCR que Reconocer texto, en los mismos
+trozos pequeños y con la misma memoria); <b>Guardar como PDF/A</b> (después de los pasos que cambian el
 documento; solo Exportar y Combinar pueden ir después; un archivo protegido con contraseña
 necesita antes Quitar contraseña); <b>Marca de agua</b> (texto o imagen); <b>Encabezado y pie
 de página</b> (códigos {page} {pages} {date} {file} {bates}); <b>Números de página</b>;
@@ -1626,10 +1628,23 @@ número y cada uno de los siguientes donde terminó el anterior; un archivo que 
 no usa números, y el informe da el primer y el último número de cada archivo); <b>Acoplar
 comentarios</b> (las marcas de censura aún no aplicadas siguen siendo marcas, salvo que elija
 Aplicarlas primero); <b>Acoplar campos de formulario</b> (y, si lo marca, también comentarios
-y marcas); <b>Aplicar censuras</b> (las marcas que ya tiene cada archivo); <b>Buscar y
-censurar</b> (una lista de palabras o frases, una por línea: cada aparición se marca y las
-marcas se aplican, y lo que esté en campos, notas, marcadores y propiedades se quita como hace
-Buscar y censurar; desmarque Aplicar para solo marcarlas y revisarlas); <b>Sanear
+y marcas); <b>Aplicar censuras</b> (las marcas que ya tiene cada archivo, aplicadas
+exactamente como Aplicar censuras: las palabras que marcó Buscar y censurar se quitan también
+de los demás lugares del archivo, y no queda en el archivo nada de lo que había bajo una
+marca, ni en el ActualText de un fragmento etiquetado, ni en la miniatura de la página, ni en
+la copia privada de la página de un programa); <b>Buscar y censurar</b> (una lista de
+palabras o frases, una por línea: cada aparición se marca, también en capas ocultas y donde
+una página está recortada, y las marcas se aplican, y las palabras se quitan de campos,
+notas, vínculos, marcadores, propiedades y los demás lugares del archivo, como nombres de
+capas, direcciones web, datos de formularios y texto alternativo, como hacen Buscar y
+censurar y Aplicar censuras; una palabra que solo está en esos lugares se quita de ahí.
+Aplicar las censuras empieza marcado: los originales quedan como estaban y las copias
+censuradas van a la carpeta de salida. El informe dice de cada archivo qué se quitó y de
+dónde: las páginas, y cuántos de los demás lugares. Desmárquelo para solo marcarlas y
+revisarlas: todavía no se quita nada, el informe lo dice ("todavía no se quitó nada: abra el
+archivo y use Aplicar censuras"), y cada archivo que queda con marcas se llama con -marcado
+al final, como informe-marcado.pdf, salvo que haya elegido un modelo de nombre propio);
+<b>Sanear
 documento</b> (las mismas opciones que Proteger &gt; Sanear documento); <b>Reducir tamaño del
 archivo</b> (como Comprimir; un archivo que no quedaría más pequeño se deja como está);
 <b>Girar páginas</b> (todas, impares, pares, horizontales o verticales, o una lista);
@@ -1670,7 +1685,8 @@ documento abierto a la vez y su memoria se libera antes del siguiente, así que 
 no usa más memoria a medida que avanza.</li>
 <li>El <b>informe</b> final lista cada archivo como Listo, Omitido o Con error, con el motivo
 (una contraseña incorrecta, un archivo que no es PDF, un paso que no se pudo hacer) y lo que
-escribió; <b>Guardar informe...</b> lo guarda como archivo CSV (se abre en Excel) o como texto.
+escribió (después de censurar, una palabra que todavía se encuentra en el archivo aparece como
+advertencia: revise ese archivo); <b>Guardar informe...</b> lo guarda como archivo CSV (se abre en Excel) o como texto.
 <b>Informe...</b> lo vuelve a mostrar.</li>
 </ul>
 

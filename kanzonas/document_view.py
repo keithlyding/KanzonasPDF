@@ -313,6 +313,74 @@ def clear_form_data(doc):
     remove_xfa(doc)
 
 
+_ACTUAL_TEXT = re.compile(rb"/ActualText\s*")
+_BDC_TAIL = re.compile(rb"[^<>()\[\]]*?>>\s*BDC")
+
+
+def _actual_texts(data):
+    """[(where the /ActualText key and its string are, the string, the drawing inside its
+    sequence)] of the marked-content sequences of content stream data carrying ActualText
+    in their own dictionary ("/Span <</ActualText (the words)>> BDC ... EMC")."""
+    from .added_text import _end_of, _skip_string
+    out = []
+    for m in _ACTUAL_TEXT.finditer(data):
+        i = m.end()
+        if data[i:i + 1] == b"(":
+            j = _skip_string(data, i)
+        elif data[i:i + 1] == b"<" and data[i:i + 2] != b"<<":
+            j = data.find(b">", i) + 1
+            if j <= 0:
+                continue
+        else:
+            continue
+        tail = _BDC_TAIL.match(data, j)
+        if tail is None:
+            continue
+        end = _end_of(data, tail.end())
+        if end is None:
+            continue
+        out.append(((m.start(), j), data[i:j], data[tail.end():end[0]]))
+    return out
+
+
+def redact_page(page):
+    """Apply the page's redaction marks (Apply redactions, Apply selected redactions): text,
+    pictures and line art under them removed. A tagged span's ActualText (the words again,
+    "/Span <</ActualText (Tagged secret words)>> BDC ... EMC") that a mark covered part of
+    stayed: MuPDF takes the letters away and keeps their wrapper, and the page's text even
+    read the words back. The page's drawing is cleaned first (as the clean-up after does
+    anyway), so that each such sequence's drawing reads the same before and after unless a
+    mark took something from it; one whose drawing changed loses its ActualText (what is left
+    of its letters reads as itself)."""
+    doc = page.parent
+    before = []
+    if any(b"/ActualText" in (doc.xref_stream(x) or b"") for x in page.get_contents()):
+        page.clean_contents()
+        for x in page.get_contents():
+            before += _actual_texts(doc.xref_stream(x) or b"")
+    page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
+                          graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
+                          text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+    if not before:
+        return
+    k = 0
+    for x in page.get_contents():
+        data = doc.xref_stream(x) or b""
+        drop = []
+        for where, text, inside in _actual_texts(data):
+            # (in order: a sequence redaction emptied may be gone; one not found as it was,
+            # whatever the reason, loses its ActualText too)
+            j = next((j for j in range(k, len(before)) if before[j][1] == text), None)
+            if j is None or before[j][2] != inside:
+                drop.append(where)
+            if j is not None:
+                k = j + 1
+        if drop:
+            for a, b in reversed(drop):
+                data = data[:a] + data[b:]
+            doc.update_stream(x, data)
+
+
 def forget_redacted(page, clean=True):
     """Take out what a page keeps of itself from before its redaction marks were applied:
     the marked-content wrappers of the text taken away (MuPDF's redaction leaves
@@ -7553,6 +7621,20 @@ class DocumentView(QScrollArea):
                 xfa_matches(self.doc, pat)
         return n
 
+    @staticmethod
+    def redaction_places(hidden):
+        """hidden_matches' counts as the places they are, in words ("2 form field(s)", "1
+        other place(s) in the file (...)"), for Search & redact here and in Batch
+        processing; the places with none left out."""
+        return [what.format(n=c) for what, c in (
+            (tr("{n} form field(s)"), hidden.get("fields", 0)),
+            (tr("{n} markup note(s)"), hidden.get("markups", 0)),
+            (tr("{n} link(s)"), hidden.get("links", 0)),
+            (tr("{n} bookmark(s)"), hidden.get("bookmarks", 0)),
+            (tr("{n} document propert(ies)"), hidden.get("metadata", 0)),
+            (tr("{n} other place(s) in the file (layer names, web addresses, form data, "
+                "alternate text...)"), hidden.get("other", 0))) if c]
+
     def _redaction_terms(self):
         terms = set()
         for i in range(self.doc.page_count):
@@ -7776,9 +7858,7 @@ class DocumentView(QScrollArea):
                     added_text.forget_under(pg, marks)
                     # Secure redaction removes crossing paths completely. Keeping them
                     # behind an opaque fill would leave confidential geometry recoverable.
-                    pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
-                                        graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
-                                        text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+                    redact_page(pg)
                     # (the clean-up below cleans every page's drawing anyway)
                     forget_redacted(pg, clean=not scrub)
             # (the markups under the marks are gone: the legends listing them are drawn
@@ -8293,9 +8373,7 @@ class DocumentView(QScrollArea):
             self._clear_under_marks(pg, marks, hand)
             from . import added_text
             added_text.forget_under(pg, marks)
-            pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
-                                graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
-                                text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+            redact_page(pg)
             forget_redacted(pg)
             for m in others:                       # put the other marks back
                 annotations.write(pg, m)
@@ -8944,72 +9022,17 @@ class DocumentView(QScrollArea):
                     return None
             return fut.result()
 
-        def ocr_image(rendering):
-            # the tiles are rendered here (PyMuPDF: this thread) and read in the worker
-            res = ocr.recognize(rendering, dlg.wasCanceled, executor=pool, wait=wait)
-            return None if dlg.wasCanceled() else res
-
-        def to_read(i, dpi, turn=0):
-            # (one display list for a page's readings: made once, each tile drawn from it)
-            if lists.get(i) is None:
-                lists.clear()
-                lists[i] = self.doc[i].get_displaylist(annots=False)
-            return ocr.Rendering(self.doc[i], turn, dpi=dpi, displaylist=lists[i])
-        lists = {}
-
         try:
             for n, i in enumerate(pages):
                 dlg.setLabelText(tr("Recognizing text on page {page} ({n} of {total})...").format(
                     page=i + 1, n=n + 1, total=len(pages)))
-                dpi = ocr.page_dpi(self.doc[i],
-                                   ocr.ACCURACY_DPI.get(accuracy, ocr.ACCURACY_DPI["fast"]))
-                best = to_read(i, dpi)
-                res = ocr_image(best)
-                if res is None:
+                # (the page read as Batch processing reads it: ocr.read_page; the tiles are
+                # drawn here, PyMuPDF on this thread, and read in the worker)
+                got = ocr.drive(ocr.read_page(self.doc, i, accuracy, dlg.wasCanceled, pool),
+                                 wait, dlg.setLabelText)
+                if got is None:
                     break
-                sharper = ocr.page_dpi(self.doc[i], ocr.ACCURACY_DPI["high"])
-                if accuracy == "auto" and sharper > dpi and ocr.needs_sharper(res, best):
-                    dlg.setLabelText(tr("Page {page}: small or unclear text, recognizing "
-                                        "again at higher resolution...").format(page=i + 1))
-                    dpi = sharper
-                    best = to_read(i, dpi)
-                    res = ocr_image(best)
-                    if res is None:
-                        break
-                turn = 0
-                if ocr.upside_down(res):
-                    # scanned upside down: read it turned upright too (lines the engine
-                    # wasn't sure about read right then), keep the better reading
-                    dlg.setLabelText(tr("Page {page}: upside down, recognizing it turned...")
-                                     .format(page=i + 1))
-                    r = to_read(i, dpi, 180)
-                    alt = ocr_image(r)
-                    if alt is None:
-                        break
-                    if ocr.score(alt) >= ocr.score(res):
-                        best, res, turn = r, alt, 180
-                turns = (90, 180, 270) if accuracy == "high" else \
-                    ((90, 270) if ocr.mostly_vertical(res) else ())
-                if turns:
-                    # Sideways or upside-down text: try other turns, keep the best.
-                    dlg.setLabelText(tr("Page {page}: checking other orientations...")
-                                     .format(page=i + 1))
-                    for extra in turns:
-                        if extra == turn:
-                            continue
-                        r = to_read(i, dpi, extra)
-                        alt = ocr_image(r)
-                        if alt is None:
-                            break
-                        # switch only for a clear win: the engine already reads turned text,
-                        # so near-equal scores are noise and the upright layout is better
-                        if ocr.score(alt) > 1.25 * ocr.score(res) + 5:
-                            best, res = r, alt
-                    if dlg.wasCanceled():
-                        break
-                best.release()              # keep the text, not the page
-                lists.clear()
-                results[i] = (res, best)
+                results[i] = got
                 dlg.setValue(n + 1)
         except Exception as ex:
             QMessageBox.critical(self, tr("OCR failed"), str(ex))
@@ -9017,12 +9040,7 @@ class DocumentView(QScrollArea):
         finally:
             pool.shutdown(wait=False, cancel_futures=True)
             dlg.close()
-            lists.clear()
-            # the memory the tiles took back to the system now, the engine's once it's
-            # been unused a while (the next job soon after reuses it)
-            ocr.trim_memory()
-            QTimer.singleShot(int(ocr.ENGINE_IDLE_S * 1000) + 1000,
-                              lambda: ocr.release_engine(ocr.ENGINE_IDLE_S))
+            ocr.job_done()
         if not results:
             return
         counts = {}

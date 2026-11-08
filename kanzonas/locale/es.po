@@ -8508,14 +8508,6 @@ msgstr "Acoplar campos de formulario"
 msgid "Makes form fields and what's typed in them part of the page: they can't be filled in any more."
 msgstr "Hace que los campos de formulario y lo escrito en ellos formen parte de la página: ya no se pueden llenar."
 
-#: batch.py:129
-msgid "Permanently removes everything under the redaction marks already in each file, as Apply redactions does."
-msgstr "Elimina para siempre todo lo que está bajo las marcas de censura que ya tiene cada archivo, como Aplicar censuras."
-
-#: batch.py:134
-msgid "Marks every occurrence of each word or phrase for redaction, as Search & redact does, then applies the marks (with any marks already in the file)."
-msgstr "Marca para censura cada aparición de cada palabra o frase, como Buscar y censurar, y luego aplica las marcas (junto con las que ya tenga el archivo)."
-
 #: batch.py:142
 msgid "Removes hidden or sensitive information, as Protect > Sanitize document does."
 msgstr "Quita información oculta o confidencial, como Proteger > Sanear documento."
@@ -8680,10 +8672,6 @@ msgstr "También comentarios y marcas"
 msgid "Words or phrases (one per line)"
 msgstr "Palabras o frases (una por línea)"
 
-#: batch.py:138
-msgid "Apply the redactions (untick to only mark them for review)"
-msgstr "Aplicar las censuras (desmarque para solo marcarlas y revisarlas)"
-
 #: batch.py:148
 msgid "Image quality"
 msgstr "Calidad de imagen"
@@ -8768,10 +8756,6 @@ msgstr "El resultado reemplazaría el archivo original. Elija otra carpeta u otr
 msgid "PDF/A-{part}b"
 msgstr "PDF/A-{part}b"
 
-#: batch.py:1160
-msgid "Applied {n} redaction(s)"
-msgstr "Se aplicaron {n} censura(s)"
-
 #: batch.py:1246
 msgid "Deleted blank page(s): {pages}"
 msgstr "Páginas en blanco eliminadas: {pages}"
@@ -8831,14 +8815,6 @@ msgstr "Bates {first} a {last}"
 #: batch.py:1140
 msgid "{n} redaction mark(s) not applied yet were kept as marks"
 msgstr "{n} marca(s) de censura aún no aplicadas se conservaron como marcas"
-
-#: batch.py:1182
-msgid "Redacted {n} match(es) on the pages"
-msgstr "Se censuraron {n} coincidencia(s) en las páginas"
-
-#: batch.py:1186
-msgid "{n} word(s) found only outside the pages (fields, notes, bookmarks, properties) were removed there"
-msgstr "{n} palabra(s) encontradas solo fuera de las páginas (campos, notas, marcadores, propiedades) se quitaron de ahí"
 
 #: batch.py:1323
 msgid "Combining {n} files..."
@@ -9338,3 +9314,56 @@ msgstr "Copiado: Ctrl+V lo pega en una página, aquí o en otro documento"
 
 msgid "Cut: Ctrl+V pastes it into a page, here or in another document"
 msgstr "Cortado: Ctrl+V lo pega en una página, aquí o en otro documento"
+
+# ---- Batch processing: redaction through Apply redactions' and Search & redact's own steps;
+# only marking says so, and the files are named -marked
+msgid "-marked"
+msgstr "-marcado"
+
+msgid "Permanently removes everything under the redaction marks already in each file, as Apply redactions does (and the words Search & redact marked, from the file's other places too)."
+msgstr "Quita para siempre todo lo que hay bajo las marcas de censura que ya tiene cada archivo, como Aplicar censuras (y las palabras que marcó Buscar y censurar, también de los demás lugares del archivo)."
+
+msgid "Marks every occurrence of each word or phrase for redaction, as Search & redact does (in hidden layers and where a page is cropped too), then applies the marks (with any marks already in the file) and removes the words from the file's other places. The originals stay as they are. Unticked, the words are only marked: nothing is removed yet, and those files are named name-marked."
+msgstr "Marca para censura cada aparición de cada palabra o frase, como Buscar y censurar (también en capas ocultas y donde una página está recortada), luego aplica las marcas (junto con las que ya tenga el archivo) y quita las palabras de los demás lugares del archivo. Los originales quedan como estaban. Desmarcado, las palabras solo se marcan: todavía no se quita nada, y esos archivos se llaman nombre-marcado."
+
+msgid "Apply the redactions (untick to only mark them: nothing is removed yet)"
+msgstr "Aplicar las censuras (desmarque para solo marcarlas: todavía no se quita nada)"
+
+msgid "(only marked: nothing removed)"
+msgstr "(solo marcado: no se quita nada)"
+
+msgid "Applied {n} redaction(s) on page(s) {pages}"
+msgstr "Se aplicaron {n} censura(s) en la(s) página(s) {pages}"
+
+msgid "also removed from {places}"
+msgstr "también se quitó de {places}"
+
+msgid "removed from {places}"
+msgstr "se quitó de {places}"
+
+msgid "{n} place(s) on the pages"
+msgstr "{n} lugar(es) en las páginas"
+
+msgid "Warning: \"{term}\" is still in the file after redacting ({places}): check it"
+msgstr "Atención: \"{term}\" sigue en el archivo después de censurar ({places}): revíselo"
+
+msgid "Redacted {n} match(es) on page(s) {pages}"
+msgstr "Se censuraron {n} coincidencia(s) en la(s) página(s) {pages}"
+
+msgid "Not found on the pages"
+msgstr "No está en las páginas"
+
+msgid "{n} redaction mark(s) already in the file applied too"
+msgstr "también se aplicaron {n} marca(s) de censura que ya tenía el archivo"
+
+msgid "Marked {n} occurrence(s) for redaction on page(s) {pages}; nothing was removed yet: open the file and use Apply redactions"
+msgstr "Se marcaron para censura {n} aparición(es) en la(s) página(s) {pages}; todavía no se quitó nada: abra el archivo y use Aplicar censuras"
+
+msgid "No matches on the pages: nothing was marked"
+msgstr "No hay coincidencias en las páginas: no se marcó nada"
+
+msgid "also found in {places}: Apply redactions removes it from there too"
+msgstr "también está en {places}: Aplicar censuras lo quita también de ahí"
+
+msgid "{terms} found only outside the pages, in {places}: nothing was removed (Search & redact in the open file offers to remove it)"
+msgstr "{terms} solo está fuera de las páginas, en {places}: no se quitó nada (Buscar y censurar, en el archivo abierto, ofrece quitarlo)"

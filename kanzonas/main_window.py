@@ -3824,13 +3824,7 @@ class MainWindow(QMainWindow):
             term = text.strip()
             hidden = v.hidden_matches(term)
             n = v.search_redact(term)
-            extra = [what.format(n=c) for what, c in (
-                (tr("{n} form field(s)"), hidden["fields"]),
-                (tr("{n} markup note(s)"), hidden["markups"]), (tr("{n} link(s)"), hidden["links"]),
-                (tr("{n} bookmark(s)"), hidden["bookmarks"]),
-                (tr("{n} document propert(ies)"), hidden["metadata"]),
-                (tr("{n} other place(s) in the file (layer names, web addresses, form data, "
-                    "alternate text...)"), hidden.get("other", 0))) if c]
+            extra = v.redaction_places(hidden)
             msg = (tr("Marked {n} occurrence(s) on the pages.").format(n=n) if n else
                    tr("No matches on the pages."))
             if extra and not n:

@@ -5,12 +5,14 @@ every file in a folder, flatten markups, shrink a folder to email it).
 This module is the engine, without a window (batch_ui.py is the window). Batch.run() is a
 generator: each next() does a short piece of work and yields where it is, so the window
 drives it from Qt's event loop in slices and stays responsive (PyMuPDF isn't thread-safe:
-every document is read and changed on the GUI thread; only the OCR engine and the exports,
-which work on their own copy of the bytes, run in a worker thread, as File > Export and
-Recognize text do). Tests simply run it to the end (run_all).
+every document is read and changed on the GUI thread, OCR's tiles drawn there too; only the
+OCR engine reading them and the exports, which work on their own copy of the bytes, run in a
+worker thread, as Recognize text and File > Export do). Tests simply run it to the end
+(run_all).
 
 One document is open at a time: each file is opened (BatchDoc), the steps run on it through
-the app's own code (DocumentView's editing steps, page_tools, ocr, pdfa, export, combine),
+the app's own code (DocumentView's editing steps, redaction included, page_tools, ocr's
+read_page, pdfa, export, combine),
 everything it produces is written, it is closed and its memory freed before the next file.
 A file's outputs appear all together or not at all: exports are made in a temporary folder
 and moved into place at the end, and the PDF is written through a temporary file
@@ -128,15 +130,19 @@ def _step_table():
             _f("comments", "bool", tr("Comments and markups too"), False)]),
         "apply_redactions": (tr("Apply redactions"), tr(
             "Permanently removes everything under the redaction marks already in each file, as "
-            "Apply redactions does."), [
+            "Apply redactions does (and the words Search & redact marked, from the file's "
+            "other places too)."), [
             _f("scrub", "bool", tr("Remove hidden information (metadata, attachments, hidden "
                                    "text, scripts)"), True)]),
         "search_redact": (tr("Search & redact"), tr(
             "Marks every occurrence of each word or phrase for redaction, as Search & redact "
-            "does, then applies the marks (with any marks already in the file)."), [
+            "does (in hidden layers and where a page is cropped too), then applies the marks "
+            "(with any marks already in the file) and removes the words from the file's other "
+            "places. The originals stay as they are. Unticked, the words are only marked: "
+            "nothing is removed yet, and those files are named name-marked."), [
             _f("words", "lines", tr("Words or phrases (one per line)"), ""),
-            _f("apply", "bool", tr("Apply the redactions (untick to only mark them for "
-                                   "review)"), True),
+            _f("apply", "bool", tr("Apply the redactions (untick to only mark them: nothing "
+                                   "is removed yet)"), True),
             _f("scrub", "bool", tr("Remove hidden information (metadata, attachments, hidden "
                                    "text, scripts)"), True)]),
         "sanitize": (tr("Sanitize document"), tr(
@@ -211,6 +217,8 @@ def steps_table():
 EXPORT_EXT = {"word": "docx", "excel": "xlsx", "ppt": "pptx", "png": "png", "jpg": "jpg",
               "txt": "txt"}
 NOT_EDITS = ("export", "combine")       # steps that don't change the document
+# added to the name of a file Search & redact only marked (see Batch.name_for)
+MARKED_SUFFIX = tr("-marked")
 
 
 def label(kind):
@@ -246,6 +254,8 @@ def summary(st):
     elif kind == "search_redact":
         words = [w for w in (o.get("words") or "").splitlines() if w.strip()]
         extra = ", ".join(words[:3]) + (", ..." if len(words) > 3 else "")
+        if not o.get("apply", True):
+            extra += " " + tr("(only marked: nothing removed)")
     return "%s: %s" % (name, extra) if extra else name
 
 
@@ -686,6 +696,7 @@ class _File:
         self.staged = []                # [(file in the temporary folder, suffix)]
         self.ready = None               # a file a step wrote that is this document as it is
         self.ready_at = -1
+        self.marked = False             # Search & redact only marked (nothing removed yet)
 
 
 class Batch:
@@ -724,6 +735,7 @@ class Batch:
         self._written = set()
         self._parts = []                # (index, file) for Combine
         self._pool = None
+        self._ocr_used = False
         self._tmp = None
         self._overwrite = self.output["overwrite"]
         self._inputs = {self._key(f.path) for f in self.files}
@@ -747,10 +759,13 @@ class Batch:
                 yield from self._combine()
         finally:
             if self._pool is not None:
-                self._pool.shutdown(wait=True)
+                self._pool.shutdown(wait=True, cancel_futures=True)
                 self._pool = None
             shutil.rmtree(self._tmp, ignore_errors=True)
             gc.collect()
+            if self._ocr_used:
+                from . import ocr
+                ocr.job_done()          # (as after Recognize text: memory given back)
 
     def run_all(self):
         """Run to the end without a window (tests, scripts). Returns the results."""
@@ -870,17 +885,22 @@ class Batch:
             return os.path.abspath(folder)
         return os.path.join(os.path.dirname(os.path.abspath(item.path)), tr("Processed"))
 
-    def name_for(self, i, item, bates=""):
+    def name_for(self, i, item, bates="", marked=False):
+        """The output's name. marked: Search & redact only marked it (nothing removed yet):
+        with the usual name pattern ({name}), "-marked" is added, so a copy still holding
+        the text is never taken for a redacted one; a pattern of the user's own is kept."""
         base = os.path.splitext(os.path.basename(item.path))[0]
         width = max(3, len(str(len(self.files))))
         pattern = self.output.get("pattern") or "{name}"
+        if marked and pattern.strip() == "{name}":
+            pattern = "{name}" + MARKED_SUFFIX
         name = (pattern.replace("{name}", base).replace("{n}", str(i + 1).zfill(width))
                 .replace("{date}", date.today().isoformat()).replace("{bates}", bates or ""))
         return _safe_name(name) or base
 
-    def output_path(self, i, item, ext=".pdf", bates=""):
+    def output_path(self, i, item, ext=".pdf", bates="", marked=False):
         """Where the file's output goes (before checking what's there)."""
-        return os.path.join(self.folder_for(item), self.name_for(i, item, bates) + ext)
+        return os.path.join(self.folder_for(item), self.name_for(i, item, bates, marked) + ext)
 
     def _resolve(self, path, own_input=None):
         """The file to write for path, after the rules for files that exist: Skip when it's
@@ -938,12 +958,15 @@ class Batch:
                 view.doc.save(part, garbage=1, deflate=True)
             self._parts.append((f.index, part))
         plan = []
+        # (marks only made, still in it: named so, see name_for)
+        marked = f.marked and view.pending_redactions() > 0
         if edits and (self.combine is None or self.combine.get("keep_each")):
             plan.append(("pdf", self._resolve(self.output_path(f.index, item, ".pdf",
-                                                               f.bates_first), item.path)))
+                                                               f.bates_first, marked),
+                                              item.path)))
         for tmp, suffix in f.staged:
             plan.append((tmp, self._resolve(self.output_path(f.index, item, suffix,
-                                                             f.bates_first))))
+                                                             f.bates_first, marked))))
         tokens = [(target, self._guard(target)) for _src, target in plan]
         for src, target in plan:
             os.makedirs(os.path.dirname(target), exist_ok=True)
@@ -964,11 +987,14 @@ class Batch:
                 self.after_write(token)
 
     # ---- a worker thread for what doesn't touch an open document
-    def _worker(self, fn, *args):
+    def _executor(self):
         if self._pool is None:
             from concurrent.futures import ThreadPoolExecutor
             self._pool = ThreadPoolExecutor(max_workers=1)
-        fut = self._pool.submit(fn, *args)
+        return self._pool
+
+    def _worker(self, fn, *args):
+        fut = self._executor().submit(fn, *args)
         while not fut.done():
             yield WAIT
         return fut.result()
@@ -990,72 +1016,37 @@ class Batch:
             f.notes.append(tr("OCR: every page already has text."))
             return
         accuracy = o.get("accuracy") or "auto"
+        self._ocr_used = True
         lines = done = 0
-        for n, i in enumerate(pages):
-            got = yield from self._ocr_page(view, i, accuracy)
-            if got is None:
-                raise _Stop()
-            res, rendering = got
-            count = {}
+        try:
+            for n, i in enumerate(pages):
+                # read as Recognize text reads it (ocr.read_page): each tile drawn here, on
+                # this thread (PyMuPDF), and read by the engine in the worker meanwhile
+                got = None
+                steps = ocr.read_page(view.doc, i, accuracy, lambda: self.stop,
+                                      self._executor())
+                try:
+                    while True:
+                        ev = next(steps)
+                        if not isinstance(ev, str):
+                            yield WAIT              # (a tile being read: back in a moment)
+                except StopIteration as end:
+                    got = end.value
+                if got is None:
+                    raise _Stop()
+                res, rendering = got
+                count = {}
 
-            def add(i=i, res=res, rendering=rendering, count=count):
-                count["n"] = ocr.add_text_layer(view.doc[i], res, rendering)
-            view.modify(add, [i])
-            lines += count["n"]
-            done += 1
-            yield (n + 1) / len(pages)
+                def add(i=i, res=res, rendering=rendering, count=count):
+                    count["n"] = ocr.add_text_layer(view.doc[i], res, rendering)
+                view.modify(add, [i])
+                lines += count["n"]
+                done += 1
+                yield (n + 1) / len(pages)
+        finally:
+            ocr.trim_memory()           # (the tiles' memory back to the system: ocr.job_done)
         f.notes.append(tr("OCR added {lines} lines of text on {pages} page(s)").format(
             lines=lines, pages=done))
-
-    def _ocr_page(self, view, i, accuracy):
-        """Recognize page i the way Recognize text does (DocumentView.run_ocr): sharper when
-        Auto finds small text, turned when it's upside down or sideways. (rendering, results)
-        or None when stopped; the page image is let go once read."""
-        from . import ocr
-        doc = view.doc
-        stop = lambda: self.stop        # noqa: E731
-
-        def read(rendering):
-            out = yield from self._worker(ocr.recognize, rendering, stop)
-            return None if self.stop else out
-        dpi = ocr.page_dpi(doc[i], ocr.ACCURACY_DPI.get(accuracy, ocr.ACCURACY_DPI["fast"]))
-        best = ocr.Rendering(doc[i], dpi=dpi)
-        res = yield from read(best)
-        if res is None:
-            return None
-        sharper = ocr.page_dpi(doc[i], ocr.ACCURACY_DPI["high"])
-        if accuracy == "auto" and sharper > dpi and ocr.needs_sharper(res, best):
-            dpi = sharper
-            best = ocr.Rendering(doc[i], dpi=dpi)
-            res = yield from read(best)
-            if res is None:
-                return None
-        turn = 0
-        if ocr.upside_down(res):
-            r = ocr.Rendering(doc[i], 180, dpi=dpi)
-            alt = yield from read(r)
-            if alt is None:
-                return None
-            if ocr.score(alt) >= ocr.score(res):
-                best, res, turn = r, alt, 180
-            else:
-                r.release()
-        turns = (90, 180, 270) if accuracy == "high" else \
-            ((90, 270) if ocr.mostly_vertical(res) else ())
-        for extra in turns:
-            if extra == turn:
-                continue
-            r = ocr.Rendering(doc[i], extra, dpi=dpi)
-            alt = yield from read(r)
-            if alt is None:
-                return None
-            if ocr.score(alt) > 1.25 * ocr.score(res) + 5:
-                best.release()
-                best, res = r, alt
-            else:
-                r.release()
-        best.release()
-        return res, best
 
     def _do_pdfa(self, f, k, o):
         from . import pdfa, pdfa_ui
@@ -1133,9 +1124,7 @@ class Batch:
     def _do_flatten_comments(self, f, k, o):
         view = f.view
         if o.get("redactions") == "apply" and view.pending_redactions():
-            n = view.pending_redactions()
-            view.apply_redactions(True)
-            f.notes.append(tr("Applied {n} redaction(s)").format(n=n))
+            self._apply(f, bool(o.get("scrub", True)))
         view.flatten(None, widgets=False)
         n = view.pending_redactions()
         if n:
@@ -1152,41 +1141,135 @@ class Batch:
             return
         view.modify(lambda: view.doc.bake(annots=False, widgets=True), structural=True)
 
+    # ---- redaction: through the very steps of Apply redactions and Search & redact
+    # (DocumentView's: every layer and the area cropped away searched, the term's other places
+    # in the file counted and cleaned, ActualText wrappers, thumbnails and private page data
+    # dropped), with the report saying per file what was removed and where
+    @staticmethod
+    def _marks_per_page(view):
+        return [view.pending_redactions([i]) for i in range(view.doc.page_count)]
+
+    @staticmethod
+    def _places(counts):
+        from .document_view import DocumentView
+        return ", ".join(DocumentView.redaction_places(counts))
+
+    @staticmethod
+    def _add_counts(total, counts):
+        for key, n in counts.items():
+            total[key] = total.get(key, 0) + n
+
+    def _apply(self, f, scrub):
+        """Apply every redaction mark in the file (Apply redactions), then check that none
+        of the Search & redact terms the marks were made for is left anywhere in it. Notes
+        what was removed and where."""
+        view = f.view
+        per_page = self._marks_per_page(view)
+        n = sum(per_page)
+        terms = sorted(view._redaction_terms())
+        elsewhere = {}
+        for term in terms:                  # (the places Apply redactions cleans them from)
+            self._add_counts(elsewhere, view.hidden_matches(term))
+        view.apply_redactions(scrub)
+        f.notes.append(tr("Applied {n} redaction(s) on page(s) {pages}").format(
+            n=n, pages=_page_numbers(i for i, c in enumerate(per_page) if c)))
+        if any(elsewhere.values()):
+            f.notes.append(tr("also removed from {places}").format(
+                places=self._places(elsewhere)))
+        self._check_gone(f, terms)
+
+    def _check_gone(self, f, terms):
+        """After redacting: a term still found in the file (on a page, in any layer or the
+        area cropped away, or one of its other places) is said in the report."""
+        view = f.view
+        for term in terms:
+            if term.lower() in "[redacted]":
+                continue                    # (what the term's places now read)
+            on_pages = sum(len(h) for h in view._search_every_layer(term).values())
+            left = view.hidden_matches(term)
+            if on_pages or any(left.values()):
+                places = ([tr("{n} place(s) on the pages").format(n=on_pages)] * bool(on_pages)
+                          + ([self._places(left)] if any(left.values()) else []))
+                f.notes.append(tr("Warning: \"{term}\" is still in the file after redacting "
+                                  "({places}): check it").format(term=term,
+                                                                 places=", ".join(places)))
+
     def _do_apply_redactions(self, f, k, o):
         view = f.view
-        n = view.pending_redactions()
-        if not n:
+        if not view.pending_redactions():
             f.notes.append(tr("No redaction marks to apply"))
             return
-        view.apply_redactions(bool(o.get("scrub", True)))
-        f.notes.append(tr("Applied {n} redaction(s)").format(n=n))
+        self._apply(f, bool(o.get("scrub", True)))
 
     def _do_search_redact(self, f, k, o):
         view = f.view
+        apply = bool(o.get("apply", True))
         terms = []
         for w in (o.get("words") or "").splitlines():
             w = w.strip()
             if w and w.lower() not in (t.lower() for t in terms):
                 terms.append(w)
-        on_pages = elsewhere = 0
+        before = self._marks_per_page(view)
+        on_pages = 0
+        with_marks, outside = {}, {}        # the other places of terms marked / not on pages
+        only_outside = []
         for n, term in enumerate(terms):
+            # as Search & redact does: where else it is counted first, then marked on every
+            # page (in every layer, also where the page is cropped away)
+            hidden = view.hidden_matches(term)
             hits = view.search_redact(term)
             on_pages += hits
-            if not hits and o.get("apply", True) and any(view.hidden_matches(term).values()):
-                # only in fields, notes, links, bookmarks or properties: removed from there,
-                # as Search & redact offers
-                view.remove_term(term)
-                elsewhere += 1
+            if hits:
+                self._add_counts(with_marks, hidden)
+            elif any(hidden.values()):
+                # only outside the pages' drawing: removed from there (as Search & redact
+                # offers), or, only marking, said
+                self._add_counts(outside, hidden)
+                only_outside.append(term)
+                if apply:
+                    view.remove_term(term)
             yield (n + 1) / (len(terms) + 1)
-        pending = view.pending_redactions()
-        if o.get("apply", True) and pending:
-            view.apply_redactions(bool(o.get("scrub", True)))
-            f.notes.append(tr("Redacted {n} match(es) on the pages").format(n=on_pages))
+        after = self._marks_per_page(view)
+        pages = _page_numbers(i for i, (a, b) in enumerate(zip(before, after)) if b > a)
+        earlier = sum(before)
+        if apply:
+            if on_pages:
+                f.notes.append(tr("Redacted {n} match(es) on page(s) {pages}").format(
+                    n=on_pages, pages=pages))
+            else:
+                f.notes.append(tr("Not found on the pages"))
+            if any(with_marks.values()) or any(outside.values()):
+                total = dict(with_marks)
+                self._add_counts(total, outside)
+                places = self._places(total)
+                f.notes.append(tr("also removed from {places}").format(places=places)
+                               if on_pages else
+                               tr("removed from {places}").format(places=places))
+            if earlier:
+                f.notes.append(tr("{n} redaction mark(s) already in the file applied too")
+                               .format(n=earlier))
+            if view.pending_redactions():
+                view.apply_redactions(bool(o.get("scrub", True)))
+            self._check_gone(f, terms)
+            return
+        # only marking: nothing removed, and said so plainly; the file is named so (see
+        # name_for) while the marks are in it
+        if on_pages:
+            f.notes.append(tr("Marked {n} occurrence(s) for redaction on page(s) {pages}; "
+                              "nothing was removed yet: open the file and use Apply "
+                              "redactions").format(n=on_pages, pages=pages))
         else:
-            f.notes.append(tr("Marked {n} occurrence(s) on the pages.").format(n=on_pages))
-        if elsewhere:
-            f.notes.append(tr("{n} word(s) found only outside the pages (fields, notes, "
-                              "bookmarks, properties) were removed there").format(n=elsewhere))
+            f.notes.append(tr("No matches on the pages: nothing was marked"))
+        if any(with_marks.values()):
+            f.notes.append(tr("also found in {places}: Apply redactions removes it from there "
+                              "too").format(places=self._places(with_marks)))
+        if only_outside:
+            f.notes.append(tr("{terms} found only outside the pages, in {places}: nothing was "
+                              "removed (Search & redact in the open file offers to remove "
+                              "it)").format(terms=", ".join('"%s"' % t for t in only_outside),
+                                            places=self._places(outside)))
+        if view.pending_redactions():
+            f.marked = True
 
     def _do_sanitize(self, f, k, o):
         from .document_view import DocumentView
@@ -1346,6 +1429,18 @@ class Batch:
             res.status, res.reason = SKIPPED, str(ex)
         except Exception as ex:
             res.status, res.reason = FAILED, str(ex) or ex.__class__.__name__
+
+
+def _page_numbers(indices):
+    """Page indexes as the pages people count: "1, 3-5"."""
+    nums = sorted({i + 1 for i in indices})
+    out = []
+    for n in nums:
+        if out and out[-1][1] == n - 1:
+            out[-1][1] = n
+        else:
+            out.append([n, n])
+    return ", ".join("%d" % a if a == b else "%d-%d" % (a, b) for a, b in out)
 
 
 def file_size(n):

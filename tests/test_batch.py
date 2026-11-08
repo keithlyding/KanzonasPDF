@@ -132,9 +132,11 @@ def run(files, steps, out_folder=None, **kw):
     return b
 
 
-def fake_recognize(rendering, cancelled=lambda: False):
-    """The OCR engine's answer for any page: one line, where the words were drawn."""
-    s = rendering.scale
+def fake_read(image):
+    """The OCR engine's answer for a page's first tile (the top of a 612-point-wide page, all
+    of its width): one line, where the words were drawn. The rest of the OCR is the app's own
+    (ocr.read_page: tiles drawn from the display list, the engine in the worker)."""
+    s = image.shape[1] / 612
     box = [[72 * s, 104 * s], [360 * s, 104 * s], [360 * s, 124 * s], [72 * s, 124 * s]]
     return [(box, "Invoice 4471 total 99.00", 0.96)]
 
@@ -227,13 +229,39 @@ class Steps(unittest.TestCase):
         with pymupdf.open(os.path.join(out, "a.pdf")) as doc:
             self.assertEqual(doc.metadata["author"], "[redacted]")
             self.assertEqual(doc.metadata["title"], "Alpha")
-        self.assertIn("removed there", b.results[0].details())
+        self.assertEqual(b.results[0].details(), "Not found on the pages; removed from 1 "
+                         "document propert(ies); 1 redaction mark(s) already in the file "
+                         "applied too")
 
     def test_search_and_redact_marks_only(self):
-        _b, out = self.one("search_redact", files=[self.f.a], words="Keep", apply=False)
-        with pymupdf.open(os.path.join(out, "a.pdf")) as doc:
+        # (owner, 6 Nov: when only marking, the results say plainly that nothing was removed
+        # yet, and the file's name says so too)
+        b, out = self.one("search_redact", files=[self.f.a, self.f.c], words="Keep",
+                          apply=False)
+        self.assertEqual(sorted(os.listdir(out)), ["a-marked.pdf", "c.pdf"])
+        with pymupdf.open(os.path.join(out, "a-marked.pdf")) as doc:
             self.assertEqual(sum(1 for p in doc for a in p.annots() if a.type[1] == "Redact"), 3)
-        self.assertIn("Keep this line", _text(os.path.join(out, "a.pdf")))
+        self.assertIn("Keep this line", _text(os.path.join(out, "a-marked.pdf")))
+        self.assertEqual(b.results[0].details(),
+                         "Marked 2 occurrence(s) for redaction on page(s) 1-2; nothing was "
+                         "removed yet: open the file and use Apply redactions")
+        # (c.pdf: nothing found, nothing marked: its usual name)
+        self.assertEqual(b.results[1].details().split("; ")[0],
+                         "No matches on the pages: nothing was marked")
+
+    def test_marked_files_keep_a_name_pattern_of_the_users_own(self):
+        out = self.f.out("marked-pattern")
+        b = run([self.f.a], [B.step("search_redact", words="Keep", apply=False)], out,
+                output={"pattern": "{name}_review"})
+        self.assertEqual(os.listdir(out), ["a_review.pdf"])
+        self.assertIn("nothing was removed yet", b.results[0].details())
+        # marks applied by a later step: nothing marked is left, the usual name
+        out = self.f.out("marked-then-applied")
+        b = run([self.f.a], [B.step("search_redact", words="Keep", apply=False),
+                             B.step("apply_redactions")], out)
+        self.assertEqual(os.listdir(out), ["a.pdf"])
+        self.assertNotIn("Keep this line", _text(os.path.join(out, "a.pdf")))
+        self.assertIn("Applied 3 redaction(s) on page(s) 1-2", b.results[0].details())
 
     def test_sanitize(self):
         _b, out = self.one("sanitize")
@@ -300,10 +328,10 @@ class Steps(unittest.TestCase):
     def test_ocr(self):
         calls = []
 
-        def recognize(rendering, cancelled=lambda: False):
-            calls.append(rendering.dpi)
-            return fake_recognize(rendering)
-        with mock.patch("kanzonas.ocr.recognize", recognize):
+        def read(image):
+            calls.append(image.shape)
+            return fake_read(image)
+        with mock.patch("kanzonas.ocr._read", read):
             b, out = self.one("ocr", files=[self.f.scan, self.f.a], accuracy="fast")
         self.assertEqual(len(calls), 3)         # the scan's pages; a.pdf has text already
         with pymupdf.open(os.path.join(out, "scan.pdf")) as doc:
@@ -387,7 +415,7 @@ class BatesAndCombine(unittest.TestCase):
     def test_archive_recipe(self):
         steps = B.builtin_recipes()["Archive (OCR + PDF/A)"]
         out = self.f.out("archive")
-        with mock.patch("kanzonas.ocr.recognize", fake_recognize):
+        with mock.patch("kanzonas.ocr._read", fake_read):
             b = run([self.f.scan], steps, out)
         self.assertEqual(b.results[0].status, B.DONE, b.results[0].details())
         from kanzonas import pdfa
@@ -580,10 +608,10 @@ class Cancel(unittest.TestCase):
         b = B.Batch(self.scans, [B.step("ocr"), B.step("export", format="txt")],
                     {"mode": "folder", "folder": out})
 
-        def recognize(rendering, cancelled=lambda: False):
+        def read(image):
             b.cancel = True                 # clicked while the first file is being read
-            return fake_recognize(rendering)
-        with mock.patch("kanzonas.ocr.recognize", recognize):
+            return fake_read(image)
+        with mock.patch("kanzonas.ocr._read", read):
             b.run_all()
         self.assertEqual([r.status for r in b.results], [B.DONE, B.CANCELED, B.CANCELED])
         self.assertEqual(sorted(os.listdir(out)), ["scan0.pdf", "scan0.txt"])
@@ -596,13 +624,13 @@ class Cancel(unittest.TestCase):
                     {"mode": "folder", "folder": out})
         seen = []
 
-        def recognize(rendering, cancelled=lambda: False):
+        def read(image):
             seen.append(1)
             if len(seen) == 5:          # on the second file's second page
                 b.stop = True
                 time.sleep(0.05)
-            return fake_recognize(rendering)
-        with mock.patch("kanzonas.ocr.recognize", recognize):
+            return fake_read(image)
+        with mock.patch("kanzonas.ocr._read", read):
             b.run_all()
         self.assertEqual([r.status for r in b.results], [B.DONE, B.CANCELED, B.CANCELED])
         self.assertIn("nothing was written", b.results[1].reason)
@@ -708,6 +736,57 @@ class BlankPages(unittest.TestCase):
         p.draw_line((100, 400), (300, 400), width=1)       # a short line: kept
         self.assertEqual([page_tools.is_blank(pg) for pg in doc],
                          [True, True, False, True, False, False, False])
+
+
+class MainsFeaturesInSteps(unittest.TestCase):
+    """1.9.1's added-text blocks stay one block through the steps that rewrite pages; the
+    compacting saves (Save as PDF/A, Reduce file size) keep a placed page's drawing
+    (save_guard)."""
+
+    TEXT = "A block of added words wrapped in a narrow box of its own"
+
+    def setUp(self):
+        from kanzonas import added_text, text_styles
+        self.dir = tempfile.mkdtemp(prefix="kz-batch-main-")
+        self.addCleanup(shutil.rmtree, self.dir, True)
+        d = pymupdf.open()
+        for _k in range(2):
+            d.new_page().insert_text((72, 600), "Unrelated private line", fontsize=11)
+        page = d[0]
+        keys = [text_styles.Style(family="Helvetica", size=11.0)] * len(self.TEXT)
+        added_text.write(page, pymupdf.Point(80, 120), 0, self.TEXT, keys, 13.2, 120)
+        page.add_text_annot((300, 300), "note").update()
+        # a page placed on page 2 (a form of its own: what a compacting save emptied)
+        src = pymupdf.open()
+        src.new_page().insert_text((72, 72), "Placed drawing words", fontsize=14)
+        d[1].show_pdf_page(pymupdf.Rect(300, 50, 500, 300), src, 0)
+        self.path = os.path.join(self.dir, "blocks.pdf")
+        d.save(self.path)
+
+    def blocks(self, path):
+        from kanzonas import added_text, text_edit
+        with pymupdf.open(path) as doc:
+            page = doc[0]
+            found = added_text.find(page, text_edit.text_lines(page))
+            self.assertEqual(len(found), 1)
+            self.assertEqual(" ".join(page.get_text("text", clip=found[0].rect).split()),
+                             self.TEXT)
+            self.assertIn("Placed drawing words", doc[1].get_text())
+
+    def test_page_rewriting_steps_keep_the_block(self):
+        chains = [[B.step("watermark"), B.step("header_footer", footer_center="{page}"),
+                   B.step("bates"), B.step("flatten_comments"),
+                   B.step("flatten_fields", comments=True),
+                   B.step("search_redact", words="private"), B.step("sanitize"),
+                   B.step("rotate", angle=180), B.step("rotate", angle=180)],
+                  [B.step("compress", preset="Smallest (72 dpi images)")],
+                  [B.step("pdfa")]]
+        for k, steps in enumerate(chains):
+            with self.subTest(steps=[st["kind"] for st in steps]):
+                out = os.path.join(self.dir, "out%d" % k)
+                b = run([self.path], steps, out)
+                self.assertEqual(b.results[0].status, B.DONE, b.results[0].details())
+                self.blocks(b.results[0].outputs[0])
 
 
 class Window(unittest.TestCase):

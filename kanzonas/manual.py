@@ -1436,7 +1436,9 @@ ones, Apply redactions applies them all. Applying removes, not just covers: the 
 and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
 own copy of the text). A vector path that touches a mark is removed past the box, including
 the part outside it. A redacted page also loses its thumbnail and the private copy of the page
-some programs (Illustrator) keep in the file. Applying scrubs metadata, attachments, hidden
+some programs (Illustrator) keep in the file, and a tagged span (the words kept again as
+ActualText, for reading and copying) that a mark covers even part of loses that copy of its
+words. Applying scrubs metadata, attachments, hidden
 text, scripts and such programs' private data unless
 you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> marks the text
 on the pages also where a layer that is hidden has it or where the page is cropped away, and finds
@@ -1622,7 +1624,9 @@ be valid).</li>
 <li><b>Steps</b> run in the order listed, each with its options (click a step to see them;
 <b>Add step</b>, <b>Remove</b>, <b>Move up</b>, <b>Move down</b>). Each does exactly what the
 command of the same name does on an open document: <b>Recognize text (OCR)</b> (skips pages
-that already have text unless you untick it; Accuracy as in the OCR window); <b>Save as
+that already have text unless you untick it; Accuracy as in the OCR window; the pages are
+read by the same OCR as Recognize text, in the same small pieces and the same memory);
+<b>Save as
 PDF/A</b> (after the steps that change the document; only Export and Combine can follow it;
 a password-protected file needs Remove password first); <b>Watermark</b> (text or a picture);
 <b>Header and footer</b> (tokens {page} {pages} {date} {file} {bates}); <b>Page numbers</b>;
@@ -1632,9 +1636,20 @@ each next one where the last left off; a file that fails or is skipped uses no n
 the report gives each file's first and last number); <b>Flatten comments</b> (redaction marks
 not applied yet stay marks unless you choose Apply them first); <b>Flatten form fields</b>
 (and, if ticked, comments and markups too); <b>Apply redactions</b> (the marks already in
-each file); <b>Search &amp; redact</b> (a list of words or phrases, one per line: every
-occurrence is marked and the marks are applied, with what's in fields, notes, bookmarks and
-properties removed as Search &amp; redact does; untick Apply to only mark them for review);
+each file, applied exactly as Apply redactions does: the words Search &amp; redact marked
+are taken out of the file's other places too, and nothing of what was under a mark is left
+in the file, in a tagged span's ActualText, the page's thumbnail or a program's private
+copy of the page); <b>Search &amp; redact</b> (a list of words or phrases, one per line:
+every occurrence is marked, in hidden layers and where a page is cropped too, and the marks
+are applied, with the words taken out of fields, notes, links, bookmarks, properties and the
+file's other places, such as layer names, web addresses, form data and alternate text, as
+Search &amp; redact and Apply redactions do; a word found only in those places is removed
+from there. Apply the redactions is ticked to begin with: the originals stay as they were,
+and the redacted copies go to the output folder. The report says for each file what was
+removed and where: the pages, and how many of the other places. Untick it to only mark them
+for review: nothing is removed yet, the report says so ("nothing was removed yet: open the
+file and use Apply redactions"), and each file left with marks is named with -marked at the
+end, such as report-marked.pdf, unless you chose a file name pattern of your own);
 <b>Sanitize document</b> (the same choices as Protect &gt; Sanitize document); <b>Reduce file
 size</b> (as Compress; a file that wouldn't get smaller is kept as it is); <b>Rotate pages</b>
 (all, odd, even, landscape or portrait pages, or a list); <b>Delete blank pages</b> (pages
@@ -1669,7 +1684,8 @@ once, leaving that file out. A file's results appear all together or not at all:
 half-written is ever left. One document is open at a time and its memory is freed before the
 next, so a long run doesn't use more memory as it goes.</li>
 <li>The <b>report</b> at the end lists each file as Done, Skipped or Failed with the reason
-(a wrong password, a file that isn't a PDF, a step that couldn't be done) and what it wrote;
+(a wrong password, a file that isn't a PDF, a step that couldn't be done) and what it wrote
+(after redacting, a word still found in the file is reported as a warning: check that file);
 <b>Save report...</b> saves it as a CSV file (opens in Excel) or as text. <b>Report...</b>
 shows it again.</li>
 </ul>
