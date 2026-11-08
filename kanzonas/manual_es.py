@@ -1686,6 +1686,110 @@ Imágenes crea una imagen por página, con el nombre que elija más el número d
 página (plano_p1.png, plano_p2.png...); si alguna ya existe, se le pregunta una vez antes de reemplazarlas.</li>
 </ul>
 
+<h2 id="accessibility">Accesibilidad (etiquetas para lectores de pantalla)</h2>
+<p>Las personas ciegas o con baja visión leen los PDF con lectores de pantalla, que siguen las
+<b>etiquetas</b> del documento: su estructura (títulos, párrafos, listas, tablas, figuras), el
+orden en que leerlas y las descripciones de las imágenes. Las leyes piden cada vez más PDF
+accesibles (en EE. UU., el Título II de la ADA para los gobiernos estatales y locales y la Sección
+508 para las agencias federales; en la UE, la Ley Europea de Accesibilidad); las normas a las que
+remiten son WCAG 2.1 y, para PDF, <b>PDF/UA</b> (ISO 14289-1). Los comandos están en
+<b>Documento &gt; Accesibilidad</b>; cada cambio es un paso que Ctrl+Z deshace, y las páginas se
+ven exactamente igual que antes.</p>
+<ul>
+<li><b>Comprobar accesibilidad...</b> enumera lo que impide que el documento, tal como está ahora,
+sea accesible, por tipo (el documento, el contenido de las páginas y las etiquetas, los títulos,
+listas, tablas y figuras, los vínculos y comentarios, los campos de formulario, las fuentes), cada
+cosa con su página (haga doble clic en una línea para ir allí), la regla que incumple (la cláusula
+de PDF/UA y la condición de fallo del <b>Protocolo Matterhorn</b>, la lista de comprobación de
+PDF/UA de la PDF Association) y la corrección de aquí que la resuelve: seleccione la línea y haga
+clic en <b>Corregir...</b>, y la comprobación se vuelve a ejecutar. Comprueba lo que un programa
+puede comprobar: que esté etiquetado, con cada elemento de contenido etiquetado o marcado como
+artefacto (decoración); el título y el idioma; las figuras y fórmulas con texto alternativo; las
+tablas con celdas de encabezado que indican qué encabezan; los títulos que empiezan en H1 y no se
+saltan ningún nivel; las listas y tablas construidas como dice PDF; los vínculos, campos de
+formulario y comentarios etiquetados y descritos; el orden de tabulación; las fuentes incrustadas y
+un texto que se lee como letras (Unicode); una seguridad que deja leer a los lectores de pantalla;
+los marcadores en documentos de más de 20 páginas. El último grupo enumera lo que solo una persona
+puede juzgar: que el orden de lectura tenga sentido, que el texto alternativo diga qué muestra cada
+imagen, que los colores contrasten lo suficiente (WCAG pide 4,5:1, 3:1 para texto grande), que los
+encabezados y pies de página sean artefactos, que el texto reconocido sea exacto. Para una
+validación formal, use <b>PAC 2024</b> (gratuito, para Windows, pac.pdf-accessibility.org) o el
+perfil PDF/UA de <b>veraPDF</b> (verapdf.org).</li>
+<li><b>Etiquetar automáticamente...</b> da a un documento sin etiquetas sus etiquetas, creadas a
+partir de lo que dibujan las páginas: <b>títulos</b> (líneas cortas más grandes o en negrita; sus
+niveles se ordenan por tamaño en todo el documento, empezando en H1 y sin saltarse ninguno),
+<b>párrafos</b>, <b>listas</b> (líneas que empiezan con una viñeta o un número como 1., a) o
+(iv): la viñeta o el número como etiqueta del elemento), <b>tablas</b> dibujadas con líneas
+alrededor de cada celda (su primera fila como encabezados de columna cuando se distingue: en
+negrita, más grande, o palabras sobre números), <b>figuras</b> (imágenes; un escaneo con texto
+reconocido encima es decoración, y se lee su texto), <b>vínculos</b> (con las palabras que cubren),
+<b>campos de formulario</b> y <b>comentarios</b>; los <b>encabezados, pies y números de
+página</b> (las mismas palabras arriba o abajo en muchas páginas) y las líneas, recuadros y otros
+dibujos pasan a ser <b>artefactos</b> que los lectores de pantalla saltan. El <b>orden de
+lectura</b> es de arriba abajo, con las columnas leídas una tras otra, de izquierda a derecha. Pide
+el título y el idioma del documento (se definen a la vez). Es adecuado para composiciones
+sencillas, y es prudente: lo que no puede reconocer con seguridad se etiqueta como párrafo. No
+reconoce listas anidadas (se leen como una sola), tablas sin líneas o con celdas combinadas (se
+leen como párrafos), pies de figura, notas al pie, fórmulas ni gráficos dibujados con líneas
+(artefactos: descríbalos en el texto o en el texto alternativo de una figura). Un documento que ya
+está etiquetado se deja como está. Una página cuyos caracteres no se pueden emparejar con sus
+instrucciones de dibujo (una fuente poco común) se etiqueta como un solo párrafo, y la ventana del
+final lo indica. Después, describa las figuras (Texto alternativo) y ejecute Comprobar
+accesibilidad.</li>
+<li><b>Texto alternativo...</b> enumera las figuras del documento, cada una con su imagen: escriba
+una descripción (qué muestra, o para qué está, en una o dos frases), o marque <b>Decorativa</b> en
+una imagen que solo decora: pasa a ser un artefacto y sale de las etiquetas. A un documento sin
+etiquetas se le ofrece primero Etiquetar automáticamente (las descripciones se guardan en las
+etiquetas).</li>
+<li><b>Orden de lectura...</b> muestra las etiquetas de la página actual numeradas en el orden en
+que las leen los lectores de pantalla, cada una dibujada como un recuadro sobre una imagen de la
+página: arrastre una etiqueta en la lista (o use Subir y Bajar) para cambiar el orden y pulse
+Aceptar. Las etiquetas de secciones distintas del documento se quedan en sus secciones.</li>
+<li><b>Título e idioma...</b>: el título que anuncian los lectores de pantalla, escrito en las
+propiedades del documento y en los metadatos XMP, y mostrado en la barra de título de la ventana en
+lugar del nombre del archivo; y el idioma del documento (English (United States), Español
+(España)... o cualquier etiqueta de idioma escrita), que define la voz y la pronunciación. El idioma
+propuesto es el de KanzonasPDF.</li>
+<li><b>Información de los campos...</b>: el nombre que dicen los lectores de pantalla para cada
+campo, propuesto a partir de las palabras justo a su izquierda o encima (si no, su nombre de campo
+hecho legible): revíselos y corríjalos en la lista y pulse Aceptar.</li>
+<li><b>Descripciones de vínculos...</b>: lo que dicen los lectores de pantalla para cada vínculo,
+propuesto a partir de las palabras que cubre, o si no de su dirección web o de la página a la que
+lleva.</li>
+<li><b>Orden de tabulación según las etiquetas</b>: en todas las páginas, Tab recorre los vínculos y
+campos en el orden de las etiquetas.</li>
+<li><b>Marcar como decorativo</b>: las imágenes y formas seleccionadas con Editar objetos pasan a
+ser artefactos (una imagen etiquetada sola como figura sale de las etiquetas). Una imagen etiquetada
+junto con texto no se puede separar de él aquí.</li>
+<li><b>Incrustar fuentes</b>: incrusta las fuentes estándar que no lo están (Helvetica, Times,
+Courier, Symbol, ZapfDingbats, y Arial, Times New Roman y Courier New, que se muestran con ellas) a
+partir de las copias propias de KanzonasPDF, como hace Guardar como PDF/A, así que el texto se ve y
+mide igual. Otras fuentes no se pueden incrustar después: vuelva a crear el PDF con sus fuentes
+incrustadas.</li>
+<li><b>Identificar como PDF/UA...</b> indica en los metadatos XMP del archivo que cumple PDF/UA-1;
+hágalo cuando Comprobar accesibilidad no encuentre nada (si no, avisa).</li>
+</ul>
+<p><b>Editar un documento etiquetado.</b> Cada edición mantiene las etiquetas al día con las
+páginas, en el mismo paso de Ctrl+Z: el texto escrito con Agregar texto, pegado o reescrito con
+Editar texto se etiqueta (un párrafo, en el orden de lectura donde lo muestra la página; un
+título, un elemento de lista o una celda de tabla reescritos siguen siendo lo que eran); una
+imagen movida con Editar objetos o en el modo CAD, también a otra página, conserva su figura y
+su texto alternativo, y una imagen pegada es una figura nueva (Comprobar accesibilidad pide su
+descripción); las líneas y formas agregadas son artefactos; los marcados, vínculos y campos
+agregados se etiquetan, y salen de las etiquetas al eliminarlos; las páginas duplicadas,
+insertadas, reemplazadas (Reemplazar páginas: el dibujo nuevo se etiqueta de nuevo) o
+eliminadas se llevan sus etiquetas; Encabezado y pie de página y los números Bates son
+artefactos de paginación. Aplicar censuras (y el texto oculto de Sanear documento) quita
+también el texto alternativo, el ActualText y la expansión del contenido etiquetado que toca
+una marca, y las etiquetas del contenido quitado por completo, para que nada en las etiquetas
+siga diciendo lo censurado. Cuando un archivo que cambió otro programa tiene etiquetas que no
+concuerdan con sus páginas (contenido que ninguna etiqueta tiene, etiquetas de contenido que no
+está, un árbol de padres que apunta mal), Comprobar accesibilidad lo dice y su corrección
+<b>Reparar etiquetas</b> lo arregla.</p>
+<p>Comprobar accesibilidad, Etiquetar automáticamente y Texto alternativo también están en la
+pestaña Páginas, en la flecha del grupo Documento; la paleta de comandos (Ctrl+Shift+P) encuentra
+todos estos por su nombre.</p>
+
 <h2 id="preferences">Preferencias</h2>
 <ul>
 <li><b>Archivo &gt; Preferencias...</b> (Ctrl+K) reúne en una sola ventana las opciones que KanzonasPDF recuerda,

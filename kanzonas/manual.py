@@ -1693,6 +1693,98 @@ page number (plan_p1.png, plan_p2.png...); if any of them exist already, you're 
 before they're replaced.</li>
 </ul>
 
+<h2 id="accessibility">Accessibility (tags for screen readers)</h2>
+<p>People who are blind or have low vision read PDFs with screen readers, which follow the
+document's <b>tags</b>: its structure (headings, paragraphs, lists, tables, figures), the
+order to read them in, and descriptions of the pictures. Laws ask for accessible PDFs more
+and more (in the US, ADA Title II for state and local governments and Section 508 for federal
+agencies; the European Accessibility Act in the EU); the standards they point to are WCAG 2.1
+and, for PDF, <b>PDF/UA</b> (ISO 14289-1). The commands are in <b>Document &gt;
+Accessibility</b>; each change is one step Ctrl+Z undoes, and the pages look exactly as
+before.</p>
+<ul>
+<li><b>Check accessibility...</b> lists what keeps the document, as it is now, from being
+accessible, by kind (the document, page content and tags, headings, lists, tables and
+figures, links and comments, form fields, fonts), each with its page (double-click a line to
+go there), the rule it breaks (the clause of PDF/UA and the failure condition of the
+<b>Matterhorn Protocol</b>, the PDF Association's checklist of PDF/UA), and the fix here that
+deals with it: select the line and click <b>Fix...</b>, and the check runs again. It checks
+what a program can: tagged, with every piece of content tagged or marked as an artifact
+(decoration); title and language; figures and formulas with alternate text; tables with
+header cells that say what they head; headings that start at H1 and skip no level; lists and
+tables built the way PDF says; links, form fields and comments tagged and described; tab
+order; fonts embedded and text that reads as letters (Unicode); security that lets screen
+readers read; bookmarks in documents longer than 20 pages. The last group lists what only a
+person can judge: the reading order makes sense, the alternate text says what each picture
+shows, the colors contrast enough (WCAG asks 4.5:1, 3:1 for large text), headers and footers
+are artifacts, recognized text is accurate. For a formal validation, use <b>PAC 2024</b>
+(free, for Windows, pac.pdf-accessibility.org) or <b>veraPDF</b>'s PDF/UA profile
+(verapdf.org).</li>
+<li><b>Auto-tag...</b> gives an untagged document its tags, made from what the pages draw:
+<b>headings</b> (larger or bold short lines; their levels ranked by size across the document,
+starting at H1 and never skipping one), <b>paragraphs</b>, <b>lists</b> (lines that start
+with a bullet or a number such as 1., a) or (iv): the bullet or number as the item's label),
+<b>tables</b> drawn with ruling lines around every cell (their first row as column headers
+when it stands out: bold, larger, or words over numbers), <b>figures</b> (pictures; a scan
+with recognized text over it is decoration, its text is read), <b>links</b> (with the words
+they cover), <b>form fields</b> and <b>comments</b>; page <b>headers, footers and page
+numbers</b> (the same words at the top or bottom of many pages) and drawn lines, boxes and
+other drawings become <b>artifacts</b> that screen readers skip. The <b>reading order</b> is
+top to bottom, with columns read one after the other, left to right. It asks for the
+document's title and language (set together). It suits simple layouts, and is careful: what it
+can't recognize for sure is tagged as a paragraph. It doesn't recognize nested lists (they're
+read as one), tables without ruling lines or with merged cells (read as paragraphs),
+captions, footnotes, formulas, or charts drawn with lines (artifacts: describe them in the
+text or a figure's alternate text). A document that is tagged already is left as it is. A page
+whose characters can't be matched with its drawing instructions (an unusual font) is tagged as
+one paragraph, and the window at the end says so. Then describe the figures (Alt text) and run
+Check accessibility.</li>
+<li><b>Alt text...</b> lists the document's figures, each with its picture: type a description
+(what it shows, or what it's for, in a sentence or two), or tick <b>Decorative</b> for a
+picture that only decorates: it becomes an artifact and leaves the tags. A document without
+tags is offered Auto-tag first (the descriptions are kept in the tags).</li>
+<li><b>Reading order...</b> shows the current page's tags numbered in the order screen
+readers read them, each drawn as a box over a picture of the page: drag a tag in the list (or
+use Move up and Move down) to change the order, then OK. Tags in different sections of the
+document stay in their sections.</li>
+<li><b>Title and language...</b>: the title screen readers announce, written in the document
+properties and the XMP metadata, and shown in the window's title bar instead of the file name;
+and the document's language (English (United States), Español (España)... or any language tag
+typed in), which sets the voice and pronunciation. The language offered is KanzonasPDF's own.</li>
+<li><b>Form field tooltips...</b>: the name screen readers say for each field, offered from the
+words just left of or above it (else its field name made readable): check and correct them in
+the list, then OK.</li>
+<li><b>Link descriptions...</b>: what screen readers say for each link, offered from the words
+it covers, else its web address or the page it goes to.</li>
+<li><b>Tab order follows the tags</b>: on every page, Tab moves through links and fields in
+the order of the tags.</li>
+<li><b>Mark as decorative</b>: the pictures and shapes selected with Edit objects become
+artifacts (a picture tagged alone as a figure leaves the tags). A picture tagged together with
+text can't be separated from it here.</li>
+<li><b>Embed fonts</b>: embeds the standard fonts that aren't (Helvetica, Times, Courier,
+Symbol, ZapfDingbats, and Arial, Times New Roman and Courier New, which are shown with them)
+from KanzonasPDF's own copies, as Save as PDF/A does, so the text looks and measures the same.
+Other fonts can't be embedded afterwards: make the PDF again with its fonts embedded.</li>
+<li><b>Identify as PDF/UA...</b> says in the file's XMP metadata that it meets PDF/UA-1; do it
+once Check accessibility finds nothing (it warns otherwise).</li>
+</ul>
+<p><b>Editing a tagged document.</b> Every edit keeps the tags in step with the pages, in the
+same Ctrl+Z step: text written with Add text, pasted or rewritten by Edit text is tagged (a
+paragraph, in the reading order where the page shows it; a heading, list item or table cell
+rewritten stays what it was); a picture moved with Edit objects or CAD mode, also onto another
+page, keeps its figure and its alternate text, and a picture pasted is a new figure (Check
+accessibility asks for its description); lines and shapes added are artifacts; markups, links
+and fields added are tagged, and leave the tags when deleted; pages duplicated, inserted,
+replaced (Replace pages: the new drawing is tagged anew) or deleted take their tags along;
+Header &amp; footer and Bates numbers are pagination artifacts. Apply redactions (and Sanitize
+document's hidden text) also takes out the alternate text, ActualText and expansion of the
+tagged content a mark touches, and the tags of content wholly removed, so nothing in the tags
+still says what was redacted. When a file another program changed has tags out of step with
+its pages (content no tag holds, tags of content that isn't there, a parent tree pointing
+wrong), Check accessibility says so and its <b>Repair tags</b> fix puts them right.</p>
+<p>Check accessibility, Auto-tag and Alt text are also on the Pages tab, under the Document
+group's arrow; the command palette (Ctrl+Shift+P) finds all of these by name.</p>
+
 <h2 id="preferences">Preferences</h2>
 <ul>
 <li><b>File &gt; Preferences...</b> (Ctrl+K) gathers the options KanzonasPDF remembers in one

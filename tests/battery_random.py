@@ -2,7 +2,7 @@
 tests/test_battery_random.py runs in every build):
 
     QT_QPA_PLATFORM=offscreen python tests/battery_random.py OUT_FOLDER [--ops N] [--seed S]
-        [--undo-limit N] [--copy] [--render-every N]
+        [--undo-limit N] [--copy] [--render-every N] [--tagged]
 
 Thousands of random edits through the app's own steps (the ones the menus, tools and keys
 call: markups of every kind added, moved, resized, recolored, retyped, duplicated, restacked
@@ -11,14 +11,18 @@ turned and deleted; words styled in Edit text and Add text (bold, italic, underl
 strikethrough, color, size); pages rotated, inserted, duplicated, deleted, moved, reordered,
 cropped, scanned in (File > Scan into the current document, with pictures made here) and
 replaced from another PDF (Replace pages); bookmarks, watermarks, form fields (made, filled
-in, given calculations and formats), flattening, redaction marks applied), in a main
+in, given calculations and formats), flattening, redaction marks applied; accessibility:
+auto-tag, title and language, tab order, tooltips, link descriptions, alt text, decoration,
+fonts), in a main
 window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
 (kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
 
 Checked:
 - after every step: nothing raised and no edit failed (modify's "Edit failed" box), the view
   agrees with the document (its pages, their sizes, its cached markup boxes and text), every
-  markup reads back and is on one page only; an edit that changes the document adds one undo
+  markup reads back and is on one page only; once the document is tagged (Auto-tag), its
+  structure tree agrees with its pages (every MCID drawn once and held by one element,
+  the ParentTree pointing back, every markup tagged once: tag_upkeep.problems); an edit that changes the document adds one undo
   step and an undo or redo moves one step across (a mirror of the history is kept).
   An undo must bring back exactly the document as it was before that step, and a redo
   exactly as it was after it, compared byte for byte once written out the same way (see
@@ -37,7 +41,9 @@ mismatch, or the two pictures of a page drawn differently) and exits 1 if anythi
 By default the history has no limit, so the end goes back to the opened file through every
 step; --undo-limit 30 keeps the app's own limit (UNDO_LIMIT); --copy runs with a copy per
 edit instead of the journal (as up to 1.6, and where the journal can't serve);
---render-every N draws and compares the pages every N steps (1: after every step).
+--render-every N draws and compares the pages every N steps (1: after every step);
+--tagged opens the document tagged (Auto-tag's engine), so every step edits a tagged document
+and its tags are checked after each one.
 """
 
 import hashlib
@@ -273,8 +279,10 @@ class Failed(AssertionError):
 
 # ---- the battery -----------------------------------------------------------------------------
 class Battery:
-    def __init__(self, out, ops, seed, undo_limit=0, journal=True, log=None, render_every=25):
+    def __init__(self, out, ops, seed, undo_limit=0, journal=True, log=None, render_every=25,
+                 tagged=False):
         self.render_every = render_every
+        self.tagged = tagged
         self.out, self.ops, self.seed = out, ops, seed
         self.rnd = random.Random(seed)
         self.undo_limit = undo_limit
@@ -339,6 +347,14 @@ class Battery:
         from kanzonas.main_window import MainWindow
         undo_journal.install()      # (the app's patches of PyMuPDF are in, journal or not)
         path = sample(os.path.join(self.out, "random.pdf"))
+        if self.tagged:
+            # (--tagged: the document opened is tagged already, by Auto-tag's engine, so
+            # every step edits a tagged document and its tags are checked after each one)
+            from kanzonas import autotag
+            d = pymupdf.open(path)
+            autotag.apply(d, autotag.make_plans(d), lang="en-US")
+            d.saveIncr()
+            d.close()
         self.win = win = MainWindow()
         win.resize(1200, 900)
         win.show()
@@ -367,6 +383,7 @@ class Battery:
                 self.check_boxes()
                 self.after(kind)
                 self.check_view()
+                self.check_tags()
                 if i % self.render_every == self.render_every - 1:
                     self.check_render()
                     renders += 1
@@ -404,10 +421,11 @@ class Battery:
         except Exception:
             self.fail(traceback.format_exc())
         stats = ("%d steps in %.0f s (%s); %d pages, %d markups at the end; %d save/open round "
-                 "trips, %d render checks; %d steps undone and redone at the end" % (
+                 "trips, %d render checks; %d steps undone and redone at the end; %d steps on a tagged "
+                 "document, its tags checked" % (
                      done, took, ", ".join("%s %d" % kv for kv in sorted(self.counts.items())),
                      v.doc.page_count, sum(len(p["annots"]) for p in final.summary["pages"]),
-                     roundtrips, renders, n_undo))
+                     roundtrips, renders, n_undo, getattr(self, "tag_checks", 0)))
         v.dirty = False
         win.close()
         return stats
@@ -573,6 +591,20 @@ class Battery:
                 if [w[:5] for w in v._words(i)] != [w[:5] for w in words]:
                     raise Failed("page %d: the cached text is old" % i)
 
+    def check_tags(self):
+        """A tagged document's tags agree with its pages (tag_upkeep.problems): every MCID
+        drawn once and held by one element, none held that isn't drawn, the ParentTree
+        pointing back at each, every markup, link and field tagged once, nothing left
+        neither tagged nor an artifact."""
+        from kanzonas import tag_upkeep
+        if not tag_upkeep.is_tagged(self.v.doc):
+            return
+        self.tag_checks = getattr(self, "tag_checks", 0) + 1
+        got = tag_upkeep.problems(self.v.doc)
+        if got:
+            raise Failed("the tags are out of step with the pages: " + "; ".join(
+                "page %s: %s" % (i + 1 if i is not None else "-", t) for i, t in got[:8]))
+
     def check_render(self):
         """Each page as the view draws it (through every cache it keeps) is the page as a
         view opened fresh on the same document draws it."""
@@ -693,6 +725,7 @@ class Battery:
             (self.op_replace_pages, 2),
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
             (self.op_review, 5),
+            (self.op_accessibility, 3),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1503,6 +1536,76 @@ class Battery:
         else:
             return "none"
 
+    def op_accessibility(self):
+        """Document > Accessibility: Auto-tag, Title and language, Tab order, Form field
+        tooltips, Link descriptions, Alt text (described or decorative), Mark as decorative
+        (pictures and shapes chosen with Edit objects), Embed fonts."""
+        from PySide6.QtWidgets import QDialog
+        from kanzonas import accessibility_ui as ui
+        v, w, rnd = self.v, self.win, self.rnd
+
+        def title(dlg):
+            if rnd.random() < 0.5:
+                dlg.title.setText(self.typed())
+            dlg.lang.setEditText(rnd.choice(["en-US", "es-ES", "fr"]))
+            return QDialog.Accepted
+
+        def alt(dlg):
+            for i in range(dlg.list.count()):
+                dlg.list.setCurrentRow(i)
+                k = rnd.random()
+                if k < 0.5:
+                    dlg.text.setPlainText(self.typed())
+                elif k < 0.7:
+                    dlg.decorative.setChecked(True)
+            return QDialog.Accepted
+
+        def review(dlg):
+            for row in range(dlg.table.rowCount()):
+                if rnd.random() < 0.5:
+                    dlg.table.item(row, 2).setText(self.typed())
+            return QDialog.Accepted
+        r = rnd.random()
+        from kanzonas import autotag
+        if 0.7 <= r < 0.82 and not autotag.is_tagged(v.doc):
+            r = 0.0         # (Alt text on an untagged document offers Auto-tag first: a step
+            #                 of its own, then the descriptions; here Auto-tag alone)
+        with mock.patch.object(ui.TitleDialog, "exec", title), \
+                mock.patch.object(ui.AutoTagDialog, "exec", title), \
+                mock.patch.object(ui.AltTextDialog, "exec", alt), \
+                mock.patch.object(ui.ReviewDialog, "exec", review):
+            if r < 0.3:
+                # (tags change no page's look or words)
+                look = [(v.doc[i].get_pixmap(dpi=36, annots=False).samples,
+                         v.doc[i].get_text()) for i in range(v.doc.page_count)]
+                if ui.auto_tag(w, v):
+                    after = [(v.doc[i].get_pixmap(dpi=36, annots=False).samples,
+                              v.doc[i].get_text()) for i in range(v.doc.page_count)]
+                    bad = [i for i, (a, b) in enumerate(zip(look, after)) if a != b]
+                    if bad:
+                        raise Failed("Auto-tag changed pages %s" % bad)
+            elif r < 0.42:
+                ui.title_language(w, v)
+            elif r < 0.5:
+                ui.tab_order(w, v)
+            elif r < 0.6:
+                ui.field_tooltips(w, v)
+            elif r < 0.7:
+                ui.link_descriptions(w, v)
+            elif r < 0.82:
+                ui.alt_text(w, v)
+            elif r < 0.94:
+                i = self.page()
+                objs = v.content_objects(i)
+                items = [it for it in (objs.items if objs else [])
+                         if it["kind"] in ("picture", "shape", "group")]
+                if not items:
+                    return "none"
+                v.select_objects(i, rnd.sample(items, min(len(items), rnd.randint(1, 3))))
+                ui.mark_decorative(w, v)
+            else:
+                ui.embed_fonts(w, v)
+
     def op_undo(self):
         for _ in range(self.rnd.randint(1, 5)):
             self.do_undo()
@@ -1533,9 +1636,9 @@ def _after_checked(after):
 Battery.after = _after_checked(Battery.after)
 
 
-def run(out, ops, seed, undo_limit=0, journal=True, log=print, render_every=25):
+def run(out, ops, seed, undo_limit=0, journal=True, log=print, render_every=25, tagged=False):
     """One run; (failures, stats)."""
-    b = Battery(out, ops, seed, undo_limit, journal, log, render_every)
+    b = Battery(out, ops, seed, undo_limit, journal, log, render_every, tagged)
     stats = b.run()
     return b.failures, stats
 
@@ -1550,6 +1653,7 @@ def main(argv):
     ops, seed, limit = opt("--ops", 2000), opt("--seed", 1), opt("--undo-limit", 0)
     every = opt("--render-every", 25)
     journal = "--copy" not in args
+    tagged = "--tagged" in args
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "battery_random.log"), "w", encoding="utf-8") as f:
         def log(text):
@@ -1558,12 +1662,13 @@ def main(argv):
             f.flush()
         import kanzonas
         log("KanzonasPDF %s random editing battery, PyMuPDF %s, Python %s, %s; seed %d, %d "
-            "steps, undo limit %s, %s" % (
+            "steps, undo limit %s, %s%s" % (
                 kanzonas.__version__, pymupdf.VersionBind, sys.version.split()[0], sys.platform,
-                seed, ops, limit or "none", "journal" if journal else "a copy per edit"))
+                seed, ops, limit or "none", "journal" if journal else "a copy per edit",
+                ", tagged" if tagged else ""))
         t = time.perf_counter()
         try:
-            failures, stats = run(out, ops, seed, limit, journal, log, every)
+            failures, stats = run(out, ops, seed, limit, journal, log, every, tagged)
         except Exception:
             failures, stats = ["the battery itself failed:\n" + traceback.format_exc()], ""
             log("FAIL " + failures[0])

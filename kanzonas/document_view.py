@@ -1877,6 +1877,13 @@ class DocumentView(QScrollArea):
                     if self.markups_changed is not None:
                         self.markups_changed |= more
                     pages = sorted(set(pages) | more)
+            # a tagged document's tags follow the edit (tag_upkeep.py), in the same step
+            more = self._refresh_tags(pages, structural, changed)
+            if more and not structural and pages is not None:
+                more -= set(pages)
+                if more:
+                    self._clear_page_caches(more)
+                    pages = sorted(set(pages) | more)
         if journal is not None:
             self._record(doc, journal, before, merge, pages, structural)
         elif snap is not None:
@@ -1926,6 +1933,17 @@ class DocumentView(QScrollArea):
                 self.pages[i].invalidate()
             self.documentChanged.emit()
         return True
+
+    def _refresh_tags(self, pages, structural, changed=None):
+        """Keep a tagged document's structure tree in step with the pages the edit changed
+        (tag_upkeep.refresh): the pages whose marking it changed. Never fails the edit."""
+        from . import tag_upkeep
+        try:
+            return tag_upkeep.refresh(self.doc, pages, structural, changed)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            return set()
 
     def _refresh_legends(self, pages, structural):
         """Draw the legends again that the edit of pages changed (legend.refresh): the
@@ -3314,8 +3332,10 @@ class DocumentView(QScrollArea):
             self._clip_uid = uuid.uuid4().hex
         return self._clip_uid
 
-    def paste_pages(self, data, at):
-        """Insert the PDF pages in data before page index at (== count: at the end)."""
+    def paste_pages(self, data, at, copies_of=None):
+        """Insert the PDF pages in data before page index at (== count: at the end).
+        copies_of: the indices of the pages here they copy (Duplicate pages), whose tags a
+        tagged document's copies get copies of (tag_upkeep)."""
         from . import links, measure
         at = max(0, min(at, self.doc.page_count))
         n = {}
@@ -3333,6 +3353,14 @@ class DocumentView(QScrollArea):
                     other, [(k, at + k) for k in range(other.page_count)], self.doc,
                     outside=lambda src, xref: xref if src == self._clip_id() and xref in mine
                     else None)
+                if copies_of:
+                    # (a copy shares its original's StructParents for now: the tags kept in
+                    # step after the edit give it copies of the original's own)
+                    for k, src in enumerate(copies_of[:n["n"]]):
+                        key = self.doc.xref_get_key(self.doc.page_xref(src), "StructParents")
+                        if key[0] == "int":
+                            self.doc.xref_set_key(self.doc.page_xref(at + k), "StructParents",
+                                                  key[1])
         self.modify(do, structural=True, changed=[])     # (the new pages are new to the list)
         self.goto_page(at)
         return "pages"
@@ -3371,7 +3399,7 @@ class DocumentView(QScrollArea):
         if not self.require_permission(pymupdf.PDF_PERM_COPY, tr("Duplicating pages")):
             return
         data = self.pages_bytes(indices)
-        return self.paste_pages(data, max(indices) + 1)
+        return self.paste_pages(data, max(indices) + 1, copies_of=sorted(indices))
 
     # ---- tool styles --------------------------------------------------------
     def tool_props(self, tool):
@@ -7920,12 +7948,13 @@ class DocumentView(QScrollArea):
         Unless scrub is False, also remove metadata, attachments, hidden text, scripts and
         XML metadata, then rewrite the file so unlinked copies of that data are gone.
         """
-        from . import added_text
+        from . import added_text, tag_upkeep
 
         def do():
             fields = smart_forms.read_form(self.doc)      # (the form before: see below)
             terms = self._redaction_terms()
             self._scrub_terms(terms)
+            redacted = []
             for i in range(self.doc.page_count):
                 pg = self.doc[i]
                 marks, hand = self._marks(pg)
@@ -7936,15 +7965,22 @@ class DocumentView(QScrollArea):
                     added_text.forget_under(pg, marks)
                     # Secure redaction removes crossing paths completely. Keeping them
                     # behind an opaque fill would leave confidential geometry recoverable.
+                    # (a tagged document's tags of what a mark touches lose their
+                    # descriptions: they would still say what is redacted)
+                    tag_upkeep.forget_under(pg, marks)
                     pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
                                         graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                         text=pymupdf.PDF_REDACT_TEXT_REMOVE)
                     # (the clean-up below cleans every page's drawing anyway)
                     forget_redacted(pg, clean=not scrub)
+                    redacted.append(i)
             # (the fields taken away leave nothing behind, and the calculated fields that
             # read them are worked out again without them: before the clean-up takes the
             # calculations out with the other scripts)
             self._forget_removed_fields(fields)
+            # (the tags of what is gone leave the tree now, before the clean-up; a field
+            # taken away above takes its Form element along)
+            tag_upkeep.refresh(self.doc, redacted)
             # (the markups under the marks are gone: the legends listing them are drawn
             # again now, before the clean-up writes the document anew)
             self._redraw_legends(*self._term_pattern(terms))
@@ -8398,6 +8434,11 @@ class DocumentView(QScrollArea):
         """Remove hidden or sensitive content (Protect > Sanitize document)."""
         def do():
             from . import pdf_speed
+            if opts.get("hidden_text"):
+                # (a tagged document's tags of hidden text: their ActualText and alternate
+                # text would still say what it said)
+                from . import tag_upkeep
+                tag_upkeep.forget_hidden(self.doc)
             pdf_speed.scrub(self.doc, attached_files=opts.get("embedded_files", False),
                             embedded_files=opts.get("embedded_files", False),
                             clean_pages=True, hidden_text=opts.get("hidden_text", False),
@@ -8414,8 +8455,11 @@ class DocumentView(QScrollArea):
             if opts.get("metadata"):
                 remove_private_data(self.doc)
             if opts.get("hidden_text"):
-                from . import added_text
+                from . import added_text, tag_upkeep
                 added_text.prune_doc(self.doc)  # (an added block whose letters all went)
+                # (and a tagged document's tags of the text that went, with their
+                # ActualText and alternate text)
+                tag_upkeep.refresh(self.doc, list(range(self.doc.page_count)))
             if opts.get("thumbnails"):
                 for i in range(self.doc.page_count):   # (scrub left /Thumb in place)
                     if self.doc.xref_get_key(self.doc.page_xref(i), "Thumb")[0] != "null":
@@ -8456,8 +8500,9 @@ class DocumentView(QScrollArea):
                 pg.delete_annot(pg.load_annot(an))
             marks, hand = self._marks(pg)
             self._clear_under_marks(pg, marks, hand)
-            from . import added_text
+            from . import added_text, tag_upkeep
             added_text.forget_under(pg, marks)
+            tag_upkeep.forget_under(pg, marks)
             pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
                                 graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                                 text=pymupdf.PDF_REDACT_TEXT_REMOVE)
@@ -10124,6 +10169,11 @@ class DocumentView(QScrollArea):
 
         def do():
             report.update(replace_pages.replace(self.doc, src, pairs, scale))
+            from . import tag_upkeep
+            if tag_upkeep.is_tagged(self.doc):
+                # (the new drawing's own MCIDs are another file's: tagged anew here)
+                for i in sorted({i for i, _j in pairs}):
+                    tag_upkeep.unmark(self.doc[i])
         # (structural: the pages may change size, so the page list and layout are made again)
         if not self.modify(do, structural=True, changed=sorted({i for i, _j in pairs})):
             return None

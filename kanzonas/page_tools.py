@@ -53,6 +53,8 @@ def _fill(template, i, total, file_name, bates):
 def add_header_footer(doc, spec, file_name):
     """spec: {"texts": {(where, align): template}, "size", "color", "margin", "pages",
               "bates_prefix", "bates_start", "bates_digits"}"""
+    from . import tag_upkeep
+    tagged = tag_upkeep.is_tagged(doc)
     total = doc.page_count
     color = A.to_rgb(spec.get("color") or "#000000")
     size = float(spec.get("size", 9))
@@ -69,16 +71,31 @@ def add_header_footer(doc, spec, file_name):
             y0 = margin - size if where == "header" else disp.height - margin - size * 1.4
             box = pymupdf.Rect(margin, y0, disp.width - margin, y0 + h)
             box = box * page.derotation_matrix
+            before = set(page.get_contents())
             rc = page.insert_textbox(box, text, fontsize=size, fontname="helv", color=color,
                                      align=_ALIGN[align], rotate=page.rotation)
             if rc < 0:
                 raise ValueError(tr("\"{text}\" doesn't fit across the page at {size} pt.").format(
                     text=text, size=f"{size:g}"))
+            if tagged:
+                # (a tagged document: headers, footers, page and Bates numbers are
+                # pagination artifacts, which screen readers skip, not the page's text)
+                _mark_pagination(page, before, "Header" if where == "header" else "Footer")
 
 
 WM_BEGIN = b"/Artifact <</Subtype /Watermark /Type /Pagination >> BDC\n"
 _WM_START = re.compile(rb"/Artifact\s*<<[^>]*?/Subtype\s*/Watermark\b[^>]*>>\s*BDC")
 _MARK_OPS = re.compile(rb"(?<![A-Za-z0-9_])(BDC|BMC|EMC)(?![A-Za-z0-9_])")
+
+
+def _mark_pagination(page, before, subtype):
+    """Wrap the content streams just added to the page as a pagination artifact
+    (/Artifact <</Type /Pagination /Subtype /Header>> BDC ... EMC: PDF 32000-1 14.8.2.2)."""
+    doc = page.parent
+    for x in page.get_contents():
+        if x not in before:
+            doc.update_stream(x, b"/Artifact <</Type /Pagination /Subtype /%s>> BDC\n"
+                              % subtype.encode() + doc.xref_stream(x) + b"\nEMC\n")
 
 
 def _mark_watermark(page, before):

@@ -870,6 +870,48 @@ class MainWindow(QMainWindow):
         self.a_attachments = self._act(tr("A&ttachments..."), self.show_attachments,
                                        tip=tr("Files embedded in this PDF: open, save or delete them"))
         self.a_bookmarks = self._act(tr("&Bookmarks"), self._show_bookmarks, "F9")
+        # Document > Accessibility (accessibility_ui.py)
+        acc = [("check_accessibility", tr("Check &accessibility..."),
+                tr("List what keeps this document from being accessible to screen readers "
+                   "(PDF/UA, WCAG), and what the fixes here deal with")),
+               ("auto_tag", tr("Auto-&tag..."),
+                tr("Tag an untagged document: headings, paragraphs, lists, tables, figures "
+                   "and reading order, for screen readers")),
+               ("alt_text", tr("Alt te&xt..."),
+                tr("Describe each figure for people who can't see it, or mark it "
+                   "decorative")),
+               ("reading_order", tr("&Reading order..."),
+                tr("The current page's tags numbered in reading order over the page: drag "
+                   "them to change it")),
+               ("title_language", tr("Title and &language..."),
+                tr("The title screen readers announce and the window shows, and the "
+                   "document's language")),
+               ("field_tooltips", tr("Form field t&ooltips..."),
+                tr("The name screen readers say for each form field")),
+               ("link_descriptions", tr("Lin&k descriptions..."),
+                tr("What screen readers say for each link")),
+               ("tab_order", tr("Ta&b order follows the tags"),
+                tr("Tab moves through links and fields in the order of the document's tags, "
+                   "on every page")),
+               ("mark_decorative", tr("Mark as &decorative"),
+                tr("Make the pictures and shapes selected with Edit objects artifacts "
+                   "(decoration screen readers skip)")),
+               ("embed_fonts", tr("&Embed fonts"),
+                tr("Embed the standard fonts that aren't (Helvetica, Times, Courier...), as "
+                   "Save as PDF/A does")),
+               ("identify_pdfua", tr("Identify as PDF/&UA..."),
+                tr("Say in the file's metadata that it meets PDF/UA-1 (once the check finds "
+                   "nothing)"))]
+        self.acc_actions = {}
+        attrs = {"check_accessibility": "check", "auto_tag": "autotag", "alt_text": "alt",
+                 "reading_order": "order",
+                 "title_language": "title", "field_tooltips": "tips",
+                 "link_descriptions": "links", "tab_order": "tabs", "mark_decorative": "decor",
+                 "embed_fonts": "fonts", "identify_pdfua": "pdfua"}
+        for name, text, tip in acc:
+            a = self.acc_actions[name] = self._act(text, lambda _=False, n=name:
+                                                   self.accessibility(n), tip=tip)
+            setattr(self, "a_acc_" + attrs[name], a)         # (a_acc_check...: the ribbon's)
         self.a_search_redact = self._act(tr("&Search && redact..."), self.search_redact)
         self.a_apply_redact = self._act(tr("&Apply redactions..."), self.apply_redactions)
         self.a_digisign = self._act(tr("&Digitally sign with certificate..."), self.digital_sign)
@@ -1210,6 +1252,16 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_bookmarks)
         m.addAction(self.a_attachments)
+        am = m.addMenu(tr("&Accessibility"))
+        acts = self.acc_actions
+        am.addActions([acts["check_accessibility"], acts["auto_tag"]])
+        am.addSeparator()
+        am.addActions([acts[k] for k in ("alt_text", "reading_order", "title_language",
+                                         "field_tooltips",
+                                         "link_descriptions", "tab_order", "mark_decorative",
+                                         "embed_fonts")])
+        am.addSeparator()
+        am.addAction(acts["identify_pdfua"])
         m.addSeparator()
         rm = m.addMenu(tr("&Redaction"))
         rm.addActions([self.tool_actions["redact"], self.a_search_redact,
@@ -1594,8 +1646,9 @@ class MainWindow(QMainWindow):
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
                   self.a_detect_fields, self.a_field_props, self.a_tab_order,
                   self.a_check_required, self.a_export_comments, self.a_import_comments,
-                  self.a_summarize, *self.export_actions):
+                  self.a_summarize, *self.export_actions, *self.acc_actions.values()):
             a.setEnabled(has)
+        self.acc_actions["mark_decorative"].setEnabled(has and v.obj_sel is not None)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_lock.setEnabled(has and v.selection is not None)
         self.a_unlock_all.setEnabled(has)
@@ -1889,6 +1942,13 @@ class MainWindow(QMainWindow):
             return False
         from . import pdfa_ui
         return pdfa_ui.save_as_pdfa(self, v)
+
+    def accessibility(self, name):
+        """Document > Accessibility: name is the command in accessibility_ui."""
+        v = self.view()
+        if v is not None:
+            from . import accessibility_ui
+            getattr(accessibility_ui, name)(self, v)
 
     def check_pdfa(self):
         v = self.view()
@@ -5155,7 +5215,9 @@ class MainWindow(QMainWindow):
             (tr("Document"), "small", [
                 split_button([self.a_header, self.a_watermark, self.a_background]),
                 self.a_bookmarks, self.a_compare, self.a_compress],
-             [self.a_attachments, self.a_sheet_links]),
+             # (and accessibility: the rest of it in Document > Accessibility)
+             [self.a_attachments, self.a_sheet_links, self.a_acc_check, self.a_acc_autotag,
+              self.a_acc_alt]),
             (tr("Convert"), "large", [self.a_ocr, self.a_flatten]),
         ])
         # print production (1.8): what a sheet needs before a plotter or a print shop

@@ -231,11 +231,20 @@ class SearchRedactOutsideTheDrawing(unittest.TestCase):
         d = pymupdf.open()
         p = d.new_page(width=400, height=400)
         p.insert_text((50, 50), "Plain TOPSECRET word", fontsize=12)
+        # (the element's MCID 0 is drawn away from the word: the tags of content a mark
+        # touches lose their alternate text, see tests/test_accessibility_upkeep.py)
+        x = d.get_new_xref()
+        d.update_object(x, "<<>>")
+        d.update_stream(x, b"/Figure <</MCID 0>> BDC 0 0 1 rg 50 180 40 20 re f EMC")
+        d.xref_set_key(p.xref, "Contents", "[%s %d 0 R]" % (
+            " ".join("%d 0 R" % c for c in p.get_contents()), x))
         se, root = d.get_new_xref(), d.get_new_xref()
         d.update_object(se, "<</Type/StructElem/S/Figure/P %d 0 R/Pg %d 0 R/K 0"
                             "/Alt(TOPSECRET alt)/ActualText(the TOPSECRET actual)"
                             "/T(TOPSECRET title)/E(TOPSECRET expansion)>>" % (root, p.xref))
-        d.update_object(root, "<</Type/StructTreeRoot/K %d 0 R>>" % se)
+        d.update_object(root, "<</Type/StructTreeRoot/K %d 0 R/ParentTree <</Nums [0 [%d 0 R]]>>"
+                              "/ParentTreeNextKey 1>>" % (se, se))
+        d.xref_set_key(p.xref, "StructParents", "0")
         d.xref_set_key(d.pdf_catalog(), "StructTreeRoot", "%d 0 R" % root)
         d.xref_set_key(d.pdf_catalog(), "MarkInfo", "<</Marked true>>")
         p.insert_link({"kind": pymupdf.LINK_URI, "from": pymupdf.Rect(50, 300, 150, 312),
