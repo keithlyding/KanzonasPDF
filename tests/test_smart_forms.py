@@ -996,6 +996,17 @@ class WithMainFeatures(Quiet):
         self.assertNotIn("Total", self.values(v))
         self.assert_gone(v, self.TOTAL, self.GRAND)
 
+    def test_search_and_redact_finds_what_a_formatted_field_shows(self):
+        # (the value kept is 220557; the field shows 220,557.00 with its format)
+        v = self.priced()
+        self.props(v, "Total", format={"kind": "number", "decimals": 2, "sep": 0, "neg": 0,
+                                       "currency": "", "prepend": True})
+        self.assertIn("220,557.00", self.shown(v))
+        self.assertGreaterEqual(v.search_redact("220,557.00"), 1)
+        v.apply_redactions()
+        self.assertNotIn("Total", self.values(v))
+        self.assert_gone(v, self.TOTAL, "220,557", self.GRAND)
+
     def test_a_field_in_two_places(self):
         v = self.open(two_widget_total)
         self.fill(v, "Price", self.PRICE)
