@@ -1675,6 +1675,23 @@ incrustadas.</li>
 <li><b>Identificar como PDF/UA...</b> indica en los metadatos XMP del archivo que cumple PDF/UA-1;
 hágalo cuando Comprobar accesibilidad no encuentre nada (si no, avisa).</li>
 </ul>
+<p><b>Editar un documento etiquetado.</b> Cada edición mantiene las etiquetas al día con las
+páginas, en el mismo paso de Ctrl+Z: el texto escrito con Agregar texto, pegado o reescrito con
+Editar texto se etiqueta (un párrafo, en el orden de lectura donde lo muestra la página; un
+título, un elemento de lista o una celda de tabla reescritos siguen siendo lo que eran); una
+imagen movida con Editar objetos o en el modo CAD, también a otra página, conserva su figura y
+su texto alternativo, y una imagen pegada es una figura nueva (Comprobar accesibilidad pide su
+descripción); las líneas y formas agregadas son artefactos; los marcados, vínculos y campos
+agregados se etiquetan, y salen de las etiquetas al eliminarlos; las páginas duplicadas,
+insertadas, reemplazadas (Reemplazar páginas: el dibujo nuevo se etiqueta de nuevo) o
+eliminadas se llevan sus etiquetas; Encabezado y pie de página y los números Bates son
+artefactos de paginación. Aplicar censuras (y el texto oculto de Sanear documento) quita
+también el texto alternativo, el ActualText y la expansión del contenido etiquetado que toca
+una marca, y las etiquetas del contenido quitado por completo, para que nada en las etiquetas
+siga diciendo lo censurado. Cuando un archivo que cambió otro programa tiene etiquetas que no
+concuerdan con sus páginas (contenido que ninguna etiqueta tiene, etiquetas de contenido que no
+está, un árbol de padres que apunta mal), Comprobar accesibilidad lo dice y su corrección
+<b>Reparar etiquetas</b> lo arregla.</p>
 <p>Comprobar accesibilidad, Etiquetar automáticamente y Texto alternativo también están en la
 pestaña Páginas, en la flecha del grupo Documento; la paleta de comandos (Ctrl+Shift+P) encuentra
 todos estos por su nombre.</p>

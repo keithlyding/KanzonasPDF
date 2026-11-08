@@ -163,7 +163,19 @@ def run_fix(parent, window, view, fix):
     {"autotag": auto_tag, "title": title_language, "lang": title_language,
      "tabs": tab_order, "alt": alt_text, "links": link_descriptions,
      "tooltips": field_tooltips, "fonts": embed_fonts,
-     "pdfua": identify_pdfua}[fix](parent, view)
+     "pdfua": identify_pdfua, "repair": repair_tags}[fix](parent, view)
+
+
+def repair_tags(parent, view):
+    """Check accessibility's Repair tags: the tags brought in step with every page (what
+    every edit here does for the pages it changes: tag_upkeep.refresh), for a file another
+    program changed: content no tag holds tagged, tags of content no longer there taken out,
+    the parent tree pointing back right."""
+    from . import tag_upkeep
+    n = view.doc.page_count
+    if view.modify(lambda: tag_upkeep.refresh(view.doc, list(range(n)), True,
+                                              list(range(n))), list(range(n))):
+        _done(view, tr("Tags repaired"))
 
 
 def _done(view, text):

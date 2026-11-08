@@ -246,10 +246,21 @@ class Tree:
 
 
 # ---- problems ------------------------------------------------------------------------------
+# The Matterhorn Protocol 1.1 failure conditions named in each problem's rule were checked (Nov
+# 2026) against the PDF Association's own list of the protocol's checkpoints (the
+# techniques-for-accessible-pdf repository, config/matterhorn.yaml, scraped from
+# Matterhorn-Protocol-1-1.pdf: the numbers and whether each is checked by machine or by a
+# person) and the descriptions of the machine checks in cpdf's PDF/UA checker (cpdfua.ml);
+# pdfa.org itself couldn't be reached from here. Corrected then: a circular role mapping is
+# 02-003 (not 02-002, a person's check), a standard type remapped 02-004, a printer's mark in
+# the structure 28-017, a layer configuration's name 20-001 (Configs) and 20-002 (D). The
+# descriptions of the checks made by a person (01-001, 01-006, 04-001, 08-001, 09-001,
+# 14-001, 15-001, 15-002, 15-004, 16-001 to 16-003, 18-001) were matched with a third-party
+# summary of the protocol only.
 class Problem:
     """One thing found: kind (see kind_labels), page (0-based or None), text, fix (the fix
     that deals with it: "autotag", "title", "lang", "tabs", "alt", "links", "tooltips",
-    "fonts", "pdfua", or None), rule (where the requirement is: ISO 14289-1 clause and
+    "fonts", "pdfua", "repair", or None), rule (where the requirement is: ISO 14289-1 clause and
     Matterhorn failure condition), node (a structure element's object number, or 0)."""
     __slots__ = ("kind", "page", "text", "fix", "rule", "node")
 
@@ -280,7 +291,7 @@ def fix_labels():
             "lang": tr("Title and language"), "tabs": tr("Tab order"),
             "alt": tr("Alt text"), "links": tr("Link descriptions"),
             "tooltips": tr("Form field tooltips"), "fonts": tr("Embed fonts"),
-            "pdfua": tr("Identify as PDF/UA")}
+            "pdfua": tr("Identify as PDF/UA"), "repair": tr("Repair tags")}
 
 
 class _Stopped(Exception):
@@ -321,6 +332,7 @@ class Checker:
         self._pages()
         if self.tagged:
             self._structure()
+            self._in_step()
         self._annotations()
         self._fonts()
         self._manual()
@@ -398,13 +410,13 @@ class Checker:
             if any(m.pdf_is_dict(c) and not (_text(m.pdf_dict_gets(c, "Name")) or "").strip()
                    for c in configs):
                 self.add("document", None, tr("A layer configuration has no name."), None,
-                         "ISO 14289-1 7.10, Matterhorn 20-001")
+                         "ISO 14289-1 7.10, Matterhorn 20-001/20-002")
         if self.tagged:
             for t, v in tree.role_map.items():
                 if t in STANDARD:
                     self.add("structure", None, tr("The standard tag {tag} is mapped to "
                                                    "{other}.").format(tag=t, other=v), None,
-                             "ISO 14289-1 7.1, Matterhorn 02-003")
+                             "ISO 14289-1 7.1, Matterhorn 02-004")
                 elif tree.standard(t) is None:
                     seen, x = set(), t
                     while x in tree.role_map and x not in seen:
@@ -413,7 +425,7 @@ class Checker:
                     if x in seen:
                         self.add("structure", None, tr("The tag {tag} is mapped in a "
                                                        "circle.").format(tag=t), None,
-                                 "ISO 14289-1 7.1, Matterhorn 02-002")
+                                 "ISO 14289-1 7.1, Matterhorn 02-003")
                     else:
                         self.add("structure", None, tr("The tag {tag} doesn't map to a "
                                                        "standard tag.").format(tag=t), None,
@@ -460,7 +472,7 @@ class Checker:
             if untagged:
                 self.add("content", i, tr("{n} pieces of content are neither tagged nor "
                                           "marked as artifacts (decoration).").format(
-                    n=untagged), None, "ISO 14289-1 7.1, Matterhorn 01-005")
+                    n=untagged), "repair", "ISO 14289-1 7.1, Matterhorn 01-005")
             if art_in_tag:
                 self.add("content", i, tr("Content marked as an artifact sits inside tagged "
                                           "content."), None,
@@ -469,6 +481,28 @@ class Checker:
                 self.add("content", i, tr("Tagged content sits inside content marked as an "
                                           "artifact."), None,
                          "ISO 14289-1 7.1, Matterhorn 01-004")
+
+    # -- the tags and the pages agree (tag_upkeep keeps them so after every edit here)
+    def _in_step(self):
+        from . import tag_upkeep
+        for page, text in tag_upkeep.problems(self.doc):
+            if "neither tagged nor an artifact" in text:
+                continue                # (_pages says so, piece by piece)
+            if "annotation" in text and "element points" not in text:
+                continue                # (_annotations says so, markup by markup)
+            if "is drawn" in text:
+                msg = tr("The same tagged content (MCID) is drawn more than once on the page.")
+            elif "is in no element" in text:
+                msg = tr("Tagged content (an MCID) belongs to no tag.")
+            elif "not on the page" in text or "not in the document" in text or \
+                    "element points" in text:
+                msg = tr("A tag points at content or a markup that is no longer there.")
+            elif "held by" in text or "twice" in text:
+                msg = tr("The same content belongs to more than one tag.")
+            else:
+                msg = tr("The structure tree's parent tree doesn't point back at the right "
+                         "tags (StructParents and ParentTree).")
+            self.add("structure", page, msg, "repair", "ISO 14289-1 7.1, ISO 32000-1 14.7.4")
 
     # -- the structure tree
     def _structure(self):
@@ -618,7 +652,8 @@ class Checker:
                 role = node.role if node is not None else None
                 if sub == "Link":
                     if self.tagged and role != "Link":
-                        self.add("annots", i, tr("A link isn't tagged as a Link."), None,
+                        self.add("annots", i, tr("A link isn't tagged as a Link."),
+                                 "repair" if node is None else None,
                                  "ISO 14289-1 7.18.5, Matterhorn 28-011")
                     if not has_contents:
                         self.add("annots", i, tr("A link has no description (Contents) for "
@@ -626,7 +661,8 @@ class Checker:
                                  "ISO 14289-1 7.18.5, Matterhorn 28-012")
                 elif sub == "Widget":
                     if self.tagged and role != "Form":
-                        self.add("forms", i, tr("A form field isn't tagged as a Form."), None,
+                        self.add("forms", i, tr("A form field isn't tagged as a Form."),
+                                 "repair" if node is None else None,
                                  "ISO 14289-1 7.18.4, Matterhorn 28-010")
                     if not self._tooltip(xref) and not (node is not None and node.alt):
                         self.add("forms", i, tr("A form field has no tooltip (a name screen "
@@ -635,7 +671,7 @@ class Checker:
                 elif sub == "PrinterMark":
                     if node is not None:
                         self.add("annots", i, tr("A printer's mark is tagged as content."),
-                                 None, "ISO 14289-1 7.18.8, Matterhorn 28-016")
+                                 None, "ISO 14289-1 7.18.8, Matterhorn 28-017")
                 else:
                     if sub == "TrapNet":
                         self.add("annots", i, tr("The page has a trap network annotation, "
@@ -644,7 +680,8 @@ class Checker:
                         continue
                     if self.tagged and role != "Annot":
                         self.add("annots", i, tr("A comment or markup ({kind}) isn't tagged "
-                                                 "as an Annot.").format(kind=sub), None,
+                                                 "as an Annot.").format(kind=sub),
+                                 "repair" if node is None else None,
                                  "ISO 14289-1 7.18.1, Matterhorn 28-002")
                     if not has_contents and not (node is not None and node.alt):
                         self.add("annots", i, tr("A comment or markup ({kind}) has no text "

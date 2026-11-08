@@ -407,6 +407,9 @@ class PageReader:
         self.glyphs = 0
         self.exact = True
         self.mcids = set()
+        # the page's own marked-content sequences, in order: [serial, kind, mcid, BDC / BMC
+        # start, its end, EMC start, its end] (the EMC's None when it never closes)
+        self.marks = []
         self._fonts = {}
         self._forms = {}
         self.text_forms = 0
@@ -476,6 +479,7 @@ class PageReader:
         font = state[0] if state else None
         trm = state[1] if state else 0
         mc = []                         # (kind, mcid, serial) of the marked content around
+        open_marks = []                 # (top) indices into self.marks of those
         level = [0]
         serial = [0]
         lvl_stack = []
@@ -604,10 +608,16 @@ class PageReader:
                     self.mcids.add(mcid)
                 push(op, s)
                 mc.append((kind, mcid, level[0]))
+                if top:
+                    open_marks.append(len(self.marks))
+                    self.marks.append([level[0], kind, mcid, s, e, None, None])
                 continue
             if op == b"EMC":
                 if mc:
                     mc.pop()
+                    if top and open_marks:
+                        mk = self.marks[open_marks.pop()]
+                        mk[5], mk[6] = s, e
                 pop(op, s)
                 continue
             if op == b"BI":

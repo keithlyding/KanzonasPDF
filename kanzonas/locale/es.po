@@ -8972,3 +8972,25 @@ msgstr "Copiado: Ctrl+V lo pega en una página, aquí o en otro documento"
 
 msgid "Cut: Ctrl+V pastes it into a page, here or in another document"
 msgstr "Cortado: Ctrl+V lo pega en una página, aquí o en otro documento"
+
+# Document > Accessibility: tags kept in step with the pages (tag_upkeep.py); Repair tags
+msgid "The same tagged content (MCID) is drawn more than once on the page."
+msgstr "El mismo contenido etiquetado (MCID) se dibuja más de una vez en la página."
+
+msgid "Tagged content (an MCID) belongs to no tag."
+msgstr "Hay contenido etiquetado (un MCID) que no pertenece a ninguna etiqueta."
+
+msgid "A tag points at content or a markup that is no longer there."
+msgstr "Una etiqueta apunta a contenido o a un marcado que ya no está."
+
+msgid "The same content belongs to more than one tag."
+msgstr "El mismo contenido pertenece a más de una etiqueta."
+
+msgid "The structure tree's parent tree doesn't point back at the right tags (StructParents and ParentTree)."
+msgstr "El árbol de padres del árbol de estructura no apunta a las etiquetas correctas (StructParents y ParentTree)."
+
+msgid "Repair tags"
+msgstr "Reparar etiquetas"
+
+msgid "Tags repaired"
+msgstr "Etiquetas reparadas"

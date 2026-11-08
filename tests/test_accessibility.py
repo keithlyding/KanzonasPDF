@@ -326,7 +326,8 @@ class Check(unittest.TestCase):
         self.assertIn("A form field has no tooltip", text)
         self.assertIn("isn't tagged as an Annot", text)
         self.assertIn("has no text describing it", text)
-        self.assertEqual({p.fix for p in found} - {None}, {"tabs", "links", "tooltips"})
+        # (the markups left out of the tags: Repair tags tags them)
+        self.assertEqual({p.fix for p in found} - {None}, {"tabs", "links", "tooltips", "repair"})
         # a link outside the tags
         d.xref_set_key(link, "StructParent", "null")
         self.assertIn("A link isn't tagged as a Link", texts_of(problems(d, "annots")))

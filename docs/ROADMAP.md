@@ -53,7 +53,11 @@ The owner sets this list; nothing below is promised until it's here.
    - Comments review (XFDF/FDF import and export, reply threads, review statuses):
      `claude/comments`.
    - Accessibility (Check accessibility against PDF/UA, Auto-tag, alt text, reading order):
-     `claude/accessibility`.
+     `claude/accessibility`. Brought up to 1.9.1 (8 Nov): every edit of a tagged document keeps
+     its tags in step (tag_upkeep.py, in the edit's undo step: Add text, Edit text, pastes,
+     moves across pages, markups, pages added and replaced); Header & footer and Bates numbers
+     are pagination artifacts there; redaction takes out the alt text and ActualText of what
+     it removes; Check accessibility's Repair tags; the battery's --tagged runs.
 2. **French, German and Portuguese** (the app and the manual), after 1.10's features (owner,
    6 Nov).
 3. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath

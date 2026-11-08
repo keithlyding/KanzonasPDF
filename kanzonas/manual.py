@@ -1676,6 +1676,20 @@ Other fonts can't be embedded afterwards: make the PDF again with its fonts embe
 <li><b>Identify as PDF/UA...</b> says in the file's XMP metadata that it meets PDF/UA-1; do it
 once Check accessibility finds nothing (it warns otherwise).</li>
 </ul>
+<p><b>Editing a tagged document.</b> Every edit keeps the tags in step with the pages, in the
+same Ctrl+Z step: text written with Add text, pasted or rewritten by Edit text is tagged (a
+paragraph, in the reading order where the page shows it; a heading, list item or table cell
+rewritten stays what it was); a picture moved with Edit objects or CAD mode, also onto another
+page, keeps its figure and its alternate text, and a picture pasted is a new figure (Check
+accessibility asks for its description); lines and shapes added are artifacts; markups, links
+and fields added are tagged, and leave the tags when deleted; pages duplicated, inserted,
+replaced (Replace pages: the new drawing is tagged anew) or deleted take their tags along;
+Header &amp; footer and Bates numbers are pagination artifacts. Apply redactions (and Sanitize
+document's hidden text) also takes out the alternate text, ActualText and expansion of the
+tagged content a mark touches, and the tags of content wholly removed, so nothing in the tags
+still says what was redacted. When a file another program changed has tags out of step with
+its pages (content no tag holds, tags of content that isn't there, a parent tree pointing
+wrong), Check accessibility says so and its <b>Repair tags</b> fix puts them right.</p>
 <p>Check accessibility, Auto-tag and Alt text are also on the Pages tab, under the Document
 group's arrow; the command palette (Ctrl+Shift+P) finds all of these by name.</p>
 
