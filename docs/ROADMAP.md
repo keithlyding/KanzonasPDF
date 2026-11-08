@@ -41,7 +41,11 @@ The owner sets this list; nothing below is promised until it's here.
 1. **1.10** (chosen by the owner on 6 Nov 2026; each feature done on its own branch, to be merged
    together, then the full checks, long batteries and a break-it battery):
    - Reading comfort (Full screen, Presentation, page layouts, Reading view, Read aloud, Auto
-     scroll): `claude/reading`.
+     scroll): `claude/reading` (done; brought up to 1.9.1 on 8 Nov, with its own ribbon tab,
+     Reading). Read aloud uses the system's own engine through QtTextToSpeech (WinRT / SAPI,
+     the Mac's AVSpeechSynthesizer, Speech Dispatcher on Linux, optional in the AppImage); the
+     builds leave out Qt's multimedia backends and FFmpeg it would bring along
+     (packaging/trim_build.py, self-test "no FFmpeg in the build").
    - Batch processing (Action wizard-style steps over many files, into a Processed folder):
      `claude/batch`. Search & redact in a batch applies by default (owner, 6 Nov: the originals
      stay); when only marking, the results say plainly that nothing was removed yet, and those

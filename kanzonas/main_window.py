@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFile
                                QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit,
                                QTextEdit, QStatusBar, QSizeGrip, QStyle, QStyleOption)
 
-from . import __version__, annotations, export, paths, signatures, theme
+from . import __version__, annotations, export, paths, reading, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
 from .i18n import tr
 from .properties import PropertiesPanel
@@ -1208,6 +1208,8 @@ class MainWindow(QMainWindow):
         from .updates import UpdateChecker
         self.a_auto_updates.setChecked(UpdateChecker(self.settings).enabled())
         self.a_auto_updates.toggled.connect(self._toggle_auto_updates)
+        # View: full screen, presentation, page layout, reading view, read aloud, auto scroll
+        reading.build_actions(self)
 
         self.tool_group = QActionGroup(self)
         self.tool_actions = {}
@@ -1273,6 +1275,8 @@ class MainWindow(QMainWindow):
         gm.addActions([self.a_next_page, self.a_prev_page, self.a_first_page, self.a_last_page])
         gm.addSeparator()
         gm.addAction(self.a_goto_page)
+        m.addSeparator()
+        reading.add_to_view_menu(self, m)
         m.addSeparator()
         m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
         m.addSeparator()
@@ -2075,7 +2079,7 @@ class MainWindow(QMainWindow):
             (v.signedDocument, self._on_signed),
             (v.oneShotPlaced, self._after_one_shot),
             (v.selectToolRequested, lambda: self.set_tool("select")),
-            (v.previousToolRequested, lambda: self.set_tool(self.default_tool())),
+            (v.previousToolRequested, lambda: reading.escape_on_page(self)),
             (v.calibrateRequested, self._calibrate),
             (v.scaleDialogRequested, lambda i: self._scale_dialog(None, i)),
             # (the view is bound here: inside a lambda, sender() isn't the view that sent
@@ -2091,6 +2095,7 @@ class MainWindow(QMainWindow):
             (v.editorFormat,
              lambda fmt, v=v: v is self.view() and self._show_editor_format(fmt)),
             (v.pageChanged, self._on_page_changed),
+            (v.pageLayoutChanged, lambda: reading.sync(self)),    # (the shown one's ticks)
             (v.zoomChanged, lambda _: self._update_ui()),
             (v.documentChanged, self._on_doc_changed),
             (v.structureChanged, self._on_structure_changed),
@@ -2243,6 +2248,7 @@ class MainWindow(QMainWindow):
             if not self._confirm_exit([(w, v) for w in [self] + others for v in w._views()]):
                 e.ignore()
                 return
+        reading.window_closing(self)        # (out of full screen before the layout is saved)
         if not ending:
             # (when Windows ends KanzonasPDF, windows_ending saved the session with every
             # window's files; a pulled-out window closed first here would be left out)
@@ -4459,6 +4465,7 @@ class MainWindow(QMainWindow):
         self.forms_btn.setIcon(theme.icon("forms"))
         for a, name in getattr(self, "_strip_icons", []):
             a.setIcon(theme.icon_named(name))
+        reading.apply_icons(self)
         labels = self.a_labels.isChecked()
         style = Qt.ToolButtonTextUnderIcon if labels else Qt.ToolButtonIconOnly
         for tb in (self.main_tb, self.tools_tb, self.arrange_tb):
@@ -4590,6 +4597,9 @@ class MainWindow(QMainWindow):
         key = os.path.normcase(v.path)
         states.pop(key, None)                      # moves to the end: the most recent
         states[key] = {"page": v.current_page(), "zoom": round(v.zoom, 4)}
+        if v.page_layout != "continuous" or v.cover_page:
+            # (View > Page layout, remembered per document like the zoom)
+            states[key].update(layout=v.page_layout, cover=v.cover_page)
         if len(states) > 200:                      # keep the 200 most recent
             states = dict(list(states.items())[-200:])
         self.settings.setValue("file_states", json.dumps(states))
@@ -4919,7 +4929,8 @@ class MainWindow(QMainWindow):
     def _step_page(self, delta):
         v = self.view()
         if v is not None:
-            v.goto_page(max(0, min(v.page_count() - 1, v.current_page() + delta)))
+            # (two pages side by side: a spread at a time)
+            v.goto_page(v.page_after(v.current_page(), delta))
 
     def set_mouse_mode(self, m, toggle=False):
         """Standard, Hand or CAD. toggle (F11, the CAD button): CAD again goes back to the
@@ -5333,6 +5344,8 @@ class MainWindow(QMainWindow):
              [self.a_collapse, self.a_group_names]),
             (tr("Help"), "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
         ])
+        # (1.10) full screen, presentation, page layouts, Reading view, read aloud, auto scroll
+        r.add_tab(tr("Reading"), reading.ribbon_groups(self))
         c = self.cad_actions
         r.add_tab(tr("CAD"), [
             (tr("Select"), "large", [self.tool_actions["select"],
@@ -5995,11 +6008,14 @@ class MainWindow(QMainWindow):
             self._show_find_count(*current.search_position())
         else:
             self._show_find_count(0, 0, False)
+        reading.sync(self)
+        reading.page_changed(self)
         self._update_ui()
 
     def _on_page_changed(self, page):
         if self.sender() is not self.view():
             return
+        reading.page_changed(self)
         # Scrolling to another page selects it in the page list. A page reached by clicking
         # in the list (Ctrl+click, Shift+click, right-click) keeps the pages selected there.
         if not self._thumb_nav and self.thumbs.currentRow() != page:
@@ -6013,6 +6029,7 @@ class MainWindow(QMainWindow):
         v = self.sender()
         if v is self.view():
             self._thumbs_changed(v)
+            reading.page_changed(self)
         self._update_ui()
 
     def _on_structure_changed(self):

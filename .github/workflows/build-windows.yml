@@ -72,6 +72,9 @@ jobs:
       - name: Build exe
         run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py
 
+      - name: Leave out what the app never uses (Qt's multimedia backends, FFmpeg)
+        run: python packaging/trim_build.py dist\KanzonasPDF
+
       - name: Smoke test (exe starts and opens a PDF)
         shell: pwsh
         run: |
@@ -383,6 +386,9 @@ jobs:
       - name: Build the app folder (PyInstaller, the same options as Windows)
         run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} --runtime-hook packaging/linux/pyi_rth_linux_env.py run.py
 
+      - name: Leave out what the app never uses (Qt's multimedia backends, FFmpeg)
+        run: python packaging/trim_build.py dist/KanzonasPDF
+
       - name: License and source notice
         run: |
           # KanzonasPDF uses PyMuPDF/MuPDF (GNU AGPL 3.0): ship the license and say where the source is
@@ -464,6 +470,9 @@ jobs:
       - name: Self test (the AppImage; OCR, exports, signatures, forms)
         run: |
           # no FUSE on the build machines: the AppImage unpacks itself and runs
+          # (Speech Dispatcher's client, left to the computer, installed only now, after the
+          # AppImage is made: the self test then loads Read aloud's Speech Dispatcher plugin)
+          sudo apt-get install -y -q --no-install-recommends libspeechd2
           code=0
           xvfb-run -a -s "-screen 0 1920x1080x24" \
             ./KanzonasPDF-x86_64.AppImage --appimage-extract-and-run --selftest selftest-linux.log || code=$?
@@ -556,6 +565,9 @@ jobs:
 
       - name: Build the app (PyInstaller, the same options as Windows and Linux)
         run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py
+
+      - name: Leave out what the app never uses (Qt's multimedia backends, FFmpeg)
+        run: python packaging/trim_build.py dist/KanzonasPDF.app
 
       - name: License and source notice
         run: |
