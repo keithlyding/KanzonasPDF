@@ -158,6 +158,10 @@ class Reader(QObject):
             return False
         self.view = view
         view.destroyed.connect(self._view_gone)
+        # (the document edited while it's read: what's still to say is read again from it,
+        # so words just redacted or deleted aren't said; its tab closed: reading stops)
+        view.documentChanged.connect(self._doc_changed)
+        view.structureChanged.connect(self._doc_changed)
         self.last_page = view.page_count() - 1 if to_end else page
         self.queue = self._sentences(page, start)
         self.next_page = page + 1
@@ -167,6 +171,33 @@ class Reader(QObject):
         else:
             self._say_next()
         return True
+
+    def _live(self):
+        """The view being read, while it and its document are there (None after its tab
+        closed: the engine may still call back)."""
+        v = self.view
+        if v is None or not shiboken6.isValid(v) or getattr(v, "doc", None) is None or \
+                v.doc.is_closed:
+            return None
+        return v
+
+    def _doc_changed(self):
+        if self.state == "stopped":
+            return
+        v = self._live()
+        if v is None:
+            self.stop()
+            return
+        count = v.doc.page_count
+        self.last_page = min(self.last_page, count - 1)
+        if self.next_page is not None:
+            self.next_page = min(self.next_page, count)
+        if self.queue:
+            nxt = self.queue[0]
+            first = nxt.words[0][2] if nxt.words and nxt.words[0][2] else None
+            start = ((first[0][0] + first[0][2]) / 2, (first[0][1] + first[0][3]) / 2) \
+                if first else None
+            self.queue = self._sentences(nxt.page, start) if nxt.page < count else []
 
     def _sentences(self, page, start=None):
         from . import reading_text
@@ -197,6 +228,9 @@ class Reader(QObject):
 
     def _say_next(self):
         if self.state != "speaking" or self.engine is None:
+            return
+        if self._live() is None:
+            self.stop()
             return
         if not self.queue:
             if self.next_page is not None and self.next_page <= self.last_page:
@@ -241,8 +275,8 @@ class Reader(QObject):
 
     # ---- what's shown -------------------------------------------------------------
     def _mark(self):
-        v = self.view
-        if v is None or not shiboken6.isValid(v):
+        v = self._live()
+        if v is None:
             return
         old = v.read_mark
         s = self.current
@@ -285,13 +319,16 @@ class Reader(QObject):
                 pass
         v = self.view
         if v is not None and shiboken6.isValid(v):
-            try:
-                v.destroyed.disconnect(self._view_gone)
-            except (RuntimeError, TypeError):
-                pass
+            for signal, slot in ((v.destroyed, self._view_gone),
+                                 (v.documentChanged, self._doc_changed),
+                                 (v.structureChanged, self._doc_changed)):
+                try:
+                    signal.disconnect(slot)
+                except (RuntimeError, TypeError):
+                    pass
             if v.read_mark is not None:
                 old, v.read_mark = v.read_mark, None
-                if old[0] < len(v.pages):
+                if old[0] < len(v.pages) and self._live() is not None:
                     _repaint(v, old)
         self.view = None
         if was != "stopped":
@@ -317,7 +354,7 @@ class Reader(QObject):
 def _repaint(view, mark):
     """Repaint where a read mark is (or was) on its page, not the whole page."""
     w = view.pages[mark[0]]
-    if w.isHidden():
+    if w.isHidden() or view.doc.is_closed or mark[0] >= view.doc.page_count:
         return
     page = view.doc[mark[0]]
     for r in list(mark[1]) + list(mark[2]):

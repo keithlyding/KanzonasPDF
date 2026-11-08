@@ -10889,3 +10889,18 @@ msgstr "Pausar la lectura en voz alta, o seguir desde donde se pausó"
 
 msgid "Stop reading aloud"
 msgstr "Detener la lectura en voz alta"
+
+msgid "It's in the output folder, where this batch writes (a result of an earlier run): left out."
+msgstr "Está en la carpeta de salida, donde escribe este lote (un resultado de un proceso anterior): se deja fuera."
+
+msgid "{folder} leads out of the output folder (a link to another place): nothing was written there."
+msgstr "{folder} lleva fuera de la carpeta de salida (un vínculo a otro lugar): no se escribió nada ahí."
+
+msgid "hidden information removed (metadata, attachments, hidden text, scripts)"
+msgstr "se quitó la información oculta (metadatos, archivos adjuntos, texto oculto, scripts)"
+
+msgid "Warning: {n} attached file(s) kept, and what's inside them wasn't searched: tick Remove hidden information to remove them"
+msgstr "Advertencia: se conservaron {n} archivo(s) adjunto(s), y no se buscó en su contenido: marque Quitar la información oculta para quitarlos"
+
+msgid "Export comes before {step}: the exported copy would still hold what is redacted. Put Export after it."
+msgstr "Exportar va antes de {step}: la copia exportada aún tendría lo que se censura. Ponga Exportar después."

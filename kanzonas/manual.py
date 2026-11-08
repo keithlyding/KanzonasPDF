@@ -376,7 +376,8 @@ toolbars or ribbon, menu bar, panels, tabs and status bar are hidden. Move the p
 very top edge of the screen and a slim bar comes down with the previous and next page, zoom,
 the page layouts, Reading view, Read this page and <b>Exit full screen</b>; it goes away when
 the pointer moves down again. <b>Escape</b> leaves full screen (when a tool is picked, the
-first Escape puts it down, as usual, and the next one leaves), and so does Ctrl+Shift+L again.
+first Escape puts it down, as usual, and the next one leaves; in the Reading view too), and so
+does Ctrl+Shift+L again.
 Everything comes back as it was. (F11, which many programs use for this, switches the CAD mouse
 mode in KanzonasPDF, and Ctrl+L locks markups; Ctrl+Shift+L is free and close to Acrobat's
 Ctrl+L.)</li>
@@ -391,7 +392,7 @@ pointer hides itself after two seconds without moving. <b>Escape</b> ends the pr
 the window shows the page you ended on. Markups are shown as they are on the page (unless Show
 markups is off). The presentation only shows the document: nothing in it changes the file. A
 change made in the window meanwhile (with the presentation on a second screen) shows at
-once.</li>
+once, Apply redactions and Undo too. F5 again brings the presentation forward.</li>
 <li><b>Page layout</b> (View menu), remembered for each document like its page and zoom:
 <ul>
 <li><b>Single page</b> (Ctrl+5): one page at a time. Scroll to its end (wheel, Page Down or the
@@ -1966,7 +1967,10 @@ every occurrence is marked, in hidden layers and where a page is cropped too, an
 are applied, with the words taken out of fields, notes, links, bookmarks, properties and the
 file's other places, such as layer names, web addresses, form data and alternate text, as
 Search &amp; redact and Apply redactions do; a word found only in those places is removed
-from there. Apply the redactions is ticked to begin with: the originals stay as they were,
+from there. With <b>Remove hidden information</b> ticked (in Apply redactions too), each
+file's metadata, attached files, hidden text and scripts are removed even when nothing was
+found to redact; unticked, attached files stay and aren't searched, and the report warns of
+them. Apply the redactions is ticked to begin with: the originals stay as they were,
 and the redacted copies go to the output folder. The report says for each file what was
 removed and where: the pages, and how many of the other places. Untick it to only mark them
 for review: nothing is removed yet, the report says so ("nothing was removed yet: open the
@@ -1981,9 +1985,11 @@ without pages, and the report lists the pages deleted: check them); <b>Add passw
 <b>Remove password</b> (as Security properties; to remove a permissions password, type it);
 <b>Set document properties</b> (title, author, subject, keywords; {name} is the file's name);
 <b>Export</b> (Word, Excel, PowerPoint, PNG or JPEG pictures, or text, made from the document
-as the steps before it left it, saved next to the PDF); <b>Combine all into one PDF</b> (the
-last step: the processed files in list order, a bookmark for each; tick Also save each file
-to keep them as well). The PDF of each file is written when the steps change documents; with
+as the steps before it left it, saved next to the PDF; it must come after Search &amp; redact
+and Apply redactions, or the copy would still hold the words); <b>Combine all into one PDF</b>
+(the last step: the processed files in list order, a bookmark for each; tick Also save each
+file to keep them as well; a file skipped or failed isn't in it and uses no Bates numbers;
+with Search &amp; redact only marking, it's named Combined-marked). The PDF of each file is written when the steps change documents; with
 only Export steps, only the exported files are.</li>
 <li><b>Recipes</b> keep a list of steps with their options under a name: choose one in
 <b>Recipe</b>, <b>Save recipe...</b> to keep the current steps, <b>Delete recipe</b> to remove
@@ -1995,11 +2001,17 @@ choices are remembered for the next time.</li>
 folder</b>, where <b>Keep the folder structure</b> puts the files of a folder's subfolders in
 the same subfolders. <b>File name</b>: {name} (the file's own name), {n} (its number in the
 list: 001, 002...), {date} (today) and {bates} (its first Bates number), such as {name}_ocr.
+A name is always a file in the output folder: slashes, colons, .. and drive letters become
+part of the name, Windows' device names (CON, NUL, LPT1...) get a _ in front, and a name too
+long is shortened.
 <b>If the file is already there:</b> Ask (Replace, Replace all, Skip, Skip all), Add a number
 (name (2).pdf), Replace it, or Skip the file. Results never replace the files they were made
 from unless you tick <b>Allow replacing the original files</b> (off every time the window
 opens); two files with the same name never overwrite each other. A "Processed" folder is left
-out when a folder is added again.</li>
+out when a folder is added again, and so are the files in the output folder when it's inside
+the folder added (the results of an earlier run). Nothing is ever written outside the output
+folder: a file already there that is a link is replaced, not written through, and a folder
+there that is a link to another place is skipped.</li>
 <li><b>Run</b> shows the progress of the file being processed and of all files. <b>Cancel</b>
 finishes the file being processed, then stops; click it again (<b>Stop now</b>) to stop at
 once, leaving that file out. A file's results appear all together or not at all: nothing
