@@ -1426,7 +1426,10 @@ and the page size (the size of the page it goes before, Letter or A4). The page 
 pages' numbers after the new pages are inserted. Run it again after changing the bookmarks and
 choose <b>In place of the table of contents made before</b>: the old pages are replaced by new
 ones, instead of adding another table. Bookmarks that go to a web page or another file aren't
-listed, and the headings on the table's own pages are never made into bookmarks. It's one undo
+listed, and the headings on the table's own pages are never made into bookmarks. Each line's link
+is described for screen readers ("Results, page 4") and the dotted leaders are marked as
+decoration; in a tagged document the table is tagged as one (a table of contents holding an
+item per line, each a link with the line's words and page number). It's one undo
 step, and it asks to unlock the page order when the page list is locked.</p>
 
 <h2 id="scan">Scanning</h2>

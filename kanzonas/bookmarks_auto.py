@@ -969,8 +969,10 @@ def insert_toc(doc, at=0, title=None, depth=MAX_LEVELS, size=None, replace=True)
                 _kind, x, base, text, key, wrap, _rows_, step = op
                 added_text.write(page, (x, base), 0, text, [key] * len(text), step,
                                  width=wrap, fonts=table)
-        # page numbers and dotted leaders, at the last line of each entry
+        # page numbers and dotted leaders, at the last line of each entry (the leaders an
+        # artifact: a screen reader doesn't read them)
         shape = page.new_shape()
+        leaders = page.new_shape()
         last_text = None
         links = []
         for op in ops:
@@ -994,23 +996,108 @@ def insert_toc(doc, at=0, title=None, depth=MAX_LEVELS, size=None, replace=True)
             dot = fonts.width(" .", plain)
             count = int((end - start) / dot) if dot > 0 else 0
             if count >= 2:
-                shape.insert_text((end - count * dot, base), " ." * count,
-                                  fontname=table[plain].name, fontsize=key.size, color=gray)
+                leaders.insert_text((end - count * dot, base), " ." * count,
+                                    fontname=table[plain].name, fontsize=key.size, color=gray)
             link = {"kind": pymupdf.LINK_GOTO, "from": rect, "page": target,
                     "to": pymupdf.Point(to) if to is not None else pymupdf.Point(0, 0),
                     "zoom": zoom or 0}
-            links.append(link)
+            # (what a screen reader says for the link: PDF/UA wants every link described)
+            links.append((link, tr("{title}, page {page}").format(
+                title=" ".join(entries[e][1].split()), page=num)))
         shape.commit()
+        if leaders.text_cont:
+            leaders.text_cont = "/Artifact BMC\n" + leaders.text_cont + "\nEMC\n"
+            leaders.commit()
         ts.fix_spaces(page, {k: f._replace(source=True) for k, f in table.items()})
         _cid_maps(page)
         _one_stream(page)
-        for link in links:
+        for link, words in links:
             page.insert_link(link)
+            xref = page.annot_xrefs()[-1][0]
+            doc.xref_set_key(xref, "Contents", pymupdf.get_pdf_str(words))
     first = at
     for idx in to_old:
         dest = toc[idx][3]
         doc.set_toc_item(idx, dest_dict=dict(dest, page=first, to=pymupdf.Point(0, 0)))
         if not dest.get("color") and dest.get("xref"):
             doc.xref_set_key(dest["xref"], "C", "null")         # (not grayed out)
+    _tag_toc(doc, first, len(pages))
     return first, len(pages)
+
+
+def _tag_toc(doc, first, count):
+    """On a tagged document, the table's pages tagged as a table of contents (PDF 32000-1
+    14.8.4.3.2): a TOC element holding a TOCI per entry, each a Link holding the entry's
+    words, its page number and its link annotation; the leaders are artifacts. (Tagged
+    plainly, as any page added to a tagged document, each title was a P, the page numbers
+    one P together and each link a Link of its own, holding no words.)"""
+    from . import pdfcoords, tag_upkeep as tu
+    if not tu.is_tagged(doc):
+        return
+    pages = list(range(first, first + count))
+    tu.refresh(doc, None, True, pages)          # (everything tagged, in step)
+    tree = tu.Tree(doc)
+    if tree.root is None:
+        return
+    m = pymupdf.mupdf
+    toc = None
+    moved = []
+    for i in pages:
+        page = doc[i]
+        px = page.xref
+        st = tu.PageState(page)
+        seq_box, _pb = st.boxes()
+        box_of = {}
+        for ser, b in seq_box.items():
+            mc = st.seqs[ser][0][2]
+            box_of[mc] = b if mc not in box_of else box_of[mc] | b
+        to_page = pdfcoords.to_page(page) * page.rotation_matrix
+        links = []
+        for num, sub, shown in tu._annot_list(doc, px, tree.pdf):
+            if sub != "Link" or not shown or len(tree.objr.get(num, ())) != 1:
+                continue
+            try:
+                r = doc.xref_get_key(num, "Rect")[1].strip("[]").split()
+                links.append((num, (pymupdf.Rect([float(v) for v in r]) * to_page)
+                              .normalize()))
+            except (TypeError, ValueError):
+                continue
+        if not links:
+            continue
+        held = {}                       # link -> [mcid] of the words it covers
+        for mc in sorted(tree.page_refs.get(px, ())):
+            b = box_of.get(mc)
+            if b is None or len(tree.refs.get((px, mc), ())) != 1:
+                continue
+            c = pymupdf.Point((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2)
+            hit = next((num for num, r in links if r.contains(c)), None)
+            if hit is not None:
+                held.setdefault(hit, []).append(mc)
+        if toc is None:
+            kids = tree.top.kids if tree.top is not None else tree.tops
+            olds = [tree.refs[(px, mc)][0] for mcs in held.values() for mc in mcs] + \
+                [tree.objr[num][0] for num, _r in links]
+            tops = []
+            for e in olds:
+                while e.parent is not None and e.parent is not tree.top:
+                    e = e.parent
+                tops.append(e)
+            at = min((kids.index(e) for e in tops if e in kids), default=None)
+            toc = tree.new_el("TOC", px, at=at)
+        for num, _r in links:
+            item = tree.new_el("TOCI", px, parent=toc)
+            link = tree.new_el("Link", px, parent=item)
+            for mc in held.get(num, ()):
+                old = tree.refs[(px, mc)][0]
+                tree.drop_mcid(old, (px, mc))
+                tree.add_mcid(link, px, mc)
+                moved.append(old)
+            old = tree.objr[num][0]
+            tree.drop_objr(old, num)
+            tree.add_objr(link, num, px)
+            moved.append(old)
+    for e in moved:
+        tree.prune(e)
+    if toc is not None:
+        tu.refresh(doc, pages)          # (the parent tree pointing at the new elements)
 

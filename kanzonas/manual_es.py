@@ -1423,8 +1423,11 @@ números de página son los de las páginas después de insertar las nuevas. Eje
 de cambiar los marcadores y elija <b>En lugar de la tabla de contenido creada antes</b>: las
 páginas viejas se reemplazan por nuevas, en vez de agregar otra tabla. No se listan los marcadores
 que llevan a una página web o a otro archivo, y los títulos de las propias páginas de la tabla
-nunca se convierten en marcadores. Es un solo paso de deshacer, y pide desbloquear el orden de las
-páginas cuando la lista de páginas está bloqueada.</p>
+nunca se convierten en marcadores. El vínculo de cada línea va descrito para los lectores de
+pantalla ("Resultados, página 4") y las líneas de puntos se marcan como decoración; en un
+documento etiquetado, la tabla se etiqueta como tal (una tabla de contenido con un elemento por
+línea, cada uno un vínculo con las palabras de la línea y su número de página). Es un solo paso de
+deshacer, y pide desbloquear el orden de las páginas cuando la lista de páginas está bloqueada.</p>
 
 <h2 id="scan">Escanear</h2>
 <p><b>Escanear...</b> (menú Archivo, pestaña Páginas &gt; grupo Crear, o la paleta de comandos)

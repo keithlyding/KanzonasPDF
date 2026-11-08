@@ -10288,6 +10288,10 @@ msgstr "El texto en la fuente {font} no se puede leer como letras (no tiene corr
 msgid "Go to page {n}"
 msgstr "Ir a la página {n}"
 
+#: bookmarks_auto.py
+msgid "{title}, page {page}"
+msgstr "{title}, página {page}"
+
 msgid "A table header cell (TH) doesn't say whether it heads a column or a row (Scope)."
 msgstr "Una celda de encabezado de tabla (TH) no indica si encabeza una columna o una fila (Scope)."
 

@@ -13,6 +13,11 @@ Check accessibility) and bookmarks, fixed:
 - Apply redactions on such a form: MuPDF draws a redacted copy of the form and leaves the
   original in the file; the MCR still pointed at the original, so the words redacted were
   in the saved file (also with the clean-up), and the element's alternate text stayed;
+- Insert table of contents on a tagged document: each title a P, the page numbers one P
+  together, each link a Link holding no words, the leaders read aloud, and no link
+  described (veraPDF's PDF/UA-1 check failed on 7.18.5-2 and 7.18.1-2 where it passed
+  before): now a TOC of TOCI, each a Link with the entry's words, page number and link,
+  the leaders an artifact, each link described (also on an untagged document);
 
 Each test failed before its fix.
 
@@ -222,6 +227,69 @@ class TaggedForms(Case):
         self.assertEqual(len(fig.stms), 1)
         self.assertIn(fig.stms[0][0], drawn)              # (the copy the page draws)
         self.assertEqual(tag_upkeep.problems(v.doc), [])
+
+
+class TableOfContents(Case):
+    def toc_doc(self, tag=True):
+        from tests.test_accessibility import autotagged, sample
+        d = sample(3)
+        if tag:
+            autotagged(d)
+        d.set_toc([[1, "Section 1", 1], [2, "Details", 1], [1, "Section 2", 2],
+                   [1, "Section 3", 3]])
+        return d
+
+    def insert(self, v, replace=False):
+        from kanzonas import bookmarks_auto as BA
+        out = {}
+        v.modify(lambda: out.setdefault("r", BA.insert_toc(v.doc, 0, replace=replace)),
+                 structural=True, changed=[])
+        return out["r"]
+
+    def test_a_table_of_contents_on_a_tagged_document_is_tagged_as_one(self):
+        from tests.battery_random import canon
+        v = self.view(self.toc_doc())
+        before = canon(v._snapshot())
+        self.assertEqual(self.insert(v), (0, 1))
+        self.assertEqual(tag_upkeep.problems(v.doc), [])
+        after = canon(v._snapshot())
+        tree = tag_upkeep.Tree(v.doc)
+        px = v.doc[0].xref
+        toc = [e for e in tree.els if e.type == "TOC"]
+        self.assertEqual(len(toc), 1)
+        items = toc[0].kids
+        self.assertEqual([e.type for e in items], ["TOCI"] * 4)
+        words = acc.marked_content(v.doc, 0)
+        for item, title, num in zip(items, ["Section 1", "Details", "Section 2", "Section 3"],
+                                    ["2", "2", "3", "4"]):
+            (link,) = item.kids
+            self.assertEqual(link.type, "Link")
+            self.assertEqual(len(link.objrs), 1)
+            text = " ".join(words[mc][1] for pg, mc in link.mcids if pg == px)
+            self.assertIn(title, text)
+            self.assertIn(num, text)
+            self.assertNotIn(". .", text)               # (the leaders: an artifact)
+            self.assertEqual(v.doc.xref_get_key(link.objrs[0][0], "Contents")[1],
+                             "%s, page %s" % (title, num))
+        # nothing on the page tagged twice or left as a P of the old kind
+        on_page = [e.type for e in tree.els if e.pg == px and not e.gone]
+        self.assertEqual(on_page.count("P"), 1)          # (the title, "Contents")
+        v.undo()
+        self.assertEqual(canon(v._snapshot()), before)
+        v.redo()
+        self.assertEqual(canon(v._snapshot()), after)
+        # made again in place of the old one: one table still
+        self.insert(v, replace=True)
+        self.assertEqual(tag_upkeep.problems(v.doc), [])
+        self.assertEqual([e.type for e in tag_upkeep.Tree(v.doc).els].count("TOC"), 1)
+
+    def test_its_links_are_described_on_an_untagged_document(self):
+        v = self.view(self.toc_doc(tag=False))
+        self.insert(v)
+        self.assertFalse(tag_upkeep.is_tagged(v.doc))
+        self.assertEqual([l["contents"] for l in acc.links(v.doc) if l["page"] == 0],
+                         ["Section 1, page 2", "Details, page 2", "Section 2, page 3",
+                          "Section 3, page 4"])
 
 
 if __name__ == "__main__":
