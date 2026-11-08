@@ -29,6 +29,16 @@ class LongMessage(unittest.TestCase):
         cls.w.show()
         APP.processEvents()
         cls.sb = cls.w.statusBar()
+        if not cls.sb.fontMetrics().horizontalAdvance("Modo"):
+            # (Qt's offscreen platform on Windows finds no font, so every text measures 0 px
+            # and none is too long: the bar is given PyMuPDF's own Helvetica to measure with)
+            import pymupdf
+            from PySide6.QtCore import QByteArray
+            from PySide6.QtGui import QFont, QFontDatabase
+            i = QFontDatabase.addApplicationFontFromData(
+                QByteArray(bytes(pymupdf.Font("helv").buffer)))
+            cls.sb.setFont(QFont(QFontDatabase.applicationFontFamilies(i)[0], 9))
+            APP.processEvents()
 
     @classmethod
     def tearDownClass(cls):
@@ -45,12 +55,22 @@ class LongMessage(unittest.TestCase):
         return shown[-1] if shown else ""
 
     def test_a_long_message_is_cut_short_left_of_the_controls(self):
-        long = "Modo nocturno activado: páginas dibujadas en blanco sobre negro " * 6
+        # (long enough for the bar as wide as it is here, in this platform's font: the Windows
+        # job's bar and font measure differently from Linux's)
+        unit, fm = "Modo nocturno activado: páginas dibujadas en blanco sobre negro ", \
+            self.sb.fontMetrics()
+        n = 6
+        while fm.horizontalAdvance((unit * n).strip()) <= 2 * self.sb.message_rect().width() \
+                and n < 600:
+            n += 6
+        long = unit * n
         self.sb.showMessage(long.strip())
         self.addCleanup(self.sb.clearMessage)
         APP.processEvents()
         shown = self.sb.shown_message()
-        self.assertTrue(shown.endswith("…"), shown)
+        self.assertTrue(shown.endswith("…"), "%s (bar %d px, room %d px, message %d px)" % (
+            shown[-80:], self.sb.width(), self.sb.message_rect().width(),
+            fm.horizontalAdvance(long.strip())))
         room = self.sb.message_rect()
         self.assertLessEqual(self.sb.fontMetrics().horizontalAdvance(shown), room.width())
         controls = self.sb._controls()              # (the page controls...)

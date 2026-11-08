@@ -160,7 +160,8 @@ def discover(window=3.0, cancel=None, target=None, log=None, interfaces=None):
     scan_probe = probe_xml(ids[0], "wscn:ScanDeviceType").encode()
     any_probe = probe_xml(ids[1], "wsdp:Device").encode()
     sends = [(scan_probe, dest, 0.0), (any_probe, dest, 0.15), (scan_probe, dest, 0.5)]
-    got = net.udp_exchange(sends, window, multicast_ttl=1, cancel=cancel, interfaces=interfaces)
+    got = net.udp_exchange(sends, window, multicast_ttl=1, cancel=cancel, interfaces=interfaces,
+                           log=log)
     matches = {}
     for data, src in got:
         for m in parse_probe_matches(data, ids):

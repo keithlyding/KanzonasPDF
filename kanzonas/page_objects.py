@@ -270,9 +270,19 @@ def _plain_xy(seg):
     return xs, ys
 
 
-def scan_steps(data, out):
+def scan_with_clips(data):
+    """(scan(data), the clipping paths it sets: [(start, end of its W / W*, ctm)] by the
+    numbers an entry's "ctx" names them with; start None when no path came before W)."""
+    out, clip_paths = [], []
+    for _ in scan_steps(data, out, clip_paths):
+        pass
+    return out, clip_paths
+
+
+def scan_steps(data, out, clip_paths=None):
     """scan() a little at a time: a generator that fills out, pausing (yield) every STEP
     instructions, so a big drawing can be read in idle time without freezing the window.
+    clip_paths: a list to get the clipping paths (see scan_with_clips).
 
     Entries share what doesn't change between them (their "ctm" Matrix, "state" bytes and
     "ctx"): nothing changes those in place, an edit puts new ones in its copies."""
@@ -432,6 +442,8 @@ def scan_steps(data, out):
             continue
         if op in (b"W", b"W*"):
             clip = True
+            if clip_paths is not None:
+                clip_paths.append((path_start, end, ctm))
             clips.append(nclip)
             nclip += 1
             ctx = (ctx[0], tuple(clips))

@@ -295,15 +295,144 @@ class Layers(unittest.TestCase):
         with mock.patch.object(PW, "PREDECODE_AFTER_S", 0):
             v.viewport().repaint()
             APP.processEvents()
-        self.assertEqual({(k[0], k[2]) for k in v._decoded}, {(0, 1)})
+        # (at the tiles' size; and, since 1.9.1, at the size of the smaller preview shown
+        # meanwhile: every render has its page's pictures decoded for it first, see
+        # test_render_order)
+        got = {(k[0], k[2]) for k in v._decoded}
+        self.assertIn((0, 1), got)
+        self.assertLessEqual(got, {(0, 1), (0, 2)})
         self.assertTrue([k for k in v._tiles if k[0] == 0])
         # another zoom: decoded at its size before its tiles are rendered
         v.set_zoom(1.8)
         v.viewport().repaint()
         APP.processEvents()
-        self.assertEqual({(k[0], k[2]) for k in v._decoded}, {(0, 1), (0, 0)})
+        now = {(k[0], k[2]) for k in v._decoded}
+        self.assertLessEqual({(0, 1), (0, 0)}, now)
+        self.assertLessEqual(now, {(0, 0), (0, 1), (0, 2)})
         s = round(v.zoom * w.devicePixelRatioF(), 5)
         self.assertTrue([k for k in v._tiles if k[0] == 0 and k[1] == s])
+
+
+def fresh(v, i, s):
+    """Page i of v's document as a copy of it opened afresh draws it, whole, at zoom s."""
+    d = pymupdf.open("pdf", v._snapshot())
+    try:
+        return expected(d[i], s)
+    finally:
+        d.close()
+
+
+class PageTransparency(unittest.TestCase):
+    """MuPDF works out whether to draw a page's content as a transparency group (a markup
+    with a blend mode makes it one) only when it loads the page: a highlight added later, or
+    one undone, left the page drawn as before, a few levels of color off the same page
+    opened afresh (the random battery: 5 levels)."""
+
+    def view(self):
+        d = pymupdf.open()
+        p = d.new_page(width=612, height=792)
+        p.insert_text((72, 100), "Words that get highlighted later on", fontsize=18)
+        p.draw_rect(pymupdf.Rect(60, 300, 400, 500), color=(0, 0, 0.6), fill=(0.7, 0.9, 0.7),
+                    width=1.5)
+        for k in range(30):
+            p.draw_line((60 + 8 * k, 520), (300, 700), color=(0.3, 0, 0), width=0.2)
+        p.insert_image(pymupdf.Rect(420, 300, 560, 400),
+                       pixmap=pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 30, 20), False))
+        path = os.path.join(tempfile.mkdtemp(), "plain.pdf")
+        d.save(path)
+        v = DocumentView(path)
+        v.resize(900, 700)
+        v.show()
+        APP.processEvents()
+        self.addCleanup(v.close_doc)
+        v.set_zoom(1.0)
+        return v
+
+    def check(self, v, why):
+        w = v.pages[0]
+        w._pix = None
+        w._render()
+        s = v.zoom * w.devicePixelRatioF()
+        same(self, w._pix.toImage(), fresh(v, 0, s), why)
+        # (and drawn whole, as the page list, printing and Capture do)
+        page = v.doc[0]
+        RL.sync_transparency(page)
+        same(self, expected(page, s), fresh(v, 0, s), why + ", drawn whole")
+
+    def test_a_highlight_added_and_undone(self):
+        v = self.view()
+        self.check(v, "as opened")
+        v.apply_text_tool(0, "highlight", pymupdf.Point(75, 92), pymupdf.Point(300, 92))
+        self.assertEqual(RL.transparency(v.doc[0]), 1)
+        self.check(v, "a highlight added")
+        v.undo()
+        self.assertEqual(RL.transparency(v.doc[0]), 0)
+        self.check(v, "the highlight undone")
+        v.redo()
+        self.check(v, "the highlight redone")
+        # the markup made part of the page: its blend mode is in the page's own resources,
+        # a dictionary MuPDF had already read (and kept its answer in)
+        v.flatten([0], widgets=False)
+        self.assertEqual(RL.transparency(v.doc[0]), 1)
+        self.check(v, "flattened")
+        v.undo()
+        v.undo()
+        self.check(v, "back to the start")
+
+    def test_as_mupdf_works_it_out(self):
+        # what transparency() says of pages opened afresh is what MuPDF says
+        d = pymupdf.open(marked_pdf())
+        p = d.new_page()
+        p.add_rect_annot(pymupdf.Rect(10, 10, 50, 50))
+        p = d.new_page()
+        p.insert_text((72, 72), "nothing see-through")
+        p = d.new_page()
+        g = pymupdf.open()
+        g.new_page().draw_rect(pymupdf.Rect(10, 10, 90, 90), fill=(1, 0, 0), fill_opacity=0.5)
+        p.show_pdf_page(pymupdf.Rect(0, 0, 200, 200), g, 0)
+        p = d.new_page()
+        p.add_freetext_annot(pymupdf.Rect(80, 560, 330, 610), "A text box")
+        p.add_highlight_annot(pymupdf.Rect(70, 82, 400, 106))
+        d = pymupdf.open("pdf", d.tobytes())
+        got = [RL.transparency(pg) for pg in d]
+        want = [pymupdf._as_pdf_page(pg).m_internal.transparency for pg in d]
+        self.assertEqual(got, want)
+        self.assertIn(0, got)
+        self.assertIn(1, got)
+
+
+class PictureOverTheEdge(unittest.TestCase):
+    """MuPDF keeps a picture's decoded tiles, and draws part of a picture from the whole one
+    decoded earlier: a picture stamp drawn whole, then moved over the page's edge, was drawn
+    up to 145 levels of color off the same page opened afresh (which decodes just the part
+    shown). Random battery, seed 1 of the dimensions work (step 974). The markups drawn again
+    after a change have their pictures decoded afresh."""
+
+    def test_stamp_moved_over_the_edge(self):
+        from tests import battery_random as BR
+        path = BR.sample(os.path.join(tempfile.mkdtemp(), "edge.pdf"), pages=3)
+        v = DocumentView(path)
+        v.resize(900, 700)
+        v.show()
+        APP.processEvents()
+        self.addCleanup(v.close_doc)
+        self.addCleanup(setattr, v, "dirty", False)
+        v.set_zoom(0.5)
+        w = v.pages[0]
+        s = v.zoom * w.devicePixelRatioF()
+        v._create(0, {"kind": "stamp", "props": dict(A.DEFAULTS["stamp"]),
+                      "rect": pymupdf.Rect(200, 300, 320, 340)})
+        for d in (pymupdf.Point(-236, -78), pymupdf.Point(150, 80), pymupdf.Point(-150, -80)):
+            w._pix = None
+            w._render()
+            x = max(x for x, t, *_ in v.doc[0].annot_xrefs() if t == pymupdf.PDF_ANNOT_STAMP)
+            v.select_xref(0, x)
+            m = v.selected_model
+            v.commit_models(0, [(x, A.moved(m, d))], olds={x: m})
+            v.clear_selection()
+            w._pix = None
+            w._render()
+            same(self, w._pix.toImage(), fresh(v, 0, s), "moved by %s" % d)
 
 
 class Zooming(unittest.TestCase):
