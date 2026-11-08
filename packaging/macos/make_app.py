@@ -76,6 +76,11 @@ def info_plist(info, version, min_macos):
         "NSRequiresAquaSystemAppearance": False,       # follows Light / Dark
         "NSSupportsAutomaticGraphicsSwitching": True,
         "NSHumanReadableCopyright": "Free software under the GNU AGPL-3.0",
+        # File > Scan finds scanners on the network (mDNS, WS-Discovery): macOS asks once for
+        # Local Network access, with this text; the eSCL services it looks for by Bonjour
+        "NSLocalNetworkUsageDescription": "KanzonasPDF looks for scanners, and printers that "
+                                          "scan, on your network when you use File > Scan.",
+        "NSBonjourServices": ["_uscan._tcp", "_uscans._tcp"],
         # PDF files: listed in Finder's Open With, and can be made the app for all of them
         "CFBundleDocumentTypes": [{
             "CFBundleTypeName": "PDF document",

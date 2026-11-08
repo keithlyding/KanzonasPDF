@@ -484,13 +484,16 @@ class Command:
     title = ""
     needs_selection = True
     snap = True                         # clicks snap to line ends, corners... (not Trim's)
+    across = False                      # its second point may be on another page (Move, Copy)
 
     def __init__(self, view, prompt):
         self.v = view
         self.ui = prompt
         self.page = None
         self.pts = []
+        self.to = None                  # the page the last point was clicked on (Move, Copy)
         self.hover = None
+        self.hover_page = None
         self.kind = None
         self.items = []
         self.ghost = []                 # the selection's outlines (page coordinates)
@@ -615,12 +618,37 @@ class Command:
             return
         if self.page is None:
             self.page = index
-        if index != self.page:
-            self.v.statusMessage.emit(tr("Click on the same page."))
+        if index != self.page and not (self.across and self.pts):
+            if self.across:
+                msg = tr("{command}: click the base point on page {n}, where the selection "
+                         "is; then where it goes, on any page.")
+            else:
+                msg = tr("{command} works on one page: click on page {n}.")
+            self.v.statusMessage.emit(msg.format(command=self.title, n=self.page + 1))
             return
+        self.to = index
         self.pts.append(pymupdf.Point(pt))
         self.step()
         self._repaint()
+
+    def shift(self, pt, index):
+        """From the base point to pt on page index, as the pages are shown (a Point)."""
+        doc = self.v.doc
+        return pymupdf.Point(pt) * doc[index].rotation_matrix - \
+            self.pts[0] * doc[self.page].rotation_matrix
+
+    def place(self, label, copy):
+        """Move or Copy's second point: on the selection's page, the CAD change as before;
+        on another page, the selection goes (or a copy of it) there."""
+        pt = self.pts[-1]
+        if self.to == self.page:
+            if copy:
+                self.v.cad_apply(label, None, copies=[translate(pt - self.pts[0])], keep=True)
+            else:
+                self.v.cad_apply(label, translate(pt - self.pts[0]))
+            return
+        self.pts.pop()                  # (the point is on another page: not drawn here)
+        self.v.transfer_selection(self.to, self.shift(pt, self.to), copy=copy, label=label)
 
     def step(self):
         """After a click."""
@@ -628,12 +656,18 @@ class Command:
     def move(self, index, pt):
         if self.gone():
             return
-        self.hover = pymupdf.Point(pt) if index == self.page or self.page is None else None
+        was = self.hover_page
+        on = index == self.page or self.page is None or (self.across and self.pts)
+        self.hover = pymupdf.Point(pt) if on else None
+        self.hover_page = index if on else None
+        if was is not None and was != index and 0 <= was < len(self.v.pages):
+            self.v.pages[was].update()
         self._repaint()
 
     def _repaint(self):
-        if self.page is not None and 0 <= self.page < len(self.v.pages):
-            self.v.pages[self.page].update()
+        for i in {self.page, self.hover_page}:
+            if i is not None and 0 <= i < len(self.v.pages):
+                self.v.pages[i].update()
 
     # ---- preview -------------------------------------------------------------------------
     def preview(self):
@@ -642,7 +676,9 @@ class Command:
         return [], None
 
     def paint(self, w, p):
-        if w.index != self.page:
+        elsewhere = self.across and self.pts and self.hover is not None and \
+            self.hover_page is not None and self.hover_page != self.page
+        if w.index != self.page and not (elsewhere and w.index == self.hover_page):
             return
         # page to screen worked out once (to_screen_pt reads the page for each point: a
         # big selection's outline took over a second to draw on each pointer move)
@@ -652,6 +688,19 @@ class Command:
             q = pymupdf.Point(q) * to
             return QPointF(q.x, q.y)
         mats, start = self.preview()
+        if elsewhere:
+            if w.index != self.hover_page:
+                mats, start = [], None
+            else:
+                # the outlines on the page the pointer is over: the selection's page as
+                # shown, moved there, then that page's screen
+                d = self.shift(self.hover, self.hover_page)
+                mats = [self.v.doc[self.page].rotation_matrix *
+                        pymupdf.Matrix(1, 0, 0, 1, d.x, d.y) *
+                        self.v.doc[w.index].derotation_matrix]
+                start = None
+        elif w.index != self.page:
+            return
         if mats and self.ghost:
             p.setPen(QPen(GHOST, 1, Qt.DashLine))
             if not hasattr(self, "_ghost_size"):
@@ -689,7 +738,7 @@ class Command:
             p.setPen(QPen(BAND, 1, Qt.DashLine))
             p.drawLine(sp(start), sp(self.hover))
         p.setPen(QPen(BAND, 1))
-        for q in self.pts:
+        for q in self.pts if w.index == self.page else ():
             c = QPointF(sp(q))
             p.drawLine(c + QPointF(-5, 0), c + QPointF(5, 0))
             p.drawLine(c + QPointF(0, -5), c + QPointF(0, 5))
@@ -697,20 +746,22 @@ class Command:
 
 class Move(Command):
     title = tr("Move")
+    across = True
 
     def ask(self):
         self.ui.show_for(self, tr("click the base point") if not self.pts else
-                         tr("click where it goes"))
+                         tr("click where it goes (on this page or another one)"))
 
     def step(self):
         if len(self.pts) == 2:
-            self.v.cad_apply(tr("Moved"), translate(self.pts[1] - self.pts[0]))
+            self.place(tr("Moved"), copy=False)
             self.finish()
         else:
             self.ask()
 
     def preview(self):
-        if len(self.pts) == 1 and self.hover is not None:
+        if len(self.pts) == 1 and self.hover is not None and \
+                self.hover_page in (None, self.page):
             return [translate(self.hover - self.pts[0])], self.pts[0]
         return [], None
 
@@ -718,21 +769,23 @@ class Move(Command):
 class Copy(Command):
     title = tr("Copy")
     made = 0
+    across = True
 
     def ask(self):
         if not self.pts:
             self.ui.show_for(self, tr("click the base point"))
         else:
-            self.ui.show_for(self, tr("click where a copy goes (Enter or Escape when done)"),
+            self.ui.show_for(self, tr("click where a copy goes, on this page or another one "
+                                      "(Enter or Escape when done)"),
                              choices=[(tr("Done"), "done")])
 
     def step(self):
         if len(self.pts) >= 2:
             rev = self.v.revision
-            self.v.cad_apply(tr("Copied"), None, copies=[translate(self.pts[-1] - self.pts[0])],
-                             keep=True)
-            if self.v.revision != rev:      # (the drawing's text alone isn't copied)
+            self.place(tr("Copied"), copy=True)
+            if self.v.revision != rev:
                 self.made += 1
+                self.rev = self.v.revision  # (its own copies don't end it: see gone)
         self.ask()
 
     def enter(self):
@@ -746,7 +799,7 @@ class Copy(Command):
         self.choose("done")
 
     def preview(self):
-        if self.pts and self.hover is not None:
+        if self.pts and self.hover is not None and self.hover_page in (None, self.page):
             return [translate(self.hover - self.pts[0])], self.pts[0]
         return [], None
 

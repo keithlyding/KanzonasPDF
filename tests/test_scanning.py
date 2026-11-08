@@ -610,6 +610,39 @@ def mdns_answer(qid, port):
 
 
 class Discovery(ServerCase):
+    def test_asking_one_address_doesnt_look_up_the_interfaces(self):
+        # (on a Mac, looking up the host name's addresses went over mDNS and took 35 s)
+        with mock.patch.object(net, "local_ipv4", side_effect=AssertionError("looked up")):
+            net.udp_exchange([(b"x", ("127.0.0.1", 9), 0.0)], 0.05)
+
+    def test_this_computers_addresses_are_read_quickly(self):
+        t0 = time.monotonic()
+        addrs = net.local_ipv4()
+        self.assertLess(time.monotonic() - t0, 3.0)
+        self.assertFalse([a for a in addrs if a.startswith("127.")])
+        if sys.platform == "darwin":                   # read from the interfaces themselves
+            route = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                route.connect(("192.0.2.1", 9))
+                own = route.getsockname()[0]
+            except OSError:
+                own = None
+            finally:
+                route.close()
+            found = net._interface_ipv4()
+            self.assertIn("127.0.0.1", found)
+            if own:
+                self.assertIn(own, found)
+
+    def test_a_send_that_fails_goes_into_the_log(self):
+        log = []
+        refused = OSError(65, "No route to host")
+        with mock.patch.object(socket.socket, "sendto", side_effect=refused):
+            got = net.udp_exchange([(b"x", ("127.0.0.1", 9), 0.0), (b"x", ("127.0.0.1", 9), 0.05)],
+                                   0.1, log=log)
+        self.assertEqual(got, [])
+        self.assertEqual(log, ["UDP: couldn't send to 127.0.0.1:9: [Errno 65] No route to host"])
+
     def test_mdns_answer_becomes_an_escl_device(self):
         def answer(data):
             qid = struct.unpack(">H", data[:2])[0]
@@ -617,8 +650,9 @@ class Discovery(ServerCase):
                     mdns_answer(qid, 8080)]
         port = udp_responder(answer, count=2)
         with mock.patch.object(scan_escl, "MDNS", ("127.0.0.1", port)):
-            found = scan_escl.browse(window=0.8, target="127.0.0.1")
-        self.assertEqual(len(found), 1)
+            log = []
+            found = scan_escl.browse(window=0.8, target="127.0.0.1", log=log)
+        self.assertEqual(len(found), 1, log)
         d = found[0]
         self.assertEqual((d.name, d.protocol, d.host), ("Dell Color MFP E525w", "escl", "127.0.0.1"))
         # reached at the address that answered, not the address the record names
@@ -646,7 +680,9 @@ class Discovery(ServerCase):
                     probe_matches(mid, "http://192.0.2.50:%d/dev" % http_port)]
         port = udp_responder(answer, count=3)
         with mock.patch.object(scan_wsd, "MULTICAST", ("127.0.0.1", port)):
-            scanners_, printers = scan_wsd.discover(window=0.8, target="127.0.0.1")
+            log = []
+            scanners_, printers = scan_wsd.discover(window=0.8, target="127.0.0.1", log=log)
+        self.assertTrue(seen, log)
         self.assertIn("<wsd:Types>wscn:ScanDeviceType</wsd:Types>", seen[0])
         self.assertEqual(printers, [])
         self.assertEqual(len(scanners_), 1)
@@ -1289,7 +1325,7 @@ class PanelScans(ServerCase):
         self.assertEqual(send_event(srv, context="not-ours"), 202)
         time.sleep(0.2)
         self.assertEqual(scans, [])
-        # from another address than the printer's
+        # from another address than the printer's: turned away before anything is read
         from kanzonas import scan_events
         other = scan_events.EventListener("10.9.9.9", lambda *a: scans.append(a), "127.0.0.1")
         other.start()
@@ -1297,10 +1333,12 @@ class PanelScans(ServerCase):
         import http.client
         _s, host, port, path = net.split_url(other.url)
         c = http.client.HTTPConnection(host, port, timeout=5)
-        c.request("POST", path, b"<a/>")
-        self.assertEqual(c.getresponse().status, 403)
+        with self.assertRaises((http.client.RemoteDisconnected, ConnectionError)):
+            c.request("POST", path, b"<a/>")
+            c.getresponse()
         c.close()
         self.assertEqual(scans, [])
+        self.assertIn("127.0.0.1 refused", other.log)
 
     def test_window_scans_when_the_printer_starts_it(self):
         srv, port = self.server(Wsd, pages=[picture(850, 1100)])

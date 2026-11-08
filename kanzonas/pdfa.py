@@ -21,11 +21,13 @@ in the check after saving, page by page.
 """
 
 import datetime
+import itertools
 import mimetypes
 import os
 import re
 import struct
 import uuid
+import zlib
 from xml.sax.saxutils import escape
 
 import pymupdf
@@ -387,6 +389,313 @@ _CMYK_OPS = re.compile(rb"(?:^|[\s\]>)])[kK](?=[\s/\[(<%]|$)|/DeviceCMYK\b|/CMYK
 _RGB_OPS = re.compile(rb"(?:^|[\s\]>)])(?:rg|RG)(?=[\s/\[(<%]|$)|/DeviceRGB\b|/RGB\b")
 
 
+# ---- pictures inside content streams (BI ... ID ... EI) --------------------------------------
+_INLINE_ABBR = {"AHx": "ASCIIHexDecode", "A85": "ASCII85Decode", "LZW": "LZWDecode",
+                "Fl": "FlateDecode", "RL": "RunLengthDecode", "CCF": "CCITTFaxDecode",
+                "DCT": "DCTDecode"}
+# the filters an inline picture's data is decoded through here (to rewrite it)
+_INLINE_PLAIN = {"ASCIIHexDecode", "ASCII85Decode", "LZWDecode", "FlateDecode",
+                 "RunLengthDecode"}
+_BI = re.compile(rb"(?:^|(?<=[\s\]>)}]))BI(?=[\s/])")
+_ID = re.compile(rb"[\s\]>)]ID[\s]")
+_EI = re.compile(rb"\sEI(?=[\s]|$)")
+_DICT_TOKEN = re.compile(rb"/([^\s/\[\]()<>{}%]+)|\[|\]|(-?[0-9.]+)|(true|false)")
+_NCOMP = {"G": 1, "DeviceGray": 1, "RGB": 3, "DeviceRGB": 3, "CMYK": 4, "DeviceCMYK": 4,
+          "I": 1, "Indexed": 1}
+
+
+def _lzw_decode(data, early=1):
+    """LZW-decoded data (as the PDF LZWDecode filter: 9 to 12 bit codes, 256 clear, 257
+    end)."""
+    out = bytearray()
+    table = [bytes([i]) for i in range(256)] + [b"", b""]
+    width, prev = 9, None
+    buf, nbits = 0, 0
+    for byte in data:
+        buf = (buf << 8) | byte
+        nbits += 8
+        while nbits >= width:
+            nbits -= width
+            code = (buf >> nbits) & ((1 << width) - 1)
+            buf &= (1 << nbits) - 1
+            if code == 256:
+                table = table[:258]
+                width, prev = 9, None
+                continue
+            if code == 257:
+                return bytes(out)
+            if code < len(table):
+                entry = table[code]
+                if prev is not None:
+                    table.append(prev + entry[:1])
+            elif prev is not None and code == len(table):
+                entry = prev + prev[:1]
+                table.append(entry)
+            else:
+                raise ValueError("bad LZW code")
+            out += entry
+            prev = entry
+            if len(table) + early >= (1 << width) and width < 12:
+                width += 1
+    return bytes(out)
+
+
+class _InlineImage:
+    """One picture in a content stream: where it is (start: BI, end: after EI, None when the
+    end of its data couldn't be told), its dictionary's entries."""
+
+    def __init__(self, start, dict_start, dict_end, data_start):
+        self.start, self.dict_start, self.dict_end = start, dict_start, dict_end
+        self.data_start, self.data_end, self.end = data_start, None, None
+        self.entries = []               # [(key, value tokens)]
+
+    def get(self, *keys):
+        for k, v in self.entries:
+            if k in keys:
+                return v
+        return None
+
+    @property
+    def filters(self):
+        v = self.get("F", "Filter") or []
+        return [_INLINE_ABBR.get(f, f) for f in v if isinstance(f, str) and f not in "[]"]
+
+    @property
+    def interpolate(self):
+        return (self.get("I", "Interpolate") or [False])[0] is True
+
+    @property
+    def mask(self):
+        return (self.get("IM", "ImageMask") or [False])[0] is True
+
+    @property
+    def bpc(self):
+        v = self.get("BPC", "BitsPerComponent")
+        return int(v[0]) if v and isinstance(v[0], float) else (1 if self.mask else None)
+
+    def expected(self):
+        """The decoded data's length, or None when the color space doesn't tell."""
+        w, h = self.get("W", "Width"), self.get("H", "Height")
+        cs = self.get("CS", "ColorSpace")
+        n = 1 if self.mask else (_NCOMP.get(cs[0]) if cs and isinstance(cs[0], str) and
+                                 len(cs) == 1 else None)
+        if cs and len(cs) > 1 and cs[0] == "[" and cs[1] in ("I", "Indexed"):
+            n = 1
+        if not (w and h and n and self.bpc) or not isinstance(w[0], float) or \
+                not isinstance(h[0], float):
+            return None
+        return int(h[0]) * ((int(w[0]) * n * self.bpc + 7) // 8)
+
+    def decode(self, raw):
+        """raw (the data as written) through its filters, or None."""
+        import base64
+        params = self.get("DP", "DecodeParms") or []
+        early = 1
+        if "EarlyChange" in params:
+            i = params.index("EarlyChange")
+            early = int(params[i + 1]) if i + 1 < len(params) else 1
+        data = raw
+        try:
+            for f in self.filters:
+                if f == "ASCIIHexDecode":
+                    t = bytes(c for c in data if c not in b" \t\r\n\f\0")
+                    t = t.split(b">")[0]
+                    data = bytes.fromhex((t + (b"0" if len(t) % 2 else b"")).decode())
+                elif f == "ASCII85Decode":
+                    t = bytes(c for c in data if c not in b" \t\r\n\f\0")
+                    data = base64.a85decode(t.split(b"~>")[0].lstrip(b"<~"))
+                elif f == "LZWDecode":
+                    data = _lzw_decode(data, early)
+                elif f == "FlateDecode":
+                    data = zlib.decompressobj().decompress(data)
+                elif f == "RunLengthDecode":
+                    out, i = bytearray(), 0
+                    while i < len(data) and data[i] != 128:
+                        n = data[i]
+                        if n < 128:
+                            out += data[i + 1:i + 2 + n]
+                            i += n + 2
+                        else:
+                            out += data[i + 1:i + 2] * (257 - n)
+                            i += 2
+                    data = bytes(out)
+                else:
+                    return None
+        except Exception:
+            return None
+        return data
+
+    def rewritten(self, stream):
+        """The picture written again: no smoothing, its data compressed with Flate (no LZW),
+        or None when its data can't be decoded."""
+        raw = stream[self.data_start:self.data_end]
+        data = self.decode(raw)
+        if data is None:
+            return None
+        params = self.get("DP", "DecodeParms")
+        predictor = params and "Predictor" in params
+        keep = []
+        for k, v in self.entries:
+            if k in ("F", "Filter", "I", "Interpolate", "L", "Length") or \
+                    (k in ("DP", "DecodeParms") and not predictor):
+                continue
+            if k in ("DP", "DecodeParms"):
+                v = [t for i, t in enumerate(v)
+                     if t != "EarlyChange" and (i == 0 or v[i - 1] != "EarlyChange")]
+            keep.append((k, v))
+        text = []
+        for k, v in keep:
+            text.append("/" + k)
+            for t in v:
+                if t in ("[", "]", "<<", ">>"):
+                    text.append(t)
+                elif isinstance(t, bool):
+                    text.append("true" if t else "false")
+                elif isinstance(t, float):
+                    text.append(("%d" % t) if t == int(t) else repr(t))
+                elif isinstance(t, tuple):
+                    text.append(t[1].decode("latin-1"))     # (a palette, as written)
+                else:
+                    text.append("/" + t)
+        text.append("/F /Fl")       # (a predictor kept: it works the same with Flate)
+        return b"BI " + " ".join(text).encode("latin-1") + b" ID " + \
+            zlib.compress(data) + b"\nEI"
+
+
+def _parse_dict(text):
+    """[(key, [value tokens])] of an inline picture's dictionary text: names as str,
+    numbers as float, true / false as bool, brackets as "[", "]" (also << >>)."""
+    entries, cur = [], None
+    depth = 0
+    i = 0
+    toks = []
+    while i < len(text):
+        c = text[i:i + 1]
+        if c in (b" ", b"\t", b"\r", b"\n", b"\f", b"\0"):
+            i += 1
+            continue
+        if text[i:i + 2] in (b"<<", b">>"):
+            toks.append(text[i:i + 2].decode())
+            i += 2
+            continue
+        if c in (b"[", b"]"):
+            toks.append(c.decode())
+            i += 1
+            continue
+        if c == b"<":                       # a hex string (an Indexed palette)
+            j = text.find(b">", i)
+            toks.append(("hex", text[i:j + 1]))
+            i = j + 1 if j >= 0 else len(text)
+            continue
+        if c == b"(":                       # a string (a palette): skip it whole
+            j, level = i + 1, 1
+            while j < len(text) and level:
+                if text[j:j + 1] == b"\\":
+                    j += 2
+                    continue
+                level += {b"(": 1, b")": -1}.get(text[j:j + 1], 0)
+                j += 1
+            toks.append(("str", text[i:j]))
+            i = j
+            continue
+        mo = _DICT_TOKEN.match(text, i)
+        if mo is None:
+            i += 1
+            continue
+        if mo.group(1) is not None:
+            toks.append(mo.group(1).decode("latin-1"))
+        elif mo.group(2) is not None:
+            try:
+                toks.append(float(mo.group(2)))
+            except ValueError:
+                pass
+        else:
+            toks.append(mo.group(3) == b"true")
+        i = mo.end()
+    # keys are the names at depth 0 in key position
+    k = 0
+    while k < len(toks):
+        key = toks[k]
+        if not isinstance(key, str) or key in ("[", "]", "<<", ">>"):
+            k += 1
+            continue
+        k += 1
+        val = []
+        depth = 0
+        while k < len(toks):
+            t = toks[k]
+            val.append(t)
+            k += 1
+            if t in ("[", "<<"):
+                depth += 1
+            elif t in ("]", ">>"):
+                depth -= 1
+            if depth <= 0:
+                break
+        entries.append((key, val))
+    return entries
+
+
+_QQ = re.compile(rb"(?:^|(?<=[\s\]>)}]))([qQ])(?=[\s\[/(<%]|$)")
+
+
+def _nesting(data):
+    """The deepest q ... Q nesting in a content stream's data."""
+    depth = deepest = 0
+    for mo in _QQ.finditer(data):
+        if mo.group(1) == b"q":
+            depth += 1
+            deepest = max(deepest, depth)
+        elif depth:
+            depth -= 1
+    return deepest
+
+
+def _inline_images(data):
+    """[_InlineImage] in a content stream's data, in order."""
+    out = []
+    pos = 0
+    while True:
+        mo = _BI.search(data, pos)
+        if mo is None:
+            return out
+        idm = _ID.search(data, mo.end())
+        if idm is None:
+            return out
+        img = _InlineImage(mo.start(), mo.end(), idm.start() + 1, idm.end())
+        try:
+            img.entries = _parse_dict(data[mo.end():idm.start() + 1])
+        except Exception:
+            img.entries = []
+        out.append(img)
+        # where the data ends: unfiltered, its length; else the first "EI" after which the
+        # data decodes to what the picture needs
+        want = img.expected()
+        if not img.filters and want is not None:
+            c = _EI.search(data, img.data_start + want)
+            if c is not None:
+                img.data_end, img.end = c.start(), c.end()
+        else:
+            spent = 0
+            for c in itertools.islice(_EI.finditer(data, img.data_start), 64):
+                spent += c.start() - img.data_start
+                if spent > (4 << 20):
+                    break           # (a picture's data with many "EI" in it: not decoded)
+                got = img.decode(data[img.data_start:c.start()]) \
+                    if all(f in _INLINE_PLAIN for f in img.filters) else None
+                if got is not None and (want is None or len(got) >= want):
+                    img.data_end, img.end = c.start(), c.end()
+                    break
+        if img.end is None:
+            # (an end not found: carry on after the first EI, reported only)
+            c = _EI.search(data, img.data_start)
+            if c is None:
+                return out
+            pos = c.end()
+        else:
+            pos = img.end
+
+
 # ---- problems ------------------------------------------------------------------------------
 class Problem:
     """One thing that keeps the document from being PDF/A: kind (see kind_labels), page
@@ -472,6 +781,7 @@ class _Pass:
         self._pages()
         self._objects()
         self._colors()
+        self._inline_images()
         self._attachments()
         if self.fix:
             self._finish()
@@ -937,17 +1247,45 @@ class _Pass:
                 o = todo.pop()
                 if m.pdf_is_dict(o):
                     self._dict(xref, o, page, o is obj)
-                    todo.extend(v for _k, v in _items(o)
-                                if not m.pdf_is_indirect(v) and (m.pdf_is_dict(v) or
-                                                                 m.pdf_is_array(v)))
+                    for k, v in _items(o):
+                        if m.pdf_is_indirect(v):
+                            continue
+                        if m.pdf_is_dict(v) or m.pdf_is_array(v):
+                            todo.append(v)
+                        elif m.pdf_is_string(v) or m.pdf_is_name(v):
+                            self._limits(v, page)
+                        if len(k) > 127:
+                            self._limits(None, page, name=k)
                 elif m.pdf_is_array(o):
                     self._array(o, page)
                     for k in range(m.pdf_array_len(o)):
                         v = m.pdf_array_get(o, k)
-                        if not m.pdf_is_indirect(v) and (m.pdf_is_dict(v) or m.pdf_is_array(v)):
+                        if m.pdf_is_indirect(v):
+                            continue
+                        if m.pdf_is_dict(v) or m.pdf_is_array(v):
                             todo.append(v)
+                        elif m.pdf_is_string(v) or m.pdf_is_name(v):
+                            self._limits(v, page)
+                elif m.pdf_is_string(o) or m.pdf_is_name(o):
+                    self._limits(o, page)
         for job in self.font_jobs:
             job()
+
+    def _limits(self, v, page, name=None):
+        """6.1.13: no string longer than 32,767 bytes, no name longer than 127 (reported:
+        they can't be shortened without losing what they say)."""
+        if name is None and m.pdf_is_string(v):
+            if m.pdf_to_str_len(v) <= 32767:
+                return
+            text = tr("A text in the file (a comment's, perhaps) is longer than PDF/A allows "
+                      "(32,767 bytes).")
+        else:
+            if name is None:
+                name = m.pdf_to_name(v)
+            if len(name.encode("utf-8")) <= 127:
+                return
+            text = tr("A name in the file is longer than PDF/A allows (127 bytes).")
+        self.problem("file", page, text, False)
 
     def _stream(self, xref, obj, page):
         filters = _filters(obj)
@@ -1377,6 +1715,62 @@ class _Pass:
             for device in found:
                 if not _has(cs, "Default" + device[6:]):
                     m.pdf_dict_puts(cs, "Default" + device[6:], self._icc_space(device))
+
+    # -- pictures inside the content (6.1.10, 6.2.8)
+    def _inline_images(self):
+        """Pictures written into a page's content (or a drawing's) rather than as objects
+        of their own (BI ... ID ... EI): the same rules as other pictures, with their own
+        abbreviations. LZW compression (6.1.10) and smoothing (/I true, 6.2.8) went
+        through unnoticed, and Save as PDF/A said the copy was PDF/A when it wasn't. Both
+        are fixed (the picture's data decoded and compressed again with Flate); a picture
+        whose data can't be told apart from the content around it is only reported."""
+        self._content_xrefs()
+        done = set()
+        for xref, page, _holder in self.content_streams:
+            if xref in done:
+                continue
+            done.add(xref)
+            self._tick()
+            try:
+                data = self.doc.xref_stream(xref)
+            except Exception:
+                continue
+            if data and data.count(b"q") > 28 and _nesting(data) > 28:
+                # 6.1.13: no more than 28 levels of saved graphics states (q ... Q)
+                self.problem("graphics", page, tr(
+                    "Drawing instructions are nested deeper than PDF/A allows (28 levels)."),
+                    False)
+            if not data or b"BI" not in data:
+                continue
+            out, changed = [], False
+            pos = 0
+            for img in _inline_images(data):
+                bad_lzw = "LZWDecode" in img.filters
+                smooth = img.interpolate
+                bits = img.bpc is not None and (
+                    (img.mask and img.bpc != 1) or
+                    (not img.mask and img.bpc not in (1, 2, 4, 8, 16)))
+                if bits:
+                    self.problem("graphics", page, tr(
+                        "A picture has a number of bits per color PDF/A doesn't allow."), False)
+                fixable = img.end is not None and \
+                    all(f in _INLINE_PLAIN for f in img.filters)
+                if bad_lzw:
+                    self.problem("file", page, tr("Part of the file uses LZW compression, "
+                                                  "which PDF/A doesn't allow."), fixable)
+                if smooth:
+                    self.problem("graphics", page, tr(
+                        "A picture is set to be smoothed when enlarged (Interpolate)."),
+                        fixable)
+                if self.fix and fixable and (bad_lzw or smooth):
+                    new = img.rewritten(data)
+                    if new is not None:
+                        out += [data[pos:img.start], new]
+                        pos = img.end
+                        changed = True
+            if changed:
+                out.append(data[pos:])
+                self.doc.update_stream(xref, b"".join(out))
 
     # -- attached files (6.8)
     def _attachments(self):

@@ -13,6 +13,7 @@ import math
 import os
 import re
 import sys
+import unicodedata
 
 import pymupdf
 
@@ -258,6 +259,25 @@ def line_at(lines, pt):
     if not hits:
         return None
     return min(hits, key=lambda h: h[0].get_area())
+
+
+def right_to_left(text):
+    """True when text has letters written right to left (Hebrew, Arabic...)."""
+    return any(c > "\u058f" and unicodedata.bidirectional(c) in ("R", "AL") for c in text or "")
+
+
+def refuse_right_to_left(*texts):
+    """Raise ValueError when one of texts is written right to left. A page's letters are
+    written left to right, one after another, unshaped: Hebrew and Arabic came out in the
+    wrong order (and Arabic's letters unjoined), and a line edited, moved or replaced in
+    was rewritten backwards from where it started, off the page's edge."""
+    if any(right_to_left(t) for t in texts):
+        raise ValueError(right_to_left_message())
+
+
+def right_to_left_message():
+    return tr("Text written right to left (Hebrew, Arabic...) can't be rewritten here yet: "
+              "it would come out in the wrong order. Nothing was changed.")
 
 
 def line_text(line):
@@ -717,16 +737,30 @@ def _fontconfig_family(family):
 
 
 def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
-             color=(0, 0, 0), wrap_width=None, runs=None):
+             color=(0, 0, 0), wrap_width=None, runs=None, mark=True):
     """Add text: write text into the page itself (not an annotation) with its first baseline
     at origin (unrotated page coordinates), reading upright as the page is displayed.
     family "" = Helvetica, which every PDF reader has built in. runs: [(text,
     text_styles.Style)] making up text, when some words have a style of their own (bold,
-    color, underline...). Returns the font name used. Raises ValueError (before changing
-    anything) if no font can write the text."""
+    color, underline...). mark: remembered as one block (added_text: Edit text opens all
+    of it, wrapped as it was). Returns the font name used. Raises ValueError (before
+    changing anything) if no font can write the text."""
+    from . import added_text
+    with added_text.marking(page) as mk:
+        name, rows, step = _add_text(page, origin, text, family, bold, italic, size, color,
+                                     wrap_width, runs)
+        if mark:
+            mk["props"] = added_text.props_of(origin, page.rotation, wrap_width, step, rows)
+    return name
+
+
+def _add_text(page, origin, text, family, bold, italic, size, color, wrap_width, runs):
+    """add_text's writing: (font name, the lines written as text_styles.write_lines gives
+    them, baseline to baseline)."""
     if any(ord(c) > 0xFFFF for c in text):
         raise ValueError(tr("Emoji and other characters beyond U+FFFF can't be written into "
                             "a PDF page here. Remove them and try again."))
+    refuse_right_to_left(text)
     if runs is not None:
         from . import text_styles
         rtext, keys = text_styles.keys_of(runs)
@@ -735,9 +769,9 @@ def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
             fonts, text, keys = text_styles.resolve_all(page, text, keys)
             fonts = text_styles.reinsert(page, fonts)
             main = text_styles.main_style(text, keys)
-            text_styles.write_lines(page, origin, page.rotation, list(zip(text, keys)), fonts,
-                                    1.2 * main.size, wrap_width)
-            return text_styles.used_name(fonts, main)
+            rows = text_styles.write_lines(page, origin, page.rotation, list(zip(text, keys)),
+                                           fonts, 1.2 * main.size, wrap_width)
+            return text_styles.used_name(fonts, main), rows, 1.2 * main.size
     found = chosen_font(page, family, bold, italic, text)
     if found is None and not _winansi_ok(text):
         # the chosen font (or Helvetica) lacks some characters: a font that has them
@@ -753,12 +787,16 @@ def add_text(page, origin, text, family="", bold=False, italic=False, size=12.0,
     else:
         fontname = _BASE14_STYLE[(bool(bold), bool(italic))]
         font = pymupdf.Font(fontname)
-    lines = _wrap(text, font, size, wrap_width) if wrap_width else text.split("\n")
-    page.insert_text(pymupdf.Point(origin), "\n".join(lines), fontsize=size, fontname=fontname,
-                     color=color, rotate=page.rotation, lineheight=1.2)
+    rows = []
+    for para in text.split("\n"):
+        part = _wrap(para, font, size, wrap_width) if wrap_width else [para]
+        rows += [(r, i == 0, i == len(part) - 1) for i, r in enumerate(part)]
+    page.insert_text(pymupdf.Point(origin), "\n".join(r[0] for r in rows), fontsize=size,
+                     fontname=fontname, color=color, rotate=page.rotation, lineheight=1.2)
     if found:
         _fix_spaces(page, fontname, font)
-    return fontname
+    step = 1.2 * float(size)
+    return fontname, [(k * step, first, last) for k, (_r, first, last) in enumerate(rows)], step
 
 
 def _pick_font(page, span, text):
@@ -853,6 +891,8 @@ def _remove_lines(page, lines, keep_links=True, decor=()):
         page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
                               graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
                               text=pymupdf.PDF_REDACT_TEXT_NONE)
+    from . import added_text
+    added_text.prune(page)              # (a block whose letters all went is no block)
     if saved:
         have = {x for x, _k, *_ in page.annot_xrefs()}
         lost = [(x, src) for x, src in saved if x not in have]
@@ -877,11 +917,22 @@ def _remove_lines(page, lines, keep_links=True, decor=()):
 def delete_lines(page, lines, keep_links=False):
     """Take these lines of text out of the page; pictures and line art stay. Links on them
     go too, unless keep_links."""
+    refuse_with_marks(page, deleting=True)
+    _remove_lines(page, lines, keep_links)
+
+
+def refuse_with_marks(page, deleting=False):
+    """Raise ValueError when page has redaction marks not applied yet: taking text out of a
+    page applies every redaction mark on it, pending ones included. An edit that also changes
+    other things checks this before changing anything (an edit refused after a change is
+    taken back, but MuPDF has dropped the steps to redo by then)."""
     from .annotations import each_annot
     if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
+        if deleting:
+            raise ValueError(tr("Apply or remove the redaction marks on this page before "
+                                "deleting its text."))
         raise ValueError(tr("Apply or remove the redaction marks on this page before "
-                            "deleting its text."))
-    _remove_lines(page, lines, keep_links)
+                            "editing its text."))
 
 
 def _font_for(page, span, text):
@@ -1451,6 +1502,7 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
     written). Raises ValueError (before changing anything) if no font can write it."""
     main = paragraph_layout(lines)["span"]
     text = new_text.strip()
+    refuse_right_to_left(paragraph_text(lines), text)
     found = None
     keys = _styled_text(runs, text, main, font, size) if runs is not None and text else None
     if keys is not None:
@@ -1485,7 +1537,7 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
         return None, pymupdf.Rect(), []
     if keys is not None:
         return _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset,
-                                       step)
+                                       step, size)
     if found:
         fontname, fnt, source = found
         fontname = _insert_font(page, fontname, **source)
@@ -1493,10 +1545,11 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
         fontname = _base14(main)
         fnt = pymupdf.Font(fontname)
     width = wrap_width or lay["width"]
+    fit = _fit_width(width, wrap_width, size)
     indent = lay["first_left"] - lay["left"]         # the first line's own start
     rows = []
     for part in text.split("\n"):                    # Shift+Enter: a new paragraph
-        wrapped = _wrap_indented(part, fnt, size, width, indent)
+        wrapped = _wrap_indented(part, fnt, size, fit, indent)
         rows += [(r, i == 0, i == len(wrapped) - 1) for i, r in enumerate(wrapped)]
     color = _rgb(main["color"])
     left, right = lay["left"] + offset[0], lay["left"] + offset[0] + width
@@ -1529,22 +1582,39 @@ def replace_paragraph(page, lines, new_text, wrap_width=None, font=None, size=No
                                   y - step + size * 0.25), bases
 
 
-def _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset, step):
+def _fit_width(width, wrap_width, size):
+    """The width a paragraph's words are wrapped to. Its own width (wrap_width None) is
+    that of its longest line as the page measures it, in the PDF's glyph widths (often
+    rounded, in thousandths of the size); the font measures the same words a little wider,
+    so that line, written again, didn't fit any more: every edit pushed a word down and the
+    paragraph got narrower and longer with each one. A little room keeps the lines as they
+    were (less than a space and the shortest word: a word that didn't fit still doesn't)."""
+    return width if wrap_width else width + 0.12 * float(size)
+
+
+def _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset, step, size):
     """replace_paragraph's writing, each run in its own style (text_styles)."""
     from . import text_styles
     fonts = text_styles.reinsert(page, fonts)
     main = text_styles.main_style(text, keys)
     width = wrap_width or lay["width"]
     indent = lay["first_left"] - lay["left"]
-    rows = text_styles.wrap(list(zip(text, keys)), fonts, width, indent)
+    rows = text_styles.wrap(list(zip(text, keys)), fonts, _fit_width(width, wrap_width, size),
+                            indent)
     left, right = lay["left"] + offset[0], lay["left"] + offset[0] + width
     y = lay["first"] + offset[1]
     top = y - max(k.size for k in keys)
     bases = []
     shape = page.new_shape()
+    prev = None
     for row, first, last in rows:
-        bases.append(y)
         row = text_styles.strip_row(row)
+        cur = text_styles.row_size(row, size)
+        if prev is not None:
+            # (farther apart where words in larger letters need the room)
+            y += text_styles.advance(step, size, prev, cur)
+        prev = cur
+        bases.append(y)
         start = left + indent if first else left
         spread = None
         if lay["align"] == "justify" and not last and \
@@ -1556,38 +1626,68 @@ def _write_styled_paragraph(page, lay, text, keys, fonts, wrap_width, offset, st
             "right": right - length, "center": (left + right - length) / 2}.get(
                 lay["align"], start)
         text_styles.write_row(shape, pymupdf.Point(x, y), 0, ps, fonts)
-        y += step
     shape.commit(True)
     text_styles.fix_spaces(page, fonts)
     tail = max(k.size for k in keys) * 0.25
-    box = pymupdf.Rect(min(left, left + indent), top, right, y - step + tail)
+    box = pymupdf.Rect(min(left, left + indent), top, right, y + tail)
     return text_styles.used_name(fonts, main), box, bases
 
 
-def move_lines(page, lines, offset):
+def move_lines(page, lines, offset, blocks=()):
     """Move these lines of the page's text by offset (points), each in its own font, size and
     color, as replace_line(page, line, its own text, offset, scan=None) does one by one, but
     with one redaction for all of them: one at a time, a drawing's 400 labels took most of a
-    minute. Returns the font names written with. Raises ValueError (before changing anything)
-    if a line can't be written."""
-    from .annotations import each_annot
-    if any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in each_annot(page)):
-        raise ValueError(tr("Apply or remove the redaction marks on this page before "
-                            "editing its text."))
+    minute. blocks: the marked blocks (added_text.Block) among them: each stays one block,
+    marked where it now is. Returns the font names written with. Raises ValueError (before
+    changing anything) if a line can't be written."""
+    refuse_with_marks(page)
     plans = []
+    styled, decor = [], []
     for line in lines:                  # 1) the fonts first: nothing goes if one can't write
         text = line_text(line)
         if not text.strip():
             continue
+        refuse_right_to_left(text)
+        if mixed_styles(line):
+            # words in styles of their own (bold, colors, invisible words): each kept, as
+            # dragging the line with Edit text does (written in the line's main style, a
+            # hidden word showed)
+            from . import text_styles
+            st = text_styles.read_line(page, line)
+            fonts, t, keys = text_styles.resolve_all(page, st.text, st.keys)
+            styled.append((line, t, keys, fonts))
+            decor += st.decor
+            continue
         main = main_span(line)
         found, text = _font_for(page, main, text)
         plans.append((line, text, main, found))
-    _remove_lines(page, lines)          # 2) all their letters out at once
+    _remove_lines(page, lines, decor=decor)     # 2) all their letters out at once
     inserted = {}                       # font name -> (name written with, Font)
     used = []
     # one drawing for all of them, added to the page once (page.insert_text adds each
-    # line on its own, reading the whole page each time: most of the time on a big sheet)
+    # line on its own, reading the whole page each time: most of the time on a big sheet);
+    # one for each marked block, which is marked again where it now is
     shape = page.new_shape()
+    owner = {id(ln): k for k, b in enumerate(blocks) for _r, ln in b.lines}
+    shapes = {}
+
+    def shape_for(line):
+        k = owner.get(id(line))
+        if k is None:
+            shapes.setdefault(None, shape)
+            return shape
+        if k not in shapes:
+            shapes[k] = page.new_shape()
+        return shapes[k]
+    for line, text, keys, fonts in styled:
+        from . import text_styles
+        fonts = text_styles.reinsert(page, fonts)
+        origin = pymupdf.Point(line["spans"][0]["origin"]) + offset
+        text_styles.write_row(shape_for(line), origin, line_rotation(line),
+                              text_styles.pieces(list(zip(text, keys)), fonts), fonts)
+        inserted.update({f.name: (f.name, f.font) for f in fonts.values()
+                         if f.source is not None})
+        used.append(text_styles.used_name(fonts, text_styles.main_style(text, keys)))
     for line, text, main, found in plans:   # 3) each written again, moved
         if found:
             fontname, font, source = found
@@ -1598,14 +1698,38 @@ def move_lines(page, lines, offset):
         else:
             name = _base14(main)
         origin = pymupdf.Point(line["spans"][0]["origin"]) + offset
-        shape.insert_text(origin, text, fontsize=float(main["size"]), fontname=name,
-                          color=_rgb(main["color"]), rotate=line_rotation(line), lineheight=1.2)
+        shape_for(line).insert_text(origin, text, fontsize=float(main["size"]), fontname=name,
+                                    color=_rgb(main["color"]), rotate=line_rotation(line),
+                                    lineheight=1.2)
         used.append(name)
-    if plans:
-        shape.commit(True)
+    from . import added_text
+    for k, sh in shapes.items():
+        if k is None:
+            sh.commit(True)
+            continue
+        with added_text.marking(page) as mk:
+            sh.commit(True)
+            p = dict(blocks[k].props)
+            p["origin"] = pymupdf.Point(p["origin"]) + offset
+            mk["props"] = p
     for name, font in inserted.values():
         _fix_spaces(page, name, font)
     return used
+
+
+def mixed_styles(line):
+    """True when a line's words aren't all in one style (font, size, color, bold, italic),
+    or some are invisible or see-through: written again in the line's main style, they
+    would lose theirs (and a hidden word would show)."""
+    seen = set()
+    for s in line["spans"]:
+        if not s["text"].strip():
+            continue
+        alpha = s.get("alpha", 255)
+        if alpha != 255:
+            return True
+        seen.add((s["font"], round(s["size"], 1), s["color"], s["flags"] & (_ITALIC | _BOLD)))
+    return len(seen) > 1
 
 
 def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None, size=None,
@@ -1634,6 +1758,7 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
         # removing the old text applies every redaction on the page, pending ones included
         raise ValueError(tr("Apply or remove the redaction marks on this page before "
                             "editing its text."))
+    refuse_right_to_left(line_text(line), new_text)
 
     if scan == "auto":
         try:
@@ -1657,6 +1782,13 @@ def replace_line(page, line, new_text, offset=(0, 0), wrap_width=None, font=None
     found = None
     builtin = None                      # a built-in PDF font matched to the scan
     keys = None
+    if runs is None and not scan and new_text.strip() and mixed_styles(line):
+        # (Replace text: the words kept keep their styles, a hidden word stays hidden)
+        from . import text_styles
+        styled = text_styles.read_line(page, line)
+        runs = text_styles.runs_of(new_text, text_styles.restyle(
+            styled.text, styled.keys, new_text, styled.main))
+        decor = styled.decor
     if runs is not None and not scan and new_text.strip():
         keys = _styled_text(runs, new_text, main, font, size, strip=False)
     if keys is not None:

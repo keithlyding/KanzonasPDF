@@ -53,7 +53,8 @@ def default_size():
 def build_pdf(pages):
     """A new PDF of scanned pages (main thread only). A picture page is its scanned size (its
     pixels at the resolution it was scanned at; a file from a watched folder keeps its own
-    size); JPEG pictures stay JPEG inside (no quality loss)."""
+    size); JPEG pictures stay JPEG inside (no quality loss). A PDF's pages come without
+    their links, form fields and comments."""
     out = pymupdf.open()
     try:
         for p in pages:
@@ -66,8 +67,12 @@ def build_pdf(pages):
                             out.page_count + src.page_count > 5 * net.MAX_PAGES:
                         raise ScanError(tr("Too many pages in one scan (more than {n}).").format(
                             n=net.MAX_PAGES))
-                    out.insert_pdf(src)
+                    # (its pages' drawing only: a PDF from the network or a shared folder
+                    # can carry links that run a script or a program, form fields and
+                    # comments, which a scanned page has no business bringing in)
+                    out.insert_pdf(src, links=False, annots=False, widgets=False)
                 continue
+            net.check_total(p.sizes)        # (before anything is decoded)
             img = pymupdf.open(stream=p.data, filetype=p.kind)
             pdf = pymupdf.open("pdf", img.convert_to_pdf())
             img.close()
@@ -173,12 +178,16 @@ class ScanDialog(QDialog):
         self.ocr = QCheckBox(tr("Make the pages searchable (recognize text, OCR)"))
         form.addRow("", self.ocr)
         lay.addLayout(form)
+        # (plain text: device names, faults and file names come from the network, and a
+        # label would otherwise take "<b>" or "<img ...>" in them for formatting)
         self.status = QLabel()
+        self.status.setTextFormat(Qt.PlainText)
         self.status.setWordWrap(True)
         self.status.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status.setMinimumHeight(48)
         lay.addWidget(self.status)
         self.panel_note = QLabel()
+        self.panel_note.setTextFormat(Qt.PlainText)
         self.panel_note.setWordWrap(True)
         self.panel_note.setStyleSheet("color: gray;")
         self.panel_note.setVisible(False)
@@ -589,7 +598,13 @@ class ScanDialog(QDialog):
         for path, page, err in result:
             if page is not None:
                 try:
-                    build_pdf([page]).close()    # (it opens: checked before it's added)
+                    # (it opens: checked before it's added, and kept as the PDF pages made
+                    # here, so Done doesn't decode its pictures again)
+                    built = build_pdf([page])
+                    try:
+                        page = net.Page(built.tobytes(), "pdf", 0, [])
+                    finally:
+                        built.close()
                 except Exception as ex:
                     err = ex
             if err is not None:

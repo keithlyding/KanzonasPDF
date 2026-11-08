@@ -18,7 +18,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
-from kanzonas import print_production as pp  # noqa: E402
+from kanzonas import i18n, print_production as pp  # noqa: E402
 from kanzonas.document_view import DocumentView  # noqa: E402
 from kanzonas.print_dialog import PrintDialog  # noqa: E402
 
@@ -163,6 +163,36 @@ class Check(unittest.TestCase):
         self.assertEqual({i for k, i, _t in found if k == "boxes"}, {0})   # (page 2 has both)
         low = [t for k, _i, t in found if k == "pictures"][0]
         self.assertIn("14 pixels per inch", low)                  # 60 px / (300/72) in
+
+    def test_one_page_and_one_line_are_singular(self):
+        d = pymupdf.open()
+        for _ in range(2):
+            d.new_page(width=612, height=792)
+        p = d.new_page(width=1224, height=792)
+        p.draw_line((72, 400), (500, 400), width=0.1)               # (one hairline)
+        found = pp.check(d)
+        sizes = sorted(t for k, _i, t in found if k == "sizes")
+        self.assertTrue(sizes[0].startswith("1 page of 1224 × 792 pt"), sizes)
+        self.assertTrue(sizes[0].endswith(": page 3"), sizes)
+        self.assertTrue(sizes[1].startswith("2 pages of 612 × 792 pt"), sizes)
+        self.assertTrue(sizes[1].endswith(": pages 1, 2"), sizes)
+        thin = [t for k, _i, t in found if k == "hairlines"]
+        self.assertEqual(thin, ["1 line thinner than 0.25 pt (Fix hairlines widens it)"])
+        es = i18n.load("es")                                        # (and in Spanish)
+        self.assertEqual(es["{n} page of {w} × {h} pt ({inch}): page {pages}"],
+                         "{n} página de {w} × {h} pt ({inch}): página {pages}")
+
+    def test_the_boxes_shown_have_their_own_names(self):
+        # (View > Show page boxes: "Trim" alone is the CAD command, a verb in Spanish)
+        es = i18n.load("es")
+        self.assertEqual([es[k] for k in ("Trim box", "Bleed box", "Art box")],
+                         ["Recorte final", "Sangrado", "Arte"])
+        self.assertEqual(es["Trim"], "Recortar")
+        import inspect
+        from kanzonas.page_widget import PageWidget
+        src = inspect.getsource(PageWidget._paint_page_boxes)
+        self.assertIn('tr("Trim box")', src)
+        self.assertNotIn('tr("Trim")', src)
 
     def test_a_clean_page_has_nothing(self):
         d = pymupdf.open()
