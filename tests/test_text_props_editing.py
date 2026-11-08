@@ -24,6 +24,10 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
+from tests.qt_fonts import ensure_font  # noqa: E402
+
+ensure_font()      # (Windows' offscreen Qt has no font: texts measure 0 px)
+
 from kanzonas import annotations, text_edit, text_styles  # noqa: E402
 from kanzonas.main_window import MainWindow  # noqa: E402
 from tests.test_undo_journal import canon  # noqa: E402
