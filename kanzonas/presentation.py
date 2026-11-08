@@ -13,6 +13,7 @@ kept (the next one drawn while the current one is on screen), so a page turns at
 from collections import OrderedDict
 
 import pymupdf
+import shiboken6
 from PySide6.QtCore import Qt, QTimer, QPointF, QRectF, Signal
 from PySide6.QtGui import QColor, QImage, QPainter, QPixmap, QRadialGradient, QCursor
 from PySide6.QtWidgets import QWidget
@@ -34,8 +35,7 @@ class Presentation(QWidget):
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.setWindowTitle(tr("Presentation"))
         self.view = view
-        self.doc = view.doc
-        self.page = max(0, min(page, self.doc.page_count - 1))
+        self.page = max(0, min(page, view.doc.page_count - 1))
         self.blank = None           # None, "black" or "white"
         self.laser = False
         self._typed = ""            # a page number being typed
@@ -65,6 +65,15 @@ class Presentation(QWidget):
         self._hide_timer.start()
 
     # ---- pages ---------------------------------------------------------------------
+    @property
+    def doc(self):
+        """The document the window shows now, None once it's closed. (Never one kept from
+        the start: Apply redactions, Undo or Reload replace the window's document object, and
+        the one from before, kept for undo, still holds what was redacted.)"""
+        v = self.view
+        doc = getattr(v, "doc", None) if shiboken6.isValid(v) else None
+        return None if doc is None or doc.is_closed else doc
+
     def _pixmap(self, index):
         dpr = self.devicePixelRatioF()
         size = (self.width(), self.height(), dpr)
@@ -73,7 +82,10 @@ class Presentation(QWidget):
         if pm is not None:
             self._cache.move_to_end(key)
             return pm
-        page = self.doc[index]
+        doc = self.doc
+        if doc is None or not 0 <= index < doc.page_count:
+            return None
+        page = doc[index]
         r = page.rect
         s = min(self.width() / max(r.width, 1), self.height() / max(r.height, 1)) * dpr
         try:
@@ -91,16 +103,21 @@ class Presentation(QWidget):
 
     def _doc_changed(self):
         self._cache.clear()
-        if not self.doc.is_closed:
-            self.page = max(0, min(self.page, self.doc.page_count - 1))
+        doc = self.doc
+        if doc is not None:
+            self.page = max(0, min(self.page, doc.page_count - 1))
         self.update()
 
     def _draw_ahead(self):
-        if self.page + 1 < self.doc.page_count and not self.doc.is_closed:
+        doc = self.doc
+        if doc is not None and self.page + 1 < doc.page_count:
             self._pixmap(self.page + 1)
 
     def go(self, index):
-        index = max(0, min(index, self.doc.page_count - 1))
+        doc = self.doc
+        if doc is None:
+            return
+        index = max(0, min(index, doc.page_count - 1))
         if index != self.page:
             self.page = index
         self.blank = None
@@ -113,7 +130,8 @@ class Presentation(QWidget):
             p.fillRect(self.rect(), Qt.black if self.blank == "black" else Qt.white)
             return
         p.fillRect(self.rect(), Qt.black)
-        if self.doc.is_closed or self.page >= self.doc.page_count:
+        doc = self.doc
+        if doc is None or self.page >= doc.page_count:
             return
         pm = self._pixmap(self.page)
         if pm is not None:
@@ -167,7 +185,7 @@ class Presentation(QWidget):
         elif k == Qt.Key_Home:
             self.go(0)
         elif k == Qt.Key_End:
-            self.go(self.doc.page_count - 1)
+            self.go(10 ** 9)                # (go keeps it to the last page)
         else:
             super().keyPressEvent(e)
 

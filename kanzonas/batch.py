@@ -265,7 +265,9 @@ def normalized(steps):
     out = []
     table = steps_table()
     for st in steps if isinstance(steps, list) else []:
-        if not isinstance(st, dict) or st.get("kind") not in table:
+        # (a kind that isn't a string, a list say, isn't a step: never looked up)
+        if not isinstance(st, dict) or not isinstance(st.get("kind"), str) or \
+                st["kind"] not in table:
             continue
         given = st.get("options") if isinstance(st.get("options"), dict) else {}
         opts = {}
@@ -277,13 +279,17 @@ def normalized(steps):
                 elif f.type == "int":
                     v = min(f.extra[1], max(f.extra[0], int(v)))
                 elif f.type == "float":
-                    v = min(f.extra[1], max(f.extra[0], float(v)))
+                    v = float(v)
+                    if v != v:
+                        raise ValueError(v)     # (NaN)
+                    v = min(f.extra[1], max(f.extra[0], v))
                 elif f.type == "choice":
                     values = [c for c, _l in f.extra]
                     v = next((c for c in values if str(c) == str(v)), f.default)
                 else:
                     v = v if isinstance(v, str) else f.default
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
+                # (OverflowError: an "int" of 1e999, which JSON reads as infinity)
                 v = f.default
             opts[f.key] = v
         out.append({"kind": st["kind"], "options": opts})
@@ -340,6 +346,15 @@ def check_steps(steps):
         elif "add_password" in kinds:
             problems.append(tr("PDF/A doesn't allow passwords: leave out Add password, or "
                                "make a separate run for it."))
+    # (an export is made from the document as the steps before it left it: one before a
+    # redaction would be a copy with the words still in it, next to the redacted PDF)
+    redacting = [k for k, st in enumerate(steps) if _redacts(st)]
+    early = next((st for st in steps[:redacting[-1]] if st["kind"] == "export"), None) \
+        if redacting else None
+    if early is not None:
+        problems.append(tr("Export comes before {step}: the exported copy would still hold "
+                           "what is redacted. Put Export after it.").format(
+                               step=label(steps[redacting[-1]]["kind"])))
     for st in steps:
         o, kind = st["options"], st["kind"]
         name = label(kind)
@@ -381,6 +396,14 @@ def check_steps(steps):
     return problems
 
 
+def _redacts(st):
+    """The step removes what is under redaction marks."""
+    o = st["options"]
+    return st["kind"] == "apply_redactions" or \
+        st["kind"] == "search_redact" and o.get("apply", True) or \
+        st["kind"] == "flatten_comments" and o.get("redactions") == "apply"
+
+
 def changes_documents(steps):
     return any(st["kind"] not in NOT_EDITS for st in steps)
 
@@ -404,8 +427,8 @@ def builtin_recipes():
 def _stored(settings):
     try:
         data = json.loads(settings.value(RECIPES_KEY, "") or "{}")
-    except (TypeError, ValueError):
-        return {}
+    except (TypeError, ValueError, RecursionError):
+        return {}           # (RecursionError: lists nested thousands deep)
     return {str(k): normalized(v) for k, v in data.items()} if isinstance(data, dict) else {}
 
 
@@ -440,7 +463,8 @@ Item = namedtuple("Item", "path root")      # root: the folder it was added from
 
 
 def processed_names():
-    return {"processed", tr("Processed").lower()}
+    # (in every language the app has: a folder made in Spanish is still left out in English)
+    return {"processed", "procesados", tr("Processed").lower()}
 
 
 def files_in(folder, subfolders=True):
@@ -473,11 +497,32 @@ def page_count(path):
         return tr("can't read")
 
 
-_BAD_CHARS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
+_BAD_CHARS = re.compile(r'[\\/:*?"<>|\x00-\x1f\x7f]')
+# characters that turn the text's direction or are invisible: a name made with them reads as
+# something else ("report\u202efdp.exe" shows as "reportexe.pdf")
+_HIDDEN_CHARS = re.compile("[\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]")
+# Windows' device names: CON.pdf (or con.txt.pdf) is the console, NUL.pdf nowhere at all,
+# whatever the folder: a result written there would be lost. (Left out everywhere: a folder
+# made on Linux is copied to Windows.)
+_DEVICE = re.compile(r"^(con|prn|aux|nul|com[0-9\u00b9\u00b2\u00b3]|lpt[0-9\u00b9\u00b2\u00b3]|"
+                     r"conin\$|conout\$)\s*(\..*)?$", re.I)
+# a name made from a pattern: at most so many characters and bytes (file systems allow 255
+# bytes; room left for " (2)", the extension and the temporary copy's longer name)
+MAX_NAME, MAX_BYTES = 150, 180
 
 
 def _safe_name(name):
-    return _BAD_CHARS.sub("_", name).strip().strip(".")
+    """name as one file name: never a path (no / \\ : .. or drive letter), never a Windows
+    device name, never too long, no characters that hide what it says."""
+    name = _HIDDEN_CHARS.sub("", _BAD_CHARS.sub("_", name)).strip().strip(".").strip()
+    if len(name) > MAX_NAME or len(name.encode("utf-8")) > MAX_BYTES:
+        name = name[:MAX_NAME]
+        while len(name.encode("utf-8")) > MAX_BYTES:
+            name = name[:-1]
+        name = name.rstrip(". ")
+    if _DEVICE.match(name):
+        name = "_" + name
+    return name
 
 
 # ---- a document opened for the batch -----------------------------------------------------------
@@ -510,6 +555,9 @@ class BatchDoc:
     def __init__(self, path, passwords=None, ask_password=None):
         self.path = os.path.abspath(path)
         self.untitled = False
+        # (the file as it was read: one changed on disk meanwhile isn't copied as it is now,
+        # see Batch._finish)
+        self.read_stamp = _stamp(self.path)
         with open(self.path, "rb") as f:
             data = f.read()
         try:
@@ -517,6 +565,11 @@ class BatchDoc:
         except Exception as ex:
             raise ValueError(tr("It isn't a PDF KanzonasPDF can read ({error}).").format(
                 error=ex)) from None
+        if not doc.is_pdf:
+            # (a picture or another document named .pdf: PyMuPDF opens it as what it is)
+            doc.close()
+            raise ValueError(tr("It isn't a PDF KanzonasPDF can read ({error}).").format(
+                error=tr("not a PDF")))
         self.doc = doc
         self._orig_data = data
         self._orig_enc = None
@@ -734,6 +787,7 @@ class Batch:
         self._bates = {}
         self._written = set()
         self._parts = []                # (index, file) for Combine
+        self._parts_marked = False      # one of them has Search & redact's marks only
         self._pool = None
         self._ocr_used = False
         self._tmp = None
@@ -788,6 +842,9 @@ class Batch:
         f = None
         step_name = ""
         try:
+            if self._earlier_output(item):
+                raise Skip(tr("It's in the output folder, where this batch writes (a result "
+                              "of an earlier run): left out."))
             protected_skip = self.output["protected"] == "skip"
             try:
                 view = BatchDoc(item.path, self.passwords,
@@ -896,15 +953,63 @@ class Batch:
             pattern = "{name}" + MARKED_SUFFIX
         name = (pattern.replace("{name}", base).replace("{n}", str(i + 1).zfill(width))
                 .replace("{date}", date.today().isoformat()).replace("{bates}", bates or ""))
-        return _safe_name(name) or base
+        return _safe_name(name) or _safe_name(base) or "_"
 
     def output_path(self, i, item, ext=".pdf", bates="", marked=False):
         """Where the file's output goes (before checking what's there)."""
         return os.path.join(self.folder_for(item), self.name_for(i, item, bates, marked) + ext)
 
-    def _resolve(self, path, own_input=None):
+    def _base(self, item):
+        """The folder nothing of this item's may be written outside of: the output folder,
+        or the folder of the file (its Processed folder is made there)."""
+        o = self.output
+        if o["mode"] == "folder" and o.get("folder"):
+            return os.path.abspath(o["folder"])
+        return os.path.dirname(os.path.abspath(item.path))
+
+    @staticmethod
+    def _within(path, folder):
+        """path is folder or inside it (as the file system has them: links followed)."""
+        try:
+            a = os.path.normcase(os.path.realpath(path))
+            b = os.path.normcase(os.path.realpath(folder))
+            return os.path.commonpath([a, b]) == b
+        except ValueError:          # (other drives)
+            return False
+
+    def _earlier_output(self, item):
+        """A file inside the output folder, found there by adding a folder above it (the
+        output folder inside the folder added): a result of an earlier run, not to be
+        processed again (and again, into output/output/...)."""
+        o = self.output
+        if o["mode"] != "folder" or not o.get("folder"):
+            return False
+        out = o["folder"]
+        return self._within(item.path, out) and not self._within(item.root, out)
+
+    def _inside(self, path, item):
+        """Skip unless path is in its output folder as written: a folder on the way there
+        that is a link (to another place, an original's folder say) is never written
+        through, nor a name that leaves it."""
+        base = self._base(item)
+        folder = os.path.dirname(os.path.abspath(path))
+        try:
+            rel = os.path.relpath(folder, base)
+        except ValueError:
+            rel = os.pardir
+        expect = os.path.realpath(base) if rel == os.curdir else \
+            os.path.join(os.path.realpath(base), rel)
+        if rel == os.pardir or rel.startswith(os.pardir + os.sep) or os.path.isabs(rel) or \
+                os.path.normcase(os.path.realpath(folder)) != os.path.normcase(
+                    os.path.normpath(expect)):
+            raise Skip(tr("{folder} leads out of the output folder (a link to another "
+                          "place): nothing was written there.").format(folder=folder))
+
+    def _resolve(self, path, item, own_input=None):
         """The file to write for path, after the rules for files that exist: Skip when it's
-        not to be written."""
+        not to be written. (A link at path is replaced by the file, never written
+        through.)"""
+        self._inside(path, item)
         key = self._key(path)
         name = os.path.basename(path)
         if own_input is not None and key == self._key(own_input):
@@ -914,7 +1019,7 @@ class Batch:
         elif key in self._inputs or key in self._written:
             # another file of the list (perhaps not processed yet), or written by this run
             path = _numbered(path)
-        elif os.path.exists(path):
+        elif os.path.lexists(path):
             rule = self._overwrite
             if rule == "ask":
                 answer = self.ask_overwrite(path) if self.ask_overwrite else "skip"
@@ -940,9 +1045,13 @@ class Batch:
 
     def _finish(self, f, res, edits):
         """Write what the file produced: its PDF (when a step changes documents) and its
-        exports, all or nothing."""
+        exports, all or nothing: everything is made in the temporary folder first, then
+        copied next to where it goes and only then put in place (a full disk or a failure
+        leaves none of them), and its pages join Combine only once it's written (a file left
+        out isn't in the combined PDF, with Bates numbers the next file numbers again)."""
         view, item = f.view, f.item
         ready = f.ready if f.ready and f.ready_at == view.edits else None
+        part = None
         if self.combine is not None:
             if not view.allowed(pymupdf.PDF_PERM_COPY):
                 from . import combine
@@ -956,32 +1065,39 @@ class Batch:
                 # (a part only for combining: written without its protection, as Combine
                 # files does with a protected PDF once its password is given)
                 view.doc.save(part, garbage=1, deflate=True)
-            self._parts.append((f.index, part))
         plan = []
         # (marks only made, still in it: named so, see name_for)
         marked = f.marked and view.pending_redactions() > 0
         if edits and (self.combine is None or self.combine.get("keep_each")):
             plan.append(("pdf", self._resolve(self.output_path(f.index, item, ".pdf",
                                                                f.bates_first, marked),
-                                              item.path)))
+                                              item, item.path)))
         for tmp, suffix in f.staged:
             plan.append((tmp, self._resolve(self.output_path(f.index, item, suffix,
-                                                             f.bates_first, marked))))
+                                                             f.bates_first, marked), item)))
         tokens = [(target, self._guard(target)) for _src, target in plan]
+        moves = []
         for src, target in plan:
-            os.makedirs(os.path.dirname(target), exist_ok=True)
             if src != "pdf":
-                _place(src, target)
+                moves.append((src, target, False))
             elif ready:
-                _place(ready, target, keep=True)
-            elif not view.dirty and os.path.exists(item.path) and \
+                moves.append((ready, target, True))
+            elif not view.dirty and _stamp(item.path) == view.read_stamp and \
                     self._key(target) != self._key(item.path):
-                _place(item.path, target, keep=True)        # unchanged: an exact copy
+                moves.append((item.path, target, True))     # unchanged: an exact copy
                 f.notes.append(tr("Nothing needed changing: copied as it was."))
             else:
-                view.save(target)
-            res.outputs.append(target)
+                # (written here, never through what is at target: see _resolve)
+                tmp = os.path.join(self._tmp, "pdf-%05d.pdf" % f.index)
+                view.save(tmp)
+                moves.append((tmp, target, False))
+        _place_all(moves)
+        res.outputs += [target for _src, target in plan]
         f.staged = []
+        if part is not None:
+            self._parts.append((f.index, part))
+            # (its marks only made, still in it: so is the combined PDF, named so)
+            self._parts_marked = self._parts_marked or marked
         for _target, token in tokens:
             if token is not None and self.after_write is not None:
                 self.after_write(token)
@@ -1196,10 +1312,42 @@ class Batch:
 
     def _do_apply_redactions(self, f, k, o):
         view = f.view
+        scrub = bool(o.get("scrub", True))
         if not view.pending_redactions():
             f.notes.append(tr("No redaction marks to apply"))
+            self._scrub_anyway(f, scrub)
             return
-        self._apply(f, bool(o.get("scrub", True)))
+        self._apply(f, scrub)
+        self._attachments_kept(f, scrub)
+
+    def _scrub_anyway(self, f, scrub):
+        """Nothing to apply, but Remove hidden information ticked: it's still removed (an
+        attachment, the metadata, a script can hold what the pages don't), as the step
+        says; without it, the file was copied as it was, attachments and all."""
+        if scrub:
+            f.view.apply_redactions(True)       # (no marks: only the clean-up)
+            f.notes.append(tr("hidden information removed (metadata, attachments, hidden "
+                              "text, scripts)"))
+        else:
+            self._attachments_kept(f, scrub)
+
+    @staticmethod
+    def _attachments_kept(f, scrub):
+        """Without the clean-up, files attached to the PDF stay, unread (what's inside them
+        isn't searched, and may be the very words): said in the report."""
+        if scrub:
+            return
+        doc = f.view.doc
+        try:
+            n = doc.embfile_count() + sum(
+                1 for page in doc for _x, t, *_r in page.annot_xrefs()
+                if t == pymupdf.PDF_ANNOT_FILE_ATTACHMENT)
+        except Exception:
+            n = 0
+        if n:
+            f.notes.append(tr("Warning: {n} attached file(s) kept, and what's inside them "
+                              "wasn't searched: tick Remove hidden information to remove "
+                              "them").format(n=n))
 
     def _do_search_redact(self, f, k, o):
         view = f.view
@@ -1248,8 +1396,12 @@ class Batch:
             if earlier:
                 f.notes.append(tr("{n} redaction mark(s) already in the file applied too")
                                .format(n=earlier))
+            scrub = bool(o.get("scrub", True))
             if view.pending_redactions():
-                view.apply_redactions(bool(o.get("scrub", True)))
+                view.apply_redactions(scrub)
+                self._attachments_kept(f, scrub)
+            else:
+                self._scrub_anyway(f, scrub)
             self._check_gone(f, terms)
             return
         # only marking: nothing removed, and said so plainly; the file is named so (see
@@ -1396,6 +1548,9 @@ class Batch:
         n = len(self.files)
         first = self.files[0] if self.files else None
         name = _safe_name(o.get("name") or "") or tr("Combined")
+        if self._parts_marked:
+            # (as each file only marked is: the words are all still in it)
+            name = _safe_name(name + MARKED_SUFFIX)
         target = os.path.join(self.folder_for(first) if first else os.getcwd(), name + ".pdf")
         res = Result(target, combined=True)
         self.results.append(res)
@@ -1408,14 +1563,13 @@ class Batch:
         yield (n, 0.0, tr("Combining {n} files...").format(n=len(self._parts)))
         try:
             from . import combine
-            target = self._resolve(target)
+            target = self._resolve(target, first)
             res.path = target
             token = self._guard(target)
             tmp = os.path.join(self._tmp, "combined.pdf")
             pages = combine.combine([p for _i, p in sorted(self._parts)], tmp,
                                     bookmarks=bool(o.get("bookmarks", True)))
-            os.makedirs(os.path.dirname(target), exist_ok=True)
-            _place(tmp, target)
+            _place_all([(tmp, target, False)])
             if token is not None and self.after_write is not None:
                 self.after_write(token)
             res.status = DONE
@@ -1464,18 +1618,54 @@ def _remove(path):
         pass
 
 
-def _place(src, target, keep=False):
-    """Put the file src at target in one step (the file at target is whole before and
-    after): copied next to target, then renamed over it. keep: src stays."""
-    tmp = target + ".kanzonas-tmp"
+def _stamp(path):
+    """(size, time changed) of the file at path, None when it isn't there."""
     try:
-        shutil.copyfile(src, tmp)
-        os.replace(tmp, target)
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (st.st_size, st.st_mtime_ns)
+
+
+def _new_beside(target):
+    """A new, empty temporary file next to target, opened for writing: (file, path). Made
+    with O_EXCL (never a file or link already there, so nothing is written through a link
+    planted with its name) and NOFOLLOW where the system has it."""
+    import secrets
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0) | \
+        getattr(os, "O_NOFOLLOW", 0)
+    folder, name = os.path.split(target)
+    while True:
+        tmp = os.path.join(folder, ".%s.%s.kanzonas-tmp" % (name[:60], secrets.token_hex(4)))
+        try:
+            return os.fdopen(os.open(tmp, flags, 0o666), "wb"), tmp
+        except FileExistsError:
+            continue
+
+
+def _place_all(moves):
+    """moves: [(src, target, keep)]. Every src put at its target, all or none: each copied
+    next to its target first (a full disk, a folder that can't be written: none is put in
+    place, and no copy is left), then each renamed over its target in one step (the file at
+    target is whole before and after; a link at target is replaced, not followed). keep: src
+    stays (else it's removed once in place)."""
+    copies = []
+    try:
+        for src, target, _keep in moves:
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            out, tmp = _new_beside(target)
+            copies.append(tmp)
+            with out, open(src, "rb") as inp:
+                shutil.copyfileobj(inp, out, 1 << 20)
+        for (src, target, keep), tmp in zip(moves, copies):
+            os.replace(tmp, target)
     except BaseException:
-        _remove(tmp)
+        for tmp in copies:
+            _remove(tmp)
         raise
-    if not keep:
-        _remove(src)
+    for src, _target, keep in moves:
+        if not keep:
+            _remove(src)
 
 
 # ---- the report -------------------------------------------------------------------------------

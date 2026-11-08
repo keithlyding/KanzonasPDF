@@ -20,11 +20,12 @@ import weakref
 
 import pymupdf
 
-from . import pdf_speed, pdfcoords, text_guard
+from . import bookmarks_auto, pdf_speed, pdfcoords, text_guard
 from .i18n import tr
 
 pdf_speed.apply()                       # (adding markups doesn't slow down as they add up)
 text_guard.apply()                      # (reading text can't crash MuPDF: see text_guard.py)
+bookmarks_auto.apply_deep_outlines()    # (bookmarks nested deep can be read: see there)
 
 
 def each_annot(page, types=None):

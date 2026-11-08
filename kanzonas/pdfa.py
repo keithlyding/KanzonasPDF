@@ -996,6 +996,8 @@ class _Pass:
                     for i in range(m.pdf_array_len(a)):
                         o = m.pdf_array_get(a, i)
                         if m.pdf_is_indirect(o):
+                            if m.pdf_to_num(o) in listed:
+                                continue        # (an array inside itself)
                             listed.add(m.pdf_to_num(o))
                         r = m.pdf_resolve_indirect(o)
                         if m.pdf_is_array(r):
@@ -1899,8 +1901,14 @@ def _name_tree_entries(tree):
     """[(Names array, index of a value in it)] of a name tree."""
     out = []
     todo = [tree] if m.pdf_is_dict(tree) else []
+    seen = set()
     while todo:
         node = todo.pop()
+        if m.pdf_is_indirect(node):
+            if m.pdf_to_num(node) in seen:
+                continue                # (a node among its own kids: it never finished)
+            seen.add(m.pdf_to_num(node))
+        node = m.pdf_resolve_indirect(node)
         names = _get(node, "Names")
         if m.pdf_is_array(names):
             for k in range(1, m.pdf_array_len(names), 2):
@@ -1908,8 +1916,7 @@ def _name_tree_entries(tree):
                     out.append((names, k))
         kids = _get(node, "Kids")
         if m.pdf_is_array(kids):
-            todo.extend(m.pdf_resolve_indirect(m.pdf_array_get(kids, k))
-                        for k in range(m.pdf_array_len(kids)))
+            todo.extend(m.pdf_array_get(kids, k) for k in range(m.pdf_array_len(kids)))
     return out
 
 

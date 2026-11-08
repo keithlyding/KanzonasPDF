@@ -107,19 +107,29 @@ def is_tagged(doc):
 
 
 def number_tree(obj, out=None, depth=0):
-    """{number: value (unresolved)} of a number tree."""
+    """{number: value (unresolved)} of a number tree. Each node is read once, at most 32
+    levels down: a node listed twice in /Kids, or among its own kids (a file made so), was
+    read again for every path to it, 2^32 times for a node naming itself twice (Check
+    accessibility, and every edit of the document, never finished)."""
     out = {} if out is None else out
-    obj = m.pdf_resolve_indirect(obj)
-    if not m.pdf_is_dict(obj) or depth > 32:
-        return out
-    nums = _get(obj, "Nums")
-    if m.pdf_is_array(nums):
-        for i in range(0, m.pdf_array_len(nums) - 1, 2):
-            k = m.pdf_array_get(nums, i)
-            if m.pdf_is_int(k):
-                out[m.pdf_to_int(k)] = m.pdf_array_get(nums, i + 1)
-    for kid in _items(m.pdf_dict_gets(obj, "Kids")):
-        number_tree(kid, out, depth + 1)
+    seen = set()
+    todo = [(obj, depth)]
+    while todo:
+        ref, level = todo.pop()
+        node = m.pdf_resolve_indirect(ref)
+        if not m.pdf_is_dict(node) or level > 32:
+            continue
+        if m.pdf_is_indirect(ref):
+            if m.pdf_to_num(ref) in seen:
+                continue
+            seen.add(m.pdf_to_num(ref))
+        nums = _get(node, "Nums")
+        if m.pdf_is_array(nums):
+            for i in range(0, m.pdf_array_len(nums) - 1, 2):
+                k = m.pdf_array_get(nums, i)
+                if m.pdf_is_int(k):
+                    out[m.pdf_to_int(k)] = m.pdf_array_get(nums, i + 1)
+        todo.extend((kid, level + 1) for kid in reversed(_items(m.pdf_dict_gets(node, "Kids"))))
     return out
 
 
@@ -140,6 +150,57 @@ def _annot_list(doc, page_xref, pdf):
     return out
 
 
+def _page_forms(pdf, page_xref, seen):
+    """The xrefs of the forms page page_xref's resources hold (also inside forms), not in
+    seen (which gets them)."""
+    out = []
+    obj = m.pdf_load_object(pdf, page_xref)
+    res = None
+    for _n in range(64):
+        res = _get(obj, "Resources")
+        if m.pdf_is_dict(res) or not m.pdf_is_dict(obj):
+            break
+        obj = _get(obj, "Parent")
+    todo = [res] if res is not None and m.pdf_is_dict(res) else []
+    while todo and len(seen) < 100000:
+        xo = _get(todo.pop(), "XObject")
+        if not m.pdf_is_dict(xo):
+            continue
+        for i in range(m.pdf_dict_len(xo)):
+            ref = m.pdf_dict_get_val(xo, i)
+            if not m.pdf_is_indirect(ref) or m.pdf_to_num(ref) in seen:
+                continue
+            f = m.pdf_resolve_indirect(ref)
+            if not m.pdf_is_dict(f) or _name(m.pdf_dict_gets(f, "Subtype")) != "Form":
+                continue
+            seen.add(m.pdf_to_num(ref))
+            out.append(m.pdf_to_num(ref))
+            r = _get(f, "Resources")
+            if m.pdf_is_dict(r):
+                todo.append(r)
+    return out
+
+
+_DRAWS = {b"Tj", b"TJ", b"'", b'"', b"Do", b"BI", b"sh", b"S", b"s", b"f", b"F", b"f*",
+          b"B", b"B*", b"b", b"b*"}
+
+
+def _form_mcids_drawn(doc, xref):
+    """{mcid} of a form's own marked content holding something drawn."""
+    data = doc.xref_stream(xref) or b""
+    out, stack = set(), []
+    for op, _args, s, e in autotag.tokens(data):
+        if op in (b"BDC", b"BMC"):
+            mo = _MCID.search(data[s:e]) if op == b"BDC" else None
+            stack.append(int(mo.group(1)) if mo else None)
+        elif op == b"EMC":
+            if stack:
+                stack.pop()
+        elif op in _DRAWS:
+            out.update(x for x in stack if x is not None)
+    return out
+
+
 def _int_key(obj, key):
     v = _get(obj, key)
     return m.pdf_to_int(v) if m.pdf_is_int(v) else None
@@ -149,15 +210,17 @@ def _int_key(obj, key):
 class El:
     """A structure element: obj (its dictionary), num (object number; 0 when direct),
     parent (El, or None at the top), type (/S), pg (its page's xref, own or inherited),
-    kids [El], mcids [(page xref, mcid)], objrs [(annot number, page xref)], other (it
-    holds content this doesn't follow: in a form, another stream), gone (left the tree)."""
+    kids [El], mcids [(page xref, mcid)], objrs [(annot number, page xref)], stms [(form
+    xref, page xref)]: forms it tags content in (MCRs with /Stm), other (it holds content
+    this doesn't follow: in a form, another stream; odd: other than in a form), gone (left
+    the tree)."""
     __slots__ = ("obj", "num", "parent", "type", "pg", "kids", "mcids", "objrs", "other",
-                 "gone", "order")
+                 "gone", "order", "stms", "odd")
 
     def __init__(self, obj, num, parent, type_, pg, order):
         self.obj, self.num, self.parent, self.type, self.pg = obj, num, parent, type_, pg
-        self.kids, self.mcids, self.objrs = [], [], []
-        self.other = False
+        self.kids, self.mcids, self.objrs, self.stms = [], [], [], []
+        self.other = self.odd = False
         self.gone = False
         self.order = order
 
@@ -175,6 +238,7 @@ class Tree:
         self.root = _get(_catalog(doc), "StructTreeRoot")
         self.els, self.refs, self.objr, self.by_num = [], {}, {}, {}
         self.page_refs = {}             # page xref -> {mcid} held
+        self.stm_pages = {}             # page xref -> [El] tagging content in forms on it
         self.tops = []
         self.role_map = {}
         if not m.pdf_is_dict(self.root):
@@ -219,8 +283,15 @@ class Tree:
                     if t == "MCR":
                         kp = m.pdf_dict_gets(k, "Pg")
                         mc = _get(k, "MCID")
-                        if not _null(m.pdf_dict_gets(k, "Stm")) or not m.pdf_is_int(mc):
+                        stm = m.pdf_dict_gets(k, "Stm")
+                        if not _null(stm) or not m.pdf_is_int(mc):
                             e.other = True      # (in a form or another stream)
+                            if m.pdf_is_indirect(stm) and m.pdf_is_int(mc):
+                                spg = _num(kp) if m.pdf_is_indirect(kp) else pg
+                                e.stms.append((m.pdf_to_num(stm), spg))
+                                self.stm_pages.setdefault(spg, []).append(e)
+                            else:
+                                e.odd = True
                         else:
                             self._ref(e, (_num(kp) if m.pdf_is_indirect(kp) else pg,
                                           m.pdf_to_int(mc)))
@@ -260,10 +331,26 @@ class Tree:
         return t
 
     def held(self, e):
-        """Whether e (or an element in it) tags anything."""
-        if e.mcids or e.objrs or e.other:
-            return True
-        return any(not k.gone and self.held(k) for k in e.kids)
+        """Whether e (or an element in it) tags anything. (The tree is walked without
+        recursing, here and below: a tree thousands of elements deep, one inside the other,
+        left every edit's tags out of step.)"""
+        todo = [e]
+        while todo:
+            x = todo.pop()
+            if x.mcids or x.objrs or x.other:
+                return True
+            todo.extend(k for k in x.kids if not k.gone)
+        return False
+
+    @staticmethod
+    def within(e):
+        """e and every element in it."""
+        out, todo = [], [e]
+        while todo:
+            x = todo.pop()
+            out.append(x)
+            todo.extend(reversed(x.kids))
+        return out
 
     def figure(self, e):
         return self.role(e.type) in ("Figure", "Formula")
@@ -328,6 +415,44 @@ class Tree:
                 lst.remove(e)
             if not lst:
                 del self.objr[annot]
+
+    def move_stms(self, e, pg, to, alive):
+        """e's MCRs into forms on page pg that are keys of to {old form: new form or None}:
+        pointed at the new form when it still draws something of their MCID (alive {new
+        form: {mcids}}), else taken out of e's /K. Returns whether e changed."""
+        k = m.pdf_dict_gets(e.obj, "K")
+        kr = m.pdf_resolve_indirect(k)
+        arr = m.pdf_is_array(kr)
+        entries = [m.pdf_resolve_indirect(m.pdf_array_get(kr, i))
+                   for i in range(m.pdf_array_len(kr))] if arr else [kr]
+        changed = False
+        stms = []
+        for i in range(len(entries) - 1, -1, -1):
+            v = entries[i]
+            if not m.pdf_is_dict(v) or _name(m.pdf_dict_gets(v, "Type")) != "MCR":
+                continue
+            stm = m.pdf_dict_gets(v, "Stm")
+            if not m.pdf_is_indirect(stm) or not m.pdf_is_int(_get(v, "MCID")):
+                continue
+            x = m.pdf_to_num(stm)
+            kp = m.pdf_dict_gets(v, "Pg")
+            vpg = _num(kp) if m.pdf_is_indirect(kp) else e.pg
+            if x in to and vpg == pg:
+                changed = True
+                new = to[x]
+                if new and _int_key(v, "MCID") in alive.get(new, ()):
+                    m.pdf_dict_puts(v, "Stm", m.pdf_new_indirect(self.pdf, new, 0))
+                    x = new
+                else:
+                    if arr:
+                        m.pdf_array_delete(kr, i)
+                    else:
+                        m.pdf_dict_dels(e.obj, "K")
+                    continue
+            stms.append((x, vpg))
+        e.stms = stms[::-1]
+        e.other = e.odd or bool(e.stms)
+        return changed
 
     def add_mcid(self, e, pg, mc, after=None):
         """(pg, mc) into e's /K (after the MCID after of the same page, else at the end)."""
@@ -435,7 +560,7 @@ class Tree:
         if e in kids:
             kids.remove(e)
 
-        def gone(x):
+        for x in self.within(e):
             x.gone = True
             for key in list(x.mcids):
                 self._unref(x, key)
@@ -445,9 +570,6 @@ class Tree:
                     lst.remove(x)
                     if not lst:
                         del self.objr[a]
-            for kid in x.kids:
-                gone(kid)
-        gone(e)
 
     def prune(self, e):
         """e, now holding nothing, leaves the tree with the elements around it left empty
@@ -509,10 +631,13 @@ class PageState:
             if mk[1] == "mcid":
                 self.seqs[mk[0]] = [mk, False]
         self.untagged = []
+        inside = self._tagged_forms(page.parent) if r.form_boxes else set()
         for p in r.pieces:
             cls = _piece_class(p)
             inn = _inner(p)
             if inn is None:
+                if p.kind == "form" and p.xobj in inside:
+                    continue            # (tagged inside: its own MCIDs, its StructParents)
                 self.untagged.append((p, cls))
             elif inn[0] == "mcid" and cls is not None and inn[2] in self.seqs:
                 self.seqs[inn[2]][1] = True
@@ -520,6 +645,25 @@ class PageState:
         for ser, (mk, _full) in sorted(self.seqs.items(), key=lambda t: t[1][0][3]):
             self.present.setdefault(mk[2], []).append(ser)
         self._boxes = None
+
+    def _tagged_forms(self, doc):
+        """The forms drawn here whose content is tagged inside them (they, or a form they
+        draw, have StructParents): drawn outside any marked content, as they should be,
+        they were wrapped in an MCID of the page's as well, their content tagged twice."""
+        r = self.r
+        own = {f for f in r.form_boxes if doc.xref_get_key(f, "StructParents")[0] == "int"}
+        out = set(own)
+        for f in r.form_boxes:
+            todo, seen = [f], set()
+            while todo:
+                x = todo.pop()
+                if x in own:
+                    out.add(f)
+                    break
+                if x not in seen:
+                    seen.add(x)
+                    todo.extend(r.form_kids.get(x, ()))
+        return out
 
     def boxes(self):
         """({serial: box}, {piece start: box}) as shown, of what each MCID sequence and each
@@ -663,6 +807,14 @@ class _Upkeep:
                     k = doc.xref_get_key(num, "StructParent")
                     if k[0] == "int":
                         out.setdefault(int(k[1]), []).append(("annot", num))
+            # (forms with tagged content: their entries were taken out of the parent tree
+            # at the first edit that wrote it)
+            seen = set()
+            for x in self.page_xrefs:
+                for f in _page_forms(self.pdf, x, seen):
+                    k = doc.xref_get_key(f, "StructParents")
+                    if k[0] == "int":
+                        out.setdefault(int(k[1]), []).append(("form", f))
             self._key_users = out
         return self._key_users
 
@@ -796,6 +948,7 @@ class _Upkeep:
                     renumber.append((ser, mc))
         # the tags of MCIDs gone
         lost = []
+        self._forms_moved(px, st, lost)
         for mc in sorted(tree.page_refs.get(px, ())):
             pg = px
             els = tree.refs[(pg, mc)]
@@ -882,6 +1035,39 @@ class _Upkeep:
         self.states[i] = st
         self.annots(i, st)
 
+    def _forms_moved(self, px, st, lost):
+        """MCRs into forms the page doesn't draw any more (redaction draws a copy of each
+        form it changes and leaves the original in the file, which the MCR kept: the words
+        redacted were still in the saved file; Edit objects deletes one): pointed at the
+        copy (the form drawn with the same StructParents), else taken out (lost gets their
+        elements)."""
+        tree, doc = self.tree, self.doc
+        els = [e for e in tree.stm_pages.get(px, ()) if not e.gone and e.stms]
+        if not els:
+            return
+        drawn = set(st.r.form_boxes)
+        gone = {x for e in els for x, pg in e.stms if pg == px and x not in drawn}
+        if not gone:
+            return
+        held = {x for e in els for x, _pg in e.stms}
+        by_key = {}
+        for f in drawn - held:
+            k = doc.xref_get_key(f, "StructParents")
+            if k[0] == "int":
+                by_key.setdefault(int(k[1]), []).append(f)
+        to = {}
+        for x in gone:
+            k = doc.xref_get_key(x, "StructParents") if 0 < x < doc.xref_length() else \
+                ("null", "")
+            new = by_key.get(int(k[1]), []) if k[0] == "int" else []
+            to[x] = new[0] if len(new) == 1 else None
+        alive = {x: _form_mcids_drawn(doc, x) for x in set(to.values()) if x}
+        for e in els:
+            if tree.move_stms(e, px, to, alive):
+                self.pt_dirty = True
+                if not e.other:
+                    lost.append(e)
+
     def _clone_copied(self, i, px, keep, unowned, shared, seq_box):
         """The elements (just inside the top) holding the content of the page that page i
         copies, copied for page i, where all their content is copied there (lists, tables,
@@ -900,16 +1086,11 @@ class _Upkeep:
             if id(top) in done:
                 continue
             done.add(id(top))
-            refs, objrs = [], []
-
-            def gather(e):
+            refs = []
+            for e in tree.within(top):
                 refs.extend(e.mcids)
-                objrs.extend(e.objrs)
                 if e.other:
                     refs.append((None, None))
-                for k in e.kids:
-                    gather(k)
-            gather(top)
             pages = {pg for pg, _mc in refs}
             if len(pages) != 1 or None in pages:
                 continue
@@ -928,7 +1109,18 @@ class _Upkeep:
 
     def _clone(self, e, parent, src_pg, dst_pg):
         """A copy of element e (and the elements in it) tagging page dst_pg's copy of what e
-        tags on src_pg (annotations left out: theirs are made for them)."""
+        tags on src_pg (annotations left out: theirs are made for them). (Copied element by
+        element, without recursing: see held.)"""
+        top = self._clone_one(e, parent, src_pg, dst_pg)
+        todo = [(top, e)]
+        while todo:
+            c, e = todo.pop()
+            subs = self._clone_kids(c, e, src_pg, dst_pg)
+            todo.extend(reversed(subs))
+        return top
+
+    def _clone_one(self, e, parent, src_pg, dst_pg):
+        """A copy of element e alone (its /K still to fill: _clone_kids)."""
         doc, pdf, tree = self.doc, self.pdf, self.tree
         x = doc.get_new_xref()
         m.pdf_update_object(pdf, x, m.pdf_deep_copy_obj(e.obj))
@@ -943,8 +1135,16 @@ class _Upkeep:
         if parent is not None:
             m.pdf_dict_puts(obj, "P", m.pdf_new_indirect(pdf, parent.num, 0))
             parent.kids.append(c)
+        return c
+
+    def _clone_kids(self, c, e, src_pg, dst_pg):
+        """c's /K: copies of e's; returns [(copy, element)] of the elements in it, whose own
+        kids are still to copy."""
+        doc, pdf, tree = self.doc, self.pdf, self.tree
+        x = c.num
         arr = m.pdf_new_array(pdf, 4)
         kids = {id(k): k for k in e.kids}
+        subs = []
         for kid in _items(m.pdf_dict_gets(e.obj, "K")):
             k = m.pdf_resolve_indirect(kid)
             if m.pdf_is_int(k):
@@ -982,10 +1182,11 @@ class _Upkeep:
                             (not kk.num and _same(kk.obj, k))), None)
                 if src is None:
                     continue
-                sub = self._clone(src, c, src_pg, dst_pg)
+                sub = self._clone_one(src, c, src_pg, dst_pg)
                 m.pdf_array_push(arr, m.pdf_new_indirect(pdf, sub.num, 0))
-        m.pdf_dict_puts(obj, "K", arr)
-        return c
+                subs.append((sub, src))
+        m.pdf_dict_puts(c.obj, "K", arr)
+        return subs
 
     @staticmethod
     def _tag_of(data, mk):
@@ -1059,17 +1260,18 @@ class _Upkeep:
         px = self.page_xrefs[i]
 
         def first(e, acc):
-            for pg, mc in e.mcids:
-                pi = self.index_of.get(pg)
-                if pi is not None:
-                    acc.append((pi, seq_y.get(mc, -1.0) if pi == i else 0.0))
-            for _a, pg in e.objrs:
-                pi = self.index_of.get(pg or e.pg)
-                if pi is not None:
-                    acc.append((pi, -1.0 if pi == i else 0.0))
-            for k in e.kids:
-                if not k.gone:
-                    first(k, acc)
+            todo = [e]
+            while todo:
+                e = todo.pop()
+                for pg, mc in e.mcids:
+                    pi = self.index_of.get(pg)
+                    if pi is not None:
+                        acc.append((pi, seq_y.get(mc, -1.0) if pi == i else 0.0))
+                for _a, pg in e.objrs:
+                    pi = self.index_of.get(pg or e.pg)
+                    if pi is not None:
+                        acc.append((pi, -1.0 if pi == i else 0.0))
+                todo.extend(k for k in e.kids if not k.gone)
         for n, e in enumerate(kids):
             acc = []
             first(e, acc)
@@ -1282,7 +1484,7 @@ def forget_under(page, rects):
         return 0
     tree = Tree(doc)
     px = page.xref
-    if not tree.page_refs.get(px) and not tree.objr:
+    if not tree.page_refs.get(px) and not tree.objr and not tree.stm_pages.get(px):
         return 0
     st = PageState(page)
     rects = [pymupdf.Rect(r) for r in rects]
@@ -1294,6 +1496,21 @@ def forget_under(page, rects):
     touched = []
     for mc in hit_mc:
         touched.extend(tree.refs.get((px, mc), ()))
+    # content tagged inside a form (an MCR with /Stm) a mark touches: the form, or a form
+    # drawing it, drawn where a mark is (its box)
+    if tree.stm_pages.get(px):
+        hit = set()
+        for f, boxes in st.r.form_boxes.items():
+            if any(b is not None and pymupdf.Rect(b).intersects(r) for b in boxes
+                   for r in rects + shown):
+                todo = [f]
+                while todo:
+                    x = todo.pop()
+                    if x not in hit:
+                        hit.add(x)
+                        todo.extend(st.r.form_kids.get(x, ()))
+        touched.extend(e for e in tree.stm_pages[px] if any(
+            x in hit for x, pg in e.stms if pg == px))
     return _forget(tree, page, touched, rects)
 
 
@@ -1427,6 +1644,14 @@ def problems(doc):
             for a, pg in e.objrs:
                 if (pg or e.pg) == px and a not in here:
                     out.append((i, "an element points at an annotation not on the page"))
+    seen = set()
+    for i in range(doc.page_count):
+        for f in _page_forms(pdf, doc.page_xref(i), seen):
+            sp = doc.xref_get_key(f, "StructParents")
+            if sp[0] == "int":
+                keys.setdefault(int(sp[1]), []).append(("form", f))
+                if int(sp[1]) not in nums:
+                    out.append((i, "a form's StructParents has no ParentTree entry"))
     for k, users in keys.items():
         if len(users) > 1:
             out.append((None, "StructParents key %d is used %d times" % (k, len(users))))

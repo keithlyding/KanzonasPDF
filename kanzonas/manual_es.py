@@ -365,7 +365,8 @@ la barra de estado. Lleve el puntero hasta el borde superior de la pantalla y ba
 delgada con la página anterior y la siguiente, el zoom, las disposiciones de páginas, Vista de
 lectura, Leer esta página y <b>Salir de pantalla completa</b>; se va cuando el puntero vuelve a
 bajar. <b>Escape</b> sale de la pantalla completa (si hay una herramienta elegida, el primer
-Escape la suelta, como siempre, y el siguiente sale), y también Ctrl+Shift+L otra vez. Todo
+Escape la suelta, como siempre, y el siguiente sale; también desde la Vista de lectura), y
+también Ctrl+Shift+L otra vez. Todo
 vuelve a quedar como estaba. (F11, que muchos programas usan para esto, activa el modo de ratón
 CAD en KanzonasPDF, y Ctrl+L bloquea marcas; Ctrl+Shift+L está libre y se parece al Ctrl+L de
 Acrobat.)</li>
@@ -381,7 +382,7 @@ dos segundos sin moverse. <b>Escape</b> termina la presentación y la ventana mu
 en la que terminó. Las marcas se muestran como están en la página (salvo que Mostrar marcas esté
 desactivado). La presentación solo muestra el documento: nada en ella cambia el archivo. Un
 cambio hecho mientras tanto en la ventana (con la presentación en una segunda pantalla) se ve
-enseguida.</li>
+enseguida, también Aplicar censuras y Deshacer. F5 otra vez trae la presentación al frente.</li>
 <li><b>Disposición de páginas</b> (menú Ver), que se recuerda para cada documento, como su
 página y su zoom:
 <ul>
@@ -1428,8 +1429,11 @@ números de página son los de las páginas después de insertar las nuevas. Eje
 de cambiar los marcadores y elija <b>En lugar de la tabla de contenido creada antes</b>: las
 páginas viejas se reemplazan por nuevas, en vez de agregar otra tabla. No se listan los marcadores
 que llevan a una página web o a otro archivo, y los títulos de las propias páginas de la tabla
-nunca se convierten en marcadores. Es un solo paso de deshacer, y pide desbloquear el orden de las
-páginas cuando la lista de páginas está bloqueada.</p>
+nunca se convierten en marcadores. El vínculo de cada línea va descrito para los lectores de
+pantalla ("Resultados, página 4") y las líneas de puntos se marcan como decoración; en un
+documento etiquetado, la tabla se etiqueta como tal (una tabla de contenido con un elemento por
+línea, cada uno un vínculo con las palabras de la línea y su número de página). Es un solo paso de
+deshacer, y pide desbloquear el orden de las páginas cuando la lista de páginas está bloqueada.</p>
 
 <h2 id="scan">Escanear</h2>
 <p><b>Escanear...</b> (menú Archivo, pestaña Páginas &gt; grupo Crear, o la paleta de comandos)
@@ -1869,7 +1873,9 @@ tablas con celdas de encabezado que indican qué encabezan; los títulos que emp
 saltan ningún nivel; las listas y tablas construidas como dice PDF; los vínculos, campos de
 formulario y comentarios etiquetados y descritos; el orden de tabulación; las fuentes incrustadas y
 un texto que se lee como letras (Unicode); una seguridad que deja leer a los lectores de pantalla;
-los marcadores en documentos de más de 20 páginas. El último grupo enumera lo que solo una persona
+los marcadores en documentos de más de 20 páginas (su corrección, <b>Crear marcadores</b>, los
+crea a partir de los títulos de las etiquetas en un documento etiquetado, si no a partir del aspecto
+de los títulos, con la misma vista previa que Documento &gt; Herramientas de marcadores). El último grupo enumera lo que solo una persona
 puede juzgar: que el orden de lectura tenga sentido, que el texto alternativo diga qué muestra cada
 imagen, que los colores contrasten lo suficiente (WCAG pide 4,5:1, 3:1 para texto grande), que los
 encabezados y pies de página sean artefactos, que el texto reconocido sea exacto. Para una
@@ -1894,7 +1900,11 @@ leen como párrafos), pies de figura, notas al pie, fórmulas ni gráficos dibuj
 (artefactos: descríbalos en el texto o en el texto alternativo de una figura). Un documento que ya
 está etiquetado se deja como está. Una página cuyos caracteres no se pueden emparejar con sus
 instrucciones de dibujo (una fuente poco común) se etiqueta como un solo párrafo, y la ventana del
-final lo indica. Después, describa las figuras (Texto alternativo) y ejecute Comprobar
+final lo indica. Una página que ya tiene contenido marcado (un programa la etiquetó y después se
+le quitaron las etiquetas, como hacen algunas herramientas) se etiqueta según ese marcado: cada
+parte marcada, un elemento del tipo que nombra su marcado (un párrafo cuando no es uno estándar),
+y lo demás como cualquier contenido agregado a una página etiquetada; la ventana indica qué
+páginas. Después, describa las figuras (Texto alternativo) y ejecute Comprobar
 accesibilidad.</li>
 <li><b>Texto alternativo...</b> enumera las figuras del documento, cada una con su imagen: escriba
 una descripción (qué muestra, o para qué está, en una o dos frases), o marque <b>Decorativa</b> en
@@ -1993,7 +2003,11 @@ palabras o frases, una por línea: cada aparición se marca, también en capas o
 una página está recortada, y las marcas se aplican, y las palabras se quitan de campos,
 notas, vínculos, marcadores, propiedades y los demás lugares del archivo, como nombres de
 capas, direcciones web, datos de formularios y texto alternativo, como hacen Buscar y
-censurar y Aplicar censuras; una palabra que solo está en esos lugares se quita de ahí.
+censurar y Aplicar censuras; una palabra que solo está en esos lugares se quita de ahí. Con
+<b>Quitar la información oculta</b> marcado (también en Aplicar censuras), los metadatos, los
+archivos adjuntos, el texto oculto y los scripts de cada archivo se quitan aunque no se haya
+encontrado nada que censurar; desmarcado, los archivos adjuntos se quedan y no se busca en
+ellos, y el informe lo advierte.
 Aplicar las censuras empieza marcado: los originales quedan como estaban y las copias
 censuradas van a la carpeta de salida. El informe dice de cada archivo qué se quitó y de
 dónde: las páginas, y cuántos de los demás lugares. Desmárquelo para solo marcarlas y
@@ -2012,9 +2026,11 @@ contraseña</b> (como Propiedades de seguridad; para quitar una contraseña de p
 escríbala); <b>Establecer propiedades del documento</b> (título, autor, asunto, palabras clave;
 {name} es el nombre del archivo); <b>Exportar</b> (Word, Excel, PowerPoint, imágenes PNG o JPEG
 o texto, hecho a partir del documento tal como lo dejaron los pasos anteriores, guardado junto
-al PDF); <b>Combinar todo en un PDF</b> (el último paso: los archivos procesados en el orden de
-la lista, con un marcador para cada uno; marque Guardar también cada archivo para conservarlos
-también). El PDF de cada archivo se escribe cuando los pasos cambian documentos; con solo pasos
+al PDF; debe ir después de Buscar y censurar y de Aplicar censuras, o la copia aún tendría las
+palabras); <b>Combinar todo en un PDF</b> (el último paso: los archivos procesados en el orden
+de la lista, con un marcador para cada uno; marque Guardar también cada archivo para
+conservarlos también; un archivo omitido o con error no está en él y no usa números Bates; con
+Buscar y censurar solo marcando, se llama Combinado-marcado). El PDF de cada archivo se escribe cuando los pasos cambian documentos; con solo pasos
 Exportar, solo se escriben los archivos exportados.</li>
 <li>Las <b>recetas</b> guardan una lista de pasos con sus opciones bajo un nombre: elija una en
 <b>Receta</b>, <b>Guardar receta...</b> para conservar los pasos actuales, <b>Eliminar
@@ -2027,12 +2043,19 @@ la próxima vez.</li>
 <b>Esta carpeta</b>, donde <b>Conservar la estructura de carpetas</b> pone los archivos de las
 subcarpetas de una carpeta en las mismas subcarpetas. <b>Nombre del archivo</b>: {name} (el
 nombre del propio archivo), {n} (su número en la lista: 001, 002...), {date} (hoy) y {bates}
-(su primer número Bates), como {name}_ocr. <b>Si el archivo ya existe:</b> Preguntar
+(su primer número Bates), como {name}_ocr. Un nombre es siempre un archivo de la carpeta de
+salida: las barras, los dos puntos, .. y las letras de unidad pasan a formar parte del nombre,
+los nombres de dispositivo de Windows (CON, NUL, LPT1...) llevan un _ delante, y un nombre
+demasiado largo se acorta. <b>Si el archivo ya existe:</b> Preguntar
 (Reemplazar, Reemplazar todo, Omitir, Omitir todos), Agregar un número (nombre (2).pdf),
 Reemplazarlo u Omitir el archivo. Los resultados nunca reemplazan los archivos de los que se
 hicieron, salvo que marque <b>Permitir reemplazar los archivos originales</b> (desmarcado cada
 vez que se abre la ventana); dos archivos con el mismo nombre nunca se sobrescriben entre sí.
-Una carpeta "Procesados" se deja fuera cuando se vuelve a agregar una carpeta.</li>
+Una carpeta "Procesados" se deja fuera cuando se vuelve a agregar una carpeta, y también los
+archivos de la carpeta de salida cuando está dentro de la carpeta agregada (los resultados de un
+proceso anterior). Nunca se escribe nada fuera de la carpeta de salida: un archivo que ya está
+ahí y es un vínculo se reemplaza, no se escribe a través de él, y una carpeta ahí que es un
+vínculo a otro lugar se omite.</li>
 <li><b>Ejecutar</b> muestra el avance del archivo en proceso y de todos los archivos.
 <b>Cancelar</b> termina el archivo en proceso y luego se detiene; vuelva a hacer clic
 (<b>Detener ya</b>) para detenerse de inmediato, dejando fuera ese archivo. Los resultados de un

@@ -28,6 +28,7 @@ adding another one.
 
 import html
 import re
+import sys
 from collections import Counter, defaultdict
 
 import pymupdf
@@ -394,6 +395,103 @@ def _item(level, title, page, rect, on=True):
     title = (text.rstrip(" .:–—-").lstrip(" –—-") or text)[:200]
     return {"level": level, "title": title, "page": page,
             "to": pymupdf.Point(0, max(0.0, rect.y0 - 2)), "on": on}
+
+
+# ---- outlines nested deep ------------------------------------------------------------------
+def _outline_depth(doc):
+    """How many levels deep the document's outline goes (as MuPDF read it)."""
+    deepest = 0
+    todo = [(doc.outline, 1)] if doc.outline else []
+    while todo:
+        o, lvl = todo.pop()
+        while o is not None and o.this.m_internal:
+            deepest = max(deepest, lvl)
+            if o.down:
+                todo.append((o.down, lvl + 1))
+            o = o.next
+    return deepest
+
+
+def _outline_xrefs(obj, xrefs):
+    """PyMuPDF's JM_outline_xrefs (the object numbers of the outline items from obj, in
+    order: each item, the items under it, then the next), without recursing, and with
+    the items seen in a set (it searched its list for each: 100,000 bookmarks took half a
+    minute to write)."""
+    m = pymupdf.mupdf
+    get, is_dict, num = m.pdf_dict_gets, m.pdf_is_dict, m.pdf_to_num
+    seen = set(xrefs)
+    todo = [obj]
+    while todo:
+        this = todo.pop()
+        while this.m_internal:
+            x = num(this)
+            if x in seen or get(this, "Type").m_internal:
+                break                   # (a loop, or the top of the outline)
+            xrefs.append(x)
+            seen.add(x)
+            first = get(this, "First")
+            nxt = get(this, "Next")
+            if not is_dict(nxt):
+                nxt = None
+            if is_dict(first):
+                if nxt is not None:
+                    todo.append(nxt)
+                this = first
+            elif nxt is not None:
+                this = nxt
+            else:
+                break
+    return xrefs
+
+
+PYMUPDF_OWN = {}                # PyMuPDF's own steps replaced below (for the tests)
+
+
+def apply_deep_outlines():
+    """Wrap Document.get_toc and replace JM_outline_xrefs (once): PyMuPDF reads the outline
+    recursing, one call per level, so a file whose bookmarks nest a thousand levels deep
+    raised RecursionError everywhere the bookmarks are read or written: the Bookmarks
+    panel stayed empty and deleting a page (which moves the bookmarks) failed. get_toc is
+    read again with room for the depth."""
+    own = pymupdf.Document.get_toc
+    if getattr(own, "_kz_deep", False):
+        return
+    if hasattr(pymupdf, "JM_outline_xrefs"):
+        PYMUPDF_OWN["JM_outline_xrefs"] = pymupdf.JM_outline_xrefs
+        pymupdf.JM_outline_xrefs = _outline_xrefs
+
+    def get_toc(doc, simple=True):
+        try:
+            return own(doc, simple)
+        except RecursionError:
+            pass
+        old = sys.getrecursionlimit()
+        sys.setrecursionlimit(old + 4 * _outline_depth(doc) + 200)
+        try:
+            return own(doc, simple)
+        finally:
+            sys.setrecursionlimit(old)
+    get_toc.__doc__ = own.__doc__
+    get_toc._kz_deep = True
+    pymupdf.Document.get_toc = get_toc
+    # (the styles of many bookmarks: PyMuPDF's compiled helper searches a list for each,
+    # 25 s for 100,000 when a file opened; its own Python steps, through the outline_xrefs
+    # above, take a second)
+    extend = getattr(pymupdf.Document, "_extend_toc_items", None)
+    if extend is not None and hasattr(pymupdf, "g_use_extra"):
+        def _extend_toc_items(doc, items):
+            if len(items) < 2000 or not pymupdf.g_use_extra:
+                return extend(doc, items)
+            pymupdf.g_use_extra = False
+            try:
+                return extend(doc, items)
+            finally:
+                pymupdf.g_use_extra = True
+        PYMUPDF_OWN["_extend_toc_items"] = extend
+        pymupdf.Document._extend_toc_items = _extend_toc_items
+
+
+apply_deep_outlines()
 
 
 # ---- tagged PDFs ---------------------------------------------------------------------------
@@ -969,8 +1067,10 @@ def insert_toc(doc, at=0, title=None, depth=MAX_LEVELS, size=None, replace=True)
                 _kind, x, base, text, key, wrap, _rows_, step = op
                 added_text.write(page, (x, base), 0, text, [key] * len(text), step,
                                  width=wrap, fonts=table)
-        # page numbers and dotted leaders, at the last line of each entry
+        # page numbers and dotted leaders, at the last line of each entry (the leaders an
+        # artifact: a screen reader doesn't read them)
         shape = page.new_shape()
+        leaders = page.new_shape()
         last_text = None
         links = []
         for op in ops:
@@ -994,23 +1094,108 @@ def insert_toc(doc, at=0, title=None, depth=MAX_LEVELS, size=None, replace=True)
             dot = fonts.width(" .", plain)
             count = int((end - start) / dot) if dot > 0 else 0
             if count >= 2:
-                shape.insert_text((end - count * dot, base), " ." * count,
-                                  fontname=table[plain].name, fontsize=key.size, color=gray)
+                leaders.insert_text((end - count * dot, base), " ." * count,
+                                    fontname=table[plain].name, fontsize=key.size, color=gray)
             link = {"kind": pymupdf.LINK_GOTO, "from": rect, "page": target,
                     "to": pymupdf.Point(to) if to is not None else pymupdf.Point(0, 0),
                     "zoom": zoom or 0}
-            links.append(link)
+            # (what a screen reader says for the link: PDF/UA wants every link described)
+            links.append((link, tr("{title}, page {page}").format(
+                title=" ".join(entries[e][1].split()), page=num)))
         shape.commit()
+        if leaders.text_cont:
+            leaders.text_cont = "/Artifact BMC\n" + leaders.text_cont + "\nEMC\n"
+            leaders.commit()
         ts.fix_spaces(page, {k: f._replace(source=True) for k, f in table.items()})
         _cid_maps(page)
         _one_stream(page)
-        for link in links:
+        for link, words in links:
             page.insert_link(link)
+            xref = page.annot_xrefs()[-1][0]
+            doc.xref_set_key(xref, "Contents", pymupdf.get_pdf_str(words))
     first = at
     for idx in to_old:
         dest = toc[idx][3]
         doc.set_toc_item(idx, dest_dict=dict(dest, page=first, to=pymupdf.Point(0, 0)))
         if not dest.get("color") and dest.get("xref"):
             doc.xref_set_key(dest["xref"], "C", "null")         # (not grayed out)
+    _tag_toc(doc, first, len(pages))
     return first, len(pages)
+
+
+def _tag_toc(doc, first, count):
+    """On a tagged document, the table's pages tagged as a table of contents (PDF 32000-1
+    14.8.4.3.2): a TOC element holding a TOCI per entry, each a Link holding the entry's
+    words, its page number and its link annotation; the leaders are artifacts. (Tagged
+    plainly, as any page added to a tagged document, each title was a P, the page numbers
+    one P together and each link a Link of its own, holding no words.)"""
+    from . import pdfcoords, tag_upkeep as tu
+    if not tu.is_tagged(doc):
+        return
+    pages = list(range(first, first + count))
+    tu.refresh(doc, None, True, pages)          # (everything tagged, in step)
+    tree = tu.Tree(doc)
+    if tree.root is None:
+        return
+    m = pymupdf.mupdf
+    toc = None
+    moved = []
+    for i in pages:
+        page = doc[i]
+        px = page.xref
+        st = tu.PageState(page)
+        seq_box, _pb = st.boxes()
+        box_of = {}
+        for ser, b in seq_box.items():
+            mc = st.seqs[ser][0][2]
+            box_of[mc] = b if mc not in box_of else box_of[mc] | b
+        to_page = pdfcoords.to_page(page) * page.rotation_matrix
+        links = []
+        for num, sub, shown in tu._annot_list(doc, px, tree.pdf):
+            if sub != "Link" or not shown or len(tree.objr.get(num, ())) != 1:
+                continue
+            try:
+                r = doc.xref_get_key(num, "Rect")[1].strip("[]").split()
+                links.append((num, (pymupdf.Rect([float(v) for v in r]) * to_page)
+                              .normalize()))
+            except (TypeError, ValueError):
+                continue
+        if not links:
+            continue
+        held = {}                       # link -> [mcid] of the words it covers
+        for mc in sorted(tree.page_refs.get(px, ())):
+            b = box_of.get(mc)
+            if b is None or len(tree.refs.get((px, mc), ())) != 1:
+                continue
+            c = pymupdf.Point((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2)
+            hit = next((num for num, r in links if r.contains(c)), None)
+            if hit is not None:
+                held.setdefault(hit, []).append(mc)
+        if toc is None:
+            kids = tree.top.kids if tree.top is not None else tree.tops
+            olds = [tree.refs[(px, mc)][0] for mcs in held.values() for mc in mcs] + \
+                [tree.objr[num][0] for num, _r in links]
+            tops = []
+            for e in olds:
+                while e.parent is not None and e.parent is not tree.top:
+                    e = e.parent
+                tops.append(e)
+            at = min((kids.index(e) for e in tops if e in kids), default=None)
+            toc = tree.new_el("TOC", px, at=at)
+        for num, _r in links:
+            item = tree.new_el("TOCI", px, parent=toc)
+            link = tree.new_el("Link", px, parent=item)
+            for mc in held.get(num, ()):
+                old = tree.refs[(px, mc)][0]
+                tree.drop_mcid(old, (px, mc))
+                tree.add_mcid(link, px, mc)
+                moved.append(old)
+            old = tree.objr[num][0]
+            tree.drop_objr(old, num)
+            tree.add_objr(link, num, px)
+            moved.append(old)
+    for e in moved:
+        tree.prune(e)
+    if toc is not None:
+        tu.refresh(doc, pages)          # (the parent tree pointing at the new elements)
 

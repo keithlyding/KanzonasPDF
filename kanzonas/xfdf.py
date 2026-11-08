@@ -333,16 +333,74 @@ def _rich_for_xfdf(rc):
     return _xml_text(rc)
 
 
+_ESCAPES = {"n": b"\n", "r": b"\r", "t": b"\t", "b": b"\b", "f": b"\f", "(": b"(", ")": b")",
+            "\\": b"\\"}
+
+
+def _pdf_strings(text):
+    """The bytes of each string in text, PDF's notation: <hex> or (literal, with its escapes).
+    (PyMuPDF writes a string whose bytes are all printable as a literal, others as hex.)"""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "<":
+            j = text.find(">", i)
+            if j < 0:
+                break
+            h = re.sub(r"\s", "", text[i + 1:j])
+            out.append(bytes.fromhex(h + "0" * (len(h) % 2)))
+            i = j + 1
+        elif c == "(":
+            buf, depth, i = bytearray(), 1, i + 1
+            while i < n and depth:
+                c = text[i]
+                if c == "\\" and i + 1 < n:
+                    e = text[i + 1]
+                    if e in _ESCAPES:
+                        buf += _ESCAPES[e]
+                        i += 2
+                    elif e in "01234567":
+                        k = i + 1
+                        while k < min(n, i + 4) and text[k] in "01234567":
+                            k += 1
+                        buf.append(int(text[i + 1:k], 8) & 255)
+                        i = k
+                    elif e in "\r\n":           # a line continued
+                        i += 2 + (e == "\r" and i + 2 < n and text[i + 2] == "\n")
+                    else:
+                        buf += e.encode("latin-1", "replace")
+                        i += 2
+                    continue
+                if c == "(":
+                    depth += 1
+                elif c == ")":
+                    depth -= 1
+                    if not depth:
+                        i += 1
+                        break
+                buf += c.encode("latin-1", "replace")
+                i += 1
+            out.append(bytes(buf))
+        else:
+            i += 1
+    return out
+
+
 def file_ids(doc):
-    """The document's file identifiers (the trailer's /ID) as hex, or None."""
+    """The document's file identifiers (the trailer's /ID) as hex, or None. (Read in either
+    notation: an ID whose random bytes happen all to be printable comes back as a literal
+    string, and was taken for none, now and then.)"""
     try:
         kind, val = doc.xref_get_key(-1, "ID")
     except Exception:
         return None
     if kind != "array":
         return None
-    ids = re.findall(r"<([0-9A-Fa-f]*)>", val)
-    return (ids[0].upper(), ids[1].upper()) if len(ids) == 2 else None
+    try:
+        ids = _pdf_strings(val)
+    except ValueError:
+        return None
+    return (ids[0].hex().upper(), ids[1].hex().upper()) if len(ids) == 2 else None
 
 
 # ---- reading a document's markups as records -------------------------------------------------

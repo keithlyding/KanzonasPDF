@@ -271,6 +271,13 @@ class _FullScreen(QObject):
             reading.show()
 
     def eventFilter(self, obj, e):
+        if e.type() == QEvent.KeyPress and e.key() == Qt.Key_Escape and \
+                not e.modifiers() and self._escape_leaves(obj):
+            # (Escape where the page doesn't get it, the Reading view or the top bar having
+            # the focus: full screen is left all the same, as its tip says; on the page, the
+            # tool is put down first: escape_on_page)
+            QTimer.singleShot(0, lambda: leave_full_screen(self.win))
+            return True
         if e.type() == QEvent.MouseMove and self.win.isActiveWindow():
             bar = getattr(self.win, "_fs_bar", None)
             if bar is not None:
@@ -282,6 +289,22 @@ class _FullScreen(QObject):
                         QApplication.activePopupWidget() is None:
                     bar.hide()
         return False
+
+
+    def _escape_leaves(self, obj):
+        """An Escape sent to obj leaves full screen: a widget of the window outside the
+        document's page (the page has its own Escape), with no menu or list popped up."""
+        from PySide6.QtWidgets import QWidget
+        from .document_view import DocumentView
+        if not isinstance(obj, QWidget) or obj.window() is not self.win or \
+                QApplication.activePopupWidget() is not None:
+            return False
+        w = obj
+        while w is not None:
+            if isinstance(w, DocumentView):
+                return False
+            w = w.parentWidget()
+        return True
 
 
 def toggle_full_screen(win):
@@ -326,13 +349,22 @@ def start_presentation(win):
     v = win.view()
     if v is None:
         return None
+    old = getattr(win, "_presentation", None)
+    if old is not None and shiboken6.isValid(old) and old.isVisible():
+        # (F5 again in the window, the presentation on the other screen: that one is
+        # brought forward, not a second one opened over it, which closing the window left
+        # behind)
+        old.raise_()
+        old.activateWindow()
+        return old
     from .presentation import Presentation
     screen = win.screen()
     p = Presentation(v, v.current_page(), screen)
     win._presentation = p
 
     def done(page):
-        win._presentation = None
+        if getattr(win, "_presentation", None) is p:
+            win._presentation = None
         if shiboken6.isValid(v) and not v.doc.is_closed:
             v.goto_page(page)
     p.finished.connect(done)
