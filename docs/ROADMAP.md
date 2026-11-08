@@ -32,7 +32,9 @@ a decision changes or a piece of work lands. Details of each version are in
   styles, also into another document. Then (owner, 8 Nov) the page's own pictures and shapes
   copied, cut and pasted to another page or document, and CAD mode's Move and Copy (and a
   selection dragged) across pages: pasted into another document, content drops its layer
-  membership (that document doesn't have the layer).
+  membership (that document doesn't have the layer). Also from the owner's use: the editing
+  box no bigger than its text (small text typed enlarged with a true-size preview), and printed
+  lines no longer faint (Dark thin lines in the Print window).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
