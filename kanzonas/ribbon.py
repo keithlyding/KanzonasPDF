@@ -5,12 +5,18 @@ stay in sync with the menus). Double-click a tab (or Ctrl+F1) to collapse it to 
 tab names; click a tab to open it again.
 
 Compact like LibreOffice's tabbed bar: two rows of small buttons, group names optional, and a
-tab scrolls sideways (mouse wheel) when the window is too narrow for it.
+tab scrolls sideways (mouse wheel) when the window is too narrow for it. Every tab fits a
+1366-pixel-wide screen in English and Spanish (tests/test_ribbon_fits.py): commands used less
+often share a button with an arrow (SplitButton) or are listed under a group's own arrow
+(the narrow button at its right end), and a group can mix large buttons with a column of
+small ones (Stack) or a row of icon-only ones (Icons).
 """
 
 from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtWidgets import (QTabWidget, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,
                                QToolButton, QLabel, QFrame, QSizePolicy, QScrollArea, QMenu)
+
+from .i18n import tr
 
 LARGE_ICON = 20
 SMALL_ICON = 16
@@ -56,7 +62,7 @@ class SplitButton(QToolButton):
     all. The face starts as the first and then shows the one last used, or the tool that is
     on (picked by its shortcut or a menu too). Made by split_button."""
 
-    def __init__(self, actions, parent=None):
+    def __init__(self, actions, parent=None, large=False):
         super().__init__(parent)
         self.setPopupMode(QToolButton.MenuButtonPopup)
         menu = QMenu(self)
@@ -68,9 +74,14 @@ class SplitButton(QToolButton):
             if a.isCheckable():
                 a.toggled.connect(self._toggled)
         self.setAutoRaise(True)
-        self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.setIconSize(QSize(SMALL_ICON, SMALL_ICON))
-        self.setFixedHeight(SMALL_HEIGHT)
+        if large:           # (in a group of large buttons: the name under the icon)
+            self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+            self.setIconSize(QSize(LARGE_ICON, LARGE_ICON))
+            self.setFixedHeight(ROWS * SMALL_HEIGHT)
+        else:
+            self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+            self.setIconSize(QSize(SMALL_ICON, SMALL_ICON))
+            self.setFixedHeight(SMALL_HEIGHT)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
     def _toggled(self, on):
@@ -91,13 +102,73 @@ class SplitButton(QToolButton):
         return self.sizeHint()
 
 
-def split_button(actions):
+def split_button(actions, large=False):
     """One ribbon button (SplitButton) for actions (the first is its face at the start); with
-    a single action, that action itself (a plain button). None when there is none."""
+    a single action, that action itself (a plain button). None when there is none. large:
+    for a group of large buttons."""
     actions = [a for a in actions if a is not None]
     if len(actions) < 2:
         return actions[0] if actions else None
-    return SplitButton(actions)
+    return SplitButton(actions, large=large)
+
+
+class Stack(list):
+    """In a large group: these commands as small buttons stacked in one column (up to ROWS),
+    beside the group's large buttons."""
+
+
+class Icons(list):
+    """In a small group: these commands as icon-only small buttons side by side, taking one
+    small button's place (their names are in their tool tips)."""
+
+
+def _small_button(action):
+    w = QToolButton()
+    w.setDefaultAction(action)
+    w.setAutoRaise(True)
+    w.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+    w.setIconSize(QSize(SMALL_ICON, SMALL_ICON))
+    w.setFixedHeight(SMALL_HEIGHT)
+    w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    return w
+
+
+def _icons_row(actions):
+    row = QWidget()
+    h = QHBoxLayout(row)
+    h.setContentsMargins(0, 0, 0, 0)
+    h.setSpacing(1)
+    for a in actions:
+        if a is None:
+            continue
+        b = QToolButton()
+        b.setDefaultAction(a)
+        b.setAutoRaise(True)
+        b.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        b.setIconSize(QSize(SMALL_ICON, SMALL_ICON))
+        b.setFixedHeight(SMALL_HEIGHT)
+        h.addWidget(b)
+    h.addStretch(1)
+    row.setFixedHeight(SMALL_HEIGHT)
+    return row
+
+
+class GroupArrow(QToolButton):
+    """The narrow arrow at a group's right end: a list of the group's commands used less often
+    (like the arrow in the corner of a group on Microsoft Office's ribbon)."""
+
+    def __init__(self, title, actions, parent=None):
+        super().__init__(parent)
+        self.setPopupMode(QToolButton.InstantPopup)
+        self.setArrowType(Qt.DownArrow)
+        self.setAutoRaise(True)
+        self.setFixedSize(14, ROWS * SMALL_HEIGHT)
+        self.setStyleSheet("QToolButton::menu-indicator { image: none; width: 0px; }")
+        menu = QMenu(self)
+        menu.addActions(actions)
+        self.setMenu(menu)
+        self.setToolTip(tr("More in {group}: {commands}").format(
+            group=title, commands=", ".join(a.iconText() for a in actions)))
 
 
 class Ribbon(QTabWidget):
@@ -116,13 +187,14 @@ class Ribbon(QTabWidget):
 
     # ---- building ---------------------------------------------------------------
     def add_tab(self, title, groups):
-        """groups: [(group title, 'large' | 'small', [QAction | QWidget | None, ...])]"""
+        """groups: [(group title, 'large' | 'small', [QAction | QWidget | Stack | Icons | None,
+        ...][, [QAction, ...] listed under the group's arrow])]"""
         page = QWidget()
         row = QHBoxLayout(page)
         row.setContentsMargins(2, 1, 2, 1)
         row.setSpacing(2)
-        for gtitle, size, items in groups:
-            row.addWidget(self._group(gtitle, size, items))
+        for gtitle, size, items, *more in groups:
+            row.addWidget(self._group(gtitle, size, items, more[0] if more else None))
             line = QFrame()
             line.setFrameShape(QFrame.VLine)
             line.setFrameShadow(QFrame.Sunken)
@@ -131,7 +203,7 @@ class Ribbon(QTabWidget):
         self.addTab(_Strip(page), title)
         return page
 
-    def _group(self, title, size, items):
+    def _group(self, title, size, items, more=None):
         box = QWidget()
         v = QVBoxLayout(box)
         v.setContentsMargins(2, 0, 2, 0)
@@ -145,7 +217,14 @@ class Ribbon(QTabWidget):
         for item in items:
             if item is None:
                 continue
-            if isinstance(item, QWidget):
+            if isinstance(item, Stack):
+                for r, a in enumerate(x for x in item if x is not None):
+                    grid.addWidget(a if isinstance(a, QWidget) else _small_button(a), r, col)
+                col += 1
+                continue
+            if isinstance(item, Icons):
+                w = _icons_row(item)
+            elif isinstance(item, QWidget):
                 w = item
             else:
                 w = QToolButton()
@@ -157,16 +236,17 @@ class Ribbon(QTabWidget):
                     w.setMinimumWidth(44)
                     w.setFixedHeight(ROWS * SMALL_HEIGHT)
                 else:
-                    w.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-                    w.setIconSize(QSize(SMALL_ICON, SMALL_ICON))
-                    w.setFixedHeight(SMALL_HEIGHT)
-                    w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+                    w = _small_button(item)
             if size == "large":
                 grid.addWidget(w, 0, col, ROWS, 1)
                 col += 1
             else:
                 grid.addWidget(w, k % ROWS, k // ROWS)
                 k += 1
+        more = [a for a in (more or []) if a is not None]
+        if more:
+            columns = col if size == "large" else (k + ROWS - 1) // ROWS
+            grid.addWidget(GroupArrow(title, more), 0, columns, ROWS, 1)
         v.addLayout(grid, 1)
         label = QLabel(title)
         label.setAlignment(Qt.AlignCenter)

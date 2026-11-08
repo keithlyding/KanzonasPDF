@@ -140,3 +140,48 @@ class FoundByTheBattery(Quiet):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RefusedEditsKeepRedo(Quiet):
+    """1.9 (random battery, seed 5, step 1282): Edit objects on shapes and text together, on a
+    page with redaction marks not applied yet. The shapes were deleted (or moved, turned)
+    first, then the text's part refused (taking text out applies the page's redaction marks)
+    and the edit was taken back: the document was as before, but MuPDF had dropped every step
+    to redo at the shapes' change, and Redo was lost. A refused edit refuses before it
+    changes anything."""
+
+    def run_refused(self, edit, box=True):
+        from unittest import mock
+        from PySide6.QtWidgets import QMessageBox
+        v = self.view()
+        v.mark_redactions(0, [pymupdf.Rect(400, 30, 450, 50)])     # (over nothing)
+        v.rotate_page(1, 90)
+        v.undo()                            # (a step to redo)
+        self.assertEqual(len(v._redo), 1)
+        shapes = [it for it in v.content_objects(0).items if it["kind"] != "picture"]
+        texts = v.text_objects(0)
+        self.assertTrue(shapes and texts)
+        from tests.test_undo_journal import canon
+        before = canon(v.doc)
+        v.select_objects(0, [shapes[0], texts[0]])
+        boxes = []
+        with mock.patch.object(QMessageBox, "warning",
+                               side_effect=lambda *a, **k: boxes.append(a[1:3])):
+            edit(v)
+        if box:
+            self.assertTrue(boxes and "redaction marks" in boxes[0][1], boxes)
+        self.assertEqual(canon(v.doc), before)
+        self.assertEqual(len(v._redo), 1, "a refused edit lost the steps to redo")
+        v.redo()                            # (MuPDF still has it: the page turns)
+        self.assertEqual(v.doc[1].rotation, 90)
+        v.dirty = False
+
+    def test_delete(self):
+        self.run_refused(lambda v: v.delete_objects())
+
+    def test_move(self):
+        self.run_refused(lambda v: v.move_objects(v.selected_objects_rect() + (20, 10, 20, 10)))
+
+    def test_turn(self):
+        # (text isn't turned: refused before the edit starts, as it always was)
+        self.run_refused(lambda v: v.rotate_objects(90), box=False)
