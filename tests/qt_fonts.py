@@ -1,6 +1,7 @@
 """Fonts for tests that measure text on screen. Qt's offscreen platform on the Windows build
-machine finds no font at all: every text measures 0 px wide, so an editor box thinks each word
-wraps, and nothing is ever too long. ensure_font() then loads PyMuPDF's own Helvetica, Times
+machine has no font at all (QFontDatabase.families() is empty); once the app loads its icon
+font, Material Design Icons, every family falls back to it, which has no letters: every text
+measures 0 px wide, so an editor box thinks each word wraps, and nothing is ever too long. ensure_font() then loads PyMuPDF's own Helvetica, Times
 and Courier (Nimbus Sans, Roman, Mono), makes them the application's font and stands them in
 for the families the app asks for (Arial, Helvetica, Times New Roman...), and checks that text
 measures; elsewhere it changes nothing."""
@@ -25,9 +26,16 @@ def _measures(family):
     return QFontMetrics(QFont(family, 9)).horizontalAdvance("Mm") > 0
 
 
+def _text_families():
+    """The installed families that hold letters (not the app's own icon font)."""
+    return [f for f in QFontDatabase.families() if "Material Design" not in f]
+
+
 def ensure_font():
     app = QApplication.instance()
-    if _done or app is None or (_measures(app.font().family()) and _measures("Arial")):
+    # (measuring doesn't tell: before the app loads its icon font, Qt's fallback measures;
+    # after, the icon font is the only font there is and every family falls back to it)
+    if _done or app is None or _text_families():
         return
     import pymupdf
     first = None
@@ -43,5 +51,5 @@ def ensure_font():
     if first:
         app.setFont(QFont(first, 9))
         _done.append(first)
-    if not (_measures(app.font().family()) and _measures("Arial")):
+    if not (_text_families() and _measures("Arial")):
         raise RuntimeError("tests.qt_fonts: no font measures text here, even PyMuPDF's")
