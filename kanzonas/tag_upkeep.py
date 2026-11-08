@@ -41,6 +41,7 @@ No Qt here.
 """
 
 import bisect
+import os
 import re
 
 import pymupdf
@@ -81,6 +82,10 @@ def _num(obj):
 
 def _null(obj):
     return obj.m_internal is None or m.pdf_is_null(obj)
+
+
+_RAW_GET = getattr(getattr(pymupdf, "_mupdf", None), "pdf_array_get", None) or m.pdf_array_get
+_RAW_NUM = getattr(getattr(pymupdf, "_mupdf", None), "pdf_to_num", None) or m.pdf_to_num
 
 
 def _items(obj):
@@ -579,11 +584,16 @@ class Tree:
         obj = parent.obj if parent is not None else self.root
         k = m.pdf_dict_gets(obj, "K")
         kr = m.pdf_resolve_indirect(k)
-        if m.pdf_is_array(kr):
+        if m.pdf_is_array(kr) and e.num:
+            # (by number: the top's /K can hold thousands)
+            get, num = _RAW_GET, _RAW_NUM
+            for i in range(m.pdf_array_len(kr) - 1, -1, -1):
+                if num(get(kr, i)) == e.num:
+                    m.pdf_array_delete(kr, i)
+        elif m.pdf_is_array(kr):
             for i in range(m.pdf_array_len(kr) - 1, -1, -1):
                 v = m.pdf_array_get(kr, i)
-                if e.num and m.pdf_is_indirect(v) and m.pdf_to_num(v) == e.num or \
-                        not e.num and m.pdf_is_dict(m.pdf_resolve_indirect(v)) and \
+                if m.pdf_is_dict(m.pdf_resolve_indirect(v)) and \
                         _same(m.pdf_resolve_indirect(v), e.obj):
                     m.pdf_array_delete(kr, i)
         elif e.num and _num(k) == e.num or not e.num and _same(kr, e.obj):
@@ -813,7 +823,7 @@ class _Upkeep:
         self.doc = doc
         self.pdf = _pdf(doc)
         self.structural = structural
-        self.tree = Tree(doc)
+        self.tree = kept_tree(doc)
         self.page_xrefs = [doc.page_xref(i) for i in range(doc.page_count)]
         self.index_of = {x: i for i, x in enumerate(self.page_xrefs)}
         self.nums = number_tree(m.pdf_dict_gets(self.tree.root, "ParentTree"))
@@ -824,32 +834,52 @@ class _Upkeep:
         self.candidates = []            # [(El, page index, class)] left empty by this edit
         self.waiting = []               # [(page index, group, [(mcid, tag)])] to place
         self.popups = []                # [(page index, popup, its markup)] to tag
+        self._objr_on = None
         self._key_users = None
 
     # -- keys
     def key_users(self):
-        """{StructParent(s) key: [("page" | "annot", xref)]} of the document as it is."""
+        """{StructParent(s) key: [("page" | "annot" | "form", xref)]} of the document as it
+        is (read once per refresh, kept up to date by _user)."""
         if self._key_users is None:
             out = {}
-            doc = self.doc
-            for x in self.page_xrefs:
-                k = doc.xref_get_key(x, "StructParents")
-                if k[0] == "int":
-                    out.setdefault(int(k[1]), []).append(("page", x))
-                for num, _sub, _shown in _annot_list(doc, x, self.pdf):
-                    k = doc.xref_get_key(num, "StructParent")
-                    if k[0] == "int":
-                        out.setdefault(int(k[1]), []).append(("annot", num))
-            # (forms with tagged content: their entries were taken out of the parent tree
-            # at the first edit that wrote it)
+            pdf = self.pdf
+            load, gets, res = m.pdf_load_object, m.pdf_dict_gets, m.pdf_resolve_indirect
+            is_int, to_int = m.pdf_is_int, m.pdf_to_int
+
+            def key_of(obj, name):
+                v = res(gets(obj, name))
+                return to_int(v) if is_int(v) else None
             seen = set()
             for x in self.page_xrefs:
-                for f in _page_forms(self.pdf, x, seen):
-                    k = doc.xref_get_key(f, "StructParents")
-                    if k[0] == "int":
-                        out.setdefault(int(k[1]), []).append(("form", f))
+                k = key_of(load(pdf, x), "StructParents")
+                if k is not None:
+                    out.setdefault(k, []).append(("page", x))
+                for a in _items(gets(load(pdf, x), "Annots")):
+                    num = _num(a)
+                    if num:
+                        k = key_of(res(a), "StructParent")
+                        if k is not None:
+                            out.setdefault(k, []).append(("annot", num))
+                # (forms with tagged content: their entries were taken out of the parent
+                # tree at the first edit that wrote it)
+                for f in _page_forms(pdf, x, seen):
+                    k = key_of(load(pdf, f), "StructParents")
+                    if k is not None:
+                        out.setdefault(k, []).append(("form", f))
             self._key_users = out
         return self._key_users
+
+    def _user(self, key, kind, xref):
+        """xref (a page, an annotation) uses key now (key_users kept up to date)."""
+        users = self._key_users
+        if users is None:
+            return
+        for k in [k for k, lst in users.items() if (kind, xref) in lst]:
+            users[k] = [u for u in users[k] if u != (kind, xref)]
+            if not users[k]:
+                del users[k]
+        users.setdefault(key, []).append((kind, xref))
 
     def new_key(self):
         k = self.next_key
@@ -926,11 +956,16 @@ class _Upkeep:
             if shown and not self.annot_ok(num, px):
                 return True
         nums = {num for num, _s, _sh in here}
-        for a, els in tree.objr.items():
-            if a not in nums and any((pg or e.pg) == px for e in els for x, pg in e.objrs
-                                     if x == a):
-                return True
-        return False
+        if self._objr_on is None:
+            # (each page's tagged annotations, once: looked for page by page, every page
+            # walked every tagged annotation)
+            self._objr_on = {}
+            for a, els in tree.objr.items():
+                for e in els:
+                    for x, pg in e.objrs:
+                        if x == a:
+                            self._objr_on.setdefault(pg or e.pg, set()).add(a)
+        return any(a not in nums for a in self._objr_on.get(px, ()))
 
     def annot_ok(self, num, px):
         sp = self.doc.xref_get_key(num, "StructParent")
@@ -1208,7 +1243,7 @@ class _Upkeep:
                         key = self.new_key()
                         doc.xref_set_key(num, "StructParent", str(key))
                         self.set_entry(key, m.pdf_new_indirect(pdf, x, 0))
-                        self._key_users = None
+                        self._user(key, "annot", num)
                         break
             elif m.pdf_is_dict(k):
                 src = next((kk for kk in kids.values() if (kk.num and kk.num == _num(kid)) or
@@ -1280,7 +1315,7 @@ class _Upkeep:
                 k = self.new_key()
                 doc.xref_set_key(num, "StructParent", str(k))
                 self.set_entry(k, m.pdf_new_indirect(self.pdf, owner.num, 0))
-                self._key_users = None
+                self._user(k, "annot", num)
 
     # -- putting the new tags in place
     def place_at(self, i, box):
@@ -1368,7 +1403,7 @@ class _Upkeep:
                 key = self.new_key()
                 doc.xref_set_key(g["annot"], "StructParent", str(key))
                 self.set_entry(key, m.pdf_new_indirect(pdf, e.num, 0))
-                self._key_users = None
+                self._user(key, "annot", g["annot"])
                 continue
             e = paired.get(k)
             if e is not None:
@@ -1398,7 +1433,7 @@ class _Upkeep:
             key = self.new_key()
             doc.xref_set_key(num, "StructParent", str(key))
             self.set_entry(key, m.pdf_new_indirect(pdf, owners[0].num, 0))
-            self._key_users = None
+            self._user(key, "annot", num)
         for i, st in self.states.items():
             edits = list(st.edits)
             for k, (pi, g, mcids) in enumerate(self.waiting):
@@ -1436,7 +1471,7 @@ class _Upkeep:
             if key is None:
                 key = self.new_key()
                 doc.xref_set_key(px, "StructParents", str(key))
-                self._key_users = None
+                self._user(key, "page", px)
             entry = self.page_entry(key) or []
             want = [held[mc].num if mc in held else 0
                     for mc in range(max(held) + 1 if held else 0)]
@@ -1477,6 +1512,123 @@ class _Upkeep:
             self.pt_dirty = True
 
 
+# ---- the tree kept between edits ---------------------------------------------------------
+# Reading the structure tree is most of what an edit of a tagged document costs (a 500-page
+# document's 15,000 elements: a quarter of a second, every edit). refresh() keeps the tree
+# it read and changed (doc._kz_tag_tree) for the next edit, which uses it when nothing else
+# can have changed the tree since: the journal's undo, redo or edit taken back (and its
+# entries forgotten) make it old (undo_journal.state), and so does another tree in the
+# catalog; every change to the tree made elsewhere says so (accessibility's
+# Reading order, Decorative..., Auto-tag, a table of contents' tags: forget_tree). With
+# KZ_TAG_CACHE_CHECK=1 (the tests, the random battery) each use compares the kept tree
+# with the tree read afresh, and fails when they differ.
+CHECK = os.environ.get("KZ_TAG_CACHE_CHECK") == "1"
+
+
+def forget_tree(doc):
+    """The tree kept for doc is old: something other than refresh changed the tags."""
+    _let_go(doc, None)
+
+
+def _let_go(doc, tree):
+    """The tree kept for doc (unless it's tree) let go of, its elements' links to each
+    other undone: freed at once, not left for the garbage collector's full passes, which
+    took a tenth of a second on a 15,000-element tree at the next edit."""
+    kept = getattr(doc, "_kz_tag_tree", None)
+    if kept is None or kept[0] is tree:
+        return
+    try:
+        doc._kz_tag_tree = None
+    except Exception:
+        return
+    old = kept[0]
+    for e in old.els:
+        e.parent = None
+        e.kids = []
+    old.els, old.tops, old.top = [], [], None
+
+
+def _stamp(doc):
+    from . import undo_journal
+    root = _get(_catalog(doc), "StructTreeRoot")
+    return undo_journal.state(doc), root.m_internal_value() if m.pdf_is_dict(root) else 0
+
+
+def _signature(tree):
+    """What a Tree read holds (elements in the tree, what each tags, in order), to compare
+    a kept tree with one read afresh."""
+    def sig(e):
+        return (e.num, e.type, e.pg, e.mcids, sorted(e.objrs), sorted(e.stms), e.other,
+                [k.num for k in e.kids if not k.gone])
+    out, todo = [], [e for e in reversed(tree.tops) if not e.gone]
+    while todo:
+        e = todo.pop()
+        out.append(sig(e))
+        todo.extend(k for k in reversed(e.kids) if not k.gone)
+    return out, tree.role_map, tree.top.num if tree.top is not None else None
+
+
+_RAW = getattr(pymupdf, "_mupdf", None)
+_ADDRESS = getattr(_RAW, "PdfObj_m_internal_value", None) or (lambda o: o.m_internal_value())
+_LOAD = getattr(_RAW, "pdf_load_object", None) or m.pdf_load_object
+
+
+def _objects(tree):
+    """[(object number, the object's address)] of the tree's elements: an element replaced
+    (xref_set_key, update_object, an undo) is another object."""
+    return [(e.num, _ADDRESS(e.obj)) for e in tree.els if e.num and not e.gone]
+
+
+def _same_objects(doc, objects):
+    pdf = _pdf(doc)
+    try:
+        for num, at in objects:
+            if _ADDRESS(_LOAD(pdf, num)) != at:
+                return False
+    except Exception:
+        return False
+    return True
+
+
+def kept_tree(doc):
+    """The document's structure tree: the one kept from the last refresh when it still
+    holds (see above: and every element is still the same object), else read."""
+    kept = getattr(doc, "_kz_tag_tree", None)
+    if kept is not None and kept[1] == _stamp(doc) and _same_objects(doc, kept[2]):
+        tree = kept[0]
+        if CHECK:
+            fresh = Tree(doc)
+            if _signature(fresh) != _signature(tree):
+                raise AssertionError("tag_upkeep: the structure tree kept is old")
+        return tree
+    return Tree(doc)
+
+
+def warm(doc):
+    """Read the document's structure tree now and keep it (see above), unless kept already:
+    reading only, nothing changes. Returns the tree read (None: none read)."""
+    if is_tagged(doc):
+        kept = getattr(doc, "_kz_tag_tree", None)
+        if kept is None or kept[1] != _stamp(doc) or not _same_objects(doc, kept[2]):
+            tree = Tree(doc)
+            _keep(doc, tree)
+            return tree
+    return None
+
+
+def _keep(doc, tree):
+    if tree.root is None:
+        forget_tree(doc)
+        return
+    if len(tree.els) > 2 * sum(1 for e in tree.els if not e.gone) + 1000:
+        tree.els = [e for e in tree.els if not e.gone]      # (what left the tree, let go)
+    _let_go(doc, tree)
+    try:
+        doc._kz_tag_tree = (tree, _stamp(doc), _objects(tree))
+    except Exception:
+        pass
+
+
 def refresh(doc, pages=None, structural=False, changed=None):
     """The tags of a tagged document brought in step with pages (indices; None: all) after
     an edit (see the module's notes); structural: pages were added, removed or moved (all
@@ -1485,17 +1637,23 @@ def refresh(doc, pages=None, structural=False, changed=None):
     Returns the pages whose content changed (their marking only: nothing looks different)."""
     if not is_tagged(doc):
         return set()
-    up = _Upkeep(doc, structural)
-    if up.tree.root is None:
-        return set()
-    if structural or pages is None:
-        again = set(changed or ()) if structural else set()
-        todo = [i for i in range(doc.page_count) if i in again or up.suspicious(i)]
-    else:
-        todo = sorted({i for i in pages if 0 <= i < doc.page_count})
-    if not todo and not structural:
-        return set()
-    up.run(todo)
+    try:
+        up = _Upkeep(doc, structural)
+        if up.tree.root is None:
+            return set()
+        if structural or pages is None:
+            again = set(changed or ()) if structural else set()
+            todo = [i for i in range(doc.page_count) if i in again or up.suspicious(i)]
+        else:
+            todo = sorted({i for i in pages if 0 <= i < doc.page_count})
+        if not todo and not structural:
+            _keep(doc, up.tree)
+            return set()
+        up.run(todo)
+    except BaseException:
+        forget_tree(doc)                # (half done: read afresh next time)
+        raise
+    _keep(doc, up.tree)
     return up.changed
 
 

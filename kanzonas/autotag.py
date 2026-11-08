@@ -1973,7 +1973,8 @@ def apply(doc, plans, lang=None):
     """Write the plans: content, structure elements, the tree's root and parent tree, the
     catalog's /MarkInfo and /Lang, each page's /StructParents and /Tabs. Run it inside
     DocumentView.modify (one undo step). Returns the number of elements written."""
-    from . import page_objects
+    from . import page_objects, tag_upkeep
+    tag_upkeep.forget_tree(doc)
     cat = doc.pdf_catalog()
     root = doc.get_new_xref()
     doc.update_object(root, "<</Type /StructTreeRoot>>")

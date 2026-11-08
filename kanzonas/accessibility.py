@@ -1236,9 +1236,17 @@ def page_order(doc, index):
     return out
 
 
+def _tree_changes(doc):
+    """The structure tree changes here, not through tag_upkeep: the tree it keeps between
+    edits is old."""
+    from .tag_upkeep import forget_tree
+    forget_tree(doc)
+
+
 def set_order(doc, items):
     """items (page_order's, in a new order): each parent's /K gets its kids among them in
     that order, in the places they held (kids of different parents keep their parents)."""
+    _tree_changes(doc)
     pdf = _pdf(doc)
     by_parent = {}
     for it in items:
@@ -1271,6 +1279,7 @@ def make_decorative(doc, num):
     """The figure (structure element num) is decoration: its marked content becomes an
     artifact, and the element leaves the structure tree (its parent tree entries too)."""
     from . import autotag, page_objects
+    _tree_changes(doc)
     tree = Tree(doc)
     node = tree.by_num.get(num)
     if node is None:
@@ -1328,6 +1337,7 @@ def _retag(data, mcids):
 
 def _drop_parents(doc, tree, page, mcids):
     """The parent tree's entries for these MCIDs of page made null."""
+    _tree_changes(doc)
     kind, val = doc.xref_get_key(page.xref, "StructParents")
     if kind != "int":
         return
@@ -1344,6 +1354,7 @@ def _drop_parents(doc, tree, page, mcids):
 
 def _unlink(doc, node):
     """Take node out of its parent's /K."""
+    _tree_changes(doc)
     parent_obj = node.parent.obj if node.parent is not None else tree_root(doc)
     if parent_obj is None or not node.num:
         return
@@ -1372,6 +1383,7 @@ def mark_artifacts(page, spans):
     marked; raises ValueError when one sits in tagged content with other things."""
     from . import autotag, page_objects
     doc = page.parent
+    _tree_changes(doc)
     r = autotag.PageReader(page).read()
     data = r.data
     wanted = []

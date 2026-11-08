@@ -1159,10 +1159,9 @@ def _tag_toc(doc, first, count):
         return
     pages = list(range(first, first + count))
     tu.refresh(doc, None, True, pages)          # (everything tagged, in step)
-    tree = tu.Tree(doc)
+    tree = tu.kept_tree(doc)                    # (changed here, and kept: the refresh below)
     if tree.root is None:
         return
-    m = pymupdf.mupdf
     toc = None
     moved = []
     for i in pages:

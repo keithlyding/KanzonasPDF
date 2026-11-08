@@ -35,6 +35,11 @@ Check accessibility) and bookmarks, fixed:
   hidden ones and those outside the crop box). Now the pop-up is in its markup's Annot
   element, its Contents the markup's (also from Auto-tag, and kept the same when the
   note's text changes); checked with veraPDF 1.28.2: passes again;
+- every edit of a tagged document read its whole structure tree again (a 500-page document's
+  14,500 elements: a markup 0.37 s instead of 0.04, Add text 0.24 s instead of 0.004): the
+  tree is kept between edits (tag_upkeep.kept_tree), read again only when an undo, redo,
+  edit taken back or another tree made it old, or one of its elements is another object
+  (xref_set_key, update_object); a markup now 0.056 s, Add text 0.05 s;
 - Delete pages moved the bookmarks of a deleted page one by one, each reading the whole
   outline again (set_toc_item): 1,000 of 3,000 bookmarks took 10 s;
 - Check accessibility's "long document without bookmarks" offered no fix: now Make
@@ -351,6 +356,104 @@ class Outlines(Case):
                                           "zoom")}] for lv, t, p, dest in ours]
         BA.PYMUPDF_OWN["_extend_toc_items"](d, items)
         self.assertEqual(items, ours)
+
+
+class TreeKept(Case):
+    """The structure tree kept between edits (tag_upkeep.kept_tree)."""
+
+    def setUp(self):
+        from tests.test_accessibility import autotagged, sample
+        d = sample(4)
+        autotagged(d)
+        self.v = self.view(d)
+        self.v._warm_now()
+        self.assertIsNotNone(getattr(self.v.doc, "_kz_tag_tree", None))
+
+    def reads(self):
+        """A counter of the trees read afresh."""
+        real = tag_upkeep.Tree
+        count = [0]
+
+        class Counted(real):
+            def __init__(self, doc):
+                count[0] += 1
+                super().__init__(doc)
+        p = mock.patch.object(tag_upkeep, "Tree", Counted)
+        p.start()
+        self.addCleanup(p.stop)
+        return count
+
+    def edits(self, v):
+        def word(i, text):
+            return next(w for w in v.doc[i].get_text("words") if w[4] == text)
+
+        def edit_text():
+            wd = word(1, "Details")
+            v.edit_text_at(1, pymupdf.Point((wd[0] + wd[2]) / 2, (wd[1] + wd[3]) / 2))
+            ed = v._inline
+            ed.text.setPlainText(ed.text.toPlainText().replace("Details", "Particulars"))
+            ed.commit()
+
+        def add_text():
+            v.add_text_at(2, pymupdf.Point(300, 640))
+            v._inline.text.setPlainText("Added words")
+            v._inline.commit()
+
+        def delete_markup():
+            page = v.doc[0]
+            page.delete_annot(next(a for a in page.annots() if a.type[1] == "Square"))
+        return [
+            ("markup", lambda: v.modify(
+                lambda: v.doc[0].add_rect_annot(pymupdf.Rect(400, 300, 450, 350)), [0])),
+            ("note", lambda: v.modify(lambda: v.doc[3].add_text_annot((400, 500), "N"), [3])),
+            ("edit text", edit_text),
+            ("add text", add_text),
+            ("delete markup", lambda: v.modify(delete_markup, [0])),
+            ("duplicate", lambda: v.duplicate_pages([1])),
+            ("insert blank", lambda: v.insert_blank(2)),
+            ("delete page", lambda: v.delete_pages([0])),
+        ]
+
+    def test_edits_undone_and_redone_with_the_tree_kept(self):
+        from tests.battery_random import canon
+        v = self.v
+        with mock.patch.object(tag_upkeep, "CHECK", True):     # (kept == read afresh)
+            for name, fn in self.edits(v):
+                before = canon(v._snapshot())
+                fn()
+                self.assertEqual(tag_upkeep.problems(v.doc), [], name)
+                after = canon(v._snapshot())
+                self.assertNotEqual(before, after, name)
+                v.undo()
+                self.assertEqual(canon(v._snapshot()), before, name)
+                v._warm_now()                   # (as the idle moment after an undo does)
+                v.redo()
+                self.assertEqual(canon(v._snapshot()), after, name)
+                self.assertEqual(tag_upkeep.problems(v.doc), [], name)
+                # the next edit right after the redo, the tree not read again yet
+                v.modify(lambda: v.doc[0].add_text_annot((30, 30 + 20 * len(name)), name),
+                         [0])
+                self.assertEqual(tag_upkeep.problems(v.doc), [], name)
+
+    def test_the_tree_is_read_only_when_it_must_be(self):
+        v = self.v
+        count = self.reads()
+        for name, fn in self.edits(v)[:5]:
+            fn()
+        self.assertEqual(count[0], 0)           # (kept, edit after edit)
+        v.undo()
+        v.modify(lambda: v.doc[0].add_text_annot((30, 30), "after undo"), [0])
+        self.assertEqual(count[0], 1)           # (an undo: read again)
+        # an element replaced (xref_set_key, as Alt text writes it): read again
+        fig = next(f for f in acc.figures(v.doc))
+        v.modify(lambda: acc.set_alt(v.doc, fig["num"], "A chart"), [])
+        v.modify(lambda: v.doc[0].add_text_annot((30, 60), "after alt"), [0])
+        self.assertEqual(count[0], 2)
+        # the tree changed in place elsewhere (Reading order): read again
+        items = acc.page_order(v.doc, 2)
+        v.modify(lambda: acc.set_order(v.doc, items[::-1]), [2])
+        self.assertEqual(count[0], 3)
+        self.assertEqual(tag_upkeep.problems(v.doc), [])
 
 
 class Popups(Case):
