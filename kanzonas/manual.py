@@ -367,8 +367,9 @@ It's for looking only: make changes in the main view.</li>
 </ul>
 
 <h2 id="reading">Reading comfortably</h2>
-<p>The View menu has ways to read a document more comfortably: on the whole screen, one page or
-two side by side, as large plain text, or read aloud.</p>
+<p>The View menu, and the ribbon's <b>Reading</b> tab, have ways to read a document more
+comfortably: on the whole screen, one page or two side by side, as large plain text, or read
+aloud.</p>
 <ul>
 <li><b>Full screen</b> (View menu, Ctrl+Shift+L): only the pages, on the whole screen: the
 toolbars or ribbon, menu bar, panels, tabs and status bar are hidden. Move the pointer to the
@@ -388,7 +389,9 @@ number and press Enter to go there. <b>B</b> (or the period key) turns the scree
 page back. <b>L</b> shows a <b>laser pointer</b>: a red dot that follows the mouse. The mouse
 pointer hides itself after two seconds without moving. <b>Escape</b> ends the presentation, and
 the window shows the page you ended on. Markups are shown as they are on the page (unless Show
-markups is off).</li>
+markups is off). The presentation only shows the document: nothing in it changes the file. A
+change made in the window meanwhile (with the presentation on a second screen) shows at
+once.</li>
 <li><b>Page layout</b> (View menu), remembered for each document like its page and zoom:
 <ul>
 <li><b>Single page</b> (Ctrl+5): one page at a time. Scroll to its end (wheel, Page Down or the
@@ -405,7 +408,12 @@ cover) is alone on the right, so the left and right pages of the book line up: 2
 5, and so on. Without it, the pages pair 1 and 2, 3 and 4.</li>
 </ul>
 With two pages side by side, the Left and Right arrows, Next page and Previous page move a
-whole spread; Fit width fits the two pages across the window and Fit page the whole spread.</li>
+whole spread; Fit width fits the two pages across the window and Fit page the whole spread.
+Every tool works in every layout, and in full screen too (each change is a step Undo takes
+back). With two pages side by side, Edit objects' <b>Paste</b> (Ctrl+V) puts what was copied on
+the page under the pointer, a selection dragged from one page onto the one beside it moves
+there, and CAD mode's <b>Move</b> and <b>Copy</b> take it to the other page when the second
+point is clicked there.</li>
 <li><b>Reading view</b> (View menu, Ctrl+4): the page's text in a panel at the side, reflowed as
 plain paragraphs in large type that wraps to the panel's width, for a small screen or tired
 eyes. Headings are larger, as they are on the page; pictures are left out. Columns are read in

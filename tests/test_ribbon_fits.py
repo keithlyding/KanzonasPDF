@@ -28,8 +28,8 @@ FRAME = 16                  # a window's left and right borders on Windows 10 an
 LIMIT = SCREEN - FRAME      # the widest a tab may be: a full-width window that isn't maximized
 FONTS = ("Segoe UI", "Liberation Sans", "Arimo", "Arial")
 
-# What each tab had on it before the tabs were made to fit (1.9), on a button, under a
-# button's arrow or under a group's arrow: none of it may leave its tab.
+# What each tab had on it before the tabs were made to fit (1.9), and each tab added since, on
+# a button, under a button's arrow or under a group's arrow: none of it may leave its tab.
 ON_TABS = {
     "Home": "a_actual a_cad_mouse a_fit_page a_fit_width a_mouse_hand a_mouse_standard a_zoom_in "
             "a_zoom_out t:addtext t:attach t:capture t:comment t:editobjects t:edittext "
@@ -59,6 +59,10 @@ ON_TABS = {
     "View": "a_chest a_collapse a_free_pan a_grid a_grid_settings a_group_names a_hl_fields "
             "a_manual a_markups a_menu_bar a_night a_palette a_props a_ribbon a_shortcuts "
             "a_show_markups a_sidebar a_snap_grid a_snap_objects a_snap_page a_split",
+    # (1.10: a tab of its own)
+    "Reading": "L:continuous L:single L:two L:two_continuous a_autoscroll a_cover "
+               "a_full_screen a_present a_read_doc a_read_from a_read_page a_read_pause "
+               "a_read_stop a_reflow",
     "CAD": "A:al_bottom A:al_hcenter A:al_left A:al_right A:al_top A:al_vmiddle A:dist_h "
            "A:dist_v A:z_back A:z_backward A:z_forward A:z_front a_snap_grid a_snap_objects "
            "a_snap_page c:align c:array c:copy c:delete c:mirror c:move c:rotate c:scale "
@@ -102,6 +106,8 @@ if font is not None:
         names.setdefault(id(a), "A:" + k)
     for k, a in w.cad_actions.items():
         names.setdefault(id(a), "c:" + k)
+    for k, a in w.layout_actions.items():
+        names.setdefault(id(a), "L:" + k)
     for k, v in vars(w).items():
         if isinstance(v, QAction):
             names.setdefault(id(v), k)

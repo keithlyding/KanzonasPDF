@@ -72,6 +72,9 @@ jobs:
       - name: Build exe
         run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py
 
+      - name: Leave out what the app never uses (Qt's multimedia backends, FFmpeg)
+        run: python packaging/trim_build.py dist\KanzonasPDF
+
       - name: Smoke test (exe starts and opens a PDF)
         shell: pwsh
         run: |
@@ -355,13 +358,14 @@ jobs:
         run: |
           # Qt's X11 platform needs the xcb libraries (not on every desktop: they go into the
           # AppImage); Xvfb and xdotool run the tests; appstream and desktop-file-utils check
-          # the metadata
+          # the metadata; libspeechd2 (Speech Dispatcher's client, left to the computer) lets
+          # the self test load Read aloud's Speech Dispatcher plugin
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
             libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
             libegl1 libgl1 libopengl0 libdbus-1-3 libfontconfig1 libgtk-3-0 libcups2 \
-            xvfb xauth xdotool appstream desktop-file-utils
+            xvfb xauth xdotool appstream desktop-file-utils libspeechd2
 
       - name: Install dependencies
         run: |
@@ -382,6 +386,9 @@ jobs:
 
       - name: Build the app folder (PyInstaller, the same options as Windows)
         run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} --runtime-hook packaging/linux/pyi_rth_linux_env.py run.py
+
+      - name: Leave out what the app never uses (Qt's multimedia backends, FFmpeg)
+        run: python packaging/trim_build.py dist/KanzonasPDF
 
       - name: License and source notice
         run: |
@@ -556,6 +563,9 @@ jobs:
 
       - name: Build the app (PyInstaller, the same options as Windows and Linux)
         run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py
+
+      - name: Leave out what the app never uses (Qt's multimedia backends, FFmpeg)
+        run: python packaging/trim_build.py dist/KanzonasPDF.app
 
       - name: License and source notice
         run: |

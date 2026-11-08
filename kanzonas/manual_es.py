@@ -355,8 +355,9 @@ Es solo para mirar: haga los cambios en la vista principal.</li>
 </ul>
 
 <h2 id="reading">Leer con comodidad</h2>
-<p>El menú Ver tiene formas de leer un documento con más comodidad: en toda la pantalla, una
-página o dos lado a lado, como texto grande y sencillo, o en voz alta.</p>
+<p>El menú Ver, y la pestaña <b>Lectura</b> de la cinta, tienen formas de leer un documento con
+más comodidad: en toda la pantalla, una página o dos lado a lado, como texto grande y sencillo,
+o en voz alta.</p>
 <ul>
 <li><b>Pantalla completa</b> (menú Ver, Ctrl+Shift+L): solo las páginas, en toda la pantalla:
 se ocultan las barras de herramientas o la cinta, la barra de menús, los paneles, las pestañas y
@@ -378,7 +379,9 @@ que el público deje de mirar la diapositiva; cualquier tecla devuelve la págin
 un <b>puntero láser</b>: un punto rojo que sigue al ratón. El puntero del ratón se oculta tras
 dos segundos sin moverse. <b>Escape</b> termina la presentación y la ventana muestra la página
 en la que terminó. Las marcas se muestran como están en la página (salvo que Mostrar marcas esté
-desactivado).</li>
+desactivado). La presentación solo muestra el documento: nada en ella cambia el archivo. Un
+cambio hecho mientras tanto en la ventana (con la presentación en una segunda pantalla) se ve
+enseguida.</li>
 <li><b>Disposición de páginas</b> (menú Ver), que se recuerda para cada documento, como su
 página y su zoom:
 <ul>
@@ -397,7 +400,11 @@ libro coinciden: 2 y 3, 4 y 5, etc. Sin ella, las páginas se emparejan 1 y 2, 3
 </ul>
 Con dos páginas lado a lado, las flechas izquierda y derecha, Página siguiente y Página anterior
 avanzan un par entero; Ajustar al ancho ajusta las dos páginas al ancho de la ventana y Ajustar
-página el par completo.</li>
+página el par completo. Todas las herramientas funcionan en cualquier disposición, y también en
+pantalla completa (cada cambio es un paso que Deshacer revierte). Con dos páginas lado a lado,
+<b>Pegar</b> (Ctrl+V) de Editar objetos pone lo copiado en la página bajo el puntero, una
+selección arrastrada de una página a la de al lado se mueve allí, y <b>Mover</b> y <b>Copiar</b>
+del modo CAD la llevan a la otra página cuando el segundo punto se hace clic allí.</li>
 <li><b>Vista de lectura</b> (menú Ver, Ctrl+4): el texto de la página en un panel lateral,
 recompuesto en párrafos sencillos con letra grande que se ajusta al ancho del panel, para una
 pantalla pequeña o una vista cansada. Los títulos son más grandes, como en la página; las

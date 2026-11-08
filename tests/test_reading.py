@@ -23,6 +23,10 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
+from tests.qt_fonts import ensure_font  # noqa: E402
+
+ensure_font()      # (Windows' offscreen Qt has no font: the full-screen bar's words measure 0 px)
+
 from kanzonas import read_aloud, reading, reading_text  # noqa: E402
 from kanzonas.main_window import MainWindow  # noqa: E402
 
@@ -593,6 +597,26 @@ class ReadAloud(_Base):
             self.assertEqual(words[:2], ["Chapter", "1"])
             r.stop()
             self.assertIsNone(self.v.read_mark)
+
+
+class Engines(unittest.TestCase):
+    def test_the_systems_own_engine_is_picked(self):
+        pick = read_aloud.pick_engine
+        self.assertEqual(pick(["mock", "sapi", "winrt"]), "winrt")
+        self.assertEqual(pick(["mock", "sapi"]), "sapi")
+        self.assertEqual(pick(["darwin", "mock"]), "darwin")
+        self.assertEqual(pick(["mock", "speechd"]), "speechd")
+        self.assertIsNone(pick([]))
+        for platform, want in (("win32", {"winrt", "sapi"}), ("darwin", {"darwin"}),
+                               ("linux", {"speechd"})):
+            with mock.patch.object(sys, "platform", platform):
+                self.assertEqual(set(read_aloud.platform_engines()), want)
+
+    def test_the_self_tests_speech_check(self):
+        # (what the built app's self-test runs: here, the PySide6 installed)
+        if not read_aloud.engines():
+            self.skipTest("no text-to-speech engine in this PySide6")
+        self.assertTrue(read_aloud.selftest_check().startswith("("))
 
 
 class ReadingView(_Base):

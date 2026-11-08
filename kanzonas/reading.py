@@ -73,6 +73,46 @@ def build_actions(win):
     sync(win)
 
 
+# icons (Material Design Icons names) of the reading commands, in the menus, on the ribbon's
+# Reading tab and on full screen's top bar
+ICONS = {"a_full_screen": "fullscreen", "a_present": "projector-screen",
+         "a_cover": "book-open-blank-variant", "a_reflow": "book-open-page-variant-outline",
+         "a_read_page": "account-voice", "a_read_from": "text-long",
+         "a_read_doc": "book-open-variant", "a_read_pause": "play-pause",
+         "a_read_stop": "stop-circle-outline", "a_autoscroll": "chevron-double-down"}
+LAYOUT_ICONS = {"single": "file-outline", "continuous": "view-sequential-outline",
+                "two": "book-open-outline", "two_continuous": "view-grid-outline"}
+
+
+def apply_icons(win):
+    """(again when the theme changes: the icons are tinted for it)"""
+    from . import theme
+    for attr, name in ICONS.items():
+        getattr(win, attr).setIcon(theme.icon_named(name))
+    for key, name in LAYOUT_ICONS.items():
+        win.layout_actions[key].setIcon(theme.icon_named(name))
+
+
+def ribbon_groups(win):
+    """The ribbon's Reading tab (main_window._build_ribbon): its groups, with the shorter
+    names the commands have on it."""
+    for a, label in ((win.a_read_page, tr("This page")),
+                     (win.a_read_from, tr("From selection")),
+                     (win.a_read_doc, tr("Whole document")),
+                     (win.a_read_pause, tr("Pause")), (win.a_read_stop, tr("Stop")),
+                     (win.a_cover, tr("Cover page apart"))):
+        a.setIconText(label)
+    lay = win.layout_actions
+    return [
+        (tr("Screen"), "large", [win.a_full_screen, win.a_present]),
+        (tr("Page layout"), "small", [lay["single"], lay["continuous"], lay["two"],
+                                      lay["two_continuous"], win.a_cover]),
+        (tr("Read"), "large", [win.a_reflow, win.a_autoscroll]),
+        (tr("Read aloud"), "small", [win.a_read_page, win.a_read_from, win.a_read_doc,
+                                     win.a_read_pause, win.a_read_stop]),
+    ]
+
+
 def add_to_view_menu(win, m):
     m.addAction(win.a_full_screen)
     m.addAction(win.a_present)

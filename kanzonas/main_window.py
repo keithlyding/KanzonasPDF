@@ -4195,6 +4195,7 @@ class MainWindow(QMainWindow):
         self.forms_btn.setIcon(theme.icon("forms"))
         for a, name in getattr(self, "_strip_icons", []):
             a.setIcon(theme.icon_named(name))
+        reading.apply_icons(self)
         labels = self.a_labels.isChecked()
         style = Qt.ToolButtonTextUnderIcon if labels else Qt.ToolButtonIconOnly
         for tb in (self.main_tb, self.tools_tb, self.arrange_tb):
@@ -5065,6 +5066,8 @@ class MainWindow(QMainWindow):
              [self.a_collapse, self.a_group_names]),
             (tr("Help"), "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
         ])
+        # (1.10) full screen, presentation, page layouts, Reading view, read aloud, auto scroll
+        r.add_tab(tr("Reading"), reading.ribbon_groups(self))
         c = self.cad_actions
         r.add_tab(tr("CAD"), [
             (tr("Select"), "large", [self.tool_actions["select"],

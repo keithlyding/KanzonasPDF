@@ -52,6 +52,10 @@ class Presentation(QWidget):
             self.setScreen(screen)
             self.setGeometry(screen.geometry())
         view.destroyed.connect(self.close)
+        # (the document edited in the window meanwhile, a second screen showing it: the
+        # pages drawn again as they are now)
+        view.documentChanged.connect(self._doc_changed)
+        view.structureChanged.connect(self._doc_changed)
 
     def start(self):
         self.showFullScreen()
@@ -84,6 +88,12 @@ class Presentation(QWidget):
         while len(self._cache) > KEEP:
             self._cache.popitem(last=False)
         return pm
+
+    def _doc_changed(self):
+        self._cache.clear()
+        if not self.doc.is_closed:
+            self.page = max(0, min(self.page, self.doc.page_count - 1))
+        self.update()
 
     def _draw_ahead(self):
         if self.page + 1 < self.doc.page_count and not self.doc.is_closed:

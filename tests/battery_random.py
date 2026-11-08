@@ -11,12 +11,14 @@ turned and deleted; words styled in Edit text and Add text (bold, italic, underl
 strikethrough, color, size); pages rotated, inserted, duplicated, deleted, moved, reordered,
 cropped, scanned in (File > Scan into the current document, with pictures made here) and
 replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
-window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
+window, with undo and redo runs and saves mixed in, and the page layout (View > Page layout:
+single page, continuous, two pages, cover page) and zoom changed between edits. Undo goes through MuPDF's journal
 (kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
 
 Checked:
 - after every step: nothing raised and no edit failed (modify's "Edit failed" box), the view
-  agrees with the document (its pages, their sizes, its cached markup boxes and text), every
+  agrees with the document (its pages, their sizes, its cached markup boxes and text, the
+  pages a single-page or two-page layout shows), every
   markup reads back and is on one page only; an edit that changes the document adds one undo
   step and an undo or redo moves one step across (a mirror of the history is kept).
   An undo must bring back exactly the document as it was before that step, and a redo
@@ -545,6 +547,18 @@ class Battery:
         if len(v.pages) != n or len(v.page_rects) != n:
             raise Failed("the view has %d pages (%d sizes), the document %d" % (
                 len(v.pages), len(v.page_rects), n))
+        # View > Page layout: one page (or spread) at a time shows only those; continuous
+        # layouts show every page; two pages side by side: a spread's pages on one row
+        shown = [i for i in range(n) if not v.pages[i].isHidden()]
+        want = v.spread(v.current_page()) if v.paged() else list(range(n))
+        if shown != want:
+            raise Failed("the %s layout shows pages %s, not %s" % (v.page_layout, shown, want))
+        if v.two_up():
+            for i in range(n):
+                row = v.spread(i)
+                if len(row) == 2 and not v.pages[row[0]].isHidden() and \
+                        v.pages[row[0]].y() != v.pages[row[1]].y():
+                    raise Failed("pages %s of a spread aren't side by side" % row)
         owner = {}
         for i in range(n):
             page = doc[i]
@@ -688,7 +702,7 @@ class Battery:
             (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
             (self.op_delete_page, 2), (self.op_move_page, 2), (self.op_reorder, 1),
             (self.op_duplicate_page, 1), (self.op_crop, 2), (self.op_bookmarks, 1),
-            (self.op_replace_pages, 2),
+            (self.op_replace_pages, 2), (self.op_layout, 3),
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
@@ -1279,6 +1293,28 @@ class Battery:
             return "none"
         i, x = self.rnd.choice(found)
         v._set_field(i, x, self.rnd.choice(["", "Jane Doe", self.typed()]))
+
+    def op_layout(self):
+        """View > Page layout (as its menu does) and a zoom, between edits: changes nothing
+        in the document (and the edits after it, and the render check, work on pages shown
+        side by side, or one page or spread at a time)."""
+        from kanzonas import reading
+        from kanzonas.document_view import PAGE_LAYOUTS
+        win, v = self.win, self.v
+        if self.rnd.random() < 0.3:
+            win.a_cover.setChecked(not win.a_cover.isChecked())
+            reading.set_layout(win, None)
+        else:
+            reading.set_layout(win, self.rnd.choice(PAGE_LAYOUTS))
+        k = self.rnd.random()
+        if k < 0.2:
+            v.fit_width()
+        elif k < 0.4:
+            v.fit_page()
+        else:
+            v.set_zoom(self.rnd.choice([0.3, 0.5, 0.75, 1.0]))
+        v.goto_page(self.page())
+        return "none"
 
     def op_rotate_page(self):
         self.v.rotate_page(self.page(), self.rnd.choice([90, -90, 180]))

@@ -8682,3 +8682,22 @@ msgstr "Página {n} de {count}"
 
 msgid "There's no text on this page. A scanned page needs Recognize text (OCR) first."
 msgstr "No hay texto en esta página. Una página escaneada necesita primero Reconocer texto (OCR)."
+
+# the ribbon's Reading tab (1.10)
+msgid "From selection"
+msgstr "Desde la selección"
+
+msgid "Pause"
+msgstr "Pausar"
+
+msgid "Stop"
+msgstr "Detener"
+
+msgid "Cover page apart"
+msgstr "Portada aparte"
+
+msgid "Screen"
+msgstr "Pantalla"
+
+msgid "Read"
+msgstr "Leer"

@@ -7,6 +7,9 @@ which) shaded darker; the page scrolls to follow.
 QtTextToSpeech is imported only when reading starts (or when Preferences lists the voices):
 nothing of it is loaded at start-up."""
 
+import os
+import re
+import sys
 import time
 
 import shiboken6
@@ -38,8 +41,27 @@ def engines():
         return []
 
 
+# the system's own engines, the best first (never Qt's silent test engine, "mock", which is in
+# the PySide6 wheel and the app's folder too)
+PREFERRED = ("winrt", "sapi", "darwin", "speechd")
+
+
+def pick_engine(names):
+    """The engine to read with, of the engines names."""
+    pick = [n for n in PREFERRED if n in names]
+    return (pick or list(names) or [None])[0]
+
+
+def platform_engines():
+    """The engines the build must have on this system."""
+    if sys.platform == "win32":
+        return ("winrt", "sapi")
+    if sys.platform == "darwin":
+        return ("darwin",)
+    return ("speechd",)
+
+
 def no_speech_message():
-    import sys
     if sys.platform.startswith("linux"):
         return tr("No speech is available on this computer. Install Speech Dispatcher "
                   "(the speech-dispatcher package, with a voice such as espeak-ng) and try "
@@ -87,10 +109,7 @@ class Reader(QObject):
         try:
             names = engines() if _engine_class is None else []
             if names:
-                # the system's own voices, never Qt's silent test engine ("mock", which is
-                # in the PySide6 wheel and the app's folder too)
-                pick = [n for n in ("winrt", "sapi", "darwin", "speechd") if n in names]
-                eng = cls((pick or names)[0], self)
+                eng = cls(pick_engine(names), self)
             else:
                 eng = cls(self)
         except Exception:
@@ -322,3 +341,77 @@ def follow(view, index, rect):
     if not (hbar.value() <= left <= hbar.value() + view.viewport().width() - r.width()):
         hbar.setValue(int(left - 40))
     view._on_scroll()
+
+
+# ---- the self-test ---------------------------------------------------------------------------
+# the FFmpeg libraries, as each platform names them (packaging/trim_build.py takes them out)
+FFMPEG = re.compile(r"^(lib)?(avcodec|avformat|avutil|avdevice|avfilter|swresample|swscale|"
+                    r"postproc)([-.]\d+)*(\.dll|\.so(\.\d+)*|\.dylib)$", re.I)
+
+
+def selftest_check():
+    """Self-test "read aloud (speech)": the system's speech engine is in the build and starts
+    (Windows: WinRT or SAPI, macOS: AVSpeechSynthesizer); on Linux Qt's Speech Dispatcher
+    plugin is in it and loads, or fails for want of the computer's own libspeechd alone; and
+    the audio output text-to-speech plays through works without Qt's multimedia backends."""
+    from PySide6.QtCore import QLibraryInfo, QPluginLoader
+    from PySide6.QtTextToSpeech import QTextToSpeech
+    names = engines()
+    have = [n for n in platform_engines() if n in names]
+    assert have, "none of this system's speech engines (%s) in the build; found %s" % (
+        ", ".join(platform_engines()), QTextToSpeech.availableEngines())
+    notes = []
+    if sys.platform.startswith("linux"):
+        path = os.path.join(QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath),
+                            "texttospeech", "libqtexttospeech_speechd.so")
+        assert os.path.isfile(path), "no Speech Dispatcher plugin at " + path
+        loader = QPluginLoader(path)
+        if loader.load():
+            notes.append("speechd plugin loads")
+        else:
+            err = loader.errorString()
+            # (everything else it needs is in the build; libspeechd comes with the
+            # computer's speech-dispatcher, which Read aloud asks for when it's missing)
+            assert "libspeechd" in err, err
+            notes.append("speechd plugin bundled; no libspeechd on this computer")
+    else:
+        name = pick_engine(names)
+        eng = QTextToSpeech(name)
+        assert eng.state() != QTextToSpeech.State.Error, "%s: %s" % (name, eng.errorString())
+        notes.append("%s starts, %d voices" % (name, len(eng.availableVoices())))
+        eng.deleteLater()
+    # (WinRT's voices play through QAudioSink: part of the QtMultimedia library, not of the
+    # backends the build leaves out)
+    from PySide6.QtMultimedia import QAudioFormat, QAudioSink, QMediaDevices
+    fmt = QAudioFormat()
+    fmt.setSampleRate(22050)
+    fmt.setChannelCount(1)
+    fmt.setSampleFormat(QAudioFormat.SampleFormat.Int16)
+    out = QMediaDevices.defaultAudioOutput()
+    if out.isNull():
+        notes.append("no sound device on this computer")
+    else:
+        sink = QAudioSink(out, fmt)
+        assert sink.format().sampleRate() == 22050, "no audio output: %s" % sink.error()
+        notes.append("plays through " + out.description())
+        sink.deleteLater()
+    return "(%s; %s)" % (", ".join(have), "; ".join(notes))
+
+
+def build_media_check():
+    """Self-test "no FFmpeg in the build": the built app holds no multimedia backend (Qt's
+    media plugins and PySide6's FFmpeg, ~20-30 MB that nothing uses; packaging/trim_build.py).
+    Outside a build there's nothing to check."""
+    top = getattr(sys, "_MEIPASS", None)
+    if not getattr(sys, "frozen", False) or not top:
+        return "(not a build)"
+    found = []
+    for d, dirs, files in os.walk(top):
+        if "PySide6" not in d.replace(os.sep, "/").split("/"):
+            continue
+        if os.path.basename(d) == "plugins" and "multimedia" in dirs:
+            found.append(os.path.join(d, "multimedia"))
+        found += [os.path.join(d, n) for n in files if FFMPEG.match(n)]
+    assert not found, "multimedia backends in the build: %s" % ", ".join(
+        os.path.relpath(p, top) for p in found[:6])
+    return ""

@@ -1203,13 +1203,18 @@ def run(log_path):
     check("scanning", t_scanning)
 
     def t_speech():
-        # View > Read aloud: Qt's text-to-speech and its plug-ins are in the build (imported
-        # only when reading starts, so PyInstaller must have found it inside a function)
-        from PySide6.QtTextToSpeech import QTextToSpeech
-        names = QTextToSpeech.availableEngines()
-        assert names, "no text-to-speech plug-ins"
-        return "(%s)" % ", ".join(names)
+        # View > Read aloud: the system's speech engine is in the build and starts (Qt's
+        # text-to-speech, imported only when reading starts, so PyInstaller must have found
+        # it inside a function), and what it plays through works without Qt's media backends
+        from . import read_aloud
+        return read_aloud.selftest_check()
     check("read aloud (speech)", t_speech)
+
+    def t_no_ffmpeg():
+        # the build leaves out Qt's multimedia backends and FFmpeg (packaging/trim_build.py)
+        from . import read_aloud
+        return read_aloud.build_media_check()
+    check("no FFmpeg in the build", t_no_ffmpeg)
 
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
