@@ -448,6 +448,9 @@ class PageWidget(QWidget):
         pm = v._rc.get(self.index, s, tile, thin)
         if pm is None:
             dl = self._display_list()
+            # (its pictures decoded whole at this size first: else how MuPDF draws them
+            # depends on what was drawn before, see _predecode)
+            self._predecode(s)
             t = time.perf_counter()
             with screen_lines(thin):
                 pm = RL.render(dl, s, clip)
@@ -616,16 +619,24 @@ class PageWidget(QWidget):
                 yield key, hit
 
     def _predecode(self, s):
-        """A scanned page at high zoom: its big pictures decoded once, at the size the tiles
-        need, so each tile doesn't decode the whole JPEG again (render_layers.predecode).
-        (Where they're drawn is read once per page, after a slow render: reading it runs the
-        page's drawing, a fifth of a second on a heavy sheet.)"""
+        """The page's pictures decoded whole, once, at the size this zoom draws them, before
+        the page is drawn (render_layers.predecode).
+
+        A scanned page at high zoom: each tile then doesn't decode the whole JPEG again. And
+        every page: MuPDF draws a picture from any decoded copy of it it still has, at a finer
+        size (another zoom) or of more of it (where another page shows all of it and this one
+        part of it, as a picture pasted or moved onto another page of the same document
+        does), and a copy decoded for this page alone comes out a few levels apart along its
+        edges and stripes. With the copy for this page and size made first, the page looks
+        the same whatever was drawn before (a page drawn afresh looked different: random
+        battery, seed 6). (Where they're drawn is read once per page and content: reading it
+        runs the page's drawing; a page with no picture skips it.)"""
         v = self.view
         page = v.doc[self.index]
         info = v._img_info.get(self.index)
         if info is None:
             info = []
-            big = self._big_images()
+            big = RL.big_images(page, 0)
             try:
                 # (matched by size: asking for xrefs has PyMuPDF checksum every picture)
                 shown = page.get_image_info() if big else []

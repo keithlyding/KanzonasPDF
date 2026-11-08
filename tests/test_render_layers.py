@@ -295,13 +295,20 @@ class Layers(unittest.TestCase):
         with mock.patch.object(PW, "PREDECODE_AFTER_S", 0):
             v.viewport().repaint()
             APP.processEvents()
-        self.assertEqual({(k[0], k[2]) for k in v._decoded}, {(0, 1)})
+        # (at the tiles' size; and, since 1.9.1, at the size of the smaller preview shown
+        # meanwhile: every render has its page's pictures decoded for it first, see
+        # test_render_order)
+        got = {(k[0], k[2]) for k in v._decoded}
+        self.assertIn((0, 1), got)
+        self.assertLessEqual(got, {(0, 1), (0, 2)})
         self.assertTrue([k for k in v._tiles if k[0] == 0])
         # another zoom: decoded at its size before its tiles are rendered
         v.set_zoom(1.8)
         v.viewport().repaint()
         APP.processEvents()
-        self.assertEqual({(k[0], k[2]) for k in v._decoded}, {(0, 1), (0, 0)})
+        now = {(k[0], k[2]) for k in v._decoded}
+        self.assertLessEqual({(0, 1), (0, 0)}, now)
+        self.assertLessEqual(now, {(0, 0), (0, 1), (0, 2)})
         s = round(v.zoom * w.devicePixelRatioF(), 5)
         self.assertTrue([k for k in v._tiles if k[0] == 0 and k[1] == s])
 
