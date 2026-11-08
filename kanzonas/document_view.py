@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
                                QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
 
-from . import annotations, dialogs, hit_index, signatures, smart_forms, text_edit, \
+from . import annotations, dialogs, hit_index, review, signatures, smart_forms, text_edit, \
     undo_journal
 from .i18n import tr
 from .inline_editor import InlineEditor
@@ -1230,8 +1230,9 @@ class DocumentView(QScrollArea):
             if order is None:
                 pg = self.doc[i]
                 items = []
+                linked = self.threads(i).links      # (replies go with their markup)
                 for an in annotations.each_annot(pg):
-                    if an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
+                    if an.xref in linked or an.type[0] == pymupdf.PDF_ANNOT_POPUP or (an.flags or 0) & (
                             pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
                         continue
                     r = an.rect * pg.rotation_matrix
@@ -1284,20 +1285,115 @@ class DocumentView(QScrollArea):
                     continue
                 if author is None or (an.info.get("title", "") or "") == author:
                     doomed.setdefault(i, []).append(an.xref)
+            an = None                   # (no Annot held while they're deleted)
         if not doomed:
             return 0
 
         def do():
+            from . import pdf_speed
             for i, xrefs in doomed.items():
-                pg = self.doc[i]
-                for x in xrefs:
-                    try:
-                        pg.delete_annot(pg.load_annot(x))
-                    except Exception:
-                        pass
+                # (one walk of the page; a markup's replies go with it)
+                pdf_speed.delete_many(self.doc[i], xrefs)
         self.clear_selection()
         self.modify(do, list(doomed), permission=pymupdf.PDF_PERM_ANNOTATE)
         return sum(len(x) for x in doomed.values())
+
+    # ---- replies and review status (review.py) -----------------------------------------
+    def threads(self, index):
+        """review.Threads of a page (cached until the page changes): which markups are
+        replies or statuses, and to what."""
+        key = ("replies", index)
+        t = self._card_cache.get(key)
+        if t is None:
+            t = self._card_cache[key] = review.Threads(self.doc[index])
+        return t
+
+    def thread_root(self, index, xref):
+        """The markup a reply or status belongs to (the markup itself otherwise)."""
+        return self.threads(index).root(xref)
+
+    def is_reply(self, index, xref):
+        return self.threads(index).is_linked(xref)
+
+    def thread_text(self, index, xref):
+        """A markup's thread as plain text: its status and replies (for the dialogs)."""
+        t = self.threads(index)
+        root = t.root(xref)
+        from .markups_panel import _date
+        lines = []
+        for ln in t.states(root):
+            lines.append(tr("{state} set by {name}, {date}").format(
+                state=review.STATE_LABELS.get(ln.state, ln.state), name=ln.author or "?",
+                date=_date(ln.modified or ln.created)))
+        for depth, ln in t.replies(root):
+            lines.append("    " * (depth - 1) + "\u21b3 " + tr("{name}, {date}:").format(
+                name=ln.author or tr("(no name)"), date=_date(ln.modified or ln.created)) +
+                " " + (ln.text or "").replace("\r", " ").replace("\n", " "))
+        return "\n".join(lines)
+
+    def reply_to(self, index, xref, text=None):
+        """Add a reply to markup (or reply) xref, asking for its text. Returns its xref."""
+        if text is None:
+            thread = self.thread_text(index, xref)
+            label = (thread + "\n\n" if thread else "") + tr("Your reply:")
+            text, ok = dialogs.get_text(self, tr("Reply"), label)
+            if not ok or not text.strip():
+                return None
+        made = []
+
+        def do():
+            made.append(review.add_reply(self.doc[index], xref, text))
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        return made[0] if made else None
+
+    def edit_reply(self, index, xref, text=None):
+        """Change a reply's text (asking for it)."""
+        ln = self.threads(index).links.get(xref)
+        if ln is None:
+            return False
+        if text is None:
+            text, ok = dialogs.get_text(self, tr("Edit reply"), tr("Text:"), ln.text or "")
+            if not ok or text == ln.text:
+                return False
+        return bool(self.modify(lambda: review.edit_reply(self.doc, xref, text), [index],
+                                permission=pymupdf.PDF_PERM_ANNOTATE))
+
+    def delete_reply(self, index, xref):
+        """Delete a reply (with the replies to it) or a status."""
+        if not self.is_reply(index, xref):
+            return False
+        from . import pdf_speed
+        return bool(self.modify(lambda: pdf_speed.delete_many(self.doc[index], [xref]), [index],
+                                permission=pymupdf.PDF_PERM_ANNOTATE))
+
+    def set_review_status(self, index, xrefs, state):
+        """Set a review status (review.REVIEW) or mark (review.MARKED) on these markups (the
+        markups their replies belong to): one undo step."""
+        t = self.threads(index)
+        roots = list(dict.fromkeys(t.root(x) for x in xrefs))
+        if not roots:
+            return False
+        return bool(self.modify(lambda: review.set_status(self.doc[index], roots, state),
+                                [index], permission=pymupdf.PDF_PERM_ANNOTATE))
+
+    def selected_status(self):
+        """(review state, marked) of the first selected markup, or None."""
+        if self.selection is None:
+            return None
+        index, xref = self.selection
+        state, _ln, marked = self.threads(index).status(self.thread_root(index, xref))
+        return state, marked
+
+    def import_comments(self, recs):
+        """Add markups read from an XFDF / FDF file (xfdf.py): one undo step. Returns its
+        xfdf.Report, or None when the edit wasn't made."""
+        from . import xfdf
+        out = []
+        self.clear_selection()
+        if not self.modify(lambda: out.append(xfdf.import_records(self.doc, recs)), None,
+                           permission=pymupdf.PDF_PERM_ANNOTATE):
+            return None
+        return out[0] if out else None
 
     def field_rects(self, index):
         """[(rect, required)] of fillable form fields on a page (cached until the next edit)."""
@@ -2247,7 +2343,7 @@ class DocumentView(QScrollArea):
             self._scale_bars.pop(i, None)
             self._legend_where.pop(i, None)
             self._legend_sums.pop(i, None)
-            for key in ("fields", "links", "fieldx", "annotx", "annothit", "review"):
+            for key in ("fields", "links", "fieldx", "annotx", "annothit", "review", "replies"):
                 self._card_cache.pop((key, i), None)
             self._card_cache.pop(i, None)
             self._snap_recheck.add(i)
@@ -2903,7 +2999,11 @@ class DocumentView(QScrollArea):
                 text_edit.delete_lines(pg, [ln for it in texts for _r, ln in it["lines"]])
             if xrefs:
                 from . import pdf_speed
-                pdf_speed.delete_many(pg, xrefs)
+                # (their replies and statuses go with them: review.py)
+                went = review.move_threads(pg, self.doc[dest],
+                                           dict(zip(xrefs, made["xrefs"])))
+                pdf_speed.delete_many(pg, [x for x in xrefs if x in went], keep_replies=True)
+                pdf_speed.delete_many(pg, [x for x in xrefs if x not in went])
         pages = [dest] if copy else [src, dest]
         keep = (self.obj_sel, self.selection, list(self.extra))
         if not copy:
@@ -3393,8 +3493,8 @@ class DocumentView(QScrollArea):
                 return
 
             def do():
-                for x in xrefs:
-                    page.delete_annot(page.load_annot(x))
+                from . import pdf_speed
+                pdf_speed.delete_many(page, xrefs)      # (with their replies)
             self.clear_selection()
             self.modify(do, [index])
             self.statusMessage.emit(tr("Erased {n} annotation(s)").format(n=len(xrefs)))
@@ -3681,6 +3781,7 @@ class DocumentView(QScrollArea):
                     m = annotations.read(a)
                     if m and m["kind"] in annotations.MEASURES and m["kind"] != "m_count":
                         models.append((a.xref, m))
+                a = None
                 # (written anew in one step that keeps their replies and their place in the
                 # stacking order: deleted one by one, their review threads went with them)
                 if models:
@@ -4297,8 +4398,11 @@ class DocumentView(QScrollArea):
             if target is None:
                 return
             xref = target.xref
+            target = None
             self.clear_selection()
-            self.modify(lambda: page.delete_annot(page.load_annot(xref)), [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+            from . import pdf_speed
+            self.modify(lambda: pdf_speed.delete_many(page, [xref]), [index],
+                        permission=pymupdf.PDF_PERM_ANNOTATE)
 
     # ---- hit testing --------------------------------------------------------------
     @staticmethod
@@ -4460,7 +4564,8 @@ class DocumentView(QScrollArea):
     @classmethod
     def _annot_at(cls, page, pt, tol=4.0):
         """Smallest annotation actually under the point (so big shapes don't swallow clicks)."""
-        hits = [an for an in annotations.each_annot(page) if cls._annot_hit(an, pt, tol)]
+        hits = [an for an in annotations.each_annot(page)
+                if not an.irt_xref and cls._annot_hit(an, pt, tol)]
         if not hits:
             return None
         return min(hits, key=lambda an: an.rect.get_area())
@@ -4501,6 +4606,9 @@ class DocumentView(QScrollArea):
         px, py = pt.x, pt.y
         near = [x for (x0, y0, x1, y1), x in boxes
                 if x0 - tol <= px <= x1 + tol and y0 - tol <= py <= y1 + tol]
+        linked = self.threads(index).links if near else None
+        if linked:                      # (replies and statuses go with their markup)
+            near = [x for x in near if x not in linked]
         page = self.doc[index]
         shots = self._card_cache.setdefault(("annothit", index), {})
         missing = [x for x in near if x not in shots or not shots[x].decided(pt, tol)]
@@ -4569,8 +4677,8 @@ class DocumentView(QScrollArea):
         """For drag-erase: the annotation lies entirely inside the box,
         or (for pen strokes and lines) any of its points is inside."""
         if annot.type[0] == pymupdf.PDF_ANNOT_POPUP or (annot.flags or 0) & (
-                pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN):
-            return False
+                pymupdf.PDF_ANNOT_IS_LOCKED | pymupdf.PDF_ANNOT_IS_HIDDEN) or annot.irt_xref:
+            return False                # (a reply goes with its markup)
         if box.contains(annot.rect):
             return True
         if annot.type[0] in (pymupdf.PDF_ANNOT_INK, pymupdf.PDF_ANNOT_LINE,
@@ -4584,7 +4692,10 @@ class DocumentView(QScrollArea):
     # ---- selecting and editing existing annotations ----------------------------
     def select_xref(self, index, xref, add=False):
         """Select one annotation. add=True (Ctrl+click) adds it to / removes it from the
-        selection instead; the first one selected stays the alignment reference."""
+        selection instead; the first one selected stays the alignment reference. A reply or
+        review status selects the markup it belongs to."""
+        if xref:
+            xref = self.thread_root(index, xref)
         if add and self.selection is not None and self.selection[0] == index and xref:
             xrefs = self.selected_xrefs()
             if xref in xrefs:
@@ -4609,8 +4720,12 @@ class DocumentView(QScrollArea):
         return model is not None
 
     def _set_selection(self, index, xrefs):
-        """Select these xrefs (in order) on one page; unreadable ones are skipped."""
+        """Select these xrefs (in order) on one page; unreadable ones are skipped (a reply or
+        status: the markup it belongs to)."""
         page = self.doc[index]
+        t = self.threads(index)
+        if t.links:
+            xrefs = list(dict.fromkeys(t.root(x) for x in xrefs))
         keep, first = [], None
         found = annotations.load_annots(page, xrefs)
         for x in xrefs:
@@ -5017,10 +5132,23 @@ class DocumentView(QScrollArea):
         xrefs = [x for x in xrefs
                  if not (x in found and (found[x].flags or 0) & pymupdf.PDF_ANNOT_IS_LOCKED)]
         found.clear()
-        self.clear_selection()
         if not xrefs:
+            self.clear_selection()
             self.statusMessage.emit(self.locked_note())
             return
+        replies = [x for x in self.threads(index).descendants(xrefs)
+                   if self.threads(index).links[x].role == "reply"]
+        if replies:
+            with _not_busy():
+                answer = QMessageBox.question(
+                    self, tr("Delete"),
+                    tr("Delete the markup and its {n} replies?").format(n=len(replies))
+                    if len(xrefs) == 1 else
+                    tr("Delete the {count} markups and their {n} replies?").format(
+                        count=len(xrefs), n=len(replies)))
+            if answer != QMessageBox.Yes:
+                return
+        self.clear_selection()
 
         def do():
             from . import links, pdf_speed
@@ -5230,6 +5358,9 @@ class DocumentView(QScrollArea):
         self._set_selection(index, sel)
 
     def edit_annot_text(self, index, xref):
+        if self.is_reply(index, xref):
+            self.edit_reply(index, xref)
+            return
         page = self.doc[index]
         model = annotations.read(page.load_annot(xref))
         if model is None:
@@ -5254,7 +5385,9 @@ class DocumentView(QScrollArea):
             self.commit_model(index, xref, model)
             return
         title = annotations.LABELS.get(model["kind"], tr("Annotation"))
-        text, ok = dialogs.get_text(self, tr("Edit {what}").format(what=title), tr("Text:"),
+        thread = self.thread_text(index, xref)      # (its status and replies, shown above)
+        text, ok = dialogs.get_text(self, tr("Edit {what}").format(what=title),
+                                    (thread + "\n\n" if thread else "") + tr("Text:"),
                                     model.get("text", ""))
         if not ok or text == model.get("text", ""):
             return
@@ -7596,10 +7729,11 @@ class DocumentView(QScrollArea):
             if hit(w.rect):
                 pg.delete_widget(w)
         legends = set(legend.legends_on(pg)) if legend_rects is not None else set()
-        for x in [a.xref for a in pg.annots()
+        doomed = [a.xref for a in pg.annots()
                   if a.type[0] not in (pymupdf.PDF_ANNOT_REDACT, pymupdf.PDF_ANNOT_POPUP)
-                  and (hit(a.rect, legend_rects) if a.xref in legends else hit(a.rect))]:
-            pg.delete_annot(pg.load_annot(x))
+                  and (hit(a.rect, legend_rects) if a.xref in legends else hit(a.rect))]
+        from . import pdf_speed
+        pdf_speed.delete_many(pg, doomed)       # (with their replies: one walk)
 
     # text a person typed or sees, in KanzonasPDF's private markup data (stamp labels, names
     # and dates, notes): the rest is structure (kind, colors, geometry, picture data), where a
@@ -7669,7 +7803,7 @@ class DocumentView(QScrollArea):
         pat, clean = self._term_pattern(terms)
         if pat is None:
             return
-        from . import legend
+        from . import legend, pdf_speed
         for i in range(self.doc.page_count):
             pg = self.doc[i]
             for w in list(pg.widgets()):
@@ -7683,9 +7817,26 @@ class DocumentView(QScrollArea):
             # (a legend shows the other markups' labels: drawn again from them once they
             # are cleaned, below, rather than deleted)
             legends = set(legend.legends_on(pg))
+            replies = review.Threads(pg).links
             for x in [a.xref for a in pg.annots() if a.type[0] != pymupdf.PDF_ANNOT_REDACT
                       and a.xref not in legends]:
-                if not self._annot_has(pg, x, pat):
+                try:
+                    if not self._annot_has(pg, x, pat):
+                        continue
+                except Exception:
+                    continue            # (gone with the markup it answered)
+                if x in replies:
+                    # a reply or status: its text and name cleaned where it is (written
+                    # anew it would lose its thread)
+                    ln = replies[x]
+                    review.edit_reply(self.doc, x, clean(ln.text or ""))
+                    self.doc.xref_set_key(x, "T", pymupdf.get_pdf_str(clean(ln.author or "")))
+                    self.doc.xref_set_key(x, "Subj", "null")
+                    if not self._annot_has(pg, x, pat):
+                        continue
+                    # (still showing it, in a drawing of its own: it goes, with the
+                    # replies to it)
+                    pdf_speed.delete_many(pg, [x])
                     continue
                 model = annotations.read(pg.load_annot(x))
                 if model is not None and model["kind"] not in self.REDACT_DROP and \
@@ -7700,8 +7851,8 @@ class DocumentView(QScrollArea):
                     if not self._annot_has(pg, x, pat):
                         continue
                 # anything else goes whole: its appearance (a stamp's picture, say) or
-                # private data can hold the text too
-                pg.delete_annot(pg.load_annot(x))
+                # private data can hold the text too (with its thread, in one walk)
+                pdf_speed.delete_many(pg, [x])
         toc = self.doc.get_toc(simple=False)
         if any(pat.search(e[1]) for e in toc):
             self.doc.set_toc([[e[0], clean(e[1])] + e[2:] for e in toc])
@@ -8272,10 +8423,10 @@ class DocumentView(QScrollArea):
             if opts.get("form_data"):
                 clear_form_data(self.doc)
             if opts.get("markups"):
+                from . import pdf_speed
                 for i in range(self.doc.page_count):
                     pg = self.doc[i]
-                    for x in [a.xref for a in pg.annots()]:
-                        pg.delete_annot(pg.load_annot(x))
+                    pdf_speed.delete_many(pg, [x for x, *_ in pg.annot_xrefs()])
         self.clear_selection()
         self.modify(do, structural=True)
 

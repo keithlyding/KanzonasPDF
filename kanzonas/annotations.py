@@ -1272,10 +1272,18 @@ def replace_many(page, changes, olds=None, again=False):
     # are written anew
     shifted = set()
     to_pdf = pdfcoords.to_pdf(page)
+    o = pymupdf.Point(0, 0) * to_pdf
+    moves = {}
     for xref, model in changes:
         d = None if again else translation(olds[xref], model)
         if d is not None and shift_in_place(page, xref, d, to_pdf):
             shifted.add(xref)
+            v = pymupdf.Point(d) * to_pdf - o
+            moves[xref] = (v.x, v.y)
+    if moves:
+        # their replies and review statuses go along (one walk of the page: review.py)
+        from . import review
+        review.shift_replies(page, moves)
     # ...the old ones of the rest go in one look through the page (one at a time, each delete
     # looked through all the page's markups for replies: minutes for a few thousand)
     # (a markup not changed at all stays as it is)
@@ -1334,8 +1342,14 @@ def replace(page, xref, model):
         return xref
     order = annot_order(page)
     pos = order.index(xref) if xref in order else None
-    page.delete_annot(page.load_annot(xref))
+    # the replies to it answer the new one (review.py): deleting it took them along
+    doc = page.parent
+    from . import review
+    answering = review.Threads(page).children.get(xref, ())
+    pdf_speed.delete_many(page, [xref], keep_replies=True)
     new = write(page, model).xref
+    for r in answering:
+        doc.xref_set_key(r, "IRT", f"{new} 0 R")
     if pos is not None:
         order = annot_order(page)
         if new in order:

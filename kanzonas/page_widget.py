@@ -1804,6 +1804,10 @@ class PageWidget(QWidget):
                     A.text_editable(v.selected_model):
                 sel = v.selection
                 menu.addAction(tr("Edit text..."), lambda: v.edit_annot_text(*sel))
+            if v.selected_model is not None and v.selected_model["kind"] != "field":
+                # (review: replies and status, the standard PDF way: review.py)
+                from . import review_ui
+                review_ui.add_review_actions(menu, v, v.selection[0], v.selected_xrefs())
             # (all that's selected: in CAD mode, the drawing's objects selected with them too)
             menu.addAction(tr("Delete"), v.delete_everything_selected)
         elif on_text:

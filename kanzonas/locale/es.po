@@ -8563,6 +8563,66 @@ msgstr "Calcular"
 msgid "Format:"
 msgstr "Formato:"
 
+msgid "Your reply:"
+msgstr "Su respuesta:"
+
+msgid "Reply"
+msgstr "Respuesta"
+
+msgid "Edit reply"
+msgstr "Editar respuesta"
+
+msgid "{state} set by {name}, {date}"
+msgstr "{state} por {name}, {date}"
+
+msgid "Delete the markup and its {n} replies?"
+msgstr "¿Eliminar la marca y sus {n} respuestas?"
+
+msgid "Delete the {count} markups and their {n} replies?"
+msgstr "¿Eliminar las {count} marcas y sus {n} respuestas?"
+
+msgid "{name}, {date}:"
+msgstr "{name}, {date}:"
+
+msgid "&Reply..."
+msgstr "&Responder..."
+
+msgid "E&xport comments..."
+msgstr "E&xportar comentarios..."
+
+msgid "&Import comments..."
+msgstr "&Importar comentarios..."
+
+msgid "Summari&ze comments..."
+msgstr "Res&umir comentarios..."
+
+msgid "Set s&tatus"
+msgstr "Establecer es&tado"
+
+msgid "Reply to the selected markup: replies show as a thread in the Markups list and in other PDF programs"
+msgstr "Responder a la marca seleccionada: las respuestas se ven como una conversación en la Lista de marcas y en otros programas de PDF"
+
+msgid "Accepted"
+msgstr "Aceptado"
+
+msgid "Rejected"
+msgstr "Rechazado"
+
+msgid "Cancelled"
+msgstr "Cancelado"
+
+msgid "Completed"
+msgstr "Completado"
+
+msgid "No status"
+msgstr "Sin estado"
+
+msgid "Marked"
+msgstr "Marcado"
+
+msgid "Unmarked"
+msgstr "Sin marcar"
+
 msgid "None"
 msgstr "Ninguno"
 
@@ -8721,6 +8781,159 @@ msgstr "Escriba un número de teléfono (7 o 10 dígitos)."
 
 msgid "Type a Social Security number (9 digits)."
 msgstr "Escriba un número de Seguro Social (9 dígitos)."
+
+msgid "Save the comments, their replies and statuses as an XFDF or FDF file, to send without the PDF"
+msgstr "Guardar los comentarios, sus respuestas y estados en un archivo XFDF o FDF, para enviarlos sin el PDF"
+
+msgid "Add the comments of an XFDF or FDF file to this document (one undo step)"
+msgstr "Agregar a este documento los comentarios de un archivo XFDF o FDF (un solo paso para deshacer)"
+
+msgid "A new PDF listing every comment by page, author, date or type, with replies and statuses, to print or save"
+msgstr "Un PDF nuevo con todos los comentarios por página, autor, fecha o tipo, con respuestas y estados, para imprimir o guardar"
+
+msgid "Select a markup to reply to it."
+msgstr "Seleccione una marca para responderle."
+
+msgid "Select the markups to set their status."
+msgstr "Seleccione las marcas para establecer su estado."
+
+msgid "All statuses"
+msgstr "Todos los estados"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Replies"
+msgstr "Respuestas"
+
+msgid "Export comments..."
+msgstr "Exportar comentarios..."
+
+msgid "The markups shown (with their replies and statuses) as an XFDF or FDF file"
+msgstr "Las marcas mostradas (con sus respuestas y estados) en un archivo XFDF o FDF"
+
+msgid "Reply..."
+msgstr "Responder..."
+
+msgid "Set status"
+msgstr "Establecer estado"
+
+msgid "Edit reply..."
+msgstr "Editar respuesta..."
+
+msgid "Delete reply"
+msgstr "Eliminar respuesta"
+
+msgid "Show or hide replies"
+msgstr "Mostrar u ocultar respuestas"
+
+msgid "Click to show or hide the replies"
+msgstr "Haga clic para mostrar u ocultar las respuestas"
+
+msgid "Comment summary"
+msgstr "Resumen de comentarios"
+
+msgid "{state} set by {name}"
+msgstr "{state} por {name}"
+
+msgid "This document has no comments."
+msgstr "Este documento no tiene comentarios."
+
+msgid "{n} comments, sorted by {how}"
+msgstr "{n} comentarios, ordenados por {how}"
+
+msgid "Page {n}"
+msgstr "Página {n}"
+
+msgid "Author: {name}"
+msgstr "Autor: {name}"
+
+msgid "Status: {status}"
+msgstr "Estado: {status}"
+
+msgid "page"
+msgstr "página"
+
+msgid "author"
+msgstr "autor"
+
+msgid "date"
+msgstr "fecha"
+
+msgid "type"
+msgstr "tipo"
+
+msgid "XFDF comments"
+msgstr "Comentarios XFDF"
+
+msgid "FDF comments"
+msgstr "Comentarios FDF"
+
+msgid "Export comments"
+msgstr "Exportar comentarios"
+
+msgid "Import comments"
+msgstr "Importar comentarios"
+
+msgid "Comment summary made: print it (Ctrl+P) or save it (Ctrl+S)"
+msgstr "Resumen de comentarios creado: imprímalo (Ctrl+P) o guárdelo (Ctrl+S)"
+
+msgid "{n} comments exported to {name}."
+msgstr "{n} comentarios exportados a {name}."
+
+msgid "Summarize comments"
+msgstr "Resumir comentarios"
+
+msgid "Sort by:"
+msgstr "Ordenar por:"
+
+msgid "Page thumbnails beside their comments (sorted by page)"
+msgstr "Miniaturas de las páginas junto a sus comentarios (ordenado por página)"
+
+msgid "Comment files"
+msgstr "Archivos de comentarios"
+
+msgid "Not exported (pictures and attached files stay in the PDF): {n}"
+msgstr "No exportados (las imágenes y los archivos adjuntos se quedan en el PDF): {n}"
+
+msgid "This XFDF file declares a DTD or entities, which aren't allowed."
+msgstr "Este archivo XFDF declara una DTD o entidades, que no se permiten."
+
+msgid "This comment file is too large to import."
+msgstr "Este archivo de comentarios es demasiado grande para importarlo."
+
+msgid "This isn't an XFDF file."
+msgstr "Este no es un archivo XFDF."
+
+msgid "This isn't an FDF file."
+msgstr "Este no es un archivo FDF."
+
+msgid "no position"
+msgstr "sin posición"
+
+msgid "{n} comments added"
+msgstr "{n} comentarios agregados"
+
+msgid "This isn't a readable XFDF file: {error}"
+msgstr "No se puede leer este archivo XFDF: {error}"
+
+msgid "This isn't a readable FDF file: {error}"
+msgstr "No se puede leer este archivo FDF: {error}"
+
+msgid "{n} updated"
+msgstr "{n} actualizados"
+
+msgid "{n} already in the document"
+msgstr "{n} ya estaban en el documento"
+
+msgid "Skipped: {n} ({why})"
+msgstr "Omitidos: {n} ({why})"
+
+msgid "not a kind of comment KanzonasPDF exchanges"
+msgstr "un tipo de comentario que KanzonasPDF no intercambia"
+
+msgid "page {n} isn't in this document"
+msgstr "la página {n} no está en este documento"
 
 # ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
 # ribbon tab fits a 1366-pixel screen in Spanish; the menus keep the full names

@@ -51,7 +51,8 @@ The owner sets this list; nothing below is promised until it's here.
      JavaScript): `claude/forms`. A percent field reads a bare 25 as 25% (owner, 6 Nov; the value
      kept is 0.25, so Acrobat's calculations still work; Acrobat itself shows 2500%).
    - Comments review (XFDF/FDF import and export, reply threads, review statuses):
-     `claude/comments`.
+     `claude/comments` (done; the XFDF/FDF details checked against Apache PDFBox's reader and
+     Acrobat's files, as Adobe's copy of the specification couldn't be fetched).
    - Accessibility (Check accessibility against PDF/UA, Auto-tag, alt text, reading order):
      `claude/accessibility`.
 2. **French, German and Portuguese** (the app and the manual), after 1.10's features (owner,
