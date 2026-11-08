@@ -20,8 +20,10 @@ the document). propose() then gives the bookmarks as items:
 {"level", "title", "page" (index), "to" (point on the page, unrotated), "on"}.
 
 insert_toc() makes the table of contents pages: the bookmarks with dotted leaders and page
-numbers, each line a link to its page. The pages carry /KZTOC in their page dictionary, so
-running it again replaces them instead of adding another one.
+numbers, each line a link to its page, in fonts embedded in its pages (PDF/A; the same in
+every reader); each title is a block of added text (added_text), so Edit text opens it whole.
+The pages carry /KZTOC in their page dictionary, so running it again replaces them instead of
+adding another one.
 """
 
 import html
@@ -707,63 +709,113 @@ def _encodable(texts):
         return False
 
 
+def _font_with(texts):
+    """(name, Font, source) of an embeddable font with every character of texts: the
+    bundled Unicode font (Droid Sans Fallback), else an installed font that covers many
+    alphabets; the bundled one when none has them all."""
+    from . import text_edit as te
+    chars = {c for t in texts for c in t if not c.isspace()}
+    cjk = pymupdf.Font("cjk")
+    if all(cjk.has_glyph(ord(c)) for c in chars):
+        return "KZUni", cjk, {"fontbuffer": cjk.buffer}
+    fonts = te._system_fonts()
+    for key in te.BROAD_FONTS:
+        path = fonts.get(key)
+        if not path:
+            continue
+        try:
+            font = pymupdf.Font(fontfile=path)
+        except Exception:
+            continue
+        if all(font.has_glyph(ord(c)) for c in chars):
+            return "KZB" + key[:20], font, {"fontfile": path}
+    return "KZUni", cjk, {"fontbuffer": cjk.buffer}
+
+
 class _Fonts:
-    """Helvetica for Western texts; MuPDF's built-in Unicode font when a title has other
-    letters (Greek, Cyrillic, Chinese...)."""
+    """The fonts the table is written in, embedded in its pages (so it looks the same in
+    every reader and passes PDF/A's check): MuPDF's own Helvetica (Nimbus Sans, the
+    program it draws Helvetica with) and its bold for Western texts; for titles with other
+    letters (Greek, Cyrillic, Chinese...) the bundled Unicode font (or an installed one),
+    made bold by thickening. styles(size, bold) gives the text_styles.Style to write with;
+    table: {Style: text_styles.Font} of every style asked for (what added_text.write and
+    text_styles' wrapping take)."""
 
     def __init__(self, texts):
+        from . import text_styles as ts
+        self._ts = ts
         if _encodable(texts):
-            self.regular, self.bold = "helv", "hebo"
-            self._font = None
+            helv, hebo = pymupdf.Font("helv"), pymupdf.Font("hebo")
+            self._faces = {False: ("KZHelv", helv, {"fontbuffer": helv.buffer}, False),
+                           True: ("KZHebo", hebo, {"fontbuffer": hebo.buffer}, False)}
         else:
-            self.regular = self.bold = "china-s"
-            self._font = pymupdf.Font("china-s")
+            name, font, source = _font_with(texts)
+            self._faces = {False: (name, font, source, False), True: (name, font, source, True)}
+        self.table = {}
 
-    def width(self, text, font, size):
-        if self._font is None:          # (Helvetica's widths are tabled: fast)
-            return pymupdf.get_text_length(text, fontname=font, fontsize=size)
-        return self._font.text_length(text, fontsize=size)
+    def style(self, size, bold=False, color=(0, 0, 0)):
+        key = self._ts.add_style("", bold, False, size, color)
+        if key not in self.table:
+            name, font, source, thick = self._faces[bool(bold)]
+            self.table[key] = self._ts.Font(name, font, source, thick, False)
+        return key
+
+    def width(self, text, key):
+        return self.table[key].font.text_length(text, fontsize=key.size)
+
+    def on(self, page):
+        """table with the fonts put into page (the names to write with there)."""
+        from . import text_edit as te
+        done, out = {}, {}
+        for k, f in self.table.items():
+            if f.name not in done:
+                done[f.name] = te._insert_font(page, f.name, **f.source)
+            out[k] = f._replace(name=done[f.name])
+        return out
 
 
-def _wrap(text, fonts, font, size, width):
-    words, lines, cur = text.split(), [], ""
-    for w in words:
-        trial = (cur + " " + w) if cur else w
-        if cur and fonts.width(trial, font, size) > width:
-            lines.append(cur)
-            cur = w
-        else:
-            cur = trial
-    if cur:
-        lines.append(cur)
-    out = []
-    for ln in lines:                    # a single word longer than the line: cut
-        while fonts.width(ln, font, size) > width and len(ln) > 1:
-            k = max(1, int(len(ln) * width / max(1.0, fonts.width(ln, font, size))) - 1)
-            out.append(ln[:k])
-            ln = ln[k:]
-        out.append(ln)
-    return out or [""]
+def _rows(text, key, fonts, width):
+    """(text, the rows it wraps to at width): text_styles' own wrapping, as added_text.write
+    does it; a word longer than the line is cut (a line break put into text)."""
+    ts = fonts._ts
+    words = []
+    for w in text.split():
+        while len(w) > 1 and fonts.width(w, key) > width:
+            k = max(1, int(len(w) * width / max(1.0, fonts.width(w, key))) - 1)
+            while k > 1 and fonts.width(w[:k], key) > width:
+                k -= 1
+            words.append(w[:k] + "\n")
+            w = w[k:]
+        words.append(w + " ")
+    text = "".join(words).rstrip(" ").replace("\n ", "\n") or " "
+    rows = ts.wrap([(c, key) for c in text], fonts.table, width)
+    return text, ["".join(c for c, _k in ts.strip_row(r)) for r, _f, _l in rows] or [""]
 
 
 def layout(entries, width, height, title, digits, fonts):
     """The table of contents laid out on pages of width x height: per page, a list of
-    ("text", x, baseline, text, font, size) and ("link", rect, entry index)."""
+    ("text", x, first baseline, text, Style, wrap width, [its rows], baseline to baseline)
+    and ("link", rect, entry index)."""
     s = max(1.0, min(width, height) / 612.0)
     margin = 54 * s
     pages, ops = [], []
     tsize = 20 * s
     y = margin
     if title:
-        ops.append(("text", margin, y + tsize, title, fonts.bold, tsize))
-        y += tsize * 2.2
+        key = fonts.style(tsize, True)
+        text, rows = _rows(title, key, fonts, width - 2 * margin)
+        ops.append(("text", margin, y + tsize, text, key, width - 2 * margin, rows,
+                    tsize * 1.2))
+        y += tsize * (2.2 + 1.2 * (len(rows) - 1))
     right = width - margin
     for k, (lvl, text, _target) in enumerate(entries):
         size = {1: 12, 2: 11}.get(lvl, 10) * s
-        font = fonts.bold if lvl == 1 else fonts.regular
+        key = fonts.style(size, lvl == 1)
+        plain = fonts.style(size)
         x = margin + (lvl - 1) * 18 * s
-        numw = fonts.width("8" * digits, fonts.regular, size)
-        lines = _wrap(text, fonts, font, size, max(40 * s, right - numw - 2 * size - x))
+        numw = fonts.width("8" * digits, plain)
+        wrap = max(40 * s, right - numw - 2 * size - x)
+        text, lines = _rows(text, key, fonts, wrap)
         lh = size * 1.5
         gap = size * 0.5 if lvl == 1 and ops and ops[-1][0] == "link" else 0
         if y + gap + lh * len(lines) > height - margin and ops:
@@ -771,9 +823,8 @@ def layout(entries, width, height, title, digits, fonts):
             ops, y, gap = [], margin, 0
         y += gap
         top = y
-        for ln in lines:
-            ops.append(("text", x, y + size, ln, font, size))
-            y += lh
+        ops.append(("text", x, y + size, text, key, wrap, lines, lh))
+        y += lh * len(lines)
         ops.append(("link", pymupdf.Rect(x, top, right, y - lh + size * 1.25), k))
     pages.append(ops)
     return pages
@@ -803,11 +854,38 @@ def toc_list(doc, depth=MAX_LEVELS, replace=True):
     return [(e[0], e[1], index_of[e[2][0]]) for e in entries]
 
 
+def _one_stream(page):
+    """The page's content streams (each block of added text wrote one) joined into one."""
+    doc = page.parent
+    xs = page.get_contents()
+    if len(xs) > 1:
+        doc.update_stream(xs[0], b"\n".join(doc.xref_stream(x) or b"" for x in xs))
+        doc.xref_set_key(page.xref, "Contents", "%d 0 R" % xs[0])
+
+
+def _cid_maps(page):
+    """PDF/A wants a TrueType CIDFont's CIDToGIDMap named (PyMuPDF leaves out /Identity,
+    the default): given to the fonts the table wrote with."""
+    doc = page.parent
+    for f in page.get_fonts(full=True):
+        if f[2] != "Type0" or not f[4].startswith("KZ"):
+            continue
+        kind, val = doc.xref_get_key(f[0], "DescendantFonts")
+        m = re.match(r"\[\s*(\d+)\s+0\s+R", val or "") if kind == "array" else None
+        if m is None:
+            continue
+        cid = int(m.group(1))
+        if doc.xref_get_key(cid, "Subtype")[1] == "/CIDFontType2" and \
+                doc.xref_get_key(cid, "CIDToGIDMap")[0] == "null":
+            doc.xref_set_key(cid, "CIDToGIDMap", "/Identity")
+
+
 def insert_toc(doc, at=0, title=None, depth=MAX_LEVELS, size=None, replace=True):
     """Insert a table of contents of doc's bookmarks (down to depth) before page index at,
     or in place of the one made before when replace and there is one. size: (width,
     height) of its pages; None: as shown, the size of the page it goes before. Returns
     (first page, page count), or None when there are no bookmarks to list."""
+    from . import added_text, text_styles as ts
     title = tr("Contents") if title is None else title
     old = toc_pages(doc) if replace else []
     toc = doc.get_toc(False)
@@ -834,15 +912,20 @@ def insert_toc(doc, at=0, title=None, depth=MAX_LEVELS, size=None, replace=True)
         doc.new_page(at + k, width=width, height=height)
     index_of = {doc.page_xref(i): i for i in range(doc.page_count)}
     marker = "<</Title %s/Depth %d>>" % (pymupdf.get_pdf_str(title), depth)
+    gray = (0.35, 0.35, 0.35)
     for k, ops in enumerate(pages):
         page = doc[at + k]
         doc.xref_set_key(page.xref, TOC_KEY, marker)
-        shape = page.new_shape()
+        table = fonts.on(page)
+        # each title (and the table's own) is a block of added text (added_text), wrapped
+        # to its width: Edit text opens and rewraps it as one
         for op in ops:
             if op[0] == "text":
-                _kind, x, base, text, font, fsize = op
-                shape.insert_text((x, base), text, fontname=font, fontsize=fsize, color=(0, 0, 0))
+                _kind, x, base, text, key, wrap, _rows_, step = op
+                added_text.write(page, (x, base), 0, text, [key] * len(text), step,
+                                 width=wrap, fonts=table)
         # page numbers and dotted leaders, at the last line of each entry
+        shape = page.new_shape()
         last_text = None
         links = []
         for op in ops:
@@ -853,24 +936,29 @@ def insert_toc(doc, at=0, title=None, depth=MAX_LEVELS, size=None, replace=True)
             xref, to, zoom = entries[e][2]
             target = index_of[xref]
             num = str(target + 1)
-            _k, x, base, text, font, fsize = last_text
-            nw = fonts.width(num, fonts.regular, fsize)
+            _k, x, base, _text, key, _wrap, rows, step = last_text
+            base += step * (len(rows) - 1)
+            plain = fonts.style(key.size)
+            nw = fonts.width(num, plain)
             nx = rect.x1 - nw
-            shape.insert_text((nx, base), num, fontname=fonts.regular, fontsize=fsize,
-                              color=(0, 0, 0))
-            start = x + fonts.width(text, font, fsize) + fsize * 0.6
+            shape.insert_text((nx, base), num, fontname=table[plain].name,
+                              fontsize=key.size, color=(0, 0, 0))
+            start = x + fonts.width(rows[-1], key) + key.size * 0.6
             # (the dots end at the same place on every line of a size: the widest number's)
-            end = rect.x1 - fonts.width("8" * digits, fonts.regular, fsize) - fsize * 0.4
-            dot = fonts.width(" .", fonts.regular, fsize)
+            end = rect.x1 - fonts.width("8" * digits, plain) - key.size * 0.4
+            dot = fonts.width(" .", plain)
             count = int((end - start) / dot) if dot > 0 else 0
             if count >= 2:
                 shape.insert_text((end - count * dot, base), " ." * count,
-                                  fontname=fonts.regular, fontsize=fsize, color=(0.35, 0.35, 0.35))
+                                  fontname=table[plain].name, fontsize=key.size, color=gray)
             link = {"kind": pymupdf.LINK_GOTO, "from": rect, "page": target,
                     "to": pymupdf.Point(to) if to is not None else pymupdf.Point(0, 0),
                     "zoom": zoom or 0}
             links.append(link)
         shape.commit()
+        ts.fix_spaces(page, table)
+        _cid_maps(page)
+        _one_stream(page)
         for link in links:
             page.insert_link(link)
     first = at

@@ -1305,7 +1305,10 @@ Standard's letters).</li>
 </ul>
 <p><b>Insert table of contents...</b> (Document menu, Pages menu, or the Bookmarks panel's ⋯)
 adds pages listing the bookmarks: a title, each bookmark with dotted leaders and its page number,
-levels indented and in smaller type, and each line a link to its page. Choose the title, how
+levels indented and in smaller type, and each line a link to its page. The text is written in
+fonts embedded in the pages, so the table looks the same in every reader and passes Save as
+PDF/A's check, and each title is one block of text that <b>Edit text</b> opens whole (wrapped as
+it was). Choose the title, how
 many levels to list, where it goes (at the start of the document, or before the current page)
 and the page size (the size of the page it goes before, Letter or A4). The page numbers are the
 pages' numbers after the new pages are inserted. Run it again after changing the bookmarks and

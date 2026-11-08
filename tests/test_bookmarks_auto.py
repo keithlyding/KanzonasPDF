@@ -441,6 +441,45 @@ class TableOfContents(unittest.TestCase):
         self.assertIn("Résumé", text)
         self.assertIn("Введение", text)
 
+    def test_fonts_embedded_for_pdfa(self):
+        """The table is written in fonts embedded in its pages (MuPDF's own Helvetica, or a
+        Unicode font for other alphabets): Check PDF/A finds no font problem there, and it
+        looks the same in every reader."""
+        from kanzonas import pdfa
+        for titles in (["Résumé", "Second – “quoted”"], ["Введение", "Ελληνικά", "中文"]):
+            d = numbered(3)
+            d.set_toc([[1, t, k + 1] for k, t in enumerate(titles)])
+            BA.insert_toc(d, 0)
+            fonts = d[0].get_fonts(full=True)
+            self.assertTrue(fonts)
+            for f in fonts:
+                self.assertNotEqual(f[1], "n/a", f)             # (n/a: not embedded)
+            problems = [p for p in pdfa.check(d) if p.kind == "fonts" and p.page == 0]
+            self.assertEqual(problems, [], titles)
+            text = d[0].get_text()
+            for t in titles:
+                self.assertIn(t, text)
+
+    def test_entries_are_blocks_of_added_text(self):
+        """Each title (and the table's own) is a block of added text (added_text): Edit text
+        opens it whole, wrapped as written; a word longer than the line is cut."""
+        from kanzonas import added_text, text_edit
+        d = numbered(3)
+        long = ("A title long enough to wrap onto a second line of the table of contents "
+                "page, as long titles do")
+        word = "W" * 90
+        d.set_toc([[1, "One", 1], [2, long, 2], [1, word, 3]])
+        BA.insert_toc(d, 0)
+        page = d[0]
+        blocks = added_text.find(page, text_edit.text_lines(page))
+        texts = [added_text.contents(page, b)[0].text for b in blocks]
+        self.assertEqual(texts[:3], ["Contents", "One", long])
+        self.assertEqual(texts[3].replace("\n", ""), word)
+        self.assertEqual(len(blocks[2].lines), 2)                # wrapped in its block
+        self.assertGreater(len(blocks[3].lines), 1)
+        self.assertEqual(len(page.get_contents()), 1)
+        self.assertEqual(toc_lines(d, 0)[:2], [("One", 2, 1), (long, 3, 2)])
+
 
 # ---- in the window: one undo step each ----------------------------------------------------------
 class Quiet(unittest.TestCase):

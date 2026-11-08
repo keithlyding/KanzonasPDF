@@ -1290,7 +1290,10 @@ etc. (las letras del National CAD Standard de EE. UU.).</li>
 <p><b>Insertar tabla de contenido...</b> (menú Documento, menú Páginas o el botón ⋯ del panel
 Marcadores) agrega páginas que listan los marcadores: un título, cada marcador con una línea de
 puntos y su número de página, los niveles con sangría y en letra más pequeña, y cada línea un
-vínculo a su página. Elija el título, cuántos niveles listar, dónde va (al principio del documento
+vínculo a su página. El texto se escribe con fuentes incrustadas en las páginas, así que la tabla
+se ve igual en cualquier lector y pasa la comprobación de Guardar como PDF/A, y cada título es un
+solo bloque de texto que <b>Editar texto</b> abre completo (ajustado como estaba). Elija el título,
+cuántos niveles listar, dónde va (al principio del documento
 o antes de la página actual) y el tamaño de página (el de la página que la sigue, Carta o A4). Los
 números de página son los de las páginas después de insertar las nuevas. Ejecútelo de nuevo después
 de cambiar los marcadores y elija <b>En lugar de la tabla de contenido creada antes</b>: las
