@@ -357,14 +357,16 @@ jobs:
       - name: System libraries (bundled into the AppImage) and test tools
         run: |
           # Qt's X11 platform needs the xcb libraries (not on every desktop: they go into the
-          # AppImage); Xvfb and xdotool run the tests; appstream and desktop-file-utils check
-          # the metadata
+          # AppImage); Read aloud's Qt TextToSpeech and Multimedia need PulseAudio's client
+          # library (libpulse0: it goes into the AppImage too, and talks to PulseAudio or
+          # PipeWire's pulse server alike); Xvfb and xdotool run the tests; appstream and
+          # desktop-file-utils check the metadata
           sudo apt-get update -q
           sudo apt-get install -y -q --no-install-recommends \
             libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
             libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 \
             libegl1 libgl1 libopengl0 libdbus-1-3 libfontconfig1 libgtk-3-0 libcups2 \
-            xvfb xauth xdotool appstream desktop-file-utils
+            libpulse0 xvfb xauth xdotool appstream desktop-file-utils
 
       - name: Install dependencies
         run: |
