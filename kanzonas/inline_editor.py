@@ -69,13 +69,22 @@ def _color_int(c):
 
 class StyleBar(QFrame):
     """The buttons above the editor that style the selected words."""
+    STATES = ("bold", "italic", "underline", "strike")      # buttons showing on / off
 
     def __init__(self, editor):
         super().__init__(editor.parentWidget())
         self.editor = editor
         self.setObjectName("KzStyleBar")
-        self.setStyleSheet("#KzStyleBar { background: palette(window); border: 1px solid "
-                           "palette(mid); border-radius: 3px; }")
+        # light, like the white box under it, in both themes (it sits on the page widget,
+        # whose dark gray would otherwise be its buttons' color); a style that the selected
+        # words have shows pressed
+        self.setStyleSheet(
+            "#KzStyleBar { background: #ffffff; border: 1px solid #9a9a9a; "
+            "border-radius: 4px; }"
+            "#KzStyleBar QToolButton { color: #202020; background: transparent; "
+            "border: 1px solid transparent; border-radius: 3px; padding: 1px 3px; }"
+            "#KzStyleBar QToolButton:hover { background: #e5f1fb; border-color: #9ccaf0; }"
+            "#KzStyleBar QToolButton:checked { background: #cce4f7; border-color: #3d8ee0; }")
         lay = QHBoxLayout(self)
         lay.setContentsMargins(2, 2, 2, 2)
         lay.setSpacing(1)
@@ -95,6 +104,7 @@ class StyleBar(QFrame):
                 setup(f)
             b.setFont(f)
             b.clicked.connect(slot)
+            b.setCheckable(key in self.STATES)
             lay.addWidget(b)
             self.buttons[key] = b
             return b
@@ -128,15 +138,25 @@ class StyleBar(QFrame):
         self.raise_()
 
     def show_state(self, fmt):
-        """The color button shows the color at the cursor."""
+        """The color button shows the color at the cursor; Bold, Italic, Underline and
+        Strikethrough show pressed when all the selected words (or the text at the cursor)
+        have them."""
         c = fmt.foreground().color() if fmt.foreground().style() != Qt.NoBrush else \
             QColor(0, 0, 0)
         self.buttons["color"].setStyleSheet("color: %s;" % c.name())
+        parts, a, b = self.editor._selected_formats()
+        fmts = [p[2] for p in parts] if a != b else [fmt]
+        sts = [self.editor.style_of(f) for f in fmts]
+        for key in self.STATES:
+            self.buttons[key].setChecked(bool(sts) and all(getattr(st, key) for st in sts))
 
 
 class InlineEditor(QFrame):
     committed = Signal(str, float, float, object)   # text, dx px, dy px, wrap width px or None
     canceled = Signal()
+    # the style of the selected words (or of the text at the cursor) for Properties to show:
+    # {"bold", "italic", "fontsize" (pt), "text_color" ("#rrggbb")}; None when the editor closes
+    formatShown = Signal(object)
 
     def __init__(self, parent, text_rect, text, family, pixel_size, click=None, bold=False,
                  runs=None, zoom=None, base=None, tools=True):
@@ -200,6 +220,7 @@ class InlineEditor(QFrame):
         self.text.textChanged.connect(self._changed)
         self.bar = StyleBar(self) if tools else None
         self.text.currentCharFormatChanged.connect(self._format_moved)
+        self.text.selectionChanged.connect(self._format_moved)
         self.show()
         self.raise_()
         self._grow()
@@ -307,10 +328,42 @@ class InlineEditor(QFrame):
             block = block.next()
         return out, a, b
 
-    def _restyle(self, change):
-        """change(Style) -> Style for the selected words (or the words about to be typed)."""
+    def _all_formats(self):
+        """[(start, end, QTextCharFormat)] of all the text, as _selected_formats."""
+        out = []
+        block = self.text.document().begin()
+        while block.isValid():
+            it = block.begin()
+            while not it.atEnd():
+                frag = it.fragment()
+                if frag.isValid():
+                    out.append((frag.position(), frag.position() + frag.length(),
+                                frag.charFormat()))
+                it += 1
+            block = block.next()
+        return out
+
+    def _restyle(self, change, whole=False):
+        """change(Style) -> Style for the selected words (or the words about to be typed; with
+        whole, all the text when nothing is selected). The selection stays selected."""
         parts, a, b = self._selected_formats()
-        if a == b:
+        if a == b and whole and not self.text.document().isEmpty():
+            parts, a, b = self._all_formats(), 0, len(self.text.toPlainText())
+            pos = self.text.textCursor().position()
+            cur = QTextCursor(self.text.document())
+            cur.beginEditBlock()
+            for s, e, fmt in parts:
+                cur.setPosition(s)
+                cur.setPosition(e, QTextCursor.KeepAnchor)
+                cur.setCharFormat(self.format_for(change(self.style_of(fmt))))
+            cur.endEditBlock()
+            # what's typed next at the cursor takes the change too
+            self.text.setCurrentCharFormat(self.format_for(change(self.style_of(
+                self.text.currentCharFormat()))))
+            c = self.text.textCursor()
+            c.setPosition(min(pos, len(self.text.toPlainText())))
+            self.text.setTextCursor(c)
+        elif a == b:
             st = change(self.style_of(self.text.currentCharFormat()))
             self.text.setCurrentCharFormat(self.format_for(st))
         else:
@@ -324,6 +377,30 @@ class InlineEditor(QFrame):
         self._grow()
         self._format_moved(self.text.currentCharFormat())
         self.text.setFocus()
+
+    def shown_format(self):
+        """The style Properties shows: of all the selected words (bold only when all of them
+        are), or of the text at the cursor."""
+        parts, a, b = self._selected_formats()
+        fmts = [p[2] for p in parts] if a != b else [self.text.currentCharFormat()]
+        sts = [self.style_of(f) for f in fmts] or [self.base]
+        first = sts[0]
+        return {"bold": all(st.bold for st in sts), "italic": all(st.italic for st in sts),
+                "fontsize": round(first.size, 2),
+                "text_color": "#%06x" % (first.color & 0xFFFFFF)}
+
+    def apply_format(self, key, value):
+        """A change made in Properties while editing: to the selected words, or to all the
+        text when nothing is selected (key: "bold", "italic", "fontsize", "text_color")."""
+        if key in ("bold", "italic"):
+            self._restyle(lambda st: st._replace(**{key: bool(value)}), whole=True)
+        elif key == "fontsize":
+            size = round(max(1.0, float(value)), 2)
+            self._restyle(lambda st: st._replace(size=size), whole=True)
+        elif key == "text_color":
+            c = QColor(value)
+            if c.isValid():
+                self._restyle(lambda st: st._replace(color=_color_int(c)), whole=True)
 
     def toggle(self, kind):
         """Bold / italic / underline / strike: on for the selection, or off when all of it
@@ -350,9 +427,11 @@ class InlineEditor(QFrame):
         self.set_color(c)
         self.text.setFocus()
 
-    def _format_moved(self, fmt):
+    def _format_moved(self, fmt=None):
         if self.bar is not None:
-            self.bar.show_state(fmt)
+            self.bar.show_state(fmt if fmt is not None else self.text.currentCharFormat())
+        if not self._done:
+            self.formatShown.emit(self.shown_format())
 
     def _changed(self):
         if self.text.document().isEmpty():
@@ -387,6 +466,7 @@ class InlineEditor(QFrame):
         self.text.setFont(f)
         cur = QTextCursor(self.text.document())
         pos = self.text.textCursor().position()
+        anchor = self.text.textCursor().anchor()
         block = self.text.document().begin()
         cur.beginEditBlock()
         while block.isValid():
@@ -400,8 +480,10 @@ class InlineEditor(QFrame):
                 it += 1
             block = block.next()
         cur.endEditBlock()
+        n = len(self.text.toPlainText())
         c = self.text.textCursor()
-        c.setPosition(min(pos, len(self.text.toPlainText())))
+        c.setPosition(min(anchor, n))
+        c.setPosition(min(pos, n), QTextCursor.KeepAnchor)      # (the selection stays)
         self.text.setTextCursor(c)
         self._grow()
         self.text.setFocus()
@@ -547,6 +629,7 @@ class InlineEditor(QFrame):
             wrap = None             # a paragraph's own width, not the box's (no creep)
         self.hide()
         self.close_bar()
+        self.formatShown.emit(None)
         self.committed.emit(self.text.toPlainText(), float(moved.x()), float(moved.y()), wrap)
         self.deleteLater()
 
@@ -566,5 +649,6 @@ class InlineEditor(QFrame):
         self._done = True
         self.hide()
         self.close_bar()
+        self.formatShown.emit(None)
         self.canceled.emit()
         self.deleteLater()

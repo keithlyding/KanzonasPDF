@@ -955,8 +955,10 @@ The style buttons above the box style single words, as in Edit text (see <b>Bold
 underline and color for single words</b> below). Only the letters used are stored in the
 file.</li>
 <li><b>Change a line's font or size:</b> with the Edit text tool, click the line: Properties
-shows its own <b>Font size</b>. Change the size, or pick a font (and Bold / Italic), and press
-Enter, with or without changing the text. The choice applies to that line only: the next line you
+shows the style of the text at the cursor. Change the <b>Font size</b>, <b>Bold</b> or
+<b>Italic</b> there and it applies to the words selected in the box (they stay selected), or to
+all its text when nothing is selected; press Enter, with or without changing the text. A font
+picked there applies to the whole line. The choice applies to that line only: the next line you
 click keeps its own font and size again (Keep the line's font / Keep the line's size). A font or
 size picked before clicking a line applies to that line.</li>
 <li><b>Delete text:</b> with the Edit text tool, right-click the text &gt; <b>Delete text</b>, or
@@ -982,8 +984,12 @@ line, or new text with Add text), select words and use the buttons above the box
 <b>Bold</b> (Ctrl+B), <b>Italic</b> (Ctrl+I), <b>Underline</b> (Ctrl+U),
 <b>Strikethrough</b>, <b>Text color</b>, and <b>Larger text</b> (Ctrl+]) / <b>Smaller
 text</b> (Ctrl+[), a point at a time (a line with larger words moves down as far as they need,
-so they don't run into the line above). Press a button again to take the style off. With nothing
-selected, the button sets the style of what you type next. Text typed next to a word takes
+so they don't run into the line above). Press a button again to take the style off; a style all the
+selected words have shows pressed. With nothing selected, the button sets the style of what you
+type next. <b>Bold</b>, <b>Italic</b> and <b>Font size</b> in Properties (and Add text's <b>Text
+color</b>) do the same while the box is open: they change the selected words, which stay
+selected, or all the text in the box when nothing is selected, and Properties shows the style of
+the selected words. They don't change the tool's own settings for the next text. Text typed next to a word takes
 that word's style; text typed into an empty box takes the paragraph's main style.
 <br>Bold and italic keep the line's font. The same family's real bold or italic is used when
 it's embedded in the PDF or installed on this computer (Arial's Arial Bold, Times New Roman's

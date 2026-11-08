@@ -621,6 +621,9 @@ class DocumentView(QScrollArea):
     layersChanged = Signal()
     requestSignature = Signal(int, int)      # page index, signature field xref
     textToolPropsChanged = Signal()          # Edit text: the line's font / size to show
+    # the open Edit text / Add text box's selected words' style for Properties to show
+    # (InlineEditor.shown_format), or None when the box closes
+    editorFormat = Signal(object)
     historyChanged = Signal()       # an undo or redo done: what can be undone / redone now
 
     def __init__(self, path, parent=None, doc=None):
@@ -5072,6 +5075,7 @@ class DocumentView(QScrollArea):
         ed.text.setTextCursor(cur)
         ed.kz_tool, ed.kz_line_size = "edittext", size
         self._inline = ed
+        self._hook_editor(ed)
         self.statusMessage.emit(tr("Editing the paragraph: the words rewrap as you type. "
                                    "Alt+click edits a single line."))
 
@@ -5242,6 +5246,7 @@ class DocumentView(QScrollArea):
             ed.text.setTextCursor(cur)
         ed.kz_tool, ed.kz_line_size = "edittext", size
         self._inline = ed
+        self._hook_editor(ed)
 
         def finished():
             self._inline = None
@@ -5412,6 +5417,7 @@ class DocumentView(QScrollArea):
                           family or "sans", size * self.zoom, zoom=self.zoom, base=start)
         ed.kz_tool = "addtext"
         self._inline = ed
+        self._hook_editor(ed)
 
         def done(text, dx, dy, wrap_px):
             self._inline = None
@@ -5458,6 +5464,11 @@ class DocumentView(QScrollArea):
         """Font size chosen for Edit text in Properties (points), or None = keep each
         line's own size."""
         return float(annotations.tool_props("edittext").get("fontsize") or 0) or None
+
+    def _hook_editor(self, ed):
+        """Properties follows the style of the words selected in the box (and changes them)."""
+        ed.formatShown.connect(self.editorFormat)
+        self.editorFormat.emit(ed.shown_format())
 
     def text_tool_props_changed(self):
         """Properties changed while Add text / Edit text is open on the page: show the text

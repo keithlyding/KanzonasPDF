@@ -1873,6 +1873,8 @@ class MainWindow(QMainWindow):
             (v.requestSignature, self._sign_field),
             (v.textToolPropsChanged,
              lambda v=v: v is self.view() and self._refresh_props()),
+            (v.editorFormat,
+             lambda fmt, v=v: v is self.view() and self._show_editor_format(fmt)),
             (v.pageChanged, self._on_page_changed),
             (v.zoomChanged, lambda _: self._update_ui()),
             (v.documentChanged, self._on_doc_changed),
@@ -2257,6 +2259,11 @@ class MainWindow(QMainWindow):
     # ---- properties panel / tool defaults -------------------------------------
     def _refresh_props(self):
         v = self.view()
+        ed = self._editing_box()
+        if ed is not None:
+            self._show_editor_format(ed.shown_format())
+            return
+        self._editor_shown = None
         if v is not None and v.selected_model is not None:
             m = v.selected_model
             self.props.show_target(m["kind"], m["props"], selected=True)
@@ -2268,8 +2275,45 @@ class MainWindow(QMainWindow):
         else:
             self.props.show_target(None, None)
 
+    def _editing_box(self):
+        """The Edit text / Add text box open on the page, if Properties is showing its tool."""
+        v = self.view()
+        ed = v._inline if v is not None else None
+        if ed is None or v.selected_model is not None or getattr(ed, "_done", False) or \
+                getattr(ed, "kz_tool", None) != self.tool:
+            return None
+        return ed
+
+    def _show_editor_format(self, fmt):
+        """Properties shows the style of the words selected in the box being edited (None:
+        the box closed; Properties shows the tool's own settings again)."""
+        if fmt is None or self._editing_box() is None:
+            self._refresh_props()           # (the tool's own settings)
+            return
+        props = dict(annotations.tool_props(self.tool))
+        shown = {k: v for k, v in fmt.items() if k in props}
+        props.update(shown)
+        self._editor_shown = shown
+        self.props.show_target(self.tool, props)
+
     def _on_props_changed(self, props):
         v = self.view()
+        ed = self._editing_box()
+        shown = getattr(self, "_editor_shown", None)
+        if ed is not None and shown is not None:
+            # while the box is open, Bold, Italic, the size and the color change its selected
+            # words (all its text when none are selected), not the tool's settings
+            changed = [k for k in shown if k in props and props[k] != shown[k]]
+            for k in changed:
+                ed.apply_format(k, props[k])
+            saved = dict(annotations.tool_props(self.tool))
+            if props.get("font", saved.get("font")) != saved.get("font"):
+                saved["font"] = props.get("font") or ""     # (a font: the whole box, as before)
+                annotations.set_tool_props(self.tool, saved)
+                v.text_tool_props_changed()
+            if changed:
+                self._show_editor_format(ed.shown_format())
+            return
         if v is not None and v.selected_model is not None:
             v.update_selected_props(props)
         elif annotations.OVERRIDE["tool"] == self.tool:

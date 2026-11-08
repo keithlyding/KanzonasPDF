@@ -936,8 +936,10 @@ Elija la fuente (cualquier fuente instalada, además de Negrita y Cursiva), el t
 Los botones de estilo sobre el cuadro dan estilo a palabras sueltas, como en Editar texto (vea <b>Negrita, cursiva,
 subrayado y color para palabras sueltas</b> más abajo). Solo se guardan en el archivo las letras que se usan.</li>
 <li><b>Cambiar la fuente o el tamaño de una línea:</b> con la herramienta Editar texto, haga clic en la línea: Propiedades
-muestra su propio <b>Tamaño de fuente</b>. Cambie el tamaño, o elija una fuente (y Negrita / Cursiva), y presione
-Enter, cambiando el texto o no. La elección se aplica solo a esa línea: la siguiente línea en la que
+muestra el estilo del texto donde está el cursor. Cambie allí el <b>Tamaño de fuente</b>, la <b>Negrita</b> o la
+<b>Cursiva</b> y se aplica a las palabras seleccionadas en el cuadro (siguen seleccionadas), o a todo su texto
+cuando no hay nada seleccionado; presione Enter, cambiando el texto o no. Una fuente elegida allí se aplica a toda
+la línea. La elección se aplica solo a esa línea: la siguiente línea en la que
 haga clic vuelve a conservar su propia fuente y su propio tamaño (Mantener la fuente de la línea / Mantener el tamaño de la línea). Una fuente o un
 tamaño elegidos antes de hacer clic en una línea se aplican a esa línea.</li>
 <li><b>Eliminar texto:</b> con la herramienta Editar texto, haga clic con el botón derecho en el texto &gt; <b>Eliminar texto</b>, o
@@ -963,8 +965,12 @@ línea, o texto nuevo con Agregar texto), seleccione palabras y use los botones 
 <b>Negrita</b> (Ctrl+B), <b>Cursiva</b> (Ctrl+I), <b>Subrayado</b> (Ctrl+U),
 <b>Tachado</b>, <b>Color del texto</b>, y <b>Texto más grande</b> (Ctrl+]) / <b>Texto más
 pequeño</b> (Ctrl+[), de un punto en un punto (una línea con palabras más grandes baja lo que
-necesitan, para que no se monten sobre la de arriba). Presione de nuevo un botón para quitar el estilo. Sin nada
-seleccionado, el botón fija el estilo de lo que escriba a continuación. El texto escrito junto a una palabra toma
+necesitan, para que no se monten sobre la de arriba). Presione de nuevo un botón para quitar el estilo; un estilo que tienen todas las
+palabras seleccionadas se ve presionado. Sin nada seleccionado, el botón fija el estilo de lo que escriba a
+continuación. La <b>Negrita</b>, la <b>Cursiva</b> y el <b>Tamaño de fuente</b> de Propiedades (y el <b>Color del
+texto</b> de Agregar texto) hacen lo mismo mientras el cuadro está abierto: cambian las palabras seleccionadas, que
+siguen seleccionadas, o todo el texto del cuadro cuando no hay nada seleccionado, y Propiedades muestra el estilo de
+las palabras seleccionadas. No cambian los ajustes propios de la herramienta para el texto siguiente. El texto escrito junto a una palabra toma
 el estilo de esa palabra; el texto escrito en un cuadro vacío toma el estilo principal del párrafo.
 <br>La negrita y la cursiva conservan la fuente de la línea. Se usa la negrita o la cursiva real de la misma familia
 cuando está incrustada en el PDF o instalada en esta computadora (Arial Bold para Arial, Times New Roman Italic
