@@ -10231,8 +10231,8 @@ msgstr "Hay contenido etiquetado dentro de contenido marcado como artefacto."
 msgid "The tab order of the page's links and fields doesn't follow the document's structure (Tabs isn't S)."
 msgstr "El orden de tabulación de los vínculos y campos de la página no sigue la estructura del documento (Tabs no es S)."
 
-msgid "The document has {n} pages and no bookmarks: bookmarks let people move around a long document (Document > Bookmarks, or the Bookmarks panel)."
-msgstr "El documento tiene {n} páginas y ningún marcador: los marcadores permiten moverse por un documento largo (Documento > Marcadores, o el panel Marcadores)."
+msgid "The document has {n} pages and no bookmarks: bookmarks let people move around a long document (Fix makes them from its headings; or Document > Bookmark tools, or the Bookmarks panel)."
+msgstr "El documento tiene {n} páginas y ningún marcador: los marcadores permiten moverse por un documento largo (Corregir los crea a partir de sus títulos; o Documento > Herramientas de marcadores, o el panel Marcadores)."
 
 msgid "A figure has no alternate text (a description for people who can't see it)."
 msgstr "Una figura no tiene texto alternativo (una descripción para quien no puede verla)."
@@ -10481,8 +10481,8 @@ msgstr "No se corrige aquí"
 msgid "The characters on this page couldn't be matched with its drawing instructions (an unusual font), so the page is tagged as one paragraph, in drawing order."
 msgstr "Los caracteres de esta página no se pudieron emparejar con sus instrucciones de dibujo (una fuente poco común), así que la página se etiquetó como un solo párrafo, en orden de dibujo."
 
-msgid "This page has marked content already, so it was left as it was (not tagged)."
-msgstr "Esta página ya tiene contenido marcado, así que se dejó como estaba (sin etiquetar)."
+msgid "This page has marked content already (a program tagged it before), so it was tagged by that marking: check its tags with Reading order."
+msgstr "Esta página ya tiene contenido marcado (un programa la etiquetó antes), así que se etiquetó según ese marcado: revise sus etiquetas con Orden de lectura."
 
 msgid "&Accessibility"
 msgstr "Accesi&bilidad"

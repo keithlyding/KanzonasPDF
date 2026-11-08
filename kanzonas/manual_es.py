@@ -1865,7 +1865,9 @@ tablas con celdas de encabezado que indican qué encabezan; los títulos que emp
 saltan ningún nivel; las listas y tablas construidas como dice PDF; los vínculos, campos de
 formulario y comentarios etiquetados y descritos; el orden de tabulación; las fuentes incrustadas y
 un texto que se lee como letras (Unicode); una seguridad que deja leer a los lectores de pantalla;
-los marcadores en documentos de más de 20 páginas. El último grupo enumera lo que solo una persona
+los marcadores en documentos de más de 20 páginas (su corrección, <b>Crear marcadores</b>, los
+crea a partir de los títulos de las etiquetas en un documento etiquetado, si no a partir del aspecto
+de los títulos, con la misma vista previa que Documento &gt; Herramientas de marcadores). El último grupo enumera lo que solo una persona
 puede juzgar: que el orden de lectura tenga sentido, que el texto alternativo diga qué muestra cada
 imagen, que los colores contrasten lo suficiente (WCAG pide 4,5:1, 3:1 para texto grande), que los
 encabezados y pies de página sean artefactos, que el texto reconocido sea exacto. Para una
@@ -1890,7 +1892,11 @@ leen como párrafos), pies de figura, notas al pie, fórmulas ni gráficos dibuj
 (artefactos: descríbalos en el texto o en el texto alternativo de una figura). Un documento que ya
 está etiquetado se deja como está. Una página cuyos caracteres no se pueden emparejar con sus
 instrucciones de dibujo (una fuente poco común) se etiqueta como un solo párrafo, y la ventana del
-final lo indica. Después, describa las figuras (Texto alternativo) y ejecute Comprobar
+final lo indica. Una página que ya tiene contenido marcado (un programa la etiquetó y después se
+le quitaron las etiquetas, como hacen algunas herramientas) se etiqueta según ese marcado: cada
+parte marcada, un elemento del tipo que nombra su marcado (un párrafo cuando no es uno estándar),
+y lo demás como cualquier contenido agregado a una página etiquetada; la ventana indica qué
+páginas. Después, describa las figuras (Texto alternativo) y ejecute Comprobar
 accesibilidad.</li>
 <li><b>Texto alternativo...</b> enumera las figuras del documento, cada una con su imagen: escriba
 una descripción (qué muestra, o para qué está, en una o dos frases), o marque <b>Decorativa</b> en

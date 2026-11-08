@@ -281,7 +281,8 @@ def fix_labels():
             "lang": tr("Title and language"), "tabs": tr("Tab order"),
             "alt": tr("Alt text"), "links": tr("Link descriptions"),
             "tooltips": tr("Form field tooltips"), "fonts": tr("Embed fonts"),
-            "pdfua": tr("Identify as PDF/UA"), "repair": tr("Repair tags")}
+            "pdfua": tr("Identify as PDF/UA"), "repair": tr("Repair tags"),
+            "bookmarks": tr("Make bookmarks")}
 
 
 class _Stopped(Exception):
@@ -390,8 +391,9 @@ class Checker:
         if doc.page_count > LONG_DOCUMENT and not doc.get_toc(simple=True):
             self.add("document", None, tr(
                 "The document has {n} pages and no bookmarks: bookmarks let people move "
-                "around a long document (Document > Bookmarks, or the Bookmarks panel)."
-            ).format(n=doc.page_count), None, "ISO 14289-1 7.17, WCAG 2.4.5")
+                "around a long document (Fix makes them from its headings; or Document > "
+                "Bookmark tools, or the Bookmarks panel)."
+            ).format(n=doc.page_count), "bookmarks", "ISO 14289-1 7.17, WCAG 2.4.5")
         ocp = _get(cat, "OCProperties")
         if m.pdf_is_dict(ocp):
             d = _get(ocp, "D")

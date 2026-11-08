@@ -18,6 +18,13 @@ Check accessibility) and bookmarks, fixed:
   described (veraPDF's PDF/UA-1 check failed on 7.18.5-2 and 7.18.1-2 where it passed
   before): now a TOC of TOCI, each a Link with the entry's words, page number and link,
   the leaders an artifact, each link described (also on an untagged document);
+- Auto-tag on a document whose tags were taken out but whose pages still have their
+  marked content (MCIDs; as some tools leave them): those pages were "left as they were",
+  their MCIDs in no element: the document came out of Auto-tag with its tags out of step
+  (Check accessibility: "MCID 0 is in no element" on every page). Now tagged by that
+  marking;
+- Check accessibility's "long document without bookmarks" offered no fix: now Make
+  bookmarks (from the tags' headings on a tagged document, else from the headings' look).
 
 Each test failed before its fix.
 
@@ -227,6 +234,35 @@ class TaggedForms(Case):
         self.assertEqual(len(fig.stms), 1)
         self.assertIn(fig.stms[0][0], drawn)              # (the copy the page draws)
         self.assertEqual(tag_upkeep.problems(v.doc), [])
+
+
+class AutoTagAndCheck(Case):
+    def test_auto_tag_on_pages_marked_by_a_tagger_before(self):
+        from kanzonas import autotag
+        d, n = simple()
+        d.xref_set_key(d.pdf_catalog(), "StructTreeRoot", "null")     # (taken out)
+        d = pymupdf.open("pdf", d.tobytes(garbage=1))
+        self.assertFalse(tag_upkeep.is_tagged(d))
+        plans = autotag.make_plans(d)
+        autotag.apply(d, plans)
+        self.assertEqual(tag_upkeep.problems(d), [])
+        self.assertEqual([it["type"] for it in acc.page_order(d, 0)], ["H1", "P"])
+        self.assertEqual([i for i, _t in autotag.notes(plans)], [0])
+
+    def test_check_offers_to_make_bookmarks_for_a_long_document(self):
+        from kanzonas import accessibility_ui, bookmarks_ui
+        d = pymupdf.open()
+        for i in range(acc.LONG_DOCUMENT + 1):
+            d.new_page().insert_text((72, 72), "Page %d" % (i + 1))
+        p = next(p for p in acc.check(d) if "no bookmarks" in p.text)
+        self.assertEqual(p.fix, "bookmarks")
+        self.assertIn("bookmarks", acc.fix_labels())
+        v = self.view(d)
+        window = mock.Mock()
+        window.view.return_value = v
+        with mock.patch.object(bookmarks_ui, "make_bookmarks") as make:
+            accessibility_ui.run_fix(None, window, v, p.fix)
+        make.assert_called_once_with(window, "headings")
 
 
 class TableOfContents(Case):

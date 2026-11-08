@@ -1858,7 +1858,9 @@ what a program can: tagged, with every piece of content tagged or marked as an a
 header cells that say what they head; headings that start at H1 and skip no level; lists and
 tables built the way PDF says; links, form fields and comments tagged and described; tab
 order; fonts embedded and text that reads as letters (Unicode); security that lets screen
-readers read; bookmarks in documents longer than 20 pages. The last group lists what only a
+readers read; bookmarks in documents longer than 20 pages (its fix, <b>Make bookmarks</b>,
+makes them from the tags' headings in a tagged document, else from the headings' look, through
+the same preview as Document &gt; Bookmark tools). The last group lists what only a
 person can judge: the reading order makes sense, the alternate text says what each picture
 shows, the colors contrast enough (WCAG asks 4.5:1, 3:1 for large text), headers and footers
 are artifacts, recognized text is accurate. For a formal validation, use <b>PAC 2024</b>
@@ -1881,7 +1883,11 @@ read as one), tables without ruling lines or with merged cells (read as paragrap
 captions, footnotes, formulas, or charts drawn with lines (artifacts: describe them in the
 text or a figure's alternate text). A document that is tagged already is left as it is. A page
 whose characters can't be matched with its drawing instructions (an unusual font) is tagged as
-one paragraph, and the window at the end says so. Then describe the figures (Alt text) and run
+one paragraph, and the window at the end says so. A page that has marked content already (a
+program tagged it, and its tags were taken out since, as some tools do) is tagged by that
+marking: each marked piece an element of the type its marking names (a paragraph when that
+isn't a standard one), the rest as any content added to a tagged page; the window says which
+pages. Then describe the figures (Alt text) and run
 Check accessibility.</li>
 <li><b>Alt text...</b> lists the document's figures, each with its picture: type a description
 (what it shows, or what it's for, in a sentence or two), or tick <b>Decorative</b> for a

@@ -2041,6 +2041,15 @@ def apply(doc, plans, lang=None):
     doc.xref_set_key(cat, "MarkInfo", "<</Marked true>>")
     if lang:
         doc.xref_set_key(cat, "Lang", pymupdf.get_pdf_str(lang))
+    # pages left as they were (marked content already: a program tagged them and the tags
+    # were taken out since, as many tools do): their MCIDs were in no element and the rest
+    # of their content in none either, the new tags out of step with them from the start;
+    # tagged now by what they hold (an element of the type each MCID's marking names, the
+    # rest as any content added to a tagged page)
+    left = [p.index for p in plans if p.note in ("tagged", "left")]
+    if left:
+        from . import tag_upkeep
+        tag_upkeep.refresh(doc, left)
     return count[0] + 1
 
 
@@ -2053,8 +2062,9 @@ def notes(plans):
                                     "its drawing instructions (an unusual font), so the page "
                                     "is tagged as one paragraph, in drawing order.")))
         elif p.note in ("left", "tagged"):
-            out.append((p.index, tr("This page has marked content already, so it was left "
-                                    "as it was (not tagged).")))
+            out.append((p.index, tr("This page has marked content already (a program tagged "
+                                    "it before), so it was tagged by that marking: check its "
+                                    "tags with Reading order.")))
     return out
 
 
