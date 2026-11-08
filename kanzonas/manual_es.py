@@ -33,7 +33,9 @@ su propia identidad única, incluso en el caso de archivos con el mismo nombre.<
 de cada hoja tal como se imprimirá: elija la impresora y las copias, qué páginas (Todas, Página actual
 o una lista como 1-3, 5), la orientación (Automática gira cada hoja para ajustarla a su página), el tamaño
 (Ajustar al papel, o Tamaño real, que solo reduce las páginas demasiado grandes), si se imprimen las marcas
-y los campos de formulario, y las <b>Marcas de corte</b> (vea Producción de impresión). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
+y los campos de formulario, <b>Líneas finas oscuras</b> (activado salvo que lo desactive: cada línea se imprime con al
+menos 0,15 pt de grosor y sólida, para que las líneas finas de los planos no salgan tenues ni cortadas; desactivado,
+las líneas se imprimen exactamente tan finas como son), y las <b>Marcas de corte</b> (vea Producción de impresión). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
 y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
 Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse

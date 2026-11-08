@@ -5806,6 +5806,16 @@ msgstr "Tamaño real (reducir las páginas demasiado grandes)"
 msgid "Print markups and form fields"
 msgstr "Imprimir marcas y campos de formulario"
 
+msgid "Dark thin lines"
+msgstr "Líneas finas oscuras"
+
+msgid ""
+"Print every line at least 0.15 pt wide and solid, so the thin lines of drawings don't come out "
+"faint. Turn off to print lines exactly as thin as they are."
+msgstr ""
+"Imprime cada línea con al menos 0,15 pt de grosor y sólida, para que las líneas finas de los "
+"planos no salgan tenues. Desactívelo para imprimir las líneas exactamente tan finas como son."
+
 #: print_dialog.py:229
 msgid "No pages"
 msgstr "No hay páginas"
