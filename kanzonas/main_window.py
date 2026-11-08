@@ -4939,7 +4939,9 @@ class MainWindow(QMainWindow):
         "a_clear_sigs": tr("Clear signatures"), "a_search_redact": tr("Search and redact"),
         "a_apply_sel_redact": tr("Apply selected"), "a_apply_redact": tr("Apply all"),
         "a_security": tr("Security"), "a_remove_security": tr("Remove security"), "a_unlock": tr("Unlock"),
-        "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"), "a_move_up": tr("Move up"),
+        "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"),
+        "a_detect_fields": tr("Detect fields"), "a_field_props": tr("Field properties"),
+        "a_tab_order": tr("Tab order"), "a_check_required": tr("Check required"), "a_move_up": tr("Move up"),
         "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files", ctx="ribbon"), "a_from_images": tr("From images"), "a_new": tr("New PDF"), "a_scan": tr("Scan"),
         "a_insert_blank": tr("Blank page"), "a_extract": tr("Extract"), "a_header": tr("Header and footer"),
         "a_watermark": tr("Watermark"), "a_background": tr("Background"),
@@ -4978,6 +4980,8 @@ class MainWindow(QMainWindow):
         "a_apply_redact": "check-decagram", "a_security": "shield-lock-outline",
         "a_remove_security": "shield-off-outline", "a_unlock": "lock-open-outline",
         "a_sanitize": "broom", "a_hl_fields": "format-color-highlight",
+        "a_detect_fields": "text-box-search-outline", "a_field_props": "form-select",
+        "a_tab_order": "order-numeric-ascending", "a_check_required": "asterisk",
         "a_move_up": "arrow-up-bold-outline", "a_move_down": "arrow-down-bold-outline",
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
         "a_replace_pages": "file-replace-outline",
@@ -5093,6 +5097,8 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab(tr("Forms"), [
             (tr("Add fields"), "large", [t[k] for k, _l, _t in FORM_TOOLS]),
+            (tr("Smart forms"), "small", [self.a_detect_fields, self.a_field_props,
+                                          self.a_tab_order, self.a_check_required]),
             (tr("Show"), "large", [self.a_hl_fields]),
         ])
         r.add_tab(tr("Pages"), [

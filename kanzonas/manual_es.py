@@ -1374,7 +1374,9 @@ con un contorno azul; los campos obligatorios reciben un contorno rojo. El sombr
 <li><b>Crear:</b> menú Formularios: campo de texto, casilla de verificación, botón de opción, lista desplegable, campo de firma,
 campo de iniciales. Un <b>campo de iniciales</b> funciona como un campo de firma: quien rellena el
 formulario hace clic en él para poner allí sus iniciales guardadas. Haga doble clic en un campo (con una herramienta de
-formulario), o haga clic derecho en él, para abrir sus Propiedades del campo.</li>
+formulario), o haga clic derecho en él, para abrir sus Propiedades del campo. En la pestaña Formularios de la cinta, el grupo
+<b>Formularios inteligentes</b> tiene Detectar campos, Propiedades del campo, Orden de tabulación y Revisar obligatorios (los
+comandos de abajo).</li>
 <li><b>Detectar campos de formulario...</b> (menú Formularios, o clic derecho en la página con una herramienta de
 formulario) encuentra dónde van los campos en un formulario plano: un PDF sin campos, o uno escaneado después de
 Reconocer texto (OCR). Busca líneas en blanco después de una etiqueta ("Nombre: ____", dibujadas o escritas con guiones

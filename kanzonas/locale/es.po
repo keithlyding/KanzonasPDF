@@ -8644,6 +8644,18 @@ msgstr "Establecer el orden de &tabulación..."
 msgid "Check &required fields"
 msgstr "Comprobar campos &obligatorios"
 
+msgid "Smart forms"
+msgstr "Formularios inteligentes"
+
+msgid "Detect fields"
+msgstr "Detectar campos"
+
+msgid "Tab order"
+msgstr "Orden de tabulación"
+
+msgid "Check required"
+msgstr "Revisar obligatorios"
+
 msgid "Find the blank lines, boxes and checkboxes of a flat (or scanned) form and make fields there: you see what was found before anything changes"
 msgstr "Encontrar las líneas en blanco, los cuadros y las casillas de un formulario plano (o escaneado) y crear campos allí: verá lo encontrado antes de que cambie nada"
 

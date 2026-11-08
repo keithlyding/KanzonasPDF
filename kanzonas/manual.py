@@ -1386,7 +1386,8 @@ blue with a blue outline; required fields get a red outline. The shading is on s
 <li><b>Create:</b> Forms menu: text field, checkbox, option button, dropdown, signature field,
 initials field. An <b>initials field</b> works like a signature field: whoever fills in the
 form clicks it to put their saved initials there. Double-click a field (with a form tool), or
-right-click it, to open its Field properties.</li>
+right-click it, to open its Field properties. On the ribbon's Forms tab, the <b>Smart forms</b>
+group has Detect fields, Field properties, Tab order and Check required (the commands below).</li>
 <li><b>Detect form fields...</b> (Forms menu, or right-click the page with a form tool) finds
 where fields belong on a flat form: a PDF without fields, or a scanned one after Recognize text
 (OCR). It looks for blank lines after a label ("Name: ____", drawn or typed as underscores) or

@@ -50,7 +50,8 @@ ON_TABS = {
                "a_multi_sign a_remove_security a_sanitize a_search_redact a_security "
                "a_sig_details a_timestamp a_unlock t:date t:initials t:placeholder t:redact "
                "t:signature",
-    "Forms": "a_hl_fields t:f_check t:f_combo t:f_initials t:f_radio t:f_sign t:f_text",
+    "Forms": "a_check_required a_detect_fields a_field_props a_hl_fields a_tab_order "
+             "t:f_check t:f_combo t:f_initials t:f_radio t:f_sign t:f_text",
     "Pages": "a_attachments a_background a_bookmarks a_combine a_compare a_compress a_del_page "
              "a_extract a_flatten a_from_images a_header a_insert_blank a_insert_pdf "
              "a_move_down a_move_up a_new a_ocr a_replace_pages a_rot_l a_rot_r a_scan "
