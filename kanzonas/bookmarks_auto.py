@@ -751,6 +751,28 @@ def _font_with(texts):
     return "KZUni", cjk, {"fontbuffer": cjk.buffer}
 
 
+class _Measured:
+    """A pymupdf.Font whose text widths are remembered letter by letter (a long table
+    measures the same few letters hundreds of thousands of times)."""
+
+    def __init__(self, font):
+        self._font = font
+        self._adv = {}
+
+    def __getattr__(self, name):
+        return getattr(self._font, name)
+
+    def text_length(self, text, fontsize=11):
+        adv = self._adv
+        total = 0.0
+        for c in text:
+            w = adv.get(c)
+            if w is None:
+                w = adv[c] = self._font.text_length(c, fontsize=1)
+            total += w
+        return total * fontsize
+
+
 class _Fonts:
     """The fonts the table is written in, embedded in its pages (so it looks the same in
     every reader and passes PDF/A's check): MuPDF's own Helvetica (Nimbus Sans, the
@@ -765,10 +787,13 @@ class _Fonts:
         self._ts = ts
         if _encodable(texts):
             helv, hebo = pymupdf.Font("helv"), pymupdf.Font("hebo")
-            self._faces = {False: ("KZHelv", helv, {"fontbuffer": helv.buffer}, False),
-                           True: ("KZHebo", hebo, {"fontbuffer": hebo.buffer}, False)}
+            self._faces = {False: ("KZHelv", _Measured(helv), {"fontbuffer": helv.buffer},
+                                   False),
+                           True: ("KZHebo", _Measured(hebo), {"fontbuffer": hebo.buffer},
+                                  False)}
         else:
             name, font, source = _font_with(texts)
+            font = _Measured(font)
             self._faces = {False: (name, font, source, False), True: (name, font, source, True)}
         self.table = {}
 
@@ -783,13 +808,14 @@ class _Fonts:
         return self.table[key].font.text_length(text, fontsize=key.size)
 
     def on(self, page):
-        """table with the fonts put into page (the names to write with there)."""
+        """table with the fonts put into page (the names to write with there; no source:
+        added_text.write doesn't put them in again for every title)."""
         from . import text_edit as te
         done, out = {}, {}
         for k, f in self.table.items():
             if f.name not in done:
                 done[f.name] = te._insert_font(page, f.name, **f.source)
-            out[k] = f._replace(name=done[f.name])
+            out[k] = f._replace(name=done[f.name], source=None)
         return out
 
 
@@ -975,7 +1001,7 @@ def insert_toc(doc, at=0, title=None, depth=MAX_LEVELS, size=None, replace=True)
                     "zoom": zoom or 0}
             links.append(link)
         shape.commit()
-        ts.fix_spaces(page, table)
+        ts.fix_spaces(page, {k: f._replace(source=True) for k, f in table.items()})
         _cid_maps(page)
         _one_stream(page)
         for link in links:
