@@ -1371,11 +1371,13 @@ the marks is fitted to the paper (Fit to paper or Actual size, as set there).</l
 <li><b>Fill in:</b> with Select or Hand, click a field. Option buttons with the same group
 name are exclusive: choosing one clears the others in its group. A field's maximum length is
 kept to; a dropdown that allows it also takes a typed value (Type a value...). KanzonasPDF
-doesn't run a form's JavaScript: totals a form works out itself and number or date formats
-written as scripts don't update (check them, or fill such a form in Acrobat Reader).</li>
+never runs a form's JavaScript: it recognizes the standard calculations, formats and checks
+that Acrobat writes and does them itself (see below); any other script stays in the file but
+isn't run, so what it would work out doesn't update (check it, or fill such a form in Acrobat
+Reader).</li>
 <li><b>Next form field</b> (Tab) and <b>Previous form field</b> (Shift+Tab), in the Forms menu:
-go through the fields in reading order (page by page, top to bottom, left to right as the
-page is shown, also on a rotated page). The
+go through the fields in the page's tab order (unless it was set otherwise with Set tab order...:
+page by page, top to bottom, left to right as the page is shown, also on a rotated page). The
 current field gets an orange outline; a text field opens for typing (Tab moves on, Shift+Tab
 goes back); for a checkbox, option button, dropdown, signature or initials field press
 <b>Space</b> or <b>Enter</b> to fill it in. Escape clears the outline.</li>
@@ -1383,8 +1385,60 @@ goes back); for a checkbox, option button, dropdown, signature or initials field
 blue with a blue outline; required fields get a red outline. The shading is on screen only.</li>
 <li><b>Create:</b> Forms menu: text field, checkbox, option button, dropdown, signature field,
 initials field. An <b>initials field</b> works like a signature field: whoever fills in the
-form clicks it to put their saved initials there. Double-click a field to change its name and
-options.</li>
+form clicks it to put their saved initials there. Double-click a field (with a form tool), or
+right-click it, to open its Field properties. On the ribbon's Forms tab, the <b>Smart forms</b>
+group has Detect fields, Field properties, Tab order and Check required (the commands below).</li>
+<li><b>Detect form fields...</b> (Forms menu, or right-click the page with a form tool) finds
+where fields belong on a flat form: a PDF without fields, or a scanned one after Recognize text
+(OCR). It looks for blank lines after a label ("Name: ____", drawn or typed as underscores) or
+with their label under them, empty boxes and table cells next to a label or under a column
+heading (Qty 1, Qty 2, ...), boxes with a small label inside, and small squares with a label
+beside them (checkboxes); a "Signature" or "Initials" label makes a signature or initials field
+and a "Date" label a date field. Each field is named after its label. Before anything changes
+a list shows what was found (each also shown on the page as an orange dashed box): untick what
+you don't want (Select all / Select none), change a name or kind, then <b>Create fields</b>
+makes them in one step (Ctrl+Z undoes it). It's careful rather than eager: a line or box with
+no label near it, underlined text, the rules between paragraphs and the page's border are left
+alone, so add any field it missed with the tools above.</li>
+<li><b>Field properties...</b> (Forms menu, or right-click a field; select the field first
+with a form tool, or Tab to it). <i>General:</i> name, tooltip (shown when the pointer rests on
+the field), Required, Read-only, a dropdown's choices and its Place in the tab order.
+<i>Format</i> (text fields): Number (decimal places, separator style such as 1,234.56 or
+1.234,56, a currency symbol before or after the number, negative numbers with a minus or in
+parentheses), Percent (a number typed is a percent: 25 or 25% shows as 25.00%, and 0.5 as
+0.50%; the value is kept as a fraction, 0.25, so Acrobat's percent calculations still work;
+Acrobat itself would show a bare 25 as 2500.00%), Date (a
+format such as mm/dd/yyyy: d day, m month, mmm Jan, mmmm January, yy or yyyy year), or Special
+(ZIP code, ZIP+4 code, phone number, Social Security number). The value is kept plain (1234.5)
+and shown formatted ($1,234.50). <i>Validate:</i> a range the value must be in (From / To;
+for a percent field, of the fraction kept: 0 to 1 for 0% to 100%, as in Acrobat).
+<i>Calculate:</i> the field's value is the Sum, Product, Average, Minimum or Maximum of the
+fields you tick, or a Formula such as <b>Price * Qty + Shipping</b> (field names, numbers,
++ - * / and parentheses; a name with spaces takes a backslash before each space: Item\\ 1).
+Each change is one undo step.</li>
+<li><b>Calculated fields</b> are worked out as soon as a field they use is filled in (Enter,
+Tab or a click elsewhere), each after the fields it uses, so a subtotal feeds a total; an empty
+field counts as 0 and a division by zero leaves the result empty. When a field (or the
+page it's on) is deleted, the fields that used it are worked out again without it. A calculated field isn't
+typed in. KanzonasPDF works them out with its own small formula reader, and saves them the way
+Acrobat does (its standard AFSimple_Calculate and simplified field notation, with the form's
+calculation order), so Acrobat and other readers calculate them too; a form made in Acrobat
+with those calculations is calculated here the same way. Any other calculation script is shown
+in Field properties as Custom calculation (not run).</li>
+<li><b>Checking what's typed:</b> a number, percent, phone, ZIP or Social Security field takes
+only the characters that fit while you type. A value that doesn't fit the field's format (a
+date that doesn't exist, a phone number with too few digits) or its range is refused: a message
+says why, the field keeps its old value and opens again with what you typed, to correct it.
+Formats and checks are saved as Acrobat's standard ones (AFNumber_Format, AFDate_FormatEx,
+AFRange_Validate and the like), so other readers apply them too.</li>
+<li><b>Required fields:</b> on Save and Print, required fields that are still empty are
+flagged in red and named in a notice at the top of the document (Go to the first takes you
+there); the file is saved or printed all the same. <b>Check required fields</b> (Forms menu)
+does the same at any time; filling in a flagged field takes its flag away.</li>
+<li><b>Set tab order...</b> (Forms menu, or right-click with a form tool): the order Tab goes
+through a page's fields: By rows, By columns (for this page or all pages), or Manual: drag the
+fields in the list, or use Move up and Move down. It's saved in the page, so other readers
+follow it too; Place in the tab order in Field properties moves one field.</li>
 </ul>
 
 <h2 id="sign">Protect: signatures, passwords, redaction</h2>
@@ -1434,7 +1488,10 @@ proving the file existed, unchanged, at that moment. Saved as a new copy.</li>
 can be selected, moved and resized; <b>Apply selected redactions</b> applies only the selected
 ones, Apply redactions applies them all. Applying removes, not just covers: the text, images
 and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
-own copy of the text). A vector path that touches a mark is removed past the box, including
+own copy of the text). A field removed leaves nothing of itself in the file, and a calculated
+field that used it is worked out again without it (counted as empty), so a total doesn't give
+away a redacted price; a redacted calculated field isn't worked out again from the fields
+left. A vector path that touches a mark is removed past the box, including
 the part outside it. A redacted page also loses its thumbnail and the private copy of the page
 some programs (Illustrator) keep in the file. Applying scrubs metadata, attachments, hidden
 text, scripts and such programs' private data unless

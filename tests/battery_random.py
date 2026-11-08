@@ -10,7 +10,8 @@ and deleted; page text added, edited and replaced; pictures and shapes of the pa
 turned and deleted; words styled in Edit text and Add text (bold, italic, underline,
 strikethrough, color, size); pages rotated, inserted, duplicated, deleted, moved, reordered,
 cropped, scanned in (File > Scan into the current document, with pictures made here) and
-replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
+replaced from another PDF (Replace pages); bookmarks, watermarks, form fields (made, filled
+in, given calculations and formats), flattening, redaction marks applied), in a main
 window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
 (kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
 
@@ -685,7 +686,8 @@ class Battery:
             (self.op_object_clip, 3), (self.op_across_pages, 2),
             (self.op_replace_text, 1), (self.op_scan, 1),
             (self.op_picture, 2), (self.op_objects, 4), (self.op_erase_content, 1),
-            (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
+            (self.op_field, 2), (self.op_form, 4), (self.op_rotate_page, 3),
+            (self.op_insert_blank, 2),
             (self.op_delete_page, 2), (self.op_move_page, 2), (self.op_reorder, 1),
             (self.op_duplicate_page, 1), (self.op_crop, 2), (self.op_bookmarks, 1),
             (self.op_replace_pages, 2),
@@ -1279,6 +1281,46 @@ class Battery:
             return "none"
         i, x = self.rnd.choice(found)
         v._set_field(i, x, self.rnd.choice(["", "Jane Doe", self.typed()]))
+
+    def op_form(self):
+        """Smart forms: a text field made, a field given a calculation (Sum ... or a
+        formula) and a format, a number typed into a field (the calculated ones worked
+        out in the same step; 25 or 25% into a percent field), or a field deleted (the
+        calculated ones reading it worked out again without it)."""
+        from kanzonas import smart_forms
+        v = self.v
+        texts = [(i, w.xref, w.field_name) for i in range(v.doc.page_count)
+                 for w in v.doc[i].widgets() if w.field_type == pymupdf.PDF_WIDGET_TYPE_TEXT]
+        r = self.rnd.random()
+        if len(texts) < 3 or r < 0.2:
+            i = self.page()
+            a, b = self.box(i, 25, 120)
+            v.create_field(i, "f_text", a, pymupdf.Point(b.x, a.y + 20), False)
+            return
+        if r < 0.45:
+            i, x, name = self.rnd.choice(texts)
+            others = sorted({n for _i, _x, n in texts if n != name})
+            pick = self.rnd.sample(others, self.rnd.randint(1, min(3, len(others))))
+            esc = [re.sub(r"([^A-Za-z0-9_.])", r"\\\1", n) for n in pick]
+            calc = self.rnd.choice([
+                {"op": self.rnd.choice(smart_forms.OPS), "fields": pick},
+                {"formula": " %s " % self.rnd.choice("+-*/").join(esc) + " * 2"},
+                {"formula": "(%s) / 4" % " + ".join(esc)}, None])
+            fmt = self.rnd.choice([
+                None, {"kind": "number", "decimals": self.rnd.randint(0, 3), "sep": 0,
+                       "neg": self.rnd.choice([0, 2]), "currency": self.rnd.choice(["", "$"]),
+                       "prepend": True},
+                {"kind": "percent", "decimals": 1, "sep": 0}])
+            v.set_field_props(i, x, {"calc": calc, "format": fmt,
+                                     "required": self.rnd.random() < 0.3})
+            return
+        if r < 0.52:
+            i, x, _name = self.rnd.choice(texts)
+            v.delete_field(i, x)
+            return
+        i, x, _name = self.rnd.choice(texts)
+        v.enter_field_value(i, x, self.rnd.choice(["", "12", "3.5", "-4", "0", "1,250.75",
+                                                   "25%", "abc"]))
 
     def op_rotate_page(self):
         self.v.rotate_page(self.page(), self.rnd.choice([90, -90, 180]))

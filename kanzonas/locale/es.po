@@ -8412,6 +8412,316 @@ msgstr "Escanear a través de Windows (WIA) necesita el paquete comtypes, que fa
 msgid "The scanner didn't accept the subscription."
 msgstr "El escáner no aceptó la suscripción."
 
+# ---- Smart forms (Forms > Detect form fields..., Field properties..., Set tab order...) ----
+msgid "{name}: {reason} The field keeps its value."
+msgstr "{name}: {reason} El campo conserva su valor."
+
+msgid "Go to the first"
+msgstr "Ir al primero"
+
+msgid " and {n} more"
+msgstr " y {n} más"
+
+msgid "These required fields are empty: {names}."
+msgstr "Estos campos obligatorios están vacíos: {names}."
+
+msgid "The formula can't be read: {error}"
+msgstr "No se puede leer la fórmula: {error}"
+
+msgid "{name} is calculated from other fields: it changes when they do (Forms > Field properties... shows how)."
+msgstr "{name} se calcula a partir de otros campos: cambia cuando ellos cambian (Formularios > Propiedades del campo... muestra cómo)."
+
+msgid "ZIP code"
+msgstr "Código postal (ZIP)"
+
+msgid "ZIP+4 code"
+msgstr "Código ZIP+4"
+
+msgid "Phone number"
+msgstr "Número de teléfono"
+
+msgid "Social Security number"
+msgstr "Número de Seguro Social"
+
+msgid "Sum (+)"
+msgstr "Suma (+)"
+
+msgid "Product (x)"
+msgstr "Producto (x)"
+
+msgid "Average"
+msgstr "Promedio"
+
+msgid "Minimum"
+msgstr "Mínimo"
+
+msgid "Maximum"
+msgstr "Máximo"
+
+msgid "Text field (several lines)"
+msgstr "Campo de texto (varias líneas)"
+
+msgid "Date field"
+msgstr "Campo de fecha"
+
+msgid "Shown when the pointer rests on the field"
+msgstr "Se muestra al dejar el puntero sobre el campo"
+
+msgid "Tooltip:"
+msgstr "Información sobre herramientas:"
+
+msgid "Required (flagged on Save and Print when empty)"
+msgstr "Obligatorio (se marca al Guardar e Imprimir si está vacío)"
+
+msgid "Read-only"
+msgstr "Solo lectura"
+
+msgid "Separator style:"
+msgstr "Estilo de separador:"
+
+msgid "e.g. $ or € (empty: none)"
+msgstr "p. ej. $ o € (vacío: ninguno)"
+
+msgid "Currency symbol:"
+msgstr "Símbolo de moneda:"
+
+msgid "Symbol after the number"
+msgstr "Símbolo después del número"
+
+msgid "Negative numbers:"
+msgstr "Números negativos:"
+
+msgid "Kind:"
+msgstr "Tipo:"
+
+msgid "The value must be in this range"
+msgstr "El valor debe estar en este rango"
+
+msgid "(no minimum)"
+msgstr "(sin mínimo)"
+
+msgid "(no maximum)"
+msgstr "(sin máximo)"
+
+msgid "From:"
+msgstr "Desde:"
+
+msgid "To:"
+msgstr "Hasta:"
+
+msgid "Not calculated"
+msgstr "Sin cálculo"
+
+msgid "Value is the"
+msgstr "El valor es"
+
+msgid "Formula:"
+msgstr "Fórmula:"
+
+msgid "e.g. Price * Qty + Shipping"
+msgstr "p. ej. Precio * Cant + Envío"
+
+msgid "Field names, numbers, + - * / and parentheses; a name with spaces or other signs takes a backslash before each (Item\\ 1)."
+msgstr "Nombres de campos, números, + - * / y paréntesis; un nombre con espacios u otros signos lleva una barra invertida antes de cada uno (Artículo\\ 1)."
+
+msgid "Detect form fields"
+msgstr "Detectar campos de formulario"
+
+msgid "Create fields"
+msgstr "Crear campos"
+
+msgid "No place for a field was found: no blank lines, boxes or checkboxes with a label next to them. (On a scanned page, run Recognize text (OCR) first so the labels can be read.)"
+msgstr "No se encontró ningún lugar para un campo: ninguna línea en blanco, cuadro ni casilla con una etiqueta al lado. (En una página escaneada, ejecute primero Reconocer texto (OCR) para que se puedan leer las etiquetas.)"
+
+msgid "Set tab order"
+msgstr "Establecer el orden de tabulación"
+
+msgid "By rows (left to right, top to bottom)"
+msgstr "Por filas (de izquierda a derecha, de arriba abajo)"
+
+msgid "By columns (top to bottom, left to right)"
+msgstr "Por columnas (de arriba abajo, de izquierda a derecha)"
+
+msgid "Manual (in the order of this list)"
+msgstr "Manual (en el orden de esta lista)"
+
+msgid "Rows or columns: all pages"
+msgstr "Filas o columnas: todas las páginas"
+
+msgid "Place in the tab order:"
+msgstr "Posición en el orden de tabulación:"
+
+msgid "Format"
+msgstr "Formato"
+
+msgid "Validate"
+msgstr "Validar"
+
+msgid "Calculate"
+msgstr "Calcular"
+
+msgid "Format:"
+msgstr "Formato:"
+
+msgid "None"
+msgstr "Ninguno"
+
+msgid "Number"
+msgstr "Número"
+
+msgid "Percent"
+msgstr "Porcentaje"
+
+msgid "Special (ZIP, phone, SSN)"
+msgstr "Especial (código postal, teléfono, Seguro Social)"
+
+msgid "A number typed is a percent: 25 or 25% shows as 25.00%. The value is kept as a fraction, 0.25, as Acrobat keeps it."
+msgstr "Un número escrito es un porcentaje: 25 o 25% se muestra como 25.00%. El valor se guarda como fracción, 0.25, como lo guarda Acrobat."
+
+msgid "d day, m month (mmm Jan, mmmm January), yy or yyyy year."
+msgstr "d día, m mes (mmm Jan, mmmm January: meses en inglés, como en Acrobat), yy o yyyy año."
+
+msgid "of these fields:"
+msgstr "de estos campos:"
+
+msgid "Custom calculation (not run)"
+msgstr "Cálculo personalizado (no se ejecuta)"
+
+msgid "Calculated fields are worked out by KanzonasPDF as you fill in the form, and by Acrobat and other readers."
+msgstr "KanzonasPDF calcula los campos calculados mientras rellena el formulario, y también Acrobat y otros lectores."
+
+msgid "Give the field a name."
+msgstr "Póngale un nombre al campo."
+
+msgid "A field can't be calculated from itself."
+msgstr "Un campo no se puede calcular a partir de sí mismo."
+
+msgid "Use"
+msgstr "Usar"
+
+msgid "Kind"
+msgstr "Tipo"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Select all"
+msgstr "Seleccionar todo"
+
+msgid "Select none"
+msgstr "No seleccionar nada"
+
+msgid "Custom script (not run)"
+msgstr "Script personalizado (no se ejecuta)"
+
+msgid "This field's format is a script KanzonasPDF doesn't run (it's kept in the file for Acrobat):"
+msgstr "El formato de este campo es un script que KanzonasPDF no ejecuta (se conserva en el archivo para Acrobat):"
+
+msgid "Type: {kind}"
+msgstr "Tipo: {kind}"
+
+msgid "This field is checked by a script KanzonasPDF doesn't run (it's kept unless you set a range):"
+msgstr "Este campo se comprueba con un script que KanzonasPDF no ejecuta (se conserva salvo que establezca un rango):"
+
+msgid "Found {n} place(s) for a field. Untick what you don't want, and change a name or kind if needed; nothing changes until you click Create fields."
+msgstr "Se encontraron {n} lugar(es) para un campo. Desmarque lo que no quiera y cambie un nombre o un tipo si hace falta; nada cambia hasta que haga clic en Crear campos."
+
+msgid "The order Tab goes through the fields of page {page}:"
+msgstr "El orden en que Tab recorre los campos de la página {page}:"
+
+msgid "No field is called {names}: check the formula (names are case-sensitive)."
+msgstr "Ningún campo se llama {names}: revise la fórmula (los nombres distinguen mayúsculas y minúsculas)."
+
+msgid "&Detect form fields..."
+msgstr "&Detectar campos de formulario..."
+
+msgid "Field p&roperties..."
+msgstr "P&ropiedades del campo..."
+
+msgid "Set &tab order..."
+msgstr "Establecer el orden de &tabulación..."
+
+msgid "Check &required fields"
+msgstr "Comprobar campos &obligatorios"
+
+msgid "Smart forms"
+msgstr "Formularios inteligentes"
+
+msgid "Detect fields"
+msgstr "Detectar campos"
+
+msgid "Tab order"
+msgstr "Orden de tabulación"
+
+msgid "Check required"
+msgstr "Revisar obligatorios"
+
+msgid "Find the blank lines, boxes and checkboxes of a flat (or scanned) form and make fields there: you see what was found before anything changes"
+msgstr "Encontrar las líneas en blanco, los cuadros y las casillas de un formulario plano (o escaneado) y crear campos allí: verá lo encontrado antes de que cambie nada"
+
+msgid "The selected field's name, tooltip, required, calculation, format, range and place in the tab order (select it with a form tool, or Tab to it)"
+msgstr "El nombre, la información sobre herramientas, si es obligatorio, el cálculo, el formato, el rango y la posición en el orden de tabulación del campo seleccionado (selecciónelo con una herramienta de formulario, o llegue a él con Tab)"
+
+msgid "The order Tab goes through the page's fields: by rows, by columns or your own"
+msgstr "El orden en que Tab recorre los campos de la página: por filas, por columnas o el suyo"
+
+msgid "Flag the required fields that are still empty (also done on Save and Print)"
+msgstr "Marcar los campos obligatorios que siguen vacíos (también al Guardar e Imprimir)"
+
+msgid "Look for form fields on which pages?"
+msgstr "¿En qué páginas se buscan campos de formulario?"
+
+msgid "Select a field first: pick a form tool (Forms menu) and click the field, or press Tab to go to it."
+msgstr "Seleccione primero un campo: elija una herramienta de formulario (menú Formularios) y haga clic en el campo, o presione Tab para llegar a él."
+
+msgid "Every required field is filled in."
+msgstr "Todos los campos obligatorios están rellenados."
+
+msgid "Made {n} form field(s) (Ctrl+Z undoes it)."
+msgstr "Se crearon {n} campo(s) de formulario (Ctrl+Z lo deshace)."
+
+msgid "Page {page} has no fields to fill in."
+msgstr "La página {page} no tiene campos para rellenar."
+
+msgid "Field properties..."
+msgstr "Propiedades del campo..."
+
+msgid "Set tab order..."
+msgstr "Establecer el orden de tabulación..."
+
+msgid "Delete field"
+msgstr "Eliminar campo"
+
+msgid "Detect form fields..."
+msgstr "Detectar campos de formulario..."
+
+msgid "Type a number."
+msgstr "Escriba un número."
+
+msgid "The value must be between {min} and {max}."
+msgstr "El valor debe estar entre {min} y {max}."
+
+msgid "The value must be at least {min}."
+msgstr "El valor debe ser como mínimo {min}."
+
+msgid "The value must be at most {max}."
+msgstr "El valor debe ser como máximo {max}."
+
+msgid "Type a date that exists, as {format}."
+msgstr "Escriba una fecha que exista, como {format}."
+
+msgid "Type a 5-digit ZIP code."
+msgstr "Escriba un código postal ZIP de 5 dígitos."
+
+msgid "Type a ZIP+4 code (9 digits)."
+msgstr "Escriba un código ZIP+4 (9 dígitos)."
+
+msgid "Type a phone number (7 or 10 digits)."
+msgstr "Escriba un número de teléfono (7 o 10 dígitos)."
+
+msgid "Type a Social Security number (9 digits)."
+msgstr "Escriba un número de Seguro Social (9 dígitos)."
+
 # ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
 # ribbon tab fits a 1366-pixel screen in Spanish; the menus keep the full names
 msgctxt "ribbon"
