@@ -16,6 +16,7 @@ turned into PDF pages on the main thread.
 """
 
 import http.client
+import _socket
 import socket
 import ssl
 import struct
@@ -23,7 +24,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from xml.sax.saxutils import escape
 
 from .i18n import tr
@@ -38,6 +39,11 @@ MAX_IMAGE = 300 * 1024 * 1024  # bytes of one scanned page (uncompressed TIFF at
 MAX_PIXELS = 200_000_000       # a Letter page at 1200 dpi is 135 megapixels
 MAX_SIDE = 40_000              # pixels
 MAX_PAGES = 500                # pages in one job
+# pixels of all the pictures in one file (a multi-page TIFF: each picture is checked against
+# MAX_PIXELS, and 500 of them could each be that large, decoded on the main thread, a tiny
+# file when compressed): a 100-page job of Letter pages at 600 dpi (5,100 x 6,600 pixels
+# each) is 3.4 billion; 6 billion leaves room above it
+MAX_TOTAL_PIXELS = 6_000_000_000
 MAX_REDIRECTS = 3
 
 PROTOCOLS = {"escl": "eSCL (AirScan)", "wsd": "WSD", "wia": "WIA", "sane": "SANE"}
@@ -298,7 +304,7 @@ class Http:
 
     def __init__(self, base_url):
         self.scheme, self.host, self.port, self.base_path = split_url(base_url)
-        self._conn = None
+        self._sock = None
         self._lock = threading.Lock()
         self.canceled = False
         self.log = []               # (method, url, status) of each request, for Copy details
@@ -322,12 +328,25 @@ class Http:
     def abort(self):
         with self._lock:
             self.canceled = True
-            conn = self._conn
-        if conn is not None and conn.sock is not None:
+            sock = self._sock
+        if sock is not None:
             try:
-                conn.sock.shutdown(socket.SHUT_RDWR)
+                # (the socket itself: http.client lets go of it once the answer's headers
+                # are in, while the answer is still read from it; and under TLS the plain
+                # shutdown, which a read in another thread then returns from)
+                socket.socket.shutdown(sock, socket.SHUT_RDWR)
             except OSError:
                 pass
+            if sys.platform == "win32":
+                # Windows doesn't wake a read waiting in another thread at a shutdown, only
+                # at closesocket: closed now (Python's own close waits for http.client's file
+                # on the socket to be closed first); the read then fails, and is canceled.
+                # (Elsewhere the shutdown wakes it, and closing a descriptor another thread
+                # still reads could close a file opened in the meantime under its number.)
+                try:
+                    _socket.socket.close(sock)
+                except OSError:
+                    pass
 
     def request(self, method, path, body=None, headers=None, limit=MAX_XML,
                 timeout=READ_TIMEOUT):
@@ -355,6 +374,9 @@ class Http:
 
     def _once(self, method, url, body, headers, limit, timeout):
         scheme, host, port, path = split_url(url)
+        # (a path from the device, a job's Location say, with a space or a character beyond
+        # ASCII in it: sent percent-encoded, as http.client refuses it as it is)
+        path = quote(path, safe="/?&=%:@!$'()*+,;~-._[]")
         if self.canceled:
             raise Canceled()
         if scheme == "https":
@@ -371,12 +393,12 @@ class Http:
         hdrs.update(headers or {})
         if isinstance(body, str):
             body = body.encode("utf-8")
-        with self._lock:
-            self._conn = conn
         try:
             try:
                 conn.connect()
                 conn.sock.settimeout(timeout)
+                with self._lock:
+                    self._sock = conn.sock
                 if self.canceled:
                     raise Canceled()
                 conn.putrequest(method, path, skip_host=True, skip_accept_encoding=True)
@@ -401,27 +423,36 @@ class Http:
                         raise ScanError(tr("The scanner's answer was too large."),
                                         "%s: more than %d bytes" % (url, limit))
                     chunks.append(part)
+                # (Cancel shuts the connection down, which reads as the end of the answer;
+                # a device that drops the connection mid-page reads the same: http.client
+                # doesn't say a Content-Length was cut short, and half a picture opens)
+                if self.canceled:
+                    raise Canceled()
+                if size.isdigit() and got < int(size):
+                    raise NetError(tr("The connection to {host} was cut before the scanner's "
+                                      "answer was complete.").format(host=host), "unreachable",
+                                   "%s %s: %d of %s bytes" % (method, url, got, size))
                 self.log.append((method, url, resp.status))
                 return Response(resp.status, rh, b"".join(chunks), url)
             except ScanError:
                 raise
-            except ConnectionRefusedError as ex:
-                raise NetError(tr("{host} refused the connection on port {port}.").format(
-                    host=host, port=port), "refused", "%s %s: %s" % (method, url, ex))
-            except (socket.timeout, TimeoutError) as ex:
-                raise NetError(tr("{host} didn't answer in time.").format(host=host), "timeout",
-                               "%s %s: %s" % (method, url, ex))
-            except ssl.SSLError as ex:
-                raise NetError(tr("A secure connection to {host} failed.").format(host=host),
-                               "tls", "%s %s: %s" % (method, url, ex))
             except (OSError, http.client.HTTPException) as ex:
-                if self.canceled:
+                if self.canceled:           # (whatever a connection shut down gives)
                     raise Canceled()
+                if isinstance(ex, ConnectionRefusedError):
+                    raise NetError(tr("{host} refused the connection on port {port}.").format(
+                        host=host, port=port), "refused", "%s %s: %s" % (method, url, ex))
+                if isinstance(ex, (socket.timeout, TimeoutError)):
+                    raise NetError(tr("{host} didn't answer in time.").format(host=host),
+                                   "timeout", "%s %s: %s" % (method, url, ex))
+                if isinstance(ex, ssl.SSLError):
+                    raise NetError(tr("A secure connection to {host} failed.").format(
+                        host=host), "tls", "%s %s: %s" % (method, url, ex))
                 raise NetError(tr("Couldn't reach {host}: {error}").format(host=host, error=ex),
                                "unreachable", "%s %s: %r" % (method, url, ex))
         finally:
             with self._lock:
-                self._conn = None
+                self._sock = None
             conn.close()
 
 
@@ -552,13 +583,70 @@ def check_image(data, dpi):
             if w > MAX_SIDE or h > MAX_SIDE or w * h > MAX_PIXELS:
                 raise ScanError(tr("A scanned page was too large ({w} x {h} pixels): choose a "
                                    "lower resolution.").format(w=w, h=h))
+        check_total(sizes)
     return Page(bytes(data), kind, int(dpi or 0), sizes)
 
 
+def check_total(sizes):
+    """ScanError when the pictures of one file [(width, height)] have more than
+    MAX_TOTAL_PIXELS pixels in all."""
+    total = sum(int(w) * int(h) for w, h in sizes)
+    if total > MAX_TOTAL_PIXELS:
+        raise ScanError(tr("The scanned file is too large: its {n} pages have {mp} "
+                           "megapixels in all (at most {most}). Scan fewer pages at a time, "
+                           "or at a lower resolution.").format(
+                               n=len(sizes), mp=total // 1_000_000,
+                               most=MAX_TOTAL_PIXELS // 1_000_000),
+                        "%d pixels in %d pictures" % (total, len(sizes)))
+
+
 # ---- discovery over UDP --------------------------------------------------------------------
+def _interface_ipv4():
+    """The IPv4 addresses of this computer's interfaces that are up, read with getifaddrs
+    (macOS and other BSDs: their struct sockaddr starts with its length)."""
+    import ctypes
+    import ctypes.util
+
+    class Sockaddr(ctypes.Structure):
+        _fields_ = [("sa_len", ctypes.c_uint8), ("sa_family", ctypes.c_uint8),
+                    ("sa_data", ctypes.c_uint8 * 14)]
+
+    class Ifaddrs(ctypes.Structure):
+        pass
+    Ifaddrs._fields_ = [("ifa_next", ctypes.POINTER(Ifaddrs)), ("ifa_name", ctypes.c_char_p),
+                        ("ifa_flags", ctypes.c_uint), ("ifa_addr", ctypes.POINTER(Sockaddr)),
+                        ("ifa_netmask", ctypes.POINTER(Sockaddr)),
+                        ("ifa_dstaddr", ctypes.POINTER(Sockaddr)), ("ifa_data", ctypes.c_void_p)]
+    libc = ctypes.CDLL(ctypes.util.find_library("c") or "libc.dylib")
+    libc.getifaddrs.argtypes = [ctypes.POINTER(ctypes.POINTER(Ifaddrs))]
+    libc.freeifaddrs.argtypes = [ctypes.POINTER(Ifaddrs)]
+    head = ctypes.POINTER(Ifaddrs)()
+    if libc.getifaddrs(ctypes.byref(head)) != 0:
+        return set()
+    addrs = set()
+    try:
+        p = head
+        while p:
+            a = p.contents.ifa_addr
+            if a and p.contents.ifa_flags & 1 and a.contents.sa_family == socket.AF_INET:  # up
+                # (sockaddr_in: length, family, port, then the address)
+                addrs.add(socket.inet_ntoa(bytes(a.contents.sa_data[2:6])))
+            p = p.contents.ifa_next
+    finally:
+        libc.freeifaddrs(head)
+    return addrs
+
+
 def local_ipv4():
     """This computer's IPv4 addresses (not loopback), to send discovery out of each network."""
     addrs = set()
+    if sys.platform == "darwin":
+        # (not the host name's addresses: a Mac's name.local is looked up over mDNS, which
+        # took 35 s on GitHub's Mac before discovery could send anything)
+        try:
+            addrs |= _interface_ipv4()
+        except (OSError, AttributeError, ValueError):
+            pass
     if sys.platform.startswith("linux"):
         try:
             import fcntl
@@ -575,11 +663,12 @@ def local_ipv4():
                 s.close()
         except (ImportError, OSError):
             pass
-    try:
-        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
-            addrs.add(info[4][0])
-    except OSError:
-        pass
+    if sys.platform != "darwin":
+        try:
+            for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+                addrs.add(info[4][0])
+        except OSError:
+            pass
     try:
         # the address of the default route (a UDP connect sends nothing)
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -594,15 +683,26 @@ def local_ipv4():
 
 
 def udp_exchange(sends, window, multicast_ttl=1, interfaces=None, max_packets=512,
-                 cancel=None):
+                 cancel=None, log=None):
     """Send each (payload, (address, port), delay seconds) from a port of our own on every local
     network (multicast) or once (a unicast address), then read the answers that come back to
     that port for `window` seconds. [(data, sender IP)]. Nothing listens on a well-known port,
-    so only answers to these queries arrive."""
+    so only answers to these queries arrive. A socket that can't be opened or a datagram that
+    can't be sent goes into log (a list of lines), once for each error, for Copy details."""
     socks = []
-    ifaces = interfaces if interfaces is not None else (local_ipv4() or ["0.0.0.0"])
+    errors = []
+
+    def note(what, err):
+        line = "UDP: %s: %s" % (what, err)
+        if log is not None and line not in errors and len(errors) < 20:
+            errors.append(line)
+            log.append(line)
     multicast = any(_is_multicast(dest[0]) for _p, dest, _d in sends)
-    for addr in (ifaces if multicast else ["0.0.0.0"]):
+    if not multicast:
+        ifaces = ["0.0.0.0"]        # (one unicast address: the interfaces aren't looked up)
+    else:
+        ifaces = interfaces if interfaces is not None else (local_ipv4() or ["0.0.0.0"])
+    for addr in ifaces:
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.setblocking(False)
@@ -611,7 +711,8 @@ def udp_exchange(sends, window, multicast_ttl=1, interfaces=None, max_packets=51
                 s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(addr))
             s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, multicast_ttl)
             socks.append(s)
-        except OSError:
+        except OSError as e:
+            note("couldn't open a socket on %s" % addr, e)
             continue
     out = []
     try:
@@ -627,8 +728,8 @@ def udp_exchange(sends, window, multicast_ttl=1, interfaces=None, max_packets=51
                 for s in socks:
                     try:
                         s.sendto(payload, dest)
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        note("couldn't send to %s:%s" % dest, e)
             if now >= window or len(out) >= max_packets or (cancel and cancel()):
                 break
             wait = min(window - now, (pending[0][2] - now) if pending else 0.2, 0.2)

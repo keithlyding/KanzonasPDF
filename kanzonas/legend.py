@@ -120,6 +120,19 @@ def _style(model):
 SKIP_TYPES = (pymupdf.PDF_ANNOT_POPUP, pymupdf.PDF_ANNOT_LINK, pymupdf.PDF_ANNOT_WIDGET)
 
 
+def _is_response(a):
+    """True for a reply to a markup or a review status (an /IRT that isn't a group's: Acrobat
+    and Bluebeam write a note for each reply in a review thread); they're part of the
+    markup they answer, not markups of the drawing."""
+    doc = a.parent.parent
+    try:
+        if doc.xref_get_key(a.xref, "IRT")[0] == "null":
+            return False
+        return doc.xref_get_key(a.xref, "RT")[1] != "/Group"
+    except Exception:
+        return False
+
+
 def _item(page, a, scale):
     """What markup a adds to a legend: {"key", "kind", "label", "style", "m", "m2", "m3"},
     or None when it isn't counted."""
@@ -129,7 +142,7 @@ def _item(page, a, scale):
         m = A.read(a)
     except Exception:
         m = None
-    if not m or m["kind"] in NOT_COUNTED or m.get("hidden"):
+    if not m or m["kind"] in NOT_COUNTED or m.get("hidden") or _is_response(a):
         return None
     subject = ""
     try:
@@ -158,7 +171,7 @@ def _item(page, a, scale):
 def page_summary(doc, index, items=None):
     """{row key: {"kind", "label", "style", "n", "m", "m2", "m3"}} for the markups of page
     index (lengths in meters, areas in square meters, volumes in cubic meters, by the page's
-    own scale). Hidden markups and legends aren't counted.
+    own scale). Hidden markups, replies (_is_response) and legends aren't counted.
     items: {xref: (its object's text and the page's scale, what it adds)}, kept by the view
     between edits, so only the markups whose object changed are read again (reading one is
     about half a millisecond: 0.5 s for a page of 1,000 markups at every edit)."""
@@ -243,8 +256,14 @@ def _f(v):
 
 
 def _rgb(hex_color):
+    """A color kept as #rrggbb -> (r, g, b), None when it's none or not one (a legend never
+    fails over one markup's odd color: it would stop updating)."""
     from . import annotations as A
-    return A.to_rgb(hex_color) if hex_color else None
+    try:
+        rgb = A.to_rgb(hex_color) if isinstance(hex_color, str) and hex_color else None
+    except ValueError:
+        return None
+    return rgb if rgb and len(rgb) == 3 else None
 
 
 def _color(rgb, op):
@@ -552,7 +571,7 @@ def layout(rows, props):
     any_total = show_t and any(r.get("total") for r in rows)
     label_w = max([_width(r["label"], fs) for r in rows] + [0])
     n_text = [str(r["n"]) for r in rows]
-    n_w = max([_width(t, fs) for t in n_text] + [_width(tr("Count"), head_s)]) if show_n else 0
+    n_w = max([_width(t, fs) for t in n_text] + [_width(tr("Count", ctx="legend"), head_s)]) if show_n else 0
     t_w = max([_width(r.get("total") or "", fs) for r in rows] +
               [_width(tr("Total"), head_s)]) if any_total else 0
     width = pad + sw + gap + label_w + (gap + n_w if show_n else 0) + \
@@ -579,8 +598,8 @@ def layout(rows, props):
     if rows and (show_n or any_total):
         hy = y + head_s
         if show_n:
-            body.append(lambda hy=hy: ops.text(x_n - _width(tr("Count"), head_s), hy,
-                                               tr("Count"), head_s, gray))
+            body.append(lambda hy=hy: ops.text(x_n - _width(tr("Count", ctx="legend"), head_s), hy,
+                                               tr("Count", ctx="legend"), head_s, gray))
         if any_total:
             body.append(lambda hy=hy: ops.text(x_t - _width(tr("Total"), head_s), hy,
                                                tr("Total"), head_s, gray))
@@ -632,9 +651,11 @@ def display_rect(page, rect, width, height):
 def draw(page, annot_xref, model, rows=None):
     """Draw the legend annot_xref (made by annotations.write) from model (its box's top-left
     corner as shown and its options): its appearance, box, contents and KZProps. rows: as
-    rows_for gives them (worked out here when None). Returns the box it now has."""
+    rows_for gives them (else model["rows"], else worked out here). Returns the box it now has."""
     doc = page.parent
     props = model["props"]
+    if rows is None:
+        rows = model.get("rows")
     if rows is None:
         rows = rows_for(doc, page.number, props.get("scope") or "page")
     ops, w, h = layout(rows, props)

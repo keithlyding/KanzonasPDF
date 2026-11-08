@@ -7,8 +7,10 @@ tests/test_battery_random.py runs in every build):
 Thousands of random edits through the app's own steps (the ones the menus, tools and keys
 call: markups of every kind added, moved, resized, recolored, retyped, duplicated, restacked
 and deleted; page text added, edited and replaced; pictures and shapes of the page moved,
-turned and deleted; pages rotated, inserted, duplicated, deleted, moved, reordered,
-cropped and replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
+turned and deleted; words styled in Edit text and Add text (bold, italic, underline,
+strikethrough, color, size); pages rotated, inserted, duplicated, deleted, moved, reordered,
+cropped, scanned in (File > Scan into the current document, with pictures made here) and
+replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
 window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
 (kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
 
@@ -52,6 +54,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import tests  # noqa: E402,F401  (settings in a scratch folder, Qt torn down in order)
 
 import pymupdf  # noqa: E402
+from PySide6.QtCore import QPoint  # noqa: E402
 from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
@@ -233,10 +236,11 @@ class State:
 
 # MuPDF draws a page's content a level or two of color apart (out of 255) depending on
 # its markups: one with a blend mode (a highlight multiplies) makes it draw the whole page
-# as a transparency group. The view keeps the content drawn without the markups and draws
-# them over it, so a page drawn before such a markup was added (and kept: its content didn't
-# change) is that far from one drawn after. Seen from a person, the same page; content
-# drawn from old caches is off by far more (a line missing, markups in another order)
+# as a transparency group. Up to 1.8 the view kept a content render made before such a
+# markup was added (and MuPDF's page kept its old answer: up to 5 levels off); since 1.9 it
+# works the answer out again and draws the content again when it changes
+# (render_layers.transparency). A margin of a few levels is kept; content drawn from old
+# caches is off by far more (a line missing, markups in another order)
 SHADE = 3
 
 
@@ -510,6 +514,11 @@ class Battery:
             elif not now.same(before):
                 self.mismatch("an edit changed the document without an undo step", before,
                               now)
+            elif not self.budget_trim(nr, mr, keep=0):
+                # (an edit refused or taken back is no edit: the steps to redo stay. One
+                # refused after a change had lost them: Edit objects, seed 5, 1.9)
+                raise Failed("an edit that changed nothing left %d steps to redo, expected %d"
+                             % (nr, mr))
             if pushed or not now.same(before):
                 if nr:
                     raise Failed("an edit left %d steps to redo" % nr)
@@ -671,7 +680,10 @@ class Battery:
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
             (self.op_retype, 3), (self.op_delete, 5), (self.op_duplicate, 2),
             (self.op_copy_paste, 2), (self.op_restack, 2), (self.op_eraser, 2),
-            (self.op_add_text, 3), (self.op_edit_text, 3), (self.op_replace_text, 1),
+            (self.op_add_text, 3), (self.op_edit_text, 3), (self.op_styled_text, 3),
+            (self.op_added_block, 3), (self.op_page_text_clip, 3),
+            (self.op_object_clip, 3), (self.op_across_pages, 2),
+            (self.op_replace_text, 1), (self.op_scan, 1),
             (self.op_picture, 2), (self.op_objects, 4), (self.op_erase_content, 1),
             (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
             (self.op_delete_page, 2), (self.op_move_page, 2), (self.op_reorder, 1),
@@ -945,8 +957,170 @@ class Battery:
         ed = v._inline
         if ed is None:
             return "none"
-        ed.text.setPlainText(self.typed())
+        if self.rnd.random() < 0.4:
+            # a box made narrower (the words wrap) and lines of their own (Shift+Enter)
+            parts = [self.typed() + " " + self.typed() for _ in range(self.rnd.randint(1, 3))]
+            ed.text.setPlainText("\n".join(parts))
+            if self.rnd.random() < 0.7:
+                ed.resized_by_user = True
+                ed.resize(int(self.rnd.uniform(60, 160) * v.zoom), ed.height())
+        else:
+            ed.text.setPlainText(self.typed())
         ed.commit()
+
+    def op_added_block(self):
+        """Edit text on text Add text wrote (a marked block, added_text): all of it opens,
+        its words are retyped, styled or broken onto lines of their own, its box sometimes
+        made wider or narrower or moved; written back as one block."""
+        from PySide6.QtGui import QTextCursor
+        v = self.v
+        pages = [i for i in range(v.doc.page_count) if v._added_blocks(i)]
+        if not pages:
+            return self.op_add_text()
+        i = self.rnd.choice(pages)
+        blk = self.rnd.choice(v._added_blocks(i))
+        r, ln = self.rnd.choice(blk.lines)
+        v.edit_text_at(i, pymupdf.Point(r.x0 + 1, (r.y0 + r.y1) / 2))
+        ed = v._inline
+        if ed is None:
+            return "none"
+        text = ed.text.toPlainText()
+        what = self.rnd.choice(["retype", "style", "break", "width", "move", "same"])
+        if what == "retype":
+            parts = text.split(" ")
+            k = self.rnd.randrange(len(parts))
+            parts[k] = self.rnd.choice(["", "new", parts[k].upper(), parts[k] + " more"])
+            ed.text.setPlainText(" ".join(p for p in parts if p) or "x")
+        elif what == "style":
+            spans = [mt.span() for mt in re.finditer(r"\S+", text)]
+            if spans:
+                a, b = self.rnd.choice(spans)
+                cur = ed.text.textCursor()
+                cur.setPosition(a)
+                cur.setPosition(b, QTextCursor.KeepAnchor)
+                ed.text.setTextCursor(cur)
+                ed.toggle(self.rnd.choice(["bold", "italic", "underline", "strike"]))
+        elif what == "break" and " " in text:
+            k = self.rnd.choice([m.start() for m in re.finditer(" ", text)])
+            ed.text.setPlainText(text[:k] + "\n" + text[k + 1:])
+        elif what == "width":
+            ed.resized_by_user = True
+            ed.resize(max(60, int(ed.width() * self.rnd.uniform(0.6, 1.5))), ed.height())
+        elif what == "move":
+            ed.move(ed.pos() + QPoint(self.rnd.randint(-30, 30), self.rnd.randint(-30, 30)))
+        ed.commit()
+
+    def op_page_text_clip(self):
+        """Edit objects: the page's own text (added blocks and the page's paragraphs) copied
+        and pasted (here, on another page), cut (pasted by a later step), pasted again, or
+        duplicated."""
+        v = self.v
+        i = self.page()
+        texts = v.text_objects(i)
+        if not texts:
+            return "none"
+        self.win.set_tool("editobjects")
+        try:
+            pick = self.rnd.sample(texts, self.rnd.randint(1, min(2, len(texts))))
+            v.select_objects(i, pick)
+            what = self.rnd.choice(["copy", "copy", "cut", "dup", "paste"])
+            if what == "dup":
+                v.duplicate_objects()
+                return None
+            if what == "cut":           # (pasted by a later step: each is one step)
+                v.cut()
+                return None
+            if what == "copy" and v.copy() != "pagetext":
+                return "none"
+            from kanzonas import clip
+            if clip.get()[0] != "pagetext":
+                return "none"
+            j = self.page()
+            with mock.patch.object(v, "paste_target", lambda: (j, self.point(j, 60))):
+                v.paste()
+        finally:
+            v.clear_object_selection()
+            self.win.set_tool("hand")
+
+    def _foreign_objects(self):
+        """Pictures and shapes copied from another document (kept: pasted again and again,
+        its pictures are copied in once, and again after an undo took them away)."""
+        got = getattr(self, "_foreign", None)
+        if got is not None:
+            return got
+        from kanzonas import object_clip, page_objects
+        d = pymupdf.open()
+        p = d.new_page()
+        p.draw_rect((60, 60, 160, 120), color=(0, 0, 1), fill=(1, 1, 0), width=2,
+                    fill_opacity=0.6, dashes="[4 2] 0")
+        p.insert_image((60, 140, 140, 200), stream=png_bytes(30, 20, (200, 60, 60)))
+        ocg = d.add_ocg("Foreign layer", on=True)
+        p.draw_line((180, 60), (260, 120), color=(0, 0.5, 0), width=3, oc=ocg)
+        objs = page_objects.Objects(p)
+        clip = object_clip.take(d, p, [it["n"] for it in objs.items], objs, uid="foreign")
+        box = None
+        for it in objs.items:
+            r = pymupdf.Rect(it["rect"])
+            box = r if box is None else box | r
+        clip["disp_box"] = box
+        self._foreign = {"text": None, "objects": clip, "markups": None}
+        return self._foreign
+
+    def op_object_clip(self):
+        """Edit objects: the page's own pictures and shapes (and text) copied and pasted onto
+        this or another page, cut, or pasted from another document."""
+        v = self.v
+        i = self.page()
+        self.win.set_tool("editobjects")
+        try:
+            what = self.rnd.choice(["copy", "copy", "cut", "foreign"])
+            j = self.page()
+            if what == "foreign":
+                return None if v.paste_page_content(j, self.point(j, 60),
+                                                    self._foreign_objects()) else None
+            objs = v.content_objects(i)
+            pool = list(objs.items if objs else []) + \
+                (list(v.text_objects(i)) if self.rnd.random() < 0.3 else [])
+            if not pool:
+                return "none"
+            pick = self.rnd.sample(pool, self.rnd.randint(1, min(4, len(pool))))
+            v.select_objects(i, pick)
+            if what == "cut":
+                v.cut()
+                return None
+            if v.copy() not in ("pagecontent", "pagetext"):
+                return "none"
+            with mock.patch.object(v, "paste_target", lambda: (j, self.point(j, 60))):
+                v.paste()
+        finally:
+            v.clear_object_selection()
+            self.win.set_tool("hand")
+
+    def op_across_pages(self):
+        """CAD mode's Move or Copy (or a drag) of the page's own objects, and markups with
+        them, onto another page, as one step for both pages."""
+        v = self.v
+        if v.doc.page_count < 2:
+            return "none"
+        i = self.page()
+        j = self.rnd.choice([k for k in range(v.doc.page_count) if k != i])
+        self.win.set_tool("editobjects")
+        try:
+            objs = v.content_objects(i)
+            pool = list(objs.items if objs else []) + \
+                (list(v.text_objects(i)) if self.rnd.random() < 0.3 else [])
+            if not pool:
+                return "none"
+            v.select_objects(i, self.rnd.sample(pool, self.rnd.randint(1, min(4, len(pool)))))
+            marks = self.markups(i)
+            if marks and self.rnd.random() < 0.4:
+                v.select_xref(i, self.rnd.choice(marks))
+            d = pymupdf.Point(self.rnd.uniform(-60, 60), self.rnd.uniform(-60, 60))
+            v.transfer_selection(j, d, copy=self.rnd.random() < 0.4)
+        finally:
+            v.clear_object_selection()
+            v.clear_selection()
+            self.win.set_tool("hand")
 
     def op_edit_text(self):
         v = self.v
@@ -966,6 +1140,100 @@ class Battery:
         parts[k] = self.rnd.choice(["", "new", parts[k].upper(), parts[k] + " more"])
         ed.text.setPlainText(" ".join(p for p in parts if p) or "x")
         ed.commit()
+
+    def op_styled_text(self):
+        """Edit text or Add text with words styled in the editor (text_styles.py), as its
+        buttons and keys do: bold, italic, underline, strikethrough, a color, a size up or
+        down, on a run of words picked at random; then Done (the editor's own commit)."""
+        from PySide6.QtGui import QColor, QTextCursor
+        v = self.v
+        i = self.page()
+        if self.rnd.random() < 0.3:
+            v.add_text_at(i, self.point(i, 60))
+            ed = v._inline
+            if ed is None:
+                return "none"
+            ed.text.setPlainText(self.typed() + " " + self.typed())
+        else:
+            words = self.words(i)
+            if not words:
+                return "none"
+            w = self.rnd.choice(words)
+            v.edit_text_at(i, pymupdf.Point((w[0] + w[2]) / 2, (w[1] + w[3]) / 2),
+                           one_line=self.rnd.random() < 0.3)
+            ed = v._inline
+            if ed is None:
+                return "none"
+        text = ed.text.toPlainText()
+        spans = [mt.span() for mt in re.finditer(r"\S+", text)]
+        if not spans:
+            ed.cancel()
+            return "none"
+        for _ in range(self.rnd.randint(1, 3)):
+            k = self.rnd.randrange(len(spans))
+            a, b = spans[k][0], spans[min(len(spans) - 1, k + self.rnd.randint(0, 3))][1]
+            cur = ed.text.textCursor()
+            cur.setPosition(a)
+            cur.setPosition(b, QTextCursor.KeepAnchor)
+            ed.text.setTextCursor(cur)
+            what = self.rnd.choice(["bold", "italic", "underline", "strike", "color", "size"])
+            if what == "color":
+                ed.set_color(QColor(self.color()))
+            elif what == "size":
+                ed.grow_size(self.rnd.choice([-1, 1, 2]))
+            else:
+                ed.toggle(what)
+        if self.rnd.random() < 0.3:             # and a word typed in its style
+            cur = ed.text.textCursor()
+            cur.setPosition(self.rnd.choice(spans)[1])
+            ed.text.setTextCursor(cur)
+            ed.text.insertPlainText(" " + self.typed())
+        ed.commit()
+
+    def op_scan(self):
+        """File > Scan, Done into the current document: scanned pictures (made here, JPEG or
+        PNG, with no scanner) put in after the current page, one undo step (scan_dialog's
+        own finish)."""
+        from kanzonas import scan_dialog, scan_net
+        from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+        from PySide6.QtGui import QColor, QImage, QPainter
+        v = self.v
+        if v.doc.page_count >= 10:
+            return self.op_delete_page()
+        v.goto_page(self.page())
+        dlg = scan_dialog.ScanDialog(self.win, discover=lambda cancel=None, log=None: ([], []),
+                                     open_scanner=lambda d: None)
+        try:
+            end = time.time() + 15
+            while "find" in dlg._busy and time.time() < end:
+                APP.processEvents()
+                time.sleep(0.005)
+            dpi = self.rnd.choice([50, 75, 100])
+            pages = []
+            for _ in range(self.rnd.randint(1, 2)):
+                w, h = int(8.5 * dpi), int(self.rnd.choice([11, 14]) * dpi)
+                if self.rnd.random() < 0.3:
+                    w, h = h, w
+                img = QImage(w, h, QImage.Format_RGB32)
+                img.fill(QColor(250, 250, 245))
+                p = QPainter(img)
+                for _ in range(12):
+                    p.fillRect(self.rnd.randrange(w), self.rnd.randrange(h),
+                               self.rnd.randint(5, w // 3), self.rnd.randint(2, 12),
+                               QColor(self.color()))
+                p.end()
+                data = QByteArray()
+                buf = QBuffer(data)
+                buf.open(QIODevice.WriteOnly)
+                img.save(buf, self.rnd.choice(["JPG", "PNG"]))
+                pages.append(scan_net.check_image(bytes(data), dpi))
+            dlg.pages = pages
+            dlg.rb_current.setChecked(True)
+            dlg.ocr.setChecked(False)
+            dlg.finish()
+        finally:
+            dlg._stop()
+            dlg.deleteLater()
 
     def op_replace_text(self):
         find, repl = self.rnd.choice([("text", "TEXT"), ("panel", "board"), ("TEXT", "text"),
