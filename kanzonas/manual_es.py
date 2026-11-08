@@ -1424,8 +1424,11 @@ números de página son los de las páginas después de insertar las nuevas. Eje
 de cambiar los marcadores y elija <b>En lugar de la tabla de contenido creada antes</b>: las
 páginas viejas se reemplazan por nuevas, en vez de agregar otra tabla. No se listan los marcadores
 que llevan a una página web o a otro archivo, y los títulos de las propias páginas de la tabla
-nunca se convierten en marcadores. Es un solo paso de deshacer, y pide desbloquear el orden de las
-páginas cuando la lista de páginas está bloqueada.</p>
+nunca se convierten en marcadores. El vínculo de cada línea va descrito para los lectores de
+pantalla ("Resultados, página 4") y las líneas de puntos se marcan como decoración; en un
+documento etiquetado, la tabla se etiqueta como tal (una tabla de contenido con un elemento por
+línea, cada uno un vínculo con las palabras de la línea y su número de página). Es un solo paso de
+deshacer, y pide desbloquear el orden de las páginas cuando la lista de páginas está bloqueada.</p>
 
 <h2 id="scan">Escanear</h2>
 <p><b>Escanear...</b> (menú Archivo, pestaña Páginas &gt; grupo Crear, o la paleta de comandos)
@@ -1863,7 +1866,9 @@ tablas con celdas de encabezado que indican qué encabezan; los títulos que emp
 saltan ningún nivel; las listas y tablas construidas como dice PDF; los vínculos, campos de
 formulario y comentarios etiquetados y descritos; el orden de tabulación; las fuentes incrustadas y
 un texto que se lee como letras (Unicode); una seguridad que deja leer a los lectores de pantalla;
-los marcadores en documentos de más de 20 páginas. El último grupo enumera lo que solo una persona
+los marcadores en documentos de más de 20 páginas (su corrección, <b>Crear marcadores</b>, los
+crea a partir de los títulos de las etiquetas en un documento etiquetado, si no a partir del aspecto
+de los títulos, con la misma vista previa que Documento &gt; Herramientas de marcadores). El último grupo enumera lo que solo una persona
 puede juzgar: que el orden de lectura tenga sentido, que el texto alternativo diga qué muestra cada
 imagen, que los colores contrasten lo suficiente (WCAG pide 4,5:1, 3:1 para texto grande), que los
 encabezados y pies de página sean artefactos, que el texto reconocido sea exacto. Para una
@@ -1888,7 +1893,11 @@ leen como párrafos), pies de figura, notas al pie, fórmulas ni gráficos dibuj
 (artefactos: descríbalos en el texto o en el texto alternativo de una figura). Un documento que ya
 está etiquetado se deja como está. Una página cuyos caracteres no se pueden emparejar con sus
 instrucciones de dibujo (una fuente poco común) se etiqueta como un solo párrafo, y la ventana del
-final lo indica. Después, describa las figuras (Texto alternativo) y ejecute Comprobar
+final lo indica. Una página que ya tiene contenido marcado (un programa la etiquetó y después se
+le quitaron las etiquetas, como hacen algunas herramientas) se etiqueta según ese marcado: cada
+parte marcada, un elemento del tipo que nombra su marcado (un párrafo cuando no es uno estándar),
+y lo demás como cualquier contenido agregado a una página etiquetada; la ventana indica qué
+páginas. Después, describa las figuras (Texto alternativo) y ejecute Comprobar
 accesibilidad.</li>
 <li><b>Texto alternativo...</b> enumera las figuras del documento, cada una con su imagen: escriba
 una descripción (qué muestra, o para qué está, en una o dos frases), o marque <b>Decorativa</b> en

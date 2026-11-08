@@ -160,6 +160,13 @@ def check_accessibility(window, view):
 
 
 def run_fix(parent, window, view, fix):
+    if fix == "bookmarks":
+        # (from the tags' headings on a tagged document, else from the headings' look)
+        from . import bookmarks_ui, bookmarks_auto
+        if window is not None and hasattr(window, "view"):
+            bookmarks_ui.make_bookmarks(
+                window, "tags" if bookmarks_auto.struct_root(view.doc) else "headings")
+        return
     {"autotag": auto_tag, "title": title_language, "lang": title_language,
      "tabs": tab_order, "alt": alt_text, "links": link_descriptions,
      "tooltips": field_tooltips, "fonts": embed_fonts,
