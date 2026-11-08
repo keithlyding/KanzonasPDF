@@ -1392,10 +1392,13 @@ herramienta de formulario, o llegue a él con Tab). <i>General:</i> nombre, info
 al dejar el puntero sobre el campo), Obligatorio, Solo lectura, las opciones de una lista desplegable y su Posición en
 el orden de tabulación. <i>Formato</i> (campos de texto): Número (decimales, estilo de separador como 1,234.56 o
 1.234,56, un símbolo de moneda antes o después del número, números negativos con un signo menos o entre paréntesis),
-Porcentaje (el valor es una fracción: 0.25, o 25% escrito, se muestra como 25.00%), Fecha (un formato como dd/mm/yyyy: d
+Porcentaje (un número escrito es un porcentaje: 25 o 25% se muestra como 25.00%, y 0.5 como 0.50%; el valor se
+guarda como fracción, 0.25, así que los cálculos de porcentaje de Acrobat siguen funcionando; Acrobat mostraría un 25
+sin más como 2500.00%), Fecha (un formato como dd/mm/yyyy: d
 día, m mes, mmm Jan, mmmm January (los meses en inglés, como en Acrobat), yy o yyyy año) o Especial (código postal ZIP, código ZIP+4, número de teléfono, número
 de Seguro Social). El valor se guarda sin formato (1234.5) y se muestra con formato ($1,234.50). <i>Validar:</i> un
-rango en el que debe estar el valor (Desde / Hasta). <i>Calcular:</i> el valor del campo es la Suma, el Producto, el
+rango en el que debe estar el valor (Desde / Hasta; en un campo de porcentaje, de la fracción guardada: de 0 a 1 para
+0% a 100%, como en Acrobat). <i>Calcular:</i> el valor del campo es la Suma, el Producto, el
 Promedio, el Mínimo o el Máximo de los campos que marque, o una Fórmula como <b>Precio * Cant + Envío</b> (nombres de
 campos, números, + - * / y paréntesis; un nombre con espacios lleva una barra invertida antes de cada espacio:
 Artículo\\ 1). Cada cambio es un solo paso para deshacer.</li>

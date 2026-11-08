@@ -702,6 +702,30 @@ def keystroke_pattern(fmt):
     return None
 
 
+def percent_typed(text):
+    """What's typed into a percent field as the value kept, a fraction (None: not a number).
+    A bare number is read as a percent, as people mean it: 25 is 25% (kept as 0.25), 0.5 is
+    0.5%; 25% is 25% too (the owner's decision, 6 Nov 2026). Acrobat's AFPercent_Keystroke
+    keeps a typed 25 as 25 and shows 2500.00%; the value kept is the same fraction Acrobat
+    keeps, so its AFPercent calculations still work."""
+    s = (text or "").strip()
+    if s.endswith("%)") and s.startswith("("):
+        s = s[:-2] + ")"
+    elif s.endswith("%"):
+        s = s[:-1]
+    if "%" in s:
+        return None
+    x = to_number(s)
+    return None if x is None else x / 100.0
+
+
+def percent_text(raw):
+    """A percent field's value as it's typed again (0.25 as 25%), for its edit box, or None
+    when the value isn't a number."""
+    x = to_number(raw)
+    return None if x is None else number_text(x * 100.0) + "%"
+
+
 def check_input(text, fmt=None, rng=None):
     """(ok, value to store, message) for what someone typed into a field with this format
     and range. The value stored is the plain one (1234.5, 5551234567, a date in the field's
@@ -713,8 +737,13 @@ def check_input(text, fmt=None, rng=None):
     k = fmt.get("kind") if fmt and "custom" not in fmt else None
     value = s if k else text
     num = None
-    if k in ("number", "percent"):
+    if k == "number":
         num = to_number(s)
+        if num is None:
+            return False, None, tr("Type a number.")
+        value = number_text(num)
+    elif k == "percent":
+        num = percent_typed(s)
         if num is None:
             return False, None, tr("Type a number.")
         value = number_text(num)

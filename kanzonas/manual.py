@@ -1404,10 +1404,13 @@ with a form tool, or Tab to it). <i>General:</i> name, tooltip (shown when the p
 the field), Required, Read-only, a dropdown's choices and its Place in the tab order.
 <i>Format</i> (text fields): Number (decimal places, separator style such as 1,234.56 or
 1.234,56, a currency symbol before or after the number, negative numbers with a minus or in
-parentheses), Percent (the value is a fraction: 0.25, or 25% typed, shows as 25.00%), Date (a
+parentheses), Percent (a number typed is a percent: 25 or 25% shows as 25.00%, and 0.5 as
+0.50%; the value is kept as a fraction, 0.25, so Acrobat's percent calculations still work;
+Acrobat itself would show a bare 25 as 2500.00%), Date (a
 format such as mm/dd/yyyy: d day, m month, mmm Jan, mmmm January, yy or yyyy year), or Special
 (ZIP code, ZIP+4 code, phone number, Social Security number). The value is kept plain (1234.5)
-and shown formatted ($1,234.50). <i>Validate:</i> a range the value must be in (From / To).
+and shown formatted ($1,234.50). <i>Validate:</i> a range the value must be in (From / To;
+for a percent field, of the fraction kept: 0 to 1 for 0% to 100%, as in Acrobat).
 <i>Calculate:</i> the field's value is the Sum, Product, Average, Minimum or Maximum of the
 fields you tick, or a Formula such as <b>Price * Qty + Shipping</b> (field names, numbers,
 + - * / and parentheses; a name with spaces takes a backslash before each space: Item\\ 1).

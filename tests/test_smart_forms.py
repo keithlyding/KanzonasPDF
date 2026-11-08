@@ -501,6 +501,52 @@ class Formats(Quiet):
         for shown in ("25.0%", "November 6, 2026", "(555) 123-4567", "123-45-6789", "90210"):
             self.assertIn(shown, text)
 
+    def test_a_bare_number_in_a_percent_field_is_a_percent(self):
+        # (the owner, 6 Nov 2026: 25 typed is 25%, kept as 0.25 so Acrobat's AFPercent
+        # calculations still work; Acrobat itself would keep 25 and show 2500.00%)
+        v = self.open(self.text_fields("pct", "price", "discount"))
+        self.props(v, "pct", format={"kind": "percent", "decimals": 2, "sep": 0})
+        self.props(v, "discount", calc={"formula": "price * pct"})
+        self.assertTrue(self.fill(v, "price", "200"))
+        for typed, kept, shown in (("25", "0.25", "25.00%"), ("25%", "0.25", "25.00%"),
+                                   ("0.5", "0.005", "0.50%"), ("12,5", "0.125", "12.50%"),
+                                   ("-10", "-0.1", "-10.00%"), ("100", "1", "100.00%")):
+            self.assertTrue(self.fill(v, "pct", typed), typed)
+            self.assertEqual(self.values(v)["pct"], kept, typed)
+            self.assertIn(shown, self.shown(v), typed)
+        self.assertTrue(self.fill(v, "pct", "25"))
+        self.assertEqual(self.values(v)["discount"], "50")
+        self.assertFalse(self.fill(v, "pct", "2%5"))
+        self.assertEqual(self.values(v)["pct"], "0.25")
+        # the edit box shows the value as it's typed (25%), so leaving it as it is changes
+        # nothing, and typing 30 over it is 30%
+        from PySide6.QtWidgets import QLineEdit
+        v._edit_text_field(0, self.xrefs(v)["pct"])
+        ed = v.findChild(QLineEdit)
+        self.assertEqual(ed.text(), "25%")
+        steps = len(v._undo)
+        v.commit_pending()
+        self.assertEqual(self.values(v)["pct"], "0.25")
+        self.assertEqual(len(v._undo), steps)
+        v._edit_text_field(0, self.xrefs(v)["pct"])
+        ed = [e for e in v.findChildren(QLineEdit) if e.isVisible()][-1]
+        ed.setText("30")
+        v.commit_pending()
+        self.assertEqual(self.values(v)["pct"], "0.3")
+        self.assertEqual(self.values(v)["discount"], "60")
+
+    def test_percent_typed(self):
+        self.assertEqual(S.percent_typed("25"), 0.25)
+        self.assertEqual(S.percent_typed(" 25 % "), 0.25)
+        self.assertEqual(S.percent_typed("(25%)"), -0.25)
+        self.assertAlmostEqual(S.percent_typed("0.5"), 0.005)
+        self.assertIsNone(S.percent_typed("%"))
+        self.assertIsNone(S.percent_typed("25%%"))
+        self.assertIsNone(S.percent_typed("abc"))
+        self.assertEqual(S.percent_text("0.25"), "25%")
+        self.assertEqual(S.percent_text("0.07"), "7%")
+        self.assertIsNone(S.percent_text("n/a"))
+
     def test_range_check(self):
         v = self.open(self.text_fields("score"))
         self.props(v, "score", range={"min": 0, "max": 100})

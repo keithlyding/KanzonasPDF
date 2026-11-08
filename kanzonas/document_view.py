@@ -8679,18 +8679,24 @@ class DocumentView(QScrollArea):
         pw = self.pages[index]
         r = pw.to_screen(w.rect)
         multiline = bool(w.field_flags & pymupdf.PDF_TX_FIELD_IS_MULTILINE)
+        _calc, fmt, _rng = smart_forms.field_scripts(self.doc, self._field_dict(w), xref)
+        start = w.field_value or ""
+        if fmt and fmt.get("kind") == "percent" and start:
+            # (a percent field reads what's typed as a percent: 0.25 is typed again as 25%)
+            start = smart_forms.percent_text(start) or start
+            if 0 < (w.text_maxlen or 0) < len(start) and start.endswith("%"):
+                start = start[:-1]          # (a bare number is a percent too)
         ed = QPlainTextEdit(pw) if multiline else QLineEdit(pw)
         if multiline:
-            ed.setPlainText(w.field_value or "")
+            ed.setPlainText(start)
             from . import spelling
             spelling.install(ed)
         else:
-            ed.setText(w.field_value or "")
+            ed.setText(start)
             ed.selectAll()
         maxlen = w.text_maxlen or 0         # the field's limit (a ZIP code, comb boxes)
         if maxlen > 0 and not multiline:
             ed.setMaxLength(maxlen)
-        _calc, fmt, _rng = smart_forms.field_scripts(self.doc, self._field_dict(w), xref)
         allowed = smart_forms.keystroke_pattern(fmt)
         if allowed and not multiline:
             # (a number, percent, phone, ZIP or SSN field: letters can't be typed, as with
@@ -8722,7 +8728,7 @@ class DocumentView(QScrollArea):
                 text = text[:maxlen]
             ed.hide()
             ed.deleteLater()
-            if save and text != (w.field_value or ""):
+            if save and text != start:
                 if not self.enter_field_value(index, xref, text):
                     if next_field is not None or explicit:
                         # (refused: typed again, with what was typed, to correct it)
