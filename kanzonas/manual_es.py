@@ -1217,7 +1217,8 @@ juntas, y Ctrl+Z deshace todo el arrastre); o use Mover página hacia arriba / M
 PDF nuevo a partir de varios. Agregue los PDF (Agregar archivos…, o suéltelos en la lista desde el Explorador); el
 documento abierto ya está en la lista. Arrástrelos, o use Subir / Bajar / Ordenar por nombre, para
 definir el orden, de arriba abajo. Con "Agregar un marcador para cada archivo" marcado, cada archivo recibe un
-marcador con su nombre y conserva sus propios marcadores debajo. Haga clic en Combinar…, elija un nombre,
+marcador con su nombre y conserva sus propios marcadores debajo (cada uno sigue llevando a su lugar de la
+página, con su propio estilo). Haga clic en Combinar…, elija un nombre,
 y el PDF combinado se abre. Los archivos protegidos con contraseña piden su contraseña. Los archivos originales
 no se modifican, y el PDF nuevo no puede reemplazar a ninguno de ellos.</li>
 <li>Combinar archivos también acepta imágenes (JPG, PNG, TIFF, BMP, GIF, WebP): cada una se convierte en una página.
@@ -1248,7 +1249,9 @@ tamaño, elija si las marcas se <b>escalan a la página nueva</b> (con su texto 
 pareja ajusta también la escala de medición de la página y su nombre: 1/4" = 1'-0" pasa a 1/2" = 1'-0" en
 una hoja del doble de tamaño) o se <b>mantienen en el mismo lugar</b>, medido desde la
 esquina superior izquierda. Las mediciones se vuelven a medir cuando cambia lo que miden (la página nueva trae
-su propia escala, o las marcas se estiraron o escalaron en una página sin escala). Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
+su propia escala, o las marcas se estiraron o escalaron en una página sin escala). Un marcador a un lugar de la
+página lleva al mismo lugar del dibujo nuevo, como se colocan las marcas. Una página de tabla de contenido que
+se reemplaza es desde entonces una página común. Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
 el dibujo nuevo; un vínculo sobre palabras que no están en el mismo lugar en el dibujo nuevo (una referencia a un
 plano que se movió) se queda donde estaba y se informa, para que pueda revisarlo. Los encabezados, pies de página,
 marcas de agua, fondos y ediciones de texto escritos en el dibujo anterior se van con él. Las capas de los dibujos
@@ -1261,7 +1264,8 @@ páginas a un archivo nuevo (a un archivo nuevo, no al propio documento), Elimin
 la lista de páginas, o la página actual; pregunta primero, y Ctrl+Z las recupera). Un marcador a una
 página eliminada lleva entonces a la página siguiente (o a la última página).</li>
 <li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional.</li>
-<li>Pestaña <b>Marcadores</b>: agregue, cambie el nombre, reordene y aplique sangría a los marcadores.</li>
+<li>Pestaña <b>Marcadores</b>: agregue, cambie el nombre, reordene y aplique sangría a los marcadores,
+créelos a partir de los títulos e inserte una tabla de contenido (vea Marcadores y tabla de contenido).</li>
 <li><b>Vincular referencias a planos</b> (menú Páginas; pestaña Páginas, en la flecha del grupo Documento): para un juego de planos trazado sin
 hipervínculos. KanzonasPDF lee el número y el título de cada plano en su cuadro de rótulo (el
 valor que sigue a un rótulo SHEET, SHEET NO o DWG NO, o el número con aspecto de número de plano más grande de la
@@ -1273,6 +1277,73 @@ así que los propios hipervínculos de AutoCAD se quedan y ejecutarlo dos veces 
 alrededor de los vínculos (desactivado de forma predeterminada, para mantener limpios los dibujos) y marcadores con el número
 y el título de cada plano. Ctrl+Z lo deshace todo.</li>
 </ul>
+
+<h2 id="bookmarks">Marcadores y tabla de contenido</h2>
+<p>Los marcadores (el esquema del PDF) aparecen en el panel <b>Marcadores</b> (F9). Haga clic en
+uno para ir a su lugar. Los botones sobre la lista agregan un marcador a la página actual (+),
+cambian el nombre, eliminan, suben y bajan, y aplican sangría (lo convierten en secundario del de
+arriba) o la reducen. El botón <b>⋯</b>, un clic derecho en la lista y <b>Documento &gt;
+Herramientas de marcadores</b> tienen el resto. Cada cambio es un paso de deshacer (Ctrl+Z), y al
+editar un marcador los demás conservan su lugar, su zoom y su estilo.</p>
+<ul>
+<li><b>Agregar marcador en la vista actual</b> (Ctrl+B, cuando no está editando texto): un
+marcador al lugar que muestra la ventana, después del marcador seleccionado. Con texto
+seleccionado, el marcador lleva a ese texto y recibe su nombre.</li>
+<li><b>Llevar el destino del marcador a la vista actual</b>: el marcador seleccionado ahora
+lleva al lugar que muestra la ventana (su nombre y su estilo se quedan).</li>
+<li><b>Ordenar los marcadores por página</b> (en el orden de las páginas y, dentro de una
+página, de arriba abajo) u <b>Ordenar los marcadores por nombre</b> (los números en orden
+numérico: A-2 antes de A-10). Los secundarios de cada marcador se mueven con él y también se
+ordenan.</li>
+<li><b>Expandir todos los marcadores</b> y <b>Contraer todos los marcadores</b> abren o pliegan
+toda la lista (solo en el panel; el documento no cambia).</li>
+<li><b>Marcador en negrita (sí/no)</b>, <b>Marcador en cursiva (sí/no)</b> y <b>Color del
+marcador...</b> dan estilo al marcador seleccionado. Se guardan en el PDF, así que Acrobat y otros
+lectores también los muestran.</li>
+</ul>
+<p><b>Crear marcadores a partir del documento.</b> Tres comandos encuentran los marcadores por
+usted. Cada uno lee las páginas con una barra de progreso (Cancelar lo detiene) y luego muestra lo
+que encontró como un árbol para revisarlo antes de que cambie nada: desmarque lo que no deba ser
+un marcador, haga doble clic en un nombre para cambiarlo, seleccione marcadores y haga clic en
+<b>Subir de nivel</b> o <b>Bajar de nivel</b>, y elija cuántos <b>Niveles</b> conservar (de 1 a
+3). Al hacer clic en un marcador ahí se ve su lugar en la página. Marque <b>Nombres en mayúsculas
+con mayúscula inicial en cada palabra</b> para escribir PLANTA DEL PRIMER PISO como Planta del
+Primer Piso. Cuando el documento ya tiene marcadores, elija si los nuevos los reemplazan o van
+después de ellos. <b>Crear marcadores</b> los crea todos como un solo paso de deshacer.</p>
+<ul>
+<li><b>Crear marcadores a partir de los títulos...</b> encuentra los títulos por su aspecto:
+texto claramente más grande que el del cuerpo, líneas en negrita solas en su renglón y títulos
+numerados (1.2 Alcance, SECTION 08 71 00, PART 2 - PRODUCTS, Capítulo 3). Los niveles son los
+mismos en todo el documento: el texto más grande es un nivel más alto, luego la negrita, luego la
+numeración (SECTION sobre PART sobre 1.1 sobre 1.1.1); la ventana dice qué aspecto quedó en qué
+nivel. Se omiten los encabezados, los pies de página y los números de página que se repiten página
+tras página, y también las líneas de una página de tabla de contenido. Una sola línea más grande
+que todo lo demás al principio (el título del documento) aparece desmarcada. Es rápido incluso en
+documentos largos (uno o dos segundos para 500 páginas).</li>
+<li><b>Marcadores desde la estructura etiquetada...</b> es para PDF etiquetados (la mayoría de
+los PDF guardados desde Word y los PDF accesibles): sus títulos están marcados de H1 a H6, así que
+los marcadores son exactamente los títulos y niveles del documento. En un PDF sin etiquetas lo
+avisa.</li>
+<li><b>Marcadores desde los números de plano...</b> es para juegos de planos: un marcador para
+cada plano, con su número y su título (A-101  PLANTA DEL PRIMER PISO), leídos de los cuadros de
+rótulo como los lee Vincular referencias a planos. Marque <b>Agrupar los planos por
+disciplina</b> para ponerlos bajo G - General, A - Arquitectura, S - Estructural, M - Mecánica,
+etc. (las letras del National CAD Standard de EE. UU.).</li>
+</ul>
+<p><b>Insertar tabla de contenido...</b> (menú Documento, menú Páginas o el botón ⋯ del panel
+Marcadores) agrega páginas que listan los marcadores: un título, cada marcador con una línea de
+puntos y su número de página, los niveles con sangría y en letra más pequeña, y cada línea un
+vínculo a su página. El texto se escribe con fuentes incrustadas en las páginas, así que la tabla
+se ve igual en cualquier lector y pasa la comprobación de Guardar como PDF/A, y cada título es un
+solo bloque de texto que <b>Editar texto</b> abre completo (ajustado como estaba). Elija el título,
+cuántos niveles listar, dónde va (al principio del documento
+o antes de la página actual) y el tamaño de página (el de la página que la sigue, Carta o A4). Los
+números de página son los de las páginas después de insertar las nuevas. Ejecútelo de nuevo después
+de cambiar los marcadores y elija <b>En lugar de la tabla de contenido creada antes</b>: las
+páginas viejas se reemplazan por nuevas, en vez de agregar otra tabla. No se listan los marcadores
+que llevan a una página web o a otro archivo, y los títulos de las propias páginas de la tabla
+nunca se convierten en marcadores. Es un solo paso de deshacer, y pide desbloquear el orden de las
+páginas cuando la lista de páginas está bloqueada.</p>
 
 <h2 id="scan">Escanear</h2>
 <p><b>Escanear...</b> (menú Archivo, pestaña Páginas &gt; grupo Crear, o la paleta de comandos)
@@ -1529,7 +1600,7 @@ de formulario (valores, opciones de lista, información sobre herramientas y nom
 vínculos (direcciones web y de correo electrónico), notas
 de marcas (también su texto con formato), títulos y direcciones web de marcadores, propiedades del documento (también las propias de un
 programa), el texto alternativo de los PDF etiquetados, las notas de
-vínculos, las etiquetas de página, los nombres de capas y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
+vínculos, las etiquetas de página, los nombres de capas, los nombres de destinos y el título que recuerda una tabla de contenido. Al aplicar, los campos, los vínculos, los sellos y los
 archivos adjuntos que lo contienen se eliminan (y un formulario XFA que lo contiene: sus campos normales se conservan), y en las notas y los comentarios (que se quedan), los marcadores
 y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar dice dónde lo encontró (los
 campos, las notas, los vínculos, los marcadores y las propiedades, y en cuántos lugares más del archivo,
@@ -1966,6 +2037,7 @@ cuadrícula...).</li>
 <tr><td>Ctrl+E</td><td>Editar texto (clic: el párrafo; Alt+clic: una línea)</td></tr>
 <tr><td>Ctrl+B / Ctrl+I / Ctrl+U (al editar texto)</td><td>Negrita / Cursiva / Subrayado de las palabras seleccionadas</td></tr>
 <tr><td>Ctrl+] / Ctrl+[ (al editar texto)</td><td>Texto más grande / más pequeño (las palabras seleccionadas, de un punto en un punto)</td></tr>
+<tr><td>Ctrl+B (cuando no edita texto)</td><td>Agregar marcador en la vista actual</td></tr>
 <tr><td>Ctrl+P</td><td>Imprimir (con vista previa)</td></tr>
 <tr><td>Ctrl+N</td><td>Nuevo PDF (página en blanco)</td></tr>
 <tr><td>Shift+T</td><td>Agregar texto (escrito en la página)</td></tr>

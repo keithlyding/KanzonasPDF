@@ -307,6 +307,23 @@ def _shift(page, start):
     return page + start if page > 0 else -1       # -1: a bookmark with no target page
 
 
+def _moved_toc(src, start):
+    """src's bookmarks as set_toc entries for its pages put start pages on: each keeps
+    where on its page it goes, its zoom and its style (bold, italic, color, closed); one to
+    a web page or another file stays as it is."""
+    from .bookmarks_auto import writable_toc
+    out = []
+    for e in writable_toc(src, src.get_toc(simple=False)):
+        lvl, title, page = e[:3]
+        d = dict(e[3]) if len(e) > 3 else {}
+        if d.get("kind") == pymupdf.LINK_GOTO and page > 0:
+            d["page"] = page - 1 + start
+        elif d.get("kind") == pymupdf.LINK_GOTO:
+            d = {}
+        out.append([lvl, title, _shift(page, start)] + ([d] if d else []))
+    return out
+
+
 def combine(paths, out, bookmarks=True, ask_password=None, letter=True, ask_owner=None):
     """Write the PDFs and pictures in `paths`, in order, to `out`. Returns the page count, or
     None if a password was needed and not given. Each file's own bookmarks are kept, nested
@@ -335,12 +352,12 @@ def combine(paths, out, bookmarks=True, ask_password=None, letter=True, ask_owne
             start = result.page_count
             result.insert_pdf(src)
             measure.copy_scales(src, result, [(k, start + k) for k in range(src.page_count)])
-            inner = src.get_toc(simple=True)
+            inner = _moved_toc(src, start)
             if bookmarks:
                 toc.append([1, os.path.splitext(os.path.basename(p))[0], start + 1])
-                toc += [[lvl + 1, title, _shift(page, start)] for lvl, title, page in inner]
+                toc += [[e[0] + 1] + e[1:] for e in inner]
             else:
-                toc += [[lvl, title, _shift(page, start)] for lvl, title, page in inner]
+                toc += inner
         finally:
             src.close()
     if toc:

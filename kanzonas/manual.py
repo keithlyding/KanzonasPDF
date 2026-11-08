@@ -1232,7 +1232,8 @@ together, and Ctrl+Z undoes the whole drag); or Move page up / Move page down
 new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
 open document is already in the list. Drag them, or use Move up / Move down / Sort by name, to
 set the order, top to bottom. With "Add a bookmark for each file" ticked, each file gets a
-bookmark named after it and keeps its own bookmarks underneath. Click Combine..., choose a name,
+bookmark named after it and keeps its own bookmarks underneath (each still going to its spot
+on the page, in its own style). Click Combine..., choose a name,
 and the combined PDF opens. Password-protected files ask for their password. The original files
 aren't changed, and the new PDF can't replace one of them.</li>
 <li>Combine files also takes pictures (JPG, PNG, TIFF, BMP, GIF, WebP): each becomes a page.
@@ -1264,7 +1265,8 @@ them; stretched if its proportions differ; an even scale adjusts the page's meas
 its name too, 1/4" = 1'-0" becoming 1/2" = 1'-0" on a sheet twice the size) or <b>kept at the same place</b>,
 measured from the top-left corner. Measurements are measured again when what they measure changed
 (the new page brings its own scale, or the markups were stretched or scaled on a page with no
-scale). The underlines and text of links made with KanzonasPDF are
+scale). A bookmark to a spot on the page goes to the same spot of the new drawing, as the markups
+are placed. A table of contents page that is replaced is an ordinary page from then on. The underlines and text of links made with KanzonasPDF are
 drawn again on the new drawing; a link over words that aren't in the same place on the new
 drawing (a sheet callout that moved) stays where it was and is reported, so you can check it.
 Headers, footers, watermarks, backgrounds and text edits written into the old drawing go with
@@ -1277,7 +1279,8 @@ pages to new file (to a new file, not the document itself), Delete pages (the pa
 the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
 deleted page then goes to the page after it (or the last page).</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
-<li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
+<li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks, make them from the
+headings, and insert a table of contents (see Bookmarks and table of contents).</li>
 <li><b>Link sheet callouts</b> (Pages menu; Pages tab, under the Document group's arrow): for a drawing set plotted without
 hyperlinks. KanzonasPDF reads each page's sheet number and title from its title block (the
 value after a SHEET, SHEET NO or DWG NO caption, or the largest sheet-like number in the
@@ -1289,6 +1292,67 @@ so AutoCAD's own hyperlinks stay and running it twice adds nothing. Options: a t
 around the links (off by default, to keep drawings clean), and bookmarks named by sheet number
 and title. Ctrl+Z undoes it all.</li>
 </ul>
+
+<h2 id="bookmarks">Bookmarks and table of contents</h2>
+<p>Bookmarks (the PDF's outline) are listed in the <b>Bookmarks</b> panel (F9). Click one to go
+to its place. The buttons above the list add a bookmark to the current page (+), rename, delete,
+move up and down, and indent (make it a child of the one above) or outdent. The <b>⋯</b> button,
+a right-click in the list, and <b>Document &gt; Bookmark tools</b> have the rest. Every change is
+one undo step (Ctrl+Z), and editing one bookmark keeps the others' places, zoom and styles.</p>
+<ul>
+<li><b>Add bookmark at current view</b> (Ctrl+B, when you're not editing text): a bookmark to
+the place the window shows, after the selected bookmark. With text selected, the bookmark goes
+to that text and is named after it.</li>
+<li><b>Set bookmark destination to current view</b>: the selected bookmark now goes to the
+place the window shows (its name and style stay).</li>
+<li><b>Sort bookmarks by page</b> (in page order, then from the top of the page down) or
+<b>Sort bookmarks by name</b> (numbers in number order: A-2 before A-10). Each bookmark's
+children move with it and are sorted too.</li>
+<li><b>Expand all bookmarks</b> and <b>Collapse all bookmarks</b> open or fold the whole list
+(only in the panel; the document doesn't change).</li>
+<li><b>Bold bookmark (on/off)</b>, <b>Italic bookmark (on/off)</b> and <b>Bookmark
+color...</b> style the selected bookmark. They're saved in the PDF, so Acrobat and other
+readers show them too.</li>
+</ul>
+<p><b>Making bookmarks from the document.</b> Three commands find the bookmarks for you. Each
+reads the pages with a progress bar (Cancel stops it), then shows what it found as a tree to
+check before anything changes: untick what shouldn't be a bookmark, double-click a name to
+change it, select bookmarks and click <b>Level up</b> or <b>Level down</b>, and choose how many
+<b>Levels</b> to keep (1 to 3). Clicking a bookmark there shows its place on the page. Tick
+<b>Names in capitals in Title Case</b> to write FIRST FLOOR PLAN as First Floor Plan. When the
+document already has bookmarks, choose whether the new ones replace them or come after them.
+<b>Make bookmarks</b> makes them all as one undo step.</p>
+<ul>
+<li><b>Make bookmarks from headings...</b> finds the headings by their look: text clearly
+bigger than the body text, bold lines alone on their row, and numbered headings (1.2 Scope,
+SECTION 08 71 00, PART 2 - PRODUCTS, Chapter 3). The levels are the same throughout the
+document: bigger text is a higher level, then bold, then the numbering (SECTION over PART over
+1.1 over 1.1.1); the window says which look became which level. Headers, footers and page
+numbers repeated on page after page are left out, and so are the lines of a table of contents
+page. A single line bigger than everything else at the start (the document's title) is listed
+unticked. It's quick even on long documents (a second or two for 500 pages).</li>
+<li><b>Bookmarks from tagged structure...</b> is for tagged PDFs (most PDFs saved from Word,
+and accessible PDFs): their headings are marked H1 to H6, so the bookmarks are exactly the
+document's headings and levels. On a PDF without tags it says so.</li>
+<li><b>Bookmarks from sheet numbers...</b> is for drawing sets: a bookmark for each sheet,
+named by its sheet number and title (A-101  FIRST FLOOR PLAN), read from the title blocks as
+Link sheet callouts reads them. Tick <b>Group the sheets by discipline</b> to put them under
+G - General, A - Architectural, S - Structural, M - Mechanical and so on (the U.S. National CAD
+Standard's letters).</li>
+</ul>
+<p><b>Insert table of contents...</b> (Document menu, Pages menu, or the Bookmarks panel's ⋯)
+adds pages listing the bookmarks: a title, each bookmark with dotted leaders and its page number,
+levels indented and in smaller type, and each line a link to its page. The text is written in
+fonts embedded in the pages, so the table looks the same in every reader and passes Save as
+PDF/A's check, and each title is one block of text that <b>Edit text</b> opens whole (wrapped as
+it was). Choose the title, how
+many levels to list, where it goes (at the start of the document, or before the current page)
+and the page size (the size of the page it goes before, Letter or A4). The page numbers are the
+pages' numbers after the new pages are inserted. Run it again after changing the bookmarks and
+choose <b>In place of the table of contents made before</b>: the old pages are replaced by new
+ones, instead of adding another table. Bookmarks that go to a web page or another file aren't
+listed, and the headings on the table's own pages are never made into bookmarks. It's one undo
+step, and it asks to unlock the page order when the page list is locked.</p>
 
 <h2 id="scan">Scanning</h2>
 <p><b>Scan...</b> (File menu, Pages tab &gt; Create group, or the command palette) scans pages
@@ -1538,7 +1602,7 @@ it where a box can't go: form
 fields (values, list options, tooltips and names, also of fields on no page), links (web and
 email addresses), markup notes (also their formatted text), bookmark titles and web addresses,
 document properties (also a program's own), the alternate text of tagged PDFs, link notes,
-page labels, layer names and destination names. When you apply, fields, links, stamps and
+page labels, layer names, destination names and the title a table of contents remembers. When you apply, fields, links, stamps and
 attached files containing it are deleted (and an XFA form holding it: its ordinary fields stay), and in notes and comments (they stay), bookmarks
 and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact says where it found it (the
 fields, notes, links, bookmarks and properties, and how many other places in the file, such as
@@ -1952,6 +2016,7 @@ settings...).</li>
 <tr><td>Ctrl+E</td><td>Edit text (click: the paragraph; Alt+click: one line)</td></tr>
 <tr><td>Ctrl+B / Ctrl+I / Ctrl+U (editing text)</td><td>Bold / Italic / Underline the selected words</td></tr>
 <tr><td>Ctrl+] / Ctrl+[ (editing text)</td><td>Larger / smaller text (the selected words, a point at a time)</td></tr>
+<tr><td>Ctrl+B (not editing text)</td><td>Add bookmark at current view</td></tr>
 <tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
 <tr><td>Ctrl+N</td><td>New PDF (blank page)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>

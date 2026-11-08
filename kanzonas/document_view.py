@@ -388,12 +388,14 @@ def forget_redacted(page, clean=True):
     "/Span <</ActualText (the words)>> BDC EMC" around nothing, the words readable in the
     file; clean: the page's drawing is cleaned, which drops them), its thumbnail (a picture
     of the page as it was) and a program's private copy of it (/PieceInfo: Illustrator keeps
-    its whole drawing there)."""
-    from . import added_text
+    its whole drawing there), and the title a table of contents page remembers
+    (bookmarks_auto: it's drawn on the page, and may have been under a mark)."""
+    from . import added_text, bookmarks_auto
     added_text.prune(page)              # (an added block's marker with nothing left in it)
     if clean:
         page.clean_contents()
     doc = page.parent
+    bookmarks_auto.forget_title(page)
     for key in ("Thumb", "PieceInfo"):
         if doc.xref_get_key(page.xref, key)[0] != "null":
             doc.xref_set_key(page.xref, key, "null")
@@ -7964,8 +7966,12 @@ class DocumentView(QScrollArea):
                 # private data can hold the text too (with its thread, in one walk)
                 pdf_speed.delete_many(pg, [x])
         toc = self.doc.get_toc(simple=False)
+        from .bookmarks_auto import clean_title, writable_toc
         if any(pat.search(e[1]) for e in toc):
-            self.doc.set_toc([[e[0], clean(e[1])] + e[2:] for e in toc])
+            # (written back as they were: one to a named destination keeps going to its
+            # place, set_toc can't write the name and left it going nowhere)
+            self.doc.set_toc(writable_toc(self.doc, [[e[0], clean(e[1])] + e[2:] for e in toc]))
+        clean_title(self.doc, pat, clean)       # (a table of contents' own title)
         meta = self.doc.metadata or {}
         if any(pat.search(v) for v in meta.values() if isinstance(v, str)):
             self.doc.set_metadata({k: clean(v) for k, v in meta.items() if v is not None})
@@ -8124,11 +8130,43 @@ class DocumentView(QScrollArea):
         self.layersChanged.emit()
 
     # ---- bookmarks & page tools -----------------------------------------------------------
-    def get_toc(self):
-        return self.doc.get_toc(simple=True)
+    def get_toc(self, simple=True):
+        return self.doc.get_toc(simple=simple)
+
+    def view_destination(self):
+        """(page index, point on it (unrotated), suggested title) for a bookmark to what the
+        window shows: the selected text's place and words when text is selected, else the
+        top-left corner of the window on the current page. None with no pages."""
+        if not getattr(self, "pages", None):
+            return None
+        if self.text_sel:
+            index, units = self.text_sel[0]
+            if units and 0 <= index < self.doc.page_count:
+                page = self.doc[index]
+                shown = pymupdf.Rect(units[0][:4]) * page.rotation_matrix
+                for u in units[1:]:
+                    shown |= pymupdf.Rect(u[:4]) * page.rotation_matrix
+                to = pymupdf.Point(0, max(0.0, shown.y0 - 4)) * page.derotation_matrix
+                return index, to, " ".join(self.selected_text().split())[:200]
+        i = self.current_page()
+        w = self.pages[i]
+        x = max(0, self.horizontalScrollBar().value() - w.x())
+        y = max(0, self.verticalScrollBar().value() - w.y())
+        to = w.to_pdf(QPointF(x, y))
+        return i, pymupdf.Point(max(0.0, to.x), max(0.0, to.y)), ""
+
+    def go_to_destination(self, page, to=None):
+        """Show page (index) from point to (unrotated) on it, as a bookmark or link does."""
+        self._go_to(page, to)
 
     def set_toc(self, toc):
-        self.modify(lambda: self.doc.set_toc(toc), [])
+        """The bookmarks become toc: [level, title, page] or [level, title, page, destination]
+        entries (get_toc(simple=False)), written back as they were (bookmarks_auto.writable)."""
+        from .bookmarks_auto import writable_toc
+
+        def do():
+            self.doc.set_toc(writable_toc(self.doc, toc))
+        self.modify(do, [])
         self.documentChanged.emit()
 
     def add_header_footer(self, spec):
