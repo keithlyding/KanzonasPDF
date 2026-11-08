@@ -8493,3 +8493,28 @@ msgstr "Texto copiado con sus estilos: Ctrl+V lo pega como texto de la página"
 
 msgid "Duplicate"
 msgstr "Duplicar"
+
+# the page's own pictures and shapes to another page or document; CAD mode across pages
+msgid "{command}: click the base point on page {n}, where the selection is; then where it goes, on any page."
+msgstr "{command}: haga clic en el punto base en la página {n}, donde está la selección; luego donde va, en cualquier página."
+
+msgid "{command} works on one page: click on page {n}."
+msgstr "{command} funciona en una sola página: haga clic en la página {n}."
+
+msgid "click where it goes (on this page or another one)"
+msgstr "haga clic donde va (en esta página o en otra)"
+
+msgid "click where a copy goes, on this page or another one (Enter or Escape when done)"
+msgstr "haga clic donde va una copia, en esta página o en otra (Enter o Escape al terminar)"
+
+msgid "Pasted into the page (Ctrl+Z undoes it)"
+msgstr "Pegado en la página (Ctrl+Z lo deshace)"
+
+msgid "{what} to page {n} (Ctrl+Z undoes it)"
+msgstr "{what} a la página {n} (Ctrl+Z lo deshace)"
+
+msgid "Copied: Ctrl+V pastes it into a page, here or in another document"
+msgstr "Copiado: Ctrl+V lo pega en una página, aquí o en otro documento"
+
+msgid "Cut: Ctrl+V pastes it into a page, here or in another document"
+msgstr "Cortado: Ctrl+V lo pega en una página, aquí o en otro documento"

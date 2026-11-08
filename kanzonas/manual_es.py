@@ -455,9 +455,13 @@ nombre de distancia ("mano", "seleccionar"). Enter sigue terminando un polígono
 barra espaciadora y Enter siguen llenando el campo de formulario al que llevó Tab.</li>
 </ul>
 <ul>
-<li><b>Mover</b>: haga clic en el punto base y luego donde va.</li>
-<li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera; Enter, Escape o Listo
-termina.</li>
+<li><b>Mover</b>: haga clic en el punto base y luego donde va, en esta página o en otra: en otra página la selección
+(las líneas, las imágenes y el texto del dibujo, y las marcas que van con ellos) va allí, a la misma distancia del punto
+en el que hizo clic que tenía del punto base, tal como se muestran las páginas (también a una página girada de otra
+manera). Los contornos siguen al puntero a la otra página, y los clics allí se ajustan a las líneas de esa página. Un
+Ctrl+Z la devuelve a su página.</li>
+<li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera, en esta página o en
+otras (como Mover); Enter, Escape o Listo termina.</li>
 <li><b>Girar</b>: haga clic en el punto base y luego escriba el ángulo en grados (en sentido antihorario; -90 gira en
 sentido horario) y presione Enter, o haga clic en un punto: la selección gira para que el "este" apunte hacia ahí.</li>
 <li><b>Escalar</b>: haga clic en el punto base y luego escriba el factor (2 = el doble de grande, 0.5 = la mitad; de 0.001
@@ -583,6 +587,19 @@ de línea. Cada pieza pegada es luego un solo bloque para Editar texto (vea <b>E
 otros programas reciben las palabras sin formato. También se copia el texto del PDF que no se agregó aquí: el texto
 continuo se sigue ajustando a su ancho, las demás líneas conservan sus saltos de línea, alineadas a la izquierda.
 Ctrl+Z deshace un pegado, un corte o un duplicado en un solo paso.</li>
+<li><b>Las imágenes y formas propias de la página</b> (herramienta Editar objetos, o la selección del modo del mouse
+CAD): selecciónelas, con texto también si quiere, y use <b>Copiar</b> (Ctrl+C) o <b>Cortar</b> (Ctrl+X);
+<b>Pegar</b> (Ctrl+V) las coloca en la página donde está el mouse (su esquina superior izquierda allí), en cualquier
+página, en una página girada de otra manera o en otro documento abierto, exactamente como se veían: colores, grosores
+y guiones de las líneas, transparencia, imágenes con sus máscaras de transparencia, tramas, y un contorno de recorte
+que les pertenece (una franja de imagen en su propia ventana, como la escribe "Imprimir a PDF") o bajo el que estaban
+dibujadas. Vuelven a ser contenido propio de la página, así que Editar objetos las selecciona, las mueve, las copia y
+las elimina como antes (un grupo sigue siendo un grupo). En el mismo documento, una imagen se guarda una sola vez por
+muchas veces que se pegue, y el contenido pegado sigue en su capa. En otro documento, cada imagen se copia una sola vez
+(al pegar de nuevo se usa otra vez), y el contenido queda sin capa (el otro documento no tiene esa capa: póngalo en una
+con el panel Capas si lo necesita). En el modo CAD, las marcas seleccionadas con ellas también van. Los otros programas
+reciben una imagen de lo copiado (no de un dibujo grande, que tardaría demasiado). Ctrl+Z deshace un pegado o un corte
+en un solo paso.</li>
 <li><b>Imágenes y texto de otros programas:</b> Pegar coloca una imagen copiada (p. ej., una captura de pantalla)
 como una marca de imagen, o un texto copiado como un cuadro de texto, donde está el mouse. Con la herramienta
 Editar objetos, el texto copiado va a la propia página, con la fuente, el tamaño y el color de Agregar texto.</li>
@@ -920,7 +937,9 @@ de una vez; un grupo con grupos dentro sigue teniéndolos después de un Desagru
 para seleccionar todo lo que esté completamente dentro de él (Ctrl+arrastrar agrega a la selección). En los dibujos de CAD, una
 "forma" suele ser muchas líneas separadas, así que un cuadro es la manera más rápida de tomarla.</li>
 <li>Arrastre la selección para moverla. Las formas siguen al puntero (no son un cuadro vacío),
-y la página en sí solo cambia cuando suelta el botón, así que un grupo grande se sigue arrastrando con rapidez.
+y la página en sí solo cambia cuando suelta el botón, así que un grupo grande se sigue arrastrando con rapidez. Si
+la suelta sobre otra página, se mueve allí (su contorno muestra dónde queda); las marcas arrastradas con Seleccionar o
+con la herramienta Mano hacen lo mismo.
 Arrastre un controlador de esquina para cambiar su tamaño conservando sus proporciones
 (mantenga presionada Shift para estirarla libremente), o un controlador lateral para hacerla más ancha o más alta. Cambiar el tamaño de una forma también
 cambia la escala del grosor de sus líneas.</li>
@@ -929,9 +948,9 @@ Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
 en sentido contrario a las agujas del reloj, los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen
 (Ctrl+V la pega como una marca de imagen) y Guardar imagen como…. Esc anula la selección.</li>
 <li><b>Duplicar</b> (Ctrl+D) coloca copias del texto, las imágenes y las formas seleccionados un poco más abajo y a la
-derecha en la misma página, seleccionadas, para que pueda arrastrarlas a su lugar. Las imágenes y las formas solo se
-copian en su propia página: Copiar toma el texto seleccionado (o una sola imagen, como marca de imagen), no las
-formas.</li>
+derecha en la misma página, seleccionadas, para que pueda arrastrarlas a su lugar. <b>Copiar</b> (Ctrl+C),
+<b>Cortar</b> (Ctrl+X) y <b>Pegar</b> (Ctrl+V) las llevan a otra página o a otro documento (vea Copiar, cortar y
+pegar).</li>
 <li><b>Orden de apilamiento:</b> cuando los objetos propios de la página se tapan entre sí, seleccione uno y use
 <b>Traer al frente</b> (Ctrl+Shift+]), <b>Traer adelante</b> (Ctrl+]), <b>Enviar atrás</b>
 (Ctrl+[) o <b>Enviar al fondo</b> (Ctrl+Shift+[), desde el menú contextual u Organizar. Al frente y
@@ -1677,7 +1696,7 @@ cuadrícula...).</li>
 <tr><td>Ctrl+clic en un vínculo (cualquier herramienta, cualquier modo del mouse)</td><td>Abrir el vínculo, también en una marca convertida en vínculo (un clic normal con la herramienta Mano)</td></tr>
 <tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse: Mano, Seleccionar, o Editar objetos en el modo CAD) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
 <tr><td>Supr</td><td>Eliminar lo seleccionado: las marcas, y en el modo CAD también los objetos del dibujo</td></tr>
-<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas; con Editar objetos, el texto propio de la página con sus estilos)</td></tr>
+<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas; con Editar objetos, las imágenes, las formas y el texto propios de la página, a cualquier página o documento)</td></tr>
 <tr><td>Ctrl+A</td><td>Seleccionar todo el texto de la página (todas las páginas en la lista de páginas)</td></tr>
 <tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (con Editar objetos, el texto, las imágenes y las formas seleccionados; las páginas, en la lista de páginas)</td></tr>
 <tr><td>Supr (en la lista de páginas)</td><td>Eliminar las páginas seleccionadas</td></tr>

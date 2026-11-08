@@ -105,14 +105,19 @@ def _layer(ctx):
 def _instructions(data, found, ns, clip_paths):
     """[(bytes, layer name or None)] drawing objects ns on their own, in PDF space."""
     starts = [x["start"] for x in found]
-    groups = []                          # [key, [bodies], prefix, layer]
+    groups = []                          # [key, [bodies], head, layer]
+    heads = {}
     for n in sorted(set(ns)):
         d = found[n]
         s, e, ctm = d["start"], d["end"], d["ctm"]
         ctx = d.get("ctx") or ((), ())
-        clip_ids = list(ctx[1])
+        clip_ids = ctx[1]
         own = None
-        if clip_ids:
+        inner = clip_paths[clip_ids[-1]][0] if clip_ids and clip_ids[-1] < len(clip_paths) \
+            else None
+        if inner is not None and (n == 0 or inner > found[n - 1]["start"]):
+            # (its own clip is set after the object before it: a clip set earlier, as a
+            # sheet's frame, is many objects', and isn't looked for each of them)
             span = po._own_clip_span(data, starts, s, e)
             if span is not None:
                 at_q = _own_span_ctm(data, span[0], s, ctm)
@@ -120,30 +125,33 @@ def _instructions(data, found, ns, clip_paths):
                     own = (span, at_q)
         body = data[s:e] if own is None else data[own[0][0]:own[0][1]]
         mat = ctm if own is None else own[1]
-        # the clipping paths in effect that aren't its own
-        prefix, prev = [], pymupdf.Matrix(1, 0, 0, 1, 0, 0)
-        for cid in clip_ids:
-            if cid >= len(clip_paths):
-                continue
-            ps, pe, cctm = clip_paths[cid]
-            if ps is None or (own is not None and ps >= own[0][0]) or not _invertible(prev):
-                continue
-            prefix.append(_fmt(cctm * ~prev) + b"\n" + data[ps:pe] + b" n")
-            prev = cctm
-        if not _invertible(prev):
-            continue
         layer = _layer(ctx)
         state = d.get("state", b"")
-        key = (tuple(mat), state, tuple(clip_ids), layer, own is None)
+        key = (tuple(mat), state, clip_ids, layer, own[0][0] if own is not None else None)
         if groups and groups[-1][0] == key and own is None:
             groups[-1][1].append(body)
             continue
-        head = b"\n".join(prefix + [_fmt(mat * ~prev), state])
-        groups.append([key, [body], head, layer])
-    out = []
-    for _key, bodies, head, layer in groups:
-        out.append((b"q\n" + head + b"\n" + b"\n".join(bodies) + b"\nQ", layer))
-    return out
+        hk = (key[0], clip_ids, own[0][0] if own is not None else None)
+        head = heads.get(hk)
+        if head is None:
+            # the clipping paths in effect that aren't its own, then its matrix
+            prefix, prev = [], pymupdf.Matrix(1, 0, 0, 1, 0, 0)
+            for cid in clip_ids:
+                if cid >= len(clip_paths):
+                    continue
+                ps, pe, cctm = clip_paths[cid]
+                if ps is None or (own is not None and ps >= own[0][0]) or \
+                        not _invertible(prev):
+                    continue
+                prefix.append(_fmt(cctm * ~prev) + b"\n" + data[ps:pe] + b" n")
+                prev = cctm
+            head = heads[hk] = b"\n".join(prefix + [_fmt(mat * ~prev)]) \
+                if _invertible(prev) else False
+        if head is False:
+            continue
+        groups.append([key, [body], head + b"\n" + state, layer])
+    return [(b"q\n" + head + b"\n" + b"\n".join(bodies) + b"\nQ", layer)
+            for _key, bodies, head, layer in groups]
 
 
 _INLINE = re.compile(rb"((?<=\s)BI\s.*?\sID\s.*?\sEI(?=\s|$))", re.S)
@@ -358,9 +366,14 @@ def _renamed(content, swap):
                     for text, names in _outside_pictures(content))
 
 
-def picture(clip, box, dpi=150, limit=4_000_000):
+PICTURE_LIMIT = 300_000          # instructions' bytes up to which a picture is made (quick)
+
+
+def picture(clip, box, dpi=150, limit=2_000_000):
     """A PNG of the copied objects (for other programs), box: where they are as shown on
-    their page; or None."""
+    their page; or None (also for a big drawing: it isn't worth the wait)."""
+    if sum(len(b) for b, _l in clip["pieces"]) > PICTURE_LIMIT:
+        return None
     try:
         w, h = max(box.width, 1), max(box.height, 1)
         cdoc = pymupdf.open()

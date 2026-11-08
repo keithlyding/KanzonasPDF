@@ -682,6 +682,7 @@ class Battery:
             (self.op_copy_paste, 2), (self.op_restack, 2), (self.op_eraser, 2),
             (self.op_add_text, 3), (self.op_edit_text, 3), (self.op_styled_text, 3),
             (self.op_added_block, 3), (self.op_page_text_clip, 3),
+            (self.op_object_clip, 3), (self.op_across_pages, 2),
             (self.op_replace_text, 1), (self.op_scan, 1),
             (self.op_picture, 2), (self.op_objects, 4), (self.op_erase_content, 1),
             (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
@@ -1039,6 +1040,86 @@ class Battery:
                 v.paste()
         finally:
             v.clear_object_selection()
+            self.win.set_tool("hand")
+
+    def _foreign_objects(self):
+        """Pictures and shapes copied from another document (kept: pasted again and again,
+        its pictures are copied in once, and again after an undo took them away)."""
+        got = getattr(self, "_foreign", None)
+        if got is not None:
+            return got
+        from kanzonas import object_clip, page_objects
+        d = pymupdf.open()
+        p = d.new_page()
+        p.draw_rect((60, 60, 160, 120), color=(0, 0, 1), fill=(1, 1, 0), width=2,
+                    fill_opacity=0.6, dashes="[4 2] 0")
+        p.insert_image((60, 140, 140, 200), stream=png_bytes(30, 20, (200, 60, 60)))
+        ocg = d.add_ocg("Foreign layer", on=True)
+        p.draw_line((180, 60), (260, 120), color=(0, 0.5, 0), width=3, oc=ocg)
+        objs = page_objects.Objects(p)
+        clip = object_clip.take(d, p, [it["n"] for it in objs.items], objs, uid="foreign")
+        box = None
+        for it in objs.items:
+            r = pymupdf.Rect(it["rect"])
+            box = r if box is None else box | r
+        clip["disp_box"] = box
+        self._foreign = {"text": None, "objects": clip, "markups": None}
+        return self._foreign
+
+    def op_object_clip(self):
+        """Edit objects: the page's own pictures and shapes (and text) copied and pasted onto
+        this or another page, cut, or pasted from another document."""
+        v = self.v
+        i = self.page()
+        self.win.set_tool("editobjects")
+        try:
+            what = self.rnd.choice(["copy", "copy", "cut", "foreign"])
+            j = self.page()
+            if what == "foreign":
+                return None if v.paste_page_content(j, self.point(j, 60),
+                                                    self._foreign_objects()) else None
+            objs = v.content_objects(i)
+            pool = list(objs.items if objs else []) + \
+                (list(v.text_objects(i)) if self.rnd.random() < 0.3 else [])
+            if not pool:
+                return "none"
+            pick = self.rnd.sample(pool, self.rnd.randint(1, min(4, len(pool))))
+            v.select_objects(i, pick)
+            if what == "cut":
+                v.cut()
+                return None
+            if v.copy() not in ("pagecontent", "pagetext"):
+                return "none"
+            with mock.patch.object(v, "paste_target", lambda: (j, self.point(j, 60))):
+                v.paste()
+        finally:
+            v.clear_object_selection()
+            self.win.set_tool("hand")
+
+    def op_across_pages(self):
+        """CAD mode's Move or Copy (or a drag) of the page's own objects, and markups with
+        them, onto another page, as one step for both pages."""
+        v = self.v
+        if v.doc.page_count < 2:
+            return "none"
+        i = self.page()
+        j = self.rnd.choice([k for k in range(v.doc.page_count) if k != i])
+        self.win.set_tool("editobjects")
+        try:
+            objs = v.content_objects(i)
+            pool = list(objs.items if objs else []) + \
+                (list(v.text_objects(i)) if self.rnd.random() < 0.3 else [])
+            if not pool:
+                return "none"
+            v.select_objects(i, self.rnd.sample(pool, self.rnd.randint(1, min(4, len(pool)))))
+            marks = self.markups(i)
+            if marks and self.rnd.random() < 0.4:
+                v.select_xref(i, self.rnd.choice(marks))
+            d = pymupdf.Point(self.rnd.uniform(-60, 60), self.rnd.uniform(-60, 60))
+            v.transfer_selection(j, d, copy=self.rnd.random() < 0.4)
+        finally:
+            v.clear_object_selection()
+            v.clear_selection()
             self.win.set_tool("hand")
 
     def op_edit_text(self):
