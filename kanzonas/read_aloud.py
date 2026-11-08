@@ -373,6 +373,13 @@ def selftest_check():
             # (everything else it needs is in the build; libspeechd comes with the
             # computer's speech-dispatcher, which Read aloud asks for when it's missing)
             assert "libspeechd" in err, err
+            import ctypes
+            try:
+                ctypes.CDLL("libspeechd.so.2")
+            except OSError:
+                pass
+            else:
+                raise AssertionError("the computer has libspeechd, yet: " + err)
             notes.append("speechd plugin bundled; no libspeechd on this computer")
     else:
         name = pick_engine(names)

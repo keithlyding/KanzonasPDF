@@ -19,7 +19,7 @@ import pymupdf  # noqa: E402
 from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, Qt, Signal  # noqa: E402
 from PySide6.QtGui import QMouseEvent  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication, QDockWidget  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
@@ -79,7 +79,9 @@ class _Base(unittest.TestCase):
 class FullScreen(_Base):
     def test_enter_and_leave(self):
         w = self.w
-        self.assertTrue(w.menuBar().isVisible())
+        # (the menu bar may be hidden with the ribbon: View > Show menu bar, remembered)
+        menu = w.menuBar().isVisible()
+        panels = {d.objectName(): (d.isVisible(), d.width()) for d in w.findChildren(QDockWidget)}
         w.a_full_screen.trigger()
         APP.processEvents()
         self.assertTrue(w.isFullScreen())
@@ -95,9 +97,12 @@ class FullScreen(_Base):
         APP.processEvents()
         self.assertFalse(w.isFullScreen())
         self.assertFalse(w.a_full_screen.isChecked())
-        self.assertTrue(w.menuBar().isVisible())
+        self.assertEqual(w.menuBar().isVisible(), menu)
         self.assertTrue(w.statusBar().isVisible())
         self.assertTrue(w.dock.isVisible())
+        # every panel back as it was: shown or not, in front of its tab or not, its width
+        self.assertEqual({d.objectName(): (d.isVisible(), d.width())
+                          for d in w.findChildren(QDockWidget)}, panels)
 
     def test_escape_puts_the_tool_down_first(self):
         w = self.w
@@ -639,6 +644,30 @@ class ReadingView(_Base):
         self.assertEqual(int(w.settings.value("reflow_size")), pane.size)
         w.a_reflow.trigger()
         self.assertFalse(w.reading_dock.isVisible())
+
+    def test_the_other_panels_keep_their_widths_and_layout(self):
+        w = self.w
+        def panels():
+            # (the panels in sight, where they are: a panel behind another's tab is
+            # "visible" with a size of its own that doesn't show)
+            return {d.objectName(): d.geometry().getRect() for d in w.findChildren(QDockWidget)
+                    if d.objectName() != "reading" and not d.visibleRegion().isEmpty()}, \
+                self.v.viewport().width()
+        before = panels()
+        w.a_reflow.trigger()
+        APP.processEvents()
+        self.assertTrue(w.reading_dock.isVisible())
+        w.a_reflow.trigger()
+        APP.processEvents()
+        self.assertEqual(panels(), before)
+        # its close button puts it away the same way
+        w.a_reflow.trigger()
+        APP.processEvents()
+        self.assertNotEqual(panels(), before)
+        w.reading_dock.close()
+        APP.processEvents()
+        self.assertFalse(w.a_reflow.isChecked())
+        self.assertEqual(panels(), before)
 
     def view_page(self, i):
         self.v.goto_page(i)

@@ -64,8 +64,10 @@ def build_actions(win):
     win.a_read_doc = act(tr("Read the whole document"), lambda: read(win, "document"),
                          "Ctrl+Shift+B", tip=tr("Read the document aloud from the first page"))
     win.a_read_pause = act(tr("Pause or resume reading"), lambda: reader(win).toggle_pause(),
-                           "Ctrl+Shift+C")
-    win.a_read_stop = act(tr("Stop reading"), lambda: reader(win).stop(), "Ctrl+Shift+E")
+                           "Ctrl+Shift+C", tip=tr("Pause reading aloud, or go on from where "
+                                                  "it paused"))
+    win.a_read_stop = act(tr("Stop reading"), lambda: reader(win).stop(), "Ctrl+Shift+E",
+                          tip=tr("Stop reading aloud"))
     win.a_autoscroll = act(tr("Auto scroll"), lambda: toggle_autoscroll(win), "Ctrl+Shift+A",
                            tip=tr("Scroll the document slowly by itself; Up and Down arrows "
                                   "change the speed, Escape stops"))
@@ -230,6 +232,9 @@ class _FullScreen(QObject):
 
     def enter(self):
         win = self.win
+        # (the panels and toolbars as they are, put back exactly on the way out: shown again
+        # one by one, a panel tabbed with another came back in front of it, at its width)
+        self.state = win.saveState()
         widgets = [win.menuBar(), win.statusBar(), win.tabs.tabBar()]
         widgets += [t for t in win.findChildren(QToolBar) if t.parent() is win]
         widgets += [d for d in win.findChildren(QDockWidget) if d.parent() is win and
@@ -250,15 +255,20 @@ class _FullScreen(QObject):
         bar = getattr(win, "_fs_bar", None)
         if bar is not None:
             bar.hide()
-        for w in self.hidden:
-            if shiboken6.isValid(w):
-                w.show()
-        self.hidden = []
+        reading = getattr(win, "reading_dock", None)
+        keep = reading is not None and reading.isVisible()
         if not self.was_full:
             if self.was_max:
                 win.showMaximized()
             else:
                 win.showNormal()
+        for w in self.hidden:
+            if shiboken6.isValid(w) and not isinstance(w, (QToolBar, QDockWidget)):
+                w.show()
+        self.hidden = []
+        win.restoreState(self.state)
+        if keep and not reading.isVisible():
+            reading.show()
 
     def eventFilter(self, obj, e):
         if e.type() == QEvent.MouseMove and self.win.isActiveWindow():
@@ -554,32 +564,80 @@ class ReadingPane(QWidget):
         bar.setValue(0)
 
 
+class _ReadingDock(QDockWidget):
+    def __init__(self, win):
+        super().__init__(tr("Reading view"), win)
+        self.win = win
+
+    def closeEvent(self, e):
+        super().closeEvent(e)
+        put_away(self.win)          # (its close button)
+
+
 def reading_pane(win):
     dock = getattr(win, "reading_dock", None)
     if dock is None:
-        dock = win.reading_dock = QDockWidget(tr("Reading view"), win)
+        dock = win.reading_dock = _ReadingDock(win)
         dock.setObjectName("reading")
         dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetMovable |
                          QDockWidget.DockWidgetFloatable)
         win.reading_pane = ReadingPane(win)
         dock.setWidget(win.reading_pane)
-        win.addDockWidget(Qt.RightDockWidgetArea, dock)
-        dock.visibilityChanged.connect(lambda on: (sync(win), on and win.reading_pane.refresh()))
-        width = paths.stored_int(win.settings, "reflow_width", 420, 200, 2000)
-        win.resizeDocks([dock], [width], Qt.Horizontal)
         dock.hide()
+        dock.visibilityChanged.connect(lambda on: (sync(win), on and win.reading_pane.refresh()))
     return dock
+
+
+def _side_panels(win):
+    """(dock, width) of the panels shown at the window's sides."""
+    return [(d, d.width()) for d in win.findChildren(QDockWidget)
+            if d.parent() is win and d.objectName() != "reading" and d.isVisible() and
+            not d.isFloating() and win.dockWidgetArea(d) in (Qt.LeftDockWidgetArea,
+                                                              Qt.RightDockWidgetArea)]
+
+
+def show_reading(win):
+    """The Reading view: a column of its own at the right, beside the panels there. It's in the
+    window's panel layout only while shown, and the other panels get their widths back when
+    it goes (in the layout while hidden, it was saved with the window's panels, and a window
+    opened later restored that layout with the panels squeezed)."""
+    dock = reading_pane(win)
+    if dock.isVisible():
+        return dock
+    win._reading_beside = _side_panels(win)
+    win.addDockWidget(Qt.RightDockWidgetArea, dock, Qt.Horizontal)
+    dock.show()
+    dock.raise_()
+    width = paths.stored_int(win.settings, "reflow_width", 420, 200, 2000)
+    win.resizeDocks([dock], [width], Qt.Horizontal)
+    win.reading_pane.refresh(force=True)
+    return dock
+
+
+def put_away(win):
+    """The Reading view closed: out of the panel layout, the other panels as they were."""
+    dock = getattr(win, "reading_dock", None)
+    if dock is None or not shiboken6.isValid(dock) or win.dockWidgetArea(dock) == \
+            Qt.NoDockWidgetArea:
+        return
+    if dock.isVisible() or dock.width() > 1:
+        win.settings.setValue("reflow_width", dock.width())
+    dock.hide()
+    win.removeDockWidget(dock)
+    beside = [(d, w) for d, w in getattr(win, "_reading_beside", [])
+              if shiboken6.isValid(d) and d.isVisible()]
+    if beside:
+        win.resizeDocks([d for d, _w in beside], [w for _d, w in beside], Qt.Horizontal)
+    win._reading_beside = []
+    sync(win)
 
 
 def toggle_reflow(win):
     dock = reading_pane(win)
     if dock.isVisible():
-        win.settings.setValue("reflow_width", dock.width())
-        dock.hide()
+        put_away(win)
     else:
-        dock.show()
-        dock.raise_()
-        win.reading_pane.refresh(force=True)
+        show_reading(win)
     sync(win)
 
 
@@ -603,3 +661,4 @@ def window_closing(win):
     p = getattr(win, "_presentation", None)
     if p is not None and shiboken6.isValid(p):
         p.close()
+    put_away(win)                   # (the Reading view isn't in the panel layout saved)

@@ -8701,3 +8701,9 @@ msgstr "Pantalla"
 
 msgid "Read"
 msgstr "Leer"
+
+msgid "Pause reading aloud, or go on from where it paused"
+msgstr "Pausar la lectura en voz alta, o seguir desde donde se pausó"
+
+msgid "Stop reading aloud"
+msgstr "Detener la lectura en voz alta"
