@@ -22,6 +22,11 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Deleting a form field or its page leaves nothing of the field in the file.
 - Combine files keeps where each bookmark goes and its style; after Replace pages a bookmark still goes to its spot on the new drawing.
 - The downloads are smaller: the video libraries Read aloud doesn't need are left out.
+- Security: a PDF or an imported comment file can no longer make an image stamp bring a picture from elsewhere on your computer or network into the document; image stamps come only from your stamp library.
+- Redaction: text tagged inside a drawing of its own, an export made before Search & redact in a batch, and a Presentation still showing the old page could all keep redacted words; they no longer do.
+- Batch processing never writes outside the chosen output folder, even through a link placed there, and never changes your originals; a skipped or failed file is left out of the combined PDF, so Bates numbers are never used twice.
+- Files with damaged tags, bookmarks nested very deep, impossible comment positions, huge stamps or formulas, or lists that loop no longer hang or stop with an error. Importing thousands of comments is fast, and so is editing a large tagged document.
+- Cutting a comment and pasting it elsewhere keeps its replies and statuses; a sticky note added to an accessible document keeps it accessible; a table of contents inserted in a tagged PDF is tagged as one.
 
 ## 1.10 (es)
 
@@ -38,6 +43,11 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Eliminar un campo de formulario o su página no deja nada del campo en el archivo.
 - Combinar archivos conserva a qué lugar lleva cada marcador y su estilo; después de Reemplazar páginas, un marcador sigue llevando a su lugar en el dibujo nuevo.
 - Las descargas son más pequeñas: se dejan fuera las bibliotecas de video que Leer en voz alta no necesita.
+- Seguridad: un PDF o un archivo de comentarios importado ya no puede hacer que un sello de imagen traiga al documento una imagen de otro lugar de su computadora o de la red; los sellos de imagen salen solo de su biblioteca de sellos.
+- Censura: el texto etiquetado dentro de un dibujo propio, una exportación hecha antes de Buscar y censurar en un lote y una Presentación que seguía mostrando la página anterior podían conservar palabras censuradas; ya no.
+- El procesamiento por lotes nunca escribe fuera de la carpeta de salida elegida, ni siquiera a través de un vínculo puesto allí, y nunca cambia sus originales; un archivo omitido o con error queda fuera del PDF combinado, así que los números Bates nunca se repiten.
+- Los archivos con etiquetas dañadas, marcadores anidados a mucha profundidad, posiciones imposibles en comentarios, sellos o fórmulas enormes, o listas que se repiten ya no se bloquean ni se detienen con un error. Importar miles de comentarios es rápido, y también editar un documento etiquetado grande.
+- Cortar un comentario y pegarlo en otro lugar conserva sus respuestas y estados; una nota adhesiva agregada a un documento accesible lo mantiene accesible; una tabla de contenido insertada en un PDF etiquetado se etiqueta como tal.
 
 ## 1.9.1
 
