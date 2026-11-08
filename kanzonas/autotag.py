@@ -344,7 +344,7 @@ class Piece:
     serial)); g0, g1: its glyphs in the page's glyph sequence; box: (x0, y0, x1, y1) in
     the page as shown, for what isn't text."""
     __slots__ = ("kind", "start", "end", "level", "mc", "g0", "g1", "box", "op", "strings",
-                 "elems", "codes", "has_image", "font", "tr", "form_text", "ctm")
+                 "elems", "codes", "has_image", "font", "tr", "form_text", "ctm", "xobj")
 
     def __init__(self, kind, start, end, level, mc):
         self.kind, self.start, self.end, self.level, self.mc = kind, start, end, level, mc
@@ -359,6 +359,7 @@ class Piece:
         self.tr = 0
         self.form_text = 0
         self.ctm = None
+        self.xobj = 0                   # (a form: its xref)
 
 
 class Unsupported(Exception):
@@ -413,6 +414,11 @@ class PageReader:
         self._fonts = {}
         self._forms = {}
         self.text_forms = 0
+        # the forms drawn (also inside forms): {form xref: [boxes as shown]}, and
+        # {form xref: {xrefs of the forms it draws}} (tag_upkeep: tags inside forms)
+        self.form_boxes = {}
+        self.form_kids = {}
+        self._form_stack = []
 
     def _page_resources(self, obj):
         seen = 0
@@ -648,6 +654,7 @@ class PageReader:
                     has_image = has_image or img
                     if top:
                         p = Piece("form", s, e, level[0], tuple(mc))
+                        p.xobj = m.pdf_to_num(xo_ref)
                         p.g0 = self.glyphs + glyphs
                         p.g1 = p.g0 + n
                         p.form_text = n
@@ -676,12 +683,17 @@ class PageReader:
             v = [m.pdf_to_real(m.pdf_array_get(bb, i)) for i in range(4)]
             box = _box([v[0], v[2]], [v[1], v[3]], _mat_mul(full, self.to_shown))
         num = m.pdf_to_num(ref)
+        if num:
+            self.form_boxes.setdefault(num, []).append(box)
+            if self._form_stack:
+                self.form_kids.setdefault(self._form_stack[-1], set()).add(num)
         key = (num, id(state[0]), state[1] == 7)
         got = self._forms.get(key)
         if got is None:
             if depth > 12 or num in getattr(self, "_running", ()):
                 return 0, False, box
             self._running = getattr(self, "_running", set()) | {num}
+            self._form_stack.append(num)
             try:
                 data = bytes(m.fz_buffer_extract_copy(m.pdf_load_stream(ref))) \
                     if m.pdf_is_stream(ref) else b""
@@ -690,7 +702,10 @@ class PageReader:
             fres = _get(xo, "Resources")
             if not m.pdf_is_dict(fres):
                 fres = res
-            got = self._run(data, fres, full, top=False, state=state, depth=depth + 1)
+            try:
+                got = self._run(data, fres, full, top=False, state=state, depth=depth + 1)
+            finally:
+                self._form_stack.pop()
             self._running.discard(num)
             self._forms[key] = got
         return got[0], got[1], box

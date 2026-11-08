@@ -88,20 +88,10 @@ def _catalog(doc):
 
 
 def number_tree(obj, out=None, depth=0):
-    """{number: value (unresolved)} of a number tree."""
-    out = {} if out is None else out
-    obj = m.pdf_resolve_indirect(obj)
-    if not m.pdf_is_dict(obj) or depth > 32:
-        return out
-    nums = _get(obj, "Nums")
-    if m.pdf_is_array(nums):
-        for i in range(0, m.pdf_array_len(nums) - 1, 2):
-            k = m.pdf_array_get(nums, i)
-            if m.pdf_is_int(k):
-                out[m.pdf_to_int(k)] = m.pdf_array_get(nums, i + 1)
-    for kid in _items(m.pdf_dict_gets(obj, "Kids")):
-        number_tree(kid, out, depth + 1)
-    return out
+    """{number: value (unresolved)} of a number tree (tag_upkeep.number_tree: each node
+    read once)."""
+    from .tag_upkeep import number_tree as read
+    return read(obj, out, depth)
 
 
 # ---- the structure tree ----------------------------------------------------------------
@@ -1206,20 +1196,28 @@ def page_order(doc, index):
     content = marked_content(doc, index)
     out = []
 
+    # (both walk the elements in n without recursing: a tree thousands of elements deep,
+    # one inside the other, made Reading order fail)
     def gather(n, acc_box, acc_text):
-        for p, mc in n.mcids:
-            if p == index and mc in content:
-                b, t = content[mc]
-                if b is not None:
-                    acc_box[0] = b if acc_box[0] is None else acc_box[0] | b
-                acc_text.append(t)
-        for k in n.kids:
-            gather(k, acc_box, acc_text)
+        todo = [n]
+        while todo:
+            n = todo.pop()
+            for p, mc in n.mcids:
+                if p == index and mc in content:
+                    b, t = content[mc]
+                    if b is not None:
+                        acc_box[0] = b if acc_box[0] is None else acc_box[0] | b
+                    acc_text.append(t)
+            todo.extend(reversed(n.kids))
 
     def on_page(n):
-        if any(p == index for p, _mc in n.mcids):
-            return True
-        return any(on_page(k) for k in n.kids)
+        todo = [n]
+        while todo:
+            n = todo.pop()
+            if any(p == index for p, _mc in n.mcids):
+                return True
+            todo.extend(n.kids)
+        return False
     stack = [n for n in tree.nodes if n.parent is None][::-1]
     while stack:
         n = stack.pop()
