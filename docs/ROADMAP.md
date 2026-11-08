@@ -43,6 +43,11 @@ The owner sets this list; nothing below is promised until it's here.
      `claude/comments`.
    - Accessibility (Check accessibility against PDF/UA, Auto-tag, alt text, reading order):
      `claude/accessibility`.
+   - Text editing (owner, 8 Nov: "Editing text is a pain... I can't copy a text box and move it
+     elsewhere"): what Add text writes is remembered as one block (a /KZText marked-content
+     marker holding numbers only, never the words, so redaction can take them all), Edit text
+     opens all of it; Edit objects copies, cuts, pastes and duplicates the page's text with its
+     styles, also into another document: `claude/text-editing-fixes`.
 2. **French, German and Portuguese** (the app and the manual), after 1.10's features (owner,
    6 Nov).
 3. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath

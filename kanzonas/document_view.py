@@ -5213,15 +5213,21 @@ class DocumentView(QScrollArea):
         if index not in self._added_cache:
             from . import added_text
             page = self.doc[index]
-            self._added_cache[index] = added_text.find(page, self._lines(index)) \
+            blocks = added_text.find(page, self._lines(index)) \
                 if added_text.has_markers(page) else []
-        return self._added_cache[index]
+            # (and which block each line is in: the pointer over Edit text asks often)
+            self._added_cache[index] = (blocks, {id(ln): b for b in blocks
+                                                 for _r, ln in b.lines})
+        return self._added_cache[index][0]
 
     def _added_block(self, index, line):
         """The marked block holding line, when it reads upright on screen (what Edit text
         opens whole), or None."""
         from . import added_text
-        blk = added_text.block_of(self._added_blocks(index), line)
+        blocks = self._added_blocks(index)
+        blk = self._added_cache[index][1].get(id(line)) if blocks else None
+        if blk is None and blocks:
+            blk = added_text.block_of(blocks, line)     # (a line read another time)
         if blk is None or (blk.props["rotate"] - self.doc[index].rotation) % 360:
             return None
         return blk
