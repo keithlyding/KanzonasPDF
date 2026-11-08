@@ -2,8 +2,11 @@
 copy of it it still has (from another page that shows all of it, or another zoom), and a copy
 decoded for this page alone came out a few levels apart along its stripes: a picture pasted or
 moved onto another page of the same document (Edit objects, CAD mode) looked different in the
-view from the same page drawn afresh (random battery, seed 6). Each page's pictures are now
-decoded for it first (PageWidget._predecode).
+view from the same page drawn afresh (random battery, seed 6). Decoding the pages' pictures
+first for each render (1.9.1) wasn't enough: once MuPDF's store let that copy go, a page drawn
+again decoded its picture another way than a view opened afresh did (1.10, seed 2103). Now a
+page's content is drawn with its pictures read and decoded afresh, as a document just opened
+draws them (PageWidget._content).
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_render_order
 """
@@ -94,6 +97,49 @@ class RenderOrder(unittest.TestCase):
             v.close_doc()
             v.deleteLater()
         self.assertFalse(_differ(zoomed, self.drawn(path, [1], zoom=0.25)))
+
+    def test_a_page_drawn_again_after_its_pictures_were_let_go(self):
+        # (1.10, random battery seed 2103 --tagged: a picture cropped partly off its page was
+        # decoded whole for the page once (1.9.1's predecode); MuPDF's store let that go and
+        # the page was drawn again, its picture now decoded only where it shows, while a
+        # view opened afresh decoded it whole: a pixel apart along its stripes)
+        path = os.path.join(tempfile.mkdtemp(), "cropped.pdf")
+        d = pymupdf.open()
+        d.new_page(width=792, height=612)
+        page = d[0]
+        page.insert_image(page.rect, stream=scan_like("png"))
+        page.set_cropbox(pymupdf.Rect(36.7, 36.7, 755.3, 575.3))
+        d.save(path)
+        d.close()
+        pymupdf.TOOLS.store_shrink(100)
+        v = DV.DocumentView(path)
+        try:
+            v.resize(900, 700)
+            v.set_zoom(0.8737)
+            page_widget.check_content(v, 0)
+            v.pages[0]._render()
+            # memory runs short: MuPDF's store and the view's renders let go of the page
+            pymupdf.TOOLS.store_shrink(100)
+            v._rc.drop_page(0)
+            v.pages[0]._render()
+            again = v.pages[0]._pix.toImage()
+        finally:
+            v.dirty = False
+            v.close_doc()
+            v.deleteLater()
+        pymupdf.TOOLS.store_shrink(100)
+        v = DV.DocumentView(path)
+        try:
+            v.resize(900, 700)
+            v.set_zoom(0.8737)
+            page_widget.check_content(v, 0)
+            v.pages[0]._render()
+            fresh = v.pages[0]._pix.toImage()
+        finally:
+            v.dirty = False
+            v.close_doc()
+            v.deleteLater()
+        self.assertFalse(_differ(again, fresh))
 
 
 if __name__ == "__main__":
