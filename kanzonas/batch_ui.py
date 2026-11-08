@@ -666,7 +666,7 @@ class BatchWindow(QDialog):
     def _restore(self):
         try:
             out = json.loads(self.settings.value("batch/output", "") or "{}")
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, RecursionError):
             out = {}
         if not isinstance(out, dict):
             out = {}
@@ -682,7 +682,7 @@ class BatchWindow(QDialog):
                                    .lower() == "true")
         try:
             steps = json.loads(self.settings.value("batch/steps", "") or "[]")
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, RecursionError):
             steps = []
         self.set_steps(B.normalized(steps))
 

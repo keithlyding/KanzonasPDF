@@ -220,7 +220,8 @@ class SearchAndRedact(Folder):
         # only outside the pages: removed from there (as Search & redact offers), and said
         self.assertEqual(details[4], "Not found on the pages; removed from 4 other place(s) "
                                      "in the file (layer names, web addresses, form data, "
-                                     "alternate text...)")
+                                     "alternate text...); hidden information removed "
+                                     "(metadata, attachments, hidden text, scripts)")
         self.assertEqual(_leaks(_all_bytes(b.results[4].outputs[0])), [])
         with pymupdf.open(b.results[2].outputs[0]) as d:
             self.assertEqual([c["text"] for c in d.layer_ui_configs()],
