@@ -3,6 +3,8 @@ Check accessibility) and bookmarks, fixed:
 
 - a parent tree whose node lists itself among its /Kids (twice): Check accessibility and
   every edit of the document never finished (each path to the node was read again: 2^32);
+- Save as PDF/A on a file whose attachments' name tree lists a node among its own kids
+  (or a layer order array inside itself) never finished, its memory growing;
 - a structure tree thousands of elements deep, one inside the other: an edit's tags were
   left out of step (the tags were walked recursing, which ran out of stack and the edit
   went on without them) and Reading order failed;
@@ -160,6 +162,21 @@ class Robustness(Case):
         d[0].add_text_annot((200, 200), "note")
         tag_upkeep.refresh(d, [0])
         self.assertEqual(tag_upkeep.problems(d), [])
+
+    def test_save_as_pdfa_reads_a_name_tree_listing_itself_once(self):
+        from kanzonas import pdfa
+        d = pymupdf.open()
+        d.new_page()
+        d.embfile_add("a.txt", b"hello")
+        tree = m.pdf_dict_getp(m.pdf_dict_gets(m.pdf_trailer(tag_upkeep._pdf(d)), "Root"),
+                               "Names/EmbeddedFiles")
+        x = d.get_new_xref()
+        d.update_object(x, "<<>>")
+        d.xref_set_key(x, "Kids", "[%d 0 R %d 0 R]" % (x, x))
+        kids = m.pdf_new_array(tag_upkeep._pdf(d), 1)
+        m.pdf_array_push(kids, m.pdf_new_indirect(tag_upkeep._pdf(d), x, 0))
+        m.pdf_dict_puts(m.pdf_resolve_indirect(tree), "Kids", kids)
+        self.assertEqual(len(pdfa._name_tree_entries(m.pdf_resolve_indirect(tree))), 1)
 
     def test_a_tree_thousands_of_elements_deep(self):
         d, n = simple()
