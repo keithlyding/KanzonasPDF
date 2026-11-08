@@ -5720,7 +5720,8 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
         w = self.pages[index]
         top = pymupdf.Point(pt) * page.rotation_matrix          # displayed coordinates
-        disp = pymupdf.Rect(top.x, top.y - size * 0.85, top.x + size * 12, top.y + size * 0.35)
+        # (as wide as one letter: the box grows and shrinks with what's typed)
+        disp = pymupdf.Rect(top.x, top.y - size * 0.85, top.x + size * 0.6, top.y + size * 0.35)
         from . import text_styles
         start = text_styles.add_style(family, props.get("bold"), props.get("italic"), size,
                                       annotations.to_rgb(props.get("text_color")) or (0, 0, 0))

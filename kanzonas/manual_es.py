@@ -953,8 +953,13 @@ página, como Agregar texto de Acrobat: los visores de PDF no pueden cambiarlo, 
 Elija la fuente (cualquier fuente instalada, además de Negrita y Cursiva), el tamaño y el color en Propiedades. El
 <b>Tamaño de fuente</b> también se puede cambiar mientras escribe: el texto se muestra en el tamaño nuevo de inmediato.
 Los botones de estilo sobre el cuadro dan estilo a palabras sueltas, como en Editar texto (vea <b>Negrita, cursiva,
-subrayado y color para palabras sueltas</b> más abajo). Arrastre un controlador lateral del cuadro para hacerlo más
-estrecho, y las palabras se ajustan a su ancho. Solo se guardan en el archivo las letras que se usan. Lo que escribe
+subrayado y color para palabras sueltas</b> más abajo). El cuadro es tan ancho como lo que escribe, y crece y
+se estrecha con ello. Arrastre un controlador lateral del cuadro para hacerlo más
+estrecho, y las palabras se ajustan a su ancho. Solo se guardan en el archivo las letras que se usan.
+<br><b>Texto pequeño con la vista alejada</b> (un plano visto entero): el texto que sería demasiado pequeño para leerse
+con ese zoom, con Agregar texto o Editar texto, se escribe ampliado en un cuadro justo debajo de su lugar, y una vista
+previa a su tamaño real, con un contorno discontinuo fino, muestra exactamente dónde va. Arrastre el cuadro para
+mover el texto; la vista previa lo sigue. Lo que escribe
 Agregar texto se recuerda como un solo bloque: Editar texto lo vuelve a abrir entero (vea <b>Editar el texto que
 agregó</b> más abajo).</li>
 <li><b>Editar el texto que agregó:</b> con la herramienta Editar texto, haga clic en cualquier línea del texto escrito

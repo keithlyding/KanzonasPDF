@@ -1007,6 +1007,9 @@ class PageWidget(QWidget):
         if self.view._cad_cmd is not None:
             self.view._cad_cmd.paint(self, p)
         self._paint_snap_mark(p)
+        ed = self.view._inline
+        if ed is not None and ed.parentWidget() is self:
+            ed.paint_preview(p)             # (small text typed enlarged: where it goes)
 
         if self.view.current_page() == self.index and self.view.page_count() > 1:
             p.setPen(QPen(QColor(0, 120, 215), 1))

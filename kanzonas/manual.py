@@ -971,9 +971,14 @@ itself, like Acrobat's Add Text: PDF viewers can't change it, and Edit text chan
 Pick the font (any installed font, plus Bold and Italic), size and color in Properties. The
 <b>Font size</b> can also be changed while you type: the text shows at the new size right away.
 The style buttons above the box style single words, as in Edit text (see <b>Bold, italic,
-underline and color for single words</b> below). Drag a side handle of the box to make it
+underline and color for single words</b> below). The box is as wide as what you type,
+growing and shrinking with it. Drag a side handle of the box to make it
 narrower, and the words wrap to its width. Only the letters used are stored in the
-file. What Add text writes is remembered as one block: Edit text opens all of it again (see
+file.
+<br><b>Small text when zoomed out</b> (a drawing sheet seen whole): text that would be too small
+to read at the zoom, with Add text or Edit text, is typed enlarged in a box just below its
+spot, and a preview at its true size, in a thin dashed outline, shows exactly where it goes.
+Drag the box to move the text; the preview follows. What Add text writes is remembered as one block: Edit text opens all of it again (see
 <b>Edit text you added</b> below).</li>
 <li><b>Edit text you added:</b> with the Edit text tool, click any line of text written with
 Add text (or pasted with Edit objects): all of it opens, in a box of the width its words wrap

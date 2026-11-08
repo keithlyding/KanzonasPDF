@@ -15,7 +15,7 @@ takes that word's style; text typed into an empty box takes the paragraph's main
 import re
 import sys
 
-from PySide6.QtCore import Qt, Signal, QEvent, QRect
+from PySide6.QtCore import Qt, Signal, QEvent, QPoint, QPointF, QRect, QRectF, QSizeF
 from PySide6.QtGui import (QColor, QFont, QFontDatabase, QFontMetricsF, QPainter, QPen,
                            QTextCharFormat, QTextCursor, QTextFormat, QTextOption)
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QTextEdit, QToolButton, QVBoxLayout
@@ -24,6 +24,11 @@ from .i18n import tr
 
 MARGIN = 7          # the outline you grab to move the text (px around the text)
 HANDLE = 7          # handle squares on the corners and side middles
+# Text smaller than SMALL_PX on screen (a drawing sheet zoomed out) is typed enlarged to
+# READABLE_PX in a box just below the spot, and a true-size preview shows where it goes (the
+# box used to show it at 6 px at least, many times its real size, around the spot)
+SMALL_PX = 8.0
+READABLE_PX = 13.0
 
 # a character's PDF style, kept in its format (text_styles.Style's fields)
 P_FONT = QTextFormat.UserProperty + 1
@@ -127,12 +132,16 @@ class StyleBar(QFrame):
         self.raise_()
 
     def place(self):
-        """Just above the editor (below it when there's no room above)."""
+        """Just above the editor (below it when there's no room above, and on the side away
+        from the true-size preview of enlarged small text)."""
         e = self.editor
         self.adjustSize()
-        y = e.y() - self.height() - 2
-        if y < 0:
-            y = e.y() + e.height() + 2
+        above = e.y() - self.height() - 2
+        below = e.y() + e.height() + 2
+        if e.enlarged() and e.y() > e.home.y():
+            y = below                       # (the preview is above the box)
+        else:
+            y = above if above >= 0 else below
         x = max(0, min(e.x() + MARGIN, self.parentWidget().width() - self.width()))
         self.move(x, y)
         self.raise_()
@@ -182,6 +191,9 @@ class InlineEditor(QFrame):
         self.base = base
         self.zoom = float(zoom or (pixel_size / base.size if base.size else 1.0))
         self._scale = pixel_size / max(0.01, base.size * self.zoom)
+        # where the text goes on the page (widget coords), and how much bigger it's shown
+        self.home = QRectF(text_rect)
+        self._mag = READABLE_PX / max(0.5, pixel_size) if pixel_size < SMALL_PX else 1.0
         lay = QVBoxLayout(self)
         lay.setContentsMargins(MARGIN, MARGIN, MARGIN, MARGIN)
         lay.setSpacing(0)
@@ -189,7 +201,7 @@ class InlineEditor(QFrame):
         self.text.setAcceptRichText(False)          # (pasted text takes the style there)
         # a hint ("sans" / "serif" / "mono") from the line edited, or a family picked in Properties
         f = QFont(_HINT.get(family, family))
-        f.setPixelSize(max(6, int(round(pixel_size))))
+        f.setPixelSize(max(6, int(round(pixel_size * self._mag))))
         f.setBold(bool(base.bold))
         self.text.setFont(f)
         self.text.setFrameShape(QFrame.NoFrame)
@@ -209,15 +221,22 @@ class InlineEditor(QFrame):
         self.setFocusPolicy(Qt.ClickFocus)
         self.setFocusProxy(self.text)
 
-        width = max(text_rect.width(), self._natural_width()) + 2 * MARGIN + 6
+        width = max(text_rect.width() * self._mag, self._natural_width()) + 2 * MARGIN + 6
         height = max(1, text.count("\n") + 1) * QFontMetricsF(f).lineSpacing() + 2 * MARGIN + 4
         # keep the editor inside the page horizontally
         width = min(width, max(80, parent.width() - text_rect.x() + MARGIN))
-        self.setGeometry(int(text_rect.x() - MARGIN), int(text_rect.y() - MARGIN),
-                         int(width), int(height))
+        y = text_rect.y() - MARGIN
+        if self.enlarged():
+            # just below the true-size spot (above it near the page's bottom)
+            y = text_rect.bottom() + 6
+            if y + height > parent.height() - 4:
+                y = max(0, text_rect.y() - height - 6)
+        self.setGeometry(int(text_rect.x() - MARGIN), int(y), int(width), int(height))
         self._start_pos = self.pos()
         self._start_width = self.width()
         self.text.textChanged.connect(self._changed)
+        if self.enlarged():
+            self.text.textChanged.connect(self.parentWidget().update)      # (the preview)
         self.bar = StyleBar(self) if tools else None
         self.text.currentCharFormatChanged.connect(self._format_moved)
         self.text.selectionChanged.connect(self._format_moved)
@@ -233,6 +252,40 @@ class InlineEditor(QFrame):
             self.text.selectAll()
         self._format_moved(self.text.currentCharFormat())
 
+    def enlarged(self):
+        """The text is shown bigger than it will be on the page (it would be too small to
+        read at this zoom), with a true-size preview at its spot."""
+        return self._mag > 1.0
+
+    def preview_origin(self):
+        """Where the text's top left goes on the page now (widget coords): its spot, moved
+        as the box has been dragged."""
+        return self.home.topLeft() + QPointF(self.pos() - self._start_pos)
+
+    def paint_preview(self, p):
+        """Draw the text at its true size where it goes (for enlarged small text): white under
+        it (the text it replaces), the words, and a thin outline. p: a painter on the page."""
+        if not self.enlarged() or self._done:
+            return
+        doc = self.text.document()
+        k = 1.0 / self._mag
+        o = self.preview_origin()
+        size = QSizeF(min(doc.size().width(), doc.idealWidth()) * k, doc.size().height() * k)
+        area = QRectF(o, size)
+        if self.pos() == self._start_pos:
+            area = area.united(self.home)       # (the text being replaced, at its spot)
+        p.save()
+        p.fillRect(area.adjusted(-1, -1, 1, 1), Qt.white)
+        p.translate(o)
+        p.scale(k, k)
+        doc.drawContents(p)
+        p.restore()
+        p.save()
+        p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+        p.setBrush(Qt.NoBrush)
+        p.drawRect(QRectF(o, size).adjusted(-1.5, -1.5, 1.5, 1.5))
+        p.restore()
+
     # ---- styles ---------------------------------------------------------------------
     def format_for(self, style):
         """The character format showing a text_styles.Style on screen."""
@@ -242,7 +295,7 @@ class InlineEditor(QFrame):
         else:
             family = screen_family(style, self._hint if not style.font else None)
         f = QFont(family)
-        f.setPixelSize(max(6, int(round(style.size * self.zoom * self._scale))))
+        f.setPixelSize(max(6, int(round(style.size * self.zoom * self._scale * self._mag))))
         f.setBold(bool(style.bold))
         f.setItalic(bool(style.italic))
         f.setUnderline(bool(style.underline))
@@ -440,9 +493,15 @@ class InlineEditor(QFrame):
         self._grow()
 
     def _place_cursor(self):
-        """Put the text cursor where the page was clicked."""
-        c = self.text.cursorForPosition(self.text.mapFrom(self.parentWidget(),
-                                                          self._click.toPoint()))
+        """Put the text cursor where the page was clicked (on enlarged small text: the
+        same place in the enlarged text)."""
+        click = QPointF(self._click)
+        if self.enlarged():
+            d = (click - self.preview_origin()) * self._mag
+            pt = self.text.viewport().mapTo(self.parentWidget(), QPoint(0, 0))
+            click = QPointF(pt) + d
+        c = self.text.cursorForPosition(self.text.viewport().mapFrom(self.parentWidget(),
+                                                                     click.toPoint()))
         self.text.setTextCursor(c)
 
     def fix_width(self, width_px):
@@ -450,7 +509,7 @@ class InlineEditor(QFrame):
         it as it will on the page (drag a side handle to change the width)."""
         self.resized_by_user = True
         self._fixed = True
-        self.resize(int(width_px + 2 * MARGIN + 6), self.height())
+        self.resize(int(width_px * self._mag + 2 * MARGIN + 6), self.height())
         self._start_width = self.width()
         self._grow()
         if self._click is not None:
@@ -462,7 +521,7 @@ class InlineEditor(QFrame):
         word scaled alike)."""
         self._scale = pixel_size / max(0.01, self.base.size * self.zoom)
         f = self.text.font()
-        f.setPixelSize(max(6, int(round(pixel_size))))
+        f.setPixelSize(max(6, int(round(pixel_size * self._mag))))
         self.text.setFont(f)
         cur = QTextCursor(self.text.document())
         pos = self.text.textCursor().position()
@@ -512,6 +571,8 @@ class InlineEditor(QFrame):
         super().moveEvent(e)
         if getattr(self, "bar", None) is not None:
             self.bar.place()
+        if getattr(self, "_mag", 1.0) > 1.0:
+            self.parentWidget().update()        # (the true-size preview follows)
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
@@ -566,13 +627,19 @@ class InlineEditor(QFrame):
     def _grow(self):
         """Widen as you type until the page's right edge (then wrap), and grow downward."""
         if not self.resized_by_user:
+            # as wide as the text (no wider than the line it replaces needs, and room for
+            # the cursor), growing and shrinking as you type, up to the page's right edge
             need = int(self._natural_width() + 2 * MARGIN + 6)
+            least = int(max(self.home.width() * self._mag + 2 * MARGIN + 6,
+                            2 * MARGIN + 6 + QFontMetricsF(self.text.font()).averageCharWidth()))
             limit = self.parentWidget().width() - self.x() - 4
-            if need > self.width():
-                self.resize(max(self.width(), min(need, limit)), self.height())
+            want = max(least, min(need, limit))
+            if want != self.width():
+                self.resize(want, self.height())
         doc = self.text.document()
         h = doc.size().height()
-        want = max(int(h + 2 * MARGIN + 4), self.min_height)
+        # (a paragraph's box covers the old paragraph; enlarged text isn't over it)
+        want = max(int(h + 2 * MARGIN + 4), 0 if self.enlarged() else self.min_height)
         if want != self.height():
             self.resize(self.width(), want)
         # wrapping in the PDF follows the editor, so the start width must track auto-growth
@@ -625,10 +692,14 @@ class InlineEditor(QFrame):
         moved = self.pos() - self._start_pos
         # Wrap in the PDF exactly when the user resized the box or the text wraps on screen.
         wrap = self.text.viewport().width() - 2 if (self.resized_by_user or self._wraps()) else None
+        if wrap is not None:
+            wrap /= self._mag                   # (true size on screen: px at the zoom)
         if self._fixed and self.width() == self._start_width:
             wrap = None             # a paragraph's own width, not the box's (no creep)
         self.hide()
         self.close_bar()
+        if self.enlarged():
+            self.parentWidget().update()        # (the preview goes)
         self.formatShown.emit(None)
         self.committed.emit(self.text.toPlainText(), float(moved.x()), float(moved.y()), wrap)
         self.deleteLater()
@@ -649,6 +720,8 @@ class InlineEditor(QFrame):
         self._done = True
         self.hide()
         self.close_bar()
+        if self.enlarged():
+            self.parentWidget().update()        # (the preview goes)
         self.formatShown.emit(None)
         self.canceled.emit()
         self.deleteLater()
