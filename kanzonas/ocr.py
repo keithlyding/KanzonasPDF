@@ -3,12 +3,15 @@
 Uses RapidOCR (Apache-2.0) on ONNX Runtime (MIT). Models ship inside the pip package,
 so it works offline with nothing else to install.
 
-Rendering and PDF edits must happen on the GUI thread (PyMuPDF is not thread-safe);
-only recognize() is meant to run in a worker thread.
+Rendering and PDF edits must happen on the GUI thread (PyMuPDF is not thread-safe):
+recognize() renders each tile in the thread that calls it and hands it to a worker thread to
+read (the engine, ONNX Runtime, no PyMuPDF).
 """
 
 import math
+import sys
 import threading
+import time
 
 import pymupdf
 
@@ -27,20 +30,72 @@ ACCURACY_LABELS = {"auto": tr("Auto (fast, redo sharper if needed)"),
                    "high": tr("High (400 dpi, checks every orientation: small print, poor "
                               "scans)")}
 
+ENGINE_IDLE_S = 120     # the engine (~45 MB) is let go this long after the last OCR job
+
 _engine = None
 _lock = threading.Lock()
+_last_used = 0.0
 
 
 def _get_engine():
-    global _engine
+    global _engine, _last_used
     with _lock:
+        _last_used = time.monotonic()
         if _engine is None:
             import onnxruntime
             onnxruntime.disable_telemetry_events()
+            _lean_sessions()
             from rapidocr_onnxruntime import RapidOCR
             _engine = RapidOCR()
             _watch_turns(_engine)
         return _engine
+
+
+def _lean_sessions():
+    """ONNX Runtime's sessions without the memory they keep between runs: RapidOCR already
+    turns its memory arena off; the memory pattern (buffers planned and kept for each size
+    of picture seen, and the pages' tiles and lines come in many sizes) goes off too."""
+    try:
+        from rapidocr_onnxruntime import utils
+        base = utils.SessionOptions
+    except Exception:
+        return
+    if getattr(base, "kz_lean", False):
+        return
+
+    def lean():
+        options = base()
+        options.enable_cpu_mem_arena = False
+        options.enable_mem_pattern = False
+        return options
+    lean.kz_lean = True
+    utils.SessionOptions = lean
+
+
+def release_engine(idle=0.0):
+    """Let the engine go (it's loaded again, in about a second, by the next job) once it has
+    been unused for idle seconds; give the memory freed back to the system. True if let go."""
+    global _engine
+    with _lock:
+        if _engine is None or time.monotonic() - _last_used < idle:
+            return False
+        _engine = None
+    import gc
+    gc.collect()
+    trim_memory()
+    return True
+
+
+def trim_memory():
+    """Give the memory OCR freed back to the system. On Linux the C library keeps what a
+    thread freed for later (hundreds of MB after a big sheet's tiles); Windows and macOS give
+    big blocks back by themselves."""
+    if sys.platform.startswith("linux"):
+        try:
+            import ctypes
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except (OSError, AttributeError):
+            pass
 
 
 def _watch_turns(engine):
@@ -95,35 +150,70 @@ def _read(image):
 
 
 class Rendering:
-    """A page image plus the mapping from image pixels back to displayed page coordinates."""
+    """A page to read, tile by tile, plus the mapping from image pixels back to displayed page
+    coordinates. Only the page's display list is kept (made once): each tile is rendered from
+    it when it's read (tile()), so a big sheet never sits in memory as one picture (an ARCH E
+    sheet at 300 dpi is over 100 MB in gray). Rendering is PyMuPDF work: make it and call
+    tile() on the GUI thread (see recognize)."""
 
-    def __init__(self, page, extra_rotation=0, dpi=OCR_DPI):
+    def __init__(self, page, extra_rotation=0, dpi=OCR_DPI, displaylist=None):
         r = page.rect                                   # displayed (rotated) page size
         scale = min(dpi / 72, MAX_SIDE_PX / max(r.width, r.height))
         self.dpi = dpi
         m = pymupdf.Matrix(scale, scale) * pymupdf.Matrix(extra_rotation)
-        # get_pixmap applies the page's own rotation, then our matrix
-        pm = page.get_pixmap(matrix=m, annots=False, alpha=False, colorspace=pymupdf.csGRAY)
-        import numpy as np
-        self.image = np.frombuffer(pm.samples, np.uint8).reshape(pm.height, pm.stride)[:, :pm.width].copy()
-        shift = (r * m).irect.tl                         # pixmap origin in transformed space
+        # the display list holds the page with its own rotation applied (as get_pixmap does),
+        # then our matrix
+        box = (r * m).irect                              # the whole image, transformed space
+        self.width, self.height = box.width, box.height
+        self._m = m
+        self._dl = displaylist if displaylist is not None else \
+            page.get_displaylist(annots=False)
         self._to_display = ~m
-        self._shift = pymupdf.Point(shift)
+        self._shift = pymupdf.Point(box.tl)              # image origin in transformed space
         self.scale = scale
 
     def to_display(self, x, y):
         return (pymupdf.Point(x, y) + self._shift) * self._to_display
 
+    def tile(self, x0, y0, w=TILE_PX, h=TILE_PX):
+        """The image's pixels x0..x0+w, y0..y0+h (cut at its edges), gray, as a numpy array:
+        those of the whole page's image (a scan's exactly; a drawn line's edge pixels can be a
+        few gray levels off, as MuPDF antialiases a line cut at the tile's edge)."""
+        import numpy as np
+        w, h = min(w, self.width - x0), min(h, self.height - y0)
+        sx, sy = int(self._shift.x), int(self._shift.y)
+        want = pymupdf.IRect(sx + x0, sy + y0, sx + x0 + w, sy + y0 + h)
+        pm = self._dl.get_pixmap(matrix=self._m, colorspace=pymupdf.csGRAY, alpha=False,
+                                 clip=pymupdf.Rect(want) * self._to_display)
+        got = np.frombuffer(pm.samples_mv, np.uint8).reshape(pm.height, pm.stride)[:, :pm.width]
+        if (pm.x, pm.y, pm.width, pm.height) == (want.x0, want.y0, w, h):
+            return got.copy()
+        # (the clip, rounded to pixels, may reach a pixel further: the wanted ones out of it)
+        out = np.full((h, w), 255, np.uint8)
+        dx, dy = pm.x - want.x0, pm.y - want.y0
+        ax, ay = max(0, dx), max(0, dy)
+        bx, by = min(w, dx + pm.width), min(h, dy + pm.height)
+        if bx > ax and by > ay:
+            out[ay:by, ax:bx] = got[ay - dy:by - dy, ax - dx:bx - dx]
+        return out
+
+    @property
+    def image(self):
+        """The whole page's image (small pages, tests); None once released."""
+        if self._dl is None:
+            return None
+        return self.tile(0, 0, self.width, self.height)
+
     def release(self):
-        """Drop the page image once it's been read: only the coordinate mapping is needed
-        to place the text, so a long batch doesn't keep every full-size scan in memory."""
-        self.image = None
+        """Drop the page's display list once it's been read: only the coordinate mapping is
+        needed to place the text, so a long batch doesn't keep every page in memory."""
+        self._dl = None
 
     @property
     def png(self):
         """Whole image as PNG (small pages / tests)."""
-        pm = pymupdf.Pixmap(pymupdf.csGRAY, self.image.shape[1], self.image.shape[0],
-                            self.image.tobytes(), False)
+        img = self.image
+        pm = pymupdf.Pixmap(pymupdf.csGRAY, img.shape[1], img.shape[0], img.tobytes(), False)
         return pm.tobytes("png")
 
 
@@ -133,35 +223,57 @@ def _starts(length):
     return starts
 
 
-def recognize(rendering, cancelled=lambda: False):
-    """Runs in a worker thread. OCR the image tile by tile and merge the results.
-    Returns [(box, text, confidence), ...] in whole-image pixel coordinates."""
+def _read_tile(tile, tx, ty, x0, y0, xs, ys):
+    """Read one tile (any thread: no PyMuPDF here); its lines in whole-image pixels, each
+    line once: the tile that holds its centre outside the shared overlap keeps it."""
     import numpy as np
-    img = rendering.image if hasattr(rendering, "image") else None
-    if img is None:                                   # PNG bytes (older callers)
-        return _read(rendering)
-    h, w = img.shape
-    xs, ys = _starts(w), _starts(h)
+    result = _read(np.ascontiguousarray(np.stack([tile] * 3, axis=-1)))
+    lo_x = x0 + (OVERLAP_PX / 2 if tx > 0 else 0)
+    hi_x = x0 + TILE_PX - (OVERLAP_PX / 2 if tx < len(xs) - 1 else 0)
+    lo_y = y0 + (OVERLAP_PX / 2 if ty > 0 else 0)
+    hi_y = y0 + TILE_PX - (OVERLAP_PX / 2 if ty < len(ys) - 1 else 0)
     out = []
+    for box, text, conf in result:
+        box = [[p[0] + x0, p[1] + y0] for p in box]
+        cx = sum(p[0] for p in box) / 4
+        cy = sum(p[1] for p in box) / 4
+        if lo_x <= cx < hi_x and lo_y <= cy < hi_y:
+            out.append((box, text, conf))
+    return out
+
+
+def recognize(rendering, cancelled=lambda: False, executor=None, wait=None):
+    """OCR the page tile by tile and merge the results: [(box, text, confidence), ...] in
+    whole-image pixel coordinates. Each tile is rendered here, in the calling thread (the GUI
+    thread: PyMuPDF), and read in executor (a worker thread; none: here) while the next one
+    is rendered; wait(future) waits for a tile's reading (default: future.result()), e.g.
+    keeping the window responsive. Only a tile or two are in memory at a time."""
+    if not isinstance(rendering, Rendering):          # PNG bytes (older callers)
+        return _read(rendering)
+    xs, ys = _starts(rendering.width), _starts(rendering.height)
+    out = []
+    pending = None
     for ty, y0 in enumerate(ys):
         for tx, x0 in enumerate(xs):
             if cancelled():
                 return out
-            tile = img[y0:y0 + TILE_PX, x0:x0 + TILE_PX]
+            tile = rendering.tile(x0, y0)
             if tile.min() > 200:                      # blank paper: nothing to read
                 continue
-            result = _read(np.ascontiguousarray(np.stack([tile] * 3, axis=-1)))
-            # keep each line once: the tile that holds its centre outside the shared overlap
-            lo_x = x0 + (OVERLAP_PX / 2 if tx > 0 else 0)
-            hi_x = x0 + TILE_PX - (OVERLAP_PX / 2 if tx < len(xs) - 1 else 0)
-            lo_y = y0 + (OVERLAP_PX / 2 if ty > 0 else 0)
-            hi_y = y0 + TILE_PX - (OVERLAP_PX / 2 if ty < len(ys) - 1 else 0)
-            for box, text, conf in result:
-                box = [[p[0] + x0, p[1] + y0] for p in box]
-                cx = sum(p[0] for p in box) / 4
-                cy = sum(p[1] for p in box) / 4
-                if lo_x <= cx < hi_x and lo_y <= cy < hi_y:
-                    out.append((box, text, conf))
+            args = (tile, tx, ty, x0, y0, xs, ys)
+            if executor is None:
+                out += _read_tile(*args)
+                continue
+            fut = executor.submit(_read_tile, *args)
+            if pending is not None:                   # (read while this one was rendered)
+                got = (wait or (lambda f: f.result()))(pending)
+                if got is None:
+                    return out
+                out += got
+            pending = fut
+    if pending is not None:
+        got = (wait or (lambda f: f.result()))(pending)
+        out += got or []
     return out
 
 

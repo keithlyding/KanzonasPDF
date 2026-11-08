@@ -44,6 +44,8 @@ def print_list(page, markups=True):
     """page as it prints, as a pymupdf.DisplayList. With markups: the annotations and form
     fields that have the Print flag, including ones hidden on screen (NoView), and not those
     without it (PDF 12.5.3). The screen rendering (get_pixmap) follows the view flags."""
+    from .render_layers import sync_transparency
+    sync_transparency(page)             # (drawn as a page opened afresh: see there)
     if not markups:
         return page.get_displaylist(annots=False)
     if not page.parent.is_pdf:
@@ -57,6 +59,43 @@ def print_list(page, markups=True):
     finally:
         m.fz_close_device(dev)
     return pymupdf.DisplayList(dl)
+
+
+PRINT_MIN_LINE_PT = 0.15      # Dark thin lines: no line printed thinner than this (0.05 mm)
+
+
+class print_lines:
+    """While a page is drawn for the printer with Dark thin lines on: every line is at least
+    PRINT_MIN_LINE_PT wide and never less than one printer dot, and lines and shapes are drawn
+    without smoothing, so a line thinner than a dot prints solid black instead of a pale gray
+    the printer then breaks into sparse dots (a 0.1 pt line printed at 300 dpi came out 55%
+    gray: faint). Text keeps its smoothing. MuPDF's settings are for the whole program, so
+    they're put back right after (the screen, export, OCR and Compare keep the true widths and
+    the smoothing)."""
+
+    def __init__(self, dpi, on=True):
+        self.on = on
+        self.px = max(1.0, PRINT_MIN_LINE_PT * dpi / 72.0)
+
+    def __enter__(self):
+        if self.on:
+            m = pymupdf.mupdf
+            self.aa = m.fz_graphics_aa_level()
+            m.fz_set_graphics_aa_level(0)
+            pymupdf.TOOLS.set_graphics_min_line_width(self.px)
+        return self
+
+    def __exit__(self, *exc):
+        if self.on:
+            pymupdf.mupdf.fz_set_graphics_aa_level(self.aa)
+            pymupdf.TOOLS.set_graphics_min_line_width(0)
+        return False
+
+
+def dark_lines_setting():
+    """Dark thin lines, as last chosen in the Print window (on unless turned off)."""
+    from PySide6.QtCore import QSettings
+    return QSettings().value("print_dark_lines", "true") != "false"
 
 
 class PrintDialog(QDialog):
@@ -122,6 +161,12 @@ class PrintDialog(QDialog):
         self.markups = QCheckBox(tr("Print markups and form fields"))
         self.markups.setChecked(True)
         left.addRow("", self.markups)
+        self.dark_lines = QCheckBox(tr("Dark thin lines"))
+        self.dark_lines.setToolTip(tr(
+            "Print every line at least 0.15 pt wide and solid, so the thin lines of drawings "
+            "don't come out faint. Turn off to print lines exactly as thin as they are."))
+        self.dark_lines.setChecked(dark_lines_setting())
+        left.addRow("", self.dark_lines)
         self.marks = QCheckBox(tr("Crop marks (at the trim box; the drawing out to the bleed box)"))
         self.marks.setToolTip(tr("Marks at the corners of each page's trim box, on the paper "
                                  "only (the file isn't changed). Set the boxes with Set page "
@@ -165,7 +210,7 @@ class PrintDialog(QDialog):
 
         for sig in (self.all_pages.toggled, self.current.toggled, self.some.toggled,
                     self.orientation.currentIndexChanged, self.size.currentIndexChanged,
-                    self.markups.toggled, self.marks.toggled,
+                    self.markups.toggled, self.marks.toggled, self.dark_lines.toggled,
                     self.printer_box.currentIndexChanged):
             sig.connect(self._changed)
         self.range_text.textChanged.connect(lambda _t: (self.some.setChecked(True),
@@ -278,10 +323,14 @@ class PrintDialog(QDialog):
         self._draw_preview()
 
     # ---- preview ----------------------------------------------------------------------
+    def _dark(self):
+        return getattr(self, "dark_lines", None) is None or self.dark_lines.isChecked()
+
     def _page_image(self, i, dpi):
         k = int(dpi) / 72.0
-        pm = print_list(self.view.doc[i], self.markups.isChecked()).get_pixmap(
-            matrix=pymupdf.Matrix(k, k))
+        dl = print_list(self.view.doc[i], self.markups.isChecked())
+        with print_lines(int(dpi), self._dark()):
+            pm = dl.get_pixmap(matrix=pymupdf.Matrix(k, k))
         return QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
 
     def _draw_preview(self):
@@ -340,6 +389,8 @@ class PrintDialog(QDialog):
 
     def print_to(self, printer, pages):
         """Print pages on printer as previewed. True when done."""
+        from PySide6.QtCore import QSettings
+        QSettings().setValue("print_dark_lines", "true" if self._dark() else "false")
         v = self.view
         dpi = min(printer.resolution(), 600 if v.allowed(pymupdf.PDF_PERM_PRINT_HQ) else 150)
         painter = QPainter()
@@ -444,7 +495,8 @@ class PrintDialog(QDialog):
                 return False
             y1 = min(r.y1, y + step)
             clip = pymupdf.Rect(r.x0, y, r.x1, y1)
-            pm = dl.get_pixmap(matrix=pymupdf.Matrix(k, k), clip=clip)
+            with print_lines(dpi, self._dark()):
+                pm = dl.get_pixmap(matrix=pymupdf.Matrix(k, k), clip=clip)
             # (the pixels themselves, not a copy: pm stays until the band is drawn)
             img = QImage(pm.samples_mv, pm.width, pm.height, pm.stride, QImage.Format_RGB888)
             painter.drawImage(QRectF(target.x(), target.y() + (y - r.y0) * sy,

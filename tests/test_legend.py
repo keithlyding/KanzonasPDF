@@ -460,3 +460,114 @@ class Placing(LegendCase):
         names = [win.ribbon.tabText(i) for i in range(win.ribbon.count())]
         markup = win.ribbon.widget(names.index("Markup"))
         self.assertTrue(any(b.defaultAction() is a for b in markup.findChildren(QToolButton)))
+
+
+def containing(data, word):
+    """The objects of a PDF (its bytes) whose dictionary or stream holds word (any case),
+    with what nothing uses any more kept (written as is, garbage 0)."""
+    d = pymupdf.open("pdf", data)
+    pdf = pymupdf.open("pdf", d.tobytes(expand=255))
+    w = word.lower()
+    out = []
+    for x in range(1, pdf.xref_length()):
+        try:
+            if w in pdf.xref_object(x).lower() or (pdf.xref_is_stream(x) and
+                                                   w.encode() in (pdf.xref_stream(x) or b"").lower()):
+                out.append(x)
+        except Exception:
+            pass
+    return out
+
+
+class Redaction(LegendCase):
+    """1.9: a word redacted that a legend shows (a markup's subject as a row's label, its
+    title) doesn't stay in the legend: Apply redactions draws the legends again from the
+    markups left, inside its own step and before its clean-up writes the document anew (they
+    used to be deleted whole, or left showing a markup redacted under a box until after)."""
+
+    def setup_markups(self, v):
+        def do():
+            page = v.doc[0]
+            for subject, r in (("Secret door", pymupdf.Rect(50, 50, 100, 90)),
+                               ("Fire door", pymupdf.Rect(150, 50, 200, 90)),
+                               ("Client ACME", pymupdf.Rect(250, 50, 300, 90))):
+                x = A.write(page, model("rect", rect=r)).xref
+                v.doc.xref_set_key(x, "Subj", pymupdf.get_pdf_str(subject))
+        v.modify(do, [0], permission=pymupdf.PDF_PERM_ANNOTATE)
+        here = self.legend(v, 0, title="Secret plan legend")
+        there = self.legend(v, 1, scope="document")
+        return here, there
+
+    def labels(self, v):
+        out = []
+        for i in range(v.doc.page_count):
+            for x in self.legend_xrefs(v, i):
+                st = L.stored(v.doc, x)
+                out.append((i, st["props"].get("title"),
+                            sorted(r["label"] for r in st["geom"]["rows"])))
+        return out
+
+    def test_search_and_redact_draws_them_again(self):
+        for scrub in (False, True):
+            v = self.view()
+            self.setup_markups(v)
+            self.assertTrue(v.search_redact("Secret"))      # (the legends' rows show it too)
+            v.apply_redactions(scrub=scrub)
+            # (the markup whose subject held it stays, written anew without its subject)
+            self.assertEqual(self.labels(v), [
+                (0, "[redacted] plan legend", ["Client ACME", "Fire door", "Rectangle"]),
+                (1, "Legend", ["Client ACME", "Fire door", "Rectangle"])], "scrub %s" % scrub)
+            for i in range(2):
+                page = v.doc[i]
+                for x in self.legend_xrefs(v, i):
+                    self.assertNotIn("secret", page.load_annot(x).get_text().lower())
+            self.assertEqual(containing(v._snapshot(), "secret"), [], "scrub %s" % scrub)
+            v.undo()
+            self.assertEqual(self.labels(v)[1][2], ["Client ACME", "Fire door", "Secret door"])
+            v.redo()
+            self.assertEqual(self.labels(v)[1][2], ["Client ACME", "Fire door", "Rectangle"])
+
+    def test_a_markup_under_a_box_leaves_them_before_the_clean_up(self):
+        v = self.view()
+        self.setup_markups(v)
+        v.mark_redactions(0, [pymupdf.Rect(245, 45, 305, 95)])     # (over Client ACME)
+        v.apply_redactions(scrub=True)
+        self.assertEqual([lab for _i, _t, lab in self.labels(v)],
+                         [["Fire door", "Secret door"]] * 2)
+        # the document written anew holds no copy of the legends as they were, not even
+        # one nothing uses (a write that keeps those: as Save signed copy did)
+        self.assertEqual(containing(v.doc.tobytes(), "ACME"), [])
+
+    def test_a_box_drawn_over_a_legend_takes_it_away(self):
+        v = self.view()
+        here, _there = self.setup_markups(v)
+        v.mark_redactions(0, [self.box(v, here)])
+        v.apply_redactions(scrub=False)
+        self.assertEqual(self.legend_xrefs(v, 0), [])
+        self.assertEqual(len(self.legend_xrefs(v, 1)), 1)
+
+    def test_remove_term_cleans_the_title(self):
+        v = self.view()
+        self.setup_markups(v)
+        v.remove_term("plan")
+        self.assertEqual(self.labels(v)[0][1], "Secret [redacted] legend")
+        self.assertEqual(containing(v._snapshot(), "plan legend"), [])
+
+    def test_signed_copy_has_nothing_redacted(self):
+        # Digital signature signs the document as it is: what Apply redactions took away
+        # without its clean-up (a note, a picture) stayed in it, unused but readable
+        v = self.view()
+        self.setup_markups(v)
+        pm = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 30, 20), False)
+
+        def picture():
+            page = v.doc[0]
+            page.insert_image(pymupdf.Rect(400, 300, 600, 450), pixmap=pm)
+        v.modify(picture, [0])
+        v.mark_redactions(0, [pymupdf.Rect(45, 45, 105, 95), pymupdf.Rect(390, 290, 610, 460)])
+        v.apply_redactions(scrub=False)
+        data = v.signing_bytes()
+        self.assertEqual(containing(data, "Secret door"), [])
+        d = pymupdf.open("pdf", data)
+        self.assertFalse([x for x in range(1, d.xref_length())
+                          if d.xref_get_key(x, "Subtype")[1] == "/Image"])

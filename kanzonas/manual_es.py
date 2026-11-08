@@ -33,7 +33,9 @@ su propia identidad única, incluso en el caso de archivos con el mismo nombre.<
 de cada hoja tal como se imprimirá: elija la impresora y las copias, qué páginas (Todas, Página actual
 o una lista como 1-3, 5), la orientación (Automática gira cada hoja para ajustarla a su página), el tamaño
 (Ajustar al papel, o Tamaño real, que solo reduce las páginas demasiado grandes), si se imprimen las marcas
-y los campos de formulario, y las <b>Marcas de corte</b> (vea Producción de impresión). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
+y los campos de formulario, <b>Líneas finas oscuras</b> (activado salvo que lo desactive: cada línea se imprime con al
+menos 0,15 pt de grosor y sólida, para que las líneas finas de los planos no salgan tenues ni cortadas; desactivado,
+las líneas se imprimen exactamente tan finas como son), y las <b>Marcas de corte</b> (vea Producción de impresión). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
 y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
 Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse
@@ -108,9 +110,18 @@ pueden hacerlo Acrobat y PDF-XChange. Abrir, guardar, imprimir, deshacer y rehac
 cuadro Buscar (con su número de coincidencias y sus flechas arriba / abajo) está a su derecha. La barra inferior (barra de estado, abajo a la derecha) tiene la navegación de páginas (primera,
 anterior, número de página, siguiente, última página), Ajustar página, Ajustar al ancho, Tamaño real, un control deslizante de zoom y el
 cuadro de zoom con alejar / acercar, como PDF-XChange Editor, y la escala del dibujo de la página actual (en rojo cuando no
-tiene ninguna; haga clic en ella para establecerla). La cinta es compacta: dos filas de
-botones. Si la ventana es demasiado estrecha para una pestaña, desplácela lateralmente con la rueda del mouse o con la
-barra delgada que hay debajo. Ver &gt; <b>Mostrar nombres de grupo en la cinta</b> agrega un nombre debajo de cada grupo de
+tiene ninguna; haga clic en ella para establecerla). Un mensaje de la barra inferior demasiado largo para el espacio a la
+izquierda de los controles de página termina en «...»; pase el mouse sobre él para leerlo entero. La cinta es compacta: dos filas de
+botones, y cada pestaña cabe en una pantalla de 1366 píxeles de ancho, en inglés y en español. Los comandos que se usan
+menos comparten un botón con una flecha al lado: haga clic en el botón para el comando que muestra, o en la flecha para
+los demás (el botón muestra luego el último usado). En la pestaña Inicio, la flecha de Resaltado tiene Subrayado y
+Tachado, y la de Firmar tiene Iniciales; en la pestaña Páginas, la de Encabezado y pie tiene Marca de agua y Fondo, y la
+de Extraer tiene Reemplazar. Otros están en la lista de la flecha estrecha al final de un grupo: Configuración de
+cuadrícula junto a los interruptores de ajuste, Subir y Bajar en el grupo Ordenar de la pestaña Páginas, Archivos
+adjuntos y Referencias a planos en su grupo Documento, Contraer y Nombres de grupo en el grupo Cinta de la
+pestaña Ver, Alinear en el grupo Modificar de la pestaña CAD. En la pestaña Inicio, Alejar y Acercar son iconos debajo
+de Tamaño real. Si la ventana es demasiado estrecha para una pestaña, desplácela lateralmente con la rueda del mouse o
+con la barra delgada que hay debajo. Ver &gt; <b>Mostrar nombres de grupo en la cinta</b> agrega un nombre debajo de cada grupo de
 botones (la cinta queda un poco más alta, como en Microsoft Office). Ver &gt; <b>Mostrar barra de menús</b> (Ctrl+Shift+M)
 oculta o muestra la barra de menús Archivo, Editar, Ver...; cuando está oculta, el botón &#9776; a la derecha
 de las pestañas de la cinta tiene todos los menús, y todos los métodos abreviados de teclado siguen funcionando. <b>Contraer cinta</b>
@@ -335,7 +346,7 @@ o editar el documento inicia una búsqueda nueva.</li>
 marque <b>Coincidir mayúsculas y minúsculas</b> o <b>Solo palabras completas</b> si hace falta, elija <b>Todas las páginas</b> o esta
 página y haga clic en <b>Reemplazar todo</b>. Cambia el texto propio del PDF (no los comentarios). Cada línea
 que cambia se vuelve a escribir como lo hace Editar texto, con la fuente propia de la línea cuando esta tiene los
-caracteres. La línea se vuelve a escribir en su sitio y no se reajusta: cuando el texto nuevo se mete en otro
+caracteres, y cada palabra con su propio estilo (negrita, cursiva, color...). La línea se vuelve a escribir en su sitio y no se reajusta: cuando el texto nuevo se mete en otro
 texto o pasa del borde de la página, Reemplazar texto indica en qué páginas (Ctrl+Z lo deshace; Editar texto
 puede reajustar el párrafo). Las páginas con marcas de censura que aún no se han aplicado se omiten (se indica cuáles).
 Ctrl+Z deshace todo el reemplazo.</li>
@@ -407,7 +418,8 @@ cinta de AutoCAD: haga clic en el botón para la herramienta que muestra, o en l
 muestra luego la última usada (o la herramienta activa). <b>Marcas</b>: Rectángulo (flecha: Nube, Polígono, Máscara), Círculo (flecha: Arco),
 Línea (flecha: Polilínea, Curva, Lápiz), Flecha, Cuadro de texto (flecha: Llamada), Sello (flecha: Imagen, Leyenda); en el modo CAD sus atajos
 de una letra escriben en la línea de comandos. <b>Medir</b>: Longitud (flecha: Longitud de polilínea, Área, Ángulo, Radio,
-Perímetro, Volumen, Conteo, Calibrar cinta métrica), Ajustar a objetos, Ajustar a la cuadrícula, Ajustar a la página.
+Perímetro, Volumen, Conteo, Calibrar cinta métrica) y, debajo, Ajustar a objetos, Ajustar a la cuadrícula y Ajustar a
+la página como iconos (como en la barra de estado de AutoCAD; pase el mouse sobre uno para ver su nombre).
 <b>Editar</b>: Borrar contenido, Traer al frente (flecha: Traer adelante, Enviar atrás, Enviar al fondo), Alinear a la
 izquierda (flecha: las demás alineaciones, Distribuir horizontalmente y Distribuir verticalmente), Editar texto (flecha:
 Agregar texto): Editar texto cambia las palabras que ya están en la página, Agregar texto escribe texto nuevo en la
@@ -443,9 +455,13 @@ nombre de distancia ("mano", "seleccionar"). Enter sigue terminando un polígono
 barra espaciadora y Enter siguen llenando el campo de formulario al que llevó Tab.</li>
 </ul>
 <ul>
-<li><b>Mover</b>: haga clic en el punto base y luego donde va.</li>
-<li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera; Enter, Escape o Listo
-termina.</li>
+<li><b>Mover</b>: haga clic en el punto base y luego donde va, en esta página o en otra: en otra página la selección
+(las líneas, las imágenes y el texto del dibujo, y las marcas que van con ellos) va allí, a la misma distancia del punto
+en el que hizo clic que tenía del punto base, tal como se muestran las páginas (también a una página girada de otra
+manera). Los contornos siguen al puntero a la otra página, y los clics allí se ajustan a las líneas de esa página. Un
+Ctrl+Z la devuelve a su página.</li>
+<li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera, en esta página o en
+otras (como Mover); Enter, Escape o Listo termina.</li>
 <li><b>Girar</b>: haga clic en el punto base y luego escriba el ángulo en grados (en sentido antihorario; -90 gira en
 sentido horario) y presione Enter, o haga clic en un punto: la selección gira para que el "este" apunte hacia ahí.</li>
 <li><b>Escalar</b>: haga clic en el punto base y luego escriba el factor (2 = el doble de grande, 0.5 = la mitad; de 0.001
@@ -491,7 +507,8 @@ de arriba) y las imágenes no se recortan.</li>
 poco para que la ventana siempre responda, así que el primer recuadro, lazo o comando empieza enseguida; el puntero
 muestra un cursor de espera mientras un comando trabaja. Un recuadro de ventana toma una curva cuando la curva tal como se
 dibuja queda dentro (sus puntos de control pueden sobresalir).</p>
-<p>Lo que los comandos no hacen: el texto propio del dibujo solo se mueve (Mover); copiarlo, girarlo, escalarlo o
+<p>Lo que los comandos no hacen: el texto propio del dibujo se mueve (Mover) y se copia (Copiar, Matriz: como texto de
+la página, cada palabra con su estilo, como lo copia Editar objetos), pero girarlo, escalarlo o
 reflejarlo lo deja donde está y lo indica (Editar texto lo cambia). Los resaltados y otras marcas de texto se quedan sobre
 sus palabras, así que solo se mueven y se copian. Una imagen o un sello reflejados se siguen leyendo al derecho, y los
 cuadros de texto giran en cuartos de vuelta.</p>
@@ -551,7 +568,7 @@ texto muy apretado. En una página con marcas de censura que aún no se han apli
 donde está (cortar aplicaría las marcas): aplíquelas o quítelas primero. <b>Seleccionar todo el texto</b> (Ctrl+A) selecciona todo el texto
 de la página. Esc o un clic en otro lugar borra la selección.</li>
 <li><b>Menú contextual:</b> haga clic con el botón derecho en la página para Cortar, Copiar, Pegar, Eliminar (para las
-marcas seleccionadas) y Seleccionar todo el texto. Con texto seleccionado, también ofrece Resaltado, Subrayado, Tachar,
+marcas seleccionadas) y Seleccionar todo el texto. Con texto seleccionado, también ofrece Resaltar, Subrayar, Tachar,
 Comentar el texto… y Marcar para censura para ese texto. Hacer clic con el botón derecho en una marca la selecciona
 primero.</li>
 <li><b>Marcas:</b> seleccione una o más marcas y luego Copiar o Cortar. <b>Pegar</b> (Ctrl+V) las coloca
@@ -559,9 +576,33 @@ donde está el mouse, en cualquier página o en otro documento abierto. Pegadas 
 otra manera (una página girada), se giran para que se vean como donde las copió; un cuadro de texto
 se sigue leyendo derecho.</li>
 <li><b>Duplicar</b> (Ctrl+D): aparecen copias de las marcas seleccionadas ligeramente desplazadas, seleccionadas
-para que pueda arrastrarlas a su lugar. En la lista de páginas, Ctrl+D duplica las páginas seleccionadas.</li>
+para que pueda arrastrarlas a su lugar. En la lista de páginas, Ctrl+D duplica las páginas seleccionadas; con la
+herramienta Editar objetos, el texto, las imágenes y las formas de la página seleccionados.</li>
+<li><b>El texto propio de la página</b> (herramienta Editar objetos): seleccione texto y use <b>Copiar</b> (Ctrl+C),
+<b>Cortar</b> (Ctrl+X) o <b>Duplicar</b> (Ctrl+D), con las teclas, el menú Edición o el menú contextual.
+<b>Pegar</b> (Ctrl+V) lo escribe en la página donde está el mouse, en cualquier página o en otro documento abierto,
+como lo hace Agregar texto: con su fuente (incrustada con él, así que se ve igual donde el otro documento no la
+tiene), su tamaño, su color, la negrita, la cursiva, el subrayado y el tachado, el ancho al que se ajusta y sus saltos
+de línea. Cada pieza pegada es luego un solo bloque para Editar texto (vea <b>Editar el texto que agregó</b>). Los
+otros programas reciben las palabras sin formato. También se copia el texto del PDF que no se agregó aquí: el texto
+continuo se sigue ajustando a su ancho, las demás líneas conservan sus saltos de línea, alineadas a la izquierda.
+Ctrl+Z deshace un pegado, un corte o un duplicado en un solo paso.</li>
+<li><b>Las imágenes y formas propias de la página</b> (herramienta Editar objetos, o la selección del modo del mouse
+CAD): selecciónelas, con texto también si quiere, y use <b>Copiar</b> (Ctrl+C) o <b>Cortar</b> (Ctrl+X);
+<b>Pegar</b> (Ctrl+V) las coloca en la página donde está el mouse (su esquina superior izquierda allí), en cualquier
+página, en una página girada de otra manera o en otro documento abierto, exactamente como se veían: colores, grosores
+y guiones de las líneas, transparencia, imágenes con sus máscaras de transparencia, tramas, y un contorno de recorte
+que les pertenece (una franja de imagen en su propia ventana, como la escribe "Imprimir a PDF") o bajo el que estaban
+dibujadas. Vuelven a ser contenido propio de la página, así que Editar objetos las selecciona, las mueve, las copia y
+las elimina como antes (un grupo sigue siendo un grupo). En el mismo documento, una imagen se guarda una sola vez por
+muchas veces que se pegue, y el contenido pegado sigue en su capa. En otro documento, cada imagen se copia una sola vez
+(al pegar de nuevo se usa otra vez), y el contenido queda sin capa (el otro documento no tiene esa capa: póngalo en una
+con el panel Capas si lo necesita). En el modo CAD, las marcas seleccionadas con ellas también van. Los otros programas
+reciben una imagen de lo copiado (no de un dibujo grande, que tardaría demasiado). Ctrl+Z deshace un pegado o un corte
+en un solo paso.</li>
 <li><b>Imágenes y texto de otros programas:</b> Pegar coloca una imagen copiada (p. ej., una captura de pantalla)
-como una marca de imagen, o un texto copiado como un cuadro de texto, donde está el mouse.</li>
+como una marca de imagen, o un texto copiado como un cuadro de texto, donde está el mouse. Con la herramienta
+Editar objetos, el texto copiado va a la propia página, con la fuente, el tamaño y el color de Agregar texto.</li>
 <li><b>Páginas:</b> desbloquee la lista de páginas (botón de bloqueo encima de las miniaturas), seleccione miniaturas
 (Ctrl+clic agrega o quita una página, Shift+clic selecciona una serie de páginas) y luego haga clic con el botón derecho en cualquiera
 de las páginas seleccionadas (toda la selección sigue seleccionada) o use el menú Páginas:
@@ -700,7 +741,8 @@ La captura también se pega como imagen en Word, Excel, el correo electrónico y
 <ul>
 <li><b>Mostrar cuadrícula</b> (menú Ver o barra de herramientas) dibuja una cuadrícula sobre la página. Solo está en pantalla:
 no se guarda en el PDF ni se imprime con él.</li>
-<li><b>Configuración de cuadrícula</b> (menú Ver): el espaciado en pulgadas, milímetros o puntos, medido en
+<li><b>Configuración de cuadrícula</b> (menú Ver; en la cinta, en la flecha a la derecha de los interruptores de
+ajuste): el espaciado en pulgadas, milímetros o puntos, medido en
 el papel, y cada cuánto se dibuja una línea más oscura. Con el zoom muy alejado, solo se muestran las líneas
 más oscuras.</li>
 <li><b>Ajustar a la cuadrícula:</b> los puntos que dibuja o arrastra saltan a la intersección de la cuadrícula más cercana.</li>
@@ -723,7 +765,8 @@ derecho se alinean con el borde izquierdo, el centro o el borde derecho de la p�
 centro o su parte inferior con los de la página, cada dirección por separado, y una guía verde discontinua
 muestra con qué se alineó (suelte una imagen cerca del centro de la hoja y queda exactamente en el centro); con
 Ajustar a objetos, una de sus esquinas, los puntos medios de sus bordes o su centro va a un punto de una marca
-cercana (una marca arrastrada también a los puntos del propio dibujo); con Ajustar a la cuadrícula, su esquina
+cercana (una marca arrastrada también a los puntos del propio dibujo; con ambos activados, el más cercano);
+con Ajustar a la cuadrícula, su esquina
 superior izquierda va a la cuadrícula.</li>
 <li><b>Mantenga presionada Alt</b> mientras dibuja o arrastra para colocar un punto libremente, sin ajuste.</li>
 </ul>
@@ -817,8 +860,10 @@ distintos (nubes rojas y nubes azules) tienen una fila cada una. Las mediciones 
 longitud, área o volumen total, en las unidades de la página (Medir &gt; Establecer escala).</li>
 <li><b>Se actualiza sola</b> cuando se agregan, cambian o eliminan marcas, como parte del mismo
 cambio: Ctrl+Z deshace la marca y la actualización de la leyenda juntas, y Rehacer vuelve a poner
-ambas. Nunca se cuenta a sí misma ni a otra leyenda, ni a las marcas ocultas, las marcas de censura
-o los marcadores de posición de firma.</li>
+ambas. Nunca se cuenta a sí misma ni a otra leyenda, ni a las marcas ocultas, las marcas de censura,
+los marcadores de posición de firma, ni las respuestas y estados de revisión de un hilo de
+comentarios (son parte de la marca a la que responden). Aplicar censuras la vuelve a dibujar con las marcas que
+quedan (vea Censura).</li>
 <li><b>Opciones</b> (panel Propiedades: elíjalas antes de colocarla, con la herramienta Leyenda
 elegida, o en una leyenda seleccionada): <b>Título</b> (Leyenda al principio; vacío para ninguno),
 <b>Marcas de</b> <b>Esta página</b> o <b>Todo el documento</b> (todas las páginas, con los totales
@@ -873,7 +918,9 @@ a una selección. En el modo del mouse <b>CAD</b>, la selección funciona como e
 derecha) toma las líneas, el texto, las imágenes y las marcas que quedan completamente dentro, un recuadro de captura verde (de derecha
 a izquierda) todo lo que toca, texto y trazos juntos; los clics, los recuadros y los lazos agregan a la selección, Shift
 quita, Escape la borra, y los comandos de la pestaña CAD la cambian (vea Modo CAD). Presione <b>Supr</b> (o Retroceso) o haga clic con el botón derecho &gt; <b>Eliminar</b> para quitarlo;
-arrástrelo para moverlo (los resaltados y otras marcas que tenga encima se mueven con él). Aquí el texto no se redimensiona,
+arrástrelo para moverlo (los resaltados y otras marcas que tenga encima se mueven con él). Copiar, Cortar, Pegar y
+Duplicar (Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D) lo copian con sus estilos como texto de la página, también a otra página o
+a otro documento (vea Copiar, cortar y pegar). Aquí el texto no se redimensiona,
 no se gira ni se reordena en la pila: cambie sus palabras, su fuente y su tamaño con Editar texto. Las imágenes y las líneas
 que tiene debajo se quedan. Si otro texto se superpone tanto que algunas de sus letras también desaparecerían,
 KanzonasPDF pregunta primero. El texto invisible (la capa de texto reconocido de un escáner) no se selecciona.</li>
@@ -890,13 +937,20 @@ de una vez; un grupo con grupos dentro sigue teniéndolos después de un Desagru
 para seleccionar todo lo que esté completamente dentro de él (Ctrl+arrastrar agrega a la selección). En los dibujos de CAD, una
 "forma" suele ser muchas líneas separadas, así que un cuadro es la manera más rápida de tomarla.</li>
 <li>Arrastre la selección para moverla. Las formas siguen al puntero (no son un cuadro vacío),
-y la página en sí solo cambia cuando suelta el botón, así que un grupo grande se sigue arrastrando con rapidez.
+y la página en sí solo cambia cuando suelta el botón, así que un grupo grande se sigue arrastrando con rapidez. Si
+la suelta sobre otra página, se mueve allí (su contorno muestra dónde queda); las marcas arrastradas con Seleccionar o
+con la herramienta Mano hacen lo mismo.
 Arrastre un controlador de esquina para cambiar su tamaño conservando sus proporciones
 (mantenga presionada Shift para estirarla libremente), o un controlador lateral para hacerla más ancha o más alta. Cambiar el tamaño de una forma también
 cambia la escala del grosor de sus líneas.</li>
-<li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
+<li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
+Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
 en sentido contrario a las agujas del reloj, los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen
 (Ctrl+V la pega como una marca de imagen) y Guardar imagen como…. Esc anula la selección.</li>
+<li><b>Duplicar</b> (Ctrl+D) coloca copias del texto, las imágenes y las formas seleccionados un poco más abajo y a la
+derecha en la misma página, seleccionadas, para que pueda arrastrarlas a su lugar. <b>Copiar</b> (Ctrl+C),
+<b>Cortar</b> (Ctrl+X) y <b>Pegar</b> (Ctrl+V) las llevan a otra página o a otro documento (vea Copiar, cortar y
+pegar).</li>
 <li><b>Orden de apilamiento:</b> cuando los objetos propios de la página se tapan entre sí, seleccione uno y use
 <b>Traer al frente</b> (Ctrl+Shift+]), <b>Traer adelante</b> (Ctrl+]), <b>Enviar atrás</b>
 (Ctrl+[) o <b>Enviar al fondo</b> (Ctrl+Shift+[), desde el menú contextual u Organizar. Al frente y
@@ -907,8 +961,8 @@ queda.</li>
 <li>Solo cambian los objetos seleccionados: mover, cambiar el tamaño y girar conservan su lugar en el
 orden de dibujo (el texto impreso sobre una imagen sigue encima), sus colores y sus estilos de línea, y
 las imágenes no se vuelven a comprimir, así que la calidad no baja. Ctrl+Z deshace cada cambio.</li>
-<li>El texto no se puede seleccionar con esta herramienta (use Editar texto), ni tampoco los objetos dentro de un objeto
-agrupado (un XObject de formulario; use primero Desagrupar) ni los contornos de recorte. En los dibujos muy grandes, el primer clic en una página
+<li>Los objetos dentro de un objeto agrupado (un XObject de formulario; use primero Desagrupar) y los contornos de
+recorte no se pueden seleccionar con esta herramienta. En los dibujos muy grandes, el primer clic en una página
 tarda un momento mientras se lee la página.</li>
 </ul>
 
@@ -920,10 +974,29 @@ página, como Agregar texto de Acrobat: los visores de PDF no pueden cambiarlo, 
 Elija la fuente (cualquier fuente instalada, además de Negrita y Cursiva), el tamaño y el color en Propiedades. El
 <b>Tamaño de fuente</b> también se puede cambiar mientras escribe: el texto se muestra en el tamaño nuevo de inmediato.
 Los botones de estilo sobre el cuadro dan estilo a palabras sueltas, como en Editar texto (vea <b>Negrita, cursiva,
-subrayado y color para palabras sueltas</b> más abajo). Solo se guardan en el archivo las letras que se usan.</li>
+subrayado y color para palabras sueltas</b> más abajo). El cuadro es tan ancho como lo que escribe, y crece y
+se estrecha con ello. Arrastre un controlador lateral del cuadro para hacerlo más
+estrecho, y las palabras se ajustan a su ancho. Solo se guardan en el archivo las letras que se usan.
+<br><b>Texto pequeño con la vista alejada</b> (un plano visto entero): el texto que sería demasiado pequeño para leerse
+con ese zoom, con Agregar texto o Editar texto, se escribe ampliado en un cuadro justo debajo de su lugar, y una vista
+previa a su tamaño real, con un contorno discontinuo fino, muestra exactamente dónde va. Arrastre el cuadro para
+mover el texto; la vista previa lo sigue. Lo que escribe
+Agregar texto se recuerda como un solo bloque: Editar texto lo vuelve a abrir entero (vea <b>Editar el texto que
+agregó</b> más abajo).</li>
+<li><b>Editar el texto que agregó:</b> con la herramienta Editar texto, haga clic en cualquier línea del texto escrito
+con Agregar texto (o pegado con Editar objetos): se abre entero, en un cuadro del ancho al que se ajustan sus palabras
+(tan ancho como sus líneas cuando no se ajustaban), con sus saltos de línea (Shift+Enter) y cada palabra con su
+propio estilo, el cursor en la palabra en la que hizo clic. Presione Enter y se vuelve a escribir como un solo bloque
+desde donde empezaba, ajustado al mismo ancho: editarlo una y otra vez, guardar y volver a abrir el archivo no lo
+mueven. Arrastre un controlador lateral para cambiar el ancho, o el contorno para moverlo. Alt+clic sigue editando
+una línea. El texto agregado con KanzonasPDF 1.9 o anterior, o con otros programas, se edita como antes (un párrafo
+o una línea). Movido con Editar objetos, sigue siendo un solo bloque; una censura aplicada sobre algunas de sus
+palabras convierte el resto en texto normal de la página.</li>
 <li><b>Cambiar la fuente o el tamaño de una línea:</b> con la herramienta Editar texto, haga clic en la línea: Propiedades
-muestra su propio <b>Tamaño de fuente</b>. Cambie el tamaño, o elija una fuente (y Negrita / Cursiva), y presione
-Enter, cambiando el texto o no. La elección se aplica solo a esa línea: la siguiente línea en la que
+muestra el estilo del texto donde está el cursor. Cambie allí el <b>Tamaño de fuente</b>, la <b>Negrita</b> o la
+<b>Cursiva</b> y se aplica a las palabras seleccionadas en el cuadro (siguen seleccionadas), o a todo su texto
+cuando no hay nada seleccionado; presione Enter, cambiando el texto o no. Una fuente elegida allí se aplica a toda
+la línea. La elección se aplica solo a esa línea: la siguiente línea en la que
 haga clic vuelve a conservar su propia fuente y su propio tamaño (Mantener la fuente de la línea / Mantener el tamaño de la línea). Una fuente o un
 tamaño elegidos antes de hacer clic en una línea se aplican a esa línea.</li>
 <li><b>Eliminar texto:</b> con la herramienta Editar texto, haga clic con el botón derecho en el texto &gt; <b>Eliminar texto</b>, o
@@ -948,8 +1021,13 @@ tachado. El cuadro los muestra como en la página.</li>
 línea, o texto nuevo con Agregar texto), seleccione palabras y use los botones sobre el cuadro:
 <b>Negrita</b> (Ctrl+B), <b>Cursiva</b> (Ctrl+I), <b>Subrayado</b> (Ctrl+U),
 <b>Tachado</b>, <b>Color del texto</b>, y <b>Texto más grande</b> (Ctrl+]) / <b>Texto más
-pequeño</b> (Ctrl+[), de un punto en un punto. Presione de nuevo un botón para quitar el estilo. Sin nada
-seleccionado, el botón fija el estilo de lo que escriba a continuación. El texto escrito junto a una palabra toma
+pequeño</b> (Ctrl+[), de un punto en un punto (una línea con palabras más grandes baja lo que
+necesitan, para que no se monten sobre la de arriba). Presione de nuevo un botón para quitar el estilo; un estilo que tienen todas las
+palabras seleccionadas se ve presionado. Sin nada seleccionado, el botón fija el estilo de lo que escriba a
+continuación. La <b>Negrita</b>, la <b>Cursiva</b> y el <b>Tamaño de fuente</b> de Propiedades (y el <b>Color del
+texto</b> de Agregar texto) hacen lo mismo mientras el cuadro está abierto: cambian las palabras seleccionadas, que
+siguen seleccionadas, o todo el texto del cuadro cuando no hay nada seleccionado, y Propiedades muestra el estilo de
+las palabras seleccionadas. No cambian los ajustes propios de la herramienta para el texto siguiente. El texto escrito junto a una palabra toma
 el estilo de esa palabra; el texto escrito en un cuadro vacío toma el estilo principal del párrafo.
 <br>La negrita y la cursiva conservan la fuente de la línea. Se usa la negrita o la cursiva real de la misma familia
 cuando está incrustada en el PDF o instalada en esta computadora (Arial Bold para Arial, Times New Roman Italic
@@ -986,6 +1064,9 @@ El texto de lado (girado en la página, o en una página girada) se abre en un c
 centro de la línea para que sea fácil escribir, con el cursor donde hizo clic a lo largo de la línea; el texto
 sigue girado en la página cuando termina.</li>
 <li>Los resaltados, subrayados, tachados, comentarios y notas adhesivas de esa línea se mueven con ella.</li>
+<li>Las palabras que la página dibuja invisibles (las palabras de una capa de OCR en una línea, una palabra
+oculta) siguen invisibles cuando su línea o su párrafo se edita, se arrastra, se cambia con Reemplazar texto o
+se mueve con un dibujo; el cuadro las muestra tenues. Las palabras semitransparentes conservan su opacidad.</li>
 <li>Se usa la fuente original cuando está incrustada o instalada y tiene todos los caracteres que
 escribió; si no, la fuente estándar más parecida o, para los caracteres que estas no pueden escribir (griego como
 &Omega; &Delta;, símbolos, chino y otras escrituras), una fuente Unicode integrada. Solo se guardan las letras
@@ -994,7 +1075,9 @@ fuente tiene un símbolo que escribió o que venía del PDF (un signo menos, un 
 espacio estrecho invisible...), se prueba una fuente instalada más amplia como Segoe UI, y luego se usa un carácter parecido
 (- para el signo menos, &Oslash; para el signo de diámetro, un espacio normal para uno
 invisible). Los caracteres que no se pueden escribir de ninguna manera, como los emojis, se indican en un mensaje, y
-no se cambia nada. Una línea de una
+no se cambia nada. El texto que se escribe de derecha a izquierda (hebreo, árabe) todavía no
+se puede editar, mover ni añadir (saldría en el orden equivocado): un mensaje lo dice, y no se
+cambia nada. Una línea de una
 página que todavía tiene marcas de censura sin aplicar no se puede editar hasta que las aplique o las quite.</li>
 <li><b>Páginas escaneadas</b> (una imagen del papel con texto reconocido encima, del OCR de su
 escáner o de Reconocer texto): Editar texto, Buscar y reemplazar y mover una línea también cambian la
@@ -1089,8 +1172,8 @@ página en blanco, Cortar, Pegar y Duplicar páginas). Usar uno de ellos pregunt
 Copiar páginas, girar y extraer funcionan mientras está bloqueado.</li>
 <li><b>Reordenar:</b> desbloquee la lista de páginas y arrastre las miniaturas (varias páginas seleccionadas se mueven
 juntas, y Ctrl+Z deshace todo el arrastre); o use Mover página hacia arriba / Mover página hacia abajo
-(Ctrl+Shift+Up / Down).</li>
-<li><b>Combinar archivos</b> (Archivo &gt; Combinar archivos..., o pestaña Páginas &gt; Combinar archivos): crea un
+(Ctrl+Shift+Up / Down; en la pestaña Páginas, en la flecha del grupo Ordenar).</li>
+<li><b>Combinar archivos</b> (Archivo &gt; Combinar archivos..., o pestaña Páginas &gt; Combinar): crea un
 PDF nuevo a partir de varios. Agregue los PDF (Agregar archivos…, o suéltelos en la lista desde el Explorador); el
 documento abierto ya está en la lista. Arrástrelos, o use Subir / Bajar / Ordenar por nombre, para
 definir el orden, de arriba abajo. Con "Agregar un marcador para cada archivo" marcado, cada archivo recibe un
@@ -1121,9 +1204,11 @@ Las páginas sin pareja se dejan como están, y los planos del archivo nuevo que
 enumeran debajo de la lista, para que lo sepa. Solo cambia el dibujo de la página (su contenido, sus cuadros de página
 y su rotación): la página misma se queda, así que sus marcas, vínculos, campos de formulario, escala y marcadores se
 quedan, y los marcadores y vínculos de otras páginas siguen llevando a ella. Cuando una página nueva tiene otro
-tamaño, elija si las marcas se <b>escalan a la página nueva</b> (estiradas si sus proporciones difieren; una escala
-pareja ajusta también la escala de medición de la página) o se <b>mantienen en el mismo lugar</b>, medido desde la
-esquina superior izquierda. Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
+tamaño, elija si las marcas se <b>escalan a la página nueva</b> (con su texto y sus grosores de línea; estiradas si sus proporciones difieren; una escala
+pareja ajusta también la escala de medición de la página y su nombre: 1/4" = 1'-0" pasa a 1/2" = 1'-0" en
+una hoja del doble de tamaño) o se <b>mantienen en el mismo lugar</b>, medido desde la
+esquina superior izquierda. Las mediciones se vuelven a medir cuando cambia lo que miden (la página nueva trae
+su propia escala, o las marcas se estiraron o escalaron en una página sin escala). Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
 el dibujo nuevo; un vínculo sobre palabras que no están en el mismo lugar en el dibujo nuevo (una referencia a un
 plano que se movió) se queda donde estaba y se informa, para que pueda revisarlo. Los encabezados, pies de página,
 marcas de agua, fondos y ediciones de texto escritos en el dibujo anterior se van con él. Las capas de los dibujos
@@ -1138,7 +1223,7 @@ página eliminada lleva entonces a la página siguiente (o a la última página)
 <li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional.</li>
 <li>Pestaña <b>Marcadores</b>: agregue, cambie el nombre, reordene y aplique sangría a los marcadores,
 créelos a partir de los títulos e inserte una tabla de contenido (vea Marcadores y tabla de contenido).</li>
-<li><b>Vincular referencias a planos</b> (menú Páginas, pestaña Páginas): para un juego de planos trazado sin
+<li><b>Vincular referencias a planos</b> (menú Páginas; pestaña Páginas, en la flecha del grupo Documento): para un juego de planos trazado sin
 hipervínculos. KanzonasPDF lee el número y el título de cada plano en su cuadro de rótulo (el
 valor que sigue a un rótulo SHEET, SHEET NO o DWG NO, o el número con aspecto de número de plano más grande de la
 zona del cuadro de rótulo) y los muestra para que los corrija. Luego, cada globo de llamada, nota o línea de índice
@@ -1230,7 +1315,9 @@ Enable).</li>
 USB y los que tienen instalado el controlador del fabricante.</li>
 <li><b>SANE</b> (Linux): los escáneres que conoce el comando scanimage (instale el paquete
 sane-utils; sane-airscan le agrega los escáneres de red sin controladores).</li>
-<li>En macOS, por ahora eSCL y WSD (allí aún no se admiten escáneres USB).</li>
+<li>En macOS, por ahora eSCL y WSD (allí aún no se admiten escáneres USB). El primer
+escaneo pide permitir que KanzonasPDF encuentre dispositivos en su red local: elija <b>Permitir</b>
+(para cambiarlo después: Ajustes del Sistema &gt; Privacidad y seguridad &gt; Red local).</li>
 </ul>
 <p>Para escanear:</p>
 <ul>
@@ -1265,7 +1352,11 @@ Reconocer texto (OCR) en las páginas nuevas.</li>
 <li><b>Vigilar una carpeta...</b> es para una impresora que solo puede escanear a una carpeta
 de red (Escanear a carpeta de red, SMB) o a FTP: elija la carpeta a la que escanea; cada PDF o
 imagen nuevo (JPEG, PNG, TIFF) que llega allí mientras la ventana está abierta se agrega como
-páginas escaneadas. Haga clic en Listo cuando estén todos.</li>
+páginas escaneadas, una vez que deja de crecer y parece terminado (un archivo que sigue sin terminar
+durante un minuto se indica como incompleto). Los vínculos a archivos de otros lugares no se toman. Un PDF
+(de la carpeta o del escáner) trae solo el dibujo y el texto de sus páginas, sin vínculos, campos de
+formulario ni comentarios.
+Haga clic en Listo cuando estén todos.</li>
 </ul>
 <p>Cuando no funciona, la ventana dice por qué con palabras sencillas, y qué probar:</p>
 <ul>
@@ -1291,7 +1382,9 @@ issue en la página de GitHub de KanzonasPDF para que se pueda admitir.</li>
 <li>Seguridad: KanzonasPDF solo se comunica con el escáner que usted elige (o la dirección que
 escribe), lee sus respuestas con límites estrictos de tamaño y de tiempo, y no envía nada a
 ningún otro lugar. Los escáneres de red usan sus propios certificados autofirmados para HTTPS;
-cada uno se acepta solo para su escáner.</li>
+cada uno se acepta solo para su escáner. Un archivo escaneado (un TIFF de varias páginas, por
+ejemplo) puede tener como máximo 6.000 megapíxeles en total, muy por encima de 100 páginas Carta en
+color a 600 ppp: escanee menos páginas cada vez, o con una resolución más baja.</li>
 </ul>
 
 <h2 id="printprod">Producción de impresión (pestaña Imprimir)</h2>
@@ -1307,7 +1400,8 @@ pulgadas o milímetros, en todas las páginas, la página actual o una lista de 
 de toda la hoja de la página (su cuadro de medios), y el cuadro de sangrado tiene que contener el cuadro de recorte final:
 si no, lo indica y no cambia nada. Ctrl+Z lo deshace.</li>
 <li><b>Mostrar cuadros de página</b> (también en el menú Ver) delinea los cuadros que tiene una página: recorte final en
-verde, sangrado en rojo, arte en azul (solo en pantalla).</li>
+verde, sangrado en rojo, arte en azul, cada uno con su nombre en una esquina (Recorte final, Sangrado, Arte; solo en
+pantalla).</li>
 <li><b>Corregir líneas finas</b>: las líneas dibujadas más finas que un grosor que elija (0,25 pt de forma
 predeterminada; incluido un grosor de 0, que significa «lo más fino que puede dibujar el dispositivo», a menudo demasiado
 tenue en un trazador) se dibujan con el grosor que elija, en todas las páginas, la página actual o una lista de páginas.
@@ -1395,16 +1489,28 @@ se pueden seleccionar, mover y redimensionar; <b>Aplicar las censuras selecciona
 seleccionadas, y Aplicar censuras las aplica todas. Aplicar quita, no solo cubre: el texto, las imágenes
 y los trazos que están debajo de una marca, y cualquier <b>campo de formulario o marca</b> con el que se superponga una marca (guardan su
 propia copia del texto). Un trazado vectorial que toca una marca se quita más allá del cuadro, incluida
-la parte que queda fuera de él. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto y los scripts, a menos que
-lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> también encuentra el texto donde no puede ir un cuadro: campos
-de formulario (valores, opciones de lista, información sobre herramientas y nombres), vínculos (direcciones web y de correo electrónico), notas
-de marcas, títulos de marcadores, propiedades del documento, el texto alternativo de los PDF etiquetados, las notas de
-vínculos, las etiquetas de página y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
-archivos adjuntos que lo contienen se eliminan, y en las notas y los comentarios (que se quedan), los marcadores
-y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar ofrece quitarlo de
-inmediato. Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
-<li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento, scripts,
-archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios, miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
+la parte que queda fuera de él. Una página censurada también pierde su miniatura y la copia privada de la página
+que algunos programas (Illustrator) guardan en el archivo. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto, los scripts
+y los datos privados de esos programas, a menos que
+lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> marca el texto de las
+páginas también donde lo tiene una capa oculta o donde la página está recortada, y lo encuentra donde no
+puede ir un cuadro: campos
+de formulario (valores, opciones de lista, información sobre herramientas y nombres, también de campos que no están en ninguna página),
+vínculos (direcciones web y de correo electrónico), notas
+de marcas (también su texto con formato), títulos y direcciones web de marcadores, propiedades del documento (también las propias de un
+programa), el texto alternativo de los PDF etiquetados, las notas de
+vínculos, las etiquetas de página, los nombres de capas y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
+archivos adjuntos que lo contienen se eliminan (y un formulario XFA que lo contiene: sus campos normales se conservan), y en las notas y los comentarios (que se quedan), los marcadores
+y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar dice dónde lo encontró (los
+campos, las notas, los vínculos, los marcadores y las propiedades, y en cuántos lugares más del archivo,
+como nombres de capas, direcciones web, datos de formularios y texto alternativo) y ofrece quitarlo de
+inmediato. Una <b>leyenda</b> se vuelve a dibujar con las marcas que quedan, en el mismo paso: sus
+filas ya no muestran lo censurado, y en su título el texto se reemplaza por [redacted] (un cuadro
+dibujado sobre una leyenda la quita). Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
+<li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento (con los datos
+privados que algunos programas, como Illustrator, guardan en el archivo), scripts,
+archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios (con un formulario XFA, que guarda los datos
+otra vez; sus campos normales se conservan), miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
 (los campos normales del formulario se conservan).</li>
 <li><b>Propiedades de seguridad (contraseñas y permisos):</b> cifrado AES-256. Si pulsa Aceptar sin marcar ninguna
 casilla en un documento protegido, se le pregunta antes de quitar su protección.
@@ -1452,9 +1558,12 @@ ya contienen texto</b> (activado de forma predeterminada, para que el texto no s
 <b>Alta</b> (400 ppp, y revisa todas las orientaciones, para letra pequeña, escaneos de mala calidad y
 páginas de lado o al revés; la más lenta); o <b>Automática</b> (el valor predeterminado), que lee cada
 página rápido y la vuelve a procesar con resolución Alta solo cuando el texto salió pequeño o poco claro.
-Una precisión mayor tarda más y usa más memoria, y nunca procesa un escaneo con más nitidez de la
+Una precisión mayor tarda más, y nunca procesa un escaneo con más nitidez de la
 que se escaneó (eso solo agrega desenfoque), así que en un escaneo de 200 ppp Normal y Alta leen a 200 ppp.
-Su elección se recuerda. Con cualquier precisión, una página escaneada al revés se detecta y se lee
+Su elección se recuerda. Una página se lee de a un mosaico por vez, cada uno dibujado solo cuando se lee,
+así que incluso un plano de 42 x 30 pulgadas en Alta necesita más o menos la misma memoria que una página carta; la
+memoria que usó el OCR vuelve al sistema cuando termina, y la del propio motor de OCR (unos 45 MB) dos minutos
+después de la última página que leyó. Con cualquier precisión, una página escaneada al revés se detecta y se lee
 girada a la posición correcta, y las líneas que están al revés o en vertical en la página reciben su texto
 donde están sus letras, de modo que Buscar, así como Buscar y censurar, abarcan las palabras correctas. Editar texto cambia
 luego las palabras del escaneo con una fuente que coincide (vea Editar el texto propio del PDF).</li>
@@ -1481,8 +1590,8 @@ páginas y direcciones web se conservan); cada comentario y marca tiene su propi
 configurado para imprimirse, y los ocultos se quitan (PDF/A muestra todas las anotaciones, así que
 uno oculto aparecería); los campos de formulario quedan dibujados (en lugar de dejarlos al visor) y
 pierden sus acciones; la configuración de capas recibe un nombre; las funciones de transferencia,
-los modos de fusión desconocidos, el suavizado de imágenes ampliadas, la compresión LZW y las
-versiones de PDF posteriores a 1.7 se reemplazan por lo que PDF/A permite, sin cambiar el aspecto
+los modos de fusión desconocidos, el suavizado de imágenes ampliadas, la compresión LZW (también
+la de las imágenes escritas dentro del contenido de una página) y las versiones de PDF posteriores a 1.7 se reemplazan por lo que PDF/A permite, sin cambiar el aspecto
 de las páginas. Los <b>archivos adjuntos</b> se conservan: si todos son a su vez archivos PDF/A,
 la copia es PDF/A-2b; si no, es PDF/A-3b, la parte de la norma que permite cualquier archivo
 adjunto (cada uno queda entonces registrado como archivo asociado al documento, con su tipo).
@@ -1499,7 +1608,8 @@ una línea para ir allí) y si Guardar como PDF/A lo corrige; un botón allí lo
 Lo que no se puede corregir: una fuente que no está incrustada y no es una de las fuentes estándar
 (vuelva a crear el PDF con sus fuentes incrustadas), una fuente estándar cuyos anchos de carácter
 en el archivo difieren de los de la fuente estándar, una página de más de 200 pulgadas o de menos
-de 3 puntos, PostScript, partes guardadas en otros archivos, una compresión poco común. Revisa los
+de 3 puntos, PostScript, partes guardadas en otros archivos, una compresión poco común, un texto de
+más de 32.767 bytes (un comentario muy largo) o instrucciones de dibujo anidadas a más de 28 niveles. Revisa los
 requisitos comunes de PDF/A-2b (y de PDF/A-3b para un archivo que dice serlo), no todos: para una
 validación formal, use <b>veraPDF</b>, gratuito, de la PDF Association (verapdf.org).</li>
 <li><b>Comparar documentos...</b> (menú Documento, pestaña Páginas): elija la revisión anterior (si está protegida con
@@ -1531,7 +1641,7 @@ agregadas por aplicaciones que las identifican como marcas de agua (Adobe Acroba
 anotaciones de marca de agua. Ctrl+Z lo deshace. Una "marca de agua" que es solo texto normal o una imagen
 de la página no se puede distinguir del resto de la página; quítela con Borrar contenido o
 Editar objetos.</li>
-<li><b>Fondo...</b> (menú Documento; pestaña Páginas): pone un <b>color sólido</b>, un <b>degradado</b>
+<li><b>Fondo...</b> (menú Documento; pestaña Páginas, en la flecha junto a Encabezado y pie): pone un <b>color sólido</b>, un <b>degradado</b>
 (dos colores, de arriba abajo, de abajo arriba, de izquierda a derecha o en diagonal) o una <b>imagen</b> (Ajustar,
 Rellenar, Estirar a la página o Centrar en su propio tamaño) detrás de todo lo que hay en la página, con la
 opacidad que elija. Aplíquelo a la página actual, a todas las páginas o a páginas como 1-3, 7. Se guarda
@@ -1652,9 +1762,9 @@ cuadrícula...).</li>
 <tr><td>Ctrl+clic en un vínculo (cualquier herramienta, cualquier modo del mouse)</td><td>Abrir el vínculo, también en una marca convertida en vínculo (un clic normal con la herramienta Mano)</td></tr>
 <tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse: Mano, Seleccionar, o Editar objetos en el modo CAD) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
 <tr><td>Supr</td><td>Eliminar lo seleccionado: las marcas, y en el modo CAD también los objetos del dibujo</td></tr>
-<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas)</td></tr>
+<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas; con Editar objetos, las imágenes, las formas y el texto propios de la página, a cualquier página o documento)</td></tr>
 <tr><td>Ctrl+A</td><td>Seleccionar todo el texto de la página (todas las páginas en la lista de páginas)</td></tr>
-<tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (o las páginas, en la lista de páginas)</td></tr>
+<tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (con Editar objetos, el texto, las imágenes y las formas seleccionados; las páginas, en la lista de páginas)</td></tr>
 <tr><td>Supr (en la lista de páginas)</td><td>Eliminar las páginas seleccionadas</td></tr>
 <tr><td>Ctrl+L</td><td>Bloquear las marcas seleccionadas</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Al frente / adelante / atrás / al fondo</td></tr>

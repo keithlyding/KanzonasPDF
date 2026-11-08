@@ -306,6 +306,7 @@ def thumbnail(view, i, s):
         if al is not None:
             pm = RL.draw_over(pm, al, s)
     else:
+        RL.sync_transparency(page)          # (as a page opened afresh: see there)
         pm = page.get_pixmap(matrix=pymupdf.Matrix(s, s), annots=True)
     return QImage(pm.samples, pm.width, pm.height, pm.stride, QImage.Format_RGB888).copy()
 
@@ -432,7 +433,10 @@ class PageWidget(QWidget):
         if not v.show_markups:
             return None
         if self.index not in v._alists:
-            v._alists[self.index] = RL.annots_list(v.doc[self.index])
+            page = v.doc[self.index]
+            # (drawn again after a change: its pictures decoded afresh, as when opened)
+            RL.forget_pictures(page.parent, RL.markup_pictures(page))
+            v._alists[self.index] = RL.annots_list(page)
         return v._alists[self.index]
 
     def _content(self, s, clip=None, tile=None):
@@ -444,6 +448,9 @@ class PageWidget(QWidget):
         pm = v._rc.get(self.index, s, tile, thin)
         if pm is None:
             dl = self._display_list()
+            # (its pictures decoded whole at this size first: else how MuPDF draws them
+            # depends on what was drawn before, see _predecode)
+            self._predecode(s)
             t = time.perf_counter()
             with screen_lines(thin):
                 pm = RL.render(dl, s, clip)
@@ -612,16 +619,24 @@ class PageWidget(QWidget):
                 yield key, hit
 
     def _predecode(self, s):
-        """A scanned page at high zoom: its big pictures decoded once, at the size the tiles
-        need, so each tile doesn't decode the whole JPEG again (render_layers.predecode).
-        (Where they're drawn is read once per page, after a slow render: reading it runs the
-        page's drawing, a fifth of a second on a heavy sheet.)"""
+        """The page's pictures decoded whole, once, at the size this zoom draws them, before
+        the page is drawn (render_layers.predecode).
+
+        A scanned page at high zoom: each tile then doesn't decode the whole JPEG again. And
+        every page: MuPDF draws a picture from any decoded copy of it it still has, at a finer
+        size (another zoom) or of more of it (where another page shows all of it and this one
+        part of it, as a picture pasted or moved onto another page of the same document
+        does), and a copy decoded for this page alone comes out a few levels apart along its
+        edges and stripes. With the copy for this page and size made first, the page looks
+        the same whatever was drawn before (a page drawn afresh looked different: random
+        battery, seed 6). (Where they're drawn is read once per page and content: reading it
+        runs the page's drawing; a page with no picture skips it.)"""
         v = self.view
         page = v.doc[self.index]
         info = v._img_info.get(self.index)
         if info is None:
             info = []
-            big = self._big_images()
+            big = RL.big_images(page, 0)
             try:
                 # (matched by size: asking for xrefs has PyMuPDF checksum every picture)
                 shown = page.get_image_info() if big else []
@@ -870,6 +885,12 @@ class PageWidget(QWidget):
         tool = self.view.tool
         self._paint_text_selection(p, page, tool)
         cad_select.paint(self, p)
+        drop = getattr(self.view, "_drop_ghost", None)
+        if drop is not None and drop[0] == self.index:
+            # a selection dragged from another page: where it lands here
+            p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+            p.setBrush(Qt.NoBrush)
+            p.drawRect(drop[1])
 
         if tool in FORM_TOOLS:
             p.setPen(QPen(QColor(0, 90, 200), 1, Qt.DashLine))
@@ -1003,6 +1024,9 @@ class PageWidget(QWidget):
         if self.view._cad_cmd is not None:
             self.view._cad_cmd.paint(self, p)
         self._paint_snap_mark(p)
+        ed = self.view._inline
+        if ed is not None and ed.parentWidget() is self:
+            ed.paint_preview(p)             # (small text typed enlarged: where it goes)
 
         if self.view.current_page() == self.index and self.view.page_count() > 1:
             p.setPen(QPen(QColor(0, 120, 215), 1))
@@ -1526,6 +1550,64 @@ class PageWidget(QWidget):
             self._markup_outline(path, model, page)
         ed["ghost_path"] = path
 
+    # ---- a selection dragged onto another page --------------------------------------------
+    def _drop_target(self, e, start):
+        """(page index, how far the drag moved, as the pages are shown) when the pointer is
+        over another page than this one, else None."""
+        g = e.globalPosition().toPoint()
+        for pw in self.view.pages:
+            if pw is self or not pw.isVisible():
+                continue
+            local = pw.mapFromGlobal(g)
+            if pw.rect().contains(local):
+                z = self.view.zoom
+                return pw.index, pymupdf.Point((local.x() - start.x()) / z,
+                                               (local.y() - start.y()) / z), pw
+        return None
+
+    def _show_drop(self, e, start, box):
+        """While dragging: the selection's box (box, on this page's screen) where it would land
+        on another page under the pointer."""
+        v = self.view
+        old = getattr(v, "_drop_ghost", None)
+        got = self._drop_target(e, start) if box is not None else None
+        v._drop_ghost = None
+        if got is not None:
+            index, d, pw = got
+            z = v.zoom
+            v._drop_ghost = (index, QRectF(box).translated(d.x * z, d.y * z))
+            pw.update()
+        if old is not None and 0 <= old[0] < len(v.pages):
+            v.pages[old[0]].update()
+
+    def _end_drop(self):
+        v = self.view
+        old = getattr(v, "_drop_ghost", None)
+        v._drop_ghost = None
+        if old is not None and 0 <= old[0] < len(v.pages):
+            v.pages[old[0]].update()
+
+    def _markups_box(self):
+        """The selected markups' box on this page's screen, or None."""
+        v = self.view
+        if v.selection is None or v.selection[0] != self.index:
+            return None
+        box = None
+        for _x, m in v.selected_models():
+            r = A.bounds(m)
+            box = r if box is None else box | r
+        return self.to_screen(box) if box is not None else None
+
+    def _dropped_elsewhere(self, e, start):
+        """A drag of the selection ended over another page: it moves there (one undo step).
+        True when it did."""
+        self._end_drop()
+        got = self._drop_target(e, start) if e is not None else None
+        if got is None:
+            return False
+        index, d, _pw = got
+        return bool(self.view.transfer_selection(index, d))
+
     def _objects_release(self, e, pos):
         ed, self._obj_edit = self._obj_edit, None
         self._snap_mark = None
@@ -1538,6 +1620,9 @@ class PageWidget(QWidget):
             box = pymupdf.Rect(self.to_pdf(q.topLeft()), self.to_pdf(q.bottomRight())).normalize()
             self.view.select_objects(self.index, self.view.objects_in(self.index, box),
                                      add=ed.get("add", False))
+            return
+        if ed["mode"] == "move" and ed["preview"] is not None and \
+                self._dropped_elsewhere(e, ed["start"]):
             return
         if ed["preview"] is not None and self._objects_here():
             q = ed["preview"]
@@ -1579,6 +1664,17 @@ class PageWidget(QWidget):
         a.setEnabled(one_pic)
         a = menu.addAction(tr("Save picture as..."), self.view.save_picture)
         a.setEnabled(one_pic and bool(items[0]["xref"]))
+        menu.addSeparator()
+        # what's selected, as the page's own content (Ctrl+V pastes it into a page, here or
+        # in another document)
+        win = self.window()
+        for what, label, keys, on in (("cut", tr("Cut"), "Ctrl+X", True),
+                                      ("copy", tr("Copy"), "Ctrl+C", True),
+                                      ("paste", tr("Paste"), "Ctrl+V", True),
+                                      ("dup", tr("Duplicate"), "Ctrl+D", True)):
+            a = menu.addAction(f"{label}\t{keys}")
+            a.triggered.connect(lambda _=False, w=what: win._clipboard(w))
+            a.setEnabled(on)
         menu.addSeparator()
         a = menu.addAction(tr("Ungroup"), self.view.ungroup_objects)
         a.setEnabled(any(it["kind"] == "group" for it in items))
@@ -1675,7 +1771,9 @@ class PageWidget(QWidget):
                     what=v.annot_label(self.index, pdf).lower()), remove)
         if has_text:
             menu.addSeparator()
-            for tool, label in (("highlight", tr("Highlight")), ("underline", tr("Underline")),
+            # (verbs, as Strike out: the tools' own names are nouns in Spanish)
+            for tool, label in (("highlight", tr("Highlight", ctx="verb")),
+                                ("underline", tr("Underline", ctx="verb")),
                                 ("strikeout", tr("Strike out")),
                                 ("comment", tr("Comment on text...")),
                                 ("redact", tr("Mark for redaction"))):
@@ -2052,13 +2150,16 @@ class PageWidget(QWidget):
         drawing too); else, each way on its own, its left / center / right onto the page's
         left / center / right and its top / middle / bottom onto the page's (snap to page,
         with a guide line along what it lines up with); else its top-left corner to the grid.
-        A picture dragged near the middle of the sheet settles in the middle."""
+        A picture dragged near the middle of the sheet settles in the middle. With both on,
+        the nearer one wins (each measured by the larger of its moves across and down): an
+        object first, whatever its distance, kept a picture dropped by the page's center
+        from settling there on any drawing with a line end near one of its corners."""
         v = self.view
         self._snap_mark = None
         self._snap_guides = []
         moved = box.translated(d)
+        best = None
         if v.snap_objects:
-            best = None
             for x in (moved.left(), moved.center().x(), moved.right()):
                 for y in (moved.top(), moved.center().y(), moved.bottom()):
                     at = QPointF(x, y)
@@ -2068,9 +2169,6 @@ class PageWidget(QWidget):
                         gap = (sp - at).manhattanLength()
                         if best is None or gap < best[0]:
                             best = (gap, sp, at)
-            if best is not None:
-                self._snap_mark = (best[1], "object")
-                return d + (best[1] - best[2])
         if v.snap_page:
             page = v.doc[self.index]
             pr = self.to_screen(page.rect * page.derotation_matrix)
@@ -2084,12 +2182,18 @@ class PageWidget(QWidget):
                 for to in (pr.top(), pr.center().y(), pr.bottom()):
                     if abs(to - at) <= tol and (dy is None or abs(to - at) < abs(dy[0])):
                         dy = (to - at, to)
-            if dx is not None or dy is not None:
+            far = max(abs(dx[0]) if dx else 0.0, abs(dy[0]) if dy else 0.0)
+            if (dx is not None or dy is not None) and (
+                    best is None or far <= max(abs(best[1].x() - best[2].x()),
+                                               abs(best[1].y() - best[2].y()))):
                 if dx is not None:
                     self._snap_guides.append(("x", dx[1]))
                 if dy is not None:
                     self._snap_guides.append(("y", dy[1]))
                 return d + QPointF(dx[0] if dx else 0.0, dy[0] if dy else 0.0)
+        if best is not None:
+            self._snap_mark = (best[1], "object")
+            return d + (best[1] - best[2])
         if v.snap_grid and v.grid_spacing > 0:
             from . import snapping
             corner = moved.topLeft()
@@ -2295,10 +2399,15 @@ class PageWidget(QWidget):
                     self._obj_edit["preview"] = self._objects_preview(pos, shift_held(e),
                                                                       self._snapping(e))
                     self._build_object_ghost()
+                    if self._obj_edit["mode"] == "move":
+                        self._show_drop(e, self._obj_edit["start"],
+                                        self.to_screen(self.view.selected_objects_rect()))
                 self.update()
         elif self._edit is not None:
             if (pos - self._edit["start"]).manhattanLength() >= 3:
                 self._edit["preview"] = self._edit_preview(pos, shift_held(e), self._snapping(e))
+                if self._edit["mode"] in ("move", "group"):
+                    self._show_drop(e, self._edit["start"], self._markups_box())
                 self.update()
         elif self._text_sel is not None:
             self._drag_now = pos
@@ -2426,6 +2535,9 @@ class PageWidget(QWidget):
             ed, self._edit = self._edit, None
             preview = ed.get("preview")
             self.update()
+            if ed["mode"] in ("move", "group") and preview is not None and \
+                    self._dropped_elsewhere(e, ed["start"]):
+                return
             if ed["mode"] == "group" and ed.get("delta") is not None:
                 delta = ed["delta"]
                 self.view.commit_models(self.index, [(x, A.moved(m, delta))
@@ -2535,7 +2647,8 @@ class PageWidget(QWidget):
         """View > Show page boxes: the trim (green), bleed (red) and art (blue) boxes the page
         has, each named inside one of its own corners (they're often only points apart: the
         names would cover each other at the same corner) (on screen only)."""
-        names = {"trimbox": tr("Trim"), "bleedbox": tr("Bleed"), "artbox": tr("Art")}
+        # (their own words: "Trim" alone is also the CAD tab's command, a verb in Spanish)
+        names = {"trimbox": tr("Trim box"), "bleedbox": tr("Bleed box"), "artbox": tr("Art box")}
         f = p.font()
         f.setPointSizeF(max(6.0, f.pointSizeF() * 0.8))
         p.setFont(f)
