@@ -35,42 +35,24 @@ a decision changes or a piece of work lands. Details of each version are in
   membership (that document doesn't have the layer). Also from the owner's use: the editing
   box no bigger than its text (small text typed enlarged with a true-size preview), and printed
   lines no longer faint (Dark thin lines in the Print window).
+- 1.10 (chosen by the owner on 6 Nov 2026; each feature on its own branch, brought up to 1.9.1
+  and merged together, then the full checks, long batteries and a break-it battery): smart
+  forms (calculations, formats and validation from Acrobat's standard calls, never running
+  JavaScript; a percent field reads a bare 25 as 25%, owner, 6 Nov); comments review (replies,
+  statuses, XFDF/FDF checked against Apache PDFBox's reader and Acrobat's files, as Adobe's
+  copy of the specification couldn't be fetched); accessibility (Check against PDF/UA,
+  Auto-tag, alt text, reading order; tags kept in step with every edit; redaction takes out
+  alt text); batch processing (Search & redact applies by default, owner, 6 Nov; mark only
+  says nothing was removed and names files -marked; the single-file commands' own redaction
+  and OCR); bookmarks from headings, tags or sheet numbers and Insert table of contents;
+  reading comfort (Full screen, Presentation, page layouts, Reading view, Read aloud with the
+  system's voices, Auto scroll; the builds leave out Qt's multimedia backends and FFmpeg).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
-1. **1.10** (chosen by the owner on 6 Nov 2026; each feature done on its own branch, to be merged
-   together, then the full checks, long batteries and a break-it battery):
-   - Reading comfort (Full screen, Presentation, page layouts, Reading view, Read aloud, Auto
-     scroll): `claude/reading` (done; brought up to 1.9.1 on 8 Nov, with its own ribbon tab,
-     Reading). Read aloud uses the system's own engine through QtTextToSpeech (WinRT / SAPI,
-     the Mac's AVSpeechSynthesizer, Speech Dispatcher on Linux, optional in the AppImage); the
-     builds leave out Qt's multimedia backends and FFmpeg it would bring along
-     (packaging/trim_build.py, self-test "no FFmpeg in the build").
-   - Batch processing (Action wizard-style steps over many files, into a Processed folder):
-     `claude/batch`. Search & redact in a batch applies by default (owner, 6 Nov: the originals
-     stay); when only marking, the results say plainly that nothing was removed yet, and those
-     files are named name-marked (unless the user's own name pattern says otherwise). Batch
-     redaction and OCR run the single-file commands' own code (DocumentView's redaction steps,
-     ocr.read_page), with a check after redacting that the words are gone (done, merged with
-     1.9.1; it found a mark over part of a tagged span leaving the span's ActualText, fixed for
-     both).
-   - Bookmarks made from headings, tags or sheet numbers, and Insert table of contents:
-     `claude/bookmarks`.
-   - Smart forms (calculations, formats and validation from the standard calls, never running
-     JavaScript): `claude/forms`. A percent field reads a bare 25 as 25% (owner, 6 Nov; the value
-     kept is 0.25, so Acrobat's calculations still work; Acrobat itself shows 2500%).
-   - Comments review (XFDF/FDF import and export, reply threads, review statuses):
-     `claude/comments` (done; the XFDF/FDF details checked against Apache PDFBox's reader and
-     Acrobat's files, as Adobe's copy of the specification couldn't be fetched).
-   - Accessibility (Check accessibility against PDF/UA, Auto-tag, alt text, reading order):
-     `claude/accessibility`. Brought up to 1.9.1 (8 Nov): every edit of a tagged document keeps
-     its tags in step (tag_upkeep.py, in the edit's undo step: Add text, Edit text, pastes,
-     moves across pages, markups, pages added and replaced); Header & footer and Bates numbers
-     are pagination artifacts there; redaction takes out the alt text and ActualText of what
-     it removes; Check accessibility's Repair tags; the battery's --tagged runs.
-2. **French, German and Portuguese** (the app and the manual), after 1.10's features (owner,
-   6 Nov).
-3. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
+1. **French, German and Portuguese** (the app and the manual), now that 1.10's features are in
+   (owner, 6 Nov).
+2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
