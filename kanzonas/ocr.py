@@ -250,9 +250,42 @@ def recognize(rendering, cancelled=lambda: False, executor=None, wait=None):
     keeping the window responsive. Only a tile or two are in memory at a time."""
     if not isinstance(rendering, Rendering):          # PNG bytes (older callers)
         return _read(rendering)
+    return drive(recognize_steps(rendering, cancelled, executor), wait)
+
+
+def drive(steps, wait=None, show=None):
+    """Run a recognize_steps or read_page generator to its end here: wait(future) for each
+    future it yields (default: future.result()), show(text) for each text. Returns what it
+    returns."""
+    try:
+        ev = next(steps)
+        while True:
+            if isinstance(ev, str):
+                if show is not None:
+                    show(ev)
+            else:
+                (wait or (lambda f: f.result()))(ev)
+            ev = next(steps)
+    except StopIteration as done:
+        return done.value
+
+
+def recognize_steps(rendering, cancelled=lambda: False, executor=None):
+    """recognize() as a generator, for a caller that keeps its window alive its own way
+    (Batch processing's slices): each tile is rendered in the thread running the generator
+    (PyMuPDF) and read in executor (none: right here, yielding nothing); while a reading isn't
+    done its future is yielded (come back in a moment). Returns the lines, as recognize(): what
+    was read so far when cancelled() says so."""
     xs, ys = _starts(rendering.width), _starts(rendering.height)
     out = []
     pending = None
+
+    def result(fut):
+        while not fut.done():
+            if cancelled():
+                return None
+            yield fut
+        return fut.result()
     for ty, y0 in enumerate(ys):
         for tx, x0 in enumerate(xs):
             if cancelled():
@@ -266,15 +299,96 @@ def recognize(rendering, cancelled=lambda: False, executor=None, wait=None):
                 continue
             fut = executor.submit(_read_tile, *args)
             if pending is not None:                   # (read while this one was rendered)
-                got = (wait or (lambda f: f.result()))(pending)
+                got = yield from result(pending)
                 if got is None:
                     return out
                 out += got
             pending = fut
     if pending is not None:
-        got = (wait or (lambda f: f.result()))(pending)
+        got = yield from result(pending)
         out += got or []
     return out
+
+
+def read_page(doc, i, accuracy="auto", cancelled=lambda: False, executor=None):
+    """Read page i of doc the way Recognize text (OCR) does, for it and for Batch
+    processing: at the accuracy's resolution (never above the scan's own); with Auto, again
+    sharper when the text came out small or unclear; turned when it reads upside down or
+    sideways (High: every turn tried), keeping the better reading. A generator (see
+    recognize_steps): yields a reading's future while it's being read and a text saying what
+    it does next; returns (results, rendering) for add_text_layer, or None when cancelled.
+    Every reading of the page is drawn from one display list, made here and let go at the
+    end (the rendering returned keeps only its coordinates)."""
+    lists = []
+
+    def to_read(dpi, turn=0):
+        if not lists:
+            lists.append(doc[i].get_displaylist(annots=False))
+        return Rendering(doc[i], turn, dpi=dpi, displaylist=lists[0])
+
+    def read(rendering):
+        res = yield from recognize_steps(rendering, cancelled, executor)
+        return None if cancelled() else res
+    try:
+        dpi = page_dpi(doc[i], ACCURACY_DPI.get(accuracy, ACCURACY_DPI["fast"]))
+        best = to_read(dpi)
+        res = yield from read(best)
+        if res is None:
+            return None
+        sharper = page_dpi(doc[i], ACCURACY_DPI["high"])
+        if accuracy == "auto" and sharper > dpi and needs_sharper(res, best):
+            yield tr("Page {page}: small or unclear text, recognizing again at higher "
+                     "resolution...").format(page=i + 1)
+            dpi = sharper
+            best = to_read(dpi)
+            res = yield from read(best)
+            if res is None:
+                return None
+        turn = 0
+        if upside_down(res):
+            # scanned upside down: read it turned upright too (lines the engine wasn't sure
+            # about read right then), keep the better reading
+            yield tr("Page {page}: upside down, recognizing it turned...").format(page=i + 1)
+            r = to_read(dpi, 180)
+            alt = yield from read(r)
+            if alt is None:
+                return None
+            if score(alt) >= score(res):
+                best, res, turn = r, alt, 180
+        turns = (90, 180, 270) if accuracy == "high" else \
+            ((90, 270) if mostly_vertical(res) else ())
+        if turns:
+            # sideways or upside-down text: try other turns, keep the best
+            yield tr("Page {page}: checking other orientations...").format(page=i + 1)
+            for extra in turns:
+                if extra == turn:
+                    continue
+                r = to_read(dpi, extra)
+                alt = yield from read(r)
+                if alt is None:
+                    return None
+                # switch only for a clear win: the engine already reads turned text, so
+                # near-equal scores are noise and the upright layout is better
+                if score(alt) > 1.25 * score(res) + 5:
+                    best, res = r, alt
+        best.release()                  # keep the text, not the page
+        return res, best
+    finally:
+        lists.clear()
+
+
+def job_done():
+    """After an OCR job (Recognize text, a batch): the memory the tiles took back to the
+    system now, the engine's once it's been unused a while (the next job soon after reuses
+    it)."""
+    trim_memory()
+    try:
+        from PySide6.QtCore import QCoreApplication, QTimer
+        if QCoreApplication.instance() is not None:
+            QTimer.singleShot(int(ENGINE_IDLE_S * 1000) + 1000,
+                              lambda: release_engine(ENGINE_IDLE_S))
+    except Exception:
+        pass
 
 
 def _good(results):

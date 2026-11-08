@@ -198,6 +198,34 @@ def _add_watermark_page(page, spec):
                      morph=(center, pymupdf.Matrix(angle)), overlay=not spec.get("behind"))
 
 
+BLANK_DPI = 72          # blank-page check: the page drawn this small, in gray
+BLANK_DARK = 128        # a pixel darker than this is ink (show-through and paper tint aren't)
+BLANK_INK = 0.0003      # at most this share of ink pixels: blank (dust and specks; one
+                        # line of text, a page number or a short signature is more)
+BLANK_EDGE = 0.05       # the outer 5% is left out: a scanner's shadow along the edges
+
+
+def is_blank(page):
+    """True when the page has nothing worth keeping: no text, no markups or form fields, and
+    drawn small almost no ink (a blank sheet through a scanner, specks and all). Made to keep
+    a page when in doubt (Batch processing: Delete blank pages)."""
+    if page.get_text("text").strip():
+        return False
+    if page.first_annot is not None or page.first_widget is not None:
+        return False
+    pm = page.get_pixmap(dpi=BLANK_DPI, colorspace=pymupdf.csGRAY, alpha=False, annots=True)
+    w, h, stride = pm.width, pm.height, pm.stride
+    dx, dy = int(w * BLANK_EDGE), int(h * BLANK_EDGE)
+    samples = pm.samples
+    dark = bytes(range(BLANK_DARK))
+    ink = 0
+    for y in range(dy, h - dy):
+        row = samples[y * stride + dx:y * stride + w - dx]
+        ink += len(row) - len(row.translate(None, dark))      # (pixels darker than BLANK_DARK)
+    area = max(1, (w - 2 * dx) * (h - 2 * dy))
+    return ink <= area * BLANK_INK
+
+
 COMPRESS_EN = {"Good quality (150 dpi images)": (200, 150, 80),
                "Smaller (100 dpi images)": (130, 100, 65),
                "Smallest (72 dpi images)": (90, 72, 50)}

@@ -759,6 +759,9 @@ class MainWindow(QMainWindow):
         DocumentView.show_scale_bar = self.a_scale_bar.isChecked()
         self.a_ocr = self._act(tr("Recognize text (&OCR)..."), self.ocr,
                                tip=tr("Make scanned pages searchable and selectable"))
+        self.a_batch = self._act(tr("&Batch processing..."), self.batch_processing,
+                                 tip=tr("Do the same steps to many PDFs at once: OCR, PDF/A, "
+                                        "Bates numbers, watermarks, flattening, smaller files"))
         self.a_props = self._act(tr("&Properties panel"), self._toggle_props, "F6")
         self.a_props.setCheckable(True)
         self.a_props.setChecked(True)
@@ -1166,7 +1169,7 @@ class MainWindow(QMainWindow):
         self.recent_menu = m.addMenu(tr("Open &recent"))
         self._rebuild_recent()
         m.addActions([self.a_save, self.a_save_as, self.a_save_pdfa, self.a_check_pdfa])
-        m.addActions([self.a_combine, self.a_from_images, self.a_scan])
+        m.addActions([self.a_combine, self.a_from_images, self.a_scan, self.a_batch])
         em = m.addMenu(tr("&Export to"))
         em.addActions(self.export_actions)
         m.addAction(self.a_compare)
@@ -1246,6 +1249,8 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_props)
         m.addSeparator()
         m.addActions([self.a_ocr, self.a_flatten])
+        m.addSeparator()
+        m.addAction(self.a_batch)
         m = mb.addMenu(tr("&Document"))
         m.addActions([self.a_header, self.a_watermark, self.a_remove_wm, self.a_background,
                       self.a_remove_bg])
@@ -2980,6 +2985,11 @@ class MainWindow(QMainWindow):
         self.settings.setValue("ocr_accuracy", accuracy)
         v.run_ocr(pages, accuracy)
 
+    def batch_processing(self):
+        """Tools > Batch processing: the same steps on many files (batch_ui.py)."""
+        from .batch_ui import BatchWindow
+        BatchWindow.open_for(self)
+
     def flatten(self):
         v = self.view()
         if not v:
@@ -3990,13 +4000,7 @@ class MainWindow(QMainWindow):
             term = text.strip()
             hidden = v.hidden_matches(term)
             n = v.search_redact(term)
-            extra = [what.format(n=c) for what, c in (
-                (tr("{n} form field(s)"), hidden["fields"]),
-                (tr("{n} markup note(s)"), hidden["markups"]), (tr("{n} link(s)"), hidden["links"]),
-                (tr("{n} bookmark(s)"), hidden["bookmarks"]),
-                (tr("{n} document propert(ies)"), hidden["metadata"]),
-                (tr("{n} other place(s) in the file (layer names, web addresses, form data, "
-                    "alternate text...)"), hidden.get("other", 0))) if c]
+            extra = v.redaction_places(hidden)
             msg = (tr("Marked {n} occurrence(s) on the pages.").format(n=n) if n else
                    tr("No matches on the pages."))
             if extra and not n:
