@@ -1591,7 +1591,7 @@ class PageWidget(QWidget):
         """A drag of the selection ended over another page: it moves there (one undo step).
         True when it did."""
         self._end_drop()
-        got = self._drop_target(e, start)
+        got = self._drop_target(e, start) if e is not None else None
         if got is None:
             return False
         index, d, _pw = got

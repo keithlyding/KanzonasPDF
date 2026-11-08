@@ -141,13 +141,18 @@ class Fixture(unittest.TestCase):
         pump()
 
     def mouse_to(self, shown_pt, index):
-        """The pointer over page index at shown_pt (a point as the page is shown)."""
+        """The pointer over page index at shown_pt (a point as the page is shown). (Paste
+        goes where the pointer is: QCursor.pos(), which the offscreen platform only roughly
+        keeps when other windows came and went, so the point is given to Paste too.)"""
         self.v.goto_page(index)
         pump()
         pw = self.v.pages[index]
         z = self.v.zoom
         QTest.mouseMove(pw, QPoint(round(shown_pt[0] * z), round(shown_pt[1] * z)))
         pump()
+        at = pymupdf.Point(round(shown_pt[0] * z) / z, round(shown_pt[1] * z) / z)
+        target = (index, at * self.v.doc[index].derotation_matrix)
+        self.v.paste_target = lambda: target
 
     def corner(self):
         """Where the copied things' top left corner was, as page 1 is shown."""

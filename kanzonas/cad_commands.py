@@ -760,7 +760,8 @@ class Move(Command):
             self.ask()
 
     def preview(self):
-        if len(self.pts) == 1 and self.hover is not None and self.hover_page == self.page:
+        if len(self.pts) == 1 and self.hover is not None and \
+                self.hover_page in (None, self.page):
             return [translate(self.hover - self.pts[0])], self.pts[0]
         return [], None
 
@@ -798,7 +799,7 @@ class Copy(Command):
         self.choose("done")
 
     def preview(self):
-        if self.pts and self.hover is not None and self.hover_page == self.page:
+        if self.pts and self.hover is not None and self.hover_page in (None, self.page):
             return [translate(self.hover - self.pts[0])], self.pts[0]
         return [], None
 
