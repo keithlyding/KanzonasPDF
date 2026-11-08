@@ -94,6 +94,8 @@ class InfoPlist(unittest.TestCase):
         self.assertEqual(info["CFBundleIconFile"], "KanzonasPDF.icns")
         self.assertTrue(info["NSHighResolutionCapable"])
         self.assertFalse(info["NSRequiresAquaSystemAppearance"])          # dark mode
+        self.assertIn("File > Scan", info["NSLocalNetworkUsageDescription"])   # (asked once)
+        self.assertEqual(info["NSBonjourServices"], ["_uscan._tcp", "_uscans._tcp"])
         self.assertEqual(info["Other"], 1)                                  # PyInstaller's kept
         pdf, = info["CFBundleDocumentTypes"]
         self.assertEqual(pdf["LSItemContentTypes"], ["com.adobe.pdf"])

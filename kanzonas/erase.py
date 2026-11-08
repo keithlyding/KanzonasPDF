@@ -144,6 +144,8 @@ def erase(page, box):
     page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_PIXELS,
                           graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
                           text=pymupdf.PDF_REDACT_TEXT_REMOVE)
+    from . import added_text
+    added_text.prune(page)               # (an added block erased all of it)
     redrawn = 0
     shape = page.new_shape()             # one shape, committed once: fast with many paths
     for path in crossing:

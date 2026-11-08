@@ -3795,6 +3795,9 @@ msgstr "{n} marcador(es)"
 msgid "{n} document propert(ies)"
 msgstr "{n} propiedad(es) del documento"
 
+msgid "{n} other place(s) in the file (layer names, web addresses, form data, alternate text...)"
+msgstr "{n} lugar(es) más del archivo (nombres de capas, direcciones web, datos de formularios, texto alternativo...)"
+
 #: main_window.py:3212
 msgid "Marked {n} occurrence(s) on the pages."
 msgstr "Se marcaron {n} aparición(es) en las páginas."
@@ -4299,7 +4302,7 @@ msgstr "Sello de tiempo"
 
 #: main_window.py:3962
 msgid "Signature details"
-msgstr "Detalles de la firma"
+msgstr "Detalles de firma"
 
 #: main_window.py:3963
 msgid "Clear signatures"
@@ -4419,11 +4422,11 @@ msgstr "Etiquetas de barras"
 
 #: main_window.py:3973
 msgid "Shortcuts"
-msgstr "Métodos abreviados"
+msgstr "Atajos"
 
 #: main_window.py:3974
 msgid "User manual"
-msgstr "Manual del usuario"
+msgstr "Manual"
 
 #: main_window.py:3974
 msgid "Command palette"
@@ -4479,11 +4482,11 @@ msgstr "Abajo"
 
 #: main_window.py:3978
 msgid "Horizontally"
-msgstr "Horizontalmente"
+msgstr "Horizontal"
 
 #: main_window.py:3978
 msgid "Vertically"
-msgstr "Verticalmente"
+msgstr "Vertical"
 
 #: main_window.py:3978
 msgid "To front"
@@ -5803,6 +5806,16 @@ msgstr "Tamaño real (reducir las páginas demasiado grandes)"
 msgid "Print markups and form fields"
 msgstr "Imprimir marcas y campos de formulario"
 
+msgid "Dark thin lines"
+msgstr "Líneas finas oscuras"
+
+msgid ""
+"Print every line at least 0.15 pt wide and solid, so the thin lines of drawings don't come out "
+"faint. Turn off to print lines exactly as thin as they are."
+msgstr ""
+"Imprime cada línea con al menos 0,15 pt de grosor y sólida, para que las líneas finas de los "
+"planos no salgan tenues. Desactívelo para imprimir las líneas exactamente tan finas como son."
+
 #: print_dialog.py:229
 msgid "No pages"
 msgstr "No hay páginas"
@@ -6295,6 +6308,10 @@ msgstr "Sello {name}"
 msgid "Emoji and other characters beyond U+FFFF can't be written into a PDF page here. Remove them and try again."
 msgstr "Los emojis y otros caracteres más allá de U+FFFF no se pueden escribir aquí en una página PDF. Quítelos e inténtelo de nuevo."
 
+#: text_edit.py
+msgid "Text written right to left (Hebrew, Arabic...) can't be rewritten here yet: it would come out in the wrong order. Nothing was changed."
+msgstr "El texto que se escribe de derecha a izquierda (hebreo, árabe...) todavía no se puede reescribir aquí: saldría en el orden equivocado. No se ha cambiado nada."
+
 #: text_edit.py:507 text_edit.py:646
 msgid "some characters"
 msgstr "algunos caracteres"
@@ -6675,8 +6692,8 @@ msgid "Trim: that's a corner of the shape or where lines cross. Click on the sid
 msgstr "Recortar: ahí hay una esquina de la forma o se cruzan líneas. Haga clic en el lado que quiere quitar, un poco lejos de la esquina."
 
 #: cad
-msgid "The drawing's text can be moved here, not copied, turned, scaled or mirrored: it stays where it is (Edit text changes it)."
-msgstr "Aquí el texto del dibujo se puede mover, pero no copiar, girar, escalar ni reflejar: se queda donde está (Editar texto lo cambia)."
+msgid "The drawing's text can be moved or copied here, not turned, scaled or mirrored: it stays where it is (Edit text changes it)."
+msgstr "Aquí el texto del dibujo se puede mover o copiar, pero no girar, escalar ni reflejar: se queda donde está (Editar texto lo cambia)."
 
 #: cad
 msgid "CAD"
@@ -7333,10 +7350,13 @@ msgstr "Delinear los cuadros de recorte final (verde), sangrado (rojo) y arte (a
 msgid "Prepare"
 msgstr "Preparar"
 
-msgid "Bleed"
+msgid "Trim box"
+msgstr "Recorte final"
+
+msgid "Bleed box"
 msgstr "Sangrado"
 
-msgid "Art"
+msgid "Art box"
 msgstr "Arte"
 
 msgid "Crop marks (at the trim box; the drawing out to the bleed box)"
@@ -7387,6 +7407,9 @@ msgstr "Sin sangrado más allá del cuadro de recorte final: un dibujo que llega
 msgid "{n} pages of {w} × {h} pt ({inch}): pages {pages}"
 msgstr "{n} páginas de {w} × {h} pt ({inch}): páginas {pages}"
 
+msgid "{n} page of {w} × {h} pt ({inch}): page {pages}"
+msgstr "{n} página de {w} × {h} pt ({inch}): página {pages}"
+
 msgid "Font not embedded: {font}"
 msgstr "Fuente no incrustada: {font}"
 
@@ -7395,6 +7418,9 @@ msgstr "Imagen en colores RGB ({w} × {h} píxeles): una prensa de cuatricromía
 
 msgid "{n} lines thinner than {w} pt (Fix hairlines widens them)"
 msgstr "{n} líneas más finas que {w} pt (Corregir líneas finas las ensancha)"
+
+msgid "{n} line thinner than {w} pt (Fix hairlines widens it)"
+msgstr "{n} línea más fina que {w} pt (Corregir líneas finas la ensancha)"
 
 msgid "Picture at {dpi} pixels per inch as printed ({w} × {h} pixels)"
 msgstr "Imagen a {dpi} píxeles por pulgada tal como se imprime ({w} × {h} píxeles)"
@@ -7455,6 +7481,9 @@ msgstr "Los márgenes se miden hacia dentro desde la página tal como se muestra
 
 msgid "Fix hairlines: {n} lines now {w} pt wide (Ctrl+Z undoes it)"
 msgstr "Corregir líneas finas: {n} líneas ahora con {w} pt de grosor (Ctrl+Z lo deshace)"
+
+msgid "Fix hairlines: {n} line now {w} pt wide (Ctrl+Z undoes it)"
+msgstr "Corregir líneas finas: {n} línea ahora con {w} pt de grosor (Ctrl+Z lo deshace)"
 
 msgid "No lines thinner than {w} pt on these pages."
 msgstr "No hay líneas más finas que {w} pt en estas páginas."
@@ -7666,6 +7695,18 @@ msgstr "Una imagen tiene versiones alternativas o vínculos OPI."
 
 msgid "A picture has a number of bits per color PDF/A doesn't allow."
 msgstr "Una imagen tiene una cantidad de bits por color que PDF/A no permite."
+
+#: pdfa.py
+msgid "A text in the file (a comment's, perhaps) is longer than PDF/A allows (32,767 bytes)."
+msgstr "Un texto del archivo (el de un comentario, quizá) es más largo de lo que PDF/A permite (32.767 bytes)."
+
+#: pdfa.py
+msgid "A name in the file is longer than PDF/A allows (127 bytes)."
+msgstr "Un nombre del archivo es más largo de lo que PDF/A permite (127 bytes)."
+
+#: pdfa.py
+msgid "Drawing instructions are nested deeper than PDF/A allows (28 levels)."
+msgstr "Las instrucciones de dibujo están anidadas a más profundidad de la que PDF/A permite (28 niveles)."
 
 msgid "Font {font} isn't embedded."
 msgstr "La fuente {font} no está incrustada."
@@ -8219,6 +8260,15 @@ msgstr "{name} no es un PDF."
 msgid "{name} is too large."
 msgstr "{name} es demasiado grande."
 
+msgid "{name} is a link to another file: it's left alone."
+msgstr "{name} es un vínculo a otro archivo: no se toma."
+
+msgid "{name} isn't a file."
+msgstr "{name} no es un archivo."
+
+msgid "{name} is incomplete (the printer may have stopped sending it)."
+msgstr "{name} está incompleto (puede que la impresora haya dejado de enviarlo)."
+
 msgid "Couldn't read {name}."
 msgstr "No se pudo leer {name}."
 
@@ -8260,6 +8310,12 @@ msgstr "Falló una conexión segura con {host}."
 
 msgid "Couldn't reach {host}: {error}"
 msgstr "No se pudo conectar con {host}: {error}"
+
+msgid "The scanned file is too large: its {n} pages have {mp} megapixels in all (at most {most}). Scan fewer pages at a time, or at a lower resolution."
+msgstr "El archivo escaneado es demasiado grande: sus {n} páginas tienen {mp} megapíxeles en total (como máximo {most}). Escanee menos páginas cada vez, o con una resolución más baja."
+
+msgid "The connection to {host} was cut before the scanner's answer was complete."
+msgstr "La conexión con {host} se cortó antes de que la respuesta del escáner estuviera completa."
 
 msgid "{host} sent KanzonasPDF to another address ({other}); for safety it doesn't follow."
 msgstr "{host} envió a KanzonasPDF a otra dirección ({other}); por seguridad no la sigue."
@@ -8355,6 +8411,113 @@ msgstr "Escanear a través de Windows (WIA) necesita el paquete comtypes, que fa
 
 msgid "The scanner didn't accept the subscription."
 msgstr "El escáner no aceptó la suscripción."
+
+# ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
+# ribbon tab fits a 1366-pixel screen in Spanish; the menus keep the full names
+msgctxt "ribbon"
+msgid "Snap to grid"
+msgstr "Ajustar a cuadrícula"
+
+msgctxt "ribbon"
+msgid "Snap to page"
+msgstr "Ajustar a página"
+
+msgctxt "ribbon"
+msgid "Combine files"
+msgstr "Combinar"
+
+msgctxt "ribbon"
+msgid "Attach file"
+msgstr "Adjuntar"
+
+msgid "More in {group}: {commands}"
+msgstr "Más en {group}: {commands}"
+
+# ---- the same English word with another meaning there (msgctxt)
+# a box's edges (Print > Page boxes), not the Align commands
+msgctxt "edge"
+msgid "Top"
+msgstr "Superior"
+
+msgctxt "edge"
+msgid "Bottom"
+msgstr "Inferior"
+
+# what to do with selected text (right-click), not the markup's name
+msgctxt "verb"
+msgid "Highlight"
+msgstr "Resaltar"
+
+msgctxt "verb"
+msgid "Underline"
+msgstr "Subrayar"
+
+# a legend's column: how many of each markup, not the Count measuring tool
+msgctxt "legend"
+msgid "Count"
+msgstr "Cantidad"
+
+# Edit text on text Add text wrote (one block); page text copied with Edit objects
+msgid "Editing the text you added: all of it, as one block. Alt+click edits a single line."
+msgstr "Editando el texto que agregó: todo, como un solo bloque. Alt+clic edita una sola línea."
+
+msgid "Text rewritten (Ctrl+Z undoes it). Alt+click edits a single line."
+msgstr "Texto reescrito (Ctrl+Z lo deshace). Alt+clic edita una sola línea."
+
+msgid "The text wasn't changed."
+msgstr "El texto no se cambió."
+
+msgid "The text now runs past the edge of the page. Ctrl+Z undoes it; drag a side of the box to change its width."
+msgstr "Ahora el texto pasa del borde de la página. Ctrl+Z lo deshace; arrastre un lado del cuadro para cambiar su ancho."
+
+msgid "{font} isn't installed in that style or lacks some of these characters; kept the text's own font."
+msgstr "{font} no está instalada en ese estilo o le faltan algunos de estos caracteres; se mantuvo la fuente propia del texto."
+
+msgid "{fonts} isn't in this document or installed here: used a standard font for it."
+msgstr "{fonts} no está en este documento ni instalada aquí: se usó una fuente estándar en su lugar."
+
+msgid "Text pasted into the page (Ctrl+Z undoes it). Edit text changes it."
+msgstr "Texto pegado en la página (Ctrl+Z lo deshace). Editar texto lo cambia."
+
+msgid "Duplicating"
+msgstr "Duplicar"
+
+msgid "Duplicated (Ctrl+Z undoes it)"
+msgstr "Duplicado (Ctrl+Z lo deshace)"
+
+msgid "Nothing was duplicated"
+msgstr "No se duplicó nada"
+
+msgid "Text copied with its styles: Ctrl+V pastes it as page text"
+msgstr "Texto copiado con sus estilos: Ctrl+V lo pega como texto de la página"
+
+msgid "Duplicate"
+msgstr "Duplicar"
+
+# the page's own pictures and shapes to another page or document; CAD mode across pages
+msgid "{command}: click the base point on page {n}, where the selection is; then where it goes, on any page."
+msgstr "{command}: haga clic en el punto base en la página {n}, donde está la selección; luego donde va, en cualquier página."
+
+msgid "{command} works on one page: click on page {n}."
+msgstr "{command} funciona en una sola página: haga clic en la página {n}."
+
+msgid "click where it goes (on this page or another one)"
+msgstr "haga clic donde va (en esta página o en otra)"
+
+msgid "click where a copy goes, on this page or another one (Enter or Escape when done)"
+msgstr "haga clic donde va una copia, en esta página o en otra (Enter o Escape al terminar)"
+
+msgid "Pasted into the page (Ctrl+Z undoes it)"
+msgstr "Pegado en la página (Ctrl+Z lo deshace)"
+
+msgid "{what} to page {n} (Ctrl+Z undoes it)"
+msgstr "{what} a la página {n} (Ctrl+Z lo deshace)"
+
+msgid "Copied: Ctrl+V pastes it into a page, here or in another document"
+msgstr "Copiado: Ctrl+V lo pega en una página, aquí o en otro documento"
+
+msgid "Cut: Ctrl+V pastes it into a page, here or in another document"
+msgstr "Cortado: Ctrl+V lo pega en una página, aquí o en otro documento"
 
 # View: full screen, presentation, page layout, reading view, read aloud, auto scroll
 

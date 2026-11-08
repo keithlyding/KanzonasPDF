@@ -35,6 +35,23 @@ class Catalog(unittest.TestCase):
         self.assertEqual(i18n.parse_po(src), {"&File": "&Archivo", "Saved {name}": "Se guardó {name}",
                                               "Two\nlines": "Dos\nlíneas"})
 
+    def test_a_context_gives_the_same_english_its_own_translation(self):
+        src = ('msgid "Trim"\nmsgstr "Recortar"\n\n'
+               'msgctxt "ribbon"\nmsgid "Combine files"\nmsgstr "Combinar"\n\n'
+               'msgid "Combine files"\nmsgstr "Combinar archivos"\n')
+        cat = i18n.parse_po(src)
+        self.assertEqual(cat, {"Trim": "Recortar", "Combine files": "Combinar archivos",
+                               "ribbon" + i18n.CTX + "Combine files": "Combinar"})
+        saved = dict(i18n._state)
+        self.addCleanup(lambda: i18n._state.update(saved))
+        i18n._state.update(lang="es", catalog=cat)
+        self.assertEqual(i18n.tr("Combine files", ctx="ribbon"), "Combinar")
+        self.assertEqual(i18n.tr("Combine files"), "Combinar archivos")
+        self.assertEqual(i18n.tr("Trim", ctx="ribbon"), "Recortar")     # (none: the plain one)
+        self.assertEqual(i18n.tr("New", ctx="ribbon"), "New")
+        # the code's texts with a context are found with it
+        self.assertIn("ribbon" + i18n.CTX + "Combine files", i18n.texts_in_code())
+
 
 class Language(unittest.TestCase):
     def setUp(self):

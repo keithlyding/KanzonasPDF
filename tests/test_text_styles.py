@@ -209,9 +209,14 @@ class Buttons(Fixture):
         ed = self.open_paragraph(v)
         self.assertIsNotNone(ed.bar)
         tips = {k: b.toolTip() for k, b in ed.bar.buttons.items()}
-        self.assertEqual(tips["bold"], "Bold (Ctrl+B)")
-        self.assertEqual(tips["italic"], "Italic (Ctrl+I)")
-        self.assertEqual(tips["underline"], "Underline (Ctrl+U)")
+        if sys.platform == "darwin":                    # a Mac names the Command key: ⌘B
+            from kanzonas.macos import mac_keys
+        else:
+            def mac_keys(text):
+                return text
+        self.assertEqual(tips["bold"], mac_keys("Bold (Ctrl+B)"))
+        self.assertEqual(tips["italic"], mac_keys("Italic (Ctrl+I)"))
+        self.assertEqual(tips["underline"], mac_keys("Underline (Ctrl+U)"))
         self.assertEqual(tips["strike"], "Strikethrough")
         select(ed, "contractor")
         ed.bar.buttons["bold"].click()
@@ -517,9 +522,10 @@ class Underlines(Fixture):
         ws = word_styles(page)
         for w in ("verify", "all", "dimensions", "field", "ordering", "materials"):
             self.assertTrue(ws[w].underline, w)
+        under = ("verify", "all", "dimensions", "field", "ordering", "materials")
         bases = sorted({round(ln["spans"][0]["origin"][1], 1)
                         for _r, ln in text_edit.text_lines(page)
-                        if any(w in text_edit.line_text(ln) for w in ("verify", "materials"))})
+                        if any(w in text_edit.line_text(ln).split() for w in under)})
         bars = drawn_bars(page)
         self.assertEqual(len(bars), len(bases))               # one bar per line piece
         self.assertGreater(len(bars), 1)

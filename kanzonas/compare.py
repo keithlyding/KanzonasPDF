@@ -29,6 +29,8 @@ MIN_CELLS = 2        # ignore specks smaller than this many cells
 
 
 def _gray(page, dpi, size):
+    from .render_layers import sync_transparency
+    sync_transparency(page)          # (drawn as a page opened afresh: see there)
     z = dpi / 72                     # (a matrix, since get_pixmap wants a whole-number dpi)
     pm = page.get_pixmap(matrix=pymupdf.Matrix(z, z), colorspace=pymupdf.csGRAY, annots=True,
                          alpha=False)
