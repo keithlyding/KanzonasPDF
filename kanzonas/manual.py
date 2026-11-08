@@ -1417,7 +1417,8 @@ fields you tick, or a Formula such as <b>Price * Qty + Shipping</b> (field names
 Each change is one undo step.</li>
 <li><b>Calculated fields</b> are worked out as soon as a field they use is filled in (Enter,
 Tab or a click elsewhere), each after the fields it uses, so a subtotal feeds a total; an empty
-field counts as 0 and a division by zero leaves the result empty. A calculated field isn't
+field counts as 0 and a division by zero leaves the result empty. When a field (or the
+page it's on) is deleted, the fields that used it are worked out again without it. A calculated field isn't
 typed in. KanzonasPDF works them out with its own small formula reader, and saves them the way
 Acrobat does (its standard AFSimple_Calculate and simplified field notation, with the form's
 calculation order), so Acrobat and other readers calculate them too; a form made in Acrobat
@@ -1486,7 +1487,10 @@ proving the file existed, unchanged, at that moment. Saved as a new copy.</li>
 can be selected, moved and resized; <b>Apply selected redactions</b> applies only the selected
 ones, Apply redactions applies them all. Applying removes, not just covers: the text, images
 and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
-own copy of the text). A vector path that touches a mark is removed past the box, including
+own copy of the text). A field removed leaves nothing of itself in the file, and a calculated
+field that used it is worked out again without it (counted as empty), so a total doesn't give
+away a redacted price; a redacted calculated field isn't worked out again from the fields
+left. A vector path that touches a mark is removed past the box, including
 the part outside it. A redacted page also loses its thumbnail and the private copy of the page
 some programs (Illustrator) keep in the file. Applying scrubs metadata, attachments, hidden
 text, scripts and such programs' private data unless

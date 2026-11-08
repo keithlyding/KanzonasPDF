@@ -1404,7 +1404,8 @@ campos, números, + - * / y paréntesis; un nombre con espacios lleva una barra 
 Artículo\\ 1). Cada cambio es un solo paso para deshacer.</li>
 <li><b>Campos calculados</b>: se calculan en cuanto se rellena un campo que usan (Enter, Tab o un clic en otro lugar),
 cada uno después de los campos que usa, así que un subtotal alimenta un total; un campo vacío cuenta como 0 y una
-división entre cero deja vacío el resultado. En un campo calculado no se escribe. KanzonasPDF los calcula con su propio
+división entre cero deja vacío el resultado. Al eliminar un campo (o su página), los campos que lo usaban se calculan
+de nuevo sin él. En un campo calculado no se escribe. KanzonasPDF los calcula con su propio
 lector de fórmulas, y los guarda como lo hace Acrobat (sus llamadas estándar AFSimple_Calculate y la notación de campo
 simplificada, con el orden de cálculo del formulario), así que Acrobat y otros lectores también los calculan; un
 formulario hecho en Acrobat con esos cálculos se calcula aquí de la misma manera. Cualquier otro script de cálculo se
@@ -1472,7 +1473,9 @@ que demuestra que el archivo existía, sin cambios, en ese momento. Se guarda co
 se pueden seleccionar, mover y redimensionar; <b>Aplicar las censuras seleccionadas</b> aplica solo las
 seleccionadas, y Aplicar censuras las aplica todas. Aplicar quita, no solo cubre: el texto, las imágenes
 y los trazos que están debajo de una marca, y cualquier <b>campo de formulario o marca</b> con el que se superponga una marca (guardan su
-propia copia del texto). Un trazado vectorial que toca una marca se quita más allá del cuadro, incluida
+propia copia del texto). Un campo quitado no deja nada de sí en el archivo, y un campo calculado que lo usaba se calcula
+de nuevo sin él (contado como vacío), así que un total no revela un precio censurado; un campo calculado censurado no se
+vuelve a calcular a partir de los campos que quedan. Un trazado vectorial que toca una marca se quita más allá del cuadro, incluida
 la parte que queda fuera de él. Una página censurada también pierde su miniatura y la copia privada de la página
 que algunos programas (Illustrator) guardan en el archivo. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto, los scripts
 y los datos privados de esos programas, a menos que

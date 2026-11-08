@@ -3245,10 +3245,12 @@ class DocumentView(QScrollArea):
 
         def do():
             toc = self.doc.get_toc(False)
+            fields = self._drop_page_fields(indices)
             # all at once: each delete_page walks every link and bookmark of the document
             # (0.2 to 0.4 s per page on a 2,000-sheet set), delete_pages does it once
             self.doc.delete_pages(indices)
             self._retarget_bookmarks(toc, set(indices), len(indices) + self.doc.page_count)
+            self._forget_removed_fields(fields)
         return bool(self.modify(do, structural=True, changed=[]))   # (False when refused)
 
     def _retarget_bookmarks(self, toc, gone, old_count):
@@ -7746,7 +7748,12 @@ class DocumentView(QScrollArea):
     def remove_term(self, term):
         """Search & redact for text that's only in fields, notes, bookmarks or properties."""
         self.clear_selection()
-        self.modify(lambda: self._scrub_terms({term}), structural=True)
+
+        def do():
+            fields = smart_forms.read_form(self.doc)
+            self._scrub_terms({term})
+            self._forget_removed_fields(fields)
+        self.modify(do, structural=True)
 
     def pending_redactions(self, pages=None):
         """How many redaction marks (on these pages; None: all) aren't applied yet."""
@@ -7765,6 +7772,7 @@ class DocumentView(QScrollArea):
         from . import added_text
 
         def do():
+            fields = smart_forms.read_form(self.doc)      # (the form before: see below)
             terms = self._redaction_terms()
             self._scrub_terms(terms)
             for i in range(self.doc.page_count):
@@ -7782,6 +7790,10 @@ class DocumentView(QScrollArea):
                                         text=pymupdf.PDF_REDACT_TEXT_REMOVE)
                     # (the clean-up below cleans every page's drawing anyway)
                     forget_redacted(pg, clean=not scrub)
+            # (the fields taken away leave nothing behind, and the calculated fields that
+            # read them are worked out again without them: before the clean-up takes the
+            # calculations out with the other scripts)
+            self._forget_removed_fields(fields)
             # (the markups under the marks are gone: the legends listing them are drawn
             # again now, before the clean-up writes the document anew)
             self._redraw_legends(*self._term_pattern(terms))
@@ -8278,6 +8290,7 @@ class DocumentView(QScrollArea):
             return 0
 
         def do():
+            fields = smart_forms.read_form(self.doc)
             pg = self.doc[index]
             terms = {a.info.get("content", "")[len(self.REDACT_TAG):]
                      for a in pg.annots() if a.xref in chosen
@@ -8300,9 +8313,12 @@ class DocumentView(QScrollArea):
             forget_redacted(pg)
             for m in others:                       # put the other marks back
                 annotations.write(pg, m)
+            self._forget_removed_fields(fields)
             self._redraw_legends(*self._term_pattern(terms))
         self.clear_selection()
-        self.modify(do, [index])
+        # (a calculated field on another page may be worked out again: see
+        # _forget_removed_fields)
+        self.modify(do, None if smart_forms.has_calculations(self.doc) else [index])
         return len(chosen)
 
     def signing_bytes(self):
@@ -9038,9 +9054,35 @@ class DocumentView(QScrollArea):
         self.clear_selection()
 
         def do():
+            fields = smart_forms.read_form(self.doc)
             pg = self.doc[index]
             pg.delete_widget(pg.load_widget(xref))
-        self.modify(do, [index])
+            self._forget_removed_fields(fields)
+        self.modify(do, None if smart_forms.has_calculations(self.doc) else [index])
+
+    def _forget_removed_fields(self, before):
+        """After fields were taken away (Apply redactions, Search & redact, a field
+        deleted), with before the Form read before: what's left of them in the file is
+        emptied and the calculation order loses them (smart_forms.forget_removed), and every
+        calculated field that read one is worked out again without it (an empty field
+        counts as 0, as when filling in). A total kept from a redacted price would give it
+        away (the price is the total over the quantity), and the next value filled in would
+        work it out again anyway."""
+        if not before.fields:
+            return
+        gone = smart_forms.forget_removed(self.doc, before)
+        self._smart = None
+        if not gone:
+            return
+        form = smart_forms.read_form(self.doc)
+        gone -= set(form.fields)
+        deps = smart_forms.dependents(form, gone)
+        if not deps:
+            return
+        more = smart_forms.recalculate(self.doc, form)
+        for n in deps:
+            if n in more:
+                self._write_field(form, n, more[n])
 
     # ---- smart forms: properties, calculations, tab order, required fields --------------
     def field_props(self, index, xref):
@@ -9675,9 +9717,24 @@ class DocumentView(QScrollArea):
 
         def do():
             toc = self.doc.get_toc(False)
+            fields = self._drop_page_fields([index])
             self.doc.delete_page(index)
             self._retarget_bookmarks(toc, {index}, self.doc.page_count + 1)
+            self._forget_removed_fields(fields)
         self.modify(do, structural=True, changed=[])
+
+    def _drop_page_fields(self, indices):
+        """Before pages are deleted: their form fields are taken out of the form (MuPDF
+        deletes a page but leaves its fields in the form's list, where they kept their
+        values in the file and were still worked out as calculated fields). The Form as it
+        was before, for _forget_removed_fields."""
+        fields = smart_forms.read_form(self.doc)
+        if fields.fields:
+            for i in indices:
+                pg = self.doc[i]
+                for w in list(pg.widgets()):
+                    pg.delete_widget(w)
+        return fields
 
     def move_page(self, index, delta):
         target = index + delta
@@ -9746,8 +9803,12 @@ class DocumentView(QScrollArea):
                                          else pages)
             try:
                 burn()
+                if pages is None:
+                    smart_forms.forget_removed(self.doc, fields)
             finally:
                 self._put_back_redactions(held)
+
+        fields = smart_forms.read_form(self.doc) if widgets else smart_forms.Form()
 
         def burn():
             if pages is None:
@@ -9780,6 +9841,8 @@ class DocumentView(QScrollArea):
                 tmp.close()
             self.doc.set_page_labels(labels)
             self._mend_form_fields(old_fields)
+            # (the calculation order loses the fields burned in)
+            smart_forms.forget_removed(self.doc, fields)
             for i, (typ, value) in scales.items():
                 if typ == "string":
                     self.doc.xref_set_key(self.doc[i].xref, "KZScale", pymupdf.get_pdf_str(value))

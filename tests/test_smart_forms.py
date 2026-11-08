@@ -864,6 +864,256 @@ class Menus(Quiet):
             self.assertEqual(edit.call_args[0][1]["name"], "a")
         v.dirty = False
 
+def in_file(doc, text):
+    """Is text anywhere in the file doc would save (every object and stream, uncompressed,
+    as Save writes it)?"""
+    # (garbage collection on a copy: on the document itself it renumbers objects under
+    # the undo journal)
+    with pymupdf.open("pdf", doc.tobytes()) as copy:
+        d = pymupdf.open("pdf", copy.tobytes(garbage=1))     # (as Save writes it)
+    try:
+        for x in range(1, d.xref_length()):
+            try:
+                if text in (d.xref_object(x, compressed=False) or ""):
+                    return True
+                if d.xref_is_stream(x) and text.encode() in (d.xref_stream(x) or b""):
+                    return True
+            except Exception:
+                continue
+        return False
+    finally:
+        d.close()
+
+
+def two_widget_total(d):
+    """Price and Qty, and a field Total = Price * Qty shown in two places (one field, two
+    widgets as kids without names of their own)."""
+    Quiet.text_fields("Price", "Qty")(d)
+    p = d[0]
+    xref = d.get_new_xref
+    total, kids = xref(), []
+    for y in (300, 500):
+        k = xref()
+        d.update_object(k, f"<< /Type /Annot /Subtype /Widget /Parent {total} 0 R "
+                           f"/Rect [100 {y} 260 {y + 20}] /F 4 /DA (/Helv 0 Tf 0 g) "
+                           f"/P {p.xref} 0 R >>")
+        kids.append(k)
+    js = "<< /S /JavaScript /JS %s >>" % pymupdf.get_pdf_str(
+        '/** BVCALC Price*Qty EVCALC **/ event.value = 0;')
+    d.update_object(total, "<< /FT /Tx /T (Total) /Kids [%s] /AA << /C %s >> >>" % (
+        " ".join(f"{k} 0 R" for k in kids), js))
+    kind, annots = d.xref_get_key(p.xref, "Annots")
+    d.xref_set_key(p.xref, "Annots", annots[:-1] + " %s]" % " ".join(f"{k} 0 R" for k in kids))
+    kind, fields = d.xref_get_key(d.pdf_catalog(), "AcroForm/Fields")
+    d.xref_set_key(d.pdf_catalog(), "AcroForm/Fields", fields[:-1] + " %d 0 R]" % total)
+    d.xref_set_key(d.pdf_catalog(), "AcroForm/CO", "[%d 0 R]" % total)
+
+
+class WithMainFeatures(Quiet):
+    """Smart forms with what else KanzonasPDF does to a document: Apply redactions, Search &
+    redact and Sanitize (a security path: a redacted value must leave nothing behind, and
+    must not be worked out again from the fields left), Save as PDF/A, Edit objects' copy
+    and paste."""
+    PRICE, TOTAL, GRAND = "73519", "220557", "220558"
+
+    def priced(self):
+        v = self.open(self.text_fields("Price", "Qty", "Total", "Grand"))
+        self.props(v, "Total", calc={"formula": "Price * Qty"},
+                   format={"kind": "number", "decimals": 0, "sep": 1, "neg": 0,
+                           "currency": "", "prepend": True})
+        self.props(v, "Grand", calc={"formula": "Total + 1"})
+        self.fill(v, "Price", self.PRICE)
+        self.fill(v, "Qty", "3")
+        self.assertEqual(self.values(v)["Grand"], self.GRAND)
+        return v
+
+    def mark(self, v, *names, page=0):
+        xs = self.xrefs(v)
+        rects = [v.doc[page].load_widget(xs[n]).rect + (-1, -1, 1, 1) for n in names]
+
+        def do():
+            for r in rects:
+                v.doc[page].add_redact_annot(r)
+        v.modify(do, [page])
+
+    def assert_gone(self, v, *texts):
+        for t in texts:
+            self.assertFalse(in_file(v.doc, t), "%s is still in the file" % t)
+
+    def test_a_redacted_calculated_field_leaves_nothing_and_isnt_worked_out_again(self):
+        for scrub in (False, True):
+            with self.subTest(scrub=scrub):
+                v = self.priced()
+                self.mark(v, "Total")
+                v.apply_redactions(scrub=scrub)
+                self.assertNotIn("Total", self.values(v))
+                # (it was still listed in the calculation order: the file kept it, value,
+                # appearance and calculation, for any program to read or work out again)
+                self.assertNotIn("Total", S.read_form(v.doc).co)
+                # Grand (Total + 1) gave Total away: worked out again without it
+                self.assertEqual(self.values(v)["Grand"], "1")
+                self.assert_gone(v, self.TOTAL, self.GRAND, "220,557")
+                # filling in the fields it was worked out from doesn't bring it back
+                self.fill(v, "Qty", "4")
+                self.fill(v, "Qty", "3")
+                self.fill(v, "Price", "73518")
+                self.fill(v, "Price", self.PRICE)
+                self.assert_gone(v, self.TOTAL, "220,557")
+                v.close_doc()
+
+    def test_undo_brings_a_redacted_calculated_field_back_exactly(self):
+        v = self.priced()
+        self.mark(v, "Total")
+        before = self.values(v)
+        v.apply_redactions(scrub=False)
+        v.undo()
+        self.assertEqual(self.values(v), before)
+        self.assertIn("Total", S.read_form(v.doc).co)
+        v.redo()
+        self.assertNotIn("Total", self.values(v))
+        self.assertEqual(self.values(v)["Grand"], "1")
+
+    def test_a_redacted_input_is_not_left_in_the_totals(self):
+        v = self.priced()
+        self.mark(v, "Price")
+        v.apply_redactions()
+        vals = self.values(v)
+        self.assertNotIn("Price", vals)
+        # (Total over Qty was the price)
+        self.assertEqual((vals["Total"], vals["Grand"]), ("0", "1"))
+        self.assert_gone(v, self.PRICE, self.TOTAL, self.GRAND)
+
+    def test_apply_selected_redactions_and_search_and_redact(self):
+        v = self.priced()
+        self.mark(v, "Total")
+        x = [a.xref for a in v.doc[0].annots() if a.type[0] == pymupdf.PDF_ANNOT_REDACT][0]
+        v.selection = (0, x)
+        self.assertEqual(v.apply_selected_redactions(), 1)
+        self.assertEqual(self.values(v)["Grand"], "1")
+        self.assert_gone(v, self.TOTAL, self.GRAND)
+        v = self.priced()
+        v.remove_term(self.TOTAL)           # (only in the field: Search & redact)
+        self.assertNotIn("Total", self.values(v))
+        self.assert_gone(v, self.TOTAL, self.GRAND)
+
+    def test_a_field_in_two_places(self):
+        v = self.open(two_widget_total)
+        self.fill(v, "Price", self.PRICE)
+        self.fill(v, "Qty", "3")
+        self.assertEqual(self.values(v)["Total"], self.TOTAL)
+        # one place redacted: the other still shows it (as text shown twice), and it's
+        # still worked out
+        totals = [w for w in v.doc[0].widgets() if w.field_name == "Total"]
+        r = totals[0].rect + (-1, -1, 1, 1)
+        v.modify(lambda: v.doc[0].add_redact_annot(r), [0])
+        v.apply_redactions()
+        self.assertEqual(len([w for w in v.doc[0].widgets() if w.field_name == "Total"]), 1)
+        self.assertEqual(self.values(v)["Total"], self.TOTAL)
+        # both places redacted: gone from the file
+        v = self.open(two_widget_total)
+        self.fill(v, "Price", self.PRICE)
+        self.fill(v, "Qty", "3")
+        rects = [w.rect + (-1, -1, 1, 1) for w in v.doc[0].widgets() if w.field_name == "Total"]
+        v.modify(lambda: [v.doc[0].add_redact_annot(r) for r in rects], [0])
+        v.apply_redactions(scrub=False)
+        self.assertNotIn("Total", self.values(v))
+        self.assertEqual(S.read_form(v.doc).co, [])
+        self.assert_gone(v, self.TOTAL)
+        self.fill(v, "Qty", "4")
+        self.fill(v, "Qty", "3")
+        self.assert_gone(v, self.TOTAL)
+
+    def test_deleting_a_field_takes_it_out_of_the_calculation_order(self):
+        v = self.priced()
+        v.delete_field(0, self.xrefs(v)["Total"])
+        self.assertNotIn("Total", S.read_form(v.doc).co)
+        self.assertEqual(self.values(v)["Grand"], "1")
+        self.assert_gone(v, self.TOTAL)
+        v.undo()
+        self.assertEqual(self.values(v)["Total"], self.TOTAL)
+        self.assertEqual(self.values(v)["Grand"], self.GRAND)
+
+    def test_deleting_or_flattening_the_page_of_a_calculated_field(self):
+        def build(d):
+            self.text_fields("Price", "Qty")(d)
+            p = d.new_page()
+            w = pymupdf.Widget()
+            w.field_type, w.field_name = pymupdf.PDF_WIDGET_TYPE_TEXT, "Total"
+            w.rect = pymupdf.Rect(100, 100, 200, 120)
+            p.add_widget(w)
+        v = self.open(build)
+        v.set_field_props(1, next(v.doc[1].widgets()).xref, {"calc": {"formula": "Price * Qty"}})
+        self.fill(v, "Price", self.PRICE)
+        self.fill(v, "Qty", "3")
+        self.assertEqual(S.read_form(v.doc).co, ["Total"])
+        # deleted with its page: out of the form, nothing of it left in the file (MuPDF
+        # left it in the form's list, still worked out on every value filled in)
+        v.delete_page(1)
+        self.assertNotIn("Total", S.read_form(v.doc).fields)
+        self.assert_gone(v, self.TOTAL)
+        v.undo()
+        self.assertEqual(S.read_form(v.doc).co, ["Total"])
+        self.assertTrue(v.delete_pages([1]))
+        self.assertNotIn("Total", S.read_form(v.doc).fields)
+        v.undo()
+        # burned into the page: it shows there, and leaves the calculation order
+        v.flatten(pages=[1])
+        self.assertEqual(S.read_form(v.doc).co, [])
+        self.assertIn(self.TOTAL, v.doc[1].get_text())
+        self.assertEqual(v.doc.xref_get_key(v.doc.pdf_catalog(), "AcroForm/CO")[0], "null")
+
+    def test_sanitize_form_data_and_scripts(self):
+        v = self.priced()
+        v.sanitize({"form_data": True})
+        self.assertEqual(set(self.values(v).values()), {""})
+        self.assert_gone(v, self.PRICE, self.TOTAL, self.GRAND)
+        self.fill(v, "Qty", "2")            # (worked out from what's there now)
+        self.assertEqual(self.values(v)["Total"], "0")
+        self.assert_gone(v, self.PRICE, self.TOTAL)
+        v = self.priced()
+        v.sanitize({"javascript": True})
+        form = S.read_form(v.doc)
+        self.assertFalse(any(f.calc for f in form.fields.values()))
+        self.assertEqual(self.values(v)["Total"], self.TOTAL)   # (kept, no longer worked out)
+        self.fill(v, "Qty", "4")
+        self.assertEqual(self.values(v)["Total"], self.TOTAL)
+
+    def test_save_as_pdfa_keeps_what_the_fields_show(self):
+        from kanzonas import pdfa
+        v = self.priced()
+        self.props(v, "Qty", format={"kind": "percent", "decimals": 1, "sep": 0})
+        self.fill(v, "Qty", "50")
+        out = os.path.join(self.tmp.name, "a.pdf")
+        result = pdfa.convert(v.doc.tobytes(), out)
+        self.assertEqual(result["remaining"], [])
+        with pymupdf.open(out) as d:
+            text = d[0].get_text()
+            self.assertIn("36760", text)          # (73519 * 0.5, rounded)
+            self.assertIn("50.0%", text)
+            self.assertEqual(pdfa.check(d), [])
+
+    def test_edit_objects_copy_and_paste_leave_the_fields_alone(self):
+        def build(d):
+            self.text_fields("a", "b", "sum")(d)
+            d[0].draw_rect((300, 300, 400, 380), color=(0, 0, 1), width=2)
+        v = self.open(build)
+        self.props(v, "sum", calc={"op": "SUM", "fields": ["a", "b"]})
+        self.fill(v, "a", "2")
+        v.set_tool("editobjects")
+        objs = v.content_objects(0)
+        self.assertTrue(objs and objs.items)
+        v.select_objects(0, list(objs.items))
+        self.assertEqual(v.copy(), "pagecontent")
+        with mock.patch.object(v, "paste_target", lambda: (0, pymupdf.Point(450, 600))):
+            v.paste()
+        v.clear_object_selection()
+        self.assertEqual(sorted(self.xrefs(v)), ["a", "b", "sum"])
+        self.fill(v, "b", "5")
+        self.assertEqual(self.values(v)["sum"], "7")
+        # a field selected with a form tool isn't copied as a markup
+        v.selection = (0, self.xrefs(v)["a"])
+        self.assertNotEqual(v.copy(), "markups")
+
 
 if __name__ == "__main__":
     unittest.main()

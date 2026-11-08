@@ -1284,8 +1284,9 @@ class Battery:
 
     def op_form(self):
         """Smart forms: a text field made, a field given a calculation (Sum ... or a
-        formula) and a format, or a number typed into a field (the calculated ones worked
-        out in the same step)."""
+        formula) and a format, a number typed into a field (the calculated ones worked
+        out in the same step; 25 or 25% into a percent field), or a field deleted (the
+        calculated ones reading it worked out again without it)."""
         from kanzonas import smart_forms
         v = self.v
         texts = [(i, w.xref, w.field_name) for i in range(v.doc.page_count)
@@ -1313,9 +1314,13 @@ class Battery:
             v.set_field_props(i, x, {"calc": calc, "format": fmt,
                                      "required": self.rnd.random() < 0.3})
             return
+        if r < 0.52:
+            i, x, _name = self.rnd.choice(texts)
+            v.delete_field(i, x)
+            return
         i, x, _name = self.rnd.choice(texts)
         v.enter_field_value(i, x, self.rnd.choice(["", "12", "3.5", "-4", "0", "1,250.75",
-                                                   "abc"]))
+                                                   "25%", "abc"]))
 
     def op_rotate_page(self):
         self.v.rotate_page(self.page(), self.rnd.choice([90, -90, 180]))

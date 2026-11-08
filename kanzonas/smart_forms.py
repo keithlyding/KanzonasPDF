@@ -1219,3 +1219,93 @@ def co_order(form, old_co=None):
     order, looped = calc_order(form)
     mine = iter(order + looped)
     return [next(mine) if "custom" not in form.fields[n].calc else n for n in seq]
+
+
+# ---- fields taken away (Apply redactions, Search & redact, a field deleted) ---------------
+def field_tree(doc):
+    """The objects of every field and widget reachable from /AcroForm /Fields, and from the
+    pages' /Annots (a widget can be on a page without being listed)."""
+    m, pymupdf = _m()
+    pdf = pymupdf._as_pdf_document(doc)
+    out = set()
+    acro = m.pdf_dict_getp(m.pdf_trailer(pdf), "Root/AcroForm")
+    stack = []
+    fields = m.pdf_dict_gets(acro, "Fields") if m.pdf_is_dict(acro) else None
+    if fields is not None and m.pdf_is_array(fields):
+        stack += [m.pdf_array_get(fields, k) for k in range(m.pdf_array_len(fields))]
+    while stack:
+        node = stack.pop()
+        num = m.pdf_to_num(node)
+        if not num or num in out or not m.pdf_is_dict(node):
+            continue
+        out.add(num)
+        kids = m.pdf_dict_gets(node, "Kids")
+        if m.pdf_is_array(kids):
+            stack += [m.pdf_array_get(kids, k) for k in range(m.pdf_array_len(kids))]
+    for i in range(doc.page_count):
+        try:
+            annots = m.pdf_dict_gets(m.pdf_lookup_page_obj(pdf, i), "Annots")
+        except Exception:
+            continue
+        if m.pdf_is_array(annots):
+            out.update(m.pdf_to_num(m.pdf_array_get(annots, k))
+                       for k in range(m.pdf_array_len(annots)))
+    out.discard(0)
+    return out
+
+
+def forget_removed(doc, before):
+    """After fields or widgets were taken away: the objects of before (the Form read before)
+    that no field and no page reaches any more are emptied, and /AcroForm /CO loses them.
+    Without this, /CO (the calculation order) still pointed at a field Apply redactions
+    had taken away, so the file kept it, value, appearance and calculation included, where
+    any program could read it, and Acrobat could work it out again from the fields left.
+    The names of the fields that are gone."""
+    if not before.fields:
+        return set()
+    m, pymupdf = _m()
+    live = field_tree(doc)
+    objs = set()
+    for f in before.fields.values():
+        objs.add(f.fx)
+        objs.update(f.widgets)
+    dead = {x for x in objs if x not in live and 0 < x < doc.xref_length()}
+    pdf = pymupdf._as_pdf_document(doc)
+    acro = m.pdf_dict_getp(m.pdf_trailer(pdf), "Root/AcroForm")
+    co = m.pdf_dict_gets(acro, "CO") if m.pdf_is_dict(acro) else None
+    if co is not None and m.pdf_is_array(co):
+        for k in reversed(range(m.pdf_array_len(co))):
+            num = m.pdf_to_num(m.pdf_array_get(co, k))
+            if num not in live:
+                m.pdf_array_delete(co, k)
+                if num:
+                    dead.add(num)
+        if not m.pdf_array_len(co):
+            m.pdf_dict_dels(acro, "CO")
+    for x in sorted(dead):
+        try:
+            if doc.xref_is_stream(x):
+                continue
+            doc.update_object(x, "<<>>")
+        except Exception:
+            pass
+    return {n for n, f in before.fields.items()
+            if f.fx in dead and all(w in dead for w in f.widgets)}
+
+
+def dependents(form, names):
+    """The calculated fields of form that read any of names (fields, or groups holding
+    them), directly or through another calculated field."""
+    names = set(names)
+    out = set()
+
+    def reads(n, f):
+        return any(g == i or g.startswith(i + ".") for i in calc_inputs(f.calc) for g in n)
+    grew = True
+    while grew:
+        grew = False
+        for n, f in form.fields.items():
+            if n not in out and f.calc and reads(names | out, f):
+                out.add(n)
+                grew = True
+    return out
