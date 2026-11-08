@@ -1218,7 +1218,7 @@ def shift_in_place(page, xref, d, to_pdf=None):
     if kind == "string":
         try:
             store = json.loads(val)
-        except ValueError:
+        except (ValueError, RecursionError):
             store = None
         geom = store.get("geom") if isinstance(store, dict) else None
         if isinstance(geom, dict):

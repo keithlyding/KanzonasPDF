@@ -658,7 +658,8 @@ primero.</li>
 <li><b>Marcas:</b> seleccione una o más marcas y luego Copiar o Cortar. <b>Pegar</b> (Ctrl+V) las coloca
 donde está el mouse, en cualquier página o en otro documento abierto. Pegadas en una página girada de
 otra manera (una página girada), se giran para que se vean como donde las copió; un cuadro de texto
-se sigue leyendo derecho.</li>
+se sigue leyendo derecho. Una marca que se corta y se pega conserva sus respuestas y sus estados de
+revisión (con sus autores y fechas); una copia se pega sin ellos.</li>
 <li><b>Duplicar</b> (Ctrl+D): aparecen copias de las marcas seleccionadas ligeramente desplazadas, seleccionadas
 para que pueda arrastrarlas a su lugar. En la lista de páginas, Ctrl+D duplica las páginas seleccionadas; con la
 herramienta Editar objetos, el texto, las imágenes y las formas de la página seleccionados.</li>
@@ -769,7 +770,10 @@ responden. Los comentarios de páginas que el documento no tiene se omiten, y un
 se agregaron, actualizaron y omitieron, y por qué. Las notas escritas como texto enriquecido (como
 las escribe Acrobat) conservan su texto y su formato en ambos sentidos. Un archivo de comentarios no
 puede ejecutar nada: los vínculos, scripts y otras acciones que contenga se omiten, y no se lee un
-archivo que declare entidades XML o que pase de 64 MB.</li>
+archivo que declare entidades XML o que pase de 64 MB. Un comentario cuya posición o tamaño no es un
+número utilizable (NaN, infinito, o más de 10 millones de puntos) se omite y se indica en el mensaje;
+los demás se importan. Un sello de imagen de un archivo de comentarios se dibuja solo desde su propia
+biblioteca de sellos, por su nombre, nunca desde otro lugar de su computadora o de la red.</li>
 <li><b>Resumir comentarios...</b> crea un PDF nuevo con todos los comentarios: su página, tipo,
 autor, fecha, estado y texto, con sus respuestas con sangría debajo. Ordénelo por página (con la
 miniatura de cada página junto a sus comentarios, como el resumen de Acrobat; desmarque Miniaturas de
@@ -961,7 +965,8 @@ texto para su texto y la pestaña Capas para las capas de CAD.</li>
 y luego haga clic para colocarlo.</li>
 <li><b>Agregar mi nombre</b> y <b>Agregar la fecha</b> son casillas separadas. Cambiarlas en un
 sello ya colocado lo vuelve a dibujar (una fecha agregada de nuevo muestra la fecha de hoy).</li>
-<li><b>Agregar sello de imagen…</b> agrega su propia imagen (PNG/JPG) a la lista de sellos.</li>
+<li><b>Agregar sello de imagen…</b> agrega su propia imagen (PNG/JPG) a la lista de sellos. Un sello
+muestra como máximo 200 caracteres de su texto, y un sello para rellenar como máximo 20 filas.</li>
 <li><b>Sellos para rellenar:</b> <b>Para rellenar: OC n.º / Fecha de pedido</b> y <b>Para rellenar: Solicitud n.º / Fecha
 de envío</b> en la lista de sellos. Al hacer clic para colocar uno, un cuadro pide el número y la
 fecha (la fecha empieza siendo la de hoy, en el formato de fecha de Preferencias &gt; Usted). Haga doble clic en uno ya
@@ -1599,7 +1604,9 @@ rango en el que debe estar el valor (Desde / Hasta; en un campo de porcentaje, d
 0% a 100%, como en Acrobat). <i>Calcular:</i> el valor del campo es la Suma, el Producto, el
 Promedio, el Mínimo o el Máximo de los campos que marque, o una Fórmula como <b>Precio * Cant + Envío</b> (nombres de
 campos, números, + - * / y paréntesis; un nombre con espacios lleva una barra invertida antes de cada espacio:
-Artículo\\ 1). Cada cambio es un solo paso para deshacer.</li>
+Artículo\\ 1; hasta 50 paréntesis o signos uno dentro de otro y 250 términos seguidos; una fórmula más larga
+en un formulario de otro origen se muestra como Cálculo personalizado (no se ejecuta)). Cada cambio es un solo
+paso para deshacer.</li>
 <li><b>Campos calculados</b>: se calculan en cuanto se rellena un campo que usan (Enter, Tab o un clic en otro lugar),
 cada uno después de los campos que usa, así que un subtotal alimenta un total; un campo vacío cuenta como 0 y una
 división entre cero deja vacío el resultado. Al eliminar un campo (o su página), los campos que lo usaban se calculan

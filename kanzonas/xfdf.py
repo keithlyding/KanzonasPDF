@@ -33,6 +33,7 @@ reaches the document.
 """
 
 import json
+import math
 import re
 import uuid
 import xml.etree.ElementTree as ET
@@ -81,12 +82,25 @@ def _num(v):
     return "0" if s in ("", "-0") else s
 
 
+LIMIT = 1e7         # a position or size beyond this (3.5 km on paper) isn't one: refused
+
+
+def _float(v):
+    """A number from a comment file (ValueError for NaN, infinity or one beyond LIMIT: a
+    file from someone else gave /Rect [nan ...] and a markup 2 billion points wide, and a
+    rotation of nan stopped the whole import with an error)."""
+    x = float(v)
+    if not math.isfinite(x) or abs(x) > LIMIT:
+        raise ValueError("not a usable number: %r" % (v,))
+    return x
+
+
 def _nums(text):
     """'[1 2.5 3]' or '1,2.5;3' -> [1.0, 2.5, 3.0]."""
     out = []
     for t in re.split(r"[\s,;\[\]]+", text or ""):
         if t:
-            out.append(float(t))
+            out.append(_float(t))
     return out
 
 
@@ -400,7 +414,10 @@ def _read_keys(doc, x):
     for k in NUMBERS:
         kind, val = doc.xref_get_key(x, k)
         if kind in ("int", "float"):
-            keys[k] = float(val)
+            try:
+                keys[k] = _float(val)
+            except ValueError:
+                pass
     for k in NAMES:
         kind, val = doc.xref_get_key(x, k)
         if kind == "name" and _NAME.match(val.lstrip("/")):
@@ -432,17 +449,26 @@ def _read_keys(doc, x):
     bs = {}
     kind, val = doc.xref_get_key(x, "BS/W")
     if kind in ("int", "float"):
-        bs["W"] = float(val)
+        try:
+            bs["W"] = _float(val)
+        except ValueError:
+            pass
     kind, val = doc.xref_get_key(x, "BS/S")
     if kind == "name" and val.lstrip("/") in STYLES and val != "/S":
         bs["S"] = val.lstrip("/")           # (solid, the default, left out)
     kind, val = doc.xref_get_key(x, "BS/D")
     if kind == "array" and not _REF.search(val):
-        bs["D"] = _nums(val)
+        try:
+            bs["D"] = _nums(val)
+        except ValueError:
+            pass
     if not bs:
         kind, val = doc.xref_get_key(x, "Border")
         if kind == "array" and not _REF.search(val):
-            nums = _nums(re.sub(r"\[[^\[\]]*\]", " ", val.strip()[1:-1]))
+            try:
+                nums = _nums(re.sub(r"\[[^\[\]]*\]", " ", val.strip()[1:-1]))
+            except ValueError:
+                nums = []
             if len(nums) >= 3:
                 bs["W"] = nums[2]
     if bs:
@@ -450,8 +476,37 @@ def _read_keys(doc, x):
     kind, val = doc.xref_get_key(x, "BE/S")
     if kind == "name" and val == "/C":
         kind, val = doc.xref_get_key(x, "BE/I")
-        keys["BE"] = {"S": "C", "I": float(val) if kind in ("int", "float") else 1.0}
+        try:
+            keys["BE"] = {"S": "C", "I": _float(val) if kind in ("int", "float") else 1.0}
+        except ValueError:
+            keys["BE"] = {"S": "C", "I": 1.0}
     return keys
+
+
+def props_ok(text):
+    """KanzonasPDF's style of a markup (KZProps) from a comment file is usable: JSON nested no
+    more than 32 deep, with no NaN, infinity or number beyond 1e9. Otherwise the markup is
+    imported without it (drawn by MuPDF from its standard keys): a style made to stop the
+    import (nested 100,000 deep) or with points at 1e308 (a markup 4 billion points wide)."""
+    def refuse(_c):
+        raise ValueError(_c)
+    try:
+        data = json.loads(text, parse_constant=refuse)
+    except (ValueError, RecursionError, TypeError):
+        return False
+    todo = [(data, 0)]
+    while todo:
+        node, depth = todo.pop()
+        if depth > 32:
+            return False
+        if isinstance(node, dict):
+            todo.extend((v, depth + 1) for v in node.values())
+        elif isinstance(node, list):
+            todo.extend((v, depth + 1) for v in node)
+        elif isinstance(node, (int, float)) and not isinstance(node, bool):
+            if not math.isfinite(node) or abs(node) > 1e9:
+                return False
+    return True
 
 
 def _skipped_kind(doc, x, subtype, keys):
@@ -463,7 +518,7 @@ def _skipped_kind(doc, x, subtype, keys):
     try:
         stored = json.loads(keys.get(A.KZ_KEY) or "{}")
         kind = stored.get("kind") if isinstance(stored, dict) else None
-    except ValueError:
+    except (ValueError, RecursionError):
         kind = None
     if kind in ("image", "attach"):
         return kind
@@ -719,7 +774,7 @@ def _xfdf_record(el, raws=None):
             if _rgb(at.get(name)):
                 k[key] = _rgb(at[name])
         if "opacity" in at:
-            k["CA"] = max(0.0, min(1.0, float(at["opacity"])))
+            k["CA"] = max(0.0, min(1.0, _float(at["opacity"])))
         if "flags" in at:
             k["F"] = float(_flags_of(at["flags"]))
         if "intent" in at and _NAME.match(at["intent"]):
@@ -727,15 +782,15 @@ def _xfdf_record(el, raws=None):
         if "icon" in at and _NAME.match(at["icon"]):
             k["Name"] = at["icon"]
         if "rotation" in at:
-            k["Rotate"] = float(at["rotation"])
+            k["Rotate"] = _float(at["rotation"])
         if "justification" in at:
             k["Q"] = float({"centered": 1, "right": 2}.get(at["justification"], 0))
         bs = {}
         if "width" in at:
-            bs["W"] = float(at["width"])
+            bs["W"] = _float(at["width"])
         style = at.get("style", "")
         if style == "cloudy":
-            k["BE"] = {"S": "C", "I": float(at.get("intensity", 1))}
+            k["BE"] = {"S": "C", "I": _float(at.get("intensity", 1))}
         elif style in STYLES.values() and style != "solid":
             bs["S"] = next(s for s, n in STYLES.items() if n == style)
         if "dashes" in at:
@@ -754,14 +809,14 @@ def _xfdf_record(el, raws=None):
         for key, name in (("LL", "leaderLength"), ("LLE", "leaderExtend"),
                           ("LLO", "leaderOffset")):
             if name in at:
-                k[key] = float(at[name])
+                k[key] = _float(at[name])
         if "caption" in at:
             k["Cap"] = at["caption"] == "yes"
         if at.get("caption-style") in ("Inline", "Top"):
             k["CP"] = at["caption-style"]
         if "caption-offset-h" in at or "caption-offset-v" in at:
-            k["CO"] = [float(at.get("caption-offset-h") or 0),
-                       float(at.get("caption-offset-v") or 0)]
+            k["CO"] = [_float(at.get("caption-offset-h") or 0),
+                       _float(at.get("caption-offset-v") or 0)]
         if sub == "Caret" and "symbol" in at:
             k["Sy"] = "P" if at["symbol"] == "paragraph" else "None"
         for name in ("kz:open", "open"):       # (ours; "open" as some programs write it)
@@ -775,7 +830,7 @@ def _xfdf_record(el, raws=None):
         if at.get("inreplyto"):
             k["RT"] = "Group" if at.get("replyType") == "group" else "R"
     except ValueError:
-        return {"subtype": sub, "page": -1, "keys": {}, "unknown": True}
+        return {"subtype": sub, "page": -1, "keys": {}, "unknown": True, "bad": True}
     rec = {"page": page, "subtype": sub, "keys": k}
     if at.get("inreplyto"):
         rec["irt"] = at["inreplyto"]
@@ -805,7 +860,8 @@ def _xfdf_record(el, raws=None):
                                     "flags": _flags_of(child.attrib["flags"])
                                     if "flags" in child.attrib else POPUP_FLAGS}
         except ValueError:
-            pass
+            if name != "popup":         # (a pop-up's place that isn't one: left out)
+                return {"subtype": sub, "page": -1, "keys": {}, "unknown": True, "bad": True}
     if rich is not None:
         # the rich text: its elements as written (an XHTML <body>), or markup written as
         # text; its plain text is the note's text when there's no <contents>
@@ -997,22 +1053,48 @@ def _same_record(doc, x, rec):
     return True
 
 
+def _has_shape(rec):
+    """The record has the points its kind is drawn from (an ink drawing without its strokes
+    was made 4 billion points wide by MuPDF); stray numbers past the last whole point or
+    quadrilateral are left out."""
+    k, sub = rec["keys"], rec["subtype"]
+    if sub == "Ink":
+        k["InkList"] = [g[:len(g) // 2 * 2] for g in k.get("InkList") or () if len(g) >= 2]
+        return bool(k["InkList"])
+    if sub in ("Polygon", "PolyLine"):
+        v = k.get("Vertices") or []
+        k["Vertices"] = v[:len(v) // 2 * 2]
+        return len(k["Vertices"]) >= 4
+    if sub == "Line":
+        return len(k.get("L") or ()) == 4
+    if sub in ("Highlight", "Underline", "StrikeOut", "Squiggly"):
+        q = k.get("QuadPoints") or []
+        k["QuadPoints"] = q[:len(q) // 8 * 8]
+        return bool(k["QuadPoints"])
+    return True
+
+
 def import_records(doc, recs):
     """Add the records' markups to doc (inside one DocumentView.modify: one undo step).
     Returns a Report. Records are matched by name (/NM) to markups already there."""
     rep = Report()
     by_page = {}
     for rec in recs:
+        if rec.get("bad"):
+            rep.skip(tr("numbers that aren't positions or sizes") + ": " + rec["subtype"])
+            continue
         if rec.get("unknown"):
             rep.skip(tr("not a kind of comment KanzonasPDF exchanges") + ": " + rec["subtype"])
             continue
         if not 0 <= rec["page"] < doc.page_count:
             rep.skip(tr("page {n} isn't in this document").format(n=rec["page"] + 1))
             continue
-        if len(rec["keys"].get("Rect") or ()) != 4:
+        if len(rec["keys"].get("Rect") or ()) != 4 or not _has_shape(rec):
             rep.skip(tr("no position"))
             continue
         rec["keys"].setdefault("NM", "kz-" + str(uuid.uuid4()))
+        if A.KZ_KEY in rec["keys"] and not props_ok(rec["keys"][A.KZ_KEY]):
+            del rec["keys"][A.KZ_KEY]
         if _skipped_kind(None, None, rec["subtype"], rec["keys"]):
             # (KanzonasPDF's style for a picture or attached file, whose contents aren't in
             # a comment file: drawn as the file says, by MuPDF)
@@ -1110,13 +1192,15 @@ def _redrawn(redraws):
         yield from redraw
 
 
+CHUNK = 300
+
+
 def _appearances(page, redraw):
     """Draw the new markups: KanzonasPDF's own as it draws them, replies empty, statuses not
     at all (hidden), the rest as MuPDF draws them."""
     if not redraw:
         return
     doc = page.parent
-    m = pymupdf.mupdf
     ours, theirs = [], []
     for x, rec in redraw:
         k = rec["keys"]
@@ -1126,39 +1210,47 @@ def _appearances(page, redraw):
                 doc, abs(r[2] - r[0]), abs(r[3] - r[1])))
             continue
         (ours if k.get(A.KZ_KEY) else theirs).append((x, rec))
-    if theirs:
-        loaded = A.load_annots(page, [x for x, _r in theirs])
-        for x, _rec in theirs:
+    models = {}
+    if ours:
+        loaded = A.load_annots(page, [x for x, _r in ours])
+        for x, _rec in ours:
             a = loaded.get(x)
-            if a is not None:
-                try:
-                    m.pdf_dirty_annot(a.this)
-                    m.pdf_update_annot(a.this)
-                except Exception:
-                    pass
+            try:
+                models[x] = A.read(a) if a is not None else None
+            except Exception:
+                models[x] = None
         loaded.clear()
+    # (all drawn by MuPDF, KanzonasPDF's own too once read as they came: each one written
+    # anew below was 25 times slower with markups on the page not drawn yet; one that can't
+    # be written anew is kept as MuPDF draws it)
+    _redraw(page, [x for x, _r in theirs + ours])
     if not ours:
         return
-    loaded = A.load_annots(page, [x for x, _r in ours])
-    models = {}
-    for x, _rec in ours:
-        a = loaded.get(x)
-        try:
-            models[x] = A.read(a) if a is not None else None
-        except Exception:
-            models[x] = None
-    loaded.clear()
     order = A.annot_order(page)
     fresh = {}
     from . import pdf_speed
-    for x, rec in ours:
-        model = models.get(x)
-        if model is None:
-            continue
-        try:
-            fresh[x] = A.write(page, model).xref
-        except Exception:
-            fresh.pop(x, None)          # (kept as it came: MuPDF draws it)
+    # (written a few hundred at a time with only those on the page's list: MuPDF looks
+    # through every markup loaded at each one written, so 2,000 imported onto one page
+    # took 13 s, 10,000 several minutes; the list is put back whole right after)
+    added = []
+    try:
+        for at in range(0, len(ours), CHUNK):
+            chunk = [x for x, _rec in ours[at:at + CHUNK] if models.get(x) is not None]
+            if not chunk:
+                continue
+            if len(order) > CHUNK:
+                A.set_annot_order(page, chunk)
+            for x in chunk:
+                try:
+                    fresh[x] = A.write(page, models[x]).xref
+                except Exception:
+                    fresh.pop(x, None)      # (kept as it came: MuPDF draws it)
+            if len(order) > CHUNK:
+                have = set(chunk)
+                added += [y for y in A.annot_order(page) if y not in have]
+    finally:
+        if len(order) > CHUNK:
+            A.set_annot_order(page, order + [y for y in added if y not in set(order)])
     if fresh:
         # the written one takes the imported one's place, its name, dates and flags
         threads = review.Threads(page)
@@ -1184,13 +1276,39 @@ def _appearances(page, redraw):
         final += [x for x in now if x not in placed]     # (pop-up notes write() added)
         if final != now:
             A.set_annot_order(page, final)
-    for x, rec in ours:
-        if x not in fresh:
-            a = A.load_annots(page, [x]).get(x)
-            if a is not None:
+
+
+def _redraw(page, xrefs):
+    """MuPDF draws these markups of the page, a few at a time with only those on the page's
+    list (the list put back whole after). MuPDF draws every markup marked when it next draws
+    one, looking through every markup loaded, and an undo step holding thousands of them
+    slows down steeply (undo_journal.SPLIT_EVERY): marked and drawn one by one, 2,000
+    comments imported onto a page took 15 s, and all marked then drawn at once, 29 s with
+    undo (10,000: many minutes, the app hung)."""
+    if not xrefs:
+        return
+    from . import undo_journal
+    m = pymupdf.mupdf
+    order = A.annot_order(page)
+    cut = len(order) > CHUNK
+    try:
+        for at in range(0, len(xrefs), undo_journal.SPLIT_EVERY):
+            chunk = xrefs[at:at + undo_journal.SPLIT_EVERY]
+            if cut:
+                A.set_annot_order(page, chunk)
+            loaded = A.load_annots(page, chunk)
+            for a in loaded.values():
                 try:
                     m.pdf_dirty_annot(a.this)
+                except Exception:
+                    pass
+            for a in loaded.values():
+                try:
                     m.pdf_update_annot(a.this)
                 except Exception:
                     pass
-            del a
+            loaded.clear()
+            undo_journal.split(page.parent)         # (a new entry of the undo step)
+    finally:
+        if cut:
+            A.set_annot_order(page, order)

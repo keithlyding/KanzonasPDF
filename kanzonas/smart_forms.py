@@ -76,10 +76,34 @@ def _tokens(text):
     return out
 
 
+MAX_NESTING = 50       # parentheses and signs inside each other
+MAX_DEPTH = 250        # a formula's tree, as deep (a + b + c ... is one level per term)
+
+
+def _tree_depth(tree):
+    """How deep a formula's tree is (worked out without recursion)."""
+    deepest, stack = 0, [(tree, 1)]
+    while stack:
+        t, d = stack.pop()
+        deepest = max(deepest, d)
+        if t[0] not in ("num", "field"):
+            stack.extend((a, d + 1) for a in t[1:])
+    return deepest
+
+
 def parse_formula(text):
-    """A formula's tree: ("num", x) | ("field", name) | ("neg", a) | (op, a, b)."""
+    """A formula's tree: ("num", x) | ("field", name) | ("neg", a) | (op, a, b).
+    A formula nested deeper than MAX_NESTING or longer than MAX_DEPTH terms is refused (a
+    file's formula is untrusted: Python's own limit on calls inside calls would stop
+    reading, working out or writing it, and with it the whole form)."""
     toks = _tokens(text)
     pos = [0]
+    nesting = [0]
+
+    def deeper():
+        nesting[0] += 1
+        if nesting[0] > MAX_NESTING:
+            raise FormulaError("the formula is nested too deeply")
 
     def peek():
         return toks[pos[0]] if pos[0] < len(toks) else (None, None)
@@ -104,7 +128,9 @@ def parse_formula(text):
     def unary():
         if peek() in (("op", "-"), ("op", "+")):
             sign = take()[1]
+            deeper()
             a = unary()
+            nesting[0] -= 1
             return ("neg", a) if sign == "-" else a
         return primary()
 
@@ -115,9 +141,11 @@ def parse_formula(text):
         if kind == "name":
             return ("field", val)
         if (kind, val) == ("op", "("):
+            deeper()
             a = expr()
             if take() != ("op", ")"):
                 raise FormulaError("a ( is not closed")
+            nesting[0] -= 1
             return a
         raise FormulaError("the formula ends too soon" if kind is None else
                            "unexpected %r" % val)
@@ -127,6 +155,8 @@ def parse_formula(text):
     tree = expr()
     if pos[0] != len(toks):
         raise FormulaError("unexpected %r" % (toks[pos[0]][1],))
+    if _tree_depth(tree) > MAX_DEPTH:
+        raise FormulaError("the formula is too long")
     return tree
 
 
@@ -260,7 +290,9 @@ def parse_call(js):
         pos[0] += 1
         return t
 
-    def literal():
+    def literal(depth=0):
+        if depth > 8:
+            raise ValueError            # (arrays inside arrays: no standard call has them)
         kind, val = peek()
         if kind == "str":
             take()
@@ -273,21 +305,21 @@ def parse_call(js):
             return val == "true"
         if (kind, val) == ("p", "["):
             take()
-            return items("]")
+            return items("]", depth + 1)
         if (kind, val) == ("id", "new") and peek(1) == ("id", "Array"):
             take()
             take()
             take("p", "(")
-            return items(")")
+            return items(")", depth + 1)
         raise ValueError
 
-    def items(close):
+    def items(close, depth=0):
         out = []
         if peek() == ("p", close):
             take()
             return out
         while True:
-            out.append(literal())
+            out.append(literal(depth))
             if peek() == ("p", close):
                 take()
                 return out
@@ -372,7 +404,7 @@ DATE_PRESETS = ["mm/dd/yyyy", "m/d/yyyy", "mm/dd/yy", "dd/mm/yyyy", "yyyy-mm-dd"
 def _int(v, default=0):
     try:
         return int(float(v))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):     # (a list; text; inf or nan)
         return default
 
 
@@ -446,6 +478,8 @@ def read_validate(js):
             hi = float(a[3]) if a[2] is True else None
         except (TypeError, ValueError):
             return {"custom": js}
+        if any(x is not None and not math.isfinite(x) for x in (lo, hi)):
+            return {"custom": js}       # ("nan", "inf": no range; written back unreadable)
         if lo is not None or hi is not None:
             return {"min": lo, "max": hi}
     return {"custom": js}
@@ -482,7 +516,7 @@ def to_number(value):
     if value is None or value is False:
         return None
     if isinstance(value, (int, float)):
-        return float(value)
+        return float(value) if math.isfinite(value) else None
     s = str(value).strip()
     if not s:
         return None
@@ -521,6 +555,8 @@ def to_number(value):
         x = float(s)
     except ValueError:
         return None
+    if not math.isfinite(x):
+        return None                 # (400 digits: no number a field can hold or show)
     if pct:
         x /= 100.0
     return -x if neg else x
@@ -546,7 +582,7 @@ def format_value(fmt, raw):
     k = fmt.get("kind")
     if k in ("number", "percent"):
         x = to_number(raw)
-        if x is None:
+        if x is None or (k == "percent" and not math.isfinite(x * 100.0)):
             return raw
         if k == "percent":
             body = _group(x * 100.0, fmt.get("decimals", 2), fmt.get("sep", 0)) + "%"
@@ -628,7 +664,10 @@ def parse_date(text, pattern):
     nums = re.findall(r"\d+", s)
     words = [w for w in re.findall(r"[^\W\d_]+", s)]
     month_word = next((_month_of(w) for w in words if _month_of(w)), None)
-    order = [t[0] for t in _DATE_TOKEN.findall(pattern) if t[0] in "dmy"]
+    # (a weekday's name, ddd or dddd, isn't where the day's number goes: with it first,
+    # "dddd, mmmm d, yyyy" read 11/6/26 as June 11)
+    order = [t[0] for t in _DATE_TOKEN.findall(pattern) if t[0] in "dmy"
+             and t not in ("ddd", "dddd")]
     seen = []
     for o in order:
         if o not in seen:
@@ -875,7 +914,9 @@ def read_form(doc):
                     page_of.setdefault(num, i)
     seen = set()
 
-    def walk(arr, prefix, inherited):
+    def walk(arr, prefix, inherited, depth=0):
+        if depth > 32:
+            return          # (fields inside fields 33 deep: a file made to stop the reading)
         for k in range(m.pdf_array_len(arr)):
             node = m.pdf_array_get(arr, k)
             num = m.pdf_to_num(node)
@@ -905,7 +946,7 @@ def read_form(doc):
                 f.widgets.append(num)
                 continue
             if named_kids:
-                walk(kids, name, inh)
+                walk(kids, name, inh, depth + 1)
                 # (a parent's own widgets, if any, are ignored: a parent is a group)
                 form.groups[name] = [n for n in form.fields if n.startswith(name + ".")]
                 continue
@@ -992,36 +1033,50 @@ def calc_order(form):
     calc = form.calculated()
     rank = {n: k for k, n in enumerate(form.co)}
     calc.sort(key=lambda n: rank.get(n, len(rank)))
-    deps = {}
+    deps, is_calc = {}, set(calc)
     for n in calc:
         ins = set()
         for name in calc_inputs(form.fields[n].calc):
             ins.update(form.expand(name))
-        deps[n] = {d for d in ins if d in deps or d in calc}
+        deps[n] = {d for d in ins if d in is_calc}
     order, done, looped = [], set(), []
     state = {}
 
-    def visit(n, path):
-        if n in done:
-            return True
-        if state.get(n):
-            return False            # (busy: a loop; done but not in order: in a loop)
-        state[n] = "busy"
-        ok = True
-        for d in sorted(deps.get(n, ()), key=lambda x: rank.get(x, len(rank))):
-            if d != n and d in deps and not visit(d, path + [n]):
-                ok = False
-        if n in deps.get(n, ()):
-            ok = False
-        state[n] = "done"
-        if ok:
-            done.add(n)
-            order.append(n)
-        else:
-            looped.append(n)
-        return ok
+    def ins_of(n):
+        return iter(sorted(deps.get(n, ()), key=lambda x: rank.get(x, len(rank))))
+
+    def visit(root):
+        # (depth first without recursion: a chain of thousands of fields, each reading
+        # the one before, went past Python's limit on calls inside calls)
+        if root in done or state.get(root):
+            return
+        state[root] = "busy"
+        stack = [[root, ins_of(root), True]]
+        while stack:
+            top = stack[-1]
+            n = top[0]
+            for d in top[1]:
+                if d == n or d not in deps or d in done:
+                    continue
+                if state.get(d):
+                    top[2] = False      # (busy: a loop; done but not in order: in a loop)
+                    continue
+                state[d] = "busy"
+                stack.append([d, ins_of(d), True])
+                break
+            else:
+                stack.pop()
+                ok = top[2] and n not in deps.get(n, ())
+                state[n] = "done"
+                if ok:
+                    done.add(n)
+                    order.append(n)
+                else:
+                    looped.append(n)
+                    if stack:
+                        stack[-1][2] = False
     for n in calc:
-        visit(n, [])
+        visit(n)
     return order, looped
 
 
@@ -1051,7 +1106,8 @@ def calculate(calc, number_of):
                 x = min(vals)
             else:
                 x = max(vals)
-    except (ZeroDivisionError, OverflowError, FormulaError):
+    except (ArithmeticError, ValueError):
+        # (division by zero, overflow, a formula refused, fsum of inf and -inf)
         return None
     if isinstance(x, float) and (math.isnan(x) or math.isinf(x)):
         return None
@@ -1296,16 +1352,19 @@ def forget_removed(doc, before):
 def dependents(form, names):
     """The calculated fields of form that read any of names (fields, or groups holding
     them), directly or through another calculated field."""
-    names = set(names)
-    out = set()
-
-    def reads(n, f):
-        return any(g == i or g.startswith(i + ".") for i in calc_inputs(f.calc) for g in n)
-    grew = True
-    while grew:
-        grew = False
-        for n, f in form.fields.items():
-            if n not in out and f.calc and reads(names | out, f):
-                out.add(n)
-                grew = True
+    readers = {}                    # a name a calculation reads -> the fields reading it
+    for n, f in form.fields.items():
+        if f.calc:
+            for i in calc_inputs(f.calc):
+                readers.setdefault(i, set()).add(n)
+    out, todo = set(), list(names)
+    while todo:
+        g = todo.pop()
+        parts = g.split(".")
+        # (g itself, or a group holding it: a.b.c is read by a, a.b and a.b.c)
+        for k in range(1, len(parts) + 1):
+            for n in readers.get(".".join(parts[:k]), ()):
+                if n not in out:
+                    out.add(n)
+                    todo.append(n)
     return out

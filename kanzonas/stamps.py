@@ -2,6 +2,7 @@
 library of custom image stamps kept in the app-data folder."""
 
 import os
+import sys
 import shutil
 from datetime import datetime
 
@@ -28,7 +29,7 @@ def form_fields(label):
     """'form:PO #|Date ordered' -> ['PO #', 'Date ordered'] (None if not a fill-in stamp)."""
     if not label.startswith(FORM_PREFIX):
         return None
-    return [f.strip() for f in label[len(FORM_PREFIX):].split("|") if f.strip()]
+    return [f.strip() for f in label[len(FORM_PREFIX):].split("|") if f.strip()][:MAX_ROWS]
 
 
 def form_title(label):
@@ -65,8 +66,15 @@ def detail_line(author, with_name=True, with_date=True):
     return "  ·  ".join(parts)
 
 
+# a stamp's label, its detail line and a fill-in stamp's rows, at most (they come from the
+# markup's style, so from a document or comment file too: a label of 100,000 characters or a
+# fill-in stamp of 3,000 rows was drawn as a picture of gigabytes, for minutes)
+MAX_LABEL, MAX_ROWS = 200, 20
+
+
 def render(label, color="#c00000", detail=""):
     """Text stamp -> (png bytes, aspect height/width). Bold label in a double border."""
+    label, detail = (label or "")[:MAX_LABEL], (detail or "")[:MAX_LABEL]
     col = QColor(color)
     big = QFont("Arial", 1)
     big.setBold(True)
@@ -102,6 +110,8 @@ def render(label, color="#c00000", detail=""):
 def render_form(fields, values, color="#c00000"):
     """Fill-in stamp -> (png bytes, aspect): one 'Name: value' row per field, the value
     underlined, in the same double border as the text stamps."""
+    fields = [f[:MAX_LABEL] for f in fields[:MAX_ROWS]] or [""]
+    values = [str(v)[:MAX_LABEL] for v in list(values)[:len(fields)]]
     col = QColor(color)
     font = QFont("Arial", 1)
     font.setBold(True)
@@ -168,7 +178,15 @@ def ask_form_values(parent, label, values=None):
 
 
 def image_stamp(file_name):
-    """Library image -> (png bytes, aspect) or (None, None) if the file is gone."""
+    """Library image -> (png bytes, aspect) or (None, None) if the file is gone.
+    Only a file of the stamp library itself, by its bare name: the name comes from a
+    markup's style (KZProps), so from the document or an imported comment file, and a path
+    there ("image:C:/Users/.../photo.png", "image:../..", a \\\\server\\share one) made
+    KanzonasPDF read that picture off the disk, or the network, into the document."""
+    if not file_name or file_name in (".", "..") or "/" in file_name or \
+            "\\" in file_name or "\0" in file_name or \
+            (sys.platform == "win32" and ":" in file_name):     # (C:x.png, x.png:stream)
+        return None, None
     path = os.path.join(library_dir(), file_name)
     img = QImage(path)
     if img.isNull():

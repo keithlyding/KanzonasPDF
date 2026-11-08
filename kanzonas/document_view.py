@@ -2972,9 +2972,10 @@ class DocumentView(QScrollArea):
             return ""
         return "\n\n".join(self._words_text(words) for _i, words in self.text_sel)
 
-    def copy(self):
+    def copy(self, threads=False):
         """Copy the selected text, the selected markups, or one picture selected with Edit
-        objects. Returns what was copied."""
+        objects. Returns what was copied. threads: the markups' replies and statuses go
+        along (Cut: pasted, they come back with them)."""
         from . import clip
         if not self.require_permission(pymupdf.PDF_PERM_COPY, tr("Copying")):
             return None
@@ -3011,7 +3012,7 @@ class DocumentView(QScrollArea):
                 words = added_text.plain(payload["text"]["blocks"]) if payload["text"] else ""
                 clip.put("pagecontent", payload, words, image=image)
                 return "pagecontent"
-        models = self._models_for_clipboard()
+        models = self._models_for_clipboard(threads=threads)
         if models:
             text = "\n".join(m.get("text", "") for m in models if m.get("text"))
             # the page's turn goes along: pasted on a page turned otherwise, they're turned
@@ -3021,13 +3022,15 @@ class DocumentView(QScrollArea):
             return "markups"
         return None
 
-    def _models_for_clipboard(self, keep=False):
+    def _models_for_clipboard(self, keep=False, threads=False):
         """The selected markups as models to write elsewhere (keep: as they are, their author
-        and date too, for a move; else as new copies)."""
+        and date too, for a move; else as new copies). threads: each with its replies and
+        statuses as review.thread_of gives them, under "thread"."""
         if self.selection is None:
             return []
         page = self.doc[self.selection[0]]
         out = []
+        found = review.Threads(page) if threads else None
         for x, m in self.selected_models():
             if m["kind"] in ("field", "redact"):
                 continue
@@ -3049,6 +3052,10 @@ class DocumentView(QScrollArea):
                 m.pop("author", None)
                 m.pop("created", None)
                 m["locked"] = False
+            if found is not None:
+                thread = review.thread_of(self.doc, found, x)
+                if thread:
+                    m["thread"] = thread
             out.append(m)
         return out
 
@@ -3445,7 +3452,8 @@ class DocumentView(QScrollArea):
                         "This page has pending redactions; cutting text would apply them. "
                         "Remove them first."))
                     return "blocked"
-        what = self.copy()
+        # (a markup cut and pasted keeps its replies and statuses: they were lost)
+        what = self.copy(threads=True)
         if what == "pagecontent":
             rev = self.revision
             self.delete_everything_selected()
@@ -3543,12 +3551,18 @@ class DocumentView(QScrollArea):
 
             def do():
                 pg = self.doc[index]
+                threads = []
                 for m in payload:
                     m = annotations.moved(m, d)
                     form = m.pop("form", None)
+                    thread = m.pop("thread", None)
                     if form and form[0] == id(self.doc):
                         m["img"] = form[1]          # vector capture copied in the same file
                     made.append(annotations.write(pg, m).xref)
+                    if thread:
+                        threads.append((made[-1], thread))
+                for x, thread in threads:
+                    review.put_thread(pg, x, thread)
             self.modify(do, [index])
             if made:
                 self._set_selection(index, made)
@@ -8093,20 +8107,21 @@ class DocumentView(QScrollArea):
             return []
         try:
             data = json.loads(val)
-        except ValueError:
-            return [val]                    # unreadable: treat it all as text, to be safe
+        except (ValueError, RecursionError):
+            # unreadable (or nested deeper than Python reads: a file made so that Search &
+            # redact stopped with an error): treat it all as text, to be safe
+            return [val]
         out = []
-
-        def walk(node, key=None):
+        todo = [(data, None)]           # (walked without recursion, for the same reason)
+        while todo:
+            node, key = todo.pop()
             if isinstance(node, dict):
-                for k, v in node.items():
-                    walk(v, k)
+                todo.extend((v, k) for k, v in node.items())
             elif isinstance(node, list):
-                for v in node:
-                    walk(v, key)
+                todo.extend((v, key) for v in node)
             elif isinstance(node, str) and key in self.PRIVATE_TEXT_KEYS:
                 out.append(node)
-        walk(data)
+        out.reverse()
         return out
 
     REDACT_DROP = ("stamp", "image", "attach")      # Search & redact deletes these whole
@@ -9151,6 +9166,13 @@ class DocumentView(QScrollArea):
                 self._write_value(i, wx, raw, f.fmt)
             else:
                 self._write_plain(i, wx, raw)
+        # (a new entry of the undo step every few fields: the widget's redraw isn't one of
+        # the steps undo_journal counts, and one entry holding hundreds slowed down steeply,
+        # 1,500 chained fields worked out in 46 s, now 16)
+        self._fields_written = getattr(self, "_fields_written", 0) + 1
+        if self._fields_written % 10 == 0:
+            from . import undo_journal
+            undo_journal.split(self.doc)
 
     @staticmethod
     def _form_pages(form, names):
