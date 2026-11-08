@@ -17,6 +17,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - While you edit text, Bold, Italic and Font size in Properties change the words you selected, and they stay selected (before, clicking Bold there lost the selection and did nothing). With nothing selected, they change all the text in the box, and Properties shows the style of the selected words.
 - The small style bar above the text being edited is easy to read, and shows which styles the selected words have.
 - The box you type in is no bigger than the text: Add text's box is as wide as what you type, and text too small to read at your zoom (a drawing zoomed out) is typed enlarged just below its spot, with a true-size preview showing exactly where it goes.
+- Printed lines are no longer faint: thin lines in drawings print solid and at least 0.15 pt wide (Dark thin lines in the Print window, on unless you turn it off).
 
 ## 1.9.1 (es)
 
@@ -28,6 +29,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Mientras edita texto, la Negrita, la Cursiva y el Tamaño de fuente de Propiedades cambian las palabras que seleccionó, y siguen seleccionadas (antes, hacer clic allí en Negrita perdía la selección y no hacía nada). Sin nada seleccionado, cambian todo el texto del cuadro, y Propiedades muestra el estilo de las palabras seleccionadas.
 - La pequeña barra de estilos sobre el texto que se edita se lee con facilidad y muestra qué estilos tienen las palabras seleccionadas.
 - El cuadro donde escribe no es más grande que el texto: el cuadro de Agregar texto es tan ancho como lo que escribe, y el texto demasiado pequeño para leerse con su zoom (un plano visto entero) se escribe ampliado justo debajo de su lugar, con una vista previa a tamaño real que muestra exactamente dónde va.
+- Las líneas impresas ya no salen tenues: las líneas finas de los planos se imprimen sólidas y con al menos 0,15 pt de grosor (Líneas finas oscuras en la ventana Imprimir, activado salvo que lo desactive).
 
 ## 1.9
 

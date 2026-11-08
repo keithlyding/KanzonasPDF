@@ -41,7 +41,9 @@ its own unique identity, even for files with the same name.</p>
 of each sheet as it will print: pick the printer and copies, which pages (All, Current page,
 or a list such as 1-3, 5), the orientation (Auto turns each sheet to fit its page), the size
 (Fit to paper, or Actual size, which only shrinks pages that are too big), whether markups
-and form fields print, and <b>Crop marks</b> (see Print production). <b>Page setup...</b> sets the paper size and margins. Use the arrows
+and form fields print, <b>Dark thin lines</b> (on unless you turn it off: every line prints at
+least 0.15 pt wide and solid, so the hairlines of drawings don't come out faint or broken; off,
+lines print exactly as thin as they are), and <b>Crop marks</b> (see Print production). <b>Page setup...</b> sets the paper size and margins. Use the arrows
 under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
 rendered a strip at a time so even large drawings print sharp without using much memory.
 Markups and form fields follow their own print setting, as in Acrobat: one made to show on
