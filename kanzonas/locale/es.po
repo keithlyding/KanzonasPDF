@@ -9259,6 +9259,9 @@ msgstr "Este no es un archivo FDF."
 msgid "no position"
 msgstr "sin posición"
 
+msgid "numbers that aren't positions or sizes"
+msgstr "números que no son posiciones ni tamaños"
+
 msgid "{n} comments added"
 msgstr "{n} comentarios agregados"
 

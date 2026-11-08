@@ -133,17 +133,24 @@ class Threads:
     def replies(self, root):
         """[(depth, Link)] of the replies in root's thread (no statuses), oldest first within
         each level, each followed by the replies to it."""
-        out = []
+        out, seen = [], {root}
 
-        def walk(x, depth, seen):
-            kids = [self.links[c] for c in self.children.get(x, ())
-                    if self.links[c].role == "reply" and c not in seen]
-            kids.sort(key=lambda ln: norm_date(ln.created or ln.modified))
-            for ln in kids:
-                seen.add(ln.xref)
-                out.append((depth, ln))
-                walk(ln.xref, depth + 1, seen)
-        walk(root, 1, {root})
+        def kids(x):
+            got = [self.links[c] for c in self.children.get(x, ())
+                   if self.links[c].role == "reply" and c not in seen]
+            got.sort(key=lambda ln: norm_date(ln.created or ln.modified))
+            return got
+        # (depth first without recursion: a thread of thousands of replies, each answering
+        # the one before, went past Python's limit on calls inside calls, and the Markups
+        # list, Summarize comments and Reply stopped with an error on that document)
+        todo = [(1, ln) for ln in reversed(kids(root))]
+        while todo:
+            depth, ln = todo.pop()
+            if ln.xref in seen:
+                continue
+            seen.add(ln.xref)
+            out.append((depth, ln))
+            todo.extend((depth + 1, c) for c in reversed(kids(ln.xref)))
         return out
 
     def states(self, root):
@@ -234,6 +241,40 @@ def add_reply(page, parent, text, author=None):
     x = _linked(page, parent, text, A.author() if author is None else author)
     _append_annots(page, [x])
     return x
+
+
+def thread_of(doc, threads, x):
+    """The replies and statuses under markup x (threads: its page's Threads) as plain values,
+    each after the one it answers: [{"parent": index in the list (-1: x), "text", "author",
+    "created", "modified", "state", "model"}], for put_thread."""
+    kids = threads.descendants([x])
+    at = {c: k for k, c in enumerate(kids)}
+    out = []
+    for c in kids:
+        ln = threads.links[c]
+        out.append({"parent": at.get(ln.parent, -1), "text": ln.text or "",
+                    "author": ln.author or "", "created": ln.created or "",
+                    "modified": ln.modified or "", "state": ln.state or "",
+                    "model": ln.model or ""})
+    return out
+
+
+def put_thread(page, x, thread):
+    """Put replies and statuses (thread_of) under markup x of page, their authors and dates
+    as they were. Returns their xrefs."""
+    doc = page.parent
+    new = []
+    for e in thread:
+        parent = x if e["parent"] < 0 or e["parent"] >= len(new) else new[e["parent"]]
+        y = _linked(page, parent, e["text"], e["author"], e["state"] or None,
+                    e["model"] or None)
+        for key, val in (("CreationDate", e["created"]), ("M", e["modified"])):
+            if val:
+                doc.xref_set_key(y, key, pymupdf.get_pdf_str(val))
+        new.append(y)
+    if new:
+        _append_annots(page, new)
+    return new
 
 
 def set_status(page, parents, state, author=None):

@@ -676,7 +676,8 @@ first.</li>
 <li><b>Markups:</b> select one or more markups, then Copy or Cut. <b>Paste</b> (Ctrl+V) puts them
 where the mouse is, on any page or in another open document. Pasted on a page that's turned
 another way (a rotated page), they're turned to look as they did where you copied them; a text
-box still reads upright.</li>
+box still reads upright. A markup that is cut and pasted keeps its replies and review statuses
+(with their authors and dates); a copy is pasted without them.</li>
 <li><b>Duplicate</b> (Ctrl+D): copies of the selected markups appear slightly offset, selected
 so you can drag them into place. In the page list, Ctrl+D duplicates the selected pages; with
 the Edit objects tool, the selected text, pictures and shapes of the page.</li>
@@ -784,7 +785,10 @@ up, and replies attach to the markups they answer. Comments for pages the docume
 are skipped, and a message says how many were added, updated and skipped and why. Notes written
 as rich text (as Acrobat writes them) keep their text and formatting both ways. A comment file
 can't run anything: links, scripts and other actions in it are left out, and a file that
-declares XML entities or is larger than 64 MB isn't read.</li>
+declares XML entities or is larger than 64 MB isn't read. A comment whose position or size isn't
+a usable number (NaN, infinity, or beyond 10 million points) is skipped and listed in the
+message; the rest are imported. An image stamp in a comment file is drawn only from your own
+stamp library, by its name, never from another place on your computer or the network.</li>
 <li><b>Summarize comments...</b> makes a new PDF listing every comment: its page, type, author,
 date, status and text, with its replies indented below it. Sort it by page (with each page's
 thumbnail beside its comments, as Acrobat's summary does; untick Page thumbnails for a list
@@ -971,7 +975,8 @@ text for its text and the Layers tab for CAD layers.</li>
 then click to place it.</li>
 <li><b>Add my name</b> and <b>Add the date</b> are separate checkboxes. Changing them on a
 placed stamp redraws it (a re-added date shows today's date).</li>
-<li><b>Add image stamp...</b> adds your own picture (PNG/JPG) to the stamp list.</li>
+<li><b>Add image stamp...</b> adds your own picture (PNG/JPG) to the stamp list. A stamp shows
+at most 200 characters of its text, and a fill-in stamp at most 20 rows.</li>
 <li><b>Fill-in stamps:</b> <b>Fill-in: PO # / Date ordered</b> and <b>Fill-in: Req # / Date
 submitted</b> in the stamp list. When you click to place one, a box asks for the number and the
 date (the date starts as today, in your Preferences &gt; You date format). Double-click a placed
@@ -1588,7 +1593,9 @@ and shown formatted ($1,234.50). <i>Validate:</i> a range the value must be in (
 for a percent field, of the fraction kept: 0 to 1 for 0% to 100%, as in Acrobat).
 <i>Calculate:</i> the field's value is the Sum, Product, Average, Minimum or Maximum of the
 fields you tick, or a Formula such as <b>Price * Qty + Shipping</b> (field names, numbers,
-+ - * / and parentheses; a name with spaces takes a backslash before each space: Item\\ 1).
++ - * / and parentheses; a name with spaces takes a backslash before each space: Item\\ 1;
+up to 50 parentheses or signs inside each other and 250 terms in a row; a longer formula in a
+form from elsewhere is shown as Custom calculation (not run)).
 Each change is one undo step.</li>
 <li><b>Calculated fields</b> are worked out as soon as a field they use is filled in (Enter,
 Tab or a click elsewhere), each after the fields it uses, so a subtotal feeds a total; an empty

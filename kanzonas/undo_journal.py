@@ -284,6 +284,17 @@ def _tick(pdf):
             j._split()
 
 
+def split(doc):
+    """Start a new entry of the edit in progress on doc, if there is one (for a step that does
+    much at once inside MuPDF, where _tick can't count: xfdf._redraw)."""
+    pdf = _pdf(doc)
+    if not _ACTIVE or pdf is None:
+        return
+    j = _ACTIVE.get(_address(pdf.m_internal))
+    if j is not None:
+        j._split()
+
+
 def _annot_pdf(annot):
     try:
         return pymupdf._pdf_annot_page(annot).doc()

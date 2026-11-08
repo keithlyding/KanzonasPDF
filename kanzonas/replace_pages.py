@@ -547,7 +547,7 @@ def _map_kzprops(doc, xref, tp):
         return
     try:
         store = json.loads(kv)
-    except ValueError:
+    except (ValueError, RecursionError):
         return
     if not isinstance(store, dict):
         return
