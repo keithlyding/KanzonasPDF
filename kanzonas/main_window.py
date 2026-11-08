@@ -5777,6 +5777,9 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage({"text": tr("Text copied"),
                                           "pagetext": tr("Text copied with its styles: "
                                                          "Ctrl+V pastes it as page text"),
+                                          "pagecontent": tr("Copied: Ctrl+V pastes it into "
+                                                            "a page, here or in another "
+                                                            "document"),
                                           "markups": tr("Markups copied"),
                                           "picture": tr("Picture copied: Ctrl+V pastes it as "
                                                         "an image markup")}.get(
@@ -5786,6 +5789,9 @@ class MainWindow(QMainWindow):
             if what == "blocked":
                 return                  # (it said why)
             self.statusBar().showMessage({"text": tr("Text cut"), "pagetext": tr("Text cut"),
+                                          "pagecontent": tr("Cut: Ctrl+V pastes it into a "
+                                                            "page, here or in another "
+                                                            "document"),
                                           "markups": tr("Markups cut")}.get(
                 what, tr("Select text or markups first")), 3000)
         elif op == "paste":
