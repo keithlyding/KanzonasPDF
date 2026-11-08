@@ -24,6 +24,17 @@ a decision changes or a piece of work lands. Details of each version are in
   owner's priority, for the owner's Dell E525w); styled words in Edit text; Dimension and Legend markups;
   Replace pages; Save as PDF/A and Check PDF/A; the page scale shown, with a scale bar; macOS
   (Apple silicon, unsigned); then a break-it battery (text, markups, scanning and redaction).
+- 1.9.1: text editing, from the owner's use (8 Nov: "Editing text is a pain... I can't copy a
+  text box and move it elsewhere"): Properties' Bold, Italic and size change the selected words
+  while editing; what Add text writes is remembered as one block (a /KZText marked-content
+  marker holding numbers only, never the words, so redaction can take them all) and Edit text
+  opens all of it; Edit objects copies, cuts, pastes and duplicates the page's text with its
+  styles, also into another document. Then (owner, 8 Nov) the page's own pictures and shapes
+  copied, cut and pasted to another page or document, and CAD mode's Move and Copy (and a
+  selection dragged) across pages: pasted into another document, content drops its layer
+  membership (that document doesn't have the layer). Also from the owner's use: the editing
+  box no bigger than its text (small text typed enlarged with a true-size preview), and printed
+  lines no longer faint (Dark thin lines in the Print window).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

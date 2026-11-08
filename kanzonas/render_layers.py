@@ -368,14 +368,15 @@ def cut(pm, irect):
     return pymupdf.Pixmap("raw", out)
 
 
-def big_images(page):
+def big_images(page, least=BIG_IMAGE_PX):
     """[(xref, width, height, decoded bytes)] of the page's pictures big enough that decoding
-    them again for every tile is what makes a scanned page slow at high zoom."""
+    them again for every tile is what makes a scanned page slow at high zoom (least: of at
+    least this many pixels; 0: all of them)."""
     out = []
     try:
         for info in page.get_images(full=True):
             xref, w, h, bpc, cs = info[0], info[2], info[3], info[4], info[5]
-            if xref > 0 and w * h >= BIG_IMAGE_PX:
+            if xref > 0 and w * h >= least:
                 n = 1 if bpc == 1 or cs in ("DeviceGray", "CalGray", "Indexed") else \
                     4 if cs in ("DeviceCMYK",) else 3
                 out.append((xref, w, h, w * h * n))

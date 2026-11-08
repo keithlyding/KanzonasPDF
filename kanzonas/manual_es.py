@@ -33,7 +33,9 @@ su propia identidad única, incluso en el caso de archivos con el mismo nombre.<
 de cada hoja tal como se imprimirá: elija la impresora y las copias, qué páginas (Todas, Página actual
 o una lista como 1-3, 5), la orientación (Automática gira cada hoja para ajustarla a su página), el tamaño
 (Ajustar al papel, o Tamaño real, que solo reduce las páginas demasiado grandes), si se imprimen las marcas
-y los campos de formulario, y las <b>Marcas de corte</b> (vea Producción de impresión). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
+y los campos de formulario, <b>Líneas finas oscuras</b> (activado salvo que lo desactive: cada línea se imprime con al
+menos 0,15 pt de grosor y sólida, para que las líneas finas de los planos no salgan tenues ni cortadas; desactivado,
+las líneas se imprimen exactamente tan finas como son), y las <b>Marcas de corte</b> (vea Producción de impresión). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
 y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
 Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse
@@ -453,9 +455,13 @@ nombre de distancia ("mano", "seleccionar"). Enter sigue terminando un polígono
 barra espaciadora y Enter siguen llenando el campo de formulario al que llevó Tab.</li>
 </ul>
 <ul>
-<li><b>Mover</b>: haga clic en el punto base y luego donde va.</li>
-<li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera; Enter, Escape o Listo
-termina.</li>
+<li><b>Mover</b>: haga clic en el punto base y luego donde va, en esta página o en otra: en otra página la selección
+(las líneas, las imágenes y el texto del dibujo, y las marcas que van con ellos) va allí, a la misma distancia del punto
+en el que hizo clic que tenía del punto base, tal como se muestran las páginas (también a una página girada de otra
+manera). Los contornos siguen al puntero a la otra página, y los clics allí se ajustan a las líneas de esa página. Un
+Ctrl+Z la devuelve a su página.</li>
+<li><b>Copiar</b>: haga clic en el punto base y luego donde va cada copia, tantas como quiera, en esta página o en
+otras (como Mover); Enter, Escape o Listo termina.</li>
 <li><b>Girar</b>: haga clic en el punto base y luego escriba el ángulo en grados (en sentido antihorario; -90 gira en
 sentido horario) y presione Enter, o haga clic en un punto: la selección gira para que el "este" apunte hacia ahí.</li>
 <li><b>Escalar</b>: haga clic en el punto base y luego escriba el factor (2 = el doble de grande, 0.5 = la mitad; de 0.001
@@ -501,7 +507,8 @@ de arriba) y las imágenes no se recortan.</li>
 poco para que la ventana siempre responda, así que el primer recuadro, lazo o comando empieza enseguida; el puntero
 muestra un cursor de espera mientras un comando trabaja. Un recuadro de ventana toma una curva cuando la curva tal como se
 dibuja queda dentro (sus puntos de control pueden sobresalir).</p>
-<p>Lo que los comandos no hacen: el texto propio del dibujo solo se mueve (Mover); copiarlo, girarlo, escalarlo o
+<p>Lo que los comandos no hacen: el texto propio del dibujo se mueve (Mover) y se copia (Copiar, Matriz: como texto de
+la página, cada palabra con su estilo, como lo copia Editar objetos), pero girarlo, escalarlo o
 reflejarlo lo deja donde está y lo indica (Editar texto lo cambia). Los resaltados y otras marcas de texto se quedan sobre
 sus palabras, así que solo se mueven y se copian. Una imagen o un sello reflejados se siguen leyendo al derecho, y los
 cuadros de texto giran en cuartos de vuelta.</p>
@@ -569,9 +576,33 @@ donde está el mouse, en cualquier página o en otro documento abierto. Pegadas 
 otra manera (una página girada), se giran para que se vean como donde las copió; un cuadro de texto
 se sigue leyendo derecho.</li>
 <li><b>Duplicar</b> (Ctrl+D): aparecen copias de las marcas seleccionadas ligeramente desplazadas, seleccionadas
-para que pueda arrastrarlas a su lugar. En la lista de páginas, Ctrl+D duplica las páginas seleccionadas.</li>
+para que pueda arrastrarlas a su lugar. En la lista de páginas, Ctrl+D duplica las páginas seleccionadas; con la
+herramienta Editar objetos, el texto, las imágenes y las formas de la página seleccionados.</li>
+<li><b>El texto propio de la página</b> (herramienta Editar objetos): seleccione texto y use <b>Copiar</b> (Ctrl+C),
+<b>Cortar</b> (Ctrl+X) o <b>Duplicar</b> (Ctrl+D), con las teclas, el menú Edición o el menú contextual.
+<b>Pegar</b> (Ctrl+V) lo escribe en la página donde está el mouse, en cualquier página o en otro documento abierto,
+como lo hace Agregar texto: con su fuente (incrustada con él, así que se ve igual donde el otro documento no la
+tiene), su tamaño, su color, la negrita, la cursiva, el subrayado y el tachado, el ancho al que se ajusta y sus saltos
+de línea. Cada pieza pegada es luego un solo bloque para Editar texto (vea <b>Editar el texto que agregó</b>). Los
+otros programas reciben las palabras sin formato. También se copia el texto del PDF que no se agregó aquí: el texto
+continuo se sigue ajustando a su ancho, las demás líneas conservan sus saltos de línea, alineadas a la izquierda.
+Ctrl+Z deshace un pegado, un corte o un duplicado en un solo paso.</li>
+<li><b>Las imágenes y formas propias de la página</b> (herramienta Editar objetos, o la selección del modo del mouse
+CAD): selecciónelas, con texto también si quiere, y use <b>Copiar</b> (Ctrl+C) o <b>Cortar</b> (Ctrl+X);
+<b>Pegar</b> (Ctrl+V) las coloca en la página donde está el mouse (su esquina superior izquierda allí), en cualquier
+página, en una página girada de otra manera o en otro documento abierto, exactamente como se veían: colores, grosores
+y guiones de las líneas, transparencia, imágenes con sus máscaras de transparencia, tramas, y un contorno de recorte
+que les pertenece (una franja de imagen en su propia ventana, como la escribe "Imprimir a PDF") o bajo el que estaban
+dibujadas. Vuelven a ser contenido propio de la página, así que Editar objetos las selecciona, las mueve, las copia y
+las elimina como antes (un grupo sigue siendo un grupo). En el mismo documento, una imagen se guarda una sola vez por
+muchas veces que se pegue, y el contenido pegado sigue en su capa. En otro documento, cada imagen se copia una sola vez
+(al pegar de nuevo se usa otra vez), y el contenido queda sin capa (el otro documento no tiene esa capa: póngalo en una
+con el panel Capas si lo necesita). En el modo CAD, las marcas seleccionadas con ellas también van. Los otros programas
+reciben una imagen de lo copiado (no de un dibujo grande, que tardaría demasiado). Ctrl+Z deshace un pegado o un corte
+en un solo paso.</li>
 <li><b>Imágenes y texto de otros programas:</b> Pegar coloca una imagen copiada (p. ej., una captura de pantalla)
-como una marca de imagen, o un texto copiado como un cuadro de texto, donde está el mouse.</li>
+como una marca de imagen, o un texto copiado como un cuadro de texto, donde está el mouse. Con la herramienta
+Editar objetos, el texto copiado va a la propia página, con la fuente, el tamaño y el color de Agregar texto.</li>
 <li><b>Páginas:</b> desbloquee la lista de páginas (botón de bloqueo encima de las miniaturas), seleccione miniaturas
 (Ctrl+clic agrega o quita una página, Shift+clic selecciona una serie de páginas) y luego haga clic con el botón derecho en cualquiera
 de las páginas seleccionadas (toda la selección sigue seleccionada) o use el menú Páginas:
@@ -887,7 +918,9 @@ a una selección. En el modo del mouse <b>CAD</b>, la selección funciona como e
 derecha) toma las líneas, el texto, las imágenes y las marcas que quedan completamente dentro, un recuadro de captura verde (de derecha
 a izquierda) todo lo que toca, texto y trazos juntos; los clics, los recuadros y los lazos agregan a la selección, Shift
 quita, Escape la borra, y los comandos de la pestaña CAD la cambian (vea Modo CAD). Presione <b>Supr</b> (o Retroceso) o haga clic con el botón derecho &gt; <b>Eliminar</b> para quitarlo;
-arrástrelo para moverlo (los resaltados y otras marcas que tenga encima se mueven con él). Aquí el texto no se redimensiona,
+arrástrelo para moverlo (los resaltados y otras marcas que tenga encima se mueven con él). Copiar, Cortar, Pegar y
+Duplicar (Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D) lo copian con sus estilos como texto de la página, también a otra página o
+a otro documento (vea Copiar, cortar y pegar). Aquí el texto no se redimensiona,
 no se gira ni se reordena en la pila: cambie sus palabras, su fuente y su tamaño con Editar texto. Las imágenes y las líneas
 que tiene debajo se quedan. Si otro texto se superpone tanto que algunas de sus letras también desaparecerían,
 KanzonasPDF pregunta primero. El texto invisible (la capa de texto reconocido de un escáner) no se selecciona.</li>
@@ -904,13 +937,20 @@ de una vez; un grupo con grupos dentro sigue teniéndolos después de un Desagru
 para seleccionar todo lo que esté completamente dentro de él (Ctrl+arrastrar agrega a la selección). En los dibujos de CAD, una
 "forma" suele ser muchas líneas separadas, así que un cuadro es la manera más rápida de tomarla.</li>
 <li>Arrastre la selección para moverla. Las formas siguen al puntero (no son un cuadro vacío),
-y la página en sí solo cambia cuando suelta el botón, así que un grupo grande se sigue arrastrando con rapidez.
+y la página en sí solo cambia cuando suelta el botón, así que un grupo grande se sigue arrastrando con rapidez. Si
+la suelta sobre otra página, se mueve allí (su contorno muestra dónde queda); las marcas arrastradas con Seleccionar o
+con la herramienta Mano hacen lo mismo.
 Arrastre un controlador de esquina para cambiar su tamaño conservando sus proporciones
 (mantenga presionada Shift para estirarla libremente), o un controlador lateral para hacerla más ancha o más alta. Cambiar el tamaño de una forma también
 cambia la escala del grosor de sus líneas.</li>
-<li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
+<li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
+Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
 en sentido contrario a las agujas del reloj, los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen
 (Ctrl+V la pega como una marca de imagen) y Guardar imagen como…. Esc anula la selección.</li>
+<li><b>Duplicar</b> (Ctrl+D) coloca copias del texto, las imágenes y las formas seleccionados un poco más abajo y a la
+derecha en la misma página, seleccionadas, para que pueda arrastrarlas a su lugar. <b>Copiar</b> (Ctrl+C),
+<b>Cortar</b> (Ctrl+X) y <b>Pegar</b> (Ctrl+V) las llevan a otra página o a otro documento (vea Copiar, cortar y
+pegar).</li>
 <li><b>Orden de apilamiento:</b> cuando los objetos propios de la página se tapan entre sí, seleccione uno y use
 <b>Traer al frente</b> (Ctrl+Shift+]), <b>Traer adelante</b> (Ctrl+]), <b>Enviar atrás</b>
 (Ctrl+[) o <b>Enviar al fondo</b> (Ctrl+Shift+[), desde el menú contextual u Organizar. Al frente y
@@ -921,8 +961,8 @@ queda.</li>
 <li>Solo cambian los objetos seleccionados: mover, cambiar el tamaño y girar conservan su lugar en el
 orden de dibujo (el texto impreso sobre una imagen sigue encima), sus colores y sus estilos de línea, y
 las imágenes no se vuelven a comprimir, así que la calidad no baja. Ctrl+Z deshace cada cambio.</li>
-<li>El texto no se puede seleccionar con esta herramienta (use Editar texto), ni tampoco los objetos dentro de un objeto
-agrupado (un XObject de formulario; use primero Desagrupar) ni los contornos de recorte. En los dibujos muy grandes, el primer clic en una página
+<li>Los objetos dentro de un objeto agrupado (un XObject de formulario; use primero Desagrupar) y los contornos de
+recorte no se pueden seleccionar con esta herramienta. En los dibujos muy grandes, el primer clic en una página
 tarda un momento mientras se lee la página.</li>
 </ul>
 
@@ -934,10 +974,29 @@ página, como Agregar texto de Acrobat: los visores de PDF no pueden cambiarlo, 
 Elija la fuente (cualquier fuente instalada, además de Negrita y Cursiva), el tamaño y el color en Propiedades. El
 <b>Tamaño de fuente</b> también se puede cambiar mientras escribe: el texto se muestra en el tamaño nuevo de inmediato.
 Los botones de estilo sobre el cuadro dan estilo a palabras sueltas, como en Editar texto (vea <b>Negrita, cursiva,
-subrayado y color para palabras sueltas</b> más abajo). Solo se guardan en el archivo las letras que se usan.</li>
+subrayado y color para palabras sueltas</b> más abajo). El cuadro es tan ancho como lo que escribe, y crece y
+se estrecha con ello. Arrastre un controlador lateral del cuadro para hacerlo más
+estrecho, y las palabras se ajustan a su ancho. Solo se guardan en el archivo las letras que se usan.
+<br><b>Texto pequeño con la vista alejada</b> (un plano visto entero): el texto que sería demasiado pequeño para leerse
+con ese zoom, con Agregar texto o Editar texto, se escribe ampliado en un cuadro justo debajo de su lugar, y una vista
+previa a su tamaño real, con un contorno discontinuo fino, muestra exactamente dónde va. Arrastre el cuadro para
+mover el texto; la vista previa lo sigue. Lo que escribe
+Agregar texto se recuerda como un solo bloque: Editar texto lo vuelve a abrir entero (vea <b>Editar el texto que
+agregó</b> más abajo).</li>
+<li><b>Editar el texto que agregó:</b> con la herramienta Editar texto, haga clic en cualquier línea del texto escrito
+con Agregar texto (o pegado con Editar objetos): se abre entero, en un cuadro del ancho al que se ajustan sus palabras
+(tan ancho como sus líneas cuando no se ajustaban), con sus saltos de línea (Shift+Enter) y cada palabra con su
+propio estilo, el cursor en la palabra en la que hizo clic. Presione Enter y se vuelve a escribir como un solo bloque
+desde donde empezaba, ajustado al mismo ancho: editarlo una y otra vez, guardar y volver a abrir el archivo no lo
+mueven. Arrastre un controlador lateral para cambiar el ancho, o el contorno para moverlo. Alt+clic sigue editando
+una línea. El texto agregado con KanzonasPDF 1.9 o anterior, o con otros programas, se edita como antes (un párrafo
+o una línea). Movido con Editar objetos, sigue siendo un solo bloque; una censura aplicada sobre algunas de sus
+palabras convierte el resto en texto normal de la página.</li>
 <li><b>Cambiar la fuente o el tamaño de una línea:</b> con la herramienta Editar texto, haga clic en la línea: Propiedades
-muestra su propio <b>Tamaño de fuente</b>. Cambie el tamaño, o elija una fuente (y Negrita / Cursiva), y presione
-Enter, cambiando el texto o no. La elección se aplica solo a esa línea: la siguiente línea en la que
+muestra el estilo del texto donde está el cursor. Cambie allí el <b>Tamaño de fuente</b>, la <b>Negrita</b> o la
+<b>Cursiva</b> y se aplica a las palabras seleccionadas en el cuadro (siguen seleccionadas), o a todo su texto
+cuando no hay nada seleccionado; presione Enter, cambiando el texto o no. Una fuente elegida allí se aplica a toda
+la línea. La elección se aplica solo a esa línea: la siguiente línea en la que
 haga clic vuelve a conservar su propia fuente y su propio tamaño (Mantener la fuente de la línea / Mantener el tamaño de la línea). Una fuente o un
 tamaño elegidos antes de hacer clic en una línea se aplican a esa línea.</li>
 <li><b>Eliminar texto:</b> con la herramienta Editar texto, haga clic con el botón derecho en el texto &gt; <b>Eliminar texto</b>, o
@@ -963,8 +1022,12 @@ línea, o texto nuevo con Agregar texto), seleccione palabras y use los botones 
 <b>Negrita</b> (Ctrl+B), <b>Cursiva</b> (Ctrl+I), <b>Subrayado</b> (Ctrl+U),
 <b>Tachado</b>, <b>Color del texto</b>, y <b>Texto más grande</b> (Ctrl+]) / <b>Texto más
 pequeño</b> (Ctrl+[), de un punto en un punto (una línea con palabras más grandes baja lo que
-necesitan, para que no se monten sobre la de arriba). Presione de nuevo un botón para quitar el estilo. Sin nada
-seleccionado, el botón fija el estilo de lo que escriba a continuación. El texto escrito junto a una palabra toma
+necesitan, para que no se monten sobre la de arriba). Presione de nuevo un botón para quitar el estilo; un estilo que tienen todas las
+palabras seleccionadas se ve presionado. Sin nada seleccionado, el botón fija el estilo de lo que escriba a
+continuación. La <b>Negrita</b>, la <b>Cursiva</b> y el <b>Tamaño de fuente</b> de Propiedades (y el <b>Color del
+texto</b> de Agregar texto) hacen lo mismo mientras el cuadro está abierto: cambian las palabras seleccionadas, que
+siguen seleccionadas, o todo el texto del cuadro cuando no hay nada seleccionado, y Propiedades muestra el estilo de
+las palabras seleccionadas. No cambian los ajustes propios de la herramienta para el texto siguiente. El texto escrito junto a una palabra toma
 el estilo de esa palabra; el texto escrito en un cuadro vacío toma el estilo principal del párrafo.
 <br>La negrita y la cursiva conservan la fuente de la línea. Se usa la negrita o la cursiva real de la misma familia
 cuando está incrustada en el PDF o instalada en esta computadora (Arial Bold para Arial, Times New Roman Italic
@@ -1633,9 +1696,9 @@ cuadrícula...).</li>
 <tr><td>Ctrl+clic en un vínculo (cualquier herramienta, cualquier modo del mouse)</td><td>Abrir el vínculo, también en una marca convertida en vínculo (un clic normal con la herramienta Mano)</td></tr>
 <tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse: Mano, Seleccionar, o Editar objetos en el modo CAD) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
 <tr><td>Supr</td><td>Eliminar lo seleccionado: las marcas, y en el modo CAD también los objetos del dibujo</td></tr>
-<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas)</td></tr>
+<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas; con Editar objetos, las imágenes, las formas y el texto propios de la página, a cualquier página o documento)</td></tr>
 <tr><td>Ctrl+A</td><td>Seleccionar todo el texto de la página (todas las páginas en la lista de páginas)</td></tr>
-<tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (o las páginas, en la lista de páginas)</td></tr>
+<tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (con Editar objetos, el texto, las imágenes y las formas seleccionados; las páginas, en la lista de páginas)</td></tr>
 <tr><td>Supr (en la lista de páginas)</td><td>Eliminar las páginas seleccionadas</td></tr>
 <tr><td>Ctrl+L</td><td>Bloquear las marcas seleccionadas</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Al frente / adelante / atrás / al fondo</td></tr>

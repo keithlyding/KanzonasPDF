@@ -445,6 +445,31 @@ def read_line(page, line):
         return _uniform(text, te.main_span(line))
 
 
+def read_lines(page, lines):
+    """[Styled] of each of lines, as read_line reads one, the page read once for them all."""
+    if not lines:
+        return []
+    try:
+        found, vecs = _read_area(page, _area(lines))
+    except Exception:
+        return [_uniform(te.line_text(ln), te.main_span(ln)) for ln in lines]
+    used, out = set(), []
+    for ln in lines:
+        text = te.line_text(ln)
+        try:
+            info = _line_info(ln, found)
+            decor = _decorate(ln, info, vecs, used)
+            if "".join(c for c, _k, _e in info) != text:
+                out.append(_uniform(text, te.main_span(ln)))
+                continue
+            keys = _even_sizes([k for _c, k, _e in info], te.main_span(ln)["size"])
+            out.append(Styled(text, keys, decor,
+                              main_style(text, keys, span_style(te.main_span(ln)))))
+        except Exception:
+            out.append(_uniform(text, te.main_span(ln)))
+    return out
+
+
 # ---- fonts ----------------------------------------------------------------------------
 class Font(NamedTuple):
     """A font a run is written in: its name on the page, the Font, how to insert it (None:
@@ -939,19 +964,25 @@ def advance(step, size, prev, cur):
 def write_lines(page, origin, rotate, chars, fonts, step, wrap_width=None):
     """Write styled text from origin (the first baseline's start), lines step points apart
     (farther where words in larger letters need the room), left-aligned, wrapped to
-    wrap_width (None: only at line breaks)."""
+    wrap_width (None: only at line breaks). Returns [(baseline offset from the first, first,
+    last, length)] of each line written, first / last of its paragraph (added_text marks
+    them)."""
     _d, n = direction(rotate)
     shape = page.new_shape()
     o = pymupdf.Point(origin)
     size = step / 1.2
     at, prev = 0.0, None
-    for k, (row, _first, _last) in enumerate(wrap(chars, fonts, wrap_width)):
+    out = []
+    for k, (row, first, last) in enumerate(wrap(chars, fonts, wrap_width)):
         row = strip_row(row) if wrap_width else row
         cur = row_size(row, size)
         if prev is not None:
             at += advance(step, size, prev, cur)
         prev = cur
         pt = pymupdf.Point(o.x + n[0] * at, o.y + n[1] * at)
-        write_row(shape, pt, rotate, pieces(row, fonts), fonts)
+        ps = pieces(row, fonts)
+        write_row(shape, pt, rotate, ps, fonts)
+        out.append((at, first, last, ps[-1][3] if ps else 0.0))
     shape.commit(True)
     fix_spaces(page, fonts)
+    return out

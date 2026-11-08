@@ -178,13 +178,17 @@ class Lines(Window):
         self.assertTrue(found[-1]["path"] and found[-1]["box"][1] == found[-1]["box"][3])
 
     def test_ctrl_c_copies_a_picture_selected_with_edit_objects(self):
+        # (since 1.9.1 as the page's own content, which Ctrl+V pastes into a page here or in
+        # another document; other programs get a picture of it, as Copy picture gave them)
         v = self.open()
+        pm = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 20, 20), False)
+        pm.set_rect(pm.irect, (200, 40, 40))
+        v.modify(lambda: v.doc[0].insert_image((10, 10, 50, 50), pixmap=pm), [0])
         v.set_tool("editobjects")
-        pic = {"kind": "picture", "xref": 0, "rect": pymupdf.Rect(10, 10, 50, 50), "n": 0}
-        with mock.patch.object(type(v), "selected_objects", lambda s: [pic]), \
-                mock.patch.object(type(v), "copy_picture") as cp:
-            self.assertEqual(v.copy(), "picture")
-        self.assertTrue(cp.called)
+        pic = [it for it in v.content_objects(0).items if it["kind"] == "picture"]
+        v.select_objects(0, pic)
+        self.assertEqual(v.copy(), "pagecontent")
+        self.assertFalse(QApplication.clipboard().image().isNull())
 
     def test_switching_tools_applies_the_text_being_edited(self):
         v = self.open()
