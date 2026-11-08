@@ -3690,7 +3690,9 @@ class DocumentView(QScrollArea):
             after = next((p for p in range(dest["page"] + 1, old_count) if p not in gone), None)
             new = self.doc.page_count - 1 if after is None else \
                 after - sum(1 for g in gone if g < after)
-            self.doc.set_toc_item(idx, dest_dict=dict(dest, page=new, to=pymupdf.Point(0, 0)))
+            # (its own object written: set_toc_item reads the whole outline for each)
+            from .bookmarks_auto import set_toc_dest
+            set_toc_dest(self.doc, idx, dict(dest, page=new, to=pymupdf.Point(0, 0)))
             if not dest.get("color") and dest.get("xref"):
                 self.doc.xref_set_key(dest["xref"], "C", "null")   # not grayed out
 

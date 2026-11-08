@@ -29,6 +29,8 @@ Check accessibility) and bookmarks, fixed:
   recursing): the Bookmarks panel stayed empty and Delete pages failed ("maximum
   recursion depth exceeded"); 100,000 bookmarks took 26 s to read when the file opened and
   32 s to write (a list searched for each): now 3.6 s and 3.7 s;
+- Delete pages moved the bookmarks of a deleted page one by one, each reading the whole
+  outline again (set_toc_item): 1,000 of 3,000 bookmarks took 10 s;
 - Check accessibility's "long document without bookmarks" offered no fix: now Make
   bookmarks (from the tags' headings on a tagged document, else from the headings' look).
 
@@ -343,6 +345,37 @@ class Outlines(Case):
                                           "zoom")}] for lv, t, p, dest in ours]
         BA.PYMUPDF_OWN["_extend_toc_items"](d, items)
         self.assertEqual(items, ours)
+
+
+class Retarget(Case):
+    def test_bookmarks_of_a_deleted_page_moved_fast_and_alike(self):
+        import time
+        from kanzonas import bookmarks_auto as BA
+        d = pymupdf.open()
+        for i in range(30):
+            d.new_page().insert_text((72, 72), "Page %d" % (i + 1))
+        d.set_toc([[1, "Mark %d" % i, 1 if i % 3 == 0 else i % 30 + 1,
+                    {"kind": pymupdf.LINK_GOTO, "page": 0 if i % 3 == 0 else i % 30,
+                     "to": pymupdf.Point(0, 100), "bold": i % 2 == 0}]
+                   for i in range(3000)])
+        v = self.view(d)
+        t = time.perf_counter()
+        self.assertTrue(v.delete_pages([0]))
+        took = time.perf_counter() - t
+        toc = v.doc.get_toc(False)
+        moved = [e for i, e in enumerate(toc) if i % 3 == 0]
+        self.assertEqual(len(moved), 1000)
+        self.assertTrue(all(e[2] == 1 and e[3]["page"] == 0 for e in moved))
+        self.assertTrue(all(e[3].get("bold") for e in moved[::2]))
+        self.assertLess(took, 1.5, took)        # (10 s when each read the whole outline)
+        # what set_toc_item writes, written alike
+        a, b = (pymupdf.open("pdf", d.tobytes()) for _ in range(2))
+        for doc, fn in ((a, lambda doc, i, e: doc.set_toc_item(i, dest_dict=e)),
+                        (b, BA.set_toc_dest)):
+            for i, e in enumerate(doc.get_toc(False)[:50]):
+                fn(doc, i, dict(e[3], page=5, to=pymupdf.Point(0, 0)))
+        self.assertEqual([a.xref_object(x) for x in range(1, a.xref_length())],
+                         [b.xref_object(x) for x in range(1, b.xref_length())])
 
 
 class TableOfContents(Case):
