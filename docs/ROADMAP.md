@@ -29,7 +29,10 @@ a decision changes or a piece of work lands. Details of each version are in
   while editing; what Add text writes is remembered as one block (a /KZText marked-content
   marker holding numbers only, never the words, so redaction can take them all) and Edit text
   opens all of it; Edit objects copies, cuts, pastes and duplicates the page's text with its
-  styles, also into another document.
+  styles, also into another document. Then (owner, 8 Nov) the page's own pictures and shapes
+  copied, cut and pasted to another page or document, and CAD mode's Move and Copy (and a
+  selection dragged) across pages: pasted into another document, content drops its layer
+  membership (that document doesn't have the layer).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

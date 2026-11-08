@@ -2568,18 +2568,34 @@ class DocumentView(QScrollArea):
             return "text"
         items = self.selected_objects()
         texts = [it for it in items if it["kind"] == "text"]
-        if self.tool == "editobjects" and texts and self.selection is None:
+        if self.tool == "editobjects" and items and len(texts) == len(items) and \
+                self.selection is None:
             # the page's own text, with its styles: pasted as page text (and as plain text
-            # into other programs). (CAD mode's selection holding markups too copies those,
-            # as before; its Copy command copies both)
+            # into other programs)
             from . import added_text
             payload = self._page_text_payload(self.obj_sel[0], texts)
             if payload is not None:
                 clip.put("pagetext", payload, added_text.plain(payload["blocks"]))
                 return "pagetext"
-        if self.tool == "editobjects" and len(items) == 1 and items[0]["kind"] == "picture":
-            self.copy_picture()             # (as right-click > Copy picture)
-            return "picture"
+        if self.tool == "editobjects" and items:
+            # the page's own pictures and shapes (and text, and in CAD mode the markups
+            # selected with them): pasted as page content, here or in another document;
+            # other programs get a picture of them
+            models = self._models_for_clipboard() \
+                if self.selection is not None and self.selection[0] == self.obj_sel[0] else []
+            payload = self._transfer_payload(self.obj_sel[0], items, models)
+            if payload is not None:
+                from . import added_text
+                image = None
+                if payload["objects"] is not None:
+                    from . import object_clip
+                    from PySide6.QtGui import QImage
+                    png = object_clip.picture(payload["objects"],
+                                              payload["objects"]["disp_box"])
+                    image = QImage.fromData(png) if png else None
+                words = added_text.plain(payload["text"]["blocks"]) if payload["text"] else ""
+                clip.put("pagecontent", payload, words, image=image)
+                return "pagecontent"
         models = self._models_for_clipboard()
         if models:
             text = "\n".join(m.get("text", "") for m in models if m.get("text"))
@@ -2590,7 +2606,9 @@ class DocumentView(QScrollArea):
             return "markups"
         return None
 
-    def _models_for_clipboard(self):
+    def _models_for_clipboard(self, keep=False):
+        """The selected markups as models to write elsewhere (keep: as they are, their author
+        and date too, for a move; else as new copies)."""
         if self.selection is None:
             return []
         page = self.doc[self.selection[0]]
@@ -2612,9 +2630,10 @@ class DocumentView(QScrollArea):
                 an = page.load_annot(x)
                 m["file_bytes"] = an.get_file()
                 m["filename"] = an.file_info.get("filename", "attachment")
-            m.pop("author", None)
-            m.pop("created", None)
-            m["locked"] = False
+            if not keep:
+                m.pop("author", None)
+                m.pop("created", None)
+                m["locked"] = False
             out.append(m)
         return out
 
@@ -2729,6 +2748,200 @@ class DocumentView(QScrollArea):
                                        "text changes it."))
         return True
 
+    # ---- the page's own content (pictures, shapes, text) to another page or document ----
+    def _objects_payload(self, index, items):
+        """Edit objects pictures, shapes and groups of page index as the clipboard keeps them
+        (object_clip.take, with "disp_box": where they are as the page is shown), or None."""
+        from . import object_clip
+        page = self.doc[index]
+        ns = [it["n"] for it in items if it["kind"] != "text"]
+        if not ns:
+            return None
+        got = object_clip.take(self.doc, page, ns, self.content_objects(index),
+                               uid=self._clip_id())
+        if got is None:
+            return None
+        box = None
+        for it in items:
+            if it["kind"] != "text":
+                r = pymupdf.Rect(it["rect"]) * page.rotation_matrix
+                box = r if box is None else box | r
+        got["disp_box"] = box
+        return got
+
+    def _transfer_payload(self, index, items=(), models=()):
+        """What Copy, Cut and CAD mode's Move and Copy take to another page or document: {"text":
+        _page_text_payload, "objects": _objects_payload, "markups": ([models], their box as the
+        page is shown, the page's turn) or None}, or None when there's nothing."""
+        texts = [it for it in items if it["kind"] == "text"]
+        shapes = [it for it in items if it["kind"] != "text"]
+        out = {"text": self._page_text_payload(index, texts) if texts else None,
+               "objects": self._objects_payload(index, shapes) if shapes else None,
+               "markups": None}
+        if models:
+            page = self.doc[index]
+            box = None
+            for m in models:
+                r = annotations.bounds(m) * page.rotation_matrix
+                box = r if box is None else box | r
+            out["markups"] = (list(models), box, page.rotation)
+        if out["text"] is None and out["objects"] is None and out["markups"] is None:
+            return None
+        return out
+
+    @staticmethod
+    def _payload_box(payload):
+        """The box around everything in a _transfer_payload, as its page was shown."""
+        box = None
+        boxes = [b["disp_box"] for b in (payload["text"] or {}).get("blocks", [])]
+        if payload["objects"] is not None:
+            boxes.append(payload["objects"]["disp_box"])
+        if payload["markups"] is not None:
+            boxes.append(payload["markups"][1])
+        for r in boxes:
+            r = pymupdf.Rect(r)
+            box = r if box is None else box | r
+        return box
+
+    def _place_payload(self, index, payload, delta):
+        """Inside modify: write payload (_transfer_payload) on page index, moved by delta (a
+        Point, as the pages are shown) from where it was on its own page. Returns {"start":
+        where the objects begin in the page's content, "origins": the text blocks', "missing":
+        fonts written in a standard font instead, "xrefs": the markups'}."""
+        from . import object_clip, pdfcoords
+        pg = self.doc[index]
+        made = {"origins": [], "missing": set(), "xrefs": []}
+        objs = payload["objects"]
+        if objs is not None:
+            mat = objs["to_shown"] * pymupdf.Matrix(1, 0, 0, 1, delta.x, delta.y) * \
+                pg.derotation_matrix * pdfcoords.to_pdf(pg)
+            made["start"] = object_clip.put(self.doc, pg, objs, mat, uid=self._clip_id())
+        if payload["text"] is not None:
+            made["origins"], made["missing"] = self._write_page_text(pg, payload["text"], delta)
+            self._fonts_added = True
+        if payload["markups"] is not None:
+            models, box, rot = payload["markups"]
+            turn = (rot - pg.rotation) % 360
+            models = [{k: v for k, v in m.items() if k != "page_rotation"} for m in models]
+            if turn:
+                models = [annotations.page_turned(m, turn) for m in models]
+            now = None
+            for m in models:
+                r = annotations.bounds(m) * pg.rotation_matrix
+                now = r if now is None else now | r
+            want = pymupdf.Point(box.tl) + delta
+            dm = pg.derotation_matrix
+            d = (want - now.tl) * dm - pymupdf.Point(0, 0) * dm
+            for m in self._next_counts(models):
+                m = annotations.moved(m, d)
+                form = m.pop("form", None)
+                if form and form[0] == id(self.doc):
+                    m["img"] = form[1]
+                made["xrefs"].append(annotations.write(pg, m).xref)
+        return made
+
+    def _select_placed(self, index, made):
+        """Select what _place_payload wrote: the page's objects with Edit objects (the
+        markups too, in CAD mode)."""
+        again = []
+        if "start" in made:
+            objs = self.content_objects(index)
+            again = [it for it in (objs.items if objs else [])
+                     if it.get("obj", {}).get("start", -1) >= made["start"]]
+        if self.tool == "editobjects":
+            self._select_written_text(index, made["origins"], again)
+        if made["xrefs"]:
+            self._set_selection(index, made["xrefs"])
+
+    def transfer_selection(self, dest, delta, copy=False, label=None):
+        """Move (or copy) what's selected, the page's own objects (Edit objects) and in CAD
+        mode the markups with them, onto page dest, delta (a Point, as the pages are shown)
+        from where it is on its own page: CAD mode's Move and Copy, and a selection dragged
+        onto another page. One undo step for both pages. Returns True when it was done."""
+        from . import page_objects
+        src = self.obj_sel[0] if self.obj_sel else (self.selection[0] if self.selection
+                                                     else None)
+        if src is None or dest == src:
+            return False
+        if self.selection is not None and self.selection[0] != src:
+            return False
+        items = list(self.obj_sel[1]) if self.obj_sel else []
+        models, xrefs = [], []
+        if self.selection is not None:
+            page = self.doc[src]
+            found = annotations.load_annots(page, self.selected_xrefs())
+            locked = {x for x, a in found.items() if (a.flags or 0) & pymupdf.PDF_ANNOT_IS_LOCKED}
+            found.clear()
+            del page
+            kept = self._models_for_clipboard(keep=not copy)
+            pairs = [(x, m) for x, m in self.selected_models()
+                     if m["kind"] not in ("field", "redact")]
+            for (x, _m), m in zip(pairs, kept):
+                if copy or x not in locked:
+                    models.append(m)
+                    xrefs.append(x)
+        payload = self._transfer_payload(src, items, models)
+        if payload is None:
+            return False
+        texts = [it for it in items if it["kind"] == "text"]
+        ns = [it["n"] for it in items if it["kind"] != "text"]
+        objs = self._obj_cache.get(src)
+        made = {}
+
+        def do():
+            if not copy and texts:
+                # (refused before anything changes)
+                text_edit.refuse_with_marks(self.doc[src], deleting=True)
+            made.update(self._place_payload(dest, payload, delta))
+            if copy:
+                return
+            pg = self.doc[src]
+            if ns:
+                page_objects.delete(pg, ns, objs)
+            if texts:
+                text_edit.delete_lines(pg, [ln for it in texts for _r, ln in it["lines"]])
+            if xrefs:
+                from . import pdf_speed
+                pdf_speed.delete_many(pg, xrefs)
+        pages = [dest] if copy else [src, dest]
+        keep = (self.obj_sel, self.selection, list(self.extra))
+        if not copy:
+            self.obj_sel = None
+            self.clear_selection()
+        if not self.modify(do, pages) or not made:
+            return False
+        if copy:
+            self.obj_sel = keep[0]
+        else:
+            self.obj_sel = None
+            self._select_placed(dest, made)
+        for i in pages:
+            self.pages[i].update()
+        self.selectionChanged.emit()
+        if not self._pasted_text_message(made.get("missing")):
+            self.statusMessage.emit(tr("{what} to page {n} (Ctrl+Z undoes it)").format(
+                what=label or (tr("Copied") if copy else tr("Moved")), n=dest + 1))
+        return True
+
+    def paste_page_content(self, index, pt, payload):
+        """Paste the page content copied with Edit objects (_transfer_payload) on page index,
+        its top left corner at pt (unrotated page point): pictures and shapes as the page's own
+        content again, text as added blocks, CAD mode's markups as markups. Returns True when
+        it was pasted."""
+        page = self.doc[index]
+        delta = pymupdf.Point(pt) * page.rotation_matrix - self._payload_box(payload).tl
+        del page
+        made = {}
+
+        def do():
+            made.update(self._place_payload(index, payload, delta))
+        if not self.modify(do, [index]) or not made:
+            return False
+        self._select_placed(index, made)
+        if not self._pasted_text_message(made.get("missing")):
+            self.statusMessage.emit(tr("Pasted into the page (Ctrl+Z undoes it)"))
+        return True
+
     def duplicate_objects(self, offset=12):
         """Edit objects, Duplicate: copies of the selected text, pictures and shapes, offset
         down-right on screen, selected. Text is copied with its styles as page text (an added
@@ -2814,6 +3027,10 @@ class DocumentView(QScrollArea):
                         "Remove them first."))
                     return "blocked"
         what = self.copy()
+        if what == "pagecontent":
+            rev = self.revision
+            self.delete_everything_selected()
+            return what if self.revision != rev else "blocked"
         if what == "pagetext":
             # (the text copied, not the pictures or shapes selected with it)
             index, items = self.obj_sel
@@ -2884,6 +3101,9 @@ class DocumentView(QScrollArea):
         if kind == "pagetext":
             del page
             return "pagetext" if self.paste_page_text(index, pt, payload) else None
+        if kind == "pagecontent":
+            del page
+            return "pagecontent" if self.paste_page_content(index, pt, payload) else None
         if kind == "markups":
             turn = (payload[0].get("page_rotation", page.rotation) - page.rotation) % 360 \
                 if payload else 0

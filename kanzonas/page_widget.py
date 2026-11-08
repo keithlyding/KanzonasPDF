@@ -874,6 +874,12 @@ class PageWidget(QWidget):
         tool = self.view.tool
         self._paint_text_selection(p, page, tool)
         cad_select.paint(self, p)
+        drop = getattr(self.view, "_drop_ghost", None)
+        if drop is not None and drop[0] == self.index:
+            # a selection dragged from another page: where it lands here
+            p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+            p.setBrush(Qt.NoBrush)
+            p.drawRect(drop[1])
 
         if tool in FORM_TOOLS:
             p.setPen(QPen(QColor(0, 90, 200), 1, Qt.DashLine))
@@ -1533,6 +1539,64 @@ class PageWidget(QWidget):
             self._markup_outline(path, model, page)
         ed["ghost_path"] = path
 
+    # ---- a selection dragged onto another page --------------------------------------------
+    def _drop_target(self, e, start):
+        """(page index, how far the drag moved, as the pages are shown) when the pointer is
+        over another page than this one, else None."""
+        g = e.globalPosition().toPoint()
+        for pw in self.view.pages:
+            if pw is self or not pw.isVisible():
+                continue
+            local = pw.mapFromGlobal(g)
+            if pw.rect().contains(local):
+                z = self.view.zoom
+                return pw.index, pymupdf.Point((local.x() - start.x()) / z,
+                                               (local.y() - start.y()) / z), pw
+        return None
+
+    def _show_drop(self, e, start, box):
+        """While dragging: the selection's box (box, on this page's screen) where it would land
+        on another page under the pointer."""
+        v = self.view
+        old = getattr(v, "_drop_ghost", None)
+        got = self._drop_target(e, start) if box is not None else None
+        v._drop_ghost = None
+        if got is not None:
+            index, d, pw = got
+            z = v.zoom
+            v._drop_ghost = (index, QRectF(box).translated(d.x * z, d.y * z))
+            pw.update()
+        if old is not None and 0 <= old[0] < len(v.pages):
+            v.pages[old[0]].update()
+
+    def _end_drop(self):
+        v = self.view
+        old = getattr(v, "_drop_ghost", None)
+        v._drop_ghost = None
+        if old is not None and 0 <= old[0] < len(v.pages):
+            v.pages[old[0]].update()
+
+    def _markups_box(self):
+        """The selected markups' box on this page's screen, or None."""
+        v = self.view
+        if v.selection is None or v.selection[0] != self.index:
+            return None
+        box = None
+        for _x, m in v.selected_models():
+            r = A.bounds(m)
+            box = r if box is None else box | r
+        return self.to_screen(box) if box is not None else None
+
+    def _dropped_elsewhere(self, e, start):
+        """A drag of the selection ended over another page: it moves there (one undo step).
+        True when it did."""
+        self._end_drop()
+        got = self._drop_target(e, start) if e is not None else None
+        if got is None:
+            return False
+        index, d, _pw = got
+        return bool(self.view.transfer_selection(index, d))
+
     def _objects_release(self, e, pos):
         ed, self._obj_edit = self._obj_edit, None
         self._snap_mark = None
@@ -1545,6 +1609,9 @@ class PageWidget(QWidget):
             box = pymupdf.Rect(self.to_pdf(q.topLeft()), self.to_pdf(q.bottomRight())).normalize()
             self.view.select_objects(self.index, self.view.objects_in(self.index, box),
                                      add=ed.get("add", False))
+            return
+        if ed["mode"] == "move" and ed["preview"] is not None and \
+                self._dropped_elsewhere(e, ed["start"]):
             return
         if ed["preview"] is not None and self._objects_here():
             q = ed["preview"]
@@ -1587,11 +1654,11 @@ class PageWidget(QWidget):
         a = menu.addAction(tr("Save picture as..."), self.view.save_picture)
         a.setEnabled(one_pic and bool(items[0]["xref"]))
         menu.addSeparator()
-        # the text with its styles (Ctrl+V pastes it as page text, here or elsewhere);
-        # Duplicate copies pictures and shapes too, on their page
+        # what's selected, as the page's own content (Ctrl+V pastes it into a page, here or
+        # in another document)
         win = self.window()
-        for what, label, keys, on in (("cut", tr("Cut"), "Ctrl+X", has_text),
-                                      ("copy", tr("Copy"), "Ctrl+C", has_text or one_pic),
+        for what, label, keys, on in (("cut", tr("Cut"), "Ctrl+X", True),
+                                      ("copy", tr("Copy"), "Ctrl+C", True),
                                       ("paste", tr("Paste"), "Ctrl+V", True),
                                       ("dup", tr("Duplicate"), "Ctrl+D", True)):
             a = menu.addAction(f"{label}\t{keys}")
@@ -2321,10 +2388,15 @@ class PageWidget(QWidget):
                     self._obj_edit["preview"] = self._objects_preview(pos, shift_held(e),
                                                                       self._snapping(e))
                     self._build_object_ghost()
+                    if self._obj_edit["mode"] == "move":
+                        self._show_drop(e, self._obj_edit["start"],
+                                        self.to_screen(self.view.selected_objects_rect()))
                 self.update()
         elif self._edit is not None:
             if (pos - self._edit["start"]).manhattanLength() >= 3:
                 self._edit["preview"] = self._edit_preview(pos, shift_held(e), self._snapping(e))
+                if self._edit["mode"] in ("move", "group"):
+                    self._show_drop(e, self._edit["start"], self._markups_box())
                 self.update()
         elif self._text_sel is not None:
             self._drag_now = pos
@@ -2452,6 +2524,9 @@ class PageWidget(QWidget):
             ed, self._edit = self._edit, None
             preview = ed.get("preview")
             self.update()
+            if ed["mode"] in ("move", "group") and preview is not None and \
+                    self._dropped_elsewhere(e, ed["start"]):
+                return
             if ed["mode"] == "group" and ed.get("delta") is not None:
                 delta = ed["delta"]
                 self.view.commit_models(self.index, [(x, A.moved(m, delta))

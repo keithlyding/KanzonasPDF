@@ -470,9 +470,13 @@ away ("hand", "select"). Enter still finishes a polygon or area being drawn, and
 still fill the form field Tab moved to.</li>
 </ul>
 <ul>
-<li><b>Move</b>: click the base point, then where it goes.</li>
-<li><b>Copy</b>: click the base point, then where each copy goes, as many as you like; Enter,
-Escape or Done ends it.</li>
+<li><b>Move</b>: click the base point, then where it goes, on this page or another one: on
+another page the selection (the drawing's lines, pictures and text, and the markups with them)
+goes there, as far from the point clicked there as it was from the base point, as the pages are
+shown (also onto a page turned another way). The outlines follow the pointer onto the other
+page, and clicks there snap to that page's lines. One Ctrl+Z puts it back on its page.</li>
+<li><b>Copy</b>: click the base point, then where each copy goes, as many as you like, on this
+page or others (as Move); Enter, Escape or Done ends it.</li>
 <li><b>Rotate</b>: click the base point, then type the angle in degrees (counterclockwise; -90
 turns clockwise) and press Enter, or click a point: the selection turns so that "east" points
 there.</li>
@@ -608,6 +612,20 @@ width it wraps to and its line breaks. Each piece pasted is then one block for E
 <b>Edit text you added</b>). Other programs get the plain words. Text of the PDF that wasn't
 added here is copied too: running text keeps wrapping to its width, other lines keep their line
 breaks, left-aligned. Ctrl+Z undoes a paste, a cut or a duplicate in one step.</li>
+<li><b>The page's own pictures and shapes</b> (Edit objects tool, or the CAD mouse mode's
+selection): select them, with text too if you like, and <b>Copy</b> (Ctrl+C) or <b>Cut</b>
+(Ctrl+X); <b>Paste</b> (Ctrl+V) puts them into the page where the mouse is (their top left
+corner there), on any page, a page turned another way, or in another open document, looking
+exactly as they did: colors, line widths and dashes, transparency, pictures with their
+transparency masks, patterns, and a clipping outline that belongs to them (a picture strip in its
+own window, as "Print to PDF" writes them) or that they were drawn under. They are the page's
+own content again, so Edit objects selects, moves, copies and deletes them as before (a group
+stays a group). In the same document, a picture is stored once however often it's pasted, and
+pasted content stays in its layer. In another document, each picture is copied in once (pasting
+again uses it again), and the content is on no layer there (the other document doesn't have
+that layer: put it on one with the Layers panel if you need to). In CAD mode, the markups
+selected with them come along too. Other programs get a picture of what was copied (not for a
+big drawing, which would take too long). Ctrl+Z undoes a paste or a cut in one step.</li>
 <li><b>Pictures and text from other programs:</b> Paste a copied picture (e.g. a screenshot)
 as an image markup, or copied text as a text box, where the mouse is. With the Edit objects
 tool, copied text goes into the page itself instead, in Add text's font, size and color.</li>
@@ -938,7 +956,9 @@ in one go; a group with groups inside still has those after one Ungroup.</li>
 to select everything entirely inside it (Ctrl+drag adds to the selection). In CAD drawings one
 "shape" is often many separate lines, so a box is the quickest way to grab it.</li>
 <li>Drag the selection to move it. The shapes follow the pointer (they are not an empty box),
-and the page itself changes only when you let go, so a large group stays quick to drag.
+and the page itself changes only when you let go, so a large group stays quick to drag. Let go
+over another page and it moves there (its outline shows where it lands); markups dragged with
+Select or the Hand tool do the same.
 Drag a corner handle to resize it, keeping its proportions
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
 scales its line thickness.</li>
@@ -947,9 +967,9 @@ Ungroup (groups), Rotate clockwise, Rotate
 counterclockwise, the stacking order commands and Delete, and, for one picture, Copy picture
 (Ctrl+V pastes it as an image markup) and Save picture as.... Escape deselects.</li>
 <li><b>Duplicate</b> (Ctrl+D) puts copies of the selected text, pictures and shapes slightly
-down and to the right on the same page, selected, so you can drag them into place. Pictures and
-shapes are copied on their own page only: Copy takes the selected text (or one picture, as an
-image markup), not shapes.</li>
+down and to the right on the same page, selected, so you can drag them into place. <b>Copy</b>
+(Ctrl+C), <b>Cut</b> (Ctrl+X) and <b>Paste</b> (Ctrl+V) take them to another page or document
+(see Copy, cut and paste).</li>
 <li><b>Stacking order:</b> when the page's own objects cover each other, select one and use
 <b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]), <b>Send backward</b>
 (Ctrl+[) or <b>Send to back</b> (Ctrl+Shift+[), from the right-click menu or Arrange. Front and
@@ -1685,7 +1705,7 @@ settings...).</li>
 <tr><td>Ctrl+click a link (any tool, any mouse mode)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
 <tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool: Hand, Select, or Edit objects in CAD mode) / cancel a CAD command or a started selection box</td></tr>
 <tr><td>Delete</td><td>Delete what's selected: markups, and in CAD mode the drawing's objects too</td></tr>
-<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages; with Edit objects, the page's own text with its styles)</td></tr>
+<tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages; with Edit objects, the page's own pictures, shapes and text, to any page or document)</td></tr>
 <tr><td>Ctrl+A</td><td>Select all text on the page (all pages in the page list)</td></tr>
 <tr><td>Ctrl+D</td><td>Duplicate selected markups (with Edit objects, the selected text, pictures and shapes; pages, in the page list)</td></tr>
 <tr><td>Delete (in the page list)</td><td>Delete the selected pages</td></tr>
