@@ -301,8 +301,8 @@ def move_threads(src, dest, moved):
                 continue
             carried.append(c)
             parent = threads.links[c].parent
-            if parent == old:
-                doc.xref_set_key(c, "IRT", f"{new} 0 R")
+            if parent in moved:             # (it answers one written anew there)
+                doc.xref_set_key(c, "IRT", f"{moved[parent]} 0 R")
             targets = [c]
             kind, val = doc.xref_get_key(c, "Popup")
             if kind == "xref":
