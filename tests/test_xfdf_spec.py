@@ -320,6 +320,16 @@ class Fdf(Base):
             self.assertNotIn("/Launch", obj)
             self.assertNotIn("app.alert", obj)
 
+    def test_an_id_of_printable_bytes_is_written_too(self):
+        # (a file's /ID is random bytes; when they are all printable, PyMuPDF shows them as a
+        # literal string, which the export took for no ID: the macOS build saw it now and then)
+        v = self.view()
+        v.doc.xref_set_key(-1, "ID", "[(ABCDEFGHIJKLMNOP)(a\\(b\\)\\\\c\\101)]")
+        self.assertEqual(xfdf.file_ids(v.doc), ("4142434445464748494A4B4C4D4E4F50",
+                                                "612862295C6341"))     # a ( b ) \\ c A
+        v.doc.xref_set_key(-1, "ID", "[<00FF10><0A0B>]")
+        self.assertEqual(xfdf.file_ids(v.doc), ("00FF10", "0A0B"))
+
     def test_our_fdf_follows_table_248(self):
         v = self.view()
         v.import_comments(xfdf.from_xfdf(ACROBAT.encode()))
