@@ -270,7 +270,16 @@ preguntar</b> para omitir la pregunta a partir de entonces). Un vínculo a otro 
 vínculo a otro tipo de archivo pregunta antes de abrirlo, y solo se abren documentos, imágenes,
 archivos multimedia y dibujos comunes (los vínculos que iniciarían un programa, un script o un archivo con
 macros se rechazan). Los vínculos que escriben AutoCAD y otros programas de CAD al trazar un conjunto de planos
-funcionan así, incluidos los vínculos a archivos cuyos nombres tienen espacios. Un vínculo a un archivo de otro equipo (un recurso compartido de red) pregunta primero, porque
+funcionan así, incluidos los vínculos a archivos cuyos nombres tienen espacios y los vínculos a un
+lugar con nombre del otro archivo (se abre en ese lugar). <b>Cuando el archivo vinculado no está
+donde dice el vínculo</b> (un índice creado en el equipo de otra persona apunta a su propia carpeta
+de usuario, C:\\Users\\<i>su nombre</i>\\..., o las carpetas se movieron o se sincronizan en otro
+lugar), KanzonasPDF lo busca desde la carpeta del documento que está leyendo: el nombre de archivo
+del vínculo en esa carpeta, o sus últimas carpetas y el nombre de archivo (Drawings\\14854940.pdf)
+en esa carpeta o en algunas carpetas por encima. Si encuentra el archivo, lo abre y la barra de
+estado indica qué archivo abrió; si no, el mensaje indica adónde apunta el vínculo y, en Windows,
+cuándo es la carpeta de usuario de otra persona. Un vínculo a un archivo de otro equipo (un
+recurso compartido de red) pregunta primero, porque
 abrirlo envía su inicio de sesión de Windows a ese equipo.</li>
 <li><b>Convertir cualquier cosa en un vínculo:</b> selecciónela, haga clic con el botón derecho y elija <b>Agregar vínculo…</b>; luego escriba una
 dirección web o de correo electrónico (www.example.com sirve; se agrega https://) o elija una página de este

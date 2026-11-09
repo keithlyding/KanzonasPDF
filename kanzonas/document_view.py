@@ -7,6 +7,7 @@ import math
 import os
 import re
 import shutil
+import sys
 import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -4421,7 +4422,7 @@ class DocumentView(QScrollArea):
         if k == pymupdf.LINK_URI:
             uri = (link.get("uri") or "").strip()
             if uri.lower().startswith("file:"):
-                self._open_linked_file(QUrl(uri).toLocalFile(), -1)
+                self._open_linked_file(QUrl(uri).toLocalFile(), -1, encoded=False)
                 return
             if not uri.lower().startswith(self.WEB_SCHEMES):
                 QMessageBox.information(self, tr("Link"),
@@ -4640,18 +4641,23 @@ class DocumentView(QScrollArea):
                 return False
         return False
 
-    def _open_linked_file(self, path, page):
-        """A link to another file: PDFs open here (at the page); other files with the program
-        Windows uses for them, after asking; programs and scripts are refused."""
+    def _open_linked_file(self, path, page, encoded=True):
+        """A link to another file: PDFs open here (at the page, or at the link's named
+        destination); other files with the program Windows uses for them, after asking;
+        programs and scripts are refused. A file that isn't where the link says is looked for
+        from this document's folder (link_paths.find_moved): drawing indexes are often made on
+        another person's computer, or their folders moved."""
         from PySide6.QtCore import QUrl
         from PySide6.QtGui import QDesktopServices
+        from . import link_paths
         if not path:
             return
-        if "%" in path:
-            # MuPDF hands file names back percent-encoded ("Framing%20Plan.pdf"), also for
-            # the plain /F strings CAD exporters write
-            from urllib.parse import unquote
-            path = unquote(path)
+        # MuPDF hands file names back percent-encoded ("Framing%20Plan.pdf"), also for the
+        # plain /F strings CAD exporters write, with "#nameddest=..." after a named destination
+        path, dest = link_paths.split_link(path, encoded)
+        if not path:
+            return
+        written = path
         if not os.path.isabs(path) and self.path:
             path = os.path.join(os.path.dirname(self.path), path)
         path = os.path.normpath(path)
@@ -4666,12 +4672,30 @@ class DocumentView(QScrollArea):
                         "Open it?")).format(path=path),
                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No) != QMessageBox.Yes:
                 return
-        if not os.path.exists(path):
-            QMessageBox.information(self, tr("Link"),
-                                    tr("The linked file isn't there:\n{path}").format(path=path))
-            return
+        if not link_paths.there(path):
+            found = link_paths.find_moved(written, self.path)
+            if found is None:
+                text = tr("The linked file isn't there:\n{path}").format(path=path)
+                user = link_paths.other_user(path) if sys.platform == "win32" else None
+                if user:
+                    text += "\n\n" + tr(
+                        "The link was made on another computer or by another person: it "
+                        "points into the Windows user folder of {user}, not yours.").format(
+                            user=user)
+                if self.path:
+                    text += "\n\n" + tr(
+                        "KanzonasPDF also looked for it from this document's folder, as the "
+                        "link's last folders and file name, and didn't find it.")
+                QMessageBox.information(self, tr("Link"), text)
+                return
+            self.statusMessage.emit(
+                tr("Opened {found} (the link points to {path}, which isn't there)").format(
+                    found=found, path=path))
+            path = found
         ext = os.path.splitext(path)[1].lower()
         if ext == ".pdf":
+            if dest and page < 0:
+                page = link_paths.named_page(path, dest)
             self.openFileRequested.emit(path, page)
             return
         if ext in self.RISKY or ext not in self.SAFE_OPEN:
