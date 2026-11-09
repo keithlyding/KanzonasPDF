@@ -71,6 +71,17 @@ class LibrariesLeftToTheComputer(unittest.TestCase):
                     "libEGL.so.1", "libfontconfig.so.1", "libstdc++.so.6", "libglib-2.0.so.0"):
             self.assertIn(lib, names)
 
+    def test_speech_client_is_the_computers(self):
+        # Read aloud: libspeechd goes with the computer's speech-dispatcher service; Qt's
+        # plugin for it is bundled, and may find it missing without failing the build
+        self.assertIn("libspeechd.so.2", excluded())
+        sys.path.insert(0, LINUX)
+        try:
+            import make_appimage
+        finally:
+            sys.path.remove(LINUX)
+        self.assertIn("texttospeech/libqtexttospeech_speechd.so", make_appimage.OPTIONAL_PLUGINS)
+
     def test_what_desktops_may_lack_stays_bundled(self):
         # Qt's X11 platform needs these and many desktops don't install them
         names = excluded()

@@ -88,7 +88,9 @@ class Forms(View):
     def test_renaming_names_the_field(self):
         v = self.view()
         w = self.text_field(v)
-        with mock.patch.object(QInputDialog, "getText", return_value=("applicant_name", True)):
+        # (Field properties: the window's answer, with the new name)
+        with mock.patch("kanzonas.form_ui.edit_field",
+                        side_effect=lambda _v, props: dict(props, name="applicant_name")):
             v.edit_field_properties(0, w.xref)
         self.assertEqual(next(v.doc[0].widgets()).field_name, "applicant_name")
 

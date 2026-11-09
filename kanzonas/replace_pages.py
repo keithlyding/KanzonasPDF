@@ -38,7 +38,8 @@ _INHERITED = ("Resources", "MediaBox", "CropBox", "Rotate")
 _OWN = ("Contents", "TrimBox", "BleedBox", "ArtBox", "BoxColorInfo", "Group", "UserUnit",
         "VP", "SeparationInfo", "PZ", "Metadata")
 # kept about the old drawing only: dropped (a thumbnail picture of it, another program's data)
-_STALE = ("Thumb", "PieceInfo", "LastModified")
+_STALE = ("Thumb", "PieceInfo", "LastModified",
+          "KZTOC")      # (the page was a table of contents made here: bookmarks_auto)
 
 # annotation keys holding x y pairs in PDF user space (InkList: lists of them)
 _PAIRS = ("Vertices", "L", "QuadPoints", "InkList", "CL")
@@ -131,6 +132,7 @@ def replace(doc, src, pairs, scale=True):
     spdf = pymupdf._as_pdf_document(src)
     graft = m.pdf_new_graft_map(pdf)
     report = {"pages": 0, "markups": 0, "check": [], "relinked": 0}
+    marks = _bookmark_dests(doc, {i for i, _j in pairs})
     for i, j in pairs:
         page = doc[i]
         new = src[j]
@@ -156,6 +158,7 @@ def replace(doc, src, pairs, scale=True):
         if not _is_identity(t):
             report["markups"] += _map_annots(doc, page, t, tp)
             _map_scale(doc, page, k)
+            _map_bookmarks(doc, marks.get(page.xref, ()), t)
         _take_scale(doc, src, page, new)
         if not _same_lengths(scale0, measure.get_scale(page), k):
             _measure_again(page)
@@ -167,6 +170,72 @@ def replace(doc, src, pairs, scale=True):
         report["pages"] += 1
     _register_layers(doc, pdf, spdf, graft, [j for _i, j in pairs])
     return report
+
+
+# ---- bookmarks to a spot on a replaced page --------------------------------------------------
+_DEST = re.compile(r"^\[\s*(\d+)\s+0\s+R\s*/(XYZ|FitH|FitBH|FitV|FitBV|FitR)\b([^\]]*)\]$")
+
+
+def _bookmark_dests(doc, pages):
+    """{page xref: [(outline item xref, key of its destination array)]} of the bookmarks
+    going to a spot on these pages (page indexes)."""
+    want = {doc.page_xref(i) for i in pages}
+    out = {}
+    try:
+        toc = doc.get_toc(False)
+    except Exception:
+        return out
+    for e in toc:
+        x = e[3].get("xref") if len(e) > 3 and isinstance(e[3], dict) else None
+        if not x:
+            continue
+        for key in ("Dest", "A/D"):
+            kind, val = doc.xref_get_key(x, key)
+            m = _DEST.match(val.strip()) if kind == "array" else None
+            if m and int(m.group(1)) in want:
+                out.setdefault(int(m.group(1)), []).append((x, key))
+                break
+    return out
+
+
+def _map_bookmarks(doc, items, t):
+    """The bookmarks' spots (items: _bookmark_dests) mapped through t (old PDF space ->
+    new): a bookmark goes to the same place of the drawing on the new page, as its
+    markups do. A coordinate left out (null: keep the reader's) stays left out."""
+    for x, key in items:
+        kind, val = doc.xref_get_key(x, key)
+        m = _DEST.match(val.strip()) if kind == "array" else None
+        if m is None:
+            continue
+        how = m.group(2)
+        args = m.group(3).split()
+
+        def num(k):
+            try:
+                return float(args[k])
+            except (IndexError, ValueError):
+                return None
+        if how == "XYZ":
+            pts = [(0, 1)]
+        elif how in ("FitH", "FitBH"):
+            pts = [(None, 0)]
+        elif how in ("FitV", "FitBV"):
+            pts = [(0, None)]
+        else:
+            pts = [(0, 1), (2, 3)]
+        for a, b in pts:
+            xa = num(a) if a is not None else None
+            yb = num(b) if b is not None else None
+            p = pymupdf.Point(xa or 0.0, yb or 0.0) * t
+            if a is not None and xa is not None:
+                args[a] = _fmt(p.x)
+            if b is not None and yb is not None:
+                args[b] = _fmt(p.y)
+        if how == "FitR":
+            x0, y0, x1, y1 = (float(args[k]) for k in range(4))
+            args[:4] = [_fmt(min(x0, x1)), _fmt(min(y0, y1)), _fmt(max(x0, x1)),
+                        _fmt(max(y0, y1))]
+        doc.xref_set_key(x, key, "[%s 0 R /%s %s]" % (m.group(1), how, " ".join(args)))
 
 
 # ---- layers (optional content) of the new drawings -----------------------------------------
@@ -478,7 +547,7 @@ def _map_kzprops(doc, xref, tp):
         return
     try:
         store = json.loads(kv)
-    except ValueError:
+    except (ValueError, RecursionError):
         return
     if not isinstance(store, dict):
         return

@@ -110,3 +110,7 @@ libpixman-1.so.0
 libwayland-client.so.0
 libwayland-cursor.so.0
 libwayland-egl.so.1
+
+# Speech (View > Read aloud): the client of the computer's own speech-dispatcher service,
+# installed with it (Qt's Speech Dispatcher plugin is bundled and loads it from the computer)
+libspeechd.so.2

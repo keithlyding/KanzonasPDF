@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget,
                                QCheckBox, QComboBox, QFormLayout, QLabel, QPushButton,
                                QDialogButtonBox, QLineEdit, QListWidget, QListWidgetItem,
                                QSpinBox, QDoubleSpinBox, QMessageBox, QButtonGroup,
-                               QRadioButton, QGroupBox, QScrollArea, QFrame)
+                               QRadioButton, QGroupBox, QScrollArea, QFrame, QSlider)
 
 from . import paths
 from .i18n import tr
@@ -375,6 +375,39 @@ class PreferencesDialog(QDialog):
                                "snapping.")))
         form.addRow(box)
 
+        # Reading: Read aloud's voice and speed, Auto scroll's speed
+        page, form = self._tab(tabs, tr("Reading"))
+        from . import read_aloud
+        self.voice = _VoiceBox(win)
+        self.voice.setToolTip(tr("The voice View > Read aloud reads with (the voices installed "
+                                 "on this computer)"))
+        form.addRow(tr("Read aloud voice:"), self.voice)
+        self.rate = QSlider(Qt.Horizontal)
+        self.rate.setRange(-10, 10)
+        self.rate.setPageStep(2)
+        self.rate.setValue(read_aloud.rate_from(win.settings))
+        self.rate.setToolTip(tr("Slower to the left, faster to the right; the middle is the "
+                                "voice's normal speed"))
+        test = QPushButton(tr("Test"))
+        test.clicked.connect(self._test_voice)
+        row = QHBoxLayout()
+        row.addWidget(QLabel(tr("Slower")))
+        row.addWidget(self.rate, 1)
+        row.addWidget(QLabel(tr("Faster")))
+        row.addWidget(test)
+        form.addRow(tr("Reading speed:"), row)
+        self.scroll_speed = QSpinBox()
+        self.scroll_speed.setRange(5, 2000)
+        self.scroll_speed.setSuffix(tr(" pixels a second"))
+        self.scroll_speed.setValue(paths.stored_int(win.settings, "autoscroll_speed", 40, 5,
+                                                    2000))
+        form.addRow(tr("Auto scroll speed:"), self.scroll_speed)
+        note = QLabel(tr("While Auto scroll runs, the Up and Down arrow keys change its speed. "
+                         "The Reading view's text size is set with its A+ and A\u2212 buttons "
+                         "or Ctrl+wheel."))
+        note.setWordWrap(True)
+        form.addRow(note)
+
         # OCR
         page, form = self._tab(tabs, tr("OCR"))
         from . import ocr as ocrmod
@@ -619,3 +652,55 @@ class PreferencesDialog(QDialog):
         if self._pending:
             win._refresh_props()
         self._pending = {}
+        self._apply_reading()
+
+    def _apply_reading(self):
+        win = self.win
+        win.settings.setValue("read_rate", self.rate.value())
+        win.settings.setValue("read_voice", self.voice.currentData() or "")
+        win.settings.setValue("autoscroll_speed", self.scroll_speed.value())
+        auto = getattr(win, "_autoscroll", None)
+        if auto is not None:
+            auto.speed = self.scroll_speed.value()
+        r = getattr(win, "_reader", None)
+        if r is not None:
+            r.apply_settings()
+
+    def _test_voice(self):
+        self._apply_reading()
+        from . import reading
+        reading.reader(self.win).say_sample()
+
+
+class _VoiceBox(QComboBox):
+    """The voices to read with, listed only when the list is opened (asking the system
+    for its voices starts its speech engine)."""
+
+    def __init__(self, win):
+        super().__init__()
+        from . import read_aloud
+        self.win = win
+        self.filled = False
+        self.addItem(tr("The system's default voice"), "")
+        name = read_aloud.voice_name(win.settings)
+        if name:
+            self.addItem(name, name)
+            self.setCurrentIndex(1)
+
+    def showPopup(self):
+        if not self.filled:
+            self.filled = True
+            from . import reading
+            r = reading.reader(self.win)
+            keep = self.currentData()
+            if r._ready():
+                try:
+                    names = [v.name() for v in r.engine.availableVoices()]
+                except Exception:
+                    names = []
+                self.clear()
+                self.addItem(tr("The system's default voice"), "")
+                for n in names:
+                    self.addItem(n, n)
+                self.setCurrentIndex(max(0, self.findData(keep)))
+        super().showPopup()

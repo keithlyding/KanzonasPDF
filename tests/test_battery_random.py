@@ -40,6 +40,15 @@ class RandomEditing(unittest.TestCase):
             self.assertEqual(failures, [], "\n".join(log))
             self.assertIn("200 steps", stats)
 
+    def test_short_battery_on_a_tagged_document(self):
+        # (the document opened tagged: after every step its tags agree with its pages, see
+        # tag_upkeep.problems; by hand: battery_random.py OUT --ops 2000 --seed S --tagged)
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as out:
+            log = []
+            failures, stats = battery_random.run(out, 120, 12, log=log.append, tagged=True)
+            self.assertEqual(failures, [], "\n".join(log))
+            self.assertIn("120 steps on a tagged document", stats)
+
 
 class FoundByTheBattery(Quiet):
     def test_copying_pages_leaves_the_document_as_it_was(self):

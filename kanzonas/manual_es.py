@@ -354,6 +354,88 @@ Ctrl+Z deshace todo el reemplazo.</li>
 Es solo para mirar: haga los cambios en la vista principal.</li>
 </ul>
 
+<h2 id="reading">Leer con comodidad</h2>
+<p>El menú Ver, y la pestaña <b>Lectura</b> de la cinta, tienen formas de leer un documento con
+más comodidad: en toda la pantalla, una página o dos lado a lado, como texto grande y sencillo,
+o en voz alta.</p>
+<ul>
+<li><b>Pantalla completa</b> (menú Ver, Ctrl+Shift+L): solo las páginas, en toda la pantalla:
+se ocultan las barras de herramientas o la cinta, la barra de menús, los paneles, las pestañas y
+la barra de estado. Lleve el puntero hasta el borde superior de la pantalla y baja una barra
+delgada con la página anterior y la siguiente, el zoom, las disposiciones de páginas, Vista de
+lectura, Leer esta página y <b>Salir de pantalla completa</b>; se va cuando el puntero vuelve a
+bajar. <b>Escape</b> sale de la pantalla completa (si hay una herramienta elegida, el primer
+Escape la suelta, como siempre, y el siguiente sale; también desde la Vista de lectura), y
+también Ctrl+Shift+L otra vez. Todo
+vuelve a quedar como estaba. (F11, que muchos programas usan para esto, activa el modo de ratón
+CAD en KanzonasPDF, y Ctrl+L bloquea marcas; Ctrl+Shift+L está libre y se parece al Ctrl+L de
+Acrobat.)</li>
+<li><b>Presentación</b> (menú Ver, F5): las páginas de una en una, cada una ajustada a toda la
+pantalla sobre fondo negro, para mostrarlas a un público. Página siguiente: clic, Espacio, la
+flecha derecha o abajo, Av Pág, Intro o N (o gire la rueda). Página anterior: clic derecho,
+Retroceso, la flecha izquierda o arriba, Re Pág o P. <b>Inicio</b> y <b>Fin</b> van a la primera
+y a la última página; escriba un número de página y pulse Intro para ir a ella. <b>B</b> (o la
+tecla del punto) pone la pantalla en negro y <b>W</b> (o la tecla de la coma) en blanco, para
+que el público deje de mirar la diapositiva; cualquier tecla devuelve la página. <b>L</b> muestra
+un <b>puntero láser</b>: un punto rojo que sigue al ratón. El puntero del ratón se oculta tras
+dos segundos sin moverse. <b>Escape</b> termina la presentación y la ventana muestra la página
+en la que terminó. Las marcas se muestran como están en la página (salvo que Mostrar marcas esté
+desactivado). La presentación solo muestra el documento: nada en ella cambia el archivo. Un
+cambio hecho mientras tanto en la ventana (con la presentación en una segunda pantalla) se ve
+enseguida, también Aplicar censuras y Deshacer. F5 otra vez trae la presentación al frente.</li>
+<li><b>Disposición de páginas</b> (menú Ver), que se recuerda para cada documento, como su
+página y su zoom:
+<ul>
+<li><b>Una sola página</b> (Ctrl+5): una página cada vez. Desplácese hasta su final (rueda, Av
+Pág o la flecha abajo al pie de la página) y la página siguiente ocupa su lugar; arriba, Re Pág
+o la flecha arriba vuelve al final de la página anterior.</li>
+<li><b>Continua</b> (Ctrl+6): las páginas una debajo de otra (como KanzonasPDF las ha mostrado
+siempre).</li>
+<li><b>Dos páginas</b> (Ctrl+7): dos páginas lado a lado, un par cada vez, que pasan como en
+Una sola página.</li>
+<li><b>Dos páginas continuas</b> (Ctrl+8): dos páginas lado a lado, los pares uno debajo de
+otro.</li>
+<li><b>Mostrar la portada aparte</b>: con dos páginas lado a lado, la primera página (la
+portada de un libro) queda sola a la derecha, de modo que las páginas izquierda y derecha del
+libro coinciden: 2 y 3, 4 y 5, etc. Sin ella, las páginas se emparejan 1 y 2, 3 y 4.</li>
+</ul>
+Con dos páginas lado a lado, las flechas izquierda y derecha, Página siguiente y Página anterior
+avanzan un par entero; Ajustar al ancho ajusta las dos páginas al ancho de la ventana y Ajustar
+página el par completo. Todas las herramientas funcionan en cualquier disposición, y también en
+pantalla completa (cada cambio es un paso que Deshacer revierte). Con dos páginas lado a lado,
+<b>Pegar</b> (Ctrl+V) de Editar objetos pone lo copiado en la página bajo el puntero, una
+selección arrastrada de una página a la de al lado se mueve allí, y <b>Mover</b> y <b>Copiar</b>
+del modo CAD la llevan a la otra página cuando el segundo punto se hace clic allí.</li>
+<li><b>Vista de lectura</b> (menú Ver, Ctrl+4): el texto de la página en un panel lateral,
+recompuesto en párrafos sencillos con letra grande que se ajusta al ancho del panel, para una
+pantalla pequeña o una vista cansada. Los títulos son más grandes, como en la página; las
+imágenes se omiten. Las columnas se leen en orden (la columna izquierda y luego la derecha), en
+la medida en que el texto de la página lo permite. Agrande o reduzca la letra con <b>A+</b> y
+<b>A&minus;</b> o con Ctrl+rueda en el panel (se recuerda). El panel sigue la página en la que
+está, y el PDF no cambia. Una página escaneada no tiene texto que mostrar hasta que pasa por
+Reconocer texto (OCR).</li>
+<li><b>Leer en voz alta</b> (menú Ver), con las voces propias del equipo (las voces de Windows
+en Windows, las voces del sistema en macOS, Speech Dispatcher en Linux):
+<ul>
+<li><b>Leer esta página</b> (Ctrl+Shift+V) lee la página en la que está.</li>
+<li><b>Leer desde el texto seleccionado</b> lee desde el texto que seleccionó con la herramienta
+Seleccionar (o desde el principio de la página) hasta el final del documento.</li>
+<li><b>Leer todo el documento</b> (Ctrl+Shift+B) lee desde la primera página hasta la última.</li>
+<li><b>Pausar o reanudar la lectura</b> (Ctrl+Shift+C) y <b>Detener la lectura</b>
+(Ctrl+Shift+E).</li>
+</ul>
+El texto se lee frase a frase en el orden en que lo lee una persona (los títulos y luego las
+columnas, una tras otra). La frase que se está leyendo se sombrea en azul claro en la página y la
+palabra que se pronuncia en azul más oscuro (con las voces que indican en qué palabra van), y la
+página se desplaza para seguirla. Elija la voz y la velocidad en Archivo &gt; Preferencias &gt;
+Lectura. En Linux, instale Speech Dispatcher (el paquete speech-dispatcher, con una voz como
+espeak-ng) si la lectura dice que no hay voz disponible.</li>
+<li><b>Desplazamiento automático</b> (menú Ver, Ctrl+Shift+A): el documento se desplaza
+despacio por sí solo. Las flechas arriba y abajo lo hacen más lento o más rápido (la velocidad
+se recuerda), y Escape o Desplazamiento automático otra vez lo detiene. En Una sola página y Dos
+páginas también pasa las páginas.</li>
+</ul>
+
 <h2 id="cad">Modo CAD: selección y la pestaña CAD</h2>
 <p>En el modo del mouse <b>CAD</b> (Ver &gt; Mouse: CAD, F11) KanzonasPDF selecciona y edita como un programa CAD.
 Empieza con <b>Editar objetos</b>, que selecciona todo a la vez: las líneas, el texto y las imágenes propios del
@@ -544,7 +626,9 @@ no ofrecen Editar texto (para cambiar los valores de un sello para rellenar, hag
 cuadro de texto para comentarlos.
 Si hace clic con el botón derecho en un texto resaltado que está seleccionado, el menú ofrece <b>Eliminar resaltado</b>.
 En la Lista de marcas (F7), haga doble clic en una fila para editar su texto; haga clic con el botón derecho en una fila para
-<b>Editar texto…</b> (cuando su texto se puede editar) y <b>Eliminar</b>, o presione Supr.</li>
+<b>Editar texto…</b> (cuando su texto se puede editar) y <b>Eliminar</b>, o presione Supr.
+Eliminar una marca que tiene respuestas pregunta primero, y elimina con ella sus respuestas y
+estados (un Ctrl+Z los recupera todos).</li>
 <li><b>Mover con las teclas de flecha:</b> con marcas seleccionadas (o imágenes y formas seleccionadas con
 Editar objetos), cada pulsación de una tecla de flecha las mueve 1 pt; <b>Shift+flecha</b> las mueve 10 pt y
 <b>Ctrl+flecha</b> 0.1 pt, para ajustes finos. Una serie de pulsaciones se deshace con un solo Ctrl+Z. Las marcas ligadas al
@@ -574,7 +658,8 @@ primero.</li>
 <li><b>Marcas:</b> seleccione una o más marcas y luego Copiar o Cortar. <b>Pegar</b> (Ctrl+V) las coloca
 donde está el mouse, en cualquier página o en otro documento abierto. Pegadas en una página girada de
 otra manera (una página girada), se giran para que se vean como donde las copió; un cuadro de texto
-se sigue leyendo derecho.</li>
+se sigue leyendo derecho. Una marca que se corta y se pega conserva sus respuestas y sus estados de
+revisión (con sus autores y fechas); una copia se pega sin ellos.</li>
 <li><b>Duplicar</b> (Ctrl+D): aparecen copias de las marcas seleccionadas ligeramente desplazadas, seleccionadas
 para que pueda arrastrarlas a su lugar. En la lista de páginas, Ctrl+D duplica las páginas seleccionadas; con la
 herramienta Editar objetos, el texto, las imágenes y las formas de la página seleccionados.</li>
@@ -653,6 +738,47 @@ en una marca bloqueada lleva hasta ella sin seleccionarla, y Eliminar en la list
 <li><b>Mostrar marcas:</b> desmárquelo para ocultar todos los comentarios y las marcas y ver la página como si no tuviera
 marcas. No se elimina nada; márquelo de nuevo para que vuelvan. <b>Mostrar cuadros de comentario</b>
 oculta solo los cuadros amarillos junto al texto comentado.</li>
+<li><b>Responder...</b> (menú Revisar, el menú del botón derecho de una marca o una fila de la Lista
+de marcas): responde a la marca seleccionada, o a una respuesta, con su nombre (Edición &gt; Nombre del
+autor de las marcas...) y la fecha. Las respuestas se guardan de la forma estándar de PDF (una nota
+"en respuesta a" la marca), así que Acrobat, PDF-XChange y Bluebeam las muestran como la misma
+conversación, y las de ellos se ven aquí. Una respuesta nunca es un icono en la página: se ve en la
+Lista de marcas, con sangría debajo de su marca, y encima del texto al abrir la marca (doble clic, o
+Editar texto…). Al mover la marca se mueven sus respuestas; para cambiar o quitar una respuesta, haga
+clic con el botón derecho en ella en la Lista de marcas &gt; <b>Editar respuesta...</b> o
+<b>Eliminar respuesta</b> (las respuestas a ella también se eliminan).</li>
+<li><b>Establecer estado:</b> Aceptado, Rechazado, Cancelado, Completado o Sin estado, y una casilla
+aparte, <b>Marcado</b> (una marca de verificación para su propio seguimiento), para las marcas
+seleccionadas, desde el menú Revisar o los menús del botón derecho. Cada cambio se conserva, con quién
+lo hizo y cuándo (se ve al abrir la marca), y el último es el estado de la marca. Los estados se guardan
+como los guarda Acrobat, así que viajan con el archivo.</li>
+<li><b>Lista de marcas</b>, conversaciones y estados: la columna Respuestas indica cuántas respuestas
+tiene una marca; haga clic en ella para plegarlas o desplegarlas. La columna Estado muestra su estado
+(con una marca de verificación si está marcada), y el segundo filtro muestra solo las marcas con un
+estado (o sin estado, o marcadas, o sin marcar). El filtro de texto también encuentra una marca por las
+palabras de sus respuestas. Al ordenar por cualquier columna, cada conversación queda debajo de su
+marca.</li>
+<li><b>Exportar comentarios...</b> guarda los comentarios (las marcas con sus respuestas y estados) en
+un archivo XFDF (el formato XML que leen Acrobat y otros programas; o FDF, su forma PDF), para
+enviarlos sin el PDF completo. El botón <b>Exportar comentarios...</b> de la Lista de marcas exporta
+solo las marcas que muestra (filtre primero). Las imágenes y los archivos adjuntos no se exportan: se
+quedan en el PDF. <b>Importar comentarios...</b> agrega los comentarios de un archivo XFDF o FDF a otra
+copia del documento, en las mismas páginas, como un solo paso para deshacer. Un comentario que ya está
+en el documento (con el mismo nombre) se actualiza si cambió y se deja como está si no, así que los
+comentarios que van y vienen no se acumulan, y las respuestas se unen a las marcas a las que
+responden. Los comentarios de páginas que el documento no tiene se omiten, y un mensaje indica cuántos
+se agregaron, actualizaron y omitieron, y por qué. Las notas escritas como texto enriquecido (como
+las escribe Acrobat) conservan su texto y su formato en ambos sentidos. Un archivo de comentarios no
+puede ejecutar nada: los vínculos, scripts y otras acciones que contenga se omiten, y no se lee un
+archivo que declare entidades XML o que pase de 64 MB. Un comentario cuya posición o tamaño no es un
+número utilizable (NaN, infinito, o más de 10 millones de puntos) se omite y se indica en el mensaje;
+los demás se importan. Un sello de imagen de un archivo de comentarios se dibuja solo desde su propia
+biblioteca de sellos, por su nombre, nunca desde otro lugar de su computadora o de la red.</li>
+<li><b>Resumir comentarios...</b> crea un PDF nuevo con todos los comentarios: su página, tipo,
+autor, fecha, estado y texto, con sus respuestas con sangría debajo. Ordénelo por página (con la
+miniatura de cada página junto a sus comentarios, como el resumen de Acrobat; desmarque Miniaturas de
+las páginas para tener solo la lista), autor, fecha o tipo. Se abre en una pestaña nueva: imprímalo
+(Ctrl+P) o guárdelo (Ctrl+S).</li>
 <li><b>Eliminar comentarios:</b> los de todos, solo los suyos o solo los de una persona, en todas las páginas o en la
 página actual. Deshacer los recupera.</li>
 <li><b>Acoplar comentarios:</b> convierte los comentarios y las marcas en parte permanente de la página, mientras que los campos
@@ -839,7 +965,8 @@ texto para su texto y la pestaña Capas para las capas de CAD.</li>
 y luego haga clic para colocarlo.</li>
 <li><b>Agregar mi nombre</b> y <b>Agregar la fecha</b> son casillas separadas. Cambiarlas en un
 sello ya colocado lo vuelve a dibujar (una fecha agregada de nuevo muestra la fecha de hoy).</li>
-<li><b>Agregar sello de imagen…</b> agrega su propia imagen (PNG/JPG) a la lista de sellos.</li>
+<li><b>Agregar sello de imagen…</b> agrega su propia imagen (PNG/JPG) a la lista de sellos. Un sello
+muestra como máximo 200 caracteres de su texto, y un sello para rellenar como máximo 20 filas.</li>
 <li><b>Sellos para rellenar:</b> <b>Para rellenar: OC n.º / Fecha de pedido</b> y <b>Para rellenar: Solicitud n.º / Fecha
 de envío</b> en la lista de sellos. Al hacer clic para colocar uno, un cuadro pide el número y la
 fecha (la fecha empieza siendo la de hoy, en el formato de fecha de Preferencias &gt; Usted). Haga doble clic en uno ya
@@ -1177,7 +1304,8 @@ juntas, y Ctrl+Z deshace todo el arrastre); o use Mover página hacia arriba / M
 PDF nuevo a partir de varios. Agregue los PDF (Agregar archivos…, o suéltelos en la lista desde el Explorador); el
 documento abierto ya está en la lista. Arrástrelos, o use Subir / Bajar / Ordenar por nombre, para
 definir el orden, de arriba abajo. Con "Agregar un marcador para cada archivo" marcado, cada archivo recibe un
-marcador con su nombre y conserva sus propios marcadores debajo. Haga clic en Combinar…, elija un nombre,
+marcador con su nombre y conserva sus propios marcadores debajo (cada uno sigue llevando a su lugar de la
+página, con su propio estilo). Haga clic en Combinar…, elija un nombre,
 y el PDF combinado se abre. Los archivos protegidos con contraseña piden su contraseña. Los archivos originales
 no se modifican, y el PDF nuevo no puede reemplazar a ninguno de ellos.</li>
 <li>Combinar archivos también acepta imágenes (JPG, PNG, TIFF, BMP, GIF, WebP): cada una se convierte en una página.
@@ -1208,7 +1336,9 @@ tamaño, elija si las marcas se <b>escalan a la página nueva</b> (con su texto 
 pareja ajusta también la escala de medición de la página y su nombre: 1/4" = 1'-0" pasa a 1/2" = 1'-0" en
 una hoja del doble de tamaño) o se <b>mantienen en el mismo lugar</b>, medido desde la
 esquina superior izquierda. Las mediciones se vuelven a medir cuando cambia lo que miden (la página nueva trae
-su propia escala, o las marcas se estiraron o escalaron en una página sin escala). Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
+su propia escala, o las marcas se estiraron o escalaron en una página sin escala). Un marcador a un lugar de la
+página lleva al mismo lugar del dibujo nuevo, como se colocan las marcas. Una página de tabla de contenido que
+se reemplaza es desde entonces una página común. Los subrayados y el texto de los vínculos hechos con KanzonasPDF se vuelven a dibujar en
 el dibujo nuevo; un vínculo sobre palabras que no están en el mismo lugar en el dibujo nuevo (una referencia a un
 plano que se movió) se queda donde estaba y se informa, para que pueda revisarlo. Los encabezados, pies de página,
 marcas de agua, fondos y ediciones de texto escritos en el dibujo anterior se van con él. Las capas de los dibujos
@@ -1221,7 +1351,8 @@ páginas a un archivo nuevo (a un archivo nuevo, no al propio documento), Elimin
 la lista de páginas, o la página actual; pregunta primero, y Ctrl+Z las recupera). Un marcador a una
 página eliminada lleva entonces a la página siguiente (o a la última página).</li>
 <li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional.</li>
-<li>Pestaña <b>Marcadores</b>: agregue, cambie el nombre, reordene y aplique sangría a los marcadores.</li>
+<li>Pestaña <b>Marcadores</b>: agregue, cambie el nombre, reordene y aplique sangría a los marcadores,
+créelos a partir de los títulos e inserte una tabla de contenido (vea Marcadores y tabla de contenido).</li>
 <li><b>Vincular referencias a planos</b> (menú Páginas; pestaña Páginas, en la flecha del grupo Documento): para un juego de planos trazado sin
 hipervínculos. KanzonasPDF lee el número y el título de cada plano en su cuadro de rótulo (el
 valor que sigue a un rótulo SHEET, SHEET NO o DWG NO, o el número con aspecto de número de plano más grande de la
@@ -1233,6 +1364,76 @@ así que los propios hipervínculos de AutoCAD se quedan y ejecutarlo dos veces 
 alrededor de los vínculos (desactivado de forma predeterminada, para mantener limpios los dibujos) y marcadores con el número
 y el título de cada plano. Ctrl+Z lo deshace todo.</li>
 </ul>
+
+<h2 id="bookmarks">Marcadores y tabla de contenido</h2>
+<p>Los marcadores (el esquema del PDF) aparecen en el panel <b>Marcadores</b> (F9). Haga clic en
+uno para ir a su lugar. Los botones sobre la lista agregan un marcador a la página actual (+),
+cambian el nombre, eliminan, suben y bajan, y aplican sangría (lo convierten en secundario del de
+arriba) o la reducen. El botón <b>⋯</b>, un clic derecho en la lista y <b>Documento &gt;
+Herramientas de marcadores</b> tienen el resto. Cada cambio es un paso de deshacer (Ctrl+Z), y al
+editar un marcador los demás conservan su lugar, su zoom y su estilo.</p>
+<ul>
+<li><b>Agregar marcador en la vista actual</b> (Ctrl+B, cuando no está editando texto): un
+marcador al lugar que muestra la ventana, después del marcador seleccionado. Con texto
+seleccionado, el marcador lleva a ese texto y recibe su nombre.</li>
+<li><b>Llevar el destino del marcador a la vista actual</b>: el marcador seleccionado ahora
+lleva al lugar que muestra la ventana (su nombre y su estilo se quedan).</li>
+<li><b>Ordenar los marcadores por página</b> (en el orden de las páginas y, dentro de una
+página, de arriba abajo) u <b>Ordenar los marcadores por nombre</b> (los números en orden
+numérico: A-2 antes de A-10). Los secundarios de cada marcador se mueven con él y también se
+ordenan.</li>
+<li><b>Expandir todos los marcadores</b> y <b>Contraer todos los marcadores</b> abren o pliegan
+toda la lista (solo en el panel; el documento no cambia).</li>
+<li><b>Marcador en negrita (sí/no)</b>, <b>Marcador en cursiva (sí/no)</b> y <b>Color del
+marcador...</b> dan estilo al marcador seleccionado. Se guardan en el PDF, así que Acrobat y otros
+lectores también los muestran.</li>
+</ul>
+<p><b>Crear marcadores a partir del documento.</b> Tres comandos encuentran los marcadores por
+usted. Cada uno lee las páginas con una barra de progreso (Cancelar lo detiene) y luego muestra lo
+que encontró como un árbol para revisarlo antes de que cambie nada: desmarque lo que no deba ser
+un marcador, haga doble clic en un nombre para cambiarlo, seleccione marcadores y haga clic en
+<b>Subir de nivel</b> o <b>Bajar de nivel</b>, y elija cuántos <b>Niveles</b> conservar (de 1 a
+3). Al hacer clic en un marcador ahí se ve su lugar en la página. Marque <b>Nombres en mayúsculas
+con mayúscula inicial en cada palabra</b> para escribir PLANTA DEL PRIMER PISO como Planta del
+Primer Piso. Cuando el documento ya tiene marcadores, elija si los nuevos los reemplazan o van
+después de ellos. <b>Crear marcadores</b> los crea todos como un solo paso de deshacer.</p>
+<ul>
+<li><b>Crear marcadores a partir de los títulos...</b> encuentra los títulos por su aspecto:
+texto claramente más grande que el del cuerpo, líneas en negrita solas en su renglón y títulos
+numerados (1.2 Alcance, SECTION 08 71 00, PART 2 - PRODUCTS, Capítulo 3). Los niveles son los
+mismos en todo el documento: el texto más grande es un nivel más alto, luego la negrita, luego la
+numeración (SECTION sobre PART sobre 1.1 sobre 1.1.1); la ventana dice qué aspecto quedó en qué
+nivel. Se omiten los encabezados, los pies de página y los números de página que se repiten página
+tras página, y también las líneas de una página de tabla de contenido. Una sola línea más grande
+que todo lo demás al principio (el título del documento) aparece desmarcada. Es rápido incluso en
+documentos largos (uno o dos segundos para 500 páginas).</li>
+<li><b>Marcadores desde la estructura etiquetada...</b> es para PDF etiquetados (la mayoría de
+los PDF guardados desde Word y los PDF accesibles): sus títulos están marcados de H1 a H6, así que
+los marcadores son exactamente los títulos y niveles del documento. En un PDF sin etiquetas lo
+avisa.</li>
+<li><b>Marcadores desde los números de plano...</b> es para juegos de planos: un marcador para
+cada plano, con su número y su título (A-101  PLANTA DEL PRIMER PISO), leídos de los cuadros de
+rótulo como los lee Vincular referencias a planos. Marque <b>Agrupar los planos por
+disciplina</b> para ponerlos bajo G - General, A - Arquitectura, S - Estructural, M - Mecánica,
+etc. (las letras del National CAD Standard de EE. UU.).</li>
+</ul>
+<p><b>Insertar tabla de contenido...</b> (menú Documento, menú Páginas o el botón ⋯ del panel
+Marcadores) agrega páginas que listan los marcadores: un título, cada marcador con una línea de
+puntos y su número de página, los niveles con sangría y en letra más pequeña, y cada línea un
+vínculo a su página. El texto se escribe con fuentes incrustadas en las páginas, así que la tabla
+se ve igual en cualquier lector y pasa la comprobación de Guardar como PDF/A, y cada título es un
+solo bloque de texto que <b>Editar texto</b> abre completo (ajustado como estaba). Elija el título,
+cuántos niveles listar, dónde va (al principio del documento
+o antes de la página actual) y el tamaño de página (el de la página que la sigue, Carta o A4). Los
+números de página son los de las páginas después de insertar las nuevas. Ejecútelo de nuevo después
+de cambiar los marcadores y elija <b>En lugar de la tabla de contenido creada antes</b>: las
+páginas viejas se reemplazan por nuevas, en vez de agregar otra tabla. No se listan los marcadores
+que llevan a una página web o a otro archivo, y los títulos de las propias páginas de la tabla
+nunca se convierten en marcadores. El vínculo de cada línea va descrito para los lectores de
+pantalla ("Resultados, página 4") y las líneas de puntos se marcan como decoración; en un
+documento etiquetado, la tabla se etiqueta como tal (una tabla de contenido con un elemento por
+línea, cada uno un vínculo con las palabras de la línea y su número de página). Es un solo paso de
+deshacer, y pide desbloquear el orden de las páginas cuando la lista de páginas está bloqueada.</p>
 
 <h2 id="scan">Escanear</h2>
 <p><b>Escanear...</b> (menú Archivo, pestaña Páginas &gt; grupo Crear, o la paleta de comandos)
@@ -1359,21 +1560,75 @@ al papel (Ajustar al papel o Tamaño real, como se elija allí).</li>
 <ul>
 <li><b>Rellenar:</b> con Seleccionar o Mano, haga clic en un campo. Los botones de opción con el mismo nombre de
 grupo son excluyentes: elegir uno desmarca los demás de su grupo. Se respeta la longitud máxima de un campo; una lista
-desplegable que lo permite también acepta un valor escrito (Escribir un valor...). KanzonasPDF no ejecuta el JavaScript
-de un formulario: los totales que el formulario calcula por sí mismo y los formatos de número o fecha escritos como scripts
-no se actualizan (revíselos, o rellene ese formulario en Acrobat Reader).</li>
+desplegable que lo permite también acepta un valor escrito (Escribir un valor...). KanzonasPDF nunca ejecuta el
+JavaScript de un formulario: reconoce los cálculos, formatos y comprobaciones estándar que escribe Acrobat y los hace
+por sí mismo (vea abajo); cualquier otro script se conserva en el archivo pero no se ejecuta, así que lo que calcularía
+no se actualiza (revíselo, o rellene ese formulario en Acrobat Reader).</li>
 <li><b>Campo de formulario siguiente</b> (Tab) y <b>Campo de formulario anterior</b> (Shift+Tab), en el menú Formularios:
-recorren los campos en orden de lectura (página por página, de arriba abajo, de izquierda a derecha tal como se
-muestra la página, también en una página girada). El
-campo actual recibe un contorno naranja; un campo de texto se abre para escribir (Tab avanza, Shift+Tab
+recorren los campos en el orden de tabulación de la página (si no se cambió con Establecer el orden de tabulación...:
+página por página, de arriba abajo, de izquierda a derecha tal como se muestra la página, también en una página
+girada). El campo actual recibe un contorno naranja; un campo de texto se abre para escribir (Tab avanza, Shift+Tab
 retrocede); en una casilla de verificación, un botón de opción, una lista desplegable o un campo de firma o de iniciales, presione
 <b>Espacio</b> o <b>Enter</b> para rellenarlo. Esc borra el contorno.</li>
 <li><b>Resaltar campos de formulario</b> (menú Ver o Formularios, activado de forma predeterminada) sombrea de azul cada campo que se puede rellenar
 con un contorno azul; los campos obligatorios reciben un contorno rojo. El sombreado solo se ve en pantalla.</li>
 <li><b>Crear:</b> menú Formularios: campo de texto, casilla de verificación, botón de opción, lista desplegable, campo de firma,
 campo de iniciales. Un <b>campo de iniciales</b> funciona como un campo de firma: quien rellena el
-formulario hace clic en él para poner allí sus iniciales guardadas. Haga doble clic en un campo para cambiar su nombre y
-sus opciones.</li>
+formulario hace clic en él para poner allí sus iniciales guardadas. Haga doble clic en un campo (con una herramienta de
+formulario), o haga clic derecho en él, para abrir sus Propiedades del campo. En la pestaña Formularios de la cinta, el grupo
+<b>Formularios inteligentes</b> tiene Detectar campos, Propiedades del campo, Orden de tabulación y Revisar obligatorios (los
+comandos de abajo).</li>
+<li><b>Detectar campos de formulario...</b> (menú Formularios, o clic derecho en la página con una herramienta de
+formulario) encuentra dónde van los campos en un formulario plano: un PDF sin campos, o uno escaneado después de
+Reconocer texto (OCR). Busca líneas en blanco después de una etiqueta ("Nombre: ____", dibujadas o escritas con guiones
+bajos) o con su etiqueta debajo, cuadros y celdas de tabla vacíos junto a una etiqueta o bajo un encabezado de columna
+(Cant. 1, Cant. 2, ...), cuadros con una etiqueta pequeña dentro, y cuadraditos con una etiqueta al lado (casillas de
+verificación); una etiqueta "Firma" o "Iniciales" crea un campo de firma o de iniciales, y una etiqueta "Fecha" un campo
+de fecha. Cada campo recibe el nombre de su etiqueta. Antes de cambiar nada, una lista muestra lo encontrado (cada uno
+también en la página como un cuadro naranja discontinuo): desmarque lo que no quiera (Seleccionar todo / No
+seleccionar nada), cambie un nombre o un tipo, y <b>Crear campos</b> los crea en un solo paso (Ctrl+Z lo deshace). Es
+prudente antes que entusiasta: una línea o un cuadro sin etiqueta cerca, el texto subrayado, las líneas entre párrafos y
+el borde de la página se dejan como están, así que agregue con las herramientas de arriba cualquier campo que no haya
+encontrado.</li>
+<li><b>Propiedades del campo...</b> (menú Formularios, o clic derecho en un campo; seleccione antes el campo con una
+herramienta de formulario, o llegue a él con Tab). <i>General:</i> nombre, información sobre herramientas (se muestra
+al dejar el puntero sobre el campo), Obligatorio, Solo lectura, las opciones de una lista desplegable y su Posición en
+el orden de tabulación. <i>Formato</i> (campos de texto): Número (decimales, estilo de separador como 1,234.56 o
+1.234,56, un símbolo de moneda antes o después del número, números negativos con un signo menos o entre paréntesis),
+Porcentaje (un número escrito es un porcentaje: 25 o 25% se muestra como 25.00%, y 0.5 como 0.50%; el valor se
+guarda como fracción, 0.25, así que los cálculos de porcentaje de Acrobat siguen funcionando; Acrobat mostraría un 25
+sin más como 2500.00%), Fecha (un formato como dd/mm/yyyy: d
+día, m mes, mmm Jan, mmmm January (los meses en inglés, como en Acrobat), yy o yyyy año) o Especial (código postal ZIP, código ZIP+4, número de teléfono, número
+de Seguro Social). El valor se guarda sin formato (1234.5) y se muestra con formato ($1,234.50). <i>Validar:</i> un
+rango en el que debe estar el valor (Desde / Hasta; en un campo de porcentaje, de la fracción guardada: de 0 a 1 para
+0% a 100%, como en Acrobat). <i>Calcular:</i> el valor del campo es la Suma, el Producto, el
+Promedio, el Mínimo o el Máximo de los campos que marque, o una Fórmula como <b>Precio * Cant + Envío</b> (nombres de
+campos, números, + - * / y paréntesis; un nombre con espacios lleva una barra invertida antes de cada espacio:
+Artículo\\ 1; hasta 50 paréntesis o signos uno dentro de otro y 250 términos seguidos; una fórmula más larga
+en un formulario de otro origen se muestra como Cálculo personalizado (no se ejecuta)). Cada cambio es un solo
+paso para deshacer.</li>
+<li><b>Campos calculados</b>: se calculan en cuanto se rellena un campo que usan (Enter, Tab o un clic en otro lugar),
+cada uno después de los campos que usa, así que un subtotal alimenta un total; un campo vacío cuenta como 0 y una
+división entre cero deja vacío el resultado. Al eliminar un campo (o su página), los campos que lo usaban se calculan
+de nuevo sin él. En un campo calculado no se escribe. KanzonasPDF los calcula con su propio
+lector de fórmulas, y los guarda como lo hace Acrobat (sus llamadas estándar AFSimple_Calculate y la notación de campo
+simplificada, con el orden de cálculo del formulario), así que Acrobat y otros lectores también los calculan; un
+formulario hecho en Acrobat con esos cálculos se calcula aquí de la misma manera. Cualquier otro script de cálculo se
+muestra en Propiedades del campo como Cálculo personalizado (no se ejecuta).</li>
+<li><b>Comprobación de lo escrito:</b> un campo de número, porcentaje, teléfono, código postal o Seguro Social solo
+acepta los caracteres que corresponden mientras escribe. Un valor que no se ajusta al formato del campo (una fecha que
+no existe, un teléfono con pocos dígitos) o a su rango se rechaza: un mensaje dice por qué, el campo conserva su valor
+anterior y se abre otra vez con lo que escribió, para corregirlo. Los formatos y las comprobaciones se guardan como los
+estándar de Acrobat (AFNumber_Format, AFDate_FormatEx, AFRange_Validate y similares), así que otros lectores también
+los aplican.</li>
+<li><b>Campos obligatorios:</b> al Guardar e Imprimir, los campos obligatorios que siguen vacíos se marcan en rojo y se
+nombran en un aviso en la parte superior del documento (Ir al primero lo lleva allí); el archivo se guarda o se imprime
+de todos modos. <b>Comprobar campos obligatorios</b> (menú Formularios) hace lo mismo en cualquier momento; rellenar un
+campo marcado le quita la marca.</li>
+<li><b>Establecer el orden de tabulación...</b> (menú Formularios, o clic derecho con una herramienta de formulario): el
+orden en que Tab recorre los campos de una página: Por filas, Por columnas (para esta página o todas) o Manual:
+arrastre los campos en la lista, o use Subir y Bajar. Se guarda en la página, así que otros lectores también lo siguen;
+Posición en el orden de tabulación, en Propiedades del campo, mueve un solo campo.</li>
 </ul>
 
 <h2 id="sign">Proteger: firmas, contraseñas, censura</h2>
@@ -1423,9 +1678,12 @@ que demuestra que el archivo existía, sin cambios, en ese momento. Se guarda co
 se pueden seleccionar, mover y redimensionar; <b>Aplicar las censuras seleccionadas</b> aplica solo las
 seleccionadas, y Aplicar censuras las aplica todas. Aplicar quita, no solo cubre: el texto, las imágenes
 y los trazos que están debajo de una marca, y cualquier <b>campo de formulario o marca</b> con el que se superponga una marca (guardan su
-propia copia del texto). Un trazado vectorial que toca una marca se quita más allá del cuadro, incluida
+propia copia del texto). Un campo quitado no deja nada de sí en el archivo, y un campo calculado que lo usaba se calcula
+de nuevo sin él (contado como vacío), así que un total no revela un precio censurado; un campo calculado censurado no se
+vuelve a calcular a partir de los campos que quedan. Un trazado vectorial que toca una marca se quita más allá del cuadro, incluida
 la parte que queda fuera de él. Una página censurada también pierde su miniatura y la copia privada de la página
-que algunos programas (Illustrator) guardan en el archivo. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto, los scripts
+que algunos programas (Illustrator) guardan en el archivo, y un fragmento etiquetado (las palabras guardadas otra vez como
+ActualText, para leerlas y copiarlas) que una marca cubre aunque sea en parte pierde esa copia de sus palabras. Aplicar elimina los metadatos, los archivos adjuntos, el texto oculto, los scripts
 y los datos privados de esos programas, a menos que
 lo desactive en la confirmación (la casilla empieza marcada). <b>Buscar y censurar</b> marca el texto de las
 páginas también donde lo tiene una capa oculta o donde la página está recortada, y lo encuentra donde no
@@ -1434,7 +1692,7 @@ de formulario (valores, opciones de lista, información sobre herramientas y nom
 vínculos (direcciones web y de correo electrónico), notas
 de marcas (también su texto con formato), títulos y direcciones web de marcadores, propiedades del documento (también las propias de un
 programa), el texto alternativo de los PDF etiquetados, las notas de
-vínculos, las etiquetas de página, los nombres de capas y los nombres de destinos. Al aplicar, los campos, los vínculos, los sellos y los
+vínculos, las etiquetas de página, los nombres de capas, los nombres de destinos y el título que recuerda una tabla de contenido. Al aplicar, los campos, los vínculos, los sellos y los
 archivos adjuntos que lo contienen se eliminan (y un formulario XFA que lo contiene: sus campos normales se conservan), y en las notas y los comentarios (que se quedan), los marcadores
 y las propiedades (y en esos otros lugares) se reemplaza por [redacted]. Si el texto solo está en esos lugares, Buscar y censurar dice dónde lo encontró (los
 campos, las notas, los vínculos, los marcadores y las propiedades, y en cuántos lugares más del archivo,
@@ -1592,6 +1850,226 @@ Imágenes crea una imagen por página, con el nombre que elija más el número d
 página (plano_p1.png, plano_p2.png...); si alguna ya existe, se le pregunta una vez antes de reemplazarlas.</li>
 </ul>
 
+<h2 id="accessibility">Accesibilidad (etiquetas para lectores de pantalla)</h2>
+<p>Las personas ciegas o con baja visión leen los PDF con lectores de pantalla, que siguen las
+<b>etiquetas</b> del documento: su estructura (títulos, párrafos, listas, tablas, figuras), el
+orden en que leerlas y las descripciones de las imágenes. Las leyes piden cada vez más PDF
+accesibles (en EE. UU., el Título II de la ADA para los gobiernos estatales y locales y la Sección
+508 para las agencias federales; en la UE, la Ley Europea de Accesibilidad); las normas a las que
+remiten son WCAG 2.1 y, para PDF, <b>PDF/UA</b> (ISO 14289-1). Los comandos están en
+<b>Documento &gt; Accesibilidad</b>; cada cambio es un paso que Ctrl+Z deshace, y las páginas se
+ven exactamente igual que antes.</p>
+<ul>
+<li><b>Comprobar accesibilidad...</b> enumera lo que impide que el documento, tal como está ahora,
+sea accesible, por tipo (el documento, el contenido de las páginas y las etiquetas, los títulos,
+listas, tablas y figuras, los vínculos y comentarios, los campos de formulario, las fuentes), cada
+cosa con su página (haga doble clic en una línea para ir allí), la regla que incumple (la cláusula
+de PDF/UA y la condición de fallo del <b>Protocolo Matterhorn</b>, la lista de comprobación de
+PDF/UA de la PDF Association) y la corrección de aquí que la resuelve: seleccione la línea y haga
+clic en <b>Corregir...</b>, y la comprobación se vuelve a ejecutar. Comprueba lo que un programa
+puede comprobar: que esté etiquetado, con cada elemento de contenido etiquetado o marcado como
+artefacto (decoración); el título y el idioma; las figuras y fórmulas con texto alternativo; las
+tablas con celdas de encabezado que indican qué encabezan; los títulos que empiezan en H1 y no se
+saltan ningún nivel; las listas y tablas construidas como dice PDF; los vínculos, campos de
+formulario y comentarios etiquetados y descritos; el orden de tabulación; las fuentes incrustadas y
+un texto que se lee como letras (Unicode); una seguridad que deja leer a los lectores de pantalla;
+los marcadores en documentos de más de 20 páginas (su corrección, <b>Crear marcadores</b>, los
+crea a partir de los títulos de las etiquetas en un documento etiquetado, si no a partir del aspecto
+de los títulos, con la misma vista previa que Documento &gt; Herramientas de marcadores). El último grupo enumera lo que solo una persona
+puede juzgar: que el orden de lectura tenga sentido, que el texto alternativo diga qué muestra cada
+imagen, que los colores contrasten lo suficiente (WCAG pide 4,5:1, 3:1 para texto grande), que los
+encabezados y pies de página sean artefactos, que el texto reconocido sea exacto. Para una
+validación formal, use <b>PAC 2024</b> (gratuito, para Windows, pac.pdf-accessibility.org) o el
+perfil PDF/UA de <b>veraPDF</b> (verapdf.org).</li>
+<li><b>Etiquetar automáticamente...</b> da a un documento sin etiquetas sus etiquetas, creadas a
+partir de lo que dibujan las páginas: <b>títulos</b> (líneas cortas más grandes o en negrita; sus
+niveles se ordenan por tamaño en todo el documento, empezando en H1 y sin saltarse ninguno),
+<b>párrafos</b>, <b>listas</b> (líneas que empiezan con una viñeta o un número como 1., a) o
+(iv): la viñeta o el número como etiqueta del elemento), <b>tablas</b> dibujadas con líneas
+alrededor de cada celda (su primera fila como encabezados de columna cuando se distingue: en
+negrita, más grande, o palabras sobre números), <b>figuras</b> (imágenes; un escaneo con texto
+reconocido encima es decoración, y se lee su texto), <b>vínculos</b> (con las palabras que cubren),
+<b>campos de formulario</b> y <b>comentarios</b>; los <b>encabezados, pies y números de
+página</b> (las mismas palabras arriba o abajo en muchas páginas) y las líneas, recuadros y otros
+dibujos pasan a ser <b>artefactos</b> que los lectores de pantalla saltan. El <b>orden de
+lectura</b> es de arriba abajo, con las columnas leídas una tras otra, de izquierda a derecha. Pide
+el título y el idioma del documento (se definen a la vez). Es adecuado para composiciones
+sencillas, y es prudente: lo que no puede reconocer con seguridad se etiqueta como párrafo. No
+reconoce listas anidadas (se leen como una sola), tablas sin líneas o con celdas combinadas (se
+leen como párrafos), pies de figura, notas al pie, fórmulas ni gráficos dibujados con líneas
+(artefactos: descríbalos en el texto o en el texto alternativo de una figura). Un documento que ya
+está etiquetado se deja como está. Una página cuyos caracteres no se pueden emparejar con sus
+instrucciones de dibujo (una fuente poco común) se etiqueta como un solo párrafo, y la ventana del
+final lo indica. Una página que ya tiene contenido marcado (un programa la etiquetó y después se
+le quitaron las etiquetas, como hacen algunas herramientas) se etiqueta según ese marcado: cada
+parte marcada, un elemento del tipo que nombra su marcado (un párrafo cuando no es uno estándar),
+y lo demás como cualquier contenido agregado a una página etiquetada; la ventana indica qué
+páginas. Después, describa las figuras (Texto alternativo) y ejecute Comprobar
+accesibilidad.</li>
+<li><b>Texto alternativo...</b> enumera las figuras del documento, cada una con su imagen: escriba
+una descripción (qué muestra, o para qué está, en una o dos frases), o marque <b>Decorativa</b> en
+una imagen que solo decora: pasa a ser un artefacto y sale de las etiquetas. A un documento sin
+etiquetas se le ofrece primero Etiquetar automáticamente (las descripciones se guardan en las
+etiquetas).</li>
+<li><b>Orden de lectura...</b> muestra las etiquetas de la página actual numeradas en el orden en
+que las leen los lectores de pantalla, cada una dibujada como un recuadro sobre una imagen de la
+página: arrastre una etiqueta en la lista (o use Subir y Bajar) para cambiar el orden y pulse
+Aceptar. Las etiquetas de secciones distintas del documento se quedan en sus secciones.</li>
+<li><b>Título e idioma...</b>: el título que anuncian los lectores de pantalla, escrito en las
+propiedades del documento y en los metadatos XMP, y mostrado en la barra de título de la ventana en
+lugar del nombre del archivo; y el idioma del documento (English (United States), Español
+(España)... o cualquier etiqueta de idioma escrita), que define la voz y la pronunciación. El idioma
+propuesto es el de KanzonasPDF.</li>
+<li><b>Información de los campos...</b>: el nombre que dicen los lectores de pantalla para cada
+campo, propuesto a partir de las palabras justo a su izquierda o encima (si no, su nombre de campo
+hecho legible): revíselos y corríjalos en la lista y pulse Aceptar.</li>
+<li><b>Descripciones de vínculos...</b>: lo que dicen los lectores de pantalla para cada vínculo,
+propuesto a partir de las palabras que cubre, o si no de su dirección web o de la página a la que
+lleva.</li>
+<li><b>Orden de tabulación según las etiquetas</b>: en todas las páginas, Tab recorre los vínculos y
+campos en el orden de las etiquetas.</li>
+<li><b>Marcar como decorativo</b>: las imágenes y formas seleccionadas con Editar objetos pasan a
+ser artefactos (una imagen etiquetada sola como figura sale de las etiquetas). Una imagen etiquetada
+junto con texto no se puede separar de él aquí.</li>
+<li><b>Incrustar fuentes</b>: incrusta las fuentes estándar que no lo están (Helvetica, Times,
+Courier, Symbol, ZapfDingbats, y Arial, Times New Roman y Courier New, que se muestran con ellas) a
+partir de las copias propias de KanzonasPDF, como hace Guardar como PDF/A, así que el texto se ve y
+mide igual. Otras fuentes no se pueden incrustar después: vuelva a crear el PDF con sus fuentes
+incrustadas.</li>
+<li><b>Identificar como PDF/UA...</b> indica en los metadatos XMP del archivo que cumple PDF/UA-1;
+hágalo cuando Comprobar accesibilidad no encuentre nada (si no, avisa).</li>
+</ul>
+<p><b>Editar un documento etiquetado.</b> Cada edición mantiene las etiquetas al día con las
+páginas, en el mismo paso de Ctrl+Z: el texto escrito con Agregar texto, pegado o reescrito con
+Editar texto se etiqueta (un párrafo, en el orden de lectura donde lo muestra la página; un
+título, un elemento de lista o una celda de tabla reescritos siguen siendo lo que eran); una
+imagen movida con Editar objetos o en el modo CAD, también a otra página, conserva su figura y
+su texto alternativo, y una imagen pegada es una figura nueva (Comprobar accesibilidad pide su
+descripción); las líneas y formas agregadas son artefactos; los marcados, vínculos y campos
+agregados se etiquetan (la ventana emergente de una nota junto con su nota, descrita con el
+texto de la nota, como pide la comprobación PDF/UA de veraPDF), y salen de las etiquetas al eliminarlos; las páginas duplicadas,
+insertadas, reemplazadas (Reemplazar páginas: el dibujo nuevo se etiqueta de nuevo) o
+eliminadas se llevan sus etiquetas; Encabezado y pie de página y los números Bates son
+artefactos de paginación. Aplicar censuras (y el texto oculto de Sanear documento) quita
+también el texto alternativo, el ActualText y la expansión del contenido etiquetado que toca
+una marca, y las etiquetas del contenido quitado por completo, para que nada en las etiquetas
+siga diciendo lo censurado. Cuando un archivo que cambió otro programa tiene etiquetas que no
+concuerdan con sus páginas (contenido que ninguna etiqueta tiene, etiquetas de contenido que no
+está, un árbol de padres que apunta mal), Comprobar accesibilidad lo dice y su corrección
+<b>Reparar etiquetas</b> lo arregla.</p>
+<p>Comprobar accesibilidad, Etiquetar automáticamente y Texto alternativo también están en la
+pestaña Páginas, en la flecha del grupo Documento; la paleta de comandos (Ctrl+Shift+P) encuentra
+todos estos por su nombre.</p>
+<h2 id="batch">Procesamiento por lotes</h2>
+<p><b>Herramientas &gt; Procesamiento por lotes...</b> (también en el menú Archivo) hace lo mismo
+con muchos PDF a la vez: una oficina hace buscables 200 facturas escaneadas y las archiva como
+PDF/A, un despacho de abogados pone números Bates a un conjunto de documentos de exhibición,
+CONFIDENCIAL va en cada archivo de una carpeta, se acoplan las marcas de 40 planos, una carpeta
+se reduce para enviarla por correo. No hace falta tener un documento abierto; la ventana
+sigue abierta mientras usted trabaja.</p>
+<ul>
+<li><b>Archivos:</b> <b>Agregar archivos...</b>, <b>Agregar carpeta...</b> (sus PDF; marque
+<b>Incluir subcarpetas</b> para los de estas también), o suelte archivos y carpetas en la lista.
+La lista muestra las páginas de cada archivo ("protegido" si necesita contraseña para abrirse).
+Los archivos se procesan en el orden de la lista: <b>Subir</b>, <b>Bajar</b> y <b>Ordenar por
+nombre</b> lo cambian, y los números Bates y Combinar lo siguen. Un archivo abierto en una
+pestaña se lee tal como se guardó por última vez. <b>Archivos protegidos con contraseña:</b>
+<b>Pedir la contraseña</b> (se pide una vez: la contraseña se prueba primero en los siguientes
+archivos protegidos, así que para un grupo que comparte una contraseña se pregunta una sola vez;
+<b>Omitir este archivo</b> u <b>Omitir todos los archivos protegidos</b> los dejan fuera) u
+<b>Omitirlos</b>. Un archivo que se abre pero no permite cambios necesita su contraseña de
+permisos de la misma manera. Un archivo con firma digital se omite cuando un paso lo cambiaría
+(la firma dejaría de ser válida).</li>
+<li>Los <b>pasos</b> se hacen en el orden de la lista, cada uno con sus opciones (haga clic en
+un paso para verlas; <b>Agregar paso</b>, <b>Quitar</b>, <b>Subir</b>, <b>Bajar</b>). Cada uno
+hace exactamente lo que el comando del mismo nombre hace en un documento abierto: <b>Reconocer
+texto (OCR)</b> (omite las páginas que ya tienen texto, salvo que lo desmarque; la precisión
+como en la ventana de OCR; las páginas las lee el mismo OCR que Reconocer texto, en los mismos
+trozos pequeños y con la misma memoria); <b>Guardar como PDF/A</b> (después de los pasos que cambian el
+documento; solo Exportar y Combinar pueden ir después; un archivo protegido con contraseña
+necesita antes Quitar contraseña); <b>Marca de agua</b> (texto o imagen); <b>Encabezado y pie
+de página</b> (códigos {page} {pages} {date} {file} {bates}); <b>Números de página</b>;
+<b>Numeración Bates</b> (prefijo, primer número, dígitos, posición: los números siguen de un
+archivo al siguiente en el orden de la lista, así que el primer archivo empieza en el primer
+número y cada uno de los siguientes donde terminó el anterior; un archivo que falla o se omite
+no usa números, y el informe da el primer y el último número de cada archivo); <b>Acoplar
+comentarios</b> (las marcas de censura aún no aplicadas siguen siendo marcas, salvo que elija
+Aplicarlas primero); <b>Acoplar campos de formulario</b> (y, si lo marca, también comentarios
+y marcas); <b>Aplicar censuras</b> (las marcas que ya tiene cada archivo, aplicadas
+exactamente como Aplicar censuras: las palabras que marcó Buscar y censurar se quitan también
+de los demás lugares del archivo, y no queda en el archivo nada de lo que había bajo una
+marca, ni en el ActualText de un fragmento etiquetado, ni en la miniatura de la página, ni en
+la copia privada de la página de un programa); <b>Buscar y censurar</b> (una lista de
+palabras o frases, una por línea: cada aparición se marca, también en capas ocultas y donde
+una página está recortada, y las marcas se aplican, y las palabras se quitan de campos,
+notas, vínculos, marcadores, propiedades y los demás lugares del archivo, como nombres de
+capas, direcciones web, datos de formularios y texto alternativo, como hacen Buscar y
+censurar y Aplicar censuras; una palabra que solo está en esos lugares se quita de ahí. Con
+<b>Quitar la información oculta</b> marcado (también en Aplicar censuras), los metadatos, los
+archivos adjuntos, el texto oculto y los scripts de cada archivo se quitan aunque no se haya
+encontrado nada que censurar; desmarcado, los archivos adjuntos se quedan y no se busca en
+ellos, y el informe lo advierte.
+Aplicar las censuras empieza marcado: los originales quedan como estaban y las copias
+censuradas van a la carpeta de salida. El informe dice de cada archivo qué se quitó y de
+dónde: las páginas, y cuántos de los demás lugares. Desmárquelo para solo marcarlas y
+revisarlas: todavía no se quita nada, el informe lo dice ("todavía no se quitó nada: abra el
+archivo y use Aplicar censuras"), y cada archivo que queda con marcas se llama con -marcado
+al final, como informe-marcado.pdf, salvo que haya elegido un modelo de nombre propio);
+<b>Sanear
+documento</b> (las mismas opciones que Proteger &gt; Sanear documento); <b>Reducir tamaño del
+archivo</b> (como Comprimir; un archivo que no quedaría más pequeño se deja como está);
+<b>Girar páginas</b> (todas, impares, pares, horizontales o verticales, o una lista);
+<b>Eliminar páginas en blanco</b> (páginas sin texto y casi sin tinta, como los reversos en
+blanco de un escaneo a doble cara; una página con marcas, campos de formulario, un número de
+página o unas pocas palabras escritas se conserva, un archivo nunca se queda sin páginas, y el
+informe lista las páginas eliminadas: revíselas); <b>Agregar contraseña</b> y <b>Quitar
+contraseña</b> (como Propiedades de seguridad; para quitar una contraseña de permisos,
+escríbala); <b>Establecer propiedades del documento</b> (título, autor, asunto, palabras clave;
+{name} es el nombre del archivo); <b>Exportar</b> (Word, Excel, PowerPoint, imágenes PNG o JPEG
+o texto, hecho a partir del documento tal como lo dejaron los pasos anteriores, guardado junto
+al PDF; debe ir después de Buscar y censurar y de Aplicar censuras, o la copia aún tendría las
+palabras); <b>Combinar todo en un PDF</b> (el último paso: los archivos procesados en el orden
+de la lista, con un marcador para cada uno; marque Guardar también cada archivo para
+conservarlos también; un archivo omitido o con error no está en él y no usa números Bates; con
+Buscar y censurar solo marcando, se llama Combinado-marcado). El PDF de cada archivo se escribe cuando los pasos cambian documentos; con solo pasos
+Exportar, solo se escriben los archivos exportados.</li>
+<li>Las <b>recetas</b> guardan una lista de pasos con sus opciones bajo un nombre: elija una en
+<b>Receta</b>, <b>Guardar receta...</b> para conservar los pasos actuales, <b>Eliminar
+receta</b> para quitar una de las suyas. Recetas ya hechas: <b>Hacer buscable (OCR)</b>,
+<b>Archivar (OCR + PDF/A)</b>, <b>Confidencial (marca de agua + acoplar)</b>, <b>Numeración Bates
+para producción</b> y <b>Reducir para correo electrónico</b>. Las contraseñas escritas en los
+pasos nunca se guardan en una receta. Los últimos pasos y opciones de salida se recuerdan para
+la próxima vez.</li>
+<li><b>Salida:</b> <b>Una carpeta "Procesados" junto a cada archivo</b> (lo predeterminado) o
+<b>Esta carpeta</b>, donde <b>Conservar la estructura de carpetas</b> pone los archivos de las
+subcarpetas de una carpeta en las mismas subcarpetas. <b>Nombre del archivo</b>: {name} (el
+nombre del propio archivo), {n} (su número en la lista: 001, 002...), {date} (hoy) y {bates}
+(su primer número Bates), como {name}_ocr. Un nombre es siempre un archivo de la carpeta de
+salida: las barras, los dos puntos, .. y las letras de unidad pasan a formar parte del nombre,
+los nombres de dispositivo de Windows (CON, NUL, LPT1...) llevan un _ delante, y un nombre
+demasiado largo se acorta. <b>Si el archivo ya existe:</b> Preguntar
+(Reemplazar, Reemplazar todo, Omitir, Omitir todos), Agregar un número (nombre (2).pdf),
+Reemplazarlo u Omitir el archivo. Los resultados nunca reemplazan los archivos de los que se
+hicieron, salvo que marque <b>Permitir reemplazar los archivos originales</b> (desmarcado cada
+vez que se abre la ventana); dos archivos con el mismo nombre nunca se sobrescriben entre sí.
+Una carpeta "Procesados" se deja fuera cuando se vuelve a agregar una carpeta, y también los
+archivos de la carpeta de salida cuando está dentro de la carpeta agregada (los resultados de un
+proceso anterior). Nunca se escribe nada fuera de la carpeta de salida: un archivo que ya está
+ahí y es un vínculo se reemplaza, no se escribe a través de él, y una carpeta ahí que es un
+vínculo a otro lugar se omite.</li>
+<li><b>Ejecutar</b> muestra el avance del archivo en proceso y de todos los archivos.
+<b>Cancelar</b> termina el archivo en proceso y luego se detiene; vuelva a hacer clic
+(<b>Detener ya</b>) para detenerse de inmediato, dejando fuera ese archivo. Los resultados de un
+archivo aparecen todos juntos o ninguno: nunca queda nada a medio escribir. Hay un solo
+documento abierto a la vez y su memoria se libera antes del siguiente, así que un proceso largo
+no usa más memoria a medida que avanza.</li>
+<li>El <b>informe</b> final lista cada archivo como Listo, Omitido o Con error, con el motivo
+(una contraseña incorrecta, un archivo que no es PDF, un paso que no se pudo hacer) y lo que
+escribió (después de censurar, una palabra que todavía se encuentra en el archivo aparece como
+advertencia: revise ese archivo); <b>Guardar informe...</b> lo guarda como archivo CSV (se abre en Excel) o como texto.
+<b>Informe...</b> lo vuelve a mostrar.</li>
+</ul>
+
 <h2 id="preferences">Preferencias</h2>
 <ul>
 <li><b>Archivo &gt; Preferencias...</b> (Ctrl+K) reúne en una sola ventana las opciones que KanzonasPDF recuerda,
@@ -1660,6 +2138,9 @@ orientación que usa Archivo &gt; Nuevo PDF, o Preguntar cada vez),
 y <b>Cuadrícula y ajuste</b>, todo en un solo lugar: el espaciado y las unidades de la cuadrícula, el intervalo de la línea
 más oscura, Mostrar cuadrícula, Ajustar a la cuadrícula y Ajustar a objetos (la misma configuración que Ver &gt; Configuración de
 cuadrícula...).</li>
+<li><b>Lectura:</b> la voz con la que lee Leer en voz alta (las voces instaladas en el equipo;
+la lista se llena al abrirla) y su velocidad, con <b>Probar</b> para oírlas, y la velocidad del
+Desplazamiento automático.</li>
 <li><b>OCR:</b> la precisión con la que empieza el cuadro de diálogo Reconocer texto.</li>
 <li>Los cambios se aplican cuando hace clic en Aceptar; Cancelar deja todo como estaba.</li>
 </ul>
@@ -1671,6 +2152,7 @@ cuadrícula...).</li>
 <tr><td>Ctrl+E</td><td>Editar texto (clic: el párrafo; Alt+clic: una línea)</td></tr>
 <tr><td>Ctrl+B / Ctrl+I / Ctrl+U (al editar texto)</td><td>Negrita / Cursiva / Subrayado de las palabras seleccionadas</td></tr>
 <tr><td>Ctrl+] / Ctrl+[ (al editar texto)</td><td>Texto más grande / más pequeño (las palabras seleccionadas, de un punto en un punto)</td></tr>
+<tr><td>Ctrl+B (cuando no edita texto)</td><td>Agregar marcador en la vista actual</td></tr>
 <tr><td>Ctrl+P</td><td>Imprimir (con vista previa)</td></tr>
 <tr><td>Ctrl+N</td><td>Nuevo PDF (página en blanco)</td></tr>
 <tr><td>Shift+T</td><td>Agregar texto (escrito en la página)</td></tr>
@@ -1721,6 +2203,13 @@ cuadrícula...).</li>
 <tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
 <tr><td>Letras, Enter (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Enter lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD (los de Shift y una letra, sí), salvo que Preferencias &gt; Mouse desactive escribir en la línea de comandos.</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
+<tr><td>Ctrl+Shift+L / F5</td><td>Pantalla completa (Escape sale) / Presentación</td></tr>
+<tr><td>B / W / L (presentación)</td><td>Pantalla negra / pantalla blanca / puntero láser</td></tr>
+<tr><td>Ctrl+5 / Ctrl+6 / Ctrl+7 / Ctrl+8</td><td>Una sola página / Continua / Dos páginas / Dos páginas continuas</td></tr>
+<tr><td>Ctrl+4</td><td>Vista de lectura (el texto de la página recompuesto)</td></tr>
+<tr><td>Ctrl+Shift+V / Ctrl+Shift+B</td><td>Leer en voz alta esta página / todo el documento</td></tr>
+<tr><td>Ctrl+Shift+C / Ctrl+Shift+E</td><td>Pausar o reanudar / detener la lectura en voz alta</td></tr>
+<tr><td>Ctrl+Shift+A</td><td>Desplazamiento automático (arriba / abajo: más lento / más rápido)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Páginas / Propiedades / Marcas / Caja de herramientas / Marcadores / Vista dividida</td></tr>

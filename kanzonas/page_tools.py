@@ -53,6 +53,8 @@ def _fill(template, i, total, file_name, bates):
 def add_header_footer(doc, spec, file_name):
     """spec: {"texts": {(where, align): template}, "size", "color", "margin", "pages",
               "bates_prefix", "bates_start", "bates_digits"}"""
+    from . import tag_upkeep
+    tagged = tag_upkeep.is_tagged(doc)
     total = doc.page_count
     color = A.to_rgb(spec.get("color") or "#000000")
     size = float(spec.get("size", 9))
@@ -69,16 +71,31 @@ def add_header_footer(doc, spec, file_name):
             y0 = margin - size if where == "header" else disp.height - margin - size * 1.4
             box = pymupdf.Rect(margin, y0, disp.width - margin, y0 + h)
             box = box * page.derotation_matrix
+            before = set(page.get_contents())
             rc = page.insert_textbox(box, text, fontsize=size, fontname="helv", color=color,
                                      align=_ALIGN[align], rotate=page.rotation)
             if rc < 0:
                 raise ValueError(tr("\"{text}\" doesn't fit across the page at {size} pt.").format(
                     text=text, size=f"{size:g}"))
+            if tagged:
+                # (a tagged document: headers, footers, page and Bates numbers are
+                # pagination artifacts, which screen readers skip, not the page's text)
+                _mark_pagination(page, before, "Header" if where == "header" else "Footer")
 
 
 WM_BEGIN = b"/Artifact <</Subtype /Watermark /Type /Pagination >> BDC\n"
 _WM_START = re.compile(rb"/Artifact\s*<<[^>]*?/Subtype\s*/Watermark\b[^>]*>>\s*BDC")
 _MARK_OPS = re.compile(rb"(?<![A-Za-z0-9_])(BDC|BMC|EMC)(?![A-Za-z0-9_])")
+
+
+def _mark_pagination(page, before, subtype):
+    """Wrap the content streams just added to the page as a pagination artifact
+    (/Artifact <</Type /Pagination /Subtype /Header>> BDC ... EMC: PDF 32000-1 14.8.2.2)."""
+    doc = page.parent
+    for x in page.get_contents():
+        if x not in before:
+            doc.update_stream(x, b"/Artifact <</Type /Pagination /Subtype /%s>> BDC\n"
+                              % subtype.encode() + doc.xref_stream(x) + b"\nEMC\n")
 
 
 def _mark_watermark(page, before):
@@ -179,6 +196,34 @@ def _add_watermark_page(page, spec):
                      color=A.to_rgb(spec.get("color") or "#ff0000"),
                      fill_opacity=spec.get("opacity", 0.25), stroke_opacity=spec.get("opacity", 0.25),
                      morph=(center, pymupdf.Matrix(angle)), overlay=not spec.get("behind"))
+
+
+BLANK_DPI = 72          # blank-page check: the page drawn this small, in gray
+BLANK_DARK = 128        # a pixel darker than this is ink (show-through and paper tint aren't)
+BLANK_INK = 0.0003      # at most this share of ink pixels: blank (dust and specks; one
+                        # line of text, a page number or a short signature is more)
+BLANK_EDGE = 0.05       # the outer 5% is left out: a scanner's shadow along the edges
+
+
+def is_blank(page):
+    """True when the page has nothing worth keeping: no text, no markups or form fields, and
+    drawn small almost no ink (a blank sheet through a scanner, specks and all). Made to keep
+    a page when in doubt (Batch processing: Delete blank pages)."""
+    if page.get_text("text").strip():
+        return False
+    if page.first_annot is not None or page.first_widget is not None:
+        return False
+    pm = page.get_pixmap(dpi=BLANK_DPI, colorspace=pymupdf.csGRAY, alpha=False, annots=True)
+    w, h, stride = pm.width, pm.height, pm.stride
+    dx, dy = int(w * BLANK_EDGE), int(h * BLANK_EDGE)
+    samples = pm.samples
+    dark = bytes(range(BLANK_DARK))
+    ink = 0
+    for y in range(dy, h - dy):
+        row = samples[y * stride + dx:y * stride + w - dx]
+        ink += len(row) - len(row.translate(None, dark))      # (pixels darker than BLANK_DARK)
+    area = max(1, (w - 2 * dx) * (h - 2 * dy))
+    return ink <= area * BLANK_INK
 
 
 COMPRESS_EN = {"Good quality (150 dpi images)": (200, 150, 80),

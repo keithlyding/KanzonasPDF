@@ -447,10 +447,18 @@ class PageWidget(QWidget):
         thin = v.thin_lines
         pm = v._rc.get(self.index, s, tile, thin)
         if pm is None:
+            pics = self._pictures()
+            if pics:
+                # its pictures read and decoded afresh, as a document just opened draws them:
+                # MuPDF draws a picture from any decoded copy of it it still has (whole, for
+                # another page that shows all of it; at a finer size, for another zoom; at
+                # the size a tile render decoded it), a few levels of color apart along its
+                # edges and stripes from one decoded for this page alone. So the page looked
+                # as what was drawn before had it (random battery, 1.9.1 seed 6, 1.10 seed
+                # 2103). Its content's parsed drawing holds the pictures it read: made anew.
+                RL.forget_pictures(v.doc, pics)
+                v._dlists.pop(self.index, None)
             dl = self._display_list()
-            # (its pictures decoded whole at this size first: else how MuPDF draws them
-            # depends on what was drawn before, see _predecode)
-            self._predecode(s)
             t = time.perf_counter()
             with screen_lines(thin):
                 pm = RL.render(dl, s, clip)
@@ -618,25 +626,31 @@ class PageWidget(QWidget):
                 self._keep_tile(key, hit)
                 yield key, hit
 
-    def _predecode(self, s):
-        """The page's pictures decoded whole, once, at the size this zoom draws them, before
-        the page is drawn (render_layers.predecode).
+    def _pictures(self):
+        """The object numbers of the pictures the page's content draws, with their soft
+        masks (in the forms it draws too)."""
+        out = set()
+        try:
+            for info in self.view.doc[self.index].get_images(full=True):
+                if info[0] > 0:
+                    out.add(info[0])
+                if info[1] > 0:
+                    out.add(info[1])
+        except Exception:
+            pass
+        return out
 
-        A scanned page at high zoom: each tile then doesn't decode the whole JPEG again. And
-        every page: MuPDF draws a picture from any decoded copy of it it still has, at a finer
-        size (another zoom) or of more of it (where another page shows all of it and this one
-        part of it, as a picture pasted or moved onto another page of the same document
-        does), and a copy decoded for this page alone comes out a few levels apart along its
-        edges and stripes. With the copy for this page and size made first, the page looks
-        the same whatever was drawn before (a page drawn afresh looked different: random
-        battery, seed 6). (Where they're drawn is read once per page and content: reading it
-        runs the page's drawing; a page with no picture skips it.)"""
+    def _predecode(self, s):
+        """A scanned page at high zoom: its big pictures decoded once, at the size the tiles
+        need, so each tile doesn't decode the whole JPEG again (render_layers.predecode).
+        (Where they're drawn is read once per page, after a slow render: reading it runs the
+        page's drawing, a fifth of a second on a heavy sheet.)"""
         v = self.view
         page = v.doc[self.index]
         info = v._img_info.get(self.index)
         if info is None:
             info = []
-            big = RL.big_images(page, 0)
+            big = self._big_images()
             try:
                 # (matched by size: asking for xrefs has PyMuPDF checksum every picture)
                 shown = page.get_image_info() if big else []
@@ -861,6 +875,14 @@ class PageWidget(QWidget):
                     p.setPen(QPen(QColor(255, 90, 0), 2.5))
                     p.drawRect(frame)
 
+        rm = self.view.read_mark
+        if rm is not None and rm[0] == self.index:
+            # Read aloud: the sentence being read, the word being spoken darker
+            for r in rm[1]:
+                p.fillRect(self.to_screen(r, page), QColor(90, 170, 255, 45))
+            for r in rm[2]:
+                p.fillRect(self.to_screen(r, page), QColor(30, 120, 255, 110))
+
         self._paint_comment_cards(p, page)
 
         if self.view.highlight_fields and self.view.tool not in FORM_TOOLS:
@@ -876,6 +898,22 @@ class PageWidget(QWidget):
             if fr is not None:                  # the field Tab moved to
                 p.setPen(QPen(QColor(255, 140, 0), 2.5))
                 p.drawRect(self.to_screen(fr, page).adjusted(-2, -2, 2, 2))
+        preview = self.view.detect_preview_rects(self.index)
+        if preview:
+            # Detect form fields: what it found, while its window is open (screen only)
+            for r, cur in preview:
+                sr = self.to_screen(r, page)
+                p.fillRect(sr, QColor(255, 160, 0, 110 if cur else 50))
+                p.setPen(QPen(QColor(230, 110, 0), 2.5 if cur else 1.2, Qt.DashLine))
+                p.drawRect(sr)
+        flagged = self.view.required_flag_rects(self.index)
+        if flagged:
+            # required fields left empty, flagged on Save or Print (screen only)
+            p.setPen(QPen(QColor(220, 0, 0), 2.5))
+            for r in flagged:
+                sr = self.to_screen(r, page)
+                p.fillRect(sr, QColor(255, 80, 80, 90))
+                p.drawRect(sr.adjusted(-1, -1, 1, 1))
 
         if self.view.show_boxes:
             self._paint_page_boxes(p, page)
@@ -1724,6 +1762,30 @@ class PageWidget(QWidget):
             menu.addAction(tr("Edit link..."), lambda: v.edit_link(self.index, here))
             menu.addAction(tr("Remove link"), lambda: v.remove_link_at(self.index, pdf))
 
+    def _field_menu(self, e, pdf):
+        """Right-click on a form field: its properties, the tab order (and, with a form
+        tool, Delete field). False (no menu) when there's no field there."""
+        from PySide6.QtWidgets import QMenu
+        v = self.view
+        xref = v.widget_at(self.index, pdf)
+        if xref is None:
+            return False
+        if v.tool in FORM_TOOLS:
+            v.select_field_at(self.index, pdf)
+        else:
+            v._set_field_focus(self.index, xref)
+        win = self.window()
+        menu = QMenu(self)
+        menu.addAction(tr("Field properties..."),
+                       lambda: v.edit_field_properties(self.index, xref))
+        if hasattr(win, "set_tab_order"):
+            menu.addAction(tr("Set tab order..."), win.set_tab_order)
+        if v.tool in FORM_TOOLS:
+            menu.addSeparator()
+            menu.addAction(tr("Delete field"), lambda: v.delete_field(self.index, xref))
+        menu.exec(e.globalPosition().toPoint())
+        return True
+
     def _content_menu(self, e, pdf):
         """Right-click on the page: copy / cut / paste / delete, and for selected text the
         text markups. A right-click on a markup that isn't selected selects it first; one
@@ -1731,6 +1793,8 @@ class PageWidget(QWidget):
         from PySide6.QtWidgets import QMenu
         v = self.view
         win = self.window()
+        if not v.read_only and self._field_menu(e, pdf):
+            return
         on_text = any(pymupdf.Rect(w[:4]).contains(pdf) for w in self._selected_words())
         if not on_text:
             xref = v.annot_at(self.index, pdf)
@@ -1741,6 +1805,11 @@ class PageWidget(QWidget):
         has_text = v.text_sel is not None
         has_markups = v.selection is not None
         menu = QMenu(self)
+        if v.tool in FORM_TOOLS and hasattr(win, "detect_form_fields"):
+            # (designing a form: the commands that make or order its fields)
+            menu.addAction(tr("Detect form fields..."), win.detect_form_fields)
+            menu.addAction(tr("Set tab order..."), win.set_tab_order)
+            menu.addSeparator()
         if v.tool == "edittext" and v.text_line_rect(self.index, pdf) is not None:
             # the text written into the page under the pointer (its whole paragraph)
             menu.addAction(tr("Delete text"), lambda: v.delete_text_at(self.index, pdf))
@@ -1757,6 +1826,10 @@ class PageWidget(QWidget):
                     A.text_editable(v.selected_model):
                 sel = v.selection
                 menu.addAction(tr("Edit text..."), lambda: v.edit_annot_text(*sel))
+            if v.selected_model is not None and v.selected_model["kind"] != "field":
+                # (review: replies and status, the standard PDF way: review.py)
+                from . import review_ui
+                review_ui.add_review_actions(menu, v, v.selection[0], v.selected_xrefs())
             # (all that's selected: in CAD mode, the drawing's objects selected with them too)
             menu.addAction(tr("Delete"), v.delete_everything_selected)
         elif on_text:

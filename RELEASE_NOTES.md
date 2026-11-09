@@ -7,6 +7,48 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.10
+
+**New**
+- Smart forms: fields can add up, multiply, average or follow a formula (like Price * Qty + Shipping) and work themselves out as you fill in the form, saved the way Acrobat saves them (KanzonasPDF never runs scripts from the file). Fields can show money, percents, dates, ZIP codes and phone numbers and refuse values that don't fit; in a percent field, 25 means 25%. Forms > Detect form fields makes fields on a flat or scanned form, and Field properties, Set tab order and Check required fields are on the ribbon's Forms tab.
+- Comments review: reply to comments and to replies, set a review status (Accepted, Rejected, Cancelled, Completed), export and import comments as XFDF or FDF files (Acrobat's comment files import with their text and formatting), and Summarize comments into a PDF.
+- Accessibility (Document > Accessibility): check a PDF against PDF/UA, the standard for screen readers, and fix what it finds. Auto-tag gives an untagged document its tags; describe pictures, set the reading order, the title and language, and more. Editing a tagged document keeps its tags right.
+- Batch processing (Tools > Batch processing...): the same steps on many PDFs at once (OCR, PDF/A, Bates numbers, watermarks, flattening, redaction, smaller files), into a Processed folder; your originals stay as they were. Search & redact in a batch says, for each file, what was removed and where.
+- Bookmarks made automatically from a document's headings, a tagged PDF's headings or a drawing set's sheet numbers and titles; Insert table of contents (each line a link, updated in place); a Bookmarks panel that sorts, styles, expands and collapses, and Ctrl+B to bookmark what you're looking at.
+- Reading comfort, on a new Reading tab: Full screen, Presentation (F5), two pages side by side, Reading view, Read aloud with your computer's own voices, and Auto scroll.
+
+**Fixed**
+- Redaction: a mark covering only part of a tagged piece of text left a hidden copy of those words in the file; redacting a tagged document also removes the descriptions of what you redacted; a form field removed by redaction leaves nothing of itself, and totals that used it are worked out again without it.
+- Deleting a form field or its page leaves nothing of the field in the file.
+- Combine files keeps where each bookmark goes and its style; after Replace pages a bookmark still goes to its spot on the new drawing.
+- The downloads are smaller: the video libraries Read aloud doesn't need are left out.
+- Security: a PDF or an imported comment file can no longer make an image stamp bring a picture from elsewhere on your computer or network into the document; image stamps come only from your stamp library.
+- Redaction: text tagged inside a drawing of its own, an export made before Search & redact in a batch, and a Presentation still showing the old page could all keep redacted words; they no longer do.
+- Batch processing never writes outside the chosen output folder, even through a link placed there, and never changes your originals; a skipped or failed file is left out of the combined PDF, so Bates numbers are never used twice.
+- Files with damaged tags, bookmarks nested very deep, impossible comment positions, huge stamps or formulas, or lists that loop no longer hang or stop with an error. Importing thousands of comments is fast, and so is editing a large tagged document.
+- Cutting a comment and pasting it elsewhere keeps its replies and statuses; a sticky note added to an accessible document keeps it accessible; a table of contents inserted in a tagged PDF is tagged as one.
+
+## 1.10 (es)
+
+**Novedades**
+- Formularios inteligentes: los campos pueden sumar, multiplicar, promediar o seguir una fórmula (como Precio * Cant + Envío) y se calculan solos mientras rellena el formulario, guardados como los guarda Acrobat (KanzonasPDF nunca ejecuta scripts del archivo). Los campos pueden mostrar dinero, porcentajes, fechas, códigos postales y teléfonos y rechazan valores que no encajan; en un campo de porcentaje, 25 significa 25%. Formularios > Detectar campos de formulario crea campos en un formulario plano o escaneado, y Propiedades del campo, Establecer el orden de tabulación y Comprobar campos obligatorios están en la pestaña Formularios de la cinta.
+- Revisión de comentarios: responda a comentarios y a respuestas, establezca un estado de revisión (Aceptado, Rechazado, Cancelado, Completado), exporte e importe comentarios como archivos XFDF o FDF (los archivos de comentarios de Acrobat se importan con su texto y su formato) y resuma los comentarios en un PDF.
+- Accesibilidad (Documento > Accesibilidad): compruebe un PDF según PDF/UA, el estándar para lectores de pantalla, y corrija lo que encuentre. Etiquetar automáticamente da etiquetas a un documento sin ellas; describa las imágenes, fije el orden de lectura, el título y el idioma, y más. Editar un documento etiquetado mantiene bien sus etiquetas.
+- Procesamiento por lotes (Herramientas > Procesamiento por lotes...): los mismos pasos en muchos PDF a la vez (OCR, PDF/A, números Bates, marcas de agua, acoplar, censurar, archivos más pequeños), en una carpeta Procesados; sus originales quedan como estaban. Buscar y censurar en un lote dice, de cada archivo, qué se quitó y de dónde.
+- Marcadores creados automáticamente a partir de los títulos de un documento, de los títulos de un PDF etiquetado o de los números y títulos de los planos de un juego; Insertar tabla de contenido (cada línea un vínculo, actualizada en su lugar); un panel Marcadores que ordena, da estilo, expande y contrae, y Ctrl+B para marcar lo que está viendo.
+- Comodidad de lectura, en una nueva pestaña Lectura: Pantalla completa, Presentación (F5), dos páginas lado a lado, Vista de lectura, Leer en voz alta con las voces de su computadora y Desplazamiento automático.
+
+**Correcciones**
+- Censura: una marca que cubría solo parte de un texto etiquetado dejaba en el archivo una copia oculta de esas palabras; al censurar un documento etiquetado también se quitan las descripciones de lo censurado; un campo de formulario quitado al censurar no deja nada de sí, y los totales que lo usaban se calculan de nuevo sin él.
+- Eliminar un campo de formulario o su página no deja nada del campo en el archivo.
+- Combinar archivos conserva a qué lugar lleva cada marcador y su estilo; después de Reemplazar páginas, un marcador sigue llevando a su lugar en el dibujo nuevo.
+- Las descargas son más pequeñas: se dejan fuera las bibliotecas de video que Leer en voz alta no necesita.
+- Seguridad: un PDF o un archivo de comentarios importado ya no puede hacer que un sello de imagen traiga al documento una imagen de otro lugar de su computadora o de la red; los sellos de imagen salen solo de su biblioteca de sellos.
+- Censura: el texto etiquetado dentro de un dibujo propio, una exportación hecha antes de Buscar y censurar en un lote y una Presentación que seguía mostrando la página anterior podían conservar palabras censuradas; ya no.
+- El procesamiento por lotes nunca escribe fuera de la carpeta de salida elegida, ni siquiera a través de un vínculo puesto allí, y nunca cambia sus originales; un archivo omitido o con error queda fuera del PDF combinado, así que los números Bates nunca se repiten.
+- Los archivos con etiquetas dañadas, marcadores anidados a mucha profundidad, posiciones imposibles en comentarios, sellos o fórmulas enormes, o listas que se repiten ya no se bloquean ni se detienen con un error. Importar miles de comentarios es rápido, y también editar un documento etiquetado grande.
+- Cortar un comentario y pegarlo en otro lugar conserva sus respuestas y estados; una nota adhesiva agregada a un documento accesible lo mantiene accesible; una tabla de contenido insertada en un PDF etiquetado se etiqueta como tal.
+
 ## 1.9.1
 
 **New**

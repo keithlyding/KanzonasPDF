@@ -245,6 +245,354 @@ msgstr "Cambiar nombre del marcador"
 msgid "Name:"
 msgstr "Nombre:"
 
+#: bookmarks_auto.py:509
+msgid "Hazardous Materials"
+msgstr "Materiales peligrosos"
+
+#: bookmarks_auto.py:509
+msgid "Survey / Mapping"
+msgstr "Topografía / Cartografía"
+
+#: bookmarks_auto.py:510
+msgid "Geotechnical"
+msgstr "Geotecnia"
+
+#: bookmarks_auto.py:510
+msgid "Civil Works"
+msgstr "Obras civiles"
+
+#: bookmarks_auto.py:510
+msgid "Civil"
+msgstr "Civil"
+
+#: bookmarks_auto.py:511
+msgid "Structural"
+msgstr "Estructural"
+
+#: bookmarks_auto.py:511
+msgid "Architectural"
+msgstr "Arquitectura"
+
+#: bookmarks_auto.py:512
+msgid "Interiors"
+msgstr "Interiores"
+
+#: bookmarks_auto.py:512
+msgid "Equipment"
+msgstr "Equipos"
+
+#: bookmarks_auto.py:512
+msgid "Fire Protection"
+msgstr "Protección contra incendios"
+
+#: bookmarks_auto.py:513
+msgid "Plumbing"
+msgstr "Plomería"
+
+#: bookmarks_auto.py:513
+msgid "Process"
+msgstr "Procesos"
+
+#: bookmarks_auto.py:513
+msgid "Mechanical"
+msgstr "Mecánica"
+
+#: bookmarks_auto.py:513
+msgid "Electrical"
+msgstr "Eléctrica"
+
+#: bookmarks_auto.py:514
+msgid "Telecommunications"
+msgstr "Telecomunicaciones"
+
+#: bookmarks_auto.py:514
+msgid "Resource"
+msgstr "Recursos"
+
+#: bookmarks_auto.py:514 bookmarks_auto.py:546
+msgid "Other Disciplines"
+msgstr "Otras disciplinas"
+
+#: bookmarks_auto.py:515
+msgid "Contractor / Shop Drawings"
+msgstr "Contratista / Planos de taller"
+
+#: bookmarks_auto.py:515
+msgid "Operations"
+msgstr "Operaciones"
+
+#: bookmarks_auto.py:192
+msgid "bold"
+msgstr "negrita"
+
+#: bookmarks_panel.py:140
+msgid "More bookmark tools: make bookmarks from headings, a table of contents, sort, style..."
+msgstr "Más herramientas de marcadores: crear marcadores a partir de los títulos, una tabla de contenido, ordenar, estilo..."
+
+#: bookmarks_panel.py:156
+msgid "No bookmarks. Click + to add one for the current page, or ⋯ to make them from the headings."
+msgstr "No hay marcadores. Haga clic en + para agregar uno para la página actual, o en ⋯ para crearlos a partir de los títulos."
+
+#: bookmarks_panel.py:369
+msgid "Bookmark color"
+msgstr "Color del marcador"
+
+#: bookmarks_ui.py:247
+msgid "Make bookmarks from headings"
+msgstr "Crear marcadores a partir de los títulos"
+
+#: bookmarks_ui.py:248
+msgid "Bookmarks from tagged structure"
+msgstr "Marcadores desde la estructura etiquetada"
+
+#: bookmarks_ui.py:249
+msgid "Bookmarks from sheet numbers"
+msgstr "Marcadores desde los números de plano"
+
+#: bookmarks_ui.py:258
+msgid "Reading the headings..."
+msgstr "Leyendo los títulos..."
+
+#: bookmarks_ui.py:258
+msgid "Reading the tags..."
+msgstr "Leyendo las etiquetas..."
+
+#: bookmarks_ui.py:55 bookmarks_ui.py:121 bookmarks_ui.py:204
+msgid "Make bookmarks"
+msgstr "Crear marcadores"
+
+#: bookmarks_ui.py:71
+msgid "Group the sheets by discipline (A - Architectural, S - Structural...)"
+msgstr "Agrupar los planos por disciplina (A - Arquitectura, S - Estructural...)"
+
+#: bookmarks_ui.py:81
+msgid "Names in capitals in Title Case"
+msgstr "Nombres en mayúsculas con mayúscula inicial en cada palabra"
+
+#: bookmarks_ui.py:82
+msgid "FIRST FLOOR PLAN becomes First Floor Plan"
+msgstr "PLANTA DEL PRIMER PISO se vuelve Planta del Primer Piso"
+
+#: bookmarks_ui.py:109
+msgid "Untick what shouldn't be a bookmark; double-click a name to change it; click one to see it on its page."
+msgstr "Desmarque lo que no deba ser un marcador; haga doble clic en un nombre para cambiarlo; haga clic en uno para verlo en su página."
+
+#: bookmarks_ui.py:114
+msgid "Replace the bookmarks the document has"
+msgstr "Reemplazar los marcadores que tiene el documento"
+
+#: bookmarks_ui.py:115
+msgid "Add these after the bookmarks the document has"
+msgstr "Agregar estos después de los marcadores que tiene el documento"
+
+#: bookmarks_ui.py:234
+msgid "{n} sheet(s) found by their title blocks; {none} page(s) without a sheet number are left out."
+msgstr "Se encontraron {n} plano(s) por sus cuadros de rótulo; se omiten {none} página(s) sin número de plano."
+
+#: bookmarks_ui.py:252
+msgid "This PDF isn't tagged: it has no structure to read the headings from. Use Make bookmarks from headings, which finds them by their look."
+msgstr "Este PDF no está etiquetado: no tiene una estructura de la cual leer los títulos. Use Crear marcadores a partir de los títulos, que los encuentra por su aspecto."
+
+#: bookmarks_ui.py:262
+msgid "Stopped: no bookmarks were made"
+msgstr "Detenido: no se crearon marcadores"
+
+#: bookmarks_ui.py:297 bookmarks_ui.py:358 bookmarks_ui.py:369
+msgid "Insert table of contents"
+msgstr "Insertar tabla de contenido"
+
+#: bookmarks_ui.py:304
+msgid "Title:"
+msgstr "Título:"
+
+#: bookmarks_ui.py:308 bookmarks_ui.py:75
+msgid "Levels:"
+msgstr "Niveles:"
+
+#: bookmarks_ui.py:310
+msgid "The size of the page it goes before"
+msgstr "El tamaño de la página que la sigue"
+
+#: bookmarks_ui.py:316
+msgid "At the start of the document"
+msgstr "Al principio del documento"
+
+#: bookmarks_ui.py:331
+msgid "Each line links to its page; the page numbers count the new pages. Bookmarks that go elsewhere (a web page, another file) are left out."
+msgstr "Cada línea es un vínculo a su página; los números de página cuentan las páginas nuevas. Se omiten los marcadores que llevan a otro lugar (una página web, otro archivo)."
+
+#: bookmarks_ui.py:359
+msgid "This document has no bookmarks to list. Make them first (Document > Bookmark tools > Make bookmarks from headings...), or add them in the Bookmarks panel."
+msgstr "Este documento no tiene marcadores para listar. Créelos primero (Documento > Herramientas de marcadores > Crear marcadores a partir de los títulos...) o agréguelos en el panel Marcadores."
+
+#: bookmarks_ui.py:370
+msgid "None of the bookmarks goes to a page of this document."
+msgstr "Ninguno de los marcadores lleva a una página de este documento."
+
+#: bookmarks_ui.py:88
+msgid "Bookmark"
+msgstr "Marcador"
+
+#: bookmarks_ui.py:96
+msgid "Tick all"
+msgstr "Marcar todos"
+
+#: bookmarks_ui.py:97
+msgid "Untick all"
+msgstr "Desmarcar todos"
+
+#: bookmarks_ui.py:98
+msgid "Make the selected bookmarks one level higher"
+msgstr "Subir un nivel los marcadores seleccionados"
+
+#: bookmarks_ui.py:100
+msgid "Make the selected bookmarks one level lower (under the one before)"
+msgstr "Bajar un nivel los marcadores seleccionados (bajo el anterior)"
+
+#: bookmarks_ui.py:205
+msgid "Nothing is ticked: tick the bookmarks to make."
+msgstr "No hay nada marcado: marque los marcadores que quiere crear."
+
+#: bookmarks_ui.py:229
+msgid "{n} heading(s) found by their size, weight and numbering. {looks}"
+msgstr "Se encontraron {n} título(s) por su tamaño, grosor y numeración. {looks}"
+
+#: bookmarks_ui.py:232
+msgid "{n} heading(s) found in the document's tags (H1-H6)."
+msgstr "Se encontraron {n} título(s) en las etiquetas del documento (H1-H6)."
+
+#: bookmarks_ui.py:266
+msgid "No headings were found: the text is all the same size and weight, with no numbered headings."
+msgstr "No se encontraron títulos: todo el texto tiene el mismo tamaño y grosor, sin títulos numerados."
+
+#: bookmarks_ui.py:268
+msgid "The tags have no headings (H1-H6)."
+msgstr "Las etiquetas no tienen títulos (H1-H6)."
+
+#: bookmarks_ui.py:269
+msgid "No sheet numbers were found in title blocks."
+msgstr "No se encontraron números de plano en los cuadros de rótulo."
+
+#: bookmarks_ui.py:288
+msgid "{n} bookmark(s) made (Ctrl+Z undoes it)"
+msgstr "Se crearon {n} marcador(es) (Ctrl+Z lo deshace)"
+
+#: bookmarks_ui.py:384
+msgid "Table of contents inserted: {n} page(s) from page {page} (Ctrl+Z undoes it)"
+msgstr "Tabla de contenido insertada: {n} página(s) desde la página {page} (Ctrl+Z lo deshace)"
+
+#: bookmarks_ui.py:98
+msgid "Level up"
+msgstr "Subir de nivel"
+
+#: bookmarks_ui.py:100
+msgid "Level down"
+msgstr "Bajar de nivel"
+
+#: bookmarks_ui.py:317
+msgid "Before the current page (page {page})"
+msgstr "Antes de la página actual (página {page})"
+
+#: bookmarks_ui.py:227
+msgid "level {level}: {look} ({n})"
+msgstr "nivel {level}: {look} ({n})"
+
+#: bookmarks_ui.py:318
+msgid "In place of the table of contents made before (pages {first}-{last})"
+msgstr "En lugar de la tabla de contenido creada antes (páginas {first}-{last})"
+
+#: main_window.py:566
+msgid "Add bookmark at current &view"
+msgstr "Agregar marcador en la &vista actual"
+
+#: main_window.py:567
+msgid "A bookmark to the place the window shows (to the selected text, named after it, when text is selected)"
+msgstr "Un marcador al lugar que muestra la ventana (al texto seleccionado, con su nombre, cuando hay texto seleccionado)"
+
+#: main_window.py:570
+msgid "Set bookmark &destination to current view"
+msgstr "Llevar el &destino del marcador a la vista actual"
+
+#: main_window.py:573
+msgid "Make bookmarks from &headings..."
+msgstr "Crear marcadores a partir de los &títulos..."
+
+#: main_window.py:578
+msgid "Bookmarks from &tagged structure..."
+msgstr "Marcadores desde la estructura &etiquetada..."
+
+#: main_window.py:582
+msgid "Bookmarks from &sheet numbers..."
+msgstr "Marcadores desde los números de &plano..."
+
+#: main_window.py:586
+msgid "Sort bookmarks by &page"
+msgstr "Ordenar los marcadores por &página"
+
+#: main_window.py:588
+msgid "Sort bookmarks by &name"
+msgstr "Ordenar los marcadores por &nombre"
+
+#: main_window.py:590
+msgid "&Expand all bookmarks"
+msgstr "&Expandir todos los marcadores"
+
+#: main_window.py:591
+msgid "C&ollapse all bookmarks"
+msgstr "C&ontraer todos los marcadores"
+
+#: main_window.py:593
+msgid "&Bold bookmark (on/off)"
+msgstr "Marcador en &negrita (sí/no)"
+
+#: main_window.py:595
+msgid "&Italic bookmark (on/off)"
+msgstr "Marcador en c&ursiva (sí/no)"
+
+#: main_window.py:597
+msgid "Bookmark co&lor..."
+msgstr "Co&lor del marcador..."
+
+#: main_window.py:599
+msgid "Insert table of &contents..."
+msgstr "Insertar tabla de &contenido..."
+
+#: main_window.py:1190
+msgid "Bookmar&k tools"
+msgstr "Herramientas de mar&cadores"
+
+#: main_window.py:571
+msgid "The selected bookmark goes to the place the window shows now"
+msgstr "El marcador seleccionado lleva al lugar que muestra ahora la ventana"
+
+#: main_window.py:575
+msgid "Find the headings by their size, weight and numbering and make a bookmark tree from them (you check it first)"
+msgstr "Encontrar los títulos por su tamaño, grosor y numeración y crear con ellos un árbol de marcadores (usted lo revisa primero)"
+
+#: main_window.py:580
+msgid "Make the bookmarks from a tagged PDF's headings (H1-H6): exact"
+msgstr "Crear los marcadores a partir de los títulos de un PDF etiquetado (H1-H6): exactos"
+
+#: main_window.py:584
+msgid "For a drawing set: a bookmark for each sheet, \"A-101  FIRST FLOOR PLAN\", read from the title blocks"
+msgstr "Para un juego de planos: un marcador para cada plano, \"A-101  PLANTA DEL PRIMER PISO\", leído de los cuadros de rótulo"
+
+#: main_window.py:600
+msgid "Pages listing the bookmarks with their page numbers, each line a link to its page (again: updates the one made before)"
+msgstr "Páginas que listan los marcadores con sus números de página, cada línea un vínculo a su página (otra vez: actualiza la creada antes)"
+
+#: main_window.py:624
+msgid "Select a bookmark in the Bookmarks panel first"
+msgstr "Primero seleccione un marcador en el panel Marcadores"
+
+#: main_window.py:628
+msgid "The bookmark now goes to this view"
+msgstr "El marcador ahora lleva a esta vista"
+
+#: bookmarks_ui.py:267
+msgid "This document has no text to find headings in (scanned pages: run Recognize text (OCR) first)."
+msgstr "Este documento no tiene texto en el cual buscar títulos (páginas escaneadas: ejecute primero Reconocer texto (OCR))."
+
 #: combine.py:16 main_window.py:2120
 msgid "Pictures"
 msgstr "Imágenes"
@@ -8412,6 +8760,1320 @@ msgstr "Escanear a través de Windows (WIA) necesita el paquete comtypes, que fa
 msgid "The scanner didn't accept the subscription."
 msgstr "El escáner no aceptó la suscripción."
 
+# ---- Smart forms (Forms > Detect form fields..., Field properties..., Set tab order...) ----
+msgid "{name}: {reason} The field keeps its value."
+msgstr "{name}: {reason} El campo conserva su valor."
+
+msgid "Go to the first"
+msgstr "Ir al primero"
+
+msgid " and {n} more"
+msgstr " y {n} más"
+
+msgid "These required fields are empty: {names}."
+msgstr "Estos campos obligatorios están vacíos: {names}."
+
+msgid "The formula can't be read: {error}"
+msgstr "No se puede leer la fórmula: {error}"
+
+msgid "{name} is calculated from other fields: it changes when they do (Forms > Field properties... shows how)."
+msgstr "{name} se calcula a partir de otros campos: cambia cuando ellos cambian (Formularios > Propiedades del campo... muestra cómo)."
+
+msgid "ZIP code"
+msgstr "Código postal (ZIP)"
+
+msgid "ZIP+4 code"
+msgstr "Código ZIP+4"
+
+msgid "Phone number"
+msgstr "Número de teléfono"
+
+msgid "Social Security number"
+msgstr "Número de Seguro Social"
+
+msgid "Sum (+)"
+msgstr "Suma (+)"
+
+msgid "Product (x)"
+msgstr "Producto (x)"
+
+msgid "Average"
+msgstr "Promedio"
+
+msgid "Minimum"
+msgstr "Mínimo"
+
+msgid "Maximum"
+msgstr "Máximo"
+
+msgid "Text field (several lines)"
+msgstr "Campo de texto (varias líneas)"
+
+msgid "Date field"
+msgstr "Campo de fecha"
+
+msgid "Shown when the pointer rests on the field"
+msgstr "Se muestra al dejar el puntero sobre el campo"
+
+msgid "Tooltip:"
+msgstr "Información sobre herramientas:"
+
+msgid "Required (flagged on Save and Print when empty)"
+msgstr "Obligatorio (se marca al Guardar e Imprimir si está vacío)"
+
+msgid "Read-only"
+msgstr "Solo lectura"
+
+msgid "Separator style:"
+msgstr "Estilo de separador:"
+
+msgid "e.g. $ or € (empty: none)"
+msgstr "p. ej. $ o € (vacío: ninguno)"
+
+msgid "Currency symbol:"
+msgstr "Símbolo de moneda:"
+
+msgid "Symbol after the number"
+msgstr "Símbolo después del número"
+
+msgid "Negative numbers:"
+msgstr "Números negativos:"
+
+msgid "Kind:"
+msgstr "Tipo:"
+
+msgid "The value must be in this range"
+msgstr "El valor debe estar en este rango"
+
+msgid "(no minimum)"
+msgstr "(sin mínimo)"
+
+msgid "(no maximum)"
+msgstr "(sin máximo)"
+
+msgid "From:"
+msgstr "Desde:"
+
+msgid "To:"
+msgstr "Hasta:"
+
+msgid "Not calculated"
+msgstr "Sin cálculo"
+
+msgid "Value is the"
+msgstr "El valor es"
+
+msgid "Formula:"
+msgstr "Fórmula:"
+
+msgid "e.g. Price * Qty + Shipping"
+msgstr "p. ej. Precio * Cant + Envío"
+
+msgid "Field names, numbers, + - * / and parentheses; a name with spaces or other signs takes a backslash before each (Item\\ 1)."
+msgstr "Nombres de campos, números, + - * / y paréntesis; un nombre con espacios u otros signos lleva una barra invertida antes de cada uno (Artículo\\ 1)."
+
+msgid "Detect form fields"
+msgstr "Detectar campos de formulario"
+
+msgid "Create fields"
+msgstr "Crear campos"
+
+msgid "No place for a field was found: no blank lines, boxes or checkboxes with a label next to them. (On a scanned page, run Recognize text (OCR) first so the labels can be read.)"
+msgstr "No se encontró ningún lugar para un campo: ninguna línea en blanco, cuadro ni casilla con una etiqueta al lado. (En una página escaneada, ejecute primero Reconocer texto (OCR) para que se puedan leer las etiquetas.)"
+
+msgid "Set tab order"
+msgstr "Establecer el orden de tabulación"
+
+msgid "By rows (left to right, top to bottom)"
+msgstr "Por filas (de izquierda a derecha, de arriba abajo)"
+
+msgid "By columns (top to bottom, left to right)"
+msgstr "Por columnas (de arriba abajo, de izquierda a derecha)"
+
+msgid "Manual (in the order of this list)"
+msgstr "Manual (en el orden de esta lista)"
+
+msgid "Rows or columns: all pages"
+msgstr "Filas o columnas: todas las páginas"
+
+msgid "Place in the tab order:"
+msgstr "Posición en el orden de tabulación:"
+
+msgid "Format"
+msgstr "Formato"
+
+msgid "Validate"
+msgstr "Validar"
+
+msgid "Calculate"
+msgstr "Calcular"
+
+msgid "Format:"
+msgstr "Formato:"
+
+msgid "Your reply:"
+msgstr "Su respuesta:"
+
+msgid "Reply"
+msgstr "Respuesta"
+
+msgid "Edit reply"
+msgstr "Editar respuesta"
+
+msgid "{state} set by {name}, {date}"
+msgstr "{state} por {name}, {date}"
+
+msgid "Delete the markup and its {n} replies?"
+msgstr "¿Eliminar la marca y sus {n} respuestas?"
+
+msgid "Delete the {count} markups and their {n} replies?"
+msgstr "¿Eliminar las {count} marcas y sus {n} respuestas?"
+
+msgid "{name}, {date}:"
+msgstr "{name}, {date}:"
+
+msgid "&Reply..."
+msgstr "&Responder..."
+
+msgid "E&xport comments..."
+msgstr "E&xportar comentarios..."
+
+msgid "&Import comments..."
+msgstr "&Importar comentarios..."
+
+msgid "Summari&ze comments..."
+msgstr "Res&umir comentarios..."
+
+msgid "Set s&tatus"
+msgstr "Establecer es&tado"
+
+msgid "Reply to the selected markup: replies show as a thread in the Markups list and in other PDF programs"
+msgstr "Responder a la marca seleccionada: las respuestas se ven como una conversación en la Lista de marcas y en otros programas de PDF"
+
+msgid "Accepted"
+msgstr "Aceptado"
+
+msgid "Rejected"
+msgstr "Rechazado"
+
+msgid "Cancelled"
+msgstr "Cancelado"
+
+msgid "Completed"
+msgstr "Completado"
+
+msgid "No status"
+msgstr "Sin estado"
+
+msgid "Marked"
+msgstr "Marcado"
+
+msgid "Unmarked"
+msgstr "Sin marcar"
+
+msgid "None"
+msgstr "Ninguno"
+
+msgid "Number"
+msgstr "Número"
+
+msgid "Percent"
+msgstr "Porcentaje"
+
+msgid "Special (ZIP, phone, SSN)"
+msgstr "Especial (código postal, teléfono, Seguro Social)"
+
+msgid "A number typed is a percent: 25 or 25% shows as 25.00%. The value is kept as a fraction, 0.25, as Acrobat keeps it."
+msgstr "Un número escrito es un porcentaje: 25 o 25% se muestra como 25.00%. El valor se guarda como fracción, 0.25, como lo guarda Acrobat."
+
+msgid "d day, m month (mmm Jan, mmmm January), yy or yyyy year."
+msgstr "d día, m mes (mmm Jan, mmmm January: meses en inglés, como en Acrobat), yy o yyyy año."
+
+msgid "of these fields:"
+msgstr "de estos campos:"
+
+msgid "Custom calculation (not run)"
+msgstr "Cálculo personalizado (no se ejecuta)"
+
+msgid "Calculated fields are worked out by KanzonasPDF as you fill in the form, and by Acrobat and other readers."
+msgstr "KanzonasPDF calcula los campos calculados mientras rellena el formulario, y también Acrobat y otros lectores."
+
+msgid "Give the field a name."
+msgstr "Póngale un nombre al campo."
+
+msgid "A field can't be calculated from itself."
+msgstr "Un campo no se puede calcular a partir de sí mismo."
+
+msgid "Use"
+msgstr "Usar"
+
+msgid "Kind"
+msgstr "Tipo"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Select all"
+msgstr "Seleccionar todo"
+
+msgid "Select none"
+msgstr "No seleccionar nada"
+
+msgid "Custom script (not run)"
+msgstr "Script personalizado (no se ejecuta)"
+
+msgid "This field's format is a script KanzonasPDF doesn't run (it's kept in the file for Acrobat):"
+msgstr "El formato de este campo es un script que KanzonasPDF no ejecuta (se conserva en el archivo para Acrobat):"
+
+msgid "Type: {kind}"
+msgstr "Tipo: {kind}"
+
+msgid "This field is checked by a script KanzonasPDF doesn't run (it's kept unless you set a range):"
+msgstr "Este campo se comprueba con un script que KanzonasPDF no ejecuta (se conserva salvo que establezca un rango):"
+
+msgid "Found {n} place(s) for a field. Untick what you don't want, and change a name or kind if needed; nothing changes until you click Create fields."
+msgstr "Se encontraron {n} lugar(es) para un campo. Desmarque lo que no quiera y cambie un nombre o un tipo si hace falta; nada cambia hasta que haga clic en Crear campos."
+
+msgid "The order Tab goes through the fields of page {page}:"
+msgstr "El orden en que Tab recorre los campos de la página {page}:"
+
+msgid "No field is called {names}: check the formula (names are case-sensitive)."
+msgstr "Ningún campo se llama {names}: revise la fórmula (los nombres distinguen mayúsculas y minúsculas)."
+
+msgid "&Detect form fields..."
+msgstr "&Detectar campos de formulario..."
+
+msgid "Field p&roperties..."
+msgstr "P&ropiedades del campo..."
+
+msgid "Set &tab order..."
+msgstr "Establecer el orden de &tabulación..."
+
+msgid "Check &required fields"
+msgstr "Comprobar campos &obligatorios"
+
+msgid "Smart forms"
+msgstr "Formularios inteligentes"
+
+msgid "Detect fields"
+msgstr "Detectar campos"
+
+msgid "Tab order"
+msgstr "Orden de tabulación"
+
+msgid "Check required"
+msgstr "Revisar obligatorios"
+
+msgid "Find the blank lines, boxes and checkboxes of a flat (or scanned) form and make fields there: you see what was found before anything changes"
+msgstr "Encontrar las líneas en blanco, los cuadros y las casillas de un formulario plano (o escaneado) y crear campos allí: verá lo encontrado antes de que cambie nada"
+
+msgid "The selected field's name, tooltip, required, calculation, format, range and place in the tab order (select it with a form tool, or Tab to it)"
+msgstr "El nombre, la información sobre herramientas, si es obligatorio, el cálculo, el formato, el rango y la posición en el orden de tabulación del campo seleccionado (selecciónelo con una herramienta de formulario, o llegue a él con Tab)"
+
+msgid "The order Tab goes through the page's fields: by rows, by columns or your own"
+msgstr "El orden en que Tab recorre los campos de la página: por filas, por columnas o el suyo"
+
+msgid "Flag the required fields that are still empty (also done on Save and Print)"
+msgstr "Marcar los campos obligatorios que siguen vacíos (también al Guardar e Imprimir)"
+
+msgid "Look for form fields on which pages?"
+msgstr "¿En qué páginas se buscan campos de formulario?"
+
+msgid "Select a field first: pick a form tool (Forms menu) and click the field, or press Tab to go to it."
+msgstr "Seleccione primero un campo: elija una herramienta de formulario (menú Formularios) y haga clic en el campo, o presione Tab para llegar a él."
+
+msgid "Every required field is filled in."
+msgstr "Todos los campos obligatorios están rellenados."
+
+msgid "Made {n} form field(s) (Ctrl+Z undoes it)."
+msgstr "Se crearon {n} campo(s) de formulario (Ctrl+Z lo deshace)."
+
+msgid "Page {page} has no fields to fill in."
+msgstr "La página {page} no tiene campos para rellenar."
+
+msgid "Field properties..."
+msgstr "Propiedades del campo..."
+
+msgid "Set tab order..."
+msgstr "Establecer el orden de tabulación..."
+
+msgid "Delete field"
+msgstr "Eliminar campo"
+
+msgid "Detect form fields..."
+msgstr "Detectar campos de formulario..."
+
+msgid "Type a number."
+msgstr "Escriba un número."
+
+msgid "The value must be between {min} and {max}."
+msgstr "El valor debe estar entre {min} y {max}."
+
+msgid "The value must be at least {min}."
+msgstr "El valor debe ser como mínimo {min}."
+
+msgid "The value must be at most {max}."
+msgstr "El valor debe ser como máximo {max}."
+
+msgid "Type a date that exists, as {format}."
+msgstr "Escriba una fecha que exista, como {format}."
+
+msgid "Type a 5-digit ZIP code."
+msgstr "Escriba un código postal ZIP de 5 dígitos."
+
+msgid "Type a ZIP+4 code (9 digits)."
+msgstr "Escriba un código ZIP+4 (9 dígitos)."
+
+msgid "Type a phone number (7 or 10 digits)."
+msgstr "Escriba un número de teléfono (7 o 10 dígitos)."
+
+msgid "Type a Social Security number (9 digits)."
+msgstr "Escriba un número de Seguro Social (9 dígitos)."
+
+msgid "Save the comments, their replies and statuses as an XFDF or FDF file, to send without the PDF"
+msgstr "Guardar los comentarios, sus respuestas y estados en un archivo XFDF o FDF, para enviarlos sin el PDF"
+
+msgid "Add the comments of an XFDF or FDF file to this document (one undo step)"
+msgstr "Agregar a este documento los comentarios de un archivo XFDF o FDF (un solo paso para deshacer)"
+
+msgid "A new PDF listing every comment by page, author, date or type, with replies and statuses, to print or save"
+msgstr "Un PDF nuevo con todos los comentarios por página, autor, fecha o tipo, con respuestas y estados, para imprimir o guardar"
+
+msgid "Select a markup to reply to it."
+msgstr "Seleccione una marca para responderle."
+
+msgid "Select the markups to set their status."
+msgstr "Seleccione las marcas para establecer su estado."
+
+msgid "All statuses"
+msgstr "Todos los estados"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Replies"
+msgstr "Respuestas"
+
+msgid "Export comments..."
+msgstr "Exportar comentarios..."
+
+msgid "The markups shown (with their replies and statuses) as an XFDF or FDF file"
+msgstr "Las marcas mostradas (con sus respuestas y estados) en un archivo XFDF o FDF"
+
+msgid "Reply..."
+msgstr "Responder..."
+
+msgid "Set status"
+msgstr "Establecer estado"
+
+msgid "Edit reply..."
+msgstr "Editar respuesta..."
+
+msgid "Delete reply"
+msgstr "Eliminar respuesta"
+
+msgid "Show or hide replies"
+msgstr "Mostrar u ocultar respuestas"
+
+msgid "Click to show or hide the replies"
+msgstr "Haga clic para mostrar u ocultar las respuestas"
+
+msgid "Comment summary"
+msgstr "Resumen de comentarios"
+
+msgid "{state} set by {name}"
+msgstr "{state} por {name}"
+
+msgid "This document has no comments."
+msgstr "Este documento no tiene comentarios."
+
+msgid "{n} comments, sorted by {how}"
+msgstr "{n} comentarios, ordenados por {how}"
+
+msgid "Page {n}"
+msgstr "Página {n}"
+
+msgid "Author: {name}"
+msgstr "Autor: {name}"
+
+msgid "Status: {status}"
+msgstr "Estado: {status}"
+
+msgid "page"
+msgstr "página"
+
+msgid "author"
+msgstr "autor"
+
+msgid "date"
+msgstr "fecha"
+
+msgid "type"
+msgstr "tipo"
+
+msgid "XFDF comments"
+msgstr "Comentarios XFDF"
+
+msgid "FDF comments"
+msgstr "Comentarios FDF"
+
+msgid "Export comments"
+msgstr "Exportar comentarios"
+
+msgid "Import comments"
+msgstr "Importar comentarios"
+
+msgid "Comment summary made: print it (Ctrl+P) or save it (Ctrl+S)"
+msgstr "Resumen de comentarios creado: imprímalo (Ctrl+P) o guárdelo (Ctrl+S)"
+
+msgid "{n} comments exported to {name}."
+msgstr "{n} comentarios exportados a {name}."
+
+msgid "Summarize comments"
+msgstr "Resumir comentarios"
+
+msgid "Sort by:"
+msgstr "Ordenar por:"
+
+msgid "Page thumbnails beside their comments (sorted by page)"
+msgstr "Miniaturas de las páginas junto a sus comentarios (ordenado por página)"
+
+msgid "Comment files"
+msgstr "Archivos de comentarios"
+
+msgid "Not exported (pictures and attached files stay in the PDF): {n}"
+msgstr "No exportados (las imágenes y los archivos adjuntos se quedan en el PDF): {n}"
+
+msgid "This XFDF file declares a DTD or entities, which aren't allowed."
+msgstr "Este archivo XFDF declara una DTD o entidades, que no se permiten."
+
+msgid "This comment file is too large to import."
+msgstr "Este archivo de comentarios es demasiado grande para importarlo."
+
+msgid "This isn't an XFDF file."
+msgstr "Este no es un archivo XFDF."
+
+msgid "This isn't an FDF file."
+msgstr "Este no es un archivo FDF."
+
+msgid "no position"
+msgstr "sin posición"
+
+msgid "numbers that aren't positions or sizes"
+msgstr "números que no son posiciones ni tamaños"
+
+msgid "{n} comments added"
+msgstr "{n} comentarios agregados"
+
+msgid "This isn't a readable XFDF file: {error}"
+msgstr "No se puede leer este archivo XFDF: {error}"
+
+msgid "This isn't a readable FDF file: {error}"
+msgstr "No se puede leer este archivo FDF: {error}"
+
+msgid "{n} updated"
+msgstr "{n} actualizados"
+
+msgid "{n} already in the document"
+msgstr "{n} ya estaban en el documento"
+
+msgid "Skipped: {n} ({why})"
+msgstr "Omitidos: {n} ({why})"
+
+msgid "not a kind of comment KanzonasPDF exchanges"
+msgstr "un tipo de comentario que KanzonasPDF no intercambia"
+
+msgid "page {n} isn't in this document"
+msgstr "la página {n} no está en este documento"
+
+#: batch.py:38
+msgid "Skipped"
+msgstr "Omitido"
+
+#: batch.py:38
+msgid "Failed"
+msgstr "Con error"
+
+#: batch.py:39
+msgid "Canceled"
+msgstr "Cancelado"
+
+#: batch.py:55
+msgid "Header, left"
+msgstr "Encabezado, izquierda"
+
+#: batch.py:55
+msgid "Header, center"
+msgstr "Encabezado, centro"
+
+#: batch.py:55
+msgid "Header, right"
+msgstr "Encabezado, derecha"
+
+#: batch.py:56
+msgid "Footer, left"
+msgstr "Pie de página, izquierda"
+
+#: batch.py:56
+msgid "Footer, center"
+msgstr "Pie de página, centro"
+
+#: batch.py:56
+msgid "Footer, right"
+msgstr "Pie de página, derecha"
+
+#: batch.py:385
+msgid "Make searchable (OCR)"
+msgstr "Hacer buscable (OCR)"
+
+#: batch.py:386
+msgid "Archive (OCR + PDF/A)"
+msgstr "Archivar (OCR + PDF/A)"
+
+#: batch.py:387
+msgid "Confidential (watermark + flatten)"
+msgstr "Confidencial (marca de agua + acoplar)"
+
+#: batch.py:389
+msgid "Bates number for production"
+msgstr "Numeración Bates para producción"
+
+#: batch.py:390
+msgid "Shrink for email"
+msgstr "Reducir para correo electrónico"
+
+#: batch.py:80
+msgid "Makes scanned pages searchable and selectable, as Recognize text (OCR) does."
+msgstr "Hace que las páginas escaneadas se puedan buscar y seleccionar, como Reconocer texto (OCR)."
+
+#: batch.py:86
+msgid "Makes each file a PDF/A-2b archival copy, as File > Save as PDF/A does. Put it after the steps that change the document; a password-protected file needs Remove password before it."
+msgstr "Convierte cada archivo en una copia de archivo PDF/A-2b, como Archivo > Guardar como PDF/A. Póngalo después de los pasos que cambian el documento; un archivo protegido con contraseña necesita Quitar contraseña antes."
+
+#: batch.py:90
+msgid "Writes text (or a picture) across the pages, as Document > Watermark does."
+msgstr "Escribe un texto (o una imagen) sobre las páginas, como Documento > Marca de agua."
+
+#: batch.py:100
+msgid "Text in the margins, as Document > Header & footer does. Tokens: {page} {pages} {date} {file} {bates}. Bates numbers continue from one file to the next, in the order of the list."
+msgstr "Texto en los márgenes, como Documento > Encabezado y pie de página. Códigos: {page} {pages} {date} {file} {bates}. Los números Bates siguen de un archivo al siguiente, en el orden de la lista."
+
+#: batch.py:107
+msgid "Page numbers"
+msgstr "Números de página"
+
+#: batch.py:107
+msgid "Numbers each file's pages. Tokens: {page} {pages}."
+msgstr "Numera las páginas de cada archivo. Códigos: {page} {pages}."
+
+#: batch.py:112
+msgid "A Bates number on every page, continuing from one file to the next in the order of the list (the first file starts at the first number)."
+msgstr "Un número Bates en cada página, que sigue de un archivo al siguiente en el orden de la lista (el primer archivo empieza en el primer número)."
+
+#: batch.py:120
+msgid "Makes comments and markups part of the page, as Review > Flatten comments does. Form fields stay fillable."
+msgstr "Hace que los comentarios y marcas formen parte de la página, como Revisar > Acoplar comentarios. Los campos de formulario se pueden seguir llenando."
+
+#: batch.py:125
+msgid "Flatten form fields"
+msgstr "Acoplar campos de formulario"
+
+#: batch.py:125
+msgid "Makes form fields and what's typed in them part of the page: they can't be filled in any more."
+msgstr "Hace que los campos de formulario y lo escrito en ellos formen parte de la página: ya no se pueden llenar."
+
+#: batch.py:142
+msgid "Removes hidden or sensitive information, as Protect > Sanitize document does."
+msgstr "Quita información oculta o confidencial, como Proteger > Sanear documento."
+
+#: batch.py:145
+msgid "Reduce file size"
+msgstr "Reducir tamaño del archivo"
+
+#: batch.py:145
+msgid "Makes pictures smaller and drops what isn't used, as Document > Compress does. A file that wouldn't get smaller is kept as it is."
+msgstr "Reduce las imágenes y quita lo que no se usa, como Documento > Comprimir. Un archivo que no quedaría más pequeño se deja como está."
+
+#: batch.py:152
+msgid "Rotate pages"
+msgstr "Girar páginas"
+
+#: batch.py:160
+msgid "Delete blank pages"
+msgstr "Eliminar páginas en blanco"
+
+#: batch.py:160
+msgid "Deletes pages with no text and almost no ink (blank sheets from a scanner, specks and all). A page with markups, form fields or a few written words is kept. The report lists the pages deleted."
+msgstr "Elimina las páginas sin texto y casi sin tinta (hojas en blanco de un escáner, aunque tengan alguna mota). Una página con marcas, campos de formulario o unas pocas palabras escritas se conserva. El informe lista las páginas eliminadas."
+
+#: batch.py:164
+msgid "Add password"
+msgstr "Agregar contraseña"
+
+#: batch.py:164
+msgid "Protects each file, as Protect > Security properties does (AES-256). Passwords aren't saved in recipes."
+msgstr "Protege cada archivo, como Proteger > Propiedades de seguridad (AES-256). Las contraseñas no se guardan en las recetas."
+
+#: batch.py:175
+msgid "Remove password"
+msgstr "Quitar contraseña"
+
+#: batch.py:175
+msgid "Takes the password protection off. A file that opens without a password but has a permissions password needs that password."
+msgstr "Quita la protección con contraseña. Un archivo que se abre sin contraseña pero tiene contraseña de permisos necesita esa contraseña."
+
+#: batch.py:179
+msgid "Set document properties"
+msgstr "Establecer propiedades del documento"
+
+#: batch.py:179
+msgid "{name} is the file's name. Empty boxes leave the property as it is."
+msgstr "{name} es el nombre del archivo. Las casillas vacías dejan la propiedad como está."
+
+#: batch.py:183
+msgid "Saves a copy in another format next to the PDF, as File > Export to does, from the document as the steps before it left it."
+msgstr "Guarda una copia en otro formato junto al PDF, como Archivo > Exportar a, a partir del documento tal como lo dejaron los pasos anteriores."
+
+#: batch.py:191
+msgid "Combine all into one PDF"
+msgstr "Combinar todo en un PDF"
+
+#: batch.py:191
+msgid "Puts the processed files together, in the order of the list, into one PDF (the last step)."
+msgstr "Une los archivos procesados, en el orden de la lista, en un solo PDF (el último paso)."
+
+#: batch.py:319
+msgid "Add at least one step."
+msgstr "Agregue al menos un paso."
+
+#: batch.py:324
+msgid "Combine all into one PDF must be the last step."
+msgstr "Combinar todo en un PDF debe ser el último paso."
+
+#: batch.py:463
+msgid "can't read"
+msgstr "no se puede leer"
+
+#: batch.py:853
+msgid "It doesn't allow changes, and its permissions password wasn't given."
+msgstr "No permite cambios y no se dio su contraseña de permisos."
+
+#: batch.py:869
+msgid "Processed"
+msgstr "Procesados"
+
+#: batch.py:328
+msgid "Save as PDF/A must come after the steps that change the document (only Export and Combine can follow it)."
+msgstr "Guardar como PDF/A debe ir después de los pasos que cambian el documento (solo Exportar y Combinar pueden ir después)."
+
+#: batch.py:458
+msgid "protected"
+msgstr "protegido"
+
+#: batch.py:460
+msgid "not a PDF"
+msgstr "no es un PDF"
+
+#: batch.py:592
+msgid "This PDF is protected against changes. Its permissions password is needed."
+msgstr "Este PDF está protegido contra cambios. Se necesita su contraseña de permisos."
+
+#: batch.py:632
+msgid "Its passwords are needed to keep its protection: add Remove password or Add password, or give its permissions password."
+msgstr "Se necesitan sus contraseñas para mantener su protección: agregue Quitar contraseña o Agregar contraseña, o dé su contraseña de permisos."
+
+#: batch.py:815
+msgid "Stopped: nothing was written for this file."
+msgstr "Detenido: no se escribió nada de este archivo."
+
+#: batch.py:988
+msgid "OCR: every page already has text."
+msgstr "OCR: todas las páginas ya tienen texto."
+
+#: batch.py:1062
+msgid "It's password-protected, and PDF/A doesn't allow encryption: put Remove password before Save as PDF/A."
+msgstr "Está protegido con contraseña y PDF/A no permite cifrado: ponga Quitar contraseña antes de Guardar como PDF/A."
+
+#: batch.py:1149
+msgid "No form fields to flatten"
+msgstr "No hay campos de formulario que acoplar"
+
+#: batch.py:1157
+msgid "No redaction marks to apply"
+msgstr "No hay marcas de censura que aplicar"
+
+#: batch.py:1205
+msgid "Already as small as it gets: kept as it was"
+msgstr "Ya es lo más pequeño posible: se dejó como estaba"
+
+#: batch.py:1228
+msgid "No page to turn"
+msgstr "Ninguna página que girar"
+
+#: batch.py:1243
+msgid "Every page looks blank: none was deleted"
+msgstr "Todas las páginas parecen en blanco: no se eliminó ninguna"
+
+#: batch.py:1266
+msgid "It had no password"
+msgstr "No tenía contraseña"
+
+#: batch.py:1318
+msgid "Not combined: the run was canceled."
+msgstr "No se combinó: el proceso se canceló."
+
+#: batch.py:1321
+msgid "No file to combine."
+msgstr "No hay archivos que combinar."
+
+#: batch.py:83
+msgid "Accuracy"
+msgstr "Precisión"
+
+#: batch.py:93
+msgid "Picture instead of text"
+msgstr "Imagen en lugar de texto"
+
+#: batch.py:123
+msgid "Redaction marks not applied yet"
+msgstr "Marcas de censura aún no aplicadas"
+
+#: batch.py:128
+msgid "Comments and markups too"
+msgstr "También comentarios y marcas"
+
+#: batch.py:137
+msgid "Words or phrases (one per line)"
+msgstr "Palabras o frases (una por línea)"
+
+#: batch.py:148
+msgid "Image quality"
+msgstr "Calidad de imagen"
+
+#: batch.py:153
+msgid "Turn"
+msgstr "Girar"
+
+#: batch.py:156
+msgid "Which pages"
+msgstr "Qué páginas"
+
+#: batch.py:169
+msgid "Allow printing"
+msgstr "Permitir imprimir"
+
+#: batch.py:170
+msgid "Allow copying text and images"
+msgstr "Permitir copiar texto e imágenes"
+
+#: batch.py:171
+msgid "Allow adding comments and markups"
+msgstr "Permitir agregar comentarios y marcas"
+
+#: batch.py:172
+msgid "Allow filling in form fields and signing"
+msgstr "Permitir llenar campos de formulario y firmar"
+
+#: batch.py:173
+msgid "Allow changing the document"
+msgstr "Permitir cambiar el documento"
+
+#: batch.py:174
+msgid "Allow inserting, deleting and rotating pages"
+msgstr "Permitir insertar, eliminar y girar páginas"
+
+#: batch.py:182
+msgid "Subject"
+msgstr "Asunto"
+
+#: batch.py:182
+msgid "Keywords"
+msgstr "Palabras clave"
+
+#: batch.py:190
+msgid "Picture resolution"
+msgstr "Resolución de las imágenes"
+
+#: batch.py:194
+msgid "File name"
+msgstr "Nombre del archivo"
+
+#: batch.py:195
+msgid "A bookmark for each file"
+msgstr "Un marcador para cada archivo"
+
+#: batch.py:196
+msgid "Also save each file"
+msgstr "Guardar también cada archivo"
+
+#: batch.py:331
+msgid "PDF/A doesn't allow passwords: leave out Add password, or make a separate run for it."
+msgstr "PDF/A no permite contraseñas: quite Agregar contraseña o hágalo en otro proceso."
+
+#: batch.py:536
+msgid "It's password-protected and no password was given."
+msgstr "Está protegido con contraseña y no se dio ninguna."
+
+#: batch.py:786
+msgid "It's digitally signed: changing it would make the signature invalid."
+msgstr "Tiene firma digital: cambiarlo invalidaría la firma."
+
+#: batch.py:890
+msgid "Its output would replace the original file. Choose another folder or name, or allow replacing the original files."
+msgstr "El resultado reemplazaría el archivo original. Elija otra carpeta u otro nombre, o permita reemplazar los archivos originales."
+
+#: batch.py:1073
+msgid "PDF/A-{part}b"
+msgstr "PDF/A-{part}b"
+
+#: batch.py:1246
+msgid "Deleted blank page(s): {pages}"
+msgstr "Páginas en blanco eliminadas: {pages}"
+
+#: batch.py:1410
+msgid "Output"
+msgstr "Salida"
+
+#: batch.py:1410
+msgid "Details"
+msgstr "Detalles"
+
+#: batch.py:110
+msgid "Position"
+msgstr "Posición"
+
+#: batch.py:115
+msgid "Bates prefix"
+msgstr "Prefijo Bates"
+
+#: batch.py:116
+msgid "First Bates number"
+msgstr "Primer número Bates"
+
+#: batch.py:117
+msgid "Bates digits"
+msgstr "Dígitos Bates"
+
+#: batch.py:311
+msgid "Page range {part} isn't valid."
+msgstr "El intervalo de páginas {part} no es válido."
+
+#: batch.py:741
+msgid "Not processed: the run was canceled."
+msgstr "No procesado: el proceso se canceló."
+
+#: batch.py:915
+msgid "{name} is open with unsaved changes."
+msgstr "{name} está abierto con cambios sin guardar."
+
+#: batch.py:1075
+msgid "PDF/A: {n} problem(s) couldn't be fixed (File > Check PDF/A lists them)"
+msgstr "PDF/A: no se pudieron corregir {n} problema(s) (Archivo > Revisar PDF/A los lista)"
+
+#: batch.py:1084
+msgid "{step}: none of the pages chosen are in this file."
+msgstr "{step}: ninguna de las páginas elegidas está en este archivo."
+
+#: batch.py:1098
+msgid "Bates {first} to {last}"
+msgstr "Bates {first} a {last}"
+
+#: batch.py:1140
+msgid "{n} redaction mark(s) not applied yet were kept as marks"
+msgstr "{n} marca(s) de censura aún no aplicadas se conservaron como marcas"
+
+#: batch.py:1323
+msgid "Combining {n} files..."
+msgstr "Combinando {n} archivos…"
+
+#: batch.py:1338
+msgid "{n} files, {pages} pages"
+msgstr "{n} archivos, {pages} páginas"
+
+#: batch.py:153
+msgid "90° clockwise"
+msgstr "90° en el sentido del reloj"
+
+#: batch.py:154
+msgid "180°"
+msgstr "180°"
+
+#: batch.py:155
+msgid "90° counterclockwise"
+msgstr "90° en sentido contrario al reloj"
+
+#: batch.py:157
+msgid "Odd pages"
+msgstr "Páginas impares"
+
+#: batch.py:157
+msgid "Even pages"
+msgstr "Páginas pares"
+
+#: batch.py:158
+msgid "Landscape pages"
+msgstr "Páginas horizontales"
+
+#: batch.py:158
+msgid "Portrait pages"
+msgstr "Páginas verticales"
+
+#: batch.py:187
+msgid "Microsoft Word (.docx)"
+msgstr "Microsoft Word (.docx)"
+
+#: batch.py:187
+msgid "Microsoft Excel (.xlsx)"
+msgstr "Microsoft Excel (.xlsx)"
+
+#: batch.py:188
+msgid "Microsoft PowerPoint (.pptx)"
+msgstr "Microsoft PowerPoint (.pptx)"
+
+#: batch.py:188
+msgid "Images (PNG)"
+msgstr "Imágenes (PNG)"
+
+#: batch.py:189
+msgid "Images (JPEG)"
+msgstr "Imágenes (JPEG)"
+
+#: batch.py:189
+msgid "Plain text (.txt)"
+msgstr "Texto sin formato (.txt)"
+
+#: batch.py:338
+msgid "{step}: type an open password, a permissions password, or both."
+msgstr "{step}: escriba una contraseña de apertura, una de permisos o ambas."
+
+#: batch.py:345
+msgid "{step}: type the words to look for."
+msgstr "{step}: escriba las palabras que buscar."
+
+#: batch.py:508
+msgid "It isn't a PDF KanzonasPDF can read ({error})."
+msgstr "No es un PDF que KanzonasPDF pueda leer ({error})."
+
+#: batch.py:533
+msgid "The password given doesn't open it."
+msgstr "La contraseña dada no lo abre."
+
+#: batch.py:955
+msgid "Nothing needed changing: copied as it was."
+msgstr "No hacía falta cambiar nada: se copió tal como estaba."
+
+#: batch.py:1342
+msgid "{n} file(s) left out: see above"
+msgstr "{n} archivo(s) quedaron fuera: vea arriba"
+
+#: batch.py:341
+msgid "{step}: use a different password for permissions: with the same one, anyone who can open it can change it."
+msgstr "{step}: use otra contraseña para los permisos: con la misma, cualquiera que pueda abrirlo puede cambiarlo."
+
+#: batch.py:369
+msgid "{step}: \"{pages}\" isn't a list of pages such as 1-3, 5, 8-."
+msgstr "{step}: \"{pages}\" no es una lista de páginas como 1-3, 5, 8-."
+
+#: batch.py:781
+msgid "Couldn't read it: {error}"
+msgstr "No se pudo leer: {error}"
+
+#: batch.py:356
+msgid "{step}: type something in at least one position."
+msgstr "{step}: escriba algo en al menos una posición."
+
+#: batch.py:349
+msgid "{step}: the picture {path} isn't there."
+msgstr "{step}: la imagen {path} no está."
+
+#: batch.py:352
+msgid "{step}: type the text or choose a picture."
+msgstr "{step}: escriba el texto o elija una imagen."
+
+#: batch.py:359
+msgid "{step}: type the text."
+msgstr "{step}: escriba el texto."
+
+#: batch.py:905
+msgid "{name} already exists."
+msgstr "{name} ya existe."
+
+#: batch.py:362
+msgid "{step}: type at least one property."
+msgstr "{step}: escriba al menos una propiedad."
+
+#: batch.py:364
+msgid "{step}: type a file name."
+msgstr "{step}: escriba un nombre de archivo."
+
+#: batch_ui.py:22
+msgid "Ask for the password"
+msgstr "Pedir la contraseña"
+
+#: batch_ui.py:22
+msgid "Skip them"
+msgstr "Omitirlos"
+
+#: batch_ui.py:23
+msgid "Ask"
+msgstr "Preguntar"
+
+#: batch_ui.py:23
+msgid "Add a number: name (2).pdf"
+msgstr "Agregar un número: nombre (2).pdf"
+
+#: batch_ui.py:24
+msgid "Skip the file"
+msgstr "Omitir el archivo"
+
+#: batch_ui.py:69
+msgid "{name} is password-protected. Its password:"
+msgstr "{name} está protegido con contraseña. Su contraseña:"
+
+#: batch_ui.py:70
+msgid "{name} doesn't allow changes. Its permissions password:"
+msgstr "{name} no permite cambios. Su contraseña de permisos:"
+
+#: batch_ui.py:75
+msgid "It's tried first on the next protected files, so a set that shares one password is asked once."
+msgstr "Se prueba primero en los siguientes archivos protegidos, así que para un grupo que comparte una contraseña se pregunta una sola vez."
+
+#: batch_ui.py:81
+msgid "Skip this file"
+msgstr "Omitir este archivo"
+
+#: batch_ui.py:82
+msgid "Skip all protected files"
+msgstr "Omitir todos los archivos protegidos"
+
+#: batch_ui.py:97
+msgid "Batch report"
+msgstr "Informe del proceso por lotes"
+
+#: batch_ui.py:124
+msgid "Save report..."
+msgstr "Guardar informe…"
+
+#: batch_ui.py:141
+msgid "Save report"
+msgstr "Guardar informe"
+
+#: batch_ui.py:171
+msgid "Batch processing"
+msgstr "Procesamiento por lotes"
+
+#: batch_ui.py:188
+msgid "Save recipe..."
+msgstr "Guardar receta…"
+
+#: batch_ui.py:190
+msgid "Delete recipe"
+msgstr "Eliminar receta"
+
+#: batch_ui.py:205
+msgid "Add files, add steps, then Run."
+msgstr "Agregue archivos, agregue pasos y luego Ejecutar."
+
+#: batch_ui.py:218
+msgid "Report..."
+msgstr "Informe…"
+
+#: batch_ui.py:223
+msgid "Run"
+msgstr "Ejecutar"
+
+#: batch_ui.py:228
+msgid "Finish the file being processed, then stop"
+msgstr "Terminar el archivo en proceso y luego detenerse"
+
+#: batch_ui.py:247
+msgid "Files"
+msgstr "Archivos"
+
+#: batch_ui.py:254
+msgid "Add folder..."
+msgstr "Agregar carpeta…"
+
+#: batch_ui.py:256
+msgid "Include subfolders"
+msgstr "Incluir subcarpetas"
+
+#: batch_ui.py:280
+msgid "Files are processed in this order (Bates numbers and Combine follow it). Drop files or folders here."
+msgstr "Los archivos se procesan en este orden (los números Bates y Combinar lo siguen). Suelte archivos o carpetas aquí."
+
+#: batch_ui.py:299
+msgid "Add folder"
+msgstr "Agregar carpeta"
+
+#: batch_ui.py:383
+msgid "Steps (done in this order)"
+msgstr "Pasos (en este orden)"
+
+#: batch_ui.py:391
+msgid "Add step"
+msgstr "Agregar paso"
+
+#: batch_ui.py:544
+msgid "(choose a recipe)"
+msgstr "(elija una receta)"
+
+#: batch_ui.py:568
+msgid "Save recipe"
+msgstr "Guardar receta"
+
+#: batch_ui.py:568
+msgid "Recipe name:"
+msgstr "Nombre de la receta:"
+
+#: batch_ui.py:595
+msgid "A \"Processed\" folder next to each file"
+msgstr "Una carpeta \"Procesados\" junto a cada archivo"
+
+#: batch_ui.py:596
+msgid "This folder:"
+msgstr "Esta carpeta:"
+
+#: batch_ui.py:605
+msgid "Keep the folder structure"
+msgstr "Conservar la estructura de carpetas"
+
+#: batch_ui.py:607
+msgid "Files from subfolders of an added folder go into the same subfolders of the output folder"
+msgstr "Los archivos de subcarpetas de una carpeta agregada van a las mismas subcarpetas de la carpeta de salida"
+
+#: batch_ui.py:626
+msgid "Allow replacing the original files"
+msgstr "Permitir reemplazar los archivos originales"
+
+#: batch_ui.py:627
+msgid "Off: a result never replaces the file it was made from"
+msgstr "Desmarcado: un resultado nunca reemplaza el archivo del que se hizo"
+
+#: batch_ui.py:633
+msgid "Output folder"
+msgstr "Carpeta de salida"
+
+#: batch_ui.py:34
+msgid "Folder"
+msgstr "Carpeta"
+
+#: batch_ui.py:129
+msgid "Open the output folder"
+msgstr "Abrir la carpeta de salida"
+
+#: batch_ui.py:183
+msgid "Recipe:"
+msgstr "Receta:"
+
+#: batch_ui.py:208
+msgid "This file:"
+msgstr "Este archivo:"
+
+#: batch_ui.py:212
+msgid "All files:"
+msgstr "Todos los archivos:"
+
+#: batch_ui.py:273
+msgid "Password-protected files:"
+msgstr "Archivos protegidos con contraseña:"
+
+#: batch_ui.py:565
+msgid "Add the steps first."
+msgstr "Agregue primero los pasos."
+
+#: batch_ui.py:614
+msgid "File name:"
+msgstr "Nombre del archivo:"
+
+#: batch_ui.py:619
+msgid "{name}: the file's name, {n}: its number in the list, {date}: today, {bates}: its first Bates number"
+msgstr "{name}: el nombre del archivo, {n}: su número en la lista, {date}: hoy, {bates}: su primer número Bates"
+
+#: batch_ui.py:621
+msgid "If the file is already there:"
+msgstr "Si el archivo ya existe:"
+
+#: batch_ui.py:690
+msgid "Add the files to process."
+msgstr "Agregue los archivos que procesar."
+
+#: batch_ui.py:694
+msgid "Choose the output folder."
+msgstr "Elija la carpeta de salida."
+
+#: batch_ui.py:778
+msgid "Stop now"
+msgstr "Detener ya"
+
+#: batch_ui.py:779
+msgid "Stop at once: the file being processed is left out (nothing half-written is left)"
+msgstr "Detener de inmediato: el archivo en proceso queda fuera (no queda nada a medio escribir)"
+
+#: batch_ui.py:781
+msgid "Finishing the current file, then stopping..."
+msgstr "Terminando el archivo actual; luego se detendrá…"
+
+#: batch_ui.py:784
+msgid "Stopping..."
+msgstr "Deteniendo…"
+
+#: batch_ui.py:822
+msgid "Skip"
+msgstr "Omitir"
+
+#: batch_ui.py:823
+msgid "Skip all"
+msgstr "Omitir todos"
+
+#: batch_ui.py:817
+msgid "{name} is already in {folder}."
+msgstr "{name} ya está en {folder}."
+
+#: batch_ui.py:833
+msgid "Stop the batch? The file being processed is left out; the files done so far stay."
+msgstr "¿Detener el proceso? El archivo en proceso queda fuera; los archivos ya terminados se conservan."
+
+#: batch_ui.py:102
+msgid "Done: {done}   Skipped: {skipped}   Failed: {failed}   Canceled: {canceled}"
+msgstr "Listos: {done}   Omitidos: {skipped}   Con error: {failed}   Cancelados: {canceled}"
+
+#: batch_ui.py:142
+msgid "CSV (opens in Excel)"
+msgstr "CSV (se abre en Excel)"
+
+#: batch_ui.py:470
+msgid "This step has no options."
+msgstr "Este paso no tiene opciones."
+
+#: batch_ui.py:585
+msgid "Delete the recipe {name}?"
+msgstr "¿Eliminar la receta {name}?"
+
+#: batch_ui.py:795
+msgid "Finished. Done: {done}, skipped: {skipped}, failed: {failed}."
+msgstr "Terminado. Listos: {done}, omitidos: {skipped}, con error: {failed}."
+
+#: batch_ui.py:574
+msgid "Replace the recipe {name}?"
+msgstr "¿Reemplazar la receta {name}?"
+
+#: batch_ui.py:705
+msgid "The results would replace the original files (such as {name}). Choose another folder or file name, or tick Allow replacing the original files."
+msgstr "Los resultados reemplazarían los archivos originales (como {name}). Elija otra carpeta u otro nombre de archivo, o marque Permitir reemplazar los archivos originales."
+
+#: batch_ui.py:534
+msgid "not saved in recipes"
+msgstr "no se guarda en las recetas"
+
+#: main_window.py:707
+msgid "&Batch processing..."
+msgstr "Procesamiento por &lotes..."
+
+#: main_window.py:708
+msgid "Do the same steps to many PDFs at once: OCR, PDF/A, Bates numbers, watermarks, flattening, smaller files"
+msgstr "Aplicar los mismos pasos a muchos PDF a la vez: OCR, PDF/A, números Bates, marcas de agua, acoplar, archivos más pequeños"
+
 # ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
 # ribbon tab fits a 1366-pixel screen in Spanish; the menus keep the full names
 msgctxt "ribbon"
@@ -8456,6 +10118,458 @@ msgstr "Subrayar"
 msgctxt "legend"
 msgid "Count"
 msgstr "Cantidad"
+
+# ---- Document > Accessibility (accessibility.py, accessibility_ui.py, autotag.py)
+msgid "The document"
+msgstr "El documento"
+
+msgid "Page content and tags"
+msgstr "Contenido de las páginas y etiquetas"
+
+msgid "Headings, lists, tables and figures"
+msgstr "Títulos, listas, tablas y figuras"
+
+msgid "Links, comments and tab order"
+msgstr "Vínculos, comentarios y orden de tabulación"
+
+msgid "Fonts and text"
+msgstr "Fuentes y texto"
+
+msgid "Check these yourself"
+msgstr "Compruebe esto usted mismo"
+
+msgid "Auto-tag"
+msgstr "Etiquetar automáticamente"
+
+msgid "Title and language"
+msgstr "Título e idioma"
+
+msgid "Alt text"
+msgstr "Texto alternativo"
+
+msgid "Link descriptions"
+msgstr "Descripciones de vínculos"
+
+msgid "Form field tooltips"
+msgstr "Información de los campos"
+
+msgid "Embed fonts"
+msgstr "Incrustar fuentes"
+
+msgid "Identify as PDF/UA"
+msgstr "Identificar como PDF/UA"
+
+msgid "The figure is no longer in the document's tags."
+msgstr "La figura ya no está en las etiquetas del documento."
+
+msgid "The document is locked with a password: open it with its password to check it."
+msgstr "El documento está bloqueado con una contraseña: ábralo con su contraseña para comprobarlo."
+
+msgid "The document isn't tagged: it has no structure for screen readers to follow (headings, paragraphs, lists, tables, pictures, reading order). Auto-tag makes one for documents with a simple layout."
+msgstr "El documento no está etiquetado: no tiene una estructura que puedan seguir los lectores de pantalla (títulos, párrafos, listas, tablas, imágenes, orden de lectura). Etiquetar automáticamente la crea en documentos con una composición sencilla."
+
+msgid "The tags are marked as suspect (the program that made them wasn't sure of them): check them."
+msgstr "Las etiquetas están marcadas como dudosas (el programa que las creó no estaba seguro de ellas): revíselas."
+
+msgid "The document has no XMP metadata (where its title is read from)."
+msgstr "El documento no tiene metadatos XMP (de donde se lee su título)."
+
+msgid "The document has no title."
+msgstr "El documento no tiene título."
+
+msgid "The window's title bar shows the file name, not the document's title (DisplayDocTitle isn't set)."
+msgstr "La barra de título de la ventana muestra el nombre del archivo, no el título del documento (DisplayDocTitle no está definido)."
+
+msgid "The document's language isn't set, so a screen reader may read it with the wrong voice and pronunciation."
+msgstr "El idioma del documento no está definido, así que un lector de pantalla puede leerlo con la voz y la pronunciación equivocadas."
+
+msgid "The file doesn't identify itself as PDF/UA (in its XMP metadata). Add the identifier once the rest of this list is fixed."
+msgstr "El archivo no se identifica como PDF/UA (en sus metadatos XMP). Añada el identificador cuando el resto de esta lista esté corregido."
+
+msgid "The document's security settings don't let assistive technology read its text. Change them in Protect > Security properties."
+msgstr "La configuración de seguridad del documento no deja que la tecnología de asistencia lea su texto. Cámbiela en Proteger > Propiedades de seguridad."
+
+msgid "The document uses both H and H1-H6 headings."
+msgstr "El documento usa a la vez títulos H y H1-H6."
+
+msgid "The reading order makes sense (the order screen readers read the tags in)."
+msgstr "El orden de lectura tiene sentido (el orden en que los lectores de pantalla leen las etiquetas)."
+
+msgid "Alternate text says what each picture shows, or why it's there."
+msgstr "El texto alternativo dice qué muestra cada imagen o para qué está."
+
+msgid "Headings, lists and tables are tagged as what they are, and nothing else is."
+msgstr "Los títulos, las listas y las tablas están etiquetados como lo que son, y nada más lo está."
+
+msgid "Text and its background contrast enough (4.5:1, or 3:1 for large text); color isn't the only way something is shown."
+msgstr "El texto contrasta lo suficiente con su fondo (4,5:1, o 3:1 para texto grande); el color no es la única manera de indicar algo."
+
+msgid "Headers, footers and page numbers are marked as artifacts; decoration too."
+msgstr "Los encabezados, los pies de página y los números de página están marcados como artefactos; la decoración también."
+
+msgid "Recognized text (OCR) is accurate."
+msgstr "El texto reconocido (OCR) es exacto."
+
+msgid "A selected object is tagged together with other content (text or other objects): it can't be marked as decoration on its own."
+msgstr "Un objeto seleccionado está etiquetado junto con otro contenido (texto u otros objetos): no se puede marcar como decoración por sí solo."
+
+msgid "The document has tags but doesn't say so (MarkInfo Marked is not true)."
+msgstr "El documento tiene etiquetas pero no lo indica (MarkInfo Marked no es true)."
+
+msgid "The title isn't in the XMP metadata (dc:title)."
+msgstr "El título no está en los metadatos XMP (dc:title)."
+
+msgid "The window's title bar is set to show the file name, not the document's title (DisplayDocTitle is false)."
+msgstr "La barra de título de la ventana está configurada para mostrar el nombre del archivo, no el título del documento (DisplayDocTitle es false)."
+
+msgid "A layer configuration has no name."
+msgstr "Una configuración de capas no tiene nombre."
+
+msgid "Content marked as an artifact sits inside tagged content."
+msgstr "Hay contenido marcado como artefacto dentro de contenido etiquetado."
+
+msgid "Tagged content sits inside content marked as an artifact."
+msgstr "Hay contenido etiquetado dentro de contenido marcado como artefacto."
+
+msgid "The tab order of the page's links and fields doesn't follow the document's structure (Tabs isn't S)."
+msgstr "El orden de tabulación de los vínculos y campos de la página no sigue la estructura del documento (Tabs no es S)."
+
+msgid "The document has {n} pages and no bookmarks: bookmarks let people move around a long document (Fix makes them from its headings; or Document > Bookmark tools, or the Bookmarks panel)."
+msgstr "El documento tiene {n} páginas y ningún marcador: los marcadores permiten moverse por un documento largo (Corregir los crea a partir de sus títulos; o Documento > Herramientas de marcadores, o el panel Marcadores)."
+
+msgid "A figure has no alternate text (a description for people who can't see it)."
+msgstr "Una figura no tiene texto alternativo (una descripción para quien no puede verla)."
+
+msgid "A formula has no alternate text."
+msgstr "Una fórmula no tiene texto alternativo."
+
+msgid "A table has no header cells (TH): screen readers can't say which column or row a cell belongs to. Check whether it has headers."
+msgstr "Una tabla no tiene celdas de encabezado (TH): los lectores de pantalla no pueden decir a qué columna o fila pertenece una celda. Compruebe si tiene encabezados."
+
+msgid "The document's language ({lang}) isn't a valid language tag."
+msgstr "El idioma del documento ({lang}) no es una etiqueta de idioma válida."
+
+msgid "{n} pieces of content are neither tagged nor marked as artifacts (decoration)."
+msgstr "{n} elementos de contenido no están etiquetados ni marcados como artefactos (decoración)."
+
+msgid "A section holds more than one H heading."
+msgstr "Una sección contiene más de un título H."
+
+msgid "The first heading is H{n}, not H1."
+msgstr "El primer título es H{n}, no H1."
+
+msgid "A link isn't tagged as a Link."
+msgstr "Un vínculo no está etiquetado como Link."
+
+msgid "A link has no description (Contents) for screen readers."
+msgstr "Un vínculo no tiene descripción (Contents) para los lectores de pantalla."
+
+msgid "The standard tag {tag} is mapped to {other}."
+msgstr "La etiqueta estándar {tag} está asignada a {other}."
+
+msgid "A table holds {what} where only rows belong."
+msgstr "Una tabla contiene {what} donde solo van filas."
+
+msgid "A table row isn't in a table."
+msgstr "Una fila de tabla no está en una tabla."
+
+msgid "A table row holds something other than cells."
+msgstr "Una fila de tabla contiene algo que no son celdas."
+
+msgid "A heading level is skipped: H{a} is followed by H{b}."
+msgstr "Se salta un nivel de título: a H{a} le sigue H{b}."
+
+msgid "A form field isn't tagged as a Form."
+msgstr "Un campo de formulario no está etiquetado como Form."
+
+msgid "A form field has no tooltip (a name screen readers say)."
+msgstr "Un campo de formulario no tiene información sobre el campo (un nombre que dicen los lectores de pantalla)."
+
+msgid "The text in font {font} can't be read as letters (no Unicode mapping): screen readers, search and copying get nonsense."
+msgstr "El texto en la fuente {font} no se puede leer como letras (no tiene correspondencia Unicode): los lectores de pantalla, la búsqueda y la copia obtienen texto sin sentido."
+
+msgid "Go to page {n}"
+msgstr "Ir a la página {n}"
+
+#: bookmarks_auto.py
+msgid "{title}, page {page}"
+msgstr "{title}, página {page}"
+
+msgid "A table header cell (TH) doesn't say whether it heads a column or a row (Scope)."
+msgstr "Una celda de encabezado de tabla (TH) no indica si encabeza una columna o una fila (Scope)."
+
+msgid "A table part ({what}) isn't in a table."
+msgstr "Una parte de tabla ({what}) no está en una tabla."
+
+msgid "A table part ({what}) holds something other than rows."
+msgstr "Una parte de tabla ({what}) contiene algo que no son filas."
+
+msgid "A table cell isn't in a row."
+msgstr "Una celda de tabla no está en una fila."
+
+msgid "A printer's mark is tagged as content."
+msgstr "Una marca de impresora está etiquetada como contenido."
+
+msgid "The page has a trap network annotation, which PDF/UA doesn't allow."
+msgstr "La página tiene una anotación de red de reventado (trap network), que PDF/UA no permite."
+
+msgid "The tag {tag} is mapped in a circle."
+msgstr "La etiqueta {tag} está asignada en círculo."
+
+msgid "The tag {tag} doesn't map to a standard tag."
+msgstr "La etiqueta {tag} no se asigna a una etiqueta estándar."
+
+msgid "A list holds something other than list items."
+msgstr "Una lista contiene algo que no son elementos de lista."
+
+msgid "A list item isn't in a list."
+msgstr "Un elemento de lista no está en una lista."
+
+msgid "A list item holds something other than a label and a body."
+msgstr "Un elemento de lista contiene algo que no es una etiqueta y un cuerpo."
+
+msgid "A comment or markup ({kind}) isn't tagged as an Annot."
+msgstr "Un comentario o marca ({kind}) no está etiquetado como Annot."
+
+msgid "A comment or markup ({kind}) has no text describing it (Contents)."
+msgstr "Un comentario o marca ({kind}) no tiene texto que lo describa (Contents)."
+
+msgid "A list's numbering ({what}) isn't one PDF knows."
+msgstr "La numeración de una lista ({what}) no es una que PDF conozca."
+
+msgid "A list label or body isn't in a list item."
+msgstr "La etiqueta o el cuerpo de una lista no está en un elemento de lista."
+
+msgid "Checking accessibility..."
+msgstr "Comprobando la accesibilidad..."
+
+msgid "Check accessibility"
+msgstr "Comprobar accesibilidad"
+
+msgid "The tooltip is what screen readers say for a field (and what a tip shows over it). Each is offered from the words next to the field: check and correct them. Double-click a line to go to its page."
+msgstr "La información del campo es lo que dicen los lectores de pantalla para un campo (y lo que muestra una sugerencia sobre él). Cada una se propone a partir de las palabras junto al campo: revíselas y corríjalas. Haga doble clic en una línea para ir a su página."
+
+msgid "Field"
+msgstr "Campo"
+
+msgid "The description is what screen readers say for a link. Each is offered from the words the link covers, or where it goes: check and correct them. Double-click a line to go to its page."
+msgstr "La descripción es lo que dicen los lectores de pantalla para un vínculo. Cada una se propone a partir de las palabras que cubre el vínculo, o de adónde lleva: revíselas y corríjalas. Haga doble clic en una línea para ir a su página."
+
+msgid "Reading the pages..."
+msgstr "Leyendo las páginas..."
+
+msgid "Check the result with Check accessibility."
+msgstr "Revise el resultado con Comprobar accesibilidad."
+
+msgid "It checks what a program can check of PDF/UA (ISO 14289-1), the standard for accessible PDF that WCAG 2.1 and accessibility laws point to, following the Matterhorn Protocol of the PDF Association. Some things only a person can judge (listed at the end). For a formal validation, use PAC 2024 (free, for Windows: {pac}) or veraPDF's PDF/UA profile ({vera})."
+msgstr "Comprueba lo que un programa puede comprobar de PDF/UA (ISO 14289-1), la norma de PDF accesible a la que remiten WCAG 2.1 y las leyes de accesibilidad, según el Protocolo Matterhorn de la PDF Association. Algunas cosas solo las puede juzgar una persona (se enumeran al final). Para una validación formal, use PAC 2024 (gratuito, para Windows: {pac}) o el perfil PDF/UA de veraPDF ({vera})."
+
+msgid "Fix..."
+msgstr "Corregir..."
+
+msgid "Run the fix of the selected line, then check again"
+msgstr "Aplicar la corrección de la línea seleccionada y volver a comprobar"
+
+msgid "Check again"
+msgstr "Volver a comprobar"
+
+msgid "Nothing found among what a program can check. Check the last group yourself."
+msgstr "No se encontró nada entre lo que un programa puede comprobar. Revise usted mismo el último grupo."
+
+msgid "The title is what screen readers announce and the window shows (not the file name); the language sets the voice and pronunciation screen readers use."
+msgstr "El título es lo que anuncian los lectores de pantalla y muestra la ventana (no el nombre del archivo); el idioma define la voz y la pronunciación que usan los lectores de pantalla."
+
+msgid "Title and language set"
+msgstr "Título e idioma definidos"
+
+msgid "Tab order follows the structure on every page"
+msgstr "El orden de tabulación sigue la estructura en todas las páginas"
+
+msgid "Identified as PDF/UA-1"
+msgstr "Identificado como PDF/UA-1"
+
+msgid "This document has no form fields."
+msgstr "Este documento no tiene campos de formulario."
+
+msgid "This document has no links."
+msgstr "Este documento no tiene vínculos."
+
+msgid "What the picture shows, or what it's for, in a sentence or two"
+msgstr "Qué muestra la imagen, o para qué está, en una o dos frases"
+
+msgid "Decorative (an artifact: screen readers skip it)"
+msgstr "Decorativa (un artefacto: los lectores de pantalla la saltan)"
+
+msgid "Describe each figure for people who can't see it: what it shows, or what it's there for. A picture that only decorates is marked Decorative instead. Double-click a figure to go to its page."
+msgstr "Describa cada figura para quien no puede verla: qué muestra o para qué está. Una imagen que solo decora se marca como Decorativa. Haga doble clic en una figura para ir a su página."
+
+msgid "Decorative"
+msgstr "Decorativa"
+
+msgid "Alternate text is kept in the document's tags, and this document isn't tagged. Auto-tag it first?"
+msgstr "El texto alternativo se guarda en las etiquetas del documento, y este documento no está etiquetado. ¿Etiquetarlo automáticamente primero?"
+
+msgid "The document's tags have no figures."
+msgstr "Las etiquetas del documento no tienen figuras."
+
+msgid "Auto-tag gives this untagged document the tags screen readers follow: headings (by size and weight), paragraphs, bulleted and numbered lists, tables drawn with lines, figures (pictures: describe them afterwards with Alt text), links, form fields and comments, in reading order (top to bottom, columns left to right). Headers, footers, page numbers and drawn lines become artifacts (decoration). What it can't recognize for sure is tagged as a paragraph. It suits simple layouts: check the result with Check accessibility and, for a formal validation, PAC 2024 or veraPDF. The pages look the same; Ctrl+Z undoes it."
+msgstr "Etiquetar automáticamente da a este documento sin etiquetas las etiquetas que siguen los lectores de pantalla: títulos (por tamaño y grosor), párrafos, listas con viñetas y numeradas, tablas dibujadas con líneas, figuras (imágenes: descríbalas después con Texto alternativo), vínculos, campos de formulario y comentarios, en orden de lectura (de arriba abajo, columnas de izquierda a derecha). Los encabezados, los pies de página, los números de página y las líneas dibujadas pasan a ser artefactos (decoración). Lo que no puede reconocer con seguridad se etiqueta como párrafo. Es adecuado para composiciones sencillas: revise el resultado con Comprobar accesibilidad y, para una validación formal, con PAC 2024 o veraPDF. Las páginas se ven igual; Ctrl+Z lo deshace."
+
+msgid "This document is tagged already. Auto-tag is for untagged documents; use Check accessibility to see what its tags lack."
+msgstr "Este documento ya está etiquetado. Etiquetar automáticamente es para documentos sin etiquetas; use Comprobar accesibilidad para ver lo que les falta a sus etiquetas."
+
+msgid "Tagged {pages} pages: {h} headings, {p} paragraphs, {l} lists, {t} tables, {f} figures, {a} links, fields and comments."
+msgstr "Se etiquetaron {pages} páginas: {h} títulos, {p} párrafos, {l} listas, {t} tablas, {f} figuras, {a} vínculos, campos y comentarios."
+
+msgid "Figures need a description: Document > Accessibility > Alt text."
+msgstr "Las figuras necesitan una descripción: Documento > Accesibilidad > Texto alternativo."
+
+msgid "Mark as decorative"
+msgstr "Marcar como decorativo"
+
+msgid "Select the pictures or shapes with Edit objects first."
+msgstr "Seleccione primero las imágenes o formas con Editar objetos."
+
+msgid "Mark as decorative is for pictures and shapes: select only those."
+msgstr "Marcar como decorativo es para imágenes y formas: seleccione solo esas."
+
+msgid "Fix"
+msgstr "Corrección"
+
+msgid "Rule"
+msgstr "Regla"
+
+msgid "Embedded 1 font"
+msgstr "Se incrustó 1 fuente"
+
+msgid "Alternate text"
+msgstr "Texto alternativo"
+
+msgid "(no description)"
+msgstr "(sin descripción)"
+
+msgid "Page {n}: {what}"
+msgstr "Página {n}: {what}"
+
+msgid "Tagged {pages} pages"
+msgstr "Se etiquetaron {pages} páginas"
+
+msgid "Marked 1 object as decorative"
+msgstr "Se marcó 1 objeto como decorativo"
+
+msgid "{n} problems found; the fixes here deal with {fixable} of them (select a line and click Fix). Double-click a line to go to its page."
+msgstr "Se encontraron {n} problemas; las correcciones de aquí resuelven {fixable} (seleccione una línea y haga clic en Corregir). Haga doble clic en una línea para ir a su página."
+
+msgid "The check still finds {n} problems. A file that says it is PDF/UA should meet the standard: identify it anyway?"
+msgstr "La comprobación aún encuentra {n} problemas. Un archivo que dice ser PDF/UA debería cumplir la norma: ¿identificarlo de todos modos?"
+
+msgid "Tooltips set for {n} fields"
+msgstr "Información definida para {n} campos"
+
+msgid "Descriptions set for {n} links"
+msgstr "Descripciones definidas para {n} vínculos"
+
+msgid "Alt text: {n} described, {d} decorative"
+msgstr "Texto alternativo: {n} descritas, {d} decorativas"
+
+msgid "Embedded {n} fonts"
+msgstr "Se incrustaron {n} fuentes"
+
+msgid "Marked {n} objects as decorative"
+msgstr "Se marcaron {n} objetos como decorativos"
+
+msgid "Can't fix it here"
+msgstr "No se corrige aquí"
+
+msgid "The characters on this page couldn't be matched with its drawing instructions (an unusual font), so the page is tagged as one paragraph, in drawing order."
+msgstr "Los caracteres de esta página no se pudieron emparejar con sus instrucciones de dibujo (una fuente poco común), así que la página se etiquetó como un solo párrafo, en orden de dibujo."
+
+msgid "This page has marked content already (a program tagged it before), so it was tagged by that marking: check its tags with Reading order."
+msgstr "Esta página ya tiene contenido marcado (un programa la etiquetó antes), así que se etiquetó según ese marcado: revise sus etiquetas con Orden de lectura."
+
+msgid "&Accessibility"
+msgstr "Accesi&bilidad"
+
+msgid "Check &accessibility..."
+msgstr "Comprobar &accesibilidad..."
+
+msgid "List what keeps this document from being accessible to screen readers (PDF/UA, WCAG), and what the fixes here deal with"
+msgstr "Enumerar lo que impide que este documento sea accesible para los lectores de pantalla (PDF/UA, WCAG) y lo que resuelven las correcciones de aquí"
+
+msgid "Auto-&tag..."
+msgstr "E&tiquetar automáticamente..."
+
+msgid "Tag an untagged document: headings, paragraphs, lists, tables, figures and reading order, for screen readers"
+msgstr "Etiquetar un documento sin etiquetas: títulos, párrafos, listas, tablas, figuras y orden de lectura, para los lectores de pantalla"
+
+msgid "Alt te&xt..."
+msgstr "Te&xto alternativo..."
+
+msgid "Describe each figure for people who can't see it, or mark it decorative"
+msgstr "Describir cada figura para quien no puede verla, o marcarla como decorativa"
+
+msgid "Title and &language..."
+msgstr "Título e &idioma..."
+
+msgid "The title screen readers announce and the window shows, and the document's language"
+msgstr "El título que anuncian los lectores de pantalla y muestra la ventana, y el idioma del documento"
+
+msgid "Form field t&ooltips..."
+msgstr "Información de los ca&mpos..."
+
+msgid "The name screen readers say for each form field"
+msgstr "El nombre que dicen los lectores de pantalla para cada campo de formulario"
+
+msgid "Lin&k descriptions..."
+msgstr "Descripciones de &vínculos..."
+
+msgid "What screen readers say for each link"
+msgstr "Lo que dicen los lectores de pantalla para cada vínculo"
+
+msgid "Ta&b order follows the tags"
+msgstr "Orden de ta&bulación según las etiquetas"
+
+msgid "Tab moves through links and fields in the order of the document's tags, on every page"
+msgstr "Tab recorre los vínculos y campos en el orden de las etiquetas del documento, en todas las páginas"
+
+msgid "Mark as &decorative"
+msgstr "Marcar como &decorativo"
+
+msgid "Make the pictures and shapes selected with Edit objects artifacts (decoration screen readers skip)"
+msgstr "Convertir las imágenes y formas seleccionadas con Editar objetos en artefactos (decoración que los lectores de pantalla saltan)"
+
+msgid "&Embed fonts"
+msgstr "Incrustar &fuentes"
+
+msgid "Embed the standard fonts that aren't (Helvetica, Times, Courier...), as Save as PDF/A does"
+msgstr "Incrustar las fuentes estándar que no lo están (Helvetica, Times, Courier...), como hace Guardar como PDF/A"
+
+msgid "Identify as PDF/&UA..."
+msgstr "Identificar como PDF/&UA..."
+
+msgid "Say in the file's metadata that it meets PDF/UA-1 (once the check finds nothing)"
+msgstr "Indicar en los metadatos del archivo que cumple PDF/UA-1 (cuando la comprobación no encuentre nada)"
+
+msgid "Reading order"
+msgstr "Orden de lectura"
+
+msgid "The reading order is the order of the document's tags, and this document isn't tagged: use Auto-tag first."
+msgstr "El orden de lectura es el orden de las etiquetas del documento, y este documento no está etiquetado: use primero Etiquetar automáticamente."
+
+msgid "Nothing on this page is tagged."
+msgstr "Nada de esta página está etiquetado."
+
+msgid "Screen readers read the tags of page {n} in this order. Drag a tag in the list (or use Move up and Move down) to change it; the numbers on the page follow. Tags in different sections stay in their sections."
+msgstr "Los lectores de pantalla leen las etiquetas de la página {n} en este orden. Arrastre una etiqueta en la lista (o use Subir y Bajar) para cambiarlo; los números de la página lo siguen. Las etiquetas de secciones distintas se quedan en sus secciones."
+
+msgid "Reading order of page {n} changed"
+msgstr "Se cambió el orden de lectura de la página {n}"
+
+msgid "&Reading order..."
+msgstr "Orden de &lectura..."
+
+msgid "The current page's tags numbered in reading order over the page: drag them to change it"
+msgstr "Las etiquetas de la página actual numeradas en orden de lectura sobre la página: arrástrelas para cambiarlo"
 
 # Edit text on text Add text wrote (one block); page text copied with Edit objects
 msgid "Editing the text you added: all of it, as one block. Alt+click edits a single line."
@@ -8518,3 +10632,282 @@ msgstr "Copiado: Ctrl+V lo pega en una página, aquí o en otro documento"
 
 msgid "Cut: Ctrl+V pastes it into a page, here or in another document"
 msgstr "Cortado: Ctrl+V lo pega en una página, aquí o en otro documento"
+
+# Document > Accessibility: tags kept in step with the pages (tag_upkeep.py); Repair tags
+msgid "The same tagged content (MCID) is drawn more than once on the page."
+msgstr "El mismo contenido etiquetado (MCID) se dibuja más de una vez en la página."
+
+msgid "Tagged content (an MCID) belongs to no tag."
+msgstr "Hay contenido etiquetado (un MCID) que no pertenece a ninguna etiqueta."
+
+msgid "A tag points at content or a markup that is no longer there."
+msgstr "Una etiqueta apunta a contenido o a un marcado que ya no está."
+
+msgid "The same content belongs to more than one tag."
+msgstr "El mismo contenido pertenece a más de una etiqueta."
+
+msgid "The structure tree's parent tree doesn't point back at the right tags (StructParents and ParentTree)."
+msgstr "El árbol de padres del árbol de estructura no apunta a las etiquetas correctas (StructParents y ParentTree)."
+
+msgid "Repair tags"
+msgstr "Reparar etiquetas"
+
+msgid "Tags repaired"
+msgstr "Etiquetas reparadas"
+
+# ---- Batch processing: redaction through Apply redactions' and Search & redact's own steps;
+# only marking says so, and the files are named -marked
+msgid "-marked"
+msgstr "-marcado"
+
+msgid "Permanently removes everything under the redaction marks already in each file, as Apply redactions does (and the words Search & redact marked, from the file's other places too)."
+msgstr "Quita para siempre todo lo que hay bajo las marcas de censura que ya tiene cada archivo, como Aplicar censuras (y las palabras que marcó Buscar y censurar, también de los demás lugares del archivo)."
+
+msgid "Marks every occurrence of each word or phrase for redaction, as Search & redact does (in hidden layers and where a page is cropped too), then applies the marks (with any marks already in the file) and removes the words from the file's other places. The originals stay as they are. Unticked, the words are only marked: nothing is removed yet, and those files are named name-marked."
+msgstr "Marca para censura cada aparición de cada palabra o frase, como Buscar y censurar (también en capas ocultas y donde una página está recortada), luego aplica las marcas (junto con las que ya tenga el archivo) y quita las palabras de los demás lugares del archivo. Los originales quedan como estaban. Desmarcado, las palabras solo se marcan: todavía no se quita nada, y esos archivos se llaman nombre-marcado."
+
+msgid "Apply the redactions (untick to only mark them: nothing is removed yet)"
+msgstr "Aplicar las censuras (desmarque para solo marcarlas: todavía no se quita nada)"
+
+msgid "(only marked: nothing removed)"
+msgstr "(solo marcado: no se quita nada)"
+
+msgid "Applied {n} redaction(s) on page(s) {pages}"
+msgstr "Se aplicaron {n} censura(s) en la(s) página(s) {pages}"
+
+msgid "also removed from {places}"
+msgstr "también se quitó de {places}"
+
+msgid "removed from {places}"
+msgstr "se quitó de {places}"
+
+msgid "{n} place(s) on the pages"
+msgstr "{n} lugar(es) en las páginas"
+
+msgid "Warning: \"{term}\" is still in the file after redacting ({places}): check it"
+msgstr "Atención: \"{term}\" sigue en el archivo después de censurar ({places}): revíselo"
+
+msgid "Redacted {n} match(es) on page(s) {pages}"
+msgstr "Se censuraron {n} coincidencia(s) en la(s) página(s) {pages}"
+
+msgid "Not found on the pages"
+msgstr "No está en las páginas"
+
+msgid "{n} redaction mark(s) already in the file applied too"
+msgstr "también se aplicaron {n} marca(s) de censura que ya tenía el archivo"
+
+msgid "Marked {n} occurrence(s) for redaction on page(s) {pages}; nothing was removed yet: open the file and use Apply redactions"
+msgstr "Se marcaron para censura {n} aparición(es) en la(s) página(s) {pages}; todavía no se quitó nada: abra el archivo y use Aplicar censuras"
+
+msgid "No matches on the pages: nothing was marked"
+msgstr "No hay coincidencias en las páginas: no se marcó nada"
+
+msgid "also found in {places}: Apply redactions removes it from there too"
+msgstr "también está en {places}: Aplicar censuras lo quita también de ahí"
+
+msgid "{terms} found only outside the pages, in {places}: nothing was removed (Search & redact in the open file offers to remove it)"
+msgstr "{terms} solo está fuera de las páginas, en {places}: no se quitó nada (Buscar y censurar, en el archivo abierto, ofrece quitarlo)"
+
+# View: full screen, presentation, page layout, reading view, read aloud, auto scroll
+
+msgid "Reading"
+msgstr "Lectura"
+
+msgid "The voice View > Read aloud reads with (the voices installed on this computer)"
+msgstr "La voz con la que lee Ver > Leer en voz alta (las voces instaladas en este equipo)"
+
+msgid "Read aloud voice:"
+msgstr "Voz para leer en voz alta:"
+
+msgid "Slower to the left, faster to the right; the middle is the voice's normal speed"
+msgstr "Más lento a la izquierda, más rápido a la derecha; en el centro, la velocidad normal de la voz"
+
+msgid "Test"
+msgstr "Probar"
+
+msgid "Reading speed:"
+msgstr "Velocidad de lectura:"
+
+msgid " pixels a second"
+msgstr " píxeles por segundo"
+
+msgid "Auto scroll speed:"
+msgstr "Velocidad del desplazamiento automático:"
+
+msgid "While Auto scroll runs, the Up and Down arrow keys change its speed. The Reading view's text size is set with its A+ and A− buttons or Ctrl+wheel."
+msgstr "Mientras funciona el desplazamiento automático, las flechas arriba y abajo cambian su velocidad. El tamaño de letra de la Vista de lectura se ajusta con sus botones A+ y A− o con Ctrl+rueda."
+
+msgid "The system's default voice"
+msgstr "La voz predeterminada del sistema"
+
+msgid "Slower"
+msgstr "Más lento"
+
+msgid "Faster"
+msgstr "Más rápido"
+
+msgid "Presentation"
+msgstr "Presentación"
+
+msgid "No speech is available on this computer: the system's text-to-speech couldn't be started."
+msgstr "No hay voz disponible en este equipo: no se pudo iniciar la conversión de texto a voz del sistema."
+
+msgid "No speech is available on this computer. Install Speech Dispatcher (the speech-dispatcher package, with a voice such as espeak-ng) and try again."
+msgstr "No hay voz disponible en este equipo. Instale Speech Dispatcher (el paquete speech-dispatcher, con una voz como espeak-ng) y vuelva a intentarlo."
+
+msgid "This is how KanzonasPDF reads to you."
+msgstr "Así es como KanzonasPDF le lee."
+
+msgid "Finished reading."
+msgstr "Lectura terminada."
+
+msgid "The speech stopped with an error."
+msgstr "La voz se detuvo por un error."
+
+msgid "There's no text to read on this page. A scanned page needs Recognize text (OCR) first."
+msgstr "No hay texto que leer en esta página. Una página escaneada necesita primero Reconocer texto (OCR)."
+
+msgid "Full screen"
+msgstr "Pantalla completa"
+
+msgid "Single page"
+msgstr "Una sola página"
+
+msgid "Continuous"
+msgstr "Continua"
+
+msgid "Two pages"
+msgstr "Dos páginas"
+
+msgid "Two pages continuous"
+msgstr "Dos páginas continuas"
+
+msgid "One page at a time; scrolling past its end turns the page"
+msgstr "Una página cada vez; al desplazarse más allá de su final, pasa a la siguiente"
+
+msgid "The pages one under the other, scrolling from one to the next"
+msgstr "Las páginas una debajo de otra, desplazándose de una a la siguiente"
+
+msgid "Two pages side by side, one spread at a time"
+msgstr "Dos páginas lado a lado, un par cada vez"
+
+msgid "Two pages side by side, the spreads one under the other"
+msgstr "Dos páginas lado a lado, los pares uno debajo de otro"
+
+msgid "Show cover page separately"
+msgstr "Mostrar la portada aparte"
+
+msgid "Reading view"
+msgstr "Vista de lectura"
+
+msgid "Read this page"
+msgstr "Leer esta página"
+
+msgid "Read from selected text"
+msgstr "Leer desde el texto seleccionado"
+
+msgid "Read the whole document"
+msgstr "Leer todo el documento"
+
+msgid "Pause or resume reading"
+msgstr "Pausar o reanudar la lectura"
+
+msgid "Stop reading"
+msgstr "Detener la lectura"
+
+msgid "Auto scroll"
+msgstr "Desplazamiento automático"
+
+msgid "Page layout"
+msgstr "Disposición de páginas"
+
+msgid "Read aloud"
+msgstr "Leer en voz alta"
+
+msgid "Full screen: Escape leaves it; the top edge has a bar"
+msgstr "Pantalla completa: Escape sale; en el borde superior hay una barra"
+
+msgid "Only the pages, on the whole screen: no toolbars, panels or menus. Move the pointer to the top edge for a slim bar; Escape leaves full screen"
+msgstr "Solo las páginas, en toda la pantalla: sin barras de herramientas, paneles ni menús. Lleve el puntero al borde superior para ver una barra delgada; Escape sale de la pantalla completa"
+
+msgid "Show the pages one at a time on the whole screen, for an audience: click or Space for the next page, B / W for a black or white screen, L for a laser pointer, Escape to end"
+msgstr "Mostrar las páginas de una en una en toda la pantalla, para un público: clic o Espacio para la página siguiente, B / W para una pantalla negra o blanca, L para un puntero láser, Escape para terminar"
+
+msgid "With two pages side by side, the first page alone on the right, so a book's left and right pages line up"
+msgstr "Con dos páginas lado a lado, la primera página sola a la derecha, para que coincidan las páginas izquierda y derecha de un libro"
+
+msgid "The page's text in a side panel, reflowed in large type you can make bigger or smaller (Ctrl+wheel), for small screens and tired eyes; the PDF isn't changed"
+msgstr "El texto de la página en un panel lateral, recompuesto con letra grande que puede agrandar o reducir (Ctrl+rueda), para pantallas pequeñas y vistas cansadas; el PDF no cambia"
+
+msgid "Read the page aloud with the computer's voice"
+msgstr "Leer la página en voz alta con la voz del equipo"
+
+msgid "Read aloud from the selected text (or from the top of this page) to the end of the document"
+msgstr "Leer en voz alta desde el texto seleccionado (o desde el principio de esta página) hasta el final del documento"
+
+msgid "Read the document aloud from the first page"
+msgstr "Leer el documento en voz alta desde la primera página"
+
+msgid "Scroll the document slowly by itself; Up and Down arrows change the speed, Escape stops"
+msgstr "Desplazar el documento despacio por sí solo; las flechas arriba y abajo cambian la velocidad, Escape lo detiene"
+
+msgid "Exit full screen"
+msgstr "Salir de pantalla completa"
+
+msgid "Back to the window with its toolbars and panels (Escape)"
+msgstr "Volver a la ventana con sus barras de herramientas y paneles (Escape)"
+
+msgid "Smaller text (Ctrl+wheel)"
+msgstr "Letra más pequeña (Ctrl+rueda)"
+
+msgid "Larger text (Ctrl+wheel)"
+msgstr "Letra más grande (Ctrl+rueda)"
+
+msgid "Auto scroll: {speed} pixels a second (Up and Down change it, Escape stops)"
+msgstr "Desplazamiento automático: {speed} píxeles por segundo (arriba y abajo lo cambian, Escape lo detiene)"
+
+msgid "Page {n} of {count}"
+msgstr "Página {n} de {count}"
+
+msgid "There's no text on this page. A scanned page needs Recognize text (OCR) first."
+msgstr "No hay texto en esta página. Una página escaneada necesita primero Reconocer texto (OCR)."
+
+# the ribbon's Reading tab (1.10)
+msgid "From selection"
+msgstr "Desde la selección"
+
+msgid "Pause"
+msgstr "Pausar"
+
+msgid "Stop"
+msgstr "Detener"
+
+msgid "Cover page apart"
+msgstr "Portada aparte"
+
+msgid "Screen"
+msgstr "Pantalla"
+
+msgid "Read"
+msgstr "Leer"
+
+msgid "Pause reading aloud, or go on from where it paused"
+msgstr "Pausar la lectura en voz alta, o seguir desde donde se pausó"
+
+msgid "Stop reading aloud"
+msgstr "Detener la lectura en voz alta"
+
+msgid "It's in the output folder, where this batch writes (a result of an earlier run): left out."
+msgstr "Está en la carpeta de salida, donde escribe este lote (un resultado de un proceso anterior): se deja fuera."
+
+msgid "{folder} leads out of the output folder (a link to another place): nothing was written there."
+msgstr "{folder} lleva fuera de la carpeta de salida (un vínculo a otro lugar): no se escribió nada ahí."
+
+msgid "hidden information removed (metadata, attachments, hidden text, scripts)"
+msgstr "se quitó la información oculta (metadatos, archivos adjuntos, texto oculto, scripts)"
+
+msgid "Warning: {n} attached file(s) kept, and what's inside them wasn't searched: tick Remove hidden information to remove them"
+msgstr "Advertencia: se conservaron {n} archivo(s) adjunto(s), y no se buscó en su contenido: marque Quitar la información oculta para quitarlos"
+
+msgid "Export comes before {step}: the exported copy would still hold what is redacted. Put Export after it."
+msgstr "Exportar va antes de {step}: la copia exportada aún tendría lo que se censura. Ponga Exportar después."

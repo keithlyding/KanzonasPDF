@@ -36,9 +36,12 @@ METAINFO = "io.github.keithlyding.kanzonaspdf.metainfo.xml"
 LICENSES = ("LICENSE.txt", "NOTICE.txt", "LICENSE-AGPL-3.0.txt")
 # plugins Qt loads only when asked for (embedded displays, VNC, Vulkan displays): a library
 # they need that's missing on a desktop is not an error
+# (and Read aloud's Speech Dispatcher plugin: it needs the computer's own libspeechd, which
+# comes with its speech-dispatcher service; without it Read aloud says how to install it)
 OPTIONAL_PLUGINS = ("platforms/libqeglfs.so", "platforms/libqminimalegl.so",
                     "platforms/libqvkkhrdisplay.so", "platforms/libqlinuxfb.so",
-                    "platforms/libqvnc.so", "egldeviceintegrations/")
+                    "platforms/libqvnc.so", "egldeviceintegrations/",
+                    "texttospeech/libqtexttospeech_speechd.so")
 # the versioned libraries left to the computer (excludelist): every kind of version name
 # they define, so that a need for a newer one than the oldest supported system has is
 # caught (GCC 14 code needs CXXABI_1.3.15 even when it needs no newer GLIBCXX version)

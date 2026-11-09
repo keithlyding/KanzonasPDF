@@ -28,8 +28,10 @@ FRAME = 16                  # a window's left and right borders on Windows 10 an
 LIMIT = SCREEN - FRAME      # the widest a tab may be: a full-width window that isn't maximized
 FONTS = ("Segoe UI", "Liberation Sans", "Arimo", "Arial")
 
-# What each tab had on it before the tabs were made to fit (1.9), on a button, under a
-# button's arrow or under a group's arrow: none of it may leave its tab.
+# What each tab had on it before the tabs were made to fit (1.9), and each tab added since, on
+# a button, under a button's arrow or under a group's arrow: none of it may leave its tab.
+# (Accessibility's Check, Auto-tag and Alt text joined the Pages tab, under the Document
+# group's arrow.)
 ON_TABS = {
     "Home": "a_actual a_cad_mouse a_fit_page a_fit_width a_mouse_hand a_mouse_standard a_zoom_in "
             "a_zoom_out t:addtext t:attach t:capture t:comment t:editobjects t:edittext "
@@ -50,8 +52,10 @@ ON_TABS = {
                "a_multi_sign a_remove_security a_sanitize a_search_redact a_security "
                "a_sig_details a_timestamp a_unlock t:date t:initials t:placeholder t:redact "
                "t:signature",
-    "Forms": "a_hl_fields t:f_check t:f_combo t:f_initials t:f_radio t:f_sign t:f_text",
-    "Pages": "a_attachments a_background a_bookmarks a_combine a_compare a_compress a_del_page "
+    "Forms": "a_check_required a_detect_fields a_field_props a_hl_fields a_tab_order "
+             "t:f_check t:f_combo t:f_initials t:f_radio t:f_sign t:f_text",
+    "Pages": "a_acc_alt a_acc_autotag a_acc_check "
+             "a_attachments a_background a_bookmarks a_combine a_compare a_compress a_del_page "
              "a_extract a_flatten a_from_images a_header a_insert_blank a_insert_pdf "
              "a_move_down a_move_up a_new a_ocr a_replace_pages a_rot_l a_rot_r a_scan "
              "a_sheet_links a_uncrop a_watermark t:crop",
@@ -59,6 +63,10 @@ ON_TABS = {
     "View": "a_chest a_collapse a_free_pan a_grid a_grid_settings a_group_names a_hl_fields "
             "a_manual a_markups a_menu_bar a_night a_palette a_props a_ribbon a_shortcuts "
             "a_show_markups a_sidebar a_snap_grid a_snap_objects a_snap_page a_split",
+    # (1.10: a tab of its own)
+    "Reading": "L:continuous L:single L:two L:two_continuous a_autoscroll a_cover "
+               "a_full_screen a_present a_read_doc a_read_from a_read_page a_read_pause "
+               "a_read_stop a_reflow",
     "CAD": "A:al_bottom A:al_hcenter A:al_left A:al_right A:al_top A:al_vmiddle A:dist_h "
            "A:dist_v A:z_back A:z_backward A:z_forward A:z_front a_snap_grid a_snap_objects "
            "a_snap_page c:align c:array c:copy c:delete c:mirror c:move c:rotate c:scale "
@@ -102,6 +110,8 @@ if font is not None:
         names.setdefault(id(a), "A:" + k)
     for k, a in w.cad_actions.items():
         names.setdefault(id(a), "c:" + k)
+    for k, a in w.layout_actions.items():
+        names.setdefault(id(a), "L:" + k)
     for k, v in vars(w).items():
         if isinstance(v, QAction):
             names.setdefault(id(v), k)

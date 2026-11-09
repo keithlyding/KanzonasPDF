@@ -2,7 +2,7 @@
 tests/test_battery_random.py runs in every build):
 
     QT_QPA_PLATFORM=offscreen python tests/battery_random.py OUT_FOLDER [--ops N] [--seed S]
-        [--undo-limit N] [--copy] [--render-every N]
+        [--undo-limit N] [--copy] [--render-every N] [--tagged]
 
 Thousands of random edits through the app's own steps (the ones the menus, tools and keys
 call: markups of every kind added, moved, resized, recolored, retyped, duplicated, restacked
@@ -10,14 +10,22 @@ and deleted; page text added, edited and replaced; pictures and shapes of the pa
 turned and deleted; words styled in Edit text and Add text (bold, italic, underline,
 strikethrough, color, size); pages rotated, inserted, duplicated, deleted, moved, reordered,
 cropped, scanned in (File > Scan into the current document, with pictures made here) and
-replaced from another PDF (Replace pages); bookmarks, watermarks, form fields, flattening, redaction marks applied), in a main
-window, with undo and redo runs and saves mixed in. Undo goes through MuPDF's journal
+replaced from another PDF (Replace pages); bookmarks (also made from headings and sheet
+numbers, sorted and styled) and tables of contents, watermarks, form fields (made, filled in,
+given calculations and formats), flattening, redaction marks applied; accessibility: auto-tag,
+title and language, tab order, tooltips, link descriptions, alt text, decoration, fonts), in a
+main window, with undo and redo runs and saves mixed in, and the page layout (View > Page
+layout: single page, continuous, two pages, cover page) and zoom changed between edits. Undo
+goes through MuPDF's journal
 (kanzonas/undo_journal.py), which MuPDF makes fragile: this is what finds its bugs.
 
 Checked:
 - after every step: nothing raised and no edit failed (modify's "Edit failed" box), the view
-  agrees with the document (its pages, their sizes, its cached markup boxes and text), every
-  markup reads back and is on one page only; an edit that changes the document adds one undo
+  agrees with the document (its pages, their sizes, its cached markup boxes and text, the
+  pages a single-page or two-page layout shows), every
+  markup reads back and is on one page only; once the document is tagged (Auto-tag), its
+  structure tree agrees with its pages (every MCID drawn once and held by one element,
+  the ParentTree pointing back, every markup tagged once: tag_upkeep.problems); an edit that changes the document adds one undo
   step and an undo or redo moves one step across (a mirror of the history is kept).
   An undo must bring back exactly the document as it was before that step, and a redo
   exactly as it was after it, compared byte for byte once written out the same way (see
@@ -36,7 +44,9 @@ mismatch, or the two pictures of a page drawn differently) and exits 1 if anythi
 By default the history has no limit, so the end goes back to the opened file through every
 step; --undo-limit 30 keeps the app's own limit (UNDO_LIMIT); --copy runs with a copy per
 edit instead of the journal (as up to 1.6, and where the journal can't serve);
---render-every N draws and compares the pages every N steps (1: after every step).
+--render-every N draws and compares the pages every N steps (1: after every step);
+--tagged opens the document tagged (Auto-tag's engine), so every step edits a tagged document
+and its tags are checked after each one.
 """
 
 import hashlib
@@ -272,8 +282,10 @@ class Failed(AssertionError):
 
 # ---- the battery -----------------------------------------------------------------------------
 class Battery:
-    def __init__(self, out, ops, seed, undo_limit=0, journal=True, log=None, render_every=25):
+    def __init__(self, out, ops, seed, undo_limit=0, journal=True, log=None, render_every=25,
+                 tagged=False):
         self.render_every = render_every
+        self.tagged = tagged
         self.out, self.ops, self.seed = out, ops, seed
         self.rnd = random.Random(seed)
         self.undo_limit = undo_limit
@@ -338,6 +350,14 @@ class Battery:
         from kanzonas.main_window import MainWindow
         undo_journal.install()      # (the app's patches of PyMuPDF are in, journal or not)
         path = sample(os.path.join(self.out, "random.pdf"))
+        if self.tagged:
+            # (--tagged: the document opened is tagged already, by Auto-tag's engine, so
+            # every step edits a tagged document and its tags are checked after each one)
+            from kanzonas import autotag
+            d = pymupdf.open(path)
+            autotag.apply(d, autotag.make_plans(d), lang="en-US")
+            d.saveIncr()
+            d.close()
         self.win = win = MainWindow()
         win.resize(1200, 900)
         win.show()
@@ -366,6 +386,7 @@ class Battery:
                 self.check_boxes()
                 self.after(kind)
                 self.check_view()
+                self.check_tags()
                 if i % self.render_every == self.render_every - 1:
                     self.check_render()
                     renders += 1
@@ -403,10 +424,11 @@ class Battery:
         except Exception:
             self.fail(traceback.format_exc())
         stats = ("%d steps in %.0f s (%s); %d pages, %d markups at the end; %d save/open round "
-                 "trips, %d render checks; %d steps undone and redone at the end" % (
+                 "trips, %d render checks; %d steps undone and redone at the end; %d steps on a tagged "
+                 "document, its tags checked" % (
                      done, took, ", ".join("%s %d" % kv for kv in sorted(self.counts.items())),
                      v.doc.page_count, sum(len(p["annots"]) for p in final.summary["pages"]),
-                     roundtrips, renders, n_undo))
+                     roundtrips, renders, n_undo, getattr(self, "tag_checks", 0)))
         v.dirty = False
         win.close()
         return stats
@@ -545,6 +567,18 @@ class Battery:
         if len(v.pages) != n or len(v.page_rects) != n:
             raise Failed("the view has %d pages (%d sizes), the document %d" % (
                 len(v.pages), len(v.page_rects), n))
+        # View > Page layout: one page (or spread) at a time shows only those; continuous
+        # layouts show every page; two pages side by side: a spread's pages on one row
+        shown = [i for i in range(n) if not v.pages[i].isHidden()]
+        want = v.spread(v.current_page()) if v.paged() else list(range(n))
+        if shown != want:
+            raise Failed("the %s layout shows pages %s, not %s" % (v.page_layout, shown, want))
+        if v.two_up():
+            for i in range(n):
+                row = v.spread(i)
+                if len(row) == 2 and not v.pages[row[0]].isHidden() and \
+                        v.pages[row[0]].y() != v.pages[row[1]].y():
+                    raise Failed("pages %s of a spread aren't side by side" % row)
         owner = {}
         for i in range(n):
             page = doc[i]
@@ -571,6 +605,20 @@ class Battery:
                 del v._word_cache[i]
                 if [w[:5] for w in v._words(i)] != [w[:5] for w in words]:
                     raise Failed("page %d: the cached text is old" % i)
+
+    def check_tags(self):
+        """A tagged document's tags agree with its pages (tag_upkeep.problems): every MCID
+        drawn once and held by one element, none held that isn't drawn, the ParentTree
+        pointing back at each, every markup, link and field tagged once, nothing left
+        neither tagged nor an artifact."""
+        from kanzonas import tag_upkeep
+        if not tag_upkeep.is_tagged(self.v.doc):
+            return
+        self.tag_checks = getattr(self, "tag_checks", 0) + 1
+        got = tag_upkeep.problems(self.v.doc)
+        if got:
+            raise Failed("the tags are out of step with the pages: " + "; ".join(
+                "page %s: %s" % (i + 1 if i is not None else "-", t) for i, t in got[:8]))
 
     def check_render(self):
         """Each page as the view draws it (through every cache it keeps) is the page as a
@@ -685,11 +733,15 @@ class Battery:
             (self.op_object_clip, 3), (self.op_across_pages, 2),
             (self.op_replace_text, 1), (self.op_scan, 1),
             (self.op_picture, 2), (self.op_objects, 4), (self.op_erase_content, 1),
-            (self.op_field, 2), (self.op_rotate_page, 3), (self.op_insert_blank, 2),
+            (self.op_field, 2), (self.op_form, 4), (self.op_rotate_page, 3),
+            (self.op_insert_blank, 2),
             (self.op_delete_page, 2), (self.op_move_page, 2), (self.op_reorder, 1),
             (self.op_duplicate_page, 1), (self.op_crop, 2), (self.op_bookmarks, 1),
-            (self.op_replace_pages, 2),
+            (self.op_auto_bookmarks, 2),
+            (self.op_replace_pages, 2), (self.op_layout, 3),
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
+            (self.op_review, 5),
+            (self.op_accessibility, 3),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -938,6 +990,67 @@ class Battery:
         with mock.patch.object(v, "paste_target", lambda: (i, self.point(i, 60))):
             v.paste()
         v.clear_selection()
+
+    def op_review(self):
+        """Review (review.py, xfdf.py): a reply to a markup or to a reply, a reply's text
+        changed, a reply deleted, a review status or check mark set, a page's comments
+        exported to XFDF or FDF and imported again as copies on another page, or sent back
+        with one of them changed."""
+        from kanzonas import review, xfdf
+        v = self.v
+        pages = [i for i in range(v.doc.page_count) if self.markups(i)]
+        if not pages:
+            return "none"
+        i = self.rnd.choice(pages)
+        t = v.threads(i)
+        linked = [x for x in self.markups(i) if x in t.links]
+        replies = [x for x in linked if t.links[x].role == "reply"]
+        roots = [x for x in self.markups(i) if x not in t.links]
+        what = self.rnd.choice(["reply", "reply", "nested", "status", "status", "edit",
+                                "delete", "exchange", "exchange", "resend"])
+        if what == "nested" and replies:
+            v.reply_to(i, self.rnd.choice(replies), self.typed())
+        elif what == "edit" and replies:
+            v.edit_reply(i, self.rnd.choice(replies), self.typed())
+        elif what == "delete" and replies:
+            v.delete_reply(i, self.rnd.choice(replies))
+        elif what == "status" and roots:
+            pick = self.rnd.sample(roots, self.rnd.randint(1, min(3, len(roots))))
+            v.set_review_status(i, pick, self.rnd.choice(review.REVIEW + review.MARKED))
+        elif what == "resend":
+            # the page's comments sent back with one changed: that one is replaced (its
+            # thread kept), the rest are already there (XFDF or FDF)
+            recs, _skipped = xfdf.records(v.doc, {i: roots[:6]})
+            if not recs:
+                return "none"
+            fdf = self.rnd.random() < 0.5
+            recs = xfdf.from_fdf(xfdf.to_fdf(recs)) if fdf else \
+                xfdf.from_xfdf(xfdf.to_xfdf(recs, "", xfdf.file_ids(v.doc)))
+            changed = self.rnd.choice(recs)
+            changed["keys"]["Contents"] = self.typed()
+            changed["keys"].pop("RC", None)
+            changed["keys"]["M"] = "D:20261108120000Z"
+            v.import_comments(recs)
+        elif what == "exchange":
+            recs, _skipped = xfdf.records(v.doc, {i: roots[:6]})
+            if self.rnd.random() < 0.5:
+                recs = xfdf.from_xfdf(xfdf.to_xfdf(recs))
+            else:
+                recs = xfdf.from_fdf(xfdf.to_fdf(recs))
+            to = self.page()
+            names = {r["keys"]["NM"]: "copy-%d-%s" % (self.step, k) for k, r in enumerate(recs)}
+            for r in recs:
+                r["page"] = to
+                r["keys"]["NM"] = names[r["keys"]["NM"]]
+                if r.get("irt"):
+                    r["irt"] = names.get(r["irt"], r["irt"])
+            if not recs:
+                return "none"
+            v.import_comments(recs)
+        elif roots:
+            v.reply_to(i, self.rnd.choice(roots), self.typed())
+        else:
+            return "none"
 
     def op_restack(self):
         if self.select_some() is None:
@@ -1280,6 +1393,68 @@ class Battery:
         i, x = self.rnd.choice(found)
         v._set_field(i, x, self.rnd.choice(["", "Jane Doe", self.typed()]))
 
+    def op_form(self):
+        """Smart forms: a text field made, a field given a calculation (Sum ... or a
+        formula) and a format, a number typed into a field (the calculated ones worked
+        out in the same step; 25 or 25% into a percent field), or a field deleted (the
+        calculated ones reading it worked out again without it)."""
+        from kanzonas import smart_forms
+        v = self.v
+        texts = [(i, w.xref, w.field_name) for i in range(v.doc.page_count)
+                 for w in v.doc[i].widgets() if w.field_type == pymupdf.PDF_WIDGET_TYPE_TEXT]
+        r = self.rnd.random()
+        if len(texts) < 3 or r < 0.2:
+            i = self.page()
+            a, b = self.box(i, 25, 120)
+            v.create_field(i, "f_text", a, pymupdf.Point(b.x, a.y + 20), False)
+            return
+        if r < 0.45:
+            i, x, name = self.rnd.choice(texts)
+            others = sorted({n for _i, _x, n in texts if n != name})
+            pick = self.rnd.sample(others, self.rnd.randint(1, min(3, len(others))))
+            esc = [re.sub(r"([^A-Za-z0-9_.])", r"\\\1", n) for n in pick]
+            calc = self.rnd.choice([
+                {"op": self.rnd.choice(smart_forms.OPS), "fields": pick},
+                {"formula": " %s " % self.rnd.choice("+-*/").join(esc) + " * 2"},
+                {"formula": "(%s) / 4" % " + ".join(esc)}, None])
+            fmt = self.rnd.choice([
+                None, {"kind": "number", "decimals": self.rnd.randint(0, 3), "sep": 0,
+                       "neg": self.rnd.choice([0, 2]), "currency": self.rnd.choice(["", "$"]),
+                       "prepend": True},
+                {"kind": "percent", "decimals": 1, "sep": 0}])
+            v.set_field_props(i, x, {"calc": calc, "format": fmt,
+                                     "required": self.rnd.random() < 0.3})
+            return
+        if r < 0.52:
+            i, x, _name = self.rnd.choice(texts)
+            v.delete_field(i, x)
+            return
+        i, x, _name = self.rnd.choice(texts)
+        v.enter_field_value(i, x, self.rnd.choice(["", "12", "3.5", "-4", "0", "1,250.75",
+                                                   "25%", "abc"]))
+
+    def op_layout(self):
+        """View > Page layout (as its menu does) and a zoom, between edits: changes nothing
+        in the document (and the edits after it, and the render check, work on pages shown
+        side by side, or one page or spread at a time)."""
+        from kanzonas import reading
+        from kanzonas.document_view import PAGE_LAYOUTS
+        win, v = self.win, self.v
+        if self.rnd.random() < 0.3:
+            win.a_cover.setChecked(not win.a_cover.isChecked())
+            reading.set_layout(win, None)
+        else:
+            reading.set_layout(win, self.rnd.choice(PAGE_LAYOUTS))
+        k = self.rnd.random()
+        if k < 0.2:
+            v.fit_width()
+        elif k < 0.4:
+            v.fit_page()
+        else:
+            v.set_zoom(self.rnd.choice([0.3, 0.5, 0.75, 1.0]))
+        v.goto_page(self.page())
+        return "none"
+
     def op_rotate_page(self):
         self.v.rotate_page(self.page(), self.rnd.choice([90, -90, 180]))
 
@@ -1371,6 +1546,60 @@ class Battery:
                                     for _ in range(self.rnd.randint(0, 4))]
         v.set_toc(toc)
 
+    def op_auto_bookmarks(self):
+        """Bookmark generation (from headings or sheet numbers, through the preview, replacing
+        or adding), a table of contents inserted or updated, the panel's sort and styles."""
+        from kanzonas import bookmarks_ui
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QDialog
+        v, rnd, win = self.v, self.rnd, self.win
+        r = rnd.random()
+        if r < 0.35:
+            def preview(dlg):
+                if dlg.sheet_scan is None:
+                    dlg.depth.setValue(rnd.randint(1, 3))
+                else:
+                    dlg.group.setChecked(rnd.random() < 0.5)
+                dlg.titlecase.setChecked(rnd.random() < 0.3)
+                dlg.mode_add.setChecked(rnd.random() < 0.3)
+                n = dlg.tree.topLevelItemCount()
+                if n > 1 and rnd.random() < 0.5:
+                    dlg.tree.topLevelItem(rnd.randrange(n)).setCheckState(0, Qt.Unchecked)
+                dlg._accept()
+                return dlg.result() == QDialog.Accepted
+            bookmarks_ui.make_bookmarks(win, rnd.choice(["headings", "headings", "sheets"]),
+                                        preview)
+            return None
+        if r < 0.7:
+            if not v.doc.get_toc():
+                return "none"
+
+            def toc(dlg):
+                dlg.depth.setValue(rnd.randint(1, 3))
+                if rnd.random() < 0.3:
+                    dlg.title.setText(self.typed())
+                if dlg.old and rnd.random() < 0.8:
+                    dlg.at_old.setChecked(True)
+                elif v.doc.page_count >= 10:
+                    return False                # (keep the document small)
+                else:
+                    (dlg.at_start if rnd.random() < 0.5 else dlg.at_current).setChecked(True)
+                dlg.size.setCurrentIndex(rnd.randrange(dlg.size.count()))
+                return True
+            bookmarks_ui.insert_toc(win, toc)
+            return None
+        p = win.bookmarks
+        if not p.toc:
+            return "none"
+        p.tree.setCurrentItem(p.tree.topLevelItem(rnd.randrange(p.tree.topLevelItemCount())))
+        if r < 0.8:
+            p.sort(rnd.choice(["page", "name"]))
+        elif r < 0.9:
+            p.toggle_style(rnd.choice(["bold", "italic"]))
+        else:
+            p.set_color(rnd.choice([None, (1, 0, 0), (0, 0.5, 0)]))
+        return None
+
     def op_watermark(self):
         v = self.v
         pages = sorted(self.rnd.sample(range(v.doc.page_count),
@@ -1398,6 +1627,76 @@ class Battery:
             v.apply_redactions(scrub=self.rnd.random() < 0.3)
         else:
             return "none"
+
+    def op_accessibility(self):
+        """Document > Accessibility: Auto-tag, Title and language, Tab order, Form field
+        tooltips, Link descriptions, Alt text (described or decorative), Mark as decorative
+        (pictures and shapes chosen with Edit objects), Embed fonts."""
+        from PySide6.QtWidgets import QDialog
+        from kanzonas import accessibility_ui as ui
+        v, w, rnd = self.v, self.win, self.rnd
+
+        def title(dlg):
+            if rnd.random() < 0.5:
+                dlg.title.setText(self.typed())
+            dlg.lang.setEditText(rnd.choice(["en-US", "es-ES", "fr"]))
+            return QDialog.Accepted
+
+        def alt(dlg):
+            for i in range(dlg.list.count()):
+                dlg.list.setCurrentRow(i)
+                k = rnd.random()
+                if k < 0.5:
+                    dlg.text.setPlainText(self.typed())
+                elif k < 0.7:
+                    dlg.decorative.setChecked(True)
+            return QDialog.Accepted
+
+        def review(dlg):
+            for row in range(dlg.table.rowCount()):
+                if rnd.random() < 0.5:
+                    dlg.table.item(row, 2).setText(self.typed())
+            return QDialog.Accepted
+        r = rnd.random()
+        from kanzonas import autotag
+        if 0.7 <= r < 0.82 and not autotag.is_tagged(v.doc):
+            r = 0.0         # (Alt text on an untagged document offers Auto-tag first: a step
+            #                 of its own, then the descriptions; here Auto-tag alone)
+        with mock.patch.object(ui.TitleDialog, "exec", title), \
+                mock.patch.object(ui.AutoTagDialog, "exec", title), \
+                mock.patch.object(ui.AltTextDialog, "exec", alt), \
+                mock.patch.object(ui.ReviewDialog, "exec", review):
+            if r < 0.3:
+                # (tags change no page's look or words)
+                look = [(v.doc[i].get_pixmap(dpi=36, annots=False).samples,
+                         v.doc[i].get_text()) for i in range(v.doc.page_count)]
+                if ui.auto_tag(w, v):
+                    after = [(v.doc[i].get_pixmap(dpi=36, annots=False).samples,
+                              v.doc[i].get_text()) for i in range(v.doc.page_count)]
+                    bad = [i for i, (a, b) in enumerate(zip(look, after)) if a != b]
+                    if bad:
+                        raise Failed("Auto-tag changed pages %s" % bad)
+            elif r < 0.42:
+                ui.title_language(w, v)
+            elif r < 0.5:
+                ui.tab_order(w, v)
+            elif r < 0.6:
+                ui.field_tooltips(w, v)
+            elif r < 0.7:
+                ui.link_descriptions(w, v)
+            elif r < 0.82:
+                ui.alt_text(w, v)
+            elif r < 0.94:
+                i = self.page()
+                objs = v.content_objects(i)
+                items = [it for it in (objs.items if objs else [])
+                         if it["kind"] in ("picture", "shape", "group")]
+                if not items:
+                    return "none"
+                v.select_objects(i, rnd.sample(items, min(len(items), rnd.randint(1, 3))))
+                ui.mark_decorative(w, v)
+            else:
+                ui.embed_fonts(w, v)
 
     def op_undo(self):
         for _ in range(self.rnd.randint(1, 5)):
@@ -1429,9 +1728,9 @@ def _after_checked(after):
 Battery.after = _after_checked(Battery.after)
 
 
-def run(out, ops, seed, undo_limit=0, journal=True, log=print, render_every=25):
+def run(out, ops, seed, undo_limit=0, journal=True, log=print, render_every=25, tagged=False):
     """One run; (failures, stats)."""
-    b = Battery(out, ops, seed, undo_limit, journal, log, render_every)
+    b = Battery(out, ops, seed, undo_limit, journal, log, render_every, tagged)
     stats = b.run()
     return b.failures, stats
 
@@ -1446,6 +1745,7 @@ def main(argv):
     ops, seed, limit = opt("--ops", 2000), opt("--seed", 1), opt("--undo-limit", 0)
     every = opt("--render-every", 25)
     journal = "--copy" not in args
+    tagged = "--tagged" in args
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "battery_random.log"), "w", encoding="utf-8") as f:
         def log(text):
@@ -1454,12 +1754,13 @@ def main(argv):
             f.flush()
         import kanzonas
         log("KanzonasPDF %s random editing battery, PyMuPDF %s, Python %s, %s; seed %d, %d "
-            "steps, undo limit %s, %s" % (
+            "steps, undo limit %s, %s%s" % (
                 kanzonas.__version__, pymupdf.VersionBind, sys.version.split()[0], sys.platform,
-                seed, ops, limit or "none", "journal" if journal else "a copy per edit"))
+                seed, ops, limit or "none", "journal" if journal else "a copy per edit",
+                ", tagged" if tagged else ""))
         t = time.perf_counter()
         try:
-            failures, stats = run(out, ops, seed, limit, journal, log, every)
+            failures, stats = run(out, ops, seed, limit, journal, log, every, tagged)
         except Exception:
             failures, stats = ["the battery itself failed:\n" + traceback.format_exc()], ""
             log("FAIL " + failures[0])

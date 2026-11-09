@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFile
                                QPushButton, QSlider, QAbstractSpinBox, QPlainTextEdit,
                                QTextEdit, QStatusBar, QSizeGrip, QStyle, QStyleOption)
 
-from . import __version__, annotations, export, paths, signatures, theme
+from . import __version__, annotations, export, paths, reading, signatures, theme
 from .document_view import DocumentView, MIN_ZOOM, MAX_ZOOM
 from .i18n import tr
 from .properties import PropertiesPanel
@@ -612,6 +612,82 @@ class MainWindow(QMainWindow):
             a.setStatusTip(tip)
         return a
 
+    def _build_bookmark_actions(self):
+        """Document > Bookmark tools (and the Bookmarks panel's ⋯ menu); Insert table of
+        contents."""
+        def make(source):
+            from . import bookmarks_ui
+            return bookmarks_ui.make_bookmarks(self, source)
+
+        def toc():
+            from . import bookmarks_ui
+            return bookmarks_ui.insert_toc(self)
+        bm = lambda: self.bookmarks                     # noqa: E731
+        self.a_bm_add_view = self._act(
+            tr("Add bookmark at current &view"), self.bookmark_here, "Ctrl+B",
+            tr("A bookmark to the place the window shows (to the selected text, named after "
+               "it, when text is selected)"))
+        self.a_bm_set_dest = self._act(
+            tr("Set bookmark &destination to current view"), self.bookmark_destination_here,
+            tip=tr("The selected bookmark goes to the place the window shows now"))
+        self.a_bm_headings = self._act(
+            tr("Make bookmarks from &headings..."),
+            lambda: make("headings"),
+            tip=tr("Find the headings by their size, weight and numbering and make a bookmark "
+                   "tree from them (you check it first)"))
+        self.a_bm_tags = self._act(
+            tr("Bookmarks from &tagged structure..."),
+            lambda: make("tags"),
+            tip=tr("Make the bookmarks from a tagged PDF's headings (H1-H6): exact"))
+        self.a_bm_sheets = self._act(
+            tr("Bookmarks from &sheet numbers..."),
+            lambda: make("sheets"),
+            tip=tr("For a drawing set: a bookmark for each sheet, \"A-101  FIRST FLOOR PLAN\", "
+                   "read from the title blocks"))
+        self.a_bm_sort_page = self._act(tr("Sort bookmarks by &page"),
+                                        lambda: bm().sort("page"))
+        self.a_bm_sort_name = self._act(tr("Sort bookmarks by &name"),
+                                        lambda: bm().sort("name"))
+        self.a_bm_expand = self._act(tr("&Expand all bookmarks"), lambda: bm().expand_all())
+        self.a_bm_collapse = self._act(tr("C&ollapse all bookmarks"),
+                                       lambda: bm().collapse_all())
+        self.a_bm_bold = self._act(tr("&Bold bookmark (on/off)"),
+                                   lambda: bm().toggle_style("bold"))
+        self.a_bm_italic = self._act(tr("&Italic bookmark (on/off)"),
+                                     lambda: bm().toggle_style("italic"))
+        self.a_bm_color = self._act(tr("Bookmark co&lor..."), lambda: bm().pick_color())
+        self.a_toc = self._act(
+            tr("Insert table of &contents..."), toc,
+            tip=tr("Pages listing the bookmarks with their page numbers, each line a link to "
+                   "its page (again: updates the one made before)"))
+        self.bookmark_tools = [self.a_bm_add_view, self.a_bm_set_dest, None,
+                               self.a_bm_headings, self.a_bm_tags, self.a_bm_sheets, None,
+                               self.a_bm_sort_page, self.a_bm_sort_name, self.a_bm_expand,
+                               self.a_bm_collapse, None, self.a_bm_bold, self.a_bm_italic,
+                               self.a_bm_color]
+        self.bookmark_actions = [a for a in self.bookmark_tools if a is not None] + [self.a_toc]
+        self.bookmarks.set_menu_actions(self.bookmark_tools + [None, self.a_toc])  # (panel's ⋯)
+
+    def bookmark_here(self):
+        """Ctrl+B: a bookmark to what the window shows (not while typing in a text box)."""
+        from PySide6.QtWidgets import QLineEdit, QPlainTextEdit, QTextEdit
+        if self.view() is None or isinstance(QApplication.focusWidget(),
+                                             (QLineEdit, QTextEdit, QPlainTextEdit)):
+            return
+        self._show_bookmarks()
+        self.bookmarks.add_at_view()
+
+    def bookmark_destination_here(self):
+        if self.view() is None:
+            return
+        if self.bookmarks._index() is None:
+            self._show_bookmarks()
+            self.statusBar().showMessage(tr("Select a bookmark in the Bookmarks panel first"),
+                                         4000)
+            return
+        if self.bookmarks.set_destination():
+            self.statusBar().showMessage(tr("The bookmark now goes to this view"), 4000)
+
     def _build_actions(self):
         v = self.view
         self.a_new = self._act(tr("&New PDF..."), self.new_pdf, QKeySequence.New,
@@ -759,6 +835,9 @@ class MainWindow(QMainWindow):
         DocumentView.show_scale_bar = self.a_scale_bar.isChecked()
         self.a_ocr = self._act(tr("Recognize text (&OCR)..."), self.ocr,
                                tip=tr("Make scanned pages searchable and selectable"))
+        self.a_batch = self._act(tr("&Batch processing..."), self.batch_processing,
+                                 tip=tr("Do the same steps to many PDFs at once: OCR, PDF/A, "
+                                        "Bates numbers, watermarks, flattening, smaller files"))
         self.a_props = self._act(tr("&Properties panel"), self._toggle_props, "F6")
         self.a_props.setCheckable(True)
         self.a_props.setChecked(True)
@@ -795,6 +874,28 @@ class MainWindow(QMainWindow):
         self.a_show_markups.setCheckable(True)
         self.a_show_markups.setChecked(True)
         self.a_delete_markups = self._act(tr("&Delete comments..."), self.delete_comments)
+        # replies, review status, comments exchanged as XFDF / FDF, summary (review.py)
+        self.a_reply = self._act(tr("&Reply..."), self.reply_to_selected,
+                                 tip=tr("Reply to the selected markup: replies show as a "
+                                        "thread in the Markups list and in other PDF programs"))
+        self.status_actions = {}
+        for key, label in (("Accepted", tr("Accepted")), ("Rejected", tr("Rejected")),
+                           ("Cancelled", tr("Cancelled")), ("Completed", tr("Completed")),
+                           ("None", tr("No status")), ("Marked", tr("Marked"))):
+            a = self._act(label, lambda _=False, k=key: self._set_review_status(k))
+            a.setCheckable(True)
+            self.status_actions[key] = a
+        self.a_export_comments = self._act(
+            tr("E&xport comments..."), self.export_comments,
+            tip=tr("Save the comments, their replies and statuses as an XFDF or FDF file, to "
+                   "send without the PDF"))
+        self.a_import_comments = self._act(
+            tr("&Import comments..."), self.import_comments,
+            tip=tr("Add the comments of an XFDF or FDF file to this document (one undo step)"))
+        self.a_summarize = self._act(
+            tr("Summari&ze comments..."), self.summarize_comments,
+            tip=tr("A new PDF listing every comment by page, author, date or type, with "
+                   "replies and statuses, to print or save"))
         self.a_flatten_markups = self._act(tr("&Flatten comments..."), self.flatten_comments,
                                            tip=tr("Make comments and markups part of the page; "
                                                   "form fields stay fillable"))
@@ -807,6 +908,22 @@ class MainWindow(QMainWindow):
         self.a_next_field = self._act(tr("&Next form field\tTab"),
                                       lambda: self.view() and self.view().next_field(),
                                       tip=tr("Go to the next form field (Tab; Space or Enter fills it)"))
+        self.a_detect_fields = self._act(
+            tr("&Detect form fields..."), self.detect_form_fields,
+            tip=tr("Find the blank lines, boxes and checkboxes of a flat (or scanned) form and "
+                   "make fields there: you see what was found before anything changes"))
+        self.a_field_props = self._act(
+            tr("Field p&roperties..."), self.field_properties,
+            tip=tr("The selected field's name, tooltip, required, calculation, format, range "
+                   "and place in the tab order (select it with a form tool, or Tab to it)"))
+        self.a_tab_order = self._act(
+            tr("Set &tab order..."), self.set_tab_order,
+            tip=tr("The order Tab goes through the page's fields: by rows, by columns or your "
+                   "own"))
+        self.a_check_required = self._act(
+            tr("Check &required fields"), self.check_required_fields,
+            tip=tr("Flag the required fields that are still empty (also done on Save and "
+                   "Print)"))
         self.a_prev_field = self._act(tr("&Previous form field\tShift+Tab"),
                                       lambda: self.view() and self.view().next_field(back=True),
                                       tip=tr("Go to the previous form field (Shift+Tab)"))
@@ -832,6 +949,49 @@ class MainWindow(QMainWindow):
         self.a_attachments = self._act(tr("A&ttachments..."), self.show_attachments,
                                        tip=tr("Files embedded in this PDF: open, save or delete them"))
         self.a_bookmarks = self._act(tr("&Bookmarks"), self._show_bookmarks, "F9")
+        # Document > Accessibility (accessibility_ui.py)
+        acc = [("check_accessibility", tr("Check &accessibility..."),
+                tr("List what keeps this document from being accessible to screen readers "
+                   "(PDF/UA, WCAG), and what the fixes here deal with")),
+               ("auto_tag", tr("Auto-&tag..."),
+                tr("Tag an untagged document: headings, paragraphs, lists, tables, figures "
+                   "and reading order, for screen readers")),
+               ("alt_text", tr("Alt te&xt..."),
+                tr("Describe each figure for people who can't see it, or mark it "
+                   "decorative")),
+               ("reading_order", tr("&Reading order..."),
+                tr("The current page's tags numbered in reading order over the page: drag "
+                   "them to change it")),
+               ("title_language", tr("Title and &language..."),
+                tr("The title screen readers announce and the window shows, and the "
+                   "document's language")),
+               ("field_tooltips", tr("Form field t&ooltips..."),
+                tr("The name screen readers say for each form field")),
+               ("link_descriptions", tr("Lin&k descriptions..."),
+                tr("What screen readers say for each link")),
+               ("tab_order", tr("Ta&b order follows the tags"),
+                tr("Tab moves through links and fields in the order of the document's tags, "
+                   "on every page")),
+               ("mark_decorative", tr("Mark as &decorative"),
+                tr("Make the pictures and shapes selected with Edit objects artifacts "
+                   "(decoration screen readers skip)")),
+               ("embed_fonts", tr("&Embed fonts"),
+                tr("Embed the standard fonts that aren't (Helvetica, Times, Courier...), as "
+                   "Save as PDF/A does")),
+               ("identify_pdfua", tr("Identify as PDF/&UA..."),
+                tr("Say in the file's metadata that it meets PDF/UA-1 (once the check finds "
+                   "nothing)"))]
+        self.acc_actions = {}
+        attrs = {"check_accessibility": "check", "auto_tag": "autotag", "alt_text": "alt",
+                 "reading_order": "order",
+                 "title_language": "title", "field_tooltips": "tips",
+                 "link_descriptions": "links", "tab_order": "tabs", "mark_decorative": "decor",
+                 "embed_fonts": "fonts", "identify_pdfua": "pdfua"}
+        for name, text, tip in acc:
+            a = self.acc_actions[name] = self._act(text, lambda _=False, n=name:
+                                                   self.accessibility(n), tip=tip)
+            setattr(self, "a_acc_" + attrs[name], a)         # (a_acc_check...: the ribbon's)
+        self._build_bookmark_actions()
         self.a_search_redact = self._act(tr("&Search && redact..."), self.search_redact)
         self.a_apply_redact = self._act(tr("&Apply redactions..."), self.apply_redactions)
         self.a_digisign = self._act(tr("&Digitally sign with certificate..."), self.digital_sign)
@@ -1048,6 +1208,8 @@ class MainWindow(QMainWindow):
         from .updates import UpdateChecker
         self.a_auto_updates.setChecked(UpdateChecker(self.settings).enabled())
         self.a_auto_updates.toggled.connect(self._toggle_auto_updates)
+        # View: full screen, presentation, page layout, reading view, read aloud, auto scroll
+        reading.build_actions(self)
 
         self.tool_group = QActionGroup(self)
         self.tool_actions = {}
@@ -1086,7 +1248,7 @@ class MainWindow(QMainWindow):
         self.recent_menu = m.addMenu(tr("Open &recent"))
         self._rebuild_recent()
         m.addActions([self.a_save, self.a_save_as, self.a_save_pdfa, self.a_check_pdfa])
-        m.addActions([self.a_combine, self.a_from_images, self.a_scan])
+        m.addActions([self.a_combine, self.a_from_images, self.a_scan, self.a_batch])
         em = m.addMenu(tr("&Export to"))
         em.addActions(self.export_actions)
         m.addAction(self.a_compare)
@@ -1113,6 +1275,8 @@ class MainWindow(QMainWindow):
         gm.addActions([self.a_next_page, self.a_prev_page, self.a_first_page, self.a_last_page])
         gm.addSeparator()
         gm.addAction(self.a_goto_page)
+        m.addSeparator()
+        reading.add_to_view_menu(self, m)
         m.addSeparator()
         m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
         m.addSeparator()
@@ -1166,12 +1330,31 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_props)
         m.addSeparator()
         m.addActions([self.a_ocr, self.a_flatten])
+        m.addSeparator()
+        m.addAction(self.a_batch)
         m = mb.addMenu(tr("&Document"))
         m.addActions([self.a_header, self.a_watermark, self.a_remove_wm, self.a_background,
                       self.a_remove_bg])
         m.addSeparator()
         m.addAction(self.a_bookmarks)
+        bmm = m.addMenu(tr("Bookmar&k tools"))
+        for a in self.bookmark_tools:
+            if a is None:
+                bmm.addSeparator()
+            else:
+                bmm.addAction(a)
+        m.addAction(self.a_toc)
         m.addAction(self.a_attachments)
+        am = m.addMenu(tr("&Accessibility"))
+        acts = self.acc_actions
+        am.addActions([acts["check_accessibility"], acts["auto_tag"]])
+        am.addSeparator()
+        am.addActions([acts[k] for k in ("alt_text", "reading_order", "title_language",
+                                         "field_tooltips",
+                                         "link_descriptions", "tab_order", "mark_decorative",
+                                         "embed_fonts")])
+        am.addSeparator()
+        am.addAction(acts["identify_pdfua"])
         m.addSeparator()
         rm = m.addMenu(tr("&Redaction"))
         rm.addActions([self.tool_actions["redact"], self.a_search_redact,
@@ -1188,7 +1371,17 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_prev_markup, self.a_next_markup, self.a_markups])
         m.addSeparator()
+        m.addAction(self.a_reply)
+        sm = self.status_menu = m.addMenu(tr("Set s&tatus"))
+        for key, a in self.status_actions.items():
+            if key == "Marked":
+                sm.addSeparator()
+            sm.addAction(a)
+        sm.aboutToShow.connect(self._status_menu_shown)
+        m.addSeparator()
         m.addActions([self.a_show_markups, self.a_cards])
+        m.addSeparator()
+        m.addActions([self.a_export_comments, self.a_import_comments, self.a_summarize])
         m.addSeparator()
         m.addActions([self.a_delete_markups, self.a_flatten_markups])
         m = mb.addMenu(tr("&Protect"))
@@ -1210,8 +1403,10 @@ class MainWindow(QMainWindow):
         m = mb.addMenu(tr("F&orms"))
         m.addActions([self.tool_actions[t] for t, _, _ in FORM_TOOLS])
         m.addSeparator()
+        m.addActions([self.a_detect_fields, self.a_field_props, self.a_tab_order])
+        m.addSeparator()
         m.addAction(self.a_hl_fields)
-        m.addActions([self.a_next_field, self.a_prev_field])
+        m.addActions([self.a_next_field, self.a_prev_field, self.a_check_required])
         hint = m.addAction(tr("To fill in a form: use Select or Hand and click a field"))
         hint.setEnabled(False)
         m = mb.addMenu(tr("&Pages"))
@@ -1227,6 +1422,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addActions([self.a_insert_pdf, self.a_replace_pages, self.a_insert_blank,
                       self.a_extract])
+        m.addAction(self.a_toc)
         m.addSeparator()
         m.addAction(self.a_sheet_links)
         sep = QAction(self)
@@ -1456,6 +1652,9 @@ class MainWindow(QMainWindow):
         self.bookmarks.current_page = lambda: self.view().current_page() if self.view() else 0
         self.bookmarks.jump.connect(lambda i: self.view() and self.view().goto_page(i))
         self.bookmarks.changed.connect(lambda toc: self.view() and self.view().set_toc(toc))
+        self.bookmarks.jump_to.connect(
+            lambda i, to: self.view() and self.view().go_to_destination(i, to))
+        self.bookmarks.current_view = lambda: self.view().view_destination() if self.view() else None
         self.left_tabs.addTab(self._narrowable(self.bookmarks), tr("Bookmarks"))
         from .layers_panel import LayersPanel
         self.layers = LayersPanel()
@@ -1504,6 +1703,12 @@ class MainWindow(QMainWindow):
         self.markups.activated.connect(lambda i, x: self.view() and self.view().reveal(i, x))
         self.markups.editRequested.connect(self._edit_markup)
         self.markups.deleteRequested.connect(self._delete_markup)
+        self.markups.replyRequested.connect(
+            lambda i, x: self.view() and self.view().reply_to(i, x))
+        self.markups.statusRequested.connect(
+            lambda i, x, k: self.view() and self.view().set_review_status(i, [x], k))
+        self.markups.exportRequested.connect(
+            lambda only: self.view() and self._export_comments(only))
         self.markups_dock = QDockWidget(tr("Markups list"))
         self.markups_dock.setObjectName("markups")
         self.markups_dock.setWidget(self.markups)
@@ -1536,7 +1741,12 @@ class MainWindow(QMainWindow):
                   self.a_page_boxes, self.a_fix_hairlines, self.a_print_check,
                   self.a_background, self.a_remove_bg, self.a_remove_wm,
                   self.a_search_redact, self.a_apply_redact, self.a_digisign, self.a_sig_details,
-                  *self.export_actions):
+                  self.a_detect_fields, self.a_field_props, self.a_tab_order,
+                  self.a_check_required, self.a_export_comments, self.a_import_comments,
+                  self.a_summarize, *self.export_actions, *self.acc_actions.values()):
+            a.setEnabled(has)
+        self.acc_actions["mark_decorative"].setEnabled(has and v.obj_sel is not None)
+        for a in self.bookmark_actions:
             a.setEnabled(has)
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_lock.setEnabled(has and v.selection is not None)
@@ -1799,6 +2009,7 @@ class MainWindow(QMainWindow):
             return False
         self.autosave.discard(v)
         self.statusBar().showMessage(tr("Saved {path}").format(path=v.path), 4000)
+        v.check_required_fields()           # (a notice only: the file is saved)
         return True
 
     def save_as(self):
@@ -1821,6 +2032,7 @@ class MainWindow(QMainWindow):
         self._add_recent(v.path)
         self.settings.setValue("last_dir", os.path.dirname(v.path))
         self._update_ui()
+        v.check_required_fields()
         return True
 
     def save_as_pdfa(self):
@@ -1829,6 +2041,13 @@ class MainWindow(QMainWindow):
             return False
         from . import pdfa_ui
         return pdfa_ui.save_as_pdfa(self, v)
+
+    def accessibility(self, name):
+        """Document > Accessibility: name is the command in accessibility_ui."""
+        v = self.view()
+        if v is not None:
+            from . import accessibility_ui
+            getattr(accessibility_ui, name)(self, v)
 
     def check_pdfa(self):
         v = self.view()
@@ -1860,7 +2079,7 @@ class MainWindow(QMainWindow):
             (v.signedDocument, self._on_signed),
             (v.oneShotPlaced, self._after_one_shot),
             (v.selectToolRequested, lambda: self.set_tool("select")),
-            (v.previousToolRequested, lambda: self.set_tool(self.default_tool())),
+            (v.previousToolRequested, lambda: reading.escape_on_page(self)),
             (v.calibrateRequested, self._calibrate),
             (v.scaleDialogRequested, lambda i: self._scale_dialog(None, i)),
             # (the view is bound here: inside a lambda, sender() isn't the view that sent
@@ -1876,6 +2095,7 @@ class MainWindow(QMainWindow):
             (v.editorFormat,
              lambda fmt, v=v: v is self.view() and self._show_editor_format(fmt)),
             (v.pageChanged, self._on_page_changed),
+            (v.pageLayoutChanged, lambda: reading.sync(self)),    # (the shown one's ticks)
             (v.zoomChanged, lambda _: self._update_ui()),
             (v.documentChanged, self._on_doc_changed),
             (v.structureChanged, self._on_structure_changed),
@@ -2028,6 +2248,7 @@ class MainWindow(QMainWindow):
             if not self._confirm_exit([(w, v) for w in [self] + others for v in w._views()]):
                 e.ignore()
                 return
+        reading.window_closing(self)        # (out of full screen before the layout is saved)
         if not ending:
             # (when Windows ends KanzonasPDF, windows_ending saved the session with every
             # window's files; a pulled-out window closed first here would be left out)
@@ -2218,9 +2439,65 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v or not v.require_permission(pymupdf.PDF_PERM_PRINT, tr("Printing")):
             return
+        v.check_required_fields()           # (a notice only: printing goes on)
         from .print_dialog import PrintDialog
         if PrintDialog(self, v).exec():
             self.statusBar().showMessage(tr("Sent to printer"), 4000)
+
+    # ---- smart forms -------------------------------------------------------------
+    def detect_form_fields(self):
+        """Forms > Detect form fields...: on every page (or only the current one)."""
+        v = self.view()
+        if not v:
+            return
+        pages = list(range(v.doc.page_count))
+        if v.doc.page_count > 1:
+            box = QMessageBox(QMessageBox.Question, tr("Detect form fields"),
+                              tr("Look for form fields on which pages?"), parent=self)
+            every = box.addButton(tr("All pages"), QMessageBox.AcceptRole)
+            this = box.addButton(tr("This page"), QMessageBox.AcceptRole)
+            box.addButton(QMessageBox.Cancel)
+            box.exec()
+            if box.clickedButton() is this:
+                pages = [v.current_page()]
+            elif box.clickedButton() is not every:
+                return
+        from . import form_ui
+        n = form_ui.detect_fields(v, pages)
+        if n:
+            self.statusBar().showMessage(tr("Made {n} form field(s) (Ctrl+Z undoes it).").format(
+                n=n), 5000)
+
+    def field_properties(self):
+        v = self.view()
+        if not v:
+            return
+        sel = v.selected_field()
+        if sel is None:
+            QMessageBox.information(self, tr("Field properties"), tr(
+                "Select a field first: pick a form tool (Forms menu) and click the field, or "
+                "press Tab to go to it."))
+            return
+        v.edit_field_properties(*sel)
+
+    def set_tab_order(self):
+        v = self.view()
+        if not v:
+            return
+        sel = v.selected_field()
+        index = sel[0] if sel else v.current_page()
+        if not v.page_fields(index):
+            QMessageBox.information(self, tr("Set tab order"),
+                                    tr("Page {page} has no fields to fill in.").format(
+                                        page=index + 1))
+            return
+        from . import form_ui
+        form_ui.set_tab_order(v, index)
+
+    def check_required_fields(self):
+        v = self.view()
+        if v and not v.check_required_fields():
+            self.statusBar().showMessage(tr("Every required field is filled in."), 4000)
 
     # ---- tools / search / pages --------------------------------------------
     def set_tool(self, tool):
@@ -2803,6 +3080,11 @@ class MainWindow(QMainWindow):
         accuracy = acc.currentData()
         self.settings.setValue("ocr_accuracy", accuracy)
         v.run_ocr(pages, accuracy)
+
+    def batch_processing(self):
+        """Tools > Batch processing: the same steps on many files (batch_ui.py)."""
+        from .batch_ui import BatchWindow
+        BatchWindow.open_for(self)
 
     def flatten(self):
         v = self.view()
@@ -3666,7 +3948,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_bookmarks(self):
         v = self.view()
-        self.bookmarks.set_toc(v.get_toc() if v else [])
+        self.bookmarks.set_toc(v.get_toc(simple=False) if v else [])
 
     def header_footer(self):
         from .page_tools import HeaderFooterDialog
@@ -3814,13 +4096,7 @@ class MainWindow(QMainWindow):
             term = text.strip()
             hidden = v.hidden_matches(term)
             n = v.search_redact(term)
-            extra = [what.format(n=c) for what, c in (
-                (tr("{n} form field(s)"), hidden["fields"]),
-                (tr("{n} markup note(s)"), hidden["markups"]), (tr("{n} link(s)"), hidden["links"]),
-                (tr("{n} bookmark(s)"), hidden["bookmarks"]),
-                (tr("{n} document propert(ies)"), hidden["metadata"]),
-                (tr("{n} other place(s) in the file (layer names, web addresses, form data, "
-                    "alternate text...)"), hidden.get("other", 0))) if c]
+            extra = v.redaction_places(hidden)
             msg = (tr("Marked {n} occurrence(s) on the pages.").format(n=n) if n else
                    tr("No matches on the pages."))
             if extra and not n:
@@ -4189,6 +4465,7 @@ class MainWindow(QMainWindow):
         self.forms_btn.setIcon(theme.icon("forms"))
         for a, name in getattr(self, "_strip_icons", []):
             a.setIcon(theme.icon_named(name))
+        reading.apply_icons(self)
         labels = self.a_labels.isChecked()
         style = Qt.ToolButtonTextUnderIcon if labels else Qt.ToolButtonIconOnly
         for tb in (self.main_tb, self.tools_tb, self.arrange_tb):
@@ -4320,6 +4597,9 @@ class MainWindow(QMainWindow):
         key = os.path.normcase(v.path)
         states.pop(key, None)                      # moves to the end: the most recent
         states[key] = {"page": v.current_page(), "zoom": round(v.zoom, 4)}
+        if v.page_layout != "continuous" or v.cover_page:
+            # (View > Page layout, remembered per document like the zoom)
+            states[key].update(layout=v.page_layout, cover=v.cover_page)
         if len(states) > 200:                      # keep the 200 most recent
             states = dict(list(states.items())[-200:])
         self.settings.setValue("file_states", json.dumps(states))
@@ -4649,7 +4929,8 @@ class MainWindow(QMainWindow):
     def _step_page(self, delta):
         v = self.view()
         if v is not None:
-            v.goto_page(max(0, min(v.page_count() - 1, v.current_page() + delta)))
+            # (two pages side by side: a spread at a time)
+            v.goto_page(v.page_after(v.current_page(), delta))
 
     def set_mouse_mode(self, m, toggle=False):
         """Standard, Hand or CAD. toggle (F11, the CAD button): CAD again goes back to the
@@ -4862,7 +5143,9 @@ class MainWindow(QMainWindow):
         "a_clear_sigs": tr("Clear signatures"), "a_search_redact": tr("Search and redact"),
         "a_apply_sel_redact": tr("Apply selected"), "a_apply_redact": tr("Apply all"),
         "a_security": tr("Security"), "a_remove_security": tr("Remove security"), "a_unlock": tr("Unlock"),
-        "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"), "a_move_up": tr("Move up"),
+        "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"),
+        "a_detect_fields": tr("Detect fields"), "a_field_props": tr("Field properties"),
+        "a_tab_order": tr("Tab order"), "a_check_required": tr("Check required"), "a_move_up": tr("Move up"),
         "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files", ctx="ribbon"), "a_from_images": tr("From images"), "a_new": tr("New PDF"), "a_scan": tr("Scan"),
         "a_insert_blank": tr("Blank page"), "a_extract": tr("Extract"), "a_header": tr("Header and footer"),
         "a_watermark": tr("Watermark"), "a_background": tr("Background"),
@@ -4901,6 +5184,8 @@ class MainWindow(QMainWindow):
         "a_apply_redact": "check-decagram", "a_security": "shield-lock-outline",
         "a_remove_security": "shield-off-outline", "a_unlock": "lock-open-outline",
         "a_sanitize": "broom", "a_hl_fields": "format-color-highlight",
+        "a_detect_fields": "text-box-search-outline", "a_field_props": "form-select",
+        "a_tab_order": "order-numeric-ascending", "a_check_required": "asterisk",
         "a_move_up": "arrow-up-bold-outline", "a_move_down": "arrow-down-bold-outline",
         "a_del_page": "file-remove-outline", "a_insert_pdf": "file-plus-outline",
         "a_replace_pages": "file-replace-outline",
@@ -5016,6 +5301,8 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab(tr("Forms"), [
             (tr("Add fields"), "large", [t[k] for k, _l, _t in FORM_TOOLS]),
+            (tr("Smart forms"), "small", [self.a_detect_fields, self.a_field_props,
+                                          self.a_tab_order, self.a_check_required]),
             (tr("Show"), "large", [self.a_hl_fields]),
         ])
         r.add_tab(tr("Pages"), [
@@ -5033,7 +5320,9 @@ class MainWindow(QMainWindow):
             (tr("Document"), "small", [
                 split_button([self.a_header, self.a_watermark, self.a_background]),
                 self.a_bookmarks, self.a_compare, self.a_compress],
-             [self.a_attachments, self.a_sheet_links]),
+             # (and accessibility: the rest of it in Document > Accessibility)
+             [self.a_attachments, self.a_sheet_links, self.a_acc_check, self.a_acc_autotag,
+              self.a_acc_alt]),
             (tr("Convert"), "large", [self.a_ocr, self.a_flatten]),
         ])
         # print production (1.8): what a sheet needs before a plotter or a print shop
@@ -5055,6 +5344,8 @@ class MainWindow(QMainWindow):
              [self.a_collapse, self.a_group_names]),
             (tr("Help"), "large", [self.a_palette, self.a_shortcuts, self.a_manual]),
         ])
+        # (1.10) full screen, presentation, page layouts, Reading view, read aloud, auto scroll
+        r.add_tab(tr("Reading"), reading.ribbon_groups(self))
         c = self.cad_actions
         r.add_tab(tr("CAD"), [
             (tr("Select"), "large", [self.tool_actions["select"],
@@ -5288,12 +5579,68 @@ class MainWindow(QMainWindow):
 
     def _delete_markup(self, index, xref):
         v = self.view()
+        if v and v.is_reply(index, xref):
+            v.delete_reply(index, xref)         # (a reply alone, not its markup)
+            return
         if v:
             if v.markup_locked(index, xref):
                 QMessageBox.information(self, tr("Delete"), v.locked_note())
                 return
             v.select_xref(index, xref)
             v.delete_selected()
+
+    # ---- review: replies, status, comments exchanged, summary (review.py) ----------------
+    def reply_to_selected(self):
+        v = self.view()
+        if v is None:
+            return
+        if v.selection is None:
+            self.statusBar().showMessage(tr("Select a markup to reply to it."), 5000)
+            return
+        v.reply_to(*v.selection)
+
+    def _set_review_status(self, key):
+        v = self.view()
+        if v is None:
+            return
+        if v.selection is None:
+            self.statusBar().showMessage(tr("Select the markups to set their status."), 5000)
+            self._status_menu_shown()
+            return
+        index, xref = v.selection
+        if key == "Marked":
+            st = v.selected_status()
+            key = "Unmarked" if st and st[1] else "Marked"
+        v.set_review_status(index, v.selected_xrefs(), key)
+
+    def _status_menu_shown(self):
+        v = self.view()
+        st = v.selected_status() if v is not None else None
+        state, marked = st if st else ("", False)
+        for key, a in self.status_actions.items():
+            a.setChecked(bool(st) and (marked if key == "Marked" else
+                                       (state == key or (key == "None" and not state))))
+
+    def export_comments(self):
+        self._export_comments(None)
+
+    def _export_comments(self, only):
+        v = self.view()
+        if v is not None:
+            from . import review_ui
+            review_ui.export_comments(self, v, only)
+
+    def import_comments(self):
+        v = self.view()
+        if v is not None:
+            from . import review_ui
+            review_ui.import_comments(self, v)
+
+    def summarize_comments(self):
+        v = self.view()
+        if v is not None:
+            from . import review_ui
+            review_ui.summarize_comments(self, v)
 
     # ---- updates ---------------------------------------------------------------
     def _updater(self):
@@ -5661,11 +6008,14 @@ class MainWindow(QMainWindow):
             self._show_find_count(*current.search_position())
         else:
             self._show_find_count(0, 0, False)
+        reading.sync(self)
+        reading.page_changed(self)
         self._update_ui()
 
     def _on_page_changed(self, page):
         if self.sender() is not self.view():
             return
+        reading.page_changed(self)
         # Scrolling to another page selects it in the page list. A page reached by clicking
         # in the list (Ctrl+click, Shift+click, right-click) keeps the pages selected there.
         if not self._thumb_nav and self.thumbs.currentRow() != page:
@@ -5679,6 +6029,7 @@ class MainWindow(QMainWindow):
         v = self.sender()
         if v is self.view():
             self._thumbs_changed(v)
+            reading.page_changed(self)
         self._update_ui()
 
     def _on_structure_changed(self):

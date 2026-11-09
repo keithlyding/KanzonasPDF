@@ -366,6 +366,82 @@ Ctrl+Z undoes the whole replacement.</li>
 It's for looking only: make changes in the main view.</li>
 </ul>
 
+<h2 id="reading">Reading comfortably</h2>
+<p>The View menu, and the ribbon's <b>Reading</b> tab, have ways to read a document more
+comfortably: on the whole screen, one page or two side by side, as large plain text, or read
+aloud.</p>
+<ul>
+<li><b>Full screen</b> (View menu, Ctrl+Shift+L): only the pages, on the whole screen: the
+toolbars or ribbon, menu bar, panels, tabs and status bar are hidden. Move the pointer to the
+very top edge of the screen and a slim bar comes down with the previous and next page, zoom,
+the page layouts, Reading view, Read this page and <b>Exit full screen</b>; it goes away when
+the pointer moves down again. <b>Escape</b> leaves full screen (when a tool is picked, the
+first Escape puts it down, as usual, and the next one leaves; in the Reading view too), and so
+does Ctrl+Shift+L again.
+Everything comes back as it was. (F11, which many programs use for this, switches the CAD mouse
+mode in KanzonasPDF, and Ctrl+L locks markups; Ctrl+Shift+L is free and close to Acrobat's
+Ctrl+L.)</li>
+<li><b>Presentation</b> (View menu, F5): the pages one at a time, each fitted to the whole
+screen on black, for showing to an audience. Next page: click, Space, the Right or Down arrow,
+Page Down, Enter or N (or turn the wheel). Previous page: right-click, Backspace, the Left or Up
+arrow, Page Up or P. <b>Home</b> and <b>End</b> go to the first and last page; type a page
+number and press Enter to go there. <b>B</b> (or the period key) turns the screen black and
+<b>W</b> (or the comma key) white, to take the audience's eyes off the slide; any key brings the
+page back. <b>L</b> shows a <b>laser pointer</b>: a red dot that follows the mouse. The mouse
+pointer hides itself after two seconds without moving. <b>Escape</b> ends the presentation, and
+the window shows the page you ended on. Markups are shown as they are on the page (unless Show
+markups is off). The presentation only shows the document: nothing in it changes the file. A
+change made in the window meanwhile (with the presentation on a second screen) shows at
+once, Apply redactions and Undo too. F5 again brings the presentation forward.</li>
+<li><b>Page layout</b> (View menu), remembered for each document like its page and zoom:
+<ul>
+<li><b>Single page</b> (Ctrl+5): one page at a time. Scroll to its end (wheel, Page Down or the
+Down arrow at the bottom of the page) and the next page takes its place; at the top, Page Up or
+the Up arrow goes back to the end of the page before.</li>
+<li><b>Continuous</b> (Ctrl+6): the pages one under the other (how KanzonasPDF has always shown
+them).</li>
+<li><b>Two pages</b> (Ctrl+7): two pages side by side, one spread at a time, turning like
+Single page.</li>
+<li><b>Two pages continuous</b> (Ctrl+8): two pages side by side, the spreads one under the
+other.</li>
+<li><b>Show cover page separately</b>: with two pages side by side, the first page (a book's
+cover) is alone on the right, so the left and right pages of the book line up: 2 and 3, 4 and
+5, and so on. Without it, the pages pair 1 and 2, 3 and 4.</li>
+</ul>
+With two pages side by side, the Left and Right arrows, Next page and Previous page move a
+whole spread; Fit width fits the two pages across the window and Fit page the whole spread.
+Every tool works in every layout, and in full screen too (each change is a step Undo takes
+back). With two pages side by side, Edit objects' <b>Paste</b> (Ctrl+V) puts what was copied on
+the page under the pointer, a selection dragged from one page onto the one beside it moves
+there, and CAD mode's <b>Move</b> and <b>Copy</b> take it to the other page when the second
+point is clicked there.</li>
+<li><b>Reading view</b> (View menu, Ctrl+4): the page's text in a panel at the side, reflowed as
+plain paragraphs in large type that wraps to the panel's width, for a small screen or tired
+eyes. Headings are larger, as they are on the page; pictures are left out. Columns are read in
+order (the left column, then the right one), as well as the page's text allows. Make the type
+larger or smaller with <b>A+</b> and <b>A&minus;</b> or Ctrl+wheel in the panel (remembered).
+The panel follows the page you're on, and the PDF isn't changed. A scanned page has no text to
+show until it has been through Recognize text (OCR).</li>
+<li><b>Read aloud</b> (View menu), with the computer's own voices (Windows voices on Windows,
+the system voices on macOS, Speech Dispatcher on Linux):
+<ul>
+<li><b>Read this page</b> (Ctrl+Shift+V) reads the page you're on.</li>
+<li><b>Read from selected text</b> reads from the text you selected with the Select tool (or
+from the top of the page) to the end of the document.</li>
+<li><b>Read the whole document</b> (Ctrl+Shift+B) reads from the first page to the last.</li>
+<li><b>Pause or resume reading</b> (Ctrl+Shift+C) and <b>Stop reading</b> (Ctrl+Shift+E).</li>
+</ul>
+The text is read a sentence at a time in the order a reader takes it (headings, then columns
+one after the other). The sentence being read is shaded light blue on the page and the word
+being spoken darker blue (with voices that tell which word they're on), and the page scrolls to
+follow. Choose the voice and the speed in File &gt; Preferences &gt; Reading. On Linux, install
+Speech Dispatcher (the speech-dispatcher package, with a voice such as espeak-ng) if reading
+says no speech is available.</li>
+<li><b>Auto scroll</b> (View menu, Ctrl+Shift+A): the document scrolls slowly by itself. The Up
+and Down arrow keys make it slower or faster (the speed is remembered), and Escape or Auto
+scroll again stops it. In Single page and Two pages it turns the pages too.</li>
+</ul>
+
 <h2 id="cad">CAD mode: selecting and the CAD tab</h2>
 <p>In the <b>CAD</b> mouse mode (View &gt; Mouse: CAD, F11) KanzonasPDF selects and edits like a
 CAD program. It starts with <b>Edit objects</b>, which selects everything at once: the drawing's
@@ -569,7 +645,9 @@ don't offer Edit text (double-click a fill-in stamp to change its values); add a
 text box to comment on them.
 If you right-click highlighted text that's selected, the menu offers <b>Delete highlight</b>.
 In the Markups list (F7), double-click a row to edit its text; right-click a row for
-<b>Edit text...</b> (when its text can be edited) and <b>Delete</b>, or press Delete.</li>
+<b>Edit text...</b> (when its text can be edited) and <b>Delete</b>, or press Delete.
+Deleting a markup that has replies asks first, and takes its replies and statuses with it
+(one Ctrl+Z brings them all back).</li>
 <li><b>Move with the arrow keys:</b> with markups selected (or pictures and shapes selected with
 Edit objects), each press of an arrow key moves them 1 pt; <b>Shift+arrow</b> moves 10 pt and
 <b>Ctrl+arrow</b> 0.1 pt, for fine adjustments. A series of presses is one Ctrl+Z. Markups tied to
@@ -599,7 +677,8 @@ first.</li>
 <li><b>Markups:</b> select one or more markups, then Copy or Cut. <b>Paste</b> (Ctrl+V) puts them
 where the mouse is, on any page or in another open document. Pasted on a page that's turned
 another way (a rotated page), they're turned to look as they did where you copied them; a text
-box still reads upright.</li>
+box still reads upright. A markup that is cut and pasted keeps its replies and review statuses
+(with their authors and dates); a copy is pasted without them.</li>
 <li><b>Duplicate</b> (Ctrl+D): copies of the selected markups appear slightly offset, selected
 so you can drag them into place. In the page list, Ctrl+D duplicates the selected pages; with
 the Edit objects tool, the selected text, pictures and shapes of the page.</li>
@@ -679,6 +758,42 @@ selecting it, and the list's Delete leaves it: unlock it first.</li>
 <li><b>Show markups:</b> untick to hide every comment and markup and see the page as if
 unmarked. Nothing is deleted; tick it again to bring them back. <b>Show comment boxes</b>
 hides just the yellow boxes beside commented text.</li>
+<li><b>Reply...</b> (Review menu, a markup's right-click menu, or a row of the Markups list):
+answers the selected markup, or a reply, with your name (Edit &gt; Author name for markups...) and the date. Replies are kept the standard PDF way (a note "in reply to" the markup),
+so Acrobat, PDF-XChange and Bluebeam show them as the same conversation, and theirs show here.
+A reply is never an icon on the page: it shows in the Markups list, indented under its markup,
+and above the text when you open the markup (double-click it, or Edit text...). Moving the
+markup moves its replies; to change or remove a reply, right-click it in the Markups list
+&gt; <b>Edit reply...</b> or <b>Delete reply</b> (the replies to it go too).</li>
+<li><b>Set status:</b> Accepted, Rejected, Cancelled, Completed or No status, and a separate
+<b>Marked</b> tick (a check mark for your own follow-up), for the selected markups, from the
+Review menu or the right-click menus. Each change is kept, with who made it and when (shown
+when you open the markup), and the latest is the markup's status. Statuses are stored as Acrobat
+stores them, so they travel with the file.</li>
+<li><b>Markups list</b> threads and statuses: the Replies column shows how many replies a
+markup has; click it to fold or unfold them. The Status column shows its status (a check mark
+when marked), and the second filter shows only the markups with one status (or no status, or
+marked, or unmarked). The text filter also finds a markup by the words of its replies. Sorting by
+any column keeps each thread under its markup.</li>
+<li><b>Export comments...</b> saves the comments (markups with their replies and statuses) as an
+XFDF file (the XML format Acrobat and other programs read; or FDF, its PDF form), to send them
+without the whole PDF. The Markups list's <b>Export comments...</b> button exports only the
+markups it shows (filter first). Pictures and attached files aren't exported: they stay in the
+PDF. <b>Import comments...</b> adds an XFDF or FDF file's comments to another copy of the
+document, on the same pages, as one undo step. A comment already in the document (the same
+name) is updated if it changed and left alone if not, so comments sent back and forth don't pile
+up, and replies attach to the markups they answer. Comments for pages the document doesn't have
+are skipped, and a message says how many were added, updated and skipped and why. Notes written
+as rich text (as Acrobat writes them) keep their text and formatting both ways. A comment file
+can't run anything: links, scripts and other actions in it are left out, and a file that
+declares XML entities or is larger than 64 MB isn't read. A comment whose position or size isn't
+a usable number (NaN, infinity, or beyond 10 million points) is skipped and listed in the
+message; the rest are imported. An image stamp in a comment file is drawn only from your own
+stamp library, by its name, never from another place on your computer or the network.</li>
+<li><b>Summarize comments...</b> makes a new PDF listing every comment: its page, type, author,
+date, status and text, with its replies indented below it. Sort it by page (with each page's
+thumbnail beside its comments, as Acrobat's summary does; untick Page thumbnails for a list
+alone), author, date or type. It opens in a new tab: print it (Ctrl+P) or save it (Ctrl+S).</li>
 <li><b>Delete comments:</b> everyone's, only yours, or only one person's, on all pages or the
 current page. Undo brings them back.</li>
 <li><b>Flatten comments:</b> makes comments and markups a permanent part of the page while form
@@ -861,7 +976,8 @@ text for its text and the Layers tab for CAD layers.</li>
 then click to place it.</li>
 <li><b>Add my name</b> and <b>Add the date</b> are separate checkboxes. Changing them on a
 placed stamp redraws it (a re-added date shows today's date).</li>
-<li><b>Add image stamp...</b> adds your own picture (PNG/JPG) to the stamp list.</li>
+<li><b>Add image stamp...</b> adds your own picture (PNG/JPG) to the stamp list. A stamp shows
+at most 200 characters of its text, and a fill-in stamp at most 20 rows.</li>
 <li><b>Fill-in stamps:</b> <b>Fill-in: PO # / Date ordered</b> and <b>Fill-in: Req # / Date
 submitted</b> in the stamp list. When you click to place one, a box asks for the number and the
 date (the date starts as today, in your Preferences &gt; You date format). Double-click a placed
@@ -1197,7 +1313,8 @@ together, and Ctrl+Z undoes the whole drag); or Move page up / Move page down
 new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
 open document is already in the list. Drag them, or use Move up / Move down / Sort by name, to
 set the order, top to bottom. With "Add a bookmark for each file" ticked, each file gets a
-bookmark named after it and keeps its own bookmarks underneath. Click Combine..., choose a name,
+bookmark named after it and keeps its own bookmarks underneath (each still going to its spot
+on the page, in its own style). Click Combine..., choose a name,
 and the combined PDF opens. Password-protected files ask for their password. The original files
 aren't changed, and the new PDF can't replace one of them.</li>
 <li>Combine files also takes pictures (JPG, PNG, TIFF, BMP, GIF, WebP): each becomes a page.
@@ -1229,7 +1346,8 @@ them; stretched if its proportions differ; an even scale adjusts the page's meas
 its name too, 1/4" = 1'-0" becoming 1/2" = 1'-0" on a sheet twice the size) or <b>kept at the same place</b>,
 measured from the top-left corner. Measurements are measured again when what they measure changed
 (the new page brings its own scale, or the markups were stretched or scaled on a page with no
-scale). The underlines and text of links made with KanzonasPDF are
+scale). A bookmark to a spot on the page goes to the same spot of the new drawing, as the markups
+are placed. A table of contents page that is replaced is an ordinary page from then on. The underlines and text of links made with KanzonasPDF are
 drawn again on the new drawing; a link over words that aren't in the same place on the new
 drawing (a sheet callout that moved) stays where it was and is reported, so you can check it.
 Headers, footers, watermarks, backgrounds and text edits written into the old drawing go with
@@ -1242,7 +1360,8 @@ pages to new file (to a new file, not the document itself), Delete pages (the pa
 the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
 deleted page then goes to the page after it (or the last page).</li>
 <li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
-<li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks.</li>
+<li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks, make them from the
+headings, and insert a table of contents (see Bookmarks and table of contents).</li>
 <li><b>Link sheet callouts</b> (Pages menu; Pages tab, under the Document group's arrow): for a drawing set plotted without
 hyperlinks. KanzonasPDF reads each page's sheet number and title from its title block (the
 value after a SHEET, SHEET NO or DWG NO caption, or the largest sheet-like number in the
@@ -1254,6 +1373,70 @@ so AutoCAD's own hyperlinks stay and running it twice adds nothing. Options: a t
 around the links (off by default, to keep drawings clean), and bookmarks named by sheet number
 and title. Ctrl+Z undoes it all.</li>
 </ul>
+
+<h2 id="bookmarks">Bookmarks and table of contents</h2>
+<p>Bookmarks (the PDF's outline) are listed in the <b>Bookmarks</b> panel (F9). Click one to go
+to its place. The buttons above the list add a bookmark to the current page (+), rename, delete,
+move up and down, and indent (make it a child of the one above) or outdent. The <b>⋯</b> button,
+a right-click in the list, and <b>Document &gt; Bookmark tools</b> have the rest. Every change is
+one undo step (Ctrl+Z), and editing one bookmark keeps the others' places, zoom and styles.</p>
+<ul>
+<li><b>Add bookmark at current view</b> (Ctrl+B, when you're not editing text): a bookmark to
+the place the window shows, after the selected bookmark. With text selected, the bookmark goes
+to that text and is named after it.</li>
+<li><b>Set bookmark destination to current view</b>: the selected bookmark now goes to the
+place the window shows (its name and style stay).</li>
+<li><b>Sort bookmarks by page</b> (in page order, then from the top of the page down) or
+<b>Sort bookmarks by name</b> (numbers in number order: A-2 before A-10). Each bookmark's
+children move with it and are sorted too.</li>
+<li><b>Expand all bookmarks</b> and <b>Collapse all bookmarks</b> open or fold the whole list
+(only in the panel; the document doesn't change).</li>
+<li><b>Bold bookmark (on/off)</b>, <b>Italic bookmark (on/off)</b> and <b>Bookmark
+color...</b> style the selected bookmark. They're saved in the PDF, so Acrobat and other
+readers show them too.</li>
+</ul>
+<p><b>Making bookmarks from the document.</b> Three commands find the bookmarks for you. Each
+reads the pages with a progress bar (Cancel stops it), then shows what it found as a tree to
+check before anything changes: untick what shouldn't be a bookmark, double-click a name to
+change it, select bookmarks and click <b>Level up</b> or <b>Level down</b>, and choose how many
+<b>Levels</b> to keep (1 to 3). Clicking a bookmark there shows its place on the page. Tick
+<b>Names in capitals in Title Case</b> to write FIRST FLOOR PLAN as First Floor Plan. When the
+document already has bookmarks, choose whether the new ones replace them or come after them.
+<b>Make bookmarks</b> makes them all as one undo step.</p>
+<ul>
+<li><b>Make bookmarks from headings...</b> finds the headings by their look: text clearly
+bigger than the body text, bold lines alone on their row, and numbered headings (1.2 Scope,
+SECTION 08 71 00, PART 2 - PRODUCTS, Chapter 3). The levels are the same throughout the
+document: bigger text is a higher level, then bold, then the numbering (SECTION over PART over
+1.1 over 1.1.1); the window says which look became which level. Headers, footers and page
+numbers repeated on page after page are left out, and so are the lines of a table of contents
+page. A single line bigger than everything else at the start (the document's title) is listed
+unticked. It's quick even on long documents (a second or two for 500 pages).</li>
+<li><b>Bookmarks from tagged structure...</b> is for tagged PDFs (most PDFs saved from Word,
+and accessible PDFs): their headings are marked H1 to H6, so the bookmarks are exactly the
+document's headings and levels. On a PDF without tags it says so.</li>
+<li><b>Bookmarks from sheet numbers...</b> is for drawing sets: a bookmark for each sheet,
+named by its sheet number and title (A-101  FIRST FLOOR PLAN), read from the title blocks as
+Link sheet callouts reads them. Tick <b>Group the sheets by discipline</b> to put them under
+G - General, A - Architectural, S - Structural, M - Mechanical and so on (the U.S. National CAD
+Standard's letters).</li>
+</ul>
+<p><b>Insert table of contents...</b> (Document menu, Pages menu, or the Bookmarks panel's ⋯)
+adds pages listing the bookmarks: a title, each bookmark with dotted leaders and its page number,
+levels indented and in smaller type, and each line a link to its page. The text is written in
+fonts embedded in the pages, so the table looks the same in every reader and passes Save as
+PDF/A's check, and each title is one block of text that <b>Edit text</b> opens whole (wrapped as
+it was). Choose the title, how
+many levels to list, where it goes (at the start of the document, or before the current page)
+and the page size (the size of the page it goes before, Letter or A4). The page numbers are the
+pages' numbers after the new pages are inserted. Run it again after changing the bookmarks and
+choose <b>In place of the table of contents made before</b>: the old pages are replaced by new
+ones, instead of adding another table. Bookmarks that go to a web page or another file aren't
+listed, and the headings on the table's own pages are never made into bookmarks. Each line's link
+is described for screen readers ("Results, page 4") and the dotted leaders are marked as
+decoration; in a tagged document the table is tagged as one (a table of contents holding an
+item per line, each a link with the line's words and page number). It's one undo
+step, and it asks to unlock the page order when the page list is locked.</p>
 
 <h2 id="scan">Scanning</h2>
 <p><b>Scan...</b> (File menu, Pages tab &gt; Create group, or the command palette) scans pages
@@ -1371,11 +1554,13 @@ the marks is fitted to the paper (Fit to paper or Actual size, as set there).</l
 <li><b>Fill in:</b> with Select or Hand, click a field. Option buttons with the same group
 name are exclusive: choosing one clears the others in its group. A field's maximum length is
 kept to; a dropdown that allows it also takes a typed value (Type a value...). KanzonasPDF
-doesn't run a form's JavaScript: totals a form works out itself and number or date formats
-written as scripts don't update (check them, or fill such a form in Acrobat Reader).</li>
+never runs a form's JavaScript: it recognizes the standard calculations, formats and checks
+that Acrobat writes and does them itself (see below); any other script stays in the file but
+isn't run, so what it would work out doesn't update (check it, or fill such a form in Acrobat
+Reader).</li>
 <li><b>Next form field</b> (Tab) and <b>Previous form field</b> (Shift+Tab), in the Forms menu:
-go through the fields in reading order (page by page, top to bottom, left to right as the
-page is shown, also on a rotated page). The
+go through the fields in the page's tab order (unless it was set otherwise with Set tab order...:
+page by page, top to bottom, left to right as the page is shown, also on a rotated page). The
 current field gets an orange outline; a text field opens for typing (Tab moves on, Shift+Tab
 goes back); for a checkbox, option button, dropdown, signature or initials field press
 <b>Space</b> or <b>Enter</b> to fill it in. Escape clears the outline.</li>
@@ -1383,8 +1568,62 @@ goes back); for a checkbox, option button, dropdown, signature or initials field
 blue with a blue outline; required fields get a red outline. The shading is on screen only.</li>
 <li><b>Create:</b> Forms menu: text field, checkbox, option button, dropdown, signature field,
 initials field. An <b>initials field</b> works like a signature field: whoever fills in the
-form clicks it to put their saved initials there. Double-click a field to change its name and
-options.</li>
+form clicks it to put their saved initials there. Double-click a field (with a form tool), or
+right-click it, to open its Field properties. On the ribbon's Forms tab, the <b>Smart forms</b>
+group has Detect fields, Field properties, Tab order and Check required (the commands below).</li>
+<li><b>Detect form fields...</b> (Forms menu, or right-click the page with a form tool) finds
+where fields belong on a flat form: a PDF without fields, or a scanned one after Recognize text
+(OCR). It looks for blank lines after a label ("Name: ____", drawn or typed as underscores) or
+with their label under them, empty boxes and table cells next to a label or under a column
+heading (Qty 1, Qty 2, ...), boxes with a small label inside, and small squares with a label
+beside them (checkboxes); a "Signature" or "Initials" label makes a signature or initials field
+and a "Date" label a date field. Each field is named after its label. Before anything changes
+a list shows what was found (each also shown on the page as an orange dashed box): untick what
+you don't want (Select all / Select none), change a name or kind, then <b>Create fields</b>
+makes them in one step (Ctrl+Z undoes it). It's careful rather than eager: a line or box with
+no label near it, underlined text, the rules between paragraphs and the page's border are left
+alone, so add any field it missed with the tools above.</li>
+<li><b>Field properties...</b> (Forms menu, or right-click a field; select the field first
+with a form tool, or Tab to it). <i>General:</i> name, tooltip (shown when the pointer rests on
+the field), Required, Read-only, a dropdown's choices and its Place in the tab order.
+<i>Format</i> (text fields): Number (decimal places, separator style such as 1,234.56 or
+1.234,56, a currency symbol before or after the number, negative numbers with a minus or in
+parentheses), Percent (a number typed is a percent: 25 or 25% shows as 25.00%, and 0.5 as
+0.50%; the value is kept as a fraction, 0.25, so Acrobat's percent calculations still work;
+Acrobat itself would show a bare 25 as 2500.00%), Date (a
+format such as mm/dd/yyyy: d day, m month, mmm Jan, mmmm January, yy or yyyy year), or Special
+(ZIP code, ZIP+4 code, phone number, Social Security number). The value is kept plain (1234.5)
+and shown formatted ($1,234.50). <i>Validate:</i> a range the value must be in (From / To;
+for a percent field, of the fraction kept: 0 to 1 for 0% to 100%, as in Acrobat).
+<i>Calculate:</i> the field's value is the Sum, Product, Average, Minimum or Maximum of the
+fields you tick, or a Formula such as <b>Price * Qty + Shipping</b> (field names, numbers,
++ - * / and parentheses; a name with spaces takes a backslash before each space: Item\\ 1;
+up to 50 parentheses or signs inside each other and 250 terms in a row; a longer formula in a
+form from elsewhere is shown as Custom calculation (not run)).
+Each change is one undo step.</li>
+<li><b>Calculated fields</b> are worked out as soon as a field they use is filled in (Enter,
+Tab or a click elsewhere), each after the fields it uses, so a subtotal feeds a total; an empty
+field counts as 0 and a division by zero leaves the result empty. When a field (or the
+page it's on) is deleted, the fields that used it are worked out again without it. A calculated field isn't
+typed in. KanzonasPDF works them out with its own small formula reader, and saves them the way
+Acrobat does (its standard AFSimple_Calculate and simplified field notation, with the form's
+calculation order), so Acrobat and other readers calculate them too; a form made in Acrobat
+with those calculations is calculated here the same way. Any other calculation script is shown
+in Field properties as Custom calculation (not run).</li>
+<li><b>Checking what's typed:</b> a number, percent, phone, ZIP or Social Security field takes
+only the characters that fit while you type. A value that doesn't fit the field's format (a
+date that doesn't exist, a phone number with too few digits) or its range is refused: a message
+says why, the field keeps its old value and opens again with what you typed, to correct it.
+Formats and checks are saved as Acrobat's standard ones (AFNumber_Format, AFDate_FormatEx,
+AFRange_Validate and the like), so other readers apply them too.</li>
+<li><b>Required fields:</b> on Save and Print, required fields that are still empty are
+flagged in red and named in a notice at the top of the document (Go to the first takes you
+there); the file is saved or printed all the same. <b>Check required fields</b> (Forms menu)
+does the same at any time; filling in a flagged field takes its flag away.</li>
+<li><b>Set tab order...</b> (Forms menu, or right-click with a form tool): the order Tab goes
+through a page's fields: By rows, By columns (for this page or all pages), or Manual: drag the
+fields in the list, or use Move up and Move down. It's saved in the page, so other readers
+follow it too; Place in the tab order in Field properties moves one field.</li>
 </ul>
 
 <h2 id="sign">Protect: signatures, passwords, redaction</h2>
@@ -1434,9 +1673,14 @@ proving the file existed, unchanged, at that moment. Saved as a new copy.</li>
 can be selected, moved and resized; <b>Apply selected redactions</b> applies only the selected
 ones, Apply redactions applies them all. Applying removes, not just covers: the text, images
 and line art under a mark, and any <b>form field or markup</b> a mark overlaps (they keep their
-own copy of the text). A vector path that touches a mark is removed past the box, including
+own copy of the text). A field removed leaves nothing of itself in the file, and a calculated
+field that used it is worked out again without it (counted as empty), so a total doesn't give
+away a redacted price; a redacted calculated field isn't worked out again from the fields
+left. A vector path that touches a mark is removed past the box, including
 the part outside it. A redacted page also loses its thumbnail and the private copy of the page
-some programs (Illustrator) keep in the file. Applying scrubs metadata, attachments, hidden
+some programs (Illustrator) keep in the file, and a tagged span (the words kept again as
+ActualText, for reading and copying) that a mark covers even part of loses that copy of its
+words. Applying scrubs metadata, attachments, hidden
 text, scripts and such programs' private data unless
 you turn that off in the confirmation (the checkbox starts ticked). <b>Search &amp; redact</b> marks the text
 on the pages also where a layer that is hidden has it or where the page is cropped away, and finds
@@ -1444,7 +1688,7 @@ it where a box can't go: form
 fields (values, list options, tooltips and names, also of fields on no page), links (web and
 email addresses), markup notes (also their formatted text), bookmark titles and web addresses,
 document properties (also a program's own), the alternate text of tagged PDFs, link notes,
-page labels, layer names and destination names. When you apply, fields, links, stamps and
+page labels, layer names, destination names and the title a table of contents remembers. When you apply, fields, links, stamps and
 attached files containing it are deleted (and an XFA form holding it: its ordinary fields stay), and in notes and comments (they stay), bookmarks
 and properties (and those other places) it's replaced by [redacted]. If the text is only in those places, Search &amp; redact says where it found it (the
 fields, notes, links, bookmarks and properties, and how many other places in the file, such as
@@ -1601,6 +1845,202 @@ page number (plan_p1.png, plan_p2.png...); if any of them exist already, you're 
 before they're replaced.</li>
 </ul>
 
+<h2 id="accessibility">Accessibility (tags for screen readers)</h2>
+<p>People who are blind or have low vision read PDFs with screen readers, which follow the
+document's <b>tags</b>: its structure (headings, paragraphs, lists, tables, figures), the
+order to read them in, and descriptions of the pictures. Laws ask for accessible PDFs more
+and more (in the US, ADA Title II for state and local governments and Section 508 for federal
+agencies; the European Accessibility Act in the EU); the standards they point to are WCAG 2.1
+and, for PDF, <b>PDF/UA</b> (ISO 14289-1). The commands are in <b>Document &gt;
+Accessibility</b>; each change is one step Ctrl+Z undoes, and the pages look exactly as
+before.</p>
+<ul>
+<li><b>Check accessibility...</b> lists what keeps the document, as it is now, from being
+accessible, by kind (the document, page content and tags, headings, lists, tables and
+figures, links and comments, form fields, fonts), each with its page (double-click a line to
+go there), the rule it breaks (the clause of PDF/UA and the failure condition of the
+<b>Matterhorn Protocol</b>, the PDF Association's checklist of PDF/UA), and the fix here that
+deals with it: select the line and click <b>Fix...</b>, and the check runs again. It checks
+what a program can: tagged, with every piece of content tagged or marked as an artifact
+(decoration); title and language; figures and formulas with alternate text; tables with
+header cells that say what they head; headings that start at H1 and skip no level; lists and
+tables built the way PDF says; links, form fields and comments tagged and described; tab
+order; fonts embedded and text that reads as letters (Unicode); security that lets screen
+readers read; bookmarks in documents longer than 20 pages (its fix, <b>Make bookmarks</b>,
+makes them from the tags' headings in a tagged document, else from the headings' look, through
+the same preview as Document &gt; Bookmark tools). The last group lists what only a
+person can judge: the reading order makes sense, the alternate text says what each picture
+shows, the colors contrast enough (WCAG asks 4.5:1, 3:1 for large text), headers and footers
+are artifacts, recognized text is accurate. For a formal validation, use <b>PAC 2024</b>
+(free, for Windows, pac.pdf-accessibility.org) or <b>veraPDF</b>'s PDF/UA profile
+(verapdf.org).</li>
+<li><b>Auto-tag...</b> gives an untagged document its tags, made from what the pages draw:
+<b>headings</b> (larger or bold short lines; their levels ranked by size across the document,
+starting at H1 and never skipping one), <b>paragraphs</b>, <b>lists</b> (lines that start
+with a bullet or a number such as 1., a) or (iv): the bullet or number as the item's label),
+<b>tables</b> drawn with ruling lines around every cell (their first row as column headers
+when it stands out: bold, larger, or words over numbers), <b>figures</b> (pictures; a scan
+with recognized text over it is decoration, its text is read), <b>links</b> (with the words
+they cover), <b>form fields</b> and <b>comments</b>; page <b>headers, footers and page
+numbers</b> (the same words at the top or bottom of many pages) and drawn lines, boxes and
+other drawings become <b>artifacts</b> that screen readers skip. The <b>reading order</b> is
+top to bottom, with columns read one after the other, left to right. It asks for the
+document's title and language (set together). It suits simple layouts, and is careful: what it
+can't recognize for sure is tagged as a paragraph. It doesn't recognize nested lists (they're
+read as one), tables without ruling lines or with merged cells (read as paragraphs),
+captions, footnotes, formulas, or charts drawn with lines (artifacts: describe them in the
+text or a figure's alternate text). A document that is tagged already is left as it is. A page
+whose characters can't be matched with its drawing instructions (an unusual font) is tagged as
+one paragraph, and the window at the end says so. A page that has marked content already (a
+program tagged it, and its tags were taken out since, as some tools do) is tagged by that
+marking: each marked piece an element of the type its marking names (a paragraph when that
+isn't a standard one), the rest as any content added to a tagged page; the window says which
+pages. Then describe the figures (Alt text) and run
+Check accessibility.</li>
+<li><b>Alt text...</b> lists the document's figures, each with its picture: type a description
+(what it shows, or what it's for, in a sentence or two), or tick <b>Decorative</b> for a
+picture that only decorates: it becomes an artifact and leaves the tags. A document without
+tags is offered Auto-tag first (the descriptions are kept in the tags).</li>
+<li><b>Reading order...</b> shows the current page's tags numbered in the order screen
+readers read them, each drawn as a box over a picture of the page: drag a tag in the list (or
+use Move up and Move down) to change the order, then OK. Tags in different sections of the
+document stay in their sections.</li>
+<li><b>Title and language...</b>: the title screen readers announce, written in the document
+properties and the XMP metadata, and shown in the window's title bar instead of the file name;
+and the document's language (English (United States), Español (España)... or any language tag
+typed in), which sets the voice and pronunciation. The language offered is KanzonasPDF's own.</li>
+<li><b>Form field tooltips...</b>: the name screen readers say for each field, offered from the
+words just left of or above it (else its field name made readable): check and correct them in
+the list, then OK.</li>
+<li><b>Link descriptions...</b>: what screen readers say for each link, offered from the words
+it covers, else its web address or the page it goes to.</li>
+<li><b>Tab order follows the tags</b>: on every page, Tab moves through links and fields in
+the order of the tags.</li>
+<li><b>Mark as decorative</b>: the pictures and shapes selected with Edit objects become
+artifacts (a picture tagged alone as a figure leaves the tags). A picture tagged together with
+text can't be separated from it here.</li>
+<li><b>Embed fonts</b>: embeds the standard fonts that aren't (Helvetica, Times, Courier,
+Symbol, ZapfDingbats, and Arial, Times New Roman and Courier New, which are shown with them)
+from KanzonasPDF's own copies, as Save as PDF/A does, so the text looks and measures the same.
+Other fonts can't be embedded afterwards: make the PDF again with its fonts embedded.</li>
+<li><b>Identify as PDF/UA...</b> says in the file's XMP metadata that it meets PDF/UA-1; do it
+once Check accessibility finds nothing (it warns otherwise).</li>
+</ul>
+<p><b>Editing a tagged document.</b> Every edit keeps the tags in step with the pages, in the
+same Ctrl+Z step: text written with Add text, pasted or rewritten by Edit text is tagged (a
+paragraph, in the reading order where the page shows it; a heading, list item or table cell
+rewritten stays what it was); a picture moved with Edit objects or CAD mode, also onto another
+page, keeps its figure and its alternate text, and a picture pasted is a new figure (Check
+accessibility asks for its description); lines and shapes added are artifacts; markups, links
+and fields added are tagged (a note's pop-up together with its note, described by the note's
+text, as veraPDF's PDF/UA check wants), and leave the tags when deleted; pages duplicated, inserted,
+replaced (Replace pages: the new drawing is tagged anew) or deleted take their tags along;
+Header &amp; footer and Bates numbers are pagination artifacts. Apply redactions (and Sanitize
+document's hidden text) also takes out the alternate text, ActualText and expansion of the
+tagged content a mark touches, and the tags of content wholly removed, so nothing in the tags
+still says what was redacted. When a file another program changed has tags out of step with
+its pages (content no tag holds, tags of content that isn't there, a parent tree pointing
+wrong), Check accessibility says so and its <b>Repair tags</b> fix puts them right.</p>
+<p>Check accessibility, Auto-tag and Alt text are also on the Pages tab, under the Document
+group's arrow; the command palette (Ctrl+Shift+P) finds all of these by name.</p>
+<h2 id="batch">Batch processing</h2>
+<p><b>Tools &gt; Batch processing...</b> (also in the File menu) does the same thing to many
+PDFs at once: an office makes 200 scanned invoices searchable and archives them as PDF/A, a
+law office Bates-numbers a set of discovery documents, CONFIDENTIAL goes on every file in a
+folder, the markups on 40 sheets are flattened, a folder is made small enough to email. You
+don't need a document open; the window stays open while you keep working.</p>
+<ul>
+<li><b>Files:</b> <b>Add files...</b>, <b>Add folder...</b> (its PDFs; tick <b>Include
+subfolders</b> for theirs too), or drop files and folders on the list. The list shows each
+file's page count ("protected" for one that needs a password to open). Files are processed
+in the order of the list: <b>Move up</b>, <b>Move down</b> and <b>Sort by name</b> set it, and
+Bates numbers and Combine follow it. A file open in a tab is read as it was last saved.
+<b>Password-protected files:</b> <b>Ask for the password</b> (asked once: the password is
+tried first on the next protected files, so a set that shares one password is asked once;
+<b>Skip this file</b> or <b>Skip all protected files</b> leave them out) or <b>Skip them</b>.
+A file that opens but doesn't allow changes needs its permissions password the same way. A
+digitally signed file is skipped when a step would change it (the signature would no longer
+be valid).</li>
+<li><b>Steps</b> run in the order listed, each with its options (click a step to see them;
+<b>Add step</b>, <b>Remove</b>, <b>Move up</b>, <b>Move down</b>). Each does exactly what the
+command of the same name does on an open document: <b>Recognize text (OCR)</b> (skips pages
+that already have text unless you untick it; Accuracy as in the OCR window; the pages are
+read by the same OCR as Recognize text, in the same small pieces and the same memory);
+<b>Save as
+PDF/A</b> (after the steps that change the document; only Export and Combine can follow it;
+a password-protected file needs Remove password first); <b>Watermark</b> (text or a picture);
+<b>Header and footer</b> (tokens {page} {pages} {date} {file} {bates}); <b>Page numbers</b>;
+<b>Bates numbering</b> (prefix, first number, digits, position: the numbers continue from one
+file to the next in the order of the list, so the first file starts at the first number and
+each next one where the last left off; a file that fails or is skipped uses no numbers, and
+the report gives each file's first and last number); <b>Flatten comments</b> (redaction marks
+not applied yet stay marks unless you choose Apply them first); <b>Flatten form fields</b>
+(and, if ticked, comments and markups too); <b>Apply redactions</b> (the marks already in
+each file, applied exactly as Apply redactions does: the words Search &amp; redact marked
+are taken out of the file's other places too, and nothing of what was under a mark is left
+in the file, in a tagged span's ActualText, the page's thumbnail or a program's private
+copy of the page); <b>Search &amp; redact</b> (a list of words or phrases, one per line:
+every occurrence is marked, in hidden layers and where a page is cropped too, and the marks
+are applied, with the words taken out of fields, notes, links, bookmarks, properties and the
+file's other places, such as layer names, web addresses, form data and alternate text, as
+Search &amp; redact and Apply redactions do; a word found only in those places is removed
+from there. With <b>Remove hidden information</b> ticked (in Apply redactions too), each
+file's metadata, attached files, hidden text and scripts are removed even when nothing was
+found to redact; unticked, attached files stay and aren't searched, and the report warns of
+them. Apply the redactions is ticked to begin with: the originals stay as they were,
+and the redacted copies go to the output folder. The report says for each file what was
+removed and where: the pages, and how many of the other places. Untick it to only mark them
+for review: nothing is removed yet, the report says so ("nothing was removed yet: open the
+file and use Apply redactions"), and each file left with marks is named with -marked at the
+end, such as report-marked.pdf, unless you chose a file name pattern of your own);
+<b>Sanitize document</b> (the same choices as Protect &gt; Sanitize document); <b>Reduce file
+size</b> (as Compress; a file that wouldn't get smaller is kept as it is); <b>Rotate pages</b>
+(all, odd, even, landscape or portrait pages, or a list); <b>Delete blank pages</b> (pages
+with no text and almost no ink, such as the blank backs of a two-sided scan; a page with
+markups, form fields, a page number or a few written words is kept, a file is never left
+without pages, and the report lists the pages deleted: check them); <b>Add password</b> and
+<b>Remove password</b> (as Security properties; to remove a permissions password, type it);
+<b>Set document properties</b> (title, author, subject, keywords; {name} is the file's name);
+<b>Export</b> (Word, Excel, PowerPoint, PNG or JPEG pictures, or text, made from the document
+as the steps before it left it, saved next to the PDF; it must come after Search &amp; redact
+and Apply redactions, or the copy would still hold the words); <b>Combine all into one PDF</b>
+(the last step: the processed files in list order, a bookmark for each; tick Also save each
+file to keep them as well; a file skipped or failed isn't in it and uses no Bates numbers;
+with Search &amp; redact only marking, it's named Combined-marked). The PDF of each file is written when the steps change documents; with
+only Export steps, only the exported files are.</li>
+<li><b>Recipes</b> keep a list of steps with their options under a name: choose one in
+<b>Recipe</b>, <b>Save recipe...</b> to keep the current steps, <b>Delete recipe</b> to remove
+one of yours. Ready-made ones: <b>Make searchable (OCR)</b>, <b>Archive (OCR + PDF/A)</b>,
+<b>Confidential (watermark + flatten)</b>, <b>Bates number for production</b> and <b>Shrink
+for email</b>. Passwords typed in steps are never saved in a recipe. The last steps and output
+choices are remembered for the next time.</li>
+<li><b>Output:</b> <b>A "Processed" folder next to each file</b> (the default), or <b>This
+folder</b>, where <b>Keep the folder structure</b> puts the files of a folder's subfolders in
+the same subfolders. <b>File name</b>: {name} (the file's own name), {n} (its number in the
+list: 001, 002...), {date} (today) and {bates} (its first Bates number), such as {name}_ocr.
+A name is always a file in the output folder: slashes, colons, .. and drive letters become
+part of the name, Windows' device names (CON, NUL, LPT1...) get a _ in front, and a name too
+long is shortened.
+<b>If the file is already there:</b> Ask (Replace, Replace all, Skip, Skip all), Add a number
+(name (2).pdf), Replace it, or Skip the file. Results never replace the files they were made
+from unless you tick <b>Allow replacing the original files</b> (off every time the window
+opens); two files with the same name never overwrite each other. A "Processed" folder is left
+out when a folder is added again, and so are the files in the output folder when it's inside
+the folder added (the results of an earlier run). Nothing is ever written outside the output
+folder: a file already there that is a link is replaced, not written through, and a folder
+there that is a link to another place is skipped.</li>
+<li><b>Run</b> shows the progress of the file being processed and of all files. <b>Cancel</b>
+finishes the file being processed, then stops; click it again (<b>Stop now</b>) to stop at
+once, leaving that file out. A file's results appear all together or not at all: nothing
+half-written is ever left. One document is open at a time and its memory is freed before the
+next, so a long run doesn't use more memory as it goes.</li>
+<li>The <b>report</b> at the end lists each file as Done, Skipped or Failed with the reason
+(a wrong password, a file that isn't a PDF, a step that couldn't be done) and what it wrote
+(after redacting, a word still found in the file is reported as a warning: check that file);
+<b>Save report...</b> saves it as a CSV file (opens in Excel) or as text. <b>Report...</b>
+shows it again.</li>
+</ul>
+
 <h2 id="preferences">Preferences</h2>
 <ul>
 <li><b>File &gt; Preferences...</b> (Ctrl+K) gathers the options KanzonasPDF remembers in one
@@ -1669,6 +2109,9 @@ orientation File &gt; New PDF uses, or Ask every time),
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid
 settings...).</li>
+<li><b>Reading:</b> the voice Read aloud reads with (the voices installed on the computer; the
+list is filled when you open it) and its speed, with <b>Test</b> to hear them, and the Auto
+scroll speed.</li>
 <li><b>OCR:</b> the accuracy the Recognize text dialog starts with.</li>
 <li>Changes apply when you click OK; Cancel leaves everything as it was.</li>
 </ul>
@@ -1680,6 +2123,7 @@ settings...).</li>
 <tr><td>Ctrl+E</td><td>Edit text (click: the paragraph; Alt+click: one line)</td></tr>
 <tr><td>Ctrl+B / Ctrl+I / Ctrl+U (editing text)</td><td>Bold / Italic / Underline the selected words</td></tr>
 <tr><td>Ctrl+] / Ctrl+[ (editing text)</td><td>Larger / smaller text (the selected words, a point at a time)</td></tr>
+<tr><td>Ctrl+B (not editing text)</td><td>Add bookmark at current view</td></tr>
 <tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
 <tr><td>Ctrl+N</td><td>New PDF (blank page)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>
@@ -1730,6 +2174,13 @@ settings...).</li>
 <tr><td>F11</td><td>CAD mouse mode on / off (off goes back to Standard or Hand, whichever you had)</td></tr>
 <tr><td>Letters, Enter (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode (Shift+letter ones do), unless Preferences &gt; Mouse turns typing to the command line off.</td></tr>
 <tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
+<tr><td>Ctrl+Shift+L / F5</td><td>Full screen (Escape leaves it) / Presentation</td></tr>
+<tr><td>B / W / L (presentation)</td><td>Black screen / white screen / laser pointer</td></tr>
+<tr><td>Ctrl+5 / Ctrl+6 / Ctrl+7 / Ctrl+8</td><td>Single page / Continuous / Two pages / Two pages continuous</td></tr>
+<tr><td>Ctrl+4</td><td>Reading view (the page's text reflowed)</td></tr>
+<tr><td>Ctrl+Shift+V / Ctrl+Shift+B</td><td>Read this page / the whole document aloud</td></tr>
+<tr><td>Ctrl+Shift+C / Ctrl+Shift+E</td><td>Pause or resume / stop reading aloud</td></tr>
+<tr><td>Ctrl+Shift+A</td><td>Auto scroll (Up / Down: slower / faster)</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>

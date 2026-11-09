@@ -20,11 +20,12 @@ import weakref
 
 import pymupdf
 
-from . import pdf_speed, pdfcoords, text_guard
+from . import bookmarks_auto, pdf_speed, pdfcoords, text_guard
 from .i18n import tr
 
 pdf_speed.apply()                       # (adding markups doesn't slow down as they add up)
 text_guard.apply()                      # (reading text can't crash MuPDF: see text_guard.py)
+bookmarks_auto.apply_deep_outlines()    # (bookmarks nested deep can be read: see there)
 
 
 def each_annot(page, types=None):
@@ -1217,7 +1218,7 @@ def shift_in_place(page, xref, d, to_pdf=None):
     if kind == "string":
         try:
             store = json.loads(val)
-        except ValueError:
+        except (ValueError, RecursionError):
             store = None
         geom = store.get("geom") if isinstance(store, dict) else None
         if isinstance(geom, dict):
@@ -1272,10 +1273,18 @@ def replace_many(page, changes, olds=None, again=False):
     # are written anew
     shifted = set()
     to_pdf = pdfcoords.to_pdf(page)
+    o = pymupdf.Point(0, 0) * to_pdf
+    moves = {}
     for xref, model in changes:
         d = None if again else translation(olds[xref], model)
         if d is not None and shift_in_place(page, xref, d, to_pdf):
             shifted.add(xref)
+            v = pymupdf.Point(d) * to_pdf - o
+            moves[xref] = (v.x, v.y)
+    if moves:
+        # their replies and review statuses go along (one walk of the page: review.py)
+        from . import review
+        review.shift_replies(page, moves)
     # ...the old ones of the rest go in one look through the page (one at a time, each delete
     # looked through all the page's markups for replies: minutes for a few thousand)
     # (a markup not changed at all stays as it is)
@@ -1334,8 +1343,14 @@ def replace(page, xref, model):
         return xref
     order = annot_order(page)
     pos = order.index(xref) if xref in order else None
-    page.delete_annot(page.load_annot(xref))
+    # the replies to it answer the new one (review.py): deleting it took them along
+    doc = page.parent
+    from . import review
+    answering = review.Threads(page).children.get(xref, ())
+    pdf_speed.delete_many(page, [xref], keep_replies=True)
     new = write(page, model).xref
+    for r in answering:
+        doc.xref_set_key(r, "IRT", f"{new} 0 R")
     if pos is not None:
         order = annot_order(page)
         if new in order:
