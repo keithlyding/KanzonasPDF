@@ -7,6 +7,18 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.10.1
+
+**Fixed**
+- Links to other files, as in a drawing index: when the linked file isn't where the link says (the index was made on another person's computer, or the folders were moved or synced somewhere else), KanzonasPDF looks for it from the folder of the document you're reading and opens it; the status bar says which file it opened. If it can't find it, the message says so and, on Windows, when the link points into another person's user folder.
+- A link that ends with a hidden character, or that names a drive the way some PDF programs write it (/C/Users/...), opens its file; a link to a named spot in another PDF opens that PDF at that spot.
+
+## 1.10.1 (es)
+
+**Correcciones**
+- Vínculos a otros archivos, como en un índice de planos: cuando el archivo vinculado no está donde dice el vínculo (el índice se creó en el equipo de otra persona, o las carpetas se movieron o se sincronizan en otro lugar), KanzonasPDF lo busca desde la carpeta del documento que está leyendo y lo abre; la barra de estado indica qué archivo abrió. Si no lo encuentra, el mensaje lo dice y, en Windows, indica cuándo el vínculo apunta a la carpeta de usuario de otra persona.
+- Un vínculo que termina con un carácter oculto, o que nombra una unidad como la escriben algunos programas de PDF (/C/Users/...), abre su archivo; un vínculo a un lugar con nombre de otro PDF abre ese PDF en ese lugar.
+
 ## 1.10
 
 **New**

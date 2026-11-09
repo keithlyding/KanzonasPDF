@@ -10911,3 +10911,12 @@ msgstr "Advertencia: se conservaron {n} archivo(s) adjunto(s), y no se buscó en
 
 msgid "Export comes before {step}: the exported copy would still hold what is redacted. Put Export after it."
 msgstr "Exportar va antes de {step}: la copia exportada aún tendría lo que se censura. Ponga Exportar después."
+
+msgid "The link was made on another computer or by another person: it points into the Windows user folder of {user}, not yours."
+msgstr "El vínculo se creó en otro equipo o lo creó otra persona: apunta a la carpeta de usuario de Windows de {user}, no a la suya."
+
+msgid "KanzonasPDF also looked for it from this document's folder, as the link's last folders and file name, and didn't find it."
+msgstr "KanzonasPDF también lo buscó desde la carpeta de este documento, con las últimas carpetas y el nombre de archivo del vínculo, y no lo encontró."
+
+msgid "Opened {found} (the link points to {path}, which isn't there)"
+msgstr "Se abrió {found} (el vínculo apunta a {path}, que no está ahí)"

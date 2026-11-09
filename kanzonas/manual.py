@@ -280,7 +280,15 @@ again</b> to skip the question from then on). A link to another PDF opens it in 
 link to another kind of file asks before opening it, and only common documents, pictures,
 media and drawings are opened (links that would start a program, a script or a file with
 macros are refused). Links written by AutoCAD and other CAD programs when plotting a sheet set
-work this way, including links to files whose names have spaces. A link to a file on another computer (a network share) asks first, because
+work this way, including links to files whose names have spaces and links to a named spot in
+the other file (it opens at that spot). <b>When the linked file isn't where the link says</b>
+(an index made on another person's computer points into their own user folder, C:\\Users\\<i>their
+name</i>\\..., or the folders were moved or synced somewhere else), KanzonasPDF looks for it from
+the folder of the document you're reading: the link's file name in that folder, or its last
+folders and file name (Drawings\\14854940.pdf) in that folder or a few folders above it. If it
+finds the file, it opens it and the status bar says which file it opened; if not, the message
+says where the link points and, on Windows, when that's another person's user folder. A link
+to a file on another computer (a network share) asks first, because
 opening it sends your Windows sign-in to that computer.</li>
 <li><b>Make anything a link:</b> select it, right-click and choose <b>Add link...</b>, then type a
 web or e-mail address (www.example.com is fine; https:// is added) or choose a page in this
