@@ -2269,6 +2269,7 @@ class DocumentView(QScrollArea):
         fresh = pymupdf.open(stream=data, filetype="pdf")
         # (the drawings compressed quickly since the last Save: Save packs them tightly)
         fresh._kz_quick = set(getattr(getattr(self, "doc", None), "_kz_quick", ()) or ())
+        fresh._kz_packed = dict(getattr(getattr(self, "doc", None), "_kz_packed", None) or {})
         if fresh.needs_pass and self._orig_enc is not None:
             for pw in (self._orig_enc.get("owner_pw"), self._orig_enc.get("user_pw")):
                 if pw and fresh.authenticate(pw):
@@ -11675,7 +11676,11 @@ class DocumentView(QScrollArea):
     def _write_file(self, tmp, sec):
         """Write the document to tmp the way save needs it (see save)."""
         from . import page_objects
-        page_objects.pack_quick_streams(self.doc)       # (as tight as before 1.6.1)
+        with page_objects.packed_for_saving(self.doc):  # (as tight as before 1.6.1)
+            self._write_packed(tmp, sec)
+
+    def _write_packed(self, tmp, sec):
+        """_write_file's writing, the drawings packed."""
         if not self.dirty and sec is None and self._orig_data is not None:
             # nothing changed: write the original bytes, so digital signatures stay valid
             # and protection stays exactly as it was
