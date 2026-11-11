@@ -1228,6 +1228,40 @@ def rebase_page(page, d):
             doc.xref_set_key(xref, "KZUnder", _shift_pairs(val, d.x, d.y))
 
 
+def outside_page(page):
+    """The xrefs of the page's markups wholly outside it (in the working space around the
+    page: KanzonasPDF shows them, other PDF programs and printing don't), its form fields,
+    links and pop-ups left out. Hidden information: Sanitize document and Remove hidden
+    information take them out."""
+    shown = (page.cropbox - (page.cropbox.x0, page.cropbox.y0, page.cropbox.x0,
+                             page.cropbox.y0))      # (unrotated page coordinates)
+    out = []
+    for xref, kind, _name in page.annot_xrefs():
+        if kind in (pymupdf.PDF_ANNOT_WIDGET, pymupdf.PDF_ANNOT_LINK, pymupdf.PDF_ANNOT_POPUP):
+            continue
+        try:
+            r = page.load_annot(xref).rect
+        except Exception:
+            continue
+        if r.is_valid and not r.is_empty and not r.intersects(shown):
+            out.append(xref)
+    return out
+
+
+def remove_outside(doc):
+    """Remove the markups wholly outside their pages (outside_page), with their replies and
+    pop-ups. Returns how many."""
+    from . import pdf_speed
+    n = 0
+    for i in range(doc.page_count):
+        pg = doc[i]
+        gone = outside_page(pg)
+        if gone:
+            pdf_speed.delete_many(pg, gone)         # (with their replies and pop-ups)
+            n += len(gone)
+    return n
+
+
 def sync_page(page):
     """After the page's boxes changed: MuPDF works out its page transform again and reloads
     its links and markups (a loaded page keeps its links' positions from when it was loaded:

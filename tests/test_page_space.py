@@ -166,5 +166,47 @@ class Crop(unittest.TestCase):
         self.assertAlmostEqual(abs(got["rect kept"].tl - P(100, 100)), 0, delta=0.05)
 
 
+class OutsideIsHiddenInformation(unittest.TestCase):
+    """Comments kept wholly outside the page (the working space): other PDF programs and
+    printing don't show them, so Sanitize document and redaction's Remove hidden information
+    take them out; a markup partly on the page stays."""
+    def view(self):
+        path = os.path.join(tempfile.mkdtemp(), "notes.pdf")
+        d = pymupdf.open()
+        pg = d.new_page(width=612, height=792)
+        props = dict(A.DEFAULTS["textbox"])
+        for name, r in (("on", pymupdf.Rect(100, 100, 250, 140)),
+                        ("partly", pymupdf.Rect(560, 100, 700, 140)),
+                        ("outside", pymupdf.Rect(650, 300, 800, 340))):
+            A.write(pg, {"kind": "textbox", "rect": r, "text": name, "props": props})
+        d.save(path)
+        v = DocumentView(path)
+        self.addCleanup(v.close_doc)
+        return v
+
+    def texts(self, v):
+        return sorted(a.info.get("content", "") for a in v.doc[0].annots())
+
+    def test_found(self):
+        v = self.view()
+        self.assertEqual(len(A.outside_page(v.doc[0])), 1)
+
+    def test_sanitize(self):
+        v = self.view()
+        v.sanitize({"outside": True})
+        self.assertEqual(self.texts(v), ["on", "partly"])
+        v = self.view()
+        v.sanitize({"outside": False})
+        self.assertEqual(self.texts(v), ["on", "outside", "partly"])
+
+    def test_redaction_clean_up(self):
+        v = self.view()
+        v.apply_redactions(True)
+        self.assertEqual(self.texts(v), ["on", "partly"])
+        v = self.view()
+        v.apply_redactions(False)
+        self.assertEqual(self.texts(v), ["on", "outside", "partly"])
+
+
 if __name__ == "__main__":
     unittest.main()

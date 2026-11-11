@@ -8425,6 +8425,9 @@ class DocumentView(QScrollArea):
                                 xml_metadata=True)
                 remove_scripts(self.doc)
                 remove_private_data(self.doc)
+                # comments kept in the working space around a page: only KanzonasPDF shows
+                # them, so nobody else would know they're in the file
+                annotations.remove_outside(self.doc)
                 # scrub unlinks the old objects; a plain tobytes() would still carry them.
                 enc = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
                 keep = {"encryption": pymupdf.PDF_ENCRYPT_KEEP} if enc else {}
@@ -8888,6 +8891,8 @@ class DocumentView(QScrollArea):
         ("hidden_text", tr("Hidden text (e.g. invisible OCR text)"), False),
         ("links", tr("Links"), False),
         ("markups", tr("Comments and markups"), False),
+        ("outside", tr("Comments and markups outside the page (only KanzonasPDF shows them)"),
+         True),
         ("form_data", tr("Data typed into form fields"), False),
         ("thumbnails", tr("Page thumbnails and leftover redaction data"), True),
     ]
@@ -8928,6 +8933,8 @@ class DocumentView(QScrollArea):
                         self.doc.xref_set_key(self.doc.page_xref(i), "Thumb", "null")
             if opts.get("form_data"):
                 clear_form_data(self.doc)
+            if opts.get("outside") and not opts.get("markups"):
+                annotations.remove_outside(self.doc)
             if opts.get("markups"):
                 from . import pdf_speed
                 for i in range(self.doc.page_count):
