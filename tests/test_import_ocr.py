@@ -20,6 +20,7 @@ from PySide6.QtWidgets import QApplication, QDialog, QFileDialog  # noqa: E402
 APP = QApplication.instance() or QApplication([])
 
 from kanzonas import combine as C  # noqa: E402
+from kanzonas import ocr  # noqa: E402
 from kanzonas import paths  # noqa: E402
 from kanzonas.main_window import MainWindow  # noqa: E402
 
@@ -107,6 +108,7 @@ class InTheWindow(unittest.TestCase):
         return init
 
     def test_picture_made_searchable_and_saved(self):
+        self.addCleanup(ocr.release_engine, 0)          # (later tests start with none loaded)
         folder = tempfile.mkdtemp()
         out = os.path.join(folder, "letter.pdf")
         self.make([picture_of_text(folder)], out, ocr=True)
