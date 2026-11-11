@@ -64,6 +64,18 @@ a decision changes or a piece of work lands. Details of each version are in
 - 1.11.1 (owner, 11 Nov, from the owner's use): dragging a page in the Pages panel scrolls the
   list near and past its top or bottom, so a page can go anywhere in a long document; Create
   PDF from images and Combine files can recognize the text on the pictures (OCR) and save it.
+- 1.12 (owner, 11 Nov, after a Bluebeam Revu screenshot from a colleague: "add all of the
+  features except Studio", "all in one release"; grouping and layers also asked for in issue
+  #82): View > Rulers and the pointer's position and page size on the status bar, with a Reuse
+  switch; Split view side by side or top and bottom, any open document, Sync by page number or
+  by the pages in view; Arrange > Group / Ungroup (the standard PDF group) and Flip; markups on
+  layers (the PDF's own optional content: a layer new markups go on, moved between layers,
+  the Markups list's Layer column and filter); Spaces (named areas; the Markups list's Space
+  column and filter); Sets (several PDFs browsed as one in the Sets panel, by sheet number
+  and title, Next / Previous sheet across files, Combine to one PDF). The random battery now
+  groups, flips, moves markups between layers, hides layers and draws spaces; it found that
+  Duplicate pages gave a page with nothing tagged and its copy the same StructParents key
+  (in 1.11.1 too), fixed.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
@@ -76,38 +88,15 @@ The owner sets this list; nothing below is promised until it's here.
    the full run (the state MuPDF keeps in memory matters, not the file); NeedAppearances is
    false and resynth_required and recalculate are 0 at that point. Nothing is lost but Redo.
 0. **From the first outside tester (issue #82, Hamish Poole-Hill, 11 Nov; owner: "good ideas"):**
-   - **Grouping markups**, as Bluebeam's Group: several markups selected, grouped, then moved,
-     copied, styled and deleted as one (and Ungroup).
-   - **Markups on layers**: a markup put on a layer (new or the drawing's own), shown and
-     hidden with it in the Layers panel.
+   - (Done in 1.12: grouping markups and markups on layers.)
    - (Done in 1.11: markups anywhere in the gray, for his use: "plans that are spread across
      multiple sheets back together for review".)
    - **The Mac download not installing** for a colleague of his: asked for the Mac's model,
      macOS version and the message shown (Apple silicon and macOS 14.4 or newer only; not
      signed by Apple yet, so Privacy & Security > Open Anyway the first time).
-0. **1.12: the features from the Bluebeam comparison** (owner, 11 Nov, after a Bluebeam Revu
-   screenshot from a colleague: "add all of the features except Studio"; before the
-   translations, and "all in one release instead of having a bunch of releases"), built in
-   this order (Claude's suggestion), released together as 1.12:
-   1. **Rulers and the pointer's position**: rulers along the top and left of the page in its
-      units (inches, mm, points; right-click to change), and the pointer's position on the page
-      in the status bar, as Revu shows "(17.93, 8.82)". With them, a **Reuse** switch on the
-      status bar (the tool stays picked after drawing, as since 1.11, or goes back to Select).
-   2. **Split view with Sync**: the window split side by side or top and bottom, each part
-      showing any open document (or two places in one); Sync pans and zooms them together, by
-      page number or by the pages in view (Revu's MultiView and Sync). For comparing a plan
-      with a detail, or one revision with another.
-   3. **Grouping markups** (above, from issue #82) and **Flip** (mirror a markup or a group
-      across its middle, horizontally or vertically; Revu's own help says its flip goes wrong
-      on groups, so flip the group as one).
-   4. **Markups on layers** (above, from issue #82): a layer new markups go on, markups moved
-      between layers, the Markups list filtered by layer.
-   5. **Spaces**: named areas drawn on a sheet (Room 101); the Markups list and counts sorted
-      and filtered by the space each markup is in (punch lists, takeoff by room).
-   6. **Sets**: several PDFs browsed as one document without merging them (a drawing set's
-      sheets as separate files), with Combine to make one PDF of them.
-1. **French, German and Portuguese** (the app and the manual), after 1.12 (owner, 11 Nov: the
-   Bluebeam features first, so their words are translated once; set as next on 6 Nov).
+1. **French, German and Portuguese** (the app and the manual), next now that 1.12 is out
+   (owner, 11 Nov: the Bluebeam features first, so their words are translated once; set as
+   next on 6 Nov).
 2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 

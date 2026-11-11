@@ -7,6 +7,34 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.12
+
+**New** (features from Bluebeam Revu)
+- Rulers: View > Rulers (Ctrl+R) along the top and left of the page, in inches, millimeters or points (right-click a ruler). The status bar shows the page size and where the pointer is on the page.
+- Reuse switch on the status bar: on, the tool you drew with stays picked; off, it goes back to Select (or Hand) after each markup.
+- Split view side by side or top and bottom, showing any open document, with Sync to pan and zoom both together, by page number or by the pages in view: compare a plan with a detail, or two revisions.
+- Arrange > Group and Ungroup (Ctrl+Shift+G / Ctrl+Alt+G): grouped markups are selected, moved, restyled, copied and deleted together. They're a standard PDF group, so Acrobat sees it too. Flip horizontally and Flip vertically mirror a markup or a group.
+- Markups on layers: make a layer in the Layers panel, choose the layer new markups go on, and right-click markups > Layer to move them. Hiding a layer hides its markups, in other PDF programs too. The Markups list shows and filters by layer.
+- Spaces: the Space tool (Measure tab) draws a named area, such as Room 101. The Markups list shows which space each markup is in and filters by space, for punch lists and counts room by room.
+- Sets: browse several PDFs (one per sheet, say) as one document without combining them. File > New set... lists them in the Sets panel by sheet number and title, Next and Previous sheet go across the files, and Combine to one PDF makes a single file of them.
+
+**Fixed**
+- Duplicating a page with nothing tagged on it, in a document tagged for screen readers, no longer leaves the copy sharing the original's tag entry.
+
+## 1.12 (es)
+
+**Novedades** (funciones de Bluebeam Revu)
+- Reglas: Ver > Reglas (Ctrl+R) a lo largo de la parte de arriba y de la izquierda de la página, en pulgadas, milímetros o puntos (clic derecho en una regla). La barra de estado muestra el tamaño de la página y dónde está el puntero en ella.
+- Interruptor Reutilizar en la barra de estado: activado, la herramienta con la que dibujó sigue elegida; desactivado, vuelve a Seleccionar (o Mano) después de cada marca.
+- Vista dividida lado a lado o arriba y abajo, con cualquier documento abierto, y Sincronizar para desplazar y hacer zoom en las dos a la vez, por número de página o por las páginas a la vista: compare un plano con un detalle, o dos revisiones.
+- Organizar > Agrupar y Desagrupar (Ctrl+Mayús+G / Ctrl+Alt+G): las marcas agrupadas se seleccionan, mueven, cambian de estilo, copian y eliminan juntas. Son un grupo PDF estándar, así que Acrobat también lo ve. Voltear horizontalmente y Voltear verticalmente reflejan una marca o un grupo.
+- Marcas en capas: cree una capa en el panel Capas, elija la capa en la que van las marcas nuevas y haga clic derecho en marcas > Capa para moverlas. Ocultar una capa oculta sus marcas, también en otros programas de PDF. La lista de marcas muestra y filtra por capa.
+- Espacios: la herramienta Espacio (pestaña Medir) dibuja un área con nombre, como Habitación 101. La lista de marcas muestra en qué espacio está cada marca y filtra por espacio, para listas de pendientes y conteos habitación por habitación.
+- Conjuntos: recorra varios PDF (uno por plano, por ejemplo) como un solo documento sin combinarlos. Archivo > Nuevo conjunto... los muestra en el panel Conjuntos por número y título de plano, Plano siguiente y Plano anterior avanzan a través de los archivos, y Combinar en un PDF hace un solo archivo con ellos.
+
+**Correcciones**
+- Duplicar una página sin nada etiquetado, en un documento etiquetado para lectores de pantalla, ya no deja la copia compartiendo la entrada de etiquetas del original.
+
 ## 1.11.1
 
 **New**
