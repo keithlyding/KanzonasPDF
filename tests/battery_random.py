@@ -723,6 +723,7 @@ class Battery:
         return [
             (self.op_shape, 10), (self.op_line, 5), (self.op_poly, 4), (self.op_ink, 3),
             (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
+            (self.op_dot, 2), (self.op_dot_options, 2),
             (self.op_measure, 2), (self.op_dimension, 3), (self.op_text_markup, 6),
             (self.op_attach, 1), (self.op_legend, 2), (self.op_legend_options, 2),
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
@@ -789,6 +790,45 @@ class Battery:
     def op_stamp(self):
         i = self.page()
         self.v.place_stamp(i, self.point(i, 80))
+
+    def op_dot(self):
+        # a dot (dots.py) with the next number: filled or outlined, its number and/or text
+        # on a side or its number inside it (its text typed: dialogs.get_text answers)
+        i = self.page()
+        props = dict(annotations.tool_props("dot"),
+                     filled=self.rnd.random() < 0.6,
+                     show=self.rnd.choice(["none", "number", "text", "both"]),
+                     side=self.rnd.choice(["right", "below", "left", "above"]),
+                     inside=self.rnd.random() < 0.3,
+                     size=self.rnd.choice([3.0, 6.0, 10.0]))
+        with mock.patch.object(self.v, "tool_props", lambda tool: dict(props)):
+            self.v.place_dot(i, self.point(i, 60))
+
+    def op_dot_options(self):
+        # a dot's options changed (as in Properties): filled, shows, side, inside, number, size
+        v = self.v
+        found = []
+        for i in range(v.doc.page_count):
+            page = v.doc[i]
+            for a in annotations.each_annot(page, (pymupdf.PDF_ANNOT_CIRCLE,)):
+                model = annotations.read(a)
+                if model and model["kind"] == "dot":
+                    found.append((i, a.xref))
+        if not found:
+            return "none"
+        i, xref = self.rnd.choice(found)
+        v.select_xref(i, xref)
+        if v.selection is None:
+            return "none"
+        k = self.rnd.choice(["filled", "show", "side", "inside", "n", "size"])
+        value = {"filled": self.rnd.random() < 0.5,
+                 "show": self.rnd.choice(["none", "number", "text", "both"]),
+                 "side": self.rnd.choice(["right", "below", "left", "above"]),
+                 "inside": self.rnd.random() < 0.5,
+                 "n": self.rnd.randint(1, 120),
+                 "size": self.rnd.choice([3.0, 6.0, 10.0])}[k]
+        v.update_selected_props({k: value})
+        v.clear_selection()
 
     def op_measure(self):
         i = self.page()

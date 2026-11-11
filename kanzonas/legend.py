@@ -31,7 +31,8 @@ NOT_COUNTED = ("legend", "redact", "placeholder")
 LENGTHS = ("m_length", "m_poly", "m_perimeter")
 # style properties that tell two markups of one kind apart (a red cloud and a blue one are
 # two rows)
-STYLE_KEYS = ("stroke", "fill", "width", "head", "opacity", "text_color", "markup", "icon")
+STYLE_KEYS = ("stroke", "fill", "width", "head", "opacity", "text_color", "markup", "icon",
+              "filled")
 
 
 # ---- finding legends ---------------------------------------------------------------------
@@ -549,6 +550,14 @@ def _sample(ops, kind, style, x, y, w, h, fs):
         ops.ellipse(cx - r, cy - r, cx + r, cy + r)
         rgb = stroke or (0, 0.31, 1)
         ops.add(_color(rgb, "rg"), "f")
+    elif kind == "dot":                     # (dots.py: filled, or its outline only)
+        r = h * 0.3
+        ops.ellipse(cx - r, cy - r, cx + r, cy + r)
+        rgb = stroke or (0.88, 0, 0)
+        if style.get("filled", True):
+            ops.add(_color(rgb, "rg"), "f")
+        else:
+            ops.add(_color(rgb, "RG"), "%s w" % _f(min(width, r * 0.5)), "S")
     else:
         ops.path([(cx - h * 0.35, y + m), (cx + h * 0.35, y + m), (cx + h * 0.35, y1 - m),
                   (cx - h * 0.35, y1 - m)], True)

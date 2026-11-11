@@ -11084,3 +11084,52 @@ msgstr "En una hoja extra después de la página (la página a escala)"
 
 msgid "Sheet {n} of {total} (page {page}: markups outside it)"
 msgstr "Hoja {n} de {total} (página {page}: marcas fuera de ella)"
+
+# ---- 1.13: dots
+msgid "Dot"
+msgstr "Punto"
+
+msgid "Text beside the dot:"
+msgstr "Texto junto al punto:"
+
+msgid "Dot: click to place a numbered dot; choose filled or outline, the number and the text beside it in Properties (B)"
+msgstr "Punto: haga clic para colocar un punto numerado; elija relleno o solo contorno, el número y el texto junto a él en Propiedades (B)"
+
+msgid "Filled"
+msgstr "Relleno"
+
+msgid "Outline only"
+msgstr "Solo contorno"
+
+msgid "Nothing"
+msgstr "Nada"
+
+msgid "Number and text"
+msgstr "Número y texto"
+
+msgid "What is written with the dot. Its text is asked for when you place it; double-click a dot to change it."
+msgstr "Lo que se escribe con el punto. El texto se pide al colocarlo; haga doble clic en un punto para cambiarlo."
+
+msgid "Below"
+msgstr "Debajo"
+
+msgid "Above"
+msgstr "Encima"
+
+msgid "Where the number or the text goes. With both, the text goes here and the number on the other side of the dot."
+msgstr "Dónde va el número o el texto. Con ambos, el texto va aquí y el número al otro lado del punto."
+
+msgid "Number inside the dot"
+msgstr "Número dentro del punto"
+
+msgid "New dots take the next number after the highest one in the document."
+msgstr "Los puntos nuevos toman el número siguiente al más alto del documento."
+
+msgid "Dot size"
+msgstr "Tamaño del punto"
+
+msgid "Shows"
+msgstr "Muestra"
+
+msgid "Click the page to place a dot. When it shows a text, you type it after the click; double-click a dot to change its text."
+msgstr "Haga clic en la página para colocar un punto. Si muestra un texto, lo escribe después del clic; haga doble clic en un punto para cambiar su texto."

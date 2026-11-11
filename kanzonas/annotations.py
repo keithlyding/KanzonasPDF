@@ -108,6 +108,11 @@ DEFAULTS = {
     "m_volume": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "depth": 1.0,
                  "opacity": 1.0},
     "m_count": {"stroke": "#0050ff", "fontsize": 9, "group": "Count 1", "opacity": 1.0},
+    # a dot (dots.py): filled or outlined, its number and/or its text beside it ("side") or
+    # its number inside it; its text is the markup's text, its number "n"
+    "dot": {"stroke": "#e00000", "filled": True, "size": 6.0, "width": 1.0, "show": "number",
+            "side": "right", "inside": False, "fontsize": 9, "text_color": "#000000",
+            "n": 1, "opacity": 1.0},
     # the stamp word is printed on the page: in the user's language (a placed stamp keeps its own)
     "stamp": {"label": tr("APPROVED"), "stroke": "#c00000", "name": True, "date": True, "opacity": 1.0},
     "line": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
@@ -136,7 +141,7 @@ LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": t
           "opencloud": tr("Cloud"),
           "m_length": tr("Length"), "m_dim": tr("Dimension"), "m_poly": tr("Polylength"),
           "m_area": tr("Area"),
-          "m_count": tr("Count"),
+          "m_count": tr("Count"), "dot": tr("Dot"),
           "m_angle": tr("Angle"), "m_radius": tr("Radius"), "m_perimeter": tr("Perimeter"),
           "m_volume": tr("Volume"),
           "image": tr("Image"), "attach": tr("Attached file"), "redact": tr("Redaction mark"),
@@ -166,7 +171,7 @@ BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "at
 MEASURES = ("m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius", "m_perimeter",
             "m_volume", "m_dim")
 CLOSED_MEASURES = ("m_area", "m_perimeter", "m_volume")      # drawn as a closed outline
-POINTED = ("line", "arrow", "polygon", "polyline", "arc", "opencloud") + MEASURES   # geometry = list of points
+POINTED = ("line", "arrow", "polygon", "polyline", "arc", "opencloud", "dot") + MEASURES   # geometry = list of points
 VERTEXED = ("polygon", "polyline", "arc", "opencloud", "m_poly", "m_angle", "m_dim") + \
     CLOSED_MEASURES     # one handle per vertex (a dimension's: its two points and its line)
 # Shapes with a "rotation" property (degrees, counterclockwise as seen on screen). Boxes keep
@@ -398,6 +403,8 @@ def read(annot):
     elif kind == "m_count":
         model["points"] = [pymupdf.Point(geom.get("at", annot.rect.tl + (5, 5)))]
         model["n"] = geom.get("n", 1)
+    elif kind == "dot":
+        model["points"] = [pymupdf.Point(geom.get("at", annot.rect.tl + (3, 3)))]
     elif kind == "callout":
         model["rect"] = pymupdf.Rect(geom.get("box", annot.rect))
         model["points"] = [pymupdf.Point(geom.get("target", annot.rect.bl))]
@@ -514,6 +521,9 @@ def write(page, model):
     elif kind == "m_count":
         c = model["points"][0]
         a = page.add_circle_annot(pymupdf.Rect(c.x - 5, c.y - 5, c.x + 5, c.y + 5))
+    elif kind == "dot":
+        from . import dots
+        a = page.add_circle_annot(dots.box(model))
     elif kind in ("polyline", "opencloud"):
         a = page.add_polyline_annot([(q.x, q.y) for q in model["points"]])
     elif kind == "callout":
@@ -595,6 +605,8 @@ def write(page, model):
             a.set_colors(stroke=stroke if stroke else [], fill=fill)
         elif kind == "m_count":
             a.set_colors(stroke=stroke, fill=stroke)
+        elif kind == "dot":
+            a.set_colors(stroke=stroke, fill=stroke if p.get("filled", True) else None)
         elif kind == "arrow" and "closed" in (p.get("head") or ""):
             a.set_colors(stroke=stroke, fill=stroke)
         elif kind == "m_dim":
@@ -605,8 +617,8 @@ def write(page, model):
         if kind in ("rect", "ellipse", "polygon") and p.get("cloud"):
             a.set_border(width=width, clouds=2)
         elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline", "arc",
-                      "opencloud", "m_length", "m_poly", "m_angle", "m_radius", "m_dim") + \
-                CLOSED_MEASURES:
+                      "opencloud", "m_length", "m_poly", "m_angle", "m_radius", "m_dim",
+                      "dot") + CLOSED_MEASURES:
             a.set_border(width=width)
     if p.get("opacity", 1) < 1:
         a.set_opacity(float(p["opacity"]))
@@ -678,6 +690,8 @@ def write(page, model):
         store["geom"] = {"box": list(model["rect"])}
     elif kind == "m_count":
         store["geom"] = {"at": list(model["points"][0]), "n": model.get("n", 1)}
+    elif kind == "dot":
+        store["geom"] = {"at": list(model["points"][0])}
     elif kind == "arc":
         store["geom"] = {"pts": [c for q in model["points"][:3] for c in (q.x, q.y)]}
     elif kind == "m_dim":               # (its third point kept halfway along its line)
@@ -713,6 +727,9 @@ def write(page, model):
             anchor, lab_angle = measure.label_anchor(kind, model["points"], page)
         measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
                           stroke or (0, 0, 0), lab_angle)
+    if kind == "dot":
+        from . import dots
+        dots.draw(page, a, model)
     if kind == "opencloud":
         from . import clouds
         clouds.appearance(page, a, model)       # (last: a setter after it would undo it)
@@ -868,6 +885,9 @@ def bounds(model):
         if model["kind"] == "m_dim":
             from . import dimensions
             return _points_box(dimensions.path(model["points"]))
+        if model["kind"] == "dot":
+            from . import dots
+            return dots.box(model)
         if model["kind"] == "arc" or model.get("bend") is not None:
             bend = model.get("bend")
             return pymupdf.Rect(_curve_box(

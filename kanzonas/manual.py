@@ -766,6 +766,15 @@ flattened. Its font can be Helvetica, Times or Courier (Properties > Font): thos
 every PDF viewer has, so the comment looks the same everywhere. To write text that's part of
 the page, use <b>Add text</b> (below).</li>
 <li><b>Callout</b> (K): press on the point you're pointing at, drag to where the text goes.</li>
+<li><b>Dot</b> (B): click where a dot goes, such as an elevation point on a floor plan. In
+Properties choose <b>Filled</b> or <b>Outline only</b>, its color, size and border width, and
+what it <b>Shows</b>: nothing, its number, a text, or the number and a text. <b>Position</b> puts
+them right of, below, left of or above the dot; with both, the text goes there and the number on
+the other side. Or tick <b>Number inside the dot</b> (the dot grows to hold it; on a filled dot
+the number is white). Each new dot takes the next number after the highest one in the document,
+and so do copies (Duplicate, copy and paste); to change a dot's number, select it and set
+<b>Number</b>. When the dot shows a text, you type it after the click (Cancel places nothing);
+double-click a dot to change it. On rotated pages the number and the text stay upright.</li>
 <li><b>Author name:</b> Edit &gt; Author name for markups. It's recorded on your markups and
 printed on stamps.</li>
 <li><b>Check spelling</b> (Edit menu, on at first): while you type a comment, a text box, a
@@ -872,7 +881,7 @@ go still works too. A click that shakes a little is still a click. Escape or a r
 cancels the shape being drawn; zooming or scrolling between the two clicks doesn't move its first
 point. A click on a markup with the Eraser still deletes it at once, a click on a link with the
 Links tool still opens it, and two clicks on the same spot with Text box make one of the default
-size. Note, Stamp, Count and Image still place with one click.</li>
+size. Note, Stamp, Count, Dot and Image still place with one click.</li>
 <li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Backspace to take back the last point,
 Escape to cancel.</li>
 <li>With a drawing tool, clicking an existing markup selects it, and dragging moves it or its
@@ -2190,6 +2199,7 @@ scroll speed.</li>
 <tr><td>Shift+O</td><td>Edit objects (the page's own pictures and shapes)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
 <tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>
+<tr><td>B</td><td>Dot</td></tr>
 <tr><td>R / E / O / D / Y</td><td>Rectangle / Ellipse / Circle / Cloud / Polygon</td></tr>
 <tr><td>L / A / Shift+L / P</td><td>Line / Arrow / Polyline / Pen</td></tr>
 <tr><td>M / X</td><td>Stamp / Eraser</td></tr>

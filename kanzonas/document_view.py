@@ -4193,6 +4193,29 @@ class DocumentView(QScrollArea):
         self._create(index, {"kind": "m_count", "props": self.tool_props("m_count"),
                              "points": [pt], "rect": pymupdf.Rect(), "n": n + 1})
 
+    def place_dot(self, index, pt):
+        """A dot with the next number; its text asked for when the dot shows one."""
+        props = dict(self.tool_props("dot"))
+        text = ""
+        if props.get("show") in ("text", "both"):
+            text, ok = dialogs.get_text(self, tr("Dot"), tr("Text beside the dot:"))
+            if not ok:
+                return
+        props["n"] = self._last_dot() + 1
+        self._create(index, {"kind": "dot", "props": props, "points": [pt],
+                             "rect": pymupdf.Rect(), "text": text.strip()})
+
+    def _last_dot(self):
+        """The highest dot number in the document (0: none)."""
+        last = 0
+        for i in range(self.doc.page_count):
+            pg = self.doc[i]
+            for a in annotations.each_annot(pg, (pymupdf.PDF_ANNOT_CIRCLE,)):
+                m = annotations.read(a)
+                if m and m["kind"] == "dot":
+                    last = max(last, int(m["props"].get("n") or 0))
+        return last
+
     def _last_counts(self):
         """{count group: its highest number} in the document."""
         last = {}
@@ -4206,16 +4229,24 @@ class DocumentView(QScrollArea):
         return last
 
     def _next_counts(self, models):
-        """Copies (Ctrl+D, paste) of Count markers take the next numbers of their group."""
-        if not any(m["kind"] == "m_count" for m in models):
+        """Copies (Ctrl+D, paste) of Count markers take the next numbers of their group, and
+        copies of dots the next dot numbers."""
+        counts = any(m["kind"] == "m_count" for m in models)
+        dots = any(m["kind"] == "dot" for m in models)
+        if not counts and not dots:
             return models
-        last = self._last_counts()
+        last = self._last_counts() if counts else {}
+        last_dot = self._last_dot() if dots else 0
         out = []
         for m in models:
             if m["kind"] == "m_count":
                 m = annotations.copy(m)
                 group = m["props"].get("group")
                 last[group] = m["n"] = last.get(group, 0) + 1
+            elif m["kind"] == "dot":
+                m = annotations.copy(m)
+                last_dot += 1
+                m["props"]["n"] = last_dot
             out.append(m)
         return out
 

@@ -32,6 +32,7 @@ ICONS = {
     "edittext": "format-text", "highlight": "marker", "underline": "format-underline",
     "strikeout": "format-strikethrough", "comment": "comment-text-outline",
     "note": "note-text-outline", "textbox": "format-textbox", "callout": "message-text-outline",
+    "dot": "circle-medium",
     "rect": "rectangle-outline", "ellipse": "ellipse-outline", "cloud": "cloud-outline",
     "circle": "circle-outline", "mask": "square-opacity",
     "polygon": "vector-polygon", "line": "vector-line", "arrow": "arrow-top-right",

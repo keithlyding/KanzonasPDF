@@ -37,7 +37,7 @@ EDIT_IN_PLACE = {"rect", "ellipse", "circle", "mask", "cloud", "line", "arrow", 
                  "polyline", "ink", "arc", "curve", "textbox", "callout", "note", "stamp",
                  "m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius",
                  "m_perimeter", "m_volume", "m_dim", "image", "attach", "placeholder",
-                 "legend"}
+                 "legend", "dot"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area", "m_angle", "m_radius",
                  "m_perimeter", "m_volume", "m_dim"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}
@@ -59,7 +59,7 @@ TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
 ROT_GAP = 26        # rotation handle distance above the selection, px
 # tools whose points snap (to the grid / to objects) while drawing
-SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "crop", "link"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach"}
+SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "crop", "link"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach", "dot"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "m_radius", "callout"}   # Shift = 45° steps
 SQUARE_TOOLS = {"rect", "ellipse", "cloud", "mask"}                       # Shift = square / circle
 
@@ -341,6 +341,7 @@ class PageWidget(QWidget):
         self._failed = set()        # tiles MuPDF couldn't draw: (scale, tx, ty)
         self._drag_start = None     # shape tools / box selection
         self._drag_now = None
+        self._placed_dot = False    # the last left press placed a dot (its double-click: nothing)
         self._text_sel = None       # (mode, words) while selecting text
         self._text_mode = None      # "text" or "box" for the drag in progress
         self._ink = []
@@ -1307,7 +1308,7 @@ class PageWidget(QWidget):
                 out[f"v{i}"] = QRectF(s.x() - h / 2, s.y() - h / 2, h, h)
             out.update(self._rot_handle(model))
             return out
-        if not A.movable(model) or model["kind"] in ("note", "m_count", "attach"):
+        if not A.movable(model) or model["kind"] in ("note", "m_count", "attach", "dot"):
             return {}
         extra = {}
         if model["kind"] == "callout":
@@ -2127,6 +2128,7 @@ class PageWidget(QWidget):
             return
         if e.button() != Qt.LeftButton:
             return super().mousePressEvent(e)
+        self._placed_dot = False
         if self.view._inline is not None:
             # clicking outside the text editor finishes the edit (and nothing else)
             self.view.commit_pending()
@@ -2196,6 +2198,10 @@ class PageWidget(QWidget):
             return
         if tool == "m_count":
             self.view.place_count(self.index, pdf)
+            return
+        if tool == "dot":
+            self.view.place_dot(self.index, pdf)
+            self._placed_dot = True
             return
         if tool in POLY_TOOLS:
             if self._poly and shift_held(e):
@@ -2829,6 +2835,22 @@ class PageWidget(QWidget):
             xref = self.view.widget_at(self.index, self.to_pdf(e.position()))
             if xref is not None:
                 self.view.edit_field_properties(self.index, xref)
+            return
+        if self.view.tool == "dot":
+            if self._placed_dot:
+                # the first click placed this dot, which stays selected as drawn (1.11): the
+                # second click of the double-click mustn't open its text as on a chosen dot
+                self._placed_dot = False
+                return
+            # the first click selected a dot (it didn't place one): the second edits its text
+            pdf = self.to_pdf(e.position())
+            xref = self.view.annot_at(self.index, pdf)
+            selection = self.view.selection
+            on_selected = (xref is not None and selection is not None
+                           and selection[0] == self.index
+                           and xref in self.view.selected_xrefs())
+            if on_selected:
+                self.view.edit_annot_text(self.index, xref)
             return
         if self.view.tool in ("select", "hand"):
             card = self._card_at(e.position())

@@ -86,6 +86,8 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("note", tr("Note"), "N", tr("Sticky note: click where it should go (N)")),
     ("textbox", tr("Text box"), "T", tr("Text box: drag a box or click (T)")),
     ("callout", tr("Callout"), "K", tr("Callout: press on the point, drag to where the text goes (K)")),
+    ("dot", tr("Dot"), "B", tr("Dot: click to place a numbered dot; choose filled or outline, the "
+                               "number and the text beside it in Properties (B)")),
     ("rect", tr("Rectangle"), "R", tr("Rectangle (R)")),
     ("ellipse", tr("Ellipse"), "E", tr("Ellipse (E)")),
     ("cloud", tr("Cloud"), "D", tr("Revision cloud: drag a box (D)")),
@@ -5480,7 +5482,7 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Markup"), [
             (tr("Text"), "small", [t["highlight"], t["underline"], t["strikeout"], t["comment"],
                                    t["note"], t["textbox"]]),
-            (tr("Callout & stamps"), "large", [t["callout"], t["stamp"], t["attach"],
+            (tr("Callout & stamps"), "large", [t["callout"], t["dot"], t["stamp"], t["attach"],
                                                t["legend"]]),
             (tr("Shapes"), "small", [t["rect"], t["ellipse"], t["circle"], t["cloud"], t["mask"],
                                      t["polygon"], t["line"], t["arrow"], t["polyline"], t["arc"],

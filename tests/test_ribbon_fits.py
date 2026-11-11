@@ -38,7 +38,7 @@ ON_TABS = {
             "t:erasecontent t:highlight t:image t:initials t:link t:note t:signature t:stamp "
             "t:strikeout t:textbox t:underline",
     "Markup": "a_chest a_props t:arc t:arrow t:attach t:callout t:circle t:cloud t:comment "
-              "t:curve t:ellipse t:eraser t:highlight t:ink t:legend t:line t:mask t:note "
+              "t:curve t:dot t:ellipse t:eraser t:highlight t:ink t:legend t:line t:mask t:note "
               "t:polygon t:polyline t:rect t:stamp t:strikeout t:textbox t:underline",
     "Measure": "a_grid a_grid_settings a_measure_summary a_scale_bar a_sheet_scales a_snap_grid "
                "a_snap_objects a_snap_page t:m_angle t:m_area t:m_calibrate t:m_count t:m_dim "

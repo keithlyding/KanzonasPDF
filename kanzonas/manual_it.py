@@ -750,6 +750,16 @@ appiattita. Il suo carattere può essere Helvetica, Times o Courier (Proprietà 
 ogni visualizzatore PDF possiede, quindi il commento appare uguale ovunque. Per scrivere testo che fa parte
 della pagina, usa <b>Aggiungi testo</b> (più avanti).</li>
 <li><b>Richiamo</b> (K): premi sul punto che vuoi indicare e trascina fino a dove va il testo.</li>
+<li><b>Punto</b> (B): fai clic dove va il punto, ad esempio una quota su una pianta. In
+Proprietà scegli <b>Pieno</b> o <b>Solo bordo</b>, il colore, la dimensione e lo spessore del
+bordo, e cosa <b>Mostra</b>: niente, il numero, un testo, oppure il numero e un testo.
+<b>Posizione</b> li mette a destra, sotto, a sinistra o sopra il punto; con entrambi, il testo va
+lì e il numero dall'altra parte. Oppure spunta <b>Numero dentro il punto</b> (il punto si allarga
+per contenerlo; su un punto pieno il numero è bianco). Ogni nuovo punto prende il numero
+successivo al più alto del documento, e così le copie (Duplica, copia e incolla); per cambiare il
+numero di un punto, selezionalo e imposta <b>Numero</b>. Se il punto mostra un testo, lo scrivi
+dopo il clic (Annulla non mette niente); fai doppio clic su un punto per cambiarlo. Sulle pagine
+ruotate il numero e il testo restano dritti.</li>
 <li><b>Nome dell'autore:</b> Modifica &gt; Nome dell'autore delle annotazioni. Viene registrato sulle tue annotazioni e
 stampato sui timbri.</li>
 <li><b>Controllo ortografico</b> (menu Modifica, attivo all'inizio): mentre scrivi un commento, una casella di testo, un
@@ -856,7 +866,7 @@ funziona ancora. Un clic con un leggero tremolio resta un clic. Esc o un clic co
 annulla la forma che stai disegnando; lo zoom o lo scorrimento tra i due clic non sposta il suo primo
 punto. Un clic su un'annotazione con la Gomma la elimina comunque subito, un clic su un collegamento con lo strumento
 Collegamenti lo apre comunque, e due clic nello stesso punto con Casella di testo ne creano una delle dimensioni
-predefinite. Nota, Timbro, Conteggio e Immagine si posizionano ancora con un solo clic.</li>
+predefinite. Nota, Timbro, Conteggio, Punto e Immagine si posizionano ancora con un solo clic.</li>
 <li><b>Poligono / polilinea:</b> fai clic su ogni punto; doppio clic o Invio per terminare, Backspace per togliere l'ultimo punto,
 Esc per annullare.</li>
 <li>Con uno strumento di disegno, un clic su un'annotazione esistente la seleziona, e il trascinamento sposta l'annotazione o i suoi
@@ -2198,6 +2208,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>Shift+O</td><td>Modifica oggetti (le immagini e le forme della pagina stessa)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Evidenzia / Sottolinea / Barrato</td></tr>
 <tr><td>C / N / T / K</td><td>Commento / Nota / Casella di testo / Richiamo</td></tr>
+<tr><td>B</td><td>Punto</td></tr>
 <tr><td>R / E / O / D / Y</td><td>Rettangolo / Ellisse / Cerchio / Nuvola / Poligono</td></tr>
 <tr><td>L / A / Shift+L / P</td><td>Linea / Freccia / Polilinea / Penna</td></tr>
 <tr><td>M / X</td><td>Timbro / Gomma</td></tr>

@@ -9,6 +9,45 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.12); without one they
 see the English.
 
+## 1.13
+
+**New**
+- Dot (Markup tab, shortcut B): one click places a numbered dot, filled or outline only, as for the elevation points on a floor plan. Show its number, a text or both beside it (right, below, left or above), or the number inside the dot; new dots and copies take the next number.
+
+**Fixed**
+- Undo after saving brings back the page exactly as it was before the step; a page edited with Edit objects or Edit text could keep part of the step.
+- PDF/A: an attached file is labeled with its real type on every computer (a CSV file could be labeled as an Excel file).
+- Text recognition (OCR) keeps its lower memory use with the newer RapidOCR versions.
+- In a tagged (accessible) PDF, a markup's replies moved with it to an earlier page keep their tags.
+- In a tagged (accessible) PDF, duplicating a page with a hidden markup, or a page with no tagged content left, keeps the tag structure valid.
+- A file remembered at a page it no longer has (it got shorter since) opens at its last page instead of failing.
+
+## 1.13 (es)
+
+**Novedades**
+- Punto (pestaña Marcas, atajo B): un clic coloca un punto numerado, relleno o solo con contorno, como las cotas de un plano. Muestre su número, un texto o ambos junto a él (a la derecha, debajo, a la izquierda o encima), o el número dentro del punto; los puntos nuevos y las copias toman el número siguiente.
+
+**Correcciones**
+- Deshacer después de guardar devuelve la página exactamente como estaba antes del paso; una página editada con Editar objetos o Editar texto podía conservar parte del paso.
+- PDF/A: un archivo adjunto lleva su tipo real en cualquier equipo (un archivo CSV podía figurar como archivo de Excel).
+- El reconocimiento de texto (OCR) sigue usando menos memoria con las versiones nuevas de RapidOCR.
+- En un PDF etiquetado (accesible), las respuestas de una marca movida con ella a una página anterior conservan sus etiquetas.
+- En un PDF etiquetado (accesible), duplicar una página con una marca oculta, o una página sin contenido etiquetado, mantiene válida la estructura de etiquetas.
+- Un archivo recordado en una página que ya no tiene (porque ahora es más corto) se abre en su última página en lugar de fallar.
+
+## 1.13 (it)
+
+**Novità**
+- Punto (scheda Annotazioni, scorciatoia B): un clic mette un punto numerato, pieno o solo bordo, come le quote su una pianta. Mostra il numero, un testo o entrambi accanto (a destra, sotto, a sinistra o sopra), oppure il numero dentro il punto; i nuovi punti e le copie prendono il numero successivo.
+
+**Correzioni**
+- Annulla dopo il salvataggio riporta la pagina esattamente com'era prima del passaggio; una pagina modificata con Modifica oggetti o Modifica testo poteva conservarne una parte.
+- PDF/A: un file allegato riporta il suo tipo reale su ogni computer (un file CSV poteva risultare un file Excel).
+- Il riconoscimento del testo (OCR) continua a usare meno memoria con le versioni nuove di RapidOCR.
+- In un PDF con tag (accessibile), le risposte di un'annotazione spostata con essa su una pagina precedente mantengono i loro tag.
+- In un PDF con tag (accessibile), duplicare una pagina con un'annotazione nascosta, o una pagina senza più contenuto con tag, mantiene valida la struttura dei tag.
+- Un file ricordato a una pagina che non ha più (perché ora è più corto) si apre alla sua ultima pagina invece di dare errore.
+
 ## 1.12
 
 **New**
