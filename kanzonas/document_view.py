@@ -9583,6 +9583,9 @@ class DocumentView(QScrollArea):
             if maxlen > 0:
                 text = text[:maxlen]
             ed.hide()
+            if multiline:
+                from . import spelling
+                spelling.uninstall(ed)
             ed.deleteLater()
             if save and text != start:
                 if not self.enter_field_value(index, xref, text):

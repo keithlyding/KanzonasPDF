@@ -81,6 +81,19 @@ class Spelling(unittest.TestCase):
         self.assertEqual(self.underlined(edit), [])
         self.assertEqual(self.store.d["spell_words"], ["pleese"])
 
+    def test_an_editor_about_to_be_deleted_stops_spell_checking(self):
+        # (its document cleared as it is destroyed calls back no highlighter: a crash on exit)
+        edit = QPlainTextEdit("teh cat")
+        highlighter = spelling.install(edit)
+        self.assertIs(highlighter.document(), edit.document())
+
+        spelling.uninstall(edit)
+
+        self.assertIsNone(highlighter.document())
+        self.assertIsNone(edit._kz_spell)
+        spelling.uninstall(edit)                # (twice does nothing)
+        spelling.uninstall(QPlainTextEdit())    # (never spell checked: nothing to do)
+
     def test_turned_off(self):
         spelling.set_enabled(False)
         edit = QPlainTextEdit("recieve")

@@ -216,3 +216,13 @@ def install(edit):
     edit._kz_menu = _MenuFilter(edit)
     edit.viewport().installEventFilter(edit._kz_menu)
     return edit._kz_spell
+
+
+def uninstall(edit):
+    """Stop spell checking an editor about to be deleted. Its document is cleared as it is
+    destroyed, and a highlighter still on it is called back for the cleared lines after PySide
+    has let go of it, and the process can crash (seen at the tests' exit)."""
+    highlighter = getattr(edit, "_kz_spell", None)
+    if highlighter is not None:
+        highlighter.setDocument(None)
+        edit._kz_spell = None
