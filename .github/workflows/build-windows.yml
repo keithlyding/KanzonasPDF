@@ -24,8 +24,8 @@ jobs:
       - name: PyMuPDF 2.0
         run: |
           python -m pip install -q --only-binary :all: "pymupdf==2.0"
-          python tools/probe_heading_speed.py
+          python tools/probe_heading_speed.py && python tools/probe_text_ways.py
       - name: PyMuPDF 2.1
         run: |
           python -m pip install -q --only-binary :all: "pymupdf==2.1"
-          python tools/probe_heading_speed.py --profile
+          python tools/probe_text_ways.py
