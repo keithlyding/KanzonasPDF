@@ -5987,7 +5987,8 @@ class DocumentView(QScrollArea):
                 self.cad_apply(tr("Moved"), pymupdf.Matrix(1, 0, 0, 1, d.x, d.y))
             elif self.obj_sel is not None:
                 r = self.selected_objects_rect()
-                self.move_objects(r + (d.x, d.y, d.x, d.y))
+                if self.move_objects(r + (d.x, d.y, d.x, d.y)) is False:
+                    return False            # (it would leave the page: said why)
             else:
                 have = [(x, m) for x, m in self.selected_models()
                         if m["kind"] != "field" and annotations.movable(m)]
@@ -8348,6 +8349,26 @@ class DocumentView(QScrollArea):
         old = self.selected_objects_rect()
         if self.obj_sel is None:
             return
+        page = self.doc[self.obj_sel[0]]
+        shown = page.rect * page.derotation_matrix
+        del page
+        texts = [it for it in self.obj_sel[1] if it["kind"] == "text"]
+        moved = pymupdf.Rect(new_rect)
+        if texts:
+            d = (moved.x0 - old.x0, moved.y0 - old.y0)
+            moved = pymupdf.Rect()
+            for it in texts:
+                moved |= pymupdf.Rect(it["rect"]) + (d[0], d[1], d[0], d[1])
+        if not (shown + (-0.5, -0.5, 0.5, 0.5)).contains(moved) if texts else \
+                not moved.intersects(shown):
+            # (the page's own content off the page isn't shown nor read: text partly past
+            # the edge lost the letters out there at the next move, and off it altogether it
+            # vanished, unselected. Random battery, seed 31: text moved up with the arrow keys
+            # past the top of the page. Shapes and pictures may hang over the edge.)
+            self.statusMessage.emit(tr("The page's own text can't go past the edge of the "
+                                       "page, nor its pictures and shapes off it altogether "
+                                       "(markups can)."))
+            return False
         objs = self._obj_cache.get(self.obj_sel[0])
         new_rect = pymupdf.Rect(new_rect)
         offset = (new_rect.x0 - old.x0, new_rect.y0 - old.y0)
@@ -8365,6 +8386,7 @@ class DocumentView(QScrollArea):
         self._objects_edit(tr("Moved"), lambda pg, ns: page_objects.move_to(pg, ns, old, new_rect, objs),
                            text_fn=move_text,
                            links_fn=lambda pg: links.follow(pg, old, new_rect, parts=parts))
+        return True
 
     @staticmethod
     def _blocks_of(texts):

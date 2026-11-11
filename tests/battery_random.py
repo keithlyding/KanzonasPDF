@@ -629,13 +629,11 @@ class Battery:
             f.write(v._snapshot())
         fresh = DV.DocumentView(path)
         try:
-            # (layers hidden here are hidden in the fresh view too: hiding a layer is a
-            # viewing choice, not saved; object numbers stay as they are in the snapshot)
-            from kanzonas import markup_layers
-            off = markup_layers.hidden(v.doc)
-            for n, x in markup_layers.ui_layers(fresh.doc) if off else ():
-                if x in off:
-                    fresh.set_layer(n, False)
+            # (each layer shown or hidden in the fresh view as it is here: showing or hiding
+            # one is a viewing choice, not saved, and a file can start with some hidden;
+            # object numbers stay as they are in the snapshot)
+            for n, on in self.layer_states(fresh.doc):
+                fresh.set_layer(n, on)
             fresh.resize(v.width(), v.height())
             fresh.set_zoom(v.zoom)
             for i in range(v.doc.page_count):
@@ -657,17 +655,23 @@ class Battery:
             fresh.close_doc()
             fresh.deleteLater()
 
+    def layer_states(self, other):
+        """[(layer number in document other, shown here)] for the layers whose state other
+        doesn't have yet (the same layers, by object number)."""
+        from kanzonas import markup_layers
+        here = {x: on for x, _n, on in markup_layers.layers(self.v.doc)}
+        there = {x: on for x, _n, on in markup_layers.layers(other)}
+        return [(n, here[x]) for n, x in markup_layers.ui_layers(other)
+                if x in here and there.get(x) != here[x]]
+
     def roundtrip(self):
         """Save (as File > Save does), open the file again: the same document."""
         self.do_save()
         self.after("save")
-        from kanzonas import markup_layers
-        off = markup_layers.hidden(self.v.doc)
         with pymupdf.open(self.v.path) as d:
-            # (the layers hidden here hidden there too: a viewing choice, not saved)
-            for n, x in markup_layers.ui_layers(d) if off else ():
-                if x in off:
-                    d.set_layer_ui_config(n, 2)
+            # (each layer shown or hidden there as here: a viewing choice, not saved)
+            for n, on in self.layer_states(d):
+                d.set_layer_ui_config(n, 1 if on else 2)
             got = summary(d)
         if got != self.cur.summary:
             raise Failed("saved and opened again: " + summary_diff(self.cur.summary, got))
@@ -1453,7 +1457,7 @@ class Battery:
         pick = self.rnd.sample(pool, self.rnd.randint(1, min(3, len(pool))))
         v.select_objects(i, pick)
         what = self.rnd.choice(["move", "move", "rotate", "delete"])
-        others = self.other_letters(i, pick)
+        others = self.other_letters(i, pick, inside=what == "delete")
         if what == "move":
             v.move_objects(v.selected_objects_rect() + (lambda d: (d, d * 0.5, d, d * 0.5))(
                 self.rnd.uniform(-40, 40)))
@@ -1488,18 +1492,24 @@ class Battery:
         self.check_letters(i, others)
         return "edit" if moved else "none"
 
-    def other_letters(self, i, picked):
-        """The letters of page i's text that isn't among the picked Edit objects items."""
+    def other_letters(self, i, picked, inside=False):
+        """The letters of page i's text that isn't among the picked Edit objects items (with
+        inside: nor within a picked picture, shape or group's box: a flattened markup's words
+        are in its group, and go when it's deleted)."""
         import collections
         from kanzonas import text_edit
         if i >= self.v.doc.page_count:
             return None
         mine = {(text_edit.line_text(ln), round(r.x0), round(r.y0))
                 for it in picked if it["kind"] == "text" for r, ln in it["lines"]}
+        boxes = [pymupdf.Rect(it["rect"]) + (-1, -1, 1, 1) for it in picked
+                 if it["kind"] != "text"] if inside else []
         out = collections.Counter()
         for r, ln in text_edit.text_lines(self.v.doc[i]):
-            if (text_edit.line_text(ln), round(r.x0), round(r.y0)) not in mine:
-                out.update(c for c in text_edit.line_text(ln) if not c.isspace())
+            if (text_edit.line_text(ln), round(r.x0), round(r.y0)) in mine or \
+                    any(b.contains(r) for b in boxes):
+                continue
+            out.update(c for c in text_edit.line_text(ln) if not c.isspace())
         return out
 
     def check_letters(self, i, before):

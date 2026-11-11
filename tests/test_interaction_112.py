@@ -237,6 +237,26 @@ class AngledAndRefused(Window):
         self.assertEqual(blocks(v.doc), ["Some text to move"])
 
 
+class OffThePage(Window):
+    def test_the_pages_text_stops_at_its_edge(self):
+        # (random battery, seed 31: moved up past the top with the arrow keys, the text went
+        # where nothing shows it and was unselected)
+        def build(pg):
+            pg.insert_text((100, 30), "Near the top", fontsize=11)
+        w, v = self.open(build)
+        w.set_tool("editobjects")
+        pump()
+        self.click(v.pages[0], self.at(P(130, 27)))
+        self.assertIsNotNone(v.obj_sel)
+        for _ in range(6):
+            QTest.keyClick(QApplication.focusWidget() or v, Qt.Key_Up, Qt.ShiftModifier)
+            pump(2)
+            self.assertIsNotNone(v.obj_sel)
+        self.assertEqual(blocks(v.doc), ["Near the top"])
+        r = v.obj_sel[1][0]["rect"]
+        self.assertGreater(r.y1, 0)                     # (still partly on the page)
+
+
 class GrayPreviews(Window):
     """Each preview is drawn on the gray canvas where it reaches past the page."""
 

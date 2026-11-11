@@ -11295,3 +11295,6 @@ msgstr "El último plano del conjunto"
 
 msgid "The first sheet of the set"
 msgstr "El primer plano del conjunto"
+
+msgid "The page's own text can't go past the edge of the page, nor its pictures and shapes off it altogether (markups can)."
+msgstr "El texto propio de la página no puede pasar del borde de la página, ni sus imágenes y formas salir del todo de ella (las marcas sí)."

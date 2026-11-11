@@ -20,7 +20,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 
 **Fixed**
 - Moving the page's own text with the arrow keys (or by dragging) onto another line of text no longer deletes that line's letters, and a paragraph moved over other text no longer picks it up and carries it along. The selection stays on the text you selected, and Ctrl+Z undoes a whole series of arrow-key moves at once.
-- Moving text that sits at an angle (a diagonal watermark, a tilted label) keeps its angle and its see-through look, and leaves no letters behind. A move that can't be made (redaction marks waiting on the page) no longer unselects the text.
+- Moving text that sits at an angle (a diagonal watermark, a tilted label) keeps its angle and its see-through look, and leaves no letters behind. A move that can't be made (redaction marks waiting on the page) no longer unselects the text. The page's own text now stops at the edge of the page (letters moved past it were lost on the next move), and its pictures and shapes can't be moved off the page altogether.
 - Markups being placed or moved in the gray around a page now show while you place them: a stamp following the pointer, a box dragged off the page, a markup moved beside it, a polygon's next side.
 - Snap to objects works when moving the page's own pictures, shapes and text with Edit objects: they snap to the drawing's line ends and corners too.
 - With the Hand tool, dragging a markup moves it (it was only selected).
@@ -40,7 +40,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 
 **Correcciones**
 - Mover el texto propio de la página con las flechas del teclado (o arrastrándolo) sobre otra línea de texto ya no borra las letras de esa línea, y un párrafo movido sobre otro texto ya no lo recoge y se lo lleva. La selección se queda en el texto que seleccionó, y Ctrl+Z deshace de una vez toda una serie de movimientos con las flechas.
-- Mover texto en ángulo (una marca de agua en diagonal, una etiqueta inclinada) conserva su ángulo y su transparencia, y no deja letras atrás. Un movimiento que no se puede hacer (marcas de redacción pendientes en la página) ya no deja el texto sin seleccionar.
+- Mover texto en ángulo (una marca de agua en diagonal, una etiqueta inclinada) conserva su ángulo y su transparencia, y no deja letras atrás. Un movimiento que no se puede hacer (marcas de redacción pendientes en la página) ya no deja el texto sin seleccionar. El texto propio de la página ahora se detiene en el borde de la página (las letras que pasaban de él se perdían en el siguiente movimiento), y sus imágenes y formas no se pueden sacar del todo de la página.
 - Las marcas que se colocan o se mueven en el gris alrededor de una página ahora se ven mientras las coloca: un sello que sigue al puntero, un cuadro arrastrado fuera de la página, una marca movida a su lado, el lado siguiente de un polígono.
 - Ajustar a objetos funciona al mover las imágenes, formas y texto propios de la página con Editar objetos: también se ajustan a los extremos de línea y las esquinas del dibujo.
 - Con la herramienta Mano, arrastrar una marca la mueve (solo se seleccionaba).
