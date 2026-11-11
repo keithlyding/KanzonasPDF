@@ -1012,6 +1012,18 @@ the outer two stay put.</li>
 <b>Send backward</b> (Ctrl+[), <b>Send to back</b> (Ctrl+Shift+[). With pictures or shapes of
 the page itself selected (Edit objects tool), these change their order on the page instead
 (see Editing the PDF's own pictures, shapes and text).</li>
+<li><b>Group</b> (Ctrl+Shift+G; Arrange menu, the Arrange tab's Group group, or the right-click
+menu) makes the selected markups one group: a click on any of them selects them all, so they
+move, copy, change style (Properties) and delete together, and copies are a group too.
+<b>Ungroup</b> (Ctrl+Alt+G) makes them separate again. Grouping groups already grouped among
+them makes one bigger group. It's the PDF standard's group (a markup "in reply to" the first,
+of the Group kind), so Acrobat keeps them together too; in other programs they stay separate
+markups.</li>
+<li><b>Flip horizontally</b> / <b>Flip vertically</b> (Arrange menu, the Group group, or the
+right-click menu) mirror the selection left for right or top for bottom across its middle, as
+the page is shown; a group flips as one (each part to its mirrored place), and the page's own
+objects selected with Edit objects flip too. CAD mode's Mirror does the same across any line
+you click. Text keeps reading the right way round.</li>
 </ul>
 
 <h2 id="objects">Objects panel and locking</h2>
@@ -2231,6 +2243,7 @@ scroll speed.</li>
 <tr><td>Ctrl+D</td><td>Duplicate selected markups (with Edit objects, the selected text, pictures and shapes; pages, in the page list)</td></tr>
 <tr><td>Delete (in the page list)</td><td>Delete the selected pages</td></tr>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
+<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Group / Ungroup the selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
 <tr><td>Left / Right, Page Up / Page Down</td><td>Previous / next page</td></tr>
 <tr><td>Home / End</td><td>First / last page</td></tr>

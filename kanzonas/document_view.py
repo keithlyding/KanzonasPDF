@@ -3239,7 +3239,7 @@ class DocumentView(QScrollArea):
         if self.selection is None:
             return []
         page = self.doc[self.selection[0]]
-        out = []
+        out, xs = [], []
         found = review.Threads(page) if threads else None
         for x, m in self.selected_models():
             if m["kind"] in ("field", "redact"):
@@ -3267,7 +3267,23 @@ class DocumentView(QScrollArea):
                 if thread:
                     m["thread"] = thread
             out.append(m)
+            xs.append(x)
+        # a group copied whole is a group again where it's put: each member names its
+        # primary's place in the list (_regroup)
+        t = found if found is not None else review.Threads(page)
+        if t.groups:
+            for i, x in enumerate(xs):
+                top = t.group_primary(x)
+                if top != x and top in xs:
+                    out[i]["group_of"] = xs.index(top)
         return out
+
+    def _regroup(self, made, models):
+        """The copies made from models (in order) grouped as the originals were."""
+        for i, m in enumerate(models):
+            j = m.get("group_of")
+            if j is not None and i < len(made) and 0 <= j < len(made):
+                annotations.set_group_link(self.doc, made[i], made[j])
 
     def duplicate_selected(self, offset=12):
         """Copies of the selected markups, offset down-right on screen; the copies are selected."""
@@ -3285,6 +3301,7 @@ class DocumentView(QScrollArea):
             pg = self.doc[index]
             for m in models:
                 made.append(annotations.write(pg, annotations.moved(m, d)).xref)
+            self._regroup(made, models)
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if made:
             self._set_selection(index, made)
@@ -3464,12 +3481,15 @@ class DocumentView(QScrollArea):
             want = pymupdf.Point(box.tl) + delta
             dm = pg.derotation_matrix
             d = (want - now.tl) * dm - pymupdf.Point(0, 0) * dm
-            for m in self._next_counts(models):
+            placed = self._next_counts(models)
+            start = len(made["xrefs"])
+            for m in placed:
                 m = annotations.moved(m, d)
                 form = m.pop("form", None)
                 if form and form[0] == id(self.doc):
                     m["img"] = form[1]
                 made["xrefs"].append(annotations.write(pg, m).xref)
+            self._regroup(made["xrefs"][start:], placed)
         return made
 
     def _select_placed(self, index, made):
@@ -3773,6 +3793,7 @@ class DocumentView(QScrollArea):
                         threads.append((made[-1], thread))
                 for x, thread in threads:
                     review.put_thread(pg, x, thread)
+                self._regroup(made, payload)
             self.modify(do, [index])
             if made:
                 self._set_selection(index, made)
@@ -5283,6 +5304,78 @@ class DocumentView(QScrollArea):
             return any(box.contains(pymupdf.Point(p)) for p in pts)
         return False
 
+    # ---- Arrange > Group / Ungroup, Flip (1.12) --------------------------------------------
+    def can_group(self):
+        """Two or more markups selected that aren't already one group."""
+        if self.selection is None or self.read_only:
+            return False
+        xrefs = self.selected_xrefs()
+        if len(xrefs) < 2:
+            return False
+        t = self.threads(self.selection[0])
+        return len({t.group_primary(x) for x in xrefs}) > 1
+
+    def can_ungroup(self):
+        if self.selection is None or self.read_only:
+            return False
+        t = self.threads(self.selection[0])
+        return any(x in t.groups or len(t.group(x)) > 1 for x in self.selected_xrefs())
+
+    def group_selection(self):
+        """Group the selected markups (as one group: groups among them are merged), the first
+        selected the group's primary (PDF 1.6 groups: /IRT and /RT /Group, which Acrobat
+        reads as a group too). One undo step."""
+        if not self.can_group():
+            return False
+        index, xrefs = self.selection[0], self.selected_xrefs()
+        primary = xrefs[0]
+
+        def do():
+            for x in xrefs:
+                annotations.set_group_link(self.doc, x, None if x == primary else primary)
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self._set_selection(index, xrefs)
+        self.statusMessage.emit(tr("{n} markups grouped").format(n=len(xrefs)))
+        return True
+
+    def ungroup_selection(self):
+        if not self.can_ungroup():
+            return False
+        index, xrefs = self.selection[0], self.selected_xrefs()
+
+        def do():
+            for x in xrefs:
+                if annotations.group_link(self.doc, x):
+                    annotations.set_group_link(self.doc, x, None)
+        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self._set_selection(index, xrefs)           # (still selected, each on its own now)
+        self.statusMessage.emit(tr("Ungrouped"))
+        return True
+
+    def flip_selection(self, horizontal=True):
+        """Mirror what's selected (markups, or the drawing's objects with Edit objects) across
+        its middle as the page is shown: left for right (horizontal) or top for bottom; a
+        group flips as one. One undo step (CAD mode's Mirror, two clicks fewer)."""
+        what = self.cad_targets()
+        if what is None or self.read_only:
+            return False
+        kind, index, items = what
+        page = self.doc[index]
+        pts = [pymupdf.Point(p) * page.rotation_matrix
+               for line in self.cad_outlines(index, kind, items) for p in line]
+        if not pts:
+            return False
+        xs, ys = [p.x for p in pts], [p.y for p in pts]
+        mid = pymupdf.Point((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)     # (as shown)
+        a, b = (mid - (0, 1), mid + (0, 1)) if horizontal else (mid - (1, 0), mid + (1, 0))
+        from .cad_commands import mirror
+        m = mirror(a * page.derotation_matrix, b * page.derotation_matrix)
+        if m is None:
+            return False
+        self.cad_apply(tr("Flipped horizontally") if horizontal else tr("Flipped vertically"),
+                       m)
+        return True
+
     # ---- selecting and editing existing annotations ----------------------------
     def select_xref(self, index, xref, add=False):
         """Select one annotation. add=True (Ctrl+click) adds it to / removes it from the
@@ -5290,14 +5383,18 @@ class DocumentView(QScrollArea):
         review status selects the markup it belongs to."""
         if xref:
             xref = self.thread_root(index, xref)
+        group = self.threads(index).group(xref) if xref else [xref]
         if add and self.selection is not None and self.selection[0] == index and xref:
             xrefs = self.selected_xrefs()
-            if xref in xrefs:
-                xrefs.remove(xref)
+            if xref in xrefs:                   # (a group comes off, or goes on, whole)
+                xrefs = [x for x in xrefs if x not in group]
             else:
-                xrefs.append(xref)
+                xrefs += [x for x in group if x not in xrefs]
             self._set_selection(index, xrefs)
             return True
+        if len(group) > 1:                      # a grouped markup: its whole group
+            self._set_selection(index, group)
+            return self.selection is not None
         page = self.doc[index]
         annot = page.load_annot(xref) if xref else None
         if annot is not None and (annot.flags or 0) & pymupdf.PDF_ANNOT_IS_LOCKED:
@@ -5320,6 +5417,8 @@ class DocumentView(QScrollArea):
         t = self.threads(index)
         if t.links:
             xrefs = list(dict.fromkeys(t.root(x) for x in xrefs))
+        if t.groups:                            # (a grouped markup brings its group)
+            xrefs = list(dict.fromkeys(y for x in xrefs for y in t.group(x)))
         keep, first = [], None
         found = annotations.load_annots(page, xrefs)
         for x in xrefs:

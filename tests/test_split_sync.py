@@ -119,16 +119,23 @@ class Split(unittest.TestCase):
         pane.sync.setChecked(True)
         pump()
         self.assertTrue(pane.linked())
-        go_to_anchor(details, 3, 0.25, 0.6, 1.5)
+        # (at 3x both pages are wider than their views, so the place across syncs too; a
+        # page narrower than its view stays centered)
+        go_to_anchor(details, 3, 0.25, 0.6, 3.0)
         pump()
         page, fx, fy, zoom = sync_anchor(sv)
         self.assertEqual(page, 3)
         self.assertAlmostEqual(zoom, details.zoom, places=3)
         self.assertAlmostEqual(fy, 0.6, delta=0.03)
+        self.assertGreater(sv.horizontalScrollBar().maximum(), 0)
         self.assertAlmostEqual(fx, 0.25, delta=0.03)
         # the other way: the second view moves the main one (once the echoes of being moved
         # by Sync are past, as by the time a person scrolls it)
-        QTest.qWait(200)
+        for _ in range(60):
+            if not pane._quiet:
+                break
+            QTest.qWait(50)
+        self.assertFalse(pane._quiet)
         go_to_anchor(sv, 1, 0.5, 0.2)
         pump()
         self.assertEqual(sync_anchor(details)[0], 1)

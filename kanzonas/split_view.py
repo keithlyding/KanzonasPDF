@@ -187,35 +187,34 @@ class SplitPane(QWidget):
         else:
             offset, ratio = b[0] - a[0], b[3] / max(1e-6, a[3])
         self._link = (main, sv, offset, ratio)
+        # (each view's own slot: which view moved is known without asking Qt for the sender,
+        # whose Python wrapper can be a new one, not equal to the one kept)
+        self._conns = []
         for v in (main, sv):
-            v.horizontalScrollBar().valueChanged.connect(self._moved)
-            v.verticalScrollBar().valueChanged.connect(self._moved)
-            v.zoomChanged.connect(self._moved)
+            slot = (lambda *_a, v=v: self._moved(v))
+            for sig in (v.horizontalScrollBar().valueChanged, v.verticalScrollBar().valueChanged,
+                        v.zoomChanged):
+                sig.connect(slot)
+                self._conns.append((sig, slot))
         if offset == 0 and ratio == 1.0:
             self._follow(main)              # (by page number: the second view lines up now)
 
     def _unlink(self):
         if self._link is None:
             return
-        for v in self._link[:2]:
-            for sig in (v.horizontalScrollBar().valueChanged, v.verticalScrollBar().valueChanged,
-                        v.zoomChanged):
-                try:
-                    sig.disconnect(self._moved)
-                except (RuntimeError, TypeError):
-                    pass
+        for sig, slot in getattr(self, "_conns", ()):
+            try:
+                sig.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+        self._conns = []
         self._link = None
 
     def linked(self):
         return self._link is not None
 
-    def _moved(self, *_):
-        if self._link is None:
-            return
-        sender = self.sender()
-        main, sv = self._link[:2]
-        src = sv if sender in (sv, sv.horizontalScrollBar(), sv.verticalScrollBar()) else main
-        if src in self._quiet:
+    def _moved(self, src):
+        if self._link is None or src in self._quiet:
             return
         self._follow(src)
 

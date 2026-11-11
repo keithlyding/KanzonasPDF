@@ -44,8 +44,9 @@ ON_TABS = {
                "a_snap_objects a_snap_page t:m_angle t:m_area t:m_calibrate t:m_count t:m_dim "
                "t:m_length t:m_perimeter t:m_poly t:m_radius t:m_volume",
     "Arrange": "A:al_bottom A:al_hcenter A:al_left A:al_right A:al_top A:al_vmiddle A:dist_h "
-               "A:dist_v A:z_back A:z_backward A:z_forward A:z_front a_grid a_grid_settings "
-               "a_lock a_snap_grid a_snap_objects a_snap_page a_unlock_all",
+               "A:dist_v A:z_back A:z_backward A:z_forward A:z_front a_flip_h a_flip_v a_grid "
+               "a_grid_settings a_group a_lock a_snap_grid a_snap_objects a_snap_page a_ungroup "
+               "a_unlock_all",
     "Review": "a_cards a_delete_markups a_flatten_markups a_markups a_next_markup a_prev_markup "
               "a_show_markups t:comment t:note",
     "Protect": "a_apply_placeholders a_apply_redact a_apply_sel_redact a_clear_sigs a_digisign "

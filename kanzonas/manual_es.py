@@ -999,6 +999,17 @@ las dos de los extremos no se mueven.</li>
 <b>Enviar atrás</b> (Ctrl+[), <b>Enviar al fondo</b> (Ctrl+Shift+[). Con imágenes o formas de
 la propia página seleccionadas (herramienta Editar objetos), estos comandos cambian, en su lugar, el orden de esos objetos en la página
 (vea Editar las imágenes, formas y texto propios del PDF).</li>
+<li><b>Agrupar</b> (Ctrl+Shift+G; menú Organizar, el grupo Grupo de la pestaña Organizar, o el menú del botón derecho)
+hace de las marcas seleccionadas un grupo: un clic en cualquiera las selecciona todas, así que se mueven, se copian,
+cambian de estilo (Propiedades) y se eliminan juntas, y sus copias también son un grupo. <b>Desagrupar</b>
+(Ctrl+Alt+G) las vuelve a separar. Agrupar grupos que ya estaban agrupados entre ellas forma un grupo más grande.
+Es el grupo del estándar PDF (una marca "en respuesta a" la primera, del tipo Grupo), así que Acrobat también las
+mantiene juntas; en otros programas quedan como marcas separadas.</li>
+<li><b>Voltear horizontalmente</b> / <b>Voltear verticalmente</b> (menú Organizar, el grupo Grupo, o el menú del botón
+derecho) reflejan la selección de izquierda a derecha o de arriba abajo por su centro, tal como se ve la página; un
+grupo se voltea como uno solo (cada parte a su lugar reflejado), y los objetos propios de la página seleccionados con
+Editar objetos también se voltean. Simetría del modo CAD hace lo mismo respecto a cualquier línea en la que haga clic.
+El texto se sigue leyendo al derecho.</li>
 </ul>
 
 <h2 id="objects">Panel Objetos y bloqueo</h2>
@@ -2257,6 +2268,7 @@ Desplazamiento automático.</li>
 <tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (con Editar objetos, el texto, las imágenes y las formas seleccionados; las páginas, en la lista de páginas)</td></tr>
 <tr><td>Supr (en la lista de páginas)</td><td>Eliminar las páginas seleccionadas</td></tr>
 <tr><td>Ctrl+L</td><td>Bloquear las marcas seleccionadas</td></tr>
+<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Agrupar / Desagrupar las marcas seleccionadas</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Al frente / adelante / atrás / al fondo</td></tr>
 <tr><td>Izquierda / Derecha, Re Pág / Av Pág</td><td>Página anterior / siguiente</td></tr>
 <tr><td>Inicio / Fin</td><td>Primera / última página</td></tr>

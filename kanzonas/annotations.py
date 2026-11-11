@@ -1386,10 +1386,15 @@ def replace_many(page, changes, olds=None, again=False):
     answering = {}
     if rewrite:
         targets = {f"{x} 0 R": x for x in rewrite}
+        gone = set(rewrite)
         for x, _kind, *_ in page.annot_xrefs():
+            if x in gone:
+                continue                # (written anew itself: its link is set below)
             kind, val = doc.xref_get_key(x, "IRT")
             if kind == "xref" and val in targets:
                 answering.setdefault(targets[val], []).append(x)
+    # (and one in a group stays in it: Arrange > Group's /IRT and /RT /Group)
+    grouped = {x: g for x in rewrite for g in [group_link(doc, x)] if g}
     pdf_speed.delete_many(page, rewrite, keep_replies=True)
     for xref, model in changes:
         if xref in shifted or xref in unchanged:
@@ -1401,7 +1406,15 @@ def replace_many(page, changes, olds=None, again=False):
         new = write(page, model).xref
         for r in answering.get(xref, ()):
             doc.xref_set_key(r, "IRT", f"{new} 0 R")
+        if xref in grouped:
+            set_group_link(doc, new, grouped[xref])
         out.append((xref, olds[xref], new))
+    # (a group whose primary and members were all written anew points at the new primary)
+    renamed = {x: new for x, _old, new in out if new != x}
+    for x, _old, new in out:
+        g = group_link(doc, new)
+        if g in renamed:
+            set_group_link(doc, new, renamed[g])
     # each new one takes its old one's place in the stacking order (anything else made on
     # the way, a pop-up note, stays on top as it was added)
     now = annot_order(page)
@@ -1419,6 +1432,28 @@ def replace_many(page, changes, olds=None, again=False):
     return out
 
 
+def group_link(doc, xref):
+    """The xref of the markup xref's group hangs from (Arrange > Group: /IRT with /RT
+    /Group), or None."""
+    try:
+        if doc.xref_get_key(xref, "RT") != ("name", "/Group"):
+            return None
+        kind, val = doc.xref_get_key(xref, "IRT")
+        return int(val.split()[0]) if kind == "xref" else None
+    except Exception:
+        return None
+
+
+def set_group_link(doc, xref, primary):
+    """Put markup xref in the group hanging from primary (None: out of any group)."""
+    if primary:
+        doc.xref_set_key(xref, "IRT", f"{primary} 0 R")
+        doc.xref_set_key(xref, "RT", "/Group")
+    else:
+        doc.xref_set_key(xref, "IRT", "null")
+        doc.xref_set_key(xref, "RT", "null")
+
+
 def replace(page, xref, model):
     """Swap annotation xref for a newly written model, keeping its place in the stacking
     order. Returns the new xref."""
@@ -1432,14 +1467,19 @@ def replace(page, xref, model):
         return xref
     order = annot_order(page)
     pos = order.index(xref) if xref in order else None
-    # the replies to it answer the new one (review.py): deleting it took them along
+    # the replies to it answer the new one (review.py), and its group's markups hang from it
+    # (deleting it took them along), and it stays in its own group
     doc = page.parent
-    from . import review
-    answering = review.Threads(page).children.get(xref, ())
+    ref = f"{xref} 0 R"
+    answering = [x for x, *_ in page.annot_xrefs() if x != xref and
+                 doc.xref_get_key(x, "IRT") == ("xref", ref)]
+    own = group_link(doc, xref)
     pdf_speed.delete_many(page, [xref], keep_replies=True)
     new = write(page, model).xref
     for r in answering:
         doc.xref_set_key(r, "IRT", f"{new} 0 R")
+    if own:
+        set_group_link(doc, new, own)
     if pos is not None:
         order = annot_order(page)
         if new in order:

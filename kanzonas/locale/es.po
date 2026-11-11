@@ -11106,3 +11106,46 @@ msgstr "Cerrar la vista dividida (F10)"
 
 msgid "The document in front"
 msgstr "El documento de delante"
+
+msgid "Flipped horizontally"
+msgstr "Volteado horizontalmente"
+
+msgid "Flipped vertically"
+msgstr "Volteado verticalmente"
+
+msgid "{n} markups grouped"
+msgstr "{n} marcas agrupadas"
+
+msgid "Flip left/right"
+msgstr "Voltear ↔"
+
+msgid "Flip up/down"
+msgstr "Voltear ↕"
+
+msgid "&Group"
+msgstr "A&grupar"
+
+msgid "U&ngroup"
+msgstr "Desagr&upar"
+
+msgid "Flip &horizontally"
+msgstr "Voltear &horizontalmente"
+
+msgid "Flip &vertically"
+msgstr "Voltear &verticalmente"
+
+msgid "Group the selected markups: a click on one selects them all, to move, copy, style or delete them together (Ctrl+Shift+G)"
+msgstr "Agrupar las marcas seleccionadas: un clic en una las selecciona todas, para moverlas, copiarlas, cambiar su estilo o eliminarlas juntas (Ctrl+Shift+G)"
+
+msgid "Ungroup the selected group: its markups are on their own again (Ctrl+Alt+G)"
+msgstr "Desagrupar el grupo seleccionado: sus marcas vuelven a ser independientes (Ctrl+Alt+G)"
+
+msgid "Mirror the selection left for right, across its middle (a group as one)"
+msgstr "Reflejar la selección de izquierda a derecha, por su centro (un grupo como uno solo)"
+
+msgid "Mirror the selection top for bottom, across its middle (a group as one)"
+msgstr "Reflejar la selección de arriba abajo, por su centro (un grupo como uno solo)"
+
+msgctxt "verb"
+msgid "Group"
+msgstr "Agrupar"

@@ -1960,6 +1960,11 @@ class PageWidget(QWidget):
             if v.default_tool_of_selected() is not None:
                 # its style for the next markups made with its tool (Bluebeam's name for it)
                 menu.addAction(tr("Set as Default"), v.set_selected_as_default)
+            if win is not None and hasattr(win, "a_group"):
+                menu.addSeparator()
+                for act in (win.a_group, win.a_ungroup, win.a_flip_h, win.a_flip_v):
+                    if act.isEnabled():
+                        menu.addAction(act)
             # (all that's selected: in CAD mode, the drawing's objects selected with them too)
             menu.addAction(tr("Delete"), v.delete_everything_selected)
         elif on_text:

@@ -1317,6 +1317,24 @@ class MainWindow(QMainWindow):
                                 tip=tr("Lock the selected markups: they can't be clicked, moved or "
                                        "selected on the page (unlock in the Objects panel)"))
         self.a_unlock_all = self._act(tr("&Unlock all markups"), lambda: self._unlock_all())
+        # (1.12) groups of markups, and flipping, as Bluebeam's Group and Flip
+        self.a_group = self._act(tr("&Group"), lambda: self.view() and
+                                 self.view().group_selection(), "Ctrl+Shift+G",
+                                 tip=tr("Group the selected markups: a click on one selects "
+                                        "them all, to move, copy, style or delete them "
+                                        "together (Ctrl+Shift+G)"))
+        self.a_ungroup = self._act(tr("U&ngroup"), lambda: self.view() and
+                                   self.view().ungroup_selection(), "Ctrl+Alt+G",
+                                   tip=tr("Ungroup the selected group: its markups are "
+                                          "on their own again (Ctrl+Alt+G)"))
+        self.a_flip_h = self._act(tr("Flip &horizontally"), lambda: self.view() and
+                                  self.view().flip_selection(True),
+                                  tip=tr("Mirror the selection left for right, across its "
+                                         "middle (a group as one)"))
+        self.a_flip_v = self._act(tr("Flip &vertically"), lambda: self.view() and
+                                  self.view().flip_selection(False),
+                                  tip=tr("Mirror the selection top for bottom, across its "
+                                         "middle (a group as one)"))
         self.align_ref_group = QActionGroup(self)
         self.align_ref_actions = {}
         # (menu text, the shorter text in the toolbar's "align to" box)
@@ -1455,6 +1473,8 @@ class MainWindow(QMainWindow):
         m.addActions([acts["dist_h"], acts["dist_v"]])
         m.addSeparator()
         m.addActions([acts[k] for k in ("z_front", "z_forward", "z_backward", "z_back")])
+        m.addSeparator()
+        m.addActions([self.a_group, self.a_ungroup, self.a_flip_h, self.a_flip_v])
         m.addSeparator()
         m.addActions([self.a_lock, self.a_unlock_all])
         m.addSeparator()
@@ -1898,6 +1918,11 @@ class MainWindow(QMainWindow):
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_lock.setEnabled(has and v.selection is not None)
         self.a_unlock_all.setEnabled(has)
+        self.a_group.setEnabled(has and v.can_group())
+        self.a_ungroup.setEnabled(has and v.can_ungroup())
+        for a in (self.a_flip_h, self.a_flip_v):
+            a.setEnabled(has and not v.read_only and (v.selection is not None or
+                                                      v.obj_sel is not None))
         if hasattr(self, "_objects_timer"):
             self._objects_timer.start()
         # markups and the drawing's own objects (Edit objects, CAD mode) count alike: any
@@ -5451,6 +5476,8 @@ class MainWindow(QMainWindow):
         "a_set_scale": tr("Set scale"), "a_sheet_scales": tr("Sheet scales"), "a_measure_summary": tr("Summary"), "a_ocr": tr("OCR"),
         "a_rot_l": tr("Rotate left"), "a_rot_r": tr("Rotate right"), "a_lock": tr("Lock"),
         "a_unlock_all": tr("Unlock all"), "a_prev_markup": tr("Previous"), "a_next_markup": tr("Next"),
+        "a_group": tr("Group", ctx="verb"), "a_ungroup": tr("Ungroup"), "a_flip_h": tr("Flip left/right"),
+        "a_flip_v": tr("Flip up/down"),
         "a_markups": tr("Markups list"), "a_show_markups": tr("Show markups"),
         "a_cards": tr("Comment boxes"), "a_delete_markups": tr("Delete comments"),
         "a_flatten_markups": tr("Flatten comments"), "a_multi_sign": tr("Multi-place"),
@@ -5489,7 +5516,8 @@ class MainWindow(QMainWindow):
     }
     RIBBON_ICONS = {
         "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square", "a_sheet_scales": "text-box-search-outline", "a_sheet_links": "link-variant-plus",
-        "a_measure_summary": "sigma", "a_grid_settings": "cog-outline", "a_lock": "lock-outline",
+        "a_measure_summary": "sigma", "a_grid_settings": "cog-outline", "a_lock": "lock-outline", "a_group": "group", "a_ungroup": "ungroup",
+        "a_flip_h": "flip-horizontal", "a_flip_v": "flip-vertical",
         "a_unlock_all": "lock-open-variant-outline", "a_prev_markup": "chevron-up",
         "a_next_markup": "chevron-down", "a_markups": "format-list-bulleted",
         "a_show_markups": "eye-outline", "a_cards": "card-text-outline",
@@ -5601,7 +5629,8 @@ class MainWindow(QMainWindow):
             (tr("Align to"), "small", [self.ribbon_align_box]),
             (tr("Distribute"), "small", [A_["dist_h"], A_["dist_v"]]),
             (tr("Order"), "small", [A_["z_front"], A_["z_forward"], A_["z_backward"], A_["z_back"]]),
-            (tr("Lock"), "large", [self.a_lock, self.a_unlock_all]),
+            (tr("Group"), "small", [self.a_group, self.a_ungroup, self.a_flip_h, self.a_flip_v]),
+            (tr("Lock"), "small", [self.a_lock, self.a_unlock_all]),     # (small: room for Group)
             (tr("Snap"), "small", snap, [self.a_grid_settings]),
         ])
         r.add_tab(tr("Review"), [
