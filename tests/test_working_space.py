@@ -76,6 +76,10 @@ class Gray(unittest.TestCase):
         w.resize(1400, 900)
         w.show()
         pump()
+        # (the mouse mode is remembered: a test before may have left CAD mode, where what's
+        # drawn isn't selected and a drag draws a selection box; on macOS the tests share the
+        # real settings store)
+        w.set_mouse_mode("standard")
         w.open_file(self.path)
         pump()
         self.v = w.view()

@@ -43,6 +43,7 @@ class Drawn(unittest.TestCase):
         w.resize(1300, 900)
         w.show()
         pump()
+        w.set_mouse_mode("standard")        # (not CAD mode a test before may have left)
         w.open_file(path)
         pump()
         self.v = w.view()
