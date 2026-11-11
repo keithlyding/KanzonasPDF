@@ -52,12 +52,9 @@ PREDECODE_AFTER_S = 0.25    # tiles this slow on a page with big pictures: decod
 SMALL_PREVIEW = 400         # px: the small copy of a page's bitmap kept once it's let go ...
 SMALL_PREVIEWS = 40         # ... for this many pages
 TILE = 512                  # tile size in device pixels
-# View > Working space around pages: gray room around each page where markups can be kept
-# (shown and saved, never printed), as a fraction of the page's shown width (left and right)
-# and height (above and below); issue #82
-WS_X = 0.5
-WS_Y = 0.15
-WS_COLOR = QColor(98, 102, 106)
+# the room around a page for its markups outside it (DocumentView.outside_margins): the same
+# gray as the canvas the pages lie on, so it looks as the gray always has (issue #82)
+WS_COLOR = QColor("#525659")
 TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
 ROT_GAP = 26        # rotation handle distance above the selection, px
@@ -368,19 +365,22 @@ class PageWidget(QWidget):
 
     # ---- geometry -------------------------------------------------------
     def margins_pt(self):
-        """The working space on each side of the page, in points as shown: (x, y); (0, 0)
-        when View > Working space around pages is off."""
-        if not getattr(self.view, "working_space", False):
-            return 0.0, 0.0
-        r = self.view.page_rects[self.index]
-        return r.width * WS_X, r.height * WS_Y
+        """The room around the page for its markups outside it, in points as shown: (left,
+        top, right, bottom); all 0 when it has none (or they're hidden)."""
+        try:
+            return self.view.outside_margins(self.index)
+        except Exception:
+            return (0.0, 0.0, 0.0, 0.0)
+
+    def _margins_px(self):
+        z = self.view.zoom
+        return tuple(int(round(m * z)) for m in self.margins_pt())
 
     def offset(self):
-        """Where the page's top-left corner is in the widget (pixels): (0, 0) unless the
-        working space is shown around it."""
-        mx, my = self.margins_pt()
-        z = self.view.zoom
-        return QPointF(round(mx * z), round(my * z))
+        """Where the page's top-left corner is in the widget (pixels): (0, 0) unless it has
+        room around it for markups outside it."""
+        left, top, _r, _b = self._margins_px()
+        return QPointF(left, top)
 
     def page_px(self):
         """The page's own size in widget pixels (without the working space)."""
@@ -404,8 +404,8 @@ class PageWidget(QWidget):
         r = self.view.page_rects[self.index]
         z = self.view.zoom
         w, h = self.page_px()
-        o = self.offset()
-        size = (w + 2 * int(o.x()), h + 2 * int(o.y()))
+        left, top, right, bottom = self._margins_px()
+        size = (w + left + right, h + top + bottom)
         del z
         if self._pix is not None and size != (self.width(), self.height()):
             # (a new zoom: the page as it was is shown, scaled, until it's drawn sharp again)
@@ -468,11 +468,11 @@ class PageWidget(QWidget):
             v._dlists[self.index] = dl
         return dl
 
-    def _annots(self):
+    def _annots(self, on_page=True):
         """The page's markups and form fields as a DisplayList (None: none to draw, or
         View > Show markups off)."""
         v = self.view
-        if not v.show_markups:
+        if not v.show_markups or (on_page and not v.show_page_markups):
             return None
         if self.index not in v._alists:
             page = v.doc[self.index]
@@ -876,8 +876,9 @@ class PageWidget(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         o = self.offset()
-        if o.x() or o.y():
-            p.fillRect(event.rect(), WS_COLOR)          # the working space around the page
+        room = any(self._margins_px())
+        if room:
+            p.fillRect(event.rect(), WS_COLOR)          # the room around the page
         if self.view.doc.is_closed or self.index >= self.view.doc.page_count:
             # tab closing, or a widget of a page that was just deleted (its deleteLater is
             # still queued): a repaint must not touch the document
@@ -914,7 +915,7 @@ class PageWidget(QWidget):
             self._paint_grid(p, QRectF(exposed))
         p.restore()
         page = self.view.doc[self.index]
-        if o.x() or o.y():
+        if room:
             self._paint_outside(p, event.rect())
         p.setRenderHint(QPainter.Antialiasing)
 
@@ -1154,7 +1155,9 @@ class PageWidget(QWidget):
         draws past the page's edge when asked to), as a QImage with transparency; None when
         nothing of them is outside the page. Kept until the markups, the zoom or the size
         change (their DisplayList is made anew after any change: its id is in the key)."""
-        dl = self._annots()
+        if not (self.view.show_markups and self.view.show_outside):
+            return None
+        dl = self._annots(on_page=False)
         if dl is None:
             return None
         dpr = self.devicePixelRatioF()
@@ -1164,10 +1167,7 @@ class PageWidget(QWidget):
         if got is not None and got[0] == key:
             return got[1]
         img = None
-        page = self.view.doc[self.index]
-        shown = page.rect
-        if any(not shown.contains((pymupdf.Rect(a.rect) * page.rotation_matrix).normalize())
-               for a in page.annots()):
+        if any(self._margins_px()):          # (markups outside the page: the room has them)
             m = pymupdf.mupdf
             # (a very big page at a high zoom: drawn smaller, then stretched)
             f = min(1.0, math.sqrt(self.OUTSIDE_PX / max(1.0, self.width() * self.height()

@@ -10989,3 +10989,63 @@ msgstr "No imprimirlas"
 
 msgid "Turn on View > Working space around pages to see what's outside the page"
 msgstr "Active Ver > Espacio de trabajo alrededor de las páginas para ver lo que está fuera de la página"
+
+msgid "On the page"
+msgstr "En la página"
+
+msgid "Outside pages"
+msgstr "Fuera de las páginas"
+
+msgid "Fit with markups"
+msgstr "Ajustar con marcas"
+
+msgid "Show markups on the &page"
+msgstr "Mostrar marcas en la &página"
+
+msgid "Show markups &outside pages"
+msgstr "Mostrar marcas &fuera de las páginas"
+
+msgid "Fit page and &markups"
+msgstr "Ajustar página y &marcas"
+
+msgid "Fit page and markups"
+msgstr "Ajustar página y marcas"
+
+msgid "KanzonasPDF keeps it and shows it in the gray beside the page, but other PDF programs don't show it, and it doesn't print unless you choose so.\n\nPrint markups outside the page? On the same sheet, the page prints smaller to make room; on an extra sheet after the page, the page prints at its size (a drawing stays at scale). Nothing in the document changes. You can change this each time in the Print window (Markups outside pages)."
+msgstr "KanzonasPDF la guarda y la muestra en el gris junto a la página, pero otros programas de PDF no la muestran, y no se imprime salvo que usted lo elija.\n\n¿Imprimir las marcas que están fuera de la página? En la misma hoja, la página se imprime más pequeña para dejar espacio; en una hoja extra después de la página, la página se imprime a su tamaño (un plano conserva su escala). Nada cambia en el documento. Puede cambiarlo cada vez en la ventana Imprimir (Marcas fuera de las páginas)."
+
+msgid "Same sheet"
+msgstr "Misma hoja"
+
+msgid "Extra sheet"
+msgstr "Hoja extra"
+
+msgid "Show or hide the markups on the pages (those kept outside the pages stay as they are)"
+msgstr "Mostrar u ocultar las marcas en las páginas (las guardadas fuera de las páginas quedan como están)"
+
+msgid "Show or hide the markups kept in the gray beside the pages (saved, not printed); hidden, the room around the pages closes up"
+msgstr "Mostrar u ocultar las marcas guardadas en el gris junto a las páginas (se guardan, no se imprimen); ocultas, el espacio alrededor de las páginas se cierra"
+
+msgid "Zoom so the page and the markups kept beside it fit in the window"
+msgstr "Hacer zoom para que la página y las marcas guardadas junto a ella quepan en la ventana"
+
+msgid "Markups outside pages are hidden: turn on Review > Show markups outside pages to see them"
+msgstr "Las marcas fuera de las páginas están ocultas: active Revisar > Mostrar marcas fuera de las páginas para verlas"
+
+msgid "Markups kept outside a page's edge (in the gray beside it) don't print unless you choose so here"
+msgstr "Las marcas guardadas fuera del borde de una página (en el gris junto a ella) no se imprimen salvo que lo elija aquí"
+
+msgid "Markups outside pages"
+msgstr "Marcas fuera de las páginas"
+
+msgid "Leave them out"
+msgstr "Dejarlas fuera"
+
+msgid "On the same sheet (the page smaller)"
+msgstr "En la misma hoja (la página más pequeña)"
+
+msgid "On an extra sheet after the page (the page at scale)"
+msgstr "En una hoja extra después de la página (la página a escala)"
+
+msgid "Sheet {n} of {total} (page {page}: markups outside it)"
+msgstr "Hoja {n} de {total} (página {page}: marcas fuera de ella)"

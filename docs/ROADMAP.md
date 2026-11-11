@@ -50,13 +50,16 @@ a decision changes or a piece of work lands. Details of each version are in
 - 1.10.1: links to other files found again when an index was made on another computer or its
   folders moved (the owner's drawing index, 9 Nov).
 - 1.11 (owner, 11 Nov, from the first outside tester's issue #82 and the owner's own use):
-  View > Working space around pages (markups kept beside a page, shown and saved, not printed
-  unless asked; other PDF programs don't show them, so Sanitize and Remove hidden information
-  take them out); Pages > Add space around page (real page, everything staying in place);
-  Print: Comments beside the page; what's drawn stays selected and Set as Default; opacity on
-  pictures and captures fixed; PyMuPDF 2.1 (MuPDF 1.28.6; issue #80; the owner chose to take it
-  with this release, not 1.10.1). Bluebeam's own manual and forum were read for how it does
-  these (support.bluebeam.com and community.bluebeam.com are allowed in the environment).
+  markups anywhere in the gray around a page (the gray works as it always has; a page with
+  markups beside it gets just the room they need; Review > Show markups on the page / outside
+  pages; Fit page and markups; printed only when asked, on the same sheet or on an extra
+  sheet at scale; other PDF programs don't show them, so Sanitize and Remove hidden
+  information take them out); Pages > Add space around page (real page, everything staying in
+  place); what's drawn stays selected and Set as Default; opacity on pictures and captures
+  fixed; the front document tab marked; PyMuPDF 2.1 (MuPDF 1.28.6; issue #80; the owner chose
+  to take it with this release, not 1.10.1). Bluebeam's own manual and forum were read for
+  how it does these (support.bluebeam.com and community.bluebeam.com are allowed in the
+  environment).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
@@ -72,11 +75,8 @@ The owner sets this list; nothing below is promised until it's here.
      copied, styled and deleted as one (and Ungroup).
    - **Markups on layers**: a markup put on a layer (new or the drawing's own), shown and
      hidden with it in the Layers panel.
-   - **The working space for putting sheets back together** (his use: "plans that are spread
-     across multiple sheets back together for review"): markups anywhere in the gray around a
-     page, room for whole neighboring sheets, more where a file already has markups farther
-     out; printing them on the same sheet (smaller) or on an extra sheet after the page (the
-     page at scale). The owner and Claude are settling the details (11 Nov).
+   - (Done in 1.11: markups anywhere in the gray, for his use: "plans that are spread across
+     multiple sheets back together for review".)
    - **The Mac download not installing** for a colleague of his: asked for the Mac's model,
      macOS version and the message shown (Apple silicon and macOS 14.4 or newer only; not
      signed by Apple yet, so Privacy & Security > Open Anyway the first time).

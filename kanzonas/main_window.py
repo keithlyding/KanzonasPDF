@@ -880,17 +880,23 @@ class MainWindow(QMainWindow):
         self.a_scale_bar.setCheckable(True)
         self.a_scale_bar.setChecked(self.settings.value("scale_bar", "false") == "true")
         DocumentView.show_scale_bar = self.a_scale_bar.isChecked()
-        self.a_working_space = self._act(
-            tr("&Working space around pages"), self._toggle_working_space,
-            tip=tr("Gray room around each page to keep comments and pictures beside the "
-                   "drawing: shown and saved, never printed (other PDF programs don't show "
-                   "them)"))
-        self.a_working_space.setCheckable(True)
-        # (KANZONAS_WORKING_SPACE=1: on unless turned off, to run the tests with it shown)
-        self.a_working_space.setChecked(self.settings.value(
-            "working_space", "true" if os.environ.get("KANZONAS_WORKING_SPACE") == "1"
-            else "false") == "true")
-        DocumentView.working_space = self.a_working_space.isChecked()
+        # (issue #82) the markups on the page and those kept outside it, shown apart; off,
+        # those outside it also give their room around the page back
+        self.a_show_page_markups = self._act(
+            tr("Show markups on the &page"), self._toggle_show_page_markups,
+            tip=tr("Show or hide the markups on the pages (those kept outside the pages stay "
+                   "as they are)"))
+        self.a_show_page_markups.setCheckable(True)
+        self.a_show_page_markups.setChecked(True)
+        self.a_show_outside = self._act(
+            tr("Show markups &outside pages"), self._toggle_show_outside,
+            tip=tr("Show or hide the markups kept in the gray beside the pages (saved, not "
+                   "printed); hidden, the room around the pages closes up"))
+        self.a_show_outside.setCheckable(True)
+        self.a_show_outside.setChecked(True)
+        self.a_fit_markups = self._act(tr("Fit page and &markups"), lambda: v() and v().fit_markups(),
+                                       tip=tr("Zoom so the page and the markups kept beside it "
+                                              "fit in the window"))
         self.a_ocr = self._act(tr("Recognize text (&OCR)..."), self.ocr,
                                tip=tr("Make scanned pages searchable and selectable"))
         self.a_batch = self._act(tr("&Batch processing..."), self.batch_processing,
@@ -1328,7 +1334,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_find, self.a_find_next, self.a_find_prev, self.a_replace])
         m = self.view_menu = mb.addMenu(tr("&View"))
         m.addActions([self.a_zoom_in, self.a_zoom_out, self.a_actual, self.a_fit_width,
-                      self.a_fit_page])
+                      self.a_fit_page, self.a_fit_markups])
         gm = m.addMenu(tr("Go to"))         # (every free letter is taken in this menu)
         gm.addActions([self.a_next_page, self.a_prev_page, self.a_first_page, self.a_last_page])
         gm.addSeparator()
@@ -1348,7 +1354,6 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_hl_fields)
         m.addAction(self.a_show_boxes)
         m.addAction(self.a_scale_bar)
-        m.addAction(self.a_working_space)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
                       self.a_grid_settings])
@@ -1438,7 +1443,8 @@ class MainWindow(QMainWindow):
             sm.addAction(a)
         sm.aboutToShow.connect(self._status_menu_shown)
         m.addSeparator()
-        m.addActions([self.a_show_markups, self.a_cards])
+        m.addActions([self.a_show_markups, self.a_show_page_markups, self.a_show_outside,
+                      self.a_cards])
         m.addSeparator()
         m.addActions([self.a_export_comments, self.a_import_comments, self.a_summarize])
         m.addSeparator()
@@ -1508,6 +1514,7 @@ class MainWindow(QMainWindow):
         self.zoom_box = QComboBox()
         self.zoom_box.setEditable(True)
         self.zoom_box.addItems(ZOOM_PRESETS)
+        self.zoom_box.addItem(tr("Fit page and markups"))
         self.zoom_box.setMinimumWidth(80)
         self.zoom_box.lineEdit().returnPressed.connect(self._zoom_from_box)
         self.zoom_box.activated.connect(lambda _: self._zoom_from_box())
@@ -2815,6 +2822,10 @@ class MainWindow(QMainWindow):
         v = self.view()
         if not v:
             return
+        if self.zoom_box.currentText() == tr("Fit page and markups"):
+            v.fit_markups()                 # (issue #82: the page with what's beside it)
+            self._update_ui()
+            return
         z = parse_zoom(self.zoom_box.currentText())
         if z is not None:
             v.set_zoom(z / 100)
@@ -3895,7 +3906,7 @@ class MainWindow(QMainWindow):
     def _ask_outside(self, v):
         """The first time in a document that what was just drawn, pasted or moved (the
         selection) reaches outside its page: say it won't print or show elsewhere, and ask
-        whether to print such markups (the Print window's Comments beside the page starts
+        how such markups print (the Print window's Markups outside pages starts
         that way); Don't ask again stops the question (the owner, 11 Nov)."""
         import shiboken6
         if not shiboken6.isValid(v) or v.doc.is_closed or v.selection is None or \
@@ -3917,23 +3928,26 @@ class MainWindow(QMainWindow):
         box = QMessageBox(QMessageBox.Question, tr("Markups outside the page"), "", parent=self)
         box.setText(tr("This markup is partly or wholly outside the page."))
         box.setInformativeText(
-            tr("KanzonasPDF keeps it and shows it (View > Working space around pages), but it "
-               "doesn't print, and other PDF programs don't show it.\n\nPrint markups outside "
-               "the page? Then each printed sheet takes in the page and them: the paper gets "
-               "room on the sides where they are, so the page prints smaller. Nothing in the "
-               "document changes size. You can change this each time in the Print window "
-               "(Comments beside the page)."))
-        yes = box.addButton(tr("Print them"), QMessageBox.YesRole)
-        box.addButton(tr("Don't print them"), QMessageBox.NoRole)
+            tr("KanzonasPDF keeps it and shows it in the gray beside the page, but other PDF "
+               "programs don't show it, and it doesn't print unless you choose so.\n\nPrint "
+               "markups outside the page? On the same sheet, the page prints smaller to make "
+               "room; on an extra sheet after the page, the page prints at its size (a drawing "
+               "stays at scale). Nothing in the document changes. You can change this each "
+               "time in the Print window (Markups outside pages)."))
+        no = box.addButton(tr("Don't print them"), QMessageBox.RejectRole)
+        same = box.addButton(tr("Same sheet"), QMessageBox.AcceptRole)
+        extra = box.addButton(tr("Extra sheet"), QMessageBox.AcceptRole)
+        box.setDefaultButton(no)
         again = QCheckBox(tr("Don't ask again"))
         box.setCheckBox(again)
-        if not v.working_space:
-            self.statusBar().showMessage(tr("Turn on View > Working space around pages to "
-                                            "see what's outside the page"), 6000)
+        if not v.show_outside:
+            self.statusBar().showMessage(tr("Markups outside pages are hidden: turn on Review "
+                                            "> Show markups outside pages to see them"), 6000)
 
         def answered(_result):
-            on = box.clickedButton() is yes
-            self.settings.setValue("print_beside", "true" if on else "false")
+            got = box.clickedButton()
+            self.settings.setValue("print_beside", "same" if got is same else
+                                   "extra" if got is extra else "no")
             if again.isChecked():
                 self.settings.setValue("ask_beside", "false")
             box.deleteLater()
@@ -3943,17 +3957,21 @@ class MainWindow(QMainWindow):
         box.open()
         self._outside_box = box
 
-    def _toggle_working_space(self):
-        on = self.a_working_space.isChecked()
-        self.settings.setValue("working_space", "true" if on else "false")
+    def _toggle_show_page_markups(self):
+        on = self.a_show_page_markups.isChecked()
+        DocumentView.show_page_markups = on
         for w in windows():
-            w.a_working_space.setChecked(on)
+            w.a_show_page_markups.setChecked(on)
             for v in w._views():
-                v.set_working_space(on)
-        DocumentView.working_space = on         # (and documents opened from now on)
-        if on:
-            self.statusBar().showMessage(tr("Working space on: what's kept beside a page is "
-                                            "shown and saved, but not printed"), 5000)
+                v.set_outside_shown(page=on)
+
+    def _toggle_show_outside(self):
+        on = self.a_show_outside.isChecked()
+        DocumentView.show_outside = on
+        for w in windows():
+            w.a_show_outside.setChecked(on)
+            for v in w._views():
+                v.set_outside_shown(outside=on)
 
     def link_sheet_callouts(self):
         """Pages > Link sheet callouts...: sheet numbers from the title blocks, then a link on
@@ -5299,7 +5317,8 @@ class MainWindow(QMainWindow):
         "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "a_add_space": tr("Add space"), "tool_link": tr("Links"),
         "a_page_boxes": tr("Page boxes"), "a_fix_hairlines": tr("Fix hairlines"),
         "a_print_check": tr("Check for printing"), "a_show_boxes": tr("Show boxes"),
-        "a_scale_bar": tr("Scale bar"), "a_working_space": tr("Working space"),
+        "a_scale_bar": tr("Scale bar"), "a_show_page_markups": tr("On the page"),
+        "a_show_outside": tr("Outside pages"), "a_fit_markups": tr("Fit with markups"),
         "tool_editobjects": tr("Edit objects"), "tool_addtext": tr("Add text"),
         "tool_attach": tr("Attach file", ctx="ribbon"),
         "tool_m_calibrate": tr("Calibrate"),
@@ -5330,7 +5349,8 @@ class MainWindow(QMainWindow):
         "a_page_boxes": "border-outside", "a_fix_hairlines": "format-line-weight",
         "a_print_check": "printer-search", "a_show_boxes": "border-style",
         "a_scale_bar": "map-legend",
-        "a_working_space": "selection-ellipse-arrow-inside",
+        "a_show_page_markups": "file-eye-outline", "a_show_outside": "selection-ellipse-arrow-inside",
+        "a_fit_markups": "fit-to-screen-outline",
         "a_from_images": "file-image-outline", "a_new": "file-document-plus-outline",
         "a_scan": "scanner", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
@@ -5423,7 +5443,8 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Review"), [
             (tr("Add"), "large", [t["comment"], t["note"]]),
             (tr("Navigate"), "large", [self.a_prev_markup, self.a_next_markup, self.a_markups]),
-            (tr("Show"), "small", [self.a_show_markups, self.a_cards]),
+            (tr("Show"), "small", [self.a_show_markups, self.a_show_page_markups,
+                                   self.a_show_outside, self.a_cards]),
             (tr("Manage"), "large", [self.a_delete_markups, self.a_flatten_markups]),
         ])
         r.add_tab(tr("Protect"), [

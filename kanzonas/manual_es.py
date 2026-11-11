@@ -36,10 +36,11 @@ o una lista como 1-3, 5), la orientación (Automática gira cada hoja para ajust
 y los campos de formulario, <b>Líneas finas oscuras</b> (activado salvo que lo desactive: cada línea se imprime con al
 menos 0,15 pt de grosor y sólida, para que las líneas finas de los planos no salgan tenues ni cortadas; desactivado,
 las líneas se imprimen exactamente tan finas como son), las <b>Marcas de corte</b> (vea Producción de impresión) y
-<b>Comentarios junto a la página (espacio de trabajo)</b> (desactivado salvo que lo marque; solo se ofrece cuando una
-página tiene marcas fuera de su borde): cada hoja abarca entonces la página y los comentarios e imágenes guardados junto
-a ella, a escala del papel, con la página donde estaba entre ellos; sin esto, solo se imprime la página, como en
-cualquier programa de PDF. <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
+<b>Marcas fuera de las páginas</b> (solo se ofrece cuando una página tiene marcas junto a ella, en el gris):
+<b>Dejarlas fuera</b> (solo se imprime la página, como en cualquier programa de PDF), <b>En la misma hoja</b> (la hoja
+abarca la página y lo que está junto a ella, así que la página se imprime más pequeña) o <b>En una hoja extra después de
+la página</b> (la página se imprime a su tamaño, así que un plano conserva su escala, y la hoja siguiente la muestra
+tenue con lo que está junto a ella en su lugar). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
 y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
 Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse
@@ -154,19 +155,23 @@ CAD usan líneas muy finas (una décima de punto o menos); con su ancho real cub
 parte de un píxel de pantalla al alejar y se ven de un gris pálido. Con esta opción activada siguen oscuras y
 legibles con cualquier zoom. Solo cambia la pantalla: la impresión, la exportación, el OCR, Comparar y el archivo
 guardado usan los anchos de línea reales. Su elección se recuerda.</li>
-<li><b>Espacio de trabajo alrededor de las páginas</b> (menú Ver, grupo Disposición de páginas de la pestaña Lectura;
-desactivado de forma predeterminada, se recuerda): espacio gris alrededor de cada página, la mitad del ancho de la página a cada lado y algo arriba y abajo, como
-en un escritorio alrededor de un plano. Las marcas guardadas ahí, total o parcialmente fuera del borde de la página, se
-dibujan, y puede hacer clic en ellas, moverlas, editarlas y dibujarlas ahí con cualquier herramienta, o pegar ahí una
-captura. Se guardan en el archivo, pero <b>no se imprimen</b> (salvo que marque <b>Comentarios junto a la página</b> en la
-ventana Imprimir), y otros programas de PDF como Acrobat no las muestran (en Acrobat, como mucho se ven al alejar), así
-que úselas para sus propias notas. Para dar el espacio a todos, use <b>Páginas &gt; Agregar espacio alrededor de la
-página</b>: ese espacio es parte de la página. Sanear documento y Quitar la información oculta (al aplicar censuras)
-quitan las marcas que están por completo fuera de una página. Desactivado, las páginas se disponen como antes, y una
-marca fuera de la página no se dibuja. La primera vez en un documento que algo que dibuja, pega o mueve sale de la
-página, KanzonasPDF pregunta si <b>Imprimirlas</b> o <b>No imprimirlas</b>: su respuesta es como empieza Comentarios
-junto a la página en la ventana Imprimir (allí puede cambiarlo). Marque <b>No volver a preguntar</b> para que no
-pregunte más.</li>
+<li><b>Marcas fuera de la página:</b> ponga marcas, imágenes y planos capturados en cualquier lugar del gris
+alrededor de una página: junto a un plano, u otros planos pegados al lado para volver a juntar un plano repartido en
+varias hojas (Capturar área, Mayús+P, los mantiene nítidos). El gris funciona como siempre; una página con marcas junto a
+ella recibe solo el espacio que necesitan, en esos lados (el mismo a la izquierda y a la derecha, para que las páginas
+sigan alineadas; con dos páginas lado a lado, la página siguiente se aparta para que nada quede tapado). Un clic o un
+arrastre en el gris va a la página más cercana. Esas marcas se guardan en el archivo, pero <b>no se imprimen</b> salvo que
+lo elija en la ventana Imprimir (Marcas fuera de las páginas), y otros programas de PDF como Acrobat no las muestran (en
+Acrobat, como mucho se ven al alejar), así que úselas para sus propias notas. Para dar el espacio a todos, use
+<b>Páginas &gt; Agregar espacio alrededor de la página</b>: ese espacio es parte de la página. <b>Ajustar página y
+marcas</b> (menú Ver y la lista del cuadro de zoom) muestra una página con todo lo que tiene al lado; Ajustar página y
+Ajustar al ancho ajustan las páginas como siempre. Revisar &gt; <b>Mostrar marcas</b> oculta o muestra todas;
+<b>Mostrar marcas en la página</b> y <b>Mostrar marcas fuera de las páginas</b> ocultan un tipo u otro (con las de fuera
+ocultas, el espacio alrededor de las páginas se cierra). Sanear documento y Quitar la información oculta (al aplicar
+censuras) quitan las marcas que están por completo fuera de una página. La primera vez en un documento que algo que
+dibuja, pega o mueve sale de la página, KanzonasPDF pregunta cómo se imprimen esas marcas: <b>No imprimirlas</b>,
+<b>Misma hoja</b> u <b>Hoja extra</b>; su respuesta es como empieza la ventana Imprimir (allí puede cambiarlo). Marque
+<b>No volver a preguntar</b> para que no pregunte más.</li>
 <li><b>Tema:</b> Ver &gt; Tema (Igual que Windows, o Igual que el sistema en Linux y macOS; Claro, Oscuro). Ver &gt; Mostrar etiquetas de texto en las
 barras de herramientas agrega nombres debajo de los iconos. Coloque el puntero sobre cualquier botón o cuadro de la barra de herramientas o de la cinta para ver una información sobre herramientas
 que indica qué hace y su método abreviado de teclado (el que haya establecido en Métodos abreviados de teclado);

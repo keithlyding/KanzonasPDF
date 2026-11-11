@@ -44,10 +44,11 @@ or a list such as 1-3, 5), the orientation (Auto turns each sheet to fit its pag
 and form fields print, <b>Dark thin lines</b> (on unless you turn it off: every line prints at
 least 0.15 pt wide and solid, so the hairlines of drawings don't come out faint or broken; off,
 lines print exactly as thin as they are), <b>Crop marks</b> (see Print production), and
-<b>Comments beside the page (working space)</b> (off unless you tick it; only offered when a
-page has markups outside its edge): each sheet then takes in the page and the comments and
-pictures kept beside it, scaled to the paper, with the page where it was among them; without
-it, only the page prints, as in every PDF program. <b>Page setup...</b> sets the paper size and margins. Use the arrows
+<b>Markups outside pages</b> (only offered when a page has markups beside it, in the gray):
+<b>Leave them out</b> (only the page prints, as in every PDF program), <b>On the same sheet</b>
+(the sheet takes in the page and what's beside it, so the page prints smaller), or <b>On an
+extra sheet after the page</b> (the page prints at its size, so a drawing stays at scale, and
+the next sheet shows it faint with what's beside it in place). <b>Page setup...</b> sets the paper size and margins. Use the arrows
 under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
 rendered a strip at a time so even large drawings print sharp without using much memory.
 Markups and form fields follow their own print setting, as in Acrobat: one made to show on
@@ -162,21 +163,25 @@ drawings use very thin lines (a tenth of a point or less); at their true width t
 part of a screen pixel when zoomed out and come out pale gray. With this on they stay dark and
 legible at any zoom. Only the screen changes: printing, export, OCR, Compare and the saved
 file use the true line widths. Your choice is remembered.</li>
-<li><b>Working space around pages</b> (View menu, Reading tab's Page layout group; off by default,
-remembered): gray
-room around each page, half the page's width on each side and some above and below, as on a
-desk around a drawing sheet. Markups kept there, wholly or partly outside the page's edge, are
-drawn, and you can click, move, edit and draw them there with any tool, or paste a capture
-there. They're saved in the file, but <b>not printed</b> (unless you tick <b>Comments beside the
-page</b> in the Print window), and other PDF programs such as Acrobat don't show them (in
-Acrobat you can at most see them by zooming out), so use them for your own notes. To give
-everyone the room, use <b>Pages &gt; Add space around page</b> instead: that space is part of
-the page. Sanitize document and Remove hidden information (when applying redactions) remove the
-markups wholly outside a page. Off, the pages are laid out as before, and a markup outside
-the page isn't drawn. The first time in a document that something you draw, paste or move
-reaches outside the page, KanzonasPDF asks whether to <b>Print them</b> or <b>Don't print
-them</b>: your answer is where the Print window's Comments beside the page starts (you can
-still change it there). Tick <b>Don't ask again</b> to stop the question.</li>
+<li><b>Markups outside the page:</b> put markups, pictures and captured sheets anywhere in the
+gray around a page: beside a drawing, or other sheets pasted next to it to put a plan spread
+over several sheets back together (Capture area, Shift+P, keeps them sharp). The gray works as
+it always has; a page with markups beside it gets just the room they need, on those sides
+(the same on the left and right, so the pages stay lined up; in two pages side by side, the
+next page moves over so nothing is covered). A click or drag in the gray goes to the page
+nearest it. Such markups are saved in the file, but <b>not printed</b> unless you choose so in
+the Print window (Markups outside pages), and other PDF programs such as Acrobat don't show
+them (in Acrobat you can at most see them by zooming out), so use them for your own notes. To
+give everyone the room, use <b>Pages &gt; Add space around page</b> instead: that space is part
+of the page. <b>Fit page and markups</b> (View menu, and the zoom box's list) shows a page with
+everything beside it; Fit page and Fit width fit the pages as always. Review &gt; <b>Show
+markups</b> hides or shows all of them; <b>Show markups on the page</b> and <b>Show markups
+outside pages</b> hide one kind or the other (with those outside hidden, the room around the
+pages closes up). Sanitize document and Remove hidden information (when applying redactions)
+remove the markups wholly outside a page. The first time in a document that something you
+draw, paste or move reaches outside the page, KanzonasPDF asks how such markups print: <b>Don't
+print them</b>, <b>Same sheet</b> or <b>Extra sheet</b>; your answer is where the Print window
+starts (you can still change it there). Tick <b>Don't ask again</b> to stop the question.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, or Match system on Linux and macOS; Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar or ribbon button or box for a
 tooltip saying what it does and its keyboard shortcut (the one you set in Keyboard shortcuts);
