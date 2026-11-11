@@ -1393,8 +1393,10 @@ def replace_many(page, changes, olds=None, again=False):
             kind, val = doc.xref_get_key(x, "IRT")
             if kind == "xref" and val in targets:
                 answering.setdefault(targets[val], []).append(x)
-    # (and one in a group stays in it: Arrange > Group's /IRT and /RT /Group)
+    # (and one in a group stays in it: Arrange > Group's /IRT and /RT /Group; one on a layer
+    # stays on it: its /OC)
     grouped = {x: g for x in rewrite for g in [group_link(doc, x)] if g}
+    layered = {x: v for x in rewrite for k, v in [doc.xref_get_key(x, "OC")] if k == "xref"}
     pdf_speed.delete_many(page, rewrite, keep_replies=True)
     for xref, model in changes:
         if xref in shifted or xref in unchanged:
@@ -1408,6 +1410,8 @@ def replace_many(page, changes, olds=None, again=False):
             doc.xref_set_key(r, "IRT", f"{new} 0 R")
         if xref in grouped:
             set_group_link(doc, new, grouped[xref])
+        if xref in layered:
+            doc.xref_set_key(new, "OC", layered[xref])
         out.append((xref, olds[xref], new))
     # (a group whose primary and members were all written anew points at the new primary)
     renamed = {x: new for x, _old, new in out if new != x}
@@ -1474,12 +1478,15 @@ def replace(page, xref, model):
     answering = [x for x, *_ in page.annot_xrefs() if x != xref and
                  doc.xref_get_key(x, "IRT") == ("xref", ref)]
     own = group_link(doc, xref)
+    oc_kind, oc = doc.xref_get_key(xref, "OC")
     pdf_speed.delete_many(page, [xref], keep_replies=True)
     new = write(page, model).xref
     for r in answering:
         doc.xref_set_key(r, "IRT", f"{new} 0 R")
     if own:
         set_group_link(doc, new, own)
+    if oc_kind == "xref":
+        doc.xref_set_key(new, "OC", oc)
     if pos is not None:
         order = annot_order(page)
         if new in order:

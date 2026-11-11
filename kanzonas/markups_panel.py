@@ -22,8 +22,9 @@ from . import review
 from .i18n import tr
 
 COLUMNS = [tr("Page"), tr("Type"), tr("Comment / text"), tr("Author"), tr("Date"), tr("Color"),
-           tr("Status"), tr("Replies")]
+           tr("Status"), tr("Replies"), tr("Layer")]
 ALL_TYPES = tr("All types")
+ALL_LAYERS = tr("All layers")
 ALL_STATUSES = tr("All statuses")
 NO_STATUS = tr("No status")
 SORT = Qt.UserRole + 1          # what a cell sorts by (a reply's: its markup's)
@@ -79,7 +80,13 @@ def collect(doc, pages=None):
         page = doc[i]
         rows += _threaded(review.Threads(page), _page_rows(doc, page, i, old, known))
     doc._kz_markup_rows = known
-    return rows
+    # (1.12) the layer each markup is on, last (markup_layers.py); a reply's: none
+    from . import markup_layers
+    names = markup_layers.names(doc)
+    if not names:
+        return [r + ("",) for r in rows]
+    return [r + ("" if r[9] else names.get(markup_layers.layer_of(doc, r[1]), ""),)
+            for r in rows]
 
 
 def _threaded(threads, base):
@@ -175,6 +182,9 @@ class MarkupsPanel(QWidget):
         self.status_filter.addItem(NO_STATUS, "")
         for key in review.REVIEW[:-1] + review.MARKED:
             self.status_filter.addItem(review.STATE_LABELS[key], key)
+        self.layer_filter = QComboBox()             # (1.12: markups on layers)
+        self.layer_filter.addItem(ALL_LAYERS)
+        self.layer_filter.setVisible(False)         # (shown when the document has layers)
         self.text_filter = QLineEdit()
         self.text_filter.setPlaceholderText(tr("Filter by text or author"))
         self.text_filter.setClearButtonEnabled(True)
@@ -188,6 +198,7 @@ class MarkupsPanel(QWidget):
         bar.addWidget(QLabel(tr("Show:")))
         bar.addWidget(self.type_filter)
         bar.addWidget(self.status_filter)
+        bar.addWidget(self.layer_filter)
         bar.addWidget(self.text_filter, 1)
         bar.addWidget(self.count)
         bar.addWidget(export)
@@ -218,6 +229,7 @@ class MarkupsPanel(QWidget):
         lay.addWidget(self.table)
         self.type_filter.currentIndexChanged.connect(self._apply_filter)
         self.status_filter.currentIndexChanged.connect(self._apply_filter)
+        self.layer_filter.currentIndexChanged.connect(self._apply_filter)
         self.text_filter.textChanged.connect(self._apply_filter)
 
     def refresh(self, doc, pages=None):
@@ -252,6 +264,15 @@ class MarkupsPanel(QWidget):
         self.type_filter.addItems(types)
         self.type_filter.setCurrentText(cur if cur in types else ALL_TYPES)
         self.type_filter.blockSignals(False)
+        layers = sorted({r[11] for r in self._rows if not r[9] and r[11]})
+        cur = self.layer_filter.currentText()
+        self.layer_filter.blockSignals(True)
+        self.layer_filter.clear()
+        self.layer_filter.addItem(ALL_LAYERS)
+        self.layer_filter.addItems(layers)
+        self.layer_filter.setCurrentText(cur if cur in layers else ALL_LAYERS)
+        self.layer_filter.setVisible(bool(layers))
+        self.layer_filter.blockSignals(False)
         self.table.setSortingEnabled(False)
         # sizing columns to their contents on every setItem made filling quadratic (2,000
         # markups: 3 minutes): fill with fixed columns, then size them once
@@ -272,10 +293,10 @@ class MarkupsPanel(QWidget):
         self._apply_filter()
 
     def _set_row(self, r, row):
-        page, xref, label, text, author, date, color, status, root, depth, n = row
-        values = [page + 1, label, text, author, date, color, status, n]
+        page, xref, label, text, author, date, color, status, root, depth, n, layer = row
+        values = [page + 1, label, text, author, date, color, status, n, layer]
         cells = [_Item(str(page + 1)), _Item(label), _Item(text), _Item(author), _Item(date),
-                 _Item(color), _Item(status), _Item("")]
+                 _Item(color), _Item(status), _Item(""), _Item(layer)]
         if depth:
             # a reply: indented under its markup, and sorted as its markup
             cells[1].setText("    " * (depth - 1) + "↳ " + label)
@@ -283,7 +304,7 @@ class MarkupsPanel(QWidget):
             parent = self._parents.get((page, root))
             if parent is not None:
                 values = [parent[0] + 1, parent[2], parent[3], parent[4], parent[5],
-                          parent[6], parent[7], parent[10]]
+                          parent[6], parent[7], parent[10], parent[11]]
         elif n:
             folded = (page, xref) in self._collapsed
             cells[7].setText(("▸ " if folded else "▾ ") + str(n))
@@ -352,6 +373,7 @@ class MarkupsPanel(QWidget):
     def _apply_filter(self, *_):
         t = self.type_filter.currentText()
         want = self.status_filter.currentData()
+        layer = self.layer_filter.currentText()
         q = self.text_filter.text().strip().lower()
         replies_hay = {}
         if q:
@@ -374,6 +396,7 @@ class MarkupsPanel(QWidget):
             status = row[7] if row is not None else ""
             hay = (self.table.item(r, 2).text() + " " + self.table.item(r, 3).text()).lower()
             hide = (t != ALL_TYPES and label != t) or \
+                (layer != ALL_LAYERS and (row[11] if row is not None else "") != layer) or \
                 (q and q not in hay and not any(q in h for h in replies_hay.get(
                     (page, xref), ()))) or \
                 (want is not None and not _status_matches(status, want))
@@ -513,7 +536,7 @@ class MarkupsPanel(QWidget):
                                                          error=ex.strerror or ex))
 
 
-_SIZED = (0, 1, 3, 4, 5, 6, 7)          # (columns sized to their contents)
+_SIZED = (0, 1, 3, 4, 5, 6, 7, 8)       # (columns sized to their contents)
 
 
 def _status_matches(label, want):

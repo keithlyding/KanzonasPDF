@@ -25,6 +25,7 @@ from . import annotations, dialogs, hit_index, review, signatures, smart_forms, 
 from .i18n import tr
 from .inline_editor import InlineEditor
 from .outside import page_outside_margins
+from . import markup_layers
 from .page_widget import PageWidget
 
 PAGE_GAP = 12
@@ -835,6 +836,7 @@ class DocumentView(QScrollArea):
         self.selection = None          # (page index, annotation xref): the first one selected
         self.selected_model = None
         self.extra = []                # more selected xrefs on the same page, in click order
+        self.markup_layer = None       # the layer (OCG xref) new markups go on (markup_layers)
         self.show_comment_boxes = True
         self._inline = None
         self.sig_images = {}           # kind -> (png bytes, QPixmap)
@@ -3266,6 +3268,9 @@ class DocumentView(QScrollArea):
                 thread = review.thread_of(self.doc, found, x)
                 if thread:
                     m["thread"] = thread
+            oc = markup_layers.layer_of(self.doc, x)
+            if oc:
+                m["layer"] = (id(self.doc), oc)     # (a copy in this document: the same layer)
             out.append(m)
             xs.append(x)
         # a group copied whole is a group again where it's put: each member names its
@@ -3279,11 +3284,53 @@ class DocumentView(QScrollArea):
         return out
 
     def _regroup(self, made, models):
-        """The copies made from models (in order) grouped as the originals were."""
+        """The copies made from models (in order) grouped as the originals were, and on their
+        layers (copies in the same document)."""
         for i, m in enumerate(models):
             j = m.get("group_of")
             if j is not None and i < len(made) and 0 <= j < len(made):
                 annotations.set_group_link(self.doc, made[i], made[j])
+            layer = m.get("layer")
+            if layer and layer[0] == id(self.doc) and i < len(made):
+                markup_layers.put(self.doc, [made[i]], layer[1])
+
+    def _on_markup_layer(self, xrefs):
+        """New markups go on the layer chosen for them (inside the edit that made them)."""
+        if self.markup_layer and self.markup_layer in (self.doc.get_ocgs() or {}):
+            markup_layers.put(self.doc, xrefs, self.markup_layer)
+
+    def set_markup_layer(self, layer):
+        self.markup_layer = layer or None
+
+    def selection_layer(self):
+        """The layer the selected markups are on (None: none, or not all on one)."""
+        if self.selection is None:
+            return None
+        found = {markup_layers.layer_of(self.doc, x) for x in self.selected_xrefs()}
+        return found.pop() if len(found) == 1 else None
+
+    def move_selection_to_layer(self, layer):
+        """Put the selected markups (their groups too) on layer, or on none. One undo step."""
+        if self.selection is None or self.read_only:
+            return False
+        index, xrefs = self.selection[0], self.selected_xrefs()
+        self.modify(lambda: markup_layers.put(self.doc, xrefs, layer), [index],
+                    permission=pymupdf.PDF_PERM_ANNOTATE)
+        self._set_selection(index, xrefs)
+        self.layersChanged.emit()
+        return True
+
+    def new_markup_layer(self, name):
+        """A new layer (one undo step); returns its xref."""
+        made = {}
+
+        def do():
+            made["x"] = markup_layers.new_layer(self.doc, name)
+        self.modify(do, None)
+        if "x" in made:
+            self._redraw_all()
+            self.layersChanged.emit()
+        return made.get("x")
 
     def duplicate_selected(self, offset=12):
         """Copies of the selected markups, offset down-right on screen; the copies are selected."""
@@ -3750,6 +3797,7 @@ class DocumentView(QScrollArea):
                     # vector content: stays sharp at any zoom and in print
                     model["img"] = capture.make_form(self.doc, payload["pdf"], payload["box"])
                 made["xref"] = annotations.write(self.doc[index], model).xref
+                self._on_markup_layer([made["xref"]])
             del page
             self.modify(do, [index])
             if "xref" in made:
@@ -3975,6 +4023,7 @@ class DocumentView(QScrollArea):
 
         def do():
             made["xref"] = annotations.write(self.doc[index], model).xref
+            self._on_markup_layer([made["xref"]])
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if "xref" in made and not DocumentView.reuse_tools:
             # Reuse off: the tool is put down, as Bluebeam does (first: a new tool clears the
@@ -4062,7 +4111,7 @@ class DocumentView(QScrollArea):
                 model = {"kind": tool, "props": self.tool_props(tool),
                          "quads": [r.quad for r in self.line_rects(words)],
                          "text": note if tool == "comment" else self._words_text(words)}
-                annotations.write(self.doc[index], model)
+                self._on_markup_layer([annotations.write(self.doc[index], model).xref])
         self.modify(do, [i for i, _words in spans], permission=pymupdf.PDF_PERM_ANNOTATE)
 
     def _markup_words(self, index, tool, words, text):
@@ -5188,8 +5237,10 @@ class DocumentView(QScrollArea):
         if boxes is None:
             page = self.doc[index]              # keep the Page alive while reading its annots
             shots = {}
+            off = markup_layers.hidden(self.doc)    # (a markup on a hidden layer isn't shown)
             for a in annotations.each_annot(page):
-                if a.type[0] != pymupdf.PDF_ANNOT_POPUP:
+                if a.type[0] != pymupdf.PDF_ANNOT_POPUP and not (
+                        off and markup_layers.layer_of(self.doc, a.xref) in off):
                     shots[a.xref] = _AnnotShot(a)
             # plain numbers: building and testing pymupdf.Rect objects is slow in Python
             boxes = [(tuple(shot.rect), x) for x, shot in shots.items()]
@@ -8741,12 +8792,26 @@ class DocumentView(QScrollArea):
     def set_layer(self, number, visible):
         """Show/hide a layer. This is a viewing choice, not an edit (no undo, not 'unsaved')."""
         self.doc.set_layer_ui_config(number, 1 if visible else 2)
+        self._layers_shown_changed()
         self._redraw_all()
+
+    def _layers_shown_changed(self):
+        """Markups on a layer just hidden can't be picked (nor stay selected)."""
+        for key in [k for k in self._card_cache
+                    if isinstance(k, tuple) and k and k[0] in ("annotx", "annothit")]:
+            self._card_cache.pop(key, None)
+        self._annot_memo = None
+        if self.selection is not None:
+            off = markup_layers.hidden(self.doc)
+            if off and any(markup_layers.layer_of(self.doc, x) in off
+                           for x in self.selected_xrefs()):
+                self.clear_selection()
 
     def set_all_layers(self, visible):
         for c in self.layer_configs():
             if not c.get("locked"):
                 self.doc.set_layer_ui_config(c["number"], 1 if visible else 2)
+        self._layers_shown_changed()
         self._redraw_all()
 
     def _redraw_all(self):

@@ -1434,7 +1434,14 @@ documento protegido contra cambios lo rechaza.</li>
 páginas a un archivo nuevo (a un archivo nuevo, no al propio documento), Eliminar páginas (las páginas seleccionadas en
 la lista de páginas, o la página actual; pregunta primero, y Ctrl+Z las recupera). Un marcador a una
 página eliminada lleva entonces a la página siguiente (o a la última página).</li>
-<li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional.</li>
+<li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional. <b>Marcas en capas</b> (como en
+Bluebeam): <b>Nueva capa...</b> agrega una capa al documento, y <b>Las marcas nuevas van en</b> elige la capa en la que van
+las marcas que dibuja (Sin capa: ninguna). Para poner en una capa marcas ya dibujadas, selecciónelas y haga clic con el
+botón derecho &gt; <b>Capa</b> &gt; una capa, Sin capa o Nueva capa.... Una marca en una capa oculta no se dibuja y no se puede
+hacer clic en ella; sigue en el archivo. Las marcas a las que cambia el estilo, que mueve o que copia siguen en su capa.
+Las capas son las del propio PDF, así que Acrobat y otros programas con capas también muestran y ocultan las marcas con
+ellas. La lista de marcas tiene una columna Capa y, cuando el documento tiene capas, una lista para mostrar las marcas de
+una capa.</li>
 <li>Pestaña <b>Marcadores</b>: agregue, cambie el nombre, reordene y aplique sangría a los marcadores,
 créelos a partir de los títulos e inserte una tabla de contenido (vea Marcadores y tabla de contenido).</li>
 <li><b>Vincular referencias a planos</b> (menú Páginas; pestaña Páginas, en la flecha del grupo Documento): para un juego de planos trazado sin

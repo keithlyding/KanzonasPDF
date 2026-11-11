@@ -1827,6 +1827,9 @@ class MainWindow(QMainWindow):
         self.layers = LayersPanel()
         self.layers.toggled.connect(lambda n, on: self.view() and self.view().set_layer(n, on))
         self.layers.allToggled.connect(self._all_layers)
+        self.layers.markupLayerChosen.connect(
+            lambda x: self.view() and self.view().set_markup_layer(x or None))
+        self.layers.newLayerRequested.connect(lambda: self.new_markup_layer())
         self.left_tabs.addTab(self._narrowable(self.layers), tr("Layers"))
         from .objects_panel import ObjectsPanel
         self.objects = ObjectsPanel()
@@ -2260,6 +2263,7 @@ class MainWindow(QMainWindow):
             # (the view is bound here: inside a lambda, sender() isn't the view that sent
             # the signal, so a check on it was never true and these never ran)
             (v.layersChanged, lambda v=v: v is self.view() and self._rebuild_thumbs()),
+            (v.layersChanged, lambda v=v: v is self.view() and self._refresh_layers()),
             (v.scaleChanged, self._update_ui),
             (v.historyChanged, self._update_ui),
             (v.documentChanged, self._markups_timer.start),
@@ -4210,6 +4214,28 @@ class MainWindow(QMainWindow):
     def _refresh_layers(self):
         v = self.view()
         self.layers.set_layers(v.layer_configs() if v else [])
+        from . import markup_layers
+        self.layers.set_markup_layers(markup_layers.layers(v.doc) if v else [],
+                                      v.markup_layer if v else None)
+
+    def new_markup_layer(self, move_selection=False):
+        """Layers panel > New layer (or a markup's right-click > Layer > New layer): a layer
+        for markups, which new markups then go on (and the selected ones, from the menu)."""
+        v = self.view()
+        if v is None or v.read_only:
+            return None
+        name, ok = QInputDialog.getText(self, tr("New layer"), tr("Name of the new layer:"),
+                                        text=tr("Markups"))
+        name = name.strip()
+        if not ok or not name:
+            return None
+        x = v.new_markup_layer(name)
+        if x:
+            v.set_markup_layer(x)
+            if move_selection:
+                v.move_selection_to_layer(x)
+        self._refresh_layers()
+        return x
 
     def _show_bookmarks(self):
         self.dock.show()

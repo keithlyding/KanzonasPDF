@@ -11149,3 +11149,33 @@ msgstr "Reflejar la selección de arriba abajo, por su centro (un grupo como uno
 msgctxt "verb"
 msgid "Group"
 msgstr "Agrupar"
+
+msgid "The layer the markups you draw go on (shown and hidden with it, in other PDF programs too)"
+msgstr "La capa en la que van las marcas que dibuja (se muestran y se ocultan con ella, también en otros programas de PDF)"
+
+msgid "New layer..."
+msgstr "Nueva capa..."
+
+msgid "Add a layer to the document, for markups"
+msgstr "Agregar una capa al documento, para marcas"
+
+msgid "No layer"
+msgstr "Sin capa"
+
+msgid "New markups go on:"
+msgstr "Las marcas nuevas van en:"
+
+msgid "New layer"
+msgstr "Nueva capa"
+
+msgid "Name of the new layer:"
+msgstr "Nombre de la capa nueva:"
+
+msgid "Markups"
+msgstr "Marcas"
+
+msgid "All layers"
+msgstr "Todas las capas"
+
+msgid "Layer"
+msgstr "Capa"

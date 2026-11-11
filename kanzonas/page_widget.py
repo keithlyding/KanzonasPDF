@@ -1965,6 +1965,19 @@ class PageWidget(QWidget):
                 for act in (win.a_group, win.a_ungroup, win.a_flip_h, win.a_flip_v):
                     if act.isEnabled():
                         menu.addAction(act)
+            if win is not None and hasattr(win, "new_markup_layer") and not v.read_only:
+                # (1.12) the layer the selected markups are on: none, one of the document's,
+                # or a new one
+                from . import markup_layers
+                lm = menu.addMenu(tr("Layer"))
+                now = v.selection_layer()
+                for x, name in [(None, tr("No layer"))] + [
+                        (x, name) for x, name, _on in markup_layers.layers(v.doc)]:
+                    act = lm.addAction(name, lambda x=x: v.move_selection_to_layer(x))
+                    act.setCheckable(True)
+                    act.setChecked(x == now)
+                lm.addSeparator()
+                lm.addAction(tr("New layer..."), lambda: win.new_markup_layer(True))
             # (all that's selected: in CAD mode, the drawing's objects selected with them too)
             menu.addAction(tr("Delete"), v.delete_everything_selected)
         elif on_text:

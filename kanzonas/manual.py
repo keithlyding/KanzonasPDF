@@ -1447,7 +1447,14 @@ it.</li>
 pages to new file (to a new file, not the document itself), Delete pages (the pages selected in
 the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
 deleted page then goes to the page after it (or the last page).</li>
-<li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
+<li><b>Layers</b> tab: show or hide CAD / optional-content layers. <b>Markups on layers</b>
+(as in Bluebeam): <b>New layer...</b> adds a layer to the document, and <b>New markups go on</b>
+picks the layer the markups you draw go on (No layer: none). To put markups already drawn on a
+layer, select them and right-click &gt; <b>Layer</b> &gt; a layer, No layer, or New layer....
+A markup on a hidden layer isn't drawn and can't be clicked; it stays in the file. Restyled,
+moved and copied markups stay on their layer. The layers are the PDF's own, so Acrobat and other
+programs with layers show and hide the markups with them too. The Markups list has a Layer column
+and, when the document has layers, a list to show one layer's markups.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks, make them from the
 headings, and insert a table of contents (see Bookmarks and table of contents).</li>
 <li><b>Link sheet callouts</b> (Pages menu; Pages tab, under the Document group's arrow): for a drawing set plotted without
