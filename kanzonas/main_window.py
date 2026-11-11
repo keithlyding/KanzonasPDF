@@ -5444,7 +5444,7 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab(tr("Pages"), [
             (tr("Rotate"), "large", [self.a_rot_l, self.a_rot_r]),
-            (tr("Crop"), "large", [t["crop"], self.a_uncrop, self.a_add_space]),
+            (tr("Crop"), "small", [t["crop"], self.a_uncrop, self.a_add_space]),
             # (Extract and Replace pages share one button; moving pages is mostly done by
             # dragging them in the Pages panel: Move up and down under the arrow)
             (tr("Organize"), "small", [self.a_insert_pdf, self.a_insert_blank, self.a_del_page,
@@ -5474,7 +5474,7 @@ class MainWindow(QMainWindow):
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                      self.a_split]),
             (tr("Display"), "small", [self.a_night, self.a_show_markups, self.a_hl_fields,
-                                      self.a_free_pan, self.a_working_space]),
+                                      self.a_free_pan]),
             (tr("Grid & snap"), "small", snap, [self.a_grid_settings]),
             # (Collapse is also a double-click on a tab, or Ctrl+F1)
             (tr("Ribbon"), "small", [self.a_ribbon, self.a_menu_bar],

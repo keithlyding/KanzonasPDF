@@ -10934,7 +10934,7 @@ msgid "Space added (Ctrl+Z undoes it; Crop pages takes it off again)"
 msgstr "Espacio agregado (Ctrl+Z lo deshace; Recortar páginas lo vuelve a quitar)"
 
 msgid "Add space"
-msgstr "Agregar espacio"
+msgstr "Ampliar"
 
 msgid "Working space"
 msgstr "Espacio de trabajo"

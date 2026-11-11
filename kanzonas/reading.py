@@ -107,8 +107,10 @@ def ribbon_groups(win):
     lay = win.layout_actions
     return [
         (tr("Screen"), "large", [win.a_full_screen, win.a_present]),
+        # (Working space around pages: how the pages are laid out too; issue #82)
         (tr("Page layout"), "small", [lay["single"], lay["continuous"], lay["two"],
-                                      lay["two_continuous"], win.a_cover]),
+                                      lay["two_continuous"], win.a_cover,
+                                      win.a_working_space]),
         (tr("Read"), "large", [win.a_reflow, win.a_autoscroll]),
         (tr("Read aloud"), "small", [win.a_read_page, win.a_read_from, win.a_read_doc,
                                      win.a_read_pause, win.a_read_stop]),

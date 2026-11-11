@@ -162,7 +162,8 @@ drawings use very thin lines (a tenth of a point or less); at their true width t
 part of a screen pixel when zoomed out and come out pale gray. With this on they stay dark and
 legible at any zoom. Only the screen changes: printing, export, OCR, Compare and the saved
 file use the true line widths. Your choice is remembered.</li>
-<li><b>Working space around pages</b> (View menu, View tab; off by default, remembered): gray
+<li><b>Working space around pages</b> (View menu, Reading tab's Page layout group; off by default,
+remembered): gray
 room around each page, half the page's width on each side and some above and below, as on a
 desk around a drawing sheet. Markups kept there, wholly or partly outside the page's edge, are
 drawn, and you can click, move, edit and draw them there with any tool, or paste a capture

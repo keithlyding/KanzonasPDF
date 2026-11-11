@@ -154,8 +154,8 @@ CAD usan líneas muy finas (una décima de punto o menos); con su ancho real cub
 parte de un píxel de pantalla al alejar y se ven de un gris pálido. Con esta opción activada siguen oscuras y
 legibles con cualquier zoom. Solo cambia la pantalla: la impresión, la exportación, el OCR, Comparar y el archivo
 guardado usan los anchos de línea reales. Su elección se recuerda.</li>
-<li><b>Espacio de trabajo alrededor de las páginas</b> (menú Ver, pestaña Ver; desactivado de forma predeterminada, se
-recuerda): espacio gris alrededor de cada página, la mitad del ancho de la página a cada lado y algo arriba y abajo, como
+<li><b>Espacio de trabajo alrededor de las páginas</b> (menú Ver, grupo Disposición de páginas de la pestaña Lectura;
+desactivado de forma predeterminada, se recuerda): espacio gris alrededor de cada página, la mitad del ancho de la página a cada lado y algo arriba y abajo, como
 en un escritorio alrededor de un plano. Las marcas guardadas ahí, total o parcialmente fuera del borde de la página, se
 dibujan, y puede hacer clic en ellas, moverlas, editarlas y dibujarlas ahí con cualquier herramienta, o pegar ahí una
 captura. Se guardan en el archivo, pero <b>no se imprimen</b> (salvo que marque <b>Comentarios junto a la página</b> en la
