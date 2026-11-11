@@ -147,8 +147,8 @@ of the ribbon tabs has every menu, and all keyboard shortcuts still work. <b>Col
 (Ctrl+F1, or double-click a tab) shows only the tab names; click a tab to open it again. Untick
 View &gt; <b>Ribbon (instead of toolbars)</b> for the classic compact toolbars (zoom, page number
 and Find then go back to the top toolbar). The menus always have every command.</li>
-<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers and
-Objects panels; click the lit icon again to fold the panel away and get more room for the page.
+<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers, Objects
+and Sets panels; click the lit icon again to fold the panel away and get more room for the page.
 The Markups list and Attachments icons are there too. View &gt; <b>Show panel strip (left
 edge)</b> hides the strip; the panels then show their names as tabs at the bottom instead.</li>
 <li><b>Command palette</b> (Ctrl+Shift+P; Help menu, View tab): type a few letters of what you
@@ -1479,6 +1479,31 @@ folder (A-501 Details.pdf) links to that file. Words that already have a link ar
 so AutoCAD's own hyperlinks stay and running it twice adds nothing. Options: a thin blue box
 around the links (off by default, to keep drawings clean), and bookmarks named by sheet number
 and title. Ctrl+Z undoes it all.</li>
+</ul>
+
+<h2 id="sets">Sets: several PDFs as one</h2>
+<p>Like Bluebeam's Sets: a drawing set kept as one PDF per sheet (or a project's drawings and
+specifications) browsed as one document, without combining the files. Each PDF stays as it is,
+and markups are saved in the file they're drawn on.</p>
+<ul>
+<li><b>New set...</b> (File menu; Pages tab, under the Create group's arrow; or the Set button
+of the <b>Sets</b> panel): pick the PDFs, then where to save the set. A set is a small file of
+its own (.kzset) listing the PDFs; the ones in its folder or below are kept by their place
+next to it, so the folder can be moved or shared with the set in it. <b>Open set...</b>
+opens one (so does dragging a .kzset file onto the window).</li>
+<li>The <b>Sets</b> panel (a tab of the left panel, and an icon on the panel strip) lists each
+file with its pages under it. On drawing-size pages (11x17 and larger) the sheet number and
+title are read from the title block (SHEET NO, SHEET TITLE), so A-101 FLOOR PLAN is listed;
+other pages by their page label or number. A file that can't be found is listed grayed out.
+Type in <b>Filter sheets</b> to find a sheet by its number or title.</li>
+<li>Click a sheet to open its file at that page. <b>&#9654;</b> (Next sheet) and <b>&#9664;</b>
+(Previous sheet) go page by page across the files: after the last page of one file comes the
+first of the next. A file the set opened is closed again when you go on to another file,
+unless you changed it, so browsing a set of 60 sheets doesn't leave 60 tabs.</li>
+<li>Right-click a file in the panel to <b>Move up</b>, <b>Move down</b> or <b>Remove from
+set</b>; the Set button has <b>Add files...</b>, <b>Rename set...</b>, <b>Close set</b> and
+<b>Combine to one PDF...</b> (Combine files with the set's files, in the set's order). A change
+to the set is saved in its file at once.</li>
 </ul>
 
 <h2 id="bookmarks">Bookmarks and table of contents</h2>

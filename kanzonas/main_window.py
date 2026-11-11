@@ -663,7 +663,9 @@ class MainWindow(QMainWindow):
                  tr("Bookmarks panel (click again to fold it away)")),
                 (tr("Layers"), "layers-outline", tr("Layers panel (click again to fold it away)")),
                 (tr("Objects"), "shape-outline",
-                 tr("Objects panel (click again to fold it away)")))):
+                 tr("Objects panel (click again to fold it away)")),
+                (tr("Sets"), "folder-multiple-outline",
+                 tr("Sets panel (click again to fold it away)")))):
             a = QAction(theme.icon_named(icon), label, self, checkable=True)
             self._strip_icons.append((a, icon))
             a.setToolTip(tip)
@@ -679,7 +681,7 @@ class MainWindow(QMainWindow):
             ps.addAction(a)
         self.a_panel_strip = QAction(tr("Show panel &strip (left edge)"), self, checkable=True)
         self.a_panel_strip.setToolTip(tr("Icons on the left edge that open and fold the Pages, "
-                                         "Bookmarks, Layers and Objects panels"))
+                                         "Bookmarks, Layers, Objects and Sets panels"))
         self.a_panel_strip.setChecked(self.settings.value("panel_strip", "true") != "false")
         self.a_panel_strip.toggled.connect(self._toggle_panel_strip)
         self.view_menu.addAction(self.a_panel_strip)
@@ -1090,6 +1092,13 @@ class MainWindow(QMainWindow):
         self.a_attachments = self._act(tr("A&ttachments..."), self.show_attachments,
                                        tip=tr("Files embedded in this PDF: open, save or delete them"))
         self.a_bookmarks = self._act(tr("&Bookmarks"), self._show_bookmarks, "F9")
+        # (1.12) Sets (sets_panel.py)
+        self.a_new_set = self._act(tr("New s&et..."), self._new_set,
+                                   tip=tr("A set: several PDFs (one per sheet, say) browsed as "
+                                          "one document in the Sets panel, without combining "
+                                          "them"))
+        self.a_open_set = self._act(tr("Open se&t..."), self._open_set_dialog,
+                                    tip=tr("Open a set of PDFs in the Sets panel"))
         # Document > Accessibility (accessibility_ui.py)
         acc = [("check_accessibility", tr("Check &accessibility..."),
                 tr("List what keeps this document from being accessible to screen readers "
@@ -1412,6 +1421,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_new, self.a_open])
         self.recent_menu = m.addMenu(tr("Open &recent"))
         self._rebuild_recent()
+        m.addActions([self.a_new_set, self.a_open_set])
         m.addActions([self.a_save, self.a_save_as, self.a_save_pdfa, self.a_check_pdfa])
         m.addActions([self.a_combine, self.a_from_images, self.a_scan, self.a_batch])
         em = m.addMenu(tr("&Export to"))
@@ -1840,6 +1850,14 @@ class MainWindow(QMainWindow):
         self.objects.flagsChanged.connect(self._objects_flags)
         self.objects.arrange.connect(lambda how: self.view() and self.view().arrange(how))
         self.left_tabs.addTab(self._narrowable(self.objects), tr("Objects"))
+        # (1.12) Sets: several PDFs browsed as one (doc_sets.py, sets_panel.py)
+        from .sets_panel import SetsPanel
+        self.sets = SetsPanel()
+        self.sets.openRequested.connect(self._set_go)
+        self.sets.stepRequested.connect(self._set_step)
+        self.sets.combineRequested.connect(lambda files: self.combine_files(files))
+        self.sets.setChanged.connect(self._set_shown)
+        self.left_tabs.addTab(self._narrowable(self.sets), tr("Sets"))
         self._objects_timer = QTimer(self, singleShot=True, interval=150)
         self._objects_timer.timeout.connect(self._refresh_objects)
         self.left_tabs.currentChanged.connect(lambda _i: self._objects_timer.start())
@@ -1995,6 +2013,10 @@ class MainWindow(QMainWindow):
 
     def open_file(self, path):
         path = os.path.abspath(path)
+        from . import doc_sets
+        if path.lower().endswith(doc_sets.SUFFIX):
+            self.open_set(path)          # (a set: its files in the Sets panel)
+            return
         for win in [self] + [x for x in windows() if x is not self]:
             # (also in a pulled-out window: two copies of one file, each saved over the
             # other's changes)
@@ -2982,12 +3004,18 @@ class MainWindow(QMainWindow):
         AddSpaceDialog(self, v).exec()
         v.setFocus()
 
-    def combine_files(self):
+    def combine_files(self, files=None):
+        """Combine files (files: these to start with, a set's; else the document in front)."""
         from .combine import CombineDialog
         v = self.view()
         first = [v.path] if v is not None and not v.untitled and v.path and \
             os.path.isfile(v.path) else []
-        if first and v.dirty:
+        if files:
+            first = list(files)
+            v = next((w for w in self._all_views() if w.dirty and not w.untitled and
+                      os.path.normcase(w.path or "") in {os.path.normcase(f) for f in files}),
+                     None)
+        if first and v is not None and v.dirty:
             QMessageBox.information(self, tr("Combine files"), tr("The current document has unsaved "
                                                                   "changes; the combined PDF uses the saved file."))
         dlg = CombineDialog(self, self._last_dir(), first)
@@ -4239,6 +4267,85 @@ class MainWindow(QMainWindow):
                 v.move_selection_to_layer(x)
         self._refresh_layers()
         return x
+
+    # ---- Sets (1.12: doc_sets.py, sets_panel.py) -----------------------------------------
+    def _show_sets(self):
+        self.dock.show()
+        self.left_tabs.setCurrentWidget(self.sets.parentWidget().parentWidget())
+
+    def _new_set(self):
+        self._show_sets()
+        before = self.sets.docset
+        self.sets.new_set_dialog()
+        if self.sets.docset is not None and self.sets.docset is not before:
+            self._set_first()
+
+    def _open_set_dialog(self):
+        self._show_sets()
+        before = self.sets.docset
+        self.sets.open_set_dialog()
+        if self.sets.docset is not None and self.sets.docset is not before:
+            self._set_first()
+
+    def open_set(self, path):
+        """Open the set at path in the Sets panel, and its first sheet."""
+        self._show_sets()
+        if self.sets.open_set(path) is not None:
+            self._set_first()
+
+    def _set_first(self):
+        from . import doc_sets
+        ds = self.sets.docset
+        first = next((f for f in ds.files if doc_sets.page_count(f)), None) if ds else None
+        if first is not None:
+            self._set_go(first, 0)
+
+    def _set_go(self, path, page):
+        """Show page of the set's file path: its tab if it's open, else opened. A file the
+        set opened and left unchanged is closed when the set goes on to another (browsing a
+        set of 60 sheets leaves no 60 tabs)."""
+        key = os.path.normcase(os.path.abspath(path))
+        for v in list(self._views()):
+            if getattr(v, "_kz_from_set", False) and not v.dirty and not v.untitled and \
+                    os.path.normcase(v.path or "") != key and \
+                    not (self.split_dock.isVisible() and self.split_dock.chosen() == id(v)):
+                self.close_tab(self.tabs.indexOf(v))
+        opened = {id(v) for v in self._all_views()}
+        self.open_file(path)
+        v = self.view()
+        if v is None or os.path.normcase(v.path or "") != key:
+            return
+        if id(v) not in opened:
+            v._kz_from_set = True
+        v.goto_page(max(0, min(page, v.doc.page_count - 1)))
+        self.sets.show_current(v.path, v.current_page())
+
+    def _set_step(self, by):
+        v = self.view()
+        ds = self.sets.docset
+        if ds is None:
+            return
+        if v is None or ds.index_of(v.path) is None:
+            self._set_first()       # (the document in front isn't in the set: its start)
+            return
+        from . import doc_sets
+
+        def count(f):
+            # (the open document's own page count: pages added or deleted, not saved yet)
+            if os.path.normcase(f) == os.path.normcase(v.path):
+                return v.doc.page_count
+            return doc_sets.page_count(f)
+        to = ds.step(v.path, v.current_page(), by, count)
+        if to is None:
+            self.statusBar().showMessage(tr("The last sheet of the set") if by > 0 else
+                                         tr("The first sheet of the set"), 3000)
+            return
+        self._set_go(*to)
+
+    def _set_shown(self):
+        v = self.view()
+        if v is not None and not v.untitled:
+            self.sets.show_current(v.path, v.current_page())
 
     def _show_bookmarks(self):
         self.dock.show()
@@ -5694,7 +5801,7 @@ class MainWindow(QMainWindow):
                                        split_button([self.a_extract, self.a_replace_pages])],
              [self.a_move_up, self.a_move_down]),
             (tr("Create"), "small", [self.a_new, self.a_combine, self.a_from_images,
-                                     self.a_scan]),
+                                     self.a_scan], [self.a_new_set, self.a_open_set]),
             # (what's put on every page shares a button: header and footer, watermark,
             # background)
             (tr("Document"), "small", [
@@ -6381,6 +6488,7 @@ class MainWindow(QMainWindow):
         self._rebuild_thumbs()
         self._refresh_bookmarks()
         self._refresh_layers()
+        self._set_shown()
         self._markups_timer.start()
         self._refresh_props()
         # the count beside Find is the shown tab's own search ("3 of 120"), nothing once the
@@ -6434,6 +6542,7 @@ class MainWindow(QMainWindow):
         if self.sender() is not self.view():
             return
         reading.page_changed(self)
+        self._set_shown()           # (the sheet marked in the Sets panel)
         # Scrolling to another page selects it in the page list. A page reached by clicking
         # in the list (Ctrl+click, Shift+click, right-click) keeps the pages selected there.
         if not self._thumb_nav and self.thumbs.currentRow() != page:

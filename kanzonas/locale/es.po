@@ -2312,9 +2312,6 @@ msgid "Show panel &strip (left edge)"
 msgstr "Mostrar &franja de paneles (borde izquierdo)"
 
 #: main_window.py:432
-msgid "Icons on the left edge that open and fold the Pages, Bookmarks, Layers and Objects panels"
-msgstr "Iconos en el borde izquierdo que abren y pliegan los paneles Páginas, Marcadores, Capas y Objetos"
-
 #: main_window.py:488
 msgid "&New PDF..."
 msgstr "&Nuevo PDF..."
@@ -11206,3 +11203,95 @@ msgstr "Cambiar el nombre del espacio"
 
 msgid "Rename space..."
 msgstr "Cambiar el nombre del espacio..."
+
+# (1.12) Sets: a set of PDFs browsed as one (sets_panel.py)
+msgctxt "noun"
+msgid "Set"
+msgstr "Conjunto"
+
+msgid "KanzonasPDF sets"
+msgstr "Conjuntos de KanzonasPDF"
+
+msgid "New set..."
+msgstr "Nuevo conjunto..."
+
+msgid "Open set..."
+msgstr "Abrir conjunto..."
+
+msgid "Rename set..."
+msgstr "Cambiar el nombre del conjunto..."
+
+msgid "Combine to one PDF..."
+msgstr "Combinar en un PDF..."
+
+msgid "Close set"
+msgstr "Cerrar conjunto"
+
+msgid "Previous sheet (across the set's files)"
+msgstr "Plano anterior (a través de los archivos del conjunto)"
+
+msgid "Next sheet (across the set's files)"
+msgstr "Plano siguiente (a través de los archivos del conjunto)"
+
+msgid "Filter sheets"
+msgstr "Filtrar planos"
+
+msgid "No set is open. A set lists several PDFs (one per sheet, say) to browse as one document without combining them: Set > New set... or Open set...."
+msgstr "No hay ningún conjunto abierto. Un conjunto reúne varios PDF (uno por plano, por ejemplo) para recorrerlos como un solo documento sin combinarlos: Conjunto > Nuevo conjunto... o Abrir conjunto...."
+
+msgid "Remove from set"
+msgstr "Quitar del conjunto"
+
+msgid "The PDFs in the new set"
+msgstr "Los PDF del nuevo conjunto"
+
+msgid "Save the set as"
+msgstr "Guardar el conjunto como"
+
+msgid "Open set"
+msgstr "Abrir conjunto"
+
+msgid "Add files to the set"
+msgstr "Agregar archivos al conjunto"
+
+msgid "Rename set"
+msgstr "Cambiar el nombre del conjunto"
+
+msgid "Name of the set:"
+msgstr "Nombre del conjunto:"
+
+msgid "Sets"
+msgstr "Conjuntos"
+
+msgid "{name} isn't a set KanzonasPDF can read:\n{error}"
+msgstr "{name} no es un conjunto que KanzonasPDF pueda leer:\n{error}"
+
+msgid "{name} (not found)"
+msgstr "{name} (no se encuentra)"
+
+msgid "{name} (can't be read)"
+msgstr "{name} (no se puede leer)"
+
+msgid "Icons on the left edge that open and fold the Pages, Bookmarks, Layers, Objects and Sets panels"
+msgstr "Iconos en el borde izquierdo que abren y pliegan los paneles Páginas, Marcadores, Capas, Objetos y Conjuntos"
+
+msgid "New s&et..."
+msgstr "Nuevo con&junto..."
+
+msgid "Open se&t..."
+msgstr "Abrir conj&unto..."
+
+msgid "A set: several PDFs (one per sheet, say) browsed as one document in the Sets panel, without combining them"
+msgstr "Un conjunto: varios PDF (uno por plano, por ejemplo) que se recorren como un solo documento en el panel Conjuntos, sin combinarlos"
+
+msgid "Open a set of PDFs in the Sets panel"
+msgstr "Abrir un conjunto de PDF en el panel Conjuntos"
+
+msgid "Sets panel (click again to fold it away)"
+msgstr "Panel Conjuntos (haga clic de nuevo para plegarlo)"
+
+msgid "The last sheet of the set"
+msgstr "El último plano del conjunto"
+
+msgid "The first sheet of the set"
+msgstr "El primer plano del conjunto"

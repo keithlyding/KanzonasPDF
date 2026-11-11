@@ -139,8 +139,8 @@ de las pestañas de la cinta tiene todos los menús, y todos los métodos abrevi
 (Ctrl+F1, o doble clic en una pestaña) muestra solo los nombres de las pestañas; haga clic en una pestaña para abrirla de nuevo. Desmarque
 Ver &gt; <b>Cinta (en lugar de barras de herramientas)</b> para usar las barras de herramientas compactas clásicas (el zoom, el número de página
 y Buscar vuelven entonces a la barra de herramientas superior). Los menús siempre tienen todos los comandos.</li>
-<li><b>Franja de paneles:</b> los iconos del borde izquierdo abren los paneles Páginas, Marcadores, Capas y
-Objetos; haga clic de nuevo en el icono iluminado para plegar el panel y tener más espacio para la página.
+<li><b>Franja de paneles:</b> los iconos del borde izquierdo abren los paneles Páginas, Marcadores, Capas,
+Objetos y Conjuntos; haga clic de nuevo en el icono iluminado para plegar el panel y tener más espacio para la página.
 Los iconos de Lista de marcas y Archivos adjuntos también están allí. Ver &gt; <b>Mostrar franja de paneles (borde
 izquierdo)</b> oculta la franja; los paneles muestran entonces sus nombres como pestañas en la parte inferior.</li>
 <li><b>Paleta de comandos</b> (Ctrl+Shift+P; menú Ayuda, pestaña Ver): escriba algunas letras de lo que
@@ -1468,6 +1468,36 @@ carpeta (A-501 Details.pdf), se vincula a ese archivo. Las palabras que ya tiene
 así que los propios hipervínculos de AutoCAD se quedan y ejecutarlo dos veces no agrega nada. Opciones: un rectángulo azul delgado
 alrededor de los vínculos (desactivado de forma predeterminada, para mantener limpios los dibujos) y marcadores con el número
 y el título de cada plano. Ctrl+Z lo deshace todo.</li>
+</ul>
+
+<h2 id="sets">Conjuntos: varios PDF como uno solo</h2>
+<p>Como los Conjuntos (Sets) de Bluebeam: un juego de planos guardado como un PDF por plano (o
+los planos y las especificaciones de un proyecto) que se recorre como un solo documento, sin
+combinar los archivos. Cada PDF queda como está, y las marcas se guardan en el archivo en el que
+se dibujan.</p>
+<ul>
+<li><b>Nuevo conjunto...</b> (menú Archivo; pestaña Páginas, bajo la flecha del grupo Crear; o el
+botón Conjunto del panel <b>Conjuntos</b>): elija los PDF y luego dónde guardar el conjunto. Un
+conjunto es un pequeño archivo propio (.kzset) que enumera los PDF; los que están en su carpeta
+o por debajo se guardan por su lugar junto a él, de modo que la carpeta se puede mover o
+compartir con el conjunto dentro. <b>Abrir conjunto...</b> abre uno (también
+arrastrar un archivo .kzset a la ventana).</li>
+<li>El panel <b>Conjuntos</b> (una pestaña del panel izquierdo y un icono de la franja de
+paneles) muestra cada archivo con sus páginas debajo. En las páginas de tamaño de plano (11x17 y
+mayores) el número y el título del plano se leen del cajetín (SHEET NO, SHEET TITLE), así que se
+muestra A-101 FLOOR PLAN; las demás páginas, por su etiqueta o número de página. Un archivo que
+no se encuentra se muestra en gris. Escriba en <b>Filtrar planos</b> para buscar un plano por su
+número o título.</li>
+<li>Haga clic en un plano para abrir su archivo en esa página. <b>&#9654;</b> (Plano siguiente) y
+<b>&#9664;</b> (Plano anterior) avanzan página a página a través de los archivos: después de la
+última página de un archivo viene la primera del siguiente. Un archivo que abrió el conjunto se
+cierra de nuevo al pasar a otro archivo, salvo que lo haya cambiado, así que recorrer un
+conjunto de 60 planos no deja 60 pestañas.</li>
+<li>Clic derecho en un archivo del panel para <b>Subir</b>, <b>Bajar</b> o <b>Quitar del
+conjunto</b>; el botón Conjunto tiene <b>Agregar archivos...</b>, <b>Cambiar el nombre del
+conjunto...</b>, <b>Cerrar conjunto</b> y <b>Combinar en un PDF...</b> (Combinar archivos con
+los archivos del conjunto, en su orden). Un cambio en el conjunto se guarda en su archivo al
+momento.</li>
 </ul>
 
 <h2 id="bookmarks">Marcadores y tabla de contenido</h2>

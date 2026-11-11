@@ -58,7 +58,8 @@ ON_TABS = {
     "Pages": "a_acc_alt a_acc_autotag a_acc_check "
              "a_attachments a_background a_bookmarks a_combine a_compare a_compress a_del_page "
              "a_extract a_flatten a_from_images a_header a_insert_blank a_insert_pdf "
-             "a_move_down a_move_up a_new a_ocr a_replace_pages a_rot_l a_rot_r a_scan "
+             "a_move_down a_move_up a_new a_new_set a_ocr a_open_set a_replace_pages a_rot_l "
+             "a_rot_r a_scan "
              "a_sheet_links a_uncrop a_watermark t:crop",
     "Print": "a_fix_hairlines a_page_boxes a_print a_print_check a_show_boxes a_uncrop t:crop",
     "View": "a_chest a_collapse a_free_pan a_grid a_grid_settings a_group_names a_hl_fields "
