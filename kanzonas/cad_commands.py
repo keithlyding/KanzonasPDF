@@ -682,7 +682,8 @@ class Command:
             return
         # page to screen worked out once (to_screen_pt reads the page for each point: a
         # big selection's outline took over a second to draw on each pointer move)
-        to = self.v.doc[w.index].rotation_matrix * pymupdf.Matrix(self.v.zoom, self.v.zoom)
+        z, o = self.v.zoom, w.offset()       # (o: the working space around the page)
+        to = self.v.doc[w.index].rotation_matrix * pymupdf.Matrix(z, 0, 0, z, o.x(), o.y())
 
         def sp(q):
             q = pymupdf.Point(q) * to

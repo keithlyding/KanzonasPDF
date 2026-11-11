@@ -72,7 +72,8 @@ class CadWindow(unittest.TestCase):
         self.w.activateWindow()
 
     def at(self, x, y):
-        return QPoint(int(x * self.v.zoom), int(y * self.v.zoom))
+        o = self.v.pages[0].offset()        # (the working space around the page, if shown)
+        return QPoint(int(o.x() + x * self.v.zoom), int(o.y() + y * self.v.zoom))
 
 
 class Tab(CadWindow):
@@ -166,8 +167,8 @@ class Rollover(CadWindow):
 
     def test_it_fades(self):
         # the arrow's pixels turn lighter while the pointer is over it
-        z = self.v.zoom
-        spot = (int(250 * z), int(225 * z))
+        z, o = self.v.zoom, self.page.offset()
+        spot = (int(o.x() + 250 * z), int(o.y() + 225 * z))
         self.hover(600, 500)
         before = self.page.grab().toImage().pixelColor(*spot)
         self.hover(250, 225)
@@ -403,7 +404,8 @@ class Selected(CadWindow):
         pts = got["grips"]
         self.assertGreaterEqual(len(pts), 2)                    # (the arrow's two ends)
         ends = {(round(q.x()), round(q.y())) for q in pts}
-        self.assertIn((round(100 * self.v.zoom), round(100 * self.v.zoom)), ends)
+        o = self.page.offset()
+        self.assertIn((round(o.x() + 100 * self.v.zoom), round(o.y() + 100 * self.v.zoom)), ends)
 
     def test_selected_drawing_objects_get_grips(self):
         d = pymupdf.open()
@@ -430,11 +432,11 @@ class Selected(CadWindow):
         self.v._set_selection(0, xs[:1])
         w.repaint()
         after = w.grab().toImage()
-        z = self.v.zoom
+        z, o = self.v.zoom, w.offset()
         changed = 0
         for k in range(20, 80):
-            x = int((100 + 3 * k) * z)
-            y = int((100 + 2.5 * k) * z)
+            x = int(o.x() + (100 + 3 * k) * z)
+            y = int(o.y() + (100 + 2.5 * k) * z)
             if before.pixelColor(x, y) != after.pixelColor(x, y):
                 changed += 1
         self.assertGreater(changed, 20)

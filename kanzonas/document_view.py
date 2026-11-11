@@ -1140,6 +1140,9 @@ class DocumentView(QScrollArea):
             return
         page = self.current_page()
         self.working_space = on
+        if self.zoom > self._zoom_cap():      # (the pages, now bigger, must still fit)
+            self.zoom = self._zoom_cap()
+            self.zoomChanged.emit(self.zoom)
         self._relayout()
         for w in self.pages:
             w.update()
@@ -1303,13 +1306,16 @@ class DocumentView(QScrollArea):
     def _zoom_cap(self):
         """Highest zoom for this file: 6400%, or less when a page, or all the pages stacked
         one under the other, would exceed Qt's widget size."""
+        from .page_widget import WS_X, WS_Y
         cap = MAX_ZOOM
         rects = getattr(self, "page_rects", None) or []
+        # (with the working space shown, each page's widget is that much bigger)
+        fx, fy = (1 + 2 * WS_X, 1 + 2 * WS_Y) if self.working_space else (1.0, 1.0)
         for r in rects:
-            side = max(r.width, r.height, 1)
+            side = max(r.width * fx, r.height * fy, 1)
             cap = min(cap, WIDGET_PX / side)
         if rects:
-            tall = sum(r.height for r in rects)
+            tall = sum(r.height for r in rects) * fy
             cap = min(cap, (WIDGET_PX - (len(rects) + 1) * PAGE_GAP) / max(tall, 1))
         return max(MIN_ZOOM, cap)
 
@@ -1335,8 +1341,15 @@ class DocumentView(QScrollArea):
     def zoom_out(self):
         self.set_zoom(self.zoom / 1.2)
 
+    def _ws_factors(self):
+        """How much bigger than its page a page's place is across and up and down (the
+        working space around it, when shown): the fit commands fit that place, so the room
+        beside the pages is in view too, and a spread of two pages still fits."""
+        from .page_widget import WS_X, WS_Y
+        return (1 + 2 * WS_X, 1 + 2 * WS_Y) if self.working_space else (1.0, 1.0)
+
     def fit_width(self):
-        widest = max((r.width for r in self.page_rects), default=612)
+        widest = max((r.width for r in self.page_rects), default=612) * self._ws_factors()[0]
         avail = self.viewport().width() - 2 * PAGE_GAP - 4
         if not self.verticalScrollBar().isVisible():
             avail -= self.verticalScrollBar().sizeHint().width()
@@ -1357,6 +1370,8 @@ class DocumentView(QScrollArea):
             width = sum(x.width for x in rects)
             height = max(x.height for x in rects)
             avail_w -= SPREAD_GAP * (len(rects) - 1)
+        fx, fy = self._ws_factors()
+        width, height = width * fx, height * fy
         self.set_zoom(min(avail_w / width, avail_h / height), keep_fit=True)
         self.fit_mode = "page"
         self.show_whole_page(page)
@@ -1905,16 +1920,19 @@ class DocumentView(QScrollArea):
         if not getattr(self, "pages", None):
             return False
         # only when the whole page, top to bottom and side to side, is in the window
-        w = self.pages[self.current_page()]
+        # (the page itself: the working space around it, if shown, may reach past)
+        area = self.pages[self.current_page()].page_area()
         vp = self.viewport()
-        return w.height() <= vp.height() and w.width() <= vp.width()
+        return area.height() <= vp.height() and area.width() <= vp.width()
 
     def show_whole_page(self, index):
         """Scroll so page `index` is centered top to bottom in the window."""
         index = max(0, min(index, len(self.pages) - 1))
         self._show_index(index)
         w = self.pages[index]
-        self.verticalScrollBar().setValue(int(w.y() - (self.viewport().height() - w.height()) / 2))
+        area = w.page_area()            # (the page itself, inside its working space)
+        self.verticalScrollBar().setValue(int(w.y() + area.y() -
+                                              (self.viewport().height() - area.height()) / 2))
         self.center_horizontally(index)
         self._on_scroll()
 
