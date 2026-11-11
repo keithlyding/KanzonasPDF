@@ -973,7 +973,10 @@ class _Upkeep:
             return False
         v = self.nums.get(int(sp[1]))
         e = self.tree.by_num.get(_num(v)) if v is not None else None
-        return e is not None and not e.gone and any(a == num for a, _pg in e.objrs) and \
+        # (held for this page: a reply carried here from another page with its markup is
+        # still held for the page it left, until that one's turn drops it)
+        return e is not None and not e.gone and \
+            any(a == num and (pg or e.pg) == px for a, pg in e.objrs) and \
             len(self.tree.objr.get(num, ())) == 1
 
     # -- one page
@@ -1286,9 +1289,18 @@ class _Upkeep:
             parent = popup_of(doc, num) if shown and sub == "Popup" else 0
             if parent:
                 _mirror_contents(doc, num, parent)
-            if not shown or self.annot_ok(num, px):
+            if not shown:
+                self._unshare_hidden(num)
+                continue
+            if self.annot_ok(num, px):
                 continue
             for e in list(tree.objr.get(num, ())):
+                if not any(x == num and (pg or e.pg) == px for x, pg in e.objrs):
+                    # (it came from another page, a reply with its markup: tagged anew here)
+                    tree.drop_objr(e, num)
+                    tree.prune(e)
+                    self.pt_dirty = True
+                    continue
                 vp = doc.xref_get_key(num, "StructParent")
                 v = self.nums.get(int(vp[1])) if vp[0] == "int" else None
                 if len(tree.objr.get(num, ())) > 1 and _num(v) == e.num:
@@ -1467,6 +1479,7 @@ class _Upkeep:
             held = {mc: tree.refs[(px, mc)][0] for mc in tree.page_refs.get(px, ())}
             key = st.key
             if not held and key is None:
+                self._unshare_page(px)
                 continue
             if key is None:
                 key = self.new_key()
@@ -1482,6 +1495,35 @@ class _Upkeep:
                                      m.PdfObj())
                 self.set_entry(key, arr)
         self.write_parent_tree()
+
+    def _unshare_page(self, px):
+        """A page with no tagged content keeps the key it has, but a copy of it has the same
+        key: each one that shares it with another page (or anything else) gives it up, so
+        the last one keeps it."""
+        sp = self.doc.xref_get_key(px, "StructParents")
+        if sp[0] != "int":
+            return
+        key = int(sp[1])
+        users = self.key_users().get(key, [])
+        others = [u for u in users if u != ("page", px)]
+        if not others or len(others) == len(users):
+            return
+        self.doc.xref_set_key(px, "StructParents", "null")
+        self._key_users[key] = others
+
+    def _unshare_hidden(self, num):
+        """A hidden annotation (or one not tagged) isn't tagged anew, but one hidden after it
+        was keeps its StructParent: a page duplicated copies it with that key. The one no
+        element holds gives the key up (shown again, it is tagged anew)."""
+        sp = self.doc.xref_get_key(num, "StructParent")
+        if sp[0] != "int" or num in self.tree.objr:
+            return
+        key = int(sp[1])
+        users = self.key_users().get(key, ())
+        if len([u for u in users if u != ("annot", num)]) == 0:
+            return
+        self.doc.xref_set_key(num, "StructParent", "null")
+        self._key_users[key] = [u for u in users if u != ("annot", num)]
 
     def run(self, pages):
         self.states = {}

@@ -269,6 +269,25 @@ class Upkeep(unittest.TestCase):
         self.undoes(v, lambda: v.modify(delete, [0]))
         self.assertNotIn("Annot", [n.type for n in acc.Tree(v.doc).nodes])
 
+    def test_a_reply_moved_to_an_earlier_page_with_its_markup_stays_tagged(self):
+        # (the page it lands on is looked at first: its tag on the page it left still
+        # stood then, and went with that page's turn)
+        w, v = self.window(sample(2))
+        v.modify(lambda: v.doc[1].add_rect_annot(pymupdf.Rect(400, 100, 450, 150)), [1])
+        box = next(a.xref for a in v.doc[1].annots() if a.type[1] == "Square")
+        reply = v.reply_to(1, box, "follows")
+        self.in_step(v)
+
+        def across():
+            v.select_xref(1, box)
+            self.assertTrue(v.transfer_selection(0, pymupdf.Point(10, 20)))
+            v.clear_selection()
+        self.undoes(v, across)
+        self.assertIn(reply, [x for x, *_ in v.doc[0].annot_xrefs()])
+        node = acc.Tree(v.doc).annot_node(reply)
+        self.assertIsNotNone(node)
+        self.assertEqual(node.page, 0)
+
     # ---- pages
     def test_pages_duplicated_inserted_replaced_deleted(self):
         from tests.battery_random import revision
@@ -294,6 +313,37 @@ class Upkeep(unittest.TestCase):
         self.undoes(v, lambda: v.replace_pages(src, [(2, 0)]))
         self.assertIn("Revision B sheet 1", " ".join(t for _ty, t in self.order(v, 2)))
         self.undoes(v, lambda: v.delete_page(0))
+
+    def test_a_page_with_a_hidden_markup_duplicated_shares_no_key(self):
+        # (a hidden markup isn't tagged, but one hidden after it was keeps its StructParent:
+        # the copy's copy of it used the same key)
+        w, v = self.window(sample(1))
+        v.modify(lambda: v.doc[0].add_rect_annot(pymupdf.Rect(400, 100, 450, 150)), [0])
+        box = next(a.xref for a in v.doc[0].annots() if a.type[1] == "Square")
+        v.modify(lambda: v.doc.xref_set_key(box, "F", "2"), [0])
+        self.in_step(v)
+        self.undoes(v, lambda: v.duplicate_pages([0]))
+        self.assertEqual(v.doc.xref_get_key(box, "StructParent")[0], "int")
+        copy = next(a.xref for a in v.doc[1].annots() if a.type[1] == "Square")
+        self.assertNotEqual(v.doc.xref_get_key(copy, "StructParent"),
+                            v.doc.xref_get_key(box, "StructParent"))
+        # shown again, it is tagged anew
+        v.modify(lambda: v.doc.xref_set_key(copy, "F", "4"), [1])
+        self.in_step(v)
+        self.assertEqual(acc.Tree(v.doc).annot_node(copy).page, 1)
+
+    def test_a_page_with_no_tagged_content_duplicated_shares_no_key(self):
+        # (a page whose content was all taken out keeps its key with an empty entry: its
+        # copy used the same key, and neither page gave it up)
+        from kanzonas import page_objects
+        w, v = self.window(sample(1))
+        v.modify(lambda: page_objects._set_contents(v.doc[0], b"q 0 0 1 RG 10 10 m 90 90 l S Q"),
+                 [0])
+        self.in_step(v)
+        self.assertEqual(v.doc.xref_get_key(v.doc.page_xref(0), "StructParents")[0], "int")
+        self.undoes(v, lambda: v.duplicate_pages([0]))
+        keys = [v.doc.xref_get_key(v.doc.page_xref(i), "StructParents") for i in range(2)]
+        self.assertNotEqual(keys[0], keys[1])
 
     def test_pages_from_a_tagged_file(self):
         w, v = self.window(sample(1))
