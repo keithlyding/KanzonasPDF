@@ -180,6 +180,37 @@ class WorkingSpace(unittest.TestCase):
         # page 2 has nothing beside it: printed as before
         self.assertEqual(dlg.sheet(1)[1], PrintDialog(None, self.v).sheet(1)[1])
 
+    def test_asked_once_whether_to_print_them(self):
+        """The first markup drawn outside a page in a document brings a question: print
+        markups outside the page? The answer is the Print window's start; Don't ask again
+        stops it (the owner, 11 Nov). It doesn't hold the program up while it's open."""
+        from kanzonas import paths
+        st = paths.settings()
+        for k in ("ask_beside", "print_beside"):
+            st.remove(k)
+        self.addCleanup(lambda: [st.remove(k) for k in ("ask_beside", "print_beside")])
+        self.on()
+        self.w.set_tool("rect")
+        pump()
+        self.drag((200, 500), (300, 560))                   # on the page: no question
+        pump()
+        self.assertIsNone(getattr(self.w, "_outside_box", None))
+        self.drag((650, 500), (750, 560))                   # beside it
+        pump()
+        box = self.w._outside_box
+        self.assertTrue(box.isVisible())
+        self.assertIn("outside the page", box.text())
+        box.checkBox().setChecked(True)                     # Don't ask again
+        next(b for b in box.buttons() if b.text() == "Print them").click()
+        pump()
+        self.assertEqual(st.value("print_beside"), "true")
+        self.assertEqual(st.value("ask_beside"), "false")
+        self.w._outside_box = None
+        self.drag((650, 600), (750, 660))                   # not asked again
+        pump()
+        self.assertIsNone(self.w._outside_box)
+        self.assertTrue(PrintDialog(None, self.v).beside.isChecked())
+
     def test_going_to_a_page_shows_its_top(self):
         self.on()
         self.v.goto_page(1)

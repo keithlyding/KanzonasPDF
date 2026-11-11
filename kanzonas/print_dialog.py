@@ -213,6 +213,10 @@ class PrintDialog(QDialog):
         doc = view.doc
         self.beside.setEnabled(any(beside_rect(doc[i]) is not None
                                    for i in range(min(doc.page_count, 2000))))
+        # (as answered when the first markup went outside a page: MainWindow._ask_outside)
+        from . import paths
+        self.beside.setChecked(self.beside.isEnabled() and
+                               paths.settings().value("print_beside", "false") == "true")
         left.addRow("", self.beside)
 
         # preview

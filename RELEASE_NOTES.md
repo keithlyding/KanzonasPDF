@@ -13,6 +13,8 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Working space around pages (View menu): gray room beside each page to keep your own comments and pictures next to the drawing. They're shown and saved, and you can click, move and draw them there, but they don't print (unless you tick Comments beside the page in the Print window), and other PDF programs don't show them. Sanitize document and Remove hidden information take them out.
 - Pages > Add space around page: make a page bigger on the sides you choose, with the drawing and everything on it staying where it is. The new space is real page: it prints and shows everywhere, so it's room for comments or for pasting in other sheets to make one combined plan.
 - What you just drew stays selected, so Properties changes it right away; right-click a markup > Set as Default to use its style for the next ones. The Properties title shows plainly whether you're changing a markup or a tool's style.
+- The first time something you draw, paste or move goes outside a page, KanzonasPDF asks whether markups outside the page should print (Don't ask again stops the question).
+- The document tab in front is easier to spot: a blue line along its top, the other tabs' names a little dimmer.
 
 **Fixed**
 - Opacity now works on pictures and on Capture area's pasted captures (they stayed solid).
@@ -26,6 +28,8 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Espacio de trabajo alrededor de las páginas (menú Ver): espacio gris junto a cada página para guardar sus propios comentarios e imágenes al lado del dibujo. Se muestran y se guardan, y puede hacer clic en ellos, moverlos y dibujarlos ahí, pero no se imprimen (salvo que marque Comentarios junto a la página en la ventana Imprimir), y otros programas de PDF no los muestran. Sanear documento y Quitar la información oculta los quitan.
 - Páginas > Agregar espacio alrededor de la página: agrande una página por los lados que elija, con el dibujo y todo lo que tiene quedándose donde está. El espacio nuevo es página real: se imprime y se ve en todas partes, así que sirve para comentarios o para pegar otros planos y formar un solo plano combinado.
 - Lo que acaba de dibujar queda seleccionado, así que Propiedades lo cambia enseguida; clic con el botón derecho en una marca > Establecer como predeterminado para usar su estilo en las siguientes. El título de Propiedades muestra claramente si cambia una marca o el estilo de una herramienta.
+- La primera vez que algo que dibuja, pega o mueve sale de una página, KanzonasPDF pregunta si las marcas fuera de la página deben imprimirse (No volver a preguntar hace que no pregunte más).
+- La pestaña del documento de delante se distingue mejor: una línea azul arriba y los nombres de las demás pestañas un poco más tenues.
 
 **Correcciones**
 - La opacidad ya funciona en las imágenes y en las capturas pegadas de Capturar área (se quedaban sólidas).

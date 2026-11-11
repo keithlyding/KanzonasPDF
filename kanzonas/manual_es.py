@@ -60,7 +60,8 @@ antes de crear las sesiones de reconocimiento.</p>
 <h2 id="start">Primeros pasos</h2>
 <ul>
 <li><b>Abrir un PDF:</b> Archivo &gt; Abrir (Ctrl+O), arrastre un archivo a la ventana o elija uno en
-Archivo &gt; Abrir recientes. Cada archivo se abre en su propia pestaña, en la página y con el zoom con que lo dejó. Si
+Archivo &gt; Abrir recientes. Cada archivo se abre en su propia pestaña, en la página y con el zoom con que lo dejó (la
+pestaña de delante tiene una línea azul arriba; los nombres de las demás se ven un poco más tenues). Si
 KanzonasPDF ya está abierto, un PDF que se abre desde el Explorador, un correo electrónico o un navegador se abre en una nueva pestaña
 en él, y la ventana pasa al frente (se restaura si estaba minimizada). Abrir un archivo que
 ya está abierto cambia a su pestaña; si el archivo cambió en el disco desde que se abrió, la pestaña
@@ -162,7 +163,10 @@ ventana Imprimir), y otros programas de PDF como Acrobat no las muestran (en Acr
 que úselas para sus propias notas. Para dar el espacio a todos, use <b>Páginas &gt; Agregar espacio alrededor de la
 página</b>: ese espacio es parte de la página. Sanear documento y Quitar la información oculta (al aplicar censuras)
 quitan las marcas que están por completo fuera de una página. Desactivado, las páginas se disponen como antes, y una
-marca fuera de la página no se dibuja.</li>
+marca fuera de la página no se dibuja. La primera vez en un documento que algo que dibuja, pega o mueve sale de la
+página, KanzonasPDF pregunta si <b>Imprimirlas</b> o <b>No imprimirlas</b>: su respuesta es como empieza Comentarios
+junto a la página en la ventana Imprimir (allí puede cambiarlo). Marque <b>No volver a preguntar</b> para que no
+pregunte más.</li>
 <li><b>Tema:</b> Ver &gt; Tema (Igual que Windows, o Igual que el sistema en Linux y macOS; Claro, Oscuro). Ver &gt; Mostrar etiquetas de texto en las
 barras de herramientas agrega nombres debajo de los iconos. Coloque el puntero sobre cualquier botón o cuadro de la barra de herramientas o de la cinta para ver una información sobre herramientas
 que indica qué hace y su método abreviado de teclado (el que haya establecido en Métodos abreviados de teclado);

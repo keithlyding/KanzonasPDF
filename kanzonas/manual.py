@@ -68,7 +68,8 @@ telemetry before creating recognition sessions.</p>
 <h2 id="start">Getting started</h2>
 <ul>
 <li><b>Open a PDF:</b> File &gt; Open (Ctrl+O), drag a file onto the window, or pick one from
-File &gt; Open recent. Each file opens in its own tab, at the page and zoom you left it. When
+File &gt; Open recent. Each file opens in its own tab, at the page and zoom you left it (the tab
+in front has a blue line along its top; the others' names are a little dimmer). When
 KanzonasPDF is already open, a PDF opened from Explorer, an e-mail or a browser opens as a new tab
 in it, and the window comes to the front (restored if it was minimized). Opening a file that's
 already open switches to its tab; if the file has changed on disk since it was opened, the tab
@@ -171,7 +172,10 @@ Acrobat you can at most see them by zooming out), so use them for your own notes
 everyone the room, use <b>Pages &gt; Add space around page</b> instead: that space is part of
 the page. Sanitize document and Remove hidden information (when applying redactions) remove the
 markups wholly outside a page. Off, the pages are laid out as before, and a markup outside
-the page isn't drawn.</li>
+the page isn't drawn. The first time in a document that something you draw, paste or move
+reaches outside the page, KanzonasPDF asks whether to <b>Print them</b> or <b>Don't print
+them</b>: your answer is where the Print window's Comments beside the page starts (you can
+still change it there). Tick <b>Don't ask again</b> to stop the question.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, or Match system on Linux and macOS; Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar or ribbon button or box for a
 tooltip saying what it does and its keyboard shortcut (the one you set in Keyboard shortcuts);

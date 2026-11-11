@@ -10971,3 +10971,21 @@ msgstr "Comentarios junto a la página (espacio de trabajo)"
 
 msgid "Also print the comments and pictures kept outside the page's edge: each sheet takes in the page and them, scaled to the paper. The file isn't changed."
 msgstr "Imprimir también los comentarios e imágenes guardados fuera del borde de la página: cada hoja abarca la página y ellos, a escala del papel. El archivo no cambia."
+
+msgid "Markups outside the page"
+msgstr "Marcas fuera de la página"
+
+msgid "This markup is partly or wholly outside the page."
+msgstr "Esta marca está parcial o totalmente fuera de la página."
+
+msgid "KanzonasPDF keeps it and shows it (View > Working space around pages), but it doesn't print, and other PDF programs don't show it.\n\nPrint markups outside the page? Then each printed sheet takes in the page and them: the paper gets room on the sides where they are, so the page prints smaller. Nothing in the document changes size. You can change this each time in the Print window (Comments beside the page)."
+msgstr "KanzonasPDF la guarda y la muestra (Ver > Espacio de trabajo alrededor de las páginas), pero no se imprime, y otros programas de PDF no la muestran.\n\n¿Imprimir las marcas que están fuera de la página? Entonces cada hoja impresa abarca la página y ellas: el papel deja espacio en los lados donde están, así que la página se imprime más pequeña. Nada en el documento cambia de tamaño. Puede cambiarlo cada vez en la ventana Imprimir (Comentarios junto a la página)."
+
+msgid "Print them"
+msgstr "Imprimirlas"
+
+msgid "Don't print them"
+msgstr "No imprimirlas"
+
+msgid "Turn on View > Working space around pages to see what's outside the page"
+msgstr "Active Ver > Espacio de trabajo alrededor de las páginas para ver lo que está fuera de la página"

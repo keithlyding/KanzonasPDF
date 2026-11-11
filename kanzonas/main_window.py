@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pymupdf
 from PySide6.QtCore import Qt, QSize, QTimer, QEvent, Signal, QMimeData, QPoint, QObject, QRect
 from PySide6.QtGui import (QAction, QActionGroup, QKeySequence, QIcon, QPixmap,
-                           QPainter, QDrag, QMouseEvent, QCursor)
+                           QPainter, QDrag, QMouseEvent, QCursor, QColor, QPalette)
 from PySide6.QtWidgets import (QMainWindow, QTabWidget, QTabBar, QToolBar, QFileDialog, QMessageBox,
                                QToolTip,
                                QLineEdit, QSpinBox, QLabel, QComboBox, QListWidget,
@@ -299,6 +299,49 @@ class _TabBar(QTabBar):
         self.win = win
         self.setAcceptDrops(True)
         self._press = None
+        self.currentChanged.connect(lambda _i: self._dim_others())
+
+    # ---- which document is in front (the owner, 11 Nov: hard to tell in dark mode) ------
+    ACCENT_PX = 3
+
+    def _dim_others(self):
+        """The front tab's name in the full text color, the others' a little dimmer."""
+        pal = self.palette()
+        full = pal.color(QPalette.WindowText)
+        back = pal.color(QPalette.Window)
+        dim = QColor(int(full.red() * 0.62 + back.red() * 0.38),
+                     int(full.green() * 0.62 + back.green() * 0.38),
+                     int(full.blue() * 0.62 + back.blue() * 0.38))
+        cur = self.currentIndex()
+        for i in range(self.count()):
+            self.setTabTextColor(i, full if i == cur or self.count() < 2 else dim)
+
+    def tabInserted(self, index):
+        super().tabInserted(index)
+        self._dim_others()
+
+    def tabRemoved(self, index):
+        super().tabRemoved(index)
+        self._dim_others()
+
+    def changeEvent(self, e):
+        super().changeEvent(e)
+        if e.type() == QEvent.PaletteChange:        # (the theme changed)
+            self._dim_others()
+
+    def paintEvent(self, e):
+        super().paintEvent(e)
+        i = self.currentIndex()
+        if i < 0 or self.count() < 2:
+            return
+        r = self.tabRect(i)
+        accent = self.palette().color(QPalette.Highlight)
+        p = QPainter(self)
+        tint = QColor(accent)
+        tint.setAlpha(40 if self.palette().color(QPalette.Window).lightness() < 128 else 26)
+        p.fillRect(r, tint)
+        p.fillRect(r.x(), r.y(), r.width(), self.ACCENT_PX, accent)
+        p.end()
 
     def mousePressEvent(self, e):
         if e.button() == Qt.LeftButton:
@@ -2104,6 +2147,9 @@ class MainWindow(QMainWindow):
             (v.scaleChanged, self._update_ui),
             (v.historyChanged, self._update_ui),
             (v.documentChanged, self._markups_timer.start),
+            # (after the edit is done and what it made is selected: never during a drag)
+            (v.documentChanged,
+             lambda v=v: QTimer.singleShot(0, lambda: self._ask_outside(v))),
             (v.structureChanged, self._markups_timer.start),
             (v.requestSignature, self._sign_field),
             (v.textToolPropsChanged,
@@ -3845,6 +3891,57 @@ class MainWindow(QMainWindow):
         if on:
             self.statusBar().showMessage(tr("Scale bar on: it shows on the pages that have a "
                                             "scale (on screen only)"), 4000)
+
+    def _ask_outside(self, v):
+        """The first time in a document that what was just drawn, pasted or moved (the
+        selection) reaches outside its page: say it won't print or show elsewhere, and ask
+        whether to print such markups (the Print window's Comments beside the page starts
+        that way); Don't ask again stops the question (the owner, 11 Nov)."""
+        import shiboken6
+        if not shiboken6.isValid(v) or v.doc.is_closed or v.selection is None or \
+                getattr(v, "_beside_asked", False) or \
+                self.settings.value("ask_beside", "true") == "false":
+            return
+        index = v.selection[0]
+        if not 0 <= index < v.doc.page_count:
+            return
+        page = v.doc[index]
+        shown = page.cropbox - (page.cropbox.x0, page.cropbox.y0, page.cropbox.x0,
+                                page.cropbox.y0)
+        found = annotations.load_annots(page, v.selected_xrefs())
+        outside = any(not shown.contains(a.rect) for a in found.values())
+        del found
+        if not outside:
+            return
+        v._beside_asked = True
+        box = QMessageBox(QMessageBox.Question, tr("Markups outside the page"), "", parent=self)
+        box.setText(tr("This markup is partly or wholly outside the page."))
+        box.setInformativeText(
+            tr("KanzonasPDF keeps it and shows it (View > Working space around pages), but it "
+               "doesn't print, and other PDF programs don't show it.\n\nPrint markups outside "
+               "the page? Then each printed sheet takes in the page and them: the paper gets "
+               "room on the sides where they are, so the page prints smaller. Nothing in the "
+               "document changes size. You can change this each time in the Print window "
+               "(Comments beside the page)."))
+        yes = box.addButton(tr("Print them"), QMessageBox.YesRole)
+        box.addButton(tr("Don't print them"), QMessageBox.NoRole)
+        again = QCheckBox(tr("Don't ask again"))
+        box.setCheckBox(again)
+        if not v.working_space:
+            self.statusBar().showMessage(tr("Turn on View > Working space around pages to "
+                                            "see what's outside the page"), 6000)
+
+        def answered(_result):
+            on = box.clickedButton() is yes
+            self.settings.setValue("print_beside", "true" if on else "false")
+            if again.isChecked():
+                self.settings.setValue("ask_beside", "false")
+            box.deleteLater()
+        box.finished.connect(answered)
+        # (in front of the window until answered, without holding up the program: open(),
+        # not exec(), so nothing waits on it, the tests and the random battery included)
+        box.open()
+        self._outside_box = box
 
     def _toggle_working_space(self):
         on = self.a_working_space.isChecked()
