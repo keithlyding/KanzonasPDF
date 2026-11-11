@@ -8431,6 +8431,9 @@ msgstr "Poner las páginas en:"
 msgid "Make the pages searchable (recognize text, OCR)"
 msgstr "Hacer las páginas buscables (reconocer texto, OCR)"
 
+msgid "Make the pictures searchable (recognize text, OCR)"
+msgstr "Hacer las imágenes buscables (reconocer texto, OCR)"
+
 msgid "Copy details"
 msgstr "Copiar detalles"
 

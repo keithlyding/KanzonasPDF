@@ -7,6 +7,22 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.11.1
+
+**New**
+- Create PDF from images and Combine files can make pictures of text searchable: tick "Make the pictures searchable (recognize text, OCR)" and the text on the pages made from pictures is recognized, so you can find and select its words. The PDF is saved with it, and the choice is remembered.
+
+**Fixed**
+- Pages panel: dragging a page now scrolls the list when you hold it near the top or bottom, or just above or below the list, so a page can go anywhere in a long document.
+
+## 1.11.1 (es)
+
+**Novedades**
+- Crear PDF desde imágenes y Combinar archivos pueden hacer buscables las imágenes de texto: marque "Hacer las imágenes buscables (reconocer texto, OCR)" y se reconoce el texto de las páginas hechas a partir de imágenes, así que puede buscar y seleccionar sus palabras. El PDF se guarda con él, y la elección se recuerda.
+
+**Correcciones**
+- Panel Páginas: al arrastrar una página, la lista ahora se desplaza si la mantiene cerca de la parte de arriba o de abajo, o justo por encima o por debajo de la lista, así que una página puede ir a cualquier lugar de un documento largo.
+
 ## 1.10.1
 
 **Fixed**

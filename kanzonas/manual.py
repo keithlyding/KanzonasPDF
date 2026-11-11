@@ -1315,7 +1315,9 @@ the Pages menu, the ribbon or a shortcut (Move page up / down, Delete pages, Ins
 blank page, Cut, Paste and Duplicate pages). Using one of those asks whether to unlock first.
 Copying pages, rotating and extracting work while locked.</li>
 <li><b>Reorder:</b> unlock the page list, then drag thumbnails (several selected pages move
-together, and Ctrl+Z undoes the whole drag); or Move page up / Move page down
+together, and Ctrl+Z undoes the whole drag). To take a page to a place you can't see, hold it
+near the top or bottom of the list, or just above or below it: the list scrolls, faster the
+farther you go. Or use Move page up / Move page down
 (Ctrl+Shift+Up / Down; on the Pages tab, under the Organize group's arrow).</li>
 <li><b>Combine files</b> (File &gt; Combine files..., or Pages tab &gt; Combine): makes one
 new PDF from several. Add the PDFs (Add files..., or drop them onto the list from Explorer); the
@@ -1331,7 +1333,11 @@ them in order and click Create.... With "Put each picture on a Letter page" tick
 default), each picture is fitted on a Letter page turned to suit it (landscape for wide
 pictures); untick it to make each page the picture's own size. Phone photos come out upright,
 JPEG photos aren't recompressed (no quality loss), and each page of a multi-page TIFF scan
-becomes a page.</li>
+becomes a page. Tick "Make the pictures searchable (recognize text, OCR)" (here and in Combine
+files) for pictures of text, such as scans and phone photos of documents: when the PDF opens,
+the text on the pages made from pictures is recognized, as Recognize text (OCR) does, and the
+PDF is saved with it, so its words can be found and selected (PDF pages put in are left as
+they are). The choice is remembered.</li>
 <li><b>Insert pages from file</b> (Pages menu, Pages tab) inserts PDFs and pictures (JPG, PNG,
 TIFF, BMP, GIF, WebP; pick several at once), in the order chosen, after the current page, at the
 end or at the beginning, as one undo step. Each picture becomes a page the size of the page
