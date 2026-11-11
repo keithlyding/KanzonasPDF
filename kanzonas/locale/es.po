@@ -10926,3 +10926,48 @@ msgstr "Establecer como predeterminado"
 
 msgid "This style is now the default for {tool}"
 msgstr "Este estilo es ahora el predeterminado de {tool}"
+
+msgid "Comments and markups outside the page (only KanzonasPDF shows them)"
+msgstr "Comentarios y marcas fuera de la página (solo KanzonasPDF los muestra)"
+
+msgid "Space added (Ctrl+Z undoes it; Crop pages takes it off again)"
+msgstr "Espacio agregado (Ctrl+Z lo deshace; Recortar páginas lo vuelve a quitar)"
+
+msgid "Add space"
+msgstr "Agregar espacio"
+
+msgid "Working space"
+msgstr "Espacio de trabajo"
+
+msgid "&Add space around page..."
+msgstr "&Agregar espacio alrededor de la página..."
+
+msgid "&Working space around pages"
+msgstr "&Espacio de trabajo alrededor de las páginas"
+
+msgid "Make the page bigger on the sides you choose, with everything on it staying where it is: room for comments, or to paste other sheets in"
+msgstr "Agrandar la página por los lados que elija, con todo lo que tiene quedándose donde está: espacio para comentarios, o para pegar otros planos"
+
+msgid "Gray room around each page to keep comments and pictures beside the drawing: shown and saved, never printed (other PDF programs don't show them)"
+msgstr "Espacio gris alrededor de cada página para guardar comentarios e imágenes junto al dibujo: se muestran y se guardan, nunca se imprimen (otros programas de PDF no los muestran)"
+
+msgid "Working space on: what's kept beside a page is shown and saved, but not printed"
+msgstr "Espacio de trabajo activado: lo que se guarda junto a una página se muestra y se guarda, pero no se imprime"
+
+msgid "Space can only be added; to take some away, use Crop pages."
+msgstr "Solo se puede agregar espacio; para quitarlo, use Recortar páginas."
+
+msgid "A PDF page can be at most 200 inches (5.08 m) on a side."
+msgstr "Una página PDF puede medir como máximo 200 pulgadas (5,08 m) por lado."
+
+msgid "Add space around page"
+msgstr "Agregar espacio alrededor de la página"
+
+msgid "The page gets bigger on these sides, as it's shown; the drawing, markups, links and form fields stay where they are on it. What you put in the new space prints and shows in every PDF program. Crop pages takes the space off again."
+msgstr "La página se agranda por estos lados, tal como se muestra; el dibujo, las marcas, los vínculos y los campos de formulario se quedan donde están en ella. Lo que ponga en el espacio nuevo se imprime y se ve en cualquier programa de PDF. Recortar páginas vuelve a quitar el espacio."
+
+msgid "Comments beside the page (working space)"
+msgstr "Comentarios junto a la página (espacio de trabajo)"
+
+msgid "Also print the comments and pictures kept outside the page's edge: each sheet takes in the page and them, scaled to the paper. The file isn't changed."
+msgstr "Imprimir también los comentarios e imágenes guardados fuera del borde de la página: cada hoja abarca la página y ellos, a escala del papel. El archivo no cambia."

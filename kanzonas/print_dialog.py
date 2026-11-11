@@ -2,6 +2,7 @@
 size on the left, a preview of each sheet as it will print on the right (like Acrobat's and
 PDF-XChange's print dialogs; Windows' standard print dialog has no preview)."""
 
+import math
 import re
 
 import pymupdf
@@ -59,6 +60,36 @@ def print_list(page, markups=True):
     finally:
         m.fz_close_device(dev)
     return pymupdf.DisplayList(dl)
+
+
+def print_annots_list(page):
+    """The page's markups and form fields that print (the Print flag), without the page's
+    content, as a pymupdf.DisplayList: what's kept beside the page is drawn from it (Print:
+    Comments beside the page)."""
+    m = pymupdf.mupdf
+    pdf_page = m.pdf_page_from_fz_page(page.this)
+    dl = m.FzDisplayList(m.fz_bound_page(page.this))
+    dev = m.fz_new_list_device(dl)
+    try:
+        m.pdf_run_page_annots_with_usage(pdf_page, dev, m.FzMatrix(), "Print", m.FzCookie())
+        m.pdf_run_page_widgets_with_usage(pdf_page, dev, m.FzMatrix(), "Print", m.FzCookie())
+    finally:
+        m.fz_close_device(dev)
+    return pymupdf.DisplayList(dl)
+
+
+def beside_rect(page):
+    """The page (as shown) with the markups kept beside it (partly or wholly outside it, in
+    the working space), or None when none are."""
+    shown = page.rect
+    out = None
+    for a in page.annots():
+        if a.flags & pymupdf.PDF_ANNOT_IS_HIDDEN or not a.flags & pymupdf.PDF_ANNOT_IS_PRINT:
+            continue
+        r = (pymupdf.Rect(a.rect) * page.rotation_matrix).normalize()
+        if r.is_valid and not shown.contains(r):
+            out = r if out is None else out | r
+    return None if out is None else shown | out
 
 
 PRINT_MIN_LINE_PT = 0.15      # Dark thin lines: no line printed thinner than this (0.05 mm)
@@ -173,6 +204,16 @@ class PrintDialog(QDialog):
                                  "boxes (Print tab, or Pages > Print production); a page without "
                                  "a trim box is marked at its edges."))
         left.addRow("", self.marks)
+        # what's kept beside the pages (View > Working space around pages): printed only
+        # when asked, the sheet made larger to take it in; the file isn't changed
+        self.beside = QCheckBox(tr("Comments beside the page (working space)"))
+        self.beside.setToolTip(tr("Also print the comments and pictures kept outside the "
+                                  "page's edge: each sheet takes in the page and them, scaled "
+                                  "to the paper. The file isn't changed."))
+        doc = view.doc
+        self.beside.setEnabled(any(beside_rect(doc[i]) is not None
+                                   for i in range(min(doc.page_count, 2000))))
+        left.addRow("", self.beside)
 
         # preview
         self.picture = QLabel()
@@ -211,6 +252,7 @@ class PrintDialog(QDialog):
         for sig in (self.all_pages.toggled, self.current.toggled, self.some.toggled,
                     self.orientation.currentIndexChanged, self.size.currentIndexChanged,
                     self.markups.toggled, self.marks.toggled, self.dark_lines.toggled,
+                    self.beside.toggled,
                     self.printer_box.currentIndexChanged):
             sig.connect(self._changed)
         self.range_text.textChanged.connect(lambda _t: (self.some.setChecked(True),
@@ -265,6 +307,9 @@ class PrintDialog(QDialog):
         page = self.view.doc[i].rect                      # as displayed (rotation applied)
         lay = self._marks_layout(i)
         ext = lay["job"] if lay is not None else page
+        beside = self._beside(i)
+        if beside is not None:
+            ext = ext | beside
         mode = self.orientation.currentIndex()
         landscape = (ext.width > ext.height) if mode == 0 else mode == 2
         if landscape != (w > h):
@@ -283,6 +328,66 @@ class PrintDialog(QDialog):
         box = QRectF(ebox.x() + (page.x0 - ext.x0) * k, ebox.y() + (page.y0 - ext.y0) * k,
                      page.width * k, page.height * k)
         return QSizeF(w, h), box
+
+    def _beside(self, i):
+        """beside_rect of page i when Comments beside the page is ticked (and markups print),
+        else None."""
+        b = getattr(self, "beside", None)
+        if b is None or not b.isChecked() or not b.isEnabled() or not self.markups.isChecked():
+            return None
+        return beside_rect(self.view.doc[i])
+
+    def _draw_beside(self, painter, i, target, dpi, going=lambda: True):
+        """The markups kept beside page i, where they are around the page drawn into target
+        (the page itself is left as drawn), in bands as _draw_bands. False when canceled."""
+        ext = self._beside(i)
+        if ext is None:
+            return True
+        from PySide6.QtGui import QPainterPath
+        m = pymupdf.mupdf
+        page = self.view.doc[i]
+        dl = print_annots_list(page)
+        k = dpi / 72.0
+        outer = self._to_target(i, target, ext)
+        clip = QPainterPath()
+        clip.addRect(outer)
+        inner = QPainterPath()
+        inner.addRect(target)
+        painter.save()
+        painter.setClipPath(clip.subtracted(inner), Qt.IntersectClip)
+        sy = outer.height() / max(1e-6, ext.height)
+        rows = max(1, int(BAND_BYTES / max(1.0, ext.width * k * 4)))
+        step = rows / k
+        x0, x1 = int(math.floor(ext.x0 * k)), int(math.ceil(ext.x1 * k))
+        y = ext.y0
+        try:
+            while y < ext.y1:
+                if y > ext.y0 and not going():
+                    return False
+                y1 = min(ext.y1, y + step)
+                iy0, iy1 = int(math.floor(y * k)), max(int(math.floor(y * k)) + 1,
+                                                       int(math.ceil(y1 * k)))
+                raw = m.fz_new_pixmap_with_bbox(m.fz_device_rgb(), m.FzIrect(x0, iy0, x1, iy1),
+                                                m.FzSeparations(), 1)
+                m.fz_clear_pixmap(raw)
+                with print_lines(dpi, self._dark()):
+                    dev = m.fz_new_draw_device(m.FzMatrix(k, 0, 0, k, 0, 0), raw)
+                    try:
+                        m.fz_run_display_list(dl.this, dev, m.FzMatrix(),
+                                              m.FzRect(m.FzRect.Fixed_INFINITE), m.FzCookie())
+                    finally:
+                        m.fz_close_device(dev)
+                pm = pymupdf.Pixmap(raw)
+                img = QImage(pm.samples_mv, pm.width, pm.height, pm.stride,
+                             QImage.Format_RGBA8888_Premultiplied)
+                painter.drawImage(QRectF(outer.x() + (x0 / k - ext.x0) * sy,
+                                         outer.y() + (iy0 / k - ext.y0) * sy,
+                                         (x1 - x0) / k * sy, (iy1 - iy0) / k * sy), img)
+                del img, pm
+                y = y1
+        finally:
+            painter.restore()
+        return True
 
     def _to_target(self, i, target, r):
         """Rect r (page as displayed) where it lands when the page is drawn into target."""
@@ -366,6 +471,7 @@ class PrintDialog(QDialog):
             if lay is not None:
                 p.restore()
                 self._draw_marks(p, i, target, lay)
+            self._draw_beside(p, i, target, dpi)
         finally:
             p.end()
         self.picture.setPixmap(canvas)
@@ -451,6 +557,8 @@ class PrintDialog(QDialog):
             if lay is not None:
                 painter.restore()
                 self._draw_marks(painter, i, target, lay)
+            if not self._draw_beside(painter, i, target, dpi, going):
+                return False
         if progress is not None:
             progress.setValue(len(pages))
         return True

@@ -7,6 +7,32 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.11
+
+**New**
+- Working space around pages (View menu): gray room beside each page to keep your own comments and pictures next to the drawing. They're shown and saved, and you can click, move and draw them there, but they don't print (unless you tick Comments beside the page in the Print window), and other PDF programs don't show them. Sanitize document and Remove hidden information take them out.
+- Pages > Add space around page: make a page bigger on the sides you choose, with the drawing and everything on it staying where it is. The new space is real page: it prints and shows everywhere, so it's room for comments or for pasting in other sheets to make one combined plan.
+- What you just drew stays selected, so Properties changes it right away; right-click a markup > Set as Default to use its style for the next ones. The Properties title shows plainly whether you're changing a markup or a tool's style.
+
+**Fixed**
+- Opacity now works on pictures and on Capture area's pasted captures (they stayed solid).
+- The opacity slider applies when you click its track or use the arrow keys, not only when you drag it.
+- After Crop pages, a box or callout no longer jumps when you edit it.
+- Security: PDF reading updated (PyMuPDF 2.1, with MuPDF 1.28.6).
+
+## 1.11 (es)
+
+**Novedades**
+- Espacio de trabajo alrededor de las páginas (menú Ver): espacio gris junto a cada página para guardar sus propios comentarios e imágenes al lado del dibujo. Se muestran y se guardan, y puede hacer clic en ellos, moverlos y dibujarlos ahí, pero no se imprimen (salvo que marque Comentarios junto a la página en la ventana Imprimir), y otros programas de PDF no los muestran. Sanear documento y Quitar la información oculta los quitan.
+- Páginas > Agregar espacio alrededor de la página: agrande una página por los lados que elija, con el dibujo y todo lo que tiene quedándose donde está. El espacio nuevo es página real: se imprime y se ve en todas partes, así que sirve para comentarios o para pegar otros planos y formar un solo plano combinado.
+- Lo que acaba de dibujar queda seleccionado, así que Propiedades lo cambia enseguida; clic con el botón derecho en una marca > Establecer como predeterminado para usar su estilo en las siguientes. El título de Propiedades muestra claramente si cambia una marca o el estilo de una herramienta.
+
+**Correcciones**
+- La opacidad ya funciona en las imágenes y en las capturas pegadas de Capturar área (se quedaban sólidas).
+- El control de opacidad se aplica al hacer clic en su guía o al usar las flechas del teclado, no solo al arrastrarlo.
+- Después de Recortar páginas, un cuadro o una llamada ya no salta al editarlo.
+- Seguridad: lectura de PDF actualizada (PyMuPDF 2.1, con MuPDF 1.28.6).
+
 ## 1.10.1
 
 **Fixed**

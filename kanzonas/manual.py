@@ -43,7 +43,11 @@ or a list such as 1-3, 5), the orientation (Auto turns each sheet to fit its pag
 (Fit to paper, or Actual size, which only shrinks pages that are too big), whether markups
 and form fields print, <b>Dark thin lines</b> (on unless you turn it off: every line prints at
 least 0.15 pt wide and solid, so the hairlines of drawings don't come out faint or broken; off,
-lines print exactly as thin as they are), and <b>Crop marks</b> (see Print production). <b>Page setup...</b> sets the paper size and margins. Use the arrows
+lines print exactly as thin as they are), <b>Crop marks</b> (see Print production), and
+<b>Comments beside the page (working space)</b> (off unless you tick it; only offered when a
+page has markups outside its edge): each sheet then takes in the page and the comments and
+pictures kept beside it, scaled to the paper, with the page where it was among them; without
+it, only the page prints, as in every PDF program. <b>Page setup...</b> sets the paper size and margins. Use the arrows
 under the preview to see each sheet. Pages print at the printer's resolution up to 600 dpi,
 rendered a strip at a time so even large drawings print sharp without using much memory.
 Markups and form fields follow their own print setting, as in Acrobat: one made to show on
@@ -157,6 +161,17 @@ drawings use very thin lines (a tenth of a point or less); at their true width t
 part of a screen pixel when zoomed out and come out pale gray. With this on they stay dark and
 legible at any zoom. Only the screen changes: printing, export, OCR, Compare and the saved
 file use the true line widths. Your choice is remembered.</li>
+<li><b>Working space around pages</b> (View menu, View tab; off by default, remembered): gray
+room around each page, half the page's width on each side and some above and below, as on a
+desk around a drawing sheet. Markups kept there, wholly or partly outside the page's edge, are
+drawn, and you can click, move, edit and draw them there with any tool, or paste a capture
+there. They're saved in the file, but <b>not printed</b> (unless you tick <b>Comments beside the
+page</b> in the Print window), and other PDF programs such as Acrobat don't show them (in
+Acrobat you can at most see them by zooming out), so use them for your own notes. To give
+everyone the room, use <b>Pages &gt; Add space around page</b> instead: that space is part of
+the page. Sanitize document and Remove hidden information (when applying redactions) remove the
+markups wholly outside a page. Off, the pages are laid out as before, and a markup outside
+the page isn't drawn.</li>
 <li><b>Theme:</b> View &gt; Theme (Match Windows, or Match system on Linux and macOS; Light, Dark). View &gt; Show text labels on
 toolbars adds names under the icons. Hover over any toolbar or ribbon button or box for a
 tooltip saying what it does and its keyboard shortcut (the one you set in Keyboard shortcuts);
@@ -919,7 +934,17 @@ corner goes to the grid.</li>
 <h2 id="properties">Colors, borders and styles (Properties panel)</h2>
 <ul>
 <li>With a tool active, the Properties panel (F6) sets that tool's <b>default style</b>, saved
-for next time. With a markup selected, it changes <b>that markup</b>.</li>
+for next time. With a markup selected, it changes <b>that markup</b>. The panel's title says
+which: <b>Selected: Rectangle</b> on a blue band (the markup on the page), or <b>Rectangle:
+default style</b> on an amber band (the next ones you make with the tool).</li>
+<li><b>What you just drew is selected</b>, with its tool still picked: change its color,
+width or opacity in Properties right away, and drag again to draw the next one (that one is
+then the one selected). Click an empty spot or press Esc to deselect it; Properties then sets
+the tool's style again. (In CAD mode, as in AutoCAD, what you draw isn't selected.)</li>
+<li><b>Set as Default</b> (right-click a markup): its style becomes its tool's default style,
+for the next ones you make with that tool (as Bluebeam's Set as Default).</li>
+<li>The <b>Opacity</b> slider applies when you let go of it, click its track, or press the
+arrow keys on it. Pictures, including Capture area's pasted captures, take an opacity too.</li>
 <li>Line color, fill (or <b>No fill</b>), <b>No border</b> for boxes and shapes, text color,
 line width, font size, arrowheads, cloud border, opacity.</li>
 <li><b>Reset defaults</b> puts a tool back to its original style.</li>
@@ -1305,7 +1330,15 @@ when the scale is in feet and inches); changing it updates the selected measurem
 choose <b>This page</b> or <b>All pages</b> (on other pages the same box is measured from their
 top left corner). Only the visible area changes; nothing is deleted, so <b>Remove crop...</b>
 (Pages menu, Pages tab) shows the whole page again, on this page or all pages. Ctrl+Z undoes
-either.</li>
+either. Markups stay where they are on the page, also when edited afterwards.</li>
+<li><b>Add space around page...</b> (Pages menu, Pages tab): makes the page bigger on the sides
+you choose, as the page is shown: type how much to add on the <b>Left</b>, <b>Top</b>,
+<b>Right</b> and <b>Bottom</b> (in inches, millimeters or points), and pick the pages (the
+current one, all, or a list such as 1-3, 5). The drawing, markups, links and form fields stay
+exactly where they are on the page; the new space is white page. It's real page: what you put
+there (comments, or other sheets pasted in with Capture area to make one combined plan) shows
+in every PDF program and prints. Ctrl+Z undoes it; <b>Crop pages</b> takes the space off again.
+A page can be at most 200 inches on a side (PDF's limit).</li>
 <li><b>Page list size:</b> drag the Pages panel's edge to make it as narrow as you like; the
 thumbnails shrink to fit (the lock button then just reads Locked / Unlocked). Tabs that don't fit
 scroll sideways.</li>
@@ -1706,8 +1739,9 @@ show what was redacted, and the text in its title is replaced by [redacted] (a b
 legend removes it). Check the result before sharing; Undo works until you close the file.</li>
 <li><b>Sanitize document:</b> remove hidden data you choose: document information (with the
 private data some programs, like Illustrator, keep in the file), scripts,
-attached files, hidden text, links, comments, form data (with an XFA form, which keeps the
-data again; its ordinary fields stay), thumbnails. Scripts includes those in
+attached files, hidden text, links, comments, <b>comments and markups outside the page</b> (kept
+in the working space: only KanzonasPDF shows them, so they're ticked to go), form data (with an
+XFA form, which keeps the data again; its ordinary fields stay), thumbnails. Scripts includes those in
 other actions (multimedia), javascript: links and an XFA form's scripts (the ordinary form fields
 stay).</li>
 <li><b>Security properties (passwords &amp; permissions):</b> AES-256 encryption. Clicking OK
@@ -1993,8 +2027,8 @@ are applied, with the words taken out of fields, notes, links, bookmarks, proper
 file's other places, such as layer names, web addresses, form data and alternate text, as
 Search &amp; redact and Apply redactions do; a word found only in those places is removed
 from there. With <b>Remove hidden information</b> ticked (in Apply redactions too), each
-file's metadata, attached files, hidden text and scripts are removed even when nothing was
-found to redact; unticked, attached files stay and aren't searched, and the report warns of
+file's metadata, attached files, hidden text, scripts and the markups kept wholly outside its
+pages (see Working space) are removed even when nothing was found to redact; unticked, attached files stay and aren't searched, and the report warns of
 them. Apply the redactions is ticked to begin with: the originals stay as they were,
 and the redacted copies go to the output folder. The report says for each file what was
 removed and where: the pages, and how many of the other places. Untick it to only mark them

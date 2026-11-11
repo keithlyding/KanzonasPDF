@@ -1034,7 +1034,6 @@ class PageWidget(QWidget):
             r = self._sig_box()
             pm = self.view.sig_pixmap(tool)
             if r is not None and pm is not None:
-                z = self.view.zoom
                 p.setOpacity(0.7)
                 p.drawPixmap(self.shown_rect(r), pm,
                              QRectF(pm.rect()))
@@ -1045,7 +1044,6 @@ class PageWidget(QWidget):
             pm = self.view.sig_pixmap(tool)
             if pm is not None:
                 r = self.view.sig_display_rect(self.index, tool, self.to_pdf(self._ghost))
-                z = self.view.zoom
                 p.setOpacity(0.6)
                 p.drawPixmap(self.shown_rect(r), pm,
                              QRectF(pm.rect()))
@@ -1096,7 +1094,6 @@ class PageWidget(QWidget):
             # the page's links, outlined so they can be found and clicked to change them
             p.setPen(QPen(QColor(0, 90, 220), 1, Qt.DashLine))
             p.setBrush(QColor(0, 90, 220, 28))
-            z = self.view.zoom
             for r, _ln in self.view.links(self.index):
                 p.drawRect(self.shown_rect(r))
             p.setBrush(Qt.NoBrush)

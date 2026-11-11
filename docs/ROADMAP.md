@@ -47,6 +47,16 @@ a decision changes or a piece of work lands. Details of each version are in
   and OCR); bookmarks from headings, tags or sheet numbers and Insert table of contents;
   reading comfort (Full screen, Presentation, page layouts, Reading view, Read aloud with the
   system's voices, Auto scroll; the builds leave out Qt's multimedia backends and FFmpeg).
+- 1.10.1: links to other files found again when an index was made on another computer or its
+  folders moved (the owner's drawing index, 9 Nov).
+- 1.11 (owner, 11 Nov, from the first outside tester's issue #82 and the owner's own use):
+  View > Working space around pages (markups kept beside a page, shown and saved, not printed
+  unless asked; other PDF programs don't show them, so Sanitize and Remove hidden information
+  take them out); Pages > Add space around page (real page, everything staying in place);
+  Print: Comments beside the page; what's drawn stays selected and Set as Default; opacity on
+  pictures and captures fixed; PyMuPDF 2.1 (MuPDF 1.28.6; issue #80; the owner chose to take it
+  with this release, not 1.10.1). Bluebeam's own manual and forum were read for how it does
+  these (support.bluebeam.com and community.bluebeam.com are allowed in the environment).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

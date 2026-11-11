@@ -156,6 +156,30 @@ class WorkingSpace(unittest.TestCase):
                    if img.pixelColor(x, y).blue() > 200 and img.pixelColor(x, y).red() < 60)
         self.assertEqual(blue, 0)                           # the page only: not printed
 
+    def test_printed_when_asked(self):
+        """Print > Comments beside the page: the sheet takes in the page and what's beside
+        it, scaled to the paper; the page itself prints as before, inside it."""
+        dlg = PrintDialog(None, self.v)
+        self.assertTrue(dlg.beside.isEnabled())
+        paper0, box0 = dlg.sheet(0)
+        dlg.beside.setChecked(True)
+        paper, box = dlg.sheet(0)
+        self.assertLess(box.width(), box0.width())          # the page smaller, to make room
+        img = QImage(int(paper.width()), int(paper.height()), QImage.Format_RGB32)
+        img.fill(0xFFFFFFFF)
+        p = QPainter(img)
+        self.assertTrue(dlg._draw_bands(p, 0, box, 72))
+        self.assertTrue(dlg._draw_beside(p, 0, box, 72))
+        p.end()
+        k = box.width() / 612
+        at = QPointF(box.x() + 700 * k, box.y() + 350 * k).toPoint()
+        c = img.pixelColor(at)
+        self.assertEqual((c.red(), c.green(), c.blue()), (0, 0, 255))
+        at = QPointF(box.x() + 150 * k, box.y() + 150 * k).toPoint()
+        self.assertEqual(img.pixelColor(at).red(), 0)        # the page's square, in place
+        # page 2 has nothing beside it: printed as before
+        self.assertEqual(dlg.sheet(1)[1], PrintDialog(None, self.v).sheet(1)[1])
+
     def test_going_to_a_page_shows_its_top(self):
         self.on()
         self.v.goto_page(1)
