@@ -47,9 +47,44 @@ a decision changes or a piece of work lands. Details of each version are in
   and OCR); bookmarks from headings, tags or sheet numbers and Insert table of contents;
   reading comfort (Full screen, Presentation, page layouts, Reading view, Read aloud with the
   system's voices, Auto scroll; the builds leave out Qt's multimedia backends and FFmpeg).
+- 1.10.1: links to other files found again when an index was made on another computer or its
+  folders moved (the owner's drawing index, 9 Nov).
+- 1.11 (owner, 11 Nov, from the first outside tester's issue #82 and the owner's own use):
+  markups anywhere in the gray around a page (the gray works as it always has; a page with
+  markups beside it gets just the room they need; Review > Show markups on the page / outside
+  pages; Fit page and markups; printed only when asked, on the same sheet or on an extra
+  sheet at scale; other PDF programs don't show them, so Sanitize and Remove hidden
+  information take them out); Pages > Add space around page (real page, everything staying in
+  place); what's drawn stays selected and Set as Default; opacity on pictures and captures
+  fixed; the front document tab marked; PyMuPDF 2.1 (MuPDF 1.28.6; issue #80; the owner chose
+  to take it with this release, not 1.10.1). Bluebeam's own manual and forum were read for
+  how it does these (support.bluebeam.com and community.bluebeam.com are allowed in the
+  environment).
+
+- 1.11.1 (owner, 11 Nov, from the owner's use): dragging a page in the Pages panel scrolls the
+  list near and past its top or bottom, so a page can go anywhere in a long document; Create
+  PDF from images and Combine files can recognize the text on the pictures (OCR) and save it.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
+0. **The next fix release: Redo lost after undoing Auto bookmarks** (owner, 11 Nov: ship 1.11,
+   fix this next; 1.11.1 went to the owner's Pages panel and OCR requests).
+   Found by the random battery (seed 31, 1500 steps, PyMuPDF 2.0 and 2.1, also in 1.10.1): after
+   an Auto bookmarks step is undone, opening a page with a calculated form field again (MuPDF's
+   fz_load_page) makes MuPDF write that field's appearance anew (a new Helvetica font object
+   in its /Resources), and that change drops every step to redo. Not reproduced yet outside
+   the full run (the state MuPDF keeps in memory matters, not the file); NeedAppearances is
+   false and resynth_required and recalculate are 0 at that point. Nothing is lost but Redo.
+0. **From the first outside tester (issue #82, Hamish Poole-Hill, 11 Nov; owner: "good ideas"):**
+   - **Grouping markups**, as Bluebeam's Group: several markups selected, grouped, then moved,
+     copied, styled and deleted as one (and Ungroup).
+   - **Markups on layers**: a markup put on a layer (new or the drawing's own), shown and
+     hidden with it in the Layers panel.
+   - (Done in 1.11: markups anywhere in the gray, for his use: "plans that are spread across
+     multiple sheets back together for review".)
+   - **The Mac download not installing** for a colleague of his: asked for the Mac's model,
+     macOS version and the message shown (Apple silicon and macOS 14.4 or newer only; not
+     signed by Apple yet, so Privacy & Security > Open Anyway the first time).
 1. **French, German and Portuguese** (the app and the manual), now that 1.10's features are in
    (owner, 6 Nov).
 2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath

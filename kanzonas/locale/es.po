@@ -6337,8 +6337,8 @@ msgid "Used for the text you add next; it's written into the page."
 msgstr "Se usa para el próximo texto que agregue; se escribe en la página."
 
 #: properties.py:223
-msgid "Saved for next time. New annotations use these settings."
-msgstr "Se guarda para la próxima vez. Las anotaciones nuevas usan esta configuración."
+msgid "For the next ones you make with this tool, saved for next time. To change one already on the page, click it first; right-click one and choose Set as Default to use its style here."
+msgstr "Para las próximas que haga con esta herramienta; se guarda para la próxima vez. Para cambiar una que ya está en la página, haga clic en ella primero; haga clic con el botón derecho en una y elija Establecer como predeterminado para usar su estilo aquí."
 
 #: properties.py:233
 msgid "Rotation (90° steps)"
@@ -10923,3 +10923,132 @@ msgstr "KanzonasPDF también lo buscó desde la carpeta de este documento, con l
 
 msgid "Opened {found} (the link points to {path}, which isn't there)"
 msgstr "Se abrió {found} (el vínculo apunta a {path}, que no está ahí)"
+
+msgid "Set as Default"
+msgstr "Establecer como predeterminado"
+
+msgid "This style is now the default for {tool}"
+msgstr "Este estilo es ahora el predeterminado de {tool}"
+
+msgid "Comments and markups outside the page (only KanzonasPDF shows them)"
+msgstr "Comentarios y marcas fuera de la página (solo KanzonasPDF los muestra)"
+
+msgid "Space added (Ctrl+Z undoes it; Crop pages takes it off again)"
+msgstr "Espacio agregado (Ctrl+Z lo deshace; Recortar páginas lo vuelve a quitar)"
+
+msgid "Add space"
+msgstr "Ampliar"
+
+msgid "Working space"
+msgstr "Espacio de trabajo"
+
+msgid "&Add space around page..."
+msgstr "&Agregar espacio alrededor de la página..."
+
+msgid "&Working space around pages"
+msgstr "&Espacio de trabajo alrededor de las páginas"
+
+msgid "Make the page bigger on the sides you choose, with everything on it staying where it is: room for comments, or to paste other sheets in"
+msgstr "Agrandar la página por los lados que elija, con todo lo que tiene quedándose donde está: espacio para comentarios, o para pegar otros planos"
+
+msgid "Gray room around each page to keep comments and pictures beside the drawing: shown and saved, never printed (other PDF programs don't show them)"
+msgstr "Espacio gris alrededor de cada página para guardar comentarios e imágenes junto al dibujo: se muestran y se guardan, nunca se imprimen (otros programas de PDF no los muestran)"
+
+msgid "Working space on: what's kept beside a page is shown and saved, but not printed"
+msgstr "Espacio de trabajo activado: lo que se guarda junto a una página se muestra y se guarda, pero no se imprime"
+
+msgid "Space can only be added; to take some away, use Crop pages."
+msgstr "Solo se puede agregar espacio; para quitarlo, use Recortar páginas."
+
+msgid "A PDF page can be at most 200 inches (5.08 m) on a side."
+msgstr "Una página PDF puede medir como máximo 200 pulgadas (5,08 m) por lado."
+
+msgid "Add space around page"
+msgstr "Agregar espacio alrededor de la página"
+
+msgid "The page gets bigger on these sides, as it's shown; the drawing, markups, links and form fields stay where they are on it. What you put in the new space prints and shows in every PDF program. Crop pages takes the space off again."
+msgstr "La página se agranda por estos lados, tal como se muestra; el dibujo, las marcas, los vínculos y los campos de formulario se quedan donde están en ella. Lo que ponga en el espacio nuevo se imprime y se ve en cualquier programa de PDF. Recortar páginas vuelve a quitar el espacio."
+
+msgid "Comments beside the page (working space)"
+msgstr "Comentarios junto a la página (espacio de trabajo)"
+
+msgid "Also print the comments and pictures kept outside the page's edge: each sheet takes in the page and them, scaled to the paper. The file isn't changed."
+msgstr "Imprimir también los comentarios e imágenes guardados fuera del borde de la página: cada hoja abarca la página y ellos, a escala del papel. El archivo no cambia."
+
+msgid "Markups outside the page"
+msgstr "Marcas fuera de la página"
+
+msgid "This markup is partly or wholly outside the page."
+msgstr "Esta marca está parcial o totalmente fuera de la página."
+
+msgid "KanzonasPDF keeps it and shows it (View > Working space around pages), but it doesn't print, and other PDF programs don't show it.\n\nPrint markups outside the page? Then each printed sheet takes in the page and them: the paper gets room on the sides where they are, so the page prints smaller. Nothing in the document changes size. You can change this each time in the Print window (Comments beside the page)."
+msgstr "KanzonasPDF la guarda y la muestra (Ver > Espacio de trabajo alrededor de las páginas), pero no se imprime, y otros programas de PDF no la muestran.\n\n¿Imprimir las marcas que están fuera de la página? Entonces cada hoja impresa abarca la página y ellas: el papel deja espacio en los lados donde están, así que la página se imprime más pequeña. Nada en el documento cambia de tamaño. Puede cambiarlo cada vez en la ventana Imprimir (Comentarios junto a la página)."
+
+msgid "Print them"
+msgstr "Imprimirlas"
+
+msgid "Don't print them"
+msgstr "No imprimirlas"
+
+msgid "Turn on View > Working space around pages to see what's outside the page"
+msgstr "Active Ver > Espacio de trabajo alrededor de las páginas para ver lo que está fuera de la página"
+
+msgid "On the page"
+msgstr "En la página"
+
+msgid "Outside pages"
+msgstr "Fuera de las páginas"
+
+msgid "Fit with markups"
+msgstr "Ajustar con marcas"
+
+msgid "Show markups on the &page"
+msgstr "Mostrar marcas en la &página"
+
+msgid "Show markups &outside pages"
+msgstr "Mostrar marcas &fuera de las páginas"
+
+msgid "Fit page and &markups"
+msgstr "Ajustar página y &marcas"
+
+msgid "Fit page and markups"
+msgstr "Ajustar página y marcas"
+
+msgid "KanzonasPDF keeps it and shows it in the gray beside the page, but other PDF programs don't show it, and it doesn't print unless you choose so.\n\nPrint markups outside the page? On the same sheet, the page prints smaller to make room; on an extra sheet after the page, the page prints at its size (a drawing stays at scale). Nothing in the document changes. You can change this each time in the Print window (Markups outside pages)."
+msgstr "KanzonasPDF la guarda y la muestra en el gris junto a la página, pero otros programas de PDF no la muestran, y no se imprime salvo que usted lo elija.\n\n¿Imprimir las marcas que están fuera de la página? En la misma hoja, la página se imprime más pequeña para dejar espacio; en una hoja extra después de la página, la página se imprime a su tamaño (un plano conserva su escala). Nada cambia en el documento. Puede cambiarlo cada vez en la ventana Imprimir (Marcas fuera de las páginas)."
+
+msgid "Same sheet"
+msgstr "Misma hoja"
+
+msgid "Extra sheet"
+msgstr "Hoja extra"
+
+msgid "Show or hide the markups on the pages (those kept outside the pages stay as they are)"
+msgstr "Mostrar u ocultar las marcas en las páginas (las guardadas fuera de las páginas quedan como están)"
+
+msgid "Show or hide the markups kept in the gray beside the pages (saved, not printed); hidden, the room around the pages closes up"
+msgstr "Mostrar u ocultar las marcas guardadas en el gris junto a las páginas (se guardan, no se imprimen); ocultas, el espacio alrededor de las páginas se cierra"
+
+msgid "Zoom so the page and the markups kept beside it fit in the window"
+msgstr "Hacer zoom para que la página y las marcas guardadas junto a ella quepan en la ventana"
+
+msgid "Markups outside pages are hidden: turn on Review > Show markups outside pages to see them"
+msgstr "Las marcas fuera de las páginas están ocultas: active Revisar > Mostrar marcas fuera de las páginas para verlas"
+
+msgid "Markups kept outside a page's edge (in the gray beside it) don't print unless you choose so here"
+msgstr "Las marcas guardadas fuera del borde de una página (en el gris junto a ella) no se imprimen salvo que lo elija aquí"
+
+msgid "Markups outside pages"
+msgstr "Marcas fuera de las páginas"
+
+msgid "Leave them out"
+msgstr "Dejarlas fuera"
+
+msgid "On the same sheet (the page smaller)"
+msgstr "En la misma hoja (la página más pequeña)"
+
+msgid "On an extra sheet after the page (the page at scale)"
+msgstr "En una hoja extra después de la página (la página a escala)"
+
+msgid "Sheet {n} of {total} (page {page}: markups outside it)"
+msgstr "Hoja {n} de {total} (página {page}: marcas fuera de ella)"

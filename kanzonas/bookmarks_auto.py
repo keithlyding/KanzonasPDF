@@ -27,6 +27,7 @@ adding another one.
 """
 
 import html
+import json
 import re
 import sys
 from collections import Counter, defaultdict
@@ -59,38 +60,151 @@ class Row:
         return self.cells == 1
 
 
-def _line_pieces(page):
-    """[(order, text, size, bold chars, chars, rect (unrotated), shown rect)] of the page's
-    upright lines."""
+# A page's lines are read from MuPDF's own outputs of the page's text (_mupdf_lines): its XML
+# without the characters (each line's box and direction), its HTML (each piece of a line in
+# one font, its size and whether the font is bold) and its JSON (the name of each line's first
+# font). PyMuPDF's get_text("dict") gives the same, but builds it a character at a time
+# through MuPDF calls that are each slow on macOS: a 500-page document took 3.5 s there
+# against 0.6 s on Linux (PyMuPDF 2.1; MuPDF's own outputs take 0.04 s per 200 pages on
+# both). A page they can't tell everything about falls back to get_text("dict") (_dict_lines):
+# when the three don't list the same lines, or when a line in several fonts could have a later
+# one whose name says bold though MuPDF doesn't take it as bold (only the first one's name is
+# known). On 1,631 pages of 420 documents both ways gave the same lines, words, sizes, bold
+# and boxes (PyMuPDF 2.0; with 2.1, which measures some fonts' lines from the font's own
+# heights, a line in a symbol font on 12 of them was up to a point taller through
+# get_text("dict")); 51 of them fell back (tests/test_bookmarks_auto.py: MuPDFLines).
+_SUBSET = re.compile(r"^[A-Z]{6}\+")
+_XML_ITEM = re.compile(r'<(block|line) bbox="([^"]*)"(?: wmode="[^"]*" dir="([^"]*)")?')
+_HTML_LINE = re.compile(r"<p\b[^>]*>(.*?)</p>", re.S)
+_HTML_TOKEN = re.compile(r'<(/?)([a-z]+)(?: style="([^"]*)")?\s*/?>|([^<]+)')
+_HTML_SIZE = re.compile(r"font-size:([0-9.]+)pt")
+
+
+def _mupdf_output(tp, write, *args):
+    m = pymupdf.mupdf
+    buf = m.fz_new_buffer(4096)
+    out = m.FzOutput(buf)
+    write(out, tp.this, *args)
+    out.fz_close_output()
+    return m.fz_buffer_extract_copy(buf).decode("utf-8", "replace")
+
+
+def _html_pieces(line):
+    """[(text, size, bold)] of one line of MuPDF's HTML (a <span> for each run in one font)."""
+    out = []
+    bold = 0
+    size = None
+    for close, tag, style, text in _HTML_TOKEN.findall(line):
+        if text:
+            if size is None:        # (MuPDF writes every letter in a span: not as expected)
+                raise ValueError("text outside a span")
+            out.append((html.unescape(text), size, bold > 0))
+        elif tag == "b":
+            bold += -1 if close else 1
+        elif tag == "span":
+            if close:
+                size = None
+            else:
+                found = _HTML_SIZE.search(style or "")
+                size = float(found.group(1)) if found else 0.0
+    return out
+
+
+def _mupdf_lines(page):
+    """[(direction, box, [(text, size, bold)])] of the page's lines, from MuPDF's outputs;
+    None when they can't tell everything get_text("dict") would."""
+    try:
+        return _read_mupdf_lines(page)
+    except Exception:           # (something in them not as expected: read it the other way)
+        return None
+
+
+def _read_mupdf_lines(page):
+    m = pymupdf.mupdf
+    tp = page.get_textpage(flags=_FLAGS)        # (through the text guard, as everywhere)
+    xml = _mupdf_output(tp, m.fz_print_stext_page_as_xml_with_flags, 0, 0)
+    page_html = _mupdf_output(tp, m.fz_print_stext_page_as_html, 0)
+    js = json.loads(_mupdf_output(tp, m.fz_print_stext_page_as_json, 1.0))
+    area = pymupdf.Rect(tp.rect)
+    ax0, ay0, ax1, ay1 = area
+    everywhere = area.is_infinite
+    lines, block = [], True
+    for kind, box, direction in _XML_ITEM.findall(xml):
+        x0, y0, x1, y1 = (float(v) for v in box.split())
+        # (get_text("dict") leaves out a block, and a line, that has no area on the page)
+        on = everywhere or (max(x0, ax0) < min(x1, ax1) and max(y0, ay0) < min(y1, ay1))
+        if kind == "block":
+            block = on
+        else:
+            lines.append((block and on, direction, (x0, y0, x1, y1)))
+    pieces = _HTML_LINE.findall(page_html)
+    firsts = [ln.get("font") or {} for b in js.get("blocks", ()) if b.get("type") == "text"
+              for ln in b.get("lines", ())]
+    if not (len(lines) == len(pieces) == len(firsts)):
+        return None
+    bold_font = {}                      # font name: MuPDF takes it as bold
+    for f in firsts:
+        bold_font[_SUBSET.sub("", f.get("name") or "")] = f.get("weight") == "bold"
+    risky = None                        # fonts whose name says bold, MuPDF not (or unknown)
+    out = []
+    for (keep, direction, r), line, first in zip(lines, pieces, firsts):
+        if not keep:
+            continue
+        spans = _html_pieces(line)
+        name = _SUBSET.sub("", first.get("name") or "")
+        if len(spans) > 1:
+            if risky is None:
+                names = {_SUBSET.sub("", f[3]) for f in page.get_fonts(full=True)}
+                risky = {n for n in names | set(bold_font)
+                         if _BOLD_NAME.search(n) and not bold_font.get(n)}
+            if risky:
+                return None
+        if spans and _BOLD_NAME.search(name):
+            spans[0] = (spans[0][0], spans[0][1], True)
+        out.append((tuple(float(v) for v in direction.split()), pymupdf.Rect(r), spans))
+    return out
+
+
+def _dict_lines(page):
+    """The same as _mupdf_lines, from PyMuPDF's get_text("dict")."""
     try:
         d = page.get_text("dict", flags=_FLAGS)
     except Exception:
         return []
+    return [(ln["dir"], pymupdf.Rect(ln["bbox"]),
+             [(s["text"], s["size"], bool(s["flags"] & 16 or _BOLD_NAME.search(s["font"] or "")))
+              for s in ln["spans"]])
+            for b in d.get("blocks", ()) if b.get("type") == 0 for ln in b.get("lines", ())]
+
+
+def _line_pieces(page):
+    """[(order, text, size, bold chars, chars, rect (unrotated), shown rect)] of the page's
+    upright lines."""
+    lines = _mupdf_lines(page)
+    if lines is None:
+        lines = _dict_lines(page)
     rot = page.rotation_matrix
-    turn = pymupdf.Matrix(rot.a, rot.b, rot.c, rot.d, 0, 0)
+    a, c = rot.a, rot.c
+    upright = page.rotation == 0        # (most pages: no turning, one rect for both)
     out = []
-    for b in d.get("blocks", ()):
-        if b.get("type") != 0:
+    for (dx, dy), r, spans in lines:
+        if dx * a + dy * c < 0.9:       # sideways text (labels on drawings): never a heading
             continue
-        for ln in b.get("lines", ()):
-            v = pymupdf.Point(ln["dir"]) * turn
-            if v.x < 0.9:               # sideways text (labels on drawings): never a heading
+        sizes = Counter()
+        bold = chars = 0
+        for text, size, is_bold in spans:
+            n = len("".join(text.split()))      # (letters and signs, not spaces: the same
+            if not n:                           # however a line is cut into pieces)
                 continue
-            sizes = Counter()
-            bold = chars = 0
-            for s in ln["spans"]:
-                n = len(s["text"].strip())
-                if not n:
-                    continue
-                sizes[round(s["size"] * 2) / 2] += n
-                if s["flags"] & 16 or _BOLD_NAME.search(s["font"] or ""):
-                    bold += n
-                chars += n
-            if not chars:
-                continue
-            text = " ".join("".join(s["text"] for s in ln["spans"]).split())
-            r = pymupdf.Rect(ln["bbox"])
-            out.append((len(out), text, sizes.most_common(1)[0][0], bold, chars, r, r * rot))
+            sizes[round(size * 2) / 2] += n
+            if is_bold:
+                bold += n
+            chars += n
+        if not chars:
+            continue
+        text = " ".join("".join(s[0] for s in spans).split())
+        out.append((len(out), text, sizes.most_common(1)[0][0], bold, chars, r,
+                    r if upright else r * rot))
     return out
 
 

@@ -14,7 +14,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pymupdf
 from PySide6.QtCore import Qt, Signal, QTimer, QObject, QEvent, QPoint, QPointF, QRectF
-from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor, QImage)
+from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor, QImage,
+                           QMouseEvent)
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QGridLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
                                QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
@@ -23,6 +24,7 @@ from . import annotations, dialogs, hit_index, review, signatures, smart_forms, 
     undo_journal
 from .i18n import tr
 from .inline_editor import InlineEditor
+from .outside import page_outside_margins
 from .page_widget import PageWidget
 
 PAGE_GAP = 12
@@ -646,7 +648,32 @@ class _Canvas(QWidget):
                 self._down = w
                 e.accept()
                 return
+        # anywhere else in the gray: the nearest page has it, as a point outside it, so a
+        # markup can be drawn, put or moved there (issue #82); that page then makes room
+        if getattr(v, "doc", None) is not None and not v.read_only:
+            w, _pos = self._page_at(e.position())
+            if w is not None:
+                self._fwd = w
+                self._send(w, e, w.mousePressEvent)
+                return
         super().mousePressEvent(e)
+
+    def _send(self, w, e, handler):
+        """Hand mouse event e to page widget w, at its place in w's coordinates."""
+        local = QPointF(w.mapFromGlobal(e.globalPosition()))
+        ev = QMouseEvent(e.type(), local, e.globalPosition(), e.button(), e.buttons(),
+                         e.modifiers())
+        handler(ev)
+        self.update()                   # (the outline of what's drawn out here)
+
+    def mouseDoubleClickEvent(self, e):
+        v = self._view
+        if getattr(v, "doc", None) is not None and not v.read_only and v._cad_pick is None:
+            w, _pos = self._page_at(e.position())
+            if w is not None:
+                self._send(w, e, w.mouseDoubleClickEvent)
+                return
+        super().mouseDoubleClickEvent(e)
 
     def mouseMoveEvent(self, e):
         from . import cad_select
@@ -657,6 +684,16 @@ class _Canvas(QWidget):
         if not e.buttons() and self._view._cad_pick is not None:
             cad_select.hover(self._view._cad_pick["w"], e)
             return
+        fwd = getattr(self, "_fwd", None)
+        if fwd is not None and e.buttons():
+            self._send(fwd, e, fwd.mouseMoveEvent)
+            return
+        if not e.buttons() and getattr(self._view, "doc", None) is not None:
+            w, _pos = self._page_at(e.position())
+            if w is not None:           # (the cursor and what's under the pointer)
+                self._send(w, e, w.mouseMoveEvent)
+                self.setCursor(w.cursor())
+                return
         super().mouseMoveEvent(e)
 
     def mouseReleaseEvent(self, e):
@@ -665,7 +702,28 @@ class _Canvas(QWidget):
         if w is not None and w._cad_down is not None:
             cad_select.release(w, e, QPointF(w.mapFromGlobal(e.globalPosition())))
             return
+        fwd, self._fwd = getattr(self, "_fwd", None), None
+        if fwd is not None:
+            self._send(fwd, e, fwd.mouseReleaseEvent)
+            return
         super().mouseReleaseEvent(e)
+
+    def _paint_drag(self, p):
+        """While a box or line is dragged out from the gray (or into it): its outline here,
+        where the page's own drawing of it doesn't reach."""
+        fwd = getattr(self, "_fwd", None)
+        if fwd is None or fwd._drag_start is None or fwd._drag_now is None:
+            return
+        o = QPointF(fwd.pos())
+        a, b = fwd._drag_start + o, fwd._drag_now + o
+        p.setPen(QPen(self._view.tool_color(self._view.tool), 1, Qt.DashLine))
+        p.setBrush(Qt.NoBrush)
+        if self._view.tool in ("line", "arrow", "m_length", "callout"):
+            p.drawLine(a, b)
+        elif self._view.tool in ("ellipse", "circle"):
+            p.drawEllipse(QRectF(a, b).normalized())
+        else:
+            p.drawRect(QRectF(a, b).normalized())
 
     def paintEvent(self, e):
         super().paintEvent(e)
@@ -673,6 +731,7 @@ class _Canvas(QWidget):
         p = QPainter(self)
         try:
             cad_select.paint_outside(self._view, p)
+            self._paint_drag(p)
         finally:
             p.end()
 
@@ -689,6 +748,7 @@ class DocumentView(QScrollArea):
     searchChanged = Signal(int, int, bool)   # match shown (1-based, 0 = none), matches, still searching
     openFileRequested = Signal(str, int)      # a link to another PDF: path, page (0-based)
     selectionChanged = Signal()
+    toolDefaultsChanged = Signal(str)     # a tool's default style was set (Set as Default)
     signedDocument = Signal()
     oneShotPlaced = Signal()        # a signature / initials / date was placed
     selectToolRequested = Signal()
@@ -1032,6 +1092,8 @@ class DocumentView(QScrollArea):
             self.fit_width()
         elif self.fit_mode == "page":
             self.fit_page()
+        elif self.fit_mode == "markups":
+            self.fit_markups()
         self.goto_page(page)
         if not self.fit_mode == "page":
             self.center_horizontally(page)
@@ -1126,6 +1188,69 @@ class DocumentView(QScrollArea):
             w.update_size()
         self.widget().adjustSize()
 
+    # Markups outside a page (issue #82, the owner, 11 Nov): the gray around the pages is as it
+    # always was, and markups can be put anywhere in it; a page with markups beside it gets just
+    # the room they need, on those sides (left and right alike, so the pages stay lined up).
+    # View > Show markups (all of them), Show markups on the page, Show markups outside pages
+    # (off: hidden, and the room closes up again)
+    show_page_markups = True
+    show_outside = True
+    OUTSIDE_PAD = 18.0              # points of gray kept beyond the farthest markup outside
+
+    def outside_margins(self, index):
+        """(left, top, right, bottom) in points, as the page is shown: the room page index
+        needs around it for its markups outside it (0 where none is needed, and all 0 with
+        those markups hidden). Read from the file's /Annots and /Rect without loading the
+        page; pop-ups and links don't count (other programs leave them off the page)."""
+        if not (self.show_markups and self.show_outside):
+            return (0.0, 0.0, 0.0, 0.0)
+        cache = self.__dict__.setdefault("_margin_cache", {})
+        got = cache.get(index)
+        if got is None:
+            try:
+                got = page_outside_margins(self.doc, index)
+            except Exception:
+                got = (0.0, 0.0, 0.0, 0.0)
+            if any(got):
+                pad = self.OUTSIDE_PAD
+                left, top, right, bottom = (m + pad if m > 0 else 0.0 for m in got)
+                side = max(left, right)         # (the same on both sides: pages lined up)
+                got = (side, top, side, bottom)
+            cache[index] = got
+        return got
+
+    def forget_margins(self, pages=None):
+        """The room around these pages (None: all) is worked out again; the pages whose room
+        changed are laid out again. True when one did."""
+        cache = self.__dict__.setdefault("_margin_cache", {})
+        if pages is None:
+            cache.clear()
+            pages = range(len(getattr(self, "pages", [])))
+        else:
+            for i in pages:
+                cache.pop(i, None)
+        changed = False
+        for i in pages:
+            if 0 <= i < len(self.pages):
+                w = self.pages[i]
+                before = (w.width(), w.height())
+                w.update_size()
+                changed = changed or (w.width(), w.height()) != before
+        if changed and self.widget() is not None:
+            self.widget().adjustSize()
+        return changed
+
+    def set_outside_shown(self, page=None, outside=None):
+        """View > Show markups on the page / outside pages (None: as it is)."""
+        if page is not None:
+            self.show_page_markups = bool(page)
+        if outside is not None:
+            self.show_outside = bool(outside)
+        cur = self.current_page()
+        self.refresh_markup_display()
+        if self.forget_margins() and self.pages:
+            self.goto_page(cur)
+
     def _on_scroll(self, *_):
         cur = self.current_page()
         if cur != self._last_page:
@@ -1188,7 +1313,9 @@ class DocumentView(QScrollArea):
     def goto_page(self, index, y_offset=0):
         index = max(0, min(index, len(self.pages) - 1))
         self._show_index(index)
-        self.verticalScrollBar().setValue(self.pages[index].y() - PAGE_GAP + int(y_offset))
+        # (y_offset: from the page's top; its working space, if shown, is above it)
+        self.verticalScrollBar().setValue(self.pages[index].y() - PAGE_GAP + int(y_offset)
+                                          + int(self.pages[index].offset().y()))
         self._on_scroll()
 
     def showEvent(self, e):
@@ -1282,11 +1409,15 @@ class DocumentView(QScrollArea):
         one under the other, would exceed Qt's widget size."""
         cap = MAX_ZOOM
         rects = getattr(self, "page_rects", None) or []
-        for r in rects:
-            side = max(r.width, r.height, 1)
+        tall = 0.0
+        for i, r in enumerate(rects):
+            # (a page with markups beside it: its room is part of its place on the screen)
+            ml, mt, mr, mb = self.outside_margins(i) if getattr(self, "doc", None) is not None \
+                else (0, 0, 0, 0)
+            side = max(r.width + ml + mr, r.height + mt + mb, 1)
             cap = min(cap, WIDGET_PX / side)
+            tall += r.height + mt + mb
         if rects:
-            tall = sum(r.height for r in rects)
             cap = min(cap, (WIDGET_PX - (len(rects) + 1) * PAGE_GAP) / max(tall, 1))
         return max(MIN_ZOOM, cap)
 
@@ -1337,6 +1468,31 @@ class DocumentView(QScrollArea):
         self.set_zoom(min(avail_w / width, avail_h / height), keep_fit=True)
         self.fit_mode = "page"
         self.show_whole_page(page)
+
+    def fit_markups(self):
+        """Zoom > Fit page and markups: the page in view with the markups kept beside it (its
+        room around it) in the window, centered."""
+        page = self.current_page()
+        r = self.page_rects[page]
+        avail_w = self.viewport().width() - 2 * PAGE_GAP
+        avail_h = self.viewport().height() - 2 * PAGE_GAP
+        rows = [page]
+        if self.two_up():
+            rows = list(self.spread(page))
+            avail_w -= SPREAD_GAP * (len(rows) - 1)
+        width = height = 0.0
+        for i in rows:
+            ml, mt, mr, mb = self.outside_margins(i)
+            ri = self.page_rects[i]
+            width += ri.width + ml + mr
+            height = max(height, ri.height + mt + mb)
+        del r
+        self.set_zoom(min(avail_w / max(width, 1), avail_h / max(height, 1)), keep_fit=True)
+        self.fit_mode = "markups"
+        w = self.pages[page]
+        self.verticalScrollBar().setValue(int(w.y() - (self.viewport().height() - w.height()) / 2))
+        self.center_horizontally(page)
+        self._on_scroll()
 
     highlight_fields = True        # shade fillable form fields (View / Forms menu)
     show_markups = True            # Review > Show markups (off: the page as if unmarked)
@@ -1882,16 +2038,19 @@ class DocumentView(QScrollArea):
         if not getattr(self, "pages", None):
             return False
         # only when the whole page, top to bottom and side to side, is in the window
-        w = self.pages[self.current_page()]
+        # (the page itself: the working space around it, if shown, may reach past)
+        area = self.pages[self.current_page()].page_area()
         vp = self.viewport()
-        return w.height() <= vp.height() and w.width() <= vp.width()
+        return area.height() <= vp.height() and area.width() <= vp.width()
 
     def show_whole_page(self, index):
         """Scroll so page `index` is centered top to bottom in the window."""
         index = max(0, min(index, len(self.pages) - 1))
         self._show_index(index)
         w = self.pages[index]
-        self.verticalScrollBar().setValue(int(w.y() - (self.viewport().height() - w.height()) / 2))
+        area = w.page_area()            # (the page itself, inside its working space)
+        self.verticalScrollBar().setValue(int(w.y() + area.y() -
+                                              (self.viewport().height() - area.height()) / 2))
         self.center_horizontally(index)
         self._on_scroll()
 
@@ -2237,6 +2396,9 @@ class DocumentView(QScrollArea):
         else:
             for i in pages or []:
                 self.pages[i].invalidate()
+            # (a markup put outside its page, moved back or deleted: the room around it)
+            self.forget_margins(None if pages is None else
+                                [i for i in pages if 0 <= i < len(self.pages)])
             self.documentChanged.emit()
         return True
 
@@ -2399,6 +2561,7 @@ class DocumentView(QScrollArea):
                 self.markups_changed |= set(pages)
             for i in pages:
                 self.pages[i].invalidate()
+            self.forget_margins(pages)          # (a markup outside a page came or went)
             # (the page list draws the thumbnails in view again, as after an undo up to 1.6;
             # tests/test_speed_161_pages checks that)
             self.thumbs_changed = None
@@ -2603,6 +2766,7 @@ class DocumentView(QScrollArea):
     # ---- caches (cleared on every change) ------------------------------------
     def _clear_caches(self):
         self._gen = getattr(self, "_gen", 0) + 1   # (anything read from the pages is old)
+        self._margin_cache = {}        # page index -> its room for markups outside it
         self._dlists = {}              # page index -> parsed content, no markups (DisplayList)
         self._alists = {}              # page index -> its markups' DisplayList (None: none)
         self._tiles = OrderedDict()    # (page, scale, tx, ty) -> rendered tile, LRU
@@ -3764,7 +3928,15 @@ class DocumentView(QScrollArea):
         return QColor(self.tool_props(tool).get("stroke") or "#0078d7")
 
     # ---- creating annotations -------------------------------------------------
-    def _create(self, index, model, select=False):
+    def _create(self, index, model, select=None):
+        """Write a markup placed with a tool, in one undo step. It's selected (select None:
+        except in CAD mode): Properties then shows and changes it, while the tool stays
+        picked for the next one (the owner, 10 Nov: Properties changed the tool's style for
+        the next markup, not the one just drawn, and seemed to do nothing). In CAD mode, as
+        in AutoCAD, what's drawn isn't selected: a selection there shows grips, and the next
+        line starting on its end would take a grip instead."""
+        if select is None:
+            select = self.mouse_mode != "cad"
         made = {}
 
         def do():
@@ -5045,6 +5217,11 @@ class DocumentView(QScrollArea):
         becomes unusable once its Page object is garbage collected.)"""
         if not self.show_markups:
             return None
+        if not (self.show_page_markups and self.show_outside):
+            cb = self.doc[index].cropbox
+            on_page = 0 <= pt.x <= cb.width and 0 <= pt.y <= cb.height
+            if not (self.show_page_markups if on_page else self.show_outside):
+                return None
         shot = self._annot_shot_under(index, pt)
         return shot.xref if shot is not None else None
 
@@ -5448,6 +5625,33 @@ class DocumentView(QScrollArea):
             self.selectionChanged.emit()
         elif made:
             self._set_selection(index, [made.get(x, x) for x in sel] or list(made.values()))
+
+    def default_tool_of_selected(self):
+        """The tool whose default style Set as Default would set from the selected markup
+        (one markup, not a form field), or None."""
+        from . import tool_chest
+        m = self.selected_model
+        if self.selection is None or self.extra or m is None or m["kind"] == "field":
+            return None
+        tool = tool_chest.tool_for(m)
+        return tool if tool in annotations.DEFAULTS else None
+
+    def set_selected_as_default(self):
+        """Right-click > Set as Default: the selected markup's style becomes its tool's
+        default style, for the next markups made with it (as Bluebeam's Set as Default)."""
+        tool = self.default_tool_of_selected()
+        if tool is None:
+            return False
+        base = annotations.DEFAULTS[tool]
+        props = dict(annotations.tool_props(tool))
+        for k, v in self.selected_model["props"].items():
+            if k in base and k != "rotation" and annotations._fits(base[k], v):
+                props[k] = v
+        annotations.set_tool_props(tool, props)
+        self.toolDefaultsChanged.emit(tool)
+        self.statusMessage.emit(tr("This style is now the default for {tool}").format(
+            tool=annotations.LABELS.get(tool, tool)))
+        return True
 
     def update_selected_props(self, props):
         if self.selection is None or self.selected_model is None or \
@@ -8389,6 +8593,9 @@ class DocumentView(QScrollArea):
                                 xml_metadata=True)
                 remove_scripts(self.doc)
                 remove_private_data(self.doc)
+                # comments kept in the working space around a page: only KanzonasPDF shows
+                # them, so nobody else would know they're in the file
+                annotations.remove_outside(self.doc)
                 # scrub unlinks the old objects; a plain tobytes() would still carry them.
                 enc = self._orig_enc is not None and (self.doc.metadata or {}).get("encryption")
                 keep = {"encryption": pymupdf.PDF_ENCRYPT_KEEP} if enc else {}
@@ -8650,6 +8857,8 @@ class DocumentView(QScrollArea):
             self.fit_width()
         elif self.fit_mode == "page":
             self.fit_page()
+        elif self.fit_mode == "markups":
+            self.fit_markups()
 
     # ---- signatures & initials -------------------------------------------------------
     SIG_WIDTH = {"signature": 144.0, "initials": 54.0}     # default size in points
@@ -8852,6 +9061,8 @@ class DocumentView(QScrollArea):
         ("hidden_text", tr("Hidden text (e.g. invisible OCR text)"), False),
         ("links", tr("Links"), False),
         ("markups", tr("Comments and markups"), False),
+        ("outside", tr("Comments and markups outside the page (only KanzonasPDF shows them)"),
+         True),
         ("form_data", tr("Data typed into form fields"), False),
         ("thumbnails", tr("Page thumbnails and leftover redaction data"), True),
     ]
@@ -8892,6 +9103,8 @@ class DocumentView(QScrollArea):
                         self.doc.xref_set_key(self.doc.page_xref(i), "Thumb", "null")
             if opts.get("form_data"):
                 clear_form_data(self.doc)
+            if opts.get("outside") and not opts.get("markups"):
+                annotations.remove_outside(self.doc)
             if opts.get("markups"):
                 from . import pdf_speed
                 for i in range(self.doc.page_count):
@@ -9511,7 +9724,8 @@ class DocumentView(QScrollArea):
         pg = self.doc[index]
         w = pg.load_widget(xref)
         self._show_index(index)
-        top = self.pages[index].y() + (w.rect * pg.rotation_matrix).y0 * self.zoom
+        top = self.pages[index].y() + self.pages[index].offset().y() + \
+            (w.rect * pg.rotation_matrix).y0 * self.zoom
         vbar = self.verticalScrollBar()
         if not vbar.value() + 20 <= top <= vbar.value() + self.viewport().height() - 40:
             vbar.setValue(int(top - self.viewport().height() / 3))
@@ -10260,10 +10474,32 @@ class DocumentView(QScrollArea):
                 cb = page.cropbox
                 box = (rect + (cb.x0, cb.y0, cb.x0, cb.y0)) & page.mediabox
                 if box.width >= 2 and box.height >= 2:
+                    before = annotations.page_origin(page)
                     page.set_cropbox(box)
+                    page = self.doc[i]
+                    annotations.sync_page(page)
+                    annotations.rebase_page(page, annotations.page_origin(page) - before)
         self.modify(do, structural=True, changed=list(targets))
         self.statusMessage.emit(tr("Cropped (Ctrl+Z undoes it; Pages > Remove crop shows the "
                                    "whole page again)"))
+
+    def add_page_space(self, pages, margins):
+        """Pages > Add space around page: pages made bigger by margins (left, top, right,
+        bottom, points, as shown), with everything on them staying where it is (page_space.py);
+        one undo step. Raises ValueError (a sentence to show) before changing anything when a
+        page can't take it."""
+        from . import page_space
+        for i in pages:
+            why = page_space.check(self.doc[i], margins)
+            if why:
+                raise ValueError(why)
+
+        def do():
+            for i in pages:
+                page_space.add_space(self.doc[i], margins)
+        self.modify(do, structural=True, changed=list(pages))
+        self.statusMessage.emit(tr("Space added (Ctrl+Z undoes it; Crop pages takes it off "
+                                   "again)"))
 
     def remove_crop(self, index, all_pages=False):
         targets = range(self.doc.page_count) if all_pages else [index]
@@ -10274,7 +10510,11 @@ class DocumentView(QScrollArea):
         def do():
             for i in targets:
                 page = self.doc[i]
+                before = annotations.page_origin(page)
                 page.set_cropbox(page.mediabox)
+                page = self.doc[i]
+                annotations.sync_page(page)
+                annotations.rebase_page(page, annotations.page_origin(page) - before)
         self.modify(do, structural=True, changed=list(targets))
         self.statusMessage.emit(tr("Crop removed"))
 

@@ -759,7 +759,20 @@ def _image_appearance(page, a, model):
     # PyMuPDF shrinks a stamp's Rect to the picture's proportions: use the real box
     pr = (b * pdfcoords.to_pdf(page)).normalize()
     doc.xref_set_key(a.xref, "Rect", f"[{pr.x0:.4f} {pr.y0:.4f} {pr.x1:.4f} {pr.y1:.4f}]")
-    doc.update_stream(ap, (f"q {w * co:.5f} {w * si:.5f} {-h * si:.5f} {h * co:.5f} "
+    # its opacity: the appearance is written anew here, so the transparency PyMuPDF put into
+    # it is put back (the markup's /CA alone isn't drawn by MuPDF, nor by every viewer)
+    try:
+        alpha = float(model["props"].get("opacity", 1))
+    except (TypeError, ValueError):
+        alpha = 1.0
+    gs = ""
+    if 0 <= alpha < 1:
+        doc.xref_set_key(ap, "Resources/ExtGState/KZa",
+                         f"<</Type/ExtGState/CA {alpha:.4g}/ca {alpha:.4g}>>")
+        gs = "/KZa gs "
+    else:
+        doc.xref_set_key(ap, "Resources/ExtGState", "null")
+    doc.update_stream(ap, (f"q {gs}{w * co:.5f} {w * si:.5f} {-h * si:.5f} {h * co:.5f} "
                            f"{e:.4f} {f:.4f} cm /I Do Q\n").encode())
     # keep a direct reference so the image survives even if the appearance is rebuilt
     doc.xref_set_key(a.xref, "KZImage", f"{img} 0 R")
@@ -1185,6 +1198,82 @@ def translation(old, new):
         a.pop("rect", None)             # (a text markup's box is worked out from its quads)
         b.pop("rect", None)
     return d if _same(a, b) else None
+
+
+def rebase_page(page, d):
+    """After the page's boxes changed (Crop pages, Remove crop, Add space around page): the
+    positions KanzonasPDF keeps in page coordinates for its markups (their KZProps box,
+    target, points...) and links (their underline) move by d, the change of the page
+    coordinates of a fixed PDF point, so they stay with the markup, which didn't move in the
+    PDF. (Before: after Crop pages a box or callout jumped by the crop when next edited.)"""
+    if not d.x and not d.y:
+        return
+    doc = page.parent
+    for xref, _kind, _name in page.annot_xrefs():
+        kind, val = doc.xref_get_key(xref, KZ_KEY)
+        if kind == "string":
+            try:
+                store = json.loads(val)
+            except (ValueError, RecursionError):
+                store = None
+            geom = store.get("geom") if isinstance(store, dict) else None
+            if isinstance(geom, dict):
+                for k in ("box", "target", "at", "pts", "bend"):
+                    g = geom.get(k)
+                    if isinstance(g, list) and all(isinstance(c, (int, float)) for c in g):
+                        geom[k] = [c + (d.x if i % 2 == 0 else d.y) for i, c in enumerate(g)]
+                doc.xref_set_key(xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
+        kind, val = doc.xref_get_key(xref, "KZUnder")
+        if kind == "array" and "R" not in val:
+            doc.xref_set_key(xref, "KZUnder", _shift_pairs(val, d.x, d.y))
+
+
+def outside_page(page):
+    """The xrefs of the page's markups wholly outside it (in the working space around the
+    page: KanzonasPDF shows them, other PDF programs and printing don't), its form fields,
+    links and pop-ups left out. Hidden information: Sanitize document and Remove hidden
+    information take them out."""
+    shown = (page.cropbox - (page.cropbox.x0, page.cropbox.y0, page.cropbox.x0,
+                             page.cropbox.y0))      # (unrotated page coordinates)
+    out = []
+    for xref, kind, _name in page.annot_xrefs():
+        if kind in (pymupdf.PDF_ANNOT_WIDGET, pymupdf.PDF_ANNOT_LINK, pymupdf.PDF_ANNOT_POPUP):
+            continue
+        try:
+            r = page.load_annot(xref).rect
+        except Exception:
+            continue
+        if r.is_valid and not r.is_empty and not r.intersects(shown):
+            out.append(xref)
+    return out
+
+
+def remove_outside(doc):
+    """Remove the markups wholly outside their pages (outside_page), with their replies and
+    pop-ups. Returns how many."""
+    from . import pdf_speed
+    n = 0
+    for i in range(doc.page_count):
+        pg = doc[i]
+        gone = outside_page(pg)
+        if gone:
+            pdf_speed.delete_many(pg, gone)         # (with their replies and pop-ups)
+            n += len(gone)
+    return n
+
+
+def sync_page(page):
+    """After the page's boxes changed: MuPDF works out its page transform again and reloads
+    its links and markups (a loaded page keeps its links' positions from when it was loaded:
+    after Add space around page, a link read before was clicked where it no longer was)."""
+    mu = pymupdf.mupdf
+    mu.pdf_sync_page(mu.pdf_page_from_fz_page(page.this))
+
+
+def page_origin(page):
+    """Where PDF point (0, 0) is in the page's coordinates: compared before and after a
+    change of its boxes, the d for rebase_page."""
+    return pymupdf.Point(0, 0) * pdfcoords.to_page(page)
 
 
 def shift_in_place(page, xref, d, to_pdf=None):

@@ -357,6 +357,110 @@ class Speed(unittest.TestCase):
         self.assertLess(time.perf_counter() - t, 3.0)
 
 
+class MuPDFLines(unittest.TestCase):
+    """The lines read from MuPDF's own outputs (fast on macOS too) are those PyMuPDF's
+    get_text("dict") gives: words, sizes, bold, boxes, direction, and the lines get_text
+    leaves out; a page they can't tell everything about is read through get_text."""
+
+    @staticmethod
+    def through_dict(page):
+        with mock.patch.object(BA, "_mupdf_lines", lambda p: None):
+            return BA._line_pieces(page)
+
+    def same(self, page):
+        self.assertIsNotNone(BA._mupdf_lines(page), "read from MuPDF's outputs")
+        fast, slow = BA._line_pieces(page), self.through_dict(page)
+        self.assertEqual([p[:5] for p in fast], [p[:5] for p in slow])
+        for a, b in zip(fast, slow):
+            self.assertAlmostEqual(abs(a[6].tl - b[6].tl) + abs(a[6].br - b[6].br), 0, delta=0.01)
+        return fast
+
+    def test_fonts_sizes_bold_and_turned_pages(self):
+        d = pymupdf.open()
+        for rotation in (0, 90, 180, 270):
+            p = d.new_page()
+            p.insert_text((72, 90), "1 Chapter One", fontsize=18, fontname="hebo")
+            p.insert_text((72, 130), "Body & <text> été café", fontsize=10)
+            tw = pymupdf.TextWriter(p.rect)
+            tw.append((72, 160), "Run-in ", font=pymupdf.Font("hebo"), fontsize=11)
+            tw.append(tw.last_point, "heading then body", font=pymupdf.Font("helv"),
+                      fontsize=11)
+            tw.append((72, 190), "Small ", font=pymupdf.Font("tiro"), fontsize=8)
+            tw.append(tw.last_point, "and big", font=pymupdf.Font("tiro"), fontsize=16)
+            tw.write_text(p)
+            p.insert_text((300, 500), "Sideways label", fontsize=10, rotate=90)
+            p.set_rotation(rotation)
+        d = pymupdf.open("pdf", d.tobytes())
+        for page in d:
+            pieces = self.same(page)
+            texts = [p[1] for p in pieces]
+            if page.rotation == 90:             # (only what reads upright as shown)
+                self.assertEqual(texts, ["Sideways label"])
+            if page.rotation == 0:
+                self.assertIn("Body & <text> été café", texts)
+                self.assertNotIn("Sideways label", texts)
+                run_in = next(p for p in pieces if p[1].startswith("Run-in"))
+                self.assertEqual((run_in[3], run_in[4]), (6, 21))     # 6 of 21 letters bold
+
+    def test_lines_with_no_area_are_left_out(self):
+        d = pymupdf.open()
+        p = d.new_page()
+        p.insert_text((72, 100), "Item one", fontsize=11)
+        p.insert_text((-200, 300), "Off the page", fontsize=11)
+        # a letter drawn with no height (MuPDF lists its line, get_text("dict") doesn't)
+        c = p.get_contents()[0]
+        d.update_stream(c, d.xref_stream(c) + b"\nq BT /%s 11 Tf 1 0 0 0 72 400 Tm (x) Tj"
+                        b" ET Q" % p.get_fonts()[0][4].encode())
+        page = pymupdf.open("pdf", d.tobytes())[0]
+        self.assertEqual([p[1] for p in self.same(page)], ["Item one"])
+
+    def test_bold_by_the_font_name_or_by_mupdf(self):
+        # "Demi" in the name only (MuPDF doesn't take it as bold), and a font MuPDF takes as
+        # bold (its descriptor says so) with no such word in its name: both are bold
+        for name, descriptor in (("Foundry-Demi", None),
+                                 ("Foundry", "<</Type/FontDescriptor/FontName/Foundry"
+                                  "/Flags 262176/FontBBox[0 0 1000 1000]/ItalicAngle 0"
+                                  "/Ascent 800/Descent -200/CapHeight 700/StemV 160"
+                                  "/FontWeight 700>>")):
+            d = pymupdf.open()
+            p = d.new_page()
+            p.insert_text((72, 100), "Some words here", fontsize=12)
+            x = p.get_fonts()[0][0]
+            d.xref_set_key(x, "BaseFont", "/" + name)
+            if descriptor:
+                fd = d.get_new_xref()
+                d.update_object(fd, descriptor)
+                d.xref_set_key(x, "FontDescriptor", "%d 0 R" % fd)
+            page = pymupdf.open("pdf", d.tobytes())[0]
+            (piece,) = self.same(page)
+            self.assertEqual((piece[3], piece[4]), (13, 13), name)
+
+    def test_a_font_named_bold_that_isnt_reads_through_get_text(self):
+        # a line in two fonts, and one of the page's fonts named "Demi" though MuPDF doesn't
+        # take it as bold: which piece of the line is in it isn't told by MuPDF's outputs
+        d = pymupdf.open()
+        p = d.new_page()
+        tw = pymupdf.TextWriter(p.rect)
+        tw.append((72, 100), "Plain words ", font=pymupdf.Font("helv"), fontsize=12)
+        tw.append(tw.last_point, "Demi words", font=pymupdf.Font("tiro"), fontsize=12)
+        tw.write_text(p)
+        x = next(f[0] for f in p.get_fonts() if f[3] == "Times-Roman")
+        d.xref_set_key(x, "BaseFont", "/Foundry-Demi")
+        page = pymupdf.open("pdf", d.tobytes())[0]
+        self.assertIsNone(BA._mupdf_lines(page))
+        self.assertEqual(BA._line_pieces(page), self.through_dict(page))
+
+    def test_outputs_not_as_expected_read_through_get_text(self):
+        with self.assertRaises(ValueError):
+            BA._html_pieces("words outside a span")
+        d = pymupdf.open()
+        d.new_page().insert_text((72, 100), "Heading", fontsize=18)
+        page = pymupdf.open("pdf", d.tobytes())[0]
+        with mock.patch.object(BA, "_HTML_LINE", BA.re.compile("(?!)")):    # (no lines)
+            self.assertIsNone(BA._mupdf_lines(page))
+            self.assertEqual([p[1] for p in BA._line_pieces(page)], ["Heading"])
+
+
 # ---- the table of contents ----------------------------------------------------------------------
 def numbered(n=12):
     d = pymupdf.open()

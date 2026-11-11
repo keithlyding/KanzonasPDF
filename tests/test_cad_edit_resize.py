@@ -69,7 +69,8 @@ class CadWindow(unittest.TestCase):
         APP.processEvents()
 
     def at(self, x, y):
-        return QPoint(int(x * self.v.zoom), int(y * self.v.zoom))
+        o = self.v.pages[0].offset()        # (the working space around the page, if shown)
+        return QPoint(int(o.x() + x * self.v.zoom), int(o.y() + y * self.v.zoom))
 
     def rects(self):
         page = self.v.doc[0]

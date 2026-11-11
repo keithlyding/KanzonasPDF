@@ -138,7 +138,11 @@ feature, and update it when a decision changes or a piece of work lands.
 - Text is read through `Page.get_textpage`, which `text_guard.py` wraps: MuPDF 1.28 crashes
   on nested ActualText, and such pages are read with TEXT_IGNORE_ACTUALTEXT. Read text through
   PyMuPDF's page methods (or ask `text_guard.flags_for`), never with MuPDF's stext calls
-  directly; the self-test check "text reading guard" fails if the guard is off.
+  directly; the self-test check "text reading guard" fails if the guard is off. (Printing a
+  TextPage made by `Page.get_textpage` with MuPDF's own outputs is fine: Auto bookmarks'
+  heading scan does, `bookmarks_auto._mupdf_lines`, because PyMuPDF's per-character text
+  output, get_text("dict"), "words", even plain "text", is 8-13 times slower on macOS than on
+  Linux, MuPDF's own outputs as fast on both.)
 - Page content is rendered without markups and kept by a content key (`render_layers.py`,
   `DocumentView._content_key`): any content change must go through `modify` with its pages
   (or `_clear_caches()`), or the old content render stays on screen.

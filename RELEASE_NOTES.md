@@ -23,6 +23,36 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 **Correcciones**
 - Panel Páginas: al arrastrar una página, la lista ahora se desplaza si la mantiene cerca de la parte de arriba o de abajo, o justo por encima o por debajo de la lista, así que una página puede ir a cualquier lugar de un documento largo.
 
+## 1.11
+
+**New**
+- Markups anywhere in the gray around a page: put comments, pictures or other sheets beside a drawing (to put a plan spread over several sheets back together). The page makes room for them, nothing gets covered, and Fit page and markups shows it all. They're saved but don't print unless you choose (on the same sheet, or on an extra sheet so the drawing stays at scale), and other PDF programs don't show them. Review > Show markups on the page and Show markups outside pages hide one or the other; Sanitize document and Remove hidden information take them out.
+- Pages > Add space around page: make a page bigger on the sides you choose, with the drawing and everything on it staying where it is. The new space is real page: it prints and shows everywhere, so it's room for comments or for pasting in other sheets to make one combined plan.
+- What you just drew stays selected, so Properties changes it right away; right-click a markup > Set as Default to use its style for the next ones. The Properties title shows plainly whether you're changing a markup or a tool's style.
+- The first time something you draw, paste or move goes outside a page, KanzonasPDF asks how markups outside pages should print (Don't ask again stops the question).
+- The document tab in front is easier to spot: a blue line along its top, the other tabs' names a little dimmer.
+
+**Fixed**
+- Opacity now works on pictures and on Capture area's pasted captures (they stayed solid).
+- The opacity slider applies when you click its track or use the arrow keys, not only when you drag it.
+- After Crop pages, a box or callout no longer jumps when you edit it.
+- Security: PDF reading updated (PyMuPDF 2.1, with MuPDF 1.28.6).
+
+## 1.11 (es)
+
+**Novedades**
+- Marcas en cualquier lugar del gris alrededor de una página: ponga comentarios, imágenes u otros planos junto a un dibujo (para volver a juntar un plano repartido en varias hojas). La página deja espacio para ellos, nada queda tapado y Ajustar página y marcas lo muestra todo. Se guardan pero no se imprimen salvo que lo elija (en la misma hoja, o en una hoja extra para que el plano conserve su escala), y otros programas de PDF no los muestran. Revisar > Mostrar marcas en la página y Mostrar marcas fuera de las páginas ocultan unas u otras; Sanear documento y Quitar la información oculta las quitan.
+- Páginas > Agregar espacio alrededor de la página: agrande una página por los lados que elija, con el dibujo y todo lo que tiene quedándose donde está. El espacio nuevo es página real: se imprime y se ve en todas partes, así que sirve para comentarios o para pegar otros planos y formar un solo plano combinado.
+- Lo que acaba de dibujar queda seleccionado, así que Propiedades lo cambia enseguida; clic con el botón derecho en una marca > Establecer como predeterminado para usar su estilo en las siguientes. El título de Propiedades muestra claramente si cambia una marca o el estilo de una herramienta.
+- La primera vez que algo que dibuja, pega o mueve sale de una página, KanzonasPDF pregunta cómo deben imprimirse las marcas fuera de las páginas (No volver a preguntar hace que no pregunte más).
+- La pestaña del documento de delante se distingue mejor: una línea azul arriba y los nombres de las demás pestañas un poco más tenues.
+
+**Correcciones**
+- La opacidad ya funciona en las imágenes y en las capturas pegadas de Capturar área (se quedaban sólidas).
+- El control de opacidad se aplica al hacer clic en su guía o al usar las flechas del teclado, no solo al arrastrarlo.
+- Después de Recortar páginas, un cuadro o una llamada ya no salta al editarlo.
+- Seguridad: lectura de PDF actualizada (PyMuPDF 2.1, con MuPDF 1.28.6).
+
 ## 1.10.1
 
 **Fixed**
