@@ -11430,3 +11430,51 @@ msgstr "Adatta al testo"
 
 msgid "Fitted to the text (Ctrl+Z undoes it)"
 msgstr "Adattato al testo (Ctrl+Z annulla)"
+# ---- 1.14: dots
+msgid "Dot"
+msgstr "Punto"
+
+msgid "Text beside the dot:"
+msgstr "Testo accanto al punto:"
+
+msgid "Dot: click to place a numbered dot; choose filled or outline, the number and the text beside it in Properties (B)"
+msgstr "Punto: fai clic per mettere un punto numerato; scegli pieno o solo bordo, il numero e il testo accanto in Proprietà (B)"
+
+msgid "Filled"
+msgstr "Pieno"
+
+msgid "Outline only"
+msgstr "Solo bordo"
+
+msgid "Nothing"
+msgstr "Niente"
+
+msgid "Number and text"
+msgstr "Numero e testo"
+
+msgid "What is written with the dot. Its text is asked for when you place it; double-click a dot to change it."
+msgstr "Cosa viene scritto con il punto. Il testo viene chiesto quando lo metti; fai doppio clic su un punto per cambiarlo."
+
+msgid "Below"
+msgstr "Sotto"
+
+msgid "Above"
+msgstr "Sopra"
+
+msgid "Where the number or the text goes. With both, the text goes here and the number on the other side of the dot."
+msgstr "Dove va il numero o il testo. Con entrambi, il testo va qui e il numero dall'altra parte del punto."
+
+msgid "Number inside the dot"
+msgstr "Numero dentro il punto"
+
+msgid "New dots take the next number after the highest one in the document."
+msgstr "I nuovi punti prendono il numero successivo al più alto del documento."
+
+msgid "Dot size"
+msgstr "Dimensione del punto"
+
+msgid "Shows"
+msgstr "Mostra"
+
+msgid "Click the page to place a dot. When it shows a text, you type it after the click; double-click a dot to change its text."
+msgstr "Fai clic sulla pagina per mettere un punto. Se mostra un testo, lo scrivi dopo il clic; fai doppio clic su un punto per cambiarne il testo."

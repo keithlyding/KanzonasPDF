@@ -69,6 +69,9 @@ def every_kind(rotation):
     add(p, "m_area", points=[P(250, 420), P(350, 420), P(350, 500), P(250, 500)])
     add(p, "m_radius", points=[P(450, 600), P(500, 600)])
     add(p, "m_count", points=[P(450, 450)], n=1)
+    add(p, "dot", points=[P(420, 380)], text="dot text",                # (dots.py)
+        props={"show": "both", "side": "below"})
+    add(p, "dot", points=[P(480, 380)], props={"filled": False, "inside": True, "n": 7})
     add(p, "m_dim", points=[P(560, 540), P(760, 560), P(660, 525)],      # (dimensions.py)
         props={"head": "closed"})
     add(p, "callout", rect=pymupdf.Rect(550, 420, 700, 460), points=[P(520, 500)],

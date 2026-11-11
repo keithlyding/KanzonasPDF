@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.14
+
+**New**
+- Dot (Markup tab, shortcut B): one click places a numbered dot, filled or outline only, as for the elevation points on a floor plan. Show its number, a text or both beside it (right, below, left or above), or the number inside the dot; new dots and copies take the next number.
+
+## 1.14 (es)
+
+**Novedades**
+- Punto (pestaña Marcas, atajo B): un clic coloca un punto numerado, relleno o solo con contorno, como las cotas de un plano. Muestre su número, un texto o ambos junto a él (a la derecha, debajo, a la izquierda o encima), o el número dentro del punto; los puntos nuevos y las copias toman el número siguiente.
+
+## 1.14 (it)
+
+**Novità**
+- Punto (scheda Annotazioni, scorciatoia B): un clic mette un punto numerato, pieno o solo bordo, come le quote su una pianta. Mostra il numero, un testo o entrambi accanto (a destra, sotto, a sinistra o sopra), oppure il numero dentro il punto; i nuovi punti e le copie prendono il numero successivo.
+
 ## 1.13.1
 
 **New**

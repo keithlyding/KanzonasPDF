@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QPixmap, QIcon
 from PySide6.QtWidgets import (QWidget, QFormLayout, QVBoxLayout, QLabel, QToolButton,
                                QCheckBox, QDoubleSpinBox, QSlider, QComboBox, QHBoxLayout,
+                               QSpinBox,
                                QColorDialog, QPushButton, QLineEdit)
 
 from . import annotations as A
@@ -62,6 +63,8 @@ class PropertiesPanel(QWidget):
     def __init__(self):
         super().__init__()
         self._kind = None
+        self._selected = False
+        self._props = {}
         self._loading = False
         outer = QVBoxLayout(self)
         self.title = QLabel()
@@ -169,6 +172,34 @@ class PropertiesPanel(QWidget):
         self.fit.setToolTip(tr("The box grows or shrinks to its text as you type or change "
                                "the font size; its width stays, and the text wraps in it. "
                                "Changing its height by hand turns this off."))
+        # a dot's options (dots.py)
+        self.filled = QComboBox()
+        self.filled.addItem(tr("Filled"), True)
+        self.filled.addItem(tr("Outline only"), False)
+        self.dot_size = QDoubleSpinBox()
+        self.dot_size.setRange(1, 72)
+        self.dot_size.setSuffix(" pt")
+        self.dot_size.setKeyboardTracking(False)
+        self.dot_show = QComboBox()
+        self.dot_show.addItem(tr("Nothing"), "none")
+        self.dot_show.addItem(tr("Number"), "number")
+        self.dot_show.addItem(tr("Text"), "text")
+        self.dot_show.addItem(tr("Number and text"), "both")
+        self.dot_show.setToolTip(tr("What is written with the dot. Its text is asked for when "
+                                    "you place it; double-click a dot to change it."))
+        self.side = QComboBox()
+        self.side.addItem(tr("Right"), "right")
+        self.side.addItem(tr("Below"), "below")
+        self.side.addItem(tr("Left"), "left")
+        self.side.addItem(tr("Above"), "above")
+        self.side.setToolTip(tr("Where the number or the text goes. With both, the text goes "
+                                "here and the number on the other side of the dot."))
+        self.inside = QCheckBox(tr("Number inside the dot"))
+        self.number = QSpinBox()
+        self.number.setRange(0, 999999)
+        self.number.setKeyboardTracking(False)
+        self.number.setToolTip(tr("New dots take the next number after the highest one in "
+                                  "the document."))
 
         self.rows = {}
         for key, label, w in (("title", tr("Title"), self.title_edit),
@@ -183,6 +214,12 @@ class PropertiesPanel(QWidget):
                               ("cloud", "", self.cloud),
                               ("markup", tr("Marks text with"), self.markup),
                               ("for", tr("Placeholder for"), self.for_who),
+                              ("filled", tr("Dot"), self.filled),
+                              ("size", tr("Dot size"), self.dot_size),
+                              ("show", tr("Shows"), self.dot_show),
+                              ("n", tr("Number"), self.number),
+                              ("side", tr("Position"), self.side),
+                              ("inside", "", self.inside),
                               ("font", tr("Font"), font_row),
                               ("text_color", tr("Text color"), self.text_color),
                               ("stroke", tr("Line color"), stroke_row),
@@ -232,6 +269,12 @@ class PropertiesPanel(QWidget):
         self.show_totals.toggled.connect(self._emit)
         self.border.toggled.connect(self._emit)
         self.fit.toggled.connect(self._emit)
+        self.filled.currentIndexChanged.connect(self._emit)
+        self.dot_size.valueChanged.connect(self._emit)
+        self.dot_show.currentIndexChanged.connect(self._emit)
+        self.side.currentIndexChanged.connect(self._emit)
+        self.inside.toggled.connect(self._emit)
+        self.number.valueChanged.connect(self._emit)
         self.show_target(None, None)
 
     def show_target(self, kind, props, selected=False):
@@ -262,12 +305,16 @@ class PropertiesPanel(QWidget):
                              "line only.") if kind == "edittext" else
                           tr("Used for the text you add next; it's written into the page.")
                           if kind in A.PAGE_TEXT_TOOLS else
+                          tr("Click the page to place a dot. When it shows a text, you type it "
+                             "after the click; double-click a dot to change its text.")
+                          if kind == "dot" else
                           tr("For the next ones you make with this tool, saved for next time. "
                              "To change one already on the page, click it first; right-click "
                              "one and choose Set as Default to use its style here."))
         self.reset.setVisible(not selected)
         for key, (lab, w) in self.rows.items():
-            vis = key in props and (key != "rotation" or selected)   # new markups start upright
+            # (new markups start upright; a new dot takes the next number)
+            vis = key in props and (key not in ("rotation", "n") or selected)
             lab.setVisible(vis)
             w.setVisible(vis)
         if "rotation" in props:
@@ -284,7 +331,8 @@ class PropertiesPanel(QWidget):
             self.no_stroke.setVisible(kind in BORDERLESS)
             self.no_stroke.setChecked(props["stroke"] is None and kind in BORDERLESS)
             self.rows["stroke"][0].setText(tr("Border color") if kind in ("textbox", "legend") else
-                                           tr("Color") if kind in A.MARKUP + ("note", "stamp")
+                                           tr("Color") if kind in A.MARKUP + ("note", "stamp",
+                                                                               "dot")
                                            else tr("Line color"))
         if "fill" in props:
             self.fill.set_color(props["fill"])
@@ -293,7 +341,7 @@ class PropertiesPanel(QWidget):
             self.text_color.set_color(props["text_color"])
         if "width" in props:
             self.width.setValue(float(props["width"]))
-            self.rows["width"][0].setText(tr("Border width") if kind == "textbox"
+            self.rows["width"][0].setText(tr("Border width") if kind in ("textbox", "dot")
                                           else tr("Line width"))
         if "fontsize" in props:
             keep = kind == "edittext"          # 0 = keep each line's own size
@@ -334,6 +382,18 @@ class PropertiesPanel(QWidget):
             self.border.setChecked(bool(props["border"]))
         if "fit" in props:
             self.fit.setChecked(bool(props["fit"]))
+        if "filled" in props:
+            self.filled.setCurrentIndex(0 if props["filled"] else 1)
+        if "size" in props:
+            self.dot_size.setValue(float(props["size"]))
+        if "show" in props:
+            self.dot_show.setCurrentIndex(max(0, self.dot_show.findData(props["show"])))
+        if "side" in props:
+            self.side.setCurrentIndex(max(0, self.side.findData(props["side"])))
+        if "inside" in props:
+            self.inside.setChecked(bool(props["inside"]))
+        if "n" in props:
+            self.number.setValue(int(props["n"] or 0))
         if "font" in props:
             self._fill_fonts(kind, props.get("font") or "")
             page_text = kind != "textbox"           # comments can't use bold / italic fonts
@@ -342,7 +402,28 @@ class PropertiesPanel(QWidget):
             self.bold.setChecked(bool(props.get("bold")))
             self.italic.setChecked(bool(props.get("italic")))
         self._props = dict(props)
+        self._selected = selected
+        self._dot_rows()
         self._loading = False
+
+    def _dot_rows(self):
+        """A dot's rows that mean something for what it shows (none of them when it shows
+        nothing but itself)."""
+        p = self._props
+        if self._kind != "dot":
+            return
+        show = self.dot_show.currentData()
+        number = show in ("number", "both")
+        inside = number and self.inside.isChecked()
+        for key, vis in (("n", number and self._selected),
+                         ("inside", number),
+                         ("side", show != "none" and not (show == "number" and inside)),
+                         ("text_color", show != "none"),
+                         ("fontsize", show != "none")):
+            if key in p:
+                lab, w = self.rows[key]
+                lab.setVisible(vis)
+                w.setVisible(vis)
 
     def _fill_heads(self, kind):
         """The arrowheads the kind of markup can have (a dimension's own set)."""
@@ -457,6 +538,18 @@ class PropertiesPanel(QWidget):
             p["border"] = self.border.isChecked()
         if "fit" in p:
             p["fit"] = self.fit.isChecked()
+        if "filled" in p:
+            p["filled"] = bool(self.filled.currentData())
+        if "size" in p:
+            p["size"] = self.dot_size.value()
+        if "show" in p:
+            p["show"] = self.dot_show.currentData() or "number"
+        if "side" in p:
+            p["side"] = self.side.currentData() or "right"
+        if "inside" in p:
+            p["inside"] = self.inside.isChecked()
+        if "n" in p:
+            p["n"] = self.number.value()
         if "rotation" in p:
             v = self.rotation.value()
             if self._kind in A.QUARTER_TURNS:
@@ -464,4 +557,5 @@ class PropertiesPanel(QWidget):
             old = float(p.get("rotation") or 0)
             p["rotation"] = old if abs(((v - old + 180) % 360) - 180) < 1e-6 else v % 360
         self._props = p
+        self._dot_rows()
         self.propsChanged.emit(p)
