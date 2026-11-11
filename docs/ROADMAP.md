@@ -60,6 +60,13 @@ a decision changes or a piece of work lands. Details of each version are in
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
+0. **1.11.1: Redo lost after undoing Auto bookmarks** (owner, 11 Nov: ship 1.11, fix this next).
+   Found by the random battery (seed 31, 1500 steps, PyMuPDF 2.0 and 2.1, also in 1.10.1): after
+   an Auto bookmarks step is undone, opening a page with a calculated form field again (MuPDF's
+   fz_load_page) makes MuPDF write that field's appearance anew (a new Helvetica font object
+   in its /Resources), and that change drops every step to redo. Not reproduced yet outside
+   the full run (the state MuPDF keeps in memory matters, not the file); NeedAppearances is
+   false and resynth_required and recalculate are 0 at that point. Nothing is lost but Redo.
 1. **French, German and Portuguese** (the app and the manual), now that 1.10's features are in
    (owner, 6 Nov).
 2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
