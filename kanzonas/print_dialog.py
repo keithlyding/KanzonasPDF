@@ -2,6 +2,7 @@
 size on the left, a preview of each sheet as it will print on the right (like Acrobat's and
 PDF-XChange's print dialogs; Windows' standard print dialog has no preview)."""
 
+import math
 import re
 
 import pymupdf
@@ -61,6 +62,37 @@ def print_list(page, markups=True):
     return pymupdf.DisplayList(dl)
 
 
+def print_annots_list(page):
+    """The page's markups and form fields that print (the Print flag), without the page's
+    content, as a pymupdf.DisplayList: what's kept beside the page is drawn from it (Print:
+    Markups outside pages)."""
+    m = pymupdf.mupdf
+    pdf_page = m.pdf_page_from_fz_page(page.this)
+    dl = m.FzDisplayList(m.fz_bound_page(page.this))
+    dev = m.fz_new_list_device(dl)
+    try:
+        m.pdf_run_page_annots_with_usage(pdf_page, dev, m.FzMatrix(), "Print", m.FzCookie())
+        m.pdf_run_page_widgets_with_usage(pdf_page, dev, m.FzMatrix(), "Print", m.FzCookie())
+    finally:
+        m.fz_close_device(dev)
+    return pymupdf.DisplayList(dl)
+
+
+def beside_rect(page):
+    """The page (as shown) with the markups kept beside it (partly or wholly outside it, in
+    the working space), or None when none are."""
+    shown = page.rect
+    out = None
+    for a in page.annots():
+        if a.flags & pymupdf.PDF_ANNOT_IS_HIDDEN or not a.flags & pymupdf.PDF_ANNOT_IS_PRINT:
+            continue
+        r = (pymupdf.Rect(a.rect) * page.rotation_matrix).normalize()
+        if r.is_valid and not shown.contains(r):
+            out = r if out is None else out | r
+    return None if out is None else shown | out
+
+
+EXTRA_PAGE_OPACITY = 0.35    # the page on its extra sheet: faint, under the markups beside it
 PRINT_MIN_LINE_PT = 0.15      # Dark thin lines: no line printed thinner than this (0.05 mm)
 
 
@@ -173,6 +205,23 @@ class PrintDialog(QDialog):
                                  "boxes (Print tab, or Pages > Print production); a page without "
                                  "a trim box is marked at its edges."))
         left.addRow("", self.marks)
+        # markups kept outside the pages (issue #82): left out (as every PDF program does),
+        # on the same sheet with the page smaller, or on an extra sheet after the page so the
+        # page prints at its size (a drawing at scale); the file isn't changed
+        self.beside = QComboBox()
+        self.beside.addItems([tr("Leave them out"),
+                              tr("On the same sheet (the page smaller)"),
+                              tr("On an extra sheet after the page (the page at scale)")])
+        self.beside.setToolTip(tr("Markups kept outside a page's edge (in the gray beside it) "
+                                  "don't print unless you choose so here"))
+        doc = view.doc
+        self.beside.setEnabled(any(beside_rect(doc[i]) is not None
+                                   for i in range(min(doc.page_count, 2000))))
+        # (as answered when the first markup went outside a page: MainWindow._ask_outside)
+        from . import paths
+        start = {"same": 1, "extra": 2}.get(paths.settings().value("print_beside", "no"), 0)
+        self.beside.setCurrentIndex(start if self.beside.isEnabled() else 0)
+        left.addRow(tr("Markups outside pages"), self.beside)
 
         # preview
         self.picture = QLabel()
@@ -211,6 +260,7 @@ class PrintDialog(QDialog):
         for sig in (self.all_pages.toggled, self.current.toggled, self.some.toggled,
                     self.orientation.currentIndexChanged, self.size.currentIndexChanged,
                     self.markups.toggled, self.marks.toggled, self.dark_lines.toggled,
+                    self.beside.currentIndexChanged,
                     self.printer_box.currentIndexChanged):
             sig.connect(self._changed)
         self.range_text.textChanged.connect(lambda _t: (self.some.setChecked(True),
@@ -254,7 +304,7 @@ class PrintDialog(QDialog):
         from . import print_production
         return print_production.marks_layout(self.view.doc[i])
 
-    def sheet(self, i):
+    def sheet(self, i, extra=False):
         """(paper size in points, page box on the paper in points) for page i. With crop
         marks, what's fitted on the paper is the trim box with room for the marks around it
         (the page box can then reach past the paper: only the drawing out to the bleed box
@@ -263,8 +313,11 @@ class PrintDialog(QDialog):
         paper = layout.pageSize().size(QPageSize.Unit.Point)
         w, h = paper.width(), paper.height()
         page = self.view.doc[i].rect                      # as displayed (rotation applied)
-        lay = self._marks_layout(i)
+        lay = None if extra else self._marks_layout(i)
         ext = lay["job"] if lay is not None else page
+        beside = self._beside(i, extra)
+        if beside is not None:
+            ext = ext | beside
         mode = self.orientation.currentIndex()
         landscape = (ext.width > ext.height) if mode == 0 else mode == 2
         if landscape != (w > h):
@@ -283,6 +336,84 @@ class PrintDialog(QDialog):
         box = QRectF(ebox.x() + (page.x0 - ext.x0) * k, ebox.y() + (page.y0 - ext.y0) * k,
                      page.width * k, page.height * k)
         return QSizeF(w, h), box
+
+    def _beside_mode(self):
+        """0: markups outside pages left out, 1: on the same sheet, 2: on an extra sheet."""
+        b = getattr(self, "beside", None)
+        if b is None or not b.isEnabled() or not self.markups.isChecked():
+            return 0
+        return b.currentIndex()
+
+    def _beside(self, i, extra=False):
+        """The area page i's sheet takes in when its markups outside it print there (the
+        page with them, beside_rect), else None: on its own sheet when they go on the same
+        sheet, on its extra sheet when they go on an extra one."""
+        mode = self._beside_mode()
+        if mode == 0 or (mode == 1) == extra:
+            return None
+        return beside_rect(self.view.doc[i])
+
+    def sheets(self, pages):
+        """The sheets to print: (page, False) for each page, followed by (page, True), its
+        extra sheet, when markups outside pages go on extra sheets and it has some."""
+        out = []
+        for i in pages or []:
+            out.append((i, False))
+            if self._beside(i, True) is not None:
+                out.append((i, True))
+        return out
+
+    def _draw_beside(self, painter, i, target, dpi, going=lambda: True, extra=False):
+        """The markups kept beside page i, where they are around the page drawn into target
+        (the page itself is left as drawn), in bands as _draw_bands. False when canceled."""
+        ext = self._beside(i, extra)
+        if ext is None:
+            return True
+        from PySide6.QtGui import QPainterPath
+        m = pymupdf.mupdf
+        page = self.view.doc[i]
+        dl = print_annots_list(page)
+        k = dpi / 72.0
+        outer = self._to_target(i, target, ext)
+        clip = QPainterPath()
+        clip.addRect(outer)
+        inner = QPainterPath()
+        inner.addRect(target)
+        painter.save()
+        painter.setClipPath(clip.subtracted(inner), Qt.IntersectClip)
+        sy = outer.height() / max(1e-6, ext.height)
+        rows = max(1, int(BAND_BYTES / max(1.0, ext.width * k * 4)))
+        step = rows / k
+        x0, x1 = int(math.floor(ext.x0 * k)), int(math.ceil(ext.x1 * k))
+        y = ext.y0
+        try:
+            while y < ext.y1:
+                if y > ext.y0 and not going():
+                    return False
+                y1 = min(ext.y1, y + step)
+                iy0, iy1 = int(math.floor(y * k)), max(int(math.floor(y * k)) + 1,
+                                                       int(math.ceil(y1 * k)))
+                raw = m.fz_new_pixmap_with_bbox(m.fz_device_rgb(), m.FzIrect(x0, iy0, x1, iy1),
+                                                m.FzSeparations(), 1)
+                m.fz_clear_pixmap(raw)
+                with print_lines(dpi, self._dark()):
+                    dev = m.fz_new_draw_device(m.FzMatrix(k, 0, 0, k, 0, 0), raw)
+                    try:
+                        m.fz_run_display_list(dl.this, dev, m.FzMatrix(),
+                                              m.FzRect(m.FzRect.Fixed_INFINITE), m.FzCookie())
+                    finally:
+                        m.fz_close_device(dev)
+                pm = pymupdf.Pixmap(raw)
+                img = QImage(pm.samples_mv, pm.width, pm.height, pm.stride,
+                             QImage.Format_RGBA8888_Premultiplied)
+                painter.drawImage(QRectF(outer.x() + (x0 / k - ext.x0) * sy,
+                                         outer.y() + (iy0 / k - ext.y0) * sy,
+                                         (x1 - x0) / k * sy, (iy1 - iy0) / k * sy), img)
+                del img, pm
+                y = y1
+        finally:
+            painter.restore()
+        return True
 
     def _to_target(self, i, target, r):
         """Rect r (page as displayed) where it lands when the page is drawn into target."""
@@ -314,12 +445,12 @@ class PrintDialog(QDialog):
         self.range_text.setStyleSheet("" if pages is not None or not self.some.isChecked()
                                       else "background: #ffe0e0;")
         if pages:
-            self._shown = min(self._shown, len(pages) - 1)
+            self._shown = min(self._shown, len(self.sheets(pages)) - 1)
         self._draw_preview()
 
     def _step(self, d):
-        pages = self.pages() or []
-        self._shown = max(0, min(len(pages) - 1, self._shown + d))
+        n = len(self.sheets(self.pages() or []))
+        self._shown = max(0, min(n - 1, self._shown + d))
         self._draw_preview()
 
     # ---- preview ----------------------------------------------------------------------
@@ -343,8 +474,9 @@ class PrintDialog(QDialog):
             self.prev_b.setEnabled(False)
             self.next_b.setEnabled(False)
             return
-        i = pages[self._shown]
-        paper, box = self.sheet(i)
+        sheets = self.sheets(pages)
+        i, extra = sheets[min(self._shown, len(sheets) - 1)]
+        paper, box = self.sheet(i, extra)
         k = min((PREVIEW_W - 20) / paper.width(), (PREVIEW_H - 20) / paper.height())
         ox = (PREVIEW_W - paper.width() * k) / 2
         oy = (PREVIEW_H - paper.height() * k) / 2
@@ -357,22 +489,28 @@ class PrintDialog(QDialog):
             p.fillRect(QRectF(ox + 3, oy + 3, paper.width() * k, paper.height() * k),
                        QColor(0, 0, 0, 60))
             p.fillRect(QRectF(ox, oy, paper.width() * k, paper.height() * k), Qt.white)
-            lay = self._marks_layout(i)
+            lay = None if extra else self._marks_layout(i)
             if lay is not None:
                 p.save()
                 p.setClipRect(self._to_target(i, target, lay["content"]))
+            if extra:
+                p.setOpacity(EXTRA_PAGE_OPACITY)    # (the page faint: what's beside it is the point)
             p.drawImage(target, img)
+            p.setOpacity(1.0)
             self._draw_links(p, i, target)
             if lay is not None:
                 p.restore()
                 self._draw_marks(p, i, target, lay)
+            self._draw_beside(p, i, target, dpi, extra=extra)
         finally:
             p.end()
         self.picture.setPixmap(canvas)
-        self.sheet_label.setText(tr("Sheet {n} of {total} (page {page})").format(
-            n=self._shown + 1, total=len(pages), page=i + 1))
+        self.sheet_label.setText(
+            (tr("Sheet {n} of {total} (page {page}: markups outside it)") if extra else
+             tr("Sheet {n} of {total} (page {page})")).format(
+                n=self._shown + 1, total=len(sheets), page=i + 1))
         self.prev_b.setEnabled(self._shown > 0)
-        self.next_b.setEnabled(self._shown < len(pages) - 1)
+        self.next_b.setEnabled(self._shown < len(sheets) - 1)
 
     # ---- printing ---------------------------------------------------------------------
     def _accept(self):
@@ -396,7 +534,8 @@ class PrintDialog(QDialog):
         painter = QPainter()
         # a big sheet or many pages take a while: show how far it is and let it be stopped
         # (the window keeps responding between pages and between strips of a page)
-        progress = QProgressDialog(tr("Printing..."), tr("Cancel"), 0, len(pages), self)
+        progress = QProgressDialog(tr("Printing..."), tr("Cancel"), 0,
+                                   len(self.sheets(pages)), self)
         progress.setWindowTitle(tr("Print"))
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumDuration(400)
@@ -421,14 +560,15 @@ class PrintDialog(QDialog):
                 printer.abort()
                 return False
             return True
-        for n, i in enumerate(pages):
+        sheets = self.sheets(pages)
+        for n, (i, extra) in enumerate(sheets):
             if progress is not None:
                 progress.setLabelText(tr("Printing page {n} of {total}...").format(
-                    n=n + 1, total=len(pages)))
+                    n=n + 1, total=len(sheets)))
                 progress.setValue(n)
             if not going():
                 return False
-            paper, box = self.sheet(i)
+            paper, box = self.sheet(i, extra)
             orient = QPageLayout.Landscape if paper.width() > paper.height() else QPageLayout.Portrait
             printer.setPageOrientation(orient)              # each sheet turned as previewed
             if first:
@@ -440,19 +580,25 @@ class PrintDialog(QDialog):
                 printer.newPage()
             res = printer.resolution() / 72.0
             target = QRectF(box.x() * res, box.y() * res, box.width() * res, box.height() * res)
-            lay = self._marks_layout(i)
+            lay = None if extra else self._marks_layout(i)
             if lay is not None:
                 # only the drawing out to the bleed box; the marks go outside the trim box
                 painter.save()
                 painter.setClipRect(self._to_target(i, target, lay["content"]))
-            if not self._draw_bands(painter, i, target, dpi, going):
+            if extra:
+                painter.setOpacity(EXTRA_PAGE_OPACITY)
+            ok = self._draw_bands(painter, i, target, dpi, going)
+            painter.setOpacity(1.0)
+            if not ok:
                 return False
             self._draw_links(painter, i, target)
             if lay is not None:
                 painter.restore()
                 self._draw_marks(painter, i, target, lay)
+            if not self._draw_beside(painter, i, target, dpi, going, extra=extra):
+                return False
         if progress is not None:
-            progress.setValue(len(pages))
+            progress.setValue(len(sheets))
         return True
 
     def _draw_links(self, painter, i, target):

@@ -180,14 +180,22 @@ class Paragraphs(unittest.TestCase):
 
     def test_larger_words_get_the_room_they_need(self):
         def letters(page):
-            """[(baseline, top of the letters, bottom)] of each line, top to bottom."""
-            out = []
-            for _r, ln in text_edit.text_lines(page):
-                spans = ln["spans"]
-                top = min(s["origin"][1] - s["ascender"] * s["size"] for s in spans)
-                bot = max(s["origin"][1] - s["descender"] * s["size"] for s in spans)
-                out.append((spans[0]["origin"][1], top, bot))
-            return sorted(out)
+            """[(baseline, top of the letters, bottom)] of each line, top to bottom: where
+            the letters' ink is (MuPDF's accurate boxes, from the glyphs themselves). (Read
+            before from a span's ascender and descender: PyMuPDF 2.0 gave 0.8 and -0.2 of
+            the size for Helvetica, 2.1 gives the font's own 1.075 and -0.299, taller than
+            the letters, where the text written is the same.)"""
+            rows = {}
+            d = page.get_text("dict", flags=pymupdf.TEXT_ACCURATE_BBOXES)
+            for b in d["blocks"]:
+                for ln in b.get("lines", ()):
+                    for sp in ln["spans"]:
+                        if not sp["text"].strip():
+                            continue
+                        y = round(sp["origin"][1], 1)
+                        top, bot = rows.get(y, (sp["bbox"][1], sp["bbox"][3]))
+                        rows[y] = (min(top, sp["bbox"][1]), max(bot, sp["bbox"][3]))
+            return sorted((y, t, b) for y, (t, b) in rows.items())
         # a paragraph's word made larger
         d = pymupdf.open()
         bases = embedded_paragraph(d.new_page(), code="helv")

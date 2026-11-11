@@ -718,7 +718,8 @@ def resize_release(w, e, pos):
         return
     page = w.view.doc[w.index]
     z = w.view.zoom
-    to_screen = pymupdf.Matrix(page.rotation_matrix) * pymupdf.Matrix(z, z)
+    o = w.offset()                  # (the working space around the page, if shown)
+    to_screen = pymupdf.Matrix(page.rotation_matrix) * pymupdf.Matrix(z, 0, 0, z, o.x(), o.y())
     del page
     on_screen = pymupdf.Matrix(1, 0, 0, 1, -io.left(), -io.top()) * \
         pymupdf.Matrix(sx, 0, 0, sy, 0, 0) * pymupdf.Matrix(1, 0, 0, 1, nw.left(), nw.top())

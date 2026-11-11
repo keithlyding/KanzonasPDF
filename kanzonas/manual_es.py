@@ -35,7 +35,12 @@ o una lista como 1-3, 5), la orientación (Automática gira cada hoja para ajust
 (Ajustar al papel, o Tamaño real, que solo reduce las páginas demasiado grandes), si se imprimen las marcas
 y los campos de formulario, <b>Líneas finas oscuras</b> (activado salvo que lo desactive: cada línea se imprime con al
 menos 0,15 pt de grosor y sólida, para que las líneas finas de los planos no salgan tenues ni cortadas; desactivado,
-las líneas se imprimen exactamente tan finas como son), y las <b>Marcas de corte</b> (vea Producción de impresión). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
+las líneas se imprimen exactamente tan finas como son), las <b>Marcas de corte</b> (vea Producción de impresión) y
+<b>Marcas fuera de las páginas</b> (solo se ofrece cuando una página tiene marcas junto a ella, en el gris):
+<b>Dejarlas fuera</b> (solo se imprime la página, como en cualquier programa de PDF), <b>En la misma hoja</b> (la hoja
+abarca la página y lo que está junto a ella, así que la página se imprime más pequeña) o <b>En una hoja extra después de
+la página</b> (la página se imprime a su tamaño, así que un plano conserva su escala, y la hoja siguiente la muestra
+tenue con lo que está junto a ella en su lugar). <b>Configurar página…</b> define el tamaño del papel y los márgenes. Use las flechas
 debajo de la vista previa para ver cada hoja. Las páginas se imprimen con la resolución de la impresora, hasta 600 ppp,
 y se procesan por franjas, de modo que incluso los planos grandes se imprimen nítidos sin usar mucha memoria.
 Las marcas y los campos de formulario siguen su propia opción de impresión, como en Acrobat: una hecha para verse
@@ -56,7 +61,8 @@ antes de crear las sesiones de reconocimiento.</p>
 <h2 id="start">Primeros pasos</h2>
 <ul>
 <li><b>Abrir un PDF:</b> Archivo &gt; Abrir (Ctrl+O), arrastre un archivo a la ventana o elija uno en
-Archivo &gt; Abrir recientes. Cada archivo se abre en su propia pestaña, en la página y con el zoom con que lo dejó. Si
+Archivo &gt; Abrir recientes. Cada archivo se abre en su propia pestaña, en la página y con el zoom con que lo dejó (la
+pestaña de delante tiene una línea azul arriba; los nombres de las demás se ven un poco más tenues). Si
 KanzonasPDF ya está abierto, un PDF que se abre desde el Explorador, un correo electrónico o un navegador se abre en una nueva pestaña
 en él, y la ventana pasa al frente (se restaura si estaba minimizada). Abrir un archivo que
 ya está abierto cambia a su pestaña; si el archivo cambió en el disco desde que se abrió, la pestaña
@@ -149,6 +155,23 @@ CAD usan líneas muy finas (una décima de punto o menos); con su ancho real cub
 parte de un píxel de pantalla al alejar y se ven de un gris pálido. Con esta opción activada siguen oscuras y
 legibles con cualquier zoom. Solo cambia la pantalla: la impresión, la exportación, el OCR, Comparar y el archivo
 guardado usan los anchos de línea reales. Su elección se recuerda.</li>
+<li><b>Marcas fuera de la página:</b> ponga marcas, imágenes y planos capturados en cualquier lugar del gris
+alrededor de una página: junto a un plano, u otros planos pegados al lado para volver a juntar un plano repartido en
+varias hojas (Capturar área, Mayús+P, los mantiene nítidos). El gris funciona como siempre; una página con marcas junto a
+ella recibe solo el espacio que necesitan, en esos lados (el mismo a la izquierda y a la derecha, para que las páginas
+sigan alineadas; con dos páginas lado a lado, la página siguiente se aparta para que nada quede tapado). Un clic o un
+arrastre en el gris va a la página más cercana. Esas marcas se guardan en el archivo, pero <b>no se imprimen</b> salvo que
+lo elija en la ventana Imprimir (Marcas fuera de las páginas), y otros programas de PDF como Acrobat no las muestran (en
+Acrobat, como mucho se ven al alejar), así que úselas para sus propias notas. Para dar el espacio a todos, use
+<b>Páginas &gt; Agregar espacio alrededor de la página</b>: ese espacio es parte de la página. <b>Ajustar página y
+marcas</b> (menú Ver y la lista del cuadro de zoom) muestra una página con todo lo que tiene al lado; Ajustar página y
+Ajustar al ancho ajustan las páginas como siempre. Revisar &gt; <b>Mostrar marcas</b> oculta o muestra todas;
+<b>Mostrar marcas en la página</b> y <b>Mostrar marcas fuera de las páginas</b> ocultan un tipo u otro (con las de fuera
+ocultas, el espacio alrededor de las páginas se cierra). Sanear documento y Quitar la información oculta (al aplicar
+censuras) quitan las marcas que están por completo fuera de una página. La primera vez en un documento que algo que
+dibuja, pega o mueve sale de la página, KanzonasPDF pregunta cómo se imprimen esas marcas: <b>No imprimirlas</b>,
+<b>Misma hoja</b> u <b>Hoja extra</b>; su respuesta es como empieza la ventana Imprimir (allí puede cambiarlo). Marque
+<b>No volver a preguntar</b> para que no pregunte más.</li>
 <li><b>Tema:</b> Ver &gt; Tema (Igual que Windows, o Igual que el sistema en Linux y macOS; Claro, Oscuro). Ver &gt; Mostrar etiquetas de texto en las
 barras de herramientas agrega nombres debajo de los iconos. Coloque el puntero sobre cualquier botón o cuadro de la barra de herramientas o de la cinta para ver una información sobre herramientas
 que indica qué hace y su método abreviado de teclado (el que haya establecido en Métodos abreviados de teclado);
@@ -909,7 +932,17 @@ superior izquierda va a la cuadrícula.</li>
 <h2 id="properties">Colores, bordes y estilos (Panel de propiedades)</h2>
 <ul>
 <li>Con una herramienta activa, el panel de propiedades (F6) define el <b>estilo predeterminado</b> de esa herramienta, que se guarda
-para la próxima vez. Con una marca seleccionada, cambia <b>esa marca</b>.</li>
+para la próxima vez. Con una marca seleccionada, cambia <b>esa marca</b>. El título del panel dice cuál:
+<b>Seleccionado: Rectángulo</b> sobre una franja azul (la marca de la página), o <b>Rectángulo: estilo
+predeterminado</b> sobre una franja ámbar (las próximas que haga con la herramienta).</li>
+<li><b>Lo que acaba de dibujar queda seleccionado</b>, con su herramienta aún elegida: cambie enseguida su color,
+grosor u opacidad en Propiedades, y arrastre de nuevo para dibujar la siguiente (que pasa a ser la seleccionada).
+Haga clic en un lugar vacío o pulse Esc para deseleccionarla; Propiedades vuelve entonces a definir el estilo de la
+herramienta. (En el modo CAD, como en AutoCAD, lo que dibuja no queda seleccionado.)</li>
+<li><b>Establecer como predeterminado</b> (clic con el botón derecho en una marca): su estilo pasa a ser el estilo
+predeterminado de su herramienta, para las próximas que haga con ella (como Set as Default de Bluebeam).</li>
+<li>El control <b>Opacidad</b> se aplica al soltarlo, al hacer clic en su guía o al pulsar las flechas del teclado
+sobre él. Las imágenes, también las capturas pegadas de Capturar área, admiten una opacidad.</li>
 <li>Color de línea, relleno (o <b>Sin relleno</b>), <b>Sin borde</b> para cuadros y formas, color del texto,
 grosor de línea, tamaño de fuente, puntas de flecha, borde de nube, opacidad.</li>
 <li><b>Restablecer valores predeterminados</b> devuelve una herramienta a su estilo original.</li>
@@ -1297,7 +1330,14 @@ cuando la escala está en pies y pulgadas); cambiarla actualiza la medición sel
 elija <b>Esta página</b> o <b>Todas las páginas</b> (en las demás páginas, el mismo cuadro se mide desde su
 esquina superior izquierda). Solo cambia la zona visible; no se elimina nada, así que <b>Quitar recorte...</b>
 (menú Páginas, pestaña Páginas) vuelve a mostrar la página entera, en esta página o en todas. Ctrl+Z deshace
-cualquiera de los dos.</li>
+cualquiera de los dos. Las marcas se quedan donde están en la página, también al editarlas después.</li>
+<li><b>Agregar espacio alrededor de la página...</b> (menú Páginas, pestaña Páginas): agranda la página por los lados
+que elija, tal como se muestra: escriba cuánto agregar a la <b>Izquierda</b>, <b>Arriba</b>, a la <b>Derecha</b> y
+<b>Abajo</b> (en pulgadas, milímetros o puntos) y elija las páginas (la actual, todas o una lista como 1-3, 5). El
+dibujo, las marcas, los vínculos y los campos de formulario se quedan exactamente donde están en la página; el espacio
+nuevo es página en blanco. Es página real: lo que ponga ahí (comentarios, u otros planos pegados con Capturar área para
+formar un solo plano combinado) se ve en cualquier programa de PDF y se imprime. Ctrl+Z lo deshace; <b>Recortar
+páginas</b> vuelve a quitar el espacio. Una página puede medir como máximo 200 pulgadas por lado (el límite de PDF).</li>
 <li><b>Tamaño de la lista de páginas:</b> arrastre el borde del panel Páginas para hacerlo tan estrecho como quiera; las
 miniaturas se reducen para caber (el botón de bloqueo indica entonces solo Bloqueado / Desbloqueado). Las pestañas que no caben
 se desplazan lateralmente.</li>
@@ -1711,8 +1751,9 @@ filas ya no muestran lo censurado, y en su título el texto se reemplaza por [re
 dibujado sobre una leyenda la quita). Revise el resultado antes de compartirlo; Deshacer funciona hasta que cierra el archivo.</li>
 <li><b>Sanear documento:</b> quita los datos ocultos que elija: información del documento (con los datos
 privados que algunos programas, como Illustrator, guardan en el archivo), scripts,
-archivos adjuntos, texto oculto, vínculos, comentarios, datos de formularios (con un formulario XFA, que guarda los datos
-otra vez; sus campos normales se conservan), miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
+archivos adjuntos, texto oculto, vínculos, comentarios, <b>comentarios y marcas fuera de la página</b> (guardados en el
+espacio de trabajo: solo KanzonasPDF los muestra, así que vienen marcados para quitarse), datos de formularios (con un
+formulario XFA, que guarda los datos otra vez; sus campos normales se conservan), miniaturas. Los scripts incluyen los de otras acciones (multimedia), los vínculos javascript: y los scripts de un formulario XFA
 (los campos normales del formulario se conservan).</li>
 <li><b>Propiedades de seguridad (contraseñas y permisos):</b> cifrado AES-256. Si pulsa Aceptar sin marcar ninguna
 casilla en un documento protegido, se le pregunta antes de quitar su protección.
@@ -2015,8 +2056,8 @@ notas, vínculos, marcadores, propiedades y los demás lugares del archivo, como
 capas, direcciones web, datos de formularios y texto alternativo, como hacen Buscar y
 censurar y Aplicar censuras; una palabra que solo está en esos lugares se quita de ahí. Con
 <b>Quitar la información oculta</b> marcado (también en Aplicar censuras), los metadatos, los
-archivos adjuntos, el texto oculto y los scripts de cada archivo se quitan aunque no se haya
-encontrado nada que censurar; desmarcado, los archivos adjuntos se quedan y no se busca en
+archivos adjuntos, el texto oculto, los scripts y las marcas guardadas por completo fuera de sus páginas (vea Espacio
+de trabajo) de cada archivo se quitan aunque no se haya encontrado nada que censurar; desmarcado, los archivos adjuntos se quedan y no se busca en
 ellos, y el informe lo advierte.
 Aplicar las censuras empieza marcado: los originales quedan como estaban y las copias
 censuradas van a la carpeta de salida. El informe dice de cada archivo qué se quitó y de

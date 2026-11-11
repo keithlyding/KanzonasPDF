@@ -1259,8 +1259,11 @@ class ScanWindow(unittest.TestCase):
 
 
 # ---- scans started on the printer's panel (WS-Eventing) ------------------------------------
-def send_event(srv, sid="scan-id-1", identifier=None, context=None, path=None, body=None):
-    """The fake printer sends ScanAvailableEvent to the address KanzonasPDF subscribed with."""
+def send_event(srv, sid="scan-id-1", identifier=None, context=None, path=None, body=None,
+               announce=None):
+    """The fake printer sends ScanAvailableEvent to the address KanzonasPDF subscribed with.
+    announce: only the headers, saying a body of that many bytes follows (none is sent: the
+    listener must answer from the headers, without waiting for or reading the body)."""
     import http.client
     sub = srv.st["subscribe"]
     url = re.search(r"<wse:NotifyTo><wsa:Address>(.*?)</wsa:Address>", sub).group(1)
@@ -1274,7 +1277,13 @@ def send_event(srv, sid="scan-id-1", identifier=None, context=None, path=None, b
         b"</soap:Header>", b"<wse:Identifier>" + ident.encode() + b"</wse:Identifier>"
         b"</soap:Header>")
     c = http.client.HTTPConnection(host, port, timeout=5)
-    c.request("POST", path or upath, body, {"Content-Type": "application/soap+xml"})
+    if announce is not None:
+        c.putrequest("POST", path or upath)
+        c.putheader("Content-Type", "application/soap+xml")
+        c.putheader("Content-Length", str(announce))
+        c.endheaders()
+    else:
+        c.request("POST", path or upath, body, {"Content-Type": "application/soap+xml"})
     status = c.getresponse().status
     c.close()
     return status
@@ -1319,7 +1328,9 @@ class PanelScans(ServerCase):
         srv, link, scans = self.link()
         self.assertEqual(send_event(srv, path="/kanzonas-scan/guess"), 404)
         self.assertEqual(send_event(srv, identifier="urn:uuid:someone-else"), 403)
-        self.assertEqual(send_event(srv, body=b"<a>" + b"x" * 70000 + b"</a>"), 413)
+        # too big: refused from its Content-Length, the body never read (a whole one sent
+        # here could meet the connection closed unread: a reset on macOS, not the 413)
+        self.assertEqual(send_event(srv, announce=70007), 413)
         self.assertEqual(send_event(srv, body=b'<?xml version="1.0"?><!DOCTYPE a [<!ENTITY x '
                                               b'"y">]><a>&x;</a>'), 400)
         self.assertEqual(send_event(srv, context="not-ours"), 202)

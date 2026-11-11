@@ -204,6 +204,10 @@ class PropertiesPanel(QWidget):
         self.fontsize.valueChanged.connect(self._emit)
         self.depth.valueChanged.connect(self._emit)
         self.opacity.sliderReleased.connect(self._emit)
+        # (a click on the slider's track or the arrow keys move it without a release: they
+        # apply too; a drag applies once, when it's let go)
+        self.opacity.valueChanged.connect(
+            lambda _v: None if self.opacity.isSliderDown() else self._emit())
         self.head.currentIndexChanged.connect(self._emit)
         self.markup.currentIndexChanged.connect(self._emit)
         self.for_who.currentIndexChanged.connect(self._emit)
@@ -228,6 +232,7 @@ class PropertiesPanel(QWidget):
         self._kind = kind
         if kind is None:
             self.title.setText(tr("No tool settings"))
+            self.title.setStyleSheet("font-weight: bold;")
             self.hint.setText(tr("Pick a markup tool to set its default style, "
                                  "or click an annotation to edit it."))
             for lab, w in self.rows.values():
@@ -239,12 +244,20 @@ class PropertiesPanel(QWidget):
         name = A.LABELS.get(kind, kind)
         self.title.setText(tr("Selected: {name}").format(name=name) if selected else
                            tr("{name}: default style").format(name=name))
+        # which one changes, at a glance: a markup on the page (blue) or the tool's style for
+        # the next ones (amber); the owner changed a tool's style thinking it was the markup
+        # just drawn (10 Nov)
+        self.title.setStyleSheet(
+            "font-weight: bold; padding: 3px 5px; border-radius: 3px; background: %s;"
+            % ("rgba(45, 108, 223, 0.28)" if selected else "rgba(230, 160, 0, 0.28)"))
         self.hint.setText(tr("Changes apply to the selected annotation.") if selected else
                           tr("The line being edited: a font or size picked here changes that "
                              "line only.") if kind == "edittext" else
                           tr("Used for the text you add next; it's written into the page.")
                           if kind in A.PAGE_TEXT_TOOLS else
-                          tr("Saved for next time. New annotations use these settings."))
+                          tr("For the next ones you make with this tool, saved for next time. "
+                             "To change one already on the page, click it first; right-click "
+                             "one and choose Set as Default to use its style here."))
         self.reset.setVisible(not selected)
         for key, (lab, w) in self.rows.items():
             vis = key in props and (key != "rotation" or selected)   # new markups start upright
