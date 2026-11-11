@@ -42,7 +42,7 @@ ON_TABS = {
               "t:polygon t:polyline t:rect t:stamp t:strikeout t:textbox t:underline",
     "Measure": "a_grid a_grid_settings a_measure_summary a_scale_bar a_sheet_scales a_snap_grid "
                "a_snap_objects a_snap_page t:m_angle t:m_area t:m_calibrate t:m_count t:m_dim "
-               "t:m_length t:m_perimeter t:m_poly t:m_radius t:m_volume",
+               "t:m_length t:m_perimeter t:m_poly t:m_radius t:m_volume t:space",
     "Arrange": "A:al_bottom A:al_hcenter A:al_left A:al_right A:al_top A:al_vmiddle A:dist_h "
                "A:dist_v A:z_back A:z_backward A:z_forward A:z_front a_flip_h a_flip_v a_grid "
                "a_grid_settings a_group a_lock a_snap_grid a_snap_objects a_snap_page a_ungroup "
@@ -75,7 +75,7 @@ ON_TABS = {
            "c:trim t:addtext t:arc t:arrow t:callout t:circle t:cloud t:curve t:editobjects "
            "t:edittext t:erasecontent t:image t:ink t:legend t:line t:m_angle t:m_area "
            "t:m_calibrate t:m_count t:m_dim t:m_length t:m_perimeter t:m_poly t:m_radius "
-           "t:m_volume t:mask t:polygon t:polyline t:rect t:select t:stamp t:textbox",
+           "t:m_volume t:mask t:polygon t:polyline t:rect t:select t:space t:stamp t:textbox",
 }
 
 # Builds the main window in one language with the stand-in font, shows it as wide as the

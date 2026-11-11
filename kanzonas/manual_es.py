@@ -1350,6 +1350,20 @@ radio (R) y el diámetro (&Oslash;).
 &times; la profundidad. Defina la <b>Profundidad</b> en el panel de propiedades, en la unidad de la escala de la página (pies
 cuando la escala está en pies y pulgadas); cambiarla actualiza la medición seleccionada.</li>
 <li><b>Resumen de mediciones</b> suma todo y exporta a CSV.</li>
+<li><b>Espacio</b> (pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña
+CAD), como los Espacios de Bluebeam: un área con nombre de un plano (una habitación, una zona,
+un nivel). Haga clic en cada esquina, doble clic o pulse Enter, y escriba su nombre (se ofrece
+Espacio 1, Espacio 2...). Es un polígono azul transparente con su nombre escrito dentro en
+pantalla; el color, el contorno y la transparencia están en Propiedades, y sus pinzamientos
+mueven sus esquinas como los de un polígono. Haga clic en su contorno para seleccionarlo: al
+pulsar dentro se dibuja o se selecciona lo que hay en la habitación. Para cambiarle el nombre,
+clic derecho en él &gt;
+<b>Cambiar el nombre del espacio...</b>. Cada marca cuyo centro está dentro de un espacio está
+en ese espacio (en el más pequeño donde se superponen): la lista de marcas lo muestra en su
+columna <b>Espacio</b> y, cuando el documento tiene espacios, tiene una lista para mostrar las
+marcas de un espacio (con Tipo en Conteo, su conteo aparece arriba, como "12 de 40"). Mueva
+una marca hacia dentro o fuera y su espacio la sigue. Otros programas de PDF muestran un
+espacio como un polígono con su nombre como comentario.</li>
 </ul>
 
 <h2 id="pages">Páginas</h2>

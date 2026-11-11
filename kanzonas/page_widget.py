@@ -10,7 +10,7 @@ import time
 import pymupdf
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath,
-                           QFontMetrics, QTransform)
+                           QFontMetrics, QTransform, QFont)
 from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
@@ -25,7 +25,7 @@ SHAPE_TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", 
                "callout", "m_length", "m_calibrate", "m_radius", "image", "placeholder",
                "erasecontent", "capture", "crop", "link", "legend"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume",
-              "arc", "curve", "m_dim"}
+              "arc", "curve", "m_dim", "space"}
 # three clicks: Arc = start, a point it passes through, end; Curve = start, end, the bend
 CURVE_TOOLS = {"arc", "curve"}
 # three clicks, the last one ends it: an angle's end, corner, end; a dimension's two points
@@ -37,7 +37,7 @@ EDIT_IN_PLACE = {"rect", "ellipse", "circle", "mask", "cloud", "line", "arrow", 
                  "polyline", "ink", "arc", "curve", "textbox", "callout", "note", "stamp",
                  "m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius",
                  "m_perimeter", "m_volume", "m_dim", "image", "attach", "placeholder",
-                 "legend"}
+                 "legend", "space"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area", "m_angle", "m_radius",
                  "m_perimeter", "m_volume", "m_dim"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}
@@ -949,6 +949,7 @@ class PageWidget(QWidget):
                 p.fillRect(self.to_screen(r, page), QColor(30, 120, 255, 110))
 
         self._paint_comment_cards(p, page)
+        self._paint_space_names(p, page)
 
         if self.view.highlight_fields and self.view.tool not in FORM_TOOLS:
             # shade fillable fields (screen only) with a blue outline so they stand out even
@@ -1019,7 +1020,7 @@ class PageWidget(QWidget):
             else:
                 for a_, b_ in zip(pts, pts[1:]):
                     p.drawLine(a_, b_)
-            if tool in ("polygon",) + A.CLOSED_MEASURES and len(pts) > 2:
+            if tool in ("polygon", "space") + A.CLOSED_MEASURES and len(pts) > 2:
                 p.setPen(QPen(self.view.tool_color(tool), 1, Qt.DashLine))
                 p.drawLine(pts[-1], pts[0])
             if tool in MEASURE_TOOLS:
@@ -1248,6 +1249,27 @@ class PageWidget(QWidget):
         p.setBrush(Qt.NoBrush)
         p.setPen(Qt.black)
         p.drawText(box.adjusted(5, 3, -5, -3), Qt.AlignLeft | Qt.AlignTop, text)
+
+    def _paint_space_names(self, p, page):
+        """Each space's name written in it (spaces.py; on screen only, like Revu's)."""
+        if not self.view.show_markups:
+            return
+        found = self.view.space_labels(self.index)
+        if not found:
+            return
+        f = QFont(self.font())
+        f.setBold(True)
+        f.setPixelSize(max(9, min(28, int(round(10 * self.view.zoom)))))
+        p.setFont(f)
+        fm = QFontMetrics(f)
+        for name, at in found:
+            c = self.to_screen_pt(at, page)
+            w = fm.horizontalAdvance(name)
+            r = QRectF(c.x() - w / 2 - 3, c.y() - fm.height() / 2, w + 6, fm.height())
+            p.fillRect(r, QColor(255, 255, 255, 170))
+            p.setPen(QColor(20, 70, 160))
+            p.drawText(r, Qt.AlignCenter, name)
+        p.setFont(self.font())
 
     def _paint_comment_cards(self, p, page):
         """Adobe-style note boxes beside commented text (drawn by us, not in the PDF)."""
@@ -1965,6 +1987,8 @@ class PageWidget(QWidget):
                 for act in (win.a_group, win.a_ungroup, win.a_flip_h, win.a_flip_v):
                     if act.isEnabled():
                         menu.addAction(act)
+            if v.selected_space() is not None and not v.read_only:
+                menu.addAction(tr("Rename space..."), v.rename_space)      # (spaces.py)
             if win is not None and hasattr(win, "new_markup_layer") and not v.read_only:
                 # (1.12) the layer the selected markups are on: none, one of the document's,
                 # or a new one
@@ -2811,8 +2835,8 @@ class PageWidget(QWidget):
         self.update()
         tool = self.view.tool
         self._dim_press = None
-        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc", "m_dim")
-                                      and len(pts) < 3):
+        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc", "m_dim",
+                                               "space") and len(pts) < 3):
             return
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 

@@ -150,7 +150,7 @@ class MarkupsList(unittest.TestCase):
         rows = {r[1]: r for r in collect(v.doc)}
         self.assertEqual(rows[on][11], "Fire")
         self.assertEqual(rows[off][11], "")
-        self.assertEqual(COLUMNS[-1], "Layer")
+        self.assertEqual(COLUMNS[8], "Layer")             # (Space after it: 1.12 too)
         panel = MarkupsPanel()
         self.addCleanup(panel.deleteLater)
         panel.refresh(v.doc)

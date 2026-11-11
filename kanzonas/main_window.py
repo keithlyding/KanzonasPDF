@@ -131,6 +131,9 @@ MEASURE_TOOLS = [
     ("m_perimeter", tr("Perimeter"), "", tr("Measure a perimeter: click corners, double-click or Enter to finish")),
     ("m_volume", tr("Volume"), "", tr("Measure volume: click the corners of the area, double-click or Enter; set the depth in Properties")),
     ("m_count", tr("Count"), "Shift+C", tr("Count: click each item; set the group name in Properties (Shift+C)")),
+    ("space", tr("Space"), "", tr("Space: a named area (a room, a zone): click each corner, "
+                                  "double-click or Enter to finish, then name it. The Markups "
+                                  "list shows the space each markup is in")),
     ("m_calibrate", tr("Calibrate Tape Measure"), "", tr("Calibrate Tape Measure: drag along a known dimension, then type its real length")),
 ]
 EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
@@ -5642,7 +5645,7 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Measure"), [
             (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
             (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_dim"], t["m_perimeter"],
-                                   t["m_volume"], t["m_calibrate"]]),
+                                   t["m_volume"], t["space"], t["m_calibrate"]]),
             # the page's scale in large type opens Set scale (so no separate button for it),
             # with the Show scale bar switch beside it
             (tr("Page scale"), "large", [self.scale_panel]),

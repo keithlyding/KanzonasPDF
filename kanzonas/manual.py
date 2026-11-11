@@ -1362,6 +1362,18 @@ radius (R) and diameter (&Oslash;).
 &times; depth. Set the <b>Depth</b> in the Properties panel, in the page's scale unit (feet
 when the scale is in feet and inches); changing it updates the selected measurement.</li>
 <li><b>Measurement summary</b> totals everything and exports to CSV.</li>
+<li><b>Space</b> (Measure tab, "More" group, the Measure menu and the CAD tab's Measure
+button), like Bluebeam's Spaces: a named area of a sheet (a room, a zone, a level). Click each
+corner, double-click or press Enter, and type its name (Space 1, Space 2... is offered). It is
+a see-through blue polygon with its name written in it on screen; color, outline and
+see-through are in Properties, and its grips move its corners as a polygon's do. Click its
+outline to select it: a press inside it draws or selects what's in the room. To rename
+it, right-click it &gt; <b>Rename space...</b>. Every markup whose middle is inside a space is
+in that space (in the smallest one where spaces overlap): the Markups list shows it in its
+<b>Space</b> column and, when the document has spaces, has a list to show one space's markups
+(with Type set to Count, its count shows at the top, as "12 of 40"). Move a markup in or out
+and its space follows. Other PDF programs show a space as a polygon with its name as its
+comment.</li>
 </ul>
 
 <h2 id="pages">Pages</h2>

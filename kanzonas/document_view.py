@@ -26,6 +26,7 @@ from .i18n import tr
 from .inline_editor import InlineEditor
 from .outside import page_outside_margins
 from . import markup_layers
+from . import spaces
 from .page_widget import PageWidget
 
 PAGE_GAP = 12
@@ -2849,7 +2850,8 @@ class DocumentView(QScrollArea):
             self._scale_bars.pop(i, None)
             self._legend_where.pop(i, None)
             self._legend_sums.pop(i, None)
-            for key in ("fields", "links", "fieldx", "annotx", "annothit", "review", "replies"):
+            for key in ("fields", "links", "fieldx", "annotx", "annothit", "review", "replies",
+                        "spaces"):
                 self._card_cache.pop((key, i), None)
             self._card_cache.pop(i, None)
             self._snap_recheck.add(i)
@@ -4447,6 +4449,14 @@ class DocumentView(QScrollArea):
                 model = annotations.bent(model, pts[2], 0.5 / max(self.zoom, 0.05))
             self._create(index, model)
             return
+        if tool == "space":
+            # (spaces.py: a named, see-through polygon)
+            name = self.ask_space_name(spaces.next_name(self.doc))
+            if not name:
+                return
+            self._create(index, {"kind": "polygon", "props": self.tool_props(tool),
+                                 "points": pts, "rect": pymupdf.Rect(), "text": name})
+            return
         if tool == "m_dim":
             # (its two measured points, and its dimension line's middle: dimensions.py)
             from . import dimensions
@@ -4455,6 +4465,60 @@ class DocumentView(QScrollArea):
             pts = dimensions.normalized(pts)
         self._create(index, {"kind": tool, "props": self.tool_props(tool), "points": pts,
                              "rect": pymupdf.Rect()})
+
+    # ---- spaces (spaces.py) ----------------------------------------------------------
+    def ask_space_name(self, default, title=None):
+        """The name for a space (None: cancelled). (Tests replace it.)"""
+        from PySide6.QtWidgets import QInputDialog
+        name, ok = QInputDialog.getText(self, title or tr("New space"),
+                                        tr("Name of the space (a room, a zone...):"),
+                                        text=default)
+        name = name.strip()
+        return name if ok and name else None
+
+    def space_labels(self, index):
+        """[(name, middle, unrotated page point)] of page index's spaces shown now: their
+        names are written in them on screen (PageWidget)."""
+        key = ("spaces", index)
+        got = self._card_cache.get(key)
+        if got is None:
+            try:
+                got = spaces.labels(self.doc[index])
+            except Exception:
+                got = []
+            self._card_cache[key] = got
+        return got
+
+    def selected_space(self):
+        """The xref of the one space selected, or None."""
+        xs = self.selected_xrefs() if self.selection is not None else []
+        if len(xs) == 1 and spaces.is_space(self.doc, xs[0]):
+            return xs[0]
+        return None
+
+    def rename_space(self, xref=None, name=None):
+        """Rename the space selected (or xref), asking for its name when none is given; one
+        undo step. True when renamed."""
+        xref = xref or self.selected_space()
+        if xref is None or self.selection is None and xref is None:
+            return False
+        index = self.selection[0] if self.selection is not None else None
+        if index is None:
+            return False
+        old = spaces._name(self.doc, xref)
+        if name is None:
+            name = self.ask_space_name(old, tr("Rename space"))
+        if not name or name == old:
+            return False
+
+        def do():
+            page = self.doc[index]
+            a = page.load_annot(xref)
+            a.set_info(content=name)
+            a.update()
+        self.modify(do, [index])
+        self.select_xref(index, xref)
+        return True
 
     # ---- stamps -----------------------------------------------------------------
     def stamp_preview(self):
@@ -5144,6 +5208,15 @@ class DocumentView(QScrollArea):
             return cls._shape_hit(annot, pt, tol, width)
         return annot.rect.contains(pt)
 
+    @staticmethod
+    def _is_space(annot):
+        """A space (spaces.py): picked by its outline only, filled as it is, so a press
+        inside it draws or selects what's in the room."""
+        try:
+            return spaces.is_space(annot.parent.parent, annot.xref)
+        except Exception:
+            return False
+
     @classmethod
     def _shape_hit(cls, annot, pt, tol, width):
         """Rectangles, ellipses and polygons (clouds, areas): a filled one is hit anywhere
@@ -5158,7 +5231,7 @@ class DocumentView(QScrollArea):
             if len(v) < 2:
                 return annot.rect.contains(pt)
             inside = cls._in_polygon(pt, v)
-            if filled and inside:
+            if filled and inside and not cls._is_space(annot):
                 return True
             d = min(cls._seg_dist(pt, v[k], v[(k + 1) % len(v)]) for k in range(len(v)))
             # cloud bumps lie outside the outline, up to the /RD margin
@@ -8798,7 +8871,7 @@ class DocumentView(QScrollArea):
     def _layers_shown_changed(self):
         """Markups on a layer just hidden can't be picked (nor stay selected)."""
         for key in [k for k in self._card_cache
-                    if isinstance(k, tuple) and k and k[0] in ("annotx", "annothit")]:
+                    if isinstance(k, tuple) and k and k[0] in ("annotx", "annothit", "spaces")]:
             self._card_cache.pop(key, None)
         self._annot_memo = None
         if self.selection is not None:

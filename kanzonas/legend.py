@@ -98,6 +98,8 @@ def label_of(model, subject=""):
     s = sample_kind(model)
     if s in ("cloud", "mask", "curve"):
         return A.LABELS[s]
+    if kind == "polygon" and p.get("space"):
+        return A.LABELS["space"]            # (spaces.py)
     return A.LABELS.get(kind, kind)
 
 

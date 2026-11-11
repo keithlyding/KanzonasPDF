@@ -629,6 +629,13 @@ class Battery:
             f.write(v._snapshot())
         fresh = DV.DocumentView(path)
         try:
+            # (layers hidden here are hidden in the fresh view too: hiding a layer is a
+            # viewing choice, not saved; object numbers stay as they are in the snapshot)
+            from kanzonas import markup_layers
+            off = markup_layers.hidden(v.doc)
+            for n, x in markup_layers.ui_layers(fresh.doc) if off else ():
+                if x in off:
+                    fresh.set_layer(n, False)
             fresh.resize(v.width(), v.height())
             fresh.set_zoom(v.zoom)
             for i in range(v.doc.page_count):
@@ -654,7 +661,13 @@ class Battery:
         """Save (as File > Save does), open the file again: the same document."""
         self.do_save()
         self.after("save")
+        from kanzonas import markup_layers
+        off = markup_layers.hidden(self.v.doc)
         with pymupdf.open(self.v.path) as d:
+            # (the layers hidden here hidden there too: a viewing choice, not saved)
+            for n, x in markup_layers.ui_layers(d) if off else ():
+                if x in off:
+                    d.set_layer_ui_config(n, 2)
             got = summary(d)
         if got != self.cur.summary:
             raise Failed("saved and opened again: " + summary_diff(self.cur.summary, got))
@@ -742,6 +755,9 @@ class Battery:
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
             (self.op_review, 5),
             (self.op_accessibility, 3),
+            # (1.12) groups and Flip, markups on layers, spaces
+            (self.op_group, 3), (self.op_flip, 2), (self.op_markup_layer, 3),
+            (self.op_space, 2),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1057,6 +1073,72 @@ class Battery:
             return "none"
         self.v.arrange(self.rnd.choice(["front", "back", "forward", "backward"]))
         self.v.clear_selection()
+
+    def op_group(self):
+        """Arrange > Group / Ungroup (a group: /IRT and /RT /Group, review.py)."""
+        if self.select_some() is None:
+            return "none"
+        v = self.v
+        if v.can_group() and (not v.can_ungroup() or self.rnd.random() < 0.6):
+            done = v.group_selection()
+        elif v.can_ungroup():
+            done = v.ungroup_selection()
+        else:
+            done = False
+        v.clear_selection()
+        return "edit" if done else "none"
+
+    def op_flip(self):
+        if self.select_some() is None:
+            return "none"
+        done = self.v.flip_selection(self.rnd.random() < 0.5)
+        self.v.clear_selection()
+        return "edit" if done else "none"
+
+    def op_markup_layer(self):
+        """Markups on layers (markup_layers.py): a new layer, the layer new markups go on,
+        markups moved to a layer (or none), a layer hidden or shown (not an edit)."""
+        from kanzonas import markup_layers
+        v = self.v
+        have = markup_layers.layers(v.doc)
+        r = self.rnd.random()
+        if not have or r < 0.2:
+            v.new_markup_layer("Layer %d" % self.rnd.randint(1, 99))
+            return "edit"
+        if r < 0.4:
+            v.set_markup_layer(self.rnd.choice([None] + [x for x, _n, _o in have]))
+            return "none"
+        if r < 0.55:
+            numbers = [n for n, _x in markup_layers.ui_layers(v.doc)]
+            if not numbers:
+                return "none"
+            v.set_layer(self.rnd.choice(numbers), self.rnd.random() < 0.6)
+            return "none"
+        if self.select_some() is None:
+            return "none"
+        done = v.move_selection_to_layer(self.rnd.choice([None] + [x for x, _n, _o in have]))
+        v.clear_selection()
+        return "edit" if done else "none"
+
+    def op_space(self):
+        """A space drawn and named, or one renamed (spaces.py)."""
+        from kanzonas import spaces
+        v = self.v
+        i = self.page()
+        own = spaces.on_page(v.doc, v.doc[i])
+        if own and self.rnd.random() < 0.3:
+            x = self.rnd.choice(own)[0]
+            v.select_xref(i, x)
+            if v.selected_space() != x:
+                v.clear_selection()
+                return "none"
+            done = v.rename_space(name="Room %d" % self.rnd.randint(1, 999))
+            v.clear_selection()
+            return "edit" if done else "none"
+        pts = [self.point(i, 40) for _ in range(self.rnd.randint(3, 6))]
+        with mock.patch.object(v, "ask_space_name", lambda default, title=None: default):
+            v.apply_poly(i, "space", pts)
+        v.clear_selection()
 
     def op_eraser(self):
         i = self.page()

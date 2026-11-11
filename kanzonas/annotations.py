@@ -87,7 +87,11 @@ DEFAULTS = {
     "circle": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     # a rectangle that hides what's under it (AutoCAD's Wipeout): paper white, no outline
     "mask": {"stroke": None, "fill": "#ffffff", "width": 1.0, "cloud": False, "opacity": 1.0},
-    "polygon": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
+    "polygon": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0,
+                "space": False},
+    # a named area of a sheet (spaces.py, 1.12): a polygon, see-through, its name its text
+    "space": {"stroke": "#1f6fd0", "fill": "#1f6fd0", "width": 1.5, "cloud": False,
+              "opacity": 0.2, "space": True},
     "polyline": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "arc": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     # the Curve tool draws a bent line (kind "line" with a "bend" point): its own style
@@ -129,6 +133,7 @@ LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": t
           "textbox": tr("Text box"),
           "rect": tr("Rectangle"), "ellipse": tr("Ellipse"), "line": tr("Line"), "arrow": tr("Arrow"),
           "ink": tr("Pen"), "polygon": tr("Polygon"), "polyline": tr("Polyline"),
+          "space": tr("Space"),
           "arc": tr("Arc"), "curve": tr("Curve"),
           "callout": tr("Callout"),
           "stamp": tr("Stamp"), "field": tr("Form field"), "cloud": tr("Cloud"),

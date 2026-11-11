@@ -11179,3 +11179,30 @@ msgstr "Todas las capas"
 
 msgid "Layer"
 msgstr "Capa"
+
+msgid "Space"
+msgstr "Espacio"
+
+msgid "Space: a named area (a room, a zone): click each corner, double-click or Enter to finish, then name it. The Markups list shows the space each markup is in"
+msgstr "Espacio: un área con nombre (una habitación, una zona): haga clic en cada esquina, doble clic o Enter para terminar, y póngale nombre. La lista de marcas muestra el espacio en el que está cada marca"
+
+msgid "All spaces"
+msgstr "Todos los espacios"
+
+msgid "(unnamed space)"
+msgstr "(espacio sin nombre)"
+
+msgid "Space {n}"
+msgstr "Espacio {n}"
+
+msgid "New space"
+msgstr "Nuevo espacio"
+
+msgid "Name of the space (a room, a zone...):"
+msgstr "Nombre del espacio (una habitación, una zona...):"
+
+msgid "Rename space"
+msgstr "Cambiar el nombre del espacio"
+
+msgid "Rename space..."
+msgstr "Cambiar el nombre del espacio..."

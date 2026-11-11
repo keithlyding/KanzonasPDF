@@ -295,6 +295,25 @@ class Upkeep(unittest.TestCase):
         self.assertIn("Revision B sheet 1", " ".join(t for _ty, t in self.order(v, 2)))
         self.undoes(v, lambda: v.delete_page(0))
 
+    def test_a_page_with_nothing_tagged_duplicated(self):
+        # (random battery, seed 31, 1.12: a page whose tagged text was all erased keeps its
+        # StructParents; its copy kept the same key, used twice. The original keeps it, the
+        # copy drops it)
+        w, v = self.window(sample(2))
+        page = v.doc[1]
+
+        def erase():
+            from kanzonas import page_objects
+            page_objects._set_contents(v.doc[1], b"")
+        v.modify(erase, [1])
+        v.modify(lambda: v.doc[1].add_rect_annot(pymupdf.Rect(400, 100, 450, 150)), [1])
+        del page
+        self.in_step(v)
+        key = v.doc.xref_get_key(v.doc.page_xref(1), "StructParents")
+        self.undoes(v, lambda: v.duplicate_pages([1]))
+        self.assertEqual(v.doc.xref_get_key(v.doc.page_xref(1), "StructParents"), key)
+        self.assertNotEqual(v.doc.xref_get_key(v.doc.page_xref(2), "StructParents"), key)
+
     def test_pages_from_a_tagged_file(self):
         w, v = self.window(sample(1))
         other = sample(1)
