@@ -373,7 +373,7 @@ msgstr "Raggruppa le tavole per disciplina (A - Architettonico, S - Strutturale.
 
 #: bookmarks_ui.py:81
 msgid "Names in capitals in Title Case"
-msgstr "Nomi in maiuscolo con le iniziali maiuscole"
+msgstr "Nomi in MAIUSCOLO: solo l'iniziale maiuscola"
 
 #: bookmarks_ui.py:82
 msgid "FIRST FLOOR PLAN becomes First Floor Plan"
@@ -1708,6 +1708,18 @@ msgstr "pollici"
 #: export.py:25 main_window.py:2862
 msgid "millimeters"
 msgstr "millimetri"
+
+#: snapping.py:25
+msgid "points"
+msgstr "punti"
+
+#: measure_ui.py:60
+msgid "title block"
+msgstr "cartiglio"
+
+#: measure_ui.py:61
+msgid "drawing"
+msgstr "disegno"
 
 #: export.py:26 main_window.py:2863
 msgid "PDF points (1:1)"
@@ -4436,7 +4448,7 @@ msgstr "Scorciatoie da tastiera"
 
 #: main_window.py:3689
 msgid "Click a shortcut and press the new key combination. Clear it with Backspace. Ctrl+Shift+Plus/Minus always rotate."
-msgstr "Fai clic su una scorciatoia e premi la nuova combinazione di tasti. Cancellala con Backspace. Ctrl+Shift+Plus/Minus ruotano sempre la pagina."
+msgstr "Fai clic su una scorciatoia e premi la nuova combinazione di tasti. Cancellala con Backspace. Ctrl+Shift con + o - ruotano sempre la pagina."
 
 #: main_window.py:3694
 msgid "Filter"
@@ -5426,11 +5438,11 @@ msgstr "Esporta misure"
 
 #: new_pdf.py:31
 msgid "Letter"
-msgstr "Lettera"
+msgstr "Letter"
 
 #: new_pdf.py:31
 msgid "Legal"
-msgstr "Legale"
+msgstr "Legal"
 
 #: new_pdf.py:31
 msgid "Tabloid"
@@ -6159,7 +6171,7 @@ msgid "Print markups and form fields"
 msgstr "Stampa annotazioni e campi modulo"
 
 msgid "Dark thin lines"
-msgstr "Linee sottili scure"
+msgstr "Scurisci le linee sottili"
 
 msgid ""
 "Print every line at least 0.15 pt wide and solid, so the thin lines of drawings don't come out "

@@ -108,6 +108,15 @@ class Language(unittest.TestCase):
         self.assertEqual(i18n.tr("Preferences"), "Preferencias")
         self.assertEqual(i18n.tr("Not in the catalog"), "Not in the catalog")
 
+    def test_grid_units_are_shown_in_the_users_language(self):
+        """The grid's units were once listed in English in the Italian Grid window."""
+        from kanzonas import snapping
+        self.pick("it")
+
+        names = snapping.unit_names()
+
+        self.assertEqual(names, {"in": "pollici", "mm": "millimetri", "pt": "punti"})
+
     def test_qt_buttons_in_spanish(self):
         self.pick("es")
         t = i18n.install_qt(APP)

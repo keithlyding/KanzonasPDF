@@ -5039,7 +5039,7 @@ class MainWindow(QMainWindow):
         value.setDecimals(3)
         value.setRange(0.001, 10000)
         unit = QComboBox()
-        for k, name in snapping.UNIT_NAMES.items():
+        for k, name in snapping.unit_names().items():
             unit.addItem(name, k)
         unit.setCurrentIndex(max(0, unit.findData(paths.stored_str(self.settings, "grid_unit",
                                                                    "in"))))
