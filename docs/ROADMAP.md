@@ -67,6 +67,19 @@ The owner sets this list; nothing below is promised until it's here.
    in its /Resources), and that change drops every step to redo. Not reproduced yet outside
    the full run (the state MuPDF keeps in memory matters, not the file); NeedAppearances is
    false and resynth_required and recalculate are 0 at that point. Nothing is lost but Redo.
+0. **From the first outside tester (issue #82, Hamish Poole-Hill, 11 Nov; owner: "good ideas"):**
+   - **Grouping markups**, as Bluebeam's Group: several markups selected, grouped, then moved,
+     copied, styled and deleted as one (and Ungroup).
+   - **Markups on layers**: a markup put on a layer (new or the drawing's own), shown and
+     hidden with it in the Layers panel.
+   - **The working space for putting sheets back together** (his use: "plans that are spread
+     across multiple sheets back together for review"): markups anywhere in the gray around a
+     page, room for whole neighboring sheets, more where a file already has markups farther
+     out; printing them on the same sheet (smaller) or on an extra sheet after the page (the
+     page at scale). The owner and Claude are settling the details (11 Nov).
+   - **The Mac download not installing** for a colleague of his: asked for the Mac's model,
+     macOS version and the message shown (Apple silicon and macOS 14.4 or newer only; not
+     signed by Apple yet, so Privacy & Security > Open Anyway the first time).
 1. **French, German and Portuguese** (the app and the manual), now that 1.10's features are in
    (owner, 6 Nov).
 2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
