@@ -837,6 +837,17 @@ class MainWindow(QMainWindow):
         self.a_scale_bar.setCheckable(True)
         self.a_scale_bar.setChecked(self.settings.value("scale_bar", "false") == "true")
         DocumentView.show_scale_bar = self.a_scale_bar.isChecked()
+        self.a_working_space = self._act(
+            tr("&Working space around pages"), self._toggle_working_space,
+            tip=tr("Gray room around each page to keep comments and pictures beside the "
+                   "drawing: shown and saved, never printed (other PDF programs don't show "
+                   "them)"))
+        self.a_working_space.setCheckable(True)
+        # (KANZONAS_WORKING_SPACE=1: on unless turned off, to run the tests with it shown)
+        self.a_working_space.setChecked(self.settings.value(
+            "working_space", "true" if os.environ.get("KANZONAS_WORKING_SPACE") == "1"
+            else "false") == "true")
+        DocumentView.working_space = self.a_working_space.isChecked()
         self.a_ocr = self._act(tr("Recognize text (&OCR)..."), self.ocr,
                                tip=tr("Make scanned pages searchable and selectable"))
         self.a_batch = self._act(tr("&Batch processing..."), self.batch_processing,
@@ -1294,6 +1305,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_hl_fields)
         m.addAction(self.a_show_boxes)
         m.addAction(self.a_scale_bar)
+        m.addAction(self.a_working_space)
         m.addSeparator()
         m.addActions([self.a_grid, self.a_snap_grid, self.a_snap_objects, self.a_snap_page,
                       self.a_grid_settings])
@@ -3834,6 +3846,18 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(tr("Scale bar on: it shows on the pages that have a "
                                             "scale (on screen only)"), 4000)
 
+    def _toggle_working_space(self):
+        on = self.a_working_space.isChecked()
+        self.settings.setValue("working_space", "true" if on else "false")
+        for w in windows():
+            w.a_working_space.setChecked(on)
+            for v in w._views():
+                v.set_working_space(on)
+        DocumentView.working_space = on         # (and documents opened from now on)
+        if on:
+            self.statusBar().showMessage(tr("Working space on: what's kept beside a page is "
+                                            "shown and saved, but not printed"), 5000)
+
     def link_sheet_callouts(self):
         """Pages > Link sheet callouts...: sheet numbers from the title blocks, then a link on
         every callout, note and index line that names one of the sheets."""
@@ -5178,7 +5202,7 @@ class MainWindow(QMainWindow):
         "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "a_add_space": tr("Add space"), "tool_link": tr("Links"),
         "a_page_boxes": tr("Page boxes"), "a_fix_hairlines": tr("Fix hairlines"),
         "a_print_check": tr("Check for printing"), "a_show_boxes": tr("Show boxes"),
-        "a_scale_bar": tr("Scale bar"),
+        "a_scale_bar": tr("Scale bar"), "a_working_space": tr("Working space"),
         "tool_editobjects": tr("Edit objects"), "tool_addtext": tr("Add text"),
         "tool_attach": tr("Attach file", ctx="ribbon"),
         "tool_m_calibrate": tr("Calibrate"),
@@ -5209,6 +5233,7 @@ class MainWindow(QMainWindow):
         "a_page_boxes": "border-outside", "a_fix_hairlines": "format-line-weight",
         "a_print_check": "printer-search", "a_show_boxes": "border-style",
         "a_scale_bar": "map-legend",
+        "a_working_space": "selection-ellipse-arrow-inside",
         "a_from_images": "file-image-outline", "a_new": "file-document-plus-outline",
         "a_scan": "scanner", "a_extract": "file-export-outline",
         "a_header": "page-layout-header-footer", "a_watermark": "watermark", "a_background": "format-color-fill",
@@ -5352,7 +5377,7 @@ class MainWindow(QMainWindow):
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                      self.a_split]),
             (tr("Display"), "small", [self.a_night, self.a_show_markups, self.a_hl_fields,
-                                      self.a_free_pan]),
+                                      self.a_free_pan, self.a_working_space]),
             (tr("Grid & snap"), "small", snap, [self.a_grid_settings]),
             # (Collapse is also a double-click on a tab, or Ctrl+F1)
             (tr("Ribbon"), "small", [self.a_ribbon, self.a_menu_bar],

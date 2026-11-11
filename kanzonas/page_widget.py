@@ -52,6 +52,12 @@ PREDECODE_AFTER_S = 0.25    # tiles this slow on a page with big pictures: decod
 SMALL_PREVIEW = 400         # px: the small copy of a page's bitmap kept once it's let go ...
 SMALL_PREVIEWS = 40         # ... for this many pages
 TILE = 512                  # tile size in device pixels
+# View > Working space around pages: gray room around each page where markups can be kept
+# (shown and saved, never printed), as a fraction of the page's shown width (left and right)
+# and height (above and below); issue #82
+WS_X = 0.5
+WS_Y = 0.15
+WS_COLOR = QColor(98, 102, 106)
 TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
 ROT_GAP = 26        # rotation handle distance above the selection, px
@@ -361,10 +367,46 @@ class PageWidget(QWidget):
         self._shape_end = None      # CAD mode: a shape whose ending click is down (cad_draw.py)
 
     # ---- geometry -------------------------------------------------------
+    def margins_pt(self):
+        """The working space on each side of the page, in points as shown: (x, y); (0, 0)
+        when View > Working space around pages is off."""
+        if not getattr(self.view, "working_space", False):
+            return 0.0, 0.0
+        r = self.view.page_rects[self.index]
+        return r.width * WS_X, r.height * WS_Y
+
+    def offset(self):
+        """Where the page's top-left corner is in the widget (pixels): (0, 0) unless the
+        working space is shown around it."""
+        mx, my = self.margins_pt()
+        z = self.view.zoom
+        return QPointF(round(mx * z), round(my * z))
+
+    def page_px(self):
+        """The page's own size in widget pixels (without the working space)."""
+        r = self.view.page_rects[self.index]
+        z = self.view.zoom
+        return max(1, int(r.width * z)), max(1, int(r.height * z))
+
+    def page_area(self):
+        """The page itself in widget coordinates."""
+        w, h = self.page_px()
+        o = self.offset()
+        return QRectF(o.x(), o.y(), w, h)
+
+    def shown_rect(self, r):
+        """A rect in page coordinates as shown (turned) -> widget QRectF."""
+        z = self.view.zoom
+        o = self.offset()
+        return QRectF(o.x() + r.x0 * z, o.y() + r.y0 * z, r.width * z, r.height * z)
+
     def update_size(self):
         r = self.view.page_rects[self.index]
         z = self.view.zoom
-        size = (max(1, int(r.width * z)), max(1, int(r.height * z)))
+        w, h = self.page_px()
+        o = self.offset()
+        size = (w + 2 * int(o.x()), h + 2 * int(o.y()))
+        del z
         if self._pix is not None and size != (self.width(), self.height()):
             # (a new zoom: the page as it was is shown, scaled, until it's drawn sharp again)
             self._preview = (self._pix, r)
@@ -497,15 +539,16 @@ class PageWidget(QWidget):
     def _device_rect(self, dpr):
         """The widget in device pixels, the last ones even when partly covered (3890 widget
         pixels at 125% are 4862.5 device pixels: 4863 to paint)."""
-        return pymupdf.IRect(0, 0, math.ceil(self.width() * dpr - 1e-6),
-                             math.ceil(self.height() * dpr - 1e-6))
+        w, h = self.page_px()
+        return pymupdf.IRect(0, 0, math.ceil(w * dpr - 1e-6), math.ceil(h * dpr - 1e-6))
 
     def _tiled(self):
         """Drawn in tiles (only what's in view) rather than as one bitmap: a page bigger than
         FULL_LIMIT device pixels, or bigger than FULL_MIN and FULL_SCREENS windowfuls (a heavy
         drawing at 400% isn't rendered whole to show a corner of it)."""
         dpr = self.devicePixelRatioF()
-        px = self.width() * self.height() * dpr * dpr
+        w, h = self.page_px()
+        px = w * h * dpr * dpr
         if px <= FULL_MIN:
             return False
         if px > FULL_LIMIT:
@@ -733,7 +776,8 @@ class PageWidget(QWidget):
             for r in rects:
                 p.fillRect(r, paper)
         else:
-            p.drawPixmap(QRectF(0, 0, self.width(), self.height()), src,
+            w, h = self.page_px()
+            p.drawPixmap(QRectF(0, 0, w, h), src,
                          QRectF(0, 0, src.width(), src.height()))
         old = getattr(self, "_tile_scale", None)
         if old and abs(old - round(s, 5)) > 1e-9:
@@ -756,7 +800,8 @@ class PageWidget(QWidget):
         v = self.view
         if v.doc.is_closed or self.index >= v.doc.page_count:
             return False
-        vis = self.visibleRegion().boundingRect()
+        vis = self.visibleRegion().boundingRect().translated(-self.offset().toPoint()) & \
+            self.page_area().translated(-self.offset()).toRect()
         if vis.isEmpty():
             return False
         if not self._tiled():
@@ -797,19 +842,23 @@ class PageWidget(QWidget):
         """Widget position -> unrotated PDF point (what PyMuPDF expects)."""
         page = self.view.doc[self.index]
         z = self.view.zoom
-        return pymupdf.Point(pos.x() / z, pos.y() / z) * page.derotation_matrix
+        o = self.offset()
+        return pymupdf.Point((pos.x() - o.x()) / z, (pos.y() - o.y()) / z) * \
+            page.derotation_matrix
 
     def to_screen(self, rect, page=None):
         """Unrotated PDF rect -> widget QRectF."""
         page = page or self.view.doc[self.index]
         r = pymupdf.Rect(rect) * page.rotation_matrix
         z = self.view.zoom
-        return QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z)
+        o = self.offset()
+        return QRectF(o.x() + r.x0 * z, o.y() + r.y0 * z, r.width * z, r.height * z)
 
     def to_screen_pt(self, pt, page=None):
         page = page or self.view.doc[self.index]
         q = pymupdf.Point(pt) * page.rotation_matrix
-        return QPointF(q.x * self.view.zoom, q.y * self.view.zoom)
+        o = self.offset()
+        return QPointF(o.x() + q.x * self.view.zoom, o.y() + q.y * self.view.zoom)
 
     # ---- painting -------------------------------------------------------
     _no_defer = None            # the scale at which drawing this page later failed
@@ -826,33 +875,47 @@ class PageWidget(QWidget):
 
     def paintEvent(self, event):
         p = QPainter(self)
+        o = self.offset()
+        if o.x() or o.y():
+            p.fillRect(event.rect(), WS_COLOR)          # the working space around the page
         if self.view.doc.is_closed or self.index >= self.view.doc.page_count:
             # tab closing, or a widget of a page that was just deleted (its deleteLater is
             # still queued): a repaint must not touch the document
             p.fillRect(event.rect(), Qt.white)
             return
-        if self._tiled():
+        # the page itself, drawn in its own pixels (moved by the working space, if shown)
+        w, h = self.page_px()
+        exposed = event.rect().translated(-o.toPoint()) & QRectF(0, 0, w, h).toRect()
+        p.save()
+        p.translate(o)
+        if exposed.isEmpty():
+            pass
+        elif self._tiled():
             self._pix = None
-            self._paint_tiles(p, event.rect())
+            self._paint_tiles(p, exposed)
         else:
             if self._pix is None:
                 s = self.view.zoom * self.devicePixelRatioF()
                 check_content(self.view, self.index)
                 if self.view._rc.get(self.index, s, None, self.view.thin_lines) is None \
                         and self._no_defer != round(s, 5) and self._defer(s):
-                    self._paint_preview(p, [QRectF(event.rect())], s)
+                    self._paint_preview(p, [QRectF(exposed)], s)
                     self.view._render_later(self)
                 else:
                     try:
                         self._render()
                     except Exception:
-                        p.fillRect(self.rect(), Qt.white)
+                        p.fillRect(QRectF(0, 0, w, h), Qt.white)
+                        p.restore()
                         return
             if self._pix is not None:
                 p.drawPixmap(0, 0, self._pix)
-        page = self.view.doc[self.index]
         if self.view.grid_on:
-            self._paint_grid(p, QRectF(event.rect()))
+            self._paint_grid(p, QRectF(exposed))
+        p.restore()
+        page = self.view.doc[self.index]
+        if o.x() or o.y():
+            self._paint_outside(p, event.rect())
         p.setRenderHint(QPainter.Antialiasing)
 
         hits = self.view.search_hits.get(self.index)
@@ -973,18 +1036,18 @@ class PageWidget(QWidget):
             if r is not None and pm is not None:
                 z = self.view.zoom
                 p.setOpacity(0.7)
-                p.drawPixmap(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z), pm,
+                p.drawPixmap(self.shown_rect(r), pm,
                              QRectF(pm.rect()))
                 p.setOpacity(1.0)
                 p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
-                p.drawRect(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z))
+                p.drawRect(self.shown_rect(r))
         elif self._ghost is not None and tool in SIGN_TOOLS:
             pm = self.view.sig_pixmap(tool)
             if pm is not None:
                 r = self.view.sig_display_rect(self.index, tool, self.to_pdf(self._ghost))
                 z = self.view.zoom
                 p.setOpacity(0.6)
-                p.drawPixmap(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z), pm,
+                p.drawPixmap(self.shown_rect(r), pm,
                              QRectF(pm.rect()))
                 p.setOpacity(1.0)
         # a shape being dragged, or (CAD mode) one started with a click that follows the pointer
@@ -1035,7 +1098,7 @@ class PageWidget(QWidget):
             p.setBrush(QColor(0, 90, 220, 28))
             z = self.view.zoom
             for r, _ln in self.view.links(self.index):
-                p.drawRect(QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z))
+                p.drawRect(self.shown_rect(r))
             p.setBrush(Qt.NoBrush)
 
         tm = self._text_move
@@ -1069,7 +1132,69 @@ class PageWidget(QWidget):
         if self.view.current_page() == self.index and self.view.page_count() > 1:
             p.setPen(QPen(QColor(0, 120, 215), 1))
             p.setBrush(Qt.NoBrush)
-            p.drawRect(self.rect().adjusted(0, 0, -1, -1))
+            p.drawRect(self.page_area().adjusted(0, 0, -1, -1))
+
+    def _paint_outside(self, p, exposed):
+        """The markups (and parts of markups) in the working space around the page, drawn
+        as MuPDF draws them, over the gray (kept per zoom and page drawing in the view's
+        _outside cache). Nothing to draw: nothing is made."""
+        img = self._outside_image()
+        if img is None:
+            return
+        p.save()
+        clip = QPainterPath()
+        clip.addRect(QRectF(self.rect()))
+        page = QPainterPath()
+        page.addRect(self.page_area())
+        p.setClipPath(clip.subtracted(page))
+        p.drawImage(QRectF(self.rect()), img, QRectF(img.rect()))
+        p.restore()
+
+    OUTSIDE_PX = 16_000_000     # the working space's markups drawn at most this many pixels
+
+    def _outside_image(self):
+        """The page's markups drawn over the whole widget, working space included (MuPDF
+        draws past the page's edge when asked to), as a QImage with transparency; None when
+        nothing of them is outside the page. Kept until the markups, the zoom or the size
+        change (their DisplayList is made anew after any change: its id is in the key)."""
+        dl = self._annots()
+        if dl is None:
+            return None
+        dpr = self.devicePixelRatioF()
+        z = self.view.zoom
+        key = (id(dl), round(z, 6), dpr, self.width(), self.height())
+        got = getattr(self, "_outside", None)
+        if got is not None and got[0] == key:
+            return got[1]
+        img = None
+        page = self.view.doc[self.index]
+        shown = page.rect
+        if any(not shown.contains((pymupdf.Rect(a.rect) * page.rotation_matrix).normalize())
+               for a in page.annots()):
+            m = pymupdf.mupdf
+            # (a very big page at a high zoom: drawn smaller, then stretched)
+            f = min(1.0, math.sqrt(self.OUTSIDE_PX / max(1.0, self.width() * self.height()
+                                                         * dpr * dpr)))
+            s = z * dpr * f
+            o = self.offset()
+            x0, y0 = -int(round(o.x() * dpr * f)), -int(round(o.y() * dpr * f))
+            w, h = max(1, int(self.width() * dpr * f)), max(1, int(self.height() * dpr * f))
+            # (MuPDF's own device RGB, as the page is drawn: pymupdf.csRGB is another RGB,
+            # and colors drawn into it came out converted, a pure blue dull)
+            raw = m.fz_new_pixmap_with_bbox(m.fz_device_rgb(), m.FzIrect(x0, y0, x0 + w, y0 + h),
+                                            m.FzSeparations(), 1)
+            m.fz_clear_pixmap(raw)                  # transparent
+            dev = m.fz_new_draw_device(m.FzMatrix(s, 0, 0, s, 0, 0), raw)
+            try:
+                m.fz_run_display_list(dl.this, dev, m.FzMatrix(),
+                                      m.FzRect(m.FzRect.Fixed_INFINITE), m.FzCookie())
+            finally:
+                m.fz_close_device(dev)
+            pix = pymupdf.Pixmap(raw)
+            img = QImage(pix.samples, pix.width, pix.height, pix.stride,
+                         QImage.Format_RGBA8888_Premultiplied).copy()
+        self._outside = (key, img)
+        return img
 
     def _paint_text_selection(self, p, page, tool):
         """Blue highlight over text being dragged or already selected on this page.
@@ -1362,7 +1487,8 @@ class PageWidget(QWidget):
         """Unrotated PDF point -> widget point (to_screen_pt) as a QTransform."""
         z = self.view.zoom
         m = page.rotation_matrix
-        return QTransform(m.a * z, m.b * z, m.c * z, m.d * z, m.e * z, m.f * z)
+        o = self.offset()
+        return QTransform(m.a * z, m.b * z, m.c * z, m.d * z, m.e * z + o.x(), m.f * z + o.y())
 
     def _draw_object(self, p, item, page):
         p.drawPath(self._screen_transform(page).map(
@@ -1599,8 +1725,9 @@ class PageWidget(QWidget):
             local = pw.mapFromGlobal(g)
             if pw.rect().contains(local):
                 z = self.view.zoom
-                return pw.index, pymupdf.Point((local.x() - start.x()) / z,
-                                               (local.y() - start.y()) / z), pw
+                a, b = pw.offset(), self.offset()       # (each page's own working space)
+                return pw.index, pymupdf.Point((local.x() - a.x() - start.x() + b.x()) / z,
+                                               (local.y() - a.y() - start.y() + b.y()) / z), pw
         return None
 
     def _show_drop(self, e, start, box):
@@ -1680,7 +1807,7 @@ class PageWidget(QWidget):
                        Qt.DashLine if style == "D" else Qt.SolidLine)
             p.setPen(pen)
             p.setBrush(Qt.NoBrush)
-            box = QRectF(r.x0 * z, r.y0 * z, r.width * z, r.height * z)
+            box = self.shown_rect(r)
             if style == "U":
                 p.drawLine(box.bottomLeft(), box.bottomRight())
             else:
@@ -1743,6 +1870,8 @@ class PageWidget(QWidget):
         pm = self.view.sig_pixmap(self.view.tool)
         aspect = pm.height() / pm.width() if pm is not None and pm.width() else 0.35
         z = self.view.zoom
+        o = self.offset()
+        a, b = a - o, b - o                     # (page pixels: without the working space)
         x0, x1 = sorted((a.x() / z, b.x() / z))
         w = x1 - x0
         h = w * aspect
@@ -2743,12 +2872,13 @@ class PageWidget(QWidget):
         """View > Show scale bar: the page's graphic scale at its bottom left corner (on
         screen only; the picture is made once per page and zoom, see scale_bar_pixmap)."""
         dpr = self.devicePixelRatioF()
-        pm = self.view.scale_bar_pixmap(self.index, dpr, self.width())
+        area = self.page_area()
+        pm = self.view.scale_bar_pixmap(self.index, dpr, int(area.width()))
         if pm is None:
             return
         from .scale_display import BAR_MARGIN
         h = pm.height() / dpr
-        p.drawPixmap(QPointF(BAR_MARGIN, round(self.height() - h - BAR_MARGIN)), pm)
+        p.drawPixmap(QPointF(area.x() + BAR_MARGIN, round(area.bottom() - h - BAR_MARGIN)), pm)
 
     def _select_word(self, pdf, e):
         """Double-click: select the word under the pointer (a third click selects the line)."""

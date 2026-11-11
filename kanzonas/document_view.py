@@ -1127,6 +1127,26 @@ class DocumentView(QScrollArea):
             w.update_size()
         self.widget().adjustSize()
 
+    # View > Working space around pages (page_widget.WS_X, WS_Y); KANZONAS_WORKING_SPACE=1
+    # shows it from the start, to run the tests with it
+    working_space = os.environ.get("KANZONAS_WORKING_SPACE") == "1"
+
+    def set_working_space(self, on):
+        """Show (or hide) the gray working space around each page, where markups kept
+        outside a page are drawn and can be selected, moved and edited; the page in view
+        stays in view."""
+        on = bool(on)
+        if on == self.working_space:
+            return
+        page = self.current_page()
+        self.working_space = on
+        self._relayout()
+        for w in self.pages:
+            w.update()
+        if self.pages:
+            self.goto_page(page)
+            self.center_horizontally()
+
     def _on_scroll(self, *_):
         cur = self.current_page()
         if cur != self._last_page:
@@ -1189,7 +1209,9 @@ class DocumentView(QScrollArea):
     def goto_page(self, index, y_offset=0):
         index = max(0, min(index, len(self.pages) - 1))
         self._show_index(index)
-        self.verticalScrollBar().setValue(self.pages[index].y() - PAGE_GAP + int(y_offset))
+        # (y_offset: from the page's top; its working space, if shown, is above it)
+        self.verticalScrollBar().setValue(self.pages[index].y() - PAGE_GAP + int(y_offset)
+                                          + int(self.pages[index].offset().y()))
         self._on_scroll()
 
     def showEvent(self, e):
@@ -9554,7 +9576,8 @@ class DocumentView(QScrollArea):
         pg = self.doc[index]
         w = pg.load_widget(xref)
         self._show_index(index)
-        top = self.pages[index].y() + (w.rect * pg.rotation_matrix).y0 * self.zoom
+        top = self.pages[index].y() + self.pages[index].offset().y() + \
+            (w.rect * pg.rotation_matrix).y0 * self.zoom
         vbar = self.verticalScrollBar()
         if not vbar.value() + 20 <= top <= vbar.value() + self.viewport().height() - 40:
             vbar.setValue(int(top - self.viewport().height() / 3))
