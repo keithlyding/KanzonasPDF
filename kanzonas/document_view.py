@@ -1133,6 +1133,8 @@ class DocumentView(QScrollArea):
         if not getattr(self, "pages", None):
             return
         index = self.current_page() if index is None else index
+        # (as goto_page: a page remembered past the end of a file that got shorter)
+        index = max(0, min(index, len(self.pages) - 1))
         ws = [self.pages[i] for i in self.spread(index)] if self.two_up() else [self.pages[index]]
         left = min(w.x() for w in ws)
         right = max(w.x() + w.width() for w in ws)
