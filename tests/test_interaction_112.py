@@ -257,6 +257,17 @@ class GrayPreviews(Window):
         pump(3)
         return self.canvas.grab().toImage()
 
+    def hover(self, pos):
+        """The pointer moved (no button) over the canvas at pos, sent to it straight (moved
+        by the window system, it can land in a window an earlier test left behind)."""
+        from PySide6.QtCore import QEvent, QPointF
+        from PySide6.QtGui import QMouseEvent
+        ev = QMouseEvent(QEvent.MouseMove, QPointF(pos),
+                         QPointF(self.canvas.mapToGlobal(pos)), Qt.NoButton, Qt.NoButton,
+                         Qt.NoModifier)
+        QApplication.sendEvent(self.canvas, ev)
+        pump()
+
     def changed(self, before, after, at, r=6):
         return sum(1 for dx in range(-r, r + 1) for dy in range(-r, r + 1)
                    if before.pixel(at.x() + dx, at.y() + dy) !=
@@ -266,8 +277,7 @@ class GrayPreviews(Window):
         self.w.set_tool("stamp")
         pump()
         before = self.shot()
-        QTest.mouseMove(self.canvas, self.gray + QPoint(-30, 20))   # (from somewhere else)
-        QTest.mouseMove(self.canvas, self.gray)
+        self.hover(self.gray)
         self.assertIsNotNone(self.pw._ghost)
         self.assertGreater(self.changed(before, self.shot(), self.gray), 10)
 
@@ -308,7 +318,7 @@ class GrayPreviews(Window):
         self.click(self.pw, QPoint(40, 40))
         self.click(self.pw, QPoint(80, 40))
         before = self.shot()
-        QTest.mouseMove(self.canvas, self.gray)
+        self.hover(self.gray)
         self.assertGreater(self.changed(before, self.shot(), self.gray, 3), 3)
 
 

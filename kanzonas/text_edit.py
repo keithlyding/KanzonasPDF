@@ -900,10 +900,27 @@ def removal_bands(line):
     return out
 
 
-def _same_line(a, b):
-    return line_text(a) == line_text(b) and \
-        abs(pymupdf.Rect(a["bbox"]).x0 - pymupdf.Rect(b["bbox"]).x0) < 0.5 and \
-        abs(pymupdf.Rect(a["bbox"]).y0 - pymupdf.Rect(b["bbox"]).y0) < 0.5
+def _span_key(s):
+    return (round(s["origin"][0], 1), round(s["origin"][1], 1), s["text"])
+
+
+def _others_of(page, lines):
+    """The page's text lines without the spans of these lines: a justified line's words, a
+    piece set apart, can be grouped into lines another way than these were (what's left of a
+    line is a line of its own)."""
+    mine = {_span_key(s) for ln in lines for s in ln["spans"]}
+    out = []
+    for _r, ln in text_lines(page):
+        rest = [s for s in ln["spans"] if _span_key(s) not in mine]
+        if not rest or not any(s["text"].strip() for s in rest):
+            continue
+        if len(rest) != len(ln["spans"]):
+            box = pymupdf.Rect()
+            for s in rest:
+                box |= pymupdf.Rect(s["bbox"])
+            ln = {"bbox": box, "dir": ln["dir"], "spans": rest}
+        out.append(ln)
+    return out
 
 
 def touched_lines(page, lines):
@@ -915,7 +932,7 @@ def touched_lines(page, lines):
     if not bands:
         return []
     cell = 48.0
-    others = [ln for _r, ln in text_lines(page) if not any(_same_line(ln, m) for m in lines)]
+    others = _others_of(page, lines)
     grid = {}
     for k, ln in enumerate(others):
         for sp in ln["spans"]:
