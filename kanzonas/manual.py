@@ -400,8 +400,15 @@ characters, each word kept in its own style (bold, italic, color...). A line is 
 text or past the edge of the page, Replace text says on which pages (Ctrl+Z undoes it; Edit text
 can rewrap the paragraph). Pages with redaction marks that aren't applied yet are skipped (it says which).
 Ctrl+Z undoes the whole replacement.</li>
-<li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.
-It's for looking only: make changes in the main view.</li>
+<li><b>Split view</b> (F10) shows a second, independently scrolling view under the documents,
+or beside them with <b>Side by side</b> on its bar (remembered); drag the bar between them to
+share the room. It's for looking only: make changes in the main view (they show in both). Its
+list shows <b>The document in front</b> (it follows the tabs) or any other open document, to
+compare a plan with a detail sheet or one revision with another; if that document is closed,
+it shows the one in front. Tick <b>Sync</b> to pan and zoom both views together, as Bluebeam's
+Sync does: <b>By page number</b> keeps the same page in both (two revisions of a set);
+<b>By the pages in view</b> keeps the two pages shown when you ticked it paired, at their
+zooms (a plan and its detail), and moving either view moves the other.</li>
 <li><b>Rulers</b> (View menu, or the View tab's Display group; Ctrl+R) puts rulers along the top
 and left of the document. They measure the page under the pointer (or the page in view) from
 its top-left corner as it's shown, in paper units: the page's own length is the lighter band,

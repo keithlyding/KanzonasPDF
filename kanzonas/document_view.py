@@ -1335,6 +1335,9 @@ class DocumentView(QScrollArea):
             QTimer.singleShot(0, self._initial_view)
 
     def _initial_view(self):
+        import shiboken6
+        if not shiboken6.isValid(self):
+            return              # (queued with a timer: a split view replaced meanwhile)
         if not self.isVisible():
             # its tab went to the back before this ran (several files opened at once): the
             # page layout isn't updated while hidden, so wait until the tab is shown again

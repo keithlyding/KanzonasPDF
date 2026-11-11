@@ -387,8 +387,14 @@ caracteres, y cada palabra con su propio estilo (negrita, cursiva, color...). La
 texto o pasa del borde de la página, Reemplazar texto indica en qué páginas (Ctrl+Z lo deshace; Editar texto
 puede reajustar el párrafo). Las páginas con marcas de censura que aún no se han aplicado se omiten (se indica cuáles).
 Ctrl+Z deshace todo el reemplazo.</li>
-<li><b>Vista dividida</b> (F10) muestra una segunda vista del mismo archivo, que se desplaza de forma independiente.
-Es solo para mirar: haga los cambios en la vista principal.</li>
+<li><b>Vista dividida</b> (F10) muestra una segunda vista, que se desplaza de forma independiente, debajo de los
+documentos, o a su lado con <b>Lado a lado</b> en su barra (se recuerda); arrastre la barra entre ellas para repartir el
+espacio. Es solo para mirar: haga los cambios en la vista principal (se ven en las dos). Su lista muestra <b>El
+documento de delante</b> (sigue a las pestañas) o cualquier otro documento abierto, para comparar un plano con una hoja
+de detalles o una revisión con otra; si ese documento se cierra, muestra el de delante. Marque <b>Sincronizar</b> para
+desplazar y hacer zoom en las dos vistas a la vez, como Sync de Bluebeam: <b>Por número de página</b> mantiene la misma
+página en las dos (dos revisiones de un juego); <b>Por las páginas a la vista</b> mantiene emparejadas las dos páginas
+que se veían al marcarlo, con sus zooms (un plano y su detalle), y mover cualquiera de las vistas mueve la otra.</li>
 <li><b>Reglas</b> (menú Ver, o el grupo Visualización de la pestaña Ver; Ctrl+R) pone reglas arriba y a la izquierda del
 documento. Miden la página bajo el puntero (o la página a la vista) desde su esquina superior izquierda tal como se ve,
 en unidades de papel: el largo de la propia página es la franja más clara, y una línea marca dónde está el puntero.

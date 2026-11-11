@@ -2299,10 +2299,7 @@ class MainWindow(QMainWindow):
             return
         v.commit_pending()
         title = self.tabs.tabText(index)
-        if self._split_view is not None and getattr(self._split_view, "_source", None) is v:
-            self._split_view.deleteLater()
-            self._split_view = None
-            self.split_dock.hide()
+        self._split_source_gone(v)
         self._disconnect_view(v)
         self.tabs.removeTab(index)
         target.adopt_view(v, title, at)
@@ -2369,10 +2366,7 @@ class MainWindow(QMainWindow):
             v._cad_cmd.cancel()
         self._remember_state(v)
         self.autosave.discard(v)
-        if self._split_view is not None and getattr(self._split_view, "_source", None) is v:
-            self._split_view.deleteLater()
-            self._split_view = None
-            self.split_dock.hide()
+        self._split_source_gone(v)
         self.tabs.removeTab(index)
         v.close_doc()
         v.deleteLater()
@@ -4856,17 +4850,29 @@ class MainWindow(QMainWindow):
 
     # ---- split view -----------------------------------------------------------------------
     def _build_split(self):
-        self.split_dock = QDockWidget(tr("Second view"))
-        self.split_dock.setObjectName("splitview")
-        self.split_dock.setFeatures(QDockWidget.DockWidgetClosable)
-        self.split_holder = QWidget()
-        QVBoxLayout(self.split_holder).setContentsMargins(0, 0, 0, 0)
-        self.split_dock.setWidget(self.split_holder)
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.split_dock)
+        """Split view (F10): the second view's pane in a splitter with the documents, under
+        them or beside them (split_view.py)."""
+        from .split_view import SplitPane
+        from PySide6.QtWidgets import QSplitter
+        self.takeCentralWidget()            # (the tabs; setCentralWidget would delete them)
+        self.central_split = QSplitter(Qt.Vertical)
+        self.central_split.setChildrenCollapsible(False)
+        self.central_split.addWidget(self.tabs)
+        # (named as the dock it was before 1.12: the window and the tests show and hide it)
+        self.split_dock = SplitPane(self)
+        self.central_split.addWidget(self.split_dock)
+        self.setCentralWidget(self.central_split)
         self.split_dock.hide()
+        self.split_dock.side.blockSignals(True)
+        self.split_dock.side.setChecked(self.settings.value("split_side", "false") == "true")
+        self.split_dock.side.blockSignals(False)
+        self._apply_split_orientation()
         self.split_dock.visibilityChanged.connect(self._split_visible)
+        self.split_dock.sourceChanged.connect(self._attach_split)
+        self.split_dock.orientationChanged.connect(self._split_orientation_changed)
         self._split_view = None
-        self.tabs.currentChanged.connect(lambda _: self.split_dock.isVisible() and self._attach_split())
+        self.tabs.currentChanged.connect(lambda _: self.split_dock.isVisible() and
+                                         self._split_front_changed())
 
     def _toggle_split(self):
         self.split_dock.setVisible(self.a_split.isChecked())
@@ -4875,22 +4881,83 @@ class MainWindow(QMainWindow):
         self.a_split.setChecked(vis)
         if vis:
             self._attach_split()
-            self.resizeDocks([self.split_dock], [int(self.height() * 0.42)], Qt.Vertical)
-        elif self._split_view is not None:
-            self._split_view.deleteLater()
+            total = sum(self.central_split.sizes()) or 2
+            self.central_split.setSizes([total // 2, total - total // 2])
+        else:
+            self.split_dock.set_view(None)
             self._split_view = None
 
+    def _apply_split_orientation(self):
+        self.central_split.setOrientation(
+            Qt.Horizontal if self.split_dock.side.isChecked() else Qt.Vertical)
+
+    def _split_orientation_changed(self):
+        self.settings.setValue("split_side", "true" if self.split_dock.side.isChecked()
+                               else "false")
+        self._apply_split_orientation()
+        total = sum(self.central_split.sizes()) or 2
+        self.central_split.setSizes([total // 2, total - total // 2])
+
+    def _split_documents(self):
+        views = self._views()
+        names = [self.tabs.tabText(i) for i in range(len(views))]
+        return views, names
+
+    def _split_source(self):
+        """The view the second view shows: the one in front, or the one chosen."""
+        chosen = self.split_dock.chosen()
+        if chosen != "front":
+            for v in self._views():
+                if id(v) == chosen:
+                    return v
+        return self.view()
+
+    def _split_front_changed(self):
+        """Another tab came to the front: the second view follows it when it shows the
+        document in front; Sync pairs it with the new one."""
+        self._refresh_split_list()
+        if self.split_dock.chosen() == "front":
+            self._attach_split()
+        else:
+            self.split_dock._relink()
+
+    def _refresh_split_list(self):
+        views, names = self._split_documents()
+        chosen = self.split_dock.chosen()
+        pinned = next((v for v in views if id(v) == chosen), None)
+        self.split_dock.fill_documents(views, names, pinned)
+
+    def _split_source_gone(self, v):
+        """View v is closing or moving to another window: a second view showing it shows
+        the document in front instead (or closes, with none left)."""
+        if self._split_view is None or getattr(self._split_view, "_source", None) is not v:
+            if self.split_dock.isVisible():
+                QTimer.singleShot(0, self._refresh_split_list)
+            return
+        self.split_dock.set_view(None)
+        self._split_view = None
+        self.split_dock.fill_documents([], [], None)        # (back to the one in front)
+        QTimer.singleShot(0, self._reattach_split)
+
+    def _reattach_split(self):
+        if not self.split_dock.isVisible():
+            return
+        if self.view() is None:
+            self.split_dock.hide()
+        else:
+            self._attach_split()
+
     def _attach_split(self):
-        """Show a second, independently scrolled view of the current document."""
-        if self._split_view is not None:
-            self._split_view.deleteLater()
-            self._split_view = None
-        v = self.view()
+        """Show a second, independently scrolled view of the chosen document."""
+        self._refresh_split_list()
+        v = self._split_source()
         if v is None:
+            self.split_dock.set_view(None)
+            self._split_view = None
             return
         sv = DocumentView.mirror(v)
-        self.split_holder.layout().addWidget(sv)
         self._split_view = sv
+        self.split_dock.set_view(sv)
         self.split_dock.setWindowTitle(
             tr("Second view: {name} (scroll independently; edit in the main view)").format(
                 name=os.path.basename(v.path)))

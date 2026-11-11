@@ -11076,3 +11076,33 @@ msgstr "Regla: clic derecho para cambiar sus unidades"
 
 msgid "Ruler units: right-click to change them"
 msgstr "Unidades de las reglas: clic derecho para cambiarlas"
+
+msgid "The document the second view shows: the one in front, or any other open one"
+msgstr "El documento que muestra la segunda vista: el de delante, o cualquier otro abierto"
+
+msgid "Side by side"
+msgstr "Lado a lado"
+
+msgid "Show the second view beside the documents (on) or under them (off)"
+msgstr "Mostrar la segunda vista al lado de los documentos (activado) o debajo de ellos (desactivado)"
+
+msgid "Sync"
+msgstr "Sincronizar"
+
+msgid "Pan and zoom both views together"
+msgstr "Desplazar y hacer zoom en las dos vistas a la vez"
+
+msgid "By page number"
+msgstr "Por número de página"
+
+msgid "By the pages in view"
+msgstr "Por las páginas a la vista"
+
+msgid "By page number: the same page in both. By the pages in view: the two pages shown now stay paired (a plan and its detail)"
+msgstr "Por número de página: la misma página en las dos. Por las páginas a la vista: las dos páginas que se ven ahora quedan emparejadas (un plano y su detalle)"
+
+msgid "Close the split view (F10)"
+msgstr "Cerrar la vista dividida (F10)"
+
+msgid "The document in front"
+msgstr "El documento de delante"
