@@ -85,8 +85,10 @@ The owner sets this list; nothing below is promised until it's here.
    - **The Mac download not installing** for a colleague of his: asked for the Mac's model,
      macOS version and the message shown (Apple silicon and macOS 14.4 or newer only; not
      signed by Apple yet, so Privacy & Security > Open Anyway the first time).
-0. **From the Bluebeam comparison** (owner, 11 Nov, after a Bluebeam Revu screenshot from a
-   colleague: "add all of the features except Studio"), in this order (Claude's suggestion):
+0. **1.12: the features from the Bluebeam comparison** (owner, 11 Nov, after a Bluebeam Revu
+   screenshot from a colleague: "add all of the features except Studio"; before the
+   translations, and "all in one release instead of having a bunch of releases"), built in
+   this order (Claude's suggestion), released together as 1.12:
    1. **Rulers and the pointer's position**: rulers along the top and left of the page in its
       units (inches, mm, points; right-click to change), and the pointer's position on the page
       in the status bar, as Revu shows "(17.93, 8.82)". With them, a **Reuse** switch on the
@@ -104,8 +106,8 @@ The owner sets this list; nothing below is promised until it's here.
       and filtered by the space each markup is in (punch lists, takeoff by room).
    6. **Sets**: several PDFs browsed as one document without merging them (a drawing set's
       sheets as separate files), with Combine to make one PDF of them.
-1. **French, German and Portuguese** (the app and the manual), now that 1.10's features are in
-   (owner, 6 Nov).
+1. **French, German and Portuguese** (the app and the manual), after 1.12 (owner, 11 Nov: the
+   Bluebeam features first, so their words are translated once; set as next on 6 Nov).
 2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
