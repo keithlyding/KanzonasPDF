@@ -61,8 +61,9 @@ ON_TABS = {
              "a_sheet_links a_uncrop a_watermark t:crop",
     "Print": "a_fix_hairlines a_page_boxes a_print a_print_check a_show_boxes a_uncrop t:crop",
     "View": "a_chest a_collapse a_free_pan a_grid a_grid_settings a_group_names a_hl_fields "
-            "a_manual a_markups a_menu_bar a_night a_palette a_props a_ribbon a_shortcuts "
-            "a_show_markups a_sidebar a_snap_grid a_snap_objects a_snap_page a_split",
+            "a_manual a_markups a_menu_bar a_night a_palette a_props a_ribbon a_rulers "
+            "a_shortcuts a_show_markups a_sidebar a_snap_grid a_snap_objects a_snap_page "
+            "a_split",
     # (1.10: a tab of its own)
     "Reading": "L:continuous L:single L:two L:two_continuous a_autoscroll a_cover "
                "a_full_screen a_present a_read_doc a_read_from a_read_page a_read_pause "

@@ -115,8 +115,13 @@ se ve y se comporta como acoplado; Editar texto y Editar objetos (pestaña Inici
 pueden hacerlo Acrobat y PDF-XChange. Abrir, guardar, imprimir, deshacer y rehacer están a la izquierda de las pestañas, y el
 cuadro Buscar (con su número de coincidencias y sus flechas arriba / abajo) está a su derecha. La barra inferior (barra de estado, abajo a la derecha) tiene la navegación de páginas (primera,
 anterior, número de página, siguiente, última página), Ajustar página, Ajustar al ancho, Tamaño real, un control deslizante de zoom y el
-cuadro de zoom con alejar / acercar, como PDF-XChange Editor, y la escala del dibujo de la página actual (en rojo cuando no
-tiene ninguna; haga clic en ella para establecerla). Un mensaje de la barra inferior demasiado largo para el espacio a la
+cuadro de zoom con alejar / acercar, como PDF-XChange Editor, el tamaño de la página y dónde está el puntero en ella
+("8.50 &times; 11.00 in&nbsp;&nbsp;(1.25, 3.40)": desde la esquina superior izquierda de la página tal como se ve, en las
+unidades de las reglas), <b>Reutilizar</b>, y la escala del dibujo de la página actual (en rojo cuando no
+tiene ninguna; haga clic en ella para establecerla). <b>Reutilizar</b> activado (lo predeterminado): después de dibujar
+una marca, su herramienta queda elegida para la siguiente; desactivado: se vuelve a la herramienta del modo del mouse
+(Seleccionar, Mano o Editar objetos), como el botón Reuse de Bluebeam. En ambos casos lo que dibujó queda seleccionado,
+así que Propiedades lo cambia. Un mensaje de la barra inferior demasiado largo para el espacio a la
 izquierda de los controles de página termina en «...»; pase el mouse sobre él para leerlo entero. La cinta es compacta: dos filas de
 botones, y cada pestaña cabe en una pantalla de 1366 píxeles de ancho, en inglés y en español. Los comandos que se usan
 menos comparten un botón con una flecha al lado: haga clic en el botón para el comando que muestra, o en la flecha para
@@ -353,8 +358,8 @@ pestaña <b>CAD</b>, al frente, con Mover, Copiar, Girar y los demás comandos C
 </ul>
 Su elección se recuerda. (Antes de la versión 1.5 esto era el interruptor del mouse estilo CAD y una herramienta
 predeterminada; sus elecciones se conservan.)</li>
-<li><b>Movimiento libre de la página (arrastrar la página más allá de sus bordes)</b> (menú Ver, pestaña Ver de la
-cinta): un lienzo abierto alrededor de las páginas, para que la herramienta Mano (o la rueda presionada) arrastre la
+<li><b>Movimiento libre de la página (arrastrar la página más allá de sus bordes)</b> (menú Ver, o bajo la flecha
+del grupo Visualización de la pestaña Ver): un lienzo abierto alrededor de las páginas, para que la herramienta Mano (o la rueda presionada) arrastre la
 página a cualquier lugar, arriba, abajo y a los lados, aunque la página entera quepa en la ventana, por ejemplo después
 de Ajustar página. El menú lo cambia para el modo del mouse en uso; cada modo recuerda su propio ajuste (activado en el
 modo Mano, desactivado en el modo Estándar, activado en el modo CAD).</li>
@@ -384,6 +389,13 @@ puede reajustar el párrafo). Las páginas con marcas de censura que aún no se 
 Ctrl+Z deshace todo el reemplazo.</li>
 <li><b>Vista dividida</b> (F10) muestra una segunda vista del mismo archivo, que se desplaza de forma independiente.
 Es solo para mirar: haga los cambios en la vista principal.</li>
+<li><b>Reglas</b> (menú Ver, o el grupo Visualización de la pestaña Ver; Ctrl+R) pone reglas arriba y a la izquierda del
+documento. Miden la página bajo el puntero (o la página a la vista) desde su esquina superior izquierda tal como se ve,
+en unidades de papel: el largo de la propia página es la franja más clara, y una línea marca dónde está el puntero.
+Haga clic con el botón derecho en una regla (o en el cuadrado donde se juntan) para elegir Pulgadas, Milímetros o
+Puntos; la posición del puntero en la barra de estado usa las mismas unidades. La primera vez son pulgadas donde la
+computadora mide en pulgadas y milímetros en los demás lugares. Quedan activadas para todos los documentos hasta que
+las desactive.</li>
 </ul>
 
 <h2 id="reading">Leer con comodidad</h2>
@@ -2259,6 +2271,7 @@ Desplazamiento automático.</li>
 <tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
 <tr><td>Letras, Enter (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Enter lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD (los de Shift y una letra, sí), salvo que Preferencias &gt; Mouse desactive escribir en la línea de comandos.</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
+<tr><td>Ctrl+R</td><td>Activar / desactivar las reglas</td></tr>
 <tr><td>Ctrl+Shift+L / F5</td><td>Pantalla completa (Escape sale) / Presentación</td></tr>
 <tr><td>B / W / L (presentación)</td><td>Pantalla negra / pantalla blanca / puntero láser</td></tr>
 <tr><td>Ctrl+5 / Ctrl+6 / Ctrl+7 / Ctrl+8</td><td>Una sola página / Continua / Dos páginas / Dos páginas continuas</td></tr>

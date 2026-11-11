@@ -737,6 +737,8 @@ class _Canvas(QWidget):
 
 
 class DocumentView(QScrollArea):
+    _rulers = None                  # (top, left, corner) while View > Rulers is on
+    _pointer = None                 # (page index, x, y): pointer_pos
     _orig_data = None               # original file bytes (signed / protected files only)
     _orig_enc = None                # original protection, to keep it when saving edits
     pageChanged = Signal(int)
@@ -764,6 +766,9 @@ class DocumentView(QScrollArea):
     editorFormat = Signal(object)
     historyChanged = Signal()       # an undo or redo done: what can be undone / redone now
     pageLayoutChanged = Signal()    # View > Page layout changed (the menu's tick follows)
+    pointerMoved = Signal()         # the pointer's place on a page (pointer_pos) changed
+    toolUsed = Signal()             # a markup drawn with Reuse off: back to the mouse mode's tool
+    reuse_tools = True              # the status bar's Reuse (MainWindow sets it)
 
     def __init__(self, path, parent=None, doc=None):
         """doc: a new document not yet saved (File > New PDF); path is then the name Save
@@ -854,6 +859,11 @@ class DocumentView(QScrollArea):
         self.setAlignment(Qt.AlignHCenter)
         self.setStyleSheet("QScrollArea { background: #525659; border: none; }")
         self.verticalScrollBar().valueChanged.connect(self._on_scroll)
+        self._rulers = None             # (top, left, corner) while View > Rulers is on
+        self._pointer = None            # (page index, x, y) in points as shown, or None
+        self.horizontalScrollBar().valueChanged.connect(self._rulers_update)
+        self.verticalScrollBar().valueChanged.connect(self._rulers_update)
+        self.zoomChanged.connect(self._rulers_update)
         self.thumb_icons = OrderedDict()   # page xref -> [QIcon, still current] (page list)
         import weakref
         if DocumentView._views is None:
@@ -3942,6 +3952,10 @@ class DocumentView(QScrollArea):
         def do():
             made["xref"] = annotations.write(self.doc[index], model).xref
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        if "xref" in made and not DocumentView.reuse_tools:
+            # Reuse off: the tool is put down, as Bluebeam does (first: a new tool clears the
+            # selection, and what was drawn is selected below)
+            self.toolUsed.emit()
         if select and "xref" in made:
             self.select_xref(index, made["xref"])
         if "xref" in made and model.get("kind") in annotations.MEASURES:
@@ -4287,7 +4301,7 @@ class DocumentView(QScrollArea):
         h = b.height()
         b.hide()
         self._banner_kind = None
-        self.setViewportMargins(0, 0, 0, 0)
+        self._apply_margins()
         bar = self.verticalScrollBar()
         bar.setValue(bar.value() - h)
 
@@ -8832,12 +8846,97 @@ class DocumentView(QScrollArea):
         b.setFixedWidth(self.width())
         h = b.sizeHint().height()
         b.setGeometry(0, 0, self.width(), h)
-        self.setViewportMargins(0, h, 0, 0)
+        self._apply_margins()
         b.raise_()
+
+    # ---- View > Rulers, and the pointer's place on the page ---------------------------------
+    def _apply_margins(self):
+        """Room at the top for the banner and the top ruler, at the left for the left ruler."""
+        from .rulers import THICKNESS
+        b = getattr(self, "_banner", None)
+        banner = b.height() if b is not None and not b.isHidden() else 0
+        ruler = THICKNESS if self._rulers is not None else 0
+        self.setViewportMargins(ruler, banner + ruler, 0, 0)
+        self._place_rulers()
+
+    def _place_rulers(self):
+        if self._rulers is None:
+            return
+        from .rulers import THICKNESS
+        top, left, corner = self._rulers
+        vp = self.viewport().geometry()
+        y = vp.y() - THICKNESS
+        top.setGeometry(vp.x(), y, vp.width(), THICKNESS)
+        left.setGeometry(0, vp.y(), THICKNESS, vp.height())
+        corner.setGeometry(0, y, THICKNESS, THICKNESS)
+        for w in self._rulers:
+            w.raise_()
+
+    def set_rulers(self, on):
+        """Show or hide the rulers (rulers.py)."""
+        if bool(on) == (self._rulers is not None):
+            return
+        if on:
+            from .rulers import Corner, Ruler
+            self._rulers = (Ruler(self, True), Ruler(self, False), Corner(self))
+            for w in self._rulers:
+                w.show()
+        else:
+            for w in self._rulers:
+                w.deleteLater()
+            self._rulers = None
+        self._apply_margins()
+
+    def rulers_shown(self):
+        return self._rulers is not None
+
+    def _rulers_update(self, *_):
+        if self._rulers is not None:
+            for w in self._rulers[:2]:
+                w.update()
+
+    def units_changed(self):
+        """The rulers' units were changed (right-click on a ruler): every view follows."""
+        for v in list(DocumentView._views or ()):
+            if v._rulers is not None:
+                for w in v._rulers:
+                    w.update()
+            v.pointerMoved.emit()
+
+    def ruler_page(self):
+        """The page the rulers measure: the one under the pointer, else the one in view."""
+        if self._pointer is not None:
+            return self._pointer[0]
+        return self.current_page() if self.pages else None
+
+    def pointer_pos(self):
+        """(page index, x, y): where the pointer is on a page, in points as the page is shown
+        (turned), from its top-left corner (negative or past its size in the gray around
+        it); None when it isn't over the document."""
+        return self._pointer
+
+    def pointer_at(self, index, pos):
+        """A page widget's pointer moved to pos (widget pixels). Cheap: a few divisions, a
+        signal and two thin repaints."""
+        pw = self.pages[index] if 0 <= index < len(self.pages) else None
+        if pw is None:
+            return
+        o = pw.offset()
+        z = self.zoom or 1.0
+        self._pointer = (index, (pos.x() - o.x()) / z, (pos.y() - o.y()) / z)
+        self._rulers_update()
+        self.pointerMoved.emit()
+
+    def pointer_left(self):
+        if self._pointer is not None:
+            self._pointer = None
+            self._rulers_update()
+            self.pointerMoved.emit()
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
         self._place_banner()
+        self._place_rulers()
         if self.free_pan:
             self.apply_canvas()
         # Fit width / Fit page keep fitting when the window or the side panels change size

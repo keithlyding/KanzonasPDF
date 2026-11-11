@@ -11052,3 +11052,27 @@ msgstr "En una hoja extra después de la página (la página a escala)"
 
 msgid "Sheet {n} of {total} (page {page}: markups outside it)"
 msgstr "Hoja {n} de {total} (página {page}: marcas fuera de ella)"
+
+msgid "The page's size, and where the pointer is on it from its top-left corner (the units: right-click a ruler, View > Rulers)"
+msgstr "El tamaño de la página, y dónde está el puntero en ella desde su esquina superior izquierda (las unidades: clic derecho en una regla, Ver > Reglas)"
+
+msgid "Reuse"
+msgstr "Reutilizar"
+
+msgid "Reuse: after drawing a markup, keep its tool for the next one (on), or go back to the mouse mode's tool (off)"
+msgstr "Reutilizar: después de dibujar una marca, conservar su herramienta para la siguiente (activado), o volver a la herramienta del modo del mouse (desactivado)"
+
+msgid "&Rulers"
+msgstr "&Reglas"
+
+msgid "Rulers along the top and left of the page, in inches, millimeters or points (right-click one to change) (Ctrl+R)"
+msgstr "Reglas arriba y a la izquierda de la página, en pulgadas, milímetros o puntos (clic derecho en una para cambiarlas) (Ctrl+R)"
+
+msgid "Points"
+msgstr "Puntos"
+
+msgid "Ruler: right-click to change its units"
+msgstr "Regla: clic derecho para cambiar sus unidades"
+
+msgid "Ruler units: right-click to change them"
+msgstr "Unidades de las reglas: clic derecho para cambiarlas"

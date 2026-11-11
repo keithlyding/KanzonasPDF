@@ -2490,6 +2490,7 @@ class PageWidget(QWidget):
     def mouseMoveEvent(self, e):
         if self._gone():
             return                      # (its tab is closing: the document is closed)
+        self.view.pointer_at(self.index, e.position())     # (rulers, the status bar)
         if getattr(self, "_mid_pan", False):
             self.view.continue_pan(e.globalPosition())
             return
@@ -2909,6 +2910,8 @@ class PageWidget(QWidget):
         return bool(line)
 
     def leaveEvent(self, e):
+        if not self._gone():
+            self.view.pointer_left()
         cad_select.clear_rollover(self)
         if self._obj_hover is not None:
             self._obj_hover = None

@@ -583,6 +583,25 @@ class MainWindow(QMainWindow):
         from .scale_display import ScaleStatusLabel
         self.scale_label = ScaleStatusLabel()
         self.scale_label.clicked.connect(self.set_scale)
+        # the page's size and the pointer's place on it, in the rulers' units (rulers.py)
+        self.pointer_label = QLabel()
+        self.pointer_label.setToolTip(tr("The page's size, and where the pointer is on it "
+                                         "from its top-left corner (the units: right-click a "
+                                         "ruler, View > Rulers)"))
+        self.statusBar().addPermanentWidget(self.pointer_label)
+        # Reuse: the tool stays picked after a markup is drawn (on), or goes back to the
+        # mouse mode's tool (off), as Bluebeam's Reuse button
+        self.reuse_btn = QToolButton()
+        self.reuse_btn.setText(tr("Reuse"))
+        self.reuse_btn.setCheckable(True)
+        self.reuse_btn.setAutoRaise(True)
+        self.reuse_btn.setChecked(self.settings.value("reuse_tools", "true") == "true")
+        self.reuse_btn.setToolTip(tr("Reuse: after drawing a markup, keep its tool for the "
+                                     "next one (on), or go back to the mouse mode's tool "
+                                     "(off)"))
+        self.reuse_btn.toggled.connect(self._set_reuse)
+        DocumentView.reuse_tools = self.reuse_btn.isChecked()
+        self.statusBar().addPermanentWidget(self.reuse_btn)
         self.statusBar().addPermanentWidget(self.scale_label)
         self._thumb_queue = []
         self._thumb_timer = QTimer(self, interval=0)
@@ -1239,6 +1258,12 @@ class MainWindow(QMainWindow):
         self._apply_grid_settings(save=False)
         self.a_split = self._act(tr("&Split view"), self._toggle_split, "F10")
         self.a_split.setCheckable(True)
+        self.a_rulers = self._act(tr("&Rulers"), self._toggle_rulers, "Ctrl+R",
+                                  tip=tr("Rulers along the top and left of the page, in "
+                                         "inches, millimeters or points (right-click one to "
+                                         "change) (Ctrl+R)"))
+        self.a_rulers.setCheckable(True)
+        self.a_rulers.setChecked(self.settings.value("show_rulers", "false") == "true")
         self.a_shortcuts = self._act(tr("&Keyboard shortcuts..."), self.edit_shortcuts)
         self.a_markups = self._act(tr("&Markups list"), self._toggle_markups, "F7")
         self.a_markups.setCheckable(True)
@@ -1400,6 +1425,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
         m.addSeparator()
         m.addAction(self.a_split)
+        m.addAction(self.a_rulers)
         m.addAction(self.a_detach)
         m.addActions([self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse])
         m.addAction(self.a_free_pan)
@@ -2194,7 +2220,10 @@ class MainWindow(QMainWindow):
         move to another window, see move_view)."""
         v.set_tool(self.tool)
         v.show_comment_boxes = self.a_cards.isChecked()
+        v.set_rulers(self.a_rulers.isChecked())
         conns = [
+            (v.pointerMoved, lambda v=v: v is self.view() and self._show_pointer()),
+            (v.toolUsed, lambda: self.set_tool(self.default_tool())),
             (v.selectionChanged, self._on_selection_changed),
             (v.openFileRequested, self._open_linked_pdf),
             (v.signedDocument, self._on_signed),
@@ -5426,7 +5455,7 @@ class MainWindow(QMainWindow):
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
         "a_compress": "zip-box-outline", "a_compare": "compare", "a_flatten": "layers-triple-outline",
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
-        "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_labels": "label-outline",
+        "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_rulers": "ruler-square", "a_labels": "label-outline",
         "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline", "a_palette": "console-line",
         "a_night": "weather-night",
         "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline", "a_menu_bar": "menu",
@@ -5562,8 +5591,9 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("View"), [
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                      self.a_split]),
+            # (Free pan, a setting seldom changed, under the arrow: Rulers took its place)
             (tr("Display"), "small", [self.a_night, self.a_show_markups, self.a_hl_fields,
-                                      self.a_free_pan]),
+                                      self.a_rulers], [self.a_free_pan]),
             (tr("Grid & snap"), "small", snap, [self.a_grid_settings]),
             # (Collapse is also a double-click on a tab, or Ctrl+F1)
             (tr("Ribbon"), "small", [self.a_ribbon, self.a_menu_bar],
@@ -6236,7 +6266,44 @@ class MainWindow(QMainWindow):
             self._show_find_count(0, 0, False)
         reading.sync(self)
         reading.page_changed(self)
+        self._show_pointer()
         self._update_ui()
+
+    def _toggle_rulers(self):
+        on = self.a_rulers.isChecked()
+        self.settings.setValue("show_rulers", "true" if on else "false")
+        for w in windows():
+            w.a_rulers.setChecked(on)
+            for v in w._views():
+                v.set_rulers(on)
+
+    def _set_reuse(self, on):
+        self.settings.setValue("reuse_tools", "true" if on else "false")
+        DocumentView.reuse_tools = bool(on)
+        for w in windows():
+            if w.reuse_btn.isChecked() != bool(on):
+                w.reuse_btn.setChecked(bool(on))
+
+    def _show_pointer(self):
+        """The status bar: the page's size as shown, and where the pointer is on it."""
+        from . import rulers
+        v = self.view()
+        if v is None or not v.pages:
+            self.pointer_label.setText("")
+            return
+        unit = rulers.units()
+        pos = v.pointer_pos()
+        index = pos[0] if pos is not None else v.current_page()
+        if not 0 <= index < len(v.page_rects):
+            self.pointer_label.setText("")
+            return
+        r = v.page_rects[index]
+        text = "%s \u00d7 %s %s" % (rulers.fmt(rulers.to_units(r.width, unit), unit),
+                                    rulers.fmt(rulers.to_units(r.height, unit), unit), unit)
+        if pos is not None:
+            text += "   (%s, %s)" % (rulers.fmt(rulers.to_units(pos[1], unit), unit),
+                                     rulers.fmt(rulers.to_units(pos[2], unit), unit))
+        self.pointer_label.setText(text)
 
     def _on_page_changed(self, page):
         if self.sender() is not self.view():

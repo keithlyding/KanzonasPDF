@@ -123,8 +123,13 @@ looks and acts flattened; Edit text and Edit objects (Home tab) still change it 
 Acrobat and PDF-XChange can. Open, save, print, undo and redo sit left of the tabs, and the
 Find box (with its match count and up / down arrows) sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
-zoom box with zoom out / zoom in, like PDF-XChange Editor, and the current page's drawing
-scale (red when it has none; click it to set it). A message on the bottom bar too long for
+zoom box with zoom out / zoom in, like PDF-XChange Editor, the page's size and where the
+pointer is on it ("8.50 &times; 11.00 in&nbsp;&nbsp;(1.25, 3.40)": from the page's top-left
+corner as it's shown, in the rulers' units), <b>Reuse</b>, and the current page's drawing
+scale (red when it has none; click it to set it). <b>Reuse</b> on (the default): after you
+draw a markup, its tool stays picked for the next one; off: the tool goes back to the mouse
+mode's tool (Select, Hand or Edit objects), as Bluebeam's Reuse button does. Either way what
+you drew stays selected, so Properties changes it. A message on the bottom bar too long for
 the room left of the page controls ends in "..."; hover over it to read all of it. The ribbon is compact: two rows of
 buttons, and every tab fits a screen 1366 pixels wide, in English and in Spanish. Commands used
 less often share a button with an arrow beside it: click the button for the command it shows,
@@ -366,8 +371,8 @@ canvas, the pointer is a <b>plus</b> (except with the Hand), selecting works lik
 </ul>
 Your choice is remembered. (Before version 1.5 this was the CAD-style mouse switch and a
 default tool; your choices carry over.)</li>
-<li><b>Free page movement (drag the page past its edges)</b> (View menu, the View tab of the
-ribbon): an open canvas around the pages, so the Hand tool (or the held wheel) drags the page
+<li><b>Free page movement (drag the page past its edges)</b> (View menu, or under the arrow
+of the View tab's Display group): an open canvas around the pages, so the Hand tool (or the held wheel) drags the page
 anywhere, up, down and sideways, even when the whole page fits in the window, for example after
 Fit page. The menu switches it for the mouse mode in use; each mode remembers its own setting
 (on in Hand mode, off in Standard mode, on in CAD mode).</li>
@@ -397,6 +402,13 @@ can rewrap the paragraph). Pages with redaction marks that aren't applied yet ar
 Ctrl+Z undoes the whole replacement.</li>
 <li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.
 It's for looking only: make changes in the main view.</li>
+<li><b>Rulers</b> (View menu, or the View tab's Display group; Ctrl+R) puts rulers along the top
+and left of the document. They measure the page under the pointer (or the page in view) from
+its top-left corner as it's shown, in paper units: the page's own length is the lighter band,
+and a line marks where the pointer is. Right-click a ruler (or the square where they meet) to
+choose Inches, Millimeters or Points; the status bar's pointer position uses the same units.
+The first time, they're inches where the computer measures in inches, millimeters elsewhere.
+They stay on for every document until you turn them off.</li>
 </ul>
 
 <h2 id="reading">Reading comfortably</h2>
@@ -2232,6 +2244,7 @@ scroll speed.</li>
 <tr><td>F11</td><td>CAD mouse mode on / off (off goes back to Standard or Hand, whichever you had)</td></tr>
 <tr><td>Letters, Enter (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode (Shift+letter ones do), unless Preferences &gt; Mouse turns typing to the command line off.</td></tr>
 <tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
+<tr><td>Ctrl+R</td><td>Rulers on / off</td></tr>
 <tr><td>Ctrl+Shift+L / F5</td><td>Full screen (Escape leaves it) / Presentation</td></tr>
 <tr><td>B / W / L (presentation)</td><td>Black screen / white screen / laser pointer</td></tr>
 <tr><td>Ctrl+5 / Ctrl+6 / Ctrl+7 / Ctrl+8</td><td>Single page / Continuous / Two pages / Two pages continuous</td></tr>
