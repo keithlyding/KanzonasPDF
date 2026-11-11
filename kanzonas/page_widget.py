@@ -440,6 +440,7 @@ class PageWidget(QWidget):
             while len(keep) > SMALL_PREVIEWS:
                 keep.popitem(last=False)
         self._pix = None
+        self._outside = None            # (its markups beside it: drawn again when back in view)
         self._preview = None
         self.view._rc.drop_page(self.index, whole_only=True)
 
@@ -1148,7 +1149,7 @@ class PageWidget(QWidget):
         p.drawImage(QRectF(self.rect()), img, QRectF(img.rect()))
         p.restore()
 
-    OUTSIDE_PX = 16_000_000     # the working space's markups drawn at most this many pixels
+    OUTSIDE_PX = 4_000_000      # the markups beside the page drawn at most this many pixels
 
     def _outside_image(self):
         """The page's markups drawn over the whole widget, working space included (MuPDF
