@@ -53,7 +53,9 @@ class ContentIndex:
     def __len__(self):
         return sum(len(b) for b in self.buckets.values()) // 2
 
-    def nearest(self, pt, tol, exclude=()):
+    def nearest(self, pt, tol, exclude=(), skip=None):
+        """skip: a pymupdf.Rect whose points don't count (what's being dragged: the page's
+        own objects moved with Edit objects are part of the drawing)."""
         best, best_d = None, tol
         r = int(math.ceil(tol / CELL))
         px, py = pt.x, pt.y
@@ -67,6 +69,9 @@ class ContentIndex:
                 for k in range(0, len(b), 2):
                     d = hypot(b[k] - px, b[k + 1] - py)
                     if d <= best_d:
+                        if skip is not None and skip.x0 <= b[k] <= skip.x1 and \
+                                skip.y0 <= b[k + 1] <= skip.y1:
+                            continue
                         best, best_d = (b[k], b[k + 1]), d
         return None if best is None else pymupdf.Point(best)
 

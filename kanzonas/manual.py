@@ -954,9 +954,10 @@ with Edit objects) snaps its whole box: with Snap to page, its left edge, center
 lines up with the page's left edge, center or right edge, and its top, middle or bottom with the
 page's, each way on its own, and a green dashed guide shows what it lined up with (drop a picture
 near the middle of the sheet and it settles exactly in the middle); with Snap to objects, one of
-its corners, edge middles or center goes onto a nearby markup's point (a dragged markup also onto
-the drawing's own points; with both on, whichever is nearer); with Snap to grid, its top-left
-corner goes to the grid.</li>
+its corners, edge middles or center goes onto a nearby markup's point or a point of the drawing
+itself (line ends and midpoints, corners; for the page's own items moved with Edit objects, not
+their own points where they were; with both on, whichever is nearer); with Snap to grid, its
+top-left corner goes to the grid.</li>
 <li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
 </ul>
 
@@ -1016,7 +1017,8 @@ the page itself selected (Edit objects tool), these change their order on the pa
 menu) makes the selected markups one group: a click on any of them selects them all, so they
 move, copy, change style (Properties) and delete together, and copies are a group too.
 <b>Ungroup</b> (Ctrl+Alt+G) makes them separate again. Grouping groups already grouped among
-them makes one bigger group. It's the PDF standard's group (a markup "in reply to" the first,
+them makes one bigger group. Align and Distribute move a group as one item, so its markups keep
+their places in it. It's the PDF standard's group (a markup "in reply to" the first,
 of the Group kind), so Acrobat keeps them together too; in other programs they stay separate
 markups.</li>
 <li><b>Flip horizontally</b> / <b>Flip vertically</b> (Arrange menu, the Group group, or the

@@ -757,7 +757,7 @@ class Battery:
             (self.op_accessibility, 3),
             # (1.12) groups and Flip, markups on layers, spaces
             (self.op_group, 3), (self.op_flip, 2), (self.op_markup_layer, 3),
-            (self.op_space, 2),
+            (self.op_space, 2), (self.op_text_nudge, 3),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1453,6 +1453,7 @@ class Battery:
         pick = self.rnd.sample(pool, self.rnd.randint(1, min(3, len(pool))))
         v.select_objects(i, pick)
         what = self.rnd.choice(["move", "move", "rotate", "delete"])
+        others = self.other_letters(i, pick)
         if what == "move":
             v.move_objects(v.selected_objects_rect() + (lambda d: (d, d * 0.5, d, d * 0.5))(
                 self.rnd.uniform(-40, 40)))
@@ -1461,6 +1462,59 @@ class Battery:
         else:
             v.delete_objects()
         v.clear_object_selection()
+        self.check_letters(i, others)
+
+    def op_text_nudge(self):
+        """Edit objects: a paragraph of the page's text moved with the arrow keys, a burst
+        of presses (one undo step), often onto other text (the owner, 11 Nov: a line moved
+        onto another took that one's letters on the next press; and the selection must hold
+        through the burst)."""
+        v = self.v
+        i = self.page()
+        texts = v.text_objects(i)
+        if not texts:
+            return "none"
+        it = self.rnd.choice(texts)
+        v.select_objects(i, [it])
+        others = self.other_letters(i, [it])
+        v._last_nudge = (None, 0.0, -1)      # (a burst of its own)
+        dx, dy = self.rnd.choice([(0, 1), (0, -1), (1, 0), (-1, 0)])
+        moved = 0
+        for _ in range(self.rnd.randint(2, 8)):
+            if v.obj_sel is None:
+                raise Failed("the text was unselected in the middle of the arrow-key moves")
+            moved += bool(v.nudge(dx, dy, self.rnd.choice([1.0, 10.0])))
+        v.clear_object_selection()
+        self.check_letters(i, others)
+        return "edit" if moved else "none"
+
+    def other_letters(self, i, picked):
+        """The letters of page i's text that isn't among the picked Edit objects items."""
+        import collections
+        from kanzonas import text_edit
+        if i >= self.v.doc.page_count:
+            return None
+        mine = {(text_edit.line_text(ln), round(r.x0), round(r.y0))
+                for it in picked if it["kind"] == "text" for r, ln in it["lines"]}
+        out = collections.Counter()
+        for r, ln in text_edit.text_lines(self.v.doc[i]):
+            if (text_edit.line_text(ln), round(r.x0), round(r.y0)) not in mine:
+                out.update(c for c in text_edit.line_text(ln) if not c.isspace())
+        return out
+
+    def check_letters(self, i, before):
+        """Every letter of the text that wasn't picked is still on the page."""
+        import collections
+        from kanzonas import text_edit
+        if before is None or i >= self.v.doc.page_count:
+            return
+        now = collections.Counter()
+        for _r, ln in text_edit.text_lines(self.v.doc[i]):
+            now.update(c for c in text_edit.line_text(ln) if not c.isspace())
+        lost = before - now
+        if lost:
+            raise Failed("page %d: text that wasn't selected lost letters: %r" % (
+                i, "".join(sorted(lost.elements()))[:80]))
 
     def op_erase_content(self):
         i = self.page()

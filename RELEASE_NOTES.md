@@ -19,6 +19,12 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Sets: browse several PDFs (one per sheet, say) as one document without combining them. File > New set... lists them in the Sets panel by sheet number and title, Next and Previous sheet go across the files, and Combine to one PDF makes a single file of them.
 
 **Fixed**
+- Moving the page's own text with the arrow keys (or by dragging) onto another line of text no longer deletes that line's letters, and a paragraph moved over other text no longer picks it up and carries it along. The selection stays on the text you selected, and Ctrl+Z undoes a whole series of arrow-key moves at once.
+- Moving text that sits at an angle (a diagonal watermark, a tilted label) keeps its angle and its see-through look, and leaves no letters behind. A move that can't be made (redaction marks waiting on the page) no longer unselects the text.
+- Markups being placed or moved in the gray around a page now show while you place them: a stamp following the pointer, a box dragged off the page, a markup moved beside it, a polygon's next side.
+- Snap to objects works when moving the page's own pictures, shapes and text with Edit objects: they snap to the drawing's line ends and corners too.
+- With the Hand tool, dragging a markup moves it (it was only selected).
+- Align and Distribute move a group as one item.
 - Duplicating a page with nothing tagged on it, in a document tagged for screen readers, no longer leaves the copy sharing the original's tag entry.
 
 ## 1.12 (es)
@@ -33,6 +39,12 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Conjuntos: recorra varios PDF (uno por plano, por ejemplo) como un solo documento sin combinarlos. Archivo > Nuevo conjunto... los muestra en el panel Conjuntos por número y título de plano, Plano siguiente y Plano anterior avanzan a través de los archivos, y Combinar en un PDF hace un solo archivo con ellos.
 
 **Correcciones**
+- Mover el texto propio de la página con las flechas del teclado (o arrastrándolo) sobre otra línea de texto ya no borra las letras de esa línea, y un párrafo movido sobre otro texto ya no lo recoge y se lo lleva. La selección se queda en el texto que seleccionó, y Ctrl+Z deshace de una vez toda una serie de movimientos con las flechas.
+- Mover texto en ángulo (una marca de agua en diagonal, una etiqueta inclinada) conserva su ángulo y su transparencia, y no deja letras atrás. Un movimiento que no se puede hacer (marcas de redacción pendientes en la página) ya no deja el texto sin seleccionar.
+- Las marcas que se colocan o se mueven en el gris alrededor de una página ahora se ven mientras las coloca: un sello que sigue al puntero, un cuadro arrastrado fuera de la página, una marca movida a su lado, el lado siguiente de un polígono.
+- Ajustar a objetos funciona al mover las imágenes, formas y texto propios de la página con Editar objetos: también se ajustan a los extremos de línea y las esquinas del dibujo.
+- Con la herramienta Mano, arrastrar una marca la mueve (solo se seleccionaba).
+- Alinear y Distribuir mueven un grupo como un solo elemento.
 - Duplicar una página sin nada etiquetado, en un documento etiquetado para lectores de pantalla, ya no deja la copia compartiendo la entrada de etiquetas del original.
 
 ## 1.11.1

@@ -941,7 +941,8 @@ derecho se alinean con el borde izquierdo, el centro o el borde derecho de la p�
 centro o su parte inferior con los de la página, cada dirección por separado, y una guía verde discontinua
 muestra con qué se alineó (suelte una imagen cerca del centro de la hoja y queda exactamente en el centro); con
 Ajustar a objetos, una de sus esquinas, los puntos medios de sus bordes o su centro va a un punto de una marca
-cercana (una marca arrastrada también a los puntos del propio dibujo; con ambos activados, el más cercano);
+cercana o a un punto del propio dibujo (extremos y puntos medios de líneas, esquinas; para los elementos de la
+página movidos con Editar objetos, no sus propios puntos donde estaban; con ambos activados, el más cercano);
 con Ajustar a la cuadrícula, su esquina
 superior izquierda va a la cuadrícula.</li>
 <li><b>Mantenga presionada Alt</b> mientras dibuja o arrastra para colocar un punto libremente, sin ajuste.</li>
@@ -1003,6 +1004,7 @@ la propia página seleccionadas (herramienta Editar objetos), estos comandos cam
 hace de las marcas seleccionadas un grupo: un clic en cualquiera las selecciona todas, así que se mueven, se copian,
 cambian de estilo (Propiedades) y se eliminan juntas, y sus copias también son un grupo. <b>Desagrupar</b>
 (Ctrl+Alt+G) las vuelve a separar. Agrupar grupos que ya estaban agrupados entre ellas forma un grupo más grande.
+Alinear y Distribuir mueven un grupo como un solo elemento, así que sus marcas mantienen su lugar en él.
 Es el grupo del estándar PDF (una marca "en respuesta a" la primera, del tipo Grupo), así que Acrobat también las
 mantiene juntas; en otros programas quedan como marcas separadas.</li>
 <li><b>Voltear horizontalmente</b> / <b>Voltear verticalmente</b> (menú Organizar, el grupo Grupo, o el menú del botón

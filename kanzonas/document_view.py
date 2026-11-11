@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pymupdf
 from PySide6.QtCore import Qt, Signal, QTimer, QObject, QEvent, QPoint, QPointF, QRectF
 from PySide6.QtGui import (QColor, QGuiApplication, QPixmap, QPainter, QPen, QCursor, QImage,
-                           QMouseEvent)
+                           QMouseEvent, QRegion)
 from PySide6.QtWidgets import (QScrollArea, QWidget, QVBoxLayout, QGridLayout, QInputDialog,
                                QMessageBox, QLineEdit, QProgressDialog, QApplication,
                                QMenu, QPlainTextEdit, QHBoxLayout, QLabel, QPushButton)
@@ -608,6 +608,28 @@ def _annot_flags(doc, xref):
     except ValueError:
         return 0
 
+def _text_at(texts, r):
+    """The text object (Edit objects) that is the paragraph expected at rect r after an edit:
+    the one starting at its corner, else the one covering most of it. Written again, a line's
+    box can come out a point or two off (another font's ascent; the owner, 11 Nov: text
+    moved with the arrow keys was sometimes unselected mid-move)."""
+    r = pymupdf.Rect(r)
+    exact = [t for t in texts if abs(t["rect"].x0 - r.x0) < 1.5 and abs(t["rect"].y0 - r.y0) < 1.5]
+    if exact:
+        return exact[0]
+    best, best_k = None, 0.5
+    area = max(r.get_area(), 1e-6)
+    for t in texts:
+        tr_ = pymupdf.Rect(t["rect"])
+        inter = tr_ & r
+        if inter.is_empty:
+            continue
+        k = inter.get_area() / max(area, tr_.get_area(), 1e-6)     # (not a small one in it)
+        if k > best_k:
+            best, best_k = t, k
+    return best
+
+
 class _Canvas(QWidget):
     """The gray canvas the pages lie on. In CAD mode a selection box or lasso can start (and
     end) on it, off the page: a sheet covered by one object (a background, a scan) leaves no
@@ -666,7 +688,7 @@ class _Canvas(QWidget):
         ev = QMouseEvent(e.type(), local, e.globalPosition(), e.button(), e.buttons(),
                          e.modifiers())
         handler(ev)
-        self.update()                   # (the outline of what's drawn out here)
+        self.update_gray()              # (what's drawn out here: _paint_overlays)
 
     def mouseDoubleClickEvent(self, e):
         v = self._view
@@ -710,22 +732,38 @@ class _Canvas(QWidget):
             return
         super().mouseReleaseEvent(e)
 
-    def _paint_drag(self, p):
-        """While a box or line is dragged out from the gray (or into it): its outline here,
-        where the page's own drawing of it doesn't reach."""
-        fwd = getattr(self, "_fwd", None)
-        if fwd is None or fwd._drag_start is None or fwd._drag_now is None:
+    def update_gray(self):
+        """Repaint the gray shown between and around the pages (not the pages: they paint
+        themselves), where a page's preview reaching past it is drawn."""
+        area = self.visibleRegion()
+        for w in getattr(self._view, "pages", []):
+            if w.isVisible():
+                area -= QRegion(w.geometry())
+        if not area.isEmpty():
+            self.update(area)
+
+    def _paint_overlays(self, p):
+        """What a page is drawing, placing or moving (its _paint_overlay), where it reaches
+        into the gray: a stamp following the pointer, a box dragged off the page, a markup
+        moved beside it (the owner, 11 Nov: markups put in the gray "disappear until I
+        click"). The pages lie over this, so only the part in the gray shows."""
+        v = self._view
+        doc = getattr(v, "doc", None)
+        if doc is None or doc.is_closed:
             return
-        o = QPointF(fwd.pos())
-        a, b = fwd._drag_start + o, fwd._drag_now + o
-        p.setPen(QPen(self._view.tool_color(self._view.tool), 1, Qt.DashLine))
-        p.setBrush(Qt.NoBrush)
-        if self._view.tool in ("line", "arrow", "m_length", "callout"):
-            p.drawLine(a, b)
-        elif self._view.tool in ("ellipse", "circle"):
-            p.drawEllipse(QRectF(a, b).normalized())
-        else:
-            p.drawRect(QRectF(a, b).normalized())
+        for w in getattr(v, "pages", []):
+            if not w.isVisible() or w.index >= doc.page_count:
+                continue
+            if not (w.in_progress() or getattr(w, "_gray_had", False)):
+                continue
+            p.save()
+            p.translate(QPointF(w.pos()))
+            p.setRenderHint(QPainter.Antialiasing)
+            try:
+                w._paint_overlay(p, doc[w.index])
+            except Exception:
+                pass
+            p.restore()
 
     def paintEvent(self, e):
         super().paintEvent(e)
@@ -733,7 +771,7 @@ class _Canvas(QWidget):
         p = QPainter(self)
         try:
             cad_select.paint_outside(self._view, p)
-            self._paint_drag(p)
+            self._paint_overlays(p)
         finally:
             p.end()
 
@@ -1950,16 +1988,17 @@ class DocumentView(QScrollArea):
             return snapping.grid_snap(page, pt, self.grid_spacing), "grid"
         return None
 
-    def snap_object_point(self, index, pt, exclude=(), content=True):
+    def snap_object_point(self, index, pt, exclude=(), content=True, skip=None):
         """The nearest point of a markup (but those in exclude) or, with content, of the
-        page's drawing, within SNAP_PX of PDF point pt; None when none is that near."""
+        page's drawing (but its points inside the PDF rect skip), within SNAP_PX of PDF
+        point pt; None when none is that near."""
         from . import snapping
         tol = self.SNAP_PX / self.zoom
         if index not in self._snap_markups:
             self._snap_markups[index] = snapping.markup_index(self.doc[index])
         hits = [self._snap_markups[index].nearest(pt, tol, exclude)]
         if content:
-            hits.append(self._content_snaps(index).nearest(pt, tol))
+            hits.append(self._content_snaps(index).nearest(pt, tol, skip=skip))
         hits = [h for h in hits if h is not None]
         return min(hits, key=lambda h: abs(h - pt)) if hits else None
 
@@ -5958,6 +5997,10 @@ class DocumentView(QScrollArea):
                                    olds=dict(have))
         finally:
             self._merge_edit = False
+        # (the selection as the press leaves it: the next press continues the series even when
+        # the objects were taken anew, a moved paragraph given its own item over another one)
+        key = ("obj", self.obj_sel[0], tuple(it["n"] for it in self.obj_sel[1])) \
+            if self.obj_sel else key
         self._last_nudge = (key, now, self.revision)
         self.statusMessage.emit(tr("Moved {step} pt (Shift+arrow: 10 pt, Ctrl+arrow: 0.1 pt; "
                                    "Ctrl+Z undoes the whole series)").format(step="%g" % step))
@@ -6037,12 +6080,27 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
         rot = page.rotation_matrix
         boxes = []
+        units = {}                      # group primary -> its entry (a group is one unit)
+        threads = self.threads(index) if self.selection is not None else None
         for kind, key, _b in out:
             if kind == "markup":
-                boxes.append((kind, key, self._display_bounds(page, key[1])))
+                box = self._display_bounds(page, key[1])
+                primary = threads.group_primary(key[0]) if threads is not None else None
+                if primary is not None and len(threads.group(key[0])) > 1:
+                    # (Arrange > Group, 1.12: aligned and distributed as one, its markups
+                    # keeping their places in it; the owner, 11 Nov)
+                    unit = units.get(primary)
+                    if unit is None:
+                        unit = units[primary] = ["markups", [key], pymupdf.Rect(box)]
+                        boxes.append(unit)
+                    else:
+                        unit[1].append(key)
+                        unit[2] |= box
+                    continue
+                boxes.append((kind, key, box))
             else:
                 boxes.append((kind, key, pymupdf.Rect(key["rect"]) * rot))
-        return index, boxes
+        return index, [tuple(b) for b in boxes]
 
     def _arrange_move(self, index, moves, label):
         """moves: [(kind, key, (dx, dy) as seen on screen)] from _arrange_items: the
@@ -6055,6 +6113,8 @@ class DocumentView(QScrollArea):
             d = pymupdf.Point(dx, dy) * to_pdf - o
             if kind == "markup":
                 marks.append((key[0], annotations.moved(key[1], d)))
+            elif kind == "markups":     # (a group: all of it by the same offset)
+                marks += [(x, annotations.moved(m, d)) for x, m in key]
             else:
                 objs[key["n"]] = (key, d)
         del page
@@ -7211,6 +7271,34 @@ class DocumentView(QScrollArea):
 
     TEXT_N = 10 ** 9                   # Edit objects numbers text paragraphs from here
 
+    def _text_again(self, index, item, rect, texts_now, k=0):
+        """The text item selected again after an edit moved it to rect: its own lines, where
+        they are now. Moved onto other text, the page's paragraphs take both in as one (the
+        owner, 11 Nov: arrow keys carried the block a paragraph passed over along with it):
+        then an item of just its lines is made."""
+        d = pymupdf.Point(rect.x0 - item["rect"].x0, rect.y0 - item["rect"].y0)
+        now = self._lines(index)
+        mine = []
+        for rr, ln in item.get("lines") or []:
+            want = pymupdf.Rect(rr) + (d.x, d.y, d.x, d.y)
+            text = text_edit.line_text(ln)
+            hit = next((h for h in now if text_edit.line_text(h[1]) == text and
+                        abs(h[0].x0 - want.x0) < 2 and abs(h[0].y0 - want.y0) < 2), None)
+            if hit is None:
+                return _text_at(texts_now, rect)
+            mine.append(hit)
+        cand = _text_at(texts_now, rect)
+        ids = {id(ln) for _r, ln in mine}
+        if cand is not None and {id(ln) for _r, ln in cand["lines"]} == ids:
+            return cand
+        if not mine:
+            return cand
+        box = pymupdf.Rect()
+        for rr, _ln in mine:
+            box |= rr
+        return {"kind": "text", "rect": box, "quad": box.quad, "lines": mine,
+                "n": self.TEXT_N + 10 ** 6 + k}
+
     def text_objects(self, index):
         """The page's visible text as Edit objects items, one per paragraph: kind "text",
         "rect", "lines" [(rect, line)] (cached until the next edit)."""
@@ -7494,9 +7582,9 @@ class DocumentView(QScrollArea):
         again = []
         for it in items:
             if it["kind"] == "text":
-                r = it["rect"]
-                again += [t for t in texts if abs(t["rect"].x0 - r.x0) < 1.5 and
-                          abs(t["rect"].y0 - r.y0) < 1.5][:1]
+                found = _text_at(texts, it["rect"])
+                if found is not None and all(found is not t for t in again):
+                    again.append(found)
             elif it["n"] in by_n:
                 again.append(by_n[it["n"]])
         self.select_objects(index, again)
@@ -8228,7 +8316,13 @@ class DocumentView(QScrollArea):
             if links_fn is not None and not links_first and links_fn(page):
                 fresh["objs"] = None
         before = self._obj_cache.get(index)
-        self.modify(do, [index])
+        if not self.modify(do, [index]):
+            # refused or failed (redaction marks on the page, a font that can't write the
+            # text): nothing moved, so what was selected stays selected (it was looked for
+            # where it would have gone and the selection dropped: random battery, seed 5,
+            # the owner's "unselected mid-move", 11 Nov)
+            self._reselect_objects(index, items)
+            return
         self._obj_cache.pop(index, None)
         if isinstance(fresh.get("objs"), page_objects.Objects) and before is not None:
             # a move / rotate worked out the page's objects without reading it again
@@ -8239,10 +8333,11 @@ class DocumentView(QScrollArea):
             objs = self.content_objects(index)
             wanted = set(ns)
             again = [it for it in (objs.items if objs else []) if it["n"] in wanted]
-            for r in fresh.get("text_rects") or []:
-                near = [it for it in self.text_objects(index)
-                        if abs(it["rect"].x0 - r.x0) < 1.5 and abs(it["rect"].y0 - r.y0) < 1.5]
-                again += near[:1]
+            texts_now = self.text_objects(index) if fresh.get("text_rects") else []
+            for k, (it, r) in enumerate(zip(texts, fresh.get("text_rects") or [])):
+                found = self._text_again(index, it, r, texts_now, k)
+                if found is not None and all(found is not x for x in again):
+                    again.append(found)
             self.obj_sel = (index, again) if again else None
         self.pages[index].update()
         self.selectionChanged.emit()    # menus (Arrange) follow the reselected objects

@@ -986,6 +986,19 @@ class PageWidget(QWidget):
         if self.view.show_scale_bar:
             self._paint_scale_bar(p)
 
+        self._paint_overlay(p, page)
+
+        if self.view.current_page() == self.index and self.view.page_count() > 1:
+            p.setPen(QPen(QColor(0, 120, 215), 1))
+            p.setBrush(Qt.NoBrush)
+            p.drawRect(self.page_area().adjusted(0, 0, -1, -1))
+
+    def _paint_overlay(self, p, page):
+        """What's being drawn, placed, moved or selected over the page: the tool's preview,
+        the selection and its handles, snap marks. Also painted by the gray canvas around the
+        pages (document_view._Canvas) where it reaches past this widget, so a markup put in
+        the gray shows while it's placed (the owner, 11 Nov: "they disappear until I
+        click")."""
         tool = self.view.tool
         self._paint_text_selection(p, page, tool)
         cad_select.paint(self, p)
@@ -1128,11 +1141,6 @@ class PageWidget(QWidget):
         ed = self.view._inline
         if ed is not None and ed.parentWidget() is self:
             ed.paint_preview(p)             # (small text typed enlarged: where it goes)
-
-        if self.view.current_page() == self.index and self.view.page_count() > 1:
-            p.setPen(QPen(QColor(0, 120, 215), 1))
-            p.setBrush(Qt.NoBrush)
-            p.drawRect(self.page_area().adjusted(0, 0, -1, -1))
 
     def _paint_outside(self, p, exposed):
         """The markups (and parts of markups) in the working space around the page, drawn
@@ -1612,15 +1620,18 @@ class PageWidget(QWidget):
         self.update()
 
     def _objects_preview(self, pos, free=False, snap=False):
-        """The selection's new box on screen while dragging (a move snapped: _snap_box; the
-        page's drawing isn't a target, it holds the dragged objects' own points)."""
+        """The selection's new box on screen while dragging (a move snapped: _snap_box, to
+        markups and to the page's drawing but its points where the dragged objects were:
+        those are the dragged objects' own; the owner, 11 Nov: snapping "doesn't seem to be
+        working anymore" when moving the page's own objects)."""
         ed = self._obj_edit
         r = QRectF(self.to_screen(self.view.selected_objects_rect()))
         d = pos - ed["start"]
         mode = ed["mode"]
         if mode == "move":
             if snap:
-                d = self._snap_box(r, d, content=False)
+                own = self.view.selected_objects_rect() + (-0.5, -0.5, 0.5, 0.5)
+                d = self._snap_box(r, d, skip=own)
             return r.translated(d)
         left, top, right, bottom = r.left(), r.top(), r.right(), r.bottom()
         if "l" in mode:
@@ -2126,6 +2137,31 @@ class PageWidget(QWidget):
                 return xref
         return None
 
+    def update(self, *args):
+        """Repaint (Qt's update), and the gray around the pages where what's being drawn,
+        placed or moved reaches past this page (the canvas paints it there: _paint_overlay)."""
+        super().update(*args)
+        if args:
+            return
+        busy = self.in_progress()
+        if busy or getattr(self, "_gray_had", False):
+            self._gray_had = busy
+            canvas = self.parentWidget()
+            redraw = getattr(canvas, "update_gray", None)
+            if redraw is not None:
+                redraw()
+
+    def in_progress(self):
+        """Something being drawn, placed or moved here, that may reach past the page."""
+        v = self.view
+        return bool(self._drag_start is not None or self._edit is not None or self._poly or
+                    self._ink or self._obj_edit is not None or self._text_move is not None or
+                    self._sig_drag is not None or self._ghost is not None or
+                    getattr(self, "_cad_down", None) is not None or
+                    getattr(self, "_cad_resize", None) is not None or
+                    getattr(v, "_cad_cmd", None) is not None or
+                    (getattr(v, "_drop_ghost", None) or (None,))[0] == self.index)
+
     def _gone(self):
         """The document is closed, or this page no longer in it (a widget waiting for its
         deleteLater): no mouse event may touch the document."""
@@ -2389,7 +2425,7 @@ class PageWidget(QWidget):
         corner = box.topLeft()
         return self.to_pdf(corner + d) - self.to_pdf(corner)
 
-    def _snap_box(self, box, d, exclude=(), content=True):
+    def _snap_box(self, box, d, exclude=(), content=True, skip=None):
         """The drag d (widget) of a box (widget QRectF) snapped: one of the box's corners,
         edge middles or center onto an object's point (snap to objects; content: the page's
         drawing too); else, each way on its own, its left / center / right onto the page's
@@ -2408,7 +2444,8 @@ class PageWidget(QWidget):
             for x in (moved.left(), moved.center().x(), moved.right()):
                 for y in (moved.top(), moved.center().y(), moved.bottom()):
                     at = QPointF(x, y)
-                    hit = v.snap_object_point(self.index, self.to_pdf(at), exclude, content)
+                    hit = v.snap_object_point(self.index, self.to_pdf(at), exclude, content,
+                                              skip)
                     if hit is not None:
                         sp = self.to_screen_pt(hit)
                         gap = (sp - at).manhattanLength()
@@ -2622,7 +2659,9 @@ class PageWidget(QWidget):
             self._poly_hover = snap45(self._poly[0], pos) if shift_held(e) else pos
             self.update()
             return
-        if tool == "hand":
+        if tool == "hand" and self._edit is None:
+            # (a press on a markup with the Hand selected it to move it: that drag moves it,
+            # 1.12; it panned nothing and the markup stayed put)
             self.view.continue_pan(e.globalPosition())
         elif self._sig_drag is not None:
             self._sig_now = pos
@@ -2764,7 +2803,7 @@ class PageWidget(QWidget):
                 a, b = self.to_pdf(tm["start"]), self.to_pdf(pos)
                 self.view.move_text_line(self.index, tm["pdf"], (b.x - a.x, b.y - a.y))
             return
-        if tool == "hand":
+        if tool == "hand" and self._edit is None:
             self.view.end_pan()
         elif self._sig_drag is not None:
             self._sig_now = pos
