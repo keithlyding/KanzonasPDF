@@ -61,9 +61,14 @@ a decision changes or a piece of work lands. Details of each version are in
   how it does these (support.bluebeam.com and community.bluebeam.com are allowed in the
   environment).
 
+- 1.11.1 (owner, 11 Nov, from the owner's use): dragging a page in the Pages panel scrolls the
+  list near and past its top or bottom, so a page can go anywhere in a long document; Create
+  PDF from images and Combine files can recognize the text on the pictures (OCR) and save it.
+
 ## Next
 The owner sets this list; nothing below is promised until it's here.
-0. **1.11.1: Redo lost after undoing Auto bookmarks** (owner, 11 Nov: ship 1.11, fix this next).
+0. **The next fix release: Redo lost after undoing Auto bookmarks** (owner, 11 Nov: ship 1.11,
+   fix this next; 1.11.1 went to the owner's Pages panel and OCR requests).
    Found by the random battery (seed 31, 1500 steps, PyMuPDF 2.0 and 2.1, also in 1.10.1): after
    an Auto bookmarks step is undone, opening a page with a calculated form field again (MuPDF's
    fz_load_page) makes MuPDF write that field's appearance anew (a new Helvetica font object

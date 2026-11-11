@@ -400,6 +400,61 @@ class _Tabs(QTabWidget):
         self.setTabBar(_TabBar(win))
 
 
+class _ThumbList(QListWidget):
+    """The Pages panel's thumbnails. A page dragged to a new place scrolls the list when the
+    pointer nears its top or bottom, faster the nearer it gets, and keeps scrolling while the
+    pointer is above or below the list, so a page can go anywhere in a long document (Qt's
+    own scrolls only within 16 pixels of the edge, slowly, and stops once the pointer is out
+    of the list)."""
+    EDGE = 48           # pixels from the top or bottom where scrolling starts
+    TICK_MS = 30
+    MAX_STEP = 40       # pixels a tick past the edge (about 1,300 a second)
+
+    def __init__(self):
+        super().__init__()
+        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.dragging = False
+        self._scroll_timer = QTimer(self)
+        self._scroll_timer.setInterval(self.TICK_MS)
+        self._scroll_timer.timeout.connect(self.scroll_tick)
+
+    def scroll_step(self, y):
+        """Pixels to scroll a tick with the pointer at y in the list (negative: up)."""
+        h = self.viewport().height()
+        edge = max(8.0, min(self.EDGE, h / 4))
+        if y < edge:
+            depth = (edge - y) / edge           # 0 where scrolling starts, 1 at the edge
+        elif y > h - edge:
+            depth = (y - (h - edge)) / edge
+        else:
+            return 0
+        step = max(2, round(self.MAX_STEP * min(depth, 2.0) / 2))
+        return -step if y < edge else step
+
+    def pointer_y(self):
+        return self.viewport().mapFromGlobal(QCursor.pos()).y()
+
+    def scroll_tick(self):
+        if not self.dragging:
+            self._scroll_timer.stop()
+            return
+        step = self.scroll_step(self.pointer_y())
+        if step:
+            bar = self.verticalScrollBar()
+            bar.setValue(bar.value() + step)
+
+    def startDrag(self, actions):
+        self.dragging = True
+        self.setAutoScroll(False)               # (this one scrolls instead)
+        self._scroll_timer.start()
+        try:
+            super().startDrag(actions)          # (returns when the page is dropped)
+        finally:
+            self.dragging = False
+            self._scroll_timer.stop()
+            self.setAutoScroll(True)
+
+
 class _FindBox(QLineEdit):
     """The Find box: Enter = next match, Shift+Enter = previous (returnPressed can't tell)."""
     previousRequested = Signal()
@@ -1666,7 +1721,7 @@ class MainWindow(QMainWindow):
         self._build_ribbon()
 
     def _build_sidebar(self):
-        self.thumbs = QListWidget()
+        self.thumbs = _ThumbList()
         self.thumbs.setViewMode(QListWidget.ListMode)
         self.thumbs.setIconSize(QSize(120, 160))
         self.thumbs.setSpacing(4)
@@ -2887,6 +2942,7 @@ class MainWindow(QMainWindow):
             self.open_file(dlg.result_path)
             self.statusBar().showMessage(tr("Combined into {path}").format(path=dlg.result_path),
                                          5000)
+            self._ocr_new_pdf(dlg.result_path, dlg.ocr_pages)
 
     def _guard_target(self, dlg):
         """Have the Combine dialog check the file it's about to write (see _writing_over);
@@ -2913,6 +2969,18 @@ class MainWindow(QMainWindow):
             self._written_over(replaced)
             self.open_file(dlg.result_path)
             self.statusBar().showMessage(tr("Created {path}").format(path=dlg.result_path), 5000)
+            self._ocr_new_pdf(dlg.result_path, dlg.ocr_pages)
+
+    def _ocr_new_pdf(self, path, pages):
+        """Recognize the text on the pages a new PDF made from pictures (Combine files' "Make
+        the pictures searchable"), then save it, so the file made has the text in it."""
+        v = self.view()
+        if not pages or v is None or v.untitled or os.path.abspath(v.path or "") != \
+                os.path.abspath(path):
+            return
+        v.run_ocr(pages, paths.stored_str(self.settings, "ocr_accuracy", "auto"))
+        if v.dirty:
+            self.save()
 
     def scan(self):
         """File > Scan: pages from a scanner (scan_dialog.py; nothing of it loads before)."""

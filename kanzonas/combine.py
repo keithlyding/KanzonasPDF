@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QListWidget, Q
                                QInputDialog, QLineEdit, QMessageBox, QAbstractItemView)
 
 from . import measure
+from . import paths as app_paths
 from .i18n import tr
 
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp", ".gif", ".webp")
@@ -227,12 +228,18 @@ class CombineDialog(QDialog):
                                    "the picture's own size)"))
         self.letter.setChecked(True)
         lay.addWidget(self.letter)
+        # (pictures of text, as scans and phone photos are: OCR makes their words searchable
+        # and selectable, as Scan's option does; remembered)
+        self.ocr = QCheckBox(tr("Make the pictures searchable (recognize text, OCR)"))
+        self.ocr.setChecked(app_paths.stored_str(app_paths.settings(), "import_ocr", "false") == "true")
+        lay.addWidget(self.ocr)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btns.button(QDialogButtonBox.Ok).setText(tr("Create...") if images else tr("Combine..."))
         btns.accepted.connect(self._ok)
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)
         self.result_path = None
+        self.ocr_pages = []
         # check_target(path) -> False: don't write there (MainWindow: the file is open with
         # unsaved changes and the user said no)
         self.check_target = None
@@ -264,35 +271,39 @@ class CombineDialog(QDialog):
         self.list.add_paths(paths)
 
     def _ok(self):
-        paths = self.list.paths()
-        if not paths or (len(paths) < 2 and not any(is_image(p) for p in paths)):
+        files = self.list.paths()
+        if not files or (len(files) < 2 and not any(is_image(p) for p in files)):
             QMessageBox.information(self, self.title, tr("Add at least two PDFs, or a picture."))
             return
-        folder = os.path.dirname(paths[0])
-        name = (os.path.splitext(os.path.basename(paths[0]))[0] + ".pdf" if self.images
+        folder = os.path.dirname(files[0])
+        name = (os.path.splitext(os.path.basename(files[0]))[0] + ".pdf" if self.images
                 else tr("Combined") + ".pdf")
         out, _ = QFileDialog.getSaveFileName(self, tr("Save the PDF as"),
                                              os.path.join(folder, name),
                                              tr("PDF files") + " (*.pdf)")
         if not out:
             return
-        if os.path.abspath(out) in {os.path.abspath(p) for p in paths}:
+        if os.path.abspath(out) in {os.path.abspath(p) for p in files}:
             QMessageBox.warning(self, self.title, tr("Choose a new file name: the new PDF "
                                                      "can't replace one of the files going "
                                                      "into it."))
             return
         if self.check_target is not None and not self.check_target(out):
             return
+        app_paths.settings().setValue("import_ocr", "true" if self.ocr.isChecked() else "false")
+        pictures = []
         try:
-            n = combine(paths, out, self.bookmarks.isChecked(), self._password,
+            n = combine(files, out, self.bookmarks.isChecked(), self._password,
                         letter=self.letter.isChecked(),
-                        ask_owner=lambda p: ask_owner_password(self, p))
+                        ask_owner=lambda p: ask_owner_password(self, p), pictures=pictures)
         except Exception as e:
             QMessageBox.warning(self, self.title, tr("Couldn't make the PDF:\n{error}").format(error=e))
             return
         if n is None:
             return
         self.result_path = out
+        # pages for the window to recognize once the new PDF is open
+        self.ocr_pages = pictures if self.ocr.isChecked() else []
         self.accept()
 
     def _password(self, path):
@@ -324,18 +335,22 @@ def _moved_toc(src, start):
     return out
 
 
-def combine(paths, out, bookmarks=True, ask_password=None, letter=True, ask_owner=None):
+def combine(paths, out, bookmarks=True, ask_password=None, letter=True, ask_owner=None,
+            pictures=None):
     """Write the PDFs and pictures in `paths`, in order, to `out`. Returns the page count, or
     None if a password was needed and not given. Each file's own bookmarks are kept, nested
     under the file's bookmark when `bookmarks` is on. letter: see add_image. A PDF that
     doesn't allow copying needs its permissions password (ask_owner, see unlock_copy), else
-    PermissionError."""
+    PermissionError. pictures: a list given gets the indexes of the pages made from pictures
+    (for OCR)."""
     result = pymupdf.open()
     toc = []
     for p in paths:
         if is_image(p):
             start = result.page_count
             add_image(result, p, letter)
+            if pictures is not None:
+                pictures.extend(range(start, result.page_count))
             if bookmarks:
                 toc.append([1, os.path.splitext(os.path.basename(p))[0], start + 1])
             continue

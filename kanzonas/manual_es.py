@@ -1347,7 +1347,9 @@ con el menú Páginas, con la cinta o con un método abreviado (Mover página ha
 página en blanco, Cortar, Pegar y Duplicar páginas). Usar uno de ellos pregunta si desea desbloquear primero.
 Copiar páginas, girar y extraer funcionan mientras está bloqueado.</li>
 <li><b>Reordenar:</b> desbloquee la lista de páginas y arrastre las miniaturas (varias páginas seleccionadas se mueven
-juntas, y Ctrl+Z deshace todo el arrastre); o use Mover página hacia arriba / Mover página hacia abajo
+juntas, y Ctrl+Z deshace todo el arrastre). Para llevar una página a un lugar que no se ve, manténgala
+cerca de la parte de arriba o de abajo de la lista, o justo por encima o por debajo de ella: la lista se
+desplaza, más rápido cuanto más lejos vaya. O use Mover página hacia arriba / Mover página hacia abajo
 (Ctrl+Shift+Up / Down; en la pestaña Páginas, en la flecha del grupo Ordenar).</li>
 <li><b>Combinar archivos</b> (Archivo &gt; Combinar archivos..., o pestaña Páginas &gt; Combinar): crea un
 PDF nuevo a partir de varios. Agregue los PDF (Agregar archivos…, o suéltelos en la lista desde el Explorador); el
@@ -1363,7 +1365,11 @@ en orden y haga clic en Crear…. Con "Poner cada imagen en una página Carta" m
 predeterminado), cada imagen se ajusta en una página Carta girada según convenga (horizontal para las imágenes
 anchas); desmárquelo para que cada página tenga el tamaño propio de la imagen. Las fotos del teléfono salen derechas,
 las fotos JPEG no se vuelven a comprimir (sin pérdida de calidad), y cada página de un escaneo TIFF de varias páginas
-se convierte en una página.</li>
+se convierte en una página. Marque "Hacer las imágenes buscables (reconocer texto, OCR)" (aquí y en Combinar
+archivos) para imágenes de texto, como escaneos y fotos de documentos hechas con el teléfono: al abrirse el PDF,
+se reconoce el texto de las páginas hechas a partir de imágenes, como hace Reconocer texto (OCR), y el PDF se
+guarda con él, así que sus palabras se pueden buscar y seleccionar (las páginas de PDF que se agregan quedan como
+están). La elección se recuerda.</li>
 <li><b>Insertar páginas desde archivo</b> (menú Páginas, pestaña Páginas) inserta archivos PDF e imágenes (JPG, PNG,
 TIFF, BMP, GIF, WebP; elija varios a la vez), en el orden elegido, después de la página actual, al
 final o al principio, como un solo paso de deshacer. Cada imagen se convierte en una página del tamaño de la página
