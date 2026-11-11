@@ -25,7 +25,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Snap to objects works when moving the page's own pictures, shapes and text with Edit objects: they snap to the drawing's line ends and corners too.
 - With the Hand tool, dragging a markup moves it (it was only selected).
 - Align and Distribute move a group as one item.
-- Duplicating a page with nothing tagged on it, in a document tagged for screen readers, no longer leaves the copy sharing the original's tag entry.
+- Documents tagged for screen readers: duplicating a page with nothing tagged on it no longer leaves the copy sharing the original's tag entry, and a reply moved to another page with its markup keeps its tag.
 
 ## 1.12 (es)
 
@@ -45,7 +45,7 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 - Ajustar a objetos funciona al mover las imágenes, formas y texto propios de la página con Editar objetos: también se ajustan a los extremos de línea y las esquinas del dibujo.
 - Con la herramienta Mano, arrastrar una marca la mueve (solo se seleccionaba).
 - Alinear y Distribuir mueven un grupo como un solo elemento.
-- Duplicar una página sin nada etiquetado, en un documento etiquetado para lectores de pantalla, ya no deja la copia compartiendo la entrada de etiquetas del original.
+- Documentos etiquetados para lectores de pantalla: duplicar una página sin nada etiquetado ya no deja la copia compartiendo la entrada de etiquetas del original, y una respuesta movida a otra página con su marca conserva su etiqueta.
 
 ## 1.11.1
 

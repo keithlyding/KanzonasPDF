@@ -1307,6 +1307,17 @@ class _Upkeep:
             parent = popup_of(doc, num) if shown and sub == "Popup" else 0
             if parent:
                 _mirror_contents(doc, num, parent)
+            if shown:
+                # moved here from another page (a reply carried with its markup, the same
+                # object): its element names the page it was on, and that page's turn takes
+                # it out after this one kept it (random battery, seed 9, 1.12: a group moved
+                # to another page left its member's reply untagged). Tagged anew here.
+                for e in list(tree.objr.get(num, ())):
+                    on = [(pg or e.pg) for x, pg in e.objrs if x == num]
+                    if on and px not in on:
+                        tree.drop_objr(e, num)
+                        tree.prune(e)
+                        self.pt_dirty = True
             if not shown or self.annot_ok(num, px):
                 continue
             for e in list(tree.objr.get(num, ())):
