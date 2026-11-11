@@ -5350,7 +5350,7 @@ class MainWindow(QMainWindow):
         "a_cad_mouse": tr("CAD"), "a_mouse_standard": tr("Select"), "a_mouse_hand": tr("Hand"),
         "a_free_pan": tr("Free movement"), "a_grid": tr("Grid"),
         "a_snap_grid": tr("Snap to grid", ctx="ribbon"),
-        "a_snap_objects": tr("Snap to objects"), "a_snap_page": tr("Snap to page", ctx="ribbon"),
+        "a_snap_objects": tr("Snap to objects", ctx="ribbon"), "a_snap_page": tr("Snap to page", ctx="ribbon"),
         "a_grid_settings": tr("Grid settings"),
         "a_set_scale": tr("Set scale"), "a_sheet_scales": tr("Sheet scales"), "a_measure_summary": tr("Summary"), "a_ocr": tr("OCR"),
         "a_rot_l": tr("Rotate left"), "a_rot_r": tr("Rotate right"), "a_lock": tr("Lock"),
@@ -5372,17 +5372,18 @@ class MainWindow(QMainWindow):
         "a_watermark": tr("Watermark"), "a_background": tr("Background"),
         "a_remove_bg": tr("Remove background"), "a_remove_wm": tr("Remove watermarks"), "a_bookmarks": tr("Bookmarks"), "a_attachments": tr("Attachments"),
         "a_compress": tr("Compress"), "a_compare": tr("Compare"), "a_flatten": tr("Flatten"),
-        "a_sidebar": tr("Pages panel"), "a_props": tr("Properties"), "a_chest": tr("Tool chest"), "a_night": tr("Night mode"),
+        "a_sidebar": tr("Pages panel"), "a_props": tr("Properties"), "a_chest": tr("Tool chest", ctx="ribbon"), "a_night": tr("Night mode"),
         "a_split": tr("Split view"), "a_labels": tr("Toolbar labels"), "a_shortcuts": tr("Shortcuts"),
-        "a_manual": tr("User manual"), "a_palette": tr("Command palette"), "a_ribbon": tr("Ribbon"), "a_collapse": tr("Collapse"), "a_group_names": tr("Group names"), "a_menu_bar": tr("Menu bar"),
+        "a_manual": tr("User manual"), "a_palette": tr("Command palette"), "a_ribbon": tr("Ribbon", ctx="ribbon"), "a_collapse": tr("Collapse"), "a_group_names": tr("Group names"), "a_menu_bar": tr("Menu bar"),
         "a_zoom_in": tr("Zoom in"), "a_zoom_out": tr("Zoom out"), "a_open": tr("Open"), "a_save": tr("Save"),
         "a_print": tr("Print"), "al_left": tr("Left"), "al_hcenter": tr("Center"), "al_right": tr("Right"),
         "al_top": tr("Top"), "al_vmiddle": tr("Middle"), "al_bottom": tr("Bottom"),
         "dist_h": tr("Horizontally"), "dist_v": tr("Vertically"), "z_front": tr("To front"),
         "z_forward": tr("Forward"), "z_backward": tr("Backward"), "z_back": tr("To back"),
         "tool_redact": tr("Redact"), "tool_placeholder": tr("Placeholder"),
-        "tool_erasecontent": tr("Erase content"), "tool_capture": tr("Capture"),
-        "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "a_add_space": tr("Add space"), "tool_link": tr("Links"),
+        "tool_erasecontent": tr("Erase content", ctx="ribbon"), "tool_capture": tr("Capture"),
+        "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "a_add_space": tr("Add space"),
+        "tool_link": tr("Links", ctx="ribbon"),
         "a_page_boxes": tr("Page boxes"), "a_fix_hairlines": tr("Fix hairlines"),
         "a_print_check": tr("Check for printing"), "a_show_boxes": tr("Show boxes"),
         "a_scale_bar": tr("Scale bar"), "a_show_page_markups": tr("On the page"),
@@ -5453,7 +5454,7 @@ class MainWindow(QMainWindow):
         from .scale_display import ScalePanel
         self.scale_panel = ScalePanel(self.a_set_scale, self.a_scale_bar)
         r = self.ribbon = Ribbon()
-        # Every tab fits a 1366-pixel-wide screen in English and in Spanish, at Windows' own
+        # Every tab fits a 1366-pixel-wide screen in English, Spanish and Italian, at Windows' own
         # font (tests/test_ribbon_fits.py): commands used less often share a button with an
         # arrow (split_button) or are listed under the group's arrow (its last element), the
         # ones used most stay large. The same layout in every language.

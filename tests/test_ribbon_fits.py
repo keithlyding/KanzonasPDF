@@ -1,6 +1,6 @@
-"""Every ribbon tab fits a 1366 x 768 screen, in English and in Spanish, without scrolling
-sideways (the owner: "Let's fit Spanish stuff on a 1366 pixel screen"); the layout is the same
-in both languages; and no command has left the tab it was on.
+"""Every ribbon tab fits a 1366 x 768 screen, in English, Spanish and Italian, without
+scrolling sideways (the owner: "Let's fit Spanish stuff on a 1366 pixel screen"); the layout
+is the same in every language; and no command has left the tab it was on.
 
 Measured at Windows' own interface font, Segoe UI 9 pt at 100% scaling. Where Segoe UI isn't
 installed, a font of the same width stands in: Liberation Sans or Arimo (made with Arial's
@@ -149,9 +149,12 @@ os._exit(0)
 """
 
 
-def run_both():
+LANGS = ("en", "es", "it")
+
+
+def run_all():
     procs = {}
-    for lang in ("en", "es"):
+    for lang in LANGS:
         env = dict(os.environ, KANZONAS_LANG=lang, QT_QPA_PLATFORM="offscreen", KZ_ROOT=ROOT,
                    KZ_LIMIT=str(LIMIT), KZ_FONTS=json.dumps(FONTS),
                    KZ_SETTINGS=tempfile.mkdtemp(prefix="kanzonas-test-ribbon-"))
@@ -170,7 +173,7 @@ def run_both():
 class RibbonFits(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.result = run_both()
+        cls.result = run_all()
         if cls.result["en"]["font"] is None:
             raise unittest.SkipTest("none of %s is installed to measure with" % (FONTS,))
 
@@ -178,14 +181,14 @@ class RibbonFits(unittest.TestCase):
         return ", ".join("%s %d" % (t["title"], t["width"]) for t in self.result[lang]["tabs"])
 
     def test_measured_with_a_font_as_wide_as_segoe_ui(self):
-        for lang in ("en", "es"):
+        for lang in LANGS:
             r = self.result[lang]
             self.assertEqual(r["lang"], lang)
             self.assertEqual(r["font_used"], r["font"])
             self.assertEqual(r["pixels"], 12)           # 9 pt at 96 dots per inch (100%)
 
-    def test_every_tab_fits_in_english_and_spanish(self):
-        for lang in ("en", "es"):
+    def test_every_tab_fits_in_every_language(self):
+        for lang in LANGS:
             r = self.result[lang]
             self.assertLessEqual(r["window"], LIMIT)
             for t in r["tabs"]:
@@ -193,11 +196,13 @@ class RibbonFits(unittest.TestCase):
                     lang, t["title"], r["font"], self.widths(lang)))
                 self.assertFalse(t["scrolls"], "%s, %s tab scrolls" % (lang, t["title"]))
 
-    def test_the_same_layout_in_both_languages(self):
-        en, es = self.result["en"]["tabs"], self.result["es"]["tabs"]
-        self.assertEqual(len(en), len(es))
-        for a, b in zip(en, es):
-            self.assertEqual(a["groups"], b["groups"], "%s / %s" % (a["title"], b["title"]))
+    def test_the_same_layout_in_every_language(self):
+        en = self.result["en"]["tabs"]
+        for lang in LANGS[1:]:
+            other = self.result[lang]["tabs"]
+            self.assertEqual(len(en), len(other), lang)
+            for a, b in zip(en, other):
+                self.assertEqual(a["groups"], b["groups"], "%s / %s" % (a["title"], b["title"]))
 
     def test_no_command_left_its_tab(self):
         tabs = {t["title"]: t for t in self.result["en"]["tabs"]}

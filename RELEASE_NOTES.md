@@ -5,7 +5,24 @@ version newer than the one you have, so you see everything that changed since yo
 The full details are in [CHANGELOG.md](CHANGELOG.md).
 
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
-Spanish translation under `## <version> (es)`. The Windows build fails without them.
+Spanish translation under `## <version> (es)`. The Windows build fails without them. An Italian
+translation under `## <version> (it)` is shown to Italian users (since 1.12); without one they
+see the English.
+
+## 1.12
+
+**New**
+- KanzonasPDF in Italian: menus, ribbon, messages and the user manual. Pick Italiano in File > Preferences > General > Language, or leave Automatic and an Italian Windows shows it in Italian; the change shows the next time KanzonasPDF starts.
+
+## 1.12 (es)
+
+**Novedades**
+- KanzonasPDF en italiano: menús, cinta, mensajes y el manual del usuario. Elija Italiano en Archivo > Preferencias > General > Idioma, o deje Automático y un Windows en italiano lo muestra en italiano; el cambio se ve la próxima vez que se inicia KanzonasPDF.
+
+## 1.12 (it)
+
+**Novità**
+- KanzonasPDF in italiano: menu, barra multifunzione, messaggi e manuale utente. Scegli Italiano in File > Preferenze > Generale > Lingua, oppure lascia Automatica e con Windows in italiano lo vedi in italiano; la modifica vale dal prossimo avvio di KanzonasPDF.
 
 ## 1.11.1
 

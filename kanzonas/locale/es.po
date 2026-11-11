@@ -4162,7 +4162,7 @@ msgid ""
 msgstr ""
 "No está en las páginas, pero se encontró en {places}.\n"
 "\n"
-"¿Quitarlo de ahí ahora? (Los campos, vínculos, sellos y archivos adjuntos que lo contienen se eliminan; en las notas, los marcadores y las propiedades se reemplaza por [censurado]. Deshacer funciona hasta que cierre el archivo.)"
+"¿Quitarlo de ahí ahora? (Los campos, vínculos, sellos y archivos adjuntos que lo contienen se eliminan; en las notas, los marcadores y las propiedades se reemplaza por [redacted]. Deshacer funciona hasta que cierre el archivo.)"
 
 #: main_window.py:3223
 msgid "Removed. Save to make it permanent."
@@ -4170,7 +4170,7 @@ msgstr "Quitado. Guarde para que sea permanente."
 
 #: main_window.py:3226
 msgid "Also found in {places}. Those can't be covered with a box. When you apply the redactions, fields, links, stamps and attachments containing it are deleted; in notes, bookmarks and properties it's replaced by [redacted]."
-msgstr "También se encontró en {places}. Eso no se puede cubrir con un cuadro. Al aplicar las censuras, los campos, vínculos, sellos y archivos adjuntos que lo contienen se eliminan; en las notas, los marcadores y las propiedades se reemplaza por [censurado]."
+msgstr "También se encontró en {places}. Eso no se puede cubrir con un cuadro. Al aplicar las censuras, los campos, vínculos, sellos y archivos adjuntos que lo contienen se eliminan; en las notas, los marcadores y las propiedades se reemplaza por [redacted]."
 
 #: main_window.py:3232
 msgid "Review the marks, then use Apply redactions."
@@ -10078,7 +10078,7 @@ msgid "Do the same steps to many PDFs at once: OCR, PDF/A, Bates numbers, waterm
 msgstr "Aplicar los mismos pasos a muchos PDF a la vez: OCR, PDF/A, números Bates, marcas de agua, acoplar, archivos más pequeños"
 
 # ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
-# ribbon tab fits a 1366-pixel screen in Spanish; the menus keep the full names
+# ribbon tab fits a 1366-pixel screen in Spanish and Italian; the menus keep the full names
 msgctxt "ribbon"
 msgid "Snap to grid"
 msgstr "Ajustar a cuadrícula"
@@ -10094,6 +10094,26 @@ msgstr "Combinar"
 msgctxt "ribbon"
 msgid "Attach file"
 msgstr "Adjuntar"
+
+msgctxt "ribbon"
+msgid "Snap to objects"
+msgstr "Ajustar a objetos"
+
+msgctxt "ribbon"
+msgid "Tool chest"
+msgstr "Caja de herramientas"
+
+msgctxt "ribbon"
+msgid "Links"
+msgstr "Vínculos"
+
+msgctxt "ribbon"
+msgid "Ribbon"
+msgstr "Cinta"
+
+msgctxt "ribbon"
+msgid "Erase content"
+msgstr "Borrar contenido"
 
 msgid "More in {group}: {commands}"
 msgstr "Más en {group}: {commands}"

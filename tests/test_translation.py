@@ -1,5 +1,6 @@
-"""KanzonasPDF in Spanish: every text in the code that goes through tr() has a Spanish
-translation with the same {fields}; the .po reader; the language setting; Qt's own words.
+"""KanzonasPDF in Spanish and Italian: every text in the code that goes through tr() has a
+Spanish and an Italian translation with the same {fields}; the .po reader; the language
+setting; Qt's own words.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_translation
 """
@@ -24,6 +25,25 @@ class Catalog(unittest.TestCase):
         self.assertEqual(missing, [], "no Spanish for %d texts, e.g. %s" % (
             len(missing), missing[:5]))
         self.assertEqual(fields, [], "the {fields} differ: %s" % fields[:5])
+
+    def test_every_text_has_an_italian_translation(self):
+        missing, fields = i18n.untranslated("it")
+        self.assertEqual(missing, [], "no Italian for %d texts, e.g. %s" % (
+            len(missing), missing[:5]))
+        self.assertEqual(fields, [], "the {fields} differ: %s" % fields[:5])
+
+    def test_the_catalogs_keep_the_englishs_accelerators(self):
+        # a menu text with an &accelerator keeps exactly one in each translation ("A & B",
+        # with a space after it, is a plain ampersand and no accelerator)
+        def accelerators(s):
+            return s.replace("&&", "").replace("& ", " ").count("&")
+
+        for lang in ("es", "it"):
+            for text, translated in i18n.load(lang).items():
+                english = text.split(i18n.CTX)[-1]
+                if accelerators(english) == 1:
+                    self.assertEqual(accelerators(translated), 1,
+                                     "%s: %r -> %r" % (lang, english, translated))
 
     def test_reading_a_po_file(self):
         src = ('msgid ""\nmsgstr ""\n"Language: es\\n"\n\n'
@@ -67,11 +87,18 @@ class Language(unittest.TestCase):
     def test_automatic_follows_windows(self):
         self.assertEqual(self.pick("auto", "es_MX"), "es")
         self.assertEqual(self.pick("auto", "en_US"), "en")
+        self.assertEqual(self.pick("auto", "it_IT"), "it")
+        self.assertEqual(self.pick("auto", "it_CH"), "it")
         self.assertEqual(self.pick("auto", "de_DE"), "en")      # no German yet: English
 
     def test_chosen_language_wins(self):
         self.assertEqual(self.pick("es", "en_US"), "es")
         self.assertEqual(self.pick("en", "es_MX"), "en")
+        self.assertEqual(self.pick("it", "en_US"), "it")
+        self.assertEqual(self.pick("es", "it_IT"), "es")
+
+    def test_preferences_offers_italian(self):
+        self.assertEqual(i18n.LANGUAGES["it"], "Italiano")
 
     def test_english_is_the_text_itself_and_spanish_is_looked_up(self):
         self.pick("en")

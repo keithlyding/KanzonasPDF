@@ -3,7 +3,8 @@
 Every text the user sees goes through tr("English text"); a translation is looked up in
 kanzonas/locale/<language>.po (the standard gettext format translators know) and the English
 is used where there's none. The language is File > Preferences > General > Language:
-Automatic (the language of Windows), English or Español; a change applies at the next start.
+Automatic (the language of Windows), English, Español or Italiano; a change applies at the next
+start.
 Qt's own dialogs and buttons (Open, Save, Yes, No) come translated with Qt.
 
 Texts with parts filled in use named fields: tr("Saved {name}").format(name=...), so a
@@ -18,12 +19,12 @@ there's none.
 import os
 import re
 
-LANGUAGES = {"en": "English", "es": "Español"}
+LANGUAGES = {"en": "English", "es": "Español", "it": "Italiano"}
 _state = {"lang": None, "catalog": {}}
 
 
 def _wanted():
-    """The language set in Preferences ('auto', 'en', 'es'); KANZONAS_LANG overrides it (the
+    """The language set in Preferences ('auto', 'en', 'es', 'it'); KANZONAS_LANG overrides it (the
     tests run in English)."""
     env = os.environ.get("KANZONAS_LANG")
     if env:
@@ -44,7 +45,7 @@ def _system_language():
 
 
 def language():
-    """The language in use: 'en' or 'es'."""
+    """The language in use: 'en', 'es' or 'it'."""
     if _state["lang"] is None:
         want = _wanted()
         lang = _system_language() if want == "auto" else want

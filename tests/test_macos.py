@@ -24,7 +24,7 @@ from PySide6.QtWidgets import QApplication, QDialog, QLabel  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
-from kanzonas import macos, manual, manual_es, text_edit, updates  # noqa: E402
+from kanzonas import macos, manual, manual_es, manual_it, text_edit, updates  # noqa: E402
 
 
 def mac():
@@ -330,11 +330,18 @@ class Manual(unittest.TestCase):
         self.assertEqual(rest, manual.MANUAL.replace(self.table(manual.MANUAL), ""))
 
     def test_in_spanish(self):
-        t = self.table(manual.for_mac(manual_es.MANUAL, spanish=True))
+        t = self.table(manual.for_mac(manual_es.MANUAL, "es"))
         self.assertNotIn("Ctrl+", t)
         self.assertIn("Opción", t)
         self.assertIn("<td>Cmd+Q</td><td>Salir (menú KanzonasPDF)</td>", t)
         self.assertIn("<td>Cmd+Option+F</td>".replace("Option", "Opción"), t)
+
+    def test_in_italian(self):
+        t = self.table(manual.for_mac(manual_it.MANUAL, "it"))
+        self.assertNotIn("Ctrl+", t)
+        self.assertIn("Opzione", t)
+        self.assertIn("<td>Cmd+Q</td><td>Esci (menu KanzonasPDF)</td>", t)
+        self.assertIn("<td>Cmd+Opzione+F</td>", t)
 
     def test_shown_on_a_mac_only(self):
         with mac():
@@ -343,7 +350,7 @@ class Manual(unittest.TestCase):
             self.assertIs(manual.manual_html(), manual.MANUAL)
 
     def test_the_mac_chapter(self):
-        for html in (manual.MANUAL, manual_es.MANUAL):
+        for html in (manual.MANUAL, manual_es.MANUAL, manual_it.MANUAL):
             start = html.index('<h2 id="macos">')
             chapter = html[start:html.index("<h2", start + 5)]
             self.assertNotIn("x86_64.dmg", chapter)
@@ -354,6 +361,7 @@ class Manual(unittest.TestCase):
                 self.assertIn(word, chapter)
         self.assertIn("Open Anyway", manual.MANUAL)
         self.assertIn("Abrir igualmente", manual_es.MANUAL)
+        self.assertIn("Apri comunque", manual_it.MANUAL)
 
 
 if __name__ == "__main__":

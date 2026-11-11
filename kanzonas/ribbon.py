@@ -6,8 +6,8 @@ tab names; click a tab to open it again.
 
 Compact like LibreOffice's tabbed bar: two rows of small buttons, group names optional, and a
 tab scrolls sideways (mouse wheel) when the window is too narrow for it. Every tab fits a
-1366-pixel-wide screen in English and Spanish (tests/test_ribbon_fits.py): commands used less
-often share a button with an arrow (SplitButton) or are listed under a group's own arrow
+1366-pixel-wide screen in English, Spanish and Italian (tests/test_ribbon_fits.py): commands
+used less often share a button with an arrow (SplitButton) or are listed under a group's own arrow
 (the narrow button at its right end), and a group can mix large buttons with a column of
 small ones (Stack) or a row of icon-only ones (Icons).
 """

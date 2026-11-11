@@ -103,7 +103,8 @@ The owner sets this list; nothing below is promised until it's here.
   user or all users), a portable zip and a PortableApps.com package; Linux as an AppImage; macOS
   (since 1.9) as a disk image for Apple silicon only, no Intel build (owner, 6 Nov 2026), unsigned
   until there's an Apple Developer account.
-- **English and Spanish**: every user-facing text and the release notes in both.
+- **English, Spanish and Italian**: every user-facing text and the user manual in all three;
+  the release notes in English and Spanish, and in Italian from 1.12.
 - **Standard PDF**: markups are standard PDF annotations, so Acrobat, Bluebeam and others see
   them; nothing locks a file to KanzonasPDF.
 - **Private**: no account, no telemetry; the only call home is the optional update check.
