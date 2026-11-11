@@ -6337,8 +6337,8 @@ msgid "Used for the text you add next; it's written into the page."
 msgstr "Se usa para el próximo texto que agregue; se escribe en la página."
 
 #: properties.py:223
-msgid "Saved for next time. New annotations use these settings."
-msgstr "Se guarda para la próxima vez. Las anotaciones nuevas usan esta configuración."
+msgid "For the next ones you make with this tool, saved for next time. To change one already on the page, click it first; right-click one and choose Set as Default to use its style here."
+msgstr "Para las próximas que haga con esta herramienta; se guarda para la próxima vez. Para cambiar una que ya está en la página, haga clic en ella primero; haga clic con el botón derecho en una y elija Establecer como predeterminado para usar su estilo aquí."
 
 #: properties.py:233
 msgid "Rotation (90° steps)"
@@ -10920,3 +10920,9 @@ msgstr "KanzonasPDF también lo buscó desde la carpeta de este documento, con l
 
 msgid "Opened {found} (the link points to {path}, which isn't there)"
 msgstr "Se abrió {found} (el vínculo apunta a {path}, que no está ahí)"
+
+msgid "Set as Default"
+msgstr "Establecer como predeterminado"
+
+msgid "This style is now the default for {tool}"
+msgstr "Este estilo es ahora el predeterminado de {tool}"

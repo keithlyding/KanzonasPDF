@@ -1830,6 +1830,9 @@ class PageWidget(QWidget):
                 # (review: replies and status, the standard PDF way: review.py)
                 from . import review_ui
                 review_ui.add_review_actions(menu, v, v.selection[0], v.selected_xrefs())
+            if v.default_tool_of_selected() is not None:
+                # its style for the next markups made with its tool (Bluebeam's name for it)
+                menu.addAction(tr("Set as Default"), v.set_selected_as_default)
             # (all that's selected: in CAD mode, the drawing's objects selected with them too)
             menu.addAction(tr("Delete"), v.delete_everything_selected)
         elif on_text:

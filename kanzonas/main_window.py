@@ -808,6 +808,10 @@ class MainWindow(QMainWindow):
                                               "link to it (also to PDFs in the same folder)"))
         self.a_uncrop = self._act(tr("Remove cro&p..."), lambda: self._page_op("uncrop"),
                                   tip=tr("Show the whole page again on this page or all pages"))
+        self.a_add_space = self._act(tr("&Add space around page..."), self._add_page_space,
+                                     tip=tr("Make the page bigger on the sides you choose, "
+                                            "with everything on it staying where it is: room "
+                                            "for comments, or to paste other sheets in"))
         # print production (print_production.py)
         self.a_page_boxes = self._act(tr("Set page &boxes..."), self._page_boxes,
                                       tip=tr("Trim box (the finished size), bleed box and art "
@@ -1413,7 +1417,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_copy_pages, self.a_cut_pages, self.a_paste_pages, self.a_dup_pages])
         m.addSeparator()
         m.addActions([self.a_rot_l, self.a_rot_r])
-        m.addActions([self.tool_actions["crop"], self.a_uncrop])
+        m.addActions([self.tool_actions["crop"], self.a_uncrop, self.a_add_space])
         pm = m.addMenu(tr("Print pro&duction"))
         pm.addActions([self.a_page_boxes, self.a_fix_hairlines, self.a_print_check,
                        self.a_show_boxes])
@@ -2092,6 +2096,8 @@ class MainWindow(QMainWindow):
             (v.requestSignature, self._sign_field),
             (v.textToolPropsChanged,
              lambda v=v: v is self.view() and self._refresh_props()),
+            (v.toolDefaultsChanged,
+             lambda _t, v=v: v is self.view() and self._refresh_props()),
             (v.editorFormat,
              lambda fmt, v=v: v is self.view() and self._show_editor_format(fmt)),
             (v.pageChanged, self._on_page_changed),
@@ -2788,6 +2794,14 @@ class MainWindow(QMainWindow):
             if scope is not None:
                 v.remove_crop(cur, scope == "all")
             v.setFocus()                # so Escape still puts the Crop tool down
+
+    def _add_page_space(self):
+        v = self.view()
+        if v is None:
+            return
+        from .page_space import AddSpaceDialog
+        AddSpaceDialog(self, v).exec()
+        v.setFocus()
 
     def combine_files(self):
         from .combine import CombineDialog
@@ -5161,7 +5175,7 @@ class MainWindow(QMainWindow):
         "z_forward": tr("Forward"), "z_backward": tr("Backward"), "z_back": tr("To back"),
         "tool_redact": tr("Redact"), "tool_placeholder": tr("Placeholder"),
         "tool_erasecontent": tr("Erase content"), "tool_capture": tr("Capture"),
-        "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "tool_link": tr("Links"),
+        "tool_crop": tr("Crop"), "a_uncrop": tr("Remove crop"), "a_add_space": tr("Add space"), "tool_link": tr("Links"),
         "a_page_boxes": tr("Page boxes"), "a_fix_hairlines": tr("Fix hairlines"),
         "a_print_check": tr("Check for printing"), "a_show_boxes": tr("Show boxes"),
         "a_scale_bar": tr("Scale bar"),
@@ -5191,6 +5205,7 @@ class MainWindow(QMainWindow):
         "a_replace_pages": "file-replace-outline",
         "a_combine": "file-document-multiple-outline",
         "a_insert_blank": "file-outline", "a_uncrop": "crop-free",
+        "a_add_space": "arrow-expand-all",
         "a_page_boxes": "border-outside", "a_fix_hairlines": "format-line-weight",
         "a_print_check": "printer-search", "a_show_boxes": "border-style",
         "a_scale_bar": "map-legend",
@@ -5307,7 +5322,7 @@ class MainWindow(QMainWindow):
         ])
         r.add_tab(tr("Pages"), [
             (tr("Rotate"), "large", [self.a_rot_l, self.a_rot_r]),
-            (tr("Crop"), "large", [t["crop"], self.a_uncrop]),
+            (tr("Crop"), "large", [t["crop"], self.a_uncrop, self.a_add_space]),
             # (Extract and Replace pages share one button; moving pages is mostly done by
             # dragging them in the Pages panel: Move up and down under the arrow)
             (tr("Organize"), "small", [self.a_insert_pdf, self.a_insert_blank, self.a_del_page,

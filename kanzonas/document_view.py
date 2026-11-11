@@ -689,6 +689,7 @@ class DocumentView(QScrollArea):
     searchChanged = Signal(int, int, bool)   # match shown (1-based, 0 = none), matches, still searching
     openFileRequested = Signal(str, int)      # a link to another PDF: path, page (0-based)
     selectionChanged = Signal()
+    toolDefaultsChanged = Signal(str)     # a tool's default style was set (Set as Default)
     signedDocument = Signal()
     oneShotPlaced = Signal()        # a signature / initials / date was placed
     selectToolRequested = Signal()
@@ -3764,7 +3765,15 @@ class DocumentView(QScrollArea):
         return QColor(self.tool_props(tool).get("stroke") or "#0078d7")
 
     # ---- creating annotations -------------------------------------------------
-    def _create(self, index, model, select=False):
+    def _create(self, index, model, select=None):
+        """Write a markup placed with a tool, in one undo step. It's selected (select None:
+        except in CAD mode): Properties then shows and changes it, while the tool stays
+        picked for the next one (the owner, 10 Nov: Properties changed the tool's style for
+        the next markup, not the one just drawn, and seemed to do nothing). In CAD mode, as
+        in AutoCAD, what's drawn isn't selected: a selection there shows grips, and the next
+        line starting on its end would take a grip instead."""
+        if select is None:
+            select = self.mouse_mode != "cad"
         made = {}
 
         def do():
@@ -5448,6 +5457,33 @@ class DocumentView(QScrollArea):
             self.selectionChanged.emit()
         elif made:
             self._set_selection(index, [made.get(x, x) for x in sel] or list(made.values()))
+
+    def default_tool_of_selected(self):
+        """The tool whose default style Set as Default would set from the selected markup
+        (one markup, not a form field), or None."""
+        from . import tool_chest
+        m = self.selected_model
+        if self.selection is None or self.extra or m is None or m["kind"] == "field":
+            return None
+        tool = tool_chest.tool_for(m)
+        return tool if tool in annotations.DEFAULTS else None
+
+    def set_selected_as_default(self):
+        """Right-click > Set as Default: the selected markup's style becomes its tool's
+        default style, for the next markups made with it (as Bluebeam's Set as Default)."""
+        tool = self.default_tool_of_selected()
+        if tool is None:
+            return False
+        base = annotations.DEFAULTS[tool]
+        props = dict(annotations.tool_props(tool))
+        for k, v in self.selected_model["props"].items():
+            if k in base and k != "rotation" and annotations._fits(base[k], v):
+                props[k] = v
+        annotations.set_tool_props(tool, props)
+        self.toolDefaultsChanged.emit(tool)
+        self.statusMessage.emit(tr("This style is now the default for {tool}").format(
+            tool=annotations.LABELS.get(tool, tool)))
+        return True
 
     def update_selected_props(self, props):
         if self.selection is None or self.selected_model is None or \
@@ -10260,10 +10296,32 @@ class DocumentView(QScrollArea):
                 cb = page.cropbox
                 box = (rect + (cb.x0, cb.y0, cb.x0, cb.y0)) & page.mediabox
                 if box.width >= 2 and box.height >= 2:
+                    before = annotations.page_origin(page)
                     page.set_cropbox(box)
+                    page = self.doc[i]
+                    annotations.sync_page(page)
+                    annotations.rebase_page(page, annotations.page_origin(page) - before)
         self.modify(do, structural=True, changed=list(targets))
         self.statusMessage.emit(tr("Cropped (Ctrl+Z undoes it; Pages > Remove crop shows the "
                                    "whole page again)"))
+
+    def add_page_space(self, pages, margins):
+        """Pages > Add space around page: pages made bigger by margins (left, top, right,
+        bottom, points, as shown), with everything on them staying where it is (page_space.py);
+        one undo step. Raises ValueError (a sentence to show) before changing anything when a
+        page can't take it."""
+        from . import page_space
+        for i in pages:
+            why = page_space.check(self.doc[i], margins)
+            if why:
+                raise ValueError(why)
+
+        def do():
+            for i in pages:
+                page_space.add_space(self.doc[i], margins)
+        self.modify(do, structural=True, changed=list(pages))
+        self.statusMessage.emit(tr("Space added (Ctrl+Z undoes it; Crop pages takes it off "
+                                   "again)"))
 
     def remove_crop(self, index, all_pages=False):
         targets = range(self.doc.page_count) if all_pages else [index]
@@ -10274,7 +10332,11 @@ class DocumentView(QScrollArea):
         def do():
             for i in targets:
                 page = self.doc[i]
+                before = annotations.page_origin(page)
                 page.set_cropbox(page.mediabox)
+                page = self.doc[i]
+                annotations.sync_page(page)
+                annotations.rebase_page(page, annotations.page_origin(page) - before)
         self.modify(do, structural=True, changed=list(targets))
         self.statusMessage.emit(tr("Crop removed"))
 

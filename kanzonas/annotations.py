@@ -1200,6 +1200,48 @@ def translation(old, new):
     return d if _same(a, b) else None
 
 
+def rebase_page(page, d):
+    """After the page's boxes changed (Crop pages, Remove crop, Add space around page): the
+    positions KanzonasPDF keeps in page coordinates for its markups (their KZProps box,
+    target, points...) and links (their underline) move by d, the change of the page
+    coordinates of a fixed PDF point, so they stay with the markup, which didn't move in the
+    PDF. (Before: after Crop pages a box or callout jumped by the crop when next edited.)"""
+    if not d.x and not d.y:
+        return
+    doc = page.parent
+    for xref, _kind, _name in page.annot_xrefs():
+        kind, val = doc.xref_get_key(xref, KZ_KEY)
+        if kind == "string":
+            try:
+                store = json.loads(val)
+            except (ValueError, RecursionError):
+                store = None
+            geom = store.get("geom") if isinstance(store, dict) else None
+            if isinstance(geom, dict):
+                for k in ("box", "target", "at", "pts", "bend"):
+                    g = geom.get(k)
+                    if isinstance(g, list) and all(isinstance(c, (int, float)) for c in g):
+                        geom[k] = [c + (d.x if i % 2 == 0 else d.y) for i, c in enumerate(g)]
+                doc.xref_set_key(xref, KZ_KEY, pymupdf.get_pdf_str(json.dumps(store)))
+        kind, val = doc.xref_get_key(xref, "KZUnder")
+        if kind == "array" and "R" not in val:
+            doc.xref_set_key(xref, "KZUnder", _shift_pairs(val, d.x, d.y))
+
+
+def sync_page(page):
+    """After the page's boxes changed: MuPDF works out its page transform again and reloads
+    its links and markups (a loaded page keeps its links' positions from when it was loaded:
+    after Add space around page, a link read before was clicked where it no longer was)."""
+    mu = pymupdf.mupdf
+    mu.pdf_sync_page(mu.pdf_page_from_fz_page(page.this))
+
+
+def page_origin(page):
+    """Where PDF point (0, 0) is in the page's coordinates: compared before and after a
+    change of its boxes, the d for rebase_page."""
+    return pymupdf.Point(0, 0) * pdfcoords.to_page(page)
+
+
 def shift_in_place(page, xref, d, to_pdf=None):
     """Move annotation xref by d (page coordinates) without writing it again: its box and
     the positions it keeps are shifted, and its appearance (drawn into its box) moves with
