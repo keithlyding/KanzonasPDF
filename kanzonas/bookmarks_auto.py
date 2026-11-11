@@ -67,14 +67,15 @@ def _line_pieces(page):
     except Exception:
         return []
     rot = page.rotation_matrix
-    turn = pymupdf.Matrix(rot.a, rot.b, rot.c, rot.d, 0, 0)
+    a, c = rot.a, rot.c
+    upright = page.rotation == 0        # (most pages: no turning, one rect for both)
     out = []
     for b in d.get("blocks", ()):
         if b.get("type") != 0:
             continue
         for ln in b.get("lines", ()):
-            v = pymupdf.Point(ln["dir"]) * turn
-            if v.x < 0.9:               # sideways text (labels on drawings): never a heading
+            dx, dy = ln["dir"]
+            if dx * a + dy * c < 0.9:   # sideways text (labels on drawings): never a heading
                 continue
             sizes = Counter()
             bold = chars = 0
@@ -90,7 +91,8 @@ def _line_pieces(page):
                 continue
             text = " ".join("".join(s["text"] for s in ln["spans"]).split())
             r = pymupdf.Rect(ln["bbox"])
-            out.append((len(out), text, sizes.most_common(1)[0][0], bold, chars, r, r * rot))
+            out.append((len(out), text, sizes.most_common(1)[0][0], bold, chars, r,
+                        r if upright else r * rot))
     return out
 
 
