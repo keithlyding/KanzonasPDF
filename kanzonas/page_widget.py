@@ -478,9 +478,36 @@ class PageWidget(QWidget):
         if self.index not in v._alists:
             page = v.doc[self.index]
             # (drawn again after a change: its pictures decoded afresh, as when opened)
-            RL.forget_pictures(page.parent, RL.markup_pictures(page))
+            pics = RL.markup_pictures(page)
+            RL.forget_pictures(page.parent, pics)
             v._alists[self.index] = RL.annots_list(page)
+            v.__dict__.setdefault("_alist_pics", {})[self.index] = pics
+            if pics:            # (pictures decoded here: the other pages draw theirs afresh)
+                v._pic_tick = getattr(v, "_pic_tick", 0) + 1
+                v.__dict__.setdefault("_pic_seen", {})[self.index] = (None, v._pic_tick)
         return v._alists[self.index]
+
+    def _forget_markup_pictures(self, s):
+        """Before the markups are drawn anew: their pictures (stamps, images) decoded afresh.
+        MuPDF keeps a decoded copy of a picture and draws from one decoded for another page or
+        size, a few levels of color off (a stamp duplicated onto another page: random
+        battery, seed 9, 1.12); the page's content does the same before each render."""
+        v = self.view
+        pics = getattr(v, "_alist_pics", {}).get(self.index)
+        if not pics or self.index not in v._alists:
+            return
+        # once per page and zoom, while no other page or zoom draws pictures in between (a
+        # big page draws in tiles: not made anew for each)
+        tick = getattr(v, "_pic_tick", 0)
+        seen = v.__dict__.setdefault("_pic_seen", {})
+        if seen.get(self.index) == (round(s, 6), tick):
+            return
+        # (the markups' drawing holds the pictures it read: made anew, as the content's)
+        page = v.doc[self.index]
+        RL.forget_pictures(v.doc, pics)
+        v._alists[self.index] = RL.annots_list(page)
+        v._pic_tick = tick + 1
+        seen[self.index] = (round(s, 6), v._pic_tick)
 
     def _content(self, s, clip=None, tile=None):
         """The page's content rendered at zoom s (device pixels per point), whole or the clip,
@@ -512,9 +539,10 @@ class PageWidget(QWidget):
     def _with_markups(self, base, s, clip=None):
         """base (the content at zoom s) with the markups drawn over it by MuPDF (blend modes,
         opacity and all, as a whole-page render draws them)."""
-        al = self._annots()
-        if al is None:
+        if self._annots() is None:
             return base
+        self._forget_markup_pictures(s)
+        al = self._annots()
         with screen_lines(self.view.thin_lines):
             return RL.draw_over(base, al, s, clip)
 

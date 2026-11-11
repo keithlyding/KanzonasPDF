@@ -608,6 +608,31 @@ def _annot_flags(doc, xref):
     except ValueError:
         return 0
 
+def _spans_in(lines, line, d):
+    """(rect, line of just its spans) of the spans of line, moved by d, found among the
+    page's lines (as read now, joined to another line), or None."""
+    want = [(s["text"], s["origin"][0] + d.x, s["origin"][1] + d.y) for s in line["spans"]
+            if s["text"].strip()]
+    if not want:
+        return None
+    found = []
+    for text, x, y in want:
+        hit = None
+        for _r, ln in lines:
+            hit = next((s for s in ln["spans"] if s["text"] == text and
+                        abs(s["origin"][0] - x) < 1.5 and abs(s["origin"][1] - y) < 1.5),
+                       None)
+            if hit is not None:
+                found.append((hit, ln["dir"]))
+                break
+        if hit is None:
+            return None
+    box = pymupdf.Rect()
+    for s, _dir in found:
+        box |= pymupdf.Rect(s["bbox"])
+    return box, {"bbox": box, "dir": found[0][1], "spans": [s for s, _dir in found]}
+
+
 def _text_at(texts, r):
     """The text object (Edit objects) that is the paragraph expected at rect r after an edit:
     the one starting at its corner, else the one covering most of it. Written again, a line's
@@ -5963,6 +5988,12 @@ class DocumentView(QScrollArea):
         (dx, dy) * step points as seen on screen. Presses less than 1.5 s apart are one undo
         step. Returns True if something moved."""
         import time
+        if self.obj_sel is not None and self.selection is not None and \
+                self.selection[0] != self.obj_sel[0]:
+            # (objects on one page and a markup on another: the keys move the objects, the
+            # markup is let go. Random battery, seed 31: both moved as CAD mode's selection,
+            # which is on one page, and the text was unselected)
+            self.clear_selection()
         if self.obj_sel is not None:
             index = self.obj_sel[0]
         elif self.selection is not None:
@@ -5984,7 +6015,8 @@ class DocumentView(QScrollArea):
                 self.selection is not None else None
             if what is not None and what[0] == "both":
                 # CAD mode's selection of the drawing's objects and markups: both move
-                self.cad_apply(tr("Moved"), pymupdf.Matrix(1, 0, 0, 1, d.x, d.y))
+                if self.cad_apply(tr("Moved"), pymupdf.Matrix(1, 0, 0, 1, d.x, d.y)) is False:
+                    return False            # (it would take the text past the page's edge)
             elif self.obj_sel is not None:
                 r = self.selected_objects_rect()
                 if self.move_objects(r + (d.x, d.y, d.x, d.y)) is False:
@@ -7286,6 +7318,10 @@ class DocumentView(QScrollArea):
             hit = next((h for h in now if text_edit.line_text(h[1]) == text and
                         abs(h[0].x0 - want.x0) < 2 and abs(h[0].y0 - want.y0) < 2), None)
             if hit is None:
+                # moved up to another line, the page reads them as one (a page number put
+                # beside its leader dots: random battery, seed 31): its own spans in it
+                hit = _spans_in(now, ln, d)
+            if hit is None:
                 return _text_at(texts_now, rect)
             mine.append(hit)
         cand = _text_at(texts_now, rect)
@@ -7552,9 +7588,10 @@ class DocumentView(QScrollArea):
                     kept = self.obj_sel
                     # (the markups on the moved text went with it: not moved again)
                     carried, self._carried = self._carried, set()
-                    self.then_in_same_step(
-                        rev, lambda: self._cad_apply(label, mat, copies, keep, only="markups",
-                                                     skip=carried))
+                    if out is not False:    # (refused: the markups stay put too)
+                        self.then_in_same_step(
+                            rev, lambda: self._cad_apply(label, mat, copies, keep,
+                                                         only="markups", skip=carried))
                     if kept is not None and self.obj_sel is None:
                         # (changing the markups dropped the page's objects as read before:
                         # the same ones are selected again, so Copy goes on with both)
@@ -7635,6 +7672,21 @@ class DocumentView(QScrollArea):
         kind, index, items = what
         mats = copies if copies is not None else [mat]
         moving_only = all(cad_commands.is_translation(m) for m in mats)
+        texts_moved = [it for it in (items if kind == "objects" else
+                                     items["objects"] if kind == "both" else [])
+                       if it["kind"] == "text"] if moving_only else []
+        if texts_moved:
+            # the page's text stays on the page (past its edge, letters are lost at the next
+            # move: see move_objects), in CAD mode's moves and arrow keys too
+            page = self.doc[index]
+            shown = (page.rect * page.derotation_matrix) + (-0.5, -0.5, 0.5, 0.5)
+            del page
+            if any(not shown.contains(pymupdf.Rect(it["rect"]) + (m.e, m.f, m.e, m.f))
+                   for m in mats for it in texts_moved):
+                self.statusMessage.emit(tr("The page's own text can't go past the edge of "
+                                           "the page, nor its pictures and shapes off it "
+                                           "altogether (markups can)."))
+                return False
         if kind == "objects":
             texts = [it for it in items if it["kind"] == "text"]
             shapes = [it for it in items if it["kind"] != "text"]
