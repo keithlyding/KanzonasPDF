@@ -51,15 +51,29 @@ def _get_engine():
         return _engine
 
 
+def session_module():
+    """RapidOCR's module that makes ONNX Runtime's session options (None without RapidOCR):
+    utils.infer_engine from RapidOCR 1.3 on, utils (one file) in 1.2."""
+    try:
+        from rapidocr_onnxruntime.utils import infer_engine
+        return infer_engine
+    except Exception:
+        pass
+    try:
+        from rapidocr_onnxruntime import utils
+    except Exception:
+        return None
+    return utils if hasattr(utils, "SessionOptions") else None
+
+
 def _lean_sessions():
     """ONNX Runtime's sessions without the memory they keep between runs: RapidOCR already
     turns its memory arena off; the memory pattern (buffers planned and kept for each size
     of picture seen, and the pages' tiles and lines come in many sizes) goes off too."""
-    try:
-        from rapidocr_onnxruntime import utils
-        base = utils.SessionOptions
-    except Exception:
+    module = session_module()
+    if module is None:
         return
+    base = module.SessionOptions
     if getattr(base, "kz_lean", False):
         return
 
@@ -69,7 +83,7 @@ def _lean_sessions():
         options.enable_mem_pattern = False
         return options
     lean.kz_lean = True
-    utils.SessionOptions = lean
+    module.SessionOptions = lean
 
 
 def release_engine(idle=0.0):

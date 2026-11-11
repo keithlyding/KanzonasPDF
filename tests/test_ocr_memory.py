@@ -167,16 +167,44 @@ class Tiles(unittest.TestCase):
 
 class Engine(unittest.TestCase):
     def test_sessions_keep_no_memory_pattern_or_arena(self):
-        try:
-            from rapidocr_onnxruntime import utils
-        except ImportError:
+        # (the module that makes the sessions: utils in RapidOCR 1.2, utils.infer_engine
+        # from 1.3 on; the patch must land where they are made, or it does nothing)
+        module = ocr.session_module()
+        if module is None:
             self.skipTest("RapidOCR isn't installed here")
         ocr._lean_sessions()
         ocr._lean_sessions()                    # (once is enough: not wrapped twice)
-        options = utils.SessionOptions()
+        options = module.SessionOptions()
         self.assertFalse(options.enable_mem_pattern)
         self.assertFalse(options.enable_cpu_mem_arena)
-        self.assertTrue(utils.SessionOptions.kz_lean)
+        self.assertTrue(module.SessionOptions.kz_lean)
+
+    def test_the_session_module_is_found_in_every_layout(self):
+        # RapidOCR 1.2: utils is one file holding SessionOptions; 1.3 and later: a package
+        # whose infer_engine holds it
+        made = []
+
+        def options():
+            made.append(1)
+
+        one_file = mock.MagicMock(spec=["SessionOptions"], SessionOptions=options)
+        package_engine = mock.MagicMock(spec=["SessionOptions"], SessionOptions=options)
+        package = mock.MagicMock(spec=["infer_engine"], infer_engine=package_engine)
+        rapid_old = mock.MagicMock(utils=one_file)
+        rapid_new = mock.MagicMock(utils=package)
+        old = {"rapidocr_onnxruntime": rapid_old, "rapidocr_onnxruntime.utils": one_file,
+               "rapidocr_onnxruntime.utils.infer_engine": None}
+        new = {"rapidocr_onnxruntime": rapid_new, "rapidocr_onnxruntime.utils": package,
+               "rapidocr_onnxruntime.utils.infer_engine": package_engine}
+        with mock.patch.dict(sys.modules, old):
+            self.assertIs(ocr.session_module(), one_file)
+        with mock.patch.dict(sys.modules, new):
+            self.assertIs(ocr.session_module(), package_engine)
+        nothing = {"rapidocr_onnxruntime": None,
+                   "rapidocr_onnxruntime.utils": None,
+                   "rapidocr_onnxruntime.utils.infer_engine": None}
+        with mock.patch.dict(sys.modules, nothing):
+            self.assertIsNone(ocr.session_module())
 
     def test_the_engine_is_let_go_only_when_unused_a_while(self):
         with mock.patch.object(ocr, "_engine", object()), \
