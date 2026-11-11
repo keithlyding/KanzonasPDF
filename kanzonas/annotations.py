@@ -759,7 +759,20 @@ def _image_appearance(page, a, model):
     # PyMuPDF shrinks a stamp's Rect to the picture's proportions: use the real box
     pr = (b * pdfcoords.to_pdf(page)).normalize()
     doc.xref_set_key(a.xref, "Rect", f"[{pr.x0:.4f} {pr.y0:.4f} {pr.x1:.4f} {pr.y1:.4f}]")
-    doc.update_stream(ap, (f"q {w * co:.5f} {w * si:.5f} {-h * si:.5f} {h * co:.5f} "
+    # its opacity: the appearance is written anew here, so the transparency PyMuPDF put into
+    # it is put back (the markup's /CA alone isn't drawn by MuPDF, nor by every viewer)
+    try:
+        alpha = float(model["props"].get("opacity", 1))
+    except (TypeError, ValueError):
+        alpha = 1.0
+    gs = ""
+    if 0 <= alpha < 1:
+        doc.xref_set_key(ap, "Resources/ExtGState/KZa",
+                         f"<</Type/ExtGState/CA {alpha:.4g}/ca {alpha:.4g}>>")
+        gs = "/KZa gs "
+    else:
+        doc.xref_set_key(ap, "Resources/ExtGState", "null")
+    doc.update_stream(ap, (f"q {gs}{w * co:.5f} {w * si:.5f} {-h * si:.5f} {h * co:.5f} "
                            f"{e:.4f} {f:.4f} cm /I Do Q\n").encode())
     # keep a direct reference so the image survives even if the appearance is rebuilt
     doc.xref_set_key(a.xref, "KZImage", f"{img} 0 R")
