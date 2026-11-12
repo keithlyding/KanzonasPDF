@@ -105,6 +105,14 @@ The owner sets this list; nothing below is promised until it's here.
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
+- **Outside contributions are welcome, and speed is a condition for taking them** (owner, 12
+  Nov, on Federico Benedetti's PRs #86 Italian and #87 Dot markers: "I want to make sure the
+  program stays fast"). Each must pass `--selftest`'s speed budgets on the current `main`, and
+  add no loop over every markup or object on the way to an edit (per-page cached indexes, as
+  AGENTS.md's Performance section says). Their code runs in this repository's builds (copied to
+  a `claude/review-...` branch: the builds run for branches here only) before it's merged.
+  Accepted on those terms: the six fixes of #87 (as their own PR first), Italian (#86), then the
+  Dot as its own tool (not folded into Count).
 - **No live shared markup sessions like Bluebeam Studio** (owner, 11 Nov): they need a server
   everyone's copy connects to, cloud storage and accounts, against "Free, for good" and
   "Private" below. If shared review is wanted, it would go through files (markups exported to
