@@ -902,6 +902,24 @@ class _Upkeep:
         if lst is not None:
             lst[:] = [u for u in lst if u != ("page", px)]
 
+    def _drop_hidden_key(self, num):
+        """Annotation num is hidden, so it isn't tagged anew, but one hidden after it was
+        tagged keeps its StructParent, and Duplicate pages copies that key: two annotations
+        then share it. One that no element holds gives the key up when anything else uses
+        it (shown again, it is tagged anew)."""
+        doc = self.doc
+        sp = doc.xref_get_key(num, "StructParent")
+        if sp[0] != "int" or num in self.tree.objr:
+            return
+        key = int(sp[1])
+        others = [u for u in self.key_users().get(key, ()) if u != ("annot", num)]
+        if not others:
+            return
+        doc.xref_set_key(num, "StructParent", "null")
+        lst = self._key_users.get(key) if self._key_users is not None else None
+        if lst is not None:
+            lst[:] = others
+
     def new_key(self):
         k = self.next_key
         self.next_key += 1
@@ -1318,7 +1336,10 @@ class _Upkeep:
                         tree.drop_objr(e, num)
                         tree.prune(e)
                         self.pt_dirty = True
-            if not shown or self.annot_ok(num, px):
+            if not shown:
+                self._drop_hidden_key(num)
+                continue
+            if self.annot_ok(num, px):
                 continue
             for e in list(tree.objr.get(num, ())):
                 vp = doc.xref_get_key(num, "StructParent")

@@ -7,6 +7,26 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.12.2
+
+**Fixed**
+- Recognizing text (OCR) uses less memory again with RapidOCR 1.3 and later.
+- PDF/A: an attached file gets the same file type on every computer (a .csv was sometimes marked as an Excel file).
+- Closing a text box being edited with spell checking on no longer can crash KanzonasPDF.
+- Undo after Save gives back exactly what was there, also after Edit objects or Edit text.
+- A file that got shorter since you last had it open opens at its last page instead of failing.
+- Accessibility: duplicating a page with a hidden markup no longer leaves two markups sharing one tag.
+
+## 1.12.2 (es)
+
+**Correcciones**
+- Reconocer texto (OCR) vuelve a usar menos memoria con RapidOCR 1.3 y posteriores.
+- PDF/A: un archivo adjunto recibe el mismo tipo de archivo en todos los equipos (un .csv a veces se marcaba como archivo de Excel).
+- Cerrar un cuadro de texto en edición con la revisión ortográfica activada ya no puede cerrar KanzonasPDF.
+- Deshacer después de Guardar devuelve exactamente lo que había, también después de Editar objetos o Editar texto.
+- Un archivo que se acortó desde la última vez que lo abrió se abre en su última página en lugar de fallar.
+- Accesibilidad: duplicar una página con una marca oculta ya no deja dos marcas compartiendo una misma etiqueta.
+
 ## 1.12.1
 
 **New**

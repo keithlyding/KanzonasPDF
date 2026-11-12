@@ -702,7 +702,7 @@ class InlineEditor(QFrame):
             self.parentWidget().update()        # (the preview goes)
         self.formatShown.emit(None)
         self.committed.emit(self.text.toPlainText(), float(moved.x()), float(moved.y()), wrap)
-        self.deleteLater()
+        self._delete()
 
     def _wraps(self):
         """Some paragraph wraps onto more than one line on screen."""
@@ -724,4 +724,9 @@ class InlineEditor(QFrame):
             self.parentWidget().update()        # (the preview goes)
         self.formatShown.emit(None)
         self.canceled.emit()
+        self._delete()
+
+    def _delete(self):
+        from . import spelling
+        spelling.uninstall(self.text)
         self.deleteLater()

@@ -59,6 +59,11 @@ FILTERS = {"ASCIIHexDecode", "ASCII85Decode", "FlateDecode", "RunLengthDecode",
 # the keys _Pass._dict looks at (a dictionary with none of them is passed over)
 _KEYS_LOOKED_AT = {"AA", "A", "OpenAction", "Next", "Type", "Metadata", "TR", "TR2", "HTP",
                    "HT", "BM", "RI", "ColorSpace", "CS", "Font"}
+# Python's own table of file types, without what the system adds: on Windows the registry
+# says .csv is application/vnd.ms-excel when Excel is installed, so the same file got
+# another Subtype on another machine
+_FILE_TYPES = mimetypes.MimeTypes()
+
 _PLAIN_FILTERS = {"LZWDecode", "FlateDecode", "ASCIIHexDecode", "ASCII85Decode",
                   "RunLengthDecode"}
 # 6.2.11.3.3: the CMaps a font may use without embedding them (ISO 32000-1, Table 118)
@@ -1841,7 +1846,7 @@ class _Pass:
             if not _has(spec, "AFRelationship"):
                 m.pdf_dict_puts(spec, "AFRelationship", m.pdf_new_name("Unspecified"))
             if not _has(stream, "Subtype"):
-                mime = mimetypes.guess_type(label)[0] or "application/octet-stream"
+                mime = _FILE_TYPES.guess_type(label)[0] or "application/octet-stream"
                 m.pdf_dict_puts(stream, "Subtype", m.pdf_new_name(mime))
             if m.pdf_is_indirect(raw):
                 ref = _ref(pdf, m.pdf_to_num(raw))

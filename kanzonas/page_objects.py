@@ -15,6 +15,7 @@ line width with it.
 """
 
 import bisect
+import contextlib
 import functools
 import gc
 import math
@@ -725,22 +726,59 @@ def _put_stream(doc, xref, data):
 QUICK_KEY = "KZQuick"
 
 
+def _raw_print(doc, x):
+    """A stream's bytes as stored (compressed), in a few numbers: tells a stream packed
+    by pack_quick_streams from one written quickly again since."""
+    raw = doc.xref_stream_raw(x) or b""
+    return len(raw), zlib.crc32(raw)
+
+
 def pack_quick_streams(doc):
     """Compress tightly (MuPDF's deflate) the streams _put_stream wrote quickly, before a
     Save: about a second for a big sheet's drawing, paid once when saving, not on each
     edit. doc._kz_quick: the xrefs written so (carried from document to document by undo
-    and redo); each is checked for the mark, so one that changed since is left alone."""
+    and redo); each is checked for the mark, so one that changed since is left alone.
+    doc._kz_packed: {xref: _raw_print} of the streams packed (carried the same way), so a
+    later Save doesn't pack one again. Returns the xrefs that carry the mark: the file is
+    written without it (packed_for_saving)."""
+    packed = getattr(doc, "_kz_packed", None)
+    if packed is None:
+        packed = doc._kz_packed = {}
+    marked = []
     for x in sorted(getattr(doc, "_kz_quick", ()) or ()):
         try:
             if x >= doc.xref_length() or doc.xref_get_key(x, QUICK_KEY)[1] != "true" or \
                     not doc.xref_is_stream(x):
                 continue
+            marked.append(x)
+            if packed.get(x) == _raw_print(doc, x):
+                continue                # (packed by an earlier Save, not written since)
             data = doc.xref_stream(x)
             doc.update_stream(x, data, compress=True)
-            doc.xref_set_key(x, QUICK_KEY, "null")
+            packed[x] = _raw_print(doc, x)
         except Exception:
             continue                    # (left as it is: still a valid, compressed stream)
     # (the list stays: an undo after this Save brings back streams written quickly)
+    return marked
+
+
+@contextlib.contextmanager
+def packed_for_saving(doc):
+    """The quickly written streams packed (pack_quick_streams) and their mark taken off
+    while the file is written, then put back: the document keeps it, as every undo step
+    has it. (Taken off for good, an undo after the Save brought back an edit's own
+    streams marked and left the others unmarked: a document that never was.)"""
+    marked = pack_quick_streams(doc)
+    for x in marked:
+        doc.xref_set_key(x, QUICK_KEY, "null")
+    try:
+        yield
+    finally:
+        for x in marked:
+            try:
+                doc.xref_set_key(x, QUICK_KEY, "true")
+            except Exception:
+                pass
 
 
 def _set_contents(page, data):
