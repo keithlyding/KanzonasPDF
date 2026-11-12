@@ -76,9 +76,19 @@ a decision changes or a piece of work lands. Details of each version are in
   groups, flips, moves markups between layers, hides layers and draws spaces; it found that
   Duplicate pages gave a page with nothing tagged and its copy the same StructParents key
   (in 1.11.1 too), fixed.
+- 1.12.1 (owner, 12 Nov): in CAD mode a drag from the selection moves it (with the four-way
+  arrow over it); the Select tool's pointer is the arrow (the text cursor only with text tools
+  and where text is typed); Pages > Insert pages from file can recognize the text of the
+  pictures inserted (OCR), as an option.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
+- **A quiet period after 1.12.1** (owner, 12 Nov: "make sure it's stable and leave it alone
+  for a few days"): no new features or releases until the owner says so; only a fix for
+  something broken, and only with the owner's go-ahead. Outside contributors (Hamish
+  Poole-Hill's suggestions, issue #82; Federico Benedetti's PRs #86 and #87) are welcome
+  meanwhile, and the owner wants them to know he's grateful: their work is reviewed and
+  answered, not rushed.
 0. **The next fix release: Redo lost after undoing Auto bookmarks** (owner, 11 Nov: ship 1.11,
    fix this next; 1.11.1 went to the owner's Pages panel and OCR requests).
    Found by the random battery (seed 31, 1500 steps, PyMuPDF 2.0 and 2.1, also in 1.10.1): after
@@ -97,10 +107,24 @@ The owner sets this list; nothing below is promised until it's here.
 1. **French, German and Portuguese** (the app and the manual), next now that 1.12 is out
    (owner, 11 Nov: the Bluebeam features first, so their words are translated once; set as
    next on 6 Nov).
-2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
+2. **Export to Markdown** (owner, 12 Nov: "let's just add it to the roadmap"; not scheduled):
+   File > Export to > Markdown, next to Word, Excel and PowerPoint: a document's text with its
+   headings, lists, tables, bold and italics as a plain .md file, the way people feed documents
+   to AI tools or paste them into notes and wikis. PyMuPDF's companion `pymupdf4llm` does the
+   conversion (AGPL, as PyMuPDF; imported only when used, as the other exports). For text
+   documents; drawings have little to give, scanned pages need OCR first.
+3. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
+- **Outside contributions are welcome, and speed is a condition for taking them** (owner, 12
+  Nov, on Federico Benedetti's PRs #86 Italian and #87 Dot markers: "I want to make sure the
+  program stays fast"). Each must pass `--selftest`'s speed budgets on the current `main`, and
+  add no loop over every markup or object on the way to an edit (per-page cached indexes, as
+  AGENTS.md's Performance section says). Their code runs in this repository's builds (copied to
+  a `claude/review-...` branch: the builds run for branches here only) before it's merged.
+  Accepted on those terms: the six fixes of #87 (as their own PR first), Italian (#86), then the
+  Dot as its own tool (not folded into Count).
 - **No live shared markup sessions like Bluebeam Studio** (owner, 11 Nov): they need a server
   everyone's copy connects to, cloud storage and accounts, against "Free, for good" and
   "Private" below. If shared review is wanted, it would go through files (markups exported to

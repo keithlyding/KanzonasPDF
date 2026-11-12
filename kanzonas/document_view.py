@@ -2203,9 +2203,13 @@ class DocumentView(QScrollArea):
         if tool == "eraser" and not self.plus_cursor:
             self.viewport().setCursor(eraser_cursor())
             return
-        text_cursor = ("select", "edittext", "addtext", "highlight", "underline", "strikeout", "comment",
+        # (the text cursor only with a tool that works on text; Select still selects text by
+        # dragging over it, with the arrow: the owner, 12 Nov, "there should be no text cursor
+        # unless I've double-clicked on text to edit or have a text tool")
+        text_cursor = ("edittext", "addtext", "highlight", "underline", "strikeout", "comment",
                        "redact")
-        cursors = {"hand": Qt.OpenHandCursor, **{t: Qt.IBeamCursor for t in text_cursor}}
+        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.ArrowCursor,
+                   **{t: Qt.IBeamCursor for t in text_cursor}}
         if self.plus_cursor and tool != "hand":
             cursors = {}                # CAD mouse: a plus, as in CAD programs
         self.viewport().setCursor(cursors.get(tool, Qt.CrossCursor))
@@ -9033,7 +9037,9 @@ class DocumentView(QScrollArea):
 
     def set_layer(self, number, visible):
         """Show/hide a layer. This is a viewing choice, not an edit (no undo, not 'unsaved')."""
-        self.doc.set_layer_ui_config(number, 1 if visible else 2)
+        # (PyMuPDF: 0 shows, 1 switches, 2 hides. 1 for "show" hid a layer already shown:
+        # Show all hid the shown ones. Random battery, seed 9, 1.12.1)
+        self.doc.set_layer_ui_config(number, 0 if visible else 2)
         self._layers_shown_changed()
         self._redraw_all()
 
@@ -9052,7 +9058,7 @@ class DocumentView(QScrollArea):
     def set_all_layers(self, visible):
         for c in self.layer_configs():
             if not c.get("locked"):
-                self.doc.set_layer_ui_config(c["number"], 1 if visible else 2)
+                self.doc.set_layer_ui_config(c["number"], 0 if visible else 2)
         self._layers_shown_changed()
         self._redraw_all()
 
@@ -11272,9 +11278,13 @@ class DocumentView(QScrollArea):
         from .combine import insert_files
         n = self.doc.page_count
         ref = self.page_rects[min(max(at - 1, 0), n - 1) if at != -1 else n - 1]
-        self.modify(lambda: insert_files(self.doc, paths, n if at == -1 else at,
-                                         (ref.width, ref.height), owner), structural=True,
-                    changed=[])
+        made = []
+
+        def do():
+            made.extend(insert_files(self.doc, paths, n if at == -1 else at,
+                                     (ref.width, ref.height), owner))
+        self.modify(do, structural=True, changed=[])
+        return made         # (the pages made from pictures)
 
     def replace_pages(self, src, pairs, scale=True):
         """Pages > Replace pages: the pages' drawings become those of src's pages (pairs:

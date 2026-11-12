@@ -7,6 +7,30 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.12.1
+
+**New**
+- CAD mode: drag what's selected to move it (markups and the page's own lines, text and pictures together, one undo step). The pointer shows the four-way arrow over the selection; a drag anywhere else still draws a selection box or lasso.
+- Pages > Insert pages from file can make pictures searchable: tick "Make the pictures searchable (recognize text, OCR)" and the pages made from pictures have their text recognized. The choice is remembered, shared with Combine files and Create PDF from images.
+
+**Fixed**
+- Layers panel: Show all no longer hides the layers that were already shown.
+
+**Changed**
+- The Select tool's pointer is the arrow, not the text cursor. The text cursor shows only with the tools that work on text (Edit text, Add text, Highlight and the other text markups, Redact) and where you type. Dragging over text with Select still selects it.
+
+## 1.12.1 (es)
+
+**Novedades**
+- Modo CAD: arrastre lo seleccionado para moverlo (las marcas y las líneas, el texto y las imágenes propios de la página a la vez, en un solo paso de deshacer). El puntero muestra la flecha de cuatro puntas sobre la selección; un arrastre en cualquier otro lugar sigue dibujando un cuadro de selección o un lazo.
+- Páginas > Insertar páginas desde archivo puede hacer buscables las imágenes: marque "Hacer las imágenes buscables (reconocer texto, OCR)" y se reconoce el texto de las páginas hechas a partir de imágenes. La elección se recuerda, compartida con Combinar archivos y Crear PDF desde imágenes.
+
+**Correcciones**
+- Panel Capas: Mostrar todo ya no oculta las capas que ya se mostraban.
+
+**Cambios**
+- El puntero de la herramienta Seleccionar es la flecha, no el cursor de texto. El cursor de texto solo aparece con las herramientas que trabajan con texto (Editar texto, Agregar texto, Resaltar y las demás marcas de texto, Redactar) y donde escribe. Arrastrar sobre el texto con Seleccionar sigue seleccionándolo.
+
 ## 1.12
 
 **New** (features from Bluebeam Revu)

@@ -7,7 +7,10 @@ page's own lines, text and pictures):
   everything it touches). Escape cancels it;
 - hold the button and drag: a lasso that follows the pointer. Drawn rightward at first it's a
   window lasso (blue), leftward a crossing lasso (green);
-- dragging never moves anything (use the CAD tab's Move); handles still resize;
+- dragging from what's selected moves the selection (markups and the page's own objects
+  together, as one undo step; the four-way arrow shows over it: the owner, 12 Nov, as
+  AutoCAD's drag of a selection); dragging anywhere else draws a lasso or box; handles
+  still resize;
 - while a box or lasso is drawn, what it would take is highlighted, worked out in short
   slices between pointer moves so big drawings stay smooth (it fills in as it goes).
 
@@ -76,7 +79,20 @@ def press(w, e, pos, pdf, outside=False):
         target = target_at(w, pos, pdf)
     w._cad_down = {"start": pos, "pts": [pos], "dir": 0, "mode": None, "now": None,
                    "target": target, "remove": remove, "t": e.timestamp(),
-                   "link": getattr(w, "_link_press", None) is not None}
+                   "link": getattr(w, "_link_press", None) is not None,
+                   "on_selection": not outside and not remove and is_selected(w, *target)}
+
+
+def is_selected(w, kind, target):
+    """The item (target_at's) is in the selection on page widget w's page."""
+    v = w.view
+    if target is None:
+        return False
+    if kind == "markup":
+        return v.selection is not None and v.selection[0] == w.index and \
+            target in v.selected_xrefs()
+    return v.obj_sel is not None and v.obj_sel[0] == w.index and \
+        any(it["n"] == target["n"] for it in v.obj_sel[1])
 
 
 def target_at(w, pos, pdf):
@@ -117,7 +133,17 @@ def move(w, e, pos):
         return
     v = w.view
     if d["mode"] is None and (pos - d["start"]).manhattanLength() >= 4:
-        d["mode"] = "lasso" if v.lasso else "box"
+        if d.get("on_selection"):
+            d["mode"] = "drag"
+            d["outlines"] = _selection_lines(w)
+        else:
+            d["mode"] = "lasso" if v.lasso else "box"
+    if d["mode"] == "drag":
+        d["now"] = w._snap(pos, e) if w._snapping(e) else pos
+        w.setCursor(Qt.SizeAllCursor)
+        w.update()
+        _outside_update(w)
+        return
     if d["mode"] == "lasso":
         if (pos - d["pts"][-1]).manhattanLength() >= 2:
             d["pts"].append(pos)
@@ -193,13 +219,52 @@ def handle_at(w, pos):
     return None
 
 
+def _selection_lines(w):
+    """The selection's outlines (page coordinates), to show where a drag moves it."""
+    v = w.view
+    try:
+        what = v.cad_targets()
+    except Exception:
+        return []
+    if what is None or what[1] != w.index:
+        return []
+    return v.cad_outlines(w.index, what[0], what[2])[:LIMIT]
+
+
+def paint_drag(w, p):
+    """The selection's outlines where a drag puts it."""
+    d = getattr(w, "_cad_down", None)
+    if not d or d.get("mode") != "drag" or d.get("now") is None:
+        return
+    from PySide6.QtGui import QPainterPath
+    t = w._screen_transform(w.view.doc[w.index])
+    path = QPainterPath()
+    for line in d.get("outlines") or []:
+        if len(line) >= 2:
+            path.moveTo(line[0][0], line[0][1])
+            for q in line[1:]:
+                path.lineTo(q[0], q[1])
+    path = t.map(path).translated(d["now"] - d["start"])
+    p.setBrush(Qt.NoBrush)
+    p.setPen(QPen(QColor(255, 255, 255, 200), 3))
+    p.drawPath(path)
+    p.setPen(QPen(BLUE, 1, Qt.DashLine))
+    p.drawPath(path)
+
+
 def apply_cursor(w):
-    """The pick box cursor over something a click takes, else the view's own cross (a
-    resize arrow over a handle)."""
+    """The pick box cursor over something a click takes, the four-way arrow over what's
+    selected (a drag moves it), else the view's own cross (a resize arrow over a
+    handle)."""
     hid = getattr(w, "_cad_handle", None)
     if hid is not None:
         from .page_widget import handle_cursor
         w.setCursor(handle_cursor(hid))
+        return
+    hv = getattr(w, "_cad_hover", None)
+    if hv is not None and hv["takes"] and hv["key"][2] == w.view.revision and \
+            is_selected(w, hv["kind"], hv["target"]):
+        w.setCursor(Qt.SizeAllCursor)
         return
     hv = _rollover_shown(w)
     if hv is not None and hv["takes"]:
@@ -234,6 +299,7 @@ def rollover(w, pos):
     key = (kind, target if kind == "markup" else target["n"], v.revision, w.index)
     old = getattr(w, "_cad_hover", None)
     if old is not None and old["key"] == key:
+        apply_cursor(w)                 # (selected since: the four-way arrow)
         return                          # (the same item: nothing read again)
     lines, fill, width, takes = [], False, 1.0, True
     if kind == "markup" and v.markup_locked(w.index, target):
@@ -297,6 +363,14 @@ def release(w, e, pos):
     if d.get("ignore"):
         return
     v = w.view
+    if d["mode"] == "drag":
+        now = d.get("now") or pos
+        if (now - d["start"]).manhattanLength() >= 2:
+            a, b = w.to_pdf(d["start"]), w.to_pdf(now)
+            v.cad_apply(tr("Moved"), pymupdf.Matrix(1, 0, 0, 1, b.x - a.x, b.y - a.y))
+        w._snap_mark = None
+        w.update()
+        return
     if d["mode"] is not None and _a_click(d, e, pos):
         d["mode"] = None                # (a click with the hand moving a little)
     if d["mode"] == "lasso" and len(d["pts"]) >= 3:
@@ -775,6 +849,7 @@ def _glow_path(w, pv):
 
 def paint(w, p):
     paint_resize(w, p)
+    paint_drag(w, p)
     hv = _rollover_shown(w)
     if hv is not None and hv["takes"] and hv["lines"]:
         # the item drawn lighter: the paper's color over it, part see-through

@@ -76,7 +76,9 @@ como Guardar como, y al cerrarlo después de hacer cambios se le pregunta si des
 preguntar</b> para usar siempre el tamaño que eligió; cámbielo, o vuelva a hacer que se le pregunte, en
 Preferencias &gt; Páginas y visualización &gt; Tamaño de página del nuevo PDF. Sin ningún documento abierto, Insertar página
 en blanco crea un PDF nuevo de la misma manera, e Insertar páginas desde archivo crea un PDF nuevo, sin guardar, a partir de
-los archivos que elija.</li>
+los archivos que elija. Cuando los archivos incluyen imágenes, Insertar páginas desde archivo ofrece <b>Hacer las imágenes
+buscables (reconocer texto, OCR)</b>, como Crear PDF desde imágenes (la misma opción, recordada): las páginas hechas a partir
+de imágenes reconocen su texto una vez insertadas.</li>
 <li><b>Guardar:</b> Ctrl+S. <b>Guardar como:</b> Ctrl+Shift+S. (Para una copia de archivo, vea
 Guardar como PDF/A en Herramientas de documento.) Guardar como un archivo que está abierto en otra
 pestaña reemplaza ese archivo y cierra esa pestaña (y pregunta antes si tiene cambios sin guardar); lo mismo ocurre
@@ -533,8 +535,11 @@ los que toca un recuadro de captura (Ctrl+C los copia).</li>
 captura), así que ve lo que obtendrá antes del segundo clic o antes de soltar; una vez tomado, se dibuja con línea
 discontinua y pinzamientos. En un dibujo muy grande se completa en un
 momento mientras se mueve.</li>
-<li>En el modo CAD arrastrar nunca mueve nada, así que nada se mueve por accidente: los controladores cuadrados de una
-marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pestaña CAD lo mueve.</li>
+<li>Arrastre lo seleccionado para moverlo, como en AutoCAD: sobre un elemento seleccionado el puntero es la flecha de
+cuatro puntas, y arrastrar desde él mueve toda la selección (marcas y las líneas, el texto y las imágenes propios de la
+página a la vez; un solo paso de deshacer; con el ajuste igual que al dibujar). Un arrastre que empieza en cualquier
+otro lugar dibuja un lazo o un cuadro y no mueve nada. Los controladores cuadrados de una marca u objeto seleccionado
+cambian su tamaño, y <b>Mover</b> de la pestaña CAD mueve desde un punto base.</li>
 <li>Preferencias &gt; Mouse activa o desactiva cada una de estas funciones (vea Preferencias).</li>
 </ul>
 <p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Como en AutoCAD, seleccione primero y luego
@@ -648,7 +653,9 @@ cuadros de texto giran en cuartos de vuelta.</p>
 <h2 id="select">Seleccionar y editar marcas</h2>
 <ul>
 <li><b>Herramienta Seleccionar (V):</b> arrastre sobre el texto para seleccionarlo, incluso a través del espacio entre
-páginas (permanece resaltado; vea Copiar, cortar y pegar más abajo). Haga clic en una marca para seleccionarla; luego arrástrela
+páginas (permanece resaltado; vea Copiar, cortar y pegar más abajo). Su puntero es la flecha: el cursor de texto solo
+aparece con las herramientas que trabajan con texto (Editar texto, Agregar texto, Resaltar y las demás marcas de texto,
+Redactar) y en el cuadro donde escribe. Haga clic en una marca para seleccionarla; luego arrástrela
 para moverla, arrastre un controlador cuadrado para cambiar su tamaño o cambie su aspecto en el panel de propiedades.
 En el modo del mouse <b>CAD</b>, Seleccionar funciona como en AutoCAD: ventanas azules y recuadros de captura verdes, un
 lazo, clics que agregan a la selección, Shift para quitar, Escape para borrarla, y arrastrar no mueve nada (vea Modo

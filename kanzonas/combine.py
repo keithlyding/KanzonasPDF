@@ -138,9 +138,12 @@ def image_pages(path, size):
 def insert_files(doc, paths, pos, size, owner=None):
     """Insert the PDFs and pictures in `paths`, in order, into doc before page `pos`; each
     picture page is fitted on a page of `size` (see image_pages). owner: {path: permissions
-    password} for PDFs that don't allow copying (owner_passwords)."""
+    password} for PDFs that don't allow copying (owner_passwords). Returns the indexes of
+    the pages made from pictures (to recognize their text: OCR)."""
+    pictures = []
     for path in paths:
-        other = image_pages(path, size) if is_image(path) else pymupdf.open(path)
+        picture = is_image(path)
+        other = image_pages(path, size) if picture else pymupdf.open(path)
         with other:
             if other.needs_pass:
                 raise ValueError(tr("{name} is password-protected: open it and use Combine "
@@ -149,7 +152,10 @@ def insert_files(doc, paths, pos, size, owner=None):
                 raise PermissionError(not_allowed(path))
             doc.insert_pdf(other, start_at=pos)
             measure.copy_scales(other, doc, [(k, pos + k) for k in range(other.page_count)])
+            if picture:
+                pictures += range(pos, pos + other.page_count)
             pos += other.page_count
+    return pictures
 
 
 class _FileList(QListWidget):

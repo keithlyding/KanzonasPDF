@@ -84,7 +84,9 @@ as Save As does, and closing it after changes asks whether to save. Tick <b>Don'
 again</b> to always use the size you chose; change it, or go back to being asked, in
 Preferences &gt; Pages and display &gt; New PDF page size. With no document open, Insert blank
 page starts a new PDF the same way, and Insert pages from file makes a new, unsaved PDF from
-the files you choose.</li>
+the files you choose. When the files include pictures, Insert pages from file offers <b>Make the
+pictures searchable (recognize text, OCR)</b>, as Create PDF from images does (the same choice,
+remembered): the pages made from pictures get their text recognized once they're in.</li>
 <li><b>Save:</b> Ctrl+S. <b>Save as:</b> Ctrl+Shift+S. (For an archival copy, see Save as PDF/A
 in Document tools.) Saving as a file that's open in another
 tab replaces that file and closes that tab (asking first if it has unsaved changes); the same goes
@@ -542,8 +544,11 @@ window, or the ones a crossing box touches (Ctrl+C copies them).</li>
 <li>While you draw a box or a lasso, what it would take <b>glows</b> (blue for a window,
 green for a crossing box), so you see what you'll get before the second click or before you
 let go; once taken, it's drawn dashed with grips. On a very big drawing it fills in over a moment while you move.</li>
-<li>Dragging never moves anything in CAD mode, so nothing moves by accident: the square handles
-of one selected markup or object still resize it, and the CAD tab's <b>Move</b> moves.</li>
+<li>Drag what's selected to move it, as in AutoCAD: over a selected item the pointer is the
+four-way arrow, and dragging from it moves the whole selection (markups and the page's own
+lines, text and pictures together; one undo step; snapping as for drawing). A drag that starts
+anywhere else draws a lasso or box and moves nothing. The square handles of one selected markup
+or object resize it, and the CAD tab's <b>Move</b> moves by a base point.</li>
 <li>Preferences &gt; Mouse turns each of these on or off (see Preferences).</li>
 </ul>
 <p>The <b>CAD</b> tab (and the CAD menu) shows only in CAD mode. As in AutoCAD, either select
@@ -668,7 +673,9 @@ keeps reading the right way round, and text boxes turn in quarter turns.</p>
 <h2 id="select">Selecting and editing markups</h2>
 <ul>
 <li><b>Select tool (V):</b> drag across text to select it, including across the gap between
-pages (it stays highlighted; see Copy, cut and paste below). Click a markup to select it, then drag
+pages (it stays highlighted; see Copy, cut and paste below). Its pointer is the arrow: the text
+cursor shows only with the tools that work on text (Edit text, Add text, Highlight and the
+other text markups, Redact) and in the box where you type. Click a markup to select it, then drag
 it to move it, drag a square handle to resize it, or change its look in the Properties panel.
 In the <b>CAD</b> mouse mode, Select works as in AutoCAD instead: blue window and green
 crossing boxes, a lasso, clicks that add to the selection, Shift to take out, Escape to clear,

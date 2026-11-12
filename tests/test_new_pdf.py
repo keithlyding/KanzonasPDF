@@ -201,11 +201,16 @@ class InsertFiles(Base):
         o = pymupdf.open()
         o.new_page(width=200, height=300)
         o.save(other)
+        asked = []
+
+        def options(where, pictures):
+            asked.append((where, pictures))
+            return 0, False                         # (after the current page; no OCR)
         with mock.patch.object(QFileDialog, "getOpenFileNames",
                                lambda *a, **k: ([tall, other, wide], "")), \
-                mock.patch.object(QInputDialog, "getItem",
-                                  lambda *a, **k: ("After current page", True)):
+                mock.patch.object(self.w, "_insert_options", options):
             self.w.a_insert_pdf.trigger()
+        self.assertEqual(asked, [(True, True)])
         # after page 1 (792 x 612): tall picture turned upright, the PDF as it is, wide one
         self.assertEqual(sized(v.doc), [(792, 612), (612, 792), (200, 300), (792, 612),
                                         (1224, 792)])
@@ -220,7 +225,8 @@ class InsertFiles(Base):
         self.assertTrue(self.w.a_insert_blank.isEnabled())
         seen = []
         with mock.patch.object(QFileDialog, "getOpenFileNames", lambda *a, **k: ([pic], "")), \
-                answer("Legal", seen=seen):
+                answer("Legal", seen=seen), \
+                mock.patch.object(self.w, "_insert_options", lambda *a: (0, False)):
             self.w.a_insert_pdf.trigger()
         v = self.w.view()
         self.assertEqual(len(seen), 1)                         # pictures: the size is asked
@@ -239,6 +245,52 @@ class InsertFiles(Base):
             w2.a_insert_pdf.trigger()
         self.assertEqual(len(seen), 1)
         self.assertEqual(sized(w2.view().doc), [(300, 300)])
+
+    def test_insert_pictures_with_ocr(self):
+        # (1.12.1, the owner: OCR as an option when inserting pictures, as in Create PDF
+        # from images; the pages made from pictures are recognized, the PDF's aren't)
+        from kanzonas.document_view import DocumentView
+        src = os.path.join(self.dir, "plan2.pdf")
+        d = pymupdf.open()
+        d.new_page(width=612, height=792)
+        d.save(src)
+        self.w.open_file(src)
+        self.w.lock_btn.setChecked(False)
+        v = self.w.view()
+        pic = picture(os.path.join(self.dir, "scan.png"), 600, 800)
+        other = os.path.join(self.dir, "other2.pdf")
+        o = pymupdf.open()
+        o.new_page(width=200, height=300)
+        o.save(other)
+        seen = []
+        with mock.patch.object(QFileDialog, "getOpenFileNames",
+                               lambda *a, **k: ([other, pic], "")), \
+                mock.patch.object(self.w, "_insert_options", lambda *a: (1, True)), \
+                mock.patch.object(DocumentView, "run_ocr",
+                                  lambda self_, pages, acc="auto": seen.append(list(pages))):
+            self.w.a_insert_pdf.trigger()
+        self.assertEqual(seen, [[2]])                   # (at the end: the PDF's page 2, then
+        self.assertEqual(v.page_count(), 3)             #  the picture's page 3)
+
+    def test_the_insert_question(self):
+        # where the pages go, and OCR only when there are pictures (remembered)
+        from PySide6.QtWidgets import QCheckBox, QComboBox, QDialog
+        self.w.settings.setValue("import_ocr", "false")
+        got = []
+
+        def answer_it(dlg):
+            boxes = dlg.findChildren(QCheckBox)
+            got.append((bool(dlg.findChildren(QComboBox)),
+                        [b.isVisibleTo(dlg) for b in boxes]))
+            dlg.findChildren(QComboBox)[0].setCurrentIndex(2) if dlg.findChildren(QComboBox) \
+                else None
+            boxes[0].setChecked(True)
+            return QDialog.Accepted
+        with mock.patch.object(QDialog, "exec", answer_it):
+            self.assertEqual(self.w._insert_options(True, True), (2, True))
+            self.assertEqual(self.w._insert_options(True, False), (2, False))
+        self.assertEqual(got, [(True, [True]), (True, [False])])
+        self.assertEqual(self.w.settings.value("import_ocr"), "true")
 
     def test_blank_page_with_nothing_open_is_a_new_pdf(self):
         with answer("ARCH B"):

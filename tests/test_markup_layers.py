@@ -82,6 +82,22 @@ class Layers(unittest.TestCase):
         self.v.set_layer(self.number_of(oc), True)
         self.assertEqual(self.v.annot_at(0, inside), x)
 
+    def test_show_and_show_all_never_hide(self):
+        # (1.12.1, random battery seed 9: the app passed PyMuPDF's 1, which switches a layer,
+        # for "show": Show all hid the layers already shown, Show on a shown one hid it)
+        a = self.v.new_markup_layer("A")
+        b = self.v.new_markup_layer("B")
+        self.v.set_layer(self.number_of(a), False)
+        self.assertEqual(L.hidden(self.v.doc), {a})
+        self.v.set_all_layers(True)
+        self.assertEqual(L.hidden(self.v.doc), set())
+        self.v.set_layer(self.number_of(b), True)               # (already shown: stays)
+        self.assertEqual(L.hidden(self.v.doc), set())
+        self.v.set_all_layers(False)
+        self.assertEqual(L.hidden(self.v.doc), {a, b})
+        self.v.set_layer(self.number_of(a), False)              # (already hidden: stays)
+        self.assertEqual(L.hidden(self.v.doc), {a, b})
+
     def test_a_hidden_layer_stays_hidden_when_another_is_made(self):
         a = self.v.new_markup_layer("A")
         self.v.set_layer(self.number_of(a), False)
