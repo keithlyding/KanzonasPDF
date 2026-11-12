@@ -107,7 +107,13 @@ The owner sets this list; nothing below is promised until it's here.
 1. **French, German and Portuguese** (the app and the manual), next now that 1.12 is out
    (owner, 11 Nov: the Bluebeam features first, so their words are translated once; set as
    next on 6 Nov).
-2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
+2. **Export to Markdown** (owner, 12 Nov: "let's just add it to the roadmap"; not scheduled):
+   File > Export to > Markdown, next to Word, Excel and PowerPoint: a document's text with its
+   headings, lists, tables, bold and italics as a plain .md file, the way people feed documents
+   to AI tools or paste them into notes and wikis. PyMuPDF's companion `pymupdf4llm` does the
+   conversion (AGPL, as PyMuPDF; imported only when used, as the other exports). For text
+   documents; drawings have little to give, scanned pages need OCR first.
+3. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
