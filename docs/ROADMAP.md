@@ -83,6 +83,12 @@ a decision changes or a piece of work lands. Details of each version are in
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
+- **A quiet period after 1.12.1** (owner, 12 Nov: "make sure it's stable and leave it alone
+  for a few days"): no new features or releases until the owner says so; only a fix for
+  something broken, and only with the owner's go-ahead. Outside contributors (Hamish
+  Poole-Hill's suggestions, issue #82; Federico Benedetti's PRs #86 and #87) are welcome
+  meanwhile, and the owner wants them to know he's grateful: their work is reviewed and
+  answered, not rushed.
 0. **The next fix release: Redo lost after undoing Auto bookmarks** (owner, 11 Nov: ship 1.11,
    fix this next; 1.11.1 went to the owner's Pages panel and OCR requests).
    Found by the random battery (seed 31, 1500 steps, PyMuPDF 2.0 and 2.1, also in 1.10.1): after
