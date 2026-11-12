@@ -761,7 +761,7 @@ class Battery:
             (self.op_accessibility, 3),
             # (1.12) groups and Flip, markups on layers, spaces
             (self.op_group, 3), (self.op_flip, 2), (self.op_markup_layer, 3),
-            (self.op_space, 2), (self.op_text_nudge, 3),
+            (self.op_space, 2), (self.op_text_nudge, 3), (self.op_cad_drag, 3),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1467,6 +1467,33 @@ class Battery:
             v.delete_objects()
         v.clear_object_selection()
         self.check_letters(i, others)
+
+    def op_cad_drag(self):
+        """CAD mode's drag of a selection (1.12.1): some of a page's own objects and text with
+        markups of the same page, moved together as one step (cad_apply, as the drag does)."""
+        v = self.v
+        i = self.page()
+        objs = v.content_objects(i)
+        pool = list(objs.items if objs else []) + \
+            (list(v.text_objects(i)) if self.rnd.random() < 0.5 else [])
+        marks = self.markups(i)
+        if not pool and not marks:
+            return "none"
+        v.clear_selection()
+        v.clear_object_selection()
+        pick = self.rnd.sample(pool, self.rnd.randint(1, min(3, len(pool)))) if pool else []
+        if pick:
+            v.select_objects(i, pick)
+        if marks and (not pick or self.rnd.random() < 0.6):
+            v.select_xref(i, self.rnd.choice(marks))
+        others = self.other_letters(i, pick)
+        d = (self.rnd.uniform(-50, 50), self.rnd.uniform(-50, 50))
+        rev = v.revision
+        v.cad_apply("Moved", pymupdf.Matrix(1, 0, 0, 1, d[0], d[1]))
+        v.clear_selection()
+        v.clear_object_selection()
+        self.check_letters(i, others)
+        return "edit" if v.revision != rev else "none"
 
     def op_text_nudge(self):
         """Edit objects: a paragraph of the page's text moved with the arrow keys, a burst
