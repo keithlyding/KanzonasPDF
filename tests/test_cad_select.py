@@ -141,13 +141,18 @@ class CadMouse(unittest.TestCase):
         self.drag(v, (420, 210), (50, 190), Qt.ShiftModifier)   # Shift+crossing takes out
         self.assertEqual(self.chosen(v), [(100, 100, "shape")])
 
-    def test_dragging_moves_nothing_it_selects(self):
+    def test_a_drag_selects_and_a_drag_from_the_selection_moves_it(self):
         v = self.view(drawing, "editobjects")
         before = [d["rect"] for d in v.doc[0].get_drawings()]
-        self.drag(v, (200, 200), (90, 90))                      # starts on the long line
-        self.assertEqual(self.chosen(v), [(60, 200, "shape"), (100, 100, "shape")])
-        self.drag(v, (200, 200), (200, 230))                    # on it, selected: still a box
+        self.drag(v, (200, 200), (90, 90))                      # starts on the long line:
+        self.assertEqual(self.chosen(v), [(60, 200, "shape"), (100, 100, "shape")])  # a box
         self.assertEqual([d["rect"] for d in v.doc[0].get_drawings()], before)
+        # (1.12.1, the owner: from what's selected, a drag moves it, as AutoCAD's drag)
+        chosen = {(round(it["rect"].x0), round(it["rect"].y0)) for it in v.selected_objects()}
+        self.drag(v, (200, 200), (200, 230))
+        self.assertEqual(sorted(tuple(d["rect"]) for d in v.doc[0].get_drawings()),
+                         sorted(tuple(r + (0, 30, 0, 30)) if (round(r.x0), round(r.y0)) in
+                                chosen else tuple(r) for r in before))
 
     def test_click_move_click_draws_the_box(self):
         DocumentView.click_click = True
@@ -269,10 +274,13 @@ class CadMouse(unittest.TestCase):
         self.drag(v, (200, 250), (90, 90))                      # from the line: a box
         self.assertEqual(len(v.selected_xrefs()), 2)
         page = v.doc[0]                                         # (alive while its annots are)
-        before = sorted(tuple(a.rect) for a in page.annots())
-        self.drag(v, (200, 250), (200, 280))                    # on it, selected: no move
-        page = v.doc[0]
-        self.assertEqual(sorted(tuple(a.rect) for a in page.annots()), before)
+        sel = set(v.selected_xrefs())
+        before = sorted((a.xref in sel, tuple(a.rect)) for a in page.annots())
+        self.drag(v, (200, 250), (200, 280))                    # on it, selected: it moves
+        page = v.doc[0]                                         # (1.12.1, the owner)
+        self.assertEqual(sorted(tuple(a.rect) for a in page.annots()),
+                         sorted((r[0], r[1] + 30, r[2], r[3] + 30) if s else r
+                                for s, r in before))
 
     def test_select_text_by_window_and_crossing(self):
         v = self.view(self.markups, "select")
@@ -294,6 +302,9 @@ class CadMouse(unittest.TestCase):
         self.assertEqual(v.viewport().cursor().shape(), Qt.OpenHandCursor)
         DocumentView.plus_cursor = False
         v.set_tool("select")
+        # (1.12.1, the owner: no text cursor unless a tool works on text)
+        self.assertEqual(v.viewport().cursor().shape(), Qt.ArrowCursor)
+        v.set_tool("highlight")
         self.assertEqual(v.viewport().cursor().shape(), Qt.IBeamCursor)
 
 

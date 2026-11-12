@@ -11063,3 +11063,334 @@ msgstr "Foglio {n} di {total} (pagina {page}: annotazioni fuori dalla pagina)"
 
 msgid "For the next ones you make with this tool, saved for next time. To change one already on the page, click it first; right-click one and choose Set as Default to use its style here."
 msgstr "Per le prossime che crei con questo strumento, salvato per la prossima volta. Per cambiarne una già sulla pagina, prima fai clic su di essa; fai clic destro su una e scegli Imposta come predefinito per usare qui il suo stile."
+
+# (1.12, 1.12.1) spaces, groups, flip, layers, rulers, Reuse, Sets, split view
+#: kanzonas/annotations.py:136
+msgid "Space"
+msgstr "Spazio"
+
+#: kanzonas/document_view.py:4542
+msgid "Name of the space (a room, a zone...):"
+msgstr "Nome dello spazio (una stanza, una zona...):"
+
+#: kanzonas/document_view.py:4541
+msgid "New space"
+msgstr "Nuovo spazio"
+
+#: kanzonas/document_view.py:4578
+msgid "Rename space"
+msgstr "Rinomina spazio"
+
+#: kanzonas/document_view.py:5567
+msgid "Flipped horizontally"
+msgstr "Riflesso orizzontalmente"
+
+#: kanzonas/document_view.py:5567
+msgid "Flipped vertically"
+msgstr "Riflesso verticalmente"
+
+#: kanzonas/document_view.py:8424
+msgid "The page's own text can't go past the edge of the page, nor its pictures and shapes off it altogether (markups can)."
+msgstr "Il testo della pagina non può uscire dal bordo della pagina, né le sue immagini e forme uscirne del tutto (le annotazioni sì)."
+
+#: kanzonas/document_view.py:5530
+msgid "{n} markups grouped"
+msgstr "{n} annotazioni raggruppate"
+
+#: kanzonas/layers_panel.py:38
+msgid "The layer the markups you draw go on (shown and hidden with it, in other PDF programs too)"
+msgstr "Il livello su cui vanno le annotazioni che disegni (mostrate e nascoste con esso, anche in altri programmi PDF)"
+
+#: kanzonas/layers_panel.py:43
+msgid "New layer..."
+msgstr "Nuovo livello..."
+
+#: kanzonas/layers_panel.py:44
+msgid "Add a layer to the document, for markups"
+msgstr "Aggiungi un livello al documento, per le annotazioni"
+
+#: kanzonas/layers_panel.py:56
+msgid "No layer"
+msgstr "Nessun livello"
+
+#: kanzonas/layers_panel.py:36
+msgid "New markups go on:"
+msgstr "Le nuove annotazioni vanno su:"
+
+#: kanzonas/main_window.py:134
+msgid "Space: a named area (a room, a zone): click each corner, double-click or Enter to finish, then name it. The Markups list shows the space each markup is in"
+msgstr "Spazio: un'area con un nome (una stanza, una zona): fai clic su ogni angolo, doppio clic o Invio per finire, poi dagli un nome. L'elenco Annotazioni mostra lo spazio in cui si trova ogni annotazione"
+
+#: kanzonas/main_window.py:5656
+msgctxt "verb"
+msgid "Group"
+msgstr "Raggruppa"
+
+#: kanzonas/main_window.py:5656
+msgid "Flip left/right"
+msgstr "Rifletti ↔"
+
+#: kanzonas/main_window.py:5657
+msgid "Flip up/down"
+msgstr "Rifletti ↕"
+
+#: kanzonas/main_window.py:591
+msgid "The page's size, and where the pointer is on it from its top-left corner (the units: right-click a ruler, View > Rulers)"
+msgstr "Le dimensioni della pagina e la posizione del puntatore dal suo angolo in alto a sinistra (le unità: clic destro su un righello, Visualizza > Righelli)"
+
+#: kanzonas/main_window.py:598
+msgid "Reuse"
+msgstr "Riusa"
+
+#: kanzonas/main_window.py:602
+msgid "Reuse: after drawing a markup, keep its tool for the next one (on), or go back to the mouse mode's tool (off)"
+msgstr "Riusa: dopo aver disegnato un'annotazione, tieni il suo strumento per la successiva (attivo) o torna allo strumento della modalità mouse (disattivo)"
+
+#: kanzonas/main_window.py:683
+msgid "Icons on the left edge that open and fold the Pages, Bookmarks, Layers, Objects and Sets panels"
+msgstr "Icone sul bordo sinistro che aprono e comprimono i pannelli Pagine, Segnalibri, Livelli, Oggetti e Raccolte"
+
+#: kanzonas/main_window.py:1096
+msgid "New s&et..."
+msgstr "Nuova racc&olta..."
+
+#: kanzonas/main_window.py:1100
+msgid "Open se&t..."
+msgstr "Apri raccol&ta..."
+
+#: kanzonas/main_window.py:1273
+msgid "&Rulers"
+msgstr "&Righelli"
+
+#: kanzonas/main_window.py:1333
+msgid "&Group"
+msgstr "Ra&ggruppa"
+
+#: kanzonas/main_window.py:1338
+msgid "U&ngroup"
+msgstr "Se&para"
+
+#: kanzonas/main_window.py:1342
+msgid "Flip &horizontally"
+msgstr "Rifletti &orizzontalmente"
+
+#: kanzonas/main_window.py:1346
+msgid "Flip &vertically"
+msgstr "Rifletti &verticalmente"
+
+#: kanzonas/main_window.py:1860
+msgid "Sets"
+msgstr "Raccolte"
+
+#: kanzonas/main_window.py:4299
+msgid "New layer"
+msgstr "Nuovo livello"
+
+#: kanzonas/main_window.py:4299
+msgid "Name of the new layer:"
+msgstr "Nome del nuovo livello:"
+
+#: kanzonas/main_window.py:1097
+msgid "A set: several PDFs (one per sheet, say) browsed as one document in the Sets panel, without combining them"
+msgstr "Una raccolta: più PDF (uno per tavola, per esempio) sfogliati come un solo documento nel pannello Raccolte, senza combinarli"
+
+#: kanzonas/main_window.py:1101
+msgid "Open a set of PDFs in the Sets panel"
+msgstr "Apri una raccolta di PDF nel pannello Raccolte"
+
+#: kanzonas/main_window.py:1274
+msgid "Rulers along the top and left of the page, in inches, millimeters or points (right-click one to change) (Ctrl+R)"
+msgstr "Righelli lungo il bordo superiore e sinistro della pagina, in pollici, millimetri o punti (clic destro su uno per cambiarli) (Ctrl+R)"
+
+#: kanzonas/main_window.py:1335
+msgid "Group the selected markups: a click on one selects them all, to move, copy, style or delete them together (Ctrl+Shift+G)"
+msgstr "Raggruppa le annotazioni selezionate: un clic su una le seleziona tutte, per spostarle, copiarle, cambiarne lo stile o eliminarle insieme (Ctrl+Shift+G)"
+
+#: kanzonas/main_window.py:1340
+msgid "Ungroup the selected group: its markups are on their own again (Ctrl+Alt+G)"
+msgstr "Separa il gruppo selezionato: le sue annotazioni tornano indipendenti (Ctrl+Alt+G)"
+
+#: kanzonas/main_window.py:1344
+msgid "Mirror the selection left for right, across its middle (a group as one)"
+msgstr "Specchia la selezione da sinistra a destra, attorno al suo centro (un gruppo come un tutt'uno)"
+
+#: kanzonas/main_window.py:1348
+msgid "Mirror the selection top for bottom, across its middle (a group as one)"
+msgstr "Specchia la selezione dall'alto in basso, attorno al suo centro (un gruppo come un tutt'uno)"
+
+#: kanzonas/main_window.py:4300
+msgid "Markups"
+msgstr "Annotazioni"
+
+#: kanzonas/main_window.py:668
+msgid "Sets panel (click again to fold it away)"
+msgstr "Pannello Raccolte (fai di nuovo clic per comprimerlo)"
+
+#: kanzonas/main_window.py:4381
+msgid "The last sheet of the set"
+msgstr "L'ultima tavola della raccolta"
+
+#: kanzonas/main_window.py:4382
+msgid "The first sheet of the set"
+msgstr "La prima tavola della raccolta"
+
+#: kanzonas/markups_panel.py:27
+msgid "All layers"
+msgstr "Tutti i livelli"
+
+#: kanzonas/markups_panel.py:28
+msgid "All spaces"
+msgstr "Tutti gli spazi"
+
+#: kanzonas/markups_panel.py:25
+msgid "Layer"
+msgstr "Livello"
+
+#: kanzonas/page_widget.py:2030
+msgid "Rename space..."
+msgstr "Rinomina spazio..."
+
+#: kanzonas/rulers.py:27
+msgid "Points"
+msgstr "Punti"
+
+#: kanzonas/rulers.py:86
+msgid "Ruler: right-click to change its units"
+msgstr "Righello: clic destro per cambiarne le unità"
+
+#: kanzonas/rulers.py:199
+msgid "Ruler units: right-click to change them"
+msgstr "Unità del righello: clic destro per cambiarle"
+
+#: kanzonas/sets_panel.py:21
+msgid "KanzonasPDF sets"
+msgstr "Raccolte KanzonasPDF"
+
+#: kanzonas/sets_panel.py:45
+msgctxt "noun"
+msgid "Set"
+msgstr "Raccolta"
+
+#: kanzonas/sets_panel.py:49
+msgid "New set..."
+msgstr "Nuova raccolta..."
+
+#: kanzonas/sets_panel.py:50
+msgid "Open set..."
+msgstr "Apri raccolta..."
+
+#: kanzonas/sets_panel.py:53
+msgid "Rename set..."
+msgstr "Rinomina raccolta..."
+
+#: kanzonas/sets_panel.py:54
+msgid "Combine to one PDF..."
+msgstr "Combina in un solo PDF..."
+
+#: kanzonas/sets_panel.py:59
+msgid "Close set"
+msgstr "Chiudi raccolta"
+
+#: kanzonas/sets_panel.py:64
+msgid "Previous sheet (across the set's files)"
+msgstr "Tavola precedente (attraverso i file della raccolta)"
+
+#: kanzonas/sets_panel.py:68
+msgid "Next sheet (across the set's files)"
+msgstr "Tavola successiva (attraverso i file della raccolta)"
+
+#: kanzonas/sets_panel.py:75
+msgid "Filter sheets"
+msgstr "Filtra tavole"
+
+#: kanzonas/sets_panel.py:87
+msgid "No set is open. A set lists several PDFs (one per sheet, say) to browse as one document without combining them: Set > New set... or Open set...."
+msgstr "Nessuna raccolta aperta. Una raccolta elenca più PDF (uno per tavola, per esempio) da sfogliare come un solo documento senza combinarli: Raccolta > Nuova raccolta... o Apri raccolta...."
+
+#: kanzonas/sets_panel.py:266
+msgid "Remove from set"
+msgstr "Rimuovi dalla raccolta"
+
+#: kanzonas/sets_panel.py:282
+msgid "The PDFs in the new set"
+msgstr "I PDF della nuova raccolta"
+
+#: kanzonas/sets_panel.py:287
+msgid "Save the set as"
+msgstr "Salva la raccolta come"
+
+#: kanzonas/sets_panel.py:306
+msgid "Open set"
+msgstr "Apri raccolta"
+
+#: kanzonas/sets_panel.py:323
+msgid "Add files to the set"
+msgstr "Aggiungi file alla raccolta"
+
+#: kanzonas/sets_panel.py:330
+msgid "Rename set"
+msgstr "Rinomina raccolta"
+
+#: kanzonas/sets_panel.py:330
+msgid "Name of the set:"
+msgstr "Nome della raccolta:"
+
+#: kanzonas/sets_panel.py:315
+msgid "{name} isn't a set KanzonasPDF can read:\n{error}"
+msgstr "{name} non è una raccolta che KanzonasPDF sa leggere:\n{error}"
+
+#: kanzonas/sets_panel.py:136
+msgid "{name} (not found)"
+msgstr "{name} (non trovato)"
+
+#: kanzonas/sets_panel.py:138
+msgid "{name} (can't be read)"
+msgstr "{name} (illeggibile)"
+
+#: kanzonas/spaces.py:182
+msgid "Space {n}"
+msgstr "Spazio {n}"
+
+#: kanzonas/spaces.py:89
+msgid "(unnamed space)"
+msgstr "(spazio senza nome)"
+
+#: kanzonas/split_view.py:87
+msgid "The document the second view shows: the one in front, or any other open one"
+msgstr "Il documento mostrato dalla seconda vista: quello in primo piano o un altro documento aperto"
+
+#: kanzonas/split_view.py:93
+msgid "Side by side"
+msgstr "Affiancate"
+
+#: kanzonas/split_view.py:94
+msgid "Show the second view beside the documents (on) or under them (off)"
+msgstr "Mostra la seconda vista accanto ai documenti (attivo) o sotto (disattivo)"
+
+#: kanzonas/split_view.py:97
+msgid "Sync"
+msgstr "Sincronizza"
+
+#: kanzonas/split_view.py:98
+msgid "Pan and zoom both views together"
+msgstr "Scorri e ingrandisci le due viste insieme"
+
+#: kanzonas/split_view.py:100
+msgid "By page number"
+msgstr "Per numero di pagina"
+
+#: kanzonas/split_view.py:101
+msgid "By the pages in view"
+msgstr "Per le pagine visibili"
+
+#: kanzonas/split_view.py:102
+msgid "By page number: the same page in both. By the pages in view: the two pages shown now stay paired (a plan and its detail)"
+msgstr "Per numero di pagina: la stessa pagina in entrambe. Per le pagine visibili: le due pagine mostrate ora restano abbinate (una pianta e il suo dettaglio)"
+
+#: kanzonas/split_view.py:110
+msgid "Close the split view (F10)"
+msgstr "Chiudi la vista divisa (F10)"
+
+#: kanzonas/split_view.py:149
+msgid "The document in front"
+msgstr "Il documento in primo piano"

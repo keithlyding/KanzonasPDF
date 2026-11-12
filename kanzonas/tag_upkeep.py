@@ -881,6 +881,27 @@ class _Upkeep:
                 del users[k]
         users.setdefault(key, []).append((kind, xref))
 
+    def _drop_copied_key(self, px):
+        """Page px holds no marked content and doesn't own its StructParents: when another
+        page uses the same key (Duplicate pages copied a page with nothing tagged on it, a
+        key both kept: seed 31 of the random battery, 1.12), the first of them in the
+        document keeps it and the others drop it (a page with nothing tagged needs none)."""
+        doc = self.doc
+        sp = doc.xref_get_key(px, "StructParents")
+        if sp[0] != "int":
+            return
+        key = int(sp[1])
+        users = [u[1] for u in self.key_users().get(key, ()) if u[0] == "page"]
+        if len(users) < 2:
+            return
+        order = {x: n for n, x in enumerate(self.page_xrefs)}
+        if px == min(users, key=lambda x: order.get(x, len(order))):
+            return
+        doc.xref_set_key(px, "StructParents", "null")
+        lst = self._key_users.get(key) if self._key_users is not None else None
+        if lst is not None:
+            lst[:] = [u for u in lst if u != ("page", px)]
+
     def new_key(self):
         k = self.next_key
         self.next_key += 1
@@ -1286,6 +1307,17 @@ class _Upkeep:
             parent = popup_of(doc, num) if shown and sub == "Popup" else 0
             if parent:
                 _mirror_contents(doc, num, parent)
+            if shown:
+                # moved here from another page (a reply carried with its markup, the same
+                # object): its element names the page it was on, and that page's turn takes
+                # it out after this one kept it (random battery, seed 9, 1.12: a group moved
+                # to another page left its member's reply untagged). Tagged anew here.
+                for e in list(tree.objr.get(num, ())):
+                    on = [(pg or e.pg) for x, pg in e.objrs if x == num]
+                    if on and px not in on:
+                        tree.drop_objr(e, num)
+                        tree.prune(e)
+                        self.pt_dirty = True
             if not shown or self.annot_ok(num, px):
                 continue
             for e in list(tree.objr.get(num, ())):
@@ -1467,6 +1499,7 @@ class _Upkeep:
             held = {mc: tree.refs[(px, mc)][0] for mc in tree.page_refs.get(px, ())}
             key = st.key
             if not held and key is None:
+                self._drop_copied_key(px)
                 continue
             if key is None:
                 key = self.new_key()

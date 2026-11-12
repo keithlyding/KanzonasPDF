@@ -73,7 +73,9 @@ come Salva con nome, e se lo chiudi dopo averlo modificato ti chiede se salvarlo
 più</b> per usare sempre il formato che hai scelto; per cambiarlo, o per tornare a ricevere la domanda, vai in
 Preferenze &gt; Pagine e visualizzazione &gt; Formato pagina del nuovo PDF. Senza documenti aperti, Inserisci pagina
 vuota crea un nuovo PDF allo stesso modo, e Inserisci pagine da file crea un nuovo PDF non salvato a partire
-dai file che scegli.</li>
+dai file che scegli. Quando tra i file ci sono immagini, Inserisci pagine da file offre <b>Rendi le immagini
+ricercabili (riconoscimento del testo, OCR)</b>, come Crea PDF da immagini (la stessa scelta,
+ricordata): sulle pagine create dalle immagini il testo viene riconosciuto una volta inserite.</li>
 <li><b>Salva:</b> Ctrl+S. <b>Salva con nome:</b> Ctrl+Shift+S. (Per una copia d'archivio, vedi Salva come PDF/A
 in Strumenti per i documenti.) Se salvi con il nome di un file aperto in un'altra
 scheda, quel file viene sostituito e quella scheda si chiude (chiedendo prima se ha modifiche non salvate); lo stesso vale
@@ -112,8 +114,13 @@ appare e si comporta come appiattito; Modifica testo e Modifica oggetti (scheda 
 fanno Acrobat e PDF-XChange. Apri, salva, stampa, annulla e ripeti si trovano a sinistra delle schede, e la
 casella Trova (con il numero di corrispondenze e le frecce su / giù) si trova alla loro destra. La barra inferiore (barra di stato, in basso a destra) contiene la navigazione tra le pagine (prima,
 precedente, numero di pagina, successiva, ultima pagina), Adatta alla pagina, Adatta alla larghezza, Dimensioni reali, un cursore dello zoom e la
-casella dello zoom con riduci / ingrandisci, come in PDF-XChange Editor, e la scala di disegno della pagina
-corrente (in rosso se non ne ha una; fai clic per impostarla). Un messaggio della barra inferiore troppo lungo per
+casella dello zoom con riduci / ingrandisci, come in PDF-XChange Editor, le dimensioni della pagina e la
+posizione del puntatore ("8.50 &times; 11.00 in&nbsp;&nbsp;(1.25, 3.40)": dall'angolo in alto a sinistra
+della pagina come viene mostrata, nelle unità dei righelli), <b>Riusa</b> e la scala di disegno della pagina
+corrente (in rosso se non ne ha una; fai clic per impostarla). Con <b>Riusa</b> attivo (il predefinito), dopo
+aver disegnato un'annotazione il suo strumento resta scelto per la successiva; disattivo: si torna allo
+strumento della modalità mouse (Seleziona, Mano o Modifica oggetti), come fa il pulsante Reuse di Bluebeam.
+In entrambi i casi ciò che hai disegnato resta selezionato, così Proprietà lo modifica. Un messaggio della barra inferiore troppo lungo per
 lo spazio a sinistra dei controlli di pagina termina con "..."; passaci sopra con il mouse per leggerlo per intero. La barra multifunzione è compatta: due righe di
 pulsanti, e ogni scheda entra in uno schermo largo 1366 pixel, in inglese, spagnolo e italiano. I comandi usati
 meno spesso condividono un pulsante con una freccia accanto: fai clic sul pulsante per il comando che mostra,
@@ -131,8 +138,8 @@ delle schede della barra multifunzione contiene tutti i menu, e tutte le scorcia
 (Ctrl+F1, o doppio clic su una scheda) mostra solo i nomi delle schede; fai clic su una scheda per riaprirla. Togli la spunta da
 Visualizza &gt; <b>Barra multifunzione (al posto delle barre degli strumenti)</b> per le classiche barre degli strumenti compatte (zoom, numero di pagina
 e Trova tornano allora nella barra degli strumenti superiore). I menu contengono sempre tutti i comandi.</li>
-<li><b>Barra dei pannelli:</b> le icone sul bordo sinistro aprono i pannelli Pagine, Segnalibri, Livelli e
-Oggetti; fai di nuovo clic sull'icona illuminata per richiudere il pannello e avere più spazio per la pagina.
+<li><b>Barra dei pannelli:</b> le icone sul bordo sinistro aprono i pannelli Pagine, Segnalibri, Livelli, Oggetti
+e Raccolte; fai di nuovo clic sull'icona illuminata per richiudere il pannello e avere più spazio per la pagina.
 Ci sono anche le icone di Elenco annotazioni e Allegati. Visualizza &gt; <b>Mostra barra dei pannelli (bordo
 sinistro)</b> nasconde la barra; i pannelli mostrano allora i loro nomi come schede in basso.</li>
 <li><b>Tavolozza dei comandi</b> (Ctrl+Shift+P; menu Guida, scheda Visualizza): digita alcune lettere di ciò che
@@ -357,8 +364,8 @@ compare la scheda <b>CAD</b>, in primo piano, con Sposta, Copia, Ruota e gli alt
 </ul>
 La scelta viene ricordata. (Prima della versione 1.5 c'erano l'opzione del mouse in stile CAD e uno strumento
 predefinito; le tue scelte vengono mantenute.)</li>
-<li><b>Movimento libero della pagina (trascina la pagina oltre i bordi)</b> (menu Visualizza, scheda Visualizza della
-barra multifunzione): un'area di lavoro aperta intorno alle pagine, così lo strumento Mano (o la rotellina tenuta
+<li><b>Movimento libero della pagina (trascina la pagina oltre i bordi)</b> (menu Visualizza, o sotto la freccia del
+gruppo Visualizzazione della scheda Visualizza): un'area di lavoro aperta intorno alle pagine, così lo strumento Mano (o la rotellina tenuta
 premuta) trascina la pagina ovunque, in alto, in basso e di lato, anche quando l'intera pagina entra nella finestra,
 per esempio dopo Adatta alla pagina. Il menu lo attiva o disattiva per la modalità del mouse in uso; ogni modalità
 ricorda la propria impostazione (attivo in modalità Mano, disattivato in modalità Standard, attivo in modalità CAD).</li>
@@ -386,8 +393,24 @@ parola nel suo stile (grassetto, corsivo, colore...). Una riga viene riscritta s
 testo o oltre il bordo della pagina, Sostituisci testo indica in quali pagine (Ctrl+Z lo annulla; Modifica testo
 può reimpaginare il paragrafo). Le pagine con segni di oscuramento non ancora applicati vengono saltate (indica quali).
 Ctrl+Z annulla l'intera sostituzione.</li>
-<li><b>Vista divisa</b> (F10) mostra una seconda vista dello stesso file, che scorre in modo indipendente.
-Serve solo per guardare: apporta le modifiche nella vista principale.</li>
+<li><b>Vista divisa</b> (F10) mostra una seconda vista, che scorre in modo indipendente, sotto i documenti,
+o accanto a loro con <b>Affiancate</b> sulla sua barra (ricordato); trascina la barra tra le due per
+dividere lo spazio. Serve solo per guardare: apporta le modifiche nella vista principale (si vedono in
+entrambe). Il suo elenco mostra <b>Il documento in primo piano</b> (segue le schede) o un altro documento
+aperto, per confrontare una pianta con una tavola di dettaglio o una revisione con un'altra; se quel
+documento viene chiuso, mostra quello in primo piano. Spunta <b>Sincronizza</b> per scorrere e ingrandire
+le due viste insieme, come Sync di Bluebeam: <b>Per numero di pagina</b> tiene la stessa pagina in
+entrambe (due revisioni di una serie di tavole); <b>Per le pagine visibili</b> tiene abbinate le due
+pagine mostrate quando l'hai spuntato, ai loro zoom (una pianta e il suo dettaglio), e muovere una vista
+muove l'altra.</li>
+<li><b>Righelli</b> (menu Visualizza, o il gruppo Visualizzazione della scheda Visualizza; Ctrl+R) mette
+dei righelli lungo il bordo superiore e sinistro del documento. Misurano la pagina sotto il puntatore (o
+la pagina visibile) dal suo angolo in alto a sinistra come viene mostrata, in unità della carta: la
+lunghezza della pagina è la fascia più chiara, e una linea segna dove si trova il puntatore. Fai clic
+destro su un righello (o sul quadrato dove si incontrano) per scegliere Pollici, Millimetri o Punti; la
+posizione del puntatore nella barra di stato usa le stesse unità. La prima volta sono pollici dove il
+computer misura in pollici, millimetri altrove. Restano attivi per ogni documento finché non li
+disattivi.</li>
 </ul>
 
 <h2 id="reading">Leggere comodamente</h2>
@@ -509,8 +532,11 @@ finestra, o quelli toccati da un riquadro di intersezione (Ctrl+C li copia).</li
 <li>Mentre disegni un riquadro o un lazo, ciò che prenderebbe si <b>illumina</b> (in blu per una finestra,
 in verde per un riquadro di intersezione), così vedi cosa otterrai prima del secondo clic o prima di rilasciare il
 pulsante; una volta preso, viene disegnato tratteggiato con i grip. In un disegno molto grande si completa in un attimo mentre ti muovi.</li>
-<li>In modalità CAD il trascinamento non sposta mai nulla, così nulla si sposta per sbaglio: le maniglie quadrate di
-un'annotazione o di un oggetto selezionato lo ridimensionano comunque, e <b>Sposta</b> della scheda CAD sposta.</li>
+<li>Trascina ciò che è selezionato per spostarlo, come in AutoCAD: sopra un elemento selezionato il puntatore è la
+freccia a quattro punte, e trascinando da lì sposti l'intera selezione (annotazioni e linee, testo e immagini della
+pagina insieme; un solo passaggio di annullamento; aggancio come nel disegno). Un trascinamento che parte da un
+altro punto disegna un lazo o un riquadro e non sposta nulla. Le maniglie quadrate di un'annotazione o di un
+oggetto selezionato lo ridimensionano, e <b>Sposta</b> della scheda CAD sposta da un punto base.</li>
 <li>Preferenze &gt; Mouse attiva o disattiva ciascuna di queste funzioni (vedi Preferenze).</li>
 </ul>
 <p>La scheda <b>CAD</b> (e il menu CAD) compare solo in modalità CAD. Come in AutoCAD, puoi selezionare prima e poi
@@ -631,7 +657,9 @@ timbro specchiati continuano a leggersi nel verso giusto, e le caselle di testo 
 <h2 id="select">Selezionare e modificare le annotazioni</h2>
 <ul>
 <li><b>Strumento Seleziona (V):</b> trascina sul testo per selezionarlo, anche attraverso lo spazio tra le
-pagine (resta evidenziato; vedi Copiare, tagliare e incollare più avanti). Fai clic su un'annotazione per selezionarla,
+pagine (resta evidenziato; vedi Copiare, tagliare e incollare più avanti). Il suo puntatore è la freccia: il cursore
+di testo compare solo con gli strumenti che lavorano sul testo (Modifica testo, Aggiungi testo, Evidenzia e le
+altre annotazioni di testo, Oscura) e nella casella in cui scrivi. Fai clic su un'annotazione per selezionarla,
 poi trascinala per spostarla, trascina una maniglia quadrata per ridimensionarla o cambiane l'aspetto nel pannello
 Proprietà.
 Nella modalità del mouse <b>CAD</b>, invece, Seleziona funziona come in AutoCAD: finestre blu e riquadri di
@@ -919,9 +947,10 @@ con Modifica oggetti) si aggancia il suo intero riquadro: con Aggancia alla pagi
 si allineano al bordo sinistro, al centro o al bordo destro della pagina, e il suo lato superiore, il centro o il lato inferiore a quelli della
 pagina, ogni direzione per conto suo, e una guida tratteggiata verde mostra a cosa si è allineato (rilascia un'immagine
 vicino al centro del foglio e si sistema esattamente al centro); con Aggancia agli oggetti, uno dei suoi
-angoli, dei punti medi dei lati o il centro va su un punto di un'annotazione vicina (un'annotazione trascinata anche
-sui punti del disegno stesso; con entrambi attivi, quello più vicino); con Aggancia alla griglia, il suo angolo in alto a sinistra
-va sulla griglia.</li>
+angoli, dei punti medi dei lati o il centro va su un punto di un'annotazione vicina o su un punto del disegno
+stesso (estremità e punti medi delle linee, angoli; per gli elementi della pagina spostati con Modifica oggetti,
+non i loro stessi punti dov'erano; con entrambi attivi, quello più vicino); con Aggancia alla griglia, il suo
+angolo in alto a sinistra va sulla griglia.</li>
 <li><b>Tieni premuto Alt</b> mentre disegni o trascini per posizionare un punto liberamente, senza aggancio.</li>
 </ul>
 
@@ -977,6 +1006,19 @@ i due elementi esterni restano fermi.</li>
 <b>Porta indietro</b> (Ctrl+[), <b>Porta in fondo</b> (Ctrl+Shift+[). Con immagini o forme
 della pagina stessa selezionate (strumento Modifica oggetti), questi comandi cambiano invece il loro ordine nella pagina
 (vedi Modificare immagini, forme e testo del PDF).</li>
+<li><b>Raggruppa</b> (Ctrl+Shift+G; menu Disponi, il gruppo Gruppo della scheda Disponi o il menu del clic
+destro) fa delle annotazioni selezionate un solo gruppo: un clic su una qualsiasi le seleziona tutte, così si
+spostano, si copiano, cambiano stile (Proprietà) e si eliminano insieme, e anche le copie sono un gruppo.
+<b>Separa</b> (Ctrl+Alt+G) le rende di nuovo indipendenti. Raggruppare gruppi già raggruppati tra loro crea un
+gruppo più grande. Allinea e Distribuisci spostano un gruppo come un solo elemento, così le sue annotazioni
+mantengono il loro posto al suo interno. È il gruppo dello standard PDF (un'annotazione "in risposta" alla
+prima, di tipo Group), quindi anche Acrobat le tiene insieme; in altri programmi restano annotazioni
+separate.</li>
+<li><b>Rifletti orizzontalmente</b> / <b>Rifletti verticalmente</b> (menu Disponi, il gruppo Gruppo o il
+menu del clic destro) specchiano la selezione da sinistra a destra o dall'alto in basso attorno al suo centro,
+come viene mostrata la pagina; un gruppo si riflette come un tutt'uno (ogni parte al suo posto speculare), e
+anche gli oggetti della pagina selezionati con Modifica oggetti si riflettono. Specchia della modalità CAD fa lo
+stesso attorno a qualsiasi linea su cui fai clic. Il testo continua a leggersi nel verso giusto.</li>
 </ul>
 
 <h2 id="objects">Pannello Oggetti e blocco</h2>
@@ -1315,6 +1357,18 @@ raggio (R) e il diametro (&Oslash;).
 &times; profondità. Imposta la <b>Profondità</b> nel pannello Proprietà, nell'unità della scala della pagina (piedi
 quando la scala è in piedi e pollici); cambiarla aggiorna la misura selezionata.</li>
 <li><b>Riepilogo misure</b> somma tutto ed esporta in CSV.</li>
+<li><b>Spazio</b> (scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misura della scheda CAD),
+come gli Spaces di Bluebeam: un'area con un nome in una tavola (una stanza, una zona, un piano). Fai clic su
+ogni angolo, doppio clic o premi Invio, e digita il suo nome (viene proposto Spazio 1, Spazio 2...). È un
+poligono blu trasparente con il suo nome scritto dentro sullo schermo; colore, contorno e trasparenza sono in
+Proprietà, e i suoi grip spostano gli angoli come quelli di un poligono. Fai clic sul contorno per
+selezionarlo: un clic all'interno disegna o seleziona ciò che c'è nella stanza. Per rinominarlo, fai clic
+destro &gt; <b>Rinomina spazio...</b>. Ogni annotazione il cui centro è dentro uno spazio appartiene a quello
+spazio (al più piccolo, dove gli spazi si sovrappongono): l'Elenco annotazioni lo mostra nella colonna
+<b>Spazio</b> e, quando il documento ha degli spazi, ha un elenco per mostrare le annotazioni di un solo spazio
+(con Tipo impostato su Conteggio, in alto compare il suo conteggio, come "12 di 40"). Sposta un'annotazione
+dentro o fuori e il suo spazio la segue. Gli altri programmi PDF mostrano uno spazio come un poligono con il
+suo nome come commento.</li>
 </ul>
 
 <h2 id="pages">Pagine</h2>
@@ -1399,7 +1453,15 @@ consente.</li>
 pagine in un nuovo file (in un nuovo file, non nel documento stesso), Elimina pagine (le pagine selezionate nell'elenco
 delle pagine, o la pagina corrente; chiede conferma, e Ctrl+Z le ripristina). Un segnalibro a una
 pagina eliminata porta poi alla pagina successiva (o all'ultima pagina).</li>
-<li>Scheda <b>Livelli</b>: mostra o nascondi i livelli CAD / di contenuto opzionale.</li>
+<li>Scheda <b>Livelli</b>: mostra o nascondi i livelli CAD / di contenuto opzionale. <b>Annotazioni sui
+livelli</b> (come in Bluebeam): <b>Nuovo livello...</b> aggiunge un livello al documento, e <b>Le nuove
+annotazioni vanno su</b> sceglie il livello su cui vanno le annotazioni che disegni (Nessun livello: nessuno).
+Per mettere su un livello annotazioni già disegnate, selezionale e fai clic destro &gt; <b>Livello</b> &gt; un
+livello, Nessun livello o Nuovo livello.... Un'annotazione su un livello nascosto non viene disegnata e non si
+può cliccare; resta nel file. Le annotazioni con lo stile cambiato, spostate e copiate restano sul loro
+livello. I livelli sono quelli del PDF stesso, quindi anche Acrobat e gli altri programmi con i livelli
+mostrano e nascondono le annotazioni insieme a loro. L'Elenco annotazioni ha una colonna Livello e, quando il
+documento ha dei livelli, un elenco per mostrare le annotazioni di un solo livello.</li>
 <li>Scheda <b>Segnalibri</b>: aggiungi, rinomina, riordina e rientra i segnalibri, creali dai
 titoli e inserisci un sommario (vedi Segnalibri e sommario).</li>
 <li><b>Collega i richiami alle tavole</b> (menu Pagine; scheda Pagine, sotto la freccia del gruppo Documento): per una serie di disegni stampata senza
@@ -1412,6 +1474,31 @@ cartella (A-501 Details.pdf) collega a quel file. Le parole che hanno già un co
 quindi i collegamenti ipertestuali propri di AutoCAD restano ed eseguirlo due volte non aggiunge nulla. Opzioni: un sottile riquadro blu
 attorno ai collegamenti (disattivato per impostazione predefinita, per tenere puliti i disegni) e segnalibri con il numero
 e il titolo della tavola. Ctrl+Z annulla tutto.</li>
+</ul>
+
+<h2 id="sets">Raccolte: più PDF come uno solo</h2>
+<p>Come i Sets di Bluebeam: una serie di disegni tenuta come un PDF per tavola (o i disegni e il
+capitolato di un progetto) sfogliata come un solo documento, senza combinare i file. Ogni PDF resta
+com'è, e le annotazioni vengono salvate nel file su cui sono disegnate.</p>
+<ul>
+<li><b>Nuova raccolta...</b> (menu File; scheda Pagine, sotto la freccia del gruppo Crea; o il pulsante
+Raccolta del pannello <b>Raccolte</b>): scegli i PDF, poi dove salvare la raccolta. Una raccolta è un
+piccolo file a sé (.kzset) che elenca i PDF; quelli nella sua cartella o sotto vengono tenuti in base alla
+loro posizione rispetto a esso, così la cartella si può spostare o condividere con la raccolta dentro.
+<b>Apri raccolta...</b> ne apre una (come trascinare un file .kzset sulla finestra).</li>
+<li>Il pannello <b>Raccolte</b> (una scheda del pannello di sinistra e un'icona sulla barra dei pannelli)
+elenca ogni file con le sue pagine sotto. Nelle pagine di formato da disegno (11x17 e più grandi) il numero
+e il titolo della tavola vengono letti dal cartiglio (SHEET NO, SHEET TITLE), così compare A-101 FLOOR PLAN;
+le altre pagine con la loro etichetta o il loro numero. Un file che non si trova viene elencato in grigio.
+Scrivi in <b>Filtra tavole</b> per trovare una tavola dal suo numero o titolo.</li>
+<li>Fai clic su una tavola per aprire il suo file a quella pagina. <b>&#9654;</b> (Tavola successiva) e
+<b>&#9664;</b> (Tavola precedente) vanno pagina per pagina attraverso i file: dopo l'ultima pagina di un file
+viene la prima del successivo. Un file aperto dalla raccolta viene richiuso quando passi a un altro file, a
+meno che tu non l'abbia modificato, così sfogliare una raccolta di 60 tavole non lascia 60 schede.</li>
+<li>Fai clic destro su un file nel pannello per <b>Sposta su</b>, <b>Sposta giù</b> o <b>Rimuovi dalla
+raccolta</b>; il pulsante Raccolta ha <b>Aggiungi file...</b>, <b>Rinomina raccolta...</b>, <b>Chiudi
+raccolta</b> e <b>Combina in un solo PDF...</b> (Combina file con i file della raccolta, nel suo ordine).
+Una modifica alla raccolta viene salvata subito nel suo file.</li>
 </ul>
 
 <h2 id="bookmarks">Segnalibri e sommario</h2>
@@ -2220,6 +2307,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>Ctrl+D</td><td>Duplica le annotazioni selezionate (con Modifica oggetti, il testo, le immagini e le forme selezionati; le pagine, nell'elenco delle pagine)</td></tr>
 <tr><td>Canc (nell'elenco delle pagine)</td><td>Elimina le pagine selezionate</td></tr>
 <tr><td>Ctrl+L</td><td>Blocca le annotazioni selezionate</td></tr>
+<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Raggruppa / Separa le annotazioni selezionate</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Porta in primo piano / Porta avanti / Porta indietro / Porta in fondo</td></tr>
 <tr><td>Left / Right, Page Up / Page Down</td><td>Pagina precedente / successiva</td></tr>
 <tr><td>Home / End</td><td>Prima / ultima pagina</td></tr>
@@ -2240,6 +2328,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>F11</td><td>Attiva / disattiva la modalità mouse CAD (disattivandola si torna a Standard o Mano, quella che avevi)</td></tr>
 <tr><td>Lettere, Invio (modalità CAD)</td><td>Digita un comando nella riga di comando (M Sposta, CO Copia, RO Ruota...); Invio lo esegue e, su una riga vuota, ripete l'ultimo. Le scorciatoie degli strumenti a una lettera non valgono in modalità CAD (quelle con Shift+lettera sì), a meno che Preferenze &gt; Mouse non disattivi la digitazione nella riga di comando.</td></tr>
 <tr><td>F12</td><td>Attiva / disattiva la Modalità notturna (linee bianche su nero)</td></tr>
+<tr><td>Ctrl+R</td><td>Attiva / disattiva i Righelli</td></tr>
 <tr><td>Ctrl+Shift+L / F5</td><td>Schermo intero (Esc per uscire) / Presentazione</td></tr>
 <tr><td>B / W / L (presentazione)</td><td>Schermo nero / schermo bianco / puntatore laser</td></tr>
 <tr><td>Ctrl+5 / Ctrl+6 / Ctrl+7 / Ctrl+8</td><td>Pagina singola / Continua / Due pagine / Due pagine continue</td></tr>

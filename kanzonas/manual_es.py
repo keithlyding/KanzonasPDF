@@ -76,7 +76,9 @@ como Guardar como, y al cerrarlo después de hacer cambios se le pregunta si des
 preguntar</b> para usar siempre el tamaño que eligió; cámbielo, o vuelva a hacer que se le pregunte, en
 Preferencias &gt; Páginas y visualización &gt; Tamaño de página del nuevo PDF. Sin ningún documento abierto, Insertar página
 en blanco crea un PDF nuevo de la misma manera, e Insertar páginas desde archivo crea un PDF nuevo, sin guardar, a partir de
-los archivos que elija.</li>
+los archivos que elija. Cuando los archivos incluyen imágenes, Insertar páginas desde archivo ofrece <b>Hacer las imágenes
+buscables (reconocer texto, OCR)</b>, como Crear PDF desde imágenes (la misma opción, recordada): las páginas hechas a partir
+de imágenes reconocen su texto una vez insertadas.</li>
 <li><b>Guardar:</b> Ctrl+S. <b>Guardar como:</b> Ctrl+Shift+S. (Para una copia de archivo, vea
 Guardar como PDF/A en Herramientas de documento.) Guardar como un archivo que está abierto en otra
 pestaña reemplaza ese archivo y cierra esa pestaña (y pregunta antes si tiene cambios sin guardar); lo mismo ocurre
@@ -115,8 +117,13 @@ se ve y se comporta como acoplado; Editar texto y Editar objetos (pestaña Inici
 pueden hacerlo Acrobat y PDF-XChange. Abrir, guardar, imprimir, deshacer y rehacer están a la izquierda de las pestañas, y el
 cuadro Buscar (con su número de coincidencias y sus flechas arriba / abajo) está a su derecha. La barra inferior (barra de estado, abajo a la derecha) tiene la navegación de páginas (primera,
 anterior, número de página, siguiente, última página), Ajustar página, Ajustar al ancho, Tamaño real, un control deslizante de zoom y el
-cuadro de zoom con alejar / acercar, como PDF-XChange Editor, y la escala del dibujo de la página actual (en rojo cuando no
-tiene ninguna; haga clic en ella para establecerla). Un mensaje de la barra inferior demasiado largo para el espacio a la
+cuadro de zoom con alejar / acercar, como PDF-XChange Editor, el tamaño de la página y dónde está el puntero en ella
+("8.50 &times; 11.00 in&nbsp;&nbsp;(1.25, 3.40)": desde la esquina superior izquierda de la página tal como se ve, en las
+unidades de las reglas), <b>Reutilizar</b>, y la escala del dibujo de la página actual (en rojo cuando no
+tiene ninguna; haga clic en ella para establecerla). <b>Reutilizar</b> activado (lo predeterminado): después de dibujar
+una marca, su herramienta queda elegida para la siguiente; desactivado: se vuelve a la herramienta del modo del mouse
+(Seleccionar, Mano o Editar objetos), como el botón Reuse de Bluebeam. En ambos casos lo que dibujó queda seleccionado,
+así que Propiedades lo cambia. Un mensaje de la barra inferior demasiado largo para el espacio a la
 izquierda de los controles de página termina en «...»; pase el mouse sobre él para leerlo entero. La cinta es compacta: dos filas de
 botones, y cada pestaña cabe en una pantalla de 1366 píxeles de ancho, en inglés, español e italiano. Los comandos que se usan
 menos comparten un botón con una flecha al lado: haga clic en el botón para el comando que muestra, o en la flecha para
@@ -134,8 +141,8 @@ de las pestañas de la cinta tiene todos los menús, y todos los métodos abrevi
 (Ctrl+F1, o doble clic en una pestaña) muestra solo los nombres de las pestañas; haga clic en una pestaña para abrirla de nuevo. Desmarque
 Ver &gt; <b>Cinta (en lugar de barras de herramientas)</b> para usar las barras de herramientas compactas clásicas (el zoom, el número de página
 y Buscar vuelven entonces a la barra de herramientas superior). Los menús siempre tienen todos los comandos.</li>
-<li><b>Franja de paneles:</b> los iconos del borde izquierdo abren los paneles Páginas, Marcadores, Capas y
-Objetos; haga clic de nuevo en el icono iluminado para plegar el panel y tener más espacio para la página.
+<li><b>Franja de paneles:</b> los iconos del borde izquierdo abren los paneles Páginas, Marcadores, Capas,
+Objetos y Conjuntos; haga clic de nuevo en el icono iluminado para plegar el panel y tener más espacio para la página.
 Los iconos de Lista de marcas y Archivos adjuntos también están allí. Ver &gt; <b>Mostrar franja de paneles (borde
 izquierdo)</b> oculta la franja; los paneles muestran entonces sus nombres como pestañas en la parte inferior.</li>
 <li><b>Paleta de comandos</b> (Ctrl+Shift+P; menú Ayuda, pestaña Ver): escriba algunas letras de lo que
@@ -353,8 +360,8 @@ pestaña <b>CAD</b>, al frente, con Mover, Copiar, Girar y los demás comandos C
 </ul>
 Su elección se recuerda. (Antes de la versión 1.5 esto era el interruptor del mouse estilo CAD y una herramienta
 predeterminada; sus elecciones se conservan.)</li>
-<li><b>Movimiento libre de la página (arrastrar la página más allá de sus bordes)</b> (menú Ver, pestaña Ver de la
-cinta): un lienzo abierto alrededor de las páginas, para que la herramienta Mano (o la rueda presionada) arrastre la
+<li><b>Movimiento libre de la página (arrastrar la página más allá de sus bordes)</b> (menú Ver, o bajo la flecha
+del grupo Visualización de la pestaña Ver): un lienzo abierto alrededor de las páginas, para que la herramienta Mano (o la rueda presionada) arrastre la
 página a cualquier lugar, arriba, abajo y a los lados, aunque la página entera quepa en la ventana, por ejemplo después
 de Ajustar página. El menú lo cambia para el modo del mouse en uso; cada modo recuerda su propio ajuste (activado en el
 modo Mano, desactivado en el modo Estándar, activado en el modo CAD).</li>
@@ -382,8 +389,21 @@ caracteres, y cada palabra con su propio estilo (negrita, cursiva, color...). La
 texto o pasa del borde de la página, Reemplazar texto indica en qué páginas (Ctrl+Z lo deshace; Editar texto
 puede reajustar el párrafo). Las páginas con marcas de censura que aún no se han aplicado se omiten (se indica cuáles).
 Ctrl+Z deshace todo el reemplazo.</li>
-<li><b>Vista dividida</b> (F10) muestra una segunda vista del mismo archivo, que se desplaza de forma independiente.
-Es solo para mirar: haga los cambios en la vista principal.</li>
+<li><b>Vista dividida</b> (F10) muestra una segunda vista, que se desplaza de forma independiente, debajo de los
+documentos, o a su lado con <b>Lado a lado</b> en su barra (se recuerda); arrastre la barra entre ellas para repartir el
+espacio. Es solo para mirar: haga los cambios en la vista principal (se ven en las dos). Su lista muestra <b>El
+documento de delante</b> (sigue a las pestañas) o cualquier otro documento abierto, para comparar un plano con una hoja
+de detalles o una revisión con otra; si ese documento se cierra, muestra el de delante. Marque <b>Sincronizar</b> para
+desplazar y hacer zoom en las dos vistas a la vez, como Sync de Bluebeam: <b>Por número de página</b> mantiene la misma
+página en las dos (dos revisiones de un juego); <b>Por las páginas a la vista</b> mantiene emparejadas las dos páginas
+que se veían al marcarlo, con sus zooms (un plano y su detalle), y mover cualquiera de las vistas mueve la otra.</li>
+<li><b>Reglas</b> (menú Ver, o el grupo Visualización de la pestaña Ver; Ctrl+R) pone reglas arriba y a la izquierda del
+documento. Miden la página bajo el puntero (o la página a la vista) desde su esquina superior izquierda tal como se ve,
+en unidades de papel: el largo de la propia página es la franja más clara, y una línea marca dónde está el puntero.
+Haga clic con el botón derecho en una regla (o en el cuadrado donde se juntan) para elegir Pulgadas, Milímetros o
+Puntos; la posición del puntero en la barra de estado usa las mismas unidades. La primera vez son pulgadas donde la
+computadora mide en pulgadas y milímetros en los demás lugares. Quedan activadas para todos los documentos hasta que
+las desactive.</li>
 </ul>
 
 <h2 id="reading">Leer con comodidad</h2>
@@ -515,8 +535,11 @@ los que toca un recuadro de captura (Ctrl+C los copia).</li>
 captura), así que ve lo que obtendrá antes del segundo clic o antes de soltar; una vez tomado, se dibuja con línea
 discontinua y pinzamientos. En un dibujo muy grande se completa en un
 momento mientras se mueve.</li>
-<li>En el modo CAD arrastrar nunca mueve nada, así que nada se mueve por accidente: los controladores cuadrados de una
-marca u objeto seleccionado siguen cambiando su tamaño, y <b>Mover</b> de la pestaña CAD lo mueve.</li>
+<li>Arrastre lo seleccionado para moverlo, como en AutoCAD: sobre un elemento seleccionado el puntero es la flecha de
+cuatro puntas, y arrastrar desde él mueve toda la selección (marcas y las líneas, el texto y las imágenes propios de la
+página a la vez; un solo paso de deshacer; con el ajuste igual que al dibujar). Un arrastre que empieza en cualquier
+otro lugar dibuja un lazo o un cuadro y no mueve nada. Los controladores cuadrados de una marca u objeto seleccionado
+cambian su tamaño, y <b>Mover</b> de la pestaña CAD mueve desde un punto base.</li>
 <li>Preferencias &gt; Mouse activa o desactiva cada una de estas funciones (vea Preferencias).</li>
 </ul>
 <p>La pestaña <b>CAD</b> (y el menú CAD) solo aparece en el modo CAD. Como en AutoCAD, seleccione primero y luego
@@ -630,7 +653,9 @@ cuadros de texto giran en cuartos de vuelta.</p>
 <h2 id="select">Seleccionar y editar marcas</h2>
 <ul>
 <li><b>Herramienta Seleccionar (V):</b> arrastre sobre el texto para seleccionarlo, incluso a través del espacio entre
-páginas (permanece resaltado; vea Copiar, cortar y pegar más abajo). Haga clic en una marca para seleccionarla; luego arrástrela
+páginas (permanece resaltado; vea Copiar, cortar y pegar más abajo). Su puntero es la flecha: el cursor de texto solo
+aparece con las herramientas que trabajan con texto (Editar texto, Agregar texto, Resaltar y las demás marcas de texto,
+Redactar) y en el cuadro donde escribe. Haga clic en una marca para seleccionarla; luego arrástrela
 para moverla, arrastre un controlador cuadrado para cambiar su tamaño o cambie su aspecto en el panel de propiedades.
 En el modo del mouse <b>CAD</b>, Seleccionar funciona como en AutoCAD: ventanas azules y recuadros de captura verdes, un
 lazo, clics que agregan a la selección, Shift para quitar, Escape para borrarla, y arrastrar no mueve nada (vea Modo
@@ -923,7 +948,8 @@ derecho se alinean con el borde izquierdo, el centro o el borde derecho de la p�
 centro o su parte inferior con los de la página, cada dirección por separado, y una guía verde discontinua
 muestra con qué se alineó (suelte una imagen cerca del centro de la hoja y queda exactamente en el centro); con
 Ajustar a objetos, una de sus esquinas, los puntos medios de sus bordes o su centro va a un punto de una marca
-cercana (una marca arrastrada también a los puntos del propio dibujo; con ambos activados, el más cercano);
+cercana o a un punto del propio dibujo (extremos y puntos medios de líneas, esquinas; para los elementos de la
+página movidos con Editar objetos, no sus propios puntos donde estaban; con ambos activados, el más cercano);
 con Ajustar a la cuadrícula, su esquina
 superior izquierda va a la cuadrícula.</li>
 <li><b>Mantenga presionada Alt</b> mientras dibuja o arrastra para colocar un punto libremente, sin ajuste.</li>
@@ -981,6 +1007,18 @@ las dos de los extremos no se mueven.</li>
 <b>Enviar atrás</b> (Ctrl+[), <b>Enviar al fondo</b> (Ctrl+Shift+[). Con imágenes o formas de
 la propia página seleccionadas (herramienta Editar objetos), estos comandos cambian, en su lugar, el orden de esos objetos en la página
 (vea Editar las imágenes, formas y texto propios del PDF).</li>
+<li><b>Agrupar</b> (Ctrl+Shift+G; menú Organizar, el grupo Grupo de la pestaña Organizar, o el menú del botón derecho)
+hace de las marcas seleccionadas un grupo: un clic en cualquiera las selecciona todas, así que se mueven, se copian,
+cambian de estilo (Propiedades) y se eliminan juntas, y sus copias también son un grupo. <b>Desagrupar</b>
+(Ctrl+Alt+G) las vuelve a separar. Agrupar grupos que ya estaban agrupados entre ellas forma un grupo más grande.
+Alinear y Distribuir mueven un grupo como un solo elemento, así que sus marcas mantienen su lugar en él.
+Es el grupo del estándar PDF (una marca "en respuesta a" la primera, del tipo Grupo), así que Acrobat también las
+mantiene juntas; en otros programas quedan como marcas separadas.</li>
+<li><b>Voltear horizontalmente</b> / <b>Voltear verticalmente</b> (menú Organizar, el grupo Grupo, o el menú del botón
+derecho) reflejan la selección de izquierda a derecha o de arriba abajo por su centro, tal como se ve la página; un
+grupo se voltea como uno solo (cada parte a su lugar reflejado), y los objetos propios de la página seleccionados con
+Editar objetos también se voltean. Simetría del modo CAD hace lo mismo respecto a cualquier línea en la que haga clic.
+El texto se sigue leyendo al derecho.</li>
 </ul>
 
 <h2 id="objects">Panel Objetos y bloqueo</h2>
@@ -1321,6 +1359,20 @@ radio (R) y el diámetro (&Oslash;).
 &times; la profundidad. Defina la <b>Profundidad</b> en el panel de propiedades, en la unidad de la escala de la página (pies
 cuando la escala está en pies y pulgadas); cambiarla actualiza la medición seleccionada.</li>
 <li><b>Resumen de mediciones</b> suma todo y exporta a CSV.</li>
+<li><b>Espacio</b> (pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña
+CAD), como los Espacios de Bluebeam: un área con nombre de un plano (una habitación, una zona,
+un nivel). Haga clic en cada esquina, doble clic o pulse Enter, y escriba su nombre (se ofrece
+Espacio 1, Espacio 2...). Es un polígono azul transparente con su nombre escrito dentro en
+pantalla; el color, el contorno y la transparencia están en Propiedades, y sus pinzamientos
+mueven sus esquinas como los de un polígono. Haga clic en su contorno para seleccionarlo: al
+pulsar dentro se dibuja o se selecciona lo que hay en la habitación. Para cambiarle el nombre,
+clic derecho en él &gt;
+<b>Cambiar el nombre del espacio...</b>. Cada marca cuyo centro está dentro de un espacio está
+en ese espacio (en el más pequeño donde se superponen): la lista de marcas lo muestra en su
+columna <b>Espacio</b> y, cuando el documento tiene espacios, tiene una lista para mostrar las
+marcas de un espacio (con Tipo en Conteo, su conteo aparece arriba, como "12 de 40"). Mueva
+una marca hacia dentro o fuera y su espacio la sigue. Otros programas de PDF muestran un
+espacio como un polígono con su nombre como comentario.</li>
 </ul>
 
 <h2 id="pages">Páginas</h2>
@@ -1405,7 +1457,14 @@ documento protegido contra cambios lo rechaza.</li>
 páginas a un archivo nuevo (a un archivo nuevo, no al propio documento), Eliminar páginas (las páginas seleccionadas en
 la lista de páginas, o la página actual; pregunta primero, y Ctrl+Z las recupera). Un marcador a una
 página eliminada lleva entonces a la página siguiente (o a la última página).</li>
-<li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional.</li>
+<li>Pestaña <b>Capas</b>: muestre u oculte las capas de CAD / de contenido opcional. <b>Marcas en capas</b> (como en
+Bluebeam): <b>Nueva capa...</b> agrega una capa al documento, y <b>Las marcas nuevas van en</b> elige la capa en la que van
+las marcas que dibuja (Sin capa: ninguna). Para poner en una capa marcas ya dibujadas, selecciónelas y haga clic con el
+botón derecho &gt; <b>Capa</b> &gt; una capa, Sin capa o Nueva capa.... Una marca en una capa oculta no se dibuja y no se puede
+hacer clic en ella; sigue en el archivo. Las marcas a las que cambia el estilo, que mueve o que copia siguen en su capa.
+Las capas son las del propio PDF, así que Acrobat y otros programas con capas también muestran y ocultan las marcas con
+ellas. La lista de marcas tiene una columna Capa y, cuando el documento tiene capas, una lista para mostrar las marcas de
+una capa.</li>
 <li>Pestaña <b>Marcadores</b>: agregue, cambie el nombre, reordene y aplique sangría a los marcadores,
 créelos a partir de los títulos e inserte una tabla de contenido (vea Marcadores y tabla de contenido).</li>
 <li><b>Vincular referencias a planos</b> (menú Páginas; pestaña Páginas, en la flecha del grupo Documento): para un juego de planos trazado sin
@@ -1418,6 +1477,36 @@ carpeta (A-501 Details.pdf), se vincula a ese archivo. Las palabras que ya tiene
 así que los propios hipervínculos de AutoCAD se quedan y ejecutarlo dos veces no agrega nada. Opciones: un rectángulo azul delgado
 alrededor de los vínculos (desactivado de forma predeterminada, para mantener limpios los dibujos) y marcadores con el número
 y el título de cada plano. Ctrl+Z lo deshace todo.</li>
+</ul>
+
+<h2 id="sets">Conjuntos: varios PDF como uno solo</h2>
+<p>Como los Conjuntos (Sets) de Bluebeam: un juego de planos guardado como un PDF por plano (o
+los planos y las especificaciones de un proyecto) que se recorre como un solo documento, sin
+combinar los archivos. Cada PDF queda como está, y las marcas se guardan en el archivo en el que
+se dibujan.</p>
+<ul>
+<li><b>Nuevo conjunto...</b> (menú Archivo; pestaña Páginas, bajo la flecha del grupo Crear; o el
+botón Conjunto del panel <b>Conjuntos</b>): elija los PDF y luego dónde guardar el conjunto. Un
+conjunto es un pequeño archivo propio (.kzset) que enumera los PDF; los que están en su carpeta
+o por debajo se guardan por su lugar junto a él, de modo que la carpeta se puede mover o
+compartir con el conjunto dentro. <b>Abrir conjunto...</b> abre uno (también
+arrastrar un archivo .kzset a la ventana).</li>
+<li>El panel <b>Conjuntos</b> (una pestaña del panel izquierdo y un icono de la franja de
+paneles) muestra cada archivo con sus páginas debajo. En las páginas de tamaño de plano (11x17 y
+mayores) el número y el título del plano se leen del cajetín (SHEET NO, SHEET TITLE), así que se
+muestra A-101 FLOOR PLAN; las demás páginas, por su etiqueta o número de página. Un archivo que
+no se encuentra se muestra en gris. Escriba en <b>Filtrar planos</b> para buscar un plano por su
+número o título.</li>
+<li>Haga clic en un plano para abrir su archivo en esa página. <b>&#9654;</b> (Plano siguiente) y
+<b>&#9664;</b> (Plano anterior) avanzan página a página a través de los archivos: después de la
+última página de un archivo viene la primera del siguiente. Un archivo que abrió el conjunto se
+cierra de nuevo al pasar a otro archivo, salvo que lo haya cambiado, así que recorrer un
+conjunto de 60 planos no deja 60 pestañas.</li>
+<li>Clic derecho en un archivo del panel para <b>Subir</b>, <b>Bajar</b> o <b>Quitar del
+conjunto</b>; el botón Conjunto tiene <b>Agregar archivos...</b>, <b>Cambiar el nombre del
+conjunto...</b>, <b>Cerrar conjunto</b> y <b>Combinar en un PDF...</b> (Combinar archivos con
+los archivos del conjunto, en su orden). Un cambio en el conjunto se guarda en su archivo al
+momento.</li>
 </ul>
 
 <h2 id="bookmarks">Marcadores y tabla de contenido</h2>
@@ -2239,6 +2328,7 @@ Desplazamiento automático.</li>
 <tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (con Editar objetos, el texto, las imágenes y las formas seleccionados; las páginas, en la lista de páginas)</td></tr>
 <tr><td>Supr (en la lista de páginas)</td><td>Eliminar las páginas seleccionadas</td></tr>
 <tr><td>Ctrl+L</td><td>Bloquear las marcas seleccionadas</td></tr>
+<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Agrupar / Desagrupar las marcas seleccionadas</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Al frente / adelante / atrás / al fondo</td></tr>
 <tr><td>Izquierda / Derecha, Re Pág / Av Pág</td><td>Página anterior / siguiente</td></tr>
 <tr><td>Inicio / Fin</td><td>Primera / última página</td></tr>
@@ -2259,6 +2349,7 @@ Desplazamiento automático.</li>
 <tr><td>F11</td><td>Activar / desactivar el modo del mouse CAD (al desactivarlo vuelve a Estándar o Mano, el que tenía)</td></tr>
 <tr><td>Letras, Enter (modo CAD)</td><td>Escribir un comando en la línea de comandos (M Mover, CO Copiar, RO Girar...); Enter lo ejecuta y, con la línea vacía, repite el último. Los atajos de una sola letra de las herramientas no se aplican en el modo CAD (los de Shift y una letra, sí), salvo que Preferencias &gt; Mouse desactive escribir en la línea de comandos.</td></tr>
 <tr><td>F12</td><td>Activar / desactivar el modo nocturno (líneas blancas sobre negro)</td></tr>
+<tr><td>Ctrl+R</td><td>Activar / desactivar las reglas</td></tr>
 <tr><td>Ctrl+Shift+L / F5</td><td>Pantalla completa (Escape sale) / Presentación</td></tr>
 <tr><td>B / W / L (presentación)</td><td>Pantalla negra / pantalla blanca / puntero láser</td></tr>
 <tr><td>Ctrl+5 / Ctrl+6 / Ctrl+7 / Ctrl+8</td><td>Una sola página / Continua / Dos páginas / Dos páginas continuas</td></tr>

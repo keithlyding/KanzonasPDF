@@ -64,9 +64,31 @@ a decision changes or a piece of work lands. Details of each version are in
 - 1.11.1 (owner, 11 Nov, from the owner's use): dragging a page in the Pages panel scrolls the
   list near and past its top or bottom, so a page can go anywhere in a long document; Create
   PDF from images and Combine files can recognize the text on the pictures (OCR) and save it.
+- 1.12 (owner, 11 Nov, after a Bluebeam Revu screenshot from a colleague: "add all of the
+  features except Studio", "all in one release"; grouping and layers also asked for in issue
+  #82): View > Rulers and the pointer's position and page size on the status bar, with a Reuse
+  switch; Split view side by side or top and bottom, any open document, Sync by page number or
+  by the pages in view; Arrange > Group / Ungroup (the standard PDF group) and Flip; markups on
+  layers (the PDF's own optional content: a layer new markups go on, moved between layers,
+  the Markups list's Layer column and filter); Spaces (named areas; the Markups list's Space
+  column and filter); Sets (several PDFs browsed as one in the Sets panel, by sheet number
+  and title, Next / Previous sheet across files, Combine to one PDF). The random battery now
+  groups, flips, moves markups between layers, hides layers and draws spaces; it found that
+  Duplicate pages gave a page with nothing tagged and its copy the same StructParents key
+  (in 1.11.1 too), fixed.
+- 1.12.1 (owner, 12 Nov): in CAD mode a drag from the selection moves it (with the four-way
+  arrow over it); the Select tool's pointer is the arrow (the text cursor only with text tools
+  and where text is typed); Pages > Insert pages from file can recognize the text of the
+  pictures inserted (OCR), as an option.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
+- **A quiet period after 1.12.1** (owner, 12 Nov: "make sure it's stable and leave it alone
+  for a few days"): no new features or releases until the owner says so; only a fix for
+  something broken, and only with the owner's go-ahead. Outside contributors (Hamish
+  Poole-Hill's suggestions, issue #82; Federico Benedetti's PRs #86 and #87) are welcome
+  meanwhile, and the owner wants them to know he's grateful: their work is reviewed and
+  answered, not rushed.
 0. **The next fix release: Redo lost after undoing Auto bookmarks** (owner, 11 Nov: ship 1.11,
    fix this next; 1.11.1 went to the owner's Pages panel and OCR requests).
    Found by the random battery (seed 31, 1500 steps, PyMuPDF 2.0 and 2.1, also in 1.10.1): after
@@ -76,21 +98,37 @@ The owner sets this list; nothing below is promised until it's here.
    the full run (the state MuPDF keeps in memory matters, not the file); NeedAppearances is
    false and resynth_required and recalculate are 0 at that point. Nothing is lost but Redo.
 0. **From the first outside tester (issue #82, Hamish Poole-Hill, 11 Nov; owner: "good ideas"):**
-   - **Grouping markups**, as Bluebeam's Group: several markups selected, grouped, then moved,
-     copied, styled and deleted as one (and Ungroup).
-   - **Markups on layers**: a markup put on a layer (new or the drawing's own), shown and
-     hidden with it in the Layers panel.
+   - (Done in 1.12: grouping markups and markups on layers.)
    - (Done in 1.11: markups anywhere in the gray, for his use: "plans that are spread across
      multiple sheets back together for review".)
    - **The Mac download not installing** for a colleague of his: asked for the Mac's model,
      macOS version and the message shown (Apple silicon and macOS 14.4 or newer only; not
      signed by Apple yet, so Privacy & Security > Open Anyway the first time).
-1. **French, German and Portuguese** (the app and the manual), now that 1.10's features are in
-   (owner, 6 Nov).
-2. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
+1. **French, German and Portuguese** (the app and the manual), next now that 1.12 is out
+   (owner, 11 Nov: the Bluebeam features first, so their words are translated once; set as
+   next on 6 Nov).
+2. **Export to Markdown** (owner, 12 Nov: "let's just add it to the roadmap"; not scheduled):
+   File > Export to > Markdown, next to Word, Excel and PowerPoint: a document's text with its
+   headings, lists, tables, bold and italics as a plain .md file, the way people feed documents
+   to AI tools or paste them into notes and wikis. PyMuPDF's companion `pymupdf4llm` does the
+   conversion (AGPL, as PyMuPDF; imported only when used, as the other exports). For text
+   documents; drawings have little to give, scanned pages need OCR first.
+3. **Code signing** for the Windows downloads, once the project qualifies again (a SignPath
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
+- **Outside contributions are welcome, and speed is a condition for taking them** (owner, 12
+  Nov, on Federico Benedetti's PRs #86 Italian and #87 Dot markers: "I want to make sure the
+  program stays fast"). Each must pass `--selftest`'s speed budgets on the current `main`, and
+  add no loop over every markup or object on the way to an edit (per-page cached indexes, as
+  AGENTS.md's Performance section says). Their code runs in this repository's builds (copied to
+  a `claude/review-...` branch: the builds run for branches here only) before it's merged.
+  Accepted on those terms: the six fixes of #87 (as their own PR first), Italian (#86), then the
+  Dot as its own tool (not folded into Count).
+- **No live shared markup sessions like Bluebeam Studio** (owner, 11 Nov): they need a server
+  everyone's copy connects to, cloud storage and accounts, against "Free, for good" and
+  "Private" below. If shared review is wanted, it would go through files (markups exported to
+  a file and several reviewers' files merged into one PDF), never a service.
 - **A PDF viewer and editor first**: KanzonasPDF is presented as a free, general PDF viewer and
   editor and an alternative to Acrobat Pro and PDF-XChange Editor (README, store listings,
   screenshots). Measuring for drawings is a feature for one audience; CAD mode is a fun extra,
@@ -104,7 +142,7 @@ The owner sets this list; nothing below is promised until it's here.
   (since 1.9) as a disk image for Apple silicon only, no Intel build (owner, 6 Nov 2026), unsigned
   until there's an Apple Developer account.
 - **English, Spanish and Italian**: every user-facing text and the user manual in all three;
-  the release notes in English and Spanish, and in Italian from 1.12.
+  the release notes in English and Spanish, and in Italian from 1.13.
 - **Standard PDF**: markups are standard PDF annotations, so Acrobat, Bluebeam and others see
   them; nothing locks a file to KanzonasPDF.
 - **Private**: no account, no telemetry; the only call home is the optional update check.

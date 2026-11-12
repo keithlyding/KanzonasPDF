@@ -886,8 +886,10 @@ def _shear(d, n):
 
 def write_row(shape, origin, rotate, row_pieces, fonts):
     """Write a row's pieces from origin (its baseline's start, unrotated page space) in the
-    direction of rotate, with their underlines and strikethrough lines."""
+    direction of rotate (degrees; any angle: a diagonal watermark's, 1.12), with their
+    underlines and strikethrough lines."""
     d, n = direction(rotate)
+    quarter = abs((rotate + 45) % 90 - 45) < 0.01
     origin = pymupdf.Point(origin)
 
     def at(a, c=0.0):
@@ -898,7 +900,13 @@ def write_row(shape, origin, rotate, row_pieces, fonts):
         f = fonts[k]
         pt = at(a0)
         rgb = _rgb(k.color)
-        kw = {"fontsize": k.size, "fontname": f.name, "color": rgb, "rotate": rotate}
+        kw = {"fontsize": k.size, "fontname": f.name, "color": rgb}
+        turn = None
+        if quarter:
+            kw["rotate"] = int(round(rotate)) % 360
+        else:
+            turn = pymupdf.Matrix(rotate)       # (insert_text turns only by quarters)
+            kw["morph"] = (pt, turn)
         if f.bold:
             kw.update(render_mode=2, fill=rgb, border_width=STROKE)
         if k.alpha == 0:
@@ -908,7 +916,7 @@ def write_row(shape, origin, rotate, row_pieces, fonts):
         elif k.alpha < 255:
             kw.update(fill_opacity=k.alpha / 255, stroke_opacity=k.alpha / 255)
         if f.italic:
-            kw["morph"] = (pt, _shear(d, n))
+            kw["morph"] = (pt, _shear(d, n) if turn is None else turn * _shear(d, n))
         shape.insert_text(pt, text, **kw)
     for kind in ("underline", "strike"):
         group = []

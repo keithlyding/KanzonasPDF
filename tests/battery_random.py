@@ -629,6 +629,11 @@ class Battery:
             f.write(v._snapshot())
         fresh = DV.DocumentView(path)
         try:
+            # (each layer shown or hidden in the fresh view as it is here: showing or hiding
+            # one is a viewing choice, not saved, and a file can start with some hidden;
+            # object numbers stay as they are in the snapshot)
+            for n, on in self.layer_states(fresh.doc):
+                fresh.set_layer(n, on)
             fresh.resize(v.width(), v.height())
             fresh.set_zoom(v.zoom)
             for i in range(v.doc.page_count):
@@ -650,11 +655,23 @@ class Battery:
             fresh.close_doc()
             fresh.deleteLater()
 
+    def layer_states(self, other):
+        """[(layer number in document other, shown here)] for the layers whose state other
+        doesn't have yet (the same layers, by object number)."""
+        from kanzonas import markup_layers
+        here = {x: on for x, _n, on in markup_layers.layers(self.v.doc)}
+        there = {x: on for x, _n, on in markup_layers.layers(other)}
+        return [(n, here[x]) for n, x in markup_layers.ui_layers(other)
+                if x in here and there.get(x) != here[x]]
+
     def roundtrip(self):
         """Save (as File > Save does), open the file again: the same document."""
         self.do_save()
         self.after("save")
         with pymupdf.open(self.v.path) as d:
+            # (each layer shown or hidden there as here: a viewing choice, not saved)
+            for n, on in self.layer_states(d):
+                d.set_layer_ui_config(n, 0 if on else 2)       # (0 shows, 2 hides)
             got = summary(d)
         if got != self.cur.summary:
             raise Failed("saved and opened again: " + summary_diff(self.cur.summary, got))
@@ -742,6 +759,9 @@ class Battery:
             (self.op_watermark, 1), (self.op_flatten, 1), (self.op_redact, 2),
             (self.op_review, 5),
             (self.op_accessibility, 3),
+            # (1.12) groups and Flip, markups on layers, spaces
+            (self.op_group, 3), (self.op_flip, 2), (self.op_markup_layer, 3),
+            (self.op_space, 2), (self.op_text_nudge, 3), (self.op_cad_drag, 3),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1058,6 +1078,72 @@ class Battery:
         self.v.arrange(self.rnd.choice(["front", "back", "forward", "backward"]))
         self.v.clear_selection()
 
+    def op_group(self):
+        """Arrange > Group / Ungroup (a group: /IRT and /RT /Group, review.py)."""
+        if self.select_some() is None:
+            return "none"
+        v = self.v
+        if v.can_group() and (not v.can_ungroup() or self.rnd.random() < 0.6):
+            done = v.group_selection()
+        elif v.can_ungroup():
+            done = v.ungroup_selection()
+        else:
+            done = False
+        v.clear_selection()
+        return "edit" if done else "none"
+
+    def op_flip(self):
+        if self.select_some() is None:
+            return "none"
+        done = self.v.flip_selection(self.rnd.random() < 0.5)
+        self.v.clear_selection()
+        return "edit" if done else "none"
+
+    def op_markup_layer(self):
+        """Markups on layers (markup_layers.py): a new layer, the layer new markups go on,
+        markups moved to a layer (or none), a layer hidden or shown (not an edit)."""
+        from kanzonas import markup_layers
+        v = self.v
+        have = markup_layers.layers(v.doc)
+        r = self.rnd.random()
+        if not have or r < 0.2:
+            v.new_markup_layer("Layer %d" % self.rnd.randint(1, 99))
+            return "edit"
+        if r < 0.4:
+            v.set_markup_layer(self.rnd.choice([None] + [x for x, _n, _o in have]))
+            return "none"
+        if r < 0.55:
+            numbers = [n for n, _x in markup_layers.ui_layers(v.doc)]
+            if not numbers:
+                return "none"
+            v.set_layer(self.rnd.choice(numbers), self.rnd.random() < 0.6)
+            return "none"
+        if self.select_some() is None:
+            return "none"
+        done = v.move_selection_to_layer(self.rnd.choice([None] + [x for x, _n, _o in have]))
+        v.clear_selection()
+        return "edit" if done else "none"
+
+    def op_space(self):
+        """A space drawn and named, or one renamed (spaces.py)."""
+        from kanzonas import spaces
+        v = self.v
+        i = self.page()
+        own = spaces.on_page(v.doc, v.doc[i])
+        if own and self.rnd.random() < 0.3:
+            x = self.rnd.choice(own)[0]
+            v.select_xref(i, x)
+            if v.selected_space() != x:
+                v.clear_selection()
+                return "none"
+            done = v.rename_space(name="Room %d" % self.rnd.randint(1, 999))
+            v.clear_selection()
+            return "edit" if done else "none"
+        pts = [self.point(i, 40) for _ in range(self.rnd.randint(3, 6))]
+        with mock.patch.object(v, "ask_space_name", lambda default, title=None: default):
+            v.apply_poly(i, "space", pts)
+        v.clear_selection()
+
     def op_eraser(self):
         i = self.page()
         a, b = self.box(i, 40, 300)
@@ -1371,6 +1457,7 @@ class Battery:
         pick = self.rnd.sample(pool, self.rnd.randint(1, min(3, len(pool))))
         v.select_objects(i, pick)
         what = self.rnd.choice(["move", "move", "rotate", "delete"])
+        others = self.other_letters(i, pick, inside=what == "delete")
         if what == "move":
             v.move_objects(v.selected_objects_rect() + (lambda d: (d, d * 0.5, d, d * 0.5))(
                 self.rnd.uniform(-40, 40)))
@@ -1379,6 +1466,92 @@ class Battery:
         else:
             v.delete_objects()
         v.clear_object_selection()
+        self.check_letters(i, others)
+
+    def op_cad_drag(self):
+        """CAD mode's drag of a selection (1.12.1): some of a page's own objects and text with
+        markups of the same page, moved together as one step (cad_apply, as the drag does)."""
+        v = self.v
+        i = self.page()
+        objs = v.content_objects(i)
+        pool = list(objs.items if objs else []) + \
+            (list(v.text_objects(i)) if self.rnd.random() < 0.5 else [])
+        marks = self.markups(i)
+        if not pool and not marks:
+            return "none"
+        v.clear_selection()
+        v.clear_object_selection()
+        pick = self.rnd.sample(pool, self.rnd.randint(1, min(3, len(pool)))) if pool else []
+        if pick:
+            v.select_objects(i, pick)
+        if marks and (not pick or self.rnd.random() < 0.6):
+            v.select_xref(i, self.rnd.choice(marks))
+        others = self.other_letters(i, pick)
+        d = (self.rnd.uniform(-50, 50), self.rnd.uniform(-50, 50))
+        rev = v.revision
+        v.cad_apply("Moved", pymupdf.Matrix(1, 0, 0, 1, d[0], d[1]))
+        v.clear_selection()
+        v.clear_object_selection()
+        self.check_letters(i, others)
+        return "edit" if v.revision != rev else "none"
+
+    def op_text_nudge(self):
+        """Edit objects: a paragraph of the page's text moved with the arrow keys, a burst
+        of presses (one undo step), often onto other text (the owner, 11 Nov: a line moved
+        onto another took that one's letters on the next press; and the selection must hold
+        through the burst)."""
+        v = self.v
+        i = self.page()
+        texts = v.text_objects(i)
+        if not texts:
+            return "none"
+        it = self.rnd.choice(texts)
+        v.select_objects(i, [it])
+        others = self.other_letters(i, [it])
+        v._last_nudge = (None, 0.0, -1)      # (a burst of its own)
+        dx, dy = self.rnd.choice([(0, 1), (0, -1), (1, 0), (-1, 0)])
+        moved = 0
+        for _ in range(self.rnd.randint(2, 8)):
+            if v.obj_sel is None:
+                raise Failed("the text was unselected in the middle of the arrow-key moves")
+            moved += bool(v.nudge(dx, dy, self.rnd.choice([1.0, 10.0])))
+        v.clear_object_selection()
+        self.check_letters(i, others)
+        return "edit" if moved else "none"
+
+    def other_letters(self, i, picked, inside=False):
+        """The letters of page i's text that isn't among the picked Edit objects items (with
+        inside: nor within a picked picture, shape or group's box: a flattened markup's words
+        are in its group, and go when it's deleted)."""
+        import collections
+        from kanzonas import text_edit
+        if i >= self.v.doc.page_count:
+            return None
+        mine = {(text_edit.line_text(ln), round(r.x0), round(r.y0))
+                for it in picked if it["kind"] == "text" for r, ln in it["lines"]}
+        boxes = [pymupdf.Rect(it["rect"]) + (-1, -1, 1, 1) for it in picked
+                 if it["kind"] != "text"] if inside else []
+        out = collections.Counter()
+        for r, ln in text_edit.text_lines(self.v.doc[i]):
+            if (text_edit.line_text(ln), round(r.x0), round(r.y0)) in mine or \
+                    any(b.contains(r) for b in boxes):
+                continue
+            out.update(c for c in text_edit.line_text(ln) if not c.isspace())
+        return out
+
+    def check_letters(self, i, before):
+        """Every letter of the text that wasn't picked is still on the page."""
+        import collections
+        from kanzonas import text_edit
+        if before is None or i >= self.v.doc.page_count:
+            return
+        now = collections.Counter()
+        for _r, ln in text_edit.text_lines(self.v.doc[i]):
+            now.update(c for c in text_edit.line_text(ln) if not c.isspace())
+        lost = before - now
+        if lost:
+            raise Failed("page %d: text that wasn't selected lost letters: %r" % (
+                i, "".join(sorted(lost.elements()))[:80]))
 
     def op_erase_content(self):
         i = self.page()
