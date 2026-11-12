@@ -1157,7 +1157,7 @@ più in basso e a destra nella stessa pagina, selezionate, così puoi trascinarl
 (vedi Copiare, tagliare e incollare).</li>
 <li><b>Ordine di sovrapposizione:</b> quando gli oggetti della pagina si coprono a vicenda, selezionane uno e usa
 <b>Porta in primo piano</b> (Ctrl+Shift+]), <b>Porta avanti</b> (Ctrl+]), <b>Porta indietro</b>
-(Ctrl+[) o <b>Porta in fondo</b> (Ctrl+Shift+[), dal menu contestuale o da Disponi. In primo piano e
+(Ctrl+[) o <b>Porta in fondo</b> (Ctrl+Shift+[), dal menu contestuale o da Disponi. In cima e
 in fondo significano davanti o dietro a tutto ciò che c'è nella pagina, testo della pagina incluso; avanti e
 indietro lo spostano oltre l'oggetto successivo con cui si sovrappone. L'oggetto mantiene colori, stile della linea e
 trasparenza. Se nella posizione di partenza era ritagliato da un contorno di ritaglio, non lo è più dove

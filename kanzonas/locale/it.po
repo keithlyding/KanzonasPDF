@@ -4856,19 +4856,19 @@ msgstr "Verticalmente"
 
 #: main_window.py:3978
 msgid "To front"
-msgstr "In primo piano"
+msgstr "In cima"
 
 #: main_window.py:3979
 msgid "Forward"
-msgstr "Porta avanti"
+msgstr "Avanti"
 
 #: main_window.py:3979
 msgid "Backward"
-msgstr "Porta indietro"
+msgstr "Indietro"
 
 #: main_window.py:3979
 msgid "To back"
-msgstr "In secondo piano"
+msgstr "In fondo"
 
 #: main_window.py:3980 main_window.py:4087
 msgid "Redact"
