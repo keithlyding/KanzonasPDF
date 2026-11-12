@@ -7,6 +7,7 @@ are appended to the circle's appearance here, laid out as seen on screen, so the
 upright on rotated pages too.
 """
 
+import json
 import math
 
 import pymupdf
@@ -58,6 +59,36 @@ def box(model):
     c = pymupdf.Point(model["points"][0])
     r = radius(model)
     return pymupdf.Rect(c.x - r, c.y - r, c.x + r, c.y + r)
+
+
+def stored_number(doc, xref):
+    """The number of the dot that annotation xref is, from its KZProps (0: not a dot)."""
+    try:
+        kind, val = doc.xref_get_key(xref, "KZProps")
+    except Exception:
+        return 0
+    if kind != "string" or '"dot"' not in val:      # most Circles: no JSON parsed
+        return 0
+    try:
+        store = json.loads(val)
+        number = int(store.get("props", {}).get("n") or 0)
+    except (ValueError, TypeError, AttributeError, RecursionError):
+        return 0
+    return number if store.get("kind") == "dot" else 0
+
+
+def last_number(doc):
+    """The highest dot number in the document (0: none).
+
+    Each page's annotations are listed from its dictionary (page_annot_xrefs loads neither
+    the page nor its annotations) and each Circle's KZProps is read as a string. A sheet
+    with thousands of Count markers, Circles too, then costs one string test per marker."""
+    last = 0
+    for page_number in range(doc.page_count):
+        for xref, annot_type, _name in doc.page_annot_xrefs(page_number):
+            if annot_type == pymupdf.PDF_ANNOT_CIRCLE:
+                last = max(last, stored_number(doc, xref))
+    return last
 
 
 def parts(model):

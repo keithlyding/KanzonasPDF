@@ -4439,15 +4439,10 @@ class DocumentView(QScrollArea):
                              "rect": pymupdf.Rect(), "text": text.strip()})
 
     def _last_dot(self):
-        """The highest dot number in the document (0: none)."""
-        last = 0
-        for i in range(self.doc.page_count):
-            pg = self.doc[i]
-            for a in annotations.each_annot(pg, (pymupdf.PDF_ANNOT_CIRCLE,)):
-                m = annotations.read(a)
-                if m and m["kind"] == "dot":
-                    last = max(last, int(m["props"].get("n") or 0))
-        return last
+        """The highest dot number in the document (0: none), read without loading the
+        annotations (dots.last_number)."""
+        from . import dots
+        return dots.last_number(self.doc)
 
     def _last_counts(self):
         """{count group: its highest number} in the document."""

@@ -253,6 +253,40 @@ class Placing(unittest.TestCase):
         got = sorted((m["props"]["n"], m["text"]) for _i, m in self.dots_in(v))
         self.assertEqual(got, [(1, "A"), (2, "A"), (3, "A"), (4, "A")])
 
+    def test_the_number_comes_from_dots_only(self):
+        # Count markers and ellipses are Circles too: their numbers and boxes don't count,
+        # and a dot whose stored style can't be read is skipped
+        v = self.view()
+        self.use(v, show="number")
+        page = v.doc[0]
+        count = {"kind": "m_count", "props": dict(A.DEFAULTS["m_count"]),
+                 "rect": pymupdf.Rect(), "points": [P(30, 30)], "n": 75}
+        ellipse = {"kind": "ellipse", "props": dict(A.DEFAULTS["ellipse"]),
+                   "rect": pymupdf.Rect(60, 60, 120, 100), "points": []}
+        v.modify(lambda: (A.write(page, count), A.write(page, ellipse)), [0],
+                 permission=pymupdf.PDF_PERM_ANNOTATE)
+        self.assertEqual(dots.last_number(v.doc), 0)
+        v.place_dot(0, P(200, 200))
+        self.assertEqual(dots.last_number(v.doc), 1)
+        page = v.doc[0]                         # (kept alive while its markups are read)
+        x, = [a.xref for a in A.each_annot(page) if A.read(a)["kind"] == "dot"]
+        v.doc.xref_set_key(x, "KZProps", pymupdf.get_pdf_str('{"kind": "dot", "props": '))
+        self.assertEqual(dots.stored_number(v.doc, x), 0)
+        self.assertEqual(dots.last_number(v.doc), 0)
+
+    def test_the_number_follows_undo_and_redo(self):
+        v = self.view()
+        self.use(v, show="number")
+        v.place_dot(0, P(100, 100))
+        v.place_dot(1, P(100, 100))
+        v.undo()
+        self.assertEqual(dots.last_number(v.doc), 1)
+        v.place_dot(0, P(150, 100))
+        self.assertEqual(sorted(m["props"]["n"] for _i, m in self.dots_in(v)), [1, 2])
+        v.undo()
+        v.redo()
+        self.assertEqual(dots.last_number(v.doc), 2)
+
     def test_restyling_several_dots_keeps_their_numbers(self):
         v = self.view()
         self.use(v, show="number")
@@ -266,6 +300,45 @@ class Placing(unittest.TestCase):
         got = sorted((m["props"]["n"], m["props"]["filled"], m["props"]["stroke"])
                      for _i, m in self.dots_in(v))
         self.assertEqual(got, [(1, False, "#0000ff"), (2, False, "#0000ff")])
+
+
+def counts_sheet(path, how_many):
+    """A large sheet with how_many Count markers (Circles with a count's stored style)."""
+    d = pymupdf.open()
+    sheet = d.new_page(width=2592, height=1728)
+    count = {"kind": "m_count", "props": dict(A.DEFAULTS["m_count"]),
+             "rect": pymupdf.Rect(), "points": [P(20, 20)], "n": 1}
+    first = A.write(sheet, count)
+    stored = d.xref_get_key(first.xref, "KZProps")[1]
+    for i in range(1, how_many):
+        x = 20 + (i % 60) * 40
+        y = 20 + (i // 60) * 30
+        marker = sheet.add_circle_annot(pymupdf.Rect(x - 4, y - 4, x + 4, y + 4))
+        d.xref_set_key(marker.xref, "KZProps", pymupdf.get_pdf_str(stored))
+    d.save(path)
+
+
+class Speed(unittest.TestCase):
+    """The owner (PR review, 12 Nov): the Dot tool must stay fast, so finding the next number
+    doesn't load every Circle on a sheet of Count markers."""
+
+    def test_a_dot_on_a_sheet_of_3000_counts(self):
+        import time
+        path = os.path.join(tempfile.mkdtemp(), "counts.pdf")
+        counts_sheet(path, 3000)
+        v = DocumentView(path)
+        self.addCleanup(v.close_doc)
+        self.addCleanup(lambda: setattr(v, "dirty", False))
+        v.tool_props = lambda kind: dict(A.DEFAULTS[kind])
+        with mock.patch.object(A, "read", side_effect=AssertionError("a markup was loaded")):
+            self.assertEqual(dots.last_number(v.doc), 0)
+        started = time.perf_counter()
+        v.place_dot(0, P(500, 900))
+        took = time.perf_counter() - started
+        self.assertEqual(dots.last_number(v.doc), 1)
+        # (about 4 times the time on the build machine, as the self-test's editing budget;
+        # reading all 3,000 Circles took about 1 s on its own)
+        self.assertLess(took, 1.0, f"placing a dot took {took:.2f}s")
 
 
 class Clicking(unittest.TestCase):
