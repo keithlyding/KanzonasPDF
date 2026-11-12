@@ -11322,3 +11322,15 @@ msgstr "Las marcas seleccionadas ya son un grupo."
 
 msgid "{n} objects grouped (Ctrl+Z undoes it)"
 msgstr "{n} objetos agrupados (Ctrl+Z lo deshace)"
+
+msgid "Fit the box to its text"
+msgstr "Ajustar el cuadro a su texto"
+
+msgid "The box grows or shrinks to its text as you type or change the font size; its width stays, and the text wraps in it. Changing its height by hand turns this off."
+msgstr "El cuadro crece o se encoge con su texto al escribir o cambiar el tamaño de fuente; su ancho se mantiene y el texto se ajusta dentro. Cambiar su altura a mano lo desactiva."
+
+msgid "Fit to text"
+msgstr "Ajustar al texto"
+
+msgid "Fitted to the text (Ctrl+Z undoes it)"
+msgstr "Ajustado al texto (Ctrl+Z lo deshace)"

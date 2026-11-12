@@ -2027,6 +2027,9 @@ class PageWidget(QWidget):
             if v.default_tool_of_selected() is not None:
                 # its style for the next markups made with its tool (Bluebeam's name for it)
                 menu.addAction(tr("Set as Default"), v.set_selected_as_default)
+            if v.can_fit_to_text():
+                # (issue #90) the box as tall as its text, and following it from then on
+                menu.addAction(tr("Fit to text"), v.fit_selected_to_text)
             if win is not None and hasattr(win, "a_group"):
                 menu.addSeparator()
                 for act in (win.a_group, win.a_ungroup, win.a_flip_h, win.a_flip_v):
@@ -2862,6 +2865,17 @@ class PageWidget(QWidget):
                 self.view.commit_models(self.index, [(x, A.moved(m, delta))
                                                      for x, m in ed["group"]])
             elif preview is not None:
+                if A.fits_text(preview) and ed["mode"] in box_handles(QRectF()):
+                    # a text box or callout resized (issue #90): a new width, its height
+                    # follows the text; its height changed by hand, it keeps that box (and
+                    # stops following its text: Right-click > Fit to text turns it on again)
+                    across = A.quarter(preview["props"]) in (90, 270)
+                    sides = "lr" if across else "tb"
+                    if any(c in sides for c in ed["mode"]):
+                        preview = A.copy(preview)
+                        preview["props"]["fit"] = False
+                    else:
+                        preview = A.fitted(self.view.doc[self.index], preview)
                 self.view.commit_model(self.index, self.view.selection[1], preview)
         elif self._text_sel is not None:
             a, b = self._drag_start, pos

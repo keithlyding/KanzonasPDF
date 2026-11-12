@@ -78,9 +78,11 @@ DEFAULTS = {
     "strikeout": {"stroke": "#e00000", "opacity": 1.0},
     "squiggly": {"stroke": "#e00000", "opacity": 1.0},
     "note": {"stroke": "#ffdc00", "opacity": 1.0},
+    # fit: the box's height follows its text at its width (issue #90; read() gives markups
+    # made before it, or by other programs, False: they keep the box they have)
     "textbox": {"font": "Helvetica", "text_color": "#000000", "stroke": "#d00000", "fill": None,
                 "width": 1.0,
-                "fontsize": 11, "opacity": 1.0},
+                "fontsize": 11, "opacity": 1.0, "fit": True},
     "rect": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "ellipse": {"stroke": "#d00000", "fill": None, "width": 2.0, "cloud": False, "opacity": 1.0},
     "cloud": {"stroke": "#d00000", "fill": None, "width": 1.5, "cloud": True, "opacity": 1.0},
@@ -99,7 +101,7 @@ DEFAULTS = {
     # a cloud with part of it trimmed away (clouds.py): drawn along an open polyline
     "opencloud": {"stroke": "#d00000", "width": 1.5, "opacity": 1.0},
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
-                "fontsize": 11, "head": "open", "opacity": 1.0},
+                "fontsize": 11, "head": "open", "opacity": 1.0, "fit": True},
     "m_length": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     # a dimension (dimensions.py): its arrowheads are one of dimensions.HEADS
     "m_dim": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "head": "closed",
@@ -351,6 +353,8 @@ def read(annot):
     if annot.opacity is not None and 0 <= annot.opacity < 1:
         props["opacity"] = annot.opacity
     props.update({k: v for k, v in stored.get("props", {}).items() if k in props})
+    if "fit" in props and "fit" not in stored.get("props", {}):
+        props["fit"] = False            # (made before 1.12.2 or elsewhere: keeps its box)
 
     flags = annot.flags or 0
     model = {"kind": kind, "props": props, "text": annot.info.get("content", ""),
@@ -799,6 +803,80 @@ def angle(model):
         return float(model["props"].get("rotation") or 0) % 360
     except (TypeError, ValueError):
         return 0.0
+
+
+FIT_KINDS = ("textbox", "callout")
+
+
+def fits_text(model):
+    """True for a text box or callout whose box follows its text (props "fit")."""
+    return model["kind"] in FIT_KINDS and bool(model["props"].get("fit"))
+
+
+def fitted_rect(page, model, pad=None):
+    """The box (model "rect") a text box or callout needs to show all of its text at its
+    width, as MuPDF lays it out (issue #90, as Bluebeam's callouts grow with their text):
+    the side its text starts from stays, the far one moves (the box's bottom, as shown, for
+    level text). Worked out by laying the text out in a scratch copy, a box as wide and very
+    tall, and reading where its letters went (about 2 ms). The box as it is when it has no
+    text or isn't as wide as one letter."""
+    r = pymupdf.Rect(model["rect"])
+    p = model["props"]
+    text = model.get("text") or ""
+    if not text.strip():
+        return r
+    t = (page.rotation + quarter(p)) % 360
+    along_y = t in (0, 180)             # (the lines stack down the box, or across it)
+    if (r.width if along_y else r.height) < 4:
+        return r
+    size = float(p.get("fontsize", 11) or 11)
+    bw = float(p.get("width", 1) or 0) if to_rgb(p.get("stroke")) is not None else 0.0
+    font = COMMENT_FONTS.get(p.get("font"), "helv") if model["kind"] == "textbox" else "helv"
+    big, tall = 14000.0, 5000.0
+    dx, dy = big / 2 - (r.x0 + r.x1) / 2, big / 2 - (r.y0 + r.y1) / 2
+    rr = r + (dx, dy, dx, dy)
+    rr = pymupdf.Rect(rr.x0, rr.y0 - tall, rr.x1, rr.y1 + tall) if along_y else \
+        pymupdf.Rect(rr.x0 - tall, rr.y0, rr.x1 + tall, rr.y1)
+    d = pymupdf.open()
+    try:
+        pg = d.new_page(width=big, height=big)
+        a = pg.add_freetext_annot(rr, text, fontsize=size, fontname=font, text_color=(0, 0, 0),
+                                  border_width=bw, rotate=t)
+        a.update()
+        del a
+        d.bake(annots=True)
+        tb = pymupdf.Rect()
+        for b in d[0].get_text("dict")["blocks"]:
+            if b.get("type") == 0:
+                for ln in b["lines"]:
+                    for sp in ln["spans"]:
+                        if sp["text"].strip():
+                            tb |= pymupdf.Rect(sp["bbox"])
+    finally:
+        d.close()
+    if tb.is_empty:
+        return r
+    pad = bw + 3.0 if pad is None else pad
+    if along_y:
+        if tb.y0 - rr.y0 <= rr.y1 - tb.y1:          # (from the top down)
+            return pymupdf.Rect(r.x0, r.y0, r.x1, r.y0 + (tb.y1 - rr.y0) + pad)
+        return pymupdf.Rect(r.x0, r.y1 - (rr.y1 - tb.y0) - pad, r.x1, r.y1)
+    if tb.x0 - rr.x0 <= rr.x1 - tb.x1:
+        return pymupdf.Rect(r.x0, r.y0, r.x0 + (tb.x1 - rr.x0) + pad, r.y1)
+    return pymupdf.Rect(r.x1 - (rr.x1 - tb.x0) - pad, r.y0, r.x1, r.y1)
+
+
+def fitted(page, model):
+    """model with its box fitted to its text (fitted_rect) when it follows its text, else
+    model itself."""
+    if not fits_text(model):
+        return model
+    r = fitted_rect(page, model)
+    if r == pymupdf.Rect(model["rect"]):
+        return model
+    m = copy(model)
+    m["rect"] = r
+    return m
 
 
 def quarter(props):

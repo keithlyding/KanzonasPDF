@@ -57,7 +57,7 @@ class RotatedPageTools(unittest.TestCase):
                     v.apply_drag_tool(0, "textbox", P(100, 500) * dm, P(100, 500) * dm, True)
                 box = self.shown(v, self.newest(v))
                 self.assertAlmostEqual(box.width, 200, delta=2)
-                self.assertAlmostEqual(box.height, 40, delta=2)
+                self.assertTrue(12 < box.height < 24, box)      # (its line of text: #90)
                 self.assertTrue(abs(box.tl - P(100, 500)) < 2)
                 props = dict(annotations.tool_props("placeholder"), **{"for": "signature"})
                 with mock.patch.object(v, "tool_props", return_value=props):
@@ -80,7 +80,8 @@ class RotatedPageTools(unittest.TestCase):
                     box = R(model["rect"]) * page.rotation_matrix
                     del page
                     self.assertAlmostEqual(box.width, 160, delta=2)
-                    self.assertAlmostEqual(box.height, 40, delta=2)
+                    # (as tall as its one line of text, issue #90: it was always 40)
+                    self.assertTrue(12 < box.height < 24, box)
                     self.assertAlmostEqual(box.y0, 200, delta=2)
                     self.assertAlmostEqual(box.x1 if left else box.x0, end.x, delta=2)
 

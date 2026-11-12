@@ -771,6 +771,13 @@ acopla. Su fuente puede ser Helvetica, Times o Courier (Propiedades > Fuente): s
 tiene todo visor de PDF, así que el comentario se ve igual en todas partes. Para escribir texto que forme parte de
 la página, use <b>Agregar texto</b> (más abajo).</li>
 <li><b>Llamada</b> (K): presione en el punto que señala y arrastre hasta donde va el texto.</li>
+<li><b>Los cuadros de texto y las llamadas se ajustan a su texto:</b> el cuadro mantiene su ancho y es tan alto como
+su texto, que se ajusta dentro, al crearlo, al cambiar su texto o el tamaño de fuente y al arrastrar su lado para
+hacerlo más ancho o más angosto. Arrastre su borde superior o inferior (o una esquina) para darle una altura propia:
+entonces conserva ese cuadro. <b>Ajustar al texto</b> (botón derecho) vuelve a hacerlo tan alto como su texto, y hace
+que uno creado antes de esta versión, o con otro programa, siga a su texto desde entonces. Es la casilla
+<b>Ajustar el cuadro a su texto</b> de Propiedades, parte del estilo de la herramienta (Establecer como
+predeterminado la guarda), activada al principio.</li>
 <li><b>Nombre del autor:</b> Editar &gt; Nombre del autor de las marcas. Se registra en sus marcas y
 se imprime en los sellos.</li>
 <li><b>Revisar ortografía</b> (menú Editar, activado al principio): mientras escribe un comentario, un cuadro de texto, un

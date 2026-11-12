@@ -793,6 +793,13 @@ flattened. Its font can be Helvetica, Times or Courier (Properties > Font): thos
 every PDF viewer has, so the comment looks the same everywhere. To write text that's part of
 the page, use <b>Add text</b> (below).</li>
 <li><b>Callout</b> (K): press on the point you're pointing at, drag to where the text goes.</li>
+<li><b>Text boxes and callouts fit their text:</b> the box keeps its width and is as tall as its
+text, wrapped in it, when it's made, when its text or font size changes and when you drag its
+side to make it wider or narrower. Drag its top or bottom (or a corner) to give it a height of
+your own: it then keeps that box. <b>Fit to text</b> (right-click) makes one as tall as its
+text again, and one made before this version, or by another program, follow its text from then
+on. It's the <b>Fit the box to its text</b> box in Properties, part of the tool's style (Set as
+Default keeps it), on at first.</li>
 <li><b>Author name:</b> Edit &gt; Author name for markups. It's recorded on your markups and
 printed on stamps.</li>
 <li><b>Check spelling</b> (Edit menu, on at first): while you type a comment, a text box, a

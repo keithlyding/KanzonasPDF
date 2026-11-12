@@ -4166,7 +4166,9 @@ class DocumentView(QScrollArea):
         made = {}
 
         def do():
-            made["xref"] = annotations.write(self.doc[index], model).xref
+            page = self.doc[index]
+            # a text box or callout as tall as its text (issue #90)
+            made["xref"] = annotations.write(page, annotations.fitted(page, model)).xref
             self._on_markup_layer([made["xref"]])
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if "xref" in made and not DocumentView.reuse_tools:
@@ -6122,8 +6124,36 @@ class DocumentView(QScrollArea):
                 m["detail"] = None              # redrawn with / without name and date
             if "rotation" in changed and "rotation" in m["props"]:
                 m = annotations.rotated(m, changed["rotation"])
+            if annotations.fits_text(m) and (set(keys) & {"fit", "fontsize", "font", "width",
+                                                          "stroke"} or "rotation" in changed):
+                m = annotations.fitted(self.doc[self.selection[0]], m)      # (issue #90)
             out.append((x, m))
         self.commit_models(self.selection[0], out)
+
+    def can_fit_to_text(self):
+        return not self.read_only and any(
+            m["kind"] in annotations.FIT_KINDS for _x, m in self.selected_models())
+
+    def fit_selected_to_text(self):
+        """Right-click > Fit to text (issue #90): the selected text boxes and callouts made as
+        tall as their text at their width, and from then on following it. One undo step."""
+        if self.selection is None or self.read_only:
+            return False
+        index = self.selection[0]
+        page = self.doc[index]
+        out = []
+        for x, m in self.selected_models():
+            if m["kind"] not in annotations.FIT_KINDS:
+                continue
+            m = annotations.copy(m)
+            m["props"]["fit"] = True
+            out.append((x, annotations.fitted(page, m)))
+        del page
+        if not out:
+            return False
+        self.commit_models(index, out)
+        self.statusMessage.emit(tr("Fitted to the text (Ctrl+Z undoes it)"))
+        return True
 
     NUDGE = {"": 1.0, "shift": 10.0, "ctrl": 0.1}     # points per arrow-key press
 
@@ -6473,7 +6503,7 @@ class DocumentView(QScrollArea):
         if not ok or text == model.get("text", ""):
             return
         model["text"] = text
-        self.commit_model(index, xref, model)
+        self.commit_model(index, xref, annotations.fitted(page, model))   # (issue #90)
 
     def edit_annot_at(self, index, pt):
         xref = self.annot_at(index, pt)
