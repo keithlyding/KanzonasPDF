@@ -83,12 +83,15 @@ a decision changes or a piece of work lands. Details of each version are in
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
-- **A quiet period after 1.12.1** (owner, 12 Nov: "make sure it's stable and leave it alone
-  for a few days"): no new features or releases until the owner says so; only a fix for
-  something broken, and only with the owner's go-ahead. Outside contributors (Hamish
-  Poole-Hill's suggestions, issue #82; Federico Benedetti's PRs #86 and #87) are welcome
-  meanwhile, and the owner wants them to know he's grateful: their work is reviewed and
-  answered, not rushed.
+- **Releases** (owner, 12 Nov): a day's notes go into as few releases as practical, but a
+  release isn't held for the evening ("I don't want to wait until tonight"); a critical fix
+  goes out at once. Outside contributors (@hamishpoole-hill-ctrl's suggestions, issue #82;
+  @fexxdev's PRs) come in before our own work of the same day (owner: "Let's get that in
+  there before our stuff"), and are credited by GitHub handle only (README, release notes).
+- **On hold (owner, 12 Nov: "leave it alone for now"): colors of the page's own content.**
+  "Need a way of changing text's color and changing the fill color of an object": Text color
+  for the page's own text (Edit text, Edit objects), and Fill and Line color for its shapes
+  (owner: "Both"). Markups already have them in Properties.
 0. **The next fix release: Redo lost after undoing Auto bookmarks** (owner, 11 Nov: ship 1.11,
    fix this next; 1.11.1 went to the owner's Pages panel and OCR requests).
    Found by the random battery (seed 31, 1500 steps, PyMuPDF 2.0 and 2.1, also in 1.10.1): after
@@ -97,7 +100,7 @@ The owner sets this list; nothing below is promised until it's here.
    in its /Resources), and that change drops every step to redo. Not reproduced yet outside
    the full run (the state MuPDF keeps in memory matters, not the file); NeedAppearances is
    false and resynth_required and recalculate are 0 at that point. Nothing is lost but Redo.
-0. **From the first outside tester (issue #82, Hamish Poole-Hill, 11 Nov; owner: "good ideas"):**
+0. **From the first outside tester (issue #82, @hamishpoole-hill-ctrl, 11 Nov; owner: "good ideas"):**
    - (Done in 1.12: grouping markups and markups on layers.)
    - (Done in 1.11: markups anywhere in the gray, for his use: "plans that are spread across
      multiple sheets back together for review".)
@@ -118,7 +121,7 @@ The owner sets this list; nothing below is promised until it's here.
 
 ## Standing decisions
 - **Outside contributions are welcome, and speed is a condition for taking them** (owner, 12
-  Nov, on Federico Benedetti's PRs #86 Italian and #87 Dot markers: "I want to make sure the
+  Nov, on @fexxdev's PRs #86 Italian and #87 Dot markers: "I want to make sure the
   program stays fast"). Each must pass `--selftest`'s speed budgets on the current `main`, and
   add no loop over every markup or object on the way to an edit (per-page cached indexes, as
   AGENTS.md's Performance section says). Their code runs in this repository's builds (copied to

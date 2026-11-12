@@ -9,6 +9,39 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.13.1
+
+**New**
+- Arrange > Group (Ctrl+Shift+G) now groups the page's own lines, shapes, pictures and text too (Edit objects or CAD mode): a click on any of it selects the whole group, and it moves, copies and deletes as one object. Ungroup takes it apart again. Markups and the page's own objects can't be one group: with both selected, Group is grayed out and its tooltip says why.
+- Text boxes and callouts fit their text: the box keeps its width and grows or shrinks to its text when it's made, when the text or font size changes, and when you drag its side. Right-click > Fit to text fits an existing one; "Fit the box to its text" in Properties turns it on or off and is part of the tool's style. Dragging its top or bottom sets a height of your own. (Issue #90)
+
+**Fixed**
+- Undo and Redo no longer unselect what you had selected.
+
+**Thanks** to @fexxdev for the Italian translation in 1.13 and the fixes in 1.12.2, and to @hellensvard for suggesting callouts that fit their text (#90).
+
+## 1.13.1 (es)
+
+**Novedades**
+- Organizar > Agrupar (Ctrl+Shift+G) ahora también agrupa las líneas, formas, imágenes y texto propios de la página (Editar objetos o modo CAD): un clic en cualquier parte selecciona el grupo entero, y se mueve, se copia y se elimina como un solo objeto. Desagrupar lo vuelve a separar. Las marcas y los objetos propios de la página no pueden ser un mismo grupo: con ambos seleccionados, Agrupar queda en gris y su información sobre herramientas dice por qué.
+- Los cuadros de texto y las llamadas se ajustan a su texto: el cuadro mantiene su ancho y crece o se encoge con su texto al crearlo, al cambiar el texto o el tamaño de fuente y al arrastrar su lado. Botón derecho > Ajustar al texto ajusta uno existente; "Ajustar el cuadro a su texto" en Propiedades lo activa o desactiva y forma parte del estilo de la herramienta. Arrastrar su borde superior o inferior le da una altura propia. (Incidencia #90)
+
+**Correcciones**
+- Deshacer y Rehacer ya no quitan la selección.
+
+**Gracias** a @fexxdev por la traducción al italiano de 1.13 y las correcciones de 1.12.2, y a @hellensvard por sugerir llamadas que se ajustan a su texto (#90).
+
+## 1.13.1 (it)
+
+**Novità**
+- Disponi > Raggruppa (Ctrl+Shift+G) ora raggruppa anche le linee, le forme, le immagini e il testo propri della pagina (Modifica oggetti o modalità CAD): un clic su un punto qualsiasi seleziona l'intero gruppo, che si sposta, si copia e si elimina come un unico oggetto. Separa lo divide di nuovo. Le annotazioni e gli oggetti propri della pagina non possono formare un unico gruppo: se li selezioni insieme, Raggruppa è disattivato e il suo suggerimento spiega perché.
+- Le caselle di testo e i richiami si adattano al testo: il riquadro mantiene la larghezza e si allarga o si riduce con il testo quando lo crei, quando cambi il testo o la dimensione del carattere e quando trascini un lato. Clic destro > Adatta al testo adatta un riquadro esistente; "Adatta il riquadro al testo" in Proprietà lo attiva o disattiva e fa parte dello stile dello strumento. Trascinando il bordo superiore o inferiore gli dai un'altezza tua. (Segnalazione #90)
+
+**Correzioni**
+- Annulla e Ripeti non deselezionano più ciò che avevi selezionato.
+
+**Grazie** a @fexxdev per la traduzione italiana della 1.13 e le correzioni della 1.12.2, e a @hellensvard per aver suggerito i richiami che si adattano al testo (#90).
+
 ## 1.13
 
 **New**
