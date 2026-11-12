@@ -30,6 +30,17 @@ and only when both are green.
   release on GitHub (only 0.x ones were marked pre-release).
 - Every push to any branch runs the full Windows and Linux builds (~12-15 minutes, in parallel). Push when a piece of
   work is done, not after every small edit.
+- **Outside contributors' pull requests** (the owner, 12 Nov 2026):
+  - They don't set `__version__`, CHANGELOG.md or RELEASE_NOTES.md (CONTRIBUTING.md says so):
+    the maintainer adds them at merge time, with the next free number and a credit by GitHub
+    handle only (never a full name).
+  - Their builds run on a copy: push the pull request's exact head commit to a branch of
+    ours (`claude/review-<handle>-pr<N>`); its checks then count for the pull request. Fork
+    pull requests don't run the workflow (the owner's choice, for security), and their code
+    is never run in an agent's own environment before it's merged: the build machines test it.
+  - Our own work doesn't wait on theirs: each merges when it's green, at the next free
+    number. A trivial conflict in theirs is resolved on a copy of their branch (their
+    commits untouched, a merge on top); one in the same logic goes back to them.
 
 ## Logos
 Every Kanzonas logo comes from the Kanzonas-Site repository's `brand/` folder
