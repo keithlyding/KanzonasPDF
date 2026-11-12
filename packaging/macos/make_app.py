@@ -69,7 +69,7 @@ def info_plist(info, version, min_macos):
         "CFBundleVersion": version,
         "CFBundleIconFile": ICON,
         "CFBundleDevelopmentRegion": "en",
-        "CFBundleLocalizations": ["en", "es"],
+        "CFBundleLocalizations": ["en", "es", "it"],
         "LSMinimumSystemVersion": min_macos,
         "LSApplicationCategoryType": "public.app-category.productivity",
         "NSHighResolutionCapable": True,

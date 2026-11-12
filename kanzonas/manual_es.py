@@ -125,7 +125,7 @@ una marca, su herramienta queda elegida para la siguiente; desactivado: se vuelv
 (Seleccionar, Mano o Editar objetos), como el botón Reuse de Bluebeam. En ambos casos lo que dibujó queda seleccionado,
 así que Propiedades lo cambia. Un mensaje de la barra inferior demasiado largo para el espacio a la
 izquierda de los controles de página termina en «...»; pase el mouse sobre él para leerlo entero. La cinta es compacta: dos filas de
-botones, y cada pestaña cabe en una pantalla de 1366 píxeles de ancho, en inglés y en español. Los comandos que se usan
+botones, y cada pestaña cabe en una pantalla de 1366 píxeles de ancho, en inglés, español e italiano. Los comandos que se usan
 menos comparten un botón con una flecha al lado: haga clic en el botón para el comando que muestra, o en la flecha para
 los demás (el botón muestra luego el último usado). En la pestaña Inicio, la flecha de Resaltado tiene Subrayado y
 Tachado, y la de Firmar tiene Iniciales; en la pestaña Páginas, la de Encabezado y pie tiene Marca de agua y Fondo, y la
@@ -228,8 +228,8 @@ USB a una nueva letra de unidad: si Abrir recientes muestra E:\\Docs\\plan.pdf y
 abre F:\\Docs\\plan.pdf.</li>
 <li><b>Ayuda &gt; Buscar actualizaciones:</b> pregunta a GitHub si se ha publicado una versión más reciente de KanzonasPDF.
 Un cuadro le indica la respuesta. Si hay una versión más reciente, muestra las <b>novedades desde su versión</b>: las
-notas breves de cada versión más reciente que la suya, de la más nueva a la más antigua (en español cuando KanzonasPDF
-está en español); <b>Descargar</b> abre la página de la versión en su navegador y <b>Actualizar ahora</b> actualiza esta
+notas breves de cada versión más reciente que la suya, de la más nueva a la más antigua (en español o en italiano cuando KanzonasPDF
+está en ese idioma y las notas lo tienen; si no, en inglés); <b>Descargar</b> abre la página de la versión en su navegador y <b>Actualizar ahora</b> actualiza esta
 copia en el mismo lugar (vea más arriba; no en la versión de PortableApps.com, que su plataforma actualiza). La búsqueda
 automática, en cambio, muestra un aviso en la parte inferior de la ventana con <b>Novedades</b> (las mismas notas),
 <b>Actualizar ahora</b>, <b>Descargar</b>, <b>Omitir esta versión</b> y <b>Más tarde</b>. No se descarga ni se instala
@@ -2224,7 +2224,7 @@ cierra la ventana; <b>Aplicar</b> los usa de inmediato y deja la ventana abierta
 el efecto y seguir ajustando; <b>Cancelar</b> la cierra sin los cambios hechos desde el último
 Aplicar.</li>
 <li><b>General:</b> tema (Igual que Windows, o Igual que el sistema en Linux y macOS; Claro, Oscuro), <b>Idioma</b> (Automático, el idioma de
-Windows o del sistema; English; Español: menús, mensajes y este manual; el cambio se ve la próxima vez que se
+Windows o del sistema; English; Español; Italiano: menús, mensajes y este manual; el cambio se ve la próxima vez que se
 inicia KanzonasPDF), Cinta (en lugar de barras de herramientas), Mostrar nombres de grupo
 en la cinta, Mostrar barra de menús, Mostrar etiquetas de texto en las barras de herramientas, Buscar actualizaciones automáticamente y, en Linux,
 Agregar KanzonasPDF al menú de aplicaciones y abrir los PDF con él (vea KanzonasPDF en Linux).

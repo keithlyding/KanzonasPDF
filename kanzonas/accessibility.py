@@ -44,8 +44,8 @@ _LANG_TAG = re.compile(r"^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$")
 
 
 def default_language():
-    """The document language to offer: the app's own language (en-US, es-ES)."""
-    return {"es": "es-ES"}.get(language(), "en-US")
+    """The document language to offer: the app's own language (en-US, es-ES, it-IT)."""
+    return {"es": "es-ES", "it": "it-IT"}.get(language(), "en-US")
 
 
 # ---- small helpers on MuPDF objects ------------------------------------------------------

@@ -44,7 +44,7 @@ people who mark up and measure drawings, to Bluebeam Revu.
 editing the PDF's own text, pictures and shapes, fillable forms, signatures and digital
 signatures, OCR, redaction, passwords, page tools, compare, export to Word, Excel and
 PowerPoint, and printing with a preview. It runs from a USB stick too, or as a PortableApps.com
-package, and speaks English and Spanish.
+package, and speaks English, Spanish and Italian.
 
 **Missing something you rely on in Acrobat or another editor?** [Tell us](#feedback). That's
 how most of the features below got here.
@@ -247,7 +247,7 @@ Applications to the Trash (and delete those two to remove your settings and file
   default markup styles, the zoom documents open at, mouse and scrolling options, automatic
   backups and more.
 - **Keyboard shortcuts:** View > Keyboard shortcuts... lists them all, and you can change them.
-- **In English and Spanish (Español):** menus, messages and the user manual follow the language
+- **In English, Spanish (Español) and Italian (Italiano):** menus, messages and the user manual follow the language
   of Windows, or pick one in File > Preferences > General > Language.
 
 ## Feedback

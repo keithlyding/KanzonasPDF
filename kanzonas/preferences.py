@@ -357,7 +357,7 @@ class PreferencesDialog(QDialog):
         self.grid_value.setRange(0.001, 10000)
         self.grid_value.setValue(paths.stored_float(win.settings, "grid_value", 0.5, 0.001, 10000))
         self.grid_unit = QComboBox()
-        for k, name in snapping.UNIT_NAMES.items():
+        for k, name in snapping.unit_names().items():
             self.grid_unit.addItem(name, k)
         self.grid_unit.setCurrentIndex(max(0, self.grid_unit.findData(
             paths.stored_str(win.settings, "grid_unit", "in"))))
