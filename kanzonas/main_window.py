@@ -724,6 +724,12 @@ class MainWindow(QMainWindow):
         w.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         return w
 
+    @staticmethod
+    def _group_tip():
+        return tr("Group the selected markups, or the selected lines, shapes and pictures of "
+                  "the page: a click on one selects them all, to move, copy or delete them "
+                  "together (Ctrl+Shift+G)")
+
     def _act(self, text, slot, shortcut=None, tip=None):
         a = QAction(text, self)
         a.triggered.connect(slot)
@@ -1332,13 +1338,11 @@ class MainWindow(QMainWindow):
         # (1.12) groups of markups, and flipping, as Bluebeam's Group and Flip
         self.a_group = self._act(tr("&Group"), lambda: self.view() and
                                  self.view().group_selection(), "Ctrl+Shift+G",
-                                 tip=tr("Group the selected markups: a click on one selects "
-                                        "them all, to move, copy, style or delete them "
-                                        "together (Ctrl+Shift+G)"))
+                                 tip=self._group_tip())
         self.a_ungroup = self._act(tr("U&ngroup"), lambda: self.view() and
                                    self.view().ungroup_selection(), "Ctrl+Alt+G",
-                                   tip=tr("Ungroup the selected group: its markups are "
-                                          "on their own again (Ctrl+Alt+G)"))
+                                   tip=tr("Ungroup the selected group: its markups, or its lines, shapes "
+                                          "and pictures, are on their own again (Ctrl+Alt+G)"))
         self.a_flip_h = self._act(tr("Flip &horizontally"), lambda: self.view() and
                                   self.view().flip_selection(True),
                                   tip=tr("Mirror the selection left for right, across its "
@@ -1477,6 +1481,7 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         m.addAction(self.a_shortcuts)
         m = mb.addMenu(tr("&Arrange"))
+        m.setToolTipsVisible(True)          # (Group grayed says why in its tooltip)
         acts = self.arrange_actions
         m.addActions([acts[k] for k in ("al_left", "al_hcenter", "al_right")])
         m.addActions([acts[k] for k in ("al_top", "al_vmiddle", "al_bottom")])
@@ -1942,7 +1947,14 @@ class MainWindow(QMainWindow):
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_lock.setEnabled(has and v.selection is not None)
         self.a_unlock_all.setEnabled(has)
-        self.a_group.setEnabled(has and v.can_group())
+        why = v.group_problem() if has else ""
+        self.a_group.setEnabled(has and why is None)
+        # (grayed: its tooltip says why, the owner's choice of 12 Nov for markups and the
+        # page's own objects selected together)
+        tip = self._group_tip() + ("\n" + why if why else "")
+        if self.a_group.toolTip() != tip:
+            self.a_group.setToolTip(tip)
+            self.a_group.setStatusTip(tip.replace("\n", " "))
         self.a_ungroup.setEnabled(has and v.can_ungroup())
         for a in (self.a_flip_h, self.a_flip_v):
             a.setEnabled(has and not v.read_only and (v.selection is not None or

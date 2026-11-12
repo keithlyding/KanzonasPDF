@@ -91,7 +91,8 @@ remembered): the pages made from pictures get their text recognized once they're
 in Document tools.) Saving as a file that's open in another
 tab replaces that file and closes that tab (asking first if it has unsaved changes); the same goes
 for Extract pages, Combine files and the copies saved by Compress, Timestamp and digital signing,
-except that the other tab then shows the new file. Undo is Ctrl+Z, redo is Ctrl+Y.
+except that the other tab then shows the new file. Undo is Ctrl+Z, redo is Ctrl+Y. What was
+selected stays selected through an undo or redo (unless the step took it away).
 Up to 30 steps are kept. Each step keeps only what the edit changed, so undo and redo are quick
 and all 30 steps fit even on very large PDFs; the history still stays within a memory budget
 (256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
@@ -1027,7 +1028,14 @@ move, copy, change style (Properties) and delete together, and copies are a grou
 them makes one bigger group. Align and Distribute move a group as one item, so its markups keep
 their places in it. It's the PDF standard's group (a markup "in reply to" the first,
 of the Group kind), so Acrobat keeps them together too; in other programs they stay separate
-markups.</li>
+markups.
+With lines, shapes and pictures of the page's own drawing selected (Edit objects tool, or CAD
+mode), <b>Group</b> makes them one drawing group, the kind CAD programs export blocks as: a
+click on any of it selects it all, and it moves, copies, rotates and deletes as one object; Ungroup
+takes it apart again, its pieces left selected. It's drawn where the last of them was, so
+something drawn between them comes out under it. The page's text isn't put in a group, and
+markups and the page's own objects can't be one group (a PDF keeps the two apart): with those
+selected Group stays grayed out, and its tooltip says why.</li>
 <li><b>Flip horizontally</b> / <b>Flip vertically</b> (Arrange menu, the Group group, or the
 right-click menu) mirror the selection left for right or top for bottom across its middle, as
 the page is shown; a group flips as one (each part to its mirrored place), and the page's own
@@ -1147,6 +1155,8 @@ become these, and some programs export a whole drawing as one) is selected, move
 rotated, deleted and re-stacked as one object, as in Acrobat and PDF-XChange. A group that
 fills the whole page isn't picked by a click (that would grab the sheet whenever you click
 blank paper): drag a selection box around the page to select it.
+Right-click &gt; <b>Group</b> (Ctrl+Shift+G) makes the selected lines, shapes, pictures and groups
+one group (see Align, distribute and stacking order).
 Right-click a group &gt; <b>Ungroup</b> to take it apart: it looks the same, but its shapes and
 pictures become separate objects you can select one by one, and its text can be changed with
 Edit text. A group holding just one other group (as many programs write them) is taken apart
@@ -2296,7 +2306,7 @@ scroll speed.</li>
 <tr><td>Ctrl+D</td><td>Duplicate selected markups (with Edit objects, the selected text, pictures and shapes; pages, in the page list)</td></tr>
 <tr><td>Delete (in the page list)</td><td>Delete the selected pages</td></tr>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
-<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Group / Ungroup the selected markups</td></tr>
+<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Group / Ungroup the selected markups, or the page's selected lines, shapes and pictures</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
 <tr><td>Left / Right, Page Up / Page Down</td><td>Previous / next page</td></tr>
 <tr><td>Home / End</td><td>First / last page</td></tr>

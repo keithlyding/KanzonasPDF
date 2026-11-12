@@ -83,7 +83,8 @@ de imágenes reconocen su texto una vez insertadas.</li>
 Guardar como PDF/A en Herramientas de documento.) Guardar como un archivo que está abierto en otra
 pestaña reemplaza ese archivo y cierra esa pestaña (y pregunta antes si tiene cambios sin guardar); lo mismo ocurre
 con Extraer páginas, Combinar archivos y las copias que guardan Comprimir, Sello de tiempo y la firma digital,
-salvo que en ese caso la otra pestaña muestra el archivo nuevo. Deshacer es Ctrl+Z; rehacer es Ctrl+Y.
+salvo que en ese caso la otra pestaña muestra el archivo nuevo. Deshacer es Ctrl+Z; rehacer es Ctrl+Y. Lo que
+estaba seleccionado sigue seleccionado al deshacer o rehacer (salvo que el paso lo quite).
 Se conservan hasta 30 pasos. Cada paso guarda solo lo que cambió la edición, así que deshacer y rehacer son rápidos
 y los 30 pasos caben incluso en PDF muy grandes; el historial sigue sin superar un límite de memoria
 (256 MB por documento, 512 MB para todos los documentos abiertos juntos; los pasos más antiguos se descartan primero).</li>
@@ -1013,7 +1014,14 @@ cambian de estilo (Propiedades) y se eliminan juntas, y sus copias también son 
 (Ctrl+Alt+G) las vuelve a separar. Agrupar grupos que ya estaban agrupados entre ellas forma un grupo más grande.
 Alinear y Distribuir mueven un grupo como un solo elemento, así que sus marcas mantienen su lugar en él.
 Es el grupo del estándar PDF (una marca "en respuesta a" la primera, del tipo Grupo), así que Acrobat también las
-mantiene juntas; en otros programas quedan como marcas separadas.</li>
+mantiene juntas; en otros programas quedan como marcas separadas.
+Con líneas, formas e imágenes del propio dibujo de la página seleccionadas (herramienta Editar objetos, o el modo
+CAD), <b>Agrupar</b> las convierte en un grupo de dibujo, del tipo en que los programas CAD exportan los bloques: un
+clic en cualquier parte lo selecciona entero, y se mueve, se copia, se gira y se elimina como un solo objeto;
+Desagrupar lo vuelve a separar y deja sus piezas seleccionadas. Se dibuja donde estaba la última de ellas, así que lo
+que se dibujaba entre ellas queda debajo. El texto de la página no se pone en un grupo, y las marcas y los objetos
+propios de la página no pueden ser un mismo grupo (un PDF los mantiene separados): con eso seleccionado, Agrupar
+queda en gris y su información sobre herramientas dice por qué.</li>
 <li><b>Voltear horizontalmente</b> / <b>Voltear verticalmente</b> (menú Organizar, el grupo Grupo, o el menú del botón
 derecho) reflejan la selección de izquierda a derecha o de arriba abajo por su centro, tal como se ve la página; un
 grupo se voltea como uno solo (cada parte a su lugar reflejado), y los objetos propios de la página seleccionados con
@@ -1136,6 +1144,8 @@ se convierten en esto, y algunos programas exportan un dibujo entero como uno so
 se gira, se elimina y se reordena en la pila como un solo objeto, como en Acrobat y PDF-XChange. Un grupo que
 ocupa toda la página no se selecciona con un clic (eso tomaría la hoja cada vez que hiciera clic en
 papel en blanco): arrastre un cuadro de selección alrededor de la página para seleccionarlo.
+Botón derecho &gt; <b>Agrupar</b> (Ctrl+Shift+G) hace de las líneas, formas, imágenes y grupos seleccionados un
+solo grupo (vea Alinear, distribuir y orden de apilamiento).
 Haga clic con el botón derecho en un grupo &gt; <b>Desagrupar</b> para separarlo: se ve igual, pero sus formas e
 imágenes pasan a ser objetos separados que puede seleccionar uno por uno, y su texto se puede cambiar con
 Editar texto. Un grupo que solo contiene otro grupo (como lo escriben muchos programas) se separa
@@ -2328,7 +2338,7 @@ Desplazamiento automático.</li>
 <tr><td>Ctrl+D</td><td>Duplicar las marcas seleccionadas (con Editar objetos, el texto, las imágenes y las formas seleccionados; las páginas, en la lista de páginas)</td></tr>
 <tr><td>Supr (en la lista de páginas)</td><td>Eliminar las páginas seleccionadas</td></tr>
 <tr><td>Ctrl+L</td><td>Bloquear las marcas seleccionadas</td></tr>
-<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Agrupar / Desagrupar las marcas seleccionadas</td></tr>
+<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Agrupar / Desagrupar las marcas seleccionadas, o las líneas, formas e imágenes de la página seleccionadas</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Al frente / adelante / atrás / al fondo</td></tr>
 <tr><td>Izquierda / Derecha, Re Pág / Av Pág</td><td>Página anterior / siguiente</td></tr>
 <tr><td>Inicio / Fin</td><td>Primera / última página</td></tr>

@@ -1884,6 +1884,7 @@ class PageWidget(QWidget):
         one_pic = len(items) == 1 and items[0]["kind"] == "picture"
         has_text = any(it["kind"] == "text" for it in items)
         menu = QMenu(self)
+        menu.setToolTipsVisible(True)       # (Group grayed says why)
         a = menu.addAction(tr("Copy picture"), self.view.copy_picture)
         a.setEnabled(one_pic)
         a = menu.addAction(tr("Save picture as..."), self.view.save_picture)
@@ -1900,6 +1901,11 @@ class PageWidget(QWidget):
             a.triggered.connect(lambda _=False, w=what: win._clipboard(w))
             a.setEnabled(on)
         menu.addSeparator()
+        why = self.view.group_problem()
+        a = menu.addAction(tr("Group"), self.view.group_selection)
+        a.setEnabled(why is None)
+        if why:
+            a.setToolTip(why)
         a = menu.addAction(tr("Ungroup"), self.view.ungroup_objects)
         a.setEnabled(any(it["kind"] == "group" for it in items))
         menu.addSeparator()

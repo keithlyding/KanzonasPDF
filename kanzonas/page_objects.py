@@ -2417,6 +2417,86 @@ def _expand(doc, page, fx, taken, depth=0):
     return b"\nq " + m + b" cm " + clip + b"\n" + body + b"\nQ\n"
 
 
+def group_problem(objs, items):
+    """Why Edit objects items (of the page's Objects objs) can't be one group, or None when
+    they can: two or more shapes, pictures (not inline ones) and groups, drawn under the same
+    clipping and in the same layer (marked content), as the group placed after the last of
+    them will be. Text can't go in one yet (its lines are written by text_edit, not here)."""
+    if len(items) < 2:
+        return tr("Select two or more objects to group them.")
+    if any(it["kind"] == "text" for it in items):
+        return tr("Text of the page can't be grouped (only its lines, shapes and pictures).")
+    if any(it["kind"] not in ("shape", "picture", "group") or
+           it["kind"] == "picture" and not it.get("xref") for it in items):
+        return tr("Some of the selected objects can't be grouped.")
+    found = objs.found if objs is not None else None
+    if not found or any(it["n"] >= len(found) for it in items):
+        return tr("The object is no longer on the page.")
+    ctx = [found[it["n"]].get("ctx") for it in items]
+    if None in ctx:                     # (entries made some other way: read the stream)
+        ctx = _contexts(objs.data, [found[it["n"]]["start"] for it in items]).values()
+    if len(set(ctx)) != 1:
+        return tr("The selected objects are drawn under different clipping or on different "
+                  "layers: they can't be one group.")
+    return None
+
+
+@_gc_paused
+def group(page, ns):
+    """Make objects ns (shapes, pictures and groups, see group_problem) one group: a Form
+    XObject, as CAD programs export blocks, drawn where the last of them was (objects
+    between them come out under the group), the objects themselves taken off the page.
+    Edit objects and CAD mode select and move it as one object; Ungroup takes it apart again.
+    Returns the group's xref."""
+    doc = page.parent
+    data = _contents(page)
+    found = scan(data)
+    ns = sorted(set(ns))
+    if len(ns) < 2 or ns[-1] >= len(found):
+        raise ValueError(tr("The object is no longer on the page."))
+    forms = {("/" + g[1]).encode(): g[0] for g in page.get_xobjects() if g[2] == 0}
+    _own_resources(page)
+    _add_reset_gs(page)
+    body = [_DEFAULTS] + _standalone(data, found, ns)
+    xs, ys, pad = [], [], 0.0
+    for n in ns:
+        d = found[n]
+        if d.get("path"):
+            x0, y0, x1, y1 = d["box"]
+            corners = [pymupdf.Point(x, y) for x, y in ((x0, y0), (x1, y0), (x0, y1), (x1, y1))]
+            c = d["ctm"]                # (the width is in the object's units, the box isn't)
+            scale = math.sqrt(abs(c.a * c.d - c.b * c.c))
+            pad = max(pad, (d.get("width", 1.0) * 2 + 1) * max(scale, 1.0))
+        elif d.get("name") in forms:
+            box, fm = _form_box(doc, forms[d["name"]])
+            if box is None:
+                raise ValueError(tr("Some of the selected objects can't be grouped."))
+            q = box.quad.transform(fm)
+            corners = [q.ul, q.ur, q.ll, q.lr]
+        else:
+            corners = [pymupdf.Point(x, y) for x, y in ((0, 0), (1, 0), (0, 1), (1, 1))]
+        for p in corners:
+            p = p * d["ctm"]
+            xs.append(p.x)
+            ys.append(p.y)
+    res = _used_resources(doc, page, b"\n".join(body))
+    xref = doc.get_new_xref()
+    doc.update_object(xref, "<</Type/XObject/Subtype/Form/BBox[%g %g %g %g]/Resources %s>>"
+                      % (min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad, res))
+    _put_stream(doc, xref, b"\n".join(body))
+    name = b"KzGroup%d" % xref
+    _set_resource(doc, page.xref, "XObject", name.decode(), "%d 0 R" % xref)
+    last = found[ns[-1]]
+    add = b"\nq\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" % _inv(tuple(last["ctm"])) + \
+        b"/%s Do\nQ\n" % name
+    at = last["end"]
+    _set_contents(page, data[:at] + add + data[at:])
+    # (the group comes right after the last of them: their numbers in the drawing order
+    # are the same, and they go)
+    delete(page, ns)
+    return xref
+
+
 def ungroup(page, ns):
     """Turn the groups (Form XObjects drawn with /Name Do) among objects ns into ordinary page
     content: the "Do" is replaced by the group's own drawing instructions, kept inside its
