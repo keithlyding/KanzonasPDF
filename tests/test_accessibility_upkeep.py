@@ -314,6 +314,27 @@ class Upkeep(unittest.TestCase):
         self.assertEqual(v.doc.xref_get_key(v.doc.page_xref(1), "StructParents"), key)
         self.assertNotEqual(v.doc.xref_get_key(v.doc.page_xref(2), "StructParents"), key)
 
+    def test_a_page_with_a_hidden_markup_duplicated(self):
+        # (a hidden markup isn't tagged, but one hidden after it was keeps its StructParent:
+        # Duplicate pages copied that key, used twice. The original keeps it, the copy drops
+        # it, and is tagged anew once shown again)
+        w, v = self.window(sample(1))
+        v.modify(lambda: v.doc[0].add_rect_annot(pymupdf.Rect(400, 100, 450, 150)), [0])
+        box = next(a.xref for a in v.doc[0].annots() if a.type[1] == "Square")
+        v.modify(lambda: v.doc.xref_set_key(box, "F", "2"), [0])
+        self.in_step(v)
+        key = v.doc.xref_get_key(box, "StructParent")
+        self.assertEqual(key[0], "int")
+
+        self.undoes(v, lambda: v.duplicate_pages([0]))
+
+        copy = next(a.xref for a in v.doc[1].annots() if a.type[1] == "Square")
+        self.assertEqual(v.doc.xref_get_key(box, "StructParent"), key)
+        self.assertNotEqual(v.doc.xref_get_key(copy, "StructParent"), key)
+        v.modify(lambda: v.doc.xref_set_key(copy, "F", "4"), [1])
+        self.in_step(v)
+        self.assertEqual(acc.Tree(v.doc).annot_node(copy).page, 1)
+
     def test_a_group_with_a_reply_moved_to_another_page(self):
         # (to an earlier page: its tags are brought up to date first. Random battery, seed 9, 1.12: a group's member's reply, carried along to the other
         # page as the same object, kept the element naming its old page until that page's

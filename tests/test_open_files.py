@@ -252,6 +252,26 @@ class ReopenInBackgroundTab(Base):
                     self.pump(40)
                     self.assertEqual(self.w.view().current_page(), page)
 
+    def test_a_remembered_page_past_the_end_opens_the_last_page(self):
+        # (the file got shorter since, here or in another program: the page centered was
+        # looked up past the end, and the view opened with an error)
+        a = self.pdf("a.pdf", 3)
+        errors = []
+        mock.patch.object(sys, "excepthook", lambda *e: errors.append(e[1])).start()
+        for mode in ("width", "last", "actual", "page"):
+            with self.subTest(mode=mode):
+                for i in reversed(range(self.w.tabs.count())):
+                    self.w.close_tab(i)
+                self.pump()
+                with mock.patch.object(DocumentView, "open_view", mode), \
+                        mock.patch.object(DocumentView, "reopen_page", True):
+                    self.w.settings.setValue("file_states", json.dumps(
+                        {os.path.normcase(a): {"page": 50, "zoom": 1.5}}))
+                    self.w.open_file(a)
+                    self.pump(40)
+                    self.assertEqual(errors, [])
+                    self.assertEqual(self.w.view().current_page(), 2)
+
 
 class RecoveredCopy(Base):
     def test_recovered_copy_opens_unsaved_and_named_after_its_original(self):
