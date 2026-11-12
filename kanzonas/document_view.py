@@ -633,6 +633,22 @@ def _spans_in(lines, line, d):
     return box, {"bbox": box, "dir": found[0][1], "spans": [s for s, _dir in found]}
 
 
+def _text_kept(texts, item, lines):
+    """The paragraph that is text item (read before an undo or redo) after it: the one with
+    the same lines nearest to where it was (the step moved it back), else the one where it
+    was (the step changed its words)."""
+    def words(t):
+        return [text_edit.line_text(ln) for _r, ln in t.get("lines") or []]
+    r = pymupdf.Rect(item["rect"])
+    at = _text_at(texts, r)
+    if at is not None and words(at) == lines:
+        return at
+    same = [t for t in texts if words(t) == lines]
+    if same:
+        return min(same, key=lambda t: abs(t["rect"].x0 - r.x0) + abs(t["rect"].y0 - r.y0))
+    return at
+
+
 def _text_at(texts, r):
     """The text object (Edit objects) that is the paragraph expected at rect r after an edit:
     the one starting at its corner, else the one covering most of it. Written again, a line's
@@ -2762,6 +2778,7 @@ class DocumentView(QScrollArea):
         self._prune_history()
         if not source:
             return
+        kept = self._selection_kept()
         back = self._undo_step(source.pop(), way)
         if back is None:
             # (its entries in the journal are gone: it, and what's before it, can't be
@@ -2773,10 +2790,67 @@ class DocumentView(QScrollArea):
         self._measure_journal()
         self._trim_history()
         self._warm_tags()
+        self._select_kept(kept)
         # (the view told of the change while the step was between the two lists: Redo
         # stayed grayed out after an undo, and Ctrl+Y did nothing. Found by
         # tests/battery_random.py)
         self.historyChanged.emit()
+
+    def _selection_kept(self):
+        """What's selected before an undo or redo, to select again after it (the owner,
+        12 Nov: undo and redo unselected whatever was selected): the markups by xref, the
+        drawing's own objects as they were read (and how many the page had)."""
+        marks = (self.selection[0], self.selected_xrefs()) if self.selection else None
+        objs = None
+        if self.obj_sel is not None:
+            index, items = self.obj_sel
+            have = self._obj_cache.get(index)
+            count = len(have.items) if have is not None and have.items is not None else None
+            lines = [[text_edit.line_text(ln) for _r, ln in it.get("lines") or []]
+                     if it["kind"] == "text" else None for it in items]
+            objs = (index, list(items), count, lines)
+        return marks, objs
+
+    def _select_kept(self, kept):
+        """Select again, after an undo or redo, what _selection_kept took that is still there:
+        markups by xref (one the step took away stays unselected); shapes and pictures by
+        their place in the drawing order and their box (a step that moved one back: its
+        place; one that changed the order, Bring to front taken back: its box); text by its
+        lines, near where it was."""
+        marks, objs = kept
+        n = self.doc.page_count
+        if marks is not None and 0 <= marks[0] < n:
+            self._set_selection(*marks)
+        if objs is not None and 0 <= objs[0] < n:
+            index, items, count, lines = objs
+            now = self.content_objects(index)
+            now = list(now.items) if now is not None and now.items is not None else []
+            by_n = {o["n"]: o for o in now}
+
+            def same_box(a, b):
+                return all(abs(p - q) < 0.5 for p, q in zip(a["rect"], b["rect"]))
+            texts = None
+            again = []
+            for it, want in zip(items, lines):
+                if it["kind"] == "text":
+                    if texts is None:
+                        texts = self.text_objects(index)
+                    found = _text_kept(texts, it, want)
+                else:
+                    o = by_n.get(it["n"])
+                    found = o if o is not None and o["kind"] == it["kind"] and \
+                        same_box(o, it) else None
+                    if found is None:
+                        found = next((o for o in now if o["kind"] == it["kind"] and
+                                      same_box(o, it)), None)
+                    if found is None and count == len(now) and o is not None and \
+                            o["kind"] == it["kind"]:
+                        found = o
+                if found is not None and all(found is not x for x in again):
+                    again.append(found)
+            if again:
+                self.select_objects(index, again)
+        self.selectionChanged.emit()
 
     # every change bumps the revision, so autosave can tell whether anything changed since
     # its last backup
@@ -4095,7 +4169,9 @@ class DocumentView(QScrollArea):
         made = {}
 
         def do():
-            made["xref"] = annotations.write(self.doc[index], model).xref
+            page = self.doc[index]
+            # a text box or callout as tall as its text (issue #90)
+            made["xref"] = annotations.write(page, annotations.fitted(page, model)).xref
             self._on_markup_layer([made["xref"]])
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if "xref" in made and not DocumentView.reuse_tools:
@@ -5501,17 +5577,49 @@ class DocumentView(QScrollArea):
 
     # ---- Arrange > Group / Ungroup, Flip (1.12) --------------------------------------------
     def can_group(self):
-        """Two or more markups selected that aren't already one group."""
-        if self.selection is None or self.read_only:
-            return False
-        xrefs = self.selected_xrefs()
-        if len(xrefs) < 2:
-            return False
-        t = self.threads(self.selection[0])
-        return len({t.group_primary(x) for x in xrefs}) > 1
+        """Two or more markups selected that aren't already one group, or two or more of the
+        drawing's own shapes, pictures and groups that can be one (group_problem)."""
+        return self.group_problem() is None
+
+    def group_problem(self):
+        """Why Group can't group what's selected (shown as its tooltip; "" when there's
+        nothing to say: nothing selected, the file read only), or None when it can. A PDF
+        keeps markups and the page's own drawing apart: the two together can't be one group
+        (the owner chose that, 12 Nov: Group stays grayed for a mix, saying why)."""
+        if self.read_only:
+            return ""
+        objs = self.obj_sel[1] if self.obj_sel is not None else []
+        if self.selection is not None and objs:
+            return tr("Markups and the page's own objects can't be one group: group the "
+                      "markups, or the page's objects, on their own.")
+        if self.selection is not None:
+            xrefs = self.selected_xrefs()
+            if len(xrefs) < 2:
+                return tr("Select two or more markups to group them.")
+            t = self.threads(self.selection[0])
+            if len({t.group_primary(x) for x in xrefs}) <= 1:
+                return tr("The selected markups are already one group.")
+            return None
+        if not objs:
+            return ""
+        index = self.obj_sel[0]
+        key = (getattr(self, "_gen", 0), id(self.doc), index,
+               tuple((it["kind"], it["n"]) for it in objs))
+        cached = getattr(self, "_group_problem", None)
+        if cached is None or cached[0] != key:
+            from . import page_objects
+            have = self._obj_cache.get(index)
+            if have is None and any(it["kind"] != "text" for it in objs):
+                have = self.content_objects(index)
+            cached = self._group_problem = (key, page_objects.group_problem(have, objs))
+        return cached[1]
 
     def can_ungroup(self):
-        if self.selection is None or self.read_only:
+        if self.read_only:
+            return False
+        if self.obj_sel is not None and self.selection is None:
+            return any(it["kind"] == "group" for it in self.obj_sel[1])
+        if self.selection is None:
             return False
         t = self.threads(self.selection[0])
         return any(x in t.groups or len(t.group(x)) > 1 for x in self.selected_xrefs())
@@ -5522,6 +5630,8 @@ class DocumentView(QScrollArea):
         reads as a group too). One undo step."""
         if not self.can_group():
             return False
+        if self.selection is None:
+            return self.group_objects()
         index, xrefs = self.selection[0], self.selected_xrefs()
         primary = xrefs[0]
 
@@ -5536,6 +5646,9 @@ class DocumentView(QScrollArea):
     def ungroup_selection(self):
         if not self.can_ungroup():
             return False
+        if self.selection is None:
+            self.ungroup_objects()
+            return True
         index, xrefs = self.selection[0], self.selected_xrefs()
 
         def do():
@@ -5545,6 +5658,35 @@ class DocumentView(QScrollArea):
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         self._set_selection(index, xrefs)           # (still selected, each on its own now)
         self.statusMessage.emit(tr("Ungrouped"))
+        return True
+
+    def group_objects(self):
+        """Group the selected shapes, pictures, groups and text of the page's own drawing into
+        one group (a Form XObject: page_objects.group; the text written again inside it),
+        selected afterwards. One undo step."""
+        from . import page_objects
+        index, items = self.obj_sel
+        ns = [it["n"] for it in items if it["kind"] != "text"]
+        lines = [ln for it in items if it["kind"] == "text" for _r, ln in it["lines"]]
+        made = {}
+
+        def do():
+            made["xref"], used = page_objects.group(self.doc[index], ns, lines)
+            if any(u.startswith("KZ") for u in used):
+                self._fonts_added = True
+        self.obj_sel = None
+        if not self.modify(do, [index]) or "xref" not in made:
+            self._reselect_objects(index, items)
+            return False
+        self._obj_cache.pop(index, None)
+        objs = self.content_objects(index)
+        mine = [it for it in (objs.items if objs else [])
+                if it["kind"] == "group" and it.get("xref") == made["xref"]]
+        self.select_objects(index, mine)
+        self.pages[index].update()
+        self.selectionChanged.emit()
+        self.statusMessage.emit(tr("{n} objects grouped (Ctrl+Z undoes it)").format(
+            n=len(items)))
         return True
 
     def flip_selection(self, horizontal=True):
@@ -5985,8 +6127,36 @@ class DocumentView(QScrollArea):
                 m["detail"] = None              # redrawn with / without name and date
             if "rotation" in changed and "rotation" in m["props"]:
                 m = annotations.rotated(m, changed["rotation"])
+            if annotations.fits_text(m) and (set(keys) & {"fit", "fontsize", "font", "width",
+                                                          "stroke"} or "rotation" in changed):
+                m = annotations.fitted(self.doc[self.selection[0]], m)      # (issue #90)
             out.append((x, m))
         self.commit_models(self.selection[0], out)
+
+    def can_fit_to_text(self):
+        return not self.read_only and any(
+            m["kind"] in annotations.FIT_KINDS for _x, m in self.selected_models())
+
+    def fit_selected_to_text(self):
+        """Right-click > Fit to text (issue #90): the selected text boxes and callouts made as
+        tall as their text at their width, and from then on following it. One undo step."""
+        if self.selection is None or self.read_only:
+            return False
+        index = self.selection[0]
+        page = self.doc[index]
+        out = []
+        for x, m in self.selected_models():
+            if m["kind"] not in annotations.FIT_KINDS:
+                continue
+            m = annotations.copy(m)
+            m["props"]["fit"] = True
+            out.append((x, annotations.fitted(page, m)))
+        del page
+        if not out:
+            return False
+        self.commit_models(index, out)
+        self.statusMessage.emit(tr("Fitted to the text (Ctrl+Z undoes it)"))
+        return True
 
     NUDGE = {"": 1.0, "shift": 10.0, "ctrl": 0.1}     # points per arrow-key press
 
@@ -6336,7 +6506,7 @@ class DocumentView(QScrollArea):
         if not ok or text == model.get("text", ""):
             return
         model["text"] = text
-        self.commit_model(index, xref, model)
+        self.commit_model(index, xref, annotations.fitted(page, model))   # (issue #90)
 
     def edit_annot_at(self, index, pt):
         xref = self.annot_at(index, pt)
@@ -7373,9 +7543,45 @@ class DocumentView(QScrollArea):
         hits = [it for it in (texts[i] for i in near.near(pt.x, pt.y, pad))
                 if (it["rect"] + (-pad, -pad, pad, pad)).contains(pt)]
         if hits:
-            return min(hits, key=lambda it: it["rect"].get_area())
+            t = min(hits, key=lambda it: it["rect"].get_area())
+            return self._group_holding(index, t) or t
         objs = self.content_objects(index)
         return objs.at(pt, 4 / self.zoom) if objs is not None else None
+
+    def _group_holding(self, index, text):
+        """The drawing group (Form XObject) Edit objects text item text lies in, or None: the
+        smallest group around it, but one filling the page. The page's text reads the same
+        inside a group as outside it, so the text in a group (Arrange > Group with text, a
+        label in a CAD block, a flattened stamp's words) is picked with its group, as one
+        object, not on its own (the owner, 12 Nov: text grouped with lines)."""
+        key = (getattr(self, "_gen", 0), id(self.doc), index)
+        cached = getattr(self, "_group_boxes", None)
+        if cached is None or cached[0] != key:
+            objs = self.content_objects(index)
+            groups = [it for it in (objs.items if objs is not None and objs.items else [])
+                      if it["kind"] == "group" and not it.get("whole")]
+            cached = self._group_boxes = (key, groups)
+        r = pymupdf.Rect(text["rect"])
+        best = None
+        for g in cached[1]:
+            if (g["rect"] + (-1, -1, 1, 1)).contains(r) and (
+                    best is None or g["rect"].get_area() < best["rect"].get_area()):
+                best = g
+        return best
+
+    def _with_groups(self, index, found, texts):
+        """found (objects) and texts, each text lying in a group replaced by that group (once;
+        see _group_holding)."""
+        out = list(found)
+        have = {it["n"] for it in out}
+        for t in texts:
+            g = self._group_holding(index, t)
+            if g is None:
+                out.append(t)
+            elif g["n"] not in have:
+                out.append(g)
+                have.add(g["n"])
+        return out
 
     def objects_in(self, index, box):
         """What a selection box takes: the pictures and shapes inside it, or, when it holds
@@ -7384,7 +7590,8 @@ class DocumentView(QScrollArea):
         objs = self.content_objects(index)
         box = pymupdf.Rect(box)
         found = objs.inside(box) if objs is not None else []
-        return found or [it for it in self.text_objects(index) if box.contains(it["rect"])]
+        return found or self._with_groups(
+            index, [], [it for it in self.text_objects(index) if box.contains(it["rect"])])
 
     def cad_objects(self, index, region, crossing=False):
         """What a CAD selection region (page_objects.Box or Lasso) takes with Edit objects, as
@@ -7400,7 +7607,7 @@ class DocumentView(QScrollArea):
             if region.contains_rect(it["rect"]) or crossing and any(
                     region.touches_rect(r) for r, _ln in it["lines"]):
                 texts.append(it)
-        return found + texts
+        return self._with_groups(index, found, texts)
 
     # ---- CAD mode: the page made ready while nothing happens -------------------------------
     PREP_WAIT = 600             # ms without a new reason before preparing starts
@@ -8625,9 +8832,30 @@ class DocumentView(QScrollArea):
         from . import page_objects
         if self.obj_sel is None or not any(it["kind"] == "group" for it in self.obj_sel[1]):
             return
-        groups = [it for it in self.obj_sel[1] if it["kind"] == "group"]
-        self.obj_sel = (self.obj_sel[0], groups)
+        index = self.obj_sel[0]
+        groups = sorted((it for it in self.obj_sel[1] if it["kind"] == "group"),
+                        key=lambda it: it["n"])
+        # each group's pieces take its place in the drawing order: selected afterwards, as
+        # Ungroup leaves a group of markups selected
+        sizes = []
+        for g in groups:
+            try:
+                sizes.append(len(page_objects.scan(self.doc.xref_stream(g["xref"]) or b"")))
+            except Exception:
+                sizes.append(None)
+        before = self.content_objects(index)
+        before = len(before.items) if before is not None and before.items is not None else None
+        self.obj_sel = (index, groups)
         self._objects_edit(tr("Ungrouped"), page_objects.ungroup, keep=False)
+        objs = self.content_objects(index)
+        now = list(objs.items) if objs is not None and objs.items is not None else []
+        if None in sizes or before is None or len(now) != before + sum(sizes) - len(groups):
+            return                      # (not as expected: nothing selected)
+        wanted, shift = set(), 0
+        for g, k in zip(groups, sizes):
+            wanted.update(range(g["n"] + shift, g["n"] + shift + k))
+            shift += k - 1
+        self.select_objects(index, [it for it in now if it["n"] in wanted])
 
     def copy_picture(self):
         """Copy the one selected picture (Ctrl+V pastes it as an image markup)."""

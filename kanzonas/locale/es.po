@@ -11163,11 +11163,11 @@ msgstr "Voltear &horizontalmente"
 msgid "Flip &vertically"
 msgstr "Voltear &verticalmente"
 
-msgid "Group the selected markups: a click on one selects them all, to move, copy, style or delete them together (Ctrl+Shift+G)"
-msgstr "Agrupar las marcas seleccionadas: un clic en una las selecciona todas, para moverlas, copiarlas, cambiar su estilo o eliminarlas juntas (Ctrl+Shift+G)"
+msgid "Group the selected markups, or the selected lines, shapes, pictures and text of the page: a click on one selects them all, to move, copy or delete them together (Ctrl+Shift+G)"
+msgstr "Agrupar las marcas seleccionadas, o las líneas, formas, imágenes y texto seleccionados de la página: un clic en una las selecciona todas, para moverlas, copiarlas o eliminarlas juntas (Ctrl+Shift+G)"
 
-msgid "Ungroup the selected group: its markups are on their own again (Ctrl+Alt+G)"
-msgstr "Desagrupar el grupo seleccionado: sus marcas vuelven a ser independientes (Ctrl+Alt+G)"
+msgid "Ungroup the selected group: its markups, or its lines, shapes and pictures, are on their own again (Ctrl+Alt+G)"
+msgstr "Desagrupar el grupo seleccionado: sus marcas, o sus líneas, formas e imágenes, vuelven a ser independientes (Ctrl+Alt+G)"
 
 msgid "Mirror the selection left for right, across its middle (a group as one)"
 msgstr "Reflejar la selección de izquierda a derecha, por su centro (un grupo como uno solo)"
@@ -11330,3 +11330,39 @@ msgstr "El primer plano del conjunto"
 
 msgid "The page's own text can't go past the edge of the page, nor its pictures and shapes off it altogether (markups can)."
 msgstr "El texto propio de la página no puede pasar del borde de la página, ni sus imágenes y formas salir del todo de ella (las marcas sí)."
+
+msgid "Select two or more objects to group them."
+msgstr "Seleccione dos o más objetos para agruparlos."
+
+msgid "The text couldn't be put in a group."
+msgstr "No se pudo poner el texto en un grupo."
+
+msgid "Some of the selected objects can't be grouped."
+msgstr "Algunos de los objetos seleccionados no se pueden agrupar."
+
+msgid "The selected objects are drawn under different clipping or on different layers: they can't be one group."
+msgstr "Los objetos seleccionados se dibujan con recortes distintos o en capas distintas: no pueden ser un mismo grupo."
+
+msgid "Markups and the page's own objects can't be one group: group the markups, or the page's objects, on their own."
+msgstr "Las marcas y los objetos propios de la página no pueden ser un mismo grupo: agrupe las marcas, o los objetos de la página, por separado."
+
+msgid "Select two or more markups to group them."
+msgstr "Seleccione dos o más marcas para agruparlas."
+
+msgid "The selected markups are already one group."
+msgstr "Las marcas seleccionadas ya son un grupo."
+
+msgid "{n} objects grouped (Ctrl+Z undoes it)"
+msgstr "{n} objetos agrupados (Ctrl+Z lo deshace)"
+
+msgid "Fit the box to its text"
+msgstr "Ajustar el cuadro a su texto"
+
+msgid "The box grows or shrinks to its text as you type or change the font size; its width stays, and the text wraps in it. Changing its height by hand turns this off."
+msgstr "El cuadro crece o se encoge con su texto al escribir o cambiar el tamaño de fuente; su ancho se mantiene y el texto se ajusta dentro. Cambiar su altura a mano lo desactiva."
+
+msgid "Fit to text"
+msgstr "Ajustar al texto"
+
+msgid "Fitted to the text (Ctrl+Z undoes it)"
+msgstr "Ajustado al texto (Ctrl+Z lo deshace)"

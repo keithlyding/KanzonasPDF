@@ -762,6 +762,8 @@ class Battery:
             # (1.12) groups and Flip, markups on layers, spaces
             (self.op_group, 3), (self.op_flip, 2), (self.op_markup_layer, 3),
             (self.op_space, 2), (self.op_text_nudge, 3), (self.op_cad_drag, 3),
+            # (12 Nov) Group / Ungroup of the page's own drawing
+            (self.op_group_objects, 3),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1467,6 +1469,34 @@ class Battery:
             v.delete_objects()
         v.clear_object_selection()
         self.check_letters(i, others)
+
+    def op_group_objects(self):
+        """Arrange > Group / Ungroup on the page's own lines, shapes, pictures and groups
+        (page_objects.group: one Form XObject), the page's text left as it was."""
+        v = self.v
+        i = self.page()
+        objs = v.content_objects(i)
+        pool = [it for it in (objs.items if objs else [])
+                if it["kind"] in ("shape", "picture", "group")]
+        if not pool:
+            return "none"
+        v.clear_selection()
+        v.clear_object_selection()
+        groups = [it for it in pool if it["kind"] == "group"]
+        if groups and self.rnd.random() < 0.4:
+            pick = self.rnd.sample(groups, self.rnd.randint(1, min(2, len(groups))))
+        else:
+            pick = self.rnd.sample(pool, self.rnd.randint(min(2, len(pool)), min(4, len(pool))))
+        v.select_objects(i, pick)
+        others = self.other_letters(i, [])
+        rev = v.revision
+        if v.can_group() and (not v.can_ungroup() or self.rnd.random() < 0.6):
+            v.group_selection()
+        elif v.can_ungroup():
+            v.ungroup_selection()
+        v.clear_object_selection()
+        self.check_letters(i, others)
+        return "edit" if v.revision != rev else "none"
 
     def op_cad_drag(self):
         """CAD mode's drag of a selection (1.12.1): some of a page's own objects and text with

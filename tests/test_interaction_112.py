@@ -107,7 +107,9 @@ class Snapping(Window):
         # (a small move isn't held back by the objects' own points where they were)
         v.undo()
         pump()
-        self.drag(pw, self.at(P(100, 375)), self.at(P(102, 377)))
+        # (the rectangle is still selected after the undo, 12 Nov: the press is on its
+        # edge away from the middle grip, which would resize it)
+        self.drag(pw, self.at(P(100, 340)), self.at(P(102, 342)))
         corners = sorted((round(d["rect"].x0, 1), round(d["rect"].y0, 1))
                          for d in v.doc[0].get_drawings())
         self.assertEqual(corners, [(100.0, 100.0), (102.0, 302.0)])

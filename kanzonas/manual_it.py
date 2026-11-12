@@ -80,7 +80,8 @@ ricordata): sulle pagine create dalle immagini il testo viene riconosciuto una v
 in Strumenti per i documenti.) Se salvi con il nome di un file aperto in un'altra
 scheda, quel file viene sostituito e quella scheda si chiude (chiedendo prima se ha modifiche non salvate); lo stesso vale
 per Estrai pagine, Combina file e le copie salvate da Comprimi, Marca temporale e firma digitale,
-tranne che in questo caso l'altra scheda mostra il nuovo file. Annulla è Ctrl+Z, Ripeti è Ctrl+Y.
+tranne che in questo caso l'altra scheda mostra il nuovo file. Annulla è Ctrl+Z, Ripeti è Ctrl+Y. Ciò che
+era selezionato resta selezionato dopo Annulla o Ripeti (a meno che il passo non lo tolga).
 Vengono conservati fino a 30 passaggi. Ogni passaggio conserva solo ciò che la modifica ha cambiato, quindi annullare e ripetere è rapido
 e tutti i 30 passaggi entrano anche in PDF molto grandi; la cronologia resta comunque entro un limite di memoria
 (256 MB per documento, 512 MB per tutti i documenti aperti insieme; i passaggi più vecchi vengono eliminati per primi).</li>
@@ -778,6 +779,13 @@ appiattita. Il suo carattere può essere Helvetica, Times o Courier (Proprietà 
 ogni visualizzatore PDF possiede, quindi il commento appare uguale ovunque. Per scrivere testo che fa parte
 della pagina, usa <b>Aggiungi testo</b> (più avanti).</li>
 <li><b>Richiamo</b> (K): premi sul punto che vuoi indicare e trascina fino a dove va il testo.</li>
+<li><b>Le caselle di testo e i richiami si adattano al testo:</b> il riquadro mantiene la larghezza ed è alto
+quanto il suo testo, che va a capo al suo interno, quando lo crei, quando cambi il testo o la dimensione del
+carattere e quando trascini un suo lato per allargarlo o restringerlo. Trascina il bordo superiore o inferiore
+(o un angolo) per dargli un'altezza tua: da quel momento mantiene quel riquadro. <b>Adatta al testo</b> (clic
+destro) lo rende di nuovo alto quanto il suo testo, e fa sì che uno creato prima di questa versione, o con un
+altro programma, segua il suo testo da allora in poi. È la casella <b>Adatta il riquadro al testo</b> in
+Proprietà, parte dello stile dello strumento (Imposta come predefinito la conserva), attiva all'inizio.</li>
 <li><b>Nome dell'autore:</b> Modifica &gt; Nome dell'autore delle annotazioni. Viene registrato sulle tue annotazioni e
 stampato sui timbri.</li>
 <li><b>Controllo ortografico</b> (menu Modifica, attivo all'inizio): mentre scrivi un commento, una casella di testo, un
@@ -1013,7 +1021,17 @@ spostano, si copiano, cambiano stile (Proprietà) e si eliminano insieme, e anch
 gruppo più grande. Allinea e Distribuisci spostano un gruppo come un solo elemento, così le sue annotazioni
 mantengono il loro posto al suo interno. È il gruppo dello standard PDF (un'annotazione "in risposta" alla
 prima, di tipo Group), quindi anche Acrobat le tiene insieme; in altri programmi restano annotazioni
-separate.</li>
+separate.
+Con linee, forme, immagini e testo del disegno della pagina selezionati (strumento Modifica oggetti, o la
+modalità CAD), <b>Raggruppa</b> ne fa un unico gruppo di disegno, il tipo in cui i programmi CAD esportano i
+blocchi: un clic su un punto qualsiasi, anche sul suo testo, lo seleziona tutto, e si sposta, si copia e si
+elimina come un unico oggetto; Separa lo scompone di nuovo e lascia selezionati i suoi pezzi. Viene disegnato
+dove si trovava l'ultimo di essi, quindi ciò che era disegnato tra di loro finisce sotto. Il suo testo viene
+riscritto al suo interno con il suo carattere, la sua dimensione e il suo colore, come quando si sposta il
+testo; si può ancora cercare e copiare. Modifica testo lo cambia ancora, ma una riga cambiata così esce dal
+gruppo (raggruppala di nuovo, oppure prima Separa e poi Raggruppa). Le annotazioni e gli oggetti propri della
+pagina non possono formare un unico gruppo (un PDF li tiene separati): se selezioni entrambi, Raggruppa è
+disattivato e il suo suggerimento spiega perché.</li>
 <li><b>Rifletti orizzontalmente</b> / <b>Rifletti verticalmente</b> (menu Disponi, il gruppo Gruppo o il
 menu del clic destro) specchiano la selezione da sinistra a destra o dall'alto in basso attorno al suo centro,
 come viene mostrata la pagina; un gruppo si riflette come un tutt'uno (ogni parte al suo posto speculare), e
@@ -1133,6 +1151,9 @@ diventano gruppi di questo tipo, e alcuni programmi esportano un intero disegno 
 ruotato, eliminato e riordinato come un unico oggetto, come in Acrobat e PDF-XChange. Un gruppo che
 riempie l'intera pagina non viene preso con un clic (afferrerebbe la tavola ogni volta che fai clic
 sulla carta vuota): trascina un riquadro di selezione attorno alla pagina per selezionarlo.
+Clic destro &gt; <b>Raggruppa</b> (Ctrl+Shift+G) fa delle linee, forme, immagini, testo e gruppi selezionati
+un unico gruppo (vedi Allineamento, distribuzione e ordine di sovrapposizione). Un clic sul testo di un gruppo
+seleziona il gruppo.
 Fai clic con il tasto destro su un gruppo &gt; <b>Separa</b> per scomporlo: appare uguale, ma le sue forme e
 immagini diventano oggetti separati che puoi selezionare uno per uno, e il suo testo si può cambiare con
 Modifica testo. Un gruppo che contiene solo un altro gruppo (come li scrivono molti programmi) viene scomposto
@@ -2307,7 +2328,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>Ctrl+D</td><td>Duplica le annotazioni selezionate (con Modifica oggetti, il testo, le immagini e le forme selezionati; le pagine, nell'elenco delle pagine)</td></tr>
 <tr><td>Canc (nell'elenco delle pagine)</td><td>Elimina le pagine selezionate</td></tr>
 <tr><td>Ctrl+L</td><td>Blocca le annotazioni selezionate</td></tr>
-<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Raggruppa / Separa le annotazioni selezionate</td></tr>
+<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Raggruppa / Separa le annotazioni selezionate, oppure le linee, forme e immagini della pagina selezionate</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Porta in primo piano / Porta avanti / Porta indietro / Porta in fondo</td></tr>
 <tr><td>Left / Right, Page Up / Page Down</td><td>Pagina precedente / successiva</td></tr>
 <tr><td>Home / End</td><td>Prima / ultima pagina</td></tr>

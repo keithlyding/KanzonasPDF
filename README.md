@@ -330,6 +330,15 @@ to `false` (Settings > Secrets and variables > Actions > Variables) to turn rele
 
 ## Credits
 
+**Thanks to the people who help:**
+- [@fexxdev](https://github.com/fexxdev): the Italian translation (1.13), the fixes in 1.12.2,
+  and the Dot markup (coming).
+- [@hamishpoole-hill-ctrl](https://github.com/hamishpoole-hill-ctrl): the first outside tester;
+  working space around the page, grouping and layers came from those suggestions (issue #82, in 1.11
+  and 1.12).
+- [@hellensvard](https://github.com/hellensvard): text boxes and callouts that fit their text
+  (issue #90, in 1.13.1).
+
 App icon: the owner's artwork in `assets/` (after changing it, run `python tools_make_assets.py`).
 Logo: every Kanzonas logo comes from [Kanzonas-Site](https://github.com/keithlyding/Kanzonas-Site)
 (`brand/`), the single source of truth; bring a new one in with `python tools/update_logo.py

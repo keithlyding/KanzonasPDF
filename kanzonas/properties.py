@@ -164,6 +164,11 @@ class PropertiesPanel(QWidget):
         self.show_totals.setToolTip(tr("Total length, area or volume of each kind of "
                                        "measurement, in the page's units"))
         self.border = QCheckBox(tr("Border"))
+        # (issue #90) a text box's or callout's height follows its text
+        self.fit = QCheckBox(tr("Fit the box to its text"))
+        self.fit.setToolTip(tr("The box grows or shrinks to its text as you type or change "
+                               "the font size; its width stays, and the text wraps in it. "
+                               "Changing its height by hand turns this off."))
 
         self.rows = {}
         for key, label, w in (("title", tr("Title"), self.title_edit),
@@ -171,6 +176,7 @@ class PropertiesPanel(QWidget):
                               ("count", "", self.show_count),
                               ("totals", "", self.show_totals),
                               ("border", "", self.border),
+                              ("fit", "", self.fit),
                               ("label", tr("Stamp"), label_row),
                               ("name", "", self.name),
                               ("date", "", self.date),
@@ -225,6 +231,7 @@ class PropertiesPanel(QWidget):
         self.show_count.toggled.connect(self._emit)
         self.show_totals.toggled.connect(self._emit)
         self.border.toggled.connect(self._emit)
+        self.fit.toggled.connect(self._emit)
         self.show_target(None, None)
 
     def show_target(self, kind, props, selected=False):
@@ -325,6 +332,8 @@ class PropertiesPanel(QWidget):
             self.show_totals.setChecked(bool(props["totals"]))
         if "border" in props:
             self.border.setChecked(bool(props["border"]))
+        if "fit" in props:
+            self.fit.setChecked(bool(props["fit"]))
         if "font" in props:
             self._fill_fonts(kind, props.get("font") or "")
             page_text = kind != "textbox"           # comments can't use bold / italic fonts
@@ -446,6 +455,8 @@ class PropertiesPanel(QWidget):
             p["totals"] = self.show_totals.isChecked()
         if "border" in p:
             p["border"] = self.border.isChecked()
+        if "fit" in p:
+            p["fit"] = self.fit.isChecked()
         if "rotation" in p:
             v = self.rotation.value()
             if self._kind in A.QUARTER_TURNS:

@@ -11203,12 +11203,12 @@ msgid "Rulers along the top and left of the page, in inches, millimeters or poin
 msgstr "Righelli lungo il bordo superiore e sinistro della pagina, in pollici, millimetri o punti (clic destro su uno per cambiarli) (Ctrl+R)"
 
 #: kanzonas/main_window.py:1335
-msgid "Group the selected markups: a click on one selects them all, to move, copy, style or delete them together (Ctrl+Shift+G)"
-msgstr "Raggruppa le annotazioni selezionate: un clic su una le seleziona tutte, per spostarle, copiarle, cambiarne lo stile o eliminarle insieme (Ctrl+Shift+G)"
+msgid "Group the selected markups, or the selected lines, shapes, pictures and text of the page: a click on one selects them all, to move, copy or delete them together (Ctrl+Shift+G)"
+msgstr "Raggruppa le annotazioni selezionate, oppure le linee, le forme, le immagini e il testo della pagina selezionati: un clic su uno li seleziona tutti, per spostarli, copiarli o eliminarli insieme (Ctrl+Shift+G)"
 
 #: kanzonas/main_window.py:1340
-msgid "Ungroup the selected group: its markups are on their own again (Ctrl+Alt+G)"
-msgstr "Separa il gruppo selezionato: le sue annotazioni tornano indipendenti (Ctrl+Alt+G)"
+msgid "Ungroup the selected group: its markups, or its lines, shapes and pictures, are on their own again (Ctrl+Alt+G)"
+msgstr "Separa il gruppo selezionato: le sue annotazioni, oppure le sue linee, forme e immagini, tornano indipendenti (Ctrl+Alt+G)"
 
 #: kanzonas/main_window.py:1344
 msgid "Mirror the selection left for right, across its middle (a group as one)"
@@ -11394,3 +11394,39 @@ msgstr "Chiudi la vista divisa (F10)"
 #: kanzonas/split_view.py:149
 msgid "The document in front"
 msgstr "Il documento in primo piano"
+
+msgid "Select two or more objects to group them."
+msgstr "Seleziona due o più oggetti per raggrupparli."
+
+msgid "Some of the selected objects can't be grouped."
+msgstr "Alcuni degli oggetti selezionati non si possono raggruppare."
+
+msgid "The selected objects are drawn under different clipping or on different layers: they can't be one group."
+msgstr "Gli oggetti selezionati sono disegnati con ritagli diversi o su livelli diversi: non possono formare un unico gruppo."
+
+msgid "Markups and the page's own objects can't be one group: group the markups, or the page's objects, on their own."
+msgstr "Le annotazioni e gli oggetti propri della pagina non possono formare un unico gruppo: raggruppa le annotazioni, oppure gli oggetti della pagina, separatamente."
+
+msgid "Select two or more markups to group them."
+msgstr "Seleziona due o più annotazioni per raggrupparle."
+
+msgid "The selected markups are already one group."
+msgstr "Le annotazioni selezionate sono già un unico gruppo."
+
+msgid "{n} objects grouped (Ctrl+Z undoes it)"
+msgstr "{n} oggetti raggruppati (Ctrl+Z annulla)"
+
+msgid "The text couldn't be put in a group."
+msgstr "Non è stato possibile mettere il testo in un gruppo."
+
+msgid "Fit the box to its text"
+msgstr "Adatta il riquadro al testo"
+
+msgid "The box grows or shrinks to its text as you type or change the font size; its width stays, and the text wraps in it. Changing its height by hand turns this off."
+msgstr "Il riquadro si allarga o si riduce con il testo mentre scrivi o cambi la dimensione del carattere; la larghezza resta e il testo va a capo al suo interno. Cambiare l'altezza a mano disattiva questa opzione."
+
+msgid "Fit to text"
+msgstr "Adatta al testo"
+
+msgid "Fitted to the text (Ctrl+Z undoes it)"
+msgstr "Adattato al testo (Ctrl+Z annulla)"
