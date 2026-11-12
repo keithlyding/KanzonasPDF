@@ -2419,46 +2419,90 @@ def _expand(doc, page, fx, taken, depth=0):
 
 def group_problem(objs, items):
     """Why Edit objects items (of the page's Objects objs) can't be one group, or None when
-    they can: two or more shapes, pictures (not inline ones) and groups, drawn under the same
-    clipping and in the same layer (marked content), as the group placed after the last of
-    them will be. Text can't go in one yet (its lines are written by text_edit, not here)."""
+    they can: two or more shapes, pictures (not inline ones), groups and paragraphs of text,
+    the shapes, pictures and groups drawn under the same clipping and in the same layer
+    (marked content), as the group placed after the last of them will be. (Text is written
+    again, as a move does: text_edit.)"""
     if len(items) < 2:
         return tr("Select two or more objects to group them.")
-    if any(it["kind"] == "text" for it in items):
-        return tr("Text of the page can't be grouped (only its lines, shapes and pictures).")
+    drawn = [it for it in items if it["kind"] != "text"]
     if any(it["kind"] not in ("shape", "picture", "group") or
-           it["kind"] == "picture" and not it.get("xref") for it in items):
+           it["kind"] == "picture" and not it.get("xref") for it in drawn):
         return tr("Some of the selected objects can't be grouped.")
+    if not drawn:
+        return None
     found = objs.found if objs is not None else None
-    if not found or any(it["n"] >= len(found) for it in items):
+    if not found or any(it["n"] >= len(found) for it in drawn):
         return tr("The object is no longer on the page.")
-    ctx = [found[it["n"]].get("ctx") for it in items]
+    ctx = [found[it["n"]].get("ctx") for it in drawn]
     if None in ctx:                     # (entries made some other way: read the stream)
-        ctx = _contexts(objs.data, [found[it["n"]]["start"] for it in items]).values()
+        ctx = _contexts(objs.data, [found[it["n"]]["start"] for it in drawn]).values()
     if len(set(ctx)) != 1:
         return tr("The selected objects are drawn under different clipping or on different "
                   "layers: they can't be one group.")
     return None
 
 
+def _key(d):
+    """What an object is, to find it again after the page's text was taken out (a redaction
+    writes the page's instructions again)."""
+    return (d.get("name"), tuple(round(v, 3) for v in d.get("box") or ()),
+            tuple(round(v, 4) for v in d["ctm"]))
+
+
 @_gc_paused
-def group(page, ns):
-    """Make objects ns (shapes, pictures and groups, see group_problem) one group: a Form
-    XObject, as CAD programs export blocks, drawn where the last of them was (objects
-    between them come out under the group), the objects themselves taken off the page.
-    Edit objects and CAD mode select and move it as one object; Ungroup takes it apart again.
-    Returns the group's xref."""
+def group(page, ns, text=None):
+    """Make objects ns (shapes, pictures and groups, see group_problem), and the page's text
+    lines text (text_edit lines), one group: a Form XObject, as CAD programs export blocks,
+    drawn where the last object was (objects between them come out under the group; with
+    text only, on top), the objects themselves taken off the page. The text is written again
+    inside it, in its own font, size and color, as a move writes it. Edit objects and CAD
+    mode select and move a group as one object; Ungroup takes it apart again. Returns the
+    group's xref and the fonts the text was written with. Raises ValueError (before anything
+    changes) when a line can't be written."""
+    from . import text_edit
     doc = page.parent
+    ns = sorted(set(ns))
+    lines = list(text or [])
+    if len(ns) + len(lines) < 2:
+        raise ValueError(tr("Select two or more objects to group them."))
+    found = scan(_contents(page))
+    if ns and ns[-1] >= len(found):
+        raise ValueError(tr("The object is no longer on the page."))
+    keys = [_key(found[n]) for n in ns]
+    extra, boxes, used = b"", [], []
+    if lines:
+        text_edit.refuse_with_marks(page)
+        plans, styled, decor = text_edit._plan_lines(page, lines)   # (the fonts first)
+        tm = pdfcoords.to_page(page)
+        for line in lines:
+            boxes.append(pymupdf.Rect(line["bbox"]) * ~tm)
+        text_edit._remove_lines(page, lines, decor=decor)
+        base = _contents(page)
+        used = text_edit._write_lines(page, plans, styled, (0, 0))
+        after = _contents(page)
+        if not after.startswith(base):
+            raise ValueError(tr("The text couldn't be put in a group."))
+        extra = after[len(base):]
+        _set_contents(page, base)       # (it goes in the group instead)
     data = _contents(page)
     found = scan(data)
-    ns = sorted(set(ns))
-    if len(ns) < 2 or ns[-1] >= len(found):
-        raise ValueError(tr("The object is no longer on the page."))
+    if ns and [_key(found[n]) for n in ns if n < len(found)] != keys:
+        # (taking the text out wrote the page's instructions again: the same objects,
+        # found by what they are)
+        want, out, k = list(keys), [], 0
+        for i, d in enumerate(found):
+            if k < len(want) and _key(d) == want[k]:
+                out.append(i)
+                k += 1
+        if len(out) != len(ns):
+            raise ValueError(tr("The object is no longer on the page."))
+        ns = out
     forms = {("/" + g[1]).encode(): g[0] for g in page.get_xobjects() if g[2] == 0}
     _own_resources(page)
     _add_reset_gs(page)
-    body = [_DEFAULTS] + _standalone(data, found, ns)
-    xs, ys, pad = [], [], 0.0
+    body = [_DEFAULTS] + _standalone(data, found, ns) + ([b"q\n" + extra + b"\nQ"] if extra else [])
+    xs, ys, pad = [], [], 1.0
     for n in ns:
         d = found[n]
         if d.get("path"):
@@ -2479,6 +2523,9 @@ def group(page, ns):
             p = p * d["ctm"]
             xs.append(p.x)
             ys.append(p.y)
+    for r in boxes:
+        xs += [r.x0, r.x1]
+        ys += [r.y0, r.y1]
     res = _used_resources(doc, page, b"\n".join(body))
     xref = doc.get_new_xref()
     doc.update_object(xref, "<</Type/XObject/Subtype/Form/BBox[%g %g %g %g]/Resources %s>>"
@@ -2486,15 +2533,20 @@ def group(page, ns):
     _put_stream(doc, xref, b"\n".join(body))
     name = b"KzGroup%d" % xref
     _set_resource(doc, page.xref, "XObject", name.decode(), "%d 0 R" % xref)
-    last = found[ns[-1]]
-    add = b"\nq\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" % _inv(tuple(last["ctm"])) + \
-        b"/%s Do\nQ\n" % name
-    at = last["end"]
-    _set_contents(page, data[:at] + add + data[at:])
-    # (the group comes right after the last of them: their numbers in the drawing order
-    # are the same, and they go)
-    delete(page, ns)
-    return xref
+    if ns:
+        last = found[ns[-1]]
+        add = b"\nq\n%.6f %.6f %.6f %.6f %.4f %.4f cm\n" % _inv(tuple(last["ctm"])) + \
+            b"/%s Do\nQ\n" % name
+        at = last["end"]
+        _set_contents(page, data[:at] + add + data[at:])
+        # (the group comes right after the last of them: their numbers in the drawing order
+        # are the same, and they go)
+        delete(page, ns)
+    else:
+        # (text only: on top, where the text was written again; the page's instructions
+        # end with the default coordinates, PyMuPDF keeps them balanced)
+        _set_contents(page, data + b"\nq\n/%s Do\nQ\n" % name)
+    return xref, used
 
 
 def ungroup(page, ns):

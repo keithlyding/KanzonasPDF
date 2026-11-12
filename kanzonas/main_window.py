@@ -725,9 +725,9 @@ class MainWindow(QMainWindow):
         return w
 
     @staticmethod
-    def _group_tip():
-        return tr("Group the selected markups, or the selected lines, shapes and pictures of "
-                  "the page: a click on one selects them all, to move, copy or delete them "
+    def _group_cmd_tip():
+        return tr("Group the selected markups, or the selected lines, shapes, pictures and text "
+                  "of the page: a click on one selects them all, to move, copy or delete them "
                   "together (Ctrl+Shift+G)")
 
     def _act(self, text, slot, shortcut=None, tip=None):
@@ -1338,7 +1338,7 @@ class MainWindow(QMainWindow):
         # (1.12) groups of markups, and flipping, as Bluebeam's Group and Flip
         self.a_group = self._act(tr("&Group"), lambda: self.view() and
                                  self.view().group_selection(), "Ctrl+Shift+G",
-                                 tip=self._group_tip())
+                                 tip=self._group_cmd_tip())
         self.a_ungroup = self._act(tr("U&ngroup"), lambda: self.view() and
                                    self.view().ungroup_selection(), "Ctrl+Alt+G",
                                    tip=tr("Ungroup the selected group: its markups, or its lines, shapes "
@@ -1951,7 +1951,7 @@ class MainWindow(QMainWindow):
         self.a_group.setEnabled(has and why is None)
         # (grayed: its tooltip says why, the owner's choice of 12 Nov for markups and the
         # page's own objects selected together)
-        tip = self._group_tip() + ("\n" + why if why else "")
+        tip = self._group_cmd_tip() + ("\n" + why if why else "")
         if self.a_group.toolTip() != tip:
             self.a_group.setToolTip(tip)
             self.a_group.setStatusTip(tip.replace("\n", " "))

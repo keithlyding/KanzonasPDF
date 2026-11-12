@@ -11131,8 +11131,8 @@ msgstr "Voltear &horizontalmente"
 msgid "Flip &vertically"
 msgstr "Voltear &verticalmente"
 
-msgid "Group the selected markups, or the selected lines, shapes and pictures of the page: a click on one selects them all, to move, copy or delete them together (Ctrl+Shift+G)"
-msgstr "Agrupar las marcas seleccionadas, o las líneas, formas e imágenes seleccionadas de la página: un clic en una las selecciona todas, para moverlas, copiarlas o eliminarlas juntas (Ctrl+Shift+G)"
+msgid "Group the selected markups, or the selected lines, shapes, pictures and text of the page: a click on one selects them all, to move, copy or delete them together (Ctrl+Shift+G)"
+msgstr "Agrupar las marcas seleccionadas, o las líneas, formas, imágenes y texto seleccionados de la página: un clic en una las selecciona todas, para moverlas, copiarlas o eliminarlas juntas (Ctrl+Shift+G)"
 
 msgid "Ungroup the selected group: its markups, or its lines, shapes and pictures, are on their own again (Ctrl+Alt+G)"
 msgstr "Desagrupar el grupo seleccionado: sus marcas, o sus líneas, formas e imágenes, vuelven a ser independientes (Ctrl+Alt+G)"
@@ -11302,8 +11302,8 @@ msgstr "El texto propio de la página no puede pasar del borde de la página, ni
 msgid "Select two or more objects to group them."
 msgstr "Seleccione dos o más objetos para agruparlos."
 
-msgid "Text of the page can't be grouped (only its lines, shapes and pictures)."
-msgstr "El texto de la página no se puede agrupar (solo sus líneas, formas e imágenes)."
+msgid "The text couldn't be put in a group."
+msgstr "No se pudo poner el texto en un grupo."
 
 msgid "Some of the selected objects can't be grouped."
 msgstr "Algunos de los objetos seleccionados no se pueden agrupar."

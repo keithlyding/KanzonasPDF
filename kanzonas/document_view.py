@@ -5656,15 +5656,19 @@ class DocumentView(QScrollArea):
         return True
 
     def group_objects(self):
-        """Group the selected shapes, pictures and groups of the page's own drawing into one
-        group (a Form XObject: page_objects.group), selected afterwards. One undo step."""
+        """Group the selected shapes, pictures, groups and text of the page's own drawing into
+        one group (a Form XObject: page_objects.group; the text written again inside it),
+        selected afterwards. One undo step."""
         from . import page_objects
         index, items = self.obj_sel
-        ns = [it["n"] for it in items]
+        ns = [it["n"] for it in items if it["kind"] != "text"]
+        lines = [ln for it in items if it["kind"] == "text" for _r, ln in it["lines"]]
         made = {}
 
         def do():
-            made["xref"] = page_objects.group(self.doc[index], ns)
+            made["xref"], used = page_objects.group(self.doc[index], ns, lines)
+            if any(u.startswith("KZ") for u in used):
+                self._fonts_added = True
         self.obj_sel = None
         if not self.modify(do, [index]) or "xref" not in made:
             self._reselect_objects(index, items)
@@ -5676,7 +5680,8 @@ class DocumentView(QScrollArea):
         self.select_objects(index, mine)
         self.pages[index].update()
         self.selectionChanged.emit()
-        self.statusMessage.emit(tr("{n} objects grouped (Ctrl+Z undoes it)").format(n=len(ns)))
+        self.statusMessage.emit(tr("{n} objects grouped (Ctrl+Z undoes it)").format(
+            n=len(items)))
         return True
 
     def flip_selection(self, horizontal=True):
@@ -7505,9 +7510,45 @@ class DocumentView(QScrollArea):
         hits = [it for it in (texts[i] for i in near.near(pt.x, pt.y, pad))
                 if (it["rect"] + (-pad, -pad, pad, pad)).contains(pt)]
         if hits:
-            return min(hits, key=lambda it: it["rect"].get_area())
+            t = min(hits, key=lambda it: it["rect"].get_area())
+            return self._group_holding(index, t) or t
         objs = self.content_objects(index)
         return objs.at(pt, 4 / self.zoom) if objs is not None else None
+
+    def _group_holding(self, index, text):
+        """The drawing group (Form XObject) Edit objects text item text lies in, or None: the
+        smallest group around it, but one filling the page. The page's text reads the same
+        inside a group as outside it, so the text in a group (Arrange > Group with text, a
+        label in a CAD block, a flattened stamp's words) is picked with its group, as one
+        object, not on its own (the owner, 12 Nov: text grouped with lines)."""
+        key = (getattr(self, "_gen", 0), id(self.doc), index)
+        cached = getattr(self, "_group_boxes", None)
+        if cached is None or cached[0] != key:
+            objs = self.content_objects(index)
+            groups = [it for it in (objs.items if objs is not None and objs.items else [])
+                      if it["kind"] == "group" and not it.get("whole")]
+            cached = self._group_boxes = (key, groups)
+        r = pymupdf.Rect(text["rect"])
+        best = None
+        for g in cached[1]:
+            if (g["rect"] + (-1, -1, 1, 1)).contains(r) and (
+                    best is None or g["rect"].get_area() < best["rect"].get_area()):
+                best = g
+        return best
+
+    def _with_groups(self, index, found, texts):
+        """found (objects) and texts, each text lying in a group replaced by that group (once;
+        see _group_holding)."""
+        out = list(found)
+        have = {it["n"] for it in out}
+        for t in texts:
+            g = self._group_holding(index, t)
+            if g is None:
+                out.append(t)
+            elif g["n"] not in have:
+                out.append(g)
+                have.add(g["n"])
+        return out
 
     def objects_in(self, index, box):
         """What a selection box takes: the pictures and shapes inside it, or, when it holds
@@ -7516,7 +7557,8 @@ class DocumentView(QScrollArea):
         objs = self.content_objects(index)
         box = pymupdf.Rect(box)
         found = objs.inside(box) if objs is not None else []
-        return found or [it for it in self.text_objects(index) if box.contains(it["rect"])]
+        return found or self._with_groups(
+            index, [], [it for it in self.text_objects(index) if box.contains(it["rect"])])
 
     def cad_objects(self, index, region, crossing=False):
         """What a CAD selection region (page_objects.Box or Lasso) takes with Edit objects, as
@@ -7532,7 +7574,7 @@ class DocumentView(QScrollArea):
             if region.contains_rect(it["rect"]) or crossing and any(
                     region.touches_rect(r) for r, _ln in it["lines"]):
                 texts.append(it)
-        return found + texts
+        return self._with_groups(index, found, texts)
 
     # ---- CAD mode: the page made ready while nothing happens -------------------------------
     PREP_WAIT = 600             # ms without a new reason before preparing starts

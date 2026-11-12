@@ -1015,13 +1015,14 @@ cambian de estilo (Propiedades) y se eliminan juntas, y sus copias también son 
 Alinear y Distribuir mueven un grupo como un solo elemento, así que sus marcas mantienen su lugar en él.
 Es el grupo del estándar PDF (una marca "en respuesta a" la primera, del tipo Grupo), así que Acrobat también las
 mantiene juntas; en otros programas quedan como marcas separadas.
-Con líneas, formas e imágenes del propio dibujo de la página seleccionadas (herramienta Editar objetos, o el modo
-CAD), <b>Agrupar</b> las convierte en un grupo de dibujo, del tipo en que los programas CAD exportan los bloques: un
-clic en cualquier parte lo selecciona entero, y se mueve, se copia, se gira y se elimina como un solo objeto;
-Desagrupar lo vuelve a separar y deja sus piezas seleccionadas. Se dibuja donde estaba la última de ellas, así que lo
-que se dibujaba entre ellas queda debajo. El texto de la página no se pone en un grupo, y las marcas y los objetos
-propios de la página no pueden ser un mismo grupo (un PDF los mantiene separados): con eso seleccionado, Agrupar
-queda en gris y su información sobre herramientas dice por qué.</li>
+Con líneas, formas, imágenes y texto del propio dibujo de la página seleccionados (herramienta Editar objetos, o
+el modo CAD), <b>Agrupar</b> los convierte en un grupo de dibujo, del tipo en que los programas CAD exportan los
+bloques: un clic en cualquier parte, también en su texto, lo selecciona entero, y se mueve, se copia y se elimina
+como un solo objeto; Desagrupar lo vuelve a separar y deja sus piezas seleccionadas. Se dibuja donde estaba la última
+de ellas, así que lo que se dibujaba entre ellas queda debajo. Su texto se escribe de nuevo dentro de él con su propia
+fuente, tamaño y color, como al mover texto; se puede seguir buscando y copiando. Editar texto lo sigue cambiando, pero
+una línea cambiada así sale del grupo (vuelva a agruparla, o desagrupe primero y agrupe después). Las marcas y los objetos propios de la página no pueden ser un mismo grupo (un PDF los mantiene separados): con ambos
+seleccionados, Agrupar queda en gris y su información sobre herramientas dice por qué.</li>
 <li><b>Voltear horizontalmente</b> / <b>Voltear verticalmente</b> (menú Organizar, el grupo Grupo, o el menú del botón
 derecho) reflejan la selección de izquierda a derecha o de arriba abajo por su centro, tal como se ve la página; un
 grupo se voltea como uno solo (cada parte a su lugar reflejado), y los objetos propios de la página seleccionados con
@@ -1144,8 +1145,9 @@ se convierten en esto, y algunos programas exportan un dibujo entero como uno so
 se gira, se elimina y se reordena en la pila como un solo objeto, como en Acrobat y PDF-XChange. Un grupo que
 ocupa toda la página no se selecciona con un clic (eso tomaría la hoja cada vez que hiciera clic en
 papel en blanco): arrastre un cuadro de selección alrededor de la página para seleccionarlo.
-Botón derecho &gt; <b>Agrupar</b> (Ctrl+Shift+G) hace de las líneas, formas, imágenes y grupos seleccionados un
-solo grupo (vea Alinear, distribuir y orden de apilamiento).
+Botón derecho &gt; <b>Agrupar</b> (Ctrl+Shift+G) hace de las líneas, formas, imágenes, texto y grupos
+seleccionados un solo grupo (vea Alinear, distribuir y orden de apilamiento). Un clic en el texto de un grupo
+selecciona el grupo.
 Haga clic con el botón derecho en un grupo &gt; <b>Desagrupar</b> para separarlo: se ve igual, pero sus formas e
 imágenes pasan a ser objetos separados que puede seleccionar uno por uno, y su texto se puede cambiar con
 Editar texto. Un grupo que solo contiene otro grupo (como lo escriben muchos programas) se separa

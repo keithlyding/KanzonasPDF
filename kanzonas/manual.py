@@ -1029,13 +1029,15 @@ them makes one bigger group. Align and Distribute move a group as one item, so i
 their places in it. It's the PDF standard's group (a markup "in reply to" the first,
 of the Group kind), so Acrobat keeps them together too; in other programs they stay separate
 markups.
-With lines, shapes and pictures of the page's own drawing selected (Edit objects tool, or CAD
-mode), <b>Group</b> makes them one drawing group, the kind CAD programs export blocks as: a
-click on any of it selects it all, and it moves, copies, rotates and deletes as one object; Ungroup
-takes it apart again, its pieces left selected. It's drawn where the last of them was, so
-something drawn between them comes out under it. The page's text isn't put in a group, and
-markups and the page's own objects can't be one group (a PDF keeps the two apart): with those
-selected Group stays grayed out, and its tooltip says why.</li>
+With lines, shapes, pictures and text of the page's own drawing selected (Edit objects tool,
+or CAD mode), <b>Group</b> makes them one drawing group, the kind CAD programs export blocks as:
+a click on any of it, its text too, selects it all, and it moves, copies and deletes as one
+object; Ungroup takes it apart again, its pieces left selected. It's drawn where the last of
+them was, so something drawn between them comes out under it. Its text is written again inside
+it in its own font, size and color, as moving text does; it can still be found and copied. Edit
+text still changes it, but a line changed that way comes out of the group (group it again, or
+Ungroup first and Group after). Markups and the page's own objects can't be one group (a PDF keeps
+the two apart): with both selected Group stays grayed out, and its tooltip says why.</li>
 <li><b>Flip horizontally</b> / <b>Flip vertically</b> (Arrange menu, the Group group, or the
 right-click menu) mirror the selection left for right or top for bottom across its middle, as
 the page is shown; a group flips as one (each part to its mirrored place), and the page's own
@@ -1155,8 +1157,9 @@ become these, and some programs export a whole drawing as one) is selected, move
 rotated, deleted and re-stacked as one object, as in Acrobat and PDF-XChange. A group that
 fills the whole page isn't picked by a click (that would grab the sheet whenever you click
 blank paper): drag a selection box around the page to select it.
-Right-click &gt; <b>Group</b> (Ctrl+Shift+G) makes the selected lines, shapes, pictures and groups
-one group (see Align, distribute and stacking order).
+Right-click &gt; <b>Group</b> (Ctrl+Shift+G) makes the selected lines, shapes, pictures, text and
+groups one group (see Align, distribute and stacking order). A click on text inside a group
+selects the group.
 Right-click a group &gt; <b>Ungroup</b> to take it apart: it looks the same, but its shapes and
 pictures become separate objects you can select one by one, and its text can be changed with
 Edit text. A group holding just one other group (as many programs write them) is taken apart

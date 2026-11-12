@@ -3,7 +3,8 @@ when I select multiple objects"): two or more of its lines, shapes, pictures and
 one group (a Form XObject, page_objects.group) that Edit objects and CAD mode select and move
 as one, and Ungroup takes apart again, its pieces left selected. Markups and the page's own
 objects selected together can't be one group: Group stays grayed and its tooltip says why
-(the owner's choice), as it does for text.
+(the owner's choice). The page's text goes in a group too (the owner: "I definitely need text
+to be able to be grouped with objects"), written again inside it as a move writes it.
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_group_objects
 """
@@ -23,6 +24,11 @@ from tests.test_interaction_112 import A, P, R, Window, pump  # noqa: E402
 
 def look(v):
     return v.doc[0].get_pixmap(dpi=50).samples
+
+
+def diff(a, b):
+    """The share of bytes of two renders that differ."""
+    return sum(x != y for x, y in zip(a, b)) / max(len(a), 1)
 
 
 def kinds(v):
@@ -95,13 +101,70 @@ class GroupObjects(Window):
         d = pymupdf.open(out)
         self.assertEqual(d[0].get_pixmap(dpi=50).samples, before)
 
-    def test_text_and_markups_say_why(self):
+    def test_text_goes_in_the_group(self):
+        """The owner, 12 Nov: "I definitely need text to be able to be grouped with
+        objects"."""
         w, v = self.w, self.v
+        before = look(v)
         text = v.text_objects(0)[0]
         v.select_objects(0, [self.shapes[0], text])
         w._update_ui()
-        self.assertFalse(w.a_group.isEnabled())
-        self.assertIn("Text of the page", w.a_group.toolTip())
+        self.assertTrue(w.a_group.isEnabled())
+        w.a_group.trigger()
+        pump()
+        self.assertEqual(kinds(v), ["group"])
+        self.assertTrue(v.obj_sel[1][0]["rect"].contains(text["rect"]))
+        self.assertLess(diff(look(v), before), 0.002)       # (the text written again)
+        self.assertIn("Label text", v.doc[0].get_text())    # (still text: found, copied)
+        # moved as one: the line and its label together
+        r0 = pymupdf.Rect(v.obj_sel[1][0]["rect"])
+        for _ in range(5):
+            QTest.keyClick(v.viewport(), Qt.Key_Down)
+            pump()
+        self.assertEqual(kinds(v), ["group"])
+        self.assertAlmostEqual(v.obj_sel[1][0]["rect"].y0, r0.y0 + 5, delta=0.5)
+        words = [w_ for w_ in v.doc[0].get_text("words") if w_[4] == "Label"]
+        self.assertAlmostEqual(words[0][1], text["rect"].y0 + 5, delta=2)
+        # a click on the label (Edit objects, then CAD mode) picks the whole group
+        v.select_objects(0, [])
+        self.click(v.pages[0], self.at(P(120, 650)))
+        self.assertEqual(kinds(v), ["group"])
+        was = v.mouse_mode
+        w.set_mouse_mode("cad")
+        pump()
+        v.select_objects(0, [])
+        self.click(v.pages[0], self.at(P(120, 650)))
+        self.assertEqual(kinds(v), ["group"])
+        w.set_mouse_mode(was)
+        w.set_tool("editobjects")
+        pump()
+        # Ungroup: the line and the text on their own again
+        self.click(v.pages[0], self.at(P(120, 650)))
+        self.assertEqual(kinds(v), ["group"])
+        w.a_ungroup.trigger()
+        pump()
+        self.assertIn("Label text", v.doc[0].get_text())
+        self.assertEqual(sorted(it["kind"] for it in v.content_objects(0).items),
+                         ["shape", "shape", "shape"])
+
+    def test_text_alone_and_two_paragraphs(self):
+        w, v = self.w, self.v
+        v.doc[0].insert_text((100, 700), "Second label", fontsize=12)
+        v._clear_caches()
+        texts = v.text_objects(0)
+        self.assertEqual(len(texts), 2)
+        v.select_objects(0, texts)
+        w._update_ui()
+        self.assertTrue(w.a_group.isEnabled())
+        w.a_group.trigger()
+        pump()
+        self.assertEqual(kinds(v), ["group"])
+        got = v.doc[0].get_text()
+        self.assertIn("Label text", got)
+        self.assertIn("Second label", got)
+
+    def test_markups_with_objects_say_why(self):
+        w, v = self.w, self.v
         # a markup with one of the drawing's lines (as CAD mode selects them)
         x = v._create(0, {"kind": "rect", "rect": R(300, 500, 340, 540), "text": "",
                           "props": dict(A.DEFAULTS["rect"])})
