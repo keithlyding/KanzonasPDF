@@ -2203,9 +2203,13 @@ class DocumentView(QScrollArea):
         if tool == "eraser" and not self.plus_cursor:
             self.viewport().setCursor(eraser_cursor())
             return
-        text_cursor = ("select", "edittext", "addtext", "highlight", "underline", "strikeout", "comment",
+        # (the text cursor only with a tool that works on text; Select still selects text by
+        # dragging over it, with the arrow: the owner, 12 Nov, "there should be no text cursor
+        # unless I've double-clicked on text to edit or have a text tool")
+        text_cursor = ("edittext", "addtext", "highlight", "underline", "strikeout", "comment",
                        "redact")
-        cursors = {"hand": Qt.OpenHandCursor, **{t: Qt.IBeamCursor for t in text_cursor}}
+        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.ArrowCursor,
+                   **{t: Qt.IBeamCursor for t in text_cursor}}
         if self.plus_cursor and tool != "hand":
             cursors = {}                # CAD mouse: a plus, as in CAD programs
         self.viewport().setCursor(cursors.get(tool, Qt.CrossCursor))
@@ -11272,9 +11276,13 @@ class DocumentView(QScrollArea):
         from .combine import insert_files
         n = self.doc.page_count
         ref = self.page_rects[min(max(at - 1, 0), n - 1) if at != -1 else n - 1]
-        self.modify(lambda: insert_files(self.doc, paths, n if at == -1 else at,
-                                         (ref.width, ref.height), owner), structural=True,
-                    changed=[])
+        made = []
+
+        def do():
+            made.extend(insert_files(self.doc, paths, n if at == -1 else at,
+                                     (ref.width, ref.height), owner))
+        self.modify(do, structural=True, changed=[])
+        return made         # (the pages made from pictures)
 
     def replace_pages(self, src, pairs, scale=True):
         """Pages > Replace pages: the pages' drawings become those of src's pages (pairs:

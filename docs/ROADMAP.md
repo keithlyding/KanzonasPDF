@@ -76,6 +76,10 @@ a decision changes or a piece of work lands. Details of each version are in
   groups, flips, moves markups between layers, hides layers and draws spaces; it found that
   Duplicate pages gave a page with nothing tagged and its copy the same StructParents key
   (in 1.11.1 too), fixed.
+- 1.12.1 (owner, 12 Nov): in CAD mode a drag from the selection moves it (with the four-way
+  arrow over it); the Select tool's pointer is the arrow (the text cursor only with text tools
+  and where text is typed); Pages > Insert pages from file can recognize the text of the
+  pictures inserted (OCR), as an option.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

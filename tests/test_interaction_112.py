@@ -257,6 +257,80 @@ class OffThePage(Window):
         self.assertGreater(r.y1, 0)                     # (still partly on the page)
 
 
+class CadDrag(Window):
+    """1.12.1 (the owner, 12 Nov, in CAD mode): what's selected moves by dragging it, with
+    the four-way arrow over it; a drag anywhere else still draws a box or lasso; the text
+    cursor only with a tool that works on text."""
+
+    def setUp(self):
+        def build(pg):
+            pg.insert_text((100, 600), "Hello world text line", fontsize=14)
+        w, v = self.open(build)
+        self.x = v._create(0, {"kind": "rect", "rect": R(300, 300, 360, 360), "text": "",
+                               "props": dict(A.DEFAULTS["rect"])})
+        v.clear_selection()
+        was = v.mouse_mode
+        w.set_mouse_mode("cad")
+        self.addCleanup(lambda: (w.set_mouse_mode(was), pump()))
+        pump()
+        self.pw = v.pages[0]
+
+    def hover(self, pt):
+        """The pointer moved over pt (sent to the page straight: see GrayPreviews.hover)."""
+        from PySide6.QtCore import QEvent, QPointF
+        from PySide6.QtGui import QMouseEvent
+        for pos in (self.at(pt) + QPoint(3, 0), self.at(pt)):
+            ev = QMouseEvent(QEvent.MouseMove, QPointF(pos),
+                             QPointF(self.pw.mapToGlobal(pos)), Qt.NoButton, Qt.NoButton,
+                             Qt.NoModifier)
+            QApplication.sendEvent(self.pw, ev)
+            pump(2)
+        return self.pw.cursor().shape()
+
+    def test_a_drag_from_the_selection_moves_it_all(self):
+        w, v, pw = self.w, self.v, self.pw
+        # the rectangle's outline and the text line clicked: both selected
+        self.click(pw, self.at(P(300, 330)))
+        self.click(pw, self.at(P(150, 596)))
+        self.assertEqual(v.selected_xrefs(), [self.x])
+        self.assertEqual([it["kind"] for it in v.obj_sel[1]], ["text"])
+        self.assertEqual(self.hover(P(300, 330)), Qt.SizeAllCursor)
+        self.assertEqual(self.hover(P(150, 596)), Qt.SizeAllCursor)
+        undo_before = len(v._undo)
+        self.drag(pw, self.at(P(300, 330)), self.at(P(340, 300)))
+        page = v.doc[0]
+        r = page.load_annot(self.x).rect
+        self.assertAlmostEqual(r.x0, 339, delta=1.5)
+        self.assertAlmostEqual(r.y0, 269, delta=1.5)
+        del page
+        b = {x[4].strip(): x for x in v.doc[0].get_text("blocks")}
+        self.assertAlmostEqual(b["Hello world text line"][0], 140, delta=1.5)
+        self.assertEqual(len(v._undo), undo_before + 1)         # (one undo step)
+        v.undo()
+        b = {x[4].strip(): x for x in v.doc[0].get_text("blocks")}
+        self.assertAlmostEqual(b["Hello world text line"][0], 100, delta=1.5)
+
+    def test_a_drag_elsewhere_still_draws_a_box(self):
+        v, pw = self.v, self.pw
+        self.click(pw, self.at(P(300, 330)))
+        self.assertEqual(v.selected_xrefs(), [self.x])
+        # from empty paper: a lasso / box takes the text, nothing moves
+        self.drag(pw, self.at(P(80, 570)), self.at(P(450, 620)))
+        page = v.doc[0]
+        self.assertAlmostEqual(page.load_annot(self.x).rect.x0, 299, delta=1.5)
+        del page
+
+    def test_no_text_cursor_with_select(self):
+        w, v = self.w, self.v
+        w.set_mouse_mode("standard")
+        w.set_tool("select")
+        pump()
+        self.assertEqual(v.viewport().cursor().shape(), Qt.ArrowCursor)
+        w.set_tool("edittext")
+        pump()
+        self.assertEqual(v.viewport().cursor().shape(), Qt.IBeamCursor)
+
+
 class GrayPreviews(Window):
     """Each preview is drawn on the gray canvas where it reaches past the page."""
 

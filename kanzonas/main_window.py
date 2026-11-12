@@ -3076,6 +3076,7 @@ class MainWindow(QMainWindow):
         """Pages > Insert pages from file: PDFs and pictures (each picture a page). With
         nothing open they make a new, unsaved PDF."""
         from .combine import IMAGE_EXTS, is_image
+        from . import paths as paths_mod       # (paths: the files chosen, below)
         v = self.view()
         if v and not self._pages_unlocked():
             return
@@ -3093,16 +3094,20 @@ class MainWindow(QMainWindow):
         except PermissionError as ex:
             QMessageBox.information(self, tr("Protected document"), str(ex))
             return
+        pictures = any(map(is_image, paths))
         if not v:
             from . import new_pdf
-            size = new_pdf.ask(self, self.settings) if any(map(is_image, paths)) else \
+            size = new_pdf.ask(self, self.settings) if pictures else \
                 new_pdf.page_size(*new_pdf.remembered(self.settings))
             if size is None:
+                return
+            got = self._insert_options(False, pictures) if pictures else (0, False)
+            if got is None:
                 return
             from .combine import insert_files
             doc = pymupdf.open()
             try:
-                insert_files(doc, paths, 0, size, owner)
+                made = insert_files(doc, paths, 0, size, owner)
             except Exception as ex:
                 doc.close()
                 QMessageBox.critical(self, tr("Insert pages"), str(ex))
@@ -3110,13 +3115,49 @@ class MainWindow(QMainWindow):
             v = self._open_untitled(doc)
             v.dirty = True              # closing it asks whether to save
             self._update_ui()
+            if got[1] and made:
+                v.run_ocr(made, paths_mod.stored_str(self.settings, "ocr_accuracy", "auto"))
             return
-        choices = [tr("After current page"), tr("At the end"), tr("At the beginning")]
-        where, ok = QInputDialog.getItem(self, tr("Insert pages"), tr("Insert:"), choices, 0, False)
-        if not ok:
+        got = self._insert_options(True, pictures)
+        if got is None:
             return
-        at = {0: v.current_page() + 1, 1: -1, 2: 0}[choices.index(where)]
-        v.insert_files(paths, at, owner)    # shows what went wrong itself
+        at = {0: v.current_page() + 1, 1: -1, 2: 0}[got[0]]
+        made = v.insert_files(paths, at, owner)    # shows what went wrong itself
+        if got[1] and made:
+            v.run_ocr(made, paths_mod.stored_str(self.settings, "ocr_accuracy", "auto"))
+
+    def _insert_options(self, where, pictures):
+        """Pages > Insert pages from file's question: where the pages go (where) and, with
+        pictures among them, whether their text is recognized (OCR; the owner, 12 Nov: as an
+        option; remembered with Combine files' and Create PDF from images'). Returns (0 after
+        the current page, 1 at the end, 2 at the beginning; ocr) or None when cancelled."""
+        paths_mod = paths
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("Insert pages"))
+        lay = QVBoxLayout(dlg)
+        box = None
+        if where:
+            lay.addWidget(QLabel(tr("Insert:")))
+            box = QComboBox()
+            box.addItems([tr("After current page"), tr("At the end"), tr("At the beginning")])
+            lay.addWidget(box)
+        ocr = QCheckBox(tr("Make the pictures searchable (recognize text, OCR)"))
+        ocr.setChecked(paths_mod.stored_str(self.settings, "import_ocr", "false") == "true")
+        ocr.setVisible(pictures)
+        lay.addWidget(ocr)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        lay.addWidget(btns)
+        self._insert_dialog = dlg           # (tests answer it)
+        try:
+            if dlg.exec() != QDialog.Accepted:
+                return None
+        finally:
+            self._insert_dialog = None
+        if pictures:
+            self.settings.setValue("import_ocr", "true" if ocr.isChecked() else "false")
+        return (box.currentIndex() if box is not None else 0), pictures and ocr.isChecked()
 
     def replace_pages(self):
         """Pages > Replace pages: the drawings of pages here become a new revision's (pages
