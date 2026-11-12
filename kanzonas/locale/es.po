@@ -2312,9 +2312,6 @@ msgid "Show panel &strip (left edge)"
 msgstr "Mostrar &franja de paneles (borde izquierdo)"
 
 #: main_window.py:432
-msgid "Icons on the left edge that open and fold the Pages, Bookmarks, Layers and Objects panels"
-msgstr "Iconos en el borde izquierdo que abren y pliegan los paneles Páginas, Marcadores, Capas y Objetos"
-
 #: main_window.py:488
 msgid "&New PDF..."
 msgstr "&Nuevo PDF..."
@@ -11052,3 +11049,252 @@ msgstr "En una hoja extra después de la página (la página a escala)"
 
 msgid "Sheet {n} of {total} (page {page}: markups outside it)"
 msgstr "Hoja {n} de {total} (página {page}: marcas fuera de ella)"
+
+msgid "The page's size, and where the pointer is on it from its top-left corner (the units: right-click a ruler, View > Rulers)"
+msgstr "El tamaño de la página, y dónde está el puntero en ella desde su esquina superior izquierda (las unidades: clic derecho en una regla, Ver > Reglas)"
+
+msgid "Reuse"
+msgstr "Reutilizar"
+
+msgid "Reuse: after drawing a markup, keep its tool for the next one (on), or go back to the mouse mode's tool (off)"
+msgstr "Reutilizar: después de dibujar una marca, conservar su herramienta para la siguiente (activado), o volver a la herramienta del modo del mouse (desactivado)"
+
+msgid "&Rulers"
+msgstr "&Reglas"
+
+msgid "Rulers along the top and left of the page, in inches, millimeters or points (right-click one to change) (Ctrl+R)"
+msgstr "Reglas arriba y a la izquierda de la página, en pulgadas, milímetros o puntos (clic derecho en una para cambiarlas) (Ctrl+R)"
+
+msgid "Points"
+msgstr "Puntos"
+
+msgid "Ruler: right-click to change its units"
+msgstr "Regla: clic derecho para cambiar sus unidades"
+
+msgid "Ruler units: right-click to change them"
+msgstr "Unidades de las reglas: clic derecho para cambiarlas"
+
+msgid "The document the second view shows: the one in front, or any other open one"
+msgstr "El documento que muestra la segunda vista: el de delante, o cualquier otro abierto"
+
+msgid "Side by side"
+msgstr "Lado a lado"
+
+msgid "Show the second view beside the documents (on) or under them (off)"
+msgstr "Mostrar la segunda vista al lado de los documentos (activado) o debajo de ellos (desactivado)"
+
+msgid "Sync"
+msgstr "Sincronizar"
+
+msgid "Pan and zoom both views together"
+msgstr "Desplazar y hacer zoom en las dos vistas a la vez"
+
+msgid "By page number"
+msgstr "Por número de página"
+
+msgid "By the pages in view"
+msgstr "Por las páginas a la vista"
+
+msgid "By page number: the same page in both. By the pages in view: the two pages shown now stay paired (a plan and its detail)"
+msgstr "Por número de página: la misma página en las dos. Por las páginas a la vista: las dos páginas que se ven ahora quedan emparejadas (un plano y su detalle)"
+
+msgid "Close the split view (F10)"
+msgstr "Cerrar la vista dividida (F10)"
+
+msgid "The document in front"
+msgstr "El documento de delante"
+
+msgid "Flipped horizontally"
+msgstr "Volteado horizontalmente"
+
+msgid "Flipped vertically"
+msgstr "Volteado verticalmente"
+
+msgid "{n} markups grouped"
+msgstr "{n} marcas agrupadas"
+
+msgid "Flip left/right"
+msgstr "Voltear ↔"
+
+msgid "Flip up/down"
+msgstr "Voltear ↕"
+
+msgid "&Group"
+msgstr "A&grupar"
+
+msgid "U&ngroup"
+msgstr "Desagr&upar"
+
+msgid "Flip &horizontally"
+msgstr "Voltear &horizontalmente"
+
+msgid "Flip &vertically"
+msgstr "Voltear &verticalmente"
+
+msgid "Group the selected markups: a click on one selects them all, to move, copy, style or delete them together (Ctrl+Shift+G)"
+msgstr "Agrupar las marcas seleccionadas: un clic en una las selecciona todas, para moverlas, copiarlas, cambiar su estilo o eliminarlas juntas (Ctrl+Shift+G)"
+
+msgid "Ungroup the selected group: its markups are on their own again (Ctrl+Alt+G)"
+msgstr "Desagrupar el grupo seleccionado: sus marcas vuelven a ser independientes (Ctrl+Alt+G)"
+
+msgid "Mirror the selection left for right, across its middle (a group as one)"
+msgstr "Reflejar la selección de izquierda a derecha, por su centro (un grupo como uno solo)"
+
+msgid "Mirror the selection top for bottom, across its middle (a group as one)"
+msgstr "Reflejar la selección de arriba abajo, por su centro (un grupo como uno solo)"
+
+msgctxt "verb"
+msgid "Group"
+msgstr "Agrupar"
+
+msgid "The layer the markups you draw go on (shown and hidden with it, in other PDF programs too)"
+msgstr "La capa en la que van las marcas que dibuja (se muestran y se ocultan con ella, también en otros programas de PDF)"
+
+msgid "New layer..."
+msgstr "Nueva capa..."
+
+msgid "Add a layer to the document, for markups"
+msgstr "Agregar una capa al documento, para marcas"
+
+msgid "No layer"
+msgstr "Sin capa"
+
+msgid "New markups go on:"
+msgstr "Las marcas nuevas van en:"
+
+msgid "New layer"
+msgstr "Nueva capa"
+
+msgid "Name of the new layer:"
+msgstr "Nombre de la capa nueva:"
+
+msgid "Markups"
+msgstr "Marcas"
+
+msgid "All layers"
+msgstr "Todas las capas"
+
+msgid "Layer"
+msgstr "Capa"
+
+msgid "Space"
+msgstr "Espacio"
+
+msgid "Space: a named area (a room, a zone): click each corner, double-click or Enter to finish, then name it. The Markups list shows the space each markup is in"
+msgstr "Espacio: un área con nombre (una habitación, una zona): haga clic en cada esquina, doble clic o Enter para terminar, y póngale nombre. La lista de marcas muestra el espacio en el que está cada marca"
+
+msgid "All spaces"
+msgstr "Todos los espacios"
+
+msgid "(unnamed space)"
+msgstr "(espacio sin nombre)"
+
+msgid "Space {n}"
+msgstr "Espacio {n}"
+
+msgid "New space"
+msgstr "Nuevo espacio"
+
+msgid "Name of the space (a room, a zone...):"
+msgstr "Nombre del espacio (una habitación, una zona...):"
+
+msgid "Rename space"
+msgstr "Cambiar el nombre del espacio"
+
+msgid "Rename space..."
+msgstr "Cambiar el nombre del espacio..."
+
+# (1.12) Sets: a set of PDFs browsed as one (sets_panel.py)
+msgctxt "noun"
+msgid "Set"
+msgstr "Conjunto"
+
+msgid "KanzonasPDF sets"
+msgstr "Conjuntos de KanzonasPDF"
+
+msgid "New set..."
+msgstr "Nuevo conjunto..."
+
+msgid "Open set..."
+msgstr "Abrir conjunto..."
+
+msgid "Rename set..."
+msgstr "Cambiar el nombre del conjunto..."
+
+msgid "Combine to one PDF..."
+msgstr "Combinar en un PDF..."
+
+msgid "Close set"
+msgstr "Cerrar conjunto"
+
+msgid "Previous sheet (across the set's files)"
+msgstr "Plano anterior (a través de los archivos del conjunto)"
+
+msgid "Next sheet (across the set's files)"
+msgstr "Plano siguiente (a través de los archivos del conjunto)"
+
+msgid "Filter sheets"
+msgstr "Filtrar planos"
+
+msgid "No set is open. A set lists several PDFs (one per sheet, say) to browse as one document without combining them: Set > New set... or Open set...."
+msgstr "No hay ningún conjunto abierto. Un conjunto reúne varios PDF (uno por plano, por ejemplo) para recorrerlos como un solo documento sin combinarlos: Conjunto > Nuevo conjunto... o Abrir conjunto...."
+
+msgid "Remove from set"
+msgstr "Quitar del conjunto"
+
+msgid "The PDFs in the new set"
+msgstr "Los PDF del nuevo conjunto"
+
+msgid "Save the set as"
+msgstr "Guardar el conjunto como"
+
+msgid "Open set"
+msgstr "Abrir conjunto"
+
+msgid "Add files to the set"
+msgstr "Agregar archivos al conjunto"
+
+msgid "Rename set"
+msgstr "Cambiar el nombre del conjunto"
+
+msgid "Name of the set:"
+msgstr "Nombre del conjunto:"
+
+msgid "Sets"
+msgstr "Conjuntos"
+
+msgid "{name} isn't a set KanzonasPDF can read:\n{error}"
+msgstr "{name} no es un conjunto que KanzonasPDF pueda leer:\n{error}"
+
+msgid "{name} (not found)"
+msgstr "{name} (no se encuentra)"
+
+msgid "{name} (can't be read)"
+msgstr "{name} (no se puede leer)"
+
+msgid "Icons on the left edge that open and fold the Pages, Bookmarks, Layers, Objects and Sets panels"
+msgstr "Iconos en el borde izquierdo que abren y pliegan los paneles Páginas, Marcadores, Capas, Objetos y Conjuntos"
+
+msgid "New s&et..."
+msgstr "Nuevo con&junto..."
+
+msgid "Open se&t..."
+msgstr "Abrir conj&unto..."
+
+msgid "A set: several PDFs (one per sheet, say) browsed as one document in the Sets panel, without combining them"
+msgstr "Un conjunto: varios PDF (uno por plano, por ejemplo) que se recorren como un solo documento en el panel Conjuntos, sin combinarlos"
+
+msgid "Open a set of PDFs in the Sets panel"
+msgstr "Abrir un conjunto de PDF en el panel Conjuntos"
+
+msgid "Sets panel (click again to fold it away)"
+msgstr "Panel Conjuntos (haga clic de nuevo para plegarlo)"
+
+msgid "The last sheet of the set"
+msgstr "El último plano del conjunto"
+
+msgid "The first sheet of the set"
+msgstr "El primer plano del conjunto"
+
+msgid "The page's own text can't go past the edge of the page, nor its pictures and shapes off it altogether (markups can)."
+msgstr "El texto propio de la página no puede pasar del borde de la página, ni sus imágenes y formas salir del todo de ella (las marcas sí)."

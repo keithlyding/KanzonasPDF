@@ -1,8 +1,9 @@
-"""Layers panel: show / hide a PDF's optional content layers (common in CAD plots)."""
+"""Layers panel: show / hide a PDF's optional content layers (common in CAD plots), and (1.12)
+the layer new markups go on, and New layer (markup_layers.py)."""
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-                               QPushButton, QLabel)
+                               QPushButton, QLabel, QComboBox)
 
 from .i18n import tr
 
@@ -10,6 +11,8 @@ from .i18n import tr
 class LayersPanel(QWidget):
     toggled = Signal(int, bool)        # layer number, visible
     allToggled = Signal(bool)
+    markupLayerChosen = Signal(int)    # the OCG xref new markups go on (0: none)
+    newLayerRequested = Signal()
 
     def __init__(self):
         super().__init__()
@@ -30,7 +33,32 @@ class LayersPanel(QWidget):
         self.empty = QLabel(tr("This document has no layers."))
         self.empty.setStyleSheet("color: gray;")
         lay.addWidget(self.empty)
+        lay.addWidget(QLabel(tr("New markups go on:")))
+        self.markup_box = QComboBox()
+        self.markup_box.setToolTip(tr("The layer the markups you draw go on (shown and hidden "
+                                      "with it, in other PDF programs too)"))
+        self.markup_box.activated.connect(
+            lambda _i: self.markupLayerChosen.emit(self.markup_box.currentData() or 0))
+        lay.addWidget(self.markup_box)
+        new = QPushButton(tr("New layer..."))
+        new.setToolTip(tr("Add a layer to the document, for markups"))
+        new.clicked.connect(self.newLayerRequested.emit)
+        row2 = QHBoxLayout()
+        row2.addWidget(new)
+        row2.addStretch(1)
+        lay.addLayout(row2)
         self._loading = False
+
+    def set_markup_layers(self, layers, current):
+        """layers: [(xref, name, on)] (markup_layers.layers); current: the chosen one or None."""
+        self.markup_box.blockSignals(True)
+        self.markup_box.clear()
+        self.markup_box.addItem(tr("No layer"), 0)
+        for x, name, _on in layers:
+            self.markup_box.addItem(name, x)
+        at = self.markup_box.findData(current or 0)
+        self.markup_box.setCurrentIndex(max(0, at))
+        self.markup_box.blockSignals(False)
 
     def set_layers(self, configs):
         """configs: PyMuPDF layer_ui_configs() entries."""

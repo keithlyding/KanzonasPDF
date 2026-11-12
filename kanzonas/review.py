@@ -61,15 +61,18 @@ def _text(m, obj, key):
 
 def links(page):
     """({xref: Link} of the page's replies and statuses, [xref of every markup on the page in
-    stacking order]), read in one walk of the page's markups. A reply whose markup isn't on the
-    page (a broken file, a page copied without it) counts as a markup of its own."""
+    stacking order], {member xref: primary xref} of its groups), read in one walk of the page's
+    markups. A reply whose markup isn't on the page (a broken file, a page copied without it)
+    counts as a markup of its own. A group (PDF 1.6, 12.5.6.2: a markup with /IRT to another
+    and /RT /Group, as Acrobat and KanzonasPDF's Arrange > Group make) isn't a reply: its
+    markups are selected, moved and deleted together."""
     m = pymupdf.mupdf
-    out, present = {}, []
+    out, present, groups = {}, [], {}
     try:
         pdfpage = page._pdf_page()
         a = m.pdf_first_annot(pdfpage)
     except Exception:                   # (not a PDF)
-        return out, present
+        return out, present, groups
     while a.m_internal:
         obj = m.pdf_annot_obj(a)
         n = m.pdf_to_num(obj)
@@ -77,7 +80,9 @@ def links(page):
         irt = m.pdf_dict_gets(obj, "IRT")
         if irt.m_internal and m.pdf_is_indirect(irt):
             rt = m.pdf_dict_gets(obj, "RT")
-            if not (rt.m_internal and m.pdf_to_name(rt) == "Group"):
+            if rt.m_internal and m.pdf_to_name(rt) == "Group":
+                groups[n] = m.pdf_to_num(irt)
+            else:
                 ln = Link()
                 ln.xref, ln.parent = n, m.pdf_to_num(irt)
                 ln.state = _text(m, obj, "State")
@@ -92,14 +97,15 @@ def links(page):
                 out[n] = ln
         a = m.pdf_next_annot(a)
     on_page = set(present)
-    return {x: ln for x, ln in out.items() if ln.parent in on_page and ln.parent != x}, present
+    return ({x: ln for x, ln in out.items() if ln.parent in on_page and ln.parent != x},
+            present, {x: p for x, p in groups.items() if p in on_page and p != x})
 
 
 class Threads:
     """A page's threads: which markups answer which (one walk: links())."""
 
     def __init__(self, page):
-        self.links, self.order = links(page)
+        self.links, self.order, self.groups = links(page)
         self.children = {}
         for x in self.order:                    # (in stacking order: the order they were added)
             ln = self.links.get(x)
@@ -109,6 +115,22 @@ class Threads:
     def is_linked(self, x):
         """A reply or status (not a markup of its own)."""
         return x in self.links
+
+    def group_primary(self, x):
+        """The markup x's group hangs from (x itself when it isn't grouped)."""
+        seen = set()
+        while x in self.groups and x not in seen:      # (a group in a group: the top one)
+            seen.add(x)
+            x = self.groups[x]
+        return x
+
+    def group(self, x):
+        """Every markup in x's group, the primary first then in stacking order ([x] when it
+        isn't grouped)."""
+        top = self.group_primary(x)
+        members = [y for y in self.order if y != top and y in self.groups and
+                   self.group_primary(y) == top]
+        return [top] + members if members else [x]
 
     def root(self, x):
         """The markup a thread hangs from."""

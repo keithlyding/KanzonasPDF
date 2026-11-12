@@ -7,6 +7,46 @@ The full details are in [CHANGELOG.md](CHANGELOG.md).
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
 Spanish translation under `## <version> (es)`. The Windows build fails without them.
 
+## 1.12
+
+**New** (features from Bluebeam Revu)
+- Rulers: View > Rulers (Ctrl+R) along the top and left of the page, in inches, millimeters or points (right-click a ruler). The status bar shows the page size and where the pointer is on the page.
+- Reuse switch on the status bar: on, the tool you drew with stays picked; off, it goes back to Select (or Hand) after each markup.
+- Split view side by side or top and bottom, showing any open document, with Sync to pan and zoom both together, by page number or by the pages in view: compare a plan with a detail, or two revisions.
+- Arrange > Group and Ungroup (Ctrl+Shift+G / Ctrl+Alt+G): grouped markups are selected, moved, restyled, copied and deleted together. They're a standard PDF group, so Acrobat sees it too. Flip horizontally and Flip vertically mirror a markup or a group.
+- Markups on layers: make a layer in the Layers panel, choose the layer new markups go on, and right-click markups > Layer to move them. Hiding a layer hides its markups, in other PDF programs too. The Markups list shows and filters by layer.
+- Spaces: the Space tool (Measure tab) draws a named area, such as Room 101. The Markups list shows which space each markup is in and filters by space, for punch lists and counts room by room.
+- Sets: browse several PDFs (one per sheet, say) as one document without combining them. File > New set... lists them in the Sets panel by sheet number and title, Next and Previous sheet go across the files, and Combine to one PDF makes a single file of them.
+
+**Fixed**
+- Moving the page's own text with the arrow keys (or by dragging) onto another line of text no longer deletes that line's letters, and a paragraph moved over other text no longer picks it up and carries it along. The selection stays on the text you selected, and Ctrl+Z undoes a whole series of arrow-key moves at once.
+- Moving text that sits at an angle (a diagonal watermark, a tilted label) keeps its angle and its see-through look, and leaves no letters behind. A move that can't be made (redaction marks waiting on the page) no longer unselects the text. The page's own text now stops at the edge of the page (letters moved past it were lost on the next move), and its pictures and shapes can't be moved off the page altogether.
+- Markups being placed or moved in the gray around a page now show while you place them: a stamp following the pointer, a box dragged off the page, a markup moved beside it, a polygon's next side.
+- Snap to objects works when moving the page's own pictures, shapes and text with Edit objects: they snap to the drawing's line ends and corners too.
+- With the Hand tool, dragging a markup moves it (it was only selected).
+- Align and Distribute move a group as one item.
+- Documents tagged for screen readers: duplicating a page with nothing tagged on it no longer leaves the copy sharing the original's tag entry, and a reply moved to another page with its markup keeps its tag.
+
+## 1.12 (es)
+
+**Novedades** (funciones de Bluebeam Revu)
+- Reglas: Ver > Reglas (Ctrl+R) a lo largo de la parte de arriba y de la izquierda de la página, en pulgadas, milímetros o puntos (clic derecho en una regla). La barra de estado muestra el tamaño de la página y dónde está el puntero en ella.
+- Interruptor Reutilizar en la barra de estado: activado, la herramienta con la que dibujó sigue elegida; desactivado, vuelve a Seleccionar (o Mano) después de cada marca.
+- Vista dividida lado a lado o arriba y abajo, con cualquier documento abierto, y Sincronizar para desplazar y hacer zoom en las dos a la vez, por número de página o por las páginas a la vista: compare un plano con un detalle, o dos revisiones.
+- Organizar > Agrupar y Desagrupar (Ctrl+Mayús+G / Ctrl+Alt+G): las marcas agrupadas se seleccionan, mueven, cambian de estilo, copian y eliminan juntas. Son un grupo PDF estándar, así que Acrobat también lo ve. Voltear horizontalmente y Voltear verticalmente reflejan una marca o un grupo.
+- Marcas en capas: cree una capa en el panel Capas, elija la capa en la que van las marcas nuevas y haga clic derecho en marcas > Capa para moverlas. Ocultar una capa oculta sus marcas, también en otros programas de PDF. La lista de marcas muestra y filtra por capa.
+- Espacios: la herramienta Espacio (pestaña Medir) dibuja un área con nombre, como Habitación 101. La lista de marcas muestra en qué espacio está cada marca y filtra por espacio, para listas de pendientes y conteos habitación por habitación.
+- Conjuntos: recorra varios PDF (uno por plano, por ejemplo) como un solo documento sin combinarlos. Archivo > Nuevo conjunto... los muestra en el panel Conjuntos por número y título de plano, Plano siguiente y Plano anterior avanzan a través de los archivos, y Combinar en un PDF hace un solo archivo con ellos.
+
+**Correcciones**
+- Mover el texto propio de la página con las flechas del teclado (o arrastrándolo) sobre otra línea de texto ya no borra las letras de esa línea, y un párrafo movido sobre otro texto ya no lo recoge y se lo lleva. La selección se queda en el texto que seleccionó, y Ctrl+Z deshace de una vez toda una serie de movimientos con las flechas.
+- Mover texto en ángulo (una marca de agua en diagonal, una etiqueta inclinada) conserva su ángulo y su transparencia, y no deja letras atrás. Un movimiento que no se puede hacer (marcas de redacción pendientes en la página) ya no deja el texto sin seleccionar. El texto propio de la página ahora se detiene en el borde de la página (las letras que pasaban de él se perdían en el siguiente movimiento), y sus imágenes y formas no se pueden sacar del todo de la página.
+- Las marcas que se colocan o se mueven en el gris alrededor de una página ahora se ven mientras las coloca: un sello que sigue al puntero, un cuadro arrastrado fuera de la página, una marca movida a su lado, el lado siguiente de un polígono.
+- Ajustar a objetos funciona al mover las imágenes, formas y texto propios de la página con Editar objetos: también se ajustan a los extremos de línea y las esquinas del dibujo.
+- Con la herramienta Mano, arrastrar una marca la mueve (solo se seleccionaba).
+- Alinear y Distribuir mueven un grupo como un solo elemento.
+- Documentos etiquetados para lectores de pantalla: duplicar una página sin nada etiquetado ya no deja la copia compartiendo la entrada de etiquetas del original, y una respuesta movida a otra página con su marca conserva su etiqueta.
+
 ## 1.11.1
 
 **New**

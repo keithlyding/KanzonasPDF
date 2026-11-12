@@ -25,6 +25,8 @@ def tool_for(model):
     kind = model["kind"]
     if kind == "rect" and model["props"].get("cloud"):
         return "cloud"
+    if kind == "polygon" and model["props"].get("space"):
+        return "space"
     return KIND_TOOL.get(kind)
 
 

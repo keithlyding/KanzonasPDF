@@ -295,6 +295,49 @@ class Upkeep(unittest.TestCase):
         self.assertIn("Revision B sheet 1", " ".join(t for _ty, t in self.order(v, 2)))
         self.undoes(v, lambda: v.delete_page(0))
 
+    def test_a_page_with_nothing_tagged_duplicated(self):
+        # (random battery, seed 31, 1.12: a page whose tagged text was all erased keeps its
+        # StructParents; its copy kept the same key, used twice. The original keeps it, the
+        # copy drops it)
+        w, v = self.window(sample(2))
+        page = v.doc[1]
+
+        def erase():
+            from kanzonas import page_objects
+            page_objects._set_contents(v.doc[1], b"")
+        v.modify(erase, [1])
+        v.modify(lambda: v.doc[1].add_rect_annot(pymupdf.Rect(400, 100, 450, 150)), [1])
+        del page
+        self.in_step(v)
+        key = v.doc.xref_get_key(v.doc.page_xref(1), "StructParents")
+        self.undoes(v, lambda: v.duplicate_pages([1]))
+        self.assertEqual(v.doc.xref_get_key(v.doc.page_xref(1), "StructParents"), key)
+        self.assertNotEqual(v.doc.xref_get_key(v.doc.page_xref(2), "StructParents"), key)
+
+    def test_a_group_with_a_reply_moved_to_another_page(self):
+        # (to an earlier page: its tags are brought up to date first. Random battery, seed 9, 1.12: a group's member's reply, carried along to the other
+        # page as the same object, kept the element naming its old page until that page's
+        # turn took it out: left untagged)
+        from kanzonas import annotations as A, review
+        w, v = self.window(sample(2))
+        props = dict(A.DEFAULTS["rect"])
+        a = v._create(1, {"kind": "rect", "rect": pymupdf.Rect(300, 600, 340, 640),
+                          "text": "", "props": props})
+        b = v._create(1, {"kind": "rect", "rect": pymupdf.Rect(360, 600, 400, 640),
+                          "text": "", "props": props})
+        v.select_xref(1, a)
+        v.select_xref(1, b, add=True)
+        v.group_selection()
+        page = v.doc[1]
+        v.modify(lambda: review.add_reply(page, b, "On the member", "Tester"), [1])
+        del page
+        self.in_step(v)
+        v.select_xref(1, a)
+        self.assertEqual(len(v.selected_xrefs()), 2)
+        self.undoes(v, lambda: v.transfer_selection(0, pymupdf.Point(0, -200)))
+        self.assertEqual(len([x for x in v.doc[0].annot_xrefs()
+                              if x[1] == pymupdf.PDF_ANNOT_TEXT]), 1)
+
     def test_pages_from_a_tagged_file(self):
         w, v = self.window(sample(1))
         other = sample(1)

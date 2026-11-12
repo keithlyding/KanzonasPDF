@@ -123,8 +123,13 @@ looks and acts flattened; Edit text and Edit objects (Home tab) still change it 
 Acrobat and PDF-XChange can. Open, save, print, undo and redo sit left of the tabs, and the
 Find box (with its match count and up / down arrows) sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
-zoom box with zoom out / zoom in, like PDF-XChange Editor, and the current page's drawing
-scale (red when it has none; click it to set it). A message on the bottom bar too long for
+zoom box with zoom out / zoom in, like PDF-XChange Editor, the page's size and where the
+pointer is on it ("8.50 &times; 11.00 in&nbsp;&nbsp;(1.25, 3.40)": from the page's top-left
+corner as it's shown, in the rulers' units), <b>Reuse</b>, and the current page's drawing
+scale (red when it has none; click it to set it). <b>Reuse</b> on (the default): after you
+draw a markup, its tool stays picked for the next one; off: the tool goes back to the mouse
+mode's tool (Select, Hand or Edit objects), as Bluebeam's Reuse button does. Either way what
+you drew stays selected, so Properties changes it. A message on the bottom bar too long for
 the room left of the page controls ends in "..."; hover over it to read all of it. The ribbon is compact: two rows of
 buttons, and every tab fits a screen 1366 pixels wide, in English and in Spanish. Commands used
 less often share a button with an arrow beside it: click the button for the command it shows,
@@ -142,8 +147,8 @@ of the ribbon tabs has every menu, and all keyboard shortcuts still work. <b>Col
 (Ctrl+F1, or double-click a tab) shows only the tab names; click a tab to open it again. Untick
 View &gt; <b>Ribbon (instead of toolbars)</b> for the classic compact toolbars (zoom, page number
 and Find then go back to the top toolbar). The menus always have every command.</li>
-<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers and
-Objects panels; click the lit icon again to fold the panel away and get more room for the page.
+<li><b>Panel strip:</b> the icons on the left edge open the Pages, Bookmarks, Layers, Objects
+and Sets panels; click the lit icon again to fold the panel away and get more room for the page.
 The Markups list and Attachments icons are there too. View &gt; <b>Show panel strip (left
 edge)</b> hides the strip; the panels then show their names as tabs at the bottom instead.</li>
 <li><b>Command palette</b> (Ctrl+Shift+P; Help menu, View tab): type a few letters of what you
@@ -366,8 +371,8 @@ canvas, the pointer is a <b>plus</b> (except with the Hand), selecting works lik
 </ul>
 Your choice is remembered. (Before version 1.5 this was the CAD-style mouse switch and a
 default tool; your choices carry over.)</li>
-<li><b>Free page movement (drag the page past its edges)</b> (View menu, the View tab of the
-ribbon): an open canvas around the pages, so the Hand tool (or the held wheel) drags the page
+<li><b>Free page movement (drag the page past its edges)</b> (View menu, or under the arrow
+of the View tab's Display group): an open canvas around the pages, so the Hand tool (or the held wheel) drags the page
 anywhere, up, down and sideways, even when the whole page fits in the window, for example after
 Fit page. The menu switches it for the mouse mode in use; each mode remembers its own setting
 (on in Hand mode, off in Standard mode, on in CAD mode).</li>
@@ -395,8 +400,22 @@ characters, each word kept in its own style (bold, italic, color...). A line is 
 text or past the edge of the page, Replace text says on which pages (Ctrl+Z undoes it; Edit text
 can rewrap the paragraph). Pages with redaction marks that aren't applied yet are skipped (it says which).
 Ctrl+Z undoes the whole replacement.</li>
-<li><b>Split view</b> (F10) shows a second, independently scrolling view of the same file.
-It's for looking only: make changes in the main view.</li>
+<li><b>Split view</b> (F10) shows a second, independently scrolling view under the documents,
+or beside them with <b>Side by side</b> on its bar (remembered); drag the bar between them to
+share the room. It's for looking only: make changes in the main view (they show in both). Its
+list shows <b>The document in front</b> (it follows the tabs) or any other open document, to
+compare a plan with a detail sheet or one revision with another; if that document is closed,
+it shows the one in front. Tick <b>Sync</b> to pan and zoom both views together, as Bluebeam's
+Sync does: <b>By page number</b> keeps the same page in both (two revisions of a set);
+<b>By the pages in view</b> keeps the two pages shown when you ticked it paired, at their
+zooms (a plan and its detail), and moving either view moves the other.</li>
+<li><b>Rulers</b> (View menu, or the View tab's Display group; Ctrl+R) puts rulers along the top
+and left of the document. They measure the page under the pointer (or the page in view) from
+its top-left corner as it's shown, in paper units: the page's own length is the lighter band,
+and a line marks where the pointer is. Right-click a ruler (or the square where they meet) to
+choose Inches, Millimeters or Points; the status bar's pointer position uses the same units.
+The first time, they're inches where the computer measures in inches, millimeters elsewhere.
+They stay on for every document until you turn them off.</li>
 </ul>
 
 <h2 id="reading">Reading comfortably</h2>
@@ -935,9 +954,10 @@ with Edit objects) snaps its whole box: with Snap to page, its left edge, center
 lines up with the page's left edge, center or right edge, and its top, middle or bottom with the
 page's, each way on its own, and a green dashed guide shows what it lined up with (drop a picture
 near the middle of the sheet and it settles exactly in the middle); with Snap to objects, one of
-its corners, edge middles or center goes onto a nearby markup's point (a dragged markup also onto
-the drawing's own points; with both on, whichever is nearer); with Snap to grid, its top-left
-corner goes to the grid.</li>
+its corners, edge middles or center goes onto a nearby markup's point or a point of the drawing
+itself (line ends and midpoints, corners; for the page's own items moved with Edit objects, not
+their own points where they were; with both on, whichever is nearer); with Snap to grid, its
+top-left corner goes to the grid.</li>
 <li><b>Hold Alt</b> while drawing or dragging to place a point freely, without snapping.</li>
 </ul>
 
@@ -993,6 +1013,19 @@ the outer two stay put.</li>
 <b>Send backward</b> (Ctrl+[), <b>Send to back</b> (Ctrl+Shift+[). With pictures or shapes of
 the page itself selected (Edit objects tool), these change their order on the page instead
 (see Editing the PDF's own pictures, shapes and text).</li>
+<li><b>Group</b> (Ctrl+Shift+G; Arrange menu, the Arrange tab's Group group, or the right-click
+menu) makes the selected markups one group: a click on any of them selects them all, so they
+move, copy, change style (Properties) and delete together, and copies are a group too.
+<b>Ungroup</b> (Ctrl+Alt+G) makes them separate again. Grouping groups already grouped among
+them makes one bigger group. Align and Distribute move a group as one item, so its markups keep
+their places in it. It's the PDF standard's group (a markup "in reply to" the first,
+of the Group kind), so Acrobat keeps them together too; in other programs they stay separate
+markups.</li>
+<li><b>Flip horizontally</b> / <b>Flip vertically</b> (Arrange menu, the Group group, or the
+right-click menu) mirror the selection left for right or top for bottom across its middle, as
+the page is shown; a group flips as one (each part to its mirrored place), and the page's own
+objects selected with Edit objects flip too. CAD mode's Mirror does the same across any line
+you click. Text keeps reading the right way round.</li>
 </ul>
 
 <h2 id="objects">Objects panel and locking</h2>
@@ -1331,6 +1364,18 @@ radius (R) and diameter (&Oslash;).
 &times; depth. Set the <b>Depth</b> in the Properties panel, in the page's scale unit (feet
 when the scale is in feet and inches); changing it updates the selected measurement.</li>
 <li><b>Measurement summary</b> totals everything and exports to CSV.</li>
+<li><b>Space</b> (Measure tab, "More" group, the Measure menu and the CAD tab's Measure
+button), like Bluebeam's Spaces: a named area of a sheet (a room, a zone, a level). Click each
+corner, double-click or press Enter, and type its name (Space 1, Space 2... is offered). It is
+a see-through blue polygon with its name written in it on screen; color, outline and
+see-through are in Properties, and its grips move its corners as a polygon's do. Click its
+outline to select it: a press inside it draws or selects what's in the room. To rename
+it, right-click it &gt; <b>Rename space...</b>. Every markup whose middle is inside a space is
+in that space (in the smallest one where spaces overlap): the Markups list shows it in its
+<b>Space</b> column and, when the document has spaces, has a list to show one space's markups
+(with Type set to Count, its count shows at the top, as "12 of 40"). Move a markup in or out
+and its space follows. Other PDF programs show a space as a polygon with its name as its
+comment.</li>
 </ul>
 
 <h2 id="pages">Pages</h2>
@@ -1416,7 +1461,14 @@ it.</li>
 pages to new file (to a new file, not the document itself), Delete pages (the pages selected in
 the page list, or the current page; it asks first, and Ctrl+Z brings them back). A bookmark to a
 deleted page then goes to the page after it (or the last page).</li>
-<li><b>Layers</b> tab: show or hide CAD / optional-content layers.</li>
+<li><b>Layers</b> tab: show or hide CAD / optional-content layers. <b>Markups on layers</b>
+(as in Bluebeam): <b>New layer...</b> adds a layer to the document, and <b>New markups go on</b>
+picks the layer the markups you draw go on (No layer: none). To put markups already drawn on a
+layer, select them and right-click &gt; <b>Layer</b> &gt; a layer, No layer, or New layer....
+A markup on a hidden layer isn't drawn and can't be clicked; it stays in the file. Restyled,
+moved and copied markups stay on their layer. The layers are the PDF's own, so Acrobat and other
+programs with layers show and hide the markups with them too. The Markups list has a Layer column
+and, when the document has layers, a list to show one layer's markups.</li>
 <li><b>Bookmarks</b> tab: add, rename, reorder and indent bookmarks, make them from the
 headings, and insert a table of contents (see Bookmarks and table of contents).</li>
 <li><b>Link sheet callouts</b> (Pages menu; Pages tab, under the Document group's arrow): for a drawing set plotted without
@@ -1429,6 +1481,31 @@ folder (A-501 Details.pdf) links to that file. Words that already have a link ar
 so AutoCAD's own hyperlinks stay and running it twice adds nothing. Options: a thin blue box
 around the links (off by default, to keep drawings clean), and bookmarks named by sheet number
 and title. Ctrl+Z undoes it all.</li>
+</ul>
+
+<h2 id="sets">Sets: several PDFs as one</h2>
+<p>Like Bluebeam's Sets: a drawing set kept as one PDF per sheet (or a project's drawings and
+specifications) browsed as one document, without combining the files. Each PDF stays as it is,
+and markups are saved in the file they're drawn on.</p>
+<ul>
+<li><b>New set...</b> (File menu; Pages tab, under the Create group's arrow; or the Set button
+of the <b>Sets</b> panel): pick the PDFs, then where to save the set. A set is a small file of
+its own (.kzset) listing the PDFs; the ones in its folder or below are kept by their place
+next to it, so the folder can be moved or shared with the set in it. <b>Open set...</b>
+opens one (so does dragging a .kzset file onto the window).</li>
+<li>The <b>Sets</b> panel (a tab of the left panel, and an icon on the panel strip) lists each
+file with its pages under it. On drawing-size pages (11x17 and larger) the sheet number and
+title are read from the title block (SHEET NO, SHEET TITLE), so A-101 FLOOR PLAN is listed;
+other pages by their page label or number. A file that can't be found is listed grayed out.
+Type in <b>Filter sheets</b> to find a sheet by its number or title.</li>
+<li>Click a sheet to open its file at that page. <b>&#9654;</b> (Next sheet) and <b>&#9664;</b>
+(Previous sheet) go page by page across the files: after the last page of one file comes the
+first of the next. A file the set opened is closed again when you go on to another file,
+unless you changed it, so browsing a set of 60 sheets doesn't leave 60 tabs.</li>
+<li>Right-click a file in the panel to <b>Move up</b>, <b>Move down</b> or <b>Remove from
+set</b>; the Set button has <b>Add files...</b>, <b>Rename set...</b>, <b>Close set</b> and
+<b>Combine to one PDF...</b> (Combine files with the set's files, in the set's order). A change
+to the set is saved in its file at once.</li>
 </ul>
 
 <h2 id="bookmarks">Bookmarks and table of contents</h2>
@@ -2212,6 +2289,7 @@ scroll speed.</li>
 <tr><td>Ctrl+D</td><td>Duplicate selected markups (with Edit objects, the selected text, pictures and shapes; pages, in the page list)</td></tr>
 <tr><td>Delete (in the page list)</td><td>Delete the selected pages</td></tr>
 <tr><td>Ctrl+L</td><td>Lock selected markups</td></tr>
+<tr><td>Ctrl+Shift+G / Ctrl+Alt+G</td><td>Group / Ungroup the selected markups</td></tr>
 <tr><td>Ctrl+Shift+] / Ctrl+] / Ctrl+[ / Ctrl+Shift+[</td><td>Front / forward / backward / back</td></tr>
 <tr><td>Left / Right, Page Up / Page Down</td><td>Previous / next page</td></tr>
 <tr><td>Home / End</td><td>First / last page</td></tr>
@@ -2232,6 +2310,7 @@ scroll speed.</li>
 <tr><td>F11</td><td>CAD mouse mode on / off (off goes back to Standard or Hand, whichever you had)</td></tr>
 <tr><td>Letters, Enter (CAD mode)</td><td>Type a command on the command line (M Move, CO Copy, RO Rotate...); Enter runs it, and on an empty line repeats the last one. One-letter tool shortcuts don't apply in CAD mode (Shift+letter ones do), unless Preferences &gt; Mouse turns typing to the command line off.</td></tr>
 <tr><td>F12</td><td>Night mode (white lines on black) on / off</td></tr>
+<tr><td>Ctrl+R</td><td>Rulers on / off</td></tr>
 <tr><td>Ctrl+Shift+L / F5</td><td>Full screen (Escape leaves it) / Presentation</td></tr>
 <tr><td>B / W / L (presentation)</td><td>Black screen / white screen / laser pointer</td></tr>
 <tr><td>Ctrl+5 / Ctrl+6 / Ctrl+7 / Ctrl+8</td><td>Single page / Continuous / Two pages / Two pages continuous</td></tr>

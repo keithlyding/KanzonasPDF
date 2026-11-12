@@ -299,6 +299,20 @@ def line_rotation(line):
     return int(round(math.degrees(math.atan2(-dy, dx)) / 90.0)) % 4 * 90
 
 
+def line_angle(line):
+    """The text's direction in degrees, counterclockwise as shown (unrotated page space)."""
+    dx, dy = line["dir"]
+    return math.degrees(math.atan2(-dy, dx))
+
+
+def off_quarter(line):
+    """The line runs at an angle that isn't a quarter turn (a diagonal watermark): its
+    exact angle, else None."""
+    a = line_angle(line)
+    off = (a - line_rotation(line) + 180) % 360 - 180
+    return a if abs(off) > 0.5 else None
+
+
 def main_span(line):
     spans = [s for s in line["spans"] if s["text"].strip()]
     return max(spans, key=lambda s: len(s["text"].strip()))
@@ -854,6 +868,26 @@ def removal_bands(line):
     the lines above and below, even where those overlap this one (OCR text layers)."""
     dx, dy = line["dir"]
     out = []
+    if min(abs(dx), abs(dy)) > 0.01:
+        # (text at an angle: its letters' boxes are level boxes around turned letters, and
+        # a level band through the line's middle missed its ends: small squares along its
+        # middle instead, one every quarter of its size. 1.12)
+        nx, ny = -dy, dx                # "down", across the text
+        for s in line["spans"]:
+            if not s["text"].strip():
+                continue
+            size = float(s["size"])
+            ox, oy = s["origin"]
+            r = pymupdf.Rect(s["bbox"])
+            along = [(p.x - ox) * dx + (p.y - oy) * dy for p in (r.tl, r.tr, r.bl, r.br)]
+            a, a1 = max(min(along), 0.0), max(along)
+            half, step = max(0.5, 0.1 * size), max(0.5, 0.25 * size)
+            while a <= a1:
+                cx = ox + dx * a - nx * 0.3 * size
+                cy = oy + dy * a - ny * 0.3 * size
+                out.append(pymupdf.Rect(cx - half, cy - half, cx + half, cy + half))
+                a += step
+        return out
     for s in line["spans"]:
         r = pymupdf.Rect(s["bbox"])
         if abs(dx) >= abs(dy):
@@ -866,12 +900,79 @@ def removal_bands(line):
     return out
 
 
+def _span_key(s):
+    return (round(s["origin"][0], 1), round(s["origin"][1], 1), s["text"])
+
+
+def _others_of(page, lines):
+    """The page's text lines without the spans of these lines: a justified line's words, a
+    piece set apart, can be grouped into lines another way than these were (what's left of a
+    line is a line of its own)."""
+    mine = {_span_key(s) for ln in lines for s in ln["spans"]}
+    out = []
+    for _r, ln in text_lines(page):
+        rest = [s for s in ln["spans"] if _span_key(s) not in mine]
+        if not rest or not any(s["text"].strip() for s in rest):
+            continue
+        if len(rest) != len(ln["spans"]):
+            box = pymupdf.Rect()
+            for s in rest:
+                box |= pymupdf.Rect(s["bbox"])
+            ln = {"bbox": box, "dir": ln["dir"], "spans": rest}
+        out.append(ln)
+    return out
+
+
+def touched_lines(page, lines):
+    """The page's other text lines whose letters the removal bands of these lines reach (and
+    theirs in turn): a line lying over another one (moved onto it with the arrow keys, an
+    overprinted label) would take that one's letters with it. Only lines near the bands are
+    looked at (a grid of the page's spans)."""
+    bands = [r for ln in lines for r in removal_bands(ln)]
+    if not bands:
+        return []
+    cell = 48.0
+    others = _others_of(page, lines)
+    grid = {}
+    for k, ln in enumerate(others):
+        for sp in ln["spans"]:
+            if not sp["text"].strip():
+                continue
+            b = pymupdf.Rect(sp["bbox"])
+            for i in range(int(b.x0 // cell), int(b.x1 // cell) + 1):
+                for j in range(int(b.y0 // cell), int(b.y1 // cell) + 1):
+                    grid.setdefault((i, j), set()).add(k)
+    found = set()
+    todo = list(bands)
+    while todo:
+        r = todo.pop()
+        near = set()
+        for i in range(int(r.x0 // cell), int(r.x1 // cell) + 1):
+            for j in range(int(r.y0 // cell), int(r.y1 // cell) + 1):
+                near |= grid.get((i, j), set())
+        for k in near - found:
+            if any(pymupdf.Rect(sp["bbox"]).intersects(r) for sp in others[k]["spans"]
+                   if sp["text"].strip()):
+                found.add(k)
+                todo += removal_bands(others[k])
+    return [others[k] for k in sorted(found)]
+
+
 def _remove_lines(page, lines, keep_links=True, decor=()):
     """Take the lines' letters out of the page. Applying a redaction also drops every link
     it touches: keep_links puts those back (editing or moving linked words keeps the link,
     a drawing set's sheet hyperlinks included). decor: the boxes of the lines' underlines
     and strikethrough lines (text_styles.read_*), taken out too: only a drawing lying
-    wholly inside one of them goes (a table border running on stays)."""
+    wholly inside one of them goes (a table border running on stays).
+
+    Another line the removal would reach (one these lie over) is taken out with them and
+    written again where it was, as it was (the owner, 11 Nov: text moved with the arrow keys
+    onto another line took that line's letters away on the next press)."""
+    others = touched_lines(page, lines)
+    kept = _plan_lines(page, others) if others else None   # (fonts found before anything goes)
+    if kept is not None:
+        lines = list(lines) + others
+        decor = list(decor) + kept[2]
     doc = page.parent
     saved = []
     for xref, kind, *_ in page.annot_xrefs():
@@ -891,6 +992,8 @@ def _remove_lines(page, lines, keep_links=True, decor=()):
         page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
                               graphics=pymupdf.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
                               text=pymupdf.PDF_REDACT_TEXT_NONE)
+    if kept is not None:
+        _write_lines(page, kept[0], kept[1], (0, 0))
     from . import added_text
     added_text.prune(page)              # (a block whose letters all went is no block)
     if saved:
@@ -1641,6 +1744,14 @@ def move_lines(page, lines, offset, blocks=()):
     marked where it now is. Returns the font names written with. Raises ValueError (before
     changing anything) if a line can't be written."""
     refuse_with_marks(page)
+    plans, styled, decor = _plan_lines(page, lines)     # 1) the fonts first
+    _remove_lines(page, lines, decor=decor)     # 2) all their letters out at once
+    return _write_lines(page, plans, styled, offset, blocks)    # 3) each written again
+
+
+def _plan_lines(page, lines):
+    """How each line is written again (its font found before anything changes: nothing goes
+    if one can't be written): (plans, styled, decor) for _write_lines."""
     plans = []
     styled, decor = [], []
     for line in lines:                  # 1) the fonts first: nothing goes if one can't write
@@ -1661,7 +1772,12 @@ def move_lines(page, lines, offset, blocks=()):
         main = main_span(line)
         found, text = _font_for(page, main, text)
         plans.append((line, text, main, found))
-    _remove_lines(page, lines, decor=decor)     # 2) all their letters out at once
+    return plans, styled, decor
+
+
+def _write_lines(page, plans, styled, offset, blocks=()):
+    """Write the lines planned (_plan_lines) again, moved by offset; returns the font names
+    written with."""
     inserted = {}                       # font name -> (name written with, Font)
     used = []
     # one drawing for all of them, added to the page once (page.insert_text adds each
@@ -1683,7 +1799,9 @@ def move_lines(page, lines, offset, blocks=()):
         from . import text_styles
         fonts = text_styles.reinsert(page, fonts)
         origin = pymupdf.Point(line["spans"][0]["origin"]) + offset
-        text_styles.write_row(shape_for(line), origin, line_rotation(line),
+        angle = off_quarter(line)
+        text_styles.write_row(shape_for(line), origin,
+                              line_rotation(line) if angle is None else angle,
                               text_styles.pieces(list(zip(text, keys)), fonts), fonts)
         inserted.update({f.name: (f.name, f.font) for f in fonts.values()
                          if f.source is not None})
@@ -1698,9 +1816,17 @@ def move_lines(page, lines, offset, blocks=()):
         else:
             name = _base14(main)
         origin = pymupdf.Point(line["spans"][0]["origin"]) + offset
-        shape_for(line).insert_text(origin, text, fontsize=float(main["size"]), fontname=name,
-                                    color=_rgb(main["color"]), rotate=line_rotation(line),
-                                    lineheight=1.2)
+        angle = off_quarter(line)
+        if angle is not None:
+            # (at its own angle, a diagonal watermark: insert_text turns only by quarters;
+            # moved, it came out level. Random battery, seed 1112, 1.12)
+            shape_for(line).insert_text(origin, text, fontsize=float(main["size"]),
+                                        fontname=name, color=_rgb(main["color"]),
+                                        morph=(origin, pymupdf.Matrix(angle)), lineheight=1.2)
+        else:
+            shape_for(line).insert_text(origin, text, fontsize=float(main["size"]),
+                                        fontname=name, color=_rgb(main["color"]),
+                                        rotate=line_rotation(line), lineheight=1.2)
         used.append(name)
     from . import added_text
     for k, sh in shapes.items():

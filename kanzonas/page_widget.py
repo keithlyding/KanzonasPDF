@@ -10,7 +10,7 @@ import time
 import pymupdf
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (QPainter, QImage, QPixmap, QColor, QPen, QPainterPath,
-                           QFontMetrics, QTransform)
+                           QFontMetrics, QTransform, QFont)
 from PySide6.QtWidgets import QWidget, QToolTip, QApplication
 
 from . import annotations as A
@@ -25,7 +25,7 @@ SHAPE_TOOLS = {"textbox", "rect", "ellipse", "circle", "mask", "line", "arrow", 
                "callout", "m_length", "m_calibrate", "m_radius", "image", "placeholder",
                "erasecontent", "capture", "crop", "link", "legend"}
 POLY_TOOLS = {"polygon", "polyline", "m_poly", "m_area", "m_angle", "m_perimeter", "m_volume",
-              "arc", "curve", "m_dim"}
+              "arc", "curve", "m_dim", "space"}
 # three clicks: Arc = start, a point it passes through, end; Curve = start, end, the bend
 CURVE_TOOLS = {"arc", "curve"}
 # three clicks, the last one ends it: an angle's end, corner, end; a dimension's two points
@@ -37,7 +37,7 @@ EDIT_IN_PLACE = {"rect", "ellipse", "circle", "mask", "cloud", "line", "arrow", 
                  "polyline", "ink", "arc", "curve", "textbox", "callout", "note", "stamp",
                  "m_length", "m_poly", "m_area", "m_count", "m_angle", "m_radius",
                  "m_perimeter", "m_volume", "m_dim", "image", "attach", "placeholder",
-                 "legend"}
+                 "legend", "space"}
 MEASURE_TOOLS = {"m_length", "m_calibrate", "m_poly", "m_area", "m_angle", "m_radius",
                  "m_perimeter", "m_volume", "m_dim"}
 FORM_TOOLS = {"f_text", "f_check", "f_radio", "f_combo", "f_sign", "f_initials"}
@@ -478,9 +478,36 @@ class PageWidget(QWidget):
         if self.index not in v._alists:
             page = v.doc[self.index]
             # (drawn again after a change: its pictures decoded afresh, as when opened)
-            RL.forget_pictures(page.parent, RL.markup_pictures(page))
+            pics = RL.markup_pictures(page)
+            RL.forget_pictures(page.parent, pics)
             v._alists[self.index] = RL.annots_list(page)
+            v.__dict__.setdefault("_alist_pics", {})[self.index] = pics
+            if pics:            # (pictures decoded here: the other pages draw theirs afresh)
+                v._pic_tick = getattr(v, "_pic_tick", 0) + 1
+                v.__dict__.setdefault("_pic_seen", {})[self.index] = (None, v._pic_tick)
         return v._alists[self.index]
+
+    def _forget_markup_pictures(self, s):
+        """Before the markups are drawn anew: their pictures (stamps, images) decoded afresh.
+        MuPDF keeps a decoded copy of a picture and draws from one decoded for another page or
+        size, a few levels of color off (a stamp duplicated onto another page: random
+        battery, seed 9, 1.12); the page's content does the same before each render."""
+        v = self.view
+        pics = getattr(v, "_alist_pics", {}).get(self.index)
+        if not pics or self.index not in v._alists:
+            return
+        # once per page and zoom, while no other page or zoom draws pictures in between (a
+        # big page draws in tiles: not made anew for each)
+        tick = getattr(v, "_pic_tick", 0)
+        seen = v.__dict__.setdefault("_pic_seen", {})
+        if seen.get(self.index) == (round(s, 6), tick):
+            return
+        # (the markups' drawing holds the pictures it read: made anew, as the content's)
+        page = v.doc[self.index]
+        RL.forget_pictures(v.doc, pics)
+        v._alists[self.index] = RL.annots_list(page)
+        v._pic_tick = tick + 1
+        seen[self.index] = (round(s, 6), v._pic_tick)
 
     def _content(self, s, clip=None, tile=None):
         """The page's content rendered at zoom s (device pixels per point), whole or the clip,
@@ -512,9 +539,10 @@ class PageWidget(QWidget):
     def _with_markups(self, base, s, clip=None):
         """base (the content at zoom s) with the markups drawn over it by MuPDF (blend modes,
         opacity and all, as a whole-page render draws them)."""
-        al = self._annots()
-        if al is None:
+        if self._annots() is None:
             return base
+        self._forget_markup_pictures(s)
+        al = self._annots()
         with screen_lines(self.view.thin_lines):
             return RL.draw_over(base, al, s, clip)
 
@@ -949,6 +977,7 @@ class PageWidget(QWidget):
                 p.fillRect(self.to_screen(r, page), QColor(30, 120, 255, 110))
 
         self._paint_comment_cards(p, page)
+        self._paint_space_names(p, page)
 
         if self.view.highlight_fields and self.view.tool not in FORM_TOOLS:
             # shade fillable fields (screen only) with a blue outline so they stand out even
@@ -985,6 +1014,19 @@ class PageWidget(QWidget):
         if self.view.show_scale_bar:
             self._paint_scale_bar(p)
 
+        self._paint_overlay(p, page)
+
+        if self.view.current_page() == self.index and self.view.page_count() > 1:
+            p.setPen(QPen(QColor(0, 120, 215), 1))
+            p.setBrush(Qt.NoBrush)
+            p.drawRect(self.page_area().adjusted(0, 0, -1, -1))
+
+    def _paint_overlay(self, p, page):
+        """What's being drawn, placed, moved or selected over the page: the tool's preview,
+        the selection and its handles, snap marks. Also painted by the gray canvas around the
+        pages (document_view._Canvas) where it reaches past this widget, so a markup put in
+        the gray shows while it's placed (the owner, 11 Nov: "they disappear until I
+        click")."""
         tool = self.view.tool
         self._paint_text_selection(p, page, tool)
         cad_select.paint(self, p)
@@ -1019,7 +1061,7 @@ class PageWidget(QWidget):
             else:
                 for a_, b_ in zip(pts, pts[1:]):
                     p.drawLine(a_, b_)
-            if tool in ("polygon",) + A.CLOSED_MEASURES and len(pts) > 2:
+            if tool in ("polygon", "space") + A.CLOSED_MEASURES and len(pts) > 2:
                 p.setPen(QPen(self.view.tool_color(tool), 1, Qt.DashLine))
                 p.drawLine(pts[-1], pts[0])
             if tool in MEASURE_TOOLS:
@@ -1127,11 +1169,6 @@ class PageWidget(QWidget):
         ed = self.view._inline
         if ed is not None and ed.parentWidget() is self:
             ed.paint_preview(p)             # (small text typed enlarged: where it goes)
-
-        if self.view.current_page() == self.index and self.view.page_count() > 1:
-            p.setPen(QPen(QColor(0, 120, 215), 1))
-            p.setBrush(Qt.NoBrush)
-            p.drawRect(self.page_area().adjusted(0, 0, -1, -1))
 
     def _paint_outside(self, p, exposed):
         """The markups (and parts of markups) in the working space around the page, drawn
@@ -1248,6 +1285,27 @@ class PageWidget(QWidget):
         p.setBrush(Qt.NoBrush)
         p.setPen(Qt.black)
         p.drawText(box.adjusted(5, 3, -5, -3), Qt.AlignLeft | Qt.AlignTop, text)
+
+    def _paint_space_names(self, p, page):
+        """Each space's name written in it (spaces.py; on screen only, like Revu's)."""
+        if not self.view.show_markups:
+            return
+        found = self.view.space_labels(self.index)
+        if not found:
+            return
+        f = QFont(self.font())
+        f.setBold(True)
+        f.setPixelSize(max(9, min(28, int(round(10 * self.view.zoom)))))
+        p.setFont(f)
+        fm = QFontMetrics(f)
+        for name, at in found:
+            c = self.to_screen_pt(at, page)
+            w = fm.horizontalAdvance(name)
+            r = QRectF(c.x() - w / 2 - 3, c.y() - fm.height() / 2, w + 6, fm.height())
+            p.fillRect(r, QColor(255, 255, 255, 170))
+            p.setPen(QColor(20, 70, 160))
+            p.drawText(r, Qt.AlignCenter, name)
+        p.setFont(self.font())
 
     def _paint_comment_cards(self, p, page):
         """Adobe-style note boxes beside commented text (drawn by us, not in the PDF)."""
@@ -1590,15 +1648,18 @@ class PageWidget(QWidget):
         self.update()
 
     def _objects_preview(self, pos, free=False, snap=False):
-        """The selection's new box on screen while dragging (a move snapped: _snap_box; the
-        page's drawing isn't a target, it holds the dragged objects' own points)."""
+        """The selection's new box on screen while dragging (a move snapped: _snap_box, to
+        markups and to the page's drawing but its points where the dragged objects were:
+        those are the dragged objects' own; the owner, 11 Nov: snapping "doesn't seem to be
+        working anymore" when moving the page's own objects)."""
         ed = self._obj_edit
         r = QRectF(self.to_screen(self.view.selected_objects_rect()))
         d = pos - ed["start"]
         mode = ed["mode"]
         if mode == "move":
             if snap:
-                d = self._snap_box(r, d, content=False)
+                own = self.view.selected_objects_rect() + (-0.5, -0.5, 0.5, 0.5)
+                d = self._snap_box(r, d, skip=own)
             return r.translated(d)
         left, top, right, bottom = r.left(), r.top(), r.right(), r.bottom()
         if "l" in mode:
@@ -1960,6 +2021,26 @@ class PageWidget(QWidget):
             if v.default_tool_of_selected() is not None:
                 # its style for the next markups made with its tool (Bluebeam's name for it)
                 menu.addAction(tr("Set as Default"), v.set_selected_as_default)
+            if win is not None and hasattr(win, "a_group"):
+                menu.addSeparator()
+                for act in (win.a_group, win.a_ungroup, win.a_flip_h, win.a_flip_v):
+                    if act.isEnabled():
+                        menu.addAction(act)
+            if v.selected_space() is not None and not v.read_only:
+                menu.addAction(tr("Rename space..."), v.rename_space)      # (spaces.py)
+            if win is not None and hasattr(win, "new_markup_layer") and not v.read_only:
+                # (1.12) the layer the selected markups are on: none, one of the document's,
+                # or a new one
+                from . import markup_layers
+                lm = menu.addMenu(tr("Layer"))
+                now = v.selection_layer()
+                for x, name in [(None, tr("No layer"))] + [
+                        (x, name) for x, name, _on in markup_layers.layers(v.doc)]:
+                    act = lm.addAction(name, lambda x=x: v.move_selection_to_layer(x))
+                    act.setCheckable(True)
+                    act.setChecked(x == now)
+                lm.addSeparator()
+                lm.addAction(tr("New layer..."), lambda: win.new_markup_layer(True))
             # (all that's selected: in CAD mode, the drawing's objects selected with them too)
             menu.addAction(tr("Delete"), v.delete_everything_selected)
         elif on_text:
@@ -2083,6 +2164,31 @@ class PageWidget(QWidget):
             if r.contains(pos):
                 return xref
         return None
+
+    def update(self, *args):
+        """Repaint (Qt's update), and the gray around the pages where what's being drawn,
+        placed or moved reaches past this page (the canvas paints it there: _paint_overlay)."""
+        super().update(*args)
+        if args:
+            return
+        busy = self.in_progress()
+        if busy or getattr(self, "_gray_had", False):
+            self._gray_had = busy
+            canvas = self.parentWidget()
+            redraw = getattr(canvas, "update_gray", None)
+            if redraw is not None:
+                redraw()
+
+    def in_progress(self):
+        """Something being drawn, placed or moved here, that may reach past the page."""
+        v = self.view
+        return bool(self._drag_start is not None or self._edit is not None or self._poly or
+                    self._ink or self._obj_edit is not None or self._text_move is not None or
+                    self._sig_drag is not None or self._ghost is not None or
+                    getattr(self, "_cad_down", None) is not None or
+                    getattr(self, "_cad_resize", None) is not None or
+                    getattr(v, "_cad_cmd", None) is not None or
+                    (getattr(v, "_drop_ghost", None) or (None,))[0] == self.index)
 
     def _gone(self):
         """The document is closed, or this page no longer in it (a widget waiting for its
@@ -2347,7 +2453,7 @@ class PageWidget(QWidget):
         corner = box.topLeft()
         return self.to_pdf(corner + d) - self.to_pdf(corner)
 
-    def _snap_box(self, box, d, exclude=(), content=True):
+    def _snap_box(self, box, d, exclude=(), content=True, skip=None):
         """The drag d (widget) of a box (widget QRectF) snapped: one of the box's corners,
         edge middles or center onto an object's point (snap to objects; content: the page's
         drawing too); else, each way on its own, its left / center / right onto the page's
@@ -2366,7 +2472,8 @@ class PageWidget(QWidget):
             for x in (moved.left(), moved.center().x(), moved.right()):
                 for y in (moved.top(), moved.center().y(), moved.bottom()):
                     at = QPointF(x, y)
-                    hit = v.snap_object_point(self.index, self.to_pdf(at), exclude, content)
+                    hit = v.snap_object_point(self.index, self.to_pdf(at), exclude, content,
+                                              skip)
                     if hit is not None:
                         sp = self.to_screen_pt(hit)
                         gap = (sp - at).manhattanLength()
@@ -2490,6 +2597,7 @@ class PageWidget(QWidget):
     def mouseMoveEvent(self, e):
         if self._gone():
             return                      # (its tab is closing: the document is closed)
+        self.view.pointer_at(self.index, e.position())     # (rulers, the status bar)
         if getattr(self, "_mid_pan", False):
             self.view.continue_pan(e.globalPosition())
             return
@@ -2579,7 +2687,9 @@ class PageWidget(QWidget):
             self._poly_hover = snap45(self._poly[0], pos) if shift_held(e) else pos
             self.update()
             return
-        if tool == "hand":
+        if tool == "hand" and self._edit is None:
+            # (a press on a markup with the Hand selected it to move it: that drag moves it,
+            # 1.12; it panned nothing and the markup stayed put)
             self.view.continue_pan(e.globalPosition())
         elif self._sig_drag is not None:
             self._sig_now = pos
@@ -2721,7 +2831,7 @@ class PageWidget(QWidget):
                 a, b = self.to_pdf(tm["start"]), self.to_pdf(pos)
                 self.view.move_text_line(self.index, tm["pdf"], (b.x - a.x, b.y - a.y))
             return
-        if tool == "hand":
+        if tool == "hand" and self._edit is None:
             self.view.end_pan()
         elif self._sig_drag is not None:
             self._sig_now = pos
@@ -2792,8 +2902,8 @@ class PageWidget(QWidget):
         self.update()
         tool = self.view.tool
         self._dim_press = None
-        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc", "m_dim")
-                                      and len(pts) < 3):
+        if cancel or len(pts) < 2 or (tool in ("polygon", "m_angle", "m_volume", "arc", "m_dim",
+                                               "space") and len(pts) < 3):
             return
         self.view.apply_poly(self.index, tool, [self.to_pdf(q) for q in pts])
 
@@ -2909,6 +3019,8 @@ class PageWidget(QWidget):
         return bool(line)
 
     def leaveEvent(self, e):
+        if not self._gone():
+            self.view.pointer_left()
         cad_select.clear_rollover(self)
         if self._obj_hover is not None:
             self._obj_hover = None

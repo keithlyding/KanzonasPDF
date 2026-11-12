@@ -131,6 +131,9 @@ MEASURE_TOOLS = [
     ("m_perimeter", tr("Perimeter"), "", tr("Measure a perimeter: click corners, double-click or Enter to finish")),
     ("m_volume", tr("Volume"), "", tr("Measure volume: click the corners of the area, double-click or Enter; set the depth in Properties")),
     ("m_count", tr("Count"), "Shift+C", tr("Count: click each item; set the group name in Properties (Shift+C)")),
+    ("space", tr("Space"), "", tr("Space: a named area (a room, a zone): click each corner, "
+                                  "double-click or Enter to finish, then name it. The Markups "
+                                  "list shows the space each markup is in")),
     ("m_calibrate", tr("Calibrate Tape Measure"), "", tr("Calibrate Tape Measure: drag along a known dimension, then type its real length")),
 ]
 EXTRA_TOOLS = [  # tools reached from menus, not the toolbar
@@ -583,6 +586,25 @@ class MainWindow(QMainWindow):
         from .scale_display import ScaleStatusLabel
         self.scale_label = ScaleStatusLabel()
         self.scale_label.clicked.connect(self.set_scale)
+        # the page's size and the pointer's place on it, in the rulers' units (rulers.py)
+        self.pointer_label = QLabel()
+        self.pointer_label.setToolTip(tr("The page's size, and where the pointer is on it "
+                                         "from its top-left corner (the units: right-click a "
+                                         "ruler, View > Rulers)"))
+        self.statusBar().addPermanentWidget(self.pointer_label)
+        # Reuse: the tool stays picked after a markup is drawn (on), or goes back to the
+        # mouse mode's tool (off), as Bluebeam's Reuse button
+        self.reuse_btn = QToolButton()
+        self.reuse_btn.setText(tr("Reuse"))
+        self.reuse_btn.setCheckable(True)
+        self.reuse_btn.setAutoRaise(True)
+        self.reuse_btn.setChecked(self.settings.value("reuse_tools", "true") == "true")
+        self.reuse_btn.setToolTip(tr("Reuse: after drawing a markup, keep its tool for the "
+                                     "next one (on), or go back to the mouse mode's tool "
+                                     "(off)"))
+        self.reuse_btn.toggled.connect(self._set_reuse)
+        DocumentView.reuse_tools = self.reuse_btn.isChecked()
+        self.statusBar().addPermanentWidget(self.reuse_btn)
         self.statusBar().addPermanentWidget(self.scale_label)
         self._thumb_queue = []
         self._thumb_timer = QTimer(self, interval=0)
@@ -641,7 +663,9 @@ class MainWindow(QMainWindow):
                  tr("Bookmarks panel (click again to fold it away)")),
                 (tr("Layers"), "layers-outline", tr("Layers panel (click again to fold it away)")),
                 (tr("Objects"), "shape-outline",
-                 tr("Objects panel (click again to fold it away)")))):
+                 tr("Objects panel (click again to fold it away)")),
+                (tr("Sets"), "folder-multiple-outline",
+                 tr("Sets panel (click again to fold it away)")))):
             a = QAction(theme.icon_named(icon), label, self, checkable=True)
             self._strip_icons.append((a, icon))
             a.setToolTip(tip)
@@ -657,7 +681,7 @@ class MainWindow(QMainWindow):
             ps.addAction(a)
         self.a_panel_strip = QAction(tr("Show panel &strip (left edge)"), self, checkable=True)
         self.a_panel_strip.setToolTip(tr("Icons on the left edge that open and fold the Pages, "
-                                         "Bookmarks, Layers and Objects panels"))
+                                         "Bookmarks, Layers, Objects and Sets panels"))
         self.a_panel_strip.setChecked(self.settings.value("panel_strip", "true") != "false")
         self.a_panel_strip.toggled.connect(self._toggle_panel_strip)
         self.view_menu.addAction(self.a_panel_strip)
@@ -1068,6 +1092,13 @@ class MainWindow(QMainWindow):
         self.a_attachments = self._act(tr("A&ttachments..."), self.show_attachments,
                                        tip=tr("Files embedded in this PDF: open, save or delete them"))
         self.a_bookmarks = self._act(tr("&Bookmarks"), self._show_bookmarks, "F9")
+        # (1.12) Sets (sets_panel.py)
+        self.a_new_set = self._act(tr("New s&et..."), self._new_set,
+                                   tip=tr("A set: several PDFs (one per sheet, say) browsed as "
+                                          "one document in the Sets panel, without combining "
+                                          "them"))
+        self.a_open_set = self._act(tr("Open se&t..."), self._open_set_dialog,
+                                    tip=tr("Open a set of PDFs in the Sets panel"))
         # Document > Accessibility (accessibility_ui.py)
         acc = [("check_accessibility", tr("Check &accessibility..."),
                 tr("List what keeps this document from being accessible to screen readers "
@@ -1239,6 +1270,12 @@ class MainWindow(QMainWindow):
         self._apply_grid_settings(save=False)
         self.a_split = self._act(tr("&Split view"), self._toggle_split, "F10")
         self.a_split.setCheckable(True)
+        self.a_rulers = self._act(tr("&Rulers"), self._toggle_rulers, "Ctrl+R",
+                                  tip=tr("Rulers along the top and left of the page, in "
+                                         "inches, millimeters or points (right-click one to "
+                                         "change) (Ctrl+R)"))
+        self.a_rulers.setCheckable(True)
+        self.a_rulers.setChecked(self.settings.value("show_rulers", "false") == "true")
         self.a_shortcuts = self._act(tr("&Keyboard shortcuts..."), self.edit_shortcuts)
         self.a_markups = self._act(tr("&Markups list"), self._toggle_markups, "F7")
         self.a_markups.setCheckable(True)
@@ -1292,6 +1329,24 @@ class MainWindow(QMainWindow):
                                 tip=tr("Lock the selected markups: they can't be clicked, moved or "
                                        "selected on the page (unlock in the Objects panel)"))
         self.a_unlock_all = self._act(tr("&Unlock all markups"), lambda: self._unlock_all())
+        # (1.12) groups of markups, and flipping, as Bluebeam's Group and Flip
+        self.a_group = self._act(tr("&Group"), lambda: self.view() and
+                                 self.view().group_selection(), "Ctrl+Shift+G",
+                                 tip=tr("Group the selected markups: a click on one selects "
+                                        "them all, to move, copy, style or delete them "
+                                        "together (Ctrl+Shift+G)"))
+        self.a_ungroup = self._act(tr("U&ngroup"), lambda: self.view() and
+                                   self.view().ungroup_selection(), "Ctrl+Alt+G",
+                                   tip=tr("Ungroup the selected group: its markups are "
+                                          "on their own again (Ctrl+Alt+G)"))
+        self.a_flip_h = self._act(tr("Flip &horizontally"), lambda: self.view() and
+                                  self.view().flip_selection(True),
+                                  tip=tr("Mirror the selection left for right, across its "
+                                         "middle (a group as one)"))
+        self.a_flip_v = self._act(tr("Flip &vertically"), lambda: self.view() and
+                                  self.view().flip_selection(False),
+                                  tip=tr("Mirror the selection top for bottom, across its "
+                                         "middle (a group as one)"))
         self.align_ref_group = QActionGroup(self)
         self.align_ref_actions = {}
         # (menu text, the shorter text in the toolbar's "align to" box)
@@ -1366,6 +1421,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_new, self.a_open])
         self.recent_menu = m.addMenu(tr("Open &recent"))
         self._rebuild_recent()
+        m.addActions([self.a_new_set, self.a_open_set])
         m.addActions([self.a_save, self.a_save_as, self.a_save_pdfa, self.a_check_pdfa])
         m.addActions([self.a_combine, self.a_from_images, self.a_scan, self.a_batch])
         em = m.addMenu(tr("&Export to"))
@@ -1400,6 +1456,7 @@ class MainWindow(QMainWindow):
         m.addActions([self.a_sidebar, self.a_props, self.a_chest, self.a_markups, self.a_cards])
         m.addSeparator()
         m.addAction(self.a_split)
+        m.addAction(self.a_rulers)
         m.addAction(self.a_detach)
         m.addActions([self.a_mouse_standard, self.a_mouse_hand, self.a_cad_mouse])
         m.addAction(self.a_free_pan)
@@ -1429,6 +1486,8 @@ class MainWindow(QMainWindow):
         m.addActions([acts["dist_h"], acts["dist_v"]])
         m.addSeparator()
         m.addActions([acts[k] for k in ("z_front", "z_forward", "z_backward", "z_back")])
+        m.addSeparator()
+        m.addActions([self.a_group, self.a_ungroup, self.a_flip_h, self.a_flip_v])
         m.addSeparator()
         m.addActions([self.a_lock, self.a_unlock_all])
         m.addSeparator()
@@ -1781,6 +1840,9 @@ class MainWindow(QMainWindow):
         self.layers = LayersPanel()
         self.layers.toggled.connect(lambda n, on: self.view() and self.view().set_layer(n, on))
         self.layers.allToggled.connect(self._all_layers)
+        self.layers.markupLayerChosen.connect(
+            lambda x: self.view() and self.view().set_markup_layer(x or None))
+        self.layers.newLayerRequested.connect(lambda: self.new_markup_layer())
         self.left_tabs.addTab(self._narrowable(self.layers), tr("Layers"))
         from .objects_panel import ObjectsPanel
         self.objects = ObjectsPanel()
@@ -1788,6 +1850,14 @@ class MainWindow(QMainWindow):
         self.objects.flagsChanged.connect(self._objects_flags)
         self.objects.arrange.connect(lambda how: self.view() and self.view().arrange(how))
         self.left_tabs.addTab(self._narrowable(self.objects), tr("Objects"))
+        # (1.12) Sets: several PDFs browsed as one (doc_sets.py, sets_panel.py)
+        from .sets_panel import SetsPanel
+        self.sets = SetsPanel()
+        self.sets.openRequested.connect(self._set_go)
+        self.sets.stepRequested.connect(self._set_step)
+        self.sets.combineRequested.connect(lambda files: self.combine_files(files))
+        self.sets.setChanged.connect(self._set_shown)
+        self.left_tabs.addTab(self._narrowable(self.sets), tr("Sets"))
         self._objects_timer = QTimer(self, singleShot=True, interval=150)
         self._objects_timer.timeout.connect(self._refresh_objects)
         self.left_tabs.currentChanged.connect(lambda _i: self._objects_timer.start())
@@ -1872,6 +1942,11 @@ class MainWindow(QMainWindow):
         self.a_delete_annot.setEnabled(has and v.selection is not None)
         self.a_lock.setEnabled(has and v.selection is not None)
         self.a_unlock_all.setEnabled(has)
+        self.a_group.setEnabled(has and v.can_group())
+        self.a_ungroup.setEnabled(has and v.can_ungroup())
+        for a in (self.a_flip_h, self.a_flip_v):
+            a.setEnabled(has and not v.read_only and (v.selection is not None or
+                                                      v.obj_sel is not None))
         if hasattr(self, "_objects_timer"):
             self._objects_timer.start()
         # markups and the drawing's own objects (Edit objects, CAD mode) count alike: any
@@ -1938,6 +2013,10 @@ class MainWindow(QMainWindow):
 
     def open_file(self, path):
         path = os.path.abspath(path)
+        from . import doc_sets
+        if path.lower().endswith(doc_sets.SUFFIX):
+            self.open_set(path)          # (a set: its files in the Sets panel)
+            return
         for win in [self] + [x for x in windows() if x is not self]:
             # (also in a pulled-out window: two copies of one file, each saved over the
             # other's changes)
@@ -2194,7 +2273,10 @@ class MainWindow(QMainWindow):
         move to another window, see move_view)."""
         v.set_tool(self.tool)
         v.show_comment_boxes = self.a_cards.isChecked()
+        v.set_rulers(self.a_rulers.isChecked())
         conns = [
+            (v.pointerMoved, lambda v=v: v is self.view() and self._show_pointer()),
+            (v.toolUsed, lambda: self.set_tool(self.default_tool())),
             (v.selectionChanged, self._on_selection_changed),
             (v.openFileRequested, self._open_linked_pdf),
             (v.signedDocument, self._on_signed),
@@ -2206,6 +2288,7 @@ class MainWindow(QMainWindow):
             # (the view is bound here: inside a lambda, sender() isn't the view that sent
             # the signal, so a check on it was never true and these never ran)
             (v.layersChanged, lambda v=v: v is self.view() and self._rebuild_thumbs()),
+            (v.layersChanged, lambda v=v: v is self.view() and self._refresh_layers()),
             (v.scaleChanged, self._update_ui),
             (v.historyChanged, self._update_ui),
             (v.documentChanged, self._markups_timer.start),
@@ -2270,10 +2353,7 @@ class MainWindow(QMainWindow):
             return
         v.commit_pending()
         title = self.tabs.tabText(index)
-        if self._split_view is not None and getattr(self._split_view, "_source", None) is v:
-            self._split_view.deleteLater()
-            self._split_view = None
-            self.split_dock.hide()
+        self._split_source_gone(v)
         self._disconnect_view(v)
         self.tabs.removeTab(index)
         target.adopt_view(v, title, at)
@@ -2340,10 +2420,7 @@ class MainWindow(QMainWindow):
             v._cad_cmd.cancel()
         self._remember_state(v)
         self.autosave.discard(v)
-        if self._split_view is not None and getattr(self._split_view, "_source", None) is v:
-            self._split_view.deleteLater()
-            self._split_view = None
-            self.split_dock.hide()
+        self._split_source_gone(v)
         self.tabs.removeTab(index)
         v.close_doc()
         v.deleteLater()
@@ -2927,12 +3004,18 @@ class MainWindow(QMainWindow):
         AddSpaceDialog(self, v).exec()
         v.setFocus()
 
-    def combine_files(self):
+    def combine_files(self, files=None):
+        """Combine files (files: these to start with, a set's; else the document in front)."""
         from .combine import CombineDialog
         v = self.view()
         first = [v.path] if v is not None and not v.untitled and v.path and \
             os.path.isfile(v.path) else []
-        if first and v.dirty:
+        if files:
+            first = list(files)
+            v = next((w for w in self._all_views() if w.dirty and not w.untitled and
+                      os.path.normcase(w.path or "") in {os.path.normcase(f) for f in files}),
+                     None)
+        if first and v is not None and v.dirty:
             QMessageBox.information(self, tr("Combine files"), tr("The current document has unsaved "
                                                                   "changes; the combined PDF uses the saved file."))
         dlg = CombineDialog(self, self._last_dir(), first)
@@ -4162,6 +4245,107 @@ class MainWindow(QMainWindow):
     def _refresh_layers(self):
         v = self.view()
         self.layers.set_layers(v.layer_configs() if v else [])
+        from . import markup_layers
+        self.layers.set_markup_layers(markup_layers.layers(v.doc) if v else [],
+                                      v.markup_layer if v else None)
+
+    def new_markup_layer(self, move_selection=False):
+        """Layers panel > New layer (or a markup's right-click > Layer > New layer): a layer
+        for markups, which new markups then go on (and the selected ones, from the menu)."""
+        v = self.view()
+        if v is None or v.read_only:
+            return None
+        name, ok = QInputDialog.getText(self, tr("New layer"), tr("Name of the new layer:"),
+                                        text=tr("Markups"))
+        name = name.strip()
+        if not ok or not name:
+            return None
+        x = v.new_markup_layer(name)
+        if x:
+            v.set_markup_layer(x)
+            if move_selection:
+                v.move_selection_to_layer(x)
+        self._refresh_layers()
+        return x
+
+    # ---- Sets (1.12: doc_sets.py, sets_panel.py) -----------------------------------------
+    def _show_sets(self):
+        self.dock.show()
+        self.left_tabs.setCurrentWidget(self.sets.parentWidget().parentWidget())
+
+    def _new_set(self):
+        self._show_sets()
+        before = self.sets.docset
+        self.sets.new_set_dialog()
+        if self.sets.docset is not None and self.sets.docset is not before:
+            self._set_first()
+
+    def _open_set_dialog(self):
+        self._show_sets()
+        before = self.sets.docset
+        self.sets.open_set_dialog()
+        if self.sets.docset is not None and self.sets.docset is not before:
+            self._set_first()
+
+    def open_set(self, path):
+        """Open the set at path in the Sets panel, and its first sheet."""
+        self._show_sets()
+        if self.sets.open_set(path) is not None:
+            self._set_first()
+
+    def _set_first(self):
+        from . import doc_sets
+        ds = self.sets.docset
+        first = next((f for f in ds.files if doc_sets.page_count(f)), None) if ds else None
+        if first is not None:
+            self._set_go(first, 0)
+
+    def _set_go(self, path, page):
+        """Show page of the set's file path: its tab if it's open, else opened. A file the
+        set opened and left unchanged is closed when the set goes on to another (browsing a
+        set of 60 sheets leaves no 60 tabs)."""
+        key = os.path.normcase(os.path.abspath(path))
+        for v in list(self._views()):
+            if getattr(v, "_kz_from_set", False) and not v.dirty and not v.untitled and \
+                    os.path.normcase(v.path or "") != key and \
+                    not (self.split_dock.isVisible() and self.split_dock.chosen() == id(v)):
+                self.close_tab(self.tabs.indexOf(v))
+        opened = {id(v) for v in self._all_views()}
+        self.open_file(path)
+        v = self.view()
+        if v is None or os.path.normcase(v.path or "") != key:
+            return
+        if id(v) not in opened:
+            v._kz_from_set = True
+        v.goto_page(max(0, min(page, v.doc.page_count - 1)))
+        self.sets.show_current(v.path, v.current_page())
+
+    def _set_step(self, by):
+        v = self.view()
+        ds = self.sets.docset
+        if ds is None:
+            return
+        if v is None or ds.index_of(v.path) is None:
+            self._set_first()       # (the document in front isn't in the set: its start)
+            return
+        from . import doc_sets
+
+        def count(f):
+            # (the open document's own page count: pages added or deleted, not saved yet)
+            if os.path.normcase(f) == os.path.normcase(v.path):
+                return v.doc.page_count
+            return doc_sets.page_count(f)
+        to = ds.step(v.path, v.current_page(), by, count)
+        if to is None:
+            self.statusBar().showMessage(tr("The last sheet of the set") if by > 0 else
+                                         tr("The first sheet of the set"), 3000)
+            return
+        self._set_go(*to)
+
+    def _set_shown(self):
+        v = self.view()
+        if v is not None and not v.untitled:
+            self.sets.show_current(v.path, v.current_page())
 
     def _show_bookmarks(self):
         self.dock.show()
@@ -4827,17 +5011,29 @@ class MainWindow(QMainWindow):
 
     # ---- split view -----------------------------------------------------------------------
     def _build_split(self):
-        self.split_dock = QDockWidget(tr("Second view"))
-        self.split_dock.setObjectName("splitview")
-        self.split_dock.setFeatures(QDockWidget.DockWidgetClosable)
-        self.split_holder = QWidget()
-        QVBoxLayout(self.split_holder).setContentsMargins(0, 0, 0, 0)
-        self.split_dock.setWidget(self.split_holder)
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.split_dock)
+        """Split view (F10): the second view's pane in a splitter with the documents, under
+        them or beside them (split_view.py)."""
+        from .split_view import SplitPane
+        from PySide6.QtWidgets import QSplitter
+        self.takeCentralWidget()            # (the tabs; setCentralWidget would delete them)
+        self.central_split = QSplitter(Qt.Vertical)
+        self.central_split.setChildrenCollapsible(False)
+        self.central_split.addWidget(self.tabs)
+        # (named as the dock it was before 1.12: the window and the tests show and hide it)
+        self.split_dock = SplitPane(self)
+        self.central_split.addWidget(self.split_dock)
+        self.setCentralWidget(self.central_split)
         self.split_dock.hide()
+        self.split_dock.side.blockSignals(True)
+        self.split_dock.side.setChecked(self.settings.value("split_side", "false") == "true")
+        self.split_dock.side.blockSignals(False)
+        self._apply_split_orientation()
         self.split_dock.visibilityChanged.connect(self._split_visible)
+        self.split_dock.sourceChanged.connect(self._attach_split)
+        self.split_dock.orientationChanged.connect(self._split_orientation_changed)
         self._split_view = None
-        self.tabs.currentChanged.connect(lambda _: self.split_dock.isVisible() and self._attach_split())
+        self.tabs.currentChanged.connect(lambda _: self.split_dock.isVisible() and
+                                         self._split_front_changed())
 
     def _toggle_split(self):
         self.split_dock.setVisible(self.a_split.isChecked())
@@ -4846,22 +5042,83 @@ class MainWindow(QMainWindow):
         self.a_split.setChecked(vis)
         if vis:
             self._attach_split()
-            self.resizeDocks([self.split_dock], [int(self.height() * 0.42)], Qt.Vertical)
-        elif self._split_view is not None:
-            self._split_view.deleteLater()
+            total = sum(self.central_split.sizes()) or 2
+            self.central_split.setSizes([total // 2, total - total // 2])
+        else:
+            self.split_dock.set_view(None)
             self._split_view = None
 
+    def _apply_split_orientation(self):
+        self.central_split.setOrientation(
+            Qt.Horizontal if self.split_dock.side.isChecked() else Qt.Vertical)
+
+    def _split_orientation_changed(self):
+        self.settings.setValue("split_side", "true" if self.split_dock.side.isChecked()
+                               else "false")
+        self._apply_split_orientation()
+        total = sum(self.central_split.sizes()) or 2
+        self.central_split.setSizes([total // 2, total - total // 2])
+
+    def _split_documents(self):
+        views = self._views()
+        names = [self.tabs.tabText(i) for i in range(len(views))]
+        return views, names
+
+    def _split_source(self):
+        """The view the second view shows: the one in front, or the one chosen."""
+        chosen = self.split_dock.chosen()
+        if chosen != "front":
+            for v in self._views():
+                if id(v) == chosen:
+                    return v
+        return self.view()
+
+    def _split_front_changed(self):
+        """Another tab came to the front: the second view follows it when it shows the
+        document in front; Sync pairs it with the new one."""
+        self._refresh_split_list()
+        if self.split_dock.chosen() == "front":
+            self._attach_split()
+        else:
+            self.split_dock._relink()
+
+    def _refresh_split_list(self):
+        views, names = self._split_documents()
+        chosen = self.split_dock.chosen()
+        pinned = next((v for v in views if id(v) == chosen), None)
+        self.split_dock.fill_documents(views, names, pinned)
+
+    def _split_source_gone(self, v):
+        """View v is closing or moving to another window: a second view showing it shows
+        the document in front instead (or closes, with none left)."""
+        if self._split_view is None or getattr(self._split_view, "_source", None) is not v:
+            if self.split_dock.isVisible():
+                QTimer.singleShot(0, self._refresh_split_list)
+            return
+        self.split_dock.set_view(None)
+        self._split_view = None
+        self.split_dock.fill_documents([], [], None)        # (back to the one in front)
+        QTimer.singleShot(0, self._reattach_split)
+
+    def _reattach_split(self):
+        if not self.split_dock.isVisible():
+            return
+        if self.view() is None:
+            self.split_dock.hide()
+        else:
+            self._attach_split()
+
     def _attach_split(self):
-        """Show a second, independently scrolled view of the current document."""
-        if self._split_view is not None:
-            self._split_view.deleteLater()
-            self._split_view = None
-        v = self.view()
+        """Show a second, independently scrolled view of the chosen document."""
+        self._refresh_split_list()
+        v = self._split_source()
         if v is None:
+            self.split_dock.set_view(None)
+            self._split_view = None
             return
         sv = DocumentView.mirror(v)
-        self.split_holder.layout().addWidget(sv)
         self._split_view = sv
+        self.split_dock.set_view(sv)
         self.split_dock.setWindowTitle(
             tr("Second view: {name} (scroll independently; edit in the main view)").format(
                 name=os.path.basename(v.path)))
@@ -5355,6 +5612,8 @@ class MainWindow(QMainWindow):
         "a_set_scale": tr("Set scale"), "a_sheet_scales": tr("Sheet scales"), "a_measure_summary": tr("Summary"), "a_ocr": tr("OCR"),
         "a_rot_l": tr("Rotate left"), "a_rot_r": tr("Rotate right"), "a_lock": tr("Lock"),
         "a_unlock_all": tr("Unlock all"), "a_prev_markup": tr("Previous"), "a_next_markup": tr("Next"),
+        "a_group": tr("Group", ctx="verb"), "a_ungroup": tr("Ungroup"), "a_flip_h": tr("Flip left/right"),
+        "a_flip_v": tr("Flip up/down"),
         "a_markups": tr("Markups list"), "a_show_markups": tr("Show markups"),
         "a_cards": tr("Comment boxes"), "a_delete_markups": tr("Delete comments"),
         "a_flatten_markups": tr("Flatten comments"), "a_multi_sign": tr("Multi-place"),
@@ -5393,7 +5652,8 @@ class MainWindow(QMainWindow):
     }
     RIBBON_ICONS = {
         "a_actual": "numeric-1-box-outline", "a_set_scale": "ruler-square", "a_sheet_scales": "text-box-search-outline", "a_sheet_links": "link-variant-plus",
-        "a_measure_summary": "sigma", "a_grid_settings": "cog-outline", "a_lock": "lock-outline",
+        "a_measure_summary": "sigma", "a_grid_settings": "cog-outline", "a_lock": "lock-outline", "a_group": "group", "a_ungroup": "ungroup",
+        "a_flip_h": "flip-horizontal", "a_flip_v": "flip-vertical",
         "a_unlock_all": "lock-open-variant-outline", "a_prev_markup": "chevron-up",
         "a_next_markup": "chevron-down", "a_markups": "format-list-bulleted",
         "a_show_markups": "eye-outline", "a_cards": "card-text-outline",
@@ -5426,7 +5686,7 @@ class MainWindow(QMainWindow):
         "a_bookmarks": "bookmark-outline", "a_attachments": "paperclip",
         "a_compress": "zip-box-outline", "a_compare": "compare", "a_flatten": "layers-triple-outline",
         "a_sidebar": "page-layout-sidebar-left", "a_props": "tune-variant",
-        "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_labels": "label-outline",
+        "a_chest": "toolbox-outline", "a_split": "view-split-vertical", "a_rulers": "ruler-square", "a_labels": "label-outline",
         "a_shortcuts": "keyboard-outline", "a_manual": "help-circle-outline", "a_palette": "console-line",
         "a_night": "weather-night",
         "a_ribbon": "view-dashboard-outline", "a_collapse": "chevron-double-up", "a_group_names": "label-outline", "a_menu_bar": "menu",
@@ -5492,7 +5752,7 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("Measure"), [
             (tr("Measure"), "large", [t["m_length"], t["m_poly"], t["m_area"], t["m_count"]]),
             (tr("More"), "small", [t["m_angle"], t["m_radius"], t["m_dim"], t["m_perimeter"],
-                                   t["m_volume"], t["m_calibrate"]]),
+                                   t["m_volume"], t["space"], t["m_calibrate"]]),
             # the page's scale in large type opens Set scale (so no separate button for it),
             # with the Show scale bar switch beside it
             (tr("Page scale"), "large", [self.scale_panel]),
@@ -5505,7 +5765,8 @@ class MainWindow(QMainWindow):
             (tr("Align to"), "small", [self.ribbon_align_box]),
             (tr("Distribute"), "small", [A_["dist_h"], A_["dist_v"]]),
             (tr("Order"), "small", [A_["z_front"], A_["z_forward"], A_["z_backward"], A_["z_back"]]),
-            (tr("Lock"), "large", [self.a_lock, self.a_unlock_all]),
+            (tr("Group"), "small", [self.a_group, self.a_ungroup, self.a_flip_h, self.a_flip_v]),
+            (tr("Lock"), "small", [self.a_lock, self.a_unlock_all]),     # (small: room for Group)
             (tr("Snap"), "small", snap, [self.a_grid_settings]),
         ])
         r.add_tab(tr("Review"), [
@@ -5540,7 +5801,7 @@ class MainWindow(QMainWindow):
                                        split_button([self.a_extract, self.a_replace_pages])],
              [self.a_move_up, self.a_move_down]),
             (tr("Create"), "small", [self.a_new, self.a_combine, self.a_from_images,
-                                     self.a_scan]),
+                                     self.a_scan], [self.a_new_set, self.a_open_set]),
             # (what's put on every page shares a button: header and footer, watermark,
             # background)
             (tr("Document"), "small", [
@@ -5562,8 +5823,9 @@ class MainWindow(QMainWindow):
         r.add_tab(tr("View"), [
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                      self.a_split]),
+            # (Free pan, a setting seldom changed, under the arrow: Rulers took its place)
             (tr("Display"), "small", [self.a_night, self.a_show_markups, self.a_hl_fields,
-                                      self.a_free_pan]),
+                                      self.a_rulers], [self.a_free_pan]),
             (tr("Grid & snap"), "small", snap, [self.a_grid_settings]),
             # (Collapse is also a double-click on a tab, or Ctrl+F1)
             (tr("Ribbon"), "small", [self.a_ribbon, self.a_menu_bar],
@@ -6226,6 +6488,7 @@ class MainWindow(QMainWindow):
         self._rebuild_thumbs()
         self._refresh_bookmarks()
         self._refresh_layers()
+        self._set_shown()
         self._markups_timer.start()
         self._refresh_props()
         # the count beside Find is the shown tab's own search ("3 of 120"), nothing once the
@@ -6236,12 +6499,50 @@ class MainWindow(QMainWindow):
             self._show_find_count(0, 0, False)
         reading.sync(self)
         reading.page_changed(self)
+        self._show_pointer()
         self._update_ui()
+
+    def _toggle_rulers(self):
+        on = self.a_rulers.isChecked()
+        self.settings.setValue("show_rulers", "true" if on else "false")
+        for w in windows():
+            w.a_rulers.setChecked(on)
+            for v in w._views():
+                v.set_rulers(on)
+
+    def _set_reuse(self, on):
+        self.settings.setValue("reuse_tools", "true" if on else "false")
+        DocumentView.reuse_tools = bool(on)
+        for w in windows():
+            if w.reuse_btn.isChecked() != bool(on):
+                w.reuse_btn.setChecked(bool(on))
+
+    def _show_pointer(self):
+        """The status bar: the page's size as shown, and where the pointer is on it."""
+        from . import rulers
+        v = self.view()
+        if v is None or not v.pages:
+            self.pointer_label.setText("")
+            return
+        unit = rulers.units()
+        pos = v.pointer_pos()
+        index = pos[0] if pos is not None else v.current_page()
+        if not 0 <= index < len(v.page_rects):
+            self.pointer_label.setText("")
+            return
+        r = v.page_rects[index]
+        text = "%s \u00d7 %s %s" % (rulers.fmt(rulers.to_units(r.width, unit), unit),
+                                    rulers.fmt(rulers.to_units(r.height, unit), unit), unit)
+        if pos is not None:
+            text += "   (%s, %s)" % (rulers.fmt(rulers.to_units(pos[1], unit), unit),
+                                     rulers.fmt(rulers.to_units(pos[2], unit), unit))
+        self.pointer_label.setText(text)
 
     def _on_page_changed(self, page):
         if self.sender() is not self.view():
             return
         reading.page_changed(self)
+        self._set_shown()           # (the sheet marked in the Sets panel)
         # Scrolling to another page selects it in the page list. A page reached by clicking
         # in the list (Ctrl+click, Shift+click, right-click) keeps the pages selected there.
         if not self._thumb_nav and self.thumbs.currentRow() != page:
