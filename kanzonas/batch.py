@@ -464,7 +464,7 @@ Item = namedtuple("Item", "path root")      # root: the folder it was added from
 
 def processed_names():
     # (in every language the app has: a folder made in Spanish is still left out in English)
-    return {"processed", "procesados", tr("Processed").lower()}
+    return {"processed", "procesados", "elaborati", tr("Processed").lower()}
 
 
 def files_in(folder, subfolders=True):

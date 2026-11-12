@@ -134,7 +134,7 @@ draw a markup, its tool stays picked for the next one; off: the tool goes back t
 mode's tool (Select, Hand or Edit objects), as Bluebeam's Reuse button does. Either way what
 you drew stays selected, so Properties changes it. A message on the bottom bar too long for
 the room left of the page controls ends in "..."; hover over it to read all of it. The ribbon is compact: two rows of
-buttons, and every tab fits a screen 1366 pixels wide, in English and in Spanish. Commands used
+buttons, and every tab fits a screen 1366 pixels wide, in English, Spanish and Italian. Commands used
 less often share a button with an arrow beside it: click the button for the command it shows,
 or the arrow for the others (the button then shows the one used last). On the Home tab,
 Highlight's arrow has Underline and Strike, and Sign's has Initials; on the Pages tab, Header
@@ -239,8 +239,8 @@ stick to a new drive letter: if Open recent lists E:\\Docs\\plan.pdf and the sti
 opens F:\\Docs\\plan.pdf.</li>
 <li><b>Help &gt; Check for updates:</b> asks GitHub whether a newer KanzonasPDF has been released.
 A box tells you the answer. If there's a newer version, it lists <b>what's new since your
-version</b>: the short notes of every version newer than yours, newest first (in Spanish when
-KanzonasPDF is in Spanish); <b>Download</b> opens the release page in your browser and
+version</b>: the short notes of every version newer than yours, newest first (in Spanish or
+Italian when KanzonasPDF is in that language and the notes have it, else in English); <b>Download</b> opens the release page in your browser and
 <b>Update now</b> updates this copy in place (see above; not in the PortableApps.com version,
 which its platform updates). The automatic check instead shows a notice at the bottom of the
 window with <b>What's new</b> (the same notes), <b>Update now</b>, <b>Download</b>, <b>Skip
@@ -2212,7 +2212,7 @@ closes the window; <b>Apply</b> uses them right away and leaves the window open,
 the effect and keep adjusting; <b>Cancel</b> closes it without the changes made since the last
 Apply.</li>
 <li><b>General:</b> theme (Match Windows, or Match system on Linux and macOS; Light, Dark), <b>Language</b> (Automatic, the language
-of Windows or of the system; English; Español: menus, messages and this manual; a change shows the next time
+of Windows or of the system; English; Español; Italiano: menus, messages and this manual; a change shows the next time
 KanzonasPDF starts), Ribbon (instead of toolbars), Show group names on ribbon, Show menu bar,
 Show text labels on toolbars, Check for updates automatically, and on Linux Add KanzonasPDF to the
 applications menu and open PDFs with it (see KanzonasPDF on Linux). It also tells you where your
@@ -2354,36 +2354,48 @@ scroll speed.</li>
 
 
 def manual_html():
-    """The manual in the interface's language: Spanish when it's in Spanish, else English
-    (on a Mac, its keyboard shortcuts table with the Mac's keys)."""
-    if language() == "es":
+    """The manual in the interface's language: Spanish or Italian when the interface is, else
+    English (on a Mac, its keyboard shortcuts table with the Mac's keys)."""
+    lang = language()
+    if lang == "es":
         from . import manual_es
         html = manual_es.MANUAL
+    elif lang == "it":
+        from . import manual_it
+        html = manual_it.MANUAL
     else:
+        lang = "en"
         html = MANUAL
     if sys.platform == "darwin":
-        html = for_mac(html, language() == "es")
+        html = for_mac(html, lang)
     return html
 
 
-def for_mac(html, spanish=False):
+# the Option key's name and the Quit row of the Mac's shortcut table, in each manual's language
+MAC_WORDS = {
+    "en": ("Option", "Quit (KanzonasPDF menu)"),
+    "es": ("Opci\u00f3n", "Salir (men\u00fa KanzonasPDF)"),
+    "it": ("Opzione", "Esci (menu KanzonasPDF)"),
+}
+
+
+def for_mac(html, lang="en"):
     """The manual with its keyboard shortcuts table as a Mac's keyboard has them: Cmd where
     it says Ctrl, Option where it says Alt, Quit (Cmd+Q) added, Replace text on
     Cmd+Option+F (Cmd+H hides the program on a Mac), and no menu bar row (the Mac's menu bar
-    is always there)."""
+    is always there). lang: the manual's language ('en', 'es', 'it')."""
     from .macos import mac_keys
     start = html.find('<h2 id="shortcuts">')
     end = html.find("</table>", start)
     if start < 0 or end < 0:
         return html
-    option = "Opci\u00f3n" if spanish else "Option"
+    option, quit_name = MAC_WORDS.get(lang, MAC_WORDS["en"])
     table = html[start:end]
     table = table.replace("<td>Ctrl+H</td>", "<td>Ctrl+Alt+F</td>")
     table = re.sub(r"<tr><td>Ctrl\+Shift\+M</td>.*?</tr>\n", "", table)
     table = table.replace("<td>Alt (", "<td>%s (" % option)
     table = mac_keys(table, symbols=False, option=option)
-    quit_row = "<tr><td>Cmd+Q</td><td>%s</td></tr>\n" % (
-        "Salir (men\u00fa KanzonasPDF)" if spanish else "Quit (KanzonasPDF menu)")
+    quit_row = "<tr><td>Cmd+Q</td><td>%s</td></tr>\n" % quit_name
     head = table.find("</tr>\n") + len("</tr>\n")
     table = table[:head] + quit_row + table[head:]
     return html[:start] + table + html[end:]

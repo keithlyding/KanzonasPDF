@@ -116,6 +116,25 @@ class Detect(unittest.TestCase):
         self.assertGreaterEqual(f["Name"]["rect"].x0, 109)
         self.assertGreater(f["Signature of applicant"]["rect"].height, 20)
 
+    def test_spanish_and_italian_labels_give_the_field_kind(self):
+        expected = {
+            "Firma del richiedente": "signature",
+            "Firmato": "signature",
+            "Sigla": "initials",
+            "Iniciales": "initials",
+            "Data di nascita": "date",
+            "Data dell'ultima visita": "date",
+            "Luogo e data": "date",
+            "Data:": "date",
+            "Fecha": "date",
+            "Nome": "text",
+            "Dati anagrafici": "text",      # "dati" is not "data"
+            "Personal data": "text",        # English "data" is not a date
+            "Data protection officer": "text",
+        }
+        for label, kind in expected.items():
+            self.assertEqual(form_detect._kind(label), kind, label)
+
     def test_boxes_and_checkboxes(self):
         d = pymupdf.open()
         self.assertEqual(found(boxes_form(d)), [("text", "Email"), ("check", "Yes, send me news"),

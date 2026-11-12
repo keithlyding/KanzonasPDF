@@ -8,7 +8,8 @@ Page.get_textpage, as AGENTS.md asks, so text_guard protects the read):
 - an empty box or table cell next to a label, under a column heading, or with a small label
   inside it at the top or left;
 - a small empty square (or a box character) with a label beside it: a checkbox;
-- "Signature" / "Initials" labels make signature and initials fields, "Date" a date field.
+- "Signature" / "Initials" labels make signature and initials fields, "Date" a date field
+  (also in Spanish and Italian: Firma, Iniciales, Sigla, Fecha, Data).
 On a scanned page (one big picture, the text from OCR), the lines and boxes are found in the
 picture itself.
 
@@ -25,9 +26,19 @@ TOL = 1.6               # points: lines this close are the same line
 MIN_LINE = 30           # a blank line is at least this long
 MAX_SEGMENTS = 2000     # more line pieces than this: a drawing, not a form
 
-SIGNATURE = re.compile(r"\b(signature|sign here|signed|firma)\b", re.I)
-INITIALS = re.compile(r"\b(initials?|iniciales)\b", re.I)
-DATE = re.compile(r"\b(date|fecha)\b", re.I)
+# English, Spanish and Italian label words (firma is both Spanish and Italian).
+SIGNATURE = re.compile(r"\b(signature|sign here|signed|firma|firmato)\b", re.I)
+INITIALS = re.compile(r"\b(initials?|iniciales|sigla)\b", re.I)
+# Italian "data" is an English word too ("Personal data"), so it counts only where an Italian
+# date label has it: alone ("Data:"), before di/del/della/e ("Data di nascita", "Data e ora")
+# or after e/la ("Luogo e data").
+DATE = re.compile(
+    r"\b(date|fecha)\b"
+    r"|^\s*data\s*:?\s*$"
+    r"|\bdata\s+(?:(?:di|del|della|dello|e)\b|dell')"
+    r"|\b(?:e|la)\s+data\b",
+    re.I,
+)
 BOX_CHARS = set("☐□❏❑▢⬜")
 
 

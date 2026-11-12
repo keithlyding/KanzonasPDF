@@ -607,6 +607,37 @@ class History(Quiet):
         v.undo()
         self.assertEqual(canon(v.doc), start)
 
+    def test_an_undo_after_a_save_gives_the_document_from_before_the_step(self):
+        # Save packs the drawings written quickly; it took their mark off in the document,
+        # and an undo after it brought back a step's own objects as they were but left the
+        # others unmarked: the document from before the step, but not quite
+        from kanzonas import page_objects
+        v = self.view()
+        page = v.doc[0]
+        x = page.get_contents()[0]
+        page_objects._put_stream(v.doc, x, v.doc.xref_stream(x))
+        del page
+        rect_markup(v)
+        before = canon(v.doc)
+        rect_markup(v, 1)
+        v.save()
+        with pymupdf.open(v.path) as saved:     # (the file packed and without the mark)
+            self.assertEqual(saved.xref_get_key(x, page_objects.QUICK_KEY)[0], "null")
+        self.assertEqual(v.doc.xref_get_key(x, page_objects.QUICK_KEY)[1], "true")
+        v.undo()
+        self.assertEqual(canon(v.doc), before)
+        # a second Save doesn't pack the same drawing again
+        packed = v.doc.xref_stream_raw(x)
+        with mock.patch.object(v.doc, "update_stream",
+                               side_effect=AssertionError("packed again")):
+            page_objects.pack_quick_streams(v.doc)
+        self.assertEqual(v.doc.xref_stream_raw(x), packed)
+        # one written quickly again since is packed again
+        page_objects._put_stream(v.doc, x, v.doc.xref_stream(x))
+        quick = v.doc.xref_stream_raw(x)
+        page_objects.pack_quick_streams(v.doc)
+        self.assertNotEqual(v.doc.xref_stream_raw(x), quick)
+
     def test_a_save_with_steps_to_redo_keeps_them(self):
         # Save cuts embedded fonts down and packs drawings: done in the document, it
         # would have dropped the steps to redo

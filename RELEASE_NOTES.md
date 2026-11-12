@@ -5,7 +5,44 @@ version newer than the one you have, so you see everything that changed since yo
 The full details are in [CHANGELOG.md](CHANGELOG.md).
 
 Every version gets a section `## <version>` (a few lines under **New** and **Fixed**), and its
-Spanish translation under `## <version> (es)`. The Windows build fails without them.
+Spanish translation under `## <version> (es)`. The Windows build fails without them. An Italian
+translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
+see the English.
+
+## 1.13
+
+**New**
+- KanzonasPDF in Italian: menus, ribbon, messages and the user manual. Pick Italiano in File > Preferences > General > Language, or leave Automatic and an Italian Windows shows it in Italian; the change shows the next time KanzonasPDF starts.
+
+## 1.13 (es)
+
+**Novedades**
+- KanzonasPDF en italiano: menús, cinta, mensajes y el manual del usuario. Elija Italiano en Archivo > Preferencias > General > Idioma, o deje Automático y un Windows en italiano lo muestra en italiano; el cambio se ve la próxima vez que se inicia KanzonasPDF.
+
+## 1.13 (it)
+
+**Novità**
+- KanzonasPDF in italiano: menu, barra multifunzione, messaggi e manuale utente. Scegli Italiano in File > Preferenze > Generale > Lingua, oppure lascia Automatica e con Windows in italiano lo vedi in italiano; la modifica vale dal prossimo avvio di KanzonasPDF.
+
+## 1.12.2
+
+**Fixed**
+- Recognizing text (OCR) uses less memory again with RapidOCR 1.3 and later.
+- PDF/A: an attached file gets the same file type on every computer (a .csv was sometimes marked as an Excel file).
+- Closing a text box being edited with spell checking on no longer can crash KanzonasPDF.
+- Undo after Save gives back exactly what was there, also after Edit objects or Edit text.
+- A file that got shorter since you last had it open opens at its last page instead of failing.
+- Accessibility: duplicating a page with a hidden markup no longer leaves two markups sharing one tag.
+
+## 1.12.2 (es)
+
+**Correcciones**
+- Reconocer texto (OCR) vuelve a usar menos memoria con RapidOCR 1.3 y posteriores.
+- PDF/A: un archivo adjunto recibe el mismo tipo de archivo en todos los equipos (un .csv a veces se marcaba como archivo de Excel).
+- Cerrar un cuadro de texto en edición con la revisión ortográfica activada ya no puede cerrar KanzonasPDF.
+- Deshacer después de Guardar devuelve exactamente lo que había, también después de Editar objetos o Editar texto.
+- Un archivo que se acortó desde la última vez que lo abrió se abre en su última página en lugar de fallar.
+- Accesibilidad: duplicar una página con una marca oculta ya no deja dos marcas compartiendo una misma etiqueta.
 
 ## 1.12.1
 

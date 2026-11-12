@@ -14,7 +14,16 @@ from . import annotations as A
 
 CELL = 24.0                     # bucket size, points
 UNITS = {"in": 72.0, "mm": 72.0 / 25.4, "pt": 1.0}
-UNIT_NAMES = {"in": "inches", "mm": "millimeters", "pt": "points"}
+
+
+def unit_names():
+    """{unit key: its name as shown}, in the interface language."""
+    from .i18n import tr
+    return {
+        "in": tr("inches"),
+        "mm": tr("millimeters"),
+        "pt": tr("points"),
+    }
 
 
 class PointIndex:

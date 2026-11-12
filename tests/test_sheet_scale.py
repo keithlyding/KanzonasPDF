@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 APP = QApplication.instance() or QApplication([])
 
+from kanzonas import i18n  # noqa: E402
 from kanzonas import measure as M  # noqa: E402
 from kanzonas import sheet_scale as S  # noqa: E402
 from kanzonas.main_window import MainWindow  # noqa: E402
@@ -119,6 +120,23 @@ class Dialog(unittest.TestCase):
         self.assertTrue(dlg.r_known.isChecked())
         self.assertFalse(dlg.r_sheet.isChecked())
         self.assertEqual(dlg.sheet.count(), 1)
+
+    def test_in_italian_the_place_of_the_note_is_translated(self):
+        """Where the note was read is shown in the user's language; the dialog still compares
+        the English value, so the title block's note stays preselected."""
+        saved = dict(i18n._state)
+        self.addCleanup(lambda: i18n._state.update(saved))
+        i18n._state.update(lang=None, catalog={})
+        with mock.patch.dict(os.environ, {"KANZONAS_LANG": "it"}):
+            i18n.language()
+        doc = pymupdf.open()
+        p = sheet(doc, '1/8" = 1\'-0"', extra=[(400, 900, 'SCALE: 1/2" = 1\'-0"')])
+
+        dlg = ScaleDialog(None, p)
+
+        shown = [dlg.sheet.itemText(i) for i in range(dlg.sheet.count())]
+        self.assertEqual(shown, ['1/8" = 1\'-0"  (cartiglio)', '1/2" = 1\'-0"  (disegno)'])
+        self.assertTrue(dlg.r_sheet.isChecked())
 
     def test_without_a_note_the_option_is_hidden(self):
         doc = pymupdf.open()

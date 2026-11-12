@@ -55,9 +55,15 @@ class ScaleDialog(QDialog):
         self.r_sheet = QRadioButton(tr("Scale written on the sheet"))
         self.sheet = QComboBox()
         self.found = sheet_scale.find(page)
+        # "where" stays English in the data (it is compared below); only the shown name changes
+        where_shown = {
+            "title block": tr("title block"),
+            "drawing": tr("drawing"),
+        }
         for f in self.found:
             if f["ratio"] is not None:
-                self.sheet.addItem(f'{f["label"]}  ({f["where"]})', (f["ratio"], f["unit"], f["label"]))
+                where = where_shown.get(f["where"], f["where"])
+                self.sheet.addItem(f'{f["label"]}  ({where})', (f["ratio"], f["unit"], f["label"]))
         self.length = QLineEdit()
         self.length.setPlaceholderText(tr("e.g. 12'-6\"  or  3.5"))
         self.in_unit = QComboBox()
