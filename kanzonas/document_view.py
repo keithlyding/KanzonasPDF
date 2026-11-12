@@ -9037,7 +9037,9 @@ class DocumentView(QScrollArea):
 
     def set_layer(self, number, visible):
         """Show/hide a layer. This is a viewing choice, not an edit (no undo, not 'unsaved')."""
-        self.doc.set_layer_ui_config(number, 1 if visible else 2)
+        # (PyMuPDF: 0 shows, 1 switches, 2 hides. 1 for "show" hid a layer already shown:
+        # Show all hid the shown ones. Random battery, seed 9, 1.12.1)
+        self.doc.set_layer_ui_config(number, 0 if visible else 2)
         self._layers_shown_changed()
         self._redraw_all()
 
@@ -9056,7 +9058,7 @@ class DocumentView(QScrollArea):
     def set_all_layers(self, visible):
         for c in self.layer_configs():
             if not c.get("locked"):
-                self.doc.set_layer_ui_config(c["number"], 1 if visible else 2)
+                self.doc.set_layer_ui_config(c["number"], 0 if visible else 2)
         self._layers_shown_changed()
         self._redraw_all()
 

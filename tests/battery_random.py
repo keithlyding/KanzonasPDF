@@ -671,7 +671,7 @@ class Battery:
         with pymupdf.open(self.v.path) as d:
             # (each layer shown or hidden there as here: a viewing choice, not saved)
             for n, on in self.layer_states(d):
-                d.set_layer_ui_config(n, 1 if on else 2)
+                d.set_layer_ui_config(n, 0 if on else 2)       # (0 shows, 2 hides)
             got = summary(d)
         if got != self.cur.summary:
             raise Failed("saved and opened again: " + summary_diff(self.cur.summary, got))
