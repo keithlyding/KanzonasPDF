@@ -85,6 +85,16 @@ feature, and update it when a decision changes or a piece of work lands.
   (tests/test_battery_random.py). Never weaken one of its checks to get green: fix the cause.
 - New dependencies: add the minimum to `requirements.txt` and the exact version and license
   to `constraints.txt`; heavy ones must be imported lazily (see Performance).
+- **No slop** (the owner, 13 Nov 2026): `python tools/slop_check.py`. Its hard rules fail the
+  build (tests/test_slop.py): no TODO/FIXME/XXX, placeholder text, "here's the updated code" or
+  Markdown fences left in the program, its texts or the installer; no AI model's name in them;
+  no print() in the program; nothing named in this file, CONTRIBUTING.md, README.md or
+  docs/ROADMAP.md that isn't there (a file, module, function, class or setting made up, or
+  renamed without updating the guide). Read its soft report before a release and fix what's
+  real: AI-sounding words (seamless, robust, leverage, delve...) or emoji in what users read,
+  errors swallowed with no comment saying why, comments narrating a change ("# Updated
+  to..."), code left in comments, duplicate functions, unused imports. Write plainly, say what
+  a thing does, and never mention a function or file without checking it exists.
 
 ## Security updates
 - `.github/workflows/security-check.yml` runs every Monday (and by hand): pip-audit on
@@ -99,6 +109,16 @@ feature, and update it when a decision changes or a piece of work lands.
   updates: `updates.py`). The AppImage builds on Ubuntu 22.04 (glibc 2.35); the build fails if
   a bundled file needs a newer glibc/libstdc++. appimagetool is pinned by SHA-256 in the
   workflow, and the AppImage runtime is cut from it (pinned too): update both together.
+- Windows File Explorer's thumbnails and Preview pane for PDFs are `shell_ext/`
+  (KanzonasPDFShell.dll, C++, built by `shell_ext/build.ps1` in the Windows job and tested there
+  by `shell_ext/kzshell_test.cpp`). It draws with PyMuPDF's own MuPDF (the wheel's
+  `mupdf-devel` headers and import library; it loads `_internal\pymupdf\mupdfcpp64.dll` at first
+  use), so a PyMuPDF update updates it: never build or ship a second MuPDF for it. It uses
+  MuPDF's C++ `ll_` functions (they throw) and catches with `catch (...)` only (it has the
+  static C++ runtime; MuPDF's DLL the shared one). The installer registers it with the PDF
+  entry; keep Windows running it outside Explorer (never DisableProcessIsolation): Explorer
+  reads every PDF in a folder it shows. Its class IDs are in `shell_ext/kzshell.h`, the
+  installer and the workflow (tests/test_shell_ext.py checks they match).
 - American spelling in all user-visible text.
 - Annotations: keep a Page object alive while using an Annot from it ("not bound to page").
 - PyMuPDF is not thread-safe: no worker threads touching a document; split long work into

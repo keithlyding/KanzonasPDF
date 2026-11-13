@@ -257,8 +257,7 @@ class Reading(unittest.TestCase):
             objs = P.Objects(pg)
             reads.append(time.perf_counter() - t)
             t = time.perf_counter()
-            for it in objs.items:
-                objs.lines(it)
+            objs.read_lines()       # (as the view reads them: the collector paused, 13 Nov)
             lines_.append(time.perf_counter() - t)
             self.assertEqual(len(objs.items), 60000)
         read, lines = min(reads), min(lines_)
@@ -266,6 +265,31 @@ class Reading(unittest.TestCase):
         # and 0.25 s; the budget leaves room for a slow build machine)
         self.assertLess(read, 2.5, reads)
         self.assertLess(lines, 2.0, lines_)
+
+
+    def test_outlines_are_read_with_the_collector_paused(self):
+        # (late in a long session the collector went through every point already made each
+        # time it ran: a big sheet's outlines took twice as long and varied twofold, 2.5 to
+        # 4.6 s on a Mac build machine on 13 Nov; the view's prep step pauses it too)
+        d = pymupdf.open()
+        objs = P.Objects(page_with(d, cad_content(50)))
+        seen = []
+        real = P.path_lines
+
+        def spy(*args, **kwargs):
+            seen.append(gc.isenabled())
+            return real(*args, **kwargs)
+        with mock.patch.object(P, "path_lines", spy):
+            objs.read_lines()
+        self.assertTrue(seen)
+        self.assertFalse(any(seen))
+        self.assertTrue(gc.isenabled())
+        self.assertTrue(all("lines" in it for it in objs.items if it["kind"] == "shape"))
+        # the same outlines as one at a time
+        fresh = P.Objects(page_with(pymupdf.open(), cad_content(50)))
+        for a, b in zip(objs.items, fresh.items):
+            self.assertEqual([[tuple(q) for q in ln] for ln in objs.lines(a)],
+                             [[tuple(q) for q in ln] for ln in fresh.lines(b)])
 
 
 class Lookup(unittest.TestCase):

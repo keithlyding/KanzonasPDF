@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.14.1
+
+**New**
+- Windows File Explorer shows a PDF's first page as its thumbnail, instead of the KanzonasPDF icon, and its pages in the Preview pane (Alt+P), once KanzonasPDF is your default PDF app. A PDF with a password keeps the icon. Folders you've already opened may show icons until Windows redraws them (or clear "Thumbnails" in Disk Cleanup).
+
+## 1.14.1 (es)
+
+**Novedades**
+- El Explorador de archivos de Windows muestra la primera página de un PDF como su miniatura, en lugar del icono de KanzonasPDF, y sus páginas en el panel de vista previa (Alt+P), cuando KanzonasPDF es su aplicación predeterminada para PDF. Un PDF con contraseña conserva el icono. Las carpetas que ya abrió pueden mostrar iconos hasta que Windows las vuelva a dibujar (o limpie "Miniaturas" en el Liberador de espacio en disco).
+
+## 1.14.1 (it)
+
+**Novità**
+- Esplora file di Windows mostra la prima pagina di un PDF come miniatura, al posto dell'icona di KanzonasPDF, e le sue pagine nel riquadro di anteprima (Alt+P), quando KanzonasPDF è la tua app predefinita per i PDF. Un PDF con password mantiene l'icona. Le cartelle che hai già aperto possono mostrare le icone finché Windows non le ridisegna (oppure elimina le "Anteprime" con Pulizia disco).
+
 ## 1.14
 
 **New**

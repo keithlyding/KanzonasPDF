@@ -7,3 +7,6 @@ dist/
 selftest.log
 portable.txt
 data/
+
+# Explorer handlers built by shell_ext/build.ps1
+shell_ext/out/

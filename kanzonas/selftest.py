@@ -374,8 +374,7 @@ def run(log_path):
             objs = page_objects.Objects(v.doc[0])
             times["read"] = time.perf_counter() - t
             t = time.perf_counter()
-            for it in objs.items:
-                objs.lines(it)
+            objs.read_lines()                   # (as the view does: the collector paused)
             times["outlines"] = time.perf_counter() - t
             assert len(objs.items) == 60000, f"{len(objs.items)} shapes read"
             del objs

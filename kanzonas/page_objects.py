@@ -976,6 +976,15 @@ class Objects:
                 item["lines"] = [[q.ul, q.ur, q.lr, q.ll, q.ul]]
         return item["lines"]
 
+    @_gc_paused
+    def read_lines(self, items=None):
+        """The outlines of items (all of them when None) read at once, as the view reads a
+        big drawing's after opening it (DocumentView's prep step, with the collector paused
+        the same way): the collector going through the hundreds of thousands of points made
+        meanwhile doubled the time late in a long session, and made it vary twofold."""
+        for it in (self.items if items is None else items):
+            self.lines(it)
+
     def tight(self, item):
         """The box around a shape's line as drawn (its "rect" holds a curve's control
         points too)."""
