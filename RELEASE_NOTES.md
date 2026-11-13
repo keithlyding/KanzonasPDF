@@ -14,15 +14,36 @@ see the English.
 **New**
 - Dot (Markup tab, shortcut B): one click places a numbered dot, filled or outline only, as for the elevation points on a floor plan. Show its number, a text or both beside it (right, below, left or above), or the number inside the dot; new dots and copies take the next number.
 
+**Thanks** to @fexxdev, who made the Dot tool.
+
 ## 1.14 (es)
 
 **Novedades**
 - Punto (pestaña Marcas, atajo B): un clic coloca un punto numerado, relleno o solo con contorno, como las cotas de un plano. Muestre su número, un texto o ambos junto a él (a la derecha, debajo, a la izquierda o encima), o el número dentro del punto; los puntos nuevos y las copias toman el número siguiente.
 
+**Gracias** a @fexxdev, que hizo la herramienta Punto.
+
 ## 1.14 (it)
 
 **Novità**
 - Punto (scheda Annotazioni, scorciatoia B): un clic mette un punto numerato, pieno o solo bordo, come le quote su una pianta. Mostra il numero, un testo o entrambi accanto (a destra, sotto, a sinistra o sopra), oppure il numero dentro il punto; i nuovi punti e le copie prendono il numero successivo.
+
+**Grazie** a @fexxdev, che ha creato lo strumento Punto.
+
+## 1.13.2
+
+**Fixed**
+- Edit text and Edit objects see all of the page's text on a turned page: a line of text written right to left could lose its first letter, or vanish from them altogether after a drawing elsewhere on the page was deleted (the text itself was never lost).
+
+## 1.13.2 (es)
+
+**Correcciones**
+- Editar texto y Editar objetos ven todo el texto de la página en una página girada: una línea de texto escrita de derecha a izquierda podía perder su primera letra, o desaparecer por completo para ellos después de eliminar un dibujo en otra parte de la página (el texto en sí nunca se perdía).
+
+## 1.13.2 (it)
+
+**Correzioni**
+- Modifica testo e Modifica oggetti vedono tutto il testo della pagina su una pagina ruotata: una riga di testo scritta da destra a sinistra poteva perdere la prima lettera, o sparire del tutto per loro dopo l'eliminazione di un disegno altrove nella pagina (il testo in sé non andava mai perso).
 
 ## 1.13.1
 
