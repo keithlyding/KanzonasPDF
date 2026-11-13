@@ -83,7 +83,7 @@ a decision changes or a piece of work lands. Details of each version are in
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
-- **In progress: thumbnails and the Preview pane in Windows File Explorer** (owner, 13 Nov:
+- **1.14.1: thumbnails and the Preview pane in Windows File Explorer** (owner, 13 Nov:
   "when I look in a folder, it doesn't just show a bunch of KanzonasPDF icons"; "Yes, do both
   thumbnails and preview pane"). KanzonasPDFShell.dll (shell_ext/): a C++ thumbnail handler
   and preview handler drawing with PyMuPDF's own MuPDF (its mupdfcpp64.dll, so PyMuPDF's
