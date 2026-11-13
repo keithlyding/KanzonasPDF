@@ -75,6 +75,30 @@ jobs:
       - name: Leave out what the app never uses (Qt's multimedia backends, FFmpeg)
         run: python packaging/trim_build.py dist\KanzonasPDF
 
+      - name: Explorer's thumbnails and Preview pane (KanzonasPDFShell.dll, shell_ext/)
+        shell: pwsh
+        run: |
+          # built against PyMuPDF's own MuPDF, beside the exe; it loads PyMuPDF's mupdfcpp64.dll
+          # from _internal at first use, so it's tested where it's installed
+          powershell -NoProfile -ExecutionPolicy Bypass -File shell_ext\build.ps1 -Out shell_ext\out
+          if ($LASTEXITCODE -ne 0) { throw "Building KanzonasPDFShell.dll failed" }
+          Get-ChildItem -Recurse dist\KanzonasPDF\_internal -Filter mupdfcpp64.dll | ForEach-Object { Write-Host "MuPDF: $($_.FullName)" }
+          Copy-Item shell_ext\out\KanzonasPDFShell.dll dist\KanzonasPDF\
+          python tests/make_shell_ext_pdfs.py shell_ext\out\pdfs
+          if ($LASTEXITCODE -ne 0) { throw "Making the test PDFs failed" }
+          & shell_ext\out\kzshell_test.exe dist\KanzonasPDF\KanzonasPDFShell.dll shell_ext\out\pdfs
+          if ($LASTEXITCODE -ne 0) { throw "Explorer's thumbnails or Preview pane failed their test" }
+
+      - name: Upload what Explorer would show (thumbnail and preview)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: explorer-thumbnail-and-preview
+          path: |
+            shell_ext/out/pdfs/thumb.bmp
+            shell_ext/out/pdfs/preview.bmp
+          if-no-files-found: ignore
+
       - name: Smoke test (exe starts and opens a PDF)
         shell: pwsh
         run: |
@@ -208,9 +232,27 @@ jobs:
           Get-Content installed-selftest.log
           if ($p.ExitCode -ne 0) { throw "Installed app failed its self test" }
           if (-not (Test-Path "HKCU:\Software\Classes\KanzonasPDF.Document\shell\open\command")) { throw "PDF association missing" }
+          # Explorer's thumbnails and Preview pane: registered for KanzonasPDF's PDFs, and working
+          # from where they're installed
+          $thumb = "{8BBD1C01-BC86-4432-9CA0-D3F973DBF51C}"; $prev = "{6F5FD26D-63FE-481F-8E9D-F28ADC1924C3}"
+          $cls = "HKCU:\Software\Classes"
+          if ((Get-ItemProperty "$cls\KanzonasPDF.Document\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}").'(default)' -ne $thumb) { throw "Thumbnail handler not registered" }
+          if ((Get-ItemProperty "$cls\KanzonasPDF.Document\ShellEx\{8895b1c6-b41f-4c1c-a562-0d564250836f}").'(default)' -ne $prev) { throw "Preview handler not registered" }
+          foreach ($c in $thumb, $prev) {
+            $server = (Get-ItemProperty "$cls\CLSID\$c\InprocServer32").'(default)'
+            if ($server -ne "$dir\KanzonasPDFShell.dll") { throw "$c points to '$server'" }
+          }
+          if ((Get-ItemProperty "$cls\CLSID\$prev").AppID -ne "{6d2b5079-2f0b-48dd-ab7f-97cec514d30b}") { throw "The preview handler doesn't run in Windows' preview host" }
+          if (-not (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\PreviewHandlers" -Name $prev -ErrorAction SilentlyContinue)) { throw "Preview handler not listed" }
+          & shell_ext\out\kzshell_test.exe "$dir\KanzonasPDFShell.dll" shell_ext\out\pdfs
+          if ($LASTEXITCODE -ne 0) { throw "The installed thumbnails or Preview pane failed their test" }
           $p = Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -PassThru -Wait
           Start-Sleep -Seconds 5
           if (Test-Path "$dir\KanzonasPDF.exe") { throw "Uninstall left the app behind" }
+          foreach ($k in "$cls\CLSID\$thumb", "$cls\CLSID\$prev", "$cls\KanzonasPDF.Document") {
+            if (Test-Path $k) { throw "Uninstall left $k behind" }
+          }
+          if (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\PreviewHandlers" -Name $prev -ErrorAction SilentlyContinue) { throw "Uninstall left the preview handler listed" }
 
       - name: Portable version (settings and files stay in a data folder beside the exe)
         shell: pwsh
