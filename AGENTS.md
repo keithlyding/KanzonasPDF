@@ -85,6 +85,16 @@ feature, and update it when a decision changes or a piece of work lands.
   (tests/test_battery_random.py). Never weaken one of its checks to get green: fix the cause.
 - New dependencies: add the minimum to `requirements.txt` and the exact version and license
   to `constraints.txt`; heavy ones must be imported lazily (see Performance).
+- **No slop** (the owner, 13 Nov 2026): `python tools/slop_check.py`. Its hard rules fail the
+  build (tests/test_slop.py): no TODO/FIXME/XXX, placeholder text, "here's the updated code" or
+  Markdown fences left in the program, its texts or the installer; no AI model's name in them;
+  no print() in the program; nothing named in this file, CONTRIBUTING.md, README.md or
+  docs/ROADMAP.md that isn't there (a file, module, function, class or setting made up, or
+  renamed without updating the guide). Read its soft report before a release and fix what's
+  real: AI-sounding words (seamless, robust, leverage, delve...) or emoji in what users read,
+  errors swallowed with no comment saying why, comments narrating a change ("# Updated
+  to..."), code left in comments, duplicate functions, unused imports. Write plainly, say what
+  a thing does, and never mention a function or file without checking it exists.
 
 ## Security updates
 - `.github/workflows/security-check.yml` runs every Monday (and by hand): pip-audit on
