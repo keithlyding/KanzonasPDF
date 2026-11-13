@@ -198,7 +198,7 @@ class ReplacePagesDialog(QDialog):
                 try:
                     used.add(int(self.table.item(row, 2).text()) - 1)
                 except ValueError:
-                    pass
+                    pass  # (not a page number: not counted)
             left = [(j, info) for j, info in enumerate(self._match["new"]) if j not in used]
             if left:
                 names = [(info["number"] if info else tr("page {n}").format(n=j + 1))

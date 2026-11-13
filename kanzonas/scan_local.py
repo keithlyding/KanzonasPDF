@@ -79,7 +79,7 @@ class _Proc:
         try:
             self.p.kill()
         except OSError:
-            pass
+            pass  # (already ended)
 
     def lines(self, stream):
         for raw in iter(stream.readline, b""):
@@ -193,7 +193,7 @@ def _set(props, pid, value):
         try:
             p.Value = value
         except Exception:
-            pass
+            pass  # (a setting this scanner doesn't take: its own value stays)
 
 
 def _connect(ct, device_id):
@@ -213,7 +213,7 @@ def wia_devices(log=None):
             try:
                 name = str(info.Properties.Item("Name").Value)
             except Exception:
-                pass
+                pass  # (a device without a readable name: the default label)
             out.append(Device(name or tr("Scanner"), "wia", str(info.DeviceID)))
         return out
     try:

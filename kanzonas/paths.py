@@ -42,7 +42,7 @@ def portable_options():
                 if eq and key.strip() and " " not in key.strip():
                     out[key.strip().lower()] = value.strip()
     except OSError:
-        pass
+        pass  # (unreadable: no options from it)
     return out
 
 

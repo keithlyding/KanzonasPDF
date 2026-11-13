@@ -1801,7 +1801,7 @@ class MainWindow(QMainWindow):
         self.thumbs.verticalScrollBar().valueChanged.connect(lambda *_: self._thumb_timer.start())
         self.lock_btn = QToolButton()
         self.lock_btn.setCheckable(True)
-        self.lock_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.lock_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.lock_btn.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
         self.lock_btn.toggled.connect(self._set_pages_locked)
         side = QWidget()
@@ -2341,7 +2341,7 @@ class MainWindow(QMainWindow):
             try:
                 sig.disconnect(slot)
             except (RuntimeError, TypeError):
-                pass
+                pass  # (not connected, or already gone)
         v._kz_window_conns = []
 
     # ---- tabs in other windows --------------------------------------------------------
@@ -4916,7 +4916,16 @@ class MainWindow(QMainWindow):
                          "a_grid": "grid", "a_snap_grid": "snap_grid", "a_snap_objects": "snap_objects",
                          "a_snap_page": "snap_page"}
 
+    def _lock_icon(self, locked=None):
+        """The Pages panel's lock button: a closed or open lock, in the theme's color."""
+        if locked is None:
+            locked = self.lock_btn.isChecked()
+        self.lock_btn.setIcon(theme.icon_named("lock-outline" if locked
+                                               else "lock-open-variant-outline"))
+
     def _apply_icons(self):
+        if getattr(self, "lock_btn", None) is not None:
+            self._lock_icon()
         for attr, key in self.TOOLBAR_ICON_KEYS.items():
             getattr(self, attr).setIcon(theme.icon(key))
         for key, a in self.arrange_actions.items():
@@ -6462,7 +6471,7 @@ class MainWindow(QMainWindow):
                 try:
                     os.remove(new)
                 except OSError:
-                    pass
+                    pass  # (in use or already gone: the error shown below is what matters)
                 QMessageBox.warning(self, tr("Update"), tr(
                     "The new version couldn't be put in place of {path} ({error}). The "
                     "release page opens so you can download it yourself.").format(
@@ -6643,7 +6652,8 @@ class MainWindow(QMainWindow):
     def _set_pages_locked(self, locked):
         self.thumbs.setDragDropMode(QAbstractItemView.NoDragDrop if locked
                                     else QAbstractItemView.InternalMove)
-        self.lock_btn.setText(tr("\U0001F512 Locked") if locked else tr("\U0001F513 Unlocked"))
+        self.lock_btn.setText(tr("Locked") if locked else tr("Unlocked"))
+        self._lock_icon(locked)
         self.lock_btn.setToolTip(tr("Page order locked: pages can't be moved, added or removed "
                                     "(click to unlock)") if locked else
                                  tr("Unlocked: drag pages to reorder them; move, insert, delete, "

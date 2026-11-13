@@ -570,7 +570,7 @@ class _InlineImage:
 def _parse_dict(text):
     """[(key, [value tokens])] of an inline picture's dictionary text: names as str,
     numbers as float, true / false as bool, brackets as "[", "]" (also << >>)."""
-    entries, cur = [], None
+    entries = []
     depth = 0
     i = 0
     toks = []
@@ -613,7 +613,7 @@ def _parse_dict(text):
             try:
                 toks.append(float(mo.group(2)))
             except ValueError:
-                pass
+                pass  # (not a number: skipped)
         else:
             toks.append(mo.group(3) == b"true")
         i = mo.end()
@@ -1224,14 +1224,14 @@ class _Pass:
                 if annot is not None:
                     annot.update()
             except Exception:
-                pass
+                pass  # (a markup PyMuPDF can't redraw keeps its appearance)
         if widgets_ap:
             for w in page.widgets():
                 if w.xref in widgets_ap:
                     try:
                         w.update()
                     except Exception:
-                        pass
+                        pass  # (a field PyMuPDF can't redraw keeps its appearance)
 
     # -- every object (6.1.7, 6.2.4 to 6.2.11, 6.4.1, 6.5)
     def _objects(self):
@@ -2142,7 +2142,7 @@ def convert(data, path, step=None):
             try:
                 os.remove(tmp)
             except OSError:
-                pass
+                pass  # (in use or already gone: the error raised below is what matters)
             raise
     finally:
         doc.close()

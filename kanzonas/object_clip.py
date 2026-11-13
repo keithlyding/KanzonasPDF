@@ -295,7 +295,7 @@ def _moved_pattern(doc, num, mat):
         try:
             old = pymupdf.Matrix(*[float(v) for v in val.strip("[] ").split()])
         except (TypeError, ValueError):
-            pass
+            pass  # (not a matrix: the one set before stays)
     new = doc.get_new_xref()
     doc.update_object(new, doc.xref_object(num, compressed=True))
     if doc.xref_is_stream(num):

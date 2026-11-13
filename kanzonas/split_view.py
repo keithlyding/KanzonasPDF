@@ -206,7 +206,7 @@ class SplitPane(QWidget):
             try:
                 sig.disconnect(slot)
             except (RuntimeError, TypeError):
-                pass
+                pass  # (not connected, or already gone)
         self._conns = []
         self._link = None
 

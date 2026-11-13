@@ -500,7 +500,7 @@ def _font_scan(per_step=8):
             try:
                 out.setdefault(_norm(pymupdf.Font(fontfile=f).name), f)
             except Exception:
-                pass
+                pass  # (a font file PyMuPDF can't read: left out)
             count += 1
             if count % per_step == 0:
                 yield None
@@ -648,7 +648,7 @@ def _unicode_font(page, text):
             name = _insert_font(page, "KZUni", fontbuffer=font.buffer)
             return name, font, {"fontbuffer": font.buffer}
     except Exception:
-        pass
+        pass  # (no CJK font here: the next font is tried)
     return None
 
 
@@ -850,7 +850,7 @@ def _scan_font(page, scan, text):
             name = _insert_font(page, name, **source)
             return (name, font, source), None
     except Exception:
-        pass
+        pass  # (a font PyMuPDF can't load: the next one is tried)
     return None, None
 
 
@@ -1022,7 +1022,7 @@ def _remove_lines(page, lines, keep_links=True, decor=()):
                 m = pymupdf.mupdf
                 m.pdf_sync_open_pages(m.pdf_document_from_fz_document(doc.this))
             except Exception:
-                pass
+                pass  # (MuPDF can't refresh this now: what it has loaded stays as it is)
 
 
 def delete_lines(page, lines, keep_links=False):

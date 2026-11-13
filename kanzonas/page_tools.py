@@ -249,11 +249,11 @@ def compress(pdf_bytes, out_path, preset, password=None, protect=None):
     try:
         doc.rewrite_images(dpi_threshold=threshold, dpi_target=target, quality=quality)
     except Exception:
-        pass
+        pass  # (pictures MuPDF can't re-encode: the rest is compressed, the sizes shown real)
     try:
         doc.subset_fonts()
     except Exception:
-        pass
+        pass  # (fonts MuPDF can't subset are kept whole)
     # (garbage=4 merges equal objects: two markups alike without /P would become one,
     # shown on two pages)
     from .undo_journal import own_pages

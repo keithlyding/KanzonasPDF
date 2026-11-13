@@ -374,7 +374,7 @@ def _sync(page):
     try:
         m.pdf_sync_page(m.pdf_page_from_fz_page(page.this))
     except Exception:
-        pass
+        pass  # (MuPDF can't refresh this now: what it has loaded stays as it is)
 
 
 # ---- markups --------------------------------------------------------------------------------
@@ -487,7 +487,7 @@ def _map_leaders(doc, xref, t, lin):
             try:
                 doc.xref_set_key(xref, key, _fmt(float(val) * f))
             except ValueError:
-                pass
+                pass  # (not a number: left as it was)
 
 
 def _turn_text(doc, xref, kind, t):
@@ -692,7 +692,7 @@ def _redraw_links(page, page_links, texts, tp, k):
                                    size=size * f, color=links.BLUE)
                 done = True
             except ValueError:
-                pass
+                pass  # (text that can't be written there: the link stays without its label)
         if ln["look"] == "underline":
             kt, kv = doc.xref_get_key(ln["xref"], "KZUnder")
             nums = [float(v) for v in _NUMBER.findall(kv)] if kt == "array" else []

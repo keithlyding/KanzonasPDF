@@ -603,7 +603,7 @@ def apply_deep_outlines():
         try:
             return own(doc, simple)
         except RecursionError:
-            pass
+            pass  # (nested deeper than Python allows: read again below, with more room)
         old = sys.getrecursionlimit()
         sys.setrecursionlimit(old + 4 * _outline_depth(doc) + 200)
         try:
@@ -918,7 +918,7 @@ def toc_pages(doc):
             if doc.xref_get_key(doc.page_xref(i), TOC_KEY)[0] != "null":
                 out.append(i)
         except Exception:
-            pass
+            pass  # (a page MuPDF can't read: counted as without one)
     return out
 
 

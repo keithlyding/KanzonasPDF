@@ -687,13 +687,7 @@ def path_lines(data, obj, tm, mat=None):
 def _form_box(doc, xref):
     """(BBox, Matrix) of a Form XObject, or (None, None) when it has no usable BBox."""
     def nums(key):
-        kind, val = doc.xref_get_key(xref, key)
-        if kind != "array":
-            return None
-        try:
-            return [float(v) for v in val.strip("[]").split()]
-        except ValueError:
-            return None
+        return pdfcoords.array_numbers(doc, xref, key)
     b = nums("BBox")
     if not b or len(b) != 4:
         return None, None
@@ -778,7 +772,7 @@ def packed_for_saving(doc):
             try:
                 doc.xref_set_key(x, QUICK_KEY, "true")
             except Exception:
-                pass
+                pass  # (an object that can't take the mark: left unmarked)
 
 
 def _set_contents(page, data):

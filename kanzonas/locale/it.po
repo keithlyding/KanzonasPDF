@@ -5133,12 +5133,12 @@ msgstr ""
 "Sbloccarlo e continuare? (Puoi bloccarlo di nuovo con il pulsante del lucchetto sopra l'elenco delle pagine.)"
 
 #: main_window.py:4506
-msgid "🔒 Locked"
-msgstr "🔒 Bloccato"
+msgid "Locked"
+msgstr "Bloccato"
 
 #: main_window.py:4506
-msgid "🔓 Unlocked"
-msgstr "🔓 Sbloccato"
+msgid "Unlocked"
+msgstr "Sbloccato"
 
 #: main_window.py:4507
 msgid "Page order locked: pages can't be moved, added or removed (click to unlock)"

@@ -52,7 +52,7 @@ def load_annots(page, xrefs):
             try:
                 out[x] = page.load_annot(x)
             except Exception:
-                pass
+                pass  # (a markup PyMuPDF can't load: left out)
         return out
     want = set(xrefs)
     out = {}
@@ -435,7 +435,7 @@ def read(annot):
         try:
             props["icon"] = doc.xref_get_key(annot.xref, "Name")[1].lstrip("/") or props["icon"]
         except Exception:
-            pass
+            pass  # (no icon name: the default icon stays)
     elif kind in ("rect", "ellipse", "placeholder", "textbox", "legend") and geom.get("box"):
         model["rect"] = pymupdf.Rect(geom["box"])
     elif kind in ("rect", "ellipse", "textbox") and stored:
@@ -474,7 +474,7 @@ def _recolor_textbox_border(doc, annot, stroke_rgb):
                 break
         doc.update_stream(xref, "\n".join(lines).encode("latin-1"))
     except Exception:
-        pass
+        pass  # (an appearance we didn't write: its border keeps the text color)
 
 
 def write(page, model):

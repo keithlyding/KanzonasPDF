@@ -58,7 +58,7 @@ def session_module():
         from rapidocr_onnxruntime.utils import infer_engine
         return infer_engine
     except Exception:
-        pass
+        pass  # (a RapidOCR without it: the other place is tried)
     try:
         from rapidocr_onnxruntime import utils
     except Exception:
@@ -109,7 +109,7 @@ def trim_memory():
             import ctypes
             ctypes.CDLL("libc.so.6").malloc_trim(0)
         except (OSError, AttributeError):
-            pass
+            pass  # (not glibc: memory goes back to the system on its own terms)
 
 
 def _watch_turns(engine):
@@ -402,7 +402,7 @@ def job_done():
             QTimer.singleShot(int(ENGINE_IDLE_S * 1000) + 1000,
                               lambda: release_engine(ENGINE_IDLE_S))
     except Exception:
-        pass
+        pass  # (no timer here: the engine stays loaded until the program ends)
 
 
 def _good(results):

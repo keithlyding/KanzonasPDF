@@ -84,7 +84,7 @@ def _tokens(data):
             try:
                 yield "num", float(m.group("num"))
             except ValueError:
-                pass
+                pass  # (not a number: skipped)
         elif kind == "name":
             yield "name", m.group("name").decode("latin-1")
         elif kind == "str":
@@ -115,7 +115,7 @@ def _matrix(value):
         if len(nums) == 6:
             return pymupdf.Matrix(*nums)
     except ValueError:
-        pass
+        pass  # (not six numbers: the identity below)
     return pymupdf.Matrix(1, 1)
 
 
@@ -317,7 +317,7 @@ class _Walker:
                 clips.append(([("m", q[0]), ("l", q[1]), ("l", q[2]), ("l", q[3]), ("h",)],
                               False))
             except ValueError:
-                pass
+                pass  # (not four numbers: no clip from it)
         data = self.doc.xref_stream(xref) or b""
         self.run(data, [(xref, "Resources")] + chain, ctm, ctm, clips, depth + 1,
                  visited | {xref})

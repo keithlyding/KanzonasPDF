@@ -323,7 +323,7 @@ def has_text(doc, sample=24):
             if len(doc[i].get_text("words")) >= MIN_WORDS:
                 texty += 1
         except Exception:
-            pass
+            pass  # (a page MuPDF can't read: counted as without text)
     return texty * 2 >= n
 
 

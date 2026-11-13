@@ -133,7 +133,7 @@ def remove(page):
         try:
             doc.xref_set_key(page.xref, "Resources/XObject/" + name.decode(), "null")
         except Exception:
-            pass
+            pass  # (not in the page's resources: nothing to drop)
     doc.xref_set_key(page.xref, KEY, "null")
     return True
 

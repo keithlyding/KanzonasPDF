@@ -164,7 +164,7 @@ def validate(pdf_bytes):
             try:
                 info["reason"] = sig.sig_object.get("/Reason", "") or ""
             except Exception:
-                pass
+                pass  # (an unreadable reason: left empty)
         except Exception as ex:
             info["error"] = str(ex)
         info["ok"] = info["intact"] and not info["modified"]

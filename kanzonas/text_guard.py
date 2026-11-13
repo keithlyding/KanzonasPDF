@@ -170,7 +170,7 @@ def risky(page):
         try:
             doc._kz_text_guard = cache
         except Exception:
-            pass
+            pass  # (a document that can't hold the cache: read again next time)
     if key is not None and cache.get(page.xref, (None,))[0] == key:
         return cache[page.xref][1]
     out = _bytes_mention(page) and _nested(page)

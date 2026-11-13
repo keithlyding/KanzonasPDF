@@ -877,7 +877,7 @@ def _text(m, obj):
             try:
                 return data.decode(enc)
             except UnicodeDecodeError:
-                pass
+                pass  # (not this encoding: the next is tried)
     return ""
 
 
@@ -1344,7 +1344,7 @@ def forget_removed(doc, before):
                 continue
             doc.update_object(x, "<<>>")
         except Exception:
-            pass
+            pass  # (an object that can't be emptied: left as it is)
     return {n for n, f in before.fields.items()
             if f.fx in dead and all(w in dead for w in f.widgets)}
 

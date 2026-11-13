@@ -309,7 +309,7 @@ def clear_form_data(doc):
                         t != pymupdf.PDF_WIDGET_TYPE_RADIOBUTTON:
                     blank_appearance(doc, w.xref)
             except Exception:
-                pass
+                pass  # (a field PyMuPDF can't reset: left as it is)
     for xref in range(1, doc.xref_length()):
         try:
             keys = doc.xref_get_keys(xref)
@@ -803,7 +803,7 @@ class _Canvas(QWidget):
             try:
                 w._paint_overlay(p, doc[w.index])
             except Exception:
-                pass
+                pass  # (an overlay that can't be drawn: the rest of the page is)
             p.restore()
 
     def paintEvent(self, e):
@@ -1003,7 +1003,7 @@ class DocumentView(QScrollArea):
                     gc.collect(1)
                     gc.freeze()
         except Exception:
-            pass
+            pass  # (the tags can't be read ahead: tag upkeep reads them when it needs them)
 
     def _build_pages(self):
         self._warm_tags()
@@ -1698,7 +1698,7 @@ class DocumentView(QScrollArea):
         try:
             w.render_step()
         except Exception:
-            pass
+            pass  # (a page MuPDF can't draw stays blank: the others are drawn)
         wait.extend(live)
         if wait:
             self._render_timer.start(0)
@@ -1973,7 +1973,7 @@ class DocumentView(QScrollArea):
         try:
             out.append(tuple((c.get("number"), c.get("on")) for c in doc.layer_ui_configs()))
         except Exception:
-            pass
+            pass  # (no layers PyMuPDF can list: the key leaves them out)
         return tuple(out)
 
     def _content_snaps(self, index):
@@ -2256,7 +2256,7 @@ class DocumentView(QScrollArea):
             try:
                 os.remove(tmp)
             except OSError:
-                pass
+                pass  # (already gone, or in use: left where it is)
 
     def _view_anchor(self):
         """Where the window is looking, as a fraction of the current page, so a rebuild
@@ -2315,7 +2315,7 @@ class DocumentView(QScrollArea):
                 p = p.next
             return False
         except Exception:
-            pass
+            pass  # (MuPDF's list isn't reachable: every page is checked below)
         try:
             return any(pymupdf.mupdf.pdf_to_num(self.doc[i]._pdf_page().obj())
                        != self.doc.page_xref(i) for i in range(n))
@@ -2479,7 +2479,7 @@ class DocumentView(QScrollArea):
                 try:
                     pymupdf.mupdf.pdf_sync_open_pages(pymupdf._as_pdf_document(self.doc))
                 except Exception:
-                    pass
+                    pass  # (not possible here: the check below opens the document afresh)
             if self._stale_pages():
                 self._reopen()
             self._inline = None
@@ -2579,7 +2579,7 @@ class DocumentView(QScrollArea):
             try:
                 fresh.close()
             except Exception:
-                pass
+                pass  # (already closed)
         journal.abandon()
         journal.set_trailer(before, whole=True)
         # (a big edit is kept in several entries: the first one made dropped MuPDF's
@@ -4746,7 +4746,7 @@ class DocumentView(QScrollArea):
             with open(path + ":Zone.Identifier", "w") as f:
                 f.write("[ZoneTransfer]\r\nZoneId=3\r\n")
         except OSError:
-            pass
+            pass  # (not NTFS, or read-only: saved without Windows' download mark)
 
     def place_image(self, index, a, b, is_click):
         """Image tool: pick a picture and fit it in the dragged box (or natural size at the
@@ -7953,10 +7953,11 @@ class DocumentView(QScrollArea):
                     shifts = [pymupdf.Point(m.e, m.f) * rm - pymupdf.Point(0, 0) * rm
                               for m in mats]
 
-                    def text_fn(pg, _texts):
+                    def write_texts(pg, _texts):
                         for d in shifts:
                             self._write_page_text(pg, payload, d)
                         self._fonts_added = True
+                    text_fn = write_texts
                 self._objects_edit(label, lambda pg, ns: make(pg, ns, copies, objs, placed),
                                    keep=False, text_fn=text_fn, takes_text=False)
                 if keep:
@@ -8235,16 +8236,7 @@ class DocumentView(QScrollArea):
                         n = self._as_line(n)        # (the head stays on the part at the tip)
                     models.append(n)
 
-            def do():
-                pg = self.doc[index]
-                if models:
-                    annotations.replace_many(pg, [(xref, models[0])])
-                else:
-                    pg.delete_annot(pg.load_annot(xref))
-                for mod in models[1:]:
-                    annotations.write(pg, mod)
-            self.clear_selection()
-            self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+            self._trim_replace(index, xref, models)
         self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
         return True
 
@@ -8395,9 +8387,17 @@ class DocumentView(QScrollArea):
                     n = self._as_line(n)
             models.append(n)
 
+        self._trim_replace(index, xref, models)
+        self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
+        return True
+
+    def _trim_replace(self, index, xref, models):
+        """Trim's one step: markup xref replaced by the pieces left (models), or deleted when
+        none is (one undo step)."""
         def do():
             pg = self.doc[index]
             if models:
+                # (replies, its place in the stacking order and its dates go to the first)
                 annotations.replace_many(pg, [(xref, models[0])])
             else:
                 pg.delete_annot(pg.load_annot(xref))
@@ -8405,8 +8405,6 @@ class DocumentView(QScrollArea):
                 annotations.write(pg, mod)
         self.clear_selection()
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
-        self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
-        return True
 
     def _trim_object_exact(self, index, pt, best, cutters, objs):
         """Trim one of the drawing's own curves (its parts keep their curves: cut exactly,
@@ -8495,17 +8493,7 @@ class DocumentView(QScrollArea):
                 models.append(n)
         del page
 
-        def do():
-            pg = self.doc[index]
-            if models:
-                # (replies, its place in the stacking order and its dates go to the first)
-                annotations.replace_many(pg, [(xref, models[0])])
-            else:
-                pg.delete_annot(pg.load_annot(xref))
-            for mod in models[1:]:
-                annotations.write(pg, mod)
-        self.clear_selection()
-        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+        self._trim_replace(index, xref, models)
         self.statusMessage.emit(tr("Trimmed (Ctrl+Z undoes it)"))
         return True
 
@@ -10265,7 +10253,7 @@ class DocumentView(QScrollArea):
                     if self.doc.page_xref(i) in owners:
                         pages.add(i)
         except Exception:
-            pass
+            pass  # (a field MuPDF can't read: only its own page)
         return sorted(pages)
 
     def _choose_option(self, index, xref):
@@ -10930,7 +10918,7 @@ class DocumentView(QScrollArea):
             try:
                 flags.setdefault(i, []).append(pymupdf.Rect(self.doc[i].load_widget(x).rect))
             except Exception:
-                pass
+                pass  # (a field that can't be loaded: no flag on it)
         old = self._required_flags[1] if self._required_flags else {}
         self._required_flags = (self._field_order_key(), flags) if flags else None
         for i in set(old) | set(flags):
@@ -11898,7 +11886,7 @@ class DocumentView(QScrollArea):
                     # text added later must not get the cut-down fonts (text_edit._insert_font)
                     self.doc.font_salt = getattr(self.doc, "font_salt", 0) + 1
                 except Exception:
-                    pass
+                    pass  # (fonts MuPDF can't subset are kept whole)
                 self._fonts_added = False
             sec = self.security
             try:
@@ -11915,7 +11903,7 @@ class DocumentView(QScrollArea):
                 try:
                     os.remove(tmp)
                 except OSError:
-                    pass
+                    pass  # (in use or already gone: the error raised below is what matters)
                 raise
         finally:
             if keep_redo:

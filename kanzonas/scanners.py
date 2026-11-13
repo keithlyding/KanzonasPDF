@@ -264,7 +264,7 @@ def selftest_check():
         net.parse_xml(b'<!DOCTYPE a [<!ENTITY x "y">]><a>&x;</a>')
         raise AssertionError("a DTD was accepted")
     except net.XmlRefused:
-        pass
+        pass  # (refused, as it must be)
     caps = scan_escl.parse_capabilities(_SAMPLE_CAPS)
     assert caps.sources["platen"].resolutions == [300], caps
     detail = "(XML guard, eSCL"

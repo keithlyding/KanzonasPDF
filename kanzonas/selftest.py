@@ -422,7 +422,6 @@ def run(log_path):
         # shown document seconds of layout, 0.2-0.4 s per deleted page, each Tab on a big
         # form re-reading every field)
         import time
-        from PySide6.QtCore import QPointF
         from PySide6.QtGui import QColor, QImage, QPainter, QPen, QTransform
         from PySide6.QtWidgets import QApplication
         app = QApplication.instance() or QApplication([])
@@ -588,7 +587,7 @@ def run(log_path):
             S._decrypt("9999", blob)
             raise AssertionError("wrong PIN accepted")
         except ValueError:
-            pass
+            pass  # (refused, as it must be)
     check("signature encryption", t_sig_crypto)
 
     def t_forms():
@@ -836,7 +835,7 @@ def run(log_path):
             updates.unpack(evil, app)
             raise AssertionError("unsafe zip accepted")
         except ValueError:
-            pass
+            pass  # (refused, as it must be)
         bat = updates.swap_script(4242, new, app)
         assert "PID eq 4242" in bat and "/MIR" in bat and "%rc%" in bat and "KanzonasPDF.exe" in bat
         return "(TLS: " + QSslSocket.activeBackend() + ")"
@@ -1194,7 +1193,7 @@ def run(log_path):
         from PySide6.QtWidgets import QApplication
         from . import manual
         from .main_window import MainWindow
-        app = QApplication.instance() or QApplication([])
+        QApplication.instance() or QApplication([])
         win = MainWindow()
         try:
             missing = manual.missing_from_manual(win)

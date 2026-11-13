@@ -140,7 +140,7 @@ def metadata(url, endpoint, timeout=6.0):
                 try:
                     out["scan"].append(on_host(addr, h.host))
                 except ScanError:
-                    pass
+                    pass  # (a host that doesn't answer: left out)
     return out
 
 
@@ -615,7 +615,7 @@ class WsdScanner:
                               "</wscn:CancelJobRequest>" % xml_escape(job_id),
                               http=net.Http(self.http.base), timeout=3)
                 except ScanError:
-                    pass
+                    pass  # (the scanner already dropped the job)
 
 
 # ---- WS-Eventing: scans started on the printer's panel (see scan_events.py) ---------------
