@@ -119,16 +119,23 @@ class InsertLayout(Base):
     def test_inserting_many_pages_into_a_big_document_stays_quick(self):
         numbered_pdf(self.path("a.pdf"), 600)
         numbered_pdf(self.path("b.pdf"), 300)
-        v = self.view(self.path("a.pdf"), show=True)
-        v.goto_page(300)
-        pump()
-        t = time.perf_counter()
-        v.insert_pdf(self.path("b.pdf"), 300)
-        pump(0.3)
-        took = time.perf_counter() - t
-        self.check_layout(v)
+        # the fastest of three tries, each into a fresh view (the owner, 12 Nov 2026: one try on
+        # a busy shared build machine can miss by a bit; the budget is unchanged). On 13 Nov a
+        # Mac build machine took 3.96 s once.
+        times = []
+        for _ in range(3):
+            v = self.view(self.path("a.pdf"), show=True)
+            v.goto_page(300)
+            pump()
+            t = time.perf_counter()
+            v.insert_pdf(self.path("b.pdf"), 300)
+            pump(0.3)
+            times.append(time.perf_counter() - t)
+            self.check_layout(v)
+            self.assertEqual(v.doc.page_count, 900)
         # (laid out page by page this took several seconds; now well under one)
-        self.assertLess(took, 3.0)
+        self.assertLess(min(times), 3.0, "the three tries: %s" % ", ".join(
+            "%.2f s" % x for x in times))
 
 
 # ---- 2: several pages deleted at once ----------------------------------------------------

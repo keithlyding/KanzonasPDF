@@ -378,8 +378,6 @@ class ReplacePages(unittest.TestCase):
 
     def test_big_sheet_is_quick(self):
         import time
-        v = self.view()
-        self.rect_markup(v, 0, (300, 200, 400, 260))
         d = F.open()
         page = sheet(d, "A-101", "NEW 1", size=(2592, 1728))
         shape = page.new_shape()
@@ -394,10 +392,21 @@ class ReplacePages(unittest.TestCase):
         d.close()
         src = F.open(path)
         self.docs.append(src)
-        t = time.perf_counter()
-        v.replace_pages(src, [(0, 0)])
-        self.assertLess(time.perf_counter() - t, 2.0)
-        self.assertTrue(near(v.doc[0].rect, (0, 0, 2592, 1728)))
+        # the fastest of three tries, each into a fresh document (the owner, 12 Nov 2026: one
+        # try on a busy shared build machine can miss by a bit; the budget is unchanged). On
+        # 13 Nov a Mac build machine took 2.12 s once (0.03 s on Linux).
+        times = []
+        for k in range(3):
+            v = self.view()
+            self.rect_markup(v, 0, (300, 200, 400, 260))
+            t = time.perf_counter()
+            v.replace_pages(src, [(0, 0)])
+            times.append(time.perf_counter() - t)
+            self.assertTrue(near(v.doc[0].rect, (0, 0, 2592, 1728)))
+            v.close_doc()
+            self.views.remove(v)
+        self.assertLess(min(times), 2.0, "the three tries: %s" % ", ".join(
+            "%.2f s" % x for x in times))
 
 
 if __name__ == "__main__":

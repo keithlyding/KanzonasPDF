@@ -38,7 +38,7 @@ ON_TABS = {
             "t:erasecontent t:highlight t:image t:initials t:link t:note t:signature t:stamp "
             "t:strikeout t:textbox t:underline",
     "Markup": "a_chest a_props t:arc t:arrow t:attach t:callout t:circle t:cloud t:comment "
-              "t:curve t:ellipse t:eraser t:highlight t:ink t:legend t:line t:mask t:note "
+              "t:curve t:dot t:ellipse t:eraser t:highlight t:ink t:legend t:line t:mask t:note "
               "t:polygon t:polyline t:rect t:stamp t:strikeout t:textbox t:underline",
     "Measure": "a_grid a_grid_settings a_measure_summary a_scale_bar a_sheet_scales a_snap_grid "
                "a_snap_objects a_snap_page t:m_angle t:m_area t:m_calibrate t:m_count t:m_dim "
@@ -88,6 +88,12 @@ sys.path.insert(0, os.environ["KZ_ROOT"])
 from PySide6.QtCore import QSettings
 for fmt in (QSettings.NativeFormat, QSettings.IniFormat):
     QSettings.setPath(fmt, QSettings.UserScope, os.environ["KZ_SETTINGS"])
+# (each language's run its own settings, an .ini file in its folder, on every system: on
+# macOS the app's own store is the user's preferences, where that folder is ignored, and
+# the three runs at once shared it, each reading what the others were writing)
+QSettings.setDefaultFormat(QSettings.IniFormat)
+from kanzonas import paths
+paths.settings = lambda: QSettings(QSettings.IniFormat, QSettings.UserScope, paths.APP, paths.APP)
 from PySide6.QtWidgets import QApplication, QToolButton, QComboBox, QFrame
 from PySide6.QtGui import QAction, QFont, QFontDatabase, QFontInfo
 app = QApplication([])
@@ -144,6 +150,8 @@ if font is not None:
         tabs.append({"title": r.tabText(i), "width": page.sizeHint().width(),
                      "scrolls": strip.horizontalScrollBar().maximum() > 0,
                      "viewport": strip.viewport().width(),
+                     "vscroll": strip.verticalScrollBar().maximum() > 0,
+                     "height": page.sizeHint().height(), "strip_h": strip.viewport().height(),
                      "groups": groups, "reach": sorted(reach)})
     out.update(lang=i18n.language(), window=w.width(), tabs=tabs)
 sys.stdout.write("RESULT " + json.dumps(out) + "\n")
@@ -197,7 +205,12 @@ class RibbonFits(unittest.TestCase):
             for t in r["tabs"]:
                 self.assertLessEqual(t["width"], LIMIT, "%s, %s tab (font %s): %s" % (
                     lang, t["title"], r["font"], self.widths(lang)))
-                self.assertFalse(t["scrolls"], "%s, %s tab scrolls" % (lang, t["title"]))
+                self.assertFalse(t["scrolls"], "%s, %s tab scrolls (font %s; %d px wide in a "
+                                 "%d px viewport, %d px tall in %d px%s; window %d): %s" % (
+                                     lang, t["title"], r["font"], t["width"], t["viewport"],
+                                     t["height"], t["strip_h"],
+                                     ", scrolling up and down" if t["vscroll"] else "",
+                                     r["window"], self.widths(lang)))
 
     def test_the_same_layout_in_every_language(self):
         en = self.result["en"]["tabs"]

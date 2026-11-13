@@ -304,13 +304,31 @@ def run(log_path):
             v.select_objects(0, v.cad_objects(0, region, False))
             timed("sheet move", lambda: v.cad_apply("Moved", pymupdf.Matrix(1, 0, 0, 1, 5, 5)))
             assert not list(annotations.each_annot(v.doc[0])), "markups left after Delete"
+
+            # a dot on the sheet with 3,000 Count markers: its number is found without
+            # loading them (dots.last_number; reading every Circle took about 1 s)
+            def counts():
+                page = v.doc[0]
+                count = {"kind": "m_count", "props": dict(annotations.DEFAULTS["m_count"]),
+                         "rect": pymupdf.Rect(), "points": [pymupdf.Point(20, 20)], "n": 1}
+                first = annotations.write(page, count)
+                stored = pymupdf.get_pdf_str(v.doc.xref_get_key(first.xref, "KZProps")[1])
+                for i in range(1, 3000):
+                    x, y = 20 + (i % 60) * 40, 20 + (i // 60) * 30
+                    marker = page.add_circle_annot(pymupdf.Rect(x - 4, y - 4, x + 4, y + 4))
+                    v.doc.xref_set_key(marker.xref, "KZProps", stored)
+            v.modify(counts, [0], permission=pymupdf.PDF_PERM_ANNOTATE)
+            v.tool_props = lambda kind: dict(annotations.DEFAULTS[kind])
+            timed("dot on 3,000 counts", lambda: v.place_dot(0, pymupdf.Point(1300, 1650)))
+            from . import dots
+            assert dots.last_number(v.doc) == 1, "the dot wasn't placed as number 1"
         finally:
             v.dirty = False
             v.close_doc()
         # (about 4 times today's times on the build machine: a slow machine passes, a step
         # that is slow again doesn't)
         limits = {"add": 2, "repaint": 0.05, "move": 2, "highlight step": 0.25, "delete": 1.5,
-                  "sheet move": 4}
+                  "sheet move": 4, "dot on 3,000 counts": 1}
         slow = [f"{k} {took[k]:.2f}s (limit {lim}s)" for k, lim in limits.items()
                 if took[k] >= lim]
         assert not slow, "too slow: " + ", ".join(slow)
