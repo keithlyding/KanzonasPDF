@@ -1952,6 +1952,11 @@ class MainWindow(QMainWindow):
         # (grayed: its tooltip says why, the owner's choice of 12 Nov for markups and the
         # page's own objects selected together)
         tip = self._group_cmd_tip() + ("\n" + why if why else "")
+        if sys.platform == "darwin":
+            # (its key as the Mac shows it, ⇧⌘G, as _refresh_tips gives every other tip: the
+            # macOS build's test_tooltip_keys caught "Ctrl+Shift+G" here)
+            from .macos import mac_keys
+            tip = mac_keys(tip)
         if self.a_group.toolTip() != tip:
             self.a_group.setToolTip(tip)
             self.a_group.setStatusTip(tip.replace("\n", " "))
