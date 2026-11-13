@@ -316,7 +316,7 @@ def remove(runner=subprocess.run):
     try:
         os.remove(icon_path())
     except FileNotFoundError:
-        pass
+        pass  # (already gone)
     _set_default_in_list(mimeapps_path(), DESKTOP_ID, MIME_TYPES, False, previous)
     apps = os.path.dirname(desktop_path())
     if os.path.isdir(apps):

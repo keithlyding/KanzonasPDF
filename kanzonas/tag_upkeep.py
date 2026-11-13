@@ -1680,7 +1680,7 @@ def _keep(doc, tree):
     try:
         doc._kz_tag_tree = (tree, _stamp(doc), _objects(tree))
     except Exception:
-        pass
+        pass  # (a document that can't hold the cache: read again next time)
 
 
 def refresh(doc, pages=None, structural=False, changed=None):

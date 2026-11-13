@@ -440,7 +440,7 @@ class EsclScanner:
                 h = net.Http(self.http.base)
                 h.request("DELETE", job, timeout=5 if done else 3)
             except ScanError:
-                pass
+                pass  # (the scanner already dropped the job)
 
     def _job_error(self, r):
         state, adf = self.status()

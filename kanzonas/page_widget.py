@@ -710,7 +710,7 @@ class PageWidget(QWidget):
                 if info[1] > 0:
                     out.add(info[1])
         except Exception:
-            pass
+            pass  # (pictures MuPDF can't list: none)
         return out
 
     def _predecode(self, s):

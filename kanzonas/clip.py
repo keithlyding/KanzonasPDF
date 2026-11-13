@@ -24,7 +24,7 @@ def _release():
         if md is not None and md.hasFormat(MIME):
             cb.setText(md.text())
     except Exception:
-        pass
+        pass  # (Qt's clipboard already gone at exit: nothing to swap)
 
 
 def put(kind, payload, text="", image=None):

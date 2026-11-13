@@ -665,7 +665,7 @@ class BatchDoc:
             try:
                 pymupdf.mupdf.pdf_sync_open_pages(pymupdf._as_pdf_document(self.doc))
             except Exception:
-                pass
+                pass  # (not possible here: the check below opens the document afresh)
             if self._stale_pages():
                 old = self.doc
                 self.doc = self._open_snapshot(self._snapshot())
@@ -717,7 +717,7 @@ class BatchDoc:
         try:
             self.doc.close()
         except Exception:
-            pass
+            pass  # (already closed)
 
 
 # ---- the run --------------------------------------------------------------------------------
@@ -1615,7 +1615,7 @@ def _remove(path):
     try:
         os.remove(path)
     except OSError:
-        pass
+        pass  # (already gone, or in use: left where it is)
 
 
 def _stamp(path):

@@ -62,38 +62,8 @@ OPEN_OPS = {b"q", b"BT", b"BDC", b"BMC"}
 CLOSE_OPS = {b"Q", b"ET", b"EMC"}
 
 
-def skip_string(data, i):
-    """Index just past the literal string starting at data[i] == '('."""
-    depth = 0
-    n = len(data)
-    while i < n:
-        c = data[i]
-        if c == 0x5C:
-            i += 2
-            continue
-        if c == 0x28:
-            depth += 1
-        elif c == 0x29:
-            depth -= 1
-            if depth == 0:
-                return i + 1
-        i += 1
-    return n
-
-
-def _inline_end(data, i):
-    """data[i:] is an inline image's data after 'ID '. Index just past its 'EI'."""
-    n = len(data)
-    j = i
-    while True:
-        k = data.find(b"EI", j)
-        if k < 0:
-            return n
-        before = data[k - 1] if k > 0 else 0x20
-        after = data[k + 2] if k + 2 < n else 0x20
-        if before in _WS and (after in _WS or after in b"/[(<%"):
-            return k + 2
-        j = k + 2
+# (a literal string's end, an inline picture's end: read as Edit objects reads them)
+from .page_objects import _inline_end, _skip_string as skip_string  # noqa: E402
 
 
 def _num(tok):

@@ -115,7 +115,7 @@ def instance_name(app_name, user):
             # (a socket's path holds at most 107 bytes: a longer one can't be listened at)
             return os.path.join(runtime, name)
     except OSError:
-        pass
+        pass  # (no usable runtime folder: the plain name below)
     return name
 
 
@@ -162,7 +162,7 @@ def _log_error(what):
             f.write("%s %s\n%s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), what,
                                       traceback.format_exc()))
     except OSError:
-        pass
+        pass  # (the data folder can't be written: there's nowhere to log it)
     return path
 
 
@@ -177,7 +177,7 @@ def _reset_settings():
             for key in st.allKeys():
                 f.write("%s = %r\n" % (key, st.value(key)))
     except OSError:
-        pass
+        pass  # (the copy can't be written: the settings are cleared all the same)
     st.clear()
     st.sync()
     return path
@@ -233,14 +233,14 @@ def end_on_sigterm(app, win):
             if signal.getsignal(sig) is not signal.SIG_IGN:
                 signal.signal(sig, lambda *_: got.append(1))
         except (OSError, ValueError):
-            pass
+            pass  # (not this system's signal, or not the main thread: left as it was)
     notifier = QSocketNotifier(r.fileno(), QSocketNotifier.Type.Read, app)
 
     def woke():
         try:
             r.recv(512)
         except OSError:
-            pass
+            pass  # (nothing to read: the wake-up only lets Python run its signal handlers)
         if not got:
             return
         got.clear()

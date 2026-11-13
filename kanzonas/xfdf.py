@@ -202,7 +202,7 @@ def parse_xml(data):
     try:
         p.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_NEVER)
     except AttributeError:
-        pass
+        pass  # (an expat without the setting: the handlers below refuse DTDs)
     root, stack, count, raws, rich = [], [], [0], {}, []
 
     def refuse(*_args):
@@ -417,7 +417,7 @@ def _read_keys(doc, x):
             try:
                 keys[k] = _float(val)
             except ValueError:
-                pass
+                pass  # (not numbers in this XFDF: the key is left out)
     for k in NAMES:
         kind, val = doc.xref_get_key(x, k)
         if kind == "name" and _NAME.match(val.lstrip("/")):
@@ -432,13 +432,13 @@ def _read_keys(doc, x):
             try:
                 keys[k] = _nums(val)
             except ValueError:
-                pass
+                pass  # (not numbers in this XFDF: the key is left out)
     kind, val = doc.xref_get_key(x, "InkList")
     if kind == "array" and not _REF.search(val):
         try:
             keys["InkList"] = [_nums(s) for s in re.findall(r"\[([^\[\]]*)\]", val)]
         except ValueError:
-            pass
+            pass  # (not numbers in this XFDF: the key is left out)
     kind, val = doc.xref_get_key(x, "LE")
     if kind == "array":
         ends = [n for n in re.findall(r"/([A-Za-z]+)", val)]
@@ -452,7 +452,7 @@ def _read_keys(doc, x):
         try:
             bs["W"] = _float(val)
         except ValueError:
-            pass
+            pass  # (not numbers in this XFDF: the key is left out)
     kind, val = doc.xref_get_key(x, "BS/S")
     if kind == "name" and val.lstrip("/") in STYLES and val != "/S":
         bs["S"] = val.lstrip("/")           # (solid, the default, left out)
@@ -461,7 +461,7 @@ def _read_keys(doc, x):
         try:
             bs["D"] = _nums(val)
         except ValueError:
-            pass
+            pass  # (not numbers in this XFDF: the key is left out)
     if not bs:
         kind, val = doc.xref_get_key(x, "Border")
         if kind == "array" and not _REF.search(val):
@@ -1301,12 +1301,12 @@ def _redraw(page, xrefs):
                 try:
                     m.pdf_dirty_annot(a.this)
                 except Exception:
-                    pass
+                    pass  # (PyMuPDF can't update this markup: its appearance stays as it is)
             for a in loaded.values():
                 try:
                     m.pdf_update_annot(a.this)
                 except Exception:
-                    pass
+                    pass  # (PyMuPDF can't update this markup: its appearance stays as it is)
             loaded.clear()
             undo_journal.split(page.parent)         # (a new entry of the undo step)
     finally:

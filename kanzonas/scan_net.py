@@ -176,7 +176,7 @@ def parse_xml(data, limit=MAX_XML):
     try:
         p.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_NEVER)
     except AttributeError:
-        pass
+        pass  # (an expat without the setting: the handlers below refuse DTDs)
     root, stack, count = [], [], [0]
 
     def refuse(*_args):
@@ -336,7 +336,7 @@ class Http:
                 # shutdown, which a read in another thread then returns from)
                 socket.socket.shutdown(sock, socket.SHUT_RDWR)
             except OSError:
-                pass
+                pass  # (already closed by the other side)
             if sys.platform == "win32":
                 # Windows doesn't wake a read waiting in another thread at a shutdown, only
                 # at closesocket: closed now (Python's own close waits for http.client's file
@@ -346,7 +346,7 @@ class Http:
                 try:
                     _socket.socket.close(sock)
                 except OSError:
-                    pass
+                    pass  # (already closed)
 
     def request(self, method, path, body=None, headers=None, limit=MAX_XML,
                 timeout=READ_TIMEOUT):
@@ -541,7 +541,7 @@ def image_sizes(data, kind):
             w, h = struct.unpack("<ii", d[18:26])
             return [(abs(w), abs(h))]
     except struct.error:
-        pass
+        pass  # (a cut-off picture: no size)
     return []
 
 
@@ -646,7 +646,7 @@ def local_ipv4():
         try:
             addrs |= _interface_ipv4()
         except (OSError, AttributeError, ValueError):
-            pass
+            pass  # (no interfaces this way: the other ways below)
     if sys.platform.startswith("linux"):
         try:
             import fcntl
@@ -658,17 +658,17 @@ def local_ipv4():
                                         struct.pack("256s", name[:15].encode()))
                         addrs.add(socket.inet_ntoa(r[20:24]))
                     except OSError:
-                        pass
+                        pass  # (an interface without an IPv4 address)
             finally:
                 s.close()
         except (ImportError, OSError):
-            pass
+            pass  # (no fcntl or ioctl here: the other ways)
     if sys.platform != "darwin":
         try:
             for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
                 addrs.add(info[4][0])
         except OSError:
-            pass
+            pass  # (the host name doesn't resolve: no address from it)
     try:
         # the address of the default route (a UDP connect sends nothing)
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -678,7 +678,7 @@ def local_ipv4():
         finally:
             s.close()
     except OSError:
-        pass
+        pass  # (no route out: no address from it)
     return sorted(a for a in addrs if not a.startswith("127.") and a != "0.0.0.0")
 
 
@@ -760,7 +760,7 @@ def resolve_host(name):
         if name.count(".") == 3:
             return name
     except OSError:
-        pass
+        pass  # (not a dotted IPv4 address)
     try:
         return socket.getaddrinfo(name, None, socket.AF_INET)[0][4][0]
     except (OSError, IndexError):

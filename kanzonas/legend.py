@@ -54,7 +54,7 @@ def stored(doc, xref):
             got = json.loads(val)
             return got if isinstance(got, dict) else {}
     except Exception:
-        pass
+        pass  # (no readable properties: none)
     return {}
 
 
@@ -151,7 +151,7 @@ def _item(page, a, scale):
     try:
         subject = a.info.get("subject", "") or ""
     except Exception:
-        pass
+        pass  # (no readable subject: none)
     kind = sample_kind(m)
     style = _style(m)
     label = label_of(m, subject)

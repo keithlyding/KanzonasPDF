@@ -242,7 +242,7 @@ def content_key(page):
     try:
         out.append(tuple((c.get("number"), c.get("on")) for c in doc.layer_ui_configs()))
     except Exception:
-        pass
+        pass  # (no layers PyMuPDF can list: the key leaves them out)
     return tuple(out)
 
 
@@ -298,7 +298,7 @@ def forget_pictures(doc, xrefs):
         try:
             m.pdf_purge_object_from_store(pdf, x)
         except Exception:
-            pass
+            pass  # (not in MuPDF's store: nothing to purge)
 
 
 def annots_list(page):
@@ -381,7 +381,7 @@ def big_images(page, least=BIG_IMAGE_PX):
                     4 if cs in ("DeviceCMYK",) else 3
                 out.append((xref, w, h, w * h * n))
     except Exception:
-        pass
+        pass  # (pictures MuPDF can't list: none to prepare)
     return out
 
 
@@ -400,7 +400,7 @@ def predecode(page, items):
             got = m.ll_fz_get_pixmap_from_image(img.m_internal, None, ctm.internal())
             m.ll_fz_drop_pixmap(got[0] if isinstance(got, (tuple, list)) else got)
         except Exception:
-            pass
+            pass  # (a picture MuPDF can't decode now is decoded when drawn)
 
 
 def nbytes(pm):

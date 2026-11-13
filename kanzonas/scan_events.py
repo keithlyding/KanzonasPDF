@@ -101,7 +101,7 @@ class EventListener:
                 try:
                     self._reply(code)
                 except OSError:
-                    pass
+                    pass  # (the scanner hung up before the reply)
                 if message is not None:
                     listener.on_message(*message)
 
@@ -236,7 +236,7 @@ class PanelLink:
             try:
                 scan_wsd.unsubscribe(self.device.address, sub)
             except ScanError:
-                pass
+                pass  # (the scanner already forgot the subscription)
             return
         self._schedule(sub["expires"])
 
@@ -302,7 +302,7 @@ class PanelLink:
                 try:
                     scan_wsd.unsubscribe(self.device.address, sub)
                 except ScanError:
-                    pass
+                    pass  # (the scanner already forgot the subscription)
             self._close_listener()
         if wait:
             end()

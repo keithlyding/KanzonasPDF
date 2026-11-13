@@ -123,7 +123,7 @@ def load(lang):
             with open(path, encoding="utf-8") as f:
                 out.update(parse_po(f.read()))
         except OSError:
-            pass
+            pass  # (an unreadable catalog: those texts stay in English)
     return out
 
 

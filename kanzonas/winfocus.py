@@ -51,7 +51,7 @@ def allow_foreground():
         try:
             user32.AllowSetForegroundWindow(ASFW_ANY)
         except Exception:
-            pass
+            pass  # (Windows refuses: the window may stay behind)
 
 
 def activate(hwnd):

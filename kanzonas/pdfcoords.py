@@ -15,6 +15,18 @@ import pymupdf
 _PYMUPDF_MATRIX = pymupdf.Page.transformation_matrix
 
 
+def array_numbers(doc, xref, key):
+    """The numbers of object xref's array entry key (a /Rect, /RD, /BBox, /Matrix...) in PDF
+    user space, or None when it isn't an array of numbers."""
+    kind, val = doc.xref_get_key(xref, key)
+    if kind != "array":
+        return None
+    try:
+        return [float(v) for v in val.strip("[]").split()]
+    except ValueError:
+        return None
+
+
 def to_page(page):
     """Matrix from PDF user space to unrotated page coordinates."""
     if not page.parent.is_pdf:

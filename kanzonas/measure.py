@@ -66,7 +66,7 @@ def get_scale(page):
             if math.isfinite(f) and f > 0 and unit in UNITS:
                 return f, unit, label, True
     except Exception:
-        pass
+        pass  # (an unreadable scale: the page has none)
     return PT_M, "in", tr("not set (paper size)"), False
 
 

@@ -1,7 +1,6 @@
 """Pages > Link sheet callouts...: what was read from the title blocks (editable), what will
 be linked, and the options; OK creates the links."""
 
-import os
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,

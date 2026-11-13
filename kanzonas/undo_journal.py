@@ -172,7 +172,7 @@ def reload_layers(doc):
             raw.ocg = None
         m.ll_pdf_read_ocg(raw)
     except Exception:
-        pass
+        pass  # (MuPDF's layer state can't be reset: the layers keep their state)
     doc._kz_layers = _layers_state(doc)
 
 
@@ -709,7 +709,7 @@ class Journal:
             m.ll_pdf_drop_page_tree_internal(self.raw)
             m.pdf_sync_open_pages(self.pdf)
         except Exception:
-            pass
+            pass  # (MuPDF can't refresh this now: what it has loaded stays as it is)
         reset_resources(self.pdf)
         doc.InsertedImages = {}
         doc.FontInfos = []

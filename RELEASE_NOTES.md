@@ -9,6 +9,24 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.14.2
+
+**Fixed**
+- The Pages panel's lock button shows a lock icon that follows the light or dark theme, instead of an emoji.
+- Behind the scenes: a cleanup of the program's code, found by the new check for leftovers and sloppy code (nothing else changes in how it works).
+
+## 1.14.2 (es)
+
+**Correcciones**
+- El botón de bloqueo del panel Páginas muestra un icono de candado que sigue el tema claro u oscuro, en lugar de un emoji.
+- Internamente: una limpieza del código del programa, encontrada por la nueva comprobación de restos y código descuidado (nada más cambia en su funcionamiento).
+
+## 1.14.2 (it)
+
+**Correzioni**
+- Il pulsante di blocco del pannello Pagine mostra un'icona a lucchetto che segue il tema chiaro o scuro, al posto di un'emoji.
+- Dietro le quinte: una pulizia del codice del programma, trovata dal nuovo controllo di residui e codice trascurato (nient'altro cambia nel suo funzionamento).
+
 ## 1.14.1
 
 **New**

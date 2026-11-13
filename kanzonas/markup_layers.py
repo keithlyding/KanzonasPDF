@@ -8,8 +8,6 @@ The Layers panel shows and hides layers (as before); new markups go on the layer
 Markups list shows and filters by layer. A markup on a hidden layer isn't drawn (MuPDF leaves
 it out) nor picked."""
 
-import pymupdf
-
 from .i18n import tr
 
 

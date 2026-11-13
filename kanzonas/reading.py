@@ -8,7 +8,7 @@ used, so none of it costs anything at start-up."""
 
 import shiboken6
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer
-from PySide6.QtGui import QAction, QActionGroup, QCursor
+from PySide6.QtGui import QActionGroup, QCursor
 from PySide6.QtWidgets import (QApplication, QDockWidget, QFrame, QHBoxLayout, QLabel,
                                QTextBrowser, QToolBar, QToolButton, QVBoxLayout, QWidget,
                                QMessageBox)
@@ -440,7 +440,7 @@ class AutoScroll(QObject):
             try:
                 self.view.destroyed.disconnect(self._gone)
             except (RuntimeError, TypeError):
-                pass
+                pass  # (not connected, or already gone)
         self.view = None
         self.active = False
         self.timer.stop()

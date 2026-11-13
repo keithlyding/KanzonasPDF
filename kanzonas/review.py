@@ -586,7 +586,7 @@ def summarize(doc, sort="page", thumbnails=True, title=""):
     try:
         out.subset_fonts()
     except Exception:
-        pass
+        pass  # (fonts MuPDF can't subset are kept whole)
     out.set_metadata({"title": tr("Comment summary") + (" - " + title if title else ""),
                       "creator": "KanzonasPDF"})
     return out

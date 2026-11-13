@@ -142,7 +142,7 @@ def _scanned(page):
             if not r.is_empty and abs(r) >= 0.5 * area:
                 return True
     except Exception:
-        pass
+        pass  # (pictures MuPDF can't list: taken as none)
     return False
 
 

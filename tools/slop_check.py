@@ -333,8 +333,8 @@ def swallowed():
         for node in ast.walk(tree):
             if isinstance(node, ast.ExceptHandler) and len(node.body) == 1 and \
                     isinstance(node.body[0], ast.Pass):
-                # a reason on the except line, the pass line or the line above
-                if not ({node.lineno, node.body[0].lineno, node.lineno - 1} & commented):
+                # a reason on the line above, the except line, or in the handler
+                if not (set(range(node.lineno - 1, node.body[-1].end_lineno + 1)) & commented):
                     out.append(("swallowed", rel(path), node.lineno, src[node.lineno - 1].strip()))
     return out
 
@@ -416,14 +416,31 @@ def unused():
     for line in r.stdout.splitlines():
         m = re.match(r"(.+?):(\d+):\d+:? (.*(unused|never used|redefinition of unused).*)", line)
         if m:
-            out.append(("unused", rel(os.path.join(ROOT, m.group(1))), int(m.group(2)),
-                        m.group(3)))
+            path, n = os.path.join(ROOT, m.group(1)), int(m.group(2))
+            # (an import kept on purpose says so: "# noqa: F401 (why)")
+            if "noqa" in (lines(path)[n - 1:n] or [""])[0]:
+                continue
+            out.append(("unused", rel(path), n, m.group(3)))
     return out
 
 
+# Soft findings looked at and kept, each with the reason (kind, file, what it found).
+KEPT = {
+    ("emoji", "README.md", "\u2b50"): "GitHub's own star button, named as GitHub shows it",
+    ("duplicate", "kanzonas/xfdf.py", "chars"): "the XFDF reader's and the scanner reader's "
+    "XML text handlers: each guarded parser keeps its own (sharing would tie them together)",
+}
+
+
+def _kept(f):
+    kind, path, _n, what = f
+    return any(kind == k and path == p and what.startswith(w) for k, p, w in KEPT)
+
+
 def soft():
-    return wording() + emoji() + swallowed() + narrating() + commented() + duplicates() + \
+    found = wording() + emoji() + swallowed() + narrating() + commented() + duplicates() + \
         unused()
+    return [f for f in found if not _kept(f)]
 
 
 def report(findings, title):

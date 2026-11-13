@@ -38,7 +38,7 @@ def folder():
             if os.access(chosen, os.W_OK):
                 return chosen
         except OSError:
-            pass
+            pass  # (can't be made or written: the next folder is tried)
     return default_folder()
 
 
@@ -69,7 +69,7 @@ def _save_index(data):
         with open(os.path.join(folder(), INDEX), "w", encoding="utf-8") as f:
             json.dump(data, f, indent=1)
     except OSError:
-        pass
+        pass  # (the backup folder can't be written: the index on disk stays as it was)
 
 
 def leftovers():
@@ -94,7 +94,7 @@ def _remove(p):
     try:
         os.remove(p)
     except OSError:
-        pass
+        pass  # (already gone, or in use: left where it is)
     idx = _index()
     if idx.pop(os.path.basename(p), None) is not None:
         _save_index(idx)
@@ -112,7 +112,7 @@ def set_aside(items):
             try:
                 os.remove(p)
             except OSError:
-                pass
+                pass  # (already gone, or in use: left where it is)
     out = []
     idx = _index()
     for p, orig, _t in items:

@@ -190,7 +190,7 @@ def cloud_of(model):
         try:
             c["i"] = float(got.get("i", 2)) or 2
         except (TypeError, ValueError):
-            pass
+            pass  # (not a number: the default intensity stays)
         ph = got.get("phase")
         if isinstance(ph, list) and len(ph) == n and \
                 all(p is None or isinstance(p, (int, float)) for p in ph):
@@ -279,14 +279,7 @@ def _n(v):
 
 
 # ---- a closed rectangle, ellipse or polygon, as MuPDF goes round it -----------------
-def _numbers(doc, xref, key):
-    kind, val = doc.xref_get_key(xref, key)
-    if kind != "array":
-        return None
-    try:
-        return [float(v) for v in val.strip("[]").split()]
-    except ValueError:
-        return None
+_numbers = pdfcoords.array_numbers
 
 
 def _winding(pts):

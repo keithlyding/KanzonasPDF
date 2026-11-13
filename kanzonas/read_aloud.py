@@ -135,7 +135,7 @@ class Reader(QObject):
                         eng.setVoice(v)
                         break
         except Exception:
-            pass
+            pass  # (the speech engine refuses the rate or voice: its own stay)
 
     def _ready(self):
         if self.engine is None:
@@ -316,7 +316,7 @@ class Reader(QObject):
             try:
                 self.engine.stop()
             except Exception:
-                pass
+                pass  # (the engine already stopped)
         v = self.view
         if v is not None and shiboken6.isValid(v):
             for signal, slot in ((v.destroyed, self._view_gone),
@@ -325,7 +325,7 @@ class Reader(QObject):
                 try:
                     signal.disconnect(slot)
                 except (RuntimeError, TypeError):
-                    pass
+                    pass  # (not connected, or already gone)
             if v.read_mark is not None:
                 old, v.read_mark = v.read_mark, None
                 if old[0] < len(v.pages) and self._live() is not None:
@@ -414,7 +414,7 @@ def selftest_check():
             try:
                 ctypes.CDLL("libspeechd.so.2")
             except OSError:
-                pass
+                pass  # (no speech-dispatcher library here: nothing preloaded)
             else:
                 raise AssertionError("the computer has libspeechd, yet: " + err)
             notes.append("speechd plugin bundled; no libspeechd on this computer")

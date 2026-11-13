@@ -545,12 +545,12 @@ def _abandon(st):
         if st["file"] is not None:
             st["file"].close()
     except OSError:
-        pass
+        pass  # (already closed)
     for path in st["paths"]:
         try:
             os.remove(path)
         except OSError:
-            pass
+            pass  # (already gone, or in use: left where it is)
     for folder in st["folders"]:
         shutil.rmtree(folder, ignore_errors=True)
 
@@ -673,7 +673,7 @@ class PortableUpdater(QObject):
         try:
             os.remove(self.path)
         except OSError:
-            pass
+            pass  # (already gone, or in use: left where it is)
 
 
 class InstallerUpdater(PortableUpdater):
