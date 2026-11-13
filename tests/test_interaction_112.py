@@ -94,7 +94,20 @@ class Window(unittest.TestCase):
 class Snapping(Window):
     def test_edit_objects_snaps_to_the_drawing(self):
         w, v = self.open()
-        w.a_snap_objects.trigger()
+        # Snap to objects on and the other snaps off, whatever was remembered (a trigger
+        # toggles: it turned snapping off when a run before had left it on), and as it was
+        # afterwards (the switches are the views' class attributes, and are saved)
+        snaps = (w.a_snap_objects, w.a_snap_grid, w.a_snap_page)
+        was = [a.isChecked() for a in snaps]
+
+        def put_back():
+            for a, on in zip(snaps, was):
+                a.setChecked(on)
+            w._apply_grid_settings()
+        self.addCleanup(put_back)
+        for a, on in zip(snaps, (True, False, False)):
+            a.setChecked(on)
+        w._apply_grid_settings()
         self.assertTrue(v.snap_objects)
         w.set_tool("editobjects")
         pump()
