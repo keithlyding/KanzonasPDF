@@ -1,7 +1,8 @@
 # Contributing to KanzonasPDF
 
 Thanks for your interest. KanzonasPDF is a free, open-source PDF reader and editor for
-Windows, maintained by one person in their spare time, so reviews may take a while.
+Windows, Linux and macOS, maintained by one person in their spare time, so reviews may take a
+while.
 
 ## Reporting bugs and ideas
 
@@ -15,14 +16,25 @@ data that shows the problem.
 1. Talk first: for anything bigger than a small fix, open an issue describing what you'd like
    to change, so time isn't spent on something that won't be merged.
 2. Work on a branch and open a pull request into `main`.
-3. Follow the rules in [CLAUDE.md](CLAUDE.md). In short, every user-facing change updates in the
-   same pull request:
-   - the user manual in `kanzonas/manual.py` (Help > User manual);
-   - the version in `kanzonas/__init__.py`;
-   - a row in `CHANGELOG.md`.
-4. Keep start-up fast: import heavy libraries (OCR, Office exports, signing...) inside the
-   function that needs them. The performance check in the self-test enforces this.
-5. Use American spelling in all text the user sees.
+3. Follow the rules in [AGENTS.md](AGENTS.md). In short, every user-facing change updates the
+   user manual in the same pull request (`kanzonas/manual.py`, Help > User manual, and its
+   Spanish and Italian versions, `manual_es.py` and `manual_it.py`, with the translations in
+   `kanzonas/locale/`).
+4. **Leave the version number, `CHANGELOG.md` and `RELEASE_NOTES.md` alone.** The maintainer
+   adds them when your pull request is merged, with the next free number and a credit to you
+   by your GitHub handle. (Several pull requests that each set a version collide with each
+   other and with the maintainer's own releases, and then have to be merged again only for
+   that.) Describe your change in the pull request instead.
+5. Keep your branch based on the current `main`. If `main` moves on while you wait, a small
+   conflict (a list, a line next to yours) may be resolved by the maintainer when merging:
+   your commits stay exactly as you wrote them, under your name. If your code and a change on
+   `main` touch the same logic, you'll be asked to bring `main` in yourself.
+6. Keep start-up fast: import heavy libraries (OCR, Office exports, signing...) inside the
+   function that needs them. The performance check in the self-test enforces this, and the
+   speed budgets in AGENTS.md ("Performance") are a condition for merging.
+7. Use American spelling in all text the user sees.
+8. Test on more than one system if you can: the ribbon is measured with each system's own font
+   (`tests/test_ribbon_fits.py`), and Linux's and macOS's run wider than Windows'.
 
 ## Running and testing
 
@@ -32,9 +44,11 @@ python -m kanzonas                     # run the app
 QT_QPA_PLATFORM=offscreen python -m kanzonas --selftest selftest.log   # must exit 0
 ```
 
-On Windows, leave out `QT_QPA_PLATFORM=offscreen`. Every push builds the Windows app and runs
-the self-test inside it (GitHub Actions); a pull request needs a green build. Merging a new
-version into `main` publishes it as a release automatically.
+On Windows, leave out `QT_QPA_PLATFORM=offscreen`. Every push to a branch of this repository
+builds the Windows, Linux and macOS apps and runs the tests and the self-test in each (GitHub
+Actions). The builds don't run for pull requests from forks: the maintainer copies a pull
+request's commits to a review branch here to run them, and posts the results. A pull request
+needs green builds to be merged. Merging into `main` publishes a release automatically.
 
 ## Free releases
 

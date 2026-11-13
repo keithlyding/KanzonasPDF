@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.13.2
+
+**Fixed**
+- Edit text and Edit objects see all of the page's text on a turned page: a line of text written right to left could lose its first letter, or vanish from them altogether after a drawing elsewhere on the page was deleted (the text itself was never lost).
+
+## 1.13.2 (es)
+
+**Correcciones**
+- Editar texto y Editar objetos ven todo el texto de la página en una página girada: una línea de texto escrita de derecha a izquierda podía perder su primera letra, o desaparecer por completo para ellos después de eliminar un dibujo en otra parte de la página (el texto en sí nunca se perdía).
+
+## 1.13.2 (it)
+
+**Correzioni**
+- Modifica testo e Modifica oggetti vedono tutto il testo della pagina su una pagina ruotata: una riga di testo scritta da destra a sinistra poteva perdere la prima lettera, o sparire del tutto per loro dopo l'eliminazione di un disegno altrove nella pagina (il testo in sé non andava mai perso).
+
 ## 1.13.1
 
 **New**

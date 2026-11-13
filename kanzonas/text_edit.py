@@ -61,12 +61,20 @@ def page_textpage(page, flags, clip=None):
         try:
             dl = page.get_displaylist(annots=False)
             stp = None
-            if clip is not None:
+            # The page box clip is asked of MuPDF as a clip rectangle, not as its own
+            # TEXT_MEDIABOX_CLIP: that one, reading a display list, dropped a line of
+            # right-to-left text on a turned page once a drawing group elsewhere on it was
+            # deleted (the glyph test it uses went wrong), while the text was still there and
+            # still drawn: Edit text and Edit objects no longer saw it. Random battery, seed
+            # 1112, 13 Nov 2026 (tests/test_text_page_clip.py); MuPDF 1.28.
+            c = pymupdf.Rect(clip) if clip is not None else None
+            if flags & pymupdf.TEXT_MEDIABOX_CLIP:
+                c = (c & page.rect) if c is not None else pymupdf.Rect(page.rect)
+            if c is not None:
                 try:
                     m = pymupdf.mupdf
                     opts = m.FzStextOptions()
-                    opts.flags = flags | m.FZ_STEXT_CLIP_RECT
-                    c = pymupdf.Rect(clip)
+                    opts.flags = (flags & ~pymupdf.TEXT_MEDIABOX_CLIP) | m.FZ_STEXT_CLIP_RECT
                     box = m.FzRect(c.x0, c.y0, c.x1, c.y1)     # (kept alive while used)
                     opts.clip = box.internal()
                     stp = m.FzStextPage(dl.this, opts)
