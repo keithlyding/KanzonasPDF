@@ -9,10 +9,13 @@ runs before PySide's shutdown.
 
 Settings: QSettings resolves its folder once per process, so changing HOME inside a test does
 nothing after the first QSettings exists. The whole run is pointed at a fresh temporary folder
-here instead (on Linux; on Windows the native store is the registry and on macOS the user's
-preferences (cfprefsd), and the path is ignored: the macOS build clears what the tests left
-there), so on Linux the tests never read or write the developer's real KanzonasPDF settings.
-Within a run the store is still shared, so a test that depends on a remembered option sets it."""
+here instead, on every system: the app's own store (paths.settings, QSettings(APP, APP)) is
+the registry on Windows and the user's preferences (cfprefsd) on macOS, where that folder is
+ignored, so here it is an .ini file in the folder instead. The tests never read or write the
+developer's real KanzonasPDF settings: a remembered CAD mouse mode or Snap to objects made two
+tests fail on a contributor's Windows machine (13 Nov 2026), and one of them on every other
+run, as each run saved the snap switch it had turned. Within a run the store is still shared,
+so a test that depends on a remembered option sets it."""
 import atexit
 import gc
 import os
@@ -26,6 +29,21 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QMenu
 _SETTINGS_DIR = tempfile.mkdtemp(prefix="kanzonas-test-settings-")
 for _fmt in (QSettings.NativeFormat, QSettings.IniFormat):
     QSettings.setPath(_fmt, QSettings.UserScope, _SETTINGS_DIR)
+QSettings.setDefaultFormat(QSettings.IniFormat)     # (QSettings() with no names, as Print uses)
+
+from kanzonas import paths as _paths  # noqa: E402
+
+_app_settings = _paths.settings
+
+
+def _test_settings():
+    """paths.settings, in the temporary folder on every system (portable: its own .ini)."""
+    if _paths.is_portable():
+        return _app_settings()
+    return QSettings(QSettings.IniFormat, QSettings.UserScope, _paths.APP, _paths.APP)
+
+
+_paths.settings = _test_settings
 
 
 def _shutdown_qt():
