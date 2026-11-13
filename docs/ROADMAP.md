@@ -127,6 +127,9 @@ The owner sets this list; nothing below is promised until it's here.
    Foundation application was declined as too new; see CODE_SIGNING_POLICY.md).
 
 ## Standing decisions
+- **No slop** (owner, 13 Nov: "please add a search for slop in future testing"; what AI tools
+  leave behind): `tools/slop_check.py`, its hard rules in every build (tests/test_slop.py), its
+  soft report read before each release (see AGENTS.md).
 - **Outside contributions are welcome, and speed is a condition for taking them** (owner, 12
   Nov, on @fexxdev's PRs #86 Italian and #87 Dot markers: "I want to make sure the
   program stays fast"). Each must pass `--selftest`'s speed budgets on the current `main`, and
