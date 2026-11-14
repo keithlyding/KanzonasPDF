@@ -171,7 +171,9 @@ class CadMouse(unittest.TestCase):
         self.click(v, (500, 600))
         self.escape(v)                                          # Escape drops a started box
         self.assertIsNone(v._cad_pick)
-        self.assertEqual(len(v.selected_objects()), 2)          # (and keeps the selection)
+        # (and the selection with it, one Escape for both: 1.15.1, the owner, 14 Nov 2026,
+        # "escape is not always unselecting objects")
+        self.assertEqual(len(v.selected_objects()), 0)
 
     def test_what_a_box_would_take_lights_up_while_it_is_drawn(self):
         DocumentView.click_click = True
