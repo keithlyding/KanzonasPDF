@@ -278,13 +278,24 @@ class CommandLine(QWidget):
                 self.run()
                 return True
             if k == Qt.Key_Escape:
-                if self.edit.text():
+                # a command running: what was typed goes, or else the command (its
+                # selection kept, as on the page). Otherwise what was typed goes, and a
+                # shape started with a click, or else a box in progress and what's selected
+                # (the keyboard is here after a letter typed over the drawing, and Escape
+                # left the selection: the owner, 14 Nov 2026, "escape is not always
+                # unselecting objects")
+                v = self._view()
+                if self.command is not None:
+                    if self.edit.text():
+                        self.edit.clear()
+                    else:
+                        self.command.cancel()
+                else:
                     self.edit.clear()
-                elif self.command is not None:
-                    self.command.cancel()
-                elif self._view() is not None:
-                    from . import cad_draw
-                    cad_draw.cancel(self._view())   # (a shape started with a click)
+                    from . import cad_draw, cad_select
+                    if v is not None and not cad_draw.cancel(v):
+                        cad_select.cancel(v)
+                        v.escape_selection()
                 self._back_to_page()
                 return True
             if k in (Qt.Key_Up, Qt.Key_Down) and self.list is not None and self.list.isVisible():

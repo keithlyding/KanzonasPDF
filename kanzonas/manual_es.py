@@ -508,6 +508,7 @@ dibujo solo se mueve: no se copia, gira, escala ni refleja). <b>Seleccionar</b> 
 no van a la línea de comandos) selecciona del mismo modo solo sus marcas, o los caracteres del texto de la página.</p>
 <ul>
 <li>Haga <b>clic</b> en algo para agregarlo a la selección. <b>Shift+clic</b> lo quita. <b>Escape</b> borra toda la
+selección, también justo después de escribir una letra para la línea de comandos o de un clic que empezó un cuadro de
 selección. Hacer clic en el papel vacío conserva la selección. Una marca está encima del dibujo, así que un clic sobre ella
 toma la marca. Una marca bloqueada no se toma.</li>
 <li>Las <b>teclas de flecha</b> desplazan toda la selección, los objetos del dibujo y las marcas juntos. Haga clic derecho en
@@ -1038,8 +1039,8 @@ página seleccionados con Editar objetos o con un cuadro de selección del modo 
 cuadro conserva su tamaño). Todo el cambio se deshace con un solo Ctrl+Z.</li>
 <li><b>Alinear respecto a:</b> Alinear con la primera seleccionada (el valor predeterminado), Alinear con la última seleccionada,
 Alinear con toda la selección o Alinear con la página. Elíjalo en la lista desplegable de la barra de herramientas o en Organizar &gt;
-Alinear respecto a. La primera marca seleccionada tiene un contorno más grueso. Cuando se seleccionan marcas y objetos
-propios de la página a la vez, las marcas cuentan como seleccionadas primero.</li>
+Alinear respecto a. La primera y la última siguen el orden en que seleccionó los elementos, tanto marcas como objetos
+propios de la página. La primera marca seleccionada tiene un contorno más grueso.</li>
 <li><b>Distribuir horizontalmente</b> / <b>Distribuir verticalmente</b> (tres o más): espacios iguales;
 las dos de los extremos no se mueven.</li>
 <li><b>Traer al frente</b> (Ctrl+Shift+]), <b>Traer adelante</b> (Ctrl+]),
