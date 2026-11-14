@@ -796,7 +796,15 @@ jobs:
 
       - name: Release notes (RELEASE_NOTES.md; the update box shows them)
         id: notes
-        run: python3 tools/release_notes.py "$VERSION" --github-output
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # with the notes of versions never published (their build stopped, or a newer one
+          # merged first): every version between the newest release and this one
+          gh release list --repo "${{ github.repository }}" --exclude-drafts --limit 200 \
+            --json tagName --jq '.[].tagName' > published.txt || : > published.txt
+          echo "Published: $(wc -l < published.txt) releases, the newest $(sort -V published.txt | tail -1)"
+          python3 tools/release_notes.py "$VERSION" --published published.txt --github-output
 
       - name: Publish release
         if: >-

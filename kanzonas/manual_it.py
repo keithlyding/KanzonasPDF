@@ -764,6 +764,16 @@ disegno grande, che richiederebbe troppo tempo). Ctrl+Z annulla un incollaggio o
 <li><b>Immagini e testo da altri programmi:</b> Incolla mette un'immagine copiata (ad esempio una schermata)
 come annotazione immagine, o il testo copiato come casella di testo, dove si trova il mouse. Con lo strumento Modifica
 oggetti, il testo copiato va invece nella pagina stessa, con il carattere, la dimensione e il colore di Aggiungi testo.</li>
+<li><b>Colori del disegno e del testo propri della pagina</b> (strumento Modifica oggetti, o la
+selezione della modalità del mouse CAD): seleziona forme o testo, fai clic con il tasto destro e
+scegli <b>Colore linea...</b> (il contorno delle forme selezionate), <b>Colore riempimento...</b>
+(l'interno delle forme piene) o <b>Colore testo...</b> (il testo selezionato; ogni parola
+mantiene carattere, dimensione, grassetto e corsivo). Ognuno è un solo passo per tutto ciò che è
+selezionato (Ctrl+Z lo annulla), e la selezione resta. Un comando è disattivato quando nulla di
+ciò che è selezionato lo ha (Colore riempimento per linee senza riempimento, Colore testo senza
+testo); viene proposto per primo l'ultimo colore scelto per ciascuno. Le immagini e i gruppi
+mantengono i loro colori (prima Separa per colorare le forme di un gruppo). Per colorare solo
+alcune parole di una riga, usa Modifica testo e Colore testo in Proprietà.</li>
 <li><b>Pagine:</b> sblocca l'elenco delle pagine (pulsante con il lucchetto sopra le miniature), seleziona le miniature
 (Ctrl+clic aggiunge o toglie una pagina, Shift+clic seleziona una serie di pagine), poi fai clic con il tasto destro su
 una qualsiasi delle pagine selezionate (l'intera selezione resta selezionata) o usa il menu Pagine:

@@ -777,6 +777,15 @@ big drawing, which would take too long). Ctrl+Z undoes a paste or a cut in one s
 <li><b>Pictures and text from other programs:</b> Paste a copied picture (e.g. a screenshot)
 as an image markup, or copied text as a text box, where the mouse is. With the Edit objects
 tool, copied text goes into the page itself instead, in Add text's font, size and color.</li>
+<li><b>Colors of the page's own drawing and text</b> (Edit objects tool, or the CAD mouse
+mode's selection): select shapes or text, right-click and choose <b>Line color...</b> (the
+outline of the selected shapes), <b>Fill color...</b> (the inside of filled shapes) or
+<b>Text color...</b> (the selected text, each word keeping its font, size, bold and italic).
+Each is one step for everything selected (Ctrl+Z undoes it), and the selection stays. A
+command is grayed when nothing selected has it (Fill color for lines without a fill, Text
+color without text); the color picked last for each is offered first. Pictures and groups
+keep their colors (Ungroup first to color a group's shapes). To color only some words of a
+line, use Edit text and Properties' Text color.</li>
 <li><b>Pages:</b> unlock the page list (lock button above the thumbnails), select thumbnails
 (Ctrl+click adds or removes one page, Shift+click selects a run of pages), then right-click any
 of the selected pages (the whole selection stays selected) or use the Pages menu:

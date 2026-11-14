@@ -1910,6 +1910,12 @@ class PageWidget(QWidget):
         a = menu.addAction(tr("Ungroup"), self.view.ungroup_objects)
         a.setEnabled(any(it["kind"] == "group" for it in items))
         menu.addSeparator()
+        can = self.view.object_colors()
+        for what, label in (("stroke", tr("Line color...")), ("fill", tr("Fill color...")),
+                            ("text", tr("Text color..."))):
+            a = menu.addAction(label, lambda w=what: self.view.pick_object_color(w))
+            a.setEnabled(what in can)
+        menu.addSeparator()
         for deg, label in ((90, tr("Rotate clockwise")), (-90, tr("Rotate counterclockwise"))):
             a = menu.addAction(label, lambda d=deg: self.view.rotate_objects(d))
             a.setEnabled(not has_text)

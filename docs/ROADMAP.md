@@ -95,10 +95,11 @@ The owner sets this list; nothing below is promised until it's here.
   goes out at once. Outside contributors (@hamishpoole-hill-ctrl's suggestions, issue #82;
   @fexxdev's PRs) come in before our own work of the same day (owner: "Let's get that in
   there before our stuff"), and are credited by GitHub handle only (README, release notes).
-- **On hold (owner, 12 Nov: "leave it alone for now"): colors of the page's own content.**
-  "Need a way of changing text's color and changing the fill color of an object": Text color
-  for the page's own text (Edit text, Edit objects), and Fill and Line color for its shapes
-  (owner: "Both"). Markups already have them in Properties.
+- **1.15: colors of the page's own content** (owner, 12 Nov: "Need a way of changing text's
+  color and changing the fill color of an object", "Both"; on hold, then asked for on 14 Nov):
+  Edit objects / CAD mode > right-click > Line color..., Fill color..., Text color... (Edit
+  text already colored single words through Properties). With it, a version never published
+  has its notes carried into the next release (owner, 12 Nov; tools/release_notes.py).
 0. **The next fix release: Redo lost after undoing Auto bookmarks** (owner, 11 Nov: ship 1.11,
    fix this next; 1.11.1 went to the owner's Pages panel and OCR requests).
    Found by the random battery (seed 31, 1500 steps, PyMuPDF 2.0 and 2.1, also in 1.10.1): after

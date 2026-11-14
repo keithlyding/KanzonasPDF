@@ -765,6 +765,8 @@ class Battery:
             (self.op_space, 2), (self.op_text_nudge, 3), (self.op_cad_drag, 3),
             # (12 Nov) Group / Ungroup of the page's own drawing
             (self.op_group_objects, 3),
+            # (1.15) Line color / Fill color / Text color of the page's own drawing and text
+            (self.op_recolor_objects, 3),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1534,6 +1536,34 @@ class Battery:
             v.group_selection()
         elif v.can_ungroup():
             v.ungroup_selection()
+        v.clear_object_selection()
+        self.check_letters(i, others)
+        return "edit" if v.revision != rev else "none"
+
+    def op_recolor_objects(self):
+        """Edit objects > Line color..., Fill color... or Text color... (1.15) on some of the
+        page's own shapes or text: the letters stay the same (text is written again where it
+        is, in the new color)."""
+        v = self.v
+        i = self.page()
+        objs = v.content_objects(i)
+        pool = [it for it in (objs.items if objs else []) if it["kind"] == "shape"]
+        if self.rnd.random() < 0.4:
+            pool += list(v.text_objects(i))
+        if not pool:
+            return "none"
+        v.clear_selection()
+        v.clear_object_selection()
+        v.select_objects(i, self.rnd.sample(pool, self.rnd.randint(1, min(3, len(pool)))))
+        can = sorted(v.object_colors())
+        if not can:
+            v.clear_object_selection()
+            return "none"
+        what = self.rnd.choice(can)
+        rgb = tuple(round(self.rnd.random(), 2) for _ in range(3))
+        others = self.other_letters(i, [])
+        rev = v.revision
+        v.recolor_objects(**{what: rgb})
         v.clear_object_selection()
         self.check_letters(i, others)
         return "edit" if v.revision != rev else "none"

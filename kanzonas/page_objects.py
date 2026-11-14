@@ -1294,9 +1294,10 @@ def _inside(lines, p):
 
 # ---- edits ---------------------------------------------------------------------------
 @_gc_paused
-def _edit(page, ns, new, objs=None):
-    """Replace the drawing instructions of objects ns with new(old_bytes, ctm). objs: the
-    page's Objects when the caller has them (saves reading a big drawing again)."""
+def _edit(page, ns, new, objs=None, by_n=None):
+    """Replace the drawing instructions of objects ns with new(old_bytes, ctm), or with
+    by_n[n] (bytes for each object). objs: the page's Objects when the caller has them
+    (saves reading a big drawing again)."""
     data = _contents(page)
     have = objs is not None and objs.found and objs.data == data
     found = objs.found if have else scan(data)
@@ -1305,7 +1306,11 @@ def _edit(page, ns, new, objs=None):
         if n >= len(found):
             raise ValueError(tr("The object is no longer on the page."))
         d = found[n]
-        pieces.append((d["start"], d["end"], new(data[d["start"]:d["end"]], d["ctm"]), n))
+        piece = by_n[n] if by_n is not None else new(data[d["start"]:d["end"]], d["ctm"])
+        start = d["start"]
+        if isinstance(piece, tuple):        # (from where the new bytes start, before it)
+            start, piece = piece
+        pieces.append((start, d["end"], piece, n))
     new_data = _splice(data, pieces)
     _set_contents(page, new_data)
     if not have:
@@ -2187,6 +2192,55 @@ def rewrite_path(page, n, state, parts, paint, objs=None):
     paint = b"S" if paint in (b"s", b"") else paint
     new = (state + b" " if state else b"") + b" ".join(body) + b" " + paint
     return _edit(page, [n], lambda old, ctm: b"\n" + new + b"\n", objs)
+
+
+_FILL_SET = _FILL | {b"cs"}            # (what sets a fill color, its color space included)
+_STROKE_SET = _STROKE | {b"CS"}
+
+
+# the colors recolor() wrote: a  q , a line of  r g b RG / rg , then the shape
+_OWN_COLOR = re.compile(rb"\nq\n((?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg) ?)+)\n")
+
+
+def _rgb_op(rgb, op):
+    return b"%.4g %.4g %.4g " % tuple(max(0.0, min(1.0, float(c))) for c in rgb) + op
+
+
+def recolor(page, ns, stroke=None, fill=None, objs=None):
+    """Give shapes ns (path objects) a new line color (stroke) and/or fill color (fill), each
+    (r, g, b) from 0 to 1 or None to keep it. The color is set in a  q ... Q  of the shape's
+    own, so what's drawn after it keeps its colors; a shape colored this way before has its
+    color replaced in that one (no nesting). Pictures and groups are left as they are.
+    objs: the page's Objects (already read). Returns the page's new Objects, or None."""
+    if stroke is None and fill is None:
+        return objs
+    data = _contents(page)
+    found = objs.found if objs is not None and objs.found and objs.data == data else scan(data)
+    shapes = [n for n in set(ns) if n < len(found) and found[n].get("path")]
+    if not shapes:
+        return objs
+    new_ops = ([_rgb_op(stroke, b"RG")] if stroke is not None else []) + \
+        ([_rgb_op(fill, b"rg")] if fill is not None else [])
+    pieces = {}
+    for n in shapes:
+        d = found[n]
+        s, e = d["start"], d["end"]
+        old = data[s:e]
+        m = _OWN_COLOR.search(data, max(0, s - 160), s)
+        if m and m.end() == s and data[e:e + 3] == b"\nQ\n":
+            # colored before: its colors (the line after its own  q ) replaced there, not a
+            # wrapper in a wrapper
+            ops = m.group(1)
+            kept = [ops[s_:e_] for op, _a, s_, e_ in _tokens(ops)
+                    if not (stroke is not None and op == b"RG")
+                    and not (fill is not None and op == b"rg")]
+            pieces[n] = (m.start(1), b" ".join(kept + new_ops) + b"\n" + old)
+        else:
+            # its settings stay for what's after it; the new color only for it
+            state, body = _split(old)
+            pieces[n] = (state + b"\n" if state else b"") + b"\nq\n" + \
+                b" ".join(new_ops) + b"\n" + body + b"\nQ\n"
+    return _edit(page, list(pieces), None, objs, by_n=pieces)
 
 
 def delete(page, ns, objs=None):
