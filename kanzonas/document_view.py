@@ -2057,6 +2057,8 @@ class DocumentView(QScrollArea):
     type_to_line = False        # CAD: letters typed over the drawing go to the command line
     _cad_pick = None            # CAD: a click, move, click box in progress (cad_select.py)
     _cad_shape = None           # CAD: a shape started with a click, ended by the next (cad_draw.py)
+    _picked = {}                # what's selected -> when it was selected (_note_picks)
+    _pick_n = 0
     hand_selects = True         # Hand: clicking a markup selects it
     free_pan = False            # Free page movement: the page can be dragged past its edges
     page_wheel = False          # one wheel step = one page when the page fits the window
@@ -5767,6 +5769,7 @@ class DocumentView(QScrollArea):
         self.selection = (index, xref) if model else None
         self.selected_model = model
         self.extra = []
+        self._note_picks()
         for i in {index, old[0] if old else index}:
             if 0 <= i < len(self.pages):
                 self.pages[i].update()
@@ -5799,6 +5802,7 @@ class DocumentView(QScrollArea):
             self.selection = (index, keep[0])
             self.selected_model = first
             self.extra = keep[1:]
+        self._note_picks()
         for i in {index, old[0] if old else index}:
             if 0 <= i < len(self.pages):
                 self.pages[i].update()
@@ -6060,6 +6064,7 @@ class DocumentView(QScrollArea):
         self.selection = None
         self.selected_model = None
         self.extra = []
+        self._note_picks()
         if 0 <= old[0] < len(self.pages):
             self.pages[old[0]].update()
         self.selectionChanged.emit()
@@ -6298,6 +6303,26 @@ class DocumentView(QScrollArea):
     def _display_bounds(self, page, model):
         return annotations.bounds(model) * page.rotation_matrix
 
+    def _note_picks(self):
+        """Number what's selected in the order it was selected, markups and the drawing's
+        objects together: Align to first / last selected go by it (the objects' own list is
+        in drawing order, and markups were always taken before objects: the owner, 14 Nov
+        2026, "aligning with first selected object isn't working"). Each newly selected one
+        gets the next number; what's no longer selected is forgotten."""
+        keys = []
+        if self.selection is not None:
+            keys += [("markup", self.selection[0], x) for x in self.selected_xrefs()]
+        if self.obj_sel is not None:
+            keys += [("object", self.obj_sel[0], it["n"]) for it in self.obj_sel[1]]
+        old, new = self._picked, {}
+        for k in keys:
+            if k in old:
+                new[k] = old[k]
+            else:
+                self._pick_n += 1
+                new[k] = self._pick_n
+        self._picked = new
+
     def _arrange_items(self):
         """What Align / Distribute move: the selected markups and the drawing's own objects
         selected with Edit objects (CAD mode selects both), any mix of kinds, on one page.
@@ -6336,6 +6361,16 @@ class DocumentView(QScrollArea):
                 boxes.append((kind, key, box))
             else:
                 boxes.append((kind, key, pymupdf.Rect(key["rect"]) * rot))
+        # in the order they were selected (what was selected some other way, after an edit
+        # read the page again: in the order it's listed, after the rest)
+        self._note_picks()
+
+        def when(b):
+            if b[0] == "object":
+                return self._picked.get(("object", index, b[1]["n"]), float("inf"))
+            keys = [k[0] for k in b[1]] if b[0] == "markups" else [b[1][0]]
+            return min(self._picked.get(("markup", index, x), float("inf")) for x in keys)
+        boxes.sort(key=when)
         return index, [tuple(b) for b in boxes]
 
     def _arrange_move(self, index, moves, label):
@@ -6568,6 +6603,16 @@ class DocumentView(QScrollArea):
             self._card_cache[index] = cards
         return self._card_cache[index]
 
+    def escape_selection(self):
+        """Escape in CAD mode: everything selected (markups, the drawing's objects, text) is
+        unselected. True if anything was."""
+        if self.obj_sel is None and not self.text_sel and self.selection is None:
+            return False
+        self.clear_object_selection()
+        self.clear_text_selection()
+        self.clear_selection()
+        return True
+
     def keyPressEvent(self, e):
         if self._cad_cmd is not None and e.key() in (Qt.Key_Escape, Qt.Key_Return,
                                                      Qt.Key_Enter):
@@ -6578,7 +6623,14 @@ class DocumentView(QScrollArea):
             return
         if e.key() == Qt.Key_Escape:
             from . import cad_select, cad_draw
-            if cad_select.cancel(self) or cad_draw.cancel(self):
+            if cad_select.cancel(self):
+                # (a box started by a click on empty space goes, and in CAD mode what's
+                # selected with it: one Escape clears it all, as in AutoCAD; the owner, 14 Nov
+                # 2026, "escape is not always unselecting objects")
+                if self.cad_select:
+                    self.escape_selection()
+                return
+            if cad_draw.cancel(self):
                 return
         drawing = [w for w in self.pages if w._poly]
         if drawing and e.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):
@@ -6592,13 +6644,8 @@ class DocumentView(QScrollArea):
                 self.selection is not None or self.obj_sel is not None):
             self.delete_everything_selected()
             return
-        if e.key() == Qt.Key_Escape and self.cad_select and (
-                self.obj_sel is not None or self.text_sel or self.selection is not None):
-            # CAD mouse: clicks and boxes only add to the selection; Escape clears all of it
-            self.clear_object_selection()
-            self.clear_text_selection()
-            self.clear_selection()
-            return
+        if e.key() == Qt.Key_Escape and self.cad_select and self.escape_selection():
+            return              # (CAD mouse: clicks and boxes only add to the selection)
         if e.key() == Qt.Key_Escape and self.obj_sel is not None:
             self.clear_object_selection()
             return
@@ -8529,6 +8576,7 @@ class DocumentView(QScrollArea):
                     have[it["n"]] = it
             items = sorted(have.values(), key=lambda it: it["n"])
         self.obj_sel = (index, list(items)) if items else None
+        self._note_picks()
         for i in {old[0] if old else None, index}:
             if i is not None and 0 <= i < len(self.pages):
                 self.pages[i].update()

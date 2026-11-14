@@ -516,7 +516,8 @@ scaled or mirrored). <b>Select</b> (the CAD tab, or V when letters aren't going 
 line) selects only your markups, or the characters of the page's text, the same way.</p>
 <ul>
 <li><b>Click</b> something to add it to the selection. <b>Shift+click</b> takes it out.
-<b>Escape</b> clears the whole selection. Clicking empty paper keeps the selection. A markup lies
+<b>Escape</b> clears the whole selection, also right after a letter typed for the command line or
+a click that started a selection box. Clicking empty paper keeps the selection. A markup lies
 on top of the drawing, so a click on it takes the markup. A locked markup isn't taken.</li>
 <li>The <b>arrow keys</b> nudge the whole selection, the drawing's objects and the markups
 together. Right-click a markup for its own menu, the drawing's objects for theirs.
@@ -1047,8 +1048,8 @@ text selected with Edit objects or a CAD mode selection box. Text of the page on
 box keeps its size). The whole change is one Ctrl+Z.</li>
 <li><b>Align relative to:</b> Align to first selected (the default), Align to last selected,
 Align to whole selection, or Align to page. Choose it in the toolbar dropdown or Arrange &gt;
-Align relative to. The first-selected markup has a bolder outline. When markups and the
-page's own objects are selected together, the markups count as selected first.</li>
+Align relative to. First and last go by the order you selected things in, markups and the
+page's own objects alike. The first-selected markup has a bolder outline.</li>
 <li><b>Distribute horizontally</b> / <b>Distribute vertically</b> (three or more): equal gaps,
 the outer two stay put.</li>
 <li><b>Bring to front</b> (Ctrl+Shift+]), <b>Bring forward</b> (Ctrl+]),

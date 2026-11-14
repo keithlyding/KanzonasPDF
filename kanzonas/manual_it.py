@@ -504,7 +504,8 @@ scheda CAD, oppure V quando le lettere non vanno alla riga di comando) seleziona
 annotazioni o i caratteri del testo della pagina.</p>
 <ul>
 <li><b>Fai clic</b> su un elemento per aggiungerlo alla selezione. <b>Shift+clic</b> lo toglie.
-<b>Esc</b> annulla l'intera selezione. Un clic su un punto vuoto del foglio mantiene la selezione. Un'annotazione sta
+<b>Esc</b> annulla l'intera selezione, anche subito dopo una lettera scritta per la riga di comando o un clic che ha
+iniziato un riquadro di selezione. Un clic su un punto vuoto del foglio mantiene la selezione. Un'annotazione sta
 sopra il disegno, quindi un clic su di essa prende l'annotazione. Un'annotazione bloccata non viene presa.</li>
 <li>I <b>tasti freccia</b> spostano di poco l'intera selezione, gli oggetti del disegno e le annotazioni insieme. Fai
 clic destro su un'annotazione per il suo menu, sugli oggetti del disegno per il loro.
@@ -1036,8 +1037,8 @@ testo della pagina stessa selezionati con Modifica oggetti o con un riquadro di 
 riquadro mantiene le dimensioni). L'intera modifica si annulla con un solo Ctrl+Z.</li>
 <li><b>Allinea rispetto a:</b> Allinea alla prima selezionata (predefinito), Allinea all'ultima selezionata,
 Allinea all'intera selezione o Allinea alla pagina. Sceglilo nel menu a discesa della barra degli strumenti o in Disponi &gt;
-Allinea rispetto a. L'annotazione selezionata per prima ha un contorno più marcato. Quando sono selezionati insieme annotazioni e
-oggetti della pagina, le annotazioni contano come selezionate per prime.</li>
+Allinea rispetto a. La prima e l'ultima seguono l'ordine in cui hai selezionato gli elementi, sia annotazioni sia oggetti
+della pagina. L'annotazione selezionata per prima ha un contorno più marcato.</li>
 <li><b>Distribuisci orizzontalmente</b> / <b>Distribuisci verticalmente</b> (tre o più elementi): spazi uguali,
 i due elementi esterni restano fermi.</li>
 <li><b>Porta in primo piano</b> (Ctrl+Shift+]), <b>Porta avanti</b> (Ctrl+]),

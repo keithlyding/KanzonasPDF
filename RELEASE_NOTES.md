@@ -9,6 +9,24 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.1
+
+**Fixed**
+- CAD mode: Escape now always unselects everything, also right after you type a letter for the command line or click empty space to start a selection box.
+- Align to first selected (and to last selected) now goes by the order you selected things in. Before, it used the order they were drawn in the file, and markups always counted before the page's own objects.
+
+## 1.15.1 (es)
+
+**Correcciones**
+- Modo CAD: Escape ahora siempre quita toda la selección, también justo después de escribir una letra para la línea de comandos o de hacer clic en un espacio vacío para empezar un cuadro de selección.
+- Alinear con la primera seleccionada (y con la última) ahora sigue el orden en que seleccionó los elementos. Antes usaba el orden en que estaban dibujados en el archivo, y las marcas siempre contaban antes que los objetos propios de la página.
+
+## 1.15.1 (it)
+
+**Correzioni**
+- Modalità CAD: Esc ora annulla sempre tutta la selezione, anche subito dopo aver scritto una lettera per la riga di comando o aver fatto clic su uno spazio vuoto per iniziare un riquadro di selezione.
+- Allinea alla prima selezionata (e all'ultima) ora segue l'ordine in cui hai selezionato gli elementi. Prima usava l'ordine in cui erano disegnati nel file, e le annotazioni contavano sempre prima degli oggetti della pagina.
+
 ## 1.15
 
 **New**
