@@ -1757,9 +1757,24 @@ def move_lines(page, lines, offset, blocks=()):
     return _write_lines(page, plans, styled, offset, blocks)    # 3) each written again
 
 
-def _plan_lines(page, lines):
+def recolor_lines(page, lines, rgb, blocks=()):
+    """Write these lines of the page's text again where they are, every word in color rgb
+    ((r, g, b) from 0 to 1), each keeping its font, size, bold, italic and underline (Edit
+    objects > Text color...). One redaction for all of them, as move_lines; blocks: the
+    marked blocks (added_text) among them, each kept one block. Returns the font names
+    written with. Raises ValueError (before changing anything) if a line can't be written."""
+    refuse_with_marks(page)
+    plans, styled, decor = _plan_lines(page, lines, rgb)
+    _remove_lines(page, lines, decor=decor)
+    return _write_lines(page, plans, styled, pymupdf.Point(0, 0), blocks)
+
+
+def _plan_lines(page, lines, color=None):
     """How each line is written again (its font found before anything changes: nothing goes
-    if one can't be written): (plans, styled, decor) for _write_lines."""
+    if one can't be written): (plans, styled, decor) for _write_lines. color: (r, g, b) for
+    every word instead of its own."""
+    from . import text_styles
+    srgb = text_styles.to_int(color) if color is not None else None
     plans = []
     styled, decor = [], []
     for line in lines:                  # 1) the fonts first: nothing goes if one can't write
@@ -1771,13 +1786,16 @@ def _plan_lines(page, lines):
             # words in styles of their own (bold, colors, invisible words): each kept, as
             # dragging the line with Edit text does (written in the line's main style, a
             # hidden word showed)
-            from . import text_styles
             st = text_styles.read_line(page, line)
+            if srgb is not None:
+                st = st._replace(keys=[k._replace(color=srgb) for k in st.keys])
             fonts, t, keys = text_styles.resolve_all(page, st.text, st.keys)
             styled.append((line, t, keys, fonts))
             decor += st.decor
             continue
         main = main_span(line)
+        if srgb is not None:
+            main = dict(main, color=srgb)
         found, text = _font_for(page, main, text)
         plans.append((line, text, main, found))
     return plans, styled, decor

@@ -11414,3 +11414,21 @@ msgstr "Muestra"
 
 msgid "Click the page to place a dot. When it shows a text, you type it after the click; double-click a dot to change its text."
 msgstr "Haga clic en la página para colocar un punto. Si muestra un texto, lo escribe después del clic; haga doble clic en un punto para cambiar su texto."
+
+msgid "Text color changed"
+msgstr "Color del texto cambiado"
+
+msgid "Color changed"
+msgstr "Color cambiado"
+
+msgid "Fill color"
+msgstr "Color de relleno"
+
+msgid "Line color..."
+msgstr "Color de línea..."
+
+msgid "Fill color..."
+msgstr "Color de relleno..."
+
+msgid "Text color..."
+msgstr "Color del texto..."

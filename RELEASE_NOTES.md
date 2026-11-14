@@ -9,6 +9,24 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15
+
+**New**
+- Change the colors of the page's own drawing and text: with Edit objects (or in CAD mode), select shapes or text, right-click and choose Line color, Fill color or Text color. Each word keeps its font and style, and Ctrl+Z undoes it in one step.
+- A version that was never released on its own now has its notes included in the next one, so the update box shows everything that changed.
+
+## 1.15 (es)
+
+**Novedades**
+- Cambie los colores del dibujo y el texto propios de la página: con Editar objetos (o en el modo CAD), seleccione formas o texto, haga clic con el botón derecho y elija Color de línea, Color de relleno o Color del texto. Cada palabra conserva su fuente y su estilo, y Ctrl+Z lo deshace en un solo paso.
+- Una versión que nunca se publicó por separado ahora incluye sus notas en la siguiente, para que el cuadro de actualización muestre todo lo que cambió.
+
+## 1.15 (it)
+
+**Novità**
+- Cambia i colori del disegno e del testo propri della pagina: con Modifica oggetti (o in modalità CAD), seleziona forme o testo, fai clic con il tasto destro e scegli Colore linea, Colore riempimento o Colore testo. Ogni parola mantiene il suo carattere e il suo stile, e Ctrl+Z lo annulla in un solo passo.
+- Una versione che non è mai stata pubblicata da sola ora ha le sue note incluse nella successiva, così la finestra degli aggiornamenti mostra tutto ciò che è cambiato.
+
 ## 1.14.2
 
 **Fixed**

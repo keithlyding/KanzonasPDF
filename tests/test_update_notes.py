@@ -7,6 +7,7 @@ check that finds nothing newer says so quietly in the status bar.
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_update_notes
 """
 import os
+import re
 import sys
 import unittest
 from unittest import mock
@@ -77,6 +78,84 @@ class Notes(unittest.TestCase):
         self.assertIn("Cohetes", es[0][1])
         self.assertIn("Wheels", es[2][1])                        # no Spanish: English
         self.assertEqual(updates.notes_since(rels, current="2.1"), [])
+
+
+class SkippedVersions(unittest.TestCase):
+    """A version never published (1.13.1 on 12 Nov 2026: its Mac build found no machine, and
+    1.13.2 was merged before it) has its notes carried in the next release (owner, 12 Nov:
+    carry them automatically)."""
+    TEXT = NOTES.replace("## 2.0\n", "## 2.0.2\n\n**Fixed**\n- Brakes.\n\n## 2.0.2 (es)\n\n"
+                         "**Correcciones**\n- Frenos.\n\n## 2.0.1\n\n**Fixed**\n- Horn.\n\n"
+                         "## 2.0\n")
+
+    def test_which_versions_were_skipped(self):
+        self.assertEqual(release_notes.skipped(self.TEXT, "2.1", ["v2.0", "v1.9"]),
+                         ["2.0.1", "2.0.2"])
+        self.assertEqual(release_notes.skipped(self.TEXT, "2.1", ["v2.0.2", "v2.0"]), [])
+        self.assertEqual(release_notes.skipped(self.TEXT, "2.0.2", ["v2.0"]), ["2.0.1"])
+        # nothing known published (gh failed): nothing taken as skipped
+        self.assertEqual(release_notes.skipped(self.TEXT, "2.1", []), [])
+        self.assertEqual(release_notes.skipped(self.TEXT, "2.1", ["", "junk"]), [])
+
+    def test_the_release_carries_them_and_old_copies_ignore_them(self):
+        body = release_notes.with_skipped(self.TEXT, "2.1", ["v2.0"])
+        self.assertIn("Also in this release: 2.0.1", body)
+        self.assertIn("<!-- kanzonas-notes v=2.0.2 -->", body)
+        self.assertIn("<!-- kanzonas-notes lang=es v=2.0.2 -->", body)
+        self.assertTrue(body.startswith(release_notes.block(self.TEXT, "2.1")))
+        # its own notes are the first block of each language, as copies before 1.15 read them
+        old = re.compile(r"(?: lang=(\w+))? -->")
+        own = {}
+        at = body.find("<!-- kanzonas-notes")
+        while at >= 0:
+            m = old.match(body, at + len("<!-- kanzonas-notes"))
+            if m:
+                own.setdefault(m.group(1) or "en", body[m.end():body.find("<!--", m.end())])
+            at = body.find("<!-- kanzonas-notes", at + 1)
+        self.assertIn("Rockets", own["en"])
+        self.assertIn("Cohetes", own["es"])
+        self.assertNotIn("Brakes", "".join(own.values()))
+        self.assertEqual(updates.release_notes({"body": body}), updates.release_notes(
+            {"body": release_notes.block(self.TEXT, "2.1")}))
+
+    def test_the_update_box_lists_each_skipped_version(self):
+        body = release_notes.with_skipped(self.TEXT, "2.1", ["v2.0"])
+        rels = [release("2.0", release_notes.block(self.TEXT, "2.0")), release("2.1", body)]
+        got = updates.notes_since(rels, current="1.9")
+        self.assertEqual([v for v, _n, _u in got], ["2.1", "2.0.2", "2.0.1", "2.0"])
+        self.assertIn("Rockets", got[0][1])
+        self.assertIn("Brakes", got[1][1])
+        self.assertNotIn("Rockets", got[1][1])
+        self.assertIn("Horn", got[2][1])
+        self.assertEqual(got[1][2], rels[1]["html_url"])     # (its page: the release with it)
+        es = updates.notes_since(rels, current="1.9", lang="es")
+        self.assertIn("Frenos", es[1][1])
+        self.assertIn("Horn", es[2][1])                      # (no Spanish: English)
+        # someone on 2.0.1 sees 2.0.2 and 2.1, not 2.0.1 again
+        self.assertEqual([v for v, _n, _u in updates.notes_since(rels, current="2.0.1")],
+                         ["2.1", "2.0.2"])
+        # a carried version that was published after all is listed once, with its own notes
+        rels.append(release("2.0.2", "<!-- kanzonas-notes -->\nOwn brakes\n<!-- /kanzonas-notes -->"))
+        got = updates.notes_since(rels, current="1.9")
+        self.assertEqual([v for v, _n, _u in got].count("2.0.2"), 1)
+        self.assertIn("Own brakes", [n for v, n, _u in got if v == "2.0.2"][0])
+
+    def test_the_tool_reads_the_published_list(self):
+        import tempfile
+        d = tempfile.mkdtemp()
+        lst = os.path.join(d, "published.txt")
+        with open(lst, "w") as f:
+            f.write("v1.13\nv1.12.2\n")
+        out = os.path.join(d, "out")
+        with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": out}):
+            self.assertEqual(release_notes.main(["x", "1.13.2", "--published", lst,
+                                                 "--github-output"]), 0)
+        got = open(out, encoding="utf-8").read()
+        self.assertIn("<!-- kanzonas-notes v=1.13.1 -->", got)    # (the real skipped one)
+        with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": out + "2"}):
+            release_notes.main(["x", "1.13.2", "--published", os.path.join(d, "none"),
+                                "--github-output"])
+        self.assertNotIn("v=1.13.1", open(out + "2", encoding="utf-8").read())
 
 
 class OddAnswers(unittest.TestCase):

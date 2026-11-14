@@ -753,6 +753,17 @@ muchas veces que se pegue, y el contenido pegado sigue en su capa. En otro docum
 con el panel Capas si lo necesita). En el modo CAD, las marcas seleccionadas con ellas también van. Los otros programas
 reciben una imagen de lo copiado (no de un dibujo grande, que tardaría demasiado). Ctrl+Z deshace un pegado o un corte
 en un solo paso.</li>
+<li><b>Colores del dibujo y el texto propios de la página</b> (herramienta Editar objetos, o la
+selección del modo del mouse CAD): seleccione formas o texto, haga clic con el botón derecho y
+elija <b>Color de línea...</b> (el contorno de las formas seleccionadas), <b>Color de
+relleno...</b> (el interior de las formas rellenas) o <b>Color del texto...</b> (el texto
+seleccionado; cada palabra conserva su fuente, tamaño, negrita y cursiva). Cada uno es un solo
+paso para todo lo seleccionado (Ctrl+Z lo deshace), y la selección se mantiene. Un comando
+aparece en gris cuando nada de lo seleccionado lo tiene (Color de relleno para líneas sin
+relleno, Color del texto sin texto); se ofrece primero el último color elegido para cada uno.
+Las imágenes y los grupos conservan sus colores (Desagrupar primero para colorear las formas de
+un grupo). Para colorear solo algunas palabras de una línea, use Editar texto y Color del texto
+en Propiedades.</li>
 <li><b>Imágenes y texto de otros programas:</b> Pegar coloca una imagen copiada (p. ej., una captura de pantalla)
 como una marca de imagen, o un texto copiado como un cuadro de texto, donde está el mouse. Con la herramienta
 Editar objetos, el texto copiado va a la propia página, con la fuente, el tamaño y el color de Agregar texto.</li>

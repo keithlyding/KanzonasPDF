@@ -8840,6 +8840,64 @@ class DocumentView(QScrollArea):
         self.delete_objects()
         self.obj_sel = None
 
+    def recolor_objects(self, stroke=None, fill=None, text=None):
+        """Edit objects > Line color / Fill color / Text color: the selected shapes' line or
+        fill color, or the selected text's color, each (r, g, b) from 0 to 1 (None: as it
+        is), in one undo step; they stay selected."""
+        from . import page_objects
+        if self.obj_sel is None or (stroke is None and fill is None and text is None):
+            return
+        index = self.obj_sel[0]
+        cache = self._obj_cache.get(index)
+
+        def shapes(page, ns):
+            if stroke is None and fill is None:
+                return cache
+            return page_objects.recolor(page, ns, stroke, fill, cache)
+
+        def texts(page, its):
+            if text is not None:
+                lines = [ln for it in its for _r, ln in it["lines"]]
+                used = text_edit.recolor_lines(page, lines, text, self._blocks_of(its))
+                if any(u.startswith("KZ") for u in used):
+                    self._fonts_added = True
+            return [it["rect"] for it in its]
+        self._objects_edit(tr("Text color changed") if text is not None else
+                           tr("Color changed"), shapes, text_fn=texts,
+                           takes_text=text is not None)
+
+    def object_colors(self):
+        """What the selected objects can have changed: {"stroke", "fill", "text"} (Line
+        color: shapes with an outline; Fill color: filled ones; Text color: text)."""
+        if self.obj_sel is None:
+            return set()
+        out = set()
+        for it in self.obj_sel[1]:
+            if it["kind"] == "shape":
+                if it.get("stroke"):
+                    out.add("stroke")
+                if it.get("fill"):
+                    out.add("fill")
+            elif it["kind"] == "text":
+                out.add("text")
+        return out
+
+    def pick_object_color(self, what):
+        """Ask for the color (what: "stroke", "fill" or "text") and give it to the selected
+        objects. The color picked last for each is offered first."""
+        from PySide6.QtGui import QColor
+        from PySide6.QtWidgets import QColorDialog
+        titles = {"stroke": tr("Line color"), "fill": tr("Fill color"),
+                  "text": tr("Text color")}
+        last = getattr(self, "_object_colors", {})
+        start = QColor(last.get(what, "#000000" if what != "fill" else "#ffffff"))
+        got = QColorDialog.getColor(start, self, titles[what])
+        if not got.isValid():
+            return
+        last[what] = got.name()
+        self._object_colors = last
+        self.recolor_objects(**{what: (got.redF(), got.greenF(), got.blueF())})
+
     def ungroup_objects(self):
         """Take the selected groups apart: their shapes, pictures and text become separate
         objects of the page (Edit objects, Edit text)."""

@@ -91,12 +91,13 @@ def newest(releases, current=None):
 # (a part's text never runs into the next part, also when its closing mark is missing)
 _OPEN = "<!-- kanzonas-notes"
 _CLOSE = "<!-- /kanzonas-notes -->"
-_LANG = re.compile(r"(?: lang=(\w+))? -->")
+_LANG = re.compile(r"(?: lang=(\w+))?(?: v=(\d+(?:\.\d+){0,3}))? -->")
 
 
-def _notes_blocks(body):
-    """{language: notes} from a release's text. Plain string searching (a release text is
-    anyone's: no pattern that slows down on odd input)."""
+def _all_blocks(body):
+    """{version or None: {language: notes}} from a release's text: None its own notes, a
+    version number the notes of a skipped version it carries (tools/release_notes.py). Plain
+    string searching (a release text is anyone's: no pattern that slows down on odd input)."""
     found = {}
     at = body.find(_OPEN)
     while at >= 0:
@@ -108,9 +109,14 @@ def _notes_blocks(body):
         nxt = body.find(_OPEN, start)
         close = body.find(_CLOSE, start)
         end = min(x for x in (nxt, close, len(body)) if x >= 0)
-        found.setdefault(m.group(1) or "en", body[start:end].strip())
+        found.setdefault(m.group(2), {}).setdefault(m.group(1) or "en", body[start:end].strip())
         at = nxt
     return found
+
+
+def _notes_blocks(body):
+    """{language: notes} of a release's own notes."""
+    return _all_blocks(body).get(None, {})
 
 
 def release_notes(release, lang="en"):
@@ -125,17 +131,28 @@ def notes_since(releases, current=None, lang="en"):
     """[(version, notes or None, page url)] for every published release newer than current,
     newest first: what changed since the version the user has."""
     current = _order(version_tuple(current or __version__))
-    out = []
+    found = []
     for r in releases or []:
         if not isinstance(r, dict):
             continue
         v = _order(version_tuple(r.get("tag_name", "")))
         if r.get("draft") or not v or v <= current:
             continue
-        out.append((v, r))
+        found.append((v, r))
+    published = {v for v, _r in found}
+    out = [(v, str(r["tag_name"]).lstrip("vV"), release_notes(r, lang), _page(r))
+           for v, r in found]
+    # versions that were never published, whose notes a later release carries
+    for _v, r in found:
+        body = r.get("body") if isinstance(r.get("body"), str) else ""
+        for name, notes in _all_blocks(body).items():
+            sv = _order(version_tuple(name or ""))
+            if name is None or not sv or sv <= current or sv in published:
+                continue
+            published.add(sv)
+            out.append((sv, name, notes.get(lang) or notes.get("en"), _page(r)))
     out.sort(key=lambda x: x[0], reverse=True)
-    return [(str(r["tag_name"]).lstrip("vV"), release_notes(r, lang), _page(r))
-            for _v, r in out]
+    return [(name, text, page) for _v, name, text, page in out]
 
 
 def newest_release(releases, current=None):
