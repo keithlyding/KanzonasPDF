@@ -123,14 +123,34 @@ class InsertLayout(Base):
         # a busy shared build machine can miss by a bit; the budget is unchanged). On 13 Nov a
         # Mac build machine took 3.96 s once.
         times = []
+        import cProfile, gc, io, pstats
+        import kanzonas.document_view as dv
+        orig = dv._collect_all
+        spent = []
+        def timed():
+            t0 = time.perf_counter(); orig(); spent.append(time.perf_counter() - t0)
         for _ in range(3):
             v = self.view(self.path("a.pdf"), show=True)
             v.goto_page(300)
             pump()
-            t = time.perf_counter()
-            v.insert_pdf(self.path("b.pdf"), 300)
-            pump(0.3)
+            spent.clear()
+            prof = cProfile.Profile()
+            with mock.patch.object(dv, "_collect_all", timed):
+                t = time.perf_counter()
+                prof.enable()
+                v.insert_pdf(self.path("b.pdf"), 300)
+                t1 = time.perf_counter()
+                pump(0.3)
+                prof.disable()
             times.append(time.perf_counter() - t)
+            out = io.StringIO()
+            pstats.Stats(prof, stream=out).sort_stats("tottime").print_stats(15)
+            sys.stderr.write("\n=== KZDIAG insert: total %.2f s, insert_pdf %.2f s, pump %.2f s, "
+                             "full gc %s, gc objects %d, gc counts %s, thresholds %s\n%s"
+                             "=== KZDIAG end\n" % (
+                                 times[-1], t1 - t, times[-1] - (t1 - t),
+                                 ["%.2f" % x for x in spent], len(gc.get_objects()),
+                                 gc.get_count(), gc.get_threshold(), out.getvalue()))
             self.check_layout(v)
             self.assertEqual(v.doc.page_count, 900)
         # (laid out page by page this took several seconds; now well under one)
