@@ -67,6 +67,26 @@ def _collect_all():
     gc.collect()
 
 
+def _page_held(doc):
+    """Whether MuPDF still has one of doc's pages loaded and in use (by a Page, an Annot or a
+    lower-level wrapper, perhaps only through a reference cycle). Only then can gc.collect()
+    free a page before pages move: it goes through every object Python has, a second or more
+    late in a long session or with a big sheet's drawings, so it isn't run for nothing.
+    MuPDF's own list of loaded pages is read, as in DocumentView._stale_pages: PyMuPDF's
+    Document._page_refs forgets its pages at each change of pages, while an Annot in a cycle
+    can keep one alive (the random battery, seed 9, step 1157); a page MuPDF has let go of
+    can stay in the list with no users (refs 0)."""
+    try:
+        p = doc.this.m_internal.open
+        while p:
+            if p.refs > 0:
+                return True
+            p = p.next
+        return False
+    except Exception:
+        return True                 # (MuPDF's list isn't reachable: collect, as before)
+
+
 atexit.register(gc.unfreeze)    # (Python's last collection skips what's set aside)
 
 
@@ -2410,7 +2430,7 @@ class DocumentView(QScrollArea):
             if self.markups_changed is not None:
                 self.markups_changed |= set(pages)
         was_dirty = self.dirty
-        if structural:
+        if structural and _page_held(self.doc):
             # a page kept loaded only by a reference cycle (an Annot and its Page) would
             # come back under its old number once pages move: free those first
             _collect_all()
