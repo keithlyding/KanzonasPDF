@@ -68,15 +68,23 @@ def _collect_all():
 
 
 def _page_held(doc):
-    """Whether PyMuPDF still has one of doc's pages (a Page object) alive, as a reference
-    cycle keeps one (an Annot and its Page). Only then can gc.collect() free a page before
-    pages move: it goes through every object Python has, a second or more late in a long
-    session or with a big sheet's drawings, so it isn't run for nothing. (A page held some
-    other way is still caught after the change: DocumentView._stale_pages.)"""
-    refs = getattr(doc, "_page_refs", None)
-    if refs is None:
-        return True                 # (another PyMuPDF: collect, as before)
-    return next(iter(refs.values()), None) is not None
+    """Whether MuPDF still has one of doc's pages loaded and in use (by a Page, an Annot or a
+    lower-level wrapper, perhaps only through a reference cycle). Only then can gc.collect()
+    free a page before pages move: it goes through every object Python has, a second or more
+    late in a long session or with a big sheet's drawings, so it isn't run for nothing.
+    MuPDF's own list of loaded pages is read, as in DocumentView._stale_pages: PyMuPDF's
+    Document._page_refs forgets its pages at each change of pages, while an Annot in a cycle
+    can keep one alive (the random battery, seed 9, step 1157); a page MuPDF has let go of
+    can stay in the list with no users (refs 0)."""
+    try:
+        p = doc.this.m_internal.open
+        while p:
+            if p.refs > 0:
+                return True
+            p = p.next
+        return False
+    except Exception:
+        return True                 # (MuPDF's list isn't reachable: collect, as before)
 
 
 atexit.register(gc.unfreeze)    # (Python's last collection skips what's set aside)

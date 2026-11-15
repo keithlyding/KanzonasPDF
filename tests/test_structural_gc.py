@@ -1,9 +1,9 @@
 """Pages added, removed or moved: the whole collection (gc.collect) that frees a page held only by
-a reference cycle runs only while PyMuPDF still has one of the document's pages alive.
+a reference cycle runs only while MuPDF still has one of the document's pages loaded and in use.
 
-It goes through every object Python has: late in the test run (1.6 million objects) it took
-0.84-1.03 s of the 1.6 s that inserting 300 pages into 600 took on Linux, and the Mac build
-machine missed the 3.0 s budget three times (15 Nov 2026).
+It goes through every object Python has: late in the test run (1.55 million objects) it took
+2.06-2.51 s of the 2.77-3.14 s that inserting 300 pages into 600 took on the Mac build machine,
+which missed the 3.0 s budget three times, and 0.86 s of 1.41 s on the Linux one (15 Nov 2026).
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_structural_gc
 """
@@ -67,6 +67,32 @@ class StructuralCollection(Base):
         self.assertEqual(first_lines(v.doc), ["PAGE 1", "PAGE 3", "PAGE 2", "PAGE 4"])
         disk = pymupdf.open(stream=v.doc.tobytes(), filetype="pdf")
         self.assertEqual(first_lines(disk), ["PAGE 1", "PAGE 3", "PAGE 2", "PAGE 4"])
+
+    def test_a_page_in_a_cycle_that_pymupdf_no_longer_lists_is_freed_too(self):
+        # (the random battery, seed 9, step 1157: PyMuPDF forgets its pages at each change of
+        # pages, while an Annot in a cycle kept one alive; here a page's lower-level wrapper)
+        v = self.view(numbered())
+
+        class Holder:
+            pass
+        h = Holder()
+        h.pdf_page, h.me = v.doc[2]._pdf_page(), h
+        del h
+        self.assertEqual(list(v.doc._page_refs.values()), [])
+        self.assertTrue(document_view._page_held(v.doc))
+        reopened = []
+        with mock.patch.object(v, "_reopen", side_effect=lambda: reopened.append(1)):
+            v.move_page(1, 1)
+        self.assertEqual(reopened, [])
+        self.assertFalse(document_view._page_held(v.doc))
+        self.assertEqual(first_lines(v.doc), ["PAGE 1", "PAGE 3", "PAGE 2", "PAGE 4"])
+
+    def test_a_page_let_go_of_does_not_count(self):
+        v = self.view(numbered())
+        page = v.doc[1]
+        self.assertTrue(document_view._page_held(v.doc))
+        del page
+        self.assertFalse(document_view._page_held(v.doc))
 
     def test_another_pymupdf_collects_as_before(self):
         class Doc:
