@@ -67,6 +67,18 @@ def _collect_all():
     gc.collect()
 
 
+def _page_held(doc):
+    """Whether PyMuPDF still has one of doc's pages (a Page object) alive, as a reference
+    cycle keeps one (an Annot and its Page). Only then can gc.collect() free a page before
+    pages move: it goes through every object Python has, a second or more late in a long
+    session or with a big sheet's drawings, so it isn't run for nothing. (A page held some
+    other way is still caught after the change: DocumentView._stale_pages.)"""
+    refs = getattr(doc, "_page_refs", None)
+    if refs is None:
+        return True                 # (another PyMuPDF: collect, as before)
+    return next(iter(refs.values()), None) is not None
+
+
 atexit.register(gc.unfreeze)    # (Python's last collection skips what's set aside)
 
 
@@ -2410,7 +2422,7 @@ class DocumentView(QScrollArea):
             if self.markups_changed is not None:
                 self.markups_changed |= set(pages)
         was_dirty = self.dirty
-        if structural:
+        if structural and _page_held(self.doc):
             # a page kept loaded only by a reference cycle (an Annot and its Page) would
             # come back under its old number once pages move: free those first
             _collect_all()

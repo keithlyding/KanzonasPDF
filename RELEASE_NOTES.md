@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.2
+
+**Fixed**
+- Inserting, deleting and moving pages no longer pauses to tidy up memory when it doesn't need to. With a large drawing open or after a long session, that pause could take a second or more.
+
+## 1.15.2 (es)
+
+**Correcciones**
+- Insertar, eliminar y mover páginas ya no se detiene a ordenar la memoria cuando no hace falta. Con un dibujo grande abierto o después de una sesión larga, esa pausa podía durar un segundo o más.
+
+## 1.15.2 (it)
+
+**Correzioni**
+- Inserire, eliminare e spostare pagine non si ferma più a riordinare la memoria quando non serve. Con un disegno grande aperto o dopo una sessione lunga, quella pausa poteva durare un secondo o più.
+
 ## 1.15.1
 
 **Fixed**
