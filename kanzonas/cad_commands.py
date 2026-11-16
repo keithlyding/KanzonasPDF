@@ -7,7 +7,7 @@ Copy     base point, then where each copy goes (as many as you like; Enter or Es
 Rotate   base point, then the angle: type it (degrees, counterclockwise) or click a point
 Scale    base point, then the factor: type it, or click two points (a length, then the length
          it becomes)
-Mirror   two points on the mirror line, then keep or delete the originals
+Mirror   two points on the mirror line, then keep or delete the originals (Y or N will do)
 Delete   the selection
 Align    first source point, where it goes, second source point, where it goes; then scale or
          not, to make the second pair meet too
@@ -15,6 +15,9 @@ Array    rows and columns, then the spacing: click the base point, the next colu
          the next row's place
 Trim     click the part of a line to cut away, up to the nearest crossing lines (or its end);
          again and again until Escape. No selection needed.
+
+Shift or Ctrl held while clicking a point keeps it straight across or straight up and down
+from the point before (as AutoCAD's Ortho): a mirror line, a move, a copy, a turn.
 
 The selection is either the drawing's own objects (Edit objects) or markups (Select). Text of
 the drawing only moves (Move); the other commands leave it where it is and say so.
@@ -34,6 +37,23 @@ GHOST = QColor(0, 120, 215, 200)
 BAND = QColor(220, 60, 0)
 GHOST_LIMIT = 400           # copies previewed one by one (more: the box they fill)
 GHOST_SEGMENTS = 20000      # line pieces drawn while previewing (more: each copy's box)
+
+
+def _fold(text):
+    """Text to compare typed answers with: lower case, accents taken off ("Sí" is "si")."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFKD", text.replace("&", "").lower())
+                   if not unicodedata.combining(c))
+
+
+def yes_words():
+    """What a typed Yes may be (with the first letters: Y, Ye...), in English and the user's
+    language: a question's answer typed as in AutoCAD ("Erase source objects? Yes / No")."""
+    return ("yes", tr("Yes"))
+
+
+def no_words():
+    return ("no", tr("No"))
 
 
 def _scale():
@@ -223,8 +243,8 @@ class CommandLine(QWidget):
         self.label.setText("<b>%s</b>: %s" % (command.title, text))
         self.edit.clear()
         self._clear_choices()
-        self.choices = list(choices)
-        for label, value in choices:
+        self.choices = list(choices)            # (label, value) or (label, value, other words)
+        for label, value, *_words in choices:
             b = QPushButton(label)
             b.setFocusPolicy(Qt.NoFocus)    # (a click leaves the keys with the page)
             b.clicked.connect(lambda _=False, v=value: self.command and
@@ -328,11 +348,18 @@ class CommandLine(QWidget):
             if not text:
                 cmd.enter_key()
                 return
-            low = text.lower()
-            for label, value in self.choices:
-                if label.replace("&", "").lower().startswith(low):
+            low = _fold(text)
+            for label, value, *more in self.choices:
+                # a button's name, or another word for it (Yes / No), from its first letters
+                names = (label,) + (tuple(more[0]) if more else ())
+                if any(_fold(n).startswith(low) for n in names):
                     cmd.choose(value)
                     return
+            if any(len(c) > 2 for c in self.choices):
+                # (a question: what was typed is none of its answers)
+                self._say(tr("{text} isn't an answer here: click a button, or type the start "
+                             "of its name, or Y or N.").format(text=text))
+                return
             if cmd.selecting:
                 self.show_for(cmd, tr("select objects (click them, or draw a box or a lasso), "
                                       "then press Enter or right-click"), typing=False)
@@ -664,6 +691,11 @@ class Command:
     def step(self):
         """After a click."""
 
+    def straight_from(self):
+        """The point the next click is kept straight from when Shift or Ctrl is held (Ortho):
+        the base point (Move, Copy, Rotate, Scale, Mirror, Array), or None for nothing."""
+        return self.pts[0] if self.pts else None
+
     def move(self, index, pt):
         if self.gone():
             return
@@ -922,8 +954,10 @@ class Mirror(Command):
         elif len(self.pts) == 1:
             self.ui.show_for(self, tr("click the second point of the mirror line"))
         else:
-            self.ui.show_for(self, tr("delete the originals?"),
-                             choices=[(tr("Keep them"), "keep"), (tr("Delete them"), "delete")])
+            # (as AutoCAD asks it: Yes / No typed, or their first letter, Enter = No)
+            self.ui.show_for(self, tr("delete the originals? Yes or No (Enter: No)"),
+                             choices=[(tr("Keep them"), "keep", no_words()),
+                                      (tr("Delete them"), "delete", yes_words())])
 
     def step(self):
         if len(self.pts) == 2 and mirror(self.pts[0], self.pts[1]) is None:
@@ -962,11 +996,18 @@ class Align(Command):
         if len(self.pts) < 4:
             self.ui.show_for(self, texts[len(self.pts)])
         else:
-            self.ui.show_for(self, tr("scale it so the second points meet too?"),
-                             choices=[(tr("Don't scale"), "no"), (_scale(), "yes")])
+            self.ui.show_for(self, tr("scale it so the second points meet too? Yes or No "
+                                      "(Enter: No)"),
+                             choices=[(tr("Don't scale"), "no", no_words()),
+                                      (_scale(), "yes", yes_words())])
 
     def step(self):
         self.ask()
+
+    def straight_from(self):
+        # (each "where it goes" from its source point; the second source point from the first)
+        n = {1: 0, 2: 0, 3: 2}.get(len(self.pts))
+        return None if n is None else self.pts[n]
 
     def enter(self):
         if len(self.pts) == 4:
@@ -1099,6 +1140,9 @@ class Trim(Command):
     snap = False                        # the click picks a line: it must stay where it is
     done = 0
     edges = None                        # (page, [polylines]) the chosen cutting edges
+
+    def straight_from(self):
+        return None                     # (each click picks a line: nothing to keep straight)
 
     def start(self):
         what = self.v.cad_targets()

@@ -2158,6 +2158,24 @@ class PageWidget(QWidget):
             return False
         return e is None or not e.modifiers() & Qt.AltModifier      # Alt = don't snap
 
+    def _command_point(self, cmd, e, pos):
+        """The PDF point a CAD command takes from the pointer at pos: snapped (unless Alt), and
+        with Shift or Ctrl held kept straight across or straight up and down, as the page is
+        shown, from the command's point before (AutoCAD's Ortho: a mirror line at 0 or 90
+        degrees, a move along one direction). The snapped point's other coordinate stays,
+        so a point can still be lined up with an object."""
+        if cmd.snap:
+            pos = self._snap(pos, e)
+        ref = cmd.straight_from() if e.modifiers() & (Qt.ShiftModifier |
+                                                      Qt.ControlModifier) else None
+        if ref is not None and self.index == cmd.page:
+            r = self.to_screen_pt(ref)
+            if abs(pos.x() - r.x()) >= abs(pos.y() - r.y()):
+                pos = QPointF(pos.x(), r.y())
+            else:
+                pos = QPointF(r.x(), pos.y())
+        return self.to_pdf(pos)
+
     def _snap(self, pos, e=None, exclude=()):
         """Widget point -> snapped widget point (records the marker)."""
         self._snap_mark = None
@@ -2272,8 +2290,7 @@ class PageWidget(QWidget):
         if cmd is not None and not cmd.selecting:
             # a CAD tab command takes the clicks (snapped); right-click = Enter
             if e.button() == Qt.LeftButton:
-                pos = self._snap(e.position(), e) if cmd.snap else e.position()
-                cmd.click(self.index, self.to_pdf(pos))
+                cmd.click(self.index, self._command_point(cmd, e, e.position()))
             elif e.button() == Qt.RightButton:
                 cmd.enter_key()
             return
@@ -2669,9 +2686,11 @@ class PageWidget(QWidget):
             return
         pos = e.position()
         tool = self.view.tool
-        if not e.buttons() and tool != "hand" and not self._poly:
+        cmd = self.view._cad_cmd
+        taking_points = cmd is not None and not cmd.selecting
+        if not e.buttons() and tool != "hand" and not self._poly and not taking_points:
             # Ctrl over a link, with any tool: a pointing hand and where it goes (a Ctrl+click
-            # follows it)
+            # follows it). Not while a CAD command takes points: Ctrl keeps them straight.
             link = self.view.link_to_follow(self.index, self.to_pdf(pos)) \
                 if ctrl_held(e) else None
             if link is not None:
@@ -2682,10 +2701,8 @@ class PageWidget(QWidget):
             if getattr(self, "_ctrl_link", False):
                 self._ctrl_link = False
                 self.unsetCursor()
-        if self.view._cad_cmd is not None and not e.buttons() and \
-                not self.view._cad_cmd.selecting:
-            cmd = self.view._cad_cmd
-            cmd.move(self.index, self.to_pdf(self._snap(pos, e) if cmd.snap else pos))
+        if taking_points and not e.buttons():
+            cmd.move(self.index, self._command_point(cmd, e, pos))
             return
         if getattr(self, "_cad_resize", None) is not None and e.buttons():
             cad_select.resize_move(self, e, pos)

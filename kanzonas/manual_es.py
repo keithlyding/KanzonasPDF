@@ -559,7 +559,11 @@ inicie un comando, o inicie primero el comando: sin nada seleccionado le pide <b
 recuadros, lazos como arriba), y <b>Enter</b> (o un clic derecho) continúa con lo seleccionado. Luego responda a su
 indicación en la línea de comandos: haga clic en puntos
 de la página (se ajustan a los extremos de las líneas y a las esquinas como con las herramientas de dibujo; mantenga
-presionada Alt para no ajustar), escriba un valor y presione Enter, o haga clic en un botón ahí. Escape (o Cancelar)
+presionada Alt para no ajustar), escriba un valor y presione Enter, o haga clic en un botón ahí. Mantenga presionada
+<b>Mayús</b> o <b>Ctrl</b> al hacer clic en un punto para que quede justo en horizontal o en vertical respecto al punto
+anterior, tal como se muestra la página (como el Orto de AutoCAD): un eje de simetría horizontal o vertical, un
+movimiento o una copia en una sola dirección. Un punto ajustado a un objeto conserva la otra coordenada de ese objeto,
+así que aún puede alinearse con él. Escape (o Cancelar)
 detiene un comando; el clic derecho equivale a Enter. Cada cambio se deshace con un Ctrl+Z.</p>
 <p>Para que el modo CAD no necesite otra pestaña en el trabajo diario, la pestaña CAD también tiene las herramientas que más
 se usan junto a sus comandos (siguen también en sus propias pestañas). Las herramientas parecidas comparten un botón, como en la
@@ -593,7 +597,8 @@ Un ajuste que se activa escribiendo su nombre indica si ahora está activado o d
 <li>Mientras se dibuja un círculo (con el centro ya marcado), escriba su radio y presione Enter.</li>
 <li>Mientras se ejecuta un comando, la línea indica qué hacer a continuación y toma lo que escribe: un ángulo, un factor
 de escala o una elección (bastan las primeras letras del nombre de un botón: C para Conservarlos, E para
-Eliminarlos).</li>
+Eliminarlos). Una pregunta («¿eliminar los originales?» de Simetría, «¿escalarlo?» de Alinear) también acepta
+<b>Sí</b> o <b>No</b>, o solo S o N (también Y, como en AutoCAD); Enter solo es No.</li>
 <li>Escape borra lo que escribió; sin nada escrito, cancela el comando.</li>
 <li>En el modo CAD, los atajos de una sola letra de las herramientas (V para Seleccionar, H para Mano...) escriben en la
 línea de comandos (Preferencias &gt; Mouse, opciones de CAD: desactive <b>Las letras escritas sobre el dibujo van a la
@@ -615,11 +620,11 @@ otras (como Mover); Enter, Escape o Listo termina.</li>
 sentido horario) y presione Enter, o haga clic en un punto: la selección gira para que el "este" apunte hacia ahí.</li>
 <li><b>Escalar</b>: haga clic en el punto base y luego escriba el factor (2 = el doble de grande, 0.5 = la mitad; de 0.001
 a 1000) y presione Enter, o haga clic en un punto a una longitud que conozca y luego en el punto a la longitud que tendrá.</li>
-<li><b>Simetría</b>: haga clic en dos puntos del eje de simetría y luego en <b>Conservarlos</b> (una copia reflejada) o
-<b>Eliminarlos</b> (los originales se reemplazan).</li>
+<li><b>Simetría</b>: haga clic en dos puntos del eje de simetría y luego en <b>Conservarlos</b> (una copia reflejada;
+escriba N o No, o presione Enter) o <b>Eliminarlos</b> (los originales se reemplazan; escriba S o Sí).</li>
 <li><b>Eliminar</b>: elimina la selección.</li>
 <li><b>Alinear</b>: haga clic en un punto de la selección y donde va, luego en un segundo punto y donde va; después en
-<b>Escalar</b> (para que también coincidan los segundos puntos) o <b>No escalar</b>.</li>
+<b>Escalar</b> (para que también coincidan los segundos puntos; S o Sí) o <b>No escalar</b> (N, No o Enter).</li>
 <li><b>Matriz</b>: elija las filas y las columnas (hasta 50 de cada una) y luego haga clic en el punto base, donde va la
 copia de la columna siguiente y donde va la copia de la fila siguiente (la dirección también cuenta). Una matriz que
 crearía más de 20 000 objetos pregunta primero (un grupo cuenta cada objeto que dibuja). Una matriz grande (más de 20 copias de una selección grande) se hace como
@@ -1133,8 +1138,10 @@ de la página.</li>
 
 <h2 id="images">Imágenes y archivos adjuntos (videos y más)</h2>
 <ul>
-<li>Herramienta <b>Imagen</b>: arrastre un cuadro y elija una imagen (PNG, JPEG, BMP, GIF, TIFF). Se ajusta
-dentro del cuadro conservando sus proporciones; si solo hace clic, se coloca con su tamaño natural.
+<li>Herramienta <b>Imagen</b>: arrastre un cuadro y elija una imagen (PNG, JPEG, BMP, GIF, TIFF) o un dibujo SVG. Se
+ajusta dentro del cuadro conservando sus proporciones; si solo hace clic, se coloca con su tamaño natural. Un SVG entra
+con sus propias líneas, formas y texto, nítido con cualquier zoom, como un solo grupo en <b>Editar objetos</b> (Desagrupar
+lo separa en sus formas); una imagen que el SVG solo enlaza, en otro archivo, se deja fuera.
 La imagen se incrusta en el PDF con su calidad y su tamaño de archivo originales y pasa a formar parte de
 la propia página, como Agregar imagen de Acrobat: los visores de PDF no pueden moverla ni eliminarla. Muévala, cambie su tamaño,
 gírela o elimínela con <b>Editar objetos</b> (Shift+O), como en Acrobat y PDF-XChange. Para una
@@ -2415,6 +2422,7 @@ Desplazamiento automático.</li>
 <tr><td>Ctrl+Shift+A</td><td>Desplazamiento automático (arriba / abajo: más lento / más rápido)</td></tr>
 <tr><td>Mantener presionada la rueda + arrastrar</td><td>Desplazar (con cualquier herramienta)</td></tr>
 <tr><td>Alt (al dibujar o arrastrar)</td><td>No ajustar</td></tr>
+<tr><td>Mayús o Ctrl (al hacer clic en un punto de un comando CAD)</td><td>Justo en horizontal o en vertical respecto al punto anterior</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Páginas / Propiedades / Marcas / Caja de herramientas / Marcadores / Vista dividida</td></tr>
 </table>
 <p>Cambie cualquier método abreviado en Ver &gt; Métodos abreviados de teclado. Una tecla solo puede usarla un comando: si dos comandos comparten una, no se cambia nada hasta que lo corrija. Una tecla que usted asignó a un comando sigue siendo suya: un atajo nuevo que una versión posterior da a otro comando no se la quita (ese comando queda sin atajo; Restablecer todos los valores predeterminados se lo devuelve). <b>Restablecer todos los valores predeterminados</b> vuelve a poner los métodos abreviados originales de inmediato. Los cambios se aplican en todas las ventanas.</p>

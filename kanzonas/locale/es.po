@@ -6956,8 +6956,8 @@ msgid "Mirrored (a copy)"
 msgstr "Reflejado (una copia)"
 
 #: cad
-msgid "scale it so the second points meet too?"
-msgstr "¿escalarlo para que también coincidan los segundos puntos?"
+msgid "scale it so the second points meet too? Yes or No (Enter: No)"
+msgstr "¿escalarlo para que también coincidan los segundos puntos? Sí o No (Enter: No)"
 
 #: cad
 msgid "The two source points must be apart."
@@ -6984,8 +6984,8 @@ msgid "click the second point of the mirror line"
 msgstr "haga clic en el segundo punto del eje de simetría"
 
 #: cad
-msgid "delete the originals?"
-msgstr "¿eliminar los originales?"
+msgid "delete the originals? Yes or No (Enter: No)"
+msgstr "¿eliminar los originales? Sí o No (Enter: No)"
 
 #: cad
 msgid "click where the next column's copy goes"
@@ -11444,3 +11444,15 @@ msgstr "Ángulo en grados (en sentido contrario a las agujas del reloj; -90 gira
 
 msgid "Rotate: {deg}° (Shift: 15° steps)"
 msgstr "Girar: {deg}° (Shift: pasos de 15°)"
+
+msgid "Yes"
+msgstr "Sí"
+
+msgid "No"
+msgstr "No"
+
+msgid "{text} isn't an answer here: click a button, or type the start of its name, or Y or N."
+msgstr "{text} no es una respuesta aquí: haga clic en un botón, o escriba el comienzo de su nombre, o S o N."
+
+msgid "That SVG file can't be read, or it draws nothing."
+msgstr "Ese archivo SVG no se puede leer, o no dibuja nada."

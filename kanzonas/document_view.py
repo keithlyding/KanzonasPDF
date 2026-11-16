@@ -176,6 +176,31 @@ def eraser_cursor():
     return _ERASER_CURSOR
 
 
+def is_svg(path, data):
+    """Whether a picture file is an SVG drawing (by its name, or its start: <svg or <?xml)."""
+    if os.path.splitext(path)[1].lower() in (".svg", ".svgz"):
+        return True
+    head = data[:512].lstrip(b"\xef\xbb\xbf \t\r\n").lower()
+    return head.startswith(b"<svg") or (head.startswith(b"<?xml") and b"<svg" in data[:4096])
+
+
+def svg_drawing(data):
+    """An SVG drawing as a one-page PDF of its lines, shapes and text (MuPDF reads it: pictures
+    it links to outside the file are left out), or None when it can't be read or draws
+    nothing."""
+    try:
+        with pymupdf.open(stream=data, filetype="svg") as src:
+            r = src[0].rect
+            if src.page_count != 1 or r.width < 0.5 or r.height < 0.5:
+                return None             # (no size: made into a whole empty page otherwise)
+            pdf = pymupdf.open("pdf", src.convert_to_pdf())
+    except Exception:
+        return None                     # (not SVG, or broken: the caller says so)
+    if not pdf[0].get_bboxlog():        # (what the page draws: lines, fills, text, pictures)
+        pdf.close()
+        return None
+    return pdf
+
 
 def link_border(doc, xref):
     """(width, (r, g, b), style) of a link's visible border, or None when it has none.
@@ -4739,7 +4764,7 @@ class DocumentView(QScrollArea):
         return disp * page.derotation_matrix
 
     # ---- images and attached files ----------------------------------------------------
-    IMAGE_FILTER = tr("Images") + " (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff)"
+    IMAGE_FILTER = tr("Images") + " (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.svg *.svgz)"
     RISKY = (".exe", ".bat", ".cmd", ".com", ".msi", ".js", ".jse", ".vbs", ".vbe", ".ps1",
              ".scr", ".lnk", ".hta", ".wsf", ".jar", ".reg", ".pif", ".cpl",
              ".application", ".html", ".htm", ".msc", ".iso", ".dll")
@@ -4772,20 +4797,31 @@ class DocumentView(QScrollArea):
 
     def place_image(self, index, a, b, is_click):
         """Image tool: pick a picture and fit it in the dragged box (or natural size at the
-        click), keeping its proportions. It becomes part of the page content."""
+        click), keeping its proportions. It becomes part of the page content. An SVG drawing
+        goes in as its lines, shapes and text (sharp at any zoom), one group in Edit objects."""
         path = dialogs.open_file(self, tr("Insert image"), self.IMAGE_FILTER)
         if not path:
             return
         with open(path, "rb") as f:
             data = f.read()
-        try:
-            pm = pymupdf.Pixmap(data)
-            iw, ih = pm.width, pm.height
-            dpi_x, dpi_y = pm.xres or 150, pm.yres or 150
-        except Exception:
-            QMessageBox.warning(self, tr("Insert image"),
-                                tr("That file isn't an image this app can read."))
-            return
+        drawing = None
+        if is_svg(path, data):
+            drawing = svg_drawing(data)
+            if drawing is None:
+                QMessageBox.warning(self, tr("Insert image"),
+                                    tr("That SVG file can't be read, or it draws nothing."))
+                return
+            iw, ih = drawing[0].rect.width, drawing[0].rect.height
+            dpi_x = dpi_y = 72          # (its size is in points already)
+        else:
+            try:
+                pm = pymupdf.Pixmap(data)
+                iw, ih = pm.width, pm.height
+                dpi_x, dpi_y = pm.xres or 150, pm.yres or 150
+            except Exception:
+                QMessageBox.warning(self, tr("Insert image"),
+                                    tr("That file isn't an image this app can read."))
+                return
         page = self.doc[index]
         to_disp, to_pdf = page.rotation_matrix, page.derotation_matrix
         pa, pb = pymupdf.Point(a) * to_disp, pymupdf.Point(b) * to_disp
@@ -4806,9 +4842,18 @@ class DocumentView(QScrollArea):
 
         def do():
             pg = self.doc[index]
-            pg.insert_image(rect, stream=data, keep_proportion=True, rotate=pg.rotation,
-                            overlay=True)
-        self.modify(do, [index])
+            if drawing is not None:
+                # (turned with the page, as the picture is: it reads upright on screen)
+                pg.show_pdf_page(rect, drawing, 0, keep_proportion=True, overlay=True,
+                                 rotate=pg.rotation)
+            else:
+                pg.insert_image(rect, stream=data, keep_proportion=True, rotate=pg.rotation,
+                                overlay=True)
+        try:
+            self.modify(do, [index])
+        finally:
+            if drawing is not None:
+                drawing.close()
         self.statusMessage.emit(tr("Picture added to the page. Edit objects (Shift+O) moves, "
                                    "resizes or deletes it; Ctrl+Z undoes it."))
 
