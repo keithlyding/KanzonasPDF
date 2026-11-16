@@ -186,35 +186,32 @@ jobs:
           Start-Sleep -Seconds 3
           # Windows holds the old KanzonasPDFShell.dll, as on a computer whose Explorer has shown a
           # PDF's thumbnail: a COM Surrogate (dllhost.exe, no window) keeps it loaded. A quiet setup
-          # that may only ask it to close quit without updating (the owner, 16 Nov 2026).
+          # that may only ask it to close quit without updating (the owner, 16 Nov 2026). For the
+          # test the thumbnail handler is asked for out of process (CLSCTX_LOCAL_SERVER, with an
+          # AppID naming Windows' default surrogate), so Windows starts a dllhost.exe holding it.
           $shell = "$dir\KanzonasPDFShell.dll"
-          New-Item -Force "HKCU:\Software\Classes\.pdf" | Out-Null
-          $pdfWas = (Get-Item "HKCU:\Software\Classes\.pdf").GetValue("")
-          Set-Item "HKCU:\Software\Classes\.pdf" -Value "KanzonasPDF.Document"
+          $thumb = "{8BBD1C01-BC86-4432-9CA0-D3F973DBF51C}"
+          $appKey = "HKCU:\Software\Classes\AppID\$thumb"
+          New-Item -Force $appKey | Out-Null
+          Set-ItemProperty $appKey -Name DllSurrogate -Value ""
+          Set-ItemProperty "HKCU:\Software\Classes\CLSID\$thumb" -Name AppID -Value $thumb
           Add-Type -TypeDefinition @"
-          using System; using System.Runtime.InteropServices;
-          public static class KzThumb {
-            [StructLayout(LayoutKind.Sequential)] public struct SIZE { public int cx; public int cy; }
-            [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-            interface IShellItemImageFactory { [PreserveSig] int GetImage(SIZE size, int flags, out IntPtr phbm); }
-            [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
-            static extern void SHCreateItemFromParsingName(string path, IntPtr pbc, [MarshalAs(UnmanagedType.LPStruct)] Guid riid, [MarshalAs(UnmanagedType.Interface)] out object ppv);
-            [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr h);
-            public static int Get(string path) {
-              object o; SHCreateItemFromParsingName(path, IntPtr.Zero, typeof(IShellItemImageFactory).GUID, out o);
-              var f = (IShellItemImageFactory)o; IntPtr h; var size = new SIZE(); size.cx = 256; size.cy = 256;
-              int hr = f.GetImage(size, 0x8, out h);   // SIIGBF_THUMBNAILONLY: the thumbnail handler's
-              if (h != IntPtr.Zero) DeleteObject(h);
+          using System; using System.Collections.Generic; using System.Runtime.InteropServices;
+          public static class KzSurrogate {
+            [DllImport("ole32.dll")]
+            static extern int CoCreateInstance(ref Guid clsid, IntPtr outer, uint ctx, ref Guid iid, [MarshalAs(UnmanagedType.IUnknown)] out object o);
+            static readonly List<object> kept = new List<object>();   // (held: the dllhost stays)
+            public static int Start(string clsid) {
+              Guid c = new Guid(clsid); Guid unknown = new Guid("00000000-0000-0000-C000-000000000046"); object o;
+              int hr = CoCreateInstance(ref c, IntPtr.Zero, 4, ref unknown, out o);   // CLSCTX_LOCAL_SERVER
+              if (hr == 0) kept.Add(o);
               return hr;
             }
           }
           "@
           function Hold-Shell {
-            # a new PDF each time (a thumbnail Windows has cached wouldn't load the handler)
-            $pdf = "$env:RUNNER_TEMP\kz-thumb-$([guid]::NewGuid().ToString('N')).pdf"
-            python -c "import pymupdf, sys; d = pymupdf.open(); d.new_page().insert_text((72, 72), 'thumb'); d.save(sys.argv[1])" $pdf
-            $hr = [KzThumb]::Get($pdf)
-            Write-Host ("Thumbnail asked of Windows: 0x{0:X8}" -f $hr)
+            $hr = [KzSurrogate]::Start($thumb)
+            Write-Host ("Thumbnail handler asked for out of process: 0x{0:X8}" -f $hr)
             $held = @()
             foreach ($i in 1..20) {
               $held = @(Get-Process dllhost, prevhost -ErrorAction SilentlyContinue | Where-Object {
@@ -226,7 +223,7 @@ jobs:
               Write-Host "Held by Windows: $(($held | ForEach-Object { "$($_.ProcessName) $($_.Id)" }) -join ', ')"
               return $held
             }
-            # (Windows didn't load it for this runner's thumbnail: a process with no window holds it instead)
+            # (no COM Surrogate loaded it on this runner: a process with no window holds it instead)
             Write-Host "::warning::No COM Surrogate loaded KanzonasPDFShell.dll here; a hidden process holds it instead"
             $hold = 'Add-Type -Name K -Namespace W -MemberDefinition ''[DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr LoadLibrary(string p);''; if ([W.K]::LoadLibrary($env:KZ_SHELL) -eq [IntPtr]::Zero) { exit 3 }; Start-Sleep -Seconds 900'
             $env:KZ_SHELL = $shell
@@ -284,7 +281,8 @@ jobs:
           Get-Process KanzonasPDF -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($dir) } | Stop-Process -Force
           Start-Sleep -Seconds 2
           if ((Get-ItemProperty $un).DisplayVersion -ne "${{ steps.ver.outputs.version }}") { throw "Installed version is wrong after Update now's command line" }
-          if ($pdfWas) { Set-Item "HKCU:\Software\Classes\.pdf" -Value $pdfWas } else { Remove-Item "HKCU:\Software\Classes\.pdf" -Recurse -Force }
+          Remove-Item $appKey -Recurse -Force
+          Remove-ItemProperty "HKCU:\Software\Classes\CLSID\$thumb" -Name AppID -ErrorAction SilentlyContinue
           $p = Start-Process "$dir\KanzonasPDF.exe" -ArgumentList "--selftest","upgraded-selftest.log" -PassThru -Wait
           if ($p.ExitCode -ne 0) { Get-Content upgraded-selftest.log; throw "Updated app failed its self test" }
           Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
