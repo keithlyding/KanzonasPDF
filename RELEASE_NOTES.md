@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.5
+
+**Fixed**
+- Windows: Update now could quit without updating once File Explorer had shown a PDF thumbnail (Windows kept a file in use in its "COM Surrogate"). The setup now closes it, and if an update ever doesn't finish, KanzonasPDF tells you the next time it starts.
+
+## 1.15.5 (es)
+
+**Correcciones**
+- Windows: Actualizar ahora podía cerrarse sin actualizar después de que el Explorador mostrara la miniatura de un PDF (Windows mantenía un archivo en uso en su "COM Surrogate"). Ahora el instalador lo cierra, y si alguna vez una actualización no termina, KanzonasPDF se lo dice la próxima vez que se inicia.
+
+## 1.15.5 (it)
+
+**Correzioni**
+- Windows: Aggiorna ora poteva chiudersi senza aggiornare dopo che Esplora file aveva mostrato la miniatura di un PDF (Windows teneva un file in uso nel suo "COM Surrogate"). Ora il programma di installazione lo chiude, e se un aggiornamento non si completa, KanzonasPDF te lo dice al successivo avvio.
+
 ## 1.15.4
 
 **New**

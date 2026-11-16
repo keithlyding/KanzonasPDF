@@ -224,7 +224,12 @@ sha256 matches the digest published with that release; it asks to save open docu
 installs the new version over this one (for you, or for all users with Windows' administrator
 prompt if that's how it was installed) and starts again. Or run the newer setup over the old one
 yourself; there's no need to uninstall first. Either way it installs in the same place and keeps
-your settings, signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
+your settings, signatures, stamps and tool chest. Windows keeps the thumbnail and Preview pane part
+loaded in a <b>COM Surrogate</b> once Explorer has shown a PDF's thumbnail: the setup closes it
+(Windows starts it again when it's next needed); run by hand, the setup lists it under
+"Preparing to Install", with <b>Automatically close the applications</b> chosen. If an update
+doesn't finish, KanzonasPDF says so the next time it starts, with the setup's log, and offers to
+run that setup with its windows, which show what's in the way. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
 <li><b>Portable version</b> (<b>KanzonasPDF-portable.zip</b>): no installation. Unzip the KanzonasPDF folder
 anywhere (a USB stick, a network drive, your Documents) and run KanzonasPDF.exe. Because of the
 portable.txt file inside, your settings, signatures, stamp images and certificate are kept in a

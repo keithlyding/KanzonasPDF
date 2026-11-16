@@ -14,7 +14,12 @@ alone), and starts it again. The path to KanzonasPDF.exe never changes, so file 
 
 Installed copies update in place too (InstallerUpdater): download the release's setup, check
 its sha256 the same way, close KanzonasPDF (saving first), and run the setup quietly over the
-installation; it starts KanzonasPDF again when it's done.
+installation; it starts KanzonasPDF again when it's done. The quiet setup force-closes what
+holds its files: Windows keeps KanzonasPDFShell.dll (Explorer's thumbnails and Preview pane)
+loaded in a COM Surrogate (dllhost.exe) or the preview host, and a quiet setup that may only ask
+them to close gave up and quit, so the update never happened and nothing said why (the owner,
+16 Nov 2026). It writes a log beside itself, and an update that didn't take is said at the next
+start (remember_update, update_outcome).
 
 On Linux, the AppImage updates itself (AppImageUpdater): the release's
 KanzonasPDF-x86_64.AppImage is downloaded next to the running one ($APPIMAGE), checked the
@@ -382,14 +387,56 @@ def for_all_users(app_dir):
     return False
 
 
+def setup_log(setup_path):
+    """Where the quiet setup writes its log: beside it, in its own temporary folder."""
+    return os.path.join(os.path.dirname(setup_path), "setup.log")
+
+
 def installer_command(setup_path, app_dir):
     """How Update now runs the new setup: quietly (a progress window only, no questions),
     over the existing installation with its options kept, closing anything still using the
-    files, and starting KanzonasPDF again when done (/RELAUNCH, see installer/KanzonasPDF.iss;
-    the Windows build tests this command line)."""
+    files, by force if it doesn't close when asked (a COM Surrogate holding Explorer's
+    thumbnail handler has no window to ask), writing its log, and starting KanzonasPDF again
+    when done (/RELAUNCH, see installer/KanzonasPDF.iss; the Windows build tests this command
+    line, with Windows holding KanzonasPDFShell.dll)."""
     return [setup_path, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
-            "/CLOSEAPPLICATIONS", "/ALLUSERS" if for_all_users(app_dir) else "/CURRENTUSER",
-            "/RELAUNCH"]
+            "/CLOSEAPPLICATIONS", "/FORCECLOSEAPPLICATIONS",
+            "/ALLUSERS" if for_all_users(app_dir) else "/CURRENTUSER", "/RELAUNCH",
+            "/LOG=" + setup_log(setup_path)]
+
+
+PENDING_KEY = "update_pending"
+
+
+def remember_update(settings, version, setup_path):
+    """Update now is about to run the setup for version: kept until the next start, which
+    tells whether it took (update_outcome)."""
+    settings.setValue(PENDING_KEY, json.dumps({
+        "version": str(version), "setup": setup_path, "log": setup_log(setup_path),
+        "at": time.time()}))
+
+
+def update_outcome(settings, running=None):
+    """At start-up, after Update now ran a setup: None when there was none (or the record is
+    unreadable), else {"ok": bool, "version", "setup", "log"}. ok: the version running is the
+    one installed, or newer; the setup's folder is then removed. Either way the record goes:
+    the outcome is told once."""
+    raw = settings.value(PENDING_KEY)
+    if not raw:
+        return None
+    settings.remove(PENDING_KEY)
+    try:
+        rec = json.loads(str(raw))
+        want = str(rec["version"])
+    except (ValueError, KeyError, TypeError):
+        return None                     # (a record this version can't read: nothing to tell)
+    ok = version_tuple(running or __version__) >= version_tuple(want)
+    out = {"ok": ok, "version": want, "setup": str(rec.get("setup") or ""),
+           "log": str(rec.get("log") or "")}
+    folder = os.path.dirname(out["setup"])
+    if ok and os.path.basename(folder).startswith("kzsetup"):
+        shutil.rmtree(folder, ignore_errors=True)    # (the setup and its log: done with)
+    return out
 
 
 def _file_sha256(path):

@@ -184,13 +184,76 @@ jobs:
           }
           if ($old.MainWindowTitle -notlike "kz-open-during-update*") { throw "The old version didn't open the document (title '$($old.MainWindowTitle)')" }
           Start-Sleep -Seconds 3
-          # the new setup runs exactly as the app's Update now runs it (updates.installer_command):
-          # no /DIR (it must find the existing install by itself), and /RELAUNCH starts the app again
-          $uargs = "/SILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-","/CLOSEAPPLICATIONS","/CURRENTUSER","/RELAUNCH"
-          # (not -Wait: that also waits for the programs the setup starts, and it starts KanzonasPDF)
-          $p = Start-Process "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe" -ArgumentList $uargs -PassThru
-          $p.WaitForExit()
-          if ($p.ExitCode -ne 0) { throw "Update over the old version failed" }
+          # Windows holds the old KanzonasPDFShell.dll, as on a computer whose Explorer has shown a
+          # PDF's thumbnail: a COM Surrogate (dllhost.exe, no window) keeps it loaded. A quiet setup
+          # that may only ask it to close quit without updating (the owner, 16 Nov 2026).
+          $shell = "$dir\KanzonasPDFShell.dll"
+          New-Item -Force "HKCU:\Software\Classes\.pdf" | Out-Null
+          $pdfWas = (Get-Item "HKCU:\Software\Classes\.pdf").GetValue("")
+          Set-Item "HKCU:\Software\Classes\.pdf" -Value "KanzonasPDF.Document"
+          Add-Type -TypeDefinition @"
+          using System; using System.Runtime.InteropServices;
+          public static class KzThumb {
+            [StructLayout(LayoutKind.Sequential)] public struct SIZE { public int cx; public int cy; }
+            [ComImport, Guid("bcc18b79-ba16-442f-80c4-8a59c30c463b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+            interface IShellItemImageFactory { [PreserveSig] int GetImage(SIZE size, int flags, out IntPtr phbm); }
+            [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
+            static extern void SHCreateItemFromParsingName(string path, IntPtr pbc, [MarshalAs(UnmanagedType.LPStruct)] Guid riid, [MarshalAs(UnmanagedType.Interface)] out object ppv);
+            [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr h);
+            public static int Get(string path) {
+              object o; SHCreateItemFromParsingName(path, IntPtr.Zero, typeof(IShellItemImageFactory).GUID, out o);
+              var f = (IShellItemImageFactory)o; IntPtr h; var size = new SIZE(); size.cx = 256; size.cy = 256;
+              int hr = f.GetImage(size, 0x8, out h);   // SIIGBF_THUMBNAILONLY: the thumbnail handler's
+              if (h != IntPtr.Zero) DeleteObject(h);
+              return hr;
+            }
+          }
+          "@
+          function Hold-Shell {
+            # a new PDF each time (a thumbnail Windows has cached wouldn't load the handler)
+            $pdf = "$env:RUNNER_TEMP\kz-thumb-$([guid]::NewGuid().ToString('N')).pdf"
+            python -c "import pymupdf, sys; d = pymupdf.open(); d.new_page().insert_text((72, 72), 'thumb'); d.save(sys.argv[1])" $pdf
+            $hr = [KzThumb]::Get($pdf)
+            Write-Host ("Thumbnail asked of Windows: 0x{0:X8}" -f $hr)
+            $held = @()
+            foreach ($i in 1..20) {
+              $held = @(Get-Process dllhost, prevhost -ErrorAction SilentlyContinue | Where-Object {
+                try { $_.Modules | Where-Object { $_.FileName -ieq $shell } } catch { $null } })
+              if ($held.Count -gt 0) { break }
+              Start-Sleep -Milliseconds 500
+            }
+            if ($held.Count -gt 0) {
+              Write-Host "Held by Windows: $(($held | ForEach-Object { "$($_.ProcessName) $($_.Id)" }) -join ', ')"
+              return $held
+            }
+            # (Windows didn't load it for this runner's thumbnail: a process with no window holds it instead)
+            Write-Host "::warning::No COM Surrogate loaded KanzonasPDFShell.dll here; a hidden process holds it instead"
+            $hold = 'Add-Type -Name K -Namespace W -MemberDefinition ''[DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr LoadLibrary(string p);''; if ([W.K]::LoadLibrary($env:KZ_SHELL) -eq [IntPtr]::Zero) { exit 3 }; Start-Sleep -Seconds 900'
+            $env:KZ_SHELL = $shell
+            $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($hold))
+            $held = @(Start-Process pwsh -WindowStyle Hidden -ArgumentList "-NoProfile", "-EncodedCommand", $enc -PassThru)
+            Start-Sleep -Seconds 5
+            if ($held[0].HasExited) { throw "Couldn't hold KanzonasPDFShell.dll for the test" }
+            return $held
+          }
+          function Run-Update($uargs, $what) {
+            $holders = @(Hold-Shell)
+            $ulog = "$env:RUNNER_TEMP\kz-update-$what.log"
+            # (not -Wait: that also waits for the programs the setup starts, and it starts KanzonasPDF)
+            $p = Start-Process "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe" -ArgumentList ($uargs + "/LOG=$ulog") -PassThru
+            $p.WaitForExit()
+            if ($p.ExitCode -ne 0) {
+              if (Test-Path $ulog) { Get-Content $ulog | Select-Object -Last 60 }
+              throw "Update ($what) failed with the thumbnail handler held (setup exit code $($p.ExitCode))"
+            }
+            foreach ($h in $holders) {
+              $h.Refresh()
+              if (-not $h.HasExited) { $h | Stop-Process -Force; throw "The setup ($what) didn't close $($h.ProcessName) holding KanzonasPDFShell.dll" }
+            }
+          }
+          # first as the copies already installed run it (1.15.2 to 1.15.4: no force flag, so the
+          # setup's own CloseApplications=force must close the COM Surrogate); with /LOG added
+          Run-Update @("/SILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-","/CLOSEAPPLICATIONS","/CURRENTUSER","/RELAUNCH") "from-1.15.4"
           if (-not $old.HasExited) { $old | Stop-Process -Force; throw "The setup didn't close the running KanzonasPDF" }
           $files = (Get-ItemProperty $kz).session_files
           if ($files -notlike "*kz-open-during-update.pdf*") { throw "The document open during the update wasn't remembered: '$files'" }
@@ -213,6 +276,15 @@ jobs:
           if ($ver -ne "${{ steps.ver.outputs.version }}") { throw "Installed version is '$ver' after the update" }
           if ((Get-ItemProperty $un).InstallLocation.TrimEnd('\') -ne $dir) { throw "Update installed to a different folder" }
           if ((Get-ItemProperty "HKCU:\Software\KanzonasPDF\upgradetest").keep -ne "yes") { throw "Update lost the user's settings" }
+          # then exactly as this version's Update now runs it (updates.installer_command), over
+          # the same install with the handler held again: no /DIR (it must find the existing
+          # install by itself), and /RELAUNCH starts the app again
+          Run-Update @("/SILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-","/CLOSEAPPLICATIONS","/FORCECLOSEAPPLICATIONS","/CURRENTUSER","/RELAUNCH") "update-now"
+          Start-Sleep -Seconds 5
+          Get-Process KanzonasPDF -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($dir) } | Stop-Process -Force
+          Start-Sleep -Seconds 2
+          if ((Get-ItemProperty $un).DisplayVersion -ne "${{ steps.ver.outputs.version }}") { throw "Installed version is wrong after Update now's command line" }
+          if ($pdfWas) { Set-Item "HKCU:\Software\Classes\.pdf" -Value $pdfWas } else { Remove-Item "HKCU:\Software\Classes\.pdf" -Recurse -Force }
           $p = Start-Process "$dir\KanzonasPDF.exe" -ArgumentList "--selftest","upgraded-selftest.log" -PassThru -Wait
           if ($p.ExitCode -ne 0) { Get-Content upgraded-selftest.log; throw "Updated app failed its self test" }
           Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait

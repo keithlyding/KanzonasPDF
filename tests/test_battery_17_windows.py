@@ -432,7 +432,7 @@ class WindowsBuild(unittest.TestCase):
         self.assertEqual(made, self.ARTIFACTS)
         # the build tests the setup with the command line Update now uses
         self.assertIn('"/SILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-","/CLOSEAPPLICATIONS",'
-                      '"/CURRENTUSER","/RELAUNCH"', "\n".join(
+                      '"/FORCECLOSEAPPLICATIONS","/CURRENTUSER","/RELAUNCH")', "\n".join(
                           s.get("run", "") for s in self.build["steps"]))
 
     def test_the_windows_release_files_keep_their_names(self):
