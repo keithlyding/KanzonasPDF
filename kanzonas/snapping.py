@@ -1,5 +1,6 @@
-"""Snapping: to a grid, and to objects (markup corners / ends / centers and the drawing's own
-line work: line ends and midpoints, rectangle corners).
+"""Snapping: to a grid, and to objects (markup corners / ends / centers, the drawing's own
+line work: line ends and midpoints, rectangle corners, and the page's pictures: corners, edge
+middles and center, also when turned).
 
 Points are kept in unrotated PDF coordinates in a bucket grid so lookups stay fast on CAD
 sheets with hundreds of thousands of lines.
@@ -85,8 +86,32 @@ class ContentIndex:
         return None if best is None else pymupdf.Point(best)
 
 
+def picture_points(page):
+    """Corners, edge middles and centers of the pictures the page draws, as placed (a turned
+    picture's corners where they are), in unrotated page coordinates as get_cdrawings gives
+    them: [(x, y)]. Only a page with pictures is read for them (a CAD sheet has none)."""
+    try:
+        if not page.get_images(full=True):
+            return []
+        infos = page.get_image_info()
+    except Exception:
+        return []                       # (an unreadable picture: its points are left out)
+    out = []
+    for info in infos:
+        try:
+            m = pymupdf.Matrix(info["transform"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        for u, v in ((0, 0), (1, 0), (1, 1), (0, 1), (0.5, 0), (1, 0.5), (0.5, 1), (0, 0.5),
+                     (0.5, 0.5)):
+            q = pymupdf.Point(u, v) * m
+            out.append((q.x, q.y))
+    return out
+
+
 def content_index(page):
-    """Snap points of the page's own vector drawing (line ends and midpoints, corners)."""
+    """Snap points of the page's own vector drawing (line ends and midpoints, corners) and of
+    its pictures (picture_points)."""
     idx = None
     for idx in content_index_steps(page):
         pass
@@ -107,9 +132,13 @@ def content_index_steps(page, step=20000):
     yield None
     buckets = idx.buckets
     get = buckets.get
-    for s in range(0, len(paths), step):
+    pictures = picture_points(page)
+    for s in range(0, max(len(paths), 1), step):
         pts = []
         add = pts.extend
+        if s == 0:
+            for q in pictures:
+                add(q)
         for path in paths[s:s + step]:
             for it in path["items"]:
                 op = it[0]

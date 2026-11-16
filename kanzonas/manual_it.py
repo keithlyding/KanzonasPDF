@@ -974,7 +974,7 @@ carta, e ogni quante linee ne viene disegnata una più scura. Con uno zoom molto
 più scure.</li>
 <li><b>Aggancia alla griglia:</b> i punti che disegni o trascini saltano all'intersezione della griglia più vicina.</li>
 <li><b>Aggancia agli oggetti:</b> i punti saltano agli angoli, ai punti medi dei lati, ai centri e alle estremità delle
-linee delle annotazioni vicine, e alle estremità delle linee, ai punti medi e agli angoli del disegno stesso (utile sulle tavole CAD).</li>
+linee delle annotazioni vicine, alle estremità delle linee, ai punti medi e agli angoli del disegno stesso (utile sulle tavole CAD), e agli angoli, ai punti medi dei lati e al centro delle immagini della pagina (anche ruotate), così il punto base di un comando CAD può essere l'angolo di un'immagine.</li>
 <li>Le opzioni di aggancio si trovano nel menu Visualizza e nella barra degli strumenti, nel gruppo <b>Griglia e aggancio</b> della
 scheda Visualizza della barra multifunzione, nel gruppo <b>Scala e aggancio</b> della scheda Misure e nel gruppo <b>Aggancio</b>
 della scheda Disponi, in Impostazioni griglia e in Preferenze &gt; Pagine e visualizzazione.</li>
@@ -1209,7 +1209,9 @@ Trascina una maniglia d'angolo per ridimensionarla mantenendo le proporzioni
 ne scala anche lo spessore delle linee. <b>Ruotala</b> trascinando la <b>maniglia rotonda</b> sopra di essa: ruota attorno al
 suo centro, l'angolo appare nella barra di stato e Shift la ruota a passi di 15&deg;. Per ruotarla di un angolo esatto, fai
 clic con il tasto destro &gt; <b>Ruota di un angolo...</b> e digita i gradi (in senso antiorario, come la Rotazione di
-un'annotazione; -90 la ruota di un quarto in senso orario). Il testo si sposta, non si ruota, quindi una selezione con del
+un'annotazione; -90 la ruota di un quarto in senso orario). Anche il pannello <b>Proprietà</b> la mostra: un'immagine o un
+gruppo mostra la sua <b>Rotazione</b> (digita un angolo e ruota fino a quello); linee e forme, o più oggetti, non hanno un
+angolo proprio, quindi mostra <b>Ruota di</b> (digita i gradi e ruotano di tanto; la casella torna a 0). Il testo si sposta, non si ruota, quindi una selezione con del
 testo non ha la maniglia rotonda (anche Ruota della modalità CAD lascia il testo dov'è).</li>
 <li>Canc (o Backspace) elimina la selezione. Fai clic con il tasto destro per Taglia, Copia, Incolla e Duplica,
 Separa (gruppi), Ruota in senso orario, Ruota

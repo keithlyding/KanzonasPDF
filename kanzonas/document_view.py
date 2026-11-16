@@ -876,6 +876,7 @@ class DocumentView(QScrollArea):
     searchChanged = Signal(int, int, bool)   # match shown (1-based, 0 = none), matches, still searching
     openFileRequested = Signal(str, int)      # a link to another PDF: path, page (0-based)
     selectionChanged = Signal()
+    objectSelectionChanged = Signal()   # the page's objects selected (obj_sel) changed: Properties
     toolDefaultsChanged = Signal(str)     # a tool's default style was set (Set as Default)
     signedDocument = Signal()
     oneShotPlaced = Signal()        # a signature / initials / date was placed
@@ -8629,6 +8630,54 @@ class DocumentView(QScrollArea):
             got = self._sel_rect = (sel, bounding(it["rect"] for it in self.selected_objects()))
         return pymupdf.Rect(got[1])
 
+    _obj_sel_value = None
+
+    @property
+    def obj_sel(self):
+        """(page index, [objects]) selected with Edit objects (CAD mode too), or None."""
+        return self._obj_sel_value
+
+    @obj_sel.setter
+    def obj_sel(self, sel):
+        # (set in many places: each says so here, for the Properties panel's Rotation)
+        self._obj_sel_value = sel
+        try:
+            self.objectSelectionChanged.emit()
+        except RuntimeError:
+            pass                        # (the view is being taken down: nobody to tell)
+
+    @staticmethod
+    def describe_objects(items):
+        """"1 picture", "2 shapes, 1 group"...: what of the page's own is selected."""
+        pics = sum(1 for it in items if it["kind"] == "picture")
+        groups = sum(1 for it in items if it["kind"] == "group")
+        texts = sum(1 for it in items if it["kind"] == "text")
+        shapes = len(items) - pics - groups - texts
+        return ", ".join(x for x in (
+            (tr("{n} text") if texts == 1 else tr("{n} texts")).format(n=texts)
+            if texts else "",
+            (tr("{n} picture") if pics == 1 else tr("{n} pictures")).format(n=pics)
+            if pics else "",
+            (tr("{n} shape") if shapes == 1 else tr("{n} shapes")).format(n=shapes)
+            if shapes else "",
+            (tr("{n} group") if groups == 1 else tr("{n} groups")).format(n=groups)
+            if groups else "") if x)
+
+    def objects_angle(self):
+        """The angle of the one picture or group selected, counterclockwise as the page is
+        shown (-180 to 180; its top edge's direction), or None: several, or lines and shapes,
+        which keep no angle of their own."""
+        sel = self.obj_sel
+        if sel is None or len(sel[1]) != 1 or sel[1][0]["kind"] not in ("picture", "group"):
+            return None
+        quad = sel[1][0].get("quad")
+        if quad is None:
+            return None
+        q = pymupdf.Quad(quad) * self.doc[sel[0]].rotation_matrix
+        ang = -math.degrees(math.atan2(q.ur.y - q.ul.y, q.ur.x - q.ul.x))
+        ang = round(ang, 2) + 0.0
+        return ang - 360 if ang > 180 else ang
+
     def select_objects(self, index, items, add=False):
         """Select pictures / shapes on page index; add=True toggles them in the selection."""
         old = self.obj_sel
@@ -8651,19 +8700,8 @@ class DocumentView(QScrollArea):
             # menus: Arrange works on objects too (Align needs two, Distribute three)
             self.selectionChanged.emit()
         if items:
-            pics = sum(1 for it in items if it["kind"] == "picture")
-            groups = sum(1 for it in items if it["kind"] == "group")
             texts = sum(1 for it in items if it["kind"] == "text")
-            shapes = len(items) - pics - groups - texts
-            what = ", ".join(x for x in (
-                (tr("{n} text") if texts == 1 else tr("{n} texts")).format(n=texts)
-                if texts else "",
-                (tr("{n} picture") if pics == 1 else tr("{n} pictures")).format(n=pics)
-                if pics else "",
-                (tr("{n} shape") if shapes == 1 else tr("{n} shapes")).format(n=shapes)
-                if shapes else "",
-                (tr("{n} group") if groups == 1 else tr("{n} groups")).format(n=groups)
-                if groups else "") if x)
+            what = self.describe_objects(items)
             how = (tr("drag to move, Delete deletes, right-click for more (Edit text changes "
                       "the words)") if texts else
                    tr("drag to move, drag a handle to resize, Delete deletes, right-click for "

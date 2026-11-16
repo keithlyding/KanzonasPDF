@@ -11456,3 +11456,18 @@ msgstr "{text} no es una respuesta aquí: haga clic en un botón, o escriba el c
 
 msgid "That SVG file can't be read, or it draws nothing."
 msgstr "Ese archivo SVG no se puede leer, o no dibuja nada."
+
+msgid "Rotate by"
+msgstr "Girar"
+
+msgid "Counterclockwise (-90 turns a quarter clockwise). You can also drag the round handle above them."
+msgstr "En sentido contrario a las agujas del reloj (-90 gira un cuarto en el sentido de las agujas del reloj). También puede arrastrar el controlador redondo que tienen encima."
+
+msgid "Text is moved, not turned: select only pictures and shapes to rotate them."
+msgstr "El texto se mueve, no se gira: seleccione solo imágenes y formas para girarlas."
+
+msgid "Rotation turns it about its middle (counterclockwise), as its round handle does."
+msgstr "Rotación lo gira alrededor de su centro (en sentido contrario a las agujas del reloj), como su controlador redondo."
+
+msgid "Rotate by turns them about their middle (counterclockwise), as their round handle does."
+msgstr "Girar los gira alrededor de su centro (en sentido contrario a las agujas del reloj), como su controlador redondo."
