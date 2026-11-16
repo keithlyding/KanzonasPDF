@@ -1218,10 +1218,15 @@ over another page and it moves there (its outline shows where it lands); markups
 Select or the Hand tool do the same.
 Drag a corner handle to resize it, keeping its proportions
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
-scales its line thickness.</li>
+scales its line thickness. <b>Turn it</b> by dragging the <b>round handle</b> above it: it turns
+about its middle, the angle shows in the status bar, and Shift turns it in 15&deg; steps. To turn
+it by an exact angle, right-click &gt; <b>Rotate by an angle...</b> and type the degrees
+(counterclockwise, as a markup's Rotation; -90 turns it a quarter clockwise). Text is moved, not
+turned, so a selection with text in it has no round handle (CAD mode's Rotate leaves text where
+it is the same way).</li>
 <li>Delete (or Backspace) deletes the selection. Right-click for Cut, Copy, Paste and Duplicate,
 Ungroup (groups), Rotate clockwise, Rotate
-counterclockwise, the stacking order commands and Delete, and, for one picture, Copy picture
+counterclockwise, Rotate by an angle..., the stacking order commands and Delete, and, for one picture, Copy picture
 (Ctrl+V pastes it as an image markup) and Save picture as.... Escape deselects.</li>
 <li><b>Duplicate</b> (Ctrl+D) puts copies of the selected text, pictures and shapes slightly
 down and to the right on the same page, selected, so you can drag them into place. <b>Copy</b>

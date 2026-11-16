@@ -11497,6 +11497,18 @@ msgstr "Colore riempimento..."
 msgid "Text color..."
 msgstr "Colore testo..."
 
+msgid "Rotate by an angle..."
+msgstr "Ruota di un angolo..."
+
+msgid "Rotate by an angle"
+msgstr "Ruota di un angolo"
+
+msgid "Angle in degrees (counterclockwise; -90 turns clockwise):"
+msgstr "Angolo in gradi (in senso antiorario; -90 ruota in senso orario):"
+
+msgid "Rotate: {deg}° (Shift: 15° steps)"
+msgstr "Ruota: {deg}° (Shift: passi di 15°)"
+
 msgid "Yes"
 msgstr "Sì"
 

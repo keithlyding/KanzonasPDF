@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.4
+
+**New**
+- Edit objects (and CAD mode): turn the page's own pictures, shapes and groups by dragging the round handle above them (Shift for 15° steps), or right-click > Rotate by an angle... and type the degrees.
+
+## 1.15.4 (es)
+
+**Novedades**
+- Editar objetos (y el modo CAD): gire las imágenes, formas y grupos propios de la página arrastrando el controlador redondo que tienen encima (Shift para pasos de 15°), o haga clic con el botón derecho > Girar un ángulo... y escriba los grados.
+
+## 1.15.4 (it)
+
+**Novità**
+- Modifica oggetti (e la modalità CAD): ruota le immagini, le forme e i gruppi della pagina trascinando la maniglia rotonda sopra di essi (Shift per passi di 15°), o fai clic con il tasto destro > Ruota di un angolo... e digita i gradi.
+
 ## 1.15.3
 
 **New**

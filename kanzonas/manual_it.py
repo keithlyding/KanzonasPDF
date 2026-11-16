@@ -1206,10 +1206,14 @@ su un'altra pagina e si sposta lì (il contorno mostra dove arriva); le annotazi
 Seleziona o con lo strumento Mano fanno lo stesso.
 Trascina una maniglia d'angolo per ridimensionarla mantenendo le proporzioni
 (tieni premuto Shift per deformarla liberamente), o una maniglia laterale per renderla più larga o più alta. Ridimensionare una forma
-ne scala anche lo spessore delle linee.</li>
+ne scala anche lo spessore delle linee. <b>Ruotala</b> trascinando la <b>maniglia rotonda</b> sopra di essa: ruota attorno al
+suo centro, l'angolo appare nella barra di stato e Shift la ruota a passi di 15&deg;. Per ruotarla di un angolo esatto, fai
+clic con il tasto destro &gt; <b>Ruota di un angolo...</b> e digita i gradi (in senso antiorario, come la Rotazione di
+un'annotazione; -90 la ruota di un quarto in senso orario). Il testo si sposta, non si ruota, quindi una selezione con del
+testo non ha la maniglia rotonda (anche Ruota della modalità CAD lascia il testo dov'è).</li>
 <li>Canc (o Backspace) elimina la selezione. Fai clic con il tasto destro per Taglia, Copia, Incolla e Duplica,
 Separa (gruppi), Ruota in senso orario, Ruota
-in senso antiorario, i comandi dell'ordine di sovrapposizione ed Elimina e, per una sola immagine, Copia immagine
+in senso antiorario, Ruota di un angolo..., i comandi dell'ordine di sovrapposizione ed Elimina e, per una sola immagine, Copia immagine
 (Ctrl+V la incolla come annotazione immagine) e Salva immagine con nome.... Esc annulla la selezione.</li>
 <li><b>Duplica</b> (Ctrl+D) mette copie del testo, delle immagini e delle forme selezionati leggermente
 più in basso e a destra nella stessa pagina, selezionate, così puoi trascinarle al loro posto. <b>Copia</b>

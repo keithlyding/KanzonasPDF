@@ -1207,10 +1207,14 @@ la suelta sobre otra página, se mueve allí (su contorno muestra dónde queda);
 con la herramienta Mano hacen lo mismo.
 Arrastre un controlador de esquina para cambiar su tamaño conservando sus proporciones
 (mantenga presionada Shift para estirarla libremente), o un controlador lateral para hacerla más ancha o más alta. Cambiar el tamaño de una forma también
-cambia la escala del grosor de sus líneas.</li>
+cambia la escala del grosor de sus líneas. <b>Gírela</b> arrastrando el <b>controlador redondo</b> que tiene encima: gira
+alrededor de su centro, el ángulo aparece en la barra de estado y Shift la gira en pasos de 15&deg;. Para girarla un ángulo
+exacto, haga clic con el botón derecho &gt; <b>Girar un ángulo...</b> y escriba los grados (en sentido contrario a las agujas
+del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido de las agujas del reloj). El texto se mueve, no se
+gira, así que una selección con texto no tiene controlador redondo (Girar del modo CAD también deja el texto donde está).</li>
 <li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
 Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
-en sentido contrario a las agujas del reloj, los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen
+en sentido contrario a las agujas del reloj, Girar un ángulo..., los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen
 (Ctrl+V la pega como una marca de imagen) y Guardar imagen como…. Esc anula la selección.</li>
 <li><b>Duplicar</b> (Ctrl+D) coloca copias del texto, las imágenes y las formas seleccionados un poco más abajo y a la
 derecha en la misma página, seleccionadas, para que pueda arrastrarlas a su lugar. <b>Copiar</b> (Ctrl+C),
