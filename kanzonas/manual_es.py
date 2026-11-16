@@ -198,13 +198,14 @@ lo desea así). Agrega un acceso directo en el menú Inicio, opcionalmente un ac
 KanzonasPDF como aplicación para abrir archivos PDF.</li>
 <li><b>Convertirla en su aplicación predeterminada para PDF:</b> Windows no permite que los instaladores lo hagan sin preguntar. Haga clic con el botón derecho en
 cualquier PDF &gt; Abrir con &gt; Elegir otra aplicación &gt; KanzonasPDF, y marque "Usar siempre esta aplicación".</li>
-<li><b>Miniaturas y el panel de vista previa en el Explorador de archivos:</b> cuando KanzonasPDF
-es su aplicación predeterminada para PDF, las carpetas del Explorador muestran la primera página
-de cada PDF en lugar del icono de KanzonasPDF (en la vista Iconos medianos o mayor), y el panel de
-vista previa (Alt+P en el Explorador) muestra sus páginas: desplácelas con la rueda del ratón, la
-barra de desplazamiento o las teclas de flecha y Re Pág/Av Pág. Se dibujan con el mismo motor de
-PDF que KanzonasPDF, y Windows las ejecuta fuera del propio Explorador. Un PDF con contraseña
-muestra el icono, y un aviso en el panel de vista previa. Si una carpeta sigue mostrando iconos,
+<li><b>Miniaturas en el Explorador de archivos:</b> cuando KanzonasPDF es su aplicación
+predeterminada para PDF, las carpetas del Explorador muestran la primera página de cada PDF en
+lugar del icono de KanzonasPDF (en la vista Iconos medianos o mayor). Se dibujan con el mismo motor
+de PDF que KanzonasPDF, y Windows las ejecuta fuera del propio Explorador. Un PDF con contraseña
+muestra el icono. Las vistas previas (el panel de vista previa del Explorador, Alt+P, y la vista
+previa de adjuntos de Outlook) las da el visor de PDF propio de Windows: Outlook solo usa visores
+instalados para todo el equipo, así que KanzonasPDF no añade uno propio (con uno, Outlook decía
+"no hay ningún visor instalado" para los PDF). Si una carpeta sigue mostrando iconos,
 Windows está mostrando las imágenes que guardó de antes: se vuelven a dibujar cuando cambian los
 archivos, o de inmediato después de limpiar "Miniaturas" en el Liberador de espacio en disco.
 Las versiones portátiles no las añaden (no cambian nada en Windows).</li>

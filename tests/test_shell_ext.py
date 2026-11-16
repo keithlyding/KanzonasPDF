@@ -40,7 +40,6 @@ def clsids_in_header():
 
 THUMBNAIL_KEY = "{e357fccd-a995-4576-b01f-234630154e96}"    # IThumbnailProvider's handler key
 PREVIEW_KEY = "{8895b1c6-b41f-4c1c-a562-0d564250836f}"      # IPreviewHandler's handler key
-PREVHOST_64 = "{6d2b5079-2f0b-48dd-ab7f-97cec514d30b}"      # Windows' 64-bit preview host
 
 
 class ShellExtension(unittest.TestCase):
@@ -54,21 +53,34 @@ class ShellExtension(unittest.TestCase):
         iss = read("installer", "KanzonasPDF.iss")
         # (Inno writes a "{" as "{{")
         self.assertIn('#define ThumbCLSID "{%s"' % ids["CLSID_KzThumbnail"], iss)
-        self.assertIn('#define PrevCLSID "{%s"' % ids["CLSID_KzPreview"], iss)
         self.assertIn("KanzonasPDF.Document\\ShellEx\\{%s\"; ValueType: string; ValueData: "
                       "\"{#ThumbCLSID}\"" % THUMBNAIL_KEY, iss)
-        self.assertIn("KanzonasPDF.Document\\ShellEx\\{%s\"; ValueType: string; ValueData: "
-                      "\"{#PrevCLSID}\"" % PREVIEW_KEY, iss)
-        self.assertIn('ValueName: "AppID"; ValueData: "{%s"' % PREVHOST_64, iss)
-        self.assertEqual(iss.count('ValueData: "{app}\\KanzonasPDFShell.dll"'), 2)
-        self.assertEqual(iss.count('ValueName: "ThreadingModel"; ValueData: "Apartment"'), 2)
+        self.assertEqual(iss.count('ValueData: "{app}\\KanzonasPDFShell.dll"'), 1)
+        self.assertEqual(iss.count('ValueName: "ThreadingModel"; ValueData: "Apartment"'), 1)
         # (the program's own icon stays for files it can't draw)
         self.assertIn("KanzonasPDF.Document\\DefaultIcon", iss)
         # registered and removed with the PDF entry, never outside it
         for line in iss.splitlines():
-            if "KzShell" in line or "CLSID}" in line or "PreviewHandlers" in line:
+            if "KzShell" in line or "CLSID}" in line:
                 if line.startswith("Root:"):
                     self.assertIn("Tasks: pdfdefault", line, line)
+
+    def test_the_preview_handler_isnt_registered_and_the_old_one_goes(self):
+        # Outlook lists only previewers registered for the whole computer: with a just-me
+        # install it said "no previewer installed" for PDFs (the owner, 16 Nov 2026)
+        ids = clsids_in_header()
+        iss = read("installer", "KanzonasPDF.iss")
+        registry = iss[iss.index("[Registry]"):iss.index("[Run]")]
+        self.assertNotIn(PREVIEW_KEY.lower(), registry.lower())
+        self.assertNotIn(ids["CLSID_KzPreview"].lower(), registry.lower())
+        self.assertNotIn("PreviewHandlers", registry)
+        code = iss[iss.index("[Code]"):]
+        self.assertIn("RegDeleteKeyIncludingSubkeys(Root, 'Software\\Classes\\KanzonasPDF.Document"
+                      "\\ShellEx\\%s')" % PREVIEW_KEY, code)
+        self.assertIn("RegDeleteKeyIncludingSubkeys(Root, 'Software\\Classes\\CLSID\\%s')"
+                      % ids["CLSID_KzPreview"], code)
+        self.assertIn("\\PreviewHandlers', '%s')" % ids["CLSID_KzPreview"], code)
+        self.assertIn("if CurStep = ssPostInstall then\n    RemoveOldPreviewHandler;", code)
 
     def test_the_workflow_checks_the_same_ones(self):
         ids = clsids_in_header()

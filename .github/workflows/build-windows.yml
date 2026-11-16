@@ -226,33 +226,40 @@ jobs:
         run: |
           $setup = "dist-installer\KanzonasPDF-v${{ steps.ver.outputs.version }}-setup.exe"
           $dir = "$env:RUNNER_TEMP\kzinstall"
+          # what 1.14.1 to 1.15.6 registered for the Preview pane, as a computer updating from them has
+          # it: the setup takes it away (Outlook said "no previewer installed" for PDFs: the owner,
+          # 16 Nov 2026), so Windows' own PDF previewer is used again
+          $thumb = "{8BBD1C01-BC86-4432-9CA0-D3F973DBF51C}"; $prev = "{6F5FD26D-63FE-481F-8E9D-F28ADC1924C3}"
+          $cls = "HKCU:\Software\Classes"
+          $prevKey = "$cls\KanzonasPDF.Document\ShellEx\{8895b1c6-b41f-4c1c-a562-0d564250836f}"
+          New-Item -Force $prevKey | Set-Item -Value $prev
+          New-Item -Force "$cls\CLSID\$prev\InprocServer32" | Set-Item -Value "$dir\KanzonasPDFShell.dll"
+          $ph = "HKCU:\Software\Microsoft\Windows\CurrentVersion\PreviewHandlers"
+          if (-not (Test-Path $ph)) { New-Item -Force $ph | Out-Null }
+          Set-ItemProperty $ph -Name $prev -Value "KanzonasPDF preview handler"
           $p = Start-Process $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/CURRENTUSER","/NORESTART","/DIR=$dir","/TASKS=pdfdefault" -PassThru -Wait
           if ($p.ExitCode -ne 0) { throw "Installer failed with code $($p.ExitCode)" }
           $p = Start-Process "$dir\KanzonasPDF.exe" -ArgumentList "--selftest","installed-selftest.log" -PassThru -Wait
           Get-Content installed-selftest.log
           if ($p.ExitCode -ne 0) { throw "Installed app failed its self test" }
           if (-not (Test-Path "HKCU:\Software\Classes\KanzonasPDF.Document\shell\open\command")) { throw "PDF association missing" }
-          # Explorer's thumbnails and Preview pane: registered for KanzonasPDF's PDFs, and working
-          # from where they're installed
-          $thumb = "{8BBD1C01-BC86-4432-9CA0-D3F973DBF51C}"; $prev = "{6F5FD26D-63FE-481F-8E9D-F28ADC1924C3}"
-          $cls = "HKCU:\Software\Classes"
+          # Explorer's thumbnails: registered for KanzonasPDF's PDFs, and working from where they're
+          # installed; the old Preview pane handler gone, whole
           if ((Get-ItemProperty "$cls\KanzonasPDF.Document\ShellEx\{e357fccd-a995-4576-b01f-234630154e96}").'(default)' -ne $thumb) { throw "Thumbnail handler not registered" }
-          if ((Get-ItemProperty "$cls\KanzonasPDF.Document\ShellEx\{8895b1c6-b41f-4c1c-a562-0d564250836f}").'(default)' -ne $prev) { throw "Preview handler not registered" }
-          foreach ($c in $thumb, $prev) {
-            $server = (Get-ItemProperty "$cls\CLSID\$c\InprocServer32").'(default)'
-            if ($server -ne "$dir\KanzonasPDFShell.dll") { throw "$c points to '$server'" }
-          }
-          if ((Get-ItemProperty "$cls\CLSID\$prev").AppID -ne "{6d2b5079-2f0b-48dd-ab7f-97cec514d30b}") { throw "The preview handler doesn't run in Windows' preview host" }
-          if (-not (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\PreviewHandlers" -Name $prev -ErrorAction SilentlyContinue)) { throw "Preview handler not listed" }
+          $server = (Get-ItemProperty "$cls\CLSID\$thumb\InprocServer32").'(default)'
+          if ($server -ne "$dir\KanzonasPDFShell.dll") { throw "$thumb points to '$server'" }
+          if (Test-Path $prevKey) { throw "The old Preview pane handler is still named for KanzonasPDF's PDFs" }
+          if (Test-Path "$cls\CLSID\$prev") { throw "The old Preview pane handler's class is still registered" }
+          if (Get-ItemProperty $ph -Name $prev -ErrorAction SilentlyContinue) { throw "The old Preview pane handler is still listed" }
+          # (the DLL's Preview pane handler is still tested, unregistered, by kzshell_test)
           & shell_ext\out\kzshell_test.exe "$dir\KanzonasPDFShell.dll" shell_ext\out\pdfs
           if ($LASTEXITCODE -ne 0) { throw "The installed thumbnails or Preview pane failed their test" }
           $p = Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -PassThru -Wait
           Start-Sleep -Seconds 5
           if (Test-Path "$dir\KanzonasPDF.exe") { throw "Uninstall left the app behind" }
-          foreach ($k in "$cls\CLSID\$thumb", "$cls\CLSID\$prev", "$cls\KanzonasPDF.Document") {
+          foreach ($k in "$cls\CLSID\$thumb", "$cls\KanzonasPDF.Document") {
             if (Test-Path $k) { throw "Uninstall left $k behind" }
           }
-          if (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\PreviewHandlers" -Name $prev -ErrorAction SilentlyContinue) { throw "Uninstall left the preview handler listed" }
 
       - name: Portable version (settings and files stay in a data folder beside the exe)
         shell: pwsh

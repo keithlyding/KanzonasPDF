@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.7
+
+**Fixed**
+- Outlook shows PDF attachments in its preview again. KanzonasPDF no longer puts in a PDF previewer of its own, which Outlook couldn't use; previews come from Windows' own PDF previewer, as before 1.14.1. File Explorer still shows KanzonasPDF's page thumbnails.
+
+## 1.15.7 (es)
+
+**Correcciones**
+- Outlook vuelve a mostrar los PDF adjuntos en su vista previa. KanzonasPDF ya no añade un visor de PDF propio, que Outlook no podía usar; las vistas previas las da el visor de PDF de Windows, como antes de la 1.14.1. El Explorador de archivos sigue mostrando las miniaturas de página de KanzonasPDF.
+
+## 1.15.7 (it)
+
+**Correzioni**
+- Outlook mostra di nuovo i PDF allegati nella sua anteprima. KanzonasPDF non aggiunge più un visualizzatore PDF suo, che Outlook non poteva usare; le anteprime vengono dal visualizzatore PDF di Windows, come prima della 1.14.1. Esplora file mostra ancora le miniature delle pagine di KanzonasPDF.
+
 ## 1.15.4
 
 **New**

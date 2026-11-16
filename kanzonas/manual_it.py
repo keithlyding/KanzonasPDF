@@ -196,13 +196,14 @@ lo preferisci). Aggiunge un collegamento nel menu Start, facoltativamente un col
 KanzonasPDF come app per aprire i PDF.</li>
 <li><b>Impostarlo come app PDF predefinita:</b> Windows non consente ai programmi di installazione di farlo in automatico. Fai clic destro su
 un PDF qualsiasi &gt; Apri con &gt; Scegli un'altra app &gt; KanzonasPDF, e spunta "Usa sempre questa app".</li>
-<li><b>Miniature e riquadro di anteprima in Esplora file:</b> quando KanzonasPDF è la tua app
-predefinita per i PDF, le cartelle di Esplora file mostrano la prima pagina di ogni PDF al posto
-dell'icona di KanzonasPDF (nella visualizzazione Icone medie o più grandi), e il riquadro di
-anteprima (Alt+P in Esplora file) ne mostra le pagine: scorrile con la rotellina del mouse, la
-barra di scorrimento o i tasti freccia e Pag su/Pag giù. Sono disegnate con lo stesso motore PDF
-di KanzonasPDF, e Windows le esegue fuori da Esplora file stesso. Un PDF con password mostra
-l'icona, e un avviso nel riquadro di anteprima. Se una cartella mostra ancora le icone, Windows
+<li><b>Miniature in Esplora file:</b> quando KanzonasPDF è la tua app predefinita per i PDF, le
+cartelle di Esplora file mostrano la prima pagina di ogni PDF al posto dell'icona di KanzonasPDF
+(nella visualizzazione Icone medie o più grandi). Sono disegnate con lo stesso motore PDF di
+KanzonasPDF, e Windows le esegue fuori da Esplora file stesso. Un PDF con password mostra l'icona.
+Le anteprime (il riquadro di anteprima di Esplora file, Alt+P, e l'anteprima degli allegati di
+Outlook) vengono dal visualizzatore PDF di Windows: Outlook usa solo visualizzatori installati per
+tutto il computer, quindi KanzonasPDF non ne aggiunge uno suo (con uno, Outlook diceva "nessun
+visualizzatore installato" per i PDF). Se una cartella mostra ancora le icone, Windows
 sta mostrando le immagini che aveva conservato: vengono ridisegnate quando i file cambiano, o
 subito dopo aver eliminato le "Anteprime" con Pulizia disco. Le versioni portatili non le
 aggiungono (non cambiano nulla in Windows).</li>
