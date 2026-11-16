@@ -8802,6 +8802,24 @@ class DocumentView(QScrollArea):
         self._objects_edit(tr("Rotated"), lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees, objs),
                            links_fn=turn_links)
 
+    _turn_typed = 15.0                  # the angle Rotate by an angle... offers (the last one)
+
+    def rotate_objects_by(self):
+        """Rotate by an angle... (Edit objects' right-click menu): the selected pictures and
+        shapes turned about their middle by a typed angle, in degrees counterclockwise as the
+        page is shown (as a markup's Rotation and CAD mode's Rotate; -90 turns clockwise).
+        Their round handle turns them by dragging."""
+        if self.obj_sel is None:
+            return
+        deg, ok = QInputDialog.getDouble(
+            self, tr("Rotate by an angle"),
+            tr("Angle in degrees (counterclockwise; -90 turns clockwise):"),
+            DocumentView._turn_typed, -360.0, 360.0, 2)
+        if not ok or abs(deg) < 1e-9:
+            return
+        DocumentView._turn_typed = deg
+        self.rotate_objects(-deg)       # (rotate_objects: clockwise as shown)
+
     def arrange_objects(self, how):
         """Stacking order of the page's own pictures and shapes (Edit objects): bring them
         in front of what covers them (text too), or send them behind."""

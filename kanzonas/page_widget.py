@@ -1524,7 +1524,26 @@ class PageWidget(QWidget):
         items = self._objects_here()
         if not items or any(it["kind"] == "text" for it in items):
             return {}                   # text is moved, not resized (Edit text changes it)
-        return box_handles(self.to_screen(self.view.selected_objects_rect()).adjusted(-2, -2, 2, 2))
+        r = self.to_screen(self.view.selected_objects_rect()).adjusted(-2, -2, 2, 2)
+        out = box_handles(r)
+        # the round handle above them turns them (as a markup's), about their middle
+        h = HANDLE + 2
+        c = QPointF(r.center().x(), r.top() - ROT_GAP)
+        out["rot"] = QRectF(c.x() - h / 2, c.y() - h / 2, h, h)
+        return out
+
+    def _objects_turn(self, pos, steps=False):
+        """Degrees the selected objects turn while their round handle is dragged to pos
+        (clockwise as shown, -180 to 180; Shift: 15 degree steps)."""
+        ed = self._obj_edit
+        c = QRectF(self.to_screen(self.view.selected_objects_rect())).center()
+        a0 = math.atan2(ed["start"].y() - c.y(), ed["start"].x() - c.x())
+        a1 = math.atan2(pos.y() - c.y(), pos.x() - c.x())
+        deg = math.degrees(a1 - a0)             # (screen y grows downward: clockwise)
+        deg = (deg + 180.0) % 360.0 - 180.0
+        if steps:
+            deg = round(deg / 15.0) * 15.0
+        return deg
 
     def _selected_size(self, items):
         """How many line pieces the selected objects have (worked out once per selection)."""
@@ -1622,8 +1641,13 @@ class PageWidget(QWidget):
             if ed is None:
                 p.setPen(QPen(blue, 1))
                 p.setBrush(Qt.white)
-                for r in self._objects_handles().values():
-                    p.drawRect(r)
+                for hid, r in self._objects_handles().items():
+                    if hid == "rot":
+                        top = QPointF(r.center().x(), r.bottom())
+                        p.drawLine(top, top + QPointF(0, ROT_GAP - r.height() / 2 - 2))
+                        p.drawEllipse(r)
+                    else:
+                        p.drawRect(r)
                 p.setBrush(Qt.NoBrush)
 
     def _objects_press(self, e, pos, pdf):
@@ -1718,6 +1742,21 @@ class PageWidget(QWidget):
             self._build_object_ghost()
         pm = ed.get("ghost_pm")
         preview = ed.get("preview")
+        if ed["mode"] == "rot" and preview is not None:
+            # (the shapes' picture turned about their middle, and the angle beside it)
+            bounds, src = ed.get("bounds_rect"), ed.get("ghost_rect")
+            c = preview.center()
+            p.save()
+            p.translate(c)
+            p.rotate(ed.get("turn", 0.0))
+            p.translate(-c)
+            if pm is not None and not pm.isNull() and src is not None:
+                p.drawPixmap(src, pm, QRectF(0, 0, pm.width(), pm.height()))
+            p.setPen(QPen(QColor(0, 120, 215), 1, Qt.DashLine))
+            p.setBrush(Qt.NoBrush)
+            p.drawRect(bounds if bounds is not None else preview)
+            p.restore()
+            return
         bounds = ed.get("bounds_rect")
         src = ed.get("ghost_rect")
         if (pm is not None and not pm.isNull() and bounds is not None and src is not None
@@ -1849,6 +1888,10 @@ class PageWidget(QWidget):
         if ed["mode"] == "move" and ed["preview"] is not None and \
                 self._dropped_elsewhere(e, ed["start"]):
             return
+        if ed["mode"] == "rot":
+            if ed["preview"] is not None and self._objects_here() and abs(ed.get("turn", 0)) > 1e-6:
+                self.view.rotate_objects(ed["turn"])
+            return
         if ed["preview"] is not None and self._objects_here():
             q = ed["preview"]
             new = pymupdf.Rect(self.to_pdf(q.topLeft()), self.to_pdf(q.bottomRight())).normalize()
@@ -1919,6 +1962,8 @@ class PageWidget(QWidget):
         for deg, label in ((90, tr("Rotate clockwise")), (-90, tr("Rotate counterclockwise"))):
             a = menu.addAction(label, lambda d=deg: self.view.rotate_objects(d))
             a.setEnabled(not has_text)
+        a = menu.addAction(tr("Rotate by an angle..."), self.view.rotate_objects_by)
+        a.setEnabled(not has_text)
         menu.addSeparator()
         for how, label, keys in (("front", tr("Bring to front"), "Ctrl+Shift+]"),
                                  ("forward", tr("Bring forward"), "Ctrl+]"),
@@ -2729,6 +2774,15 @@ class PageWidget(QWidget):
             if (pos - self._obj_edit["start"]).manhattanLength() >= 3:
                 if self._obj_edit["mode"] == "box":
                     self._obj_edit["now"] = pos
+                elif self._obj_edit["mode"] == "rot":
+                    ed = self._obj_edit
+                    ed["turn"] = self._objects_turn(pos, shift_held(e))
+                    ed["preview"] = QRectF(self.to_screen(self.view.selected_objects_rect()))
+                    self._build_object_ghost()
+                    # (said counterclockwise, as the angle typed in Rotate by an angle...)
+                    self.view.statusMessage.emit(tr("Rotate: {deg}\u00b0 (Shift: 15\u00b0 "
+                                                    "steps)").format(
+                        deg=("%.1f" % -ed["turn"]).rstrip("0").rstrip(".")))
                 else:
                     self._obj_edit["preview"] = self._objects_preview(pos, shift_held(e),
                                                                       self._snapping(e))
