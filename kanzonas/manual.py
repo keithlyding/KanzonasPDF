@@ -567,8 +567,12 @@ first and then start a command, or start the command first: with nothing selecte
 <b>select objects</b> (clicks, boxes, lassos as above), and <b>Enter</b> (or a right-click) goes
 on with what you selected. Then answer its prompt on the command line:
 click points on the page (they snap to line ends and corners like the drawing tools; hold Alt
-not to snap), type a value and press Enter, or click a button there. Escape (or Cancel) stops a
-command; right-click is Enter. Each change is one Ctrl+Z.</p>
+not to snap), type a value and press Enter, or click a button there. Hold <b>Shift</b> or
+<b>Ctrl</b> while clicking a point to keep it straight across or straight up and down from the
+point before, as the page is shown (as AutoCAD's Ortho): a level or upright mirror line, a move
+or copy along one direction. A point snapped to an object keeps that object's other
+coordinate, so it can still be lined up with it. Escape (or Cancel) stops a command;
+right-click is Enter. Each change is one Ctrl+Z.</p>
 <p>So CAD mode needs no other tab for everyday work, the CAD tab also has the tools used most
 next to its commands (they stay on their own tabs too). Similar tools share one button, as on
 AutoCAD's ribbon: click the button for the tool it shows, or the arrow beside it to pick another;
@@ -603,7 +607,8 @@ or off.</li>
 <li>While a circle is being drawn (its center clicked), type its radius and press Enter.</li>
 <li>While a command runs, the line says what to do next and takes what you type: an angle, a
 scale factor, or a choice (the first letters of a button's name will do: K for Keep them, D
-for Delete them).</li>
+for Delete them). A question (Mirror's "delete the originals?", Align's "scale it?") also takes
+<b>Yes</b> or <b>No</b>, or just Y or N, as in AutoCAD; Enter alone is No.</li>
 <li>Escape clears what you typed; with nothing typed, it cancels the command.</li>
 <li>In CAD mode the one-letter tool shortcuts (V for Select, H for Hand...) type into the command
 line instead (Preferences &gt; Mouse, CAD options: turn off <b>Letters typed over the drawing go to
@@ -627,11 +632,13 @@ there.</li>
 <li><b>Scale</b>: click the base point, then type the factor (2 = twice as big, 0.5 = half; from
 0.001 to 1000) and press Enter, or click a point at a length you know, then the point at the
 length it becomes.</li>
-<li><b>Mirror</b>: click two points on the mirror line, then <b>Keep them</b> (a mirrored copy)
-or <b>Delete them</b> (the originals are replaced).</li>
+<li><b>Mirror</b>: click two points on the mirror line, then <b>Keep them</b> (a mirrored copy;
+type N or No, or press Enter) or <b>Delete them</b> (the originals are replaced; type Y or
+Yes).</li>
 <li><b>Delete</b>: deletes the selection.</li>
 <li><b>Align</b>: click a point on the selection and where it goes, then a second point and where
-it goes; then <b>Scale</b> (so the second points meet too) or <b>Don't scale</b>.</li>
+it goes; then <b>Scale</b> (so the second points meet too; Y or Yes) or <b>Don't scale</b> (N, No
+or Enter).</li>
 <li><b>Array</b>: choose the rows and columns (up to 50 each), then click the base point, where
 the next column's copy goes and where the next row's copy goes (the direction counts too). An
 array that would make more than 20,000 objects asks first (a group counts every object it
@@ -1140,8 +1147,11 @@ print it as it looks here, and Flatten comments makes it part of the page.</li>
 
 <h2 id="images">Pictures and attached files (videos and more)</h2>
 <ul>
-<li><b>Image</b> tool: drag a box and pick a picture (PNG, JPEG, BMP, GIF, TIFF). It's fitted
-inside the box keeping its proportions; just click instead to place it at its natural size.
+<li><b>Image</b> tool: drag a box and pick a picture (PNG, JPEG, BMP, GIF, TIFF) or an SVG
+drawing. It's fitted inside the box keeping its proportions; just click instead to place it at
+its natural size. An SVG goes in as its own lines, shapes and text, sharp at any zoom, as one
+group in <b>Edit objects</b> (Ungroup takes it apart into its shapes); a picture an SVG only
+links to, in another file, is left out.
 The picture is embedded in the PDF at its original quality and file size and becomes part of
 the page itself, like Acrobat's Add Image: PDF viewers can't move or delete it. Move, resize,
 rotate or delete it with <b>Edit objects</b> (Shift+O), as in Acrobat and PDF-XChange. For a
@@ -2376,6 +2386,7 @@ scroll speed.</li>
 <tr><td>Ctrl+Shift+A</td><td>Auto scroll (Up / Down: slower / faster)</td></tr>
 <tr><td>Hold wheel + drag</td><td>Pan (any tool)</td></tr>
 <tr><td>Alt (while drawing or dragging)</td><td>Don't snap</td></tr>
+<tr><td>Shift or Ctrl (clicking a CAD command's point)</td><td>Straight across or up and down from the point before</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pages / Properties / Markups / Tool chest / Bookmarks / Split view</td></tr>
 </table>
 <p>Change any shortcut in View &gt; Keyboard shortcuts. A key can be used by only one command: if two commands share one, nothing is changed until you fix it. A key you gave a command yourself stays yours: a new default that a later version gives another command doesn't take it (that command then shows no shortcut; Reset all to defaults gives it back). <b>Reset all to defaults</b> puts the built-in shortcuts back straight away. Changes apply in every window.</p>
