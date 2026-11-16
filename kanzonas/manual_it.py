@@ -556,7 +556,11 @@ avviare un comando, oppure avviare prima il comando: se non c'è nulla di selezi
 <b>selezionare gli oggetti</b> (clic, riquadri, lazi come sopra), e <b>Invio</b> (o un clic destro) prosegue con ciò
 che hai selezionato. Poi rispondi alla sua richiesta nella riga di comando:
 fai clic su punti della pagina (si agganciano alle estremità delle linee e agli angoli come gli strumenti di disegno;
-tieni premuto Alt per non agganciare), digita un valore e premi Invio, oppure fai clic su un pulsante lì. Esc (o
+tieni premuto Alt per non agganciare), digita un valore e premi Invio, oppure fai clic su un pulsante lì. Tieni
+premuto <b>Maiusc</b> o <b>Ctrl</b> mentre fai clic su un punto per tenerlo esattamente in orizzontale o in verticale
+rispetto al punto precedente, così come è mostrata la pagina (come l'Orto di AutoCAD): una linea di specchiatura
+orizzontale o verticale, uno spostamento o una copia in una sola direzione. Un punto agganciato a un oggetto mantiene
+l'altra coordinata di quell'oggetto, così puoi ancora allinearlo. Esc (o
 Annulla) interrompe un comando; il clic destro equivale a Invio. Ogni modifica si annulla con un solo Ctrl+Z.</p>
 <p>Perché la modalità CAD non richieda altre schede per il lavoro di tutti i giorni, la scheda CAD contiene anche gli
 strumenti più usati accanto ai suoi comandi (restano anche nelle loro schede). Gli strumenti simili condividono un
@@ -592,7 +596,8 @@ digitandone il nome indica se ora è attiva o disattivata.</li>
 <li>Mentre disegni un cerchio (dopo aver fatto clic sul centro), digita il raggio e premi Invio.</li>
 <li>Mentre un comando è in corso, la riga indica cosa fare dopo e accetta ciò che digiti: un angolo, un
 fattore di scala o una scelta (bastano le prime lettere del nome di un pulsante: M per Mantienili, E
-per Eliminali).</li>
+per Eliminali). Una domanda («eliminare gli originali?» di Specchia, «scalarlo?» di Allinea) accetta anche
+<b>Sì</b> o <b>No</b>, o solo S o N (anche Y, come in AutoCAD); Invio da solo è No.</li>
 <li>Esc cancella ciò che hai digitato; se non hai digitato nulla, annulla il comando.</li>
 <li>In modalità CAD le scorciatoie degli strumenti di una lettera (V per Seleziona, H per Mano...) scrivono invece nella
 riga di comando (Preferenze &gt; Mouse, opzioni CAD: disattiva <b>Le lettere digitate sul disegno vanno alla
@@ -615,10 +620,10 @@ orario) e premi Invio, oppure fai clic su un punto: la selezione ruota in modo c
 <li><b>Scala</b>: fai clic sul punto base, poi digita il fattore (2 = il doppio, 0.5 = la metà; da 0.001 a 1000) e premi
 Invio, oppure fai clic su un punto a una distanza nota, poi sul punto alla distanza che deve diventare.</li>
 <li><b>Specchia</b>: fai clic su due punti della linea di specchiatura, poi su <b>Mantienili</b> (una copia specchiata)
-o su <b>Eliminali</b> (gli originali vengono sostituiti).</li>
+(digita N o No, o premi Invio) o su <b>Eliminali</b> (gli originali vengono sostituiti; digita S o Sì).</li>
 <li><b>Elimina</b>: elimina la selezione.</li>
 <li><b>Allinea</b>: fai clic su un punto della selezione e su dove va, poi su un secondo punto e su dove va; poi su
-<b>Scala</b> (così coincidono anche i secondi punti) o su <b>Non scalare</b>.</li>
+<b>Scala</b> (così coincidono anche i secondi punti; S o Sì) o su <b>Non scalare</b> (N, No o Invio).</li>
 <li><b>Serie</b>: scegli le righe e le colonne (fino a 50 ciascuna), poi fai clic sul punto base, su dove va la copia
 della colonna successiva e su dove va la copia della riga successiva (conta anche la direzione). Una serie che
 creerebbe più di 20.000 oggetti chiede prima conferma (un gruppo conta tutti gli oggetti che disegna). Una serie grande (più di 20 copie di
@@ -1130,8 +1135,11 @@ la stampano come appare qui, e Appiattisci commenti la rende parte della pagina.
 
 <h2 id="images">Immagini e file allegati (video e altro)</h2>
 <ul>
-<li>Strumento <b>Immagine</b>: trascina un riquadro e scegli un'immagine (PNG, JPEG, BMP, GIF, TIFF). Viene adattata
-al riquadro mantenendo le proporzioni; fai solo clic, invece, per posizionarla alle sue dimensioni naturali.
+<li>Strumento <b>Immagine</b>: trascina un riquadro e scegli un'immagine (PNG, JPEG, BMP, GIF, TIFF) o un disegno SVG.
+Viene adattata al riquadro mantenendo le proporzioni; fai solo clic, invece, per posizionarla alle sue dimensioni
+naturali. Un SVG entra con le sue linee, forme e testo, nitido a qualsiasi zoom, come un solo gruppo in <b>Modifica
+oggetti</b> (Separa lo divide nelle sue forme); un'immagine che l'SVG si limita a collegare, in un altro file, viene
+lasciata fuori.
 L'immagine viene incorporata nel PDF con la qualità e le dimensioni di file originali e diventa parte
 della pagina stessa, come Aggiungi immagine di Acrobat: i visualizzatori PDF non possono spostarla né eliminarla. Spostala, ridimensionala,
 ruotala o eliminala con <b>Modifica oggetti</b> (Shift+O), come in Acrobat e PDF-XChange. Per
@@ -2391,6 +2399,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>Ctrl+Shift+A</td><td>Scorrimento automatico (Up / Down: più lento / più veloce)</td></tr>
 <tr><td>Rotellina premuta + trascinamento</td><td>Panoramica (con qualsiasi strumento)</td></tr>
 <tr><td>Alt (mentre disegni o trascini)</td><td>Nessun aggancio</td></tr>
+<tr><td>Maiusc o Ctrl (clic su un punto di un comando CAD)</td><td>Esattamente in orizzontale o in verticale rispetto al punto precedente</td></tr>
 <tr><td>F4 / F6 / F7 / F8 / F9 / F10</td><td>Pagine / Proprietà / Elenco annotazioni / Cassetta degli attrezzi / Segnalibri / Vista divisa</td></tr>
 </table>
 <p>Puoi cambiare qualsiasi scorciatoia in Visualizza &gt; Scorciatoie da tastiera. Un tasto può essere usato da un solo comando: se due comandi condividono lo stesso tasto, non viene modificato nulla finché non risolvi il conflitto. Un tasto che hai assegnato tu a un comando resta tuo: una nuova scorciatoia predefinita che una versione successiva assegna a un altro comando non te lo toglie (quel comando resta senza scorciatoia; Ripristina tutte le impostazioni predefinite gliela restituisce). <b>Ripristina tutte le impostazioni predefinite</b> rimette subito le scorciatoie originali. Le modifiche valgono in tutte le finestre.</p>

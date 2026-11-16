@@ -9,6 +9,33 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.3
+
+**New**
+- The Image tool takes SVG drawings. They go into the page as real lines and shapes, so they stay sharp at any zoom, and Edit objects moves, resizes or ungroups them.
+- CAD mode: hold Shift or Ctrl while clicking a command's point to keep it straight across or straight up and down from the point before, for example a level or upright mirror line.
+
+**Fixed**
+- CAD mode: Mirror's "delete the originals?" (and Align's "scale it?") now takes a typed Yes or No, or just Y or N. Enter alone still means No.
+
+## 1.15.3 (es)
+
+**Novedades**
+- La herramienta Imagen acepta dibujos SVG. Entran en la página como líneas y formas reales, así que se ven nítidos con cualquier zoom, y Editar objetos los mueve, cambia de tamaño o desagrupa.
+- Modo CAD: mantenga presionada Mayús o Ctrl al hacer clic en el punto de un comando para que quede justo en horizontal o en vertical respecto al punto anterior, por ejemplo un eje de simetría horizontal o vertical.
+
+**Correcciones**
+- Modo CAD: «¿eliminar los originales?» de Simetría (y «¿escalarlo?» de Alinear) ahora acepta Sí o No escritos, o solo S o N. Enter solo sigue siendo No.
+
+## 1.15.3 (it)
+
+**Novità**
+- Lo strumento Immagine accetta disegni SVG. Entrano nella pagina come linee e forme vere, quindi restano nitidi a qualsiasi zoom, e Modifica oggetti li sposta, ridimensiona o separa.
+- Modalità CAD: tieni premuto Maiusc o Ctrl mentre fai clic sul punto di un comando per tenerlo esattamente in orizzontale o in verticale rispetto al punto precedente, per esempio una linea di specchiatura orizzontale o verticale.
+
+**Correzioni**
+- Modalità CAD: «eliminare gli originali?» di Specchia (e «scalarlo?» di Allinea) ora accetta Sì o No digitati, o solo S o N. Invio da solo significa ancora No.
+
 ## 1.15.2
 
 **Fixed**
