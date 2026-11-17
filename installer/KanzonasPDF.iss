@@ -59,23 +59,20 @@ Root: HKA; Subkey: "Software\Classes\KanzonasPDF.Document"; ValueType: string; V
 Root: HKA; Subkey: "Software\Classes\KanzonasPDF.Document\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExe},0"; Tasks: pdfdefault
 Root: HKA; Subkey: "Software\Classes\KanzonasPDF.Document\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExe}"" ""%1"""; Tasks: pdfdefault
 Root: HKA; Subkey: "Software\Classes\.pdf\OpenWithProgids"; ValueType: string; ValueName: "KanzonasPDF.Document"; ValueData: ""; Flags: uninsdeletevalue; Tasks: pdfdefault
-; Explorer's thumbnails (a PDF's first page instead of the program's icon) and Preview pane
-; (Alt+P) for the PDFs KanzonasPDF opens: KanzonasPDFShell.dll (shell_ext/), with the class IDs
-; in shell_ext/kzshell.h. Windows runs them outside Explorer: thumbnails in a dllhost.exe, the
-; preview in its preview host (the AppID below, 64-bit prevhost.exe).
+; Explorer's thumbnails (a PDF's first page instead of the program's icon) for the PDFs
+; KanzonasPDF opens: KanzonasPDFShell.dll (shell_ext/), with the class IDs in shell_ext/kzshell.h.
+; Windows runs it outside Explorer, in a dllhost.exe (COM Surrogate).
+; Its Preview pane handler isn't registered (the owner, 16 Nov 2026, "whatever option makes it just
+; simplistic for people who don't know computers very well"): Outlook lists only previewers
+; registered for the whole computer, so with KanzonasPDF installed just for the user (the default)
+; Outlook said "no previewer installed" for every PDF once KanzonasPDF's file type named its own.
+; Without it, Windows' own PDF previewer shows previews in Explorer and Outlook, as before 1.14.1.
+; RemoveOldPreviewHandler takes away what 1.14.1 to 1.15.6 registered.
 #define ThumbCLSID "{{8BBD1C01-BC86-4432-9CA0-D3F973DBF51C}"
-#define PrevCLSID "{{6F5FD26D-63FE-481F-8E9D-F28ADC1924C3}"
 Root: HKA; Subkey: "Software\Classes\CLSID\{#ThumbCLSID}"; ValueType: string; ValueData: "KanzonasPDF thumbnail handler"; Flags: uninsdeletekey; Tasks: pdfdefault
 Root: HKA; Subkey: "Software\Classes\CLSID\{#ThumbCLSID}\InprocServer32"; ValueType: string; ValueData: "{app}\KanzonasPDFShell.dll"; Tasks: pdfdefault
 Root: HKA; Subkey: "Software\Classes\CLSID\{#ThumbCLSID}\InprocServer32"; ValueType: string; ValueName: "ThreadingModel"; ValueData: "Apartment"; Tasks: pdfdefault
 Root: HKA; Subkey: "Software\Classes\KanzonasPDF.Document\ShellEx\{{e357fccd-a995-4576-b01f-234630154e96}"; ValueType: string; ValueData: "{#ThumbCLSID}"; Tasks: pdfdefault
-Root: HKA; Subkey: "Software\Classes\CLSID\{#PrevCLSID}"; ValueType: string; ValueData: "KanzonasPDF preview handler"; Flags: uninsdeletekey; Tasks: pdfdefault
-Root: HKA; Subkey: "Software\Classes\CLSID\{#PrevCLSID}"; ValueType: string; ValueName: "AppID"; ValueData: "{{6d2b5079-2f0b-48dd-ab7f-97cec514d30b}"; Tasks: pdfdefault
-Root: HKA; Subkey: "Software\Classes\CLSID\{#PrevCLSID}"; ValueType: string; ValueName: "DisplayName"; ValueData: "KanzonasPDF preview handler"; Tasks: pdfdefault
-Root: HKA; Subkey: "Software\Classes\CLSID\{#PrevCLSID}\InprocServer32"; ValueType: string; ValueData: "{app}\KanzonasPDFShell.dll"; Tasks: pdfdefault
-Root: HKA; Subkey: "Software\Classes\CLSID\{#PrevCLSID}\InprocServer32"; ValueType: string; ValueName: "ThreadingModel"; ValueData: "Apartment"; Tasks: pdfdefault
-Root: HKA; Subkey: "Software\Classes\KanzonasPDF.Document\ShellEx\{{8895b1c6-b41f-4c1c-a562-0d564250836f}"; ValueType: string; ValueData: "{#PrevCLSID}"; Tasks: pdfdefault
-Root: HKA; Subkey: "Software\Microsoft\Windows\CurrentVersion\PreviewHandlers"; ValueType: string; ValueName: "{#PrevCLSID}"; ValueData: "KanzonasPDF preview handler"; Flags: uninsdeletevalue; Tasks: pdfdefault
 Root: HKA; Subkey: "Software\Classes\Applications\{#MyAppExe}\SupportedTypes"; ValueType: string; ValueName: ".pdf"; ValueData: ""; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\Applications\{#MyAppExe}\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExe}"" ""%1"""
 
@@ -89,4 +86,26 @@ Filename: "{app}\{#MyAppExe}"; Flags: nowait runasoriginaluser; Check: RelaunchA
 function RelaunchAfterUpdate: Boolean;
 begin
   Result := WizardSilent and (Pos('/RELAUNCH', Uppercase(GetCmdTail)) > 0);
+end;
+
+// The Preview pane handler 1.14.1 to 1.15.6 registered (see [Registry]): its keys go, whole, so
+// Windows' own PDF previewer is found again (an empty key left behind could still stand in its
+// way). The class ID is shell_ext/kzshell.h's CLSID_KzPreview.
+procedure RemoveOldPreviewHandler;
+var
+  Root: Integer;
+begin
+  if IsAdminInstallMode then
+    Root := HKLM
+  else
+    Root := HKCU;
+  RegDeleteKeyIncludingSubkeys(Root, 'Software\Classes\KanzonasPDF.Document\ShellEx\{8895b1c6-b41f-4c1c-a562-0d564250836f}');
+  RegDeleteKeyIncludingSubkeys(Root, 'Software\Classes\CLSID\{6F5FD26D-63FE-481F-8E9D-F28ADC1924C3}');
+  RegDeleteValue(Root, 'Software\Microsoft\Windows\CurrentVersion\PreviewHandlers', '{6F5FD26D-63FE-481F-8E9D-F28ADC1924C3}');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+    RemoveOldPreviewHandler;
 end;

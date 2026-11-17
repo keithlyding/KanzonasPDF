@@ -208,12 +208,13 @@ want that). It adds a Start-menu shortcut, optionally a desktop shortcut, and of
 KanzonasPDF as an app for opening PDFs.</li>
 <li><b>Make it your default PDF app:</b> Windows doesn't let installers do this silently. Right-click
 any PDF &gt; Open with &gt; Choose another app &gt; KanzonasPDF, and tick "Always use this app".</li>
-<li><b>Thumbnails and the Preview pane in File Explorer:</b> once KanzonasPDF is your default PDF
-app, Explorer's folders show each PDF's first page instead of the KanzonasPDF icon (in the Medium
-icons view or larger), and the Preview pane (Alt+P in Explorer) shows its pages: scroll them with
-the mouse wheel, the scroll bar or the arrow and Page Up/Page Down keys. They're drawn with the
-same PDF engine as KanzonasPDF, by Windows outside Explorer itself. A PDF with a password shows
-the icon, and a note in the Preview pane. If a folder still shows icons, Windows is showing the
+<li><b>Thumbnails in File Explorer:</b> once KanzonasPDF is your default PDF app, Explorer's
+folders show each PDF's first page instead of the KanzonasPDF icon (in the Medium icons view or
+larger). They're drawn with the same PDF engine as KanzonasPDF, by Windows outside Explorer
+itself. A PDF with a password shows the icon. Previews (Explorer's Preview pane, Alt+P, and
+Outlook's attachment preview) come from Windows' own PDF previewer: Outlook only uses previewers
+installed for the whole computer, so KanzonasPDF doesn't put in one of its own (with one,
+Outlook said "no previewer installed" for PDFs). If a folder still shows icons, Windows is showing the
 pictures it kept from before: they're redrawn as files change, or at once after clearing
 "Thumbnails" in Disk Cleanup. The portable versions don't add them (they change nothing in
 Windows).</li>
@@ -224,8 +225,8 @@ sha256 matches the digest published with that release; it asks to save open docu
 installs the new version over this one (for you, or for all users with Windows' administrator
 prompt if that's how it was installed) and starts again. Or run the newer setup over the old one
 yourself; there's no need to uninstall first. Either way it installs in the same place and keeps
-your settings, signatures, stamps and tool chest. Windows keeps the thumbnail and Preview pane part
-loaded in a <b>COM Surrogate</b> once Explorer has shown a PDF's thumbnail: the setup closes it
+your settings, signatures, stamps and tool chest. Windows keeps the thumbnail part loaded in a
+<b>COM Surrogate</b> once Explorer has shown a PDF's thumbnail: the setup closes it
 (Windows starts it again when it's next needed); run by hand, the setup lists it under
 "Preparing to Install", with <b>Automatically close the applications</b> chosen. If an update
 doesn't finish, KanzonasPDF says so the next time it starts, with the setup's log, and offers to

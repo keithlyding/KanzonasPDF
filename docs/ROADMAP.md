@@ -90,6 +90,12 @@ The owner sets this list; nothing below is promised until it's here.
   security updates cover it), registered by the installer with the PDF entry (KanzonasPDF's
   ProgID only: thumbnails show when KanzonasPDF is the default PDF app; not the portable
   versions), run by Windows outside Explorer, tested on the Windows build machine.
+  **Preview pane changed in 1.15.7** (owner, 16 Nov: Outlook classic said "This file cannot be
+  previewed because there is no previewer installed for it"; "I want whatever option makes it
+  just simplistic for people who don't know computers very well"): Outlook lists only
+  previewers registered for the whole computer, and installs are for one user by default, so
+  KanzonasPDF's own Preview pane handler is no longer registered; Windows' own PDF previewer
+  shows previews in Explorer and Outlook, as before 1.14.1. Thumbnails stay KanzonasPDF's.
 - **Releases** (owner, 12 Nov): a day's notes go into as few releases as practical, but a
   release isn't held for the evening ("I don't want to wait until tonight"); a critical fix
   goes out at once. Outside contributors (@hamishpoole-hill-ctrl's suggestions, issue #82;
