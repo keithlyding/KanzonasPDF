@@ -320,6 +320,9 @@ the libraries it needs). Or: `pip install -r requirements.txt`, then `python run
 manual and the performance budget. The Windows build runs it on the packaged app, the installer
 and an upgrade; the Linux and macOS builds on the AppImage and the app.
 
+**Screenshots:** `QT_QPA_PLATFORM=offscreen python tools/make_screenshots.py` makes the five
+screenshots in `docs/` again, with the current app, from sample documents it builds.
+
 **Build an .exe:** double-click `build_windows.bat`; the app ends up in
 `dist\KanzonasPDF\KanzonasPDF.exe`.
 
