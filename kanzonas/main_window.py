@@ -1871,6 +1871,8 @@ class MainWindow(QMainWindow):
 
         self.props = PropertiesPanel()
         self.props.propsChanged.connect(self._on_props_changed)
+        self.props.objectsTurn.connect(
+            lambda deg: self.view() is not None and self.view().rotate_objects(-deg))
         self.props.resetRequested.connect(self._reset_tool_defaults)
         scroll = QScrollArea()
         scroll.setWidget(self.props)
@@ -2318,6 +2320,9 @@ class MainWindow(QMainWindow):
             (v.requestSignature, self._sign_field),
             (v.textToolPropsChanged,
              lambda v=v: v is self.view() and self._refresh_props()),
+            # (set many times in one step: Properties shows it once, after)
+            (v.objectSelectionChanged,
+             lambda v=v: v is self.view() and self._props_soon()),
             (v.toolDefaultsChanged,
              lambda _t, v=v: v is self.view() and self._refresh_props()),
             (v.editorFormat,
@@ -2766,6 +2771,11 @@ class MainWindow(QMainWindow):
         if v is not None and v.selected_model is not None:
             m = v.selected_model
             self.props.show_target(m["kind"], m["props"], selected=True)
+        elif v is not None and v.obj_sel:
+            # the page's own objects (Edit objects, CAD mode): their rotation
+            items = v.obj_sel[1]
+            self.props.show_objects(v.describe_objects(items), v.objects_angle(),
+                                    text=any(it["kind"] == "text" for it in items))
         elif (self.tool in annotations.DEFAULTS and self.tool != "image") or \
                 self.tool in annotations.PAGE_TEXT_TOOLS:
             # (the Image tool writes into the page: no markup settings apply; Add text and
@@ -2773,6 +2783,17 @@ class MainWindow(QMainWindow):
             self.props.show_target(self.tool, annotations.tool_props(self.tool))
         else:
             self.props.show_target(None, None)
+
+    def _props_soon(self):
+        """Properties shown again once the current step is done (the page's object selection
+        is set several times in one edit)."""
+        t = getattr(self, "_props_timer", None)
+        if t is None:
+            t = self._props_timer = QTimer(self)
+            t.setSingleShot(True)
+            t.setInterval(0)
+            t.timeout.connect(self._refresh_props)
+        t.start()
 
     def _editing_box(self):
         """The Edit text / Add text box open on the page, if Properties is showing its tool."""

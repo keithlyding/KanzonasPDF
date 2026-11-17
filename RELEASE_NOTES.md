@@ -9,6 +9,30 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.6
+
+**New**
+- Properties shows the rotation of the page's own pictures and groups: type an angle to turn one to it. For lines and shapes, Rotate by turns them by the degrees typed.
+
+**Fixed**
+- Snapping now finds a picture's corners, edge middles and center, so a CAD command's base point can be a picture's corner.
+
+## 1.15.6 (es)
+
+**Novedades**
+- Propiedades muestra la rotación de las imágenes y los grupos propios de la página: escriba un ángulo para girar uno hasta él. Para líneas y formas, Girar las gira los grados escritos.
+
+**Correcciones**
+- El ajuste ahora encuentra las esquinas, los puntos medios de los bordes y el centro de una imagen, así que el punto base de un comando CAD puede ser la esquina de una imagen.
+
+## 1.15.6 (it)
+
+**Novità**
+- Proprietà mostra la rotazione delle immagini e dei gruppi della pagina: digita un angolo per ruotarne uno fino a quello. Per linee e forme, Ruota di le ruota dei gradi digitati.
+
+**Correzioni**
+- L'aggancio ora trova gli angoli, i punti medi dei lati e il centro di un'immagine, così il punto base di un comando CAD può essere l'angolo di un'immagine.
+
 ## 1.15.5
 
 **Fixed**

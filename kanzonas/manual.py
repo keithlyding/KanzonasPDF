@@ -992,7 +992,9 @@ the paper, and how often a darker line is drawn. When zoomed far out, only the d
 are shown.</li>
 <li><b>Snap to grid:</b> points you draw or drag jump to the nearest grid intersection.</li>
 <li><b>Snap to objects:</b> points jump to nearby markup corners, edge midpoints, centers and
-line ends, and to the drawing's own line ends, midpoints and corners (useful on CAD sheets).</li>
+line ends, to the drawing's own line ends, midpoints and corners (useful on CAD sheets), and to
+the corners, edge midpoints and center of the page's pictures (also turned ones), so a CAD
+command's base point can be a picture's corner.</li>
 <li>The snap options are in the View menu and toolbar, in the <b>Grid &amp; snap</b> group of
 the ribbon's View tab, the <b>Scale &amp; snap</b> group of the Measure tab and the <b>Snap</b>
 group of the Arrange tab, in Grid settings, and in Preferences &gt; Pages and display.</li>
@@ -1226,7 +1228,10 @@ Drag a corner handle to resize it, keeping its proportions
 scales its line thickness. <b>Turn it</b> by dragging the <b>round handle</b> above it: it turns
 about its middle, the angle shows in the status bar, and Shift turns it in 15&deg; steps. To turn
 it by an exact angle, right-click &gt; <b>Rotate by an angle...</b> and type the degrees
-(counterclockwise, as a markup's Rotation; -90 turns it a quarter clockwise). Text is moved, not
+(counterclockwise, as a markup's Rotation; -90 turns it a quarter clockwise). The <b>Properties</b>
+panel shows it too: one picture or group shows its <b>Rotation</b> (type an angle and it turns to
+it); lines and shapes, or several objects, keep no angle of their own, so it shows <b>Rotate by</b>
+(type the degrees and they turn by that much; the box goes back to 0). Text is moved, not
 turned, so a selection with text in it has no round handle (CAD mode's Rotate leaves text where
 it is the same way).</li>
 <li>Delete (or Backspace) deletes the selection. Right-click for Cut, Copy, Paste and Duplicate,

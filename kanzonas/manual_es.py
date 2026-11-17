@@ -980,7 +980,7 @@ el papel, y cada cuánto se dibuja una línea más oscura. Con el zoom muy aleja
 más oscuras.</li>
 <li><b>Ajustar a la cuadrícula:</b> los puntos que dibuja o arrastra saltan a la intersección de la cuadrícula más cercana.</li>
 <li><b>Ajustar a objetos:</b> los puntos saltan a las esquinas, los puntos medios de los bordes, los centros y
-los extremos de línea de las marcas cercanas, y a los extremos de línea, los puntos medios y las esquinas del propio dibujo (útil en planos de CAD).</li>
+los extremos de línea de las marcas cercanas, a los extremos de línea, los puntos medios y las esquinas del propio dibujo (útil en planos de CAD), y a las esquinas, los puntos medios de los bordes y el centro de las imágenes de la página (también giradas), de modo que el punto base de un comando CAD puede ser la esquina de una imagen.</li>
 <li>Las opciones de ajuste están en el menú Ver y en la barra de herramientas, en el grupo <b>Cuadrícula y ajuste</b> de
 la pestaña Ver de la cinta, en el grupo <b>Escala y ajuste</b> de la pestaña Medir y en el grupo <b>Ajuste</b> de la
 pestaña Organizar, en Configuración de cuadrícula y en Preferencias &gt; Páginas y visualización.</li>
@@ -1215,7 +1215,10 @@ Arrastre un controlador de esquina para cambiar su tamaño conservando sus propo
 cambia la escala del grosor de sus líneas. <b>Gírela</b> arrastrando el <b>controlador redondo</b> que tiene encima: gira
 alrededor de su centro, el ángulo aparece en la barra de estado y Shift la gira en pasos de 15&deg;. Para girarla un ángulo
 exacto, haga clic con el botón derecho &gt; <b>Girar un ángulo...</b> y escriba los grados (en sentido contrario a las agujas
-del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido de las agujas del reloj). El texto se mueve, no se
+del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido de las agujas del reloj). El panel
+<b>Propiedades</b> también lo muestra: una imagen o un grupo muestra su <b>Rotación</b> (escriba un ángulo y gira hasta él); las
+líneas y formas, o varios objetos, no guardan un ángulo propio, así que muestra <b>Girar</b> (escriba los grados y giran esa
+cantidad; el cuadro vuelve a 0). El texto se mueve, no se
 gira, así que una selección con texto no tiene controlador redondo (Girar del modo CAD también deja el texto donde está).</li>
 <li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
 Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
