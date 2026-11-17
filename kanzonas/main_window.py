@@ -6235,7 +6235,9 @@ class MainWindow(QMainWindow):
 
     def start_update_check(self):
         """Called a few seconds after start-up: checks at most once a day, if enabled. While
-        KanzonasPDF stays open, it looks again every hour whether a day has passed."""
+        KanzonasPDF stays open, it looks again every hour whether a day has passed. First, after
+        Update now ran a setup, says if the update didn't take."""
+        self._update_outcome()
         self._updater().check_if_due()
         if getattr(self, "_update_timer", None) is None:
             self._update_timer = QTimer(self)
@@ -6395,6 +6397,36 @@ class MainWindow(QMainWindow):
         elif updates.can_update_appimage():
             self.update_appimage()
 
+    def _update_outcome(self):
+        """After Update now: when the version running is still the old one, the quiet setup
+        stopped (something kept its files in use, or it was refused): say so once, with its log,
+        and offer to run that setup with its windows, which say what's in the way."""
+        from . import __version__, updates
+        out = updates.update_outcome(self.settings)
+        if out is None or out["ok"]:
+            return
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle(tr("Update"))
+        text = tr("The update to KanzonasPDF {new} didn't finish: this is still {old}. Windows "
+                  "may have kept one of its files in use.").format(new=out["version"],
+                                                               old=__version__)
+        if out["log"] and os.path.exists(out["log"]):
+            text += "\n\n" + tr("The setup's log: {path}").format(path=out["log"])
+        box.setText(text)
+        run = None
+        if out["setup"] and os.path.exists(out["setup"]):
+            box.setInformativeText(tr("Run the setup now to finish it: it shows what's in the "
+                                      "way and can close it."))
+            run = box.addButton(tr("Run the setup"), QMessageBox.AcceptRole)
+        else:
+            box.setInformativeText(tr("Download the setup from the release page and run it."))
+        box.addButton(QMessageBox.Close)
+        box.exec()
+        if run is not None and box.clickedButton() is run:
+            import subprocess
+            subprocess.Popen([out["setup"]], close_fds=True)
+
     def _close_all_for_update(self):
         """Close every window before an update (asking about unsaved changes in all of them,
         also when Update now was clicked in a pulled-out window). False: the user kept a
@@ -6435,6 +6467,7 @@ class MainWindow(QMainWindow):
             if not self._close_all_for_update():    # a document kept open: not now
                 shutil.rmtree(os.path.dirname(setup), ignore_errors=True)
                 return
+            updates.remember_update(self.settings, version, setup)
             subprocess.Popen(updates.installer_command(setup, paths.app_dir()), close_fds=True)
             QApplication.quit()
         dl.progress.connect(progress)

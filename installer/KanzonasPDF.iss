@@ -34,7 +34,12 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 ChangesAssociations=yes
-CloseApplications=yes
+; force: what still holds the files after being asked to close is closed anyway. Windows
+; keeps KanzonasPDFShell.dll (thumbnails, Preview pane) loaded in a COM Surrogate or the preview
+; host, which have no window to ask: the setup stopped there ("COM Surrogate" in the list), and
+; a quiet one (Update now) quit without updating (the owner, 16 Nov 2026). Windows starts them
+; again when Explorer next needs a thumbnail or a preview.
+CloseApplications=force
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; Flags: unchecked

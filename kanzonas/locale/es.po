@@ -11471,3 +11471,18 @@ msgstr "Rotación lo gira alrededor de su centro (en sentido contrario a las agu
 
 msgid "Rotate by turns them about their middle (counterclockwise), as their round handle does."
 msgstr "Girar los gira alrededor de su centro (en sentido contrario a las agujas del reloj), como su controlador redondo."
+
+msgid "The update to KanzonasPDF {new} didn't finish: this is still {old}. Windows may have kept one of its files in use."
+msgstr "La actualización a KanzonasPDF {new} no terminó: esta sigue siendo la {old}. Puede que Windows haya mantenido en uso uno de sus archivos."
+
+msgid "The setup's log: {path}"
+msgstr "Registro del instalador: {path}"
+
+msgid "Run the setup now to finish it: it shows what's in the way and can close it."
+msgstr "Ejecute ahora el instalador para terminarla: muestra qué lo impide y puede cerrarlo."
+
+msgid "Run the setup"
+msgstr "Ejecutar el instalador"
+
+msgid "Download the setup from the release page and run it."
+msgstr "Descargue el instalador desde la página de la versión y ejecútelo."
