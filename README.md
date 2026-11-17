@@ -70,7 +70,8 @@ how most of the features below got here.
 
 **Edit the PDF itself**
 - Edit text in place: click a paragraph and type, and the words rewrap; find and replace text
-- Move, resize, rotate or delete the page's own pictures and shapes; add text and pictures
+- Move, resize, rotate or delete the page's own pictures and shapes (drag a handle, or type an
+  exact angle in Properties); add text, pictures and SVG drawings (kept as sharp lines and shapes)
 - Erase content in an area, add backgrounds, watermarks, headers and footers, page numbers and
   Bates numbering, and links on anything
 
@@ -104,8 +105,9 @@ how most of the features below got here.
   measurement summary you can export to CSV
 - Compare two revisions of a sheet, with every change clouded; links from sheet callouts to the
   sheets they name
-- And, for fun, a CAD mode with AutoCAD-style move, copy, rotate, trim and a command line, plus
-  a night mode (white lines on black) and export to AutoCAD DXF
+- And, for fun, a CAD mode with AutoCAD-style move, copy, rotate, mirror, trim and a command line
+  (Shift or Ctrl keeps a point straight across or up and down, and points snap to line ends,
+  corners and pictures), plus a night mode (white lines on black) and export to AutoCAD DXF
 
 **Built to stay fast and light:** it starts in well under a second, and every build checks
 start-up time and memory automatically. There's no background service, no account and no
@@ -124,7 +126,7 @@ Pick **one** of these files from the newest release:
 
 | File | What it is |
 | --- | --- |
-| `KanzonasPDF-v…-setup.exe` | **Installer (recommended).** No administrator rights needed. It can add a desktop shortcut and offer KanzonasPDF as an app for opening PDFs. |
+| `KanzonasPDF-v…-setup.exe` | **Installer (recommended).** No administrator rights needed. It can add a desktop shortcut and offer KanzonasPDF as an app for opening PDFs; once it's your default PDF app, File Explorer shows each PDF's first page as its thumbnail. |
 | `KanzonasPDF-portable.zip` | **No installation.** Unzip anywhere (even a USB stick) and run `KanzonasPDF.exe`. Settings, signatures and stamps stay in a `data` folder next to it. To update, unzip the new one over the same folder: the program keeps the same path, so it stays your default PDF app. |
 | `KanzonasPDF-windows.zip` | The same program as the portable version, but it keeps its settings in your Windows profile. |
 
@@ -148,9 +150,13 @@ before it's published, and every release lists the SHA-256 checksum of each down
 
 ### Updating and uninstalling
 
-- KanzonasPDF tells you when a newer version is out (Help > Check for updates...). It only
-  tells you; it never installs anything by itself.
-- To update, run the new installer: it replaces the old version and keeps your settings,
+- KanzonasPDF tells you when a newer version is out (Help > Check for updates...). Nothing is
+  downloaded or installed until you click **Update now** (installer and portable versions): it
+  downloads the new version from GitHub, checks it against the release's checksum, puts it in
+  place of this one and starts KanzonasPDF again. If an installed copy's update ever doesn't
+  finish, KanzonasPDF tells you the next time it starts. The PortableApps.com package is updated
+  by its own platform, and `KanzonasPDF-windows.zip` by unzipping the new one over the old.
+- Or run the new installer yourself: it replaces the old version and keeps your settings,
   signatures, stamps and tool chest.
 - To uninstall, use Windows Settings > Apps.
 
