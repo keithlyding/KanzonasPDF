@@ -216,7 +216,12 @@ sha256 del archivo coincide con el resumen publicado con esa versión; pide guar
 se cierra, instala la nueva versión sobre esta (para usted, o para todos los usuarios con el aviso de
 administrador de Windows si así se instaló) y se vuelve a iniciar. También puede ejecutar usted mismo el
 instalador más reciente sobre el anterior; no hace falta desinstalar primero. De cualquier forma se instala
-en el mismo lugar y conserva su configuración, sus firmas, sus sellos y su caja de herramientas. <b>Desinstalar:</b> Configuración de Windows &gt; Aplicaciones, o el desinstalador de la carpeta de instalación.</li>
+en el mismo lugar y conserva su configuración, sus firmas, sus sellos y su caja de herramientas. Windows mantiene
+cargada la parte de miniaturas en un <b>COM Surrogate</b> una vez que el Explorador ha
+mostrado la miniatura de un PDF: el instalador lo cierra (Windows lo vuelve a iniciar cuando hace falta); si lo
+ejecuta usted, el instalador lo muestra en "Preparando la instalación", con <b>Cerrar automáticamente las
+aplicaciones</b> elegido. Si una actualización no termina, KanzonasPDF lo dice la próxima vez que se inicia, con el
+registro del instalador, y ofrece ejecutar ese instalador con sus ventanas, que muestran qué lo impide. <b>Desinstalar:</b> Configuración de Windows &gt; Aplicaciones, o el desinstalador de la carpeta de instalación.</li>
 <li><b>Versión portátil</b> (<b>KanzonasPDF-portable.zip</b>): no requiere instalación. Descomprima la carpeta KanzonasPDF
 en cualquier lugar (una memoria USB, una unidad de red, su carpeta Documentos) y ejecute KanzonasPDF.exe. Gracias al
 archivo portable.txt que contiene, su configuración, sus firmas, sus imágenes de sellos y su certificado se guardan en una
@@ -976,7 +981,7 @@ el papel, y cada cuánto se dibuja una línea más oscura. Con el zoom muy aleja
 más oscuras.</li>
 <li><b>Ajustar a la cuadrícula:</b> los puntos que dibuja o arrastra saltan a la intersección de la cuadrícula más cercana.</li>
 <li><b>Ajustar a objetos:</b> los puntos saltan a las esquinas, los puntos medios de los bordes, los centros y
-los extremos de línea de las marcas cercanas, y a los extremos de línea, los puntos medios y las esquinas del propio dibujo (útil en planos de CAD).</li>
+los extremos de línea de las marcas cercanas, a los extremos de línea, los puntos medios y las esquinas del propio dibujo (útil en planos de CAD), y a las esquinas, los puntos medios de los bordes y el centro de las imágenes de la página (también giradas), de modo que el punto base de un comando CAD puede ser la esquina de una imagen.</li>
 <li>Las opciones de ajuste están en el menú Ver y en la barra de herramientas, en el grupo <b>Cuadrícula y ajuste</b> de
 la pestaña Ver de la cinta, en el grupo <b>Escala y ajuste</b> de la pestaña Medir y en el grupo <b>Ajuste</b> de la
 pestaña Organizar, en Configuración de cuadrícula y en Preferencias &gt; Páginas y visualización.</li>
@@ -1211,7 +1216,10 @@ Arrastre un controlador de esquina para cambiar su tamaño conservando sus propo
 cambia la escala del grosor de sus líneas. <b>Gírela</b> arrastrando el <b>controlador redondo</b> que tiene encima: gira
 alrededor de su centro, el ángulo aparece en la barra de estado y Shift la gira en pasos de 15&deg;. Para girarla un ángulo
 exacto, haga clic con el botón derecho &gt; <b>Girar un ángulo...</b> y escriba los grados (en sentido contrario a las agujas
-del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido de las agujas del reloj). El texto se mueve, no se
+del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido de las agujas del reloj). El panel
+<b>Propiedades</b> también lo muestra: una imagen o un grupo muestra su <b>Rotación</b> (escriba un ángulo y gira hasta él); las
+líneas y formas, o varios objetos, no guardan un ángulo propio, así que muestra <b>Girar</b> (escriba los grados y giran esa
+cantidad; el cuadro vuelve a 0). El texto se mueve, no se
 gira, así que una selección con texto no tiene controlador redondo (Girar del modo CAD también deja el texto donde está).</li>
 <li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
 Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar

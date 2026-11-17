@@ -225,7 +225,12 @@ sha256 matches the digest published with that release; it asks to save open docu
 installs the new version over this one (for you, or for all users with Windows' administrator
 prompt if that's how it was installed) and starts again. Or run the newer setup over the old one
 yourself; there's no need to uninstall first. Either way it installs in the same place and keeps
-your settings, signatures, stamps and tool chest. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
+your settings, signatures, stamps and tool chest. Windows keeps the thumbnail part loaded in a
+<b>COM Surrogate</b> once Explorer has shown a PDF's thumbnail: the setup closes it
+(Windows starts it again when it's next needed); run by hand, the setup lists it under
+"Preparing to Install", with <b>Automatically close the applications</b> chosen. If an update
+doesn't finish, KanzonasPDF says so the next time it starts, with the setup's log, and offers to
+run that setup with its windows, which show what's in the way. <b>Uninstall:</b> Windows Settings &gt; Apps, or the uninstaller in the install folder.</li>
 <li><b>Portable version</b> (<b>KanzonasPDF-portable.zip</b>): no installation. Unzip the KanzonasPDF folder
 anywhere (a USB stick, a network drive, your Documents) and run KanzonasPDF.exe. Because of the
 portable.txt file inside, your settings, signatures, stamp images and certificate are kept in a
@@ -988,7 +993,9 @@ the paper, and how often a darker line is drawn. When zoomed far out, only the d
 are shown.</li>
 <li><b>Snap to grid:</b> points you draw or drag jump to the nearest grid intersection.</li>
 <li><b>Snap to objects:</b> points jump to nearby markup corners, edge midpoints, centers and
-line ends, and to the drawing's own line ends, midpoints and corners (useful on CAD sheets).</li>
+line ends, to the drawing's own line ends, midpoints and corners (useful on CAD sheets), and to
+the corners, edge midpoints and center of the page's pictures (also turned ones), so a CAD
+command's base point can be a picture's corner.</li>
 <li>The snap options are in the View menu and toolbar, in the <b>Grid &amp; snap</b> group of
 the ribbon's View tab, the <b>Scale &amp; snap</b> group of the Measure tab and the <b>Snap</b>
 group of the Arrange tab, in Grid settings, and in Preferences &gt; Pages and display.</li>
@@ -1222,7 +1229,10 @@ Drag a corner handle to resize it, keeping its proportions
 scales its line thickness. <b>Turn it</b> by dragging the <b>round handle</b> above it: it turns
 about its middle, the angle shows in the status bar, and Shift turns it in 15&deg; steps. To turn
 it by an exact angle, right-click &gt; <b>Rotate by an angle...</b> and type the degrees
-(counterclockwise, as a markup's Rotation; -90 turns it a quarter clockwise). Text is moved, not
+(counterclockwise, as a markup's Rotation; -90 turns it a quarter clockwise). The <b>Properties</b>
+panel shows it too: one picture or group shows its <b>Rotation</b> (type an angle and it turns to
+it); lines and shapes, or several objects, keep no angle of their own, so it shows <b>Rotate by</b>
+(type the degrees and they turn by that much; the box goes back to 0). Text is moved, not
 turned, so a selection with text in it has no round handle (CAD mode's Rotate leaves text where
 it is the same way).</li>
 <li>Delete (or Backspace) deletes the selection. Right-click for Cut, Copy, Paste and Duplicate,

@@ -59,6 +59,7 @@ class ColorButton(QToolButton):
 class PropertiesPanel(QWidget):
     propsChanged = Signal(dict)      # full props dict after a user change
     resetRequested = Signal()
+    objectsTurn = Signal(float)      # the page's selected objects: turn by degrees (counterclockwise)
 
     def __init__(self):
         super().__init__()
@@ -125,6 +126,16 @@ class PropertiesPanel(QWidget):
         self.name = QCheckBox(tr("Add my name"))
         self.name.setToolTip(tr("Your name is set in Edit > Author name for markups"))
         self.date = QCheckBox(tr("Add the date"))
+        # the page's own lines and shapes keep no angle: they're turned by what's typed here,
+        # and it goes back to 0 (each arrow click turns them 5 degrees more)
+        self.turn = QDoubleSpinBox()
+        self.turn.setRange(-360, 360)
+        self.turn.setDecimals(1)
+        self.turn.setSingleStep(5)
+        self.turn.setSuffix("\u00b0")
+        self.turn.setKeyboardTracking(False)
+        self.turn.setToolTip(tr("Counterclockwise (-90 turns a quarter clockwise). You can also "
+                                "drag the round handle above them."))
         self.rotation = QDoubleSpinBox()
         self.rotation.setRange(-360, 360)
         self.rotation.setDecimals(1)
@@ -229,6 +240,7 @@ class PropertiesPanel(QWidget):
                               ("head", tr("Arrowhead"), self.head),
                               ("depth", tr("Depth"), self.depth),
                               ("rotation", tr("Rotation"), self.rotation),
+                              ("turn", tr("Rotate by"), self.turn),
                               ("opacity", tr("Opacity"), self.opacity)):
             lab = QLabel(label)
             self.form.addRow(lab, w)
@@ -259,6 +271,7 @@ class PropertiesPanel(QWidget):
         self.date.toggled.connect(self._emit)
         self.name.toggled.connect(self._emit)
         self.rotation.valueChanged.connect(self._emit)
+        self.turn.valueChanged.connect(self._turn_by)
         self.cloud.toggled.connect(self._emit)
         self.font.currentIndexChanged.connect(self._emit)
         self.bold.toggled.connect(self._emit)
@@ -478,8 +491,62 @@ class PropertiesPanel(QWidget):
         self._loading = False
         self._emit()
 
+    def show_objects(self, what, angle=None, text=False):
+        """The page's own objects selected (Edit objects, CAD mode): their rotation. what: what
+        is selected ("1 picture"). angle: the one picture's or group's angle as shown
+        (counterclockwise): Rotation turns it to the angle typed; None (lines and shapes keep no
+        angle, or several): Rotate by turns them by what's typed. text: text is among them
+        (moved, not turned)."""
+        self._loading = True
+        self._kind = "objects"
+        self._props = {}
+        self._obj_angle = angle
+        self.title.setText(tr("Selected: {name}").format(name=what))
+        self.title.setStyleSheet("font-weight: bold; padding: 3px 5px; border-radius: 3px; "
+                                 "background: rgba(45, 108, 223, 0.28);")
+        for lab, w in self.rows.values():
+            lab.hide()
+            w.hide()
+        self.reset.hide()
+        if text:
+            self.hint.setText(tr("Text is moved, not turned: select only pictures and shapes "
+                                 "to rotate them."))
+        elif angle is not None:
+            self.hint.setText(tr("Rotation turns it about its middle (counterclockwise), as "
+                                 "its round handle does."))
+            self.rows["rotation"][0].setText(tr("Rotation"))
+            self.rotation.setSingleStep(5)
+            self.rotation.setDecimals(1)
+            self.rotation.setValue(angle)
+            for w in self.rows["rotation"]:
+                w.show()
+        else:
+            self.hint.setText(tr("Rotate by turns them about their middle (counterclockwise), "
+                                 "as their round handle does."))
+            self.turn.setValue(0)
+            for w in self.rows["turn"]:
+                w.show()
+        self._loading = False
+
+    def _turn_by(self, value):
+        if self._loading or self._kind != "objects" or not value:
+            return
+        self._loading = True
+        self.turn.setValue(0)
+        self._loading = False
+        self.objectsTurn.emit(value)
+
     def _emit(self, *_):
         if self._loading or self._kind is None:
+            return
+        if self._kind == "objects":
+            # (Rotation of one picture or group: turned by the difference to the angle typed)
+            if self._obj_angle is not None:
+                delta = self.rotation.value() - self._obj_angle
+                delta = (delta + 180.0) % 360.0 - 180.0
+                if abs(delta) > 1e-6:
+                    self._obj_angle = self.rotation.value()
+                    self.objectsTurn.emit(delta)
             return
         p = dict(self._props)
         if "stroke" in p:

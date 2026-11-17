@@ -11520,3 +11520,33 @@ msgstr "{text} non è una risposta qui: fai clic su un pulsante, o digita l'iniz
 
 msgid "That SVG file can't be read, or it draws nothing."
 msgstr "Quel file SVG non può essere letto, oppure non disegna nulla."
+
+msgid "Rotate by"
+msgstr "Ruota di"
+
+msgid "Counterclockwise (-90 turns a quarter clockwise). You can also drag the round handle above them."
+msgstr "In senso antiorario (-90 ruota di un quarto in senso orario). Puoi anche trascinare la maniglia rotonda sopra di essi."
+
+msgid "Text is moved, not turned: select only pictures and shapes to rotate them."
+msgstr "Il testo si sposta, non si ruota: seleziona solo immagini e forme per ruotarle."
+
+msgid "Rotation turns it about its middle (counterclockwise), as its round handle does."
+msgstr "Rotazione lo ruota attorno al suo centro (in senso antiorario), come la sua maniglia rotonda."
+
+msgid "Rotate by turns them about their middle (counterclockwise), as their round handle does."
+msgstr "Ruota di li ruota attorno al loro centro (in senso antiorario), come la loro maniglia rotonda."
+
+msgid "The update to KanzonasPDF {new} didn't finish: this is still {old}. Windows may have kept one of its files in use."
+msgstr "L'aggiornamento a KanzonasPDF {new} non si è completato: questa è ancora la {old}. Windows potrebbe aver tenuto in uso uno dei suoi file."
+
+msgid "The setup's log: {path}"
+msgstr "Registro del programma di installazione: {path}"
+
+msgid "Run the setup now to finish it: it shows what's in the way and can close it."
+msgstr "Esegui ora il programma di installazione per completarlo: mostra cosa lo impedisce e può chiuderlo."
+
+msgid "Run the setup"
+msgstr "Esegui il programma di installazione"
+
+msgid "Download the setup from the release page and run it."
+msgstr "Scarica il programma di installazione dalla pagina della versione ed eseguilo."

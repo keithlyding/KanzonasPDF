@@ -24,6 +24,45 @@ see the English.
 **Correzioni**
 - Outlook mostra di nuovo i PDF allegati nella sua anteprima. KanzonasPDF non aggiunge più un visualizzatore PDF suo, che Outlook non poteva usare; le anteprime vengono dal visualizzatore PDF di Windows, come prima della 1.14.1. Esplora file mostra ancora le miniature delle pagine di KanzonasPDF.
 
+## 1.15.6
+
+**New**
+- Properties shows the rotation of the page's own pictures and groups: type an angle to turn one to it. For lines and shapes, Rotate by turns them by the degrees typed.
+
+**Fixed**
+- Snapping now finds a picture's corners, edge middles and center, so a CAD command's base point can be a picture's corner.
+
+## 1.15.6 (es)
+
+**Novedades**
+- Propiedades muestra la rotación de las imágenes y los grupos propios de la página: escriba un ángulo para girar uno hasta él. Para líneas y formas, Girar las gira los grados escritos.
+
+**Correcciones**
+- El ajuste ahora encuentra las esquinas, los puntos medios de los bordes y el centro de una imagen, así que el punto base de un comando CAD puede ser la esquina de una imagen.
+
+## 1.15.6 (it)
+
+**Novità**
+- Proprietà mostra la rotazione delle immagini e dei gruppi della pagina: digita un angolo per ruotarne uno fino a quello. Per linee e forme, Ruota di le ruota dei gradi digitati.
+
+**Correzioni**
+- L'aggancio ora trova gli angoli, i punti medi dei lati e il centro di un'immagine, così il punto base di un comando CAD può essere l'angolo di un'immagine.
+
+## 1.15.5
+
+**Fixed**
+- Windows: Update now could quit without updating once File Explorer had shown a PDF thumbnail (Windows kept a file in use in its "COM Surrogate"). The setup now closes it, and if an update ever doesn't finish, KanzonasPDF tells you the next time it starts.
+
+## 1.15.5 (es)
+
+**Correcciones**
+- Windows: Actualizar ahora podía cerrarse sin actualizar después de que el Explorador mostrara la miniatura de un PDF (Windows mantenía un archivo en uso en su "COM Surrogate"). Ahora el instalador lo cierra, y si alguna vez una actualización no termina, KanzonasPDF se lo dice la próxima vez que se inicia.
+
+## 1.15.5 (it)
+
+**Correzioni**
+- Windows: Aggiorna ora poteva chiudersi senza aggiornare dopo che Esplora file aveva mostrato la miniatura di un PDF (Windows teneva un file in uso nel suo "COM Surrogate"). Ora il programma di installazione lo chiude, e se un aggiornamento non si completa, KanzonasPDF te lo dice al successivo avvio.
+
 ## 1.15.4
 
 **New**
