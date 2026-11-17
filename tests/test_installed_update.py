@@ -60,14 +60,17 @@ class Pieces(unittest.TestCase):
             mine = updates.installer_command("/t/setup.exe", "/home/me/Programs/KanzonasPDF")
             everyone = updates.installer_command("/t/setup.exe", "/pf/KanzonasPDF")
         self.assertEqual(mine, ["/t/setup.exe", "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
-                                "/SP-", "/CLOSEAPPLICATIONS", "/CURRENTUSER", "/RELAUNCH"])
+                                "/SP-", "/CLOSEAPPLICATIONS", "/FORCECLOSEAPPLICATIONS",
+                                "/CURRENTUSER", "/RELAUNCH",
+                                "/LOG=" + os.path.join("/t", "setup.log")])
         self.assertIn("/ALLUSERS", everyone)
         self.assertNotIn("/CURRENTUSER", everyone)
         # the Windows build tests this same command line, and the setup knows /RELAUNCH
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(root, ".github", "workflows", "build-windows.yml")) as f:
             self.assertIn('"/SILENT","/SUPPRESSMSGBOXES","/NORESTART","/SP-",'
-                          '"/CLOSEAPPLICATIONS","/CURRENTUSER","/RELAUNCH"', f.read())
+                          '"/CLOSEAPPLICATIONS","/FORCECLOSEAPPLICATIONS","/CURRENTUSER",'
+                          '"/RELAUNCH")', f.read())             # (and its own /LOG)
         with open(os.path.join(root, "installer", "KanzonasPDF.iss")) as f:
             iss = f.read()
         self.assertIn("Check: RelaunchAfterUpdate", iss)
@@ -166,7 +169,13 @@ class UpdateNow(unittest.TestCase):
         cmd = popen.call_args[0][0]
         self.assertEqual(cmd[0], setup)
         self.assertIn("/RELAUNCH", cmd)
+        self.assertIn("/FORCECLOSEAPPLICATIONS", cmd)
         self.assertTrue(quit_.called)
+        # remembered for the next start, which tells whether it took
+        self.addCleanup(w.settings.remove, updates.PENDING_KEY)
+        out = updates.update_outcome(w.settings, running="1.0")
+        self.assertEqual(out, {"ok": False, "version": "9.9", "setup": setup,
+                               "log": updates.setup_log(setup)})
 
     def test_keeping_a_document_open_cancels_and_cleans_up(self):
         from kanzonas.main_window import MainWindow
@@ -201,6 +210,86 @@ class UpdateNow(unittest.TestCase):
             w.update_now()
         self.assertFalse(popen.called)
         self.assertFalse(os.path.exists(folder))
+
+
+
+class AfterTheSetup(unittest.TestCase):
+    """The next start after Update now ran the quiet setup (the owner, 16 Nov 2026: the setup
+    quit, held up by a COM Surrogate, and KanzonasPDF still showed the update as needed with
+    nothing saying why)."""
+
+    def settings(self):
+        from PySide6.QtCore import QSettings
+        st = QSettings(os.path.join(tempfile.mkdtemp(), "s.ini"), QSettings.IniFormat)
+        return st
+
+    def ran(self, version="9.9"):
+        folder = tempfile.mkdtemp(prefix="kzsetup")
+        setup = os.path.join(folder, updates.setup_name(version))
+        open(setup, "wb").close()
+        with open(updates.setup_log(setup), "w") as f:
+            f.write("Setup log")
+        st = self.settings()
+        updates.remember_update(st, version, setup)
+        return st, setup
+
+    def test_nothing_ran_nothing_to_tell(self):
+        self.assertIsNone(updates.update_outcome(self.settings()))
+
+    def test_it_took_the_setup_folder_goes_and_nothing_is_said_again(self):
+        st, setup = self.ran("1.15.5")
+        out = updates.update_outcome(st, running="1.15.5")
+        self.assertTrue(out["ok"])
+        self.assertFalse(os.path.exists(os.path.dirname(setup)))
+        self.assertIsNone(updates.update_outcome(st, running="1.15.5"))
+
+    def test_it_didnt_take_the_setup_and_its_log_are_kept_said_once(self):
+        st, setup = self.ran("1.15.5")
+        out = updates.update_outcome(st, running="1.15.2")
+        self.assertFalse(out["ok"])
+        self.assertEqual(out["setup"], setup)
+        self.assertTrue(os.path.exists(setup))
+        self.assertTrue(os.path.exists(out["log"]))
+        self.assertIsNone(updates.update_outcome(st, running="1.15.2"))
+
+    def test_an_unreadable_record_is_dropped(self):
+        st = self.settings()
+        st.setValue(updates.PENDING_KEY, "{not json")
+        self.assertIsNone(updates.update_outcome(st))
+        self.assertIsNone(st.value(updates.PENDING_KEY))
+
+    def test_the_window_says_it_and_offers_the_setup_with_its_windows(self):
+        from PySide6.QtWidgets import QMessageBox
+        from kanzonas.main_window import MainWindow
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        st, setup = self.ran("99.0")
+        w.settings.setValue(updates.PENDING_KEY, st.value(updates.PENDING_KEY))
+        self.addCleanup(w.settings.remove, updates.PENDING_KEY)
+        shown = {}
+
+        def run(box):
+            shown["text"] = box.text() + "\n" + box.informativeText()
+            shown["buttons"] = [b.text() for b in box.buttons()]
+            box.clickedButton = lambda: [b for b in box.buttons()
+                                         if b.text() == "Run the setup"][0]
+            return 0
+        with mock.patch.object(QMessageBox, "exec", run), \
+                mock.patch("subprocess.Popen") as popen:
+            w._update_outcome()
+        self.assertIn("didn't finish", shown["text"])
+        self.assertIn("99.0", shown["text"])
+        self.assertIn(updates.setup_log(setup), shown["text"])
+        self.assertIn("Run the setup", shown["buttons"])
+        self.assertEqual(popen.call_args[0][0], [setup])        # (with its windows, not quiet)
+        with mock.patch.object(QMessageBox, "exec") as again:
+            w._update_outcome()                                 # (said once)
+        self.assertFalse(again.called)
+
+    def test_the_setup_force_closes_what_holds_its_files(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "installer", "KanzonasPDF.iss")) as f:
+            self.assertIn("\nCloseApplications=force\n", f.read())
 
 
 if __name__ == "__main__":

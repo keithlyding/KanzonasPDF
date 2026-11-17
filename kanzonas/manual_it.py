@@ -213,7 +213,12 @@ sha256 del file corrisponde all'impronta pubblicata con quella versione; chiede 
 installa la nuova versione sopra quella attuale (per te, o per tutti gli utenti con la richiesta di amministratore di Windows
 se era stato installato così) e si riavvia. In alternativa esegui tu il nuovo programma di installazione sopra quello vecchio;
 non serve disinstallare prima. In entrambi i casi viene installato nello stesso posto e mantiene
-impostazioni, firme, timbri e cassetta degli attrezzi. <b>Disinstallare:</b> Impostazioni di Windows &gt; App, oppure il programma di disinstallazione nella cartella di installazione.</li>
+impostazioni, firme, timbri e cassetta degli attrezzi. Windows tiene caricata la parte delle miniature e del
+riquadro di anteprima in un <b>COM Surrogate</b> dopo che Esplora file ha mostrato la miniatura di un PDF: il
+programma di installazione lo chiude (Windows lo riavvia quando serve); se lo esegui tu, il programma di
+installazione lo elenca in "Preparazione all'installazione", con <b>Chiudi automaticamente le applicazioni</b>
+scelto. Se un aggiornamento non si completa, KanzonasPDF lo dice al successivo avvio, con il registro del
+programma di installazione, e propone di eseguirlo con le sue finestre, che mostrano cosa lo impedisce. <b>Disinstallare:</b> Impostazioni di Windows &gt; App, oppure il programma di disinstallazione nella cartella di installazione.</li>
 <li><b>Versione portatile</b> (<b>KanzonasPDF-portable.zip</b>): nessuna installazione. Estrai la cartella KanzonasPDF
 dove vuoi (una chiavetta USB, un'unità di rete, i tuoi Documenti) ed esegui KanzonasPDF.exe. Grazie al
 file portable.txt al suo interno, impostazioni, firme, immagini dei timbri e certificato vengono conservati in una
