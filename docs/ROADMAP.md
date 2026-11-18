@@ -80,6 +80,11 @@ a decision changes or a piece of work lands. Details of each version are in
   arrow over it); the Select tool's pointer is the arrow (the text cursor only with text tools
   and where text is typed); Pages > Insert pages from file can recognize the text of the
   pictures inserted (OCR), as an option.
+- 1.15.8 (owner, 18 Nov: "When I'm selecting text (not in cad mouse), the cursor is a hand
+  instead of the text cursor"): the 12 Nov "no text cursor" holds in CAD mode only. In the
+  Standard and Hand modes, Select and the Hand show the text cursor over text, and the Hand
+  selects text by a drag from it, as Acrobat's does (a drag elsewhere moves the page;
+  Preferences > Mouse, Hand can switch that off).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

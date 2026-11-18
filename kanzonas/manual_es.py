@@ -366,7 +366,8 @@ el menú Ver; Preferencias &gt; Mouse): tres maneras de trabajar, cada una con s
 <li><b>Mouse: Estándar (flecha, la rueda desplaza)</b>: KanzonasPDF se inicia con la herramienta Seleccionar (la
 flecha) y Escape vuelve a ella; la rueda desplaza y Ctrl+rueda acerca y aleja.</li>
 <li><b>Mouse: Mano (arrastrar la página)</b>: se inicia con la herramienta Mano, que arrastra la página; hacer clic en
-una marca con ella la selecciona. En este modo el movimiento libre de la página está activado, así que la Mano arrastra
+una marca con ella la selecciona, y sobre el texto se convierte en el cursor de texto: arrastre desde el texto para
+seleccionarlo, como con Seleccionar. En este modo el movimiento libre de la página está activado, así que la Mano arrastra
 la página a cualquier lugar, aunque quepa en la ventana. Así se inicia KanzonasPDF la primera vez.</li>
 <li><b>Mouse: CAD (la rueda acerca y aleja; mantenga presionada la rueda para desplazar)</b> (F11 lo activa, y otra vez
 vuelve al modo que tenía): como en AutoCAD, la rueda del mouse acerca y aleja alrededor del cursor y mantener presionada
@@ -676,17 +677,19 @@ cuadros de texto giran en cuartos de vuelta.</p>
 <h2 id="select">Seleccionar y editar marcas</h2>
 <ul>
 <li><b>Herramienta Seleccionar (V):</b> arrastre sobre el texto para seleccionarlo, incluso a través del espacio entre
-páginas (permanece resaltado; vea Copiar, cortar y pegar más abajo). Su puntero es la flecha: el cursor de texto solo
-aparece con las herramientas que trabajan con texto (Editar texto, Agregar texto, Resaltar y las demás marcas de texto,
-Redactar) y en el cuadro donde escribe. Haga clic en una marca para seleccionarla; luego arrástrela
+páginas (permanece resaltado; vea Copiar, cortar y pegar más abajo). Su puntero es la flecha, y el cursor de texto sobre
+el texto que un arrastre selecciona (no en el modo del mouse CAD, donde el puntero sigue siendo la cruz o la flecha: allí el cursor de
+texto solo aparece con las herramientas que trabajan con texto, Editar texto, Agregar texto, Resaltar y las demás marcas de
+texto, Redactar, y en el cuadro donde escribe). Haga clic en una marca para seleccionarla; luego arrástrela
 para moverla, arrastre un controlador cuadrado para cambiar su tamaño o cambie su aspecto en el panel de propiedades.
 En el modo del mouse <b>CAD</b>, Seleccionar funciona como en AutoCAD: ventanas azules y recuadros de captura verdes, un
 lazo, clics que agregan a la selección, Shift para quitar, Escape para borrarla, y arrastrar no mueve nada (vea Modo
 CAD).</li>
 <li>Con una herramienta de dibujo activa (rectángulo, línea, llamada, ...), hacer clic en una marca existente también la
 selecciona, así que no tiene que volver a la flecha (no en el modo CAD, donde una herramienta de dibujo siempre dibuja). La <b>herramienta Mano</b> funciona igual:
-haga clic en una marca (un resaltado, una nota, una forma...) para seleccionarla; arrastre en cualquier otro lugar para mover la
-página. Una marca convertida en vínculo abre su vínculo en su lugar cuando se hace clic en ella con la herramienta Mano, o
+haga clic en una marca (un resaltado, una nota, una forma...) para seleccionarla; sobre el texto se convierte en el cursor
+de texto y un arrastre selecciona el texto (doble clic una palabra, tres clics una línea), como con Seleccionar; arrastre en
+cualquier otro lugar para mover la página (no en el modo del mouse CAD, donde la Mano solo mueve la página). Una marca convertida en vínculo abre su vínculo en su lugar cuando se hace clic en ella con la herramienta Mano, o
 Ctrl+clic con cualquier otra herramienta (un clic normal con Seleccionar la selecciona). Una marca sobre un vínculo
 que ya traía el PDF (un resaltado sobre una entrada de la tabla de contenido) se selecciona; haga clic en el vínculo
 junto a la marca para abrirlo.</li>
@@ -2338,7 +2341,8 @@ se inicia KanzonasPDF y a la que vuelve Escape) y las opciones de cada modo:
 <ul>
 <li>Estándar: Desplazar una página por paso de la rueda (activado), Movimiento libre de la página (desactivado).</li>
 <li>Mano: Movimiento libre de la página (activado), Desplazar una página por paso de la rueda (activado), Hacer clic en
-una marca con la Mano la selecciona (activado).</li>
+una marca con la Mano la selecciona (activado), Arrastrar desde el texto con la Mano selecciona el texto (el cursor de texto
+aparece sobre el texto) (activado; desactivado, un arrastre desde el texto también mueve la página).</li>
 <li>CAD: La rueda acerca y aleja en el cursor (Ctrl+rueda desplaza), Cursor en cruz, Lienzo abierto alrededor de las
 páginas, Selección por ventana (azul) y por captura (verde), Clic, mover, clic dibuja el recuadro de selección, Mantenga
 presionado el botón y arrastre para dibujar un lazo, Mostrar la pestaña CAD, Las letras escritas sobre el dibujo van a la
