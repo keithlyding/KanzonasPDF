@@ -1,12 +1,14 @@
 """The text cursor over text, outside the CAD mouse mode: with Select (a drag from there selects
 text), and with the Hand, where a drag from text selects it (as Acrobat's Hand) and a drag
-anywhere else still moves the page. Over a markup the Hand stays a hand (a click selects it).
+anywhere else still moves the page. The Hand's pointer is the arrow there (the closed hand
+while it moves the page); over a markup the arrow too (a click selects it).
 Preferences > Mouse, Hand: "Dragging from text with the Hand selects the text" switches it off.
 In CAD mode nothing changes: the plus (or the arrow), and the Hand only moves the page (the
 owner, 12 Nov: no text cursor there unless typing or with a text tool).
 
 The owner, 18 Nov 2026: "When I'm selecting text (not in cad mouse), the cursor is a hand
-instead of the text cursor".
+instead of the text cursor"; "The cursor should be the pointer arrow until it browses over
+text".
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_text_cursor
 """
@@ -20,7 +22,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pymupdf  # noqa: E402
 from PySide6.QtCore import QEvent, QPointF, Qt  # noqa: E402
-from PySide6.QtGui import QMouseEvent  # noqa: E402
+from PySide6.QtGui import QEnterEvent, QMouseEvent  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
@@ -39,6 +41,7 @@ def sheet():
     p = d.new_page()
     p.insert_text((100, 100), "Hello world some text here", fontsize=20)
     p.insert_text((300, 540), "Under the note", fontsize=14)
+    p.insert_text((1, 300), "EDGE", fontsize=12)
     a = p.add_rect_annot(NOTE)
     a.set_colors(stroke=(1, 0, 0), fill=(1, 1, 0))      # (filled: a click inside takes it)
     a.update()
@@ -112,14 +115,43 @@ class StandardMode(Cursor):
         self.use("select")
         self.assertEqual(self.hover(P(350, 535)), Qt.SizeAllCursor)
 
-    def test_the_hand_shows_the_text_cursor_over_text(self):
+    def test_the_hand_is_the_arrow_until_it_is_over_text(self):
         self.use("hand")
+        self.assertEqual(self.hover(BLANK[0]), Qt.ArrowCursor)
         self.assertEqual(self.hover(ON_TEXT[0]), Qt.IBeamCursor)
-        self.assertEqual(self.hover(BLANK[0]), Qt.OpenHandCursor)
+        self.assertEqual(self.hover(BLANK[0]), Qt.ArrowCursor)
 
-    def test_the_hand_stays_a_hand_over_a_markup(self):
+    def test_the_hand_over_a_markup_is_the_arrow_not_the_text_cursor(self):
         self.use("hand")
-        self.assertEqual(self.hover(P(350, 535)), Qt.OpenHandCursor)
+        self.assertEqual(self.hover(P(350, 535)), Qt.ArrowCursor)
+
+    def test_the_closed_hand_while_it_moves_the_page_then_the_arrow(self):
+        self.v.set_zoom(3.0)
+        APP.processEvents()
+        self.use("hand")
+        a = self.page.to_screen_pt(BLANK[0])
+        self.move(a)
+        QTest.mousePress(self.page, Qt.LeftButton, Qt.NoModifier, a.toPoint())
+        self.move(QPointF(a + QPointF(-40, -40)), Qt.LeftButton)
+        self.assertEqual(self.v.viewport().cursor().shape(), Qt.ClosedHandCursor)
+        QTest.mouseRelease(self.page, Qt.LeftButton, Qt.NoModifier, (a + QPointF(-40, -40)).toPoint())
+        APP.processEvents()
+        self.assertEqual(self.v.viewport().cursor().shape(), Qt.ArrowCursor)
+
+    def test_no_text_cursor_left_behind_from_the_gray_beside_the_page(self):
+        self.use("hand")
+        w = self.page
+        canvas = w.parentWidget()
+        edge = w.to_screen_pt(P(3, 296))                    # ("EDGE", at the page's left edge)
+        gray = QPointF(w.x() - 2, w.y() + edge.y())         # (the gray just left of it)
+        canvas.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, gray, canvas.mapToGlobal(gray),
+                                          Qt.NoButton, Qt.NoButton, Qt.NoModifier))
+        APP.processEvents()
+        self.assertEqual(canvas.cursor().shape(), Qt.IBeamCursor)   # (text right there)
+        inside = QPointF(w.to_screen_pt(BLANK[0]))
+        QApplication.sendEvent(w, QEnterEvent(inside, w.mapToGlobal(inside), w.mapToGlobal(inside)))
+        self.assertEqual(self.hover(BLANK[0]), Qt.ArrowCursor)
+
 
     def test_a_drag_from_text_with_the_hand_selects_it(self):
         self.use("hand")
@@ -151,6 +183,7 @@ class HandMode(StandardMode):
         mouse_modes.apply(self.w.settings)
         self.use("hand")
         self.assertEqual(self.hover(ON_TEXT[0]), Qt.OpenHandCursor)
+        self.assertEqual(self.hover(BLANK[0]), Qt.OpenHandCursor)    # (the hand: it moves)
         self.drag(*ON_TEXT)
         self.assertEqual(self.v.selected_text(), "")
 

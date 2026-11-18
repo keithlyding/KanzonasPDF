@@ -368,8 +368,8 @@ Preferenze più avanti).
 <li><b>Mouse: Standard (freccia, la rotellina scorre)</b>: KanzonasPDF parte con lo strumento Seleziona (la freccia)
 ed Esc torna a quello; la rotellina scorre e Ctrl+rotellina esegue lo zoom.</li>
 <li><b>Mouse: Mano (trascina la pagina)</b>: parte con lo strumento Mano, che trascina la pagina; un clic su
-un'annotazione con questo strumento la seleziona, e sopra il testo diventa il cursore di testo: trascina dal testo per
-selezionarlo, come con Seleziona. In questa modalità il movimento libero della pagina è attivo, quindi
+un'annotazione con questo strumento la seleziona. Il suo puntatore è la freccia, il cursore di testo sopra il testo
+(trascina dal testo per selezionarlo, come con Seleziona) e la mano chiusa mentre sposta la pagina. In questa modalità il movimento libero della pagina è attivo, quindi
 la Mano trascina la pagina ovunque, anche quando entra tutta nella finestra. È la modalità con cui KanzonasPDF parte la
 prima volta.</li>
 <li><b>Mouse: CAD (la rotellina esegue lo zoom, tienila premuta per la panoramica)</b> (F11 la attiva, e la
@@ -693,10 +693,10 @@ e il trascinamento non sposta nulla (vedi Modalità CAD).</li>
 <li>Con uno strumento di disegno attivo (rettangolo, linea, richiamo, ...), anche un clic su un'annotazione esistente la
 seleziona, così non devi tornare alla freccia (non in modalità CAD, dove uno strumento di disegno disegna sempre). Lo
 <b>strumento Mano</b> funziona allo stesso modo:
-fai clic su un'annotazione (un'evidenziazione, una nota, una forma...) per selezionarla; sopra il testo diventa il
-cursore di testo e un trascinamento seleziona il testo (doppio clic una parola, tre clic una riga), come con Seleziona;
-trascina in qualsiasi altro punto per spostare la pagina (non nella modalità del mouse CAD, dove la Mano sposta soltanto
-la pagina). Un'annotazione trasformata in collegamento apre invece il suo collegamento se ci fai clic
+fai clic su un'annotazione (un'evidenziazione, una nota, una forma...) per selezionarla; il suo puntatore è la freccia, sopra il
+testo il cursore di testo, e un trascinamento dal testo seleziona il testo (doppio clic una parola, tre clic una riga), come con Seleziona;
+trascina in qualsiasi altro punto per spostare la pagina (la mano chiusa mentre lo fa). Nella modalità del mouse CAD la
+Mano è la mano aperta e sposta soltanto la pagina. Un'annotazione trasformata in collegamento apre invece il suo collegamento se ci fai clic
 con lo strumento Mano, o Ctrl+clic con qualsiasi altro strumento (un clic semplice con Seleziona la seleziona).
 Un'annotazione su un collegamento già presente nel PDF (un'evidenziazione su una voce di un sommario) viene
 selezionata; fai clic sul collegamento accanto all'annotazione per aprirlo.</li>
@@ -2323,7 +2323,7 @@ esistenti si aggiornano la prossima volta che le sposti o le modifichi.</li>
 <li>Standard: Scorri di una pagina per ogni scatto della rotellina (attivato), Movimento libero della pagina (disattivato).</li>
 <li>Mano: Movimento libero della pagina (attivato), Scorri di una pagina per ogni scatto della rotellina (attivato), Un clic su un'annotazione con
 la Mano la seleziona (attivato), Trascinare dal testo con la Mano seleziona il testo (il cursore di testo compare sopra
-il testo) (attivato; disattivato, un trascinamento dal testo sposta anche la pagina).</li>
+il testo) (attivato; disattivato, la Mano è la mano aperta e un trascinamento dal testo sposta anche la pagina).</li>
 <li>CAD: La rotellina esegue lo zoom sul cursore (Ctrl+rotellina scorre), Cursore a croce, Area di lavoro libera attorno alle
 pagine, Selezione a finestra (blu) e intersecante (verde), Clic, sposta, clic disegna il riquadro di selezione,
 Tieni premuto il pulsante e trascina per disegnare un lazo, Mostra la scheda CAD, Le lettere digitate sul disegno vanno alla

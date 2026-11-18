@@ -3163,6 +3163,15 @@ class PageWidget(QWidget):
             self.view.set_text_selection(self.index, line)
         return bool(line)
 
+    def enterEvent(self, e):
+        # (the gray around the pages shows the cursor of the page it hands the pointer to,
+        # _Canvas.mouseMoveEvent; here that one would show through wherever this page has
+        # none of its own, a text cursor on blank paper)
+        canvas = self.parentWidget()
+        if canvas is not None and canvas is not self.view.viewport():
+            canvas.unsetCursor()
+        super().enterEvent(e)
+
     def leaveEvent(self, e):
         if not self._gone():
             self.view.pointer_left()
