@@ -2734,6 +2734,13 @@ class MainWindow(QMainWindow):
                 self.tool_actions[self.tool].setChecked(True)
                 return
             self._cache_sig(tool, png)
+        if tool == "hand" and self._standard_mode():
+            # (the owner, 18 Nov 2026: "When in select mode, the hand should not drag the page":
+            # the Hand picked in Select mode is Select; the held wheel and Hand mode move it)
+            tool = "select"
+            self.statusBar().showMessage(tr("Mouse: Standard. The arrow selects and doesn't move "
+                                            "the page: hold the wheel down to move it, or switch "
+                                            "to the Hand mouse mode."), 6000)
         self.tool = tool
         if tool in ("hand", "select"):
             self._last_basic_tool = tool            # where signing / dating returns to
@@ -2748,6 +2755,10 @@ class MainWindow(QMainWindow):
         if v is not None and not typing:
             v.setFocus()
         self._refresh_props()
+
+    def _standard_mode(self):
+        from . import mouse_modes
+        return mouse_modes.mode(self.settings) == "standard"
 
     def default_tool(self):
         """The mouse mode's tool (Hand; Select in Standard; Edit objects in CAD): the tool at

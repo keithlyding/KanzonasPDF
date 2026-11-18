@@ -364,7 +364,9 @@ lateralmente.</li>
 el menú Ver; Preferencias &gt; Mouse): tres maneras de trabajar, cada una con sus propias opciones (vea Preferencias más abajo).
 <ul>
 <li><b>Mouse: Estándar (flecha, la rueda desplaza)</b>: KanzonasPDF se inicia con la herramienta Seleccionar (la
-flecha) y Escape vuelve a ella; la rueda desplaza y Ctrl+rueda acerca y aleja.</li>
+flecha) y Escape vuelve a ella; la rueda desplaza y Ctrl+rueda acerca y aleja. En este modo nada arrastra la página:
+elegir la herramienta Mano (H) da Seleccionar, así que mantenga presionada la rueda para mover la página, o cambie al
+modo del mouse Mano.</li>
 <li><b>Mouse: Mano (arrastrar la página)</b>: se inicia con la herramienta Mano, que arrastra la página; hacer clic en
 una marca con ella la selecciona. Su puntero es la flecha, el cursor de texto sobre el texto (arrastre desde el texto
 para seleccionarlo, como con Seleccionar) y la mano cerrada mientras mueve la página. En este modo el movimiento libre de la página está activado, así que la Mano arrastra
@@ -690,7 +692,7 @@ selecciona, así que no tiene que volver a la flecha (no en el modo CAD, donde u
 haga clic en una marca (un resaltado, una nota, una forma...) para seleccionarla; su puntero es la flecha, sobre el texto
 el cursor de texto, y un arrastre desde el texto selecciona el texto (doble clic una palabra, tres clics una línea), como con Seleccionar; arrastre en
 cualquier otro lugar para mover la página (la mano cerrada mientras lo hace). En el modo del mouse CAD la Mano es la
-mano abierta y solo mueve la página. Una marca convertida en vínculo abre su vínculo en su lugar cuando se hace clic en ella con la herramienta Mano, o
+mano abierta y solo mueve la página; en el modo del mouse Estándar no hay Mano (da Seleccionar). Una marca convertida en vínculo abre su vínculo en su lugar cuando se hace clic en ella con la herramienta Mano, o
 Ctrl+clic con cualquier otra herramienta (un clic normal con Seleccionar la selecciona). Una marca sobre un vínculo
 que ya traía el PDF (un resaltado sobre una entrada de la tabla de contenido) se selecciona; haga clic en el vínculo
 junto a la marca para abrirlo.</li>

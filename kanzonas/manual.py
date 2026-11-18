@@ -375,7 +375,9 @@ sideways too.</li>
 options (see Preferences below).
 <ul>
 <li><b>Mouse: Standard (arrow, the wheel scrolls)</b>: KanzonasPDF starts with the Select tool
-(the arrow) and Escape goes back to it; the wheel scrolls and Ctrl+wheel zooms.</li>
+(the arrow) and Escape goes back to it; the wheel scrolls and Ctrl+wheel zooms. Nothing drags the
+page in this mode: picking the Hand tool (H) gives Select, so hold the wheel down to move the page,
+or switch to the Hand mouse mode.</li>
 <li><b>Mouse: Hand (drag the page)</b>: starts with the Hand tool, which drags the page; clicking
 a markup with it selects the markup. Its pointer is the arrow, the text cursor over text (drag
 from the text to select it, as with Select) and the closed hand while it moves the page. Free page movement is on in this mode, so the Hand drags the
@@ -712,7 +714,8 @@ draws). The <b>Hand tool</b> works the same way:
 click a markup (a highlight, a note, a shape...) to select it; its pointer is the arrow, over
 text the text cursor, and a drag from text selects the text (double-click a word, three clicks a line), as with Select;
 drag anywhere else to move the page (the closed hand while it does). In the CAD mouse mode the
-Hand is the open hand and only moves the page. A markup made a link opens its link instead when clicked with the Hand tool, or
+Hand is the open hand and only moves the page; in the Standard mouse mode there's no Hand (it
+gives Select). A markup made a link opens its link instead when clicked with the Hand tool, or
 Ctrl+clicked with any other tool (a plain click with Select selects it). A markup on a link
 the PDF came with (a highlight on a table of contents entry) is selected; click the link
 beside the markup to open it.</li>

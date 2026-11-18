@@ -1,6 +1,7 @@
 """The text cursor over text, outside the CAD mouse mode: with Select (a drag from there selects
-text), and with the Hand, where a drag from text selects it (as Acrobat's Hand) and a drag
-anywhere else still moves the page. The Hand's pointer is the arrow there (the closed hand
+text), and in the Hand mouse mode with the Hand, where a drag from text selects it (as
+Acrobat's Hand) and a drag anywhere else still moves the page. In the Standard (Select) mouse
+mode the Hand picked is Select: nothing there drags the page. The Hand's pointer is the arrow there (the closed hand
 while it moves the page); over a markup the arrow too (a click selects it).
 Preferences > Mouse, Hand: "Dragging from text with the Hand selects the text" switches it off.
 In CAD mode nothing changes: the plus (or the arrow), and the Hand only moves the page (the
@@ -105,7 +106,9 @@ class Cursor(unittest.TestCase):
         return (v.horizontalScrollBar().value(), v.verticalScrollBar().value()) != before
 
 
-class StandardMode(Cursor):
+class SelectTests:
+    """Select, in the Standard and Hand mouse modes."""
+
     def test_select_shows_the_text_cursor_over_text_and_the_arrow_elsewhere(self):
         self.use("select")
         self.assertEqual(self.hover(ON_TEXT[0]), Qt.IBeamCursor)
@@ -114,6 +117,61 @@ class StandardMode(Cursor):
     def test_select_over_a_markup_shows_the_move_arrows(self):
         self.use("select")
         self.assertEqual(self.hover(P(350, 535)), Qt.SizeAllCursor)
+
+    def test_no_text_cursor_left_behind_from_the_gray_beside_the_page(self):
+        self.gray_then_blank_paper("select")
+
+    def gray_then_blank_paper(self, tool):
+        self.use(tool)
+        w = self.page
+        canvas = w.parentWidget()
+        edge = w.to_screen_pt(P(3, 296))                    # ("EDGE", at the page's left edge)
+        gray = QPointF(w.x() - 2, w.y() + edge.y())         # (the gray just left of it)
+        canvas.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, gray, canvas.mapToGlobal(gray),
+                                          Qt.NoButton, Qt.NoButton, Qt.NoModifier))
+        APP.processEvents()
+        self.assertEqual(canvas.cursor().shape(), Qt.IBeamCursor)   # (text right there)
+        inside = QPointF(w.to_screen_pt(BLANK[0]))
+        QApplication.sendEvent(w, QEnterEvent(inside, w.mapToGlobal(inside),
+                                              w.mapToGlobal(inside)))
+        self.assertEqual(self.hover(BLANK[0]), Qt.ArrowCursor)
+
+
+class StandardMode(SelectTests, Cursor):
+    """The owner, 18 Nov 2026: "When in select mode, the hand should not drag the page": the
+    Hand picked in the Standard (Select) mouse mode is Select."""
+
+    def test_the_hand_picked_is_select(self):
+        said = []
+        self.w.statusBar().messageChanged.connect(said.append)
+        self.use("hand")
+        self.assertEqual(self.w.tool, "select")
+        self.assertEqual(self.v.tool, "select")
+        self.assertTrue(self.w.tool_actions["select"].isChecked())
+        self.assertTrue(any("doesn't move the page" in m for m in said), said)
+
+    def test_a_drag_on_blank_paper_never_moves_the_page(self):
+        self.v.set_zoom(3.0)
+        APP.processEvents()
+        self.use("hand")
+        self.v.ensureVisible(self.page.x() + 600, self.page.y() + 1200, 200, 200)
+        APP.processEvents()
+        self.assertFalse(self.drag(*BLANK))
+
+    def test_a_drag_from_text_selects_it(self):
+        self.use("hand")
+        self.assertFalse(self.drag(*ON_TEXT))
+        self.assertEqual(self.v.selected_text(), "Hello world")
+
+    def test_the_hand_mode_still_gets_its_hand(self):
+        self.w.set_mouse_mode("hand")
+        APP.processEvents()
+        self.use("hand")
+        self.assertEqual(self.v.tool, "hand")
+
+
+class HandMode(SelectTests, Cursor):
+    mode = "hand"
 
     def test_the_hand_is_the_arrow_until_it_is_over_text(self):
         self.use("hand")
@@ -130,28 +188,17 @@ class StandardMode(Cursor):
         APP.processEvents()
         self.use("hand")
         a = self.page.to_screen_pt(BLANK[0])
+        b = a + QPointF(-40, -40)
         self.move(a)
         QTest.mousePress(self.page, Qt.LeftButton, Qt.NoModifier, a.toPoint())
-        self.move(QPointF(a + QPointF(-40, -40)), Qt.LeftButton)
+        self.move(b, Qt.LeftButton)
         self.assertEqual(self.v.viewport().cursor().shape(), Qt.ClosedHandCursor)
-        QTest.mouseRelease(self.page, Qt.LeftButton, Qt.NoModifier, (a + QPointF(-40, -40)).toPoint())
+        QTest.mouseRelease(self.page, Qt.LeftButton, Qt.NoModifier, b.toPoint())
         APP.processEvents()
         self.assertEqual(self.v.viewport().cursor().shape(), Qt.ArrowCursor)
 
-    def test_no_text_cursor_left_behind_from_the_gray_beside_the_page(self):
-        self.use("hand")
-        w = self.page
-        canvas = w.parentWidget()
-        edge = w.to_screen_pt(P(3, 296))                    # ("EDGE", at the page's left edge)
-        gray = QPointF(w.x() - 2, w.y() + edge.y())         # (the gray just left of it)
-        canvas.mouseMoveEvent(QMouseEvent(QEvent.MouseMove, gray, canvas.mapToGlobal(gray),
-                                          Qt.NoButton, Qt.NoButton, Qt.NoModifier))
-        APP.processEvents()
-        self.assertEqual(canvas.cursor().shape(), Qt.IBeamCursor)   # (text right there)
-        inside = QPointF(w.to_screen_pt(BLANK[0]))
-        QApplication.sendEvent(w, QEnterEvent(inside, w.mapToGlobal(inside), w.mapToGlobal(inside)))
-        self.assertEqual(self.hover(BLANK[0]), Qt.ArrowCursor)
-
+    def test_no_text_cursor_left_behind_with_the_hand(self):
+        self.gray_then_blank_paper("hand")
 
     def test_a_drag_from_text_with_the_hand_selects_it(self):
         self.use("hand")
@@ -173,10 +220,6 @@ class StandardMode(Cursor):
         QTest.mouseDClick(self.page, Qt.LeftButton, Qt.NoModifier, q)
         APP.processEvents()
         self.assertEqual(self.v.selected_text(), "Hello")
-
-
-class HandMode(StandardMode):
-    mode = "hand"
 
     def test_the_option_off_gives_the_hand_back_its_old_ways(self):
         mouse_modes.set_option(self.w.settings, "hand", "hand_text", False)

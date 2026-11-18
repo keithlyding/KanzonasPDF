@@ -7253,6 +7253,10 @@ msgid "Dragging from text with the Hand selects the text (the text cursor shows 
 msgstr "Arrastrar desde el texto con la Mano selecciona el texto (el cursor de texto aparece sobre el texto)"
 
 #: cad
+msgid "Mouse: Standard. The arrow selects and doesn't move the page: hold the wheel down to move it, or switch to the Hand mouse mode."
+msgstr "Mouse: Estándar. La flecha selecciona y no mueve la página: mantenga presionada la rueda para moverla, o cambie al modo del mouse Mano."
+
+#: cad
 msgid "{mode} options"
 msgstr "Opciones de {mode}"
 

@@ -366,7 +366,9 @@ orizzontale.</li>
 Preferenze più avanti).
 <ul>
 <li><b>Mouse: Standard (freccia, la rotellina scorre)</b>: KanzonasPDF parte con lo strumento Seleziona (la freccia)
-ed Esc torna a quello; la rotellina scorre e Ctrl+rotellina esegue lo zoom.</li>
+ed Esc torna a quello; la rotellina scorre e Ctrl+rotellina esegue lo zoom. In questa modalità niente trascina la
+pagina: scegliere lo strumento Mano (H) dà Seleziona, quindi tieni premuta la rotellina per spostare la pagina, oppure
+passa alla modalità del mouse Mano.</li>
 <li><b>Mouse: Mano (trascina la pagina)</b>: parte con lo strumento Mano, che trascina la pagina; un clic su
 un'annotazione con questo strumento la seleziona. Il suo puntatore è la freccia, il cursore di testo sopra il testo
 (trascina dal testo per selezionarlo, come con Seleziona) e la mano chiusa mentre sposta la pagina. In questa modalità il movimento libero della pagina è attivo, quindi
@@ -696,7 +698,7 @@ seleziona, così non devi tornare alla freccia (non in modalità CAD, dove uno s
 fai clic su un'annotazione (un'evidenziazione, una nota, una forma...) per selezionarla; il suo puntatore è la freccia, sopra il
 testo il cursore di testo, e un trascinamento dal testo seleziona il testo (doppio clic una parola, tre clic una riga), come con Seleziona;
 trascina in qualsiasi altro punto per spostare la pagina (la mano chiusa mentre lo fa). Nella modalità del mouse CAD la
-Mano è la mano aperta e sposta soltanto la pagina. Un'annotazione trasformata in collegamento apre invece il suo collegamento se ci fai clic
+Mano è la mano aperta e sposta soltanto la pagina; nella modalità del mouse Standard non c'è la Mano (dà Seleziona). Un'annotazione trasformata in collegamento apre invece il suo collegamento se ci fai clic
 con lo strumento Mano, o Ctrl+clic con qualsiasi altro strumento (un clic semplice con Seleziona la seleziona).
 Un'annotazione su un collegamento già presente nel PDF (un'evidenziazione su una voce di un sommario) viene
 selezionata; fai clic sul collegamento accanto all'annotazione per aprirlo.</li>
