@@ -802,7 +802,12 @@ class _Canvas(QWidget):
             w, _pos = self._page_at(e.position())
             if w is not None:           # (the cursor and what's under the pointer)
                 self._send(w, e, w.mouseMoveEvent)
-                self.setCursor(w.cursor())
+                # (the page's own cursor, or none: one kept here would show on the page too,
+                # a text cursor left on blank paper, once the page unsets its own)
+                if w.testAttribute(Qt.WA_SetCursor):
+                    self.setCursor(w.cursor())
+                else:
+                    self.unsetCursor()
                 return
         super().mouseMoveEvent(e)
 
@@ -2106,6 +2111,7 @@ class DocumentView(QScrollArea):
     _picked = {}                # what's selected -> when it was selected (_note_picks)
     _pick_n = 0
     hand_selects = True         # Hand: clicking a markup selects it
+    hand_text = True            # Hand: a drag from text selects it (the text cursor over it)
     free_pan = False            # Free page movement: the page can be dragged past its edges
     page_wheel = False          # one wheel step = one page when the page fits the window
     night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
@@ -2269,12 +2275,16 @@ class DocumentView(QScrollArea):
         if tool == "eraser" and not self.plus_cursor:
             self.viewport().setCursor(eraser_cursor())
             return
-        # (the text cursor only with a tool that works on text; Select still selects text by
-        # dragging over it, with the arrow: the owner, 12 Nov, "there should be no text cursor
-        # unless I've double-clicked on text to edit or have a text tool")
+        # (the text cursor with a tool that works on text; Select and the Hand show it only
+        # over text, outside CAD mode (PageWidget hover, text_cursor_at): the owner, 12 Nov, in
+        # CAD mode, "there should be no text cursor unless I've double-clicked on text to edit
+        # or have a text tool"; 18 Nov, not in CAD mode, the hand instead of the text cursor,
+        # and "The cursor should be the pointer arrow until it browses over text": the Hand
+        # that selects text is the arrow there, the closed hand only while it moves the page)
         text_cursor = ("edittext", "addtext", "highlight", "underline", "strikeout", "comment",
                        "redact")
-        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.ArrowCursor,
+        hand = Qt.ArrowCursor if self.hand_text and not self.cad_like() else Qt.OpenHandCursor
+        cursors = {"hand": hand, "select": Qt.ArrowCursor,
                    **{t: Qt.IBeamCursor for t in text_cursor}}
         if self.plus_cursor and tool != "hand":
             cursors = {}                # CAD mouse: a plus, as in CAD programs
@@ -3349,6 +3359,20 @@ class DocumentView(QScrollArea):
         words = self._words(index)
         self.set_text_selection(index, words)
         return len(self.selected_text())
+
+    def cad_like(self):
+        """The CAD mouse mode, or one of its ways on (the plus cursor, window and crossing
+        selection): no text cursor over text, and the Hand only moves the page."""
+        return self.mouse_mode == "cad" or self.plus_cursor or self.cad_select
+
+    def text_cursor_at(self, index, pt):
+        """True where the text cursor shows: on (or right next to) text a drag would select,
+        outside CAD mode. The owner, 18 Nov 2026: "When I'm selecting text (not in cad
+        mouse), the cursor is a hand instead of the text cursor"; in CAD mode the plus or the
+        arrow stays (12 Nov: no text cursor there unless typing or with a text tool)."""
+        if self.cad_like() or not self._words(index):
+            return False
+        return self._word_near(index, pt, self.NEAR) is not None
 
     def word_at(self, index, pt):
         """The characters of the word under pt (unrotated page point), or []."""

@@ -2351,6 +2351,11 @@ class PageWidget(QWidget):
                     self.view.hand_selects and \
                     self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
                 return
+            if self._link_press is None and self._hand_text(pdf):
+                # (as Acrobat's Hand: a drag from text selects it; anywhere else moves the page)
+                if not self._triple_click(e):
+                    self._begin_text_drag(pos, pdf, marquee=False)
+                return
             self.view.begin_pan(e.globalPosition())
             return
         if tool == "editobjects":
@@ -2418,17 +2423,7 @@ class PageWidget(QWidget):
         if tool in TEXT_TOOLS:
             if self._triple_click(e):
                 return
-            self.view.clear_text_selection()
-            self._drag_start = self._drag_now = pos
-            mode, words = self.view.text_selection(self.index, pdf, pdf)
-            self._marquee = tool == "select" and ctrl_held(e)
-            self._text_mode = "box" if self._marquee else mode
-            self._text_sel = (self._text_mode, [] if self._marquee else words)
-            if self._marquee:
-                self.view._set_text_drag([(self.index, "box", [])])
-            else:
-                self.view._set_text_drag([(self.index, mode, words)])
-            self.update()
+            self._begin_text_drag(pos, pdf, marquee=tool == "select" and ctrl_held(e))
         elif tool in SHAPE_TOOLS:
             self._drag_start = self._drag_now = pos
             self._shape_press = (e.position(), e.timestamp())   # (a click or a drag: cad_draw)
@@ -2449,6 +2444,26 @@ class PageWidget(QWidget):
             self.view.add_text_at(self.index, pdf)
         elif tool in ("note", "attach"):
             self.view.apply_point_tool(self.index, tool, pdf)
+
+    def _begin_text_drag(self, pos, pdf, marquee):
+        """A press that starts selecting (or marking up) text; marquee: Ctrl with Select, a
+        box of the text inside it."""
+        self.view.clear_text_selection()
+        self._drag_start = self._drag_now = pos
+        mode, words = self.view.text_selection(self.index, pdf, pdf)
+        self._marquee = marquee
+        self._text_mode = "box" if marquee else mode
+        self._text_sel = (self._text_mode, [] if marquee else words)
+        if marquee:
+            self.view._set_text_drag([(self.index, "box", [])])
+        else:
+            self.view._set_text_drag([(self.index, mode, words)])
+        self.update()
+
+    def _hand_text(self, pdf):
+        """The Hand over text it selects (Preferences > Mouse, Hand: on unless switched off;
+        never in CAD mode)."""
+        return self.view.hand_text and self.view.text_cursor_at(self.index, pdf)
 
     def _paint_dim_preview(self, p, pts):
         """The Dimension being drawn (widget points): the measured line, then with the third
@@ -2747,7 +2762,15 @@ class PageWidget(QWidget):
                     if tool == "hand":
                         return
             if tool == "hand":
-                self.unsetCursor()
+                pdf = self.to_pdf(pos)
+                # (a markup under it is selected by a click: the hand stays there)
+                on_markup = self.view.show_markups and self.view.hand_selects and (
+                    self.view.annot_at(self.index, pdf) is not None or
+                    self._card_at(pos) is not None)
+                if not on_markup and self._hand_text(pdf):
+                    self.setCursor(Qt.IBeamCursor)
+                else:
+                    self.unsetCursor()
             if tool == "editobjects":
                 self._objects_hover(pos)
                 return
@@ -2770,9 +2793,9 @@ class PageWidget(QWidget):
             self._poly_hover = snap45(self._poly[0], pos) if shift_held(e) else pos
             self.update()
             return
-        if tool == "hand" and self._edit is None:
+        if tool == "hand" and self._edit is None and self._text_sel is None:
             # (a press on a markup with the Hand selected it to move it: that drag moves it,
-            # 1.12; it panned nothing and the markup stayed put)
+            # 1.12; it panned nothing and the markup stayed put. One on text selects it)
             self.view.continue_pan(e.globalPosition())
         elif self._sig_drag is not None:
             self._sig_now = pos
@@ -2864,6 +2887,8 @@ class PageWidget(QWidget):
                 tip = self.view.annot_tooltip(self.index, self.to_pdf(pos))
                 if tip:
                     QToolTip.showText(self.mapToGlobal(pos.toPoint()), tip, self)
+        elif self.view.tool == "select" and self.view.text_cursor_at(self.index, self.to_pdf(pos)):
+            self.setCursor(Qt.IBeamCursor)      # (a drag from here selects text)
         else:
             self.unsetCursor()
 
@@ -2923,7 +2948,7 @@ class PageWidget(QWidget):
                 a, b = self.to_pdf(tm["start"]), self.to_pdf(pos)
                 self.view.move_text_line(self.index, tm["pdf"], (b.x - a.x, b.y - a.y))
             return
-        if tool == "hand" and self._edit is None:
+        if tool == "hand" and self._edit is None and self._text_sel is None:
             self.view.end_pan()
         elif self._sig_drag is not None:
             self._sig_now = pos
@@ -2977,8 +3002,8 @@ class PageWidget(QWidget):
                     box = pymupdf.Rect(start_pt, self.to_pdf(b)).normalize()
                     if self.view.select_in_box(self.index, box, add=ctrl_held(e)) or ctrl_held(e):
                         return
-                self.view.apply_text_span(tool, (self.index, start_pt), (end_i, end_pt),
-                                          box=marquee)
+                self.view.apply_text_span("select" if tool == "hand" else tool,
+                                          (self.index, start_pt), (end_i, end_pt), box=marquee)
         elif self._drag_start is not None and tool in FORM_TOOLS:
             a, b = self._drag_start, self._drag_now
             self._drag_start = self._drag_now = None
@@ -3064,7 +3089,8 @@ class PageWidget(QWidget):
             pdf = self.to_pdf(e.position())
             if card is not None:
                 self.view.edit_annot_text(self.index, card)
-            elif self.view.annot_at(self.index, pdf) is not None or self.view.tool == "hand":
+            elif self.view.annot_at(self.index, pdf) is not None or \
+                    self.view.tool == "hand" and not self._hand_text(pdf):
                 self.view.edit_annot_at(self.index, pdf)
             else:
                 self._select_word(pdf, e)
@@ -3136,6 +3162,15 @@ class PageWidget(QWidget):
         if line:
             self.view.set_text_selection(self.index, line)
         return bool(line)
+
+    def enterEvent(self, e):
+        # (the gray around the pages shows the cursor of the page it hands the pointer to,
+        # _Canvas.mouseMoveEvent; here that one would show through wherever this page has
+        # none of its own, a text cursor on blank paper)
+        canvas = self.parentWidget()
+        if canvas is not None and canvas is not self.view.viewport():
+            canvas.unsetCursor()
+        super().enterEvent(e)
 
     def leaveEvent(self, e):
         if not self._gone():

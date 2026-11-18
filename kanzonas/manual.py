@@ -375,9 +375,12 @@ sideways too.</li>
 options (see Preferences below).
 <ul>
 <li><b>Mouse: Standard (arrow, the wheel scrolls)</b>: KanzonasPDF starts with the Select tool
-(the arrow) and Escape goes back to it; the wheel scrolls and Ctrl+wheel zooms.</li>
+(the arrow) and Escape goes back to it; the wheel scrolls and Ctrl+wheel zooms. Nothing drags the
+page in this mode: picking the Hand tool (H) gives Select, so hold the wheel down to move the page,
+or switch to the Hand mouse mode.</li>
 <li><b>Mouse: Hand (drag the page)</b>: starts with the Hand tool, which drags the page; clicking
-a markup with it selects the markup. Free page movement is on in this mode, so the Hand drags the
+a markup with it selects the markup. Its pointer is the arrow, the text cursor over text (drag
+from the text to select it, as with Select) and the closed hand while it moves the page. Free page movement is on in this mode, so the Hand drags the
 page anywhere, also when it fits in the window. This is how KanzonasPDF starts at first.</li>
 <li><b>Mouse: CAD (wheel zooms, hold wheel to pan)</b> (F11 switches it on, and off again to the
 mode you had): like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the
@@ -697,9 +700,10 @@ keeps reading the right way round, and text boxes turn in quarter turns.</p>
 <h2 id="select">Selecting and editing markups</h2>
 <ul>
 <li><b>Select tool (V):</b> drag across text to select it, including across the gap between
-pages (it stays highlighted; see Copy, cut and paste below). Its pointer is the arrow: the text
-cursor shows only with the tools that work on text (Edit text, Add text, Highlight and the
-other text markups, Redact) and in the box where you type. Click a markup to select it, then drag
+pages (it stays highlighted; see Copy, cut and paste below). Its pointer is the arrow, and the
+text cursor over text a drag selects (not in the CAD mouse mode, where the pointer stays the
+plus or the arrow: there the text cursor shows only with the tools that work on text, Edit text, Add text,
+Highlight and the other text markups, Redact, and in the box where you type). Click a markup to select it, then drag
 it to move it, drag a square handle to resize it, or change its look in the Properties panel.
 In the <b>CAD</b> mouse mode, Select works as in AutoCAD instead: blue window and green
 crossing boxes, a lasso, clicks that add to the selection, Shift to take out, Escape to clear,
@@ -707,8 +711,11 @@ and dragging moves nothing (see CAD mode).</li>
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
 it too, so you don't have to switch back to the arrow (not in CAD mode, where a drawing tool always
 draws). The <b>Hand tool</b> works the same way:
-click a markup (a highlight, a note, a shape...) to select it; drag anywhere else to move the
-page. A markup made a link opens its link instead when clicked with the Hand tool, or
+click a markup (a highlight, a note, a shape...) to select it; its pointer is the arrow, over
+text the text cursor, and a drag from text selects the text (double-click a word, three clicks a line), as with Select;
+drag anywhere else to move the page (the closed hand while it does). In the CAD mouse mode the
+Hand is the open hand and only moves the page; in the Standard mouse mode there's no Hand (it
+gives Select). A markup made a link opens its link instead when clicked with the Hand tool, or
 Ctrl+clicked with any other tool (a plain click with Select selects it). A markup on a link
 the PDF came with (a highlight on a table of contents entry) is selected; click the link
 beside the markup to open it.</li>
@@ -2309,7 +2316,8 @@ is the one KanzonasPDF starts with and Escape goes back to), and each mode's own
 <ul>
 <li>Standard: Scroll one page per wheel step (on), Free page movement (off).</li>
 <li>Hand: Free page movement (on), Scroll one page per wheel step (on), Clicking a markup with
-the Hand selects it (on).</li>
+the Hand selects it (on), Dragging from text with the Hand selects the text (the text cursor
+shows over text) (on; off, the Hand is the open hand and a drag from text moves the page too).</li>
 <li>CAD: The wheel zooms at the cursor (Ctrl+wheel scrolls), Plus cursor, Open canvas around the
 pages, Window (blue) and crossing (green) selection, Click, move, click draws the selection box,
 Hold the button and drag to draw a lasso, Show the CAD tab, Letters typed over the drawing go to

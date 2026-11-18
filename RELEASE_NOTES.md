@@ -9,6 +9,24 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.8
+
+**Fixed**
+- Selecting text shows the text cursor (not in the CAD mouse mode). The Hand tool's pointer is now the arrow until it's over text, where it becomes the text cursor: drag from text to select it, as in Adobe Acrobat; drag anywhere else to move the page. To have the Hand only move the page, switch off "Dragging from text with the Hand selects the text" in Preferences > Mouse.
+- In the Standard (Select) mouse mode nothing drags the page any more: picking the Hand there gives Select. Hold the mouse wheel down to move the page, or switch to the Hand mouse mode.
+
+## 1.15.8 (es)
+
+**Correcciones**
+- Al seleccionar texto se ve el cursor de texto (no en el modo del mouse CAD). El puntero de la herramienta Mano ahora es la flecha hasta que pasa sobre el texto, donde se convierte en el cursor de texto: arrastre desde el texto para seleccionarlo, como en Adobe Acrobat; arrastre en cualquier otro lugar para mover la página. Para que la Mano solo mueva la página, desactive "Arrastrar desde el texto con la Mano selecciona el texto" en Preferencias > Mouse.
+- En el modo del mouse Estándar (Seleccionar) ya nada arrastra la página: elegir la Mano allí da Seleccionar. Mantenga presionada la rueda del mouse para mover la página, o cambie al modo del mouse Mano.
+
+## 1.15.8 (it)
+
+**Correzioni**
+- Quando selezioni il testo compare il cursore di testo (non nella modalità del mouse CAD). Il puntatore dello strumento Mano ora è la freccia finché non passa sopra il testo, dove diventa il cursore di testo: trascina dal testo per selezionarlo, come in Adobe Acrobat; trascina in qualsiasi altro punto per spostare la pagina. Perché la Mano sposti soltanto la pagina, disattiva "Trascinare dal testo con la Mano seleziona il testo" in Preferenze > Mouse.
+- Nella modalità del mouse Standard (Seleziona) niente trascina più la pagina: scegliere la Mano lì dà Seleziona. Tieni premuta la rotellina del mouse per spostare la pagina, oppure passa alla modalità del mouse Mano.
+
 ## 1.15.7
 
 **Fixed**
