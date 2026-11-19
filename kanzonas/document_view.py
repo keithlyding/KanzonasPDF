@@ -5021,10 +5021,12 @@ class DocumentView(QScrollArea):
             return tr("Open {file}").format(file=link.get("file") or tr("file"))
         return tr("Link")
 
-    def _go_to(self, page, to=None, shown=False):
-        """Show page (index) from the point to on it: unturned, as bookmarks give it, or as
-        the page is shown (shown), as links give it (MuPDF turns a link's place already;
-        a bookmark's, read back from the outline, it doesn't)."""
+    def _go_to(self, page, to=None, space="page"):
+        """Show page (index) from the point to on it, given in one of three ways, as PyMuPDF
+        hands them back: "page", unturned and from the page's top (a bookmark's place); "shown",
+        as the page is shown, turned (a link's); "pdf", the PDF's own numbers, from the page's
+        bottom (a link through a named destination: the owner's link index, 19 Nov 2026,
+        on pages that aren't turned)."""
         if not 0 <= page < self.doc.page_count:
             return
         y = 0
@@ -5033,7 +5035,11 @@ class DocumentView(QScrollArea):
             # and the next page filled the window; the owner, 19 Nov 2026: "it barely shows
             # the bottom of it and what I see is more of the page after")
             pg = self.doc[page]
-            at = pymupdf.Point(to) if shown else pymupdf.Point(to) * pg.rotation_matrix
+            at = pymupdf.Point(to)
+            if space == "pdf":
+                at = at * pg.transformation_matrix
+            if space != "shown":
+                at = at * pg.rotation_matrix
             y = at.y * self.zoom - 20
             # never so far down that the page leaves the window (a place near its bottom: as
             # much of the page as fits, down to its bottom edge)
@@ -5048,7 +5054,10 @@ class DocumentView(QScrollArea):
         from PySide6.QtGui import QDesktopServices
         k = link.get("kind")
         if k in (pymupdf.LINK_GOTO, pymupdf.LINK_NAMED) and link.get("page", -1) >= 0:
-            self._go_to(link["page"], link.get("to"), shown=True)
+            # (a named destination's place comes back as the PDF writes it, from the page's
+            # bottom: read as from the top, a link to a page's top went to its bottom)
+            self._go_to(link["page"], link.get("to"),
+                        space="pdf" if k == pymupdf.LINK_NAMED else "shown")
             return
         if k == pymupdf.LINK_NAMED:
             name = (link.get("name") or "").lower()

@@ -12,6 +12,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -98,6 +99,47 @@ class Jump(Base):
                 self.open(90, dest=dest)
                 (w0, _w1), (p0, _p1) = self.shown()
                 self.assertLess(abs(w0 - p0), 30)
+
+
+def named(rotation, where):
+    """Three letter pages, the second turned; page 1 links to page 2 through the named
+    destination "SHEET2" ([page 2 /XYZ 0 where 0], as drawing indexes write them)."""
+    d = pymupdf.open()
+    for i in range(3):
+        p = d.new_page(width=612, height=792)
+        if i == 1:
+            p.set_rotation(rotation)
+    n = d.get_new_xref()
+    d.update_object(n, "<< /Names [(SHEET2) [%d 0 R /XYZ 0 %g 0]] >>" % (d[1].xref, where))
+    d.xref_set_key(d.pdf_catalog(), "Names", "<< /Dests %d 0 R >>" % n)
+    x = d.get_new_xref()
+    d.update_object(x, "<< /Type /Annot /Subtype /Link /Rect [72 600 300 620] /Border [0 0 0] "
+                       "/Dest (SHEET2) >>")
+    d.xref_set_key(d[0].xref, "Annots", "[%d 0 R]" % x)
+    path = os.path.join(tempfile.mkdtemp(), "named.pdf")
+    d.save(path)
+    return path
+
+
+class NamedDestinations(Base):
+    """A link through a named destination: its place comes back as the PDF writes it, from
+    the page's bottom (the owner's link index: "it barely shows the bottom of it")."""
+
+    def follow(self, rotation, where, zoom=1.0):
+        with mock.patch(__name__ + ".sheets", lambda _r, _d: named(rotation, where)):
+            return self.open(rotation, zoom=zoom)
+
+    def test_to_the_top_of_the_page(self):
+        for rot in (0, 90):
+            with self.subTest(rotation=rot):
+                self.follow(rot, 792)
+                (w0, _w1), (p0, _p1) = self.shown()
+                self.assertLess(abs(w0 - p0), 30)
+
+    def test_to_the_middle_of_the_page(self):
+        self.follow(0, 400, zoom=2.0)       # (the page taller than the window below its middle)
+        (w0, _w1), (p0, _p1) = self.shown()
+        self.assertAlmostEqual(w0 - p0, 392 * 2 - 20 - 12, delta=15)
 
 
 class Bookmarks(Base):
