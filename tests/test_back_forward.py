@@ -35,7 +35,9 @@ FOLDER = tempfile.mkdtemp()
 
 def pdf(name, pages, link_to=None, other=None):
     """A PDF of pages letter pages, "Page N" on each; page 1 links to page link_to (0-based)
-    or to the first page of the file other."""
+    or to the first page of the file other (by its name: both are in FOLDER. A Windows path
+    written into the link loses its backslashes, which a PDF string reads as escapes, and
+    the link then points nowhere)."""
     d = pymupdf.open()
     for i in range(pages):
         d.new_page(width=612, height=792).insert_text((72, 100), "Page %d WORD%d" % (i + 1, i),
@@ -45,14 +47,27 @@ def pdf(name, pages, link_to=None, other=None):
         d[0].insert_link({"kind": pymupdf.LINK_GOTO, "from": r, "page": link_to,
                           "to": pymupdf.Point(0, 0)})
     if other is not None:
-        d[0].insert_link({"kind": pymupdf.LINK_GOTOR, "from": r, "file": other, "page": 0})
+        d[0].insert_link({"kind": pymupdf.LINK_GOTOR, "from": r, "file": os.path.basename(other),
+                          "page": 0})
     path = os.path.join(FOLDER, name)
     d.save(path)
     return path
 
 
+def no_dialogs(test):
+    """A message box fails the test at once: none is expected, and on the build machines
+    nobody is there to close one (the Windows build waited for one for an hour)."""
+    from PySide6.QtWidgets import QMessageBox
+    for name in ("information", "question", "warning", "critical"):
+        p = mock.patch.object(QMessageBox, name, side_effect=AssertionError(
+            "a message box (QMessageBox.%s) opened" % name))
+        p.start()
+        test.addCleanup(p.stop)
+
+
 class History(unittest.TestCase):
     def setUp(self):
+        no_dialogs(self)
         w = self.w = main_window.MainWindow()
         self.addCleanup(lambda: [setattr(x, "_close_confirmed", True) or x.close()
                                  for x in main_window.windows()])
