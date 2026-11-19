@@ -5230,8 +5230,22 @@ class MainWindow(QMainWindow):
         self.settings.setValue("theme", mode)
         app = QApplication.instance()
         theme.apply(app, mode)
-        # widgets with style sheets keep their old colors until re-polished
-        for wdg in app.allWidgets():
+        # widgets with style sheets keep their old colors until re-polished. Python's garbage
+        # collector is held off while the list is made: run in the middle of it, it can delete
+        # a widget no longer used (a closed dialog) that the list already holds, and reading
+        # that one crashed; one deleted while the others are polished is skipped.
+        import gc
+        import shiboken6
+        collecting = gc.isenabled()
+        gc.disable()
+        try:
+            widgets = app.allWidgets()
+        finally:
+            if collecting:
+                gc.enable()
+        for wdg in widgets:
+            if not shiboken6.isValid(wdg):
+                continue
             wdg.style().unpolish(wdg)
             wdg.style().polish(wdg)
             wdg.update()

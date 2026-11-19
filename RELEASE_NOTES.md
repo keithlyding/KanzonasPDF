@@ -19,6 +19,7 @@ see the English.
 
 **Fixed**
 - A link to a page sometimes showed the bottom of that page and mostly the next one: links through named destinations, and links to sheets turned a quarter, now land where they say.
+- A rare crash when changing the theme (View > Theme) soon after closing a dialog.
 
 ## 1.15.10 (es)
 
@@ -30,6 +31,7 @@ see the English.
 
 **Correcciones**
 - Un vínculo a una página a veces mostraba el final de esa página y casi toda la siguiente: los vínculos a destinos con nombre y a hojas giradas un cuarto de vuelta ahora llevan a donde indican.
+- Un cierre inesperado poco frecuente al cambiar el tema (Ver > Tema) poco después de cerrar un cuadro de diálogo.
 
 ## 1.15.10 (it)
 
@@ -41,6 +43,7 @@ see the English.
 
 **Correzioni**
 - Un collegamento a una pagina a volte mostrava il fondo di quella pagina e quasi tutta la successiva: i collegamenti a destinazioni con nome e ai fogli ruotati di un quarto di giro ora portano dove indicano.
+- Una chiusura improvvisa rara cambiando il tema (Visualizza > Tema) poco dopo aver chiuso una finestra di dialogo.
 
 ## 1.15.9
 
