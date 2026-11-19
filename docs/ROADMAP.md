@@ -88,6 +88,13 @@ a decision changes or a piece of work lands. Details of each version are in
   Preferences > Mouse, Hand can switch that off, and the Hand is the open hand again). In the
   Standard (Select) mode nothing drags the page ("When in select mode, the hand should not
   drag the page"): the Hand picked there is Select; the held wheel moves the page.
+- 1.15.9 (@cloydcc-dev's issue #107, the owner's choices of 19 Nov): Count set up in
+  Properties (Group, New count, Layer, the next number); Keep the numbers in order, on by
+  default (a delete or a move to another group renumbers the group); a marker's group and
+  number changed in Properties (the Markups list stays read-only); placed Count markers
+  aren't selected, so Properties keeps the tool's settings while clicking. Then (the same
+  day): each New count its own color, a group picked again its markers' look, and a group's
+  gaps or repeats said in Properties with Renumber beside it.
 - 1.15.10 (owner, 19 Nov): **the Hand only views** ("I want the hand to always show no matter
   what. Selecting text or objects while in hand should not be doable. Hand is like a view only
   type thing"), replacing 1.15.8's Hand that selected text and 1.12's that selected markups:

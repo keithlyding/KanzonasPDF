@@ -11553,6 +11553,85 @@ msgstr "Esegui il programma di installazione"
 msgid "Download the setup from the release page and run it."
 msgstr "Scarica il programma di installazione dalla pagina della versione ed eseguilo."
 
+#: counts
+msgid "Count {n}"
+msgstr "Conteggio {n}"
+
+#: counts
+msgid "Numbered again with no gaps (Ctrl+Z undoes it)"
+msgstr "Numerati di nuovo senza buchi (Ctrl+Z annulla)"
+
+#: counts
+msgid "The numbers are already in order"
+msgstr "I numeri sono già in ordine"
+
+#: counts
+msgid "New count: {group}. Rename it in Properties if you like; the next marker is number 1."
+msgstr "Nuovo conteggio: {group}. Rinominalo in Proprietà se vuoi; il prossimo indicatore è il numero 1."
+
+#: counts
+msgid "Renumber group"
+msgstr "Rinumera il gruppo"
+
+#: counts
+msgid "Type a name for the group"
+msgstr "Scrivi un nome per il gruppo"
+
+#: counts
+msgid "Markers of one group are numbered together (1, 2, 3...) and totaled together in the Measurement summary and legends. Pick a group of this document or type a new name."
+msgstr "Gli indicatori di un gruppo sono numerati insieme (1, 2, 3...) e sommati insieme nel Riepilogo misure e nelle legende. Scegli un gruppo di questo documento o scrivi un nome nuovo."
+
+#: counts
+msgid "New count"
+msgstr "Nuovo conteggio"
+
+#: counts
+msgid "Start another count: a new group whose first marker is number 1"
+msgstr "Inizia un altro conteggio: un gruppo nuovo il cui primo indicatore è il numero 1"
+
+#: counts
+msgid "Keep the numbers in order"
+msgstr "Mantieni i numeri in ordine"
+
+#: counts
+msgid "Deleting a marker of the group, or moving it to another group, numbers the rest 1, 2, 3... again, with no gaps. Off: the numbers stay as they are, and the next marker takes the number after the highest."
+msgstr "Eliminando un indicatore del gruppo, o spostandolo in un altro gruppo, gli altri vengono numerati di nuovo 1, 2, 3..., senza buchi. Disattivato: i numeri restano come sono e il prossimo indicatore prende il numero dopo il più alto."
+
+#: counts
+msgid "The layer the markers go on (Layers tab: show or hide a layer's markups)"
+msgstr "Il livello su cui vanno gli indicatori (scheda Livelli: mostra o nascondi le annotazioni di un livello)"
+
+#: counts
+msgid "As the Layers tab says"
+msgstr "Come dice la scheda Livelli"
+
+#: counts
+msgid "This marker's number. With Keep the numbers in order on, the others of its group move up or down to make room."
+msgstr "Il numero di questo indicatore. Con Mantieni i numeri in ordine attivo, gli altri del suo gruppo salgono o scendono per fargli posto."
+
+#: counts
+msgid "The next marker: {group} #{n}"
+msgstr "Il prossimo indicatore: {group} n. {n}"
+
+#: counts
+msgid "{group} numbers {problems}"
+msgstr "Numeri di {group} {problems}"
+
+#: counts
+msgid "missing: {numbers}"
+msgstr "mancanti: {numbers}"
+
+#: counts
+msgid "used more than once: {numbers}"
+msgstr "usati più di una volta: {numbers}"
+
+#: counts
+msgid "Renumber"
+msgstr "Rinumera"
+
+#: counts
+msgid "Number the group 1, 2, 3... again, with no gaps or repeats (Ctrl+Z undoes it)"
+msgstr "Numera di nuovo il gruppo 1, 2, 3..., senza buchi né ripetizioni (Ctrl+Z annulla)"
 #: main_window
 msgid "&Back"
 msgstr "&Indietro"

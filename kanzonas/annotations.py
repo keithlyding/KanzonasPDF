@@ -113,7 +113,8 @@ DEFAULTS = {
     "m_perimeter": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_volume": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "depth": 1.0,
                  "opacity": 1.0},
-    "m_count": {"stroke": "#0050ff", "fontsize": 9, "group": "Count 1", "opacity": 1.0},
+    "m_count": {"stroke": "#0050ff", "fontsize": 9, "group": "Count 1", "opacity": 1.0,
+                "order": True},
     # a dot (dots.py): filled or outlined, its number and/or its text beside it ("side") or
     # its number inside it; its text is the markup's text, its number "n"
     "dot": {"stroke": "#e00000", "filled": True, "size": 6.0, "width": 1.0, "show": "number",

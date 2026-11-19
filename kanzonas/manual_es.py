@@ -1435,8 +1435,30 @@ nota se dejan como están y se enumeran. Confíe, pero compruebe: un plano impre
 24x36 en papel de 11x17) sigue indicando su escala original, y nada en la página lo advierte. Mida
 una dimensión conocida después de leer las escalas, y use Calibrar cinta métrica si no coincide.</li>
 <li><b>Longitud</b> (Shift+M), <b>Longitud de polilínea</b>, <b>Área</b> con perímetro (Shift+A) y
-<b>Conteo</b> (Shift+C, con grupos con nombre). Los valores se actualizan cuando edita la marca o cambia
-la escala. Un marcador de Conteo copiado con Duplicar (Ctrl+D) o con copiar y pegar toma el siguiente
+<b>Conteo</b> (Shift+C, con grupos con nombre, más abajo). Los valores se actualizan cuando edita la marca
+o cambia la escala.</li>
+<li><b>Conteo</b> (Shift+C): haga clic en cada elemento; cada clic pone un marcador con el siguiente número
+de su grupo. Prepárelo en Propiedades antes de hacer clic, con la herramienta Conteo elegida:
+<b>Grupo</b> (elija uno de los grupos del documento o escriba un nombre, como Detectores de humo: los
+marcadores de un grupo se numeran juntos y se suman juntos en el Resumen de mediciones y en las leyendas),
+<b>Nuevo conteo</b> (el siguiente grupo, Conteo 2 en adelante, cuyo primer marcador es el 1, en un color que
+ningún grupo del documento tiene todavía; cámbielo si quiere),
+<b>Mantener los números en orden</b> (activado salvo que lo desactive: al eliminar un marcador, o al pasarlo
+a otro grupo, los demás de su grupo se numeran de nuevo 1, 2, 3..., en todas las páginas, en un solo paso
+de deshacer; desactivado, el hueco queda y el siguiente marcador toma el número siguiente al más alto) y
+<b>Capa</b> (la capa en la que van los marcadores: Según la pestaña Capas, Sin capa, una de las capas del
+documento o Nueva capa...). Al elegir un grupo que el documento ya tiene, los siguientes marcadores toman la capa,
+el color, el tamaño del texto y la opacidad de sus marcadores, así que una lista a la que vuelve se ve igual.
+Propiedades muestra también el grupo y el número del siguiente marcador y, cuando los números del grupo tienen
+huecos o repetidos (un marcador eliminado con Mantener los números en orden desactivado o en otro visor de PDF, un
+número escrito dos veces, un archivo anterior a la 1.15.9), dice cuáles ("Números de Conteo 1 que faltan: 4, 9;
+repetidos: 3"), con <b>Renumerar</b> al lado para numerar el grupo de nuevo 1, 2, 3... (Ctrl+Z lo deshace). Los
+marcadores que pone no quedan
+seleccionados, así que Propiedades sigue mostrando todo esto mientras hace clic. Para cambiar uno, haga
+clic en él con Seleccionar: su Grupo (toma el siguiente número del grupo nuevo), <b>Número</b> (con Mantener
+los números en orden activado, los demás de su grupo suben o bajan para hacerle lugar), Capa, color y
+tamaño. Clic derecho en un marcador &gt; <b>Renumerar el grupo</b> numera su grupo de nuevo 1, 2, 3...
+sin huecos. Un marcador de Conteo copiado con Duplicar (Ctrl+D) o con copiar y pegar toma el siguiente
 número de su grupo.</li>
 <li><b>Cota</b> (Shift+D; pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña CAD),
 como la Cota de Bluebeam y la cota alineada de AutoCAD: haga clic en los dos puntos que va a medir, luego

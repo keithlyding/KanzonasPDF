@@ -2104,6 +2104,9 @@ class PageWidget(QWidget):
             if v.can_fit_to_text():
                 # (issue #90) the box as tall as its text, and following it from then on
                 menu.addAction(tr("Fit to text"), v.fit_selected_to_text)
+            if not v.read_only and any(m["kind"] == "m_count" for _x, m in v.selected_models()):
+                # (issue #107) its group numbered 1, 2, 3... again, with no gaps
+                menu.addAction(tr("Renumber group"), v.renumber_selected_counts)
             if win is not None and hasattr(win, "a_group"):
                 menu.addSeparator()
                 for act in (win.a_group, win.a_ungroup, win.a_flip_h, win.a_flip_v):
