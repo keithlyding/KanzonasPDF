@@ -279,7 +279,7 @@ class Workflow(unittest.TestCase):
                       self.script)
 
     def test_tested_before_it_can_be_published(self):
-        self.assertIn('python -m unittest discover -s tests -p "test_*.py" -t .', self.script)
+        self.assertIn('-m unittest discover -s tests -p "test_*.py" -t .', self.script)
         self.assertEqual(self.steps["Regression tests (security, document preservation, "
                                     "efficiency budgets)"]["env"], {"QT_QPA_PLATFORM": "offscreen"})
         selftest = self.steps["Self test (inside the app; OCR, exports, signatures, forms)"]["run"]

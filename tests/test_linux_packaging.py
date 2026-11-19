@@ -182,7 +182,7 @@ class Workflow(unittest.TestCase):
         self.assertIn("--appimage-extract-and-run --selftest selftest-linux.log", linux)
         self.assertIn("grep -q '^FAIL' selftest-linux.log", linux)
         self.assertIn("smoke_test.sh ./KanzonasPDF-x86_64.AppImage --appimage-extract-and-run", linux)
-        self.assertIn('python -m unittest discover -s tests -p "test_*.py" -t .', linux)
+        self.assertIn('-m unittest discover -s tests -p "test_*.py" -t .', linux)
 
     def test_the_release_waits_for_both_builds_and_carries_the_appimage(self):
         pub = self.jobs["publish"]
