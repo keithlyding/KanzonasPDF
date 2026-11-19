@@ -211,6 +211,112 @@ class GroupAndNumber(Counting):
         self.assertEqual(sorted(self.numbers().values()), [1, 2, 3])
 
 
+class Colors(Counting):
+    """New count takes a color no group of the document has yet; picking a group again gives
+    the next markers its markers' color, text size and opacity (the owner, 19 Nov)."""
+
+    def tool(self, key):
+        return annotations.tool_props("m_count")[key]
+
+    def pick(self, group):
+        self.w.props.group.setCurrentText(group)
+        self.w.props._emit()
+        APP.processEvents()
+
+    def test_each_new_count_gets_its_own_color(self):
+        self.place((0, 100))
+        first = self.tool("stroke")
+        self.w._new_count_group()
+        second = self.tool("stroke")
+        self.place((0, 150))
+        self.w._new_count_group()
+        third = self.tool("stroke")
+        self.assertEqual(len({first.lower(), second.lower(), third.lower()}), 3)
+        self.assertIn(second, counts.COLORS)
+
+    def test_a_group_picked_again_looks_like_its_markers(self):
+        self.w.props.fontsize.setValue(14)
+        self.place((0, 100))
+        blue = self.tool("stroke")
+        self.w._new_count_group()
+        self.w.props.fontsize.setValue(9)
+        self.place((0, 150))
+        self.pick(counts.DEFAULT_GROUP)
+        self.assertEqual(self.tool("stroke"), blue)
+        self.assertEqual(self.tool("fontsize"), 14)
+        self.place((0, 200))
+        m = self.select(0, 200)
+        self.assertEqual((m["n"], m["props"]["stroke"]), (2, blue))
+
+    def test_a_new_name_keeps_the_color_chosen(self):
+        self.w.props.stroke.set_color("#123456")
+        self.w.props._emit()
+        self.pick("Speakers")
+        self.assertEqual(self.tool("stroke"), "#123456")
+
+    def test_when_all_the_colors_are_used_it_goes_round(self):
+        found = [(0, k, {"props": {"stroke": c, "group": "G%d" % k}, "n": 1})
+                 for k, c in enumerate(counts.COLORS)]
+        self.assertEqual(counts.next_color(found, counts.COLORS[2]), counts.COLORS[3])
+
+
+class GapsAreShown(Counting):
+    """Properties says when a group's numbers have gaps or repeats, with Renumber beside it;
+    nothing when they're clean."""
+
+    def shown(self):
+        self.w._refresh_props()
+        lab, row = self.w.props.rows["gaps"]
+        return self.w.props.gaps.text() if row.isVisible() else ""
+
+    def gap(self):
+        """1, 3: the second deleted with the order off."""
+        self.place((0, 100), (0, 150), (0, 200))
+        self.select(0, 100)
+        self.change(order=False)
+        self.select(0, 150)
+        self.v.delete_selected()
+        self.v.clear_selection()
+
+    def test_nothing_when_the_numbers_are_clean(self):
+        self.place((0, 100), (0, 150))
+        self.assertEqual(self.shown(), "")
+
+    def test_a_gap_is_named_for_the_tool(self):
+        self.gap()
+        self.assertIn("missing: 2", self.shown())
+
+    def test_and_for_a_selected_marker(self):
+        self.gap()
+        self.select(0, 200)
+        self.assertIn("missing: 2", self.shown())
+
+    def test_a_number_used_twice(self):
+        self.place((0, 100), (0, 150), (0, 200))
+        self.select(0, 100)
+        self.change(order=False)
+        self.select(0, 200)
+        self.change(n=2)
+        self.v.clear_selection()
+        text = self.shown()
+        self.assertIn("used more than once: 2", text)
+        self.assertNotIn("missing", text)          # (1, 2, 2: nothing above 2 to miss)
+
+    def test_renumber_fixes_it_and_the_line_goes(self):
+        self.gap()
+        self.shown()
+        self.w.props.renumber.click()
+        APP.processEvents()
+        self.assertEqual(self.numbers(), {(0, 100): 1, (0, 200): 2})
+        self.assertEqual(self.shown(), "")
+        self.v.undo()
+        self.assertEqual(self.numbers(), {(0, 100): 1, (0, 200): 3})
+
+    def test_a_long_list_is_cut_short(self):
+        self.assertEqual(counts.problem_text("Count 1", list(range(1, 20)), []),
+                         "Count 1 numbers missing: 1, 2, 3, 4, 5, 6, 7, 8, ...")
+
+
 class WithAToolChestEntry(Counting):
     """A Tool Chest entry of the Count tool keeps its group and color, in every document (it's
     the tool's whole style); New count and the group picked work on it too."""

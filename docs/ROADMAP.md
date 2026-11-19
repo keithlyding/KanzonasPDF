@@ -92,7 +92,9 @@ a decision changes or a piece of work lands. Details of each version are in
   Properties (Group, New count, Layer, the next number); Keep the numbers in order, on by
   default (a delete or a move to another group renumbers the group); a marker's group and
   number changed in Properties (the Markups list stays read-only); placed Count markers
-  aren't selected, so Properties keeps the tool's settings while clicking.
+  aren't selected, so Properties keeps the tool's settings while clicking. Then (the same
+  day): each New count its own color, a group picked again its markers' look, and a group's
+  gaps or repeats said in Properties with Renumber beside it.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

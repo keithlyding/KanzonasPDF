@@ -58,11 +58,11 @@ def last_numbers(doc):
     return summary(doc)[1]
 
 
-def summary(doc):
+def summary(doc, found=None):
     """(the groups in the order they first appear, {group: its highest number}), from one
-    reading of the markers."""
+    reading of the markers (found: markers() already read)."""
     seen, last = [], {}
-    for _i, _x, m in markers(doc):
+    for _i, _x, m in markers(doc) if found is None else found:
         g = group_of(m)
         if g not in last:
             seen.append(g)
@@ -77,6 +77,35 @@ def next_group_name(doc, taken=()):
     while tr("Count {n}").format(n=k) in used or "Count %d" % k in used:
         k += 1
     return tr("Count {n}").format(n=k)
+
+
+# New count's colors, one after the other (the Count tool's blue first): distinct on white
+# and on a drawing's black lines
+COLORS = ("#0050ff", "#e02020", "#109040", "#f07800", "#8040c0", "#0098a8", "#d0209c",
+          "#8b5a2b")
+
+
+def next_color(found, current=None):
+    """A color for a new group: the first of COLORS no group of the document uses (nor
+    current, the tool's color now); when all are used, the next after current."""
+    used = {(m["props"].get("stroke") or "").lower() for _i, _x, m in found}
+    if current:
+        used.add(current.lower())
+    for c in COLORS:
+        if c not in used:
+            return c
+    k = COLORS.index(current.lower()) if current and current.lower() in COLORS else -1
+    return COLORS[(k + 1) % len(COLORS)]
+
+
+def look_of(found, group):
+    """The color, text size and opacity of the group's highest-numbered marker ({} when the
+    group has none): picking the group again gives the next ones that look."""
+    mine = [m for _i, _x, m in found if group_of(m) == group]
+    if not mine:
+        return {}
+    m = max(mine, key=lambda m: m.get("n", 0))
+    return {k: m["props"][k] for k in ("stroke", "fontsize", "opacity") if k in m["props"]}
 
 
 def keeps_order(models):
@@ -104,3 +133,34 @@ def renumbered(found, skip=()):
                 m["n"] = k
                 out.setdefault(i, []).append((x, m))
     return out
+
+
+def problems(found, group):
+    """(missing, repeated): the numbers from 1 to the group's highest that no marker has, and
+    those more than one marker has. Gaps come from markers deleted with Keep the numbers in
+    order off, in another PDF viewer, or before 1.15.9; repeats from numbers typed."""
+    seen = {}
+    for _i, _x, m in found:
+        if group_of(m) == group:
+            n = m.get("n", 0)
+            seen[n] = seen.get(n, 0) + 1
+    if not seen:
+        return [], []
+    missing = [n for n in range(1, max(seen) + 1) if n not in seen]
+    return missing, sorted(n for n, k in seen.items() if k > 1)
+
+
+def problem_text(group, missing, repeated, most=8):
+    """The line Properties shows for a group whose numbers have gaps or repeats ("" when
+    they don't)."""
+    def listed(ns):
+        out = ", ".join(str(n) for n in ns[:most])
+        return out + (", ..." if len(ns) > most else "")
+    parts = []
+    if missing:
+        parts.append(tr("missing: {numbers}").format(numbers=listed(missing)))
+    if repeated:
+        parts.append(tr("used more than once: {numbers}").format(numbers=listed(repeated)))
+    if not parts:
+        return ""
+    return tr("{group} numbers {problems}").format(group=group, problems="; ".join(parts))

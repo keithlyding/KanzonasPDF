@@ -1419,13 +1419,19 @@ o cambia la escala.</li>
 de su grupo. Prepárelo en Propiedades antes de hacer clic, con la herramienta Conteo elegida:
 <b>Grupo</b> (elija uno de los grupos del documento o escriba un nombre, como Detectores de humo: los
 marcadores de un grupo se numeran juntos y se suman juntos en el Resumen de mediciones y en las leyendas),
-<b>Nuevo conteo</b> (el siguiente grupo, Conteo 2 en adelante, cuyo primer marcador es el 1),
+<b>Nuevo conteo</b> (el siguiente grupo, Conteo 2 en adelante, cuyo primer marcador es el 1, en un color que
+ningún grupo del documento tiene todavía; cámbielo si quiere),
 <b>Mantener los números en orden</b> (activado salvo que lo desactive: al eliminar un marcador, o al pasarlo
 a otro grupo, los demás de su grupo se numeran de nuevo 1, 2, 3..., en todas las páginas, en un solo paso
 de deshacer; desactivado, el hueco queda y el siguiente marcador toma el número siguiente al más alto) y
 <b>Capa</b> (la capa en la que van los marcadores: Según la pestaña Capas, Sin capa, una de las capas del
-documento o Nueva capa...; al elegir de nuevo un grupo se elige la capa en la que están sus marcadores).
-Propiedades muestra también el grupo y el número del siguiente marcador. Los marcadores que pone no quedan
+documento o Nueva capa...). Al elegir un grupo que el documento ya tiene, los siguientes marcadores toman la capa,
+el color, el tamaño del texto y la opacidad de sus marcadores, así que una lista a la que vuelve se ve igual.
+Propiedades muestra también el grupo y el número del siguiente marcador y, cuando los números del grupo tienen
+huecos o repetidos (un marcador eliminado con Mantener los números en orden desactivado o en otro visor de PDF, un
+número escrito dos veces, un archivo anterior a la 1.15.9), dice cuáles ("Números de Conteo 1 que faltan: 4, 9;
+repetidos: 3"), con <b>Renumerar</b> al lado para numerar el grupo de nuevo 1, 2, 3... (Ctrl+Z lo deshace). Los
+marcadores que pone no quedan
 seleccionados, así que Propiedades sigue mostrando todo esto mientras hace clic. Para cambiar uno, haga
 clic en él con Seleccionar: su Grupo (toma el siguiente número del grupo nuevo), <b>Número</b> (con Mantener
 los números en orden activado, los demás de su grupo suben o bajan para hacerle lugar), Capa, color y

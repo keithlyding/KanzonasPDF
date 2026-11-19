@@ -63,11 +63,13 @@ class PropertiesPanel(QWidget):
     countLayer = Signal(object)      # a count's layer picked: None (as the Layers tab), 0 (no
     #                                  layer), a layer's xref, or "new"
     newCountGroup = Signal()         # the Count tool: start a new group ("New count")
+    renumberCount = Signal(str)      # a count group with gaps or repeats: number it again
 
     def __init__(self):
         super().__init__()
         self._kind = None
         self._selected = False
+        self.read_only_counts = False   # (a read-only document: no Renumber)
         self._props = {}
         self._loading = False
         outer = QVBoxLayout(self)
@@ -237,6 +239,20 @@ class PropertiesPanel(QWidget):
                                  "group, numbers the rest 1, 2, 3... again, with no gaps. Off: "
                                  "the numbers stay as they are, and the next marker takes the "
                                  "number after the highest."))
+        # a group whose numbers have gaps or repeats says so, with the fix beside it
+        self.gaps = QLabel()
+        self.gaps.setWordWrap(True)
+        self.gaps.setStyleSheet("color: #b35c00;")
+        self.renumber = QPushButton(tr("Renumber"))
+        self.renumber.setToolTip(tr("Number the group 1, 2, 3... again, with no gaps or "
+                                    "repeats (Ctrl+Z undoes it)"))
+        self.renumber.clicked.connect(lambda: self.renumberCount.emit(self._gap_group))
+        self._gap_group = ""
+        gaps_row = QWidget()
+        gl = QHBoxLayout(gaps_row)
+        gl.setContentsMargins(0, 0, 0, 0)
+        gl.addWidget(self.gaps, 1)
+        gl.addWidget(self.renumber)
         self.layer = QComboBox()
         self.layer.setToolTip(tr("The layer the markers go on (Layers tab: show or hide a "
                                  "layer's markups)"))
@@ -261,6 +277,7 @@ class PropertiesPanel(QWidget):
                               ("group", tr("Group"), group_row),
                               ("n", tr("Number"), self.number),
                               ("order", "", self.order),
+                              ("gaps", "", gaps_row),
                               ("layer", tr("Layer"), self.layer),
                               ("side", tr("Position"), self.side),
                               ("inside", "", self.inside),
@@ -476,11 +493,16 @@ class PropertiesPanel(QWidget):
         self.group.setCurrentIndex(self.group.findText(current))
         self._loading = was
 
-    def count_rows(self, groups, layers, layer, next_n=None):
+    def count_rows(self, groups, layers, layer, next_n=None, problem="", group=""):
         """A Count marker's extra rows (after show_target): the document's groups to pick
         from, and the layer row. layers: [(xref, name)]; layer: as countLayer gives it.
-        next_n: the Count tool's next number (None for a selected marker)."""
+        next_n: the Count tool's next number (None for a selected marker). problem: the
+        group's gaps or repeats, said (counts.problem_text), with Renumber beside it."""
         self._loading = True
+        self._gap_group = group
+        self.gaps.setText(problem)
+        for w in self.rows["gaps"]:
+            w.setVisible(bool(problem) and not self.read_only_counts)
         self._fill_groups(groups, self._props.get("group") or "")
         self.layer.clear()
         if next_n is not None:

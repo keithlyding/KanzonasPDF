@@ -1876,6 +1876,9 @@ class MainWindow(QMainWindow):
         self.props.resetRequested.connect(self._reset_tool_defaults)
         self.props.countLayer.connect(self._count_layer_picked)
         self.props.newCountGroup.connect(self._new_count_group)
+        self.props.renumberCount.connect(
+            lambda g: self.view() is not None and self.view().renumber_count_group(g) and
+            self._refresh_props())
         scroll = QScrollArea()
         scroll.setWidget(self.props)
         scroll.setWidgetResizable(True)
@@ -2814,13 +2817,20 @@ class MainWindow(QMainWindow):
         number."""
         from . import counts, markup_layers
         layers = [(x, name) for x, name, _on in markup_layers.layers(v.doc)]
-        groups, last = counts.summary(v.doc)
+        found = counts.markers(v.doc)
+        groups, last = counts.summary(v.doc, found)
+        self.props.read_only_counts = v.read_only
         if selected:
-            self.props.count_rows(groups, layers, v.selection_layer() or 0)
+            group = counts.group_of(v.selected_model)
+            problem = counts.problem_text(group, *counts.problems(found, group))
+            self.props.count_rows(groups, layers, v.selection_layer() or 0, problem=problem,
+                                  group=group)
             return
         group = (annotations.tool_props("m_count").get("group") or "").strip() or \
             counts.DEFAULT_GROUP
-        self.props.count_rows(groups, layers, v.count_layer, next_n=last.get(group, 0) + 1)
+        problem = counts.problem_text(group, *counts.problems(found, group))
+        self.props.count_rows(groups, layers, v.count_layer, next_n=last.get(group, 0) + 1,
+                              problem=problem, group=group)
 
     def _count_layer_picked(self, layer):
         """The layer picked in a Count's Properties: the selected markers move to it, or the
@@ -2853,10 +2863,9 @@ class MainWindow(QMainWindow):
             return
         props = dict(annotations.tool_props("m_count"))
         props["group"] = counts.next_group_name(v.doc, taken=[props.get("group") or ""])
-        if annotations.OVERRIDE["tool"] == "m_count":
-            annotations.OVERRIDE["props"] = props   # (a Tool Chest entry in use: it changes)
-        else:
-            annotations.set_tool_props("m_count", props)
+        # (a color of its own, so the new list stands out: the owner, 19 Nov)
+        props["stroke"] = counts.next_color(counts.markers(v.doc), props.get("stroke"))
+        self._set_count_tool(props)
         v.count_layer = None
         self._refresh_props()
         self.statusBar().showMessage(tr("New count: {group}. Rename it in Properties if you "
@@ -2926,14 +2935,25 @@ class MainWindow(QMainWindow):
                 v.text_tool_props_changed()
             self._count_group_picked(v, before, props)
 
+    def _set_count_tool(self, props):
+        """The Count tool's settings: a Tool Chest entry's while one is in use, else its own."""
+        if annotations.OVERRIDE["tool"] == "m_count":
+            annotations.OVERRIDE["props"] = dict(props)
+        else:
+            annotations.set_tool_props("m_count", props)
+
     def _count_group_picked(self, v, before, props):
-        """The Count tool's group changed (its own settings or a Tool Chest entry's): its
-        markers' layer, and its next number (counts.py)."""
+        """The Count tool's group changed (its own settings or a Tool Chest entry's): a group
+        of the document gives the next markers its markers' layer, color, text size and
+        opacity (the owner, 19 Nov); then its next number (counts.py)."""
         if self.tool != "m_count" or v is None or props.get("group") == before:
             return
         from . import counts
-        if props.get("group") in counts.groups(v.doc):
+        found = counts.markers(v.doc)
+        look = counts.look_of(found, props.get("group"))
+        if look:
             v.count_layer = v.count_group_layer(props["group"])
+            self._set_count_tool(dict(props, **look))
         self._refresh_props()
 
     def _reset_tool_defaults(self):

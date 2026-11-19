@@ -11618,3 +11618,23 @@ msgstr "Il numero di questo indicatore. Con Mantieni i numeri in ordine attivo, 
 #: counts
 msgid "The next marker: {group} #{n}"
 msgstr "Il prossimo indicatore: {group} n. {n}"
+
+#: counts
+msgid "{group} numbers {problems}"
+msgstr "Numeri di {group} {problems}"
+
+#: counts
+msgid "missing: {numbers}"
+msgstr "mancanti: {numbers}"
+
+#: counts
+msgid "used more than once: {numbers}"
+msgstr "usati più di una volta: {numbers}"
+
+#: counts
+msgid "Renumber"
+msgstr "Rinumera"
+
+#: counts
+msgid "Number the group 1, 2, 3... again, with no gaps or repeats (Ctrl+Z undoes it)"
+msgstr "Numera di nuovo il gruppo 1, 2, 3..., senza buchi né ripetizioni (Ctrl+Z annulla)"

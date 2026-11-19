@@ -4659,13 +4659,21 @@ class DocumentView(QScrollArea):
             return False
         groups = {counts.group_of(m) for _x, m in self.selected_models()
                   if m["kind"] == "m_count"}
-        if not groups:
+        return bool(groups) and self.renumber_count_group(groups)
+
+    def renumber_count_group(self, groups):
+        """A count group (or a set of them) numbered 1, 2, 3... again, with no gaps or
+        repeats, in the order of their numbers; the selection kept. One undo step."""
+        from . import counts
+        if self.read_only or not groups:
             return False
+        if isinstance(groups, str):
+            groups = {groups}
         plan = counts.renumbered(counts.markers(self.doc, groups))
         if not plan:
             self.statusMessage.emit(tr("The numbers are already in order"))
             return True
-        self._commit_counts(plan, select=self.selection[0])
+        self._commit_counts(plan, select=self.selection[0] if self.selection else None)
         self.statusMessage.emit(tr("Numbered again with no gaps (Ctrl+Z undoes it)"))
         return True
 

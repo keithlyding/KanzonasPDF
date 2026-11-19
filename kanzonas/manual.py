@@ -1435,13 +1435,19 @@ change the scale.</li>
 its group. Set it up in Properties before you click, with the Count tool picked:
 <b>Group</b> (pick one of the document's groups or type a name, such as Smoke detectors:
 the markers of a group are numbered together and totaled together in the Measurement summary
-and legends), <b>New count</b> (the next group, Count 2 and on, whose first marker is 1),
+and legends), <b>New count</b> (the next group, Count 2 and on, whose first marker is 1, in a color no group
+of the document has yet; change it if you like),
 <b>Keep the numbers in order</b> (on unless you switch it off: deleting a marker, or moving it
 to another group, numbers the rest of its group 1, 2, 3... again, on every page, in one undo
 step; off, the gap stays and the next marker takes the number after the highest) and
 <b>Layer</b> (the layer the markers go on: As the Layers tab says, No layer, one of the
-document's layers, or New layer...; picking a group again picks the layer its markers are
-on). Properties also shows the next marker's group and number. The markers you place aren't
+document's layers, or New layer...). Picking a group the document already has gives the next
+markers the layer, color, text size and opacity of its markers, so a list you go back to looks
+the same. Properties also shows the next marker's group and number, and when the group's numbers have
+gaps or repeats (a marker deleted with Keep the numbers in order off or in another PDF viewer,
+a number typed twice, a file from before 1.15.9) it says which ("Count 1 numbers missing: 4,
+9; used more than once: 3"), with <b>Renumber</b> beside it to number the group 1, 2, 3...
+again (Ctrl+Z undoes it). The markers you place aren't
 selected, so Properties keeps showing all this while you click. To change one, click it with
 Select: its Group (it takes the next number of the new group), <b>Number</b> (with Keep the
 numbers in order on, the others of its group move up or down to make room), Layer, color and

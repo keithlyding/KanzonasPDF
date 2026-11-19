@@ -11554,3 +11554,23 @@ msgstr "El número de este marcador. Con Mantener los números en orden activado
 #: counts
 msgid "The next marker: {group} #{n}"
 msgstr "El siguiente marcador: {group} n.º {n}"
+
+#: counts
+msgid "{group} numbers {problems}"
+msgstr "Números de {group} {problems}"
+
+#: counts
+msgid "missing: {numbers}"
+msgstr "que faltan: {numbers}"
+
+#: counts
+msgid "used more than once: {numbers}"
+msgstr "repetidos: {numbers}"
+
+#: counts
+msgid "Renumber"
+msgstr "Renumerar"
+
+#: counts
+msgid "Number the group 1, 2, 3... again, with no gaps or repeats (Ctrl+Z undoes it)"
+msgstr "Numerar el grupo de nuevo 1, 2, 3..., sin huecos ni repetidos (Ctrl+Z lo deshace)"

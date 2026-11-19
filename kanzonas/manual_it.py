@@ -1418,14 +1418,19 @@ l'annotazione o cambi la scala.</li>
 successivo del suo gruppo. Preparalo in Proprietà prima di fare clic, con lo strumento Conteggio scelto:
 <b>Gruppo</b> (scegli uno dei gruppi del documento o scrivi un nome, come Rilevatori di fumo: gli indicatori
 di un gruppo sono numerati insieme e sommati insieme nel Riepilogo misure e nelle legende),
-<b>Nuovo conteggio</b> (il gruppo successivo, Conteggio 2 in poi, il cui primo indicatore è l'1),
+<b>Nuovo conteggio</b> (il gruppo successivo, Conteggio 2 in poi, il cui primo indicatore è l'1, in un colore
+che nessun gruppo del documento ha ancora; cambialo se vuoi),
 <b>Mantieni i numeri in ordine</b> (attivo a meno che non lo disattivi: eliminando un indicatore, o
 spostandolo in un altro gruppo, gli altri del suo gruppo vengono numerati di nuovo 1, 2, 3..., su tutte le
 pagine, in un solo passo di annullamento; disattivato, il buco resta e il prossimo indicatore prende il
 numero dopo il più alto) e <b>Livello</b> (il livello su cui vanno gli indicatori: Come dice la scheda
-Livelli, Nessun livello, uno dei livelli del documento o Nuovo livello...; scegliendo di nuovo un gruppo si
-sceglie il livello su cui sono i suoi indicatori). Proprietà mostra anche il gruppo e il numero del
-prossimo indicatore. Gli indicatori che metti non restano selezionati, così Proprietà continua a mostrare
+Livelli, Nessun livello, uno dei livelli del documento o Nuovo livello...). Scegliendo un gruppo che il documento
+ha già, i prossimi indicatori prendono il livello, il colore, la dimensione del testo e l'opacità dei suoi
+indicatori, così una lista a cui torni ha lo stesso aspetto. Proprietà mostra anche il gruppo e il numero del
+prossimo indicatore e, quando i numeri del gruppo hanno buchi o ripetizioni (un indicatore eliminato con Mantieni i
+numeri in ordine disattivato o in un altro visualizzatore PDF, un numero scritto due volte, un file precedente alla
+1.15.9), dice quali ("Numeri di Conteggio 1 mancanti: 4, 9; usati più di una volta: 3"), con <b>Rinumera</b> accanto
+per numerare di nuovo il gruppo 1, 2, 3... (Ctrl+Z annulla). Gli indicatori che metti non restano selezionati, così Proprietà continua a mostrare
 tutto questo mentre fai clic. Per cambiarne uno, fai clic su di esso con Seleziona: il suo Gruppo (prende il
 numero successivo del nuovo gruppo), <b>Numero</b> (con Mantieni i numeri in ordine attivo, gli altri del
 suo gruppo salgono o scendono per fargli posto), Livello, colore e dimensione. Clic destro su un indicatore
