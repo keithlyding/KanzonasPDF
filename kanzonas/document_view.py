@@ -4986,8 +4986,16 @@ class DocumentView(QScrollArea):
             return
         y = 0
         if to is not None:
+            # (MuPDF gives the place as the page is shown, turned: turned again, a link to
+            # the top of a sheet turned a quarter went past its bottom and showed the next
+            # page; the owner, 19 Nov 2026: "it barely shows the bottom of it and what I see
+            # is more of the page after")
             pg = self.doc[page]
-            y = max(0, (pymupdf.Point(to) * pg.rotation_matrix).y * self.zoom - 20)
+            y = pymupdf.Point(to).y * self.zoom - 20
+            # never so far down that the page leaves the window (a place near its bottom: as
+            # much of the page as fits, down to its bottom edge)
+            room = pg.rect.height * self.zoom - self.viewport().height() + PAGE_GAP
+            y = max(0, min(y, room))
         self.goto_page(page, y)
 
     def follow_link(self, link):
