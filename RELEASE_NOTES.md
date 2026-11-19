@@ -9,6 +9,42 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.9
+
+**New**
+- Count: set it up in Properties before you click. Pick or type a Group (Smoke detectors, Speakers...), start a New count (Count 2, Count 3... beginning at 1, each in a color of its own), and choose the Layer its markers go on. Going back to a group gives the next markers its color, size and layer. Properties shows the next marker's number while you click.
+- Count: Keep the numbers in order (on unless you switch it off): deleting a marker numbers the rest of its group 1, 2, 3... again, so there are no gaps. Select a marker to change its group or number; right-click > Renumber group closes old gaps.
+- Count: Properties says when a group's numbers have gaps or repeats (for example after a marker was deleted in another PDF viewer), with a Renumber button beside it.
+
+**Fixed**
+- The Count tool's group couldn't be changed: every marker went into "Count 1".
+
+**Thanks** to @cloydcc-dev for asking for all of this (#107).
+
+## 1.15.9 (es)
+
+**Novedades**
+- Conteo: prepárelo en Propiedades antes de hacer clic. Elija o escriba un Grupo (Detectores de humo, Altavoces...), empiece un Nuevo conteo (Conteo 2, Conteo 3... desde el 1, cada uno con su propio color) y elija la Capa en la que van sus marcadores. Al volver a un grupo, los siguientes marcadores toman su color, tamaño y capa. Propiedades muestra el número del siguiente marcador mientras hace clic.
+- Conteo: Mantener los números en orden (activado salvo que lo desactive): al eliminar un marcador, los demás de su grupo se numeran de nuevo 1, 2, 3..., sin huecos. Seleccione un marcador para cambiar su grupo o su número; clic derecho > Renumerar el grupo cierra los huecos que ya había.
+- Conteo: Propiedades avisa cuando los números de un grupo tienen huecos o repetidos (por ejemplo, después de eliminar un marcador en otro visor de PDF), con un botón Renumerar al lado.
+
+**Correcciones**
+- No se podía cambiar el grupo de la herramienta Conteo: todos los marcadores iban a "Count 1".
+
+**Gracias** a @cloydcc-dev por pedir todo esto (#107).
+
+## 1.15.9 (it)
+
+**Novità**
+- Conteggio: preparalo in Proprietà prima di fare clic. Scegli o scrivi un Gruppo (Rilevatori di fumo, Altoparlanti...), inizia un Nuovo conteggio (Conteggio 2, Conteggio 3... a partire da 1, ognuno con un colore suo) e scegli il Livello su cui vanno i suoi indicatori. Tornando a un gruppo, i prossimi indicatori prendono il suo colore, la sua dimensione e il suo livello. Proprietà mostra il numero del prossimo indicatore mentre fai clic.
+- Conteggio: Mantieni i numeri in ordine (attivo a meno che non lo disattivi): eliminando un indicatore, gli altri del suo gruppo vengono numerati di nuovo 1, 2, 3..., senza buchi. Seleziona un indicatore per cambiarne il gruppo o il numero; clic destro > Rinumera il gruppo chiude i buchi già presenti.
+- Conteggio: Proprietà avvisa quando i numeri di un gruppo hanno buchi o ripetizioni (per esempio dopo aver eliminato un indicatore in un altro visualizzatore PDF), con un pulsante Rinumera accanto.
+
+**Correzioni**
+- Il gruppo dello strumento Conteggio non si poteva cambiare: tutti gli indicatori andavano in "Count 1".
+
+**Grazie** a @cloydcc-dev per aver chiesto tutto questo (#107).
+
 ## 1.15.8
 
 **Fixed**

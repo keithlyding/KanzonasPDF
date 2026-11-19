@@ -1874,6 +1874,11 @@ class MainWindow(QMainWindow):
         self.props.objectsTurn.connect(
             lambda deg: self.view() is not None and self.view().rotate_objects(-deg))
         self.props.resetRequested.connect(self._reset_tool_defaults)
+        self.props.countLayer.connect(self._count_layer_picked)
+        self.props.newCountGroup.connect(self._new_count_group)
+        self.props.renumberCount.connect(
+            lambda g: self.view() is not None and self.view().renumber_count_group(g) and
+            self._refresh_props())
         scroll = QScrollArea()
         scroll.setWidget(self.props)
         scroll.setWidgetResizable(True)
@@ -2325,6 +2330,9 @@ class MainWindow(QMainWindow):
              lambda v=v: v is self.view() and self._props_soon()),
             (v.toolDefaultsChanged,
              lambda _t, v=v: v is self.view() and self._refresh_props()),
+            # (the Count tool's next number and groups, after each marker or delete)
+            (v.documentChanged, lambda v=v: v is self.view() and self.tool == "m_count" and
+             v.selected_model is None and self._props_soon()),
             (v.editorFormat,
              lambda fmt, v=v: v is self.view() and self._show_editor_format(fmt)),
             (v.pageChanged, self._on_page_changed),
@@ -2781,7 +2789,13 @@ class MainWindow(QMainWindow):
         self._editor_shown = None
         if v is not None and v.selected_model is not None:
             m = v.selected_model
-            self.props.show_target(m["kind"], m["props"], selected=True)
+            if m["kind"] == "m_count":
+                # (its number too, and the document's groups and layers: counts.py)
+                self.props.show_target(m["kind"], dict(m["props"], n=m.get("n", 1)),
+                                       selected=True)
+                self._show_count_rows(v, selected=True)
+            else:
+                self.props.show_target(m["kind"], m["props"], selected=True)
         elif v is not None and v.obj_sel:
             # the page's own objects (Edit objects, CAD mode): their rotation
             items = v.obj_sel[1]
@@ -2792,8 +2806,71 @@ class MainWindow(QMainWindow):
             # (the Image tool writes into the page: no markup settings apply; Add text and
             # Edit text have their font settings here)
             self.props.show_target(self.tool, annotations.tool_props(self.tool))
+            if self.tool == "m_count" and v is not None:
+                self._show_count_rows(v, selected=False)
         else:
             self.props.show_target(None, None)
+
+    def _show_count_rows(self, v, selected):
+        """Properties for Count markers (issue #107): the document's groups, its layers, and
+        the layer the selected marker is on, or the one the next markers go on and the next
+        number."""
+        from . import counts, markup_layers
+        layers = [(x, name) for x, name, _on in markup_layers.layers(v.doc)]
+        found = counts.markers(v.doc)
+        groups, last = counts.summary(v.doc, found)
+        self.props.read_only_counts = v.read_only
+        if selected:
+            group = counts.group_of(v.selected_model)
+            problem = counts.problem_text(group, *counts.problems(found, group))
+            self.props.count_rows(groups, layers, v.selection_layer() or 0, problem=problem,
+                                  group=group)
+            return
+        group = (annotations.tool_props("m_count").get("group") or "").strip() or \
+            counts.DEFAULT_GROUP
+        problem = counts.problem_text(group, *counts.problems(found, group))
+        self.props.count_rows(groups, layers, v.count_layer, next_n=last.get(group, 0) + 1,
+                              problem=problem, group=group)
+
+    def _count_layer_picked(self, layer):
+        """The layer picked in a Count's Properties: the selected markers move to it, or the
+        next ones go on it ("new": a new layer, named first)."""
+        v = self.view()
+        if v is None:
+            return
+        if layer == "new":
+            if v.read_only:
+                return
+            name, ok = QInputDialog.getText(self, tr("New layer"), tr("Name of the new layer:"),
+                                            text=tr("Markups"))
+            if not ok or not name.strip():
+                self._refresh_props()
+                return
+            layer = v.new_markup_layer(name.strip())
+            self._refresh_layers()
+        if v.selected_model is not None and v.selected_model["kind"] == "m_count":
+            v.move_selection_to_layer(layer or None)
+        else:
+            v.count_layer = layer
+        self._refresh_props()
+
+    def _new_count_group(self):
+        """New count (the Count tool's Properties): the next group, "Count 2" and on, whose
+        first marker is number 1, on the layer the Layers tab says."""
+        from . import counts
+        v = self.view()
+        if v is None:
+            return
+        props = dict(annotations.tool_props("m_count"))
+        props["group"] = counts.next_group_name(v.doc, taken=[props.get("group") or ""])
+        # (a color of its own, so the new list stands out: the owner, 19 Nov)
+        props["stroke"] = counts.next_color(counts.markers(v.doc), props.get("stroke"))
+        self._set_count_tool(props)
+        v.count_layer = None
+        self._refresh_props()
+        self.statusBar().showMessage(tr("New count: {group}. Rename it in Properties if you "
+                                        "like; the next marker is number 1.").format(
+            group=props["group"]), 6000)
 
     def _props_soon(self):
         """Properties shown again once the current step is done (the page's object selection
@@ -2848,11 +2925,36 @@ class MainWindow(QMainWindow):
         if v is not None and v.selected_model is not None:
             v.update_selected_props(props)
         elif annotations.OVERRIDE["tool"] == self.tool:
+            before = annotations.tool_props(self.tool).get("group")
             annotations.OVERRIDE["props"] = dict(props)
+            self._count_group_picked(v, before, props)
         elif self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
+            before = annotations.tool_props(self.tool).get("group")
             annotations.set_tool_props(self.tool, props)
             if v is not None and self.tool in annotations.PAGE_TEXT_TOOLS:
                 v.text_tool_props_changed()
+            self._count_group_picked(v, before, props)
+
+    def _set_count_tool(self, props):
+        """The Count tool's settings: a Tool Chest entry's while one is in use, else its own."""
+        if annotations.OVERRIDE["tool"] == "m_count":
+            annotations.OVERRIDE["props"] = dict(props)
+        else:
+            annotations.set_tool_props("m_count", props)
+
+    def _count_group_picked(self, v, before, props):
+        """The Count tool's group changed (its own settings or a Tool Chest entry's): a group
+        of the document gives the next markers its markers' layer, color, text size and
+        opacity (the owner, 19 Nov); then its next number (counts.py)."""
+        if self.tool != "m_count" or v is None or props.get("group") == before:
+            return
+        from . import counts
+        found = counts.markers(v.doc)
+        look = counts.look_of(found, props.get("group"))
+        if look:
+            v.count_layer = v.count_group_layer(props["group"])
+            self._set_count_tool(dict(props, **look))
+        self._refresh_props()
 
     def _reset_tool_defaults(self):
         if self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:

@@ -11494,3 +11494,83 @@ msgstr "Ejecutar el instalador"
 
 msgid "Download the setup from the release page and run it."
 msgstr "Descargue el instalador desde la página de la versión y ejecútelo."
+
+#: counts
+msgid "Count {n}"
+msgstr "Conteo {n}"
+
+#: counts
+msgid "Numbered again with no gaps (Ctrl+Z undoes it)"
+msgstr "Numerado de nuevo sin huecos (Ctrl+Z lo deshace)"
+
+#: counts
+msgid "The numbers are already in order"
+msgstr "Los números ya están en orden"
+
+#: counts
+msgid "New count: {group}. Rename it in Properties if you like; the next marker is number 1."
+msgstr "Nuevo conteo: {group}. Cámbiele el nombre en Propiedades si quiere; el siguiente marcador es el número 1."
+
+#: counts
+msgid "Renumber group"
+msgstr "Renumerar el grupo"
+
+#: counts
+msgid "Type a name for the group"
+msgstr "Escriba un nombre para el grupo"
+
+#: counts
+msgid "Markers of one group are numbered together (1, 2, 3...) and totaled together in the Measurement summary and legends. Pick a group of this document or type a new name."
+msgstr "Los marcadores de un grupo se numeran juntos (1, 2, 3...) y se suman juntos en el Resumen de mediciones y en las leyendas. Elija un grupo de este documento o escriba un nombre nuevo."
+
+#: counts
+msgid "New count"
+msgstr "Nuevo conteo"
+
+#: counts
+msgid "Start another count: a new group whose first marker is number 1"
+msgstr "Empezar otro conteo: un grupo nuevo cuyo primer marcador es el número 1"
+
+#: counts
+msgid "Keep the numbers in order"
+msgstr "Mantener los números en orden"
+
+#: counts
+msgid "Deleting a marker of the group, or moving it to another group, numbers the rest 1, 2, 3... again, with no gaps. Off: the numbers stay as they are, and the next marker takes the number after the highest."
+msgstr "Al eliminar un marcador del grupo, o al pasarlo a otro grupo, los demás se numeran de nuevo 1, 2, 3..., sin huecos. Desactivado: los números quedan como están y el siguiente marcador toma el número siguiente al más alto."
+
+#: counts
+msgid "The layer the markers go on (Layers tab: show or hide a layer's markups)"
+msgstr "La capa en la que van los marcadores (pestaña Capas: muestre u oculte las marcas de una capa)"
+
+#: counts
+msgid "As the Layers tab says"
+msgstr "Según la pestaña Capas"
+
+#: counts
+msgid "This marker's number. With Keep the numbers in order on, the others of its group move up or down to make room."
+msgstr "El número de este marcador. Con Mantener los números en orden activado, los demás de su grupo suben o bajan para hacerle lugar."
+
+#: counts
+msgid "The next marker: {group} #{n}"
+msgstr "El siguiente marcador: {group} n.º {n}"
+
+#: counts
+msgid "{group} numbers {problems}"
+msgstr "Números de {group} {problems}"
+
+#: counts
+msgid "missing: {numbers}"
+msgstr "que faltan: {numbers}"
+
+#: counts
+msgid "used more than once: {numbers}"
+msgstr "repetidos: {numbers}"
+
+#: counts
+msgid "Renumber"
+msgstr "Renumerar"
+
+#: counts
+msgid "Number the group 1, 2, 3... again, with no gaps or repeats (Ctrl+Z undoes it)"
+msgstr "Numerar el grupo de nuevo 1, 2, 3..., sin huecos ni repetidos (Ctrl+Z lo deshace)"

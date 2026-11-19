@@ -968,6 +968,8 @@ class DocumentView(QScrollArea):
         self.selected_model = None
         self.extra = []                # more selected xrefs on the same page, in click order
         self.markup_layer = None       # the layer (OCG xref) new markups go on (markup_layers)
+        self.count_layer = None        # the one new Count markers go on: None as markup_layer,
+        #                                0 none, else a layer's xref (counts.py, issue #107)
         self.show_comment_boxes = True
         self._inline = None
         self.sig_images = {}           # kind -> (png bytes, QPixmap)
@@ -3513,10 +3515,14 @@ class DocumentView(QScrollArea):
             if layer and layer[0] == id(self.doc) and i < len(made):
                 markup_layers.put(self.doc, [made[i]], layer[1])
 
-    def _on_markup_layer(self, xrefs):
-        """New markups go on the layer chosen for them (inside the edit that made them)."""
-        if self.markup_layer and self.markup_layer in (self.doc.get_ocgs() or {}):
-            markup_layers.put(self.doc, xrefs, self.markup_layer)
+    def _on_markup_layer(self, xrefs, kind=None):
+        """New markups go on the layer chosen for them (inside the edit that made them);
+        Count markers on the one picked in the Count's Properties, if one was."""
+        layer = self.markup_layer
+        if kind == "m_count" and self.count_layer is not None:
+            layer = self.count_layer or None
+        if layer and layer in (self.doc.get_ocgs() or {}):
+            markup_layers.put(self.doc, xrefs, layer)
 
     def set_markup_layer(self, layer):
         self.markup_layer = layer or None
@@ -4244,7 +4250,7 @@ class DocumentView(QScrollArea):
             page = self.doc[index]
             # a text box or callout as tall as its text (issue #90)
             made["xref"] = annotations.write(page, annotations.fitted(page, model)).xref
-            self._on_markup_layer([made["xref"]])
+            self._on_markup_layer([made["xref"]], model.get("kind"))
         self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
         if "xref" in made and not DocumentView.reuse_tools:
             # Reuse off: the tool is put down, as Bluebeam does (first: a new tool clears the
@@ -4493,10 +4499,14 @@ class DocumentView(QScrollArea):
         return measure.measure_text(kind, pts, self.doc[index], props=self.tool_props(tool))
 
     def place_count(self, index, pt):
-        group = self.tool_props("m_count").get("group") or "Count"
-        n = self._last_counts().get(group, 0)
-        self._create(index, {"kind": "m_count", "props": self.tool_props("m_count"),
-                             "points": [pt], "rect": pymupdf.Rect(), "n": n + 1})
+        from . import counts
+        props = dict(self.tool_props("m_count"))
+        props["group"] = (props.get("group") or "").strip() or counts.DEFAULT_GROUP
+        n = self._last_counts().get(props["group"], 0)
+        # (not selected, unlike other markups: Properties keeps showing the Count tool's group,
+        # next number and layer while you click item after item, issue #107)
+        self._create(index, {"kind": "m_count", "props": props,
+                             "points": [pt], "rect": pymupdf.Rect(), "n": n + 1}, select=False)
 
     def place_dot(self, index, pt):
         """A dot with the next number; its text asked for when the dot shows one."""
@@ -4518,19 +4528,187 @@ class DocumentView(QScrollArea):
 
     def _last_counts(self):
         """{count group: its highest number} in the document."""
-        last = {}
-        for i in range(self.doc.page_count):
-            pg = self.doc[i]
-            for a in annotations.each_annot(pg, (pymupdf.PDF_ANNOT_CIRCLE,)):
-                m = annotations.read(a)
-                if m and m["kind"] == "m_count":
-                    group = m["props"].get("group")
-                    last[group] = max(last.get(group, 0), m.get("n", 0))
-        return last
+        from . import counts
+        return counts.last_numbers(self.doc)
+
+    def count_group_layer(self, group):
+        """The layer a group's markers are on (None: none, or not all on one)."""
+        from . import counts
+        found = {markup_layers.layer_of(self.doc, x)
+                 for _i, x, _m in counts.markers(self.doc, {group})}
+        return found.pop() if len(found) == 1 else None
+
+    def _commit_counts(self, by_page, select=None):
+        """Write the Count markers in by_page ({page: [(xref, model)]}) in one undo step,
+        across pages; select: the page whose selection is kept (its xrefs as they become)."""
+        if not by_page:
+            return
+        sel = self.selected_xrefs() if self.selection and self.selection[0] == select else []
+        made = {}
+
+        def do():
+            for i, changes in by_page.items():
+                page = self.doc[i]
+                for x, _old, new in annotations.replace_many(page, changes):
+                    if i == select:
+                        made[x] = new
+                del page
+        self.modify(do, sorted(by_page), permission=pymupdf.PDF_PERM_ANNOTATE)
+        if sel:
+            self._set_selection(select, [made.get(x, x) for x in sel])
+
+    def update_selected_counts(self, props):
+        """Properties changed for the selected Count markers: their style, group (each moved
+        one takes the next number of its new group), number (with Keep the numbers in order
+        the others of its group make room), and Keep the numbers in order (for the whole
+        group; switched on, the group is numbered again with no gaps). One undo step."""
+        from . import counts
+        index = self.selection[0]
+        mine = [(x, m) for x, m in self.selected_models() if m["kind"] == "m_count"]
+        if not mine:
+            return False
+        first = self.selected_model
+        props = dict(props)
+        n = props.pop("n", None)
+        changed = {k: v for k, v in props.items() if first["props"].get(k) != v}
+        if "group" in changed:
+            changed["group"] = (changed["group"] or "").strip() or counts.DEFAULT_GROUP
+            if changed["group"] == counts.group_of(first):
+                changed.pop("group")
+        new_n = n if (n is not None and len(mine) == 1 and n != first.get("n")) else None
+        if not changed and new_n is None:
+            return True
+        found = counts.markers(self.doc)
+        where = {(i, x): k for k, (i, x, _m) in enumerate(found)}
+        old_groups = {counts.group_of(m) for _x, m in mine}
+        target = changed.get("group")
+        last = counts.last_numbers(self.doc)
+        edited = set()
+        for x, m in mine:
+            k = where.get((index, x))
+            if k is None:
+                continue
+            m = annotations.copy(found[k][2])
+            m["props"].update({key: v for key, v in changed.items() if key in m["props"]
+                               and key != "order"})
+            if target is not None:
+                last[target] = m["n"] = last.get(target, 0) + 1
+            found[k] = (index, x, m)
+            edited.add(k)
+        groups_now = {counts.group_of(found[k][2]) for k in edited}
+        if "order" in changed:
+            # (the group's setting: every marker of the group, on every page)
+            for k, (i, x, m) in enumerate(found):
+                if counts.group_of(m) in groups_now and m["props"].get("order", True) != \
+                        changed["order"]:
+                    m = annotations.copy(m)
+                    m["props"]["order"] = changed["order"]
+                    found[k] = (i, x, m)
+                    edited.add(k)
+        if new_n is not None:
+            k = where[(index, mine[0][0])]
+            i, x, m = found[k]
+            g, old_n = counts.group_of(m), m.get("n", 0)
+            ordered = counts.keeps_order([f[2] for f in found if counts.group_of(f[2]) == g])
+            m = annotations.copy(m)
+            m["n"] = new_n
+            found[k] = (i, x, m)
+            edited.add(k)
+            if ordered:
+                # the others make room: those between its old and new number move one place
+                for j, (i2, x2, m2) in enumerate(found):
+                    if j == k or counts.group_of(m2) != g:
+                        continue
+                    v = m2.get("n", 0)
+                    shift = -1 if old_n < v <= new_n else 1 if new_n <= v < old_n else 0
+                    if shift:
+                        m2 = annotations.copy(m2)
+                        m2["n"] = v + shift
+                        found[j] = (i2, x2, m2)
+                        edited.add(j)
+        # the groups that keep their numbers in order, numbered again with no gaps: those a
+        # marker left or joined, whose number changed, or that just switched it on (a color
+        # changed renumbers nothing: an older document may have gaps from before)
+        affected = set()
+        if target is not None:
+            affected |= old_groups | {target}
+        if new_n is not None:
+            affected.add(counts.group_of(found[where[(index, mine[0][0])]][2]))
+        if changed.get("order"):
+            affected |= groups_now
+        tidy = [f for f in found if counts.group_of(f[2]) in affected]
+        by_group = {}
+        for f in tidy:
+            by_group.setdefault(counts.group_of(f[2]), []).append(f[2])
+        tidy = [f for f in tidy if counts.keeps_order(by_group[counts.group_of(f[2])])]
+        by_page = {}
+        for k in edited:
+            i, x, m = found[k]
+            by_page.setdefault(i, {})[x] = m
+        for i, changes in counts.renumbered(tidy).items():
+            for x, m in changes:
+                by_page.setdefault(i, {})[x] = m
+        self._commit_counts({i: list(d.items()) for i, d in by_page.items()}, select=index)
+        return True
+
+    def renumber_selected_counts(self):
+        """Right-click > Renumber group: the groups of the selected Count markers numbered
+        1, 2, 3... again, with no gaps, in the order of their numbers. One undo step."""
+        from . import counts
+        if self.selection is None or self.read_only:
+            return False
+        groups = {counts.group_of(m) for _x, m in self.selected_models()
+                  if m["kind"] == "m_count"}
+        return bool(groups) and self.renumber_count_group(groups)
+
+    def renumber_count_group(self, groups):
+        """A count group (or a set of them) numbered 1, 2, 3... again, with no gaps or
+        repeats, in the order of their numbers; the selection kept. One undo step."""
+        from . import counts
+        if self.read_only or not groups:
+            return False
+        if isinstance(groups, str):
+            groups = {groups}
+        plan = counts.renumbered(counts.markers(self.doc, groups))
+        if not plan:
+            self.statusMessage.emit(tr("The numbers are already in order"))
+            return True
+        self._commit_counts(plan, select=self.selection[0] if self.selection else None)
+        self.statusMessage.emit(tr("Numbered again with no gaps (Ctrl+Z undoes it)"))
+        return True
+
+    def _counts_after_delete(self, index, xrefs):
+        """{page: [(xref, model)]}: the numbers the Count markers left in the groups of those
+        being deleted take, for the groups that keep their numbers in order."""
+        from . import counts
+        xrefs = [x for x in xrefs if counts.is_marker(self.doc, x)]
+        if not xrefs:
+            return {}
+        page = self.doc[index]
+        found = annotations.load_annots(page, xrefs)
+        groups = set()
+        for x in xrefs:
+            a = found.get(x)
+            m = annotations.read(a) if a is not None and \
+                a.type[0] == pymupdf.PDF_ANNOT_CIRCLE else None
+            if m and m["kind"] == "m_count":
+                groups.add(counts.group_of(m))
+        found.clear()
+        del page
+        if not groups:
+            return {}
+        everyone = counts.markers(self.doc, groups)
+        by_group = {}
+        for _i, _x, m in everyone:
+            by_group.setdefault(counts.group_of(m), []).append(m)
+        keep = {g for g, ms in by_group.items() if counts.keeps_order(ms)}
+        return counts.renumbered([f for f in everyone if counts.group_of(f[2]) in keep],
+                                 skip={(index, x) for x in xrefs})
 
     def _next_counts(self, models):
         """Copies (Ctrl+D, paste) of Count markers take the next numbers of their group, and
         copies of dots the next dot numbers."""
+        from . import counts as count_groups
         counts = any(m["kind"] == "m_count" for m in models)
         dots = any(m["kind"] == "dot" for m in models)
         if not counts and not dots:
@@ -4541,7 +4719,7 @@ class DocumentView(QScrollArea):
         for m in models:
             if m["kind"] == "m_count":
                 m = annotations.copy(m)
-                group = m["props"].get("group")
+                group = count_groups.group_of(m)
                 last[group] = m["n"] = last.get(group, 0) + 1
             elif m["kind"] == "dot":
                 m = annotations.copy(m)
@@ -5389,7 +5567,15 @@ class DocumentView(QScrollArea):
             target = None
             self.clear_selection()
             from . import pdf_speed
-            self.modify(lambda: pdf_speed.delete_many(page, [xref]), [index],
+            renumber = self._counts_after_delete(index, [xref])     # (counts.py)
+
+            def do():
+                pdf_speed.delete_many(page, [xref])
+                for i, changes in renumber.items():
+                    pg = self.doc[i]
+                    annotations.replace_many(pg, changes)
+                    del pg
+            self.modify(do, sorted({index} | set(renumber)),
                         permission=pymupdf.PDF_PERM_ANNOTATE)
 
     # ---- hit testing --------------------------------------------------------------
@@ -6231,6 +6417,9 @@ class DocumentView(QScrollArea):
         if self.selection is None or self.selected_model is None or \
                 self.selected_model["kind"] == "field":
             return
+        if self.selected_model["kind"] == "m_count":
+            self.update_selected_counts(props)      # (its group and number too: counts.py)
+            return
         old = self.selected_model["props"]
         changed = {k: v for k, v in props.items() if old.get(k) != v}
         if not changed:
@@ -6367,6 +6556,8 @@ class DocumentView(QScrollArea):
             if answer != QMessageBox.Yes:
                 return
         self.clear_selection()
+        # (a Count group that keeps its numbers in order closes the gap: counts.py)
+        renumber = self._counts_after_delete(index, xrefs)
 
         def do():
             from . import links, pdf_speed
@@ -6387,7 +6578,11 @@ class DocumentView(QScrollArea):
                     mine[ln["xref"]] = ln
             if mine:
                 links.remove(page, list(mine.values()), keep_text=True)
-        self.modify(do, [index], permission=pymupdf.PDF_PERM_ANNOTATE)
+            for i, changes in renumber.items():
+                pg = self.doc[i]
+                annotations.replace_many(pg, changes)
+                del pg
+        self.modify(do, sorted({index} | set(renumber)), permission=pymupdf.PDF_PERM_ANNOTATE)
 
     # ---- arrange: align, distribute, stacking order -------------------------------
     def _display_bounds(self, page, model):
