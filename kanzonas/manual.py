@@ -123,7 +123,7 @@ boxes, callouts, stamps, legends, shapes and attached-file icons. Markups stay e
 viewer (Adobe Reader, browsers) until you flatten them. Everything else you add (pictures,
 Add text, signatures, initials, dates) is written into the page itself, so in a viewer it
 looks and acts flattened; Edit text and Edit objects (Home tab) still change it here, as
-Acrobat and PDF-XChange can. Open, save, print, undo and redo sit left of the tabs, and the
+Acrobat and PDF-XChange can. Open, save, print, undo, redo, Back and Forward sit left of the tabs, and the
 Find box (with its match count and up / down arrows) sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
 zoom box with zoom out / zoom in, like PDF-XChange Editor, the page's size and where the
@@ -306,6 +306,17 @@ last page. The same are in <b>View &gt; Go to</b>: <b>Next page</b>, <b>Previous
 <b>First page</b>, <b>Last page</b> and <b>Go to page...</b> (Ctrl+G: the page box, ready for a
 number), so the command palette and the CAD command line find them too ("next page", "last
 page").</li>
+<li><b>Back / Forward</b> (Alt+Left / Alt+Right; the arrows beside Undo and Redo, left of the
+tabs; View &gt; Go to; and the first two items when you right-click the page): back to where
+you were before a jump, and forward again after Back, at the same place and zoom. A jump is
+following a link (also a link to another PDF: Back comes back to the document you were in,
+opening it again if you closed its tab), a bookmark, Go to page, First page or Last page, a
+page clicked in the page list, a markup picked in the Markups list or with Next / Previous
+comment, a sheet picked in a set, or the first match of a search (the next matches don't add
+steps). Scrolling and the next / previous page aren't jumps. Up to 100 steps are kept each
+way; a new jump after Back starts again from there. A link to a page shows that page from the
+place the link names, also on sheets turned a quarter, and never so far down that the page
+leaves the window.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, the zoom slider, or the zoom box
 (type a percent, from 10% to 6400%; 25.5 and 25,5 both work, and so does 1,000 for 1000%; a
 zoom that isn't a whole percent shows one decimal). With the mouse wheel the page follows at
@@ -2393,6 +2404,7 @@ scroll speed.</li>
 <tr><td>Ctrl+H</td><td>Replace text</td></tr>
 <tr><td>Ctrl+Shift+N</td><td>Move tab to new window</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
+<tr><td>Alt+Left / Alt+Right</td><td>Back / Forward (where you were before a jump)</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
 <tr><td>Ctrl+Shift+P</td><td>Command palette</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>

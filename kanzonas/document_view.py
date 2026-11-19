@@ -899,6 +899,8 @@ class DocumentView(QScrollArea):
     historyChanged = Signal()       # an undo or redo done: what can be undone / redone now
     pageLayoutChanged = Signal()    # View > Page layout changed (the menu's tick follows)
     pointerMoved = Signal()         # the pointer's place on a page (pointer_pos) changed
+    jumpFrom = Signal(object)       # a jump (a link, bookmark, Go to page...) leaves this
+    #                                 place (location()): Back comes back to it
     toolUsed = Signal()             # a markup drawn with Reuse off: back to the mouse mode's tool
     reuse_tools = True              # the status bar's Reuse (MainWindow sets it)
 
@@ -1455,13 +1457,51 @@ class DocumentView(QScrollArea):
                 lo = m + 1
         return min(lo, len(pages) - 1)
 
-    def goto_page(self, index, y_offset=0):
+    def goto_page(self, index, y_offset=0, remember=False):
+        """Show the page, y_offset pixels below its top. remember: a jump Back comes back
+        from (a link, a bookmark, Go to page, a search result...; not a step to the next page
+        or a page shown again after an edit)."""
         index = max(0, min(index, len(self.pages) - 1))
+        if remember:
+            self._note_jump(index, y_offset)
         self._show_index(index)
         # (y_offset: from the page's top; its working space, if shown, is above it)
         self.verticalScrollBar().setValue(self.pages[index].y() - PAGE_GAP + int(y_offset)
                                           + int(self.pages[index].offset().y()))
         self._on_scroll()
+
+    def location(self):
+        """Where the view is: {"page", "y" (points from that page's top to the window's
+        top), "x" (points scrolled sideways), "zoom"}; restore_location() goes back to it."""
+        if not self.pages or self.doc is None:
+            return None
+        page = self.current_page()
+        w = self.pages[page]
+        top = self.verticalScrollBar().value()
+        y = (top - (w.y() - PAGE_GAP + w.offset().y())) / self.zoom
+        return {"page": page, "y": y, "x": self.horizontalScrollBar().value() / self.zoom,
+                "zoom": self.zoom}
+
+    def restore_location(self, loc):
+        """Show a place location() gave (Back, Forward): its zoom, page and scroll."""
+        if not self.pages or not loc:
+            return
+        if abs(loc.get("zoom", self.zoom) - self.zoom) > 1e-6:
+            self.set_zoom(loc["zoom"])
+        page = max(0, min(int(loc.get("page", 0)), len(self.pages) - 1))
+        self.goto_page(page, loc.get("y", 0) * self.zoom)
+        self.horizontalScrollBar().setValue(int(loc.get("x", 0) * self.zoom))
+
+    def _note_jump(self, index, y_offset):
+        """A jump is about to leave here: jumpFrom, unless it lands on the same page about
+        where the window is now (a second click on the same link)."""
+        here = self.location()
+        if here is None:
+            return
+        same_page = here["page"] == index
+        if same_page and abs(here["y"] * self.zoom - y_offset) < self.viewport().height() / 2:
+            return
+        self.jumpFrom.emit(here)
 
     def showEvent(self, e):
         super().showEvent(e)
@@ -4981,22 +5021,25 @@ class DocumentView(QScrollArea):
             return tr("Open {file}").format(file=link.get("file") or tr("file"))
         return tr("Link")
 
-    def _go_to(self, page, to=None):
+    def _go_to(self, page, to=None, shown=False):
+        """Show page (index) from the point to on it: unturned, as bookmarks give it, or as
+        the page is shown (shown), as links give it (MuPDF turns a link's place already;
+        a bookmark's, read back from the outline, it doesn't)."""
         if not 0 <= page < self.doc.page_count:
             return
         y = 0
         if to is not None:
-            # (MuPDF gives the place as the page is shown, turned: turned again, a link to
-            # the top of a sheet turned a quarter went past its bottom and showed the next
-            # page; the owner, 19 Nov 2026: "it barely shows the bottom of it and what I see
-            # is more of the page after")
+            # (a link's place turned again went past the bottom of a sheet turned a quarter,
+            # and the next page filled the window; the owner, 19 Nov 2026: "it barely shows
+            # the bottom of it and what I see is more of the page after")
             pg = self.doc[page]
-            y = pymupdf.Point(to).y * self.zoom - 20
+            at = pymupdf.Point(to) if shown else pymupdf.Point(to) * pg.rotation_matrix
+            y = at.y * self.zoom - 20
             # never so far down that the page leaves the window (a place near its bottom: as
             # much of the page as fits, down to its bottom edge)
             room = pg.rect.height * self.zoom - self.viewport().height() + PAGE_GAP
             y = max(0, min(y, room))
-        self.goto_page(page, y)
+        self.goto_page(page, y, remember=True)
 
     def follow_link(self, link):
         """Click on a link: go to the page, open the web address (asking first, like Adobe
@@ -5005,7 +5048,7 @@ class DocumentView(QScrollArea):
         from PySide6.QtGui import QDesktopServices
         k = link.get("kind")
         if k in (pymupdf.LINK_GOTO, pymupdf.LINK_NAMED) and link.get("page", -1) >= 0:
-            self._go_to(link["page"], link.get("to"))
+            self._go_to(link["page"], link.get("to"), shown=True)
             return
         if k == pymupdf.LINK_NAMED:
             name = (link.get("name") or "").lower()
@@ -6133,7 +6176,8 @@ class DocumentView(QScrollArea):
             locked = bool((annot.flags or 0) & pymupdf.PDF_ANNOT_IS_LOCKED)
         except Exception:
             return
-        self.goto_page(index, max(0, r.y0 * self.zoom - self.viewport().height() / 3))
+        self.goto_page(index, max(0, r.y0 * self.zoom - self.viewport().height() / 3),
+                       remember=True)
         if locked:
             self.clear_selection()
             self.statusMessage.emit(self.locked_note())
@@ -6788,7 +6832,8 @@ class DocumentView(QScrollArea):
         if e.key() in (Qt.Key_Home, Qt.Key_End) and \
                 e.modifiers() in (Qt.NoModifier, Qt.ControlModifier):
             # first / last page (View > Go to), as in other PDF readers
-            self.goto_page(0 if e.key() == Qt.Key_Home else self.page_count() - 1)
+            self.goto_page(0 if e.key() == Qt.Key_Home else self.page_count() - 1,
+                           remember=True)
             return
         if e.key() in (Qt.Key_Left, Qt.Key_Right) and e.modifiers() == Qt.ShiftModifier:
             bar = self.horizontalScrollBar()
@@ -12016,6 +12061,12 @@ class DocumentView(QScrollArea):
 
     def _show_hit(self, hit):
         old = self._search_cur
+        if old is None and self.pages and hit[0] != self.current_page():
+            # (the first match of a search, on another page: Back comes back here; the next
+            # matches don't each add a step)
+            here = self.location()
+            if here is not None:
+                self.jumpFrom.emit(here)
         self._search_cur = hit
         i, k = hit
         self._show_index(i)

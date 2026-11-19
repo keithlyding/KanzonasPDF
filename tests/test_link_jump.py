@@ -41,7 +41,7 @@ def sheets(rotation, dest):
     return path
 
 
-class Jump(unittest.TestCase):
+class Base(unittest.TestCase):
     def open(self, rotation, dest="/XYZ 0 792 0", zoom=1.0):
         w = main_window.MainWindow()
         self.addCleanup(lambda: [setattr(x, "_close_confirmed", True) or x.close()
@@ -70,6 +70,8 @@ class Jump(unittest.TestCase):
         self.assertLessEqual(p0 - 30, w0, "the page starts below the window's top")
         self.assertGreaterEqual(p1, w1, "the page ends above the window's bottom")
 
+
+class Jump(Base):
     def test_to_the_top_of_a_page(self):
         self.open(0)
         (w0, _w1), (p0, _p1) = self.shown()
@@ -94,6 +96,27 @@ class Jump(unittest.TestCase):
         for dest in ("/Fit", "/XYZ null null null"):
             with self.subTest(dest=dest):
                 self.open(90, dest=dest)
+                (w0, _w1), (p0, _p1) = self.shown()
+                self.assertLess(abs(w0 - p0), 30)
+
+
+class Bookmarks(Base):
+    """A bookmark's place comes back unturned (unlike a link's): turned once, it shows the
+    top of a turned sheet too."""
+
+    def test_a_bookmark_to_the_top_of_a_turned_sheet(self):
+        for rot in (0, 90):
+            with self.subTest(rotation=rot):
+                v = self.open(rot)
+                pg = v.doc[1]
+                to = pymupdf.Point(0, 0) * pg.derotation_matrix   # (as view_destination)
+                v.set_toc([[1, "Sheet 2", 2, {"kind": pymupdf.LINK_GOTO, "page": 1, "to": to,
+                                              "zoom": 0}]])
+                v.goto_page(2)
+                APP.processEvents()
+                item = v.get_toc(simple=False)[0]
+                v.go_to_destination(item[2] - 1, item[3]["to"])
+                APP.processEvents()
                 (w0, _w1), (p0, _p1) = self.shown()
                 self.assertLess(abs(w0 - p0), 30)
 

@@ -112,7 +112,7 @@ di testo, richiami, timbri, legende, forme e icone di file allegati. Le annotazi
 PDF (Adobe Reader, browser) finché non le appiattisci. Tutto il resto che aggiungi (immagini,
 Aggiungi testo, firme, sigle, date) viene scritto nella pagina stessa, quindi in un visualizzatore
 appare e si comporta come appiattito; Modifica testo e Modifica oggetti (scheda Home) possono comunque modificarlo qui, come
-fanno Acrobat e PDF-XChange. Apri, salva, stampa, annulla e ripeti si trovano a sinistra delle schede, e la
+fanno Acrobat e PDF-XChange. Apri, salva, stampa, annulla, ripeti, Indietro e Avanti si trovano a sinistra delle schede, e la
 casella Trova (con il numero di corrispondenze e le frecce su / giù) si trova alla loro destra. La barra inferiore (barra di stato, in basso a destra) contiene la navigazione tra le pagine (prima,
 precedente, numero di pagina, successiva, ultima pagina), Adatta alla pagina, Adatta alla larghezza, Dimensioni reali, un cursore dello zoom e la
 casella dello zoom con riduci / ingrandisci, come in PDF-XChange Editor, le dimensioni della pagina e la
@@ -295,6 +295,16 @@ prima e all'ultima pagina. Gli stessi comandi sono in <b>Visualizza &gt; Vai a</
 <b>Pagina precedente</b>, <b>Prima pagina</b>, <b>Ultima pagina</b> e <b>Vai a pagina...</b> (Ctrl+G: la casella della
 pagina, pronta per un numero), così li trovano anche la tavolozza dei comandi e la riga di comando CAD ("pagina
 successiva", "ultima pagina").</li>
+<li><b>Indietro / Avanti</b> (Alt+Left / Alt+Right; le frecce accanto ad Annulla e Ripeti, a sinistra delle schede;
+Visualizza &gt; Vai a; e le prime due voci quando fai clic destro sulla pagina): torna dov'eri prima di un salto, e di
+nuovo avanti dopo Indietro, nello stesso punto e con lo stesso zoom. Un salto è seguire un collegamento (anche un
+collegamento a un altro PDF: Indietro torna al documento in cui eri, riaprendolo se ne hai chiuso la scheda), un
+segnalibro, Vai a pagina, Prima pagina o Ultima pagina, una pagina scelta nell'elenco delle pagine, un'annotazione scelta
+nell'elenco delle annotazioni o con Commento successivo / precedente, un foglio scelto in un insieme, o la prima
+corrispondenza di una ricerca (le successive non aggiungono passi). Scorrere e la pagina successiva / precedente non sono
+salti. Si tengono fino a 100 passi in ciascun senso; un nuovo salto dopo Indietro riparte da lì. Un collegamento a una
+pagina mostra quella pagina dal punto indicato dal collegamento, anche sui fogli ruotati di un quarto di giro, e mai così
+in basso che la pagina esca dalla finestra.</li>
 <li><b>Ingrandisci / Riduci:</b> Ctrl+Più / Ctrl+Meno, Ctrl+rotellina del mouse, il cursore dello zoom o la casella dello zoom
 (digita una percentuale, dal 10% al 6400%; 25.5 e 25,5 funzionano entrambi, e anche 1,000 vale 1000%; uno
 zoom non intero viene mostrato con un decimale). Con la rotellina del mouse la pagina segue subito, un po' sfocata, e
@@ -2401,6 +2411,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>Ctrl+H</td><td>Sostituisci testo</td></tr>
 <tr><td>Ctrl+Shift+N</td><td>Sposta scheda in una nuova finestra</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Commento successivo / precedente</td></tr>
+<tr><td>Alt+Left / Alt+Right</td><td>Indietro / Avanti (dov'eri prima di un salto)</td></tr>
 <tr><td>F1</td><td>Questo manuale</td></tr>
 <tr><td>Ctrl+Shift+P</td><td>Tavolozza dei comandi</td></tr>
 <tr><td>Ctrl+F1</td><td>Comprimi / espandi la barra multifunzione</td></tr>

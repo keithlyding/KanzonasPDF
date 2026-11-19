@@ -1916,6 +1916,15 @@ class PageWidget(QWidget):
             else:
                 p.drawRect(box)
 
+    def _nav_actions(self, menu):
+        """Back and Forward first in the page's right-click menu (grayed when there's nowhere
+        to go)."""
+        win = self.window()
+        if hasattr(win, "a_back"):
+            menu.addAction(win.a_back)
+            menu.addAction(win.a_forward)
+            menu.addSeparator()
+
     def _objects_menu(self, e, pdf):
         """The Edit objects menu; False (no menu) when there's no object there."""
         from PySide6.QtWidgets import QMenu
@@ -1929,6 +1938,7 @@ class PageWidget(QWidget):
         has_text = any(it["kind"] == "text" for it in items)
         menu = QMenu(self)
         menu.setToolTipsVisible(True)       # (Group grayed says why)
+        self._nav_actions(menu)
         a = menu.addAction(tr("Copy picture"), self.view.copy_picture)
         a.setEnabled(one_pic)
         a = menu.addAction(tr("Save picture as..."), self.view.save_picture)
@@ -2051,6 +2061,7 @@ class PageWidget(QWidget):
         has_text = v.text_sel is not None
         has_markups = v.selection is not None
         menu = QMenu(self)
+        self._nav_actions(menu)
         if v.tool in FORM_TOOLS and hasattr(win, "detect_form_fields"):
             # (designing a form: the commands that make or order its fields)
             menu.addAction(tr("Detect form fields..."), win.detect_form_fields)

@@ -11558,3 +11558,19 @@ msgstr "Esegui il programma di installazione"
 
 msgid "Download the setup from the release page and run it."
 msgstr "Scarica il programma di installazione dalla pagina della versione ed eseguilo."
+
+#: main_window
+msgid "&Back"
+msgstr "&Indietro"
+
+#: main_window
+msgid "For&ward"
+msgstr "Ava&nti"
+
+#: main_window
+msgid "Back to where you were before the last jump: a link, bookmark, Go to page... (Alt+Left)"
+msgstr "Torna dov'eri prima dell'ultimo salto: un collegamento, un segnalibro, Vai a pagina... (Alt+Left)"
+
+#: main_window
+msgid "Forward again, after Back (Alt+Right)"
+msgstr "Di nuovo avanti, dopo Indietro (Alt+Right)"

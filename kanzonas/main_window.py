@@ -889,6 +889,16 @@ class MainWindow(QMainWindow):
                                      tip=tr("Next page (Right arrow or Page Down)"))
         self.a_prev_page = self._act(tr("&Previous page"), lambda: self._step_page(-1),
                                      tip=tr("Previous page (Left arrow or Page Up)"))
+        # Back / Forward: where you were before a jump (a link, a bookmark, Go to page...),
+        # also in another document (the owner, 19 Nov 2026)
+        self.a_back = self._act(tr("&Back"), self.go_back, "Alt+Left",
+                                tip=tr("Back to where you were before the last jump: a link, "
+                                       "bookmark, Go to page... (Alt+Left)"))
+        self.a_forward = self._act(tr("For&ward"), self.go_forward, "Alt+Right",
+                                   tip=tr("Forward again, after Back (Alt+Right)"))
+        self.a_back.setEnabled(False)
+        self.a_forward.setEnabled(False)
+        self._back, self._forward = [], []
         self.a_first_page = self._act(tr("&First page"), lambda: self._step_page(-10 ** 9),
                                       tip=tr("First page (Home)"))
         self.a_last_page = self._act(tr("&Last page"), lambda: self._step_page(10 ** 9),
@@ -1456,6 +1466,8 @@ class MainWindow(QMainWindow):
         gm.addActions([self.a_next_page, self.a_prev_page, self.a_first_page, self.a_last_page])
         gm.addSeparator()
         gm.addAction(self.a_goto_page)
+        gm.addSeparator()
+        gm.addActions([self.a_back, self.a_forward])
         m.addSeparator()
         reading.add_to_view_menu(self, m)
         m.addSeparator()
@@ -1651,7 +1663,8 @@ class MainWindow(QMainWindow):
         self.page_spin.setKeyboardTracking(False)
         self.page_spin.setButtonSymbols(QSpinBox.NoButtons)       # left/right buttons instead
         self.page_spin.setAlignment(Qt.AlignCenter)
-        self.page_spin.valueChanged.connect(lambda n: self.view() and self.view().goto_page(n - 1))
+        self.page_spin.valueChanged.connect(
+            lambda n: self.view() and self.view().goto_page(n - 1, remember=True))
         self.prev_page_btn = QToolButton()
         self.prev_page_btn.setArrowType(Qt.LeftArrow)
         self.prev_page_btn.setToolTip(tr("Previous page (Left arrow key)"))
@@ -1837,7 +1850,8 @@ class MainWindow(QMainWindow):
         from .bookmarks_panel import BookmarksPanel
         self.bookmarks = BookmarksPanel()
         self.bookmarks.current_page = lambda: self.view().current_page() if self.view() else 0
-        self.bookmarks.jump.connect(lambda i: self.view() and self.view().goto_page(i))
+        self.bookmarks.jump.connect(
+            lambda i: self.view() and self.view().goto_page(i, remember=True))
         self.bookmarks.changed.connect(lambda toc: self.view() and self.view().set_toc(toc))
         self.bookmarks.jump_to.connect(
             lambda i, to: self.view() and self.view().go_to_destination(i, to))
@@ -2325,6 +2339,7 @@ class MainWindow(QMainWindow):
              lambda v=v: v is self.view() and self._props_soon()),
             (v.toolDefaultsChanged,
              lambda _t, v=v: v is self.view() and self._refresh_props()),
+            (v.jumpFrom, lambda loc, v=v: self._note_jump(v, loc)),
             (v.editorFormat,
              lambda fmt, v=v: v is self.view() and self._show_editor_format(fmt)),
             (v.pageChanged, self._on_page_changed),
@@ -2860,6 +2875,7 @@ class MainWindow(QMainWindow):
             self._refresh_props()
 
     def _open_linked_pdf(self, path, page):
+        self._note_here()                   # (Back comes back to this document)
         self.open_file(path)
         v = self.view()
         if v is not None and page >= 0 and os.path.normcase(v.path or "") == os.path.normcase(path):
@@ -4403,6 +4419,7 @@ class MainWindow(QMainWindow):
                     not (self.split_dock.isVisible() and self.split_dock.chosen() == id(v)):
                 self.close_tab(self.tabs.indexOf(v))
         opened = {id(v) for v in self._all_views()}
+        self._note_here()                   # (Back comes back to the sheet before)
         self.open_file(path)
         v = self.view()
         if v is None or os.path.normcase(v.path or "") != key:
@@ -4939,7 +4956,8 @@ class MainWindow(QMainWindow):
                                     "Use Save As to keep the comparison."))
 
     # ---- appearance -------------------------------------------------------------------
-    TOOLBAR_ICON_KEYS = {"a_open": "open", "a_save": "save", "a_print": "print", "a_undo": "undo",
+    TOOLBAR_ICON_KEYS = {"a_back": "back", "a_forward": "forward",
+                         "a_open": "open", "a_save": "save", "a_print": "print", "a_undo": "undo",
                          "a_redo": "redo", "a_zoom_in": "zoom_in", "a_zoom_out": "zoom_out",
                          "a_fit_width": "fit_width", "a_fit_page": "fit_page", "a_ocr": "ocr",
                          "a_rot_l": "rot_l", "a_rot_r": "rot_r", "a_cad_mouse": "cad_mouse",
@@ -5500,16 +5518,107 @@ class MainWindow(QMainWindow):
             n, ok = QInputDialog.getInt(self, tr("Go to page"), tr("Page:"),
                                         v.current_page() + 1, 1, v.page_count())
             if ok:
-                v.goto_page(n - 1)
+                v.goto_page(n - 1, remember=True)
             return
         box.setFocus()
         box.selectAll()
 
+    # ---- Back / Forward (the owner, 19 Nov 2026) ------------------------------------
+    HISTORY = 100                       # places kept each way
+
+    def _place(self, v, loc=None):
+        """A place for Back / Forward: the view, its file (to open it again once its tab is
+        closed) and where in it (DocumentView.location)."""
+        loc = loc if loc is not None else v.location()
+        if loc is None:
+            return None
+        return dict(loc, view=v, path=None if v.untitled else v.path)
+
+    @staticmethod
+    def _same_place(a, b):
+        return a is not None and b is not None and a["view"] is b["view"] and \
+            a["page"] == b["page"] and abs(a["y"] - b["y"]) < 2
+
+    def _note_jump(self, v, loc):
+        """A jump leaves loc in v: Back comes back to it; Forward starts again."""
+        place = self._place(v, loc)
+        if place is None or (self._back and self._same_place(self._back[-1], place)):
+            return
+        self._back.append(place)
+        del self._back[:-self.HISTORY]
+        self._forward.clear()
+        self._sync_nav()
+
+    def _note_here(self):
+        """A jump to another document is about to leave the one shown."""
+        v = self.view()
+        if v is not None and getattr(v, "doc", None) is not None:
+            self._note_jump(v, v.location())
+
+    def go_back(self):
+        self._travel(self._back, self._forward)
+
+    def go_forward(self):
+        self._travel(self._forward, self._back)
+
+    def _travel(self, source, dest):
+        """Back (source: the places behind) or Forward: show the last place of source that can
+        still be shown, and keep where you are now on dest for the way back."""
+        v = self.view()
+        here = self._place(v) if v is not None and getattr(v, "doc", None) is not None \
+            else None
+        while source:
+            place = source.pop()
+            if self._same_place(place, here):
+                continue
+            if self._show_place(place):
+                if here is not None:
+                    dest.append(here)
+                    del dest[:-self.HISTORY]
+                break
+        self._sync_nav()
+
+    def _show_place(self, place):
+        """Show a remembered place: its tab, in whichever window has it, or its file opened
+        again when the tab was closed. False when it can't be shown (closed and never saved,
+        or the file is gone)."""
+        import shiboken6
+        v = place["view"]
+        if v is not None and shiboken6.isValid(v) and getattr(v, "doc", None) is not None \
+                and not v.doc.is_closed:
+            for win in windows():
+                i = win.tabs.indexOf(v)
+                if i >= 0:
+                    win.tabs.setCurrentIndex(i)
+                    if win is not self:
+                        win.raise_()
+                        win.activateWindow()
+                    v.restore_location(place)
+                    return True
+        path = place.get("path")
+        if not path or not os.path.exists(path):
+            return False
+        self.open_file(path)
+        v = self.view()
+        if v is None or os.path.normcase(v.path or "") != os.path.normcase(path):
+            return False
+        # (the same document again: later places of the closed tab now mean this one)
+        for p in self._back + self._forward:
+            if p["view"] is place["view"]:
+                p["view"] = v
+        QTimer.singleShot(0, lambda v=v: shiboken6.isValid(v) and v.restore_location(place))
+        return True
+
+    def _sync_nav(self):
+        self.a_back.setEnabled(bool(self._back))
+        self.a_forward.setEnabled(bool(self._forward))
+
     def _step_page(self, delta):
         v = self.view()
         if v is not None:
-            # (two pages side by side: a spread at a time)
-            v.goto_page(v.page_after(v.current_page(), delta))
+            # (two pages side by side: a spread at a time; First / Last page are jumps Back
+            # comes back from, a step to the next page isn't)
+            v.goto_page(v.page_after(v.current_page(), delta), remember=abs(delta) > 1)
 
     def set_mouse_mode(self, m, toggle=False):
         """Standard, Hand or CAD. toggle (F11, the CAD button): CAD again goes back to the
@@ -5977,6 +6086,8 @@ class MainWindow(QMainWindow):
         q.addActions([self.a_open, self.a_save, self.a_print])
         q.addSeparator()
         q.addActions([self.a_undo, self.a_redo])
+        q.addSeparator()
+        q.addActions([self.a_back, self.a_forward])
         r.setCornerWidget(q, Qt.TopLeftCorner)
         self.ribbon_right = QWidget()
         rh = QHBoxLayout(self.ribbon_right)
@@ -6856,7 +6967,7 @@ class MainWindow(QMainWindow):
         if v and row >= 0:
             self._thumb_nav = True
             try:
-                v.goto_page(row)
+                v.goto_page(row, remember=True)
             finally:
                 self._thumb_nav = False
 

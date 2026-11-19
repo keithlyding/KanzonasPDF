@@ -115,7 +115,7 @@ de texto, llamadas, sellos, leyendas, formas e iconos de archivos adjuntos. Las 
 de PDF (Adobe Reader, navegadores) hasta que las acopla. Todo lo demás que agregue (imágenes,
 Agregar texto, firmas, iniciales, fechas) se escribe en la propia página, de modo que en un visor
 se ve y se comporta como acoplado; Editar texto y Editar objetos (pestaña Inicio) siguen pudiendo cambiarlo aquí, como
-pueden hacerlo Acrobat y PDF-XChange. Abrir, guardar, imprimir, deshacer y rehacer están a la izquierda de las pestañas, y el
+pueden hacerlo Acrobat y PDF-XChange. Abrir, guardar, imprimir, deshacer, rehacer, Atrás y Adelante están a la izquierda de las pestañas, y el
 cuadro Buscar (con su número de coincidencias y sus flechas arriba / abajo) está a su derecha. La barra inferior (barra de estado, abajo a la derecha) tiene la navegación de páginas (primera,
 anterior, número de página, siguiente, última página), Ajustar página, Ajustar al ancho, Tamaño real, un control deslizante de zoom y el
 cuadro de zoom con alejar / acercar, como PDF-XChange Editor, el tamaño de la página y dónde está el puntero en ella
@@ -296,6 +296,16 @@ o Av Pág / Re Pág, o escriba un número de página y presione Enter. <b>Inicio
 última página. Lo mismo está en <b>Ver &gt; Ir a</b>: <b>Página siguiente</b>, <b>Página anterior</b>, <b>Primera
 página</b>, <b>Última página</b> e <b>Ir a la página...</b> (Ctrl+G: el cuadro de página, listo para un número), así que
 la paleta de comandos y la línea de comandos CAD también los encuentran ("página siguiente", "última página").</li>
+<li><b>Atrás / Adelante</b> (Alt+Left / Alt+Right; las flechas junto a Deshacer y Rehacer, a la izquierda de las
+pestañas; Ver &gt; Ir a; y los dos primeros elementos al hacer clic derecho en la página): vuelve a donde estaba antes
+de un salto, y adelante otra vez después de Atrás, en el mismo lugar y con el mismo zoom. Un salto es seguir un vínculo
+(también un vínculo a otro PDF: Atrás vuelve al documento en el que estaba, abriéndolo de nuevo si cerró su pestaña), un
+marcador, Ir a la página, Primera página o Última página, una página elegida en la lista de páginas, una marca elegida en
+la lista de marcas o con Comentario siguiente / anterior, una hoja elegida en un conjunto, o la primera coincidencia de una
+búsqueda (las siguientes no agregan pasos). Desplazarse y la página siguiente / anterior no son saltos. Se guardan hasta
+100 pasos en cada sentido; un salto nuevo después de Atrás empieza de nuevo desde ahí. Un vínculo a una página muestra esa
+página desde el lugar que indica el vínculo, también en hojas giradas un cuarto de vuelta, y nunca tan abajo que la página
+salga de la ventana.</li>
 <li><b>Acercar / Alejar:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+rueda del mouse, el control deslizante de zoom o el cuadro de zoom
 (escriba un porcentaje, del 10% al 6400%; 25.5 y 25,5 funcionan igual, y 1,000 es 1000%; un zoom que no es
 un porcentaje entero se muestra con un decimal). Con la rueda del mouse la página sigue al instante, algo borrosa,
@@ -2421,6 +2431,7 @@ Desplazamiento automático.</li>
 <tr><td>Ctrl+H</td><td>Reemplazar texto</td></tr>
 <tr><td>Ctrl+Shift+N</td><td>Mover pestaña a una nueva ventana</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Comentario siguiente / anterior</td></tr>
+<tr><td>Alt+Left / Alt+Right</td><td>Atrás / Adelante (donde estaba antes de un salto)</td></tr>
 <tr><td>F1</td><td>Este manual</td></tr>
 <tr><td>Ctrl+Shift+P</td><td>Paleta de comandos</td></tr>
 <tr><td>Ctrl+F1</td><td>Contraer / expandir la cinta</td></tr>
