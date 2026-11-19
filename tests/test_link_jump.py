@@ -43,6 +43,10 @@ def sheets(rotation, dest):
 
 
 class Base(unittest.TestCase):
+    def setUp(self):
+        from tests.test_back_forward import no_dialogs
+        no_dialogs(self)
+
     def open(self, rotation, dest="/XYZ 0 792 0", zoom=1.0):
         w = main_window.MainWindow()
         self.addCleanup(lambda: [setattr(x, "_close_confirmed", True) or x.close()
