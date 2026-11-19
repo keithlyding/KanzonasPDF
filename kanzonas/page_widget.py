@@ -2290,7 +2290,14 @@ class PageWidget(QWidget):
         if self._gone():
             return                      # (its tab is closing: the document is closed)
         if e.button() == Qt.MiddleButton:
-            # hold the wheel down and drag to pan (CAD style), with any tool
+            # hold the wheel down and drag to pan (CAD style), with any tool; a click on a
+            # link to a page of this document (with the Hand, or Ctrl held, as a left click
+            # follows links) shows its place aside (the owner, 19 Nov 2026)
+            self._mid_link = None
+            if self.view.tool == "hand" or ctrl_held(e):
+                link = self.view.link_to_follow(self.index, self.to_pdf(e.position()))
+                if self.view.link_in_this_document(link):
+                    self._mid_link = (link, e.position())
             self._mid_pan = True
             self.view.begin_pan(e.globalPosition())
             return
@@ -2921,6 +2928,11 @@ class PageWidget(QWidget):
         if e.button() == Qt.MiddleButton and getattr(self, "_mid_pan", False):
             self._mid_pan = False
             self.view.end_pan()
+            press, self._mid_link = getattr(self, "_mid_link", None), None
+            if press is not None:
+                moved = e.position() - press[1]
+                if abs(moved.x()) + abs(moved.y()) < 5:     # (a click, not a drag)
+                    self.view.linkAside.emit(press[0])
             return
         if e.button() != Qt.LeftButton:
             return

@@ -899,6 +899,8 @@ class DocumentView(QScrollArea):
     historyChanged = Signal()       # an undo or redo done: what can be undone / redone now
     pageLayoutChanged = Signal()    # View > Page layout changed (the menu's tick follows)
     pointerMoved = Signal()         # the pointer's place on a page (pointer_pos) changed
+    linkAside = Signal(object)      # Ctrl+middle-click on a link to a page of this document:
+    #                                 its place in a view-only tab or the split view
     jumpFrom = Signal(object)       # a jump (a link, bookmark, Go to page...) leaves this
     #                                 place (location()): Back comes back to it
     toolUsed = Signal()             # a markup drawn with Reuse off: back to the mouse mode's tool
@@ -2471,7 +2473,10 @@ class DocumentView(QScrollArea):
         if getattr(self, "_source", None) is not None:
             # the split view shares the main view's document but not its undo history or
             # unsaved-changes mark: edits must go through the main view
-            self.statusMessage.emit(tr("The split view is read-only: edit in the main view."))
+            self.statusMessage.emit(
+                tr("This tab is view-only: edit in the document's own tab.")
+                if getattr(self, "view_only_tab", False) else
+                tr("The split view is read-only: edit in the main view."))
             return
         if not self.allowed(permission):
             if getattr(self, "sig_results", None):
@@ -5046,6 +5051,12 @@ class DocumentView(QScrollArea):
             room = pg.rect.height * self.zoom - self.viewport().height() + PAGE_GAP
             y = max(0, min(y, room))
         self.goto_page(page, y, remember=True)
+
+    def link_in_this_document(self, link):
+        """True for a link to a page of this document (what Ctrl+middle-click opens aside)."""
+        return link is not None and link.get("kind") in (pymupdf.LINK_GOTO,
+                                                         pymupdf.LINK_NAMED) and \
+            0 <= link.get("page", -1) < self.doc.page_count
 
     def follow_link(self, link):
         """Click on a link: go to the page, open the web address (asking first, like Adobe

@@ -264,6 +264,8 @@ def _doc_name(v):
     if v.untitled and getattr(v, "recovered", False):
         # a backup copy opened after a crash, not saved yet (the file name itself stays)
         name = tr("{name} (recovered)").format(name=name)
+    if getattr(v, "view_only_tab", False):
+        name = tr("{name} (view only)").format(name=name)
     return name
 
 
@@ -845,8 +847,9 @@ class MainWindow(QMainWindow):
                                          "monitor); drag the tab out of the tab bar does the same"))
         self.a_prefs = self._act(tr("Pre&ferences..."), self.preferences, "Ctrl+K",
                                  tip=tr("All the remembered options in one place (Ctrl+K)"))
-        self.a_undo = self._act(tr("&Undo"), lambda: v() and v().undo(), QKeySequence.Undo)
-        self.a_redo = self._act(tr("&Redo"), lambda: v() and v().redo(), QKeySequence.Redo)
+        d = self._doc_view          # (a view-only tab: its original's undo history)
+        self.a_undo = self._act(tr("&Undo"), lambda: d() and d().undo(), QKeySequence.Undo)
+        self.a_redo = self._act(tr("&Redo"), lambda: d() and d().redo(), QKeySequence.Redo)
         self.a_find = self._act(tr("&Find"), self._focus_search, QKeySequence.Find)
         # (macOS: Command-H hides the program; Command-Option-F is its Find and Replace)
         replace_key = "Ctrl+Alt+F" if sys.platform == "darwin" else "Ctrl+H"
@@ -1937,6 +1940,14 @@ class MainWindow(QMainWindow):
         w = self.tabs.currentWidget()
         return w if isinstance(w, DocumentView) else None
 
+    def _doc_view(self):
+        """The view whose document is shown: a view-only tab's original (its own tab, which
+        saves, undoes and redoes)."""
+        v = self.view()
+        if v is not None and getattr(v, "view_only_tab", False):
+            return v._source
+        return v
+
     def _update_ui(self):
         v = self.view()
         has = v is not None
@@ -2018,8 +2029,8 @@ class MainWindow(QMainWindow):
                 self.zoom_slider.blockSignals(False)
             self._show_page_scale(v)
             # (the file name itself is never translated, only the words around it)
-            name = tr("{name} [protected]").format(name=_doc_name(v)) if v.read_only \
-                else _doc_name(v)
+            name = tr("{name} [protected]").format(name=_doc_name(v)) if v.read_only and \
+                not getattr(v, "view_only_tab", False) else _doc_name(v)
             self.setWindowTitle(f"{'*' if v.dirty else ''}{name} - {_title_base()}")
             for i in range(self.tabs.count()):
                 # only changed names: each set lays out the whole tab bar again
@@ -2211,7 +2222,7 @@ class MainWindow(QMainWindow):
         self.recent_menu.setEnabled(bool(recent))
 
     def save(self):
-        v = self.view()
+        v = self._doc_view()
         if not v:
             return False
         if v.untitled:
@@ -2248,7 +2259,7 @@ class MainWindow(QMainWindow):
         return True
 
     def save_as(self):
-        v = self.view()
+        v = self._doc_view()
         if not v:
             return False
         path, _ = QFileDialog.getSaveFileName(self, tr("Save As"), v.path, PDF_FILTER)
@@ -2340,6 +2351,7 @@ class MainWindow(QMainWindow):
             (v.toolDefaultsChanged,
              lambda _t, v=v: v is self.view() and self._refresh_props()),
             (v.jumpFrom, lambda loc, v=v: self._note_jump(v, loc)),
+            (v.linkAside, lambda link, v=v: self._link_aside(v, link)),
             (v.editorFormat,
              lambda fmt, v=v: v is self.view() and self._show_editor_format(fmt)),
             (v.pageChanged, self._on_page_changed),
@@ -2453,8 +2465,15 @@ class MainWindow(QMainWindow):
 
     def close_tab(self, index):
         v = self.tabs.widget(index)
+        if v is not None and getattr(v, "view_only_tab", False):
+            self._drop_view_only(v)         # (the document stays open in its own tab)
+            return
         if v is None or not self._confirm_close(v):
             return
+        for win in windows():               # (its view-only tabs show nothing without it)
+            for other in win._views():
+                if getattr(other, "view_only_tab", False) and other._source is v:
+                    win._drop_view_only(other)
         if v._cad_cmd is not None:
             v._cad_cmd.cancel()
         self._remember_state(v)
@@ -2466,6 +2485,14 @@ class MainWindow(QMainWindow):
         self._update_ui()
         if not self.primary and self.tabs.count() == 0:
             QTimer.singleShot(0, self.close)     # a pulled-out window with nothing left in it
+
+    def _drop_view_only(self, v):
+        i = self.tabs.indexOf(v)
+        if i >= 0:
+            self._disconnect_view(v)
+            self.tabs.removeTab(i)
+        v.deleteLater()
+        self._update_ui()
 
     def _views(self):
         return [self.tabs.widget(i) for i in range(self.tabs.count())]
@@ -2521,6 +2548,8 @@ class MainWindow(QMainWindow):
         session = []
         for w in [self] + list(others):
             for v in w._views():
+                if getattr(v, "view_only_tab", False):
+                    continue                # (a second look at a document open anyway)
                 w._remember_state(v)
                 # (a backup copy isn't reopened as a document; the backups folder may also be
                 # a folder of documents)
@@ -5179,7 +5208,7 @@ class MainWindow(QMainWindow):
         self.central_split.setSizes([total // 2, total - total // 2])
 
     def _split_documents(self):
-        views = self._views()
+        views = [v for v in self._views() if not getattr(v, "view_only_tab", False)]
         names = [self.tabs.tabText(i) for i in range(len(views))]
         return views, names
 
@@ -5522,6 +5551,80 @@ class MainWindow(QMainWindow):
             return
         box.setFocus()
         box.selectAll()
+
+    # ---- a link's place aside: Ctrl+middle-click (the owner, 19 Nov 2026) -------------
+    LINK_ASIDE = "link_middle_click"    # settings: "tab" or "split" (else asked)
+
+    def _link_aside(self, v, link):
+        """Ctrl+middle-click on a link to a page of this document: its place in a view-only
+        tab beside this one, or in the split view, as Preferences > Mouse says (asked the
+        first time, with Remember my choice)."""
+        choice = self.settings.value(self.LINK_ASIDE, "")
+        if choice not in ("tab", "split"):
+            choice = self._ask_link_aside()
+        if choice == "split":
+            self._link_in_split(v, link)
+        elif choice == "tab":
+            self._link_in_tab(v, link)
+
+    def _ask_link_aside(self):
+        box = QMessageBox(self)
+        box.setWindowTitle(tr("Open the link"))
+        box.setText(tr("Show the link's place without leaving this one: in another tab of this "
+                       "document (view only: you edit in its own tab), or in the split view?"))
+        tab = box.addButton(tr("View-only tab"), QMessageBox.AcceptRole)
+        split = box.addButton(tr("Split view"), QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        remember = QCheckBox(tr("Remember my choice (Preferences > Mouse changes it)"))
+        box.setCheckBox(remember)
+        box.exec()
+        clicked = box.clickedButton()
+        choice = "tab" if clicked is tab else "split" if clicked is split else None
+        if choice and remember.isChecked():
+            self.settings.setValue(self.LINK_ASIDE, choice)
+        return choice
+
+    def _link_in_tab(self, v, link):
+        """A view-only tab of v's document, right of it, showing the link's place."""
+        import shiboken6
+        source = v._source if getattr(v, "view_only_tab", False) else v
+        mv = DocumentView.mirror(source)
+        mv.view_only_tab = True
+        mv._fitted = True                   # (no first-view fitting: it shows the link's place)
+        self._connect_view(mv)
+        at = self.tabs.indexOf(v) + 1 if self.tabs.indexOf(v) >= 0 else self.tabs.count()
+        self.tabs.insertTab(at, mv, _doc_name(mv))
+        self.tabs.setCurrentIndex(at)
+        self._update_ui()
+
+        def show():
+            if shiboken6.isValid(mv) and not mv.doc.is_closed:
+                mv.set_zoom(source.zoom)
+                mv.follow_link(link)
+        QTimer.singleShot(0, show)
+
+    def _link_in_split(self, v, link):
+        """The split view, showing v's document at the link's place."""
+        import shiboken6
+        source = v._source if getattr(v, "view_only_tab", False) else v
+        if not self.split_dock.isVisible():
+            self.split_dock.show()
+        if source is not self.view():
+            # (from a view-only tab: the split view shows its original, picked in its list)
+            self._refresh_split_list()
+            box = self.split_dock.doc_box
+            box.setCurrentIndex(max(0, box.findData(id(source))))
+        if self._split_view is None or self._split_view._source is not source:
+            self._attach_split()
+        if self._split_view is not None:
+            self._split_view._fitted = True     # (no first-view fitting: the link's place)
+
+        def show():
+            sv = self._split_view
+            if sv is not None and shiboken6.isValid(sv) and sv._source is source:
+                sv.set_zoom(source.zoom)
+                sv.follow_link(link)
+        QTimer.singleShot(0, show)
 
     # ---- Back / Forward (the owner, 19 Nov 2026) ------------------------------------
     HISTORY = 100                       # places kept each way

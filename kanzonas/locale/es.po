@@ -11510,3 +11510,47 @@ msgstr "Volver a donde estaba antes del último salto: un vínculo, un marcador,
 #: main_window
 msgid "Forward again, after Back (Alt+Right)"
 msgstr "Adelante otra vez, después de Atrás (Alt+Right)"
+
+#: main_window
+msgid "This tab is view-only: edit in the document's own tab."
+msgstr "Esta pestaña es solo de lectura: edite en la pestaña propia del documento."
+
+#: main_window
+msgid "Open the link"
+msgstr "Abrir el vínculo"
+
+#: main_window
+msgid "Show the link's place without leaving this one: in another tab of this document (view only: you edit in its own tab), or in the split view?"
+msgstr "¿Mostrar el lugar del vínculo sin dejar este: en otra pestaña de este documento (solo lectura: se edita en su propia pestaña) o en la vista dividida?"
+
+#: main_window
+msgid "View-only tab"
+msgstr "Pestaña de solo lectura"
+
+#: main_window
+msgid "Remember my choice (Preferences > Mouse changes it)"
+msgstr "Recordar mi elección (se cambia en Preferencias > Mouse)"
+
+#: main_window
+msgid "{name} (view only)"
+msgstr "{name} (solo lectura)"
+
+#: main_window
+msgid "Ask each time"
+msgstr "Preguntar cada vez"
+
+#: main_window
+msgid "A view-only tab of the document"
+msgstr "Una pestaña de solo lectura del documento"
+
+#: main_window
+msgid "The split view"
+msgstr "La vista dividida"
+
+#: main_window
+msgid "Middle-clicking a link (with Ctrl held, as for a left click, except with the Hand) shows its place without leaving the one you're at"
+msgstr "Hacer clic con el botón central en un vínculo (con Ctrl presionado, como con el clic izquierdo, salvo con la Mano) muestra su lugar sin dejar el lugar en el que está"
+
+#: main_window
+msgid "Middle-click on a link opens:"
+msgstr "Clic central en un vínculo abre:"

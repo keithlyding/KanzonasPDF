@@ -165,6 +165,111 @@ class InOneDocument(History):
         self.assertEqual(seen[:2], [self.w.a_back, self.w.a_forward])
 
 
+class MiddleClick(History):
+    """Ctrl+middle-click on a link (the Hand: no Ctrl, as a left click) shows its place aside,
+    in a view-only tab of the document or in the split view (Preferences > Mouse; asked the
+    first time). The owner, 19 Nov 2026: "click a link by clicking my scroll wheel and opening
+    the same document in another tab with that location"; "View only (tab needs to say so in
+    parentheses next to it), but Split View as an option in settings and a one time popup".
+    """
+    def setUp(self):
+        super().setUp()
+        old = self.w.settings.value(self.w.LINK_ASIDE)
+        self.addCleanup(lambda: self.w.settings.setValue(self.w.LINK_ASIDE, old)
+                        if old is not None else self.w.settings.remove(self.w.LINK_ASIDE))
+        self.v = self.open(pdf("plan.pdf", 30, link_to=20))
+        self.w.set_tool("select")
+
+    def middle_click(self, mods=None, move=0):
+        from PySide6.QtCore import QEvent, QPointF, Qt
+        from PySide6.QtGui import QMouseEvent
+        mods = Qt.ControlModifier if mods is None else mods
+        page = self.v.pages[0]
+        at = QPointF(page.to_screen_pt(pymupdf.Point(100, 210)))
+        end = at + QPointF(move, 0)
+        page.mousePressEvent(QMouseEvent(QEvent.MouseButtonPress, at, page.mapToGlobal(at),
+                                         Qt.MiddleButton, Qt.MiddleButton, mods))
+        page.mouseReleaseEvent(QMouseEvent(QEvent.MouseButtonRelease, end,
+                                           page.mapToGlobal(end), Qt.MiddleButton,
+                                           Qt.NoButton, mods))
+        for _ in range(5):
+            APP.processEvents()
+
+    def use(self, choice):
+        self.w.settings.setValue(self.w.LINK_ASIDE, choice)
+
+    def test_a_view_only_tab_at_the_links_place(self):
+        self.use("tab")
+        self.middle_click()
+        self.assertEqual(self.w.tabs.count(), 2)
+        tab = self.w.view()
+        self.assertIsNot(tab, self.v)
+        self.assertEqual(self.w.tabs.tabText(self.w.tabs.indexOf(tab)), "plan.pdf (view only)")
+        self.assertIs(tab.doc, self.v.doc)
+        self.assertEqual(tab.current_page(), 20)
+        self.assertEqual(self.v.current_page(), 0)          # (the first one stays where it was)
+
+    def test_the_view_only_tab_doesnt_edit_and_saves_the_original(self):
+        self.use("tab")
+        self.middle_click()
+        tab = self.w.view()
+        said = []
+        tab.statusMessage.connect(said.append)
+        tab.modify(lambda: None, [0])
+        self.assertIn("view-only", said[-1])
+        self.assertIs(self.w._doc_view(), self.v)
+
+    def test_closing_the_view_only_tab_keeps_the_document(self):
+        self.use("tab")
+        self.middle_click()
+        self.w.close_tab(self.w.tabs.indexOf(self.w.view()))
+        APP.processEvents()
+        self.assertEqual(self.w.tabs.count(), 1)
+        self.assertFalse(self.v.doc.is_closed)
+
+    def test_closing_the_document_closes_its_view_only_tabs(self):
+        self.use("tab")
+        self.middle_click()
+        self.w.close_tab(self.w.tabs.indexOf(self.v))
+        APP.processEvents()
+        self.assertEqual(self.w.tabs.count(), 0)
+
+    def test_in_the_split_view(self):
+        self.use("split")
+        self.middle_click()
+        self.assertEqual(self.w.tabs.count(), 1)
+        self.assertTrue(self.w.split_dock.isVisible())
+        sv = self.w._split_view
+        self.assertIs(sv._source, self.v)
+        self.assertEqual(sv.current_page(), 20)
+
+    def test_asked_the_first_time(self):
+        self.w.settings.remove(self.w.LINK_ASIDE)
+        with mock.patch.object(main_window.MainWindow, "_ask_link_aside",
+                               return_value="tab") as ask:
+            self.middle_click()
+        self.assertTrue(ask.called)
+        self.assertEqual(self.w.tabs.count(), 2)
+
+    def test_without_ctrl_it_only_moves_the_page(self):
+        from PySide6.QtCore import Qt
+        self.use("tab")
+        self.middle_click(mods=Qt.NoModifier)
+        self.assertEqual(self.w.tabs.count(), 1)
+
+    def test_with_the_hand_no_ctrl_is_needed(self):
+        from PySide6.QtCore import Qt
+        self.use("tab")
+        self.w.set_tool("hand")
+        self.middle_click(mods=Qt.NoModifier)
+        self.assertEqual(self.w.tabs.count(), 2)
+
+    def test_a_drag_moves_the_page_and_opens_nothing(self):
+        self.use("tab")
+        self.middle_click(move=40)
+        self.assertEqual(self.w.tabs.count(), 1)
+
+
 class AcrossDocuments(History):
     def setUp(self):
         super().setUp()
