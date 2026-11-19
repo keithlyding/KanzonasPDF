@@ -2853,7 +2853,10 @@ class MainWindow(QMainWindow):
             return
         props = dict(annotations.tool_props("m_count"))
         props["group"] = counts.next_group_name(v.doc, taken=[props.get("group") or ""])
-        annotations.set_tool_props("m_count", props)
+        if annotations.OVERRIDE["tool"] == "m_count":
+            annotations.OVERRIDE["props"] = props   # (a Tool Chest entry in use: it changes)
+        else:
+            annotations.set_tool_props("m_count", props)
         v.count_layer = None
         self._refresh_props()
         self.statusBar().showMessage(tr("New count: {group}. Rename it in Properties if you "
@@ -2913,18 +2916,25 @@ class MainWindow(QMainWindow):
         if v is not None and v.selected_model is not None:
             v.update_selected_props(props)
         elif annotations.OVERRIDE["tool"] == self.tool:
+            before = annotations.tool_props(self.tool).get("group")
             annotations.OVERRIDE["props"] = dict(props)
+            self._count_group_picked(v, before, props)
         elif self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:
             before = annotations.tool_props(self.tool).get("group")
             annotations.set_tool_props(self.tool, props)
             if v is not None and self.tool in annotations.PAGE_TEXT_TOOLS:
                 v.text_tool_props_changed()
-            if self.tool == "m_count" and v is not None and props.get("group") != before:
-                # another group picked: its markers' layer, and its next number (counts.py)
-                from . import counts
-                if props.get("group") in counts.groups(v.doc):
-                    v.count_layer = v.count_group_layer(props["group"])
-                self._refresh_props()
+            self._count_group_picked(v, before, props)
+
+    def _count_group_picked(self, v, before, props):
+        """The Count tool's group changed (its own settings or a Tool Chest entry's): its
+        markers' layer, and its next number (counts.py)."""
+        if self.tool != "m_count" or v is None or props.get("group") == before:
+            return
+        from . import counts
+        if props.get("group") in counts.groups(v.doc):
+            v.count_layer = v.count_group_layer(props["group"])
+        self._refresh_props()
 
     def _reset_tool_defaults(self):
         if self.tool in annotations.DEFAULTS or self.tool in annotations.PAGE_TEXT_TOOLS:

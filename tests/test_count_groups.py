@@ -211,6 +211,41 @@ class GroupAndNumber(Counting):
         self.assertEqual(sorted(self.numbers().values()), [1, 2, 3])
 
 
+class WithAToolChestEntry(Counting):
+    """A Tool Chest entry of the Count tool keeps its group and color, in every document (it's
+    the tool's whole style); New count and the group picked work on it too."""
+
+    def use(self, **props):
+        self.w.chest.use.emit("m_count", dict(annotations.DEFAULTS["m_count"], **props))
+        APP.processEvents()
+        self.addCleanup(lambda: annotations.OVERRIDE.update({"tool": None, "props": None}))
+
+    def test_its_group_and_color(self):
+        self.use(group="Smoke detectors", stroke="#ff0000")
+        self.place((0, 100), (0, 150))
+        self.assertEqual(self.numbers("Smoke detectors"), {(0, 100): 1, (0, 150): 2})
+        self.assertTrue(all(m["props"]["stroke"] == "#ff0000"
+                            for _i, _x, m in counts.markers(self.v.doc)))
+
+    def test_new_count_with_it(self):
+        self.use(group="Smoke detectors")
+        self.place((0, 100))
+        self.w._new_count_group()
+        self.assertEqual(annotations.tool_props("m_count")["group"], "Count 1")
+        self.place((0, 150))
+        self.assertEqual(self.numbers(), {(0, 150): 1})
+
+    def test_picking_a_group_with_it_picks_its_layer(self):
+        x = self.v.new_markup_layer("Fire alarm")
+        self.use(group="Smoke detectors")
+        self.w._count_layer_picked(x)
+        self.place((0, 100))
+        self.w._new_count_group()
+        self.w.props.group.setCurrentText("Smoke detectors")
+        self.w.props._emit()
+        self.assertEqual(self.v.count_layer, x)
+
+
 class Layers(Counting):
     def test_new_markers_go_on_the_layer_picked(self):
         x = self.v.new_markup_layer("Fire alarm")
