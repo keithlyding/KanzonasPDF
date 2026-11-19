@@ -12,7 +12,8 @@ scene is set up through the app's own steps:
   screenshot-edit-text.png  Edit text open on a paragraph of the catalog's own text
   screenshot-forms.png      the catalog's order form filled in and signed, fields highlighted
   screenshot-measure.png    a floor plan measured to the scale its title block gives: an area
-                            (selected), a length, counts, a cloud with a callout, a stamp
+                            (selected), a length, two named counts, a cloud with a callout, a
+                            stamp
 
 The sample catalog ("Desert Bloom", 4 pages) is drawn here with PyMuPDF and its tile
 pictures with Pillow; the floor plan is tests/cad_samples.py's. Both go to a temporary
@@ -80,7 +81,7 @@ def _no_box(*args, **_kw):
 for _name in ("question", "information", "warning", "critical"):
     setattr(QMessageBox, _name, staticmethod(_no_box))
 
-from kanzonas import annotations, measure, theme  # noqa: E402
+from kanzonas import annotations, counts, measure, theme  # noqa: E402
 from kanzonas.main_window import MainWindow  # noqa: E402
 
 W, H = 612, 792                      # US Letter
@@ -683,7 +684,12 @@ def measure_scene(cad, plan, outdir):
     c = (r.tl + r.br) / 2
     big = pymupdf.Rect(c, c) + (pymupdf.Rect(r.tl - c, r.br - c) * 3.0)
     v._create(0, {"kind": "stamp", "props": props("stamp"), "rect": big})
+    # two named counts, each its own color (1.15.9): six workstations, then four data outlets
+    annotations.set_tool_props("m_count", props("m_count", group="Workstations"))
     for k in range(10):
+        if k == 6:
+            annotations.set_tool_props("m_count", props("m_count", group="Data outlets",
+                                                        stroke=counts.COLORS[1]))
         v.place_count(0, at(4 + (8 + k) * 3.6 + 1.5, 38 + 1.2))
     v.select_xref(0, area)
     show_markups_list(w, 190)

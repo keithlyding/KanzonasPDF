@@ -59,6 +59,11 @@ how most of the features below got here.
 **Read and navigate**
 - Tabs, fast scrolling and zoom even on very large pages, page thumbnails, bookmarks, layers
 - Find with every match highlighted; split view to see two places at once
+- Back and Forward (Alt+Left / Alt+Right) to where you were before a link, a bookmark or a
+  search, also across documents; Ctrl+middle-click a link to open its place in a new tab or the
+  split view
+- A Hand tool that only views (it never selects or changes anything), and Space held to drag the
+  page with any tool
 - Light, dark or match-system theme; ribbon or classic toolbars; a command palette (Ctrl+Shift+P)
 
 **Comment and mark up**
@@ -103,6 +108,9 @@ how most of the features below got here.
   from the sheet's title block
 - Length, polylength, area, perimeter, volume, angle, radius and counts, with snapping and a
   measurement summary you can export to CSV
+- Named counts ("Smoke detectors", "Data outlets"...), each with its own color and layer,
+  numbered 1, 2, 3... and kept in order when one is deleted, with any gap or repeated number
+  pointed out
 - Compare two revisions of a sheet, with every change clouded; links from sheet callouts to the
   sheets they name
 - And, for fun, a CAD mode with AutoCAD-style move, copy, rotate, mirror, trim and a command line
@@ -116,7 +124,7 @@ and, if you add a trusted timestamp to a digital signature, to contact a timesta
 
 <p align="center">
   <img src="docs/screenshot-dark.png" width="49%" alt="The same catalog review in the dark theme">
-  <img src="docs/screenshot-measure.png" width="49%" alt="Measuring a floor plan: an area, a length, counts, a revision cloud and a stamp, with the scale read from the title block">
+  <img src="docs/screenshot-measure.png" width="49%" alt="Measuring a floor plan: an area, a length, two named counts in their own colors, a revision cloud and a stamp, with the scale read from the title block">
 </p>
 
 ## Download and install
