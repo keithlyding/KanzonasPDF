@@ -67,7 +67,7 @@ jobs:
       - name: Regression tests (security, document preservation, efficiency budgets)
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests -p "test_*.py" -t .
+        run: python -X faulthandler -m unittest discover -s tests -p "test_*.py" -t .
 
       - name: Build exe
         run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} run.py
@@ -502,7 +502,7 @@ jobs:
       - name: Regression tests (security, document preservation, efficiency budgets)
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest discover -s tests -p "test_*.py" -t .
+        run: python -X faulthandler -m unittest discover -s tests -p "test_*.py" -t .
 
       - name: Build the app folder (PyInstaller, the same options as Windows)
         run: python -m PyInstaller ${{ env.PYINSTALLER_OPTIONS }} --runtime-hook packaging/linux/pyi_rth_linux_env.py run.py
@@ -677,7 +677,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python -m unittest discover -s tests -p "test_*.py" -t .
+          python -X faulthandler -m unittest discover -s tests -p "test_*.py" -t .
           # (macOS keeps settings for programs itself, where tests can't put them aside as on
           # Linux: what they left, and the files they left in the app's data folder, go before
           # the app is tested: a backup left there would be offered at the app's start)
