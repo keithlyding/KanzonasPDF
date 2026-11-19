@@ -2403,6 +2403,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>Ctrl+B (fuori dalla modifica del testo)</td><td>Aggiungi segnalibro alla vista corrente</td></tr>
 <tr><td>Ctrl+P</td><td>Stampa (con anteprima)</td></tr>
 <tr><td>Ctrl+N</td><td>Nuovo PDF (pagina vuota)</td></tr>
+<tr><td>Ctrl+W (o Ctrl+F4)</td><td>Chiudi scheda (chiede prima se ci sono modifiche non salvate)</td></tr>
 <tr><td>Shift+T</td><td>Aggiungi testo (scritto nella pagina)</td></tr>
 <tr><td>Ctrl+K</td><td>Preferenze</td></tr>
 <tr><td>Ctrl+;</td><td>Data (la data di oggi dove fai clic)</td></tr>

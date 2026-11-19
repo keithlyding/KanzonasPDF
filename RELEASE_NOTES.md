@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.11
+
+**New**
+- Ctrl+W closes the tab (Ctrl+F4 still does too). If the document has unsaved changes, KanzonasPDF asks first.
+
+## 1.15.11 (es)
+
+**Novedades**
+- Ctrl+W cierra la pestaña (Ctrl+F4 también sigue haciéndolo). Si el documento tiene cambios sin guardar, KanzonasPDF pregunta antes.
+
+## 1.15.11 (it)
+
+**Novità**
+- Ctrl+W chiude la scheda (anche Ctrl+F4 continua a farlo). Se il documento ha modifiche non salvate, KanzonasPDF chiede prima.
+
 ## 1.15.10
 
 **New**
