@@ -1568,6 +1568,26 @@ class DocumentView(QScrollArea):
         other.layersChanged.connect(self._redraw_all)
         return self
 
+    def unmirror(self):
+        """Let go of the view it mirrors at once (a view-only tab closing): until deleteLater
+        runs, a change to that document, or its closing, would reach this one and read a
+        closed document."""
+        src = getattr(self, "_source", None)
+        if src is None:
+            return
+        import shiboken6
+        if shiboken6.isValid(src):
+            for sig, slot in ((src.documentChanged, self._mirror_changed),
+                              (src.structureChanged, self._mirror_structure),
+                              (src.pageResized, self._mirror_resized),
+                              (src.layersChanged, self._redraw_all)):
+                try:
+                    sig.disconnect(slot)
+                except (RuntimeError, TypeError):
+                    pass                    # (not connected: nothing to let go of)
+        self._search_gen = getattr(self, "_search_gen", 0) + 1     # (a Find running stops)
+        self.hide()
+
     def _mirror_changed(self):
         # what this (read-only) split view read from the pages is old too: the text, the
         # markups under the pointer (a hover showed a moved note where it was), the objects

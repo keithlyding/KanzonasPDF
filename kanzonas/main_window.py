@@ -2499,6 +2499,7 @@ class MainWindow(QMainWindow):
         if i >= 0:
             self._disconnect_view(v)
             self.tabs.removeTab(i)
+        v.unmirror()                        # (before its document can change or close)
         v.deleteLater()
         self._update_ui()
 
