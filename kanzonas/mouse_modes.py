@@ -17,8 +17,8 @@ def labels():
 def descriptions():
     return {
         "standard": tr("The arrow: select text and markups; the wheel scrolls, Ctrl+wheel zooms."),
-        "hand": tr("The Hand: drag to move the page; drag from text to select it; click a "
-                   "markup to select it; the wheel scrolls."),
+        "hand": tr("The Hand: view only, drag to move the page; links open with a click; the "
+                   "wheel scrolls."),
         "cad": tr("Like CAD programs: the wheel zooms at the cursor, hold the wheel to pan, a "
                   "plus cursor, window and crossing selection, and the CAD tab's commands.")}
 
@@ -31,10 +31,7 @@ def options(mode):
                 ("free_pan", tr("Free page movement (drag the page past its edges)"), False)]
     if mode == "hand":
         return [("free_pan", tr("Free page movement (drag the page past its edges)"), True),
-                page_wheel,
-                ("hand_selects", tr("Clicking a markup with the Hand selects it"), True),
-                ("hand_text", tr("Dragging from text with the Hand selects the text (the text "
-                                 "cursor shows over text)"), True)]
+                page_wheel]
     return [("wheel_zoom", tr("The wheel zooms at the cursor (Ctrl+wheel scrolls)"), True),
             ("plus_cursor", tr("Plus cursor"), True),
             ("free_pan", tr("Open canvas around the pages (drag the drawing anywhere)"), True),
@@ -92,13 +89,9 @@ def apply(settings):
     m = mode(settings)
     DocumentView.mouse_mode = m
     listed = {k for k, _label, _default in options(m)}
-    for key in ("page_wheel", "free_pan", "hand_selects", "hand_text", "wheel_zoom",
-                "plus_cursor", "cad_select", "click_click", "lasso", "type_to_line"):
-        # an option a mode doesn't list keeps its usual behavior there: the Hand tool picked
-        # in Standard or CAD mode still selects the markup it clicks
-        on = option(settings, m, key) if key in listed else UNLISTED.get(key, False)
+    for key in ("page_wheel", "free_pan", "wheel_zoom", "plus_cursor", "cad_select",
+                "click_click", "lasso", "type_to_line"):
+        # (an option a mode doesn't list is off there)
+        on = option(settings, m, key) if key in listed else False
         setattr(DocumentView, key, on)
     return m
-
-
-UNLISTED = {"hand_selects": True, "hand_text": True}

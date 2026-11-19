@@ -88,6 +88,14 @@ a decision changes or a piece of work lands. Details of each version are in
   Preferences > Mouse, Hand can switch that off, and the Hand is the open hand again). In the
   Standard (Select) mode nothing drags the page ("When in select mode, the hand should not
   drag the page"): the Hand picked there is Select; the held wheel moves the page.
+- 1.15.10 (owner, 19 Nov): **the Hand only views** ("I want the hand to always show no matter
+  what. Selecting text or objects while in hand should not be doable. Hand is like a view only
+  type thing"), replacing 1.15.8's Hand that selected text and 1.12's that selected markups:
+  always a hand (the pointing hand on a link), never selects or edits, follows links (also
+  under a markup) and fills forms, a view-only right-click menu; Space held drags the page with
+  any tool. Back / Forward across documents (Alt+Left / Alt+Right, beside Undo and Redo, View >
+  Go to, the right-click menu); Ctrl+middle-click a link: a new tab (view only) or the split
+  view, asked once; links to turned pages and through named destinations land where they say.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

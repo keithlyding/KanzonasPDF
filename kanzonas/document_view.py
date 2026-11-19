@@ -2152,8 +2152,7 @@ class DocumentView(QScrollArea):
     _cad_shape = None           # CAD: a shape started with a click, ended by the next (cad_draw.py)
     _picked = {}                # what's selected -> when it was selected (_note_picks)
     _pick_n = 0
-    hand_selects = True         # Hand: clicking a markup selects it
-    hand_text = True            # Hand: a drag from text selects it (the text cursor over it)
+    space_pan = False           # Space held: a drag moves the page, with any tool
     free_pan = False            # Free page movement: the page can be dragged past its edges
     page_wheel = False          # one wheel step = one page when the page fits the window
     night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
@@ -2317,16 +2316,18 @@ class DocumentView(QScrollArea):
         if tool == "eraser" and not self.plus_cursor:
             self.viewport().setCursor(eraser_cursor())
             return
-        # (the text cursor with a tool that works on text; Select and the Hand show it only
-        # over text, outside CAD mode (PageWidget hover, text_cursor_at): the owner, 12 Nov, in
-        # CAD mode, "there should be no text cursor unless I've double-clicked on text to edit
-        # or have a text tool"; 18 Nov, not in CAD mode, the hand instead of the text cursor,
-        # and "The cursor should be the pointer arrow until it browses over text": the Hand
-        # that selects text is the arrow there, the closed hand only while it moves the page)
+        # (the text cursor with a tool that works on text; Select shows it only over text,
+        # outside CAD mode (PageWidget hover, text_cursor_at): the owner, 12 Nov, in CAD mode,
+        # "there should be no text cursor unless I've double-clicked on text to edit or have a
+        # text tool"; 18 Nov, not in CAD mode, "When I'm selecting text ... the cursor is a hand
+        # instead of the text cursor". The Hand is always a hand: it only views, 19 Nov, "I
+        # want the hand to always show no matter what")
         text_cursor = ("edittext", "addtext", "highlight", "underline", "strikeout", "comment",
                        "redact")
-        hand = Qt.ArrowCursor if self.hand_text and not self.cad_like() else Qt.OpenHandCursor
-        cursors = {"hand": hand, "select": Qt.ArrowCursor,
+        if self.space_pan:
+            self.viewport().setCursor(Qt.OpenHandCursor)
+            return
+        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.ArrowCursor,
                    **{t: Qt.IBeamCursor for t in text_cursor}}
         if self.plus_cursor and tool != "hand":
             cursors = {}                # CAD mouse: a plus, as in CAD programs
@@ -5000,10 +5001,11 @@ class DocumentView(QScrollArea):
     def link_to_follow(self, index, pt):
         """The link a click at pt follows (Hand tool, Ctrl+click with Select): on a markup,
         only a link made on that markup; a link merely under a markup (the PDF's own link on
-        highlighted words) leaves the click to the markup."""
+        highlighted words) leaves the click to the markup, except with the Hand, which only
+        views (it selects no markup, so the link under it is followed)."""
         link = self.link_at(index, pt)
-        if link is None or not self.show_markups:
-            return link
+        if link is None or not self.show_markups or self.tool == "hand":
+            return link             # (the Hand selects no markup: the link under it is its)
         page, a = self._annot_under(index, pt)
         if a is None:
             return link
@@ -5051,6 +5053,31 @@ class DocumentView(QScrollArea):
             room = pg.rect.height * self.zoom - self.viewport().height() + PAGE_GAP
             y = max(0, min(y, room))
         self.goto_page(page, y, remember=True)
+
+    def keyReleaseEvent(self, e):
+        if e.key() == Qt.Key_Space and not e.isAutoRepeat() and self.space_pan:
+            self._set_space_pan(False)
+            return
+        super().keyReleaseEvent(e)
+
+    def focusOutEvent(self, e):
+        if self.space_pan:
+            self._set_space_pan(False)      # (Space let go in another window: no stuck hand)
+        super().focusOutEvent(e)
+
+    def _set_space_pan(self, on):
+        self.space_pan = on
+        self._tool_cursor()
+        for w in getattr(self, "pages", []):
+            w.unsetCursor()                 # (the view's hand shows on every page)
+
+    def is_attachment(self, index, xref):
+        """True when the markup is a file attached to the page (the Hand opens it)."""
+        try:
+            page = self.doc[index]
+            return page.load_annot(xref).type[0] == pymupdf.PDF_ANNOT_FILE_ATTACHMENT
+        except Exception:
+            return False                    # (gone, or not a markup: nothing to open)
 
     def link_in_this_document(self, link):
         """True for a link to a page of this document (what Ctrl+middle-click opens aside)."""
@@ -6813,6 +6840,12 @@ class DocumentView(QScrollArea):
             return
         if e.key() == Qt.Key_Escape and self.text_sel is not None:
             self.clear_text_selection()
+            return
+        if e.key() == Qt.Key_Space and not e.modifiers() and self.field_focus is None:
+            # hold Space and drag: the page moves, with any tool (as in Acrobat); typing in a
+            # box isn't here (the box has the keys), and Space on a form field still ticks it
+            if not e.isAutoRepeat():
+                self._set_space_pan(True)
             return
         if self.field_focus is not None and self.tool in ("hand", "select") and \
                 e.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter) and not self.read_only:

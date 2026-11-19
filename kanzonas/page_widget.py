@@ -2049,6 +2049,17 @@ class PageWidget(QWidget):
         from PySide6.QtWidgets import QMenu
         v = self.view
         win = self.window()
+        if v.tool == "hand":
+            # (view only: where to go, copying what's selected already, and the tool that
+            # selects; nothing under the pointer is selected or edited)
+            menu = QMenu(self)
+            self._nav_actions(menu)
+            if v.text_sel is not None and hasattr(win, "_clipboard"):
+                menu.addAction("%s\tCtrl+C" % tr("Copy"), lambda: win._clipboard("copy"))
+            if hasattr(win, "tool_actions") and "select" in win.tool_actions:
+                menu.addAction(win.tool_actions["select"])
+            menu.exec(e.globalPosition().toPoint())
+            return
         if not v.read_only and self._field_menu(e, pdf):
             return
         on_text = any(pymupdf.Rect(w[:4]).contains(pdf) for w in self._selected_words())
@@ -2362,18 +2373,12 @@ class PageWidget(QWidget):
         if cad_select.active(self):
             cad_select.press(self, e, pos, pdf)
             return
-        if tool == "hand":
-            # like Adobe and PDF-XChange: clicking a markup with the Hand selects it (to
-            # move, restyle or delete), unless it's a link; anywhere else drags the page
-            if self._link_press is None and self.view.show_markups and \
-                    self.view.hand_selects and \
-                    self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
-                return
-            if self._link_press is None and self._hand_text(pdf):
-                # (as Acrobat's Hand: a drag from text selects it; anywhere else moves the page)
-                if not self._triple_click(e):
-                    self._begin_text_drag(pos, pdf, marquee=False)
-                return
+        if tool == "hand" or self.view.space_pan:
+            self._space_drag = tool != "hand"
+            # the Hand only views: it moves the page, follows links and fills forms; it never
+            # selects text, markups or objects (the owner, 19 Nov 2026: "Selecting text or
+            # objects while in hand should not be doable. Hand is like a view only type
+            # thing"). Space held: the same with any tool, as in Acrobat
             self.view.begin_pan(e.globalPosition())
             return
         if tool == "editobjects":
@@ -2477,11 +2482,6 @@ class PageWidget(QWidget):
         else:
             self.view._set_text_drag([(self.index, mode, words)])
         self.update()
-
-    def _hand_text(self, pdf):
-        """The Hand over text it selects (Preferences > Mouse, Hand: on unless switched off;
-        never in CAD mode)."""
-        return self.view.hand_text and self.view.text_cursor_at(self.index, pdf)
 
     def _paint_dim_preview(self, p, pts):
         """The Dimension being drawn (widget points): the measured line, then with the third
@@ -2780,15 +2780,7 @@ class PageWidget(QWidget):
                     if tool == "hand":
                         return
             if tool == "hand":
-                pdf = self.to_pdf(pos)
-                # (a markup under it is selected by a click: the hand stays there)
-                on_markup = self.view.show_markups and self.view.hand_selects and (
-                    self.view.annot_at(self.index, pdf) is not None or
-                    self._card_at(pos) is not None)
-                if not on_markup and self._hand_text(pdf):
-                    self.setCursor(Qt.IBeamCursor)
-                else:
-                    self.unsetCursor()
+                self.unsetCursor()          # (the view's open hand, everywhere but a link)
             if tool == "editobjects":
                 self._objects_hover(pos)
                 return
@@ -2811,10 +2803,8 @@ class PageWidget(QWidget):
             self._poly_hover = snap45(self._poly[0], pos) if shift_held(e) else pos
             self.update()
             return
-        if tool == "hand" and self._edit is None and self._text_sel is None:
-            # (a press on a markup with the Hand selected it to move it: that drag moves it,
-            # 1.12; it panned nothing and the markup stayed put. One on text selects it)
-            self.view.continue_pan(e.globalPosition())
+        if tool == "hand" or getattr(self, "_space_drag", False):
+            self.view.continue_pan(e.globalPosition())      # (the Hand, or Space held)
         elif self._sig_drag is not None:
             self._sig_now = pos
             self.update()
@@ -2971,7 +2961,8 @@ class PageWidget(QWidget):
                 a, b = self.to_pdf(tm["start"]), self.to_pdf(pos)
                 self.view.move_text_line(self.index, tm["pdf"], (b.x - a.x, b.y - a.y))
             return
-        if tool == "hand" and self._edit is None and self._text_sel is None:
+        if tool == "hand" or getattr(self, "_space_drag", False):
+            self._space_drag = False
             self.view.end_pan()
         elif self._sig_drag is not None:
             self._sig_now = pos
@@ -3107,13 +3098,19 @@ class PageWidget(QWidget):
             if on_selected:
                 self.view.edit_annot_text(self.index, xref)
             return
-        if self.view.tool in ("select", "hand"):
+        if self.view.tool == "hand":
+            # (view only: a file attached to the page opens; nothing is edited or selected)
+            pdf = self.to_pdf(e.position())
+            xref = self.view.annot_at(self.index, pdf)
+            if xref is not None and self.view.is_attachment(self.index, xref):
+                self.view.edit_annot_at(self.index, pdf)
+            return
+        if self.view.tool == "select":
             card = self._card_at(e.position())
             pdf = self.to_pdf(e.position())
             if card is not None:
                 self.view.edit_annot_text(self.index, card)
-            elif self.view.annot_at(self.index, pdf) is not None or \
-                    self.view.tool == "hand" and not self._hand_text(pdf):
+            elif self.view.annot_at(self.index, pdf) is not None:
                 self.view.edit_annot_at(self.index, pdf)
             else:
                 self._select_word(pdf, e)

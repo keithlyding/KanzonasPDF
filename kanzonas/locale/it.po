@@ -7206,8 +7206,8 @@ msgid "The arrow: select text and markups; the wheel scrolls, Ctrl+wheel zooms."
 msgstr "La freccia: seleziona testo e annotazioni; la rotellina scorre, Ctrl+rotellina esegue lo zoom."
 
 #: cad
-msgid "The Hand: drag to move the page; drag from text to select it; click a markup to select it; the wheel scrolls."
-msgstr "La Mano: trascina per spostare la pagina; trascina dal testo per selezionarlo; fai clic su un'annotazione per selezionarla; la rotellina scorre."
+msgid "The Hand: view only, drag to move the page; links open with a click; the wheel scrolls."
+msgstr "La Mano: solo per guardare, trascina per spostare la pagina; i collegamenti si aprono con un clic; la rotellina scorre."
 
 #: cad
 msgid "Like CAD programs: the wheel zooms at the cursor, hold the wheel to pan, a plus cursor, window and crossing selection, and the CAD tab's commands."
@@ -7249,13 +7249,7 @@ msgstr "Mostra la scheda CAD (Sposta, Copia, Ruota...)"
 msgid "Free page movement (drag the page past its edges)"
 msgstr "Movimento libero della pagina (trascina la pagina oltre i bordi)"
 
-#: cad
-msgid "Clicking a markup with the Hand selects it"
-msgstr "Un clic su un'annotazione con la Mano la seleziona"
 
-#: cad
-msgid "Dragging from text with the Hand selects the text (the text cursor shows over text)"
-msgstr "Trascinare dal testo con la Mano seleziona il testo (il cursore di testo compare sopra il testo)"
 
 #: cad
 msgid "Mouse: Standard. The arrow selects and doesn't move the page: hold the wheel down to move it, or switch to the Hand mouse mode."

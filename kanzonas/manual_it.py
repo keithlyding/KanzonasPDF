@@ -376,8 +376,10 @@ spariscono con lui). Anche un clic su un collegamento con lo strumento Collegame
 tratteggiati. Tutte le parti di uno stesso collegamento (su più righe) cambiano e spariscono insieme. Ctrl+Z annulla
 ognuna di queste operazioni. Per un'intera serie di disegni, <b>Collega i richiami alle tavole</b> (menu Pagine) crea i
 collegamenti per te a partire dai numeri delle tavole.</li>
-<li><b>Panoramica:</b> strumento Mano (H; KanzonasPDF parte con questo strumento nella modalità del mouse Mano), le barre di scorrimento oppure <b>tieni premuta la rotellina del mouse e trascina</b>
-(funziona con qualsiasi strumento). <b>Shift+rotellina</b> scorre sempre a sinistra e a destra, in ogni modalità del
+<li><b>Panoramica:</b> strumento Mano (H; KanzonasPDF parte con questo strumento nella modalità del mouse Mano), le barre di scorrimento, <b>tieni premuta la rotellina del mouse e trascina</b>
+oppure <b>tieni premuta la barra spaziatrice e trascina</b> (entrambi funzionano con qualsiasi strumento: il puntatore è una
+mano mentre tieni premuta la barra spaziatrice, e rilasciandola torna lo strumento; uno spazio scritto in una casella di
+testo o in un campo resta uno spazio). <b>Shift+rotellina</b> scorre sempre a sinistra e a destra, in ogni modalità del
 mouse e anche quando uno scatto della rotellina altrimenti girerebbe pagina. Anche Shift+Left/Right scorre in
 orizzontale.</li>
 <li><b>Modalità del mouse</b> (i primi tre pulsanti della scheda Home, <b>Seleziona</b>, <b>Mano</b> e
@@ -386,11 +388,11 @@ Preferenze più avanti).
 <ul>
 <li><b>Mouse: Standard (freccia, la rotellina scorre)</b>: KanzonasPDF parte con lo strumento Seleziona (la freccia)
 ed Esc torna a quello; la rotellina scorre e Ctrl+rotellina esegue lo zoom. In questa modalità niente trascina la
-pagina: scegliere lo strumento Mano (H) dà Seleziona, quindi tieni premuta la rotellina per spostare la pagina, oppure
-passa alla modalità del mouse Mano.</li>
-<li><b>Mouse: Mano (trascina la pagina)</b>: parte con lo strumento Mano, che trascina la pagina; un clic su
-un'annotazione con questo strumento la seleziona. Il suo puntatore è la freccia, il cursore di testo sopra il testo
-(trascina dal testo per selezionarlo, come con Seleziona) e la mano chiusa mentre sposta la pagina. In questa modalità il movimento libero della pagina è attivo, quindi
+pagina: scegliere lo strumento Mano (H) dà Seleziona, quindi tieni premuta la rotellina (o la barra spaziatrice) e
+trascina per spostare la pagina, oppure passa alla modalità del mouse Mano.</li>
+<li><b>Mouse: Mano (trascina la pagina)</b>: parte con lo strumento Mano, che serve solo a guardare: trascina la pagina,
+segue i collegamenti e compila i campi dei moduli, e non seleziona mai testo, annotazioni o oggetti (per questo scegli
+Seleziona, V). In questa modalità il movimento libero della pagina è attivo, quindi
 la Mano trascina la pagina ovunque, anche quando entra tutta nella finestra. È la modalità con cui KanzonasPDF parte la
 prima volta.</li>
 <li><b>Mouse: CAD (la rotellina esegue lo zoom, tienila premuta per la panoramica)</b> (F11 la attiva, e la
@@ -713,14 +715,15 @@ intersezione verdi, un lazo, clic che aggiungono alla selezione, Shift per togli
 e il trascinamento non sposta nulla (vedi Modalità CAD).</li>
 <li>Con uno strumento di disegno attivo (rettangolo, linea, richiamo, ...), anche un clic su un'annotazione esistente la
 seleziona, così non devi tornare alla freccia (non in modalità CAD, dove uno strumento di disegno disegna sempre). Lo
-<b>strumento Mano</b> funziona allo stesso modo:
-fai clic su un'annotazione (un'evidenziazione, una nota, una forma...) per selezionarla; il suo puntatore è la freccia, sopra il
-testo il cursore di testo, e un trascinamento dal testo seleziona il testo (doppio clic una parola, tre clic una riga), come con Seleziona;
-trascina in qualsiasi altro punto per spostare la pagina (la mano chiusa mentre lo fa). Nella modalità del mouse CAD la
-Mano è la mano aperta e sposta soltanto la pagina; nella modalità del mouse Standard non c'è la Mano (dà Seleziona). Un'annotazione trasformata in collegamento apre invece il suo collegamento se ci fai clic
-con lo strumento Mano, o Ctrl+clic con qualsiasi altro strumento (un clic semplice con Seleziona la seleziona).
-Un'annotazione su un collegamento già presente nel PDF (un'evidenziazione su una voce di un sommario) viene
-selezionata; fai clic sul collegamento accanto all'annotazione per aprirlo.</li>
+<b>strumento Mano</b> no: serve solo a guardare, come un lettore. Il suo puntatore è sempre una mano (la mano chiusa
+mentre sposta la pagina, una mano che indica sopra un collegamento), e un trascinamento in qualsiasi punto sposta la pagina:
+non seleziona mai testo, annotazioni o oggetti, un doppio clic non modifica nulla (si apre un file allegato alla pagina), e
+il suo menu del clic destro ha Indietro, Avanti, Copia (ciò che è già selezionato) e Seleziona. Un clic su un collegamento
+lo segue, anche su un'annotazione sopra un collegamento proprio del PDF (un'evidenziazione su una voce di un sommario), e un
+clic su un campo di un modulo lo compila. Nella modalità del mouse Standard non c'è la Mano (dà Seleziona).
+Un'annotazione trasformata in collegamento apre il suo collegamento con Ctrl+clic con qualsiasi altro strumento (un clic
+semplice con Seleziona la seleziona); un'annotazione su un collegamento già presente nel PDF si seleziona con Seleziona: fai
+clic sul collegamento accanto all'annotazione per aprirlo.</li>
 <li><b>Contorni e riempimenti:</b> un rettangolo, un'ellisse, una nuvola, un poligono o una misura di area senza
 riempimento si prende dal contorno (entro pochi pixel a qualsiasi zoom, o dall'etichetta di un'area), come in Bluebeam;
 uno pieno in qualsiasi punto al suo interno. Così, con uno strumento di disegno o di misura, premendo all'interno di una
@@ -1234,7 +1237,7 @@ per selezionare tutto ciò che vi è interamente contenuto (Ctrl+trascinamento a
 <li>Trascina la selezione per spostarla. Le forme seguono il puntatore (non sono un riquadro vuoto),
 e la pagina cambia solo quando rilasci, così anche un gruppo grande resta veloce da trascinare. Rilasciala
 su un'altra pagina e si sposta lì (il contorno mostra dove arriva); le annotazioni trascinate con
-Seleziona o con lo strumento Mano fanno lo stesso.
+Seleziona fanno lo stesso.
 Trascina una maniglia d'angolo per ridimensionarla mantenendo le proporzioni
 (tieni premuto Shift per deformarla liberamente), o una maniglia laterale per renderla più larga o più alta. Ridimensionare una forma
 ne scala anche lo spessore delle linee. <b>Ruotala</b> trascinando la <b>maniglia rotonda</b> sopra di essa: ruota attorno al
@@ -2342,9 +2345,7 @@ esistenti si aggiornano la prossima volta che le sposti o le modifichi.</li>
 è quello con cui si avvia KanzonasPDF e a cui si torna con Esc), e le opzioni di ciascuna modalità:
 <ul>
 <li>Standard: Scorri di una pagina per ogni scatto della rotellina (attivato), Movimento libero della pagina (disattivato).</li>
-<li>Mano: Movimento libero della pagina (attivato), Scorri di una pagina per ogni scatto della rotellina (attivato), Un clic su un'annotazione con
-la Mano la seleziona (attivato), Trascinare dal testo con la Mano seleziona il testo (il cursore di testo compare sopra
-il testo) (attivato; disattivato, la Mano è la mano aperta e un trascinamento dal testo sposta anche la pagina).</li>
+<li>Mano: Movimento libero della pagina (attivato), Scorri di una pagina per ogni scatto della rotellina (attivato).</li>
 <li>CAD: La rotellina esegue lo zoom sul cursore (Ctrl+rotellina scorre), Cursore a croce, Area di lavoro libera attorno alle
 pagine, Selezione a finestra (blu) e intersecante (verde), Clic, sposta, clic disegna il riquadro di selezione,
 Tieni premuto il pulsante e trascina per disegnare un lazo, Mostra la scheda CAD, Le lettere digitate sul disegno vanno alla
@@ -2373,6 +2374,7 @@ velocità dello Scorrimento automatico.</li>
 <table border="1" cellpadding="3" cellspacing="0">
 <tr><th>Tasto</th><th>Azione</th></tr>
 <tr><td>V / H</td><td>Seleziona / Mano</td></tr>
+<tr><td>Barra spaziatrice (tenuta premuta) e trascina</td><td>Sposta la pagina, con qualsiasi strumento</td></tr>
 <tr><td>Ctrl+E</td><td>Modifica testo (clic: il paragrafo; Alt+clic: una riga)</td></tr>
 <tr><td>Ctrl+B / Ctrl+I / Ctrl+U (durante la modifica del testo)</td><td>Grassetto / Corsivo / Sottolineato per le parole selezionate</td></tr>
 <tr><td>Ctrl+] / Ctrl+[ (durante la modifica del testo)</td><td>Testo più grande / più piccolo (le parole selezionate, un punto alla volta)</td></tr>
