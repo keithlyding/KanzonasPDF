@@ -179,6 +179,9 @@ class MiddleClick(History):
                         if old is not None else self.w.settings.remove(self.w.LINK_ASIDE))
         self.v = self.open(pdf("plan.pdf", 30, link_to=20))
         self.w.set_tool("select")
+        # (the split view shut before the window closes: a window remembers it, and the
+        # tests after this one would open with less room for the pages)
+        self.addCleanup(lambda: self.w.split_dock.hide())
 
     def middle_click(self, mods=None, move=0):
         from PySide6.QtCore import QEvent, QPointF, Qt

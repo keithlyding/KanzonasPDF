@@ -5631,14 +5631,23 @@ class MainWindow(QMainWindow):
     def _place(self, v, loc=None):
         """A place for Back / Forward: the view, its file (to open it again once its tab is
         closed) and where in it (DocumentView.location)."""
+        import weakref
         loc = loc if loc is not None else v.location()
         if loc is None:
             return None
-        return dict(loc, view=v, path=None if v.untitled else v.path)
+        # (the view weakly: a closed tab's view isn't kept alive by the history, where it
+        # would still be listed among the open documents, DocumentView._views)
+        return dict(loc, view=weakref.ref(v), path=None if v.untitled else v.path)
 
     @staticmethod
-    def _same_place(a, b):
-        return a is not None and b is not None and a["view"] is b["view"] and \
+    def _view_of(place):
+        ref = place.get("view") if place else None
+        return ref() if ref is not None else None
+
+    @classmethod
+    def _same_place(cls, a, b):
+        return a is not None and b is not None and \
+            cls._view_of(a) is not None and cls._view_of(a) is cls._view_of(b) and \
             a["page"] == b["page"] and abs(a["y"] - b["y"]) < 2
 
     def _note_jump(self, v, loc):
@@ -5685,7 +5694,8 @@ class MainWindow(QMainWindow):
         again when the tab was closed. False when it can't be shown (closed and never saved,
         or the file is gone)."""
         import shiboken6
-        v = place["view"]
+        import weakref
+        v = self._view_of(place)
         if v is not None and shiboken6.isValid(v) and getattr(v, "doc", None) is not None \
                 and not v.doc.is_closed:
             for win in windows():
@@ -5705,9 +5715,10 @@ class MainWindow(QMainWindow):
         if v is None or os.path.normcase(v.path or "") != os.path.normcase(path):
             return False
         # (the same document again: later places of the closed tab now mean this one)
+        gone = place.get("view")
         for p in self._back + self._forward:
-            if p["view"] is place["view"]:
-                p["view"] = v
+            if p.get("view") is gone or (p.get("path") == path and self._view_of(p) is None):
+                p["view"] = weakref.ref(v)
         QTimer.singleShot(0, lambda v=v: shiboken6.isValid(v) and v.restore_location(place))
         return True
 

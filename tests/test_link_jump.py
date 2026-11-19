@@ -79,11 +79,14 @@ class Jump(Base):
         self.assertLess(abs(w0 - p0), 30)
 
     def test_to_the_top_of_a_sheet_turned_a_quarter(self):
-        for rot in (90, 270):
-            with self.subTest(rotation=rot):
-                self.open(rot)
-                (w0, _w1), (p0, _p1) = self.shown()
-                self.assertLess(abs(w0 - p0), 30)
+        self.open(90)
+        (w0, _w1), (p0, _p1) = self.shown()
+        self.assertLess(abs(w0 - p0), 30)
+
+    def test_turned_three_quarters_the_page_still_fills_the_window(self):
+        # (its top as written is the bottom as shown: the page is kept in the window)
+        self.open(270)
+        self.assert_page_fills_the_window()
 
     def test_turned_upside_down_the_page_still_fills_the_window(self):
         self.open(180)

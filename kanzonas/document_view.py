@@ -9914,7 +9914,10 @@ class DocumentView(QScrollArea):
 
     def units_changed(self):
         """The rulers' units were changed (right-click on a ruler): every view follows."""
+        import shiboken6
         for v in list(DocumentView._views or ()):
+            if not shiboken6.isValid(v):
+                continue                    # (a closed tab's view, not collected yet)
             if v._rulers is not None:
                 for w in v._rulers:
                     w.update()

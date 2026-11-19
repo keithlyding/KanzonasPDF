@@ -136,7 +136,7 @@ class Hand(Window):
         x = v._create(0, {"kind": "rect", "rect": R(150, 150, 200, 200), "text": "",
                           "props": dict(A.DEFAULTS["rect"])})
         v.clear_selection()
-        w.set_tool("hand")
+        v.set_tool("hand")              # (on the view: in Standard mode the window gives Select)
         pump()
         page = v.doc[0]                 # (kept alive while its markup is read)
         before = page.load_annot(x).rect
