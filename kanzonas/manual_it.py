@@ -307,8 +307,8 @@ pagina mostra quella pagina dal punto indicato dal collegamento, anche sui fogli
 in basso che la pagina esca dalla finestra.</li>
 <li><b>Il punto di un collegamento a parte:</b> fai clic con il tasto centrale su un collegamento a una pagina dello stesso
 documento (con Ctrl premuto, come serve per il clic sinistro, tranne con lo strumento Mano) per vedere dove porta senza
-lasciare il punto in cui sei: in una <b>scheda di sola lettura</b> del documento, a destra della sua scheda e con "(sola
-lettura)" nel nome, o nella <b>vista divisa</b>. La prima volta KanzonasPDF chiede quale, con Ricorda la mia scelta;
+lasciare il punto in cui sei: in una <b>nuova scheda</b> del documento, a destra della sua scheda, o nella <b>vista
+divisa</b>. La nuova scheda è di sola lettura, e il suo nome lo dice: "(sola lettura)". La prima volta KanzonasPDF chiede quale, con Ricorda la mia scelta;
 Preferenze &gt; Mouse, <b>Il clic centrale su un collegamento apre</b>, la cambia in seguito. Una scheda di sola lettura
 segue ogni modifica fatta nella scheda propria del documento, ma modifichi, annoti, salvi e annulli lì (Salva e Annulla
 nella scheda di sola lettura agiscono su di essa); chiudere la scheda di sola lettura lascia aperto il documento, e
@@ -2351,8 +2351,8 @@ Tieni premuto il pulsante e trascina per disegnare un lazo, Mostra la scheda CAD
 riga di comando: tutte attivate (l'ultima è disattivata per chi usava il mouse in stile CAD prima della 1.5, così
 le scorciatoie degli strumenti a una lettera che usava continuano a funzionare). Con il riquadro clic, sposta, clic e il
 lazo disattivati, premere, trascinare e rilasciare disegna un riquadro.</li>
-<li>Il clic centrale su un collegamento apre: Chiedi ogni volta, Una scheda di sola lettura del documento o La vista divisa
-(vedi Spostarsi nel documento).</li>
+<li>Il clic centrale su un collegamento apre: Chiedi ogni volta, Una nuova scheda o La vista divisa (vedi Spostarsi nel
+documento).</li>
 </ul>
 La nota sotto Scorri di una pagina per ogni scatto della rotellina indica quando si applica: solo mentre l'intera pagina
 sta nella finestra, come dopo Adatta alla pagina.</li>
@@ -2401,7 +2401,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>Shift+clic (strumento di disegno)</td><td>Inizia una nuova annotazione sopra una esistente</td></tr>
 <tr><td>Ctrl+clic, Ctrl+trascinamento</td><td>Seleziona più annotazioni</td></tr>
 <tr><td>Ctrl+clic su un collegamento (qualsiasi strumento, qualsiasi modalità del mouse)</td><td>Apre il collegamento, anche su un'annotazione trasformata in collegamento (un semplice clic con lo strumento Mano)</td></tr>
-<tr><td>Ctrl+clic centrale su un collegamento</td><td>Il suo punto in una scheda di sola lettura o nella vista divisa (un semplice clic centrale con lo strumento Mano)</td></tr>
+<tr><td>Ctrl+clic centrale su un collegamento</td><td>Il suo punto in una nuova scheda (di sola lettura) o nella vista divisa (un semplice clic centrale con lo strumento Mano)</td></tr>
 <tr><td>Esc</td><td>Annulla la selezione / rilascia lo strumento (torna allo strumento della modalità del mouse: Mano, Seleziona, o Modifica oggetti in modalità CAD) / annulla un comando CAD o un riquadro di selezione iniziato</td></tr>
 <tr><td>Canc</td><td>Elimina ciò che è selezionato: le annotazioni e, in modalità CAD, anche gli oggetti del disegno</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copia / Taglia / Incolla (testo, annotazioni, immagini, pagine; con Modifica oggetti, le immagini, le forme e il testo della pagina stessa, su qualsiasi pagina o documento)</td></tr>

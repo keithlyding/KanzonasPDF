@@ -319,8 +319,8 @@ place the link names, also on sheets turned a quarter, and never so far down tha
 leaves the window.</li>
 <li><b>A link's place aside:</b> middle-click a link to a page of the same document (with Ctrl
 held, as a left click needs, except with the Hand tool) to see where it goes without leaving
-where you are: in a <b>view-only tab</b> of the document, right of its own tab and named
-"(view only)", or in the <b>split view</b>. The first time, KanzonasPDF asks which, with
+where you are: in a <b>new tab</b> of the document, right of its own tab, or in the <b>split
+view</b>. The new tab is view-only, and its name says so: "(view only)". The first time, KanzonasPDF asks which, with
 Remember my choice; Preferences &gt; Mouse, <b>Middle-click on a link opens</b>, changes it
 later. A view-only tab follows every edit made in the document's own tab, but you edit, mark
 up, save and undo there (Save and Undo in the view-only tab act on it); closing the view-only
@@ -2344,8 +2344,8 @@ Hold the button and drag to draw a lasso, Show the CAD tab, Letters typed over t
 the command line: all on (the last one is off for whoever had the CAD-style mouse before 1.5, so
 the one-letter tool shortcuts they used keep working). With the click, move, click box and the
 lasso off, a press, drag and release draws a box.</li>
-<li>Middle-click on a link opens: Ask each time, A view-only tab of the document, or The split
-view (see Moving around).</li>
+<li>Middle-click on a link opens: Ask each time, A new tab, or The split view (see Moving
+around).</li>
 </ul>
 The note under Scroll one page per wheel step says when it applies: only while the whole page
 fits in the window, as after Fit page.</li>
@@ -2394,7 +2394,7 @@ scroll speed.</li>
 <tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Ctrl+click a link (any tool, any mouse mode)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
-<tr><td>Ctrl+middle-click a link</td><td>Its place in a view-only tab or the split view (a plain middle-click with the Hand tool)</td></tr>
+<tr><td>Ctrl+middle-click a link</td><td>Its place in a new tab (view only) or the split view (a plain middle-click with the Hand tool)</td></tr>
 <tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool: Hand, Select, or Edit objects in CAD mode) / cancel a CAD command or a started selection box</td></tr>
 <tr><td>Delete</td><td>Delete what's selected: markups, and in CAD mode the drawing's objects too</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages; with Edit objects, the page's own pictures, shapes and text, to any page or document)</td></tr>

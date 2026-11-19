@@ -11583,13 +11583,7 @@ msgstr "Questa scheda è di sola lettura: modifica nella scheda propria del docu
 msgid "Open the link"
 msgstr "Apri il collegamento"
 
-#: main_window
-msgid "Show the link's place without leaving this one: in another tab of this document (view only: you edit in its own tab), or in the split view?"
-msgstr "Mostrare il punto del collegamento senza lasciare questo: in un'altra scheda di questo documento (sola lettura: modifichi nella sua scheda) o nella vista divisa?"
 
-#: main_window
-msgid "View-only tab"
-msgstr "Scheda di sola lettura"
 
 #: main_window
 msgid "Remember my choice (Preferences > Mouse changes it)"
@@ -11603,9 +11597,6 @@ msgstr "{name} (sola lettura)"
 msgid "Ask each time"
 msgstr "Chiedi ogni volta"
 
-#: main_window
-msgid "A view-only tab of the document"
-msgstr "Una scheda di sola lettura del documento"
 
 #: main_window
 msgid "The split view"
@@ -11618,3 +11609,15 @@ msgstr "Un clic centrale su un collegamento (con Ctrl premuto, come per il clic 
 #: main_window
 msgid "Middle-click on a link opens:"
 msgstr "Il clic centrale su un collegamento apre:"
+
+#: main_window
+msgid "Open the link's place in a new tab, or in the split view?"
+msgstr "Aprire il punto del collegamento in una nuova scheda o nella vista divisa?"
+
+#: main_window
+msgid "New tab"
+msgstr "Nuova scheda"
+
+#: main_window
+msgid "A new tab"
+msgstr "Una nuova scheda"

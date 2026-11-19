@@ -11519,13 +11519,7 @@ msgstr "Esta pestaña es solo de lectura: edite en la pestaña propia del docume
 msgid "Open the link"
 msgstr "Abrir el vínculo"
 
-#: main_window
-msgid "Show the link's place without leaving this one: in another tab of this document (view only: you edit in its own tab), or in the split view?"
-msgstr "¿Mostrar el lugar del vínculo sin dejar este: en otra pestaña de este documento (solo lectura: se edita en su propia pestaña) o en la vista dividida?"
 
-#: main_window
-msgid "View-only tab"
-msgstr "Pestaña de solo lectura"
 
 #: main_window
 msgid "Remember my choice (Preferences > Mouse changes it)"
@@ -11539,9 +11533,6 @@ msgstr "{name} (solo lectura)"
 msgid "Ask each time"
 msgstr "Preguntar cada vez"
 
-#: main_window
-msgid "A view-only tab of the document"
-msgstr "Una pestaña de solo lectura del documento"
 
 #: main_window
 msgid "The split view"
@@ -11554,3 +11545,15 @@ msgstr "Hacer clic con el botón central en un vínculo (con Ctrl presionado, co
 #: main_window
 msgid "Middle-click on a link opens:"
 msgstr "Clic central en un vínculo abre:"
+
+#: main_window
+msgid "Open the link's place in a new tab, or in the split view?"
+msgstr "¿Abrir el lugar del vínculo en una pestaña nueva o en la vista dividida?"
+
+#: main_window
+msgid "New tab"
+msgstr "Pestaña nueva"
+
+#: main_window
+msgid "A new tab"
+msgstr "Una pestaña nueva"

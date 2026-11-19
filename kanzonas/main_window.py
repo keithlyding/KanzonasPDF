@@ -5570,9 +5570,8 @@ class MainWindow(QMainWindow):
     def _ask_link_aside(self):
         box = QMessageBox(self)
         box.setWindowTitle(tr("Open the link"))
-        box.setText(tr("Show the link's place without leaving this one: in another tab of this "
-                       "document (view only: you edit in its own tab), or in the split view?"))
-        tab = box.addButton(tr("View-only tab"), QMessageBox.AcceptRole)
+        box.setText(tr("Open the link's place in a new tab, or in the split view?"))
+        tab = box.addButton(tr("New tab"), QMessageBox.AcceptRole)
         split = box.addButton(tr("Split view"), QMessageBox.AcceptRole)
         box.addButton(QMessageBox.Cancel)
         remember = QCheckBox(tr("Remember my choice (Preferences > Mouse changes it)"))

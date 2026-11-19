@@ -326,7 +326,7 @@ class PreferencesDialog(QDialog):
         # Ctrl+middle-click on a link to a page of the document: where its place shows
         self.link_aside = QComboBox()
         self.link_aside.addItem(tr("Ask each time"), "")
-        self.link_aside.addItem(tr("A view-only tab of the document"), "tab")
+        self.link_aside.addItem(tr("A new tab"), "tab")
         self.link_aside.addItem(tr("The split view"), "split")
         self.link_aside.setCurrentIndex(max(0, self.link_aside.findData(
             win.settings.value(win.LINK_ASIDE, "") or "")))

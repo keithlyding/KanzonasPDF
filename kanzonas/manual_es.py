@@ -308,8 +308,8 @@ página desde el lugar que indica el vínculo, también en hojas giradas un cuar
 salga de la ventana.</li>
 <li><b>El lugar de un vínculo aparte:</b> haga clic con el botón central en un vínculo a una página del mismo documento (con
 Ctrl presionado, como lo necesita el clic izquierdo, salvo con la herramienta Mano) para ver a dónde lleva sin dejar donde
-está: en una <b>pestaña de solo lectura</b> del documento, a la derecha de su propia pestaña y con "(solo lectura)" en el
-nombre, o en la <b>vista dividida</b>. La primera vez, KanzonasPDF pregunta cuál, con Recordar mi elección; Preferencias
+está: en una <b>pestaña nueva</b> del documento, a la derecha de su propia pestaña, o en la <b>vista dividida</b>. La
+pestaña nueva es de solo lectura, y su nombre lo dice: "(solo lectura)". La primera vez, KanzonasPDF pregunta cuál, con Recordar mi elección; Preferencias
 &gt; Mouse, <b>Clic central en un vínculo abre</b>, lo cambia después. Una pestaña de solo lectura sigue cada cambio hecho en
 la pestaña propia del documento, pero se edita, se marca, se guarda y se deshace allí (Guardar y Deshacer en la pestaña de
 solo lectura actúan sobre ella); cerrar la pestaña de solo lectura deja el documento abierto, y cerrar el documento cierra
@@ -2371,8 +2371,8 @@ presionado el botón y arrastre para dibujar un lazo, Mostrar la pestaña CAD, L
 línea de comandos: todas activadas (la última está desactivada para quien usaba el mouse estilo CAD antes de la 1.5, así
 siguen funcionando los atajos de una letra que usaba). Con el recuadro de clic, mover, clic y el lazo desactivados,
 presionar, arrastrar y soltar dibuja un recuadro.</li>
-<li>Clic central en un vínculo abre: Preguntar cada vez, Una pestaña de solo lectura del documento o La vista dividida (vea
-Desplazarse por el documento).</li>
+<li>Clic central en un vínculo abre: Preguntar cada vez, Una pestaña nueva o La vista dividida (vea Desplazarse por el
+documento).</li>
 </ul>
 La nota debajo de Desplazar una página por paso de la rueda indica cuándo se aplica: solo mientras la página entera cabe
 en la ventana, como después de Ajustar página.</li>
@@ -2421,7 +2421,7 @@ Desplazamiento automático.</li>
 <tr><td>Shift+clic (herramienta de dibujo)</td><td>Empezar una marca nueva encima de una existente</td></tr>
 <tr><td>Ctrl+clic, Ctrl+arrastrar</td><td>Seleccionar varias marcas</td></tr>
 <tr><td>Ctrl+clic en un vínculo (cualquier herramienta, cualquier modo del mouse)</td><td>Abrir el vínculo, también en una marca convertida en vínculo (un clic normal con la herramienta Mano)</td></tr>
-<tr><td>Ctrl+clic central en un vínculo</td><td>Su lugar en una pestaña de solo lectura o en la vista dividida (un clic central normal con la herramienta Mano)</td></tr>
+<tr><td>Ctrl+clic central en un vínculo</td><td>Su lugar en una pestaña nueva (de solo lectura) o en la vista dividida (un clic central normal con la herramienta Mano)</td></tr>
 <tr><td>Esc</td><td>Borrar la selección / soltar la herramienta (volver a la herramienta del modo del mouse: Mano, Seleccionar, o Editar objetos en el modo CAD) / cancelar un comando CAD o un recuadro de selección empezado</td></tr>
 <tr><td>Supr</td><td>Eliminar lo seleccionado: las marcas, y en el modo CAD también los objetos del dibujo</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copiar / cortar / pegar (texto, marcas, imágenes, páginas; con Editar objetos, las imágenes, las formas y el texto propios de la página, a cualquier página o documento)</td></tr>
