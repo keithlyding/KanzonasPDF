@@ -1412,9 +1412,26 @@ nota restano come sono e vengono elencate. Fidati ma verifica: una tavola stampa
 24x36 su carta 11x17) riporta ancora la scala originale, e niente sulla pagina lo rivela. Misura
 una dimensione nota dopo aver letto le scale, e usa Calibra metro a nastro se non torna.</li>
 <li><b>Lunghezza</b> (Shift+M), <b>Lunghezza polilinea</b>, <b>Area</b> con perimetro (Shift+A) e
-<b>Conteggio</b> (Shift+C, con gruppi con nome). I valori si aggiornano quando modifichi l'annotazione o cambi
-la scala. Un indicatore di Conteggio copiato con Duplica (Ctrl+D) o con copia e incolla prende il numero
-successivo del suo gruppo.</li>
+<b>Conteggio</b> (Shift+C, con gruppi con nome, più avanti). I valori si aggiornano quando modifichi
+l'annotazione o cambi la scala.</li>
+<li><b>Conteggio</b> (Shift+C): fai clic su ogni elemento; ogni clic mette un indicatore con il numero
+successivo del suo gruppo. Preparalo in Proprietà prima di fare clic, con lo strumento Conteggio scelto:
+<b>Gruppo</b> (scegli uno dei gruppi del documento o scrivi un nome, come Rilevatori di fumo: gli indicatori
+di un gruppo sono numerati insieme e sommati insieme nel Riepilogo misure e nelle legende),
+<b>Nuovo conteggio</b> (il gruppo successivo, Conteggio 2 in poi, il cui primo indicatore è l'1),
+<b>Mantieni i numeri in ordine</b> (attivo a meno che non lo disattivi: eliminando un indicatore, o
+spostandolo in un altro gruppo, gli altri del suo gruppo vengono numerati di nuovo 1, 2, 3..., su tutte le
+pagine, in un solo passo di annullamento; disattivato, il buco resta e il prossimo indicatore prende il
+numero dopo il più alto) e <b>Livello</b> (il livello su cui vanno gli indicatori: Come dice la scheda
+Livelli, Nessun livello, uno dei livelli del documento o Nuovo livello...; scegliendo di nuovo un gruppo si
+sceglie il livello su cui sono i suoi indicatori). Proprietà mostra anche il gruppo e il numero del
+prossimo indicatore. Gli indicatori che metti non restano selezionati, così Proprietà continua a mostrare
+tutto questo mentre fai clic. Per cambiarne uno, fai clic su di esso con Seleziona: il suo Gruppo (prende il
+numero successivo del nuovo gruppo), <b>Numero</b> (con Mantieni i numeri in ordine attivo, gli altri del
+suo gruppo salgono o scendono per fargli posto), Livello, colore e dimensione. Clic destro su un indicatore
+&gt; <b>Rinumera il gruppo</b> numera di nuovo il suo gruppo 1, 2, 3... senza buchi. Un indicatore di
+Conteggio copiato con Duplica (Ctrl+D) o con copia e incolla prende il numero successivo del suo
+gruppo.</li>
 <li><b>Quota</b> (Shift+D; scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misure della scheda CAD),
 come la quota di Bluebeam e la quota allineata di AutoCAD: fai clic sui due
 punti da misurare, poi sposta il puntatore e fai clic dove va la linea di quota (nella

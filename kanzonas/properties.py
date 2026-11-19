@@ -60,6 +60,9 @@ class PropertiesPanel(QWidget):
     propsChanged = Signal(dict)      # full props dict after a user change
     resetRequested = Signal()
     objectsTurn = Signal(float)      # the page's selected objects: turn by degrees (counterclockwise)
+    countLayer = Signal(object)      # a count's layer picked: None (as the Layers tab), 0 (no
+    #                                  layer), a layer's xref, or "new"
+    newCountGroup = Signal()         # the Count tool: start a new group ("New count")
 
     def __init__(self):
         super().__init__()
@@ -211,6 +214,33 @@ class PropertiesPanel(QWidget):
         self.number.setKeyboardTracking(False)
         self.number.setToolTip(tr("New dots take the next number after the highest one in "
                                   "the document."))
+        # a count's options (counts.py; issue #107): its group, whether the group keeps its
+        # numbers in order, and the layer it goes on
+        self.group = QComboBox()
+        self.group.setEditable(True)
+        self.group.setInsertPolicy(QComboBox.NoInsert)
+        self.group.lineEdit().setPlaceholderText(tr("Type a name for the group"))
+        self.group.setToolTip(tr("Markers of one group are numbered together (1, 2, 3...) and "
+                                 "totaled together in the Measurement summary and legends. "
+                                 "Pick a group of this document or type a new name."))
+        self.new_group = QPushButton(tr("New count"))
+        self.new_group.setToolTip(tr("Start another count: a new group whose first marker is "
+                                     "number 1"))
+        self.new_group.clicked.connect(self.newCountGroup.emit)
+        group_row = QWidget()
+        gr = QHBoxLayout(group_row)
+        gr.setContentsMargins(0, 0, 0, 0)
+        gr.addWidget(self.group, 1)
+        gr.addWidget(self.new_group)
+        self.order = QCheckBox(tr("Keep the numbers in order"))
+        self.order.setToolTip(tr("Deleting a marker of the group, or moving it to another "
+                                 "group, numbers the rest 1, 2, 3... again, with no gaps. Off: "
+                                 "the numbers stay as they are, and the next marker takes the "
+                                 "number after the highest."))
+        self.layer = QComboBox()
+        self.layer.setToolTip(tr("The layer the markers go on (Layers tab: show or hide a "
+                                 "layer's markups)"))
+        self.layer.activated.connect(self._layer_picked)
 
         self.rows = {}
         for key, label, w in (("title", tr("Title"), self.title_edit),
@@ -228,7 +258,10 @@ class PropertiesPanel(QWidget):
                               ("filled", tr("Dot"), self.filled),
                               ("size", tr("Dot size"), self.dot_size),
                               ("show", tr("Shows"), self.dot_show),
+                              ("group", tr("Group"), group_row),
                               ("n", tr("Number"), self.number),
+                              ("order", "", self.order),
+                              ("layer", tr("Layer"), self.layer),
                               ("side", tr("Position"), self.side),
                               ("inside", "", self.inside),
                               ("font", tr("Font"), font_row),
@@ -288,6 +321,9 @@ class PropertiesPanel(QWidget):
         self.side.currentIndexChanged.connect(self._emit)
         self.inside.toggled.connect(self._emit)
         self.number.valueChanged.connect(self._emit)
+        self.group.activated.connect(self._emit)
+        self.group.lineEdit().editingFinished.connect(self._emit)
+        self.order.toggled.connect(self._emit)
         self.show_target(None, None)
 
     def show_target(self, kind, props, selected=False):
@@ -406,7 +442,17 @@ class PropertiesPanel(QWidget):
         if "inside" in props:
             self.inside.setChecked(bool(props["inside"]))
         if "n" in props:
+            self.number.setMinimum(1 if kind == "m_count" else 0)
             self.number.setValue(int(props["n"] or 0))
+            self.number.setToolTip(
+                tr("This marker's number. With Keep the numbers in order on, the others of its "
+                   "group move up or down to make room.") if kind == "m_count" else
+                tr("New dots take the next number after the highest one in the document."))
+        if "group" in props:
+            self._fill_groups([], props["group"])
+            self.new_group.setVisible(not selected)
+        if "order" in props:
+            self.order.setChecked(bool(props["order"]))
         if "font" in props:
             self._fill_fonts(kind, props.get("font") or "")
             page_text = kind != "textbox"           # comments can't use bold / italic fonts
@@ -418,6 +464,44 @@ class PropertiesPanel(QWidget):
         self._selected = selected
         self._dot_rows()
         self._loading = False
+
+    def _fill_groups(self, names, current):
+        was = self._loading
+        self._loading = True
+        self.group.clear()
+        for name in names:
+            self.group.addItem(name)
+        if self.group.findText(current) < 0:
+            self.group.addItem(current)
+        self.group.setCurrentIndex(self.group.findText(current))
+        self._loading = was
+
+    def count_rows(self, groups, layers, layer, next_n=None):
+        """A Count marker's extra rows (after show_target): the document's groups to pick
+        from, and the layer row. layers: [(xref, name)]; layer: as countLayer gives it.
+        next_n: the Count tool's next number (None for a selected marker)."""
+        self._loading = True
+        self._fill_groups(groups, self._props.get("group") or "")
+        self.layer.clear()
+        if next_n is not None:
+            self.layer.addItem(tr("As the Layers tab says"), None)
+        self.layer.addItem(tr("No layer"), 0)
+        for x, name in layers:
+            self.layer.addItem(name, x)
+        self.layer.addItem(tr("New layer..."), "new")
+        i = self.layer.findData(layer)
+        self.layer.setCurrentIndex(i if i >= 0 else 0)
+        for w in self.rows["layer"]:
+            w.setVisible(True)
+        if next_n is not None:
+            self.hint.setText(self.hint.text() + "\n" + tr(
+                "The next marker: {group} #{n}").format(group=self._props.get("group") or "",
+                                                        n=next_n))
+        self._loading = False
+
+    def _layer_picked(self, _i):
+        if not self._loading:
+            self.countLayer.emit(self.layer.currentData())
 
     def _dot_rows(self):
         """A dot's rows that mean something for what it shows (none of them when it shows
@@ -617,6 +701,11 @@ class PropertiesPanel(QWidget):
             p["inside"] = self.inside.isChecked()
         if "n" in p:
             p["n"] = self.number.value()
+        if "group" in p:
+            from . import counts
+            p["group"] = self.group.currentText().strip() or counts.DEFAULT_GROUP
+        if "order" in p:
+            p["order"] = self.order.isChecked()
         if "rotation" in p:
             v = self.rotation.value()
             if self._kind in A.QUARTER_TURNS:

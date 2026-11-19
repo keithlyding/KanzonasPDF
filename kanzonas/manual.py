@@ -1429,8 +1429,24 @@ note are left as they are and listed. Trust but check: a sheet printed at reduce
 24x36 on 11x17 paper) still says its original scale, and nothing on the page tells. Measure
 one known dimension after reading the scales, and use Calibrate Tape Measure if it is off.</li>
 <li><b>Length</b> (Shift+M), <b>Polylength</b>, <b>Area</b> with perimeter (Shift+A), and
-<b>Count</b> (Shift+C, with named groups). Values update when you edit the markup or change
-the scale. A Count marker copied with Duplicate (Ctrl+D) or copy and paste takes the next
+<b>Count</b> (Shift+C, with named groups, below). Values update when you edit the markup or
+change the scale.</li>
+<li><b>Count</b> (Shift+C): click each item; each click places a marker with the next number of
+its group. Set it up in Properties before you click, with the Count tool picked:
+<b>Group</b> (pick one of the document's groups or type a name, such as Smoke detectors:
+the markers of a group are numbered together and totaled together in the Measurement summary
+and legends), <b>New count</b> (the next group, Count 2 and on, whose first marker is 1),
+<b>Keep the numbers in order</b> (on unless you switch it off: deleting a marker, or moving it
+to another group, numbers the rest of its group 1, 2, 3... again, on every page, in one undo
+step; off, the gap stays and the next marker takes the number after the highest) and
+<b>Layer</b> (the layer the markers go on: As the Layers tab says, No layer, one of the
+document's layers, or New layer...; picking a group again picks the layer its markers are
+on). Properties also shows the next marker's group and number. The markers you place aren't
+selected, so Properties keeps showing all this while you click. To change one, click it with
+Select: its Group (it takes the next number of the new group), <b>Number</b> (with Keep the
+numbers in order on, the others of its group move up or down to make room), Layer, color and
+size. Right-click a marker &gt; <b>Renumber group</b> numbers its group 1, 2, 3... again with
+no gaps. A Count marker copied with Duplicate (Ctrl+D) or copy and paste takes the next
 number of its group.</li>
 <li><b>Dimension</b> (Shift+D; Measure tab, "More" group, the Measure menu and the CAD tab's
 Measure button), like Bluebeam's Dimension and AutoCAD's aligned dimension: click the two
