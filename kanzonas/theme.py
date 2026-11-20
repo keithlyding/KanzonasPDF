@@ -23,7 +23,8 @@ ICONS = {
     "z_forward": "arrange-bring-forward", "z_backward": "arrange-send-backward",
     # file / view
     "open": "folder-open-outline", "save": "content-save-outline", "print": "printer-outline",
-    "undo": "undo", "redo": "redo", "zoom_in": "magnify-plus-outline",
+    "undo": "undo", "redo": "redo", "back": "arrow-left", "forward": "arrow-right",
+    "zoom_in": "magnify-plus-outline",
     "zoom_out": "magnify-minus-outline", "fit_width": "arrow-expand-horizontal",
     "fit_page": "fit-to-page-outline", "ocr": "ocr", "forms": "form-select",
     "rot_l": "rotate-left", "rot_r": "rotate-right",

@@ -129,18 +129,22 @@ class Snapping(Window):
 
 
 class Hand(Window):
-    def test_a_drag_on_a_markup_moves_it(self):
+    def test_a_drag_on_a_markup_moves_the_page_not_the_markup(self):
+        # (the Hand only views, 19 Nov 2026: "Selecting text or objects while in hand should
+        # not be doable"; until then a drag from a markup moved it, 1.12)
         w, v = self.open()
         x = v._create(0, {"kind": "rect", "rect": R(150, 150, 200, 200), "text": "",
                           "props": dict(A.DEFAULTS["rect"])})
         v.clear_selection()
-        w.set_tool("hand")
+        v.set_tool("hand")              # (on the view: in Standard mode the window gives Select)
         pump()
+        page = v.doc[0]                 # (kept alive while its markup is read)
+        before = page.load_annot(x).rect
+        del page
         self.drag(v.pages[0], self.at(P(150, 175)), self.at(P(110, 135)))
         page = v.doc[0]
-        r = page.load_annot(x).rect
-        self.assertAlmostEqual(r.x0, 109, delta=1)
-        self.assertAlmostEqual(r.y0, 109, delta=1)
+        self.assertEqual(page.load_annot(x).rect, before)
+        self.assertIsNone(v.selection)
 
 
 class TextOverText(Window):

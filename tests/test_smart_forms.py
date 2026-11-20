@@ -866,6 +866,12 @@ class Menus(Quiet):
         ev = QMouseEvent(QMouseEvent.MouseButtonPress, pos, pw.mapToGlobal(pos),
                          Qt.RightButton, Qt.RightButton, Qt.NoModifier)
         with mock.patch("PySide6.QtWidgets.QMenu", Menu):
+            # (the Hand only views: no field editing, 1.15.10; set on the view itself, as the
+            # window gives Select for it in the Standard mouse mode a test before may leave)
+            v.set_tool("hand")
+            pw._content_menu(ev, pw.to_pdf(pos))
+            hand = shown.pop()
+            win.set_tool("select")
             pw._content_menu(ev, pw.to_pdf(pos))
             win.set_tool("f_text")
             pw._content_menu(ev, pw.to_pdf(pos))
@@ -873,9 +879,12 @@ class Menus(Quiet):
             pw._content_menu(QMouseEvent(QMouseEvent.MouseButtonPress, far, pw.mapToGlobal(far),
                                          Qt.RightButton, Qt.RightButton, Qt.NoModifier),
                              pw.to_pdf(far))
+        self.assertNotIn("Field properties...", hand)
         self.assertEqual(shown[0], ["Field properties...", "Set tab order..."])
         self.assertEqual(shown[1], ["Field properties...", "Set tab order...", "Delete field"])
-        self.assertEqual(shown[2][:2], ["Detect form fields...", "Set tab order..."])
+        # (after Back and Forward, which lead the page's right-click menu since 1.15.10)
+        rest = [t for t in shown[2] if t and t not in ("&Back", "For&ward")]
+        self.assertEqual(rest[:2], ["Detect form fields...", "Set tab order..."])
         # with a field selected, Field properties... opens it
         self.assertEqual(v.selected_field()[1], pg.first_widget.xref)
         with mock.patch("kanzonas.form_ui.edit_field", return_value=None) as edit:

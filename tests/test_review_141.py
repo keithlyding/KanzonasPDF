@@ -36,7 +36,11 @@ def heads(lines):
 
 
 class HandOnHighlightedLink(unittest.TestCase):
-    def test_hand_selects_a_highlight_on_the_pdfs_own_link(self):
+    """A highlight on the PDF's own link (a table of contents entry): Select selects the
+    highlight (Ctrl+click follows the link); the Hand, which only views (19 Nov 2026),
+    follows the link and selects nothing."""
+
+    def test_hand_follows_the_pdfs_own_link_under_a_highlight(self):
         d = pymupdf.open()
         d.new_page()
         d.new_page()
@@ -52,7 +56,8 @@ class HandOnHighlightedLink(unittest.TestCase):
         APP.processEvents()
         followed = []
         v.follow_link = followed.append
-        self.assertIsNone(v.link_to_follow(0, pymupdf.Point(100, 96)))
+        v.set_tool("select")
+        self.assertIsNone(v.link_to_follow(0, pymupdf.Point(100, 96)))      # (the markup's)
         self.assertIsNotNone(v.link_to_follow(0, pymupdf.Point(200, 96)))   # off the markup
         w = v.pages[0]
         pos = w.to_screen_pt(pymupdf.Point(100, 96))
@@ -63,8 +68,8 @@ class HandOnHighlightedLink(unittest.TestCase):
                              Qt.NoModifier)
             (w.mousePressEvent if t == QEvent.MouseButtonPress else w.mouseReleaseEvent)(ev)
         APP.processEvents()
-        self.assertEqual(followed, [])
-        self.assertIsNotNone(v.selection)
+        self.assertEqual(len(followed), 1)
+        self.assertIsNone(v.selection)
 
 
 class HangingIndents(unittest.TestCase):

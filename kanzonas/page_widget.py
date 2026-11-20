@@ -1916,6 +1916,15 @@ class PageWidget(QWidget):
             else:
                 p.drawRect(box)
 
+    def _nav_actions(self, menu):
+        """Back and Forward first in the page's right-click menu (grayed when there's nowhere
+        to go)."""
+        win = self.window()
+        if hasattr(win, "a_back"):
+            menu.addAction(win.a_back)
+            menu.addAction(win.a_forward)
+            menu.addSeparator()
+
     def _objects_menu(self, e, pdf):
         """The Edit objects menu; False (no menu) when there's no object there."""
         from PySide6.QtWidgets import QMenu
@@ -1929,6 +1938,7 @@ class PageWidget(QWidget):
         has_text = any(it["kind"] == "text" for it in items)
         menu = QMenu(self)
         menu.setToolTipsVisible(True)       # (Group grayed says why)
+        self._nav_actions(menu)
         a = menu.addAction(tr("Copy picture"), self.view.copy_picture)
         a.setEnabled(one_pic)
         a = menu.addAction(tr("Save picture as..."), self.view.save_picture)
@@ -2039,6 +2049,17 @@ class PageWidget(QWidget):
         from PySide6.QtWidgets import QMenu
         v = self.view
         win = self.window()
+        if v.tool == "hand":
+            # (view only: where to go, copying what's selected already, and the tool that
+            # selects; nothing under the pointer is selected or edited)
+            menu = QMenu(self)
+            self._nav_actions(menu)
+            if v.text_sel is not None and hasattr(win, "_clipboard"):
+                menu.addAction("%s\tCtrl+C" % tr("Copy"), lambda: win._clipboard("copy"))
+            if hasattr(win, "tool_actions") and "select" in win.tool_actions:
+                menu.addAction(win.tool_actions["select"])
+            menu.exec(e.globalPosition().toPoint())
+            return
         if not v.read_only and self._field_menu(e, pdf):
             return
         on_text = any(pymupdf.Rect(w[:4]).contains(pdf) for w in self._selected_words())
@@ -2051,6 +2072,7 @@ class PageWidget(QWidget):
         has_text = v.text_sel is not None
         has_markups = v.selection is not None
         menu = QMenu(self)
+        self._nav_actions(menu)
         if v.tool in FORM_TOOLS and hasattr(win, "detect_form_fields"):
             # (designing a form: the commands that make or order its fields)
             menu.addAction(tr("Detect form fields..."), win.detect_form_fields)
@@ -2282,7 +2304,14 @@ class PageWidget(QWidget):
         if self._gone():
             return                      # (its tab is closing: the document is closed)
         if e.button() == Qt.MiddleButton:
-            # hold the wheel down and drag to pan (CAD style), with any tool
+            # hold the wheel down and drag to pan (CAD style), with any tool; a click on a
+            # link to a page of this document (with the Hand, or Ctrl held, as a left click
+            # follows links) shows its place aside (the owner, 19 Nov 2026)
+            self._mid_link = None
+            if self.view.tool == "hand" or ctrl_held(e):
+                link = self.view.link_to_follow(self.index, self.to_pdf(e.position()))
+                if self.view.link_in_this_document(link):
+                    self._mid_link = (link, e.position())
             self._mid_pan = True
             self.view.begin_pan(e.globalPosition())
             return
@@ -2347,18 +2376,12 @@ class PageWidget(QWidget):
         if cad_select.active(self):
             cad_select.press(self, e, pos, pdf)
             return
-        if tool == "hand":
-            # like Adobe and PDF-XChange: clicking a markup with the Hand selects it (to
-            # move, restyle or delete), unless it's a link; anywhere else drags the page
-            if self._link_press is None and self.view.show_markups and \
-                    self.view.hand_selects and \
-                    self._press_on_markup(pos, pdf, ctrl_held(e), cards=True):
-                return
-            if self._link_press is None and self._hand_text(pdf):
-                # (as Acrobat's Hand: a drag from text selects it; anywhere else moves the page)
-                if not self._triple_click(e):
-                    self._begin_text_drag(pos, pdf, marquee=False)
-                return
+        if tool == "hand" or self.view.space_pan:
+            self._space_drag = tool != "hand"
+            # the Hand only views: it moves the page, follows links and fills forms; it never
+            # selects text, markups or objects (the owner, 19 Nov 2026: "Selecting text or
+            # objects while in hand should not be doable. Hand is like a view only type
+            # thing"). Space held: the same with any tool, as in Acrobat
             self.view.begin_pan(e.globalPosition())
             return
         if tool == "editobjects":
@@ -2462,11 +2485,6 @@ class PageWidget(QWidget):
         else:
             self.view._set_text_drag([(self.index, mode, words)])
         self.update()
-
-    def _hand_text(self, pdf):
-        """The Hand over text it selects (Preferences > Mouse, Hand: on unless switched off;
-        never in CAD mode)."""
-        return self.view.hand_text and self.view.text_cursor_at(self.index, pdf)
 
     def _paint_dim_preview(self, p, pts):
         """The Dimension being drawn (widget points): the measured line, then with the third
@@ -2765,15 +2783,7 @@ class PageWidget(QWidget):
                     if tool == "hand":
                         return
             if tool == "hand":
-                pdf = self.to_pdf(pos)
-                # (a markup under it is selected by a click: the hand stays there)
-                on_markup = self.view.show_markups and self.view.hand_selects and (
-                    self.view.annot_at(self.index, pdf) is not None or
-                    self._card_at(pos) is not None)
-                if not on_markup and self._hand_text(pdf):
-                    self.setCursor(Qt.IBeamCursor)
-                else:
-                    self.unsetCursor()
+                self.unsetCursor()          # (the view's open hand, everywhere but a link)
             if tool == "editobjects":
                 self._objects_hover(pos)
                 return
@@ -2796,10 +2806,8 @@ class PageWidget(QWidget):
             self._poly_hover = snap45(self._poly[0], pos) if shift_held(e) else pos
             self.update()
             return
-        if tool == "hand" and self._edit is None and self._text_sel is None:
-            # (a press on a markup with the Hand selected it to move it: that drag moves it,
-            # 1.12; it panned nothing and the markup stayed put. One on text selects it)
-            self.view.continue_pan(e.globalPosition())
+        if tool == "hand" or getattr(self, "_space_drag", False):
+            self.view.continue_pan(e.globalPosition())      # (the Hand, or Space held)
         elif self._sig_drag is not None:
             self._sig_now = pos
             self.update()
@@ -2913,6 +2921,11 @@ class PageWidget(QWidget):
         if e.button() == Qt.MiddleButton and getattr(self, "_mid_pan", False):
             self._mid_pan = False
             self.view.end_pan()
+            press, self._mid_link = getattr(self, "_mid_link", None), None
+            if press is not None:
+                moved = e.position() - press[1]
+                if abs(moved.x()) + abs(moved.y()) < 5:     # (a click, not a drag)
+                    self.view.linkAside.emit(press[0])
             return
         if e.button() != Qt.LeftButton:
             return
@@ -2951,7 +2964,8 @@ class PageWidget(QWidget):
                 a, b = self.to_pdf(tm["start"]), self.to_pdf(pos)
                 self.view.move_text_line(self.index, tm["pdf"], (b.x - a.x, b.y - a.y))
             return
-        if tool == "hand" and self._edit is None and self._text_sel is None:
+        if tool == "hand" or getattr(self, "_space_drag", False):
+            self._space_drag = False
             self.view.end_pan()
         elif self._sig_drag is not None:
             self._sig_now = pos
@@ -3087,13 +3101,19 @@ class PageWidget(QWidget):
             if on_selected:
                 self.view.edit_annot_text(self.index, xref)
             return
-        if self.view.tool in ("select", "hand"):
+        if self.view.tool == "hand":
+            # (view only: a file attached to the page opens; nothing is edited or selected)
+            pdf = self.to_pdf(e.position())
+            xref = self.view.annot_at(self.index, pdf)
+            if xref is not None and self.view.is_attachment(self.index, xref):
+                self.view.edit_annot_at(self.index, pdf)
+            return
+        if self.view.tool == "select":
             card = self._card_at(e.position())
             pdf = self.to_pdf(e.position())
             if card is not None:
                 self.view.edit_annot_text(self.index, card)
-            elif self.view.annot_at(self.index, pdf) is not None or \
-                    self.view.tool == "hand" and not self._hand_text(pdf):
+            elif self.view.annot_at(self.index, pdf) is not None:
                 self.view.edit_annot_at(self.index, pdf)
             else:
                 self._select_word(pdf, e)

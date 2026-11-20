@@ -123,7 +123,7 @@ boxes, callouts, stamps, legends, shapes and attached-file icons. Markups stay e
 viewer (Adobe Reader, browsers) until you flatten them. Everything else you add (pictures,
 Add text, signatures, initials, dates) is written into the page itself, so in a viewer it
 looks and acts flattened; Edit text and Edit objects (Home tab) still change it here, as
-Acrobat and PDF-XChange can. Open, save, print, undo and redo sit left of the tabs, and the
+Acrobat and PDF-XChange can. Open, save, print, undo, redo, Back and Forward sit left of the tabs, and the
 Find box (with its match count and up / down arrows) sits right of them. The bottom bar (status bar, bottom right) has page navigation (first,
 previous, page number, next, last page), Fit page, Fit width, Actual size, a zoom slider and the
 zoom box with zoom out / zoom in, like PDF-XChange Editor, the page's size and where the
@@ -306,6 +306,26 @@ last page. The same are in <b>View &gt; Go to</b>: <b>Next page</b>, <b>Previous
 <b>First page</b>, <b>Last page</b> and <b>Go to page...</b> (Ctrl+G: the page box, ready for a
 number), so the command palette and the CAD command line find them too ("next page", "last
 page").</li>
+<li><b>Back / Forward</b> (Alt+Left / Alt+Right; the arrows beside Undo and Redo, left of the
+tabs; View &gt; Go to; and the first two items when you right-click the page): back to where
+you were before a jump, and forward again after Back, at the same place and zoom. A jump is
+following a link (also a link to another PDF: Back comes back to the document you were in,
+opening it again if you closed its tab), a bookmark, Go to page, First page or Last page, a
+page clicked in the page list, a markup picked in the Markups list or with Next / Previous
+comment, a sheet picked in a set, or the first match of a search (the next matches don't add
+steps). Scrolling and the next / previous page aren't jumps. Up to 100 steps are kept each
+way; a new jump after Back starts again from there. A link to a page shows that page from the
+place the link names, also on sheets turned a quarter, and never so far down that the page
+leaves the window.</li>
+<li><b>A link's place aside:</b> middle-click a link to a page of the same document (with Ctrl
+held, as a left click needs, except with the Hand tool) to see where it goes without leaving
+where you are: in a <b>new tab</b> of the document, right of its own tab, or in the <b>split
+view</b>. The new tab is view-only, and its name says so: "(view only)". The first time, KanzonasPDF asks which, with
+Remember my choice; Preferences &gt; Mouse, <b>Middle-click on a link opens</b>, changes it
+later. A view-only tab follows every edit made in the document's own tab, but you edit, mark
+up, save and undo there (Save and Undo in the view-only tab act on it); closing the view-only
+tab leaves the document open, and closing the document closes its view-only tabs. The split
+view is view-only too. Holding the wheel down and dragging still moves the page.</li>
 <li><b>Zoom in / Zoom out:</b> Ctrl+Plus / Ctrl+Minus, Ctrl+mouse wheel, the zoom slider, or the zoom box
 (type a percent, from 10% to 6400%; 25.5 and 25,5 both work, and so does 1,000 for 1000%; a
 zoom that isn't a whole percent shows one decimal). With the mouse wheel the page follows at
@@ -366,8 +386,10 @@ tool also opens it for changing, with <b>Delete link</b>. The Links tool shows t
 blue dashed boxes. All the parts of one link (several lines) change and go together. Ctrl+Z
 undoes any of it. For a whole drawing set, <b>Link sheet callouts</b> (Pages menu) makes the
 links for you from the sheet numbers.</li>
-<li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with it in the Hand mouse mode), the scroll bars, or <b>hold the mouse wheel down and drag</b>
-(works with any tool). <b>Shift+wheel</b> always scrolls left and right, in every mouse mode and
+<li><b>Pan:</b> Hand tool (H; KanzonasPDF starts with it in the Hand mouse mode), the scroll bars, <b>hold the mouse wheel down and drag</b>
+or <b>hold Space and drag</b> (both work with any tool: the pointer is a hand while Space is
+held, and letting go of Space gives the tool back; a space typed in a text box or a field stays
+a space). <b>Shift+wheel</b> always scrolls left and right, in every mouse mode and
 when one wheel step would otherwise turn the page. Shift+Left/Right scrolls
 sideways too.</li>
 <li><b>Mouse mode</b> (the first three buttons of the Home tab, <b>Select</b>, <b>Hand</b> and
@@ -376,11 +398,11 @@ options (see Preferences below).
 <ul>
 <li><b>Mouse: Standard (arrow, the wheel scrolls)</b>: KanzonasPDF starts with the Select tool
 (the arrow) and Escape goes back to it; the wheel scrolls and Ctrl+wheel zooms. Nothing drags the
-page in this mode: picking the Hand tool (H) gives Select, so hold the wheel down to move the page,
-or switch to the Hand mouse mode.</li>
-<li><b>Mouse: Hand (drag the page)</b>: starts with the Hand tool, which drags the page; clicking
-a markup with it selects the markup. Its pointer is the arrow, the text cursor over text (drag
-from the text to select it, as with Select) and the closed hand while it moves the page. Free page movement is on in this mode, so the Hand drags the
+page in this mode: picking the Hand tool (H) gives Select, so hold the wheel down (or Space) and
+drag to move the page, or switch to the Hand mouse mode.</li>
+<li><b>Mouse: Hand (drag the page)</b>: starts with the Hand tool, which only views: it drags the
+page, follows links and fills in form fields, and never selects text, markups or objects (pick
+Select, V, for that). Free page movement is on in this mode, so the Hand drags the
 page anywhere, also when it fits in the window. This is how KanzonasPDF starts at first.</li>
 <li><b>Mouse: CAD (wheel zooms, hold wheel to pan)</b> (F11 switches it on, and off again to the
 mode you had): like AutoCAD, the scroll wheel zooms in and out around the cursor and holding the
@@ -710,15 +732,15 @@ crossing boxes, a lasso, clicks that add to the selection, Shift to take out, Es
 and dragging moves nothing (see CAD mode).</li>
 <li>With a drawing tool active (rectangle, line, callout, ...), clicking an existing markup selects
 it too, so you don't have to switch back to the arrow (not in CAD mode, where a drawing tool always
-draws). The <b>Hand tool</b> works the same way:
-click a markup (a highlight, a note, a shape...) to select it; its pointer is the arrow, over
-text the text cursor, and a drag from text selects the text (double-click a word, three clicks a line), as with Select;
-drag anywhere else to move the page (the closed hand while it does). In the CAD mouse mode the
-Hand is the open hand and only moves the page; in the Standard mouse mode there's no Hand (it
-gives Select). A markup made a link opens its link instead when clicked with the Hand tool, or
-Ctrl+clicked with any other tool (a plain click with Select selects it). A markup on a link
-the PDF came with (a highlight on a table of contents entry) is selected; click the link
-beside the markup to open it.</li>
+draws). The <b>Hand tool</b> doesn't: it only views, like a reader. Its pointer is always a hand
+(the closed hand while it moves the page, a pointing hand on a link), and a drag anywhere moves
+the page: it never selects text, markups or objects, a double-click edits nothing (a file
+attached to the page opens), and its right-click menu has Back, Forward, Copy (what's already
+selected) and Select. A click on a link follows it, also on a markup lying on the PDF's own link
+(a highlight on a table of contents entry), and a click on a form field fills it in. In the
+Standard mouse mode there's no Hand (it gives Select). A markup made a link opens its link when
+Ctrl+clicked with any other tool (a plain click with Select selects it); a markup on a link the
+PDF came with is selected by Select: click the link beside the markup to open it.</li>
 <li><b>Outlines and fills:</b> a rectangle, ellipse, cloud, polygon or area measurement
 without a fill is picked by its outline (within a few pixels at any zoom, or an area's
 label), like in Bluebeam; a filled one anywhere inside. So with a drawing or measuring tool,
@@ -1230,7 +1252,7 @@ to select everything entirely inside it (Ctrl+drag adds to the selection). In CA
 <li>Drag the selection to move it. The shapes follow the pointer (they are not an empty box),
 and the page itself changes only when you let go, so a large group stays quick to drag. Let go
 over another page and it moves there (its outline shows where it lands); markups dragged with
-Select or the Hand tool do the same.
+Select do the same.
 Drag a corner handle to resize it, keeping its proportions
 (hold Shift to stretch freely), or a side handle to make it wider or taller. Resizing a shape also
 scales its line thickness. <b>Turn it</b> by dragging the <b>round handle</b> above it: it turns
@@ -2337,15 +2359,15 @@ measurement labels update when you next move or edit them.</li>
 is the one KanzonasPDF starts with and Escape goes back to), and each mode's own options:
 <ul>
 <li>Standard: Scroll one page per wheel step (on), Free page movement (off).</li>
-<li>Hand: Free page movement (on), Scroll one page per wheel step (on), Clicking a markup with
-the Hand selects it (on), Dragging from text with the Hand selects the text (the text cursor
-shows over text) (on; off, the Hand is the open hand and a drag from text moves the page too).</li>
+<li>Hand: Free page movement (on), Scroll one page per wheel step (on).</li>
 <li>CAD: The wheel zooms at the cursor (Ctrl+wheel scrolls), Plus cursor, Open canvas around the
 pages, Window (blue) and crossing (green) selection, Click, move, click draws the selection box,
 Hold the button and drag to draw a lasso, Show the CAD tab, Letters typed over the drawing go to
 the command line: all on (the last one is off for whoever had the CAD-style mouse before 1.5, so
 the one-letter tool shortcuts they used keep working). With the click, move, click box and the
 lasso off, a press, drag and release draws a box.</li>
+<li>Middle-click on a link opens: Ask each time, A new tab, or The split view (see Moving
+around).</li>
 </ul>
 The note under Scroll one page per wheel step says when it applies: only while the whole page
 fits in the window, as after Fit page.</li>
@@ -2366,6 +2388,7 @@ scroll speed.</li>
 <table border="1" cellpadding="3" cellspacing="0">
 <tr><th>Key</th><th>Action</th></tr>
 <tr><td>V / H</td><td>Select / Hand</td></tr>
+<tr><td>Space (hold) and drag</td><td>Move the page, with any tool</td></tr>
 <tr><td>Ctrl+E</td><td>Edit text (click: the paragraph; Alt+click: one line)</td></tr>
 <tr><td>Ctrl+B / Ctrl+I / Ctrl+U (editing text)</td><td>Bold / Italic / Underline the selected words</td></tr>
 <tr><td>Ctrl+] / Ctrl+[ (editing text)</td><td>Larger / smaller text (the selected words, a point at a time)</td></tr>
@@ -2394,6 +2417,7 @@ scroll speed.</li>
 <tr><td>Shift+click (drawing tool)</td><td>Start a new markup on top of an existing one</td></tr>
 <tr><td>Ctrl+click, Ctrl+drag</td><td>Select several markups</td></tr>
 <tr><td>Ctrl+click a link (any tool, any mouse mode)</td><td>Open the link, also on a markup made a link (a plain click with the Hand tool)</td></tr>
+<tr><td>Ctrl+middle-click a link</td><td>Its place in a new tab (view only) or the split view (a plain middle-click with the Hand tool)</td></tr>
 <tr><td>Escape</td><td>Clear selection / put the tool down (back to the mouse mode's tool: Hand, Select, or Edit objects in CAD mode) / cancel a CAD command or a started selection box</td></tr>
 <tr><td>Delete</td><td>Delete what's selected: markups, and in CAD mode the drawing's objects too</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copy / cut / paste (text, markups, pictures, pages; with Edit objects, the page's own pictures, shapes and text, to any page or document)</td></tr>
@@ -2415,6 +2439,7 @@ scroll speed.</li>
 <tr><td>Ctrl+H</td><td>Replace text</td></tr>
 <tr><td>Ctrl+Shift+N</td><td>Move tab to new window</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Next / previous comment</td></tr>
+<tr><td>Alt+Left / Alt+Right</td><td>Back / Forward (where you were before a jump)</td></tr>
 <tr><td>F1</td><td>This manual</td></tr>
 <tr><td>Ctrl+Shift+P</td><td>Command palette</td></tr>
 <tr><td>Ctrl+F1</td><td>Collapse / expand the ribbon</td></tr>

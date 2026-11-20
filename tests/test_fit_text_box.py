@@ -41,6 +41,8 @@ def ink(page_rect, kind, text, rect, props=None):
 class FitTextBox(Window):
     def setUp(self):
         self.w, self.v = self.open()
+        self.w.set_tool("select")       # (resizing is Select's: the Hand only views, 1.15.10)
+        pump()
 
     def newest(self):
         page = self.v.doc[0]

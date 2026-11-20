@@ -9,6 +9,42 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.10
+
+**New**
+- Back and Forward: the arrows beside Undo and Redo, Alt+Left / Alt+Right, View > Go to, or right-click the page. They take you back to where you were before a link, a bookmark, Go to page or a search, also in another document (opened again if you closed it).
+- Ctrl+middle-click a link to open its place in a new tab (view only) or in the split view, without leaving where you are. KanzonasPDF asks which the first time; Preferences > Mouse changes it.
+- The Hand only views now: it's always a hand, moves the page, follows links and fills in forms, and never selects or changes anything. Use Select (V) to select text and markups.
+- Hold Space and drag to move the page with any tool.
+
+**Fixed**
+- A link to a page sometimes showed the bottom of that page and mostly the next one: links through named destinations, and links to sheets turned a quarter, now land where they say.
+- A rare crash when changing the theme (View > Theme) soon after closing a dialog.
+
+## 1.15.10 (es)
+
+**Novedades**
+- Atrás y Adelante: las flechas junto a Deshacer y Rehacer, Alt+Left / Alt+Right, Ver > Ir a, o clic derecho en la página. Lo llevan de vuelta a donde estaba antes de un vínculo, un marcador, Ir a la página o una búsqueda, también en otro documento (que se abre de nuevo si lo cerró).
+- Ctrl+clic central en un vínculo abre su lugar en una pestaña nueva (de solo lectura) o en la vista dividida, sin dejar donde está. KanzonasPDF pregunta cuál la primera vez; Preferencias > Mouse lo cambia.
+- La Mano ahora solo sirve para ver: siempre es una mano, mueve la página, sigue vínculos y rellena formularios, y nunca selecciona ni cambia nada. Use Seleccionar (V) para seleccionar texto y marcas.
+- Mantenga presionada la barra espaciadora y arrastre para mover la página con cualquier herramienta.
+
+**Correcciones**
+- Un vínculo a una página a veces mostraba el final de esa página y casi toda la siguiente: los vínculos a destinos con nombre y a hojas giradas un cuarto de vuelta ahora llevan a donde indican.
+- Un cierre inesperado poco frecuente al cambiar el tema (Ver > Tema) poco después de cerrar un cuadro de diálogo.
+
+## 1.15.10 (it)
+
+**Novità**
+- Indietro e Avanti: le frecce accanto ad Annulla e Ripeti, Alt+Left / Alt+Right, Visualizza > Vai a, o clic destro sulla pagina. Ti riportano dov'eri prima di un collegamento, un segnalibro, Vai a pagina o una ricerca, anche in un altro documento (riaperto se l'avevi chiuso).
+- Ctrl+clic centrale su un collegamento ne apre il punto in una nuova scheda (di sola lettura) o nella vista divisa, senza lasciare il punto in cui sei. KanzonasPDF chiede quale la prima volta; Preferenze > Mouse lo cambia.
+- La Mano ora serve solo a guardare: è sempre una mano, sposta la pagina, segue i collegamenti e compila i moduli, e non seleziona né cambia mai nulla. Usa Seleziona (V) per selezionare testo e annotazioni.
+- Tieni premuta la barra spaziatrice e trascina per spostare la pagina con qualsiasi strumento.
+
+**Correzioni**
+- Un collegamento a una pagina a volte mostrava il fondo di quella pagina e quasi tutta la successiva: i collegamenti a destinazioni con nome e ai fogli ruotati di un quarto di giro ora portano dove indicano.
+- Una chiusura improvvisa rara cambiando il tema (Visualizza > Tema) poco dopo aver chiuso una finestra di dialogo.
+
 ## 1.15.9
 
 **New**

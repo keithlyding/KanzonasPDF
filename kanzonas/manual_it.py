@@ -112,7 +112,7 @@ di testo, richiami, timbri, legende, forme e icone di file allegati. Le annotazi
 PDF (Adobe Reader, browser) finché non le appiattisci. Tutto il resto che aggiungi (immagini,
 Aggiungi testo, firme, sigle, date) viene scritto nella pagina stessa, quindi in un visualizzatore
 appare e si comporta come appiattito; Modifica testo e Modifica oggetti (scheda Home) possono comunque modificarlo qui, come
-fanno Acrobat e PDF-XChange. Apri, salva, stampa, annulla e ripeti si trovano a sinistra delle schede, e la
+fanno Acrobat e PDF-XChange. Apri, salva, stampa, annulla, ripeti, Indietro e Avanti si trovano a sinistra delle schede, e la
 casella Trova (con il numero di corrispondenze e le frecce su / giù) si trova alla loro destra. La barra inferiore (barra di stato, in basso a destra) contiene la navigazione tra le pagine (prima,
 precedente, numero di pagina, successiva, ultima pagina), Adatta alla pagina, Adatta alla larghezza, Dimensioni reali, un cursore dello zoom e la
 casella dello zoom con riduci / ingrandisci, come in PDF-XChange Editor, le dimensioni della pagina e la
@@ -295,6 +295,25 @@ prima e all'ultima pagina. Gli stessi comandi sono in <b>Visualizza &gt; Vai a</
 <b>Pagina precedente</b>, <b>Prima pagina</b>, <b>Ultima pagina</b> e <b>Vai a pagina...</b> (Ctrl+G: la casella della
 pagina, pronta per un numero), così li trovano anche la tavolozza dei comandi e la riga di comando CAD ("pagina
 successiva", "ultima pagina").</li>
+<li><b>Indietro / Avanti</b> (Alt+Left / Alt+Right; le frecce accanto ad Annulla e Ripeti, a sinistra delle schede;
+Visualizza &gt; Vai a; e le prime due voci quando fai clic destro sulla pagina): torna dov'eri prima di un salto, e di
+nuovo avanti dopo Indietro, nello stesso punto e con lo stesso zoom. Un salto è seguire un collegamento (anche un
+collegamento a un altro PDF: Indietro torna al documento in cui eri, riaprendolo se ne hai chiuso la scheda), un
+segnalibro, Vai a pagina, Prima pagina o Ultima pagina, una pagina scelta nell'elenco delle pagine, un'annotazione scelta
+nell'elenco delle annotazioni o con Commento successivo / precedente, un foglio scelto in un insieme, o la prima
+corrispondenza di una ricerca (le successive non aggiungono passi). Scorrere e la pagina successiva / precedente non sono
+salti. Si tengono fino a 100 passi in ciascun senso; un nuovo salto dopo Indietro riparte da lì. Un collegamento a una
+pagina mostra quella pagina dal punto indicato dal collegamento, anche sui fogli ruotati di un quarto di giro, e mai così
+in basso che la pagina esca dalla finestra.</li>
+<li><b>Il punto di un collegamento a parte:</b> fai clic con il tasto centrale su un collegamento a una pagina dello stesso
+documento (con Ctrl premuto, come serve per il clic sinistro, tranne con lo strumento Mano) per vedere dove porta senza
+lasciare il punto in cui sei: in una <b>nuova scheda</b> del documento, a destra della sua scheda, o nella <b>vista
+divisa</b>. La nuova scheda è di sola lettura, e il suo nome lo dice: "(sola lettura)". La prima volta KanzonasPDF chiede quale, con Ricorda la mia scelta;
+Preferenze &gt; Mouse, <b>Il clic centrale su un collegamento apre</b>, la cambia in seguito. Una scheda di sola lettura
+segue ogni modifica fatta nella scheda propria del documento, ma modifichi, annoti, salvi e annulli lì (Salva e Annulla
+nella scheda di sola lettura agiscono su di essa); chiudere la scheda di sola lettura lascia aperto il documento, e
+chiudere il documento ne chiude le schede di sola lettura. Anche la vista divisa è di sola lettura. Tenere premuta la
+rotellina e trascinare continua a spostare la pagina.</li>
 <li><b>Ingrandisci / Riduci:</b> Ctrl+Più / Ctrl+Meno, Ctrl+rotellina del mouse, il cursore dello zoom o la casella dello zoom
 (digita una percentuale, dal 10% al 6400%; 25.5 e 25,5 funzionano entrambi, e anche 1,000 vale 1000%; uno
 zoom non intero viene mostrato con un decimale). Con la rotellina del mouse la pagina segue subito, un po' sfocata, e
@@ -357,8 +376,10 @@ spariscono con lui). Anche un clic su un collegamento con lo strumento Collegame
 tratteggiati. Tutte le parti di uno stesso collegamento (su più righe) cambiano e spariscono insieme. Ctrl+Z annulla
 ognuna di queste operazioni. Per un'intera serie di disegni, <b>Collega i richiami alle tavole</b> (menu Pagine) crea i
 collegamenti per te a partire dai numeri delle tavole.</li>
-<li><b>Panoramica:</b> strumento Mano (H; KanzonasPDF parte con questo strumento nella modalità del mouse Mano), le barre di scorrimento oppure <b>tieni premuta la rotellina del mouse e trascina</b>
-(funziona con qualsiasi strumento). <b>Shift+rotellina</b> scorre sempre a sinistra e a destra, in ogni modalità del
+<li><b>Panoramica:</b> strumento Mano (H; KanzonasPDF parte con questo strumento nella modalità del mouse Mano), le barre di scorrimento, <b>tieni premuta la rotellina del mouse e trascina</b>
+oppure <b>tieni premuta la barra spaziatrice e trascina</b> (entrambi funzionano con qualsiasi strumento: il puntatore è una
+mano mentre tieni premuta la barra spaziatrice, e rilasciandola torna lo strumento; uno spazio scritto in una casella di
+testo o in un campo resta uno spazio). <b>Shift+rotellina</b> scorre sempre a sinistra e a destra, in ogni modalità del
 mouse e anche quando uno scatto della rotellina altrimenti girerebbe pagina. Anche Shift+Left/Right scorre in
 orizzontale.</li>
 <li><b>Modalità del mouse</b> (i primi tre pulsanti della scheda Home, <b>Seleziona</b>, <b>Mano</b> e
@@ -367,11 +388,11 @@ Preferenze più avanti).
 <ul>
 <li><b>Mouse: Standard (freccia, la rotellina scorre)</b>: KanzonasPDF parte con lo strumento Seleziona (la freccia)
 ed Esc torna a quello; la rotellina scorre e Ctrl+rotellina esegue lo zoom. In questa modalità niente trascina la
-pagina: scegliere lo strumento Mano (H) dà Seleziona, quindi tieni premuta la rotellina per spostare la pagina, oppure
-passa alla modalità del mouse Mano.</li>
-<li><b>Mouse: Mano (trascina la pagina)</b>: parte con lo strumento Mano, che trascina la pagina; un clic su
-un'annotazione con questo strumento la seleziona. Il suo puntatore è la freccia, il cursore di testo sopra il testo
-(trascina dal testo per selezionarlo, come con Seleziona) e la mano chiusa mentre sposta la pagina. In questa modalità il movimento libero della pagina è attivo, quindi
+pagina: scegliere lo strumento Mano (H) dà Seleziona, quindi tieni premuta la rotellina (o la barra spaziatrice) e
+trascina per spostare la pagina, oppure passa alla modalità del mouse Mano.</li>
+<li><b>Mouse: Mano (trascina la pagina)</b>: parte con lo strumento Mano, che serve solo a guardare: trascina la pagina,
+segue i collegamenti e compila i campi dei moduli, e non seleziona mai testo, annotazioni o oggetti (per questo scegli
+Seleziona, V). In questa modalità il movimento libero della pagina è attivo, quindi
 la Mano trascina la pagina ovunque, anche quando entra tutta nella finestra. È la modalità con cui KanzonasPDF parte la
 prima volta.</li>
 <li><b>Mouse: CAD (la rotellina esegue lo zoom, tienila premuta per la panoramica)</b> (F11 la attiva, e la
@@ -694,14 +715,15 @@ intersezione verdi, un lazo, clic che aggiungono alla selezione, Shift per togli
 e il trascinamento non sposta nulla (vedi Modalità CAD).</li>
 <li>Con uno strumento di disegno attivo (rettangolo, linea, richiamo, ...), anche un clic su un'annotazione esistente la
 seleziona, così non devi tornare alla freccia (non in modalità CAD, dove uno strumento di disegno disegna sempre). Lo
-<b>strumento Mano</b> funziona allo stesso modo:
-fai clic su un'annotazione (un'evidenziazione, una nota, una forma...) per selezionarla; il suo puntatore è la freccia, sopra il
-testo il cursore di testo, e un trascinamento dal testo seleziona il testo (doppio clic una parola, tre clic una riga), come con Seleziona;
-trascina in qualsiasi altro punto per spostare la pagina (la mano chiusa mentre lo fa). Nella modalità del mouse CAD la
-Mano è la mano aperta e sposta soltanto la pagina; nella modalità del mouse Standard non c'è la Mano (dà Seleziona). Un'annotazione trasformata in collegamento apre invece il suo collegamento se ci fai clic
-con lo strumento Mano, o Ctrl+clic con qualsiasi altro strumento (un clic semplice con Seleziona la seleziona).
-Un'annotazione su un collegamento già presente nel PDF (un'evidenziazione su una voce di un sommario) viene
-selezionata; fai clic sul collegamento accanto all'annotazione per aprirlo.</li>
+<b>strumento Mano</b> no: serve solo a guardare, come un lettore. Il suo puntatore è sempre una mano (la mano chiusa
+mentre sposta la pagina, una mano che indica sopra un collegamento), e un trascinamento in qualsiasi punto sposta la pagina:
+non seleziona mai testo, annotazioni o oggetti, un doppio clic non modifica nulla (si apre un file allegato alla pagina), e
+il suo menu del clic destro ha Indietro, Avanti, Copia (ciò che è già selezionato) e Seleziona. Un clic su un collegamento
+lo segue, anche su un'annotazione sopra un collegamento proprio del PDF (un'evidenziazione su una voce di un sommario), e un
+clic su un campo di un modulo lo compila. Nella modalità del mouse Standard non c'è la Mano (dà Seleziona).
+Un'annotazione trasformata in collegamento apre il suo collegamento con Ctrl+clic con qualsiasi altro strumento (un clic
+semplice con Seleziona la seleziona); un'annotazione su un collegamento già presente nel PDF si seleziona con Seleziona: fai
+clic sul collegamento accanto all'annotazione per aprirlo.</li>
 <li><b>Contorni e riempimenti:</b> un rettangolo, un'ellisse, una nuvola, un poligono o una misura di area senza
 riempimento si prende dal contorno (entro pochi pixel a qualsiasi zoom, o dall'etichetta di un'area), come in Bluebeam;
 uno pieno in qualsiasi punto al suo interno. Così, con uno strumento di disegno o di misura, premendo all'interno di una
@@ -1215,7 +1237,7 @@ per selezionare tutto ciò che vi è interamente contenuto (Ctrl+trascinamento a
 <li>Trascina la selezione per spostarla. Le forme seguono il puntatore (non sono un riquadro vuoto),
 e la pagina cambia solo quando rilasci, così anche un gruppo grande resta veloce da trascinare. Rilasciala
 su un'altra pagina e si sposta lì (il contorno mostra dove arriva); le annotazioni trascinate con
-Seleziona o con lo strumento Mano fanno lo stesso.
+Seleziona fanno lo stesso.
 Trascina una maniglia d'angolo per ridimensionarla mantenendo le proporzioni
 (tieni premuto Shift per deformarla liberamente), o una maniglia laterale per renderla più larga o più alta. Ridimensionare una forma
 ne scala anche lo spessore delle linee. <b>Ruotala</b> trascinando la <b>maniglia rotonda</b> sopra di essa: ruota attorno al
@@ -2345,15 +2367,15 @@ esistenti si aggiornano la prossima volta che le sposti o le modifichi.</li>
 è quello con cui si avvia KanzonasPDF e a cui si torna con Esc), e le opzioni di ciascuna modalità:
 <ul>
 <li>Standard: Scorri di una pagina per ogni scatto della rotellina (attivato), Movimento libero della pagina (disattivato).</li>
-<li>Mano: Movimento libero della pagina (attivato), Scorri di una pagina per ogni scatto della rotellina (attivato), Un clic su un'annotazione con
-la Mano la seleziona (attivato), Trascinare dal testo con la Mano seleziona il testo (il cursore di testo compare sopra
-il testo) (attivato; disattivato, la Mano è la mano aperta e un trascinamento dal testo sposta anche la pagina).</li>
+<li>Mano: Movimento libero della pagina (attivato), Scorri di una pagina per ogni scatto della rotellina (attivato).</li>
 <li>CAD: La rotellina esegue lo zoom sul cursore (Ctrl+rotellina scorre), Cursore a croce, Area di lavoro libera attorno alle
 pagine, Selezione a finestra (blu) e intersecante (verde), Clic, sposta, clic disegna il riquadro di selezione,
 Tieni premuto il pulsante e trascina per disegnare un lazo, Mostra la scheda CAD, Le lettere digitate sul disegno vanno alla
 riga di comando: tutte attivate (l'ultima è disattivata per chi usava il mouse in stile CAD prima della 1.5, così
 le scorciatoie degli strumenti a una lettera che usava continuano a funzionare). Con il riquadro clic, sposta, clic e il
 lazo disattivati, premere, trascinare e rilasciare disegna un riquadro.</li>
+<li>Il clic centrale su un collegamento apre: Chiedi ogni volta, Una nuova scheda o La vista divisa (vedi Spostarsi nel
+documento).</li>
 </ul>
 La nota sotto Scorri di una pagina per ogni scatto della rotellina indica quando si applica: solo mentre l'intera pagina
 sta nella finestra, come dopo Adatta alla pagina.</li>
@@ -2374,6 +2396,7 @@ velocità dello Scorrimento automatico.</li>
 <table border="1" cellpadding="3" cellspacing="0">
 <tr><th>Tasto</th><th>Azione</th></tr>
 <tr><td>V / H</td><td>Seleziona / Mano</td></tr>
+<tr><td>Barra spaziatrice (tenuta premuta) e trascina</td><td>Sposta la pagina, con qualsiasi strumento</td></tr>
 <tr><td>Ctrl+E</td><td>Modifica testo (clic: il paragrafo; Alt+clic: una riga)</td></tr>
 <tr><td>Ctrl+B / Ctrl+I / Ctrl+U (durante la modifica del testo)</td><td>Grassetto / Corsivo / Sottolineato per le parole selezionate</td></tr>
 <tr><td>Ctrl+] / Ctrl+[ (durante la modifica del testo)</td><td>Testo più grande / più piccolo (le parole selezionate, un punto alla volta)</td></tr>
@@ -2402,6 +2425,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>Shift+clic (strumento di disegno)</td><td>Inizia una nuova annotazione sopra una esistente</td></tr>
 <tr><td>Ctrl+clic, Ctrl+trascinamento</td><td>Seleziona più annotazioni</td></tr>
 <tr><td>Ctrl+clic su un collegamento (qualsiasi strumento, qualsiasi modalità del mouse)</td><td>Apre il collegamento, anche su un'annotazione trasformata in collegamento (un semplice clic con lo strumento Mano)</td></tr>
+<tr><td>Ctrl+clic centrale su un collegamento</td><td>Il suo punto in una nuova scheda (di sola lettura) o nella vista divisa (un semplice clic centrale con lo strumento Mano)</td></tr>
 <tr><td>Esc</td><td>Annulla la selezione / rilascia lo strumento (torna allo strumento della modalità del mouse: Mano, Seleziona, o Modifica oggetti in modalità CAD) / annulla un comando CAD o un riquadro di selezione iniziato</td></tr>
 <tr><td>Canc</td><td>Elimina ciò che è selezionato: le annotazioni e, in modalità CAD, anche gli oggetti del disegno</td></tr>
 <tr><td>Ctrl+C / Ctrl+X / Ctrl+V</td><td>Copia / Taglia / Incolla (testo, annotazioni, immagini, pagine; con Modifica oggetti, le immagini, le forme e il testo della pagina stessa, su qualsiasi pagina o documento)</td></tr>
@@ -2423,6 +2447,7 @@ velocità dello Scorrimento automatico.</li>
 <tr><td>Ctrl+H</td><td>Sostituisci testo</td></tr>
 <tr><td>Ctrl+Shift+N</td><td>Sposta scheda in una nuova finestra</td></tr>
 <tr><td>Alt+Down / Alt+Up</td><td>Commento successivo / precedente</td></tr>
+<tr><td>Alt+Left / Alt+Right</td><td>Indietro / Avanti (dov'eri prima di un salto)</td></tr>
 <tr><td>F1</td><td>Questo manuale</td></tr>
 <tr><td>Ctrl+Shift+P</td><td>Tavolozza dei comandi</td></tr>
 <tr><td>Ctrl+F1</td><td>Comprimi / espandi la barra multifunzione</td></tr>

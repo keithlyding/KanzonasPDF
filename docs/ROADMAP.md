@@ -95,6 +95,14 @@ a decision changes or a piece of work lands. Details of each version are in
   aren't selected, so Properties keeps the tool's settings while clicking. Then (the same
   day): each New count its own color, a group picked again its markers' look, and a group's
   gaps or repeats said in Properties with Renumber beside it.
+- 1.15.10 (owner, 19 Nov): **the Hand only views** ("I want the hand to always show no matter
+  what. Selecting text or objects while in hand should not be doable. Hand is like a view only
+  type thing"), replacing 1.15.8's Hand that selected text and 1.12's that selected markups:
+  always a hand (the pointing hand on a link), never selects or edits, follows links (also
+  under a markup) and fills forms, a view-only right-click menu; Space held drags the page with
+  any tool. Back / Forward across documents (Alt+Left / Alt+Right, beside Undo and Redo, View >
+  Go to, the right-click menu); Ctrl+middle-click a link: a new tab (view only) or the split
+  view, asked once; links to turned pages and through named destinations land where they say.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
@@ -116,6 +124,12 @@ The owner sets this list; nothing below is promised until it's here.
   goes out at once. Outside contributors (@hamishpoole-hill-ctrl's suggestions, issue #82;
   @fexxdev's PRs) come in before our own work of the same day (owner: "Let's get that in
   there before our stuff"), and are credited by GitHub handle only (README, release notes).
+  **Merge when green** (owner, 19 Nov, after issue #107's fix took all day: "I agree with both
+  of your suggestions. Please do this going forward"): an agent's own pull request is merged,
+  and so released, as soon as its checks are green on GitHub and it merges cleanly, unless the
+  owner has said to hold it; the owner is told each time. **An outside issue's fix ships
+  first**: the fix for what was asked goes out on its own as soon as it's ready, and further
+  ideas (the owner's or an agent's) follow in a later release the same day, not in the same one.
 - **1.15: colors of the page's own content** (owner, 12 Nov: "Need a way of changing text's
   color and changing the fill color of an object", "Both"; on hold, then asked for on 14 Nov):
   Edit objects / CAD mode > right-click > Line color..., Fill color..., Text color... (Edit

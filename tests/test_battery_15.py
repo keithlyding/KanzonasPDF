@@ -148,10 +148,11 @@ class Keys(Window):
 
 
 class Modes(Window):
-    def test_the_hand_tool_selects_markups_in_every_mode(self):
-        for m in ("standard", "cad", "hand"):
-            self.w.set_mouse_mode(m)
-            self.assertTrue(DocumentView.hand_selects, m)
+    def test_the_hand_tool_options_are_gone(self):
+        # (the Hand only views since 1.15.10: no switch makes it select markups or text)
+        self.assertEqual([k for k, _l, _d in mouse_modes.options("hand")],
+                         ["free_pan", "page_wheel"])
+        self.assertFalse(hasattr(DocumentView, "hand_selects"))
 
     def test_a_mode_change_reaches_every_window(self):
         self.open(2)

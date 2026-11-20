@@ -899,6 +899,10 @@ class DocumentView(QScrollArea):
     historyChanged = Signal()       # an undo or redo done: what can be undone / redone now
     pageLayoutChanged = Signal()    # View > Page layout changed (the menu's tick follows)
     pointerMoved = Signal()         # the pointer's place on a page (pointer_pos) changed
+    linkAside = Signal(object)      # Ctrl+middle-click on a link to a page of this document:
+    #                                 its place in a view-only tab or the split view
+    jumpFrom = Signal(object)       # a jump (a link, bookmark, Go to page...) leaves this
+    #                                 place (location()): Back comes back to it
     toolUsed = Signal()             # a markup drawn with Reuse off: back to the mouse mode's tool
     reuse_tools = True              # the status bar's Reuse (MainWindow sets it)
 
@@ -1457,13 +1461,51 @@ class DocumentView(QScrollArea):
                 lo = m + 1
         return min(lo, len(pages) - 1)
 
-    def goto_page(self, index, y_offset=0):
+    def goto_page(self, index, y_offset=0, remember=False):
+        """Show the page, y_offset pixels below its top. remember: a jump Back comes back
+        from (a link, a bookmark, Go to page, a search result...; not a step to the next page
+        or a page shown again after an edit)."""
         index = max(0, min(index, len(self.pages) - 1))
+        if remember:
+            self._note_jump(index, y_offset)
         self._show_index(index)
         # (y_offset: from the page's top; its working space, if shown, is above it)
         self.verticalScrollBar().setValue(self.pages[index].y() - PAGE_GAP + int(y_offset)
                                           + int(self.pages[index].offset().y()))
         self._on_scroll()
+
+    def location(self):
+        """Where the view is: {"page", "y" (points from that page's top to the window's
+        top), "x" (points scrolled sideways), "zoom"}; restore_location() goes back to it."""
+        if not self.pages or self.doc is None:
+            return None
+        page = self.current_page()
+        w = self.pages[page]
+        top = self.verticalScrollBar().value()
+        y = (top - (w.y() - PAGE_GAP + w.offset().y())) / self.zoom
+        return {"page": page, "y": y, "x": self.horizontalScrollBar().value() / self.zoom,
+                "zoom": self.zoom}
+
+    def restore_location(self, loc):
+        """Show a place location() gave (Back, Forward): its zoom, page and scroll."""
+        if not self.pages or not loc:
+            return
+        if abs(loc.get("zoom", self.zoom) - self.zoom) > 1e-6:
+            self.set_zoom(loc["zoom"])
+        page = max(0, min(int(loc.get("page", 0)), len(self.pages) - 1))
+        self.goto_page(page, loc.get("y", 0) * self.zoom)
+        self.horizontalScrollBar().setValue(int(loc.get("x", 0) * self.zoom))
+
+    def _note_jump(self, index, y_offset):
+        """A jump is about to leave here: jumpFrom, unless it lands on the same page about
+        where the window is now (a second click on the same link)."""
+        here = self.location()
+        if here is None:
+            return
+        same_page = here["page"] == index
+        if same_page and abs(here["y"] * self.zoom - y_offset) < self.viewport().height() / 2:
+            return
+        self.jumpFrom.emit(here)
 
     def showEvent(self, e):
         super().showEvent(e)
@@ -1525,6 +1567,26 @@ class DocumentView(QScrollArea):
         # (a layer shown or hidden in the main view is shown or hidden here too: same document)
         other.layersChanged.connect(self._redraw_all)
         return self
+
+    def unmirror(self):
+        """Let go of the view it mirrors at once (a view-only tab closing): until deleteLater
+        runs, a change to that document, or its closing, would reach this one and read a
+        closed document."""
+        src = getattr(self, "_source", None)
+        if src is None:
+            return
+        import shiboken6
+        if shiboken6.isValid(src):
+            for sig, slot in ((src.documentChanged, self._mirror_changed),
+                              (src.structureChanged, self._mirror_structure),
+                              (src.pageResized, self._mirror_resized),
+                              (src.layersChanged, self._redraw_all)):
+                try:
+                    sig.disconnect(slot)
+                except (RuntimeError, TypeError):
+                    pass                    # (not connected: nothing to let go of)
+        self._search_gen = getattr(self, "_search_gen", 0) + 1     # (a Find running stops)
+        self.hide()
 
     def _mirror_changed(self):
         # what this (read-only) split view read from the pages is old too: the text, the
@@ -2112,8 +2174,7 @@ class DocumentView(QScrollArea):
     _cad_shape = None           # CAD: a shape started with a click, ended by the next (cad_draw.py)
     _picked = {}                # what's selected -> when it was selected (_note_picks)
     _pick_n = 0
-    hand_selects = True         # Hand: clicking a markup selects it
-    hand_text = True            # Hand: a drag from text selects it (the text cursor over it)
+    space_pan = False           # Space held: a drag moves the page, with any tool
     free_pan = False            # Free page movement: the page can be dragged past its edges
     page_wheel = False          # one wheel step = one page when the page fits the window
     night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
@@ -2277,16 +2338,18 @@ class DocumentView(QScrollArea):
         if tool == "eraser" and not self.plus_cursor:
             self.viewport().setCursor(eraser_cursor())
             return
-        # (the text cursor with a tool that works on text; Select and the Hand show it only
-        # over text, outside CAD mode (PageWidget hover, text_cursor_at): the owner, 12 Nov, in
-        # CAD mode, "there should be no text cursor unless I've double-clicked on text to edit
-        # or have a text tool"; 18 Nov, not in CAD mode, the hand instead of the text cursor,
-        # and "The cursor should be the pointer arrow until it browses over text": the Hand
-        # that selects text is the arrow there, the closed hand only while it moves the page)
+        # (the text cursor with a tool that works on text; Select shows it only over text,
+        # outside CAD mode (PageWidget hover, text_cursor_at): the owner, 12 Nov, in CAD mode,
+        # "there should be no text cursor unless I've double-clicked on text to edit or have a
+        # text tool"; 18 Nov, not in CAD mode, "When I'm selecting text ... the cursor is a hand
+        # instead of the text cursor". The Hand is always a hand: it only views, 19 Nov, "I
+        # want the hand to always show no matter what")
         text_cursor = ("edittext", "addtext", "highlight", "underline", "strikeout", "comment",
                        "redact")
-        hand = Qt.ArrowCursor if self.hand_text and not self.cad_like() else Qt.OpenHandCursor
-        cursors = {"hand": hand, "select": Qt.ArrowCursor,
+        if self.space_pan:
+            self.viewport().setCursor(Qt.OpenHandCursor)
+            return
+        cursors = {"hand": Qt.OpenHandCursor, "select": Qt.ArrowCursor,
                    **{t: Qt.IBeamCursor for t in text_cursor}}
         if self.plus_cursor and tool != "hand":
             cursors = {}                # CAD mouse: a plus, as in CAD programs
@@ -2433,7 +2496,10 @@ class DocumentView(QScrollArea):
         if getattr(self, "_source", None) is not None:
             # the split view shares the main view's document but not its undo history or
             # unsaved-changes mark: edits must go through the main view
-            self.statusMessage.emit(tr("The split view is read-only: edit in the main view."))
+            self.statusMessage.emit(
+                tr("This tab is view-only: edit in the document's own tab.")
+                if getattr(self, "view_only_tab", False) else
+                tr("The split view is read-only: edit in the main view."))
             return
         if not self.allowed(permission):
             if getattr(self, "sig_results", None):
@@ -5133,10 +5199,11 @@ class DocumentView(QScrollArea):
     def link_to_follow(self, index, pt):
         """The link a click at pt follows (Hand tool, Ctrl+click with Select): on a markup,
         only a link made on that markup; a link merely under a markup (the PDF's own link on
-        highlighted words) leaves the click to the markup."""
+        highlighted words) leaves the click to the markup, except with the Hand, which only
+        views (it selects no markup, so the link under it is followed)."""
         link = self.link_at(index, pt)
-        if link is None or not self.show_markups:
-            return link
+        if link is None or not self.show_markups or self.tool == "hand":
+            return link             # (the Hand selects no markup: the link under it is its)
         page, a = self._annot_under(index, pt)
         if a is None:
             return link
@@ -5159,14 +5226,62 @@ class DocumentView(QScrollArea):
             return tr("Open {file}").format(file=link.get("file") or tr("file"))
         return tr("Link")
 
-    def _go_to(self, page, to=None):
+    def _go_to(self, page, to=None, space="page"):
+        """Show page (index) from the point to on it, given in one of three ways, as PyMuPDF
+        hands them back: "page", unturned and from the page's top (a bookmark's place); "shown",
+        as the page is shown, turned (a link's); "pdf", the PDF's own numbers, from the page's
+        bottom (a link through a named destination: the owner's link index, 19 Nov 2026,
+        on pages that aren't turned)."""
         if not 0 <= page < self.doc.page_count:
             return
         y = 0
         if to is not None:
+            # (a link's place turned again went past the bottom of a sheet turned a quarter,
+            # and the next page filled the window; the owner, 19 Nov 2026: "it barely shows
+            # the bottom of it and what I see is more of the page after")
             pg = self.doc[page]
-            y = max(0, (pymupdf.Point(to) * pg.rotation_matrix).y * self.zoom - 20)
-        self.goto_page(page, y)
+            at = pymupdf.Point(to)
+            if space == "pdf":
+                at = at * pg.transformation_matrix
+            if space != "shown":
+                at = at * pg.rotation_matrix
+            y = at.y * self.zoom - 20
+            # never so far down that the page leaves the window (a place near its bottom: as
+            # much of the page as fits, down to its bottom edge)
+            room = pg.rect.height * self.zoom - self.viewport().height() + PAGE_GAP
+            y = max(0, min(y, room))
+        self.goto_page(page, y, remember=True)
+
+    def keyReleaseEvent(self, e):
+        if e.key() == Qt.Key_Space and not e.isAutoRepeat() and self.space_pan:
+            self._set_space_pan(False)
+            return
+        super().keyReleaseEvent(e)
+
+    def focusOutEvent(self, e):
+        if self.space_pan:
+            self._set_space_pan(False)      # (Space let go in another window: no stuck hand)
+        super().focusOutEvent(e)
+
+    def _set_space_pan(self, on):
+        self.space_pan = on
+        self._tool_cursor()
+        for w in getattr(self, "pages", []):
+            w.unsetCursor()                 # (the view's hand shows on every page)
+
+    def is_attachment(self, index, xref):
+        """True when the markup is a file attached to the page (the Hand opens it)."""
+        try:
+            page = self.doc[index]
+            return page.load_annot(xref).type[0] == pymupdf.PDF_ANNOT_FILE_ATTACHMENT
+        except Exception:
+            return False                    # (gone, or not a markup: nothing to open)
+
+    def link_in_this_document(self, link):
+        """True for a link to a page of this document (what Ctrl+middle-click opens aside)."""
+        return link is not None and link.get("kind") in (pymupdf.LINK_GOTO,
+                                                         pymupdf.LINK_NAMED) and \
+            0 <= link.get("page", -1) < self.doc.page_count
 
     def follow_link(self, link):
         """Click on a link: go to the page, open the web address (asking first, like Adobe
@@ -5175,7 +5290,10 @@ class DocumentView(QScrollArea):
         from PySide6.QtGui import QDesktopServices
         k = link.get("kind")
         if k in (pymupdf.LINK_GOTO, pymupdf.LINK_NAMED) and link.get("page", -1) >= 0:
-            self._go_to(link["page"], link.get("to"))
+            # (a named destination's place comes back as the PDF writes it, from the page's
+            # bottom: read as from the top, a link to a page's top went to its bottom)
+            self._go_to(link["page"], link.get("to"),
+                        space="pdf" if k == pymupdf.LINK_NAMED else "shown")
             return
         if k == pymupdf.LINK_NAMED:
             name = (link.get("name") or "").lower()
@@ -6311,7 +6429,8 @@ class DocumentView(QScrollArea):
             locked = bool((annot.flags or 0) & pymupdf.PDF_ANNOT_IS_LOCKED)
         except Exception:
             return
-        self.goto_page(index, max(0, r.y0 * self.zoom - self.viewport().height() / 3))
+        self.goto_page(index, max(0, r.y0 * self.zoom - self.viewport().height() / 3),
+                       remember=True)
         if locked:
             self.clear_selection()
             self.statusMessage.emit(self.locked_note())
@@ -6937,6 +7056,12 @@ class DocumentView(QScrollArea):
         if e.key() == Qt.Key_Escape and self.text_sel is not None:
             self.clear_text_selection()
             return
+        if e.key() == Qt.Key_Space and not e.modifiers() and self.field_focus is None:
+            # hold Space and drag: the page moves, with any tool (as in Acrobat); typing in a
+            # box isn't here (the box has the keys), and Space on a form field still ticks it
+            if not e.isAutoRepeat():
+                self._set_space_pan(True)
+            return
         if self.field_focus is not None and self.tool in ("hand", "select") and \
                 e.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter) and not self.read_only:
             self.fill_field(*self.field_focus)
@@ -6975,7 +7100,8 @@ class DocumentView(QScrollArea):
         if e.key() in (Qt.Key_Home, Qt.Key_End) and \
                 e.modifiers() in (Qt.NoModifier, Qt.ControlModifier):
             # first / last page (View > Go to), as in other PDF readers
-            self.goto_page(0 if e.key() == Qt.Key_Home else self.page_count() - 1)
+            self.goto_page(0 if e.key() == Qt.Key_Home else self.page_count() - 1,
+                           remember=True)
             return
         if e.key() in (Qt.Key_Left, Qt.Key_Right) and e.modifiers() == Qt.ShiftModifier:
             bar = self.horizontalScrollBar()
@@ -10003,7 +10129,10 @@ class DocumentView(QScrollArea):
 
     def units_changed(self):
         """The rulers' units were changed (right-click on a ruler): every view follows."""
+        import shiboken6
         for v in list(DocumentView._views or ()):
+            if not shiboken6.isValid(v):
+                continue                    # (a closed tab's view, not collected yet)
             if v._rulers is not None:
                 for w in v._rulers:
                     w.update()
@@ -12203,6 +12332,12 @@ class DocumentView(QScrollArea):
 
     def _show_hit(self, hit):
         old = self._search_cur
+        if old is None and self.pages and hit[0] != self.current_page():
+            # (the first match of a search, on another page: Back comes back here; the next
+            # matches don't each add a step)
+            here = self.location()
+            if here is not None:
+                self.jumpFrom.emit(here)
         self._search_cur = hit
         i, k = hit
         self._show_index(i)

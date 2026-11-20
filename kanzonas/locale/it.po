@@ -7206,8 +7206,8 @@ msgid "The arrow: select text and markups; the wheel scrolls, Ctrl+wheel zooms."
 msgstr "La freccia: seleziona testo e annotazioni; la rotellina scorre, Ctrl+rotellina esegue lo zoom."
 
 #: cad
-msgid "The Hand: drag to move the page; drag from text to select it; click a markup to select it; the wheel scrolls."
-msgstr "La Mano: trascina per spostare la pagina; trascina dal testo per selezionarlo; fai clic su un'annotazione per selezionarla; la rotellina scorre."
+msgid "The Hand: view only, drag to move the page; links open with a click; the wheel scrolls."
+msgstr "La Mano: solo per guardare, trascina per spostare la pagina; i collegamenti si aprono con un clic; la rotellina scorre."
 
 #: cad
 msgid "Like CAD programs: the wheel zooms at the cursor, hold the wheel to pan, a plus cursor, window and crossing selection, and the CAD tab's commands."
@@ -7249,13 +7249,7 @@ msgstr "Mostra la scheda CAD (Sposta, Copia, Ruota...)"
 msgid "Free page movement (drag the page past its edges)"
 msgstr "Movimento libero della pagina (trascina la pagina oltre i bordi)"
 
-#: cad
-msgid "Clicking a markup with the Hand selects it"
-msgstr "Un clic su un'annotazione con la Mano la seleziona"
 
-#: cad
-msgid "Dragging from text with the Hand selects the text (the text cursor shows over text)"
-msgstr "Trascinare dal testo con la Mano seleziona il testo (il cursore di testo compare sopra il testo)"
 
 #: cad
 msgid "Mouse: Standard. The arrow selects and doesn't move the page: hold the wheel down to move it, or switch to the Hand mouse mode."
@@ -11638,3 +11632,65 @@ msgstr "Rinumera"
 #: counts
 msgid "Number the group 1, 2, 3... again, with no gaps or repeats (Ctrl+Z undoes it)"
 msgstr "Numera di nuovo il gruppo 1, 2, 3..., senza buchi né ripetizioni (Ctrl+Z annulla)"
+#: main_window
+msgid "&Back"
+msgstr "&Indietro"
+
+#: main_window
+msgid "For&ward"
+msgstr "Ava&nti"
+
+#: main_window
+msgid "Back to where you were before the last jump: a link, bookmark, Go to page... (Alt+Left)"
+msgstr "Torna dov'eri prima dell'ultimo salto: un collegamento, un segnalibro, Vai a pagina... (Alt+Left)"
+
+#: main_window
+msgid "Forward again, after Back (Alt+Right)"
+msgstr "Di nuovo avanti, dopo Indietro (Alt+Right)"
+
+#: main_window
+msgid "This tab is view-only: edit in the document's own tab."
+msgstr "Questa scheda è di sola lettura: modifica nella scheda propria del documento."
+
+#: main_window
+msgid "Open the link"
+msgstr "Apri il collegamento"
+
+
+
+#: main_window
+msgid "Remember my choice (Preferences > Mouse changes it)"
+msgstr "Ricorda la mia scelta (si cambia in Preferenze > Mouse)"
+
+#: main_window
+msgid "{name} (view only)"
+msgstr "{name} (sola lettura)"
+
+#: main_window
+msgid "Ask each time"
+msgstr "Chiedi ogni volta"
+
+
+#: main_window
+msgid "The split view"
+msgstr "La vista divisa"
+
+#: main_window
+msgid "Middle-clicking a link (with Ctrl held, as for a left click, except with the Hand) shows its place without leaving the one you're at"
+msgstr "Un clic centrale su un collegamento (con Ctrl premuto, come per il clic sinistro, tranne con la Mano) ne mostra il punto senza lasciare quello in cui sei"
+
+#: main_window
+msgid "Middle-click on a link opens:"
+msgstr "Il clic centrale su un collegamento apre:"
+
+#: main_window
+msgid "Open the link's place in a new tab, or in the split view?"
+msgstr "Aprire il punto del collegamento in una nuova scheda o nella vista divisa?"
+
+#: main_window
+msgid "New tab"
+msgstr "Nuova scheda"
+
+#: main_window
+msgid "A new tab"
+msgstr "Una nuova scheda"

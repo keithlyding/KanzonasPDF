@@ -1,15 +1,14 @@
-"""The text cursor over text, outside the CAD mouse mode: with Select (a drag from there selects
-text), and in the Hand mouse mode with the Hand, where a drag from text selects it (as
-Acrobat's Hand) and a drag anywhere else still moves the page. In the Standard (Select) mouse
-mode the Hand picked is Select: nothing there drags the page. The Hand's pointer is the arrow there (the closed hand
-while it moves the page); over a markup the arrow too (a click selects it).
-Preferences > Mouse, Hand: "Dragging from text with the Hand selects the text" switches it off.
-In CAD mode nothing changes: the plus (or the arrow), and the Hand only moves the page (the
-owner, 12 Nov: no text cursor there unless typing or with a text tool).
+"""The pointer over the page, outside the CAD mouse mode: Select shows the text cursor over
+text (a drag from there selects text) and the arrow elsewhere. The Hand only views: always a
+hand (the closed hand while it moves the page, a pointing hand on a link), and it never
+selects text, markups or objects. In the Standard (Select) mouse mode the Hand picked is
+Select: nothing there drags the page. Space held: any tool drags the page. In CAD mode the
+plus (or the arrow), no text cursor (the owner, 12 Nov: not unless typing or with a text tool).
 
 The owner, 18 Nov 2026: "When I'm selecting text (not in cad mouse), the cursor is a hand
-instead of the text cursor"; "The cursor should be the pointer arrow until it browses over
-text".
+instead of the text cursor"; 19 Nov: "I want the hand to always show no matter what.
+Selecting text or objects while in hand should not be doable. Hand is like a view only type
+thing".
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_text_cursor
 """
@@ -56,7 +55,7 @@ class Cursor(unittest.TestCase):
 
     def setUp(self):
         w = self.w = main_window.MainWindow()
-        keys = ("mouse_mode", "mouse_before_cad", "mouse/hand/hand_text")
+        keys = ("mouse_mode", "mouse_before_cad")
         old = {k: w.settings.value(k) for k in keys}
 
         def back():
@@ -66,7 +65,6 @@ class Cursor(unittest.TestCase):
         self.addCleanup(back)
         self.addCleanup(lambda: [setattr(x, "_close_confirmed", True) or x.close()
                                  for x in main_window.windows()])
-        w.settings.remove("mouse/hand/hand_text")
         w.resize(1200, 900)
         w.show()
         w.open_file(sheet())
@@ -171,19 +169,19 @@ class StandardMode(SelectTests, Cursor):
 
 
 class HandMode(SelectTests, Cursor):
+    """The Hand only views (the owner, 19 Nov 2026: "I want the hand to always show no matter
+    what. Selecting text or objects while in hand should not be doable"): an open hand over
+    paper, text and markups, the closed hand while it moves the page, a pointing hand on a
+    link; a drag anywhere moves the page and selects nothing."""
     mode = "hand"
 
-    def test_the_hand_is_the_arrow_until_it_is_over_text(self):
+    def test_always_the_open_hand(self):
         self.use("hand")
-        self.assertEqual(self.hover(BLANK[0]), Qt.ArrowCursor)
-        self.assertEqual(self.hover(ON_TEXT[0]), Qt.IBeamCursor)
-        self.assertEqual(self.hover(BLANK[0]), Qt.ArrowCursor)
+        for where in (BLANK[0], ON_TEXT[0], P(350, 535)):
+            with self.subTest(where=where):
+                self.assertEqual(self.hover(where), Qt.OpenHandCursor)
 
-    def test_the_hand_over_a_markup_is_the_arrow_not_the_text_cursor(self):
-        self.use("hand")
-        self.assertEqual(self.hover(P(350, 535)), Qt.ArrowCursor)
-
-    def test_the_closed_hand_while_it_moves_the_page_then_the_arrow(self):
+    def test_the_closed_hand_while_it_moves_the_page(self):
         self.v.set_zoom(3.0)
         APP.processEvents()
         self.use("hand")
@@ -195,43 +193,64 @@ class HandMode(SelectTests, Cursor):
         self.assertEqual(self.v.viewport().cursor().shape(), Qt.ClosedHandCursor)
         QTest.mouseRelease(self.page, Qt.LeftButton, Qt.NoModifier, b.toPoint())
         APP.processEvents()
-        self.assertEqual(self.v.viewport().cursor().shape(), Qt.ArrowCursor)
+        self.assertEqual(self.v.viewport().cursor().shape(), Qt.OpenHandCursor)
 
-    def test_no_text_cursor_left_behind_with_the_hand(self):
-        self.gray_then_blank_paper("hand")
-
-    def test_a_drag_from_text_with_the_hand_selects_it(self):
-        self.use("hand")
-        self.assertFalse(self.drag(*ON_TEXT))
-        self.assertEqual(self.v.selected_text(), "Hello world")
-
-    def test_a_drag_from_blank_paper_with_the_hand_still_moves_the_page(self):
+    def test_a_drag_from_text_moves_the_page_and_selects_nothing(self):
         self.v.set_zoom(3.0)
         APP.processEvents()
         self.use("hand")
-        self.v.ensureVisible(self.page.x() + 600, self.page.y() + 1200, 200, 200)
+        self.v.ensureVisible(self.page.x() + 300, self.page.y() + 280, 300, 300)
         APP.processEvents()
-        self.assertTrue(self.drag(*BLANK))
+        self.assertTrue(self.drag(*ON_TEXT))
         self.assertEqual(self.v.selected_text(), "")
 
-    def test_a_double_click_on_a_word_with_the_hand_selects_it(self):
+    def test_a_click_on_a_markup_selects_nothing(self):
         self.use("hand")
-        q = self.page.to_screen_pt(P(120, 94)).toPoint()
-        QTest.mouseDClick(self.page, Qt.LeftButton, Qt.NoModifier, q)
+        q = self.page.to_screen_pt(P(350, 535)).toPoint()
+        QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, q)
         APP.processEvents()
-        self.assertEqual(self.v.selected_text(), "Hello")
+        self.assertIsNone(self.v.selection)
 
-    def test_the_option_off_gives_the_hand_back_its_old_ways(self):
-        mouse_modes.set_option(self.w.settings, "hand", "hand_text", False)
-        mouse_modes.apply(self.w.settings)
+    def test_a_double_click_selects_and_edits_nothing(self):
         self.use("hand")
-        self.assertEqual(self.hover(ON_TEXT[0]), Qt.OpenHandCursor)
-        self.assertEqual(self.hover(BLANK[0]), Qt.OpenHandCursor)    # (the hand: it moves)
-        self.drag(*ON_TEXT)
+        for where in (P(120, 94), P(350, 535)):
+            q = self.page.to_screen_pt(where).toPoint()
+            QTest.mouseDClick(self.page, Qt.LeftButton, Qt.NoModifier, q)
+            APP.processEvents()
         self.assertEqual(self.v.selected_text(), "")
+        self.assertIsNone(self.v.selection)
+        self.assertIsNone(self.v._inline)
 
-    def test_preferences_lists_the_option(self):
-        self.assertIn("hand_text", [k for k, _l, _d in mouse_modes.options("hand")])
+    def test_the_hand_options_are_gone(self):
+        self.assertEqual([k for k, _l, _d in mouse_modes.options("hand")],
+                         ["free_pan", "page_wheel"])
+
+
+class SpaceToPan(Cursor):
+    """Hold Space and drag: the page moves, with any tool (as in Acrobat); let go of Space,
+    the tool is back."""
+    mode = "standard"
+
+    def test_space_held_moves_the_page_with_select(self):
+        self.v.set_zoom(3.0)
+        APP.processEvents()
+        self.use("select")
+        self.v.ensureVisible(self.page.x() + 300, self.page.y() + 1200, 300, 300)
+        APP.processEvents()
+        QTest.keyPress(self.v, Qt.Key_Space)
+        self.assertEqual(self.v.viewport().cursor().shape(), Qt.OpenHandCursor)
+        self.assertTrue(self.drag(*ON_TEXT))
+        self.assertEqual(self.v.selected_text(), "")
+        QTest.keyRelease(self.v, Qt.Key_Space)
+        self.assertFalse(self.v.space_pan)
+        self.assertEqual(self.v.viewport().cursor().shape(), Qt.ArrowCursor)
+
+    def test_without_space_select_selects_again(self):
+        self.use("select")
+        QTest.keyPress(self.v, Qt.Key_Space)
+        QTest.keyRelease(self.v, Qt.Key_Space)
+        self.assertFalse(self.drag(*ON_TEXT))
+        self.assertEqual(self.v.selected_text(), "Hello world")
 
 
 class CadMode(Cursor):

@@ -323,6 +323,17 @@ class PreferencesDialog(QDialog):
                     note.setIndent(22)
                     inner.addRow(note)
             form.addRow(box)
+        # Ctrl+middle-click on a link to a page of the document: where its place shows
+        self.link_aside = QComboBox()
+        self.link_aside.addItem(tr("Ask each time"), "")
+        self.link_aside.addItem(tr("A new tab"), "tab")
+        self.link_aside.addItem(tr("The split view"), "split")
+        self.link_aside.setCurrentIndex(max(0, self.link_aside.findData(
+            win.settings.value(win.LINK_ASIDE, "") or "")))
+        self.link_aside.setToolTip(tr("Middle-clicking a link (with Ctrl held, as for a left "
+                                      "click, except with the Hand) shows its place without "
+                                      "leaving the one you're at"))
+        form.addRow(tr("Middle-click on a link opens:"), self.link_aside)
 
         # Pages and display
         page, form = self._tab(tabs, tr("Pages and display"))
@@ -621,6 +632,10 @@ class PreferencesDialog(QDialog):
         from . import mouse_modes
         for (m, key), b in self.mouse_options.items():
             mouse_modes.set_option(win.settings, m, key, b.isChecked())
+        if self.link_aside.currentData():
+            win.settings.setValue(win.LINK_ASIDE, self.link_aside.currentData())
+        else:
+            win.settings.remove(win.LINK_ASIDE)
         chosen = next(m for m, b in self.mouse_mode.items() if b.isChecked())
         if chosen != mouse_modes.mode(win.settings):
             win.set_mouse_mode(chosen)
