@@ -92,6 +92,44 @@ def snap45(a, b):
     return a + QPointF(math.cos(ang) * length, math.sin(ang) * length)
 
 
+_DIRS = [QPointF(1, 0), QPointF(0, 1), QPointF(math.sqrt(0.5), math.sqrt(0.5)),
+         QPointF(math.sqrt(0.5), -math.sqrt(0.5))]
+
+
+def ortho_corner(pos, neighbors, near_px=20):
+    """pos moved so its sides to its neighbors run straight (at multiples of 45 degrees): to
+    where a straight side from each of two neighbors meet, when that's within near_px of pos
+    (a square corner); else onto the nearest straight side from a neighbor, which then gets
+    longer or shorter as pos moves. The owner, 20 Nov 2026: "when lengthening or shortening
+    lines of the polygon (to make them connect straight and at right angles), holding shift
+    did not work to make the lines straight"."""
+    def dist(p):
+        return math.hypot(p.x() - pos.x(), p.y() - pos.y())
+    best = None
+    if len(neighbors) == 2:
+        a, b = neighbors
+        for da in _DIRS:
+            for db in _DIRS:
+                cross = da.x() * db.y() - da.y() * db.x()
+                if abs(cross) < 1e-9:
+                    continue
+                t = ((b.x() - a.x()) * db.y() - (b.y() - a.y()) * db.x()) / cross
+                p = a + da * t
+                if min(math.hypot(p.x() - n.x(), p.y() - n.y()) for n in neighbors) < 1:
+                    continue                # (a side of no length)
+                if dist(p) <= near_px and (best is None or dist(p) < dist(best)):
+                    best = p
+    if best is not None:
+        return best
+    for n in neighbors:
+        for d in _DIRS:
+            t = (pos.x() - n.x()) * d.x() + (pos.y() - n.y()) * d.y()
+            p = n + d * t
+            if best is None or dist(p) < dist(best):
+                best = p
+    return QPointF(pos) if best is None else best
+
+
 def square_corner(a, b):
     """b moved so the box a-b is a square."""
     d = b - a
@@ -335,6 +373,7 @@ class PageWidget(QWidget):
         self.update()
 
     def _reset_state(self):
+        self._shown_at = None       # (zoom, page offset) the points being drawn were taken at
         self._pix = None
         self._preview = None        # (QPixmap, page rect): the page as last drawn whole
         self._tile_scale = None     # the scale its tiles were last drawn at
@@ -413,6 +452,34 @@ class PageWidget(QWidget):
             self._preview = (self._pix, r)
         self.setFixedSize(*size)
         self._pix = None
+        self._keep_drawn_points()
+
+    # what a shape being drawn holds in widget pixels (the points clicked so far)
+    _DRAWN_POINTS = ("_poly_hover", "_drag_start", "_drag_now", "_dim_press", "_sig_drag",
+                     "_sig_now")
+
+    def _keep_drawn_points(self):
+        """A shape being drawn keeps its points where they were clicked on the page: they're
+        widget pixels, so a new zoom (or new room around the page) moves them with the page.
+        The owner, 20 Nov 2026: "I was in the middle of drawing a polygon and had to zoom.
+        The whole shape moved on me"."""
+        z, o = self.view.zoom, self.offset()
+        old, self._shown_at = self._shown_at, (z, QPointF(o))
+        if old is None:
+            return
+        oz, oo = old
+        if abs(oz - z) < 1e-9 and oo == o:
+            return
+        k = z / oz
+
+        def moved(p):
+            return QPointF(o.x() + (p.x() - oo.x()) * k, o.y() + (p.y() - oo.y()) * k)
+        if self._poly:
+            self._poly = [moved(p) for p in self._poly]
+        for name in self._DRAWN_POINTS:
+            p = getattr(self, name, None)
+            if isinstance(p, QPointF):
+                setattr(self, name, moved(p))
 
     def invalidate(self):
         """The page changed: its markups are drawn again; its content too if that changed
@@ -2671,8 +2738,14 @@ class PageWidget(QWidget):
                 if shift and i < 2:         # (Shift: 45 degree steps from the other point)
                     pos = snap45(self.to_screen_pt(model["points"][1 - i]), pos)
                 return A.with_endpoint(model, i, self.to_pdf(pos))
-            if shift and len(model["points"]) > 1:
-                pos = snap45(self.to_screen_pt(model["points"][i - 1]), pos)
+            pts = model["points"]
+            if shift and len(pts) > 1:
+                # (Shift: its sides to the corners before and after it straight; a polygon's
+                # first and last corners are neighbors, a polyline's ends have one)
+                closed = model["kind"] in ("polygon", "space") + A.CLOSED_MEASURES
+                near = [j for j in (i - 1, i + 1) if closed or 0 <= j < len(pts)]
+                pos = ortho_corner(pos, [self.to_screen_pt(pts[j % len(pts)])
+                                         for j in dict.fromkeys(near) if j % len(pts) != i])
             return A.with_endpoint(model, i, self.to_pdf(pos))
         r = self.to_screen(A.bounds(model))
         d = pos - ed["start"]

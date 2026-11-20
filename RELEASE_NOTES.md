@@ -9,6 +9,24 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.12
+
+**Fixed**
+- Zooming in the middle of drawing a polygon (or a polyline or a measurement) moved what was drawn so far: it now stays where you clicked.
+- Holding Shift while dragging a corner of a polygon now keeps both of its sides straight: near a square corner it lands there, and elsewhere it slides along a straight side, making it longer or shorter. Before, only one side was kept straight.
+
+## 1.15.12 (es)
+
+**Correcciones**
+- Hacer zoom mientras dibujaba un polígono (o una polilínea o una medición) movía lo ya dibujado: ahora se queda donde hizo clic.
+- Mantener Shift al arrastrar un vértice de un polígono ahora mantiene rectos sus dos lados: cerca de una esquina en ángulo recto se coloca allí, y en otro lugar se desliza sobre un lado recto, alargándolo o acortándolo. Antes solo un lado quedaba recto.
+
+## 1.15.12 (it)
+
+**Correzioni**
+- Lo zoom mentre si disegnava un poligono (o una polilinea o una misura) spostava quanto già disegnato: ora resta dove hai fatto clic.
+- Tenere premuto Shift mentre trascini un vertice di un poligono ora mantiene dritti entrambi i lati: vicino a un angolo retto si posiziona lì, altrove scorre lungo un lato dritto, allungandolo o accorciandolo. Prima solo un lato restava dritto.
+
 ## 1.15.11
 
 **New**
