@@ -92,6 +92,44 @@ def snap45(a, b):
     return a + QPointF(math.cos(ang) * length, math.sin(ang) * length)
 
 
+_DIRS = [QPointF(1, 0), QPointF(0, 1), QPointF(math.sqrt(0.5), math.sqrt(0.5)),
+         QPointF(math.sqrt(0.5), -math.sqrt(0.5))]
+
+
+def ortho_corner(pos, neighbors, near_px=20):
+    """pos moved so its sides to its neighbors run straight (at multiples of 45 degrees): to
+    where a straight side from each of two neighbors meet, when that's within near_px of pos
+    (a square corner); else onto the nearest straight side from a neighbor, which then gets
+    longer or shorter as pos moves. The owner, 20 Nov 2026: "when lengthening or shortening
+    lines of the polygon (to make them connect straight and at right angles), holding shift
+    did not work to make the lines straight"."""
+    def dist(p):
+        return math.hypot(p.x() - pos.x(), p.y() - pos.y())
+    best = None
+    if len(neighbors) == 2:
+        a, b = neighbors
+        for da in _DIRS:
+            for db in _DIRS:
+                cross = da.x() * db.y() - da.y() * db.x()
+                if abs(cross) < 1e-9:
+                    continue
+                t = ((b.x() - a.x()) * db.y() - (b.y() - a.y()) * db.x()) / cross
+                p = a + da * t
+                if min(math.hypot(p.x() - n.x(), p.y() - n.y()) for n in neighbors) < 1:
+                    continue                # (a side of no length)
+                if dist(p) <= near_px and (best is None or dist(p) < dist(best)):
+                    best = p
+    if best is not None:
+        return best
+    for n in neighbors:
+        for d in _DIRS:
+            t = (pos.x() - n.x()) * d.x() + (pos.y() - n.y()) * d.y()
+            p = n + d * t
+            if best is None or dist(p) < dist(best):
+                best = p
+    return QPointF(pos) if best is None else best
+
+
 def square_corner(a, b):
     """b moved so the box a-b is a square."""
     d = b - a
@@ -2700,8 +2738,14 @@ class PageWidget(QWidget):
                 if shift and i < 2:         # (Shift: 45 degree steps from the other point)
                     pos = snap45(self.to_screen_pt(model["points"][1 - i]), pos)
                 return A.with_endpoint(model, i, self.to_pdf(pos))
-            if shift and len(model["points"]) > 1:
-                pos = snap45(self.to_screen_pt(model["points"][i - 1]), pos)
+            pts = model["points"]
+            if shift and len(pts) > 1:
+                # (Shift: its sides to the corners before and after it straight; a polygon's
+                # first and last corners are neighbors, a polyline's ends have one)
+                closed = model["kind"] in ("polygon", "space") + A.CLOSED_MEASURES
+                near = [j for j in (i - 1, i + 1) if closed or 0 <= j < len(pts)]
+                pos = ortho_corner(pos, [self.to_screen_pt(pts[j % len(pts)])
+                                         for j in dict.fromkeys(near) if j % len(pts) != i])
             return A.with_endpoint(model, i, self.to_pdf(pos))
         r = self.to_screen(A.bounds(model))
         d = pos - ed["start"]

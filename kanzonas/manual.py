@@ -993,7 +993,7 @@ markups with Edit objects or Select.</li>
   <li>rectangles, ellipses and clouds become perfect squares and circles.</li>
   </ul></li>
 <li><b>Hold Shift while resizing</b> from a corner: squares and circles stay perfect, other
-markups keep their proportions. Shift while dragging a line's end keeps it at 45&deg; steps.</li>
+markups keep their proportions. Shift while dragging a line's end keeps it at 45&deg; steps. Shift while dragging a corner of a polygon, a polyline or a measurement keeps its sides straight (0, 45 or 90&deg;): near a spot where both its sides come out straight, it lands there (a square corner); elsewhere it slides along the nearest straight side, which gets longer or shorter.</li>
 <li><b>Eraser</b> (X): click a markup to delete it, or drag a box to delete everything inside.</li>
 <li><b>Erase content</b> (Shift+E; Home tab, Tools menu): like Bluebeam's,
 drag a box to permanently delete the page's own content inside it: text, images and lines.

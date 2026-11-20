@@ -980,7 +980,7 @@ marcas con Editar objetos o Seleccionar.</li>
   <li>los rectángulos, las elipses y las nubes se convierten en cuadrados y círculos perfectos.</li>
   </ul></li>
 <li><b>Mantenga presionada Shift al cambiar el tamaño</b> desde una esquina: los cuadrados y los círculos siguen siendo perfectos, y las demás
-marcas conservan sus proporciones. Shift al arrastrar el extremo de una línea la mantiene en pasos de 45&deg;.</li>
+marcas conservan sus proporciones. Shift al arrastrar el extremo de una línea la mantiene en pasos de 45&deg;. Shift al arrastrar un vértice de un polígono, una polilínea o una medición mantiene rectos sus lados (0, 45 o 90&deg;): cerca de un punto donde ambos lados quedan rectos, se coloca allí (una esquina en ángulo recto); en otro lugar se desliza sobre el lado recto más cercano, que se alarga o se acorta.</li>
 <li><b>Borrador</b> (X): haga clic en una marca para eliminarla, o arrastre un cuadro para eliminar todo lo que haya dentro.</li>
 <li><b>Borrar contenido</b> (Shift+E; pestaña Inicio, menú Herramientas): como el de Bluebeam,
 arrastre un cuadro para eliminar de forma permanente el contenido propio de la página que hay dentro: texto, imágenes y líneas.

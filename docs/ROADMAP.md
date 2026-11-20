@@ -107,6 +107,8 @@ a decision changes or a piece of work lands. Details of each version are in
   closes the tab, Ctrl+F4 still does; unsaved changes are asked about first.
 - 1.15.12 (owner, 20 Nov: "I was in the middle of drawing a polygon and had to zoom. The whole
   shape moved on me"): a zoom while drawing keeps the points clicked so far on the page.
+  And Shift while dragging a polygon's corner keeps both its sides straight ("to make them
+  connect straight and at right angles").
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

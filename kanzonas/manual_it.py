@@ -979,7 +979,7 @@ le annotazioni con Modifica oggetti o Seleziona.</li>
   <li>rettangoli, ellissi e nuvole diventano quadrati e cerchi perfetti.</li>
   </ul></li>
 <li><b>Tieni premuto Shift mentre ridimensioni</b> da un angolo: quadrati e cerchi restano perfetti, le altre
-annotazioni mantengono le proporzioni. Shift mentre trascini l'estremità di una linea la mantiene a passi di 45&deg;.</li>
+annotazioni mantengono le proporzioni. Shift mentre trascini l'estremità di una linea la mantiene a passi di 45&deg;. Shift mentre trascini un vertice di un poligono, una polilinea o una misura ne mantiene dritti i lati (0, 45 o 90&deg;): vicino a un punto in cui entrambi i lati risultano dritti, si posiziona lì (un angolo retto); altrove scorre lungo il lato dritto più vicino, che si allunga o si accorcia.</li>
 <li><b>Gomma</b> (X): fai clic su un'annotazione per eliminarla, o trascina un riquadro per eliminare tutto ciò che contiene.</li>
 <li><b>Cancella contenuto</b> (Shift+E; scheda Home, menu Strumenti): come quello di Bluebeam,
 trascina un riquadro per eliminare definitivamente il contenuto della pagina al suo interno: testo, immagini e linee.
