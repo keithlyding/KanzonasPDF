@@ -105,6 +105,8 @@ a decision changes or a piece of work lands. Details of each version are in
   view, asked once; links to turned pages and through named destinations land where they say.
 - 1.15.11 (owner, 19 Nov: "Can ctrl+w close the tab (and ask to save if needed)?"): Ctrl+W
   closes the tab, Ctrl+F4 still does; unsaved changes are asked about first.
+- 1.15.12 (owner, 20 Nov: "I was in the middle of drawing a polygon and had to zoom. The whole
+  shape moved on me"): a zoom while drawing keeps the points clicked so far on the page.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

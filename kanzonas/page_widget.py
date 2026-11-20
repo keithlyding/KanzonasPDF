@@ -335,6 +335,7 @@ class PageWidget(QWidget):
         self.update()
 
     def _reset_state(self):
+        self._shown_at = None       # (zoom, page offset) the points being drawn were taken at
         self._pix = None
         self._preview = None        # (QPixmap, page rect): the page as last drawn whole
         self._tile_scale = None     # the scale its tiles were last drawn at
@@ -413,6 +414,34 @@ class PageWidget(QWidget):
             self._preview = (self._pix, r)
         self.setFixedSize(*size)
         self._pix = None
+        self._keep_drawn_points()
+
+    # what a shape being drawn holds in widget pixels (the points clicked so far)
+    _DRAWN_POINTS = ("_poly_hover", "_drag_start", "_drag_now", "_dim_press", "_sig_drag",
+                     "_sig_now")
+
+    def _keep_drawn_points(self):
+        """A shape being drawn keeps its points where they were clicked on the page: they're
+        widget pixels, so a new zoom (or new room around the page) moves them with the page.
+        The owner, 20 Nov 2026: "I was in the middle of drawing a polygon and had to zoom.
+        The whole shape moved on me"."""
+        z, o = self.view.zoom, self.offset()
+        old, self._shown_at = self._shown_at, (z, QPointF(o))
+        if old is None:
+            return
+        oz, oo = old
+        if abs(oz - z) < 1e-9 and oo == o:
+            return
+        k = z / oz
+
+        def moved(p):
+            return QPointF(o.x() + (p.x() - oo.x()) * k, o.y() + (p.y() - oo.y()) * k)
+        if self._poly:
+            self._poly = [moved(p) for p in self._poly]
+        for name in self._DRAWN_POINTS:
+            p = getattr(self, name, None)
+            if isinstance(p, QPointF):
+                setattr(self, name, moved(p))
 
     def invalidate(self):
         """The page changed: its markups are drawn again; its content too if that changed
