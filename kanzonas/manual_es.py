@@ -2423,6 +2423,7 @@ Desplazamiento automático.</li>
 <tr><td>Ctrl+B (cuando no edita texto)</td><td>Agregar marcador en la vista actual</td></tr>
 <tr><td>Ctrl+P</td><td>Imprimir (con vista previa)</td></tr>
 <tr><td>Ctrl+N</td><td>Nuevo PDF (página en blanco)</td></tr>
+<tr><td>Ctrl+W (o Ctrl+F4)</td><td>Cerrar pestaña (pregunta antes si tiene cambios sin guardar)</td></tr>
 <tr><td>Shift+T</td><td>Agregar texto (escrito en la página)</td></tr>
 <tr><td>Ctrl+K</td><td>Preferencias</td></tr>
 <tr><td>Ctrl+;</td><td>Fecha (la fecha de hoy donde hace clic)</td></tr>

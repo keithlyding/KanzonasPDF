@@ -2395,6 +2395,7 @@ scroll speed.</li>
 <tr><td>Ctrl+B (not editing text)</td><td>Add bookmark at current view</td></tr>
 <tr><td>Ctrl+P</td><td>Print (with preview)</td></tr>
 <tr><td>Ctrl+N</td><td>New PDF (blank page)</td></tr>
+<tr><td>Ctrl+W (or Ctrl+F4)</td><td>Close tab (asks first if it has unsaved changes)</td></tr>
 <tr><td>Shift+T</td><td>Add text (written into the page)</td></tr>
 <tr><td>Ctrl+K</td><td>Preferences</td></tr>
 <tr><td>Ctrl+;</td><td>Date (today's date where you click)</td></tr>

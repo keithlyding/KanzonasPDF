@@ -835,7 +835,10 @@ class MainWindow(QMainWindow):
                                              "page by page, and what Save as PDF/A fixes"))
         self.a_print = self._act(tr("&Print..."), self.print_doc, QKeySequence.Print)
         self.a_close = self._act(tr("&Close tab"), lambda: self.close_tab(self.tabs.currentIndex()),
-                                 QKeySequence.Close)
+                                 "Ctrl+W")
+        # (Ctrl+F4 too, Windows' own key for closing a document; Keyboard shortcuts changes
+        # the first, Ctrl+W, and a key given there replaces both)
+        self.a_close.setShortcuts([QKeySequence("Ctrl+W"), QKeySequence("Ctrl+F4")])
         if sys.platform == "darwin":
             # macOS: Quit (Command-Q, in the application menu) ends the whole program, from
             # any window, as Mac programs do

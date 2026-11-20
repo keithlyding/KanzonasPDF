@@ -103,6 +103,8 @@ a decision changes or a piece of work lands. Details of each version are in
   any tool. Back / Forward across documents (Alt+Left / Alt+Right, beside Undo and Redo, View >
   Go to, the right-click menu); Ctrl+middle-click a link: a new tab (view only) or the split
   view, asked once; links to turned pages and through named destinations land where they say.
+- 1.15.11 (owner, 19 Nov: "Can ctrl+w close the tab (and ask to save if needed)?"): Ctrl+W
+  closes the tab, Ctrl+F4 still does; unsaved changes are asked about first.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
