@@ -13,11 +13,12 @@ only there are they made into PDF pages (PyMuPDF isn't thread-safe).
 
 import json
 import os
+import queue
 import sys
 import threading
 
 import pymupdf
-from PySide6.QtCore import QObject, Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QComboBox, QDialog,
                                QFileDialog, QFormLayout, QHBoxLayout, QInputDialog, QLabel,
                                QListWidget, QListWidgetItem, QMessageBox, QProgressBar,
@@ -92,8 +93,8 @@ def build_pdf(pages):
         raise
 
 
-class _Bridge(QObject):
-    event = Signal(object)
+# how often the window reads what its worker threads sent (ms)
+PUMP_MS = 25
 
 
 class ScanDialog(QDialog):
@@ -118,8 +119,15 @@ class ScanDialog(QDialog):
         self.link = None                # the WSD printer this computer is listed on (panel)
         self._gen = {}
         self._busy = set()
-        self._bridge = _Bridge(self)
-        self._bridge.event.connect(self._on_event)
+        # the worker threads (finding scanners, asking one what it can do, scanning, the
+        # printer's panel) only put their answers here, never touch a Qt object: a signal
+        # sent from one while the window was being deleted crashed the app (the Windows
+        # build's tests); this timer, on the window's own thread, reads them
+        self._events = queue.SimpleQueue()
+        self._pump = QTimer(self)
+        self._pump.setInterval(PUMP_MS)
+        self._pump.timeout.connect(self._drain)
+        self._pump.start()
         self._watch_timer = QTimer(self)
         self._watch_timer.timeout.connect(self._poll_folder)
         self.setWindowTitle(tr("Scan"))
@@ -275,13 +283,10 @@ class ScanDialog(QDialog):
         """Run fn() in a worker thread; its result (or exception) comes back as an event."""
         gen = self._gen[kind] = self._gen.get(kind, 0) + 1
         self._busy.add(kind)
-        bridge = self._bridge
+        events = self._events
 
         def emit(ev):
-            try:
-                bridge.event.emit(ev)
-            except RuntimeError:        # (the window is gone)
-                pass
+            events.put(ev)              # (read on the window's thread: _drain)
 
         def run():
             try:
@@ -293,6 +298,15 @@ class ScanDialog(QDialog):
         t.start()
         self._update()
         return t
+
+    def _drain(self):
+        """What the worker threads sent since the last time, in the order they sent it."""
+        while True:
+            try:
+                ev = self._events.get_nowait()
+            except queue.Empty:
+                return
+            self._on_event(ev)
 
     def _on_event(self, ev):
         kind, gen, what = ev[0], ev[1], ev[2]
@@ -515,13 +529,10 @@ class ScanDialog(QDialog):
     def _link(self, device):
         from .scan_events import PanelLink
         gen = self._gen["panel"] = self._gen.get("panel", 0) + 1
-        bridge = self._bridge
+        events = self._events
 
         def emit(*ev):
-            try:
-                bridge.event.emit(("panel", gen) + ev)
-            except RuntimeError:        # (the window is gone)
-                pass
+            events.put(("panel", gen) + ev)     # (read on the window's thread: _drain)
         self.link = PanelLink(device, lambda sid, token: emit("scan", sid, token),
                               lambda ok, err: emit("state", ok, err))
         self.panel_note.setText(tr("Letting the printer list this computer on its panel..."))

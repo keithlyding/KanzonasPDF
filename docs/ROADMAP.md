@@ -109,6 +109,9 @@ a decision changes or a piece of work lands. Details of each version are in
   shape moved on me"): a zoom while drawing keeps the points clicked so far on the page.
   And Shift while dragging a polygon's corner keeps both its sides straight ("to make them
   connect straight and at right angles").
+- 1.15.13 (owner, 21 Nov: the old Windows test crash, "let's try to identify that bug and fix
+  it"): the Scan window's worker threads only queue their answers (no Qt signal from a
+  worker thread: one sent while the window was deleted crashed).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

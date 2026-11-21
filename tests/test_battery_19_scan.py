@@ -338,5 +338,73 @@ class Window(unittest.TestCase):
             self.assertEqual(len(doc[0].get_images()), 1)
 
 
+
+class Closing(unittest.TestCase):
+    """The Scan window closed (and deleted) while its worker threads still answer: they only
+    put their answers in a queue the window reads, so nothing touches the deleted window.
+    Before, a thread sending its answer as a Qt signal while the window was being deleted
+    crashed the app with no message (the Windows build of 1.15.2, after these tests)."""
+
+    def test_answers_after_the_window_is_gone(self):
+        from PySide6.QtCore import QCoreApplication, QEvent
+        from kanzonas import scan_dialog
+        from kanzonas.main_window import MainWindow
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        w.settings.remove("scan_device")
+
+        def busy(progress):             # (a scan sending its pages, still going)
+            end = time.time() + 0.05
+            while time.time() < end:
+                progress("page")
+        workers = []
+        for i in range(100):     # (a race: this catches the old way often, not always)
+            dlg = scan_dialog.ScanDialog(w, discover=lambda cancel=None, log=None: ([], []))
+            workers.append(dlg._start("caps", busy))
+            time.sleep(0.001 * (i % 7))
+            dlg._stop()
+            dlg.deleteLater()
+            QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+            APP.processEvents()
+        for t in workers:
+            t.join(5)
+        APP.processEvents()
+        self.assertFalse(any(t.is_alive() for t in workers))
+
+    def test_answers_are_read_on_the_windows_thread(self):
+        """The worker only puts its answers in the window's queue; the window reads them on
+        its own thread, so a window gone by then is never touched by the worker."""
+        from kanzonas import scan_dialog
+        from kanzonas.main_window import MainWindow
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        w.settings.remove("scan_device")
+        dlg = scan_dialog.ScanDialog(w, discover=lambda cancel=None, log=None: ([], []))
+        self.addCleanup(lambda: (dlg._stop(), dlg.deleteLater()))
+        wait_for(lambda: "find" not in dlg._busy)
+        seen = []
+        dlg._got_caps = lambda what, *a: seen.append(
+            (what, threading.current_thread() is threading.main_thread()))
+        t = dlg._start("caps", lambda progress: (progress("page"), "caps")[1])
+        t.join(5)
+        self.assertEqual(seen, [])                      # (nothing handled by the worker)
+        self.assertEqual(dlg._events.qsize(), 2)        # (its two answers, waiting)
+        wait_for(lambda: len(seen) == 2)
+        self.assertEqual(seen, [("progress", True), ("ok", True)])
+
+    def test_answers_still_come_while_it_is_open(self):
+        from kanzonas import scan_dialog
+        from kanzonas.main_window import MainWindow
+        w = MainWindow()
+        self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
+        w.settings.remove("scan_device")
+        dev = Device("Office", "escl", "http://10.0.0.9/eSCL", "10.0.0.9")
+        dlg = scan_dialog.ScanDialog(w, discover=lambda cancel=None, log=None: ([dev], []),
+                                     open_scanner=lambda d: FakeScanner(d, []))
+        self.addCleanup(lambda: (dlg._stop(), dlg.deleteLater()))
+        wait_for(lambda: "find" not in dlg._busy)
+        self.assertEqual([d.name for d in dlg.devices], ["Office"])
+
+
 if __name__ == "__main__":
     unittest.main()

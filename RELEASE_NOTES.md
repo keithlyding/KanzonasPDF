@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.13
+
+**Fixed**
+- A rare crash when the Scan window was closed while it was still looking for scanners or talking to one.
+
+## 1.15.13 (es)
+
+**Correcciones**
+- Un cierre inesperado poco frecuente al cerrar la ventana Escanear mientras aún buscaba escáneres o se comunicaba con uno.
+
+## 1.15.13 (it)
+
+**Correzioni**
+- Una chiusura improvvisa rara chiudendo la finestra Scansiona mentre stava ancora cercando gli scanner o comunicando con uno.
+
 ## 1.15.12
 
 **Fixed**
