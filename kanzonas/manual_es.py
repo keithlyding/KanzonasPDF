@@ -85,9 +85,12 @@ pestaña reemplaza ese archivo y cierra esa pestaña (y pregunta antes si tiene 
 con Extraer páginas, Combinar archivos y las copias que guardan Comprimir, Sello de tiempo y la firma digital,
 salvo que en ese caso la otra pestaña muestra el archivo nuevo. Deshacer es Ctrl+Z; rehacer es Ctrl+Y. Lo que
 estaba seleccionado sigue seleccionado al deshacer o rehacer (salvo que el paso lo quite).
-Se conservan hasta 30 pasos. Cada paso guarda solo lo que cambió la edición, así que deshacer y rehacer son rápidos
-y los 30 pasos caben incluso en PDF muy grandes; el historial sigue sin superar un límite de memoria
-(256 MB por documento, 512 MB para todos los documentos abiertos juntos; los pasos más antiguos se descartan primero).</li>
+Se conservan hasta 100 pasos. Cada paso guarda solo lo que cambió la edición, así que deshacer y rehacer son rápidos
+y los 100 pasos caben incluso en PDF muy grandes; el historial sigue sin superar un límite de memoria
+(256 MB por documento, 512 MB para todos los documentos abiertos juntos; los pasos más antiguos se descartan primero).
+Si Deshacer se pone gris antes de volver al punto de partida, los pasos anteriores quedan fuera de
+los 100 que se conservan (o del límite de memoria) y no se pueden deshacer; el archivo tal como se
+abrió sigue en el disco hasta que lo guarde encima.</li>
 <li><b>Paneles:</b> Páginas/Marcadores/Capas a la izquierda (F4), Propiedades a la derecha (F6),
 Lista de marcas (F7), Caja de herramientas (F8), Marcadores (F9), Vista dividida (F10). Los paneles que tenía abiertos
 al cerrar KanzonasPDF (y sus tamaños, sus lados y cuál de Propiedades / Caja de herramientas estaba

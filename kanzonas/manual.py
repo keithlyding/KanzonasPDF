@@ -93,9 +93,12 @@ tab replaces that file and closes that tab (asking first if it has unsaved chang
 for Extract pages, Combine files and the copies saved by Compress, Timestamp and digital signing,
 except that the other tab then shows the new file. Undo is Ctrl+Z, redo is Ctrl+Y. What was
 selected stays selected through an undo or redo (unless the step took it away).
-Up to 30 steps are kept. Each step keeps only what the edit changed, so undo and redo are quick
-and all 30 steps fit even on very large PDFs; the history still stays within a memory budget
-(256 MB per document, 512 MB for all open documents together; the oldest steps go first).</li>
+Up to 100 steps are kept. Each step keeps only what the edit changed, so undo and redo are quick
+and all 100 steps fit even on very large PDFs; the history still stays within a memory budget
+(256 MB per document, 512 MB for all open documents together; the oldest steps go first).
+When Undo turns gray before you're back to where you started, the steps before it are past the
+100 kept (or the memory budget) and can't be undone; the file as it was opened is still on disk
+until you save over it.</li>
 <li><b>Panels:</b> Pages/Bookmarks/Layers on the left (F4), Properties on the right (F6),
 Markups list (F7), Tool chest (F8), Bookmarks (F9), Split view (F10). The panels you had open
 when you closed KanzonasPDF (and their sizes, sides and which of Properties / Tool chest was in
