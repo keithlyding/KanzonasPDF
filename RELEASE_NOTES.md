@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.16
+
+**Changed**
+- Undo now keeps your last 100 steps (it kept 30).
+
+## 1.15.16 (es)
+
+**Cambios**
+- Deshacer ahora conserva sus últimos 100 pasos (conservaba 30).
+
+## 1.15.16 (it)
+
+**Modifiche**
+- Annulla ora conserva gli ultimi 100 passaggi (ne conservava 30).
+
 ## 1.15.15
 
 **Fixed**

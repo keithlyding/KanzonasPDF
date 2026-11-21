@@ -118,6 +118,8 @@ a decision changes or a piece of work lands. Details of each version are in
 - 1.15.15 (owner, 21 Nov): numbered dots: a dot just placed isn't selected (Properties keeps the
   tool's settings, as for Count); the number inside a filled dot takes the text color chosen; Dot
   is named Numbered dot, its tooltip pointing to Count for counting.
+- 1.15.16 (owner, 21 Nov: "raise it to 100"): undo keeps the last 100 steps (30 before); the
+  manual says when Undo runs out, no message ("It's a normal thing for undo to run out").
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
