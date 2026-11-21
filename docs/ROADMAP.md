@@ -112,6 +112,9 @@ a decision changes or a piece of work lands. Details of each version are in
 - 1.15.13 (@cloydcc-dev, issue #107, 21 Nov): a selected Count marker shows a box (its outline
   was a box of no size under its dot). Shipped before the Scan window fix (then 1.15.14), by the
   owner's rule: an outside issue's fix ships first.
+- 1.15.15 (owner, 21 Nov): numbered dots: a dot just placed isn't selected (Properties keeps the
+  tool's settings, as for Count); the number inside a filled dot takes the text color chosen; Dot
+  is named Numbered dot, its tooltip pointing to Count for counting.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

@@ -86,8 +86,10 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("note", tr("Note"), "N", tr("Sticky note: click where it should go (N)")),
     ("textbox", tr("Text box"), "T", tr("Text box: drag a box or click (T)")),
     ("callout", tr("Callout"), "K", tr("Callout: press on the point, drag to where the text goes (K)")),
-    ("dot", tr("Dot"), "B", tr("Dot: click to place a numbered dot; choose filled or outline, the "
-                               "number and the text beside it in Properties (B)")),
+    ("dot", tr("Numbered dot"), "B", tr("Numbered dot: each click places the next number (1, 2, 3...), to mark "
+                                        "points in order; filled or outline, the number "
+                                        "inside or beside it, and a text, in Properties. To "
+                                        "count items by group with totals, use Count (B)")),
     ("rect", tr("Rectangle"), "R", tr("Rectangle (R)")),
     ("ellipse", tr("Ellipse"), "E", tr("Ellipse (E)")),
     ("cloud", tr("Cloud"), "D", tr("Revision cloud: drag a box (D)")),
@@ -5422,7 +5424,8 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "_default_shortcuts"):
             self._default_shortcuts = {n: a.shortcut().toString() for n, a in acts.items()}
         renamed = {"CAD-style mouse (wheel zooms, hold wheel to pan)":     # before 1.5
-                   "Mouse: CAD (wheel zooms, hold wheel to pan)"}
+                   "Mouse: CAD (wheel zooms, hold wheel to pan)",
+                   "Dot": "Numbered dot"}                                # before 1.15.15
         saved = {renamed.get(n, n): seq for n, seq in saved.items() if isinstance(seq, str)}
         # a key the user put on a command stays theirs: a later release's new default for
         # another command (O for Circle in 1.6.3) would put it on two, and run neither

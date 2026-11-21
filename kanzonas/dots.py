@@ -144,10 +144,10 @@ def layout(page, model):
         w = max(pymupdf.get_text_length(t, fontname="helv", fontsize=fs) for t in lines)
         h = lead * len(lines)
         at = _block_center(place, center, r, w, h, gap) * to_page
-        color = text_color
-        if place == "inside" and p.get("filled", True):
-            color = (1, 1, 1)                   # (on the dot's own color)
-        out.append((lines, at, _align(place), color))
+        # (the text color chosen, also for the number inside a filled dot: it was always
+        # white there, whatever was chosen; Properties makes it white when the number goes
+        # inside a filled dot, and it can be changed)
+        out.append((lines, at, _align(place), text_color))
     return out
 
 
