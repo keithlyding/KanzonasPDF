@@ -12545,6 +12545,10 @@ class DocumentView(QScrollArea):
     def close_doc(self):
         self._undo, self._redo = [], []         # free the history (and the shared budget)
         self._journal, self._journal_bytes = None, 0
+        # (its page list's thumbnails too: a closed document still waiting to be freed
+        # counted in the cap for all documents, and open ones' thumbnails were let go and
+        # drawn again; the Mac build's test_speed_161_pages)
+        getattr(self, "thumb_icons", {}).clear()
         self._rc.clear()                        # (and the pages' content renders)
         gc.unfreeze()                           # (its drawings may be set aside: _set_aside)
         self._inline = None

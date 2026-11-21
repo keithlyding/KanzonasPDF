@@ -7352,7 +7352,7 @@ class MainWindow(QMainWindow):
         their document is shown)."""
         from .document_view import DocumentView
         views = [o for o in list(DocumentView._views or ()) if o is not v and
-                 getattr(o, "thumb_icons", None)]
+                 getattr(o, "thumb_icons", None) and not o.doc.is_closed]
         total = len(getattr(v, "thumb_icons", None) or ()) + sum(len(o.thumb_icons) for o in views)
         for o in views:
             if total <= self.THUMB_KEEP_ALL:
