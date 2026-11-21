@@ -353,7 +353,14 @@ class Workflow(unittest.TestCase):
         for job in ("build", "linux", "macos"):
             self.assertNotEqual((self.jobs[job].get("permissions") or {}).get("contents"),
                                 "write", job)
-        self.assertEqual(self.jobs["publish"]["permissions"], {"contents": "write"})
+        # (and, for the build-provenance attestations of the release files, a token to sign
+        # them and the right to store them: those too only in the publish job)
+        self.assertEqual(self.jobs["publish"]["permissions"],
+                         {"contents": "write", "id-token": "write", "attestations": "write"})
+        for job in ("build", "linux", "macos"):
+            perms = self.jobs[job].get("permissions") or {}
+            self.assertNotIn("id-token", perms, job)
+            self.assertNotIn("attestations", perms, job)
 
     def test_a_push_to_main_never_cancels_a_release_halfway(self):
         # the release is made and its files uploaded one by one: cancelled in between, it
@@ -370,6 +377,23 @@ class Workflow(unittest.TestCase):
             name = os.path.basename(line.strip())
             if name != "SHA256SUMS.txt":
                 self.assertIn(name.replace("${{ env.VERSION }}", "$VERSION"), sums["run"], name)
+
+    def test_every_release_file_is_attested_before_it_is_uploaded(self):
+        # (the owner, 21 Nov 2026: GitHub's build-provenance attestations, so anyone can
+        # check a download was built by this workflow from a given commit)
+        steps = self.jobs["publish"]["steps"]
+        names = [s.get("name") for s in steps]
+        attest = steps[names.index("Attest the release files (build provenance)")]
+        publish = steps[names.index("Publish release")]
+        self.assertLess(names.index(attest["name"]), names.index("Publish release"))
+        self.assertTrue(attest["uses"].startswith("actions/attest-build-provenance@"))
+        # the same files as the release uploads...
+        attested = sorted(x.strip() for x in attest["with"]["subject-path"].splitlines()
+                          if x.strip())
+        uploaded = sorted(x.strip() for x in publish["with"]["files"].splitlines() if x.strip())
+        self.assertEqual(attested, uploaded)
+        # ...and only when there is a release: a run that publishes nothing attests nothing
+        self.assertEqual(" ".join(attest["if"].split()), " ".join(publish["if"].split()))
 
 
 if __name__ == "__main__":

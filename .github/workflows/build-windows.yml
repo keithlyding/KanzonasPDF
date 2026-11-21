@@ -812,6 +812,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # (the build-provenance attestations: a short-lived OIDC token to sign them, and the
+      # right to store them with the repository; only this job has either)
+      id-token: write
+      attestations: write
     env:
       VERSION: ${{ needs.build.outputs.version }}
     steps:
@@ -883,6 +887,27 @@ jobs:
           echo "Published: $(wc -l < published.txt) releases, the newest $(sort -V published.txt | tail -1)"
           python3 tools/release_notes.py "$VERSION" --published published.txt --github-output
 
+      # A signed record, for each file the release uploads, that it was built by this
+      # workflow from this commit: anyone can check a download with
+      # `gh attestation verify <file> --owner keithlyding`. Under the same condition as the
+      # release itself, so a run that publishes nothing (a branch, a version already out)
+      # attests nothing: a file already published would get a record naming the wrong run.
+      - name: Attest the release files (build provenance)
+        if: >-
+          (startsWith(github.ref, 'refs/tags/v') && steps.onmain.outputs.main == 'true') ||
+          (github.ref == 'refs/heads/main' && steps.rel.outputs.new == 'true' &&
+           vars.AUTO_RELEASE != 'false')
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            SHA256SUMS.txt
+            release/KanzonasPDF-v${{ env.VERSION }}-setup.exe
+            release/KanzonasPDF-portable.zip
+            release/KanzonasPDF-windows.zip
+            release/KanzonasPDF-x86_64.AppImage
+            release/KanzonasPDF-macos-arm64.dmg
+            release/winget-manifests.zip
+
       - name: Publish release
         if: >-
           (startsWith(github.ref, 'refs/tags/v') && steps.onmain.outputs.main == 'true') ||
@@ -919,6 +944,8 @@ jobs:
             ```
             ${{ steps.sums.outputs.text }}
             ```
+
+            Each file also has a build-provenance attestation: `gh attestation verify <file> --owner keithlyding` (with the [GitHub CLI](https://cli.github.com/)) checks it was built by this repository's workflow, from the commit of this release.
           files: |
             SHA256SUMS.txt
             release/KanzonasPDF-v${{ env.VERSION }}-setup.exe
