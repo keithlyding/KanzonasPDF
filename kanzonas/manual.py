@@ -1475,7 +1475,8 @@ Select: its Group (it takes the next number of the new group), <b>Number</b> (wi
 numbers in order on, the others of its group move up or down to make room), Layer, color and
 size. Right-click a marker &gt; <b>Renumber group</b> numbers its group 1, 2, 3... again with
 no gaps. A Count marker copied with Duplicate (Ctrl+D) or copy and paste takes the next
-number of its group.</li>
+number of its group. A selected marker shows a dashed box around it and its number (blue
+dashes over white, so it shows on a blue marker too).</li>
 <li><b>Dimension</b> (Shift+D; Measure tab, "More" group, the Measure menu and the CAD tab's
 Measure button), like Bluebeam's Dimension and AutoCAD's aligned dimension: click the two
 points to measure, then move the pointer and click where the dimension line goes (in the

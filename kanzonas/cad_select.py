@@ -726,9 +726,10 @@ def _box_pdf(w):
     key = (getattr(v, "_gen", 0), v.revision, v.selection, tuple(v.extra), id(v.obj_sel))
     got = getattr(w, "_resize_box", None)
     if got is None or got[0] != key:
-        from . import annotations
         from .page_objects import bounding
-        rects = [annotations.bounds(m) for _x, m in marks]
+        # (a count marker or a dot by the box it's drawn in: their bounds are a point, and
+        # a row of them made a box of no height)
+        rects = [w._shown_box(m) for _x, m in marks]
         if objs:
             rects.append(v.selected_objects_rect())
         got = w._resize_box = (key, bounding(rects))

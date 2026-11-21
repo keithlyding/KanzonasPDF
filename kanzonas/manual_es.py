@@ -1459,7 +1459,8 @@ clic en él con Seleccionar: su Grupo (toma el siguiente número del grupo nuevo
 los números en orden activado, los demás de su grupo suben o bajan para hacerle lugar), Capa, color y
 tamaño. Clic derecho en un marcador &gt; <b>Renumerar el grupo</b> numera su grupo de nuevo 1, 2, 3...
 sin huecos. Un marcador de Conteo copiado con Duplicar (Ctrl+D) o con copiar y pegar toma el siguiente
-número de su grupo.</li>
+número de su grupo. Un marcador seleccionado muestra un recuadro discontinuo alrededor de él y de su número
+(trazos azules sobre blanco, para que se vea también sobre un marcador azul).</li>
 <li><b>Cota</b> (Shift+D; pestaña Medir, grupo "Más", el menú Medir y el botón Medir de la pestaña CAD),
 como la Cota de Bluebeam y la cota alineada de AutoCAD: haga clic en los dos puntos que va a medir, luego
 mueva el puntero y haga clic donde va la línea de cota (en el modo del mouse Estándar también puede
