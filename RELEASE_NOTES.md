@@ -36,6 +36,21 @@ see the English.
 **Modifiche**
 - Lo strumento Punto ora si chiama Punto numerato, e la sua descrizione dice che ogni clic mette il numero successivo. Per contare elementi per gruppo con i totali, usa Conteggio.
 
+## 1.15.14
+
+**Fixed**
+- A rare crash when the Scan window was closed while it was still looking for scanners or talking to one.
+
+## 1.15.14 (es)
+
+**Correcciones**
+- Un cierre inesperado poco frecuente al cerrar la ventana Escanear mientras aún buscaba escáneres o se comunicaba con uno.
+
+## 1.15.14 (it)
+
+**Correzioni**
+- Una chiusura improvvisa rara chiudendo la finestra Scansiona mentre stava ancora cercando gli scanner o comunicando con uno.
+
 ## 1.15.13
 
 **Fixed**
