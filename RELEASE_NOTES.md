@@ -9,20 +9,35 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
-## 1.15.13
+## 1.15.14
 
 **Fixed**
 - A rare crash when the Scan window was closed while it was still looking for scanners or talking to one.
 
-## 1.15.13 (es)
+## 1.15.14 (es)
 
 **Correcciones**
 - Un cierre inesperado poco frecuente al cerrar la ventana Escanear mientras aún buscaba escáneres o se comunicaba con uno.
 
-## 1.15.13 (it)
+## 1.15.14 (it)
 
 **Correzioni**
 - Una chiusura improvvisa rara chiudendo la finestra Scansiona mentre stava ancora cercando gli scanner o comunicando con uno.
+
+## 1.15.13
+
+**Fixed**
+- A selected Count marker now shows a dashed box around it and its number: before, nothing showed it was selected. A selection's outline is drawn blue over white, so it shows on blue markups too. Thanks to @cloydcc-dev for reporting it.
+
+## 1.15.13 (es)
+
+**Correcciones**
+- Un marcador de Conteo seleccionado ahora muestra un recuadro discontinuo alrededor de él y de su número: antes, nada indicaba que estaba seleccionado. El contorno de una selección se dibuja en azul sobre blanco, para que se vea también sobre marcas azules. Gracias a @cloydcc-dev por informarlo.
+
+## 1.15.13 (it)
+
+**Correzioni**
+- Un indicatore di Conteggio selezionato ora mostra un riquadro tratteggiato attorno a sé e al suo numero: prima, nulla indicava che era selezionato. Il contorno di una selezione è disegnato in blu su bianco, così si vede anche sulle annotazioni blu. Grazie a @cloydcc-dev per la segnalazione.
 
 ## 1.15.12
 

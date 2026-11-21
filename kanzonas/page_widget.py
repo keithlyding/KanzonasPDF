@@ -1454,10 +1454,23 @@ class PageWidget(QWidget):
         c = QPointF(r.center().x(), r.top() - ROT_GAP)
         return {"rot": QRectF(c.x() - h / 2, c.y() - h / 2, h, h)}
 
-    def _model_lines(self, m, page, curved=True):
+    @staticmethod
+    def _shown_box(m):
+        """The box a selected markup's outline is drawn around: its bounds, or for a markup
+        that is one point (a count marker, a dot) the box it's drawn in, with its number.
+        A count marker's outline was a box of no size under its dot: nothing showed it was
+        selected (cloydcc-dev, issue #107, 21 Nov 2026: "there is no box or any visible
+        indicator on what is selected on the page")."""
+        r = A.bounds(m)
+        if r.width < 1 and r.height < 1 and m.get("rect") is not None:
+            return pymupdf.Rect(m["rect"])
+        return r
+
+    def _model_lines(self, m, page, curved=True, pad=0):
         """A markup's outline as lines of widget points ((x, y) pairs), as the selection
-        shows it: its shape for lines and shapes with corners, else its box. curved: an arc
-        or a bent line along its curve (else through its points: quicker, for many)."""
+        shows it: its shape for lines and shapes with corners, else its box (pad pixels out).
+        curved: an arc or a bent line along its curve (else through its points: quicker, for
+        many)."""
         def pt(q):
             w = self.to_screen_pt(q, page)
             return (w.x(), w.y())
@@ -1473,12 +1486,12 @@ class PageWidget(QWidget):
                 pts.append(pts[0])
             return [pts]
         if m["kind"] == "callout":
-            r = self.to_screen(m["rect"], page)
+            r = self.to_screen(m["rect"], page).adjusted(-pad, -pad, pad, pad)
             c = r.center()
             return [[(r.left(), r.top()), (r.right(), r.top()), (r.right(), r.bottom()),
                      (r.left(), r.bottom()), (r.left(), r.top())],
                     [pt(m["points"][0]), (c.x(), c.y())]]
-        r = self.to_screen(A.bounds(m), page)
+        r = self.to_screen(self._shown_box(m), page).adjusted(-pad, -pad, pad, pad)
         return [[(r.left(), r.top()), (r.right(), r.top()), (r.right(), r.bottom()),
                  (r.left(), r.bottom()), (r.left(), r.top())]]
 
@@ -1523,9 +1536,10 @@ class PageWidget(QWidget):
             if self.view.cad_select and not self._edit and len(group) <= 2000:
                 self._paint_cad_markups(p, group, page)
                 return
-            for k, m in enumerate(group):
-                p.setPen(QPen(blue, 2 if k == 0 else 1, Qt.SolidLine if k == 0 else Qt.DashLine))
-                p.drawRect(self.to_screen(A.bounds(m), page).adjusted(-3, -3, 3, 3))
+            path = QPainterPath()
+            for m in group:
+                path.addRect(self.to_screen(self._shown_box(m), page).adjusted(-3, -3, 3, 3))
+            paint_selected_path(p, path)        # (shows on any color: white under blue)
             return
         shown = self._edit["preview"] if self._edit and self._edit.get("preview") else model
         if self.view.cad_select and self.view.tool == "editobjects" and not self._edit:
@@ -1534,27 +1548,14 @@ class PageWidget(QWidget):
                 # one markup selected: its handles resize it here too (cad_select.press)
                 self._paint_handles(p, model)
             return
-        p.setPen(QPen(blue, 1, Qt.DashLine))
-        if A.turned(shown):
-            pts = [self.to_screen_pt(q, page) for q in A.outline(shown, 36)]
-            for a_, b_ in zip(pts, pts[1:] + pts[:1]):
-                p.drawLine(a_, b_)
-        elif shown["kind"] in ("line", "arrow", "m_length", "m_radius"):
-            pts = [self.to_screen_pt(q, page) for q in A.path_points(shown)]
-            for a_, b_ in zip(pts, pts[1:]):
-                p.drawLine(a_, b_)
-        elif shown["kind"] in A.VERTEXED:
-            pts = [self.to_screen_pt(q, page) for q in A.path_points(shown)]
-            if shown["kind"] in ("polygon",) + A.CLOSED_MEASURES:
-                pts.append(pts[0])
-            for a_, b_ in zip(pts, pts[1:]):
-                p.drawLine(a_, b_)
-        elif shown["kind"] == "callout":
-            p.drawRect(self.to_screen(shown["rect"], page).adjusted(-3, -3, 3, 3))
-            p.drawLine(self.to_screen_pt(shown["points"][0], page),
-                       self.to_screen(shown["rect"], page).center())
-        else:
-            p.drawRect(self.to_screen(A.bounds(shown), page).adjusted(-3, -3, 3, 3))
+        # (white under dashed blue, as CAD mode shows a selection: it shows on a blue markup)
+        path = QPainterPath()
+        for line in self._model_lines(shown, page, pad=3):
+            if len(line) > 1:
+                path.moveTo(*line[0])
+                for xy in line[1:]:
+                    path.lineTo(*xy)
+        paint_selected_path(p, path)
         if self._edit and self._edit["mode"] == "rot":
             p.setPen(blue)
             at = self._edit.get("pos", QPointF())
