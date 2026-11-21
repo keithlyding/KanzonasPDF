@@ -10091,6 +10091,10 @@ msgstr "Aplicar los mismos pasos a muchos PDF a la vez: OCR, PDF/A, números Bat
 # ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
 # ribbon tab fits a 1366-pixel screen in Spanish and Italian; the menus keep the full names
 msgctxt "ribbon"
+msgid "Numbered dot"
+msgstr "Punto n.º"
+
+msgctxt "ribbon"
 msgid "Snap to grid"
 msgstr "Ajustar a cuadrícula"
 

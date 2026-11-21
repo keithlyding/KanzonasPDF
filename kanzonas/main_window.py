@@ -6070,6 +6070,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": tr("Apply selected"), "a_apply_redact": tr("Apply all"),
         "a_security": tr("Security"), "a_remove_security": tr("Remove security"), "a_unlock": tr("Unlock"),
         "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"),
+        "tool_dot": tr("Numbered dot", ctx="ribbon"),
         "a_detect_fields": tr("Detect fields"), "a_field_props": tr("Field properties"),
         "a_tab_order": tr("Tab order"), "a_check_required": tr("Check required"), "a_move_up": tr("Move up"),
         "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files", ctx="ribbon"), "a_from_images": tr("From images"), "a_new": tr("New PDF"), "a_scan": tr("Scan"),
