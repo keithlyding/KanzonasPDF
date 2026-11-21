@@ -156,6 +156,21 @@ before it's published, and every release lists the SHA-256 checksum of each down
 (`SHA256SUMS.txt`), so you can check that what you downloaded is what was built:
 `Get-FileHash <file>` in PowerShell.
 
+### Checking a download
+
+From 1.15.16 on, each file a release offers (the installer, the zips, the AppImage,
+the disk image and `SHA256SUMS.txt`) also has a build-provenance attestation: a signed record,
+kept by GitHub, that the file was built by this repository's own workflow from a given commit.
+With the [GitHub CLI](https://cli.github.com/) installed, check a downloaded file with:
+
+```
+gh attestation verify <file> --owner keithlyding
+```
+
+It passes only for a file built here, and names the commit it was built from. It doesn't change
+what Windows SmartScreen shows: it's a way to check that a download is genuine, not a code
+signature. The attestations are listed under the repository's Actions > Attestations.
+
 ### Updating and uninstalling
 
 - KanzonasPDF tells you when a newer version is out (Help > Check for updates...). Nothing is
