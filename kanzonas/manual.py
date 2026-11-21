@@ -861,12 +861,15 @@ your own: it then keeps that box. <b>Fit to text</b> (right-click) makes one as 
 text again, and one made before this version, or by another program, follow its text from then
 on. It's the <b>Fit the box to its text</b> box in Properties, part of the tool's style (Set as
 Default keeps it), on at first.</li>
-<li><b>Dot</b> (B): click where a dot goes, such as an elevation point on a floor plan. In
+<li><b>Numbered dot</b> (B): each click places a dot with the next number (1, 2, 3...), to mark
+points in order, such as elevation points on a floor plan (to count items by group, with totals,
+use Count, below). While you place them, Properties shows the tool's settings, so a change there
+applies to the next dots; to change one dot, select it. In
 Properties choose <b>Filled</b> or <b>Outline only</b>, its color, size and border width, and
 what it <b>Shows</b>: nothing, its number, a text, or the number and a text. <b>Position</b> puts
 them right of, below, left of or above the dot; with both, the text goes there and the number on
 the other side. Or tick <b>Number inside the dot</b> (the dot grows to hold it; on a filled dot
-the number is white). Each new dot takes the next number after the highest one in the document,
+the text color turns white when it was black, and any text color can be chosen). Each new dot takes the next number after the highest one in the document,
 and so do copies (Duplicate, copy and paste); to change a dot's number, select it and set
 <b>Number</b>. When the dot shows a text, you type it after the click (Cancel places nothing);
 double-click a dot to change it. On rotated pages the number and the text stay upright.</li>
@@ -976,7 +979,7 @@ go still works too. A click that shakes a little is still a click. Escape or a r
 cancels the shape being drawn; zooming or scrolling between the two clicks doesn't move its first
 point. A click on a markup with the Eraser still deletes it at once, a click on a link with the
 Links tool still opens it, and two clicks on the same spot with Text box make one of the default
-size. Note, Stamp, Count, Dot and Image still place with one click.</li>
+size. Note, Stamp, Count, Numbered dot and Image still place with one click.</li>
 <li><b>Polygon / polyline:</b> click each point; double-click or Enter to finish, Backspace to take back the last point,
 Escape to cancel.</li>
 <li>With a drawing tool, clicking an existing markup selects it, and dragging moves it or its
@@ -2403,7 +2406,7 @@ scroll speed.</li>
 <tr><td>Shift+O</td><td>Edit objects (the page's own pictures and shapes)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Highlight / Underline / Strike</td></tr>
 <tr><td>C / N / T / K</td><td>Comment / Note / Text box / Callout</td></tr>
-<tr><td>B</td><td>Dot</td></tr>
+<tr><td>B</td><td>Numbered dot</td></tr>
 <tr><td>R / E / O / D / Y</td><td>Rectangle / Ellipse / Circle / Cloud / Polygon</td></tr>
 <tr><td>L / A / Shift+L / P</td><td>Line / Arrow / Polyline / Pen</td></tr>
 <tr><td>M / X</td><td>Stamp / Eraser</td></tr>

@@ -149,7 +149,7 @@ LABELS = {"addtext": tr("Add text"), "edittext": tr("Edit text"), "highlight": t
           "opencloud": tr("Cloud"),
           "m_length": tr("Length"), "m_dim": tr("Dimension"), "m_poly": tr("Polylength"),
           "m_area": tr("Area"),
-          "m_count": tr("Count"), "dot": tr("Dot"),
+          "m_count": tr("Count"), "dot": tr("Numbered dot"),
           "m_angle": tr("Angle"), "m_radius": tr("Radius"), "m_perimeter": tr("Perimeter"),
           "m_volume": tr("Volume"),
           "image": tr("Image"), "attach": tr("Attached file"), "redact": tr("Redaction mark"),

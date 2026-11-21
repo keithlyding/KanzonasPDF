@@ -4579,12 +4579,16 @@ class DocumentView(QScrollArea):
         props = dict(self.tool_props("dot"))
         text = ""
         if props.get("show") in ("text", "both"):
-            text, ok = dialogs.get_text(self, tr("Dot"), tr("Text beside the dot:"))
+            text, ok = dialogs.get_text(self, tr("Numbered dot"), tr("Text beside the dot:"))
             if not ok:
                 return
         props["n"] = self._last_dot() + 1
+        # (not selected, as a count marker isn't: Properties keeps showing the Dot tool's
+        # settings while you click dot after dot, so a change there applies to the next dots;
+        # the owner, 21 Nov 2026: "I change to number inside the dot while numbering, and the
+        # next number reverts to the old way")
         self._create(index, {"kind": "dot", "props": props, "points": [pt],
-                             "rect": pymupdf.Rect(), "text": text.strip()})
+                             "rect": pymupdf.Rect(), "text": text.strip()}, select=False)
 
     def _last_dot(self):
         """The highest dot number in the document (0: none), read without loading the
@@ -12541,6 +12545,10 @@ class DocumentView(QScrollArea):
     def close_doc(self):
         self._undo, self._redo = [], []         # free the history (and the shared budget)
         self._journal, self._journal_bytes = None, 0
+        # (its page list's thumbnails too: a closed document still waiting to be freed
+        # counted in the cap for all documents, and open ones' thumbnails were let go and
+        # drawn again; the Mac build's test_speed_161_pages)
+        getattr(self, "thumb_icons", {}).clear()
         self._rc.clear()                        # (and the pages' content renders)
         gc.unfreeze()                           # (its drawings may be set aside: _set_aside)
         self._inline = None

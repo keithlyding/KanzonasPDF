@@ -86,8 +86,10 @@ TOOLS = [  # (id, label, shortcut, tooltip)
     ("note", tr("Note"), "N", tr("Sticky note: click where it should go (N)")),
     ("textbox", tr("Text box"), "T", tr("Text box: drag a box or click (T)")),
     ("callout", tr("Callout"), "K", tr("Callout: press on the point, drag to where the text goes (K)")),
-    ("dot", tr("Dot"), "B", tr("Dot: click to place a numbered dot; choose filled or outline, the "
-                               "number and the text beside it in Properties (B)")),
+    ("dot", tr("Numbered dot"), "B", tr("Numbered dot: each click places the next number (1, 2, 3...), to mark "
+                                        "points in order; filled or outline, the number "
+                                        "inside or beside it, and a text, in Properties. To "
+                                        "count items by group with totals, use Count (B)")),
     ("rect", tr("Rectangle"), "R", tr("Rectangle (R)")),
     ("ellipse", tr("Ellipse"), "E", tr("Ellipse (E)")),
     ("cloud", tr("Cloud"), "D", tr("Revision cloud: drag a box (D)")),
@@ -5422,7 +5424,8 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "_default_shortcuts"):
             self._default_shortcuts = {n: a.shortcut().toString() for n, a in acts.items()}
         renamed = {"CAD-style mouse (wheel zooms, hold wheel to pan)":     # before 1.5
-                   "Mouse: CAD (wheel zooms, hold wheel to pan)"}
+                   "Mouse: CAD (wheel zooms, hold wheel to pan)",
+                   "Dot": "Numbered dot"}                                # before 1.15.15
         saved = {renamed.get(n, n): seq for n, seq in saved.items() if isinstance(seq, str)}
         # a key the user put on a command stays theirs: a later release's new default for
         # another command (O for Circle in 1.6.3) would put it on two, and run neither
@@ -6067,6 +6070,7 @@ class MainWindow(QMainWindow):
         "a_apply_sel_redact": tr("Apply selected"), "a_apply_redact": tr("Apply all"),
         "a_security": tr("Security"), "a_remove_security": tr("Remove security"), "a_unlock": tr("Unlock"),
         "a_sanitize": tr("Sanitize"), "a_hl_fields": tr("Highlight fields"),
+        "tool_dot": tr("Numbered dot", ctx="ribbon"),
         "a_detect_fields": tr("Detect fields"), "a_field_props": tr("Field properties"),
         "a_tab_order": tr("Tab order"), "a_check_required": tr("Check required"), "a_move_up": tr("Move up"),
         "a_move_down": tr("Move down"), "a_del_page": tr("Delete"), "a_insert_pdf": tr("Insert file"), "a_replace_pages": tr("Replace"), "a_sheet_links": tr("Sheet callouts"), "a_combine": tr("Combine files", ctx="ribbon"), "a_from_images": tr("From images"), "a_new": tr("New PDF"), "a_scan": tr("Scan"),
@@ -7348,7 +7352,7 @@ class MainWindow(QMainWindow):
         their document is shown)."""
         from .document_view import DocumentView
         views = [o for o in list(DocumentView._views or ()) if o is not v and
-                 getattr(o, "thumb_icons", None)]
+                 getattr(o, "thumb_icons", None) and not o.doc.is_closed]
         total = len(getattr(v, "thumb_icons", None) or ()) + sum(len(o.thumb_icons) for o in views)
         for o in views:
             if total <= self.THUMB_KEEP_ALL:
