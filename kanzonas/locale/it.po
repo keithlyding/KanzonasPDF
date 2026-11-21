@@ -10093,6 +10093,10 @@ msgstr "Applica gli stessi passaggi a molti PDF in una volta: OCR, PDF/A, numeri
 # ---- ribbon buttons: shorter words where the ribbon needs them (msgctxt "ribbon"), so every
 # ribbon tab fits a 1366-pixel screen in Spanish and Italian; the menus keep the full names
 msgctxt "ribbon"
+msgid "Numbered dot"
+msgstr "Punto numerato"
+
+msgctxt "ribbon"
 msgid "Snap to grid"
 msgstr "Aggancio griglia"
 
@@ -11433,6 +11437,12 @@ msgstr "Adatta al testo"
 msgid "Fitted to the text (Ctrl+Z undoes it)"
 msgstr "Adattato al testo (Ctrl+Z annulla)"
 # ---- 1.14: dots
+msgid "Numbered dot"
+msgstr "Punto numerato"
+
+msgid "Numbered dot: each click places the next number (1, 2, 3...), to mark points in order; filled or outline, the number inside or beside it, and a text, in Properties. To count items by group with totals, use Count (B)"
+msgstr "Punto numerato: ogni clic mette il numero successivo (1, 2, 3...), per segnare punti in ordine; pieno o solo bordo, il numero dentro o accanto, e un testo, in Proprietà. Per contare elementi per gruppo con i totali, usa Conteggio (B)"
+
 msgid "Dot"
 msgstr "Punto"
 

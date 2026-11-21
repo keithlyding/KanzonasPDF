@@ -725,6 +725,16 @@ class Thumbnails(unittest.TestCase):
         self.assertIn(v.doc.page_xref(299), self.drawn)
         self.assertNotIn(v.doc.page_xref(0), self.drawn)
 
+    def test_a_closed_document_keeps_no_thumbnails(self):
+        # (it counted in the cap for all open documents until it was freed, and the open
+        # ones' thumbnails were let go: the Mac build of 1.15.15)
+        v = self.open("a.pdf", 40)
+        self.assertTrue(v.thumb_icons)
+        self.open("b.pdf", 10)
+        self.w.close_tab(self.w.tabs.indexOf(v))
+        APP.processEvents()
+        self.assertEqual(len(v.thumb_icons), 0)
+
     def test_kept_across_tabs_and_redrawn_only_where_changed(self):
         v = self.open("a.pdf", 40)
         first = {r: self.icon_key(r) for r in self.w._thumb_rows()}

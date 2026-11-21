@@ -842,12 +842,17 @@ entonces conserva ese cuadro. <b>Ajustar al texto</b> (botón derecho) vuelve a 
 que uno creado antes de esta versión, o con otro programa, siga a su texto desde entonces. Es la casilla
 <b>Ajustar el cuadro a su texto</b> de Propiedades, parte del estilo de la herramienta (Establecer como
 predeterminado la guarda), activada al principio.</li>
-<li><b>Punto</b> (B): haga clic donde va el punto, por ejemplo una cota en un plano. En
+<li><b>Punto numerado</b> (B): cada clic coloca un punto con el número siguiente (1, 2, 3...), para
+marcar puntos en orden, por ejemplo cotas en un plano (para contar elementos por grupo, con
+totales, use Conteo, más abajo). Mientras los coloca, Propiedades muestra los ajustes de la
+herramienta, así que un cambio allí se aplica a los puntos siguientes; para cambiar un punto,
+selecciónelo. En
 Propiedades elija <b>Relleno</b> o <b>Solo contorno</b>, el color, el tamaño y el grosor del
 borde, y lo que <b>Muestra</b>: nada, su número, un texto, o el número y un texto.
 <b>Posición</b> los coloca a la derecha, debajo, a la izquierda o encima del punto; con ambos, el
 texto va ahí y el número al otro lado. O marque <b>Número dentro del punto</b> (el punto crece
-para contenerlo; en un punto relleno el número es blanco). Cada punto nuevo toma el número
+para contenerlo; en un punto relleno el color del texto pasa a blanco si era negro, y se puede
+elegir cualquier color). Cada punto nuevo toma el número
 siguiente al más alto del documento, y también las copias (Duplicar, copiar y pegar); para
 cambiar el número de un punto, selecciónelo y fije <b>Número</b>. Si el punto muestra un texto, lo
 escribe después del clic (Cancelar no coloca nada); haga doble clic en un punto para cambiarlo. En
@@ -965,7 +970,7 @@ funcionando. Un clic que tiembla un poco sigue siendo un clic. Esc o un clic der
 forma que se está dibujando; acercar, alejar o desplazarse entre los dos clics no mueve su primer
 punto. Un clic sobre una marca con el Borrador la sigue eliminando de inmediato, un clic sobre un
 vínculo con la herramienta Vínculos lo sigue abriendo, y dos clics en el mismo lugar con Cuadro
-de texto crean uno del tamaño predeterminado. Nota, Sello, Conteo, Punto e Imagen se siguen colocando
+de texto crean uno del tamaño predeterminado. Nota, Sello, Conteo, Punto numerado e Imagen se siguen colocando
 con un clic.</li>
 <li><b>Polígono / polilínea:</b> haga clic en cada punto; doble clic o Enter para terminar, Retroceso para quitar el último
 punto, Esc para cancelar.</li>
@@ -2434,7 +2439,7 @@ Desplazamiento automático.</li>
 <tr><td>Shift+O</td><td>Editar objetos (las imágenes y formas propias de la página)</td></tr>
 <tr><td>Ctrl+Shift+H / U / X</td><td>Resaltado / Subrayado / Tachado</td></tr>
 <tr><td>C / N / T / K</td><td>Comentario / Nota / Cuadro de texto / Llamada</td></tr>
-<tr><td>B</td><td>Punto</td></tr>
+<tr><td>B</td><td>Punto numerado</td></tr>
 <tr><td>R / E / O / D / Y</td><td>Rectángulo / Elipse / Círculo / Nube / Polígono</td></tr>
 <tr><td>L / A / Shift+L / P</td><td>Línea / Flecha / Polilínea / Lápiz</td></tr>
 <tr><td>M / X</td><td>Sello / Borrador</td></tr>

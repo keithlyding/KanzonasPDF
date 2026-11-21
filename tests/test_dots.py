@@ -145,14 +145,20 @@ class InThePdf(unittest.TestCase):
                         grown = pymupdf.Rect(box.x0 - 1, box.y0 - 1, box.x1 + 1, box.y1 + 1)
                         self.assertTrue(grown.contains(word), (box, word))
 
-    def test_number_inside_is_centred_and_white_on_a_filled_dot(self):
+    def test_number_inside_is_centred_in_the_text_color(self):
+        # (the text color chosen, filled or not: a filled dot's number was always white,
+        # whatever was chosen; Properties turns a black text color white when the number
+        # goes inside a filled dot, WhileNumbering)
         d, p = page()
-        m = dot(at=(200, 150), show="number", inside=True, n=5, size=16)
+        m = dot(at=(200, 150), show="number", inside=True, n=5, size=16, text_color="#ffffff")
         A.write(p, m)
         number, = word_boxes(p, "5")
         self.assertTrue(dots.box(m).contains((number.tl + number.br) / 2))
         lay, = dots.layout(p, m)
         self.assertEqual(lay[3], (1, 1, 1))
+        m = dot(at=(200, 150), show="number", inside=True, n=5, size=16, text_color="#ffd000")
+        lay, = dots.layout(p, m)
+        self.assertEqual([round(c, 2) for c in lay[3]], [1.0, 0.82, 0.0])
         m = dot(at=(200, 150), show="number", inside=True, n=5, size=16, filled=False)
         lay, = dots.layout(p, m)
         self.assertEqual(lay[3], (0, 0, 0))
@@ -392,6 +398,12 @@ class Clicking(unittest.TestCase):
         QTest.mouseClick(self.page, Qt.LeftButton, Qt.NoModifier, self.at(x, y))
         APP.processEvents()
 
+    def test_a_placed_dot_isnt_selected(self):
+        # (Properties keeps showing the tool's settings while you place dot after dot)
+        self.click(100, 100)
+        self.assertEqual(self.numbers(), [1])
+        self.assertEqual(self.v.selected_xrefs(), [])
+
     def test_a_click_places_a_dot_and_a_click_on_it_selects_it(self):
         self.click(100, 100)
         self.click(200, 100)
@@ -472,6 +484,68 @@ class Legend(unittest.TestCase):
         ring = L._style(dot(filled=False))
         self.assertNotEqual(full, ring)
         self.assertEqual(L.label_of(dot()), A.LABELS["dot"])
+
+
+
+class WhileNumbering(Clicking):
+    """A change in Properties while placing dots goes to the next dots: the dot just placed
+    isn't selected, so Properties shows the Dot tool's settings. The owner, 21 Nov 2026: "I
+    change to number inside the dot while numbering, and the next number reverts to the old
+    way"; "when doing filled in dots, the text color doesn't match what is selected"."""
+
+    def setUp(self):
+        old = A.tool_props("dot")
+        self.addCleanup(lambda: A.set_tool_props("dot", old))
+        A.set_tool_props("dot", dict(A.DEFAULTS["dot"], show="number", filled=True,
+                                     text_color="#000000", inside=False))
+        super().setUp()
+        mock.patch.stopall()                    # (the real tool settings, saved and read)
+
+    def props_of_dots(self):
+        page = self.v.doc[0]
+        return [A.read(a)["props"] for a in A.each_annot(page)]
+
+    def test_number_inside_goes_to_the_next_dots(self):
+        self.click(100, 100)
+        self.w.props.inside.setChecked(True)
+        APP.processEvents()
+        self.click(200, 100)
+        self.click(300, 100)
+        got = sorted((p["n"], p["inside"]) for p in self.props_of_dots())
+        self.assertEqual(got, [(1, False), (2, True), (3, True)])
+
+    def test_inside_a_filled_dot_black_turns_white_and_a_color_chosen_stays(self):
+        panel = self.w.props
+        panel.inside.setChecked(True)
+        APP.processEvents()
+        self.assertEqual(panel.text_color.color().lower(), "#ffffff")
+        panel.inside.setChecked(False)
+        panel.text_color.set_color("#ffd000")
+        panel._emit()
+        panel.inside.setChecked(True)
+        APP.processEvents()
+        self.assertEqual(panel.text_color.color().lower(), "#ffd000")
+        self.click(100, 100)
+        (p,) = self.props_of_dots()
+        self.assertTrue(p["inside"])
+        self.assertEqual(p["text_color"].lower(), "#ffd000")
+
+
+class InsideColor(unittest.TestCase):
+    """The number inside a filled dot is drawn in the text color chosen (it was always white
+    there)."""
+
+    def test_the_chosen_color(self):
+        d, p = page()
+        m = dot(at=(200, 150), show="number", n=7, inside=True, filled=True, size=30,
+                stroke="#ffffff", text_color="#0000ff")
+        placed = dots.layout(p, m)
+        self.assertEqual([c for _l, _a, _al, c in placed], [(0.0, 0.0, 1.0)])
+        A.write(p, m)
+        pix = p.get_pixmap(dpi=288, alpha=False, clip=pymupdf.Rect(190, 140, 210, 160))
+        blue = sum(1 for x in range(pix.width) for y in range(pix.height)
+                   if pix.pixel(x, y)[2] > 150 and pix.pixel(x, y)[0] < 100)
+        self.assertGreater(blue, 10)            # (blue strokes of the 7 on a white dot)
 
 
 if __name__ == "__main__":

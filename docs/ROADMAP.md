@@ -115,6 +115,9 @@ a decision changes or a piece of work lands. Details of each version are in
 - 1.15.14 (owner, 21 Nov: the old Windows test crash, "let's try to identify that bug and fix
   it"): the Scan window's worker threads only queue their answers (no Qt signal from a
   worker thread: one sent while the window was deleted crashed).
+- 1.15.15 (owner, 21 Nov): numbered dots: a dot just placed isn't selected (Properties keeps the
+  tool's settings, as for Count); the number inside a filled dot takes the text color chosen; Dot
+  is named Numbered dot, its tooltip pointing to Count for counting.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

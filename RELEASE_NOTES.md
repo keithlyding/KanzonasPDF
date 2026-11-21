@@ -9,6 +9,33 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.15
+
+**Fixed**
+- Numbered dots: a setting changed in Properties while you place dots (such as Number inside the dot) now goes to the next dots. Before, it changed only the dot just placed, and the next one went back to the old setting.
+- The number inside a filled dot is drawn in the text color you choose. Ticking Number inside the dot on a filled dot makes black text white, and you can pick any color.
+
+**Changed**
+- The Dot tool is now called Numbered dot, and its tooltip says each click places the next number. To count items by group with totals, use Count.
+
+## 1.15.15 (es)
+
+**Correcciones**
+- Puntos numerados: un ajuste cambiado en Propiedades mientras coloca puntos (como Número dentro del punto) ahora se aplica a los puntos siguientes. Antes solo cambiaba el punto recién colocado, y el siguiente volvía al ajuste anterior.
+- El número dentro de un punto relleno se dibuja en el color de texto que elija. Al marcar Número dentro del punto en un punto relleno, el texto negro pasa a blanco, y puede elegir cualquier color.
+
+**Cambios**
+- La herramienta Punto ahora se llama Punto numerado, y su descripción dice que cada clic coloca el número siguiente. Para contar elementos por grupo con totales, use Conteo.
+
+## 1.15.15 (it)
+
+**Correzioni**
+- Punti numerati: un'impostazione cambiata in Proprietà mentre metti i punti (come Numero dentro il punto) ora vale per i punti successivi. Prima cambiava solo il punto appena messo, e il successivo tornava all'impostazione precedente.
+- Il numero dentro un punto pieno è disegnato nel colore del testo che scegli. Spuntando Numero dentro il punto su un punto pieno, il testo nero diventa bianco, e puoi scegliere qualsiasi colore.
+
+**Modifiche**
+- Lo strumento Punto ora si chiama Punto numerato, e la sua descrizione dice che ogni clic mette il numero successivo. Per contare elementi per gruppo con i totali, usa Conteggio.
+
 ## 1.15.14
 
 **Fixed**

@@ -336,7 +336,7 @@ class PropertiesPanel(QWidget):
         self.dot_size.valueChanged.connect(self._emit)
         self.dot_show.currentIndexChanged.connect(self._emit)
         self.side.currentIndexChanged.connect(self._emit)
-        self.inside.toggled.connect(self._emit)
+        self.inside.toggled.connect(self._inside_toggled)
         self.number.valueChanged.connect(self._emit)
         self.group.activated.connect(self._emit)
         self.group.lineEdit().editingFinished.connect(self._emit)
@@ -641,6 +641,14 @@ class PropertiesPanel(QWidget):
         self.turn.setValue(0)
         self._loading = False
         self.objectsTurn.emit(value)
+
+    def _inside_toggled(self, on):
+        """The number put inside a filled dot reads white on it: a black text color (the
+        default) turns white, any other color chosen stays, and either can be changed."""
+        if on and not self._loading and self._kind == "dot" and self.filled.currentData() \
+                and self.text_color.color().lower() in ("#000000", "#000"):
+            self.text_color.set_color("#ffffff")
+        self._emit()
 
     def _emit(self, *_):
         if self._loading or self._kind is None:
