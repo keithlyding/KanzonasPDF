@@ -346,9 +346,18 @@ class Closing(unittest.TestCase):
     crashed the app with no message (the Windows build of 1.15.2, after these tests)."""
 
     def test_answers_after_the_window_is_gone(self):
+        import gc
         from PySide6.QtCore import QCoreApplication, QEvent
         from kanzonas import scan_dialog
         from kanzonas.main_window import MainWindow
+        # Python's garbage collector runs on whichever thread is making objects: with a
+        # hundred workers answering, it ran on one of them on the Mac build and freed an
+        # earlier test's windows there (Qt objects deleted off their own thread, a crash of
+        # its own). Collected here first and held off while the workers run, so this test
+        # checks only what it's for: answers coming after the window is gone.
+        gc.collect()
+        gc.disable()
+        self.addCleanup(gc.enable)
         w = MainWindow()
         self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
         w.settings.remove("scan_device")
@@ -368,8 +377,13 @@ class Closing(unittest.TestCase):
             APP.processEvents()
         for t in workers:
             t.join(5)
+        for t in threading.enumerate():     # (the windows' own searches, started with them)
+            if t.name.startswith("kanzonas-scan-"):
+                t.join(5)
         APP.processEvents()
         self.assertFalse(any(t.is_alive() for t in workers))
+        gc.enable()
+        gc.collect()
 
     def test_answers_are_read_on_the_windows_thread(self):
         """The worker only puts its answers in the window's queue; the window reads them on
