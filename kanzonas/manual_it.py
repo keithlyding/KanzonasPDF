@@ -1458,7 +1458,8 @@ numero successivo del nuovo gruppo), <b>Numero</b> (con Mantieni i numeri in ord
 suo gruppo salgono o scendono per fargli posto), Livello, colore e dimensione. Clic destro su un indicatore
 &gt; <b>Rinumera il gruppo</b> numera di nuovo il suo gruppo 1, 2, 3... senza buchi. Un indicatore di
 Conteggio copiato con Duplica (Ctrl+D) o con copia e incolla prende il numero successivo del suo
-gruppo.</li>
+gruppo. Un indicatore selezionato mostra un riquadro tratteggiato attorno a sé e al suo numero
+(trattini blu su bianco, così si vede anche su un indicatore blu).</li>
 <li><b>Quota</b> (Shift+D; scheda Misure, gruppo "Altro", il menu Misure e il pulsante Misure della scheda CAD),
 come la quota di Bluebeam e la quota allineata di AutoCAD: fai clic sui due
 punti da misurare, poi sposta il puntatore e fai clic dove va la linea di quota (nella

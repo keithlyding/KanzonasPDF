@@ -109,6 +109,9 @@ a decision changes or a piece of work lands. Details of each version are in
   shape moved on me"): a zoom while drawing keeps the points clicked so far on the page.
   And Shift while dragging a polygon's corner keeps both its sides straight ("to make them
   connect straight and at right angles").
+- 1.15.13 (@cloydcc-dev, issue #107, 21 Nov): a selected Count marker shows a box (its outline
+  was a box of no size under its dot). Shipped before the Scan window fix (then 1.15.14), by the
+  owner's rule: an outside issue's fix ships first.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
