@@ -112,6 +112,9 @@ a decision changes or a piece of work lands. Details of each version are in
 - 1.15.13 (@cloydcc-dev, issue #107, 21 Nov): a selected Count marker shows a box (its outline
   was a box of no size under its dot). Shipped before the Scan window fix (then 1.15.14), by the
   owner's rule: an outside issue's fix ships first.
+- 1.15.14 (owner, 21 Nov: the old Windows test crash, "let's try to identify that bug and fix
+  it"): the Scan window's worker threads only queue their answers (no Qt signal from a
+  worker thread: one sent while the window was deleted crashed).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
