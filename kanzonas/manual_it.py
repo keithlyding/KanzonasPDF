@@ -82,9 +82,12 @@ scheda, quel file viene sostituito e quella scheda si chiude (chiedendo prima se
 per Estrai pagine, Combina file e le copie salvate da Comprimi, Marca temporale e firma digitale,
 tranne che in questo caso l'altra scheda mostra il nuovo file. Annulla è Ctrl+Z, Ripeti è Ctrl+Y. Ciò che
 era selezionato resta selezionato dopo Annulla o Ripeti (a meno che il passo non lo tolga).
-Vengono conservati fino a 30 passaggi. Ogni passaggio conserva solo ciò che la modifica ha cambiato, quindi annullare e ripetere è rapido
-e tutti i 30 passaggi entrano anche in PDF molto grandi; la cronologia resta comunque entro un limite di memoria
-(256 MB per documento, 512 MB per tutti i documenti aperti insieme; i passaggi più vecchi vengono eliminati per primi).</li>
+Vengono conservati fino a 100 passaggi. Ogni passaggio conserva solo ciò che la modifica ha cambiato, quindi annullare e ripetere è rapido
+e tutti i 100 passaggi entrano anche in PDF molto grandi; la cronologia resta comunque entro un limite di memoria
+(256 MB per documento, 512 MB per tutti i documenti aperti insieme; i passaggi più vecchi vengono eliminati per primi).
+Se Annulla diventa grigio prima di tornare al punto di partenza, i passaggi precedenti sono oltre i
+100 conservati (o il limite di memoria) e non si possono annullare; il file com'era all'apertura
+resta sul disco finché non lo salvi sopra.</li>
 <li><b>Pannelli:</b> Pagine/Segnalibri/Livelli a sinistra (F4), Proprietà a destra (F6),
 Elenco annotazioni (F7), Cassetta degli attrezzi (F8), Segnalibri (F9), Vista divisa (F10). I pannelli che avevi aperti
 quando hai chiuso KanzonasPDF (con le loro dimensioni, i loro lati e quale tra Proprietà / Cassetta degli attrezzi era in

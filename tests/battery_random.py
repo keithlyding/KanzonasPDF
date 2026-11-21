@@ -42,7 +42,7 @@ A failure records the seed and step, and the run goes on (from the document as i
 failures. Writes OUT_FOLDER/battery_random.log (and the two documents of a byte-for-byte
 mismatch, or the two pictures of a page drawn differently) and exits 1 if anything failed.
 By default the history has no limit, so the end goes back to the opened file through every
-step; --undo-limit 30 keeps the app's own limit (UNDO_LIMIT); --copy runs with a copy per
+step; --undo-limit 100 keeps the app's own limit (UNDO_LIMIT); --copy runs with a copy per
 edit instead of the journal (as up to 1.6, and where the journal can't serve);
 --render-every N draws and compares the pages every N steps (1: after every step);
 --tagged opens the document tagged (Auto-tag's engine), so every step edits a tagged document

@@ -38,7 +38,7 @@ MIN_ZOOM, MAX_ZOOM = 0.1, 64.0     # 10% to 6400%, the same ceiling as Acrobat a
 # Qt refuses a widget larger than this on one side. A normal page still reaches 6400%;
 # an oversized sheet stops a little earlier so the window can still hold it.
 WIDGET_PX = 16_000_000
-UNDO_LIMIT = 30
+UNDO_LIMIT = 100          # (30 up to 1.15.15: the owner, 21 Nov 2026, "raise it to 100")
 # The undo history also has a memory budget: per document, and for all open documents
 # together (the oldest steps go first; the latest is always kept). What counts: MuPDF's
 # journal of the changes, and the whole-document copies kept where it can't serve
