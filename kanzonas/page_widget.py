@@ -346,6 +346,13 @@ def thumbnail(view, i, s):
         pm = RL.render(dl, s)
         if al is not None:
             pm = RL.draw_over(pm, al, s)
+    elif not view.line_weights:
+        from . import line_weights
+        RL.sync_transparency(page)
+        pm = RL.render(line_weights.thin(page.get_displaylist(annots=False)), s)
+        al = RL.annots_list(page)
+        if al is not None:
+            pm = RL.draw_over(pm, al, s)
     else:
         RL.sync_transparency(page)          # (as a page opened afresh: see there)
         pm = page.get_pixmap(matrix=pymupdf.Matrix(s, s), annots=True)
@@ -534,6 +541,9 @@ class PageWidget(QWidget):
             if self.index not in v._rc.keys:
                 v._rc.keys[self.index] = RL.content_key(page)
             dl = page.get_displaylist(annots=False)
+            if not v.line_weights:
+                from . import line_weights
+                dl = line_weights.thin(dl)      # (View > Show line weights off)
             v._dlists[self.index] = dl
         return dl
 
@@ -582,7 +592,7 @@ class PageWidget(QWidget):
         as a pymupdf.Pixmap: the one kept from before when there is one."""
         v = self.view
         check_content(v, self.index)
-        thin = v.thin_lines
+        thin = v.screen_look
         pm = v._rc.get(self.index, s, tile, thin)
         if pm is None:
             pics = self._pictures()
@@ -664,7 +674,7 @@ class PageWidget(QWidget):
         full = self._device_rect(dpr)
         tiles = self.view._tiles
         rc = self.view._rc
-        thin = self.view.thin_lines
+        thin = self.view.screen_look
         check_content(self.view, self.index)
         tx0, ty0, tx1, ty1 = tile_span(exposed, dpr)
         missing = []
@@ -740,7 +750,7 @@ class PageWidget(QWidget):
             try:
                 dl = self._display_list()
                 t = time.perf_counter()
-                with screen_lines(v.thin_lines):
+                with screen_lines(v.screen_look):
                     pm = RL.render(dl, s, clip)
                 took = time.perf_counter() - t
                 v._note_render_cost(self.index, took)
@@ -755,7 +765,7 @@ class PageWidget(QWidget):
                     yield d, None
                 continue
             for tx, ty, d in batch:
-                v._rc.put(self.index, s, (tx, ty), v.thin_lines,
+                v._rc.put(self.index, s, (tx, ty), v.screen_look,
                           pm if len(batch) == 1 else RL.cut(pm, d))
                 part = img if len(batch) == 1 else \
                     img.copy(d.x0 - pm.x, d.y0 - pm.y, d.width, d.height)
@@ -923,7 +933,7 @@ class PageWidget(QWidget):
         for ty in range(ty0, ty1 + 1):
             for tx in range(tx0, tx1 + 1):
                 if (self.index, s5, tx, ty) in v._tiles or (s5, tx, ty) in self._failed or \
-                        v._rc.get(self.index, s, (tx, ty), v.thin_lines) is not None:
+                        v._rc.get(self.index, s, (tx, ty), v.screen_look) is not None:
                     continue
                 dev = pymupdf.IRect(tx * TILE, ty * TILE, (tx + 1) * TILE, (ty + 1) * TILE) & full
                 if not dev.is_empty:
@@ -995,7 +1005,7 @@ class PageWidget(QWidget):
             if self._pix is None:
                 s = self.view.zoom * self.devicePixelRatioF()
                 check_content(self.view, self.index)
-                if self.view._rc.get(self.index, s, None, self.view.thin_lines) is None \
+                if self.view._rc.get(self.index, s, None, self.view.screen_look) is None \
                         and self._no_defer != round(s, 5) and self._defer(s):
                     self._paint_preview(p, [QRectF(exposed)], s)
                     self.view._render_later(self)

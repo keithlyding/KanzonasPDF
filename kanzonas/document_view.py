@@ -2180,6 +2180,14 @@ class DocumentView(QScrollArea):
     night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
     show_scale_bar = False      # View > Show scale bar: a graphic scale on pages with a scale
     thin_lines = True           # Enhance thin lines: lines at least a pixel wide on screen
+    line_weights = True         # View > Show line weights (off: every line thin, line_weights.py)
+
+    @property
+    def screen_look(self):
+        """What the content renders on screen depend on besides the page (part of their key):
+        Enhance thin lines, or "thin" with Show line weights off (every line thin, at least a
+        pixel wide)."""
+        return self.thin_lines if self.line_weights else "thin"
     untitled = False            # a new document never saved yet (File > New PDF)
     open_view = "width"         # zoom for newly opened files: width, page, actual, last
     reopen_page = True          # reopen files at the page they were left on
@@ -9383,6 +9391,36 @@ class DocumentView(QScrollArea):
         self._objects_edit(tr("Text color changed") if text is not None else
                            tr("Color changed"), shapes, text_fn=texts,
                            takes_text=text is not None)
+
+    def object_line_width(self):
+        """The line width (points on the page) of the selected shapes with an outline: one
+        number when they all have the same, "" when they differ, None when none has one."""
+        from . import page_objects
+        if self.obj_sel is None:
+            return None
+        index, items = self.obj_sel
+        objs = self._obj_cache.get(index)
+        found = objs.found if objs is not None else None
+        widths = set()
+        for it in items:
+            if it["kind"] == "shape" and it.get("stroke"):
+                d = found[it["n"]] if found and it["n"] < len(found) else it
+                widths.add(round(page_objects.page_width(d), 3))
+        if not widths:
+            return None
+        return widths.pop() if len(widths) == 1 else ""
+
+    def set_object_width(self, width):
+        """Properties > Line width on the page's own objects: the selected shapes' lines drawn
+        width points wide on the page, in one undo step; they stay selected."""
+        from . import page_objects
+        if self.obj_sel is None or width is None:
+            return
+        cache = self._obj_cache.get(self.obj_sel[0])
+        self._objects_edit(tr("Line width changed"),
+                           lambda page, ns: page_objects.recolor(page, ns, objs=cache,
+                                                                 width=float(width)),
+                           takes_text=False)
 
     def object_colors(self):
         """What the selected objects can have changed: {"stroke", "fill", "text"} (Line

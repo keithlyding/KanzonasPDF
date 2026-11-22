@@ -163,6 +163,12 @@ CAD usano linee molto sottili (un decimo di punto o meno); alla loro larghezza r
 una parte di un pixel dello schermo quando lo zoom è ridotto e appaiono grigio chiaro. Con questa opzione attiva restano scure e
 leggibili a qualsiasi zoom. Cambia solo lo schermo: stampa, esportazione, OCR, Confronta e file
 salvato usano le larghezze reali delle linee. La tua scelta viene ricordata.</li>
+<li><b>Mostra spessori di linea</b> (menu Visualizza, la freccia del gruppo Visualizzazione della scheda Visualizza, Preferenze &gt; Pagine e visualizzazione;
+attivo per impostazione predefinita): le linee vengono disegnate con lo spessore che dà loro il disegno. Disattivalo per disegnare
+ogni linea del disegno della pagina sottile, larga un pixel dello schermo, come fanno i programmi CAD con gli spessori di linea
+nascosti: un contorno spesso e una linea di quota sottile appaiono uguali, e le linee vicine restano separate quando
+lo zoom è ridotto. Le annotazioni mantengono la propria larghezza. Cambia solo lo schermo: stampa, esportazione, OCR,
+Confronta e file salvato usano le larghezze reali delle linee. La tua scelta viene ricordata.</li>
 <li><b>Annotazioni fuori dalla pagina:</b> metti annotazioni, immagini e disegni catturati ovunque nel grigio
 attorno a una pagina: accanto a un disegno, oppure altre tavole incollate a fianco per ricomporre un disegno diviso su
 più fogli (Cattura area, Shift+P, le mantiene nitide). Il grigio funziona come sempre; una pagina con annotazioni accanto
@@ -1254,6 +1260,12 @@ un'annotazione; -90 la ruota di un quarto in senso orario). Anche il pannello <b
 gruppo mostra la sua <b>Rotazione</b> (digita un angolo e ruota fino a quello); linee e forme, o più oggetti, non hanno un
 angolo proprio, quindi mostra <b>Ruota di</b> (digita i gradi e ruotano di tanto; la casella torna a 0). Il testo si sposta, non si ruota, quindi una selezione con del
 testo non ha la maniglia rotonda (anche Ruota della modalità CAD lascia il testo dov'è).</li>
+<li><b>Spessore linea</b> nel pannello <b>Proprietà</b>: con linee o forme con un contorno
+selezionate (Modifica oggetti, o la modalità CAD), mostra il loro spessore come è disegnato sulla pagina, in punti (vuoto
+se sono diversi). Digita uno spessore e vengono disegnate con quello spessore, in un solo passaggio che Annulla annulla; il
+resto della pagina resta com'era. È lo spessore sulla pagina, qualunque sia la scala a cui una linea è disegnata
+nel disegno. Per vedere ogni linea sottile per un po' senza cambiare il file, usa Visualizza &gt; Mostra
+spessori di linea.</li>
 <li>Canc (o Backspace) elimina la selezione. Fai clic con il tasto destro per Taglia, Copia, Incolla e Duplica,
 Separa (gruppi), Ruota in senso orario, Ruota
 in senso antiorario, Ruota di un angolo..., i comandi dell'ordine di sovrapposizione ed Elimina e, per una sola immagine, Copia immagine
@@ -2388,7 +2400,7 @@ documento).</li>
 La nota sotto Scorri di una pagina per ogni scatto della rotellina indica quando si applica: solo mentre l'intera pagina
 sta nella finestra, come dopo Adatta alla pagina.</li>
 <li><b>Pagine e visualizzazione:</b> Blocca l'ordine delle pagine, Mostra caselle dei commenti, Evidenzia campi modulo,
-Modalità notturna (linee bianche su nero), Migliora linee sottili, Mostra barra della scala, <b>Formato pagina del nuovo PDF</b> (il formato e
+Modalità notturna (linee bianche su nero), Migliora linee sottili, Mostra spessori di linea, Mostra barra della scala, <b>Formato pagina del nuovo PDF</b> (il formato e
 l'orientamento usati da File &gt; Nuovo PDF, oppure Chiedi ogni volta),
 e <b>Griglia e aggancio</b>, tutto in un unico punto: spaziatura e unità della griglia, l'intervallo della linea
 più scura, Mostra griglia, Aggancia alla griglia e Aggancia agli oggetti (le stesse impostazioni di Visualizza &gt; Impostazioni
