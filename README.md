@@ -161,7 +161,14 @@ before it's published, and every release lists the SHA-256 checksum of each down
 From 1.15.16 on, each file a release offers (the installer, the zips, the AppImage,
 the disk image and `SHA256SUMS.txt`) also has a build-provenance attestation: a signed record,
 kept by GitHub, that the file was built by this repository's own workflow from a given commit.
-With the [GitHub CLI](https://cli.github.com/) installed, check a downloaded file with:
+With the [GitHub CLI](https://cli.github.com/) installed, sign in once (it asks GitHub for the
+record, and any free GitHub account will do):
+
+```
+gh auth login
+```
+
+then check a downloaded file with:
 
 ```
 gh attestation verify <file> --owner keithlyding
