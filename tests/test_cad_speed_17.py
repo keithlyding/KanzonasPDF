@@ -219,6 +219,10 @@ class Reading(unittest.TestCase):
         self.assertEqual(len(ctms), 1)      # one matrix for the shapes drawn under it
 
     def test_the_collector_is_paused_while_reading_and_back_after(self):
+        # (with the automatic collector on, as before a window starts gc_main's collector)
+        collecting = gc.isenabled()
+        gc.enable()
+        self.addCleanup(lambda: None if collecting else gc.disable())
         d = pymupdf.open()
         pg = page_with(d, cad_content(500))
         seen = []

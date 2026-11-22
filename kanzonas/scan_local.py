@@ -150,24 +150,37 @@ def hresult(ex):
     return ""
 
 
+def _without_tracebacks(ex):
+    """ex with no traceback, nor any on the errors it was raised while handling: a traceback
+    keeps the frames it went through, and their WIA objects, alive."""
+    seen = set()
+    e = ex
+    while e is not None and id(e) not in seen:
+        seen.add(id(e))
+        e.__traceback__ = None
+        e = e.__cause__ or e.__context__
+    return ex
+
+
 def com_call(fn):
     """fn(comtypes) with COM set up in this thread; COM errors become ScanErrors. Every WIA
-    object is let go of (and an error's traceback with them) before COM is shut down."""
+    object is let go of (and an error's tracebacks with them) before COM is shut down: fn's
+    own variables go when it returns, and the tracebacks are dropped. (Not with gc.collect():
+    it runs on the main thread only, see gc_main.py. Here it freed closed windows too.)"""
     ct = _comtypes()
     ct.CoInitializeEx(ct.COINIT_APARTMENTTHREADED)
     result, err = None, None
     try:
         result = fn(ct)
     except ScanError as ex:
-        err = ex.with_traceback(None)
+        err = _without_tracebacks(ex)
     except Exception as ex:                 # COMError, or a WIA object missing a member
         code = hresult(ex)
         text = (getattr(ex, "text", None) or (ex.args[1] if len(ex.args) > 1 else "") or
                 str(ex))
+        _without_tracebacks(ex)
         err = ScanError(wia_message(code, text), "WIA %s: %s" % (code, text))
     finally:
-        import gc
-        gc.collect()
         ct.CoUninitialize()
     if err is not None:
         raise err

@@ -356,8 +356,9 @@ class Closing(unittest.TestCase):
         # its own). Collected here first and held off while the workers run, so this test
         # checks only what it's for: answers coming after the window is gone.
         gc.collect()
+        collecting = gc.isenabled()     # (off once a window has started gc_main's collector)
         gc.disable()
-        self.addCleanup(gc.enable)
+        self.addCleanup(lambda: collecting and gc.enable())
         w = MainWindow()
         self.addCleanup(lambda: (setattr(w, "_close_confirmed", True), w.close()))
         w.settings.remove("scan_device")
@@ -382,7 +383,8 @@ class Closing(unittest.TestCase):
                 t.join(5)
         APP.processEvents()
         self.assertFalse(any(t.is_alive() for t in workers))
-        gc.enable()
+        if collecting:
+            gc.enable()
         gc.collect()
 
     def test_answers_are_read_on_the_windows_thread(self):

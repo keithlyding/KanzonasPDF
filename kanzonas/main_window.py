@@ -554,6 +554,8 @@ class MainWindow(QMainWindow):
         closes the others). A window a tab was pulled out into is not: closing its last
         tab closes it."""
         super().__init__()
+        from . import gc_main
+        gc_main.install()           # (Python's collector runs on this thread only)
         self.setStatusBar(_StatusBar(self))
         from . import paths
         self.settings = paths.settings()

@@ -120,6 +120,9 @@ a decision changes or a piece of work lands. Details of each version are in
   is named Numbered dot, its tooltip pointing to Count for counting.
 - 1.15.16 (owner, 21 Nov: "raise it to 100"): undo keeps the last 100 steps (30 before); the
   manual says when Undo runs out, no message ("It's a normal thing for undo to run out").
+- 1.15.17 (owner, 22 Nov: "If we know about a bug, we need to fix it"): Python's garbage
+  collector runs only on the main thread (gc_main.py): a collection on a worker thread deleted
+  closed windows off their own thread (a crash).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
