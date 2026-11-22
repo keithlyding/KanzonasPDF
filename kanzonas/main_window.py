@@ -1264,6 +1264,15 @@ class MainWindow(QMainWindow):
         self.a_thin_lines.setCheckable(True)
         self.a_thin_lines.setChecked(self.settings.value("thin_lines", "true") == "true")
         DocumentView.thin_lines = self.a_thin_lines.isChecked()
+        self.a_line_weights = self._act(tr("Show line &weights"), self._toggle_line_weights,
+                                        tip=tr("Draw lines at the widths the drawing gives them. "
+                                               "Off, every line is drawn thin (one screen "
+                                               "pixel), as CAD programs do with line weights "
+                                               "hidden. Printing and export keep the true line "
+                                               "widths"))
+        self.a_line_weights.setCheckable(True)
+        self.a_line_weights.setChecked(self.settings.value("line_weights", "true") == "true")
+        DocumentView.line_weights = self.a_line_weights.isChecked()
         from . import autosave, measure
         measure.configure(self.settings)
         minutes = paths.stored_int(self.settings, "autosave_minutes", 5, 0, 60)
@@ -1491,6 +1500,7 @@ class MainWindow(QMainWindow):
         m.addAction(self.a_page_wheel)
         m.addAction(self.a_night)
         m.addAction(self.a_thin_lines)
+        m.addAction(self.a_line_weights)
         m.addAction(self.a_hl_fields)
         m.addAction(self.a_show_boxes)
         m.addAction(self.a_scale_bar)
@@ -6036,6 +6046,18 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(tr("Thin lines drawn at least a pixel wide") if on else
                                      tr("Lines drawn at their true width"), 3000)
 
+    def _toggle_line_weights(self):
+        on = self.a_line_weights.isChecked()
+        DocumentView.line_weights = on
+        self.settings.setValue("line_weights", "true" if on else "false")
+        for w in windows():
+            w.a_line_weights.setChecked(on)
+            for v in w._views_drawn():
+                v._dlists.clear()           # (made again, thin or as drawn)
+                v.redraw_pages()
+        self.statusBar().showMessage(tr("Lines drawn at their line weights") if on else
+                                     tr("Every line drawn thin (line weights hidden)"), 3000)
+
     def _toggle_night(self):
         on = self.a_night.isChecked()
         DocumentView.night_mode = on
@@ -6274,8 +6296,10 @@ class MainWindow(QMainWindow):
             (tr("Panels"), "small", [self.a_sidebar, self.a_props, self.a_markups, self.a_chest,
                                      self.a_split]),
             # (Free pan, a setting seldom changed, under the arrow: Rulers took its place)
+            # (Show line weights under the arrow: a fifth button starts a column of its own,
+            # and the Spanish and Italian View tabs would no longer fit a 1366-pixel screen)
             (tr("Display"), "small", [self.a_night, self.a_show_markups, self.a_hl_fields,
-                                      self.a_rulers], [self.a_free_pan]),
+                                      self.a_rulers], [self.a_free_pan, self.a_line_weights]),
             (tr("Grid & snap"), "small", snap, [self.a_grid_settings]),
             # (Collapse is also a double-click on a tab, or Ctrl+F1)
             (tr("Ribbon"), "small", [self.a_ribbon, self.a_menu_bar],

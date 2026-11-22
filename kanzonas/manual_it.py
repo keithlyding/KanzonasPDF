@@ -163,6 +163,12 @@ CAD usano linee molto sottili (un decimo di punto o meno); alla loro larghezza r
 una parte di un pixel dello schermo quando lo zoom è ridotto e appaiono grigio chiaro. Con questa opzione attiva restano scure e
 leggibili a qualsiasi zoom. Cambia solo lo schermo: stampa, esportazione, OCR, Confronta e file
 salvato usano le larghezze reali delle linee. La tua scelta viene ricordata.</li>
+<li><b>Mostra spessori di linea</b> (menu Visualizza, la freccia del gruppo Visualizzazione della scheda Visualizza, Preferenze &gt; Pagine e visualizzazione;
+attivo per impostazione predefinita): le linee vengono disegnate con lo spessore che dà loro il disegno. Disattivalo per disegnare
+ogni linea del disegno della pagina sottile, larga un pixel dello schermo, come fanno i programmi CAD con gli spessori di linea
+nascosti: un contorno spesso e una linea di quota sottile appaiono uguali, e le linee vicine restano separate quando
+lo zoom è ridotto. Le annotazioni mantengono la propria larghezza. Cambia solo lo schermo: stampa, esportazione, OCR,
+Confronta e file salvato usano le larghezze reali delle linee. La tua scelta viene ricordata.</li>
 <li><b>Annotazioni fuori dalla pagina:</b> metti annotazioni, immagini e disegni catturati ovunque nel grigio
 attorno a una pagina: accanto a un disegno, oppure altre tavole incollate a fianco per ricomporre un disegno diviso su
 più fogli (Cattura area, Shift+P, le mantiene nitide). Il grigio funziona come sempre; una pagina con annotazioni accanto
@@ -2388,7 +2394,7 @@ documento).</li>
 La nota sotto Scorri di una pagina per ogni scatto della rotellina indica quando si applica: solo mentre l'intera pagina
 sta nella finestra, come dopo Adatta alla pagina.</li>
 <li><b>Pagine e visualizzazione:</b> Blocca l'ordine delle pagine, Mostra caselle dei commenti, Evidenzia campi modulo,
-Modalità notturna (linee bianche su nero), Migliora linee sottili, Mostra barra della scala, <b>Formato pagina del nuovo PDF</b> (il formato e
+Modalità notturna (linee bianche su nero), Migliora linee sottili, Mostra spessori di linea, Mostra barra della scala, <b>Formato pagina del nuovo PDF</b> (il formato e
 l'orientamento usati da File &gt; Nuovo PDF, oppure Chiedi ogni volta),
 e <b>Griglia e aggancio</b>, tutto in un unico punto: spaziatura e unità della griglia, l'intervallo della linea
 più scura, Mostra griglia, Aggancia alla griglia e Aggancia agli oggetti (le stesse impostazioni di Visualizza &gt; Impostazioni

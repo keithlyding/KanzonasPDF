@@ -426,7 +426,9 @@ class ContentCache:
         ContentCache._all.add(self)
 
     def _key(self, i, s, tile, thin):
-        return (i, round(s, 5), tile, bool(thin))
+        # thin: Enhance thin lines (True / False), or "thin" with Show line weights off
+        # (DocumentView.screen_look): a render of one look is never shown for another
+        return (i, round(s, 5), tile, thin if isinstance(thin, str) else bool(thin))
 
     def get(self, i, s, tile, thin):
         k = self._key(i, s, tile, thin)

@@ -166,6 +166,12 @@ CAD usan líneas muy finas (una décima de punto o menos); con su ancho real cub
 parte de un píxel de pantalla al alejar y se ven de un gris pálido. Con esta opción activada siguen oscuras y
 legibles con cualquier zoom. Solo cambia la pantalla: la impresión, la exportación, el OCR, Comparar y el archivo
 guardado usan los anchos de línea reales. Su elección se recuerda.</li>
+<li><b>Mostrar grosores de línea</b> (menú Ver, la flecha del grupo Visualización de la pestaña Ver, Preferencias &gt; Páginas y visualización;
+activado de forma predeterminada): las líneas se dibujan con el grosor que les da el dibujo. Desactívelo para dibujar
+cada línea del dibujo de la página fina, de un píxel de pantalla, como hacen los programas de CAD con los grosores de línea
+ocultos: un contorno grueso y una línea de cota fina se ven iguales, y las líneas cercanas siguen separadas al
+alejar. Las marcas conservan su propio ancho. Solo cambia la pantalla: la impresión, la exportación, el OCR,
+Comparar y el archivo guardado usan los anchos de línea reales. Su elección se recuerda.</li>
 <li><b>Marcas fuera de la página:</b> ponga marcas, imágenes y planos capturados en cualquier lugar del gris
 alrededor de una página: junto a un plano, u otros planos pegados al lado para volver a juntar un plano repartido en
 varias hojas (Capturar área, Mayús+P, los mantiene nítidos). El gris funciona como siempre; una página con marcas junto a
@@ -2409,7 +2415,7 @@ documento).</li>
 La nota debajo de Desplazar una página por paso de la rueda indica cuándo se aplica: solo mientras la página entera cabe
 en la ventana, como después de Ajustar página.</li>
 <li><b>Páginas y visualización:</b> bloquear el orden de las páginas, Mostrar cuadros de comentario, Resaltar campos de formulario,
-Modo nocturno (líneas blancas sobre negro), Mejorar líneas finas, Mostrar barra de escala, <b>Tamaño de página del nuevo PDF</b> (el tamaño y la
+Modo nocturno (líneas blancas sobre negro), Mejorar líneas finas, Mostrar grosores de línea, Mostrar barra de escala, <b>Tamaño de página del nuevo PDF</b> (el tamaño y la
 orientación que usa Archivo &gt; Nuevo PDF, o Preguntar cada vez),
 y <b>Cuadrícula y ajuste</b>, todo en un solo lugar: el espaciado y las unidades de la cuadrícula, el intervalo de la línea
 más oscura, Mostrar cuadrícula, Ajustar a la cuadrícula y Ajustar a objetos (la misma configuración que Ver &gt; Configuración de

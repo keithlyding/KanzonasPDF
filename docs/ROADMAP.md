@@ -125,6 +125,9 @@ a decision changes or a piece of work lands. Details of each version are in
   closed windows off their own thread (a crash).
 - 1.15.18: only documents open in a tab count in the page list's thumbnail cap (1.15.17's
   build on main failed on it and wasn't published; its notes come with 1.15.18).
+- 1.15.19 (@cloydcc-dev, issue #120; the owner, 22 Nov: yes, on the View tab): View > Show
+  line weights; off, every line drawn thin on screen (line_weights.py). The owner replies on
+  #120 once it's out and asks whether he'd also like a line width for selected drawing lines.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

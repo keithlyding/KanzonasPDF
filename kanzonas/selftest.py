@@ -199,6 +199,13 @@ def run(log_path):
         return gc_main.selftest_check()
     check("garbage collection on the main thread", t_gc_main)
 
+    def t_line_weights():
+        # View > Show line weights off: the page's drawing played through line_weights' device
+        # (PyMuPDF's FzDevice2), every line thin, the rest as it was
+        from . import line_weights
+        return line_weights.selftest_check()
+    check("show line weights", t_line_weights)
+
     def t_undo_journal():
         # undo and redo go through MuPDF's journal (undo_journal.py), not a copy of the
         # document per edit: its patches on PyMuPDF and the search for MuPDF's tables of

@@ -341,7 +341,8 @@ class PreferencesDialog(QDialog):
         self.lock.setToolTip(win.lock_btn.toolTip())
         self.lock.setChecked(win.lock_btn.isChecked())
         form.addRow(self.lock)
-        for a in (win.a_cards, win.a_hl_fields, win.a_night, win.a_thin_lines, win.a_scale_bar):
+        for a in (win.a_cards, win.a_hl_fields, win.a_night, win.a_thin_lines, win.a_line_weights,
+                  win.a_scale_bar):
             self._box(form, a)
         # File > New PDF: the page size, or ask each time
         from . import new_pdf

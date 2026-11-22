@@ -2180,6 +2180,14 @@ class DocumentView(QScrollArea):
     night_mode = False          # pages drawn with their lightness inverted (CAD night mode)
     show_scale_bar = False      # View > Show scale bar: a graphic scale on pages with a scale
     thin_lines = True           # Enhance thin lines: lines at least a pixel wide on screen
+    line_weights = True         # View > Show line weights (off: every line thin, line_weights.py)
+
+    @property
+    def screen_look(self):
+        """What the content renders on screen depend on besides the page (part of their key):
+        Enhance thin lines, or "thin" with Show line weights off (every line thin, at least a
+        pixel wide)."""
+        return self.thin_lines if self.line_weights else "thin"
     untitled = False            # a new document never saved yet (File > New PDF)
     open_view = "width"         # zoom for newly opened files: width, page, actual, last
     reopen_page = True          # reopen files at the page they were left on

@@ -11640,3 +11640,19 @@ msgstr "Pestaña nueva"
 #: main_window
 msgid "A new tab"
 msgstr "Una pestaña nueva"
+
+#: main_window
+msgid "Show line &weights"
+msgstr "Mostrar &grosores de línea"
+
+#: main_window
+msgid "Draw lines at the widths the drawing gives them. Off, every line is drawn thin (one screen pixel), as CAD programs do with line weights hidden. Printing and export keep the true line widths"
+msgstr "Dibujar las líneas con el grosor que les da el dibujo. Desactivado, cada línea se dibuja fina (un píxel de pantalla), como hacen los programas de CAD con los grosores de línea ocultos. La impresión y la exportación conservan el ancho real de las líneas"
+
+#: main_window
+msgid "Lines drawn at their line weights"
+msgstr "Líneas dibujadas con sus grosores de línea"
+
+#: main_window
+msgid "Every line drawn thin (line weights hidden)"
+msgstr "Cada línea dibujada fina (grosores de línea ocultos)"
