@@ -735,6 +735,19 @@ class Thumbnails(unittest.TestCase):
         APP.processEvents()
         self.assertEqual(len(v.thumb_icons), 0)
 
+    def test_a_view_in_no_tab_takes_no_share_of_the_cap(self):
+        # (one an earlier test left open, waiting for the collector, had the thumbnails of
+        # the documents still open let go: the Linux build of 1.15.17)
+        from kanzonas.document_view import DocumentView
+        path = os.path.join(self.tmp.name, "left.pdf")
+        numbered_pdf(path, 2)
+        left = DocumentView(path)
+        self.addCleanup(left.close_doc)
+        from collections import OrderedDict
+        left.thumb_icons = OrderedDict((i, None) for i in range(self.w.THUMB_KEEP_ALL + 100))
+        self.test_kept_across_tabs_and_redrawn_only_where_changed()
+        self.assertEqual(len(left.thumb_icons), self.w.THUMB_KEEP_ALL + 100)
+
     def test_kept_across_tabs_and_redrawn_only_where_changed(self):
         v = self.open("a.pdf", 40)
         first = {r: self.icon_key(r) for r in self.w._thumb_rows()}

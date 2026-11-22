@@ -137,7 +137,10 @@ class Prepared(unittest.TestCase):
                                         if it["kind"] == "shape"):
                 break
         objs = v._obj_cache.get(0)
-        self.assertIsNotNone(objs)
+        t = getattr(v, "_prep_timer", None)
+        self.assertIsNotNone(objs, "read: %s, reading: %s, timer on: %s, page %s of %s" % (
+            0 in v._obj_cache, getattr(v, "_prep_read", None) is not None,
+            t is not None and t.isActive(), v.current_page(), len(v.pages or ())))
         self.assertTrue(all("lines" in it for it in objs.items if it["kind"] == "shape"))
 
 
