@@ -1064,6 +1064,14 @@ predeterminado de su herramienta, para las próximas que haga con ella (como Set
 sobre él. Las imágenes, también las capturas pegadas de Capturar área, admiten una opacidad.</li>
 <li>Color de línea, relleno (o <b>Sin relleno</b>), <b>Sin borde</b> para cuadros y formas, color del texto,
 grosor de línea, tamaño de fuente, puntas de flecha, borde de nube, opacidad.</li>
+<li>Líneas (Línea, Flecha, Polilínea, Arco, Curva): <b>Punta de flecha inicial</b> y <b>Punta de flecha final</b>,
+cada una de su propio tipo (abierta, cerrada, invertida, círculo, cuadrado, rombo, barra o ninguna), para que una línea
+pueda apuntar en ambos sentidos; <b>Flecha central</b> (abierta o cerrada), a mitad de la línea, en el sentido en que se dibujó;
+y <b>Estilo de línea</b>: continua, discontinua, punteada o raya y punto, con rayas tan largas como ancha es la línea.
+Cuando un extremo es cerrado (relleno), un círculo, cuadrado o rombo en el otro extremo también se rellena: una línea PDF
+tiene un solo color de relleno para sus extremos. La flecha central se dibuja en la propia marca, porque PDF no tiene punta
+de flecha central: KanzonasPDF la conserva, pero otro programa que vuelva a dibujar la marca a partir de sus ajustes muestra
+la línea sin ella.</li>
 <li><b>Restablecer valores predeterminados</b> devuelve una herramienta a su estilo original.</li>
 <li><b>Caja de herramientas</b> (F8, o la pestaña Ver): sus estilos de marca favoritos, a un clic de distancia. F8
 o el botón lo abre y, cuando está visible, lo vuelve a cerrar (si está detrás de la pestaña
@@ -1269,6 +1277,12 @@ si son distintos). Escriba un grosor y se dibujan con ese grosor, en un solo pas
 resto de la página queda como estaba. Es el grosor en la página, sea cual sea la escala a la que se dibuja una línea
 en el dibujo. Para ver cada línea fina un rato sin cambiar el archivo, use Ver &gt; Mostrar
 grosores de línea.</li>
+<li>Junto a él, para la misma selección: <b>Color de línea</b> (líneas y contornos) y <b>Color de relleno</b>
+(formas rellenas), tal como los tiene el dibujo; <b>Estilo de línea</b> (continua, discontinua, punteada, raya y punto);
+y, para las líneas (rectas, polilíneas y curvas, no formas cerradas), <b>Punta de flecha inicial</b>, <b>Punta de flecha
+final</b> y <b>Flecha central</b>: ninguna, abierta o cerrada (un triángulo de contorno). Las puntas de flecha pasan a
+formar parte de la línea: se mueven, giran y cambian de color con ella, y tienen su mismo grosor. Cada cambio es un paso
+que Deshacer revierte; elegir ninguna las quita de nuevo. En una línea discontinua o punteada se dibujan continuas.</li>
 <li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
 Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
 en sentido contrario a las agujas del reloj, Girar un ángulo..., los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen

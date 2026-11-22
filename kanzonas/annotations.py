@@ -94,10 +94,13 @@ DEFAULTS = {
     # a named area of a sheet (spaces.py, 1.12): a polygon, see-through, its name its text
     "space": {"stroke": "#1f6fd0", "fill": "#1f6fd0", "width": 1.5, "cloud": False,
               "opacity": 0.2, "space": True},
-    "polyline": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
-    "arc": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
+    "polyline": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "head_start": "none",
+                 "head": "none", "mid": "none", "dash": "solid"},
+    "arc": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "head_start": "none",
+            "head": "none", "mid": "none", "dash": "solid"},
     # the Curve tool draws a bent line (kind "line" with a "bend" point): its own style
-    "curve": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "rotation": 0},
+    "curve": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "rotation": 0,
+              "head_start": "none", "head": "none", "mid": "none", "dash": "solid"},
     # a cloud with part of it trimmed away (clouds.py): drawn along an open polyline
     "opencloud": {"stroke": "#d00000", "width": 1.5, "opacity": 1.0},
     "callout": {"text_color": "#000000", "stroke": "#d00000", "fill": "#ffffd0", "width": 1.0,
@@ -122,8 +125,10 @@ DEFAULTS = {
             "n": 1, "opacity": 1.0},
     # the stamp word is printed on the page: in the user's language (a placed stamp keeps its own)
     "stamp": {"label": tr("APPROVED"), "stroke": "#c00000", "name": True, "date": True, "opacity": 1.0},
-    "line": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
-    "arrow": {"stroke": "#d00000", "width": 2.0, "head": "open", "opacity": 1.0},
+    "line": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0, "head_start": "none",
+             "head": "none", "mid": "none", "dash": "solid"},
+    "arrow": {"stroke": "#d00000", "width": 2.0, "head": "open", "opacity": 1.0,
+              "head_start": "none", "mid": "none", "dash": "solid"},
     "ink": {"stroke": "#0050ff", "width": 2.0, "opacity": 1.0},
     "image": {"opacity": 1.0},
     "redact": {},
@@ -167,11 +172,19 @@ PAGE_TEXT_TOOLS = {
 
 # printed in the sign-here box (made from the placeholder's kind, never read back)
 PLACEHOLDER_TEXT = {"signature": tr("SIGN HERE"), "initials": tr("INITIAL HERE")}
-HEADS = {"open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE_CLOSED_ARROW,
+HEADS = {"none": pymupdf.PDF_ANNOT_LE_NONE,
+         "open": pymupdf.PDF_ANNOT_LE_OPEN_ARROW, "closed": pymupdf.PDF_ANNOT_LE_CLOSED_ARROW,
          "open (reversed)": pymupdf.PDF_ANNOT_LE_R_OPEN_ARROW,
          "closed (reversed)": pymupdf.PDF_ANNOT_LE_R_CLOSED_ARROW,
          "circle": pymupdf.PDF_ANNOT_LE_CIRCLE, "square": pymupdf.PDF_ANNOT_LE_SQUARE,
          "diamond": pymupdf.PDF_ANNOT_LE_DIAMOND, "bar": pymupdf.PDF_ANNOT_LE_BUTT}
+# a line's ends and middle (Properties > Start / End arrowhead, Middle arrow, Line style):
+# the kinds drawn as an open line, the ends that are filled, the middle arrows, and the
+# dash patterns (in line widths: a dash 3 widths long, a gap of 2)
+LINE_KINDS = ("line", "arrow", "polyline", "arc", "curve")
+FILLED_HEADS = ("closed", "closed (reversed)")
+MIDS = ("none", "open", "closed")
+DASHES = {"solid": None, "dash": (3, 2), "dot": (1, 1.5), "dashdot": (3, 1.5, 1, 1.5)}
 MARKUP = ("highlight", "comment", "underline", "strikeout", "squiggly")
 COMMENT_STYLES = ["highlight", "underline", "strikeout", "squiggly"]   # how a comment marks text      # tied to text: not movable
 BOXED = ("rect", "ellipse", "textbox", "field", "callout", "stamp", "image", "attach", "redact",
@@ -358,6 +371,15 @@ def read(annot):
         props["width"] = annot.border["width"]
     if annot.opacity is not None and 0 <= annot.opacity < 1:
         props["opacity"] = annot.opacity
+    if kind in LINE_KINDS and "head" not in stored.get("props", {}):
+        # (a line from another program, or from before 1.15.21: its ends and dash as they are)
+        names = {v: k for k, v in HEADS.items()}
+        ends = annot.line_ends or ()
+        if len(ends) == 2:
+            props["head_start"] = names.get(ends[0], "none")
+            props["head"] = names.get(ends[1], props.get("head", "none"))
+        if annot.border and annot.border.get("dashes"):
+            props["dash"] = "dash"
     props.update({k: v for k, v in stored.get("props", {}).items() if k in props})
     if "fit" in props and "fit" not in stored.get("props", {}):
         props["fit"] = False            # (made before 1.12.2 or elsewhere: keeps its box)
@@ -478,6 +500,109 @@ def _recolor_textbox_border(doc, annot, stroke_rgb):
         pass  # (an appearance we didn't write: its border keeps the text color)
 
 
+def _ends(kind, p):
+    """(start, end) PDF line endings of a line kind's markup, by its head_start and head."""
+    default = "open" if kind == "arrow" else "none"
+    return (HEADS.get(p.get("head_start") or "none", HEADS["none"]),
+            HEADS.get(p.get("head") or default, HEADS[default]))
+
+
+def _filled_ends(p):
+    return p.get("head") in FILLED_HEADS or p.get("head_start") in FILLED_HEADS
+
+
+def dashes(p, width):
+    """The dash pattern (a list of lengths) of Line style p["dash"] for a line width wide,
+    or None for a solid line."""
+    pattern = DASHES.get(p.get("dash") or "solid")
+    if not pattern:
+        return None
+    w = max(1.0, float(width))
+    return [max(1, round(k * w)) for k in pattern]
+
+
+def _along(points):
+    """The point halfway along a path of points, and the direction there (a unit vector)."""
+    segs = [(a, b, abs(b - a)) for a, b in zip(points, points[1:]) if abs(b - a) > 1e-9]
+    if not segs:
+        return None, None
+    half = sum(n for _a, _b, n in segs) / 2
+    for a, b, n in segs:
+        if half <= n or (a, b, n) == segs[-1]:
+            t = min(1.0, half / n)
+            return a + (b - a) * t, (b - a) / n
+        half -= n
+    return None, None
+
+
+def mid_arrow(points, width, style):
+    """A middle arrow's points (page coordinates) for a line through points, pointing the
+    way it's drawn: [back left, tip, back right]. Its length grows with the line's width."""
+    mid, u = _along([pymupdf.Point(q) for q in points])
+    if mid is None:
+        return None
+    length = max(6.0, 3.0 * float(width) + 3.0)
+    n = pymupdf.Point(-u.y, u.x)
+    tip, back = mid + u * (length / 2), mid - u * (length / 2)
+    return [back + n * (length * 0.45), tip, back - n * (length * 0.45)]
+
+
+def _solid_ends(doc, annot):
+    """A dashed PolyLine's ends drawn solid, as MuPDF draws a dashed Line's: its appearance
+    keeps the dash for the arrowheads after the line (they came out dashed and blotchy)."""
+    kind, val = doc.xref_get_key(annot.xref, "AP/N")
+    if kind != "xref":
+        return
+    ap = int(val.split()[0])
+    data = doc.xref_stream(ap) or b""
+    k = data.find(b"\nS\n")
+    if k >= 0:
+        doc.update_stream(ap, data[:k + 3] + b"[] 0 d\n" + data[k + 3:])
+
+
+def _draw_mid_arrow(page, annot, p, stroke, width):
+    """Properties > Middle arrow: an arrow halfway along the line, drawn into its appearance
+    (PDF line endings are at the ends only). Its box and the appearance's box grow alike, so
+    the drawing isn't scaled. KanzonasPDF writes it again with each change; another program
+    that draws the markup anew from its settings leaves it out."""
+    doc = page.parent
+    pts = [pymupdf.Point(q) for q in (annot.vertices or [])]
+    wing = mid_arrow(pts, width, p.get("mid"))
+    if wing is None:
+        return
+    kind, val = doc.xref_get_key(annot.xref, "AP/N")
+    if kind != "xref":
+        return
+    ap = int(val.split()[0])
+    m = pdfcoords.to_pdf(page)
+    q = [w * m for w in wing]
+    rgb = stroke or (0, 0, 0)
+    fill = p.get("mid") == "closed"
+    path = b"[] 0 d %s RG %s%.3f %.3f m %.3f %.3f l %.3f %.3f l %s" % (
+        b"%.4g %.4g %.4g" % tuple(rgb),
+        (b"%.4g %.4g %.4g rg " % tuple(rgb)) if fill else b"",
+        q[0].x, q[0].y, q[1].x, q[1].y, q[2].x, q[2].y, b"b" if fill else b"S")
+    data = doc.xref_stream(ap) or b""
+    end = data.rstrip().rfind(b"Q")
+    data = (data[:end] + path + b"\n" + data[end:]) if end >= 0 else data + b"\n" + path
+    doc.update_stream(ap, data)
+    # (the box: as much bigger as the arrow and its line width need, in both)
+    pad = float(width) / 2 + 1
+    grown = pymupdf.Rect(q[0], q[0])
+    for w in q[1:]:
+        grown |= w
+    grown = grown + (-pad, -pad, pad, pad)
+    for key in ("BBox",):
+        k, v = doc.xref_get_key(ap, key)
+        if k == "array":
+            box = pymupdf.Rect([float(t) for t in v.strip("[]").split()]) | grown
+            doc.xref_set_key(ap, key, "[%g %g %g %g]" % tuple(box))
+    k, v = doc.xref_get_key(annot.xref, "Rect")
+    if k == "array":
+        box = pymupdf.Rect([float(t) for t in v.strip("[]").split()]) | grown
+        doc.xref_set_key(annot.xref, "Rect", "[%g %g %g %g]" % tuple(box))
+
+
 def write(page, model):
     """Model -> new annotation on page. Returns the annotation."""
     kind, p = model["kind"], model["props"]
@@ -509,8 +634,9 @@ def write(page, model):
         a = page.add_polyline_annot([(q.x, q.y) for q in curves.path(model)])
     elif kind in ("line", "arrow"):
         a = page.add_line_annot(*model["points"][:2])
-        if kind == "arrow":
-            a.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, HEADS.get(p.get("head"), HEADS["open"]))
+        start, end = _ends(kind, p)
+        if start or end:
+            a.set_line_ends(start, end)
     elif kind == "ink":
         a = page.add_ink_annot([[(q.x, q.y) for q in s] for s in model["strokes"]])
     elif kind in ("polygon",) + CLOSED_MEASURES:
@@ -617,7 +743,7 @@ def write(page, model):
             a.set_colors(stroke=stroke, fill=stroke)
         elif kind == "dot":
             a.set_colors(stroke=stroke, fill=stroke if p.get("filled", True) else None)
-        elif kind == "arrow" and "closed" in (p.get("head") or ""):
+        elif kind in LINE_KINDS and _filled_ends(p):
             a.set_colors(stroke=stroke, fill=stroke)
         elif kind == "m_dim":
             a.set_colors(stroke=stroke,
@@ -626,6 +752,8 @@ def write(page, model):
             a.set_colors(stroke=stroke)
         if kind in ("rect", "ellipse", "polygon") and p.get("cloud"):
             a.set_border(width=width, clouds=2)
+        elif kind in LINE_KINDS and dashes(p, width):
+            a.set_border(width=width, dashes=dashes(p, width))
         elif kind in ("rect", "ellipse", "line", "arrow", "ink", "polygon", "polyline", "arc",
                       "opencloud", "m_length", "m_poly", "m_angle", "m_radius", "m_dim",
                       "dot") + CLOSED_MEASURES:
@@ -677,11 +805,18 @@ def write(page, model):
         a.set_popup(_popup_rect(page, anchor))
         a.set_open(False)
     a.update()
-    if kind == "arrow" and model.get("bend") is not None:
-        # a bent arrow's head: set after update (PyMuPDF's update adds a second, smaller head
-        # of its own to a PolyLine) and drawn by MuPDF, as a straight arrow's is
-        a.set_line_ends(pymupdf.PDF_ANNOT_LE_NONE, HEADS.get(p.get("head"), HEADS["open"]))
-        pymupdf.mupdf.pdf_update_annot(a.this)
+    if kind in LINE_KINDS and (kind in ("polyline", "arc") or model.get("bend") is not None):
+        # a bent line's or a polyline's ends: set after update (PyMuPDF's update adds a
+        # second, smaller head of its own to a PolyLine) and drawn by MuPDF, as a straight
+        # line's are
+        start, end = _ends(kind, p)
+        if start or end:
+            a.set_line_ends(start, end)
+            pymupdf.mupdf.pdf_update_annot(a.this)
+            if dashes(p, width):
+                _solid_ends(page.parent, a)
+    if kind in LINE_KINDS and p.get("mid") in ("open", "closed"):
+        _draw_mid_arrow(page, a, p, stroke, width)
 
     doc = page.parent
     if kind in ("textbox", "callout") and width > 0 and stroke:

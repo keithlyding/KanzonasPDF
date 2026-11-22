@@ -9,6 +9,24 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.21
+
+**New**
+- Lines you draw (Line, Arrow, Polyline, Arc, Curve): in Properties, an arrowhead at the start and at the end, each of its own kind, so a line can point both ways; a middle arrow; and a line style: solid, dashed, dotted or dash-dot.
+- The drawing's own lines (Edit objects, CAD mode): Line color, Fill color, Line style and arrowheads at the start, end and middle, in Properties next to Line width. The arrowheads become part of the line and move with it.
+
+## 1.15.21 (es)
+
+**Novedades**
+- Las líneas que dibuja (Línea, Flecha, Polilínea, Arco, Curva): en Propiedades, una punta de flecha al inicio y otra al final, cada una de su propio tipo, para que una línea pueda apuntar en ambos sentidos; una flecha central; y un estilo de línea: continua, discontinua, punteada o raya y punto.
+- Las líneas propias del dibujo (Editar objetos, modo CAD): Color de línea, Color de relleno, Estilo de línea y puntas de flecha al inicio, al final y en el centro, en Propiedades junto a Grosor de línea. Las puntas de flecha pasan a formar parte de la línea y se mueven con ella.
+
+## 1.15.21 (it)
+
+**Novità**
+- Le linee che disegni (Linea, Freccia, Polilinea, Arco, Curva): nelle Proprietà, una punta di freccia all'inizio e una alla fine, ciascuna del proprio tipo, così una linea può puntare in entrambi i sensi; una freccia centrale; e uno stile linea: continua, tratteggiata, punteggiata o tratto-punto.
+- Le linee del disegno stesso (Modifica oggetti, modalità CAD): Colore linea, Colore riempimento, Stile linea e punte di freccia all'inizio, alla fine e al centro, nelle Proprietà accanto a Spessore linea. Le punte di freccia diventano parte della linea e si spostano con essa.
+
 ## 1.15.20
 
 **Fixed**

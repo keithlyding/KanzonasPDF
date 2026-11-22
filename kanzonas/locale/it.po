@@ -11724,3 +11724,43 @@ msgstr "Ogni linea disegnata sottile (spessori di linea nascosti)"
 #: document_view
 msgid "Line width changed"
 msgstr "Spessore linea cambiato"
+
+#: properties
+msgid "Start arrowhead"
+msgstr "Punta di freccia iniziale"
+
+#: properties
+msgid "End arrowhead"
+msgstr "Punta di freccia finale"
+
+#: properties
+msgid "Middle arrow"
+msgstr "Freccia centrale"
+
+#: properties
+msgid "Line style"
+msgstr "Stile linea"
+
+#: properties
+msgid "solid"
+msgstr "continua"
+
+#: properties
+msgid "dashed"
+msgstr "tratteggiata"
+
+#: properties
+msgid "dotted"
+msgstr "punteggiata"
+
+#: properties
+msgid "dash-dot"
+msgstr "tratto-punto"
+
+#: properties
+msgid "Arrowheads changed"
+msgstr "Punte di freccia cambiate"
+
+#: properties
+msgid "Line style changed"
+msgstr "Stile linea cambiato"

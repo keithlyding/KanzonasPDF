@@ -2199,10 +2199,17 @@ _STROKE_SET = _STROKE | {b"CS"}
 
 
 # the colors recolor() wrote: a  q , a line of  r g b RG / rg , then the shape
-# the  q <settings>  a shape was given by recolor (its colors, its line width), searched for
-# ending where the shape starts (\Z: at the end of the search, so an earlier  q  and settings
-# don't stop it there)
-_OWN_COLOR = re.compile(rb"\nq\n((?:(?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg)|-?[\d.]+ w) ?)+)\n\Z")
+# the  q <settings>  a shape was given by recolor (its colors, line width, dash; and, after
+# them, the arrowheads it was given: /KZHeads ... DP, a marked-content point that draws
+# nothing), searched for ending where the shape starts (\Z: at the end of the search, so an
+# earlier  q  and settings don't stop it there; a move's  q ... cm  may come in between)
+_OWN_COLOR = re.compile(
+    rb"\nq\n((?:(?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg)|-?[\d.]+ w|\[[-\d. ]*\] -?[\d.]+ d) ?)*)"
+    rb"\n(/KZHeads <<[^<>]*>> DP\n)?((?:\nq (?:-?[\d.]+ ){6}cm\n)*)\Z")
+_HEADS_MARK = re.compile(rb"/KZHeads <</S/(\w+)/E/(\w+)/M/(\w+)/N (\d+)>> DP")
+HEAD_KINDS = ("none", "open", "closed")      # a drawing line's arrowheads (closed: outlined)
+# a Line style's dash pattern, in line widths (as annotations.DASHES)
+DASHES = {"solid": None, "dash": (3, 2), "dot": (1, 1.5), "dashdot": (3, 1.5, 1, 1.5)}
 
 
 def _rgb_op(rgb, op):
@@ -2221,19 +2228,210 @@ def page_width(d):
     return d.get("width", 1.0) * width_scale(d)
 
 
-def recolor(page, ns, stroke=None, fill=None, objs=None, width=None):
+def _own(data, d):
+    """The match of the  q <settings>  recolor gave shape d, or None."""
+    s, e = d["start"], d["end"]
+    m = _OWN_COLOR.search(data, max(0, s - 400), s)
+    if m and m.end() == s and data[e:e + 3] == b"\nQ\n":
+        return m
+    return None
+
+
+def heads_of(data, d):
+    """The arrowheads a drawing line was given (Properties > Start / End arrowhead, Middle
+    arrow): (start, end, middle, how many subpaths they added), or None when it has none."""
+    m = _own(data, d)
+    h = _HEADS_MARK.search(m.group(2) or b"") if m else None
+    if not h:
+        return None
+    return tuple(x.decode() for x in h.groups()[:3]) + (int(h.group(4)),)
+
+
+def _color_hex(op, args):
+    """A color operator's color as #rrggbb (gray, RGB or CMYK), or None (a pattern, a name)."""
+    try:
+        v = [float(a) for a in args]
+    except (TypeError, ValueError):
+        return None
+    if len(v) == 1:
+        v = v * 3
+    elif len(v) == 4:
+        c, mg, y, k = v
+        v = [(1 - c) * (1 - k), (1 - mg) * (1 - k), (1 - y) * (1 - k)]
+    elif len(v) != 3:
+        return None
+    return "#%02x%02x%02x" % tuple(round(max(0.0, min(1.0, x)) * 255) for x in v)
+
+
+def style_of(d):
+    """What a shape is drawn with, from the settings in effect for it: its line color and
+    fill color (#rrggbb, or None) and its Line style (a key of DASHES)."""
+    stroke = fill = None
+    dash = "solid"
+    for op, args, _s, _e in _tokens(d.get("state") or b""):
+        if op in (b"RG", b"G", b"K", b"SC", b"SCN"):
+            stroke = _color_hex(op, args)
+        elif op in (b"rg", b"g", b"k", b"sc", b"scn"):
+            fill = _color_hex(op, args)
+        elif op == b"d":
+            dash = _dash_key(args, d.get("width") or 1.0)
+    if stroke is None and d.get("stroke"):
+        stroke = "#000000"              # (the default: black)
+    if fill is None and d.get("fill"):
+        fill = "#000000"
+    return {"stroke": stroke if d.get("stroke") else None,
+            "fill": fill if d.get("fill") else None, "dash": dash}
+
+
+def _dash_key(args, width):
+    """The Line style a dash array is closest to (a  [a b] p d  operator's operands)."""
+    try:
+        arr = [float(t) for t in b" ".join(a for a in args[:-1] if a).strip(b"[]").split()]
+    except (TypeError, ValueError):
+        return "dash"
+    if not arr or not any(arr):
+        return "solid"
+    w = max(float(width), 1e-6)
+    ratios = [x / w for x in arr]
+    best = min(((k, pat) for k, pat in DASHES.items() if pat),
+               key=lambda kp: sum(abs(a - b) for a, b in zip(ratios, kp[1])) +
+               3 * abs(len(ratios) - len(kp[1])))
+    return best[0]
+
+
+def _dash_op(key, width_user):
+    pattern = DASHES.get(key)
+    if not pattern:
+        return b"[] 0 d"
+    w = max(float(width_user), 1e-6)
+    return b"[" + b" ".join(b"%.3f" % (k * w) for k in pattern) + b"] 0 d"
+
+
+def _first_dash(state, dash_op=None):
+    """The first dash's length (shape units) of the dash in effect: dash_op (a new  d
+    operator) or the last in state; None for a solid line."""
+    ops = [(op, args) for op, args, _s, _e in _tokens(state or b"") if op == b"d"]
+    if dash_op is not None:
+        ops = [(op, args) for op, args, _s, _e in _tokens(dash_op) if op == b"d"]
+    if not ops:
+        return None
+    try:
+        arr = [float(t) for t in b" ".join(a for a in ops[-1][1][:-1] if a)
+               .strip(b"[]").split()]
+    except (TypeError, ValueError):
+        return None
+    return arr[0] if arr and arr[0] > 0 else None
+
+
+def can_have_heads(body, added=0):
+    """Whether a shape's path and paint (body) is an open line arrowheads can go on: stroked
+    only, no closed subpath, no rectangle, plain numbers. added: how many subpaths at its end
+    are arrowheads given before (left out of the check)."""
+    toks = _path_tokens(body)
+    if not toks or toks[-1][0] != b"S" or toks[0][0] != b"m":
+        return False
+    subs = _subpaths(toks[:-1])
+    if added:
+        subs = subs[:max(1, len(subs) - added)]
+    return all(op in (b"m", b"l", b"c", b"v", b"y") for sub in subs for op, _a, _r in sub)
+
+
+def _subpaths(toks):
+    subs = []
+    for op, args, raw in toks:
+        if op == b"m":
+            subs.append([])
+        if subs:
+            subs[-1].append((op, args, raw))
+    return subs
+
+
+def _points(sub):
+    """A subpath's points in order (curves' control points too: their directions)."""
+    out = []
+    for _op, args, _raw in sub:
+        v = [float(a) for a in args]
+        out += [pymupdf.Point(v[i], v[i + 1]) for i in range(0, len(v) - 1, 2)]
+    return out
+
+
+def _arrow(tip, frm, length, closed, piece=None):
+    """An arrowhead's subpaths at tip, coming from frm (piece coordinates). piece: on a
+    dashed line, the longest piece each stroke is cut into (each piece is a subpath of its
+    own, and a dash pattern starts again at each subpath, so the arrowhead is drawn solid on
+    a dashed or dotted line); None: one subpath."""
+    u = tip - frm
+    n = abs(u)
+    if n < 1e-9:
+        return []
+    u = u / n
+    side = pymupdf.Point(-u.y, u.x) * (length * 0.45)
+    back = tip - u * length
+    a, b = back + side, back - side
+    if not piece:
+        return [b"%.3f %.3f m %.3f %.3f l %.3f %.3f l%s" % (
+            a.x, a.y, tip.x, tip.y, b.x, b.y, b" h" if closed else b"")]
+    out = []
+    for p, q in [(a, tip), (tip, b)] + ([(b, a)] if closed else []):
+        k = max(1, math.ceil(abs(q - p) / piece))
+        for i in range(k):
+            x, y = p + (q - p) * (i / k), p + (q - p) * ((i + 1) / k)
+            out.append(b"%.3f %.3f m %.3f %.3f l" % (x.x, x.y, y.x, y.y))
+    return out
+
+
+def _with_heads(body, heads, old_n, length, piece=None):
+    """body (path and paint) with old_n subpaths added before taken off, and the arrowheads
+    heads (start, end, middle: each a key of HEAD_KINDS) added: (new body, how many
+    subpaths added). piece: see _arrow."""
+    toks = _path_tokens(body)
+    paint = toks[-1]
+    subs = _subpaths(toks[:-1])
+    if old_n:
+        subs = subs[:max(1, len(subs) - old_n)]
+    pts = [q for sub in subs for q in _points(sub)]
+    added = []
+    start, end, mid = heads
+    if start in ("open", "closed") and len(pts) >= 2:
+        frm = next((q for q in pts[1:] if abs(q - pts[0]) > 1e-9), None)
+        if frm is not None:
+            added += _arrow(pts[0], frm, length, start == "closed", piece)
+    if end in ("open", "closed") and len(pts) >= 2:
+        frm = next((q for q in reversed(pts[:-1]) if abs(q - pts[-1]) > 1e-9), None)
+        if frm is not None:
+            added += _arrow(pts[-1], frm, length, end == "closed", piece)
+    if mid in ("open", "closed") and len(pts) >= 2:
+        segs = [(a, b) for a, b in zip(pts, pts[1:]) if abs(b - a) > 1e-9]
+        half = sum(abs(b - a) for a, b in segs) / 2
+        for a, b in segs:
+            n = abs(b - a)
+            if half <= n or (a, b) == segs[-1]:
+                u = (b - a) / n
+                c = a + u * min(half, n)
+                added += _arrow(c + u * (length / 2), c - u * (length / 2) - u, length,
+                                mid == "closed", piece)
+                break
+            half -= n
+    raws = [raw for sub in subs for _op, _a, raw in sub]
+    return b" ".join(raws + added + [paint[2]]), len(added)
+
+
+def recolor(page, ns, stroke=None, fill=None, objs=None, width=None, dash=None, heads=None):
     """Give shapes ns (path objects) a new line color (stroke) and/or fill color (fill), each
-    (r, g, b) from 0 to 1 or None to keep it, and/or a new line width (width: points on the
-    page, whatever the shape's own scale; None to keep it). They're set in a  q ... Q  of the
+    (r, g, b) from 0 to 1 or None to keep it; a new line width (width: points on the page,
+    whatever the shape's own scale); a Line style (dash: a key of DASHES); and arrowheads
+    (heads: {"start", "end", "mid"} -> a key of HEAD_KINDS, on open lines only, added to the
+    line's own path, so they move and turn with it). They're set in a  q ... Q  of the
     shape's own, so what's drawn after it keeps its settings; a shape restyled this way before
-    has its settings replaced in that one (no nesting). Pictures and groups are left as they
-    are. objs: the page's Objects (already read). Returns the page's new Objects, or None."""
-    if stroke is None and fill is None and width is None:
+    has its settings replaced in that one (no nesting), and its arrowheads replaced. Pictures
+    and groups are left as they are. objs: the page's Objects (already read). Returns the
+    page's new Objects, or None."""
+    if stroke is None and fill is None and width is None and dash is None and not heads:
         return objs
     data = _contents(page)
     found = objs.found if objs is not None and objs.found and objs.data == data else scan(data)
     shapes = [n for n in set(ns) if n < len(found) and found[n].get("path")]
-    if width is not None:
+    if width is not None or dash is not None or heads:
         shapes = [n for n in shapes if found[n].get("stroke")]
     if not shapes:
         return objs
@@ -2242,27 +2440,53 @@ def recolor(page, ns, stroke=None, fill=None, objs=None, width=None):
     pieces = {}
     for n in shapes:
         d = found[n]
+        k = width_scale(d)
+        k = k if k > 1e-12 else 1.0
         new_ops = list(colors)
         if width is not None:
-            k = width_scale(d)
-            new_ops.append(b"%.4f w" % (max(0.0, width) / k if k > 1e-12 else width))
+            new_ops.append(b"%.4f w" % (max(0.0, width) / k))
+        if dash is not None:
+            w_user = (width / k) if width is not None else d.get("width", 1.0)
+            new_ops.append(_dash_op(dash, w_user))
         s, e = d["start"], d["end"]
         old = data[s:e]
-        m = _OWN_COLOR.search(data, max(0, s - 160), s)
-        if m and m.end() == s and data[e:e + 3] == b"\nQ\n":
+        m = _own(data, d)
+        state, body = _split(old)
+        marker = m.group(2) if m else None
+        had = heads_of(data, d)
+        if had and not heads and (width is not None or dash is not None):
+            heads = {}          # (drawn again: they're as long as the line is wide, and solid)
+        if heads is not None and (heads or had) and can_have_heads(body, had[3] if had else 0):
+            want = (heads.get("start", had[0] if had else "none"),
+                    heads.get("end", had[1] if had else "none"),
+                    heads.get("mid", had[2] if had else "none"))
+            w_page = (width if width is not None else page_width(d))
+            length = max(6.0, 3.0 * w_page + 3.0) / k
+            first = _first_dash(d.get("state"),
+                                _dash_op(dash, (width / k) if width is not None
+                                         else d.get("width", 1.0)) if dash is not None
+                                else None)
+            body, count = _with_heads(body, want, had[3] if had else 0, length,
+                                      first * 0.9 if first else None)
+            marker = (b"/KZHeads <</S/%s/E/%s/M/%s/N %d>> DP\n" % (
+                want[0].encode(), want[1].encode(), want[2].encode(), count)) \
+                if count else None
+        if m:
             # restyled before: its settings (the line after its own  q ) replaced there, not
             # a wrapper in a wrapper
             ops = m.group(1)
             kept = [ops[s_:e_] for op, _a, s_, e_ in _tokens(ops)
                     if not (stroke is not None and op == b"RG")
                     and not (fill is not None and op == b"rg")
-                    and not (width is not None and op == b"w")]
-            pieces[n] = (m.start(1), b" ".join(kept + new_ops) + b"\n" + old)
+                    and not (width is not None and op == b"w")
+                    and not (dash is not None and op == b"d")]
+            piece = (state + b" " if state else b"") + body
+            pieces[n] = (m.start(1), b" ".join(kept + new_ops) + b"\n" + (marker or b"") +
+                         m.group(3) + piece)
         else:
-            # its settings stay for what's after it; the new color only for it
-            state, body = _split(old)
+            # its settings stay for what's after it; the new ones only for it
             pieces[n] = (state + b"\n" if state else b"") + b"\nq\n" + \
-                b" ".join(new_ops) + b"\n" + body + b"\nQ\n"
+                b" ".join(new_ops) + b"\n" + (marker or b"") + body + b"\nQ\n"
     return _edit(page, list(pieces), None, objs, by_n=pieces)
 
 

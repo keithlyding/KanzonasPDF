@@ -131,6 +131,9 @@ a decision changes or a piece of work lands. Details of each version are in
   once it's out and checks it's what he asked for.
 - 1.15.20 (the random battery, seed 13): text written again (Text color, moved, Edit text)
   uses a copy of its font that draws its letters, not one Save cut down to other letters.
+- 1.15.21 (owner, 22 Nov: "Almost how Microsoft does it"; "all of them but as one release"):
+  lines' Start / End arrowhead, Middle arrow and Line style in Properties, for markups and the
+  drawing's own lines (with their Line color and Fill color there too).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

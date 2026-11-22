@@ -1014,17 +1014,25 @@ class Battery:
             return "none"
         v = self.v
         props = v.selected_model["props"]
-        choices = [k for k in ("stroke", "fill", "width", "opacity", "fontsize", "text_color")
+        choices = [k for k in ("stroke", "fill", "width", "opacity", "fontsize", "text_color",
+                               "head_start", "head", "mid", "dash")
                    if k in props]
         if not choices:
             v.clear_selection()
             return "none"
         k = self.rnd.choice(choices)
+        from kanzonas import annotations as A
+        heads = list(A.HEADS) if v.selected_model["kind"] in A.LINE_KINDS else ["open", "closed"]
         value = {"stroke": self.color(), "fill": self.color(),
                  "width": self.rnd.choice([0.5, 1.0, 2.0, 4.0]),
                  "opacity": self.rnd.choice([0.4, 0.7, 1.0]),
                  "fontsize": self.rnd.choice([8, 11, 14, 20]),
-                 "text_color": self.color()}[k]
+                 "text_color": self.color(),
+                 # (1.15.21: a line's ends, middle arrow and Line style)
+                 "head_start": self.rnd.choice(list(A.HEADS)),
+                 "head": self.rnd.choice(heads),
+                 "mid": self.rnd.choice(list(A.MIDS)),
+                 "dash": self.rnd.choice(list(A.DASHES))}[k]
         v.update_selected_props({k: value})
         v.clear_selection()
 
@@ -1565,6 +1573,21 @@ class Battery:
         if not can:
             v.clear_object_selection()
             return "none"
+        style = v.object_style()
+        if style and self.rnd.random() < 0.4:
+            # (1.15.21: Properties > Line style, or arrowheads on the drawing's own lines)
+            from kanzonas import page_objects as P
+            others = self.other_letters(i, [])
+            rev = v.revision
+            if "start" in style and self.rnd.random() < 0.6:
+                v.style_objects(heads={k: self.rnd.choice(P.HEAD_KINDS)
+                                       for k in self.rnd.sample(["start", "end", "mid"],
+                                                                self.rnd.randint(1, 3))})
+            elif "dash" in style:
+                v.style_objects(dash=self.rnd.choice(list(P.DASHES)))
+            v.clear_object_selection()
+            self.check_letters(i, others)
+            return "edit" if v.revision != rev else "none"
         what = self.rnd.choice(can)
         rgb = tuple(round(self.rnd.random(), 2) for _ in range(3))
         others = self.other_letters(i, [])

@@ -1061,6 +1061,14 @@ suo strumento, per le prossime che crei con esso (come Set as Default di Bluebea
 della tastiera su di esso. Anche le immagini, comprese le catture incollate da Cattura area, hanno un'opacità.</li>
 <li>Colore della linea, riempimento (o <b>Nessun riempimento</b>), <b>Nessun bordo</b> per riquadri e forme, colore del testo,
 spessore della linea, dimensione del carattere, punte di freccia, bordo a nuvola, opacità.</li>
+<li>Linee (Linea, Freccia, Polilinea, Arco, Curva): <b>Punta di freccia iniziale</b> e <b>Punta di freccia finale</b>,
+ciascuna del proprio tipo (aperta, chiusa, invertita, cerchio, quadrato, rombo, barra o nessuna), così una linea può
+puntare in entrambi i sensi; <b>Freccia centrale</b> (aperta o chiusa), a metà della linea, nel senso in cui è stata
+disegnata; e <b>Stile linea</b>: continua, tratteggiata, punteggiata o tratto-punto, con trattini lunghi quanto è larga
+la linea. Quando un'estremità è chiusa (piena), un cerchio, quadrato o rombo all'altra estremità viene riempito anche lui:
+una linea PDF ha un solo colore di riempimento per le estremità. La freccia centrale è disegnata nell'annotazione stessa,
+perché il PDF non ha una punta di freccia centrale: KanzonasPDF la mantiene, ma un altro programma che ridisegna
+l'annotazione dalle sue impostazioni mostra la linea senza.</li>
 <li><b>Ripristina predefiniti</b> riporta uno strumento al suo stile originale.</li>
 <li><b>Cassetta degli attrezzi</b> (F8, o la scheda Visualizza): i tuoi stili di annotazione preferiti, a un clic di distanza. F8
 o il pulsante la apre e, quando è visibile, la richiude (se è dietro la scheda Proprietà,
@@ -1266,6 +1274,12 @@ se sono diversi). Digita uno spessore e vengono disegnate con quello spessore, i
 resto della pagina resta com'era. È lo spessore sulla pagina, qualunque sia la scala a cui una linea è disegnata
 nel disegno. Per vedere ogni linea sottile per un po' senza cambiare il file, usa Visualizza &gt; Mostra
 spessori di linea.</li>
+<li>Accanto, per la stessa selezione: <b>Colore linea</b> (linee e contorni) e <b>Colore riempimento</b>
+(forme piene), come li ha il disegno; <b>Stile linea</b> (continua, tratteggiata, punteggiata, tratto-punto); e, per le
+linee (rette, polilinee e curve, non forme chiuse), <b>Punta di freccia iniziale</b>, <b>Punta di freccia finale</b> e
+<b>Freccia centrale</b>: nessuna, aperta o chiusa (un triangolo di contorno). Le punte di freccia diventano parte della
+linea: si spostano, ruotano e cambiano colore con essa, e hanno il suo stesso spessore. Ogni modifica è un passaggio che
+Annulla annulla; scegliere nessuna le toglie di nuovo. Su una linea tratteggiata o punteggiata sono disegnate continue.</li>
 <li>Canc (o Backspace) elimina la selezione. Fai clic con il tasto destro per Taglia, Copia, Incolla e Duplica,
 Separa (gruppi), Ruota in senso orario, Ruota
 in senso antiorario, Ruota di un angolo..., i comandi dell'ordine di sovrapposizione ed Elimina e, per una sola immagine, Copia immagine

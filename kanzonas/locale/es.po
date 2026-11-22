@@ -11660,3 +11660,43 @@ msgstr "Cada línea dibujada fina (grosores de línea ocultos)"
 #: document_view
 msgid "Line width changed"
 msgstr "Grosor de línea cambiado"
+
+#: properties
+msgid "Start arrowhead"
+msgstr "Punta de flecha inicial"
+
+#: properties
+msgid "End arrowhead"
+msgstr "Punta de flecha final"
+
+#: properties
+msgid "Middle arrow"
+msgstr "Flecha central"
+
+#: properties
+msgid "Line style"
+msgstr "Estilo de línea"
+
+#: properties
+msgid "solid"
+msgstr "continua"
+
+#: properties
+msgid "dashed"
+msgstr "discontinua"
+
+#: properties
+msgid "dotted"
+msgstr "punteada"
+
+#: properties
+msgid "dash-dot"
+msgstr "raya y punto"
+
+#: properties
+msgid "Arrowheads changed"
+msgstr "Puntas de flecha cambiadas"
+
+#: properties
+msgid "Line style changed"
+msgstr "Estilo de línea cambiado"

@@ -9410,6 +9410,59 @@ class DocumentView(QScrollArea):
             return None
         return widths.pop() if len(widths) == 1 else ""
 
+    def object_style(self):
+        """For Properties: what the selected shapes are drawn with ({"stroke", "fill",
+        "dash"}: the outlined ones' color and Line style, the filled ones' fill color) and the
+        arrowheads of the open lines among them ({"start", "end", "mid"}); each value "" when
+        they differ, and a key left out when none of them has it."""
+        from . import page_objects as P
+        if self.obj_sel is None:
+            return {}
+        index, items = self.obj_sel
+        objs = self._obj_cache.get(index)
+        if objs is None or not objs.found:
+            return {}
+        vals = {k: set() for k in ("stroke", "fill", "dash", "start", "end", "mid")}
+        for it in items:
+            if it["kind"] != "shape" or it["n"] >= len(objs.found):
+                continue
+            d = objs.found[it["n"]]
+            st = P.style_of(d)
+            if st["stroke"]:
+                vals["stroke"].add(st["stroke"])
+                vals["dash"].add(st["dash"])
+            if st["fill"]:
+                vals["fill"].add(st["fill"])
+            h = P.heads_of(objs.data, d)
+            body = P._split(objs.data[d["start"]:d["end"]])[1]
+            if st["stroke"] and P.can_have_heads(body, h[3] if h else 0):
+                h = h or ("none", "none", "none", 0)
+                for k, v in zip(("start", "end", "mid"), h):
+                    vals[k].add(v)
+        return {k: (v.pop() if len(v) == 1 else "") for k, v in vals.items() if v}
+
+    def style_objects(self, stroke=None, fill=None, dash=None, heads=None):
+        """Properties on the page's own shapes: Line color / Fill color (#rrggbb), Line style
+        (a key of page_objects.DASHES) and arrowheads ({"start", "end", "mid"} -> none, open
+        or closed, on open lines), in one undo step; they stay selected."""
+        from . import page_objects
+        if self.obj_sel is None or (stroke is None and fill is None and dash is None and
+                                    not heads):
+            return
+
+        def rgb(h):
+            from PySide6.QtGui import QColor
+            c = QColor(h)
+            return (c.redF(), c.greenF(), c.blueF())
+        cache = self._obj_cache.get(self.obj_sel[0])
+        self._objects_edit(
+            tr("Arrowheads changed") if heads else tr("Line style changed") if dash else
+            tr("Color changed"),
+            lambda page, ns: page_objects.recolor(
+                page, ns, stroke=rgb(stroke) if stroke else None,
+                fill=rgb(fill) if fill else None, objs=cache, dash=dash, heads=heads),
+            takes_text=False)
+
     def set_object_width(self, width):
         """Properties > Line width on the page's own objects: the selected shapes' lines drawn
         width points wide on the page, in one undo step; they stay selected."""
