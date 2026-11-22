@@ -359,6 +359,29 @@ def _base14(span):
     return family[(2 if italic else 0) + (1 if bold else 0)]
 
 
+def draws_letters(font, text):
+    """Whether font draws every visible letter of text: has_glyph alone says a glyph is
+    there, while a font program cut down to the glyphs one text used can have the others
+    as empty shells (the random battery, seed 13, 22 Nov 2026: a line written again with such a
+    copy of the page's font was invisible). Spaces and other blank characters aren't
+    checked; a font whose outlines MuPDF can't read (a picture font) passes."""
+    m = pymupdf.mupdf
+    for c in set(text):
+        if c.isspace() or unicodedata.category(c) in ("Cc", "Cf", "Zs", "Zl", "Zp"):
+            continue
+        gid = font.has_glyph(ord(c))
+        if not gid:
+            return False
+        try:
+            path = m.fz_outline_glyph(font.this, gid, m.FzMatrix())
+            if not path.m_internal or m.fz_is_empty_rect(
+                    m.fz_bound_path(path, m.FzStrokeState(), m.FzMatrix())):
+                return False
+        except Exception:
+            continue    # (outlines it can't read: taken as drawn, as before)
+    return True
+
+
 def _embedded_font(page, span, text):
     """Reuse the span's embedded font if it has every glyph we need. Returns a font name or None."""
     doc = page.parent
@@ -373,7 +396,8 @@ def _embedded_font(page, span, text):
             if not buf:
                 return None
             font = pymupdf.Font(fontbuffer=buf)
-            if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r"):
+            if all(font.has_glyph(ord(c)) for c in text if c not in "\n\r") and \
+                    draws_letters(font, text):
                 name = f"KZ{xref}"
                 page.insert_font(fontname=name, fontbuffer=buf)
                 return name, font, {"fontbuffer": buf}

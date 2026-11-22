@@ -504,7 +504,9 @@ def _style_keys(fam, bold, italic):
 
 
 def _writes(font, text):
-    return all(font.has_glyph(ord(c)) for c in text if c not in "\n\r")
+    """font has, and draws, every letter of text (see text_edit.draws_letters)."""
+    return all(font.has_glyph(ord(c)) for c in text if c not in "\n\r") and \
+        te.draws_letters(font, text)
 
 
 def _variant(page, fontname, bold, italic, text):

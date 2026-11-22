@@ -125,6 +125,8 @@ a decision changes or a piece of work lands. Details of each version are in
   closed windows off their own thread (a crash).
 - 1.15.18: only documents open in a tab count in the page list's thumbnail cap (1.15.17's
   build on main failed on it and wasn't published; its notes come with 1.15.18).
+- 1.15.20 (the random battery, seed 13): text written again (Text color, moved, Edit text)
+  uses a copy of its font that draws its letters, not one Save cut down to other letters.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
