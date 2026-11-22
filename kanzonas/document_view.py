@@ -9414,6 +9414,89 @@ class DocumentView(QScrollArea):
                            tr("Color changed"), shapes, text_fn=texts,
                            takes_text=text is not None)
 
+    _TEXT_STYLE_SAMPLE = 40             # lines read for object_text_style (a big selection)
+
+    def object_text_style(self):
+        """For Properties: the style of the page's text selected in Edit objects, as
+        {"bold", "italic", "underline", "strike"} (True when all of it has it), "fontsize"
+        (points), "text_color" ("#rrggbb") and "text_back" (its Text background: "#rrggbb",
+        "-" for none), each "" when it differs, and "font" ("": as it is). None when no text
+        is selected. A big selection is judged by its first lines."""
+        from . import text_styles
+        if self.obj_sel is None:
+            return None
+        index, items = self.obj_sel
+        lines = [ln for it in items if it["kind"] == "text" for _r, ln in it["lines"]]
+        if not lines:
+            return None
+        page = self.doc[index]
+        flags = {"bold": True, "italic": True, "underline": True, "strike": True}
+        sizes, colors, backs = set(), set(), set()
+        for ln in lines[:self._TEXT_STYLE_SAMPLE]:
+            st = text_styles.read_line(page, ln)
+            for c, k in zip(st.text, st.keys):
+                if c.isspace():
+                    continue
+                for key in flags:
+                    flags[key] = flags[key] and bool(getattr(k, key))
+                sizes.add(round(k.size, 1))
+                colors.add(k.color & 0xFFFFFF)
+                backs.add(k.back)
+        out = dict(flags, font="")
+        out["fontsize"] = sizes.pop() if len(sizes) == 1 else ""
+        out["text_color"] = ("#%06x" % colors.pop()) if len(colors) == 1 else ""
+        back = backs.pop() if len(backs) == 1 else None
+        out["text_back"] = "" if back is None else "-" if back < 0 else "#%06x" % back
+        return out
+
+    def style_text_objects(self, changes):
+        """Properties with the page's text selected in Edit objects: changes ({"bold",
+        "italic", "underline", "strike"}: on or off; "fontsize": points; "text_color":
+        "#rrggbb"; "text_back": "#rrggbb" or "-" for none; "font": an installed family)
+        given to all of it, each word keeping the
+        rest of its style, the text written again where it is (text_edit.restyle_lines), in
+        one undo step; it stays selected. Text color alone goes the quicker way
+        (recolor_objects)."""
+        from PySide6.QtGui import QColor
+        if self.obj_sel is None or not changes:
+            return
+        if set(changes) == {"text_color"}:
+            c = QColor(changes["text_color"])
+            if c.isValid():
+                self.recolor_objects(text=(c.redF(), c.greenF(), c.blueF()))
+            return
+        swap = {k: bool(changes[k]) for k in ("bold", "italic", "underline", "strike")
+                if k in changes}
+        if "text_color" in changes and QColor(changes["text_color"]).isValid():
+            c = QColor(changes["text_color"])
+            swap["color"] = (c.red() << 16) | (c.green() << 8) | c.blue()
+        if "text_back" in changes:
+            c = QColor(changes["text_back"]) if changes["text_back"] != "-" else None
+            swap["back"] = (c.red() << 16) | (c.green() << 8) | c.blue() \
+                if c is not None and c.isValid() else -1
+        size = changes.get("fontsize")
+        family = changes.get("font") or None
+
+        def change(k):
+            return k._replace(**swap) if swap else k
+
+        def texts(page, its):
+            paras = [[ln for _r, ln in it["lines"]] for it in its]
+            used = text_edit.restyle_lines(page, paras, change, family=family,
+                                           size=float(size) if size else None,
+                                           blocks=self._blocks_of(its))
+            if any(u.startswith("KZ") for u in used):
+                self._fonts_added = True
+            return [it["rect"] for it in its]
+        names = {"bold": tr("Bold"), "italic": tr("Italic"), "underline": tr("Underline"),
+                 "strike": tr("Strikethrough"), "fontsize": tr("Font size"),
+                 "font": tr("Font"), "text_color": tr("Text color"),
+                 "text_back": tr("Text background")}
+        label = tr("{what} changed").format(what=names[next(iter(changes))]) \
+            if len(changes) == 1 else tr("Text style changed")
+        self._objects_edit(label, lambda page, ns: self._obj_cache.get(self.obj_sel[0]),
+                           text_fn=texts)
+
     def object_line_width(self):
         """The line width (points on the page) of the selected shapes with an outline: one
         number when they all have the same, "" when they differ, None when none has one."""

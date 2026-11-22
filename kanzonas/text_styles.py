@@ -19,6 +19,13 @@ thickened (render mode 2, a stroke about 3% of the size in the text's color) or 
 (a shear of about 12 degrees). Only text the font can't write at all goes to another font,
 as before. Underline and strikethrough are drawn as thin filled bars in the run's color,
 one per line piece, turned with sideways text.
+
+A background color (Text background: the page's own text highlighted, not a Highlight
+markup) is a filled box behind the run, from just above its letters to just below them,
+drawn in the page right before the letters, multiplied with what's under it (as a
+highlighter pen: a line it crosses stays dark). Read back, a filled box that hugs a run of
+letters (starts and ends with them, about as tall as they are) is taken as that run's
+background, and taken out with it when the text is written again.
 """
 
 import difflib
@@ -54,6 +61,7 @@ class Style(NamedTuple):
     family: str = ""
     alt: int = 0                    # (1: runs its font can't write, given another one)
     alpha: int = 255                # opacity, 0..255; 0: invisible (render mode 3, or no ink)
+    back: int = -1                  # the text's background color (sRGB), -1: none
 
 
 _BOLD_WORDS = re.compile(r"bold|black|heavy|demi|semibold", re.I)
@@ -373,6 +381,46 @@ def _decorate(line, info, vecs, used):
     return out
 
 
+def _backgrounds(line, info, vecs, used):
+    """Mark the letters of line (info: _line_info) that a filled box lies behind, hugging
+    them (a Text background); returns the boxes taken."""
+    dx, dy = line["dir"]
+    nx, ny = -dy, dx
+    ox, oy = line["spans"][0]["origin"]
+    base = ox * nx + oy * ny
+    size = te.main_span(line)["size"]
+    ext = [(i, e[2][0], e[2][1]) for i, e in enumerate(info) if e[2] is not None]
+    ink = [x for x in ext if not info[x[0]][0].isspace()]
+    if not ink:
+        return []
+    tol = max(1.0, 0.2 * size)
+    out = []
+    for vi, v in enumerate(vecs):
+        if vi in used or v.get("stroked") or v.get("color") is None:
+            continue
+        r = pymupdf.Rect(v["bbox"])
+        corners = (r.tl, r.tr, r.bl, r.br)
+        along = [p.x * dx + p.y * dy for p in corners]
+        across = [p.x * nx + p.y * ny - base for p in corners]
+        v0, v1, c0, c1 = min(along), max(along), min(across), max(across)
+        # (from above the letters' x-height to below the baseline, not much taller)
+        if not (-1.25 * size <= c0 <= -0.5 * size and 0.05 * size <= c1 <= 0.5 * size):
+            continue
+        cov = [x for x in ext if v0 - 0.01 <= (x[1] + x[2]) / 2 <= v1 + 0.01]
+        if not any(not info[i][0].isspace() for i, _a, _b in cov):
+            continue
+        if abs(min(x[1] for x in cov) - v0) > tol or abs(max(x[2] for x in cov) - v1) > tol:
+            continue                    # a box bigger than the words: a table cell, a bar
+        idx = {i for i, _a, _b in cov}
+        color = int(v["color"]) & 0xFFFFFF
+        for i in range(min(idx), max(idx) + 1):
+            if i in idx or info[i][2] is None:
+                info[i][1] = info[i][1]._replace(back=color)
+        used.add(vi)
+        out.append(r)
+    return out
+
+
 def _strip(info):
     a, b = 0, len(info)
     while a < b and info[a][0].isspace():
@@ -386,7 +434,8 @@ def _joint(before, after):
     """The style of a space put between two letters: the one before's, underlined or
     struck through only when both are."""
     return before._replace(underline=before.underline and after.underline,
-                           strike=before.strike and after.strike)
+                           strike=before.strike and after.strike,
+                           back=before.back if before.back == after.back else -1)
 
 
 def _uniform(text, span):
@@ -405,6 +454,7 @@ def read_paragraph(page, lines):
         for ln in lines:
             info = _line_info(ln, found)
             decor += _decorate(ln, info, vecs, used)
+            decor += _backgrounds(ln, info, vecs, used)
             t = _strip(info)
             if not t:
                 continue
@@ -435,7 +485,8 @@ def read_line(page, line):
     try:
         found, vecs = _read_area(page, _area([line]))
         info = _line_info(line, found)
-        decor = _decorate(line, info, vecs, set())
+        used = set()
+        decor = _decorate(line, info, vecs, used) + _backgrounds(line, info, vecs, used)
         if "".join(c for c, _k, _e in info) != text:
             return _uniform(text, te.main_span(line))
         keys = _even_sizes([k for _c, k, _e in info], te.main_span(line)["size"])
@@ -458,7 +509,7 @@ def read_lines(page, lines):
         text = te.line_text(ln)
         try:
             info = _line_info(ln, found)
-            decor = _decorate(ln, info, vecs, used)
+            decor = _decorate(ln, info, vecs, used) + _backgrounds(ln, info, vecs, used)
             if "".join(c for c, _k, _e in info) != text:
                 out.append(_uniform(text, te.main_span(ln)))
                 continue
@@ -896,6 +947,15 @@ def write_row(shape, origin, rotate, row_pieces, fonts):
 
     def at(a, c=0.0):
         return pymupdf.Point(origin.x + d[0] * a + n[0] * c, origin.y + d[1] * a + n[1] * c)
+    # backgrounds first, under the letters
+    group = []
+    for p in list(row_pieces) + [None]:
+        on = p is not None and p[1].back >= 0
+        if group and (not on or p[1].back != group[0][1].back):
+            _background(shape, at, group, fonts)
+            group = []
+        if on:
+            group.append(p)
     for text, k, a0, _a1, written in row_pieces:
         if not written or not text:
             continue
@@ -946,6 +1006,45 @@ def _bar(shape, at, kind, group, fonts):
                      max(p.x for p in pts), max(p.y for p in pts))
     shape.draw_rect(r)
     shape.finish(color=None, fill=_rgb(k.color), width=0, fill_opacity=k.alpha / 255)
+
+
+BACK_GS = "KZMul"                 # the graphics state a background is drawn with (Multiply)
+
+
+def _multiply_gs(page):
+    """The page's /KZMul graphics state (blend mode Multiply), added when it has none (as
+    PyMuPDF adds the ones for opacity, Page._set_opacity)."""
+    m = pymupdf.mupdf
+    obj = pymupdf._as_pdf_page(page.this).obj()
+    res = m.pdf_dict_get(obj, m.pdf_new_name("Resources"))
+    if not res.m_internal:
+        res = m.pdf_dict_put_dict(obj, m.pdf_new_name("Resources"), 2)
+    extg = m.pdf_dict_get(res, m.pdf_new_name("ExtGState"))
+    if not extg.m_internal:
+        extg = m.pdf_dict_put_dict(res, m.pdf_new_name("ExtGState"), 2)
+    if not m.pdf_dict_gets(extg, BACK_GS).m_internal:
+        gs = m.pdf_new_dict(m.pdf_get_bound_document(obj), 2)
+        m.pdf_dict_put(gs, m.pdf_new_name("BM"), m.pdf_new_name("Multiply"))
+        m.pdf_dict_puts(extg, BACK_GS, gs)
+    return BACK_GS
+
+
+def _background(shape, at, group, fonts):
+    """A run's background: a filled box behind its letters, multiplied with the page."""
+    while group and group[-1][0].isspace() and len(group) > 1:
+        group = group[:-1]              # (not behind the spaces a row ends with)
+    while group and group[0][0].isspace() and len(group) > 1:
+        group = group[1:]
+    k = group[0][1]
+    size = max(p[1].size for p in group)
+    a0, a1 = group[0][2], group[-1][3]
+    top, bottom = -0.9 * size, 0.25 * size
+    pts = [at(a0, top), at(a1, top), at(a0, bottom), at(a1, bottom)]
+    r = pymupdf.Rect(min(p.x for p in pts), min(p.y for p in pts),
+                     max(p.x for p in pts), max(p.y for p in pts))
+    shape.draw_rect(r)
+    shape.draw_cont = "/%s gs\n" % _multiply_gs(shape.page) + shape.draw_cont
+    shape.finish(color=None, fill=_rgb(k.back), width=0)
 
 
 def fix_spaces(page, fonts):

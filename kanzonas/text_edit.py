@@ -1793,6 +1793,53 @@ def recolor_lines(page, lines, rgb, blocks=()):
     return _write_lines(page, plans, styled, pymupdf.Point(0, 0), blocks)
 
 
+def restyle_lines(page, paragraphs, change, family=None, size=None, blocks=()):
+    """Write the lines of these paragraphs (each a list of the page's lines) again where they
+    are, every word's style changed by change(text_styles.Style) -> Style (bold, italic,
+    underline, strikethrough, color...), the rest of its style kept (Properties with the
+    page's text selected in Edit objects). family: a font family picked for all of it; size:
+    a font size (points) for all of it, the lines of each paragraph spread apart (or drawn
+    together) as much as their size grows (or shrinks), from its first line. One redaction
+    for all, as move_lines; blocks: the marked blocks (added_text) among them, each kept one
+    block (its line spacing scaled with the size). Returns the font names written with.
+    Raises ValueError (before changing anything) if a line can't be written."""
+    from . import text_styles
+    refuse_with_marks(page)
+    styled, decor, offsets, scales = [], [], {}, {}
+    owner = {id(ln): k for k, b in enumerate(blocks) for _r, ln in b.lines}
+    lines = []
+    for para in paragraphs:
+        para = [ln for ln in para if line_text(ln).strip()]
+        if not para:
+            continue
+        reads = []
+        for line in para:               # 1) the fonts first: nothing goes if one can't write
+            refuse_right_to_left(line_text(line))
+            reads.append((line, text_styles.read_line(page, line)))
+        ratio = 1.0
+        if size is not None:
+            main = text_styles.main_style(reads[0][1].text, reads[0][1].keys, reads[0][1].main)
+            ratio = float(size) / main.size if main.size > 0 else 1.0
+        first = pymupdf.Point(para[0]["spans"][0]["origin"])
+        for line, st in reads:
+            keys = [change(k) for k in st.keys]
+            if size is not None:
+                keys = [k._replace(size=round(float(size), 2)) for k in keys]
+            fonts, t, keys = text_styles.resolve_all(page, st.text, keys, family=family)
+            styled.append((line, t, keys, fonts))
+            decor += st.decor
+            if ratio != 1.0:
+                offsets[id(line)] = (pymupdf.Point(line["spans"][0]["origin"]) - first) * \
+                    (ratio - 1.0)
+                if id(line) in owner:
+                    scales[owner[id(line)]] = ratio
+        lines += para
+    if not lines:
+        return []
+    _remove_lines(page, lines, decor=decor)
+    return _write_lines(page, [], styled, pymupdf.Point(0, 0), blocks, offsets, scales)
+
+
 def _plan_lines(page, lines, color=None):
     """How each line is written again (its font found before anything changes: nothing goes
     if one can't be written): (plans, styled, decor) for _write_lines. color: (r, g, b) for
@@ -1801,16 +1848,18 @@ def _plan_lines(page, lines, color=None):
     srgb = text_styles.to_int(color) if color is not None else None
     plans = []
     styled, decor = [], []
-    for line in lines:                  # 1) the fonts first: nothing goes if one can't write
+    lines = [ln for ln in lines if line_text(ln).strip()]
+    # (the page read once for all of them: underlines, strikethrough and backgrounds are
+    # drawings the letters don't tell of. Written in the line's main style they were lost,
+    # and their bars and boxes stayed where the text had been)
+    reads = text_styles.read_lines(page, lines)
+    for line, st in zip(lines, reads):  # 1) the fonts first: nothing goes if one can't write
         text = line_text(line)
-        if not text.strip():
-            continue
         refuse_right_to_left(text)
-        if mixed_styles(line):
-            # words in styles of their own (bold, colors, invisible words): each kept, as
-            # dragging the line with Edit text does (written in the line's main style, a
-            # hidden word showed)
-            st = text_styles.read_line(page, line)
+        if st.decor or mixed_styles(line):
+            # words in styles of their own (bold, colors, invisible words, underlined, on a
+            # background): each kept, as dragging the line with Edit text does (written in
+            # the line's main style, a hidden word showed)
             if srgb is not None:
                 st = st._replace(keys=[k._replace(color=srgb) for k in st.keys])
             fonts, t, keys = text_styles.resolve_all(page, st.text, st.keys)
@@ -1825,9 +1874,10 @@ def _plan_lines(page, lines, color=None):
     return plans, styled, decor
 
 
-def _write_lines(page, plans, styled, offset, blocks=()):
+def _write_lines(page, plans, styled, offset, blocks=(), offsets=None, scales=None):
     """Write the lines planned (_plan_lines) again, moved by offset; returns the font names
-    written with."""
+    written with. offsets: {id(line): Point} moving a line of styled by its own offset
+    instead; scales: {block number: how much its line spacing grows} (restyle_lines)."""
     inserted = {}                       # font name -> (name written with, Font)
     used = []
     # one drawing for all of them, added to the page once (page.insert_text adds each
@@ -1848,7 +1898,8 @@ def _write_lines(page, plans, styled, offset, blocks=()):
     for line, text, keys, fonts in styled:
         from . import text_styles
         fonts = text_styles.reinsert(page, fonts)
-        origin = pymupdf.Point(line["spans"][0]["origin"]) + offset
+        origin = pymupdf.Point(line["spans"][0]["origin"]) + \
+            (offsets.get(id(line), offset) if offsets else offset)
         angle = off_quarter(line)
         text_styles.write_row(shape_for(line), origin,
                               line_rotation(line) if angle is None else angle,
@@ -1887,6 +1938,9 @@ def _write_lines(page, plans, styled, offset, blocks=()):
             sh.commit(True)
             p = dict(blocks[k].props)
             p["origin"] = pymupdf.Point(p["origin"]) + offset
+            if scales and k in scales:
+                p["rows"] = [r * scales[k] for r in p["rows"]]
+                p["step"] = p["step"] * scales[k]
             mk["props"] = p
     for name, font in inserted.values():
         _fix_spaces(page, name, font)

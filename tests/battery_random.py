@@ -773,6 +773,7 @@ class Battery:
             (self.op_group_objects, 3),
             # (1.15) Line color / Fill color / Text color of the page's own drawing and text
             (self.op_recolor_objects, 3),
+            (self.op_text_style, 3),
             (self.op_undo, 14), (self.op_redo, 9), (self.op_save, 2),
         ]
 
@@ -1595,6 +1596,49 @@ class Battery:
         v.recolor_objects(**{what: rgb})
         v.clear_object_selection()
         self.check_letters(i, others)
+        return "edit" if v.revision != rev else "none"
+
+    def op_text_style(self):
+        """Properties with the page's own text selected in Edit objects (1.16): Bold, Italic,
+        Underline, Strikethrough, Font size, Text color or Text background given to some of
+        its paragraphs, written again where they are. All the page's letters stay (the
+        selected text's too), and the change shows when it's read again."""
+        v = self.v
+        i = self.page()
+        pool = list(v.text_objects(i))
+        if not pool:
+            return "none"
+        v.clear_selection()
+        v.clear_object_selection()
+        v.select_objects(i, self.rnd.sample(pool, self.rnd.randint(1, min(3, len(pool)))))
+        if v.object_text_style() is None:
+            v.clear_object_selection()
+            return "none"
+        changes = {}
+        for key in self.rnd.sample(["bold", "italic", "underline", "strike", "fontsize",
+                                    "text_color", "text_back"], self.rnd.randint(1, 2)):
+            if key == "fontsize":
+                changes[key] = self.rnd.choice([8, 10, 12, 14.5, 20])
+            elif key == "text_color":
+                changes[key] = "#%02x%02x%02x" % tuple(self.rnd.randrange(256) for _ in range(3))
+            elif key == "text_back":
+                changes[key] = self.rnd.choice(["#ffff00", "#aaffaa", "-"])
+            else:
+                changes[key] = self.rnd.random() < 0.7
+        others = self.other_letters(i, [])
+        rev = v.revision
+        v.style_text_objects(changes)
+        self.check_letters(i, others)
+        if v.revision != rev and v.obj_sel is not None:
+            got = v.object_text_style() or {}
+            for key in ("bold", "underline", "strike"):
+                if key in changes and got.get(key) != changes[key] and \
+                        not (key == "bold" and changes[key]):
+                    # (bold on: a font with no bold of its own is thickened, and that reads
+                    # back as bold only with a stroke; underline and strikethrough read back)
+                    raise Failed("page %d: %s %r given, read back %r" % (
+                        i, key, changes[key], got.get(key)))
+        v.clear_object_selection()
         return "edit" if v.revision != rev else "none"
 
     def op_cad_drag(self):
