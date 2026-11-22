@@ -2199,41 +2199,64 @@ _STROKE_SET = _STROKE | {b"CS"}
 
 
 # the colors recolor() wrote: a  q , a line of  r g b RG / rg , then the shape
-_OWN_COLOR = re.compile(rb"\nq\n((?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg) ?)+)\n")
+# the  q <settings>  a shape was given by recolor (its colors, its line width), searched for
+# ending where the shape starts (\Z: at the end of the search, so an earlier  q  and settings
+# don't stop it there)
+_OWN_COLOR = re.compile(rb"\nq\n((?:(?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg)|-?[\d.]+ w) ?)+)\n\Z")
 
 
 def _rgb_op(rgb, op):
     return b"%.4g %.4g %.4g " % tuple(max(0.0, min(1.0, float(c))) for c in rgb) + op
 
 
-def recolor(page, ns, stroke=None, fill=None, objs=None):
+def width_scale(d):
+    """How much a scan entry's matrix scales its line width (the square root of its area
+    change): its width on the page is its own times this."""
+    m = d.get("ctm")
+    return math.sqrt(abs(m.a * m.d - m.b * m.c)) if m is not None else 1.0
+
+
+def page_width(d):
+    """A scan entry's line width as drawn on the page (points)."""
+    return d.get("width", 1.0) * width_scale(d)
+
+
+def recolor(page, ns, stroke=None, fill=None, objs=None, width=None):
     """Give shapes ns (path objects) a new line color (stroke) and/or fill color (fill), each
-    (r, g, b) from 0 to 1 or None to keep it. The color is set in a  q ... Q  of the shape's
-    own, so what's drawn after it keeps its colors; a shape colored this way before has its
-    color replaced in that one (no nesting). Pictures and groups are left as they are.
-    objs: the page's Objects (already read). Returns the page's new Objects, or None."""
-    if stroke is None and fill is None:
+    (r, g, b) from 0 to 1 or None to keep it, and/or a new line width (width: points on the
+    page, whatever the shape's own scale; None to keep it). They're set in a  q ... Q  of the
+    shape's own, so what's drawn after it keeps its settings; a shape restyled this way before
+    has its settings replaced in that one (no nesting). Pictures and groups are left as they
+    are. objs: the page's Objects (already read). Returns the page's new Objects, or None."""
+    if stroke is None and fill is None and width is None:
         return objs
     data = _contents(page)
     found = objs.found if objs is not None and objs.found and objs.data == data else scan(data)
     shapes = [n for n in set(ns) if n < len(found) and found[n].get("path")]
+    if width is not None:
+        shapes = [n for n in shapes if found[n].get("stroke")]
     if not shapes:
         return objs
-    new_ops = ([_rgb_op(stroke, b"RG")] if stroke is not None else []) + \
+    colors = ([_rgb_op(stroke, b"RG")] if stroke is not None else []) + \
         ([_rgb_op(fill, b"rg")] if fill is not None else [])
     pieces = {}
     for n in shapes:
         d = found[n]
+        new_ops = list(colors)
+        if width is not None:
+            k = width_scale(d)
+            new_ops.append(b"%.4f w" % (max(0.0, width) / k if k > 1e-12 else width))
         s, e = d["start"], d["end"]
         old = data[s:e]
         m = _OWN_COLOR.search(data, max(0, s - 160), s)
         if m and m.end() == s and data[e:e + 3] == b"\nQ\n":
-            # colored before: its colors (the line after its own  q ) replaced there, not a
-            # wrapper in a wrapper
+            # restyled before: its settings (the line after its own  q ) replaced there, not
+            # a wrapper in a wrapper
             ops = m.group(1)
             kept = [ops[s_:e_] for op, _a, s_, e_ in _tokens(ops)
                     if not (stroke is not None and op == b"RG")
-                    and not (fill is not None and op == b"rg")]
+                    and not (fill is not None and op == b"rg")
+                    and not (width is not None and op == b"w")]
             pieces[n] = (m.start(1), b" ".join(kept + new_ops) + b"\n" + old)
         else:
             # its settings stay for what's after it; the new color only for it

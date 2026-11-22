@@ -60,6 +60,8 @@ class PropertiesPanel(QWidget):
     propsChanged = Signal(dict)      # full props dict after a user change
     resetRequested = Signal()
     objectsTurn = Signal(float)      # the page's selected objects: turn by degrees (counterclockwise)
+    objectsWidth = Signal(float)     # the page's selected objects: their line width (points)
+    _obj_width = None                # their line width shown ("" when they differ)
     countLayer = Signal(object)      # a count's layer picked: None (as the Layers tab), 0 (no
     #                                  layer), a layer's xref, or "new"
     newCountGroup = Signal()         # the Count tool: start a new group ("New count")
@@ -346,6 +348,8 @@ class PropertiesPanel(QWidget):
     def show_target(self, kind, props, selected=False):
         self._loading = True
         self._kind = kind
+        self._obj_width = None
+        self.width.setSpecialValueText("")          # (blank only for objects of mixed widths)
         if kind is None:
             self.title.setText(tr("No tool settings"))
             self.title.setStyleSheet("font-weight: bold;")
@@ -597,16 +601,18 @@ class PropertiesPanel(QWidget):
         self._loading = False
         self._emit()
 
-    def show_objects(self, what, angle=None, text=False):
-        """The page's own objects selected (Edit objects, CAD mode): their rotation. what: what
-        is selected ("1 picture"). angle: the one picture's or group's angle as shown
-        (counterclockwise): Rotation turns it to the angle typed; None (lines and shapes keep no
-        angle, or several): Rotate by turns them by what's typed. text: text is among them
-        (moved, not turned)."""
+    def show_objects(self, what, angle=None, text=False, width=None):
+        """The page's own objects selected (Edit objects, CAD mode): their rotation, and their
+        line width. what: what is selected ("1 picture"). angle: the one picture's or group's
+        angle as shown (counterclockwise): Rotation turns it to the angle typed; None (lines
+        and shapes keep no angle, or several): Rotate by turns them by what's typed. text: text
+        is among them (moved, not turned). width: the line width of the shapes with an outline
+        among them (points on the page), "" when they differ, None when none has one."""
         self._loading = True
         self._kind = "objects"
         self._props = {}
         self._obj_angle = angle
+        self._obj_width = width
         self.title.setText(tr("Selected: {name}").format(name=what))
         self.title.setStyleSheet("font-weight: bold; padding: 3px 5px; border-radius: 3px; "
                                  "background: rgba(45, 108, 223, 0.28);")
@@ -632,6 +638,13 @@ class PropertiesPanel(QWidget):
             self.turn.setValue(0)
             for w in self.rows["turn"]:
                 w.show()
+        if width is not None:
+            # (several of different widths: shown blank, and the width typed goes to all)
+            self.rows["width"][0].setText(tr("Line width"))
+            self.width.setSpecialValueText("" if width != "" else " ")
+            self.width.setValue(float(width) if width != "" else self.width.minimum())
+            for w in self.rows["width"]:
+                w.show()
         self._loading = False
 
     def _turn_by(self, value):
@@ -654,6 +667,14 @@ class PropertiesPanel(QWidget):
         if self._loading or self._kind is None:
             return
         if self._kind == "objects":
+            # (Line width: given to the selected shapes when it's another than they have)
+            if self._obj_width is not None and self.rows["width"][1].isVisible():
+                w = round(self.width.value(), 3)
+                if self._obj_width == "" or abs(w - float(self._obj_width)) > 1e-6:
+                    self._obj_width = w
+                    self.width.setSpecialValueText("")
+                    self.objectsWidth.emit(w)
+                    return
             # (Rotation of one picture or group: turned by the difference to the angle typed)
             if self._obj_angle is not None:
                 delta = self.rotation.value() - self._obj_angle

@@ -174,6 +174,12 @@ drawings use very thin lines (a tenth of a point or less); at their true width t
 part of a screen pixel when zoomed out and come out pale gray. With this on they stay dark and
 legible at any zoom. Only the screen changes: printing, export, OCR, Compare and the saved
 file use the true line widths. Your choice is remembered.</li>
+<li><b>Show line weights</b> (View menu, the arrow of the View tab's Display group, Preferences &gt; Pages and display;
+on by default): lines are drawn at the widths the drawing gives them. Turn it off to draw every
+line of the page's drawing thin, one screen pixel wide, as CAD programs do with line weights
+hidden: a heavy outline and a thin dimension line look alike, and close lines stay apart when
+zoomed out. Markups keep their own widths. Only the screen changes: printing, export, OCR,
+Compare and the saved file use the true line widths. Your choice is remembered.</li>
 <li><b>Markups outside the page:</b> put markups, pictures and captured sheets anywhere in the
 gray around a page: beside a drawing, or other sheets pasted next to it to put a plan spread
 over several sheets back together (Capture area, Shift+P, keeps them sharp). The gray works as
@@ -1270,6 +1276,12 @@ it); lines and shapes, or several objects, keep no angle of their own, so it sho
 (type the degrees and they turn by that much; the box goes back to 0). Text is moved, not
 turned, so a selection with text in it has no round handle (CAD mode's Rotate leaves text where
 it is the same way).</li>
+<li><b>Line width</b> in the <b>Properties</b> panel: with lines or shapes that have an outline
+selected (Edit objects, or CAD mode), it shows their width as drawn on the page, in points (blank
+when they differ). Type a width and they're drawn that wide, as one step Undo takes back; the
+rest of the page stays as it was. It's the width on the page, whatever scale a line is drawn at
+in the drawing. To see every line thin for a while without changing the file, use View &gt; Show
+line weights.</li>
 <li>Delete (or Backspace) deletes the selection. Right-click for Cut, Copy, Paste and Duplicate,
 Ungroup (groups), Rotate clockwise, Rotate
 counterclockwise, Rotate by an angle..., the stacking order commands and Delete, and, for one picture, Copy picture
@@ -2379,7 +2391,7 @@ around).</li>
 The note under Scroll one page per wheel step says when it applies: only while the whole page
 fits in the window, as after Fit page.</li>
 <li><b>Pages and display:</b> lock the page order, Show comment boxes, Highlight form fields,
-Night mode (white lines on black), Enhance thin lines, Show scale bar, <b>New PDF page size</b> (the size and
+Night mode (white lines on black), Enhance thin lines, Show line weights, Show scale bar, <b>New PDF page size</b> (the size and
 orientation File &gt; New PDF uses, or Ask every time),
 and <b>Grid and snapping</b>, all in one place: grid spacing and units, the darker line
 interval, Show grid, Snap to grid and Snap to objects (the same settings as View &gt; Grid

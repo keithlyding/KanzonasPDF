@@ -9,6 +9,24 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.19
+
+**New**
+- View > Show line weights: turn it off to draw every line thin on screen, as CAD programs do with line weights hidden. Printing, export and the file keep the real line widths. Also in Preferences and under the arrow of the View tab's Display group. Thanks to @cloydcc-dev for the suggestion.
+- Properties > Line width for the drawing's own lines (Edit objects, CAD mode): see the width of the selected lines and type a new one.
+
+## 1.15.19 (es)
+
+**Novedades**
+- Ver > Mostrar grosores de línea: desactívelo para dibujar cada línea fina en pantalla, como hacen los programas de CAD con los grosores de línea ocultos. La impresión, la exportación y el archivo conservan los anchos de línea reales. También en Preferencias y en la flecha del grupo Visualización de la pestaña Ver. Gracias a @cloydcc-dev por la sugerencia.
+- Propiedades > Grosor de línea para las líneas propias del dibujo (Editar objetos, modo CAD): vea el grosor de las líneas seleccionadas y escriba uno nuevo.
+
+## 1.15.19 (it)
+
+**Novità**
+- Visualizza > Mostra spessori di linea: disattivalo per disegnare ogni linea sottile sullo schermo, come fanno i programmi CAD con gli spessori di linea nascosti. Stampa, esportazione e file mantengono le larghezze reali delle linee. Anche nelle Preferenze e nella freccia del gruppo Visualizzazione della scheda Visualizza. Grazie a @cloydcc-dev per il suggerimento.
+- Proprietà > Spessore linea per le linee del disegno stesso (Modifica oggetti, modalità CAD): vedi lo spessore delle linee selezionate e digitane uno nuovo.
+
 ## 1.15.18
 
 **Fixed**

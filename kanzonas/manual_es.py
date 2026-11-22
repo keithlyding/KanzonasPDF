@@ -166,6 +166,12 @@ CAD usan líneas muy finas (una décima de punto o menos); con su ancho real cub
 parte de un píxel de pantalla al alejar y se ven de un gris pálido. Con esta opción activada siguen oscuras y
 legibles con cualquier zoom. Solo cambia la pantalla: la impresión, la exportación, el OCR, Comparar y el archivo
 guardado usan los anchos de línea reales. Su elección se recuerda.</li>
+<li><b>Mostrar grosores de línea</b> (menú Ver, la flecha del grupo Visualización de la pestaña Ver, Preferencias &gt; Páginas y visualización;
+activado de forma predeterminada): las líneas se dibujan con el grosor que les da el dibujo. Desactívelo para dibujar
+cada línea del dibujo de la página fina, de un píxel de pantalla, como hacen los programas de CAD con los grosores de línea
+ocultos: un contorno grueso y una línea de cota fina se ven iguales, y las líneas cercanas siguen separadas al
+alejar. Las marcas conservan su propio ancho. Solo cambia la pantalla: la impresión, la exportación, el OCR,
+Comparar y el archivo guardado usan los anchos de línea reales. Su elección se recuerda.</li>
 <li><b>Marcas fuera de la página:</b> ponga marcas, imágenes y planos capturados en cualquier lugar del gris
 alrededor de una página: junto a un plano, u otros planos pegados al lado para volver a juntar un plano repartido en
 varias hojas (Capturar área, Mayús+P, los mantiene nítidos). El gris funciona como siempre; una página con marcas junto a
@@ -1257,6 +1263,12 @@ del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido d
 líneas y formas, o varios objetos, no guardan un ángulo propio, así que muestra <b>Girar</b> (escriba los grados y giran esa
 cantidad; el cuadro vuelve a 0). El texto se mueve, no se
 gira, así que una selección con texto no tiene controlador redondo (Girar del modo CAD también deja el texto donde está).</li>
+<li><b>Grosor de línea</b> en el panel <b>Propiedades</b>: con líneas o formas con contorno
+seleccionadas (Editar objetos, o el modo CAD), muestra su grosor tal como se dibuja en la página, en puntos (en blanco
+si son distintos). Escriba un grosor y se dibujan con ese grosor, en un solo paso que Deshacer revierte; el
+resto de la página queda como estaba. Es el grosor en la página, sea cual sea la escala a la que se dibuja una línea
+en el dibujo. Para ver cada línea fina un rato sin cambiar el archivo, use Ver &gt; Mostrar
+grosores de línea.</li>
 <li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
 Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
 en sentido contrario a las agujas del reloj, Girar un ángulo..., los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen
@@ -2409,7 +2421,7 @@ documento).</li>
 La nota debajo de Desplazar una página por paso de la rueda indica cuándo se aplica: solo mientras la página entera cabe
 en la ventana, como después de Ajustar página.</li>
 <li><b>Páginas y visualización:</b> bloquear el orden de las páginas, Mostrar cuadros de comentario, Resaltar campos de formulario,
-Modo nocturno (líneas blancas sobre negro), Mejorar líneas finas, Mostrar barra de escala, <b>Tamaño de página del nuevo PDF</b> (el tamaño y la
+Modo nocturno (líneas blancas sobre negro), Mejorar líneas finas, Mostrar grosores de línea, Mostrar barra de escala, <b>Tamaño de página del nuevo PDF</b> (el tamaño y la
 orientación que usa Archivo &gt; Nuevo PDF, o Preguntar cada vez),
 y <b>Cuadrícula y ajuste</b>, todo en un solo lugar: el espaciado y las unidades de la cuadrícula, el intervalo de la línea
 más oscura, Mostrar cuadrícula, Ajustar a la cuadrícula y Ajustar a objetos (la misma configuración que Ver &gt; Configuración de
