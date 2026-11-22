@@ -1907,6 +1907,8 @@ class MainWindow(QMainWindow):
         self.props.propsChanged.connect(self._on_props_changed)
         self.props.objectsTurn.connect(
             lambda deg: self.view() is not None and self.view().rotate_objects(-deg))
+        self.props.objectsWidth.connect(
+            lambda w: self.view() is not None and self.view().set_object_width(w))
         self.props.resetRequested.connect(self._reset_tool_defaults)
         self.props.countLayer.connect(self._count_layer_picked)
         self.props.newCountGroup.connect(self._new_count_group)
@@ -2859,10 +2861,11 @@ class MainWindow(QMainWindow):
             else:
                 self.props.show_target(m["kind"], m["props"], selected=True)
         elif v is not None and v.obj_sel:
-            # the page's own objects (Edit objects, CAD mode): their rotation
+            # the page's own objects (Edit objects, CAD mode): their rotation, line width
             items = v.obj_sel[1]
             self.props.show_objects(v.describe_objects(items), v.objects_angle(),
-                                    text=any(it["kind"] == "text" for it in items))
+                                    text=any(it["kind"] == "text" for it in items),
+                                    width=v.object_line_width())
         elif (self.tool in annotations.DEFAULTS and self.tool != "image") or \
                 self.tool in annotations.PAGE_TEXT_TOOLS:
             # (the Image tool writes into the page: no markup settings apply; Add text and

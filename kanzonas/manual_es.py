@@ -1263,6 +1263,12 @@ del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido d
 líneas y formas, o varios objetos, no guardan un ángulo propio, así que muestra <b>Girar</b> (escriba los grados y giran esa
 cantidad; el cuadro vuelve a 0). El texto se mueve, no se
 gira, así que una selección con texto no tiene controlador redondo (Girar del modo CAD también deja el texto donde está).</li>
+<li><b>Grosor de línea</b> en el panel <b>Propiedades</b>: con líneas o formas con contorno
+seleccionadas (Editar objetos, o el modo CAD), muestra su grosor tal como se dibuja en la página, en puntos (en blanco
+si son distintos). Escriba un grosor y se dibujan con ese grosor, en un solo paso que Deshacer revierte; el
+resto de la página queda como estaba. Es el grosor en la página, sea cual sea la escala a la que se dibuja una línea
+en el dibujo. Para ver cada línea fina un rato sin cambiar el archivo, use Ver &gt; Mostrar
+grosores de línea.</li>
 <li>Supr (o Retroceso) elimina la selección. Haga clic con el botón derecho para Cortar, Copiar, Pegar y Duplicar,
 Desagrupar (grupos), Girar en el sentido de las agujas del reloj, Girar
 en sentido contrario a las agujas del reloj, Girar un ángulo..., los comandos de orden de apilamiento y Eliminar, y, para una sola imagen, Copiar imagen

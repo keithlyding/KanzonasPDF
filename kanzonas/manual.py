@@ -1276,6 +1276,12 @@ it); lines and shapes, or several objects, keep no angle of their own, so it sho
 (type the degrees and they turn by that much; the box goes back to 0). Text is moved, not
 turned, so a selection with text in it has no round handle (CAD mode's Rotate leaves text where
 it is the same way).</li>
+<li><b>Line width</b> in the <b>Properties</b> panel: with lines or shapes that have an outline
+selected (Edit objects, or CAD mode), it shows their width as drawn on the page, in points (blank
+when they differ). Type a width and they're drawn that wide, as one step Undo takes back; the
+rest of the page stays as it was. It's the width on the page, whatever scale a line is drawn at
+in the drawing. To see every line thin for a while without changing the file, use View &gt; Show
+line weights.</li>
 <li>Delete (or Backspace) deletes the selection. Right-click for Cut, Copy, Paste and Duplicate,
 Ungroup (groups), Rotate clockwise, Rotate
 counterclockwise, Rotate by an angle..., the stacking order commands and Delete, and, for one picture, Copy picture

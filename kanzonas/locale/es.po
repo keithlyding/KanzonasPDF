@@ -11656,3 +11656,7 @@ msgstr "Líneas dibujadas con sus grosores de línea"
 #: main_window
 msgid "Every line drawn thin (line weights hidden)"
 msgstr "Cada línea dibujada fina (grosores de línea ocultos)"
+
+#: document_view
+msgid "Line width changed"
+msgstr "Grosor de línea cambiado"

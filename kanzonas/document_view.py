@@ -9392,6 +9392,36 @@ class DocumentView(QScrollArea):
                            tr("Color changed"), shapes, text_fn=texts,
                            takes_text=text is not None)
 
+    def object_line_width(self):
+        """The line width (points on the page) of the selected shapes with an outline: one
+        number when they all have the same, "" when they differ, None when none has one."""
+        from . import page_objects
+        if self.obj_sel is None:
+            return None
+        index, items = self.obj_sel
+        objs = self._obj_cache.get(index)
+        found = objs.found if objs is not None else None
+        widths = set()
+        for it in items:
+            if it["kind"] == "shape" and it.get("stroke"):
+                d = found[it["n"]] if found and it["n"] < len(found) else it
+                widths.add(round(page_objects.page_width(d), 3))
+        if not widths:
+            return None
+        return widths.pop() if len(widths) == 1 else ""
+
+    def set_object_width(self, width):
+        """Properties > Line width on the page's own objects: the selected shapes' lines drawn
+        width points wide on the page, in one undo step; they stay selected."""
+        from . import page_objects
+        if self.obj_sel is None or width is None:
+            return
+        cache = self._obj_cache.get(self.obj_sel[0])
+        self._objects_edit(tr("Line width changed"),
+                           lambda page, ns: page_objects.recolor(page, ns, objs=cache,
+                                                                 width=float(width)),
+                           takes_text=False)
+
     def object_colors(self):
         """What the selected objects can have changed: {"stroke", "fill", "text"} (Line
         color: shapes with an outline; Fill color: filled ones; Text color: text)."""
