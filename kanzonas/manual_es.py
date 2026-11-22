@@ -1268,12 +1268,14 @@ alrededor de su centro, el ángulo aparece en la barra de estado y Shift la gira
 exacto, haga clic con el botón derecho &gt; <b>Girar un ángulo...</b> y escriba los grados (en sentido contrario a las agujas
 del reloj, como la Rotación de una marca; -90 la gira un cuarto en el sentido de las agujas del reloj). El panel
 <b>Propiedades</b> también lo muestra: una imagen o un grupo muestra su <b>Rotación</b> (escriba un ángulo y gira hasta él); las
-líneas y formas, o varios objetos, no guardan un ángulo propio, así que muestra <b>Girar</b> (escriba los grados y giran esa
-cantidad; el cuadro vuelve a 0). El texto se mueve, no se
+líneas y formas, o varios objetos, no guardan un ángulo propio, así que muestra <b>Girar</b> (muestra cuánto han girado desde que
+los seleccionó: escriba un número, o súbalo o bájelo con las flechas, de 5&deg; en 5&deg;, y giran la diferencia;
+una selección nueva empieza en 0). El texto se mueve, no se
 gira, así que una selección con texto no tiene controlador redondo (Girar del modo CAD también deja el texto donde está).</li>
 <li><b>Grosor de línea</b> en el panel <b>Propiedades</b>: con líneas o formas con contorno
 seleccionadas (Editar objetos, o el modo CAD), muestra su grosor tal como se dibuja en la página, en puntos (en blanco
-si son distintos). Escriba un grosor y se dibujan con ese grosor, en un solo paso que Deshacer revierte; el
+si son distintos). Escriba un grosor y pulse Intro, o súbalo o bájelo con las flechas, y se dibujan con ese grosor, cada cambio
+un paso que Deshacer revierte; el
 resto de la página queda como estaba. Es el grosor en la página, sea cual sea la escala a la que se dibuja una línea
 en el dibujo. Para ver cada línea fina un rato sin cambiar el archivo, use Ver &gt; Mostrar
 grosores de línea.</li>

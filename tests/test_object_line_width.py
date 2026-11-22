@@ -125,6 +125,33 @@ class LineWidth(unittest.TestCase):
         pm = self.v.doc[0].get_pixmap()                 # (y=500 up from the bottom of 842)
         self.assertEqual(pm.pixel(250, 342), (0, 0, 255))
 
+    def test_the_arrows_step_it_and_a_number_typed_applies_on_enter(self):
+        # (the owner, 22 Nov 2026: "when I edit a line width, I can't change it with the arrow
+        # nor by typing in a value": the page read again kept the old width, so the box went
+        # back to it and the next step started from there)
+        from PySide6.QtCore import Qt
+        from PySide6.QtTest import QTest
+        self.select(self.shapes()[:1])
+        box = self.props.width
+        box.setFocus()
+        for k in range(1, 4):
+            QTest.keyClick(box, Qt.Key_Up)
+            APP.processEvents()
+            self.assertAlmostEqual(box.value(), 3 + 0.5 * k)
+            self.assertEqual(self.widths()[0], 3 + 0.5 * k)
+        box.lineEdit().selectAll()
+        QTest.keyClicks(box.lineEdit(), "7.5")
+        APP.processEvents()
+        self.assertEqual(self.widths()[0], 4.5)             # (not as each key is typed)
+        QTest.keyClick(box, Qt.Key_Return)
+        APP.processEvents()
+        self.assertAlmostEqual(box.value(), 7.5)
+        self.assertEqual(self.widths(), [7.5, 2.0, 4.0])
+        self.assertAlmostEqual(self.v.object_line_width(), 7.5)
+        self.v.undo()
+        APP.processEvents()
+        self.assertEqual(self.widths()[0], 4.5)             # (one step for the number typed)
+
     def test_a_shape_with_no_outline_shows_no_width(self):
         self.select([self.shapes()[2]])
         self.assertFalse(self.shown())

@@ -9047,6 +9047,7 @@ class DocumentView(QScrollArea):
                     have[it["n"]] = it
             items = sorted(have.values(), key=lambda it: it["n"])
         self.obj_sel = (index, list(items)) if items else None
+        self._turned = None             # (selected again: Rotate by starts at 0)
         self._note_picks()
         for i in {old[0] if old else None, index}:
             if i is not None and 0 <= i < len(self.pages):
@@ -9239,8 +9240,29 @@ class DocumentView(QScrollArea):
             if mine:
                 links.transform(pg, mine, turn)
             return bool(mine)
+        before, key = self.revision, self._turn_key()
         self._objects_edit(tr("Rotated"), lambda pg, ns: page_objects.rotate(pg, ns, rect, degrees, objs),
                            links_fn=turn_links)
+        if self.obj_sel is not None and self.revision != before:
+            # how far they've turned since they were selected (Properties > Rotate by shows
+            # it; counterclockwise as shown, -180 to 180)
+            total = (self._turned[1] if self._turned and self._turned[0] == key else 0.0)
+            total = (total - degrees + 180.0) % 360.0 - 180.0
+            self._turned = (self._turn_key(), round(total, 6) + 0.0)
+
+    _turned = None                      # (_turn_key(), degrees) for objects_turned
+
+    def _turn_key(self):
+        if self.obj_sel is None:
+            return None
+        return (self.obj_sel[0], tuple(sorted(it["n"] for it in self.obj_sel[1])))
+
+    def objects_turned(self):
+        """How far the selected pictures and shapes have been turned since they were selected
+        (degrees counterclockwise as shown, -180 to 180): Properties > Rotate by shows it."""
+        if self._turned is None or self._turned[0] != self._turn_key():
+            return 0.0
+        return self._turned[1]
 
     _turn_typed = 15.0                  # the angle Rotate by an angle... offers (the last one)
 

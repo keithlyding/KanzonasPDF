@@ -11545,8 +11545,8 @@ msgstr "Il testo si sposta, non si ruota: seleziona solo immagini e forme per ru
 msgid "Rotation turns it about its middle (counterclockwise), as its round handle does."
 msgstr "Rotazione lo ruota attorno al suo centro (in senso antiorario), come la sua maniglia rotonda."
 
-msgid "Rotate by turns them about their middle (counterclockwise), as their round handle does."
-msgstr "Ruota di li ruota attorno al loro centro (in senso antiorario), come la loro maniglia rotonda."
+msgid "Rotate by turns them about their middle (counterclockwise), as their round handle does. It shows how far they've turned since you selected them."
+msgstr "Ruota di li ruota attorno al loro centro (in senso antiorario), come la loro maniglia rotonda. Mostra di quanto sono ruotati da quando li hai selezionati."
 
 msgid "The update to KanzonasPDF {new} didn't finish: this is still {old}. Windows may have kept one of its files in use."
 msgstr "L'aggiornamento a KanzonasPDF {new} non si è completato: questa è ancora la {old}. Windows potrebbe aver tenuto in uso uno dei suoi file."

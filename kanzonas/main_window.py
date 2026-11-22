@@ -2866,7 +2866,8 @@ class MainWindow(QMainWindow):
             items = v.obj_sel[1]
             self.props.show_objects(v.describe_objects(items), v.objects_angle(),
                                     text=any(it["kind"] == "text" for it in items),
-                                    width=v.object_line_width(), style=v.object_style())
+                                    width=v.object_line_width(), style=v.object_style(),
+                                    turned=v.objects_turned())
         elif (self.tool in annotations.DEFAULTS and self.tool != "image") or \
                 self.tool in annotations.PAGE_TEXT_TOOLS:
             # (the Image tool writes into the page: no markup settings apply; Add text and

@@ -109,6 +109,7 @@ class PropertiesPanel(QWidget):
         self.width.setRange(0, 50)
         self.width.setSingleStep(0.5)
         self.width.setSuffix(" pt")
+        self.width.setKeyboardTracking(False)       # (a number typed applies on Enter, once)
         self.fontsize = QDoubleSpinBox()
         self.fontsize.setRange(4, 144)
         self.fontsize.setSuffix(" pt")
@@ -151,7 +152,8 @@ class PropertiesPanel(QWidget):
         # the page's own lines and shapes keep no angle: they're turned by what's typed here,
         # and it goes back to 0 (each arrow click turns them 5 degrees more)
         self.turn = QDoubleSpinBox()
-        self.turn.setRange(-360, 360)
+        self.turn.setRange(-180, 180)
+        self.turn.setWrapping(True)
         self.turn.setDecimals(1)
         self.turn.setSingleStep(5)
         self.turn.setSuffix("\u00b0")
@@ -635,14 +637,18 @@ class PropertiesPanel(QWidget):
         self._loading = False
         self._emit()
 
-    def show_objects(self, what, angle=None, text=False, width=None, style=None):
+    _turn_at = 0.0                   # Rotate by: how far they've turned since selected
+
+    def show_objects(self, what, angle=None, text=False, width=None, style=None, turned=0.0):
         """The page's own objects selected (Edit objects, CAD mode): their rotation, and their
         line width. what: what is selected ("1 picture"). angle: the one picture's or group's
         angle as shown (counterclockwise): Rotation turns it to the angle typed; None (lines
         and shapes keep no angle, or several): Rotate by turns them by what's typed. text: text
         is among them (moved, not turned). width: the line width of the shapes with an outline
         among them (points on the page), "" when they differ, None when none has one.
-        style: DocumentView.object_style() (their colors, Line style, arrowheads)."""
+        style: DocumentView.object_style() (their colors, Line style, arrowheads).
+        turned: how far they've turned since they were selected (Rotate by shows it, and a
+        new number turns them by the difference)."""
         self._loading = True
         self._kind = "objects"
         self._props = {}
@@ -670,8 +676,10 @@ class PropertiesPanel(QWidget):
                 w.show()
         else:
             self.hint.setText(tr("Rotate by turns them about their middle (counterclockwise), "
-                                 "as their round handle does."))
-            self.turn.setValue(0)
+                                 "as their round handle does. It shows how far they've turned "
+                                 "since you selected them."))
+            self._turn_at = float(turned or 0.0)
+            self.turn.setValue(self._turn_at)
             for w in self.rows["turn"]:
                 w.show()
         style = self._obj_style
@@ -715,12 +723,14 @@ class PropertiesPanel(QWidget):
         self._loading = False
 
     def _turn_by(self, value):
-        if self._loading or self._kind != "objects" or not value:
+        """Rotate by: turned by the difference to the number shown before (the arrows step
+        it 5 degrees at a time; past 180 it goes on from -180)."""
+        if self._loading or self._kind != "objects":
             return
-        self._loading = True
-        self.turn.setValue(0)
-        self._loading = False
-        self.objectsTurn.emit(value)
+        delta = (value - self._turn_at + 180.0) % 360.0 - 180.0
+        self._turn_at = value
+        if abs(delta) > 1e-9:
+            self.objectsTurn.emit(delta)
 
     def _inside_toggled(self, on):
         """The number put inside a filled dot reads white on it: a black text color (the

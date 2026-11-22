@@ -1343,12 +1343,21 @@ def _edit(page, ns, new, objs=None, by_n=None):
             x["ctm"] = x["ctm"] * d["ctm"]
             x["ctx"] = d.get("ctx")     # (a piece has no clipping or marked content)
             x["state"] = _state_after(d.get("state", b""), own) if own else d.get("state", b"")
-            if x.get("path"):
+            if x.get("path") and not _sets_width(piece):
+                # (the piece read alone starts at 1 pt: the width it's drawn with is the
+                # one in effect where it is, unless it sets its own, as Line width does)
                 x["width"] = d.get("width", x["width"])
             out.append(x)
             origin.append(None)
         shift += len(piece) - (e_ - s_)
     return _rebuilt(page, new_data, out, objs, origin)
+
+
+def _sets_width(piece):
+    """True when a piece of drawing instructions sets a line width ( w ) of its own."""
+    if b"w" not in piece:
+        return False
+    return any(op == b"w" for op, _a, _s, _e in _tokens(piece))
 
 
 def _split(old):

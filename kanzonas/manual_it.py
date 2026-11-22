@@ -1266,11 +1266,13 @@ suo centro, l'angolo appare nella barra di stato e Shift la ruota a passi di 15&
 clic con il tasto destro &gt; <b>Ruota di un angolo...</b> e digita i gradi (in senso antiorario, come la Rotazione di
 un'annotazione; -90 la ruota di un quarto in senso orario). Anche il pannello <b>Proprietà</b> la mostra: un'immagine o un
 gruppo mostra la sua <b>Rotazione</b> (digita un angolo e ruota fino a quello); linee e forme, o più oggetti, non hanno un
-angolo proprio, quindi mostra <b>Ruota di</b> (digita i gradi e ruotano di tanto; la casella torna a 0). Il testo si sposta, non si ruota, quindi una selezione con del
+angolo proprio, quindi mostra <b>Ruota di</b> (mostra di quanto sono ruotati da quando li hai selezionati: digita un numero, o cambialo con le frecce,
+di 5&deg; alla volta, e ruotano della differenza; una nuova selezione parte da 0). Il testo si sposta, non si ruota, quindi una selezione con del
 testo non ha la maniglia rotonda (anche Ruota della modalità CAD lascia il testo dov'è).</li>
 <li><b>Spessore linea</b> nel pannello <b>Proprietà</b>: con linee o forme con un contorno
 selezionate (Modifica oggetti, o la modalità CAD), mostra il loro spessore come è disegnato sulla pagina, in punti (vuoto
-se sono diversi). Digita uno spessore e vengono disegnate con quello spessore, in un solo passaggio che Annulla annulla; il
+se sono diversi). Digita uno spessore e premi Invio, o cambialo con le frecce, e vengono disegnate con quello spessore, ogni
+modifica un passaggio che Annulla annulla; il
 resto della pagina resta com'era. È lo spessore sulla pagina, qualunque sia la scala a cui una linea è disegnata
 nel disegno. Per vedere ogni linea sottile per un po' senza cambiare il file, usa Visualizza &gt; Mostra
 spessori di linea.</li>
