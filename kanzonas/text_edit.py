@@ -1807,15 +1807,16 @@ def restyle_lines(page, paragraphs, change, family=None, size=None, blocks=()):
     refuse_with_marks(page)
     styled, decor, offsets, scales = [], [], {}, {}
     owner = {id(ln): k for k, b in enumerate(blocks) for _r, ln in b.lines}
+    paragraphs = [[ln for ln in para if line_text(ln).strip()] for para in paragraphs]
+    paragraphs = [para for para in paragraphs if para]
+    every = [ln for para in paragraphs for ln in para]
+    for line in every:
+        refuse_right_to_left(line_text(line))
+    # (the page read once for all of them: one read a line walked a big drawing each time)
+    read = dict(zip(map(id, every), text_styles.read_lines(page, every)))
     lines = []
-    for para in paragraphs:
-        para = [ln for ln in para if line_text(ln).strip()]
-        if not para:
-            continue
-        reads = []
-        for line in para:               # 1) the fonts first: nothing goes if one can't write
-            refuse_right_to_left(line_text(line))
-            reads.append((line, text_styles.read_line(page, line)))
+    for para in paragraphs:         # 1) the fonts first: nothing goes if one can't write
+        reads = [(line, read[id(line)]) for line in para]
         ratio = 1.0
         if size is not None:
             main = text_styles.main_style(reads[0][1].text, reads[0][1].keys, reads[0][1].main)

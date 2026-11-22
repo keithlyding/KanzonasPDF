@@ -9432,8 +9432,8 @@ class DocumentView(QScrollArea):
         page = self.doc[index]
         flags = {"bold": True, "italic": True, "underline": True, "strike": True}
         sizes, colors, backs = set(), set(), set()
-        for ln in lines[:self._TEXT_STYLE_SAMPLE]:
-            st = text_styles.read_line(page, ln)
+        # (the page read once for them all: one read a line walked a big drawing each time)
+        for st in text_styles.read_lines(page, lines[:self._TEXT_STYLE_SAMPLE]):
             for c, k in zip(st.text, st.keys):
                 if c.isspace():
                     continue

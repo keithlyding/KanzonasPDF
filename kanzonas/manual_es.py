@@ -1048,6 +1048,38 @@ superior izquierda va a la cuadrícula.</li>
 <li><b>Mantenga presionada Alt</b> mientras dibuja o arrastra para colocar un punto libremente, sin ajuste.</li>
 </ul>
 
+<h2 id="kinds">Marca o contenido de la página</h2>
+<p>Lo que agrega a un PDF es de uno de dos tipos, y KanzonasPDF dice cuál en cada paso.</p>
+<ul>
+<li><b>Las marcas</b> (anotaciones: resaltados, comentarios, notas, formas y líneas dibujadas con
+las herramientas de la pestaña Marcas, sellos, mediciones) quedan <b>encima de la página</b>. Se
+pueden mover, ocultar, eliminar, poner en capas o acoplar, y la página de debajo queda como
+estaba; otros lectores de PDF las muestran como comentarios.</li>
+<li><b>El contenido de la página</b> es la propia página: su texto, sus líneas y sus imágenes.
+<b>Editar texto</b>, <b>Agregar texto</b>, <b>Editar objetos</b>, la herramienta <b>Imagen</b> y
+<b>Borrar contenido</b> lo cambian. Lo que escriben forma parte de la página: todos los lectores
+lo muestran y lo imprimen, y no se puede ocultar ni quitar como una marca.</li>
+<li><b>Cómo saberlo:</b> el panel de propiedades muestra una etiqueta sobre su título, <b>Marca:
+encima de la página</b> (violeta) o <b>Contenido de la página: cambia la propia página</b>
+(verde azulado), para lo seleccionado y para la herramienta que va a usar. La descripción de
+cada herramienta empieza también por <b>Marca:</b> o <b>Contenido de la página:</b>.</li>
+<li><b>Resaltar texto de dos maneras:</b> la herramienta <b>Resaltar</b> (pestaña Marcas) agrega
+una marca de resaltado sobre las palabras: se puede quitar, y un revisor la ve como un
+comentario. <b>Fondo del texto</b> (Propiedades, o el botón <b>ab</b> sobre el cuadro al editar
+texto) colorea el fondo de las palabras en la propia página, como un marcador sobre papel: forma
+parte del estilo de cada palabra, así que se mueve y se reajusta con sus palabras, se imprime
+siempre y no es un comentario. Lo mismo vale para el <b>Subrayado</b> y el <b>Tachado</b>: los de
+la pestaña Marcas son marcas; los de Propiedades al editar texto cambian el propio texto.</li>
+<li><b>El texto de la página en Propiedades:</b> seleccione texto con Editar objetos (o en el modo
+CAD) y Propiedades muestra su <b>Fuente</b>, <b>Tamaño de fuente</b>, <b>Negrita</b>,
+<b>Cursiva</b>, <b>Subrayado</b>, <b>Tachado</b>, <b>Color del texto</b> y <b>Fondo del texto</b>
+(en blanco, o "varios", cuando el texto seleccionado es distinto). Un cambio va a todo: el texto
+se vuelve a escribir en la página donde está, cada palabra conserva el resto de su estilo, en un
+solo paso que Deshacer revierte, y sigue seleccionado. Un tamaño nuevo separa (o junta) las
+líneas de un párrafo tanto como agranda (o achica) el texto. Para cambiar palabras sueltas, edite
+el texto (Editar texto) y selecciónelas en el cuadro.</li>
+</ul>
+
 <h2 id="properties">Colores, bordes y estilos (Panel de propiedades)</h2>
 <ul>
 <li>Con una herramienta activa, el panel de propiedades (F6) define el <b>estilo predeterminado</b> de esa herramienta, que se guarda
@@ -1362,12 +1394,13 @@ tachado. El cuadro los muestra como en la página.</li>
 <li><b>Negrita, cursiva, subrayado y color para palabras sueltas:</b> mientras edita (un párrafo, una
 línea, o texto nuevo con Agregar texto), seleccione palabras y use los botones sobre el cuadro:
 <b>Negrita</b> (Ctrl+B), <b>Cursiva</b> (Ctrl+I), <b>Subrayado</b> (Ctrl+U),
-<b>Tachado</b>, <b>Color del texto</b>, y <b>Texto más grande</b> (Ctrl+]) / <b>Texto más
+<b>Tachado</b>, <b>Color del texto</b>, <b>Fondo del texto</b> (ab: las palabras resaltadas en la propia
+página, vea <a href="#kinds">Marca o contenido de la página</a>), y <b>Texto más grande</b> (Ctrl+]) / <b>Texto más
 pequeño</b> (Ctrl+[), de un punto en un punto (una línea con palabras más grandes baja lo que
 necesitan, para que no se monten sobre la de arriba). Presione de nuevo un botón para quitar el estilo; un estilo que tienen todas las
 palabras seleccionadas se ve presionado. Sin nada seleccionado, el botón fija el estilo de lo que escriba a
-continuación. La <b>Negrita</b>, la <b>Cursiva</b> y el <b>Tamaño de fuente</b> de Propiedades (y el <b>Color del
-texto</b> de Agregar texto) hacen lo mismo mientras el cuadro está abierto: cambian las palabras seleccionadas, que
+continuación. La <b>Negrita</b>, la <b>Cursiva</b>, el <b>Subrayado</b>, el <b>Tachado</b>, el <b>Tamaño de
+fuente</b>, el <b>Color del texto</b> y el <b>Fondo del texto</b> de Propiedades hacen lo mismo mientras el cuadro está abierto: cambian las palabras seleccionadas, que
 siguen seleccionadas, o todo el texto del cuadro cuando no hay nada seleccionado, y Propiedades muestra el estilo de
 las palabras seleccionadas. No cambian los ajustes propios de la herramienta para el texto siguiente. El texto escrito junto a una palabra toma
 el estilo de esa palabra; el texto escrito en un cuadro vacío toma el estilo principal del párrafo.

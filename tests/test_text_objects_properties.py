@@ -153,5 +153,30 @@ class TextObjects(unittest.TestCase):
         self.assertEqual(self.props.fontsize.text().strip(), "")
 
 
+class OnABigSheet(unittest.TestCase):
+    def test_400_labels_made_bold_quickly(self):
+        # (each line read on its own walked the whole drawing: 8.7 s here, 1.0 s read once)
+        import time
+        d = pymupdf.open()
+        p = d.new_page(width=3000, height=2000)
+        sh = p.new_shape()
+        for i in range(20000):
+            x, y = (i * 37) % 2990, (i * 91) % 1990
+            sh.draw_line((x, y), (x + 10, y + 5))
+            sh.finish(width=1, color=(0, 0, 0))
+        sh.commit()
+        for i in range(400):
+            p.insert_text((50 + (i % 20) * 140, 60 + (i // 20) * 90), "LABEL %d" % i,
+                          fontsize=10)
+        paras = [[ln] for _r, ln in text_edit.text_lines(p)]
+        t = time.perf_counter()
+        text_edit.restyle_lines(p, paras, lambda k: k._replace(underline=True))
+        took = time.perf_counter() - t
+        self.assertLess(took, 4.0)          # (the editing budget's 400 labels moved: 4 s)
+        got = text_styles.read_lines(p, [ln for _r, ln in text_edit.text_lines(p)])
+        self.assertEqual(len(got), 400)
+        self.assertTrue(all(st.keys[0].underline for st in got))
+
+
 if __name__ == "__main__":
     unittest.main()

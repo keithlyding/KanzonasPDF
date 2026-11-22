@@ -9,6 +9,36 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.16
+
+**New**
+- Markup or page content: Properties shows which one you're changing or about to add, a markup on top of the page or the page's own content, and every tool's tooltip says it too.
+- The page's own text in Properties: select it with Edit objects and change its font, size, bold, italic, underline, strikethrough, color and background there. While editing text, Properties has all of them too.
+- Text background: highlight words in the page itself, as a highlighter pen on paper, as against the Highlight markup on top. It moves and rewraps with its words.
+
+**Fixed**
+- Text moved or recolored with Edit objects kept its underline and strikethrough (they were lost, and their lines stayed where the text had been).
+
+## 1.16 (es)
+
+**Novedades**
+- Marca o contenido de la página: Propiedades muestra cuál está cambiando o va a agregar, una marca encima de la página o el contenido propio de la página, y la descripción de cada herramienta también lo dice.
+- El texto propio de la página en Propiedades: selecciónelo con Editar objetos y cambie allí su fuente, tamaño, negrita, cursiva, subrayado, tachado, color y fondo. Al editar texto, Propiedades también los tiene todos.
+- Fondo del texto: resalte palabras en la propia página, como un marcador sobre papel, a diferencia de la marca de Resaltar que queda encima. Se mueve y se reajusta con sus palabras.
+
+**Correcciones**
+- El texto movido o con otro color en Editar objetos conserva su subrayado y su tachado (se perdían, y sus líneas quedaban donde había estado el texto).
+
+## 1.16 (it)
+
+**Novità**
+- Annotazione o contenuto della pagina: Proprietà mostra quale stai cambiando o stai per aggiungere, un'annotazione sopra la pagina o il contenuto della pagina stessa, e lo dice anche la descrizione di ogni strumento.
+- Il testo della pagina in Proprietà: selezionalo con Modifica oggetti e cambia lì il font, la dimensione, il grassetto, il corsivo, la sottolineatura, il barrato, il colore e lo sfondo. Mentre modifichi il testo, Proprietà li ha tutti.
+- Sfondo del testo: evidenzia parole nella pagina stessa, come un evidenziatore sulla carta, a differenza dell'annotazione Evidenzia che sta sopra. Si sposta e va a capo con le sue parole.
+
+**Correzioni**
+- Il testo spostato o ricolorato con Modifica oggetti mantiene sottolineatura e barrato (si perdevano, e le loro linee restavano dov'era il testo).
+
 ## 1.15.21
 
 **New**
