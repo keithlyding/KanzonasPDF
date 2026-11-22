@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.18
+
+**Fixed**
+- The page list keeps the thumbnails of your open documents when you switch tabs: only documents open in a tab count toward its limit.
+
+## 1.15.18 (es)
+
+**Correcciones**
+- La lista de páginas conserva las miniaturas de sus documentos abiertos al cambiar de pestaña: solo cuentan para su límite los documentos abiertos en una pestaña.
+
+## 1.15.18 (it)
+
+**Correzioni**
+- L'elenco delle pagine conserva le miniature dei documenti aperti quando cambi scheda: solo i documenti aperti in una scheda contano per il suo limite.
+
 ## 1.15.17
 
 **Fixed**

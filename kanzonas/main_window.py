@@ -7351,10 +7351,17 @@ class MainWindow(QMainWindow):
     def _trim_other_thumbs(self, v):
         """Ten long documents open kept 400 thumbnails each: the other documents' oldest go
         first, so all of them together keep at most THUMB_KEEP_ALL (they're drawn again when
-        their document is shown)."""
+        their document is shown). Only documents open in a tab count: a view no longer in one
+        is closed, or waiting for Python's collector to free it (see gc_main.py), and kept
+        nothing anyone sees."""
         from .document_view import DocumentView
-        views = [o for o in list(DocumentView._views or ()) if o is not v and
-                 getattr(o, "thumb_icons", None) and not o.doc.is_closed]
+        views = []
+        for win in windows():
+            for i in range(win.tabs.count()):
+                o = win.tabs.widget(i)
+                if isinstance(o, DocumentView) and o is not v and o not in views and \
+                        getattr(o, "thumb_icons", None) and not o.doc.is_closed:
+                    views.append(o)
         total = len(getattr(v, "thumb_icons", None) or ()) + sum(len(o.thumb_icons) for o in views)
         for o in views:
             if total <= self.THUMB_KEEP_ALL:

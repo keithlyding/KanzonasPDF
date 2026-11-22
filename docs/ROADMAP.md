@@ -123,6 +123,8 @@ a decision changes or a piece of work lands. Details of each version are in
 - 1.15.17 (owner, 22 Nov: "If we know about a bug, we need to fix it"): Python's garbage
   collector runs only on the main thread (gc_main.py): a collection on a worker thread deleted
   closed windows off their own thread (a crash).
+- 1.15.18: only documents open in a tab count in the page list's thumbnail cap (1.15.17's
+  build on main failed on it and wasn't published; its notes come with 1.15.18).
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.
