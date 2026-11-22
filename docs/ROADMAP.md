@@ -129,6 +129,8 @@ a decision changes or a piece of work lands. Details of each version are in
   line weights; off, every line drawn thin on screen (line_weights.py). And (the owner: "let's
   add that too") Properties > Line width for the page's own lines. The owner replies on #120
   once it's out and checks it's what he asked for.
+- 1.15.20 (the random battery, seed 13): text written again (Text color, moved, Edit text)
+  uses a copy of its font that draws its letters, not one Save cut down to other letters.
 
 ## Next
 The owner sets this list; nothing below is promised until it's here.

@@ -9,6 +9,20 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.20
+
+**Fixed**
+- Text added and saved, then another line in the same font added later: recoloring, moving or editing that line could make it disappear. It now keeps its letters.
+
+## 1.15.20 (es)
+
+**Correcciones**
+- Texto añadido y guardado, y luego otra línea en la misma fuente añadida más tarde: cambiar el color, mover o editar esa línea podía hacerla desaparecer. Ahora conserva sus letras.
+
+## 1.15.20 (it)
+
+**Correzioni**
+- Testo aggiunto e salvato, poi un'altra riga nello stesso carattere aggiunta in seguito: cambiare il colore, spostare o modificare quella riga poteva farla sparire. Ora mantiene le sue lettere.
 ## 1.15.19
 
 **New**
