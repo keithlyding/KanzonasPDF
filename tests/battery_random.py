@@ -180,8 +180,14 @@ def canon(data):
     d.xref_set_key(-1, "ID", "null")
     d.set_metadata({k: v for k, v in (d.metadata or {}).items()
                     if k in ("title", "author", "subject", "keywords", "creator")})
-    raw = d.tobytes(garbage=4, expand=255, no_new_id=True)
+    # (expanded first, then the same objects merged: MuPDF merges objects whose stored bytes
+    # are the same, and two copies of one stream, one written quickly and one packed by a
+    # Save, weren't, though they hold the same drawing. Random battery, seed 13, 22 Nov 2026:
+    # a duplicated page's own copies of its original's streams after an undo)
+    expanded = pymupdf.open("pdf", d.tobytes(expand=255, no_new_id=True))
     d.close()
+    raw = expanded.tobytes(garbage=4, no_new_id=True)
+    expanded.close()
     return re.sub(rb"/[A-Z]{6}\+", b"/XXXXXX+", raw)
 
 
