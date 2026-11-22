@@ -144,6 +144,15 @@ def same_lines(la, lb):
                                  for u, v in zip(p, q)) for p, q in zip(la, lb))
 
 
+
+def collector_on(test):
+    """Python's automatic collector on for the test (as before a window starts gc_main's
+    collector, which turns it off), put back as it was after: these tests check that a pause
+    of it ends with it on again."""
+    collecting = gc.isenabled()
+    gc.enable()
+    test.addCleanup(lambda: None if collecting else gc.disable())
+
 class Reading(unittest.TestCase):
     def assert_same_scan(self, data, label=""):
         quick, slow = P.scan(data), general(P.scan, data)
@@ -219,10 +228,7 @@ class Reading(unittest.TestCase):
         self.assertEqual(len(ctms), 1)      # one matrix for the shapes drawn under it
 
     def test_the_collector_is_paused_while_reading_and_back_after(self):
-        # (with the automatic collector on, as before a window starts gc_main's collector)
-        collecting = gc.isenabled()
-        gc.enable()
-        self.addCleanup(lambda: None if collecting else gc.disable())
+        collector_on(self)
         d = pymupdf.open()
         pg = page_with(d, cad_content(500))
         seen = []
@@ -275,6 +281,7 @@ class Reading(unittest.TestCase):
         # (late in a long session the collector went through every point already made each
         # time it ran: a big sheet's outlines took twice as long and varied twofold, 2.5 to
         # 4.6 s on a Mac build machine on 13 Nov; the view's prep step pauses it too)
+        collector_on(self)
         d = pymupdf.open()
         objs = P.Objects(page_with(d, cad_content(50)))
         seen = []
@@ -360,6 +367,7 @@ class Editing(unittest.TestCase):
 
 class CadPrep(unittest.TestCase):
     def test_outlines_read_in_idle_time_are_set_aside(self):
+        collector_on(self)
         tmp = tempfile.mkdtemp()
         d = pymupdf.open()
         page_with(d, cad_content(3000))
