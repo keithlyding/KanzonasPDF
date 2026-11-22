@@ -9,6 +9,21 @@ Spanish translation under `## <version> (es)`. The Windows build fails without t
 translation under `## <version> (it)` is shown to Italian users (since 1.13); without one they
 see the English.
 
+## 1.15.17
+
+**Fixed**
+- A crash that could happen while a background task was running (scanning, finding scanners, recognizing text, exporting, comparing documents) after you had closed a window or dialog.
+
+## 1.15.17 (es)
+
+**Correcciones**
+- Un cierre inesperado que podía ocurrir mientras una tarea en segundo plano estaba en curso (escanear, buscar escáneres, reconocer texto, exportar, comparar documentos) después de cerrar una ventana o un cuadro de diálogo.
+
+## 1.15.17 (it)
+
+**Correzioni**
+- Un arresto anomalo che poteva verificarsi mentre un'attività in background era in corso (scansione, ricerca degli scanner, riconoscimento del testo, esportazione, confronto di documenti) dopo aver chiuso una finestra o una finestra di dialogo.
+
 ## 1.15.16
 
 **Changed**

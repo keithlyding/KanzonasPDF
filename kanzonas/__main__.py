@@ -268,6 +268,8 @@ def main():
         from .selftest import run
         sys.exit(run(sys.argv[2] if len(sys.argv) > 2 else "selftest.log"))
     app = QApplication(sys.argv)
+    from . import gc_main
+    gc_main.install()               # (Python's collector runs on this thread only)
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_NAME)
     if sys.platform.startswith("linux"):

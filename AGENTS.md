@@ -127,6 +127,10 @@ feature, and update it when a decision changes or a piece of work lands.
 - Annotations: keep a Page object alive while using an Annot from it ("not bound to page").
 - PyMuPDF is not thread-safe: no worker threads touching a document; split long work into
   short slices on the Qt event loop (see Find in `document_view.py`).
+- Python's garbage collector runs only on the main thread (`kanzonas/gc_main.py`: the automatic
+  collector is off and a timer collects). Never call `gc.collect()` or `gc.enable()` in a worker
+  thread: a collection there deletes closed windows off their own thread (a crash). To pause the
+  collector, put it back as it was (`if enabled: gc.enable()`), as `page_objects._gc_paused` does.
 ## Performance (keep it fast and light, like PDF-XChange)
 - Start-up must not import heavy libraries (OCR/onnxruntime, pdf2docx, ezdxf, openpyxl,
   python-pptx, python-docx, pyHanko, aiohttp, OpenCV, qtawesome, pyspellchecker): import them inside the function

@@ -190,6 +190,15 @@ def run(log_path):
         return "(nested ActualText read safely)"
     check("text reading guard", t_text_guard)
 
+    def t_gc_main():
+        # Python's garbage collector runs only on the main thread (gc_main.py): a collection
+        # in a worker thread deleted closed windows off their own thread (a crash)
+        from PySide6.QtWidgets import QApplication
+        QApplication.instance() or QApplication([])
+        from . import gc_main
+        return gc_main.selftest_check()
+    check("garbage collection on the main thread", t_gc_main)
+
     def t_undo_journal():
         # undo and redo go through MuPDF's journal (undo_journal.py), not a copy of the
         # document per edit: its patches on PyMuPDF and the search for MuPDF's tables of
