@@ -2199,8 +2199,10 @@ _STROKE_SET = _STROKE | {b"CS"}
 
 
 # the colors recolor() wrote: a  q , a line of  r g b RG / rg , then the shape
-# the  q <settings>  a shape was given by recolor (its colors, its line width)
-_OWN_COLOR = re.compile(rb"\nq\n((?:(?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg)|-?[\d.]+ w) ?)+)\n")
+# the  q <settings>  a shape was given by recolor (its colors, its line width), searched for
+# ending where the shape starts (\Z: at the end of the search, so an earlier  q  and settings
+# don't stop it there)
+_OWN_COLOR = re.compile(rb"\nq\n((?:(?:-?[\d.]+ -?[\d.]+ -?[\d.]+ (?:RG|rg)|-?[\d.]+ w) ?)+)\n\Z")
 
 
 def _rgb_op(rgb, op):
