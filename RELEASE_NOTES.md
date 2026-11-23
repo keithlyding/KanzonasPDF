@@ -16,6 +16,9 @@ see the English.
 - Crop pages: the box snaps to the page's corners and edges with Snap to page on (and to the grid and objects, as shapes do).
 - Print: the paper size is on the Print window (the printer's own sizes; Page setup is for the margins), and each document remembers what it was last printed with: printer, paper, copies, pages and the other settings.
 
+**Fixed**
+- Callouts made in another program (Bluebeam, Acrobat): changing their text size or resizing their box sent their arrow to the corner of the page; they're now read as callouts and their arrows stay where they point.
+
 ## 1.16.3 (es)
 
 **Novedades**
@@ -23,12 +26,18 @@ see the English.
 - Recortar páginas: el cuadro se ajusta a las esquinas y bordes de la página con Ajustar a la página activado (y a la cuadrícula y los objetos, como las formas).
 - Imprimir: el tamaño del papel está en la ventana Imprimir (los tamaños de la impresora; Configurar página es para los márgenes), y cada documento recuerda con qué se imprimió la última vez: impresora, papel, copias, páginas y los demás ajustes.
 
+**Correcciones**
+- Llamadas hechas en otro programa (Bluebeam, Acrobat): cambiar el tamaño del texto o del cuadro mandaba su flecha a la esquina de la página; ahora se leen como llamadas y sus flechas se quedan donde apuntan.
+
 ## 1.16.3 (it)
 
 **Novità**
 - Area della parete da una lunghezza: dai a una misura di Lunghezza o Lunghezza polilinea un'Altezza in Proprietà, e mostra anche l'area della parete (lunghezza × altezza), per cartongesso, pittura, isolamento o muratura. Il Riepilogo misure e il computo in Excel la elencano come Area parete.
 - Ritaglia pagine: il riquadro si aggancia agli angoli e ai bordi della pagina con Aggancia alla pagina attivo (e alla griglia e agli oggetti, come le forme).
 - Stampa: il formato della carta è nella finestra Stampa (i formati della stampante; Imposta pagina è per i margini), e ogni documento ricorda con cosa è stato stampato l'ultima volta: stampante, carta, copie, pagine e le altre impostazioni.
+
+**Correzioni**
+- Richiami fatti in un altro programma (Bluebeam, Acrobat): cambiare la dimensione del testo o del riquadro mandava la freccia nell'angolo della pagina; ora sono letti come richiami e le frecce restano dove puntano.
 
 ## 1.16.2
 
