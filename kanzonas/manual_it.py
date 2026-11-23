@@ -1099,6 +1099,15 @@ suo strumento, per le prossime che crei con esso (come Set as Default di Bluebea
 della tastiera su di esso. Anche le immagini, comprese le catture incollate da Cattura area, hanno un'opacità.</li>
 <li>Colore della linea, riempimento (o <b>Nessun riempimento</b>), <b>Nessun bordo</b> per riquadri e forme, colore del testo,
 spessore della linea, dimensione del carattere, punte di freccia, bordo a nuvola, opacità.</li>
+<li><b>Scegliere un colore</b>: ogni pulsante e comando di colore (Proprietà, <b>Colore linea...</b>,
+<b>Colore riempimento...</b> e <b>Colore testo...</b> di Modifica oggetti, il riquadro di modifica del testo,
+<b>Colore segnalibro...</b>, Filigrana, Sfondo, Elaborazione batch) apre la stessa finestra dei colori. Sopra il consueto
+selettore di colore ha due file di campioni: <b>Recenti</b>, gli ultimi 12 colori scelti ovunque in KanzonasPDF,
+il più recente per primo (restano dopo un riavvio), e <b>In questo documento</b>, i colori usati dalle annotazioni
+del documento aperto (i loro colori di linea, riempimento e testo), il più usato per primo. Fai clic su un campione
+per sceglierne il colore; puntaci sopra per vederne il valore (#rrggbb). Qualsiasi colore scelto, da un campione o
+dal selettore, passa in testa a Recenti. Una fila compare solo quando ha dei colori (nessun documento aperto:
+nessuna fila In questo documento).</li>
 <li>Linee (Linea, Freccia, Polilinea, Arco, Curva): <b>Punta di freccia iniziale</b> e <b>Punta di freccia finale</b>,
 ciascuna del proprio tipo (aperta, chiusa, invertita, cerchio, quadrato, rombo, barra o nessuna), così una linea può
 puntare in entrambi i sensi; <b>Freccia centrale</b> (aperta o chiusa), a metà della linea, nel senso in cui è stata

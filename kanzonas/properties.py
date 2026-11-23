@@ -4,8 +4,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QPixmap, QIcon
 from PySide6.QtWidgets import (QWidget, QFormLayout, QVBoxLayout, QLabel, QToolButton,
                                QCheckBox, QDoubleSpinBox, QSlider, QComboBox, QHBoxLayout,
-                               QSpinBox,
-                               QColorDialog, QPushButton, QLineEdit)
+                               QSpinBox, QPushButton, QLineEdit)
 
 from . import annotations as A
 from . import stamps as ST
@@ -61,7 +60,8 @@ class ColorButton(QToolButton):
 
     def _pick(self):
         start = QColor(self._color) if self._color else QColor("#ffffff")
-        c = QColorDialog.getColor(start, self, tr("Choose color"))
+        from . import color_picker
+        c = color_picker.get_color(start, self, tr("Choose color"))
         if c.isValid():
             self.set_color(c.name())
             self.changed.emit()

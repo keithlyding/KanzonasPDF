@@ -9796,12 +9796,12 @@ class DocumentView(QScrollArea):
         """Ask for the color (what: "stroke", "fill" or "text") and give it to the selected
         objects. The color picked last for each is offered first."""
         from PySide6.QtGui import QColor
-        from PySide6.QtWidgets import QColorDialog
+        from . import color_picker
         titles = {"stroke": tr("Line color"), "fill": tr("Fill color"),
                   "text": tr("Text color")}
         last = getattr(self, "_object_colors", {})
         start = QColor(last.get(what, "#000000" if what != "fill" else "#ffffff"))
-        got = QColorDialog.getColor(start, self, titles[what])
+        got = color_picker.get_color(start, self, titles[what], doc=self.doc)
         if not got.isValid():
             return
         last[what] = got.name()

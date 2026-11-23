@@ -11971,3 +11971,9 @@ msgstr "La pendenza di una copertura, alzata su base (6:12) o in gradi (30°): l
 
 msgid "Slope"
 msgstr "Pendenza"
+
+msgid "Recent"
+msgstr "Recenti"
+
+msgid "In this document"
+msgstr "In questo documento"

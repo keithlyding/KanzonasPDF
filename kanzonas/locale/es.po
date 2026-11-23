@@ -11907,3 +11907,9 @@ msgstr "La pendiente de una cubierta, subida a recorrido (6:12) o en grados (30Â
 
 msgid "Slope"
 msgstr "Pendiente"
+
+msgid "Recent"
+msgstr "Recientes"
+
+msgid "In this document"
+msgstr "En este documento"
