@@ -22,6 +22,7 @@ see the English.
 **Fixed**
 - Callouts made in another program (Bluebeam, Acrobat): changing their text size or resizing their box sent their arrow to the corner of the page; they're now read as callouts and their arrows stay where they point.
 - The page's text moved together with a markup by the arrow keys stays selected when it reaches other text (it was unselected after the first press).
+- Properties for the page's own text show its strikethrough and underline also when other, smaller text crosses the same line (they read as missing).
 - Mac: when GitHub has no Mac free to build a version, it goes out without the Mac download; KanzonasPDF on a Mac tells you only about versions that have one.
 
 ## 1.16.3 (es)
@@ -37,6 +38,7 @@ see the English.
 **Correcciones**
 - Llamadas hechas en otro programa (Bluebeam, Acrobat): cambiar el tamaño del texto o del cuadro mandaba su flecha a la esquina de la página; ahora se leen como llamadas y sus flechas se quedan donde apuntan.
 - El texto de la página movido junto con una marca con las flechas sigue seleccionado al llegar a otro texto (se deseleccionaba tras la primera pulsación).
+- Las Propiedades del texto de la página muestran el tachado y el subrayado también cuando otro texto, más pequeño, cruza la misma línea (antes aparecían como ausentes).
 - Mac: cuando GitHub no tiene un Mac libre para crear una versión, esta sale sin la descarga para Mac; KanzonasPDF en un Mac solo avisa de las versiones que la tienen.
 
 ## 1.16.3 (it)
@@ -52,6 +54,7 @@ see the English.
 **Correzioni**
 - Richiami fatti in un altro programma (Bluebeam, Acrobat): cambiare la dimensione del testo o del riquadro mandava la freccia nell'angolo della pagina; ora sono letti come richiami e le frecce restano dove puntano.
 - Il testo della pagina spostato insieme a un'annotazione con i tasti freccia resta selezionato quando arriva su altro testo (veniva deselezionato dopo la prima pressione).
+- Le Proprietà del testo della pagina mostrano barrato e sottolineato anche quando altro testo, più piccolo, attraversa la stessa riga (prima risultavano assenti).
 - Mac: quando GitHub non ha un Mac libero per creare una versione, questa esce senza il download per Mac; KanzonasPDF su un Mac avvisa solo delle versioni che lo hanno.
 
 ## 1.16.2
