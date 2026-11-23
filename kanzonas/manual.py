@@ -1614,7 +1614,8 @@ comment.</li>
 <h2 id="pages">Pages</h2>
 <ul>
 <li><b>Rotate page left / Rotate page right:</b> Ctrl+Shift+Minus / Ctrl+Shift+Plus.</li>
-<li><b>Crop pages</b> (Pages menu, Pages tab, Tools menu): drag a box around what to keep, then
+<li><b>Crop pages</b> (Pages menu, Pages tab, Tools menu): drag a box around what to keep (it snaps as shapes do: with
+<b>Snap to page</b> on, to the page's corners and edges), then
 choose <b>This page</b> or <b>All pages</b> (on other pages the same box is measured from their
 top left corner). Only the visible area changes; nothing is deleted, so <b>Remove crop...</b>
 (Pages menu, Pages tab) shows the whole page again, on this page or all pages. Ctrl+Z undoes

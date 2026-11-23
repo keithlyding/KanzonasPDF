@@ -44,6 +44,27 @@ class Crop(unittest.TestCase):
         v.remove_crop(0)
         self.assertEqual(v.doc[0].rect, F.Rect(0, 0, 600, 800))
 
+    def test_the_crop_box_snaps_to_the_page(self):
+        # (the owner, 23 Nov: "when cropping, I need to be able to snap to page, including
+        # corners"; Crop was the one box tool left out of snapping: a drag, a CAD click and
+        # the box's end all snap through _snap for the tools in SNAP_TOOLS)
+        from PySide6.QtCore import QPointF
+        from kanzonas import page_widget
+        self.assertIn("crop", page_widget.SNAP_TOOLS)
+        v = self.view()
+        v.resize(900, 900)
+        v.show()
+        APP.processEvents()
+        v.set_tool("crop")
+        v.snap_page, v.snap_grid, v.snap_objects = True, False, False
+        pw = v.pages[0]
+        start = pw.to_screen_pt(F.Point(4, 3))             # near the top left corner
+        snapped = pw.to_pdf(pw._snap(start))
+        self.assertAlmostEqual(snapped.x, 0, delta=0.01)
+        self.assertAlmostEqual(snapped.y, 0, delta=0.01)
+        near = pw.to_screen_pt(F.Point(597, 300))           # near the right edge
+        self.assertAlmostEqual(pw.to_pdf(pw._snap(near)).x, 600, delta=0.01)
+
     def test_crop_all_pages(self):
         v = self.view()
         v.crop_pages(1, F.Rect(50, 60, 350, 460), all_pages=True)

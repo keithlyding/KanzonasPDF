@@ -1598,7 +1598,8 @@ suo nome come commento.</li>
 <h2 id="pages">Pagine</h2>
 <ul>
 <li><b>Ruota pagina a sinistra / Ruota pagina a destra:</b> Ctrl+Shift+Meno / Ctrl+Shift+Più.</li>
-<li><b>Ritaglia pagine</b> (menu Pagine, scheda Pagine, menu Strumenti): trascina un riquadro attorno a ciò che vuoi tenere, poi
+<li><b>Ritaglia pagine</b> (menu Pagine, scheda Pagine, menu Strumenti): trascina un riquadro attorno a ciò che vuoi tenere (si aggancia come le forme: con
+<b>Aggancia alla pagina</b> attivo, agli angoli e ai bordi della pagina), poi
 scegli <b>Questa pagina</b> o <b>Tutte le pagine</b> (sulle altre pagine lo stesso riquadro è misurato dal loro
 angolo superiore sinistro). Cambia solo l'area visibile; non viene eliminato nulla, quindi <b>Rimuovi ritaglio...</b>
 (menu Pagine, scheda Pagine) mostra di nuovo la pagina intera, su questa pagina o su tutte. Ctrl+Z annulla

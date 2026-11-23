@@ -1598,7 +1598,8 @@ espacio como un polígono con su nombre como comentario.</li>
 <h2 id="pages">Páginas</h2>
 <ul>
 <li><b>Girar página a la izquierda / Girar página a la derecha:</b> Ctrl+Shift+Minus / Ctrl+Shift+Plus.</li>
-<li><b>Recortar páginas</b> (menú Páginas, pestaña Páginas, menú Herramientas): arrastre un cuadro alrededor de lo que desea conservar y luego
+<li><b>Recortar páginas</b> (menú Páginas, pestaña Páginas, menú Herramientas): arrastre un cuadro alrededor de lo que desea conservar (se ajusta como las formas: con
+<b>Ajustar a la página</b> activado, a las esquinas y bordes de la página) y luego
 elija <b>Esta página</b> o <b>Todas las páginas</b> (en las demás páginas, el mismo cuadro se mide desde su
 esquina superior izquierda). Solo cambia la zona visible; no se elimina nada, así que <b>Quitar recorte...</b>
 (menú Páginas, pestaña Páginas) vuelve a mostrar la página entera, en esta página o en todas. Ctrl+Z deshace

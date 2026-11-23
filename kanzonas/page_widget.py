@@ -59,7 +59,9 @@ TILE_LIMIT = 160            # tiles kept in memory per document (~125 MB)
 CARD_W = 190        # comment box width in px
 ROT_GAP = 26        # rotation handle distance above the selection, px
 # tools whose points snap (to the grid / to objects) while drawing
-SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "crop", "link"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach", "dot"}
+# (Crop too: its box snaps to the page's corners and edges, the grid and objects, the owner
+# 23 Nov: "when cropping, I need to be able to snap to page, including corners")
+SNAP_TOOLS = (SHAPE_TOOLS - {"eraser", "erasecontent", "capture", "link"}) | POLY_TOOLS | {"stamp", "note", "m_count", "attach", "dot"}
 STRAIGHT_TOOLS = {"line", "arrow", "m_length", "m_calibrate", "m_radius", "callout"}   # Shift = 45° steps
 SQUARE_TOOLS = {"rect", "ellipse", "cloud", "mask"}                       # Shift = square / circle
 
