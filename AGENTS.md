@@ -83,6 +83,9 @@ feature, and update it when a decision changes or a piece of work lands.
   give the same document; it exits 1 and names the seed and step of each failure (rerun with
   that seed to see it again). A short run of it is in the unit suite
   (tests/test_battery_random.py). Never weaken one of its checks to get green: fix the cause.
+  It also runs every night on main (`.github/workflows/nightly-battery.yml`, midnight EST,
+  new seeds each night on Linux, Windows and macOS); a failure there goes into one open issue
+  labeled `battery`: fix it like any known bug.
 - New dependencies: add the minimum to `requirements.txt` and the exact version and license
   to `constraints.txt`; heavy ones must be imported lazily (see Performance).
 - **No slop** (the owner, 13 Nov 2026): `python tools/slop_check.py`. Its hard rules fail the
