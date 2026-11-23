@@ -19,7 +19,9 @@ so a test that depends on a remembered option sets it."""
 import atexit
 import gc
 import os
+import sys
 import tempfile
+import unittest
 
 os.environ.setdefault("KANZONAS_LANG", "en")      # the tests check English texts
 
@@ -81,3 +83,45 @@ def _shutdown_qt():
 
 
 atexit.register(_shutdown_qt)
+
+
+def _delete_closed_windows():
+    """The main windows closed by the tests before, deleted. A primary window isn't deleted
+    when it closes (in the app, closing it quits), so each one a test made stayed with its
+    1,180 widgets: about 800,000 by the end of the suite, which every later walk over the
+    widgets (a theme change, a polish, the collector) went through. test_theme_gc's theme
+    change took 13 s on Linux and 636 s on the Mac build with them (23 Nov 2026)."""
+    main_window = sys.modules.get("kanzonas.main_window")
+    app = QApplication.instance()
+    if main_window is None or app is None:
+        return
+    still_open = set(map(id, main_window.windows()))
+    closed = []
+    for w in QApplication.topLevelWidgets():
+        try:
+            if (isinstance(w, main_window.MainWindow) and id(w) not in still_open
+                    and not w.isVisible()):
+                # (its actions out of its toolbars and menus first, as _shutdown_qt does)
+                app.removeEventFilter(w)
+                for tb in w.findChildren(QToolBar):
+                    tb.clear()
+                for m in w.findChildren(QMenu):
+                    m.clear()
+                w.menuBar().clear()
+                w.deleteLater()
+                closed.append(w)
+        except RuntimeError:        # (deleted on the C++ side already)
+            pass
+    if closed:
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
+
+_run_test = unittest.TestCase.run
+
+
+def _run_after_deleting_closed_windows(self, result=None):
+    _delete_closed_windows()
+    return _run_test(self, result)
+
+
+unittest.TestCase.run = _run_after_deleting_closed_windows

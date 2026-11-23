@@ -7,7 +7,10 @@ The collector is turned on for the test (a window turns Python's automatic colle
 gc_main), at a collection to nearly every new object for its first FIRST_COLLECTIONS: with
 300 closed dialogs that crashes the old code every time (200 did, 100 didn't), and the fixed code passes in a
 few seconds. (With it off, nothing was collected and the old code passed too; left at one a
-new object for the whole change, the test took 23 minutes in the Mac build's full suite.)
+new object for the whole change, the test took 23 minutes in the Mac build's full suite.
+It took 23 minutes there again in 1.16.3, with the limit: the main windows the tests before
+had closed were never deleted, about 800,000 widgets, and the theme walks them all; the
+suite deletes them now, tests/__init__.py.)
 
     QT_QPA_PLATFORM=offscreen python -m unittest tests.test_theme_gc
 """
