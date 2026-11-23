@@ -1075,9 +1075,12 @@ modalità CAD) e Proprietà mostra il suo <b>Font</b>, la <b>Dimensione caratter
 <b>Sfondo del testo</b> (vuoti, o "diversi", quando il testo selezionato è diverso). Una
 modifica va a tutto: il testo viene riscritto nella pagina dov'è, ogni parola mantiene il resto
 del suo stile, in un solo passaggio che Annulla annulla, e resta selezionato. Una nuova
-dimensione allontana (o avvicina) le righe di un paragrafo quanto ingrandisce (o rimpicciolisce)
-il testo. Per cambiare singole parole, modifica il testo (Modifica testo) e selezionale nella
-casella.</li>
+dimensione o un nuovo font rimandano a capo un paragrafo di più righe alla sua larghezza, come
+Modifica testo; una sola riga (un'etichetta), il testo di lato e i blocchi di Aggiungi testo
+vengono riscritti dove sono, con le righe allontanate (o avvicinate) quanto cresce (o cala) la
+dimensione. Il testo inclinato di un angolo che non è un quarto di giro (una filigrana in
+diagonale) non ha sottolineatura, barrato né sfondo. Per cambiare singole parole, modifica il
+testo (Modifica testo) e selezionale nella casella.</li>
 </ul>
 
 <h2 id="properties">Colori, bordi e stili (pannello Proprietà)</h2>

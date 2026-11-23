@@ -18,6 +18,7 @@ see the English.
 
 **Fixed**
 - Text moved or recolored with Edit objects kept its underline and strikethrough (they were lost, and their lines stayed where the text had been).
+- An underline on diagonal text (a watermark) was drawn as a large square over the word; diagonal text now gets no underline.
 
 ## 1.16 (es)
 
@@ -28,6 +29,7 @@ see the English.
 
 **Correcciones**
 - El texto movido o con otro color en Editar objetos conserva su subrayado y su tachado (se perdían, y sus líneas quedaban donde había estado el texto).
+- Un subrayado en texto en diagonal (una marca de agua) se dibujaba como un cuadrado grande sobre la palabra; el texto en diagonal ya no lleva subrayado.
 
 ## 1.16 (it)
 
@@ -38,6 +40,7 @@ see the English.
 
 **Correzioni**
 - Il testo spostato o ricolorato con Modifica oggetti mantiene sottolineatura e barrato (si perdevano, e le loro linee restavano dov'era il testo).
+- Una sottolineatura su testo in diagonale (una filigrana) veniva disegnata come un grande quadrato sulla parola; il testo in diagonale ora non ha sottolineatura.
 
 ## 1.15.21
 

@@ -1087,9 +1087,12 @@ Properties shows its <b>Font</b>, <b>Font size</b>, <b>Bold</b>, <b>Italic</b>,
 <b>Underline</b>, <b>Strikethrough</b>, <b>Text color</b> and <b>Text background</b> (blank, or
 "several", when the selected text differs). A change goes to all of it: the text is written
 again in the page where it is, each word keeping the rest of its style, in one step Undo takes
-back, and it stays selected. A new size spreads a paragraph's lines apart (or draws them
-together) as much as it grows (or shrinks) the text. To change single words, edit the text
-(Edit text) and select them in the box.</li>
+back, and it stays selected. A new size or font wraps a paragraph of several lines again to its
+own width, as Edit text does; a single line (a label), sideways text and Add text's blocks are
+written where they are, their lines spread apart (or drawn together) as much as the size grows
+(or shrinks). Text at an angle other than a quarter turn (a diagonal watermark) gets no
+underline, strikethrough or background. To change single words, edit the text (Edit text) and
+select them in the box.</li>
 </ul>
 
 <h2 id="properties">Colors, borders and styles (Properties panel)</h2>

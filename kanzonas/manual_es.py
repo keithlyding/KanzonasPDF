@@ -1075,9 +1075,11 @@ CAD) y Propiedades muestra su <b>Fuente</b>, <b>Tamaño de fuente</b>, <b>Negrit
 <b>Cursiva</b>, <b>Subrayado</b>, <b>Tachado</b>, <b>Color del texto</b> y <b>Fondo del texto</b>
 (en blanco, o "varios", cuando el texto seleccionado es distinto). Un cambio va a todo: el texto
 se vuelve a escribir en la página donde está, cada palabra conserva el resto de su estilo, en un
-solo paso que Deshacer revierte, y sigue seleccionado. Un tamaño nuevo separa (o junta) las
-líneas de un párrafo tanto como agranda (o achica) el texto. Para cambiar palabras sueltas, edite
-el texto (Editar texto) y selecciónelas en el cuadro.</li>
+solo paso que Deshacer revierte, y sigue seleccionado. Un tamaño o una fuente nuevos vuelven a ajustar un
+párrafo de varias líneas a su propio ancho, como Editar texto; una sola línea (una etiqueta), el texto de lado y los
+bloques de Agregar texto se escriben donde están, con sus líneas separadas (o juntas) tanto como crece (o se achica)
+el tamaño. El texto en un ángulo que no es un cuarto de vuelta (una marca de agua en diagonal) no lleva subrayado,
+tachado ni fondo. Para cambiar palabras sueltas, edite el texto (Editar texto) y selecciónelas en el cuadro.</li>
 </ul>
 
 <h2 id="properties">Colores, bordes y estilos (Panel de propiedades)</h2>
