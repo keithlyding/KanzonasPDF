@@ -677,7 +677,9 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python -X faulthandler -m unittest discover -s tests -p "test_*.py" -t .
+          # (--durations: the slowest tests named in the log; this job's tests have taken from
+          # 52 to 90 minutes since 1.15.20, 2.5 times Linux's, against a 120-minute limit)
+          python -X faulthandler -m unittest discover -s tests -p "test_*.py" -t . --durations 40
           # (macOS keeps settings for programs itself, where tests can't put them aside as on
           # Linux: what they left, and the files they left in the app's data folder, go before
           # the app is tested: a backup left there would be offered at the app's start)
