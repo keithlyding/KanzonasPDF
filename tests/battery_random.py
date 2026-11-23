@@ -1625,11 +1625,20 @@ class Battery:
                 changes[key] = self.rnd.choice(["#ffff00", "#aaffaa", "-"])
             else:
                 changes[key] = self.rnd.random() < 0.7
-        others = self.other_letters(i, [])
+        # (counted wherever they are: a label made larger can run past the page's edge, and
+        # a restyle takes no letters out)
+        others = self.all_letters(i)
+        marks = any(a.type[0] == pymupdf.PDF_ANNOT_REDACT for a in v.doc[i].annots())
+        before = v.object_text_style()
         rev = v.revision
         v.style_text_objects(changes)
-        self.check_letters(i, others)
-        if v.revision != rev and v.obj_sel is not None:
+        self.check_letters(i, others, anywhere=True)
+        if marks:
+            # (refused: the page has redaction marks not applied yet, and applying them is
+            # what takes text out; nothing of the text changes)
+            if v.obj_sel is not None and v.object_text_style() != before:
+                raise Failed("page %d: text restyled with redaction marks on it" % i)
+        elif v.revision != rev and v.obj_sel is not None:
             got = v.object_text_style() or {}
             for key in ("bold", "underline", "strike"):
                 if key in changes and got.get(key) != changes[key] and \

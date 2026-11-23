@@ -125,16 +125,34 @@ class TextObjects(unittest.TestCase):
         pump()
         self.assertEqual(styles(self.v.doc[0]), before)
 
-    def test_a_size_spreads_the_lines_as_it_grows_the_text(self):
+    def test_a_size_wraps_a_paragraph_again_to_its_own_width(self):
+        # (written again line by line, a long first line ran off the page: random battery,
+        # seed 13; now it wraps as Edit text does)
         self.select(self.texts("Notes"))
+        right = max(r.x1 for r, _ln in self.texts("Notes")[0]["lines"])
         self.props.fontsize.setValue(24)
         self.props.fontsize.editingFinished.emit()
         pump()
         got = styles(self.v.doc[0])
-        self.assertEqual(got["Notes for the plan"][4], 24.0)
-        self.assertEqual(got["Notes for the plan"][6], 100.0)            # (the first stays)
-        self.assertEqual(got["read them first"][6], 130.0)               # (15 pt -> 30 pt)
+        words = [w for k in got if k != "Sheet title" for w in k.split()]
+        self.assertEqual(words, "Notes for the plan read them first".split())
+        self.assertEqual({got[k][4] for k in got if k != "Sheet title"}, {24.0})
+        self.assertEqual(got["Notes"][6], 100.0)                       # (the first stays)
+        for r, ln in text_edit.text_lines(self.v.doc[0]):
+            if "Sheet" not in text_edit.line_text(ln):
+                self.assertLess(r.x1, right + 30)                      # (within its width)
         self.assertEqual(got["Sheet title"][4], 12.0)
+        sel = self.v.obj_sel[1]                                         # (still selected)
+        self.assertEqual(len(sel), 1)
+        self.assertEqual(len(sel[0]["lines"]), len(got) - 1)
+
+    def test_a_size_on_labels_writes_them_where_they_are(self):
+        self.select(self.texts("Sheet"))
+        self.props.fontsize.setValue(20)
+        pump()
+        got = styles(self.v.doc[0])
+        self.assertEqual(got["Sheet title"][4:], (20.0, 0x0000FF, 400.0))
+        self.assertEqual(len(self.v.obj_sel[1]), 1)
 
     def test_several_colors_show_several_and_one_picked_goes_to_all(self):
         self.select(self.texts("Notes") + self.texts("Sheet"))

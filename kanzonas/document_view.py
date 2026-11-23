@@ -9481,13 +9481,58 @@ class DocumentView(QScrollArea):
             return k._replace(**swap) if swap else k
 
         def texts(page, its):
-            paras = [[ln for _r, ln in it["lines"]] for it in its]
-            used = text_edit.restyle_lines(page, paras, change, family=family,
-                                           size=float(size) if size else None,
-                                           blocks=self._blocks_of(its))
-            if any(u.startswith("KZ") for u in used):
+            # a new size or font changes the words' widths: a paragraph of several level
+            # lines is wrapped again to its own width, as Edit text does (written again line
+            # by line, its first line ran off the page: random battery, seed 13); the rest
+            # (labels, sideways text, Add text's blocks) is written again where it is
+            from . import text_styles
+            rewrap = [it for it in its if (size or family) and len(it["lines"]) > 1 and
+                      it.get("added") is None and
+                      all(abs(ln["dir"][0] - 1) < 1e-3 for _r, ln in it["lines"])]
+            here = [it for it in its if all(it is not x for x in rewrap)]
+            boxes = {}
+            used = []
+            if here:
+                paras = [[ln for _r, ln in it["lines"]] for it in here]
+                ratio = {}
+                for it in here:
+                    lines = [ln for _r, ln in it["lines"]]
+                    st = text_styles.read_lines(page, lines[:1])[0]
+                    main = text_styles.main_style(st.text, st.keys, st.main).size
+                    ratio[id(it)] = float(size) / main if size and main > 0 else 1.0
+                used += text_edit.restyle_lines(page, paras, change, family=family,
+                                                size=float(size) if size else None,
+                                                blocks=self._blocks_of(here))
+                # where each one's lines are now (to select it again): its first line where
+                # it was, the others as far from it as the size grew
+                now = text_edit.text_lines(page)
+                for it in here:
+                    lines = [ln for _r, ln in it["lines"]]
+                    first = pymupdf.Point(lines[0]["spans"][0]["origin"])
+                    box = pymupdf.Rect()
+                    for ln in lines:
+                        o = pymupdf.Point(ln["spans"][0]["origin"])
+                        want = first + (o - first) * ratio[id(it)]
+                        hit = next((r for r, h in now if text_edit.line_text(h).strip() ==
+                                    text_edit.line_text(ln).strip() and
+                                    abs(pymupdf.Point(h["spans"][0]["origin"]) - want) < 0.75),
+                                   None)
+                        if hit is not None:
+                            box |= hit
+                    boxes[id(it)] = box if not box.is_empty else it["rect"]
+            for it in rewrap:
+                lines = [ln for _r, ln in it["lines"]]
+                st = text_styles.read_paragraph(page, lines)
+                keys = [change(k)._replace(size=round(float(size), 2)) if size else change(k)
+                        for k in st.keys]
+                name, box, _bases = text_edit.replace_paragraph(
+                    page, lines, st.text, font=(family, False, False) if family else None,
+                    runs=text_styles.runs_of(st.text, keys), decor=st.decor)
+                used.append(name)
+                boxes[id(it)] = pymupdf.Rect(box)
+            if any(u and u.startswith("KZ") for u in used):
                 self._fonts_added = True
-            return [it["rect"] for it in its]
+            return [boxes.get(id(it), it["rect"]) for it in its]
         names = {"bold": tr("Bold"), "italic": tr("Italic"), "underline": tr("Underline"),
                  "strike": tr("Strikethrough"), "fontsize": tr("Font size"),
                  "font": tr("Font"), "text_color": tr("Text color"),
