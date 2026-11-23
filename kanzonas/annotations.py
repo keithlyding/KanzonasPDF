@@ -112,8 +112,10 @@ DEFAULTS = {
     # a dimension (dimensions.py): its arrowheads are one of dimensions.HEADS
     "m_dim": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "head": "closed",
               "opacity": 1.0},
+    # drops: vertical lengths (drops, rises) at its points, [[point number, meters]]: in its
+    # total (measure.drops_m)
     "m_poly": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0,
-               "height": 0.0},
+               "height": 0.0, "drops": []},
     "m_area": {"stroke": "#d00000", "fill": None, "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_angle": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
     "m_radius": {"stroke": "#d00000", "width": 1.0, "fontsize": 9, "opacity": 1.0},
@@ -892,6 +894,14 @@ def write(page, model):
             anchor, lab_angle = measure.label_anchor(kind, model["points"], page)
         measure.add_label(page, a, label_text, anchor, float(p.get("fontsize", 9)),
                           stroke or (0, 0, 0), lab_angle)
+        if kind == "m_poly":
+            # each drop or rise named at its point (measure.drops_m)
+            unit = measure.get_scale(page)[1]
+            for k, metres in measure.drops_m(p, len(model["points"])):
+                q = model["points"][k]
+                measure.add_label(page, a, tr("Drop {length}").format(
+                    length=measure.fmt_length(metres, unit)), pymupdf.Point(q.x, q.y - 10),
+                    float(p.get("fontsize", 9)), stroke or (0, 0, 0), 0.0)
     if kind == "dot":
         from . import dots
         dots.draw(page, a, model)

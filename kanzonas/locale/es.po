@@ -11814,3 +11814,30 @@ msgstr "Altura"
 
 msgid "Wall area"
 msgstr "Área de muro"
+
+msgid "Drop {length}"
+msgstr "Bajada {length}"
+
+msgid "Drop or rise"
+msgstr "Bajada o subida"
+
+msgid "Vertical length at this point (12'-6\", 3.5...):"
+msgstr "Longitud vertical en este punto (12'-6\", 3.5...):"
+
+msgid "Couldn't read that length. Try 12'-6\" or 3.5:"
+msgstr "No se pudo leer esa longitud. Pruebe 12'-6\" o 3.5:"
+
+msgid "including 1 drop of {length}"
+msgstr "incluida 1 bajada de {length}"
+
+msgid "including {n} drops, {length}"
+msgstr "incluidas {n} bajadas, {length}"
+
+msgid "Change this drop..."
+msgstr "Cambiar esta bajada..."
+
+msgid "Add drop or rise..."
+msgstr "Agregar bajada o subida..."
+
+msgid "Remove this drop"
+msgstr "Quitar esta bajada"

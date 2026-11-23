@@ -166,7 +166,7 @@ The owner sets this list; nothing below is promised until it's here.
      and subtotals; CSV stays. The start of a bill of quantities.
   3. **Wall area from a length** (1.16.3): a Height on Length and Polylength (as Volume's Depth),
      showing length x height as well (drywall, paint, insulation, masonry).
-  4. **Drops on runs**: vertical lengths (drops, rises) at chosen points of a Polylength,
+  4. **Drops on runs** (1.16.4): vertical lengths (drops, rises) at chosen points of a Polylength,
      counted in its total, shown on the markup and in the summary (conduit, wire, pipe).
   5. **A quantity per count, and waste**: items per counted item with their own units ("each
      fixture = 2 boxes + 1 whip"), and a waste or extra percentage for a group or

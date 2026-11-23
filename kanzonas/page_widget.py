@@ -2219,6 +2219,27 @@ class PageWidget(QWidget):
                 if m.get("holes"):
                     menu.addAction(tr("Remove all cut-outs"),
                                    lambda x=x: v.remove_cutouts(self.index, x))
+            polys = [(x, m) for x, m in v.selected_models()
+                     if m["kind"] == "m_poly"] if not v.read_only else []
+            if len(polys) == 1 and not v.extra:
+                # (a drop or rise at the point clicked near: measure.drops_m)
+                x, m = polys[0]
+                k = v.poly_point_at(self.index, x, pdf)
+                if k is not None:
+                    from . import measure
+                    have = dict(measure.drops_m(m["props"], len(m["points"])))
+                    unit = measure.get_scale(v.doc[self.index])[1]
+
+                    def ask(k=k, x=x, have=have, unit=unit):
+                        metres = v.ask_drop(measure.fmt_length(have[k], unit)
+                                            if k in have else "")
+                        if metres:
+                            v.set_drop(self.index, x, k, metres)
+                    menu.addAction(tr("Change this drop...") if k in have else
+                                   tr("Add drop or rise..."), ask)
+                    if k in have:
+                        menu.addAction(tr("Remove this drop"),
+                                       lambda x=x, k=k: v.set_drop(self.index, x, k, None))
             if win is not None and hasattr(win, "new_markup_layer") and not v.read_only:
                 # (1.12) the layer the selected markups are on: none, one of the document's,
                 # or a new one

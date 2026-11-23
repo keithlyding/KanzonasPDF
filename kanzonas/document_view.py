@@ -5050,6 +5050,59 @@ class DocumentView(QScrollArea):
                 new.pop("holes")
         self.commit_model(index, xref, new)
 
+    # ---- drops and rises on a Polylength (measure.drops_m) ----------------------------
+    def poly_point_at(self, index, xref, pt, tol=None):
+        """The number of the selected Polylength's point nearest pt (within tol page points,
+        12 pixels by default), or None."""
+        page = self.doc[index]          # (kept alive while its markup is read)
+        found = annotations.load_annots(page, [xref])
+        m = annotations.read(found[xref]) if xref in found else None
+        if not m or m["kind"] != "m_poly":
+            return None
+        tol = tol if tol is not None else 12.0 / max(self.zoom, 0.05)
+        best = min(range(len(m["points"])), key=lambda k: abs(m["points"][k] - pt),
+                   default=None)
+        if best is None or abs(m["points"][best] - pt) > tol:
+            return None
+        return best
+
+    def ask_drop(self, default):
+        """The length of a drop or rise, typed (meters), or None. (Tests replace it.)"""
+        from PySide6.QtWidgets import QInputDialog
+        from . import measure, measure_ui
+        unit = measure.get_scale(self.doc[self.selection[0]])[1] if self.selection else "ft"
+        text, ok = QInputDialog.getText(
+            self, tr("Drop or rise"), tr("Vertical length at this point (12'-6\", 3.5...):"),
+            text=default)
+        while ok:
+            try:
+                metres = measure_ui.parse_length(text, unit)
+                if metres > 0:
+                    return metres
+            except ValueError:
+                pass                    # (not a length: asked again, saying so)
+            text, ok = QInputDialog.getText(
+                self, tr("Drop or rise"), tr("Couldn't read that length. Try 12'-6\" or 3.5:"),
+                text=text)
+        return None
+
+    def set_drop(self, index, xref, point, metres):
+        """Give point number point of a Polylength a drop or rise of metres (None or 0: take
+        it off), counted in its total; one undo step."""
+        from . import measure
+        page = self.doc[index]
+        found = annotations.load_annots(page, [xref])
+        m = annotations.read(found[xref]) if xref in found else None
+        if not m or m["kind"] != "m_poly" or m.get("locked"):
+            return False
+        new = annotations.copy(m)
+        drops = [[k, d] for k, d in measure.drops_m(m["props"], len(m["points"])) if k != point]
+        if metres:
+            drops.append([int(point), float(metres)])
+        new["props"]["drops"] = sorted(drops)
+        self.commit_model(index, xref, new)
+        return True
+
     # ---- spaces (spaces.py) ----------------------------------------------------------
     def ask_space_name(self, default, title=None):
         """The name for a space (None: cancelled). (Tests replace it.)"""
@@ -6619,7 +6672,8 @@ class DocumentView(QScrollArea):
         base = annotations.DEFAULTS[tool]
         props = dict(annotations.tool_props(tool))
         for k, v in self.selected_model["props"].items():
-            if k in base and k != "rotation" and annotations._fits(base[k], v):
+            # (a Polylength's drops are where its own points are: not a style for the next)
+            if k in base and k not in ("rotation", "drops") and annotations._fits(base[k], v):
                 props[k] = v
         annotations.set_tool_props(tool, props)
         self.toolDefaultsChanged.emit(tool)

@@ -1516,6 +1516,14 @@ Con un'altezza, la misura mostra anche l'area della parete (lunghezza &times; al
 per cartongesso, pittura, isolamento o muratura, e il Riepilogo misure e il computo in Excel la elencano come
 <b>Area parete</b> a sé accanto alla lunghezza. Impostala prima di disegnare per le lunghezze successive, o
 seleziona una lunghezza e cambiala lì.</li>
+<li><b>Discese e risalite sui percorsi:</b> per tubi, cavi e tubazioni, una Lunghezza polilinea può contare i
+tratti verticali che la pianta non mostra. Selezionala, fai clic destro vicino a uno dei suoi punti &gt;
+<b>Aggiungi discesa o risalita...</b> e digita la lunghezza verticale (12'-6", o un numero nell'unità della
+pagina). Ognuna è indicata al suo punto ("Discesa 10.00 ft"), la misura mostra il totale con esse ("27.00 ft,
+comprese 2 discese, 12.00 ft"), e il Riepilogo misure, il computo in Excel e le legende contano il totale. Fai
+clic destro di nuovo vicino al punto per <b>Cambia questa discesa...</b> o <b>Rimuovi questa discesa</b>.
+Restano ai loro punti quando il percorso viene spostato, copiato o ruotato, e Imposta come predefinito non le
+passa alle Lunghezze polilinea successive.</li>
 <li><b>Conteggio</b> (Shift+C): fai clic su ogni elemento; ogni clic mette un indicatore con il numero
 successivo del suo gruppo. Preparalo in Proprietà prima di fare clic, con lo strumento Conteggio scelto:
 <b>Gruppo</b> (scegli uno dei gruppi del documento o scrivi un nome, come Rilevatori di fumo: gli indicatori

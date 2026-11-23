@@ -748,6 +748,7 @@ class Battery:
             (self.op_textbox, 3), (self.op_callout, 2), (self.op_note, 2), (self.op_stamp, 2),
             (self.op_dot, 2), (self.op_dot_options, 2),
             (self.op_measure, 2), (self.op_dimension, 3), (self.op_cutout, 3),
+            (self.op_drops, 2),
             (self.op_text_markup, 6),
             (self.op_attach, 1), (self.op_legend, 2), (self.op_legend_options, 2),
             (self.op_move, 6), (self.op_nudge, 3), (self.op_resize, 3), (self.op_props, 4),
@@ -918,6 +919,45 @@ class Battery:
                 if abs(net - max(0.0, gross - cut)) > 1e-6 or cut > gross + 1e-6:
                     raise Failed("page %d: an area's net %.3f isn't its gross %.3f less its "
                                  "cut-outs %.3f" % (i, net, gross, cut))
+        return "edit"
+
+    def op_drops(self):
+        """Drops and rises on a Polylength (1.16.4, measure.drops_m): one drawn, or one already
+        there given a vertical length at one of its points, changed, or taken off. Its value
+        must be its plan length and its drops, read back from the file."""
+        from kanzonas import annotations as A, measure as M
+        v = self.v
+        have = [(i, x) for i in range(v.doc.page_count) for x in self.markups(i)
+                if self.kind(i, x) == "m_poly"]
+        if not have or self.rnd.random() < 0.3:
+            i = self.page()
+            v.apply_poly(i, "m_poly", [self.point(i, 40) for _ in range(self.rnd.randint(2, 5))])
+            return None
+        i, x = self.rnd.choice(have)
+        v.select_xref(i, x)
+        m = v.selected_model
+        if m is None or m["kind"] != "m_poly" or m.get("locked"):
+            v.clear_selection()
+            return "none"
+        k = self.rnd.randrange(len(m["points"]))
+        rev = v.revision
+        v.set_drop(i, x, k, self.rnd.choice([None, 0.3, 1.5, 3.05]))
+        v.clear_selection()
+        if v.revision == rev:
+            return "none"
+        page = v.doc[i]
+        for a in A.each_annot(page):
+            got = A.read(a)
+            if got and got["kind"] == "m_poly":
+                f, unit = M.get_scale(page)[:2]
+                base = "ft" if unit == "ft-in" else unit
+                want = (M.length(got["points"]) * f +
+                        sum(d for _k, d in M.drops_m(got["props"], len(got["points"])))) / \
+                    M.UNITS[base]
+                value = M.raw_values("m_poly", got["points"], page, got["props"])[0]
+                if abs(value - want) > 1e-6:
+                    raise Failed("page %d: a Polylength's total %.4f isn't its length and "
+                                 "drops %.4f" % (i, value, want))
         return "edit"
 
     def op_dimension(self):

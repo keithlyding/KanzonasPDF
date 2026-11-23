@@ -1514,6 +1514,14 @@ principio. Con una altura, la medición muestra también el área del muro (long
 120.00 sq ft"), para paneles de yeso, pintura, aislamiento o mampostería, y el Resumen de mediciones y la medición
 en Excel la muestran como un <b>Área de muro</b> propia junto a la longitud. Defínala antes de dibujar para las
 siguientes longitudes, o seleccione una longitud y cámbiela allí.</li>
+<li><b>Bajadas y subidas en recorridos:</b> para tubo, cable y tubería, una Longitud de polilínea puede contar
+los tramos verticales que el plano no muestra. Selecciónela, haga clic derecho cerca de uno de sus puntos &gt;
+<b>Agregar bajada o subida...</b> y escriba la longitud vertical (12'-6", o un número en la unidad de la página).
+Cada una se nombra en su punto ("Bajada 10.00 ft"), la medición muestra su total con ellas ("27.00 ft, incluidas
+2 bajadas, 12.00 ft"), y el Resumen de mediciones, la medición en Excel y las leyendas cuentan el total. Haga clic
+derecho de nuevo cerca del punto para <b>Cambiar esta bajada...</b> o <b>Quitar esta bajada</b>. Se quedan en sus
+puntos cuando el recorrido se mueve, se copia o se gira, y Establecer como predeterminado no las pasa a las
+siguientes Longitudes de polilínea.</li>
 <li><b>Conteo</b> (Shift+C): haga clic en cada elemento; cada clic pone un marcador con el siguiente número
 de su grupo. Prepárelo en Propiedades antes de hacer clic, con la herramienta Conteo elegida:
 <b>Grupo</b> (elija uno de los grupos del documento o escriba un nombre, como Detectores de humo: los
